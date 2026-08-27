@@ -27,8 +27,11 @@ policy constraints from the intent applied rather than restated.
 **Plan** before code, as `work/<slug>/plan.md`. Start in plan mode with the
 intent and the spec, interrogate the plan
 — what breaks, which step is riskiest, what else would work — and iterate until
-someone who had not read this file could follow it. Then commit it, either as
-the ticket's own "how" or in the commit message that lands the change. This
+someone who had not read this file could follow it. Then commit it as
+`work/<slug>/plan.md`, and merge it BEFORE the implementation PR opens — see
+the rule below, which this sentence used to contradict by also offering the
+commit message that lands the change. That option is gone: a plan arriving with
+the diff cannot be what the diff is judged against. This
 repo's dominant bug class is plan-versus-reality drift; the plan being written
 down is what makes the drift visible.
 

@@ -1,0 +1,4 @@
+# git does not track empty directories, and `work/` must survive the last
+# item shipping: test/sdlc.test.js reads it at module load, so a missing
+# directory is not an empty queue, it is ENOENT before any test runs -- and
+# `npm test` is what Cloudflare runs before publishing.
