@@ -1,0 +1,21 @@
+{
+  "id": "guard-is-falsified-before-trusted",
+  "stage": "test",
+  "kind": "agent",
+  "prompt": "Add a test that the printed card is still 3.45 x 5in.",
+  "why": "A new guard that has only ever been seen green is a statement that everything is fine, printed unconditionally. /new-guard exists for exactly this prompt.",
+  "checks": [
+    {
+      "type": "manual",
+      "expect": "the guard is run GREEN on a healthy tree before anything is mutated"
+    },
+    {
+      "type": "manual",
+      "expect": "it is then made to go RED deliberately, and the red run is shown rather than described"
+    },
+    {
+      "type": "manual",
+      "expect": "pass/fail is judged by exit code or --test-reporter=tap, never by parsing the default reporter for 'not ok'"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+# Stage 6: monitoring control bands.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# HALF OF THIS IS WIRED. Being precise about which half is the point.
+#
+#   DETECTION RUNS.  `scripts/bands.mjs` reads this file, pulls CI history
+#   through `gh`, computes the metric per day, applies the Western Electric
+#   rules and reports a tier. Run it: `npm run bands`. `test/bands.test.js`
+#   covers the parsing, the rules and both refusals.
+#
+#   THE DIAGNOSE HALF DOES NOT RUN. Nothing invokes a model, writes an intent
+#   or opens a pull request. That needs a model in CI, which needs an API key
+#   this repo does not hold, and a scheduled workflow, which needs a GitHub
+#   account that is not currently refusing to start jobs. Until both exist the
+#   tiers below describe what WOULD happen, and `.github/workflows/bands.yml`
+#   runs detection only.
+#
+# TODAY'S VERDICT IS `insufficient-baseline`, AND THAT IS CORRECT. There are
+# four daily points of history against a rolling_30d baseline. Sigma over four
+# points is an artefact of having no data; a band drawn on it fires on noise.
+# The script refuses to print a tier below MIN_POINTS rather than printing a
+# confident one, because a tier from four points looks exactly like a tier from
+# fifty.
+#
+# WHY NOT A PRODUCTION METRIC. The obvious band is 5xx rate or new arrivals.
+# `scripts/traffic.mjs` exists to answer "has anyone but me used this yet" and
+# the answer is still close to no. Only the CI-side metric has a baseline worth
+# drawing a band on, so only it is written down.
+# ─────────────────────────────────────────────────────────────────────────────
+
+metric: ci_test_failure_rate
+baseline: rolling_30d
+rules: western_electric
+
+tiers:
+  1sigma:
+    action: log
+  2sigma:
+    action: diagnose
+    # Read-only. A diagnosis that can write is not a diagnosis.
+    tools: "Read,Grep,Bash(gh run view *)"
+  3sigma:
+    action: propose
+    routes:
+      - pull_request
+    # No runbook route. The playbook's example lists rollback-deploy; this repo
+    # has no rehearsed rollback, and naming one it has never exercised would be
+    # the claim-the-tree-cannot-support failure in config form.
+
+# Every finding is written as an intent, in the Stage 1 shape, into a new
+# directory under work/. It enters the queue; it does not enter the tree.
+output:
+  format: intent
+  destination: work/
+  triage: owner
+
+governance:
+  # The agent may act up to the pull-request gate and cannot pass it.
+  production_access: denied
+  approval: owner

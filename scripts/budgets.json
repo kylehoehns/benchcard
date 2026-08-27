@@ -1,0 +1,18 @@
+{
+  "recorded": "2026-08-24",
+  "note": "Cold load of index.html at 390x844, measured by scripts/smoke.mjs. Bytes are uncompressed -- the harness serves app/ without gzip, so this tracks growth rather than what production ships. scripts/budgets.mjs holds the slack, and READ ITS COMMENT BEFORE CHANGING ANY OF THIS. AS OF 2026-08-24 THE THREE NUMBERS ARE NO LONGER THE SAME KIND OF RULE. `bytes` and `nodes` are REGRESSION ALARMS with deliberately generous slack (25% + 4 KB, and +250) because they are not a design constraint (decided 2026-08-24) -- this app precaches its whole shell, so after the first load neither number costs a coach anything. Their baselines are historical measurements and are NOT re-recorded on every change; the wide ceiling is what does the work. NODE AND BYTE COST IS NOT A REASON TO REJECT A FIX: measure it, report it in the commit, and spend it. `requests` is the ONE hand-pinned number and the only real constraint. It is held at 39 against the 40 the app actually fetches, so 40-of-41 is live and anything adding a module to the boot graph has to say so out loud. It is not about weight -- request count is what hurts on a high-latency connection in a way raw bytes do not. NEVER re-record `requests`; being one under the truth is its entire job. The blanket-re-record warning therefore still stands: do NOT run `node scripts/smoke.mjs --update-budgets`, it would erase that hand pin. Re-pin by hand, and say what you set and why. History, kept because it is the pattern: `bytes` was re-pinned twice for brittleness (it had drifted to 736.5 KB against a 737.0 KB ceiling, half a kilobyte of headroom, which stops measuring performance and starts failing CI over unrelated boot-graph edits) before the 2026-08-24 decision replaced that cycle with generous slack.",
+  "initialPayload": {
+    "bytes": 754209,
+    "requests": 39,
+    "nodes": 1519,
+    "byType": {
+      "Document": 58202,
+      "Stylesheet": 123249,
+      "Script": 511445,
+      "Manifest": 1130,
+      "Font": 48614,
+      "Ping": 111,
+      "Other": 11458
+    }
+  }
+}

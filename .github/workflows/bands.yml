@@ -1,0 +1,56 @@
+name: bands
+
+# Stage 6 detection. Reads CI history, computes the metric, reports the tier.
+#
+# IT ONLY DETECTS. There is no diagnose step here and no model is invoked: that
+# needs an API key this repo does not hold. `bands.yaml` says the same thing,
+# and the two are meant to be read together. When the diagnose half lands, it
+# lands as a step in this file and both comments change.
+#
+# `continue-on-error` is deliberate and is the opposite of laziness. A control
+# band that turns the repo red is a band people mute, and a muted band is worse
+# than none. The script always exits 0 anyway; this is belt and braces so that
+# a `gh` outage never reads as "the suite is broken".
+#
+# Nothing runs today regardless: GitHub is refusing to start jobs on this
+# account. That is itself the kind of thing a band would catch, if a band could
+# run, which is a loop worth noticing before trusting any of this.
+
+on:
+  schedule:
+    # Mondays, 07:40 UTC. Off the hour: GitHub queues everything submitted on
+    # the hour and runs it late, the same reason vendor-drift sits at :20.
+    - cron: '40 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read   # `gh run list` reads this repo's own run history
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    name: control band
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: compute the band
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/bands.mjs --json | tee band.json
+
+      # The verdict belongs where somebody will see it without opening a log.
+      - name: report
+        if: always()
+        run: |
+          {
+            echo "### Control band"
+            echo
+            echo '```'
+            node -e "const b=require('./band.json');console.log(b.verdict==='insufficient-baseline'?b.detail:'verdict: '+b.verdict+(b.tier?' at '+b.tier+' -> '+b.action:''))" 2>/dev/null || echo "no verdict produced"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

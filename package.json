@@ -1,0 +1,12 @@
+{
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "smoke": "node scripts/smoke.mjs",
+    "og": "node scripts/og.mjs",
+    "charts": "node scripts/charts.mjs",
+    "redirect-check": "node scripts/redirect-check.mjs",
+    "evals": "node scripts/evals.mjs",
+    "bands": "node scripts/bands.mjs"
+  }
+}

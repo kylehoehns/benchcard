@@ -1,0 +1,76 @@
+{
+  // Static-asset Worker. There is no build step: `app/` *is* the site. Every
+  // file under it is meant to be public, and nothing outside it is reachable —
+  // an allowlist directory fails closed, so a new internal file cannot publish
+  // itself at benchcard.app/<name> because someone forgot a denylist entry.
+  //
+  // The four dashboard fields, confirmed against the Cloudflare dashboard on
+  // 2026-08-24. There is no build step, so the build command runs the suite
+  // instead -- that field is the only thing gating a deploy on a green test
+  // run, which is why it is not empty:
+  //
+  //   Build command:    npm test
+  //   Deploy command:   npx wrangler deploy
+  //   Version command:  npx wrangler versions upload
+  //   Root directory:   /
+  //
+  // `app/_headers` is honoured by Workers static assets (it lives at the root
+  // of the asset directory and is consumed, not served), so the caching policy
+  // in that file applies here — no-cache on the HTML and sw.js so an update is
+  // never stuck behind a CDN cache.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "benchcard",
+  "compatibility_date": "2026-08-01",
+  /* The only server code on the site. Assets are still served by Cloudflare's
+     asset layer without this script running -- it exists for `/e`, the product
+     event endpoint. See src/index.js. */
+  "main": "src/index.js",
+  "assets": {
+    "directory": "app",
+    // lets the Worker hand anything that is not /e back to the asset layer
+    "binding": "ASSETS",
+    // Serve /about.html for /about, and return the real 404 rather than
+    // rewriting every unknown path to the app shell — the service worker
+    // already handles offline navigation.
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  // Workers Logs. Declared here rather than left to the dashboard toggle
+  // because every deploy reconciles the Worker against this file -- a setting
+  // that only exists in the dashboard gets reset the next time Cloudflare
+  // builds from the repo. Sample everything: this is a static site with no
+  // Worker code, so the invocation volume is the traffic volume, and at that
+  // scale a partial sample buys nothing and hides the 404s worth seeing.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  /* A ceiling on how often one address may POST /e. Declared here rather than
+     as a dashboard WAF rule so that it is version-controlled, reviewable and
+     testable -- a dashboard rule is invisible to this repo and can vanish
+     without anything going red. There is no account resource to create:
+     `namespace_id` is just a string naming this counter within the account, and
+     the binding is deliberately not visible in the dashboard either.
+
+     100 a minute, generous on purpose. The app fires eleven event types and one
+     coach produces a handful in a session, but a venue's wifi is a single
+     address: a dozen coaches on one NAT each running a full pre-game sequence
+     inside the same minute is already ~70 events. The two errors are not
+     symmetric -- a false positive is invisible, because a limited request gets
+     the same 204 as everything else, so a tight number would drop real counters
+     and never say so, while a loose one still turns a naive loop from thousands
+     a second into under two. `period` may only be 10 or 60; 60 is the one that
+     tolerates a burst.
+
+     Cloudflare's limiter is per-location and eventually consistent by design,
+     so treat this as a bill cap, not an accounting system. */
+  "ratelimits": [
+    { "name": "LIMITER", "namespace_id": "1001", "simple": { "limit": 100, "period": 60 } }
+  ],
+  /* Counters only -- the whitelist in app/analytics.js is what decides what may
+     be written, and the Worker runs the same function the browser does. If this
+     binding is ever absent the Worker logs instead of failing. */
+  "analytics_engine_datasets": [
+    { "binding": "AE", "dataset": "benchcard_events" }
+  ]
+}

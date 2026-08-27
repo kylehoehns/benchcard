@@ -1,0 +1,1542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F6F4F0">
+<script>
+/* Resolve the theme before first paint. `auto` is the default and the dark
+   palette lives only behind [data-theme="dark"], so this attribute is the
+   whole of dark mode -- and app.js is a deferred module two round trips away,
+   which is a ~130ms flash of white on a dark-mode phone if we wait for it.
+   applyTheme() re-runs the same resolution once the state is really loaded.
+
+   Every key we have written, newest first, and the same lines live in
+   about.html: v6 is what storage.js writes, v5, v4 and v3 are only ever read
+   (a coach who upgraded still has one), so reading an old key alone -- as this
+   once did -- meant a fresh install had nothing to read and fell through to
+   prefers-color-scheme, which is exactly the flash the script exists to
+   prevent. A returning coach must not pay a flash of the wrong theme for a
+   schema bump, so a new key goes at the FRONT of this chain, never the back.
+   test/storage.test.js pins the key here to storage.js's KEY. */
+(function () {
+  try {
+    var get = function (k) {
+      // per key, so a corrupt v6 blob still lets v5, v4 or v3 answer
+      try { return (JSON.parse(localStorage.getItem(k)) || {}).ui; } catch (e) { return null; }
+    };
+    var ui = get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
+    var t = ui && ui.theme;
+    if (t !== 'light' && t !== 'dark') {
+      t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelector('meta[name="theme-color"]')
+      .setAttribute('content', t === 'dark' ? '#0B0A09' : '#F6F4F0');
+  } catch (e) {}
+})();
+</script>
+<script>
+/* Which view the app will land on, resolved before first paint -- the same
+   idiom as the theme script above and for the same reason: `app.js` is a
+   deferred module two round trips away, and the markup has to commit to a view
+   long before it arrives. `#view-games` is the one view that ships visible, so
+   a coach on their FIRST EVER load painted the games shell -- top bar, team
+   strip, an empty rotation -- and then watched it flip to the welcome screen.
+   Reported from production on 2026-08-25.
+
+   The obvious fix, shipping `#view-welcome` visible instead, only moves the
+   flash onto the returning coach, who loads the app every Saturday rather than
+   once. So the markup default stays "games" -- which is also what a throw in
+   here degrades to, and it is why nothing is stamped for a boot that lands on
+   games -- and this script stamps `data-boot` only when the first frame has to
+   be something other than the games shell. `app.css` reads the attribute;
+   `applyView` in render.js removes it the first time it runs, so nothing here
+   can outlive the boot or fight the real view logic.
+
+   IT RESOLVES THE WHOLE VIEW, NOT JUST WELCOME-VS-GAMES (A42). A41 stamped
+   `welcome` or nothing, which left the coach who last closed the app on Team,
+   Season or Settings watching the same flash one view along: the games shell,
+   then a flip. `app.js` boots with `setView(state.onboarded ? state.view :
+   'welcome')`, so the stored view is half the answer and it is read here the
+   same way `sanitize` reads it.
+
+   THE ONLY THING THAT MATTERS HERE IS THAT IT AGREES WITH `loadState` AND
+   `sanitize`. A second, cheaper implementation of "does this coach have a
+   record" flashes the other way round, which is the same defect wearing
+   different clothes. `test/first-paint.test.js` runs this exact script and
+   `loadState` over ONE table of records and fails on any disagreement, so the
+   clauses below are copied from storage.js deliberately and have to move with
+   it:
+     - a player counts when it is an object with a non-empty string id
+       (`sanitizeTeam`), across the first twelve teams only (`sanitize`);
+     - `onboarded` is `raw.onboarded || anyPlayers` (`sanitize`);
+     - `complete` is version 6 + a non-empty teams array + a boolean
+       `onboarded` (A36/A37's vital signs);
+     - `viewOf` is `sanitize`'s allow-list and its ONE legacy translation,
+       `roster -> team` (A40's `VIEW_WAS`). A backup file written before that
+       rename still restores onto the Team page, so the first frame has to know
+       it too. An unrecognised value lands on games exactly as `sanitize` sends
+       it there -- stamping a view the allow-list would reject paints a frame
+       with every view hidden. The same-members check is in the test file; an
+       array, not an object, because `{}['constructor']` is truthy.
+
+   IT READS THE BACKUP KEY, AND THE OLD SCHEMAS, ON PURPOSE. `loadState` falls
+   back to `benchcard.v6.bak` and then to v5/v4/v3 and the two legacy keys, so a
+   check that stopped at the primary would answer "first run" for a coach whose
+   primary is missing or corrupt but whose backup holds a season -- flashing the
+   welcome screen at somebody with history, which is the worst version of the
+   bug it is fixing. The whole chain is in the same order, and it stops at the
+   first record `loadState` would accept: a COMPLETE primary that says
+   `onboarded: false` (the coach who removed their last team) is honoured there
+   and the backup is never consulted, exactly as in the loader.
+
+   Cost is one extra JSON.parse of the record on a cold load. Anything cheaper
+   -- a regex, a length check -- is the second implementation this comment
+   exists to forbid. */
+(function () {
+  try {
+    var read = function (k) {
+      try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; }
+    };
+    var isObj = function (v) { return v !== null && typeof v === 'object' && !Array.isArray(v); };
+    var anyPlayers = function (r) {
+      var ts = Array.isArray(r.teams) && r.teams.length ? r.teams : [r];
+      return ts.slice(0, 12).some(function (t) {
+        return isObj(t) && Array.isArray(t.players) && t.players.some(function (p) {
+          return isObj(p) && typeof p.id === 'string' && p.id;
+        });
+      });
+    };
+    var onboarded = function (r) { return !!r.onboarded || anyPlayers(r); };
+    var complete = function (r) {
+      return r.version === 6 && Array.isArray(r.teams) && r.teams.length > 0
+        && typeof r.onboarded === 'boolean';
+    };
+    var VIEWS = ['games', 'team', 'season', 'settings'];
+    var viewOf = function (v) {
+      if (v === 'roster') v = 'team';
+      return VIEWS.indexOf(v) < 0 ? 'games' : v;
+    };
+    var welcome = true, view = 'games', decided = false, raw, i;
+    var v6 = ['benchcard.v6', 'benchcard.v6.bak'];
+    var older = ['benchcard.v5', 'benchcard.v5.bak', 'benchcard.v4', 'benchcard.v4.bak', 'benchcard.v3'];
+    for (i = 0; i < v6.length && !decided; i++) {
+      raw = read(v6[i]);
+      // sanitize returns null for anything that is not an object, and the
+      // loader's `hasRoster(s) || s.onboarded` collapses into `onboarded`
+      if (isObj(raw) && (onboarded(raw) || complete(raw))) {
+        decided = true; welcome = !onboarded(raw); view = viewOf(raw.view);
+      }
+    }
+    // an older schema is only ever accepted with a roster or the flag, so
+    // reaching one at all means the app is not on its first run
+    for (i = 0; i < older.length && !decided; i++) {
+      raw = read(older[i]);
+      if (isObj(raw) && onboarded(raw)) { decided = true; welcome = false; view = viewOf(raw.view); }
+    }
+    if (!decided) {
+      // v1/v2 kept the roster as text; `migrateLegacy` gives up on a blank one.
+      // No view is read here on purpose: `migrateLegacy` builds a v3 record
+      // without one, so the loader lands on games whatever the old bytes say.
+      raw = read('rotation-card.v2') || read('rotation-card.v1');
+      if (isObj(raw) && String(raw.roster || '').split('\n').some(function (x) { return x.trim(); })) {
+        welcome = false;
+      }
+    }
+    // games is the markup default, so it is stamped as nothing at all
+    if (welcome) view = 'welcome';
+    if (view !== 'games') document.documentElement.setAttribute('data-boot', view);
+  } catch (e) {}
+})();
+</script>
+<!-- The app's one way to say it broke, and a coach's way out when it does.
+     The long version is in README.md, "A boot that fails says so"; the two
+     things not to undo from here:
+
+     INLINE, IN THE HEAD, NOT A MODULE. A throw at the top of app.js -- or in
+     any module it imports -- runs before app.js's own body, so a handler
+     installed from a module never sees it; a module cannot report its own
+     failure to load either, and a second file is a 41st request against a
+     budget pinned at 41. It costs one DOM node on a healthy load.
+
+     THE PANEL IS BUILT IN THE CATCH. Not in the markup: a hidden panel would
+     spend a third of the node budget's headroom on a screen almost nobody
+     sees. `track`, the `where` classifier and backup.js's download mechanics
+     are all imported at failure time -- already in the boot graph, so a normal
+     failure fetches nothing, and precached if the boot died before they
+     loaded. -->
+<script>
+(function () {
+  var g = window.benchcard = { booted: false, fail: report };
+  var told = false;
+
+  /* app.js's boot catch passes `where` outright; the listeners pass the script
+     that threw and let errorWhere pick one of five literals. That filename
+     never leaves errorWhere: no message and no stack is sent, so the payload
+     cannot carry a name. Once per load -- an error loop is not a beacon loop. */
+  function report(where, src) {
+    if (!told) {
+      told = true;
+      import('./analytics.js').then(function (m) {
+        m.track('app_error', { where: where || m.errorWhere(src, g.booted) });
+      }).catch(function () {});
+    }
+    if (!g.booted) panel();
+  }
+
+  function panel() {
+    if (document.getElementById('recover')) return;
+    var box = document.createElement('div');
+    box.id = 'recover';
+    box.className = 'wrap';
+    box.style.cssText = 'max-width:32rem;padding:2.5rem 1.15rem';
+    box.innerHTML = '<div class="alert error" style="margin-bottom:1.1rem">'
+      + 'Benchcard could not start.</div>'
+      + '<p>Your roster and your season are still saved on this device — the app '
+      + 'just failed to draw them. Download a backup first, then reload. If it '
+      + 'still will not start, that file restores everything in any browser.</p>'
+      + '<div class="gm-cta" style="margin-top:1.4rem">'
+      + '<button class="btn primary press" id="recoverSave" type="button">Download my backup</button>'
+      + '<button class="btn press" id="recoverReload" type="button">Reload</button></div>'
+      + '<p class="note" id="recoverNote" role="status"></p>';
+    document.body.replaceChildren(box);
+    document.getElementById('recoverReload').onclick = function () { location.reload(); };
+    document.getElementById('recoverSave').onclick = save;
+  }
+
+  /* Newest key first, the same chain as the theme script above: a boot that
+     broke midway through a migration still has a record under an older key,
+     and an empty file would be worse than nothing. */
+  function save() {
+    var raw = '', note = document.getElementById('recoverNote');
+    try {
+      var keys = ['benchcard.v6', 'benchcard.v5', 'benchcard.v4', 'benchcard.v3'];
+      for (var i = 0; i < keys.length && !raw; i++) raw = localStorage.getItem(keys[i]) || '';
+    } catch (e) {}
+    if (!raw) { note.textContent = 'There is nothing saved on this device to download.'; return; }
+    var name = '';
+    try { var s = JSON.parse(raw); name = ((s.teams || [])[s.activeTeam || 0] || {}).name || ''; } catch (e) {}
+    import('./backup.js').then(function (m) {
+      m.downloadText(raw, m.backupFilename(name), 'application/json');
+      note.textContent = 'Saved to your downloads.';
+    }).catch(function () { note.textContent = 'The download failed. Copy this page’s address and try another browser.'; });
+  }
+
+  addEventListener('error', function (e) { report(null, e && e.filename); });
+  addEventListener('unhandledrejection', function () { report(null, null); });
+})();
+</script>
+<!-- The icon is a data URI on purpose: zero requests, paints before the first
+     frame, no flash of the browser's default. It is also invisible to Google,
+     whose favicon crawler needs a URL it can fetch — which is why /favicon.ico
+     exists (a 48x48 ICO, the size Google asks for, generated from icon-192.png).
+     Nothing references it and nothing should: a browser handed a rel="icon"
+     never goes looking for it, so it costs the app no request at load. Do not
+     delete it for being unreferenced, and do not "fix" it into a <link> here —
+     that would trade a search-result logo for a fetch on every cold start. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2211%22%20fill%3D%22%23E14E12%22%2F%3E%3Cg%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%20opacity%3D%22.6%22%3E%3Cpath%20d%3D%22M12%201v22M1.5%208.5h21M1.5%2015.5h21%22%2F%3E%3Cpath%20d%3D%22M4.5%203.6c3.6%203.9%203.6%2012.9%200%2016.8M19.5%203.6c-3.6%203.9-3.6%2012.9%200%2016.8%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="manifest" href="./site.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Benchcard">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- ================================ SEO ================================
+     The origin is https://benchcard.app (registered). It appears here in the
+     canonical, the og:/twitter: URLs and the absolute image URLs, and again in
+     about.html, robots.txt and sitemap.xml -- grep for it if it ever moves.
+     Absolute URLs are not optional for Open Graph: Slack, iMessage and Twitter
+     will not resolve a relative og:image.
+     Title is written for the query, not for us: coaches search
+     "basketball substitution rotation generator" and "equal playing time",
+     never "benchcard". -->
+<title>Benchcard — basketball substitution rotation generator</title>
+<meta name="description" content="Free youth basketball rotation planner. Paste your roster, choose how the minutes get split, and print a substitution card that fits in your pocket — equal playing time worked out before tip-off. Works offline; your roster never leaves your device.">
+<link rel="canonical" href="https://benchcard.app/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Benchcard">
+<meta property="og:url" content="https://benchcard.app/">
+<meta property="og:title" content="Benchcard — basketball substitution rotation generator">
+<!-- NOT the same sentence as name="description" above, and deliberately.
+     That one is written for a search result, where "print a substitution
+     card" is a phrase coaches actually type. This one rides along with
+     og.png in a link preview, and og.png leads with bench mode -- so a
+     description leading with printing paper made the two halves of one
+     preview disagree about what the app is. It also carries the sentence
+     cut from the image itself on 2026-08-26: redundant inside the frame,
+     the only thing doing that job underneath it. -->
+<meta property="og:description" content="Plan the rotation before the game, then run it from the bench: who’s on, who’s next, one tap. Free, offline, no account.">
+<meta property="og:image" content="https://benchcard.app/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Benchcard&rsquo;s bench mode open on a phone: the five players on the floor with minutes played, and the next substitution &mdash; who is coming off and who is going on &mdash; beside the words &ldquo;Even minutes, worked out before the game.&rdquo;">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Benchcard — basketball substitution rotation generator">
+<meta name="twitter:description" content="Plan the rotation before the game, then run it from the bench: who’s on, who’s next, one tap. Free, offline, no account.">
+<meta name="twitter:image" content="https://benchcard.app/og.png">
+<meta name="twitter:image:alt" content="Benchcard&rsquo;s bench mode open on a phone: the five players on the floor with minutes played, and the next substitution &mdash; who is coming off and who is going on &mdash; beside the words &ldquo;Even minutes, worked out before the game.&rdquo;">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Benchcard",
+  "url": "https://benchcard.app/",
+  "applicationCategory": "SportsApplication",
+  "applicationSubCategory": "Basketball substitution rotation planner",
+  "operatingSystem": "Any browser — iOS, Android, macOS, Windows",
+  "browserRequirements": "Requires JavaScript. Works offline once loaded.",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "description": "Benchcard plans youth basketball substitutions. Paste a roster, pick how the minutes should be split — even for everybody, totals you set yourself, a group that closes, or fixed platoons — and it works out who is on the floor for every stint of the game, then prints it on a pocket card. Rules for starters, minute floors and ceilings, pairs to keep together or apart and rest limits are respected, a tournament day balances across games, and everything stays in the browser: no account, and your roster never leaves your device.",
+  "featureList": [
+    "Equal playing time across the whole roster",
+    "Per-player minute targets, floors and ceilings",
+    "Closing lineups and fixed platoons",
+    "Starting five and last-period rules",
+    "Keep two players together or apart",
+    "Back-to-back stint limits",
+    "Tournament days balanced across games",
+    "Printable pocket or half-sheet card",
+    "Bench mode with a live next-substitution view",
+    "Works offline; all data stays on the device"
+  ],
+  "screenshot": "https://benchcard.app/og.png",
+  "softwareHelp": "https://benchcard.app/about"
+}
+</script>
+<noscript><style>.app { display: none; }</style></noscript>
+<link rel="stylesheet" href="./tokens.css">
+<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./card.css">
+</head>
+<body>
+<!-- Not an SEO device -- Googlebot runs the JS and sees the real app. This is
+     for the person whose browser or extension does not, who would otherwise
+     get a dead grey page: tell them why, and send them somewhere that reads
+     fine without scripts. -->
+<noscript>
+  <div style="max-width:34rem;margin:3rem auto;padding:1.25rem 1.35rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);font:17px/1.55 var(--font);color:var(--ink-2)">
+    <h1 style="margin:0 0 .5rem;font-size:1.35rem;letter-spacing:-.03em;color:var(--ink)">Benchcard needs JavaScript</h1>
+    <p style="margin:0 0 .9rem">Benchcard plans youth basketball substitutions and prints them on a
+      pocket card. It runs entirely in your browser, with no server doing the work, so it
+      needs JavaScript switched on for this site.</p>
+    <p style="margin:0"><a href="./about.html" style="color:var(--accent)">Read what it does first</a>. That page works without.</p>
+  </div>
+</noscript>
+<div class="app">
+
+  <header class="bar noprint">
+    <div class="brand">
+      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.5" fill="var(--accent)"/>
+        <g stroke="var(--accent-ink)" stroke-width="1.35" fill="none" opacity=".55">
+          <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
+          <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
+        </g>
+      </svg>
+      <span>Benchcard</span>
+    </div>
+    <div class="spacer"></div>
+    <!-- Three tabs, and the tab budget is now spent: measured, the bar has room
+         for exactly one more control on a 390px phone and only because `?` and
+         the theme toggle gave up their seats to the cog. Season earns the third
+         because it is what a coach opens between games; Settings does not,
+         because it is set once a season. -->
+    <!-- A40: the LABEL and the view KEY are both "Team" again as of slice 2,
+         but they are still a MAP and not the same thing, and THIS is the one
+         place the map is written. A guard that needs the pair reads it out of
+         these three buttons rather than assuming the label is the key (see
+         test/sample-team.test.js). The old key `roster` is translated ONCE, by
+         `VIEW_WAS` in storage.js, because a coach's backup file still carries
+         it -- do not add a second translation here or in `applyView`. -->
+    <nav class="seg" id="viewnav">
+      <button class="press" data-view="games">Games</button>
+      <button class="press" data-view="team">Team <span id="rcount"></span></button>
+      <button class="press" data-view="season">Season</button>
+    </nav>
+    <button class="keys-hint press" id="keysHint" type="button" aria-label="Keyboard shortcuts"><kbd>?</kbd><span>Shortcuts</span></button>
+    <button class="btn icon ghost press" id="settingsBtn" type="button" title="Settings" aria-label="Settings"><span class="i" data-icon="settings"></span></button>
+  </header>
+
+  <!-- The team switcher belongs to the SHELL, not to any one view -- see
+       teams-view.js for why it left the games view. Not sticky (the bar
+       already is, and two on a phone eat the rotation) and not IN the bar (one
+       row at 360px by 0.1px; the team name makes it two, 72px → 121px, against
+       54px here). `noprint`: it inherited that from `.dayhead` before.
+
+       A45: IT SHIPS VISIBLE, EMPTY, WITH ONE ROW OF HEIGHT RESERVED, the same
+       way `.bar` and `.foot` ship. It used to ship `hidden`, and the chips only
+       arrive with `renderTeams`, so the first frame had no strip and the boot
+       pushed every view down 53.6px — on games too, which stamps nothing and so
+       could never have been fixed by a rule keyed on the stamp. `app.css`
+       reserves the row and `html[data-boot="welcome"]` takes the strip away for
+       the one boot that must not have it; `applyView` owns it from then on. -->
+  <nav class="teamtabs noprint" id="teamtabs" aria-label="Teams"></nav>
+
+  <!-- "Changes are not being saved" belongs to the SHELL for the same reason
+       the team switcher does. It used to live inside the Rotation block of the
+       games view, and a save fails on whatever screen the coach is editing --
+       measured 2026-08-25 on the roster: adding a player with a full quota
+       rendered the banner with the right words into a `hidden` <main>, 0x0 and
+       `checkVisibility` false, while the row appeared on screen and the record
+       on disk still held the old roster. `role="status"` was dead there too --
+       a live region inside a hidden subtree announces nothing. The other
+       occupant of this box, the recovery notice, was worse still: it says
+       "check the roster", and a coach whose last view WAS the roster booted
+       straight past it. Empty on every ordinary render, so it costs no layout
+       (`#storagewarn:not(:empty)` in app.css carries the padding). -->
+  <div id="storagewarn" class="noprint" role="status" aria-live="polite"></div>
+
+  <!-- ============================ GAMES ============================ -->
+  <main class="view print-path" id="view-games">
+    <div class="wrap print-path">
+
+      <div class="dayhead noprint">
+        <input type="text" id="dayName" class="daytitle" placeholder="Name this day…" aria-label="Day or tournament name">
+        <div class="games" id="tabs"></div>
+      </div>
+
+      <div class="cols print-path">
+        <div class="col-main noprint">
+
+          <section class="block s-squad">
+            <details class="fold" id="squadFold" open>
+              <summary><h3>Squad</h3><span class="hint" id="availcount" role="status" aria-live="polite" aria-atomic="true"></span></summary>
+              <div class="squad" id="avail"></div>
+            </details>
+          </section>
+
+          <!-- The shape of the game itself. These three controls used to sit
+               inside the fold below labelled "Rules" — which reads as the
+               player rules (keep-together, keep-apart, always-one-on), was
+               shut by default and sat UNDER the rotation. A coach hunting for
+               "two halves of twenty minutes" never opens a fold called Rules,
+               so the app answered the question and hid the answer. They are
+               per-game and always have been; nothing about the seeding in
+               state.js changed. The summary carries the format in words, so a
+               collapsed block still answers the question it exists for. -->
+          <details class="block fold s-fmt" id="fmtFold" open>
+            <summary><h3>Game format</h3><span class="hint" id="fmthint"></span></summary>
+            <div class="row">
+              <div><label class="f" for="periods">Periods</label><input type="number" id="periods" min="1" max="8" inputmode="numeric"></div>
+              <div><label class="f" for="periodMinutes">Min / period</label><input type="number" id="periodMinutes" min="1" max="40" inputmode="numeric"></div>
+              <div class="wide"><span class="f">Sub at</span><div id="gran" class="chips" role="group" aria-label="Substitution interval"></div></div>
+            </div>
+          </details>
+
+          <!-- Plan folds, like every other setup block on this page. It was
+               the one section left permanently open, and it was the expensive
+               one: `#stratbody` changes shape per strategy, so with Plan open
+               the rotation itself started at y=1049 (platoon), 1103 (closers)
+               and 1267 (minutes) on an 844px phone -- off the first screen
+               entirely, for the three strategies a coach has deliberately
+               chosen. Shut, all three start around y=560.
+
+               It opens for a coach still on the default (app.js), because
+               Balanced costs nothing to leave open and that segment is the
+               only place outside the skippable tour where the app says what
+               it can do. The summary carries the answer in words, so a shut
+               block still says which plan is running.
+
+               The strategy SENTENCE sits below the segment, not in the
+               summary: every other summary hint on this page is a value
+               ("9 of 9", "2 x 20 min"), and a sentence above the control it
+               describes explained a choice that had not been made yet. -->
+          <details class="block fold s-plan" id="planFold" open>
+            <summary><h3>Plan</h3><span class="hint" id="stratnote"></span><button class="helpq press" type="button" data-help="help-plan" aria-label="How the plan choices work">?</button></summary>
+            <div class="seg wide" id="stratseg" role="group" aria-label="Planning strategy">
+              <button class="press" data-strat="balanced">Balanced</button>
+              <button class="press" data-strat="minutes">Minutes</button>
+              <button class="press" data-strat="closers">Closers</button>
+              <button class="press" data-strat="platoon">Platoon</button>
+            </div>
+            <p class="note" id="stratwhy"></p>
+            <div id="stratbody"></div>
+          </details>
+
+          <!-- The shape only. Which end of the game your stronger lineups go
+               is a call about tonight's opponent, so it lives with the plan;
+               the levels it works from are season-long and live on the roster
+               page. Folded shut by default -- with every player on the same
+               level the whole feature is inert. -->
+          <section class="block s-balance">
+            <details class="fold" id="balanceFold">
+              <summary><h3>Lineup balance</h3><span class="hint" id="balancehint"></span><button class="helpq press" type="button" data-help="help-balance" aria-label="How lineup balance works">?</button></summary>
+              <div id="balancebody"></div>
+            </details>
+          </section>
+
+          <!-- The constraint engine, and it reads as the LAST INPUT rather
+               than as a drawer trailing the page. It used to sit below, after
+               "Across the day": measured at 390x844 that put it at y 2646 of a
+               3,411px page, 11th of the 13 things that render, below the card
+               AND below the bench button, with an empty summary. `ROADMAP.md`
+               calls this the one thing no competitor has (A21b).
+
+               It stays a `.dz` and not a `.fold` on purpose -- two prominence
+               tiers, today's setup against the drawer, is the information
+               design and it survived the study. Being eleventh was the defect,
+               not being quiet.
+
+               Below 1100px the `order:` list in app.css is what actually
+               orders this column, so BOTH have to say the same thing: this
+               element sits between Lineup balance and Rotation in the source
+               for the wide layout, and at order 5 for the stacked one. -->
+          <details class="dz" id="consdetails">
+            <summary>Rules <span class="count" id="conscount"></span><button class="helpq press" type="button" data-help="help-rules" aria-label="How rules work">?</button></summary>
+            <div class="dz-bd" id="constraints"></div>
+          </details>
+
+          <section class="block s-rot">
+            <div class="block-hd">
+              <h3>Rotation</h3>
+              <span class="spacer"></span>
+              <button class="btn ghost sm press" id="regen"><span class="i" data-icon="shuffle"></span>Shuffle</button>
+            </div>
+            <div id="issues" role="status" aria-live="polite"></div>
+            <div class="surface">
+              <div id="timeline" class="tl"></div>
+              <div class="statrow" id="stats" style="margin-top:1.05rem"></div>
+            </div>
+          </section>
+
+          <section class="block s-day">
+            <details class="fold" id="dayFold">
+              <summary><h3>Across the day</h3><span class="hint" id="dayhint"></span><button class="helpq press" type="button" data-help="help-season" aria-label="How a tournament day and the season work">?</button></summary>
+              <div class="surface" id="daytotals"></div>
+            </details>
+          </section>
+
+          <details class="dz" id="tabledetails">
+            <summary>Stint by stint</summary>
+            <div class="dz-bd" id="plan"></div>
+          </details>
+        </div>
+
+        <aside class="col-side print-path">
+          <!-- Who you are playing, and the one control that removes the game.
+               It used to sit inside `.s-cardopts`, at the bottom of the right
+               rail under the card options, and that was wrong twice over: on a
+               phone it was the last block on a 3,281px page, and the card
+               folds SHUT by default (`storage.js` seeds `cardOpen` false), so
+               `#view-games.card-shut .s-cardopts { display: none }` hid
+               Opponent, Tip-off and Remove outright for a coach who had never
+               opened the card. `order: 0` in the phone stack puts it directly
+               under the game tabs, where "This game" means something.
+               `#removeGame` keeps its `undoable()` and its `< 2` guard -- a
+               day must always have a game. -->
+          <div class="side-box noprint s-thisgame" style="margin-bottom:.9rem">
+            <div class="side-hd">This game</div>
+            <div class="row">
+              <div><label class="f" for="label">Opponent</label><input type="text" id="label" placeholder="Panthers"></div>
+              <div><label class="f" for="when">Tip-off</label><input type="text" id="when" placeholder="Sat 9:00"></div>
+            </div>
+            <button class="btn ghost danger sm press" id="removeGame" hidden style="margin-top:.9rem">Remove this game</button>
+          </div>
+          <!-- A header on a wide screen, a disclosure on a phone. The card is
+               still the thing this app makes, but a coach building a rotation
+               is looking at the timeline, and the full preview was pushing it
+               off the screen. Same element either way so nothing has to be
+               rendered twice; below 1100px it takes the button behaviour. -->
+          <button class="block-hd noprint s-cardhd cardtoggle" id="cardToggle" type="button"
+                  aria-expanded="true" aria-controls="sheet">
+            <span class="i ct-ico" data-icon="printer"></span>
+            <h3>The card</h3>
+            <span class="hint">3.45 × 5 in</span>
+            <span class="i ct-chev" data-icon="chevron-right"></span>
+          </button>
+          <!-- Above the stage, not below it: this is the explanation for why
+               there are four previews, and a coach who reads it after scrolling
+               past all four has already spent the confusion it was meant to
+               prevent. -->
+          <div id="cardnote" class="alert info noprint" style="margin-bottom:.85rem"></div>
+          <div class="stage print-path" id="sheet"></div>
+          <!-- BELOW 900px this row is Share card and nothing else. The phone
+               action bar already carries bench and print, in thumb reach, and
+               a coach on their own phone read the duplicate row as clutter:
+               "Share card is the only unique thing." Above 900px there is no
+               action bar, so this row is the only path to any of them and
+               keeps all four. `app.css` owns the hide; nothing is removed from
+               the DOM, because `#print` is found by three separate mechanisms
+               (see the note on the button itself). -->
+          <div class="gm-cta noprint">
+            <!-- The one "?" that is not on a section header, and the reason
+                 is the door it stands beside: `shortcuts.js` refuses every key
+                 while a sheet is up, so `#help` cannot be opened from INSIDE
+                 game mode. A20 slice 3 moved the three bench scopes off
+                 about.html on the recorded promise that `#help` is the surface
+                 a coach at the bench can reach -- this is what makes that
+                 promise true. Below 900px the bench control is `#abBench` and
+                 the twin of this button sits beside it in `#actionbar`; this
+                 one is the desktop half of that pair.
+
+                 The wrapper is the one node this slice spends and it is not
+                 decoration: `.gm-cta` is a centred `flex-wrap: wrap` row, so
+                 at 320px on 200% text every button takes its own line and a
+                 bare "?" would wrap to a line of its own, attached to
+                 nothing. Inside a wrapper it stays beside the button it
+                 explains at every width -- and the ambiguity it also fixes is
+                 that at 390px the "?" sat 6px from the bench button and 9px
+                 from Print, which reads as belonging to neither. -->
+            <span class="gmq">
+              <button class="btn press" id="gmOpen">
+<span class="i" data-icon="maximize-2"></span> <span class="ab-lab">Use this on the bench</span>
+              </button>
+              <button class="helpq press" type="button" data-help="help-bench" aria-label="How changing the plan mid-game works">?</button>
+            </span>
+            <!-- Print lives HERE, beside the card, and nowhere else: it used to
+                 stand in the top bar on every view, which reads as "print THIS"
+                 over Settings or Team, and hiding it off the other three made
+                 the whole right-hand cluster reflow every time the coach opened
+                 Settings. The action bar keeps its own printer for thumb reach
+                 on a phone; this one is what desktop has, and the top bar is now
+                 identical on all four views. -->
+            <button class="btn primary press" id="print" data-needs-card aria-label="Print the card">
+<span class="i" data-icon="printer"></span> Print
+            </button>
+            <!-- "Text me your rotation" is how a card actually reaches another
+                 coach; printing needs a printer. -->
+            <button class="btn press" id="shareCard" data-needs-card>
+<span class="i" data-icon="share-2"></span> Share card
+            </button>
+          </div>
+          <div class="noprint s-cardopts" style="margin-top:1rem">
+            <div class="side-box">
+            <div class="side-hd">Card options</div>
+            <div class="row">
+              <div><label class="f" for="printScope">Print</label>
+                <select id="printScope"><option value="game">this game</option><option value="day">every game today</option></select></div>
+              <div><label class="f" for="copies">Copies</label>
+                <select id="copies"><option value="1">1</option><option value="2">2</option><option value="4">4</option></select></div>
+              <div><label class="f" for="cardId">Names</label>
+                <select id="cardId"><option value="short">short names</option><option value="number">jersey numbers</option></select></div>
+              <div><label class="f" for="cardSize">Card</label>
+                <select id="cardSize"><option value="pocket">pocket 3.45 × 5 in</option><option value="half">half-sheet 8 × 5.1 in</option></select></div>
+            </div>
+            <label class="switch" style="margin-top:.85rem"><input type="checkbox" id="showMinutes"><span>Minutes strip on the card</span></label>
+            <p class="note">Cut on the dashed line. Underlined = just came in.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================ FIRST RUN ============================ -->
+  <!-- A52. ONE SCREEN. The first-run screen is a hero that fills the viewport
+       and nothing else, and everything a coach types is behind a tap.
+
+       WHY IT CHANGED AGAIN, from a phone: A51 stacked the plan, a paper/screen
+       pair and the two doors down one column and measured the fold at 844.
+       844 is not what an iPhone gives you -- Safari's floating address bar sits
+       over the bottom of the viewport -- so "Show me with a sample team" landed
+       underneath it, and the two figures were 86px thumbnails beside a
+       paragraph, which is too small to tell a coach anything. Reported with a
+       screenshot 2026-08-26.
+
+       SO THE THREE VISUALS SHARE ONE STAGE instead of stacking. `The plan`,
+       `On paper` and `On screen` are three tabs over a single box, which means
+       each one gets the whole width and whatever height the device has left:
+       the card is shown at ACTUAL PRINT SIZE and cropped, rather than shrunk
+       to a smear. The tab strip still says "on paper" and "on screen" side by
+       side, which is the whole of why A51 exists -- a coach who does not want
+       to carry paper can see themselves in the first screen.
+
+       HEIGHT IS `dvh`, not `vh` and not a pixel count. `dvh` re-resolves as the
+       address bar collapses, which is exactly the failure above; the `vh`
+       line under it is the fallback for anything without `dvh`, the same pair
+       `.keyswrap` already uses. The stage is the only elastic part, so a short
+       viewport shrinks the figures and never the buttons.
+
+       SETUP IS A SECOND SCREEN, not a box under the first one. The reasoning
+       is on the `<section>` itself, further down. -->
+  <main class="view welcome noprint" id="view-welcome" hidden>
+    <div class="wel-in">
+      <!-- TWO PANES, ONE AT A TIME. The landing screen is a landing screen and
+           nothing else; "I'll type my roster" takes a coach to setup the way a
+           second page would, and Back returns. Not a real view: `sanitize`'s
+           allow-list is `games | team | season | settings` and the pre-paint
+           script resolves against it, so a fifth key would ripple into storage,
+           into `data-boot` and into test/first-paint.js for a screen that
+           exists once per install. Two panes and one class buy the same thing
+           for a coach and cost none of it. -->
+      <div class="wel-landing" id="welLanding">
+      <div class="wel-hero">
+        <p class="wel-lockup">
+          <span class="wel-mark" aria-hidden="true">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10.5" fill="var(--accent)"/>
+              <g stroke="var(--accent-ink)" stroke-width="1.35" fill="none" opacity=".55">
+                <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
+                <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
+              </g>
+            </svg>
+          </span>
+          <b>Benchcard</b>
+        </p>
+        <h1 class="wel-h">The whole game, worked out before you leave the house.</h1>
+        <p class="wel-sub">Even minutes for everybody, or however else you want them split.</p>
+
+        <!-- One stage, three views of the same game. -->
+        <div class="wel-stage">
+          <div class="wel-seg" role="tablist" aria-label="What Benchcard makes">
+            <button class="wel-seg-b sel press" id="welTabPlan" type="button" role="tab"
+                    aria-selected="true" aria-controls="welPanePlan">The plan</button>
+            <button class="wel-seg-b press" id="welTabPaper" type="button" role="tab"
+                    aria-selected="false" aria-controls="welPanePaper">On paper</button>
+            <button class="wel-seg-b press" id="welTabScreen" type="button" role="tab"
+                    aria-selected="false" aria-controls="welPaneScreen">On screen</button>
+          </div>
+          <div class="wel-show">
+            <!-- Rows and the two figures are written by onboarding.js, and only
+                 for a coach who has no record. See `initOnboarding`. -->
+            <div class="wel-pane" id="welPanePlan" role="tabpanel" aria-labelledby="welTabPlan">
+              <div class="wel-qs" aria-hidden="true"><span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span></div>
+              <div class="wel-rows" id="welRows"></div>
+            </div>
+            <div class="wel-pane wel-pane-shot" id="welPanePaper" role="tabpanel" aria-labelledby="welTabPaper" hidden></div>
+            <div class="wel-pane wel-pane-draw" id="welPaneScreen" role="tabpanel" aria-labelledby="welTabScreen" hidden></div>
+          </div>
+          <p class="wel-cap">
+            <span id="welCap">Nine players, 16 or 20 minutes each. Shuffle solves it again.</span>
+            <!-- The same control as the games view's `#regen`, down to the icon,
+                 and since A52 it calls the same solver rather than cycling a
+                 baked list. It only belongs to the plan tab, so it hides with
+                 it. -->
+            <button class="btn ghost sm press wel-shuf" id="welShuf" type="button">
+              <span class="i" data-icon="shuffle"></span>Shuffle
+            </button>
+          </p>
+        </div>
+      </div>
+
+      <!-- The two doors. BOTH GO TO SETUP; one arrives with the roster already
+           in the box. That is A49's `fillSample` again, and the objection A51
+           raised against it is spent: A49's sample answered "what does this
+           make?" with a second helping of the form, because nothing on the
+           screen had answered it yet. The stage above answers it now -- the
+           plan, the card and bench mode, before a coach taps anything -- so by
+           the time they reach this pair the question is what to type, and the
+           honest answer to that is "here, have ten names".
+
+           It still counts nothing. `finishOnboarding` compares the box against
+           what `fillSample` wrote and defers an untouched sample through
+           `markFirstRunPending()`, so `first_run_complete` has never measured
+           our own suggestion. `loadSample` keeps the OTHER path and only that
+           one: somebody who clicked "try it with nine players" on a chart page
+           asked to see the card, not a form. -->
+      <div class="wel-doors">
+        <button type="button" class="btn primary press wel-go" id="welTry" aria-controls="welSetup">Start with a sample team</button>
+        <button type="button" class="btn press wel-go wel-type" id="welType" aria-controls="welSetup">I&rsquo;ll type my roster</button>
+        <p class="note wel-foot">No account. Your roster and your players never leave your device.</p>
+      </div>
+
+
+      <!-- The tail: one hairline footer under the hero rather than three
+           stacked blocks, which is what pushed 165px of links below a screen
+           that is meant to read as one.
+
+           IT IS NOT BEHIND `#welType` AND MUST NOT BE. A browser that evicts
+           local storage lands a RETURNING coach on this screen holding a
+           backup file, which is the exact case the file exists for -- and
+           making them tap "I'll type my roster" to find Restore would hide the
+           way back in behind a button that says the opposite. The paste link
+           is beside it for the same reason it has always existed: a .json in
+           an email attachment is awkward to hand to a mobile browser, and it
+           is the same file, the same parser and the same undo, so it must not
+           read as a second choice to make. -->
+      <div class="pastein wel-tail">
+        <!-- ONE FOOTER ROW OF PEERS, not three stacked fragments. It was a
+             prompt on its own line, two accent links under it and an
+             underlined third below that, which read as leftovers rather than
+             as a footer. All three are the same quiet treatment now.
+
+             NONE OF IT IS BEHIND `#welType`, and it must not be: a browser
+             that evicts local storage lands a RETURNING coach on this screen
+             holding a backup file, which is the exact case the file exists
+             for, and putting Restore behind "I'll type my roster" would hide
+             the way back in behind a button that says the opposite. Paste is
+             beside it because a .json in an email attachment is awkward to
+             hand to a mobile browser -- same file, same parser, same undo, so
+             it must not read as a second choice to make.
+
+             `class="wel-about"` on the anchor is load-bearing AND is matched
+             as an exact attribute: test/link-graph.test.js hangs the whole
+             six-page chart tail off `<a class="wel-about" href="./about.html"`,
+             so a second class in there reads to that guard as the link being
+             gone. All three share one treatment through the `.wel-tail-row`
+             selector list in app.css instead. -->
+        <nav class="wel-tail-row" aria-label="More about Benchcard">
+          <a class="wel-about" href="./about.html">How it works</a>
+          <button type="button" class="linkish press" id="welRestore">Restore a backup</button>
+          <button type="button" class="linkish press paste-open">Paste one</button>
+        </nav>
+        <div class="pastebox" hidden>
+          <textarea class="paste-text" spellcheck="false" autocapitalize="off" autocorrect="off"
+                    aria-label="Paste your backup" placeholder="Paste the contents of your backup file"></textarea>
+          <button type="button" class="btn press paste-go">Restore</button>
+        </div>
+      </div>
+      </div><!-- /.wel-landing -->
+
+      <!-- THE SETUP SCREEN. `#welType` opens it and hides the landing pane in
+           the same breath, so a coach is never looking at both and the first
+           screen stays a first screen. Back returns.
+
+           A49 removed a `<details>` from this screen and A52 is not putting it
+           back: the half of A49 that survives is A47's, that a control iOS does
+           not recognise as interactive is a bad bet, and both `#welType` and
+           `#welBack` are plain buttons. The half that did not survive was the
+           no-script argument, which A49 itself proved worthless -- `#welGo` is
+           a JS onclick and there is no <form> anywhere in this app, so this
+           screen has needed the module graph since it was written. -->
+      <section class="wel-setup" id="welSetup" hidden aria-labelledby="welSetupHd">
+        <p class="wel-backrow">
+          <button type="button" class="linkish press wel-back" id="welBack">Back</button>
+        </p>
+        <!-- Focused when the pane opens, which is what makes this read as
+             arriving somewhere rather than as a box appearing under a button. -->
+        <h2 class="wel-h2" id="welSetupHd" tabindex="-1">Set up your team</h2>
+        <div class="wel-card">
+          <label class="f" for="welTeam">What do you call this team?</label>
+          <input type="text" id="welTeam" placeholder="Wildcats 6th Grade" autocomplete="off">
+
+          <label class="f" for="welRoster" style="margin-top:1.15rem">Your players, one per line</label>
+          <textarea id="welRoster" spellcheck="false" aria-describedby="welCount" placeholder="12 Maya Webb&#10;4 Eli Tran&#10;Devon Ellis"></textarea>
+          <!-- One element is the hint, the running count and the error, so it is
+               both the textarea's description and a live region. `describedby`
+               covers "Get started" bouncing focus back here — the message is read
+               as part of the field. `aria-live` covers the other way in, Cmd+Enter
+               from inside the box, where focus never moves and nothing would be
+               announced at all. Polite, not assertive: it queues behind the
+               keystroke echo instead of interrupting a coach mid-name. -->
+          <p class="note" id="welCount" aria-live="polite">Paste from wherever your roster lives. Jersey numbers are optional.</p>
+          <p class="note wel-fill"><button type="button" class="linkish press" id="welFill">Fill this in with a sample team</button></p>
+
+          <label class="f" style="margin-top:1.15rem">How long is a game?</label>
+          <div class="row">
+            <div><label class="f" for="welPeriods">Periods</label><input type="number" id="welPeriods" value="4" min="1" max="8" inputmode="numeric"></div>
+            <div><label class="f" for="welMinutes">Min / period</label><input type="number" id="welMinutes" value="8" min="1" max="40" inputmode="numeric"></div>
+          </div>
+
+          <label class="f" style="margin-top:1.15rem">How often do you sub?</label>
+          <div id="welGran" class="chips"></div>
+
+          <button class="btn primary press wel-go" id="welGo">Build my first card</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ============================= TEAM ============================= -->
+  <!-- Labelled "Team" since A40 slice 1; the view KEY and this id followed in
+       slice 2. `roster-view.js` keeps its name -- it renders the list of
+       PLAYERS, which is the noun and is still what it is. -->
+
+  <main class="view wrap noprint" id="view-team" hidden style="max-width:820px">
+    <!-- No page-level prose here, deliberately, and none may come back: a
+         paragraph at the top of a view describes whatever the page happened to
+         be the day it was written, and nobody adding the next section has any
+         reason to revisit it. This one still claimed the page was a roster
+         long after it had grown levels, backup, restore and the season ledger.
+         Every note on this page now sits inside the box it describes, so it
+         ships and dies with that control. Pinned by test/note-placement.test.js.
+
+         The ledger and the backup box have since left for a Season view and a
+         Settings view of their own, which is most of what "this page is doing
+         four jobs" was asking for. What is left is the roster and the team it
+         belongs to -- and, since A40 slice 2, the team's own settings at the
+         foot of the page: the players are what a coach opens this tab for, and
+         the five rules under them are set once a season. -->
+    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Team</h1>
+    <div class="teamfield">
+      <label class="f" for="teamName">Team name</label>
+      <input type="text" id="teamName" maxlength="40" autocomplete="off" placeholder="Wildcats 6th Grade" data-fk="teamName">
+      <p class="note">Heads the card when a game has no opponent, and names the day above your games.</p>
+      <div class="teamrow">
+        <button class="btn ghost sm press" id="addTeam" type="button">
+          <span class="i" data-icon="plus"></span>Add a team
+        </button>
+        <button class="btn ghost danger sm press" id="removeTeam" type="button">Remove this team</button>
+        <span class="note teamcount" id="teamCount"></span>
+      </div>
+    </div>
+    <div id="dupewarn" role="status" aria-live="polite"></div>
+    <div id="levelskey" hidden></div>
+    <div class="rhead"><span></span><span></span><span>#</span><span>Player</span><span>On card</span><span></span></div>
+    <div class="rlist" id="rosterlist"></div>
+    <div class="rfoot">
+      <button class="btn press" id="addplayer"><span class="i" data-icon="plus"></span>Add player</button>
+      <button class="btn ghost press" id="bulktoggle"><span class="i" data-icon="clipboard-list"></span>Paste a list</button>
+      <button class="btn ghost press" id="cardnames" type="button" aria-pressed="false">Card names</button>
+      <span class="rcount" id="rosterCount"></span>
+      <!-- Inside the footer, not loose above the page: this sentence is about
+           the "On card" column and the phone-only button that reveals it, and
+           it should disappear the day they do. -->
+      <p class="note">The card prints a short name. Override it when two kids collide.</p>
+    </div>
+    <div id="levelsfoot" class="levelsfoot" hidden></div>
+
+    <div id="bulkwrap" hidden class="side-box" style="margin-top:1rem">
+      <div class="side-hd">Paste your roster</div>
+      <textarea id="bulk" spellcheck="false" placeholder="12 Maya Webb&#10;4 Eli Tran&#10;Devon Ellis"></textarea>
+      <p class="note">One per line. Numbers are read from either end: &ldquo;12 Maya Webb&rdquo; or &ldquo;Maya Webb #12&rdquo;.</p>
+      <div style="display:flex;align-items:center;gap:.75rem;margin-top:.75rem;flex-wrap:wrap">
+        <button class="btn primary press" id="bulkadd">Add players</button>
+        <span class="note" id="bulkCount" style="margin:0"></span>
+      </div>
+    </div>
+
+    <div class="side-box" style="margin-top:1rem">
+      <!-- Filled with the active team's name by teams-view.js. The fallback
+           text ships in the markup so the heading is never blank for the frame
+           before the first render. -->
+      <div class="side-hd" id="setTeamHd">This team</div>
+      <!-- Said once, here, instead of at the end of every note in the box.
+           Each of the five used to close with "This one belongs to this team
+           alone." — five repetitions of one fact, under a heading that is only
+           the team's NAME and so does not say it at all. The scope belongs to
+           the box, not to each row in it. -->
+      <p class="note" style="margin:0 0 .15rem">Each team keeps its own settings.</p>
+
+      <!-- The team's game format. First in the box because it is the most basic
+           fact about a team, and it was the one thing on this page that lived
+           only inside the Rules fold of whichever game happened to be open.
+           Number fields, by the same line the league minimum drew: a seg
+           teaches a closed set of stances, a field transcribes a value off a
+           rulebook, and "four eights" is transcription. Same `min`/`max` as the
+           Rules fold's own inputs, so a number that passes here can never be
+           refused there. Reuses `.minwrap` rather than growing a class — the
+           layout it wants is identical. Read by newGame ONLY when there is no
+           game to clone from; see DEFAULT_SETTINGS. -->
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">A game is</div>
+          <p class="note">
+            Periods, and minutes in each period. A game you add copies the format from
+            the game before it, so this is what a game starts as when there is nothing
+            to copy: a brand new team, or your first game. You can still change it per
+            game under Game format.
+          </p>
+        </div>
+        <div class="minwrap">
+          <input class="minmins" id="setPeriods" type="number" min="1" max="8" step="1"
+                 inputmode="numeric" aria-label="Periods in a game">
+          <span aria-hidden="true">×</span>
+          <input class="minmins" id="setPerMins" type="number" min="1" max="40" step="1"
+                 inputmode="numeric" aria-label="Minutes in a period">
+          <span aria-hidden="true">min</span>
+        </div>
+      </div>
+
+      <!-- The first real team setting: engine.js's DEFAULT_MAX_SUBS, which has
+           always been 3, moved to where a coach can see it. A PREFERENCE, and
+           the note says so — a plan can still go over, and carries a
+           SUBS_EXCEEDED warning naming the arithmetic when it does. `.seg.wide`
+           rather than the mock's compact stepper: that one measured 32×44 at
+           every width and failed the touch sweep.
+
+           `#maxSubsRead` is the live read-back, written by `renderSettings`;
+           `SUBS_READ` in teams-view.js holds the five sentences and the
+           claim-by-claim justification for each. The static note below lost
+           its "the plan says so when it cannot keep to your number" sentence
+           to it — the read-back makes that promise per option. -->
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">Players changing at once</div>
+          <p class="note">
+            How many go on together at a substitution. Fewer keeps the floor settled;
+            more breaks up long stretches on the bench. Totals come out the same either
+            way.
+          </p>
+          <p class="note" id="maxSubsRead" aria-live="polite"></p>
+        </div>
+        <div class="seg wide" id="maxSubsSeg" role="group" aria-label="How many players change at once">
+          <button class="press" type="button" data-subs="1">1</button>
+          <button class="press" type="button" data-subs="2">2</button>
+          <button class="press" type="button" data-subs="3">3</button>
+          <button class="press" type="button" data-subs="4">4</button>
+          <button class="press" type="button" data-subs="5">5</button>
+        </div>
+      </div>
+
+      <!-- The tie-break stance. The odd stint has always gone to whoever is
+           furthest behind on the season; this is the first time a coach can
+           see that, or hand it to their rotation levels instead. Inert until
+           levels are set — every player starts on the middle level, so
+           "Best players" then settles it exactly as "Furthest behind" does. -->
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">The odd minutes</div>
+          <p class="note">
+            When the clock will not divide evenly, somebody plays one stint less. Choose
+            who lands on the high side. Minimum minutes, caps and minutes you set by hand
+            all still win. Until you set levels on this page, both settle it the
+            same way.
+          </p>
+        </div>
+        <div class="seg wide" id="tieBreakSeg" role="group" aria-label="Who plays the odd stint">
+          <button class="press" type="button" data-tie="behind">Furthest behind</button>
+          <button class="press" type="button" data-tie="levels">Best players</button>
+        </div>
+      </div>
+
+      <!-- The league's floor. A number field rather than a third `.seg`, and
+           the reason is the value, not the budget: a seg TEACHES a closed set
+           of stances (that is why maxSubs and the odd minutes are segs), while
+           this one TRANSCRIBES a number a coach is reading off a rulebook.
+           There is no "what should I pick?" moment to answer, and no fixed set
+           of buttons is honest across formats -- a 12-minute floor is roomy in
+           a 2x20 game and arithmetically impossible in a 4x6, so a preset
+           would be an affordance that hands a coach MINS_UNSATISFIABLE. The
+           node budget was the stated reason first time round; it was re-decided
+           on the merits once that constraint was lifted, and the answer held.
+           The `min` suffix is what the budget HAD cost: the label is a sentence
+           fragment the value completes, and a bare "0" left it unfinished.
+           Blank and 0 both mean off. It composes into the per-player minimums
+           the engine already reads -- see computeAll -- so nothing in the
+           solver changed. -->
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">Everyone plays at least</div>
+          <p class="note">
+            Minutes, for every player who is available. Leave it at 0 unless your league
+            has a rule. A minimum you set on one player still wins when it is higher, a
+            cap you set still wins when it is lower, and the plan says so if the game is
+            not long enough to give everyone that much.
+          </p>
+        </div>
+        <div class="minwrap">
+          <input class="minmins" id="minMins" type="number" min="0" max="60" step="1"
+                 inputmode="numeric" aria-label="Minutes everyone plays at least">
+          <span aria-hidden="true">min</span>
+        </div>
+      </div>
+
+      <!-- The carryover default. B3's switch is per game and opens off, so a
+           coach who has already decided re-ticks the same box every Saturday.
+           This is the first real "team default, per-game override" control and
+           the override already exists — the switch itself, in the rules panel.
+           A `.seg` rather than a field because this one genuinely is a closed
+           pair of stances, which is the line the tie-break and the league
+           minimum drew between the two controls. It is read once, by newGame,
+           at the moment a game is created: it is not a solver input, it is not
+           in the plan signature, and it never moves a game that already
+           exists. -->
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">A new game starts</div>
+          <p class="note">
+            Every game you add can open with “Even out the season so far” already on,
+            so you do not tick it each week. You can still change it per game under
+            Rules. Until you have filed a finished game with New day there is no season
+            to even out, and both settle a new game the same way.
+          </p>
+        </div>
+        <div class="seg wide" id="seasonDefSeg" role="group" aria-label="How a new game starts">
+          <button class="press" type="button" data-sdef="0">On its own</button>
+          <button class="press" type="button" data-sdef="1">With the season</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ============================ SEASON ============================ -->
+  <!-- The ledger, painted by season-view.js. It spent its first slices at the
+       foot of the roster page because a third nav tab was judged not to fit at
+       360px; re-measured with the real bar, it does — see the header in
+       season-view.js. Everything inside is unchanged, markup and copy both:
+       this view is a move, not a rewrite. -->
+  <main class="view wrap noprint" id="view-season" hidden style="max-width:820px">
+    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Season<span class="note sn-count" id="seasonCount"></span></h1>
+    <!-- One box, no `.side-hd`: the page heading above already says Season, and
+         a box captioned with the word directly under it says it twice. The note
+         stays inside the box with the ledger it describes -- a `p.note` loose in
+         a view is what test/note-placement.test.js exists to stop. -->
+    <div class="side-box">
+      <p class="note" style="margin:0 0 .9rem">
+        Every game you have finished with this team, and what each player actually played.
+        Games are filed when you choose <b>New day</b>.
+      </p>
+      <div id="seasonbox"></div>
+    </div>
+  </main>
+
+  <!-- =========================== SETTINGS ===========================
+       Two labelled zones, and after A40 slice 2 they are the whole page:
+       "Benchcard" -- the theme and the help sheet, which span every team --
+       and "Backup", which replaces everything on the device.
+
+       NOTHING PER-TEAM LIVES HERE ANY MORE. The five per-team controls
+       (`teams[].settings`: the format defaults, `maxSubs`, the tie-break
+       stance, the league minimum and the carryover default) moved onto the
+       Team tab in one piece, because that tab is now named for the team and a
+       coach standing on it reasonably expects the team's rules there. They
+       still render from `teams-view.js`, and `renderSettings()` still runs on
+       every render whatever view is showing.
+
+       Behind a cog rather than a fourth tab: the tab budget is spent (see the
+       bar), and what is left here is set once and then left alone. -->
+  <main class="view wrap noprint" id="view-settings" hidden style="max-width:820px">
+    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Settings</h1>
+
+    <!-- Zone order, A25's decision and still binding: the things a coach
+         recognises first -- the theme and the help sheet -- and Backup last
+         and alone, because it is the one control that replaces everything on
+         the device. A25 fixed a page where "How this works" opened at y=1459
+         of a 1938px page, two screens under five rows of league rules. Those
+         rows have since moved to the Team tab, which cannot put the help
+         sheet back down there -- but the ORDER is the rule, not the row count,
+         and A25's `.side-box > .set-h:first-child` margin fix is still what
+         keeps Backup's caption level with the box above it.
+         `test/settings.test.js` pins both halves. -->
+    <div class="side-box">
+      <div class="side-hd">Benchcard</div>
+
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">Theme</div>
+          <p class="note">Follows your device until you pick one. Currently <b id="themeNow">automatic</b>.</p>
+        </div>
+        <button class="btn icon press" id="theme" title="Theme" aria-label="Toggle theme"></button>
+      </div>
+
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">How this works</div>
+          <p class="note">The reference sheet, and the guided tour again.</p>
+        </div>
+        <button class="btn press" id="helpBtn" type="button" aria-label="How this works">Open</button>
+      </div>
+    </div>
+
+    <div class="side-box" style="margin-top:1rem">
+      <!-- Everything this app knows lives in one browser key, and a browser is
+           allowed to throw that away. It was at the very bottom of the roster
+           page for exactly the reason it is at the bottom of this one: nowhere
+           a coach can hit it in a gym. -->
+      <h4 class="set-h">Backup</h4>
+      <p class="note" style="margin:0 0 .7rem">
+        Your roster is saved in this browser and nowhere else. Clearing your history can
+        erase it, and so can leaving Benchcard unopened for a week on an iPhone. Save a
+        file now and keep it somewhere you would keep a photo.
+      </p>
+      <!-- Shown only when the browser itself says this origin is persisted --
+           app.js unhides it from `keepStored()`, which reads
+           navigator.storage.persisted() and never persist()'s return value.
+           Hidden is the honest default: most browsers refuse the request, and
+           a sentence that appears whatever the answer is a promise, not a
+           report. It does not replace the paragraph above, because a
+           persisted origin can still be cleared by hand. -->
+      <p class="note" id="persistNote" style="margin:0 0 .7rem" hidden>
+        This browser has agreed to keep Benchcard’s data, so a week without opening it
+        will not clear your roster. Clearing your history still will.
+      </p>
+      <div class="backuprow">
+        <button class="btn press" id="exportBackup" type="button">Save a backup file</button>
+        <button class="btn ghost press" id="importBackup" type="button">Restore from a file</button>
+        <!-- The file picker is the browser's, so the button above is what the
+             coach sees and what the 44px rule measures. `hidden` alone is
+             enough: a click on it still opens the picker. -->
+        <input type="file" id="backupFile" accept="application/json,.json" hidden>
+      </div>
+      <!-- The paste path, same as on first run: one Restore control with a
+           quiet way in underneath, never a second top-level button. -->
+      <div class="pastein">
+        <button type="button" class="linkish press paste-open">or paste a backup</button>
+        <div class="pastebox" hidden>
+          <textarea class="paste-text" spellcheck="false" autocapitalize="off" autocorrect="off"
+                    aria-label="Paste your backup" placeholder="Paste the contents of your backup file"></textarea>
+          <button type="button" class="btn press paste-go">Restore</button>
+        </div>
+      </div>
+      <p class="note" style="margin:.7rem 0 0">
+        Restoring replaces everything on this device with what is in the file. You get
+        nine seconds to undo it.
+      </p>
+    </div>
+  </main>
+
+  <!-- ============================ GAME MODE ============================ -->
+  <div class="gm noprint" id="gamemode" hidden tabindex="-1" role="dialog" aria-modal="true" aria-label="Game mode">
+    <div class="gm-bar">
+      <button class="gm-x press" id="gmClose" aria-label="Leave game mode"><span class="i" data-icon="x"></span></button>
+      <div class="gm-title"><span id="gmGame"></span><span class="gm-clock" id="gmClock"></span></div>
+      <button class="gm-x press" id="gmReset" title="Undo in-game changes" hidden><span class="i" data-icon="rotate-ccw"></span></button>
+    </div>
+
+    <!-- The card in the coach's pocket goes stale the moment anything in here
+         moves, and until now the only trace was the ↺ icon appearing in the
+         corner. Under the bar rather than inside the scroller: a coach who
+         looked away for two minutes should not have to scroll to find out. -->
+    <p class="gm-moved" id="gmMoved" hidden></p>
+
+    <div class="gm-body">
+      <div class="gm-sec">
+        <div class="gm-lab rowed">On the floor<span class="gm-key" id="gmMinsKey"></span></div>
+        <div class="gm-floor" id="gmFloor"></div>
+        <!-- Five available means no bench at all. The sentence belongs under
+             the floor it describes; a "BENCH" heading over an empty list plus
+             a padded empty-state cost ~200px of nothing on a 390px screen. -->
+        <div class="gm-allon" id="gmAllOn" hidden>Everyone available is on the floor.</div>
+      </div>
+      <div class="gm-next" id="gmNext"></div>
+      <div class="gm-sec" id="gmBenchSec">
+        <div class="gm-lab" id="gmBenchLab">Bench</div>
+        <div class="gm-bench" id="gmBench"></div>
+      </div>
+    </div>
+
+    <div class="gm-foot">
+      <!-- Second exit, phone only: the top-left X is a two-handed reach on a
+           390px screen and this is the one view used standing up. -->
+      <button class="gm-nav gm-exit press" id="gmDone">Done</button>
+      <button class="gm-nav press" id="gmPrev" aria-label="Previous stint"><span class="i" data-icon="chevron-left"></span></button>
+      <div class="gm-dots" id="gmDots" aria-hidden="true"></div>
+      <button class="gm-nav next press" id="gmNext2" aria-label="Next stint"><span class="i" data-icon="chevron-right"></span></button>
+    </div>
+  </div>
+
+  <!-- Phone action bar: the card and game mode are ~2 screens down, and a coach
+       standing courtside should not have to scroll to reach either.
+       This bar only exists below 900px, and below 900px it is the ONLY bench
+       and print control -- `.gm-cta`'s pair is hidden there (A39). The two
+       breakpoints carry different rows on purpose: the in-card row keeps what
+       the action bar does not. -->
+  <div class="actionbar noprint" id="actionbar" hidden>
+    <button class="ab-main press" id="abBench">
+      <span class="i" data-icon="maximize-2"></span>
+      <span class="ab-lab">Use on the bench</span>
+    </button>
+    <!-- The bench "?" travels with the bench button. Above 900px that button is
+         `#gmOpen` and the "?" beside it lives in `.gm-cta`; below 900px this bar
+         IS the bench control, so the door into `#help` has to be here or a phone
+         has none at all -- `shortcuts.js` refuses every key while a sheet is up,
+         so `#help` cannot be opened from inside game mode, and there is no
+         keyboard on a phone to press "?" with either. Exactly one of the two is
+         ever on screen: `.actionbar` is `display: none` above 900px and `.gmq`
+         is `display: none` below it. -->
+    <button class="helpq press" type="button" data-help="help-bench" aria-label="How changing the plan mid-game works">?</button>
+    <button class="ab-side press" id="abCard" data-needs-card aria-label="Print the card">
+      <span class="i" data-icon="printer"></span>
+    </button>
+  </div>
+
+  <div class="tour noprint" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+    <div class="tour-hole" id="tourHole" aria-hidden="true"></div>
+    <div class="tour-box" id="tourBox">
+      <div class="tour-step" id="tourStep"></div>
+      <h2 class="tour-t" id="tourTitle"></h2>
+      <div class="tour-bd" id="tourBody"></div>
+      <div class="tour-acts">
+        <button class="btn ghost sm press" id="tourSkip" type="button">Skip</button>
+        <div class="tour-dots" id="tourDots" aria-hidden="true"></div>
+        <button class="btn primary press" id="tourNext" type="button">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- The one confirm in the app.
+       Everything else destructive is an undo toast, on purpose: a confirm asks
+       before you can see the result, and a coach cannot judge dropping a game
+       until the day has rebalanced. Removing a team is the exception. It takes
+       a whole roster, a season of levels and every game with it, and a nine
+       second undo window is thin protection for that. -->
+  <div class="keyswrap noprint" id="confirm" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="keysbox confirmbox">
+      <div class="keys-hd"><div class="keys-t" id="confirmTitle"></div></div>
+      <p class="note" id="confirmBody"></p>
+      <div class="confirm-acts">
+        <button class="btn ghost press" id="confirmNo" type="button">Cancel</button>
+        <button class="btn danger press" id="confirmYes" type="button">Remove</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts noprint" id="toasts" role="status" aria-live="polite"></div>
+
+  <!-- ============================ help ============================
+       Written for the volunteer parent who got handed the clipboard, not for
+       whoever wrote the solver. Static markup on purpose: it is prose, it
+       never depends on state, and building it in JS would only make it
+       harder to read and edit. -->
+  <div class="keyswrap noprint" id="help" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="keysbox helpbox">
+      <div class="keys-hd">
+        <div class="keys-t" id="helpTitle">How this works</div>
+        <button class="btn icon ghost press" id="helpClose" aria-label="Close"><span class="i" data-icon="x"></span></button>
+      </div>
+      <!-- The second sentence is the narrow claim, word for word as the other
+           eight HTML files make it. It used to be an absolute one; the reason
+           that is banned, and how a line wrap hid it, is in
+           test/analytics.test.js. -->
+      <p class="help-lede">Benchcard works out who is on the floor for every minute of the
+        game, then prints it on a card that fits in your pocket. There is no account, and
+        your roster and your players never leave your device.</p>
+
+      <h4 class="help-h" id="help-plan">Choosing a plan</h4>
+      <dl class="help-dl">
+        <dt>Balanced</dt>
+        <dd>Everybody plays as close to the same number of minutes as the clock allows.
+          This is what most rec and youth leagues expect, and it is the right answer if
+          you are not sure.</dd>
+        <dt>Minutes</dt>
+        <dd>You set each player’s total yourself and the plan hits it. Useful when
+          somebody has to leave early, is easing back from an injury, or a parent has
+          asked for something specific. The totals always add up to the whole game, so
+          giving one player more takes it from the others in front of you.</dd>
+        <dt>Closers</dt>
+        <dd>Even minutes for most of the game, then a group you pick stays on to finish.
+          For the games that are allowed to matter.</dd>
+        <dt>Platoon</dt>
+        <dd>Two or three fixed fives that swap as whole units. The easiest thing to run
+          from the bench, and good for the youngest ages. The minutes only come out even
+          if the groups themselves are even.</dd>
+      </dl>
+
+      <h4 class="help-h" id="help-balance">Lineup balance</h4>
+      <p class="help-p">Even minutes decides how long everyone plays, not who plays
+        together, so five players picked purely for fairness can be your five
+        youngest at once. Give each player a level on the <b>Team</b> page, on the
+        row of steps under their name. You do that once a season, not once a game, and
+        the plan keeps the fives from tipping. Minutes do not move. Then pick the shape under
+        <b>Lineup balance</b> beside the plan, which is a call about tonight&rsquo;s
+        opponent. Levels stay on the Team page: never printed, never shown in
+        bench mode.</p>
+      <dl class="help-dl">
+        <dt>Even</dt>
+        <dd>Every stint about as strong as every other.</dd>
+        <dt>Start strong</dt>
+        <dd>Best five open the game. The closing stints go lighter in exchange. Those minutes have to land somewhere.</dd>
+        <dt>Finish strong</dt>
+        <dd>Best five saved for the end.</dd>
+        <dt>Both ends</dt>
+        <dd>Strong to open and close, softer through the middle. The one to pick to get developing players real minutes in a game you expect to be decided late.</dd>
+      </dl>
+
+      <h4 class="help-h" id="help-rules">Rules</h4>
+      <p class="help-p">Rules are things you need to be true; the plan works around them.
+        Add them under <b>Rules</b>, remove one by tapping its ✕.</p>
+      <dl class="help-dl">
+        <dt>Minutes limit</dt>
+        <dd>A floor, a ceiling, or both, for one player. “At least 10” guarantees floor
+          time; “capped at 12” holds somebody back.</dd>
+        <dt>Starting five / Last period</dt>
+        <dd>Names who is on the floor at tip-off, or who is out there for the final
+          period.</dd>
+        <dt>Play together / Keep apart</dt>
+        <dd>Two players who work well as a pair, or two who need separating. By default
+          “together” is a preference the plan maximizes and reports; the switch below
+          the rules makes it a hard requirement for every stint, which costs you
+          evenness.</dd>
+        <dt>Always one on</dt>
+        <dd>A pair you never want resting at the same time: your two ball handlers,
+          or your two bigs. One of them is on the floor every stint. The mirror of
+          “keep apart”: that one is about the floor, this one is about the bench.</dd>
+        <dt>Rest limit</dt>
+        <dd>The most stints anyone may play back to back. Stops the plan leaving a kid
+          out there for the whole half.</dd>
+      </dl>
+      <p class="help-p">One rule is worth setting once rather than per game. If your
+        league says everyone plays a minimum, the <b>Team</b> tab holds
+        <b>Everyone plays at least … min</b>, a floor for the whole team that reaches
+        every available player in every game. A minimum you set on one player still wins
+        when it is higher, and a cap you set still wins when it is lower.</p>
+
+      <h4 class="help-h" id="help-season">A tournament day, and the season</h4>
+      <p class="help-p">Add a game with <b>+ Game</b> and it copies the format, who is at
+        the gym and your rules. Only the opponent and tip-off are new. From the second
+        game on there is a switch called <b>Balance against minutes already played
+        today</b>. Leave it on and the day evens out across every game, so a kid who sat
+        more in game 1 gets it back in game 2. Turn it off and each game is fair on its
+        own. <b>Across the day</b> shows the running totals.</p>
+      <p class="help-p"><b>New day</b> files every game you have finished into the
+        <b>Season</b> tab, which keeps what each player actually played and exports as a
+        spreadsheet. Once a season has games in it, every game gets a second switch called
+        <b>Even out the season so far</b>. It starts the players who are behind for
+        the season a stint or two up, and the ones ahead a stint or two down. The switch
+        is off to begin with; the <b>Team</b> tab can have each new game open with it
+        already on.</p>
+
+      <h4 class="help-h">Reading the card</h4>
+      <!-- Bold here means "printed on the paper", not "stressed in this
+           sentence" -- about.html's card section already made that call. -->
+      <p class="help-p">Each block is one substitution. On the left is the clock:
+        <b>Q2 8:00</b> means with 8:00 left in the second period. To its right,
+        <b>▼</b> lists who is coming off. Underneath are the five who are on the floor
+        for that stretch, and the <b>underlined</b> names are the
+        ones who just came on. <b>START</b> is your opening five and <b>NO SUBS</b>
+        means nobody changes at that break. Cut along the dashed line.</p>
+      <p class="help-p">Two sizes, under <b>Print</b>. <b>Pocket size</b> is 3.45 × 5 in,
+        two to a sheet across, and is the one that lives in a notebook.
+        <b>Half-sheet</b> is 8 × 5.1 in, two down the page: the same card in bigger type
+        on a clipboard, and it lays the stints out in two columns, so a long game stays
+        on one card.</p>
+
+      <h4 class="help-h" id="help-bench">Changing the plan mid-game</h4>
+      <p class="help-p"><b>Use on the bench</b> opens the game one stint at a time.
+        Tap whoever is coming off and pick how long the change lasts.</p>
+      <dl class="help-dl">
+        <dt>This stint</dt>
+        <dd>A one-off swap. The printed plan picks up again at the next change.</dd>
+        <dt>Rest of game</dt>
+        <dd>Every remaining stint goes to the player you name. This is how you say
+          “Simone takes Rafael’s minutes”.</dd>
+        <dt>Sit, rebalance</dt>
+        <dd>For foul trouble, when you have no opinion about who covers. It sits that
+          player for the rest of the game and spreads the minutes across everyone
+          still available, counting what each has already played. Nothing already
+          played moves, and <b>Undo in-game changes</b> in the top bar puts the
+          printed plan back.</dd>
+      </dl>
+
+      <button class="btn press help-tour" id="helpTour" type="button">Show me around again</button>
+    </div>
+  </div>
+
+  <!-- ====================== keyboard shortcuts ======================
+       Keyboard-only by nature, so there is no button for it on a phone —
+       the footer hint only shows itself where a keyboard is plausible. -->
+  <div class="keyswrap noprint" id="keys" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="keysTitle">
+    <div class="keysbox">
+      <div class="keys-hd">
+        <div class="keys-t" id="keysTitle">Keyboard shortcuts</div>
+        <button class="btn icon ghost press" id="keysClose" aria-label="Close shortcuts"><span class="i" data-icon="x"></span></button>
+      </div>
+      <dl class="keys-list">
+        <div class="keys-row"><dt><kbd>P</kbd></dt><dd>Print the card</dd></div>
+        <div class="keys-row"><dt><kbd>S</kbd></dt><dd>Shuffle the rotation</dd></div>
+        <div class="keys-row"><dt><kbd>V</kbd></dt><dd>Next view: Games, Team, Season</dd></div>
+        <div class="keys-row"><dt><kbd>B</kbd></dt><dd>Use on the bench</dd></div>
+        <div class="keys-row"><dt><kbd>←</kbd><kbd>→</kbd></dt><dd>Previous / next stint, on the bench</dd></div>
+        <div class="keys-row"><dt><kbd>?</kbd></dt><dd>This list</dd></div>
+        <div class="keys-row"><dt><kbd>Esc</kbd></dt><dd>Close whatever is open</dd></div>
+      </dl>
+      <p class="note keys-note">Shortcuts pause while you are typing in a field.</p>
+    </div>
+  </div>
+
+  <footer class="foot noprint">
+    <div class="foot-in">
+      <span class="foot-note">
+        <b>Benchcard is free</b>, and your roster never leaves your device.
+        <span class="foot-why">Built by an engineer who coaches, and got tired of
+        working the minutes out by hand before every game. If it has saved you a
+        Saturday morning, a coffee covers the hosting.</span>
+      </span>
+      <a class="foot-link" href="./about.html">How it works</a>
+      <!-- Deliberately a plain address and not a "get in touch!" pitch: the
+           reader this is for is a league or YMCA sports director deciding
+           whether to link the app, and they need a way to reach a person, not
+           to be sold to. Same class as the About link so it inherits the 44px
+           tap target the smoke check enforces. -->
+      <a class="foot-link" href="mailto:hello@benchcard.app">Contact</a>
+      <a class="tip press" id="tipLink" href="#" target="_blank" rel="noopener noreferrer">
+<span class="tip-ico i" data-icon="coffee"></span><span>Buy me a coffee</span>
+      </a>
+    </div>
+  </footer>
+</div>
+<script>
+/* Paints the timeline's shape while the modules are still on the wire. Runs
+   here, at the end of the body, so it is still ahead of first paint but has
+   #timeline to write into; the module below is deferred and lands much later
+   on a phone. Only for a coach who already has a squad — a first-timer is
+   about to have this whole view replaced by the welcome screen, so a fake
+   rotation would just flash at them.
+
+   The key chain is the same one the pre-paint theme script at the top of this
+   file walks, and for the same reason: newest first, one try/catch per key so
+   a corrupt v6 blob still lets v5, v4 or v3 answer. This read `benchcard.v3`
+   alone long after v4 shipped, so on the current schema there was no such key
+   at all -- it parsed `null` and returned before drawing anything, and the
+   skeleton has been absent on every cold load since the multi-team migration.
+   It looked right the whole time, which is the failure mode; test/storage.js
+   pins both chains now so a schema bump cannot do it a third time. */
+(function () {
+  try {
+    var get = function (k) {
+      // per key, so a corrupt v6 blob still lets v5, v4 or v3 answer
+      try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; }
+    };
+    var s = get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
+    if (!s || !s.onboarded) return;
+    /* The roster lives under `teams[activeTeam]` since v4. A v3 record has it
+       at the top level and loads as a one-team record, so `s` itself is the
+       last resort -- the same shape rule sanitize() uses. */
+    var t = (s.teams && (s.teams[s.activeTeam | 0] || s.teams[0])) || s;
+    var players = t && t.players;
+    if (!Array.isArray(players) || players.length < 5) return;
+    var tl = document.getElementById('timeline');
+    if (!tl) return;
+    var rows = '';
+    for (var i = 0; i < Math.min(16, players.length); i++) {
+      rows += '<div class="tl-row"><div class="tl-lab"><span class="dot"></span>' +
+        '<span class="nm"></span></div><div class="tl-track"></div><div class="tl-tot"></div></div>';
+    }
+    tl.innerHTML = '<div class="tl-skel" aria-hidden="true">' +
+      '<div class="tl-head"><div></div><div class="tl-periods"></div><div></div></div>' +
+      '<div class="tl-body">' + rows + '</div></div>';
+    tl.setAttribute('aria-busy', 'true');
+  } catch (e) {}
+})();
+</script>
+<script type="module" src="./app.js"></script>
+<script>
+/* Service worker: the shell has to boot in a gym with no signal. Registered
+   after load so it never competes with first paint, and failures are silent —
+   an app that works online must not break because the SW did.
+
+   If an update is already sitting in "waiting", let it through now: it takes
+   over on the next navigation, so nothing swaps underneath a coach mid-game
+   and this page keeps the modules it already has. */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').then(function (reg) {
+      if (reg.waiting) reg.waiting.postMessage('skip-waiting');
+      reg.addEventListener('updatefound', function () {
+        var sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', function () {
+          if (sw.state === 'installed' && reg.waiting) reg.waiting.postMessage('skip-waiting');
+        });
+      });
+
+      /* An installed Home Screen app can sit on old code indefinitely, and
+         that is not the handshake above failing — it is that the handshake
+         never runs. iOS resumes an installed app from a snapshot rather than
+         re-navigating, so there is no `load`, no update check, and the modules
+         already in memory stay there across any number of app opens. A coach
+         who installed in September was still being shown a feature removed in
+         August; force-quitting from the app switcher was the only cure.
+
+         So check on the way back to the foreground as well. `pageshow` with
+         `persisted` covers the back-forward cache, which is the same resume by
+         another name. Throttled, because a coach flipping between Benchcard
+         and a group chat during a game would otherwise fire a request every
+         time — and never the reload itself: taking over is `sw.js`'s decision
+         and offering the reload is toast.js's, both deliberately conservative
+         about a game in progress. */
+      var last = 0;
+      var recheck = function () {
+        if (document.visibilityState !== 'visible') return;
+        var now = Date.now();
+        if (now - last < 60000) return;
+        last = now;
+        // offline is the normal case here, so swallow the rejection rather
+        // than leaving an unhandled one in a coach's console every gym trip
+        try { var p = reg.update(); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+      };
+      addEventListener('visibilitychange', recheck);
+      addEventListener('pageshow', function (e) { if (e.persisted) recheck(); });
+    }).catch(function () {});
+  });
+}
+</script>
+</body>
+</html>

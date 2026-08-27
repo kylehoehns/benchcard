@@ -1,0 +1,12 @@
+# Playwright MCP scratch output from verification runs
+.playwright-mcp/
+
+# Screenshots taken while verifying; not part of the app
+screenshot*.png
+
+.DS_Store
+node_modules/
+
+# Scratch worktrees the agent harness creates; .claude/ itself IS committed --
+# settings.json, hooks/ and skills/ are part of the harness, not local config.
+.claude/worktrees/

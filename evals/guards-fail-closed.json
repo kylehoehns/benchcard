@@ -1,0 +1,27 @@
+{
+  "id": "guards-fail-closed",
+  "stage": "build",
+  "kind": "deterministic",
+  "prompt": "(environment) The blocking hooks run on a machine where jq is not installed.",
+  "why": "Without jq the hooks read empty input, every pattern misses, and they exit 0 -- a total loss of protection that reports success. Found by writing this check, not before it.",
+  "checks": [
+    {
+      "type": "hookExit",
+      "hook": "guard-bash.sh",
+      "env": {
+        "PATH": "/nonexistent"
+      },
+      "input": {},
+      "expectExit": 2
+    },
+    {
+      "type": "hookExit",
+      "hook": "guard-edit.sh",
+      "env": {
+        "PATH": "/nonexistent"
+      },
+      "input": {},
+      "expectExit": 2
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# Benchcard. Everything here is public and static; nothing is disallowed on
+# purpose -- Google needs vendor/ (the font, Motion, Lucide) to render the page
+# the way a coach sees it, so blocking it would only hide the app from itself.
+User-agent: *
+Allow: /
+
+Sitemap: https://benchcard.app/sitemap.xml

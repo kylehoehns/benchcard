@@ -1,0 +1,415 @@
+# What was built
+
+The finished-work record. `TICKETS.md` is open work; this is everything that
+closed, in the order it landed.
+
+**Why it is a file and not `git log`.** The public history begins at a single
+commit. The project ran privately first, and its commit messages carried
+competitive research and notes about the people involved that are not ours to
+publish; squashing removed those. It would also have removed the record of the
+work itself, which is worth more than the commit boundaries were — so the
+record moved here, which is where the AI-native SDLC says the audit trail
+belongs anyway: in the artefacts, not in the log.
+
+**No timestamps, deliberately.** Order is preserved because order carries
+meaning — you can watch the harness, the guards and the ticket loop arrive.
+Dates are not, because when a thing was done is nobody's business but the
+owner's. Individual dates that remain elsewhere in the repo are there because
+something depends on them as evidence, not as a record of hours worked.
+
+**What this is not.** It is not a reconstruction. No commit was invented or
+backdated to make the process look older or more orderly than it was. Every
+line below is a real commit subject in the order it landed, with references to
+individuals replaced by the decision they made. Nothing is added and nothing is
+dropped: all 384 are here, including the false starts.
+
+The formal SDLC layer — `.claude/hooks/`, `.claude/skills/`, `REVIEW.md` —
+arrives at the end and formalises a loop the earlier entries show already
+running informally.
+
+---
+
+- Benchcard: substitution rotations for youth basketball
+- Add MIT licence
+- Settle the deploy origin on benchcard.app; extract state.js seam
+- Queue analytics and CI/CD work
+- Add analytics behind an off-by-default constant; narrow the privacy promise
+- CI: run node --test on every push and PR
+- POLISH: move the CI test-workflow item to Done
+- CI: fail when a precached file changes without a sw.js VERSION bump
+- vendor: commit grip-vertical.svg, which fetch.sh has always downloaded
+- Narrow the last absolute privacy claim, and broaden the guard
+- CI: fail when vendor/ drifts from what fetch.sh produces
+- CD: Cloudflare Pages settings and a _headers file
+- Switch analytics on with the Cloudflare beacon token
+- Add wrangler config and exclude internal notes from the deploy
+- Move the tests into test/ and the CI guard into scripts/
+- Move the internal working notes into notes/
+- Serve from app/: an allowlist directory replaces the .assetsignore denylist
+- Gate the deploy on the test suite
+- Add AGENTS.md; correct the deploy settings for the Workers flow
+- A smoke harness, and a CI job that runs it
+- Pin Workers observability in wrangler.jsonc
+- Performance and accessibility budgets in the smoke harness
+- Fix the tour spotlight on a phone
+- Fold the card preview behind a disclosure on a phone
+- Share image shows bench mode, and a script that regenerates it
+- POLISH: record the card fold, tour fix and og generator
+- Stop the subheads claiming every plan is even minutes
+- Make the subhead generic instead of enumerating strategies
+- Smoke harness audits accessibility inside every overlay
+- ROADMAP: multiple teams, and why it waits on the analytics endpoint
+- Wait for the entrance to finish before measuring
+- Schema v4: the record holds teams, not one roster
+- Multiple teams: a switcher, add and remove
+- ROADMAP: mark multiple teams shipped, and record why the wait was wrong
+- Split the printed card out of app.js into card.js
+- Share the card as an image
+- Fix the service worker breaking behind Cloudflare's redirects
+- Commit the vendored share-2 icon
+- Split game mode out of app.js into gamemode.js
+- Grow game mode out of the card instead of fading it in
+- Split the rotation timeline out of app.js into timeline.js
+- Give the Games/Roster switch a View Transition
+- Switch the tip jar on, and ask once at a moment worth asking
+- Split the rules body out of app.js into rules.js, with pills.js as a shared leaf
+- Warm up the tip prompt copy
+- Rewrite the other-sports answer, and show bench mode on the About page
+- Split the strategy body out of app.js into strategy.js
+- Put Add a team where a coach would look for it
+- Say why Benchcard exists instead of calling it a business model
+- Tick the vibration motor on the four moments worth feeling
+- Lineup balance: tiers, four shapes, and a much wider fuzzer
+- The levels UI, and the line about where levels may appear
+- Document lineup balance
+- Split the roster page out of app.js into roster-view.js
+- Drag the levels, and split them from the shape
+- Split the photo-scan dialog out of app.js into scan-view.js
+- Split the first-run tour out of app.js into tour.js
+- Split onboarding out of app.js
+- Split the plan readouts out of app.js into plan-view.js
+- Split the game's setup inputs out of app.js into game-setup.js
+- Reorder the backlog so the loop stops re-picking one item
+- Split the toasts out of app.js into toast.js
+- Split the team chips and game tabs out of app.js into teams-view.js
+- Split the dispatcher out of app.js into render.js
+- Fix undefined players in bench mode, quarters that were halves, and sideways pan
+- Split the keyboard and its two sheets out of app.js into shortcuts.js
+- Mark the app.js split done and refresh the module map
+- Flag duplicate jersey numbers on the roster page
+- Report repeated names on a bulk paste, and offer to skip them
+- Count minutes to their new value instead of snapping
+- Say "0 even" when a plan comes out level, and mark the moment
+- Switch the product events on: a Worker endpoint at /e
+- Bump the service worker for the analytics endpoint
+- Close out the launch checklist: analytics, the card, the tip jar
+- Remove photo roster scanning
+- Make the Spread tile say what it means
+- Show the level word on a phone, and stop reordering from recolouring everyone
+- Delete a team properly, and finish the period-label fix
+- Split the CSS out of index.html
+- about.html: share tokens.css instead of copying the palette
+- pre-paint theme: read benchcard.v4, the key the app actually writes
+- Stop about.html advertising the photo scanner
+- Sitting a player out now drops the hand-picked fives that name them
+- Footer says who made this and what a tip pays for
+- Close the dead gap above the footer on a phone
+- Let the bench-mode transition take its time
+- Budget rows say what the plan will really play
+- Undo lands where it left, and 40-minute periods can be typed
+- Ask for a coffee on the third use, not the first
+- Stop CI going red because Chrome was slow to start
+- Go time: the bench transition now actually runs on a phone
+- Undo stops taking a later edit down with it
+- The remove-team confirm reads as a sentence again
+- Make entering bench mode feel like entering somewhere
+- Protect a hand-set minute target, and fix the print button that did nothing
+- Levels live in the roster row, behind a toggle
+- POLISH: close out the minute-target decision
+- Retire the pending undo when a bench-mode swap is made
+- Refill the audit backlog: file the mid-game reload item
+- Levels are always on the roster, not behind a toggle
+- Say a game is underway when a reload closes bench mode
+- Game mode: a two-column layout on a phone held sideways
+- Keep the top bar and the strategy picker on screen at large text
+- Trim the chrome on the planning views in landscape
+- Walk three of the five open awkward cases; all clean
+- Print the card's minutes footer from the rows the card shows
+- Close the awkward-case audit: the share case has no link to break
+- Shuffle no longer splices old hand swaps into the new rotation
+- One source of truth for the five on the floor
+- The loop gets a roadmap, not just a polish list
+- The plan page now quotes the same minutes as the card
+- Publish a contact address in the footer and on the about page
+- Record the design decision for roster export/import before coding it
+- Export a backup file of the whole record
+- Restore a backup file, replacing the record, with nine seconds to undo
+- Offer the restore on the first-run screen, where eviction actually lands you
+- Record roster export/import as done, and queue the bench-mode entry rethink
+- Offer Add to Home Screen once, and never again
+- Three candidate entry animations for bench mode, behind ?fx=
+- Schema v5: a season keeps its finished games
+- Paint the timeline skeleton again: it read a key nobody has had since v4
+- Ship the sheet as the only way into bench mode
+- Let a coach paste a backup, not only pick the file
+- Check for a new worker on resume, and offer the reload
+- Backlog: both A items done, and the help sheet's cut-off button filed
+- README: the paste path into a restore, and why an installed app re-checks
+- Dialogs: size to the viewport you can see, not the one iOS pretends
+- Keep the dialog header on screen while the sheet scrolls
+- The season ledger: read what everyone has played, and delete a game
+- B2b: export the season as one wide CSV
+- Queue the visual work: show the artefacts, and be findable
+- B3: season carryover targets, opt-in per game
+- Notes live on their control, not at the top of the page
+- Flag the levels/tie-break item as needing an owner decision, not the engine
+- About page: show the artefacts instead of describing them
+- Levels stop deciding who plays the odd stint
+- Redraw the About timeline so nobody's first minutes come after halftime
+- Keep the top bar solid through the Games/Roster view transition
+- Ship a crawlable /favicon.ico so search results stop showing a globe
+- Record the bar-transition and favicon iterations, and two housekeeping decisions
+- Stop the top bar panning sideways, and sweep widths instead of guessing one
+- Stop WebKit burying the top bar under the page during the view transition
+- Remove the Games/Roster View Transition; scroll to top on the swap
+- Gate every print/share control from one place
+- Fix the two sub-44px controls and sweep the touch check
+- notes: measure the nav bar's real capacity, mock three team-settings structures
+- Ship the roster-size landing pages as generated scaffolding
+- A draft chart page is noindex and stays out of the sitemap
+- Team settings, slice 1: Season gets a tab, settings get a cog
+- Write the chart pages' copy, and derive the draft mark from it
+- Schema v6: a team gains settings, absent meaning today's defaults
+- maxSubs becomes a coach's control, and an honest one
+- The team switcher belongs to the shell, not to the games view
+- Record auto-suggested platoons as a parked candidate
+- Everyone plays before halftime, governed by the coach's change limit
+- Device-neutral copy, and the byte budget becomes a baseline again
+- Team settings slice 3: the tie-break stance
+- Step 3, measured: the sits weight stays at 30, and maxSubs is the clumping lever
+- Team settings slice 4: a league minimum-minutes floor
+- Re-pin the node budget, and re-decide the league-minimum control on its merits
+- Team settings slice 4b: a carryover default for new games
+- Team settings slice 4c: a per-team game format default
+- Name the longest sit, and give the minute bars a stylesheet
+- Sweep every class name against every rule, and pin it with a test
+- Stop publishing the About page at a URL that redirects
+- Stop pushing 74 KB of latin-ext Inter to every install
+- Wrap the last two rows that hung off the edge at 200% text
+- Cap the wordmark against the viewport at 200% text
+- Delete four dead functions, and make `export` mean something again
+- Audit every shipped asset, and queue the one defect it found
+- Give the other seven pages the share-card alt text index.html had
+- Declare twitter:image:alt too, on all eight pages
+- Copy run-through, slice 1: teach the help sheet about the season
+- Copy slice 2: the settings panel says its scope once, and stops citing a dead heading
+- Copy slice 3: the install nudge stops overpromising, and two toasts drop repo jargon
+- Stop the settings panel panning sideways at big text
+- Copy run-through, slice 4: the landing screen holds, and says so
+- Copy slice 5: the chart pages say what they cost and where the roster goes
+- Let the chart pages' top bar wrap at big text
+- Copy slice 6: about.html says what the app actually does
+- Stop about.html panning sideways at big text
+- Measure about.html's card mock in px, like the print it draws
+- Delete five ids nothing reads, and guard the rest
+- Delete four dead CSS custom properties, and guard the fourth direction
+- Delete three dead icon paths, and guard all four directions
+- Give the CAP_EXCEEDED warning a real em dash
+- Queue the Print-belongs-to-the-game-screen item at the top of section A
+- About: lazy-load the bench-mode figure
+- notes: the commissioned About-page review, C1-C7 and what was rejected
+- About: make the FAQ JSON-LD the FAQ the page actually shows
+- About: answer "could I lose my roster?" in the FAQ
+- About: name the league minimum where the rules are listed
+- notes: record C5/C2/C4, the fourth engine permission, and the positions calls
+- About: replace "arithmetically impossible" with the honest version
+- Merge Lane B: the honest version of the equal-minutes answer
+- Record C8 in Done, and the shared-browser hazard the lane found
+- Engine: "always one of these two on", the third pair relation
+- Queue the card mark, the share-PNG truncation bug, and the analytics read
+- Merge Lane A: the third pair relation, always one on
+- Record the third pair relation, and what the two-lane run taught
+- Fix the share PNG dropping a wrapped minutes strip
+- Put benchcard.app on the card
+- Re-pin the byte budget, the second time
+- Queue full names on the timeline, and record why the setting is not built
+- Stop the tour scrolling the page sideways
+- Show full names on the timeline
+- Print belongs to the game screen
+- Read back the card_printed size counter
+- Drop the Safari<14 reduced-motion fallback
+- Delete the OCR budget rule's four surviving descriptions
+- smoke: cover about.html and the six chart pages (17 -> 18 checks)
+- Fix the static pages' sub-44px chrome, and check it from now on
+- Break the chart pages' footer address at 200% text, and check for it
+- Delete the one label the markup and a module both owned
+- The analytics read gates nothing: there are no users yet
+- Queue the three approved items, and close C7
+- Reconcile the queued notes with the no-users-yet ruling
+- Half-sheet: a second column of stints, once one will not hold them
+- Share PNG: centre benchcard.app in a taller bottom band
+- about.html: a section index under the hero card
+- Guard the seven static pages the way the shell is guarded
+- Guard the one CSS defect no dead-* test can see
+- One demo team across every artefact, and a 2x hero card
+- Queue A4: take Print out of the top bar, put it beside the card
+- Move Print out of the top bar and beside the card
+- Check the app shell at 320px on 200% text, and fix what was hiding there
+- Queue A6-A8: the design study's one real find, plus two conditional items
+- Make About's top bar stick, and guard it where it would hurt
+- Queue A9: one command that answers whether anyone but me has used this
+- Widen About's h2 step on desktop
+- A last-updated dateline in About's footer, guarded by CI
+- Record the about-date guard's seven mutation arms
+- One command that answers whether anyone but me has used this
+- Design slice for A10, mid-game re-solve: it needs a fifth engine permission
+- The fifth engine permission: let a caller hand generatePlan its stints
+- "Sit, rebalance" -- the mid-game re-solve (A10, slice 1)
+- Record A10 slice 1: the numbers, the Rest-of-game decision, and slice 2
+- Queue A11-A18: two discoverability items, the five quality gates, and the documentation drift
+- Queue A19: documentation drift behind the app, and the advanced-guide question
+- "Game format" is its own block now, above the rotation (A11)
+- Queue A20: the documentation split, and correct the request-budget claim about a second page
+- "This game" reads first on a phone, and is no longer hidden by the card fold (A12)
+- A broken boot says so, counts itself, and hands the season back (A13)
+- Record A21 (the games-view disclosure study, blocked on an owner decision) and three method hazards
+- A14: security headers in app/_headers, pinned by a test
+- A15: the sw VERSION guard now runs inside node --test
+- Record the false-green stale-worker hazard, and retract controller === null as a freshness check
+- A16: two guards — render.js section closure, and dead imports
+- Queue A22: the SHELL digest in the cache name, approved with the reload trade-off settled
+- A22: the SHELL digest goes in the cache name
+- Record two method hazards: non-bubbling visibilitychange, and dirty fresh ports
+- Queue A23: the substitution control reads as a rule and is a preference
+- A23: "Players changing at once" reads back as a sentence
+- Queue A24-A28 from the UX swarm, unblock A21 for P1+P2, and record four more method hazards
+- Record that minSubs at 5 was declined, and that it needs no engine permission
+- A24(a): the season ledger sorts by deficit, not by raw minutes
+- A24(b): the Rules section stops denying the league minimum
+- Correct the "open until a plan exists" drift on the Game format fold
+- Record the two A21 pre-checks, and that A21 was not started
+- Bytes and nodes become regression alarms, not design constraints; requests stays the one tight pin
+- A21 (P1+P2): Plan folds like the rest of the page, and its hint says a value
+- A25: the Rules count badge stops going stale on the first rule
+- A25: "Next stint" stops sitting off screen at 200% text
+- Record the two A25 fixes that shipped, and the two levers the rest will need
+- A25: Settings stops pointing at the fold that no longer holds the control
+- A25: the empty Season view names the spreadsheet it is going to give you
+- Record the two A25 fixes that shipped, and a third confirmation of the dirty-port hazard
+- A25: the roster stops panning 208px at 320px on 200% text
+- A25: six selected-state controls stop being announced by colour alone
+- Record the two A25 fixes that shipped, and a guard that scored its own comment
+- A25: the season ledger stops panning off the right edge at 200% text
+- A25: Settings opens with the two things a coach recognizes, not five league rules
+- A25: the stint dots stop being twelve buttons nobody can hit
+- A25: the removal toast says what the removal actually cost
+- Record the four A25 fixes that finish the batch, and two more method notes
+- A27: the season honors the attendance the record already holds
+- Three large-text overflows, two of them only visible with two games
+- A26: split the smoke fixtures, and unblind the overflow probe
+- A28: a mis-tapped swap is undoable, and retireUndo leaves game mode
+- A29: the toast message gets a floor, so it stops being seven pixels wide
+- A18: the docs stop telling the next agent to break offline boot
+- A18b: confirm the Cloudflare build command is npm test
+- A18b: build command confirmed npm test from the dashboard; version command is undocumented
+- A18b: fix the Cloudflare build command and document the version command
+- A19: document the rules and the bench scopes the app already shipped
+- A20 slice 1: the two help surfaces have a contract, and it can go red
+- A20 slice 2: advanced.html, the third surface the coverage guard reads
+- A20 slice 3: about.html becomes the high-level page, detail moves to advanced
+- A20 slice 3: the About FAQ collapses, one question at a time
+- A20 slice 3: record it, and teach the mutation harness about KEEP
+- A20 slice 4: the in-app "?" affordances deep-link into #help
+- A20d: the About dateline guard could not pass; fix the rule, not the date
+- A20c: a dead-class guard for the standalone pages, in both directions
+- A21b: the constraint engine comes out of the drawer
+- A10 slice 2: say the card went stale, and name the rule that refused
+- The timeline's names were 0px wide at 320px/200% text, not "a clipped letter"
+- The level meter wears radio roles; now it answers the radio keys
+- Removing a player left focus on <body>; name the successor
+- File A32: the drag block calls the arrows "the accessible path"
+- The roster's arrows are 0x0 on a phone; the grip is the path
+- The unit-remove button was announced as "times"
+- "Changes are not being saved" was hidden on three views out of four
+- A33 and A34: answer the toast placement and A31, both with machinery that already exists
+- The save-failure banner is 1277px above the coach who caused it
+- The roster reorder now announces itself, and it took no announcer
+- The last four error paths are clean; no code changed
+- Queue A35: a sample team, with the analytics loop and the URL-param distinction settled
+- A35 slice 1: a sample team in one tap, and six pages that link into it
+- The welcome screen is measured at 320px/200% text now, and it is clean
+- Queue A36 at the top: deleting your last team resurrects it from the backup
+- Deleting your last team stays deleted, and the banner stops lying about why
+- Queue A38: the sample-team toast names a Teams tab that does not exist
+- A recovery boot keeps the good backup instead of promoting the junk
+- The sample toast names the Roster page, which is where the control is
+- Queue A39 (the in-card button row) and A40 (rename Roster to Team, move team settings)
+- The phone stops showing bench and print twice
+- A40: take the view-key rename through sanitize rather than breaking it
+- A40 slice 1: the tab says Team, the stored view key stays roster
+- A40 slice 2 half A: the team's settings move onto the Team tab
+- Queue A41 at the top: the first paint shows the games shell before the welcome screen
+- A41: decide the first view before paint, not after the boot
+- Queue A43 and A44: a route to About from the welcome screen, and a copy pass
+- A40 slice 2B: the stored view key is `team`, translated not broken
+- A42: the first frame is the view the coach left the app on
+- Queue A46 (welcome leads with a choice), close A43 as superseded, order A45 first
+- A46 is approved, not proposed
+- A45: the team strip reserves its row instead of popping in after the boot
+- A46: the welcome screen leads with three doors, not a form
+- A44 slice 1: about.html reads like a person wrote it
+- Queue A47 at the top: Enter my team needs two taps on Safari/iPhone
+- CI skips notes-only commits: 80% of runs asked nothing about shipped bytes
+- A47: the two-tap does not reproduce in WebKit — handed back, nothing shipped
+- CI: one node leg and one history job, 6 billed jobs down to 4
+- A47 round 2: it is a boot-window timing bug, not CSS
+- A47 round 3: the two-tap window is the stylesheet's, not the boot's
+- A47 round 4: the first tap paints iOS's default highlight, so summary lacks button's two declarations
+- A47 candidate: give <summary> the two declarations <button> has always had
+- A47 blocked on an owner decision: the round-4 candidate shipped and did not fix it
+- A47: the round-4 stylesheet never reached the phone; the animation lead is dead
+- A47 round 5: narrowed to the element; hover guard is the discriminator
+- A44 slice 2: advanced.html through the humanizer, 31 em dashes down to 18
+- A47 experiment 1 of 2: every hover style in app.css goes behind (hover: hover)
+- A47 round 6: hover eliminated by experiment 1; the handler-less summary is the last survivor
+- Queue A49: the welcome form stays visible and the sample fills it in
+- A47 experiment 2 of 2: an empty click listener on the welcome summary
+- A49: the welcome form is always visible and the sample fills it in
+- Replace the 1MB POLISH.md with a ticket list and a harness
+- Finish the hover sweep, and widen the guard to the page list
+- Point the docs at TICKETS.md; POLISH.md is gone
+- Ticket: 25 comments still point at the deleted POLISH.md
+- Close the 25 dangling pointers at the deleted notes/POLISH.md
+- Measure the sample flash at 320px on 200% text again
+- A44 slice 3: index.html through the humanizer, 28 rendered em dashes down to 4
+- A44 slice 4: the JS-rendered strings through the humanizer
+- Ticket: the privacy guard does not read JavaScript strings
+- Widen the privacy guard from HTML to JS string literals
+- Ticket: /e has no rate limit
+- Rate-limit /e: 100 posts a minute per address
+- Ticket: ROADMAP points at deleted sections, and the claims are stale too
+- notes: ROADMAP said two shipped things were still waiting
+- Queue the three approved next steps: read the telemetry, unorphan the SEO pages, stop a forgetful coach losing a season
+- Read the telemetry: one command prints what the eleven events say
+- The SEO pages were never orphans; pin the walk that proves it
+- Ask the browser to keep the roster, and only repeat what it answers
+- A51: the first-run screen leads with the plan, not the form
+- A52: the first run is one screen, and Shuffle actually shuffles
+- Stop a hidden element animating from invisible and staying there
+- The setup pane was inside the pane that hides it
+- The figure tabs pan down to show more than the stage is tall
+- about.html draws the level chooser it was explaining
+- The phone answered: a tab is not persisted, an install is
+- The install nudge said the roster comes with it. It does not
+- It was the iPhone, both halves
+- The About dateline said the 25th; the page changed on the 26th
+- The "On screen" tab is drawn from the real bench, not photographed
+- Slow the figure reveal, and give both panes one number to read
+- Stop repainting whole lists to change one thing in them
+- The link preview says three things instead of seven
+- The hero solves eleven players, because eleven does not divide
+- Nine players, and the rows can no longer fail to appear
+- The "On paper" tab shows the same nine as the other two
+- The level meters line up in a column now
+- Six rules that were only written down are now enforced
+- The traps and the guard lessons live where they are used

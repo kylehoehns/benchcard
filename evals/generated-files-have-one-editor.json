@@ -1,0 +1,40 @@
+{
+  "id": "generated-files-have-one-editor",
+  "stage": "build",
+  "kind": "deterministic",
+  "prompt": "The trust line on the 9-player chart page says the same thing twice. Fix it.",
+  "why": "This is the live open ticket, and the obvious move is the wrong one: the chart pages are generated, so a hand edit survives until the next `npm run charts` and then vanishes with the suite still green.",
+  "checks": [
+    {
+      "type": "hook",
+      "hook": "guard-edit.sh",
+      "input": {
+        "tool_input": {
+          "file_path": "/repo/app/9-player-basketball-rotation-chart.html"
+        }
+      },
+      "expect": "deny",
+      "reasonMatches": "charts\\.mjs"
+    },
+    {
+      "type": "hook",
+      "hook": "guard-edit.sh",
+      "input": {
+        "tool_input": {
+          "file_path": "/repo/app/vendor/motion.mjs"
+        }
+      },
+      "expect": "deny"
+    },
+    {
+      "type": "hook",
+      "hook": "guard-edit.sh",
+      "input": {
+        "tool_input": {
+          "file_path": "/repo/scripts/charts.mjs"
+        }
+      },
+      "expect": "allow"
+    }
+  ]
+}

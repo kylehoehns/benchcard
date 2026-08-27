@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F6F4F0">
+<script>
+/* The same pre-paint theme resolution as the app and as about.html, and
+   deliberately a third copy rather than a shared file: it has to run before
+   first paint, so a shared file would be an extra blocking request on a page
+   whose whole point is that it loads fast from anywhere. Reads the app's own
+   stored preference so arriving here from a dark-mode app does not flash
+   white. Every key we have written, newest first. */
+(function () {
+  try {
+    var get = function (k) {
+      // per key, so a corrupt v6 blob still lets v5, v4 or v3 answer
+      try { return (JSON.parse(localStorage.getItem(k)) || {}).ui; } catch (e) { return null; }
+    };
+    var ui = get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
+    var t = ui && ui.theme;
+    if (t !== 'light' && t !== 'dark') {
+      t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelector('meta[name="theme-color"]')
+      .setAttribute('content', t === 'dark' ? '#0B0A09' : '#F6F4F0');
+  } catch (e) {}
+})();
+</script>
+<!-- Same data-URI icon as the app and About, and the same reason. The
+     crawlable copy for Google lives at /favicon.ico, which is domain-wide. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%2211%22%20fill%3D%22%23E14E12%22%2F%3E%3Cg%20stroke%3D%22%23fff%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%20opacity%3D%22.6%22%3E%3Cpath%20d%3D%22M12%201v22M1.5%208.5h21M1.5%2015.5h21%22%2F%3E%3Cpath%20d%3D%22M4.5%203.6c3.6%203.9%203.6%2012.9%200%2016.8M19.5%203.6c-3.6%203.9-3.6%2012.9%200%2016.8%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="manifest" href="./site.webmanifest">
+
+<title>Benchcard reference: every setting, rule and card option</title>
+<meta name="description" content="The full reference for Benchcard: the four ways to split a game, the four lineup shapes, all seven rules, changing the plan mid-game, the season ledger and the two card sizes.">
+<link rel="canonical" href="https://benchcard.app/advanced">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Benchcard">
+<meta property="og:url" content="https://benchcard.app/advanced">
+<meta property="og:title" content="Benchcard reference: every setting, rule and card option">
+<meta property="og:description" content="The four ways to split a game, the four lineup shapes, all seven rules, changing the plan mid-game, the season ledger and the two card sizes.">
+<meta property="og:image" content="https://benchcard.app/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Benchcard&rsquo;s bench mode open on a phone: the five players on the floor with minutes played, and the next substitution &mdash; who is coming off and who is going on &mdash; beside the words &ldquo;Even minutes, worked out before the game.&rdquo;">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Benchcard reference: every setting, rule and card option">
+<meta name="twitter:description" content="The four ways to split a game, the four lineup shapes, all seven rules, changing the plan mid-game, the season ledger and the two card sizes.">
+<meta name="twitter:image" content="https://benchcard.app/og.png">
+<meta name="twitter:image:alt" content="Benchcard&rsquo;s bench mode open on a phone: the five players on the floor with minutes played, and the next substitution &mdash; who is coming off and who is going on &mdash; beside the words &ldquo;Even minutes, worked out before the game.&rdquo;">
+
+<link rel="stylesheet" href="./tokens.css">
+<style>
+/* This page carries its own sheet, exactly as about.html does, and links only
+   `tokens.css`. It does NOT link `app.css`: that sheet is the app shell, and a
+   document is not the shell. Every rule below is worn by something on this
+   page -- `test/dead-static.test.js` is what says so, in both directions.
+
+   Deliberately NOT copied from about.html: the scroll reveals. A reference is
+   landed on at an anchor and scanned, not read top to bottom, so hiding
+   sections until they scroll into view works against the page's job -- and not
+   copying the choreography means not copying its hazard, which is a page that
+   is blank to anyone without script. */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font); font-size: 17px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding: 0 0 env(safe-area-inset-bottom);
+}
+/* The gutter lives here, not on `body`, so `.topbar` can be a body child and
+   run edge to edge. `40rem + 2 x 1.15rem` keeps the text column at 40rem. */
+.wrap { max-width: 42.3rem; margin: 0 auto; padding: 0 1.15rem; }
+
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem;
+       max-width: 42.3rem; margin: 0 auto; padding: .9rem 1.15rem .3rem; }
+/* `min-height` because the wordmark is a live link home, not decoration: under
+   the 44px floor the rest of the app holds itself to. It costs no bar height
+   while the pill shares the row; it only pays when the row wraps. */
+.mark { display: flex; align-items: center; min-height: 44px; gap: .5rem; text-decoration: none; color: inherit; }
+.mark b { font-size: 1.05rem; font-weight: 660; letter-spacing: -.03em; }
+.spacer { flex: 1; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+  min-height: 44px; padding: 0 1.05rem; border-radius: 999px;
+  font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
+  text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
+  background: var(--surface); cursor: pointer;
+  transition: transform 110ms cubic-bezier(.22,.61,.36,1);
+}
+.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.btn:active { transform: scale(.97); }
+
+h1 {
+  font-size: clamp(1.8rem, 7vw, 2.5rem); line-height: 1.08; letter-spacing: -.04em;
+  font-weight: 700; margin: 1.6rem 0 0;
+}
+.lede { font-size: 1.16rem; line-height: 1.5; color: var(--ink-2); margin: 1rem 0 0; }
+.cta { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.5rem 0 2.4rem; }
+section { border-top: 1px solid var(--line); padding-top: 1.9rem; margin-top: 2.9rem; }
+h2 {
+  font-size: 1.32rem; letter-spacing: -.03em; font-weight: 640;
+  margin: 0 0 .7rem; scroll-margin-top: 1rem;
+}
+h3 { font-size: 1.02rem; font-weight: 640; letter-spacing: -.02em; margin: 1.5rem 0 .3rem; }
+p { margin: .8rem 0; color: var(--ink-2); }
+p.tight { margin-top: .25rem; }
+p.lead { font-size: 1.06rem; color: var(--ink-2); margin: 0 0 1.1rem; max-width: 34rem; }
+b, strong { color: var(--ink); font-weight: 620; }
+a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: .07em; }
+
+ul { margin: 1rem 0; padding-left: 1.2rem; color: var(--ink-2); }
+ul li { margin: 0 0 .7rem; padding-left: .25rem; }
+ul li::marker { color: var(--accent); }
+
+.box {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; padding: 1.1rem 1.15rem; margin: 1.1rem 0;
+  box-shadow: var(--shadow);
+}
+.box h3 { margin-top: 0; }
+.note {
+  border-left: 3px solid var(--accent-line); background: var(--surface-2);
+  border-radius: 0 12px 12px 0; padding: .75rem .95rem; margin: 1.2rem 0;
+  font-size: .96rem;
+}
+.note p { margin: 0; }
+
+/* ---- artefacts -----------------------------------------------------------
+   Every mock below draws a piece of the app in the app's own vocabulary rather
+   than photographing it: sharper than a screenshot, correct in both themes for
+   free, and it never goes stale against a redesign the way a PNG does. There
+   is no new raster asset on this page, on purpose. */
+.plate {
+  border-radius: var(--r-lg); padding: 1.15rem 1rem; border: 1px solid var(--line);
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
+    var(--bg-2);
+}
+figure.art { margin: 0 0 1.5rem; }
+figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6rem; }
+.plate-hd {
+  font-size: .68rem; font-weight: 680; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--faint); margin: 0 0 .7rem;
+}
+
+/* one miniature track per player, so each split reads as a SHAPE */
+.strip { display: grid; gap: .26rem; margin: .1rem 0 .9rem; }
+.strip .sr { display: grid; grid-template-columns: 1fr 2.1rem; gap: .55rem; align-items: center; }
+.strip .trk { position: relative; height: .78rem; border-radius: 5px; background: var(--pc-track); overflow: hidden; }
+.strip .blk { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--c); opacity: .92; z-index: 1; }
+/* The closing window, marked on every track so the two who stay on read as
+   staying on rather than as two long blocks that happen to line up. */
+.strip .band { position: absolute; top: 0; bottom: 0; z-index: 0;
+  background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.strip .mn { font-size: .7rem; font-weight: 640; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.strip-key { display: flex; justify-content: space-between; font-size: .62rem; font-weight: 660;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin-bottom: .35rem;
+  padding-right: 2.65rem; }
+
+/* the shape control, from the games screen */
+.seg { display: flex; width: 100%; padding: 4px; gap: 2px; background: var(--surface-2);
+  border-radius: var(--r-full); border: 1px solid var(--line); margin: 1rem 0 0; }
+.seg span { flex: 1; padding: .58rem .3rem; border-radius: var(--r-full); text-align: center;
+  font-size: .8rem; font-weight: 570; color: var(--muted); white-space: nowrap; }
+.seg span.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); font-weight: 620; }
+
+/* rule chips, exactly as the rules builder reads them back */
+.rulechips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.rchip { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .55rem .3rem .75rem;
+  border-radius: var(--r-full); border: 1px solid var(--line-2); background: var(--surface);
+  font-size: .82rem; font-weight: 550; color: var(--ink-2); }
+.rchip.ok { border-color: color-mix(in srgb, var(--ok) 38%, transparent); color: var(--ok); }
+.rchip.err { border-color: color-mix(in srgb, var(--err) 38%, transparent); color: var(--err); }
+.rchip .x { color: var(--faint); font-size: .9rem; line-height: 1; }
+
+/* the swap scope row from bench mode. Two of these are modes and the third is
+   an action that fires on the tap -- which is why the third is drawn as a
+   button and not as a third segment. Same distinction gamemode.js makes. */
+.scope { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .6rem; }
+.scp { display: inline-flex; align-items: center; min-height: 32px; padding: 0 .7rem;
+  border-radius: var(--r-full); border: 1px solid var(--line-2); background: var(--surface);
+  font-size: .8rem; font-weight: 570; color: var(--ink-2); }
+.scp.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 640; }
+.scp.act { border-style: dashed; color: var(--muted); }
+
+/* the season ledger, and the switch that feeds it back into a plan */
+.sn-h { margin: 0 0 .35rem; font-size: .68rem; font-weight: 680; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent); }
+.sn-list { border-top: 1px solid var(--line); }
+.sn-row { display: flex; align-items: center; gap: .55rem; padding: .42rem .1rem; border-bottom: 1px solid var(--line); }
+.sn-dot { flex: 0 0 auto; width: .62rem; height: .62rem; border-radius: 50%; background: var(--c); }
+.sn-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: .9rem; color: var(--ink); }
+.sn-x { flex: 0 0 auto; font-size: .74rem; color: var(--faint); }
+.sn-min { flex: 0 0 3.4rem; text-align: right; font-weight: 640; font-size: .9rem;
+  font-variant-numeric: tabular-nums; color: var(--ink); }
+.sn-more { padding: .45rem .1rem 0; font-size: .78rem; color: var(--faint); }
+.switch { display: flex; align-items: center; gap: .62rem; font-size: .88rem; color: var(--ink);
+  margin-top: 1.1rem; }
+.switch i { flex: 0 0 auto; width: 2.4rem; height: 1.4rem; border-radius: var(--r-full);
+  background: var(--accent); position: relative; }
+.switch i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 1.1rem; height: 1.1rem;
+  border-radius: 50%; background: #fff; transform: translateX(1rem); }
+
+/* One block of the printed card, drawn rather than photographed. Black on
+   white in both themes for the same reason card.css is: it is paper.
+
+   Every measurement in here is `px`, deliberately, and that includes the box
+   and not only the type: the heading promises these blocks at the size they
+   print, and a `rem` padding beside px type means the reader's text setting
+   inflates the frame while the names inside it stay put. */
+.paper { background: #fff; color: #000; border-radius: 5px; padding: 12px 13px;
+  box-shadow: var(--shadow-paper); max-width: 336px; margin: 0 auto;
+  font-feature-settings: 'cv11' 1; }
+.paper .stint + .stint { margin-top: 10px; }
+.paper .stint.newper { border-top: 2.5px solid #000; padding-top: 7px; }
+.paper .chg { display: flex; justify-content: space-between; align-items: baseline; gap: 6px;
+  color: #333; font-variant-numeric: tabular-nums; line-height: 1.25; font-size: 11.5px; }
+.paper .chg .clk { font-weight: 700; color: #000; white-space: nowrap; }
+.paper .chg .io { text-align: right; }
+.paper .chg .io.start { font-weight: 700; letter-spacing: .1em; }
+.paper .five { display: flex; justify-content: space-between; gap: 5px;
+  font-weight: 800; line-height: 1.12; letter-spacing: -.01em; font-size: 16px; }
+.paper .five .nm.fresh { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1.6px; }
+.legend { display: grid; grid-template-columns: auto 1fr; gap: .5rem .75rem; align-items: baseline;
+  margin-top: 1.1rem; font-size: .88rem; color: var(--ink-2); }
+.legend .tok { background: #fff; color: #000; border-radius: 4px; padding: .18rem .4rem;
+  font-size: .78rem; font-weight: 800; white-space: nowrap; justify-self: start;
+  box-shadow: 0 0 0 1px rgba(20,18,15,.14); }
+.legend .tok.u { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1.6px; }
+.legend .tok.sm { font-weight: 700; letter-spacing: .08em; font-size: .72rem; }
+
+/* The section index. Rows, not chips: these are eight full headings, and a
+   wrapping chip row cannot shrink an over-wide chip -- at 320px on a 32px root
+   one of them would hang off the right edge. A row cannot overflow, it wraps,
+   and it is a 44px target by construction. */
+.jumpto { display: flex; flex-direction: column; margin: 0 0 2.6rem; }
+.jumpto-hd {
+  margin: 0 0 .1rem; font-size: .82rem; font-weight: 620; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted);
+}
+.jumpto a {
+  display: flex; align-items: center; min-height: 44px; padding: .3rem 0;
+  border-bottom: 1px solid var(--line); color: var(--ink-2);
+  text-decoration: none; font-size: .97rem;
+}
+.jumpto a:first-of-type { border-top: 1px solid var(--line); }
+.jumpto a:focus-visible { color: var(--accent); }
+@media (hover: hover) { .jumpto a:hover { color: var(--accent); } }
+
+footer {
+  border-top: 1px solid var(--line); margin: 3.2rem 0 0; padding: 1.4rem 0 2.6rem;
+  font-size: .92rem; color: var(--muted);
+  display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center;
+}
+/* Standalone controls, not words in a sentence, so the 44px floor applies. */
+footer a { display: flex; align-items: center; min-height: 44px; }
+
+/* ---- the sticky bar, and the one width where it must NOT stick -----------
+   `min-width` IN REM IS THE GUARD. `.top` wraps to two rows once the wordmark
+   and the pill stop fitting side by side, and that threshold is near-constant
+   in rem -- about.html measured 19.13rem at a 16px root and 18.25rem at 32px.
+   20rem clears both. So the bar sticks at 320 and 390px at a normal root, one
+   row; at a 32px root 20rem is 640px, false at both, and a 200% reader keeps
+   the plain static bar instead of a slab taking a quarter of the viewport.
+
+   `.topbar` is a body child, NOT inside `.wrap`: a solid bar inside a 40rem
+   column would be 640px wide with the page scrolling past either side. */
+@media (min-width: 20rem) {
+  .topbar {
+    position: sticky; top: 0; z-index: 5;
+    background: color-mix(in srgb, var(--bg) 76%, transparent);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border-bottom: 1px solid var(--line);
+  }
+  .top { padding-top: calc(.9rem + env(safe-area-inset-top)); }
+  /* Or every `.jumpto` link lands underneath the bar. The bar is 64.2px at a
+     16px root; there is no reveal transform on this page to add to it, so this
+     is the bar plus air rather than about.html's 5.5rem. */
+  h2 { scroll-margin-top: 4.8rem; }
+}
+@media (min-width: 46rem) {
+  body { font-size: 18px; }
+  h1 { margin-top: 2.2rem; }
+  h2 { font-size: 1.8rem; }
+  .plate { padding: 1.5rem 1.4rem; }
+  .paper { max-width: 384px; padding: 15px 16px; }
+  .paper .five { font-size: 19px; }
+  .paper .chg { font-size: 13px; }
+}
+@media (max-width: 24rem) {
+  .plate { padding: .95rem .75rem; }
+  /* Four `nowrap` labels across is wider than a 320px column even at normal
+     text -- `rem` here means this catches a big-text 390px phone too. Two by
+     two with the labels free to break, which is what `.seg.wide` does in the
+     app, and the pill radius goes with it: a 999px corner on a box two rows
+     tall draws a circle rather than a control. */
+  .seg, .seg span { border-radius: var(--r-lg); }
+  .seg { flex-wrap: wrap; }
+  .seg span { flex: 1 0 40%; white-space: normal; }
+}
+
+/* `19em` is the app's own name for "the text is large" -- 304px at a default
+   root, so a 320px phone at normal text never sees any of this, but 608px at a
+   32px root, so a 390px phone at 200% does. */
+@media (max-width: 19em) {
+  /* Two-digit minutes in a 3.4rem gutter reserve 109px at a 32px root.
+     `.sn-nm` is already `flex: 1`, so the number stays flush right without the
+     reservation, and the row can drop it to its own line if it runs out. */
+  .sn-row { flex-wrap: wrap; }
+  .sn-min { flex: 0 0 auto; }
+
+  /* The card legend's token column and its explanation cannot both fit, so the
+     explanation goes under its token rather than beside it. */
+  .legend { grid-template-columns: 1fr; gap: .15rem .75rem; }
+  .legend span:nth-child(even) { margin-bottom: .45rem; }
+
+  /* Five 16px names in a 246px column is about.html's recorded 7px overflow,
+     and this page is pinned at ZERO in `scripts/smoke.mjs` rather than
+     inheriting that allowance. Wrapping is not resizing: the type stays at the
+     size it prints, the row just takes a second line in the one cell where
+     five names have nowhere to go. */
+  .paper .five { flex-wrap: wrap; justify-content: flex-start; gap: 5px 10px; }
+
+  /* One unbreakable token in a 288px column. */
+  footer a { overflow-wrap: anywhere; }
+}
+</style>
+</head>
+<body>
+
+<!-- Outside `.wrap` so the sticky bar can run edge to edge; the inner `.top`
+     carries the same 40rem centring the text column has. -->
+<header class="topbar">
+  <div class="top">
+    <a class="mark" href="./">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.5" fill="var(--accent)"/>
+        <g stroke="var(--accent-ink)" stroke-width="1.35" fill="none" opacity=".55">
+          <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
+          <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
+        </g>
+      </svg>
+      <b>Benchcard</b>
+    </a>
+    <span class="spacer"></span>
+    <a class="btn" href="./">Open the app</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h1>The reference</h1>
+  <p class="lede">Everything Benchcard can be told to do, in one place: the four
+    ways to split a game, the four lineup shapes, all seven rules, what to do
+    when the plan meets a real bench, the season ledger and the two card sizes.
+    <a href="./about">The short version is on the About page</a>; this is the
+    one to keep open while you set a season up.</p>
+
+  <div class="cta">
+    <a class="btn primary" href="./">Open the app</a>
+    <a class="btn" href="./about">What Benchcard is</a>
+  </div>
+
+  <nav class="jumpto" aria-labelledby="onthispage">
+    <p id="onthispage" class="jumpto-hd">On this page</p>
+    <a href="#splits">The four ways to split a game</a>
+    <a href="#shapes">Where your strongest lineups fall</a>
+    <a href="#rules">The seven rules</a>
+    <a href="#minimum">A league minimum for the whole team</a>
+    <a href="#midgame">Changing the plan mid-game</a>
+    <a href="#season">The season ledger</a>
+    <a href="#card">The card, and its two sizes</a>
+    <a href="#privacy">Where your team is stored</a>
+  </nav>
+
+  <section>
+    <h2 id="splits">The four ways to split a game</h2>
+    <p class="lead">One setting, four answers. Four sample players, one game;
+      the number on the right is that player&rsquo;s total at the buzzer.</p>
+
+    <div class="box">
+      <h3>Balanced</h3>
+      <div class="strip-key" aria-hidden="true"><span>Tip-off</span><span>Final buzzer</span></div>
+      <div class="strip" aria-hidden="true">
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 26)"><span class="trk"><i class="blk" style="left:0%;width:25%"></i><i class="blk" style="left:50%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 128)"><span class="trk"><i class="blk" style="left:12.5%;width:25%"></i><i class="blk" style="left:62.5%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 214)"><span class="trk"><i class="blk" style="left:25%;width:25%"></i><i class="blk" style="left:75%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 304)"><span class="trk"><i class="blk" style="left:0%;width:12.5%"></i><i class="blk" style="left:37.5%;width:25%"></i><i class="blk" style="left:87.5%;width:12.5%"></i></span><span class="mn">16</span></span>
+      </div>
+      <p class="tight">Everybody as close to the same number of minutes as the
+        clock allows, and the default. Where the clock will not divide evenly,
+        somebody plays one stint fewer. The plan records who, and the season
+        ledger further down pays it back.</p>
+    </div>
+    <div class="box">
+      <h3>Minutes</h3>
+      <div class="strip" aria-hidden="true">
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 26)"><span class="trk"><i class="blk" style="left:0%;width:25%"></i><i class="blk" style="left:37.5%;width:25%"></i><i class="blk" style="left:75%;width:12.5%"></i></span><span class="mn">20</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 128)"><span class="trk"><i class="blk" style="left:0%;width:25%"></i><i class="blk" style="left:50%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 214)"><span class="trk"><i class="blk" style="left:25%;width:25%"></i><i class="blk" style="left:87.5%;width:12.5%"></i></span><span class="mn">12</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 304)"><span class="trk"><i class="blk" style="left:25%;width:12.5%"></i><i class="blk" style="left:62.5%;width:25%"></i></span><span class="mn">12</span></span>
+      </div>
+      <p class="tight">You set each player&rsquo;s total yourself and the plan
+        hits it. The totals always add up to the whole game, so giving one
+        player more takes it from the others in front of you rather than by
+        accident. Lock the two or three you care about and leave the rest; an
+        unlocked total is free to move.</p>
+    </div>
+    <div class="box">
+      <h3>Closers</h3>
+      <div class="strip-key" aria-hidden="true"><span>Tip-off</span><span>Closing window</span></div>
+      <div class="strip" aria-hidden="true">
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 26)"><span class="trk"><i class="band" style="left:75%;width:25%"></i><i class="blk" style="left:0%;width:25%"></i><i class="blk" style="left:75%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 128)"><span class="trk"><i class="band" style="left:75%;width:25%"></i><i class="blk" style="left:25%;width:25%"></i><i class="blk" style="left:75%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 214)"><span class="trk"><i class="band" style="left:75%;width:25%"></i><i class="blk" style="left:0%;width:25%"></i><i class="blk" style="left:50%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 304)"><span class="trk"><i class="band" style="left:75%;width:25%"></i><i class="blk" style="left:12.5%;width:25%"></i><i class="blk" style="left:50%;width:25%"></i></span><span class="mn">16</span></span>
+      </div>
+      <p class="tight">Even minutes for most of the game, then a group you name
+        stays on to finish, in the shaded window on every track above. The
+        minutes still come out level, because the closers give the time back
+        earlier.</p>
+    </div>
+    <div class="box">
+      <h3>Platoon</h3>
+      <div class="strip" aria-hidden="true">
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 26)"><span class="trk"><i class="blk" style="left:0%;width:25%"></i><i class="blk" style="left:50%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 128)"><span class="trk"><i class="blk" style="left:0%;width:25%"></i><i class="blk" style="left:50%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 214)"><span class="trk"><i class="blk" style="left:25%;width:25%"></i><i class="blk" style="left:75%;width:25%"></i></span><span class="mn">16</span></span>
+        <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 304)"><span class="trk"><i class="blk" style="left:25%;width:25%"></i><i class="blk" style="left:75%;width:25%"></i></span><span class="mn">16</span></span>
+      </div>
+      <p class="tight">Two or three fixed fives that swap as whole units. It is
+        the easiest thing to run from the bench, and good for the youngest ages.
+        The minutes only come out even if the groups themselves are even, so
+        here the roster does the work rather than the solver.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="shapes">Where your strongest lineups fall</h2>
+    <p class="lead">How long everybody plays and who they play beside are two
+      different questions. This is the second one.</p>
+
+    <figure class="art">
+      <div class="plate">
+        <p class="plate-hd">This game · the shape</p>
+        <div class="seg" aria-hidden="true">
+          <span class="on">Even</span><span>Start strong</span><span>Finish strong</span><span>Both ends</span>
+        </div>
+      </div>
+      <figcaption>The shape sits with the game, not with the roster, because it
+        is a call about tonight&rsquo;s opponent.</figcaption>
+    </figure>
+
+    <p>Give each player a rotation level on the Team page, once a season rather
+      than once a game, and Benchcard keeps the fives from tipping. The share of
+      the minutes is still worked out without the levels: they change who shares the
+      floor, not how long anyone is on it. Then, beside each game, pick where
+      the strong lineups land:</p>
+    <ul>
+      <li><b>Even</b> — every stint about as strong as every other. Nobody is
+        stranded with a five that cannot compete.</li>
+      <li><b>Start strong</b> — your best five open the game. Under even minutes
+        that means lighter stints at the end; those minutes have to go
+        somewhere.</li>
+      <li><b>Finish strong</b> — the reverse, saving the strongest five for the
+        last stretch.</li>
+      <li><b>Both ends</b> — strong to open and strong to close, softer in the
+        middle. Pick this one to get developing players on the floor in the
+        stretch where the game is usually already decided.</li>
+    </ul>
+    <p>The whole feature is off until you use it: everyone starts on the middle
+      level, every five is worth the same, and the plan is the plan you would
+      have got anyway.</p>
+  </section>
+
+  <section>
+    <h2 id="rules">The seven rules</h2>
+    <p class="lead">Rules are things that have to be true. Everything else bends
+      to fit, and the plan holds all of them at once.</p>
+
+    <figure class="art">
+      <div class="plate">
+        <p class="plate-hd">This game · rules</p>
+        <div class="rulechips" aria-hidden="true">
+          <span class="rchip">Simone plays at least 10 min<span class="x">✕</span></span>
+          <span class="rchip">Cole capped at 12 min<span class="x">✕</span></span>
+          <span class="rchip ok">Bria + Ty together<span class="x">✕</span></span>
+          <span class="rchip err">Noah / Mia apart<span class="x">✕</span></span>
+          <span class="rchip">Starts: Bria Cole Noah Rafael Ty<span class="x">✕</span></span>
+          <span class="rchip">Max 2 stints in a row<span class="x">✕</span></span>
+          <span class="rchip">Rafael or Devon always on<span class="x">✕</span></span>
+        </div>
+      </div>
+      <figcaption>Every rule reads back as a sentence, nothing shows until a
+        rule exists, and any of them comes off again in one tap.</figcaption>
+    </figure>
+
+    <ul>
+      <li><b>Minutes limit</b> — a floor, a ceiling, or both, for one player.
+        &ldquo;At least 10&rdquo; guarantees floor time; &ldquo;capped at
+        12&rdquo; holds somebody back after an illness or a long week.</li>
+      <li><b>Starting five</b> — who is on the floor at tip-off.</li>
+      <li>The <b>last period</b> five — who is out there at the end. Set both and
+        you have bracketed the game; the solver fills in everything between.</li>
+      <li><b>Play together</b> — a pair that works. It is a preference the plan
+        maximizes by default, and you can promote it to a hard requirement at a
+        cost in evenness.</li>
+      <li><b>Keep apart</b> — two who need separating, and the only rule most
+        coaches set for reasons that have nothing to do with basketball.</li>
+      <li><b>Always one on</b> — a pair you never want resting at the same time.
+        Name your two ball handlers, or your two bigs, and one of them is on the
+        floor every stint. It is the mirror of keep apart: that one is about the
+        floor, this one is about the bench.</li>
+      <li><b>Rest limit</b> — the most stints anyone may play back to back, so
+        nobody is left out there for a whole half.</li>
+    </ul>
+    <p>When two rules cannot both hold, the plan says so on the chip rather than
+      quietly dropping one. The red chip in the mock above is a pair the solver
+      could not honor alongside everything else that was asked of it.</p>
+  </section>
+
+  <section>
+    <h2 id="minimum">A league minimum for the whole team</h2>
+    <p class="lead">One number, set once, that reaches every available player in
+      every game.</p>
+    <p>If your league says everyone plays a minimum, the Team tab holds one
+      floor for the whole team, <b>Everyone plays at least … min</b>, so you are
+      not adding a rule for each player before each game. It composes with the
+      per-player limits above: a minimum you set on one player wins when it is
+      higher, and a cap you set wins when it is lower, so a cap under a league
+      rule holds instead of turning into an error nobody asked for.</p>
+    <p>Worth setting on the day you install this, before the roster is
+      finished.</p>
+  </section>
+
+  <section>
+    <h2 id="midgame">Changing the plan mid-game</h2>
+    <p class="lead">Foul trouble, a twisted ankle, a kid who is having a
+      miserable afternoon. The card is a plan, not a contract.</p>
+
+    <figure class="art">
+      <div class="plate">
+        <p class="plate-hd">Bench mode · swap in for Bria</p>
+        <div class="scope" aria-hidden="true">
+          <span class="scp on">This stint</span>
+          <span class="scp">Rest of game</span>
+          <span class="scp act">Sit, rebalance</span>
+        </div>
+      </div>
+      <figcaption>Tap who comes off, then say how long it lasts. The first two
+        wait for a name off the bench; the third answers it for you.</figcaption>
+    </figure>
+
+    <ul>
+      <li><b>This stint</b> — a one-off. The next stint is the printed plan
+        again, so a player who needs a minute gets a minute and nothing else
+        moves.</li>
+      <li><b>Rest of game</b> — the swap holds from here to the buzzer. Use it
+        when somebody has gone off for the afternoon and you already know who is
+        taking their place.</li>
+      <li><b>Sit, rebalance</b> — you know who is coming off and not who is
+        replacing them. Benchcard picks, spreading the freed minutes over
+        whoever is furthest behind rather than handing them all to one player.</li>
+    </ul>
+    <p>Every one of them is undoable from the toast that follows. The card in
+      your pocket stays the record of what was planned; the app knows what
+      actually happened.</p>
+  </section>
+
+  <section>
+    <h2 id="season">The season ledger</h2>
+    <p class="lead">The part a phone is better at than a parent under pressure:
+      remembering, in March, who was short in November.</p>
+
+    <figure class="art">
+      <div class="plate">
+        <p class="sn-h">Season · 4 games</p>
+        <div class="sn-list" aria-hidden="true">
+          <div class="sn-row" style="--c:oklch(var(--pc-l) var(--pc-c) 26)"><i class="sn-dot"></i><span class="sn-nm">Bria Hale</span><span class="sn-x">4 games</span><span class="sn-min">62</span></div>
+          <div class="sn-row" style="--c:oklch(var(--pc-l) var(--pc-c) 52)"><i class="sn-dot"></i><span class="sn-nm">Cole Whitaker</span><span class="sn-x">4 games</span><span class="sn-min">60</span></div>
+          <div class="sn-row" style="--c:oklch(var(--pc-l) var(--pc-c) 92)"><i class="sn-dot"></i><span class="sn-nm">Noah Castellan</span><span class="sn-x">3 games</span><span class="sn-min">46</span></div>
+          <div class="sn-row" style="--c:oklch(var(--pc-l) var(--pc-c) 274)"><i class="sn-dot"></i><span class="sn-nm">Devon Ellis</span><span class="sn-x">4 games</span><span class="sn-min">54</span></div>
+        </div>
+        <p class="sn-more">and seven more · exports as one CSV</p>
+        <div class="switch"><i></i><span>Even out the season so far</span></div>
+      </div>
+      <figcaption>Finished games are filed here. The switch is per game, so a
+        friendly can be fair on its own while the league games even out.</figcaption>
+    </figure>
+
+    <p>Turn <b>Even out the season so far</b> on and the next plan opens each
+      player ahead or behind by how far they are off their share of everything
+      played to date. It moves nobody more than two stints either way, and never
+      over a limit or a locked number. The targets it handed the solver are
+      printed underneath the switch, so a number never moves without saying
+      why.</p>
+    <p>A tournament day is the same machinery on a shorter clock. Add a second
+      game and it copies the format, who is at the gym and your rules; only the
+      opponent and the tip-off are new. The day balances across every game by
+      default, so a player who sat more in game one gets it back in game two.</p>
+  </section>
+
+  <section>
+    <h2 id="card">The card, and its two sizes</h2>
+    <p class="lead">Three blocks of a printed card, at the size they print.</p>
+
+    <figure class="art">
+      <div class="plate">
+        <div class="paper">
+          <div class="stint">
+            <div class="chg"><span class="clk">Q1 8:00</span><span class="io start">START</span></div>
+            <div class="five"><span class="nm">BRIA</span><span class="nm">COLE</span><span class="nm">NOAH</span><span class="nm">RAFA</span><span class="nm">TY</span></div>
+          </div>
+          <div class="stint">
+            <div class="chg"><span class="clk">4:00</span><span class="io">▼RAFA TY</span></div>
+            <div class="five"><span class="nm">BRIA</span><span class="nm">COLE</span><span class="nm">NOAH</span><span class="nm fresh">AMAR</span><span class="nm fresh">MIA</span></div>
+          </div>
+          <div class="stint newper">
+            <div class="chg"><span class="clk">Q2 8:00</span><span class="io">▼BRIA COLE NOAH MIA</span></div>
+            <div class="five"><span class="nm fresh">RAFA</span><span class="nm fresh">TY</span><span class="nm">AMAR</span><span class="nm fresh">ELEN</span><span class="nm fresh">KADE</span></div>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="tok">Q2 8:00</span><span>eight minutes left in the second period</span>
+          <span class="tok">▼</span><span>the names after it are coming off</span>
+          <span class="tok u">KADE</span><span>underlined — just came on</span>
+          <span class="tok sm">START</span><span>your opening five</span>
+          <span class="tok sm">NO SUBS</span><span>nobody changes at this break</span>
+        </div>
+      </div>
+      <figcaption>The first three stints of an eleven-player plan. Short names
+        are derived from the roster and any of them can be overridden.</figcaption>
+    </figure>
+
+    <p>Two sizes, under <b>Print</b>:</p>
+    <ul>
+      <li><b>Pocket size</b> — 3.45 × 5 in, one column. Folds into a shirt
+        pocket and survives a gym.</li>
+      <li><b>Half-sheet</b> — 8 × 5.1 in, two columns. Bigger type at arm&rsquo;s
+        length, and the second column is what keeps a long game on one card
+        instead of two.</li>
+    </ul>
+    <p>Both print from the browser with no app and no account, and both are
+      legible from a clipboard in a dim gym.</p>
+  </section>
+
+  <section>
+    <h2 id="privacy">Where your team is stored</h2>
+    <div class="note">
+      <p><b>Your roster and your players never leave your device.</b> Benchcard
+        runs in your browser. Your roster, your games and your rules are stored
+        on the device you typed them into. There is no account and no server
+        holding your team, so clearing your browser data clears it too. The site
+        counts anonymous usage (page views, and which features get used) so I
+        can see what is worth building next; those are counters only, never a
+        name, a team or an opponent.</p>
+    </div>
+    <p>Settings can write a backup file with your roster, your rules and the
+      season ledger in it, and read one back in the same panel. Worth doing once
+      at the start of a season, and again any time you would hate to lose the
+      ledger you have built up.</p>
+  </section>
+
+  <div class="cta" style="margin-top:2.4rem">
+    <a class="btn primary" href="./">Open the app</a>
+    <a class="btn" href="./about">What Benchcard is</a>
+  </div>
+
+  <footer>
+    <span>Benchcard — free, offline, and yours.</span>
+    <a href="./">Open the app</a>
+    <!-- Spelled out rather than "About": a 41.5px-wide footer link is under
+         the 44px floor the rest of the site holds itself to, and smoke's
+         static-page pass caught it. -->
+    <a href="./about">What Benchcard is</a>
+    <a href="mailto:hello@benchcard.app">hello@benchcard.app</a>
+  </footer>
+</div>
+
+</body>
+</html>

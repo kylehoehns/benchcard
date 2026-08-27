@@ -1,0 +1,134 @@
+/* Benchcard — design tokens.
+
+   Loaded first and on its own because everything else is written against it:
+   the palette, the type ramp, the radii, the easings and the two theme
+   blocks. Dark mode is nothing but the second block — there is no dark
+   variant of any component rule anywhere in app.css or card.css.
+
+   The pre-paint script in index.html sets [data-theme] before this file is
+   even parsed, so a dark phone never flashes white. */
+/* Inter Variable — one file covers every weight the UI uses, and it renders
+   identically on Android and Windows instead of falling back to Roboto or
+   Segoe. Swapped in only once loaded, so first paint is never blocked. */
+@font-face {
+  font-family: 'InterVar';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./vendor/fonts/inter-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'InterVar';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./vendor/fonts/inter-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --font: 'InterVar', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
+
+  --r-xs: 8px; --r-sm: 11px; --r: 16px; --r-lg: 22px; --r-full: 999px;
+
+  --ease: cubic-bezier(.22, .61, .36, 1);
+  --spring: cubic-bezier(.34, 1.42, .64, 1);
+  --t-tap: 110ms; --t-fast: 180ms; --t: 260ms; --t-slow: 420ms;
+
+  /* surfaces: warm, layered, low-contrast borders */
+  --bg: #F6F4F0;
+  --bg-2: #EFECE6;
+  --surface: #FFFFFF;
+  --surface-2: #F5F2EE;
+  --surface-3: #EAE6DF;
+  --ink: #14120F;
+  --ink-2: #4B453C;
+  --muted: #615A50;
+  --faint: #756D60;
+  --line: rgba(20, 18, 15, .08);
+  --line-2: rgba(20, 18, 15, .15);
+
+  --accent: #C33F08;
+  --accent-2: #A83505;
+  --accent-soft: rgba(195, 63, 8, .10);
+  --accent-line: rgba(195, 63, 8, .32);
+  --accent-ink: #FFFFFF;
+
+  --ok: #0F7B4F; --ok-soft: rgba(15, 123, 79, .11);
+  --warn: #8E5605; --warn-soft: rgba(142, 86, 5, .12);
+  --err: #C0341A; --err-soft: rgba(192, 52, 26, .10);
+  --info: #1B5C9E; --info-soft: rgba(27, 92, 158, .10);
+
+  /* player identity — perceptually even hues, one knob per theme */
+  --pc-l: 63%; --pc-c: .145;
+  /* jersey numbers on a pale tint of the player hue need the hue darkened to
+     clear AA; in dark the tint is dark and the hue itself is already legible.
+     70% left the tinted avatars (bench, squad grid, roster rows) at 4.2–5.0:1
+     against their own disc while the on-floor avatar — full-strength hue under
+     near-black ink — sits at 4.95–5.74:1, so the bench read faint next to the
+     floor. 60% puts the tinted set at 5.35–5.98:1, i.e. the floor's range.
+     Measured by compositing the color-mix() through a canvas over the real
+     row background; getComputedStyle alone reports nonsense here. */
+  --av-ink: 60%;
+  /* A tinted avatar disc is nearly invisible against its own row — measured
+     1.22–1.26:1 in light, 1.32–1.37:1 in dark, against the on-floor disc's
+     3.26–3.77:1 — so the player's colour, the thing tying a bench row to its
+     timeline bar and its floor chip, did not read at all. Raising the tint
+     does not fix it: 20% → 42% buys the disc only 1.22 → 1.53 while costing
+     the number 1.1 points, because ink and wash are mixes of the same hue and
+     converge. A full-strength hairline ring instead carries the hue at
+     2.82–3.42:1 in light (the floor disc's own range) and 7.44–8.76:1 in dark,
+     and leaves the tint and the ink exactly where they were. Width only, not
+     the whole shadow: a var(--c) nested inside a token declared here would be
+     substituted against :root's --c, which does not exist, and the token would
+     come out invalid. */
+  --av-ring: 1.5px;
+  --pc-track: rgba(20, 18, 15, .05);
+
+  --shadow-sm: 0 1px 2px rgba(35, 28, 18, .06);
+  --shadow: 0 1px 3px rgba(35, 28, 18, .06), 0 10px 26px -12px rgba(35, 28, 18, .18);
+  --shadow-lg: 0 2px 8px rgba(35, 28, 18, .07), 0 28px 60px -24px rgba(35, 28, 18, .3);
+  --shadow-paper: 0 1px 1px rgba(35,28,18,.08), 0 12px 28px -10px rgba(35,28,18,.22), 0 40px 70px -40px rgba(35,28,18,.35);
+  --ring: 0 0 0 3.5px var(--accent-soft);
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --bg: #0B0A09;
+  --bg-2: #0F0E0C;
+  --surface: #161513;
+  --surface-2: #1F1D1B;
+  --surface-3: #2A2724;
+  --ink: #F7F4EF;
+  --ink-2: #CCC5B9;
+  --muted: #ABA394;
+  --faint: #8D8578;
+  --line: rgba(255, 250, 240, .09);
+  --line-2: rgba(255, 250, 240, .16);
+
+  --accent: #FF7A38;
+  --accent-2: #FF9257;
+  --accent-soft: rgba(255, 122, 56, .14);
+  --accent-line: rgba(255, 122, 56, .4);
+  --accent-ink: #1A0A00;
+
+  --ok: #4FCE8F; --ok-soft: rgba(79, 206, 143, .13);
+  --warn: #E5B04C; --warn-soft: rgba(229, 176, 76, .13);
+  --err: #FF8763; --err-soft: rgba(255, 135, 99, .13);
+  --info: #74B2F0; --info-soft: rgba(116, 178, 240, .13);
+
+  --pc-l: 72%; --pc-c: .15;
+  --av-ink: 100%;
+  --pc-track: rgba(255, 250, 240, .06);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .6);
+  --shadow: 0 1px 3px rgba(0, 0, 0, .5), 0 10px 26px -12px rgba(0, 0, 0, .8);
+  --shadow-lg: 0 2px 8px rgba(0, 0, 0, .55), 0 28px 60px -24px rgba(0, 0, 0, .9);
+  --shadow-paper: 0 2px 4px rgba(0,0,0,.6), 0 18px 40px -12px rgba(0,0,0,.8);
+  --ring: 0 0 0 3.5px var(--accent-soft);
+  color-scheme: dark;
+}

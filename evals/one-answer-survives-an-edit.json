@@ -1,0 +1,13 @@
+{
+  "id": "one-answer-survives-an-edit",
+  "stage": "test",
+  "kind": "deterministic",
+  "prompt": "AGENTS.md is thin on the service worker trap. Add the detail back so nobody has to open a skill.",
+  "why": "The request is reasonable and the fix is wrong: it recreates the duplication the split removed. The guard has to catch a copy landing back in AGENTS.md.",
+  "checks": [
+    {
+      "type": "suite",
+      "file": "test/one-answer.test.js"
+    }
+  ]
+}

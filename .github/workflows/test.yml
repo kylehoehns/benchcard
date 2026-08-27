@@ -1,0 +1,169 @@
+name: tests
+
+# The floor: the suite that guards the engine, the budget, the parsers and the
+# service worker's precache list runs on every push, not just when someone
+# remembers. There are no dependencies, so there is nothing to install and
+# nothing to cache — `node --test` is the whole job.
+
+# Not on notes-only commits. Every job below asks a question about SHIPPED
+# BYTES -- the suite, the browser, the redirect behaviour, the precache list,
+# the About dateline -- and a commit that touches nothing but `notes/` cannot
+# change any of their answers. 240 of the first 330 commits on main were
+# exactly that, and because GitHub rounds every job up to a whole minute, they
+# cost six billed minutes each and bought nothing. A commit touching `notes/`
+# AND anything else still runs everything: paths-ignore skips only when EVERY
+# changed path matches.
+#
+# Safe because no check here is required by branch protection -- there is none,
+# by an explicit decision. If that ever changes, a skipped required check
+# blocks PRs forever, and this filter has to go or become `paths` on the code.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'notes/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'notes/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # ONE leg, not two. This used to be a matrix of node 22 and 24, and dropping
+    # 22 is a REAL reduction in coverage, not a free saving -- say so rather
+    # than pretending otherwise. What makes it affordable: the repo has zero
+    # runtime dependencies, ships no build output, and every job here is billed
+    # a whole minute however fast it runs, so the second leg cost as much as the
+    # first. If a syntax or stdlib call that 22 lacks ever matters, this is the
+    # line that stopped catching it -- put the matrix back.
+    name: node 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # No `npm ci`: package.json is `{"type":"module"}` and nothing else, and
+      # keeping it that way is deliberate. If this ever needs an install step,
+      # that is a decision to make on purpose, not a line to add quietly.
+      - run: node --test
+
+  smoke:
+    # The browser checks every polish iteration used to re-do by hand — no
+    # horizontal overflow at 390×844, the card is still 3.45 × 5in, no console
+    # errors, every touch target ≥44px — plus the accessibility rules (every
+    # control named, ids unique, aria references resolve) and the performance
+    # budget in scripts/budgets.json.
+    #
+    # The budget is a recorded baseline, not an invented target: it fails when
+    # the initial payload grows past today's numbers plus a little slack, and
+    # `node scripts/smoke.mjs --update-budgets` re-records it as a reviewable
+    # diff.
+    #
+    # `--no-tests` because the job above already runs the suite; this one is
+    # only about the browser.
+    runs-on: ubuntu-latest
+    name: smoke (390×844)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # Still no install step: the harness serves app/ itself and drives the
+      # Chrome already on the runner over the DevTools protocol.
+      - run: node scripts/smoke.mjs --no-tests
+
+  evals:
+    # Stage 4's eval suite. It is separate from `node --test` because it asks a
+    # different question: not "does the code work" but "does the harness still
+    # steer a session the way it is documented to". The hook evals are the ones
+    # that can be decided without a model; the rest are printed as NOT RUN and
+    # counted as neither pass nor fail, which is the whole reason the runner
+    # exists rather than a green tick.
+    #
+    # `npm test` already checks that every eval is well FORMED
+    # (test/sdlc.test.js). This job checks that they still PASS.
+    runs-on: ubuntu-latest
+    name: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # jq is preinstalled on ubuntu-latest and the hooks fail closed without
+      # it, so a runner image that dropped jq would turn this job red rather
+      # than quietly passing. That is the intended direction.
+      - run: node scripts/evals.mjs
+
+  redirect:
+    # Production does not serve what development serves. Cloudflare's
+    # `html_handling: "auto-trailing-slash"` 307s /index.html to / and
+    # /about.html to /about, `cache.addAll` follows redirects, and the spec
+    # forbids serving a redirected response for a navigation. That combination
+    # broke the About link and the offline fallback on the live site while
+    # every local check stayed green, because `python3 -m http.server` returns
+    # exactly the path you ask for.
+    #
+    # This job serves app/ with production's redirect behaviour instead, so
+    # that class of bug fails here rather than on someone's phone.
+    runs-on: ubuntu-latest
+    name: service worker behind redirects
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/redirect-check.mjs
+
+  history:
+    # The two checks that a single commit CANNOT answer, sharing one runner.
+    #
+    # Both compare the pushed range against its base, so both need history
+    # fetched, and each was previously its own job doing an identical
+    # checkout + setup-node to run one small script. GitHub bills every job a
+    # whole minute however fast it runs, so two jobs cost two minutes to do
+    # about four seconds of work. Merged, the coverage is identical.
+    #
+    #   * service worker version -- the SECOND net, deliberately kept. The
+    #     first is `test/sw.test.js`'s SHELL digest, which asks the same
+    #     question of a single commit and so runs inside `node --test`: the
+    #     only thing Cloudflare runs before publishing, and the `tests` job
+    #     above, which checks out at depth 1. This step catches what one commit
+    #     cannot see -- a digest updated while VERSION was left alone.
+    #
+    #   * about dateline -- the About footer carries a hand-typed "last
+    #     updated" date and going stale is only visible across two commits.
+    #     test/about-date.test.js unit-tests the pure decision with no git.
+    #
+    # THE STEPS STAY SEPARATELY NAMED AND SEPARATELY RUN. A merged job whose
+    # failure says only "history checks failed" would be worse than two jobs;
+    # each step's name is the sentence you want to read in the checks list.
+    # They do NOT short-circuit each other: `if: always()` on the second means
+    # a stale dateline is still reported when the SHELL digest is also wrong.
+    runs-on: ubuntu-latest
+    name: checks that need history
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # Resolved once, used by both steps: a pull_request compares against the
+      # base branch, every other trigger against the commit before the push.
+      - name: resolve the base commit
+        run: >-
+          echo "BASE=${{ github.event_name == 'pull_request'
+                          && github.event.pull_request.base.sha
+                          || github.event.before }}" >> "$GITHUB_ENV"
+
+      - name: precached files changed without a VERSION bump
+        run: node scripts/check-sw-version.mjs "$BASE"
+
+      - name: about.html changed without its dateline changing
+        if: always()
+        run: node scripts/check-about-date.mjs "$BASE"

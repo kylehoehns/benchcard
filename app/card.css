@@ -1,0 +1,84 @@
+/* Benchcard — the printed card, and print itself.
+
+   The card is the product: a 3.45 × 5in pocket rectangle (or an 8 × 5.1in
+   half-sheet) laid out at true print size on screen and scaled to fit with
+   `zoom: var(--cardzoom)`. It is black on white in both themes on purpose —
+   it is paper, not UI — so nothing here reads a theme token except the stage
+   it sits on.
+
+   Loaded last. The stage rules below intentionally follow app.css, and the
+   print block stays beside the object it prints. */
+
+/* ============================ the card, as an object ============================ */
+.stage {
+  position: relative; border-radius: var(--r-lg); padding: 1.5rem 1rem;
+  background:
+    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
+    var(--bg-2);
+  border: 1px solid var(--line);
+  display: flex; flex-wrap: wrap; gap: .18in; justify-content: center;
+}
+.card {
+  width: 3.45in; height: 5.0in; padding: .11in; background: #fff; color: #000;
+  zoom: var(--cardzoom, 1);
+  border-radius: 4px; display: flex; flex-direction: column;
+  font-family: 'InterVar', "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: 'cv11' 1;
+  break-inside: avoid; page-break-inside: avoid;
+  box-shadow: var(--shadow-paper);
+  transition: transform var(--t-slow) var(--ease), box-shadow var(--t-slow) var(--ease);
+}
+.card.half { width: 8in; height: 5.1in; padding: .2in; }
+.card.half .card-hd .opp { font-size: 15px; }
+.card.half .card-hd .when { font-size: 11px; }
+.card.half .card-hd .card-mark { font-size: 9px; }
+.card.half .card-ft { font-size: 9px; }
+/* Screen decoration only: the preview lifts under a pointer. On a phone the
+   tap would paint the lift and leave it painted, so it is behind the pointer
+   query like every hover rule in app.css. Nothing printed depends on it --
+   the print block sets `transform: none !important` on `.card` regardless. */
+@media (hover: hover) { .stage .card:first-child:hover { transform: translateY(-4px) rotate(-.35deg); box-shadow: var(--shadow-lg); } }
+.card-hd { display: flex; justify-content: space-between; align-items: baseline; gap: .06in; border-bottom: 2.5px solid #000; padding-bottom: .04in; }
+/* a long team name must never push the date off the card or wrap the rule */
+.card-hd .opp { font-weight: 800; font-size: 11px; letter-spacing: .02em; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.card-hd .when { font-size: 8px; color: #444; flex: none; }
+.card-hd .card-mark { font-size: 7px; color: #777; flex: none; margin-left: auto; }
+.stints { flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
+/* The half-sheet's second column of stints — see `columnsFor` in card.js for
+   when it appears. The gap must match COL_GUTTER there. Named `.stintcols`,
+   not `.cols`: index.html already carries a `.cols` page grid, card.css loads
+   last, and the short name silently replaced its `display: grid`. No vertical
+   rule on purpose — share.js paints horizontal borders only. */
+.stintcols { flex: 1; display: flex; gap: .18in; }
+.stintcols > .stints { min-width: 0; }
+.stint.newper { border-top: 2.5px solid #000; padding-top: .045in; }
+.chg { display: flex; justify-content: space-between; align-items: baseline; color: #333; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.chg .clk { font-weight: 700; color: #000; }
+.chg .io.start { font-weight: 700; letter-spacing: .1em; }
+.five { display: flex; justify-content: space-between; font-weight: 800; line-height: 1.12; letter-spacing: -.01em; }
+.five .nm.fresh { text-decoration: underline; text-underline-offset: .02in; text-decoration-thickness: .018in; }
+.card-ft { border-top: 1px solid #000; margin-top: .04in; padding-top: .04in; font-size: 7px; color: #333; font-variant-numeric: tabular-nums; }
+
+/* Copies are a print setting; a second identical preview is ~500px of scroll
+   that says nothing the first one did not. Kept in the DOM for print. */
+/* `.stage .card-copy`, not `.card-copy`: `.card` sets `display: flex` at
+   equal specificity a few lines up, so the bare class would lose on source
+   order. */
+@media screen { .stage .card-copy { display: none; } }
+
+/* the card keeps its true print size, so the stage gives up its padding
+   rather than pushing the page sideways */
+@media (max-width: 620px) { .stage { padding: .85rem .3rem; border-radius: var(--r); } }
+
+/* ============================ print ============================ */
+@page { size: letter portrait; margin: .25in; }
+@media print {
+  html, body { background: #fff !important; }
+  .noprint { display: none !important; }
+  .print-path { display: block !important; position: static !important; max-width: none !important;
+    margin: 0 !important; padding: 0 !important; border: 0 !important; background: #fff !important;
+    box-shadow: none !important; animation: none !important; }
+  .stage { display: flex !important; justify-content: flex-start !important; padding: 0 !important;
+    background: #fff !important; border: 0 !important; gap: .15in !important; }
+  .card { box-shadow: none !important; border: 1px dashed #ccc; transform: none !important; zoom: 1 !important; }
+}

@@ -1,0 +1,88 @@
+# Cloudflare Pages headers. There is no build step, so nothing here is
+# content-hashed — every URL keeps its name across deploys. That single fact
+# decides every rule below.
+#
+# The failure this file exists to prevent: a coach opens the app on Saturday
+# and gets a version from three weeks ago because an intermediary is still
+# holding `index.html` or `sw.js`. `sw.js` is the worst of the two — it is the
+# only thing that can replace itself, so a stale copy is stale forever.
+#
+# The other half of the trap runs the other way: a file cached long here is a
+# file the worker can re-install *stale*. So nothing that appears in `PRECACHE`
+# gets a long cache. Cloudflare Pages' own default for uncached assets is
+# `public, max-age=0, must-revalidate`, which is already correct for those; the
+# rules below are the deliberate exceptions and the two belt-and-braces ones.
+#
+# **Be precise about how the worker actually installs**, because two earlier
+# versions of this comment were wrong about it and one of them invited a rewrite
+# that would have broken offline boot. `sw.js` does NOT use `cache.addAll` — see
+# the long comment above `precache()`, which explains that `addAll` stores a
+# redirected response and the spec then refuses to serve it for a navigation.
+# And `precache()` fetches with `{ cache: 'reload' }`, which BYPASSES the HTTP
+# cache, so no `max-age` set here can stale an install.
+#
+# The policy still stands, for the paths that do read this file:
+#   - the first, uncontrolled load, before any worker exists;
+#   - `index.html` and `sw.js` themselves, above;
+#   - `LAZY` (the Inter ext subset), which the fetch handler gets with a plain
+#     `fetch(req)` — the one file that really is served out of the HTTP cache
+#     and then written into the worker's cache.
+
+/
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/about.html
+  Cache-Control: no-cache
+
+# Never cache the updater. A stale service worker cannot be replaced by a
+# newer one it never fetches.
+/sw.js
+  Cache-Control: no-cache
+
+# Inter is in the worker's cache either way — the latin subset precached, the
+# ext subset fetched on demand — so this is a week rather than a year: long
+# enough that no coach refetches it, short enough that a re-vendor is not
+# frozen into returning browsers past the next SHELL change.
+/vendor/fonts/*
+  Cache-Control: public, max-age=604800
+
+# ---------------------------------------------------------------------------
+# Security headers, on every path. Nothing below costs the app anything: `app/`
+# contains no iframe, no `<object>` or `<embed>`, no `<base>`, and nothing
+# cross-origin that needs a referrer path.
+#
+# **Be honest about what the CSP buys.** It carries `'unsafe-inline'` and
+# therefore does NOT stop injected inline script: counted 2026-08-24, there are
+# 15 inline `<script>` blocks across the 8 HTML files (8 of them the pre-paint
+# theme resolver, duplicated on purpose rather than shared) and 264 inline
+# `style=` attributes. Hashing them instead would want a build step, and a build
+# step is rejected: it would invalidate this file, the whole `dead-*` suite and
+# `sw.test.js`'s precache-vs-import-graph check.
+#
+# What it DOES close is the realistic supply-chain risk. There is exactly one
+# third-party script on the entire site — the Cloudflare beacon, injected at
+# `analytics.js:163` — and there is no `eval` and no `new Function` anywhere,
+# `vendor/motion.umd.js` included. `script-src` names that one origin and locks
+# out every other. `object-src` and `base-uri` close the two classic ways an
+# inline injection escalates; `frame-ancestors` is the clickjacking half and
+# supersedes `X-Frame-Options`.
+#
+# There is deliberately no `default-src`. It would silently govern `img-src`,
+# `font-src`, `connect-src` and `manifest-src` as well, and a policy that can
+# break the card offline in a gym buys nothing here that `script-src` has not
+# already bought.
+#
+# HSTS is belt-and-braces, not a hole being closed: `.app` is an HSTS-preloaded
+# TLD, so every modern browser already refuses plain HTTP to this host before a
+# request leaves it. It is here because it is one line and it covers the
+# browsers and preview hostnames that preloading does not. No `includeSubDomains`
+# — there are no subdomains to speak for.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=()
+  Content-Security-Policy: script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
+  Strict-Transport-Security: max-age=31536000

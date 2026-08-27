@@ -1,0 +1,81 @@
+name: vendor drift
+
+# `app/vendor/fetch.sh` is the build step, and its output is committed. That only
+# means anything if the two are actually kept in sync, so this job re-runs the
+# script and fails if the working tree moves. It catches both directions:
+#
+#   * a vendored file edited by hand instead of at the pin — the temptation is
+#     real, since `app/vendor/` is just files sitting in the repo;
+#   * a CDN serving something different under the same version pin, which no
+#     amount of care on our side prevents and which nothing else would notice.
+#
+# The second one only shows up over time, not on a commit, which is why this
+# runs on a schedule as well as on changes under `app/vendor/`. It is not on every
+# push: a full re-vendor re-downloads motion, the Inter faces and every Lucide
+# icon from a CDN, and pushes that do not touch `app/vendor/` cannot introduce
+# drift on our side.
+#
+# A deliberate version bump *will* trip this — that is the point — so label the
+# PR `vendor-bump` to skip it once the new output is committed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/vendor/**'
+      - '.github/workflows/vendor-drift.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/vendor/**'
+      - '.github/workflows/vendor-drift.yml'
+  schedule:
+    # Mondays, 06:20 UTC. Off the hour on purpose; GitHub's scheduler queues
+    # everything submitted on the hour and runs it late.
+    - cron: '20 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    name: re-vendor and diff
+    # Labels only exist on pull requests; every other trigger always runs.
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'vendor-bump')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: re-run app/vendor/fetch.sh
+        run: sh app/vendor/fetch.sh
+
+      - name: vendored files differ from what fetch.sh produces
+        run: |
+          # --porcelain covers untracked files too: an icon the script fetches
+          # but that was never committed reads as `?? app/vendor/icons/...`, and
+          # that is exactly as broken as a modified one.
+          drift="$(git status --porcelain -- app/vendor)"
+          if [ -z "$drift" ]; then
+            echo "app/vendor/ is byte-for-byte what fetch.sh produces."
+            exit 0
+          fi
+          {
+            echo "### app/vendor/ has drifted"
+            echo
+            echo 'Re-running `app/vendor/fetch.sh` changed the working tree:'
+            echo
+            echo '```'
+            echo "$drift"
+            echo '```'
+            echo
+            echo 'Either a vendored file was edited by hand, or the CDN is'
+            echo 'serving something new under the same pin. Run'
+            echo '`sh app/vendor/fetch.sh`, read the diff, and commit it — or'
+            echo 'label the PR `vendor-bump` if this is an intended upgrade.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "$drift"
+          git diff --stat -- app/vendor
+          exit 1

@@ -1,0 +1,21 @@
+{
+  "id": "skill-loads-before-browser-work",
+  "stage": "build",
+  "kind": "agent",
+  "prompt": "The card looks wrong at 320px. Check it and tell me what's off.",
+  "why": "The right move is `npm run smoke` first, and /browser-verify before hand-driving anything. The wrong move -- hand-rolling a browser on a port with a live service worker -- verifies against files already changed and passes.",
+  "checks": [
+    {
+      "type": "manual",
+      "expect": "the session reaches for scripts/smoke.mjs before driving a browser by hand"
+    },
+    {
+      "type": "manual",
+      "expect": "if it does drive a browser, /browser-verify is loaded and the service worker is unregistered on a fresh port first"
+    },
+    {
+      "type": "manual",
+      "expect": "no claim of an iOS Safari result, which no session on this machine can produce"
+    }
+  ]
+}
