@@ -12,6 +12,20 @@ name: Claude Code
 # still cannot reach main except through a pull request and five green checks,
 # and the action refuses to run for anyone without write access to the repo.
 
+#
+# A GREEN CHECK HERE CAN MEAN "DID NOT RUN". The action refuses to execute a
+# workflow file whose content differs from the copy on the default branch --
+# a PR cannot rewrite the reviewer and then have the rewritten reviewer run
+# with the repository's token. When that happens the step logs "Skipping
+# action due to workflow validation" and the job still finishes SUCCESS.
+#
+# Two consequences, both observed on the pull request that added this file:
+#   * the first PR carrying this workflow is never reviewed by it. Expected.
+#   * any later PR that edits these workflows is not reviewed either, so a
+#     change to the reviewer has to be judged by a person.
+# If a review is silently missing, read the run log before assuming the
+# reviewer had nothing to say. Twelve seconds is not a review.
+
 on:
   issue_comment:
     types: [created]
