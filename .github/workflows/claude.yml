@@ -1,5 +1,17 @@
 name: Claude Code
 
+# The other half of Stage 5, and the half worth more on a repository with one
+# contributor: Claude RECEIVES review. Tag `@claude` on a review comment and it
+# addresses the point and pushes the fix to the branch, rather than handing back
+# a suggestion for someone to retype.
+#
+# WRITE PERMISSIONS ARE THE POINT HERE, and are a real grant. The generated
+# template shipped read-only, which lets Claude answer a comment but not act on
+# it -- the interesting half of the loop, missing. The blast radius stays small
+# for reasons that are not this file's doing: branch protection means a push
+# still cannot reach main except through a pull request and five green checks,
+# and the action refuses to run for anyone without write access to the repo.
+
 on:
   issue_comment:
     types: [created]
@@ -10,6 +22,10 @@ on:
   pull_request_review:
     types: [submitted]
 
+concurrency:
+  group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   claude:
     if: |
@@ -18,12 +34,13 @@ jobs:
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write        # so a fix is a commit, not a suggestion
+      pull-requests: write
+      issues: write
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read          # lets Claude read why a check went red
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,16 +52,12 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-
-          # This is an optional setting that allows Claude to read CI results on PRs
           additional_permissions: |
             actions: read
-
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
-          # prompt: 'Update the pull request description to include a summary of changes.'
-
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
-
+          # AGENTS.md is the harness and CLAUDE.md points at it, so a session
+          # here already loads the traps and the rules. What it does not load on
+          # its own is the fact that this repository now refuses direct pushes:
+          # a fix has to land on the PR branch, and the five checks decide.
+          claude_args: >-
+            --max-turns 60
+            --append-system-prompt "Read AGENTS.md before changing anything; it is the harness. Nothing reaches main except through a pull request, so push fixes to the PR branch and let the checks report -- never try to push to main. Do not approve a pull request: REVIEW.md says the approval is a human's. Run npm test and npm run smoke before claiming a change works, and say what you actually ran."

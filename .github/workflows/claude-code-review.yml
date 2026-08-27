@@ -1,24 +1,38 @@
 name: Claude Code Review
 
+# Stage 5 of the AI-native SDLC: every pull request gets the same review passes,
+# against a policy that lives in the repo rather than in whoever is reviewing.
+#
+# THIS IS NOT A REQUIRED CHECK AND MUST NOT BECOME ONE. Findings inform; they do
+# not approve or block. Branch protection already requires the five deterministic
+# checks in test.yml, and those are the ones that can be wrong in only one
+# direction. A review that can block turns every false positive into a merge
+# outage, and the fix people reach for is muting the reviewer.
+
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+
+# A review of a commit nobody is looking at any more is spend with no reader.
+# Rapid pushes collapse into one review of the latest state.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
-
+    # SKIP PULL REQUESTS FROM FORKS. This repository is public, and GitHub
+    # withholds secrets from fork-triggered runs -- so the job cannot
+    # authenticate and would fail on every outside contribution. A red check
+    # that means "we did not run this" is worse than no check: it reads as
+    # "your change is broken" to someone who has done nothing wrong.
+    # To review a fork PR, comment `@claude review this` and claude.yml handles
+    # it, which runs with the base repository's trust rather than the fork's.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: read
@@ -39,7 +53,16 @@ jobs:
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-
+          # `--append-system-prompt` IS HOW REVIEW.md GETS READ AT ALL. The
+          # `/code-review` skill follows CLAUDE.md like any session but does NOT
+          # read REVIEW.md -- only Anthropic's managed Code Review service does
+          # that, and this repository is not on it. Appending the instruction is
+          # what makes the policy file more than a document nobody opens.
+          #
+          # It cannot go in `prompt`: without `ultra`, everything after the
+          # flags is read as the review TARGET, so prose there would be taken as
+          # a path to review rather than an instruction.
+          claude_args: >-
+            --allowedTools "mcp__github_inline_comment__create_inline_comment"
+            --max-turns 40
+            --append-system-prompt "Review against REVIEW.md at the repository root: it defines the passes, what Important and Nit mean here, and which paths are excluded. AGENTS.md is the harness and says why each rule exists. Severity is not a matter of taste in this repo -- REVIEW.md lists blockers that are never traded for a follow-up ticket, and a Nit cap. Respect both."
