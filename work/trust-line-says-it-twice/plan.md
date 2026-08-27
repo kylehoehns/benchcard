@@ -1,22 +1,42 @@
 # Plan: standardise the privacy claim
 
 **Stage 3.** Written in plan mode from `intent.md` and `spec.md`, interrogated,
-and committed before implementation. **Not yet implemented** — this is a plan
-awaiting execution, and saying so is the point: an unexecuted plan that reads
-as done is worse than no plan.
+and committed before implementation. **Revised at the start of implementation**,
+in its own commit, before any code changed.
+
+## What the revision changed, and why
+
+**A fifth surface the ticket never listed: `app/advanced.html:660`.** It carries
+the long form in the same bold-line-plus-paragraph shape as `about.html`. The
+Risks section below predicted exactly this — "the ticket lists only HTML, and
+that list has been wrong before" — and it was right. `advanced.html` is
+precached, so it was always going to force the shell bump regardless.
+
+**A failing guard comes first.** The original plan went straight to editing
+`scripts/charts.mjs`. The process this repo follows says a fix starts with a
+test that fails today and passes after, and that is the right call here for a
+reason beyond process: what makes this bug possible is that **nothing asserts
+one form of the claim exists.** Fix the strings alone and the sixth surface
+someone adds next month says it the other way again. The guard is the durable
+half of the change; the string edits are the perishable half.
 
 ## Files that change
 
 | File | Change |
 | --- | --- |
 | `scripts/charts.mjs` | the trust-line literal the six pages are built from |
-| `app/index.html` | lines 735, 1280 |
+| `app/index.html` | the welcome foot and the help lede |
 | `app/about.html` | line 1027, the bold line only |
 | `app/sw.js` | `VERSION` bump, `SHELL` to the digest `npm test` names |
 | six generated chart pages | regenerated, never hand-edited |
 
 ## Order of work
 
+0. **The guard, first and failing.** Assert that exactly one form of the claim
+   exists across every surface under `app/`. Commit it red. It belongs beside
+   `test/analytics.test.js`'s phrasing list rather than in it: that file bans
+   four absolutes, this one pins one wording, and the two answer different
+   questions about the same sentence.
 1. `scripts/charts.mjs` first, and regenerate. Doing the generator first means
    the hand-edited files and the generated ones are never briefly inconsistent
    in a way a reviewer has to hold in their head.
