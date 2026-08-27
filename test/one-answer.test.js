@@ -35,8 +35,12 @@ const skills = readdirSync(new URL(SKILL_DIR, ROOT), { withFileTypes: true })
   .filter(d => d.isDirectory())
   .map(d => d.name);
 
-/* Every file that answers "how do I work in this repo". */
-const DOCS = ['AGENTS.md', 'CLAUDE.md', 'REVIEW.md',
+/* Every file that answers "how do I work in this repo" or "how does this work".
+ * README.md and docs/ joined this set when the 107KB README was split: the
+ * split is exactly the moment a fact gets copied instead of moved, and three
+ * of them had been sitting duplicated in the old README for months. */
+const DOCS = ['AGENTS.md', 'CLAUDE.md', 'REVIEW.md', 'README.md',
+  ...readdirSync(new URL('docs', ROOT)).filter(f => f.endsWith('.md')).map(f => `docs/${f}`),
   ...skills.map(s => `${SKILL_DIR}/${s}/SKILL.md`)];
 
 /* Every comparison below runs against whitespace-normalised text, and this is
@@ -71,7 +75,8 @@ const OWNED = {
   // deliberately NOT moved: these apply whether or not a browser is opened,
   // so AGENTS.md keeps them and the skills must not grow a copy
   'document.fonts.ready':              'AGENTS.md',
-  'check-sw-version.mjs':              'AGENTS.md',
+  'inert locally':                     'AGENTS.md',
+  'benchcard-v':                       'AGENTS.md',
   'a window of source is not a scope': 'AGENTS.md',
 };
 
@@ -132,4 +137,30 @@ test('the skills declare who owns what, so the split survives being read out of 
       `${s} does not state that it owns its subject; without that a future edit copies it back into AGENTS.md`);
     assert.match(body, /^description:.+/m, `${s} has no description, so nothing will trigger it`);
   }
+});
+
+/* A public README full of dead links is the "index whose pointers are dead"
+ * failure with an audience. Checked here rather than by eye, because the split
+ * that created docs/ is exactly what breaks them. */
+test('every relative link in the docs resolves', () => {
+  for (const f of DOCS) {
+    const body = raw[f];
+    const targets = [
+      ...[...body.matchAll(/\]\(([^)#][^)]*)\)/g)].map(m => m[1]),
+      ...[...body.matchAll(/src="([^"]+)"/g)].map(m => m[1]),
+    ].filter(t => !t.startsWith('http') && !t.startsWith('mailto:'));
+    for (const t of targets) {
+      const clean = t.split('#')[0];
+      if (!clean) continue;
+      assert.ok(existsSync(new URL(clean, ROOT)), `${f} links to ${t}, which does not exist`);
+    }
+  }
+});
+
+test('the README points a reader at the app and shows the share image', () => {
+  const readme = raw['README.md'];
+  assert.match(readme, /https:\/\/benchcard\.app/, 'the README must link the running app');
+  assert.match(readme, /src="app\/og\.png"/, 'the share image is the first thing a visitor sees');
+  assert.ok(readme.length < 20000,
+    `README is ${readme.length} bytes. It was 107KB once and nobody read it; the reference lives in docs/.`);
 });

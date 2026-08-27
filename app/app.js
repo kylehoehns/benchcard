@@ -5,7 +5,7 @@
  * controls that no single module owns, and the boot sequence at the
  * bottom that hands each module the callbacks it cannot import. The
  * rendering lives in render.js, and everything it paints in a module of
- * its own -- see README.md for the map.
+ * its own -- see docs/architecture.md for the map.
  *
  * The one rule to keep: nothing imports back from this file. Every module
  * takes `render` / `renderAll` / `soon` / `setView` through its `init*`
