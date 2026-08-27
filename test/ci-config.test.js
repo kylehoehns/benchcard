@@ -74,8 +74,23 @@ test('the workflow declares no more required-looking jobs than are pinned here',
     'a job was added to or removed from test.yml. Update branch protection and this list together, or say why the job is not required.');
 });
 
-test('vendor-drift keeps its path filter, because it is not a required check', () => {
-  const drift = read('.github/workflows/vendor-drift.yml');
-  assert.match(drift, /paths:/,
-    'vendor-drift is scheduled and label-conditional; its filter is correct and the rule above does not apply to it');
+/* The rule is not "no path filters". It is "no path filter on a REQUIRED
+ * check", and the two workflows below are the reason to say it that way: both
+ * carry a filter, both are correct to, and neither is required. A blanket ban
+ * would have deleted two correct filters; a blanket permission would have
+ * re-armed the trap on test.yml. */
+test('the advisory workflows keep their path filters, because neither is required', () => {
+  assert.match(read('.github/workflows/vendor-drift.yml'), /paths:/,
+    'vendor-drift is scheduled and label-conditional; its filter is correct');
+  assert.match(read('.github/workflows/claude-code-review.yml'), /paths-ignore:/,
+    'the reviewer is advisory, so skipping it on notes-only and docs-only changes costs nothing but the run');
+});
+
+test('the reviewer still runs on the files that carry the rules', () => {
+  const review = read('.github/workflows/claude-code-review.yml');
+  const ignored = review.slice(review.indexOf('paths-ignore:'), review.indexOf('concurrency:'));
+  for (const rules of ['AGENTS.md', 'REVIEW.md', 'CLAUDE.md', '*.md']) {
+    assert.ok(!ignored.includes(`'${rules}'`),
+      `${rules} is excluded from review. A contradiction introduced into the rules costs more than one in code, because everything downstream inherits it — PR #4's second finding was exactly that.`);
+  }
 });

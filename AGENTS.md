@@ -87,9 +87,12 @@ bearing as the DENY ones: a hook that ate `grep -n update-budgets` would be
 switched off within a day, and a switched-off hook is worse than none, because
 the prose was deleted on the strength of it.
 
-Two procedures live in `.claude/skills/` rather than here, because they are
+Three procedures live in `.claude/skills/` rather than here, because they are
 sequences you follow rather than facts you need loaded at all times:
-`/browser-verify` and `/new-guard`. Both cite the sections above rather than
+`/browser-verify` and `/new-guard`, which own their subjects outright, and
+`/address-review` for acting on findings on a pull request — verify a finding
+before complying with it, and treat a repeat of a class already written down
+here as the harness failing rather than the code. Both cite the sections above rather than
 copying them. **They are Claude-specific. This file is not** — anything an
 agent must know to avoid breaking the tree belongs here, where every tool reads
 it.

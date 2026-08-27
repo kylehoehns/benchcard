@@ -26,6 +26,25 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
+    # A FILTER IS CORRECT HERE AND FORBIDDEN ON test.yml, and the difference is
+    # the whole reason to state it: this is NOT a required check. A required
+    # check that does not run leaves a PR pending forever; an advisory one that
+    # does not run simply has no opinion. `test/ci-config.test.js` enforces the
+    # other half.
+    #
+    # Only two paths, deliberately narrow. `notes/` is the queue, the research
+    # and the closed-work log; `docs/` is reference prose. Neither is shipped --
+    # `app/` is the only deployed directory -- and neither carries a rule that
+    # binds a session.
+    #
+    # ROOT *.md IS NOT EXCLUDED, and the evidence is PR #4: the review's second
+    # finding was a real contradiction introduced into AGENTS.md, in a change
+    # that looked like documentation. AGENTS.md, REVIEW.md, CLAUDE.md and
+    # README.md are rules and front door, and a mistake in them costs more than
+    # a mistake in code because everything downstream inherits it.
+    paths-ignore:
+      - 'notes/**'
+      - 'docs/**'
 
 # A review of a commit nobody is looking at any more is spend with no reader.
 # Rapid pushes collapse into one review of the latest state.
