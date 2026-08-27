@@ -130,12 +130,26 @@ test('AGENTS.md still names the traps it no longer explains', () => {
   }
 });
 
-test('the skills declare who owns what, so the split survives being read out of order', () => {
+/* ONLY THE SKILLS THAT TOOK CONTENT OUT OF AGENTS.md HAVE TO CLAIM IT. This
+ * assertion used to apply to every skill, which was written when both of them
+ * were content transfers -- the same state-of-N trap as the empty-queue
+ * assertion two commits ago, and it produced a false failure on the first skill
+ * that was new material rather than moved material. The set is derived from
+ * OWNED rather than listed, so it stays true as skills are added. */
+const OWNERS = new Set(Object.values(OWNED)
+  .filter(f => f.startsWith(SKILL_DIR))
+  .map(f => f.split('/')[2]));
+
+test('a skill that owns moved content says so, so a future edit does not copy it back', () => {
+  for (const s of OWNERS) {
+    assert.match(raw[`${SKILL_DIR}/${s}/SKILL.md`], /owns .*? outright/,
+      `${s} owns content moved out of AGENTS.md but never says so`);
+  }
+});
+
+test('every skill declares a description, or nothing will trigger it', () => {
   for (const s of skills) {
-    const body = raw[`${SKILL_DIR}/${s}/SKILL.md`];
-    assert.match(body, /owns .* outright/,
-      `${s} does not state that it owns its subject; without that a future edit copies it back into AGENTS.md`);
-    assert.match(body, /^description:.+/m, `${s} has no description, so nothing will trigger it`);
+    assert.match(raw[`${SKILL_DIR}/${s}/SKILL.md`], /^description: .+/m, `${s} has no description`);
   }
 });
 
