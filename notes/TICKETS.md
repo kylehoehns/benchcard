@@ -15,7 +15,7 @@ iteration is already running. Stage explicit paths, never `git add -A`.
 
 | Item | Stage reached | What would settle it |
 | --- | --- | --- |
-| [`trust-line-says-it-twice`](../work/trust-line-says-it-twice/) | plan committed, not implemented | one sentence, one form, everywhere; `scripts/charts.mjs` emits it too |
+| _nothing open_ | | |
 
 ## Closed but kept
 
