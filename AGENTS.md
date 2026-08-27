@@ -39,6 +39,23 @@ is the order of operations for the parts a harness does not cover.
 which is honest rather than decorative: those checks are written down and
 nothing here can decide them.
 
+**One item at a time.** Take the top row of `notes/TICKETS.md`, finish it, hand
+it back. Not two, and not "while I am in here". A session that touches three
+items produces a diff no reviewer can judge against any one plan, which is the
+check `REVIEW.md` exists to make possible.
+
+**Done means the directory goes.** The implementation PR deletes
+`work/<slug>/` and its row in `notes/TICKETS.md`, in the same PR as the change.
+`work/` holds OPEN work; finished work is `git log` and `notes/DECISIONS.md`,
+and the artefacts stay readable forever at
+`git show <sha>:work/<slug>/plan.md`. An empty `work/` is a finished queue, not
+a broken one.
+
+The one thing this cannot be compressed into: **the artefacts must be merged
+before the implementation PR opens.** The review checks the diff against the
+plan, so a plan arriving in the same PR as the diff is a plan written to match
+it. Add and delete are never the same merge.
+
 **Review** against `REVIEW.md`, on a pull request. Every change reaches `main`
 through one — no exceptions, including a one-line fix and including a change
 that touches only `notes/`. Branch, commit, push, open the PR, and let the
