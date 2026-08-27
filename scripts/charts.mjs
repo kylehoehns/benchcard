@@ -237,13 +237,13 @@ const COPY = {
      see it. Not a function, because it is the same on all six.
 
      The words are lifted from what the site already says rather than written
-     fresh: index.html's welcome foot is "No account. Your roster and your
-     players never leave your device." and about.html's FAQ answers "Is
+     fresh: index.html's welcome foot is "No account. Your roster never leaves
+     your device." and about.html's FAQ answers "Is
      Benchcard free?" with "Yes. It is free, there is no account...". Nothing
      here is a new claim, and deliberately no "runs entirely in your browser"
      -- that absolute is wider than anything the site says elsewhere, and it
      stays unsaid until someone can stand behind it. */
-  trust: 'Free, and there is no account. Your roster and your players never leave your device.',
+  trust: 'Free, and there is no account. Your roster never leaves your device.',
 };
 const PLACEHOLDER_KEYS = ['lede', 'caption'];
 
