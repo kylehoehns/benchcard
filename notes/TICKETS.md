@@ -16,7 +16,7 @@ iteration is already running. Stage explicit paths, never `git add -A`.
 | Item | Stage reached | What would settle it |
 | --- | --- | --- |
 | [`guard-bash-shell-hole`](../work/guard-bash-shell-hole/) | intent only | `AGENTS.md`'s enforcement table is true — either shell writes to protected paths are denied, or the table says which surfaces it covers |
-| [`greps-blind-to-line-wraps`](../work/greps-blind-to-line-wraps/) | intent only | every prose-searching guard surveyed, the exposed ones fixed and re-falsified with a wrapped phrase |
+| [`greps-blind-to-line-wraps`](../work/greps-blind-to-line-wraps/) | spec committed — **survey falsified the intent**, scope much smaller | the rule written where a session meets it, and `analytics.test.js`'s wrap-resistance pinned by a test |
 
 ## Closed but kept
 
