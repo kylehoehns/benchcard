@@ -15,7 +15,6 @@ iteration is already running. Stage explicit paths, never `git add -A`.
 
 | Item | Stage reached | What would settle it |
 | --- | --- | --- |
-| [`trust-line-says-it-twice`](../work/trust-line-says-it-twice/) | plan committed, not implemented | one sentence, one form, everywhere; `scripts/charts.mjs` emits it too |
 | [`guard-bash-shell-hole`](../work/guard-bash-shell-hole/) | intent only | `AGENTS.md`'s enforcement table is true — either shell writes to protected paths are denied, or the table says which surfaces it covers |
 | [`greps-blind-to-line-wraps`](../work/greps-blind-to-line-wraps/) | intent only | every prose-searching guard surveyed, the exposed ones fixed and re-falsified with a wrapped phrase |
 
