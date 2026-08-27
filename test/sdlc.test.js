@@ -21,8 +21,14 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = f => readFileSync(new URL(f, ROOT), 'utf8');
-const dirs = d => readdirSync(new URL(d, ROOT), { withFileTypes: true })
-  .filter(e => e.isDirectory()).map(e => e.name);
+/* Tolerant on purpose. `work/` is tracked only by `work/.gitkeep`, and a
+ * checkout that somehow lacks it must fail on an ASSERTION that names the
+ * problem, not on ENOENT thrown at module load -- which takes down every test
+ * in this file, including the ones that have nothing to do with work/. */
+const dirs = d => existsSync(new URL(d, ROOT))
+  ? readdirSync(new URL(d, ROOT), { withFileTypes: true })
+      .filter(e => e.isDirectory()).map(e => e.name)
+  : null;
 
 /* ---------- Stage 1 -> 3: the chain ---------- */
 
@@ -39,8 +45,11 @@ const items = dirs('work');
  * That is the state-of-one trap: a guard run in a single state is a guard whose
  * other states are guesses. What is checked below is the SHAPE of whatever is
  * in work/, which is the thing that can actually rot. */
-test('an empty queue is a legitimate state', () => {
-  assert.ok(Array.isArray(items), 'work/ must exist as a directory even when nothing is open');
+test('work/ survives an empty queue', () => {
+  assert.notEqual(items, null,
+    'work/ is missing from the checkout. It is tracked only by work/.gitkeep, and git does not track empty directories — so shipping the last item deletes the directory itself unless .gitkeep stays.');
+  assert.ok(existsSync(new URL('work/.gitkeep', ROOT)),
+    'work/.gitkeep is gone. The next PR that finishes the last open item removes work/ entirely, and this file then throws ENOENT at module load rather than failing one assertion.');
 });
 
 test('every work item carries the whole chain', () => {
