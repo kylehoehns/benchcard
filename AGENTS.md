@@ -3,7 +3,7 @@
 Static, client-side app that plans youth basketball substitution rotations and
 prints them on a pocket-notebook card. No backend, no accounts, no build step.
 
-`README.md` explains what the code does and why. `notes/TICKETS.md` is the
+`README.md` is the front door; `docs/` explains what the code does and why. `notes/TICKETS.md` is the
 open work — open only; finished work is `notes/DECISIONS.md`. This file is the harness:
 the things that will bite you, which are not obvious from reading the code.
 
