@@ -39,8 +39,11 @@ is the order of operations for the parts a harness does not cover.
 which is honest rather than decorative: those checks are written down and
 nothing here can decide them.
 
-**Review** against `REVIEW.md` before committing — same passes every time, and
-severity that means the same thing twice running.
+**Review** against `REVIEW.md`, on a pull request. Every change reaches `main`
+through one — no exceptions, including a one-line fix and including a change
+that touches only `notes/`. Branch, commit, push, open the PR, and let the
+checks report before merging. The same passes every time, and severity that
+means the same thing twice running.
 
 ## What is enforced, and what is only written down
 

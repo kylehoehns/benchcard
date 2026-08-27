@@ -4,9 +4,21 @@ The review policy, so that every change gets the same passes and severity means
 the same thing twice running. `AGENTS.md` is the harness and says *why* each
 rule below exists; this file says only what a review does with it.
 
-Read by `/code-review`, and ready for `claude-code-action` if work ever moves
-onto pull requests. It does not today: 382 commits, no PRs, and no branch
-protection by an explicit decision recorded in `.github/workflows/test.yml`.
+Read by `/code-review`, and applied to every pull request. **Nothing reaches
+`main` except through one.** That is a change from how this repo ran for its
+first 384 commits, which went straight to `main` by an explicit decision; the
+reasoning that decision rested on -- no second pair of eyes to wait for, and
+billed CI minutes -- stopped holding when the work started needing a review
+gate more than it needed speed.
+
+Two consequences worth stating, because both have teeth:
+
+- **No path filter may be added to a required check.** A required check that
+  does not run leaves a PR pending forever rather than failing it, so a
+  notes-only PR would hang on a job that was never going to report.
+  `test/ci-config.test.js` fails if one comes back.
+- **An agent may not approve its own work.** It can open the PR, address
+  comments and push fixes; the approval is a human's.
 
 ## Passes, in order
 
