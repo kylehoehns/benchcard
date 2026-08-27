@@ -51,6 +51,31 @@ one.
 
 **7. End with the real suite green**, from the real files, and say so.
 
+## The trap that has cost the most here: writing a guard in one state
+
+**A guard run in a single state is a guard whose other states are guesses.**
+Three assertions in this repo were written while exactly one example of the
+thing existed, and all three were wrong in the same way — each one encoded an
+accident of the moment as a rule:
+
+- `work/` must be non-empty. Written while one item existed. It would have gone
+  red the moment somebody did the right thing and finished it.
+- every skill must declare it "owns X outright". Written while two skills
+  existed, both of them content moved out of `AGENTS.md`. It failed on arrival
+  of the first skill that was new material.
+- every work item must carry all three stages. Written while the only item that
+  had ever existed was already at Stage 3. It made an intent-only item — which
+  is what Stage 1 *is* — impossible to commit.
+
+Each passed on the day it was written. Each was a guess about states that did
+not exist yet, dressed as a check.
+
+Before you commit an assertion, name the states the thing can be in — none of
+them, one, several, the first of a new kind — and say which you have actually
+run it against. If the answer is "the one in front of me", the guard is not
+finished. Construct the others: an empty directory, a second kind, the state
+right after the work succeeds.
+
 ## Two smells
 
 - **If a check reports a suspiciously perfect result, verify the check.** Every

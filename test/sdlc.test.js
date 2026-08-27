@@ -52,12 +52,29 @@ test('work/ survives an empty queue', () => {
     'work/.gitkeep is gone. The next PR that finishes the last open item removes work/ entirely, and this file then throws ENOENT at module load rather than failing one assertion.');
 });
 
-test('every work item carries the whole chain', () => {
+/* PREFIX-COMPLETE, NOT COMPLETE. This demanded all three files, which was
+ * written when the only item that had ever existed was already at Stage 3 --
+ * and it is wrong for the same reason the empty-queue assertion and the
+ * skill-ownership assertion were wrong before it. The stages are SEQUENTIAL:
+ * an item legitimately exists carrying only `intent.md` from the moment the
+ * problem is written down until the spec is agreed. Demanding the whole chain
+ * up front forces a plan to be invented alongside the intent, which is exactly
+ * the "plan written to match the diff" failure one stage earlier.
+ *
+ * What is actually wrong is a GAP -- a plan with no spec above it, a spec with
+ * no intent. That is what is checked. */
+const stagesPresent = item =>
+  STAGES.map(s => existsSync(new URL(`work/${item}/${s}`, ROOT)));
+
+test('a work item has no gap in its chain', () => {
   for (const item of items) {
-    for (const stage of STAGES) {
-      assert.ok(existsSync(new URL(`work/${item}/${stage}`, ROOT)),
-        `work/${item}/ is missing ${stage} — a chain with a gap is not a chain`);
-    }
+    const present = stagesPresent(item);
+    assert.ok(present[0],
+      `work/${item}/ has no intent.md. Every item starts with the problem, whatever else it has.`);
+    const firstMissing = present.indexOf(false);
+    if (firstMissing === -1) continue;
+    assert.ok(!present.slice(firstMissing).includes(true),
+      `work/${item}/ skips ${STAGES[firstMissing]} but has a later stage — a chain with a gap is not a chain, and the later stage rests on a decision nobody wrote down`);
   }
 });
 
@@ -65,14 +82,16 @@ test('each stage says which stage it is, so a file read alone is not ambiguous',
   const n = { 'intent.md': 1, 'spec.md': 2, 'plan.md': 3 };
   for (const item of items) {
     for (const stage of STAGES) {
+      if (!existsSync(new URL(`work/${item}/${stage}`, ROOT))) continue;
       assert.match(read(`work/${item}/${stage}`), new RegExp(`\\*\\*Stage ${n[stage]}\\.\\*\\*`),
         `work/${item}/${stage} does not declare its stage`);
     }
   }
 });
 
-test('a plan states whether it has been implemented', () => {
+test('a plan, once it exists, states whether it has been implemented', () => {
   for (const item of items) {
+    if (!existsSync(new URL(`work/${item}/plan.md`, ROOT))) continue;
     const plan = read(`work/${item}/plan.md`);
     assert.match(plan, /implemented/i,
       `work/${item}/plan.md never says whether it was implemented — an unexecuted plan that reads as done is worse than no plan`);
