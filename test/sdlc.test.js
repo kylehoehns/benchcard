@@ -29,8 +29,18 @@ const dirs = d => readdirSync(new URL(d, ROOT), { withFileTypes: true })
 const STAGES = ['intent.md', 'spec.md', 'plan.md'];
 const items = dirs('work');
 
-test('there is at least one work item, or the chain is a directory of nothing', () => {
-  assert.ok(items.length > 0, 'work/ is empty — the artefact chain exists only as a folder');
+/* THERE IS NO ASSERTION THAT work/ IS NON-EMPTY, and there was one until the
+ * first item was about to ship. An empty queue is a finished queue. The old
+ * assertion would have gone red at the exact moment a session did the right
+ * thing -- deleted the directory of the item it had just completed -- and sent
+ * it hunting a failure that was the guard's fault, not the change's.
+ *
+ * It only ever passed because it was written while exactly one item existed.
+ * That is the state-of-one trap: a guard run in a single state is a guard whose
+ * other states are guesses. What is checked below is the SHAPE of whatever is
+ * in work/, which is the thing that can actually rot. */
+test('an empty queue is a legitimate state', () => {
+  assert.ok(Array.isArray(items), 'work/ must exist as a directory even when nothing is open');
 });
 
 test('every work item carries the whole chain', () => {
