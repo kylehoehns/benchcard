@@ -64,14 +64,18 @@ function crawlable(name) {
 }
 
 /* An href becomes a page name, or null if it is not a page on this site.
-   `./advanced` has no extension on purpose: Cloudflare serves the
-   extensionless spelling and 307s the .html one, so both spellings are real
-   and both have to resolve here. */
+
+   ONE SPELLING. Every internal href is extensionless, because that is what
+   the canonical tag, og:url and sitemap.xml name and what Cloudflare 200s;
+   the .html spelling is a live URL that 307s there, and nothing on this site
+   links to it. This used to accept both, which is exactly how the two drifted
+   apart -- see the assertion at the bottom of this file, which now bans the
+   redirecting spelling outright. */
 function target(href) {
   if (/^(https?:|mailto:|data:|#)/.test(href)) return null;
   const path = href.replace(/[?#].*$/, '').replace(/^\.\//, '');
   if (path === '' ) return 'index.html';
-  if (path.endsWith('.html')) return path;
+  if (path.endsWith('.html')) return path;      // a stale link; the ban below catches it
   if (/\.[a-z0-9]+$/i.test(path)) return null;   // .css, .png, .webmanifest
   return `${path}.html`;
 }
@@ -121,8 +125,43 @@ test('the welcome screen, not the hidden footer, is what links off "/"', () => {
      screen has to argue with it. Two iterations rebuilt that screen this week;
      the next one should know this link is holding up six pages. */
   const withoutFoot = crawlable('index.html');
-  assert.ok(withoutFoot.includes('href="./about.html"'),
-    'nothing outside index.html\'s hidden .foot links to about.html — the six chart pages just went dark');
-  assert.ok(/<a class="wel-about" href="\.\/about\.html"/.test(withoutFoot),
-    'the welcome screen\'s "What is this?" link is gone; the only about.html hrefs left are in the hidden footer, a comment or <noscript>');
+  assert.ok(withoutFoot.includes('href="./about"'),
+    'nothing outside index.html\'s hidden .foot links to about — the six chart pages just went dark');
+  assert.ok(/<a class="wel-about" href="\.\/about"/.test(withoutFoot),
+    'the welcome screen\'s "What is this?" link is gone; the only about hrefs left are in the hidden footer, a comment or <noscript>');
+});
+
+/* ------------------------------------------------------------------ *
+ * One spelling per page.
+ *
+ * The walk above proves every page is REACHABLE. It cannot notice that the
+ * link reaching it is a URL Cloudflare 307s away from, because a redirect
+ * still arrives -- which is precisely how this went unnoticed: `about.html`
+ * was linked 16 times, every one of them a hop, while the canonical tag,
+ * og:url and sitemap.xml all named `/about`.
+ *
+ * That cost more than a crawl hop. `sw.js` keys its cache on the file
+ * (`./about.html`), the hrefs to `advanced.html` had ALREADY moved to the
+ * extensionless spelling, and offline the mismatch served the app shell in
+ * place of the page -- silently, since the shell is a valid document.
+ *
+ * Derived from the files, never listed: a seventh page cannot arrive exempt.
+ * ------------------------------------------------------------------ */
+test('no internal href points at a URL that redirects', () => {
+  /* The RAW hrefs, deliberately -- not `linksFrom`, which resolves each one to
+     a page name and so hands back `about.html` whatever the markup said. The
+     first cut of this test used it and could not pass on any tree. */
+  const offenders = [];
+  for (const name of shipped) {
+    for (const m of crawlable(name).matchAll(/href="([^"]*)"/g)) {
+      const href = m[1];
+      if (/^(https?:|mailto:|data:|#)/.test(href)) continue;
+      if (href.replace(/[?#].*$/, '').endsWith('.html')) offenders.push(`${name}: href="${href}"`);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    'these hrefs name the .html spelling, which Cloudflare 307s to the extensionless one. '
+    + 'The canonical tag, og:url and sitemap.xml all name the extensionless URL, and sw.js '
+    + 'caches by file — so a .html href is both a wasted hop for a crawler and, offline, a '
+    + 'cache miss that hands back the app shell instead of the page:\n  ' + offenders.join('\n  '));
 });

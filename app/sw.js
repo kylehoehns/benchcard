@@ -19,7 +19,7 @@
    whenever a precached file changes -- `npm test` names it in the SHELL
    failure and `scripts/check-sw-version.mjs` enforces it across commits --
    but a forgotten bump is now a stale LABEL, not a stale SHELL. */
-const VERSION = '257';
+const VERSION = '258';
 
 /* Fingerprint of every file PRECACHE names, and the half of the cache name
    that actually busts it. `test/sw.test.js` recomputes it from the bytes on
@@ -29,7 +29,7 @@ const VERSION = '257';
    `activate` below deletes the old one. It lives HERE rather than in the test
    so that the edit updating it lands on the line below VERSION. Deleting it
    fails the suite too. */
-const SHELL = '2e39cccf3112';
+const SHELL = 'eda1edc4e927';
 
 const CACHE = `benchcard-v${VERSION}-${SHELL}`;
 
@@ -115,11 +115,14 @@ const LAZY = './vendor/fonts/inter-latin-ext-wght-normal.woff2';
  * and the spec forbids serving one of those for a *navigation*. Safari words
  * the rejection "Response served by service worker has redirections".
  *
- * That is invisible in development, because `python3 -m http.server` returns
- * exactly the path you ask for and never redirects. In production it broke the
- * About link, and it broke the offline fallback below, which hands back the
- * cached `./index.html` -- so the one thing this worker exists for, booting in
- * a gym with no signal, had been failing since launch.
+ * It was invisible in development, because the dev server of the day
+ * (`python3 -m http.server`) returned exactly the path you asked for and never
+ * redirected. In production it broke the About link, and it broke the offline
+ * fallback below, which hands back the cached `./index.html` -- so the one
+ * thing this worker exists for, booting in a gym with no signal, had been
+ * failing since launch. That is why `npm run serve` now redirects the way
+ * Cloudflare does: a local server that disagrees with production is not a
+ * convenience, it is a class of bug nothing can see.
  *
  * Re-wrapping the response drops the flag: `redirected` is not one of the
  * fields the Response constructor copies. Still one Promise.all, so a missing
@@ -179,7 +182,36 @@ self.addEventListener('fetch', (e) => {
        has not happened yet in the window this closes. Opening the named cache
        makes a generation self-consistent by construction. */
     const cache = await caches.open(CACHE);
-    const cached = await cache.match(req, { ignoreSearch: true });
+    let cached = await cache.match(req, { ignoreSearch: true });
+
+    /* A page has two spellings and this is where they meet.
+     *
+     * Every internal href is extensionless (`/about`), because that is what
+     * the canonical tag, `og:url` and `sitemap.xml` all name -- one address
+     * per page, and it is the one Cloudflare 200s. PRECACHE, by contrast, is
+     * a list of FILES: `./about.html`. It has to be, because
+     * `test/sw.test.js` fingerprints those entries by reading them off disk,
+     * and two CI guards (`scripts/check-sw-version.mjs` and
+     * `.claude/hooks/after-edit.sh`) match them against filenames -- both of
+     * those fail SILENTLY if an entry stops naming a file.
+     *
+     * `ignoreSearch` drops the query string, not the extension, so `/about`
+     * does not match `./about.html` and falls through to the network. Online
+     * nobody notices. Offline it lands in the navigation fallback below and
+     * the coach is handed the app shell in place of the page they tapped --
+     * no error, no clue. It shipped that way, and `redirect-check.mjs` arm 5
+     * is the reproduction.
+     *
+     * Navigations only: a subresource is requested by the exact URL the
+     * markup names, so widening this would put a second cache lookup on every
+     * 404 for nothing. */
+    if (!cached && req.mode === 'navigate') {
+      const p = url.pathname;
+      if (p !== '/' && !/\.[a-z0-9]+$/i.test(p)) {
+        cached = await cache.match(`${p}.html`, { ignoreSearch: true });
+      }
+    }
+
     // Belt and braces: `precache` above keeps redirected responses out of the
     // cache in the first place, but anything that ever gets in here would brick
     // navigation again, and the cost of checking is a boolean.

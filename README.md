@@ -73,7 +73,7 @@ No dependencies, no build step, no install.
 
 ```sh
 git clone https://github.com/kylehoehns/benchcard
-cd benchcard/app && python3 -m http.server 8201
+cd benchcard && npm run serve
 ```
 
 From the repo root:

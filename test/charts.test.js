@@ -114,10 +114,18 @@ test('no absolute benchcard.app URL this site publishes points at a redirect', (
      entry, and index.html's JSON-LD `softwareHelp` — while all six chart
      pages were already correct.
 
-     Only ABSOLUTE URLs. The in-app links stay `./about.html` on purpose:
-     that spelling is the service worker's precache key, and
-     `scripts/redirect-check.mjs` exists to prove a navigation through it
-     works. Rewriting those would break the offline About link. */
+     Only ABSOLUTE URLs, because relative in-app links are a different
+     question and `test/link-graph.test.js` owns it.
+
+     THIS COMMENT USED TO SAY THE OPPOSITE, and it is worth knowing why it was
+     wrong. It read: "the in-app links stay `./about.html` on purpose -- that
+     spelling is the service worker's precache key... rewriting those would
+     break the offline About link." The premise was real but the conclusion
+     was backwards: the links and the precache key HAD already drifted apart
+     for `advanced.html`, and offline that served the app shell in place of
+     the page. `sw.js` now resolves a navigation to the file backing it, so
+     the href is free to be the address the canonical names, and
+     `redirect-check.mjs` arm 5 is what holds that. */
   const files = ['index.html', 'about.html', 'sitemap.xml', ...SIZES.map(file)];
   for (const name of files) {
     for (const m of read(name).matchAll(/https:\/\/benchcard\.app\/(\S*?)(?=["'<\s])/g)) {
@@ -130,13 +138,13 @@ test('no absolute benchcard.app URL this site publishes points at a redirect', (
 test('about.html links to all six, so the pages are reachable without the sitemap', () => {
   const about = read('about.html');
   for (const n of SIZES) {
-    assert.ok(about.includes(`href="./${file(n)}"`), `about.html does not link to ${file(n)}`);
+    assert.ok(about.includes(`href="./${slug(n)}"`), `about.html does not link to ${slug(n)}`);
   }
   // and each page links to its five siblings
   for (const n of SIZES) {
     for (const o of SIZES) {
       if (o === n) continue;
-      assert.ok(html.get(n).includes(`href="./${file(o)}"`), `${file(n)} does not link to ${file(o)}`);
+      assert.ok(html.get(n).includes(`href="./${slug(o)}"`), `${file(n)} does not link to ${slug(o)}`);
     }
   }
 });

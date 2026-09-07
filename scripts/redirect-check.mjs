@@ -18,65 +18,28 @@
  * signal, and it had been broken there since launch.
  *
  * This server is the production one's redirect behaviour, so the failure is
- * reproducible on a laptop. Four assertions now: the first three all failed before the fix and
- * pass after it, and the fourth is the same question asked of `advanced.html`
- * (A20 slice 2), which is precached the same way and can fail the same way.
+ * reproducible on a laptop. FIVE assertions now. The first three failed before
+ * the original fix and pass after it; the fourth is the offline fallback.
+ *
+ * The fifth is a second bug of the same family, found in September 2026: the
+ * hrefs and the precache key had drifted to different spellings of the same
+ * page, so offline the worker served the app shell in place of About and of
+ * the reference page. Arms 2 and 3 could not see it -- they navigated
+ * `.html`, and arm 3 had been navigating a spelling nothing linked to since
+ * the page shipped. Both now follow the href. `work/one-spelling-per-page/`
+ * carried the reasoning while it was open; `notes/DECISIONS.md` has the rest.
  */
-import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, extname, resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { serve } from './serve.mjs';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const APP = join(ROOT, 'app');
 const JSON_OUT = process.argv.includes('--json');
 
-const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json', '.webmanifest': 'application/manifest+json',
-  '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml',
-};
-
-/* Cloudflare's `auto-trailing-slash`, as far as this app exercises it:
-   - `/index.html` → 307 `/`
-   - `/<name>.html` → 307 `/<name>`
-   - `/<name>`      → serves `<name>.html`
-   Everything else is served as asked. */
-function serve() {
-  const server = createServer(async (req, res) => {
-    const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-
-    // the product-event endpoint; see the note in scripts/smoke.mjs
-    if (path === '/e') { res.writeHead(204).end(); return; }
-
-    if (path === '/index.html') { res.writeHead(307, { location: '/' }).end(); return; }
-    if (path.endsWith('.html')) {
-      res.writeHead(307, { location: path.slice(0, -'.html'.length) }).end();
-      return;
-    }
-
-    let file = path === '/' ? '/index.html' : path;
-    if (!extname(file)) file += '.html';       // /about → about.html
-    const abs = join(APP, file);
-    if (!abs.startsWith(APP)) { res.writeHead(403).end(); return; }
-    try {
-      const body = await readFile(abs);
-      res.writeHead(200, { 'content-type': TYPES[extname(abs)] || 'application/octet-stream' });
-      res.end(body);
-    } catch { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); }
-  });
-  /* Keep-alive sockets outlive `server.close()`, and a half-open connection is
-     not the same as no network -- the offline check below needs the real
-     thing, so hold them and destroy them by hand. */
-  const sockets = new Set();
-  server.on('connection', (s) => { sockets.add(s); s.on('close', () => sockets.delete(s)); });
-  server.stopHard = () => { for (const s of sockets) s.destroy(); server.close(); };
-  return new Promise(ok => server.listen(0, '127.0.0.1', () => ok(server)));
-}
+/* The server is `scripts/serve.mjs` -- the Cloudflare-shaped one, which used
+   to live in this file. It moved so that `smoke.mjs` and `og.mjs` could stop
+   running their own, non-redirecting copies. */
 
 const CHROME = [
   process.env.CHROME_PATH,
@@ -200,11 +163,17 @@ try {
   /* 2. The About link -- the failure that was reported from a phone. A
         navigation handed a redirected response is rejected outright, and the
         page that arrives is the browser's error page, not ours. */
-  /* The href in the footer, verbatim. Navigating to `/about` instead would
-     pass even while broken -- that path is not a cache key, so it misses the
-     cache and goes to the network. The bug is reachable only through the
-     precached spelling, which is exactly the one the link uses. */
-  const a = await navigate(origin + '/about.html');
+  /* The href in the footer, verbatim -- and `verbatim` is the whole point, so
+     this line moves whenever the href does. It used to read `/about.html` and
+     say that was "exactly the one the link uses". That stopped being true when
+     the links became extensionless, and a check aimed at a spelling nothing
+     links to proves nothing at all -- see the note on arm 3, which had already
+     been in that state for some time.
+
+     `/about` is a cache MISS until `sw.js` resolves a navigation to the file
+     backing it, so before that fix this arm passes only by falling through to
+     the network. Arm 5 below is the one that cannot. */
+  const a = await navigate(origin + '/about');
   const aboutOk = !a.failed && /Benchcard/.test(a.title || '');
   add('the About link loads through the worker', aboutOk,
     a.failed ? 'navigation produced no document' : `title "${a.title}"`);
@@ -215,9 +184,16 @@ try {
         true` can be set on one and not the other -- and the whole point of the
         new page is that it is linkable from anywhere, which means it is the
         one a coach reaches from a search result rather than from the app.
-        Navigated by its `.html` spelling for the reason above: `/advanced` is
-        not a cache key, so it would go to the network and pass while broken. */
-  const adv = await navigate(origin + '/advanced.html');
+
+        THIS ARM WAS GREEN WITHOUT TESTING ANYTHING, and it is worth saying how
+        so the next person recognises the shape. It navigated `/advanced.html`
+        and its comment claimed that was the spelling the link uses. It never
+        was: every one of the seven links to this page -- all of them on
+        about.html -- has always been extensionless. So the check for "does the
+        reference page survive the worker" was asking about a URL no reader can
+        reach, and passed either way. A guard that cannot fail is not a guard;
+        `/new-guard` names this exact class. */
+  const adv = await navigate(origin + '/advanced');
   const advOk = !adv.failed && /Benchcard/.test(adv.title || '');
   add('the reference page loads through the worker', advOk,
     adv.failed ? 'navigation produced no document' : `title "${adv.title}"`);
@@ -234,6 +210,30 @@ try {
   const o = await navigate(origin + '/some/deep/link');
   add('offline navigation still gets the shell', !o.failed && o.hasApp === true,
     o.failed ? 'navigation produced no document' : `shell present: ${o.hasApp}, title "${o.title}"`);
+
+  /* 5. THE ONE THIS ITEM EXISTS FOR. Offline, a precached document must load
+        through the spelling its own hrefs use.
+
+        Arm 4 proves the shell answers for a path that was never precached.
+        That is the fallback working -- and it is also, exactly, the bug: a
+        navigation to `/about` misses the cache (the key is `./about.html`,
+        and `ignoreSearch` drops the query string, not the extension), the
+        network is gone, and the fallback hands back the shell. The coach taps
+        "How it works" and gets the app, with no error to explain it. Measured
+        that way on this tree before the fix.
+
+        So the assertion is not "something loaded" -- the shell IS something,
+        and that is what made this invisible. It is "the page that loaded is
+        the one named", checked by title and by the ABSENCE of the app shell.
+        Both, because either alone passes on the wrong document. */
+  for (const [path, want] of [['/about', /How Benchcard plans/], ['/advanced', /reference/i]]) {
+    const r = await navigate(origin + path);
+    const ok = !r.failed && r.hasApp === false && want.test(r.title || '');
+    add(`offline, ${path} is the page it names`, ok,
+      r.failed ? 'navigation produced no document'
+        : r.hasApp ? `got the app shell instead — title "${r.title}"`
+          : `title "${r.title}"`);
+  }
 } finally {
   c.close();
   proc.kill();

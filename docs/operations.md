@@ -4,7 +4,7 @@ Running it, testing it, shipping it, and what it measures once it is out there.
 
 ## Running it
 
-    cd app && python3 -m http.server 8137     # then open http://localhost:8137
+    npm run serve                             # then open http://localhost:8201
 
 Serve `app/`, not the repo root: the service worker's scope, the manifest's
 `start_url` and every absolute path in it assume `app/` is `/`. ES modules are
@@ -71,7 +71,7 @@ gives 3.33-minute stints, and minutes were printing as
 `23.333333333333332` — on the pocket card.
 ## Deployment
 
-ES modules are blocked over `file://`, and this runs on a phone at the gym, so it needs to be served — Cloudflare Pages in production, or `npx serve` locally. No build step either way.
+ES modules are blocked over `file://`, and this runs on a phone at the gym, so it needs to be served — Cloudflare Pages in production, `npm run serve` locally. No build step either way.
 
 **Cloudflare settings.** Framework preset **None**, build command **`npm test`**,
 deploy command **`npx wrangler deploy`**, version command
@@ -237,9 +237,11 @@ Two things address that, and they are different problems:
   The prose slots (`lede`, `caption`) are placeholders carrying `data-draft="1"`
   until the author writes them — `grep -l data-draft app/*.html`. The `<title>`
   and description are assembled from the generated plan's own numbers instead.
-  Canonical and `sitemap.xml` use the **extensionless** URL, which is what
-  Cloudflare 200s; internal `href`s keep `.html`, which is what works locally
-  and what `redirect-check` exercises. They are deliberately **not precached**:
+  Canonical, `sitemap.xml` and every internal `href` use the **extensionless**
+  URL, which is what Cloudflare 200s. One spelling per page: they disagreed
+  until September 2026, and offline the worker served the app shell in place of
+  About and the reference page because the cache key and the link did not
+  match. They are deliberately **not precached**:
   offline value is near zero for a page reached from a search result, and the
   precache list is the payload budget's problem. The one internal link into them
   is on `about.html` rather than `index.html`, so the app's own cold-load budget
