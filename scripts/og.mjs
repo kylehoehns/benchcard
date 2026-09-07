@@ -20,13 +20,13 @@
  * uses. Composition is HTML rendered by Chrome, not canvas drawing calls, so
  * the type is the app's own Inter at the app's own weights.
  */
-import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, extname, resolve, dirname } from 'node:path';
+import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
+import { serve } from './serve.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -138,28 +138,12 @@ function recompressPng(buf) {
 }
 
 /* ---------- static server (mirrors scripts/smoke.mjs) ---------- */
-const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json', '.webmanifest': 'application/manifest+json',
-  '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml',
-};
-function serve() {
-  const server = createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://x');
-    let path = decodeURIComponent(url.pathname);
-    if (path.endsWith('/')) path += 'index.html';
-    const file = join(APP, path);
-    if (!file.startsWith(APP)) { res.writeHead(403).end(); return; }
-    try {
-      const body = await readFile(file);
-      res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream' });
-      res.end(body);
-    } catch { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); }
-  });
-  return new Promise(ok => server.listen(0, '127.0.0.1', () => ok(server)));
-}
+/* The server is `scripts/serve.mjs`, shared with smoke.mjs and
+   redirect-check.mjs. The copy that used to sit here called itself a mirror of
+   smoke.mjs's and, like it, 404d on any extensionless path -- so line ~500's
+   navigation to `/about` had been fetching a 404 body. Nothing noticed, because
+   the next statement replaces documentElement.innerHTML wholesale. */
+
 
 /* ---------- Chrome over CDP ---------- */
 const CHROME = [

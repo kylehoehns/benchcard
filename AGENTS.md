@@ -111,7 +111,11 @@ notes/     TICKETS.md (the queue), ROADMAP.md (the why), DECISIONS.md (closed)
 `app/` is the only directory that is deployed. Everything above it is process,
 and none of it reaches a coach.
 
-Serve with `cd app && python3 -m http.server 8201`. Run tests with `npm test`
+Serve with `npm run serve` (port 8201), never `python3 -m http.server`. It
+redirects the way Cloudflare does: `about.html` 307s to the extensionless
+spelling, which is what every internal href, canonical tag and sitemap entry
+uses. The python server 404s on all of them, and a local server that disagrees
+with production is a class of bug nothing can see. Run tests with `npm test`
 from the repo root (`node --test`, no dependencies to install).
 
 `npm run smoke` runs the browser checks — **20 of them**, printed as a pass/fail

@@ -52,6 +52,13 @@ const ORIGIN = 'https://benchcard.app';
 const OG_ALT = 'Benchcard&rsquo;s bench mode open on a phone: the five players on the floor with minutes played, and the next substitution &mdash; who is coming off and who is going on &mdash; beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
 
 export const SIZES = [7, 8, 9, 10, 11, 12];
+/* Two spellings, and they are NOT interchangeable -- keeping them apart is
+   what this file gets wrong when it drifts. `slug` is the page's ADDRESS: the
+   canonical tag, `sitemap.xml`, `og:url` and every internal href use it,
+   because it is what Cloudflare 200s. `file` is the page's FILE ON DISK: reads,
+   writes and the precache list use it, because that is what exists. They were
+   used interchangeably for hrefs until September 2026, which is how the site
+   came to link to addresses its own canonical tags told Google not to use. */
 export const slug = n => `${n}-player-basketball-rotation-chart`;
 export const file = n => `${slug(n)}.html`;
 
@@ -294,7 +301,7 @@ export function renderPage(n, shared = fromAbout()) {
   const desc = COPY.description(n, f);
 
   const siblings = SIZES.filter(o => o !== n)
-    .map(o => `<a href="./${file(o)}">${o} players</a>`).join('\n      ');
+    .map(o => `<a href="./${slug(o)}">${o} players</a>`).join('\n      ');
 
   return `<!doctype html>
 <html lang="en">
@@ -315,10 +322,12 @@ ${shared.icon}
 <meta name="description" content="${esc(desc)}">
 <!-- Canonical is the extensionless URL, which is what Cloudflare actually
      serves a 200 for: html_handling: auto-trailing-slash 307s
-     /<name>.html to /<name>. Internal hrefs keep the .html spelling so the
-     pages also work under python3 -m http.server, and so the precached
-     spelling and the linked spelling stay the same as they are for
-     about.html -- see scripts/redirect-check.mjs. -->
+     /<name>.html to /<name>. Internal hrefs are the SAME spelling -- one
+     address per page. They used to keep .html, on the grounds that it worked
+     under python3 -m http.server and matched the precache key; both reasons
+     are gone. npm run serve now redirects the way Cloudflare does, and sw.js
+     resolves a navigation to the file backing it, so the link a reader
+     follows is the URL the canonical names. See scripts/redirect-check.mjs. -->
 <link rel="canonical" href="${url}">
 <meta name="robots" content="${isDraft(n, f) ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}">
 
@@ -463,7 +472,7 @@ footer a { display: flex; align-items: center; min-height: 44px; }
          stripped from the URL immediately, and it carries one integer and
          nothing about anybody -- it is not a URL share. -->
     <a class="btn" href="./?try=${n}">Try it with ${n} sample players</a>
-    <a class="btn" href="./about.html">How it works</a>
+    <a class="btn" href="./about">How it works</a>
   </div>
   <p class="trust noprint">${esc(COPY.trust)}</p>
 
@@ -487,7 +496,7 @@ footer a { display: flex; align-items: center; min-height: 44px; }
   <footer class="noprint">
     <span>Benchcard — free, offline, and yours.</span>
     <a href="./">Open the app</a>
-    <a href="./about.html">How it works</a>
+    <a href="./about">How it works</a>
     <a href="mailto:hello@benchcard.app">hello@benchcard.app</a>
   </footer>
 </div>

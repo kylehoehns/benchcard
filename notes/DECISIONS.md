@@ -413,3 +413,6 @@ running informally.
 - The level meters line up in a column now
 - Six rules that were only written down are now enforced
 - The traps and the guard lessons live where they are used
+- Ticket: one page, two spellings, and neither works everywhere
+- A check that was green against a URL nothing links to
+- One spelling per page, and one local server that redirects like production

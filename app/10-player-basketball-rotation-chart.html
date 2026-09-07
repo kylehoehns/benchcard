@@ -40,10 +40,12 @@
 <meta name="description" content="A printable substitution chart for a 10-player basketball roster: four 8-minute quarters, subs every 4 minutes, 16 minutes each. Free, no signup, works offline.">
 <!-- Canonical is the extensionless URL, which is what Cloudflare actually
      serves a 200 for: html_handling: auto-trailing-slash 307s
-     /<name>.html to /<name>. Internal hrefs keep the .html spelling so the
-     pages also work under python3 -m http.server, and so the precached
-     spelling and the linked spelling stay the same as they are for
-     about.html -- see scripts/redirect-check.mjs. -->
+     /<name>.html to /<name>. Internal hrefs are the SAME spelling -- one
+     address per page. They used to keep .html, on the grounds that it worked
+     under python3 -m http.server and matched the precache key; both reasons
+     are gone. npm run serve now redirects the way Cloudflare does, and sw.js
+     resolves a navigation to the file backing it, so the link a reader
+     follows is the URL the canonical names. See scripts/redirect-check.mjs. -->
 <link rel="canonical" href="https://benchcard.app/10-player-basketball-rotation-chart">
 <meta name="robots" content="index, follow, max-image-preview:large">
 
@@ -188,7 +190,7 @@ footer a { display: flex; align-items: center; min-height: 44px; }
          stripped from the URL immediately, and it carries one integer and
          nothing about anybody -- it is not a URL share. -->
     <a class="btn" href="./?try=10">Try it with 10 sample players</a>
-    <a class="btn" href="./about.html">How it works</a>
+    <a class="btn" href="./about">How it works</a>
   </div>
   <p class="trust noprint">Free, and there is no account. Your roster never leaves your device.</p>
 
@@ -218,18 +220,18 @@ footer a { display: flex; align-items: center; min-height: 44px; }
   <section class="noprint">
     <h2>A different number of players?</h2>
     <nav class="sizes" aria-label="Other roster sizes">
-      <a href="./7-player-basketball-rotation-chart.html">7 players</a>
-      <a href="./8-player-basketball-rotation-chart.html">8 players</a>
-      <a href="./9-player-basketball-rotation-chart.html">9 players</a>
-      <a href="./11-player-basketball-rotation-chart.html">11 players</a>
-      <a href="./12-player-basketball-rotation-chart.html">12 players</a>
+      <a href="./7-player-basketball-rotation-chart">7 players</a>
+      <a href="./8-player-basketball-rotation-chart">8 players</a>
+      <a href="./9-player-basketball-rotation-chart">9 players</a>
+      <a href="./11-player-basketball-rotation-chart">11 players</a>
+      <a href="./12-player-basketball-rotation-chart">12 players</a>
     </nav>
   </section>
 
   <footer class="noprint">
     <span>Benchcard — free, offline, and yours.</span>
     <a href="./">Open the app</a>
-    <a href="./about.html">How it works</a>
+    <a href="./about">How it works</a>
     <a href="mailto:hello@benchcard.app">hello@benchcard.app</a>
   </footer>
 </div>

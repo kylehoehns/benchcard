@@ -21,13 +21,13 @@
    that eats iterations by hand: a stale service worker on :8201 serving code
    you already changed. A fresh port is a virgin origin every run. */
 
-import { createServer } from 'node:http';
 import { spawn, execFile } from 'node:child_process';
 import { readFile, writeFile, mkdtemp, rm, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, extname, resolve, dirname } from 'node:path';
+import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compare, summarize } from './budgets.mjs';
+import { serve } from './serve.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -38,36 +38,16 @@ const WIDTH = 390, HEIGHT = 844;
 
 /* ---------- a static server for app/ ---------- */
 
-const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json', '.webmanifest': 'application/manifest+json',
-  '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml',
-};
+/* `scripts/serve.mjs`, shared with redirect-check.mjs and og.mjs. This file
+   used to carry its own copy that served `/about.html` but 404d on `/about`,
+   which is the spelling every internal href now uses -- so the harness could
+   not open the pages the site links to. It also stubbed `/e` so a cold load's
+   product beacon does not surface as a console error and turn this harness red
+   about a server it was never running; `serve.mjs` does that instead.
 
-function serve() {
-  const server = createServer(async (req, res) => {
-    const url = new URL(req.url, 'http://x');
-    let path = decodeURIComponent(url.pathname);
-    /* The product-event endpoint. In production this is the Worker in
-       src/index.js; here it just has to exist, because the app now POSTs to it
-       on a cold load and a 404 would surface as a console error -- the harness
-       would be red about the absence of a server it was never running. Same
-       principle as scripts/redirect-check.mjs: dev behaves like prod, or the
-       checks are measuring the wrong thing. */
-    if (path === '/e') { res.writeHead(204).end(); return; }
-    if (path.endsWith('/')) path += 'index.html';
-    const file = join(APP, path);
-    if (!file.startsWith(APP)) { res.writeHead(403).end(); return; }
-    try {
-      const body = await readFile(file);
-      res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream' });
-      res.end(body);
-    } catch { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); }
-  });
-  return new Promise(ok => server.listen(0, '127.0.0.1', () => ok(server)));
-}
+   The rule the deleted copy was breaking, and which this file had stated in
+   its own comment while breaking it: DEV BEHAVES LIKE PROD, OR THE CHECKS ARE
+   MEASURING THE WRONG THING. */
 
 /* ---------- Chrome ---------- */
 
@@ -824,7 +804,12 @@ async function touchPass(c, source) {
  * Console errors are covered for free: this runs inside the same CDP session,
  * before the `no console errors` verdict is assembled, so that check now
  * covers seven more pages than it used to. */
-const STATIC_PAGES = ['/about.html', '/advanced.html', ...[7, 8, 9, 10, 11, 12].map(n => `/${n}-player-basketball-rotation-chart.html`)];
+/* The URLs A READER GETS, not the files on disk. These were the `.html`
+   spellings until September 2026, which meant the eight checks below measured
+   eight addresses nothing on the site links to -- and would have kept passing
+   while the real ones broke. `scripts/serve.mjs` 307s `.html` to these, the
+   same as Cloudflare. */
+const STATIC_PAGES = ['/about', '/advanced', ...[7, 8, 9, 10, 11, 12].map(n => `/${n}-player-basketball-rotation-chart`)];
 const STATIC_WIDTHS = [390, 320];
 
 /* ---- the large-text pass ----

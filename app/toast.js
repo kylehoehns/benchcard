@@ -34,9 +34,11 @@ let renderAll = () => {};
 export function initToast(renderAllFn) {
   renderAll = renderAllFn;
   // No tip URL configured: hide the tip link, not the whole footer. The footer
-  // also carries the only link to /about.html -- the one page on this site a
-  // crawler can read without running the app -- so hiding the footer wholesale
-  // took that with it, back when TIP_URL was empty. It is set now.
+  // also carries a link to /about -- the one page on this site a crawler can
+  // read without running the app -- so hiding the footer wholesale took that
+  // with it, back when TIP_URL was empty. It is set now. (Not the ONLY link
+  // any more: the welcome screen's .wel-about is the one test/link-graph.test.js
+  // hangs the six chart pages off, because the footer is hidden on welcome.)
   const tip = $('#tipLink');
   if (tip) { if (TIP_URL) tip.href = TIP_URL; else tip.hidden = true; }
 }
