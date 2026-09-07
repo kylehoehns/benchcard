@@ -17,7 +17,7 @@ iteration is already running. Stage explicit paths, never `git add -A`.
 | --- | --- | --- |
 | [`guard-bash-shell-hole`](../work/guard-bash-shell-hole/) | intent only | `AGENTS.md`'s enforcement table is true — either shell writes to protected paths are denied, or the table says which surfaces it covers |
 | [`greps-blind-to-line-wraps`](../work/greps-blind-to-line-wraps/) | spec committed — **survey falsified the intent**, scope much smaller | the rule written where a session meets it, and `analytics.test.js`'s wrap-resistance pinned by a test |
-| [`one-spelling-per-page`](../work/one-spelling-per-page/) | intent only | every internal href lands on the page it names — offline, under the documented dev server, and without a redirect |
+| [`one-spelling-per-page`](../work/one-spelling-per-page/) | spec committed — survey **settled the open question**: extensionless, and the dev server is the cost | every internal href lands on the page it names — offline, under the documented dev server, and without a redirect |
 
 ## Closed but kept
 
