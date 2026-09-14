@@ -15,7 +15,7 @@ cd "$root" 2>/dev/null || exit 0
 lines=""
 dirty=$(git status --porcelain 2>/dev/null | grep -v '^?? \.claude/worktrees/' || true)
 if [ -n "$dirty" ]; then
-  lines="The tree is DIRTY, which by AGENTS.md ("Rules") means an iteration may already be running here -- one writer at a time. Read the diff before writing anything:
+  lines="The tree is DIRTY, which by AGENTS.md (\"Rules\") means an iteration may already be running here -- one writer at a time. Read the diff before writing anything:
 $(printf '%s' "$dirty" | head -20)"
 fi
 

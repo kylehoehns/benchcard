@@ -14,9 +14,9 @@ handed in a gym.
   `height` animated on a hot path (use transform or opacity), layout read and
   written in a loop, work repeated on every render that could be done once, and
   a new module joining the boot graph.
-- **Bytes and nodes are not findings** while they sit inside their ceilings —
-  `AGENTS.md` says why. The `requests` pin in `scripts/budgets.json` is the one
-  real constraint.
-- Each finding: `file:line`, the cost, and the fix.
+- Severity is `REVIEW.md`'s, including where byte and node counts land; do not
+  invent your own. `AGENTS.md` § Layout says which budget number is a real
+  constraint.
+- Each finding: severity, `file:line`, the cost, and the fix.
 
 Return a short, prioritised list, or "no efficiency issues found".

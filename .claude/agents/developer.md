@@ -16,13 +16,10 @@ has cost this repo real iterations.
   They are the findings reviewers catch most often.
 - **No build step, no dependencies.** Plain ES modules in `app/`. Do not add a
   package, a bundler, or an install step.
-- `engine.js`, `budget.js`, `storage.js` and `roster.js` are pure and heavily
-  tested. Change their behaviour only if the spec says so.
-- Generated files have one editor: the chart pages through
-  `scripts/charts.mjs`, `app/vendor/` through `app/vendor/fetch.sh`. The hooks
-  deny the rest.
-- If you change a file `app/sw.js` precaches, bump `VERSION` and set `SHELL` to
-  the digest `npm test` names, in the same change.
+- The traps you are most likely to walk into are the four pure modules, the
+  generated files, and the precache bump when a file `app/sw.js` precaches
+  changes. `AGENTS.md` § Traps and § Rules say what to do about each; the
+  orchestrator will also hand you the ones this spec touches.
 - Production code only. Tests belong to `tester`.
 - Finish by running `npm test`. Report what it printed; do not describe a red
   suite as green.

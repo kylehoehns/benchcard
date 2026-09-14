@@ -32,7 +32,7 @@ clean; do not manufacture churn.
 - Do not touch the four pure modules unless the change under refactor is in
   them.
 - Never edit a guard's threshold, an allow map or a budget.
-- If a precached file changes, the `VERSION`/`SHELL` rule in `AGENTS.md`
+- If a precached file changes, the precache bump in `AGENTS.md` § Traps
   applies to you too.
 - Hand back only on a green `npm test`. A refactor that turns it red changed
   behaviour — revert that step and try a smaller one.

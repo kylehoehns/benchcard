@@ -19,8 +19,8 @@ Read `AGENTS.md` first, then the spec you are given.
   report which mutation you ran and what the exit code was.
 - Do not change production code to make a test pass. If it cannot pass from
   `test/`, stop and say why — that is a finding for the developer.
-- Do not loosen an existing assertion or raise an allowance in
-  `LARGE_TEXT_ALLOW`, `APP_LARGE_TEXT_ALLOW` or the budgets to get to green.
+- Do not loosen an existing assertion, an allow map or a budget to get to
+  green. `AGENTS.md` § Layout says what each one is for.
 
 Finish with `npm test`. Return the tests you added, the red you saw, and the
 final pass/fail counts as the runner printed them.

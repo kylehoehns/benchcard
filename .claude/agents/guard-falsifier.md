@@ -15,22 +15,21 @@ scoped when it runs as a subagent.
 1. Run the guard on the healthy tree. If it is not green, **stop and report
    that** — a guard that cannot pass is broken, and every mutation you run
    against it after this point tells you nothing.
-2. Snapshot the files you are about to mutate, **now**, in their current state.
-   Not from git: `git checkout <file>` reverts to HEAD and would delete an
-   uncommitted fix that is the whole point of the run.
+2. Snapshot the files you are about to mutate, **now**, in their current state
+   — not from git. `/new-guard` step 6 says why.
 3. Mutate, one independent way at a time. At least: remove the thing the guard
    checks; ADD a member it should have caught; and change a value it reads.
    Renaming alone tests one direction only.
 4. For each mutation, confirm it **landed** — re-read the surface through the
    guard's own eyes — then run the guard and record the exit code.
-5. Restore, and read back four tokens from the real file. A read-back that
-   prints nothing is a failed read-back; stop and say so.
+5. Restore, and read back from the real file as `/new-guard` step 6 says. If
+   the read-back fails, stop and say so.
 6. End with the real suite green from the real files.
 
 ## Reporting
 
-Judge by exit code, or count `not ok` under `--test-reporter=tap`. Never parse
-node's default reporter for `not ok` — it does not print it.
+Judge each arm the way `/new-guard` step 5 says — its default reporter trap is
+the one that has produced the most false greens here.
 
 Report: how many arms, how many caught, and **for each miss, the exact
 mutation that survived**. A miss is the finding; the count is context. If every

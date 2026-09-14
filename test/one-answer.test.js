@@ -38,10 +38,16 @@ const skills = readdirSync(new URL(SKILL_DIR, ROOT), { withFileTypes: true })
 /* Every file that answers "how do I work in this repo" or "how does this work".
  * README.md and docs/ joined this set when the 107KB README was split: the
  * split is exactly the moment a fact gets copied instead of moved, and three
- * of them had been sitting duplicated in the old README for months. */
+ * of them had been sitting duplicated in the old README for months.
+ *
+ * .claude/agents/ joined it when a subagent is briefed with the rules it must
+ * follow, because a brief is a copy. The first review of the /ship-feature team
+ * found efficiency-reviewer contradicting REVIEW.md, and bringing the directory
+ * in found guard-falsifier restating two of /new-guard's lessons. */
 const DOCS = ['AGENTS.md', 'CLAUDE.md', 'REVIEW.md', 'README.md',
   ...readdirSync(new URL('docs', ROOT)).filter(f => f.endsWith('.md')).map(f => `docs/${f}`),
-  ...skills.map(s => `${SKILL_DIR}/${s}/SKILL.md`)];
+  ...skills.map(s => `${SKILL_DIR}/${s}/SKILL.md`),
+  ...readdirSync(new URL('.claude/agents', ROOT)).filter(f => f.endsWith('.md')).map(f => `.claude/agents/${f}`)];
 
 /* Every comparison below runs against whitespace-normalised text, and this is
  * not a detail. The first run of this guard failed on "service worker" because
@@ -78,6 +84,10 @@ const OWNED = {
   'inert locally':                     'AGENTS.md',
   'benchcard-v':                       'AGENTS.md',
   'a window of source is not a scope': 'AGENTS.md',
+
+  // the review policy. A reviewer agent that restates where a budget finding
+  // lands will drift from REVIEW.md -- the first one contradicted it on arrival
+  'inside their ceilings':             'REVIEW.md',
 };
 
 test('every moved fact still exists, in the file that now owns it', () => {
