@@ -643,6 +643,16 @@ transition on the spot rather than waiting it out (`armInterrupt`), and a tap
 that lands on the page still receding behind the rising sheet is swallowed
 rather than acted on.
 
+**It holds a screen wake lock the whole time it is open.** `openGameMode`
+requests one and `closeGameMode` releases it, so a coach can prop the phone on
+the bench for a whole timeout without it locking mid-horn; a
+`visibilitychange` listener asks again when the tab comes back to the
+foreground with bench mode still on screen, since the browser drops the lock
+the moment a tab is hidden. `navigator.wakeLock` is feature-detected, never
+sniffed by platform (interface guideline D2, D5): where it is absent, or the
+request is rejected, this is a silent no-op — bench mode opens, steps and
+closes exactly as it did before, nothing shown and nothing logged.
+
 **A part-played game says so from the plan page.** A reload closes bench mode —
 on iOS, switching to the clock or the scorebook app and coming back is often
 enough — and the coach landed back on Games with no sign a game was underway,

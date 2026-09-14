@@ -80,7 +80,7 @@ From the repo root:
 
 ```sh
 npm test                        # the suite — 965 tests, node --test, zero deps
-npm run smoke                   # 19 browser checks: layout, a11y, card size, budgets
+npm run smoke                   # 21 browser checks: layout, a11y, card size, budgets
 npm run evals                   # the agent-harness eval suite
 ```
 
