@@ -43,7 +43,7 @@ if printf '%s' "$cmd" | grep -qE 'smoke\.mjs[^|;&]*--update-budgets'; then
 fi
 
 if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])git[[:space:]]+add[[:space:]]+(-A|--all|\.)([[:space:]]|$)'; then
-  deny 'Blocked: stage explicit paths, never `git add -A` / `git add .`. This tree carries screenshots, .playwright-mcp scratch and worktrees that are ignored today only because someone remembered to ignore them; the next scratch file will not be. notes/TICKETS.md, header.'
+  deny 'Blocked: stage explicit paths, never `git add -A` / `git add .`. This tree carries screenshots, .playwright-mcp scratch and worktrees that are ignored today only because someone remembered to ignore them; the next scratch file will not be. AGENTS.md, "Rules".'
 fi
 
 if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' \

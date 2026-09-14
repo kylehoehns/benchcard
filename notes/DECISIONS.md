@@ -1,7 +1,8 @@
 # What was built
 
-The finished-work record. `TICKETS.md` is open work; this is everything that
-closed, in the order it landed.
+The finished-work record, up to the move to GitHub issues — the last line
+below. Everything since is a closed issue, its pull request and `git log`,
+which is public from here on, so this list is no longer appended.
 
 **Why it is a file and not `git log`.** The public history begins at a single
 commit. The project ran privately first, and its commit messages carried
@@ -416,3 +417,4 @@ running informally.
 - Ticket: one page, two spellings, and neither works everywhere
 - A check that was green against a URL nothing links to
 - One spelling per page, and one local server that redirects like production
+- Open work is GitHub issues, built end to end by /ship-feature

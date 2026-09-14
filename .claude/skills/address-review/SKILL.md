@@ -74,7 +74,7 @@ One reply per thread, saying which of these happened:
 - **Addressed**, with the commit and the evidence — the numbers, not "fixed".
 - **Not a defect**, with what you ran that shows it. Leave the thread open.
 - **Real, not here** — a genuine problem outside this PR's scope. Say where it
-  goes: a `work/<slug>/intent.md`, or a row in `notes/TICKETS.md`.
+  goes: a new GitHub issue, linked in the reply.
 
 **Resolve only threads you actually addressed.** Never resolve to tidy the page
 — an unresolved thread you disagree with is the record of a live disagreement,
