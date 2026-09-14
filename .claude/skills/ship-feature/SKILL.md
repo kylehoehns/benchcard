@@ -88,8 +88,9 @@ directions, so a renamed or new agent fails the suite until this table agrees.
      prove it, and which guard must be shown going red.
    - **Out of scope** — what the grilling decided not to do.
 
-   For a ticket, **What would settle it** is its acceptance criteria, and
-   **Constraints** include the `docs/interface-guidelines.md` rules it names.
+   For a ticket, **What would settle it** is its acceptance criteria. If the
+   ticket names `docs/interface-guidelines.md` rules, **Constraints** include
+   them; a ticket that touches nothing a coach sees names none, and needs none.
 
    Leave the spec, `CONTEXT.md` and any ADR on disk, uncommitted. Get the
    human's go-ahead — unless step 2 found nothing to ask, in which case build.

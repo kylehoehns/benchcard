@@ -46,8 +46,10 @@ to the `/to-tickets` template:
 - **Acceptance criteria with concrete values** — a roster size, a viewport
   width, the exact copy. A criterion without one is an open question, and the
   build stops to ask it.
-- **The rules it implements**, by ID from `docs/interface-guidelines.md`
-  (`N4`, `C3`, …), when the ticket is part of the redesign.
+- **Only if it changes what a coach sees or touches:** the rules it implements,
+  by ID from `docs/interface-guidelines.md` (`N4`, `C3`, …). A ticket that
+  changes the engine, storage, the harness or anything else a coach never
+  handles names none.
 
 ## When a skill says "fetch the relevant ticket"
 
