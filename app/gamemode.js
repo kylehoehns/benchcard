@@ -40,6 +40,34 @@ let onClose = () => {};
 let undoable = (msg, mutate, refresh) => { mutate(); (refresh || render)(); };
 let flash = () => {};
 
+/* Screen wake lock, held only while bench mode is actually on screen -- a
+   coach sets the phone on the bench for a whole timeout and it must not lock
+   itself mid-horn. `navigator.wakeLock` is feature-detected, never sniffed by
+   platform (D5): where it does not exist, or `request` rejects, these are
+   both silent no-ops and bench mode is exactly what it was before this. */
+let wakeLock = null;
+const lockHeld = () => wakeLock && !wakeLock.released;
+const releaseQuietly = (lock) => lock?.release().catch(() => {});
+
+function keepAwake() {
+  if (!navigator.wakeLock || lockHeld()) return;
+  navigator.wakeLock.request('screen').then((s) => {
+    /* The request is a round trip to the browser, and the coach can close
+       bench mode -- or close and reopen it -- before it comes back. A grant
+       for a screen nobody is looking at, or a second grant arriving while an
+       earlier one from the same reopen race is already held, is released on
+       arrival rather than stored, so a close-then-reopen that overlaps an
+       in-flight request never ends up holding two. */
+    if ($('#gamemode').hidden || lockHeld()) releaseQuietly(s);
+    else wakeLock = s;
+  }).catch(() => {});
+}
+
+function letSleep() {
+  releaseQuietly(wakeLock);
+  wakeLock = null;
+}
+
 /* Called once at startup from app.js's wiring block. */
 export function initGameMode(renderFn, onCloseFn, toastFns) {
   render = renderFn;
@@ -51,6 +79,13 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
   on('#gmDone', 'onclick', closeGameMode);   // phone-height twin of the top-left X
   on('#gmPrev', 'onclick', () => gmStep(-1));
   on('#gmNext2', 'onclick', () => gmStep(1));
+  /* The browser drops the lock as soon as the tab is hidden -- there is no
+     "keep this held in the background" option -- so returning to a visible
+     tab with bench mode still on screen has to ask again. One listener for
+     the module's whole life, not one per open, so it never stacks. */
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && $('#gamemode').hidden === false) keepAwake();
+  });
 }
 
 let gmPick = null;      // player selected for a swap
@@ -96,6 +131,7 @@ export function openGameMode() {
   gmPick = null;
   const gm = $('#gamemode');
   gm.hidden = false;
+  keepAwake();
   const ab0 = $('#actionbar'); if (ab0) ab0.hidden = true;
   document.body.style.overflow = 'hidden';
   renderGameMode();
@@ -228,6 +264,7 @@ function closeGameMode() {
     n.style.transform = '';
   }
   gmEl.hidden = true;
+  letSleep();
   restorePage();
   const ab1 = $('#actionbar');
   if (ab1) ab1.hidden = state.view !== 'games' || !state.onboarded;

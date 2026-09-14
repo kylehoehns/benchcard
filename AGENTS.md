@@ -130,7 +130,7 @@ uses. The python server 404s on all of them, and a local server that disagrees
 with production is a class of bug nothing can see. Run tests with `npm test`
 from the repo root (`node --test`, no dependencies to install).
 
-`npm run smoke` runs the browser checks — **20 of them**, printed as a pass/fail
+`npm run smoke` runs the browser checks — **21 of them**, printed as a pass/fail
 table: no horizontal overflow at 390×844, the card is still 3.45 × 5in, no
 console errors, every touch target ≥44px across 320–390px, the last control in
 an open dialog on screen and still 44px, every control accessibly named, ids

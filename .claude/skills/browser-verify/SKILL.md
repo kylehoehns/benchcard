@@ -15,7 +15,7 @@ and was wrong, and somebody spent iterations finding out.
 
 ## 1. Try not to drive a browser at all
 
-`node scripts/smoke.mjs` already covers 20 checks across eleven pages, serves
+`node scripts/smoke.mjs` already covers 21 checks across eleven pages, serves
 `app/` on its own ephemeral port, and is therefore immune to the stale-worker
 trap by construction. If the thing you changed is overflow, card dimensions,
 console errors, touch targets, accessible names, id uniqueness, alt text,
