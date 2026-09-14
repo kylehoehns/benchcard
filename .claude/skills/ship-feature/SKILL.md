@@ -20,8 +20,10 @@ by the first survey. So the pipeline has two halves:
   its own. You orchestrate the subagents in `.claude/agents/`; you do not write
   the production code yourself.
 
-Run it top to bottom. **Do not start Build until the human confirms the spec.**
-One issue at a time — `AGENTS.md` § The loop says why.
+Run it top to bottom. **Do not start Build until the human confirms the spec** —
+except for a `ready-for-agent` ticket with nothing left to ask (step 2), where
+the ticket is the confirmation. One issue at a time — `AGENTS.md` § The loop
+says why.
 
 ## The team
 
@@ -53,7 +55,18 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    claims before grilling**. A claim the code does not support is a question for
    the human, not a requirement.
 
-2. **Grill it** with `/grill-with-docs`. One question at a time, each with your
+   If the issue is a `ready-for-agent` ticket, also read its parent issue (the
+   spec `/to-tickets` cut it from) and every closed blocker's pull request: the
+   decisions live there, and a blocker may have changed the tree the ticket
+   describes.
+
+2. **Grill only what is still open.** A `ready-for-agent` ticket was decided
+   with the human before it was published. If the survey holds up every claim
+   and each acceptance criterion has a concrete value, there is nothing to ask:
+   skip to step 3 and do not wait for a go-ahead. Otherwise, grill just the
+   falsified claims and the missing values. Any other issue is grilled in full.
+
+   **Grill it** with `/grill-with-docs`. One question at a time, each with your
    recommended answer; facts get looked up, decisions go to the human. As terms
    settle, `CONTEXT.md` gets them; a hard-to-reverse trade-off gets an ADR in
    `docs/adr/` (sparingly — `/domain-modeling` says when). **Do not proceed
@@ -75,8 +88,11 @@ directions, so a renamed or new agent fails the suite until this table agrees.
      prove it, and which guard must be shown going red.
    - **Out of scope** — what the grilling decided not to do.
 
+   For a ticket, **What would settle it** is its acceptance criteria, and
+   **Constraints** include the `docs/interface-guidelines.md` rules it names.
+
    Leave the spec, `CONTEXT.md` and any ADR on disk, uncommitted. Get the
-   human's go-ahead.
+   human's go-ahead — unless step 2 found nothing to ask, in which case build.
 
 ## Build
 

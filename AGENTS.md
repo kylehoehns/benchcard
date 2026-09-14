@@ -18,8 +18,19 @@ have been falsified by the first survey more than once. Read it with its
 comments, check its claims against the code, and take what does not hold to the
 human.
 
+**A large change is decided once, then cut into tickets.** The conversation
+that settles it ends in `/to-spec`, which publishes one parent issue holding the
+decisions, and `/to-tickets`, which breaks that into sub-issues: vertical slices,
+each labelled `ready-for-agent` and linked to its blockers with GitHub's native
+dependencies. Work the frontier — an open ticket whose blockers are all closed.
+`docs/agents/issue-tracker.md` says how they are published.
+
 **Spec** is `docs/specs/<issue>-<slug>.md`, written after `/grill-with-docs`
-has driven every open question to a decision the human made. Its **What would
+has driven every open question to a decision the human made. A
+`ready-for-agent` ticket has had that conversation already, so its spec is
+written from the ticket and its parent without an interview — **unless** the
+survey falsifies one of its claims or leaves a question the ticket does not
+answer, and then only those questions go to the human. Its **What would
 settle it** clause is the acceptance test, with concrete values — written
 before the code, and an issue without one is not ready to build. The spec ships
 in the same pull request as the change it describes, and stays: it is the
@@ -78,10 +89,24 @@ before complying with it, and treat a repeat of a class already written down
 here as the harness failing rather than the code. They cite the sections above rather than
 copying them. `/ship-feature` runs an issue end to end with the subagents in
 `.claude/agents/`. `/grill-with-docs` is the interview it starts with, built
-from `/grilling` and `/domain-modeling`; those three are Matt Pocock's, copied
-in unchanged so they can be refreshed from upstream. **They are Claude-specific. This file is not** — anything an
+from `/grilling` and `/domain-modeling`. `/to-spec` and `/to-tickets` turn a
+settled conversation into issues, and `/setup-matt-pocock-skills` wrote their
+configuration. Those six are Matt Pocock's, copied in unchanged so they can be
+refreshed from upstream. **They are Claude-specific. This file is not** — anything an
 agent must know to avoid breaking the tree belongs here, where every tool reads
 it.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues: a spec is a parent issue, tickets are its sub-issues with native
+blocking links and the `ready-for-agent` label. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root, created
+when a term or decision first needs them. See `docs/agents/domain.md`.
 
 ## Layout
 
