@@ -21,6 +21,12 @@ has cost this repo real iterations.
   changes. `AGENTS.md` § Traps and § Rules say what to do about each; the
   orchestrator will also hand you the ones this spec touches.
 - Production code only. Tests belong to `tester`.
+- **Iterate small, prove once.** While working, run `node --test <file>` for
+  the file you touched and, if you touched `app/` or `scripts/smoke*`,
+  `node scripts/smoke.mjs --only "<check>"` for the check that covers it —
+  never the full suite mid-iteration. `AGENTS.md` § Layout (13) is the
+  iterate-then-prove rule; run the proof pair once before handing back, the
+  smoke half only if you touched `app/` or `scripts/smoke*`.
 - Finish by running `npm test`. Report what it printed; do not describe a red
   suite as green.
 

@@ -12,6 +12,12 @@
        node scripts/smoke.mjs --headful        # watch it happen
        node scripts/smoke.mjs --json           # machine-readable, for CI
        node scripts/smoke.mjs --update-budgets # re-record scripts/budgets.json
+       node scripts/smoke.mjs --only "<check>" # one check, while iterating —
+                                                # not proof; see the registry below
+
+   `--only` runs just the setup one named check needs and that check alone; it
+   implies `--no-tests` and skips the budgets. It is for the loop between full
+   runs, never a substitute for one — `AGENTS.md` § Layout says why.
 
    No dependencies, deliberately: this repo has none and adding Playwright to
    get four assertions would be the tail wagging the dog. Chrome is driven over
@@ -307,7 +313,7 @@ async function fixturePass(c) {
     r.filedGames >= 3 ? null : `${r.filedGames} filed game(s) in the ledger, want 3`,
   ].filter(Boolean);
   return {
-    name: 'rich fixture is live',
+    name: nameOf('fixture'),
     pass: missing.length === 0,
     detail: missing.length
       ? `${missing.length} precondition(s) missing on ${r.host}: ${missing.join('; ')}`
@@ -469,7 +475,7 @@ async function overlayPass(c, source) {
   }
   const forced = STATES.filter(s => s.forced).length;
   return {
-    name: 'a11y in overlays and dialogs',
+    name: nameOf('overlay'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
@@ -693,7 +699,7 @@ async function wakeLockPass(c, origin, consoleErrors) {
   nums.push(`${types.length} request(s) across all scenarios, all type 'screen'`);
 
   return {
-    name: 'bench mode wake lock',
+    name: nameOf('wakelock'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.join(' | ')}`
@@ -773,7 +779,7 @@ async function narrowPass(c) {
 
   const pass = !r.pans && r.barFits && r.stranded.length === 0;
   return {
-    name: `no sideways pan at ${NARROW}px`,
+    name: nameOf('narrow'),
     pass,
     detail: pass
       ? `page cannot pan, top bar fits in ${r.barW}px, nothing stranded`
@@ -899,7 +905,7 @@ async function sweepPass(c) {
   const pass = bad.length === 0;
   const list = bad.slice(0, 6).map(b => `${b.view}@${b.w}px: ${b.el} reaches ${b.right}px`).join(', ');
   return {
-    name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`,
+    name: nameOf('sweep'),
     pass,
     detail: pass
       ? `${(SWEEP_HI - SWEEP_FLOOR + 1) * VIEWS.length} widths across ${VIEWS.map(v => v.name).join(' + ')}, nothing stranded past the right edge`
@@ -977,7 +983,7 @@ async function touchPass(c, source) {
   await new Promise(r => setTimeout(r, 300));
 
   return {
-    name: `touch targets ≥ 44px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`,
+    name: nameOf('touch'),
     pass: bad.length === 0,
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) under 44px: ${bad.slice(0, 4).join(' | ')}`
@@ -1190,7 +1196,7 @@ async function staticPass(c, source, origin) {
   }
 
   return {
-    name: 'static pages: 2 guides + 6 charts',
+    name: nameOf('static'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
@@ -1598,7 +1604,7 @@ async function appLargeTextPass(c, origin) {
       { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
   }
   return {
-    name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`,
+    name: nameOf('applargetext'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
@@ -1628,7 +1634,63 @@ const STATIC_A11Y = new Set([
   'touch targets ≥ 44px',
 ]);
 
-async function browserChecks(origin) {
+/* ---------- the check registry ----------
+ *
+ * ONE LIST NAMES EVERY ROW A FULL RUN PRINTS, in the order it prints them, so
+ * `--only` has one place to validate a name against and the header's "21" is
+ * counted rather than typed. It is built from the same constants the passes
+ * above already use (`NARROW`, `SWEEP_FLOOR`, `SWEEP_HI`, `TOUCH_WIDTHS`,
+ * `LARGE_TEXT_WIDTH`, `LARGE_TEXT_PX`) rather than a second copy of their
+ * template strings — `nameOf` below is how a pass gets its name back out, so
+ * the template lives here exactly once.
+ *
+ * `selectable: false` marks the four rows `--only` may never choose: `no
+ * console errors` covers passes it did not run, and the three budget rows plus
+ * `node --test` measure the WHOLE run, not one check — see AGENTS.md § Layout.
+ *
+ * `setup` is what a partial run has to do before the row's own pass can run:
+ * `cold` is the SEED load and the `smoke-checks.js` evaluate, everything a
+ * full run has on screen before the fixture split; `rich` is that plus one
+ * `goRich` — every row after the split, because `goRich` is a fresh reload of
+ * the same fixture and so reproduces the arrival state whether it is the first
+ * call or, as two rows below get it in a full run, the second. `run` is the
+ * pass itself, called with the session a partial run has open. */
+const REGISTRY = Object.freeze([
+  { id: 'console', name: 'no console errors', selectable: false, setup: null },
+  { id: 'overflow', name: 'no horizontal overflow', selectable: true, setup: 'cold' },
+  { id: 'cardsize', name: 'card is 3.45 × 5in', selectable: true, setup: 'cold' },
+  { id: 'dialog', name: 'last control in an open dialog is reachable', selectable: true, setup: 'cold' },
+  { id: 'names', name: 'controls have accessible names', selectable: true, setup: 'cold' },
+  { id: 'alt', name: 'images declare alt text', selectable: true, setup: 'cold' },
+  { id: 'ids', name: 'ids unique, aria references resolve', selectable: true, setup: 'cold' },
+  { id: 'doc', name: 'document lang, title, tab order', selectable: true, setup: 'cold' },
+  { id: 'fcp', name: 'first contentful paint (informational)', selectable: true, setup: 'cold' },
+  { id: 'fixture', name: 'rich fixture is live', selectable: true, setup: 'rich',
+    run: ctx => fixturePass(ctx.c) },
+  { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich',
+    run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors) },
+  { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich',
+    run: ctx => overlayPass(ctx.c, ctx.source) },
+  { id: 'touch', name: `touch targets ≥ 44px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich',
+    run: ctx => touchPass(ctx.c, ctx.source) },
+  { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich',
+    run: ctx => narrowPass(ctx.c) },
+  { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich',
+    run: ctx => sweepPass(ctx.c) },
+  { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich',
+    run: ctx => appLargeTextPass(ctx.c, ctx.origin) },
+  { id: 'static', name: 'static pages: 2 guides + 6 charts', selectable: true, setup: 'rich',
+    run: ctx => staticPass(ctx.c, ctx.source, ctx.origin) },
+  // These three names are `budgets.mjs`'s, verbatim — that file is untouched by
+  // this change, so the names are pinned here by hand rather than imported.
+  { id: 'budgetbytes', name: 'initial payload ≤ budget', selectable: false, setup: null },
+  { id: 'budgetrequests', name: 'request count ≤ budget', selectable: false, setup: null },
+  { id: 'budgetnodes', name: 'DOM nodes ≤ budget', selectable: false, setup: null },
+  { id: 'nodetest', name: 'node --test', selectable: false, setup: null },
+]);
+const nameOf = id => REGISTRY.find(r => r.id === id).name;
+
+async function browserChecks(origin, only) {
   const debugPort = 9222 + Math.floor(Math.random() * 500);
   const { proc, dir, ws } = await launch(debugPort);
   const c = cdp(ws);
@@ -1695,6 +1757,24 @@ async function browserChecks(origin) {
     if (exceptionDetails) throw new Error('checks threw: ' + (exceptionDetails.exception?.description || exceptionDetails.text));
 
     const report = result.value;
+
+    /* THE PARTIAL PATH. It reuses the setup above rather than reimplementing
+       it: the cold load and this same evaluate already ran, so a `cold` row
+       just keeps its one entry out of what came back. A `rich` row calls
+       `goRich` — the same function the full run below calls, once — and then
+       its own pass, nothing else. No budgets, no `node --test`, no second
+       `goRich`: see the registry's comment for why one reproduces the
+       arrival state either way. */
+    if (only) {
+      if (only.setup === 'cold') {
+        report.checks = report.checks.filter(k => k.name === only.name);
+      } else {
+        await goRich(c, origin);
+        report.checks = [await only.run({ c, origin, source, consoleErrors })];
+      }
+      return { report, consoleErrors };
+    }
+
     // Before the overlay pass: the budget is a cold load, and walking the UI
     // after it would fold whatever the overlays fetch into the number.
     report.payload = { ...summarize([...requests.values()], origin), nodes: report.nodes };
@@ -1736,13 +1816,13 @@ async function browserChecks(origin) {
        game mode is exactly the kind of thing the opening screen cannot show
        you. */
     report.checks.unshift({
-      name: 'no console errors',
+      name: nameOf('console'),
       pass: consoleErrors.length === 0,
       detail: consoleErrors.length
         ? consoleErrors.slice(0, 4).join(' | ')
         : `clean${thirdParty.length ? ` (${thirdParty.length} third-party, ignored)` : ''}`,
     });
-    return report;
+    return { report, consoleErrors };
   } finally {
     c.close();
     proc.kill();
@@ -1757,7 +1837,7 @@ function runTests() {
       const count = key => (stdout.match(new RegExp(`^[ℹ#] ${key} (\\d+)`, 'm')) || [])[1];
       const pass = count('pass'), total = count('tests');
       ok({
-        name: 'node --test',
+        name: nameOf('nodetest'),
         pass: !err,
         detail: total ? `${pass}/${total} passing` : (err ? 'suite failed to run' : 'passed'),
       });
@@ -1767,13 +1847,66 @@ function runTests() {
 
 const BUDGETS = join(ROOT, 'scripts', 'budgets.json');
 
+const printRow = (pad, chk) =>
+  console.log(`  ${chk.pass ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m'}  ${chk.name.padEnd(pad)}  ${chk.detail}`);
+
+/* ---------- --only ----------
+ *
+ * Validated BEFORE `serve()` and before Chrome ever launches: `--only "nope"`
+ * has to exit fast enough that a node test can spawn this file and read the
+ * code back, not wait out a browser boot to be told the name was wrong. */
+const ONLY_NAME = (() => {
+  const i = args.indexOf('--only');
+  return i === -1 ? null : args[i + 1];
+})();
+
+if (ONLY_NAME !== null && has('--update-budgets')) {
+  console.error('--only and --update-budgets cannot be combined: --only proves one check on the '
+    + 'rich fixture, --update-budgets re-records the lean cold load. Run them separately.');
+  process.exit(1);
+}
+
+const VALID_ONLY = REGISTRY.filter(r => r.selectable);
+let ONLY = null;
+if (ONLY_NAME !== null) {
+  ONLY = VALID_ONLY.find(r => r.name === ONLY_NAME) || null;
+  if (!ONLY) {
+    console.error(`--only "${ONLY_NAME}" is not a check --only can run. Valid names:`);
+    for (const r of VALID_ONLY) console.error(r.name);
+    process.exit(1);
+  }
+}
+
 const server = await serve();
 const origin = `http://127.0.0.1:${server.address().port}`;
-let report;
+let result;
 try {
-  report = await browserChecks(origin);
+  result = await browserChecks(origin, ONLY);
 } finally {
   server.close();
+}
+const { report, consoleErrors } = result;
+
+if (ONLY) {
+  /* No budgets, no `node --test`: `--only` proves one check, not the suite —
+     AGENTS.md § Layout says a partial run proves nothing beyond the row it
+     printed. Console errors get a note instead of a row, because they are a
+     property of the whole session `--only` still opened, not of the one pass
+     it ran. */
+  if (JSON_OUT) {
+    console.log(JSON.stringify({ ...report, consoleErrors }, null, 2));
+  } else {
+    const pad = Math.max(...report.checks.map(c => c.name.length));
+    console.log(`\nbenchcard smoke — ${report.viewport[0]}×${report.viewport[1]}, 1 of ${REGISTRY.length} checks (--only)\n`);
+    for (const c of report.checks) printRow(pad, c);
+    console.log('');
+    console.log('skipped: node --test (--only implies --no-tests), 3 budget checks (--only)');
+    if (consoleErrors.length) {
+      console.log(`console errors during this run: ${consoleErrors.length} — ${consoleErrors.slice(0, 4).join(' | ')}`);
+    }
+    console.log('');
+  }
+  process.exit(report.checks.every(c => c.pass) && consoleErrors.length === 0 ? 0 : 1);
 }
 
 /* Budgets. `--update-budgets` re-records today's numbers instead of judging
@@ -1803,10 +1936,28 @@ if (JSON_OUT) {
 } else {
   const pad = Math.max(...report.checks.map(c => c.name.length));
   console.log(`\nbenchcard smoke — ${report.viewport[0]}×${report.viewport[1]}, ${report.checks.length} checks\n`);
-  for (const c of report.checks) {
-    console.log(`  ${c.pass ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m'}  ${c.name.padEnd(pad)}  ${c.detail}`);
-  }
+  for (const c of report.checks) printRow(pad, c);
   console.log('');
+}
+
+/* THE DRIFT CHECK. A full run's printed names have to be exactly the
+   registry's — not a superset, not a subset — or the registry stops being
+   something `--only` can trust. Skipped under `--update-budgets`: that run's
+   budget row is `budgets re-recorded`, not the three comparison rows, by
+   design. `node --test` is excluded under `--no-tests`, which drops that row
+   on purpose rather than by drift. */
+if (!has('--update-budgets')) {
+  const expected = new Set(
+    REGISTRY.filter(r => !(has('--no-tests') && r.id === 'nodetest')).map(r => r.name));
+  const printed = new Set(report.checks.map(c => c.name));
+  const extra = [...printed].filter(n => !expected.has(n));
+  const missing = [...expected].filter(n => !printed.has(n));
+  if (extra.length || missing.length) {
+    console.log('registry drift:');
+    if (extra.length) console.log(`  printed, but not in the registry: ${extra.join(', ')}`);
+    if (missing.length) console.log(`  in the registry, but not printed: ${missing.join(', ')}`);
+    process.exit(1);
+  }
 }
 
 process.exit(report.checks.every(c => c.pass) ? 0 : 1);

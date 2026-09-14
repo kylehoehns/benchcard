@@ -21,6 +21,12 @@ Read `AGENTS.md` first, then the spec you are given.
   `test/`, stop and say why — that is a finding for the developer.
 - Do not loosen an existing assertion, an allow map or a budget to get to
   green. `AGENTS.md` § Layout says what each one is for.
+- **Iterate small, prove once.** While working, run `node --test <file>` for
+  the file you touched and, if you touched `app/` or `scripts/smoke*`,
+  `node scripts/smoke.mjs --only "<check>"` for the check that covers it —
+  never the full suite mid-iteration. `AGENTS.md` § Layout (13) is the
+  iterate-then-prove rule; run the proof pair once before handing back, the
+  smoke half only if you touched `app/` or `scripts/smoke*`.
 
 Finish with `npm test`. Return the tests you added, the red you saw, and the
 final pass/fail counts as the runner printed them.

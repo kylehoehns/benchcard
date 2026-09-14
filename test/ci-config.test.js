@@ -24,7 +24,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = f => readFileSync(new URL(f, ROOT), 'utf8');
@@ -92,5 +92,31 @@ test('the reviewer still runs on the files that carry the rules', () => {
   for (const rules of ['AGENTS.md', 'REVIEW.md', 'CLAUDE.md', '*.md']) {
     assert.ok(!ignored.includes(`'${rules}'`),
       `${rules} is excluded from review. A contradiction introduced into the rules costs more than one in code, because everything downstream inherits it — PR #4's second finding was exactly that.`);
+  }
+});
+
+/* #40: `--only` runs one smoke check and proves nothing about the other 20 --
+ * AGENTS.md § Layout says so in as many words. CI running the suite with
+ * `--only` would make a required check named "smoke (390×844)" report green
+ * having audited a single row, which is exactly the "required check that does
+ * not test what its name claims" shape `check-sw-version.test.js`'s job-rename
+ * trap already guards from the other side.
+ *
+ * Scoped to an invocation of the smoke suite itself (`smoke.mjs` or `npm run
+ * smoke`) followed by `--only` on the same command line, not to `--only`
+ * anywhere in the file -- `npm ci --only=production` is a real, unrelated
+ * flag on a different command and must not trip this. */
+test('no workflow runs the smoke suite with --only', () => {
+  const dir = new URL('.github/workflows/', ROOT);
+  const files = readdirSync(dir).filter(f => f.endsWith('.yml') || f.endsWith('.yaml'));
+  assert.ok(files.length > 0, 'no workflow files found -- this test would pass vacuously');
+  const smokeWithOnly = /(?:smoke\.mjs|npm run smoke)[^|;&\n]*--only\b/;
+  for (const f of files) {
+    const content = read(`.github/workflows/${f}`);
+    for (const line of content.split('\n')) {
+      assert.doesNotMatch(line, smokeWithOnly,
+        `${f} invokes the smoke suite with --only, which proves one check, not the suite -- `
+        + `AGENTS.md § Layout. CI must run the full suite: "${line.trim()}"`);
+    }
   }
 });
