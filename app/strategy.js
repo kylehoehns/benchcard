@@ -4,7 +4,7 @@
  * whichever editor the current strategy needs: the per-player minutes budget
  * (`minutesEditor` + the in-place `updateBudgetUI`), the closing window and
  * closers picker (`closersEditor`), or the platoon units (`platoonEditor`).
- * Balanced has no body at all, which is the point of it.
+ * Even has no body at all, which is the point of it.
  *
  * Like every other view seam, the one thing it cannot own is the repaint
  * scheduler: `soon` and `PLAN_ONLY` live with the `render()` dispatcher in
@@ -284,7 +284,7 @@ function closersEditor(g) {
   // an empty roster though -- there is no plan of any kind to compare to, and
   // the timeline is already asking for players.
   if (!c.closing.players.length && availIds(g).length) {
-    wrap.append(el('p', 'budget-msg', 'Until you pick someone, this plans exactly like Balanced.'));
+    wrap.append(el('p', 'budget-msg', 'Until you pick someone, this plans exactly like Even.'));
   }
   return wrap;
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEATURES, KEEP, SURFACES, read, covered, shipped, chunksOf, textOf }
+import { FEATURES, KEEP, SURFACES, read, covered, termsFor, normalise, shipped, chunksOf, textOf }
   from '../scripts/feature-keys.mjs';
 
 /* The two reference surfaces have to name the same features (A20 slice 1).
@@ -42,9 +42,9 @@ test('every pinned feature is named on both reference surfaces', () => {
     const html = read(name);
     for (const f of FEATURES) {
       if (KEEP.has(`${name} ${f.key}`)) continue;
-      if (!covered(html, f)) {
+      if (!covered(html, f, name)) {
         gaps.push(`${name}: ${f.key} (${f.src}) -- names none of `
-          + JSON.stringify([...(f.term || []), ...(f.text || [])]));
+          + JSON.stringify([...termsFor(f, name), ...(f.text || [])]));
       }
     }
   }
@@ -69,10 +69,38 @@ test('every KEEP entry is still a real, still-uncovered omission', () => {
     if (!keys.has(key)) { stale.push(`${entry}: no such feature key`); continue; }
     assert.ok(why && why.trim().length > 10, `KEEP entry "${entry}" has no reason on the line`);
     const f = FEATURES.find((x) => x.key === key);
-    if (covered(read(name), f)) stale.push(`${entry}: ${name} names it again — delete the entry`);
+    if (covered(read(name), f, name)) stale.push(`${entry}: ${name} names it again — delete the entry`);
   }
   assert.deepEqual(stale, [],
     'KEEP has entries that are no longer true:\n  ' + stale.join('\n  '));
+});
+
+test('no two feature keys resolve to the same name on the same surface', () => {
+  /* The class of bug behind the #19 collision: `strategy:balanced` and
+     `shape:even` both claimed the word "even" in one shared list, so on any
+     surface naming either feature, deleting ONE of the two names left the
+     other key satisfied by what was left over -- a mutation that should have
+     gone red stayed green. `termsFor` resolves what each key actually claims
+     on a given surface; if two keys claim the same word there, either can
+     stand in for the other and the mutation harness cannot tell them apart.
+     `feature-mutate.mjs` blanks a whole key's terms at once, so it cannot see
+     this either -- it never mutates one key while leaving a same-named one
+     standing. This is what does. */
+  const collisions = [];
+  for (const name of Object.keys(SURFACES)) {
+    const claimedBy = new Map();
+    for (const f of FEATURES) {
+      const words = [...termsFor(f, name), ...(f.text || [])];
+      for (const w of words) {
+        const norm = normalise(w);
+        const holder = claimedBy.get(norm);
+        if (holder && holder !== f.key) collisions.push(`${name}: "${w}" names both ${holder} and ${f.key}`);
+        else claimedBy.set(norm, f.key);
+      }
+    }
+  }
+  assert.deepEqual(collisions, [], 'two keys sharing one name on a surface means either can '
+    + 'satisfy the other\'s mutation:\n  ' + collisions.join('\n  '));
 });
 
 test('the app ships exactly the features this list pins', () => {
@@ -95,7 +123,7 @@ test('the surfaces are the ones this test means, and comments are not text', () 
   const help = textOf(read('#help'));
   const about = textOf(read('about.html'));
 
-  assert.ok(help.includes('how this works'), '#help should be sliced from its own title');
+  assert.ok(help.includes('how it works'), '#help should be sliced from its own title');
   assert.ok(!help.includes('keyboard shortcuts'), 'the #help slice should stop before #keys');
   assert.ok(help.length > 3000, `#help reads as ${help.length} chars -- the slice has collapsed`);
   assert.ok(about.length > 8000, `about.html reads as ${about.length} chars`);

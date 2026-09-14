@@ -11,7 +11,7 @@ globalThis.document = {
 };
 globalThis.addEventListener ??= () => {};
 globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
-const { levelFromKey } = await import('../app/balance.js');
+const { levelFromKey, LEVELS, SHAPES } = await import('../app/balance.js');
 
 /* The roster's level meter is five `<button role="radio">` inside a
  * `role="radiogroup"`, and until 2026-08-25 it wore those roles without
@@ -64,4 +64,24 @@ test('a key the meter does not own is handed back, not swallowed', () => {
     assert.equal(levelFromKey(key, 3), null,
       `${JSON.stringify(key)} is not this control's key and must fall through.`);
   }
+});
+
+/* #19: the five level names and the four balance-shape names, pinned so a
+ * future rename lands everywhere the glossary says or fails here first. Both
+ * word lists come from CONTEXT.md (Team and players' Level entry, and
+ * Strategies' Balance shape entry).
+ * `LEVELS` and `SHAPES` are both exported and imported directly here, the
+ * same instances the meter paints from -- a source-text guard anchored on a
+ * name in this repo has twice been satisfied by a comment that mentions it. */
+test('the five level labels are the glossary\'s words, tier in order', () => {
+  assert.deepEqual(LEVELS.map(l => l.v), [1, 2, 3, 4, 5]);
+  assert.deepEqual(LEVELS.map(l => l.label),
+    ['Developing', 'Learning', 'Regular', 'Reliable', 'Go-to']);
+});
+
+test('the four balance shape labels are the glossary\'s words, stored value unchanged', () => {
+  assert.deepEqual(SHAPES.map(s => s.v), ['even', 'start', 'finish', 'both'],
+    'the stored value must not move when the on-screen label is renamed');
+  assert.deepEqual(SHAPES.map(s => s.label),
+    ['Steady', 'Start strong', 'Finish strong', 'Both ends']);
 });

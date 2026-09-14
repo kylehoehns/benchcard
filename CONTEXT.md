@@ -37,9 +37,8 @@ _In code_: `shortName`
 A coach's rating of a player from 1 to 5 — Developing, Learning, Regular,
 Reliable, Go-to — used only to shape who plays together, never how many minutes
 anyone gets, and never shown on the card, in bench mode or in an export.
-Level 3 is **Regular (decided 2026-09-14)**.
 _Avoid_: tier, rating, skill
-_In code_: `tier`; level 3 is still labelled "Rotation"
+_In code_: `tier`
 
 ## Games and the day
 
@@ -89,7 +88,7 @@ _In code_: `granMode` / `granValue`, `granularity`
 **Available**:
 A player who is at this game and can be planned.
 
-**Absent** (decided 2026-09-14):
+**Absent**:
 A player who is on the roster but not at this game, so the plan leaves them out
 entirely.
 _Avoid_: out, sitting out, no-show, not here
@@ -148,7 +147,7 @@ _In code_: `plan.ok === false`, `issues` with severity `error`
 How minutes are shared out in a game: Even, By hand, Closers or Platoon.
 _Avoid_: mode, plan type
 
-**Even** (decided 2026-09-14):
+**Even**:
 The strategy that makes minutes as equal as the clock allows.
 _Avoid_: Balanced, equal time
 _In code_: `balanced`
@@ -188,7 +187,7 @@ _Avoid_: skill balancing, strength
 
 **Balance shape**:
 Where lineup balance puts strength across the game: Steady, Start strong, Finish
-strong or Both ends. **Steady (decided 2026-09-14)** is the one that keeps every
+strong or Both ends. **Steady** is the one that keeps every
 stint about as strong as every other.
 _Avoid_: Even (for the shape)
 _In code_: `balance`, with `even` for Steady

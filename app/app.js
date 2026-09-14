@@ -334,9 +334,9 @@ if (matchMedia('(max-width: 620px)').matches) {
 if (!noRoster()) { const ff = $('#fmtFold'); if (ff) ff.open = false; }
 
 /* Plan folds on the same terms, with one extra condition: it stays open while
-   the strategy is still the default. Balanced has no body at all, so an open
-   Plan costs a Balanced coach ~60px and keeps the one control that says what
-   this app does on the first screen. A coach who has picked Minutes, Closers
+   the strategy is still the default. Even has no body at all, so an open
+   Plan costs an Even coach ~60px and keeps the one control that says what
+   this app does on the first screen. A coach who has picked By hand, Closers
    or Platoon has already made that choice -- and those three carry an editor
    tall enough to push the rotation off the phone entirely -- so for them the
    summary hint is the answer and the fold shuts. First paint only, same rule
@@ -349,7 +349,7 @@ if (!noRoster() && game()?.strategy !== 'balanced') { const pf = $('#planFold');
 startAnalytics();
 window.addEventListener('appinstalled', () => track('pwa_installed'));
 // once per load as well as on every strategy change, otherwise a coach who
-// picked Closers months ago and never touches the segment reads as Balanced
+// picked Closers months ago and never touches the segment reads as Even
 if (state.onboarded) track('plan_generated', { strategy: game()?.strategy });
 
 /* Wire the modules together. Everything a module cannot import for itself

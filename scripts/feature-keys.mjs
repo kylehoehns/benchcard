@@ -85,8 +85,11 @@ export const read = (name) => SURFACES[name].slice(app(SURFACES[name].file));
 /* ----------------------------------------------------------------- the list */
 
 /* `term`: must appear where the surface NAMES things (a whole text node).
+ * Either a plain array, meaning the same word on every surface, or an object
+ * keyed by surface name, when the word differs by surface.
  * `text`: distinctive enough to count anywhere on the surface.
- * Either satisfies the key. `src` is where the app defines the feature.
+ * Either `term` or `text` satisfies the key. `src` is where the app defines
+ * the feature.
  *
  * DELIBERATELY NOT A KEY, so the next iteration does not re-file it: the
  * per-day switch "Balance against minutes already played today". `#help` names
@@ -96,12 +99,24 @@ export const read = (name) => SURFACES[name].slice(app(SURFACES[name].file));
  * detail slice 3 moves OFF the public page.
  */
 export const FEATURES = [
-  { key: 'strategy:balanced', src: 'state.js STRATEGIES', term: ['balanced'] },
-  { key: 'strategy:minutes', src: 'state.js STRATEGIES', term: ['minutes'] },
+  /* #19 renamed the strategy in-app to Even / By hand and the balance shape
+   * `even` to Steady, but only in-app: about.html and advanced.html are out
+   * of #19's scope and still say Balanced / Minutes / Even. `even` is
+   * therefore a name for TWO different keys depending which surface it sits
+   * on -- the strategy on #help, the balance shape on about.html and
+   * advanced.html -- so `term` is given per surface rather than as one
+   * list, and each key claims only the word its own surface actually uses. A
+   * word shared across keys in one list let either key satisfy the other's
+   * mutation. */
+  { key: 'strategy:balanced', src: 'state.js STRATEGIES',
+    term: { '#help': ['even'], 'about.html': ['balanced'], 'advanced.html': ['balanced'] } },
+  { key: 'strategy:minutes', src: 'state.js STRATEGIES',
+    term: { '#help': ['by hand'], 'about.html': ['minutes'], 'advanced.html': ['minutes'] } },
   { key: 'strategy:closers', src: 'state.js STRATEGIES', term: ['closers'] },
   { key: 'strategy:platoon', src: 'state.js STRATEGIES', term: ['platoon'] },
 
-  { key: 'shape:even', src: 'balance.js SHAPES', term: ['even'] },
+  { key: 'shape:even', src: 'balance.js SHAPES',
+    term: { '#help': ['steady'], 'about.html': ['even'], 'advanced.html': ['even'] } },
   { key: 'shape:start', src: 'balance.js SHAPES', term: ['start strong'], text: ['start strong'] },
   { key: 'shape:finish', src: 'balance.js SHAPES', term: ['finish strong'], text: ['finish strong'] },
   { key: 'shape:both', src: 'balance.js SHAPES', term: ['both ends'], text: ['both ends'] },
@@ -153,8 +168,18 @@ export const KEEP = new Map([
   ['about.html bench:rebalance', 'in-app button label; #help and advanced.html#midgame name it'],
 ]);
 
-export const covered = (html, f) =>
-  (f.term || []).some((t) => chunksOf(html).has(t))
+/* `f.term` resolves to the words THIS surface names the feature by: the whole
+ * array when it is plain (every surface means the same thing), or just its
+ * own entry when it is keyed by surface -- a surface with no entry there has
+ * no term to check and falls back to `text`, same as a feature with no term
+ * at all. */
+export const termsFor = (f, surfaceName) => {
+  if (!f.term) return [];
+  return Array.isArray(f.term) ? f.term : (f.term[surfaceName] || []);
+};
+
+export const covered = (html, f, surfaceName) =>
+  termsFor(f, surfaceName).some((t) => chunksOf(html).has(t))
   || (f.text || []).some((t) => textOf(html).includes(t));
 
 /* ------------------------------------------- what the app itself still ships */

@@ -450,8 +450,8 @@
           <details class="block fold s-plan" id="planFold" open>
             <summary><h3>Plan</h3><span class="hint" id="stratnote"></span><button class="helpq press" type="button" data-help="help-plan" aria-label="How the plan choices work">?</button></summary>
             <div class="seg wide" id="stratseg" role="group" aria-label="Planning strategy">
-              <button class="press" data-strat="balanced">Balanced</button>
-              <button class="press" data-strat="minutes">Minutes</button>
+              <button class="press" data-strat="balanced">Even</button>
+              <button class="press" data-strat="minutes">By hand</button>
               <button class="press" data-strat="closers">Closers</button>
               <button class="press" data-strat="platoon">Platoon</button>
             </div>
@@ -585,7 +585,7 @@
                  from Print, which reads as belonging to neither. -->
             <span class="gmq">
               <button class="btn press" id="gmOpen">
-<span class="i" data-icon="maximize-2"></span> <span class="ab-lab">Use this on the bench</span>
+<span class="i" data-icon="maximize-2"></span> <span class="ab-lab">Start game</span>
               </button>
               <button class="helpq press" type="button" data-help="help-bench" aria-label="How changing the plan mid-game works">?</button>
             </span>
@@ -1109,10 +1109,10 @@
 
       <div class="setrow">
         <div class="setrow-b">
-          <div class="setrow-t">How this works</div>
+          <div class="setrow-t">How it works</div>
           <p class="note">The reference sheet, and the guided tour again.</p>
         </div>
-        <button class="btn press" id="helpBtn" type="button" aria-label="How this works">Open</button>
+        <button class="btn press" id="helpBtn" type="button" aria-label="How it works">Open</button>
       </div>
     </div>
 
@@ -1164,9 +1164,9 @@
   </main>
 
   <!-- ============================ GAME MODE ============================ -->
-  <div class="gm noprint" id="gamemode" hidden tabindex="-1" role="dialog" aria-modal="true" aria-label="Game mode">
+  <div class="gm noprint" id="gamemode" hidden tabindex="-1" role="dialog" aria-modal="true" aria-label="Bench mode">
     <div class="gm-bar">
-      <button class="gm-x press" id="gmClose" aria-label="Leave game mode"><span class="i" data-icon="x"></span></button>
+      <button class="gm-x press" id="gmClose" aria-label="Leave bench mode"><span class="i" data-icon="x"></span></button>
       <div class="gm-title"><span id="gmGame"></span><span class="gm-clock" id="gmClock"></span></div>
       <button class="gm-x press" id="gmReset" title="Undo in-game changes" hidden><span class="i" data-icon="rotate-ccw"></span></button>
     </div>
@@ -1212,7 +1212,7 @@
   <div class="actionbar noprint" id="actionbar" hidden>
     <button class="ab-main press" id="abBench">
       <span class="i" data-icon="maximize-2"></span>
-      <span class="ab-lab">Use on the bench</span>
+      <span class="ab-lab">Start game</span>
     </button>
     <!-- The bench "?" travels with the bench button. Above 900px that button is
          `#gmOpen` and the "?" beside it lives in `.gm-cta`; below 900px this bar
@@ -1269,7 +1269,7 @@
   <div class="keyswrap noprint" id="help" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
     <div class="keysbox helpbox">
       <div class="keys-hd">
-        <div class="keys-t" id="helpTitle">How this works</div>
+        <div class="keys-t" id="helpTitle">How it works</div>
         <button class="btn icon ghost press" id="helpClose" aria-label="Close"><span class="i" data-icon="x"></span></button>
       </div>
       <!-- The second sentence is the narrow claim, word for word as the other
@@ -1282,11 +1282,11 @@
 
       <h4 class="help-h" id="help-plan">Choosing a plan</h4>
       <dl class="help-dl">
-        <dt>Balanced</dt>
+        <dt>Even</dt>
         <dd>Everybody plays as close to the same number of minutes as the clock allows.
           This is what most rec and youth leagues expect, and it is the right answer if
           you are not sure.</dd>
-        <dt>Minutes</dt>
+        <dt>By hand</dt>
         <dd>You set each player’s total yourself and the plan hits it. Useful when
           somebody has to leave early, is easing back from an injury, or a parent has
           asked for something specific. The totals always add up to the whole game, so
@@ -1310,7 +1310,7 @@
         opponent. Levels stay on the Team page: never printed, never shown in
         bench mode.</p>
       <dl class="help-dl">
-        <dt>Even</dt>
+        <dt>Steady</dt>
         <dd>Every stint about as strong as every other.</dd>
         <dt>Start strong</dt>
         <dd>Best five open the game. The closing stints go lighter in exchange. Those minutes have to land somewhere.</dd>
@@ -1380,7 +1380,7 @@
         on one card.</p>
 
       <h4 class="help-h" id="help-bench">Changing the plan mid-game</h4>
-      <p class="help-p"><b>Use on the bench</b> opens the game one stint at a time.
+      <p class="help-p"><b>Bench mode</b> opens the game one stint at a time.
         Tap whoever is coming off and pick how long the change lasts.</p>
       <dl class="help-dl">
         <dt>This stint</dt>
@@ -1413,7 +1413,7 @@
         <div class="keys-row"><dt><kbd>P</kbd></dt><dd>Print the card</dd></div>
         <div class="keys-row"><dt><kbd>S</kbd></dt><dd>Shuffle the rotation</dd></div>
         <div class="keys-row"><dt><kbd>V</kbd></dt><dd>Next view: Games, Team, Season</dd></div>
-        <div class="keys-row"><dt><kbd>B</kbd></dt><dd>Use on the bench</dd></div>
+        <div class="keys-row"><dt><kbd>B</kbd></dt><dd>Start game</dd></div>
         <div class="keys-row"><dt><kbd>←</kbd><kbd>→</kbd></dt><dd>Previous / next stint, on the bench</dd></div>
         <div class="keys-row"><dt><kbd>?</kbd></dt><dd>This list</dd></div>
         <div class="keys-row"><dt><kbd>Esc</kbd></dt><dd>Close whatever is open</dd></div>

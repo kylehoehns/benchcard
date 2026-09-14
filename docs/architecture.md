@@ -91,8 +91,8 @@ Generation runs 20–50 ms across every configuration tried, including a
 20-player roster and a 20-stint game.
 ## Planning strategies
 
-- **Balanced** (default) -- as close to equal as the clock allows. One click.
-- **Minutes** -- per-player targets on sliders, with locks. Exact when they
+- **Even** (default) -- as close to equal as the clock allows. One click.
+- **By hand** -- per-player targets on sliders, with locks. Exact when they
   add up to the whole game; short of that the spare minutes get shared out and
   each row says what it will really play.
 - **Closers** -- even minutes early, a group you pick finishes the game.
@@ -230,7 +230,7 @@ anchor is read off the anchor's computed position rather than declared per
 step; a `position: fixed` one is already where it is going to be, and
 scrolling to it walks the page to the top for nothing.
 
-**How this works** (Settings → *How this works*) is the reference sheet — the strategies and when a
+**How it works** (Settings → *How it works*) is the reference sheet — the strategies and when a
 coach would pick each, what every rule does, how a tournament day carries over,
 how to read the card (`▼` is who comes off, underlined is who just came on) and
 what the app does with a roster. It is static markup in `index.html`, not
@@ -473,7 +473,7 @@ asks the preference itself.
 
 **Keyboard shortcuts** exist for the desk half of the job — planning the day
 before you leave the house. <kbd>P</kbd> print, <kbd>S</kbd> shuffle,
-<kbd>V</kbd> switch Games/Roster, <kbd>B</kbd> open game mode, arrows to move
+<kbd>V</kbd> switch Games/Roster, <kbd>B</kbd> open bench mode, arrows to move
 between stints there, <kbd>?</kbd> for the list, Escape to close. Each key
 clicks the button it names rather than repeating its work, so a disabled or
 absent control is already the answer for the key too. *Disabled*, note, not
@@ -561,7 +561,7 @@ constraints and carryover. `state` is a `const` binding everything closes over,
 so a restore refills it in place rather than reassigning. There are no
 `confirm()` calls left in the app.
 
-**Game mode traps focus.** It sits on top of the page rather than replacing
+**Bench mode traps focus.** It sits on top of the page rather than replacing
 it, so without a trap Tab walks into the form underneath.
 
 Mobile specifics that came out of real use:
@@ -616,7 +616,7 @@ Mobile specifics that came out of real use:
   options in a native picker fills a phone screen for a one-tap decision.
 - **Destructive actions leave the nav strip.** "Remove game" sits in the game
   panel header behind a confirm, not as a tab beside the games.
-## Game mode
+## Bench mode
 
 The card, full screen and live — the phone becomes the bench reference, not
 just a thing that prints one. Big lineup, live minutes per player, what changes
@@ -635,7 +635,7 @@ production — 0x0 against the card preview, which is folded away by default
 below 1100px, so the animation silently never ran on mobile at all; and
 `top: 855` against an 844px viewport when the coach beat the action bar's own
 slide-in. Both degraded to a plain CSS fade, which is indistinguishable from
-"the animation did not run". Nothing on the way into game mode may measure the
+"the animation did not run". Nothing on the way into bench mode may measure the
 page again; `test/gamemode-open.test.js` pins that. Under reduced motion
 `sheetUp` declines and the CSS `gmIn` keyframe takes over, which the global
 reduce rule collapses to an instant state change. A tap anywhere finishes the
@@ -643,13 +643,13 @@ transition on the spot rather than waiting it out (`armInterrupt`), and a tap
 that lands on the page still receding behind the rising sheet is swallowed
 rather than acted on.
 
-**A part-played game says so from the plan page.** A reload closes game mode —
+**A part-played game says so from the plan page.** A reload closes bench mode —
 on iOS, switching to the clock or the scorebook app and coming back is often
 enough — and the coach landed back on Games with no sign a game was underway,
-under a button reading "Use on the bench", which reads as *start*. The state was
+under a button reading "Start game", which reads as *start*. The state was
 always fine; the page was just silent about it. `resumeAt()` in `card.js` is the
 one answer to "is this game part-played": stint 0 is indistinguishable from
-never started and the last stint is a game that is over (game mode restarts that
+never started and the last stint is a game that is over (bench mode restarts that
 one), so only the middle counts. It relabels the bench button — "Resume · Q2
 4:00", with a play icon — and the timeline draws a `.tl-now` playhead down every
 row at the same point. The marker is per-track rather than one line across the
@@ -658,7 +658,7 @@ phone. Bench mode is deliberately **not** reopened on load: a coach who reloaded
 *because* something was wrong would be trapped in it.
 
 Leaving is a **thumb reach on a phone**: as well as the X in the top bar there
-is a **Done** button at the left end of the stint bar, because game mode is the
+is a **Done** button at the left end of the stint bar, because bench mode is the
 one screen used standing up one-handed and the top-left corner is the worst
 place on a 390px screen to have to reach. It is text rather than a chevron so it
 never reads as a third stint control, and it is hidden above the coarse-pointer
@@ -707,7 +707,7 @@ row does anything. Those rows are therefore not buttons at all — they render a
 a plain full-width list with hairline rules, and the "Bench" label carries
 "tap who comes off first". A disabled button styled like the live one is a
 trap: it looks tappable, swallows the tap and explains nothing. Dimming was
-rejected for the same reason the rest of game mode is high contrast — a dim row
+rejected for the same reason the rest of bench mode is high contrast — a dim row
 in a dim gym is a legibility regression.
 
 The floor rows go inert the same way when the bench is empty. With a five-player
@@ -877,7 +877,7 @@ no-op is worse than a clear ask, so it is now an error that names Unit 1.
 
 Closers has the same trap without the blocked state: the engine only forces
 anyone onto the floor once the closing group has players, so leaving "Who
-closes" empty produced a plan identical to Balanced with nothing saying so. It
+closes" empty produced a plan identical to Even with nothing saying so. It
 now says so twice -- an info banner in the issues list and a line under the
 picker -- but stays an info rather than an error, because unlike an undefined
 platoon the plan is perfectly valid.
