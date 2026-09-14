@@ -23,19 +23,19 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { FEATURES, KEEP, SURFACES, covered, normalise, partsOf, app } from './feature-keys.mjs';
+import { FEATURES, KEEP, SURFACES, covered, termsFor, normalise, partsOf, app } from './feature-keys.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const TEST = 'test/feature-coverage.test.js';
 const filePath = (f) => new URL(`app/${f}`, ROOT);
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-function mutate(html, feature) {
+function mutate(html, feature, surfaceName) {
   let out = '';
   for (const seg of html.split(/(<[^>]+>)/)) {
     if (seg.startsWith('<')) { out += seg; continue; }
     let t = seg;
-    for (const term of feature.term || []) {
+    for (const term of termsFor(feature, surfaceName)) {
       if (partsOf(t).includes(term)) t = t.replace(new RegExp(esc(term), 'ig'), 'REDACTED');
     }
     out += t;
@@ -58,12 +58,12 @@ for (const [name, s] of Object.entries(SURFACES)) {
        failure -- there is simply no name here to delete. KEEP carries the
        reason, and `test/feature-coverage.test.js` is what stops a KEEP entry
        going stale. Anything else uncovered still fails the run. */
-    if (!covered(before, f)) {
+    if (!covered(before, f, name)) {
       (KEEP.has(`${name} ${f.key}`) ? allowed : skipped).push(`${name} ${f.key}`);
       continue;
     }
-    const after = mutate(before, f);
-    if (covered(after, f)) { unlanded.push(`${name} ${f.key}`); continue; }
+    const after = mutate(before, f, name);
+    if (covered(after, f, name)) { unlanded.push(`${name} ${f.key}`); continue; }
 
     writeFileSync(file, s.splice(original, after));
     let red = false, out = '';

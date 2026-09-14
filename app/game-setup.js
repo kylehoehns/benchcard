@@ -118,7 +118,7 @@ function availCountText(g) {
   if (noRoster()) return '';   // "0 of 0" beside an empty box says nothing
   const outCount = g.out.length;
   return outCount
-    ? `${state.players.length - outCount} of ${state.players.length} · ${outCount} out`
+    ? `${state.players.length - outCount} of ${state.players.length} · ${outCount} absent`
     : `${state.players.length - outCount} of ${state.players.length}`;
 }
 

@@ -35,8 +35,8 @@ phone in your hand while play is live.
 
 | | |
 | --- | --- |
-| **Balanced** | as close to equal as the clock allows — one click |
-| **Minutes** | per-player targets on sliders, with locks |
+| **Even** | as close to equal as the clock allows — one click |
+| **By hand** | per-player targets on sliders, with locks |
 | **Closers** | even minutes early, a group you pick finishes the game |
 | **Platoon** | fixed fives alternating wholesale |
 
@@ -132,7 +132,7 @@ cost this project more than any other.
 
 | | |
 | --- | --- |
-| [`docs/architecture.md`](docs/architecture.md) | how the app is put together — the interface, game mode, the card, the solver |
+| [`docs/architecture.md`](docs/architecture.md) | how the app is put together — the interface, bench mode, the card, the solver |
 | [`docs/design-decisions.md`](docs/design-decisions.md) | the calls that were made, and what they were made against |
 | [`docs/operations.md`](docs/operations.md) | testing, deployment, analytics, install and sharing |
 | [`docs/interface-guidelines.md`](docs/interface-guidelines.md) | the target design: how Benchcard should look and behave on iPhone and Android, rule by rule |

@@ -120,6 +120,37 @@ test('unknown enum values fall back instead of breaking the UI', () => {
   assert.equal(s.view, 'games');
 });
 
+test('a save written before #19 loads with its strategy, balance and level unchanged', () => {
+  /* #19 renamed these words on screen only; the stored spelling is the one
+     CONTEXT.md's "In code" lines give for each term, and storage.js must not
+     translate it. See Strategies (Even/By hand/Steady) and Team and players
+     (Level) there for the mapping.
+
+     Alongside the four spec values this also pins a NON-default neighbour for
+     each: 'balanced', 'even' and 3 are sanitizeTeam's own fallback for an
+     unrecognised strategy, balance and tier, so a rewrite that always returned
+     the fallback would still pass a test that only ever stored the fallback
+     value. 'closers', 'start' and tier 5 are not the fallback and must come
+     back exactly as written too. */
+  const raw = good();
+  raw.players[0].tier = 3;
+  raw.players[1].tier = 5;
+  raw.day.games[0].strategy = 'balanced';
+  raw.day.games[0].balance = 'even';
+  raw.day.games.push({ ...newGame(), id: 'g2', strategy: 'minutes', balance: 'even' });
+  raw.day.games.push({ ...newGame(), id: 'g3', strategy: 'closers', balance: 'start' });
+  const s = sanitize(raw, H);
+  const games = s.teams[0].day.games;
+  assert.equal(s.teams[0].players[0].tier, 3, 'tier 3 must stay 3, not become a level name');
+  assert.equal(s.teams[0].players[1].tier, 5, 'tier 5 is not the fallback and must not be reset to it');
+  assert.equal(games[0].strategy, 'balanced', 'balanced must not be rewritten to even/by-hand/etc');
+  assert.equal(games[0].balance, 'even', 'the even shape must not be rewritten to steady');
+  assert.equal(games[1].strategy, 'minutes', 'minutes must not be rewritten to by-hand or balanced');
+  assert.equal(games[1].balance, 'even', 'a second game keeps its own balance value too');
+  assert.equal(games[2].strategy, 'closers', 'closers is not the fallback and must not be reset to balanced');
+  assert.equal(games[2].balance, 'start', 'start is not the fallback and must not be reset to even');
+});
+
 test('a record with no games gets one rather than rendering nothing', () => {
   const raw = good();
   raw.day.games = [];
@@ -203,6 +234,32 @@ const withStore = (entries, fn) => {
     else delete globalThis.localStorage;
   }
 };
+
+test('a save written before #19 loads unchanged through loadState too, not sanitize() alone', () => {
+  /* S9: sanitize() being right does not prove loadState() is. A rename step
+     added only in loadState -- after `const s = sanitize(raw, helpers)`, on
+     the record it is about to return -- would sail past every test above,
+     because all of them call sanitize() directly and never boot through the
+     real load path. Same fixture as the sanitize() test, driven through
+     loadState() instead. */
+  const raw = good();
+  raw.players[0].tier = 3;
+  raw.players[1].tier = 5;
+  raw.day.games[0].strategy = 'balanced';
+  raw.day.games[0].balance = 'even';
+  raw.day.games.push({ ...newGame(), id: 'g2', strategy: 'minutes', balance: 'even' });
+  raw.day.games.push({ ...newGame(), id: 'g3', strategy: 'closers', balance: 'start' });
+  const r = withStore({ [KEY]: JSON.stringify(raw) }, () => loadState(H));
+  const games = r.state.teams[0].day.games;
+  assert.equal(r.state.teams[0].players[0].tier, 3, 'tier 3 must stay 3 through loadState too');
+  assert.equal(r.state.teams[0].players[1].tier, 5, 'tier 5 must stay 5 through loadState too');
+  assert.equal(games[0].strategy, 'balanced', 'balanced must not be rewritten by loadState');
+  assert.equal(games[0].balance, 'even', 'even must not be rewritten to steady by loadState');
+  assert.equal(games[1].strategy, 'minutes', 'minutes must not be rewritten by loadState');
+  assert.equal(games[1].balance, 'even', 'the second game keeps its own balance through loadState');
+  assert.equal(games[2].strategy, 'closers', 'closers must not be reset to balanced by loadState');
+  assert.equal(games[2].balance, 'start', 'start must not be reset to even by loadState');
+});
 
 test('a readable main record loads without claiming a recovery', () => {
   const r = withStore({ [KEY]: JSON.stringify(good()) }, () => loadState(H));

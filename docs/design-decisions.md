@@ -157,7 +157,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   written to the record but the one boolean: the targets are re-derived on
   every `computeAll`, so turning it off restores the previous plan exactly.
   A **hand-set target and a lock are untouchable by construction**: it writes a
-  target only where there is not one already, so the Minutes strategy gets
+  target only where there is not one already, so the By hand strategy gets
   nothing (those sliders *are* the coach's targets), Platoon gets nothing (the
   units are exact), and a locked row is left out of the pinned set entirely
   rather than handed a target — a target would pin it at 1000/min, and a
@@ -261,7 +261,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   it -- including the timeline, whose rows put the name above a full-width bar
   and which read `AUST` until 2026-08-24 while already announcing "Austin
   Schumacher" to a screen reader; `tlName` in `timeline.js` is the single answer
-  now, and it prefers the full name. Game mode's next-sub call -- the line the coach shouts -- uses `callNames()`
+  now, and it prefers the full name. Bench mode's next-sub call -- the line the coach shouts -- uses `callNames()`
   in `roster.js`: first names, plus a last initial when two available players share
   one (the full name if even that collides). It drops back to the short names only
   when a call row would wrap, and then both rows drop together so the block never

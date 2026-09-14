@@ -27,17 +27,17 @@ export function resumeAt(p = plans[state.activeGame], g = game()) {
 
 /* The one thing that says a game is already underway. A reload drops the coach
    back here with bench mode shut -- on iOS, switching to the clock app and back
-   is often enough -- and "Use on the bench" reads as *start*, so the coach has
+   is often enough -- and "Start game" reads as *start*, so the coach has
    no sign the app still holds their place. Reopening always resumed correctly;
    this is the app finally saying so. Bench mode is deliberately NOT reopened on
    load: a coach who reloaded because something was wrong would be trapped. */
 function labelBench(blocked) {
   const r = blocked ? null : resumeAt();
-  for (const [sel, verb] of [['#abBench', 'Resume'], ['#gmOpen', 'Resume the game']]) {
+  for (const sel of ['#abBench', '#gmOpen']) {
     const btn = $(sel);
     if (!btn) continue;
     const lab = btn.querySelector('.ab-lab');
-    if (lab) lab.textContent = r ? `${verb} · ${r.where}` : sel === '#abBench' ? 'Use on the bench' : 'Use this on the bench';
+    if (lab) lab.textContent = r ? `Resume · ${r.where}` : 'Start game';
     /* The `.i` span is the styled wrapper and the svg lives inside it (see the
        hydration loop in app.js), so swap the contents, never the span. */
     const ic = btn.querySelector('.i');

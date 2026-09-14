@@ -52,11 +52,11 @@ const TOUR = [
   {
     sel: ['#squadFold', '#avail'],
     title: 'Who is here tonight',
-    body: 'Everyone on the roster starts in. Pick a player to sit them out for a no-show or foul trouble, and the rotation rebuilds around who is left.',
+    body: 'Everyone on the roster starts in. Pick a player to mark them absent for a no-show or foul trouble, and the rotation rebuilds around who is left.',
     before: () => { const f = $('#squadFold'); if (f) f.open = true; },
   },
   {
-    /* `#planFold` shuts on first paint for anyone not on Balanced, and a
+    /* `#planFold` shuts on first paint for anyone not on Even, and a
        spotlight on a control inside a shut fold is either centred copy or a
        ring around nothing. Open it first, exactly as step 1 does for the
        squad, and name the fold itself as the fallback anchor so this step
@@ -65,8 +65,8 @@ const TOUR = [
     before: () => { const f = $('#planFold'); if (f) f.open = true; },
     title: 'How the minutes get shared',
     lines: [
-      ['Balanced', 'as close to equal as the clock allows.'],
-      ['Minutes', 'you set each player’s total by hand.'],
+      ['Even', 'as close to equal as the clock allows.'],
+      ['By hand', 'you set each player’s total yourself.'],
       ['Closers', 'even early, then a group you pick finishes.'],
       ['Platoon', 'fixed fives that swap as whole units.'],
     ],

@@ -33,13 +33,13 @@ import { tick } from './fx.js';
 export const LEVELS = [
   { v: 1, label: 'Developing', hint: 'building up: protect their minutes, not their matchups' },
   { v: 2, label: 'Learning', hint: 'coming along' },
-  { v: 3, label: 'Rotation', hint: 'the middle of your bench, where everyone starts' },
+  { v: 3, label: 'Regular', hint: 'the middle of your bench, where everyone starts' },
   { v: 4, label: 'Reliable', hint: 'you are comfortable with them out there' },
   { v: 5, label: 'Go-to', hint: 'the five you would pick if you had to win one possession' },
 ];
 
-const SHAPES = [
-  { v: 'even', label: 'Even', blurb: 'Every stint about as strong as every other. Nobody gets stranded with a lineup that cannot compete.' },
+export const SHAPES = [
+  { v: 'even', label: 'Steady', blurb: 'Every stint about as strong as every other. Nobody gets stranded with a lineup that cannot compete.' },
   { v: 'start', label: 'Start strong', blurb: 'Your best five open the game. Under even minutes the closing stints are lighter. Those minutes have to go somewhere.' },
   { v: 'finish', label: 'Finish strong', blurb: 'Saves your best five for the end. The opening stints are lighter in exchange.' },
   { v: 'both', label: 'Both ends', blurb: 'Strong to open and strong to close, with a softer middle. Good for developing players when the game is likely decided in the last period.' },

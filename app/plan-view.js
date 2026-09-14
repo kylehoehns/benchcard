@@ -149,7 +149,7 @@ export function renderIssues() {
   }
   /* Closers with an empty closing group is the one strategy that can silently
      do nothing: the engine only forces anyone on when the group has players, so
-     the plan comes out byte-identical to Balanced and the coach has no way to
+     the plan comes out byte-identical to Even and the coach has no way to
      tell their choice did not take. Platoon says so loudly because it has no
      plan at all; this one still has a valid plan, so it is an info, not a
      block. */

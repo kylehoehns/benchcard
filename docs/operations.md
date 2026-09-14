@@ -135,7 +135,7 @@ carries no third-party script when it is off) and eleven events posted
 to a Worker. Each event is tied to a decision in `notes/ROADMAP.md` §1;
 `plan_generated` fires on every strategy change *and* once per load, since a
 coach who picked Closers months ago and never touches the segment would
-otherwise read as Balanced forever. (This paragraph said "seven" for as long as
+otherwise read as Even forever. (This paragraph said "seven" for as long as
 there were ten of them, which is the whole argument for `analytics.test.js`
 pinning the list rather than the count.)
 
@@ -284,7 +284,7 @@ A new worker never swaps code underneath a coach mid-game: the open page keeps
 the modules it already loaded, and a waiting worker is told to `skip-waiting`
 only on a load with no unsaved edit in flight. When one does take over,
 `toast.js` *offers* a reload ("Benchcard updated." / "Reload") rather than
-taking it, and never over game mode — see the Status section. That offer is the
+taking it, and never over bench mode — see the Status section. That offer is the
 update prompt; this paragraph said there was none.
 
 `site.webmanifest` uses `display_override: ["minimal-ui", "standalone"]`. A
@@ -333,4 +333,4 @@ already loaded, so nothing swaps under a coach mid-substitution; the new code
 lands on the next navigation. An installed iOS app can go weeks without one --
 it resumes from a snapshot rather than navigating -- so `index.html` re-checks
 for a worker whenever the app returns to the foreground, and when one takes over
-`toast.js` *offers* the reload rather than taking it, never over game mode.
+`toast.js` *offers* the reload rather than taking it, never over bench mode.
