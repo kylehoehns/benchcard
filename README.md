@@ -135,6 +135,7 @@ cost this project more than any other.
 | [`docs/architecture.md`](docs/architecture.md) | how the app is put together — the interface, game mode, the card, the solver |
 | [`docs/design-decisions.md`](docs/design-decisions.md) | the calls that were made, and what they were made against |
 | [`docs/operations.md`](docs/operations.md) | testing, deployment, analytics, install and sharing |
+| [`docs/interface-guidelines.md`](docs/interface-guidelines.md) | the target design: how Benchcard should look and behave on iPhone and Android, rule by rule |
 | [`AGENTS.md`](AGENTS.md) | the harness — read this before changing anything |
 | [`REVIEW.md`](REVIEW.md) | the review policy |
 | [`notes/ROADMAP.md`](notes/ROADMAP.md) | the research behind what this should become |
