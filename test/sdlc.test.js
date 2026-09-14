@@ -1,6 +1,6 @@
-/* The SDLC artefacts are structure, and structure rots quietly: a work item
- * loses its plan, an eval loses a check, a queue points at a directory nobody
- * created. None of that fails anything on its own, which is exactly why it
+/* The SDLC artefacts are structure, and structure rots quietly: an eval loses
+ * a check, a skill launches an agent nobody kept, a config reads as live when
+ * half of it is not. None of that fails anything on its own, which is exactly why it
  * needs a guard — the failure mode of a process artefact is that it keeps
  * looking correct while meaning nothing.
  *
@@ -17,101 +17,46 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = f => readFileSync(new URL(f, ROOT), 'utf8');
-/* Tolerant on purpose. `work/` is tracked only by `work/.gitkeep`, and a
- * checkout that somehow lacks it must fail on an ASSERTION that names the
- * problem, not on ENOENT thrown at module load -- which takes down every test
- * in this file, including the ones that have nothing to do with work/. */
-const dirs = d => existsSync(new URL(d, ROOT))
-  ? readdirSync(new URL(d, ROOT), { withFileTypes: true })
-      .filter(e => e.isDirectory()).map(e => e.name)
-  : null;
+/* ---------- The team /ship-feature orchestrates ---------- */
 
-/* ---------- Stage 1 -> 3: the chain ---------- */
-
-const STAGES = ['intent.md', 'spec.md', 'plan.md'];
-const items = dirs('work');
-
-/* THERE IS NO ASSERTION THAT work/ IS NON-EMPTY, and there was one until the
- * first item was about to ship. An empty queue is a finished queue. The old
- * assertion would have gone red at the exact moment a session did the right
- * thing -- deleted the directory of the item it had just completed -- and sent
- * it hunting a failure that was the guard's fault, not the change's.
+/* The skill names its subagents in a table, and the orchestrator launches
+ * whatever the table says. A row whose agent was renamed or deleted fails at
+ * launch, in the middle of an unattended run; an agent nobody put in the table
+ * is never launched at all and reads as coverage. Both directions, because
+ * both have the same shape: the table and the directory disagree and nothing
+ * says so.
  *
- * It only ever passed because it was written while exactly one item existed.
- * That is the state-of-one trap: a guard run in a single state is a guard whose
- * other states are guesses. What is checked below is the SHAPE of whatever is
- * in work/, which is the thing that can actually rot. */
-test('work/ survives an empty queue', () => {
-  assert.notEqual(items, null,
-    'work/ is missing from the checkout. It is tracked only by work/.gitkeep, and git does not track empty directories — so shipping the last item deletes the directory itself unless .gitkeep stays.');
-  assert.ok(existsSync(new URL('work/.gitkeep', ROOT)),
-    'work/.gitkeep is gone. The next PR that finishes the last open item removes work/ entirely, and this file then throws ENOENT at module load rather than failing one assertion.');
-});
+ * STATES THIS WAS RUN AGAINST: the healthy tree; a row removed; an agent file
+ * added with no row; a row renamed; a row in another table or a code block;
+ * a row without spaces; and the table deleted outright. The last
+ * one is why the row count is asserted on its own -- with no table, the
+ * directory check still fires, but on the first agent's name, which points at
+ * the agent rather than at the missing table. */
+const SHIP = '.claude/skills/ship-feature/SKILL.md';
+const agentFiles = () => readdirSync(new URL('.claude/agents', ROOT))
+  .filter(f => f.endsWith('.md')).map(f => f.replace(/\.md$/, ''));
 
-/* PREFIX-COMPLETE, NOT COMPLETE. This demanded all three files, which was
- * written when the only item that had ever existed was already at Stage 3 --
- * and it is wrong for the same reason the empty-queue assertion and the
- * skill-ownership assertion were wrong before it. The stages are SEQUENTIAL:
- * an item legitimately exists carrying only `intent.md` from the moment the
- * problem is written down until the spec is agreed. Demanding the whole chain
- * up front forces a plan to be invented alongside the intent, which is exactly
- * the "plan written to match the diff" failure one stage earlier.
- *
- * What is actually wrong is a GAP -- a plan with no spec above it, a spec with
- * no intent. That is what is checked. */
-const stagesPresent = item =>
-  STAGES.map(s => existsSync(new URL(`work/${item}/${s}`, ROOT)));
-
-test('a work item has no gap in its chain', () => {
-  for (const item of items) {
-    const present = stagesPresent(item);
-    assert.ok(present[0],
-      `work/${item}/ has no intent.md. Every item starts with the problem, whatever else it has.`);
-    const firstMissing = present.indexOf(false);
-    if (firstMissing === -1) continue;
-    assert.ok(!present.slice(firstMissing).includes(true),
-      `work/${item}/ skips ${STAGES[firstMissing]} but has a later stage — a chain with a gap is not a chain, and the later stage rests on a decision nobody wrote down`);
+test('the /ship-feature team table and .claude/agents/ agree, in both directions', () => {
+  /* ONLY THE TEAM SECTION, and only its first column. Scanning the whole file
+   * counted a row in any other table, or in a code block, as a team member --
+   * falsified both ways -- and demanding one space around the name failed a
+   * row written `|\`developer\`|`, which renders identically. */
+  const section = (read(SHIP).split(/^## The team\s*$/m)[1] ?? '').split(/^## /m)[0];
+  const rows = [...section.matchAll(/^\|\s*`([a-z][a-z0-9-]*)`\s*\|/gm)].map(m => m[1]);
+  assert.ok(rows.length > 0,
+    `${SHIP} has no "## The team" section with table rows ("| \`agent-name\` | job | writes |"), so nothing says which subagents it launches`);
+  const agents = agentFiles();
+  for (const r of rows) {
+    assert.ok(agents.includes(r),
+      `${SHIP} launches \`${r}\`, but .claude/agents/${r}.md does not exist — rename the row or restore the agent`);
   }
-});
-
-test('each stage says which stage it is, so a file read alone is not ambiguous', () => {
-  const n = { 'intent.md': 1, 'spec.md': 2, 'plan.md': 3 };
-  for (const item of items) {
-    for (const stage of STAGES) {
-      if (!existsSync(new URL(`work/${item}/${stage}`, ROOT))) continue;
-      assert.match(read(`work/${item}/${stage}`), new RegExp(`\\*\\*Stage ${n[stage]}\\.\\*\\*`),
-        `work/${item}/${stage} does not declare its stage`);
-    }
-  }
-});
-
-test('a plan, once it exists, states whether it has been implemented', () => {
-  for (const item of items) {
-    if (!existsSync(new URL(`work/${item}/plan.md`, ROOT))) continue;
-    const plan = read(`work/${item}/plan.md`);
-    assert.match(plan, /implemented/i,
-      `work/${item}/plan.md never says whether it was implemented — an unexecuted plan that reads as done is worse than no plan`);
-    assert.match(plan, /## Proof/,
-      `work/${item}/plan.md has no Proof section, so nothing says how it would be known to work`);
-  }
-});
-
-/* The queue and the directories are two halves of one answer, and they drift
- * in both directions: an item shipped but still listed, or created and never
- * queued. */
-test('the TICKETS index and work/ agree, in both directions', () => {
-  const tickets = read('notes/TICKETS.md');
-  for (const item of items) {
-    assert.ok(tickets.includes(`work/${item}/`),
-      `work/${item}/ exists but notes/TICKETS.md never lists it`);
-  }
-  for (const [, linked] of tickets.matchAll(/work\/([a-z0-9-]+)\//g)) {
-    assert.ok(items.includes(linked),
-      `notes/TICKETS.md points at work/${linked}/, which does not exist`);
+  for (const a of agents) {
+    assert.ok(rows.includes(a),
+      `.claude/agents/${a}.md exists but ${SHIP}'s team table never names it, so the pipeline never runs it — add a row or delete the agent`);
   }
 });
 

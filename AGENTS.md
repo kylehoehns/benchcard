@@ -3,37 +3,29 @@
 Static, client-side app that plans youth basketball substitution rotations and
 prints them on a pocket-notebook card. No backend, no accounts, no build step.
 
-`README.md` is the front door; `docs/` explains what the code does and why. `notes/TICKETS.md` is the
-open work — open only; finished work is `notes/DECISIONS.md`. This file is the harness:
+`README.md` is the front door; `docs/` explains what the code does and why.
+Open work is GitHub issues. This file is the harness:
 the things that will bite you, which are not obvious from reading the code.
 
 ## The loop
 
-Work moves through four artefacts and each one is committed before the next
-begins. The chain is the audit trail: the artefacts say what was asked for, what
-was produced, and what proved it. `notes/DECISIONS.md` is the closed-work
-half of that record.
+Open work is **GitHub issues** — `gh issue list`. `notes/ROADMAP.md` holds the
+research behind them, so no iteration re-derives evidence that already exists.
+`/ship-feature` is the whole procedure; this section is only what it rests on.
 
-**Intent** is `work/<slug>/intent.md` — problem, outcome, affected surfaces,
-constraints, and what would settle it. That last clause is the acceptance test,
-written before the work, and an item without one is not ready to start.
-`notes/TICKETS.md` is the index over the open ones; `notes/ROADMAP.md` holds
-the research behind them so no iteration re-derives evidence that already
-exists.
+**The issue is the requirement, not the truth about the tree.** Issues here
+have been falsified by the first survey more than once. Read it with its
+comments, check its claims against the code, and take what does not hold to the
+human.
 
-**Spec** is `work/<slug>/spec.md` — the requirement and the design, with the
-policy constraints from the intent applied rather than restated.
-
-**Plan** before code, as `work/<slug>/plan.md`. Start in plan mode with the
-intent and the spec, interrogate the plan
-— what breaks, which step is riskiest, what else would work — and iterate until
-someone who had not read this file could follow it. Then commit it as
-`work/<slug>/plan.md`, and merge it BEFORE the implementation PR opens — see
-the rule below, which this sentence used to contradict by also offering the
-commit message that lands the change. That option is gone: a plan arriving with
-the diff cannot be what the diff is judged against. This
-repo's dominant bug class is plan-versus-reality drift; the plan being written
-down is what makes the drift visible.
+**Spec** is `docs/specs/<issue>-<slug>.md`, written after `/grill-with-docs`
+has driven every open question to a decision the human made. Its **What would
+settle it** clause is the acceptance test, with concrete values — written
+before the code, and an issue without one is not ready to build. The spec ships
+in the same pull request as the change it describes, and stays: it is the
+record of what was asked for at that commit, not a description of the code
+today. Terms go to `CONTEXT.md`; a hard-to-reverse trade-off goes to
+`docs/adr/`.
 
 **Proof** is `npm test` and `npm run smoke`, and neither is optional. "It
 works" means a harness said so, in a browser, on this tree. `/browser-verify`
@@ -42,22 +34,13 @@ is the order of operations for the parts a harness does not cover.
 which is honest rather than decorative: those checks are written down and
 nothing here can decide them.
 
-**One item at a time.** Take the top row of `notes/TICKETS.md`, finish it, hand
-it back. Not two, and not "while I am in here". A session that touches three
-items produces a diff no reviewer can judge against any one plan, which is the
-check `REVIEW.md` exists to make possible.
+**One issue at a time.** Finish it, hand it back. Not two, and not "while I am
+in here". A diff that touches three issues cannot be judged against any one
+spec, which is the check `REVIEW.md` exists to make possible. A real problem
+found along the way becomes a new issue, not part of this diff.
 
-**Done means the directory goes.** The implementation PR deletes
-`work/<slug>/` and its row in `notes/TICKETS.md`, in the same PR as the change.
-`work/` holds OPEN work; finished work is `git log` and `notes/DECISIONS.md`,
-and the artefacts stay readable forever at
-`git show <sha>:work/<slug>/plan.md`. An empty `work/` is a finished queue, not
-a broken one.
-
-The one thing this cannot be compressed into: **the artefacts must be merged
-before the implementation PR opens.** The review checks the diff against the
-plan, so a plan arriving in the same PR as the diff is a plan written to match
-it. Add and delete are never the same merge.
+**Done is the merge.** The pull request says `Closes #N`, so merging it closes
+the issue. Finished work is the closed issue, its pull request and `git log`.
 
 **Review** against `REVIEW.md`, on a pull request. Every change reaches `main`
 through one — no exceptions, including a one-line fix and including a change
@@ -87,13 +70,16 @@ bearing as the DENY ones: a hook that ate `grep -n update-budgets` would be
 switched off within a day, and a switched-off hook is worse than none, because
 the prose was deleted on the strength of it.
 
-Three procedures live in `.claude/skills/` rather than here, because they are
+Procedures live in `.claude/skills/` rather than here, because they are
 sequences you follow rather than facts you need loaded at all times:
 `/browser-verify` and `/new-guard`, which own their subjects outright, and
 `/address-review` for acting on findings on a pull request — verify a finding
 before complying with it, and treat a repeat of a class already written down
-here as the harness failing rather than the code. Both cite the sections above rather than
-copying them. **They are Claude-specific. This file is not** — anything an
+here as the harness failing rather than the code. They cite the sections above rather than
+copying them. `/ship-feature` runs an issue end to end with the subagents in
+`.claude/agents/`. `/grill-with-docs` is the interview it starts with, built
+from `/grilling` and `/domain-modeling`; those three are Matt Pocock's, copied
+in unchanged so they can be refreshed from upstream. **They are Claude-specific. This file is not** — anything an
 agent must know to avoid breaking the tree belongs here, where every tool reads
 it.
 
@@ -102,9 +88,9 @@ it.
 ```
 app/       everything served — HTML, JS modules, sw.js, vendor/
 test/      *.test.js          scripts/  CI guards and the eval runner
-work/      <slug>/intent.md -> spec.md -> plan.md, one directory per item
+docs/      reference prose; specs/ one spec per issue; adr/ decisions
 evals/     *.json + README    bands.yaml  stage 6, unwired (it says so)
-notes/     TICKETS.md (the queue), ROADMAP.md (the why), DECISIONS.md (closed)
+notes/     ROADMAP.md (the why), DECISIONS.md (what was built, to 2026-09)
 .claude/   settings.json, hooks/, skills/, agents/
 ```
 
@@ -166,7 +152,7 @@ and say why in the commit.
 
 Nothing outside `app/` is deployed — `wrangler.jsonc` names `assets.directory`
 as `"app"`. That is deliberate: it replaced an `.assetsignore` denylist that
-would have published `notes/TICKETS.md` at `benchcard.app/TICKETS.md`. Keep the
+would have published the old ticket list at `benchcard.app/TICKETS.md`. Keep the
 allowlist shape; do not reintroduce a denylist.
 
 ## Traps
@@ -240,6 +226,13 @@ CI check, a hook, a mutation harness — without it.
   discriminator. It used to name two files by hand, which left the six chart
   pages carrying the trust line unguarded.
 - **No `Co-Authored-By` trailer in commits.**
+- **Stage explicit paths, never `git add -A` / `git add .`.** This tree carries
+  screenshots, `.playwright-mcp` scratch and worktrees that are ignored today
+  only because someone remembered to ignore them; the next scratch file will
+  not be.
+- **One writer at a time.** A dirty tree means another session is mid-change.
+  Read the diff before writing anything — two writers here has meant one
+  reverting the other's uncommitted fix.
 
 ## Deploy
 

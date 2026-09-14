@@ -2,7 +2,7 @@
 # SessionStart. Two facts that are cheap to read, easy to forget, and expensive
 # to be wrong about.
 #
-#   * A dirty tree means another iteration is already running. notes/TICKETS.md
+#   * A dirty tree means another iteration is already running. AGENTS.md
 #     says "one writer at a time" and nothing enforced it; two writers in this
 #     repo means one of them reverts the other's uncommitted fix, which the
 #     Guards section already records happening via `git checkout <file>`.
@@ -15,7 +15,7 @@ cd "$root" 2>/dev/null || exit 0
 lines=""
 dirty=$(git status --porcelain 2>/dev/null | grep -v '^?? \.claude/worktrees/' || true)
 if [ -n "$dirty" ]; then
-  lines="The tree is DIRTY, which by notes/TICKETS.md means an iteration may already be running here -- one writer at a time. Read the diff before writing anything:
+  lines="The tree is DIRTY, which by AGENTS.md ("Rules") means an iteration may already be running here -- one writer at a time. Read the diff before writing anything:
 $(printf '%s' "$dirty" | head -20)"
 fi
 

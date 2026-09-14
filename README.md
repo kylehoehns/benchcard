@@ -93,9 +93,9 @@ everything else is the interface around them.
 ```
 app/       everything served — HTML, JS modules, sw.js, vendor/
 test/      *.test.js               scripts/   CI guards, smoke, evals, bands
-work/      intent.md → spec.md → plan.md, one directory per work item
+docs/      reference; specs/ one per issue; adr/ decisions
 evals/     agent-harness tasks     bands.yaml  control band over CI health
-notes/     TICKETS.md, ROADMAP.md, DECISIONS.md
+notes/     ROADMAP.md, DECISIONS.md
 .claude/   hooks, skills, subagents
 ```
 
@@ -110,8 +110,9 @@ and most of it is machinery rather than prose:
 
 - **`AGENTS.md`** — the harness. The traps that have actually cost time here,
   written with the evidence that settled them.
-- **`work/<slug>/`** — every item gets `intent.md` → `spec.md` → `plan.md`,
-  each committed before the next begins.
+- **GitHub issues** — the open work. `/ship-feature` grills an issue into a
+  spec in `docs/specs/`, then a team of subagents in `.claude/agents/` builds,
+  tests, reviews and opens the pull request.
 - **`.claude/hooks/`** — rules that are deterministic are *enforced*, not
   documented. Blanket budget re-records, `git add -A`, and hand edits to
   generated files are denied outright.
@@ -141,7 +142,7 @@ cost this project more than any other.
 ## Contributing
 
 Read `AGENTS.md` first — it is short, and it is the accumulated list of things
-that will otherwise bite you. Then `notes/TICKETS.md` for what is open.
+that will otherwise bite you. Then the GitHub issues for what is open.
 
 Three rules worth knowing before you start:
 

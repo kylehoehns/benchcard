@@ -155,7 +155,14 @@ test('every skill declares a description, or nothing will trigger it', () => {
 
 /* A public README full of dead links is the "index whose pointers are dead"
  * failure with an audience. Checked here rather than by eye, because the split
- * that created docs/ is exactly what breaks them. */
+ * that created docs/ is exactly what breaks them.
+ *
+ * RESOLVED FROM THE LINKING FILE, not the repo root, because that is how GitHub
+ * and every markdown reader resolve them. Resolving from the root passed only
+ * because every file checked used to sit at the root or link like it did: the
+ * first skill with a sibling link (`./CONTEXT-FORMAT.md` in /domain-modeling)
+ * failed a correct link, and a `docs/` file linking `architecture.md` -- broken
+ * on GitHub -- would have passed. */
 test('every relative link in the docs resolves', () => {
   for (const f of DOCS) {
     const body = raw[f];
@@ -166,7 +173,7 @@ test('every relative link in the docs resolves', () => {
     for (const t of targets) {
       const clean = t.split('#')[0];
       if (!clean) continue;
-      assert.ok(existsSync(new URL(clean, ROOT)), `${f} links to ${t}, which does not exist`);
+      assert.ok(existsSync(new URL(clean, new URL(f, ROOT))), `${f} links to ${t}, which does not exist`);
     }
   }
 });

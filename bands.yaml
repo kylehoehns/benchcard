@@ -47,11 +47,11 @@ tiers:
     # has no rehearsed rollback, and naming one it has never exercised would be
     # the claim-the-tree-cannot-support failure in config form.
 
-# Every finding is written as an intent, in the Stage 1 shape, into a new
-# directory under work/. It enters the queue; it does not enter the tree.
+# Every finding is filed as a GitHub issue. It enters the queue; it does not
+# enter the tree.
 output:
-  format: intent
-  destination: work/
+  format: issue
+  destination: github-issues
   triage: owner
 
 governance:

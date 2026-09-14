@@ -40,6 +40,10 @@ Two consequences worth stating, because both have teeth:
 5. **Guards.** Anything under `test/` or `scripts/` that judges the tree gets
    asked whether it can fail.
 6. **Evidence.** Not "is this right" but "what would show it was wrong".
+7. **The spec.** A change built from an issue carries
+   `docs/specs/<issue>-<slug>.md`. Something the spec's **What would settle
+   it** asks for that the diff does not do, or something the diff does that no
+   spec asked for, is Important.
 
 ## Severity
 
