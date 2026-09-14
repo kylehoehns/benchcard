@@ -16,8 +16,7 @@ paths are the policy; do not invent your own.
   for, are both findings.
 - Apply `AGENTS.md` § Judgement: a grep hit, a comment and another agent's
   report are not proof. Read whole files around a change, not a window.
-- Each finding: severity (Blocker, Important or Nit, as `REVIEW.md` defines
-  them), `file:line`, the problem, and the fix. At most three Nits, and none if
-  there is an Important.
+- Each finding: severity as `REVIEW.md` defines it — including its cap on
+  Nits — `file:line`, the problem, and the fix.
 
 Return a prioritised list, Blockers first, or "no quality issues found".

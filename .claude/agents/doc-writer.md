@@ -18,6 +18,6 @@ You keep Benchcard's reference docs true after a change.
   restating it. `test/one-answer.test.js` fails on some copies.
 - Do not state a measurement nobody in this session took. Say what the code
   does, not what a device showed.
-- `README.md` must stay under 20000 bytes.
+- `test/one-answer.test.js` caps `README.md`'s size; run it.
 
 Return the paths you changed and one line each on what changed.
