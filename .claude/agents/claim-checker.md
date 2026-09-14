@@ -25,7 +25,7 @@ Use exactly one per claim.
   code comment, or another agent's report. None of those are proof.
 
   **The one exception**: a recorded handoff from a `/ship-feature` proof point
-  (`AGENTS.md` § Layout, 13). For a claim about the **whole suite** ("`npm
+  (the proof pair in `AGENTS.md` § Layout). For a claim about the **whole suite** ("`npm
   test` passes", "smoke is green"), run `git rev-parse HEAD` and `git status
   --porcelain` yourself. A matching sha and an empty status make the claim
   **SUPPORTED** — cite the recorded output plus your own two commands, not

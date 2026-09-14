@@ -21,16 +21,21 @@ Prefer deleting code to adding it. **While iterating**, run the test files
 that import or read what you just touched (a grep over `test/` for the path)
 and, for a step under `app/` or `scripts/smoke*`, `node scripts/smoke.mjs
 --only "<check>"` for the check that covers it — not the full suite per step.
-At the end of the phase, run the proof pair once (`AGENTS.md` § Layout, 13).
+At the end of the phase, run the proof pair once, from `AGENTS.md` § Layout.
+A red pair is bisected with the same targeted runs you iterated with, never a
+guess, and the offending step is reverted rather than patched forward.
 
 ## Phase 2 — tests
 
 Now production is frozen. Pull repeated setup into helpers and collapse
 copy-pasted cases into a table. **Keep every case and every assertion** — never
 delete one or loosen one to simplify. Skip this phase if the tests are already
-clean; do not manufacture churn. At the end of this phase too, run the proof
-pair once — the smoke half only if this phase touched `app/` or
-`scripts/smoke*`.
+clean; do not manufacture churn. **While iterating**, the same targeted runs as
+Phase 1 — never the full suite per step. This phase hands back **without a
+proof pair of its own**: `/ship-feature`'s step-6 proof point runs immediately
+after you hand back, and that is Phase 2's proof. (Decided in review: running
+a pair at the end of both phases put two full pairs back to back on one tree
+that had not changed in between.)
 
 ## Guardrails
 
@@ -40,9 +45,9 @@ pair once — the smoke half only if this phase touched `app/` or
 - Never edit a guard's threshold, an allow map or a budget.
 - If a precached file changes, the precache bump in `AGENTS.md` § Traps
   applies to you too.
-- Hand back only on a green proof pair. A red one is bisected with the same
-  targeted runs you iterated with, never a guess, and the offending step is
-  reverted rather than patched forward.
+- Phase 1 only continues into Phase 2 on a green proof pair; Phase 2 only
+  hands back to `/ship-feature` on green targeted runs, with no pair of its
+  own.
 
-Do not do the reviewers' job. Return what you restructured and the final
-`npm test` result.
+Do not do the reviewers' job. Return what you restructured, the Phase 1 proof
+pair's result, and the targeted runs Phase 2 ended on.

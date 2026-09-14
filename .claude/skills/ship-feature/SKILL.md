@@ -119,8 +119,8 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    > **Refactor on green, once.** Hand the change to **`refactorer`**:
    > production first (the suite is the oracle), then tests (production frozen,
    > keep every case). Keep the instruction generic — "improve the internal
-   > structure without changing behaviour". It hands back only on a green
-   > `npm test`. Run it here, never in the fix loop.
+   > structure without changing behaviour". `refactorer.md` owns its hand-back
+   > condition. Run it here, never in the fix loop.
 
    **Prove and commit.** Run the proof pair — `AGENTS.md` § Layout names it and
    says it runs once, not twice. Both green: stage **explicit paths**,
@@ -138,15 +138,15 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    `guard-falsifier` to the same message if the diff touches `test/`,
    `scripts/` or `.claude/hooks/`.
 
-8. **Fix, once.** Actionable findings go to `developer` (or `tester`), then
-   `npm test` again. At most one pass. A `REVIEW.md` **Blocker** that survives
-   it stops the run: report it in the wrap-up rather than shipping.
+8. **Fix, once.** Actionable findings go to `developer` (or `tester`). At most
+   one pass. A `REVIEW.md` **Blocker** that survives it stops the run: report
+   it in the wrap-up rather than shipping.
 
-   **Prove and commit again**, the same way as step 6 — the proof pair,
-   explicit paths, no trailers, a fresh handoff (HEAD moved, so step 6's is
-   stale). If nothing in this step was actionable, the tree is exactly what
-   step 6 already proved and committed: keep that handoff and skip straight to
-   Ship rather than running the pair a third time.
+   **Prove and commit again**, the same way as step 6 — the proof pair (one
+   proof, not two), explicit paths, no trailers, a fresh handoff (HEAD moved,
+   so step 6's is stale). If nothing in this step was actionable, the tree is
+   exactly what step 6 already proved and committed: keep that handoff and
+   skip straight to Ship rather than running the pair again.
 
 9. **Verify what a harness cannot.** `/browser-verify` for anything a reader
    sees. The proof pair already ran at whichever step above is current — cite
@@ -156,10 +156,9 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 ## Ship
 
 10. **Open the PR.** The proof points already committed the change; this step
-    pushes what is already on the branch rather than making a new commit.  Run
+    pushes what is already on the branch rather than making a new commit. Run
     `claim-checker` over the PR body before it goes up, passing it the current
-    handoff — a claim about the whole suite is exactly what it re-verifies from
-    `git rev-parse HEAD` and `git status --porcelain` rather than trusting.
+    handoff — it owns how it uses it (`claim-checker.md`).
 
     ```bash
     git push -u origin "$(git branch --show-current)"

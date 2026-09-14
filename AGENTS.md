@@ -170,9 +170,13 @@ load, or the cold load plus `goRich`), for the loop while iterating —
 `node scripts/smoke.mjs --only "bench mode wake lock"` prints that one row and
 nothing else. It is not proof: a partial run says nothing about the other 20
 checks, and the full `npm run smoke` still stands between every change and its
-PR. **The proof pair** is `npm test` then `npm run smoke -- --no-tests`, and the
-suite runs once, not twice — an agent handed a tree a proof point already
-recorded as green does not re-run it to say so again.
+PR. **The iterate-then-prove rule**: while iterating, run `node --test <file>`
+for the file you touched and `--only "<check>"` for the check it covers, never
+the full suite. Then, once, before handing back: **the proof pair** —
+`npm test` then `npm run smoke -- --no-tests`, the smoke half only if you
+touched `app/` or `scripts/smoke*` — and the suite runs once, not twice: an
+agent handed a tree a proof point already recorded as green does not re-run it
+to say so again.
 
 The payload budget is a **recorded** baseline in `scripts/budgets.json`.
 **Bytes and nodes are regression alarms, not constraints**: the shell is

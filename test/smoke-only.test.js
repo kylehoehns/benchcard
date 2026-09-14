@@ -12,6 +12,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const ROOT = new URL('../', import.meta.url);
 const SMOKE = new URL('scripts/smoke.mjs', ROOT).pathname;
@@ -23,17 +26,39 @@ const CWD = new URL('.', ROOT).pathname;
  * makes `--only` fall through to the real run. */
 const FAST_MS = 5000;
 
+/* The 5s timer above only catches a launch slow enough to blow the deadline —
+ * a launch-then-kill, or a launch that happens to come up fast on this
+ * machine, still finishes inside 5s and would pass it. `launch()` in
+ * smoke.mjs calls `mkdtemp(join(tmpdir(), 'benchcard-smoke-'))` to make
+ * Chrome's `--user-data-dir` before it ever spawns the binary, so a fresh,
+ * otherwise-empty directory pointed to by TMPDIR/TMP/TEMP is a tripwire no
+ * timer can be fooled by: if Chrome launches at all, this directory stops
+ * being empty, no matter how fast. */
 function run(args) {
+  const sandbox = mkdtempSync(join(tmpdir(), 'ci-guard-'));
   const start = Date.now();
   let status = 0, stdout = '', stderr = '';
   try {
-    stdout = execFileSync(process.execPath, [SMOKE, ...args], { cwd: CWD, encoding: 'utf8' });
+    stdout = execFileSync(process.execPath, [SMOKE, ...args], {
+      cwd: CWD,
+      encoding: 'utf8',
+      env: { ...process.env, TMPDIR: sandbox, TMP: sandbox, TEMP: sandbox },
+    });
   } catch (e) {
     status = e.status;
     stdout = e.stdout ?? '';
     stderr = e.stderr ?? '';
   }
-  return { status, stdout, stderr, ms: Date.now() - start };
+  const ms = Date.now() - start;
+  const chromeProfileDirs = readdirSync(sandbox);
+  rmSync(sandbox, { recursive: true, force: true });
+  return { status, stdout, stderr, ms, chromeProfileDirs };
+}
+
+function assertNeverLaunchedChrome(r, label) {
+  assert.deepEqual(r.chromeProfileDirs, [],
+    `${label}: TMPDIR sandbox is not empty (${JSON.stringify(r.chromeProfileDirs)}) — ` +
+    `Chrome's --user-data-dir was created here, so validation ran after launch(), not before it`);
 }
 
 const TABLE_HEADER = /benchcard smoke —/;
@@ -48,6 +73,7 @@ test('--only "nope" exits non-zero, fast, with no table', () => {
   assert.ok(invalid.ms < FAST_MS,
     `took ${invalid.ms}ms — an unknown --only name must be refused before serve()/Chrome, not after`);
   assert.doesNotMatch(invalid.stdout + invalid.stderr, TABLE_HEADER);
+  assertNeverLaunchedChrome(invalid, '--only "nope"');
 });
 
 test('the refusal lists the 16 selectable rows, one per line', () => {
@@ -91,6 +117,7 @@ for (const name of NON_SELECTABLE) {
     assert.deepEqual(names, validNames,
       `--only "${name}" printed a different valid-name list than the "nope" case`);
     assert.ok(!names.includes(name), `"${name}" must not appear in its own valid-names list`);
+    assertNeverLaunchedChrome(r, `--only "${name}"`);
   });
 }
 
@@ -101,4 +128,42 @@ test('--only combined with --update-budgets is refused, fast, with no table', ()
     `took ${r.ms}ms — the combination must be refused before serve()/Chrome`);
   assert.match(r.stdout + r.stderr, /cannot be combined/i);
   assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER);
+  assertNeverLaunchedChrome(r, '--only + --update-budgets');
+});
+
+/* #40, item 3 (tightened in review): `--only=<name>` is the same flag as
+ * `--only <name>` -- it used to be silently ignored, which fell through to a
+ * full run instead of being refused. And a bare `--only` with no name after
+ * it -- as the last argument, or immediately followed by another `--flag` --
+ * is refused the same way an unknown name is, rather than reading the next
+ * flag as if it were the check name. */
+test('--only=nope (the = form) is refused the same way as --only nope', () => {
+  const r = run(['--only=nope']);
+  assert.notEqual(r.status, 0, '--only=nope must not be silently ignored into a full run');
+  assert.ok(r.ms < FAST_MS,
+    `took ${r.ms}ms — --only=<unknown> must be refused before serve()/Chrome`);
+  assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER, '--only=nope must never print a table');
+  const names = r.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean);
+  assert.deepEqual(names, validNames, '--only=nope printed a different valid-name list than --only nope');
+  assertNeverLaunchedChrome(r, '--only=nope');
+});
+
+test('a bare --only as the last argument is refused with the list', () => {
+  const r = run(['--only']);
+  assert.notEqual(r.status, 0, 'a bare --only with nothing after it must not fall through to a full run');
+  assert.ok(r.ms < FAST_MS, `took ${r.ms}ms — a bare --only must be refused before serve()/Chrome`);
+  assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER, 'a bare --only must never print a table');
+  const names = r.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean);
+  assert.deepEqual(names, validNames, 'a bare --only printed a different valid-name list than --only nope');
+  assertNeverLaunchedChrome(r, 'bare --only (last arg)');
+});
+
+test('--only immediately followed by another flag is refused with the list', () => {
+  const r = run(['--only', '--json']);
+  assert.notEqual(r.status, 0, '--only --json must not read --json as the check name');
+  assert.ok(r.ms < FAST_MS, `took ${r.ms}ms — --only --json must be refused before serve()/Chrome`);
+  assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER, '--only --json must never print a table');
+  const names = r.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean);
+  assert.deepEqual(names, validNames, '--only --json printed a different valid-name list than --only nope');
+  assertNeverLaunchedChrome(r, '--only --json');
 });

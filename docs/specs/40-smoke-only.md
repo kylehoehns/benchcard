@@ -27,7 +27,10 @@ still runs all of it.
    `benchcard smoke — 390×844, 21 checks`.
 3. Matching is exact, on the full row name. `--only "nope"` exits non-zero,
    prints every valid `--only` name one per line, and launches neither the
-   server nor Chrome. It never prints a table.
+   server nor Chrome. It never prints a table. `--only=<name>` is the same
+   flag; `--only` with no name after it (last argument, or followed by another
+   `--flag`) is refused the same way. (Added in review: `--only=x` was silently
+   ignored, giving a full run.)
 4. The valid `--only` names are the 16 browser-check rows. `no console errors`,
    the three budget rows and `node --test` are not valid: each is refused as in
    3, with the list.
@@ -47,9 +50,10 @@ still runs all of it.
    with `--only`.
 9. A full run without `--only` prints the same 21 rows, in the same order, as
    `main` at 727dedb (20 with `--no-tests`).
-10. A full run checks the names it printed against the registry. If a row
-    exists that the registry does not name, or the registry names a row the
-    run did not print, the run prints which and exits non-zero. Skipped under
+10. A full run checks the names it printed against the registry, as an ordered
+    list: a row the registry does not name, a registry row not printed, a row
+    printed twice, or rows in a different order all print which (to stderr)
+    and exit non-zero. Skipped under
     `--update-budgets`, whose budget rows differ by design; `node --test` is
     excluded from the comparison under `--no-tests`.
 11. `guard-falsifier` shows these going red: the unknown-name exit (3), the CI
@@ -79,8 +83,11 @@ still runs all of it.
     and run the proof pair once before handing back — the smoke half only if
     they touched `app/` or `scripts/smoke*`. The iterate-then-prove rule lives
     in `AGENTS.md` (13); the three agent files point at it.
-16. **The refactorer** runs the proof pair once at the end of Phase 1 and once
-    at the end of Phase 2, not per step. While iterating it runs the test files
+16. **The refactorer** runs the proof pair once, at the end of Phase 1, not
+    per step. Phase 2 iterates with targeted runs and hands back without a
+    pair of its own: `/ship-feature`'s step-6 proof point runs immediately
+    after and is Phase 2's proof. (Decided in review: running both put two
+    full pairs back to back on one unchanged tree.) While iterating it runs the test files
     that import or read what it touched (a grep over `test/` for each touched
     path) and `--only` for the smoke checks covering touched `app/` or
     `scripts/smoke*` code. A red proof pair is bisected with targeted runs, and

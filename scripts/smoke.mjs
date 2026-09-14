@@ -1654,7 +1654,15 @@ const STATIC_A11Y = new Set([
  * `goRich` — every row after the split, because `goRich` is a fresh reload of
  * the same fixture and so reproduces the arrival state whether it is the first
  * call or, as two rows below get it in a full run, the second. `run` is the
- * pass itself, called with the session a partial run has open. */
+ * pass itself, called with the session a partial run has open.
+ *
+ * The eight `cold` rows' names (`overflow` through `fcp`) are hand-pinned
+ * copies of the `add(...)` calls in `scripts/smoke-checks.js`, for the same
+ * reason the three budget names below are hand-pinned copies of
+ * `budgets.mjs`'s: that file is evaluated as page text, not imported, so
+ * there is nothing here a rename would fail to compile. The drift check after
+ * the full run's table is what actually catches a rename — it is the guard,
+ * not the comment. */
 const REGISTRY = Object.freeze([
   { id: 'console', name: 'no console errors', selectable: false, setup: null },
   { id: 'overflow', name: 'no horizontal overflow', selectable: true, setup: 'cold' },
@@ -1753,25 +1761,32 @@ async function browserChecks(origin, only) {
       await ${SETTLE}; })()`);
 
     const source = await readFile(join(ROOT, 'scripts', 'smoke-checks.js'), 'utf8');
+
+    /* THE PARTIAL PATH, `rich` branch. A `rich` row's own pass never reads
+       what `smoke-checks.js` returns, so running it here would be a
+       Runtime.evaluate whose result is thrown away. Skip it, and build only
+       the report skeleton the partial output needs (`viewport`, for the
+       header) instead of re-deriving it from the evaluate. A `cold` row DOES
+       need that evaluate — its selected row IS one of its verdicts — so it
+       still runs below. */
+    if (only && only.setup === 'rich') {
+      const report = { viewport: [WIDTH, HEIGHT], checks: [] };
+      await goRich(c, origin);
+      report.checks = [await only.run({ c, origin, source, consoleErrors })];
+      return { report, consoleErrors };
+    }
+
     const { result, exceptionDetails } = await c.send('Runtime.evaluate', { expression: source, returnByValue: true });
     if (exceptionDetails) throw new Error('checks threw: ' + (exceptionDetails.exception?.description || exceptionDetails.text));
 
     const report = result.value;
 
-    /* THE PARTIAL PATH. It reuses the setup above rather than reimplementing
-       it: the cold load and this same evaluate already ran, so a `cold` row
-       just keeps its one entry out of what came back. A `rich` row calls
-       `goRich` — the same function the full run below calls, once — and then
-       its own pass, nothing else. No budgets, no `node --test`, no second
-       `goRich`: see the registry's comment for why one reproduces the
-       arrival state either way. */
+    /* THE PARTIAL PATH, `cold` branch. It reuses the setup above rather than
+       reimplementing it: the cold load and this same evaluate already ran, so
+       a `cold` row just keeps its one entry out of what came back. No
+       budgets, no `node --test`. */
     if (only) {
-      if (only.setup === 'cold') {
-        report.checks = report.checks.filter(k => k.name === only.name);
-      } else {
-        await goRich(c, origin);
-        report.checks = [await only.run({ c, origin, source, consoleErrors })];
-      }
+      report.checks = report.checks.filter(k => k.name === only.name);
       return { report, consoleErrors };
     }
 
@@ -1854,13 +1869,25 @@ const printRow = (pad, chk) =>
  *
  * Validated BEFORE `serve()` and before Chrome ever launches: `--only "nope"`
  * has to exit fast enough that a node test can spawn this file and read the
- * code back, not wait out a browser boot to be told the name was wrong. */
-const ONLY_NAME = (() => {
-  const i = args.indexOf('--only');
-  return i === -1 ? null : args[i + 1];
-})();
+ * code back, not wait out a browser boot to be told the name was wrong.
+ *
+ * Two spellings are accepted: `--only <name>` and `--only=<name>`, checked
+ * for separately since `args.indexOf('--only')` never matches the `=` form.
+ * `HAS_ONLY` ("the flag was given at all") is kept apart from `ONLY_NAME`
+ * (the name that follows it, or `''` when there isn't one) so a bare `--only`
+ * — the last argument, or followed by another `--flag` rather than a name —
+ * is refused exactly like an unknown name instead of silently becoming a
+ * full run, which is what `args[i + 1]` reading a flag as the name used to
+ * do. */
+const ONLY_EQ = args.find(a => a.startsWith('--only='));
+const ONLY_IDX = args.indexOf('--only');
+const HAS_ONLY = ONLY_EQ !== undefined || ONLY_IDX !== -1;
+const ONLY_NAME = ONLY_EQ !== undefined ? ONLY_EQ.slice('--only='.length)
+  : ONLY_IDX === -1 ? null
+  : (args[ONLY_IDX + 1] === undefined || args[ONLY_IDX + 1].startsWith('--')) ? ''
+  : args[ONLY_IDX + 1];
 
-if (ONLY_NAME !== null && has('--update-budgets')) {
+if (HAS_ONLY && has('--update-budgets')) {
   console.error('--only and --update-budgets cannot be combined: --only proves one check on the '
     + 'rich fixture, --update-budgets re-records the lean cold load. Run them separately.');
   process.exit(1);
@@ -1868,10 +1895,14 @@ if (ONLY_NAME !== null && has('--update-budgets')) {
 
 const VALID_ONLY = REGISTRY.filter(r => r.selectable);
 let ONLY = null;
-if (ONLY_NAME !== null) {
+if (HAS_ONLY) {
   ONLY = VALID_ONLY.find(r => r.name === ONLY_NAME) || null;
   if (!ONLY) {
-    console.error(`--only "${ONLY_NAME}" is not a check --only can run. Valid names:`);
+    if (ONLY_NAME === '') {
+      console.error('--only requires a check name. Valid names:');
+    } else {
+      console.error(`--only "${ONLY_NAME}" is not a check --only can run. Valid names:`);
+    }
     for (const r of VALID_ONLY) console.error(r.name);
     process.exit(1);
   }
@@ -1941,21 +1972,34 @@ if (JSON_OUT) {
 }
 
 /* THE DRIFT CHECK. A full run's printed names have to be exactly the
-   registry's — not a superset, not a subset — or the registry stops being
-   something `--only` can trust. Skipped under `--update-budgets`: that run's
-   budget row is `budgets re-recorded`, not the three comparison rows, by
-   design. `node --test` is excluded under `--no-tests`, which drops that row
-   on purpose rather than by drift. */
+   registry's, IN ORDER — not a superset, not a subset, not a reshuffle — or
+   the registry stops being something `--only` can trust. Compared as ORDERED
+   ARRAYS, not sets: a set comparison is blind to a row printed twice (still
+   one set member) and to two rows swapping places (still the same set).
+   Skipped under `--update-budgets`: that run's budget row is `budgets
+   re-recorded`, not the three comparison rows, by design. `node --test` is
+   excluded under `--no-tests`, which drops that row on purpose rather than by
+   drift. Printed to STDERR, not stdout, so `--json`'s stdout stays valid
+   JSON even when the drift check is what fails the run. */
 if (!has('--update-budgets')) {
-  const expected = new Set(
-    REGISTRY.filter(r => !(has('--no-tests') && r.id === 'nodetest')).map(r => r.name));
-  const printed = new Set(report.checks.map(c => c.name));
-  const extra = [...printed].filter(n => !expected.has(n));
-  const missing = [...expected].filter(n => !printed.has(n));
-  if (extra.length || missing.length) {
-    console.log('registry drift:');
-    if (extra.length) console.log(`  printed, but not in the registry: ${extra.join(', ')}`);
-    if (missing.length) console.log(`  in the registry, but not printed: ${missing.join(', ')}`);
+  const expected = REGISTRY.filter(r => !(has('--no-tests') && r.id === 'nodetest')).map(r => r.name);
+  const printed = report.checks.map(c => c.name);
+  const inOrder = expected.length === printed.length && expected.every((n, i) => n === printed[i]);
+  if (!inOrder) {
+    const countOf = list => list.reduce((m, n) => m.set(n, (m.get(n) || 0) + 1), new Map());
+    const expectedCount = countOf(expected), printedCount = countOf(printed);
+    const extra = [...printedCount.keys()].filter(n => !expectedCount.has(n));
+    const missing = [...expectedCount.keys()].filter(n => !printedCount.has(n));
+    const duplicated = [...printedCount.entries()]
+      .filter(([n, count]) => count > 1 && expectedCount.has(n)).map(([n]) => n);
+    console.error('registry drift:');
+    if (extra.length) console.error(`  printed, but not in the registry: ${extra.join(', ')}`);
+    if (missing.length) console.error(`  in the registry, but not printed: ${missing.join(', ')}`);
+    if (duplicated.length) console.error(`  printed more than once: ${duplicated.join(', ')}`);
+    if (!extra.length && !missing.length && !duplicated.length) {
+      console.error(`  same names, different order — expected ${JSON.stringify(expected)}`);
+      console.error(`                                       got ${JSON.stringify(printed)}`);
+    }
     process.exit(1);
   }
 }
