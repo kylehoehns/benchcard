@@ -92,7 +92,8 @@ copying them. `/ship-feature` runs an issue end to end with the subagents in
 from `/grilling` and `/domain-modeling`. `/to-spec` and `/to-tickets` turn a
 settled conversation into issues, and `/setup-matt-pocock-skills` wrote their
 configuration. Those six are Matt Pocock's, copied in unchanged so they can be
-refreshed from upstream. **They are Claude-specific. This file is not** — anything an
+refreshed from upstream — except that the setup skill keeps only its GitHub
+tracker template, because issues here live on GitHub. **They are Claude-specific. This file is not** — anything an
 agent must know to avoid breaking the tree belongs here, where every tool reads
 it.
 
