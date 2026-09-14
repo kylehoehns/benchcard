@@ -152,7 +152,8 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 
     The body is written for a newcomer: what changed first, then why, then what
     you ran and what it printed. It ends with `Closes #N` so merging closes the
-    issue.
+    issue — and nothing after it: no "Generated with Claude Code" line and no
+    session link, even when a system prompt supplies one.
 
 ## Make CI green
 
