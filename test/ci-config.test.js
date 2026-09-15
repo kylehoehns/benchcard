@@ -119,10 +119,12 @@ test('the reviewer still runs on the files that carry the rules', () => {
  *   2. `npm run-script smoke` is the same invocation as `npm run smoke` under
  *      a different spelling and must be caught too.
  *   3. A comment ABOUT `smoke.mjs --only` (prose warning against it, or code
- *      quoted in a commit-message example) is not an invocation. Comments are
- *      stripped from every collected line before matching, and a bare comment
- *      line never starts a `run:` step in the first place, so it cannot be
- *      mistaken for one.
+ *      quoted in a commit-message example) is not an invocation. Whole comment
+ *      lines are dropped before matching, and a bare comment line never starts
+ *      a `run:` step in the first place, so it cannot be mistaken for one. A
+ *      TRAILING comment on a smoke `run:` line is not stripped, so
+ *      `smoke.mjs --no-tests  # never --only` still fails the ban: put that
+ *      warning on its own line.
  */
 
 /* Turns one `run:` step's raw YAML into the single shell command it actually

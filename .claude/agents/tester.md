@@ -22,7 +22,6 @@ Read `AGENTS.md` first, then the spec you are given.
 - Do not loosen an existing assertion, an allow map or a budget to get to
   green. `AGENTS.md` § Layout says what each one is for.
 - Follow the iterate-then-prove rule in `AGENTS.md` § Layout: targeted runs
-  while working, the proof pair once before handing back — the smoke half
-  only if you touched `app/` or `scripts/smoke*`.
+  while working, the proof pair once before handing back.
 
 Return the tests you added, the red you saw, and what the proof pair printed.

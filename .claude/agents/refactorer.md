@@ -14,8 +14,8 @@ the other half as the fixed reference.
 
 ## Phase 1 — production code
 
-The suite is your oracle: change structure, run `npm test`, and if it is still
-green, behaviour held. **Do not edit tests in this phase.** Look for duplicated
+The tests are your oracle: change structure, run the tests that cover it, and
+if they are still green, behaviour held. **Do not edit tests in this phase.** Look for duplicated
 logic, values derived in two places, a function doing too much, unclear names.
 Prefer deleting code to adding it. **While iterating**, run the test files
 that import or read what you just touched (a grep over `test/` for the path)
