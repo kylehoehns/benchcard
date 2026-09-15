@@ -20,14 +20,15 @@ green after a few turns, having posted nothing, because the action treated a
   the `code-review` plugin is #1646).
 - Claude Code starts subagents in the background by default. A session that
   launches one and waits for it emits an **interim** `result` first.
-- Measured locally with Claude Code 2.1.271 (the version CI installs), one
+- Measured locally with Claude Code 2.1.271 (CI installs whatever is current;
+  #38 got 2.1.270, #41's runs 2.1.271 and 2.1.272), one
   subagent asked to reply `PONG`:
   - default: the Agent tool took `run_in_background: true`, returned
     `Async agent launched successfully…`, and the stream carried **two**
     `result` messages, the first saying the subagent was still running;
-  - with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`: the Agent tool had no
-    `run_in_background` option, returned `PONG`, and the stream carried **one**
-    `result`.
+  - with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`: the Agent call had no
+    `run_in_background` and ran in the foreground, returned `PONG`, and the
+    stream carried **one** `result`.
 - Silent passes observed on this repo: #38 (5 turns, $0.13), #41 at `b201706`
   twice (3 turns, $0.11; 5 turns, $0.13) and at `086dcf0` (6 turns, $0.18). #41
   at `8f7aa3f` reviewed fully (30 turns, $3.86, two threads).
@@ -40,7 +41,7 @@ green after a few turns, having posted nothing, because the action treated a
 2. `.github/workflows/claude.yml`: its `anthropics/claude-code-action` step has
    the same `env:` entry.
 3. The reason is written once, in `claude-code-review.yml`'s header, next to
-   the existing "A GREEN CHECK HERE CAN MEAN 'DID NOT RUN'" note: a third way
+   the existing "A GREEN CHECK HERE CAN MEAN 'DID NOT RUN'" note: a second way
    the job passes without reviewing, what the variable does, and the two action
    issues. `claude.yml` points at it in one line rather than restating it.
 4. A test in `test/ci-config.test.js` fails if either workflow's
