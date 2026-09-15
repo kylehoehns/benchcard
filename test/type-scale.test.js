@@ -125,6 +125,33 @@ test('every font-size in an index.html style attribute is on the scale', () => {
     `index.html inline styles must not size text directly: ${offenders.join(', ')}`);
 });
 
+/* The `font` shorthand carries a size too, and `styleAttrValues` above only
+   ever looks for the literal string `font-size:`, so a `style="font:17px/…"`
+   sailed through both checks above -- neither name matches "font:" without
+   the hyphen. Extract the size out of the shorthand the same way a browser
+   would: the first token, unless it is a 3-digit weight, in which case the
+   size is the second token; either way, drop a trailing `/line-height`. */
+function fontShorthandSizes(html) {
+  const values = [];
+  for (const m of html.matchAll(/style="([^"]*)"/g)) {
+    for (const fm of m[1].matchAll(/font:\s*([^;"]+);?/g)) values.push(fm[1].trim());
+  }
+  return values
+    .filter(val => val !== 'inherit')
+    .map(val => {
+      const parts = val.split(/\s+/);
+      const sizePart = /^\d{3}$/.test(parts[0]) ? parts[1] : parts[0];
+      return (sizePart || '').split('/')[0];
+    });
+}
+
+test('every font: shorthand in an index.html style attribute has an on-scale size', () => {
+  const offenders = fontShorthandSizes(index).filter(size => !FS_TOKEN.test(size));
+  assert.deepEqual(offenders, [],
+    `index.html inline styles must not size text directly via the font: shorthand ` +
+      `(font: inherit is fine): ${offenders.join(', ')}`);
+});
+
 const FW_OK = new Set(['400', '500', '600', '700', 'inherit']);
 
 function checkFontWeights(src, label) {
