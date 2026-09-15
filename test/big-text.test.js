@@ -13,8 +13,8 @@ const css = readFileSync(new URL('app.css', ROOT), 'utf8');
 
 const BIG = '@media (max-width: 19em)';
 /* The 620px block that carries the bar's stages -- there are several blocks at
-   that width, and this is the one that hides the wordmark and Print's label. */
-const PHONE_AT = css.lastIndexOf('@media (max-width: 620px)', css.indexOf('.brand > span'));
+   that width, and this is the one that lets the bar wrap. */
+const PHONE_AT = css.lastIndexOf('@media (max-width: 620px)', css.indexOf('.statrow { gap: 1rem; }'));
 const PHONE_BLOCK = css.slice(PHONE_AT, css.indexOf('\n}', PHONE_AT));
 
 test('the big-text query is in em, not px', () => {

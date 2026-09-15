@@ -40,26 +40,26 @@
 /* Which view the app will land on, resolved before first paint -- the same
    idiom as the theme script above and for the same reason: `app.js` is a
    deferred module two round trips away, and the markup has to commit to a view
-   long before it arrives. `#view-games` is the one view that ships visible, so
-   a coach on their FIRST EVER load painted the games shell -- top bar, team
-   strip, an empty rotation -- and then watched it flip to the welcome screen.
-   Reported from production on 2026-08-25.
+   long before it arrives. `#view-today` is the one view that ships visible
+   (#23), so a coach on their FIRST EVER load used to paint the games shell --
+   top bar, team strip, an empty rotation -- and then watch it flip to the
+   welcome screen. Reported from production on 2026-08-25.
 
    The obvious fix, shipping `#view-welcome` visible instead, only moves the
    flash onto the returning coach, who loads the app every Saturday rather than
-   once. So the markup default stays "games" -- which is also what a throw in
-   here degrades to, and it is why nothing is stamped for a boot that lands on
-   games -- and this script stamps `data-boot` only when the first frame has to
-   be something other than the games shell. `app.css` reads the attribute;
+   once. So the markup default is "today" -- which is also what a throw in here
+   degrades to, and it is why nothing is stamped for a boot that lands on
+   Today -- and this script stamps `data-boot` only when the first frame has to
+   be something other than the Today shell. `app.css` reads the attribute;
    `applyView` in render.js removes it the first time it runs, so nothing here
    can outlive the boot or fight the real view logic.
 
-   IT RESOLVES THE WHOLE VIEW, NOT JUST WELCOME-VS-GAMES (A42). A41 stamped
-   `welcome` or nothing, which left the coach who last closed the app on Team,
-   Season or Settings watching the same flash one view along: the games shell,
-   then a flip. `app.js` boots with `setView(state.onboarded ? state.view :
-   'welcome')`, so the stored view is half the answer and it is read here the
-   same way `sanitize` reads it.
+   IT RESOLVES THE WHOLE VIEW, NOT JUST WELCOME-VS-TODAY (A42, #23). A41
+   stamped `welcome` or nothing, which left the coach who last closed the app
+   on Team, Season or Settings watching the same flash one view along: the
+   games shell, then a flip. `app.js` boots with `setView(state.onboarded ?
+   state.view : 'welcome')`, so the stored view is half the answer and it is
+   read here the same way `sanitize` reads it.
 
    THE ONLY THING THAT MATTERS HERE IS THAT IT AGREES WITH `loadState` AND
    `sanitize`. A second, cheaper implementation of "does this coach have a
@@ -76,7 +76,7 @@
      - `viewOf` is `sanitize`'s allow-list and its ONE legacy translation,
        `roster -> team` (A40's `VIEW_WAS`). A backup file written before that
        rename still restores onto the Team page, so the first frame has to know
-       it too. An unrecognised value lands on games exactly as `sanitize` sends
+       it too. An unrecognised value lands on Today exactly as `sanitize` sends
        it there -- stamping a view the allow-list would reject paints a frame
        with every view hidden. The same-members check is in the test file; an
        array, not an object, because `{}['constructor']` is truthy.
@@ -113,12 +113,12 @@
       return r.version === 6 && Array.isArray(r.teams) && r.teams.length > 0
         && typeof r.onboarded === 'boolean';
     };
-    var VIEWS = ['games', 'team', 'season', 'settings'];
+    var VIEWS = ['today', 'games', 'team', 'season', 'settings'];
     var viewOf = function (v) {
       if (v === 'roster') v = 'team';
-      return VIEWS.indexOf(v) < 0 ? 'games' : v;
+      return VIEWS.indexOf(v) < 0 ? 'today' : v;
     };
-    var welcome = true, view = 'games', decided = false, raw, i;
+    var welcome = true, view = 'today', decided = false, raw, i;
     var v6 = ['benchcard.v6', 'benchcard.v6.bak'];
     var older = ['benchcard.v5', 'benchcard.v5.bak', 'benchcard.v4', 'benchcard.v4.bak', 'benchcard.v3'];
     for (i = 0; i < v6.length && !decided; i++) {
@@ -144,9 +144,9 @@
         welcome = false;
       }
     }
-    // games is the markup default, so it is stamped as nothing at all
+    // today is the markup default, so it is stamped as nothing at all
     if (welcome) view = 'welcome';
-    if (view !== 'games') document.documentElement.setAttribute('data-boot', view);
+    if (view !== 'today') document.documentElement.setAttribute('data-boot', view);
   } catch (e) {}
 })();
 </script>
@@ -330,53 +330,34 @@
 </noscript>
 <div class="app">
 
+  <!-- One header, two states (N4, N5, C1): Today's own (the team button, the
+       keys hint, the gear) or the back button and the screen's title, never
+       both at once. `applyView` in render.js toggles `hidden` on the two
+       halves and, off Today, writes the title into `#barTitle`. -->
   <header class="bar noprint">
-    <div class="brand">
-      <svg width="25" height="25" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="10.5" fill="var(--accent)"/>
-        <g stroke="var(--accent-ink)" stroke-width="1.35" fill="none" opacity=".55">
-          <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
-          <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
-        </g>
-      </svg>
-      <span>Benchcard</span>
+    <div class="bar-today" id="barToday">
+      <!-- The team switcher. A native `popover` (C8) anchored to this button
+           rather than a dropdown built by hand -- Escape, outside-click and
+           the top layer all come free. Visible text is the team's own name
+           (or `Team N`, unnamed), written by `renderTeams` in teams-view.js;
+           the chevron is decoration. -->
+      <button class="teambtn press" id="teamBtn" type="button" popovertarget="teamMenu">
+        <span id="teamBtnLabel"></span>
+        <span class="i teambtn-chev" data-icon="chevron-right" aria-hidden="true"></span>
+      </button>
+      <div class="teammenu" id="teamMenu" popover aria-label="Teams"></div>
+      <div class="spacer"></div>
+      <button class="keys-hint press" id="keysHint" type="button" aria-label="Keyboard shortcuts"><kbd>?</kbd><span>Shortcuts</span></button>
+      <!-- The gear only ever shows here, on Today (N4) -- `#barToday` is
+           hidden on every other screen, and there is no second way to reach
+           it. -->
+      <button class="btn icon ghost press" id="settingsBtn" type="button" title="Settings" aria-label="Settings"><span class="i" data-icon="settings"></span></button>
     </div>
-    <div class="spacer"></div>
-    <!-- Three tabs, and the tab budget is now spent: measured, the bar has room
-         for exactly one more control on a 390px phone and only because `?` and
-         the theme toggle gave up their seats to the cog. Season earns the third
-         because it is what a coach opens between games; Settings does not,
-         because it is set once a season. -->
-    <!-- A40: the LABEL and the view KEY are both "Team" again as of slice 2,
-         but they are still a MAP and not the same thing, and THIS is the one
-         place the map is written. A guard that needs the pair reads it out of
-         these three buttons rather than assuming the label is the key (see
-         test/sample-team.test.js). The old key `roster` is translated ONCE, by
-         `VIEW_WAS` in storage.js, because a coach's backup file still carries
-         it -- do not add a second translation here or in `applyView`. -->
-    <nav class="seg" id="viewnav">
-      <button class="press" data-view="games">Games</button>
-      <button class="press" data-view="team">Team <span id="rcount"></span></button>
-      <button class="press" data-view="season">Season</button>
-    </nav>
-    <button class="keys-hint press" id="keysHint" type="button" aria-label="Keyboard shortcuts"><kbd>?</kbd><span>Shortcuts</span></button>
-    <button class="btn icon ghost press" id="settingsBtn" type="button" title="Settings" aria-label="Settings"><span class="i" data-icon="settings"></span></button>
+    <div class="bar-back" id="barBack" hidden>
+      <button class="btn icon ghost press" id="backBtn" type="button" aria-label="Back to Today"><span class="i" data-icon="chevron-left"></span></button>
+      <h1 class="bar-title" id="barTitle"></h1>
+    </div>
   </header>
-
-  <!-- The team switcher belongs to the SHELL, not to any one view -- see
-       teams-view.js for why it left the games view. Not sticky (the bar
-       already is, and two on a phone eat the rotation) and not IN the bar (one
-       row at 360px by 0.1px; the team name makes it two, 72px → 121px, against
-       54px here). `noprint`: it inherited that from `.dayhead` before.
-
-       A45: IT SHIPS VISIBLE, EMPTY, WITH ONE ROW OF HEIGHT RESERVED, the same
-       way `.bar` and `.foot` ship. It used to ship `hidden`, and the chips only
-       arrive with `renderTeams`, so the first frame had no strip and the boot
-       pushed every view down 53.6px — on games too, which stamps nothing and so
-       could never have been fixed by a rule keyed on the stamp. `app.css`
-       reserves the row and `html[data-boot="welcome"]` takes the strip away for
-       the one boot that must not have it; `applyView` owns it from then on. -->
-  <nav class="teamtabs noprint" id="teamtabs" aria-label="Teams"></nav>
 
   <!-- "Changes are not being saved" belongs to the SHELL for the same reason
        the team switcher does. It used to live inside the Rotation block of the
@@ -392,13 +373,29 @@
        (`#storagewarn:not(:empty)` in app.css carries the padding). -->
   <div id="storagewarn" class="noprint" role="status" aria-live="polite"></div>
 
+  <!-- ============================ TODAY ============================
+       Home (#23, N1). No tab bar: a coach opens the app and sees their
+       team's games for the day, with Team and Season underneath and a gear
+       for Settings. Every entry below is painted by `renderTabs` in
+       teams-view.js -- the containers are static markup so the boot has
+       somewhere to put a skeleton, but nothing inside them is. -->
+  <main class="view wrap noprint" id="view-today">
+    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Today</h1>
+    <div class="today-games" id="todayGames"></div>
+    <div class="today-acts">
+      <button class="btn press" id="todayAddGame" type="button">Add a game</button>
+      <button class="btn ghost press" id="todayNewDay" type="button">New day</button>
+    </div>
+    <button class="today-entry press" id="todayTeam" type="button"></button>
+    <button class="today-entry press" id="todaySeason" type="button"></button>
+  </main>
+
   <!-- ============================ GAMES ============================ -->
-  <main class="view print-path" id="view-games">
+  <main class="view print-path" id="view-games" hidden>
     <div class="wrap print-path">
 
       <div class="dayhead noprint">
         <input type="text" id="dayName" class="daytitle" placeholder="Name this day…" aria-label="Day or tournament name">
-        <div class="games" id="tabs"></div>
       </div>
 
       <div class="cols print-path">
@@ -852,8 +849,9 @@
          own. What is left is the roster and nothing else: the players are what
          a coach opens this tab for, and there is no per-team policy here to
          find. The team's name, its rules and removing it all live under its
-         name in Settings now. -->
-    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Team</h1>
+         name in Settings now. The screen's own title -- "Team" -- is the back
+         header's now (render.js), shown once there rather than a second time
+         here. -->
     <div id="dupewarn" role="status" aria-live="polite"></div>
     <div id="levelskey" hidden></div>
     <div class="rhead"><span></span><span></span><span>#</span><span>Player</span><span>On card</span><span></span></div>
@@ -889,12 +887,14 @@
        season-view.js. Everything inside is unchanged, markup and copy both:
        this view is a move, not a rewrite. -->
   <main class="view wrap noprint" id="view-season" hidden style="max-width:820px">
-    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Season<span class="note sn-count" id="seasonCount"></span></h1>
-    <!-- One box, no `.side-hd`: the page heading above already says Season, and
-         a box captioned with the word directly under it says it twice. The note
-         stays inside the box with the ledger it describes -- a `p.note` loose in
-         a view is what test/note-placement.test.js exists to stop. -->
+    <!-- The screen's own title -- "Season" -- is the back header's now
+         (render.js); this view's own h1 went with it, so the count that used
+         to sit beside it (`#seasonCount`, painted by season-view.js) moved
+         into the box below. No `.side-hd` either: the note stays inside the
+         box it describes -- a `p.note` loose in a view is what
+         test/note-placement.test.js exists to stop. -->
     <div class="side-box">
+      <p class="note sn-count" id="seasonCount"></p>
       <p class="note" style="margin:0 0 .9rem">
         Every game you have finished with this team, and what each player actually played.
         Games are filed when you choose <b>New day</b>.
@@ -920,7 +920,6 @@
        Behind a cog rather than a fourth tab: the tab budget is spent (see the
        bar), and what is left here is set once and then left alone. -->
   <main class="view wrap noprint" id="view-settings" hidden style="max-width:820px">
-    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Settings</h1>
 
     <!-- The team box. Heading `#setTeamHd` is painted by `renderSettings()` in
          teams-view.js, the one place a team's name is read with its `Team N`
@@ -1411,7 +1410,7 @@
         when it is higher, and a cap you set still wins when it is lower.</p>
 
       <h4 class="help-h" id="help-season">A tournament day, and the season</h4>
-      <p class="help-p">Add a game with <b>+ Game</b> and it copies the format, who is at
+      <p class="help-p">Add a game with <b>Add a game</b> on Today and it copies the format, who is at
         the gym and your rules. Only the opponent and tip-off are new. From the second
         game on there is a switch called <b>Balance against minutes already played
         today</b>. Leave it on and the day evens out across every game, so a kid who sat
@@ -1473,7 +1472,7 @@
       <dl class="keys-list">
         <div class="keys-row"><dt><kbd>P</kbd></dt><dd>Print the card</dd></div>
         <div class="keys-row"><dt><kbd>S</kbd></dt><dd>Shuffle the rotation</dd></div>
-        <div class="keys-row"><dt><kbd>V</kbd></dt><dd>Next view: Games, Team, Season</dd></div>
+        <div class="keys-row"><dt><kbd>V</kbd></dt><dd>Team, or back to Today</dd></div>
         <div class="keys-row"><dt><kbd>B</kbd></dt><dd>Start game</dd></div>
         <div class="keys-row"><dt><kbd>←</kbd><kbd>→</kbd></dt><dd>Previous / next stint, on the bench</dd></div>
         <div class="keys-row"><dt><kbd>?</kbd></dt><dd>This list</dd></div>

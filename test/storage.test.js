@@ -117,7 +117,7 @@ test('unknown enum values fall back instead of breaking the UI', () => {
   assert.equal(s.teams[0].day.games[0].strategy, 'balanced');
   assert.equal(s.ui.theme, 'auto');
   assert.equal(s.ui.printScope, 'game');
-  assert.equal(s.view, 'games');
+  assert.equal(s.view, 'today', 'an unrecognised view opens Today (#23)');
 });
 
 test('a record with no ui.theme at all loads as auto, not just one holding a bad value', () => {
@@ -1375,29 +1375,41 @@ test('a record already on `team` survives untouched', () => {
   assert.equal(sanitize(sanitize(viewRec('roster'), H), H).view, 'team');
 });
 
-test('every other view key is untouched, and anything unknown still lands on Games', () => {
-  for (const v of ['games', 'season', 'settings']) {
+test('every other view key is untouched, and anything unknown still lands on Today', () => {
+  for (const v of ['today', 'games', 'season', 'settings']) {
     assert.equal(sanitize(viewRec(v), H).view, v, `the ${v} view stopped round-tripping`);
   }
   for (const v of ['teams', 'welcome', 'ROSTER', '', null, 42, {}, undefined, 'constructor']) {
-    assert.equal(sanitize(viewRec(v), H).view, 'games',
+    assert.equal(sanitize(viewRec(v), H).view, 'today',
       `${JSON.stringify(v)} is not a view this app has, and a record carrying it `
       + 'must not be able to hide every view at once');
   }
 });
 
-test('every tab in the markup names a view `sanitize` accepts unchanged', () => {
-  const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
-  const keys = [...html.matchAll(/data-view="([^"]+)"/g)].map((m) => m[1]);
-  assert.ok(keys.length >= 3, 'the nav bar did not parse -- re-read this test before trusting it');
-  for (const k of keys) {
-    assert.equal(sanitize(viewRec(k), H).view, k,
-      `the bar offers a tab for view "${k}", which \`sanitize\` does not accept as-is: `
-      + 'a coach who taps it, reloads, and comes back lands somewhere else');
+test('a missing view opens Today, and Today survives a round trip', () => {
+  const noView = good(); delete noView.view;
+  assert.equal(sanitize(noView, H).view, 'today', 'a missing view is the same as an unrecognised one');
+  assert.equal(sanitize(viewRec('today'), H).view, 'today');
+});
+
+test('every destination `setView(...)` names in app/*.js is a view `sanitize` accepts unchanged', () => {
+  /* There is no tab bar to read a view list off any more (#23) -- Today, the
+     team menu, the back button and the gear are the ways a screen changes --
+     so this scans every literal destination `setView` is ever called with,
+     the same property the old tab-reading version of this test checked. */
+  const files = readdirSync(new URL('../app/', import.meta.url)).filter((f) => f.endsWith('.js'));
+  const dests = new Set();
+  for (const f of files) {
+    const src = readFileSync(new URL(`../app/${f}`, import.meta.url), 'utf8');
+    for (const m of src.matchAll(/setView\(\s*(?:\w+\s*\?\s*)?'([^']+)'/g)) dests.add(m[1]);
   }
-  assert.ok(!keys.includes('roster'),
-    'the markup still ships the superseded view key -- the tab and the stored key must agree, '
-    + 'and `roster` is only allowed to exist as a translation in storage.js');
+  assert.ok(dests.size >= 3, 'no setView(...) calls with a literal destination were found');
+  for (const v of dests) {
+    if (v === 'welcome') continue;
+    assert.equal(sanitize(viewRec(v), H).view, v,
+      `app/*.js calls setView('${v}'), which \`sanitize\` does not accept as-is: a coach who `
+      + 'lands there, reloads, and comes back would land somewhere else');
+  }
 });
 
 test('storage.js is the only place a view key is translated', () => {

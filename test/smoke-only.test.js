@@ -7,7 +7,7 @@
  *
  * The valid-name list is read back from the harness's own refusal message
  * rather than typed out again here — REGISTRY lives in `smoke.mjs` and is not
- * exported, and a second, hand-typed copy of the 18 names would drift from it
+ * exported, and a second, hand-typed copy of the 20 names would drift from it
  * exactly the way `test/hooks.test.js`'s comment warns a guard can. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -76,9 +76,9 @@ test('--only "nope" exits non-zero, fast, with no table', () => {
   assertNeverLaunchedChrome(invalid, '--only "nope"');
 });
 
-test('the refusal lists the 18 selectable rows, one per line', () => {
-  assert.equal(validNames.length, 18,
-    `expected the 18 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
+test('the refusal lists the 20 selectable rows, one per line', () => {
+  assert.equal(validNames.length, 20,
+    `expected the 20 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
   // one per line, not comma-joined or wrapped
   assert.equal(new Set(validNames).size, validNames.length, 'a duplicated row name in the list');
 });

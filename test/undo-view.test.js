@@ -16,15 +16,20 @@ const teams = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'ut
 
 test('the undo refresh knows it is an undo', () => {
   const fn = toast.slice(toast.indexOf('function showUndo'));
-  assert.match(fn.slice(0, fn.indexOf('\n}')), /\(refresh \|\| renderAll\)\(true\)/);
+  assert.match(fn.slice(0, fn.indexOf('\n}')), /\(refresh \|\| viewRefresh\)\(true\)/);
   // the forward path must stay plain, or every caller sees the same flag twice
   const undoable = toast.slice(toast.indexOf('export function undoable'));
-  assert.match(undoable.slice(0, undoable.indexOf('\n}')), /\(refresh \|\| renderAll\)\(\)/);
+  assert.match(undoable.slice(0, undoable.indexOf('\n}')), /\(refresh \|\| viewRefresh\)\(\)/);
 });
 
-test('undoing a team removal lands on the view it was removed from', () => {
-  const fn = teams.slice(teams.indexOf('function removeTeam'), teams.indexOf('/* ---------------- the game tabs'));
-  assert.match(fn, /setView\(undoing \? \(state\.view \|\| 'games'\) : 'games'\)/);
+test('the default refresh itself lands an undo on the screen its snapshot names (#23)', () => {
+  const fn = toast.slice(toast.indexOf('function viewRefresh'));
+  assert.match(fn.slice(0, fn.indexOf('\n}')), /setView\(state\.view\)/);
+});
+
+test('undoing a team removal returns to Settings, where it was removed from', () => {
+  const fn = teams.slice(teams.indexOf('function removeTeam'), teams.indexOf("/* ---------------- Today's games"));
+  assert.match(fn, /setView\(undoing \? 'settings' : 'today'\)/);
 });
 
 /* ------------------------------------------------------------------ *

@@ -92,6 +92,12 @@ const rec = (players = roster(), onboarded = players.length > 0, view = 'games')
 });
 const j = v => JSON.stringify(v);
 
+// Every value the pre-paint script can stamp. Read dynamically from the real
+// source in the "allow exactly the same views" test below; asserted against
+// as a literal here, twice, because both uses are checking the fixed set the
+// app actually ships rather than re-deriving it from source a second time.
+const VIEW_STAMPS = ['welcome', 'games', 'team', 'season', 'settings'];
+
 /* What the browser will paint on the first frame. The script is run with the
    same stubs the timeline-skeleton test uses: a Map-backed `localStorage` and a
    documentElement that records what was stamped on it. */
@@ -101,17 +107,17 @@ const firstPaint = (store) => {
   // eslint-disable-next-line no-new-func
   new Function('localStorage', 'document', prePaintScript())(
     { getItem: k => (k in store ? store[k] : null) }, doc);
-  /* Games is the markup default and must stay unstamped: that is what makes a
-     throw in the script degrade to today's behaviour instead of to a blank
-     frame, and stamping a view app.css has no rule for would hide every view. */
-  assert.ok(stamped === null || ['welcome', 'team', 'season', 'settings']
-    .some(v => stamped === `data-boot=${v}`),
+  /* Today is the markup default and must stay unstamped (#23): that is what
+     makes a throw in the script degrade to today's behaviour instead of to a
+     blank frame, and stamping a view app.css has no rule for would hide every
+     view. */
+  assert.ok(stamped === null || VIEW_STAMPS.some(v => stamped === `data-boot=${v}`),
     `the pre-paint script stamped something unexpected: ${stamped}`);
-  return stamped === null ? 'games' : stamped.slice('data-boot='.length);
+  return stamped === null ? 'today' : stamped.slice('data-boot='.length);
 };
 
 /* What `app.js` will show a moment later. Line for line, app.js's boot call is
-   `setView(state.onboarded ? (state.view || 'games') : 'welcome')`, and
+   `setView(state.onboarded ? (state.view || 'today') : 'welcome')`, and
    `setView` forces welcome by itself when the flag is false. `state.view` is
    whatever `sanitize` made of the stored key, so the allow-list and the one
    legacy translation are both asked here rather than restated. No record at all
@@ -124,7 +130,7 @@ const afterBoot = (store) => {
   });
   try {
     const loaded = loadState(H);
-    return loaded && loaded.state.onboarded ? (loaded.state.view || 'games') : 'welcome';
+    return loaded && loaded.state.onboarded ? (loaded.state.view || 'today') : 'welcome';
   } finally {
     if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
     else delete globalThis.localStorage;
@@ -135,51 +141,15 @@ const afterBoot = (store) => {
    see, and it is asserted on its own BEFORE the two sides are compared, so a
    fixture whose expectation is wrong fails as itself rather than as a
    disagreement. */
-/* A45: THE TEAM STRIP IS THE SAME QUESTION, AND IT IS ANSWERED FROM THIS TABLE.
- *
- * `#teamtabs` is not a view, it is chrome — `applyView` shows it on all four
- * views and hides it on welcome, in the same three lines that hide `.bar` and
- * `.foot`. It used to ship `hidden` in the markup and get unhidden by the boot,
- * so the first frame had no strip and every view arrived 53.6px lower (measured
- * at 390 and at 1280, and on a boot that lands on games, which stamps nothing).
- * The fix is the `.bar` shape: ship it visible with one row reserved and let
- * the SAME stamp take it away for welcome. No second stamp, and nothing here
- * asks how many teams there are — the `want` column already decides it, because
- * "not welcome" is the whole rule.
- *
- * Read out of the real markup and the real stylesheet, block by block, so a
- * rule that moves into a block declaring something else fails. */
-const stripTag = () => {
-  const m = html.match(/<nav[^>]*id="teamtabs"[^>]*>/);
-  assert.ok(m, '#teamtabs is gone from index.html');
-  return m[0];
-};
-const stripCollapsedFor = () => {
-  const stamps = new Set();
-  // comments come out first: a rule quoted in a comment is not a rule
-  for (const block of css.replace(/\/\*[\s\S]*?\*\//g, '').split('}')) {
-    const at = block.indexOf('{');
-    if (at < 0) continue;
-    const sel = block.slice(0, at), body = block.slice(at + 1);
-    if (!/display:\s*none/.test(body)) continue;
-    for (const m of sel.matchAll(/html\[data-boot="([a-z]+)"\]\s*#teamtabs\s*(?=[,{]|$)/g)) {
-      stamps.add(m[1]);
-    }
-  }
-  return stamps;
-};
-const stripShownAtBoot = (stamp) => {
-  if (/\shidden(?=[\s>/])/.test(stripTag())) return false;
-  return !stripCollapsedFor().has(stamp);
-};
-
 const CASES = [
   ['a brand new device', {}, 'welcome'],
   ['a returning coach', { [KEY]: j(rec()) }, 'games'],
   ['a coach mid-onboarding, flag set before the first player',
     { [KEY]: j(rec([], true)) }, 'games'],
+  /* No `view` key at all -- #23's Today is what an unrecognised or absent
+     view opens on now, not the games shell. */
   ['a record with players but no flag (a v6 record we never wrote)',
-    { [KEY]: j({ version: 6, teams: [team(roster())] }) }, 'games'],
+    { [KEY]: j({ version: 6, teams: [team(roster())] }) }, 'today'],
 
   // --- the rows a cheaper check gets wrong ---
   ['a primary that will not parse, over a good backup',
@@ -200,20 +170,20 @@ const CASES = [
   ['a complete record that says the last team was removed, over a good backup',
     { [KEY]: j(rec([], false)), [BACKUP_KEY]: j(rec()) }, 'welcome'],
 
-  // --- the migration chain ---
-  ['a v5 record only', { [V5_KEY]: j({ version: 5, teams: [team(roster())] }) }, 'games'],
-  ['a v5 backup only', { [V5_BACKUP_KEY]: j({ version: 5, teams: [team(roster())] }) }, 'games'],
-  ['a v4 record only', { [V4_KEY]: j({ version: 4, teams: [team(roster())] }) }, 'games'],
-  ['a v4 backup only', { [V4_BACKUP_KEY]: j({ version: 4, teams: [team(roster())] }) }, 'games'],
+  // --- the migration chain -- none of these old shapes carry a view key ---
+  ['a v5 record only', { [V5_KEY]: j({ version: 5, teams: [team(roster())] }) }, 'today'],
+  ['a v5 backup only', { [V5_BACKUP_KEY]: j({ version: 5, teams: [team(roster())] }) }, 'today'],
+  ['a v4 record only', { [V4_KEY]: j({ version: 4, teams: [team(roster())] }) }, 'today'],
+  ['a v4 backup only', { [V4_BACKUP_KEY]: j({ version: 4, teams: [team(roster())] }) }, 'today'],
   ['a v3 record only (roster at the top level)',
-    { [V3_KEY]: j({ version: 3, players: roster(), day: { name: '', games: [newGame()] } }) }, 'games'],
+    { [V3_KEY]: j({ version: 3, players: roster(), day: { name: '', games: [newGame()] } }) }, 'today'],
   ['a v3 record with an empty roster', { [V3_KEY]: j({ version: 3, players: [] }) }, 'welcome'],
   ['an unusable primary with a v4 record behind it',
-    { [KEY]: '{not json', [V4_KEY]: j({ version: 4, teams: [team(roster())] }) }, 'games'],
+    { [KEY]: '{not json', [V4_KEY]: j({ version: 4, teams: [team(roster())] }) }, 'today'],
   ['a legacy v2 record',
-    { 'rotation-card.v2': j({ roster: 'Marcus\nEli\n', day: { name: '', games: [newGame()] } }) }, 'games'],
+    { 'rotation-card.v2': j({ roster: 'Marcus\nEli\n', day: { name: '', games: [newGame()] } }) }, 'today'],
   ['a legacy v1 record',
-    { 'rotation-card.v1': j({ roster: 'Marcus\nEli\n', day: { name: '', games: [newGame()] } }) }, 'games'],
+    { 'rotation-card.v1': j({ roster: 'Marcus\nEli\n', day: { name: '', games: [newGame()] } }) }, 'today'],
   ['a legacy record with a blank roster', { 'rotation-card.v2': j({ roster: '  \n\n' }) }, 'welcome'],
 
   // --- the edges sanitize has opinions about ---
@@ -225,23 +195,25 @@ const CASES = [
   ['an empty object', { [KEY]: '{}' }, 'welcome'],
   ['an empty object over a good backup', { [KEY]: '{}', [BACKUP_KEY]: j(rec()) }, 'games'],
 
-  /* --- A42: the stored view, which is the other half of the boot call ---
-     Three of these are the reported defect (Team, Season, Settings each painted
-     the games shell first), one is A40's legacy key, and the rest are the ways
-     a view value can be wrong. `'constructor'` is in here because the mapping
-     is a Map for exactly that reason. */
+  /* --- A42/#23: the stored view, which is the other half of the boot call ---
+     Every one of the five screens gets its own row, plus A40's legacy key and
+     the ways a view value can be wrong -- an unrecognised or missing one now
+     opens Today rather than Games. `'constructor'` is in here because the
+     mapping is a Map for exactly that reason. */
+  ['a coach who left the app on Today', { [KEY]: j(rec(roster(), true, 'today')) }, 'today'],
+  ['a coach who left the app on Games', { [KEY]: j(rec(roster(), true, 'games')) }, 'games'],
   ['a coach who left the app on the Team tab', { [KEY]: j(rec(roster(), true, 'team')) }, 'team'],
   ['a coach who left the app on Season', { [KEY]: j(rec(roster(), true, 'season')) }, 'season'],
   ['a coach who left the app on Settings', { [KEY]: j(rec(roster(), true, 'settings')) }, 'settings'],
   ['a record written before the Roster tab became Team',
     { [KEY]: j(rec(roster(), true, 'roster')) }, 'team'],
-  ['a view key nothing recognises', { [KEY]: j(rec(roster(), true, 'nope')) }, 'games'],
+  ['a view key nothing recognises', { [KEY]: j(rec(roster(), true, 'nope')) }, 'today'],
   ['a view key that is a prototype member',
-    { [KEY]: j(rec(roster(), true, 'constructor')) }, 'games'],
-  ['a view key that is not a string', { [KEY]: j(rec(roster(), true, 7)) }, 'games'],
-  ['a view key that is an object', { [KEY]: j(rec(roster(), true, { team: 1 })) }, 'games'],
+    { [KEY]: j(rec(roster(), true, 'constructor')) }, 'today'],
+  ['a view key that is not a string', { [KEY]: j(rec(roster(), true, 7)) }, 'today'],
+  ['a view key that is an object', { [KEY]: j(rec(roster(), true, { team: 1 })) }, 'today'],
   ['a record with no view at all',
-    { [KEY]: j({ version: 6, onboarded: true, teams: [team(roster())] }) }, 'games'],
+    { [KEY]: j({ version: 6, onboarded: true, teams: [team(roster())] }) }, 'today'],
   ['a coach on Settings whose primary will not parse, over a backup on Settings',
     { [KEY]: '{not json', [BACKUP_KEY]: j(rec(roster(), true, 'settings')) }, 'settings'],
   ['a backup on the old Roster key, with no primary',
@@ -259,7 +231,15 @@ const CASES = [
      is not the loader's answer and must not be the first frame's either. */
   ['a legacy v2 record that names a view the migration drops',
     { 'rotation-card.v2': j({ roster: 'Marcus\nEli\n', view: 'settings',
-      day: { name: '', games: [newGame()] } }) }, 'games'],
+      day: { name: '', games: [newGame()] } }) }, 'today'],
+  /* Decision 2: an out-of-range saved game is clamped by `sanitizeTeam`, not
+     sent to Today -- the clamp is about WHICH game opens inside Games, not
+     about which top-level screen the boot lands on, and neither `loadState`
+     nor the pre-paint script (which never reads `activeGame`) treats it as
+     anything other than an ordinary `view: 'games'` record. */
+  ['an out-of-range activeGame on a coach left on Games',
+    { [KEY]: j({ version: 6, onboarded: true, view: 'games',
+      teams: [{ ...team(roster()), activeGame: 99 }] }) }, 'games'],
 ];
 
 for (const [name, store, want] of CASES) {
@@ -271,12 +251,6 @@ for (const [name, store, want] of CASES) {
     assert.equal(paint, boot,
       `the first frame paints "${paint}" and then the boot switches to "${boot}" for ${name} — `
       + 'that is the flash A41 fixed, in one direction or the other');
-    /* A45, from the same row: `applyView` shows the strip on every view that is
-       not welcome, so the first frame has to do the same or the boot moves the
-       whole page down by a row of chips. */
-    assert.equal(stripShownAtBoot(paint), want !== 'welcome',
-      `the first frame ${stripShownAtBoot(paint) ? 'shows' : 'hides'} the team strip for ${name}, `
-      + `and applyView will ${want !== 'welcome' ? 'show' : 'hide'} it — the boot shifts every view`);
   });
 }
 
@@ -285,27 +259,6 @@ for (const [name, store, want] of CASES) {
    coach actually gets is that plus a chip. Both numbers are read out of the
    stylesheet's own rules and compared, so a chip that grows a taller target
    fails here instead of silently re-opening the jump. */
-test('the first frame reserves exactly one row of chips', () => {
-  assert.doesNotMatch(stripTag(), /\shidden(?=[\s>/])/,
-    '#teamtabs ships hidden again; the first frame has no strip and the boot pushes every '
-    + 'view down by a row (53.6px measured at 390 and at 1280)');
-  const body = (re, what) => {
-    const m = css.match(re);
-    assert.ok(m, `${what} is gone from app.css`);
-    return m[1];
-  };
-  const own = body(/\n\.teamtabs \{([^}]*)\}/, "the team strip's own rule");
-  const chip = body(/\n\.teamtabs \.ttab \{([^}]*)\}/, "the team chip's rule");
-  const pad = own.match(/padding:\s*([\d.]+rem)\s/);
-  assert.ok(pad, 'the team strip no longer states a padding, so the reserved row cannot match it');
-  const chipMin = chip.match(/min-height:\s*(\d+px)/);
-  assert.ok(chipMin, 'the team chip no longer states a min-height');
-  const reserved = own.match(/min-height:\s*calc\(([^)]*)\)/);
-  assert.ok(reserved, 'the team strip no longer reserves a row; the boot shift is back');
-  assert.equal(reserved[1].replace(/\s+/g, ''), `${pad[1]}+${chipMin[1]}`,
-    'the reserved height and the row it stands in for have drifted apart');
-});
-
 /* A COMMENT THAT CLOSES EARLY EATS THE RULE BELOW IT, AND EVERY GUARD IN THIS
  * FILE READS app.css AS TEXT, SO NONE OF THEM CAN SEE IT.
  *
@@ -327,17 +280,10 @@ test('app.css closes every comment exactly once', () => {
     'a comment delimiter survives outside a comment in app.css');
 });
 
-/* And the stamp that takes it away, named on its own: the strip is now chrome
-   that ships VISIBLE, so the welcome screen depends on this rule the way it
-   already depends on the one hiding `.bar`. */
-test('the welcome stamp takes the strip away with the bar and the foot', () => {
-  assert.deepEqual([...stripCollapsedFor()], ['welcome'],
-    'the strip must be collapsed for exactly the welcome stamp — for none of them and a '
-    + 'first-timer gets an empty band above the welcome screen; for more and a returning '
-    + 'coach gets the shift back');
+test('the welcome stamp still hides the bar and the foot', () => {
   for (const sel of ['.bar', '.foot']) {
     assert.ok(css.includes(`html[data-boot="welcome"] ${sel}`),
-      `the welcome rule no longer hides ${sel}; the strip was put in beside it deliberately`);
+      `the welcome rule no longer hides ${sel}`);
   }
 });
 
@@ -403,24 +349,24 @@ test('the stamp, the stylesheet and applyView name the same attribute', () => {
   const [, attr] = stamp;
   assert.equal(attr, 'data-boot');
   /* Every value the script can stamp needs both halves of a rule in app.css:
-     the games shell out of the way, and the view the boot is landing on in.
+     the Today shell out of the way, and the view the boot is landing on in.
      A stamp with no rule behind it is a frame with every view hidden, which is
      the one outcome worse than the flash. */
-  for (const v of ['welcome', 'team', 'season', 'settings']) {
-    assert.ok(css.includes(`html[${attr}="${v}"] #view-games`),
-      `app.css does not hide #view-games for [${attr}="${v}"], so the stamp paints nothing`);
+  for (const v of VIEW_STAMPS) {
+    assert.ok(css.includes(`html[${attr}="${v}"] #view-today`),
+      `app.css does not hide #view-today for [${attr}="${v}"], so the stamp paints nothing`);
     assert.ok(css.includes(`html[${attr}="${v}"] #view-${v}[hidden]`),
       `app.css does not reveal #view-${v} for [${attr}="${v}"]`);
   }
   /* Scoped to applyView's own body, not to a window of source: a stale stamp
-     hides the games view behind !important, so the removal has to be on the
-     path every view change takes. */
+     hides Today behind !important, so the removal has to be on the path
+     every view change takes. */
   const at = renderSrc.indexOf('function applyView(');
   assert.ok(at > 0, 'applyView is gone from render.js');
   const body = renderSrc.slice(at, renderSrc.indexOf('\n}\n', at));
   assert.ok(body.includes(`removeAttribute('${attr}')`),
     `applyView does not remove ${attr}; the pre-paint stamp would outlive the boot and `
-    + 'hide the games view from a coach who has just finished onboarding');
+    + 'hide Today from a coach who has just finished onboarding');
 });
 
 test('the pre-paint rule uses the display the welcome view actually has', () => {
@@ -434,19 +380,22 @@ test('the pre-paint rule uses the display the welcome view actually has', () => 
     `the first frame gives the welcome view display:${pre[1]} and the app gives it display:${own[1]}`);
 });
 
-/* The other three views have no author `display` of their own — they are
-   `<main class="view wrap">`, so the browser gives them `block` — and the
-   pre-paint rule restates `block` for that reason. The day one of them becomes
-   a grid, the first frame would lay it out differently from every frame after
-   it, so the absence is asserted rather than assumed. */
-test('the pre-paint rules for Team, Season and Settings restate the right display', () => {
-  const pre = css.match(/html\[data-boot="settings"\] #view-settings\[hidden\] \{[^}]*?display:\s*([a-z-]+)/);
-  assert.ok(pre, 'the pre-paint rule revealing #view-settings is gone');
-  assert.equal(pre[1], 'block');
+/* The other four views have no author `display` of their own — Games is
+   `<main class="view print-path">`, Team/Season/Settings are
+   `<main class="view wrap">` — so the browser gives them `block`, and the
+   pre-paint rule restates `block` for that reason. The day one of them
+   becomes a grid, the first frame would lay it out differently from every
+   frame after it, so the absence is asserted rather than assumed. */
+test('the pre-paint rules for Games, Team, Season and Settings restate the right display', () => {
+  for (const v of ['games', 'settings']) {
+    const pre = css.match(new RegExp(`html\\[data-boot="${v}"\\] #view-${v}\\[hidden\\] \\{[^}]*?display:\\s*([a-z-]+)`));
+    assert.ok(pre, `the pre-paint rule revealing #view-${v} is gone`);
+    assert.equal(pre[1], 'block');
+  }
   for (const sel of ['.view', '.wrap']) {
     const own = css.match(new RegExp(`\\n\\${sel} \\{[^}]*?display:\\s*([a-z-]+)`));
     assert.equal(own, null, own && `${sel} now declares display:${own[1]}; the pre-paint rules `
-      + `for Team, Season and Settings still say block, so the first frame would lay them out wrong`);
+      + `for Games, Team, Season and Settings still say block, so the first frame would lay them out wrong`);
   }
 });
 
@@ -469,10 +418,10 @@ test('the pre-paint script and sanitize allow exactly the same views', () => {
   };
   const theirs = list(storage, /const VIEWS = \[([^\]]*)\]/, "storage.js's allow-list");
   const ours = list(prePaintScript(), /var VIEWS = \[([^\]]*)\]/, "the pre-paint script's allow-list");
-  // the specific claim first: games is the markup default and the fallback on
-  // both sides, so its absence is a different bug from a set that has drifted
-  assert.ok(theirs.includes('games') && ours.includes('games'),
-    'games is the fallback on both sides and must be in both lists');
+  // the specific claim first: today is the markup default and the fallback on
+  // both sides (#23), so its absence is a different bug from a set that has drifted
+  assert.ok(theirs.includes('today') && ours.includes('today'),
+    'today is the fallback on both sides and must be in both lists');
   assert.deepEqual([...ours].sort(), [...theirs].sort(),
     'the first frame and sanitize allow different views; a view in one list and not the other '
     + 'either flashes on boot or paints a frame with every view hidden');

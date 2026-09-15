@@ -175,7 +175,7 @@ const freshState = (players) => ({
   tourSeen: false,
   teams: [newTeam('', players)],
   activeTeam: 0,
-  view: 'games',
+  view: 'today',
   ui: { copies: 2, showMinutes: false, printScope: 'game', cardId: 'short', cardSize: 'pocket', theme: 'auto', tipDone: false, prints: 0 },
 });
 

@@ -274,6 +274,49 @@ async function goRich(c, origin) {
     await ${SETTLE}; })()`);
 }
 
+/* Swap in `record` and reload, the way the #23 checks below need to: a
+   cache-busted URL first forces a genuinely new navigation, which is what
+   actually truncates any forward session-history entries left dangling by a
+   previous reload-then-back — `Page.navigate` to the exact URL already
+   loaded does not. The plain URL right behind it restores the real address,
+   so `location.href` comparisons against it stay honest. Waits for
+   `.today-game` rather than `.card` (`goRich` above) because every #23 check
+   reloads onto Today, never straight onto a game. */
+async function reloadWithRecord(c, origin, record) {
+  await evalIn(c, `(() => {
+    localStorage.removeItem('benchcard.v3');
+    localStorage.removeItem('benchcard.v6.bak');
+    localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(record))});
+  })()`);
+  for (const url of [`${origin}/index.html?_smoke=${Date.now()}`, `${origin}/index.html`]) {
+    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+    await c.send('Page.navigate', { url });
+    await loaded;
+  }
+  await evalIn(c, `(async () => { await document.fonts.ready;
+    for (let i = 0; i < 60 && !document.querySelector('.today-game'); i++) await new Promise(r => setTimeout(r, 50));
+    await ${SETTLE}; })()`);
+}
+
+/* A clone of `record` with a second team ("JV Ravens", a copy of the first)
+   pushed on -- RICH ships with one, and the #23 checks below need two before
+   the team menu's "switch team" and checkmark mean anything. `id` gets a
+   fresh value because sanitizeTeam trusts it for dedup. */
+function withSecondTeam(record) {
+  const withTwo = JSON.parse(JSON.stringify(record));
+  const second = JSON.parse(JSON.stringify(withTwo.teams[0]));
+  second.id = 't1';
+  second.name = 'JV Ravens';
+  withTwo.teams.push(second);
+  return withTwo;
+}
+
+// Is `#id` the screen currently on show? Both #23 checks below ask this of
+// more than one screen (Today, and on the keys/undo side, Games too), so it
+// is one helper rather than a `!!(document.getElementById(...) && ...)` at
+// every call site.
+const onScreen = (c, id) => evalIn(c, `!!(document.getElementById('${id}') && !document.getElementById('${id}').hidden)`);
+
 /* A fixture is not a guard until something fails when it does not arrive.
  *
  * Without this check, a renamed storage key, a record `sanitize` rejects or a
@@ -290,18 +333,20 @@ async function fixturePass(c) {
   const probe = await evalIn(c, `(async () => {
     const $ = s => document.querySelector(s);
     const out = { host: location.host };
-    $('#viewnav [data-view="team"]').click();
+    $('#todayTeam').click();
     await ${SETTLE};
     out.resetLevels = [...document.querySelectorAll('#view-team button')]
       .filter(b => /back to the same level/i.test(b.textContent)).length;
-    $('#viewnav [data-view="games"]').click();
+    $('#backBtn').click();
+    $('.today-game').click();
     await ${SETTLE};
     out.dayRows = document.querySelectorAll('#daytotals .dayrow').length;
     out.dayGames = document.querySelectorAll('#daytotals .legend span').length;
-    $('#viewnav [data-view="season"]').click();
+    $('#backBtn').click();
+    $('#todaySeason').click();
     await ${SETTLE};
     out.filedGames = document.querySelectorAll('#view-season details.sn-game').length;
-    $('#viewnav [data-view="games"]').click();
+    $('#backBtn').click();
     await ${SETTLE};
     return JSON.stringify(out);
   })()`);
@@ -319,6 +364,356 @@ async function fixturePass(c) {
       ? `${missing.length} precondition(s) missing on ${r.host}: ${missing.join('; ')}`
       : `${r.dayRows} players × ${r.dayGames} games today, ${r.filedGames} filed, `
         + `levels set (${r.host})`,
+  };
+}
+
+/* #23: Today is home. Items 1, 2, 3, 4, 5, 6 and 8 of the spec's "what would
+   settle it", on a RICH record reloaded with `view: 'today'` and a second
+   team added (RICH ships with one, and the menu's "switch team" and
+   checkmark need two to mean anything).
+ *
+ * Reloads its own fixture rather than reusing whatever `goRich` already left
+ * on screen, because the item is explicitly about a FRESH BOOT onto Today,
+ * and the history/reload assertions below need one anyway. Ends by putting
+ * the ordinary RICH record back (`view: 'games'`, one team) so whatever runs
+ * after it inherits the fixture every other 'rich' check expects — the same
+ * courtesy `wakeLockPass` pays with its own reload. */
+async function todayAndBackPass(c, origin) {
+  const problems = [];
+  /* Every DOM read below is written so a MISSING control is a named problem,
+     never a thrown exception -- a check that crashes on a control that does
+     not exist yet reports nothing about the controls that DO. `onToday`,
+     `text`/`click` and the object literals all guard with `?.` for the same
+     reason `/new-guard` names: a check that measures nothing must fail
+     loudly, not disappear into an unhandled rejection. The whole body is
+     also wrapped in a `try` below, as a last line of defence, not a
+     substitute for the guards. */
+  const onToday = () => onScreen(c, 'view-today');
+  const rich2 = withSecondTeam(RICH);
+  rich2.view = 'today';
+  // `Page.navigate` to the exact URL already loaded does not truncate the
+  // forward session-history entries the way `reloadWithRecord`'s genuinely
+  // new navigation does -- verified: a `today` -> `team` push straight after
+  // it read as +0, not +1, because a stale forward entry from the PREVIOUS
+  // opener's own reload-and-back test absorbed the push instead of growing
+  // the list. Every reload below needs that, so every reload below uses it.
+  const reloadWith = record => reloadWithRecord(c, origin, record);
+  try {
+
+  await reloadWith(rich2);
+  const href0 = await evalIn(c, 'location.href');
+
+  // item 1: Today's own contents.
+  const today = JSON.parse(await evalIn(c, `JSON.stringify((() => {
+    const $ = s => document.querySelector(s);
+    const gear = $('#settingsBtn');
+    const t = s => $(s)?.textContent.trim() ?? null;
+    return {
+      teamBtn: t('#teamBtnLabel'),
+      gearName: gear && gear.getAttribute('aria-label'),
+      heading: t('#view-today h1'),
+      games: [...document.querySelectorAll('.today-game')].map(b => ({
+        text: b.textContent.trim(), label: b.getAttribute('aria-label') })),
+      teamEntry: t('#todayTeam'),
+      seasonEntry: t('#todaySeason'),
+      hasAddGame: !!$('#todayAddGame'), hasNewDay: !!$('#todayNewDay'),
+      keysHintExists: !!$('#keysHint'),
+    };
+  })())`));
+  // `activeTeam: 0` in `rich2` is still "Smoke Test" -- "JV Ravens" is the
+  // second team, added so the menu below has something to switch to.
+  if (today.teamBtn !== 'Smoke Test') problems.push(`Today's header names "${today.teamBtn}", not the active team`);
+  if (today.gearName !== 'Settings') problems.push(`the gear's accessible name is "${today.gearName}", not "Settings"`);
+  if (today.heading !== 'Today') problems.push(`Today's heading reads "${today.heading}"`);
+  if (today.games.length !== 2) problems.push(`Today lists ${today.games.length} game entries, want 2`);
+  if (!today.games.some(g => /Hawks/.test(g.text) && /9:00/.test(g.text))) problems.push('the first game entry does not name "Hawks" and "9:00"');
+  if (!today.games.some(g => /Ravens/.test(g.text) && /11:30/.test(g.text))) problems.push('the second game entry does not name "Ravens" and "11:30"');
+  if (!/Team/.test(today.teamEntry) || !/Smoke Test/.test(today.teamEntry) || !/11 players/.test(today.teamEntry)) {
+    problems.push(`the Team entry reads "${today.teamEntry}", want "Team", the team name and "11 players"`);
+  }
+  if (!/Season/.test(today.seasonEntry) || !/3 games filed/.test(today.seasonEntry)) {
+    problems.push(`the Season entry reads "${today.seasonEntry}", want "Season" and "3 games filed"`);
+  }
+  if (!today.hasAddGame || !today.hasNewDay) problems.push('Today is missing "Add a game" or "New day"');
+  if (!today.keysHintExists) problems.push('#keysHint is gone from Today\'s header');
+
+  // item 2: the team menu -- two teams, current one checked, Add a team offered.
+  await evalIn(c, step(`
+    $('#teamBtn')?.click();
+    window.__menuItems = () => [...document.querySelectorAll('.teammenu-item')];
+  `));
+  const menu = JSON.parse(await evalIn(c, `JSON.stringify({
+    items: window.__menuItems().map(b => ({
+      text: b.textContent.trim(), current: b.getAttribute('aria-current'),
+    })),
+  })`));
+  if (menu.items.length !== 3) {
+    problems.push(`the team menu lists ${menu.items.length} item(s), want 2 teams + "Add a team"`);
+  } else {
+    const [t0, t1, add] = menu.items;
+    if (t0.current !== 'true' || !/Smoke Test/.test(t0.text) || !/✓/.test(t0.text)) {
+      problems.push(`the first menu item is "${JSON.stringify(t0)}", want the current team checked`);
+    }
+    if (t1.current) problems.push(`the second menu item carries aria-current, and should not — it is not the active team`);
+    if (!/Add a team/.test(add.text)) problems.push(`the last menu item reads "${add.text}", not "Add a team"`);
+  }
+
+  /* Item 2, C8: "a popover menu anchored to it" -- the button, not a fixed
+     point on the screen. Read both rects fresh each time rather than trust
+     an earlier measurement: `positionTeamMenu()` runs on the popover's own
+     `toggle` event, so a stale position would mean it never ran, not that it
+     ran wrong. Checked at the default viewport and again at 320px/32px root
+     text -- the one place `APP_LARGE_TEXT_ALLOW` stays empty and a fixed rem
+     offset would drift furthest from the button it is supposed to track. */
+  const checkMenuAnchored = async (label) => {
+    const pos = JSON.parse(await evalIn(c, `JSON.stringify((() => {
+      const b = document.getElementById('teamBtn')?.getBoundingClientRect();
+      const m = document.getElementById('teamMenu')?.getBoundingClientRect();
+      if (!b || !m || (!m.width && !m.height)) return null;
+      return { btnBottom: b.bottom, btnLeft: b.left, menuTop: m.top, menuLeft: m.left,
+               vw: innerWidth, menuW: m.width };
+    })())`));
+    if (!pos) { problems.push(`${label}: could not measure an open #teamBtn/#teamMenu pair`); return; }
+    const dTop = pos.menuTop - pos.btnBottom;
+    if (dTop < -1 || dTop > 16) {
+      problems.push(`${label}: the menu's top is ${pos.menuTop.toFixed(1)}px against the button's `
+        + `bottom at ${pos.btnBottom.toFixed(1)}px (Δ${dTop.toFixed(1)}px) -- not anchored just below it`);
+    }
+    const wantLeft = Math.max(8, Math.min(pos.btnLeft, pos.vw - 8 - pos.menuW));
+    if (Math.abs(pos.menuLeft - wantLeft) > 1) {
+      problems.push(`${label}: the menu's left is ${pos.menuLeft.toFixed(1)}px, want `
+        + `${wantLeft.toFixed(1)}px (the button's left edge, clamped on screen)`);
+    }
+  };
+  await checkMenuAnchored(`${WIDTH}px`);
+
+  await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
+  try {
+    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
+    await c.send('Emulation.setDeviceMetricsOverride',
+      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
+    await checkMenuAnchored(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+    await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
+  } finally {
+    // Never leave the emulated viewport/font behind for whatever check runs
+    // next, even if a measurement above threw.
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  }
+  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
+
+  // switching team closes the menu and repaints Today, not the menu mid-tap
+  await evalIn(c, step(`window.__menuItems()[1]?.click()`));
+  const afterSwitch = await evalIn(c, `document.getElementById('teamBtnLabel')?.textContent.trim() ?? null`);
+  if (afterSwitch !== 'JV Ravens') problems.push(`choosing the other team left the header reading "${afterSwitch}"`);
+  const menuStillOpen = await evalIn(c, `document.getElementById('teamMenu')?.matches(':popover-open') ?? false`);
+  if (menuStillOpen) problems.push('the team menu is still open after choosing a team');
+
+  // items 3, 4, 5, 6, 8: each pushed screen, its header, and its way home.
+  const openers = [
+    ['games', `document.querySelector('.today-game')?.click()`, 'Hawks'],
+    ['team', `document.getElementById('todayTeam')?.click()`, 'Team'],
+    ['season', `document.getElementById('todaySeason')?.click()`, 'Season'],
+    ['settings', `document.getElementById('settingsBtn')?.click()`, 'Settings'],
+  ];
+  for (const [name, openJs, wantTitle] of openers) {
+    /* Fresh boot per opener, or the delta below is measured against whatever
+       forward entry the PREVIOUS opener's own reload-then-back left dangling
+       -- pushing after a back() truncates a stale forward entry and replaces
+       it, which is correct browser history behaviour and exactly why a length
+       delta is only a meaningful measurement starting from a known state. */
+    await reloadWith(rich2);
+    const before = await evalIn(c, 'history.length');
+    await evalIn(c, step(openJs));
+    const opened = JSON.parse(await evalIn(c, `JSON.stringify((() => {
+      const $ = s => document.querySelector(s);
+      const back = $('#backBtn');
+      const gear = $('#settingsBtn');
+      return {
+        length: history.length,
+        backName: back && back.getAttribute('aria-label'),
+        title: $('#barTitle')?.textContent.trim() ?? null,
+        gearVisible: !!gear && gear.getClientRects().length > 0 && getComputedStyle(gear).display !== 'none',
+        href: location.href,
+      };
+    })())`));
+    if (opened.length !== before + 1) problems.push(`${name}: history.length went ${before} -> ${opened.length}, want +1`);
+    if (opened.backName !== 'Back to Today') problems.push(`${name}: the back button's name is "${opened.backName}"`);
+    if (name !== 'games' && opened.title !== wantTitle) problems.push(`${name}: the title reads "${opened.title}", want "${wantTitle}"`);
+    if (name === 'games' && !/Hawks/.test(opened.title || '')) problems.push(`games: the title reads "${opened.title}", want the game's label`);
+    if (opened.gearVisible) problems.push(`${name}: the Settings gear is visible off Today`);
+    if (opened.href !== href0) problems.push(`${name}: location.href changed to ${opened.href}`);
+
+    // history.back() lands on Today.
+    await evalIn(c, `history.back()`);
+    await new Promise(r => setTimeout(r, 200));
+    await evalIn(c, SETTLE);
+    if (!(await onToday())) problems.push(`${name}: history.back() did not land on Today`);
+
+    // reopen, then use the back BUTTON, which must land on Today too.
+    await evalIn(c, step(openJs));
+    await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+    if (!(await onToday())) problems.push(`${name}: the back button did not land on Today`);
+    const hrefAfter = await evalIn(c, 'location.href');
+    if (hrefAfter !== href0) problems.push(`${name}: location.href changed to ${hrefAfter} after the back button`);
+
+    // opening one pushed screen from another replaces, not pushes: the four
+    // openers above all start from Today, so this exercises it from `team`
+    // specifically, the same "P on Team" case the design calls out — printing
+    // is stubbed so it never opens a real dialog.
+    if (name === 'team') {
+      await evalIn(c, step(openJs));
+      const pushedLength = await evalIn(c, 'history.length');
+      await evalIn(c, `window.print = () => {}`);
+      await evalIn(c, step(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }))`));
+      const replacedLength = await evalIn(c, 'history.length');
+      if (replacedLength !== pushedLength) {
+        problems.push(`P from Team changed history.length ${pushedLength} -> ${replacedLength}, want no change (replace, not push)`);
+      }
+      await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+    }
+
+    // a reload on the pushed screen, then one history.back() lands on Today.
+    await evalIn(c, step(openJs));
+    const reloaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+    await evalIn(c, `location.reload()`);
+    await reloaded;
+    await evalIn(c, `(async () => { await document.fonts.ready;
+      for (let i = 0; i < 60 && !document.querySelector('.today-game, #barBack'); i++) await new Promise(r => setTimeout(r, 50));
+      await ${SETTLE}; })()`);
+    const afterReloadLen = await evalIn(c, 'history.length');
+    await evalIn(c, `history.back()`);
+    await new Promise(r => setTimeout(r, 200));
+    await evalIn(c, SETTLE);
+    if (!(await onToday())) problems.push(`${name}: a reload then one history.back() did not land on Today (history.length was ${afterReloadLen})`);
+  }
+
+  await reloadWith(RICH);
+  } catch (e) {
+    problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
+  }
+  return {
+    name: nameOf('todayback'),
+    pass: problems.length === 0,
+    detail: problems.length
+      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
+      : `Today's contents, the team menu (switch, checkmark, Add a team), the gear off Today, `
+        + `and history.back()/#backBtn/a reload all landing on Today across games/team/season/settings, `
+        + `location.href unchanged throughout`,
+  };
+}
+
+/* #23: Today's keyboard shortcuts and its undo-backed actions. Items 9 and
+   11. Runs against the standard RICH record (`view: 'games'`, one team --
+   whatever the previous check left the fixture as), so it starts by
+   returning to Today itself rather than assuming it is already there. */
+async function todayKeysAndUndoPass(c, origin) {
+  const problems = [];
+  // Guarded the same way `todayAndBackPass` is: a missing control is a named
+  // problem below, never a thrown exception.
+  const key = k => step(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '${k}' }))`);
+  const onToday = () => onScreen(c, 'view-today');
+  const onGames = () => onScreen(c, 'view-games');
+  try {
+
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  if (!(await onToday())) problems.push('could not reach Today to start the check');
+
+  // V on Today opens Team; V on Team returns to Today.
+  await evalIn(c, key('v'));
+  const onTeam = await evalIn(c, `!!(document.getElementById('view-team') && !document.getElementById('view-team').hidden)`);
+  if (!onTeam) problems.push('V on Today did not open Team');
+  await evalIn(c, key('v'));
+  if (!(await onToday())) problems.push('V on Team did not return to Today');
+
+  // P from Today opens the game and "prints" it (stubbed).
+  await evalIn(c, `window.__printed = 0; window.print = () => { window.__printed++; }`);
+  await evalIn(c, key('p'));
+  const printedFromToday = await evalIn(c, 'window.__printed');
+  const onGamesAfterP = await onGames();
+  if (!onGamesAfterP) problems.push('P from Today did not open the game');
+  if (printedFromToday !== 1) problems.push(`P from Today called window.print() ${printedFromToday} time(s), want 1`);
+
+  // S and B are inert off the Game screen; back to Today to prove it there.
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, key('s'));
+  const gmOpenAfterS = await evalIn(c, `!!(document.getElementById('gamemode') && !document.getElementById('gamemode').hidden)`);
+  await evalIn(c, key('b'));
+  const gmOpenAfterB = await evalIn(c, `!!(document.getElementById('gamemode') && !document.getElementById('gamemode').hidden)`);
+  if (gmOpenAfterS || gmOpenAfterB) problems.push('S or B did something off the Game screen, where neither is wired');
+  if (!(await onToday())) problems.push('S/B moved the screen off Today');
+
+  // New day + Undo on Today.
+  const gamesBefore = await evalIn(c, `document.querySelectorAll('.today-game').length`);
+  await evalIn(c, step(`document.getElementById('todayNewDay')?.click()`));
+  const gamesAfterNewDay = await evalIn(c, `document.querySelectorAll('.today-game').length`);
+  const stillTodayAfterNewDay = await onToday();
+  const undoShown = await evalIn(c, `!!document.querySelector('#toasts .toast[data-undo]')`);
+  if (!undoShown) problems.push('New day did not show an Undo toast');
+  if (!stillTodayAfterNewDay) problems.push('New day left Today');
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+  const gamesAfterUndo = await evalIn(c, `document.querySelectorAll('.today-game').length`);
+  if (gamesAfterUndo !== gamesBefore) {
+    problems.push(`New day + Undo left ${gamesAfterUndo} game(s), started with ${gamesBefore}`);
+  }
+  if (!(await onToday())) problems.push('undoing New day left Today');
+
+  // Add a game opens the new game's own screen.
+  await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
+  const onGamesAfterAdd = await onGames();
+  if (!onGamesAfterAdd) problems.push('Add a game did not open the new game\'s screen');
+  const titleAfterAdd = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
+  if (!/Game \d/.test(titleAfterAdd) && !/Hawks|Ravens/.test(titleAfterAdd)) {
+    problems.push(`the new game's title reads "${titleAfterAdd}"`);
+  }
+
+  // Remove this game -> Today -> Undo -> that game's screen again.
+  await evalIn(c, step(`document.getElementById('removeGame')?.click()`));
+  const onTodayAfterRemove = await onToday();
+  const undoShown2 = await evalIn(c, `!!document.querySelector('#toasts .toast[data-undo]')`);
+  if (!onTodayAfterRemove) problems.push('Remove this game did not return to Today');
+  if (!undoShown2) problems.push('Remove this game did not show an Undo toast');
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+  const onGamesAfterUndoRemove = await onGames();
+  const titleAfterUndoRemove = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
+  if (!onGamesAfterUndoRemove) problems.push('undoing Remove this game did not reopen that game\'s screen');
+  if (titleAfterUndoRemove !== titleAfterAdd) {
+    problems.push(`undoing Remove this game reopened "${titleAfterUndoRemove}", not "${titleAfterAdd}"`);
+  }
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  // Remove team + Undo -> Settings. A SECOND team first: RICH ships with
+  // one, and removing the LAST team is a different, welcome-bound case
+  // (item 11's own parenthetical) that this check is not about.
+  await reloadWithRecord(c, origin, withSecondTeam(RICH));
+
+  await evalIn(c, step(`document.getElementById('settingsBtn')?.click()`));
+  await evalIn(c, step(`document.getElementById('removeTeam')?.click()`));
+  await evalIn(c, step(`document.getElementById('confirmYes')?.click()`));
+  const onTodayAfterRemoveTeam = await onToday();
+  if (!onTodayAfterRemoveTeam) problems.push('removing the team did not return to Today');
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+  const onSettingsAfterUndo = await evalIn(c, `!!(document.getElementById('view-settings') && !document.getElementById('view-settings').hidden)`);
+  if (!onSettingsAfterUndo) problems.push('undoing the team removal did not return to Settings');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  // Same courtesy `todayAndBackPass` pays: leave RICH (one team, `view:
+  // 'games'`) the way every other 'rich' check expects to find it.
+  await reloadWithRecord(c, origin, RICH);
+
+  } catch (e) {
+    problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
+  }
+  return {
+    name: nameOf('todaykeys'),
+    pass: problems.length === 0,
+    detail: problems.length
+      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
+      : 'V both ways, P from Today (window.print stubbed), S/B inert off Games, New day + Undo, '
+        + 'Add a game, Remove this game -> Today -> Undo -> that game, remove team + Undo -> Settings',
   };
 }
 
@@ -413,18 +808,22 @@ async function cardFontPass(c, origin) {
    welcome screen needs a fresh install) and are shown by hand, which covers
    their static markup. */
 const STATES = [
+  /* Today is home (#23): every state below opens from it and every `close`
+     returns to it (`#backBtn`), which is the same "one baseline" contract the
+     old states kept with the games view. */
   { name: 'team view',
-    open: `$('#viewnav [data-view="team"]').click()`, shows: '#view-team',
-    close: `$('#viewnav [data-view="games"]').click()` },
+    open: `$('#todayTeam').click()`, shows: '#view-team',
+    close: `$('#backBtn').click()` },
   { name: 'team + bulk add',
-    open: `$('#viewnav [data-view="team"]').click(); $('#bulktoggle').click()`, shows: '#bulkwrap',
-    close: `$('#bulktoggle').click(); $('#viewnav [data-view="games"]').click()` },
+    open: `$('#todayTeam').click(); $('#bulktoggle').click()`, shows: '#bulkwrap',
+    close: `$('#bulktoggle').click(); $('#backBtn').click()` },
   { name: 'games view, every disclosure open',
-    open: `for (const d of document.querySelectorAll('details')) d.open = true`, shows: '#squadFold[open]',
-    close: `for (const d of document.querySelectorAll('details')) d.open = false` },
+    open: `$('.today-game').click(); for (const d of document.querySelectorAll('details')) d.open = true`,
+    shows: '#squadFold[open]',
+    close: `for (const d of document.querySelectorAll('details')) d.open = false; $('#backBtn').click()` },
   { name: 'season view',
-    open: `$('#viewnav [data-view="season"]').click()`, shows: '#view-season',
-    close: `$('#viewnav [data-view="games"]').click()` },
+    open: `$('#todaySeason').click()`, shows: '#view-season',
+    close: `$('#backBtn').click()` },
   /* No `season view, every game open` state, deliberately: the harness's record
      has a day but no FILED games, so the ledger has no folds to open, and
      seeding four of them would put ~250 nodes on a cold load that is budgeted
@@ -432,7 +831,7 @@ const STATES = [
      as the totals list above them, which this state does measure. */
   { name: 'settings view',
     open: `$('#settingsBtn').click()`, shows: '#view-settings',
-    close: `$('#viewnav [data-view="games"]').click()` },
+    close: `$('#backBtn').click()` },
   { name: 'settings view, paste box open',
     open: `$('#settingsBtn').click(); $('#view-settings .paste-open').click()`,
     shows: '#view-settings .pastebox',
@@ -440,7 +839,7 @@ const STATES = [
     // leaves the box open and the state uncloseable
     close: `$('#view-settings .pastebox').hidden = true;
             $('#view-settings .paste-open').hidden = false;
-            $('#viewnav [data-view="games"]').click()` },
+            $('#backBtn').click()` },
   /* `?` and the theme toggle left the top bar for Settings, so these three no
      longer reach `#helpBtn` from the opening screen. Clicking a button inside a
      hidden view still fires its handler, so leaving them alone would have kept
@@ -448,18 +847,24 @@ const STATES = [
      a check passing for the wrong reason. The cog comes first now. */
   { name: 'help sheet',
     open: `$('#settingsBtn').click(); $('#helpBtn').click()`, shows: '#help',
-    close: `$('#helpClose').click(); $('#viewnav [data-view="games"]').click()` },
+    close: `$('#helpClose').click(); $('#backBtn').click()` },
   { name: 'shortcuts sheet',
     open: `$('#keysHint').click()`, shows: '#keys', close: `$('#keysClose').click()` },
   /* The tour puts itself on the games view before it points at anything
-     (`startTour`), so it closes back onto games without help. */
+     (`startTour`), so it lands there regardless of where it was opened from;
+     `#backBtn` is what returns to Today afterwards now that Today, not games,
+     is the baseline every other state assumes. */
   { name: 'tour, first step',
     open: `$('#settingsBtn').click(); $('#helpBtn').click(); $('#helpTour').click()`,
-    shows: '#tour', close: `$('#tourSkip').click()` },
+    shows: '#tour', close: `$('#tourSkip').click(); $('#backBtn').click()` },
   { name: 'tour, last step',
     open: `$('#settingsBtn').click(); $('#helpBtn').click(); $('#helpTour').click();
            while (!$('#tourSkip').hidden) $('#tourNext').click()`,
-    shows: '#tour', close: `$('#tourNext').click()` },
+    shows: '#tour', close: `$('#tourNext').click(); $('#backBtn').click()` },
+  /* `#gmOpen` lives inside the games view, but clicking a control inside a
+     hidden view still fires its handler (same rule `#print`'s own note
+     relies on), so this opens bench mode straight from Today without first
+     navigating to a game. */
   { name: 'game mode',
     open: `$('#gmOpen').click()`, shows: '#gamemode', close: `$('#gmClose').click()` },
   { name: 'game mode, swap picker',
@@ -897,15 +1302,18 @@ async function narrowPass(c) {
  * crossed without breaking something worse (the 44px touch minimum is the one
  * that has been traded away before) — and write the reason down here. */
 const SWEEP_FLOOR = 300, SWEEP_HI = 420;
-/* Every view the chrome can be in, and the click that gets there. Settings has
-   no nav button -- it is behind the cog -- so the opener is per view rather
-   than derived from `data-view`: a list of names alone would have swept three
-   views and silently skipped the fourth, which is the shape of the bug this
-   whole sweep exists to catch. */
+/* Every screen the chrome can be in, and the click that gets there (#23):
+   Today is home, so it opens with nothing (or a back tap, if a previous
+   state in the sweep left a pushed screen showing); the other four open from
+   Today's own entries, since there is no tab bar to derive them from any
+   more -- a list of names alone would have swept some and silently skipped
+   the rest, which is the shape of the bug this whole sweep exists to catch. */
+const TODAY_HOME = `document.querySelector('#barBack').hidden || document.querySelector('#backBtn').click()`;
 const VIEWS = [
-  { name: 'games', open: `document.querySelector('#viewnav button[data-view="games"]').click()` },
-  { name: 'team', open: `document.querySelector('#viewnav button[data-view="team"]').click()` },
-  { name: 'season', open: `document.querySelector('#viewnav button[data-view="season"]').click()` },
+  { name: 'today', open: TODAY_HOME },
+  { name: 'games', open: `document.querySelector('.today-game').click()` },
+  { name: 'team', open: `document.querySelector('#todayTeam').click()` },
+  { name: 'season', open: `document.querySelector('#todaySeason').click()` },
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
 ];
 async function sweepPass(c) {
@@ -968,7 +1376,7 @@ async function sweepPass(c) {
     }
   }
 
-  await evalIn(c, `document.querySelector('#viewnav button[data-view="games"]').click()`);
+  await evalIn(c, TODAY_HOME);
   await c.send('Emulation.setDeviceMetricsOverride',
     { width: w0, height: h0, deviceScaleFactor: 2, mobile: true });
   await new Promise(r => setTimeout(r, 400));
@@ -1010,17 +1418,20 @@ async function sweepPass(c) {
  * not swept: the harness's record has no filed games, and seeding some would
  * cost more cold-load nodes than the budget has slack.
  *
- * Settings is opened by the cog, not by a tab. A view added to the app and not
- * to this list is a view whose controls nobody measures, which is how
- * `input.num` sat at 38.4px for months. */
+ * Settings is opened by the cog, not by a tab. A screen added to the app and
+ * not to this list is a screen whose controls nobody measures, which is how
+ * `input.num` sat at 38.4px for months. Today joins the sweep in #23: it is
+ * a new screen with its own controls (the team button, the game entries, the
+ * Team/Season entries), and the same rule applies to it. */
 const TOUCH_WIDTHS = [320, 360, 390];
 const TOUCH_STATES = [
-  { name: 'games', open: `document.querySelector('#viewnav button[data-view="games"]').click()` },
-  { name: 'team', open: `document.querySelector('#viewnav button[data-view="team"]').click()` },
-  { name: 'season', open: `document.querySelector('#viewnav button[data-view="season"]').click()` },
+  { name: 'today', open: TODAY_HOME },
+  { name: 'games', open: `document.querySelector('.today-game').click()` },
+  { name: 'team', open: `document.querySelector('#todayTeam').click()` },
+  { name: 'season', open: `document.querySelector('#todaySeason').click()` },
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
   { name: 'games, folds open',
-    open: `document.querySelector('#viewnav button[data-view="games"]').click();
+    open: `document.querySelector('.today-game').click();
            for (const d of document.querySelectorAll('details')) d.open = true` },
 
 ];
@@ -1077,7 +1488,7 @@ async function touchPass(c, source) {
     countRe: [/(\d+) controls/, /\/(\d+) under/],
     label: (st, w) => `${st.name}@${w}px`,
     missing: 'the touch check is gone from smoke-checks.js',
-    close: `document.querySelector('#viewnav button[data-view="games"]').click();
+    close: `${TODAY_HOME};
       for (const d of document.querySelectorAll('details')) d.open = false`,
   });
 
@@ -1108,7 +1519,7 @@ async function settingsRowPass(c, source) {
     countRe: [/(\d+) rows/],
     label: (st, w) => `${w}px`,
     missing: 'the settings-row check is gone from smoke-checks.js',
-    close: `document.querySelector('#viewnav button[data-view="games"]').click()`,
+    close: TODAY_HOME,
   });
 
   return {
@@ -1805,6 +2216,10 @@ const REGISTRY = Object.freeze([
     run: ctx => cardFontPass(ctx.c, ctx.origin) },
   { id: 'fixture', name: 'rich fixture is live', selectable: true, setup: 'rich',
     run: ctx => fixturePass(ctx.c) },
+  { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich',
+    run: ctx => todayAndBackPass(ctx.c, ctx.origin) },
+  { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich',
+    run: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin) },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich',
     run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors) },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich',
@@ -1937,6 +2352,11 @@ async function browserChecks(origin, only) {
        no longer be the untouched cold state item 8 asks for. */
     report.checks.push(await cardFontPass(c, origin));
     report.checks.push(await fixturePass(c));
+    /* Both of these reload their own fixture and put RICH back the way they
+       found it (`view: 'games'`, one team), same courtesy the wake-lock
+       reload below pays. */
+    report.checks.push(await todayAndBackPass(c, origin));
+    report.checks.push(await todayKeysAndUndoPass(c, origin));
 
     report.checks.push(await wakeLockPass(c, origin, consoleErrors));
     // The wake lock check stubs navigator.wakeLock, shadows
