@@ -258,7 +258,7 @@ export function setView(v, instant) {
          of work already done rather than a fresh instruction to apply. */
       pushed = false;
       shown = v;
-      applyView(v);
+      applyView(v, from);
       pendingSelfBack++;
       history.back();
       if (!instant && from && from !== v) window.scrollTo(0, 0);
@@ -273,11 +273,15 @@ export function setView(v, instant) {
   }
 
   shown = v;
-  applyView(v);
+  applyView(v, from);
   if (!instant && from && from !== v) window.scrollTo(0, 0);
 }
 
 addEventListener('popstate', (e) => {
+  // captured before anything below reassigns `shown` -- `applyView` needs to
+  // know what was on screen a moment ago, same as `setView`'s own `from`
+  // (#23 review, third round: entering Games has to repaint it).
+  const from = shown;
   if (pendingSelfBack > 0) {
     /* The echo of a `history.back()` `setView` already issued and already
        painted for, above. If nothing has navigated since, bookkeeping
@@ -304,13 +308,13 @@ addEventListener('popstate', (e) => {
   if (!state.onboarded) {
     pushed = false;
     shown = 'welcome';
-    applyView('welcome');
+    applyView('welcome', from);
     return;
   }
   const v = (e.state && e.state.view) || 'today';
   pushed = v !== 'today';
   shown = v;
-  applyView(v);
+  applyView(v, from);
   window.scrollTo(0, 0);
 });
 
@@ -327,7 +331,7 @@ function screenTitle(v) {
   return v === 'games' ? gameLabel(game(), state.activeGame) : (SCREEN_TITLE[v] || '');
 }
 
-function applyView(v) {
+function applyView(v, from) {
   /* The pre-paint stamp has done its job the moment this runs: from here the
      `hidden` flags below are the truth, and a `data-boot="welcome"` left on
      <html> would go on hiding the games view with an !important rule the
@@ -373,6 +377,39 @@ function applyView(v) {
   if (today) today.hidden = v !== 'today';
   if (back) back.hidden = !onBack;
   if (onBack) { const t = $('#barTitle'); if (t) t.textContent = screenTitle(v); }
+  /* #23 review, third round: entering Games has to show what `state` says,
+     not whichever game the screen last painted. Everything above this line
+     only ever toggled visibility and wrote the header title -- the opponent
+     input, the card and the rest of the Games screen's own content are
+     `render()`'s job, and nothing here called it. Today's game entries,
+     `printCard`'s `setView('games', true)` off Today, `startTour`'s own copy
+     of that same line, and `popstate` landing on games all go through this
+     one function, so this is the one place that can own "the screen shows
+     what state says" without a `renderAll()` sprinkled after each of those
+     calls. Run last, not first: `render()` reads `state.view` (`renderTabs`'s
+     own header-title branch among others) and it has to see 'games', which
+     `state.view = v` above has by now already set.
+
+     Gated on a REAL transition (`from !== 'games'`) so a same-screen
+     `setView('games', ...)` -- `viewRefresh`'s default undo refresh calls
+     `setView(state.view)` on every undoable edit, and most of those happen
+     while already on Games -- does not repaint everything a second time; the
+     efficiency review already flagged that shape of double work once. A
+     caller with its own reason to always repaint regardless of which screen
+     (`restoreBackup`'s `show()`, a wholesale state replace) keeps its own
+     `renderAll()` call same as before; the callers that only needed one
+     because entering Games needed it (`addGame`, both onboarding paths) had
+     theirs removed, now that this covers them.
+
+     ALSO excludes `from === null` -- the very first `setView` call of the
+     session, boot's own (app.js). Boot's own explicit `renderAll()` runs a
+     few lines after it regardless of which screen was resolved, because
+     Today, Team, Season, Settings and Welcome never got a render out of
+     `applyView` either; a coach who left the app on Games -- probably the
+     most common single case there is -- would otherwise pay for two full
+     renders on every reload rather than the one every other screen already
+     paid. */
+  if (v === 'games' && from !== 'games' && from !== null) render();
 }
 
 /* `auto` has to be resolved to a real value here. Removing the attribute does

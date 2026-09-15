@@ -450,6 +450,41 @@ async function todayAndBackPass(c, origin) {
   if (!today.hasAddGame || !today.hasNewDay) problems.push('Today is missing "Add a game" or "New day"');
   if (!today.keysHintExists) problems.push('#keysHint is gone from Today\'s header');
 
+  /* #23 review, third round: opening a DIFFERENT game from Today has to show
+     THAT game, not whichever one the Game screen last painted. `setView`
+     only ever toggled visibility and the header title -- the opponent input
+     and the card are their own sections, repainted by `render()`, and
+     nothing called it here. Opens Hawks first (index 0, the same game the
+     fixture already boots on, so this alone cannot tell a real repaint from
+     no repaint at all), backs out, opens Ravens (index 1 -- the one a stale
+     screen would still be showing Hawks on), then backs out and reopens
+     Hawks -- the same staleness the other way, so a fix that only handles
+     "index 0 -> 1" cannot pass by accident. */
+  const gameScreen = async (label) => {
+    const r = JSON.parse(await evalIn(c, `JSON.stringify({
+      opp: document.getElementById('label')?.value ?? null,
+      card: document.querySelector('.card .opp')?.textContent ?? null,
+    })`));
+    return { label, ...r };
+  };
+  await evalIn(c, step(`document.querySelectorAll('.today-game')[0]?.click()`));
+  const hawks1 = await gameScreen('Hawks (first open)');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, step(`document.querySelectorAll('.today-game')[1]?.click()`));
+  const ravens = await gameScreen('Ravens');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, step(`document.querySelectorAll('.today-game')[0]?.click()`));
+  const hawks2 = await gameScreen('Hawks (reopened)');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  for (const [want, got] of [[/Hawks/i, hawks1], [/Ravens/i, ravens], [/Hawks/i, hawks2]]) {
+    if (!want.test(got.opp || '')) {
+      problems.push(`${got.label}: the opponent input reads "${got.opp}", want it to name ${want}`);
+    }
+    if (!want.test(got.card || '')) {
+      problems.push(`${got.label}: the card header reads "${got.card}", want it to name ${want}`);
+    }
+  }
+
   // item 2: the team menu -- two teams, current one checked, Add a team offered.
   await evalIn(c, step(`
     $('#teamBtn')?.click();
@@ -908,6 +943,40 @@ async function todayKeysAndUndoPass(c, origin) {
   if (afterUndoLen !== beforeUndoLen) {
     problems.push(`undoing the removal of the last team changed history.length ${beforeUndoLen} -> `
       + `${afterUndoLen}, want no change (the same [Today, Settings] pair, not a third entry)`);
+  }
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  /* #23 review, third round: two more paths that change `state.activeGame`
+     (or which game a fresh Games screen has to show) and then show a screen
+     without a render of their own -- `addGame` and `printCard`. A fresh
+     reload of RICH (two games, Hawks and Ravens) rather than trusting
+     whatever the checks above left behind, since both need a KNOWN
+     activeGame to start from. */
+  await reloadWithRecord(c, origin, RICH);
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  // Add a game opens the new game's own, still-empty opponent input -- not
+  // whichever game (Hawks, activeGame 0) the Games screen last painted.
+  await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
+  const addedOpp = await evalIn(c, `document.getElementById('label')?.value ?? null`);
+  if (addedOpp !== '') problems.push(`Add a game: the opponent input reads "${addedOpp}", want it empty (the new game's own)`);
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  // P from Today, with activeGame already moved to the second game (Ravens)
+  // by a Today entry, prints the card THAT entry would open, not whichever
+  // one is still on screen from before. Its own fresh reload, not whatever
+  // the Add-a-game step above left the Games screen painted with -- the
+  // point is that the CARD reads Ravens, and starting from Hawks (the
+  // fixture's own boot screen) says that unambiguously.
+  await reloadWithRecord(c, origin, RICH);
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, step(`document.querySelectorAll('.today-game')[1]?.click()`));
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, `window.__printed = 0; window.print = () => { window.__printed++; }`);
+  await evalIn(c, key('p'));
+  const printedCard = await evalIn(c, `document.querySelector('.card .opp')?.textContent ?? null`);
+  if (!/Ravens/i.test(printedCard || '')) {
+    problems.push(`P from Today with the second game active printed a card reading "${printedCard}", want it to name Ravens`);
   }
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 

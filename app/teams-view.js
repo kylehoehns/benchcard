@@ -466,8 +466,12 @@ function addGame() {
   state.day.games.push(newGame(state.day.games.length, lastGame(), state.settings));
   state.activeGame = state.day.games.length - 1;
   track('day_game_count', { games: state.day.games.length });
+  // `setView('games')` renders it: always called from Today (#todayAddGame,
+  // wired below), so this is always a real transition into Games and
+  // `applyView` does the render itself now (#23 review, third round). A
+  // second `renderAll()` here would be exactly the double work that review
+  // flagged.
   setView('games');
-  renderAll();
 }
 
 /* Its own function rather than an inline handler: the wording and the undo

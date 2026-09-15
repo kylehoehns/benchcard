@@ -429,8 +429,11 @@ function fillSample(n = DEMO_N) {
 function loadSample(n) {
   startTeam(sampleRoster(n), SAMPLE_TEAM_NAME);
   markFirstRunPending();
+  // `setView('games')` renders it: always called from welcome, always a real
+  // transition into Games, so `applyView` does the render itself now (#23
+  // review, third round) -- a second `renderAll()` here is the double work
+  // that review flagged.
   setView('games');
-  renderAll();
   /* The one piece of copy the item is really about: removing the last team
      already works (`teams-view.js`, `removeTeam`), and what was missing is
      that nobody knew. A flash, not a banner -- it is a fact about a thing the
@@ -481,8 +484,10 @@ function finishOnboarding() {
     // roster" there is, and this path never touches soon()
     editHappened();
   }
+  // `setView('games')` renders it: always called from welcome, always a real
+  // transition into Games, so `applyView` does the render itself now (#23
+  // review, third round).
   setView('games');
-  renderAll();
   // after the entrance settles, not during it: the tour measures rects, and
   // the squad pills and timeline blocks are still flying into place here
   if (!state.tourSeen) setTimeout(startTour, 520);
