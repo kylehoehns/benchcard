@@ -302,14 +302,15 @@ on('#gmOpen', 'onclick', openGameMode);
 on('#abBench', 'onclick', openGameMode);
 
 
-// The card is auto-fitted from canvas measurements. Nothing else on the page
-// uses Inter any more, so nothing starts loading the card's face at boot, and
-// document.fonts.ready can resolve before it actually arrives — measuring the
-// fallback and sizing the card for a typeface it will not print in. Load
-// CARD_FONT explicitly -- the same stack card.js measures with, imported
-// rather than re-typed, so this can never drift from what the card prints in
-// -- (falling back to `ready` where `load` is unsupported, and to `ready`
-// again if the load itself fails) and re-fit once it settles.
+// The card is auto-fitted from canvas measurements. The UI's CSS no longer
+// references Inter, so document.fonts.ready is no longer guaranteed to wait
+// for the card face in every engine (card.js's own measureText call does
+// start that load, but relying on that side effect is engine-specific --
+// see scripts/smoke.mjs). Load CARD_FONT explicitly -- the same stack
+// card.js measures with, imported rather than re-typed, so this can never
+// drift from what the card prints in -- (falling back to `ready` where
+// `load` is unsupported, and to `ready` again if the load itself fails) and
+// re-fit once it settles.
 if (document.fonts) {
   const settled = document.fonts.load
     ? document.fonts.load(`800 16px ${CARD_FONT}`).catch(() => document.fonts.ready)

@@ -208,9 +208,12 @@ coach's phone. `VERSION` is that label and nothing more — keep it honest.
 only fires in CI; the `SHELL` guard in `test/sw.test.js` runs everywhere.
 
 **The printed card is auto-fitted from canvas `measureText`.** Its measurement
-font stack must match `.card`'s exactly, and cards re-fit on
-`document.fonts.ready` — otherwise a cold load measures the fallback and sizes
-the card for a typeface it will not print in.
+font stack must match `.card`'s exactly. The UI itself does not use the card's
+face, so nothing else starts loading it at boot: cards re-fit once
+`document.fonts.load('800 16px ' + CARD_FONT)` settles (falling back to
+`document.fonts.ready` where `load` is unsupported or itself fails) —
+otherwise a cold load measures the fallback and sizes the card for a typeface
+it will not print in.
 
 **The browser traps are not here.** `/browser-verify` owns them: the service
 worker, your measurement tools, `css.includes`, `getClientRects()`, the

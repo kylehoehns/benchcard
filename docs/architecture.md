@@ -440,9 +440,10 @@ The card is presented as a physical object on a lit stage rather than as a
 sidebar thumbnail.
 
 
-Type is **Inter Variable**, vendored — one file covers every weight and renders
-identically on Android and Windows instead of falling back to Roboto or Segoe.
-Icons are **Lucide**, with only the path data extracted into `icons.js` (4.7 KB
+The UI takes the phone's own system font stack; **Inter Variable**, vendored,
+loads only for the printed card's face — one file covers every weight the card
+uses and renders identically on Android and Windows instead of falling back to
+Roboto or Segoe (#21). Icons are **Lucide**, with only the path data extracted into `icons.js` (4.7 KB
 for 25 icons) rather than shipping a runtime. Motion drives spring transitions,
 staggered entrances and FLIP reordering; continuous interactions like dragging a
 minute slider deliberately stay on CSS transitions, where spawning a spring per
@@ -454,8 +455,9 @@ stack matching `.card`'s exactly, and the re-fit on font load — is a trap
 `AGENTS.md` owns and this file does not restate.
 
 Motion, colour and touch behaviour run off tokens in one place: easing curves
-(nothing linear), four durations, a warm-neutral palette with a single ember
-accent, and full light/dark. `prefers-reduced-motion` disables all of it, and
+(nothing linear), four durations, a neutral grey palette with ink as the
+primary tint, a `prefers-contrast: more` variant, and full light/dark (the
+Graphite look, #21). `prefers-reduced-motion` disables all of it, and
 **the preference is watched, not sampled** — a phone can flip it from Control
 Centre mid-game, so `fx.js` exports `enabled` as a live binding and re-reads
 the query on `change`. That gating is not decoration: the CSS
