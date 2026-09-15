@@ -23,6 +23,19 @@ name: Claude Code Review
 # If a review is silently missing, read the run log before assuming the
 # reviewer had nothing to say. Twelve seconds is not a review.
 
+#
+# A THIRD WAY THIS JOB PASSES WITHOUT REVIEWING: the action stops reading the
+# session at the first `result` message (anthropics/claude-code-action#1499;
+# the same bug through the `code-review` plugin is #1646), and Claude Code
+# starts subagents in the background by default -- a session that launches
+# one and waits for it emits an interim `result` first, so the run ends green
+# having posted nothing. The `env:` on the action step below sets
+# CLAUDE_CODE_DISABLE_BACKGROUND_TASKS to '1', which makes subagents run in
+# the foreground instead -- the Agent tool loses its `run_in_background`
+# option. Measured locally with the Claude Code version CI installs, one
+# subagent asked to reply: default, two `result` messages, the first saying
+# the subagent was still running; with the variable set, one.
+
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
@@ -81,6 +94,9 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
+        env:
+          # See the header above.
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
