@@ -112,7 +112,7 @@ a { color: inherit; }
   background: var(--surface); font-size: .88rem; font-weight: 580; white-space: nowrap;
 }
 @media (hover: hover) { .btn:hover { background: var(--surface-2); border-color: var(--muted); } }
-.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 6px 16px -8px var(--accent); }
+.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 6px 16px -8px rgba(0,0,0,.24); }
 @media (hover: hover) { .btn.primary:hover { background: var(--accent-2); } }
 .btn.ghost { background: none; border-color: transparent; color: var(--ink-2); }
 @media (hover: hover) { .btn.ghost:hover { background: var(--surface-2); } }
@@ -258,6 +258,13 @@ a { color: inherit; }
 @media (hover: hover) { .teamtabs .ttab.add:hover { color: var(--ink); border-color: var(--line-2); } }
 .teamrow { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-top: .9rem; }
 .teamrow .teamcount { margin-left: auto; }
+/* `.teamrow` already wraps its own row, but `.btn` is `white-space: nowrap`
+   by design, so a wide system font can still make "Remove this team" alone
+   wider than the row has to give -- the row wrapping does nothing for a
+   single item that is itself too wide. Letting the label wrap shrinks the
+   button to the space there is, same answer as `.levelsfoot .btn` (#21 CI
+   fix). */
+#removeTeam { white-space: normal; text-align: center; }
 
 /* ---- lineup balance ------------------------------------------------------
    A five-step control, not a number. The steps fill left-to-right like a
@@ -295,6 +302,13 @@ a { color: inherit; }
 .levelsfoot { margin-top: 1.1rem; display: flex; flex-direction: column;
   align-items: flex-start; gap: .5rem; }
 .levelsfoot .note { max-width: 62ch; }
+/* "Put everyone back to the same level": `.btn` is `white-space: nowrap` by
+   design, and a wide system font can push this one-line label past a narrow
+   column on its own, not just at the enlarged-text size the @media
+   (max-width: 19em) block below already covers. `.levelsfoot` is a column
+   flex with `align-items: flex-start`, so once the text may wrap the button
+   shrinks to the space there is, at any text size (#21 CI fix). */
+.levelsfoot .btn { white-space: normal; text-align: center; }
 #levelskey { margin: .9rem 0 .35rem; }
 #levelskey .bal-key { grid-template-columns: 1fr; }
 
@@ -461,7 +475,7 @@ a { color: inherit; }
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-tap) var(--spring);
 }
 .plr.on { border-color: color-mix(in srgb, var(--c) 45%, transparent); background: color-mix(in srgb, var(--c) 7%, var(--surface)); }
-.plr.on .av { background: var(--c); color: #14120F; }
+.plr.on .av { background: var(--c); color: #1A1A1A; }
 .plr.off { opacity: .45; }
 .plr.off .nm { text-decoration: line-through; }
 .plr:active .av { transform: scale(.88); }
@@ -514,8 +528,8 @@ a { color: inherit; }
    disappears exactly inside the long runs where a coach needs it. renderTimeline
    marks the covered ones `.onblk`. */
 .tl-div { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-2); opacity: .9; z-index: 1; }
-.tl-div.onblk { background: rgba(20, 18, 15, .34); }
-[data-theme="dark"] .tl-div.onblk { background: rgba(8, 7, 6, .46); }
+.tl-div.onblk { background: rgba(20, 20, 20, .34); }
+[data-theme="dark"] .tl-div.onblk { background: rgba(8, 8, 8, .46); }
 /* "The game is here." Only drawn while a game is genuinely part-played (see
    resumeAt in card.js), because a reload closes bench mode and the plan page
    otherwise looks identical to a game that has not started. The ring is what
@@ -982,7 +996,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 }
 .gm-p .av { width: 2.3rem; height: 2.3rem; border-radius: 50%; flex: none; display: grid; place-items: center;
   font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums;
-  background: var(--c); color: #14120F; }
+  background: var(--c); color: #1A1A1A; }
 /* Same 1.04rem as the bench so the two halves match exactly, and a tight
    line-height so the one name that has to wrap costs a pixel instead of
    fifteen. No size fits 30 characters on one line here -- 254px of name
@@ -1451,7 +1465,7 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    lag a frame behind the thing it is meant to be tracing. Steps snap. */
 .tour { position: fixed; inset: 0; z-index: 310; animation: viewIn var(--t) var(--ease); }
 .tour-hole { position: absolute; border-radius: var(--r);
-  box-shadow: 0 0 0 max(120vw, 120vh) color-mix(in srgb, #080706 66%, transparent),
+  box-shadow: 0 0 0 max(120vw, 120vh) color-mix(in srgb, #080808 66%, transparent),
               0 0 0 2px var(--accent); pointer-events: none; }
 .tour-box { position: absolute; width: min(21rem, calc(100vw - 1.5rem));
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
@@ -1641,7 +1655,7 @@ html[data-boot="settings"] #view-settings[hidden] { display: block !important; }
   height: 2.4rem; pointer-events: none;
   background: linear-gradient(to top, var(--shotbg), transparent); }
 #welPanePaper { --shotbg: #FFFFFF; }
-#welPaneScreen { --shotbg: #F6F4F0; }
+#welPaneScreen { --shotbg: #F4F4F6; }
 /* CROPPED, NOT SHRUNK. The card is drawn at its true printed width and runs off
    the bottom of the stage, which is legible; the 86px thumbnail of the whole
    card that this replaced was not.
@@ -2262,16 +2276,11 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      way round rather than assumed. */
   .bal-key .bal-key-arrow { min-width: 0; }
 
-  /* And the whole of the roster's remaining 208px pan, in one button: "Put
-     everyone back to the same level", which only exists once somebody has
-     moved a player off the default level, so no fixture that leaves the
-     levels alone can see it. `.btn` is `white-space: nowrap` by design, so at
-     a 32px root its one unbreakable line measures 506px in a 275px column and
-     the page is 528px wide -- the `.gm-cta` and `.backuprow` case exactly,
-     and it takes the same answer. `.levelsfoot` is a column flex with
-     `align-items: flex-start`, so once the text may wrap the button shrinks
-     to the space there is. */
-  .levelsfoot .btn { white-space: normal; text-align: center; }
+  /* "Put everyone back to the same level" was the whole of the roster's
+     remaining 208px pan here, the `.gm-cta` and `.backuprow` case exactly --
+     now handled unconditionally by `.levelsfoot .btn` near its base rule
+     (#21 CI fix), since a wide system font hit the same one-line label well
+     below a 32px root too. Nothing left to do at this size specifically. */
 
   /* And the season ledger, the last view still off the edge. Every `.sn-row`
      is dot + name + "5 games · 7 behind" + the minutes, and three of those
@@ -2492,7 +2501,10 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 .sn-game[open] > summary::after { transform: rotate(45deg) translate(0, 0); }
 .sn-body { padding: .1rem 0 .8rem; }
 .sn-body .sn-row:last-of-type { border-bottom: 0; }
-.sn-del { margin-top: .6rem; }
+/* Same `.btn` nowrap case as `#removeTeam` and `.levelsfoot .btn`: "Delete
+   this game" is a one-line label a wide system font can push past the
+   column on its own (#21 CI fix). */
+.sn-del { margin-top: .6rem; white-space: normal; text-align: center; }
 /* Export. `.btn`'s own padding lands near 41px, and this is set standing up in
    a gym like everything else, so it is pinned to 44 explicitly. Full width at
    phone size for the same reason the Backup row's buttons stretch: a wide

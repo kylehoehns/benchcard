@@ -95,7 +95,7 @@ test('the reviewer still runs on the files that carry the rules', () => {
   }
 });
 
-/* #40: `--only` runs one smoke check and proves nothing about the other 20 --
+/* #40: `--only` runs one smoke check and proves nothing about the other 21 --
  * AGENTS.md § Layout says so in as many words. CI running the suite with
  * `--only` would make a required check named "smoke (390×844)" report green
  * having audited a single row, which is exactly the "required check that does

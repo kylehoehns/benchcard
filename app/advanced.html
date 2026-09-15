@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F6F4F0">
+<meta name="theme-color" content="#F4F4F6">
 <script>
 /* The same pre-paint theme resolution as the app and as about.html, and
    deliberately a third copy rather than a shared file: it has to run before
@@ -24,7 +24,7 @@
     }
     document.documentElement.setAttribute('data-theme', t);
     document.querySelector('meta[name="theme-color"]')
-      .setAttribute('content', t === 'dark' ? '#0B0A09' : '#F6F4F0');
+      .setAttribute('content', t === 'dark' ? '#0B0B0C' : '#F4F4F6');
   } catch (e) {}
 })();
 </script>
@@ -234,7 +234,7 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
   margin-top: 1.1rem; font-size: .88rem; color: var(--ink-2); }
 .legend .tok { background: #fff; color: #000; border-radius: 4px; padding: .18rem .4rem;
   font-size: .78rem; font-weight: 800; white-space: nowrap; justify-self: start;
-  box-shadow: 0 0 0 1px rgba(20,18,15,.14); }
+  box-shadow: 0 0 0 1px rgba(20,20,20,.14); }
 .legend .tok.u { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1.6px; }
 .legend .tok.sm { font-weight: 700; letter-spacing: .08em; font-size: .72rem; }
 
