@@ -32,10 +32,17 @@ deny() {
 }
 
 case "$path" in
-  */app/vendor/fetch.sh | */app/vendor/README.md)
-    ;;
+  # fetch.sh and README.md are hand-written, so they stay editable. They are
+  # matched on what follows the FIRST /app/vendor/, so a lookalike nested
+  # deeper (.../vendor/x/app/vendor/fetch.sh) is still denied.
   */app/vendor/*)
-    deny 'Blocked: third-party code changes only through app/vendor/fetch.sh. The vendor-drift CI job re-runs that script and fails if the tree differs by a byte, so a hand edit here is a red build later rather than a fix now. Change the pin in fetch.sh and re-run it. AGENTS.md, "Rules".'
+    case "${path#*/app/vendor/}" in
+      fetch.sh | README.md)
+        ;;
+      *)
+        deny 'Blocked: third-party code changes only through app/vendor/fetch.sh. The vendor-drift CI job re-runs that script and fails if the tree differs by a byte, so a hand edit here is a red build later rather than a fix now. Change the pin in fetch.sh and re-run it. AGENTS.md, "Rules".'
+        ;;
+    esac
     ;;
   */scripts/budgets.json)
     deny 'Blocked: scripts/budgets.json is a RECORDED baseline, not a hand-authored file, and `requests` in it is a hand-set pin. Widen the ceiling in scripts/budgets.mjs instead, deliberately, and say why in the commit. AGENTS.md, "Layout".'
