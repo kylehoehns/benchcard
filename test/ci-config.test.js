@@ -130,13 +130,15 @@ test('the reviewer still runs on the files that carry the rules', () => {
 /* Turns one `run:` step's raw YAML into the single shell command it actually
  * runs: the inline text on the `run:` line itself, plus every following line
  * indented strictly deeper than the `run:` key (a block scalar's continuation
- * -- see 1 above), stopping at the first line that is blank* or indented at
- * or shallower than the key (the next sibling key, or the next list item).
- * (*blank lines inside a real block scalar are legal and would need to stay
- * part of it for a faithful reassembly; none of this file's steps use one
- * mid-command, so treating blank as "step ended" costs nothing here and keeps
- * the scan simple.) Comment-only continuation lines are dropped, not treated
- * as ending the step, since YAML would still read them as part of the block. */
+ * -- see 1 above), stopping at the first line that is NON-blank and indented
+ * at or shallower than the key (the next sibling key, or the next list item),
+ * or at EOF. A blank line is legal inside a real block scalar and is part of
+ * it -- it never ends the step on its own; the scan skips over it and keeps
+ * looking for the line that actually ends the block. Treating a blank line as
+ * the end was the gap: it let `smoke.mjs --only` hide on the far side of one
+ * inside a `run: |` block, invisible to a scan that stopped short. Comment-only
+ * continuation lines are dropped, not treated as ending the step either, since
+ * YAML would still read them as part of the block. */
 function extractRunCommands(yamlText) {
   const lines = yamlText.split('\n');
   const commands = [];
@@ -153,7 +155,7 @@ function extractRunCommands(yamlText) {
     let j = i + 1;
     for (; j < lines.length; j++) {
       const line = lines[j];
-      if (line.trim() === '') break;
+      if (line.trim() === '') continue; // blank inside a block scalar: never ends the step
       const indent = line.length - line.trimStart().length;
       if (indent <= keyIndent) break;
       if (line.trim().startsWith('#')) continue; // comment: part of the step, not the command
@@ -199,6 +201,32 @@ test('extractRunCommands reassembles a block-scalar run step into one command', 
   const unrelated = '    - run: npm ci --only=production';
   assert.deepEqual(extractRunCommands(unrelated), ['npm ci --only=production']);
   assert.doesNotMatch(extractRunCommands(unrelated)[0], SMOKE_INVOCATION);
+
+  // A blank line INSIDE a block scalar is part of it, not the end of the
+  // step -- this is the shape that hid `--only` from the scan before the fix.
+  const blockWithBlankLine = [
+    '  steps:',
+    '    - run: |',
+    '        npm ci',
+    '',
+    '        node scripts/smoke.mjs --only "bench mode wake lock"',
+  ].join('\n');
+  assert.deepEqual(extractRunCommands(blockWithBlankLine),
+    ['npm ci node scripts/smoke.mjs --only "bench mode wake lock"'],
+    'a blank line mid-block must not truncate the reassembled command');
+
+  // A blank line right before the NEXT step must still end the first step at
+  // that next step's key, not swallow it into the same command.
+  const blankThenNextStep = [
+    '  steps:',
+    '    - run: |',
+    '        npm ci',
+    '',
+    '    - name: next step',
+    '      run: echo done',
+  ].join('\n');
+  assert.deepEqual(extractRunCommands(blankThenNextStep), ['npm ci', 'echo done'],
+    'a trailing blank line must not merge the next sibling step into this one');
 });
 
 test('no workflow runs the smoke suite with --only', () => {

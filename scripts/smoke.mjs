@@ -1919,6 +1919,19 @@ try {
 const { report, consoleErrors } = result;
 
 if (ONLY) {
+  /* THE PARTIAL-RUN DRIFT CHECK. Both partial setups above filter or select
+     rows by the registry name with nothing that requires exactly one to come
+     back — `[].every()` is vacuously true on zero rows, and the full-run
+     drift check further down never runs on a partial path. So a name that no
+     longer matches the registry would print an empty table and exit 0 rather
+     than fail. */
+  if (report.checks.length !== 1 || report.checks[0].name !== ONLY.name) {
+    const names = report.checks.map(c => c.name).join(', ') || '(none)';
+    console.error(`--only "${ONLY.name}" produced ${report.checks.length} row(s) named ${names} `
+      + 'instead of one — registry drift, see the registry comment.');
+    process.exit(1);
+  }
+
   /* No budgets, no `node --test`: `--only` proves one check, not the suite —
      AGENTS.md § Layout says a partial run proves nothing beyond the row it
      printed. Console errors get a note instead of a row, because they are a
