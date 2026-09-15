@@ -107,6 +107,30 @@
     small.length ? `${small.length}/${tapCount} under 44px: ${small.slice(0, 6).join(', ')}`
       : `${tapCount} controls, all ≥ 44px`);
 
+  /* 3b. #22: every row in #view-settings -- each setting row, each link row
+        (About, Contact, Buy me a coffee -- `.setrow` doubles as the base for
+        both) and the backup row -- at least 48px, a floor higher than the
+        44px sweep above and scoped to this one view (I1; the app-wide 44px
+        sweep is #37's, not this ticket's). Same shape as "last control in an
+        open dialog is reachable" above: nothing open is not a failure, it is
+        nothing to measure yet -- `smoke.mjs`'s `settingsRowPass` is what
+        actually opens Settings before reading this back, at three widths. */
+  const settingsView = document.getElementById('view-settings');
+  const shortRows = [];
+  let rowCount = 0;
+  if (settingsView && visible(settingsView)) {
+    for (const row of settingsView.querySelectorAll('.setrow, .backuprow')) {
+      if (!visible(row)) continue;
+      rowCount++;
+      const r = row.getBoundingClientRect();
+      if (r.height < 47.5) shortRows.push(`${label(row)} ${round(r.height)}px`);
+    }
+  }
+  add('settings rows ≥ 48px', shortRows.length === 0,
+    !rowCount ? '#view-settings not open'
+      : shortRows.length ? `${shortRows.length}/${rowCount} under 48px: ${shortRows.slice(0, 4).join(', ')}`
+      : `${rowCount} rows, all ≥ 48px`);
+
   /* 4. The last control in an open dialog is reachable.
 
         The help sheet shipped for months with "Show me around again" below the

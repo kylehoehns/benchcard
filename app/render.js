@@ -12,7 +12,6 @@
  * repaintable region, and the three lists below name the subsets an edit
  * is allowed to touch.
  * ================================================================== */
-import { icon } from './icons.js';
 import { $ } from './dom.js';
 import { withFocus } from './trap.js';
 import { renderCards } from './card.js';
@@ -267,16 +266,18 @@ export function applyTheme() {
   document.documentElement.setAttribute('data-theme', resolved);
   document.querySelector('meta[name="theme-color"]')
     ?.setAttribute('content', resolved === 'dark' ? '#0B0B0C' : '#F4F4F6');
-  const tb = $('#theme');
-  if (tb) {
-    tb.textContent = '';
-    tb.append(icon(t === 'dark' ? 'moon' : t === 'light' ? 'sun' : 'contrast', { size: '1.05em' }));
-    tb.title = `Theme: ${t}`;
+  /* #22: the Appearance group replaces the icon cycler and its `#themeNow`
+     read-back -- a three-way choice reads better as three named buttons than
+     as a button you press to find out what it will do next. Marked the same
+     way `#maxSubsSeg` marks its current option (`.on`, `aria-pressed`); this
+     stays the one place `auto` is resolved and `data-theme` / `theme-color`
+     are written, same as before. */
+  const seg = $('#themeSeg');
+  if (seg) {
+    for (const b of seg.querySelectorAll('button[data-theme]')) {
+      const on = b.dataset.theme === t;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    }
   }
-  /* The button used to sit in the top bar, where an icon that cycles is fine
-     because it is right there to try. In a settings list it is not: a row that
-     says "Theme" beside a glyph does not say what the theme currently IS. So
-     the row carries the value in words and the button stays the cycler. */
-  const now = $('#themeNow');
-  if (now) now.textContent = t === 'auto' ? 'automatic' : t === 'dark' ? 'dark' : 'light';
 }

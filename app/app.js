@@ -56,9 +56,15 @@ for (const b of document.querySelectorAll('#stratseg button')) {
   b.onclick = () => { game().strategy = b.dataset.strat; track('plan_generated', { strategy: b.dataset.strat }); renderAll(); };
 }
 
-on('#theme', 'onclick', () => {
-  const order = ['auto', 'light', 'dark'];
-  state.ui.theme = order[(order.indexOf(state.ui.theme) + 1) % 3];
+/* #22: the Appearance group replaces the theme cycler. Same delegated shape
+   as the segs teams-view.js wires (`#maxSubsSeg` and friends): static
+   buttons, one handler, a full paint through `applyTheme()` rather than a
+   render key of its own -- the group is the only thing on screen the theme
+   change touches. */
+on('#themeSeg', 'onclick', (e) => {
+  const b = e.target.closest('button[data-theme]');
+  if (!b || b.dataset.theme === state.ui.theme) return;
+  state.ui.theme = b.dataset.theme;
   save(); applyTheme();
 });
 on('#dayName', 'oninput', e => { state.day.name = e.target.value; save(); });

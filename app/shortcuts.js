@@ -31,7 +31,12 @@ export function initShortcuts(setViewFn) {
      hands a handler the click Event. */
   on('#helpBtn', 'onclick', () => openHelp());
   on('#helpClose', 'onclick', closeHelp);
-  on('#helpTour', 'onclick', () => { closeHelp(); startTour(); });
+  on('#helpTour', 'onclick', tourAgain);
+  /* #22: Settings carries its own "Show me around again", beside the help
+     sheet's. Same function, not a second way to start the tour -- closing the
+     help sheet is a no-op when it is not open, which is exactly the case from
+     Settings. */
+  on('#helpTourSettings', 'onclick', tourAgain);
   /* The in-app "?" affordances (A20 slice 4). The markup is the list -- one
      `data-help` per `#help` section, on the control that section is about --
      so adding a sixth is an edit to index.html and nothing here.
@@ -119,6 +124,11 @@ function closeHelp() {
   h.hidden = true;
   closeTrap(h);
 }
+/* "Show me around again", wherever it is tapped from. Closes the help sheet
+   before starting the tour rather than stacking one overlay on the other --
+   see the note above `openHelp` -- and `closeHelp` is already a no-op when
+   the sheet is not open, which is the case for the Settings button (#22). */
+function tourAgain() { closeHelp(); startTour(); }
 /* `v` used to flip a pair; with a third tab it walks a ring, and the ring is
    read off the bar rather than listed here. The tabs ARE the answer to "which
    views does v visit", so asking them is what keeps a fourth tab -- or a

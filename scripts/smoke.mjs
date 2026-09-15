@@ -1063,6 +1063,51 @@ async function touchPass(c, source) {
   };
 }
 
+/* #22, spec "What would settle it" item 7: every row in #view-settings --
+   each setting row, each link row and the backup row -- at least 48px, at
+   the same three widths `touchPass` sweeps (`TOUCH_WIDTHS` -- both checks are
+   "phone widths a coach actually carries", so this reads that list rather
+   than keeping a second copy of the same three numbers). Same shape as
+   `touchPass` too: open the state, re-read `smoke-checks.js`'s own verdict at
+   each width, because a floor set in CSS has to be proven by measuring the
+   rendered box, not by reading the stylesheet. Settings has no tab of its
+   own (it is behind the cog), so the one state here is opening it and
+   nothing else. */
+async function settingsRowPass(c, source) {
+  const before = await c.send('Runtime.evaluate', {
+    expression: 'JSON.stringify(window.__SMOKE_VIEWPORT || [390, 844])', returnByValue: true,
+  });
+  const [w0, h0] = JSON.parse(before.result.value);
+
+  await evalIn(c, step(`document.querySelector('#settingsBtn').click()`));
+  const bad = [];
+  let audited = 0, seen = 0;
+  for (const w of TOUCH_WIDTHS) {
+    await c.send('Emulation.setDeviceMetricsOverride',
+      { width: w, height: h0, deviceScaleFactor: 2, mobile: true });
+    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    const chk = (await evalIn(c, source)).checks.find(k => k.name === 'settings rows ≥ 48px');
+    if (!chk) { bad.push(`${w}px: the settings-row check is gone from smoke-checks.js`); continue; }
+    audited++;
+    const n = Number((chk.detail.match(/(\d+) rows/) || [])[1] || 0);
+    seen = Math.max(seen, n);
+    if (!chk.pass) bad.push(`${w}px: ${chk.detail}`);
+  }
+
+  await evalIn(c, step(`document.querySelector('#viewnav button[data-view="games"]').click()`));
+  await c.send('Emulation.setDeviceMetricsOverride',
+    { width: w0, height: h0, deviceScaleFactor: 2, mobile: true });
+  await new Promise(r => setTimeout(r, 300));
+
+  return {
+    name: nameOf('settingsrows'),
+    pass: bad.length === 0,
+    detail: bad.length
+      ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
+      : `${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px`,
+  };
+}
+
 /* The pages no browser check had ever loaded.
  *
  * Everything above this drives `index.html` and only `index.html`. The site is
@@ -1754,6 +1799,8 @@ const REGISTRY = Object.freeze([
     run: ctx => overlayPass(ctx.c, ctx.source) },
   { id: 'touch', name: `touch targets ≥ 44px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich',
     run: ctx => touchPass(ctx.c, ctx.source) },
+  { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich',
+    run: ctx => settingsRowPass(ctx.c, ctx.source) },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich',
     run: ctx => narrowPass(ctx.c) },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich',
@@ -1892,6 +1939,11 @@ async function browserChecks(origin, only) {
        with different coverage is how the weaker one gets believed. */
     report.checks = report.checks.filter(k => k.name !== 'touch targets ≥ 44px');
     report.checks.push(await touchPass(c, source));
+    /* Same reshuffle as touch, one line up: the single-viewport verdict
+       `smoke-checks.js` already contributed to the cold array (Settings
+       closed, so it read "not open") is replaced with the swept one. */
+    report.checks = report.checks.filter(k => k.name !== 'settings rows ≥ 48px');
+    report.checks.push(await settingsRowPass(c, source));
     report.checks.push(await narrowPass(c));
     report.checks.push(await sweepPass(c));
     /* After the sweep, because it reloads the app at a 32px root and the sweep

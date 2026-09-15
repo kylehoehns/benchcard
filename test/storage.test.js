@@ -120,6 +120,21 @@ test('unknown enum values fall back instead of breaking the UI', () => {
   assert.equal(s.view, 'games');
 });
 
+test('a record with no ui.theme at all loads as auto, not just one holding a bad value', () => {
+  /* The 'chartreuse' case above proves a JUNK value falls back. #22's
+     Appearance group needs the other case too: an older record that never had
+     the key, because it predates the theme entirely, or one saved with no `ui`
+     block at all. Both must open on Automatic, not crash sanitize or read
+     `undefined` straight through. */
+  const noKey = good();
+  delete noKey.ui.theme;
+  assert.equal(sanitize(noKey, H).ui.theme, 'auto', 'ui.theme missing from an otherwise-present ui block');
+
+  const noBlock = good();
+  delete noBlock.ui;
+  assert.equal(sanitize(noBlock, H).ui.theme, 'auto', 'no ui block at all');
+});
+
 test('a save written before #19 loads with its strategy, balance and level unchanged', () => {
   /* #19 renamed these words on screen only; the stored spelling is the one
      CONTEXT.md's "In code" lines give for each term, and storage.js must not

@@ -122,7 +122,7 @@ export function renderIssues() {
     if (i >= 0) list.splice(i, 1);
   }
   /* `MIN_OFF_STINT_BOUNDARY` is one warning per player, which was right while
-     minimums were set a player at a time. The league floor on the Team tab sets
+     minimums were set a player at a time. The league floor set in Settings puts
      the same number on everyone, so a rule that is not a whole multiple of the
      stint fired twelve identical red rows. The engine is right about every one
      of them and stays untouched; the repetition is a view problem, so it is
@@ -247,7 +247,7 @@ export function renderPlanTable() {
     box.append(el('p', 'note', `Longest sit ${fmtMinutes(sit.minutes)} min in a row: ` +
       `${names.join(', ')}${sit.ids.length > 3 ? ` and ${sit.ids.length - 3} more` : ''}.` +
       (long && maxSubsNow() < 5
-        ? ' Letting more players change at once, on the Team tab, breaks up runs like that. The totals come out the same.'
+        ? ' Letting more players change at once, in Settings, breaks up runs like that. The totals come out the same.'
         : '')));
   }
 }

@@ -493,35 +493,44 @@ test('the format belongs to the team, and one squad’s never reaches the other'
  * of league rules a coach may never touch. Backup is last on purpose
  * and for the opposite reason -- it replaces everything on the device.
  *
- * A40 slice 2 moved the per-team rules OFF this page and onto the Team
- * tab, which is named for the team and now holds it. That does not
- * relax A25's order, it makes the failure it fixed impossible -- so
- * this pins both: the order that is left, and the fact that the team
- * zone is on the other page rather than quietly back here.
+ * #22 (parent #18) put the per-team rules back ON this page, under the
+ * active team's own name, and took the Team tab down to the roster and
+ * nothing else. A25's order survives them: Appearance first (S3/K4),
+ * then How it works, then Backup last -- the team zone sits ahead of
+ * both, because a coach opens Settings under their team, not under
+ * Benchcard's own choices.
  * ================================================================== */
+const indexHtml = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
+const cutView = (html, id) => html.slice(html.indexOf(`id="${id}"`), html.indexOf('</main>', html.indexOf(`id="${id}"`)));
 const views = () => {
-  const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
-  const cut = (id) => html.slice(html.indexOf(`id="${id}"`), html.indexOf('</main>', html.indexOf(`id="${id}"`)));
-  return { settings: cut('view-settings'), roster: cut('view-team') };
+  const html = indexHtml();
+  return { settings: cutView(html, 'view-settings'), roster: cutView(html, 'view-team') };
 };
 
-test('Settings keeps the help sheet above Backup, and Backup keeps the bottom', () => {
+test('Settings keeps Appearance above Backup, and Backup keeps the bottom', () => {
   const { settings } = views();
+  const appearance = settings.indexOf('id="themeSeg"');
   const help = settings.indexOf('id="helpBtn"');
-  const theme = settings.indexOf('id="theme"');
   const backup = settings.indexOf('class="set-h">Backup<');
-  assert.ok(help > -1 && theme > -1 && backup > -1, 'the settings view lost one of its two zones');
+  assert.ok(appearance > -1 && help > -1 && backup > -1, 'the settings view lost one of its zones');
+  assert.ok(appearance < help,
+    'Appearance moved below How it works; S3/K4 puts Appearance first');
   assert.ok(help < backup,
     'the help sheet is back below Backup, on a page a new coach opens for help');
-  assert.ok(theme < backup,
-    'Backup moved above the theme; the one control that replaces everything on the device belongs last');
+  /* "Keeps the bottom": Backup's heading has to sit inside the LAST box in
+     the view, not just somewhere after Appearance -- a box added below it
+     would pass the ordering checks above and still bury the one control
+     that replaces everything on the device. */
+  const lastBoxAt = settings.lastIndexOf('class="side-box"');
+  assert.ok(lastBoxAt > -1 && backup > lastBoxAt,
+    'Backup is not inside the last box in Settings; something was added below it');
 });
 
-test('the per-team settings live on the Team tab, under the roster', () => {
+test('the per-team settings live in Settings, under the team\'s own name -- not on the Team tab', () => {
   const { settings, roster } = views();
   /* Read out of the app rather than typed here, so a SIXTH per-team control
-     wired into `renderSettings` has to land on the Team tab too -- a list of
-     today's five ids would pass a new one straight through. `renderSettings`
+     wired into `renderSettings` has to land in Settings too -- a list of
+     today's ids would pass a new one straight through. `renderSettings`
      is the right seam: it is the one function that paints per-team policy, and
      every id it reaches is by definition a control that belongs to the team. */
   const tv = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8');
@@ -529,12 +538,136 @@ test('the per-team settings live on the Team tab, under the roster', () => {
   assert.ok(body.length > 200, 'renderSettings moved or was renamed; this guard is reading nothing');
   const perTeam = [...new Set([...body.matchAll(/\$\('#(\w+)'\)|\['#(\w+)'/g)].map((m) => m[1] || m[2]))];
   assert.ok(perTeam.length >= 7, `renderSettings should paint at least seven controls, found ${perTeam.length}`);
+  const benchcardAt = settings.indexOf('class="side-hd">Benchcard<');
+  assert.ok(benchcardAt > -1, 'the Benchcard heading is gone from Settings');
   for (const id of perTeam) {
-    assert.ok(roster.includes(`id="${id}"`), `#${id} belongs on the Team tab, with the team it edits`);
-    assert.ok(!settings.includes(`id="${id}"`), `#${id} is back behind the cog; per-team policy belongs on the Team tab`);
+    assert.ok(!roster.includes(`id="${id}"`), `#${id} is back on the Team tab; per-team policy belongs in Settings now`);
+    const at = settings.indexOf(`id="${id}"`);
+    assert.ok(at > -1, `#${id} is missing from Settings`);
+    assert.ok(at < benchcardAt,
+      `#${id} sits inside the Benchcard zone; per-team policy belongs in the team zone above it`);
   }
-  /* Below the players, not above them: the roster is what a coach opens
-     that tab for, and these are set once a season. */
-  assert.ok(roster.indexOf('id="rosterlist"') < roster.indexOf('id="setTeamHd"'),
-    'the team settings box moved above the roster list, pushing the players down a phone screen');
+  assert.ok(!roster.includes('id="addTeam"'),
+    '#addTeam should be gone from the Team tab -- the team strip\'s + is the only way to add one');
+});
+
+/* ================================================================== *
+ * #22 proof items 1, 2 and 5: the theme cycler is gone, Appearance is the
+ * three named buttons the spec calls for, the Benchcard zone carries the
+ * whole order through Backup, the team zone opens on the name and closes on
+ * Remove this team, and addTeam() lands a coach in Settings rather than on
+ * the Team tab it used to.
+ *
+ * `views()` above does not strip HTML comments, which is fine for ordering
+ * (ids are unique) but wrong for a "the word Theme is gone" check -- the
+ * comment above `#themeSeg` explains what it replaced, in words including
+ * "#themeNow". `visible()` strips comments first, so it reads what a coach
+ * actually sees.
+ * ================================================================== */
+const visible = () => {
+  const html = indexHtml().replace(/<!--[\s\S]*?-->/g, ' ');
+  return { settings: cutView(html, 'view-settings') };
+};
+
+test('the theme cycler is gone: no "Theme" text, no #theme or #themeNow control in Settings', () => {
+  const { settings } = visible();
+  assert.doesNotMatch(settings, /\bTheme\b/,
+    'a stray "Theme" label would resurrect the ambiguity Appearance replaced');
+  assert.ok(!settings.includes('id="theme"'), 'the #theme cycler must be gone');
+  assert.ok(!settings.includes('id="themeNow"'), 'the #themeNow read-back must be gone');
+});
+
+test('Appearance is exactly Automatic, Light, Dark, in that order, mapped to auto/light/dark', () => {
+  const { settings } = visible();
+  const at = settings.indexOf('id="themeSeg"');
+  assert.ok(at > -1, '#themeSeg is missing from Settings');
+  const block = settings.slice(at, settings.indexOf('</div>', at));
+  const buttons = [...block.matchAll(/data-theme="(\w+)"[^>]*>([^<]+)</g)]
+    .map((m) => [m[1], m[2].trim()]);
+  assert.deepEqual(buttons, [['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark']],
+    'Appearance must offer exactly these three choices, in this order, mapped to these three values');
+});
+
+test('Benchcard order: Appearance, How it works (with Show me around again), About, Contact, Buy me a coffee, Backup last', () => {
+  const { settings } = views();
+  const marks = {
+    Appearance: settings.indexOf('id="themeSeg"'),
+    'How it works': settings.indexOf('id="helpBtn"'),
+    'Show me around again': settings.indexOf('id="helpTourSettings"'),
+    About: settings.indexOf('>About<'),
+    Contact: settings.indexOf('mailto:hello@benchcard.app'),
+    'Buy me a coffee': settings.indexOf('>Buy me a coffee<'),
+    Backup: settings.indexOf('class="set-h">Backup<'),
+  };
+  for (const [name, at] of Object.entries(marks)) {
+    assert.ok(at > -1, `${name} is missing from Settings`);
+  }
+  const order = Object.keys(marks);
+  for (let i = 1; i < order.length; i++) {
+    assert.ok(marks[order[i - 1]] < marks[order[i]],
+      `${order[i - 1]} must come before ${order[i]} in Settings`);
+  }
+  // "Show me around again" belongs in the How it works row, not a row of its
+  // own further down -- no setrow boundary between the two buttons.
+  const helpRow = settings.slice(marks['How it works'], marks['Show me around again'] + 1);
+  assert.equal((helpRow.match(/class="setrow"/g) || []).length, 0,
+    'Show me around again must sit in the same row as How it works, not a new one');
+  const lastBoxAt = settings.lastIndexOf('class="side-box"');
+  assert.ok(marks.Backup > lastBoxAt, 'Backup is not inside the last box in Settings');
+});
+
+test('Team section order: Team name first, Remove this team last, both inside the team zone', () => {
+  const { settings } = views();
+  const boxHd = settings.indexOf('id="setTeamHd"');
+  const teamName = settings.indexOf('id="teamName"');
+  const removeTeam = settings.indexOf('id="removeTeam"');
+  const benchcard = settings.indexOf('class="side-hd">Benchcard<');
+  assert.ok(boxHd > -1 && teamName > -1 && removeTeam > -1 && benchcard > -1,
+    'the team zone lost one of its landmarks');
+  assert.ok(boxHd < teamName, 'the team heading must sit above the Team name row');
+  assert.ok(teamName < removeTeam,
+    'Team name must be the first row in the team zone, ahead of every other per-team control');
+  assert.ok(removeTeam < benchcard, 'Remove this team must stay inside the team zone, above Benchcard');
+  const idsAfterRemove = [...settings.slice(removeTeam + 1, benchcard).matchAll(/\sid="(\w+)"/g)]
+    .map((m) => m[1]);
+  assert.deepEqual(idsAfterRemove, [],
+    `nothing should follow Remove this team in the team zone, found ${idsAfterRemove}`);
+});
+
+test('the Settings tip link is wired from TIP_URL, not a URL written into markup', () => {
+  const html = indexHtml();
+  assert.ok(!/buymeacoffee/i.test(html),
+    'index.html must not carry the tip URL by hand -- toast.js is the one place that reads TIP_URL');
+  const { settings } = views();
+  assert.ok(settings.includes('data-tip-link'),
+    'the Settings coffee row must carry [data-tip-link] so toast.js finds it');
+  assert.ok(!settings.includes('id="tipLink"'),
+    '#tipLink is already spoken for by the footer -- the Settings row must not reuse it');
+  const toast = readFileSync(new URL('../app/toast.js', import.meta.url), 'utf8');
+  assert.match(toast, /querySelectorAll\(\s*['"]\[data-tip-link\]['"]\s*\)/,
+    'toast.js must wire every [data-tip-link] element from TIP_URL, covering the new Settings row');
+});
+
+test('the Settings tour button calls exactly what #helpTour calls, not a second way to start the tour', () => {
+  const src = readFileSync(new URL('../app/shortcuts.js', import.meta.url), 'utf8');
+  const helpTour = src.match(/on\(\s*['"]#helpTour['"]\s*,\s*['"]onclick['"]\s*,\s*(\w+)\s*\)/);
+  const settingsTour = src.match(/on\(\s*['"]#helpTourSettings['"]\s*,\s*['"]onclick['"]\s*,\s*(\w+)\s*\)/);
+  assert.ok(helpTour, '#helpTour must still be wired');
+  assert.ok(settingsTour, '#helpTourSettings must be wired');
+  assert.equal(settingsTour[1], helpTour[1],
+    'the Settings button must name the same handler #helpTour does');
+});
+
+test('adding a team opens Settings, not the Team tab, and focuses the name field', () => {
+  const src = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8');
+  const start = src.indexOf('function addTeam');
+  const body = src.slice(start, src.indexOf('\nfunction removeTeam', start));
+  assert.ok(body.length > 100, 'addTeam moved or was renamed; this guard is reading nothing');
+  assert.match(body, /setView\(\s*['"]settings['"]\s*\)/,
+    'addTeam must land the coach on Settings, where the new team\'s name field now lives');
+  assert.doesNotMatch(body, /setView\(\s*['"]team['"]\s*\)/,
+    'addTeam must not still send the coach to the Team tab');
+  assert.match(body, /\$\(\s*['"]#teamName['"]\s*\)/, 'addTeam must reach #teamName to focus it');
+  assert.match(body, /\.focus\(\)/);
+  assert.match(body, /\.select\(\)/);
 });

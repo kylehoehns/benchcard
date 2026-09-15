@@ -39,8 +39,14 @@ export function initToast(renderAllFn) {
   // with it, back when TIP_URL was empty. It is set now. (Not the ONLY link
   // any more: the welcome screen's .wel-about is the one test/link-graph.test.js
   // hangs the six chart pages off, because the footer is hidden on welcome.)
-  const tip = $('#tipLink');
-  if (tip) { if (TIP_URL) tip.href = TIP_URL; else tip.hidden = true; }
+  //
+  // `[data-tip-link]`, not `#tipLink`: #22 added a second tip row, in
+  // Settings, and an id has to stay unique while the footer still carries
+  // `#tipLink` (#37 removes the footer, not this ticket). One selector wires
+  // both rather than a second copy of this block.
+  for (const tip of document.querySelectorAll('[data-tip-link]')) {
+    if (TIP_URL) tip.href = TIP_URL; else tip.hidden = true;
+  }
 }
 
 /* ================================================================== *

@@ -59,12 +59,18 @@ test('welcome hides the strip from applyView, not from a renderer', () => {
     'renderTeams must not own the hidden flag — it does not run when onboarded is false');
 });
 
-/* The roster page keeps the team's *editing* controls. That is a different
-   job from switching, and moving them would leave the roster with no way to
-   rename or delete a team. */
-test('the roster keeps the team editing controls', () => {
-  const view = html.slice(html.indexOf('id="view-team"'), html.indexOf('id="view-season"'));
-  for (const id of ['teamName', 'addTeam', 'removeTeam', 'teamCount']) {
-    assert.ok(view.includes(`id="${id}"`), `#${id} must stay on the roster page`);
+/* The roster page lost its team-editing controls to Settings (#22): a coach
+   standing on Settings already sees the active team's name in the heading,
+   so the controls that change or remove it belong beside that heading, not
+   on a roster page that no longer names the team at all. `#addTeam` is gone
+   outright -- the team strip's own `+` is the only way to add one. */
+test('the team-editing controls moved to Settings, off the roster page', () => {
+  const roster = html.slice(html.indexOf('id="view-team"'), html.indexOf('id="view-season"'));
+  const settings = html.slice(html.indexOf('id="view-settings"'));
+  for (const id of ['teamName', 'removeTeam', 'teamCount']) {
+    assert.ok(!roster.includes(`id="${id}"`), `#${id} must leave the roster page`);
+    assert.ok(settings.includes(`id="${id}"`), `#${id} must land in Settings`);
   }
+  assert.ok(!html.includes('id="addTeam"'),
+    '#addTeam should be gone -- the team strip\'s + is the only way to add a team');
 });

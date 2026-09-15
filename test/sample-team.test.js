@@ -261,7 +261,16 @@ test('every tab the bar offers is a label for a view that exists', () => {
 
 test('the sample toast names a destination the app actually has', () => {
   const html = app('index.html');
-  const map = navMap(html);
+  const map = new Map(navMap(html));
+  /* Settings sits behind the cog, not a `#viewnav` tab -- the bar's budget
+     went to Games/Team/Season (A40) -- so it carries no entry in `navMap`,
+     which stays the tab-bar-only map `every tab the bar offers...` pins.
+     Read the same way: off the one place its own label is written, not
+     assumed. `#removeTeam` moved there in #22, taking this toast's
+     destination with it. */
+  const cog = html.match(/id="settingsBtn"[^>]*aria-label="([^"]*)"/);
+  assert.ok(cog, '#settingsBtn has no aria-label to read a destination name from');
+  map.set(cog[1], 'settings');
 
   const msg = flashString(body(app('onboarding.js'), 'function loadSample('));
   const named = [...msg.matchAll(/\b(?:in|on|under|from) (?:the )?([A-Z][A-Za-z]+)/g)].map((m) => m[1]);

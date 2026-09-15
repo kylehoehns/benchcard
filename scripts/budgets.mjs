@@ -43,8 +43,17 @@
    `requests` stays at +2 and is the one deliberately-tight pin. It is not
    about weight: request count is what hurts on a high-latency connection in a
    way raw bytes do not, and it is the thing that stops a new module quietly
-   joining the boot graph. Never re-record it. */
-export const SLACK = { bytesPct: 0.25, bytesAbs: 4096, requests: 2, nodes: 250 };
+   joining the boot graph. Never re-record it.
+
+   `bytesAbs` widened 4096 -> 6144 for #22 (one Settings screen): the ticket
+   moves a whole team-settings box into `#view-settings` and adds an
+   Appearance group plus three link rows, on top of the box it replaces --
+   real markup and CSS, not padding, and it pushed the recorded baseline
+   (736.5 KB) 0.3 KB past the old +25%+4 KB ceiling. `requests` did not move
+   (still 40 of a 41 budget): nothing joined the boot graph, this is bytes
+   the same modules already on the wire now spend. Not re-recorded with
+   `--update-budgets`, which would also touch the `requests` pin above. */
+export const SLACK = { bytesPct: 0.25, bytesAbs: 6144, requests: 2, nodes: 250 };
 
 const kb = n => `${(n / 1024).toFixed(1)} KB`;
 const pct = (got, want) => (want ? `${got > want ? '+' : ''}${(((got - want) / want) * 100).toFixed(1)}%` : 'n/a');

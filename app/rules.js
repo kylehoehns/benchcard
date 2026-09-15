@@ -83,7 +83,7 @@ export function renderConstraints() {
   if (c.lastPeriodFive.length) chips.append(chip(`Last period: ${c.lastPeriodFive.map(nm).join(' ')}`, () => { c.lastPeriodFive = []; }));
   if (c.maxConsecutive) chips.append(chip(`Max ${c.maxConsecutive} stint${c.maxConsecutive > 1 ? 's' : ''} in a row`, () => { c.maxConsecutive = 0; }));
 
-  /* The league floor is a rule, set on the Team tab rather than here: `computeAll`
+  /* The league floor is a rule, set in Settings rather than here: `computeAll`
      composes it into a CLONE of the constraints on the way to the solver, so it
      never appears in the maps above. Saying "no rules yet, the plan just evens
      out the minutes" while every available player carries a floor contradicts
@@ -94,7 +94,7 @@ export function renderConstraints() {
   if (chips.children.length) box.append(chips);
   if (lmin > 0) {
     box.append(el('p', 'note',
-      `Everyone available plays at least ${lmin} min. Your league minimum, set on the Team tab.`));
+      `Everyone available plays at least ${lmin} min. Your league minimum, set in Settings.`));
   } else if (!chips.children.length) {
     box.append(el('p', 'note', 'No rules yet. The plan just evens out the minutes.'));
   }
