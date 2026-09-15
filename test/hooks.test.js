@@ -122,7 +122,15 @@ test('a path that merely contains "add" is not a staging command', () => {
 test('vendored files, generated chart pages and the budget baseline are denied', () => {
   for (const p of [
     '/repo/app/vendor/motion.mjs',
+    '/repo/app/vendor/motion.umd.js',
     '/repo/app/vendor/icons/plus.svg',
+    '/repo/app/vendor/icons/x.svg',
+    '/repo/app/vendor/fonts/inter-latin-wght-normal.woff2',
+    '/repo/app/vendor/icons/fetch.sh',
+    '/repo/app/vendor/fetch.sh.bak',
+    '/repo/app/vendor/fonts/README.md',
+    '/repo/app/vendor/x/app/vendor/fetch.sh',
+    '/repo/app/vendor/icons/app/vendor/README.md',
     '/repo/app/9-player-basketball-rotation-chart.html',
     '/repo/app/12-player-basketball-rotation-chart.html',
     '/repo/scripts/budgets.json',
@@ -131,6 +139,11 @@ test('vendored files, generated chart pages and the budget baseline are denied',
 
 test('the chart denial names the generator, since that is the actual instruction', () => {
   assert.match(edit('/repo/app/7-player-basketball-rotation-chart.html').reason, /charts\.mjs/);
+});
+
+test('fetch.sh and README.md are the two hand-opened files under app/vendor/, so the deny message stays true', () => {
+  assert.equal(edit('/repo/app/vendor/fetch.sh').decision, null);
+  assert.equal(edit('/repo/app/vendor/README.md').decision, null);
 });
 
 test('every other file in the tree stays editable', () => {

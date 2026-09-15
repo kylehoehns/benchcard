@@ -70,7 +70,7 @@ not restated here, only listed, so there is still one answer per rule:
 | No blanket `--update-budgets` | denied, `guard-bash.sh` |
 | No `git add -A` / `git add .` | denied, `guard-bash.sh` |
 | No `Co-Authored-By` trailer | denied, `guard-bash.sh` |
-| No hand edits to `app/vendor/**`, the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` |
+| No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` |
 | A precached file changed → bump `VERSION`, set `SHELL` | reminded, `after-edit.sh` |
 | A dirty tree means another writer is here | reported at session start |
 
