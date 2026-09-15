@@ -274,6 +274,49 @@ async function goRich(c, origin) {
     await ${SETTLE}; })()`);
 }
 
+/* Swap in `record` and reload, the way the #23 checks below need to: a
+   cache-busted URL first forces a genuinely new navigation, which is what
+   actually truncates any forward session-history entries left dangling by a
+   previous reload-then-back — `Page.navigate` to the exact URL already
+   loaded does not. The plain URL right behind it restores the real address,
+   so `location.href` comparisons against it stay honest. Waits for
+   `.today-game` rather than `.card` (`goRich` above) because every #23 check
+   reloads onto Today, never straight onto a game. */
+async function reloadWithRecord(c, origin, record) {
+  await evalIn(c, `(() => {
+    localStorage.removeItem('benchcard.v3');
+    localStorage.removeItem('benchcard.v6.bak');
+    localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(record))});
+  })()`);
+  for (const url of [`${origin}/index.html?_smoke=${Date.now()}`, `${origin}/index.html`]) {
+    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+    await c.send('Page.navigate', { url });
+    await loaded;
+  }
+  await evalIn(c, `(async () => { await document.fonts.ready;
+    for (let i = 0; i < 60 && !document.querySelector('.today-game'); i++) await new Promise(r => setTimeout(r, 50));
+    await ${SETTLE}; })()`);
+}
+
+/* A clone of `record` with a second team ("JV Ravens", a copy of the first)
+   pushed on -- RICH ships with one, and the #23 checks below need two before
+   the team menu's "switch team" and checkmark mean anything. `id` gets a
+   fresh value because sanitizeTeam trusts it for dedup. */
+function withSecondTeam(record) {
+  const withTwo = JSON.parse(JSON.stringify(record));
+  const second = JSON.parse(JSON.stringify(withTwo.teams[0]));
+  second.id = 't1';
+  second.name = 'JV Ravens';
+  withTwo.teams.push(second);
+  return withTwo;
+}
+
+// Is `#id` the screen currently on show? Both #23 checks below ask this of
+// more than one screen (Today, and on the keys/undo side, Games too), so it
+// is one helper rather than a `!!(document.getElementById(...) && ...)` at
+// every call site.
+const onScreen = (c, id) => evalIn(c, `!!(document.getElementById('${id}') && !document.getElementById('${id}').hidden)`);
+
 /* A fixture is not a guard until something fails when it does not arrive.
  *
  * Without this check, a renamed storage key, a record `sanitize` rejects or a
@@ -290,18 +333,33 @@ async function fixturePass(c) {
   const probe = await evalIn(c, `(async () => {
     const $ = s => document.querySelector(s);
     const out = { host: location.host };
-    $('#viewnav [data-view="team"]').click();
+    $('#todayTeam').click();
     await ${SETTLE};
     out.resetLevels = [...document.querySelectorAll('#view-team button')]
       .filter(b => /back to the same level/i.test(b.textContent)).length;
-    $('#viewnav [data-view="games"]').click();
+    $('#backBtn').click();
+    /* Going home from a pushed screen is a REAL \`history.back()\` now (#23
+       review, item A) -- an async browser traversal, not a same-tick repaint.
+       Clicking the next thing before its own \`popstate\` has landed is
+       exactly the "back-then-push in one tick" race that traversal's own
+       fix guards against, and the guard's recovery is to reassert history at
+       the CURRENT position -- which is safe, but is not "nothing happened",
+       and chaining three of these with no yield between them was enough to
+       walk the tab's session history back past this reload's own base entry
+       and off the app entirely (reproduced: \`npm run smoke -- --no-tests\`
+       died with "Inspected target navigated or closed" mid-\`fixturePass\`).
+       One settle is the fix, here and at every \`#backBtn\` click below. */
+    await ${SETTLE};
+    $('.today-game').click();
     await ${SETTLE};
     out.dayRows = document.querySelectorAll('#daytotals .dayrow').length;
     out.dayGames = document.querySelectorAll('#daytotals .legend span').length;
-    $('#viewnav [data-view="season"]').click();
+    $('#backBtn').click();
+    await ${SETTLE};
+    $('#todaySeason').click();
     await ${SETTLE};
     out.filedGames = document.querySelectorAll('#view-season details.sn-game').length;
-    $('#viewnav [data-view="games"]').click();
+    $('#backBtn').click();
     await ${SETTLE};
     return JSON.stringify(out);
   })()`);
@@ -319,6 +377,623 @@ async function fixturePass(c) {
       ? `${missing.length} precondition(s) missing on ${r.host}: ${missing.join('; ')}`
       : `${r.dayRows} players × ${r.dayGames} games today, ${r.filedGames} filed, `
         + `levels set (${r.host})`,
+  };
+}
+
+/* #23: Today is home. Items 1, 2, 3, 4, 5, 6 and 8 of the spec's "what would
+   settle it", on a RICH record reloaded with `view: 'today'` and a second
+   team added (RICH ships with one, and the menu's "switch team" and
+   checkmark need two to mean anything).
+ *
+ * Reloads its own fixture rather than reusing whatever `goRich` already left
+ * on screen, because the item is explicitly about a FRESH BOOT onto Today,
+ * and the history/reload assertions below need one anyway. Ends by putting
+ * the ordinary RICH record back (`view: 'games'`, one team) so whatever runs
+ * after it inherits the fixture every other 'rich' check expects — the same
+ * courtesy `wakeLockPass` pays with its own reload. */
+async function todayAndBackPass(c, origin) {
+  const problems = [];
+  /* Every DOM read below is written so a MISSING control is a named problem,
+     never a thrown exception -- a check that crashes on a control that does
+     not exist yet reports nothing about the controls that DO. `onToday`,
+     `text`/`click` and the object literals all guard with `?.` for the same
+     reason `/new-guard` names: a check that measures nothing must fail
+     loudly, not disappear into an unhandled rejection. The whole body is
+     also wrapped in a `try` below, as a last line of defence, not a
+     substitute for the guards. */
+  const onToday = () => onScreen(c, 'view-today');
+  const rich2 = withSecondTeam(RICH);
+  rich2.view = 'today';
+  // `Page.navigate` to the exact URL already loaded does not truncate the
+  // forward session-history entries the way `reloadWithRecord`'s genuinely
+  // new navigation does -- verified: a `today` -> `team` push straight after
+  // it read as +0, not +1, because a stale forward entry from the PREVIOUS
+  // opener's own reload-and-back test absorbed the push instead of growing
+  // the list. Every reload below needs that, so every reload below uses it.
+  const reloadWith = record => reloadWithRecord(c, origin, record);
+  try {
+
+  await reloadWith(rich2);
+  const href0 = await evalIn(c, 'location.href');
+
+  // item 1: Today's own contents.
+  const today = JSON.parse(await evalIn(c, `JSON.stringify((() => {
+    const $ = s => document.querySelector(s);
+    const gear = $('#settingsBtn');
+    const t = s => $(s)?.textContent.trim() ?? null;
+    return {
+      teamBtn: t('#teamBtnLabel'),
+      gearName: gear && gear.getAttribute('aria-label'),
+      heading: t('#view-today h1'),
+      games: [...document.querySelectorAll('.today-game')].map(b => ({
+        text: b.textContent.trim(), label: b.getAttribute('aria-label') })),
+      teamEntry: t('#todayTeam'),
+      seasonEntry: t('#todaySeason'),
+      hasAddGame: !!$('#todayAddGame'), hasNewDay: !!$('#todayNewDay'),
+      keysHintExists: !!$('#keysHint'),
+    };
+  })())`));
+  // `activeTeam: 0` in `rich2` is still "Smoke Test" -- "JV Ravens" is the
+  // second team, added so the menu below has something to switch to.
+  if (today.teamBtn !== 'Smoke Test') problems.push(`Today's header names "${today.teamBtn}", not the active team`);
+  if (today.gearName !== 'Settings') problems.push(`the gear's accessible name is "${today.gearName}", not "Settings"`);
+  if (today.heading !== 'Today') problems.push(`Today's heading reads "${today.heading}"`);
+  if (today.games.length !== 2) problems.push(`Today lists ${today.games.length} game entries, want 2`);
+  if (!today.games.some(g => /Hawks/.test(g.text) && /9:00/.test(g.text))) problems.push('the first game entry does not name "Hawks" and "9:00"');
+  if (!today.games.some(g => /Ravens/.test(g.text) && /11:30/.test(g.text))) problems.push('the second game entry does not name "Ravens" and "11:30"');
+  if (!/Team/.test(today.teamEntry) || !/Smoke Test/.test(today.teamEntry) || !/11 players/.test(today.teamEntry)) {
+    problems.push(`the Team entry reads "${today.teamEntry}", want "Team", the team name and "11 players"`);
+  }
+  if (!/Season/.test(today.seasonEntry) || !/3 games filed/.test(today.seasonEntry)) {
+    problems.push(`the Season entry reads "${today.seasonEntry}", want "Season" and "3 games filed"`);
+  }
+  if (!today.hasAddGame || !today.hasNewDay) problems.push('Today is missing "Add a game" or "New day"');
+  if (!today.keysHintExists) problems.push('#keysHint is gone from Today\'s header');
+
+  /* #23 review, third round: opening a DIFFERENT game from Today has to show
+     THAT game, not whichever one the Game screen last painted. `setView`
+     only ever toggled visibility and the header title -- the opponent input
+     and the card are their own sections, repainted by `render()`, and
+     nothing called it here. Opens Hawks first (index 0, the same game the
+     fixture already boots on, so this alone cannot tell a real repaint from
+     no repaint at all), backs out, opens Ravens (index 1 -- the one a stale
+     screen would still be showing Hawks on), then backs out and reopens
+     Hawks -- the same staleness the other way, so a fix that only handles
+     "index 0 -> 1" cannot pass by accident. */
+  const gameScreen = async (label) => {
+    const r = JSON.parse(await evalIn(c, `JSON.stringify({
+      opp: document.getElementById('label')?.value ?? null,
+      card: document.querySelector('.card .opp')?.textContent ?? null,
+    })`));
+    return { label, ...r };
+  };
+  await evalIn(c, step(`document.querySelectorAll('.today-game')[0]?.click()`));
+  const hawks1 = await gameScreen('Hawks (first open)');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, step(`document.querySelectorAll('.today-game')[1]?.click()`));
+  const ravens = await gameScreen('Ravens');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, step(`document.querySelectorAll('.today-game')[0]?.click()`));
+  const hawks2 = await gameScreen('Hawks (reopened)');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  for (const [want, got] of [[/Hawks/i, hawks1], [/Ravens/i, ravens], [/Hawks/i, hawks2]]) {
+    if (!want.test(got.opp || '')) {
+      problems.push(`${got.label}: the opponent input reads "${got.opp}", want it to name ${want}`);
+    }
+    if (!want.test(got.card || '')) {
+      problems.push(`${got.label}: the card header reads "${got.card}", want it to name ${want}`);
+    }
+  }
+
+  // item 2: the team menu -- two teams, current one checked, Add a team offered.
+  await evalIn(c, step(`
+    $('#teamBtn')?.click();
+    window.__menuItems = () => [...document.querySelectorAll('.teammenu-item')];
+  `));
+  const menu = JSON.parse(await evalIn(c, `JSON.stringify({
+    items: window.__menuItems().map(b => ({
+      text: b.textContent.trim(), current: b.getAttribute('aria-current'),
+    })),
+  })`));
+  if (menu.items.length !== 3) {
+    problems.push(`the team menu lists ${menu.items.length} item(s), want 2 teams + "Add a team"`);
+  } else {
+    const [t0, t1, add] = menu.items;
+    if (t0.current !== 'true' || !/Smoke Test/.test(t0.text) || !/✓/.test(t0.text)) {
+      problems.push(`the first menu item is "${JSON.stringify(t0)}", want the current team checked`);
+    }
+    if (t1.current) problems.push(`the second menu item carries aria-current, and should not — it is not the active team`);
+    if (!/Add a team/.test(add.text)) problems.push(`the last menu item reads "${add.text}", not "Add a team"`);
+  }
+
+  /* Item 2, C8: "a popover menu anchored to it" -- the button, not a fixed
+     point on the screen. Read both rects fresh each time rather than trust
+     an earlier measurement: `positionTeamMenu()` runs on the popover's own
+     `toggle` event, so a stale position would mean it never ran, not that it
+     ran wrong. Checked at the default viewport and again at 320px/32px root
+     text -- the one place `APP_LARGE_TEXT_ALLOW` stays empty and a fixed rem
+     offset would drift furthest from the button it is supposed to track. */
+  const checkMenuAnchored = async (label) => {
+    const pos = JSON.parse(await evalIn(c, `JSON.stringify((() => {
+      const b = document.getElementById('teamBtn')?.getBoundingClientRect();
+      const m = document.getElementById('teamMenu')?.getBoundingClientRect();
+      if (!b || !m || (!m.width && !m.height)) return null;
+      return { btnBottom: b.bottom, btnLeft: b.left, menuTop: m.top, menuLeft: m.left,
+               vw: innerWidth, menuW: m.width };
+    })())`));
+    if (!pos) { problems.push(`${label}: could not measure an open #teamBtn/#teamMenu pair`); return; }
+    const dTop = pos.menuTop - pos.btnBottom;
+    if (dTop < -1 || dTop > 16) {
+      problems.push(`${label}: the menu's top is ${pos.menuTop.toFixed(1)}px against the button's `
+        + `bottom at ${pos.btnBottom.toFixed(1)}px (Δ${dTop.toFixed(1)}px) -- not anchored just below it`);
+    }
+    const wantLeft = Math.max(8, Math.min(pos.btnLeft, pos.vw - 8 - pos.menuW));
+    if (Math.abs(pos.menuLeft - wantLeft) > 1) {
+      problems.push(`${label}: the menu's left is ${pos.menuLeft.toFixed(1)}px, want `
+        + `${wantLeft.toFixed(1)}px (the button's left edge, clamped on screen)`);
+    }
+  };
+  await checkMenuAnchored(`${WIDTH}px`);
+
+  /* Today's own hierarchy (#23 review, item 2): the PRIMARY label in each
+     row -- a game's own name, "Team", "Season" -- has to stay at least as
+     large as the secondary text beside it (a tip-off time, a player count),
+     at every text size, not just the one the app was eyeballed at. `.btn`
+     and `#teamBtnLabel`'s own `.95rem` already scale with the root; the two
+     labels checked here were the ones that did not (both inherited the
+     body's bare `15px`, an absolute unit a reader's "bigger text" setting
+     cannot touch, while their secondary text already used `rem`). */
+  const checkLabelHierarchy = async (label) => {
+    const sizes = JSON.parse(await evalIn(c, `JSON.stringify((() => {
+      const size = s => { const e = document.querySelector(s); return e ? parseFloat(getComputedStyle(e).fontSize) : null; };
+      return {
+        gameLb: size('.today-game-lb'), gameWhen: size('.today-game-when'),
+        entryLab: size('.today-entry-lab'), entrySub: size('.today-entry-sub'),
+      };
+    })())`));
+    if (sizes.gameLb == null || sizes.gameWhen == null) {
+      problems.push(`${label}: could not measure .today-game-lb/.today-game-when`);
+    } else if (sizes.gameLb < sizes.gameWhen) {
+      problems.push(`${label}: .today-game-lb is ${sizes.gameLb}px, smaller than `
+        + `.today-game-when's ${sizes.gameWhen}px -- the game's own name reads smaller than its tip-off`);
+    }
+    if (sizes.entryLab == null || sizes.entrySub == null) {
+      problems.push(`${label}: could not measure .today-entry-lab/.today-entry-sub`);
+    } else if (sizes.entryLab < sizes.entrySub) {
+      problems.push(`${label}: .today-entry-lab is ${sizes.entryLab}px, smaller than `
+        + `.today-entry-sub's ${sizes.entrySub}px -- "Team"/"Season" reads smaller than their own subtitle`);
+    }
+  };
+  await checkLabelHierarchy(`${WIDTH}px`);
+
+  await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
+  try {
+    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
+    await c.send('Emulation.setDeviceMetricsOverride',
+      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    await checkLabelHierarchy(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+    await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
+    await checkMenuAnchored(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+    await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
+  } finally {
+    // Never leave the emulated viewport/font behind for whatever check runs
+    // next, even if a measurement above threw.
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  }
+  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
+
+  // switching team closes the menu and repaints Today, not the menu mid-tap
+  await evalIn(c, step(`window.__menuItems()[1]?.click()`));
+  const afterSwitch = await evalIn(c, `document.getElementById('teamBtnLabel')?.textContent.trim() ?? null`);
+  if (afterSwitch !== 'JV Ravens') problems.push(`choosing the other team left the header reading "${afterSwitch}"`);
+  const menuStillOpen = await evalIn(c, `document.getElementById('teamMenu')?.matches(':popover-open') ?? false`);
+  if (menuStillOpen) problems.push('the team menu is still open after choosing a team');
+
+  /* Item 3/4/5/6/8, #23 review third round: the HEADER is part of the first
+     frame too, not just the `<main>` the pre-paint rules already swap. Runs
+     from inside the page itself, installed via `addScriptToEvaluateOnNewDocument`
+     so it is there for the reload's very first `requestAnimationFrame` --
+     anything measured by a round trip out to this Node process and back would
+     already be looking at a frame `applyView` has long since fixed. Removed
+     again straight after each read, same as `firstRun`/`tryLanding` above:
+     left registered it would go on recording (uselessly, and not for free)
+     for every check that reloads after this one. */
+  const FIRST_FRAME_SCRIPT = `(() => {
+    window.__firstFrames = [];
+    // checkVisibility, not getComputedStyle on the element itself: the fix
+    // hides #barToday and leaves #settingsBtn's OWN display untouched, relying
+    // on the ancestor to take it out of rendering -- own-display alone would
+    // read the gear as shown right through a correct fix.
+    const vis = id => { const e = document.getElementById(id);
+      return !!e && e.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true }); };
+    const read = () => ({ boot: document.documentElement.getAttribute('data-boot'),
+      barToday: vis('barToday'), barBack: vis('barBack'), gear: vis('settingsBtn'), backBtn: vis('backBtn') });
+    let n = 0;
+    const tick = () => { window.__firstFrames.push(read()); if (++n < 12) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  })();`;
+  const recordFirstFrames = async (reload) => {
+    const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FIRST_FRAME_SCRIPT });
+    try {
+      await reload();
+      return JSON.parse(await evalIn(c, `JSON.stringify(window.__firstFrames || [])`));
+    } finally {
+      await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+    }
+  };
+
+  // items 3, 4, 5, 6, 8: each pushed screen, its header, and its way home.
+  const openers = [
+    ['games', `document.querySelector('.today-game')?.click()`, 'Hawks'],
+    ['team', `document.getElementById('todayTeam')?.click()`, 'Team'],
+    ['season', `document.getElementById('todaySeason')?.click()`, 'Season'],
+    ['settings', `document.getElementById('settingsBtn')?.click()`, 'Settings'],
+  ];
+  for (const [name, openJs, wantTitle] of openers) {
+    /* Fresh boot per opener, or the delta below is measured against whatever
+       forward entry the PREVIOUS opener's own reload-then-back left dangling
+       -- pushing after a back() truncates a stale forward entry and replaces
+       it, which is correct browser history behaviour and exactly why a length
+       delta is only a meaningful measurement starting from a known state. */
+    await reloadWith(rich2);
+    const before = await evalIn(c, 'history.length');
+    await evalIn(c, step(openJs));
+    const opened = JSON.parse(await evalIn(c, `JSON.stringify((() => {
+      const $ = s => document.querySelector(s);
+      const back = $('#backBtn');
+      const gear = $('#settingsBtn');
+      return {
+        length: history.length,
+        backName: back && back.getAttribute('aria-label'),
+        title: $('#barTitle')?.textContent.trim() ?? null,
+        gearVisible: !!gear && gear.getClientRects().length > 0 && getComputedStyle(gear).display !== 'none',
+        href: location.href,
+      };
+    })())`));
+    if (opened.length !== before + 1) problems.push(`${name}: history.length went ${before} -> ${opened.length}, want +1`);
+    if (opened.backName !== 'Back to Today') problems.push(`${name}: the back button's name is "${opened.backName}"`);
+    if (name !== 'games' && opened.title !== wantTitle) problems.push(`${name}: the title reads "${opened.title}", want "${wantTitle}"`);
+    if (name === 'games' && !/Hawks/.test(opened.title || '')) problems.push(`games: the title reads "${opened.title}", want the game's label`);
+    if (opened.gearVisible) problems.push(`${name}: the Settings gear is visible off Today`);
+    if (opened.href !== href0) problems.push(`${name}: location.href changed to ${opened.href}`);
+
+    // history.back() lands on Today.
+    await evalIn(c, `history.back()`);
+    await new Promise(r => setTimeout(r, 200));
+    await evalIn(c, SETTLE);
+    if (!(await onToday())) problems.push(`${name}: history.back() did not land on Today`);
+
+    // reopen, then use the back BUTTON, which must land on Today too.
+    await evalIn(c, step(openJs));
+    await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+    if (!(await onToday())) problems.push(`${name}: the back button did not land on Today`);
+    const hrefAfter = await evalIn(c, 'location.href');
+    if (hrefAfter !== href0) problems.push(`${name}: location.href changed to ${hrefAfter} after the back button`);
+
+    // opening one pushed screen from another replaces, not pushes: the four
+    // openers above all start from Today, so this exercises it from `team`
+    // specifically, the same "P on Team" case the design calls out — printing
+    // is stubbed so it never opens a real dialog.
+    if (name === 'team') {
+      await evalIn(c, step(openJs));
+      const pushedLength = await evalIn(c, 'history.length');
+      await evalIn(c, `window.print = () => {}`);
+      await evalIn(c, step(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }))`));
+      const replacedLength = await evalIn(c, 'history.length');
+      if (replacedLength !== pushedLength) {
+        problems.push(`P from Team changed history.length ${pushedLength} -> ${replacedLength}, want no change (replace, not push)`);
+      }
+      await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+    }
+
+    /* Reloading a pushed screen resets the module's in-memory `shown`/`pushed`
+       to null/false, but not the tab's session history -- boot has to read
+       `history.state` to tell "this entry already IS the pushed screen" from
+       a fresh tab, or it stacks a dead Today entry under the reopened one
+       every time. Reloading TWICE and then backing out TWICE catches what
+       reloading once and backing out once can't: after a single reload the
+       first `history.back()` lands on Today either way, because there is at
+       most one dead entry to absorb it; a second reload adds a second dead
+       entry, so a fix that only relabels instead of also pushing shows up as
+       `history.length` growing between the two reloads, and as the second
+       `history.back()` landing on yet another Today instead of actually
+       leaving. */
+    await evalIn(c, step(openJs));
+    const reloadOnce = async () => {
+      const reloaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+      await evalIn(c, `location.reload()`);
+      await reloaded;
+      await evalIn(c, `(async () => { await document.fonts.ready;
+        for (let i = 0; i < 60 && !document.querySelector('.today-game, #barBack'); i++) await new Promise(r => setTimeout(r, 50));
+        await ${SETTLE}; })()`);
+      return evalIn(c, 'history.length');
+    };
+    const firstFrames = await recordFirstFrames(reloadOnce);
+    /* The pre-paint stamp names the screen (`data-boot="games"` etc.) until
+       `applyView` removes it a moment later -- exactly the window a coach's
+       eyes, not just a round trip out to this process, would catch #barToday
+       or the gear sitting over the wrong screen. A frame recorded AFTER that
+       attribute is gone is a frame `applyView` has already fixed, and is not
+       evidence of anything. */
+    const pushedFrames = firstFrames.filter(f => f.boot && f.boot !== 'welcome' && f.boot !== 'today');
+    const todayShowing = pushedFrames.find(f => f.barToday);
+    if (todayShowing) {
+      problems.push(`${name}: a first frame over data-boot="${todayShowing.boot}" still shows `
+        + `#barToday (${JSON.stringify(todayShowing)})`);
+    }
+    const gearShowing = pushedFrames.find(f => f.gear);
+    if (gearShowing) {
+      problems.push(`${name}: a first frame over data-boot="${gearShowing.boot}" still shows `
+        + `the Settings gear (${JSON.stringify(gearShowing)})`);
+    }
+    if (!firstFrames.length) {
+      problems.push(`${name}: no first frames were recorded across the reload`);
+    } else if (!firstFrames[0].backBtn) {
+      problems.push(`${name}: the first recorded frame does not show #backBtn (${JSON.stringify(firstFrames[0])})`);
+    }
+    const lenAfterReload1 = await evalIn(c, 'history.length');
+    const lenAfterReload2 = await reloadOnce();
+    if (lenAfterReload2 !== lenAfterReload1) {
+      problems.push(`${name}: a second reload on the pushed screen grew history.length `
+        + `${lenAfterReload1} -> ${lenAfterReload2}, want no growth`);
+    }
+    const hrefAfterReloads = await evalIn(c, 'location.href');
+
+    // one `history.back()` from the twice-reloaded pushed screen lands on
+    // Today -- still the same document, a same-page pushState/replaceState
+    // entry, not a navigation.
+    await evalIn(c, `history.back()`);
+    await new Promise(r => setTimeout(r, 200));
+    await evalIn(c, SETTLE);
+    if (!(await onToday())) {
+      problems.push(`${name}: two reloads then one history.back() did not land on Today `
+        + `(history.length was ${lenAfterReload1} -> ${lenAfterReload2})`);
+    }
+
+    // a SECOND `history.back()` has to leave for good: the entry before the
+    // one boot ever created for this document, a real navigation to a
+    // different document (`location.href` changes), not another Today.
+    await evalIn(c, `history.back()`);
+    let hrefAfterSecondBack = hrefAfterReloads;
+    for (let i = 0; i < 40 && hrefAfterSecondBack === hrefAfterReloads; i++) {
+      await new Promise(r => setTimeout(r, 50));
+      hrefAfterSecondBack = await evalIn(c, 'location.href').catch(() => hrefAfterSecondBack);
+    }
+    if (hrefAfterSecondBack === hrefAfterReloads) {
+      problems.push(`${name}: a second history.back() after Today stayed on `
+        + `${hrefAfterSecondBack} instead of leaving for the previous document`);
+    }
+  }
+
+  await reloadWith(RICH);
+  } catch (e) {
+    problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
+  }
+  return {
+    name: nameOf('todayback'),
+    pass: problems.length === 0,
+    detail: problems.length
+      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
+      : `Today's contents, the team menu (switch, checkmark, Add a team), the gear off Today, `
+        + `and history.back()/#backBtn/a reload all landing on Today across games/team/season/settings, `
+        + `location.href unchanged throughout`,
+  };
+}
+
+/* #23: Today's keyboard shortcuts and its undo-backed actions. Items 9 and
+   11. Runs against the standard RICH record (`view: 'games'`, one team --
+   whatever the previous check left the fixture as), so it starts by
+   returning to Today itself rather than assuming it is already there. */
+async function todayKeysAndUndoPass(c, origin) {
+  const problems = [];
+  // Guarded the same way `todayAndBackPass` is: a missing control is a named
+  // problem below, never a thrown exception.
+  const key = k => step(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '${k}' }))`);
+  const onToday = () => onScreen(c, 'view-today');
+  const onGames = () => onScreen(c, 'view-games');
+  try {
+
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  if (!(await onToday())) problems.push('could not reach Today to start the check');
+
+  // V on Today opens Team; V on Team returns to Today.
+  await evalIn(c, key('v'));
+  const onTeam = await evalIn(c, `!!(document.getElementById('view-team') && !document.getElementById('view-team').hidden)`);
+  if (!onTeam) problems.push('V on Today did not open Team');
+  await evalIn(c, key('v'));
+  if (!(await onToday())) problems.push('V on Team did not return to Today');
+
+  // P from Today opens the game and "prints" it (stubbed).
+  await evalIn(c, `window.__printed = 0; window.print = () => { window.__printed++; }`);
+  await evalIn(c, key('p'));
+  const printedFromToday = await evalIn(c, 'window.__printed');
+  const onGamesAfterP = await onGames();
+  if (!onGamesAfterP) problems.push('P from Today did not open the game');
+  if (printedFromToday !== 1) problems.push(`P from Today called window.print() ${printedFromToday} time(s), want 1`);
+
+  // S and B are inert off the Game screen; back to Today to prove it there.
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, key('s'));
+  const gmOpenAfterS = await evalIn(c, `!!(document.getElementById('gamemode') && !document.getElementById('gamemode').hidden)`);
+  await evalIn(c, key('b'));
+  const gmOpenAfterB = await evalIn(c, `!!(document.getElementById('gamemode') && !document.getElementById('gamemode').hidden)`);
+  if (gmOpenAfterS || gmOpenAfterB) problems.push('S or B did something off the Game screen, where neither is wired');
+  if (!(await onToday())) problems.push('S/B moved the screen off Today');
+
+  // New day + Undo on Today.
+  const gamesBefore = await evalIn(c, `document.querySelectorAll('.today-game').length`);
+  await evalIn(c, step(`document.getElementById('todayNewDay')?.click()`));
+  const gamesAfterNewDay = await evalIn(c, `document.querySelectorAll('.today-game').length`);
+  const stillTodayAfterNewDay = await onToday();
+  const undoShown = await evalIn(c, `!!document.querySelector('#toasts .toast[data-undo]')`);
+  if (!undoShown) problems.push('New day did not show an Undo toast');
+  if (!stillTodayAfterNewDay) problems.push('New day left Today');
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+  const gamesAfterUndo = await evalIn(c, `document.querySelectorAll('.today-game').length`);
+  if (gamesAfterUndo !== gamesBefore) {
+    problems.push(`New day + Undo left ${gamesAfterUndo} game(s), started with ${gamesBefore}`);
+  }
+  if (!(await onToday())) problems.push('undoing New day left Today');
+
+  // Add a game opens the new game's own screen.
+  await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
+  const onGamesAfterAdd = await onGames();
+  if (!onGamesAfterAdd) problems.push('Add a game did not open the new game\'s screen');
+  const titleAfterAdd = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
+  if (!/Game \d/.test(titleAfterAdd) && !/Hawks|Ravens/.test(titleAfterAdd)) {
+    problems.push(`the new game's title reads "${titleAfterAdd}"`);
+  }
+
+  // Remove this game -> Today -> Undo -> that game's screen again.
+  /* #23 review, item A: the click and the FIRST read happen in one
+     `evalIn` call, with nothing awaited in between -- so this measures
+     what is true the instant the synchronous click handler returns, before
+     the page has had a chance to paint a frame or run a microtask. Before
+     the fix, `setView('today')` returned immediately on `history.back()`
+     and left the actual screen change to the async `popstate` that
+     followed, so `#view-games` was still visible and `state.view` (and the
+     saved record) still said 'games' right here -- a real, reachable,
+     reload-durable mid-transition state, not a rendering nicety. */
+  const immediate = JSON.parse(await evalIn(c, `(async () => {
+    document.getElementById('removeGame')?.click();
+    const hiddenNow = document.getElementById('view-games')?.hidden;
+    const { state } = await import('${origin}/state.js');
+    const viewNow = state.view;
+    let savedView = null;
+    try { savedView = JSON.parse(localStorage.getItem('benchcard.v6')).view; } catch {}
+    return JSON.stringify({ hiddenNow, viewNow, savedView });
+  })()`));
+  if (immediate.hiddenNow !== true) {
+    problems.push(`Remove this game: #view-games.hidden is ${immediate.hiddenNow} immediately after the click, want true`);
+  }
+  if (immediate.viewNow !== 'today') {
+    problems.push(`Remove this game: state.view is "${immediate.viewNow}" immediately after the click, want "today"`);
+  }
+  if (immediate.savedView !== 'today') {
+    problems.push(`Remove this game: the saved record's view is "${immediate.savedView}" immediately after the click, want "today"`);
+  }
+  await evalIn(c, SETTLE);
+  const onTodayAfterRemove = await onToday();
+  const undoShown2 = await evalIn(c, `!!document.querySelector('#toasts .toast[data-undo]')`);
+  if (!onTodayAfterRemove) problems.push('Remove this game did not return to Today');
+  if (!undoShown2) problems.push('Remove this game did not show an Undo toast');
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+  const onGamesAfterUndoRemove = await onGames();
+  const titleAfterUndoRemove = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
+  if (!onGamesAfterUndoRemove) problems.push('undoing Remove this game did not reopen that game\'s screen');
+  if (titleAfterUndoRemove !== titleAfterAdd) {
+    problems.push(`undoing Remove this game reopened "${titleAfterUndoRemove}", not "${titleAfterAdd}"`);
+  }
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  // Remove team + Undo -> Settings. A SECOND team first: RICH ships with
+  // one, and removing the LAST team is a different, welcome-bound case
+  // (item 11's own parenthetical) that this check is not about.
+  await reloadWithRecord(c, origin, withSecondTeam(RICH));
+
+  await evalIn(c, step(`document.getElementById('settingsBtn')?.click()`));
+  await evalIn(c, step(`document.getElementById('removeTeam')?.click()`));
+  await evalIn(c, step(`document.getElementById('confirmYes')?.click()`));
+  const onTodayAfterRemoveTeam = await onToday();
+  if (!onTodayAfterRemoveTeam) problems.push('removing the team did not return to Today');
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+  const onSettingsAfterUndo = await evalIn(c, `!!(document.getElementById('view-settings') && !document.getElementById('view-settings').hidden)`);
+  if (!onSettingsAfterUndo) problems.push('undoing the team removal did not return to Settings');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  /* #23 review, item B: removing the LAST team on a single-team record
+     (RICH ships with one), so this is the welcome-bound case the two-team
+     test above deliberately is not. Going to welcome touches no history at
+     all, so the `Settings` entry the coach was standing on stays live in
+     the session history -- and the physical back button (simulated with a
+     real `history.back()`, not `setView`) must still be able to land on
+     it. Before the fix, `popstate` applied whatever `e.state` named with no
+     onboarding check, painting a stale Settings (or Today) over an app that
+     no longer has a team. */
+  await reloadWithRecord(c, origin, RICH);
+  await evalIn(c, step(`document.getElementById('settingsBtn')?.click()`));
+  await evalIn(c, step(`document.getElementById('removeTeam')?.click()`));
+  await evalIn(c, step(`document.getElementById('confirmYes')?.click()`));
+  const onWelcomeAfterLastRemove = await evalIn(c,
+    `!!(document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden)`);
+  if (!onWelcomeAfterLastRemove) problems.push('removing the last team did not show the welcome screen');
+
+  await evalIn(c, `history.back()`);
+  await evalIn(c, SETTLE);
+  const stillWelcomeAfterBack = await evalIn(c,
+    `!!(document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden)`);
+  const todayHiddenAfterBack = await evalIn(c, `document.getElementById('view-today')?.hidden`);
+  if (!stillWelcomeAfterBack) problems.push('history.back() after removing the last team left welcome for a stale screen');
+  if (todayHiddenAfterBack !== true) {
+    problems.push(`#view-today.hidden is ${todayHiddenAfterBack} after history.back() with no team left, want true`);
+  }
+
+  // Undo from welcome restores Settings, on the SAME [Today, Settings] pair
+  // -- not a third entry stacked on top of the one the coach was already
+  // standing on.
+  const beforeUndoLen = await evalIn(c, `history.length`);
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+  const onSettingsAfterLastUndo = await evalIn(c,
+    `!!(document.getElementById('view-settings') && !document.getElementById('view-settings').hidden)`);
+  const afterUndoLen = await evalIn(c, `history.length`);
+  if (!onSettingsAfterLastUndo) problems.push('undoing the removal of the last team did not restore Settings');
+  if (afterUndoLen !== beforeUndoLen) {
+    problems.push(`undoing the removal of the last team changed history.length ${beforeUndoLen} -> `
+      + `${afterUndoLen}, want no change (the same [Today, Settings] pair, not a third entry)`);
+  }
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  /* #23 review, third round: two more paths that change `state.activeGame`
+     (or which game a fresh Games screen has to show) and then show a screen
+     without a render of their own -- `addGame` and `printCard`. A fresh
+     reload of RICH (two games, Hawks and Ravens) rather than trusting
+     whatever the checks above left behind, since both need a KNOWN
+     activeGame to start from. */
+  await reloadWithRecord(c, origin, RICH);
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  // Add a game opens the new game's own, still-empty opponent input -- not
+  // whichever game (Hawks, activeGame 0) the Games screen last painted.
+  await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
+  const addedOpp = await evalIn(c, `document.getElementById('label')?.value ?? null`);
+  if (addedOpp !== '') problems.push(`Add a game: the opponent input reads "${addedOpp}", want it empty (the new game's own)`);
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  // P from Today, with activeGame already moved to the second game (Ravens)
+  // by a Today entry, prints the card THAT entry would open, not whichever
+  // one is still on screen from before. Its own fresh reload, not whatever
+  // the Add-a-game step above left the Games screen painted with -- the
+  // point is that the CARD reads Ravens, and starting from Hawks (the
+  // fixture's own boot screen) says that unambiguously.
+  await reloadWithRecord(c, origin, RICH);
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, step(`document.querySelectorAll('.today-game')[1]?.click()`));
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+  await evalIn(c, `window.__printed = 0; window.print = () => { window.__printed++; }`);
+  await evalIn(c, key('p'));
+  const printedCard = await evalIn(c, `document.querySelector('.card .opp')?.textContent ?? null`);
+  if (!/Ravens/i.test(printedCard || '')) {
+    problems.push(`P from Today with the second game active printed a card reading "${printedCard}", want it to name Ravens`);
+  }
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  // Same courtesy `todayAndBackPass` pays: leave RICH (one team, `view:
+  // 'games'`) the way every other 'rich' check expects to find it.
+  await reloadWithRecord(c, origin, RICH);
+
+  } catch (e) {
+    problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
+  }
+  return {
+    name: nameOf('todaykeys'),
+    pass: problems.length === 0,
+    detail: problems.length
+      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
+      : 'V both ways, P from Today (window.print stubbed), S/B inert off Games, New day + Undo, '
+        + 'Add a game, Remove this game -> Today -> Undo -> that game, remove team + Undo -> Settings',
   };
 }
 
@@ -413,18 +1088,22 @@ async function cardFontPass(c, origin) {
    welcome screen needs a fresh install) and are shown by hand, which covers
    their static markup. */
 const STATES = [
+  /* Today is home (#23): every state below opens from it and every `close`
+     returns to it (`#backBtn`), which is the same "one baseline" contract the
+     old states kept with the games view. */
   { name: 'team view',
-    open: `$('#viewnav [data-view="team"]').click()`, shows: '#view-team',
-    close: `$('#viewnav [data-view="games"]').click()` },
+    open: `$('#todayTeam').click()`, shows: '#view-team',
+    close: `$('#backBtn').click()` },
   { name: 'team + bulk add',
-    open: `$('#viewnav [data-view="team"]').click(); $('#bulktoggle').click()`, shows: '#bulkwrap',
-    close: `$('#bulktoggle').click(); $('#viewnav [data-view="games"]').click()` },
+    open: `$('#todayTeam').click(); $('#bulktoggle').click()`, shows: '#bulkwrap',
+    close: `$('#bulktoggle').click(); $('#backBtn').click()` },
   { name: 'games view, every disclosure open',
-    open: `for (const d of document.querySelectorAll('details')) d.open = true`, shows: '#squadFold[open]',
-    close: `for (const d of document.querySelectorAll('details')) d.open = false` },
+    open: `$('.today-game').click(); for (const d of document.querySelectorAll('details')) d.open = true`,
+    shows: '#squadFold[open]',
+    close: `for (const d of document.querySelectorAll('details')) d.open = false; $('#backBtn').click()` },
   { name: 'season view',
-    open: `$('#viewnav [data-view="season"]').click()`, shows: '#view-season',
-    close: `$('#viewnav [data-view="games"]').click()` },
+    open: `$('#todaySeason').click()`, shows: '#view-season',
+    close: `$('#backBtn').click()` },
   /* No `season view, every game open` state, deliberately: the harness's record
      has a day but no FILED games, so the ledger has no folds to open, and
      seeding four of them would put ~250 nodes on a cold load that is budgeted
@@ -432,7 +1111,7 @@ const STATES = [
      as the totals list above them, which this state does measure. */
   { name: 'settings view',
     open: `$('#settingsBtn').click()`, shows: '#view-settings',
-    close: `$('#viewnav [data-view="games"]').click()` },
+    close: `$('#backBtn').click()` },
   { name: 'settings view, paste box open',
     open: `$('#settingsBtn').click(); $('#view-settings .paste-open').click()`,
     shows: '#view-settings .pastebox',
@@ -440,7 +1119,7 @@ const STATES = [
     // leaves the box open and the state uncloseable
     close: `$('#view-settings .pastebox').hidden = true;
             $('#view-settings .paste-open').hidden = false;
-            $('#viewnav [data-view="games"]').click()` },
+            $('#backBtn').click()` },
   /* `?` and the theme toggle left the top bar for Settings, so these three no
      longer reach `#helpBtn` from the opening screen. Clicking a button inside a
      hidden view still fires its handler, so leaving them alone would have kept
@@ -448,18 +1127,24 @@ const STATES = [
      a check passing for the wrong reason. The cog comes first now. */
   { name: 'help sheet',
     open: `$('#settingsBtn').click(); $('#helpBtn').click()`, shows: '#help',
-    close: `$('#helpClose').click(); $('#viewnav [data-view="games"]').click()` },
+    close: `$('#helpClose').click(); $('#backBtn').click()` },
   { name: 'shortcuts sheet',
     open: `$('#keysHint').click()`, shows: '#keys', close: `$('#keysClose').click()` },
   /* The tour puts itself on the games view before it points at anything
-     (`startTour`), so it closes back onto games without help. */
+     (`startTour`), so it lands there regardless of where it was opened from;
+     `#backBtn` is what returns to Today afterwards now that Today, not games,
+     is the baseline every other state assumes. */
   { name: 'tour, first step',
     open: `$('#settingsBtn').click(); $('#helpBtn').click(); $('#helpTour').click()`,
-    shows: '#tour', close: `$('#tourSkip').click()` },
+    shows: '#tour', close: `$('#tourSkip').click(); $('#backBtn').click()` },
   { name: 'tour, last step',
     open: `$('#settingsBtn').click(); $('#helpBtn').click(); $('#helpTour').click();
            while (!$('#tourSkip').hidden) $('#tourNext').click()`,
-    shows: '#tour', close: `$('#tourNext').click()` },
+    shows: '#tour', close: `$('#tourNext').click(); $('#backBtn').click()` },
+  /* `#gmOpen` lives inside the games view, but clicking a control inside a
+     hidden view still fires its handler (same rule `#print`'s own note
+     relies on), so this opens bench mode straight from Today without first
+     navigating to a game. */
   { name: 'game mode',
     open: `$('#gmOpen').click()`, shows: '#gamemode', close: `$('#gmClose').click()` },
   { name: 'game mode, swap picker',
@@ -897,15 +1582,18 @@ async function narrowPass(c) {
  * crossed without breaking something worse (the 44px touch minimum is the one
  * that has been traded away before) — and write the reason down here. */
 const SWEEP_FLOOR = 300, SWEEP_HI = 420;
-/* Every view the chrome can be in, and the click that gets there. Settings has
-   no nav button -- it is behind the cog -- so the opener is per view rather
-   than derived from `data-view`: a list of names alone would have swept three
-   views and silently skipped the fourth, which is the shape of the bug this
-   whole sweep exists to catch. */
+/* Every screen the chrome can be in, and the click that gets there (#23):
+   Today is home, so it opens with nothing (or a back tap, if a previous
+   state in the sweep left a pushed screen showing); the other four open from
+   Today's own entries, since there is no tab bar to derive them from any
+   more -- a list of names alone would have swept some and silently skipped
+   the rest, which is the shape of the bug this whole sweep exists to catch. */
+const TODAY_HOME = `document.querySelector('#barBack').hidden || document.querySelector('#backBtn').click()`;
 const VIEWS = [
-  { name: 'games', open: `document.querySelector('#viewnav button[data-view="games"]').click()` },
-  { name: 'team', open: `document.querySelector('#viewnav button[data-view="team"]').click()` },
-  { name: 'season', open: `document.querySelector('#viewnav button[data-view="season"]').click()` },
+  { name: 'today', open: TODAY_HOME },
+  { name: 'games', open: `document.querySelector('.today-game').click()` },
+  { name: 'team', open: `document.querySelector('#todayTeam').click()` },
+  { name: 'season', open: `document.querySelector('#todaySeason').click()` },
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
 ];
 async function sweepPass(c) {
@@ -968,7 +1656,7 @@ async function sweepPass(c) {
     }
   }
 
-  await evalIn(c, `document.querySelector('#viewnav button[data-view="games"]').click()`);
+  await evalIn(c, TODAY_HOME);
   await c.send('Emulation.setDeviceMetricsOverride',
     { width: w0, height: h0, deviceScaleFactor: 2, mobile: true });
   await new Promise(r => setTimeout(r, 400));
@@ -1010,17 +1698,20 @@ async function sweepPass(c) {
  * not swept: the harness's record has no filed games, and seeding some would
  * cost more cold-load nodes than the budget has slack.
  *
- * Settings is opened by the cog, not by a tab. A view added to the app and not
- * to this list is a view whose controls nobody measures, which is how
- * `input.num` sat at 38.4px for months. */
+ * Settings is opened by the cog, not by a tab. A screen added to the app and
+ * not to this list is a screen whose controls nobody measures, which is how
+ * `input.num` sat at 38.4px for months. Today joins the sweep in #23: it is
+ * a new screen with its own controls (the team button, the game entries, the
+ * Team/Season entries), and the same rule applies to it. */
 const TOUCH_WIDTHS = [320, 360, 390];
 const TOUCH_STATES = [
-  { name: 'games', open: `document.querySelector('#viewnav button[data-view="games"]').click()` },
-  { name: 'team', open: `document.querySelector('#viewnav button[data-view="team"]').click()` },
-  { name: 'season', open: `document.querySelector('#viewnav button[data-view="season"]').click()` },
+  { name: 'today', open: TODAY_HOME },
+  { name: 'games', open: `document.querySelector('.today-game').click()` },
+  { name: 'team', open: `document.querySelector('#todayTeam').click()` },
+  { name: 'season', open: `document.querySelector('#todaySeason').click()` },
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
   { name: 'games, folds open',
-    open: `document.querySelector('#viewnav button[data-view="games"]').click();
+    open: `document.querySelector('.today-game').click();
            for (const d of document.querySelectorAll('details')) d.open = true` },
 
 ];
@@ -1077,7 +1768,7 @@ async function touchPass(c, source) {
     countRe: [/(\d+) controls/, /\/(\d+) under/],
     label: (st, w) => `${st.name}@${w}px`,
     missing: 'the touch check is gone from smoke-checks.js',
-    close: `document.querySelector('#viewnav button[data-view="games"]').click();
+    close: `${TODAY_HOME};
       for (const d of document.querySelectorAll('details')) d.open = false`,
   });
 
@@ -1108,7 +1799,7 @@ async function settingsRowPass(c, source) {
     countRe: [/(\d+) rows/],
     label: (st, w) => `${w}px`,
     missing: 'the settings-row check is gone from smoke-checks.js',
-    close: `document.querySelector('#viewnav button[data-view="games"]').click()`,
+    close: TODAY_HOME,
   });
 
   return {
@@ -1347,10 +2038,10 @@ async function staticPass(c, source, origin) {
  * Nothing was wrong with either existing check; the cell simply had no owner.
  *
  * SAME ONE CELL, for the same reason: 320px at a 32px root is where the app's
- * `19em` large-text block is live and the column is still short. All four
- * views, because the four chromes differ and only one of them has to be wrong
- * — that is the lesson `sweepPass` already wrote down about deriving a view
- * list instead of enumerating one.
+ * `19em` large-text block is live and the column is still short. Every screen
+ * `VIEWS` names, because the five chromes differ and only one of them has to
+ * be wrong — that is the lesson `sweepPass` already wrote down about deriving
+ * a view list instead of enumerating one.
  *
  * ONE NAVIGATION, then the views are switched in the page. A font size cannot
  * be changed without a reload — `Page.setFontSizes` on a laid-out document
@@ -1358,10 +2049,10 @@ async function staticPass(c, source, origin) {
  * view switch reflows on its own, so the reload is paid once, not four times.
  *
  * FOLDS ARE LEFT AS THEY BOOT, unlike `touchPass`. Measured both ways when
- * this shipped: all four views report identically with every `<details>`
+ * this shipped: every screen reports identically with every `<details>`
  * forced open, because the app's folds hide their content with CSS rather than
  * by removing the box, so a closed fold's children still have rects and are
- * still swept. Opening them would cost four more settles for nothing.
+ * still swept. Opening them would cost a settle per screen for nothing.
  *
  * THE ALLOWANCES ARE PER VIEW, never blanket, and each number is the smallest
  * that covers a residue accepted deliberately, with its reason on the key.
@@ -1370,19 +2061,21 @@ async function staticPass(c, source, origin) {
  * red; if it does not, the number is decoration. Do NOT raise one to silence a
  * new failure — that is a bug on the screen the coach stands in front of. */
 const APP_LARGE_TEXT_ALLOW = {
-  /* EMPTY, and that is the finding, not an omission. All four views measured
+  /* EMPTY, and that is the finding, not an omission. Every screen measured
      clean in this cell once the three defects behind the 2026-08-24 report
-     were fixed, so there is no residue to name and every view is pinned at
+     were fixed, so there is no residue to name and every one is pinned at
      zero. Add a key here only for a residue accepted deliberately, with the
      reason on the line and the smallest number that covers it — and tighten it
      by 1px first to prove the number is load-bearing. */
 };
-/* The four views, plus BENCH MODE — which is the state this pass could not see
-   and the one a coach is standing in when it matters most.
+/* Every screen `VIEWS` names (Today plus the four it opens), plus BENCH
+   MODE — which is the state this pass could not see and the one a coach is
+   standing in when it matters most.
  *
- * `VIEWS` is the nav, and game mode is not on the nav: it is a full-screen
- * overlay behind `#gmOpen`. Nothing in this harness had ever enumerated it at
- * a large root, and the measured consequence was `#gmNext2` — "Next stint",
+ * `VIEWS` is `sweepPass`'s own list (#23), read here rather than kept a
+ * second time, and game mode is not on it: it is a full-screen overlay
+ * behind `#gmOpen`. Nothing in this harness had ever enumerated it at a
+ * large root, and the measured consequence was `#gmNext2` — "Next stint",
  * the primary action of the screen a coach uses with the clock running —
  * sitting at left 349 in a 320px viewport with no pan available. Wholly off
  * screen, unreachable, and green in every check.
@@ -1390,9 +2083,19 @@ const APP_LARGE_TEXT_ALLOW = {
  * The swap picker is here too because picking a player changes the layout of
  * the bench list underneath it, so it is a different measurement, not the same
  * screen with a class on it. Both close themselves so the pass leaves the app
- * on the games view for whatever runs next. */
+ * on the games screen for whatever runs next. */
 const APP_LARGE_TEXT_STATES = [
   ...VIEWS,
+  /* AND THE TEAM MENU OPEN, on Today: a native popover is its own box in the
+     top layer, sized independently of the screen behind it, and none of the
+     five `VIEWS` states above ever opens one. Reported from a real browser
+     (#23 review): `.teammenu`'s `min-width: 14rem` beat its own `max-width`
+     at a 32px root -- 448px against a 265.6px ceiling in a 320px viewport --
+     and the menu overflowed on both axes, invisible to every other state
+     here because closing a popover before moving to the next screen is what
+     every other click in this file already does. */
+  { name: 'team menu open', open: `${TODAY_HOME}; document.querySelector('#teamBtn')?.click()`,
+    close: `document.querySelector('#teamMenu')?.hidePopover?.()` },
   { name: 'bench mode', open: `document.querySelector('#gmOpen').click()`,
     close: `document.querySelector('#gmClose').click()` },
   /* AND A TOAST, which this pass could not see either, for a different reason:
@@ -1426,11 +2129,11 @@ const APP_LARGE_TEXT_STATES = [
     open: `document.querySelector('#gmOpen').click();
            document.querySelector('#gmFloor .gm-p').click()`,
     close: `document.querySelector('#gmClose').click()` },
-  /* AND THE FIFTH CHROME: the welcome screen, the first thing a coach ever
+  /* AND THE SIXTH CHROME: the welcome screen, the first thing a coach ever
      sees, and the one screen in the app this cell had never visited.
-     `overlayPass` has audited it since it was written; this pass enumerated
-     "all four views" and the welcome screen is not one of them — it is the
-     view you get INSTEAD of the four, with `.bar`, `.foot`, `#teamtabs` and
+     `overlayPass` has audited it since it was written; this pass enumerates
+     every screen `VIEWS` names and the welcome screen is not one of them —
+     it is the screen you get INSTEAD of those five, with `.bar`, `.foot` and
      `#actionbar` all taken off the screen by `applyView`. A different chrome
      is exactly the argument this list already makes for game mode.
 
@@ -1805,6 +2508,10 @@ const REGISTRY = Object.freeze([
     run: ctx => cardFontPass(ctx.c, ctx.origin) },
   { id: 'fixture', name: 'rich fixture is live', selectable: true, setup: 'rich',
     run: ctx => fixturePass(ctx.c) },
+  { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich',
+    run: ctx => todayAndBackPass(ctx.c, ctx.origin) },
+  { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich',
+    run: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin) },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich',
     run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors) },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich',
@@ -1829,6 +2536,23 @@ const REGISTRY = Object.freeze([
   { id: 'nodetest', name: 'node --test', selectable: false, setup: null },
 ]);
 const nameOf = id => REGISTRY.find(r => r.id === id).name;
+
+/* A check that throws fails ITS OWN row, named, rather than the whole run:
+ * without this, one broken pass (a selector that no longer exists, a page
+ * that navigated away mid-evaluate) took the entire table down with it and
+ * printed nothing at all -- a guard reporting nothing, the one shape
+ * `/new-guard` names as a false green by omission, here worn the other way
+ * round as a false SILENCE. `--only` already gets this for free (its own
+ * `run` call is awaited straight from `main`, which prints the thrown error
+ * and exits non-zero); this is the full-run path, where every check after
+ * the one that throws would otherwise never run at all. */
+async function safeCheck(id, fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    return { name: nameOf(id), pass: false, detail: `threw before finishing: ${e.message.split('\n')[0]}` };
+  }
+}
 
 async function browserChecks(origin, only) {
   const debugPort = 9222 + Math.floor(Math.random() * 500);
@@ -1934,39 +2658,48 @@ async function browserChecks(origin, only) {
     await goRich(c, origin);
     /* Before anything else touches the page: fixturePass below clicks through
        Team/Season and back, which is harmless to the fixture checks but would
-       no longer be the untouched cold state item 8 asks for. */
-    report.checks.push(await cardFontPass(c, origin));
-    report.checks.push(await fixturePass(c));
+       no longer be the untouched cold state item 8 asks for.
+       Every row from here on is wrapped in `safeCheck` -- a check that
+       throws (a page that navigated away mid-evaluate, a selector that no
+       longer exists) fails its own named row instead of taking down every
+       check after it and printing no table at all. */
+    report.checks.push(await safeCheck('cardfont', () => cardFontPass(c, origin)));
+    report.checks.push(await safeCheck('fixture', () => fixturePass(c)));
+    /* Both of these reload their own fixture and put RICH back the way they
+       found it (`view: 'games'`, one team), same courtesy the wake-lock
+       reload below pays. */
+    report.checks.push(await safeCheck('todayback', () => todayAndBackPass(c, origin)));
+    report.checks.push(await safeCheck('todaykeys', () => todayKeysAndUndoPass(c, origin)));
 
-    report.checks.push(await wakeLockPass(c, origin, consoleErrors));
+    report.checks.push(await safeCheck('wakelock', () => wakeLockPass(c, origin, consoleErrors)));
     // The wake lock check stubs navigator.wakeLock, shadows
     // document.visibilityState and leaves bench mode wherever its last
     // scenario left it -- reload the rich fixture so every pass after this
     // one sees the real API and the real boot state, as goRich left it above.
     await goRich(c, origin);
 
-    report.checks.push(await overlayPass(c, source));
+    report.checks.push(await safeCheck('overlay', () => overlayPass(c, source)));
     /* The swept touch pass replaces the first pass's single-viewport verdict
        rather than sitting beside it: two checks answering the same question
        with different coverage is how the weaker one gets believed. */
     report.checks = report.checks.filter(k => k.name !== 'touch targets ≥ 44px');
-    report.checks.push(await touchPass(c, source));
+    report.checks.push(await safeCheck('touch', () => touchPass(c, source)));
     /* Same reshuffle as touch, one line up: the single-viewport verdict
        `smoke-checks.js` already contributed to the cold array (Settings
        closed, so it read "not open") is replaced with the swept one. */
     report.checks = report.checks.filter(k => k.name !== 'settings rows ≥ 48px');
-    report.checks.push(await settingsRowPass(c, source));
-    report.checks.push(await narrowPass(c));
-    report.checks.push(await sweepPass(c));
+    report.checks.push(await safeCheck('settingsrows', () => settingsRowPass(c, source)));
+    report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
+    report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep
        assumes the boot-time layout; before `staticPass`, which navigates away
        from `index.html` for good. */
-    report.checks.push(await appLargeTextPass(c, origin));
+    report.checks.push(await safeCheck('applargetext', () => appLargeTextPass(c, origin)));
     /* Last of the browser passes, because it navigates away from the app and
        nothing after it may assume `index.html` is still loaded. Still ahead of
        the console verdict below, so the seven pages it visits are covered by
        that too. */
-    report.checks.push(await staticPass(c, source, origin));
+    report.checks.push(await safeCheck('static', () => staticPass(c, source, origin)));
 
     /* Last, so it covers the overlay pass too: an exception thrown by opening
        game mode is exactly the kind of thing the opening screen cannot show

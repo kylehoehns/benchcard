@@ -32,26 +32,17 @@ import { initSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
 import { initToast, undoable, offer, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
-import { render, renderAll, soon, setView, applyTheme, viewBeforeSettings, AFTER_EDIT, PLAN_ONLY } from './render.js';
+import { render, renderAll, soon, setView, applyTheme, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, removePlayer , nextHue, hueSlots, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, noRoster } from './state.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
-for (const b of document.querySelectorAll('#viewnav button')) b.onclick = () => setView(b.dataset.view);
-
-/* The cog. Settings has no tab -- the bar's last slot went to Season, which is
-   what a coach opens between games -- so the way in and the way out are the
-   same button. Tapping it again puts them back where they were rather than
-   doing nothing: the three tabs are right there, but an icon that reads as
-   pressed and then ignores a second press reads as broken. `viewBeforeSettings()`
-   is remembered in render.js rather than in `state` because it is about this
-   visit, not this record; a reload landing on Settings should just show
-   Settings (which is also why it defaults to 'games' rather than reading
-   `state.view` here). */
-on('#settingsBtn', 'onclick', () => {
-  if (state.view === 'settings') { setView(viewBeforeSettings()); return; }
-  setView('settings');
-});
+/* The gear only ever shows on Today (N4) -- it lives inside `#barToday`,
+   which `applyView` hides everywhere else -- so it has one job. The back
+   button is the same shape on the other four screens: `Back to Today` (N5)
+   is always exactly what it does. */
+on('#settingsBtn', 'onclick', () => setView('settings'));
+on('#backBtn', 'onclick', () => setView('today'));
 for (const b of document.querySelectorAll('#stratseg button')) {
   b.onclick = () => { game().strategy = b.dataset.strat; track('plan_generated', { strategy: b.dataset.strat }); renderAll(); };
 }
@@ -373,7 +364,7 @@ if (state.onboarded) track('plan_generated', { strategy: game()?.strategy });
    trigger -- gamemode.js calls it on close and knows nothing else about
    the tip jar. This is the only place in the app that knows the whole
    graph, which is the point of it being the entry point. */
-initToast(renderAll);
+initToast(renderAll, setView);
 initTeams(renderAll, setView);
 initSeason(renderAll);
 initBalance(soon, AFTER_EDIT);
@@ -387,7 +378,7 @@ initOnboarding(setView, renderAll);
 initPlanView(renderAll);
 initGameSetup(renderAll, soon, PLAN_ONLY);
 initShortcuts(setView);
-setView(state.onboarded ? (state.view || 'games') : 'welcome');
+setView(state.onboarded ? (state.view || 'today') : 'welcome');
 /* There was a `body.boot` class here, added before the first paint and removed
    700ms later to "let the entrance play once". No stylesheet ever carried a
    rule for it -- not in any commit -- so it gated nothing. The entrance it was

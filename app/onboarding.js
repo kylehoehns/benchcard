@@ -429,8 +429,11 @@ function fillSample(n = DEMO_N) {
 function loadSample(n) {
   startTeam(sampleRoster(n), SAMPLE_TEAM_NAME);
   markFirstRunPending();
+  // `setView('games')` renders it: always called from welcome, always a real
+  // transition into Games, so `applyView` does the render itself now (#23
+  // review, third round) -- a second `renderAll()` here is the double work
+  // that review flagged.
   setView('games');
-  renderAll();
   /* The one piece of copy the item is really about: removing the last team
      already works (`teams-view.js`, `removeTeam`), and what was missing is
      that nobody knew. A flash, not a banner -- it is a fact about a thing the
@@ -442,12 +445,12 @@ function loadSample(n) {
      first-time coach how to undo the sample pointed at a surface the app does
      not have. A40 slice 1 renamed that tab's LABEL to "Team" (the stored view
      key is still `roster`); #22 then moved `#removeTeam` itself off that tab
-     and into Settings, behind the cog rather than a `#viewnav` tab, so this
-     sentence follows it there. `test/sample-team.test.js` reads the
-     label->key map out of `#viewnav` plus `#settingsBtn`'s own label and
-     fails if this sentence names a destination the app does not offer, or
-     names one that is not the view holding the control it is talking
-     about. */
+     and into Settings, behind the cog. #23 removed the tab bar outright --
+     Settings is reached from the gear on Today now, and nowhere else -- so
+     this sentence still has to name it. `test/sample-team.test.js` reads
+     `#settingsBtn`'s own aria-label and fails if this sentence names a
+     destination the app does not offer, or if `#removeTeam` ever leaves
+     Settings. */
   flash('Sample team loaded. Change any name to make it yours, or remove it in Settings.');
 }
 
@@ -481,8 +484,10 @@ function finishOnboarding() {
     // roster" there is, and this path never touches soon()
     editHappened();
   }
+  // `setView('games')` renders it: always called from welcome, always a real
+  // transition into Games, so `applyView` does the render itself now (#23
+  // review, third round).
   setView('games');
-  renderAll();
   // after the entrance settles, not during it: the tour measures rects, and
   // the squad pills and timeline blocks are still flying into place here
   if (!state.tourSeen) setTimeout(startTour, 520);

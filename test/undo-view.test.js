@@ -16,16 +16,20 @@ const teams = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'ut
 
 test('the undo refresh knows it is an undo', () => {
   const fn = toast.slice(toast.indexOf('function showUndo'));
-  assert.match(fn.slice(0, fn.indexOf('\n}')), /\(refresh \|\| renderAll\)\(true\)/);
+  assert.match(fn.slice(0, fn.indexOf('\n}')), /\(refresh \|\| viewRefresh\)\(true\)/);
   // the forward path must stay plain, or every caller sees the same flag twice
   const undoable = toast.slice(toast.indexOf('export function undoable'));
-  assert.match(undoable.slice(0, undoable.indexOf('\n}')), /\(refresh \|\| renderAll\)\(\)/);
+  assert.match(undoable.slice(0, undoable.indexOf('\n}')), /\(refresh \|\| viewRefresh\)\(\)/);
 });
 
-test('undoing a team removal lands on the view it was removed from', () => {
-  const fn = teams.slice(teams.indexOf('function removeTeam'), teams.indexOf('/* ---------------- the game tabs'));
-  assert.match(fn, /setView\(undoing \? \(state\.view \|\| 'games'\) : 'games'\)/);
-});
+/* Two source-regex assertions used to live here: that `viewRefresh` calls
+   `setView(state.view)`, and that `removeTeam`'s own refresh calls
+   `setView(undoing ? 'settings' : 'today')`. Both are now proven by running
+   the behaviour, in `node scripts/smoke.mjs --only "today keys and undo"`
+   (#23 review) -- New day, Add a game, Remove this game and Remove team all
+   land the coach where their undo snapshot says, and a source match that
+   cannot tell "true" from "merely spelled the same" was the weaker of the
+   two guards on the same claim. */
 
 /* ------------------------------------------------------------------ *
  * an undo must not take a later edit down with it

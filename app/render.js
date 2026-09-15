@@ -24,9 +24,13 @@ import { renderStats, renderIssues, renderPlanTable, renderDayTotals } from './p
 import { renderSetup, renderAvail } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
 import { renderSeason } from './season-view.js';
-import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending } from './state.js';
+import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { retireUndo, flash } from './toast.js';
+// storage.js is already in the boot graph (state.js imports it for
+// `sanitizeSettings`/`DEFAULT_SETTINGS`), so this names no new request --
+// it is the one allow-list `BACK_VIEWS` below is derived from (#23 review).
+import { VIEWS } from './storage.js';
 
 /* ------------------------------------------------------------------ *
  * rendering
@@ -100,7 +104,6 @@ export function render(...keys) {
   if (failed) flash(failed);
   applyTheme();
   renderStorageWarning();
-  $('#rcount').textContent = state.players.length ? `(${state.players.length})` : '';
   /* Here rather than in a section of its own: the settings page's team heading
      has to be right the moment the cog is tapped, and the edit that changes it
      -- typing in the roster's team name field -- repaints `cards` and nothing
@@ -139,10 +142,42 @@ export function soon(...keys) {
   }, 140);
 }
 
-/* ---------------- views + theme ---------------- */
-/* Games ⇄ Team is the one navigation in the app, and the swap is a plain
- * flip of two `hidden` flags. The incoming view's own `.view { animation:
- * viewIn }` — fade up, 7px — is the whole transition, and it is enough.
+/* ---------------- views + history + theme ---------------- */
+/* Today is home (#23). `setView` is still the one way a screen changes, and
+ * it is also the one place history is pushed, replaced and popped -- no
+ * caller touches `history` directly.
+ *
+ * History is never deeper than one screen: `[Today]` or `[Today, X]`.
+ * Opening a screen from Today pushes; opening one pushed screen from another
+ * (P on Team, Add a team from the menu, the tour from Settings, the empty
+ * roster's call to action) replaces the top entry instead of pushing, so
+ * back always lands on Today. Going to Today from a pushed screen is a
+ * `history.back()`, which is what makes the browser's own back button and
+ * Android's gesture do the same thing this does: `popstate` paints whatever
+ * screen its state names, Today when there is none. At boot -- and again
+ * when onboarding finishes or a backup restores over the welcome screen,
+ * which is the same "there was nothing to go back to" moment -- the current
+ * entry is replaced with Today, and one entry is pushed on top of it if the
+ * resolved screen is not Today, so back already works after the very first
+ * reload. Welcome makes no entries at all: there is nothing to back out to
+ * before there is a team.
+ *
+ * A reload resets this module's own `shown`/`pushed` to null/false, but not
+ * the tab's session history -- boot has to read `history.state` to tell a
+ * reload of a PUSHED screen apart from a genuinely fresh tab, or every reload
+ * would repeat the "replace with Today, push the resolved screen" pair above
+ * on top of the entry that pair already produced last time, stacking one
+ * dead Today entry per reload (#23 review, unbounded `history.length`). When
+ * the current entry already names a pushed (non-Today) screen, and the
+ * screen boot resolves to is also not Today, that entry is relabelled in
+ * place instead -- the entry beneath it is Today by construction, so there
+ * is nothing left to establish. The one case that does NOT relabel is the
+ * saved view and the live entry disagreeing about Today itself (e.g. another
+ * tab wrote `state.view: 'today'` while this tab's own last entry was still
+ * a pushed screen): trusting the entry there would leave `pushed` true with
+ * Today on screen, and the next "go home" tap would fire a `history.back()`
+ * with nothing real to go back from. That one case falls back to the plain
+ * replace instead, same as a fresh tab.
  *
  * This used to run through `document.startViewTransition`, and that cost four
  * rounds of debugging one bug reported from a phone: the top bar dissolving
@@ -157,42 +192,146 @@ export function soon(...keys) {
  * Do not bring it back, and do not reimplement the cross-fade by hand with two
  * stacked views — that is the same complexity by another route.
  *
- * Games and Team are two unrelated pages, not one scrolling document, so a
- * switch goes back to the top. Without it a coach who was down at the timeline
- * lands on a shorter view already scrolled past the end of it. Instant, not
- * smooth: a smooth scroll racing the fade is a new thing to debug, and it is
- * also the honest behaviour under reduced motion.
+ * Every screen is its own page, not one scrolling document, so a switch goes
+ * back to the top. Without it a coach who was down at the timeline lands on a
+ * shorter view already scrolled past the end of it. Instant, not smooth: a
+ * smooth scroll racing the fade is a new thing to debug, and it is also the
+ * honest behaviour under reduced motion.
  *
  * `shown` starts null so the boot call scrolls nothing — there is no view
  * being left. `instant` no longer changes the animation (there is none to
  * suppress) but callers still pass it, and it still means "no scrolling
  * either": `printCard` uses it because `window.print()` fires in the same
- * tick. Returns undefined — `applyView` is synchronous, so the incoming view
- * is on screen and focusable by the time this returns. */
+ * tick. Returns undefined — `applyView` always paints synchronously, inside
+ * this call, including going to Today from a pushed screen: that path
+ * applies the repaint itself before it ever calls `history.back()` (#23
+ * review, item A), rather than waiting for the `popstate` the `back()` call
+ * raises a moment later, which only echoes bookkeeping that already
+ * happened. */
 let shown = null;
+let pushed = false;   // true while the current entry is [Today, shown], not just [Today]
 
-/* The last real view -- neither Settings nor the welcome screen -- so the cog
-   in app.js can back out to wherever the coach actually was, no matter which
-   caller sent them into Settings (the cog itself, `addTeam()`'s "+ Team", an
-   undo whose restored snapshot lands there). One writer, here, where every
-   view change already passes through; defaults to 'games' so a reload that
-   lands on Settings still backs out the way the cog's own comment promises. */
-let lastView = 'games';
+/* How many `history.back()` calls setView has issued that have not yet been
+   echoed by their own `popstate` -- see the "today from a pushed screen"
+   branch below. Almost always 0 or 1: a second `setView('today')` call before
+   the first echo lands sees `pushed` already false and takes no action of
+   its own (nothing left to go back from). */
+let pendingSelfBack = 0;
 
 export function setView(v, instant) {
   if (!state.onboarded) v = 'welcome';
-  if (v !== 'settings' && v !== 'welcome') lastView = v;
   const from = shown;
+  /* A fresh boot, or the "there was nothing to back out to" moment right
+     after onboarding finishes or a restore replaces the welcome screen --
+     but NOT every arrival at welcome: removing the last team from a PUSHED
+     screen leaves that entry live (the `v === 'welcome'` branch below never
+     touches history, and does not reset `pushed`), so a later return to a
+     real screen from THAT welcome has something to replace rather than a
+     fresh pair to establish. `pushed` is what tells the two apart. */
+  const bootstrapping = from === null || (from === 'welcome' && !pushed);
+
+  if (v === 'welcome') {
+    // no entries touched -- there is nothing to back out to before there is
+    // a team, and `pushed` is left exactly as it was (see the comment above)
+  } else if (bootstrapping) {
+    // `history.state`, not `pushed` (already reset to false by the reload
+    // that got here) -- see the comment above for why, and for the one case
+    // that deliberately does NOT take this branch.
+    const already = history.state && history.state.view;
+    if (already && already !== 'today' && v !== 'today') {
+      history.replaceState({ view: v }, '');
+      pushed = true;
+    } else {
+      history.replaceState({ view: 'today' }, '');
+      pushed = false;
+      if (v !== 'today') { history.pushState({ view: v }, ''); pushed = true; }
+    }
+  } else if (v === 'today') {
+    if (pushed) {
+      /* Applied HERE, synchronously, not left for the `popstate` this
+         `history.back()` is about to raise. The old shape returned before
+         painting anything, so `state.view` stayed at the screen being left
+         (e.g. 'games') and `#view-games` stayed visible until the async
+         popstate finally caught up -- a real, saved, mid-transition state a
+         coach's own eyes (and a reload) could catch (#23 review, item A).
+         `pendingSelfBack` marks this popstate, when it arrives, as an echo
+         of work already done rather than a fresh instruction to apply. */
+      pushed = false;
+      shown = v;
+      applyView(v, from);
+      pendingSelfBack++;
+      history.back();
+      if (!instant && from && from !== v) window.scrollTo(0, 0);
+      return;
+    }
+    // already on Today with nothing pushed: no history to touch
+  } else if (pushed) {
+    history.replaceState({ view: v }, '');
+  } else {
+    history.pushState({ view: v }, '');
+    pushed = true;
+  }
+
   shown = v;
-  applyView(v);
+  applyView(v, from);
   if (!instant && from && from !== v) window.scrollTo(0, 0);
 }
 
-export function viewBeforeSettings() {
-  return lastView;
+addEventListener('popstate', (e) => {
+  // captured before anything below reassigns `shown` -- `applyView` needs to
+  // know what was on screen a moment ago, same as `setView`'s own `from`
+  // (#23 review, third round: entering Games has to repaint it).
+  const from = shown;
+  if (pendingSelfBack > 0) {
+    /* The echo of a `history.back()` `setView` already issued and already
+       painted for, above. If nothing has navigated since, bookkeeping
+       already matches this event and there is nothing left to do. If
+       something HAS -- another `setView` call in the same tick, before this
+       echo arrived -- that navigation is the one that should stand: a stale
+       echo applying `e.state` on top of it would be the exact bug this
+       counter exists to stop (a back-then-push racing its own popstate).
+       Reasserting the current `shown` (through the ordinary push/replace
+       path, since `instant` skips the scroll a genuine transition already
+       had) repairs whatever position the browser actually landed the stale
+       traversal on, rather than trusting what it reports. */
+    pendingSelfBack--;
+    if (shown === 'today' && !pushed) return;
+    setView(shown, true);
+    return;
+  }
+  /* A real, externally-triggered traversal: the physical back button, or
+     Android's gesture. Runs through the same onboarding guard `setView`
+     applies, or a stale pushed entry from BEFORE a coach removed their last
+     team (still live in the session history -- see `bootstrapping` above)
+     paints whatever screen it names instead of welcome (#23 review, item
+     B). */
+  if (!state.onboarded) {
+    pushed = false;
+    shown = 'welcome';
+    applyView('welcome', from);
+    return;
+  }
+  const v = (e.state && e.state.view) || 'today';
+  pushed = v !== 'today';
+  shown = v;
+  applyView(v, from);
+  window.scrollTo(0, 0);
+});
+
+/* The screen's own title, shown once, top-left of its header. `gameLabel` is
+   the one game label (state.js) -- reused here exactly as Today reuses it for
+   each of the day's games. The other three screens are just their name; an
+   in-page heading that repeated it would say it twice. */
+const SCREEN_TITLE = { team: 'Team', season: 'Season', settings: 'Settings' };
+// every screen storage.js's own allow-list names, minus Today -- the one
+// case with no back button and no title, because it is the one nothing goes
+// back FROM (#23 review, item D: was a hand-typed second copy of VIEWS).
+const BACK_VIEWS = VIEWS.filter(v => v !== 'today');
+function screenTitle(v) {
+  return v === 'games' ? gameLabel(game(), state.activeGame) : (SCREEN_TITLE[v] || '');
 }
 
-function applyView(v) {
+function applyView(v, from) {
   /* The pre-paint stamp has done its job the moment this runs: from here the
      `hidden` flags below are the truth, and a `data-boot="welcome"` left on
      <html> would go on hiding the games view with an !important rule the
@@ -200,9 +339,10 @@ function applyView(v) {
      finish onboarding. Removed here rather than in the boot call because this
      is the one place view visibility is decided (index.html, app.css). */
   document.documentElement.removeAttribute('data-boot');
-  state.view = v === 'welcome' ? 'games' : v;
+  state.view = v === 'welcome' ? 'today' : v;
   save();
   $('#view-welcome').hidden = v !== 'welcome';
+  $('#view-today').hidden = v !== 'today';
   $('#view-games').hidden = v !== 'games';
   $('#view-team').hidden = v !== 'team';
   $('#view-season').hidden = v !== 'season';
@@ -210,13 +350,6 @@ function applyView(v) {
   // the chrome is meaningless before there is a team
   document.querySelector('.bar').style.display = v === 'welcome' ? 'none' : '';
   document.querySelector('.foot').style.display = v === 'welcome' ? 'none' : '';
-  /* The team strip is chrome too now, and its visibility HAS to be decided
-     here rather than in `renderTeams`: `render()` returns early when
-     `onboarded` is false, and removing the last team is exactly the path that
-     clears that flag. A renderer-owned flag never ran, so the strip sat above
-     first-run still naming the team that had just been deleted. */
-  const tt = $('#teamtabs');
-  if (tt) tt.hidden = v === 'welcome';
   const ab = document.querySelector('#actionbar');
   if (ab) ab.hidden = v !== 'games' || !state.onboarded;
   /* NOTHING here touches `#print`, and that is the point. This function used to
@@ -228,40 +361,55 @@ function applyView(v) {
      in the app, and one only fixable in place by reserving dead space or
      anchoring the cog, both workarounds for a button that should not be in the
      bar at all. So `#print` moved into the games view itself, beside the card
-     next to Share (see index.html). The bar is now IDENTICAL on all four views
-     and has no view-dependent member left but `#viewnav`'s `on` class.
-     `#print` still exists, so `card.js`'s `[data-needs-card]` sweep and
-     `test/print-gate.test.js`'s handler discovery both still find it, and the
-     `p` shortcut still clicks it from anywhere: `printCard` does
-     `setView('games', true)` first, so the key goes to the card rather than
-     dying on the three views the button is not rendered on. */
-  /* The nav buttons carry `aria-current` too, and the comment below used to
-     say why they did not. Its words were: "the nav buttons get theirs from
-     `.on` inside a segmented control a screen reader reads as a group". That
-     ground was checked in a browser and it does not hold. `#viewnav` is
-     `<nav class="seg">` with **no `role` and no `aria-label`** -- the group
-     that sentence leans on is `#stratseg`'s `role="group"`, a different
-     element. So a screen reader met three sibling buttons, one of them
-     coloured, and was told nothing at all about which view the coach was on;
-     `.on` is a colour, and it is the only thing that changed.
-     `aria-current="page"`, not `aria-pressed`: this is navigation, and it
-     keeps the cog below and the team tabs in `teams-view.js` -- which have
-     always done it -- speaking with one voice. */
-  for (const b of document.querySelectorAll('#viewnav button')) {
-    const on = b.dataset.view === v;
-    b.classList.toggle('on', on);
-    if (on) b.setAttribute('aria-current', 'page');
-    else b.removeAttribute('aria-current');
-  }
-  /* Settings has no tab -- the bar's one remaining slot went to the Season tab
-     -- so the cog carries the "you are here" state itself, in the same
-     attribute the three tabs above now use. */
-  const cog = $('#settingsBtn');
-  if (cog) {
-    cog.classList.toggle('on', v === 'settings');
-    if (v === 'settings') cog.setAttribute('aria-current', 'page');
-    else cog.removeAttribute('aria-current');
-  }
+     next to Share (see index.html). `#print` still exists, so `card.js`'s
+     `[data-needs-card]` sweep and `test/print-gate.test.js`'s handler
+     discovery both still find it, and the `p` shortcut still clicks it from
+     anywhere: `printCard` does `setView('games', true)` first, so the key
+     goes to the card rather than dying on the four screens the button is not
+     rendered on. */
+  /* One header per screen state (N4, N5, C1): Today's own -- the team button,
+     the keys hint, the gear -- lives in `#barToday`; the other four share
+     `#barBack`, an icon-only "Back to Today" and the title. Both are inside
+     the same `.bar` shell so there is still exactly one header element, the
+     same one every view has always shared. */
+  const onBack = BACK_VIEWS.includes(v);
+  const today = $('#barToday'), back = $('#barBack');
+  if (today) today.hidden = v !== 'today';
+  if (back) back.hidden = !onBack;
+  if (onBack) { const t = $('#barTitle'); if (t) t.textContent = screenTitle(v); }
+  /* #23 review, third round: entering Games has to show what `state` says,
+     not whichever game the screen last painted. Everything above this line
+     only ever toggled visibility and wrote the header title -- the opponent
+     input, the card and the rest of the Games screen's own content are
+     `render()`'s job, and nothing here called it. Today's game entries,
+     `printCard`'s `setView('games', true)` off Today, `startTour`'s own copy
+     of that same line, and `popstate` landing on games all go through this
+     one function, so this is the one place that can own "the screen shows
+     what state says" without a `renderAll()` sprinkled after each of those
+     calls. Run last, not first: `render()` reads `state.view` (`renderTabs`'s
+     own header-title branch among others) and it has to see 'games', which
+     `state.view = v` above has by now already set.
+
+     Gated on a REAL transition (`from !== 'games'`) so a same-screen
+     `setView('games', ...)` -- `viewRefresh`'s default undo refresh calls
+     `setView(state.view)` on every undoable edit, and most of those happen
+     while already on Games -- does not repaint everything a second time; the
+     efficiency review already flagged that shape of double work once. A
+     caller with its own reason to always repaint regardless of which screen
+     (`restoreBackup`'s `show()`, a wholesale state replace) keeps its own
+     `renderAll()` call same as before; the callers that only needed one
+     because entering Games needed it (`addGame`, both onboarding paths) had
+     theirs removed, now that this covers them.
+
+     ALSO excludes `from === null` -- the very first `setView` call of the
+     session, boot's own (app.js). Boot's own explicit `renderAll()` runs a
+     few lines after it regardless of which screen was resolved, because
+     Today, Team, Season, Settings and Welcome never got a render out of
+     `applyView` either; a coach who left the app on Games -- probably the
+     most common single case there is -- would otherwise pay for two full
+     renders on every reload rather than the one every other screen already
+     paid. */
+  if (v === 'games' && from !== 'games' && from !== null) render();
 }
 
 /* `auto` has to be resolved to a real value here. Removing the attribute does

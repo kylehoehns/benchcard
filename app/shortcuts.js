@@ -129,22 +129,6 @@ function closeHelp() {
    see the note above `openHelp` -- and `closeHelp` is already a no-op when
    the sheet is not open, which is the case for the Settings button (#22). */
 function tourAgain() { closeHelp(); startTour(); }
-/* `v` used to flip a pair; with a third tab it walks a ring, and the ring is
-   read off the bar rather than listed here. The tabs ARE the answer to "which
-   views does v visit", so asking them is what keeps a fourth tab -- or a
-   removed one -- from needing a second edit in this file.
-
-   Settings is deliberately outside the ring: it has no tab (the bar's last slot
-   went to Season), it is opened once a season, and a shortcut that drops a
-   coach onto a page of policy while they are hunting for the roster is worse
-   than a shorter ring. From Settings, `indexOf` misses and this lands on the
-   first tab, which is the "get me back to the app" a coach wanted anyway. */
-function nextView() {
-  const views = [...document.querySelectorAll('#viewnav button')].map(b => b.dataset.view);
-  if (!views.length) return 'games';
-  return views[(views.indexOf(state.view) + 1) % views.length];
-}
-
 // while a field has the keyboard it owns every key: eating a letter out of a
 // player's name to shuffle the rotation is worse than having no shortcut
 const typingIn = t => !!t && (t.isContentEditable ||
@@ -182,7 +166,8 @@ function onKey(e) {
      still covers the key too.
      It also keeps the `#keys` sheet honest: "Print the card", no view caveat. */
   if (k === 'p') { e.preventDefault(); $('#print').click(); }
-  else if (k === 'v') { e.preventDefault(); setView(nextView()); }
+  // Today opens Team; every other screen goes back to Today (#23).
+  else if (k === 'v') { e.preventDefault(); setView(state.view === 'today' ? 'team' : 'today'); }
   else if (state.view !== 'games') return;
   else if (k === 's') { e.preventDefault(); $('#regen').click(); }
   else if (k === 'b') { e.preventDefault(); openGameMode(); }

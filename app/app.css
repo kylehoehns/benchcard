@@ -94,9 +94,6 @@ a { color: inherit; }
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   border-bottom: 1px solid var(--line);
 }
-.brand { display: flex; align-items: center; gap: .5rem; font-weight: 700; letter-spacing: -.04em; font-size: 1.02rem; }
-.brand svg { display: block; transition: transform var(--t-slow) var(--spring); }
-@media (hover: hover) { .brand:hover svg { transform: rotate(-14deg) scale(1.08); } }
 .spacer { flex: 1; }
 
 .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: var(--r-full); border: 1px solid var(--line); }
@@ -215,47 +212,105 @@ a { color: inherit; }
   #view-games.card-shut .gm-cta { margin-top: 0; }
 }
 
-/* ---- team switcher ------------------------------------------------------
-   Same vocabulary as the game tabs a row below it, one step further out.
+/* ---- Today's header: the team button and its menu (#23) ----------------
+   `#barToday` and `#barBack` share the one `.bar` shell and are never both
+   visible -- `applyView` toggles which half shows. `.bar` already lays its
+   children out in a row, so both halves reuse that flex context rather than
+   declaring their own. */
+.bar-today, .bar-back { display: flex; align-items: center; gap: .8rem; flex: 1; min-width: 0; }
+.bar-today[hidden], .bar-back[hidden] { display: none; }
+.bar-title { font-size: 1.02rem; font-weight: 700; letter-spacing: -.03em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-   Shell furniture now, so it takes the BAR's horizontal padding rather than
-   `.wrap`'s -- it hangs off the chrome, not off the day title. No bottom
-   margin: the view's own top padding is the gap.
+/* The team button. Visible text is the team's own name (or `Team N`) --
+   never an aria-label overriding it, so a screen reader hears exactly what
+   is on screen (A2). The chevron is decoration. */
+.teambtn { display: inline-flex; align-items: center; gap: .35rem; min-height: 44px;
+  padding: .4rem .7rem; border-radius: var(--r-sm); border: 1px solid var(--line-2);
+  background: var(--surface); font: inherit; font-size: .95rem; font-weight: 650;
+  letter-spacing: -.02em; color: var(--ink); max-width: 60vw; }
+/* Rotated `chevron_right` rather than a new icon key: same glyph as `#backBtn`
+   and the game-mode nav, pointed down to say "opens a list here". */
+.teambtn-chev svg { transform: rotate(90deg); }
+.teambtn-chev { color: var(--muted); }
+@media (hover: hover) { .teambtn:hover { border-color: var(--muted); } }
+#teamBtnLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-   `[hidden]` has to be said out loud, because `display: flex` outranks the
-   attribute's UA rule and this element hides again on welcome. Without it, an
-   empty flex row paints over the first-run screen.
+/* The team menu: a native `popover` (C8), so Escape, an outside click and the
+   top layer all come for free -- no overlay or focus trap of our own. `top`
+   and `left` are NOT set here: `positionTeamMenu()` in teams-view.js sets
+   both, in px, on the popover's own `toggle` event, anchored to `#teamBtn`'s
+   real position and clamped to the viewport (spec item 2, C8's "anchored to
+   it") -- a fixed rem offset is not that, and it read as one on a phone
+   narrower than the button's own position assumed. `position: fixed` is
+   what makes those px absolute-to-viewport rather than to whatever ancestor
+   happens to be positioned; nothing here depends on CSS anchor positioning,
+   so this holds in every engine that has shipped the Popover API, not only
+   the ones with anchor positioning too. */
+/* `display` is deliberately NOT set here: the browser's own popover stylesheet
+   is `[popover]:not(:popover-open) { display: none }`, an author `display`
+   declared unconditionally would win the cascade over it regardless of
+   specificity (author beats UA on any property both declare) and the closed
+   menu would sit in the page as a 0-width flex box that a 32px root font
+   still gives a `min-width` -- reported as a phantom 475px-wide element on
+   Today, where nothing was ever open. `:popover-open` is what turns it on. */
+/* `min-width` is bounded by the same viewport ceiling `max-width` already
+   is, not a bare `14rem`: at a 32px root that is 448px, which beat a 265.6px
+   `max-width` in a 320px viewport -- `min-width` wins that fight regardless
+   of specificity, so the menu overflowed both axes (#23 review). Clamping
+   both to the same `min(…, calc(100vw - 1.7rem))` ceiling means neither can
+   ever ask for more room than the screen minus its gutters has to give, so
+   `min-width` can never again be the wider of the two. */
+.teammenu { position: fixed; margin: 0;
+  padding: .4rem; border-radius: var(--r); border: 1px solid var(--line);
+  background: var(--surface); box-shadow: var(--shadow-lg);
+  min-width: min(14rem, calc(100vw - 1.7rem));
+  max-width: min(22rem, calc(100vw - 1.7rem)); }
+.teammenu:popover-open { display: flex; flex-direction: column; gap: .1rem; }
+.teammenu-item { display: flex; align-items: center; gap: .6rem; min-height: 44px;
+  width: 100%; padding: 0 .7rem; border-radius: var(--r-sm); border: 0; background: none;
+  font: inherit; font-size: .92rem; text-align: left; color: var(--ink); }
+@media (hover: hover) { .teammenu-item:hover { background: var(--surface-2); } }
+.teammenu-check { width: 1.1em; flex: none; color: var(--accent); font-weight: 700; }
+.teammenu-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.teammenu-add { color: var(--muted); font-weight: 560; border-top: 1px solid var(--line); margin-top: .2rem; padding-top: .5rem; }
 
-   A45: THE HEIGHT IS RESERVED, because the chips do not exist until
-   `renderTeams` runs. The strip used to ship `hidden` in the markup, so the
-   first frame had no strip at all and the boot pushed every view down by
-   exactly this much -- measured 53.6px on a cold origin with `app.js` held on
-   the wire, at 390 (`#view-settings` y 72.2 -> 125.8) and at 1280 (60.3 ->
-   113.9), and the same 53.6 on a boot that lands on games. Revealing the
-   element alone would have bought 9.6px of it: the other 44 is the chip.
-   So the floor is ONE ROW -- this padding plus `.ttab`'s own `min-height`,
-   which is why the two numbers below are written to match and are pinned to
-   each other by test/first-paint.test.js. One row is a floor and not a
-   promise: three teams with long names wrap to two at 390 (103.2px measured),
-   and the strip's height is a function of the NAMES, which the pre-paint
-   script cannot know without a second stamp -- see the item's note. */
-.teamtabs { display: flex; gap: .35rem; flex-wrap: wrap;
-  padding: .6rem clamp(.85rem, 2.6vw, 1.5rem) 0; min-height: calc(.6rem + 44px); }
-.teamtabs[hidden] { display: none; }
-.teamtabs .ttab { display: inline-flex; align-items: center; min-height: 44px;
-  padding: 0 .85rem; border-radius: var(--r-full); border: 1px solid var(--line);
-  background: var(--surface); color: var(--ink-2); font: inherit; font-size: .85rem;
-  font-weight: 560; letter-spacing: -.01em; cursor: pointer; max-width: 13rem;
-  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-  transition: border-color var(--t) var(--ease), color var(--t) var(--ease); }
-@media (hover: hover) { .teamtabs .ttab:hover { border-color: var(--line-2); color: var(--ink); } }
-.teamtabs .ttab.on { background: var(--accent-soft); border-color: var(--accent-line);
-  color: var(--accent); font-weight: 620; }
-/* Dashed, like "+ Game" a row below, so the two read as the same kind of
-   affordance at two levels of the hierarchy rather than as rival buttons. */
-.teamtabs .ttab.add { border-style: dashed; color: var(--muted); font-weight: 520;
-  background: none; }
-@media (hover: hover) { .teamtabs .ttab.add:hover { color: var(--ink); border-color: var(--line-2); } }
+/* ---- Today: the day's games, then Team and Season underneath ----------- */
+.today-games { display: flex; flex-direction: column; gap: .5rem; margin: 1.1rem 0; }
+.today-game { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 44px;
+  padding: .7rem .95rem; border-radius: var(--r); border: 1px solid var(--line);
+  background: var(--surface); font: inherit; text-align: left; }
+@media (hover: hover) { .today-game:hover { border-color: var(--line-2); } }
+/* `1rem`, not inherited: `.today-game`'s `font: inherit` pulls in `body`'s
+   bare `15px` otherwise, an absolute unit a reader's larger-text setting
+   cannot move, while `.today-game-when` right beside it is already `rem`
+   and scales -- at a 32px root the tip-off time grew past the game's own
+   name (#23 review, item 2). `1rem` is the plainest rem value close to the
+   15px this read at a 16px root (1px more); every other size on Today and
+   in the team menu is already some fraction of a rem, and none of them
+   happens to land on 15px exactly, so there is no existing token to reuse
+   here rather than pick one. */
+.today-game-lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-size: 1rem; font-weight: 600; }
+.today-game-when { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.today-game .bad { width: .5rem; height: .5rem; border-radius: 50%; background: var(--err);
+  animation: pop var(--t) var(--spring) both; flex: none; }
+.today-game::after, .today-entry::after { content: '\203a'; color: var(--faint); font-size: 1.1rem;
+  flex: none; margin-left: .1rem; }
+
+.today-acts { display: flex; gap: .6rem; margin-bottom: 1.6rem; }
+.today-acts .btn { flex: 1; }
+
+.today-entry { display: flex; align-items: center; gap: .2rem .9rem; flex-wrap: wrap;
+  width: 100%; min-height: 44px; padding: .8rem .95rem; margin-bottom: .6rem;
+  border-radius: var(--r); border: 1px solid var(--line); background: var(--surface);
+  font: inherit; text-align: left; }
+@media (hover: hover) { .today-entry:hover { border-color: var(--line-2); } }
+/* Same reason and the same value as `.today-game-lb` above. */
+.today-entry-lab { font-size: 1rem; font-weight: 700; letter-spacing: -.01em; }
+.today-entry-sub { color: var(--muted); font-size: .87rem; flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* `.setrow` already wraps its own row (#22 moved this out of `.teamrow`,
    which is gone), but `.btn` is `white-space: nowrap` by design, so a wide
    system font can still make "Remove this team" alone wider than the row has
@@ -426,24 +481,6 @@ a { color: inherit; }
 @media (hover: hover) { .dayhead input.daytitle:hover { border-bottom-color: var(--line-2); } }
 .dayhead input.daytitle:focus { outline: none; border-bottom-color: var(--accent); }
 
-.games { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .95rem; }
-.gtab {
-  display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .9rem;
-  border-radius: var(--r-full); border: 1px solid var(--line-2); background: var(--surface);
-  font-size: .87rem; font-weight: 570; white-space: nowrap;
-}
-/* A long opponent name is a tab wider than the 368px row, which on a phone
-   becomes a horizontally scrolling page rather than a wrapped one. The label
-   itself is already elided in the middle by elideMiddle() in app.js, which caps
-   it at 20 characters; this max-width is the backstop for 20 unusually wide
-   glyphs, so it sits just above that. The tip-off time is never truncated -- it
-   is one of the things that tell one tournament game from the next. */
-.gtab .lb { max-width: 21ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (hover: hover) { .gtab:hover { border-color: var(--muted); } }
-.gtab.on { background: var(--ink); color: var(--bg); border-color: transparent; box-shadow: var(--shadow-sm); }
-.gtab .when { font-size: .74rem; opacity: .55; font-variant-numeric: tabular-nums; }
-.gtab.add { border-style: dashed; color: var(--muted); font-weight: 520; }
-.gtab .bad { width: .5rem; height: .5rem; border-radius: 50%; background: var(--err); animation: pop var(--t) var(--spring) both; }
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 
 /* ============================ squad ============================ */
@@ -648,8 +685,8 @@ a { color: inherit; }
 .alert:empty { display: none; }
 /* The save-failure / recovery banner is a shell strip, not a games-view
    element -- see the comment on it in index.html. Horizontal padding matches
-   `.teamtabs`, the strip directly above it; `:not(:empty)` means an ordinary
-   render pays nothing for it. */
+   the header above it; `:not(:empty)` means an ordinary render pays nothing
+   for it. */
 #storagewarn:not(:empty) { padding: .6rem clamp(.85rem, 2.6vw, 1.5rem) 0; }
 
 /* ============================ fields ============================ */
@@ -1527,15 +1564,10 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    `applyView` hides them on welcome too, and a flash of the top bar is the same
    bug in a smaller box.
 
-   `#teamtabs` JOINED THEM IN A45, AND IT IS WHY THE STRIP CAN SHIP VISIBLE.
-   The strip is chrome of exactly the same kind: shown on all four views, gone
-   on welcome, and `applyView` decides it in the same three lines. It used to
-   ship `hidden` instead, which is a THIRD state the first frame has to guess
-   at, and it guessed wrong on every returning coach. Ship it the way `.bar`
-   ships -- present, with one row of height reserved (see the strip's own rule)
-   -- and let this stamp take it away for the one boot that must not have it.
-   A boot that lands on games stamps nothing on purpose, so this is also the
-   only shape that could fix the games boot without a second stamp.
+   #23 MOVED THE DEFAULT FROM GAMES TO TODAY. `#view-today` is now the one
+   view that ships visible, so a stamp is needed for `games` as well as for
+   `team`, `season` and `settings` -- four screens away from the default
+   instead of three, and one extra row below for it.
 
    !important, and one extra id of specificity on the welcome rule, because
    `[hidden] { display: none !important }` at the top of this file has to keep
@@ -1543,25 +1575,51 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    display, pinned to it by test/first-paint.test.js so the two cannot drift.
 
    Nothing here survives the boot: `applyView` removes the attribute the first
-   time it runs, which is what stops a stale stamp hiding the games view from a
-   coach who has just finished onboarding. */
-html[data-boot="welcome"] #view-games,
+   time it runs, which is what stops a stale stamp hiding Today from a coach
+   who has just finished onboarding. */
+html[data-boot="welcome"] #view-today,
 html[data-boot="welcome"] .bar,
-html[data-boot="welcome"] #teamtabs,
 html[data-boot="welcome"] .foot { display: none !important; }
 html[data-boot="welcome"] #view-welcome[hidden] { display: flex !important; }
-/* A42, the same flash one view along: a coach who left the app on Team, Season
-   or Settings also painted the games shell first. Only two things change per
-   view -- games goes, the stored one arrives -- because `.bar`, `.foot` and the
-   team strip all belong to those views as much as to games. `block` is what
-   `.view.wrap` resolves to (a <main> with no author `display`), pinned to that
-   by test/first-paint.test.js the same way the welcome rule's `grid` is. */
-html[data-boot="team"] #view-games,
-html[data-boot="season"] #view-games,
-html[data-boot="settings"] #view-games { display: none !important; }
+/* A42, #23: a coach who left the app on Games, Team, Season or Settings also
+   used to paint the games shell (now the Today shell) first. Only two things
+   change per view -- Today goes, the stored one arrives -- because `.bar` and
+   `.foot` belong to every one of those screens as much as to Today. `block` is
+   what `.view` (Games) and `.view.wrap` (the rest) resolve to (a <main> with no
+   author `display`), pinned to that by test/first-paint.test.js the same way
+   the welcome rule's `grid` is. */
+html[data-boot="games"] #view-today,
+html[data-boot="team"] #view-today,
+html[data-boot="season"] #view-today,
+html[data-boot="settings"] #view-today { display: none !important; }
+html[data-boot="games"] #view-games[hidden] { display: block !important; }
 html[data-boot="team"] #view-team[hidden],
 html[data-boot="season"] #view-season[hidden],
 html[data-boot="settings"] #view-settings[hidden] { display: block !important; }
+/* #23 review, second round: the header is part of the first frame too.
+   `#barToday` (the team button, the keys hint, the gear) ships visible and
+   `#barBack` (the back button, the title) ships `hidden` -- only `applyView`,
+   two round trips away, used to flip them, so a reload on one of these four
+   screens painted Today's OWN header over the right screen for the first
+   frame. `#settingsBtn` lives inside `#barToday`, so hiding it takes the gear
+   with it; no separate rule for the gear. `#barTitle` is left empty here on
+   purpose -- filled by `applyView` a moment later, same as every other piece
+   of this screen's own content (the roster, the season list, the card) that
+   the pre-paint stamp never tries to paint. Reading it right for Games would
+   mean copying `gameLabel` in here, a second implementation of the one thing
+   this whole mechanism exists to forbid (see the big comment above); Team,
+   Season and Settings have no field to copy FROM at this point -- the only
+   place their titles live is `SCREEN_TITLE` in render.js, a module two round
+   trips away same as `gameLabel` -- so all four leave the title blank rather
+   than have three of them read right and one read wrong. */
+html[data-boot="games"] #barToday,
+html[data-boot="team"] #barToday,
+html[data-boot="season"] #barToday,
+html[data-boot="settings"] #barToday { display: none !important; }
+html[data-boot="games"] #barBack[hidden],
+html[data-boot="team"] #barBack[hidden],
+html[data-boot="season"] #barBack[hidden],
+html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 /* ONE SCREEN (A52). The hero is sized to the viewport you can actually see and
    the stage inside it takes whatever is left, so the two doors sit above the
    fold on any device instead of at a pixel count that happened to be true on a
@@ -2071,9 +2129,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      the card, and the bar is the same on all four views because of it. */
   .bar { gap: .4rem; padding-left: .7rem; padding-right: .7rem;
          flex-wrap: wrap; row-gap: .3rem; justify-content: flex-end; }
-  .brand > span { display: none; }
   .seg button { padding: .36rem .72rem; font-size: .82rem; }
-  #rcount { display: none; }
   .btn { padding: .55rem .8rem; }
   .btn.icon { width: 2rem; padding: .45rem; }
   .statrow { gap: 1rem; }
@@ -2091,8 +2147,6 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    every block that touches `.bar` -- test/big-text.test.js pins it. */
 @media (max-width: 385px) {
   .bar { gap: .28rem; padding-left: .5rem; padding-right: .5rem; }
-  /* the tab says Team; the count is a nicety, and it is on that page anyway */
-  #rcount { display: none; }
 }
 
 /* ...and the stage after that, for a phone with the OS text size turned up.
@@ -2152,17 +2206,16 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .seg.wide { flex-wrap: wrap; }
   .seg.wide button { flex: 1 0 40%; }
 
-  /* The view nav, and it went off the LEFT edge — which is why nothing caught
-     it for so long: every overflow probe in the harness asked whether an
-     element's RIGHT edge cleared the viewport, and `scrollWidth` cannot see
-     the left side at all. Measured at 320px on a 32px root, `#viewnav` sits at
-     left -110px: three tabs whose labels cannot shrink come to ~400px of
-     min-content, the bar above wraps them onto their own line, and that line
-     is `justify-content: flex-end`, so the overflow goes out of the left of
-     the screen instead of the right. "Games" — the tab back to the plan — was
-     entirely unreachable, in every view, including behind bench mode.
-     Wrapping is the same answer `.seg.wide` above already takes; centring
-     stops a short second line hugging one end of the pill. */
+  /* A bare (non-`.wide`) `.seg` -- the lineup-balance shape picker is the one
+     left since #23 retired the view nav this rule was first written for --
+     going off the LEFT edge, which is why nothing caught it for so long: every
+     overflow probe in the harness asked whether an element's RIGHT edge
+     cleared the viewport, and `scrollWidth` cannot see the left side at all.
+     The bar the view nav used to sit in wraps a too-wide `.seg` onto its own
+     line with `justify-content: flex-end`, so the overflow went out of the
+     left of the screen instead of the right. Wrapping is the same answer
+     `.seg.wide` above already takes; centring stops a short second line
+     hugging one end of the pill. */
   .seg { flex-wrap: wrap; justify-content: center; }
 
   /* The last two rows in the games view that no `px` stage reaches. Past 24px
@@ -2177,6 +2230,12 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      so it goes onto a second line instead of off the edge. */
   .block-hd { flex-wrap: wrap; }
   .gm-cta .btn { white-space: normal; text-align: center; }
+
+  /* Today's own pair, "Add a game" and "New day" (#23), the same `.btn`
+     nowrap case again: two `flex: 1` buttons side by side cannot shrink
+     below their own label's min-content, so at a 32px root they overflowed
+     the 320px column they share. */
+  .today-acts .btn { white-space: normal; text-align: center; }
 
   /* The same answer a third time, for the summary rows carrying a "?" (A20
      slice 4). A `.helpq` is 44px in BOTH directions on purpose, and 44px is
@@ -2363,7 +2422,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    pointer query never fires in a resized desktop browser, so everything behind
    it went untested — and a 390px screen is a phone whatever the pointer says. */
 @media (pointer: coarse), screen and (max-width: 620px) {
-  .btn, .gtab, .plr, .chip { min-height: 44px; }
+  .btn, .plr, .chip { min-height: 44px; }
   .btn.icon { min-width: 44px; }          /* was 32px wide on a phone */
   .lockbtn, .xbtn { min-width: 44px; min-height: 44px; }
   /* The lock column is 2rem by default, so a 44px button overflowed its track
@@ -2528,14 +2587,6 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    test/note-placement.test.js pins at view level. It wraps rather than
    squeezing -- a 44px control shrunk to fit a long label is the trade this
    app does not make. */
-/* The cog's "you are here". The three tabs get theirs from `.seg button.on`,
-   which reads against the segmented control's own track; the cog stands alone
-   in the bar, so it borrows the same filled-pill treatment rather than
-   inventing a second vocabulary for the same state. Without this the bar tells
-   a coach which of Games/Team/Season they are on and says nothing at all when
-   they are on Settings. */
-#settingsBtn.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
-
 .setrow { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; padding: .6rem 0; }
 .setrow + .setrow { border-top: 1px solid var(--line); }
 .setrow-b { flex: 1 1 12rem; min-width: 0; }
@@ -2584,9 +2635,6 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    that is not itself a `.setrow` still reads as one more row starting, not a
    different kind of break. */
 .setrow + .set-h { border-top: 1px solid var(--line); }
-/* The season count rides on the page heading now, not on a box caption, so it
-   has to stand down from an h1's size and sit on its baseline. */
-h1 > .sn-count { vertical-align: middle; font-weight: 560; }
 
 /* =========================== #22: one Settings screen ===========================
    The 48px floor (I1) is scoped to `#view-settings` alone -- the app-wide 44px

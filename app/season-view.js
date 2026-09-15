@@ -50,7 +50,10 @@ let renderAll = () => {};
 
 export function initSeason(renderAllFn) { renderAll = renderAllFn; }
 
-const seasonGames = () => {
+// Exported so Today's own Season entry (teams-view.js) counts a filed game
+// the same way this file does, rather than a second `Array.isArray` check of
+// its own (#23 review, item E).
+export const seasonGames = () => {
   const t = team();
   return Array.isArray(t?.season?.games) ? t.season.games : [];
 };

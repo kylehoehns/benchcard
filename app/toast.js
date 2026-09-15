@@ -30,9 +30,11 @@ const TIP_URL = 'https://buymeacoffee.com/kylehoehns';
 // ---------------------------------------------------------------------------
 
 let renderAll = () => {};
+let setView = () => {};
 
-export function initToast(renderAllFn) {
+export function initToast(renderAllFn, setViewFn) {
   renderAll = renderAllFn;
+  setView = setViewFn;
   // No tip URL configured: hide the tip link, not the whole footer. The footer
   // also carries a link to /about -- the one page on this site a crawler can
   // read without running the app -- so hiding the footer wholesale took that
@@ -74,9 +76,17 @@ let toastTimer = null;
 export function undoable(message, mutate, refresh) {
   const snap = clone(state);
   mutate();
-  (refresh || renderAll)();
+  (refresh || viewRefresh)();
   showUndo(typeof message === 'function' ? message() : message, snap, refresh);
 }
+
+/* The default refresh, used by every `undoable` caller that has no screen
+   change of its own to make. `setView(state.view)` before `renderAll()`
+   (#23) is what lands an undo on the screen its snapshot names: most edits
+   never touch `state.view`, so this is a same-screen repaint most of the
+   time, and it is only ever a real navigation on the callers -- Remove this
+   game among them -- whose mutation changes `state.view` itself. */
+function viewRefresh() { setView(state.view); renderAll(); }
 
 function dismissToast(t) {
   if (!t || t.classList.contains('out')) return;
@@ -133,7 +143,7 @@ function showUndo(message, snap, refresh) {
     replaceState(snap);
     clearPick();
     save();
-    (refresh || renderAll)(true);
+    (refresh || viewRefresh)(true);
   });
   if (t) t.dataset.undo = '1';
 }

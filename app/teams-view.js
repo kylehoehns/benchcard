@@ -1,21 +1,18 @@
 /* ================================================================== *
- * teams-view.js -- the two navigation strips, team above game
+ * teams-view.js -- Today, and team identity everywhere it is shown
  *
- * Team ▸ day ▸ game, top to bottom. The team chips (`renderTeams`) now
- * mount in the SHELL and the game tabs (`renderTabs`) inside the games
- * view, but they are still one seam because they are still one reading:
- * the strip sits directly above the tabs on the only view that has them.
- * Both own destructive actions -- removing a team, removing a game,
- * clearing the day -- so both go through `undoable`, imported straight
- * from toast.js.
+ * Today is home (#23): `renderTeams` paints the team menu that hangs off
+ * Today's header, and `renderTabs` paints Today's own content -- one entry
+ * per game, the Team and Season entries below them. They are still one seam
+ * because they are still one reading: team ▸ day ▸ game, all on the one
+ * screen the coach opens the app to. Both own destructive actions --
+ * removing a team, removing a game, clearing the day -- so both go through
+ * `undoable`, imported straight from toast.js.
  *
- * Two injections through `initTeams`, which also wires the one button that
- * lives outside the strip (`#removeTeam`, in Settings since #22 --
- * `#addTeam` left with A40's own `+ Team` chip, which calls `addTeam`
- * directly rather than through a click binding here): `renderAll`, because
- * switching team or game changes everything downstream of it, and `setView`,
- * because adding a team lands the coach on Settings. Both belong to
- * render.js.
+ * Two injections through `initTeams`: `renderAll`, because switching team or
+ * game changes everything downstream of it, and `setView`, because opening a
+ * game, Team, Season or a fresh team's Settings is a screen change. Both
+ * belong to render.js.
  *
  * `#removeGame` is wired from inside `renderTabs` -- its hidden state
  * depends on how many games the day has, so it is repainted with them.
@@ -23,11 +20,26 @@
 import { $, on, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
-import { state, plans, newGame, newTeam, team, lastGame, gameLabel, elideMiddle, archiveDay } from './state.js';
+import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
+// season-view.js is already in the boot graph (app.js calls `initSeason`),
+// so this names no new request -- it is the one place a filed game is
+// counted, and Today's Season entry reads it the same way (#23 review).
+import { seasonGames } from './season-view.js';
 
 let renderAll = () => {};
 let setView = () => {};
+
+const MAX_TEAMS = 12;   // matches the cap sanitize() applies on load
+
+/* The team label fallback, one helper for every place team identity is shown:
+   the header button and the menu on Today, the Team entry's own name, the
+   settings heading and a removal confirm's title. Written three times before
+   this ticket (`renderTeams`, `renderSettings`, `removeTeam`); Today's header
+   and its Team entry are two more call sites, and the rule is still one
+   helper, not a fourth copy. `t` may be undefined -- `team()` before the
+   first team exists -- so the fallback still has to answer something. */
+const teamLabel = (t, i) => ((t && t.name) || '').trim() || `Team ${i + 1}`;
 
 /* The read-back for `#maxSubsSeg`, one sentence per option, indexed by the
    number. Bare digits read as a rule; the setting is not one, and the only
@@ -60,9 +72,21 @@ const SUBS_READ = [
 export function initTeams(renderAllFn, setViewFn) {
   renderAll = renderAllFn;
   setView = setViewFn;
-  // #addTeam is gone (#22): the team strip's own `+` in `renderTeams` below
-  // calls `addTeam` directly, and it is the only way in now.
+  // #addTeam is gone (#22); the team menu's own "Add a team" entry calls
+  // `addTeam` directly, and it is the only way in now.
   on('#removeTeam', 'onclick', removeTeam);
+  // "+ Game", "New day" and the two entries below them are static buttons on
+  // Today now, not rebuilt every render -- bound once, like #removeTeam above.
+  on('#todayAddGame', 'onclick', addGame);
+  on('#todayNewDay', 'onclick', startNewDay);
+  on('#todayTeam', 'onclick', () => setView('team'));
+  on('#todaySeason', 'onclick', () => setView('season'));
+  // The menu is anchored to the button that opens it (C8), not to a fixed
+  // point on the screen. `toggle` (not `beforetoggle`) is what fires AFTER
+  // the popover's own box exists, which is what makes measuring ITS size --
+  // not just the button's -- possible; `beforetoggle` fires while the
+  // popover is still `display: none` and would measure a 0x0 box.
+  on('#teamMenu', 'ontoggle', (e) => { if (e.newState === 'open') positionTeamMenu(); });
   // Delegated and bound once: the five buttons are static markup, and
   // `renderSettings` only moves the `.on` class.
 
@@ -140,62 +164,72 @@ export function initTeams(renderAllFn, setViewFn) {
   fmt('#setPerMins', 'periodMinutes', 1, 40);
 }
 
-/* ---------------- teams ----------------
-   One row above whatever is showing, because the hierarchy is team ▸ day ▸
-   game and a coach who switches team expects the day, its games, the season
-   ledger and the team's settings to change with it.
+/* Anchor the popover to `#teamBtn`, not to a fixed point on the screen (C8,
+   spec item 2). Run on the popover's own `toggle` event once it has actually
+   opened -- its box exists by then, `position: fixed` in app.css already
+   makes `top`/`left` viewport-relative, and this only ever overrides those
+   two properties, never `display` or anything `:popover-open` owns. Clamped
+   to the viewport on both edges: a button hard against the right or bottom
+   edge (a narrow phone, a long team name) must not push the menu off screen
+   the way a bare "under and left-aligned" rule would. */
+function positionTeamMenu() {
+  const btn = $('#teamBtn'), menu = $('#teamMenu');
+  if (!btn || !menu) return;
+  const b = btn.getBoundingClientRect();
+  const m = menu.getBoundingClientRect();
+  const gap = 6, edge = 8;
+  const top = Math.max(edge, Math.min(b.bottom + gap, innerHeight - edge - m.height));
+  const left = Math.max(edge, Math.min(b.left, innerWidth - edge - m.width));
+  menu.style.top = `${top}px`;
+  menu.style.left = `${left}px`;
+}
 
-   It lived inside the games view until Season and Settings became team-scoped,
-   at which point switching team from either meant leaving the page you were
-   on. It is now shell furniture, mounted between the bar and the views -- one
-   move, four views fixed. The games view reads exactly as it did: the game
-   tabs are still the next thing down, so "+ Team" is still one level out from
-   "+ Game".
+/* ---------------- the team menu (#23) ----------------
+   Today's header names the active team on a button; tapping it opens a
+   native `popover` (C8) listing every team, the current one checked, then
+   "Add a team". It replaces the team chip strip, which was shell furniture
+   above every view -- this is the same identity, just reached from Today's
+   header instead of a row that used to sit above all four screens.
 
-   This row used to hide itself at one team, on the reasoning that a switcher
-   with nothing to switch to is a tax on the majority. That was wrong, and the
-   way we found out is that the person who asked for multiple teams could not
-   find how to add one. "Add a team" lived only on the roster page, which reads
-   as "edit my players", not "I coach another side". So the row is always here,
-   one chip and an add, and the add carries the word Team: the game tabs
-   directly below have their own "+ Game", and two bare plus signs stacked is
-   how you turn one confusion into two.
+   Choosing another team closes the menu and repaints Today -- the rendering
+   rule (a render never repaints the control a coach is using) is kept by
+   closing the popover BEFORE `renderAll()` runs, so the menu is never the
+   thing being redrawn mid-tap.
 
-   The one place it must NOT be is the welcome screen, where there is no team
-   to name yet and the rest of the chrome is hidden too — and that flag is set
-   by `applyView` in render.js, deliberately NOT here. `render()` returns early
-   while `onboarded` is false, so a renderer cannot hide it on the one path
-   that matters: removing the last team flips `onboarded` off, and this
-   function never runs again to notice. Contents here, visibility there. */
+   The one place this must not paint is the welcome screen, same as the strip
+   it replaces: `render()` returns early while `onboarded` is false, and
+   `applyView` in render.js owns visibility, not this function. */
 export function renderTeams() {
-  const box = $('#teamtabs');
-  if (!box) return;
-  box.textContent = '';
+  const label = $('#teamBtnLabel');
+  const menu = $('#teamMenu');
+  if (!label || !menu) return;
+  label.textContent = teamLabel(team(), state.activeTeam);
+  menu.textContent = '';
   state.teams.forEach((t, i) => {
-    const b = el('button', 'ttab press' + (i === state.activeTeam ? ' on' : ''));
-    const label = (t.name || '').trim() || `Team ${i + 1}`;
-    b.textContent = label;
-    b.title = label;
-    if (i === state.activeTeam) b.setAttribute('aria-current', 'true');
-    b.setAttribute('aria-label', `${label}, ${t.players.length} player${t.players.length === 1 ? '' : 's'}`);
-    b.onclick = () => {
-      if (i === state.activeTeam) return;
+    const item = el('button', 'teammenu-item press');
+    item.type = 'button';
+    const current = i === state.activeTeam;
+    const name = teamLabel(t, i);
+    if (current) item.setAttribute('aria-current', 'true');
+    item.append(el('span', 'teammenu-check', current ? '✓' : ''));
+    item.append(el('span', 'teammenu-nm', name));
+    item.setAttribute('aria-label', `${name}, ${t.players.length} player${t.players.length === 1 ? '' : 's'}`);
+    item.onclick = () => {
+      menu.hidePopover?.();
+      if (current) return;
       state.activeTeam = i;
       track('team_switched', { teams: state.teams.length });
       renderAll();
     };
-    box.append(b);
+    menu.append(item);
   });
   if (state.teams.length < MAX_TEAMS) {
-    const add = el('button', 'ttab add press', '+ Team');
+    const add = el('button', 'teammenu-item teammenu-add press', 'Add a team');
     add.type = 'button';
-    add.setAttribute('aria-label', 'Add a team');
-    add.onclick = addTeam;
-    box.append(add);
+    add.onclick = () => { menu.hidePopover?.(); addTeam(); };
+    menu.append(add);
   }
 }
-
-const MAX_TEAMS = 12;   // matches the cap sanitize() applies on load
 
 /* ---------------- the settings page's team heading ----------------
    The one piece of the settings surface that is not static markup, and it
@@ -208,11 +242,12 @@ const MAX_TEAMS = 12;   // matches the cap sanitize() applies on load
    looking at", and they have to answer it the same way or the settings page
    becomes the one place a league rule can land on the wrong roster.
 
-   So it borrows `renderTeams`'s own fallback verbatim -- an unnamed team reads
-   `Team 2` in the chip strip, and it must read `Team 2` here too. */
+   So it uses `teamLabel`, the one team-identity fallback -- an unnamed team
+   reads `Team 2` on Today's header and in its menu, and it must read
+   `Team 2` here too. */
 export function renderSettings() {
   const hd = $('#setTeamHd');
-  if (hd) hd.textContent = (team()?.name || '').trim() || `Team ${state.activeTeam + 1}`;
+  if (hd) hd.textContent = teamLabel(team(), state.activeTeam);
 
   /* The game format, written back like the league floor and with the same
      caret rule: `renderAll` runs on every save, so rewriting the value under a
@@ -314,7 +349,7 @@ function addTeam() {
    nothing left to plan with. Undo still restores everything, including the
    fact that they were past onboarding. */
 function removeTeam() {
-  const label = (team().name || '').trim() || `Team ${state.activeTeam + 1}`;
+  const label = teamLabel(team(), state.activeTeam);
   const last = state.teams.length === 1;
   const n = state.players.length;
   /* Two whole sentences, not a count phrase slotted in front of a fixed tail:
@@ -345,49 +380,64 @@ function removeTeam() {
     }, (undoing) => {
       // setView forces 'welcome' whenever onboarded is false, so this is right
       // in both directions -- including on undo, which restores it to true.
-      // On undo, `state.view` is the restored snapshot: a team removed from
-      // the Team page used to come back with the coach on Games.
-      setView(undoing ? (state.view || 'games') : 'games');
+      // Removing a team from Settings returns to Today; undo returns to
+      // Settings, where the coach was standing when they removed it.
+      setView(undoing ? 'settings' : 'today');
       renderAll();
     }),
   });
 }
 
-/* ---------------- the game tabs ---------------- */
+/* ---------------- Today's games, and the Team/Season entries below them ----
+   `renderTabs` keeps its name (and its render-dispatch key, 'tabs') for what
+   it has always been: the thing that repaints when the day's games move --
+   but what it paints is Today's list now, not a strip of tabs inside the
+   games view. Activating an entry opens that game's screen; "Add a game" and
+   "New day" are static buttons on Today, wired once in `initTeams`. */
 export function renderTabs() {
-  const box = $('#tabs'); box.textContent = '';
-  state.day.games.forEach((g, i) => {
-    const b = el('button', 'gtab press' + (i === state.activeGame ? ' on' : ''));
-    // .lb, not a bare span: a tournament label ("Riverside Regional Tournament
-    // Semifinal vs Northgate") made a 431px tab in a 368px row and pushed the
-    // whole page into a horizontal scroll. The visible text is elided in the
-    // middle (see elideMiddle); the full label stays on the button as its
-    // accessible name and its tooltip, and in the game's own opponent field.
-    const full = gameLabel(g, i);
-    b.append(el('span', 'lb', elideMiddle(full)));
-    b.title = full;
-    b.setAttribute('aria-label', g.when ? `${full}, ${g.when}` : full);
-    // Same attribute as the team tabs above, for the same reason: which game
-    // is open is carried by `.on` alone otherwise, and that is a colour.
-    if (i === state.activeGame) b.setAttribute('aria-current', 'true');
-    if (g.when) b.append(el('span', 'when', g.when));
-    if (plans[i] && !plans[i].ok) b.append(el('span', 'bad'));
-    b.onclick = () => { state.activeGame = i; renderAll(); };
-    box.append(b);
-  });
-  const add = el('button', 'gtab add press', '+ Game');
-  add.onclick = () => {
-    state.day.games.push(newGame(state.day.games.length, lastGame(), state.settings));
-    state.activeGame = state.day.games.length - 1;
-    track('day_game_count', { games: state.day.games.length });
-    renderAll();
-  };
-  box.append(add);
+  // The Game screen's own header title, kept live while the coach edits the
+  // opponent field -- `setView` only sets it on a view CHANGE, and typing in
+  // #label does not change the view. `gameLabel` is the one game label,
+  // reused here exactly as Today's own entries reuse it below.
+  if (state.view === 'games') {
+    const t = $('#barTitle');
+    if (t) t.textContent = gameLabel(game(), state.activeGame);
+  }
 
-  const nd = el('button', 'gtab add press', 'New day');
-  nd.style.marginLeft = '.35rem';
-  nd.onclick = startNewDay;
-  box.append(nd);
+  const box = $('#todayGames');
+  if (box) {
+    box.textContent = '';
+    state.day.games.forEach((g, i) => {
+      const b = el('button', 'today-game press');
+      const full = gameLabel(g, i);
+      b.append(el('span', 'today-game-lb', full));
+      if (g.when) b.append(el('span', 'today-game-when', g.when));
+      if (plans[i] && !plans[i].ok) b.append(el('span', 'bad'));
+      b.setAttribute('aria-label', g.when ? `${full}, ${g.when}` : full);
+      b.onclick = () => { state.activeGame = i; setView('games'); };
+      box.append(b);
+    });
+  }
+
+  const teamBtn = $('#todayTeam');
+  if (teamBtn) {
+    teamBtn.textContent = '';
+    teamBtn.append(el('span', 'today-entry-lab', 'Team'));
+    const n = state.players.length;
+    teamBtn.append(el('span', 'today-entry-sub',
+      `${teamLabel(team(), state.activeTeam)} · ${n} player${n === 1 ? '' : 's'}`));
+  }
+
+  const seasonBtn = $('#todaySeason');
+  if (seasonBtn) {
+    seasonBtn.textContent = '';
+    seasonBtn.append(el('span', 'today-entry-lab', 'Season'));
+    // `seasonGames()`, not a second `Array.isArray` check -- the same
+    // reader season-view.js's own heading counts a filed game with.
+    const n = seasonGames().length;
+    seasonBtn.append(el('span', 'today-entry-sub',
+      n === 0 ? 'No games filed yet' : `${n} game${n === 1 ? '' : 's'} filed`));
+  }
 
   const rmBtn = $('#removeGame');
   if (rmBtn) {
@@ -400,9 +450,28 @@ export function renderTabs() {
       undoable(`Removed ${label}. The day rebalanced.`, () => {
         state.day.games.splice(state.activeGame, 1);
         state.activeGame = Math.max(0, state.activeGame - 1);
+        // Removing the open game returns to Today; undo restores the game
+        // and reopens its Game screen (the snapshot holds `view: 'games'`
+        // and the old `activeGame`, so the default undo refresh reopens it).
+        setView('today');
       });
     };
   }
+}
+
+/* "+ Game"'s own push, moved with its behaviour intact: a new game copies the
+   format, who is at the gym and the rules from the last game in the day, and
+   opens straight onto its own screen. */
+function addGame() {
+  state.day.games.push(newGame(state.day.games.length, lastGame(), state.settings));
+  state.activeGame = state.day.games.length - 1;
+  track('day_game_count', { games: state.day.games.length });
+  // `setView('games')` renders it: always called from Today (#todayAddGame,
+  // wired below), so this is always a real transition into Games and
+  // `applyView` does the render itself now (#23 review, third round). A
+  // second `renderAll()` here would be exactly the double work that review
+  // flagged.
+  setView('games');
 }
 
 /* Its own function rather than an inline handler: the wording and the undo

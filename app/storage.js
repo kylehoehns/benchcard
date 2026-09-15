@@ -420,13 +420,13 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame }) {
   };
 }
 
-/* The four views the app can be on, and the ONE place a superseded view key is
+/* The five views the app can be on, and the ONE place a superseded view key is
    translated into a current one.
 
    The allow-list is not a trust: a record written by a newer build, a hand-
    edited backup or a half-finished rename all arrive as a string `applyView`
-   would happily hide every view for, so anything unrecognised lands on Games,
-   which is the view the app is for.
+   would happily hide every view for, so anything unrecognised lands on Today,
+   which is the view the app is for (#23).
 
    `VIEW_WAS` is the legacy half of the same question. The Roster tab became
    Team in A40, and the key followed in slice 2 -- but a coach's BACKUP FILE is
@@ -443,11 +443,16 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame }) {
    keeps finding, not the rename itself. A Map rather than an object literal
    because `{}['constructor']` is truthy and a prototype hit here would be a
    very quiet bug. */
-const VIEWS = ['games', 'team', 'season', 'settings'];
+/* Exported so render.js's `BACK_VIEWS` -- every screen but Today, the ones
+   that carry a back button and a title -- can be derived from this one
+   allow-list rather than hand-typing a second copy of it (#23 review). This
+   is the allow-list itself, read-only from the outside; `sanitize` and
+   `viewOf` below stay the only place it is written to or filtered against. */
+export const VIEWS = ['today', 'games', 'team', 'season', 'settings'];
 const VIEW_WAS = new Map([['roster', 'team']]);
 const viewOf = raw => {
   const v = VIEW_WAS.get(raw) || raw;
-  return VIEWS.includes(v) ? v : 'games';
+  return VIEWS.includes(v) ? v : 'today';
 };
 
 /**

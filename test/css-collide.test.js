@@ -54,8 +54,6 @@ const ALLOWED = new Map([
   ['nm app.css|card.css', 'roster and timeline labels vs. a name on the card'],
   // card.css owns `.stage` as an object; app.css only adds the empty state.
   ['stage app.css|card.css', 'card.css owns the stage; app.css adds `.stage.blank`'],
-  // `.gtab .when` is the games table; `.card-hd .when` is the card header.
-  ['when app.css|card.css', 'games table vs. card header'],
 ]);
 
 /* Every stylesheet a page loads, in cascade order: the linked local sheets in

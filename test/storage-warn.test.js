@@ -54,13 +54,13 @@ test('the storage warning box is not inside any view', () => {
   }
 });
 
-test('the shell strip is above the views, next to the team switcher', () => {
+test('the shell strip is above the views, under the header', () => {
   const at = html.search(WARN);
   const firstView = html.search(/<main\b[^>]*class="[^"]*\bview\b/);
   assert.ok(at < firstView, '#storagewarn must precede the views to be shell chrome');
   assert.ok(
-    html.search(/<nav[^>]*id="teamtabs"/) < at,
-    '#storagewarn belongs with the other shell strip, under the team switcher',
+    html.search(/<header[^>]*class="bar/) < at,
+    '#storagewarn belongs below the header, the other piece of shell chrome above the views',
   );
 });
 

@@ -48,21 +48,23 @@ Everything below is relative to `app/`.
   drift from the schema.
 - `render.js` — the repaint dispatcher: `SECTIONS` (one key per independently
   repaintable region), `render` / `renderAll`, the debounced `soon`, the
-  view switch (`setView`: flip the `hidden` flags on Games / Team / Season /
-  Settings, scroll to the top; deliberately *not* a View Transition — see the
-  comment there) and the theme. **The Roster view became "Team" in A40** —
-  label first (slice 1), then the stored key, the `data-view` and the `id`
-  (slice 2). The old key `roster` is still written in coaches' backup files, so
-  `sanitize` translates it in exactly one place (`VIEW_WAS` in `storage.js`);
-  nothing else in the app may. A guard must still not assume the label and the
-  key are the same string — they agree today by coincidence, not by rule.
+  view switch (`setView`: the one place a screen changes and the one place
+  browser history is pushed, replaced or popped for it (#23) — flip the
+  `hidden` flags on Today / Games / Team / Season / Settings, scroll to the
+  top; deliberately *not* a View Transition — see the comment there) and the
+  theme. **The Roster view became "Team" in A40** — label first (slice 1),
+  then the stored key and the `id` (slice 2). The old key `roster` is still
+  written in coaches' backup files, so `sanitize` translates it in exactly one
+  place (`VIEW_WAS` in `storage.js`); nothing else in the app may. A guard
+  must still not assume the label and the key are the same string — they
+  agree today by coincidence, not by rule.
   It imports every renderer, so
   nothing may import it back: a view that needs to repaint is handed the
   callback at boot, through its `init*` function. That rule is what keeps the
   import graph a tree.
-- The views, one module each — `roster-view.js`, `teams-view.js` (the team
-  chips, which mount in the shell above every view rather than inside one, the
-  game tabs, and the active team's name at the head of Settings),
+- The views, one module each — `roster-view.js`, `teams-view.js` (Today: the
+  team-switcher menu, the day's games, the Team and Season entries below them,
+  and the active team's name at the head of Settings),
   `season-view.js` (the Season view: minutes per player, game by game, and the
   one place a game filed by mistake can be deleted), `game-setup.js`,
   `strategy.js`, `balance.js`,
@@ -169,7 +171,7 @@ children, not a technical one, and `test/leak.test.js` enforces it at the
 source: `card.js`, `gamemode.js` and `share.js` may not reference `tier` at all.
 The UI is `balance.js`, split across two screens because the two halves have
 different lifetimes: `renderLevelControls` sits on the **roster** page — the
-tab labelled **Team** (levels live on the player and are a season-long
+screen labelled **Team** (levels live on the player and are a season-long
 judgement) and `renderBalance` sits with the
 **plan** (the shape is per game, stored as `game.balance`). Both folds are shut
 by default and build their bodies only on open -- `<details>` keeps children in
@@ -317,13 +319,24 @@ the touch check across games/roster/folds-open at 320, 360 and 390 rather than
 measuring one screen at one width, which is what let both of these live.
 ## Interface
 
-**The chrome is three tabs and a cog.** Games, Roster and Season are the nav;
-Settings sits behind a cog beside Print. The split is *policy vs plan*: a coach
-would change a strategy or an availability between two games on the same
-Saturday, and would never change a theme or a league rule, so the first belongs
-on the game screen and the second behind the cog. Season earns its tab because
-it is the thing a coach opens *between* games; Settings does not, because it is
-set once a season.
+**Today is home; there is no tab bar (#23, N1).** The app opens on Today: a
+button naming the active team, which opens a `popover` menu to switch teams or
+add one (C8), a gear for Settings, the day's games, then Team and Season as two
+entries underneath, and New day / Add a game. Game, Team, Season and Settings
+are each one screen away from Today rather than siblings on a nav — opening
+one pushes a browser-history entry, so the back button, the browser's own
+back and Android's back gesture all land back on Today, through the one path
+`setView` (render.js) owns. The split that used to be *policy vs plan* across
+three tabs and a cog is now *what changes between games* — the day's games,
+Team, Season, all reachable from Today — versus *what is set once a season* —
+Settings, behind the gear that only ever shows on Today (N4).
+
+**One header, two states.** `.bar` no longer changes shape one member at a
+time; it holds `#barToday` (the team button, `#keysHint`, the gear) and
+`#barBack` (an icon-only *Back to Today* and the screen's own title — reused
+from `gameLabel` on the game screen, else `Team` / `Season` / `Settings`), and
+`applyView` toggles which half is visible with the `hidden` attribute — never
+both, because a coach is always on Today or exactly one screen away from it.
 
 **Print stands on the games view only.** It is the one control in the bar that
 belongs to a single view: Games is the only place printing means anything, and
@@ -339,14 +352,10 @@ four. <kbd>P</kbd> stays live everywhere regardless, because `printCard`
 switches to Games before it prints; a key that dies on three views out of four
 would be worse than no key.
 
-The tab budget is now spent, and that is measured rather than assumed. With the
-brand, three tabs, the cog and Print, the bar's one-row floor is **374px** in
-the 620px stage and **359.9px** once the 385px stage tightens the gaps — one row
-at 360, 375 and 390, two rows at 320, which is exactly what two tabs did. It
-only fits because `?` and the theme toggle gave up their seats: each icon button
-in the bar costs 50px (44 + gap), the same as a tab. The bar carries `flex-wrap`
-for every phone width, so past the floor it gets taller rather than breaking —
-two rows at a 20px root and two at 24px on a 390px screen, nothing panning.
+The tab budget this used to measure is retired along with the tabs: Today's
+header carries the team button, the keys hint and the gear, and every other
+screen carries only a back button and a title, so there is no longer a row of
+sibling controls competing for the same 390px.
 
 **Settings is two labelled zones.** The top one is headed with the active
 team's name and holds policy that belongs to that team alone; the bottom is
@@ -416,21 +425,18 @@ is watched, so a phone that turns dark at dusk turns the app with it; an
 explicit light/dark choice still wins, and `theme-color` follows the resolved
 background.
 
-**The first frame.** The same idiom decides which VIEW paints. `#view-games` is
-the one view that ships visible, so a first-ever visitor used to paint the games
-shell and watch it flip to the welcome screen a beat later. A second pre-paint
-script stamps `data-boot` on `<html>` with the view the boot is going to land
-on, and `app.css` hides the games shell (and the bar, the foot and the team
-strip) and reveals that view for the stamp; `applyView` removes the attribute
-the first time it runs. It resolves the WHOLE view, not welcome-versus-games:
-a coach who left the app on Team, Season or Settings watched the same flash one
-view along. **Games is stamped as nothing at all**, deliberately — it is the
-markup default, so a throw in the script degrades to today's behaviour instead
-of to a blank frame. That is also why the team strip ships visible with one row
-of height reserved rather than `hidden`: the chips only arrive with
-`renderTeams`, and a rule keyed on the stamp can never reach a boot that stamps
-nothing, so the strip is chrome that the welcome stamp takes AWAY, exactly like
-the bar and the foot. Shipping `#view-welcome` visible instead would only move the
+**The first frame.** The same idiom decides which VIEW paints. `#view-today` is
+the one view that ships visible (#23), so a first-ever visitor used to paint
+the Today shell and watch it flip to the welcome screen a beat later. A second
+pre-paint script stamps `data-boot` on `<html>` with the view the boot is going
+to land on, and `app.css` hides the Today shell (and the bar and the foot) and
+reveals that view for the stamp; `applyView` removes the attribute the first
+time it runs. It resolves the WHOLE view, not welcome-versus-Today: a coach who
+left the app on the open game, Team, Season or Settings watched the same flash
+one view along — Games lost the "ships visible" seat to Today and gained a
+stamp of its own. **Today is stamped as nothing at all**, deliberately — it is
+the markup default, so a throw in the script degrades to that default screen
+instead of a blank frame. Shipping `#view-welcome` visible instead would only move the
 flash onto the returning coach, who loads the app far more often. The script
 walks `loadState`'s whole key chain — the v6 backup, v5/v4/v3 and both legacy
 keys — and repeats its three acceptance clauses, because a cheaper check that
@@ -477,27 +483,26 @@ asks the preference itself.
 
 **Keyboard shortcuts** exist for the desk half of the job — planning the day
 before you leave the house. <kbd>P</kbd> print, <kbd>S</kbd> shuffle,
-<kbd>V</kbd> switch Games/Roster, <kbd>B</kbd> open bench mode, arrows to move
-between stints there, <kbd>?</kbd> for the list, Escape to close. Each key
-clicks the button it names rather than repeating its work, so a disabled or
-absent control is already the answer for the key too. *Disabled*, note, not
+<kbd>V</kbd> Today ⇄ Team (any other screen goes back to Today first, #23),
+<kbd>B</kbd> open bench mode, arrows to move between stints there, <kbd>?</kbd>
+for the list, Escape to close. Each key clicks the button it names rather than
+repeating its work, so a disabled or absent control is already the answer for
+the key too. *Disabled*, note, not
 *hidden*: a programmatic `.click()` fires on a hidden element and is stopped
-only by `disabled`, which is why <kbd>P</kbd> still works on the three views
-the Print button is not on: it lives beside the card, inside the games view,
-so on Roster, Season and Settings the button <kbd>P</kbd> clicks is inside a
-hidden `<main>` — and `printCard` switches to Games before it prints, so the
-key lands on the card rather than spooling whatever is on screen. It is not in
-the top bar, and nothing in the top bar depends on the view any more: hiding a
-button there took it out of the flex flow and shifted the whole right-hand
-cluster every time a coach opened Settings. Print going `disabled`
+only by `disabled`, which is why <kbd>P</kbd> still works on the four screens
+the Print button is not on: it lives beside the card, inside the game screen,
+so on Today, Team, Season and Settings the button <kbd>P</kbd> clicks is
+inside a hidden `<main>` — and `printCard` switches to the game screen before
+it prints, so the key lands on the card rather than spooling whatever is on
+screen. Print going `disabled`
 whenever the plan is blocked is what stops <kbd>P</kbd> from spooling a page of
 furniture with no card on it, and Shuffle is `disabled` on the same flag, since
 `analyzeFeasibility` runs before the seed is used at all: a blocked plan is
 blocked for every seed, so <kbd>S</kbd> could only reshuffle nothing. They are
 inert while a
 field has focus, and behind the shortcuts sheet.
-The `?` hint in the header only appears on a fine pointer at ≥760px — on a
-phone it would advertise something the coach cannot press.
+The `?` hint sits in Today's own header and only appears on a fine pointer at
+≥760px — on a phone it would advertise something the coach cannot press.
 
 The **minute sliders move only themselves.** Auto-redistribution meant fixing
 one shoved another, and the coach ended up chasing values around the list.
@@ -570,23 +575,21 @@ it, so without a trap Tab walks into the form underneath.
 
 Mobile specifics that came out of real use:
 
-- **Game tabs wrap; they do not scroll horizontally.** A sideways scroller
-  nested inside a vertically scrolling page is miserable on a phone, and
-  wrapping also removed the need for scroll-into-view, which was yanking the
-  page to the top every time a slider settled. Wrapping only holds if a single
-  tab fits the row, so the label is capped at 20 characters — a
-  tournament-length opponent name made a 431px tab in a 368px row and put the
-  whole page into a horizontal scroll. The cut is in the **middle**, weighted
-  towards the end (`elideMiddle` in `state.js`): tournament labels share a long
-  prefix and differ only in the round and the opponent, so a tail ellipsis gave
-  two different games the same tab. The tip-off time beside it is never
-  truncated, the full label is the tab's accessible name and tooltip, and it
-  stays in the game's own opponent field.
+- **Today's games stack, one full-width row each, rather than wrapping or
+  scrolling as a strip of tabs (#23).** The chip row this replaced had to cap
+  a label at 20 characters and elide the middle of it (a tournament-length
+  opponent name made a 431px tab in a 368px row and put the whole page into a
+  horizontal scroll), because several chips had to share one line. A stacked
+  list has no such limit: `.today-game-lb` only truncates — with a plain CSS
+  tail ellipsis — when a single name is wider than its own row, the tip-off
+  time beside it is never truncated, and the full label is still the entry's
+  accessible name, and stays in the game's own opponent field.
 - **Squad pills elide the same way, and for the same reason.** `.plr .nm` is
   capped at 15ch, and a tail ellipsis cut the surname off — two kids with the
   same long first name became two identical pills for the tap that decides who
-  plays. `fitPills()` in `pills.js` runs the tabs' middle cut, but sized by
-  measurement instead of a character count, because 15ch is a different number
+  plays. `fitPills()` in `pills.js` runs `elideMiddle` (`state.js`) — the same
+  middle cut the card's own header uses — but sized by measurement instead of
+  a character count, because 15ch is a different number
   of letters for "Willi" than for "Ilinca". The measuring is done on a canvas,
   so a squad of fifteen costs no layout, and the full name stays as the pill's
   `aria-label`. The picker grid ("pick five") goes through the same function; it
@@ -618,8 +621,8 @@ Mobile specifics that came out of real use:
   button, because their control is already on screen.
 - **The substitution interval is a chip group, not a `<select>`.** Eight long
   options in a native picker fills a phone screen for a one-tap decision.
-- **Destructive actions leave the nav strip.** "Remove game" sits in the game
-  panel header behind a confirm, not as a tab beside the games.
+- **Destructive actions leave the day's own list.** "Remove game" sits in the
+  game screen's own header behind Undo, not among the day's games on Today.
 ## Bench mode
 
 The card, full screen and live — the phone becomes the bench reference, not

@@ -212,29 +212,11 @@ test('loading the sample counts nothing, and the first edit counts instead', () 
    scoped to the flash call's own string literal, because a window of source
    reaches into its neighbours and scores them instead.
 
-   A40 slice 1 split the two halves this used to conflate. The nav LABEL is now
-   "Team" while the stored view KEY is still `roster` -- `state.view` is
-   persisted and lands in the coach's own backup files, so the key migrates in
-   slice 2, through `sanitize`. So this test no longer assumes the label IS the
-   key: it reads the MAP out of `#viewnav`, checks copy against the half a coach
-   can see (the label) and checks control ownership against the half the DOM
-   uses (the key). That is a stronger guard than the version it replaced -- it
-   would still have caught the original "in Teams" bug, and it now also catches
-   a label that points at no view and a view whose label the bar never shows. */
-
-/** label -> view key, read from the one place the pair is written. */
-function navMap(html) {
-  const nav = html.slice(html.indexOf('id="viewnav"'), html.indexOf('</nav>', html.indexOf('id="viewnav"')));
-  assert.ok(nav.length > 40, '#viewnav did not parse');
-  const map = new Map();
-  for (const m of nav.matchAll(/data-view="(\w+)"[^>]*>([^<]*)/g)) {
-    const label = m[2].trim();
-    assert.ok(label, `the ${m[1]} tab has no visible label`);
-    assert.ok(!map.has(label), `two tabs are both labelled "${label}"`);
-    map.set(label, m[1].toLowerCase());
-  }
-  return map;
-}
+   #23 removed the tab bar this test used to read a label -> view map out of;
+   there is no `#viewnav` any more, and `#removeTeam` is reached one way now
+   -- the gear on Today, named "Settings" -- so that is the one destination
+   this sentence is allowed to name, and it is checked against the gear's own
+   aria-label and against `#removeTeam`'s real home rather than assumed. */
 const flashString = (src) => {
   const at = src.indexOf('flash(');
   assert.ok(at > 0, 'loadSample no longer flashes anything -- the removal copy is gone');
@@ -243,57 +225,25 @@ const flashString = (src) => {
   return lit[1];
 };
 
-test('every tab the bar offers is a label for a view that exists', () => {
-  const html = app('index.html');
-  const views = [...html.matchAll(/id="view-(\w+)"/g)].map((m) => m[1].toLowerCase());
-  const map = navMap(html);
-  assert.ok(views.includes('team') && !views.includes('teams'), 'the view list did not parse');
-  /* This loop runs BEFORE the shape assertion on purpose. Behind it the
-     deepEqual catches every drift first and the per-tab check can never be the
-     thing that fails -- an assertion that cannot fail is not an assertion. */
-  for (const [label, key] of map) {
-    assert.ok(views.includes(key),
-      `the bar offers a tab labelled "${label}" pointing at view "${key}", which does not exist`);
-  }
-  assert.deepEqual([...map.values()], ['games', 'team', 'season'],
-    'the nav bar changed shape -- re-read this test before trusting it');
-});
-
 test('the sample toast names a destination the app actually has', () => {
   const html = app('index.html');
-  const map = new Map(navMap(html));
-  /* Settings sits behind the cog, not a `#viewnav` tab -- the bar's budget
-     went to Games/Team/Season (A40) -- so it carries no entry in `navMap`,
-     which stays the tab-bar-only map `every tab the bar offers...` pins.
-     Read the same way: off the one place its own label is written, not
-     assumed. `#removeTeam` moved there in #22, taking this toast's
-     destination with it. */
   const cog = html.match(/id="settingsBtn"[^>]*aria-label="([^"]*)"/);
   assert.ok(cog, '#settingsBtn has no aria-label to read a destination name from');
-  map.set(cog[1], 'settings');
 
   const msg = flashString(body(app('onboarding.js'), 'function loadSample('));
   const named = [...msg.matchAll(/\b(?:in|on|under|from) (?:the )?([A-Z][A-Za-z]+)/g)].map((m) => m[1]);
   assert.ok(named.length, `"${msg}" points a first-time coach nowhere -- naming where to undo the sample is the whole job of this line`);
-  /* Against the LABELS, not the view keys: the label is the only half of the
-     pair a coach can read off the screen, and since A40 slice 1 they differ. */
   for (const d of named) {
-    assert.ok(map.has(d),
-      `the sample toast sends a coach to "${d}", which is not a tab this app offers (${[...map.keys()].join(', ')})`);
+    assert.equal(d, cog[1],
+      `the sample toast sends a coach to "${d}", which is not a destination this app offers (${cog[1]})`);
   }
 
-  /* And the right one of them: a real view that does not hold the control is
-     the same wrong turn one screen over. Which view owns `#removeTeam` is read
-     from the markup, not assumed, and the named label is resolved to its key
-     through the map before the two are compared. */
-  const bounds = [...html.matchAll(/id="view-(\w+)"/g)];
-  const owner = bounds.find((m, i) => {
-    const end = bounds[i + 1] ? bounds[i + 1].index : html.length;
-    return html.slice(m.index, end).includes('id="removeTeam"');
-  });
-  assert.ok(owner, '#removeTeam is not inside any view -- the toast cannot name where it lives');
-  assert.ok(named.some((d) => map.get(d) === owner[1].toLowerCase()),
-    `#removeTeam is on the "${owner[1]}" view, and the toast sends the coach to ${named.join(', ')}`);
+  /* And the right one of them: `#removeTeam` has to actually live on the
+     screen the gear opens, or the toast points a coach at a real word for
+     the wrong place. */
+  const settings = html.slice(html.indexOf('id="view-settings"'));
+  assert.ok(settings.includes('id="removeTeam"'),
+    `#removeTeam is not inside #view-settings, and the toast sends the coach to ${named.join(', ')}`);
 });
 
 test('a ?try= link cannot overwrite a roster, and does not survive the load', () => {
