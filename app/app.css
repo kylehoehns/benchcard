@@ -1596,6 +1596,30 @@ html[data-boot="games"] #view-games[hidden] { display: block !important; }
 html[data-boot="team"] #view-team[hidden],
 html[data-boot="season"] #view-season[hidden],
 html[data-boot="settings"] #view-settings[hidden] { display: block !important; }
+/* #23 review, second round: the header is part of the first frame too.
+   `#barToday` (the team button, the keys hint, the gear) ships visible and
+   `#barBack` (the back button, the title) ships `hidden` -- only `applyView`,
+   two round trips away, used to flip them, so a reload on one of these four
+   screens painted Today's OWN header over the right screen for the first
+   frame. `#settingsBtn` lives inside `#barToday`, so hiding it takes the gear
+   with it; no separate rule for the gear. `#barTitle` is left empty here on
+   purpose -- filled by `applyView` a moment later, same as every other piece
+   of this screen's own content (the roster, the season list, the card) that
+   the pre-paint stamp never tries to paint. Reading it right for Games would
+   mean copying `gameLabel` in here, a second implementation of the one thing
+   this whole mechanism exists to forbid (see the big comment above); Team,
+   Season and Settings have no field to copy FROM at this point -- the only
+   place their titles live is `SCREEN_TITLE` in render.js, a module two round
+   trips away same as `gameLabel` -- so all four leave the title blank rather
+   than have three of them read right and one read wrong. */
+html[data-boot="games"] #barToday,
+html[data-boot="team"] #barToday,
+html[data-boot="season"] #barToday,
+html[data-boot="settings"] #barToday { display: none !important; }
+html[data-boot="games"] #barBack[hidden],
+html[data-boot="team"] #barBack[hidden],
+html[data-boot="season"] #barBack[hidden],
+html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 /* ONE SCREEN (A52). The hero is sized to the viewport you can actually see and
    the stage inside it takes whatever is left, so the two doors sit above the
    fold on any device instead of at a pixel count that happened to be true on a

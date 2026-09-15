@@ -399,6 +399,40 @@ test('the pre-paint rules for Games, Team, Season and Settings restate the right
   }
 });
 
+/* THE HEADER IS PART OF THE FIRST FRAME TOO (#23 review, second round).
+ *
+ * The rules above swap the `<main>`; nothing swapped the header. `#barToday`
+ * (the team button, the keys hint, the gear) ships visible in the markup and
+ * `#barBack` (the back button, the title) ships `hidden` -- only `applyView`,
+ * two round trips away, ever flips them. So a coach who reloads on Games,
+ * Team, Season or Settings used to see Today's OWN header -- the gear, the
+ * team switcher, no back button -- sitting above the right screen for the
+ * first frame(s), then watch it swap. Reported from a live Claude review of
+ * PR #51, and reproduced with a frame recorder.
+ *
+ * `#settingsBtn` lives inside `#barToday`, so hiding `#barToday` hides the
+ * gear with it -- there is no separate rule to write or to lose track of. */
+test('the pre-paint rules for Games, Team, Season and Settings also swap the header', () => {
+  for (const v of ['games', 'team', 'season', 'settings']) {
+    const hideToday = css.match(new RegExp(`html\\[data-boot="${v}"\\][^{]*#barToday[^{]*\\{[^}]*?display:\\s*([a-z-]+)\\s*!important`));
+    assert.ok(hideToday, `app.css does not hide #barToday for [data-boot="${v}"], so the first `
+      + `frame shows Today's own header -- the gear and the team switcher -- over the ${v} screen`);
+    assert.equal(hideToday[1], 'none');
+    const showBack = css.match(new RegExp(`html\\[data-boot="${v}"\\][^{]*#barBack\\[hidden\\][^{]*\\{[^}]*?display:\\s*([a-z-]+)\\s*!important`));
+    assert.ok(showBack, `app.css does not reveal #barBack for [data-boot="${v}"], so the first `
+      + `frame ships with no back button over the ${v} screen`);
+  }
+  // the header's own display, restated so a future redesign of `.bar-back`
+  // cannot drift silently out of step with what the first frame promises
+  const own = css.match(/\.bar-today,\s*\.bar-back \{[^}]*?display:\s*([a-z-]+)/);
+  assert.ok(own, '.bar-today, .bar-back no longer declare a shared display');
+  for (const v of ['games', 'team', 'season', 'settings']) {
+    const showBack = css.match(new RegExp(`html\\[data-boot="${v}"\\][^{]*#barBack\\[hidden\\][^{]*\\{[^}]*?display:\\s*([a-z-]+)`));
+    assert.equal(showBack[1], own[1],
+      `the first frame gives #barBack display:${showBack[1]} and the app gives it display:${own[1]}`);
+  }
+});
+
 /* THE ADDITION ARM, which no fixture in the table above can reach.
  *
  * The table catches a view whose two sides disagree. It cannot catch a FIFTH

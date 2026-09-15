@@ -557,6 +557,39 @@ async function todayAndBackPass(c, origin) {
   const menuStillOpen = await evalIn(c, `document.getElementById('teamMenu')?.matches(':popover-open') ?? false`);
   if (menuStillOpen) problems.push('the team menu is still open after choosing a team');
 
+  /* Item 3/4/5/6/8, #23 review third round: the HEADER is part of the first
+     frame too, not just the `<main>` the pre-paint rules already swap. Runs
+     from inside the page itself, installed via `addScriptToEvaluateOnNewDocument`
+     so it is there for the reload's very first `requestAnimationFrame` --
+     anything measured by a round trip out to this Node process and back would
+     already be looking at a frame `applyView` has long since fixed. Removed
+     again straight after each read, same as `firstRun`/`tryLanding` above:
+     left registered it would go on recording (uselessly, and not for free)
+     for every check that reloads after this one. */
+  const FIRST_FRAME_SCRIPT = `(() => {
+    window.__firstFrames = [];
+    // checkVisibility, not getComputedStyle on the element itself: the fix
+    // hides #barToday and leaves #settingsBtn's OWN display untouched, relying
+    // on the ancestor to take it out of rendering -- own-display alone would
+    // read the gear as shown right through a correct fix.
+    const vis = id => { const e = document.getElementById(id);
+      return !!e && e.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true }); };
+    const read = () => ({ boot: document.documentElement.getAttribute('data-boot'),
+      barToday: vis('barToday'), barBack: vis('barBack'), gear: vis('settingsBtn'), backBtn: vis('backBtn') });
+    let n = 0;
+    const tick = () => { window.__firstFrames.push(read()); if (++n < 12) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  })();`;
+  const recordFirstFrames = async (reload) => {
+    const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FIRST_FRAME_SCRIPT });
+    try {
+      await reload();
+      return JSON.parse(await evalIn(c, `JSON.stringify(window.__firstFrames || [])`));
+    } finally {
+      await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+    }
+  };
+
   // items 3, 4, 5, 6, 8: each pushed screen, its header, and its way home.
   const openers = [
     ['games', `document.querySelector('.today-game')?.click()`, 'Hawks'],
@@ -643,7 +676,30 @@ async function todayAndBackPass(c, origin) {
         await ${SETTLE}; })()`);
       return evalIn(c, 'history.length');
     };
-    const lenAfterReload1 = await reloadOnce();
+    const firstFrames = await recordFirstFrames(reloadOnce);
+    /* The pre-paint stamp names the screen (`data-boot="games"` etc.) until
+       `applyView` removes it a moment later -- exactly the window a coach's
+       eyes, not just a round trip out to this process, would catch #barToday
+       or the gear sitting over the wrong screen. A frame recorded AFTER that
+       attribute is gone is a frame `applyView` has already fixed, and is not
+       evidence of anything. */
+    const pushedFrames = firstFrames.filter(f => f.boot && f.boot !== 'welcome' && f.boot !== 'today');
+    const todayShowing = pushedFrames.find(f => f.barToday);
+    if (todayShowing) {
+      problems.push(`${name}: a first frame over data-boot="${todayShowing.boot}" still shows `
+        + `#barToday (${JSON.stringify(todayShowing)})`);
+    }
+    const gearShowing = pushedFrames.find(f => f.gear);
+    if (gearShowing) {
+      problems.push(`${name}: a first frame over data-boot="${gearShowing.boot}" still shows `
+        + `the Settings gear (${JSON.stringify(gearShowing)})`);
+    }
+    if (!firstFrames.length) {
+      problems.push(`${name}: no first frames were recorded across the reload`);
+    } else if (!firstFrames[0].backBtn) {
+      problems.push(`${name}: the first recorded frame does not show #backBtn (${JSON.stringify(firstFrames[0])})`);
+    }
+    const lenAfterReload1 = await evalIn(c, 'history.length');
     const lenAfterReload2 = await reloadOnce();
     if (lenAfterReload2 !== lenAfterReload1) {
       problems.push(`${name}: a second reload on the pushed screen grew history.length `
