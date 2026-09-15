@@ -619,7 +619,10 @@ test('the pre-paint theme script reads the key the app actually writes', () => {
 test('the pre-paint theme scripts have not drifted apart', () => {
   const body = f => {
     const src = readFileSync(new URL(`../app/${f}`, import.meta.url), 'utf8');
-    return src.slice(0, src.indexOf('</script>'))
+    /* From the opening <script> tag, not from the top of the file: the head
+       above it (meta tags, #24's text-scale opt-in among them) is per-page
+       markup, not part of the theme script this test compares. */
+    return src.slice(src.indexOf('<script>'), src.indexOf('</script>'))
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
       .replace(/\s+/g, ' ').trim();
   };

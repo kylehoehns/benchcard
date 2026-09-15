@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- #24: opts into following the OS text-size setting rather than a fixed
+     scale, where a platform reads it (T2). -->
+<meta name="text-scale" content="scale">
 <meta name="theme-color" content="#F4F4F6">
 <script>
 /* Resolve the theme before first paint. `auto` is the default and the dark
@@ -321,7 +324,7 @@
      fine without scripts. -->
 <noscript>
   <div style="max-width:34rem;margin:3rem auto;padding:1.25rem 1.35rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);font:17px/1.55 var(--font);color:var(--ink-2)">
-    <h1 style="margin:0 0 .5rem;font-size:1.35rem;letter-spacing:-.03em;color:var(--ink)">Benchcard needs JavaScript</h1>
+    <h1 class="noscript-h1">Benchcard needs JavaScript</h1>
     <p style="margin:0 0 .9rem">Benchcard plans youth basketball substitutions and prints them on a
       pocket card. It runs entirely in your browser, with no server doing the work, so it
       needs JavaScript switched on for this site.</p>
@@ -380,7 +383,7 @@
        teams-view.js -- the containers are static markup so the boot has
        somewhere to put a skeleton, but nothing inside them is. -->
   <main class="view wrap noprint" id="view-today">
-    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Today</h1>
+    <h1 class="today-h1">Today</h1>
     <div class="today-games" id="todayGames"></div>
     <div class="today-acts">
       <button class="btn press" id="todayAddGame" type="button">Add a game</button>

@@ -67,11 +67,22 @@ test('the 385px stage is declared after the 620px one, where it can win', () => 
 });
 
 test('nothing pins the root font size, which would freeze every rem', () => {
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
   /* `html { font-size: 16px }` anywhere would override the reader's setting
      outright and make the whole app ignore it -- a far worse bug than the
      overflow, and an easy one to add while tidying. */
-  assert.ok(!/(^|})\s*(html|:root)\s*{[^}]*font-size/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')),
+  assert.ok(!/(^|})\s*(html|:root)\s*{[^}]*font-size/.test(bare),
     'a rule pins the root font size and overrides the reader');
+  /* #24 decision 1: `font: -apple-system-body` on `html` is the same kind of
+     pin unless it is gated -- unguarded, it would freeze the root at 13px on
+     every Mac WebKit instead of following the reader there too. */
+  const bodyRule = bare.indexOf('-apple-system-body');
+  assert.ok(bodyRule > -1, '-apple-system-body is gone -- #24 item 2 needs the gated root rule');
+  const gate = bare.lastIndexOf('@supports (-webkit-touch-callout: none)', bodyRule);
+  assert.ok(gate > -1, 'no @supports (-webkit-touch-callout: none) gate found before -apple-system-body');
+  const between = bare.slice(gate, bodyRule);
+  assert.equal((between.match(/}/g) || []).length, 0,
+    'the @supports gate already closed before the -apple-system-body rule -- it is ungated');
 });
 
 test('the last two games-view rows wrap, and only at big text', () => {
