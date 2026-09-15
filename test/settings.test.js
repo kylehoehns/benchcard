@@ -570,7 +570,7 @@ test('Settings keeps Appearance above Backup, and Backup keeps the bottom', () =
   const { settings } = views();
   const appearance = settings.indexOf('id="themeSeg"');
   const help = settings.indexOf('id="helpBtn"');
-  const backup = settings.indexOf('class="set-h">Backup<');
+  const backup = settings.indexOf('class="set-h">Backup and restore<');
   assert.ok(appearance > -1 && help > -1 && backup > -1, 'the settings view lost one of its zones');
   assert.ok(appearance < help,
     'Appearance moved below How it works; S3/K4 puts Appearance first');
@@ -660,7 +660,7 @@ test('Benchcard order: Appearance, How it works (with Show me around again), Abo
     About: settings.indexOf('>About<'),
     Contact: settings.indexOf('mailto:hello@benchcard.app'),
     'Buy me a coffee': settings.indexOf('>Buy me a coffee<'),
-    Backup: settings.indexOf('class="set-h">Backup<'),
+    Backup: settings.indexOf('class="set-h">Backup and restore<'),
   };
   for (const [name, at] of Object.entries(marks)) {
     assert.ok(at > -1, `${name} is missing from Settings`);

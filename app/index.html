@@ -1103,14 +1103,16 @@
 
     <!-- The Benchcard box: Appearance first (S3/K4), then How it works, then
          the three links the in-app footer also carries until #37 removes it,
-         then Backup last -- A25's decision, still binding. A25 fixed a page
-         where "How this works" opened at y=1459 of a 1938px page, two screens
-         under five rows of league rules; those rows now live in the team box
-         above, but the ORDER survives them -- the things a coach recognises
-         first, and the control that replaces everything on the device last.
-         A25's `.side-box > .set-h:first-child` margin fix is still what keeps
-         Backup's caption level with the box above it. `test/settings.test.js`
-         pins the order. -->
+         then Backup and restore last -- A25's decision, still binding. A25
+         fixed a page where "How this works" opened at y=1459 of a 1938px
+         page, two screens under five rows of league rules; those rows now
+         live in the team box above, but the ORDER survives them -- the things
+         a coach recognises first, and the control that replaces everything on
+         the device last. Backup is the last block IN this box, not a fourth
+         `side-box` of its own -- the ticket's acceptance criterion is one
+         Benchcard section that ends with it, and a browser check at 390x844
+         found a third box rendering below this one before that held.
+         `test/settings.test.js` pins the order. -->
     <div class="side-box" style="margin-top:1rem">
       <div class="side-hd">Benchcard</div>
 
@@ -1170,14 +1172,17 @@
         <span class="setrow-t">Buy me a coffee</span>
         <span class="linkrow-chev" aria-hidden="true">›</span>
       </a>
-    </div>
 
-    <div class="side-box" style="margin-top:1rem">
-      <!-- Everything this app knows lives in one browser key, and a browser is
-           allowed to throw that away. It was at the very bottom of the roster
-           page for exactly the reason it is at the bottom of this one: nowhere
-           a coach can hit it in a gym. -->
-      <h4 class="set-h">Backup</h4>
+      <!-- Backup and restore: the last block in the Benchcard box, not a
+           fourth `side-box` -- the ticket's acceptance criterion is one
+           Benchcard SECTION that ends with it. `.setrow + .set-h` draws the
+           same divider line the rows above already draw between each other,
+           so the boundary reads the same way even though this block is not
+           itself a `.setrow`. Everything this app knows lives in one browser
+           key, and a browser is allowed to throw that away. It was at the
+           very bottom of the roster page for exactly the reason it is at the
+           bottom of this one: nowhere a coach can hit it in a gym. -->
+      <h4 class="set-h">Backup and restore</h4>
       <p class="note" style="margin:0 0 .7rem">
         Your roster is saved in this browser and nowhere else. Clearing your history can
         erase it, and so can leaving Benchcard unopened for a week on an iPhone. Save a
