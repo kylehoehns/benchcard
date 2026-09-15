@@ -258,6 +258,13 @@ a { color: inherit; }
 @media (hover: hover) { .teamtabs .ttab.add:hover { color: var(--ink); border-color: var(--line-2); } }
 .teamrow { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-top: .9rem; }
 .teamrow .teamcount { margin-left: auto; }
+/* `.teamrow` already wraps its own row, but `.btn` is `white-space: nowrap`
+   by design, so a wide system font can still make "Remove this team" alone
+   wider than the row has to give -- the row wrapping does nothing for a
+   single item that is itself too wide. Letting the label wrap shrinks the
+   button to the space there is, same answer as `.levelsfoot .btn` (#21 CI
+   fix). */
+#removeTeam { white-space: normal; text-align: center; }
 
 /* ---- lineup balance ------------------------------------------------------
    A five-step control, not a number. The steps fill left-to-right like a
@@ -295,6 +302,13 @@ a { color: inherit; }
 .levelsfoot { margin-top: 1.1rem; display: flex; flex-direction: column;
   align-items: flex-start; gap: .5rem; }
 .levelsfoot .note { max-width: 62ch; }
+/* "Put everyone back to the same level": `.btn` is `white-space: nowrap` by
+   design, and a wide system font can push this one-line label past a narrow
+   column on its own, not just at the enlarged-text size the @media
+   (max-width: 19em) block below already covers. `.levelsfoot` is a column
+   flex with `align-items: flex-start`, so once the text may wrap the button
+   shrinks to the space there is, at any text size (#21 CI fix). */
+.levelsfoot .btn { white-space: normal; text-align: center; }
 #levelskey { margin: .9rem 0 .35rem; }
 #levelskey .bal-key { grid-template-columns: 1fr; }
 
@@ -2262,16 +2276,11 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      way round rather than assumed. */
   .bal-key .bal-key-arrow { min-width: 0; }
 
-  /* And the whole of the roster's remaining 208px pan, in one button: "Put
-     everyone back to the same level", which only exists once somebody has
-     moved a player off the default level, so no fixture that leaves the
-     levels alone can see it. `.btn` is `white-space: nowrap` by design, so at
-     a 32px root its one unbreakable line measures 506px in a 275px column and
-     the page is 528px wide -- the `.gm-cta` and `.backuprow` case exactly,
-     and it takes the same answer. `.levelsfoot` is a column flex with
-     `align-items: flex-start`, so once the text may wrap the button shrinks
-     to the space there is. */
-  .levelsfoot .btn { white-space: normal; text-align: center; }
+  /* "Put everyone back to the same level" was the whole of the roster's
+     remaining 208px pan here, the `.gm-cta` and `.backuprow` case exactly --
+     now handled unconditionally by `.levelsfoot .btn` near its base rule
+     (#21 CI fix), since a wide system font hit the same one-line label well
+     below a 32px root too. Nothing left to do at this size specifically. */
 
   /* And the season ledger, the last view still off the edge. Every `.sn-row`
      is dot + name + "5 games · 7 behind" + the minutes, and three of those
@@ -2492,7 +2501,10 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 .sn-game[open] > summary::after { transform: rotate(45deg) translate(0, 0); }
 .sn-body { padding: .1rem 0 .8rem; }
 .sn-body .sn-row:last-of-type { border-bottom: 0; }
-.sn-del { margin-top: .6rem; }
+/* Same `.btn` nowrap case as `#removeTeam` and `.levelsfoot .btn`: "Delete
+   this game" is a one-line label a wide system font can push past the
+   column on its own (#21 CI fix). */
+.sn-del { margin-top: .6rem; white-space: normal; text-align: center; }
 /* Export. `.btn`'s own padding lands near 41px, and this is set standing up in
    a gym like everything else, so it is pinned to 44 explicitly. Full width at
    phone size for the same reason the Backup row's buttons stretch: a wide
