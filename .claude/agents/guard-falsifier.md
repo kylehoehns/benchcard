@@ -12,6 +12,11 @@ scoped when it runs as a subagent.
 
 ## The job
 
+For a guard that is a smoke check, "run the guard" in steps 3–4 means `node
+scripts/smoke.mjs --only "<the guard's check>"` — the one row, not the other
+20. The full suite (the proof pair in `AGENTS.md` § Layout) only runs twice: on the
+healthy tree in step 1, and on the restored tree in step 6.
+
 1. Run the guard on the healthy tree. If it is not green, **stop and report
    that** — a guard that cannot pass is broken, and every mutation you run
    against it after this point tells you nothing.

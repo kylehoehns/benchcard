@@ -21,7 +21,8 @@ has cost this repo real iterations.
   changes. `AGENTS.md` § Traps and § Rules say what to do about each; the
   orchestrator will also hand you the ones this spec touches.
 - Production code only. Tests belong to `tester`.
-- Finish by running `npm test`. Report what it printed; do not describe a red
-  suite as green.
+- Follow the iterate-then-prove rule in `AGENTS.md` § Layout: targeted runs
+  while working, the proof pair once before handing back. Report what the
+  proof pair printed; do not describe a red suite as green.
 
-Return a short list of the files you changed and the `npm test` result.
+Return a short list of the files you changed and what the proof pair printed.

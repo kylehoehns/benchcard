@@ -24,6 +24,18 @@ Use exactly one per claim.
 - **NOT EVIDENCE** — the only thing backing it is a grep hit, a grep miss, a
   code comment, or another agent's report. None of those are proof.
 
+  **The one exception**: a recorded handoff from a `/ship-feature` proof point
+  (the proof pair in `AGENTS.md` § Layout). For a claim about the **whole suite** ("`npm
+  test` passes", "smoke is green"), run `git rev-parse HEAD` and `git status
+  --porcelain` yourself. A matching sha and an empty status make the claim
+  **SUPPORTED** — cite the recorded output plus your own two commands, not
+  another agent's word that it once ran. Any mismatch makes the recorded
+  output NOT EVIDENCE for the tree in front of you now, and you re-run the
+  proof pair rather than trust it. A claim about what one check or test
+  **covers** — not that it passed, what it actually tests — is not settled by
+  a handoff either way: run `--only "<check>"` or `node --test <file>` and
+  read it, because the table says a row passed, not what the row tests.
+
 ## Rules
 
 - A grep proves a phrase is in a file, never that a reader sees it. For copy,

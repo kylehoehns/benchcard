@@ -119,32 +119,50 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    > **Refactor on green, once.** Hand the change to **`refactorer`**:
    > production first (the suite is the oracle), then tests (production frozen,
    > keep every case). Keep the instruction generic — "improve the internal
-   > structure without changing behaviour". It hands back only on a green
-   > `npm test`. Run it here, never in the fix loop.
+   > structure without changing behaviour". `refactorer.md` owns its hand-back
+   > condition. Run it here, never in the fix loop.
 
-7. **Review and docs, in parallel.** Capture `git diff HEAD` (plus
-   `git status --porcelain` for new files). In **one** message, launch
+   **Prove and commit.** Run the proof pair — `AGENTS.md` § Layout names it and
+   says it runs once, not twice. Both green: stage **explicit paths**,
+   including `docs/specs/<N>-<slug>.md`, and commit with no trailers — the hook
+   denies `git add -A` and a trailer on this commit and on the one in step 8.
+   Record the **handoff**: `git rev-parse HEAD` and that `git status
+   --porcelain` printed nothing, the `ℹ tests` / `ℹ pass` / `ℹ fail` lines
+   `npm test` printed, and the smoke table as printed. Every agent launched
+   from here on gets that handoff verbatim.
+
+7. **Review and docs, in parallel.** Capture `git diff main...HEAD` — step 6
+   committed the change, so `git diff HEAD` is empty here. In **one** message, launch
    `reuse-reviewer`, `quality-reviewer`, `efficiency-reviewer` and `doc-writer`,
-   passing the diff and the spec path to each. Add `guard-falsifier` to the same
-   message if the diff touches `test/`, `scripts/` or `.claude/hooks/`.
+   passing the diff, the spec path and **the handoff from step 6** to each. Add
+   `guard-falsifier` to the same message if the diff touches `test/`,
+   `scripts/` or `.claude/hooks/`.
 
-8. **Fix, once.** Actionable findings go to `developer` (or `tester`), then
-   `npm test` again. At most one pass. A `REVIEW.md` **Blocker** that survives
-   it stops the run: report it in the wrap-up rather than shipping.
+8. **Fix, once.** Actionable findings go to `developer` (or `tester`). At most
+   one pass. A `REVIEW.md` **Blocker** that survives it stops the run: report
+   it in the wrap-up rather than shipping.
 
-9. **Prove it locally.** `npm test` and `npm run smoke`, both green, and
-   `/browser-verify` for anything a reader sees. Record what you ran and what
-   it printed — the PR body quotes it.
+   **Prove and commit again**, the same way as step 6 — the proof pair (one
+   proof, not two), explicit paths including every file `doc-writer` changed,
+   no trailers, a fresh handoff (HEAD moved, so step 6's is stale). Only when
+   nothing was actionable **and** `git status --porcelain` is still empty —
+   `doc-writer` edits after step 6's commit — is the tree exactly what step 6
+   proved: keep that handoff and go on to step 9 without running the pair
+   again.
+
+9. **Verify what a harness cannot.** `/browser-verify` for anything a reader
+   sees. The proof pair already ran at whichever step above is current — cite
+   that handoff in your report rather than running `npm test` or `npm run
+   smoke` again.
 
 ## Ship
 
-10. **Open the PR.** Stage **explicit paths** — the hook denies `git add -A` —
-    and write the commit message without trailers (the hook denies those too).
-    Run `claim-checker` over the PR body before it goes up.
+10. **Open the PR.** The proof points already committed the change; this step
+    pushes what is already on the branch rather than making a new commit. Run
+    `claim-checker` over the PR body before it goes up, passing it the current
+    handoff — it owns how it uses it (`claim-checker.md`).
 
     ```bash
-    git add <every path, by name> docs/specs/<N>-<slug>.md
-    git commit -m "<what changed>"
     git push -u origin "$(git branch --show-current)"
     gh pr create --base main --title "<what changed>" --body-file <body.md>
     PR=$(gh pr view --json number -q .number)

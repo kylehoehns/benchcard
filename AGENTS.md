@@ -165,6 +165,21 @@ protocol, so it is immune to the stale-service-worker trap below. Do the hand
 checks it already covers only when it fails, or when you need something it does
 not check.
 
+`--only "<check>"` runs just the one named row and the setup it needs (a cold
+load, or the cold load plus `goRich`), for the loop while iterating —
+`node scripts/smoke.mjs --only "bench mode wake lock"` prints that one row and
+nothing else. It is not proof: a partial run says nothing about the other 20
+checks, and the full `npm run smoke` still stands between every change and its
+PR. **The iterate-then-prove rule**: while iterating, run `node --test <file>`
+for the file you touched and `--only "<check>"` for the check it covers, never
+the full suite. Then, once, before handing back, the proof pair — skipping
+its smoke half if you touched nothing under `app/` or `scripts/smoke*`.
+**The proof pair** is `npm test` then `npm run smoke -- --no-tests`, so the
+suite runs once, not twice. A `/ship-feature` proof point always runs both
+halves, because its handoff has to cover the tree it names. An agent handed a
+tree a proof point already recorded as green does not re-run it to say so
+again.
+
 The payload budget is a **recorded** baseline in `scripts/budgets.json`.
 **Bytes and nodes are regression alarms, not constraints**: the shell is
 precached, so
