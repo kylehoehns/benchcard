@@ -10,12 +10,13 @@
    way to make `el.hidden = true` mean hidden. */
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
-/* #24, decision 1: the root follows the OS text-size setting on iOS/iPadOS
-   WebKit, where `-apple-system-body` tracks Dynamic Type. Gated on
-   `-webkit-touch-callout`, supported by iOS/iPadOS WebKit only -- unguarded,
-   this would apply to every WebKit including a Mac, where it measures 13px
-   (81% of the app) rather than the reader's own setting. `font:` also resets
-   family and line-height on `html`, so `body` below keeps declaring both. */
+/* docs/specs/24-text-size.md decision 1: the root follows the OS text-size
+   setting on iOS/iPadOS WebKit, where `-apple-system-body` tracks Dynamic
+   Type. Gated on `-webkit-touch-callout`, supported by iOS/iPadOS WebKit
+   only -- unguarded, this would apply to every WebKit including a Mac; the
+   spec's Survey has the measurement of what that computes to there and why
+   it is wrong. `font:` also resets family and line-height on `html`, so
+   `body` below keeps declaring both. */
 @supports (-webkit-touch-callout: none) {
   html { font: -apple-system-body; }
 }
@@ -31,13 +32,14 @@ body {
   overscroll-behavior-y: none;
 }
 h1,h2,h3,h4 { margin: 0; font-weight: 600; letter-spacing: -.025em; }
-/* #24 item 3: a bare `<b>` (`.mn`'s played-minutes figure in bench mode, the
-   only one in the app with no class and so no rule of its own) takes the UA's
-   `font-weight: bolder`, which the CSS spec resolves against the INHERITED
-   weight -- and every ancestor an emphasis element sits in here is already
-   600 or 700, both of which land in "bolder"'s 900 bucket. Pinned to 700
-   (decision 3's default for emphasis) so every `<b>` computes on the scale;
-   a class-scoped `b` rule elsewhere in this file still wins on specificity. */
+/* #24 item 3: a bare `<b>` with no class -- `.mn`'s played-minutes figure in
+   bench mode is one, among several elsewhere in `index.html` and the JS
+   modules -- takes the UA's `font-weight: bolder`, which the CSS spec
+   resolves against the INHERITED weight -- and every ancestor an emphasis
+   element sits in here is already 600 or 700, both of which land in
+   "bolder"'s 900 bucket. Pinned to 700 (decision 3's default for emphasis)
+   so every `<b>` computes on the scale; a class-scoped `b` rule elsewhere in
+   this file still wins on specificity. */
 b { font-weight: 700; }
 /* The two inline <h1> styles index.html used to carry (#24 item 1: nothing
    sizes text with a bare style attribute). Neither set its own font-weight,
@@ -1925,10 +1927,13 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 @media (max-height: 700px) {
   .welcome { padding-top: .6rem; }
   .wel-lockup { margin-bottom: .45rem; }
-  /* #24 decision 4: a large title (`.wel-h` is one of the three) may only be
-     capped against the viewport inside the 19em big-text block, and this is a
-     short-VIEWPORT-HEIGHT query, not that one -- so the wordmark no longer
-     shrinks here and takes the base var(--fs-large) at every height. */
+  /* #24 decision 4's amendment (docs/specs/24-text-size.md): a
+     short-VIEWPORT-HEIGHT block is not the 19em big-text query, so it may
+     move a large title down to another step on the scale instead -- a step,
+     never a `vw` cap, and never below the sentence step. Without this the
+     welcome screen is 725px tall in a 667px window (iPhone SE) and its
+     bottom row falls below the fold; at the sentence step it is 668px. */
+  .wel-h { font-size: var(--fs-sentence); }
   .wel-sub { font-size: var(--fs-secondary); margin-bottom: .5rem; }
   .wel-stage { margin-top: .6rem; }
   .wel-show { min-height: 10rem; }
@@ -2470,18 +2475,20 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    row of squad chips visible and nothing else.
  *
  * This trims what is left, and trims it *vertically only*: horizontal
-   padding, gaps, font sizes in the bar and every touch target stay exactly
-   where they are, so nothing here can put a control out of reach the way the
-   width trimming above it can. `.dayhead`'s own margin is what is left of the
-   day-title trim (#24 decision 4 retired the size override: a large title may
-   only be capped inside the 19em big-text block, not a short-viewport-height
-   one, so the title itself no longer shrinks here). Bounded by max-height
-   like the game-mode block, so a landscape tablet -- which has the height
-   already -- is untouched. Must stay after the 620px and 19em blocks: all
-   three share specificity on `.bar`. */
+   padding, gaps and every touch target stay exactly where they are, so
+   nothing here can put a control out of reach the way the width trimming
+   above it can. The one exception is the day title itself: #24 decision 4's
+   amendment (docs/specs/24-text-size.md) lets a short-viewport-HEIGHT block
+   move a large title down to another step on the scale for exactly this
+   vertical room, so `.dayhead input.daytitle` takes the sentence step here,
+   its pre-#24 value. Bounded by max-height like the game-mode block, so a
+   landscape tablet -- which has the height already -- is untouched. Must
+   stay after the 620px and 19em blocks: all three share specificity on
+   `.bar`. */
 @media (orientation: landscape) and (max-height: 560px) {
   .bar { padding-top: calc(.3rem + env(safe-area-inset-top)); padding-bottom: .3rem; }
   .dayhead { margin-bottom: .7rem; }
+  .dayhead input.daytitle { font-size: var(--fs-sentence); }
   /* 44px is the floor for both buttons, so the action bar gives up padding and
      8px of slack above that floor, and nothing else. */
   .actionbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-inset-bottom)); }

@@ -313,9 +313,14 @@ Roboto on Android. The printed card keeps its own face and the fitting rules in
 **T2. Size everything in `rem`, and let the phone set 1rem.** On Android,
 `<meta name="text-scale" content="scale">` (Chrome 146) makes the root size follow
 the OS text size. On iOS, `font: -apple-system-body` on the root follows Dynamic
-Type; whether it does so inside an installed web app is **(unverified)**. Lay out
-for 200%: rows grow and side-by-side pieces stack. *Web: Chrome 146 release notes;
-Adrian Roselli, 2026. Android: font scaling to 200%.*
+Type; whether it does so inside an installed web app is **(unverified)**. The
+rule is scoped to iOS/iPadOS WebKit — detected by `@supports (-webkit-touch-callout:
+none)`, the one WebKit feature that platform pair has and desktop WebKit does not
+— because applied everywhere it would also reach macOS Safari, where
+`-apple-system-body` measured 13px in this tree's own WebKit rather than
+following the reader's setting (#24). Lay out for 200%: rows grow and side-by-side
+pieces stack. *Web: Chrome 146 release notes; Adrian Roselli, 2026. Android: font
+scaling to 200%. Benchcard: decided 2026-09-15 (#24).*
 
 | Style | Size | Weight | Used for |
 | --- | --- | --- | --- |

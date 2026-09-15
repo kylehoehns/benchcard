@@ -42,9 +42,9 @@
      wordmark) -- everything else takes the nearest step by value (see
      app.css's own sweep). Weights are NOT locked to a step (decision 2): an
      element on any step may still take 400, 500, 600 or 700 for emphasis.
-     Note for #18's further work: on an iPhone at the OS default text size,
-     `-apple-system-body` is 17px, so 1rem there is 17px, not 16 -- Apple's own
-     body size is 17pt and CSS cannot rescale it. */
+     Note for #18's further work: what 1rem resolves to in px on an iPhone
+     versus Android is docs/specs/24-text-size.md decision 1, not restated
+     here. */
   --fs-large: 2.125rem;
   --fs-sentence: 1.5625rem;
   --fs-title: 1.375rem;

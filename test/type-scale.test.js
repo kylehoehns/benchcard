@@ -58,7 +58,7 @@ test('the -apple-system-body rule exists exactly once, gated on -webkit-touch-ca
     app.includes('@supports (-webkit-touch-callout: none) {\n  html { font: -apple-system-body; }\n}'),
     'the -apple-system-body rule must be exactly `html { font: -apple-system-body; }` ' +
       'inside `@supports (-webkit-touch-callout: none) { ... }` -- an ungated rule would apply ' +
-      'to every WebKit, including a Mac, where it computes to 13px'
+      'to every WebKit, including a Mac; docs/specs/24-text-size.md decision 1 has why that is wrong'
   );
 });
 

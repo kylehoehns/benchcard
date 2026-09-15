@@ -101,6 +101,18 @@ The ticket and its cited rules already point one way on each of these.
    `@media (max-width: 19em)` block, a large title that would otherwise pan at
    320px/32px may be `min(var(--fs-large), 15vw)`, as `.wel-h` is today. Nowhere
    else, and never for anything but a large title.
+
+   **Amended 2026-09-15, after review.** Read literally this also deleted the
+   two short-viewport-*height* title overrides, which are about vertical room
+   at any text size, not about text size: `.wel-h` under
+   `@media (max-height: 700px)` and `.dayhead input.daytitle` under
+   `@media (orientation: landscape) and (max-height: 560px)`. Measured in
+   Chrome at 375×667 (an iPhone SE) with a 16px root: without the override the
+   welcome screen is 725px tall in a 667px window and its bottom row falls
+   below the fold; with the sentence step it is 668px and fits, which is how it
+   behaved before this ticket. So a **short-viewport-height block may move a
+   large title down to another step on the scale** — a step, never a `vw` cap,
+   and never below the sentence step. The scale stays exactly the seven values.
 5. **Glyph icons are type.** A `›` chevron, `✕`, `✓` or an emoji icon sized
    with `font-size` takes a step like any other text. SVG icons from `icons.js`
    are sized in `em` on the SVG, not with `font-size`, and are unaffected.
@@ -148,7 +160,11 @@ The ticket and its cited rules already point one way on each of these.
    3.45 × 5in (331.2 × 480 CSS px before `zoom`), as it does at 16px, and its
    `.five` and `.chg` font sizes are the same px values as at 16px for the same
    game.
-6. **Green.** `npm test` and `npm run smoke` pass. `test/big-text.test.js`'s
+6. **Short screens keep their titles small.** At 375×667 with a 16px root, the
+   welcome screen's own height is no greater than the viewport's, and
+   `.wel-h` computes to the sentence step (25px). The two short-height blocks
+   named in decision 4's amendment each still set a smaller step.
+7. **Green.** `npm test` and `npm run smoke` pass. `test/big-text.test.js`'s
    root-pin test still fails on `html { font-size: … }` anywhere and still fails
    on an unguarded `-apple-system-body`, and accepts only the gated rule.
 
@@ -256,7 +272,8 @@ the default font to 32px, reload, measure `.card` and the first `.five` and
 | `typescale` smoke row | `node scripts/smoke.mjs --only "type scale: 7 sizes, 4 weights"` | 2 (root 16px and meta at runtime), 3 (computed sizes and weights) |
 | `app shell at 320px/32px text` smoke row, states added if missing | `--only "app shell at 320px/32px text"` | 2 (root 32px), 4 |
 | `cardsize` smoke row, extended | `--only "card is 3.45 × 5in"` | 5 |
-| `/browser-verify` | Chrome at 390×844 at 16px, then 320px at a 32px default font, screenshots of Today, the game screen, bench mode and the card preview | 4, 5, what a coach sees |
+| `test/big-text.test.js`, a short-height test (source guard): each of the two short-viewport-height blocks still sets a large title to a smaller step | `node --test` | 6 |
+| `/browser-verify` | Chrome at 390×844 at 16px, then 320px at a 32px default font, screenshots of Today, the game screen, bench mode and the card preview, plus 375×667 at 16px for the welcome screen's height | 4, 5, 6, what a coach sees |
 | full proof pair | `npm test`, `npm run smoke -- --no-tests` | 6 |
 
 The iOS half of item 2 cannot run on this machine: headless Chrome does not
