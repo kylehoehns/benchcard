@@ -112,7 +112,7 @@ a { color: inherit; }
   background: var(--surface); font-size: .88rem; font-weight: 580; white-space: nowrap;
 }
 @media (hover: hover) { .btn:hover { background: var(--surface-2); border-color: var(--muted); } }
-.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 6px 16px -8px var(--accent); }
+.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 6px 16px -8px rgba(0,0,0,.24); }
 @media (hover: hover) { .btn.primary:hover { background: var(--accent-2); } }
 .btn.ghost { background: none; border-color: transparent; color: var(--ink-2); }
 @media (hover: hover) { .btn.ghost:hover { background: var(--surface-2); } }
@@ -461,7 +461,7 @@ a { color: inherit; }
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-tap) var(--spring);
 }
 .plr.on { border-color: color-mix(in srgb, var(--c) 45%, transparent); background: color-mix(in srgb, var(--c) 7%, var(--surface)); }
-.plr.on .av { background: var(--c); color: #14120F; }
+.plr.on .av { background: var(--c); color: #1A1A1A; }
 .plr.off { opacity: .45; }
 .plr.off .nm { text-decoration: line-through; }
 .plr:active .av { transform: scale(.88); }
@@ -514,8 +514,8 @@ a { color: inherit; }
    disappears exactly inside the long runs where a coach needs it. renderTimeline
    marks the covered ones `.onblk`. */
 .tl-div { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-2); opacity: .9; z-index: 1; }
-.tl-div.onblk { background: rgba(20, 18, 15, .34); }
-[data-theme="dark"] .tl-div.onblk { background: rgba(8, 7, 6, .46); }
+.tl-div.onblk { background: rgba(20, 20, 20, .34); }
+[data-theme="dark"] .tl-div.onblk { background: rgba(8, 8, 8, .46); }
 /* "The game is here." Only drawn while a game is genuinely part-played (see
    resumeAt in card.js), because a reload closes bench mode and the plan page
    otherwise looks identical to a game that has not started. The ring is what
@@ -982,7 +982,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 }
 .gm-p .av { width: 2.3rem; height: 2.3rem; border-radius: 50%; flex: none; display: grid; place-items: center;
   font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums;
-  background: var(--c); color: #14120F; }
+  background: var(--c); color: #1A1A1A; }
 /* Same 1.04rem as the bench so the two halves match exactly, and a tight
    line-height so the one name that has to wrap costs a pixel instead of
    fifteen. No size fits 30 characters on one line here -- 254px of name
@@ -1451,7 +1451,7 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    lag a frame behind the thing it is meant to be tracing. Steps snap. */
 .tour { position: fixed; inset: 0; z-index: 310; animation: viewIn var(--t) var(--ease); }
 .tour-hole { position: absolute; border-radius: var(--r);
-  box-shadow: 0 0 0 max(120vw, 120vh) color-mix(in srgb, #080706 66%, transparent),
+  box-shadow: 0 0 0 max(120vw, 120vh) color-mix(in srgb, #080808 66%, transparent),
               0 0 0 2px var(--accent); pointer-events: none; }
 .tour-box { position: absolute; width: min(21rem, calc(100vw - 1.5rem));
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
@@ -1641,7 +1641,7 @@ html[data-boot="settings"] #view-settings[hidden] { display: block !important; }
   height: 2.4rem; pointer-events: none;
   background: linear-gradient(to top, var(--shotbg), transparent); }
 #welPanePaper { --shotbg: #FFFFFF; }
-#welPaneScreen { --shotbg: #F6F4F0; }
+#welPaneScreen { --shotbg: #F4F4F6; }
 /* CROPPED, NOT SHRUNK. The card is drawn at its true printed width and runs off
    the bottom of the stage, which is legible; the 86px thumbnail of the whole
    card that this replaced was not.

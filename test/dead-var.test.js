@@ -93,9 +93,13 @@ test('every var(--x) resolves to a declaration', () => {
     + 'an indirection that only ever yields its fallback:\n  ' + missing.join('\n  '));
 });
 
-/* tokens.css only. It is a flat file of two theme blocks with no media
- * queries, so "same property twice in one block" is unambiguous there. The
- * same check over `app.css` would be noise: it is full of deliberate
+/* tokens.css only. Besides the two theme blocks it now holds one
+ * `@media (prefers-contrast: more)` block wrapping two selector blocks of its
+ * own (#21) -- but `[^{}]*` in DECL/the regex below cannot cross a brace, so
+ * `\{([^{}]*)\}` still matches each selector's own declarations as its own
+ * block rather than swallowing the media query around them, and "same
+ * property twice in one block" stays unambiguous per block. The same check
+ * over `app.css` would be noise: it is full of deliberate
  * progressive-enhancement pairs like `max-height: 92vh; max-height:
  * min(92dvh, 100%)`, which `test/dialog-viewport.test.js` pins on purpose. */
 test('no token is declared twice in the same block of tokens.css', () => {

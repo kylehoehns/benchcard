@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F6F4F0">
+<meta name="theme-color" content="#F4F4F6">
 <script>
 /* Same pre-paint theme resolution as the app, and deliberately a copy rather
    than a shared file: it has to run before first paint, so it would be an
@@ -24,7 +24,7 @@
     }
     document.documentElement.setAttribute('data-theme', t);
     document.querySelector('meta[name="theme-color"]')
-      .setAttribute('content', t === 'dark' ? '#0B0A09' : '#F6F4F0');
+      .setAttribute('content', t === 'dark' ? '#0B0B0C' : '#F4F4F6');
   } catch (e) {}
 })();
 </script>
@@ -358,8 +358,8 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 /* Same two-ink treatment as the app: a hairline over a bright block in dark
    mode reads at about 1.15:1, so the ones that land on a block get dark ink. */
 .tl-div { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-2); opacity: .9; z-index: 1; }
-.tl-div.onblk { background: rgba(20, 18, 15, .34); }
-[data-theme="dark"] .tl-div.onblk { background: rgba(8, 7, 6, .46); }
+.tl-div.onblk { background: rgba(20, 20, 20, .34); }
+[data-theme="dark"] .tl-div.onblk { background: rgba(8, 8, 8, .46); }
 .tl-tot { text-align: right; font-size: .78rem; font-weight: 660; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .tl-tot.hi { color: var(--accent); } .tl-tot.lo { color: var(--info); }
 

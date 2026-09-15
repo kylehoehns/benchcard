@@ -14,7 +14,7 @@
 import { parseRoster, repeatIndexes } from './roster.js';
 import { icon } from './icons.js';
 import { $, on, set, uid } from './dom.js';
-import { renderCards, renderCardFold } from './card.js';
+import { renderCards, renderCardFold, CARD_FONT } from './card.js';
 import { shareCards } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
 import { initTimeline } from './timeline.js';
@@ -302,11 +302,19 @@ on('#gmOpen', 'onclick', openGameMode);
 on('#abBench', 'onclick', openGameMode);
 
 
-// The card is auto-fitted from canvas measurements. On a cold load those can
-// run before the webfont arrives, measuring the fallback and sizing the card
-// for a typeface it will not print in — so re-fit once the font is in.
-if (document.fonts?.ready) {
-  document.fonts.ready.then(() => {
+// The card is auto-fitted from canvas measurements. Nothing else on the page
+// uses Inter any more, so nothing starts loading the card's face at boot, and
+// document.fonts.ready can resolve before it actually arrives — measuring the
+// fallback and sizing the card for a typeface it will not print in. Load
+// CARD_FONT explicitly -- the same stack card.js measures with, imported
+// rather than re-typed, so this can never drift from what the card prints in
+// -- (falling back to `ready` where `load` is unsupported, and to `ready`
+// again if the load itself fails) and re-fit once it settles.
+if (document.fonts) {
+  const settled = document.fonts.load
+    ? document.fonts.load(`800 16px ${CARD_FONT}`).catch(() => document.fonts.ready)
+    : document.fonts.ready;
+  settled.then(() => {
     if (state.onboarded) render('cards');
   });
 }

@@ -102,7 +102,7 @@ const columnsFor = n => Math.max(1, Math.min(cardSize().cols, Math.ceil(n / perC
 
 // Must match .card's font-family exactly: the auto-fit sizes the card from
 // these measurements, so a mismatch silently mis-sizes the print output.
-const CARD_FONT = `'InterVar', "Helvetica Neue", Arial, sans-serif`;
+export const CARD_FONT = `'InterVar', "Helvetica Neue", Arial, sans-serif`;
 function widthAt(text, px) {
   ctx2d.font = `800 ${px}px ${CARD_FONT}`;
   return ctx2d.measureText(text).width;

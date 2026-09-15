@@ -266,7 +266,7 @@ export function applyTheme() {
   const resolved = t === 'auto' ? (darkQuery.matches ? 'dark' : 'light') : t;
   document.documentElement.setAttribute('data-theme', resolved);
   document.querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', resolved === 'dark' ? '#0B0A09' : '#F6F4F0');
+    ?.setAttribute('content', resolved === 'dark' ? '#0B0B0C' : '#F4F4F6');
   const tb = $('#theme');
   if (tb) {
     tb.textContent = '';

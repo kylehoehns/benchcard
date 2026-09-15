@@ -130,12 +130,13 @@ uses. The python server 404s on all of them, and a local server that disagrees
 with production is a class of bug nothing can see. Run tests with `npm test`
 from the repo root (`node --test`, no dependencies to install).
 
-`npm run smoke` runs the browser checks — **21 of them**, printed as a pass/fail
+`npm run smoke` runs the browser checks — **22 of them**, printed as a pass/fail
 table: no horizontal overflow at 390×844, the card is still 3.45 × 5in, no
 console errors, every touch target ≥44px across 320–390px, the last control in
 an open dialog on screen and still 44px, every control accessibly named, ids
 unique and aria references resolving, alt text, `lang`/title/tab order, the
-three budgets, and the suite. Two fixtures on purpose (A26): a lean `SEED` for
+card's own font loading before it is fitted, the three budgets, and the suite.
+Two fixtures on purpose (A26): a lean `SEED` for
 the cold-load measurement, and a `RICH` record — 11 players, two games today,
 three filed, levels set — for the overlay, touch, narrow and sweep passes. Do
 not merge them back into one.
@@ -168,7 +169,7 @@ not check.
 `--only "<check>"` runs just the one named row and the setup it needs (a cold
 load, or the cold load plus `goRich`), for the loop while iterating —
 `node scripts/smoke.mjs --only "bench mode wake lock"` prints that one row and
-nothing else. It is not proof: a partial run says nothing about the other 20
+nothing else. It is not proof: a partial run says nothing about the other 21
 checks, and the full `npm run smoke` still stands between every change and its
 PR. **The iterate-then-prove rule**: while iterating, run `node --test <file>`
 for the file you touched and `--only "<check>"` for the check it covers, never

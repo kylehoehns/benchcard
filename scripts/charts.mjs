@@ -308,7 +308,7 @@ export function renderPage(n, shared = fromAbout()) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F6F4F0">
+<meta name="theme-color" content="#F4F4F6">
 ${shared.theme}
 <!-- The same data-URI icon as the app and the About page, and the same
      reason: the crawlable .ico at the site root is deliberately referenced by
