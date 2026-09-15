@@ -257,31 +257,56 @@ test('no workflow runs the smoke suite with --only', () => {
   }
 });
 
-/* #42: `anthropics/claude-code-action` stops reading the session at the first
- * `result` message (anthropics/claude-code-action#1499; the same bug through
- * the `code-review` plugin is #1646), and Claude Code launches subagents in
- * the background by default -- a session that waits on one emits an INTERIM
- * `result` first, so the job finishes green having posted nothing.
- * `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'` on the action step is the fix;
- * claude-code-review.yml's header carries the measurement and the two action
- * issues, and this guard is the other half -- it fails if either workflow's
- * `anthropics/claude-code-action` step does not carry the entry in that
- * step's OWN `env:`. Three ways to look set without being set, and all three
- * must fail this guard: the name in a COMMENT, the entry on a DIFFERENT step
- * (or a job- or workflow-level `env:`), and the right name with the WRONG
- * value.
+/* #42: see claude-code-review.yml's header for why a subagent left running in
+ * the background makes a review job pass without reviewing, and what
+ * `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` does about it -- the mechanism is
+ * explained there once; this guard is the other half of the fix.
  *
- * `extractStepEnv` reads its `env:` map's body with `collectBlockBody`, the
- * same helper `extractRunCommands` above uses for a `run:` block's body. A
- * STEP needs one more piece a bare key does not: its own start and end, since
- * a sibling step's `env:` (or a job-level one) sits at an indent that rule
- * alone would not exclude. A step's first key carries the list dash (`- name:
- * ...`); every other key in the same step shares that key's CONTENT indent
- * (where the text starts, dash or not) without the dash. So the scan finds
- * the nearest dash-key at that content indent at or before the `uses:` line
- * (this step's start), the next dash-key at that same content indent after it
- * (the next step -- this step's end), and only then looks for `env:` inside
- * that span. */
+ * Ways to look set without being set, and every one of them must fail this
+ * guard: the name in a COMMENT; the entry on a DIFFERENT step, a SECOND
+ * `anthropics/claude-code-action` step with no `env:` of its own (same job or
+ * a second job), or a job- or workflow-level `env:`; the right name with the
+ * WRONG value; and the name appearing as TEXT under a different key's block
+ * scalar (`NOTE: |` or `NOTE: >-` followed by an indented line) -- only a
+ * DIRECT child of `env:` is a key. None of these may fail it, because they
+ * are the same config spelled differently: a trailing comment on the `env:`
+ * line or on a value, a quoted `uses: 'anthropics/claude-code-action@v1'`,
+ * and a flow-style `env: { KEY: 'v' }`.
+ */
+
+/* `extractStepEnv` reads every step in the file whose `uses:` matches
+ * usesRegex, not only the first -- a second matching step that lacks the
+ * entry, in the same job or a new one, must be caught too -- and returns one
+ * result per match, in file order: the step's own `env:` map, `{}` if `env:`
+ * is present but empty or comment-only, or `null` if the step has no `env:`
+ * of its own. An empty array means no matching step was found at all, and a
+ * caller must treat that as a failure, not a vacuous pass.
+ *
+ * A STEP needs its own start and end, since a sibling step's `env:` (or a
+ * job-level one) sits at an indent that rule alone would not exclude. A
+ * step's first key carries the list dash (`- name: ...`); every other key in
+ * the same step shares that key's CONTENT indent (where the text starts,
+ * dash or not) without the dash. So the scan finds the nearest dash-key at
+ * that content indent at or before the `uses:` line (this step's start), the
+ * next dash-key at that same content indent after it (the next step -- this
+ * step's end), and only then looks for `env:` inside that span, in either
+ * block form (`env:`, a trailing comment allowed, map on the following lines,
+ * read with `collectBlockBody`) or flow form (`env: { KEY: 'v' }` on one
+ * line).
+ *
+ * Only DIRECT children of `env:` are keys: the body's first line fixes the
+ * child indent, and any deeper line -- the continuation of a block scalar
+ * like `NOTE: |` -- is skipped rather than read as a sibling key. A value is
+ * read up to its closing quote if it has one, or up to a trailing comment if
+ * it does not; the caller, not this helper, decides whether the quoting or
+ * the value itself is acceptable.
+ *
+ * Accepted residual, not chased here: a `uses: anthropics/claude-code-action`
+ * line typed as plain text inside another step's `run: |` block fools the
+ * step finder into treating it as a step boundary. That needs a real YAML
+ * parser to rule out. The two per-workflow tests below still fail correctly
+ * through it, because the real step is found and checked independently of
+ * whatever the decoy happens to parse to. */
 function extractStepEnv(yamlText, usesRegex) {
   const lines = yamlText.split('\n');
   const contentIndent = line => {
@@ -290,45 +315,90 @@ function extractStepEnv(yamlText, usesRegex) {
   };
   const isDashKey = line => /^\s*-\s+\S/.test(line);
 
-  const usesIdx = lines.findIndex(l => usesRegex.test(l));
-  if (usesIdx === -1) return null;
-  const keyIndent = contentIndent(lines[usesIdx]);
-  const listIndent = keyIndent - 2; // the `- ` itself, one indent shallower
+  // A value ends at its closing quote if it has one, or at a trailing
+  // comment if it does not -- the same "a trailing comment is not content"
+  // rule `extractRunCommands` above needs for a `run:` line.
+  const stripValue = raw => {
+    const s = raw.trim();
+    if (s[0] === "'" || s[0] === '"') {
+      const q = s[0];
+      let end = 1;
+      while (end < s.length && s[end] !== q) end++;
+      return s.slice(0, end + 1);
+    }
+    return s.replace(/\s+#.*$/, '').trim();
+  };
 
-  // Step start: the nearest line at or before `uses:` that is THIS step's own
-  // first key -- a list item at this same content indent.
-  let start = usesIdx;
-  while (start > 0 && !(isDashKey(lines[start]) && contentIndent(lines[start]) === keyIndent)) start--;
+  const parseFlowEnv = body => {
+    const env = {};
+    for (const pair of body.split(/,(?=(?:[^']*'[^']*')*[^']*$)/)) {
+      const m = pair.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/);
+      if (m) env[m[1]] = stripValue(m[2]);
+    }
+    return env;
+  };
 
-  // Step end: the next sibling step (a list item at that same content
-  // indent), or the first line that dedents at or past the steps list
-  // itself, or EOF.
-  let end = usesIdx + 1;
-  for (; end < lines.length; end++) {
-    const line = lines[end];
-    if (line.trim() === '') continue;
-    const raw = line.length - line.trimStart().length;
-    if (isDashKey(line) && contentIndent(line) === keyIndent) break; // next step
-    if (raw <= listIndent) break; // dedented past the steps list entirely
-  }
+  const usesIndices = [];
+  lines.forEach((line, i) => { if (usesRegex.test(line)) usesIndices.push(i); });
 
-  const step = lines.slice(start, end);
-  const envIdx = step.findIndex(l => contentIndent(l) === keyIndent && /^\s*(-\s+)?env:\s*$/.test(l));
-  if (envIdx === -1) return null;
+  return usesIndices.map(usesIdx => {
+    const keyIndent = contentIndent(lines[usesIdx]);
+    const listIndent = keyIndent - 2; // the `- ` itself, one indent shallower
 
-  const env = {};
-  for (const line of collectBlockBody(step, envIdx + 1, keyIndent).body) {
-    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
-    if (m) env[m[1]] = m[2].trim();
-  }
-  return env;
+    // Step start: the nearest line at or before `uses:` that is THIS step's
+    // own first key -- a list item at this same content indent.
+    let start = usesIdx;
+    while (start > 0 && !(isDashKey(lines[start]) && contentIndent(lines[start]) === keyIndent)) start--;
+
+    // Step end: the next sibling step (a list item at that same content
+    // indent), or the first line that dedents at or past the steps list
+    // itself, or EOF.
+    let end = usesIdx + 1;
+    for (; end < lines.length; end++) {
+      const line = lines[end];
+      if (line.trim() === '') continue;
+      const raw = line.length - line.trimStart().length;
+      if (isDashKey(line) && contentIndent(line) === keyIndent) break; // next step
+      if (raw <= listIndent) break; // dedented past the steps list entirely
+    }
+
+    const step = lines.slice(start, end);
+
+    // Flow-style env: `env: { KEY: 'v' }`, trailing comment allowed.
+    const flowLine = step.find(l => contentIndent(l) === keyIndent
+      && /^\s*(-\s+)?env:\s*\{(.*)\}\s*(#.*)?$/.test(l));
+    if (flowLine !== undefined) {
+      return parseFlowEnv(flowLine.match(/^\s*(-\s+)?env:\s*\{(.*)\}\s*(#.*)?$/)[2]);
+    }
+
+    // Block-style env: `env:` (a trailing comment allowed), map on the
+    // following lines.
+    const envIdx = step.findIndex(l => contentIndent(l) === keyIndent
+      && /^\s*(-\s+)?env:\s*(#.*)?$/.test(l));
+    if (envIdx === -1) return null;
+
+    const { body } = collectBlockBody(step, envIdx + 1, keyIndent);
+    if (body.length === 0) return {};
+    // Only DIRECT children of env: are keys (item 2): the first body line
+    // fixes the child indent, and anything deeper -- the continuation of a
+    // block scalar like `NOTE: |` -- is skipped rather than read as a key.
+    const childIndent = body[0].length - body[0].trimStart().length;
+    const env = {};
+    for (const line of body) {
+      if (line.length - line.trimStart().length !== childIndent) continue;
+      const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$/);
+      if (m) env[m[1]] = stripValue(m[2]);
+    }
+    return env;
+  });
 }
 
-const CLAUDE_ACTION_USES = /^\s*(-\s+)?uses:\s*anthropics\/claude-code-action@/;
+const CLAUDE_ACTION_USES = /^\s*(-\s+)?uses:\s*['"]?anthropics\/claude-code-action@/;
 
-test("extractStepEnv reads a step's own env:, not a decoy", () => {
-  // Guards the guard: the plain case, plus the three decoys named above, so
-  // this can't go green by accident against a fixture nothing checks.
+test("extractStepEnv reads every matching step's own env:, not a decoy", () => {
+  // Guards the guard: the plain case, the pre-existing decoys, and a fixture
+  // for each of the six shapes a falsifier run found -- misses 1-2, false
+  // reds 3-6.
   const plain = [
     '    steps:',
     '      - name: Run Claude Code Review',
@@ -340,7 +410,7 @@ test("extractStepEnv reads a step's own env:, not a decoy", () => {
     '          foo: bar',
   ].join('\n');
   assert.deepEqual(extractStepEnv(plain, CLAUDE_ACTION_USES),
-    { CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" });
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" }]);
 
   const commentOnly = [
     '    steps:',
@@ -351,7 +421,7 @@ test("extractStepEnv reads a step's own env:, not a decoy", () => {
     '        with:',
     '          foo: bar',
   ].join('\n');
-  assert.deepEqual(extractStepEnv(commentOnly, CLAUDE_ACTION_USES), {},
+  assert.deepEqual(extractStepEnv(commentOnly, CLAUDE_ACTION_USES), [{}],
     'a comment naming the variable must not be read as setting it');
 
   const onAnotherStep = [
@@ -365,7 +435,7 @@ test("extractStepEnv reads a step's own env:, not a decoy", () => {
     '        with:',
     '          foo: bar',
   ].join('\n');
-  assert.deepEqual(extractStepEnv(onAnotherStep, CLAUDE_ACTION_USES), null,
+  assert.deepEqual(extractStepEnv(onAnotherStep, CLAUDE_ACTION_USES), [null],
     "a sibling step's env: must not be read as this step's own");
 
   const jobLevel = [
@@ -378,7 +448,7 @@ test("extractStepEnv reads a step's own env:, not a decoy", () => {
     '        with:',
     '          foo: bar',
   ].join('\n');
-  assert.deepEqual(extractStepEnv(jobLevel, CLAUDE_ACTION_USES), null,
+  assert.deepEqual(extractStepEnv(jobLevel, CLAUDE_ACTION_USES), [null],
     "a job-level env: must not be read as the step's own");
 
   const wrongValue = [
@@ -389,21 +459,156 @@ test("extractStepEnv reads a step's own env:, not a decoy", () => {
     "          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '0'",
   ].join('\n');
   assert.deepEqual(extractStepEnv(wrongValue, CLAUDE_ACTION_USES),
-    { CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'0'" },
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'0'" }],
     'the extractor reports the real value -- rejecting a wrong one is the assertion below, not this helper');
+
+  // Miss 1a: a second matching step in the SAME job, with no env: of its own.
+  const secondStepSameJob = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: anthropics/claude-code-action@v1',
+    '        env:',
+    "          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'",
+    '      - name: Second Claude pass',
+    '        uses: anthropics/claude-code-action@v1',
+    '        with:',
+    "          prompt: 'again'",
+  ].join('\n');
+  assert.deepEqual(extractStepEnv(secondStepSameJob, CLAUDE_ACTION_USES),
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" }, null],
+    'a second matching step with no env: of its own must be reported, not hidden behind the first match');
+
+  // Miss 1b: a second matching step in a SECOND job, with no env: of its own.
+  const secondStepSecondJob = [
+    '  claude-review:',
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: anthropics/claude-code-action@v1',
+    '        env:',
+    "          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'",
+    '  claude-review-2:',
+    '    steps:',
+    '      - name: Again',
+    '        uses: anthropics/claude-code-action@v1',
+    '        with:',
+    "          prompt: 'again'",
+  ].join('\n');
+  assert.deepEqual(extractStepEnv(secondStepSecondJob, CLAUDE_ACTION_USES),
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" }, null],
+    'a second job with an unguarded step must be caught too, not just the first job');
+
+  // Miss 2: the variable name as TEXT under a different key's block scalar --
+  // both `|` and `>-` -- is nested deeper than env:'s direct children and
+  // must not be read as a sibling key.
+  const nestedLiteral = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: anthropics/claude-code-action@v1',
+    '        env:',
+    '          NOTE: |',
+    "            CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'",
+  ].join('\n');
+  const [nestedLiteralEnv] = extractStepEnv(nestedLiteral, CLAUDE_ACTION_USES);
+  assert.equal(nestedLiteralEnv.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS, undefined,
+    'text inside a NOTE: | block is not a sibling key of env:, however it reads');
+
+  const nestedFolded = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: anthropics/claude-code-action@v1',
+    '        env:',
+    '          NOTE: >-',
+    "            CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'",
+  ].join('\n');
+  const [nestedFoldedEnv] = extractStepEnv(nestedFolded, CLAUDE_ACTION_USES);
+  assert.equal(nestedFoldedEnv.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS, undefined,
+    'same for the folded (>-) form');
+
+  // False red 3: a trailing comment on the VALUE.
+  const trailingCommentOnValue = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: anthropics/claude-code-action@v1',
+    '        env:',
+    "          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'  # see header",
+  ].join('\n');
+  assert.deepEqual(extractStepEnv(trailingCommentOnValue, CLAUDE_ACTION_USES),
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" }],
+    'a trailing comment on the value is not part of it');
+
+  // False red 4: a trailing comment on the env: KEY line.
+  const trailingCommentOnEnvKey = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: anthropics/claude-code-action@v1',
+    '        env:  # see header',
+    "          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'",
+  ].join('\n');
+  assert.deepEqual(extractStepEnv(trailingCommentOnEnvKey, CLAUDE_ACTION_USES),
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" }],
+    'a trailing comment on env: itself must not hide the map that follows it');
+
+  // False red 5: a quoted uses:, single- and double-quoted.
+  const quotedUsesSingle = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    "        uses: 'anthropics/claude-code-action@v1'",
+    '        env:',
+    "          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'",
+  ].join('\n');
+  assert.deepEqual(extractStepEnv(quotedUsesSingle, CLAUDE_ACTION_USES),
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" }],
+    'a single-quoted uses: value must still be found');
+
+  const quotedUsesDouble = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: "anthropics/claude-code-action@v1"',
+    '        env:',
+    "          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'",
+  ].join('\n');
+  assert.deepEqual(extractStepEnv(quotedUsesDouble, CLAUDE_ACTION_USES),
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" }],
+    'and a double-quoted one');
+
+  // False red 6: flow-style env:, and its wrong-value counterpart must still
+  // report the real (rejectable) value rather than disappearing.
+  const flowEnv = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: anthropics/claude-code-action@v1',
+    "        env: { CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' }",
+  ].join('\n');
+  assert.deepEqual(extractStepEnv(flowEnv, CLAUDE_ACTION_USES),
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'1'" }],
+    'flow-style env: must be read the same as block-style');
+
+  const flowEnvWrongValue = [
+    '    steps:',
+    '      - name: Run Claude Code Review',
+    '        uses: anthropics/claude-code-action@v1',
+    "        env: { CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '0' }",
+  ].join('\n');
+  assert.deepEqual(extractStepEnv(flowEnvWrongValue, CLAUDE_ACTION_USES),
+    [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'0'" }],
+    "flow-style '0' must still be reported so the assertion below rejects it");
 });
 
 for (const file of ['claude-code-review.yml', 'claude.yml']) {
-  test(`${file}'s anthropics/claude-code-action step disables background subagents`, () => {
-    const env = extractStepEnv(read(`.github/workflows/${file}`), CLAUDE_ACTION_USES);
-    assert.ok(env, `${file}: no anthropics/claude-code-action step with its own env: was found`);
-    const raw = env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS;
-    assert.ok(raw !== undefined,
-      `${file}: the anthropics/claude-code-action step's own env: does not set `
-      + "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS -- see claude-code-review.yml's header "
-      + 'for why a subagent left to run in the background makes this job pass without reviewing.');
-    assert.equal(raw.replace(/^['"]|['"]$/g, ''), '1',
-      `${file}: CLAUDE_CODE_DISABLE_BACKGROUND_TASKS must be '1' -- see claude-code-review.yml's `
-      + `header for why (got ${raw}).`);
+  test(`${file}'s anthropics/claude-code-action step(s) disable background subagents`, () => {
+    const envs = extractStepEnv(read(`.github/workflows/${file}`), CLAUDE_ACTION_USES);
+    assert.ok(envs.length > 0,
+      `${file}: no anthropics/claude-code-action step was found -- this test would pass vacuously`);
+    envs.forEach((env, i) => {
+      assert.ok(env, `${file}: anthropics/claude-code-action step #${i + 1} has no env: of its own`);
+      const raw = env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS;
+      assert.ok(raw !== undefined,
+        `${file}: anthropics/claude-code-action step #${i + 1}'s own env: does not set `
+        + "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS -- see claude-code-review.yml's header "
+        + 'for why a subagent left to run in the background makes this job pass without reviewing.');
+      assert.equal(raw.replace(/^['"]|['"]$/g, ''), '1',
+        `${file}: anthropics/claude-code-action step #${i + 1}'s CLAUDE_CODE_DISABLE_BACKGROUND_TASKS `
+        + `must be '1' -- see claude-code-review.yml's header for why (got ${raw}).`);
+    });
   });
 }

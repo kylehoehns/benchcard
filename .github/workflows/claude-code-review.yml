@@ -24,7 +24,7 @@ name: Claude Code Review
 # reviewer had nothing to say. Twelve seconds is not a review.
 
 #
-# A THIRD WAY THIS JOB PASSES WITHOUT REVIEWING: the action stops reading the
+# A SECOND WAY THIS JOB PASSES WITHOUT REVIEWING: the action stops reading the
 # session at the first `result` message (anthropics/claude-code-action#1499;
 # the same bug through the `code-review` plugin is #1646), and Claude Code
 # starts subagents in the background by default -- a session that launches
