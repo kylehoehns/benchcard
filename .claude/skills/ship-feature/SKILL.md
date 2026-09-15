@@ -131,8 +131,8 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    `npm test` printed, and the smoke table as printed. Every agent launched
    from here on gets that handoff verbatim.
 
-7. **Review and docs, in parallel.** Capture `git diff HEAD` (plus
-   `git status --porcelain` for new files). In **one** message, launch
+7. **Review and docs, in parallel.** Capture `git diff main...HEAD` — step 6
+   committed the change, so `git diff HEAD` is empty here. In **one** message, launch
    `reuse-reviewer`, `quality-reviewer`, `efficiency-reviewer` and `doc-writer`,
    passing the diff, the spec path and **the handoff from step 6** to each. Add
    `guard-falsifier` to the same message if the diff touches `test/`,
@@ -143,10 +143,12 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    it in the wrap-up rather than shipping.
 
    **Prove and commit again**, the same way as step 6 — the proof pair (one
-   proof, not two), explicit paths, no trailers, a fresh handoff (HEAD moved,
-   so step 6's is stale). If nothing in this step was actionable, the tree is
-   exactly what step 6 already proved and committed: keep that handoff and
-   skip straight to Ship rather than running the pair again.
+   proof, not two), explicit paths including every file `doc-writer` changed,
+   no trailers, a fresh handoff (HEAD moved, so step 6's is stale). Only when
+   nothing was actionable **and** `git status --porcelain` is still empty —
+   `doc-writer` edits after step 6's commit — is the tree exactly what step 6
+   proved: keep that handoff and go on to step 9 without running the pair
+   again.
 
 9. **Verify what a harness cannot.** `/browser-verify` for anything a reader
    sees. The proof pair already ran at whichever step above is current — cite
