@@ -45,7 +45,7 @@ in the repo — and a CDN serving something new under the same version pin, whic
 nothing on our side prevents. Because only the second one happens without a
 commit, the job runs weekly as well as on changes under `app/vendor/`. It is
 kept off every push because it depends on a live CDN, not because it is slow:
-a full re-vendor is Motion, two Inter subsets and 26 icons, about 250 KB, and
+a full re-vendor is Motion, two Inter subsets and 23 icons, about 250 KB, and
 takes seconds. (It was ~10 MB when Tesseract was vendored; that went with the
 photo roster scanner and this sentence did not.)
 A deliberate version bump trips it on purpose — label the PR `vendor-bump` to

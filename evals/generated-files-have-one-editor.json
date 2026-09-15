@@ -35,6 +35,16 @@
         }
       },
       "expect": "allow"
+    },
+    {
+      "type": "hook",
+      "hook": "guard-edit.sh",
+      "input": {
+        "tool_input": {
+          "file_path": "/repo/app/vendor/fetch.sh"
+        }
+      },
+      "expect": "allow"
     }
   ]
 }
