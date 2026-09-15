@@ -67,10 +67,14 @@ Must not change:
 
 ## Design
 
-In `guard-edit.sh`, before the `*/app/vendor/*` deny, a `case` arm matching
-exactly `*/app/vendor/fetch.sh | */app/vendor/README.md` that falls through
-without denying. Since `case` takes the first matching arm, that arm just
-needs to come before the deny arm. The rest of the file is unchanged.
+Inside the existing `*/app/vendor/*` arm in `guard-edit.sh`, a nested `case`
+on `"${path#*/app/vendor/}"` — the path with everything up to and including
+the first `/app/vendor/` stripped. If that remainder is exactly `fetch.sh`
+or `README.md`, the arm falls through without denying; anything else still
+hits the original deny. Stripping to the first occurrence, rather than
+matching a `*/app/vendor/fetch.sh` glob (where `*` matches `/`), is what
+keeps nested lookalikes like `app/vendor/x/app/vendor/fetch.sh` denied.
+The rest of the file is unchanged.
 
 ## Proof
 
