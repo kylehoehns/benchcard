@@ -309,11 +309,13 @@ never asked at all. `test/install.test.js` pins those rules the way
 `test/tip.test.js` pins the tip's.
 ## Money
 
-There is none. A tip jar link in the footer, switched **on** — `TIP_URL` at the
+There is none. A tip jar link in the footer, and a second in the Benchcard
+zone of Settings since #22 (both carry `[data-tip-link]`, and `toast.js` wires
+both from the same `TIP_URL`), switched **on** — `TIP_URL` at the
 top of `toast.js` holds a live Buy Me a Coffee URL, and `about.html` hard-codes
 the same one with `analytics.test.js` pinning the two together. Set it to `null`
-to hide the link (not the footer: the footer carries the only crawlable link to
-`about.html`). The market research behind that decision:
+to hide both links (not the footer itself: the footer carries the only
+crawlable link to `about.html`). The market research behind that decision:
 GameChanger gives coaches every premium feature free and monetises parents
 instead, so coach-side tooling is expected to be free, and paid-upfront tools
 above about $3 collect hostile reviews.

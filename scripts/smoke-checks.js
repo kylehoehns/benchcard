@@ -111,23 +111,75 @@
         (About, Contact, Buy me a coffee -- `.setrow` doubles as the base for
         both) and the backup row -- at least 48px, a floor higher than the
         44px sweep above and scoped to this one view (I1; the app-wide 44px
-        sweep is #37's, not this ticket's). Same shape as "last control in an
-        open dialog is reachable" above: nothing open is not a failure, it is
-        nothing to measure yet -- `smoke.mjs`'s `settingsRowPass` is what
-        actually opens Settings before reading this back, at three widths. */
+        sweep is #37's, not this ticket's).
+
+        A ROW IS DEFINED STRUCTURALLY, not by `.setrow`/`.backuprow` -- a
+        guard-falsifier renamed both classes throughout `#view-settings` and
+        this check kept reporting "0 rows" as a pass, because the old
+        `querySelectorAll('.setrow, .backuprow')` found nothing to measure and
+        nothing-to-measure took the same branch as nothing-open. So a row here
+        is: a direct child of one of `#view-settings`'s `.side-box` sections
+        that (a) either IS an interactive control (button, a[href], input,
+        [role=group]) or contains one, AND (b) is laid out as a flex row the
+        way every real row is -- `.setrow`/`.backuprow`'s own base rule sets
+        `display: flex`, and it is also the one thing an impostor row has to
+        fake to look like a row (verified: a `<div>` with a button inside it
+        but no flex layout, added above About, was invisible to this rule
+        until it also set `display: flex`, and then measured short and was
+        caught). (a) alone is what keeps headings and notes out: `.side-hd`,
+        `.set-h` and every `.note` paragraph in this view contain no control
+        and drop out there, no class name needed. (a) alone is also why a
+        bare `<a>` row still counts even if `display` stops being read from
+        `.setrow` -- the anchor is a control itself, not a container of one --
+        which is what still catches the About/Contact/Buy-me-a-coffee rows
+        after a rename, short, rather than them silently disappearing.
+
+        The one thing (a)+(b) together deliberately leaves out is Backup's own
+        "or paste a backup" trigger (`.pastein`): a control sits directly
+        inside it, but it is a plain block, not a flex row -- the design's own
+        comment calls it "a quiet way in underneath, never a second top-level
+        button", and spec item 7 names only the backup ROW (singular), not
+        every control the Backup box holds. Measured: `.pastein` is 44px tall
+        at every width this check runs at, so counting it here would fail the
+        real, unmodified page -- (b) is what keeps that specific control out
+        without naming it.
+
+        Same shape as "last control in an open dialog is reachable" above for
+        WHERE it runs: `smoke.mjs`'s `settingsRowPass` is what actually opens
+        Settings before reading this back, at three widths. Unlike that check,
+        though, nothing-open is a FAILURE here, not a pass held for later --
+        a guard-falsifier that dropped `setView('settings')` from the cog's
+        click handler left `#view-settings` never opening and this check kept
+        reporting PASS "0 rows" anyway, because only `shortRows.length` gated
+        `pass` and an empty measured set is vacuously short-free. So `pass`
+        now requires the view to actually be open AND at least one row
+        measured, not just none of the rows found being short. */
+  const ROW_CONTROL_SEL = 'button, a[href], input, [role="group"]';
   const settingsView = document.getElementById('view-settings');
+  const settingsOpen = !!settingsView && visible(settingsView);
   const shortRows = [];
   let rowCount = 0;
-  if (settingsView && visible(settingsView)) {
-    for (const row of settingsView.querySelectorAll('.setrow, .backuprow')) {
-      if (!visible(row)) continue;
-      rowCount++;
-      const r = row.getBoundingClientRect();
-      if (r.height < 47.5) shortRows.push(`${label(row)} ${round(r.height)}px`);
+  if (settingsOpen) {
+    for (const box of settingsView.querySelectorAll('.side-box')) {
+      for (const row of box.children) {
+        if (!visible(row)) continue;
+        const isControl = row.matches(ROW_CONTROL_SEL);
+        const hasControl = isControl || !!row.querySelector(ROW_CONTROL_SEL);
+        if (!hasControl) continue;                                    // heading or note
+        if (getComputedStyle(row).display !== 'flex' && !isControl) continue; // e.g. .pastein
+        rowCount++;
+        const r = row.getBoundingClientRect();
+        // 47.99, not 48 or 47.5: getBoundingClientRect can report a box a
+        // hair under its CSS min-height (subpixel layout at 2x device scale),
+        // and 47.5 is far enough under 48 to pass a floor set a half-pixel
+        // short of the real one -- verified against `min-height: 47.5px`.
+        if (r.height < 47.99) shortRows.push(`${label(row)} ${round(r.height)}px`);
+      }
     }
   }
-  add('settings rows ≥ 48px', shortRows.length === 0,
-    !rowCount ? '#view-settings not open'
+  add('settings rows ≥ 48px', settingsOpen && rowCount > 0 && shortRows.length === 0,
+    !settingsOpen ? '#view-settings not open'
+      : !rowCount ? '#view-settings open but 0 rows found -- structural row detection matched nothing'
       : shortRows.length ? `${shortRows.length}/${rowCount} under 48px: ${shortRows.slice(0, 4).join(', ')}`
       : `${rowCount} rows, all ≥ 48px`);
 

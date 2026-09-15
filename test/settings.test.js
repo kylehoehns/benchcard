@@ -500,12 +500,71 @@ test('the format belongs to the team, and one squad’s never reaches the other'
  * both, because a coach opens Settings under their team, not under
  * Benchcard's own choices.
  * ================================================================== */
-const indexHtml = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
+/* Comments dropped here, not in a second `visible()` copy further down --
+   one clean reading of index.html, not two. A developer note can carry the
+   very attribute or word a check is looking for (the paragraph above
+   `#themeSeg` names "#themeNow"; the one above the coffee row's `<a>` names
+   `data-tip-link` while explaining why it is there), and a check that reads
+   raw markup scores the comment instead of the control. `/* *\/` is dropped
+   too: index.html's two inline `<script>` blocks carry block comments of
+   their own, ahead of `#view-settings`, that this file never has reason to
+   read anyway. */
+const indexHtml = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8')
+  .replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
 const cutView = (html, id) => html.slice(html.indexOf(`id="${id}"`), html.indexOf('</main>', html.indexOf(`id="${id}"`)));
 const views = () => {
   const html = indexHtml();
   return { settings: cutView(html, 'view-settings'), roster: cutView(html, 'view-team') };
 };
+
+/* A JS-comment stripper for the wiring reads below: string- and
+   template-literal-aware, so a `//` inside a quoted URL (toast.js's
+   TIP_URL) is never mistaken for a line comment and does not eat the rest
+   of the line, and a `// on('#helpTourSettings', ...)` really is gone
+   rather than still matching the very call the comment turned off. */
+function stripComments(src) {
+  let out = '';
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i], d = src[i + 1];
+    if (c === '/' && d === '/') { const e = src.indexOf('\n', i); if (e < 0) { i = n; } else { out += '\n'; i = e + 1; } continue; }
+    if (c === '/' && d === '*') { const e = src.indexOf('*/', i + 2); const seg = e < 0 ? src.slice(i) : src.slice(i, e + 2); out += seg.replace(/[^\n]/g, ' '); i = e < 0 ? n : e + 2; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < n && src[j] !== c) { if (src[j] === '\\') j += 2; else j++; }
+      j = Math.min(j + 1, n);
+      out += src.slice(i, j); i = j; continue;
+    }
+    if (c === '`') {
+      let j = i + 1;
+      while (j < n && src[j] !== '`') { if (src[j] === '\\') j += 2; else j++; }
+      j = Math.min(j + 1, n);
+      out += src.slice(i, j); i = j; continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+
+/* The body of a top-level `function name(...) { ... }`, brace-matched
+   rather than sliced to the next function's name -- so a mutation that
+   nests a second function INSIDE it (U8b: the [data-tip-link] loop moved
+   into a `wireTips()` that initToast never calls) is still read as part of
+   the same body, and a check that wants the loop to run in the function's
+   OWN scope can tell the two apart. */
+function functionBody(src, name) {
+  const sig = `function ${name}(`;
+  const start = src.indexOf(sig);
+  assert.ok(start > -1, `${name} not found; this guard is reading nothing`);
+  const braceStart = src.indexOf('{', start);
+  let depth = 0, i = braceStart;
+  for (; i < src.length; i++) {
+    if (src[i] === '{') depth++;
+    else if (src[i] === '}') { depth--; if (depth === 0) { i++; break; } }
+  }
+  return src.slice(braceStart + 1, i - 1);
+}
 
 test('Settings keeps Appearance above Backup, and Backup keeps the bottom', () => {
   const { settings } = views();
@@ -536,7 +595,13 @@ test('the per-team settings live in Settings, under the team\'s own name -- not 
   const tv = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8');
   const body = tv.slice(tv.indexOf('export function renderSettings() {'), tv.indexOf('\nfunction addTeam()'));
   assert.ok(body.length > 200, 'renderSettings moved or was renamed; this guard is reading nothing');
-  const perTeam = [...new Set([...body.matchAll(/\$\('#(\w+)'\)|\['#(\w+)'/g)].map((m) => m[1] || m[2]))];
+  /* Four forms an id can reach the DOM through -- `$('#x')`, `['#x'...`
+     (a lookup table keyed by selector), `document.getElementById('x')` and
+     `document.querySelector('#x')` -- so a control painted through the
+     unabbreviated DOM calls is caught exactly like one painted through the
+     app's own `$` helper. */
+  const idRe = /\$\('#(\w+)'\)|\['#(\w+)'|getElementById\(\s*['"](\w+)['"]\s*\)|querySelector\(\s*['"]#(\w+)['"]\s*\)/g;
+  const perTeam = [...new Set([...body.matchAll(idRe)].map((m) => m[1] || m[2] || m[3] || m[4]))];
   assert.ok(perTeam.length >= 7, `renderSettings should paint at least seven controls, found ${perTeam.length}`);
   const benchcardAt = settings.indexOf('class="side-hd">Benchcard<');
   assert.ok(benchcardAt > -1, 'the Benchcard heading is gone from Settings');
@@ -547,8 +612,8 @@ test('the per-team settings live in Settings, under the team\'s own name -- not 
     assert.ok(at < benchcardAt,
       `#${id} sits inside the Benchcard zone; per-team policy belongs in the team zone above it`);
   }
-  assert.ok(!roster.includes('id="addTeam"'),
-    '#addTeam should be gone from the Team tab -- the team strip\'s + is the only way to add one');
+  // #addTeam's own guard, whole-document, is test/team-strip.test.js's; this
+  // one stays scoped to what renderSettings paints.
 });
 
 /* ================================================================== *
@@ -558,19 +623,17 @@ test('the per-team settings live in Settings, under the team\'s own name -- not 
  * Remove this team, and addTeam() lands a coach in Settings rather than on
  * the Team tab it used to.
  *
- * `views()` above does not strip HTML comments, which is fine for ordering
- * (ids are unique) but wrong for a "the word Theme is gone" check -- the
- * comment above `#themeSeg` explains what it replaced, in words including
- * "#themeNow". `visible()` strips comments first, so it reads what a coach
- * actually sees.
+ * `views()` reads through `indexHtml()`, which now strips comments itself
+ * (see its own comment above), so it is safe for a "the word Theme is gone"
+ * check too -- the comment that used to sit above `#themeSeg`, explaining
+ * what it replaced in words including "#themeNow", no longer survives into
+ * `settings` for this test to trip over. There used to be a second,
+ * separately-stripped `visible()` reading the same file for this reason
+ * alone; one clean reading is the point.
  * ================================================================== */
-const visible = () => {
-  const html = indexHtml().replace(/<!--[\s\S]*?-->/g, ' ');
-  return { settings: cutView(html, 'view-settings') };
-};
 
 test('the theme cycler is gone: no "Theme" text, no #theme or #themeNow control in Settings', () => {
-  const { settings } = visible();
+  const { settings } = views();
   assert.doesNotMatch(settings, /\bTheme\b/,
     'a stray "Theme" label would resurrect the ambiguity Appearance replaced');
   assert.ok(!settings.includes('id="theme"'), 'the #theme cycler must be gone');
@@ -578,7 +641,7 @@ test('the theme cycler is gone: no "Theme" text, no #theme or #themeNow control 
 });
 
 test('Appearance is exactly Automatic, Light, Dark, in that order, mapped to auto/light/dark', () => {
-  const { settings } = visible();
+  const { settings } = views();
   const at = settings.indexOf('id="themeSeg"');
   assert.ok(at > -1, '#themeSeg is missing from Settings');
   const block = settings.slice(at, settings.indexOf('</div>', at));
@@ -616,6 +679,49 @@ test('Benchcard order: Appearance, How it works (with Show me around again), Abo
   assert.ok(marks.Backup > lastBoxAt, 'Backup is not inside the last box in Settings');
 });
 
+test('nothing sits after Backup\'s own controls inside #view-settings', () => {
+  /* "Keeps the bottom" above only checked that Backup's HEADING is in the
+     last box -- a control added inside that same box, after Backup's own
+     content, would still pass it. Pin the actual floor: the last of Backup's
+     own controls (#exportBackup, #importBackup, #backupFile, the paste box's
+     .paste-go) is the last control in the view, full stop. */
+  const { settings } = views();
+  const markers = ['id="exportBackup"', 'id="importBackup"', 'id="backupFile"', 'paste-go'];
+  const lastMarkerAt = Math.max(...markers.map((m) => settings.lastIndexOf(m)));
+  assert.ok(lastMarkerAt > -1, 'lost track of Backup\'s own controls');
+  const tagEnd = settings.indexOf('>', lastMarkerAt);
+  assert.ok(tagEnd > -1);
+  const after = settings.slice(tagEnd + 1);
+  const control = /<(button|a|input|select|textarea)\b|role="group"/i;
+  const found = after.match(control);
+  assert.equal(found, null,
+    `a control (${found && found[0]}) sits after Backup's own controls in #view-settings`);
+});
+
+test('Settings link rows: About, Contact and Buy me a coffee labels are pinned to their own row', () => {
+  /* Ordering alone does not catch a swap: two labels changing rows while the
+     rows themselves keep their place passes every position check above. Pin
+     each label to the marker that names what the row IS, not where it sits
+     -- the mailto: address is Contact by definition, the [data-tip-link]
+     anchor is the tip jar by definition, and ./about is About by
+     definition. */
+  const { settings } = views();
+  const rowText = (marker) => {
+    const at = settings.indexOf(marker);
+    assert.ok(at > -1, `${marker} is missing from Settings`);
+    const rowStart = settings.lastIndexOf('<a class="setrow linkrow"', at);
+    const rowEnd = settings.indexOf('</a>', at);
+    assert.ok(rowStart > -1 && rowEnd > -1, `could not find the link row around ${marker}`);
+    return settings.slice(rowStart, rowEnd);
+  };
+  assert.match(rowText('href="./about"'), /<span class="setrow-t">About<\/span>/,
+    'the ./about row must read "About"');
+  assert.match(rowText('href="mailto:hello@benchcard.app"'), /<span class="setrow-t">Contact<\/span>/,
+    'the mailto: row must read "Contact"');
+  assert.match(rowText('data-tip-link'), /<span class="setrow-t">Buy me a coffee<\/span>/,
+    'the [data-tip-link] row must read "Buy me a coffee"');
+});
+
 test('Team section order: Team name first, Remove this team last, both inside the team zone', () => {
   const { settings } = views();
   const boxHd = settings.indexOf('id="setTeamHd"');
@@ -646,20 +752,30 @@ test('the Settings tip link is wired from TIP_URL, not a URL written into markup
   const toast = readFileSync(new URL('../app/toast.js', import.meta.url), 'utf8');
   assert.match(toast, /querySelectorAll\(\s*['"]\[data-tip-link\]['"]\s*\)/,
     'toast.js must wire every [data-tip-link] element from TIP_URL, covering the new Settings row');
+  /* Present in the file is not the same as running: the loop has to sit in
+     initToast's OWN body, not inside a second function nested inside it that
+     initToast never calls -- the regex above would still match either way. */
+  const body = functionBody(stripComments(toast), 'initToast');
+  assert.match(body, /querySelectorAll\(\s*['"]\[data-tip-link\]['"]\s*\)/,
+    'the [data-tip-link] loop must run in initToast\'s own body');
+  assert.doesNotMatch(body, /\bfunction\b/,
+    'initToast declares no nested function today -- one appearing here means the loop moved into ' +
+    'a function initToast may never call');
 });
 
 test('the Settings tour button calls exactly what #helpTour calls, not a second way to start the tour', () => {
-  const src = readFileSync(new URL('../app/shortcuts.js', import.meta.url), 'utf8');
+  const src = stripComments(readFileSync(new URL('../app/shortcuts.js', import.meta.url), 'utf8'));
   const helpTour = src.match(/on\(\s*['"]#helpTour['"]\s*,\s*['"]onclick['"]\s*,\s*(\w+)\s*\)/);
   const settingsTour = src.match(/on\(\s*['"]#helpTourSettings['"]\s*,\s*['"]onclick['"]\s*,\s*(\w+)\s*\)/);
   assert.ok(helpTour, '#helpTour must still be wired');
-  assert.ok(settingsTour, '#helpTourSettings must be wired');
+  assert.ok(settingsTour,
+    '#helpTourSettings must be wired, in real code -- a commented-out line would still be in the file');
   assert.equal(settingsTour[1], helpTour[1],
     'the Settings button must name the same handler #helpTour does');
 });
 
 test('adding a team opens Settings, not the Team tab, and focuses the name field', () => {
-  const src = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8');
+  const src = stripComments(readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8'));
   const start = src.indexOf('function addTeam');
   const body = src.slice(start, src.indexOf('\nfunction removeTeam', start));
   assert.ok(body.length > 100, 'addTeam moved or was renamed; this guard is reading nothing');
@@ -667,7 +783,35 @@ test('adding a team opens Settings, not the Team tab, and focuses the name field
     'addTeam must land the coach on Settings, where the new team\'s name field now lives');
   assert.doesNotMatch(body, /setView\(\s*['"]team['"]\s*\)/,
     'addTeam must not still send the coach to the Team tab');
-  assert.match(body, /\$\(\s*['"]#teamName['"]\s*\)/, 'addTeam must reach #teamName to focus it');
-  assert.match(body, /\.focus\(\)/);
-  assert.match(body, /\.select\(\)/);
+  /* A setView("settings") gated on state.view is only right one way round:
+     `!== 'settings'` skips the (no-op) call when already there; `===
+     'settings'` is backwards -- it only ever navigates when the coach is
+     already on the page it is supposed to land them on, i.e. never from
+     anywhere else. Unconditional is fine too, so only the backwards gate is
+     refused. */
+  const gated = body.match(/if\s*\(\s*state\.view\s*(===|!==)\s*['"]settings['"]\s*\)\s*setView\(\s*['"]settings['"]\s*\)/);
+  if (gated) {
+    assert.equal(gated[1], '!==',
+      'a setView("settings") gated on state.view must use !== -- an === gate only navigates when ' +
+      'already on Settings, which never fires from anywhere a coach would actually be');
+  }
+  // order: the view has to be live before a field inside it can take focus --
+  // focusing into a still-hidden subtree is a no-op, not a deferred focus.
+  const viewAt = body.search(/setView\(\s*['"]settings['"]\s*\)/);
+  const focusAt = body.search(/\.focus\(\)/);
+  assert.ok(viewAt > -1 && focusAt > -1, 'addTeam must both switch to Settings and focus something');
+  assert.ok(viewAt < focusAt,
+    'setView("settings") must run before .focus() -- focusing into a still-hidden view is a no-op');
+  /* Not just "#teamName appears somewhere in the body": the element that
+     is actually focused and selected has to be the one read from #teamName,
+     word for word -- `$('#teamName') && $('#dayName')` still matches a bare
+     "reaches #teamName" check while focusing a different field entirely. */
+  const decl = body.match(/const\s+(\w+)\s*=\s*(\$\(\s*['"]#teamName['"]\s*\))\s*;/);
+  assert.ok(decl,
+    'addTeam must declare a variable as exactly $(\'#teamName\'), with nothing else on the right-hand side');
+  const name = decl[1];
+  assert.match(body, new RegExp(`\\b${name}\\.focus\\(\\)`),
+    `addTeam must focus the element read from #teamName (variable "${name}")`);
+  assert.match(body, new RegExp(`\\b${name}\\.select\\(\\)`),
+    `addTeam must select the element read from #teamName (variable "${name}")`);
 });
