@@ -21,9 +21,10 @@ Prefer deleting code to adding it. **While iterating**, run the test files
 that import or read what you just touched (a grep over `test/` for the path)
 and, for a step under `app/` or `scripts/smoke*`, `node scripts/smoke.mjs
 --only "<check>"` for the check that covers it — not the full suite per step.
-At the end of the phase, run the proof pair once, from `AGENTS.md` § Layout.
-A red pair is bisected with the same targeted runs you iterated with, never a
-guess, and the offending step is reverted rather than patched forward.
+At the end of the phase, run `npm test` once — not the proof pair, which runs
+once per commit (`AGENTS.md` § Layout). A red suite is bisected with the same
+targeted runs you iterated with, never a guess, and the offending step is
+reverted rather than patched forward.
 
 ## Phase 2 — tests
 
@@ -31,11 +32,9 @@ Now production is frozen. Pull repeated setup into helpers and collapse
 copy-pasted cases into a table. **Keep every case and every assertion** — never
 delete one or loosen one to simplify. Skip this phase if the tests are already
 clean; do not manufacture churn. **While iterating**, the same targeted runs as
-Phase 1 — never the full suite per step. This phase hands back **without a
-proof pair of its own**: `/ship-feature`'s step-6 proof point runs immediately
-after you hand back, and that is Phase 2's proof. (Decided in review: running
-a pair at the end of both phases put two full pairs back to back on one tree
-that had not changed in between.)
+Phase 1 — never the full suite per step. This phase hands back on those
+targeted runs alone: `/ship-feature`'s step-6 commit runs the proof pair
+immediately after you hand back, and that is Phase 2's proof.
 
 ## Guardrails
 
@@ -45,9 +44,9 @@ that had not changed in between.)
 - Never edit a guard's threshold, an allow map or a budget.
 - If a precached file changes, the precache bump in `AGENTS.md` § Traps
   applies to you too.
-- Phase 1 only continues into Phase 2 on a green proof pair; Phase 2 only
-  hands back to `/ship-feature` on green targeted runs, with no pair of its
-  own.
+- Phase 1 only continues into Phase 2 on a green `npm test`; Phase 2 only
+  hands back to `/ship-feature` on green targeted runs.
 
-Do not do the reviewers' job. Return what you restructured, the Phase 1 proof
-pair's result, and the targeted runs Phase 2 ended on.
+Do not do the reviewers' job. Return what you restructured, the `ℹ tests` /
+`ℹ pass` / `ℹ fail` lines Phase 1's `npm test` printed, and the targeted runs
+Phase 2 ended on.

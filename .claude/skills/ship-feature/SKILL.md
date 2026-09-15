@@ -32,14 +32,12 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 
 | Agent | Job | Writes |
 | --- | --- | --- |
-| `developer` | production code from the spec | `app/`, `scripts/` |
-| `tester` | tests for the change; `npm test` green | `test/` |
+| `developer` | builds the change test-first with `/tdd`: tests and code, one slice at a time | `app/`, `scripts/`, `test/` |
 | `refactorer` | one behaviour-preserving cleanup pass, on green | code and tests |
 | `reuse-reviewer` | duplication, missed reuse | nothing |
 | `quality-reviewer` | correctness and `REVIEW.md`'s passes | nothing |
 | `efficiency-reviewer` | wasted work on hot paths | nothing |
 | `doc-writer` | `docs/` and `README.md` catch up with the change | `docs/`, `README.md` |
-| `guard-falsifier` | proves a new or changed guard can go red | nothing |
 | `claim-checker` | checks factual claims in comments, docs and the PR body | nothing |
 
 ## Understand
@@ -84,8 +82,12 @@ directions, so a renamed or new agent fails the suite until this table agrees.
      restated (the card, mobile first, the privacy claim, the four pure
      modules, the precache bump), and every **"reuse X / do not re-derive Y"**.
    - **Design** — what gets built.
-   - **Proof** — which of `npm test`, `npm run smoke` and `/browser-verify`
-     prove it, and which guard must be shown going red.
+   - **Proof** — the **seams** `/tdd` builds at, agreed here so the build can
+     run unattended: for each, where the test runs from (a module's exports
+     under `node --test`, a named smoke check, a `/browser-verify` step) and
+     which **What would settle it** items it covers. A test that reads source
+     instead of running it is a seam only if it is named here, and is then a
+     guard under `/new-guard`.
    - **Out of scope** — what the grilling decided not to do.
 
    For a ticket, **What would settle it** is its acceptance criteria. If the
@@ -107,23 +109,23 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    re-derive" constraint and every `AGENTS.md` trap the Surfaces list walks
    into — they go to the developer **verbatim, up front**, not buried in prose.
 
-5. **`developer`** implements. Its prompt carries the spec path, those
-   constraints, and one instruction: if a precached file changes, bump
-   `VERSION` and set `SHELL` to the digest `npm test` names. Wait until it
-   reports `npm test` run.
+5. **`developer`** builds it test-first, with `/tdd`, over the seams in the
+   spec's **Proof**. Its prompt carries the spec path, those constraints, and
+   one instruction: if a precached file changes, bump `VERSION` and set
+   `SHELL` to the digest `npm test` names. Wait until it reports each slice's
+   test and the failure it saw before the code existed, and a green `npm
+   test`. A slice whose reported failure is an import error or a typo rather
+   than the behaviour's assertion never saw red: send it back.
 
-6. **`tester`** writes the tests and gets `npm test` green. It does not touch
-   production code; a failure it cannot fix from `test/` comes back to you and
-   goes to `developer`.
-
-   > **Refactor on green, once.** Hand the change to **`refactorer`**:
+6. > **Refactor on green, once.** Hand the change to **`refactorer`**:
    > production first (the suite is the oracle), then tests (production frozen,
    > keep every case). Keep the instruction generic — "improve the internal
    > structure without changing behaviour". `refactorer.md` owns its hand-back
    > condition. Run it here, never in the fix loop.
 
    **Prove and commit.** Run the proof pair — `AGENTS.md` § Layout names it and
-   says it runs once, not twice. Both green: stage **explicit paths**,
+   says it runs once per commit, here, by you. No agent before this point ran
+   it. Both green: stage **explicit paths**,
    including `docs/specs/<N>-<slug>.md`, and commit with no trailers — the hook
    denies `git add -A` and a trailer on this commit and on the one in step 8.
    Record the **handoff**: `git rev-parse HEAD` and that `git status
@@ -134,11 +136,13 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 7. **Review and docs, in parallel.** Capture `git diff main...HEAD` — step 6
    committed the change, so `git diff HEAD` is empty here. In **one** message, launch
    `reuse-reviewer`, `quality-reviewer`, `efficiency-reviewer` and `doc-writer`,
-   passing the diff, the spec path and **the handoff from step 6** to each. Add
-   `guard-falsifier` to the same message if the diff touches `test/`,
-   `scripts/` or `.claude/hooks/`.
+   passing the diff, the spec path and **the handoff from step 6** to each.
+   `quality-reviewer` also judges the tests against `/tdd`'s anti-patterns:
+   implementation-coupled, tautological, and a source-reading test the spec
+   did not name as a seam.
 
-8. **Fix, once.** Actionable findings go to `developer` (or `tester`). At most
+8. **Fix, once.** Actionable findings go to `developer`, which fixes them
+   the same way it built: a failing test first where the finding is a behaviour. At most
    one pass. A `REVIEW.md` **Blocker** that survives it stops the run: report
    it in the wrap-up rather than shipping.
 
