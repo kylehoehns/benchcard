@@ -9,11 +9,13 @@
  * clearing the day -- so both go through `undoable`, imported straight
  * from toast.js.
  *
- * Two injections through `initTeams`, which also wires the two buttons
- * that live outside the strip (`#addTeam` on the roster page and
- * `#removeTeam`): `renderAll`, because switching team or game changes
- * everything downstream of it, and `setView`, because adding a team lands
- * the coach on the roster. Both belong to render.js.
+ * Two injections through `initTeams`, which also wires the one button that
+ * lives outside the strip (`#removeTeam`, in Settings since #22 --
+ * `#addTeam` left with A40's own `+ Team` chip, which calls `addTeam`
+ * directly rather than through a click binding here): `renderAll`, because
+ * switching team or game changes everything downstream of it, and `setView`,
+ * because adding a team lands the coach on Settings. Both belong to
+ * render.js.
  *
  * `#removeGame` is wired from inside `renderTabs` -- its hidden state
  * depends on how many games the day has, so it is repainted with them.
@@ -58,7 +60,8 @@ const SUBS_READ = [
 export function initTeams(renderAllFn, setViewFn) {
   renderAll = renderAllFn;
   setView = setViewFn;
-  on('#addTeam', 'onclick', addTeam);
+  // #addTeam is gone (#22): the team strip's own `+` in `renderTeams` below
+  // calls `addTeam` directly, and it is the only way in now.
   on('#removeTeam', 'onclick', removeTeam);
   // Delegated and bound once: the five buttons are static markup, and
   // `renderSettings` only moves the `.on` class.
@@ -291,10 +294,11 @@ function addTeam() {
   // team row still shows yesterday's chips and the roster is the old team's
   renderAll();
   /* A new team has no players, so the games view would show it an empty plan
-     and a "no players yet" placeholder. The roster is the only useful next
-     screen, and it is where the name field lives -- an unnamed team reads as
-     "Team 2" everywhere until it is called something. */
-  if (state.view !== 'team') setView('team');
+     and a "no players yet" placeholder, and the Team tab is only the roster
+     now (#22) -- nothing there names the team either. Settings is where the
+     name field lives, under the new team's own (still unnamed) heading, so
+     that is where a fresh "Team N" gets called something. */
+  if (state.view !== 'settings') setView('settings');
   // setView is synchronous -- it flips `hidden` and returns -- so the field is
   // in a visible subtree by now and takes focus. It used to run through a View
   // Transition and this had to wait on `finished`, because focusing into a

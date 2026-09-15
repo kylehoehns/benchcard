@@ -32,7 +32,7 @@ import { initSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
 import { initToast, undoable, offer, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
-import { render, renderAll, soon, setView, applyTheme, AFTER_EDIT, PLAN_ONLY } from './render.js';
+import { render, renderAll, soon, setView, applyTheme, viewBeforeSettings, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, removePlayer , nextHue, hueSlots, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, noRoster } from './state.js';
 
@@ -43,22 +43,28 @@ for (const b of document.querySelectorAll('#viewnav button')) b.onclick = () => 
    what a coach opens between games -- so the way in and the way out are the
    same button. Tapping it again puts them back where they were rather than
    doing nothing: the three tabs are right there, but an icon that reads as
-   pressed and then ignores a second press reads as broken. `back` is remembered
-   here rather than in `state` because it is about this visit, not this record;
-   a reload landing on Settings should just show Settings. */
-let backFrom = 'games';
+   pressed and then ignores a second press reads as broken. `viewBeforeSettings()`
+   is remembered in render.js rather than in `state` because it is about this
+   visit, not this record; a reload landing on Settings should just show
+   Settings (which is also why it defaults to 'games' rather than reading
+   `state.view` here). */
 on('#settingsBtn', 'onclick', () => {
-  if (state.view === 'settings') { setView(backFrom); return; }
-  backFrom = state.view === 'welcome' ? 'games' : state.view;
+  if (state.view === 'settings') { setView(viewBeforeSettings()); return; }
   setView('settings');
 });
 for (const b of document.querySelectorAll('#stratseg button')) {
   b.onclick = () => { game().strategy = b.dataset.strat; track('plan_generated', { strategy: b.dataset.strat }); renderAll(); };
 }
 
-on('#theme', 'onclick', () => {
-  const order = ['auto', 'light', 'dark'];
-  state.ui.theme = order[(order.indexOf(state.ui.theme) + 1) % 3];
+/* #22: the Appearance group replaces the theme cycler. Same delegated shape
+   as the segs teams-view.js wires (`#maxSubsSeg` and friends): static
+   buttons, one handler, a full paint through `applyTheme()` rather than a
+   render key of its own -- the group is the only thing on screen the theme
+   change touches. */
+on('#themeSeg', 'onclick', (e) => {
+  const b = e.target.closest('button[data-theme]');
+  if (!b || b.dataset.theme === state.ui.theme) return;
+  state.ui.theme = b.dataset.theme;
   save(); applyTheme();
 });
 on('#dayName', 'oninput', e => { state.day.name = e.target.value; save(); });

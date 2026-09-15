@@ -130,10 +130,11 @@ uses. The python server 404s on all of them, and a local server that disagrees
 with production is a class of bug nothing can see. Run tests with `npm test`
 from the repo root (`node --test`, no dependencies to install).
 
-`npm run smoke` runs the browser checks — **22 of them**, printed as a pass/fail
+`npm run smoke` runs the browser checks — **23 of them**, printed as a pass/fail
 table: no horizontal overflow at 390×844, the card is still 3.45 × 5in, no
-console errors, every touch target ≥44px across 320–390px, the last control in
-an open dialog on screen and still 44px, every control accessibly named, ids
+console errors, every touch target ≥44px across 320–390px, every row in
+Settings ≥48px across the same three widths, the last control in an open
+dialog on screen and still 44px, every control accessibly named, ids
 unique and aria references resolving, alt text, `lang`/title/tab order, the
 card's own font loading before it is fitted, the three budgets, and the suite.
 Two fixtures on purpose (A26): a lean `SEED` for

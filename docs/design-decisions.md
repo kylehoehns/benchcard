@@ -278,7 +278,8 @@ its alternative is an assertion, so the rejected options are kept here too.
   "New day" keeps the format (you play the same league every week) but clears
   absences.
 - **The team name is the fallback identity, not a decoration.** Asked for once
-  at onboarding and editable on the roster page, it heads the card when a game
+  at onboarding and editable in Settings, under the team's own name (#22 moved
+  it off the roster page), it heads the card when a game
   has no opponent (where a generic `ROTATION` used to sit) and stands in as the
   day-title placeholder. It is stored raw and trimmed at every read, so typing
   a space does not fight the caret. The card header clamps it: `.when` never

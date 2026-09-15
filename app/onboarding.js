@@ -441,12 +441,14 @@ function loadSample(n) {
      beside "Add a team" -- so the one sentence whose job is telling a
      first-time coach how to undo the sample pointed at a surface the app does
      not have. A40 slice 1 renamed that tab's LABEL to "Team" (the stored view
-     key is still `roster`), so this sentence follows the label, which is the
-     only half a coach can see. `test/sample-team.test.js` reads the
-     label->key map out of `#viewnav` and fails if this sentence names a
-     destination the bar does not offer, or names one that is not the view
-     holding the control it is talking about. */
-  flash('Sample team loaded. Change any name to make it yours, or remove it on the Team page.');
+     key is still `roster`); #22 then moved `#removeTeam` itself off that tab
+     and into Settings, behind the cog rather than a `#viewnav` tab, so this
+     sentence follows it there. `test/sample-team.test.js` reads the
+     label->key map out of `#viewnav` plus `#settingsBtn`'s own label and
+     fails if this sentence names a destination the app does not offer, or
+     names one that is not the view holding the control it is talking
+     about. */
+  flash('Sample team loaded. Change any name to make it yours, or remove it in Settings.');
 }
 
 function finishOnboarding() {

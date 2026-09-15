@@ -256,15 +256,17 @@ a { color: inherit; }
 .teamtabs .ttab.add { border-style: dashed; color: var(--muted); font-weight: 520;
   background: none; }
 @media (hover: hover) { .teamtabs .ttab.add:hover { color: var(--ink); border-color: var(--line-2); } }
-.teamrow { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-top: .9rem; }
-.teamrow .teamcount { margin-left: auto; }
-/* `.teamrow` already wraps its own row, but `.btn` is `white-space: nowrap`
-   by design, so a wide system font can still make "Remove this team" alone
-   wider than the row has to give -- the row wrapping does nothing for a
-   single item that is itself too wide. Letting the label wrap shrinks the
-   button to the space there is, same answer as `.levelsfoot .btn` (#21 CI
-   fix). */
-#removeTeam { white-space: normal; text-align: center; }
+/* `.setrow` already wraps its own row (#22 moved this out of `.teamrow`,
+   which is gone), but `.btn` is `white-space: nowrap` by design, so a wide
+   system font can still make "Remove this team" alone wider than the row has
+   to give -- the row wrapping does nothing for a single item that is itself
+   too wide. `.setrow > .btn { flex: none }` below fixes the button at its
+   own max-content width, same as `.gmq > .btn` had to be told `min-width: 0`
+   for -- without it, `white-space: normal` alone buys nothing, because a
+   flex item that cannot shrink never asks its content to wrap. `max-width:
+   100%` is the other half: it bounds the button to the line the row wrapping
+   already gave it (#21 CI fix). */
+#removeTeam { white-space: normal; text-align: center; min-width: 0; max-width: 100%; }
 
 /* ---- lineup balance ------------------------------------------------------
    A five-step control, not a number. The steps fill left-to-right like a
@@ -881,8 +883,6 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .legend span:nth-child(2) i { opacity: .66; } .legend span:nth-child(3) i { opacity: .42; } .legend span:nth-child(4) i { opacity: .28; }
 
 /* ============================ roster ============================ */
-.teamfield { max-width: 26rem; margin: 0 0 1.6rem; }
-.teamfield .note { margin: .45rem 0 0; }
 .rlist { display: flex; flex-direction: column; gap: .4rem; }
 /* six columns, and they must stay identical to .rhead below or the labels
    sit over the wrong values -- the order column was added to one and not the
@@ -2515,8 +2515,8 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 /* =========================== team settings ===========================
    Two labelled zones, stacked, in the app's own `.side-box` grammar rather
    than a new one: the surface has to read as part of the app the first time
-   it is opened, and a coach who has seen the Backup box has already read
-   this layout once.
+   it is opened, and a coach who has already scrolled a `.side-box` full of
+   rows has read this layout once.
 
    The zone heading is the scope. The team zone carries the active team's
    name (written by teams-view.js, which owns team identity everywhere else
@@ -2570,13 +2570,45 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 .setrow input.minmins { flex: none; width: 4.25rem; min-height: 44px; text-align: center;
   font-variant-numeric: tabular-nums; }
 /* Same shape as `.sn-h`: a heading for a group inside a box, one step down
-   from the zone's own `.side-hd`. */
+   from the zone's own `.side-hd`. Always dividing a zone rather than opening
+   one -- Backup and restore, the only `.set-h` in the app, sits after Buy me
+   a coffee inside the Benchcard box, never first in a `.side-box` -- so the
+   1.5rem top margin below always has rows above it to separate from. A25's
+   `.side-box > .set-h:first-child { margin-top: 0 }` fix lived here for the
+   version of this box where Backup was its own `.side-box` and this heading
+   opened it; #22's fold-in retired it along with the box it corrected for. */
 .set-h { margin: 1.5rem 0 .4rem; font-size: .76rem; font-weight: 660; letter-spacing: .09em;
   text-transform: uppercase; color: var(--accent); }
-/* ...except when it opens a zone rather than dividing one. Backup is its own
-   `.side-box` now, and the 1.5rem that separates a group from the rows above
-   it became 24px of nothing between the box's border and its first word. */
-.side-box > .set-h:first-child { margin-top: 0; }
+/* The boundary above Backup and restore: the same line `.setrow + .setrow`
+   draws between every other pair of rows in this view, so the one block here
+   that is not itself a `.setrow` still reads as one more row starting, not a
+   different kind of break. */
+.setrow + .set-h { border-top: 1px solid var(--line); }
 /* The season count rides on the page heading now, not on a box caption, so it
    has to stand down from an h1's size and sit on its baseline. */
 h1 > .sn-count { vertical-align: middle; font-weight: 560; }
+
+/* =========================== #22: one Settings screen ===========================
+   The 48px floor (I1) is scoped to `#view-settings` alone -- the app-wide 44px
+   sweep everywhere else is #37's, not this ticket's, so this must never become
+   a blanket `.setrow` rule. Covers every setting row, every link row (`.setrow`
+   doubles as `.linkrow`'s base) and the backup row. `scripts/smoke.mjs` reads
+   this back at 320/360/390px on the RICH fixture. */
+#view-settings .setrow, #view-settings .backuprow { min-height: 48px; }
+/* Same `.btn` nowrap case as `#removeTeam` above, and the same fix: "Show me
+   around again" is a five-word label a wide system font -- or a coach reading
+   at 200% text -- can push past the row on its own, taking the row past the
+   320px column with it (#21's class of bug, caught again at 320px/32px text
+   by `npm run smoke`'s large-text pass). `min-width: 0` lets a flex item that
+   cannot shrink (`.setrow > .btn { flex: none }`) wrap anyway; `max-width:
+   100%` bounds it to the line the row wrapping already gave it. */
+#helpTourSettings { white-space: normal; text-align: center; min-width: 0; max-width: 100%; }
+
+/* The About / Contact / Buy me a coffee rows: a `.setrow` that is itself the
+   `<a>`, not a div holding one, so the whole 48px row is the tap target and
+   not just the text inside it. No underline -- the chevron is what marks it
+   as a link, the same way `.foot-link` reads as one without ever gaining one.
+   Colour and focus-visible both come from the base rules above (`a { color:
+   inherit }`, the global `:focus-visible`) -- nothing here overrides either. */
+.linkrow { text-decoration: none; justify-content: space-between; }
+.linkrow-chev { flex: none; color: var(--faint); font-size: 1.1rem; }

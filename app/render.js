@@ -12,7 +12,6 @@
  * repaintable region, and the three lists below name the subsets an edit
  * is allowed to touch.
  * ================================================================== */
-import { icon } from './icons.js';
 import { $ } from './dom.js';
 import { withFocus } from './trap.js';
 import { renderCards } from './card.js';
@@ -172,12 +171,25 @@ export function soon(...keys) {
  * is on screen and focusable by the time this returns. */
 let shown = null;
 
+/* The last real view -- neither Settings nor the welcome screen -- so the cog
+   in app.js can back out to wherever the coach actually was, no matter which
+   caller sent them into Settings (the cog itself, `addTeam()`'s "+ Team", an
+   undo whose restored snapshot lands there). One writer, here, where every
+   view change already passes through; defaults to 'games' so a reload that
+   lands on Settings still backs out the way the cog's own comment promises. */
+let lastView = 'games';
+
 export function setView(v, instant) {
   if (!state.onboarded) v = 'welcome';
+  if (v !== 'settings' && v !== 'welcome') lastView = v;
   const from = shown;
   shown = v;
   applyView(v);
   if (!instant && from && from !== v) window.scrollTo(0, 0);
+}
+
+export function viewBeforeSettings() {
+  return lastView;
 }
 
 function applyView(v) {
@@ -267,16 +279,18 @@ export function applyTheme() {
   document.documentElement.setAttribute('data-theme', resolved);
   document.querySelector('meta[name="theme-color"]')
     ?.setAttribute('content', resolved === 'dark' ? '#0B0B0C' : '#F4F4F6');
-  const tb = $('#theme');
-  if (tb) {
-    tb.textContent = '';
-    tb.append(icon(t === 'dark' ? 'moon' : t === 'light' ? 'sun' : 'contrast', { size: '1.05em' }));
-    tb.title = `Theme: ${t}`;
+  /* #22: the Appearance group replaces the icon cycler and its `#themeNow`
+     read-back -- a three-way choice reads better as three named buttons than
+     as a button you press to find out what it will do next. Marked the same
+     way `#maxSubsSeg` marks its current option (`.on`, `aria-pressed`); this
+     stays the one place `auto` is resolved and `data-theme` / `theme-color`
+     are written, same as before. */
+  const seg = $('#themeSeg');
+  if (seg) {
+    for (const b of seg.querySelectorAll('button[data-theme]')) {
+      const on = b.dataset.theme === t;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    }
   }
-  /* The button used to sit in the top bar, where an icon that cycles is fine
-     because it is right there to try. In a settings list it is not: a row that
-     says "Theme" beside a glyph does not say what the theme currently IS. So
-     the row carries the value in words and the button stays the cycler. */
-  const now = $('#themeNow');
-  if (now) now.textContent = t === 'auto' ? 'automatic' : t === 'dark' ? 'dark' : 'light';
 }

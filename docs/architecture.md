@@ -350,18 +350,20 @@ two rows at a 20px root and two at 24px on a 390px screen, nothing panning.
 
 **Settings is two labelled zones.** The top one is headed with the active
 team's name and holds policy that belongs to that team alone; the bottom is
-headed *Benchcard* and holds the theme, the help sheet and backup/restore. The
-heading is the scope, so a coach with a rec team and a club team never has to
-remember which one a setting landed on. Deliberately one surface rather than
+headed *Benchcard* and holds Appearance, How it works (with **Show me around
+again**), About, Contact and Buy me a coffee, and backup/restore last (#22).
+The heading is the scope, so a coach with a rec team and a club team never has
+to remember which one a setting landed on. Deliberately one surface rather than
 two: "where do I save my stuff" should not require knowing whether saving is a
-team thing or an app thing before you can find it. Putting the theme and the
+team thing or an app thing before you can find it. Putting Appearance and the
 help sheet first is also what makes the page legible — a settings surface whose
 only contents are abstract policy is undiscoverable.
 
-The team zone's first control is **Players changing at once** (1–5, default 3):
-`maxSubs`, which has always existed in `engine.js` and was invisible to a coach
-until it moved here. It is a *preference*, and the copy says so, because the
-solver treats it as one — see the design note below.
+The team zone opens on the team's own name (`#teamName`) and the game format,
+then **Players changing at once** (1–5, default 3): `maxSubs`, which has
+always existed in `engine.js` and was invisible to a coach until it moved
+here. It is a *preference*, and the copy says so, because the solver treats it
+as one — see the design note below. Remove this team closes the zone.
 
 Five bare digits read as a rule, so the control carries a **live read-back**
 (`#maxSubsRead`, written by `renderSettings`): one sentence per option, naming

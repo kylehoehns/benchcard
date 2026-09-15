@@ -23,11 +23,11 @@ import { readFileSync, readdirSync } from 'node:fs';
  * The rule, stated so it stays narrow: a module may write a constant into an
  * element, or the markup may declare that text, but not both with the same
  * text. A JS write that BRANCHES is fine (`#gmBenchLab` really does alternate
- * between "Bench" and "Swap in for …", and `#themeNow` really does cycle), so
- * only literal-argument writes are examined. The markup keeps the constant
- * labels and the modules keep the variable ones, which is already this file's
- * convention — `#gmMinsKey` sits empty in the markup beside the label that
- * does not.
+ * between "Bench" and "Swap in for …", and `#maxSubsRead` really does read
+ * back a different line per value), so only literal-argument writes are
+ * examined. The markup keeps the constant labels and the modules keep the
+ * variable ones, which is already this file's convention — `#gmMinsKey` sits
+ * empty in the markup beside the label that does not.
  */
 
 const ROOT = new URL('../', import.meta.url);

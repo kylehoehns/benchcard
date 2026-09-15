@@ -847,25 +847,13 @@
          Every note on this page now sits inside the box it describes, so it
          ships and dies with that control. Pinned by test/note-placement.test.js.
 
-         The ledger and the backup box have since left for a Season view and a
-         Settings view of their own, which is most of what "this page is doing
-         four jobs" was asking for. What is left is the roster and the team it
-         belongs to -- and, since A40 slice 2, the team's own settings at the
-         foot of the page: the players are what a coach opens this tab for, and
-         the five rules under them are set once a season. -->
+         The ledger, the backup box and -- since #22 -- the team's own settings
+         have all since left, for a Season view and a Settings view of their
+         own. What is left is the roster and nothing else: the players are what
+         a coach opens this tab for, and there is no per-team policy here to
+         find. The team's name, its rules and removing it all live under its
+         name in Settings now. -->
     <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Team</h1>
-    <div class="teamfield">
-      <label class="f" for="teamName">Team name</label>
-      <input type="text" id="teamName" maxlength="40" autocomplete="off" placeholder="Wildcats 6th Grade" data-fk="teamName">
-      <p class="note">Heads the card when a game has no opponent, and names the day above your games.</p>
-      <div class="teamrow">
-        <button class="btn ghost sm press" id="addTeam" type="button">
-          <span class="i" data-icon="plus"></span>Add a team
-        </button>
-        <button class="btn ghost danger sm press" id="removeTeam" type="button">Remove this team</button>
-        <span class="note teamcount" id="teamCount"></span>
-      </div>
-    </div>
     <div id="dupewarn" role="status" aria-live="polite"></div>
     <div id="levelskey" hidden></div>
     <div class="rhead"><span></span><span></span><span>#</span><span>Player</span><span>On card</span><span></span></div>
@@ -892,7 +880,53 @@
       </div>
     </div>
 
-    <div class="side-box" style="margin-top:1rem">
+  </main>
+
+  <!-- ============================ SEASON ============================ -->
+  <!-- The ledger, painted by season-view.js. It spent its first slices at the
+       foot of the roster page because a third nav tab was judged not to fit at
+       360px; re-measured with the real bar, it does — see the header in
+       season-view.js. Everything inside is unchanged, markup and copy both:
+       this view is a move, not a rewrite. -->
+  <main class="view wrap noprint" id="view-season" hidden style="max-width:820px">
+    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Season<span class="note sn-count" id="seasonCount"></span></h1>
+    <!-- One box, no `.side-hd`: the page heading above already says Season, and
+         a box captioned with the word directly under it says it twice. The note
+         stays inside the box with the ledger it describes -- a `p.note` loose in
+         a view is what test/note-placement.test.js exists to stop. -->
+    <div class="side-box">
+      <p class="note" style="margin:0 0 .9rem">
+        Every game you have finished with this team, and what each player actually played.
+        Games are filed when you choose <b>New day</b>.
+      </p>
+      <div id="seasonbox"></div>
+    </div>
+  </main>
+
+  <!-- =========================== SETTINGS ===========================
+       Two zones since #22 (parent #18, S1): the team box first, headed with
+       the active team's own name, holding every per-team rule; then
+       "Benchcard" for the app-wide choices, with Backup last inside it.
+
+       THE TEAM BOX IS THE ONE PLACE PER-TEAM POLICY LIVES. The five settings
+       (`teams[].settings`: the format defaults, `maxSubs`, the tie-break
+       stance, the league minimum and the carryover default), the team's name
+       and removing the team all render from `teams-view.js` -- `renderSettings()`
+       paints the box every time the page is open, whatever else changed, so
+       switching team from the strip repaints it without a second code path.
+       The Team tab holds none of this any more; it is the roster and nothing
+       else.
+
+       Behind a cog rather than a fourth tab: the tab budget is spent (see the
+       bar), and what is left here is set once and then left alone. -->
+  <main class="view wrap noprint" id="view-settings" hidden style="max-width:820px">
+    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Settings</h1>
+
+    <!-- The team box. Heading `#setTeamHd` is painted by `renderSettings()` in
+         teams-view.js, the one place a team's name is read with its `Team N`
+         fallback -- the markup below ships the fallback text so the box is
+         never blank for the frame before the first render. -->
+    <div class="side-box">
       <!-- Filled with the active team's name by teams-view.js. The fallback
            text ships in the markup so the heading is never blank for the frame
            before the first render. -->
@@ -904,16 +938,26 @@
            the box, not to each row in it. -->
       <p class="note" style="margin:0 0 .15rem">Each team keeps its own settings.</p>
 
-      <!-- The team's game format. First in the box because it is the most basic
-           fact about a team, and it was the one thing on this page that lived
-           only inside the Rules fold of whichever game happened to be open.
-           Number fields, by the same line the league minimum drew: a seg
-           teaches a closed set of stances, a field transcribes a value off a
-           rulebook, and "four eights" is transcription. Same `min`/`max` as the
-           Rules fold's own inputs, so a number that passes here can never be
-           refused there. Reuses `.minwrap` rather than growing a class — the
-           layout it wants is identical. Read by newGame ONLY when there is no
-           game to clone from; see DEFAULT_SETTINGS. -->
+      <!-- The team's own name. A `setrow` like every other row in this box now
+           that the box itself carries the name in its heading -- there is
+           nothing left on the Team tab to hold a label for it. -->
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">Team name</div>
+          <p class="note">Heads the card when a game has no opponent, and names the day above your games.</p>
+        </div>
+        <input type="text" id="teamName" maxlength="40" autocomplete="off" placeholder="Wildcats 6th Grade"
+               aria-label="Team name" data-fk="teamName">
+      </div>
+
+      <!-- The team's game format. Number fields, by the same line the league
+           minimum drew: a seg teaches a closed set of stances, a field
+           transcribes a value off a rulebook, and "four eights" is
+           transcription. Same `min`/`max` as the Rules fold's own inputs, so a
+           number that passes here can never be refused there. Reuses
+           `.minwrap` rather than growing a class — the layout it wants is
+           identical. Read by newGame ONLY when there is no game to clone
+           from; see DEFAULT_SETTINGS. -->
       <div class="setrow">
         <div class="setrow-b">
           <div class="setrow-t">A game is</div>
@@ -976,7 +1020,7 @@
           <p class="note">
             When the clock will not divide evenly, somebody plays one stint less. Choose
             who lands on the high side. Minimum minutes, caps and minutes you set by hand
-            all still win. Until you set levels on this page, both settle it the
+            all still win. Until you set levels on the Team page, both settle it the
             same way.
           </p>
         </div>
@@ -1043,68 +1087,51 @@
           <button class="press" type="button" data-sdef="1">With the season</button>
         </div>
       </div>
-    </div>
 
-  </main>
-
-  <!-- ============================ SEASON ============================ -->
-  <!-- The ledger, painted by season-view.js. It spent its first slices at the
-       foot of the roster page because a third nav tab was judged not to fit at
-       360px; re-measured with the real bar, it does — see the header in
-       season-view.js. Everything inside is unchanged, markup and copy both:
-       this view is a move, not a rewrite. -->
-  <main class="view wrap noprint" id="view-season" hidden style="max-width:820px">
-    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Season<span class="note sn-count" id="seasonCount"></span></h1>
-    <!-- One box, no `.side-hd`: the page heading above already says Season, and
-         a box captioned with the word directly under it says it twice. The note
-         stays inside the box with the ledger it describes -- a `p.note` loose in
-         a view is what test/note-placement.test.js exists to stop. -->
-    <div class="side-box">
-      <p class="note" style="margin:0 0 .9rem">
-        Every game you have finished with this team, and what each player actually played.
-        Games are filed when you choose <b>New day</b>.
-      </p>
-      <div id="seasonbox"></div>
-    </div>
-  </main>
-
-  <!-- =========================== SETTINGS ===========================
-       Two labelled zones, and after A40 slice 2 they are the whole page:
-       "Benchcard" -- the theme and the help sheet, which span every team --
-       and "Backup", which replaces everything on the device.
-
-       NOTHING PER-TEAM LIVES HERE ANY MORE. The five per-team controls
-       (`teams[].settings`: the format defaults, `maxSubs`, the tie-break
-       stance, the league minimum and the carryover default) moved onto the
-       Team tab in one piece, because that tab is now named for the team and a
-       coach standing on it reasonably expects the team's rules there. They
-       still render from `teams-view.js`, and `renderSettings()` still runs on
-       every render whatever view is showing.
-
-       Behind a cog rather than a fourth tab: the tab budget is spent (see the
-       bar), and what is left here is set once and then left alone. -->
-  <main class="view wrap noprint" id="view-settings" hidden style="max-width:820px">
-    <h1 style="font-size:clamp(1.6rem,3.4vw,2.05rem);letter-spacing:-.042em">Settings</h1>
-
-    <!-- Zone order, A25's decision and still binding: the things a coach
-         recognises first -- the theme and the help sheet -- and Backup last
-         and alone, because it is the one control that replaces everything on
-         the device. A25 fixed a page where "How this works" opened at y=1459
-         of a 1938px page, two screens under five rows of league rules. Those
-         rows have since moved to the Team tab, which cannot put the help
-         sheet back down there -- but the ORDER is the rule, not the row count,
-         and A25's `.side-box > .set-h:first-child` margin fix is still what
-         keeps Backup's caption level with the box above it.
-         `test/settings.test.js` pins both halves. -->
-    <div class="side-box">
-      <div class="side-hd">Benchcard</div>
-
+      <!-- Removing the team. A `setrow` like the rest of the box, not the old
+           `.teamrow`: `#addTeam` left with A40's `+ Team` chip in the strip, so
+           this row is `#removeTeam` alone, with `#teamCount` (painted by
+           `roster-view.js`'s `renderTeamControls`, unchanged) standing in for
+           the note a row with nothing else to say would otherwise carry. -->
       <div class="setrow">
         <div class="setrow-b">
-          <div class="setrow-t">Theme</div>
-          <p class="note">Follows your device until you pick one. Currently <b id="themeNow">automatic</b>.</p>
+          <p class="note" id="teamCount"></p>
         </div>
-        <button class="btn icon press" id="theme" title="Theme" aria-label="Toggle theme"></button>
+        <button class="btn ghost danger sm press" id="removeTeam" type="button">Remove this team</button>
+      </div>
+    </div>
+
+    <!-- The Benchcard box: Appearance first (S3/K4), then How it works, then
+         the three links the in-app footer also carries until #37 removes it,
+         then Backup and restore last -- A25's decision, still binding. A25
+         fixed a page where "How this works" opened at y=1459 of a 1938px
+         page, two screens under five rows of league rules; those rows now
+         live in the team box above, but the ORDER survives them -- the things
+         a coach recognises first, and the control that replaces everything on
+         the device last. Backup is the last block IN this box, not a fourth
+         `side-box` of its own -- the ticket's acceptance criterion is one
+         Benchcard section that ends with it, and a browser check at 390x844
+         found a third box rendering below this one before that held.
+         `test/settings.test.js` pins the order. -->
+    <div class="side-box" style="margin-top:1rem">
+      <div class="side-hd">Benchcard</div>
+
+      <!-- Appearance. Three buttons, the same `.seg` pattern (and the same
+           `.on` / `aria-pressed` convention) `#maxSubsSeg` uses above --
+           `applyTheme()` in render.js marks the current one, the one place
+           `auto` is resolved and `data-theme` / `theme-color` are written.
+           Replaces the old icon cycler and its `#themeNow` read-back: a
+           three-way choice reads better as three named buttons than as a
+           button you have to press to find out what it will do next. -->
+      <div class="setrow">
+        <div class="setrow-b">
+          <div class="setrow-t">Appearance</div>
+        </div>
+        <div class="seg wide" id="themeSeg" role="group" aria-label="Appearance">
+          <button class="press" type="button" data-theme="auto">Automatic</button>
+          <button class="press" type="button" data-theme="light">Light</button>
+          <button class="press" type="button" data-theme="dark">Dark</button>
+        </div>
       </div>
 
       <div class="setrow">
@@ -1113,15 +1140,49 @@
           <p class="note">The reference sheet, and the guided tour again.</p>
         </div>
         <button class="btn press" id="helpBtn" type="button" aria-label="How it works">Open</button>
+        <!-- Calls exactly what `#helpTour`, inside the help sheet, calls --
+             `shortcuts.js` wires both to the one function rather than starting
+             the tour a second way. -->
+        <button class="btn press" id="helpTourSettings" type="button">Show me around again</button>
       </div>
-    </div>
 
-    <div class="side-box" style="margin-top:1rem">
-      <!-- Everything this app knows lives in one browser key, and a browser is
-           allowed to throw that away. It was at the very bottom of the roster
-           page for exactly the reason it is at the bottom of this one: nowhere
-           a coach can hit it in a gym. -->
-      <h4 class="set-h">Backup</h4>
+      <!-- About, Contact and Buy me a coffee: full-width link rows, `.setrow`
+           for the same flex/border/48px-floor rule as every row above, plus
+           `.linkrow` for the parts a row with an anchor for a root needs that
+           a `<div>` row does not (block-level `<a>`, no underline, a chevron
+           marking it as a link). Each one's accessible name is its visible
+           text -- the chevron is `aria-hidden`. -->
+      <a class="setrow linkrow" href="./about">
+        <span class="setrow-t">About</span>
+        <span class="linkrow-chev" aria-hidden="true">›</span>
+      </a>
+      <!-- Deliberately a plain address and not a "get in touch!" pitch: the
+           reader this is for is a league or YMCA sports director deciding
+           whether to link the app, and they need a way to reach a person, not
+           to be sold to. -->
+      <a class="setrow linkrow" href="mailto:hello@benchcard.app">
+        <span class="setrow-t">Contact</span>
+        <span class="linkrow-chev" aria-hidden="true">›</span>
+      </a>
+      <!-- `data-tip-link` is the one selector `toast.js` reads TIP_URL
+           through -- the footer's `#tipLink` carries it too. No id here: this
+           row needs no reader of its own, and the footer already keeps
+           `tipLink` unique. Hidden the same way: no TIP_URL, no row. -->
+      <a class="setrow linkrow" data-tip-link href="#" target="_blank" rel="noopener noreferrer">
+        <span class="setrow-t">Buy me a coffee</span>
+        <span class="linkrow-chev" aria-hidden="true">›</span>
+      </a>
+
+      <!-- Backup and restore: the last block in the Benchcard box, not a
+           fourth `side-box` -- the ticket's acceptance criterion is one
+           Benchcard SECTION that ends with it. `.setrow + .set-h` draws the
+           same divider line the rows above already draw between each other,
+           so the boundary reads the same way even though this block is not
+           itself a `.setrow`. Everything this app knows lives in one browser
+           key, and a browser is allowed to throw that away. It was at the
+           very bottom of the roster page for exactly the reason it is at the
+           bottom of this one: nowhere a coach can hit it in a gym. -->
+      <h4 class="set-h">Backup and restore</h4>
       <p class="note" style="margin:0 0 .7rem">
         Your roster is saved in this browser and nowhere else. Clearing your history can
         erase it, and so can leaving Benchcard unopened for a week on an iPhone. Save a
@@ -1344,7 +1405,7 @@
           out there for the whole half.</dd>
       </dl>
       <p class="help-p">One rule is worth setting once rather than per game. If your
-        league says everyone plays a minimum, the <b>Team</b> tab holds
+        league says everyone plays a minimum, <b>Settings</b> holds
         <b>Everyone plays at least … min</b>, a floor for the whole team that reaches
         every available player in every game. A minimum you set on one player still wins
         when it is higher, and a cap you set still wins when it is lower.</p>
@@ -1361,7 +1422,7 @@
         spreadsheet. Once a season has games in it, every game gets a second switch called
         <b>Even out the season so far</b>. It starts the players who are behind for
         the season a stint or two up, and the ones ahead a stint or two down. The switch
-        is off to begin with; the <b>Team</b> tab can have each new game open with it
+        is off to begin with; <b>Settings</b> can have each new game open with it
         already on.</p>
 
       <h4 class="help-h">Reading the card</h4>
@@ -1437,7 +1498,7 @@
            to be sold to. Same class as the About link so it inherits the 44px
            tap target the smoke check enforces. -->
       <a class="foot-link" href="mailto:hello@benchcard.app">Contact</a>
-      <a class="tip press" id="tipLink" href="#" target="_blank" rel="noopener noreferrer">
+      <a class="tip press" id="tipLink" data-tip-link href="#" target="_blank" rel="noopener noreferrer">
 <span class="tip-ico i" data-icon="coffee"></span><span>Buy me a coffee</span>
       </a>
     </div>

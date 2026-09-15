@@ -336,7 +336,7 @@ test('both ways in are offered from both entry points', () => {
   const welcome = indexHtml.slice(indexHtml.indexOf('id="view-welcome"'), indexHtml.indexOf('id="view-team"'));
   // anchored on the heading a coach actually reads, not on a wrapper element:
   // the `<div id="backupbox">` this used to cut at existed only for this line
-  const backupBox = indexHtml.slice(indexHtml.indexOf('class="set-h">Backup<'));
+  const backupBox = indexHtml.slice(indexHtml.indexOf('class="set-h">Backup and restore<'));
   for (const [name, html] of [['first run', welcome], ['settings', backupBox]]) {
     assert.match(html, /class="pastein/, `${name} offers no way to paste a backup`);
     assert.match(html, /welRestore|importBackup/, `${name} lost its file picker`);
