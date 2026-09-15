@@ -621,19 +621,60 @@ async function todayAndBackPass(c, origin) {
       await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
     }
 
-    // a reload on the pushed screen, then one history.back() lands on Today.
+    /* Reloading a pushed screen resets the module's in-memory `shown`/`pushed`
+       to null/false, but not the tab's session history -- boot has to read
+       `history.state` to tell "this entry already IS the pushed screen" from
+       a fresh tab, or it stacks a dead Today entry under the reopened one
+       every time. Reloading TWICE and then backing out TWICE catches what
+       reloading once and backing out once can't: after a single reload the
+       first `history.back()` lands on Today either way, because there is at
+       most one dead entry to absorb it; a second reload adds a second dead
+       entry, so a fix that only relabels instead of also pushing shows up as
+       `history.length` growing between the two reloads, and as the second
+       `history.back()` landing on yet another Today instead of actually
+       leaving. */
     await evalIn(c, step(openJs));
-    const reloaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await evalIn(c, `location.reload()`);
-    await reloaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('.today-game, #barBack'); i++) await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
-    const afterReloadLen = await evalIn(c, 'history.length');
+    const reloadOnce = async () => {
+      const reloaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+      await evalIn(c, `location.reload()`);
+      await reloaded;
+      await evalIn(c, `(async () => { await document.fonts.ready;
+        for (let i = 0; i < 60 && !document.querySelector('.today-game, #barBack'); i++) await new Promise(r => setTimeout(r, 50));
+        await ${SETTLE}; })()`);
+      return evalIn(c, 'history.length');
+    };
+    const lenAfterReload1 = await reloadOnce();
+    const lenAfterReload2 = await reloadOnce();
+    if (lenAfterReload2 !== lenAfterReload1) {
+      problems.push(`${name}: a second reload on the pushed screen grew history.length `
+        + `${lenAfterReload1} -> ${lenAfterReload2}, want no growth`);
+    }
+    const hrefAfterReloads = await evalIn(c, 'location.href');
+
+    // one `history.back()` from the twice-reloaded pushed screen lands on
+    // Today -- still the same document, a same-page pushState/replaceState
+    // entry, not a navigation.
     await evalIn(c, `history.back()`);
     await new Promise(r => setTimeout(r, 200));
     await evalIn(c, SETTLE);
-    if (!(await onToday())) problems.push(`${name}: a reload then one history.back() did not land on Today (history.length was ${afterReloadLen})`);
+    if (!(await onToday())) {
+      problems.push(`${name}: two reloads then one history.back() did not land on Today `
+        + `(history.length was ${lenAfterReload1} -> ${lenAfterReload2})`);
+    }
+
+    // a SECOND `history.back()` has to leave for good: the entry before the
+    // one boot ever created for this document, a real navigation to a
+    // different document (`location.href` changes), not another Today.
+    await evalIn(c, `history.back()`);
+    let hrefAfterSecondBack = hrefAfterReloads;
+    for (let i = 0; i < 40 && hrefAfterSecondBack === hrefAfterReloads; i++) {
+      await new Promise(r => setTimeout(r, 50));
+      hrefAfterSecondBack = await evalIn(c, 'location.href').catch(() => hrefAfterSecondBack);
+    }
+    if (hrefAfterSecondBack === hrefAfterReloads) {
+      problems.push(`${name}: a second history.back() after Today stayed on `
+        + `${hrefAfterSecondBack} instead of leaving for the previous document`);
+    }
   }
 
   await reloadWith(RICH);

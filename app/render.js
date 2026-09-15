@@ -162,6 +162,23 @@ export function soon(...keys) {
  * reload. Welcome makes no entries at all: there is nothing to back out to
  * before there is a team.
  *
+ * A reload resets this module's own `shown`/`pushed` to null/false, but not
+ * the tab's session history -- boot has to read `history.state` to tell a
+ * reload of a PUSHED screen apart from a genuinely fresh tab, or every reload
+ * would repeat the "replace with Today, push the resolved screen" pair above
+ * on top of the entry that pair already produced last time, stacking one
+ * dead Today entry per reload (#23 review, unbounded `history.length`). When
+ * the current entry already names a pushed (non-Today) screen, and the
+ * screen boot resolves to is also not Today, that entry is relabelled in
+ * place instead -- the entry beneath it is Today by construction, so there
+ * is nothing left to establish. The one case that does NOT relabel is the
+ * saved view and the live entry disagreeing about Today itself (e.g. another
+ * tab wrote `state.view: 'today'` while this tab's own last entry was still
+ * a pushed screen): trusting the entry there would leave `pushed` true with
+ * Today on screen, and the next "go home" tap would fire a `history.back()`
+ * with nothing real to go back from. That one case falls back to the plain
+ * replace instead, same as a fresh tab.
+ *
  * This used to run through `document.startViewTransition`, and that cost four
  * rounds of debugging one bug reported from a phone: the top bar dissolving
  * mid-swap. Three mechanisms were found and correctly fixed and it still did
@@ -185,10 +202,12 @@ export function soon(...keys) {
  * being left. `instant` no longer changes the animation (there is none to
  * suppress) but callers still pass it, and it still means "no scrolling
  * either": `printCard` uses it because `window.print()` fires in the same
- * tick. Returns undefined — `applyView` is synchronous except for the one
- * path that pops history (going to Today from a pushed screen), where the
- * repaint happens a moment later, from `popstate`, once the browser has
- * actually gone back. */
+ * tick. Returns undefined — `applyView` always paints synchronously, inside
+ * this call, including going to Today from a pushed screen: that path
+ * applies the repaint itself before it ever calls `history.back()` (#23
+ * review, item A), rather than waiting for the `popstate` the `back()` call
+ * raises a moment later, which only echoes bookkeeping that already
+ * happened. */
 let shown = null;
 let pushed = false;   // true while the current entry is [Today, shown], not just [Today]
 
@@ -215,9 +234,18 @@ export function setView(v, instant) {
     // no entries touched -- there is nothing to back out to before there is
     // a team, and `pushed` is left exactly as it was (see the comment above)
   } else if (bootstrapping) {
-    history.replaceState({ view: 'today' }, '');
-    pushed = false;
-    if (v !== 'today') { history.pushState({ view: v }, ''); pushed = true; }
+    // `history.state`, not `pushed` (already reset to false by the reload
+    // that got here) -- see the comment above for why, and for the one case
+    // that deliberately does NOT take this branch.
+    const already = history.state && history.state.view;
+    if (already && already !== 'today' && v !== 'today') {
+      history.replaceState({ view: v }, '');
+      pushed = true;
+    } else {
+      history.replaceState({ view: 'today' }, '');
+      pushed = false;
+      if (v !== 'today') { history.pushState({ view: v }, ''); pushed = true; }
+    }
   } else if (v === 'today') {
     if (pushed) {
       /* Applied HERE, synchronously, not left for the `popstate` this
