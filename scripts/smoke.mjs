@@ -500,12 +500,44 @@ async function todayAndBackPass(c, origin) {
   };
   await checkMenuAnchored(`${WIDTH}px`);
 
+  /* Today's own hierarchy (#23 review, item 2): the PRIMARY label in each
+     row -- a game's own name, "Team", "Season" -- has to stay at least as
+     large as the secondary text beside it (a tip-off time, a player count),
+     at every text size, not just the one the app was eyeballed at. `.btn`
+     and `#teamBtnLabel`'s own `.95rem` already scale with the root; the two
+     labels checked here were the ones that did not (both inherited the
+     body's bare `15px`, an absolute unit a reader's "bigger text" setting
+     cannot touch, while their secondary text already used `rem`). */
+  const checkLabelHierarchy = async (label) => {
+    const sizes = JSON.parse(await evalIn(c, `JSON.stringify((() => {
+      const size = s => { const e = document.querySelector(s); return e ? parseFloat(getComputedStyle(e).fontSize) : null; };
+      return {
+        gameLb: size('.today-game-lb'), gameWhen: size('.today-game-when'),
+        entryLab: size('.today-entry-lab'), entrySub: size('.today-entry-sub'),
+      };
+    })())`));
+    if (sizes.gameLb == null || sizes.gameWhen == null) {
+      problems.push(`${label}: could not measure .today-game-lb/.today-game-when`);
+    } else if (sizes.gameLb < sizes.gameWhen) {
+      problems.push(`${label}: .today-game-lb is ${sizes.gameLb}px, smaller than `
+        + `.today-game-when's ${sizes.gameWhen}px -- the game's own name reads smaller than its tip-off`);
+    }
+    if (sizes.entryLab == null || sizes.entrySub == null) {
+      problems.push(`${label}: could not measure .today-entry-lab/.today-entry-sub`);
+    } else if (sizes.entryLab < sizes.entrySub) {
+      problems.push(`${label}: .today-entry-lab is ${sizes.entryLab}px, smaller than `
+        + `.today-entry-sub's ${sizes.entrySub}px -- "Team"/"Season" reads smaller than their own subtitle`);
+    }
+  };
+  await checkLabelHierarchy(`${WIDTH}px`);
+
   await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
   try {
     await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
     await c.send('Emulation.setDeviceMetricsOverride',
       { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
     await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    await checkLabelHierarchy(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
     await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
     await checkMenuAnchored(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
     await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
@@ -1888,6 +1920,16 @@ const APP_LARGE_TEXT_ALLOW = {
  * on the games screen for whatever runs next. */
 const APP_LARGE_TEXT_STATES = [
   ...VIEWS,
+  /* AND THE TEAM MENU OPEN, on Today: a native popover is its own box in the
+     top layer, sized independently of the screen behind it, and none of the
+     five `VIEWS` states above ever opens one. Reported from a real browser
+     (#23 review): `.teammenu`'s `min-width: 14rem` beat its own `max-width`
+     at a 32px root -- 448px against a 265.6px ceiling in a 320px viewport --
+     and the menu overflowed on both axes, invisible to every other state
+     here because closing a popover before moving to the next screen is what
+     every other click in this file already does. */
+  { name: 'team menu open', open: `${TODAY_HOME}; document.querySelector('#teamBtn')?.click()`,
+    close: `document.querySelector('#teamMenu')?.hidePopover?.()` },
   { name: 'bench mode', open: `document.querySelector('#gmOpen').click()`,
     close: `document.querySelector('#gmClose').click()` },
   /* AND A TOAST, which this pass could not see either, for a different reason:

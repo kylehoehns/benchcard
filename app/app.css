@@ -254,9 +254,17 @@ a { color: inherit; }
    menu would sit in the page as a 0-width flex box that a 32px root font
    still gives a `min-width` -- reported as a phantom 475px-wide element on
    Today, where nothing was ever open. `:popover-open` is what turns it on. */
+/* `min-width` is bounded by the same viewport ceiling `max-width` already
+   is, not a bare `14rem`: at a 32px root that is 448px, which beat a 265.6px
+   `max-width` in a 320px viewport -- `min-width` wins that fight regardless
+   of specificity, so the menu overflowed both axes (#23 review). Clamping
+   both to the same `min(…, calc(100vw - 1.7rem))` ceiling means neither can
+   ever ask for more room than the screen minus its gutters has to give, so
+   `min-width` can never again be the wider of the two. */
 .teammenu { position: fixed; margin: 0;
   padding: .4rem; border-radius: var(--r); border: 1px solid var(--line);
-  background: var(--surface); box-shadow: var(--shadow-lg); min-width: 14rem;
+  background: var(--surface); box-shadow: var(--shadow-lg);
+  min-width: min(14rem, calc(100vw - 1.7rem));
   max-width: min(22rem, calc(100vw - 1.7rem)); }
 .teammenu:popover-open { display: flex; flex-direction: column; gap: .1rem; }
 .teammenu-item { display: flex; align-items: center; gap: .6rem; min-height: 44px;
@@ -273,8 +281,17 @@ a { color: inherit; }
   padding: .7rem .95rem; border-radius: var(--r); border: 1px solid var(--line);
   background: var(--surface); font: inherit; text-align: left; }
 @media (hover: hover) { .today-game:hover { border-color: var(--line-2); } }
+/* `1rem`, not inherited: `.today-game`'s `font: inherit` pulls in `body`'s
+   bare `15px` otherwise, an absolute unit a reader's larger-text setting
+   cannot move, while `.today-game-when` right beside it is already `rem`
+   and scales -- at a 32px root the tip-off time grew past the game's own
+   name (#23 review, item 2). `1rem` is the plainest rem value close to the
+   15px this read at a 16px root (1px more); every other size on Today and
+   in the team menu is already some fraction of a rem, and none of them
+   happens to land on 15px exactly, so there is no existing token to reuse
+   here rather than pick one. */
 .today-game-lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; font-weight: 600; }
+  white-space: nowrap; font-size: 1rem; font-weight: 600; }
 .today-game-when { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .today-game .bad { width: .5rem; height: .5rem; border-radius: 50%; background: var(--err);
   animation: pop var(--t) var(--spring) both; flex: none; }
@@ -289,7 +306,8 @@ a { color: inherit; }
   border-radius: var(--r); border: 1px solid var(--line); background: var(--surface);
   font: inherit; text-align: left; }
 @media (hover: hover) { .today-entry:hover { border-color: var(--line-2); } }
-.today-entry-lab { font-weight: 700; letter-spacing: -.01em; }
+/* Same reason and the same value as `.today-game-lb` above. */
+.today-entry-lab { font-size: 1rem; font-weight: 700; letter-spacing: -.01em; }
 .today-entry-sub { color: var(--muted); font-size: .87rem; flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
