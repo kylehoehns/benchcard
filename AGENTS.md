@@ -91,7 +91,9 @@ copying them. `/ship-feature` runs an issue end to end with the subagents in
 `.claude/agents/`. `/grill-with-docs` is the interview it starts with, built
 from `/grilling` and `/domain-modeling`. `/to-spec` and `/to-tickets` turn a
 settled conversation into issues, and `/setup-matt-pocock-skills` wrote their
-configuration. Those six are Matt Pocock's, copied in unchanged so they can be
+configuration. `/tdd` is how a change is built: one failing test at a seam the
+spec named, then just enough code to pass it, then the next. Those seven are
+Matt Pocock's, copied in unchanged so they can be
 refreshed from upstream — except that the setup skill keeps only its GitHub
 tracker template, because issues here live on GitHub. **They are Claude-specific. This file is not** — anything an
 agent must know to avoid breaking the tree belongs here, where every tool reads
@@ -174,13 +176,15 @@ nothing else. It is not proof: a partial run says nothing about the other 21
 checks, and the full `npm run smoke` still stands between every change and its
 PR. **The iterate-then-prove rule**: while iterating, run `node --test <file>`
 for the file you touched and `--only "<check>"` for the check it covers, never
-the full suite. Then, once, before handing back, the proof pair — skipping
-its smoke half if you touched nothing under `app/` or `scripts/smoke*`.
-**The proof pair** is `npm test` then `npm run smoke -- --no-tests`, so the
-suite runs once, not twice. A `/ship-feature` proof point always runs both
-halves, because its handoff has to cover the tree it names. An agent handed a
-tree a proof point already recorded as green does not re-run it to say so
-again.
+the full suite. Before handing work to someone else, `npm test` once — it is
+the half that catches a markup move breaking a test three files away — and
+not smoke. **The proof pair runs once per commit, by whoever commits**, and
+nowhere else: `npm test` then `npm run smoke -- --no-tests`, so the suite runs
+once, not twice, and both halves always, because the commit's handoff has to
+cover the tree it names. On #22 every agent ran the pair before handing back
+and the committer ran it again on the same bytes — about twelve pairs for one
+ticket, half of them repeats. A tree a commit already recorded as green is not
+re-run to say so again.
 
 The payload budget is a **recorded** baseline in `scripts/budgets.json`.
 **Bytes and nodes are regression alarms, not constraints**: the shell is
@@ -229,8 +233,11 @@ Guards here have gone green against a broken tree five separate ways: a floor
 that could never be met, a fail count the runner never printed, a `-1` sentinel
 that made `-1 > 0` the verdict, a name that differed by file, and a restore
 that deleted the very fix under test. **`/new-guard` owns the procedure and all
-five.** Do not write, edit or trust anything that reports pass/fail — a test, a
-CI check, a hook, a mutation harness — without it.
+five.** Do not write, edit or trust a check that judges the tree — a smoke
+check, a CI script, a hook, a mutation harness, a test that reads source or
+docs rather than running code — without it. A test that exercises behaviour
+through a seam is built with `/tdd` instead: watching it fail for the right
+reason before the code exists is its proof that it can.
 
 ## Judgement
 

@@ -1,6 +1,6 @@
 ---
 name: new-guard
-description: How to write, falsify and trust a guard in this repo -- a test, a CI check, a hook, or any script that reports pass/fail -- and the five ways guards here have gone green against a broken tree. Use when adding or editing anything under test/ or scripts/ that judges the tree, when writing a mutation harness, and whenever a check reports a suspiciously perfect result.
+description: How to write, falsify and trust a guard in this repo -- a check that judges the tree (a smoke check, a CI script, a hook, a test that reads source or docs) -- and the five ways guards here have gone green against a broken tree. Use when adding or editing such a check under test/, scripts/ or .claude/hooks/, when writing a mutation harness, and whenever a check reports a suspiciously perfect result. A test that runs app behaviour through a seam is built with /tdd instead.
 allowed-tools: Bash(node --test*), Bash(npm test), Bash(node scripts/*)
 ---
 
@@ -24,6 +24,12 @@ noise.
 the failure, restore. **A guard that cannot fail is not a guard, and one that
 cannot pass is broken.** A guard that cannot fail is a statement that
 everything is fine, printed unconditionally.
+
+**2a. A check that measured nothing FAILS.** #22's settings-row smoke check
+printed "up to 0 rows, all ≥ 48px" and passed when Settings never opened and
+when every row's class was renamed. Zero elements found, zero files read, zero
+matches scanned: each is a broken guard, not a clean result. Assert the count
+before you assert anything about the items.
 
 **3. Mutation-check by ADDING a member, not only by renaming one.** A
 cross-file scan went green against a wrong implementation because it matched a
