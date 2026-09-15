@@ -171,12 +171,25 @@ export function soon(...keys) {
  * is on screen and focusable by the time this returns. */
 let shown = null;
 
+/* The last real view -- neither Settings nor the welcome screen -- so the cog
+   in app.js can back out to wherever the coach actually was, no matter which
+   caller sent them into Settings (the cog itself, `addTeam()`'s "+ Team", an
+   undo whose restored snapshot lands there). One writer, here, where every
+   view change already passes through; defaults to 'games' so a reload that
+   lands on Settings still backs out the way the cog's own comment promises. */
+let lastView = 'games';
+
 export function setView(v, instant) {
   if (!state.onboarded) v = 'welcome';
+  if (v !== 'settings' && v !== 'welcome') lastView = v;
   const from = shown;
   shown = v;
   applyView(v);
   if (!instant && from && from !== v) window.scrollTo(0, 0);
+}
+
+export function viewBeforeSettings() {
+  return lastView;
 }
 
 function applyView(v) {

@@ -32,7 +32,7 @@ import { initSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
 import { initToast, undoable, offer, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
-import { render, renderAll, soon, setView, applyTheme, AFTER_EDIT, PLAN_ONLY } from './render.js';
+import { render, renderAll, soon, setView, applyTheme, viewBeforeSettings, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, removePlayer , nextHue, hueSlots, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, noRoster } from './state.js';
 
@@ -43,13 +43,13 @@ for (const b of document.querySelectorAll('#viewnav button')) b.onclick = () => 
    what a coach opens between games -- so the way in and the way out are the
    same button. Tapping it again puts them back where they were rather than
    doing nothing: the three tabs are right there, but an icon that reads as
-   pressed and then ignores a second press reads as broken. `back` is remembered
-   here rather than in `state` because it is about this visit, not this record;
-   a reload landing on Settings should just show Settings. */
-let backFrom = 'games';
+   pressed and then ignores a second press reads as broken. `viewBeforeSettings()`
+   is remembered in render.js rather than in `state` because it is about this
+   visit, not this record; a reload landing on Settings should just show
+   Settings (which is also why it defaults to 'games' rather than reading
+   `state.view` here). */
 on('#settingsBtn', 'onclick', () => {
-  if (state.view === 'settings') { setView(backFrom); return; }
-  backFrom = state.view === 'welcome' ? 'games' : state.view;
+  if (state.view === 'settings') { setView(viewBeforeSettings()); return; }
   setView('settings');
 });
 for (const b of document.querySelectorAll('#stratseg button')) {
