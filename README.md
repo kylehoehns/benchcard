@@ -79,7 +79,7 @@ cd benchcard && npm run serve
 From the repo root:
 
 ```sh
-npm test                        # the suite — 1045 tests, node --test, zero deps
+npm test                        # the suite — 1033 tests, node --test, zero deps
 npm run smoke                   # browser checks: layout, a11y, card size, budgets (count in AGENTS.md)
 npm run evals                   # the agent-harness eval suite
 ```

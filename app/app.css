@@ -2593,9 +2593,6 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    that is not itself a `.setrow` still reads as one more row starting, not a
    different kind of break. */
 .setrow + .set-h { border-top: 1px solid var(--line); }
-/* The season count rides on the page heading now, not on a box caption, so it
-   has to stand down from an h1's size and sit on its baseline. */
-h1 > .sn-count { vertical-align: middle; font-weight: 560; }
 
 /* =========================== #22: one Settings screen ===========================
    The 48px floor (I1) is scoped to `#view-settings` alone -- the app-wide 44px

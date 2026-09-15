@@ -22,15 +22,14 @@ test('the undo refresh knows it is an undo', () => {
   assert.match(undoable.slice(0, undoable.indexOf('\n}')), /\(refresh \|\| viewRefresh\)\(\)/);
 });
 
-test('the default refresh itself lands an undo on the screen its snapshot names (#23)', () => {
-  const fn = toast.slice(toast.indexOf('function viewRefresh'));
-  assert.match(fn.slice(0, fn.indexOf('\n}')), /setView\(state\.view\)/);
-});
-
-test('undoing a team removal returns to Settings, where it was removed from', () => {
-  const fn = teams.slice(teams.indexOf('function removeTeam'), teams.indexOf("/* ---------------- Today's games"));
-  assert.match(fn, /setView\(undoing \? 'settings' : 'today'\)/);
-});
+/* Two source-regex assertions used to live here: that `viewRefresh` calls
+   `setView(state.view)`, and that `removeTeam`'s own refresh calls
+   `setView(undoing ? 'settings' : 'today')`. Both are now proven by running
+   the behaviour, in `node scripts/smoke.mjs --only "today keys and undo"`
+   (#23 review) -- New day, Add a game, Remove this game and Remove team all
+   land the coach where their undo snapshot says, and a source match that
+   cannot tell "true" from "merely spelled the same" was the weaker of the
+   two guards on the same claim. */
 
 /* ------------------------------------------------------------------ *
  * an undo must not take a later edit down with it

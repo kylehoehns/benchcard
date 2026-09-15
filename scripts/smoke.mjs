@@ -338,11 +338,24 @@ async function fixturePass(c) {
     out.resetLevels = [...document.querySelectorAll('#view-team button')]
       .filter(b => /back to the same level/i.test(b.textContent)).length;
     $('#backBtn').click();
+    /* Going home from a pushed screen is a REAL \`history.back()\` now (#23
+       review, item A) -- an async browser traversal, not a same-tick repaint.
+       Clicking the next thing before its own \`popstate\` has landed is
+       exactly the "back-then-push in one tick" race that traversal's own
+       fix guards against, and the guard's recovery is to reassert history at
+       the CURRENT position -- which is safe, but is not "nothing happened",
+       and chaining three of these with no yield between them was enough to
+       walk the tab's session history back past this reload's own base entry
+       and off the app entirely (reproduced: \`npm run smoke -- --no-tests\`
+       died with "Inspected target navigated or closed" mid-\`fixturePass\`).
+       One settle is the fix, here and at every \`#backBtn\` click below. */
+    await ${SETTLE};
     $('.today-game').click();
     await ${SETTLE};
     out.dayRows = document.querySelectorAll('#daytotals .dayrow').length;
     out.dayGames = document.querySelectorAll('#daytotals .legend span').length;
     $('#backBtn').click();
+    await ${SETTLE};
     $('#todaySeason').click();
     await ${SETTLE};
     out.filedGames = document.querySelectorAll('#view-season details.sn-game').length;
@@ -671,7 +684,34 @@ async function todayKeysAndUndoPass(c, origin) {
   }
 
   // Remove this game -> Today -> Undo -> that game's screen again.
-  await evalIn(c, step(`document.getElementById('removeGame')?.click()`));
+  /* #23 review, item A: the click and the FIRST read happen in one
+     `evalIn` call, with nothing awaited in between -- so this measures
+     what is true the instant the synchronous click handler returns, before
+     the page has had a chance to paint a frame or run a microtask. Before
+     the fix, `setView('today')` returned immediately on `history.back()`
+     and left the actual screen change to the async `popstate` that
+     followed, so `#view-games` was still visible and `state.view` (and the
+     saved record) still said 'games' right here -- a real, reachable,
+     reload-durable mid-transition state, not a rendering nicety. */
+  const immediate = JSON.parse(await evalIn(c, `(async () => {
+    document.getElementById('removeGame')?.click();
+    const hiddenNow = document.getElementById('view-games')?.hidden;
+    const { state } = await import('${origin}/state.js');
+    const viewNow = state.view;
+    let savedView = null;
+    try { savedView = JSON.parse(localStorage.getItem('benchcard.v6')).view; } catch {}
+    return JSON.stringify({ hiddenNow, viewNow, savedView });
+  })()`));
+  if (immediate.hiddenNow !== true) {
+    problems.push(`Remove this game: #view-games.hidden is ${immediate.hiddenNow} immediately after the click, want true`);
+  }
+  if (immediate.viewNow !== 'today') {
+    problems.push(`Remove this game: state.view is "${immediate.viewNow}" immediately after the click, want "today"`);
+  }
+  if (immediate.savedView !== 'today') {
+    problems.push(`Remove this game: the saved record's view is "${immediate.savedView}" immediately after the click, want "today"`);
+  }
+  await evalIn(c, SETTLE);
   const onTodayAfterRemove = await onToday();
   const undoShown2 = await evalIn(c, `!!document.querySelector('#toasts .toast[data-undo]')`);
   if (!onTodayAfterRemove) problems.push('Remove this game did not return to Today');
@@ -698,6 +738,48 @@ async function todayKeysAndUndoPass(c, origin) {
   await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
   const onSettingsAfterUndo = await evalIn(c, `!!(document.getElementById('view-settings') && !document.getElementById('view-settings').hidden)`);
   if (!onSettingsAfterUndo) problems.push('undoing the team removal did not return to Settings');
+  await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
+
+  /* #23 review, item B: removing the LAST team on a single-team record
+     (RICH ships with one), so this is the welcome-bound case the two-team
+     test above deliberately is not. Going to welcome touches no history at
+     all, so the `Settings` entry the coach was standing on stays live in
+     the session history -- and the physical back button (simulated with a
+     real `history.back()`, not `setView`) must still be able to land on
+     it. Before the fix, `popstate` applied whatever `e.state` named with no
+     onboarding check, painting a stale Settings (or Today) over an app that
+     no longer has a team. */
+  await reloadWithRecord(c, origin, RICH);
+  await evalIn(c, step(`document.getElementById('settingsBtn')?.click()`));
+  await evalIn(c, step(`document.getElementById('removeTeam')?.click()`));
+  await evalIn(c, step(`document.getElementById('confirmYes')?.click()`));
+  const onWelcomeAfterLastRemove = await evalIn(c,
+    `!!(document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden)`);
+  if (!onWelcomeAfterLastRemove) problems.push('removing the last team did not show the welcome screen');
+
+  await evalIn(c, `history.back()`);
+  await evalIn(c, SETTLE);
+  const stillWelcomeAfterBack = await evalIn(c,
+    `!!(document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden)`);
+  const todayHiddenAfterBack = await evalIn(c, `document.getElementById('view-today')?.hidden`);
+  if (!stillWelcomeAfterBack) problems.push('history.back() after removing the last team left welcome for a stale screen');
+  if (todayHiddenAfterBack !== true) {
+    problems.push(`#view-today.hidden is ${todayHiddenAfterBack} after history.back() with no team left, want true`);
+  }
+
+  // Undo from welcome restores Settings, on the SAME [Today, Settings] pair
+  // -- not a third entry stacked on top of the one the coach was already
+  // standing on.
+  const beforeUndoLen = await evalIn(c, `history.length`);
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+  const onSettingsAfterLastUndo = await evalIn(c,
+    `!!(document.getElementById('view-settings') && !document.getElementById('view-settings').hidden)`);
+  const afterUndoLen = await evalIn(c, `history.length`);
+  if (!onSettingsAfterLastUndo) problems.push('undoing the removal of the last team did not restore Settings');
+  if (afterUndoLen !== beforeUndoLen) {
+    problems.push(`undoing the removal of the last team changed history.length ${beforeUndoLen} -> `
+      + `${afterUndoLen}, want no change (the same [Today, Settings] pair, not a third entry)`);
+  }
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
   // Same courtesy `todayAndBackPass` pays: leave RICH (one team, `view:
@@ -1758,10 +1840,10 @@ async function staticPass(c, source, origin) {
  * Nothing was wrong with either existing check; the cell simply had no owner.
  *
  * SAME ONE CELL, for the same reason: 320px at a 32px root is where the app's
- * `19em` large-text block is live and the column is still short. All four
- * views, because the four chromes differ and only one of them has to be wrong
- * — that is the lesson `sweepPass` already wrote down about deriving a view
- * list instead of enumerating one.
+ * `19em` large-text block is live and the column is still short. Every screen
+ * `VIEWS` names, because the five chromes differ and only one of them has to
+ * be wrong — that is the lesson `sweepPass` already wrote down about deriving
+ * a view list instead of enumerating one.
  *
  * ONE NAVIGATION, then the views are switched in the page. A font size cannot
  * be changed without a reload — `Page.setFontSizes` on a laid-out document
@@ -1769,10 +1851,10 @@ async function staticPass(c, source, origin) {
  * view switch reflows on its own, so the reload is paid once, not four times.
  *
  * FOLDS ARE LEFT AS THEY BOOT, unlike `touchPass`. Measured both ways when
- * this shipped: all four views report identically with every `<details>`
+ * this shipped: every screen reports identically with every `<details>`
  * forced open, because the app's folds hide their content with CSS rather than
  * by removing the box, so a closed fold's children still have rects and are
- * still swept. Opening them would cost four more settles for nothing.
+ * still swept. Opening them would cost a settle per screen for nothing.
  *
  * THE ALLOWANCES ARE PER VIEW, never blanket, and each number is the smallest
  * that covers a residue accepted deliberately, with its reason on the key.
@@ -1781,19 +1863,21 @@ async function staticPass(c, source, origin) {
  * red; if it does not, the number is decoration. Do NOT raise one to silence a
  * new failure — that is a bug on the screen the coach stands in front of. */
 const APP_LARGE_TEXT_ALLOW = {
-  /* EMPTY, and that is the finding, not an omission. All four views measured
+  /* EMPTY, and that is the finding, not an omission. Every screen measured
      clean in this cell once the three defects behind the 2026-08-24 report
-     were fixed, so there is no residue to name and every view is pinned at
+     were fixed, so there is no residue to name and every one is pinned at
      zero. Add a key here only for a residue accepted deliberately, with the
      reason on the line and the smallest number that covers it — and tighten it
      by 1px first to prove the number is load-bearing. */
 };
-/* The four views, plus BENCH MODE — which is the state this pass could not see
-   and the one a coach is standing in when it matters most.
+/* Every screen `VIEWS` names (Today plus the four it opens), plus BENCH
+   MODE — which is the state this pass could not see and the one a coach is
+   standing in when it matters most.
  *
- * `VIEWS` is the nav, and game mode is not on the nav: it is a full-screen
- * overlay behind `#gmOpen`. Nothing in this harness had ever enumerated it at
- * a large root, and the measured consequence was `#gmNext2` — "Next stint",
+ * `VIEWS` is `sweepPass`'s own list (#23), read here rather than kept a
+ * second time, and game mode is not on it: it is a full-screen overlay
+ * behind `#gmOpen`. Nothing in this harness had ever enumerated it at a
+ * large root, and the measured consequence was `#gmNext2` — "Next stint",
  * the primary action of the screen a coach uses with the clock running —
  * sitting at left 349 in a 320px viewport with no pan available. Wholly off
  * screen, unreachable, and green in every check.
@@ -1801,7 +1885,7 @@ const APP_LARGE_TEXT_ALLOW = {
  * The swap picker is here too because picking a player changes the layout of
  * the bench list underneath it, so it is a different measurement, not the same
  * screen with a class on it. Both close themselves so the pass leaves the app
- * on the games view for whatever runs next. */
+ * on the games screen for whatever runs next. */
 const APP_LARGE_TEXT_STATES = [
   ...VIEWS,
   { name: 'bench mode', open: `document.querySelector('#gmOpen').click()`,
@@ -1837,11 +1921,11 @@ const APP_LARGE_TEXT_STATES = [
     open: `document.querySelector('#gmOpen').click();
            document.querySelector('#gmFloor .gm-p').click()`,
     close: `document.querySelector('#gmClose').click()` },
-  /* AND THE FIFTH CHROME: the welcome screen, the first thing a coach ever
+  /* AND THE SIXTH CHROME: the welcome screen, the first thing a coach ever
      sees, and the one screen in the app this cell had never visited.
-     `overlayPass` has audited it since it was written; this pass enumerated
-     "all four views" and the welcome screen is not one of them — it is the
-     view you get INSTEAD of the four, with `.bar`, `.foot`, `#teamtabs` and
+     `overlayPass` has audited it since it was written; this pass enumerates
+     every screen `VIEWS` names and the welcome screen is not one of them —
+     it is the screen you get INSTEAD of those five, with `.bar`, `.foot` and
      `#actionbar` all taken off the screen by `applyView`. A different chrome
      is exactly the argument this list already makes for game mode.
 
@@ -2245,6 +2329,23 @@ const REGISTRY = Object.freeze([
 ]);
 const nameOf = id => REGISTRY.find(r => r.id === id).name;
 
+/* A check that throws fails ITS OWN row, named, rather than the whole run:
+ * without this, one broken pass (a selector that no longer exists, a page
+ * that navigated away mid-evaluate) took the entire table down with it and
+ * printed nothing at all -- a guard reporting nothing, the one shape
+ * `/new-guard` names as a false green by omission, here worn the other way
+ * round as a false SILENCE. `--only` already gets this for free (its own
+ * `run` call is awaited straight from `main`, which prints the thrown error
+ * and exits non-zero); this is the full-run path, where every check after
+ * the one that throws would otherwise never run at all. */
+async function safeCheck(id, fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    return { name: nameOf(id), pass: false, detail: `threw before finishing: ${e.message.split('\n')[0]}` };
+  }
+}
+
 async function browserChecks(origin, only) {
   const debugPort = 9222 + Math.floor(Math.random() * 500);
   const { proc, dir, ws } = await launch(debugPort);
@@ -2349,44 +2450,48 @@ async function browserChecks(origin, only) {
     await goRich(c, origin);
     /* Before anything else touches the page: fixturePass below clicks through
        Team/Season and back, which is harmless to the fixture checks but would
-       no longer be the untouched cold state item 8 asks for. */
-    report.checks.push(await cardFontPass(c, origin));
-    report.checks.push(await fixturePass(c));
+       no longer be the untouched cold state item 8 asks for.
+       Every row from here on is wrapped in `safeCheck` -- a check that
+       throws (a page that navigated away mid-evaluate, a selector that no
+       longer exists) fails its own named row instead of taking down every
+       check after it and printing no table at all. */
+    report.checks.push(await safeCheck('cardfont', () => cardFontPass(c, origin)));
+    report.checks.push(await safeCheck('fixture', () => fixturePass(c)));
     /* Both of these reload their own fixture and put RICH back the way they
        found it (`view: 'games'`, one team), same courtesy the wake-lock
        reload below pays. */
-    report.checks.push(await todayAndBackPass(c, origin));
-    report.checks.push(await todayKeysAndUndoPass(c, origin));
+    report.checks.push(await safeCheck('todayback', () => todayAndBackPass(c, origin)));
+    report.checks.push(await safeCheck('todaykeys', () => todayKeysAndUndoPass(c, origin)));
 
-    report.checks.push(await wakeLockPass(c, origin, consoleErrors));
+    report.checks.push(await safeCheck('wakelock', () => wakeLockPass(c, origin, consoleErrors)));
     // The wake lock check stubs navigator.wakeLock, shadows
     // document.visibilityState and leaves bench mode wherever its last
     // scenario left it -- reload the rich fixture so every pass after this
     // one sees the real API and the real boot state, as goRich left it above.
     await goRich(c, origin);
 
-    report.checks.push(await overlayPass(c, source));
+    report.checks.push(await safeCheck('overlay', () => overlayPass(c, source)));
     /* The swept touch pass replaces the first pass's single-viewport verdict
        rather than sitting beside it: two checks answering the same question
        with different coverage is how the weaker one gets believed. */
     report.checks = report.checks.filter(k => k.name !== 'touch targets ≥ 44px');
-    report.checks.push(await touchPass(c, source));
+    report.checks.push(await safeCheck('touch', () => touchPass(c, source)));
     /* Same reshuffle as touch, one line up: the single-viewport verdict
        `smoke-checks.js` already contributed to the cold array (Settings
        closed, so it read "not open") is replaced with the swept one. */
     report.checks = report.checks.filter(k => k.name !== 'settings rows ≥ 48px');
-    report.checks.push(await settingsRowPass(c, source));
-    report.checks.push(await narrowPass(c));
-    report.checks.push(await sweepPass(c));
+    report.checks.push(await safeCheck('settingsrows', () => settingsRowPass(c, source)));
+    report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
+    report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep
        assumes the boot-time layout; before `staticPass`, which navigates away
        from `index.html` for good. */
-    report.checks.push(await appLargeTextPass(c, origin));
+    report.checks.push(await safeCheck('applargetext', () => appLargeTextPass(c, origin)));
     /* Last of the browser passes, because it navigates away from the app and
        nothing after it may assume `index.html` is still loaded. Still ahead of
        the console verdict below, so the seven pages it visits are covered by
        that too. */
-    report.checks.push(await staticPass(c, source, origin));
+    report.checks.push(await safeCheck('static', () => staticPass(c, source, origin)));
 
     /* Last, so it covers the overlay pass too: an exception thrown by opening
        game mode is exactly the kind of thing the opening screen cannot show

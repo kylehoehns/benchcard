@@ -22,6 +22,10 @@ import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
+// season-view.js is already in the boot graph (app.js calls `initSeason`),
+// so this names no new request -- it is the one place a filed game is
+// counted, and Today's Season entry reads it the same way (#23 review).
+import { seasonGames } from './season-view.js';
 
 let renderAll = () => {};
 let setView = () => {};
@@ -428,8 +432,9 @@ export function renderTabs() {
   if (seasonBtn) {
     seasonBtn.textContent = '';
     seasonBtn.append(el('span', 'today-entry-lab', 'Season'));
-    // the same count season-view.js's own heading reads, off `team().season.games`
-    const n = (team().season?.games || []).length;
+    // `seasonGames()`, not a second `Array.isArray` check -- the same
+    // reader season-view.js's own heading counts a filed game with.
+    const n = seasonGames().length;
     seasonBtn.append(el('span', 'today-entry-sub',
       n === 0 ? 'No games filed yet' : `${n} game${n === 1 ? '' : 's'} filed`));
   }

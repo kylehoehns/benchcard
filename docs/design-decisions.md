@@ -47,7 +47,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   and `settings.periodMinutes` (4 and 8 = the literals `newGame` always carried)
   are read by `newGame` **only when there is no game to clone from**. The format
   was already sticky — `newGame` deep-copies it off the game it clones, and
-  every "+ Game" and "New day" hands it `lastGame()` — so a default that won
+  every **Add a game** and **New day** hands it `lastGame()` — so a default that won
   over the clone would snap game 2 of a tournament day back off the odd format
   a coach had just set. The default therefore earns its keep somewhere else:
   `newTeam`'s first game and `sanitizeTeam`'s no-games fallback pass the
@@ -103,8 +103,8 @@ its alternative is an assertion, so the rejected options are kept here too.
   nothing can be counted twice. The season is **history, not instruction**:
   unlike constraints, its minutes are not swept against the current roster,
   because a kid who left in November still played those minutes in October.
-- **And it can be read, and corrected.** The **Season** view — the third nav
-  tab — is the ledger over that record: minutes this season per player,
+- **And it can be read, and corrected.** The **Season** view — opened from its
+  own entry on Today (#23) — is the ledger over that record: minutes this season per player,
   most first, then one collapsible row per game holding what everyone played in
   it. Game-first rather than a grid on purpose — twelve players by ten games is
   120 cells, and at 390px a table of them either pans sideways or shrinks past
@@ -284,8 +284,8 @@ its alternative is an assertion, so the rejected options are kept here too.
   day-title placeholder. It is stored raw and trimmed at every read, so typing
   a space does not fight the caret. The card header clamps it: `.when` never
   shrinks, so a long name cannot push the date off the card, and the title
-  itself elides through `fitHeadline` in `card.js` — the same middle cut the
-  tabs use (`elideMiddle`), for the same reason: printing a day of tournament
+  itself elides through `fitHeadline` in `card.js` — the same middle cut
+  squad pills use (`elideMiddle` in `state.js`), for the same reason: printing a day of tournament
   games gave three cards the identical header `VS RIVERSIDE REGIONAL TOURNAMENT
   QUART…`. Unlike the tabs it is sized by measurement, not a character count,
   because a pocket card and a half-sheet have very different header widths and

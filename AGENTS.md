@@ -144,12 +144,14 @@ the cold-load measurement, and a `RICH` record — 11 players, two games today,
 three filed, levels set — for the overlay, touch, narrow and sweep passes. Do
 not merge them back into one.
 
-It drives `index.html` for all of that, plus one pass over all four views at
+It drives `index.html` for all of that, plus one pass over every screen at
 320px with the browser's default font size emulated at 32px (a reader on 200%
 text) — the app shell was held to a lower standard than the marketing pages
 until 2026-08-24, and a 228px sideways pan on the games view lived there the
-whole time. That pass now covers seven states (the four views, bench mode,
-bench mode with the undo toast, the swap picker) and checks **both axes**:
+whole time. That pass now covers eleven states (Today and the four screens it
+opens, bench mode, bench mode with the undo toast, the swap picker, the
+welcome screen on a first run and with the sample filled in, and the sample's
+flash after a `?try=` landing) and checks **both axes**:
 `STRANDED_ABOVE` exists because every overflow probe here was horizontal until
 2026-08-25, and a toast 160px above the top of the viewport passed all of them.
 `APP_LARGE_TEXT_ALLOW` is empty and every view is pinned at zero; the same rule

@@ -322,8 +322,8 @@ above about $3 collect hostile reviews.
 ## Status
 
 Feature-complete for a tournament weekend: engine + tests, a roster editor, a
-day of games with tabs, per-game constraints, cumulative day minutes, light and
-dark themes, and the printed card.
+day of games opening on a Today home screen, per-game constraints, cumulative
+day minutes, light and dark themes, and the printed card.
 
 It is deployed, at `benchcard.app`, with analytics on -- see "Deployment" and
 "Analytics". Season history is done too: `season-view.js` keeps the ledger, the

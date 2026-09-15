@@ -27,6 +27,10 @@ import { renderSeason } from './season-view.js';
 import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { retireUndo, flash } from './toast.js';
+// storage.js is already in the boot graph (state.js imports it for
+// `sanitizeSettings`/`DEFAULT_SETTINGS`), so this names no new request --
+// it is the one allow-list `BACK_VIEWS` below is derived from (#23 review).
+import { VIEWS } from './storage.js';
 
 /* ------------------------------------------------------------------ *
  * rendering
@@ -188,21 +192,50 @@ export function soon(...keys) {
 let shown = null;
 let pushed = false;   // true while the current entry is [Today, shown], not just [Today]
 
+/* How many `history.back()` calls setView has issued that have not yet been
+   echoed by their own `popstate` -- see the "today from a pushed screen"
+   branch below. Almost always 0 or 1: a second `setView('today')` call before
+   the first echo lands sees `pushed` already false and takes no action of
+   its own (nothing left to go back from). */
+let pendingSelfBack = 0;
+
 export function setView(v, instant) {
   if (!state.onboarded) v = 'welcome';
   const from = shown;
-  // a fresh boot, or the "there was nothing to back out to" moment right
-  // after onboarding finishes or a restore replaces the welcome screen
-  const bootstrapping = from === null || from === 'welcome';
+  /* A fresh boot, or the "there was nothing to back out to" moment right
+     after onboarding finishes or a restore replaces the welcome screen --
+     but NOT every arrival at welcome: removing the last team from a PUSHED
+     screen leaves that entry live (the `v === 'welcome'` branch below never
+     touches history, and does not reset `pushed`), so a later return to a
+     real screen from THAT welcome has something to replace rather than a
+     fresh pair to establish. `pushed` is what tells the two apart. */
+  const bootstrapping = from === null || (from === 'welcome' && !pushed);
 
   if (v === 'welcome') {
-    // no entries at all -- there is nothing to back out to before there is a team
+    // no entries touched -- there is nothing to back out to before there is
+    // a team, and `pushed` is left exactly as it was (see the comment above)
   } else if (bootstrapping) {
     history.replaceState({ view: 'today' }, '');
     pushed = false;
     if (v !== 'today') { history.pushState({ view: v }, ''); pushed = true; }
   } else if (v === 'today') {
-    if (pushed) { shown = v; history.back(); return; }     // popstate repaints Today
+    if (pushed) {
+      /* Applied HERE, synchronously, not left for the `popstate` this
+         `history.back()` is about to raise. The old shape returned before
+         painting anything, so `state.view` stayed at the screen being left
+         (e.g. 'games') and `#view-games` stayed visible until the async
+         popstate finally caught up -- a real, saved, mid-transition state a
+         coach's own eyes (and a reload) could catch (#23 review, item A).
+         `pendingSelfBack` marks this popstate, when it arrives, as an echo
+         of work already done rather than a fresh instruction to apply. */
+      pushed = false;
+      shown = v;
+      applyView(v);
+      pendingSelfBack++;
+      history.back();
+      if (!instant && from && from !== v) window.scrollTo(0, 0);
+      return;
+    }
     // already on Today with nothing pushed: no history to touch
   } else if (pushed) {
     history.replaceState({ view: v }, '');
@@ -217,6 +250,35 @@ export function setView(v, instant) {
 }
 
 addEventListener('popstate', (e) => {
+  if (pendingSelfBack > 0) {
+    /* The echo of a `history.back()` `setView` already issued and already
+       painted for, above. If nothing has navigated since, bookkeeping
+       already matches this event and there is nothing left to do. If
+       something HAS -- another `setView` call in the same tick, before this
+       echo arrived -- that navigation is the one that should stand: a stale
+       echo applying `e.state` on top of it would be the exact bug this
+       counter exists to stop (a back-then-push racing its own popstate).
+       Reasserting the current `shown` (through the ordinary push/replace
+       path, since `instant` skips the scroll a genuine transition already
+       had) repairs whatever position the browser actually landed the stale
+       traversal on, rather than trusting what it reports. */
+    pendingSelfBack--;
+    if (shown === 'today' && !pushed) return;
+    setView(shown, true);
+    return;
+  }
+  /* A real, externally-triggered traversal: the physical back button, or
+     Android's gesture. Runs through the same onboarding guard `setView`
+     applies, or a stale pushed entry from BEFORE a coach removed their last
+     team (still live in the session history -- see `bootstrapping` above)
+     paints whatever screen it names instead of welcome (#23 review, item
+     B). */
+  if (!state.onboarded) {
+    pushed = false;
+    shown = 'welcome';
+    applyView('welcome');
+    return;
+  }
   const v = (e.state && e.state.view) || 'today';
   pushed = v !== 'today';
   shown = v;
@@ -229,7 +291,10 @@ addEventListener('popstate', (e) => {
    each of the day's games. The other three screens are just their name; an
    in-page heading that repeated it would say it twice. */
 const SCREEN_TITLE = { team: 'Team', season: 'Season', settings: 'Settings' };
-const BACK_VIEWS = ['games', 'team', 'season', 'settings'];
+// every screen storage.js's own allow-list names, minus Today -- the one
+// case with no back button and no title, because it is the one nothing goes
+// back FROM (#23 review, item D: was a hand-typed second copy of VIEWS).
+const BACK_VIEWS = VIEWS.filter(v => v !== 'today');
 function screenTitle(v) {
   return v === 'games' ? gameLabel(game(), state.activeGame) : (SCREEN_TITLE[v] || '');
 }

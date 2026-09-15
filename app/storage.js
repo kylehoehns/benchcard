@@ -443,7 +443,12 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame }) {
    keeps finding, not the rename itself. A Map rather than an object literal
    because `{}['constructor']` is truthy and a prototype hit here would be a
    very quiet bug. */
-const VIEWS = ['today', 'games', 'team', 'season', 'settings'];
+/* Exported so render.js's `BACK_VIEWS` -- every screen but Today, the ones
+   that carry a back button and a title -- can be derived from this one
+   allow-list rather than hand-typing a second copy of it (#23 review). This
+   is the allow-list itself, read-only from the outside; `sanitize` and
+   `viewOf` below stay the only place it is written to or filtered against. */
+export const VIEWS = ['today', 'games', 'team', 'season', 'settings'];
 const VIEW_WAS = new Map([['roster', 'team']]);
 const viewOf = raw => {
   const v = VIEW_WAS.get(raw) || raw;
