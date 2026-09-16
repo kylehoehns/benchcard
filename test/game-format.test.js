@@ -93,10 +93,17 @@ test('the summary hint is repainted by the format handlers, not only by a full r
 
 test('the Rules count still counts only the player rules', () => {
   // it always did — the A11 report expected a behaviour change here and there
-  // was none to make. Pinned so a later "tidy-up" cannot fold the format into it.
-  const at = setupJs.indexOf("#conscount");
-  const src = setupJs.slice(setupJs.indexOf('const c = g.constraints;'), at);
-  for (const id of FORMAT_IDS) assert.ok(!src.includes(id), `#conscount counts ${id}`);
+  // was none to make. Pinned so a later "tidy-up" cannot fold the format into
+  // it. #26 moved the count itself into `ruleCount(g)` (state.js); this reads
+  // the function it moved to rather than the call site game-setup.js left
+  // behind, so the pin still means something.
+  assert.match(setupJs, /const n = ruleCount\(g\)/,
+    'renderConsCount no longer reads ruleCount(g) — re-point this test at wherever it counts now');
+  const stateJs = read('state.js');
+  const at = stateJs.indexOf('export function ruleCount');
+  assert.ok(at > 0, 'ruleCount has moved out of state.js — re-point this test');
+  const src = stateJs.slice(at, stateJs.indexOf('\n}', at));
+  for (const id of FORMAT_IDS) assert.ok(!src.includes(id), `ruleCount counts ${id}`);
   assert.match(src, /minMinutes[\s\S]*maxMinutes[\s\S]*pairs[\s\S]*avoids/);
 });
 

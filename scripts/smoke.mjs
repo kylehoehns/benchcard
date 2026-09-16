@@ -50,6 +50,7 @@ import { cardFontPass } from './smoke/card-font.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { todayAndBackPass } from './smoke/today-and-back.mjs';
 import { todayKeysAndUndoPass } from './smoke/today-keys-and-undo.mjs';
+import { gamePassesPass } from './smoke/game-passes.mjs';
 import { wakeLockPass } from './smoke/wake-lock.mjs';
 import { overlayPass } from './smoke/overlay.mjs';
 import { touchPass } from './smoke/touch.mjs';
@@ -95,10 +96,11 @@ const RUN = {
   fixture: ctx => fixturePass(ctx.c),
   todayback: ctx => todayAndBackPass(ctx.c, ctx.origin),
   todaykeys: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin),
+  gamepasses: ctx => gamePassesPass(ctx.c, ctx.origin),
   teamcolour: ctx => teamColourPass(ctx.c, ctx.origin),
   wakelock: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors),
   overlay: ctx => overlayPass(ctx.c, ctx.source),
-  touch: ctx => touchPass(ctx.c, ctx.source),
+  touch: ctx => touchPass(ctx.c, ctx.origin, ctx.source),
   settingsrows: ctx => settingsRowPass(ctx.c, ctx.source),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
@@ -249,6 +251,9 @@ async function browserChecks(origin, only) {
        reload below pays. */
     report.checks.push(await safeCheck('todayback', () => todayAndBackPass(c, origin)));
     report.checks.push(await safeCheck('todaykeys', () => todayKeysAndUndoPass(c, origin)));
+    /* #26. Reloads onto its own `FOUR` fixture and puts RICH back before
+       returning, same courtesy as the two rows above. */
+    report.checks.push(await safeCheck('gamepasses', () => gamePassesPass(c, origin)));
     /* #25. It reloads with a two-team record (Royal, then Graphite) and
        switches team, so RICH is put back before the wake lock pass, which
        expects the fixture as goRich left it. */
@@ -267,7 +272,7 @@ async function browserChecks(origin, only) {
        rather than sitting beside it: two checks answering the same question
        with different coverage is how the weaker one gets believed. */
     report.checks = report.checks.filter(k => k.name !== 'touch targets ≥ 44px');
-    report.checks.push(await safeCheck('touch', () => touchPass(c, source)));
+    report.checks.push(await safeCheck('touch', () => touchPass(c, origin, source)));
     /* Same reshuffle as touch, one line up: the single-viewport verdict
        `smoke-checks.js` already contributed to the cold array (Settings
        closed, so it read "not open") is replaced with the swept one. */

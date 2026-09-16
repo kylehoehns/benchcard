@@ -1,6 +1,7 @@
-import { TODAY_HOME } from './dom.mjs';
+import { evalIn, TODAY_HOME } from './dom.mjs';
 import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
 import { widthSweep } from './width-sweep.mjs';
+import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
 
 /* Touch targets, swept — because measuring one width on one screen missed two
  * controls that were under the rule the whole time.
@@ -51,7 +52,40 @@ const TOUCH_STATES = [
 
 ];
 
-export async function touchPass(c, source) {
+/* #26 item 12: "the pass and #todayNewDay are touch targets of at least
+ * 44px" — measured against `FOUR` (four passes on screen at once, the state
+ * the ticket's own fit claim is about), not `RICH`'s two-game Today.
+ *
+ * A standalone reload-measure-reload rather than a `TOUCH_STATES` entry: that
+ * array runs every state back to back with no navigation between them (only
+ * in-page clicks), so swapping the fixture for one entry would leave every
+ * state after it measuring `FOUR` too, and `close` never reloads `RICH` back.
+ * Reusing `reloadWithRecord` before AND after keeps this self-contained and
+ * leaves `widthSweep`'s own sweep, below, on `RICH` exactly as before. */
+async function fourTodayTouch(c, origin, source) {
+  const bad = [];
+  let audited = 0, seen = 0;
+  await reloadWithRecord(c, origin, FOUR);
+  try {
+    for (const w of TOUCH_WIDTHS) {
+      await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: 844, deviceScaleFactor: 2, mobile: true });
+      await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+      const chk = (await evalIn(c, source)).checks.find(k => k.name === 'touch targets ≥ 44px');
+      const where = `today, FOUR@${w}px`;
+      if (!chk) { bad.push(`${where}: the touch check is gone from smoke-checks.js`); continue; }
+      audited++;
+      const n = Number(([/(\d+) controls/, /\/(\d+) under/].map(re => chk.detail.match(re)).find(Boolean) || [])[1] || 0);
+      seen = Math.max(seen, n);
+      if (!chk.pass) bad.push(`${where}: ${chk.detail}`);
+    }
+  } finally {
+    await reloadWithRecord(c, origin, RICH);
+  }
+  return { bad, audited, seen };
+}
+
+export async function touchPass(c, origin, source) {
+  const four = await fourTodayTouch(c, origin, source);
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: TOUCH_STATES,
     checkName: 'touch targets ≥ 44px',
@@ -68,12 +102,15 @@ export async function touchPass(c, source) {
       for (const d of document.querySelectorAll('details')) d.open = false`,
   });
 
+  const allBad = [...four.bad, ...bad];
+  const totalAudited = four.audited + audited;
+  const totalSeen = Math.max(four.seen, seen);
   return {
     name: nameOf('touch'),
-    pass: bad.length === 0,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) under 44px: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (${TOUCH_STATES.map(s => s.name).join(' + ')} × `
-        + `${TOUCH_WIDTHS.join('/')}px), up to ${seen} controls, all ≥ 44px`,
+    pass: allBad.length === 0,
+    detail: allBad.length
+      ? `${allBad.length}/${totalAudited} measurement(s) under 44px: ${allBad.slice(0, 4).join(' | ')}`
+      : `${totalAudited} measurements (today, FOUR + ${TOUCH_STATES.map(s => s.name).join(' + ')} × `
+        + `${TOUCH_WIDTHS.join('/')}px), up to ${totalSeen} controls, all ≥ 44px`,
   };
 }

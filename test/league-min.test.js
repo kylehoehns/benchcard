@@ -49,12 +49,15 @@ test('leagueMinutes reads the active team, and off is 0', () => {
 
 test('the Rules count counts the league minimum', () => {
   const setup = read('game-setup.js');
-  const expr = /const n = ([\s\S]*?);\s*\n\s*set\('#conscount'/.exec(setup);
+  const expr = /const n = ([\s\S]*?);\s*\n\s*const hint/.exec(setup);
   assert.ok(expr, 'the #conscount count expression has moved — find it and re-pin it');
-  assert.match(expr[1], /leagueMinutes\(\)/,
-    'the Rules badge counts only the per-game constraint maps again. The league floor is '
-    + 'not stored on the game (computeAll composes it into a clone), so a coach with the '
-    + 'setting on sees "no rules" while a rule rewrites every available player\'s minutes');
+  assert.match(expr[1], /ruleCount\(/,
+    'the Rules badge no longer reads ruleCount(g) — that is the one place (state.js) the '
+    + 'league floor is counted in, since it is not stored on the game itself (computeAll '
+    + 'composes it into a clone). Re-deriving the count here would let the badge and '
+    + 'ruleCount disagree again (A24b / #26 decision 3)');
+  assert.match(read('state.js'), /leagueMinutes\(\) > 0 \? 1 : 0/,
+    'ruleCount(g) in state.js no longer counts the league minimum when it is on');
 });
 
 test('the Rules drawer only says "just evens out the minutes" when nothing else is on', () => {
