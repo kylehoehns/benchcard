@@ -57,17 +57,7 @@ involves a file's existence, a directory, a checkout, or anything git tracks
 differently from a filesystem. `/browser-verify` is the equivalent rule for
 measurements; this is it for the tree.
 
-## 4. A quiet re-review is not confirmation
-
-The reviewer skips a pull request it has already commented on, and skips one
-whose workflow files the PR modifies. Both cases finish GREEN and post nothing.
-So "no new findings" can mean the fix is good, or can mean nothing ran.
-
-**Read the run log before treating silence as a pass.** A review that took
-under a minute did not review anything. The evidence your fix is right is your
-own reproduction, not the reviewer's silence.
-
-## 5. Reply with what you ran, then resolve
+## 4. Reply with what you ran, then resolve
 
 One reply per thread, saying which of these happened:
 
@@ -80,7 +70,7 @@ One reply per thread, saying which of these happened:
 — an unresolved thread you disagree with is the record of a live disagreement,
 and closing it deletes that. Resolving is a claim that the thing is done.
 
-## 6. The second time is the harness's fault, not yours
+## 5. The second time is the harness's fault, not yours
 
 This is the step everyone skips and it is the one that compounds.
 

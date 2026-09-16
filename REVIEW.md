@@ -4,14 +4,10 @@ The review policy, so that every change gets the same passes and severity means
 the same thing twice running. `AGENTS.md` is the harness and says *why* each
 rule below exists; this file says only what a review does with it.
 
-**How this file actually reaches a review, which is not automatic.** The
-`/code-review` skill follows `CLAUDE.md` like any Claude Code session and does
-NOT read `REVIEW.md`; only Anthropic's managed Code Review service does that,
-and this repository is not on it. So
-`.github/workflows/claude-code-review.yml` passes this file's rules in through
-`--append-system-prompt`. That is the whole mechanism. If the reviewer ever
-starts ignoring what is written here, check that line before rewriting the
-policy.
+**How this file reaches a review.** `quality-reviewer` reads it first, and the
+other reviewers in `.claude/agents/` take their severity from it. There is no
+review bot on GitHub any more; `/ship-feature` runs these reviewers before the
+PR opens. The `/code-review` skill does NOT read this file on its own.
 
 Applied to every pull request, and **nothing reaches `main` except through
 one.** That is a change from how this repo ran for its

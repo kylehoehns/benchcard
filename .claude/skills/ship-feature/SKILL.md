@@ -5,7 +5,7 @@ description: >
   issue #14", "build the ticket #14", or "work the next issue". Reads the issue
   as the source of truth, grills it into a spec with grill-with-docs, then
   orchestrates the subagent team through build → test → refactor → review → PR →
-  CI → address review → verify on the preview → notify.
+  CI → verify on the preview → notify.
 ---
 
 # Ship a change from a GitHub issue
@@ -39,6 +39,14 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 | `efficiency-reviewer` | wasted work on hot paths | nothing |
 | `doc-writer` | `docs/` and `README.md` catch up with the change | `docs/`, `README.md` |
 | `claim-checker` | checks factual claims in comments, docs and the PR body | nothing |
+
+**Every hand-off to `developer` launches a new one.** Do not message a
+`developer` that has already reported, for review findings, a broken proof, a
+browser defect or a red CI run. Every turn re-sends the agent's whole context,
+so a reused one pays for the whole earlier build again on every turn. #23's
+developer was reused for seven rounds, grew to 964k tokens, and cost 28% of
+all the tokens this project had used. The new one gets the spec path, the
+current handoff and the findings verbatim; that is the whole brief.
 
 ## Understand
 
@@ -141,7 +149,7 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    implementation-coupled, tautological, and a source-reading test the spec
    did not name as a seam.
 
-8. **Fix, once.** Actionable findings go to `developer`, which fixes them
+8. **Fix, once.** Actionable findings go to a new `developer`, which fixes them
    the same way it built: a failing test first where the finding is a behaviour. At most
    one pass. A `REVIEW.md` **Blocker** that survives it stops the run: report
    it in the wrap-up rather than shipping.
@@ -193,43 +201,9 @@ not CI green: the history checks only run against a base ref.
     Fix from the real log, never a guess. Re-run locally, commit, push, watch
     again. **Three attempts at most**; then stop and report.
 
-## Address the Claude review
-
-`claude-code-review.yml` reviews every non-draft PR against `REVIEW.md` and
-posts inline threads as `claude`. It is advisory, not required — and it can
-finish green having reviewed nothing (`/address-review` §4).
-
-12. **Wait for the `claude-review` check to finish**, not for a comment: a clean
-    review may post nothing at all. Poll `gh pr checks "$PR"` every ~30s for up
-    to ~15 minutes. Then read the threads:
-
-    ```bash
-    gh api graphql -f query='
-      query($owner:String!,$repo:String!,$pr:Int!){
-        repository(owner:$owner,name:$repo){ pullRequest(number:$pr){
-          reviewThreads(first:100){ nodes{ id isResolved
-            comments(first:20){ nodes{ author{login} body path line } } } } } } }' \
-      -f owner=kylehoehns -f repo=benchcard -F pr="$PR"
-    ```
-
-    Three ways out, and only three:
-    - **Finished, unresolved `claude` threads** → step 13.
-    - **Finished, no threads** → read the job's duration first. Under a minute
-      means it did not run; say so. Otherwise it is a clean pass.
-    - **Not finished after ~15 minutes** → say so and go to the wrap-up.
-
-13. **Triage each thread with `/address-review`.** It owns how: verify the
-    finding before complying, fix the cause, reply with what you ran, resolve
-    only what you fixed, and treat a repeat of a class `AGENTS.md` already names
-    as the harness failing. Code changes go to `developer`.
-
-14. **Push the fixes.** `npm test`, commit, push — that re-triggers CI, so go
-    back to step 11. **Two review rounds at most.** After the second, reply to
-    what is left with your decision and move on.
-
 ## Verify on the preview
 
-15. **Prove it runs where it will ship.** Cloudflare builds every branch and
+12. **Prove it runs where it will ship.** Cloudflare builds every branch and
     `cloudflare-workers-and-pages` comments the **Branch Preview URL** on the
     PR. That server redirects the way production does, which `npm run serve`
     only imitates.
@@ -247,7 +221,6 @@ finish green having reviewed nothing (`/address-review` §4).
 
 ## Wrap up
 
-16. **Notify.** One PR comment that @mentions `@kylehoehns`: the PR and issue,
-    final CI status, Claude threads fixed vs. declined (with reasons), what was
-    measured on the preview, and the final commit sha. **Do not merge and do not
-    approve** — `REVIEW.md` says the approval is a human's.
+13. **Notify.** One PR comment that @mentions `@kylehoehns`: the PR and issue,
+    final CI status, what was measured on the preview, and the final commit
+    sha. **Do not merge and do not approve** — `REVIEW.md` says the approval is a human's.

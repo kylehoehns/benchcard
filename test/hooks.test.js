@@ -19,7 +19,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const HOOKS = new URL('../.claude/hooks/', import.meta.url);
 const ROOT = new URL('../', import.meta.url);
@@ -162,6 +164,53 @@ test('every other file in the tree stays editable', () => {
 test('budgets.mjs is the escape hatch the budgets.json denial points at, so it must be open', () => {
   assert.equal(edit('/repo/scripts/budgets.mjs').decision, null);
   assert.match(edit('/repo/scripts/budgets.json').reason, /budgets\.mjs/);
+});
+
+/* ---------- guard-read: a large text file is read in parts ---------- */
+
+/* Fixtures are written to a temp dir rather than pointed at app/app.css, so
+ * the RED half cannot turn green the day that file shrinks, and the ALLOW
+ * half cannot turn red the day a small file grows. */
+const scratch = mkdtempSync(join(tmpdir(), 'guard-read-'));
+const fixture = (name, bytes) => {
+  const f = join(scratch, name);
+  writeFileSync(f, 'x'.repeat(bytes));
+  return f;
+};
+const read = (file_path, extra = {}) =>
+  run('guard-read.sh', { tool_input: { file_path, ...extra } });
+
+test('reading a large text file whole is denied, with the way out in the reason', () => {
+  for (const name of ['big.css', 'big.mjs', 'big.html', 'BIG.JS']) {
+    const r = read(fixture(name, 60001));
+    assert.equal(r.decision, 'deny', name);
+    assert.match(r.reason, /grep -n/, 'the reason has to say how to find the part you need');
+    assert.match(r.reason, /offset and limit/);
+  }
+});
+
+test('an offset alone is still a whole-file read from there on, so it is denied', () => {
+  assert.equal(read(fixture('tail.css', 90000), { offset: 10 }).decision, 'deny');
+});
+
+test('a large file read with a limit is allowed, since that is the instruction', () => {
+  assert.equal(read(fixture('part.css', 90000), { offset: 2000, limit: 80 }).decision, null);
+  assert.equal(read(fixture('head.css', 90000), { limit: 80 }).decision, null);
+});
+
+test('a file at the limit, a missing file and a large binary are all allowed', () => {
+  assert.equal(read(fixture('edge.css', 60000)).decision, null);
+  assert.equal(read(join(scratch, 'nope.css')).decision, null);
+  for (const name of ['og.png', 'shot.JPG', 'doc.pdf', 'inter.woff2']) {
+    assert.equal(read(fixture(name, 225000)).decision, null, name);
+  }
+});
+
+test('settings.json wires guard-read.sh to Read', () => {
+  const pre = JSON.parse(readFileSync(new URL('.claude/settings.json', ROOT), 'utf8')).hooks.PreToolUse;
+  const wired = pre.filter(h => h.hooks.some(x => x.command.endsWith('/guard-read.sh')));
+  assert.equal(wired.length, 1, 'guard-read.sh is not wired, so it guards nothing');
+  assert.equal(wired[0].matcher, 'Read');
 });
 
 /* ---------- after-edit: advisory, never blocking ---------- */

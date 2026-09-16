@@ -61,7 +61,7 @@ means the same thing twice running.
 
 ## What is enforced, and what is only written down
 
-Most of this file is judgement and cannot be mechanised. Six rules can be, and
+Most of this file is judgement and cannot be mechanised. Seven rules can be, and
 are, in `.claude/hooks/` — they are stated in their own sections above and are
 not restated here, only listed, so there is still one answer per rule:
 
@@ -71,6 +71,7 @@ not restated here, only listed, so there is still one answer per rule:
 | No `git add -A` / `git add .` | denied, `guard-bash.sh` |
 | No `Co-Authored-By` trailer | denied, `guard-bash.sh` |
 | No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` |
+| A text file over 60 KB is read in parts (`grep -n`, then offset and limit) | denied, `guard-read.sh` |
 | A precached file changed → bump `VERSION`, set `SHELL` | reminded, `after-edit.sh` |
 | A dirty tree means another writer is here | reported at session start |
 
