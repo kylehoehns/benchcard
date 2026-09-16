@@ -39,10 +39,12 @@ cannot read is a guard people learn to ignore.
 
 `.github/workflows/vendor-drift.yml` re-runs `sh app/vendor/fetch.sh` and
 fails if the working tree moves. Committing the output of a script is only
-honest if the two stay in sync, and this catches both ways they come apart: a
+honest if the two stay in sync, and this catches the ways they come apart: a
 vendored file edited by hand — tempting, because `app/vendor/` is just files sitting
-in the repo — and a CDN serving something new under the same version pin, which
-nothing on our side prevents. Because only the second one happens without a
+in the repo; a CDN serving something new under the same version pin, which
+nothing on our side prevents; and a file `fetch.sh` no longer produces but that
+stayed committed — the comment at the top of `fetch.sh` explains why that now
+shows up here as a deletion. Because only the CDN case happens without a
 commit, the job runs weekly as well as on changes under `app/vendor/`. It is
 kept off every push because it depends on a live CDN, not because it is slow:
 a full re-vendor is Motion, two Inter subsets and 23 icons, about 250 KB, and
