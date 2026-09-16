@@ -47,7 +47,7 @@ import { SEED, goRich } from './smoke/fixtures.mjs';
 import { ROWS, nameOf } from './smoke/registry.mjs';
 
 import { cardFontPass } from './smoke/card-font.mjs';
-import { fixturePass } from './smoke/fixture.mjs';
+import { fixturePass } from './smoke/rich-fixture.mjs';
 import { todayAndBackPass } from './smoke/today-and-back.mjs';
 import { todayKeysAndUndoPass } from './smoke/today-keys-and-undo.mjs';
 import { wakeLockPass } from './smoke/wake-lock.mjs';

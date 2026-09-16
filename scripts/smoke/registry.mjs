@@ -1,8 +1,8 @@
-/* Row names built from the constants the passes above also use — see
-   AGENTS.md's own reasoning for why one number backs both a threshold and
-   a printed name. This module carries no pass import, so nothing here can
-   create the load-time import cycle a pass importing the registry back
-   would. */
+/* Row names built from the constants the passes in sibling modules also
+   import from here — see AGENTS.md's own reasoning for why one number backs
+   both a threshold and a printed name. This module carries no pass import,
+   so nothing here can create the load-time import cycle a pass importing
+   the registry back would. */
 
 /* 360, not 320. The narrowest phone in real use is a small Android at 360 and
    an iPhone SE 2/3 at 375; 320 is a 2016 SE. Claiming a floor the chrome cannot
