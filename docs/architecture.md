@@ -321,8 +321,8 @@ measuring one screen at one width, which is what let both of these live.
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: a
 button naming the active team, which opens a `popover` menu to switch teams or
-add one (C8), a gear for Settings, the day's games, then Team and Season as two
-entries underneath, and New day / Add a game. Game, Team, Season and Settings
+add one (C8), New day and a gear for Settings, the day's games, then Team and
+Season as two entries underneath, and Add a game. Game, Team, Season and Settings
 are each one screen away from Today rather than siblings on a nav — opening
 one pushes a browser-history entry, so the back button, the browser's own
 back and Android's back gesture all land back on Today, through the one path
@@ -332,7 +332,7 @@ Team, Season, all reachable from Today — versus *what is set once a season* �
 Settings, behind the gear that only ever shows on Today (N4).
 
 **One header, two states.** `.bar` no longer changes shape one member at a
-time; it holds `#barToday` (the team button, `#keysHint`, the gear) and
+time; it holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
 `#barBack` (an icon-only *Back to Today* and the screen's own title — reused
 from `gameLabel` on the game screen, else `Team` / `Season` / `Settings`), and
 `applyView` toggles which half is visible with the `hidden` attribute — never
@@ -353,9 +353,9 @@ switches to Games before it prints; a key that dies on three views out of four
 would be worse than no key.
 
 The tab budget this used to measure is retired along with the tabs: Today's
-header carries the team button, the keys hint and the gear, and every other
-screen carries only a back button and a title, so there is no longer a row of
-sibling controls competing for the same 390px.
+header carries the team button, the keys hint, New day and the gear, and every
+other screen carries only a back button and a title, so there is no longer a
+row of sibling controls competing for the same 390px.
 
 **Settings is two labelled zones.** The top one is headed with the active
 team's name and holds policy that belongs to that team alone; the bottom is

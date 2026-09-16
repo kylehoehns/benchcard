@@ -161,6 +161,48 @@ export async function reloadWithRecord(c, origin, record) {
     await ${SETTLE}; })()`);
 }
 
+/* ---------- FOUR (#26) ----------
+ *
+ * `RICH`'s team, twelve players (the eleven above plus `p11`, "Kai Moreau"),
+ * booted straight onto Today with four games -- the fixture `docs/specs/
+ * 26-game-passes.md`'s "What would settle it" table names, verbatim:
+ *
+ *   0 Panthers  9:00  balanced, everyone in, no rules,        useCarryover false
+ *   1 Ravens   11:30  balanced, p11 out, a pair (p0+p1) and    useCarryover true
+ *              a starting five (p0-p4)
+ *   2 (none)    2:00  closers, everyone in, no rules,          useCarryover false
+ *   3 Owls     (none) balanced, everyone in, a min of 40 for   useCarryover false
+ *              p0 at 4x8 -- more than the game holds, so this
+ *              one plan is blocked ("Needs a fix")
+ *
+ * Each game omits `constraints` unless the table names a rule for it --
+ * `sanitizeTeam` fills in `emptyConstraints()` either way, so a bare game
+ * really does carry zero rules rather than this file re-typing the default
+ * shape four times. Season and player tiers are `RICH`'s own, untouched:
+ * nothing in item 1-11 reads either, and reusing them (rather than a second
+ * copy) is one less place the two fixtures could quietly disagree about what
+ * a "rich" record looks like. */
+export const FOUR = (() => {
+  const record = JSON.parse(JSON.stringify(RICH));
+  const team = record.teams[0];
+  team.players.push({ id: 'p11', name: 'Kai Moreau', number: '10', shortName: '', tier: 3 });
+  team.day.games = [
+    { id: 'g0', label: 'Panthers', when: '9:00', periods: 4, periodMinutes: 8,
+      granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', useCarryover: false, seed: 1111 },
+    { id: 'g1', label: 'Ravens', when: '11:30', periods: 4, periodMinutes: 8,
+      granMode: 'everyN', granValue: 4, out: ['p11'], strategy: 'balanced', useCarryover: true, seed: 2222,
+      constraints: { pairs: [['p0', 'p1']], openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] } },
+    { id: 'g2', label: '', when: '2:00', periods: 4, periodMinutes: 8,
+      granMode: 'everyN', granValue: 4, out: [], strategy: 'closers', useCarryover: false, seed: 3333 },
+    { id: 'g3', label: 'Owls', when: '', periods: 4, periodMinutes: 8,
+      granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', useCarryover: false, seed: 4444,
+      constraints: { minMinutes: { p0: 40 } } },
+  ];
+  team.activeGame = 0;
+  record.view = 'today';
+  return record;
+})();
+
 /* A clone of `record` with a second team ("JV Ravens", a copy of the first)
    pushed on -- RICH ships with one, and the #23 checks below need two before
    the team menu's "switch team" and checkmark mean anything. `id` gets a

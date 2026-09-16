@@ -300,27 +300,52 @@ a { color: inherit; }
 .teammenu-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .teammenu-add { color: var(--muted); font-weight: 600; border-top: 1px solid var(--line); margin-top: .2rem; padding-top: .5rem; }
 
-/* ---- Today: the day's games, then Team and Season underneath ----------- */
-.today-games { display: flex; flex-direction: column; gap: .5rem; margin: 1.1rem 0; }
-.today-game { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 44px;
-  padding: .7rem .95rem; border-radius: var(--r); border: 1px solid var(--line);
-  background: var(--surface); font: inherit; text-align: left; }
+/* ---- Today: the day's games as passes, then Team and Season underneath -
+ *
+ * #26: each game is a PASS -- a surface (L1), not a chevron row -- so it
+ * stacks its own lines instead of sitting in one with `.today-entry`. The
+ * class stays `.today-game` (decision 7): the id-based smoke hooks and the
+ * `.today-game` selector both still find it, only what is inside changed.
+ */
+.today-games { display: flex; flex-direction: column; gap: .6rem; margin: 1.1rem 0; }
+.today-game { display: flex; flex-direction: column; align-items: stretch; gap: .3rem;
+  width: 100%; min-height: 44px; padding: .8rem .95rem; border-radius: var(--r);
+  border: 1px solid var(--line); background: var(--surface); font: inherit; text-align: left; }
 @media (hover: hover) { .today-game:hover { border-color: var(--line-2); } }
-/* `1rem`, not inherited: `.today-game`'s `font: inherit` pulls in `body`'s
-   bare `15px` otherwise, an absolute unit a reader's larger-text setting
-   cannot move, while `.today-game-when` right beside it is already `rem`
-   and scales -- at a 32px root the tip-off time grew past the game's own
-   name (#23 review, item 2). `1rem` is the plainest rem value close to the
-   15px this read at a 16px root (1px more); every other size on Today and
-   in the team menu is already some fraction of a rem, and none of them
-   happens to land on 15px exactly, so there is no existing token to reuse
-   here rather than pick one. */
-.today-game-lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; font-size: var(--fs-body); font-weight: 600; }
-.today-game-when { font-size: var(--fs-footnote); color: var(--muted); font-variant-numeric: tabular-nums; }
-.today-game .bad { width: .5rem; height: .5rem; border-radius: 50%; background: var(--err);
-  animation: pop var(--t) var(--spring) both; flex: none; }
-.today-game::after, .today-entry::after { content: '\203a'; color: var(--faint); font-size: var(--fs-headline);
+
+.pass-top { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+/* `1rem`: same reason `.today-game-lb` used to carry this comment -- an
+   absolute unit a reader's larger-text setting cannot move would let the
+   tip-off time or the status text grow past the pass's own title (#23
+   review, item 2, the bug this class inherits the fix for). */
+.pass-when { font-size: var(--fs-footnote); color: var(--muted); font-variant-numeric: tabular-nums; }
+/* K3: Planned is `--ok`, Needs a fix is `--warn` -- both tokens, never a new
+   hex and never a team colour. The dot is a `::before`, not a node
+   (decision 10): item 10's node budget has no room for a fifth element per
+   pass just to colour a status that two CSS classes already say. */
+.pass-status { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-footnote); font-weight: 600; }
+.pass-status::before { content: ''; width: .5rem; height: .5rem; border-radius: 50%; flex: none; }
+.pass-status.ok { color: var(--ok); }
+.pass-status.ok::before { background: var(--ok); }
+.pass-status.warn { color: var(--warn); }
+.pass-status.warn::before { background: var(--warn); }
+
+.pass-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-body); font-weight: 600; }
+
+/* One element per row (decision 10): the background IS the picture, painted
+   by `rowGradient` (state.js) with hard stops -- nothing here animates
+   `left`/`width`/`top`/`height`, and nothing paints or positions a block
+   with a second element. `background-color` matches `.today-game`'s own
+   background exactly, because a stint the player is not on the floor for
+   has to read as the pass's own surface, not a second grey. */
+.pass-rot { display: flex; flex-direction: column; gap: 1px; margin: .1rem 0; }
+.pass-rot .pass-row { height: 4px; border-radius: 1px; background-color: var(--surface); }
+
+.pass-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--muted); font-size: var(--fs-footnote); }
+
+.today-entry::after { content: '\203a'; color: var(--faint); font-size: var(--fs-headline);
   flex: none; margin-left: .1rem; }
 
 .today-acts { display: flex; gap: .6rem; margin-bottom: 1.6rem; }
@@ -2205,6 +2230,16 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      the card, and the bar is the same on all four views because of it. */
   .bar { gap: .4rem; padding-left: .7rem; padding-right: .7rem;
          flex-wrap: wrap; row-gap: .3rem; justify-content: flex-end; }
+  /* #26 decision 8 moved New day into `#barToday`, beside the gear. The team
+     button's own text, "New day" and the gear are each already at
+     min-content (`.btn` is `white-space: nowrap`), so team button + New day
+     + gear stopped fitting one line first at 305px (measured), then across
+     the whole phone range once the root text grows -- team button and gear
+     alone fit at every width and text size that mattered before New day
+     moved in, which is why nothing here caught it sooner. Wrapping is the
+     same answer this block already gives `.bar` itself; `flex-end` keeps the
+     gear in the top-right corner instead of the wrapped line's left edge. */
+  .bar-today { flex-wrap: wrap; row-gap: .3rem; justify-content: flex-end; }
   .seg button { padding: .36rem .72rem; font-size: var(--fs-footnote); }
   .btn { padding: .55rem .8rem; }
   .btn.icon { width: 2rem; padding: .45rem; }

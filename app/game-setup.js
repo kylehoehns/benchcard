@@ -19,7 +19,7 @@ import { riseIn } from './fx.js';
 import { $, set, style, el } from './dom.js';
 import { renderCardFold } from './card.js';
 import { fitPills } from './pills.js';
-import { state, game, teamName, colorOf, initials, noRoster, setAvailable, leagueMinutes,
+import { state, game, teamName, colorOf, initials, noRoster, setAvailable, ruleCount,
          GRAN_CHOICES } from './state.js';
 
 let renderAll = () => {};
@@ -72,14 +72,14 @@ const CONS_HINT = 'minutes, pairs, starters';
 
 export function renderConsCount() {
   const g = game();
-  const c = g.constraints;
-  /* The league floor counts. It is not stored on the game -- `computeAll`
-     composes it in on the way to the solver -- so counting the per-game maps
-     alone reported "no rules" while a rule rewrote every available player's
-     minutes (A24b). See `renderConstraints` for the matching copy. */
-  const n = Object.keys(c.minMinutes).length + Object.keys(c.maxMinutes).length +
-            c.pairs.length + c.avoids.length + c.openingFive.length + c.lastPeriodFive.length +
-            (c.maxConsecutive ? 1 : 0) + (leagueMinutes() > 0 ? 1 : 0);
+  /* `ruleCount` (state.js) is the one place this number is computed: it
+     counts each rule exactly as `renderConstraints` (rules.js) lists them --
+     a starting five or a last-period five once, not by `.length` -- and
+     includes the league floor, which is not stored on the game at all
+     (`computeAll` composes it in on the way to the solver). Reading it here
+     instead of re-deriving it is what keeps this badge and the Rules list
+     from disagreeing (#26 decision 3). */
+  const n = ruleCount(g);
   const hint = n ? '' : noRoster() ? '' : CONS_HINT;
   set('#conscount', 'textContent', n ? String(n) : hint);
   set('#conscount', 'className', n ? 'count' : 'count zero');

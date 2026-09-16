@@ -377,6 +377,12 @@
       <div class="teammenu" id="teamMenu" popover aria-label="Teams"></div>
       <div class="spacer"></div>
       <button class="keys-hint press" id="keysHint" type="button" aria-label="Keyboard shortcuts"><kbd>?</kbd><span>Shortcuts</span></button>
+      <!-- #26 decision 8: a text button, between the spacer and the gear.
+           `.keys-hint` above is `display: none` below 760px, so on a phone
+           this and the gear are the header's only two actions. Its handler
+           (`startNewDay`) is unchanged; only the id's home in the markup
+           moved, out of `.today-acts` below. -->
+      <button class="btn ghost press" id="todayNewDay" type="button">New day</button>
       <!-- The gear only ever shows here, on Today (N4) -- `#barToday` is
            hidden on every other screen, and there is no second way to reach
            it. -->
@@ -413,7 +419,6 @@
     <div class="today-games" id="todayGames"></div>
     <div class="today-acts">
       <button class="btn press" id="todayAddGame" type="button">Add a game</button>
-      <button class="btn ghost press" id="todayNewDay" type="button">New day</button>
     </div>
     <button class="today-entry press" id="todayTeam" type="button"></button>
     <button class="today-entry press" id="todaySeason" type="button"></button>

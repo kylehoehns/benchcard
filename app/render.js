@@ -411,6 +411,14 @@ function applyView(v, from) {
      renders on every reload rather than the one every other screen already
      paid. */
   if (v === 'games' && from !== 'games' && from !== null) render();
+  /* #26 decision 6: `renderTabs` skips building Today's passes while another
+     screen is on show, so a real transition INTO Today has to repaint them
+     here or a coach who edited a game and tapped back would see whatever the
+     passes looked like before the edit. `from !== null` excludes boot's own
+     landing on Today the same way the games branch above does: boot's own
+     `renderAll()` a few lines later covers it, by which point `state.view`
+     is already 'today'. */
+  if (v === 'today' && from !== 'today' && from !== null) render('tabs');
 }
 
 /* `auto` has to be resolved to a real value here. Removing the attribute does
