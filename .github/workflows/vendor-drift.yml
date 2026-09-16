@@ -2,14 +2,18 @@ name: vendor drift
 
 # `app/vendor/fetch.sh` is the build step, and its output is committed. That only
 # means anything if the two are actually kept in sync, so this job re-runs the
-# script and fails if the working tree moves. It catches both directions:
+# script and fails if the working tree moves. It catches three things:
 #
 #   * a vendored file edited by hand instead of at the pin — the temptation is
 #     real, since `app/vendor/` is just files sitting in the repo;
 #   * a CDN serving something different under the same version pin, which no
-#     amount of care on our side prevents and which nothing else would notice.
+#     amount of care on our side prevents and which nothing else would notice;
+#   * a file `fetch.sh` no longer produces but that stayed committed. Only
+#     since #52: the script now clears what it generates before it starts, so
+#     a leftover reads as a deletion here instead of being invisible to `git
+#     status`. The comment at the top of `fetch.sh` says why.
 #
-# The second one only shows up over time, not on a commit, which is why this
+# The CDN one only shows up over time, not on a commit, which is why this
 # runs on a schedule as well as on changes under `app/vendor/`. It is not on every
 # push: a full re-vendor re-downloads motion, the Inter faces and every Lucide
 # icon from a CDN, and pushes that do not touch `app/vendor/` cannot introduce

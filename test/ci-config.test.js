@@ -21,6 +21,14 @@
  * `vendor-drift.yml` is deliberately exempt: it is scheduled, conditional on a
  * PR label, and is NOT a required check. Its path filter is correct and must
  * stay.
+ *
+ * One test here is not about branch protection at all. #52 pins that
+ * `app/vendor/fetch.sh` clears what it generates -- the drift job's
+ * precondition rather than a property of a required check. It lives in this
+ * file because this file already reads `vendor-drift.yml` and already exists
+ * to catch configuration that drifts with nothing noticing, which is the same
+ * failure shape. Read the header as: what this file guards is CI
+ * configuration, plus the one precondition that job depends on.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -592,6 +600,55 @@ test("extractStepEnv reads every matching step's own env:, not a decoy", () => {
   assert.deepEqual(extractStepEnv(flowEnvWrongValue, CLAUDE_ACTION_USES),
     [{ CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "'0'" }],
     "flow-style '0' must still be reported so the assertion below rejects it");
+});
+
+/* #52: the drift job cannot see a file `fetch.sh` stopped writing. Nothing
+ * touches it, so `git status` has nothing to report and the job passes --
+ * `sun`, `moon` and `contrast` sat in app/vendor/icons/ that way through
+ * three green drift runs -- #48's two pull-request runs and its merge to
+ * main -- until #53 deleted them by hand. Clearing what it generates first
+ * turns that case into a deletion, and this pins the line so the hole cannot
+ * reopen silently. What the job itself does is documented once, in
+ * `vendor-drift.yml`'s own header. */
+test('fetch.sh clears everything it generates, before it generates it', () => {
+  const lines = read('app/vendor/fetch.sh').split('\n');
+  const code = lines.map(l => (l.trim().startsWith('#') ? '' : l));
+
+  const clearAt = code.findIndex(l => /^rm -rf /.test(l));
+  assert.notEqual(clearAt, -1,
+    'app/vendor/fetch.sh no longer clears anything before it re-vendors, so a name '
+    + 'dropped from its lists leaves a file the vendor-drift job cannot see (#52)');
+  const cleared = code[clearAt].replace(/^rm -rf /, '').trim().split(/\s+/);
+
+  /* Every path the script writes: `-o target`, a `>` redirect, `mkdir -p`.
+     Derived rather than listed, so a fifth output added to the script has to
+     be cleared too -- the mutation /new-guard asks for is ADDING a member,
+     and a hand-written list only ever catches a removed one. */
+  const writes = [];
+  code.forEach((line, n) => {
+    for (const re of [/-o\s+"?([^"\s]+)/g, /(?:^|\s)>\s*"?([^"\s]+)/g, /mkdir -p\s+"?([^"\s]+)/g]) {
+      for (const m of line.matchAll(re)) writes.push({ path: m[1], n });
+    }
+  });
+  /* Scratch files the script removes itself are not output. */
+  const temp = new Set([...code.join('\n').matchAll(/^rm -f\s+(\S+)/gm)].map(m => m[1]));
+  const output = writes.filter(w => !temp.has(w.path));
+
+  assert.ok(output.length > 0,
+    'found no write targets in fetch.sh -- this guard has stopped measuring anything, '
+    + 'which is a broken guard and not a clean result');
+
+  for (const { path } of output) {
+    assert.ok(cleared.includes(path.split('/')[0]),
+      `fetch.sh writes ${path} but does not clear ${path.split('/')[0]} first, so a `
+      + `change that stops producing it leaves the old file behind and the drift job `
+      + `stays green. Add it to the \`rm -rf\` at the top of app/vendor/fetch.sh.`);
+  }
+
+  assert.ok(clearAt < Math.min(...output.map(w => w.n)),
+    'the `rm -rf` in app/vendor/fetch.sh runs after the script has already written '
+    + 'something, so it deletes what it just fetched. It belongs at the top, before '
+    + 'the first download.');
 });
 
 for (const file of ['claude-code-review.yml', 'claude.yml']) {
