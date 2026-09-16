@@ -124,7 +124,7 @@ a { color: inherit; }
 .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: var(--r-full); border: 1px solid var(--line); }
 .seg button { padding: .36rem 1rem; border-radius: var(--r-full); font-size: var(--fs-secondary); font-weight: 600; color: var(--muted); }
 @media (hover: hover) { .seg button:hover { color: var(--ink); } }
-.seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.seg button.on { background: var(--surface); color: var(--tint); box-shadow: var(--shadow-sm); }
 .seg.wide { display: flex; width: 100%; padding: 4px; }
 .seg.wide button { flex: 1; padding: .58rem .3rem; font-size: var(--fs-secondary); }
 
@@ -134,8 +134,8 @@ a { color: inherit; }
   background: var(--surface); font-size: var(--fs-secondary); font-weight: 600; white-space: nowrap;
 }
 @media (hover: hover) { .btn:hover { background: var(--surface-2); border-color: var(--muted); } }
-.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 6px 16px -8px rgba(0,0,0,.24); }
-@media (hover: hover) { .btn.primary:hover { background: var(--accent-2); } }
+.btn.primary { background: var(--tint); border-color: transparent; color: var(--tint-ink); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 6px 16px -8px rgba(0,0,0,.24); }
+@media (hover: hover) { .btn.primary:hover { background: var(--tint-2); } }
 .btn.ghost { background: none; border-color: transparent; color: var(--ink-2); }
 @media (hover: hover) { .btn.ghost:hover { background: var(--surface-2); } }
 /* Destructive, and coloured like it. Every other button in the app is either
@@ -744,21 +744,21 @@ select {
   border-radius: var(--r-full); padding: .42rem .85rem; font-size: var(--fs-secondary); font-weight: 500; white-space: nowrap;
 }
 @media (hover: hover) { .chip:hover { border-color: var(--muted); color: var(--ink); } }
-.chip.sel { background: var(--ink); border-color: transparent; color: var(--bg); font-weight: 600; }
+.chip.sel { background: var(--tint); border-color: transparent; color: var(--tint-ink); font-weight: 600; }
 
 .switch { display: inline-flex; align-items: center; gap: .62rem; cursor: pointer; font-size: var(--fs-secondary); }
 .switch input { appearance: none; width: 2.4rem; height: 1.4rem; border-radius: var(--r-full); background: var(--line-2);
   position: relative; flex: none; margin: 0; cursor: pointer; transition: background var(--t-fast) var(--ease); }
 .switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 1.1rem; height: 1.1rem; border-radius: 50%;
   background: #fff; box-shadow: var(--shadow-sm); transition: transform var(--t-fast) var(--spring); }
-.switch input:checked { background: var(--accent); }
+.switch input:checked { background: var(--tint); }
 .switch input:checked::after { transform: translateX(1rem); }
 
 input[type=checkbox].box { appearance: none; width: 1.15rem; height: 1.15rem; border: 1.5px solid var(--line-2);
   border-radius: var(--r-xs); cursor: pointer; vertical-align: middle;
   transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), transform var(--t-tap) var(--spring); }
-input[type=checkbox].box:checked { background: var(--accent); border-color: var(--accent); transform: scale(1.06); }
-input[type=checkbox].box:checked::after { content: '✓'; color: var(--accent-ink); font-size: var(--fs-footnote); font-weight: 700; display: grid; place-items: center; height: 100%; }
+input[type=checkbox].box:checked { background: var(--tint); border-color: var(--tint); transform: scale(1.06); }
+input[type=checkbox].box:checked::after { content: '✓'; color: var(--tint-ink); font-size: var(--fs-footnote); font-weight: 700; display: grid; place-items: center; height: 100%; }
 
 /* ============================ budget sliders ============================ */
 .budget { display: flex; align-items: baseline; gap: .5rem; margin: .1rem 0 .7rem; }
@@ -869,7 +869,7 @@ input[type=range]:disabled { opacity: .5; }
 @media (hover: hover) { .btn:disabled:hover { background: var(--surface); border-color: var(--line-2); } }
 /* the generic disabled hover would repaint a primary button as a plain one
    mid-hover, which reads as the button changing identity rather than as off */
-@media (hover: hover) { .btn.primary:disabled:hover { background: var(--accent); border-color: transparent; } }
+@media (hover: hover) { .btn.primary:disabled:hover { background: var(--tint); border-color: transparent; } }
 
 /* ============================ disclosures ============================ */
 details.dz { border-top: 1px solid var(--line); }
@@ -1073,7 +1073,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-p .mn { font-size: var(--fs-secondary); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700; }
 .gm-p .mn .proj, .gm-b .mn .proj { color: var(--faint); font-weight: 500; }
 .gm-key { margin-left: auto; font-size: var(--fs-footnote); letter-spacing: .09em; color: var(--faint); font-weight: 600; }
-.gm-p.picked { border-color: var(--accent); box-shadow: var(--ring); }
+.gm-p.picked { border-color: var(--tint); box-shadow: var(--ring); }
 
 /* Full-width rows, not name-width pills: picking who comes off is a full-width
    target, so picking who goes on has to be one too. A chip sized to the name
@@ -1116,7 +1116,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    app holds everything else to. */
 .gm-scope button { padding: .55rem .7rem; min-height: 44px; border-radius: var(--r-full);
   font-size: var(--fs-footnote); font-weight: 600; color: var(--muted); }
-.gm-scope button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.gm-scope button.on { background: var(--surface); color: var(--tint); box-shadow: var(--shadow-sm); }
 /* The third item is an action, not a third segment of the toggle, so it is
    coloured like one -- a coach must not tap it expecting a mode. */
 .gm-scope button.act { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
@@ -1166,8 +1166,8 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   border: 1px solid var(--line-2); font-size: var(--fs-sentence); color: var(--ink); display: grid; place-items: center; }
 @media (hover: hover) { .gm-nav:hover { background: var(--surface-2); } }
 .gm-nav:disabled { opacity: .35; }
-.gm-nav.next { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
-@media (hover: hover) { .gm-nav.next:hover { background: var(--accent-2); } }
+.gm-nav.next { background: var(--tint); border-color: transparent; color: var(--tint-ink); }
+@media (hover: hover) { .gm-nav.next:hover { background: var(--tint-2); } }
 /* Bottom-left exit. Hidden on desktop, where the top-left X is an easy reach;
    on a phone it is the only exit a thumb can hit without regripping. Text, not
    a chevron, so it never reads as another stint control. */
@@ -1291,9 +1291,9 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 @media (max-width: 900px) { .actionbar:not([hidden]) { display: flex; } }
 .ab-main {
   flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  min-height: 52px; border-radius: var(--r); background: var(--accent); color: var(--accent-ink);
+  min-height: 52px; border-radius: var(--r); background: var(--tint); color: var(--tint-ink);
   font-size: var(--fs-body); font-weight: 600; letter-spacing: -.01em;
-  box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 8px 20px -10px var(--accent);
+  box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 8px 20px -10px var(--tint);
 }
 .ab-main:disabled { opacity: .45; box-shadow: none; }
 .ab-side {
@@ -1518,6 +1518,39 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .help-dl dd { margin: .1rem 0 0; color: var(--ink-2); }
 .help-p b, .help-dl b { color: var(--ink); font-weight: 600; }
 .help-tour { width: 100%; justify-content: center; margin-top: 1.5rem; }
+
+/* ===================== #25: team colour row + picker =====================
+   `.colour-row-btn` is the Settings row's own button (swatch + current
+   name), opening `#colourPicker` -- a `.keyswrap` dialog like `#help` and
+   `#confirm` above it, so `.colourbox` only sets the width and the rest of
+   the shell (`.keyswrap`, `.keysbox`, `.keys-hd`) is unchanged.
+
+   `.colour-swatch` reads `--tint` by default, which is right for the row's
+   own swatch (no `data-tint` of its own, so it just inherits <html>'s) and
+   for the picker's eight non-Graphite swatches (each DOES carry its own
+   `data-tint`, matched by the compound selectors in tokens.css). Graphite
+   has no tokens.css block -- it IS the base -- so its swatch reads `--ink`
+   instead, via the one override below, rather than inheriting whichever
+   team is currently active.
+
+   `.colour-opt.on` is the picker's "current one marked" (item 4's design):
+   it reads `--tint-soft`/`--tint-line`, both INHERITED from <html>, so the
+   highlight is always the ACTIVE team's colour, never the option's own --
+   that is what the swatch is for. */
+.colour-row-btn { display: inline-flex; align-items: center; gap: .5rem; }
+.colour-swatch { display: inline-block; width: 1.15rem; height: 1.15rem; border-radius: 50%;
+  background: var(--tint); box-shadow: inset 0 0 0 1px var(--line-2); flex: none; }
+.colour-opt[data-colour="graphite"] .colour-swatch { background: var(--ink); }
+
+.colourbox { width: min(22rem, 92vw); text-align: left; }
+.colour-opts { display: flex; flex-direction: column; gap: .3rem; margin-top: .5rem; }
+/* 48px, not just the 44px floor the spec sets: matches `#view-settings
+   .setrow`'s own floor (app.css :2777) rather than a second number. */
+.colour-opt { display: flex; align-items: center; gap: .7rem; width: 100%; min-height: 48px;
+  padding: .5rem .8rem; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: none; font: inherit; font-size: var(--fs-body); color: var(--ink); text-align: left; }
+.colour-opt.on { background: var(--tint-soft); border-color: var(--tint-line); font-weight: 600; }
+@media (hover: hover) { .colour-opt:hover { border-color: var(--line-2); } }
 
 /* ========================= first-run tour =========================
    A spotlight, not a modal: the coach reads about the squad row while looking
@@ -1909,7 +1942,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-secondary); font-weight: 600;
   cursor: pointer; white-space: nowrap;
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
-.wel-seg-b.sel { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
+.wel-seg-b.sel { background: var(--surface); color: var(--tint); box-shadow: var(--shadow-sm); }
 @media (hover: hover) { .wel-seg-b:not(.sel):hover { color: var(--ink); } }
 
 .wel-doors { flex: none; margin-top: .7rem; }
@@ -2012,6 +2045,15 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .linkish:focus-visible { border-bottom-color: var(--accent-line); }
 @media (hover: hover) { .linkish:hover { border-bottom-color: var(--accent-line); } }
 #welCount.ready { color: var(--ok); }
+
+/* #25 item 5: the sentence style #27 will use. Graphite reads ink with a 2px
+   underline at the accent-line alpha (--phrase-line carries that colour for
+   Graphite); every other team colour reads its own fill with no underline --
+   --phrase-line goes transparent for those (see tokens.css), so one rule
+   covers every colour rather than a second rule turning the line off. Only
+   the style ships here; the sentence itself is #27's, out of scope. */
+.phrase { color: var(--phrase); text-decoration: underline;
+  text-decoration-color: var(--phrase-line); text-decoration-thickness: 2px; }
 
 /* Collapsible sections. Open by default on a roomy screen; the phone rules
    below close the reference ones so the rotation and the card sit near the top

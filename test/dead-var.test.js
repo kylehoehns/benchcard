@@ -67,7 +67,12 @@ const used = collect([USE, GET]);
 
 /* Tokens with no reader on purpose. Anything added here needs a reason on the
  * line, or the next sweep cannot tell a deliberate hook from a leftover. */
-const KEEP_UNREAD = new Map();
+const KEEP_UNREAD = new Map([
+  ['--accent-2', '#25 moved its two readers (.btn.primary and .gm-nav.next '
+    + 'hover) onto --tint-2; kept declared because '
+    + 'test/graphite-tokens.test.js\'s NEUTRAL_DIRECT list (#21) still checks '
+    + 'it is present and neutral in every block'],
+]);
 /* Tokens read without a declaration on purpose — a genuine "set this from
  * outside" hook, not a typo. Same rule: a reason on the line. */
 const KEEP_UNDECLARED = new Map();

@@ -171,9 +171,25 @@ export const DEFAULT_SETTINGS = Object.freeze({
      rather than a league rule, and it stays one tap where it is. */
   periods: 4,
   periodMinutes: 8,
+  /* The team's colour, in Settings and in the tint it hands the K1 controls
+     (see app/render.js's applyTint). 'graphite' is neutral ink, and it is
+     what every record written before this key existed means. The values
+     themselves live only in tokens.css -- this file names the nine slots,
+     never a hex. */
+  colour: 'graphite',
 });
 
 const TIE_BREAKS = Object.freeze(['behind', 'levels']);
+
+/* The nine team colours, in the order the picker lists them and the order
+   the contrast test walks. One list: the picker, sanitizeSettings and
+   contrast.test.js all read this rather than typing the names twice. Each
+   name is its value capitalized -- 'graphite' -> 'Graphite' -- so a display
+   name is derived, not a second array. */
+export const COLOURS = Object.freeze([
+  'graphite', 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple',
+]);
+export const colourName = c => c.charAt(0).toUpperCase() + c.slice(1);
 
 /* Stricter than `num` alone, and every number in the settings block goes
    through it: `Number(null)`, `Number('')` and `Number([])` are all 0, which
@@ -207,6 +223,9 @@ export const sanitizeSettings = raw => {
     periods: Math.round(num(strictNum(s.periods), DEFAULT_SETTINGS.periods, 1, 8)),
     periodMinutes: Math.round(num(
       strictNum(s.periodMinutes), DEFAULT_SETTINGS.periodMinutes, 1, 40)),
+    // an unknown string, a wrong case, or anything that is not one of the
+    // nine names is a record we cannot paint -- fall back to the neutral one
+    colour: COLOURS.includes(s.colour) ? s.colour : DEFAULT_SETTINGS.colour,
   };
 };
 

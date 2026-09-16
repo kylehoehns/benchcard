@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseTokensCss, parseColor, colorOf, over, contrast } from '../scripts/tokens-css.mjs';
+import { COLOURS } from '../app/storage.js';
 
 /* #21 (Graphite look), item 6: every colour token in app/tokens.css against
  * WCAG 2.2's own contrast formula, on every ground it can land on.
@@ -37,9 +38,13 @@ const read = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 const resolved = parseTokensCss(read('app/tokens.css'));
 const { light, dark, lightMore, darkMore, nested } = resolved;
 
-test('the more-contrast block keeps the two selectors that survive equal specificity', () => {
-  assert.equal(nested.length, 2,
-    `@media (prefers-contrast: more) holds ${nested.length} selector block(s), want exactly 2`);
+test('the more-contrast block keeps the two base selectors that survive equal specificity', () => {
+  // #25 adds one light and one dark tint block per non-Graphite colour inside
+  // this same media query (8 colours x 2 = 16), alongside the two base
+  // selectors this test has always pinned -- so the count grows with the
+  // colour list rather than staying fixed at 2.
+  assert.equal(nested.length, 2 + 16,
+    `@media (prefers-contrast: more) holds ${nested.length} selector block(s), want exactly 2 base + 16 tint`);
   assert.ok(nested.includes(':root:not([data-theme="dark"])'),
     'no block is selected on ":root:not([data-theme=\\"dark\\"])" -- found: ' + nested.join(', '));
   assert.ok(nested.includes(':root[data-theme="dark"]'),
@@ -115,6 +120,57 @@ test('every control token clears its floor against every ground, in all four the
         const ground = colorOf(t.tokens, g);
         const r = contrast(effective(colorOf(t.tokens, tok), ground), ground);
         if (r < t.controlFloor - 1e-9) bad.push(`${t.name}: ${tok} on ${g} is ${r.toFixed(2)}:1, needs >= ${t.controlFloor}:1`);
+      }
+    }
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #25 (team colour), items 2 and 6: the nine colours are found by the same
+ * list the app uses (`COLOURS`, next to `TIE_BREAKS` in storage.js) -- a
+ * tenth colour added there with no blocks in tokens.css, or a colour with a
+ * block missing for one of the four states, fails the presence check below
+ * rather than silently reading Graphite's values for the state that is
+ * missing. Graphite itself needs no block: the base :root / dark blocks
+ * declare --tint* at Graphite's values (the selector trap's own comment in
+ * tokens.css says why), so it is excluded from the presence check but still
+ * walked by the numeric one below. */
+test('every non-Graphite colour in COLOURS has a light, dark, light+more and dark+more block', () => {
+  const bad = [];
+  for (const c of COLOURS) {
+    if (c === 'graphite') continue;
+    const t = resolved.tint(c);
+    if (!t.hasLight) bad.push(`${c}: no ":root:not([data-theme=\\"dark\\"])[data-tint=\\"${c}\\"]" block`);
+    if (!t.hasDark) bad.push(`${c}: no ":root[data-theme=\\"dark\\"][data-tint=\\"${c}\\"]" block`);
+    if (!t.hasLightMore) bad.push(`${c}: no light block inside @media (prefers-contrast: more)`);
+    if (!t.hasDarkMore) bad.push(`${c}: no dark block inside @media (prefers-contrast: more)`);
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+test('every colour\'s label on its own fill, and its fill as text on every ground, clear their floors', () => {
+  const bad = [];
+  for (const c of COLOURS) {
+    const t = resolved.tint(c);
+    const states = [
+      { name: `${c} light`, tokens: t.light, textFloor: 4.5, controlFloor: 3 },
+      { name: `${c} dark`, tokens: t.dark, textFloor: 4.5, controlFloor: 3 },
+      { name: `${c} light + more contrast`, tokens: t.lightMore, textFloor: 7, controlFloor: 4.5 },
+      { name: `${c} dark + more contrast`, tokens: t.darkMore, textFloor: 7, controlFloor: 4.5 },
+    ];
+    for (const s of states) {
+      const fill = colorOf(s.tokens, '--tint');
+      const label = colorOf(s.tokens, '--tint-ink');
+      const onFill = contrast(effective(label, fill), fill);
+      if (onFill < s.textFloor - 1e-9) {
+        bad.push(`${s.name}: --tint-ink on --tint is ${onFill.toFixed(2)}:1, needs >= ${s.textFloor}:1`);
+      }
+      for (const g of GROUNDS) {
+        const ground = colorOf(s.tokens, g);
+        const asText = contrast(effective(fill, ground), ground);
+        if (asText < s.controlFloor - 1e-9) {
+          bad.push(`${s.name}: --tint as text on ${g} is ${asText.toFixed(2)}:1, needs >= ${s.controlFloor}:1`);
+        }
       }
     }
   }

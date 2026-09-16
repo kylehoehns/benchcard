@@ -20,8 +20,8 @@
 import { $, on, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
-import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay } from './state.js';
-import { DEFAULT_SETTINGS } from './storage.js';
+import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay, activeColour } from './state.js';
+import { DEFAULT_SETTINGS, colourName } from './storage.js';
 // season-view.js is already in the boot graph (app.js calls `initSeason`),
 // so this names no new request -- it is the one place a filed game is
 // counted, and Today's Season entry reads it the same way (#23 review).
@@ -310,6 +310,24 @@ export function renderSettings() {
   const on = (team()?.settings?.seasonDefault ?? DEFAULT_SETTINGS.seasonDefault) === true;
   for (const b of sd.querySelectorAll('button[data-sdef]')) {
     const is = (b.dataset.sdef === '1') === on;
+    b.classList.toggle('on', is);
+    b.setAttribute('aria-pressed', String(is));
+  }
+
+  /* #25: the row's read-back and the picker's current mark. `#teamColourSwatch`
+     needs no write here -- it carries no `data-tint` of its own, so it reads
+     `--tint` straight off `<html>` (see the CSS comment above `.colour-swatch`)
+     and stays in step with `applyTint()` for free. `colourName` is storage.js's
+     one capitalizer (#18/#25's "do not re-derive" rule), not re-typed here.
+     `activeColour()` (state.js) is the same accessor `applyTint` (render.js)
+     reads, so the row and the tint it describes cannot disagree. */
+  const opts = $('#colourOpts');
+  if (!opts) return;
+  const colour = activeColour();
+  const name = $('#teamColourName');
+  if (name) name.textContent = colourName(colour);
+  for (const b of opts.querySelectorAll('.colour-opt[data-colour]')) {
+    const is = b.dataset.colour === colour;
     b.classList.toggle('on', is);
     b.setAttribute('aria-pressed', String(is));
   }

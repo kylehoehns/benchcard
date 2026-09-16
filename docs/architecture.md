@@ -369,7 +369,17 @@ help sheet first is also what makes the page legible — a settings surface whos
 only contents are abstract policy is undiscoverable.
 
 The team zone opens on the team's own name (`#teamName`) and the game format,
-then **Players changing at once** (1–5, default 3): `maxSubs`, which has
+then **Team colour**: one of nine choices (Graphite, Hardwood, Royal, Navy,
+Maroon, Red, Forest, Gold, Purple), each with a swatch. Graphite is the default
+and the neutral choice; the other eight tint the primary buttons, tappable
+phrases and selected states so two teams read visibly different at a glance.
+A picker dialog opens on tap, and the picker marks the current colour and
+applies a new one instantly. The colour is stored per team, so two squads with
+two colours stay visibly different when you switch between them. The tint
+follows the theme — each colour has a light and a dark value — and the
+`--tint*` tokens live in `tokens.css` alongside the `--accent` neutrals (#21).
+
+Then **Players changing at once** (1–5, default 3): `maxSubs`, which has
 always existed in `engine.js` and was invisible to a coach until it moved
 here. It is a *preference*, and the copy says so, because the solver treats it
 as one — see the design note below. Remove this team closes the zone.
@@ -425,24 +435,29 @@ is watched, so a phone that turns dark at dusk turns the app with it; an
 explicit light/dark choice still wins, and `theme-color` follows the resolved
 background.
 
-**The first frame.** The same idiom decides which VIEW paints. `#view-today` is
-the one view that ships visible (#23), so a first-ever visitor used to paint
-the Today shell and watch it flip to the welcome screen a beat later. A second
-pre-paint script stamps `data-boot` on `<html>` with the view the boot is going
-to land on, and `app.css` hides the Today shell (and the bar and the foot) and
-reveals that view for the stamp; `applyView` removes the attribute the first
-time it runs. It resolves the WHOLE view, not welcome-versus-Today: a coach who
-left the app on the open game, Team, Season or Settings watched the same flash
-one view along — Games lost the "ships visible" seat to Today and gained a
-stamp of its own. **Today is stamped as nothing at all**, deliberately — it is
-the markup default, so a throw in the script degrades to that default screen
-instead of a blank frame. Shipping `#view-welcome` visible instead would only move the
-flash onto the returning coach, who loads the app far more often. The script
-walks `loadState`'s whole key chain — the v6 backup, v5/v4/v3 and both legacy
-keys — and repeats its three acceptance clauses, because a cheaper check that
-disagreed would flash the welcome screen at a coach whose primary record is gone
-but whose backup is fine. `test/first-paint.test.js` runs the real script beside
-`loadState` and fails on any disagreement.
+**The first frame.** The same idiom decides which VIEW paints and which TINT.
+`#view-today` is the one view that ships visible (#23), so a first-ever visitor
+used to paint the Today shell and watch it flip to the welcome screen a beat
+later. A pre-paint script stamps `data-boot` on `<html>` with the view the boot
+is going to land on, and another stamps `data-tint` with the active team's colour
+(#25); `app.css` hides the Today shell (and the bar and the foot) and reveals
+that view for its stamp, and the token blocks apply for the tint. `applyView`
+removes `data-boot` the first time it runs; `data-tint` stays, because
+`applyTint` owns it from then on and rewrites it on every render. It resolves the WHOLE
+view, not welcome-versus-Today: a coach who left the app on the open game, Team,
+Season or Settings watched the same flash one view along — Games lost the
+"ships visible" seat to Today and gained a stamp of its own. **Today is stamped
+as nothing at all**, deliberately — it is the markup default, so a throw in the
+script degrades to that default screen instead of a blank frame. Graphite tint
+is also stamped as nothing (no `data-tint` attribute), matching the app's defaults
+— so a coach whose active team is not Graphite does not see a Graphite frame
+first. Shipping `#view-welcome` visible instead would only move the flash onto
+the returning coach, who loads the app far more often. The script walks `loadState`'s
+whole key chain — the v6 backup, v5/v4/v3 and both legacy keys — and repeats its
+three acceptance clauses, because a cheaper check that disagreed would flash the
+welcome screen at a coach whose primary record is gone but whose backup is fine.
+`test/first-paint.test.js` runs the real script beside `loadState` and fails on
+any disagreement.
 
 The card is presented as a physical object on a lit stage rather than as a
 sidebar thumbnail.
@@ -475,7 +490,11 @@ stack matching `.card`'s exactly, and the re-fit on font load — is a trap
 Motion, colour and touch behaviour run off tokens in one place: easing curves
 (nothing linear), four durations, a neutral grey palette with ink as the
 primary tint, a `prefers-contrast: more` variant, and full light/dark (the
-Graphite look, #21). `prefers-reduced-motion` disables all of it, and
+Graphite look, #21). A team's colour (Graphite through Purple) overrides that
+neutral tint on the primary buttons, selected states and tappable phrases (#25);
+each colour declares its own `--tint*` tokens for the current theme, and
+`applyTint()` stamps `data-tint` on `<html>` so the CSS blocks apply — the same
+pattern as `data-theme`. `prefers-reduced-motion` disables all of it, and
 **the preference is watched, not sampled** — a phone can flip it from Control
 Centre mid-game, so `fx.js` exports `enabled` as a live binding and re-reads
 the query on `change`. That gating is not decoration: the CSS

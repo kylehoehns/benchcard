@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { loadState, KEY, BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
-         V3_KEY } from '../app/storage.js';
+         V3_KEY, COLOURS } from '../app/storage.js';
 
 /* THE FIRST FRAME AND THE LOADER MUST ANSWER THE SAME QUESTION.
  *
@@ -85,6 +85,9 @@ const roster = () => [
 ];
 const team = (players) => ({ id: 't1', name: 'Hawks', players, day: { name: '', games: [newGame()] },
   season: { games: [] }, settings: {}, activeGame: 0 });
+// #25 item 8: a team carrying a colour, for the tint-stamp fixtures below.
+const teamColoured = (colour, players = roster()) =>
+  ({ ...team(players), settings: { colour } });
 // a whole record, the way saveState writes one
 const rec = (players = roster(), onboarded = players.length > 0, view = 'games') => ({
   version: 6, onboarded, tourSeen: false, teams: [team(players)], activeTeam: 0,
@@ -100,13 +103,22 @@ const VIEW_STAMPS = ['welcome', 'games', 'team', 'season', 'settings'];
 
 /* What the browser will paint on the first frame. The script is run with the
    same stubs the timeline-skeleton test uses: a Map-backed `localStorage` and a
-   documentElement that records what was stamped on it. */
-const firstPaint = (store) => {
-  let stamped = null;
-  const doc = { documentElement: { setAttribute: (k, v) => { stamped = `${k}=${v}`; } } };
+   documentElement that records EVERY attribute stamped on it -- #25 item 8
+   adds a second `setAttribute` call (`data-tint`) to the same script, beside
+   the view's own `data-boot`, so a single overwritten variable would lose
+   whichever call ran first. */
+const runPrePaint = (store) => {
+  const stamps = {};
+  const doc = { documentElement: { setAttribute: (k, v) => { stamps[k] = v; } } };
   // eslint-disable-next-line no-new-func
   new Function('localStorage', 'document', prePaintScript())(
     { getItem: k => (k in store ? store[k] : null) }, doc);
+  return stamps;
+};
+
+const firstPaint = (store) => {
+  const stamps = runPrePaint(store);
+  const stamped = 'data-boot' in stamps ? `data-boot=${stamps['data-boot']}` : null;
   /* Today is the markup default and must stay unstamped (#23): that is what
      makes a throw in the script degrade to today's behaviour instead of to a
      blank frame, and stamping a view app.css has no rule for would hide every
@@ -115,6 +127,12 @@ const firstPaint = (store) => {
     `the pre-paint script stamped something unexpected: ${stamped}`);
   return stamped === null ? 'today' : stamped.slice('data-boot='.length);
 };
+
+/* Same script, the colour half: what `data-tint` the first frame carries.
+   Graphite is today's app and needs no attribute (see tokens.css's own base
+   blocks), so its absence reads as 'graphite', the same default `sanitize`
+   gives `settings.colour`. */
+const firstPaintTint = (store) => runPrePaint(store)['data-tint'] || 'graphite';
 
 /* What `app.js` will show a moment later. Line for line, app.js's boot call is
    `setView(state.onboarded ? (state.view || 'today') : 'welcome')`, and
@@ -131,6 +149,26 @@ const afterBoot = (store) => {
   try {
     const loaded = loadState(H);
     return loaded && loaded.state.onboarded ? (loaded.state.view || 'today') : 'welcome';
+  } finally {
+    if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
+    else delete globalThis.localStorage;
+  }
+};
+
+/* #25 item 8, the colour half of the same question: what `sanitize` makes of
+   `teams[activeTeam].settings.colour` for the real boot, read through
+   `loadState` exactly as `afterBoot` reads the view above it -- never
+   recomputed by hand. */
+const afterBootColour = (store) => {
+  const prev = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { getItem: k => (k in store ? store[k] : null), setItem: () => {} },
+  });
+  try {
+    const loaded = loadState(H);
+    const s = loaded && loaded.state;
+    return (s && s.teams[s.activeTeam]?.settings.colour) || 'graphite';
   } finally {
     if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
     else delete globalThis.localStorage;
@@ -251,6 +289,43 @@ for (const [name, store, want] of CASES) {
     assert.equal(paint, boot,
       `the first frame paints "${paint}" and then the boot switches to "${boot}" for ${name} — `
       + 'that is the flash A41 fixed, in one direction or the other');
+  });
+}
+
+/* #25 item 8: the team colour, same shape as the view table above -- each row
+   is asserted against `want` on its own before the two sides are compared. */
+const COLOUR_CASES = [
+  ['a returning coach with no colour set', { [KEY]: j(rec()) }, 'graphite'],
+  ['a returning coach whose team is Royal', { [KEY]: j({ ...rec(), teams: [teamColoured('royal')] }) }, 'royal'],
+  ['a returning coach whose team is Hardwood', { [KEY]: j({ ...rec(), teams: [teamColoured('hardwood')] }) }, 'hardwood'],
+  /* THE ACTIVE-TEAM CASE. Two teams, two different colours -- a script that
+     reads `teams[0]` regardless of `activeTeam` passes every row above this
+     one and fails only here, which is the exact failure named in the spec's
+     Proof section ("red when the script ignores activeTeam"). */
+  ['a second team is active and it is Forest, the first is Royal',
+    { [KEY]: j({ ...rec(), activeTeam: 1, teams: [teamColoured('royal'), teamColoured('forest')] }) }, 'forest'],
+  ['an unrecognised colour falls back to graphite',
+    { [KEY]: j({ ...rec(), teams: [teamColoured('teal')] }) }, 'graphite'],
+  ['a colour that is not a string falls back to graphite',
+    { [KEY]: j({ ...rec(), teams: [teamColoured(42)] }) }, 'graphite'],
+  ['an out-of-range activeTeam clamps to the last team, which is Maroon',
+    { [KEY]: j({ ...rec(), activeTeam: 99, teams: [teamColoured('royal'), teamColoured('maroon')] }) }, 'maroon'],
+  ['a good backup, no primary, team is Gold',
+    { [BACKUP_KEY]: j({ ...rec(), teams: [teamColoured('gold')] }) }, 'gold'],
+  ['a v3 record (no settings at all) has no colour to read',
+    { [V3_KEY]: j({ version: 3, players: roster(), day: { name: '', games: [newGame()] } }) }, 'graphite'],
+  ['a first-run device has no team to read a colour from', {}, 'graphite'],
+];
+
+for (const [name, store, want] of COLOUR_CASES) {
+  test(`first paint's tint agrees with the boot: ${name}`, () => {
+    assert.ok(COLOURS.includes(want), `fixture expectation "${want}" is not one of COLOURS`);
+    const boot = afterBootColour(store);
+    assert.equal(boot, want, `loadState resolves "${boot}" for ${name}; the fixture expects "${want}"`);
+    const paint = firstPaintTint(store);
+    assert.equal(paint, boot,
+      `the first frame stamps "${paint}" and then the boot resolves "${boot}" for ${name} — `
+      + 'a coach whose active team is not Graphite would see a Graphite frame first');
   });
 }
 

@@ -30,7 +30,11 @@ export function splitBlocks(src) {
   while (i < src.length) {
     const open = src.indexOf('{', i);
     if (open === -1) break;
-    const selector = src.slice(i, open).trim();
+    // Whitespace collapsed, not only trimmed: #25's compound tint selectors
+    // wrap onto a second line in tokens.css (readability, not syntax), and a
+    // lookup by exact text must not care where the source happened to break
+    // the line.
+    const selector = src.slice(i, open).trim().replace(/\s+/g, ' ');
     let depth = 1, j = open + 1;
     while (depth > 0 && j < src.length) {
       if (src[j] === '{') depth++;
@@ -84,11 +88,51 @@ export function parseTokensCss(raw) {
   const lightMore = { ...light, ...lightMoreOwn };
   const darkMore = { ...dark, ...darkMoreOwn };
 
+  /* #25 (team colour): a per-colour block, found BY EXACT SELECTOR TEXT the
+   * same way the more-contrast arms above are -- the same selector trap
+   * applies doubly here, since `:root[data-tint="royal"]` alone would outrank
+   * `[data-theme="dark"]` and paint light values on a dark phone. Every block
+   * therefore names its theme explicitly, both outside and inside the
+   * more-contrast media query, and `tint(colour)` looks each one up by that
+   * exact text -- a colour with no block for a given state resolves to the
+   * base (Graphite) value there rather than throwing, and `hasLight` /
+   * `hasDark` / `hasLightMore` / `hasDarkMore` say so, so a caller can fail
+   * loudly on a missing block instead of silently reading Graphite's. */
+  /* Compound, not a single selector: the picker's swatches need each
+   * colour's own value regardless of the phone's currently active tint, so
+   * every block also matches a DESCENDANT carrying the same [data-tint] --
+   * a plain span the picker can stamp per option -- not only :root itself.
+   * Custom properties inherit, so without the descendant arm a swatch for a
+   * colour that is not the active one would just inherit the active one's
+   * value instead of its own. */
+  const tintSelector = (theme, colour) => (theme === 'dark'
+    ? `:root[data-theme="dark"][data-tint="${colour}"], :root[data-theme="dark"] [data-tint="${colour}"]`
+    : `:root:not([data-theme="dark"])[data-tint="${colour}"], :root:not([data-theme="dark"]) [data-tint="${colour}"]`);
+  function tint(colour) {
+    const lightSel = tintSelector('light', colour);
+    const darkSel = tintSelector('dark', colour);
+    const lightOwn = mergeSelector(top, lightSel);
+    const darkOwn = mergeSelector(top, darkSel);
+    const lightMoreOwn = mergeSelector(nested, lightSel);
+    const darkMoreOwn = mergeSelector(nested, darkSel);
+    return {
+      light: { ...light, ...lightOwn },
+      dark: { ...dark, ...darkOwn },
+      lightMore: { ...lightMore, ...lightMoreOwn },
+      darkMore: { ...darkMore, ...darkMoreOwn },
+      hasLight: top.some((b) => b.selector === lightSel),
+      hasDark: top.some((b) => b.selector === darkSel),
+      hasLightMore: nested.some((b) => b.selector === lightSel),
+      hasDarkMore: nested.some((b) => b.selector === darkSel),
+    };
+  }
+
   return {
     top: top.map((b) => b.selector),
     nested: nested.map((b) => b.selector),
     mediaSelectors: moreBlocks.map((b) => b.selector),
     light, darkOwn, dark, lightMoreOwn, darkMoreOwn, lightMore, darkMore,
+    tint,
   };
 }
 

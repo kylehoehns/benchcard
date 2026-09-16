@@ -39,6 +39,12 @@ const TOUCH_STATES = [
   { name: 'team', open: `document.querySelector('#todayTeam').click()` },
   { name: 'season', open: `document.querySelector('#todaySeason').click()` },
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
+  /* #25: the picker's last choice and its close control both have to stay
+     on screen and ≥ 44px (the ticket's mobile-first constraint) -- the same
+     claim every other state here makes, at the same three widths. */
+  { name: 'settings, colour picker open',
+    open: `document.querySelector('#settingsBtn').click();
+           document.querySelector('#teamColourBtn').click()` },
   { name: 'games, folds open',
     open: `document.querySelector('.today-game').click();
            for (const d of document.querySelectorAll('details')) d.open = true` },
@@ -52,7 +58,13 @@ export async function touchPass(c, source) {
     countRe: [/(\d+) controls/, /\/(\d+) under/],
     label: (st, w) => `${st.name}@${w}px`,
     missing: 'the touch check is gone from smoke-checks.js',
-    close: `${TODAY_HOME};
+    // The picker close is defensive and harmless when it is not open (its
+    // handler is a no-op on an already-hidden dialog): without it, the
+    // "colour picker open" state above would leave the dialog's trap active
+    // for `${TODAY_HOME}` below, which a real tap could never trigger while
+    // a full-screen `.keyswrap` overlay covers the back button.
+    close: `document.querySelector('#colourPickerClose')?.click();
+      ${TODAY_HOME};
       for (const d of document.querySelectorAll('details')) d.open = false`,
   });
 

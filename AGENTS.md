@@ -133,7 +133,7 @@ uses. The python server 404s on all of them, and a local server that disagrees
 with production is a class of bug nothing can see. Run tests with `npm test`
 from the repo root (`node --test`, no dependencies to install).
 
-`npm run smoke` runs the browser checks — **26 of them**, printed as a pass/fail
+`npm run smoke` runs the browser checks — **27 of them**, printed as a pass/fail
 table: no horizontal overflow at 390×844, the card is still 3.45 × 5in, no
 console errors, every touch target ≥44px across 320–390px, every row in
 Settings ≥48px across the same three widths, the last control in an open
@@ -179,7 +179,7 @@ not check.
 `--only "<check>"` runs just the one named row and the setup it needs (a cold
 load, or the cold load plus `goRich`), for the loop while iterating —
 `node scripts/smoke.mjs --only "bench mode wake lock"` prints that one row and
-nothing else. It is not proof: a partial run says nothing about the other 21
+nothing else. It is not proof: a partial run says nothing about the other 22
 checks, and the full `npm run smoke` still stands between every change and its
 PR. **The iterate-then-prove rule**: while iterating, run `node --test <file>`
 for the file you touched and `--only "<check>"` for the check it covers, never

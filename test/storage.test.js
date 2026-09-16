@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { sanitize, loadState, saveState, seasonGame, seasonDate, addSeasonGames,
          seasonShare, KEY, BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
-         V3_KEY, DEFAULT_SETTINGS } from '../app/storage.js';
+         V3_KEY, DEFAULT_SETTINGS, COLOURS } from '../app/storage.js';
 import { SIZES, file as chartFile } from '../scripts/charts.mjs';
 
 /* Every document that paints themed content before its first frame, and so
@@ -1122,7 +1122,7 @@ test('a settings block holds only what the app reads, so the file makes no claim
   const s = sanitize({ version: 6, onboarded: true,
     teams: [{ ...good(), settings: { maxSubs: 4, tieBreak: 'levels', leagueMin: 12 } }] }, H);
   assert.deepEqual(Object.keys(s.teams[0].settings),
-    ['maxSubs', 'tieBreak', 'minMinutes', 'seasonDefault', 'periods', 'periodMinutes'],
+    ['maxSubs', 'tieBreak', 'minMinutes', 'seasonDefault', 'periods', 'periodMinutes', 'colour'],
     'a key nothing honours must not survive into the record a coach can open');
   assert.equal(s.teams[0].settings.maxSubs, 4);
   assert.equal(s.teams[0].settings.tieBreak, 'levels');
@@ -1155,6 +1155,29 @@ test('a junk or unknown tie-break stance falls back to the default, not to nothi
       `a stance nothing implements must not reach the solver: ${String(junk)}`);
   }
   assert.equal(at(undefined), 'behind', 'no settings block at all is the default stance');
+});
+
+test('a team\'s colour round-trips, an unknown or malformed one falls back to graphite, and a record with none loads graphite', () => {
+  const at = raw => sanitize({ version: 6, onboarded: true,
+    teams: [{ ...good(), settings: raw }] }, H).teams[0].settings.colour;
+  for (const c of COLOURS) {
+    assert.equal(at({ colour: c }), c);
+  }
+  for (const junk of ['teal', 'Royal', null, 42, {}, [], undefined, '']) {
+    assert.equal(at({ colour: junk }), 'graphite', `an unreadable colour must not reach the paint: ${String(junk)}`);
+  }
+  assert.equal(at(undefined), 'graphite', 'no settings block at all is the default colour');
+  assert.equal(DEFAULT_SETTINGS.colour, 'graphite');
+});
+
+test('two teams\' colours are their own — there is no cascade', () => {
+  const raw = { version: 6, onboarded: true, teams: [
+    { ...good(), settings: { colour: 'royal' } },
+    { ...good(), settings: { colour: 'forest' } },
+  ] };
+  const s = sanitize(raw, H);
+  assert.equal(s.teams[0].settings.colour, 'royal');
+  assert.equal(s.teams[1].settings.colour, 'forest');
 });
 
 test('a record written before the stance existed loads with the old behaviour', () => {
