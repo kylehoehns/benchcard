@@ -20,7 +20,8 @@
 import { $, on, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
-import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay, activeColour } from './state.js';
+import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay, activeColour,
+         colorOf, passSummary, passBlocks, rowGradient } from './state.js';
 import { DEFAULT_SETTINGS, colourName } from './storage.js';
 // season-view.js is already in the boot graph (app.js calls `initSeason`),
 // so this names no new request -- it is the one place a filed game is
@@ -412,6 +413,48 @@ function removeTeam() {
    but what it paints is Today's list now, not a strip of tabs inside the
    games view. Activating an entry opens that game's screen; "Add a game" and
    "New day" are static buttons on Today, wired once in `initTeams`. */
+/* One game pass (#26): tip-off, status, the game's own name as the title, a
+ * mini rotation and a one-line summary. Reuses `gameLabel`, `passSummary`,
+ * `passBlocks`, `rowGradient` and `colorOf` from state.js -- nothing here is
+ * re-derived from the plan. One `button`, no focusable element inside it
+ * (item 8): the mini rotation is `aria-hidden`, and its accessible name is
+ * set with `aria-label` instead of read off the visible text.
+ */
+function renderPass(g, i) {
+  const p = plans[i];
+  const ok = !!(p && p.ok);
+  const full = gameLabel(g, i);
+
+  const b = el('button', 'today-game press');
+
+  const top = el('div', 'pass-top');
+  if (g.when) top.append(el('span', 'pass-when', g.when));
+  top.append(el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix'));
+  b.append(top);
+
+  b.append(el('span', 'pass-title', full));
+
+  // Decision 4: a blocked plan has no stints to draw, so there is no mini
+  // rotation for it -- not an empty one.
+  if (ok) {
+    const rot = el('div', 'pass-rot');
+    rot.setAttribute('aria-hidden', 'true');
+    for (const { id, blocks } of passBlocks(g, p)) {
+      const row = el('div', 'pass-row');
+      row.style.background = rowGradient(blocks, g, colorOf(id));
+      rot.append(row);
+    }
+    b.append(rot);
+  }
+
+  b.append(el('span', 'pass-summary', passSummary(g, i)));
+
+  const statusWord = ok ? 'planned' : 'needs a fix';
+  b.setAttribute('aria-label', g.when ? `${full}, ${g.when}, ${statusWord}` : `${full}, ${statusWord}`);
+  b.onclick = () => { state.activeGame = i; setView('games'); };
+  return b;
+}
+
 export function renderTabs() {
   // The Game screen's own header title, kept live while the coach edits the
   // opponent field -- `setView` only sets it on a view CHANGE, and typing in
@@ -423,18 +466,16 @@ export function renderTabs() {
   }
 
   const box = $('#todayGames');
-  if (box) {
+  /* #26 decision 6: passes paint only while Today is the screen on show.
+     `renderTabs` runs on every edit on the Game screen (AFTER_EDIT,
+     PLAN_ONLY in render.js), and building four mini rotations -- the one
+     thing here that costs more than a couple of elements -- on every slider
+     move, hidden the whole time, is work nobody sees. `applyView` (render.js)
+     calls `render('tabs')` once, on the way in, when Today becomes the
+     screen again, so the passes are never more than one edit stale. */
+  if (box && state.view === 'today') {
     box.textContent = '';
-    state.day.games.forEach((g, i) => {
-      const b = el('button', 'today-game press');
-      const full = gameLabel(g, i);
-      b.append(el('span', 'today-game-lb', full));
-      if (g.when) b.append(el('span', 'today-game-when', g.when));
-      if (plans[i] && !plans[i].ok) b.append(el('span', 'bad'));
-      b.setAttribute('aria-label', g.when ? `${full}, ${g.when}` : full);
-      b.onclick = () => { state.activeGame = i; setView('games'); };
-      box.append(b);
-    });
+    state.day.games.forEach((g, i) => box.append(renderPass(g, i)));
   }
 
   const teamBtn = $('#todayTeam');

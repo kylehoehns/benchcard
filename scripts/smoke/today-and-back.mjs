@@ -154,19 +154,20 @@ export async function todayAndBackPass(c, origin) {
      labels checked here were the ones that did not (both inherited the
      body's bare `15px`, an absolute unit a reader's "bigger text" setting
      cannot touch, while their secondary text already used `rem`). */
+  // #26: the pass's title/tip-off replace .today-game-lb/.today-game-when.
   const checkLabelHierarchy = async (label) => {
     const sizes = JSON.parse(await evalIn(c, `JSON.stringify((() => {
       const size = s => { const e = document.querySelector(s); return e ? parseFloat(getComputedStyle(e).fontSize) : null; };
       return {
-        gameLb: size('.today-game-lb'), gameWhen: size('.today-game-when'),
+        gameLb: size('.pass-title'), gameWhen: size('.pass-when'),
         entryLab: size('.today-entry-lab'), entrySub: size('.today-entry-sub'),
       };
     })())`));
     if (sizes.gameLb == null || sizes.gameWhen == null) {
-      problems.push(`${label}: could not measure .today-game-lb/.today-game-when`);
+      problems.push(`${label}: could not measure .pass-title/.pass-when`);
     } else if (sizes.gameLb < sizes.gameWhen) {
-      problems.push(`${label}: .today-game-lb is ${sizes.gameLb}px, smaller than `
-        + `.today-game-when's ${sizes.gameWhen}px -- the game's own name reads smaller than its tip-off`);
+      problems.push(`${label}: .pass-title is ${sizes.gameLb}px, smaller than `
+        + `.pass-when's ${sizes.gameWhen}px -- the game's own name reads smaller than its tip-off`);
     }
     if (sizes.entryLab == null || sizes.entrySub == null) {
       problems.push(`${label}: could not measure .today-entry-lab/.today-entry-sub`);

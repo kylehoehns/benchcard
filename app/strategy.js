@@ -18,7 +18,7 @@ import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { pickFive } from './pills.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, STRATEGY_WORDS } from './state.js';
 
 let soon = () => {};
 let PLAN_ONLY = [];
@@ -27,19 +27,6 @@ export function initStrategy(scheduler, planOnly) {
   soon = scheduler;
   PLAN_ONLY = planOnly;
 }
-
-/* The summary hint, in the idiom every other fold on this page uses: a VALUE,
-   not a sentence. Squad says "9 of 9", Game format says "2 x 20 min", so Plan
-   says what the plan does in two or three words and the full sentence from
-   `STRATEGIES` renders below the segment that chose it. Same four keys as
-   `STRATEGIES` -- a strategy missing here shows an empty hint, which is what a
-   missing sentence already did. */
-const HINTS = {
-  balanced: 'even minutes',
-  minutes:  'minutes set by hand',
-  closers:  'a group finishes',
-  platoon:  'fixed fives',
-};
 
 export function renderStrategy() {
   const g = game();
@@ -53,7 +40,14 @@ export function renderStrategy() {
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', String(on));
   }
-  $('#stratnote').textContent = HINTS[g.strategy] || '';
+  /* The summary hint, in the idiom every other fold on this page uses: a
+     VALUE, not a sentence. Squad says "9 of 9", Game format says "2 x 20
+     min", so Plan says what the plan does in two or three words and the full
+     sentence from `STRATEGIES` renders below the segment that chose it.
+     `STRATEGY_WORDS` lives in state.js (#26) so the pass summary on Today
+     reads the same words -- a strategy missing here shows an empty hint,
+     which is what a missing sentence already did. */
+  $('#stratnote').textContent = STRATEGY_WORDS[g.strategy] || '';
   $('#stratwhy').textContent = STRATEGIES[g.strategy] || '';
   const box = $('#stratbody'); box.textContent = '';
   if (g.strategy === 'minutes') box.append(minutesEditor(g));

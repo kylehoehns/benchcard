@@ -234,6 +234,27 @@ for (const key of ['players', 'day', 'season', 'settings', 'activeGame']) {
    default, which is what an unsanitized record means. */
 export const leagueMinutes = () => state.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes;
 
+/* One rule, one count (#26 item 9). `renderConsCount` (game-setup.js) and
+   each game's pass on Today both show this number, so it is computed once,
+   exactly as `renderConstraints` (rules.js) lists rules: a starting five or a
+   last-period five is 1 rule, not 5 (the badge used to add `.length`, which
+   counted five), and an "always on" pair (`keepOnFloor`) counts, which the
+   badge used to leave out entirely. A min or cap on a player who is not
+   available does not count -- the rules list never shows it either. */
+export function ruleCount(g) {
+  const c = g.constraints;
+  const avail = new Set(availIds(g));
+  return Object.keys(c.minMinutes).filter(id => avail.has(id)).length
+    + Object.keys(c.maxMinutes).filter(id => avail.has(id)).length
+    + c.pairs.length
+    + c.avoids.length
+    + (c.keepOnFloor || []).length
+    + (c.openingFive.length ? 1 : 0)
+    + (c.lastPeriodFive.length ? 1 : 0)
+    + (c.maxConsecutive ? 1 : 0)
+    + (leagueMinutes() > 0 ? 1 : 0);
+}
+
 /* #25: the active team's colour, read the same way `leagueMinutes` above
    reads its own settings key -- one place, so `applyTint` (render.js) and
    the Settings row/picker (teams-view.js) cannot compute it two different
@@ -552,6 +573,97 @@ export function effectiveStints(g, p) {
       in: r.onFloor.filter(x => !arr[k - 1].onFloor.includes(x)),
       out: arr[k - 1].onFloor.filter(x => !r.onFloor.includes(x)),
     }));
+}
+
+/* The two-or-three-word label for each strategy: `#stratnote` on the Plan
+   screen (`renderStrategy`, strategy.js) and the pass's one-line summary
+   (`passSummary` below, #26 decision 1) both read this one map, so the two
+   screens cannot say something different about the same strategy -- a first
+   draft of the pass gave three of the four strategies their own wording here.
+   Distinct from the long sentences `STRATEGIES` above holds for the strategy
+   picker, which describe what a strategy does rather than name it. */
+export const STRATEGY_WORDS = {
+  balanced: 'even minutes',
+  minutes: 'minutes set by hand',
+  closers: 'a group finishes',
+  platoon: 'fixed fives',
+};
+
+/* The pass's one-line summary (#26 item 5, decision 2): "<N> player(s) ·
+   <strategy words>", then "evens out the day" for a later game with carryover
+   on, then "<N> rule(s)" when `ruleCount(g)` is above 0. Built only from
+   `availIds`, `g.strategy`/`g.useCarryover` and `ruleCount` -- nothing here is
+   re-derived. */
+export function passSummary(g, i) {
+  const n = availIds(g).length;
+  const parts = [`${n} player${n === 1 ? '' : 's'} · ${STRATEGY_WORDS[g.strategy] || g.strategy}`];
+  if (i > 0 && g.useCarryover) parts.push('evens out the day');
+  const rules = ruleCount(g);
+  if (rules) parts.push(`${rules} rule${rules === 1 ? '' : 's'}`);
+  return parts.join(' · ');
+}
+
+/* One entry per available player, in roster order (#26 item 6 / decision 10):
+   `{ id, blocks }`, each block `{ period, from, to }` in minutes from that
+   period's start. Built from `effectiveStints(g, p)` -- never `p.stints`
+   directly -- so a bench-mode swap changes the mini rotation exactly the way
+   it changes the card. Consecutive stints on the floor in the same period
+   merge into one block; a period change always starts a new block, even if
+   the player never left the floor. A blocked plan (`p.ok === false`) has no
+   stints to draw (decision 4). */
+export function passBlocks(g, p) {
+  if (!p.ok) return [];
+  const stints = effectiveStints(g, p);
+  return availIds(g).map(id => {
+    const blocks = [];
+    let offset = 0, curPeriod = null, open = null;
+    for (const r of stints) {
+      if (r.period !== curPeriod) { curPeriod = r.period; offset = 0; }
+      const from = offset, to = offset + r.minutes;
+      if (r.onFloor.includes(id)) {
+        if (open && open.period === r.period && open.to === from) open.to = to;
+        else { open = { period: r.period, from, to }; blocks.push(open); }
+      } else open = null;
+      offset = to;
+    }
+    return { id, blocks };
+  });
+}
+
+/* The gap between two periods on a mini-rotation row, as a percent of the
+   row's own width. 1% of a 390px row is 3.9px -- comfortably over the 2px
+   decision 10 asks for -- and staying in one unit (percent) throughout keeps
+   `rowGradient` a plain fraction of the row rather than a page-width-relative
+   `calc()`. */
+const ROW_GAP_PCT = 1;
+
+/* One player's blocks (`passBlocks`) as a `linear-gradient(to right, …)`
+   string with hard stops (#26 decision 10): the player's colour exactly where
+   a block says they are on the floor, `transparent` everywhere else,
+   including the gap between periods. The row is one equal-per-minute track
+   per period -- `g.periodMinutes` is every period's length, so a block's
+   `from`/`to` divide by it for a fraction of that period's track. Pure: reads
+   nothing off `state`. */
+export function rowGradient(blocks, g, colour) {
+  const periods = g.periods, periodMinutes = g.periodMinutes;
+  const track = (100 - (periods - 1) * ROW_GAP_PCT) / periods;
+  const pct = n => `${Math.round(n * 10000) / 10000}%`;
+  const stops = [];
+  const push = (from, to, c) => stops.push(`${c} ${pct(from)}`, `${c} ${pct(to)}`);
+  for (let pi = 0; pi < periods; pi++) {
+    const start = pi * track + pi * ROW_GAP_PCT;
+    const frac = m => start + (m / periodMinutes) * track;   // m minutes into this period, as a % of the row
+    if (pi > 0) push(start - ROW_GAP_PCT, start, 'transparent');
+    const periodBlocks = blocks.filter(b => b.period === pi + 1).sort((a, b) => a.from - b.from);
+    let cursor = 0;
+    for (const b of periodBlocks) {
+      if (b.from > cursor) push(frac(cursor), frac(b.from), 'transparent');
+      push(frac(b.from), frac(b.to), colour);
+      cursor = b.to;
+    }
+    if (cursor < periodMinutes) push(frac(cursor), frac(periodMinutes), 'transparent');
+  }
+  return `linear-gradient(to right, ${stops.join(', ')})`;
 }
 
 /* Total the rows themselves. Rounded to the cent of a minute because stint

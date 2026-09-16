@@ -321,8 +321,8 @@ measuring one screen at one width, which is what let both of these live.
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: a
 button naming the active team, which opens a `popover` menu to switch teams or
-add one (C8), a gear for Settings, the day's games, then Team and Season as two
-entries underneath, and New day / Add a game. Game, Team, Season and Settings
+add one (C8), New day and a gear for Settings, the day's games, then Team and
+Season as two entries underneath, and Add a game. Game, Team, Season and Settings
 are each one screen away from Today rather than siblings on a nav — opening
 one pushes a browser-history entry, so the back button, the browser's own
 back and Android's back gesture all land back on Today, through the one path
@@ -332,7 +332,7 @@ Team, Season, all reachable from Today — versus *what is set once a season* �
 Settings, behind the gear that only ever shows on Today (N4).
 
 **One header, two states.** `.bar` no longer changes shape one member at a
-time; it holds `#barToday` (the team button, `#keysHint`, the gear) and
+time; it holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
 `#barBack` (an icon-only *Back to Today* and the screen's own title — reused
 from `gameLabel` on the game screen, else `Team` / `Season` / `Settings`), and
 `applyView` toggles which half is visible with the `hidden` attribute — never
@@ -353,9 +353,9 @@ switches to Games before it prints; a key that dies on three views out of four
 would be worse than no key.
 
 The tab budget this used to measure is retired along with the tabs: Today's
-header carries the team button, the keys hint and the gear, and every other
-screen carries only a back button and a title, so there is no longer a row of
-sibling controls competing for the same 390px.
+header carries the team button, the keys hint, New day and the gear, and every
+other screen carries only a back button and a title, so there is no longer a
+row of sibling controls competing for the same 390px.
 
 **Settings is two labelled zones.** The top one is headed with the active
 team's name and holds policy that belongs to that team alone; the bottom is
@@ -604,15 +604,17 @@ it, so without a trap Tab walks into the form underneath.
 
 Mobile specifics that came out of real use:
 
-- **Today's games stack, one full-width row each, rather than wrapping or
-  scrolling as a strip of tabs (#23).** The chip row this replaced had to cap
-  a label at 20 characters and elide the middle of it (a tournament-length
-  opponent name made a 431px tab in a 368px row and put the whole page into a
-  horizontal scroll), because several chips had to share one line. A stacked
-  list has no such limit: `.today-game-lb` only truncates — with a plain CSS
-  tail ellipsis — when a single name is wider than its own row, the tip-off
-  time beside it is never truncated, and the full label is still the entry's
-  accessible name, and stays in the game's own opponent field.
+- **Today's games are game passes (#26).** A coach opening the app on a
+  tournament morning sees them stacked: each shows when it tips off, the
+  opponent, whether the plan is ready (Planned, green) or blocked (Needs a fix,
+  amber), a small picture of who plays when and for how long (one row per
+  available player, `aria-hidden` since it is not a roster list), and a line of
+  setup — player count, strategy, any rules, and whether it evens out later
+  games. A blocked plan has no picture. Tapping opens the game screen.
+  The stack replaced a strip of tabs (#23) that had to cap a label at 20
+  characters. A pass has no such cap: `.pass-title` only truncates, with a
+  plain CSS tail ellipsis, when one name is wider than its own row, and the
+  full label stays in the pass's accessible name.
 - **Squad pills elide the same way, and for the same reason.** `.plr .nm` is
   capped at 15ch, and a tail ellipsis cut the surname off — two kids with the
   same long first name became two identical pills for the tap that decides who

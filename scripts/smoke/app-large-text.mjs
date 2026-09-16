@@ -2,6 +2,7 @@ import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, TODAY_HOME } from 
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { FOUR, reloadWithRecord } from './fixtures.mjs';
 
 /* ---- the same large-text cell, on the app shell ----
  *
@@ -112,6 +113,23 @@ export const APP_LARGE_TEXT_STATES = [
      cannot drift between the two passes that drive them. */
   ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team colour picker']
     .map(n => STATES.find(s => s.name === n)),
+  /* #26 item 12: "at 320px with 32px root text ... Today with FOUR has no
+     horizontal overflow and nothing stranded above the viewport" -- every
+     state above this one measures Today (and the other four chromes) on
+     whatever `RICH`'s two-game record renders; none of them ever put four
+     passes with their titles, tip-offs, status, summaries and mini rotations
+     on screen at once, which is the case this claim is actually about.
+     `reloadWithRecord` (`fixtures.mjs`) rather than an `open` script: a font
+     size cannot be re-applied without a reload (see the file comment above),
+     but `Page.setFontSizes`/`Emulation.setDeviceMetricsOverride` are already
+     set for the whole pass, so a reload here keeps rendering at 320px/32px
+     and lands back on Today (`reloadWithRecord` waits for `.today-game`).
+     LAST OF THE NON-DESTRUCTIVE STATES, deliberately: it changes the loaded
+     record, and the trio below either wipes it outright (`firstRun`,
+     `tryLanding`) or is never reached again this run (`staticPass` is the
+     only pass after this one and it navigates away from `index.html` for
+     good) -- so nothing downstream needs `RICH` restored. */
+  { name: 'today, FOUR', four: true },
   /* AND THE SIXTH CHROME: the welcome screen, the first thing a coach ever
      sees, and the one screen in the app this cell had never visited.
      `overlayPass` has audited it since it was written; this pass enumerates
@@ -394,6 +412,7 @@ export async function appLargeTextPass(c, origin) {
            themselves is both cheaper and stricter. */
         if (v.firstRun) await firstRun(c, origin);
         else if (v.tryLink) flash = await tryLanding(c, origin, v.tryLink);
+        else if (v.four) await reloadWithRecord(c, origin, FOUR);
         else await evalIn(c, step(v.open));
         const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
         const slack = APP_LARGE_TEXT_ALLOW[v.name] || 0;
