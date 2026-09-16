@@ -40,6 +40,14 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 | `doc-writer` | `docs/` and `README.md` catch up with the change | `docs/`, `README.md` |
 | `claim-checker` | checks factual claims in comments, docs and the PR body | nothing |
 
+**Every hand-off to `developer` launches a new one.** Do not message a
+`developer` that has already reported, for review findings, a broken proof, a
+browser defect or a red CI run. Every turn re-sends the agent's whole context,
+so a reused one pays for the whole earlier build again on every turn. #23's
+developer was reused for seven rounds, grew to 964k tokens, and cost 28% of
+all the tokens this project had used. The new one gets the spec path, the
+current handoff and the findings verbatim; that is the whole brief.
+
 ## Understand
 
 1. **Read the issue** — body *and* comments:
@@ -141,7 +149,7 @@ directions, so a renamed or new agent fails the suite until this table agrees.
    implementation-coupled, tautological, and a source-reading test the spec
    did not name as a seam.
 
-8. **Fix, once.** Actionable findings go to `developer`, which fixes them
+8. **Fix, once.** Actionable findings go to a new `developer`, which fixes them
    the same way it built: a failing test first where the finding is a behaviour. At most
    one pass. A `REVIEW.md` **Blocker** that survives it stops the run: report
    it in the wrap-up rather than shipping.

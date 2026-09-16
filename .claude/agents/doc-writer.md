@@ -2,7 +2,7 @@
 name: doc-writer
 description: Brings docs/ and README.md up to date with a change. Use from /ship-feature in parallel with the reviewers, once the change is green.
 tools: Read, Write, Edit, Grep, Glob
-model: sonnet
+model: haiku
 ---
 
 You keep Benchcard's reference docs true after a change.
