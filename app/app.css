@@ -2140,7 +2140,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .fold > summary:has(.helpq)::after { margin-left: .1rem; }
 details.dz > summary:has(.helpq) .count { margin-left: 0; }
 details.dz > summary .helpq { margin-block: -.85rem; }
-/* `.gm-cta` is a centerd wrapping row, so the bench "?" travels with the
+/* `.gm-cta` is a centered wrapping row, so the bench "?" travels with the
    button it explains rather than as a flex item of its own -- see the note in
    index.html. The tight gap is the whole point: at the row's own `.55rem` it
    sat almost equidistant between "Use this on the bench" and "Print". */
@@ -2339,7 +2339,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      the section heading's row (a title plus **Shuffle**, which cannot shrink
      and had nowhere to go) and the **Use this on the bench** button, whose
      label is the longest in the app and whose `white-space: nowrap` made it
-     wider than the column it sits in, overflowing both sides of a centerd
+     wider than the column it sits in, overflowing both sides of a centered
      flex line. Wrapping is the answer in both cases, and it is the same answer
      the bar and the picker above already take: nothing here can get smaller,
      so it goes onto a second line instead of off the edge. */
@@ -2804,7 +2804,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 #maxSubsRead { color: var(--ink); font-weight: 500; margin-top: .45rem; }
 .setrow > .btn { flex: none; }
 /* Fields default to `width: 100%`, which inside a flex row is a control that
-   eats the label. Fixed width, 44px tall, centerd digits -- the same target
+   eats the label. Fixed width, 44px tall, centered digits -- the same target
    rule everything else in this app is measured against.
 
    The wrap exists for two things the bare field did badly. (1) The unit: the

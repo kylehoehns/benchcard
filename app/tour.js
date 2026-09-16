@@ -40,7 +40,7 @@ export function initTour(setViewFn) {
  * points at the same button beside the card instead. Step 3 is the exception
  * and always was: `#timeline` is never conditional. (The banner used to claim
  * every step had two, and step 2 had one until A21 gave it `#planFold`.)
- * A step whose anchors are all missing still shows its copy, centerd, rather
+ * A step whose anchors are all missing still shows its copy, centered, rather
  * than silently dropping a quarter of the explanation.
  *
  * What a fallback does NOT cover: an anchor inside a shut `<details>`. Chrome
@@ -57,7 +57,7 @@ const TOUR = [
   },
   {
     /* `#planFold` shuts on first paint for anyone not on Even, and a
-       spotlight on a control inside a shut fold is either centerd copy or a
+       spotlight on a control inside a shut fold is either centered copy or a
        ring around nothing. Open it first, exactly as step 1 does for the
        squad, and name the fold itself as the fallback anchor so this step
        has two like every other one. */
@@ -241,7 +241,7 @@ export function startTour() {
   if (!wrap || !wrap.hidden || !state.onboarded) return;
   // three of the four anchors live in the games view. Re-run from Help while
   // the roster is showing and they are all `hidden`, so every step would fall
-  // back to centerd copy with nothing spotlit.
+  // back to centered copy with nothing spotlit.
   // `instant`: the tour measures anchor rects immediately, and its scrim would
   // spend the transition underneath the snapshot overlay
   if (state.view !== 'games') setView('games', true);

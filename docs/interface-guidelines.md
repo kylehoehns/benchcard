@@ -195,7 +195,7 @@ them. Sheets have 28px top corners. *Material: I/O 2026 spacing; Bottom sheets.
 Apple: Toolbars (concentric corners).*
 
 **L7. One layout that adapts by width, not a separate desktop design.** Under
-600px: one column, pushed screens. 600–839px: the same, with sheets as centerd
+600px: one column, pushed screens. 600–839px: the same, with sheets as centered
 dialogs. 840px and up (tablets, laptops, an unfolded iPhone Duo): Today on the
 left, the open game on the right. The same features at every width. *Material:
 Breakpoints. Apple: Designing for iPhone Duo.*

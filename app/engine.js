@@ -542,7 +542,7 @@ function balanceShape(kind, i, n) {
    so it averages to zero for this particular stint count. A cosine over eight
    samples is not exactly balanced, and the residue is a standing bias the
    solver can never satisfy. */
-function centerd(values) {
+function centered(values) {
   if (!values.length) return values;
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   return values.map(v => v - mean);
@@ -1050,7 +1050,7 @@ function balanceTargets(ctx, kind) {
   if (amp < 1e-9) return null;
 
   const n = ctx.stints.length;
-  const f = centerd(ctx.stints.map((_, i) => balanceShape(shape, i, n)));
+  const f = centered(ctx.stints.map((_, i) => balanceShape(shape, i, n)));
   return f.map(v => base + amp * v);
 }
 

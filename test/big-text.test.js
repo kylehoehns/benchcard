@@ -92,7 +92,7 @@ test('the last two games-view rows wrap, and only at big text', () => {
      whole of a remaining 12px sideways pan on the games view: the section
      heading row (a title plus Shuffle, which is `white-space: nowrap` and had
      nowhere to go) and the bench button, whose label made it wider than the
-     centerd flex line it sits in, so it hung off both edges.
+     centered flex line it sits in, so it hung off both edges.
 
      Both fixes live in the big-text block on purpose, unlike the bar's. At
      default text neither row overflows anything, so wrapping them at every

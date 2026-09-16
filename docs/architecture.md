@@ -39,7 +39,7 @@ Everything below is relative to `app/`.
 - `share.js` — the same card as a PNG, painted from the laid-out DOM onto a
   canvas, for `navigator.share` with a clipboard/download fallback. The image
   keeps a taller bottom margin than its other three, with `benchcard.app`
-  centerd in it: the in-card mark is 7px, which is about five device pixels
+  centered in it: the in-card mark is 7px, which is about five device pixels
   once a phone scales the picture into a message bubble. A URL and nothing
   else — the band is outside the card rect, so it costs the card no space.
 - `backup.js` — the whole record out to a JSON file and back. Deliberately
@@ -154,7 +154,7 @@ tier times stints played -- so even minutes pin the mean stint strength exactly.
 A curve averaging above it asks for strength the roster does not have. The first
 version ramped `start` from full amplitude down to the mean (+0.5 average); the
 solver flattened into a compromise satisfying nothing, and it read exactly like
-a weight set too low. `centerd()` re-zeroes whatever the shape produces, because
+a weight set too low. `centered()` re-zeroes whatever the shape produces, because
 a cosine over eight samples is not exactly balanced either.
 
 Amplitude is `bestFive - base`, so `start` genuinely aims the top five at the
@@ -714,7 +714,7 @@ breakpoint, where the top-left X is already an easy target.
 
 The dot strip is **a window, not the whole game**, past 12 stints. It is ~142px
 wide on a 390px phone, which is about twelve usable dots; an 8×20 game has forty
-of them, and drawn one-per-stint they overflowed a centerd, clipped strip so that
+of them, and drawn one-per-stint they overflowed a centered, clipped strip so that
 everything past stint 11 — the current-stint dot included — was invisible. Above
 twelve stints it draws twelve around the current one, dimming the dot at a
 truncated edge so the strip reads as a window. The exact position is never
