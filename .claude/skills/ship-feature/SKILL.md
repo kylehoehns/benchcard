@@ -38,7 +38,6 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 | `quality-reviewer` | correctness and `REVIEW.md`'s passes | nothing |
 | `efficiency-reviewer` | wasted work on hot paths | nothing |
 | `doc-writer` | `docs/` and `README.md` catch up with the change | `docs/`, `README.md` |
-| `claim-checker` | checks factual claims in comments, docs and the PR body | nothing |
 
 **Every hand-off to `developer` launches a new one.** Do not message a
 `developer` that has already reported, for review findings, a broken proof, a
@@ -170,9 +169,7 @@ current handoff and the findings verbatim; that is the whole brief.
 ## Ship
 
 10. **Open the PR.** The proof points already committed the change; this step
-    pushes what is already on the branch rather than making a new commit. Run
-    `claim-checker` over the PR body before it goes up, passing it the current
-    handoff — it owns how it uses it (`claim-checker.md`).
+    pushes what is already on the branch rather than making a new commit.
 
     ```bash
     git push -u origin "$(git branch --show-current)"
