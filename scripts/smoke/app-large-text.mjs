@@ -110,7 +110,7 @@ export const APP_LARGE_TEXT_STATES = [
      tour step, none of which any state above this one opens. Reused from
      `STATES` by reference rather than retyped, so the open/close scripts
      cannot drift between the two passes that drive them. */
-  ...['help sheet', 'shortcuts sheet', 'tour, first step']
+  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team colour picker']
     .map(n => STATES.find(s => s.name === n)),
   /* AND THE SIXTH CHROME: the welcome screen, the first thing a coach ever
      sees, and the one screen in the app this cell had never visited.

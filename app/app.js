@@ -34,7 +34,8 @@ import { initToast, undoable, offer, flash, tipAfterPrint, tipAfterGame } from '
 import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, soon, setView, applyTheme, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, removePlayer , nextHue, hueSlots, reseed,
-         replaceState, emptyConstraints, newGame, migrateLegacy, noRoster } from './state.js';
+         replaceState, emptyConstraints, newGame, migrateLegacy, noRoster, team } from './state.js';
+import { openTrap, closeTrap } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
 /* The gear only ever shows on Today (N4) -- it lives inside `#barToday`,
@@ -57,6 +58,31 @@ on('#themeSeg', 'onclick', (e) => {
   if (!b || b.dataset.theme === state.ui.theme) return;
   state.ui.theme = b.dataset.theme;
   save(); applyTheme();
+});
+/* #25: the picker is the `.keyswrap` dialog pattern (`trap.js`'s
+   openTrap/closeTrap), same shape as `#help` -- see shortcuts.js's
+   openHelp/closeHelp. Choosing a colour saves, applies (via `renderAll`'s
+   own `applyTint()` call), closes, and returns focus to `#teamColourBtn` --
+   `closeTrap` is what restores focus to the trigger `openTrap` recorded. */
+function closeColourPicker() {
+  const p = $('#colourPicker');
+  if (!p || p.hidden) return;
+  p.hidden = true;
+  closeTrap(p);
+}
+on('#teamColourBtn', 'onclick', (e) => {
+  const p = $('#colourPicker');
+  if (!p || !p.hidden) return;
+  p.hidden = false;
+  openTrap(p, closeColourPicker, e.currentTarget);
+});
+on('#colourPickerClose', 'onclick', closeColourPicker);
+on('#colourOpts', 'onclick', (e) => {
+  const b = e.target.closest('button[data-colour]');
+  const s = team()?.settings;
+  if (!b || !s) return;
+  if (b.dataset.colour !== s.colour) { s.colour = b.dataset.colour; renderAll(); }
+  closeColourPicker();
 });
 on('#dayName', 'oninput', e => { state.day.name = e.target.value; save(); });
 on('#teamName', 'oninput', e => {

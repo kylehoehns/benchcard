@@ -83,6 +83,23 @@
   --accent-line: rgba(28, 28, 30, .32);
   --accent-ink: #FFFFFF;
 
+  /* #25: the team colour. Declared here at Graphite's own values -- the same
+     literals as --accent/--accent-2/--accent-soft/--accent-line/--accent-ink
+     above -- so no attribute, or data-tint="graphite", is exactly today's
+     app. A per-colour [data-tint] block (below) overrides these four; see
+     the selector-trap comment down there for why each one names its theme
+     explicitly. --phrase/--phrase-line are #27's sentence style (item 5):
+     ink with a 2px underline at the accent-line alpha for Graphite, and
+     --phrase-line goes transparent for every other colour so the underline
+     disappears without a second rule. */
+  --tint: #1C1C1E;
+  --tint-2: #35353A;
+  --tint-ink: #FFFFFF;
+  --tint-soft: rgba(28, 28, 30, .10);
+  --tint-line: rgba(28, 28, 30, .32);
+  --phrase: #1C1C1E;
+  --phrase-line: rgba(28, 28, 30, .32);
+
   --ok: #1C7548; --ok-soft: rgba(28, 117, 72, .11);
   --warn: #885900; --warn-soft: rgba(136, 89, 0, .10);
   --err: #BE2519; --err-soft: rgba(190, 37, 25, .10);
@@ -143,6 +160,14 @@
   --accent-line: rgba(244, 244, 246, .4);
   --accent-ink: #1C1C1E;
 
+  --tint: #F4F4F6;
+  --tint-2: #D9D9DE;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(244, 244, 246, .14);
+  --tint-line: rgba(244, 244, 246, .4);
+  --phrase: #F4F4F6;
+  --phrase-line: rgba(244, 244, 246, .4);
+
   --ok: #2FAB6D; --ok-soft: rgba(47, 171, 109, .13);
   --warn: #C68C1D; --warn-soft: rgba(198, 140, 29, .13);
   --err: #FF6536; --err-soft: rgba(255, 101, 54, .13);
@@ -158,6 +183,179 @@
   --shadow-paper: 0 2px 4px rgba(0,0,0,.6), 0 18px 40px -12px rgba(0,0,0,.8);
   --ring: 0 0 0 3.5px var(--accent-soft);
   color-scheme: dark;
+}
+
+/* #25 (team colour): one block per non-Graphite colour, in COLOURS'
+   order. Graphite needs none -- the base :root / dark blocks above already
+   declare --tint* at Graphite's values, so no attribute, or
+   data-tint="graphite", is today's app.
+
+   THE SELECTOR TRAP APPLIES HERE TOO (see the comment above the
+   more-contrast block below, and scripts/tokens-css.mjs's header):
+   `:root[data-tint="royal"]` alone would outrank `[data-theme="dark"]` and
+   paint light values on a dark phone, so every block names its theme
+   explicitly, both here and inside the more-contrast media query below.
+   --phrase-line is transparent for every one of these -- #27's sentence
+   style keeps its underline only for Graphite (see the base blocks above). */
+:root:not([data-theme="dark"])[data-tint="hardwood"],
+:root:not([data-theme="dark"]) [data-tint="hardwood"] {
+  --tint: #D2500A;
+  --tint-2: #D76527;
+  --tint-ink: #000000;
+  --tint-soft: rgba(210, 80, 10, .10);
+  --tint-line: rgba(210, 80, 10, .32);
+  --phrase: #D2500A;
+  --phrase-line: transparent;
+}
+:root[data-theme="dark"][data-tint="hardwood"],
+:root[data-theme="dark"] [data-tint="hardwood"] {
+  --tint: #FF7A2A;
+  --tint-2: #E36D25;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(255, 122, 42, .14);
+  --tint-line: rgba(255, 122, 42, .4);
+  --phrase: #FF7A2A;
+  --phrase-line: transparent;
+}
+:root:not([data-theme="dark"])[data-tint="royal"],
+:root:not([data-theme="dark"]) [data-tint="royal"] {
+  --tint: #2450D6;
+  --tint-2: #3E65DB;
+  --tint-ink: #FFFFFF;
+  --tint-soft: rgba(36, 80, 214, .10);
+  --tint-line: rgba(36, 80, 214, .32);
+  --phrase: #2450D6;
+  --phrase-line: transparent;
+}
+:root[data-theme="dark"][data-tint="royal"],
+:root[data-theme="dark"] [data-tint="royal"] {
+  --tint: #7C9BFF;
+  --tint-2: #6E8AE3;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(124, 155, 255, .14);
+  --tint-line: rgba(124, 155, 255, .4);
+  --phrase: #7C9BFF;
+  --phrase-line: transparent;
+}
+:root:not([data-theme="dark"])[data-tint="navy"],
+:root:not([data-theme="dark"]) [data-tint="navy"] {
+  --tint: #1F3A6E;
+  --tint-2: #3A527F;
+  --tint-ink: #FFFFFF;
+  --tint-soft: rgba(31, 58, 110, .10);
+  --tint-line: rgba(31, 58, 110, .32);
+  --phrase: #1F3A6E;
+  --phrase-line: transparent;
+}
+:root[data-theme="dark"][data-tint="navy"],
+:root[data-theme="dark"] [data-tint="navy"] {
+  --tint: #8FB0EA;
+  --tint-2: #7F9DD0;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(143, 176, 234, .14);
+  --tint-line: rgba(143, 176, 234, .4);
+  --phrase: #8FB0EA;
+  --phrase-line: transparent;
+}
+:root:not([data-theme="dark"])[data-tint="maroon"],
+:root:not([data-theme="dark"]) [data-tint="maroon"] {
+  --tint: #8C1D3A;
+  --tint-2: #9A3852;
+  --tint-ink: #FFFFFF;
+  --tint-soft: rgba(140, 29, 58, .10);
+  --tint-line: rgba(140, 29, 58, .32);
+  --phrase: #8C1D3A;
+  --phrase-line: transparent;
+}
+:root[data-theme="dark"][data-tint="maroon"],
+:root[data-theme="dark"] [data-tint="maroon"] {
+  --tint: #EE7896;
+  --tint-2: #D46B86;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(238, 120, 150, .14);
+  --tint-line: rgba(238, 120, 150, .4);
+  --phrase: #EE7896;
+  --phrase-line: transparent;
+}
+:root:not([data-theme="dark"])[data-tint="red"],
+:root:not([data-theme="dark"]) [data-tint="red"] {
+  --tint: #C0182C;
+  --tint-2: #C83445;
+  --tint-ink: #FFFFFF;
+  --tint-soft: rgba(192, 24, 44, .10);
+  --tint-line: rgba(192, 24, 44, .32);
+  --phrase: #C0182C;
+  --phrase-line: transparent;
+}
+:root[data-theme="dark"][data-tint="red"],
+:root[data-theme="dark"] [data-tint="red"] {
+  --tint: #FF6B6B;
+  --tint-2: #E35F5F;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(255, 107, 107, .14);
+  --tint-line: rgba(255, 107, 107, .4);
+  --phrase: #FF6B6B;
+  --phrase-line: transparent;
+}
+:root:not([data-theme="dark"])[data-tint="forest"],
+:root:not([data-theme="dark"]) [data-tint="forest"] {
+  --tint: #1B6A43;
+  --tint-2: #367C5A;
+  --tint-ink: #FFFFFF;
+  --tint-soft: rgba(27, 106, 67, .10);
+  --tint-line: rgba(27, 106, 67, .32);
+  --phrase: #1B6A43;
+  --phrase-line: transparent;
+}
+:root[data-theme="dark"][data-tint="forest"],
+:root[data-theme="dark"] [data-tint="forest"] {
+  --tint: #4CC98A;
+  --tint-2: #44B37B;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(76, 201, 138, .14);
+  --tint-line: rgba(76, 201, 138, .4);
+  --phrase: #4CC98A;
+  --phrase-line: transparent;
+}
+:root:not([data-theme="dark"])[data-tint="gold"],
+:root:not([data-theme="dark"]) [data-tint="gold"] {
+  --tint: #A87200;
+  --tint-2: #B2831F;
+  --tint-ink: #000000;
+  --tint-soft: rgba(168, 114, 0, .10);
+  --tint-line: rgba(168, 114, 0, .32);
+  --phrase: #A87200;
+  --phrase-line: transparent;
+}
+:root[data-theme="dark"][data-tint="gold"],
+:root[data-theme="dark"] [data-tint="gold"] {
+  --tint: #FFC53D;
+  --tint-2: #E3AF36;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(255, 197, 61, .14);
+  --tint-line: rgba(255, 197, 61, .4);
+  --phrase: #FFC53D;
+  --phrase-line: transparent;
+}
+:root:not([data-theme="dark"])[data-tint="purple"],
+:root:not([data-theme="dark"]) [data-tint="purple"] {
+  --tint: #5B34B8;
+  --tint-2: #6F4CC1;
+  --tint-ink: #FFFFFF;
+  --tint-soft: rgba(91, 52, 184, .10);
+  --tint-line: rgba(91, 52, 184, .32);
+  --phrase: #5B34B8;
+  --phrase-line: transparent;
+}
+:root[data-theme="dark"][data-tint="purple"],
+:root[data-theme="dark"] [data-tint="purple"] {
+  --tint: #AE92FF;
+  --tint-2: #9B82E3;
+  --tint-ink: #1C1C1E;
+  --tint-soft: rgba(174, 146, 255, .14);
+  --tint-line: rgba(174, 146, 255, .4);
+  --phrase: #AE92FF;
+  --phrase-line: transparent;
 }
 
 /* Increased contrast, held to a stricter floor (text >= 7:1, controls >= 4.5:1
@@ -187,4 +385,135 @@
     --err: #FFA58B; --err-soft: rgba(255, 101, 54, .13);
     --info: #BCBCC0; --info-soft: rgba(244, 244, 246, .08);
   }
+
+  /* #25: the light+more and dark+more arm of each non-Graphite colour. Same
+     selector trap, same reason -- see the comment above the base blocks. */
+  :root:not([data-theme="dark"])[data-tint="hardwood"],
+  :root:not([data-theme="dark"]) [data-tint="hardwood"] {
+      --tint: #993A07;
+      --tint-2: #A55225;
+      --tint-ink: #FFFFFF;
+      --tint-soft: rgba(153, 58, 7, .10);
+      --tint-line: rgba(153, 58, 7, .32);
+    }
+    :root[data-theme="dark"][data-tint="hardwood"],
+    :root[data-theme="dark"] [data-tint="hardwood"] {
+      --tint: #FF853B;
+      --tint-2: #E37635;
+      --tint-ink: #1C1C1E;
+      --tint-soft: rgba(255, 133, 59, .14);
+      --tint-line: rgba(255, 133, 59, .4);
+    }
+    :root:not([data-theme="dark"])[data-tint="royal"],
+    :root:not([data-theme="dark"]) [data-tint="royal"] {
+      --tint: #224CCB;
+      --tint-2: #3D61D1;
+      --tint-ink: #FFFFFF;
+      --tint-soft: rgba(34, 76, 203, .10);
+      --tint-line: rgba(34, 76, 203, .32);
+    }
+    :root[data-theme="dark"][data-tint="royal"],
+    :root[data-theme="dark"] [data-tint="royal"] {
+      --tint: #86A3FF;
+      --tint-2: #7791E3;
+      --tint-ink: #1C1C1E;
+      --tint-soft: rgba(134, 163, 255, .14);
+      --tint-line: rgba(134, 163, 255, .4);
+    }
+    :root:not([data-theme="dark"])[data-tint="navy"],
+    :root:not([data-theme="dark"]) [data-tint="navy"] {
+      --tint: #1F3A6E;
+      --tint-2: #3A527F;
+      --tint-ink: #FFFFFF;
+      --tint-soft: rgba(31, 58, 110, .10);
+      --tint-line: rgba(31, 58, 110, .32);
+    }
+    :root[data-theme="dark"][data-tint="navy"],
+    :root[data-theme="dark"] [data-tint="navy"] {
+      --tint: #8FB0EA;
+      --tint-2: #7F9DD0;
+      --tint-ink: #1C1C1E;
+      --tint-soft: rgba(143, 176, 234, .14);
+      --tint-line: rgba(143, 176, 234, .4);
+    }
+    :root:not([data-theme="dark"])[data-tint="maroon"],
+    :root:not([data-theme="dark"]) [data-tint="maroon"] {
+      --tint: #8C1D3A;
+      --tint-2: #9A3852;
+      --tint-ink: #FFFFFF;
+      --tint-soft: rgba(140, 29, 58, .10);
+      --tint-line: rgba(140, 29, 58, .32);
+    }
+    :root[data-theme="dark"][data-tint="maroon"],
+    :root[data-theme="dark"] [data-tint="maroon"] {
+      --tint: #F087A2;
+      --tint-2: #D67890;
+      --tint-ink: #1C1C1E;
+      --tint-soft: rgba(240, 135, 162, .14);
+      --tint-line: rgba(240, 135, 162, .4);
+    }
+    :root:not([data-theme="dark"])[data-tint="red"],
+    :root:not([data-theme="dark"]) [data-tint="red"] {
+      --tint: #AF1628;
+      --tint-2: #B93242;
+      --tint-ink: #FFFFFF;
+      --tint-soft: rgba(175, 22, 40, .10);
+      --tint-line: rgba(175, 22, 40, .32);
+    }
+    :root[data-theme="dark"][data-tint="red"],
+    :root[data-theme="dark"] [data-tint="red"] {
+      --tint: #FF8181;
+      --tint-2: #E37373;
+      --tint-ink: #1C1C1E;
+      --tint-soft: rgba(255, 129, 129, .14);
+      --tint-line: rgba(255, 129, 129, .4);
+    }
+    :root:not([data-theme="dark"])[data-tint="forest"],
+    :root:not([data-theme="dark"]) [data-tint="forest"] {
+      --tint: #1A6540;
+      --tint-2: #357757;
+      --tint-ink: #FFFFFF;
+      --tint-soft: rgba(26, 101, 64, .10);
+      --tint-line: rgba(26, 101, 64, .32);
+    }
+    :root[data-theme="dark"][data-tint="forest"],
+    :root[data-theme="dark"] [data-tint="forest"] {
+      --tint: #4CC98A;
+      --tint-2: #44B37B;
+      --tint-ink: #1C1C1E;
+      --tint-soft: rgba(76, 201, 138, .14);
+      --tint-line: rgba(76, 201, 138, .4);
+    }
+    :root:not([data-theme="dark"])[data-tint="gold"],
+    :root:not([data-theme="dark"]) [data-tint="gold"] {
+      --tint: #775100;
+      --tint-2: #87661F;
+      --tint-ink: #FFFFFF;
+      --tint-soft: rgba(119, 81, 0, .10);
+      --tint-line: rgba(119, 81, 0, .32);
+    }
+    :root[data-theme="dark"][data-tint="gold"],
+    :root[data-theme="dark"] [data-tint="gold"] {
+      --tint: #FFC53D;
+      --tint-2: #E3AF36;
+      --tint-ink: #1C1C1E;
+      --tint-soft: rgba(255, 197, 61, .14);
+      --tint-line: rgba(255, 197, 61, .4);
+    }
+    :root:not([data-theme="dark"])[data-tint="purple"],
+    :root:not([data-theme="dark"]) [data-tint="purple"] {
+      --tint: #5B34B8;
+      --tint-2: #6F4CC1;
+      --tint-ink: #FFFFFF;
+      --tint-soft: rgba(91, 52, 184, .10);
+      --tint-line: rgba(91, 52, 184, .32);
+    }
+    :root[data-theme="dark"][data-tint="purple"],
+    :root[data-theme="dark"] [data-tint="purple"] {
+      --tint: #B196FF;
+      --tint-2: #9E86E3;
+      --tint-ink: #1C1C1E;
+      --tint-soft: rgba(177, 150, 255, .14);
+      --tint-line: rgba(177, 150, 255, .4);
+    }
 }

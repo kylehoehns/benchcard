@@ -90,7 +90,7 @@ test('the advisory workflow keeps its path filter, because it is not required', 
     'vendor-drift is scheduled and label-conditional; its filter is correct');
 });
 
-/* #40: `--only` runs one smoke check and proves nothing about the other 21 --
+/* #40: `--only` runs one smoke check and proves nothing about the other 22 --
  * AGENTS.md § Layout says so in as many words. CI running the suite with
  * `--only` would make a required check named "smoke (390×844)" report green
  * having audited a single row, which is exactly the "required check that does

@@ -24,7 +24,7 @@ import { renderStats, renderIssues, renderPlanTable, renderDayTotals } from './p
 import { renderSetup, renderAvail } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
 import { renderSeason } from './season-view.js';
-import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel } from './state.js';
+import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel, activeColour } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { retireUndo, flash } from './toast.js';
 // storage.js is already in the boot graph (state.js imports it for
@@ -103,6 +103,7 @@ export function render(...keys) {
   const failed = saveJustFailed();
   if (failed) flash(failed);
   applyTheme();
+  applyTint();
   renderStorageWarning();
   /* Here rather than in a section of its own: the settings page's team heading
      has to be right the moment the cog is tapped, and the edit that changes it
@@ -441,4 +442,19 @@ export function applyTheme() {
       b.setAttribute('aria-pressed', String(on));
     }
   }
+}
+
+/* #25: the active team's colour, painted the same way `applyTheme` paints
+   `state.ui.theme` -- one place that reads the state and writes the
+   attribute tokens.css keys its tint blocks off. `activeColour()` (state.js)
+   is the one place that value is derived, shared with the Settings row and
+   picker (teams-view.js), and it is already sanitized (storage.js's
+   `sanitize` runs `settings.colour` through `COLOURS.includes`), so no
+   re-validation belongs here. `graphite` removes the attribute rather than
+   stamping it, matching the pre-paint script in index.html (item 8) and the
+   spec's "removing it for graphite is fine". */
+export function applyTint() {
+  const colour = activeColour();
+  if (colour === 'graphite') document.documentElement.removeAttribute('data-tint');
+  else document.documentElement.setAttribute('data-tint', colour);
 }

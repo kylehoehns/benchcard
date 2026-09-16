@@ -255,6 +255,13 @@ A team setting for how many players the plan aims to change at each break.
 _Avoid_: max subs, change limit, churn
 _In code_: `maxSubs`
 
+**Team colour** (decided 2026-09-14):
+A team setting for the one colour that marks the primary action, the sentence's
+tappable phrases and selected states, so two teams look different at a glance.
+Graphite, the default, is the ink itself.
+_Avoid_: theme, accent, brand colour
+_In code_: `colour`, `--tint`
+
 ## Across the day and season
 
 **Evening out the day**:

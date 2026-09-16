@@ -53,6 +53,15 @@ export const STATES = [
     close: `$('#view-settings .pastebox').hidden = true;
             $('#view-settings .paste-open').hidden = false;
             $('#backBtn').click()` },
+  /* #25: the team colour picker, nested inside `#view-settings` (it is
+     per-team policy, painted by `renderSettings` -- see the comment in
+     index.html above `#colourPicker`), so it opens from the cog exactly
+     like the paste box above it. Closed through its own control, not
+     `#backBtn`: the dialog is a full-screen `.keyswrap` overlay, so a real
+     tap can never reach the back button while it is up. */
+  { name: 'team colour picker',
+    open: `$('#settingsBtn').click(); $('#teamColourBtn').click()`, shows: '#colourPicker',
+    close: `$('#colourPickerClose').click(); $('#backBtn').click()` },
   /* `?` and the theme toggle left the top bar for Settings, so these three no
      longer reach `#helpBtn` from the opening screen. Clicking a button inside a
      hidden view still fires its handler, so leaving them alone would have kept

@@ -234,6 +234,14 @@ for (const key of ['players', 'day', 'season', 'settings', 'activeGame']) {
    default, which is what an unsanitized record means. */
 export const leagueMinutes = () => state.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes;
 
+/* #25: the active team's colour, read the same way `leagueMinutes` above
+   reads its own settings key -- one place, so `applyTint` (render.js) and
+   the Settings row/picker (teams-view.js) cannot compute it two different
+   ways. `team()` is already sanitized (storage.js's `sanitize` runs
+   `settings.colour` through `COLOURS.includes`), so no re-validation
+   belongs here. */
+export const activeColour = () => state.settings?.colour ?? DEFAULT_SETTINGS.colour;
+
 // v3 spelled this `state.teamName`; on a team it is just `name`.
 Object.defineProperty(state, 'teamName', {
   get: () => team().name,
