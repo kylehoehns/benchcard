@@ -2403,6 +2403,28 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      `.sn-min` override in this block WOULD have lost -- checked. */
   .sn-row { flex-wrap: wrap; }
 
+  /* #24 CI fix (Linux font metrics, not a rule difference): wrapping the ROW
+     puts `.sn-min` on its own line once the line above it is full, but
+     `.sn-x` -- "2 games * 16 behind" -- is `flex: 0 0 auto` with no
+     `white-space: nowrap`, so it is free to wrap internally and never has to;
+     the wrap algorithm hands it its one-line max-content width and it shares
+     line one with the dot and the shrunk name. That width grows with the
+     root: 229px at a 32px root here, 324px on the CI runner's wider glyphs at
+     the same root -- 4px past a 320px viewport, invisible on this machine
+     because its glyphs measure narrower for the same string. `flex-basis:
+     100%` is the fix, not a wider allowance: it claims the whole line for
+     itself, which both starts `.sn-x` on a new line (nothing already on line
+     one shrinks to fit beside a 100%-basis item) and gives its own text a
+     width to wrap inside instead of a one-line measurement with nowhere to
+     grow past 320. Needs the extra `.sn-row` class for specificity -- the
+     base `.sn-x` rule (`flex: 0 0 auto`, no `!important`) sits ~215 lines
+     below this block and a bare override here would lose to it on source
+     order, the same trap the `.sn-min` comment above already names. Checked
+     at 34/36/38/40px roots, where the unfixed span reaches 304/322/340/357px:
+     with this rule every one of them wraps to two lines within the row's own
+     width instead. */
+  .sn-row .sn-x { flex-basis: 100%; }
+
   /* And the timeline, where the failure is not a pan at all -- the page stays
      320px wide the whole time -- but a column squeezed to nothing, the same
      shape as the toast message A29 fixed. MOST / FEWEST sits in a fixed
