@@ -31,9 +31,11 @@ its alternative is an assertion, so the rejected options are kept here too.
   clamped, and unknown enum values fall back. A failed write surfaces instead of
   being swallowed — silently not saving is the worst possible outcome.
 - **A team's settings belong to the team, and absent means the default.**
-  `teams[].settings` (schema v6) is how a team wants its plans made, as opposed
-  to what happens in one game — a league rule set for one squad must never land
-  on the other. A record written before it existed simply has no block, which
+  `teams[].settings` (schema v6) holds both planning rules (`maxSubs`,
+  `tieBreak` and the rest) and identity (`colour` —
+  the team's tint, #25). It is how a team wants its plans made, as opposed to
+  what happens in one game — a league rule set for one squad must never land on
+  the other. A record written before it existed simply has no block, which
   `sanitize` reads as today's defaults, so there is still no version branch
   anywhere in `storage.js`: the shape *is* the migration, which is what keeps it
   idempotent and what lets a backup file from an older build import for free.
