@@ -86,13 +86,19 @@
    pass now opens. It measured 948.3 KB against 944.7 KB; `requests` still 40
    of 41. The ceiling is now 952.7 KB.
 
-   `bytesAbs` widened again 32768 -> 40960 on the same PR (#54), for the same
-   reason #23's second widening gives: two CI rounds fixed real 320px/32px
-   overflows on the season screen, each bringing its rule and the measurement
-   that found it, and the last run measured 951.6 KB against 952.7 KB -- 1.1 KB
-   of room, which the next comment spends. `requests` still 40 of 41. The
-   ceiling is now 960.9 KB. */
-export const SLACK = { bytesPct: 0.25, bytesAbs: 32768, requests: 2, nodes: 250 };
+   `bytesAbs` widened again 32768 -> 34816 on the same PR (#54). Two CI rounds
+   fixed real 320px/32px overflows on the season screen, each bringing its rule
+   and the measurement that found it, and the last run measured 951.6 KB
+   against the 952.7 KB ceiling -- 1.1 KB of room, which the next comment
+   spends. 34816 is not a round number and is not meant to be: it is as far as
+   this can go while `test/budgets.test.js` ("slack is small enough to catch a
+   real regression") still fails a second 60 KB vendor script, which needs
+   `125000 + bytesAbs < 160000`. A first attempt at 40960 turned that guard red
+   -- the guard was right and the widening was wrong. The ceiling is now
+   954.7 KB, and the next widening after this one is not available: the answer
+   then is to spend fewer bytes, or to re-record the baseline deliberately.
+   `requests` still 40 of 41. */
+export const SLACK = { bytesPct: 0.25, bytesAbs: 34816, requests: 2, nodes: 250 };
 
 const kb = n => `${(n / 1024).toFixed(1)} KB`;
 const pct = (got, want) => (want ? `${got > want ? '+' : ''}${(((got - want) / want) * 100).toFixed(1)}%` : 'n/a');

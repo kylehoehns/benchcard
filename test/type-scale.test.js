@@ -130,14 +130,27 @@ test('every font-size in an index.html style attribute is on the scale', () => {
    sailed through both checks above -- neither name matches "font:" without
    the hyphen. Extract the size out of the shorthand the same way a browser
    would: the first token, unless it is a 3-digit weight, in which case the
-   size is the second token; either way, drop a trailing `/line-height`. */
-function fontShorthandSizes(html) {
+   size is the second token; either way, drop a trailing `/line-height`.
+   `-apple-system-body` is a system font keyword, not a size -- it is a
+   whole-shorthand system font reference with no decomposable size token,
+   and the gated rule that uses it has its own test above -- so it is
+   dropped here the same way `inherit` is.
+
+   Reused for both index.html's `style="…"` attributes (styleAttr: true)
+   and app.css's stylesheet rules (styleAttr: false, the default): the only
+   difference between the two seams is where the raw `font:` value strings
+   come from. */
+function fontShorthandSizes(src, { styleAttr = false } = {}) {
   const values = [];
-  for (const m of html.matchAll(/style="([^"]*)"/g)) {
-    for (const fm of m[1].matchAll(/font:\s*([^;"]+);?/g)) values.push(fm[1].trim());
+  if (styleAttr) {
+    for (const m of src.matchAll(/style="([^"]*)"/g)) {
+      for (const fm of m[1].matchAll(/font:\s*([^;"]+);?/g)) values.push(fm[1].trim());
+    }
+  } else {
+    for (const m of src.matchAll(/font:\s*([^;]+);/g)) values.push(m[1].trim());
   }
   return values
-    .filter(val => val !== 'inherit')
+    .filter(val => val !== 'inherit' && val !== '-apple-system-body')
     .map(val => {
       const parts = val.split(/\s+/);
       const sizePart = /^\d{3}$/.test(parts[0]) ? parts[1] : parts[0];
@@ -146,10 +159,17 @@ function fontShorthandSizes(html) {
 }
 
 test('every font: shorthand in an index.html style attribute has an on-scale size', () => {
-  const offenders = fontShorthandSizes(index).filter(size => !FS_TOKEN.test(size));
+  const offenders = fontShorthandSizes(index, { styleAttr: true }).filter(size => !FS_TOKEN.test(size));
   assert.deepEqual(offenders, [],
     `index.html inline styles must not size text directly via the font: shorthand ` +
       `(font: inherit is fine): ${offenders.join(', ')}`);
+});
+
+test('every font: shorthand in app.css has an on-scale size', () => {
+  const offenders = fontShorthandSizes(app).filter(size => !FS_TOKEN.test(size));
+  assert.deepEqual(offenders, [],
+    `app.css must not size text directly via the font: shorthand ` +
+      `(font: inherit and the gated font: -apple-system-body rule are fine): ${offenders.join(', ')}`);
 });
 
 const FW_OK = new Set(['400', '500', '600', '700', 'inherit']);
