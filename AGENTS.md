@@ -140,7 +140,11 @@ Settings ≥48px across the same three widths, the last control in an open
 dialog on screen and still 44px, every control accessibly named, ids
 unique and aria references resolving, alt text, `lang`/title/tab order, the
 card's own font loading before it is fitted, the three budgets, and the suite.
-Two fixtures on purpose (A26): a lean `SEED` for
+`scripts/smoke.mjs` is the entry point: flags, the check registry, the run
+order and the table. Each check lives in its own module under
+`scripts/smoke/`, with the helpers several checks share beside them, so read
+the one check you are changing rather than the whole suite. No file there may
+pass 40,000 bytes (`test/smoke-size.test.js`). Two fixtures on purpose (A26): a lean `SEED` for
 the cold-load measurement, and a `RICH` record — 11 players, two games today,
 three filed, levels set — for the overlay, touch, narrow and sweep passes. Do
 not merge them back into one.
