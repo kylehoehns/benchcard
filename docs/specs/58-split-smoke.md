@@ -4,7 +4,7 @@
 
 #58. `scripts/smoke.mjs` is 3,062 lines and 167,309 bytes; split it so each
 check lives in its own small file under `scripts/smoke/`, with no change in
-behaviour.
+behavior.
 
 ## Goal
 

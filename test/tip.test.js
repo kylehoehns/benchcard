@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 /* The tip prompt is the one place this app asks a volunteer coach for money,
-   so when it fires matters more than most behaviour here. `toast.js` reaches
+   so when it fires matters more than most behavior here. `toast.js` reaches
    for the DOM at import time, so this reads the source: what is being pinned
    is the *rule*, and the rule is short enough to read. */
 const src = readFileSync(new URL('../app/toast.js', import.meta.url), 'utf8');

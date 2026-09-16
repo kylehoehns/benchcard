@@ -3,15 +3,15 @@
 ## Issue
 
 #21 (parent #18): the current screens take the Graphite look. That means neutral
-greys, ink as the action colour, players as the only colour, light, dark and
+grays, ink as the action color, players as the only color, light, dark and
 increased-contrast values, and the phone's own font. The printed card keeps
 Inter.
 
 ## Goal
 
-A coach opens Benchcard and the screen is grey and white (or near-black), with
-dark ink on the button they are meant to press. The only colours are the
-players' own and the three status colours: planned, needs a fix and
+A coach opens Benchcard and the screen is gray and white (or near-black), with
+dark ink on the button they are meant to press. The only colors are the
+players' own and the three status colors: planned, needs a fix and
 destructive. With increased contrast turned on, it gets sharper. The text is in
 the phone's own font. The card they print is the same card, to the pixel.
 
@@ -28,7 +28,7 @@ The ticket and #18 did not settle these. The human decided each one:
 2. **App icons and `og.png` stay as they are.** They are the brand mark, not
    the interface. A new issue covers them.
 3. **`--info` blue becomes neutral.** It takes the secondary-text value, so
-   `.alert.info` is grey and `.tl-tot.lo` is secondary text. The word next to
+   `.alert.info` is gray and `.tl-tot.lo` is secondary text. The word next to
    the total already says which end it is (the comment above `.tl-tot .ex`).
 4. **Increased-contrast values are the developer's choice**, held to a stricter
    floor. Text tokens must reach ≥ 7:1 and control tokens ≥ 4.5:1 under
@@ -47,11 +47,11 @@ The ticket and #18 did not settle these. The human decided each one:
    | ink | `--ink` | `#1C1C1E` | `#F4F4F6` |
    | secondary text | `--muted` | `#6C6C72` | `#98989F` |
 
-   Every other colour token (`--bg-2`, `--surface-2`, `--surface-3`, `--ink-2`,
+   Every other color token (`--bg-2`, `--surface-2`, `--surface-3`, `--ink-2`,
    `--faint`, `--line`, `--line-2`, `--pc-track`, the shadows) takes a neutral
-   grey value in both themes. Warm tints like `#F6F4F0`, `#EFECE6`,
+   gray value in both themes. Warm tints like `#F6F4F0`, `#EFECE6`,
    `rgba(20, 18, 15, …)` and `rgba(35, 28, 18, …)` no longer appear. Each
-   colour token also gets a `prefers-contrast: more` value for light and for
+   color token also gets a `prefers-contrast: more` value for light and for
    dark (see Design for the selector trap).
 2. **No ember.** `--accent` equals `--ink` and `--accent-ink` equals
    `--surface` in every block, so the primary action (`.btn.primary`,
@@ -60,9 +60,9 @@ The ticket and #18 did not settle these. The human decided each one:
    `#A83505`, `#FF7A38`, `#FF9257`, `rgba(195, 63, 8, …)` and
    `rgba(255, 122, 56, …)` appear in no file under `app/` (excluding
    `app/vendor/` and binary images) and not in `scripts/charts.mjs`.
-3. **Status colours.** `--ok` (planned, green), `--warn` (needs a fix, amber)
+3. **Status colors.** `--ok` (planned, green), `--warn` (needs a fix, amber)
    and `--err` (destructive, red) are distinct from each other and from `--ink`
-   in every block, and none is grey. They keep their hues. Their values may move
+   in every block, and none is gray. They keep their hues. Their values may move
    to pass item 6 on the new grounds.
 4. **Info.** `--info` equals `--muted` and `--info-soft` is neutral in every
    block (decision 3).
@@ -111,7 +111,7 @@ The ticket and #18 did not settle these. The human decided each one:
     accent are updated in this change. Today that is
     `test/rules-position.test.js`, which reads `var(--accent)` in a rule. It
     keeps its meaning (the zero hint is not painted in the tint), not the old
-    colour.
+    color.
 
 ## Surfaces
 
@@ -119,11 +119,11 @@ Change:
 
 - `app/tokens.css` — the palette, the more-contrast blocks, `--font`, the header
   comment (it still says "warm" and describes Inter as the UI face).
-- `app/app.css` — only where a hard-coded warm colour or `var(--info)` needs
+- `app/app.css` — only where a hard-coded warm color or `var(--info)` needs
   it: `.tl-tot`, `.alert.info`, the handful of literal `rgba(20, 18, 15, …)` /
   `#14120F` / `#F6F4F0` / `#080706` values. No layout changes.
 - `app/card.css` — only `.stage`'s ember glow (`color-mix(… var(--accent) 7% …)`)
-  if it still reads as colour. `.card` and everything inside the card must not
+  if it still reads as color. `.card` and everything inside the card must not
   change.
 - `app/app.js` — the card-font load and re-fit (item 8).
 - `app/render.js` — the two `theme-color` values in `applyTheme`.
@@ -153,13 +153,13 @@ Must not change:
 
 ## Constraints
 
-- **One palette in one place.** Every colour comes from `tokens.css`. Do not add
+- **One palette in one place.** Every color comes from `tokens.css`. Do not add
   a second token file, do not give the static pages their own palette, and do
   not add a dark or contrast variant of any component rule in `app.css`
   (`tokens.css`'s header says why).
 - **Keep the token names.** `--bg`, `--surface`, `--ink`, `--muted` are the
   ticket's ground, surface, ink and secondary. `--accent` stays as the name of
-  the tint, because #25 (team colour) sets it. Do not rename tokens across
+  the tint, because #25 (team color) sets it. Do not rename tokens across
   `app.css`.
 - **Never regress the card** (`AGENTS.md` § Rules). The card is black on white
   and reads no theme token. Its font stack must match `CARD_FONT` exactly
@@ -179,19 +179,19 @@ Must not change:
 - **`requests` budget.** No new module or stylesheet. The card font request
   already exists, so loading it on purpose adds nothing.
 - **Interface guidelines:** K1 (tint = ink on the primary fill and selected
-  states), K2 (player colours untouched), K3 (green/amber/red, none equal to the
+  states), K2 (player colors untouched), K3 (green/amber/red, none equal to the
   ink), K5 (4.5:1 text, 3:1 controls, plus a more-contrast value for every
-  colour), T1 (system font stack for the UI, Inter only on the card), L1 (soft
-  grey ground, white surfaces).
+  color), T1 (system font stack for the UI, Inter only on the card), L1 (soft
+  gray ground, white surfaces).
 - **Mobile first.** Check 390×844 in light and dark before anything wider.
 - **The privacy claim** is untouched: no copy changes.
 
 ## Design
 
-**Tokens.** Rewrite the two blocks with the table above. Pick neutral greys in
+**Tokens.** Rewrite the two blocks with the table above. Pick neutral grays in
 the same roles for the rest, for example `--bg-2` a step below ground,
 `--surface-2`/`--surface-3` stepping away from surface, `--line` as ink at low
-alpha, and shadows in neutral black. Status colours keep their hues and move
+alpha, and shadows in neutral black. Status colors keep their hues and move
 only as far as the contrast test needs.
 
 **More contrast.** Add after the dark block:
@@ -211,7 +211,7 @@ block-matching regex still works on nested blocks, but its comment has to change
 
 **Accent.** `--accent: var(--ink)`-equivalent values, written as literals if
 `test/dead-var.test.js` or the contrast parser needs them. `--accent-ink` is the
-surface. `.btn.primary`'s coloured glow (`0 6px 16px -8px var(--accent)`)
+surface. `.btn.primary`'s colored glow (`0 6px 16px -8px var(--accent)`)
 becomes a neutral shadow when it is ink.
 
 **Font.** Change `--font` only. `@font-face` stays because the card uses it. In
@@ -247,7 +247,7 @@ item 9 holds them to `tokens.css`.
 ## Out of scope
 
 - App icons, `og.png`, the raster sample images (a new issue, decision 2).
-- Team colour (#25), text size and `rem` (#24), 48px targets (#37), floating
+- Team color (#25), text size and `rem` (#24), 48px targets (#37), floating
   controls (#33), and any markup or layout change.
 - Redesigning the static pages. They only take the new token values.
 - Making hairlines or input borders meet 3:1.

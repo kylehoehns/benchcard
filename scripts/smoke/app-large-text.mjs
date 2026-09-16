@@ -111,7 +111,7 @@ export const APP_LARGE_TEXT_STATES = [
      tour step, none of which any state above this one opens. Reused from
      `STATES` by reference rather than retyped, so the open/close scripts
      cannot drift between the two passes that drive them. */
-  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team colour picker']
+  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker']
     .map(n => STATES.find(s => s.name === n)),
   /* #26 item 12: "at 320px with 32px root text ... Today with FOUR has no
      horizontal overflow and nothing stranded above the viewport" -- every
@@ -156,7 +156,7 @@ export const APP_LARGE_TEXT_STATES = [
      in a textarea, the count line grown to "10 players. Ready.", and at 320px
      on 200% text that is the tallest this screen ever gets.
 
-     A51 MOVED THE BUTTON, not the behaviour: `#welTry` in the hero now opens
+     A51 MOVED THE BUTTON, not the behavior: `#welTry` in the hero now opens
      the app (`loadSample`, which is what `?try=N` has always called) and the
      fill lives on `#welFill` inside the roster box, for the coach who is
      already typing. A52 then put the whole form behind `#welType`, so this

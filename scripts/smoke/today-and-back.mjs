@@ -248,7 +248,7 @@ export async function todayAndBackPass(c, origin) {
     /* Fresh boot per opener, or the delta below is measured against whatever
        forward entry the PREVIOUS opener's own reload-then-back left dangling
        -- pushing after a back() truncates a stale forward entry and replaces
-       it, which is correct browser history behaviour and exactly why a length
+       it, which is correct browser history behavior and exactly why a length
        delta is only a meaningful measurement starting from a known state. */
     await reloadWith(rich2);
     const before = await evalIn(c, 'history.length');

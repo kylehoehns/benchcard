@@ -109,7 +109,7 @@ const offNote = off => {
 const nameOf = id => (byId(id)?.name || '').trim();
 
 /* One row, in both lists. Whether `byId` finds them is the whole "a player who
-   has left" decision: their minutes are real, their colour slot is not. */
+   has left" decision: their minutes are real, their color slot is not. */
 function playerRow(id, min, extra) {
   const p = byId(id);
   const row = el('div', 'sn-row');
@@ -124,7 +124,7 @@ function playerRow(id, min, extra) {
   return row;
 }
 
-/* "Sat 14 Sep" is a date a coach recognises from a schedule; the stored form
+/* "Sat 14 Sep" is a date a coach recognizes from a schedule; the stored form
    is `YYYY-MM-DD` and is nobody's reading format. Parsed as parts rather than
    `new Date(iso)`, which is UTC for this shape and lands on the day before for
    anyone west of Greenwich -- an archive filed on Saturday must not read

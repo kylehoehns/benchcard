@@ -35,7 +35,7 @@ test('the mark is styled at both card sizes', () => {
    in-card mark is 7px — about five device pixels once a phone has scaled the
    picture into a message bubble, which is where a shared card actually lands.
    Measured in the rendered PNG on 2026-08-24: a 92-device-px band under both
-   card sizes, the string 212 device px wide, centred to within half a pixel of
+   card sizes, the string 212 device px wide, centered to within half a pixel of
    the image midline, with 29 device px of clear ground beneath it. */
 const share = readFileSync(new URL('../app/share.js', import.meta.url), 'utf8');
 
@@ -45,7 +45,7 @@ test('the share image reserves a bottom band, not a symmetric margin', () => {
   assert.match(share, /const h = tall \+ PAD \+ FOOT;/);
 });
 
-test('the band carries the bare domain, centred, and nothing else', () => {
+test('the band carries the bare domain, centered, and nothing else', () => {
   assert.match(share, /const MARK = 'benchcard\.app';/);
   assert.match(share, /ctx\.textAlign = 'center';/);
   assert.match(share, /ctx\.fillText\(MARK, w \/ 2, tall \+ PAD \+ FOOT \/ 2\);/);

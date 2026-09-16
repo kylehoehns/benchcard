@@ -13,9 +13,9 @@
  * than inventing a second one.
  *
  * Every function here is a small, literal reading of the cascade and of CSS
- * colour syntax -- not a CSS engine. It exists to let the tests ask tokens.css
+ * color syntax -- not a CSS engine. It exists to let the tests ask tokens.css
  * the same questions a browser answers, in the states a browser can be in:
- * which block wins for a given property, and what colour a token resolves to.
+ * which block wins for a given property, and what color a token resolves to.
  */
 
 const stripBlockComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, ' ');
@@ -88,29 +88,29 @@ export function parseTokensCss(raw) {
   const lightMore = { ...light, ...lightMoreOwn };
   const darkMore = { ...dark, ...darkMoreOwn };
 
-  /* #25 (team colour): a per-colour block, found BY EXACT SELECTOR TEXT the
+  /* #25 (team color): a per-color block, found BY EXACT SELECTOR TEXT the
    * same way the more-contrast arms above are -- the same selector trap
    * applies doubly here, since `:root[data-tint="royal"]` alone would outrank
    * `[data-theme="dark"]` and paint light values on a dark phone. Every block
    * therefore names its theme explicitly, both outside and inside the
-   * more-contrast media query, and `tint(colour)` looks each one up by that
-   * exact text -- a colour with no block for a given state resolves to the
+   * more-contrast media query, and `tint(color)` looks each one up by that
+   * exact text -- a color with no block for a given state resolves to the
    * base (Graphite) value there rather than throwing, and `hasLight` /
    * `hasDark` / `hasLightMore` / `hasDarkMore` say so, so a caller can fail
    * loudly on a missing block instead of silently reading Graphite's. */
   /* Compound, not a single selector: the picker's swatches need each
-   * colour's own value regardless of the phone's currently active tint, so
+   * color's own value regardless of the phone's currently active tint, so
    * every block also matches a DESCENDANT carrying the same [data-tint] --
    * a plain span the picker can stamp per option -- not only :root itself.
    * Custom properties inherit, so without the descendant arm a swatch for a
-   * colour that is not the active one would just inherit the active one's
+   * color that is not the active one would just inherit the active one's
    * value instead of its own. */
-  const tintSelector = (theme, colour) => (theme === 'dark'
-    ? `:root[data-theme="dark"][data-tint="${colour}"], :root[data-theme="dark"] [data-tint="${colour}"]`
-    : `:root:not([data-theme="dark"])[data-tint="${colour}"], :root:not([data-theme="dark"]) [data-tint="${colour}"]`);
-  function tint(colour) {
-    const lightSel = tintSelector('light', colour);
-    const darkSel = tintSelector('dark', colour);
+  const tintSelector = (theme, color) => (theme === 'dark'
+    ? `:root[data-theme="dark"][data-tint="${color}"], :root[data-theme="dark"] [data-tint="${color}"]`
+    : `:root:not([data-theme="dark"])[data-tint="${color}"], :root:not([data-theme="dark"]) [data-tint="${color}"]`);
+  function tint(color) {
+    const lightSel = tintSelector('light', color);
+    const darkSel = tintSelector('dark', color);
     const lightOwn = mergeSelector(top, lightSel);
     const darkOwn = mergeSelector(top, darkSel);
     const lightMoreOwn = mergeSelector(nested, lightSel);
@@ -136,12 +136,12 @@ export function parseTokensCss(raw) {
   };
 }
 
-/* ---------------------------- colour parsing ---------------------------- */
+/* ---------------------------- color parsing ---------------------------- */
 
 /* One shared channel/alpha grammar for both the anchored single-value parse
  * below and the free-text scan in extractColors: comma syntax
  * (`rgba(28, 28, 30, .1)`) and the space syntax (`rgb(28 28 30 / .1)`) read
- * the same colour, any case, any amount of whitespace. */
+ * the same color, any case, any amount of whitespace. */
 const CH = '(?:\\s*,\\s*|\\s+)';
 const ALPHA = '(?:\\s*[,/]\\s*([\\d.]+%?)\\s*)?';
 const RGB_CORE = `([\\d.]+)${CH}([\\d.]+)${CH}([\\d.]+)${ALPHA}`;
@@ -171,7 +171,7 @@ function rgbMatchToColor(m) {
   return { r: +m[1], g: +m[2], b: +m[3], a: alpha };
 }
 
-/* A single CSS colour VALUE (the whole string is the colour, e.g. a token's
+/* A single CSS color VALUE (the whole string is the color, e.g. a token's
  * declared value) -- hex or rgb/rgba, either syntax, any case. Returns null
  * for anything else (oklch(), color-mix(), a bare keyword, a typo), which
  * callers must treat as a failure, never a skip. */
@@ -183,12 +183,12 @@ export function parseColor(raw) {
   return null;
 }
 
-/* Every colour LITERAL found anywhere in a block of text, for the ember/warm
+/* Every color LITERAL found anywhere in a block of text, for the ember/warm
  * bans -- a scan, not a parse, because the banned value can be sitting inside
  * a longer declaration (`box-shadow: 0 0 0 1px rgba(20,18,15,.14)`) rather
  * than being the whole value. Matches hex and rgb/rgba in both comma and
  * space syntax, any case, any amount of whitespace -- so a reformatted
- * `rgba( 20, 18, 15` or `rgb(20 18 15 / .08)` is read as the same colour a
+ * `rgba( 20, 18, 15` or `rgb(20 18 15 / .08)` is read as the same color a
  * plain `rgba(20, 18, 15` is, rather than missed because the spelling moved. */
 export function extractColors(text) {
   const out = [];
@@ -201,13 +201,13 @@ export function colorOf(theme, name) {
   const raw = theme[name];
   if (raw === undefined) throw new Error(`${name} is not declared in this theme`);
   const c = parseColor(raw);
-  if (!c) throw new Error(`${name}: "${raw}" could not be parsed as a colour`);
+  if (!c) throw new Error(`${name}: "${raw}" could not be parsed as a color`);
   return c;
 }
 
 export const spread = (c) => Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b);
 
-/* Standard HSL hue, degrees. Used only to check that a status colour keeps
+/* Standard HSL hue, degrees. Used only to check that a status color keeps
  * its OWN hue family (green/amber/red) rather than to judge contrast, which
  * relative luminance already owns. */
 export function hueOf(c) {
@@ -244,7 +244,7 @@ export function contrast(c1, c2) {
 
 /* The four ember and four warm-tint values #21 bans, as RGB triples rather
  * than spellings -- the scan above turns every literal it finds into the same
- * shape, so a banned colour is caught by VALUE regardless of hex vs rgb(),
+ * shape, so a banned color is caught by VALUE regardless of hex vs rgb(),
  * case, spacing or comma-vs-space syntax. Alpha is never part of the ban. */
 export const EMBER_RGB = [[195, 63, 8], [168, 53, 5], [255, 122, 56], [255, 146, 87]];
 export const WARM_RGB = [[246, 244, 240], [239, 236, 230], [20, 18, 15], [35, 28, 18]];

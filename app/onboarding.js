@@ -108,7 +108,7 @@ function solveDemo() {
   return true;
 }
 
-/* A row per player, coloured by the same hue table the app uses for the same
+/* A row per player, colored by the same hue table the app uses for the same
    players everywhere else, and named off the ONE fictional cast through
    `callNames` -- which is what the bench and the timeline call a player on
    screen. */
@@ -158,7 +158,7 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 /* THE BENCH TAB IS DRAWN, NOT PHOTOGRAPHED (A61), and it is drawn out of the
    REAL COMPONENTS: `.gm-p`, `.av`, `.tag`, `.mn`, `.gm-next` are the classes
    `gamemode.js` builds the live bench from, they are bare classes in this same
-   document, and every colour in them is a token.
+   document, and every color in them is a token.
 
    Two things fall out of that and both were the point. It is theme-aware for
    free, where `bench-sample.png` is a LIGHT-THEME capture that sat in the dark

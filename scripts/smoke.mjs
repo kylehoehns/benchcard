@@ -61,7 +61,7 @@ import { appLargeTextPass } from './smoke/app-large-text.mjs';
 import { typeScalePass } from './smoke/type-scale.mjs';
 import { staticPass } from './smoke/static.mjs';
 import { cardAt32Pass } from './smoke/card-at-32.mjs';
-import { teamColourPass } from './smoke/team-colour.mjs';
+import { teamColorPass } from './smoke/team-color.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -97,7 +97,7 @@ const RUN = {
   todayback: ctx => todayAndBackPass(ctx.c, ctx.origin),
   todaykeys: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin),
   gamepasses: ctx => gamePassesPass(ctx.c, ctx.origin),
-  teamcolour: ctx => teamColourPass(ctx.c, ctx.origin),
+  teamcolor: ctx => teamColorPass(ctx.c, ctx.origin),
   wakelock: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors),
   overlay: ctx => overlayPass(ctx.c, ctx.source),
   touch: ctx => touchPass(ctx.c, ctx.origin, ctx.source),
@@ -257,7 +257,7 @@ async function browserChecks(origin, only) {
     /* #25. It reloads with a two-team record (Royal, then Graphite) and
        switches team, so RICH is put back before the wake lock pass, which
        expects the fixture as goRich left it. */
-    report.checks.push(await safeCheck('teamcolour', () => teamColourPass(c, origin)));
+    report.checks.push(await safeCheck('teamcolor', () => teamColorPass(c, origin)));
     await goRich(c, origin);
 
     report.checks.push(await safeCheck('wakelock', () => wakeLockPass(c, origin, consoleErrors)));

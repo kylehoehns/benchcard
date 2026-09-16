@@ -1,24 +1,24 @@
-# 25 — Team colour
+# 25 — Team color
 
 ## Issue
 
-#25 (parent #18): a coach gives each team a colour in Settings. Graphite is the
-default. The colour tints only the primary action, tappable phrases and
+#25 (parent #18): a coach gives each team a color in Settings. Graphite is the
+default. The color tints only the primary action, tappable phrases and
 selected states.
 
 ## Goal
 
 A coach with a rec team and a club team opens the app and can tell which team
-is on screen from the colour of the big button, without reading the name.
-Nothing else on screen changes colour: headers, back buttons, icons and menus
-stay grey and ink. A coach who never opens the setting sees exactly today's
+is on screen from the color of the big button, without reading the name.
+Nothing else on screen changes color: headers, back buttons, icons and menus
+stay gray and ink. A coach who never opens the setting sees exactly today's
 app.
 
 ## Survey (2026-09-16)
 
 - **Settings' team section** exists (#22): `#view-settings`, heading
   `#setTeamHd`, rows painted by `renderSettings()` in `teams-view.js`. #18
-  story 60 orders the team section "default format, team colour, players
+  story 60 orders the team section "default format, team color, players
   changing at once …", so the new row goes directly after "A game is".
 - **Team settings** live in `storage.js` (`DEFAULT_SETTINGS`,
   `sanitizeSettings`). An unknown string falls back to the default (the
@@ -54,7 +54,7 @@ Measured with `scripts/tokens-css.mjs`'s `contrast()`:
 
 Every other light fill clears 4.5:1 with a white label (lowest: Red 6.16).
 Every dark fill clears it with a `#1C1C1E` label (lowest: Red 6.13). Every
-colour clears 3:1 as text on every ground in its theme (lowest: Gold light on
+color clears 3:1 as text on every ground in its theme (lowest: Gold light on
 `--bg`, 3.64).
 
 So the fill values the ticket fixes, and its 4.5:1 test, together force the
@@ -62,7 +62,7 @@ label: **Hardwood and Gold carry `#000000` text in light.** "Gold's fill carries
 dark text" holds, and Hardwood carries it too, because white on Hardwood is
 4.29:1. No value in the ticket changes. No question for the human.
 
-**More contrast.** K5 (cited by the ticket) says every colour has a
+**More contrast.** K5 (cited by the ticket) says every color has a
 `prefers-contrast: more` value. The ticket gives none. #21 decision 4 set the
 rule for this: the developer picks them, held to text ≥ 7:1 and controls
 ≥ 4.5:1. That applies here unchanged.
@@ -72,7 +72,7 @@ rule for this: the developer picks them, held to text ≥ 7:1 and controls
 At 390×844, on the smoke suite's `RICH` fixture, unless stated:
 
 1. **Row and picker.** `#view-settings`' team section has a row titled
-   `Team colour`, directly after "A game is". It shows the current colour's
+   `Team color`, directly after "A game is". It shows the current color's
    name and opens a picker. The picker is a dialog with a close control and
    exactly nine choices in this order: Graphite, Hardwood, Royal, Navy,
    Maroon, Red, Forest, Gold, Purple. Each shows a swatch and its name. The
@@ -80,7 +80,7 @@ At 390×844, on the smoke suite's `RICH` fixture, unless stated:
    a visible mark). Choosing one applies it, saves, and closes the picker.
 2. **Values.** `app/tokens.css` holds, for the tint fill:
 
-   | Colour | Light | Dark |
+   | Color | Light | Dark |
    | --- | --- | --- |
    | Graphite | `#1C1C1E` | `#F4F4F6` |
    | Hardwood | `#D2500A` | `#FF7A2A` |
@@ -93,15 +93,15 @@ At 390×844, on the smoke suite's `RICH` fixture, unless stated:
    | Purple | `#5B34B8` | `#AE92FF` |
 
    Labels: light Hardwood and Gold `#000000`, every other light `#FFFFFF`;
-   every dark `#1C1C1E`. Each colour also has a light and a dark
+   every dark `#1C1C1E`. Each color also has a light and a dark
    `prefers-contrast: more` value (developer's choice, item 6's floors).
-3. **Storage.** The per-team settings block gains `colour`, one of
+3. **Storage.** The per-team settings block gains `color`, one of
    `graphite`, `hardwood`, `royal`, `navy`, `maroon`, `red`, `forest`, `gold`,
    `purple`. `test/storage.test.js` (or `settings.test.js`) covers: a record
-   with no `colour` loads as `graphite`; each valid value round-trips through
+   with no `color` loads as `graphite`; each valid value round-trips through
    `sanitizeSettings`; an unknown string (`'teal'`), a wrong case
    (`'Royal'`), `null`, a number and an object each load as `graphite`. The
-   two teams' colours are independent. `DEFAULT_SETTINGS.colour` is
+   two teams' colors are independent. `DEFAULT_SETTINGS.color` is
    `'graphite'`.
 4. **Where the tint goes, and nowhere else.** With Royal chosen, in light:
    - these read the tint: `.btn.primary` and `.ab-main` and `.gm-nav.next`
@@ -118,15 +118,15 @@ At 390×844, on the smoke suite's `RICH` fixture, unless stated:
      in `index.html`, and `card.css`.
    A smoke check proves both lists by computed style (see Proof).
 5. **Phrases.** A `.phrase` style exists for #27's sentence. With Graphite
-   it is ink with a 2px underline (`text-decoration-thickness: 2px`, colour
-   ink at the `--accent-line` alpha). With any other colour its text is the
-   colour's own fill value and it has no underline.
-6. **Contrast test.** `test/contrast.test.js` checks, for all nine colours in
+   it is ink with a 2px underline (`text-decoration-thickness: 2px`, color
+   ink at the `--accent-line` alpha). With any other color its text is the
+   color's own fill value and it has no underline.
+6. **Contrast test.** `test/contrast.test.js` checks, for all nine colors in
    light, dark, light + more and dark + more: the label on its fill ≥ 4.5:1
    (≥ 7:1 more), and the fill as text on every ground token (`--bg`, `--bg-2`,
    `--surface`, `--surface-2`, `--surface-3`) ≥ 3:1 (≥ 4.5:1 more). It finds
-   the nine by the same list the app uses, so a tenth colour without values,
-   or values for a colour the app does not offer, fails.
+   the nine by the same list the app uses, so a tenth color without values,
+   or values for a color the app does not offer, fails.
 7. **Switching.** With two teams (Graphite and Royal), switching team from the
    team menu changes `.btn.primary`'s computed background from `#1C1C1E` to
    `#2450D6` in the same task as the switch, with no reload.
@@ -144,16 +144,16 @@ At 390×844, on the smoke suite's `RICH` fixture, unless stated:
 
 Change:
 
-- `app/storage.js`: `DEFAULT_SETTINGS.colour`, the allow-list, and
+- `app/storage.js`: `DEFAULT_SETTINGS.color`, the allow-list, and
   `sanitizeSettings`.
-- `app/tokens.css`: the `--tint*` tokens and their per-colour blocks.
+- `app/tokens.css`: the `--tint*` tokens and their per-color blocks.
 - `app/app.css`: the K1 rules in item 4 read `--tint*`; `.phrase`; the Team
-  colour row and picker.
+  color row and picker.
 - `app/index.html`: the row, the picker dialog, and the pre-paint tint stamp.
 - `app/teams-view.js` (or `render.js`): paint the row and apply the tint when
   the team or the setting changes. `app/app.js`: wire the picker.
 - `app/sw.js`: bump `VERSION`, set `SHELL`.
-- `scripts/tokens-css.mjs`: parse the per-colour blocks.
+- `scripts/tokens-css.mjs`: parse the per-color blocks.
 - `scripts/smoke/`: a check for item 4 and item 7; the overlay and touch checks
   cover the picker once it is in their open-state list.
 - `test/contrast.test.js`, `test/storage.test.js` or `test/settings.test.js`,
@@ -165,14 +165,14 @@ Must not change:
 - `app/engine.js`, `app/budget.js`, `app/roster.js`. `storage.js` only as
   above.
 - The printed card, `card.js`, `card.css`.
-- Player hue tokens and code, and the status colours.
+- Player hue tokens and code, and the status colors.
 - `about.html`, `advanced.html`, the six chart pages.
-- Any stored key other than the new `colour`.
+- Any stored key other than the new `color`.
 
 ## Constraints
 
 - **Reuse, do not re-derive:**
-  - One list of the nine colours, in order, in JS (next to `TIE_BREAKS` in
+  - One list of the nine colors, in order, in JS (next to `TIE_BREAKS` in
     `storage.js`). The picker, the sanitiser and the contrast test read it.
     The display name is derived from it or kept beside it, not typed twice.
   - The values live only in `tokens.css`. No hex from the table above appears
@@ -187,10 +187,10 @@ Must not change:
     does, and `first-paint.test.js` pins it.
 - **The selector trap (#21).** `:root[data-tint="royal"]` outranks
   `[data-theme="dark"]`, so a light tint block written that way paints light
-  values on a dark phone. Every per-colour block names its theme explicitly
+  values on a dark phone. Every per-color block names its theme explicitly
   (`:root:not([data-theme="dark"])[data-tint=…]` /
   `:root[data-theme="dark"][data-tint=…]`), inside and outside the
-  more-contrast media query. The picker's swatches need each colour whatever
+  more-contrast media query. The picker's swatches need each color whatever
   the current tint, so write the blocks so a swatch element can carry its own
   `data-tint` too.
 - **Graphite is the base.** The base `:root` / dark blocks declare `--tint*`
@@ -201,47 +201,47 @@ Must not change:
 - **Guards.** The `tokens-css.mjs` parser change, the contrast test and the
   smoke check judge the tree: `/new-guard`, and each must be shown red.
 - **The four pure modules.** `storage.js` changes only by the one key, which
-  the ticket asks for. No other behaviour moves.
+  the ticket asks for. No other behavior moves.
 - **Precache bump.** Bump `VERSION` and set `SHELL` to the digest `npm test`
   names.
 - **`requests` budget.** No new module or stylesheet.
 - **Mobile first.** 390×844, then 320px with 32px root text; the picker's
   last choice and close control stay on screen and ≥ 44px; the new Settings
   row is ≥ 48px. `APP_LARGE_TEXT_ALLOW` stays empty.
-- **Interface guidelines:** K1 (three things only), K3 (no status colour is a
-  team colour: red `#C0182C` is not `--err`, and none of the nine equals
+- **Interface guidelines:** K1 (three things only), K3 (no status color is a
+  team color: red `#C0182C` is not `--err`, and none of the nine equals
   `--ok`/`--warn`/`--err`), K5 (4.5:1 labels, 3:1 controls, a more-contrast
   value for each).
-- **Words:** "Team colour", and the nine names exactly as written.
+- **Words:** "Team color", and the nine names exactly as written.
 
 ## Design
 
 - **Tokens.** Base blocks add `--tint`, `--tint-2` (hover), `--tint-ink`
   (label), `--tint-soft`, `--tint-line` at Graphite's values (today's
   `--accent*` values), plus `--phrase` / `--phrase-line`. Each non-Graphite
-  colour gets a light, dark, light-more and dark-more block setting those.
-  Non-Graphite colours set `--phrase-line` to `transparent`, or `.phrase`
+  color gets a light, dark, light-more and dark-more block setting those.
+  Non-Graphite colors set `--phrase-line` to `transparent`, or `.phrase`
   reads a thickness token that is `0` for them — whichever the test can read.
 - **Apply.** One function sets `document.documentElement.dataset.tint` from
-  the active team's `settings.colour` (removing it for `graphite` is fine).
+  the active team's `settings.color` (removing it for `graphite` is fine).
   It runs at boot, on team switch, on add/remove/undo of a team, and when the
   picker changes the value.
-- **Row.** A `setrow` titled `Team colour`, with a button showing a swatch
+- **Row.** A `setrow` titled `Team color`, with a button showing a swatch
   and the current name, opening the picker.
-- **Picker.** A `.keyswrap` dialog titled "Team colour" with a close button
+- **Picker.** A `.keyswrap` dialog titled "Team color" with a close button
   and nine full-width option buttons (swatch + name), the current one
   marked. Tapping one saves, applies, closes, and returns focus to the row.
 - **Pre-paint.** Extend the head script (or add one beside it) to read the
-  active team's `settings.colour` with `sanitize`'s rules and stamp
+  active team's `settings.color` with `sanitize`'s rules and stamp
   `data-tint`.
 
 ## Proof
 
 - **`node --test` seams:**
   - `sanitizeSettings` / `sanitize` / `loadState` exports — item 3.
-  - `test/contrast.test.js` over `tokens.css` and the colour list — items 2
+  - `test/contrast.test.js` over `tokens.css` and the color list — items 2
     and 6. Red when: Hardwood's light label is set to `#FFFFFF`; one dark
-    block's selector loses `[data-theme="dark"]`; a colour is added to the JS
+    block's selector loses `[data-theme="dark"]`; a color is added to the JS
     list with no blocks.
   - `test/first-paint.test.js` runs the pre-paint script against
     `loadState` — item 8. Red when the script ignores `activeTeam`.
@@ -261,6 +261,6 @@ Must not change:
 - The sentence itself and its sheets (#27). Only the `.phrase` style ships.
 - Renaming `--accent`, or moving non-K1 uses to other tokens beyond keeping
   them neutral.
-- App icons, `og.png`, the `theme-color` meta (stays the ground colour).
+- App icons, `og.png`, the `theme-color` meta (stays the ground color).
 - The printed card.
-- Any colour choice beyond the nine.
+- Any color choice beyond the nine.

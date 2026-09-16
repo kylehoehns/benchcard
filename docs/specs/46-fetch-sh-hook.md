@@ -34,7 +34,7 @@ through instead of learning to route around the hook through the shell.
 - `npm test` and `npm run smoke` pass.
 
 Human decisions, 2026-09-15: `README.md` is opened as well as `fetch.sh`,
-because it is hand-written (the licence table) and `fetch.sh` never writes
+because it is hand-written (the license table) and `fetch.sh` never writes
 it. The drift-job gap found in the survey is #52, not this diff.
 
 ## Surfaces

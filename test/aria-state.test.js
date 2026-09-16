@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-/* Selected state that is carried by a CSS class alone is carried by a colour
-   alone, and a screen reader cannot see a colour.
+/* Selected state that is carried by a CSS class alone is carried by a color
+   alone, and a screen reader cannot see a color.
  *
  * Four controls in this app always got this right -- the team tabs
  * (`aria-current`), the balance shape picker, the sub-frequency chips and the
@@ -40,6 +40,6 @@ for (const s of SITES) {
     const window = src.slice(at, at + s.within);
     assert.ok(window.includes(`setAttribute('${s.attr}'`),
       `${s.file}: ${s.what} sets a class for the selected item but never sets ${s.attr}, `
-      + 'so the state is a colour and nothing else. See the four controls that do it right.');
+      + 'so the state is a color and nothing else. See the four controls that do it right.');
   });
 }

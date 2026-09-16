@@ -31,8 +31,8 @@ export function initStrategy(scheduler, planOnly) {
 export function renderStrategy() {
   const g = game();
   /* `aria-pressed` alongside the class, the way `balance.js` does it for the
-     identical `.seg.wide` control three sections down: `.on` is a colour, and
-     a screen reader cannot see a colour. Without it all four strategies read
+     identical `.seg.wide` control three sections down: `.on` is a color, and
+     a screen reader cannot see a color. Without it all four strategies read
      as plain buttons and the one the plan is actually using is announced no
      differently from the three it is not. */
   for (const b of document.querySelectorAll('#stratseg button')) {

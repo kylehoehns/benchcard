@@ -77,7 +77,7 @@ export function renderConstraints() {
   c.pairs.forEach((pr, i) => chips.append(chip(`${nm(pr[0])} + ${nm(pr[1])} together`, () => c.pairs.splice(i, 1), 'ok')));
   c.avoids.forEach((pr, i) => chips.append(chip(`${nm(pr[0])} / ${nm(pr[1])} apart`, () => c.avoids.splice(i, 1), 'err')));
   /* Untoned on purpose: green and red are a matched pair here -- must share the
-     floor, must not -- and a third green chip would blur what the colour says. */
+     floor, must not -- and a third green chip would blur what the color says. */
   keepOnList(c).forEach((pr, i) => chips.append(chip(`${nm(pr[0])} or ${nm(pr[1])} always on`, () => c.keepOnFloor.splice(i, 1))));
   if (c.openingFive.length) chips.append(chip(`Starts: ${c.openingFive.map(nm).join(' ')}`, () => { c.openingFive = []; }));
   if (c.lastPeriodFive.length) chips.append(chip(`Last period: ${c.lastPeriodFive.map(nm).join(' ')}`, () => { c.lastPeriodFive = []; }));

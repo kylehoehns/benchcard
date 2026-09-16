@@ -99,7 +99,7 @@ async function samplePixels(c, points, scrollX, scrollY) {
  * for any `G > 0` -- so this does not copy `ROW_GAP_PCT`. */
 // "The pass's background" (item 6) is the button's own, not a row's: a
 // row's background is the inline linear-gradient rowGradient sets, which is
-// transparent off a player's colour -- so what shows through off-floor and
+// transparent off a player's color -- so what shows through off-floor and
 // in the period gaps is whatever sits behind the row, i.e. the pass
 // button's computed background-color.
 async function checkRotation(c, origin, i, problems) {
@@ -179,7 +179,7 @@ async function checkRotation(c, origin, i, problems) {
     const want = pt.onFloor ? probePx[pt.rowId] : bgRgb;
     if (!closeEnough(px, want)) {
       problems.push(`pass ${i}, ${pt.rowId}, period ${pt.period} ${pt.from}-${pt.to}min: pixel ${JSON.stringify(px)}, `
-        + `want ${pt.onFloor ? 'its colour ' : 'the background '}${JSON.stringify(want)} (onFloor=${pt.onFloor})`);
+        + `want ${pt.onFloor ? 'its color ' : 'the background '}${JSON.stringify(want)} (onFloor=${pt.onFloor})`);
     }
   }
   const badGaps = new Set();
@@ -262,9 +262,9 @@ export async function gamePassesPass(c, origin) {
       }
     });
 
-    // Item 4: the status dot's colour is a real class rule, read off a probe
+    // Item 4: the status dot's color is a real class rule, read off a probe
     // built with the same class the pass carries -- never a copied hex.
-    const dotColours = JSON.parse(await evalIn(c, `(() => {
+    const dotColors = JSON.parse(await evalIn(c, `(() => {
       const probe = cls => {
         const d = document.createElement('span');
         d.className = 'pass-status ' + cls;
@@ -285,10 +285,10 @@ export async function gamePassesPass(c, origin) {
       errEl.remove();
       return JSON.stringify({ ok: probe('ok'), warn: probe('warn'), err, dots });
     })()`));
-    dotColours.dots.forEach((d, i) => {
-      const want = WANT[i].status === 'Planned' ? dotColours.ok : dotColours.warn;
-      if (d !== want) problems.push(`pass ${i}'s status dot is ${d}, want ${want === dotColours.ok ? '--ok' : '--warn'} (${want})`);
-      if (d === dotColours.err) problems.push(`pass ${i}'s status dot still reads --err (${d})`);
+    dotColors.dots.forEach((d, i) => {
+      const want = WANT[i].status === 'Planned' ? dotColors.ok : dotColors.warn;
+      if (d !== want) problems.push(`pass ${i}'s status dot is ${d}, want ${want === dotColors.ok ? '--ok' : '--warn'} (${want})`);
+      if (d === dotColors.err) problems.push(`pass ${i}'s status dot still reads --err (${d})`);
     });
 
     // Item 6, the pixel half: passes 0-2 (pass 3 has no rotation).

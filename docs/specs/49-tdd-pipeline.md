@@ -48,7 +48,7 @@ at seams the spec agreed. The full proof pair runs once per commit.
      `/tdd`'s anti-patterns.
    - Step 8's fix goes to `developer`.
 6. `/new-guard` scopes itself to checks that judge the tree and points
-   behaviour tests at `/tdd`. It gains rule 2a: a check that measured nothing
+   behavior tests at `/tdd`. It gains rule 2a: a check that measured nothing
    fails.
 7. `AGENTS.md` names `/tdd`, so `test/one-answer.test.js` passes.
    `test/sdlc.test.js` passes with the smaller team.

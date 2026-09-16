@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
    this exercises the logic through a copy rather than importing the module.
    Crude, but the thing worth pinning is small and the bug it guards against
    was mine: calling the single-slot helper inside a `.map` handed every player
-   in a pasted list the same colour, because state has not been written yet and
+   in a pasted list the same color, because state has not been written yet and
    each call sees the same "taken" set. */
 const src = readFileSync(new URL('../app/state.js', import.meta.url), 'utf8');
 const body = src.slice(src.indexOf('export const hueSlots'));

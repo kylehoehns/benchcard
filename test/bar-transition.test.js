@@ -73,7 +73,7 @@ test('a view switch goes back to the top, instantly', () => {
   /* Games and Roster are two unrelated pages. Preserving scroll across them
      can land a coach who was down at the timeline past the end of a shorter
      view. Instant, not smooth: a smooth scroll racing the fade is a new thing
-     to debug, and instant is also the correct reduced-motion behaviour. */
+     to debug, and instant is also the correct reduced-motion behavior. */
   assert.match(js, /window\.scrollTo\(0,\s*0\)/,
     'a view switch no longer scrolls to the top');
   assert.ok(!/scrollTo\(\{[^)]*behavior:\s*['"]smooth/.test(jsCode),

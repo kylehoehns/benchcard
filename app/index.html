@@ -79,7 +79,7 @@
      - `viewOf` is `sanitize`'s allow-list and its ONE legacy translation,
        `roster -> team` (A40's `VIEW_WAS`). A backup file written before that
        rename still restores onto the Team page, so the first frame has to know
-       it too. An unrecognised value lands on Today exactly as `sanitize` sends
+       it too. An unrecognized value lands on Today exactly as `sanitize` sends
        it there -- stamping a view the allow-list would reject paints a frame
        with every view hidden. The same-members check is in the test file; an
        array, not an object, because `{}['constructor']` is truthy.
@@ -151,7 +151,7 @@
     if (welcome) view = 'welcome';
     if (view !== 'today') document.documentElement.setAttribute('data-boot', view);
 
-    /* #25 item 8: the team colour, stamped from the SAME winning record
+    /* #25 item 8: the team color, stamped from the SAME winning record
        resolved above -- `raw` and `decided` -- rather than re-reading the
        keys a third time. `raw` is untouched by the legacy v1/v2 block below
        when `decided` is true (that block only runs `if (!decided)`), so this
@@ -161,21 +161,26 @@
        `rawTeams` falls back to `[raw]` for a v3-shaped record with no
        `teams` array; `activeTeam` clamps into `[0, rawTeams.length - 1]`
        the same way `num()` does (a non-finite value is 0, not out of
-       range); an unrecognised or missing `colour` is graphite, same as
-       `COLOURS.includes(...)`. Graphite needs no attribute, same as the
-       base tokens.css blocks need no `[data-tint]` selector. */
-    var colour = 'graphite';
+       range); an unrecognized or missing `color` is graphite, same as
+       `COLORS.includes(...)`. Graphite needs no attribute, same as the
+       base tokens.css blocks need no `[data-tint]` selector.
+
+       #61 renamed this key: a valid `color` wins, else a valid value under
+       the pre-#61 key, same precedence sanitizeSettings uses (storage.js). */
+    var color = 'graphite';
     if (decided && isObj(raw)) {
       var rawTeams = Array.isArray(raw.teams) && raw.teams.length ? raw.teams : [raw];
       var capped = rawTeams.slice(0, 12);
       var atNum = Number(raw.activeTeam);
       var at = Number.isFinite(atNum) ? Math.max(0, Math.min(capped.length - 1, atNum)) : 0;
       var activeTeamObj = capped[at];
-      var rawColour = activeTeamObj && isObj(activeTeamObj.settings) && activeTeamObj.settings.colour;
-      var COLOURS = ['graphite', 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
-      if (typeof rawColour === 'string' && COLOURS.indexOf(rawColour) >= 0) colour = rawColour;
+      var teamSettings = activeTeamObj && isObj(activeTeamObj.settings) ? activeTeamObj.settings : {};
+      var COLORS = ['graphite', 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
+      var rawColor = COLORS.indexOf(teamSettings.color) >= 0 ? teamSettings.color
+        : COLORS.indexOf(teamSettings.colour) >= 0 ? teamSettings.colour : null; // legacy-spelling
+      if (typeof rawColor === 'string') color = rawColor;
     }
-    if (colour !== 'graphite') document.documentElement.setAttribute('data-tint', colour);
+    if (color !== 'graphite') document.documentElement.setAttribute('data-tint', color);
   } catch (e) {}
 })();
 </script>
@@ -346,7 +351,7 @@
 <body>
 <!-- Not an SEO device -- Googlebot runs the JS and sees the real app. This is
      for the person whose browser or extension does not, who would otherwise
-     get a dead grey page: tell them why, and send them somewhere that reads
+     get a dead gray page: tell them why, and send them somewhere that reads
      fine without scripts. -->
 <noscript>
   <div style="max-width:34rem;margin:3rem auto;padding:1.25rem 1.35rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);font:var(--fs-headline)/1.55 var(--font);color:var(--ink-2)">
@@ -573,7 +578,7 @@
                still the thing this app makes, but a coach building a rotation
                is looking at the timeline, and the full preview was pushing it
                off the screen. Same element either way so nothing has to be
-               rendered twice; below 1100px it takes the button behaviour. -->
+               rendered twice; below 1100px it takes the button behavior. -->
           <button class="block-hd noprint s-cardhd cardtoggle" id="cardToggle" type="button"
                   aria-expanded="true" aria-controls="sheet">
             <span class="i ct-ico" data-icon="printer"></span>
@@ -607,7 +612,7 @@
                  one is the desktop half of that pair.
 
                  The wrapper is the one node this slice spends and it is not
-                 decoration: `.gm-cta` is a centred `flex-wrap: wrap` row, so
+                 decoration: `.gm-cta` is a centered `flex-wrap: wrap` row, so
                  at 320px on 200% text every button takes its own line and a
                  bare "?" would wrap to a line of its own, attached to
                  nothing. Inside a wrapper it stays beside the button it
@@ -821,7 +826,7 @@
 
            A49 removed a `<details>` from this screen and A52 is not putting it
            back: the half of A49 that survives is A47's, that a control iOS does
-           not recognise as interactive is a bad bet, and both `#welType` and
+           not recognize as interactive is a bad bet, and both `#welType` and
            `#welBack` are plain buttons. The half that did not survive was the
            no-script argument, which A49 itself proved worthless -- `#welGo` is
            a JS onclick and there is no <form> anywhere in this app, so this
@@ -1011,23 +1016,23 @@
         </div>
       </div>
 
-      <!-- #25: the team colour. A `setrow` like the rest of the box, opening
-           `#colourPicker` (a `.keyswrap` dialog, same shape as `#help` and
+      <!-- #25: the team color. A `setrow` like the rest of the box, opening
+           `#colorPicker` (a `.keyswrap` dialog, same shape as `#help` and
            `#confirm`) rather than a `.seg` -- nine options is too many names to
            read at once as a row of buttons, and each one needs a swatch beside
-           its name, which a `.seg` button has no room for. `#teamColourSwatch`
-           and `#teamColourName` are painted by `renderSettings`, the one
+           its name, which a `.seg` button has no room for. `#teamColorSwatch`
+           and `#teamColorName` are painted by `renderSettings`, the one
            painter of team settings (teams-view.js); `applyTint` (render.js)
            is the one function that stamps `data-tint`, at boot, on switch, on
            add/remove/undo, and here. -->
       <div class="setrow">
         <div class="setrow-b">
-          <div class="setrow-t">Team colour</div>
+          <div class="setrow-t">Team color</div>
           <p class="note">Tints the primary buttons and the selected states across the app.</p>
         </div>
-        <button class="btn press colour-row-btn" id="teamColourBtn" type="button" aria-haspopup="dialog">
-          <span class="colour-swatch" id="teamColourSwatch" aria-hidden="true"></span>
-          <span id="teamColourName">Graphite</span>
+        <button class="btn press color-row-btn" id="teamColorBtn" type="button" aria-haspopup="dialog">
+          <span class="color-swatch" id="teamColorSwatch" aria-hidden="true"></span>
+          <span id="teamColorName">Graphite</span>
         </button>
       </div>
 
@@ -1141,44 +1146,44 @@
         </div>
       </div>
 
-      <!-- #25: the team colour picker. Same `.keyswrap`/`.keysbox` dialog shape as
+      <!-- #25: the team color picker. Same `.keyswrap`/`.keysbox` dialog shape as
            `#confirm` and `#help` below -- a close button in `.keys-hd`, trapped
            and closed the same way (see shortcuts.js's `openHelp`/`closeHelp` for
            the pattern app.js follows here). Nine full-width option buttons, one
-           per `COLOURS` entry (storage.js), each a swatch and the name, painted
+           per `COLORS` entry (storage.js), each a swatch and the name, painted
            by `renderSettings` (the current one marked with `aria-pressed` and
            `.on`, the same convention `#maxSubsSeg` uses). Tapping one saves,
-           applies, closes and returns focus to `#teamColourBtn`. Kept inside
+           applies, closes and returns focus to `#teamColorBtn`. Kept inside
            `#view-settings` -- ahead of `#removeTeam` -- rather than beside
            `#help`/`#confirm` further down the file: it is per-team policy,
            painted by `renderSettings`, and `test/settings.test.js` pins every
            id that function reaches to the team zone, above `#removeTeam`. The
            `.keyswrap` shell is `position: fixed`, so nesting it here changes
            nothing about where it draws. -->
-      <div class="keyswrap noprint" id="colourPicker" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="colourPickerTitle">
-        <div class="keysbox colourbox">
+      <div class="keyswrap noprint" id="colorPicker" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="colorPickerTitle">
+        <div class="keysbox colorbox">
           <div class="keys-hd">
-            <div class="keys-t" id="colourPickerTitle">Team colour</div>
-            <button class="btn icon ghost press" id="colourPickerClose" aria-label="Close"><span class="i" data-icon="x"></span></button>
+            <div class="keys-t" id="colorPickerTitle">Team color</div>
+            <button class="btn icon ghost press" id="colorPickerClose" aria-label="Close"><span class="i" data-icon="x"></span></button>
           </div>
           <!-- Each swatch carries its OWN `data-tint`, not just the option
-               button's `data-colour` -- tokens.css's per-colour blocks match a
+               button's `data-color` -- tokens.css's per-color blocks match a
                descendant `[data-tint]` for exactly this reason (see the
                selector-trap comment there), so every swatch shows its real
-               colour no matter which one is currently active on `<html>`.
+               color no matter which one is currently active on `<html>`.
                Graphite has no tokens.css block (it IS the base), so its swatch
                reads `--ink` instead -- see the CSS rule in app.css -- rather
                than inheriting whatever team is currently active. -->
-          <div class="colour-opts" id="colourOpts" role="group" aria-label="Team colour">
-            <button class="colour-opt" type="button" data-colour="graphite"><span class="colour-swatch" aria-hidden="true"></span>Graphite</button>
-            <button class="colour-opt" type="button" data-colour="hardwood"><span class="colour-swatch" data-tint="hardwood" aria-hidden="true"></span>Hardwood</button>
-            <button class="colour-opt" type="button" data-colour="royal"><span class="colour-swatch" data-tint="royal" aria-hidden="true"></span>Royal</button>
-            <button class="colour-opt" type="button" data-colour="navy"><span class="colour-swatch" data-tint="navy" aria-hidden="true"></span>Navy</button>
-            <button class="colour-opt" type="button" data-colour="maroon"><span class="colour-swatch" data-tint="maroon" aria-hidden="true"></span>Maroon</button>
-            <button class="colour-opt" type="button" data-colour="red"><span class="colour-swatch" data-tint="red" aria-hidden="true"></span>Red</button>
-            <button class="colour-opt" type="button" data-colour="forest"><span class="colour-swatch" data-tint="forest" aria-hidden="true"></span>Forest</button>
-            <button class="colour-opt" type="button" data-colour="gold"><span class="colour-swatch" data-tint="gold" aria-hidden="true"></span>Gold</button>
-            <button class="colour-opt" type="button" data-colour="purple"><span class="colour-swatch" data-tint="purple" aria-hidden="true"></span>Purple</button>
+          <div class="color-opts" id="colorOpts" role="group" aria-label="Team color">
+            <button class="color-opt" type="button" data-color="graphite"><span class="color-swatch" aria-hidden="true"></span>Graphite</button>
+            <button class="color-opt" type="button" data-color="hardwood"><span class="color-swatch" data-tint="hardwood" aria-hidden="true"></span>Hardwood</button>
+            <button class="color-opt" type="button" data-color="royal"><span class="color-swatch" data-tint="royal" aria-hidden="true"></span>Royal</button>
+            <button class="color-opt" type="button" data-color="navy"><span class="color-swatch" data-tint="navy" aria-hidden="true"></span>Navy</button>
+            <button class="color-opt" type="button" data-color="maroon"><span class="color-swatch" data-tint="maroon" aria-hidden="true"></span>Maroon</button>
+            <button class="color-opt" type="button" data-color="red"><span class="color-swatch" data-tint="red" aria-hidden="true"></span>Red</button>
+            <button class="color-opt" type="button" data-color="forest"><span class="color-swatch" data-tint="forest" aria-hidden="true"></span>Forest</button>
+            <button class="color-opt" type="button" data-color="gold"><span class="color-swatch" data-tint="gold" aria-hidden="true"></span>Gold</button>
+            <button class="color-opt" type="button" data-color="purple"><span class="color-swatch" data-tint="purple" aria-hidden="true"></span>Purple</button>
           </div>
         </div>
       </div>
@@ -1202,7 +1207,7 @@
          fixed a page where "How this works" opened at y=1459 of a 1938px
          page, two screens under five rows of league rules; those rows now
          live in the team box above, but the ORDER survives them -- the things
-         a coach recognises first, and the control that replaces everything on
+         a coach recognizes first, and the control that replaces everything on
          the device last. Backup is the last block IN this box, not a fourth
          `side-box` of its own -- the ticket's acceptance criterion is one
          Benchcard section that ends with it, and a browser check at 390x844

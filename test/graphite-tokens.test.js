@@ -10,10 +10,10 @@ import {
  * contrast floors (those are `test/contrast.test.js`):
  *
  *   1. the four ticket values, exact, in both theme blocks; every other
- *      colour token neutral grey; no ember or warm-tint literal anywhere;
+ *      color token neutral gray; no ember or warm-tint literal anywhere;
  *   2. --accent === --ink and --accent-ink === --surface (alpha included),
  *      in every block, and --accent-soft/--accent-line unmoved;
- *   3. ok/warn/err distinct from each other and from ink, not grey, and each
+ *   3. ok/warn/err distinct from each other and from ink, not gray, and each
  *      still reads as its own hue (green/amber/red);
  *   4. --info === --muted and --info-soft neutral, in every block;
  *   5. the player-hue tokens, --av-ring and the formula untouched, and not
@@ -23,7 +23,7 @@ import {
  *   9. theme-color held to tokens.css's own --bg, everywhere it is spelled
  *      out, however the markup happens to be written.
  *
- * The tokens.css parser, the four-theme resolution and the colour maths are
+ * The tokens.css parser, the four-theme resolution and the color maths are
  * shared with test/contrast.test.js via scripts/tokens-css.mjs -- see that
  * module's header for why it is a script rather than a second file under
  * test/. */
@@ -52,14 +52,14 @@ test('the four ticket tokens hold the ticket values, exactly, in both theme bloc
   }
 });
 
-/* ------------- item 1: every other colour token is neutral grey ------------- */
+/* ------------- item 1: every other color token is neutral gray ------------- */
 
-/* Every token that is meant to be a single, pure colour and is NOT a status
- * colour (checked for its own hue below) or a player token (untouched by
+/* Every token that is meant to be a single, pure color and is NOT a status
+ * color (checked for its own hue below) or a player token (untouched by
  * #21, checked separately). The shadows are named in the spec too
  * ("--bg-2, --surface-2, --surface-3, --ink-2, --faint, --line, --line-2,
  * --pc-track, the shadows"), but a shadow's VALUE is a multi-part box-shadow
- * list, not a single colour -- extractColors pulls the literal colour(s) out
+ * list, not a single color -- extractColors pulls the literal color(s) out
  * of it instead of trying to parse the whole declaration as one. */
 const NEUTRAL_DIRECT = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3',
   '--ink', '--ink-2', '--muted', '--faint', '--line', '--line-2',
@@ -68,10 +68,10 @@ const NEUTRAL_DIRECT = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface
 const SHADOW_TOKENS = ['--shadow-sm', '--shadow', '--shadow-lg', '--shadow-paper'];
 /* The real palette's widest legitimate spread today is 8 (light --faint,
  * #6B6B73); ten points of slack above that catches a warm off-white like
- * #F2EEE8 (spread 10) without flagging anything genuinely grey. */
+ * #F2EEE8 (spread 10) without flagging anything genuinely gray. */
 const NEUTRAL_TOLERANCE = 8;
 
-test('every non-status, non-player colour token is neutral grey, in all four themes', () => {
+test('every non-status, non-player color token is neutral gray, in all four themes', () => {
   const bad = [];
   for (const [name, decls] of THEMES) {
     for (const tok of NEUTRAL_DIRECT) {
@@ -84,7 +84,7 @@ test('every non-status, non-player colour token is neutral grey, in all four the
       if (raw === undefined) continue;
       for (const c of extractColors(raw)) {
         const s = spread(c);
-        if (s > NEUTRAL_TOLERANCE) bad.push(`${name}: ${tok} (${raw}) carries a non-neutral colour, spread ${s}`);
+        if (s > NEUTRAL_TOLERANCE) bad.push(`${name}: ${tok} (${raw}) carries a non-neutral color, spread ${s}`);
       }
     }
   }
@@ -96,7 +96,7 @@ test('every non-status, non-player colour token is neutral grey, in all four the
 /* A SCAN, not a spelling match: every hex and rgb()/rgba() literal in a file
  * is parsed to its RGB triple and compared against the banned values by
  * NUMBER, so hex vs rgb(), comma vs space syntax, case and whitespace are all
- * the same colour to this check -- `rgba( 20, 18, 15` and `rgb(20 18 15 /
+ * the same color to this check -- `rgba( 20, 18, 15` and `rgb(20 18 15 /
  * .08)` are exactly as caught as `rgba(20, 18, 15`. */
 const BINARY_EXT = /\.(png|ico|woff2?|ttf|otf|jpe?g|gif|webp)$/i;
 const appFiles = readdirSync(new URL('app/', ROOT), { withFileTypes: true })
@@ -164,24 +164,24 @@ test('--accent-soft and --accent-line keep exactly today\'s alpha in light and d
   assert.deepEqual(bad, [], bad.join('\n  '));
 });
 
-/* ------------------------- item 3: status colours keep their hues ------------------------- */
+/* ------------------------- item 3: status colors keep their hues ------------------------- */
 
 /* Standard HSL hue, calibrated with margin against the four themes' real
  * values today (~150° ok, ~39° warn, ~4-14° err): a band wide enough to
  * survive a future re-tune for contrast (Design: "their values may move to
- * pass item 6"), narrow enough that a colour from a different hue family
- * (blue, grey) cannot land inside it. */
+ * pass item 6"), narrow enough that a color from a different hue family
+ * (blue, gray) cannot land inside it. */
 const HUE_BANDS = { ok: [[80, 170]], warn: [[20, 70]], err: [[0, 25], [335, 360]] };
 const HUE_NAME = { ok: 'green', warn: 'amber', err: 'red' };
 const inBand = (h, bands) => bands.some(([lo, hi]) => h >= lo && h <= hi);
 
-test('--ok, --warn and --err stay distinct from each other, from --ink, are not grey, and keep their own hue', () => {
+test('--ok, --warn and --err stay distinct from each other, from --ink, are not gray, and keep their own hue', () => {
   const bad = [];
   for (const [name, decls] of THEMES) {
     const ink = colorOf(decls, '--ink');
     const cs = { ok: colorOf(decls, '--ok'), warn: colorOf(decls, '--warn'), err: colorOf(decls, '--err') };
     for (const [k, c] of Object.entries(cs)) {
-      if (spread(c) < 15) bad.push(`${name}: --${k} (${decls['--' + k]}) reads as grey`);
+      if (spread(c) < 15) bad.push(`${name}: --${k} (${decls['--' + k]}) reads as gray`);
       if (c.r === ink.r && c.g === ink.g && c.b === ink.b) bad.push(`${name}: --${k} equals --ink`);
       const h = hueOf(c);
       if (!inBand(h, HUE_BANDS[k])) bad.push(`${name}: --${k} hue is ${h.toFixed(1)}°, expected ${HUE_NAME[k]}`);

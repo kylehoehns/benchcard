@@ -89,7 +89,7 @@ const guarded = (r) => r.at.some((a) => /\(\s*hover\s*:\s*hover\s*\)/.test(a));
 const where = (rs) => rs.map((r) => `${r.sheet}  ${r.sel}`);
 
 /* The scope itself is the thing that failed last time, so it is asserted like
- * any other behaviour. Named sheets are the ones a hover rule has actually
+ * any other behavior. Named sheets are the ones a hover rule has actually
  * arrived in; if the walker stops reaching one of them the count goes to zero
  * and the hover test below passes for the wrong reason. */
 test('the guard reaches every sheet the site ships', () => {

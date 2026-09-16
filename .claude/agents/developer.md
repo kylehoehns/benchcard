@@ -17,14 +17,14 @@ against.
 - **The seams are already agreed.** `/tdd` says to confirm seams with the user
   before writing a test. Here the spec's **Proof** section is that
   confirmation: it names each seam — a module's exports under `node --test`,
-  a smoke check, a browser step — and the behaviours tested at it. Do not ask
-  again, and do not test at a seam the spec does not name. If a behaviour has
+  a smoke check, a browser step — and the behaviors tested at it. Do not ask
+  again, and do not test at a seam the spec does not name. If a behavior has
   no workable seam, stop and say so; that is a gap in the spec.
-- **One slice at a time.** Take the next behaviour from **What would settle
+- **One slice at a time.** Take the next behavior from **What would settle
   it**. Write one test at its seam. Run it and watch it fail **for the right
-  reason**: the assertion about the behaviour, not an import error, a typo or a
+  reason**: the assertion about the behavior, not an import error, a typo or a
   missing file. Then write only enough code to pass it. Then the next slice.
-- **Test behaviour, not source.** A test that regex-reads a `.js` or `.html`
+- **Test behavior, not source.** A test that regex-reads a `.js` or `.html`
   file to decide whether a feature works is the weakest kind here — #22 shipped
   nine of them and a falsifier broke every one. Use one only when the spec names
   that seam, and then it is a guard: `/new-guard` applies.

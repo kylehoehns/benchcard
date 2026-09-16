@@ -52,7 +52,7 @@ test('the wrap clears the home indicator and the notch', () => {
       + `runs under the ${side === 'bottom' ? 'home indicator' : 'status bar'}`);
   }
   assert.ok(/height: 100dvh/.test(wrap),
-    '.keyswrap no longer sizes itself to the visible viewport, so it centres its sheet '
+    '.keyswrap no longer sizes itself to the visible viewport, so it centers its sheet '
     + 'in a box the coach cannot entirely see');
 });
 

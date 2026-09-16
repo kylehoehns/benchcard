@@ -6,11 +6,11 @@ import { nameOf } from './registry.mjs';
  * the tint and nothing else on screen does; switching team changes them in
  * the same task, with no reload. Item 4 names two full lists (tinted,
  * unchanged) and this check proves both of them, not a sample of each —
- * see docs/specs/25-team-colour.md's Proof section and the #59 review that
+ * see docs/specs/25-team-color.md's Proof section and the #59 review that
  * found the first cut of this file covering only six of the twelve tinted
  * elements and four of the sixteen unchanged ones.
  *
- * Expected colours are the spec's own table (docs/specs/25-team-colour.md,
+ * Expected colors are the spec's own table (docs/specs/25-team-color.md,
  * item 2), typed once here as `rgb()` strings -- never `tokens-css.mjs`'s
  * `contrast()` or any other route the app itself computes them through, so a
  * bug that reaches both the app and the computation this check trusted would
@@ -30,13 +30,13 @@ import { nameOf } from './registry.mjs';
  * hand -- so proving them unchanged means comparing the SAME element's
  * computed style before and after the team switch below, not a hand-typed
  * literal: a value this file invented would be a recomputation, not a fact
- * the spec states. The picker's `.colour-opt.on` mark and the phrase style
+ * the spec states. The picker's `.color-opt.on` mark and the phrase style
  * read `--tint-soft` / `--tint` respectively, and only `--tint`'s own fill
  * has a spec literal (item 2) -- `--tint-soft` is an alpha the ticket leaves
- * to the implementation, so `.colour-opt.on` is proved the same way: it must
+ * to the implementation, so `.color-opt.on` is proved the same way: it must
  * CHANGE between the two states, where the unchanged set must not.
  *
- * `getComputedStyle` resolves colour custom properties through the cascade
+ * `getComputedStyle` resolves color custom properties through the cascade
  * regardless of `[hidden]` / `display: none` -- confirmed against this app's
  * own overlay states -- so most elements below are read straight off the
  * static markup, with no dialog opened. Three groups of the tinted/unchanged
@@ -70,7 +70,7 @@ const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 /* Everything readable off the static markup (or a same-expression probe) in
  * one pass, run twice: once with Royal active, once after the switch to the
  * Graphite team. `$` is scoped to the page, not this module. */
-const READ_COLOURS = `(() => {
+const READ_COLORS = `(() => {
   const $ = s => document.querySelector(s);
   const bg = s => { const e = $(s); return e ? getComputedStyle(e).backgroundColor : null; };
   const fg = s => { const e = $(s); return e ? getComputedStyle(e).color : null; };
@@ -87,7 +87,7 @@ const READ_COLOURS = `(() => {
     welSegFg: fg('#welTabPlan'),
     // the picker's current mark -- --tint-soft, no spec literal, so this is
     // read on both passes and compared for INEQUALITY below, not to a value.
-    colourOptOnBg: bg('#colourOpts .colour-opt.on'),
+    colorOptOnBg: bg('#colorOpts .color-opt.on'),
     // item 4 unchanged, the rest of the list: one more uppercase eyebrow
     // heading beside .help-h (Settings' own "Backup and restore"), the
     // minute-bar fill, the footer link and the paste-box's own .linkish,
@@ -180,14 +180,14 @@ const READ_GAME_MODE = `(() => {
   });
 })()`;
 
-export async function teamColourPass(c, origin) {
+export async function teamColorPass(c, origin) {
   const problems = [];
   try {
     const base = JSON.parse(JSON.stringify(RICH));
     base.view = 'today';
-    base.teams[0].settings = { colour: 'royal' };
+    base.teams[0].settings = { color: 'royal' };
     const record = withSecondTeam(base);
-    record.teams[1].settings = { colour: 'graphite' };
+    record.teams[1].settings = { color: 'graphite' };
     await reloadWithRecord(c, origin, record);
 
     await evalIn(c, step(`$('#gmOpen').click(); $('#gmFloor .gm-p').click()`));
@@ -215,7 +215,7 @@ export async function teamColourPass(c, origin) {
       problems.push(`the focus ring is ${focusRing.outline} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
     }
 
-    const r = JSON.parse(await evalIn(c, READ_COLOURS));
+    const r = JSON.parse(await evalIn(c, READ_COLORS));
 
     const tinted = [
       ['.btn.primary background', r.primaryBg, ROYAL_FILL],
@@ -235,9 +235,9 @@ export async function teamColourPass(c, origin) {
     for (const [label, got, want] of tinted) {
       if (got !== want) problems.push(`${label} is ${got} with Royal active, want ${want}`);
     }
-    // item 5: Graphite's phrase carries an underline, every other colour's
+    // item 5: Graphite's phrase carries an underline, every other color's
     // does not (`--phrase-line` goes transparent) -- Royal is "every other
-    // colour", so this is the one item-4 "tinted" entry proved by a state a
+    // color", so this is the one item-4 "tinted" entry proved by a state a
     // literal cannot name (no-underline) rather than a value.
     if (r.phraseDecoration !== TRANSPARENT) {
       problems.push(`.phrase has a visible underline (${r.phraseDecoration}) with Royal active, want none`);
@@ -265,11 +265,11 @@ export async function teamColourPass(c, origin) {
     // changes `.btn.primary` in the same task, with no reload. Re-read
     // everything, both to check the switch and to prove the tokens the spec
     // gives no literal for (`#setTeamHd`, the back button, its icon,
-    // `.foot-link`, `.linkish`, `.stage`'s glow) are the same colour on the
+    // `.foot-link`, `.linkish`, `.stage`'s glow) are the same color on the
     // Graphite team as they were on Royal, and that the picker's mark and
     // the phrase style, which DO read the tint, changed.
     await evalIn(c, step(`document.querySelectorAll('#teamMenu .teammenu-item')[1]?.click()`));
-    const a = JSON.parse(await evalIn(c, READ_COLOURS));
+    const a = JSON.parse(await evalIn(c, READ_COLORS));
     if (a.primaryBg !== GRAPHITE_INK) {
       problems.push(`.btn.primary background is ${a.primaryBg} after switching to the Graphite team, `
         + `want ${GRAPHITE_INK} — no reload happened in between`);
@@ -282,13 +282,13 @@ export async function teamColourPass(c, origin) {
     for (const [label, before, afterVal] of invariant) {
       if (before !== afterVal) {
         problems.push(`${label} is ${before} with Royal active and ${afterVal} with Graphite active — `
-          + 'it should not read the team colour at all');
+          + 'it should not read the team color at all');
       }
     }
     // the inverse of the invariant list: these two DO read the tint, so they
-    // must NOT be the same colour on both teams.
-    if (r.colourOptOnBg === a.colourOptOnBg) {
-      problems.push(`the picker's current mark is ${r.colourOptOnBg} on both Royal and Graphite — it should read the active team's tint`);
+    // must NOT be the same color on both teams.
+    if (r.colorOptOnBg === a.colorOptOnBg) {
+      problems.push(`the picker's current mark is ${r.colorOptOnBg} on both Royal and Graphite — it should read the active team's tint`);
     }
     if (r.phraseFg === a.phraseFg) {
       problems.push(`.phrase is ${r.phraseFg} on both Royal and Graphite — it should read the active team's tint`);
@@ -297,7 +297,7 @@ export async function teamColourPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   }
   return {
-    name: nameOf('teamcolour'),
+    name: nameOf('teamcolor'),
     pass: problems.length === 0,
     detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
       : 'Royal tints all twelve of item 4’s controls, all sixteen of the unchanged list stay graphite ink, '

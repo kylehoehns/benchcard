@@ -22,6 +22,6 @@ SOFTWARE.
 
 ---
 
-Third-party code vendored under app/vendor/ retains its own licence; see
+Third-party code vendored under app/vendor/ retains its own license; see
 app/vendor/README.md. Briefly: Motion (MIT), Inter (SIL OFL 1.1),
 Lucide icon paths (ISC).

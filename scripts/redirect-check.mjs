@@ -17,7 +17,7 @@
  * and that was redirected too. The whole premise of the app is a gym with no
  * signal, and it had been broken there since launch.
  *
- * This server is the production one's redirect behaviour, so the failure is
+ * This server is the production one's redirect behavior, so the failure is
  * reproducible on a laptop. FIVE assertions now. The first three failed before
  * the original fix and pass after it; the fourth is the offline fallback.
  *
@@ -186,7 +186,7 @@ try {
         one a coach reaches from a search result rather than from the app.
 
         THIS ARM WAS GREEN WITHOUT TESTING ANYTHING, and it is worth saying how
-        so the next person recognises the shape. It navigated `/advanced.html`
+        so the next person recognizes the shape. It navigated `/advanced.html`
         and its comment claimed that was the spelling the link uses. It never
         was: every one of the seven links to this page -- all of them on
         about.html -- has always been extensionless. So the check for "does the

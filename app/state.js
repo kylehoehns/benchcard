@@ -28,13 +28,13 @@ export const colorOf = id => {
 };
 
 /* The lowest slot nobody is using, so a player added after a deletion reuses
-   the freed colour rather than pushing the next one into a collision. Falls
+   the freed color rather than pushing the next one into a collision. Falls
    back to the roster length once every slot is taken, which is the same
    wrap-around the old index-based scheme had. */
 export const nextHue = (players = state.players) => hueSlots(1, players)[0];
 
 /* `count` distinct free slots, in one pass. Calling nextHue() inside a map
-   would hand every player in a pasted list the same colour -- state has not
+   would hand every player in a pasted list the same color -- state has not
    been written yet, so each call sees the same "taken" set. */
 export const hueSlots = (count, players = state.players) => {
   const taken = new Set(players.map(p => p.hue).filter(Number.isFinite));
@@ -255,13 +255,13 @@ export function ruleCount(g) {
     + (leagueMinutes() > 0 ? 1 : 0);
 }
 
-/* #25: the active team's colour, read the same way `leagueMinutes` above
+/* #25: the active team's color, read the same way `leagueMinutes` above
    reads its own settings key -- one place, so `applyTint` (render.js) and
    the Settings row/picker (teams-view.js) cannot compute it two different
    ways. `team()` is already sanitized (storage.js's `sanitize` runs
-   `settings.colour` through `COLOURS.includes`), so no re-validation
+   `settings.color` through `COLORS.includes`), so no re-validation
    belongs here. */
-export const activeColour = () => state.settings?.colour ?? DEFAULT_SETTINGS.colour;
+export const activeColor = () => state.settings?.color ?? DEFAULT_SETTINGS.color;
 
 // v3 spelled this `state.teamName`; on a team it is just `name`.
 Object.defineProperty(state, 'teamName', {
@@ -387,7 +387,7 @@ export const gameLabel = (g, i) => g.label || `Game ${i + 1}`;
    Regional Tournament Semifinal vs Northgate" and "...Final vs Kingsway" both
    ended up as the tab "Riverside Regiona…", i.e. two different games wearing the
    same name. A tail ellipsis eats exactly the words that tell them apart, so the
-   tab elides the middle instead: the head is enough to recognise the event, the
+   tab elides the middle instead: the head is enough to recognize the event, the
    tail keeps the round and the opponent. Character-based on purpose -- measuring
    text costs a layout per tab per render, and the max-width on .lb is still
    there as the backstop for a label made of unusually wide glyphs. */
@@ -638,13 +638,13 @@ export function passBlocks(g, p) {
 const ROW_GAP_PCT = 1;
 
 /* One player's blocks (`passBlocks`) as a `linear-gradient(to right, …)`
-   string with hard stops (#26 decision 10): the player's colour exactly where
+   string with hard stops (#26 decision 10): the player's color exactly where
    a block says they are on the floor, `transparent` everywhere else,
    including the gap between periods. The row is one equal-per-minute track
    per period -- `g.periodMinutes` is every period's length, so a block's
    `from`/`to` divide by it for a fraction of that period's track. Pure: reads
    nothing off `state`. */
-export function rowGradient(blocks, g, colour) {
+export function rowGradient(blocks, g, color) {
   const periods = g.periods, periodMinutes = g.periodMinutes;
   const track = (100 - (periods - 1) * ROW_GAP_PCT) / periods;
   const pct = n => `${Math.round(n * 10000) / 10000}%`;
@@ -658,7 +658,7 @@ export function rowGradient(blocks, g, colour) {
     let cursor = 0;
     for (const b of periodBlocks) {
       if (b.from > cursor) push(frac(cursor), frac(b.from), 'transparent');
-      push(frac(b.from), frac(b.to), colour);
+      push(frac(b.from), frac(b.to), color);
       cursor = b.to;
     }
     if (cursor < periodMinutes) push(frac(cursor), frac(periodMinutes), 'transparent');
@@ -855,7 +855,7 @@ function syncOverrides(g, p) {
 }
 
 /* Same clamp `balance.js` applies to the meter: a level the record does not
-   recognise is the middle one, which is the level that decides nothing. */
+   recognize is the middle one, which is the level that decides nothing. */
 const tierOfPlayer = p => {
   const n = Number(p.tier);
   return Number.isFinite(n) && n >= 1 && n <= 5 ? Math.round(n) : DEFAULT_TIER;

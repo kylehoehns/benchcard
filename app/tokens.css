@@ -59,7 +59,7 @@
   --spring: cubic-bezier(.34, 1.42, .64, 1);
   --t-tap: 110ms; --t-fast: 180ms; --t: 260ms; --t-slow: 420ms;
 
-  /* surfaces: neutral grey, layered, low-contrast borders (Graphite, #21) */
+  /* surfaces: neutral gray, layered, low-contrast borders (Graphite, #21) */
   --bg: #F4F4F6;
   --bg-2: #F0F0F2;
   --surface: #FFFFFF;
@@ -72,25 +72,25 @@
   --line: rgba(28, 28, 30, .08);
   --line-2: rgba(28, 28, 30, .15);
 
-  /* Tint is ink (K1): the primary action is filled with the same colour as
+  /* Tint is ink (K1): the primary action is filled with the same color as
      the text, not a brand hue. Written as a literal matching --ink, not
      var(--ink), because the contrast test and dead-var's declaration scan
      both read tokens.css's own values rather than resolving a var() chain —
-     see #21. #25 (team colour) is the next thing allowed to move this. */
+     see #21. #25 (team color) is the next thing allowed to move this. */
   --accent: #1C1C1E;
   --accent-2: #35353A;
   --accent-soft: rgba(28, 28, 30, .10);
   --accent-line: rgba(28, 28, 30, .32);
   --accent-ink: #FFFFFF;
 
-  /* #25: the team colour. Declared here at Graphite's own values -- the same
+  /* #25: the team color. Declared here at Graphite's own values -- the same
      literals as --accent/--accent-2/--accent-soft/--accent-line/--accent-ink
      above -- so no attribute, or data-tint="graphite", is exactly today's
-     app. A per-colour [data-tint] block (below) overrides these four; see
+     app. A per-color [data-tint] block (below) overrides these four; see
      the selector-trap comment down there for why each one names its theme
      explicitly. --phrase/--phrase-line are #27's sentence style (item 5):
      ink with a 2px underline at the accent-line alpha for Graphite, and
-     --phrase-line goes transparent for every other colour so the underline
+     --phrase-line goes transparent for every other color so the underline
      disappears without a second rule. */
   --tint: #1C1C1E;
   --tint-2: #35353A;
@@ -105,7 +105,7 @@
   --err: #BE2519; --err-soft: rgba(190, 37, 25, .10);
   /* Neutral, not blue: the word beside the number already says which end of
      the squad it is (see the comment above .tl-tot .ex in app.css), so info
-     takes the secondary-text colour rather than a hue of its own (#21). */
+     takes the secondary-text color rather than a hue of its own (#21). */
   --info: #6C6C72; --info-soft: rgba(28, 28, 30, .06);
 
   /* player identity — perceptually even hues, one knob per theme */
@@ -121,7 +121,7 @@
   --av-ink: 60%;
   /* A tinted avatar disc is nearly invisible against its own row — measured
      1.22–1.26:1 in light, 1.32–1.37:1 in dark, against the on-floor disc's
-     3.26–3.77:1 — so the player's colour, the thing tying a bench row to its
+     3.26–3.77:1 — so the player's color, the thing tying a bench row to its
      timeline bar and its floor chip, did not read at all. Raising the tint
      does not fix it: 20% → 42% buys the disc only 1.22 → 1.53 while costing
      the number 1.1 points, because ink and wash are mixes of the same hue and
@@ -185,7 +185,7 @@
   color-scheme: dark;
 }
 
-/* #25 (team colour): one block per non-Graphite colour, in COLOURS'
+/* #25 (team color): one block per non-Graphite color, in COLORS'
    order. Graphite needs none -- the base :root / dark blocks above already
    declare --tint* at Graphite's values, so no attribute, or
    data-tint="graphite", is today's app.
@@ -386,7 +386,7 @@
     --info: #BCBCC0; --info-soft: rgba(244, 244, 246, .08);
   }
 
-  /* #25: the light+more and dark+more arm of each non-Graphite colour. Same
+  /* #25: the light+more and dark+more arm of each non-Graphite color. Same
      selector trap, same reason -- see the comment above the base blocks. */
   :root:not([data-theme="dark"])[data-tint="hardwood"],
   :root:not([data-theme="dark"]) [data-tint="hardwood"] {

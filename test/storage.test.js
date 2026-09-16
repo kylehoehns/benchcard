@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { sanitize, loadState, saveState, seasonGame, seasonDate, addSeasonGames,
+import { sanitize, sanitizeSettings, loadState, saveState, seasonGame, seasonDate, addSeasonGames,
          seasonShare, KEY, BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
-         V3_KEY, DEFAULT_SETTINGS, COLOURS } from '../app/storage.js';
+         V3_KEY, DEFAULT_SETTINGS, COLORS } from '../app/storage.js';
 import { SIZES, file as chartFile } from '../scripts/charts.mjs';
 
 /* Every document that paints themed content before its first frame, and so
@@ -117,7 +117,7 @@ test('unknown enum values fall back instead of breaking the UI', () => {
   assert.equal(s.teams[0].day.games[0].strategy, 'balanced');
   assert.equal(s.ui.theme, 'auto');
   assert.equal(s.ui.printScope, 'game');
-  assert.equal(s.view, 'today', 'an unrecognised view opens Today (#23)');
+  assert.equal(s.view, 'today', 'an unrecognized view opens Today (#23)');
 });
 
 test('a record with no ui.theme at all loads as auto, not just one holding a bad value', () => {
@@ -143,7 +143,7 @@ test('a save written before #19 loads with its strategy, balance and level uncha
 
      Alongside the four spec values this also pins a NON-default neighbour for
      each: 'balanced', 'even' and 3 are sanitizeTeam's own fallback for an
-     unrecognised strategy, balance and tier, so a rewrite that always returned
+     unrecognized strategy, balance and tier, so a rewrite that always returned
      the fallback would still pass a test that only ever stored the fallback
      value. 'closers', 'start' and tier 5 are not the fallback and must come
      back exactly as written too. */
@@ -552,19 +552,19 @@ test('an override of exactly five real players does survive', () => {
 });
 
 /* ================================================================== *
- * a player's colour belongs to the player, not to their row
+ * a player's color belongs to the player, not to their row
  * ================================================================== */
 
-test('hue defaults to the current index, so existing records keep their colours', () => {
+test('hue defaults to the current index, so existing records keep their colors', () => {
   const raw = good();
   const s = sanitize(raw, H);
   assert.deepEqual(s.teams[0].players.map(p => p.hue), [0, 1],
     'a record written before hues existed must look exactly as it did');
 });
 
-test('reordering the roster does not change anyone\'s colour', () => {
-  /* The bug this replaced: colour was HUES[indexOf(player)], so dragging one
-     player up the list recoloured everyone below them. A coach who has learned
+test('reordering the roster does not change anyone\'s color', () => {
+  /* The bug this replaced: color was HUES[indexOf(player)], so dragging one
+     player up the list recolored everyone below them. A coach who has learned
      "Leighton is the purple one" should not lose that for tidying their
      roster. */
   const raw = good();
@@ -575,7 +575,7 @@ test('reordering the roster does not change anyone\'s colour', () => {
   raw.players = [...first].reverse();
   const after = sanitize(raw, H).teams[0].players;
   for (const p of after) {
-    assert.equal(p.hue, before[p.id], `${p.id} changed colour by being moved`);
+    assert.equal(p.hue, before[p.id], `${p.id} changed color by being moved`);
   }
 });
 
@@ -767,7 +767,7 @@ test('a v4 record migrates forward with an empty season and nothing else lost', 
   assert.deepEqual(t.players.map(p => p.number), ['4', '']);
   assert.deepEqual(t.players.map(p => p.shortName), ['', 'ELI']);
   assert.deepEqual(t.players.map(p => p.tier), [5, 2], 'levels survive');
-  assert.deepEqual(t.players.map(p => p.hue), [3, 7], 'colours survive');
+  assert.deepEqual(t.players.map(p => p.hue), [3, 7], 'colors survive');
   assert.equal(t.day.name, 'Sat');
   assert.equal(t.day.games[0].label, 'Northgate');
   assert.deepEqual(t.day.games[0].out, ['b'], 'availability survives');
@@ -1067,7 +1067,7 @@ test('a v5 record migrates forward with default settings and nothing else lost',
   assert.deepEqual(t.players.map(p => p.id), ['a', 'b'], 'player ids are untouched');
   assert.deepEqual(t.players.map(p => p.name), ['Marcus Webb', 'Eli Tran']);
   assert.deepEqual(t.players.map(p => p.tier), [5, 2], 'levels survive');
-  assert.deepEqual(t.players.map(p => p.hue), [3, 7], 'colours survive');
+  assert.deepEqual(t.players.map(p => p.hue), [3, 7], 'colors survive');
   assert.equal(t.day.name, 'Sat');
   assert.equal(t.day.games[0].label, 'Northgate');
   assert.deepEqual(t.day.games[0].out, ['b'], 'availability survives');
@@ -1122,7 +1122,7 @@ test('a settings block holds only what the app reads, so the file makes no claim
   const s = sanitize({ version: 6, onboarded: true,
     teams: [{ ...good(), settings: { maxSubs: 4, tieBreak: 'levels', leagueMin: 12 } }] }, H);
   assert.deepEqual(Object.keys(s.teams[0].settings),
-    ['maxSubs', 'tieBreak', 'minMinutes', 'seasonDefault', 'periods', 'periodMinutes', 'colour'],
+    ['maxSubs', 'tieBreak', 'minMinutes', 'seasonDefault', 'periods', 'periodMinutes', 'color'],
     'a key nothing honours must not survive into the record a coach can open');
   assert.equal(s.teams[0].settings.maxSubs, 4);
   assert.equal(s.teams[0].settings.tieBreak, 'levels');
@@ -1157,30 +1157,66 @@ test('a junk or unknown tie-break stance falls back to the default, not to nothi
   assert.equal(at(undefined), 'behind', 'no settings block at all is the default stance');
 });
 
-test('a team\'s colour round-trips, an unknown or malformed one falls back to graphite, and a record with none loads graphite', () => {
+test('a team\'s color round-trips, an unknown or malformed one falls back to graphite, and a record with none loads graphite', () => {
   const at = raw => sanitize({ version: 6, onboarded: true,
-    teams: [{ ...good(), settings: raw }] }, H).teams[0].settings.colour;
-  for (const c of COLOURS) {
-    assert.equal(at({ colour: c }), c);
+    teams: [{ ...good(), settings: raw }] }, H).teams[0].settings.color;
+  for (const c of COLORS) {
+    assert.equal(at({ color: c }), c);
   }
   for (const junk of ['teal', 'Royal', null, 42, {}, [], undefined, '']) {
-    assert.equal(at({ colour: junk }), 'graphite', `an unreadable colour must not reach the paint: ${String(junk)}`);
+    assert.equal(at({ color: junk }), 'graphite', `an unreadable color must not reach the paint: ${String(junk)}`);
   }
-  assert.equal(at(undefined), 'graphite', 'no settings block at all is the default colour');
-  assert.equal(DEFAULT_SETTINGS.colour, 'graphite');
+  assert.equal(at(undefined), 'graphite', 'no settings block at all is the default color');
+  assert.equal(DEFAULT_SETTINGS.color, 'graphite');
 });
 
-test('two teams\' colours are their own — there is no cascade', () => {
+test('two teams\' colors are their own — there is no cascade', () => {
   const raw = { version: 6, onboarded: true, teams: [
-    { ...good(), settings: { colour: 'royal' } },
-    { ...good(), settings: { colour: 'forest' } },
+    { ...good(), settings: { color: 'royal' } },
+    { ...good(), settings: { color: 'forest' } },
   ] };
   const s = sanitize(raw, H);
-  assert.equal(s.teams[0].settings.colour, 'royal');
-  assert.equal(s.teams[1].settings.colour, 'forest');
+  assert.equal(s.teams[0].settings.color, 'royal');
+  assert.equal(s.teams[1].settings.color, 'forest');
 });
 
-test('a record written before the stance existed loads with the old behaviour', () => {
+/* #61 renamed the settings key that names a team's color. A record saved
+   before the rename holds only the pre-#61 key, and sanitizeSettings must
+   still find its color — a valid `color` wins, else a valid value under the
+   pre-#61 key, else graphite. */
+test('a saved choice survives the old-key rename', () => {
+  assert.equal(sanitizeSettings({ colour: 'navy' }).color, 'navy'); // legacy-spelling
+  assert.ok(!('colour' in sanitizeSettings({ colour: 'navy' })), 'the old key must not survive'); // legacy-spelling
+});
+
+test('a valid color wins over a valid pre-#61 value', () => {
+  assert.equal(sanitizeSettings({ color: 'royal', colour: 'navy' }).color, 'royal'); // legacy-spelling
+});
+
+test('an invalid color falls back to a valid pre-#61 value before graphite', () => {
+  assert.equal(sanitizeSettings({ color: 'bogus', colour: 'navy' }).color, 'navy'); // legacy-spelling
+});
+
+test('an invalid pre-#61 value falls back to graphite', () => {
+  assert.equal(sanitizeSettings({ colour: 'bogus' }).color, 'graphite'); // legacy-spelling
+  assert.equal(sanitizeSettings({}).color, 'graphite');
+});
+
+test('loadState reads a v6 record whose active team has only the pre-#61 key, and saveState writes it back under color', () => {
+  const raw = { version: 6, onboarded: true,
+    teams: [{ ...good(), settings: { colour: 'navy' } }] }; // legacy-spelling
+  const r = withStore({ [KEY]: JSON.stringify(raw) }, m => {
+    const loaded = loadState(H);
+    assert.equal(loaded.state.teams[0].settings.color, 'navy');
+    assert.equal(saveState(loaded.state), null);
+    return m;
+  });
+  const saved = JSON.parse(r.get(KEY));
+  assert.equal(saved.teams[0].settings.color, 'navy');
+  assert.ok(!('colour' in saved.teams[0].settings), 'the saved record must not carry the old key'); // legacy-spelling
+});
+
+test('a record written before the stance existed loads with the old behavior', () => {
   // the whole no-version-branch bargain: absent means default, so a v6 record
   // from before this key keeps solving exactly as it did
   const s = sanitize({ version: 6, onboarded: true,
@@ -1382,7 +1418,7 @@ test('season carryover round-trips once a coach turns it on', () => {
  * The risk the translation carries is the one this repo keeps re-finding: a
  * SECOND implementation of the same question, in `applyView` or in the
  * markup, drifting away from this one. So there is a structural arm below
- * as well as a behavioural one, and it is written to catch a mapping being
+ * as well as a behavioral one, and it is written to catch a mapping being
  * ADDED, not only one being renamed.
  * ================================================================== */
 
@@ -1414,7 +1450,7 @@ test('every other view key is untouched, and anything unknown still lands on Tod
 
 test('a missing view opens Today, and Today survives a round trip', () => {
   const noView = good(); delete noView.view;
-  assert.equal(sanitize(noView, H).view, 'today', 'a missing view is the same as an unrecognised one');
+  assert.equal(sanitize(noView, H).view, 'today', 'a missing view is the same as an unrecognized one');
   assert.equal(sanitize(viewRec('today'), H).view, 'today');
 });
 

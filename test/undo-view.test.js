@@ -25,7 +25,7 @@ test('the undo refresh knows it is an undo', () => {
 /* Two source-regex assertions used to live here: that `viewRefresh` calls
    `setView(state.view)`, and that `removeTeam`'s own refresh calls
    `setView(undoing ? 'settings' : 'today')`. Both are now proven by running
-   the behaviour, in `node scripts/smoke.mjs --only "today keys and undo"`
+   the behavior, in `node scripts/smoke.mjs --only "today keys and undo"`
    (#23 review) -- New day, Add a game, Remove this game and Remove team all
    land the coach where their undo snapshot says, and a source match that
    cannot tell "true" from "merely spelled the same" was the weaker of the

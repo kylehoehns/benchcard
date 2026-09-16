@@ -103,7 +103,7 @@ export const ROWS = Object.freeze([
   { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich' },
   { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich' },
   { id: 'gamepasses', name: 'game passes', selectable: true, setup: 'rich' },
-  { id: 'teamcolour', name: 'team colour tints K1 only, and switches with the team', selectable: true, setup: 'rich' },
+  { id: 'teamcolor', name: 'team color tints K1 only, and switches with the team', selectable: true, setup: 'rich' },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich' },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich' },
   { id: 'touch', name: `touch targets ≥ 44px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },

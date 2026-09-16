@@ -79,7 +79,7 @@ test('the sample team is named so it cannot be mistaken for the coach own team',
    it was written. A hidden form costs a dead graph exactly nothing extra.
 
    THE HALF THAT SURVIVES, and is pinned below, is A47's: a control iOS does
-   not recognise as interactive is a bad bet, whatever the markup says. Six
+   not recognize as interactive is a bad bet, whatever the markup says. Six
    rounds went into a two-tap bug on the one button-styled `<summary>` in the
    app. So the reveal is a plain `<button>`, it is one tap, and `<details>` and
    `<summary>` are still banned from this screen.
@@ -166,7 +166,7 @@ test('both doors land on setup, and the sample one fills the box on the way', ()
     'the sample door no longer opens setup with the roster in it');
   assert.match(init, /on\('#welType', 'onclick', \(\) => pane\(true\)\)/,
     'the typing door no longer opens setup');
-  /* The deep link keeps the OTHER behaviour and the other function: somebody
+  /* The deep link keeps the OTHER behavior and the other function: somebody
      who clicked "try it with nine players" on a chart page asked to see the
      card, not a form. */
   assert.match(init, /loadSample\(want\)/,

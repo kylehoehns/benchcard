@@ -24,7 +24,7 @@ import { renderStats, renderIssues, renderPlanTable, renderDayTotals } from './p
 import { renderSetup, renderAvail } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
 import { renderSeason } from './season-view.js';
-import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel, activeColour } from './state.js';
+import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel, activeColor } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { retireUndo, flash } from './toast.js';
 // storage.js is already in the boot graph (state.js imports it for
@@ -197,7 +197,7 @@ export function soon(...keys) {
  * back to the top. Without it a coach who was down at the timeline lands on a
  * shorter view already scrolled past the end of it. Instant, not smooth: a
  * smooth scroll racing the fade is a new thing to debug, and it is also the
- * honest behaviour under reduced motion.
+ * honest behavior under reduced motion.
  *
  * `shown` starts null so the boot call scrolls nothing — there is no view
  * being left. `instant` no longer changes the animation (there is none to
@@ -452,17 +452,17 @@ export function applyTheme() {
   }
 }
 
-/* #25: the active team's colour, painted the same way `applyTheme` paints
+/* #25: the active team's color, painted the same way `applyTheme` paints
    `state.ui.theme` -- one place that reads the state and writes the
-   attribute tokens.css keys its tint blocks off. `activeColour()` (state.js)
+   attribute tokens.css keys its tint blocks off. `activeColor()` (state.js)
    is the one place that value is derived, shared with the Settings row and
    picker (teams-view.js), and it is already sanitized (storage.js's
-   `sanitize` runs `settings.colour` through `COLOURS.includes`), so no
+   `sanitize` runs `settings.color` through `COLORS.includes`), so no
    re-validation belongs here. `graphite` removes the attribute rather than
    stamping it, matching the pre-paint script in index.html (item 8) and the
    spec's "removing it for graphite is fine". */
 export function applyTint() {
-  const colour = activeColour();
-  if (colour === 'graphite') document.documentElement.removeAttribute('data-tint');
-  else document.documentElement.setAttribute('data-tint', colour);
+  const color = activeColor();
+  if (color === 'graphite') document.documentElement.removeAttribute('data-tint');
+  else document.documentElement.setAttribute('data-tint', color);
 }

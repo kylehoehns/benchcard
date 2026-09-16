@@ -33,7 +33,7 @@ directions, so a renamed or new agent fails the suite until this table agrees.
 | Agent | Job | Writes |
 | --- | --- | --- |
 | `developer` | builds the change test-first with `/tdd`: tests and code, one slice at a time | `app/`, `scripts/`, `test/` |
-| `refactorer` | one behaviour-preserving cleanup pass, on green | code and tests |
+| `refactorer` | one behavior-preserving cleanup pass, on green | code and tests |
 | `reuse-reviewer` | duplication, missed reuse | nothing |
 | `quality-reviewer` | correctness and `REVIEW.md`'s passes | nothing |
 | `efficiency-reviewer` | wasted work on hot paths | nothing |
@@ -122,12 +122,12 @@ current handoff and the findings verbatim; that is the whole brief.
    `SHELL` to the digest `npm test` names. Wait until it reports each slice's
    test and the failure it saw before the code existed, and a green `npm
    test`. A slice whose reported failure is an import error or a typo rather
-   than the behaviour's assertion never saw red: send it back.
+   than the behavior's assertion never saw red: send it back.
 
 6. > **Refactor on green, once.** Hand the change to **`refactorer`**:
    > production first (the suite is the oracle), then tests (production frozen,
    > keep every case). Keep the instruction generic — "improve the internal
-   > structure without changing behaviour". `refactorer.md` owns its hand-back
+   > structure without changing behavior". `refactorer.md` owns its hand-back
    > condition. Run it here, never in the fix loop.
 
    **Prove and commit.** Run the proof pair — `AGENTS.md` § Layout names it and
@@ -149,7 +149,7 @@ current handoff and the findings verbatim; that is the whole brief.
    did not name as a seam.
 
 8. **Fix, once.** Actionable findings go to a new `developer`, which fixes them
-   the same way it built: a failing test first where the finding is a behaviour. At most
+   the same way it built: a failing test first where the finding is a behavior. At most
    one pass. A `REVIEW.md` **Blocker** that survives it stops the run: report
    it in the wrap-up rather than shipping.
 

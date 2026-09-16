@@ -154,7 +154,7 @@ Three rules worth knowing before you start:
 3. **Verify in a real browser**, not by reading code. A grep proves a phrase is
    in a file, never that a reader sees it.
 
-## Licence
+## License
 
-[MIT](LICENSE). Third-party licences are listed in `app/vendor/README.md` —
+[MIT](LICENSE). Third-party licenses are listed in `app/vendor/README.md` —
 Motion (MIT), Inter (SIL OFL 1.1) and Lucide (ISC).

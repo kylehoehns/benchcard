@@ -80,7 +80,7 @@ At 390×844, on the smoke suite's `RICH` fixture, unless stated:
 5. **Switching team.** With two teams, switching from the team strip while
    Settings is open changes the team heading and every value in the team
    section to the other team's.
-6. **Behaviour unchanged.** Every team setting changes plans exactly as it did
+6. **Behavior unchanged.** Every team setting changes plans exactly as it did
    from the Team tab. The existing tests in `settings.test.js`,
    `league-min.test.js` and `game-format.test.js` stay green, and no assertion
    about plans is loosened.
@@ -239,7 +239,7 @@ Settings
 
 - Removing the in-app footer or the view tabs, team strip, game chips or `?`
   controls (#23, #37).
-- Team colour (#25). No row, placeholder or stub for it.
+- Team color (#25). No row, placeholder or stub for it.
 - The roster screen's own redesign and player sheet (#31).
 - The gear-only-on-Today rule and a back button (#23).
 - Raising the app-wide touch-target sweep to 48px (#37).

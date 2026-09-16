@@ -26,7 +26,7 @@ test('size resolves to blob3 today, derived rather than assumed', () => {
 
 test('an unknown event or field fails loudly instead of querying nothing', () => {
   assert.throws(() => blobColumn('card_burned', 'size'), /unknown event/);
-  assert.throws(() => blobColumn('card_printed', 'colour'), /no string field/);
+  assert.throws(() => blobColumn('card_printed', 'color'), /no string field/);
 });
 
 test('the SQL filters on the index, weights by sample interval and bounds the window', () => {

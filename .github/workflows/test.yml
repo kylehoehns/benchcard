@@ -109,7 +109,7 @@ jobs:
     # every local check stayed green, because `python3 -m http.server` returns
     # exactly the path you ask for.
     #
-    # This job serves app/ with production's redirect behaviour instead, so
+    # This job serves app/ with production's redirect behavior instead, so
     # that class of bug fails here rather than on someone's phone.
     runs-on: ubuntu-latest
     name: service worker behind redirects

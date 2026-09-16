@@ -61,7 +61,7 @@ means the same thing twice running.
 
 ## What is enforced, and what is only written down
 
-Most of this file is judgement and cannot be mechanised. Seven rules can be, and
+Most of this file is judgement and cannot be mechanised. Eight rules can be, and
 are, in `.claude/hooks/` — they are stated in their own sections above and are
 not restated here, only listed, so there is still one answer per rule:
 
@@ -73,6 +73,7 @@ not restated here, only listed, so there is still one answer per rule:
 | No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` |
 | A text file over 60 KB is read in parts (`grep -n`, then offset and limit) | denied, `guard-read.sh` |
 | A precached file changed → bump `VERSION`, set `SHELL` | reminded, `after-edit.sh` |
+| A British spelling in an edited file | reminded, `after-edit.sh` |
 | A dirty tree means another writer is here | reported at session start |
 
 `test/hooks.test.js` asserts all of it in both directions and runs in
@@ -242,7 +243,7 @@ that made `-1 > 0` the verdict, a name that differed by file, and a restore
 that deleted the very fix under test. **`/new-guard` owns the procedure and all
 five.** Do not write, edit or trust a check that judges the tree — a smoke
 check, a CI script, a hook, a mutation harness, a test that reads source or
-docs rather than running code — without it. A test that exercises behaviour
+docs rather than running code — without it. A test that exercises behavior
 through a seam is built with `/tdd` instead: watching it fail for the right
 reason before the code exists is its proof that it can.
 
@@ -268,7 +269,7 @@ reason before the code exists is its proof that it can.
 - **Never regress the card.** It must stay 3.45 × 5in and legible at arm's
   length. It is the product.
 - **`engine.js`, `budget.js`, `storage.js`, `roster.js` are pure and heavily
-  tested.** Leave their behaviour alone unless the task is explicitly about
+  tested.** Leave their behavior alone unless the task is explicitly about
   them.
 - **Prefer transform/opacity for animation.** Anything animating `left`, `top`,
   `width` or `height` on a hot path is a bug to fix, not a pattern to copy.
@@ -285,6 +286,9 @@ reason before the code exists is its proof that it can.
   attempt is made to tell prose from selectors: the phrase is the
   discriminator. It used to name two files by hand, which left the six chart
   pages carrying the trust line unguarded.
+- **This repo uses American spelling everywhere.** The word list lives in
+  `scripts/spelling.mjs`, not here; `test/spelling.test.js` scans every tracked
+  file outside `app/vendor/` and fails on a spelling from the other list.
 - **No `Co-Authored-By` trailer in commits.**
 - **Stage explicit paths, never `git add -A` / `git add .`.** This tree carries
   screenshots, `.playwright-mcp` scratch and worktrees that are ignored today
