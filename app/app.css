@@ -10,9 +10,19 @@
    way to make `el.hidden = true` mean hidden. */
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
+/* docs/specs/24-text-size.md decision 1: the root follows the OS text-size
+   setting on iOS/iPadOS WebKit, where `-apple-system-body` tracks Dynamic
+   Type. Gated on `-webkit-touch-callout`, supported by iOS/iPadOS WebKit
+   only -- unguarded, this would apply to every WebKit including a Mac; the
+   spec's Survey has the measurement of what that computes to there and why
+   it is wrong. `font:` also resets family and line-height on `html`, so
+   `body` below keeps declaring both. */
+@supports (-webkit-touch-callout: none) {
+  html { font: -apple-system-body; }
+}
 body {
   margin: 0; background: var(--bg); color: var(--ink);
-  font-family: var(--font); font-size: 15px; line-height: 1.5;
+  font-family: var(--font); font-size: var(--fs-body); line-height: 1.5;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   font-synthesis-weight: none;
   /* cv11 = single-storey g/l disambiguation, ss03 = a rounder a; both help at
@@ -21,7 +31,22 @@ body {
   font-variant-numeric: tabular-nums;
   overscroll-behavior-y: none;
 }
-h1,h2,h3,h4 { margin: 0; font-weight: 650; letter-spacing: -.025em; }
+h1,h2,h3,h4 { margin: 0; font-weight: 600; letter-spacing: -.025em; }
+/* #24 item 3: a bare `<b>` with no class -- `.mn`'s played-minutes figure in
+   bench mode is one, among several elsewhere in `index.html` and the JS
+   modules -- takes the UA's `font-weight: bolder`, which the CSS spec
+   resolves against the INHERITED weight -- and every ancestor an emphasis
+   element sits in here is already 600 or 700, both of which land in
+   "bolder"'s 900 bucket. Pinned to 700 (decision 3's default for emphasis)
+   so every `<b>` computes on the scale; a class-scoped `b` rule elsewhere in
+   this file still wins on specificity. */
+b { font-weight: 700; }
+/* The two inline <h1> styles index.html used to carry (#24 item 1: nothing
+   sizes text with a bare style attribute). Neither set its own font-weight,
+   so both still take the h1,h2,h3,h4 rule above. */
+.noscript-h1 { margin: 0 0 .5rem; font-size: var(--fs-title); letter-spacing: -.03em; color: var(--ink); }
+/* Today's own title (#23), and one of decision 3's three large titles. */
+.today-h1 { font-size: var(--fs-large); letter-spacing: -.042em; }
 p { margin: 0; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; border: 0; background: none; cursor: pointer; }
@@ -97,16 +122,16 @@ a { color: inherit; }
 .spacer { flex: 1; }
 
 .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: var(--r-full); border: 1px solid var(--line); }
-.seg button { padding: .36rem 1rem; border-radius: var(--r-full); font-size: .86rem; font-weight: 570; color: var(--muted); }
+.seg button { padding: .36rem 1rem; border-radius: var(--r-full); font-size: var(--fs-secondary); font-weight: 600; color: var(--muted); }
 @media (hover: hover) { .seg button:hover { color: var(--ink); } }
 .seg button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 .seg.wide { display: flex; width: 100%; padding: 4px; }
-.seg.wide button { flex: 1; padding: .58rem .3rem; font-size: .875rem; }
+.seg.wide button { flex: 1; padding: .58rem .3rem; font-size: var(--fs-secondary); }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
   padding: .55rem 1.05rem; border-radius: var(--r-sm); border: 1px solid var(--line-2);
-  background: var(--surface); font-size: .88rem; font-weight: 580; white-space: nowrap;
+  background: var(--surface); font-size: var(--fs-secondary); font-weight: 600; white-space: nowrap;
 }
 @media (hover: hover) { .btn:hover { background: var(--surface-2); border-color: var(--muted); } }
 .btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 6px 16px -8px rgba(0,0,0,.24); }
@@ -120,15 +145,15 @@ a { color: inherit; }
 .btn.ghost.danger { background: none; color: var(--err); border-color: color-mix(in srgb, var(--err) 40%, transparent); }
 @media (hover: hover) { .btn.ghost.danger:hover { background: color-mix(in srgb, var(--err) 10%, transparent); } }
 .btn.icon { padding: .5rem; width: 2.2rem; }
-.btn.sm { padding: .34rem .72rem; font-size: .82rem; }
+.btn.sm { padding: .34rem .72rem; font-size: var(--fs-footnote); }
 
 .wrap { max-width: 1340px; margin: 0 auto; padding: clamp(1rem, 2.2vw, 1.8rem) clamp(.85rem, 2.6vw, 1.5rem) 4rem; }
 
 /* ============================ blocks ============================ */
 .block { margin-bottom: clamp(1.15rem, 2vw, 1.75rem); }
 .block-hd { display: flex; align-items: baseline; gap: .7rem; margin-bottom: .75rem; }
-.block-hd h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 660; }
-.block-hd .hint { margin-left: auto; font-size: .78rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+.block-hd h3 { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.block-hd .hint { margin-left: auto; font-size: var(--fs-footnote); color: var(--faint); font-variant-numeric: tabular-nums; }
 .surface { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 1.05rem; }
 
 .cols { display: grid; gap: clamp(1.1rem, 2vw, 1.8rem); grid-template-columns: minmax(0, 1fr); align-items: start; }
@@ -196,7 +221,7 @@ a { color: inherit; }
   .cardtoggle .ct-ico { display: inline-flex; color: var(--muted); }
   .cardtoggle .ct-chev { display: inline-flex; color: var(--faint); margin-left: .1rem;
     transition: transform var(--t) var(--ease); }
-  .cardtoggle h3 { text-transform: none; letter-spacing: -.01em; font-size: .95rem;
+  .cardtoggle h3 { text-transform: none; letter-spacing: -.01em; font-size: var(--fs-body);
     color: var(--ink); }
   .cardtoggle .hint { margin-left: auto; }
   .cardtoggle[aria-expanded="true"] .ct-chev { transform: rotate(90deg); }
@@ -219,7 +244,7 @@ a { color: inherit; }
    declaring their own. */
 .bar-today, .bar-back { display: flex; align-items: center; gap: .8rem; flex: 1; min-width: 0; }
 .bar-today[hidden], .bar-back[hidden] { display: none; }
-.bar-title { font-size: 1.02rem; font-weight: 700; letter-spacing: -.03em;
+.bar-title { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.03em;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* The team button. Visible text is the team's own name (or `Team N`) --
@@ -227,7 +252,7 @@ a { color: inherit; }
    is on screen (A2). The chevron is decoration. */
 .teambtn { display: inline-flex; align-items: center; gap: .35rem; min-height: 44px;
   padding: .4rem .7rem; border-radius: var(--r-sm); border: 1px solid var(--line-2);
-  background: var(--surface); font: inherit; font-size: .95rem; font-weight: 650;
+  background: var(--surface); font: inherit; font-size: var(--fs-body); font-weight: 600;
   letter-spacing: -.02em; color: var(--ink); max-width: 60vw; }
 /* Rotated `chevron_right` rather than a new icon key: same glyph as `#backBtn`
    and the game-mode nav, pointed down to say "opens a list here". */
@@ -269,11 +294,11 @@ a { color: inherit; }
 .teammenu:popover-open { display: flex; flex-direction: column; gap: .1rem; }
 .teammenu-item { display: flex; align-items: center; gap: .6rem; min-height: 44px;
   width: 100%; padding: 0 .7rem; border-radius: var(--r-sm); border: 0; background: none;
-  font: inherit; font-size: .92rem; text-align: left; color: var(--ink); }
+  font: inherit; font-size: var(--fs-secondary); text-align: left; color: var(--ink); }
 @media (hover: hover) { .teammenu-item:hover { background: var(--surface-2); } }
 .teammenu-check { width: 1.1em; flex: none; color: var(--accent); font-weight: 700; }
 .teammenu-nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.teammenu-add { color: var(--muted); font-weight: 560; border-top: 1px solid var(--line); margin-top: .2rem; padding-top: .5rem; }
+.teammenu-add { color: var(--muted); font-weight: 600; border-top: 1px solid var(--line); margin-top: .2rem; padding-top: .5rem; }
 
 /* ---- Today: the day's games, then Team and Season underneath ----------- */
 .today-games { display: flex; flex-direction: column; gap: .5rem; margin: 1.1rem 0; }
@@ -291,11 +316,11 @@ a { color: inherit; }
    happens to land on 15px exactly, so there is no existing token to reuse
    here rather than pick one. */
 .today-game-lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
-  white-space: nowrap; font-size: 1rem; font-weight: 600; }
-.today-game-when { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  white-space: nowrap; font-size: var(--fs-body); font-weight: 600; }
+.today-game-when { font-size: var(--fs-footnote); color: var(--muted); font-variant-numeric: tabular-nums; }
 .today-game .bad { width: .5rem; height: .5rem; border-radius: 50%; background: var(--err);
   animation: pop var(--t) var(--spring) both; flex: none; }
-.today-game::after, .today-entry::after { content: '\203a'; color: var(--faint); font-size: 1.1rem;
+.today-game::after, .today-entry::after { content: '\203a'; color: var(--faint); font-size: var(--fs-headline);
   flex: none; margin-left: .1rem; }
 
 .today-acts { display: flex; gap: .6rem; margin-bottom: 1.6rem; }
@@ -307,8 +332,8 @@ a { color: inherit; }
   font: inherit; text-align: left; }
 @media (hover: hover) { .today-entry:hover { border-color: var(--line-2); } }
 /* Same reason and the same value as `.today-game-lb` above. */
-.today-entry-lab { font-size: 1rem; font-weight: 700; letter-spacing: -.01em; }
-.today-entry-sub { color: var(--muted); font-size: .87rem; flex: 1; min-width: 0;
+.today-entry-lab { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.01em; }
+.today-entry-sub { color: var(--muted); font-size: var(--fs-secondary); flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* `.setrow` already wraps its own row (#22 moved this out of `.teamrow`,
@@ -329,7 +354,7 @@ a { color: inherit; }
    "four out of five". 44px targets throughout: this is set standing up. */
 .bal-intro { margin: 0 0 1rem; max-width: 62ch; }
 .bal-shape .seg { width: 100%; }
-.bal-shape .seg button { padding-left: .45rem; padding-right: .45rem; font-size: .84rem;
+.bal-shape .seg button { padding-left: .45rem; padding-right: .45rem; font-size: var(--fs-footnote);
   white-space: nowrap; }
 .bal-blurb { margin: .6rem 0 1.15rem; max-width: 62ch; min-height: 2.6em; }
 /* The meter as a second line inside a roster row. `grid-column: 1 / -1` spans
@@ -405,11 +430,11 @@ a { color: inherit; }
   align-items: center; margin: 0 0 .4rem; }
 .bal-key-ends { grid-column: 3; display: flex; justify-content: space-between;
   align-items: center; gap: .5rem; }
-.bal-key-ends span { font-size: .66rem; font-weight: 660; letter-spacing: .07em;
+.bal-key-ends span { font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .07em;
   text-transform: uppercase; color: var(--faint); white-space: nowrap; }
 .bal-key-arrow { flex: 1; height: 1px; min-width: 1.2rem;
   background: linear-gradient(to right, var(--line), var(--line-2)); }
-.bal-lv { font-size: .72rem; color: var(--muted); width: 5.2rem; text-align: right;
+.bal-lv { font-size: var(--fs-footnote); color: var(--muted); width: 5.2rem; text-align: right;
   font-variant-numeric: tabular-nums; }
 /* Five 44px targets plus an avatar plus a name does not fit 390px, and the
    answer is not a smaller target -- this is set standing up, one-handed. The
@@ -452,7 +477,7 @@ a { color: inherit; }
    takes the whole row -- 56px a step at 320px, still over 44 down to 260. */
 @media (max-width: 380px) {
   .rrow .bal-meter { grid-template-columns: 1fr; row-gap: .05rem; }
-  .rrow .bal-meter .bal-lv { justify-self: end; font-size: .68rem; }
+  .rrow .bal-meter .bal-lv { justify-self: end; font-size: var(--fs-footnote); }
 }
 
 /* The 385px stage used to live here, six hundred lines above the 620px block,
@@ -474,7 +499,7 @@ a { color: inherit; }
 .dayhead { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
 .dayhead input.daytitle {
   display: block; width: 100%; max-width: 30rem; border: 0; background: none; padding: 0 0 .35rem;
-  font-size: clamp(1.5rem, 3.4vw, 2.05rem); font-weight: 700; letter-spacing: -.042em;
+  font-size: var(--fs-large); font-weight: 700; letter-spacing: -.042em;
   border-bottom: 2px solid transparent; transition: border-color var(--t-fast) var(--ease);
 }
 .dayhead input.daytitle::placeholder { color: var(--faint); }
@@ -490,7 +515,7 @@ a { color: inherit; }
   display: inline-flex; align-items: center; gap: .5rem;
   padding: .34rem .82rem .34rem .34rem; border-radius: var(--r-full);
   border: 1px solid var(--line-2); background: var(--surface);
-  font-size: .87rem; font-weight: 550; user-select: none;
+  font-size: var(--fs-secondary); font-weight: 500; user-select: none;
 }
 @media (hover: hover) { .plr:hover { border-color: var(--c); } }
 /* One 27-character name used to stretch its pill across the whole squad grid
@@ -507,7 +532,7 @@ a { color: inherit; }
 .plr .nm { min-width: 0; max-width: 15ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plr .av {
   width: 1.7rem; height: 1.7rem; border-radius: 50%; flex: none;
-  display: grid; place-items: center; font-size: .68rem; font-weight: 700;
+  display: grid; place-items: center; font-size: var(--fs-footnote); font-weight: 700;
   font-variant-numeric: tabular-nums; letter-spacing: -.02em;
   background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
   box-shadow: inset 0 0 0 var(--av-ring) var(--c);
@@ -532,7 +557,7 @@ a { color: inherit; }
 .tl-head { display: grid; grid-template-columns: var(--lab) 1fr var(--tot); gap: .6rem; align-items: end; margin-bottom: .45rem; }
 .tl-periods { position: relative; height: 1.1rem; }
 .tl-periods span {
-  position: absolute; top: 0; font-size: .66rem; font-weight: 660; letter-spacing: .1em;
+  position: absolute; top: 0; font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .1em;
   text-transform: uppercase; color: var(--faint); transform: translateX(.3rem);
 }
 .tl-row {
@@ -542,7 +567,7 @@ a { color: inherit; }
 }
 .tl-lab { display: flex; align-items: center; gap: .4rem; min-width: 0; }
 .tl-lab .dot { width: .58rem; height: .58rem; border-radius: 50%; background: var(--c); flex: none; }
-.tl-lab .nm { font-size: .81rem; font-weight: 620; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-lab .nm { font-size: var(--fs-footnote); font-weight: 600; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-track {
   position: relative; height: 1.55rem; border-radius: var(--r-xs);
   background: var(--pc-track); overflow: hidden;
@@ -582,12 +607,12 @@ a { color: inherit; }
   width: .42rem; height: .42rem; border-radius: 50%;
   background: var(--accent); transform: translate(-50%, -35%);
 }
-.tl-tot { text-align: right; font-size: .8rem; font-weight: 660; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.tl-tot { text-align: right; font-size: var(--fs-footnote); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .tl-tot.hi { color: var(--accent); } .tl-tot.lo { color: var(--info); }
 /* The word, not the hue, is what says which end of the squad this is. Small
    enough to stay a footnote to the number, never the other way round. */
 .tl-tot .ex { display: inline-block; width: 3.2rem; margin-left: .3rem; text-align: left;
-  font-size: .6rem; font-weight: 670; letter-spacing: .07em; text-transform: uppercase; }
+  font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
 .tl.even .tl-tot .ex { width: 0; margin-left: 0; }
 .tl-body { position: relative; }
 /* First paint has the shell but no plan: the modules still have to arrive and
@@ -626,8 +651,8 @@ a { color: inherit; }
   .tl-lab { grid-area: lab; }
   .tl-tot { grid-area: tot; }
   .tl-track { grid-area: trk; height: 1.5rem; }
-  .tl-lab .nm { font-size: .86rem; }
-  .tl-tot { font-size: .84rem; }
+  .tl-lab .nm { font-size: var(--fs-secondary); }
+  .tl-tot { font-size: var(--fs-footnote); }
   .tl-head { grid-template-columns: 1fr; }
   .tl-head > div:first-child, .tl-head > div:last-child { display: none; }
   .tl-periods { padding: 0 .3rem; }
@@ -648,26 +673,26 @@ a { color: inherit; }
 .tl.pinned .tld { opacity: 1; }
 .tld-hd { display: flex; align-items: center; gap: .55rem; margin-bottom: .8rem; }
 .tld-hd .dot { width: .62rem; height: .62rem; border-radius: 50%; flex: none; }
-.tld-nm { font-weight: 680; letter-spacing: -.022em; font-size: 1rem; }
-.tld-x { width: 1.7rem; height: 1.7rem; border-radius: var(--r-full); color: var(--faint); font-size: 1rem; }
+.tld-nm { font-weight: 700; letter-spacing: -.022em; font-size: var(--fs-body); }
+.tld-x { width: 1.7rem; height: 1.7rem; border-radius: var(--r-full); color: var(--faint); font-size: var(--fs-body); }
 @media (hover: hover) { .tld-x:hover { background: var(--surface-3); color: var(--ink); } }
 .tld-facts { display: flex; flex-wrap: wrap; gap: 1.3rem; }
-.tld-f .k { font-size: .625rem; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); font-weight: 650; }
-.tld-f .v { font-size: 1.02rem; font-weight: 680; letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin-top: .1rem; }
-.tld-lab { font-size: .625rem; text-transform: uppercase; letter-spacing: .1em; color: var(--faint);
-  font-weight: 650; margin: .95rem 0 .4rem; }
+.tld-f .k { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--faint); font-weight: 600; }
+.tld-f .v { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin-top: .1rem; }
+.tld-lab { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--faint);
+  font-weight: 600; margin: .95rem 0 .4rem; }
 .tld-when { display: flex; flex-wrap: wrap; gap: .3rem; }
-.tld-slot { font-size: .76rem; font-variant-numeric: tabular-nums; padding: .2rem .55rem;
+.tld-slot { font-size: var(--fs-footnote); font-variant-numeric: tabular-nums; padding: .2rem .55rem;
   border-radius: var(--r-full); background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
 
 /* ============================ stats ============================ */
 .statrow { display: flex; gap: 1.35rem; flex-wrap: wrap; }
 .st { display: flex; flex-direction: column; gap: .06rem; }
-.st .k { font-size: .655rem; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); font-weight: 650; }
-.st .v { font-size: 1.18rem; font-weight: 690; letter-spacing: -.038em; font-variant-numeric: tabular-nums; }
+.st .k { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--faint); font-weight: 600; }
+.st .v { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.038em; font-variant-numeric: tabular-nums; }
 /* inline-block so the word can be animated: a transform on an inline box is
    ignored, and this one rises into place the moment a plan comes out even. */
-.st .v small { display: inline-block; font-size: .72rem; font-weight: 520; color: var(--muted); letter-spacing: 0; margin-left: .12em; }
+.st .v small { display: inline-block; font-size: var(--fs-footnote); font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: .12em; }
 .st.good .v small { color: var(--ok); }
 .st.good .v { color: var(--ok); }
 .st.hot .v { color: var(--accent); }
@@ -675,7 +700,7 @@ a { color: inherit; }
 /* ============================ alerts ============================ */
 .alert {
   display: flex; gap: .6rem; padding: .68rem .85rem; border-radius: var(--r-sm);
-  font-size: .86rem; margin-bottom: .45rem; animation: alertIn var(--t) var(--ease) both;
+  font-size: var(--fs-secondary); margin-bottom: .45rem; animation: alertIn var(--t) var(--ease) both;
 }
 @keyframes alertIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 .alert .ico { font-weight: 700; flex: none; }
@@ -690,7 +715,7 @@ a { color: inherit; }
 #storagewarn:not(:empty) { padding: .6rem clamp(.85rem, 2.6vw, 1.5rem) 0; }
 
 /* ============================ fields ============================ */
-.f { display: block; font-size: .69rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 650; margin-bottom: .35rem; }
+.f { display: block; font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; margin-bottom: .35rem; }
 input[type=text], input[type=number], select, textarea {
   width: 100%; padding: .58rem .72rem; border: 1px solid var(--line-2); border-radius: var(--r-sm);
   background: var(--surface); -webkit-appearance: none;
@@ -706,19 +731,22 @@ select {
   background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
   background-position: calc(100% - 15px) 53%, calc(100% - 10px) 53%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
 }
-.row { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+/* 8.125rem is 130px at the default root -- a rem, not a px, because this is a
+   text measure: a field's column has to grow with the reader's text size the
+   same way the field itself does (#24 item 1). */
+.row { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(8.125rem, 1fr)); }
 .row .wide { grid-column: span 2; }
 @media (max-width: 620px) { .row .wide { grid-column: 1 / -1; } }
 
 .chips { display: flex; flex-wrap: wrap; gap: .38rem; }
 .chip {
   border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2);
-  border-radius: var(--r-full); padding: .42rem .85rem; font-size: .85rem; font-weight: 550; white-space: nowrap;
+  border-radius: var(--r-full); padding: .42rem .85rem; font-size: var(--fs-secondary); font-weight: 500; white-space: nowrap;
 }
 @media (hover: hover) { .chip:hover { border-color: var(--muted); color: var(--ink); } }
-.chip.sel { background: var(--ink); border-color: transparent; color: var(--bg); font-weight: 620; }
+.chip.sel { background: var(--ink); border-color: transparent; color: var(--bg); font-weight: 600; }
 
-.switch { display: inline-flex; align-items: center; gap: .62rem; cursor: pointer; font-size: .88rem; }
+.switch { display: inline-flex; align-items: center; gap: .62rem; cursor: pointer; font-size: var(--fs-secondary); }
 .switch input { appearance: none; width: 2.4rem; height: 1.4rem; border-radius: var(--r-full); background: var(--line-2);
   position: relative; flex: none; margin: 0; cursor: pointer; transition: background var(--t-fast) var(--ease); }
 .switch input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 1.1rem; height: 1.1rem; border-radius: 50%;
@@ -730,12 +758,12 @@ input[type=checkbox].box { appearance: none; width: 1.15rem; height: 1.15rem; bo
   border-radius: var(--r-xs); cursor: pointer; vertical-align: middle;
   transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), transform var(--t-tap) var(--spring); }
 input[type=checkbox].box:checked { background: var(--accent); border-color: var(--accent); transform: scale(1.06); }
-input[type=checkbox].box:checked::after { content: '✓'; color: var(--accent-ink); font-size: .78rem; font-weight: 700; display: grid; place-items: center; height: 100%; }
+input[type=checkbox].box:checked::after { content: '✓'; color: var(--accent-ink); font-size: var(--fs-footnote); font-weight: 700; display: grid; place-items: center; height: 100%; }
 
 /* ============================ budget sliders ============================ */
 .budget { display: flex; align-items: baseline; gap: .5rem; margin: .1rem 0 .7rem; }
-.budget .b-k { font-size: .69rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 650; }
-.budget .b-v { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 660; font-size: .88rem; transition: color var(--t-fast) var(--ease); }
+.budget .b-k { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+.budget .b-v { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: var(--fs-secondary); transition: color var(--t-fast) var(--ease); }
 .budget .b-v.over { color: var(--err); } .budget .b-v.under { color: var(--warn); } .budget .b-v.exact { color: var(--ok); }
 .meter { position: relative; display: flex; height: .42rem; border-radius: var(--r-full);
   background: var(--pc-track); overflow: hidden; margin-bottom: .5rem; }
@@ -744,24 +772,24 @@ input[type=checkbox].box:checked::after { content: '✓'; color: var(--accent-in
 .meter.exact i { background: var(--ok); }
 .meter.under i { background: var(--warn); }
 .meter.over i { background: var(--err); }
-.budget-msg { font-size: .79rem; margin: 0 0 .55rem; color: var(--muted); transition: color var(--t-fast) var(--ease); }
+.budget-msg { font-size: var(--fs-footnote); margin: 0 0 .55rem; color: var(--muted); transition: color var(--t-fast) var(--ease); }
 .budget-msg.under { color: var(--warn); } .budget-msg.over { color: var(--err); } .budget-msg.exact { color: var(--ok); }
 .budget-acts { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
 .budget-acts .btn:disabled { opacity: .45; cursor: default; }
 .srow { --c: var(--accent); display: grid; grid-template-columns: 4.6rem 1fr 4.1rem 2rem; gap: .55rem; align-items: center; padding: .12rem 0; }
-.srow .nm { display: flex; align-items: center; gap: .38rem; font-weight: 620; font-size: .82rem; letter-spacing: -.015em; overflow: hidden; }
+.srow .nm { display: flex; align-items: center; gap: .38rem; font-weight: 600; font-size: var(--fs-footnote); letter-spacing: -.015em; overflow: hidden; }
 .srow .nm .dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--c); flex: none; }
 .srow .nm span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.srow .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; font-size: .85rem; }
-.srow .v small { color: var(--muted); font-weight: 500; font-size: .72em; }
+.srow .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-secondary); }
+.srow .v small { color: var(--muted); font-weight: 500; font-size: var(--fs-footnote); }
 .srow.locked .v { color: var(--accent); }
 /* What the plan actually gives, on the row that asked for something else. The
    coach's number stays put -- this is a correction printed under it, never a
    silent substitution. Two lines fit inside the row's own height (the 44px
    lock button sets it on touch), so nothing shifts when it appears. */
-.srow .v .act { display: block; margin-top: .02rem; font-size: .66rem; font-weight: 620;
+.srow .v .act { display: block; margin-top: .02rem; font-size: var(--fs-footnote); font-weight: 600;
                 line-height: 1.1; letter-spacing: -.01em; white-space: nowrap; color: var(--warn); }
-.lockbtn { padding: .3rem; border-radius: var(--r-xs); color: var(--muted); font-size: .92rem; line-height: 1; opacity: .38; }
+.lockbtn { padding: .3rem; border-radius: var(--r-xs); color: var(--muted); font-size: var(--fs-secondary); line-height: 1; opacity: .38; }
 @media (hover: hover) { .lockbtn:hover { opacity: 1; background: var(--surface-2); } }
 .srow.locked .lockbtn { opacity: 1; }
 input[type=range] { --fill: 0%; -webkit-appearance: none; appearance: none; width: 100%; background: none; margin: 0; padding: .5rem 0; cursor: grab; touch-action: pan-y; }
@@ -780,25 +808,25 @@ input[type=range]:disabled { opacity: .5; }
 
 /* ============================ pickers ============================ */
 .pickhd { display: flex; align-items: baseline; gap: .5rem; margin: .9rem 0 .45rem; }
-.pickhd .t { font-size: .67rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 650; }
-.pickhd .c { margin-left: auto; font-size: .74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.pickhd .c.full { color: var(--ok); font-weight: 620; }
+.pickhd .t { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
+.pickhd .c { margin-left: auto; font-size: var(--fs-footnote); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pickhd .c.full { color: var(--ok); font-weight: 600; }
 .pick { display: flex; flex-wrap: wrap; gap: .42rem; }
 .pick .plr:disabled { opacity: .32; cursor: not-allowed; }
 .pick .plr.off { opacity: .62; }
 .pick .plr.off .nm { text-decoration: none; }
 .unit { border: 1px solid var(--line); border-radius: var(--r-sm); padding: .72rem .85rem; margin-top: .6rem; animation: rise var(--t) var(--ease) both; }
 .unit .uhd { display: flex; align-items: center; gap: .5rem; }
-.unit .uhd .t { font-size: .67rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 650; }
+.unit .uhd .t { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
 
 /* rules builder */
 .rulechips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.1rem; }
 .rchip { display: inline-flex; align-items: center; gap: .2rem; padding: .3rem .3rem .3rem .75rem;
   border-radius: var(--r-full); border: 1px solid var(--line-2); background: var(--surface);
-  font-size: .82rem; font-weight: 550; animation: pop var(--t-fast) var(--spring) both; }
+  font-size: var(--fs-footnote); font-weight: 500; animation: pop var(--t-fast) var(--spring) both; }
 .rchip.ok { border-color: color-mix(in srgb, var(--ok) 38%, transparent); color: var(--ok); }
 .rchip.err { border-color: color-mix(in srgb, var(--err) 38%, transparent); color: var(--err); }
-.rchip .x { padding: 0 .3rem; color: var(--faint); font-size: 1rem; line-height: 1; border-radius: var(--r-full); }
+.rchip .x { padding: 0 .3rem; color: var(--faint); font-size: var(--fs-body); line-height: 1; border-radius: var(--r-full); }
 @media (hover: hover) { .rchip .x:hover { color: var(--err); } }
 .ruleedit { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-top: .75rem;
   padding: .8rem; border: 1px solid var(--line-2); border-radius: var(--r);
@@ -824,19 +852,19 @@ input[type=range]:disabled { opacity: .5; }
 .seasonadj { margin-top: .5rem; padding-left: .65rem; border-left: 2px solid var(--line-2); }
 .seasonadj .note { margin: .25rem 0; }
 .adjlist { list-style: none; margin: .4rem 0 .25rem; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
-.adjlist li { font-size: .84rem; line-height: 1.4; color: var(--muted); }
-.adjlist b { font-weight: 650; color: var(--ink-2); }
+.adjlist li { font-size: var(--fs-footnote); line-height: 1.4; color: var(--muted); }
+.adjlist b { font-weight: 600; color: var(--ink-2); }
 /* what the row really plays when whole stints cannot hit the ask exactly --
    the same admission the budget editor's `.act` makes, said in the same place
    as the number it disagrees with */
-.adjlist .act { font-style: normal; font-weight: 620; color: var(--warn); }
+.adjlist .act { font-style: normal; font-weight: 600; color: var(--warn); }
 
 /* the card stage, with nothing to show */
 .stage.blank { min-height: 5.4in; align-items: center; }
 .stage-empty { text-align: center; max-width: 26ch; color: var(--muted); }
-.stage-empty .se-ico { font-size: 1.6rem; opacity: .35; margin-bottom: .5rem; }
-.stage-empty .se-t { font-size: .95rem; font-weight: 650; color: var(--ink-2); margin-bottom: .25rem; }
-.stage-empty .se-s { font-size: .84rem; line-height: 1.45; }
+.stage-empty .se-ico { font-size: var(--fs-sentence); opacity: .35; margin-bottom: .5rem; }
+.stage-empty .se-t { font-size: var(--fs-body); font-weight: 600; color: var(--ink-2); margin-bottom: .25rem; }
+.stage-empty .se-s { font-size: var(--fs-footnote); line-height: 1.45; }
 .btn:disabled { opacity: .45; cursor: default; }
 @media (hover: hover) { .btn:disabled:hover { background: var(--surface); border-color: var(--line-2); } }
 /* the generic disabled hover would repaint a primary button as a plain one
@@ -847,14 +875,14 @@ input[type=range]:disabled { opacity: .5; }
 details.dz { border-top: 1px solid var(--line); }
 details.dz > summary {
   list-style: none; cursor: pointer; display: flex; align-items: center; gap: .55rem; padding: .85rem 0;
-  font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 660;
+  font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700;
   transition: color var(--t-fast) var(--ease);
 }
 @media (hover: hover) { details.dz > summary:hover { color: var(--ink); } }
 details.dz > summary::-webkit-details-marker { display: none; }
-details.dz > summary::before { content: '›'; font-size: 1.2em; line-height: 1; display: inline-block; transition: transform var(--t) var(--spring); }
+details.dz > summary::before { content: '›'; font-size: var(--fs-secondary); line-height: 1; display: inline-block; transition: transform var(--t) var(--spring); }
 details.dz[open] > summary::before { transform: rotate(90deg); }
-details.dz > summary .count { margin-left: auto; background: var(--accent-soft); color: var(--accent); padding: .12rem .5rem; border-radius: var(--r-full); font-size: .68rem; letter-spacing: 0; }
+details.dz > summary .count { margin-left: auto; background: var(--accent-soft); color: var(--accent); padding: .12rem .5rem; border-radius: var(--r-full); font-size: var(--fs-footnote); letter-spacing: 0; }
 /* Zero rules is a HINT, not a badge. The row used to say `› RULES` and nothing
    else -- the pill is hidden at zero, so the one feature no competitor has
    introduced itself with a blank. It names what it holds instead; and it has
@@ -862,7 +890,7 @@ details.dz > summary .count { margin-left: auto; background: var(--accent-soft);
    accent-soft would read as an alert about something a coach has not done.
    Same idiom as `#fmthint` a few rows up: a value in muted type. */
 details.dz > summary .count.zero { background: none; color: var(--faint); padding: 0;
-  font-size: .7rem; text-transform: none; letter-spacing: 0; font-weight: 560; }
+  font-size: var(--fs-footnote); text-transform: none; letter-spacing: 0; font-weight: 600; }
 details.dz .dz-bd { padding-bottom: 1.1rem; animation: rise var(--t) var(--ease) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
@@ -872,22 +900,22 @@ details.dz .dz-bd { padding-bottom: 1.1rem; animation: rise var(--t) var(--ease)
    clipping the root (see the overflow-x rule) cannot put its right-hand
    columns out of reach. `@media screen` so print still flattens it. */
 @media screen { #plan { overflow-x: auto; -webkit-overflow-scrolling: touch; } }
-table.grid { width: 100%; border-collapse: collapse; font-size: .85rem; }
-table.grid th { text-align: left; font-size: .645rem; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); padding: .35rem .45rem; font-weight: 650; }
+table.grid { width: 100%; border-collapse: collapse; font-size: var(--fs-secondary); }
+table.grid th { text-align: left; font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--faint); padding: .35rem .45rem; font-weight: 600; }
 table.grid td { padding: .44rem .45rem; border-top: 1px solid var(--line); vertical-align: baseline; }
 table.grid tr { transition: background var(--t-fast) var(--ease); }
 @media (hover: hover) { table.grid tbody tr:hover td, table.grid tr:hover td { background: var(--surface-2); } }
 tr.period-break td { border-top: 1.5px solid var(--line-2); }
-td.per { font-weight: 700; color: var(--faint); font-size: .76rem; }
-td.clk { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: .79rem; }
-td.floor { font-weight: 640; letter-spacing: -.014em; }
-td.in { color: var(--ok); font-size: .79rem; } td.out { color: var(--err); font-size: .79rem; }
-td.sit { color: var(--faint); font-size: .79rem; }
+td.per { font-weight: 700; color: var(--faint); font-size: var(--fs-footnote); }
+td.clk { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: var(--fs-footnote); }
+td.floor { font-weight: 600; letter-spacing: -.014em; }
+td.in { color: var(--ok); font-size: var(--fs-footnote); } td.out { color: var(--err); font-size: var(--fs-footnote); }
+td.sit { color: var(--faint); font-size: var(--fs-footnote); }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.empty { text-align: center; padding: 2.4rem 1rem; color: var(--faint); font-size: .89rem; }
+.empty { text-align: center; padding: 2.4rem 1rem; color: var(--faint); font-size: var(--fs-secondary); }
 .empty > div + div { margin-top: .2rem; }
 .empty > .btn { margin-top: .9rem; }
-.note { color: var(--muted); font-size: .84rem; margin-top: .75rem; }
+.note { color: var(--muted); font-size: var(--fs-footnote); margin-top: .75rem; }
 
 /* per-game minute bars.
    These had NO rule at all, in any stylesheet, since the first commit -- the
@@ -899,22 +927,22 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
    hue: this chart is read as one plan, and heaviest and lightest are the only
    two rows that need picking out of it. */
 .mrow { display: grid; grid-template-columns: 4.8rem 1fr 2.6rem; gap: .6rem; align-items: center; padding: .24rem 0; }
-.mrow .nm { font-weight: 610; font-size: .82rem; letter-spacing: -.01em; }
+.mrow .nm { font-weight: 600; font-size: var(--fs-footnote); letter-spacing: -.01em; }
 .mrow .track { height: .62rem; border-radius: var(--r-full); background: var(--pc-track); overflow: hidden; }
 .mrow .track i { display: block; height: 100%; border-radius: inherit; background: var(--accent); opacity: .58; transition: width var(--t-slow) var(--ease); }
 .mrow.heavy .track i { opacity: 1; }
 .mrow.light .track i { opacity: .34; }
-.mrow .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 640; font-size: .83rem; }
+.mrow .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-footnote); }
 
 /* day stack bars */
 .dayrow { --c: var(--accent); display: grid; grid-template-columns: 4.8rem 1fr 2.6rem; gap: .6rem; align-items: center; padding: .24rem 0; }
-.dayrow .nm { display: flex; align-items: center; gap: .38rem; font-weight: 610; font-size: .82rem; }
+.dayrow .nm { display: flex; align-items: center; gap: .38rem; font-weight: 600; font-size: var(--fs-footnote); }
 .dayrow .nm .dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--c); flex: none; }
 .dayrow .trk { height: .62rem; border-radius: var(--r-full); background: var(--pc-track); overflow: hidden; display: flex; gap: 2px; }
 .dayrow .trk i { display: block; height: 100%; background: var(--c); transition: width var(--t-slow) var(--ease); }
 .dayrow .trk i:nth-child(2) { opacity: .66; } .dayrow .trk i:nth-child(3) { opacity: .42; } .dayrow .trk i:nth-child(4) { opacity: .28; }
-.dayrow .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 640; font-size: .83rem; }
-.legend { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: .7rem; font-size: .73rem; color: var(--muted); }
+.dayrow .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-footnote); }
+.legend { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: .7rem; font-size: var(--fs-footnote); color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: .3rem; }
 .legend i { width: .58rem; height: .58rem; border-radius: 2px; background: var(--ink-2); }
 .legend span:nth-child(2) i { opacity: .66; } .legend span:nth-child(3) i { opacity: .42; } .legend span:nth-child(4) i { opacity: .28; }
@@ -935,7 +963,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
   background: var(--surface); animation: rowIn var(--t-fast) var(--ease) both;
 }
 @keyframes rowIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
-.rrow .av { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; font-weight: 700;
+.rrow .av { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-size: var(--fs-footnote); font-weight: 700;
   background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
   box-shadow: inset 0 0 0 var(--av-ring) var(--c); font-variant-numeric: tabular-nums; }
 .rrow input { padding: .44rem .5rem; border-color: transparent; background: none; }
@@ -944,12 +972,12 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* two kids wearing one number: mark both fields, quietly. The row is not the
    error -- the pair is -- so this tints rather than shouts, and the banner
    above the list is what names them. */
-.rrow input.num.dupe { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); font-weight: 650; }
+.rrow input.num.dupe { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); font-weight: 600; }
 .rhead { display: grid; grid-template-columns: 1.7rem 2.75rem 3.2rem 1fr 5.2rem 2.2rem; gap: .5rem;
-  font-size: .655rem; text-transform: uppercase; letter-spacing: .1em; color: var(--faint); font-weight: 650; padding: 0 .55rem .5rem; }
+  font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--faint); font-weight: 600; padding: 0 .55rem .5rem; }
 .rhead span:nth-child(3), .rhead span:nth-child(5) { text-align: center; }
 .rord { display: flex; flex-direction: column; gap: 1px; }
-.obtn { font-size: .62rem; line-height: 1; padding: .16rem .1rem; border-radius: 4px; color: var(--faint); }
+.obtn { font-size: var(--fs-footnote); line-height: 1; padding: .16rem .1rem; border-radius: 4px; color: var(--faint); }
 @media (hover: hover) { .obtn:hover:not(:disabled) { color: var(--ink); background: var(--surface-2); } }
 .obtn:disabled { opacity: .22; cursor: default; }
 /* the grip is the phone's reorder handle; the arrow pair takes over above 620px */
@@ -970,20 +998,20 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
   box-shadow: var(--shadow-lg); border-color: var(--c); }
 .rlist.no-anim .rrow { animation: none !important; }
 .rfoot { display: flex; align-items: center; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
-.rcount { margin-left: auto; font-size: .8rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+.rcount { margin-left: auto; font-size: var(--fs-footnote); color: var(--faint); font-variant-numeric: tabular-nums; }
 /* The card-name note rides in the footer so it lives with the control it
    describes; full basis puts it on its own line under the buttons rather than
    squeezing the row. */
 .rfoot .note { flex: 0 0 100%; margin: .15rem 0 0; max-width: 62ch; }
 .roster-empty { text-align: center; padding: 3rem 1rem; border: 1px dashed var(--line-2); border-radius: var(--r); }
-.roster-empty .se-ico { font-size: 2rem; margin-bottom: .6rem; opacity: .8; }
-.roster-empty .se-t { font-size: 1rem; font-weight: 660; margin-bottom: .3rem; }
-.roster-empty .se-s { font-size: .87rem; color: var(--muted); }
+.roster-empty .se-ico { font-size: var(--fs-large); margin-bottom: .6rem; opacity: .8; }
+.roster-empty .se-t { font-size: var(--fs-body); font-weight: 700; margin-bottom: .3rem; }
+.roster-empty .se-s { font-size: var(--fs-secondary); color: var(--muted); }
 /* the same empty state stands in for the blocked rotation on the games view,
    where it has to offer the way out as well as name the problem */
 .roster-empty .re-acts { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; margin-top: 1.1rem; }
 .roster-empty .re-acts .btn { min-height: 44px; }
-.xbtn { color: var(--faint); padding: .42rem; border-radius: var(--r-xs); line-height: 1; font-size: 1.1rem; }
+.xbtn { color: var(--faint); padding: .42rem; border-radius: var(--r-xs); line-height: 1; font-size: var(--fs-headline); }
 @media (hover: hover) { .xbtn:hover { color: var(--err); background: var(--err-soft); } }
 @media (max-width: 620px) {
   .rrow, .rhead { grid-template-columns: 1.5rem 2rem 2.6rem 1fr 4.2rem 2rem; gap: .3rem; }
@@ -999,17 +1027,17 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 @keyframes gmIn { from { opacity: 0; transform: scale(.965); } to { opacity: 1; transform: none; } }
 .gm-bar { display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; border-bottom: 1px solid var(--line); }
-.gm-x { width: 2.4rem; height: 2.4rem; border-radius: var(--r-full); color: var(--muted); font-size: 1.05rem;
+.gm-x { width: 2.4rem; height: 2.4rem; border-radius: var(--r-full); color: var(--muted); font-size: var(--fs-headline);
         display: grid; place-items: center; }
 @media (hover: hover) { .gm-x:hover { background: var(--surface-2); color: var(--ink); } }
 .gm-title { flex: 1; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
-.gm-title > span:first-child { font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 660; }
-.gm-clock { font-size: 1.12rem; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.gm-title > span:first-child { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.gm-clock { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 
 /* The "your card is stale" line. Pinned under the bar, so it does not scroll
    away with the floor; muted rather than alarming, because the coach asked for
    this change and nothing is wrong. */
-.gm-moved { margin: 0; padding: .5rem .9rem; font-size: .76rem; line-height: 1.35;
+.gm-moved { margin: 0; padding: .5rem .9rem; font-size: var(--fs-footnote); line-height: 1.35;
   color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line); }
 
 .gm-body { flex: 1; overflow-y: auto; padding: 1rem .9rem 1.2rem; -webkit-overflow-scrolling: touch;
@@ -1021,10 +1049,10 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 /* Was an inline style on the element; it lives here so the landscape block
    below can override it without !important. */
 #gmBenchSec { margin-top: 1.15rem; }
-.gm-lab { font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 660; margin-bottom: .55rem; }
+.gm-lab { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; margin-bottom: .55rem; }
 
 .gm-floor { display: flex; flex-direction: column; gap: .45rem; }
-.gm-allon { margin-top: .6rem; font-size: .85rem; color: var(--faint); text-align: center; }
+.gm-allon { margin-top: .6rem; font-size: var(--fs-secondary); color: var(--faint); text-align: center; }
 .gm-p {
   --c: var(--muted);
   display: flex; align-items: center; gap: .75rem; width: 100%;
@@ -1032,7 +1060,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   background: var(--surface); text-align: left;
 }
 .gm-p .av { width: 2.3rem; height: 2.3rem; border-radius: 50%; flex: none; display: grid; place-items: center;
-  font-size: .82rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  font-size: var(--fs-footnote); font-weight: 700; font-variant-numeric: tabular-nums;
   background: var(--c); color: #1A1A1A; }
 /* Same 1.04rem as the bench so the two halves match exactly, and a tight
    line-height so the one name that has to wrap costs a pixel instead of
@@ -1040,11 +1068,11 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    against 233px of room -- so the row has to absorb the wrap without growing:
    two 1.15 lines (38px) still sit inside the 37px avatar's row height, so all
    five rows stay ~59px and the lineup stays scannable at a glance. */
-.gm-p .nm { flex: 1; min-width: 0; font-size: 1.04rem; font-weight: 660; letter-spacing: -.026em;
+.gm-p .nm { flex: 1; min-width: 0; font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.026em;
   line-height: 1.15; overflow-wrap: anywhere; }
-.gm-p .mn { font-size: .88rem; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 680; }
+.gm-p .mn { font-size: var(--fs-secondary); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700; }
 .gm-p .mn .proj, .gm-b .mn .proj { color: var(--faint); font-weight: 500; }
-.gm-key { margin-left: auto; font-size: .62rem; letter-spacing: .09em; color: var(--faint); font-weight: 620; }
+.gm-key { margin-left: auto; font-size: var(--fs-footnote); letter-spacing: .09em; color: var(--faint); font-weight: 600; }
 .gm-p.picked { border-color: var(--accent); box-shadow: var(--ring); }
 
 /* Full-width rows, not name-width pills: picking who comes off is a full-width
@@ -1060,14 +1088,14 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
      a name, so it must not read as a second, smaller list. Stops just short so
      a 30-character name still clears the row on one line at 390px -- at the
      floor's own size it would wrap. */
-  font-size: 1.04rem; font-weight: 620; letter-spacing: -.026em;
+  font-size: var(--fs-headline); font-weight: 600; letter-spacing: -.026em;
 }
 .gm-b .av { width: 1.85rem; height: 1.85rem; border-radius: 50%; display: grid; place-items: center;
-  font-size: .7rem; font-weight: 700; background: color-mix(in srgb, var(--c) 20%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
+  font-size: var(--fs-footnote); font-weight: 700; background: color-mix(in srgb, var(--c) 20%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
   box-shadow: inset 0 0 0 var(--av-ring) var(--c); }
 /* flex:none plus min-width:0 on the name: a name too long to fit wraps rather
    than shoving played/projected off the right edge. */
-.gm-b .mn { flex: none; font-size: .8rem; color: var(--ink-2); font-variant-numeric: tabular-nums; font-weight: 660; }
+.gm-b .mn { flex: none; font-size: var(--fs-footnote); color: var(--ink-2); font-variant-numeric: tabular-nums; font-weight: 700; }
 .gm-b .nm { flex: 1; min-width: 0; }
 /* No pick yet, so no bench row does anything. Read as a list, not as a row of
    buttons: full-width rows, hairline rules, no pill. Full ink -- dimming it
@@ -1076,8 +1104,8 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-b.inert { padding: .5rem .3rem; gap: .6rem;
   border: 0; border-radius: 0; background: none; box-shadow: inset 0 -1px 0 var(--line); }
 .gm-b.inert:last-child { box-shadow: none; }
-.gm-hint { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: .78rem;
-  font-weight: 560; color: var(--ink-2); }
+.gm-hint { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: var(--fs-footnote);
+  font-weight: 600; color: var(--ink-2); }
 .gm.swapping .gm-b { border-color: var(--accent-line); background: var(--accent-soft); }
 .gm.swapping .gm-floor .gm-p:not(.picked) { opacity: .4; }
 
@@ -1087,7 +1115,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    are mid-game controls tapped standing up in a gym, and 44 is the floor this
    app holds everything else to. */
 .gm-scope button { padding: .55rem .7rem; min-height: 44px; border-radius: var(--r-full);
-  font-size: .76rem; font-weight: 570; color: var(--muted); }
+  font-size: var(--fs-footnote); font-weight: 600; color: var(--muted); }
 .gm-scope button.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 /* The third item is an action, not a third segment of the toggle, so it is
    coloured like one -- a coach must not tap it expecting a mode. */
@@ -1113,18 +1141,18 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 
 .gm-next { border: 1px solid var(--accent-line); border-radius: var(--r); padding: .8rem .95rem;
   background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
-.gm-next-hd { font-size: .68rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
-  font-weight: 660; margin-bottom: .5rem; }
-.gm-next-none { font-size: .9rem; color: var(--muted); }
+.gm-next-hd { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
+  font-weight: 700; margin-bottom: .5rem; }
+.gm-next-none { font-size: var(--fs-secondary); color: var(--muted); }
 .gm-next-row { display: flex; align-items: baseline; gap: .5rem; padding: .12rem 0; }
-.gm-next-row .mk { width: 1rem; font-size: .8rem; }
-.gm-next-row .lb { width: 2.1rem; font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; font-weight: 660; }
-.gm-next-row .ns { font-size: 1rem; font-weight: 680; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.gm-next-row .mk { width: 1rem; font-size: var(--fs-footnote); }
+.gm-next-row .lb { width: 2.1rem; font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+.gm-next-row .ns { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .gm-next-row.in .mk, .gm-next-row.in .lb, .gm-next-row.in .ns { color: var(--ok); }
 .gm-next-row.out .mk, .gm-next-row.out .lb, .gm-next-row.out .ns { color: var(--err); }
 
 .gm-p .nm .tag { display: inline-block; margin-left: .5rem; padding: .1rem .42rem; border-radius: var(--r-full);
-  font-size: .58rem; text-transform: uppercase; letter-spacing: .09em; font-weight: 700; vertical-align: middle; }
+  font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .09em; font-weight: 700; vertical-align: middle; }
 .gm-p .nm .tag.in { background: var(--ok-soft); color: var(--ok); }
 
 /* flex-wrap is load-bearing at large text: Done, the two chevrons and the dot
@@ -1135,7 +1163,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    there and has nothing to wrap. */
 .gm-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; padding: .8rem .9rem 1rem; border-top: 1px solid var(--line); }
 .gm-nav { flex: none; width: 3.6rem; height: 3.2rem; border-radius: var(--r); background: var(--surface);
-  border: 1px solid var(--line-2); font-size: 1.5rem; color: var(--ink); display: grid; place-items: center; }
+  border: 1px solid var(--line-2); font-size: var(--fs-sentence); color: var(--ink); display: grid; place-items: center; }
 @media (hover: hover) { .gm-nav:hover { background: var(--surface-2); } }
 .gm-nav:disabled { opacity: .35; }
 .gm-nav.next { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
@@ -1143,7 +1171,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 /* Bottom-left exit. Hidden on desktop, where the top-left X is an easy reach;
    on a phone it is the only exit a thumb can hit without regripping. Text, not
    a chevron, so it never reads as another stint control. */
-.gm-exit { display: none; width: auto; padding: 0 .85rem; font-size: .9rem; font-weight: 640;
+.gm-exit { display: none; width: auto; padding: 0 .85rem; font-size: var(--fs-secondary); font-weight: 600;
   letter-spacing: -.01em; color: var(--muted); }
 @media (hover: hover) { .gm-exit:hover { background: var(--surface-2); color: var(--ink); } }
 /* The dots jump between stints mid-game, so each one is a full-height target:
@@ -1194,7 +1222,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    single column and looks better with it -- is untouched. */
 @media (orientation: landscape) and (max-height: 560px) {
   .gm-bar { padding: .35rem .9rem; }
-  .gm-clock { font-size: 1rem; }
+  .gm-clock { font-size: var(--fs-body); }
   .gm-body {
     display: grid; align-content: start;
     grid-template-columns: 1fr 1fr; column-gap: 1.1rem;
@@ -1217,9 +1245,9 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 }
 
 .side-box { border: 1px solid var(--line); border-radius: var(--r); padding: .95rem; background: var(--surface); }
-.side-hd { font-size: .655rem; text-transform: uppercase; letter-spacing: .12em; color: var(--faint);
-  font-weight: 660; margin-bottom: .75rem; }
-.day-empty { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; color: var(--muted); font-size: .87rem; }
+.side-hd { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--faint);
+  font-weight: 700; margin-bottom: .75rem; }
+.day-empty { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; color: var(--muted); font-size: var(--fs-secondary); }
 /* `min()`, not a bare `14rem`. The floor keeps the sentence and the button
    side by side when there is room, but 14rem is a text measure — it doubles
    with the reader's root while the column does not, so at a 32px root it was a
@@ -1240,12 +1268,12 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    a second decision. The textarea is small and scrolls: a full-season two-team
    record is tens of KB and nobody reads it, they paste it and look away. */
 .pastein { margin-top: .1rem; }
-.pastein .linkish { font-size: .84rem; font-weight: 540; color: var(--muted); }
+.pastein .linkish { font-size: var(--fs-footnote); font-weight: 500; color: var(--muted); }
 .pastein .linkish:focus-visible { color: var(--accent); }
 @media (hover: hover) { .pastein .linkish:hover { color: var(--accent); } }
 .pastebox { display: flex; flex-direction: column; gap: .6rem; align-items: flex-start; margin: .1rem 0 .3rem; }
 .pastebox textarea { width: 100%; min-height: 4.6rem; max-height: 40vh; overflow: auto;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem; line-height: 1.45; }
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-footnote); line-height: 1.45; }
 
 /* ============================ phone action bar ============================ */
 .actionbar {
@@ -1264,7 +1292,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .ab-main {
   flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
   min-height: 52px; border-radius: var(--r); background: var(--accent); color: var(--accent-ink);
-  font-size: 1rem; font-weight: 640; letter-spacing: -.01em;
+  font-size: var(--fs-body); font-weight: 600; letter-spacing: -.01em;
   box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 8px 20px -10px var(--accent);
 }
 .ab-main:disabled { opacity: .45; box-shadow: none; }
@@ -1334,7 +1362,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    be shredded. At 390px and the default text size it is 192px, the row still
    fits, and the toast is unchanged. `min-width: 0` stays: once the message is
    alone on its line it may shrink under the basis for a long word. */
-.toast .tmsg { flex: 1 1 12rem; min-width: 0; font-size: .93rem; font-weight: 520; letter-spacing: -.005em; }
+.toast .tmsg { flex: 1 1 12rem; min-width: 0; font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.005em; }
 /* Right-align the action row when it has wrapped. Harmless unwrapped: `.tmsg`
    grows into the free space first, so there is none left for an auto margin.
    The `+` case is the toast with no button, where the dismiss is the only
@@ -1343,7 +1371,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .toast .tundo {
   flex: none; min-height: 44px; padding: 0 .95rem; border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--bg) 24%, transparent); color: var(--bg);
-  font-size: .93rem; font-weight: 680; letter-spacing: -.005em;
+  font-size: var(--fs-secondary); font-weight: 700; letter-spacing: -.005em;
 }
 @media (hover: hover) { .toast .tundo:hover { background: color-mix(in srgb, var(--bg) 36%, transparent); } }
 .toast .tx {
@@ -1356,8 +1384,8 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    across the top, the action beneath it. Squeezing a sentence into the gap
    beside a button gives four words a line on a phone. */
 .tip-toast { flex-wrap: wrap; padding: .85rem .5rem .6rem 1rem; }
-.tip-toast .tmsg { flex: 1 1 100%; font-weight: 470; line-height: 1.45; }
-.tip-toast .tip-lead { font-weight: 690; }
+.tip-toast .tmsg { flex: 1 1 100%; font-weight: 500; line-height: 1.45; }
+.tip-toast .tip-lead { font-weight: 700; }
 .tip-toast .tundo { display: inline-flex; align-items: center; margin-left: auto;
   text-decoration: none; }
 /* The iOS install hint has no button to offer -- the action lives in Safari's
@@ -1443,7 +1471,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   background: var(--surface); }
 /* Was `.scan-t`, borrowed from the scan dialog these two sheets sat beside.
    The scanner is gone, so the type it was lending them lives here now. */
-.keys-t { font-size: 1.05rem; font-weight: 660; letter-spacing: -.024em; }
+.keys-t { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.024em; }
 .confirmbox { width: min(22rem, 92vw); }
 .confirmbox .note { margin: .1rem 0 1.15rem; line-height: 1.5; }
 /* Cancel first and wider: the safe choice should be the easy one to hit, and
@@ -1456,19 +1484,19 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   border-top: 1px solid var(--line); }
 .keys-row:first-child { border-top: 0; }
 .keys-row dt { display: flex; gap: .3rem; flex: 0 0 4.6rem; }
-.keys-row dd { margin: 0; font-size: .9rem; color: var(--ink-2); }
+.keys-row dd { margin: 0; font-size: var(--fs-secondary); color: var(--ink-2); }
 kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7rem; padding: 0 .4rem;
-  font: 600 .8rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink);
+  font: 600 var(--fs-footnote)/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink);
   background: var(--surface-2); border: 1px solid var(--line-2);
   border-bottom-width: 2px; border-radius: var(--r-sm); }
-.keys-note { margin: .9rem 0 0; font-size: .78rem; }
+.keys-note { margin: .9rem 0 0; font-size: var(--fs-footnote); }
 /* keyboard-only, so it only advertises itself where there is a keyboard —
    on a phone it would be an affordance that cannot be used */
 .keys-hint { display: none; align-items: center; gap: .35rem;
   background: none; border: 0; padding: .4rem .3rem; cursor: pointer;
-  color: var(--faint); font: inherit; font-size: .82rem; }
+  color: var(--faint); font: inherit; font-size: var(--fs-footnote); }
 @media (hover: hover) { .keys-hint:hover { color: var(--ink-2); } }
-.keys-hint kbd { min-width: 1.35rem; height: 1.35rem; font-size: .72rem; }
+.keys-hint kbd { min-width: 1.35rem; height: 1.35rem; font-size: var(--fs-footnote); }
 @media (hover: hover) and (pointer: fine) and (min-width: 760px) { .keys-hint { display: inline-flex; } }
 
 /* ============================= help =============================
@@ -1477,18 +1505,18 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    of the three ever tall enough to scroll, so it is where the shell's sticky
    header earns its keep. */
 .helpbox { width: min(30rem, 94vw); text-align: left; }
-.help-lede { margin: .2rem 0 0; font-size: .95rem; line-height: 1.5; color: var(--ink-2); }
-.help-h { margin: 1.35rem 0 .4rem; font-size: .76rem; font-weight: 660; letter-spacing: .09em;
+.help-lede { margin: .2rem 0 0; font-size: var(--fs-body); line-height: 1.5; color: var(--ink-2); }
+.help-h { margin: 1.35rem 0 .4rem; font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .09em;
   text-transform: uppercase; color: var(--accent); }
-.help-p { margin: 0; font-size: .92rem; line-height: 1.55; color: var(--ink-2); }
-.help-dl { margin: 0; font-size: .92rem; line-height: 1.55; }
-.help-dl dt { font-weight: 640; color: var(--ink); margin-top: .7rem; }
+.help-p { margin: 0; font-size: var(--fs-secondary); line-height: 1.55; color: var(--ink-2); }
+.help-dl { margin: 0; font-size: var(--fs-secondary); line-height: 1.55; }
+.help-dl dt { font-weight: 600; color: var(--ink); margin-top: .7rem; }
 .help-dl dt:first-child { margin-top: 0; }
 /* a list that follows a lead-in sentence still needs the break the heading
    above the first list would have given it */
 .help-p + .help-dl { margin-top: .7rem; }
 .help-dl dd { margin: .1rem 0 0; color: var(--ink-2); }
-.help-p b, .help-dl b { color: var(--ink); font-weight: 640; }
+.help-p b, .help-dl b { color: var(--ink); font-weight: 600; }
 .help-tour { width: 100%; justify-content: center; margin-top: 1.5rem; }
 
 /* ========================= first-run tour =========================
@@ -1507,14 +1535,14 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .tour-box { position: absolute; width: min(21rem, calc(100vw - 1.5rem));
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg); padding: 1rem 1.05rem .95rem; }
-.tour-step { font-size: .72rem; font-weight: 660; letter-spacing: .09em;
+.tour-step { font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .09em;
   text-transform: uppercase; color: var(--accent); }
-.tour-t { font-size: 1.08rem; font-weight: 660; letter-spacing: -.024em; margin: .2rem 0 .35rem; }
-.tour-bd { font-size: .93rem; line-height: 1.5; color: var(--ink-2); }
+.tour-t { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.024em; margin: .2rem 0 .35rem; }
+.tour-bd { font-size: var(--fs-secondary); line-height: 1.5; color: var(--ink-2); }
 .tour-bd p { margin: 0; }
 .tour-bd .tour-l { display: block; margin-top: .3rem; }
 .tour-bd .tour-l:first-child { margin-top: 0; }
-.tour-bd b { color: var(--ink); font-weight: 640; }
+.tour-bd b { color: var(--ink); font-weight: 600; }
 .tour-acts { display: flex; align-items: center; gap: .5rem; margin-top: 1.05rem; }
 .tour-acts .btn { min-height: 44px; }
 .tour-acts #tourNext { min-width: 5.6rem; justify-content: center; }
@@ -1530,15 +1558,15 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    half is what gives the tip link a "me" -- the word had no antecedent anywhere
    on the site, since the About page is first person but never names anyone. It
    also makes the ask concrete: hosting is a number, "support my work" is not. */
-.foot-note { color: var(--faint); font-size: .82rem; flex: 1 1 22rem; min-width: 0;
+.foot-note { color: var(--faint); font-size: var(--fs-footnote); flex: 1 1 22rem; min-width: 0;
   line-height: 1.5; }
-.foot-note b { color: var(--ink-2); font-weight: 620; }
+.foot-note b { color: var(--ink-2); font-weight: 600; }
 .foot-why { display: block; margin-top: .25rem; max-width: 52ch; }
 /* A real <a href> rather than a sheet, on purpose: /about.html is the only
    crawlable prose on the site and this is the link that leads there. 44px tall
    for a thumb, but padded rather than boxed so it does not read as a button
    competing with the tip. */
-.foot-link { color: var(--muted); font-size: .82rem; font-weight: 540; text-decoration: none;
+.foot-link { color: var(--muted); font-size: var(--fs-footnote); font-weight: 500; text-decoration: none;
   display: inline-flex; align-items: center; min-height: 44px; padding: 0 .25rem;
   border-bottom: 1px solid transparent; }
 .foot-link:focus-visible { color: var(--accent); border-bottom-color: var(--accent-line); }
@@ -1548,7 +1576,7 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    seen it. It went red the moment the tip jar was switched on. */
 .tip { margin-left: auto; display: inline-flex; align-items: center; gap: .45rem;
   min-height: 44px; padding: .5rem .95rem;
-  border-radius: var(--r-full); border: 1px solid var(--line-2); color: var(--ink-2); text-decoration: none; font-size: .85rem; font-weight: 570; }
+  border-radius: var(--r-full); border: 1px solid var(--line-2); color: var(--ink-2); text-decoration: none; font-size: var(--fs-secondary); font-weight: 600; }
 @media (hover: hover) { .tip:hover { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); } }
 .tip-ico { transition: transform var(--t) var(--spring); }
 @media (hover: hover) { .tip:hover .tip-ico { transform: rotate(-12deg) scale(1.14); } }
@@ -1658,20 +1686,20 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-setup { width: 100%; text-align: left; }
 .wel-backrow { margin: 0 0 .35rem; }
 .wel-back { padding-left: 0; }
-.wel-h2 { font-size: clamp(1.35rem, 4.6vw, 1.7rem); letter-spacing: -.035em;
-  font-weight: 740; margin: 0 0 .2rem; }
+.wel-h2 { font-size: var(--fs-sentence); letter-spacing: -.035em;
+  font-weight: 700; margin: 0 0 .2rem; }
 .wel-h2:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
 /* The wordmark is a lockup now, not the heading (A51): the h1 carries the
    promise and the name sits above it, which is where a name goes. */
 .wel-lockup { display: flex; align-items: center; justify-content: center; gap: .45rem;
-  margin: 0 0 .62rem; font-size: 1.05rem; font-weight: 700; letter-spacing: -.022em; }
+  margin: 0 0 .62rem; font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.022em; }
 .wel-mark { display: inline-grid; place-items: center;
   animation: welMark 700ms var(--spring) both; }
 @keyframes welMark { from { opacity: 0; transform: scale(.6) rotate(-25deg); } to { opacity: 1; transform: none; } }
-.wel-h { font-size: clamp(1.55rem, 5.4vw, 2.1rem); letter-spacing: -.04em; font-weight: 750;
+.wel-h { font-size: var(--fs-large); letter-spacing: -.04em; font-weight: 700;
   line-height: 1.1; text-wrap: balance; margin: 0;
   animation: rise var(--t-slow) var(--ease) both; animation-delay: 80ms; }
-.wel-sub { color: var(--muted); font-size: 1rem; line-height: 1.5; margin: .44rem auto .55rem; max-width: 26rem;
+.wel-sub { color: var(--muted); font-size: var(--fs-body); line-height: 1.5; margin: .44rem auto .55rem; max-width: 26rem;
   animation: rise var(--t-slow) var(--ease) both; animation-delay: 140ms; }
 
 /* ---- A51/A52: one stage, three views of the same game ---- */
@@ -1754,20 +1782,20 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    rule, untouched, which is the whole reason this tab themes for free and
    cannot drift from the real bench. */
 .wel-bench { padding: .7rem .7rem .8rem; display: flex; flex-direction: column; gap: .65rem; }
-.wel-bench-hd { margin: 0; font-size: .66rem; font-weight: 680; letter-spacing: .1em;
+.wel-bench-hd { margin: 0; font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .1em;
   text-transform: uppercase; color: var(--faint); }
 .wel-bench .gm-floor { gap: .38rem; }
 .wel-bench .gm-p { padding: .48rem .6rem; gap: .55rem; }
-.wel-bench .gm-p .av { width: 1.9rem; height: 1.9rem; font-size: .74rem; }
-.wel-bench .gm-p .nm { font-size: .92rem; }
+.wel-bench .gm-p .av { width: 1.9rem; height: 1.9rem; font-size: var(--fs-footnote); }
+.wel-bench .gm-p .nm { font-size: var(--fs-secondary); }
 .wel-bench .gm-next { padding: .55rem .7rem; }
 .wel-bench-sec { display: flex; flex-direction: column; gap: .38rem; }
 .wel-bench-sub { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
-.wel-bench-hint { font-size: .66rem; font-weight: 500; letter-spacing: 0;
+.wel-bench-hint { font-size: var(--fs-footnote); font-weight: 500; letter-spacing: 0;
   text-transform: none; color: var(--faint); }
 .wel-bench .gm-bench { gap: .38rem; }
 .wel-bench .gm-b { padding: .34rem .6rem .34rem .34rem; }
-.wel-bench .gm-b .av { width: 1.6rem; height: 1.6rem; font-size: .7rem; }
+.wel-bench .gm-b .av { width: 1.6rem; height: 1.6rem; font-size: var(--fs-footnote); }
 
 /* THE DRAWN PANE PANS BY TRANSFORM, the image pane by `object-position`, and
    the two mechanisms are not interchangeable. An `object-position` percentage
@@ -1811,7 +1839,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    .35rem gaps before the track. */
 .wel-qs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;
   flex: none; margin: 0 0 .2rem calc(8px + var(--nmw) + .7rem);
-  font-size: .6rem; font-weight: 650; letter-spacing: .08em;
+  font-size: var(--fs-footnote); font-weight: 600; letter-spacing: .08em;
   color: var(--faint); text-transform: uppercase; }
 /* The rows share whatever height the stage has left, so ten of them fit a short
    phone and stretch on a tall one without a media query per device. */
@@ -1821,7 +1849,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   align-items: center; gap: .35rem; min-height: 0;
   --pc: oklch(var(--pc-l) var(--pc-c) var(--h)); }
 .wel-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pc); }
-.wel-nm { font-size: .78rem; font-weight: 600; color: var(--ink-2);
+.wel-nm { font-size: var(--fs-footnote); font-weight: 600; color: var(--ink-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wel-track { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
   height: 11px; align-self: center; }
@@ -1829,7 +1857,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-c.on { background: var(--pc); transform-origin: left center; }
 /* The quarter boundaries, so eight stints read as four quarters. */
 .wel-c.qgap { margin-right: 3px; }
-.wel-min { font-size: .74rem; font-weight: 700; text-align: right; color: var(--ink);
+.wel-min { font-size: var(--fs-footnote); font-weight: 700; text-align: right; color: var(--ink);
   font-variant-numeric: tabular-nums; }
 /* THE FINISHED PLAN IS THE RESTING STATE, and it is now the resting state in
    the only way that survives everything: NO JAVASCRIPT HOLDS THE HIDING.
@@ -1868,17 +1896,17 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    it is not. */
 .wel-cap { flex: none; display: flex; align-items: center; justify-content: space-between;
   gap: .6rem; margin: .45rem 0 0; text-align: left; min-height: 3.6em;
-  color: var(--faint); font-size: .78rem; line-height: 1.4; }
+  color: var(--faint); font-size: var(--fs-footnote); line-height: 1.4; }
 /* Smaller than a `.btn.sm`: it is a control on a figure, not one of the doors,
    and it must not read as a third choice beside them. */
-.wel-shuf { flex: none; padding: .3rem .6rem; min-height: 34px; font-size: .72rem; gap: .3rem; }
+.wel-shuf { flex: none; padding: .3rem .6rem; min-height: 34px; font-size: var(--fs-footnote); gap: .3rem; }
 .wel-shuf .i { width: 14px; height: 14px; }
 .wel-shuf[hidden] { display: none; }
 
 .wel-seg { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px;
   background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-full); }
 .wel-seg-b { min-height: 40px; padding: .45rem .4rem; border-radius: var(--r-full); border: 0;
-  background: transparent; color: var(--muted); font: inherit; font-size: .86rem; font-weight: 600;
+  background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-secondary); font-weight: 600;
   cursor: pointer; white-space: nowrap;
   transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
 .wel-seg-b.sel { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
@@ -1899,8 +1927,14 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 @media (max-height: 700px) {
   .welcome { padding-top: .6rem; }
   .wel-lockup { margin-bottom: .45rem; }
-  .wel-h { font-size: clamp(1.3rem, 4.8vw, 1.62rem); }
-  .wel-sub { font-size: .92rem; margin-bottom: .5rem; }
+  /* #24 decision 4's amendment (docs/specs/24-text-size.md): a
+     short-VIEWPORT-HEIGHT block is not the 19em big-text query, so it may
+     move a large title down to another step on the scale instead -- a step,
+     never a `vw` cap, and never below the sentence step. Without this the
+     welcome screen is 725px tall in a 667px window (iPhone SE) and its
+     bottom row falls below the fold; at the sentence step it is 668px. */
+  .wel-h { font-size: var(--fs-sentence); }
+  .wel-sub { font-size: var(--fs-secondary); margin-bottom: .5rem; }
   .wel-stage { margin-top: .6rem; }
   .wel-show { min-height: 10rem; }
   .wel-doors { margin-top: .6rem; }
@@ -1935,7 +1969,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 /* Every full-width button on this screen: the two doors under the figures and
    "Build my first card" inside the form. One column of choices, not a row a
    thumb has to aim inside. */
-.wel-go { width: 100%; margin-top: .62rem; padding: .82rem 1rem; font-size: .98rem; }
+.wel-go { width: 100%; margin-top: .62rem; padding: .82rem 1rem; font-size: var(--fs-body); }
 .wel-type { margin-top: .34rem; }
 .wel-foot { text-align: center; margin-top: .62rem; }
 /* A49's fill, demoted to a link inside the box it fills. */
@@ -1957,7 +1991,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    4px of side padding the anchor did not have, so three underlines that were
    supposed to be one row were not on one line. Two classes beat one. */
 .wel-tail-row .wel-about,
-.wel-tail-row .linkish { color: var(--muted); font-size: .84rem; font-weight: 500;
+.wel-tail-row .linkish { color: var(--muted); font-size: var(--fs-footnote); font-weight: 500;
   padding: 0; border-bottom: 0;
   text-decoration: underline; text-decoration-color: var(--line-2);
   text-underline-offset: 3px; }
@@ -1974,7 +2008,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    44px rather than boxed, the same trade `.foot-link` makes. */
 .linkish { background: none; border: 0; border-bottom: 1px solid transparent; cursor: pointer;
   display: inline-flex; align-items: center; min-height: 44px; padding: 0 .25rem;
-  font: inherit; font-weight: 570; color: var(--accent); }
+  font: inherit; font-weight: 600; color: var(--accent); }
 .linkish:focus-visible { border-bottom-color: var(--accent-line); }
 @media (hover: hover) { .linkish:hover { border-bottom-color: var(--accent-line); } }
 #welCount.ready { color: var(--ok); }
@@ -1987,10 +2021,10 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   margin-bottom: .75rem; -webkit-tap-highlight-color: transparent;
 }
 .fold > summary::-webkit-details-marker { display: none; }
-.fold > summary h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .12em;
-  color: var(--muted); font-weight: 660; }
+.fold > summary h3 { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em;
+  color: var(--muted); font-weight: 700; }
 .fold > summary::after {
-  content: '›'; margin-left: auto; color: var(--faint); font-size: 1.1rem; line-height: 1;
+  content: '›'; margin-left: auto; color: var(--faint); font-size: var(--fs-headline); line-height: 1;
   transition: transform var(--t) var(--spring);
 }
 .fold[open] > summary::after { transform: rotate(90deg); }
@@ -2021,7 +2055,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   width: 44px; min-width: 44px; height: 44px; min-height: 44px;
   margin-left: auto; padding: 0;
   background: none; border: 0; border-radius: var(--r-full);
-  font: inherit; font-size: .95rem; font-weight: 660; line-height: 1;
+  font: inherit; font-size: var(--fs-body); font-weight: 700; line-height: 1;
   color: var(--faint); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .helpq:focus-visible { color: var(--accent); background: var(--accent-soft); }
 @media (hover: hover) { .helpq:hover { color: var(--accent); background: var(--accent-soft); } }
@@ -2129,7 +2163,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      the card, and the bar is the same on all four views because of it. */
   .bar { gap: .4rem; padding-left: .7rem; padding-right: .7rem;
          flex-wrap: wrap; row-gap: .3rem; justify-content: flex-end; }
-  .seg button { padding: .36rem .72rem; font-size: .82rem; }
+  .seg button { padding: .36rem .72rem; font-size: var(--fs-footnote); }
   .btn { padding: .55rem .8rem; }
   .btn.icon { width: 2rem; padding: .45rem; }
   .statrow { gap: 1rem; }
@@ -2257,7 +2291,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      again on the next long word, and `min-width: 0` alone would push the
      wordmark out of view instead of onto the screen. */
   .wel-in { min-width: 0; }
-  .wel-h { font-size: min(2rem, 15vw); }
+  .wel-h { font-size: min(var(--fs-large), 15vw); }
 
   /* The settings panel, which panned 112px at 320px — the widest of these and
      the last one left. Two rows, and the same two shapes as everything above.
@@ -2332,8 +2366,15 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      the two words at the two ends, so the floor is what gives.
      One declaration, not two: tightening the .5rem gap fixes the same 6px on
      its own, so shipping both would have left one of them dead. Checked each
-     way round rather than assumed. */
+     way round rather than assumed.
+
+     #24: footnote is now the scale's floor (T3 -- nothing below it), so
+     "DEVELOPING" and "GO-TO" are wider than the .66rem they were when the
+     arrow's min-width alone closed the gap. Wrapping is the same one-line
+     answer this block gives everywhere else a nowrap pair cannot shrink
+     enough. */
   .bal-key .bal-key-arrow { min-width: 0; }
+  .bal-key-ends { flex-wrap: wrap; row-gap: .1rem; }
 
   /* "Put everyone back to the same level" was the whole of the roster's
      remaining 208px pan here, the `.gm-cta` and `.backuprow` case exactly --
@@ -2362,6 +2403,51 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      `.sn-min` override in this block WOULD have lost -- checked. */
   .sn-row { flex-wrap: wrap; }
 
+  /* #24 CI fix (Linux font metrics, not a rule difference): wrapping the ROW
+     puts `.sn-min` on its own line once the line above it is full, but
+     `.sn-x` -- "2 games * 16 behind" -- is `flex: 0 0 auto` with no
+     `white-space: nowrap`, so it is free to wrap internally and never has to;
+     the wrap algorithm hands it its one-line max-content width and it shares
+     line one with the dot and the shrunk name. That width grows with the
+     root: 229px at a 32px root here, 324px on the CI runner's wider glyphs at
+     the same root -- 4px past a 320px viewport, invisible on this machine
+     because its glyphs measure narrower for the same string. `flex-basis:
+     100%` is the fix, not a wider allowance: it claims the whole line for
+     itself, which both starts `.sn-x` on a new line (nothing already on line
+     one shrinks to fit beside a 100%-basis item) and gives its own text a
+     width to wrap inside instead of a one-line measurement with nowhere to
+     grow past 320. Needs the extra `.sn-row` class for specificity -- the
+     base `.sn-x` rule (`flex: 0 0 auto`, no `!important`) sits ~215 lines
+     below this block and a bare override here would lose to it on source
+     order, the same trap the `.sn-min` comment above already names. Checked
+     at 34/36/38/40px roots, where the unfixed span reaches 304/322/340/357px:
+     with this rule every one of them wraps to two lines within the row's own
+     width instead. */
+  .sn-row .sn-x { flex-basis: 100%; }
+
+  /* #24 CI fix, round 2 (Linux font metrics again): the fix above wraps the
+     LEDGER rows, but "Game by game"'s own summary row -- the game title
+     (`.sn-gt`, `flex: 1; min-width: 0`, ellipsis) beside its meta
+     (`.sn-gm`, "10 played · 4×8", `flex: 0 0 auto`) -- has no wrap rule at
+     all, and it is `.helpq`'s comment's exact tell: measured on this machine
+     at a 32px root, `.sn-gt` shrinks all the way to 0px (min-width: 0 lets
+     it) and `.sn-gm` still does not fit beside it in the ~186px column the
+     row is given, so the row's own `scrollWidth` (297px) overflows past its
+     `clientWidth` (186px) while its `getBoundingClientRect` stays inside
+     320px -- an overflow no per-element right-edge probe can see, only
+     `document.documentElement.scrollWidth` (364px at a 40px root here). It
+     surfaced as `#toasts` sizing to that wider initial containing block, not
+     as `.sn-gm` or `.sn-gt` reaching past the viewport, the same symptom the
+     `.helpq` comment above already names for the same reason. Wrapping is
+     the fix, not a wider `.sn-gt` floor: `.sn-gm` drops to its own line and
+     the title keeps the ellipsis it already has on the first. Checked at
+     32/34/36/38/40px roots: `document.documentElement.scrollWidth` stays at
+     320 with this rule at every one, where the unfixed tree measured
+     328/347/364px at 36/38/40 (32 and 34 already held on this machine's
+     narrower glyphs, which is exactly why the CI runner's own wider ones
+     were needed to see this). */
+  .sn-game > summary { flex-wrap: wrap; }
+
   /* And the timeline, where the failure is not a pan at all -- the page stays
      320px wide the whole time -- but a column squeezed to nothing, the same
      shape as the toast message A29 fixed. MOST / FEWEST sits in a fixed
@@ -2387,6 +2473,38 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      specificity and still collapses the gutter when no row earns a word,
      which is right -- there is nothing to put on a second line. */
   .tl-tot .ex { display: block; width: auto; margin-left: 0; text-align: right; }
+
+  /* #24: the three sheets that share `.keyswrap` (the shortcuts list, help
+     and the one confirm) centre in a track narrowed by the wrap's own
+     `clamp(.7rem, 3vw, 1.5rem)` padding, but each box's own width is a bare
+     `vw` -- a share of the whole viewport, not of that padded track. At a
+     32px root `.helpbox`'s `94vw` outgrew the track by more than the padding
+     had to give and the sheet's own edge passed the viewport's. `.keysbox`
+     (no `.helpbox`) stayed inside by luck of being narrower, not by design,
+     so it is capped here too rather than left to the same margin. `3rem` is
+     twice the wrap's own padding ceiling, so the box can never ask for more
+     room than the padding could ever leave it. */
+  .keysbox { width: min(24rem, calc(100vw - 3rem)); }
+  .helpbox { width: min(24rem, calc(100vw - 3rem)); }
+
+  /* #24: "Skip", the step dots and "Next"/"Got it" cannot all fit one line
+     once the footnote floor (T3) and `#tourNext`'s own `min-width: 5.6rem`
+     both grow with the root -- `.tour-box` itself is capped to the viewport
+     already (`min(21rem, calc(100vw - 1.5rem))`), so the row is what has to
+     give. Wrapping is the one-line answer this block gives every other
+     nowrap row; `justify-content: flex-end` keeps Next/Got it, the control a
+     coach is mid-tap on, anchored to the same corner whether the row wraps
+     or not. */
+  .tour-acts { flex-wrap: wrap; justify-content: flex-end; row-gap: .4rem; }
+
+  /* #24: `.row`'s field columns are a text measure now (item 1), so at a 32px
+     root the single-column floor the grid already falls back to is itself
+     260px -- wider than `#welSetup`'s own card leaves it inside `.wel-in`'s
+     30rem cap and the welcome screen's padding. `min(…, 40vw)` gives the
+     track a second, viewport-relative floor for exactly the narrow-column
+     cases this block already handles (`.dayrow`, `.rlist .rrow`); at any
+     ordinary width `40vw` is wider than `8.125rem` and this changes nothing. */
+  .row { grid-template-columns: repeat(auto-fit, minmax(min(8.125rem, 40vw), 1fr)); }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach
@@ -2395,22 +2513,27 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    is the plan" from a standing start every time it is opened.
  *
  * At 844x390 it could not. The sticky top bar and the fixed action bar spend
-   133px of the 390 between them, and the day title is *bigger* here than in
-   portrait: `clamp(1.5rem, 3.4vw, 2.05rem)` reads width, and width is the one
-   axis a landscape phone has to spare, so the title grows 20% exactly where
-   there is 54% less height for it. The plan started 256px down a 390px
-   window -- one row of squad chips visible and nothing else.
+   133px of the 390 between them, and before #24 the day title read *bigger*
+   here than in portrait -- `clamp()` read width, and width is the one axis a
+   landscape phone has to spare -- so the title grew exactly where there was
+   54% less height for it. The plan started 256px down a 390px window -- one
+   row of squad chips visible and nothing else.
  *
- * This trims the three, and trims them *vertically only*: horizontal padding,
-   gaps, font sizes in the bar and every touch target stay exactly where they
-   are, so nothing here can put a control out of reach the way the width
-   trimming above it can. Bounded by max-height like the game-mode block, so a
-   landscape tablet -- which has the height already -- is untouched. Must stay
-   after the 620px and 19em blocks: all three share specificity on `.bar`. */
+ * This trims what is left, and trims it *vertically only*: horizontal
+   padding, gaps and every touch target stay exactly where they are, so
+   nothing here can put a control out of reach the way the width trimming
+   above it can. The one exception is the day title itself: #24 decision 4's
+   amendment (docs/specs/24-text-size.md) lets a short-viewport-HEIGHT block
+   move a large title down to another step on the scale for exactly this
+   vertical room, so `.dayhead input.daytitle` takes the sentence step here,
+   its pre-#24 value. Bounded by max-height like the game-mode block, so a
+   landscape tablet -- which has the height already -- is untouched. Must
+   stay after the 620px and 19em blocks: all three share specificity on
+   `.bar`. */
 @media (orientation: landscape) and (max-height: 560px) {
   .bar { padding-top: calc(.3rem + env(safe-area-inset-top)); padding-bottom: .3rem; }
   .dayhead { margin-bottom: .7rem; }
-  .dayhead input.daytitle { font-size: 1.5rem; }
+  .dayhead input.daytitle { font-size: var(--fs-sentence); }
   /* 44px is the floor for both buttons, so the action bar gives up padding and
      8px of slack above that floor, and nothing else. */
   .actionbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-inset-bottom)); }
@@ -2482,7 +2605,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      as noise, and it is doing a column header's job, not a row's */
   .rlist.cardnames .rrow:first-child::before {
     content: "prints on the card"; grid-area: card; justify-self: end;
-    align-self: center; font-size: .72rem; color: var(--faint);
+    align-self: center; font-size: var(--fs-footnote); color: var(--faint);
   }
 }
 @media (min-width: 621px) { #cardnames { display: none; } }
@@ -2536,22 +2659,22 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    rather than as a missing value. */
 .sn-dot.gone { background: none; border: 1px solid var(--line-2); }
 .sn-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: .92rem; }
+  font-size: var(--fs-secondary); }
 .sn-nm.gone { color: var(--faint); font-style: italic; }
-.sn-x { flex: 0 0 auto; font-size: .76rem; color: var(--faint); }
+.sn-x { flex: 0 0 auto; font-size: var(--fs-footnote); color: var(--faint); }
 /* Tabular figures: the numbers are read as a column, and proportional digits
    make a 7 and a 1 sit differently in it. */
-.sn-min { flex: 0 0 3.2rem; text-align: right; font-weight: 640; font-size: .92rem;
+.sn-min { flex: 0 0 3.2rem; text-align: right; font-weight: 600; font-size: var(--fs-secondary);
   font-variant-numeric: tabular-nums; }
-.sn-h { margin: 1.35rem 0 .35rem; font-size: .76rem; font-weight: 660; letter-spacing: .09em;
+.sn-h { margin: 1.35rem 0 .35rem; font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .09em;
   text-transform: uppercase; color: var(--accent); }
 .sn-game { border-bottom: 1px solid var(--line); }
 .sn-game > summary { display: flex; align-items: center; gap: .6rem; min-height: 44px;
   cursor: pointer; list-style: none; padding: .2rem .1rem; }
 .sn-game > summary::-webkit-details-marker { display: none; }
 .sn-gt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: .92rem; font-weight: 600; }
-.sn-gm { flex: 0 0 auto; font-size: .76rem; color: var(--faint); }
+  font-size: var(--fs-secondary); font-weight: 600; }
+.sn-gm { flex: 0 0 auto; font-size: var(--fs-footnote); color: var(--faint); }
 /* The disclosure arrow, drawn rather than iconed: it is one glyph and it has
    to turn, and a rotate on a pseudo-element costs no DOM and no icon fetch. */
 .sn-game > summary::after { content: ''; flex: 0 0 auto; width: .42rem; height: .42rem;
@@ -2590,14 +2713,14 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 .setrow { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; padding: .6rem 0; }
 .setrow + .setrow { border-top: 1px solid var(--line); }
 .setrow-b { flex: 1 1 12rem; min-width: 0; }
-.setrow-t { font-weight: 620; font-size: .95rem; letter-spacing: -.01em; }
+.setrow-t { font-weight: 600; font-size: var(--fs-body); letter-spacing: -.01em; }
 .setrow .note { margin: .2rem 0 0; }
 /* The read-back under "Players changing at once": the one note here that is an
    ANSWER rather than a description, since it changes with the control. In the
    same muted grey as the paragraph above it a coach reads straight past both.
    `--ink` and a weight bump is the whole difference -- no box, no colour of
    its own, nothing that would read as a warning. */
-#maxSubsRead { color: var(--ink); font-weight: 540; margin-top: .45rem; }
+#maxSubsRead { color: var(--ink); font-weight: 500; margin-top: .45rem; }
 .setrow > .btn { flex: none; }
 /* Fields default to `width: 100%`, which inside a flex row is a control that
    eats the label. Fixed width, 44px tall, centred digits -- the same target
@@ -2617,7 +2740,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    The value never exceeds two digits (max="60"), and 68x44 still clears the
    44px target rule in both directions. */
 .minwrap { flex: none; align-self: flex-start; display: flex; align-items: center; gap: .4rem; }
-.minwrap > span { color: var(--muted); font-size: .9rem; }
+.minwrap > span { color: var(--muted); font-size: var(--fs-secondary); }
 .setrow input.minmins { flex: none; width: 4.25rem; min-height: 44px; text-align: center;
   font-variant-numeric: tabular-nums; }
 /* Same shape as `.sn-h`: a heading for a group inside a box, one step down
@@ -2628,7 +2751,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    `.side-box > .set-h:first-child { margin-top: 0 }` fix lived here for the
    version of this box where Backup was its own `.side-box` and this heading
    opened it; #22's fold-in retired it along with the box it corrected for. */
-.set-h { margin: 1.5rem 0 .4rem; font-size: .76rem; font-weight: 660; letter-spacing: .09em;
+.set-h { margin: 1.5rem 0 .4rem; font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .09em;
   text-transform: uppercase; color: var(--accent); }
 /* The boundary above Backup and restore: the same line `.setrow + .setrow`
    draws between every other pair of rows in this view, so the one block here
@@ -2659,4 +2782,4 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    Colour and focus-visible both come from the base rules above (`a { color:
    inherit }`, the global `:focus-visible`) -- nothing here overrides either. */
 .linkrow { text-decoration: none; justify-content: space-between; }
-.linkrow-chev { flex: none; color: var(--faint); font-size: 1.1rem; }
+.linkrow-chev { flex: none; color: var(--faint); font-size: var(--fs-headline); }

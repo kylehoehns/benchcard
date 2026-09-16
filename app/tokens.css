@@ -36,6 +36,23 @@
 :root {
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
 
+  /* The type scale (#24, T2-T4): seven steps, sized in rem so the phone's own
+     text-size setting moves every one of them. `--fs-large` is used by three
+     screen titles only (Today's h1, the game's day title, the welcome
+     wordmark) -- everything else takes the nearest step by value (see
+     app.css's own sweep). Weights are NOT locked to a step (decision 2): an
+     element on any step may still take 400, 500, 600 or 700 for emphasis.
+     Note for #18's further work: what 1rem resolves to in px on an iPhone
+     versus Android is docs/specs/24-text-size.md decision 1, not restated
+     here. */
+  --fs-large: 2.125rem;
+  --fs-sentence: 1.5625rem;
+  --fs-title: 1.375rem;
+  --fs-headline: 1.0625rem;
+  --fs-body: 1rem;
+  --fs-secondary: .875rem;
+  --fs-footnote: .8125rem;
+
   --r-xs: 8px; --r-sm: 11px; --r: 16px; --r-lg: 22px; --r-full: 999px;
 
   --ease: cubic-bezier(.22, .61, .36, 1);
