@@ -49,6 +49,12 @@ const TOUCH_STATES = [
   { name: 'games, folds open',
     open: `document.querySelector('.today-game').click();
            for (const d of document.querySelectorAll('details')) d.open = true` },
+  /* #27 finding: none of the states above ever opens a sheet, so the sweep
+     never measured `.bsheet-close` (40px, under the floor) or the drag
+     handle. Who's here, at half height, through its real trigger. */
+  { name: "games, who's here sheet open",
+    open: `document.querySelector('.today-game').click();
+           document.querySelector('#phrasePlayers').click()` },
 
 ];
 
@@ -98,6 +104,7 @@ export async function touchPass(c, origin, source) {
     // for `${TODAY_HOME}` below, which a real tap could never trigger while
     // a full-screen `.keyswrap` overlay covers the back button.
     close: `document.querySelector('#colorPickerClose')?.click();
+      document.querySelector('#sheetWho')?.close();
       ${TODAY_HOME};
       for (const d of document.querySelectorAll('details')) d.open = false`,
   });

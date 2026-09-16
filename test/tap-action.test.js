@@ -152,9 +152,12 @@ test('the guard can see the pages it claims to, and its parser is not lying', ()
      read as a page with nothing to find. */
   assert.deepEqual(pagesWithSummaries(), ['about.html', 'index.html'],
     'the set of pages carrying a <summary> changed; the new one needs the rule too');
-  // Seven since A49, which deleted the welcome screen's "Enter my team"
-  // disclosure -- the eighth, and the one A47 was reported against.
-  assert.equal(summaryCount('index.html'), 7, 'the app shell no longer has seven summaries');
+  // Five since #27, which retired the Squad and Game format folds
+  // (`#squadFold`, `#fmtFold`) in favor of the sentence and its Who's here /
+  // Format sheets -- was seven since A49, which deleted the welcome screen's
+  // "Enter my team" disclosure, the eighth and the one A47 was reported
+  // against.
+  assert.equal(summaryCount('index.html'), 5, 'the app shell no longer has five summaries');
   assert.equal(summaryCount('about.html'), 8, 'about.html no longer has eight FAQ rows');
 
   // The parser really does read a real rule out of a real sheet...

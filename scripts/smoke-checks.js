@@ -183,6 +183,35 @@
       : shortRows.length ? `${shortRows.length}/${rowCount} under 48px: ${shortRows.slice(0, 4).join(', ')}`
       : `${rowCount} rows, all ≥ 48px`);
 
+  /* 3b. #27 item 10: every row in the Who's here sheet, at least 48px, at the
+        same three phone widths `touchPass` and `settingsRowPass` sweep
+        (`who-rows.mjs` drives the sweep; this cell is what it reads back at
+        each width). `.sheetrow` buttons sit straight under `#sheetWhoBody` --
+        the row IS the control, unlike Settings' box-then-row-then-control
+        nesting -- so this reads them directly rather than walking two
+        levels. Same "open but nothing measured is a failure, not a vacuous
+        pass" shape as the settings check above, for the same reason: a
+        falsifier that stopped the sheet from opening at all must not read as
+        clean because there was nothing short to find. */
+  const whoSheet = document.getElementById('sheetWho');
+  const whoOpen = !!whoSheet && whoSheet.open;
+  const whoShortRows = [];
+  let whoRowCount = 0;
+  if (whoOpen) {
+    for (const row of document.querySelectorAll('#sheetWhoBody .sheetrow')) {
+      if (!visible(row)) continue;
+      whoRowCount++;
+      const r = row.getBoundingClientRect();
+      // Same 47.99 tolerance as the settings check above, for the same reason.
+      if (r.height < 47.99) whoShortRows.push(`${label(row)} ${round(r.height)}px`);
+    }
+  }
+  add("who's here rows ≥ 48px", whoOpen && whoRowCount > 0 && whoShortRows.length === 0,
+    !whoOpen ? '#sheetWho not open'
+      : !whoRowCount ? '#sheetWho open but 0 rows found -- structural row detection matched nothing'
+      : whoShortRows.length ? `${whoShortRows.length}/${whoRowCount} under 48px: ${whoShortRows.slice(0, 4).join(', ')}`
+      : `${whoRowCount} rows, all ≥ 48px`);
+
   /* 4. The last control in an open dialog is reachable.
 
         The help sheet shipped for months with "Show me around again" below the
@@ -200,21 +229,25 @@
 
         Measured against `visualViewport` where there is one: it is the box the
         user can actually see, and it is what the first-run tour's spotlight
-        already moved onto for the same reason. Unlike every other check here
-        this one moves the page (a scroll, nothing else); the harness closes
-        each state after auditing it. */
+        already moved onto for the same reason. This is the one check here that
+        moves the page, and it puts back what it moves: `scrollIntoView` can
+        scroll a sheet's own body (an ordinary element, not the window), and
+        that element is reused, not rebuilt, the next time its dialog opens --
+        a later check sharing this page would otherwise inherit the scroll. */
   const winH = window.visualViewport?.height ?? window.innerHeight;
   const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
   const cut = [];
   const audited = [];
-  for (const dlg of document.querySelectorAll('[role="dialog"]')) {
+  for (const dlg of document.querySelectorAll('[role="dialog"], dialog[open]')) {
     if (dlg.hidden || !visible(dlg)) continue;
     const foc = [...dlg.querySelectorAll(FOCUSABLE)]
       .filter(el => visible(el) && !el.closest('[hidden]') && el.type !== 'hidden');
     if (!foc.length) continue;
     const last = foc[foc.length - 1];
+    const scrolled = [dlg, ...dlg.querySelectorAll('*')].map(el => [el, el.scrollTop, el.scrollLeft]);
     last.scrollIntoView({ block: 'nearest' });
     const r = last.getBoundingClientRect();
+    for (const [el, top, left] of scrolled) { el.scrollTop = top; el.scrollLeft = left; }
     audited.push(label(dlg));
     if (r.top < -0.5 || r.bottom > winH + 0.5) {
       cut.push(`${label(dlg)} → ${label(last)} at ${round(r.top)}–${round(r.bottom)}, window is 0–${round(winH)}`);

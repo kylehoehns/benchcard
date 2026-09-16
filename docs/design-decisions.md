@@ -61,12 +61,13 @@ its alternative is an assertion, so the rejected options are kept here too.
   game's own `periods`/`periodMinutes` already are, so putting it there would
   re-solve the day for nothing. Substitution granularity is deliberately not a
   setting: it is a preference rather than a league rule, and it lives with the
-  period shape in the **Game format** block. That block used to be inside the
-  fold labelled *Rules*, shut and below the rotation — which reads as the
-  player rules, so a coach looking for "two halves of twenty minutes" never
-  opened it. Rules now holds only the player rules; its collapsed summary
-  carries the format in words (`2 × 20 min`) so the answer is visible without
-  opening anything.
+  period shape. Both are set from the sentence at the top of the game (#27):
+  the format phrase (`4 × 8`) opens a sheet with period and minute steppers,
+  and the interval phrase opens the Sub interval sheet. The format was once a
+  **Game format** block inside the fold labelled *Rules*, shut and below the
+  rotation — which reads as the player rules, so a coach looking for "two
+  halves of twenty minutes" never opened it. It then became its own fold, and
+  is now a phrase the coach reads before touching anything.
 - **A league minimum is a floor on the map the engine already reads.**
   `settings.minMinutes` (0 meaning off) is composed into each game's per-player
   `minMinutes` in `computeAll`, so `engine.js` never learns the setting exists —

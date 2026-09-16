@@ -26,7 +26,7 @@ import { initRoster } from './roster-view.js';
 import { initTour } from './tour.js';
 import { initOnboarding } from './onboarding.js';
 import { initPlanView } from './plan-view.js';
-import { initGameSetup, renderFmtHint } from './game-setup.js';
+import { initGameSetup } from './game-setup.js';
 import { initTeams, renderSettings } from './teams-view.js';
 import { initSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
@@ -101,15 +101,6 @@ on('#teamName', 'oninput', e => {
 });
 on('#label', 'oninput', e => { game().label = e.target.value; soon('tabs', 'totals', 'cards'); });
 on('#when', 'oninput', e => { game().when = e.target.value; soon('tabs', 'cards'); });
-for (const k of ['periods', 'periodMinutes']) {
-  on('#' + k, 'oninput', e => {
-    game()[k] = Number(e.target.value) || 1;
-    // in place, not through `soon`: rebuilding #setup would take the spinner
-    // out from under the coach's finger mid-word
-    renderFmtHint();
-    soon('strategy', ...AFTER_EDIT);
-  });
-}
 on('#copies', 'onchange', e => { state.ui.copies = Number(e.target.value); save(); renderCards(); });
 
 on('#cardToggle', 'onclick', () => {
@@ -355,22 +346,12 @@ for (const n of document.querySelectorAll('.i[data-icon]')) {
   if (!n.firstChild) n.append(icon(n.dataset.icon, { size: '1em' }));
 }
 
-// On a phone the rotation and the card matter most; Squad and Across-the-day
-// are reference. Collapse them by default there, but only on first paint so a
-// coach who opens one keeps it open.
+// On a phone the rotation and the card matter most; Across-the-day is
+// reference. Collapse it by default there, but only on first paint so a
+// coach who opens it keeps it open.
 if (matchMedia('(max-width: 620px)').matches) {
-  const sq = $('#squadFold'); if (sq) sq.open = false;
   const df = $('#dayFold'); if (df) df.open = false;
 }
-
-/* Game format opens for a coach who has no ROSTER yet -- it is the input the
-   rotation is built from and the thing a first-time coach goes looking for --
-   and folds away once there is one, because the summary already reads
-   "4 × 8 min". The condition is the roster, not a plan: same effect today,
-   since a plan needs a roster, but it is the precedent later disclosure items
-   cite and the wording had drifted. First paint only, same rule as the two
-   above: a coach who opens it keeps it open. */
-if (!noRoster()) { const ff = $('#fmtFold'); if (ff) ff.open = false; }
 
 /* Plan folds on the same terms, with one extra condition: it stays open while
    the strategy is still the default. Even has no body at all, so an open
@@ -409,7 +390,7 @@ initRules(soon, PLAN_ONLY);
 initStrategy(soon, PLAN_ONLY);
 initOnboarding(setView, renderAll);
 initPlanView(renderAll);
-initGameSetup(renderAll, soon, PLAN_ONLY);
+initGameSetup(renderAll, soon, PLAN_ONLY, AFTER_EDIT);
 initShortcuts(setView);
 setView(state.onboarded ? (state.view || 'today') : 'welcome');
 /* There was a `body.boot` class here, added before the first paint and removed

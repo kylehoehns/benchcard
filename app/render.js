@@ -13,7 +13,7 @@
  * is allowed to touch.
  * ================================================================== */
 import { $ } from './dom.js';
-import { withFocus } from './trap.js';
+import { withFocus, closeSheets } from './trap.js';
 import { renderCards } from './card.js';
 import { renderTimeline } from './timeline.js';
 import { renderBalance } from './balance.js';
@@ -21,7 +21,7 @@ import { renderConstraints, renderSeasonAdjust } from './rules.js';
 import { renderStrategy, refreshBudgetActuals } from './strategy.js';
 import { renderRoster, renderLevels } from './roster-view.js';
 import { renderStats, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
-import { renderSetup, renderAvail } from './game-setup.js';
+import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
 import { renderSeason } from './season-view.js';
 import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel, activeColor } from './state.js';
@@ -45,7 +45,13 @@ const SECTIONS = {
   teams:       () => renderTeams(),
   tabs:        () => renderTabs(),
   setup:       () => renderSetup(),
-  avail:       () => renderAvail(),
+  /* #27: the sentence, and the announcement inside whichever sheet is open
+     (`refreshSheetStatus`, game-setup.js) -- both read the just-solved plan,
+     so both belong on the same key as `strategy`'s own re-plan below, in
+     both AFTER_EDIT and PLAN_ONLY (decision 13). The buttons themselves are
+     never rebuilt; only their text and `aria-label` are rewritten in place,
+     which is what lets a sheet's own opener still take focus back on close. */
+  sentence:    () => renderSentence(),
   strategy:    () => renderStrategy(),
   // in-place only: writes what the plan actually gives onto the budget rows
   // without rebuilding a slider the coach may have hold of
@@ -77,10 +83,10 @@ const SECTIONS = {
 };
 const ALL = Object.keys(SECTIONS);
 // everything a plan change touches, minus the containers a coach types into
-export const AFTER_EDIT = ['teams', 'tabs', 'strategy', 'budget', 'seasonadj', 'balance', 'stats', 'issues', 'plan', 'timeline', 'totals', 'cards'];
+export const AFTER_EDIT = ['teams', 'tabs', 'sentence', 'strategy', 'budget', 'seasonadj', 'balance', 'stats', 'issues', 'plan', 'timeline', 'totals', 'cards'];
 // as above but leaving the strategy body alone -- controls that repaint
 // themselves in place (sliders, pickers) must not be rebuilt mid-interaction
-export const PLAN_ONLY = ['tabs', 'budget', 'seasonadj', 'stats', 'issues', 'plan', 'timeline', 'totals', 'cards'];
+export const PLAN_ONLY = ['tabs', 'sentence', 'budget', 'seasonadj', 'stats', 'issues', 'plan', 'timeline', 'totals', 'cards'];
 
 export function render(...keys) {
   if (!state.onboarded) return;
@@ -333,6 +339,12 @@ function screenTitle(v) {
 }
 
 function applyView(v, from) {
+  /* #27 decision 11: a sheet pushes no history entry of its own, so any
+     screen change -- including a `popstate`, which is how the browser's
+     back button and Android's gesture both arrive here -- has to close one
+     first. This is the one function every path that changes the screen
+     already runs through, so it is the one place this belongs. */
+  closeSheets();
   /* The pre-paint stamp has done its job the moment this runs: from here the
      `hidden` flags below are the truth, and a `data-boot="welcome"` left on
      <html> would go on hiding the games view with an !important rule the

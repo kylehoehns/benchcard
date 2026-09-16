@@ -175,26 +175,31 @@ a { color: inherit; }
      tabs. Said out loud as 0 rather than left to the flex default, because
      this list IS the reading order below 1100px and a blank means "look it up
      in the spec" to the next person editing it. */
+  /* #27: the sentence (`#sentence`, `#sentenceEvens`) and the three sheets
+     (`dialog.bsheet`) replaced `.s-squad` and `.s-fmt`, the two entries this
+     list used to open with. Neither needs an `order:` of its own -- the
+     sentence sits above `.cols` entirely, first in the source at every
+     width, and a modal `<dialog>` paints in the top layer regardless of
+     where it sits in the flow. So this list is two shorter, renumbered
+     whole rather than left with a gap: a gap here is a note to nobody, the
+     same reasoning Rules' own renumbering below already used. */
   .s-thisgame { order: 0; }
-  .s-squad { order: 1; }
-  .s-fmt   { order: 2; }
-  .s-plan  { order: 3; }
-  .s-balance { order: 4; }
-  /* Rules is the fifth INPUT and reads with the other four, not as a drawer
-     trailing the page: it was order 11 of 13, below the card and below the
-     bench button, and `ROADMAP.md` calls the constraint engine the one thing
-     no competitor has (A21b). Renumbered whole rather than slipped in as a
-     fraction -- this list is the reading order, and a 4.5 in it is a note to
-     nobody. It matches the source order the wide layout uses. */
-  #consdetails { order: 5; }
-  .s-rot   { order: 6; }
-  .s-cardhd { order: 7; }
-  #cardnote { order: 8; }
-  #sheet   { order: 9; }
-  .gm-cta  { order: 10; }
-  .s-day   { order: 11; }
-  #tabledetails { order: 12; }
-  .s-cardopts { order: 13; }
+  .s-plan  { order: 1; }
+  .s-balance { order: 2; }
+  /* Rules is the fourth INPUT and reads with the other three, not as a
+     drawer trailing the page: it was order 11 of 13, below the card and
+     below the bench button, and `ROADMAP.md` calls the constraint engine the
+     one thing no competitor has (A21b). It matches the source order the wide
+     layout uses. */
+  #consdetails { order: 3; }
+  .s-rot   { order: 4; }
+  .s-cardhd { order: 5; }
+  #cardnote { order: 6; }
+  #sheet   { order: 7; }
+  .gm-cta  { order: 8; }
+  .s-day   { order: 9; }
+  #tabledetails { order: 10; }
+  .s-cardopts { order: 11; }
 }
 
 /* ---- the card disclosure -------------------------------------------------
@@ -2083,6 +2088,163 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    the style ships here; the sentence itself is #27's, out of scope. */
 .phrase { color: var(--phrase); text-decoration: underline;
   text-decoration-color: var(--phrase-line); text-decoration-thickness: 2px; }
+/* The phrase style above is inherited color/underline only -- every `.phrase`
+   here is a real `<button>` inside a `<p>`, so the UA's own button chrome
+   (background, border, its own font) has to be unset for it to read as
+   underlined text running inline with the sentence rather than five little
+   boxes. */
+.phrase { background: none; border: 0; padding: 0; margin: 0; font: inherit;
+  cursor: pointer; }
+/* Touch check fallout: an inline `<button>` is only as tall as the text it
+   holds (24.8px at the body size), so every phrase failed the app-wide 44px
+   sweep. `inline-flex` with a `min-height` gives it a real box while keeping
+   it inline-level, so it still runs word to word in `.sentence`'s flow
+   rather than dropping to its own line; the small horizontal padding (with
+   an equal negative margin so the words either side do not drift apart)
+   covers the narrowest phrase ("4 × 8"), whose width alone was also under
+   44px. 48px, not the 44px floor, because #18 asks for 48px where a target
+   has the room, and a one-line sentence does. */
+.phrase { display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; padding: 0 .3em; margin: 0 -.3em; vertical-align: middle; }
+
+/* ============================== #27: the sentence ============================== */
+/* Above `.cols` entirely (decision 1), so it needs no `order:` entry in the
+   phone stack list below -- it already reads first, at every width, from its
+   position in the markup alone. */
+/* `line-height: 3` (48px at the body size) rather than the usual `1.55`: a
+   `.phrase` button on a wrapped line is 48px tall regardless of this value
+   (the UA grows that one line to fit it), so a smaller line-height here
+   would leave the lines that hold a button visibly taller than plain-text
+   lines, an uneven ladder rather than a sentence. Matching it makes every
+   line the same height whether or not it happens to break on a button. */
+.sentence { margin: 0 0 .2rem; font-size: var(--fs-body); line-height: 3;
+  color: var(--ink-2); }
+.sentence:last-of-type { margin-bottom: 1rem; }
+
+/* ============================== #27: the sheets ============================== */
+/* A `dialog` opened with `showModal()` promotes itself to the top layer, so
+   none of this needs a `z-index` and none of it needs a place in the phone
+   `order:` list either -- the top layer paints above the whole document
+   regardless of where the element sits in the DOM.
+
+   Every box property the UA stylesheet gives `dialog` (its own centering,
+   border, padding, background) is overridden below, rather than reset with a
+   shorthand: `all: unset` would also drop `display`, which is what
+   `[open]`/`:not([open])` in that same UA sheet uses to show and hide it.
+   `display` itself is left off THIS rule for the same reason: an author
+   stylesheet beats a user-agent one at equal specificity regardless of which
+   selector is more specific, so a bare `dialog.bsheet { display: flex }`
+   here would have overridden the UA's `dialog:not([open]) { display: none }`
+   and left all three sheets sitting at the bottom of the games view,
+   visible and tappable, before anyone opened one -- which is exactly what
+   the touch sweep caught (`#sheetWhoClose` etc. measuring 40x40 on a
+   `games` state that never opens a sheet). `display: flex` moves to the
+   `[open]` rule below instead, so the UA's own toggle keeps deciding
+   whether the dialog renders at all. */
+dialog.bsheet {
+  position: fixed; inset: auto 0 0 0; margin: 0; width: 100%; max-width: 100%;
+  border: 0; border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 0;
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+dialog.bsheet[open] { display: flex; flex-direction: column; }
+/* Half and full are the two resting heights `setSheetHeight` (trap.js)
+   toggles; a drag only ever sets `transform` (never `height`) while it is in
+   progress, and clears it back to `''` on release, so these are the only two
+   places `height` itself changes, and each is a single, non-dragged step
+   rather than something a finger drives. Decision 9's geometry: half puts the
+   top edge at 50% of the viewport (the 40-60% band), full at 8% (at most
+   15%). `vh` first, `dvh` second, the same belt-and-braces pair `.keysbox`
+   uses, so a browser without `dvh` still gets a sane height instead of an
+   invalid declaration. */
+dialog.bsheet.bsheet-half { height: 50vh; height: 50dvh; }
+dialog.bsheet.full { height: 92vh; height: 92dvh; }
+/* `showModal()` paints this behind the sheet over the whole viewport, dimming
+   the now-inert rotation and card above it. A flat black mix rather than
+   `--bg`-based (the full-screen `.keyswrap` dialogs use) reads as a scrim at
+   the same darkness in light or dark mode, which a sheet sitting over EITHER
+   background needs and a screen-colored blur does not give it. */
+dialog.bsheet::backdrop { background: color-mix(in srgb, #000 32%, transparent); }
+/* M2: the sheet rises, with `transform` (never `top`/`height`) so a drag can
+   share the same property without fighting a box-model transition. Under
+   reduced motion this block does not apply at all, so the dialog simply
+   appears at rest -- `@starting-style` never runs and there is no transition
+   to skip a frame of. `.dragging` (set by the handle's own pointer listeners,
+   trap.js) turns the transition off for the one interaction that has to
+   track a finger 1:1 rather than ease toward a value. */
+@media (prefers-reduced-motion: no-preference) {
+  dialog.bsheet { transition: transform var(--t) var(--ease); }
+  dialog.bsheet[open] { @starting-style { transform: translateY(100%); } }
+}
+dialog.bsheet.dragging { transition: none; }
+
+.bsheet-hd {
+  display: grid; grid-template-columns: 1fr auto;
+  grid-template-areas: "handle handle" "title close";
+  align-items: center; column-gap: .5rem;
+  padding: .3rem .9rem .7rem; border-bottom: 1px solid var(--line); flex: none;
+}
+/* A real button (decision 9 / I3), not a decorative bar: the visible pill is
+   a `::before` so the hit area can be the full width of the header without a
+   giant painted stripe. `touch-action: none` keeps the browser from turning
+   the drag into a page scroll gesture, which is what a bare `touch-action:
+   pan-y` ancestor would otherwise do to the first pointermove. */
+/* 48px hit area (the touch sweep failed it at 26px), the grip bar itself
+   staying a thin 4px pill inside it via the `::before` below -- the visual
+   mark and the tappable box are deliberately different sizes, the same way
+   the 44px `.linkish` text does it elsewhere in this file. */
+.bsheet-handle { grid-area: handle; justify-self: center;
+  position: relative; width: 100%; max-width: 5rem; height: 48px;
+  background: none; border: 0; padding: 0; cursor: grab; touch-action: none; }
+.bsheet-handle::before { content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); width: 2.6rem; height: 4px;
+  border-radius: var(--r-full); background: var(--line-2); }
+.bsheet-hd h2 { grid-area: title; margin: 0; font-size: var(--fs-headline);
+  font-weight: 700; letter-spacing: -.02em; }
+.bsheet-close { grid-area: close; display: inline-flex; align-items: center;
+  justify-content: center; width: 2.5rem; height: 2.5rem; border: 0;
+  border-radius: var(--r-full); background: none; font: inherit;
+  font-size: var(--fs-headline); color: var(--ink-2); }
+@media (hover: hover) { .bsheet-close:hover { background: var(--surface-2); } }
+
+.bsheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  padding: 0 1.1rem; }
+/* A3 (decision 10): the announcement a `showModal()` dialog's own inertness
+   would otherwise swallow, so it lives INSIDE the sheet as a visible, muted
+   line rather than an ARIA live region somewhere the coach cannot see. */
+.bsheet-status { margin: 0; flex: none; font-size: var(--fs-footnote);
+  color: var(--muted); border-top: 1px solid var(--line);
+  padding: .6rem 1.1rem calc(.6rem + env(safe-area-inset-bottom)); }
+
+.sheetempty { margin: 0; padding: 1.6rem .2rem; color: var(--muted);
+  font-size: var(--fs-secondary); text-align: center; }
+
+/* C6: one control per row, at least 48px tall, a checkmark means chosen. */
+.sheetrow { display: flex; align-items: center; justify-content: space-between;
+  gap: .7rem; width: 100%; min-height: 48px; padding: .5rem .1rem;
+  border: 0; border-top: 1px solid var(--line); background: none;
+  font: inherit; font-size: var(--fs-body); color: var(--ink); text-align: left; }
+.sheetrow:first-child { border-top: 0; }
+@media (hover: hover) { .sheetrow:not(.sel):hover { background: var(--surface-2); } }
+.sheetrow.sel { background: var(--tint); color: var(--tint-ink); font-weight: 600;
+  border-top-color: transparent; border-radius: var(--r-sm); }
+.sheetrow-t { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheetrow-state { flex: none; font-size: var(--fs-secondary); font-weight: 600;
+  color: var(--muted); }
+.sheetrow.sel .sheetrow-state { color: inherit; }
+
+.sheetstep { display: flex; align-items: center; justify-content: space-between;
+  gap: .8rem; min-height: 48px; padding: .5rem .1rem; border-top: 1px solid var(--line); }
+.sheetstep:first-child { border-top: 0; }
+.sheetstep-label { font-size: var(--fs-body); color: var(--ink); }
+.sheetstep-btn { display: inline-flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2.75rem; border-radius: var(--r-full);
+  border: 1px solid var(--line-2); background: var(--surface); font: inherit;
+  font-size: var(--fs-headline); font-weight: 700; color: var(--ink); }
+.sheetstep-btn:disabled { opacity: .35; }
+@media (hover: hover) { .sheetstep-btn:not(:disabled):hover { border-color: var(--muted); } }
+.sheetstep-value { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums;
+  font-weight: 700; font-size: var(--fs-body); }
 
 /* Collapsible sections. Open by default on a roomy screen; the phone rules
    below close the reference ones so the rotation and the card sit near the top
@@ -2646,7 +2808,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .rrow { padding-left: .3rem; border-left: 3px solid var(--c); }
   .rord { flex-direction: row; gap: 0; align-self: stretch; }
   .obtn { flex: 1; min-height: 44px; min-width: 44px; color: var(--muted); }
-  .tld-x, .gm-x { min-width: 44px; min-height: 44px; }
+  .tld-x, .gm-x, .bsheet-close { min-width: 44px; min-height: 44px; }
   .seg button { min-height: 44px; }
   .switch { min-height: 44px; }           /* the label is the target, not the 22px track */
   .gm-b, .gm-p { min-height: 44px; }

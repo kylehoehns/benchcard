@@ -29,7 +29,6 @@ const SRC = readFileSync(new URL('../app/render.js', import.meta.url), 'utf8');
 const KEEP = new Map([
   ['roster', 'rebuilt by its own edits (add/remove/reorder), and it holds the rows a coach is dragging'],
   ['setup', 'the game-setup form: inputs a coach types into, repainted only when the game changes'],
-  ['avail', 'the availability toggles repaint themselves in place as they are tapped'],
   ['levels', 'the level meters live inside the roster rows, so `roster` covers them'],
   ['constraints', 'the rule editor holds a select and two number inputs mid-edit; `seasonadj` is its plan-dependent half and IS in both lists'],
   ['season', 'the filed-games ledger: nothing about today changes it, so it repaints on a full render only'],

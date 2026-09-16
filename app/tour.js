@@ -50,10 +50,12 @@ export function initTour(setViewFn) {
  * ================================================================== */
 const TOUR = [
   {
-    sel: ['#squadFold', '#avail'],
+    /* #27: the sentence replaced the Squad fold this step used to open, and
+       its players phrase is static markup on screen at every width -- there
+       is no fold to open first, unlike the step below. */
+    sel: ['#phrasePlayers'],
     title: 'Who is here tonight',
-    body: 'Everyone on the roster starts in. Pick a player to mark them absent for a no-show or foul trouble, and the rotation rebuilds around who is left.',
-    before: () => { const f = $('#squadFold'); if (f) f.open = true; },
+    body: 'Everyone on the roster starts in. Tap the number of players to mark someone absent for a no-show or foul trouble, and the rotation rebuilds around who is left.',
   },
   {
     /* `#planFold` shuts on first paint for anyone not on Even, and a
