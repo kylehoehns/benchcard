@@ -77,8 +77,28 @@
    KB. Two widenings in one ticket is itself worth a look: much of the
    growth is prose comments in precached modules, which a coach downloads
    once and never reads. That is a question for a human, not a reason to
-   leave a real fix out. */
-export const SLACK = { bytesPct: 0.25, bytesAbs: 24576, requests: 2, nodes: 250 };
+   leave a real fix out.
+
+   `bytesAbs` widened 24576 -> 32768 for #24 (text follows the phone's text
+   size). The ticket rewrites every font-size and font-weight in app.css onto
+   seven tokens, adds the tokens, the iOS root rule, and big-text wraps for
+   the help sheet, shortcuts sheet, tour and welcome form that the 320px/32px
+   pass now opens. It measured 948.3 KB against 944.7 KB; `requests` still 40
+   of 41. The ceiling is now 952.7 KB.
+
+   `bytesAbs` widened again 32768 -> 34816 on the same PR (#54). Two CI rounds
+   fixed real 320px/32px overflows on the season screen, each bringing its rule
+   and the measurement that found it, and the last run measured 951.6 KB
+   against the 952.7 KB ceiling -- 1.1 KB of room, which the next comment
+   spends. 34816 is not a round number and is not meant to be: it is as far as
+   this can go while `test/budgets.test.js` ("slack is small enough to catch a
+   real regression") still fails a second 60 KB vendor script, which needs
+   `125000 + bytesAbs < 160000`. A first attempt at 40960 turned that guard red
+   -- the guard was right and the widening was wrong. The ceiling is now
+   954.7 KB, and the next widening after this one is not available: the answer
+   then is to spend fewer bytes, or to re-record the baseline deliberately.
+   `requests` still 40 of 41. */
+export const SLACK = { bytesPct: 0.25, bytesAbs: 34816, requests: 2, nodes: 250 };
 
 const kb = n => `${(n / 1024).toFixed(1)} KB`;
 const pct = (got, want) => (want ? `${got > want ? '+' : ''}${(((got - want) / want) * 100).toFixed(1)}%` : 'n/a');

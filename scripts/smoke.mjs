@@ -2129,6 +2129,12 @@ const APP_LARGE_TEXT_STATES = [
     open: `document.querySelector('#gmOpen').click();
            document.querySelector('#gmFloor .gm-p').click()`,
     close: `document.querySelector('#gmClose').click()` },
+  /* #24 item 4: the help sheet, the keyboard shortcuts dialog and the first
+     tour step, none of which any state above this one opens. Reused from
+     `STATES` by reference rather than retyped, so the open/close scripts
+     cannot drift between the two passes that drive them. */
+  ...['help sheet', 'shortcuts sheet', 'tour, first step']
+    .map(n => STATES.find(s => s.name === n)),
   /* AND THE SIXTH CHROME: the welcome screen, the first thing a coach ever
      sees, and the one screen in the app this cell had never visited.
      `overlayPass` has audited it since it was written; this pass enumerates
@@ -2445,6 +2451,153 @@ async function appLargeTextPass(c, origin) {
   };
 }
 
+/* #24 item 3: the scale's runtime proof. Item 3's "What would settle it" is
+   computed rem values, so this reads the SAME seven-size/four-weight set the
+   spec's own table lists (T2/T3), never the tokens.css values recomputed —
+   the tautology `/tdd` bans. `meta[name="text-scale"]` is asserted once, not
+   per state: it is document-level, not something a state can change. */
+const TYPESCALE_SIZES_PX = new Set([13, 14, 16, 17, 22, 25, 34]);
+const TYPESCALE_WEIGHTS = new Set([400, 500, 600, 700]);
+/* Every element with its own text, structurally, the same way
+   `smoke-checks.js`'s touch-target scan finds controls rather than guessing a
+   selector list: a direct non-whitespace text node, or a form control whose
+   value is its "text". `.card` is print output at a fixed size and out of
+   scope (#24's item 5 covers it separately). */
+const TYPESCALE_PROBE = `(() => {
+  const seen = [];
+  const hasOwnText = el => [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+  const isFormEl = el => el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA';
+  for (const el of document.body.querySelectorAll('*')) {
+    if (el.closest('.card')) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) continue;
+    if (!el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
+    if (!hasOwnText(el) && !isFormEl(el)) continue;
+    const cs = getComputedStyle(el);
+    const label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
+      + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join(''));
+    seen.push({ sel: label, size: Math.round(parseFloat(cs.fontSize)), weight: Number(cs.fontWeight) });
+  }
+  return JSON.stringify(seen);
+})()`;
+
+async function typeScalePass(c, origin) {
+  const problems = [];
+  let elements = 0;
+  await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+  await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  await goRich(c, origin);
+
+  const meta = await evalIn(c, `document.querySelector('meta[name="text-scale"]')?.getAttribute('content') ?? null`);
+  if (meta !== 'scale') problems.push(`meta[name="text-scale"] is ${JSON.stringify(meta)}, not "scale"`);
+
+  for (const v of APP_LARGE_TEXT_STATES) {
+    try {
+      if (v.firstRun) await firstRun(c, origin);
+      else if (v.tryLink) await tryLanding(c, origin, v.tryLink);
+      else await evalIn(c, step(v.open));
+      const seen = JSON.parse(await evalIn(c, TYPESCALE_PROBE));
+      elements += seen.length;
+      if (seen.length === 0) problems.push(`${v.name}: measured no elements at all`);
+      for (const el of seen) {
+        if (!TYPESCALE_SIZES_PX.has(el.size)) problems.push(`${v.name} — ${el.sel}: ${el.size}px is off the scale`);
+        if (!TYPESCALE_WEIGHTS.has(el.weight)) problems.push(`${v.name} — ${el.sel}: weight ${el.weight} is off the scale`);
+      }
+    } catch (e) {
+      problems.push(`${v.name}: ${e.message.split('\n')[0]}`);
+    } finally {
+      if (v.close) await evalIn(c, step(v.close))
+        .catch(e => problems.push(`${v.name}: did not close — ${e.message.split('\n')[0]}`));
+    }
+  }
+  return {
+    name: nameOf('typescale'),
+    pass: problems.length === 0 && elements > 0,
+    detail: problems.length
+      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
+      : elements === 0
+        ? 'measured no elements across any state'
+        : `${APP_LARGE_TEXT_STATES.length} states, ${elements} elements, every font-size in `
+          + `{${[...TYPESCALE_SIZES_PX].join(',')}}px and every weight in {${[...TYPESCALE_WEIGHTS].join(',')}}`,
+  };
+}
+
+/* #24 item 5: the card does not scale. Extends the `cardsize` row rather than
+   adding a new one — same seam, same name, so `--only "card is 3.45 × 5in"`
+   proves this too. Reuses the existing `Page.setFontSizes` idiom (see
+   `appLargeTextPass`) for the 32px root. `card.css` and `card.js`'s fitting
+   are untouched by #24, so this MEASURES that stays true rather than
+   implementing anything: the card's own font stack is set from canvas
+   `measureText`, independent of the root rem this ticket changes. */
+async function measureCard(c) {
+  return JSON.parse(await evalIn(c, `(() => {
+    const card = document.querySelector('.card:not(.card-copy)');
+    if (!card) return JSON.stringify(null);
+    const z = card.currentCSSZoom || 1;
+    const r = card.getBoundingClientRect();
+    const five = card.querySelector('.five');
+    const chg = card.querySelector('.chg');
+    return JSON.stringify({
+      w: Math.round(r.width / z * 100) / 100,
+      h: Math.round(r.height / z * 100) / 100,
+      five: five ? getComputedStyle(five).fontSize : null,
+      chg: chg ? getComputedStyle(chg).fontSize : null,
+    });
+  })()`));
+}
+
+// Shared by the two reloads `cardAt32Pass` below does (into the 32px
+// measurement, then back out of it): `Page.navigate` alone does not await
+// paint, so every caller in this file pairs it with the load event.
+async function reloadIndex(c, origin) {
+  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+  await c.send('Page.navigate', { url: origin + '/index.html' });
+  await loaded;
+}
+
+async function cardAt32Pass(c, origin, report) {
+  const check = report.checks.find(k => k.name === nameOf('cardsize'));
+  if (!check) return; // the base check is gone -- nothing here to extend
+
+  const at16 = await measureCard(c);
+  const problems = [];
+  if (!at16) {
+    check.pass = false;
+    check.detail += ' | no .card at a 16px root to compare against';
+    return;
+  }
+
+  await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });
+  let at32;
+  try {
+    await reloadIndex(c, origin);
+    await evalIn(c, `(async () => { await document.fonts.ready;
+      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
+      await ${SETTLE}; })()`);
+    at32 = await measureCard(c);
+  } finally {
+    // Never leave the emulated font size on, and leave the app reloaded at
+    // 16px so whatever runs next (goRich, in the full run) starts clean.
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await reloadIndex(c, origin);
+  }
+
+  if (!at32) {
+    problems.push('no .card at a 32px root');
+  } else {
+    if (Math.abs(at32.w - at16.w) > 1 || Math.abs(at32.h - at16.h) > 1) {
+      problems.push(`card measures ${at32.w}×${at32.h}px at a 32px root, ${at16.w}×${at16.h}px at 16px`);
+    }
+    if (at16.five !== at32.five) problems.push(`.five is ${at32.five} at a 32px root, ${at16.five} at 16px`);
+    if (at16.chg !== at32.chg) problems.push(`.chg is ${at32.chg} at a 32px root, ${at16.chg} at 16px`);
+  }
+
+  check.pass = check.pass && problems.length === 0;
+  check.detail += problems.length
+    ? ` | 32px root: ${problems.join('; ')}`
+    : ` | 32px root: unchanged (${at32.w}×${at32.h}px, .five ${at32.five}, .chg ${at32.chg})`;
+}
+
 /* Not `A11Y`: that set carries the dialog check, which has no dialogs to find
    here, and it is scoped to the app's overlay states. These are the verdicts
    that mean something on a page of prose.
@@ -2526,6 +2679,8 @@ const REGISTRY = Object.freeze([
     run: ctx => sweepPass(ctx.c) },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich',
     run: ctx => appLargeTextPass(ctx.c, ctx.origin) },
+  { id: 'typescale', name: 'type scale: 7 sizes, 4 weights', selectable: true, setup: 'rich',
+    run: ctx => typeScalePass(ctx.c, ctx.origin) },
   { id: 'static', name: 'static pages: 2 guides + 6 charts', selectable: true, setup: 'rich',
     run: ctx => staticPass(ctx.c, ctx.source, ctx.origin) },
   // These three names are `budgets.mjs`'s, verbatim — that file is untouched by
@@ -2637,6 +2792,18 @@ async function browserChecks(origin, only) {
 
     const report = result.value;
 
+    // Snapshotted here, before `cardAt32Pass` below reloads the page for its
+    // own 32px measurement: the budget is a SINGLE cold load, and one more
+    // navigation in `requests` — even a same-URL one — would inflate the
+    // request-count pin (AGENTS.md § Layout) that a coach never actually pays.
+    report.payload = { ...summarize([...requests.values()], origin), nodes: report.nodes };
+
+    /* #24 item 5: extends the cardsize row's own check object in place, so it
+       is covered whether this is a full run or `--only "card is 3.45 × 5in"`
+       (the `cold` partial path below just keeps whichever checks match by
+       name, this one now carrying the 32px comparison too). */
+    await cardAt32Pass(c, origin, report);
+
     /* THE PARTIAL PATH, `cold` branch. It reuses the setup above rather than
        reimplementing it: the cold load and this same evaluate already ran, so
        a `cold` row just keeps its one entry out of what came back. No
@@ -2645,10 +2812,6 @@ async function browserChecks(origin, only) {
       report.checks = report.checks.filter(k => k.name === only.name);
       return { report, consoleErrors };
     }
-
-    // Before the overlay pass: the budget is a cold load, and walking the UI
-    // after it would fold whatever the overlays fetch into the number.
-    report.payload = { ...summarize([...requests.values()], origin), nodes: report.nodes };
 
     /* THE FIXTURE SPLIT HAPPENS HERE, and the order of these three lines is
        the whole design: the budget above is measured on the lean cold load,
@@ -2695,6 +2858,11 @@ async function browserChecks(origin, only) {
        assumes the boot-time layout; before `staticPass`, which navigates away
        from `index.html` for good. */
     report.checks.push(await safeCheck('applargetext', () => appLargeTextPass(c, origin)));
+    /* #24: the scale at its default size, across the same states. Its own
+       `goRich` puts the RICH fixture back after `applargetext`'s destructive
+       tail (the welcome/sample states), so it does not inherit that pass's
+       last state. Before `staticPass`, same reason as the row above. */
+    report.checks.push(await safeCheck('typescale', () => typeScalePass(c, origin)));
     /* Last of the browser passes, because it navigates away from the app and
        nothing after it may assume `index.html` is still loaded. Still ahead of
        the console verdict below, so the seven pages it visits are covered by

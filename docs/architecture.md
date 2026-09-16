@@ -457,6 +457,16 @@ staggered entrances and FLIP reordering; continuous interactions like dragging a
 minute slider deliberately stay on CSS transitions, where spawning a spring per
 input event would cost more than it buys.
 
+The UI's own type follows the phone's text-size setting rather than a fixed
+scale (#24): `body` and every text size in `app.css` is one of the seven
+`--fs-*` tokens `tokens.css` declares, `inherit`, or (a screen's own large
+title, inside the narrow-screen block) capped against the viewport —
+`interface-guidelines.md` T2 lists the scale and the platform gate that gets
+the root itself to follow the reader's setting. The printed card is exempt:
+its sizes (in `card.css`, and the ones `card.js` derives from canvas
+`measureText`) do not move with the reader's setting, only the screens around
+it do.
+
 One consequence worth knowing: the printed card is auto-fitted from canvas
 `measureText`, and the constraint that follows from it — the measurement font
 stack matching `.card`'s exactly, and the re-fit on font load — is a trap

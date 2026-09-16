@@ -67,11 +67,23 @@ test('the 385px stage is declared after the 620px one, where it can win', () => 
 });
 
 test('nothing pins the root font size, which would freeze every rem', () => {
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
   /* `html { font-size: 16px }` anywhere would override the reader's setting
      outright and make the whole app ignore it -- a far worse bug than the
      overflow, and an easy one to add while tidying. */
-  assert.ok(!/(^|})\s*(html|:root)\s*{[^}]*font-size/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')),
+  assert.ok(!/(^|})\s*(html|:root)\s*{[^}]*font-size/.test(bare),
     'a rule pins the root font size and overrides the reader');
+  /* docs/specs/24-text-size.md decision 1: `font: -apple-system-body` on
+     `html` is the same kind of pin unless it is gated -- unguarded, it would
+     freeze the root on every Mac WebKit at the measurement the spec's Survey
+     records, instead of following the reader there too. */
+  const bodyRule = bare.indexOf('-apple-system-body');
+  assert.ok(bodyRule > -1, '-apple-system-body is gone -- #24 item 2 needs the gated root rule');
+  const gate = bare.lastIndexOf('@supports (-webkit-touch-callout: none)', bodyRule);
+  assert.ok(gate > -1, 'no @supports (-webkit-touch-callout: none) gate found before -apple-system-body');
+  const between = bare.slice(gate, bodyRule);
+  assert.equal((between.match(/}/g) || []).length, 0,
+    'the @supports gate already closed before the -apple-system-body rule -- it is ungated');
 });
 
 test('the last two games-view rows wrap, and only at big text', () => {
@@ -261,4 +273,25 @@ test('the timeline gives its names back at big text, without losing the word', (
     'the base gutter is gone, so the totals column no longer holds a flush edge at normal text');
   assert.match(others, /\.tl\.even\s+\.tl-tot\s+\.ex\s*{[^}]*width:\s*0/,
     'an even plan no longer collapses the gutter, so it holds a blank second line under every number');
+});
+
+test('the two short-viewport-height blocks still move a large title down to the sentence step', () => {
+  /* #24 decision 4's amendment (docs/specs/24-text-size.md): a short-
+     viewport-HEIGHT block -- unlike the 19em big-text block, which is about
+     the viewport's WIDTH at big text -- may move a large title down to
+     another step on the scale: a step, never a `vw` cap, and never below the
+     sentence step. Both titles' pre-#24 values landed there (`.wel-h`'s
+     clamp topped out near 1.62rem, `.dayhead input.daytitle` was a flat
+     1.5rem), so both take `var(--fs-sentence)` here. */
+  const shortAt = bare.indexOf('@media (max-height: 700px)');
+  assert.ok(shortAt > -1, 'the short-viewport-height welcome block is gone');
+  const short = bare.slice(shortAt, bare.indexOf('\n}', shortAt));
+  assert.match(short, /\.wel-h\s*{[^}]*font-size:\s*var\(--fs-sentence\)/,
+    'the welcome wordmark no longer shrinks under @media (max-height: 700px), so the bottom row falls below the fold again at 375x667');
+
+  const landscapeAt = bare.lastIndexOf('@media (orientation: landscape) and (max-height: 560px)');
+  assert.ok(landscapeAt > -1, 'the short-landscape day-title block is gone');
+  const landscape = bare.slice(landscapeAt, bare.indexOf('\n}', landscapeAt));
+  assert.match(landscape, /\.dayhead input\.daytitle\s*{[^}]*font-size:\s*var\(--fs-sentence\)/,
+    'the game title no longer shrinks under the short-landscape block');
 });
