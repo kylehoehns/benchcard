@@ -29,10 +29,10 @@ const FAST_MS = 5000;
 /* The 5s timer above only catches a launch slow enough to blow the deadline —
  * a launch-then-kill, or a launch that happens to come up fast on this
  * machine, still finishes inside 5s and would pass it. `launch()` in
- * smoke.mjs calls `mkdtemp(join(tmpdir(), 'benchcard-smoke-'))` to make
- * Chrome's `--user-data-dir` before it ever spawns the binary, so a fresh,
- * otherwise-empty directory pointed to by TMPDIR/TMP/TEMP is a tripwire no
- * timer can be fooled by: if Chrome launches at all, this directory stops
+ * `scripts/smoke/chrome.mjs` calls `mkdtemp(join(tmpdir(), 'benchcard-smoke-'))`
+ * to make Chrome's `--user-data-dir` before it ever spawns the binary, so a
+ * fresh, otherwise-empty directory pointed to by TMPDIR/TMP/TEMP is a tripwire
+ * no timer can be fooled by: if Chrome launches at all, this directory stops
  * being empty, no matter how fast. */
 function run(args) {
   const sandbox = mkdtempSync(join(tmpdir(), 'ci-guard-'));

@@ -20,7 +20,8 @@ and was wrong, and somebody spent iterations finding out.
 trap by construction. If the thing you changed is overflow, card dimensions,
 console errors, touch targets, accessible names, id uniqueness, alt text,
 `lang`, tab order, large-text reflow or the payload budget — **it is already
-checked, and your hand-rolled version of it will be worse.**
+checked, and your hand-rolled version of it will be worse.** Each check lives
+in its own module under `scripts/smoke/`; `smoke.mjs` is only the entry point.
 
 Reach for a hand-driven browser only when the harness does not cover it, or
 when it fails and you need to see why.
