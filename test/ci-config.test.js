@@ -610,11 +610,45 @@ test("extractStepEnv reads every matching step's own env:, not a decoy", () => {
  * turns that case into a deletion, and this pins the line so the hole cannot
  * reopen silently. What the job itself does is documented once, in
  * `vendor-drift.yml`'s own header. */
-test('fetch.sh clears everything it generates before re-vendoring', () => {
-  const fetchSh = read('app/vendor/fetch.sh');
-  assert.match(fetchSh, /^rm -rf icons fonts motion\.umd\.js motion\.mjs$/m,
-    'app/vendor/fetch.sh must clear icons, fonts, motion.umd.js and motion.mjs before regenerating them, '
-    + 'or a name dropped from its lists leaves a leftover file the vendor-drift job cannot see (#52)');
+test('fetch.sh clears everything it generates, before it generates it', () => {
+  const lines = read('app/vendor/fetch.sh').split('\n');
+  const code = lines.map(l => (l.trim().startsWith('#') ? '' : l));
+
+  const clearAt = code.findIndex(l => /^rm -rf /.test(l));
+  assert.notEqual(clearAt, -1,
+    'app/vendor/fetch.sh no longer clears anything before it re-vendors, so a name '
+    + 'dropped from its lists leaves a file the vendor-drift job cannot see (#52)');
+  const cleared = code[clearAt].replace(/^rm -rf /, '').trim().split(/\s+/);
+
+  /* Every path the script writes: `-o target`, a `>` redirect, `mkdir -p`.
+     Derived rather than listed, so a fifth output added to the script has to
+     be cleared too -- the mutation /new-guard asks for is ADDING a member,
+     and a hand-written list only ever catches a removed one. */
+  const writes = [];
+  code.forEach((line, n) => {
+    for (const re of [/-o\s+"?([^"\s]+)/g, /(?:^|\s)>\s*"?([^"\s]+)/g, /mkdir -p\s+"?([^"\s]+)/g]) {
+      for (const m of line.matchAll(re)) writes.push({ path: m[1], n });
+    }
+  });
+  /* Scratch files the script removes itself are not output. */
+  const temp = new Set([...code.join('\n').matchAll(/^rm -f\s+(\S+)/gm)].map(m => m[1]));
+  const output = writes.filter(w => !temp.has(w.path));
+
+  assert.ok(output.length > 0,
+    'found no write targets in fetch.sh -- this guard has stopped measuring anything, '
+    + 'which is a broken guard and not a clean result');
+
+  for (const { path } of output) {
+    assert.ok(cleared.includes(path.split('/')[0]),
+      `fetch.sh writes ${path} but does not clear ${path.split('/')[0]} first, so a `
+      + `change that stops producing it leaves the old file behind and the drift job `
+      + `stays green. Add it to the \`rm -rf\` at the top of app/vendor/fetch.sh.`);
+  }
+
+  assert.ok(clearAt < Math.min(...output.map(w => w.n)),
+    'the `rm -rf` in app/vendor/fetch.sh runs after the script has already written '
+    + 'something, so it deletes what it just fetched. It belongs at the top, before '
+    + 'the first download.');
 });
 
 for (const file of ['claude-code-review.yml', 'claude.yml']) {
