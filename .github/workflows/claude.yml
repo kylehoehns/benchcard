@@ -65,7 +65,12 @@ jobs:
         id: claude
         uses: anthropics/claude-code-action@v1
         env:
-          # Why: claude-code-review.yml's header.
+          # The action stops reading the session at the first `result` message
+          # (anthropics/claude-code-action#1499), and Claude Code starts
+          # subagents in the background by default -- a session that launches
+          # one and waits emits an interim `result` first, so the run ends green
+          # having done nothing. '1' makes subagents run in the foreground.
+          # Subagents launched together still run side by side.
           CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1'
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

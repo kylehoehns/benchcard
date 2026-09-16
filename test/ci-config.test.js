@@ -83,24 +83,11 @@ test('the workflow declares no more required-looking jobs than are pinned here',
 });
 
 /* The rule is not "no path filters". It is "no path filter on a REQUIRED
- * check", and the two workflows below are the reason to say it that way: both
- * carry a filter, both are correct to, and neither is required. A blanket ban
- * would have deleted two correct filters; a blanket permission would have
- * re-armed the trap on test.yml. */
-test('the advisory workflows keep their path filters, because neither is required', () => {
+ * check", and vendor-drift.yml is the reason to say it that way: it carries a
+ * filter, is correct to, and is not required. */
+test('the advisory workflow keeps its path filter, because it is not required', () => {
   assert.match(read('.github/workflows/vendor-drift.yml'), /paths:/,
     'vendor-drift is scheduled and label-conditional; its filter is correct');
-  assert.match(read('.github/workflows/claude-code-review.yml'), /paths-ignore:/,
-    'the reviewer is advisory, so skipping it on notes-only and docs-only changes costs nothing but the run');
-});
-
-test('the reviewer still runs on the files that carry the rules', () => {
-  const review = read('.github/workflows/claude-code-review.yml');
-  const ignored = review.slice(review.indexOf('paths-ignore:'), review.indexOf('concurrency:'));
-  for (const rules of ['AGENTS.md', 'REVIEW.md', 'CLAUDE.md', '*.md']) {
-    assert.ok(!ignored.includes(`'${rules}'`),
-      `${rules} is excluded from review. A contradiction introduced into the rules costs more than one in code, because everything downstream inherits it — PR #4's second finding was exactly that.`);
-  }
 });
 
 /* #40: `--only` runs one smoke check and proves nothing about the other 21 --
@@ -265,7 +252,7 @@ test('no workflow runs the smoke suite with --only', () => {
   }
 });
 
-/* #42: see claude-code-review.yml's header for why a subagent left running in
+/* #42: see the comment on claude.yml's `env:` for why a subagent left running in
  * the background makes a review job pass without reviewing, and what
  * `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` does about it -- the mechanism is
  * explained there once; this guard is the other half of the fix.
@@ -651,7 +638,7 @@ test('fetch.sh clears everything it generates, before it generates it', () => {
     + 'the first download.');
 });
 
-for (const file of ['claude-code-review.yml', 'claude.yml']) {
+for (const file of ['claude.yml']) {
   test(`${file}'s anthropics/claude-code-action step(s) disable background subagents`, () => {
     const envs = extractStepEnv(read(`.github/workflows/${file}`), CLAUDE_ACTION_USES);
     assert.ok(envs.length > 0,
@@ -661,11 +648,11 @@ for (const file of ['claude-code-review.yml', 'claude.yml']) {
       const raw = env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS;
       assert.ok(raw !== undefined,
         `${file}: anthropics/claude-code-action step #${i + 1}'s own env: does not set `
-        + "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS -- see claude-code-review.yml's header "
+        + "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS -- see the comment on its `env:` "
         + 'for why a subagent left to run in the background makes this job pass without reviewing.');
       assert.equal(raw.replace(/^['"]|['"]$/g, ''), '1',
         `${file}: anthropics/claude-code-action step #${i + 1}'s CLAUDE_CODE_DISABLE_BACKGROUND_TASKS `
-        + `must be '1' -- see claude-code-review.yml's header for why (got ${raw}).`);
+        + `must be '1' -- see the comment on its env: block for why (got ${raw}).`);
     });
   });
 }

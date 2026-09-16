@@ -5,7 +5,7 @@ description: >
   issue #14", "build the ticket #14", or "work the next issue". Reads the issue
   as the source of truth, grills it into a spec with grill-with-docs, then
   orchestrates the subagent team through build → test → refactor → review → PR →
-  CI → address review → verify on the preview → notify.
+  CI → verify on the preview → notify.
 ---
 
 # Ship a change from a GitHub issue
@@ -193,43 +193,9 @@ not CI green: the history checks only run against a base ref.
     Fix from the real log, never a guess. Re-run locally, commit, push, watch
     again. **Three attempts at most**; then stop and report.
 
-## Address the Claude review
-
-`claude-code-review.yml` reviews every non-draft PR against `REVIEW.md` and
-posts inline threads as `claude`. It is advisory, not required — and it can
-finish green having reviewed nothing (`/address-review` §4).
-
-12. **Wait for the `claude-review` check to finish**, not for a comment: a clean
-    review may post nothing at all. Poll `gh pr checks "$PR"` every ~30s for up
-    to ~15 minutes. Then read the threads:
-
-    ```bash
-    gh api graphql -f query='
-      query($owner:String!,$repo:String!,$pr:Int!){
-        repository(owner:$owner,name:$repo){ pullRequest(number:$pr){
-          reviewThreads(first:100){ nodes{ id isResolved
-            comments(first:20){ nodes{ author{login} body path line } } } } } } }' \
-      -f owner=kylehoehns -f repo=benchcard -F pr="$PR"
-    ```
-
-    Three ways out, and only three:
-    - **Finished, unresolved `claude` threads** → step 13.
-    - **Finished, no threads** → read the job's duration first. Under a minute
-      means it did not run; say so. Otherwise it is a clean pass.
-    - **Not finished after ~15 minutes** → say so and go to the wrap-up.
-
-13. **Triage each thread with `/address-review`.** It owns how: verify the
-    finding before complying, fix the cause, reply with what you ran, resolve
-    only what you fixed, and treat a repeat of a class `AGENTS.md` already names
-    as the harness failing. Code changes go to `developer`.
-
-14. **Push the fixes.** `npm test`, commit, push — that re-triggers CI, so go
-    back to step 11. **Two review rounds at most.** After the second, reply to
-    what is left with your decision and move on.
-
 ## Verify on the preview
 
-15. **Prove it runs where it will ship.** Cloudflare builds every branch and
+12. **Prove it runs where it will ship.** Cloudflare builds every branch and
     `cloudflare-workers-and-pages` comments the **Branch Preview URL** on the
     PR. That server redirects the way production does, which `npm run serve`
     only imitates.
@@ -247,7 +213,6 @@ finish green having reviewed nothing (`/address-review` §4).
 
 ## Wrap up
 
-16. **Notify.** One PR comment that @mentions `@kylehoehns`: the PR and issue,
-    final CI status, Claude threads fixed vs. declined (with reasons), what was
-    measured on the preview, and the final commit sha. **Do not merge and do not
-    approve** — `REVIEW.md` says the approval is a human's.
+13. **Notify.** One PR comment that @mentions `@kylehoehns`: the PR and issue,
+    final CI status, what was measured on the preview, and the final commit
+    sha. **Do not merge and do not approve** — `REVIEW.md` says the approval is a human's.
