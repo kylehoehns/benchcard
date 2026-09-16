@@ -575,15 +575,18 @@ export function effectiveStints(g, p) {
     }));
 }
 
-/* Decision 1 (#26): the words a pass's summary uses for each strategy,
-   distinct from the long sentences `STRATEGIES` above holds for the strategy
-   picker -- those describe what a strategy does, this is a three-word segment
-   of a one-line summary. */
-const STRATEGY_WORDS = {
+/* The two-or-three-word label for each strategy: `#stratnote` on the Plan
+   screen (`renderStrategy`, strategy.js) and the pass's one-line summary
+   (`passSummary` below, #26 decision 1) both read this one map, so the two
+   screens cannot say something different about the same strategy -- a first
+   draft of the pass gave three of the four strategies their own wording here.
+   Distinct from the long sentences `STRATEGIES` above holds for the strategy
+   picker, which describe what a strategy does rather than name it. */
+export const STRATEGY_WORDS = {
   balanced: 'even minutes',
-  minutes: 'minutes by hand',
-  closers: 'closers',
-  platoon: 'platoon',
+  minutes: 'minutes set by hand',
+  closers: 'a group finishes',
+  platoon: 'fixed fives',
 };
 
 /* The pass's one-line summary (#26 item 5, decision 2): "<N> player(s) ·

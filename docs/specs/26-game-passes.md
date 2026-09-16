@@ -72,9 +72,13 @@ build rests on:
 The ticket was decided with the human; these fill in what it leaves open, in
 the direction #18 already points.
 
-1. **Strategy words in the summary.** `balanced` → `even minutes`,
-   `minutes` → `minutes by hand`, `closers` → `closers`, `platoon` →
-   `platoon`.
+1. **Strategy words in the summary.** The same two-or-three-word labels the
+   Plan screen already shows under the strategy picker (`#stratnote`), read
+   from one shared map so the two screens cannot disagree: `balanced` →
+   `even minutes`, `minutes` → `minutes set by hand`, `closers` →
+   `a group finishes`, `platoon` → `fixed fives`. (Review: a first draft
+   invented its own wording, which differed from the Plan screen for three of
+   the four strategies.)
 2. **Summary order and plurals.** `<N> player(s) · <strategy words>`, then
    `evens out the day` for a later game with it on, then `<N> rule(s)` when
    there is at least one. No rules means no rules segment. Separator is
@@ -139,7 +143,7 @@ order, booted with `view: 'today'`:
 5. **Summary.** Exactly:
    - pass 0: `12 players · even minutes`
    - pass 1: `11 players · even minutes · evens out the day · 2 rules`
-   - pass 2: `12 players · closers`
+   - pass 2: `12 players · a group finishes`
    - pass 3: `12 players · even minutes · 1 rule`
 6. **Mini rotation.** Passes 0–2 each have one mini rotation,
    `aria-hidden="true"`, with one row element per available player in roster

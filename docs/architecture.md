@@ -604,15 +604,17 @@ it, so without a trap Tab walks into the form underneath.
 
 Mobile specifics that came out of real use:
 
-- **Today's games stack, one full-width row each, rather than wrapping or
-  scrolling as a strip of tabs (#23).** The chip row this replaced had to cap
-  a label at 20 characters and elide the middle of it (a tournament-length
-  opponent name made a 431px tab in a 368px row and put the whole page into a
-  horizontal scroll), because several chips had to share one line. A stacked
-  list has no such limit: `.today-game-lb` only truncates — with a plain CSS
-  tail ellipsis — when a single name is wider than its own row, the tip-off
-  time beside it is never truncated, and the full label is still the entry's
-  accessible name, and stays in the game's own opponent field.
+- **Today's games are game passes (#26).** A coach opening the app on a
+  tournament morning sees them stacked: each shows when it tips off, the
+  opponent, whether the plan is ready (Planned, green) or blocked (Needs a fix,
+  amber), a small picture of who plays when and for how long (one row per
+  available player, `aria-hidden` since it is not a roster list), and a line of
+  setup — player count, strategy, any rules, and whether it evens out later
+  games. A blocked plan has no picture. Tapping opens the game screen.
+  The stack replaced a strip of tabs (#23) that had to cap a label at 20
+  characters. A pass has no such cap: `.pass-title` only truncates, with a
+  plain CSS tail ellipsis, when one name is wider than its own row, and the
+  full label stays in the pass's accessible name.
 - **Squad pills elide the same way, and for the same reason.** `.plr .nm` is
   capped at 15ch, and a tail ellipsis cut the surname off — two kids with the
   same long first name became two identical pills for the tap that decides who

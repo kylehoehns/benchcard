@@ -85,7 +85,7 @@ test('passSummary matches the four passes of the FOUR fixture table', () => {
     assert.equal(S.passSummary(g1, 1), '11 players · even minutes · evens out the day · 2 rules');
 
     const g2 = { out: [], strategy: 'closers', useCarryover: false, constraints: S.emptyConstraints() };
-    assert.equal(S.passSummary(g2, 2), '12 players · closers');
+    assert.equal(S.passSummary(g2, 2), '12 players · a group finishes');
 
     const g3 = { out: [], strategy: 'balanced', useCarryover: false, constraints: {
       ...S.emptyConstraints(), minMinutes: { p0: 40 },
@@ -104,8 +104,8 @@ test('passSummary does not say "evens out the day" for game 0, even with useCarr
 test('passSummary uses every strategy\'s words', () => {
   withTeam(players(3), { minMinutes: 0 }, () => {
     const base = { out: [], useCarryover: false, constraints: S.emptyConstraints() };
-    assert.equal(S.passSummary({ ...base, strategy: 'minutes' }, 0), '3 players · minutes by hand');
-    assert.equal(S.passSummary({ ...base, strategy: 'platoon' }, 0), '3 players · platoon');
+    assert.equal(S.passSummary({ ...base, strategy: 'minutes' }, 0), '3 players · minutes set by hand');
+    assert.equal(S.passSummary({ ...base, strategy: 'platoon' }, 0), '3 players · fixed fives');
   });
 });
 

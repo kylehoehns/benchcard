@@ -137,6 +137,26 @@ export async function goRich(c, origin) {
     await ${SETTLE}; })()`);
 }
 
+/* Reload straight onto `SEED` (`benchcard.v3`), the way `game passes` (#26)
+   needs to measure its own `cold`/`coldToday` rather than trust a number from
+   a different check's run (`--only` on a `setup: 'rich'` row never runs the
+   cold-load evaluate that would otherwise report them -- see `smoke.mjs`'s
+   `browserChecks`). Waits for `.card` rather than `.today-game` (`reloadWithRecord`
+   below) because `SEED` boots straight onto the games view, not Today. */
+export async function goSeed(c, origin) {
+  await evalIn(c, `(() => {
+    localStorage.removeItem('benchcard.v6');
+    localStorage.removeItem('benchcard.v6.bak');
+    localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))});
+  })()`);
+  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+  await c.send('Page.navigate', { url: origin + '/index.html' });
+  await loaded;
+  await evalIn(c, `(async () => { await document.fonts.ready;
+    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
+    await ${SETTLE}; })()`);
+}
+
 /* Swap in `record` and reload, the way the #23 checks below need to: a
    cache-busted URL first forces a genuinely new navigation, which is what
    actually truncates any forward session-history entries left dangling by a

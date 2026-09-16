@@ -7,14 +7,15 @@
  *
  * Item 10's "developer picks, and says which" (`cold`/`coldToday` from the
  * cold-load evaluate, or a fresh re-measurement): this check does its OWN
- * SEED reload rather than reading `smoke-checks.js`'s report, because
- * `--only` on a `setup: 'rich'` row (this one) never runs that evaluate --
- * see `smoke.mjs`'s `browserChecks`, the `only.setup === 'rich'` branch. A
- * check that only works inside a full run is not one `--only` can prove
- * alone, so it measures `cold`/`coldToday` itself, the same way `goRich`
- * measures the rich fixture, just against `SEED`/`v3` instead. */
+ * SEED reload (`goSeed`, fixtures.mjs) rather than reading `smoke-checks.js`'s
+ * report, because `--only` on a `setup: 'rich'` row (this one) never runs
+ * that evaluate -- see `smoke.mjs`'s `browserChecks`, the `only.setup ===
+ * 'rich'` branch. A check that only works inside a full run is not one
+ * `--only` can prove alone, so it measures `cold`/`coldToday` itself, the
+ * same way `goRich` measures the rich fixture, just against `SEED`/`v3`
+ * instead. */
 import { evalIn, step, WIDTH, HEIGHT, SETTLE, TODAY_HOME } from './dom.mjs';
-import { FOUR, RICH, SEED, reloadWithRecord } from './fixtures.mjs';
+import { FOUR, RICH, goSeed, reloadWithRecord } from './fixtures.mjs';
 import { nameOf } from './registry.mjs';
 import { ceiling } from '../budgets.mjs';
 import { readFileSync } from 'node:fs';
@@ -34,26 +35,12 @@ const WANT = [
     summary: '11 players · even minutes · evens out the day · 2 rules',
     aria: 'Ravens, 11:30, planned', rows: 11, rot: true },
   { title: 'Game 3', when: '2:00', status: 'Planned',
-    summary: '12 players · closers',
+    summary: '12 players · a group finishes',
     aria: 'Game 3, 2:00, planned', rows: 12, rot: true },
   { title: 'Owls', when: null, status: 'Needs a fix',
     summary: '12 players · even minutes · 1 rule',
     aria: 'Owls, needs a fix', rows: 0, rot: false },
 ];
-
-async function loadSeed(c, origin) {
-  await evalIn(c, `(() => {
-    localStorage.removeItem('benchcard.v6');
-    localStorage.removeItem('benchcard.v6.bak');
-    localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))});
-  })()`);
-  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url: origin + '/index.html' });
-  await loaded;
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
-}
 
 const parseRgb = s => {
   const m = /rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)/.exec(s || '');
@@ -207,7 +194,7 @@ export async function gamePassesPass(c, origin) {
   let cold = null, coldToday = null, fourToday = null, roomCeiling = null;
   try {
     // Item 10.
-    await loadSeed(c, origin);
+    await goSeed(c, origin);
     cold = await evalIn(c, `document.getElementsByTagName('*').length`);
     coldToday = await evalIn(c, `document.querySelectorAll('#view-today *').length`);
 
