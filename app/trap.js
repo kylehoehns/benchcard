@@ -66,6 +66,111 @@ document.addEventListener('keydown', e => {
   else if (!e.shiftKey && cur === last) { e.preventDefault(); first.focus(); }
 }, true);
 
+/* ================================================================== *
+ * sheets (#27, decision 12)
+ *
+ * A parallel primitive, not a rewrite of the trap above: native
+ * `<dialog>.showModal()` already does what the trap hand-rolls for the
+ * other overlays -- it inerts the background and contains Tab -- and fires
+ * a `cancel` event for Escape and Android's back gesture, so a sheet needs
+ * only what `showModal` leaves undone: remembering which button opened it,
+ * one sheet open at a time, the backdrop tap, and the drag/handle behavior
+ * decision 9 and C3 ask for. Finding the first focusable node to land on
+ * reuses `trapNodes`/`FOCUSABLE` above rather than a second selector, and
+ * the focus-return rule (still in the document, still visible) is the same
+ * one `closeTrap` uses.
+ * ================================================================== */
+
+const sheetTrigger = new Map();    // dialog -> the button that opened it
+const wiredSheets = new WeakSet(); // dialogs with their listeners already attached
+
+// A downward drag past a quarter of the sheet's own height closes it
+// (decision 9); an upward drag past this much of it snaps to full. Both are
+// fractions of the sheet's own height, not the viewport's, so they hold at
+// any width.
+const DRAG_CLOSE_FRAC = 0.25;
+const DRAG_FULL_FRAC = 0.15;
+
+function setSheetHeight(dialog, full) {
+  dialog.classList.toggle('full', full);
+  // Not `half`: card.css already styles `.card.half` (the half-size print
+  // card), and a bottom sheet and a card can both be on screen at once — a
+  // second, unrelated `.half` would collide and the later stylesheet would
+  // win silently (see test/css-collide.test.js).
+  dialog.classList.toggle('bsheet-half', !full);
+  const handle = dialog.querySelector('.bsheet-handle');
+  if (handle) handle.setAttribute('aria-label', full ? 'Half height' : 'Full height');
+}
+
+function wireHandle(dialog, handle) {
+  let startY = 0, dragging = false, moved = false;
+  handle.addEventListener('pointerdown', e => {
+    startY = e.clientY; dragging = true; moved = false;
+    handle.setPointerCapture(e.pointerId);
+    // app.css turns the entrance transition off while this class is set, so
+    // the sheet tracks the finger 1:1 instead of chasing it toward each new
+    // pointermove value through an easing curve meant for the open animation.
+    dialog.classList.add('dragging');
+  });
+  handle.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dy = e.clientY - startY;
+    if (Math.abs(dy) > 4) moved = true;
+    // transform only while dragging -- never top or height (the constraint).
+    dialog.style.transform = `translateY(${dy}px)`;
+  });
+  const release = e => {
+    if (!dragging) return;
+    dragging = false;
+    const dy = e.clientY - startY;
+    const h = dialog.getBoundingClientRect().height;
+    dialog.style.transform = '';
+    dialog.classList.remove('dragging');
+    if (!moved) { setSheetHeight(dialog, !dialog.classList.contains('full')); return; }
+    if (dy > h * DRAG_CLOSE_FRAC) { closeSheet(dialog); return; }
+    if (dy < -h * DRAG_FULL_FRAC) { setSheetHeight(dialog, true); return; }
+    // released between the thresholds: settle back at the height it had.
+    setSheetHeight(dialog, dialog.classList.contains('full'));
+  };
+  handle.addEventListener('pointerup', release);
+  handle.addEventListener('pointercancel', release);
+}
+
+function wireSheet(dialog) {
+  if (wiredSheets.has(dialog)) return;
+  wiredSheets.add(dialog);
+  // A click lands on the dialog element itself only when it hits the
+  // backdrop -- every real row and button inside it is a child element, so
+  // a tap that reaches one of those never matches this target.
+  dialog.addEventListener('click', e => { if (e.target === dialog) closeSheet(dialog); });
+  // The native `cancel` event: Escape, and Android's back gesture (decision 11).
+  dialog.addEventListener('cancel', e => { e.preventDefault(); closeSheet(dialog); });
+  const handle = dialog.querySelector('.bsheet-handle');
+  if (handle) wireHandle(dialog, handle);
+}
+
+export function openSheet(dialog, trigger) {
+  if (!dialog) return;
+  closeSheets();
+  wireSheet(dialog);
+  sheetTrigger.set(dialog, trigger || document.activeElement);
+  setSheetHeight(dialog, false);
+  dialog.showModal();
+  (trapNodes(dialog)[0] || dialog).focus({ preventScroll: true });
+}
+
+export function closeSheet(dialog) {
+  if (!dialog || !dialog.open) return;
+  dialog.close();
+  const t = sheetTrigger.get(dialog);
+  if (t && document.contains(t) && t.getClientRects().length) t.focus({ preventScroll: true });
+}
+
+// Any screen change, including a `popstate`, calls this first (decision 11).
+export function closeSheets() {
+  for (const d of document.querySelectorAll('dialog.bsheet[open]')) closeSheet(d);
+}
+
 /* Re-render safety net, not strictly a trap: a repaint throws away the node
    the coach is typing into, so remember it by its `data-fk` key and put the
    caret back where it was afterwards. Lives here because it is the other half

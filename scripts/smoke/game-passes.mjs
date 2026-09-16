@@ -35,7 +35,7 @@ const WANT = [
     summary: '11 players · even minutes · evens out the day · 2 rules',
     aria: 'Ravens, 11:30, planned', rows: 11, rot: true },
   { title: 'Game 3', when: '2:00', status: 'Planned',
-    summary: '12 players · a group finishes',
+    summary: '12 players · a closing group',
     aria: 'Game 3, 2:00, planned', rows: 12, rot: true },
   { title: 'Owls', when: null, status: 'Needs a fix',
     summary: '12 players · even minutes · 1 rule',
@@ -321,11 +321,16 @@ export async function gamePassesPass(c, origin) {
       [...box.children].forEach((el, i) => { el.dataset.smokeMark = 'm' + i + '_' + Math.random().toString(36).slice(2); });
       return JSON.stringify([...box.children].map(el => el.dataset.smokeMark));
     })()`));
-    // Sit Devon Ellis (p1) out of game 0 -- an availability-pill edit, which
-    // schedules `soon('strategy', ...PLAN_ONLY)` (game-setup.js), the same
-    // repaint item 11 is about.
-    await evalIn(c, `(async () => { document.querySelector('#avail .plr[aria-label="Devon Ellis"]')?.click();
-      await ${SETTLE}; })()`);
+    // Sit Devon Ellis (p1) out of game 0 through Who's here (#27) -- an
+    // availability edit, which schedules `soon('strategy', ...PLAN_ONLY)`
+    // (game-setup.js), the same repaint item 11 is about.
+    await evalIn(c, `(async () => {
+      document.querySelector('#phrasePlayers')?.click();
+      await ${SETTLE};
+      [...document.querySelectorAll('#sheetWho button.sheetrow')]
+        .find(b => b.textContent.includes('Devon Ellis'))?.click();
+      await ${SETTLE};
+    })()`);
     const marksAfter = JSON.parse(await evalIn(c, `(() => {
       const box = document.getElementById('todayGames');
       return JSON.stringify([...box.children].map(el => el.dataset.smokeMark));

@@ -108,10 +108,15 @@ export const APP_LARGE_TEXT_STATES = [
            document.querySelector('#gmFloor .gm-p').click()`,
     close: `document.querySelector('#gmClose').click()` },
   /* #24 item 4: the help sheet, the keyboard shortcuts dialog and the first
-     tour step, none of which any state above this one opens. Reused from
-     `STATES` by reference rather than retyped, so the open/close scripts
-     cannot drift between the two passes that drive them. */
-  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker']
+     tour step, none of which any state above this one opens. #27 item 10
+     adds the Who's here sheet to the same reused list: a `dialog.bsheet` is
+     a viewport-anchored overlay exactly like the ones this list already
+     covers, and half-height (its default) is the shorter box, so a row near
+     the bottom of a long roster is the one most likely to fall past either
+     edge at a 32px root. Reused from `STATES` by reference rather than
+     retyped, so the open/close scripts cannot drift between the two passes
+     that drive them. */
+  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet"]
     .map(n => STATES.find(s => s.name === n)),
   /* #26 item 12: "at 320px with 32px root text ... Today with FOUR has no
      horizontal overflow and nothing stranded above the viewport" -- every

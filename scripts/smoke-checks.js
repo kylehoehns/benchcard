@@ -183,6 +183,35 @@
       : shortRows.length ? `${shortRows.length}/${rowCount} under 48px: ${shortRows.slice(0, 4).join(', ')}`
       : `${rowCount} rows, all ≥ 48px`);
 
+  /* 3b. #27 item 10: every row in the Who's here sheet, at least 48px, at the
+        same three phone widths `touchPass` and `settingsRowPass` sweep
+        (`who-rows.mjs` drives the sweep; this cell is what it reads back at
+        each width). `.sheetrow` buttons sit straight under `#sheetWhoBody` --
+        the row IS the control, unlike Settings' box-then-row-then-control
+        nesting -- so this reads them directly rather than walking two
+        levels. Same "open but nothing measured is a failure, not a vacuous
+        pass" shape as the settings check above, for the same reason: a
+        falsifier that stopped the sheet from opening at all must not read as
+        clean because there was nothing short to find. */
+  const whoSheet = document.getElementById('sheetWho');
+  const whoOpen = !!whoSheet && whoSheet.open;
+  const whoShortRows = [];
+  let whoRowCount = 0;
+  if (whoOpen) {
+    for (const row of document.querySelectorAll('#sheetWhoBody .sheetrow')) {
+      if (!visible(row)) continue;
+      whoRowCount++;
+      const r = row.getBoundingClientRect();
+      // Same 47.99 tolerance as the settings check above, for the same reason.
+      if (r.height < 47.99) whoShortRows.push(`${label(row)} ${round(r.height)}px`);
+    }
+  }
+  add("who's here rows ≥ 48px", whoOpen && whoRowCount > 0 && whoShortRows.length === 0,
+    !whoOpen ? '#sheetWho not open'
+      : !whoRowCount ? '#sheetWho open but 0 rows found -- structural row detection matched nothing'
+      : whoShortRows.length ? `${whoShortRows.length}/${whoRowCount} under 48px: ${whoShortRows.slice(0, 4).join(', ')}`
+      : `${whoRowCount} rows, all ≥ 48px`);
+
   /* 4. The last control in an open dialog is reachable.
 
         The help sheet shipped for months with "Show me around again" below the

@@ -57,10 +57,13 @@ test('Rules reads as the last INPUT, above the rotation and the card', () => {
       `Rules is below ${below} again — the constraint engine is back in the drawer at the `
       + 'bottom of the page, which is the whole of A21b');
   }
-  /* And it is the LAST of the inputs, not dropped in among them. */
-  for (const above of ['.s-squad', '.s-fmt', '.s-plan', '.s-balance']) {
+  /* And it is the LAST of the inputs, not dropped in among them. #27 replaced
+     `.s-squad` and `.s-fmt` with the sentence, which sits above `.cols`
+     entirely and so is not part of this `order:` list at all -- Plan and
+     Lineup balance are what remains of the setup blocks this list orders. */
+  for (const above of ['.s-plan', '.s-balance']) {
     assert.ok(at(above) < at('#consdetails'),
-      `Rules now reads before ${above} — it is the fifth input, after the four that shape the game`);
+      `Rules now reads before ${above} — it is the third input, after the two that shape the game`);
   }
 });
 

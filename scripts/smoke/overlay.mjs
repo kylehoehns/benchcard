@@ -32,8 +32,17 @@ export const STATES = [
     close: `$('#bulktoggle').click(); $('#backBtn').click()` },
   { name: 'games view, every disclosure open',
     open: `$('.today-game').click(); for (const d of document.querySelectorAll('details')) d.open = true`,
-    shows: '#squadFold[open]',
+    shows: '#planFold[open]',
     close: `for (const d of document.querySelectorAll('details')) d.open = false; $('#backBtn').click()` },
+  /* #27 item 10: the first of the three new sheets, opened through its real
+     trigger (the sentence's players phrase) rather than by hand -- the same
+     rule every other state here follows. Closed with the dialog's own native
+     `close()` rather than the ✕: this pass audits accessibility, not the
+     sheet's own close paths, which `sentence and sheets` (the new guard)
+     covers. */
+  { name: "who's here sheet",
+    open: `$('.today-game').click(); $('#phrasePlayers').click()`, shows: '#sheetWho[open]',
+    close: `$('#sheetWho').close(); $('#backBtn').click()` },
   { name: 'season view',
     open: `$('#todaySeason').click()`, shows: '#view-season',
     close: `$('#backBtn').click()` },

@@ -82,7 +82,10 @@ test('"This game" reads before the squad in the phone stack', () => {
     assert.ok(m, `no order: declared for ${sel} in the phone stack`);
     return Number(m[1]);
   };
-  assert.ok(orderOf('.s-thisgame') < orderOf('.s-squad'),
+  // #27 removed .s-squad (the sentence replaced it, and sits above .cols
+  // entirely -- not part of this order: list at all); .s-plan is the setup
+  // block that now reads first after "This game".
+  assert.ok(orderOf('.s-thisgame') < orderOf('.s-plan'),
     '"This game" no longer reads first on a phone');
   assert.ok(orderOf('.s-thisgame') < orderOf('.s-cardopts'),
     '"This game" sank back down beside the card options');

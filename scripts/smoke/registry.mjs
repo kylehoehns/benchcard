@@ -108,6 +108,13 @@ export const ROWS = Object.freeze([
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich' },
   { id: 'touch', name: `touch targets ≥ 44px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
   { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
+  // #27 item 10: the Who's here sheet swept the same way settingsrows sweeps
+  // Settings — see who-rows.mjs.
+  { id: 'whorows', name: `who's here rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
+  // #27's own guard (see docs/specs/27-sentence-and-sheets.md's Proof
+  // section): the sentence, and the Who's here / Format / Sub interval
+  // sheets it opens, driven with real buttons, keys and pointer events.
+  { id: 'sentencesheets', name: 'sentence and sheets', selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },

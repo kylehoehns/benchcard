@@ -37,7 +37,7 @@ function movePlayer(id, dir) {
     [state.players[i], state.players[j]] = [state.players[j], state.players[i]];
     renderRoster();
   }));
-  soon('avail', 'constraints', ...AFTER_EDIT);
+  soon('constraints', ...AFTER_EDIT);
 }
 
 /* ---- drag to reorder ----------------------------------------------------
@@ -189,7 +189,7 @@ function rosterDrop(d) {
     if (up) up.disabled = i === 0;
     if (dn) dn.disabled = i === order.length - 1;
   });
-  soon('avail', 'constraints', ...AFTER_EDIT);
+  soon('constraints', ...AFTER_EDIT);
 }
 
 /* ---- duplicate jersey numbers -------------------------------------------
@@ -377,7 +377,7 @@ export function renderRoster() {
       p.number = num.value.replace(/[^0-9]/g, ''); num.value = p.number;
       row.querySelector('.av').textContent = initials(p);
       paintDupes();
-      soon('avail', ...AFTER_EDIT);
+      soon(...AFTER_EDIT);
     };
 
     const nm = el('input', 'pname'); nm.type = 'text'; nm.value = p.name; nm.placeholder = 'Name';
@@ -387,14 +387,14 @@ export function renderRoster() {
       p.name = nm.value;
       if (!p.number) row.querySelector('.av').textContent = initials(p);
       paintDupes();   // the notice names the players; a rename restates it
-      soon('avail', 'constraints', ...AFTER_EDIT);
+      soon('constraints', ...AFTER_EDIT);
     };
 
     const sh = el('input', 'short'); sh.type = 'text'; sh.value = p.shortName || '';
     sh.placeholder = shorts[p.id] || '—'; sh.maxLength = 5;
     sh.dataset.fk = `r:${p.id}:short`;
     sh.setAttribute('aria-label', `Card name for ${p.name}`);
-    sh.oninput = () => { p.shortName = sh.value.toUpperCase(); sh.value = p.shortName; soon('avail', ...AFTER_EDIT); };
+    sh.oninput = () => { p.shortName = sh.value.toUpperCase(); sh.value = p.shortName; soon(...AFTER_EDIT); };
 
     const x = el('button', 'xbtn press');
     x.type = 'button';

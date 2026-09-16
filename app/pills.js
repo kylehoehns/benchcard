@@ -1,12 +1,11 @@
 /* Player pills.
  *
- * Two widgets that both draw a roster as a grid of tappable name pills: the
- * squad row on the setup view and the "tap up to N" picker that serves the
- * closers list, the platoon units and the starting-five rules. They live
- * together in a leaf module because neither has a single owner -- the picker
- * is used from the strategy body *and* from the rules body, and `fitPills`
- * is used by both of those and by the squad row. Extracting either one into
- * a view module would have meant that view importing back into app.js.
+ * The "tap up to N" picker that serves the closers list, the platoon units
+ * and the starting-five rules -- it has no single owner (the strategy body
+ * *and* the rules body both build one), which is why it lives in a leaf
+ * module rather than either of theirs. `fitPills` is its own name-measuring
+ * helper, module-private now that #27 replaced the other grid that used to
+ * import it (the squad row) with the Who's here sheet.
  *
  * Imports state / dom / engine only, so any view seam can take it.
  */
@@ -22,7 +21,7 @@ import { state, game, availIds, colorOf, initials, byId, elideMiddle } from './s
    different number of letters for "Willi" than for "Ilinca", and measured on a
    canvas so a roster of 15 costs no layout. The CSS ellipsis stays as the
    backstop for anything this misjudges. */
-export function fitPills(box) {
+function fitPills(box) {
   const spans = box.querySelectorAll('.plr .nm');
   if (!spans.length) return;
   // The picker builds its grid before anyone mounts it, and a detached node has

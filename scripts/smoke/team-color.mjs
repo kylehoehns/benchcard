@@ -80,10 +80,10 @@ const READ_COLORS = `(() => {
     segOnFg: fg('#maxSubsSeg button.on'), switchBg: bg('#showMinutes'),
     helpHFg: fg('.help-h'), teamCheckFg: fg('.teammenu-check'),
     setTeamHdFg: fg('#setTeamHd'), backBtnFg: fg('#backBtn'),
-    // item 4 tinted, the rest of the list: a real chip (#gran's
-    // substitution-interval picker, present whether its details fold is
-    // open or not) and the welcome screen's still-in-the-DOM segmented tab.
-    chipBg: bg('#gran .chip.sel'), chipFg: fg('#gran .chip.sel'),
+    // item 4 tinted, the rest of the list: the welcome screen's
+    // still-in-the-DOM segmented tab. The Sub interval sheet's selected row
+    // is read separately (READ_SHEET below) -- it only exists once the sheet
+    // is open (#27 replaced #gran with it).
     welSegFg: fg('#welTabPlan'),
     // the picker's current mark -- --tint-soft, no spec literal, so this is
     // read on both passes and compared for INEQUALITY below, not to a value.
@@ -166,6 +166,19 @@ const READ_COLORS = `(() => {
  * $('#gmFloor .gm-p').click()`). Read-only: closed again before the team
  * switch below, so it leaves the fixture exactly as `reloadWithRecord` set it
  * up, the same courtesy every other rich-fixture pass in this suite pays. */
+/* #27 item 11: `#gran` is gone -- the Sub interval sheet's own selected row
+ * is the replacement "a real chip, present whether the fold is open" this
+ * check named. It only exists once the sheet is opened (sheet bodies paint
+ * on open), so this is read, then the sheet is closed again, before
+ * `READ_COLORS` runs -- same courtesy `READ_GAME_MODE` pays bench mode. */
+const READ_SHEET = `(() => {
+  const row = document.querySelector('#sheetInterval .sheetrow.sel');
+  return JSON.stringify({
+    chipBg: row ? getComputedStyle(row).backgroundColor : null,
+    chipFg: row ? getComputedStyle(row).color : null,
+  });
+})()`;
+
 const READ_GAME_MODE = `(() => {
   const $ = s => document.querySelector(s);
   const gp = $('#gamemode .gm-p.picked');
@@ -193,6 +206,10 @@ export async function teamColorPass(c, origin) {
     await evalIn(c, step(`$('#gmOpen').click(); $('#gmFloor .gm-p').click()`));
     const gm = JSON.parse(await evalIn(c, READ_GAME_MODE));
     await evalIn(c, step(`$('#gmClose').click()`));
+
+    await evalIn(c, step(`document.querySelector('#phraseInterval').click()`));
+    const sheet = JSON.parse(await evalIn(c, READ_SHEET));
+    await evalIn(c, step(`document.querySelector('#sheetInterval').close()`));
 
     /* The focus ring (`:focus-visible`, app.css) is a global rule, not tied
      * to any one control, so this proves it against whatever control a real
@@ -224,8 +241,8 @@ export async function teamColorPass(c, origin) {
       ['.gm-nav.next (#gmNext2) background', r.gmNavNextBg, ROYAL_FILL],
       ['.seg button.on (#maxSubsSeg) text', r.segOnFg, ROYAL_FILL],
       ['.switch input:checked (#showMinutes) background', r.switchBg, ROYAL_FILL],
-      ['.chip.sel (#gran) background', r.chipBg, ROYAL_FILL],
-      ['.chip.sel (#gran) label', r.chipFg, ROYAL_LABEL],
+      ['.sheetrow.sel (#sheetInterval) background', sheet.chipBg, ROYAL_FILL],
+      ['.sheetrow.sel (#sheetInterval) label', sheet.chipFg, ROYAL_LABEL],
       ['.wel-seg-b.sel (#welTabPlan) text', r.welSegFg, ROYAL_FILL],
       ['input[type=checkbox].box:checked background', r.checkboxBoxBg, ROYAL_FILL],
       ['.gm-p.picked border', gm.pickedBorder, ROYAL_FILL],

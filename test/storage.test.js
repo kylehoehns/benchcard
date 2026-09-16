@@ -696,10 +696,15 @@ test('the timeline skeleton paints for a coach on the current schema', () => {
   assert.equal(rows(paint({ [KEY]: '{ not json' })), 0);
 });
 
-test('the format inputs let a coach type back what the sanitizer accepts', () => {
-  // `periodMinutes` sanitizes to 40, but both number inputs capped at 20: a
-  // record with a 24-minute half loaded fine, planned fine and could never be
-  // typed in again -- the spinner stopped at 20 and the field read invalid.
+test('the welcome screen input lets a coach type back what the sanitizer accepts', () => {
+  // `periodMinutes` sanitizes to 40, and the welcome screen's own number
+  // input must accept up to that same ceiling: a record with a 24-minute
+  // half loaded fine, planned fine and could never be typed in again if the
+  // field's own max fell behind the sanitizer's. The in-game format control
+  // is a stepper now (#27, decision 5) -- its own 4-20 range is deliberately
+  // narrower than storage's ceiling (a stray high value is shown as-is and
+  // only snaps into range on the first tap, see stepFormat in
+  // test/sentence.test.js), so it is no longer part of this check.
   const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
   const maxOf = (id) => {
     const tag = html.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`))[0];
@@ -708,7 +713,6 @@ test('the format inputs let a coach type back what the sanitizer accepts', () =>
   const ceiling = Number(
     readFileSync(new URL('../app/storage.js', import.meta.url), 'utf8')
       .match(/periodMinutes: num\(g\.periodMinutes, \d+, \d+, (\d+)\)/)[1]);
-  assert.equal(maxOf('periodMinutes'), ceiling);
   assert.equal(maxOf('welMinutes'), ceiling, 'the welcome screen asks the same question');
   const onboarding = readFileSync(new URL('../app/onboarding.js', import.meta.url), 'utf8');
   assert.match(onboarding, new RegExp(`Math\\.min\\(${ceiling}, Number\\(\\$\\('#welMinutes'\\)`),

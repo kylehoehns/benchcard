@@ -85,7 +85,7 @@ test('passSummary matches the four passes of the FOUR fixture table', () => {
     assert.equal(S.passSummary(g1, 1), '11 players · even minutes · evens out the day · 2 rules');
 
     const g2 = { out: [], strategy: 'closers', useCarryover: false, constraints: S.emptyConstraints() };
-    assert.equal(S.passSummary(g2, 2), '12 players · a group finishes');
+    assert.equal(S.passSummary(g2, 2), '12 players · a closing group');
 
     const g3 = { out: [], strategy: 'balanced', useCarryover: false, constraints: {
       ...S.emptyConstraints(), minMinutes: { p0: 40 },

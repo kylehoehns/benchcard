@@ -55,6 +55,8 @@ import { wakeLockPass } from './smoke/wake-lock.mjs';
 import { overlayPass } from './smoke/overlay.mjs';
 import { touchPass } from './smoke/touch.mjs';
 import { settingsRowPass } from './smoke/settings-rows.mjs';
+import { whoRowsPass } from './smoke/who-rows.mjs';
+import { sentenceSheetsPass } from './smoke/sentence-sheets.mjs';
 import { narrowPass } from './smoke/narrow.mjs';
 import { sweepPass } from './smoke/sweep.mjs';
 import { appLargeTextPass } from './smoke/app-large-text.mjs';
@@ -102,6 +104,8 @@ const RUN = {
   overlay: ctx => overlayPass(ctx.c, ctx.source),
   touch: ctx => touchPass(ctx.c, ctx.origin, ctx.source),
   settingsrows: ctx => settingsRowPass(ctx.c, ctx.source),
+  whorows: ctx => whoRowsPass(ctx.c, ctx.source),
+  sentencesheets: ctx => sentenceSheetsPass(ctx.c, ctx.origin),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
   applargetext: ctx => appLargeTextPass(ctx.c, ctx.origin),
@@ -278,6 +282,12 @@ async function browserChecks(origin, only) {
        closed, so it read "not open") is replaced with the swept one. */
     report.checks = report.checks.filter(k => k.name !== 'settings rows ≥ 48px');
     report.checks.push(await safeCheck('settingsrows', () => settingsRowPass(c, source)));
+    /* Same reshuffle again, one line further: the cold array's single-viewport
+       verdict for the Who's here sheet (which never opened it, so it always
+       read "not open") is replaced with the swept one. */
+    report.checks = report.checks.filter(k => k.name !== "who's here rows ≥ 48px");
+    report.checks.push(await safeCheck('whorows', () => whoRowsPass(c, source)));
+    report.checks.push(await safeCheck('sentencesheets', () => sentenceSheetsPass(c, origin)));
     report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
     report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep

@@ -85,14 +85,14 @@ export const STRATEGIES = {
    the game setup fold (app.js) draw the same chips, and neither may import the
    other. */
 export const GRAN_CHOICES = [
-  { mode: 'everyN', value: 2, label: '2 min' },
-  { mode: 'everyN', value: 3, label: '3 min' },
-  { mode: 'everyN', value: 4, label: '4 min' },
-  { mode: 'everyN', value: 5, label: '5 min' },
-  { mode: 'everyN', value: 6, label: '6 min' },
-  { mode: 'perPeriod', value: 2, label: '2× / period' },
-  { mode: 'perPeriod', value: 3, label: '3× / period' },
-  { mode: 'breaksOnly', value: 1, label: 'Breaks only' },
+  { mode: 'everyN', value: 2, label: '2 min', phrase: 'every 2 min' },
+  { mode: 'everyN', value: 3, label: '3 min', phrase: 'every 3 min' },
+  { mode: 'everyN', value: 4, label: '4 min', phrase: 'every 4 min' },
+  { mode: 'everyN', value: 5, label: '5 min', phrase: 'every 5 min' },
+  { mode: 'everyN', value: 6, label: '6 min', phrase: 'every 6 min' },
+  { mode: 'perPeriod', value: 2, label: '2× / period', phrase: '2× a period' },
+  { mode: 'perPeriod', value: 3, label: '3× / period', phrase: '3× a period' },
+  { mode: 'breaksOnly', value: 1, label: 'Breaks only', phrase: 'only at breaks' },
 ];
 
 export function newGame(n, from, settings) {
@@ -585,7 +585,10 @@ export function effectiveStints(g, p) {
 export const STRATEGY_WORDS = {
   balanced: 'even minutes',
   minutes: 'minutes set by hand',
-  closers: 'a group finishes',
+  // #27 decision 3: "a group finishes" didn't fit after "for" in the sentence
+  // ("subbing every 4 min for a group finishes"). The pass summary and
+  // #stratnote read this same map, so both moved with it.
+  closers: 'a closing group',
   platoon: 'fixed fives',
 };
 
@@ -602,6 +605,83 @@ export function passSummary(g, i) {
   if (rules) parts.push(`${rules} rule${rules === 1 ? '' : 's'}`);
   return parts.join(' · ');
 }
+
+/* #27: the sentence at the top of the game screen -- one line built from five
+   phrases, each of which opens its own sheet or fold. `intervalWords` is
+   split out because the Sub interval sheet's rows read it too, and
+   `evensOutLine` because it is the whole of the (conditional) second line.
+   Nothing here is re-derived: `availIds`, `ruleCount`, `STRATEGY_WORDS` and
+   `GRAN_CHOICES` are the same single sources `passSummary` above reads. */
+export function sentenceParts(g, i) {
+  const n = availIds(g).length;
+  const rules = ruleCount(g);
+  return {
+    players: `${n} player${n === 1 ? '' : 's'}`,
+    format: `${g.periods} × ${g.periodMinutes}`,
+    interval: intervalWords(g),
+    strategy: STRATEGY_WORDS[g.strategy] || g.strategy,
+    rules: rules ? `${rules} rule${rules === 1 ? '' : 's'}` : 'no rules',
+    evens: evensOutLine(i),
+  };
+}
+
+/* The Sub interval phrase (decision 6): the matching `GRAN_CHOICES` entry's
+   `phrase`, exactly as the sheet row reads it (capitalized there, not here).
+   A stored value the list does not have -- `storage.js` allows 1-40 -- still
+   gets words, so a game seeded before a chip existed does not print
+   "undefined min". */
+export function intervalWords(g) {
+  const hit = GRAN_CHOICES.find(c => c.mode === g.granMode
+    && (c.mode === 'breaksOnly' || c.value === g.granValue));
+  if (hit) return hit.phrase;
+  return g.granMode === 'perPeriod' ? `${g.granValue}× a period` : `every ${g.granValue} min`;
+}
+
+/* The sentence's optional second line (decision 7), reading `state.day.games`
+   -- never the game passed in, since it has to see the games BEFORE it. Empty
+   for game 0 or with `useCarryover` off. Each earlier game is named by its
+   tip-off, falling back to its opponent; if any earlier game has neither, the
+   whole line names none of them ("the earlier game(s)") rather than guessing. */
+export function evensOutLine(i) {
+  const games = state.day.games;
+  const g = games[i];
+  if (!g || i === 0 || !g.useCarryover) return '';
+  const earlier = games.slice(0, i);
+  const names = earlier.map(e => e.when || e.label || null);
+  const plural = earlier.length > 1;
+  if (names.some(nm => !nm)) return `Evens out the earlier game${plural ? 's' : ''}.`;
+  const joined = names.length === 1
+    ? names[0]
+    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return `Evens out the ${joined} game${plural ? 's' : ''}.`;
+}
+
+/* The status line inside an open sheet (decision 10, item 6): the minute
+   range and the change count, read off `effectiveMinutes`/`effectiveStints`
+   -- never `p.minutes`/`p.stints` -- so a hand swap the coach made before
+   opening the sheet is what the line describes. A blocked plan names its
+   first error, same wording as `renderIssues` (plan-view.js) already uses. */
+export function planSay(g, p) {
+  if (!p || !p.ok) {
+    const err = (p?.issues || []).find(x => x.severity === 'error');
+    return `Plan blocked: ${err ? err.message : ''}`;
+  }
+  const stints = effectiveStints(g, p);
+  const mins = effectiveMinutes(g, p);
+  const vals = Object.values(mins);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const subs = stints.slice(1).reduce((a, r) => a + r.in.length, 0);
+  const minutesPart = lo === hi
+    ? `${fmtMinutes(hi)} minutes each`
+    : `${fmtMinutes(lo)} to ${fmtMinutes(hi)} minutes each`;
+  return `${minutesPart}, ${subs} change${subs === 1 ? '' : 's'}`;
+}
+
+/* The Format sheet's stepper (decision 5): one step, clamped into range. A
+   stored value already outside the range (say 30 minutes, `storage.js` allows
+   up to 40) is shown as it is and its first tap lands on the nearest end
+   rather than one step further out. */
+export const stepFormat = (v, d, lo, hi) => Math.min(hi, Math.max(lo, v + d));
 
 /* One entry per available player, in roster order (#26 item 6 / decision 10):
    `{ id, blocks }`, each block `{ period, from, to }` in minutes from that

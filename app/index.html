@@ -433,37 +433,65 @@
   <main class="view print-path" id="view-games" hidden>
     <div class="wrap print-path">
 
+      <!-- #27: the sentence. It replaces the Squad and Game format folds
+           (a coach read "Squad" and "Game format" as two settings screens,
+           not one running description) with one line that says how the game
+           is set up, first thing above the day name at every width. Five of
+           its phrases are buttons that open a sheet or an existing fold; the
+           sixth (the whole of the second line, when it shows) does too.
+           `renderSentence` (game-setup.js) rewrites their text and
+           `aria-label` in place after every re-plan -- the buttons
+           themselves are never replaced, so the one that opened a sheet is
+           still there to take focus back (decision 13). The plain words
+           between them ("subbing", "for", "with", the commas, the full
+           stop) are static text, not part of any phrase. -->
+      <p class="sentence noprint" id="sentence">
+        <button type="button" class="phrase" id="phrasePlayers"></button>, <button type="button" class="phrase" id="phraseFormat"></button>, subbing <button type="button" class="phrase" id="phraseInterval"></button> for <button type="button" class="phrase" id="phraseStrategy"></button>, with <button type="button" class="phrase" id="phraseRules"></button>.
+      </p>
+      <p class="sentence noprint" id="sentenceEvens" hidden><button type="button" class="phrase" id="phraseEvens"></button></p>
+
+      <!-- The three live sheets (#27). Static shells: each is painted once,
+           when it opens (`openSheet`, trap.js), and updates itself in place
+           after that -- a row flips its own state, a stepper updates its own
+           value, per decision 12's "sheet bodies" note. `showModal()` inerts
+           everything outside the dialog, so each sheet carries its own
+           polite status line rather than relying on a live region the coach
+           can no longer hear (decision 10, A3). The handle is a real button
+           (I3): resizing never needs a gesture. -->
+      <dialog class="bsheet noprint" id="sheetWho" aria-labelledby="sheetWhoTitle">
+        <div class="bsheet-hd">
+          <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+          <h2 id="sheetWhoTitle">Who's here</h2>
+          <button type="button" class="bsheet-close" id="sheetWhoClose" aria-label="Close">✕</button>
+        </div>
+        <div class="bsheet-body" id="sheetWhoBody"></div>
+        <p class="bsheet-status" role="status" id="sheetWhoStatus"></p>
+      </dialog>
+      <dialog class="bsheet noprint" id="sheetFormat" aria-labelledby="sheetFormatTitle">
+        <div class="bsheet-hd">
+          <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+          <h2 id="sheetFormatTitle">Format</h2>
+          <button type="button" class="bsheet-close" id="sheetFormatClose" aria-label="Close">✕</button>
+        </div>
+        <div class="bsheet-body" id="sheetFormatBody"></div>
+        <p class="bsheet-status" role="status" id="sheetFormatStatus"></p>
+      </dialog>
+      <dialog class="bsheet noprint" id="sheetInterval" aria-labelledby="sheetIntervalTitle">
+        <div class="bsheet-hd">
+          <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+          <h2 id="sheetIntervalTitle">Sub interval</h2>
+          <button type="button" class="bsheet-close" id="sheetIntervalClose" aria-label="Close">✕</button>
+        </div>
+        <div class="bsheet-body" id="sheetIntervalBody"></div>
+        <p class="bsheet-status" role="status" id="sheetIntervalStatus"></p>
+      </dialog>
+
       <div class="dayhead noprint">
         <input type="text" id="dayName" class="daytitle" placeholder="Name this day…" aria-label="Day or tournament name">
       </div>
 
       <div class="cols print-path">
         <div class="col-main noprint">
-
-          <section class="block s-squad">
-            <details class="fold" id="squadFold" open>
-              <summary><h3>Squad</h3><span class="hint" id="availcount" role="status" aria-live="polite" aria-atomic="true"></span></summary>
-              <div class="squad" id="avail"></div>
-            </details>
-          </section>
-
-          <!-- The shape of the game itself. These three controls used to sit
-               inside the fold below labelled "Rules" — which reads as the
-               player rules (keep-together, keep-apart, always-one-on), was
-               shut by default and sat UNDER the rotation. A coach hunting for
-               "two halves of twenty minutes" never opens a fold called Rules,
-               so the app answered the question and hid the answer. They are
-               per-game and always have been; nothing about the seeding in
-               state.js changed. The summary carries the format in words, so a
-               collapsed block still answers the question it exists for. -->
-          <details class="block fold s-fmt" id="fmtFold" open>
-            <summary><h3>Game format</h3><span class="hint" id="fmthint"></span></summary>
-            <div class="row">
-              <div><label class="f" for="periods">Periods</label><input type="number" id="periods" min="1" max="8" inputmode="numeric"></div>
-              <div><label class="f" for="periodMinutes">Min / period</label><input type="number" id="periodMinutes" min="1" max="40" inputmode="numeric"></div>
-              <div class="wide"><span class="f">Sub at</span><div id="gran" class="chips" role="group" aria-label="Substitution interval"></div></div>
-            </div>
-          </details>
 
           <!-- Plan folds, like every other setup block on this page. It was
                the one section left permanently open, and it was the expensive
@@ -1003,7 +1031,7 @@
             Periods, and minutes in each period. A game you add copies the format from
             the game before it, so this is what a game starts as when there is nothing
             to copy: a brand new team, or your first game. You can still change it per
-            game under Game format.
+            game from the game screen.
           </p>
         </div>
         <div class="minwrap">
