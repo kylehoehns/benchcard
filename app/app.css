@@ -2808,7 +2808,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .rrow { padding-left: .3rem; border-left: 3px solid var(--c); }
   .rord { flex-direction: row; gap: 0; align-self: stretch; }
   .obtn { flex: 1; min-height: 44px; min-width: 44px; color: var(--muted); }
-  .tld-x, .gm-x { min-width: 44px; min-height: 44px; }
+  .tld-x, .gm-x, .bsheet-close { min-width: 44px; min-height: 44px; }
   .seg button { min-height: 44px; }
   .switch { min-height: 44px; }           /* the label is the target, not the 22px track */
   .gm-b, .gm-p { min-height: 44px; }

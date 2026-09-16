@@ -637,6 +637,17 @@ export function intervalWords(g) {
   return g.granMode === 'perPeriod' ? `${g.granValue}× a period` : `every ${g.granValue} min`;
 }
 
+/* "a", "a and b", "a, b and c" -- the one join a reader-facing list of names
+   uses in this app. Exported so `evensOutLine` below and `roster-view.js`'s
+   duplicate-jersey-number notice share it rather than each hand-rolling the
+   same three lines a third time (`engine.js` has its own module-private
+   `andList` for the same shape; it is left alone, per #27's constraint that
+   the pure modules do not change). */
+export function joinNames(names) {
+  if (names.length < 2) return names.join(' and ');
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
 /* The sentence's optional second line (decision 7), reading `state.day.games`
    -- never the game passed in, since it has to see the games BEFORE it. Empty
    for game 0 or with `useCarryover` off. Each earlier game is named by its
@@ -650,10 +661,7 @@ export function evensOutLine(i) {
   const names = earlier.map(e => e.when || e.label || null);
   const plural = earlier.length > 1;
   if (names.some(nm => !nm)) return `Evens out the earlier game${plural ? 's' : ''}.`;
-  const joined = names.length === 1
-    ? names[0]
-    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  return `Evens out the ${joined} game${plural ? 's' : ''}.`;
+  return `Evens out the ${joinNames(names)} game${plural ? 's' : ''}.`;
 }
 
 /* The status line inside an open sheet (decision 10, item 6): the minute

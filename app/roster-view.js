@@ -14,7 +14,7 @@ import { icon } from './icons.js';
 import { $, set, el } from './dom.js';
 import { withFocus } from './trap.js';
 import { undoable } from './toast.js';
-import { state, colorOf, initials, removePlayer, byId } from './state.js';
+import { state, colorOf, initials, removePlayer, byId, joinNames } from './state.js';
 import { levelMeter, levelKey, levelledCount, resetLevels, repaintLevels } from './balance.js';
 
 let soon = () => {};
@@ -208,17 +208,14 @@ function nameOf(id) {
 }
 
 // "A and B", "A, B and C" -- US English, serial comma left off deliberately to
-// match the rest of the app's copy.
-function joinNames(ids) {
-  const names = ids.map(nameOf);
-  if (names.length < 3) return names.join(' and ');
-  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
-}
+// match the rest of the app's copy. `joinNames` (state.js) is the join; this
+// is only the ids-to-player-names step ahead of it.
+const joinPlayerNames = ids => joinNames(ids.map(nameOf));
 
 function dupeMessage(dupes) {
   if (!dupes.length) return '';
   const sentences = dupes.map(d =>
-    `${joinNames(d.ids)} ${d.ids.length > 2 ? 'all' : 'both'} wear #${d.number}.`);
+    `${joinPlayerNames(d.ids)} ${d.ids.length > 2 ? 'all' : 'both'} wear #${d.number}.`);
   sentences.push(dupes.length > 1
     ? 'Give one of each a different number.'
     : 'Give one of them a different number.');
@@ -229,7 +226,7 @@ function paintDupes() {
   const dupes = duplicateNumbers(state.players);
   const others = new Map();          // id -> the names it collides with
   for (const d of dupes) {
-    for (const id of d.ids) others.set(id, joinNames(d.ids.filter(x => x !== id)));
+    for (const id of d.ids) others.set(id, joinPlayerNames(d.ids.filter(x => x !== id)));
   }
   for (const row of document.querySelectorAll('#rosterlist .rrow')) {
     const num = row.querySelector('.num');

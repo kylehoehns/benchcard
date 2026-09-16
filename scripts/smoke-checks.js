@@ -229,21 +229,25 @@
 
         Measured against `visualViewport` where there is one: it is the box the
         user can actually see, and it is what the first-run tour's spotlight
-        already moved onto for the same reason. Unlike every other check here
-        this one moves the page (a scroll, nothing else); the harness closes
-        each state after auditing it. */
+        already moved onto for the same reason. This is the one check here that
+        moves the page, and it puts back what it moves: `scrollIntoView` can
+        scroll a sheet's own body (an ordinary element, not the window), and
+        that element is reused, not rebuilt, the next time its dialog opens --
+        a later check sharing this page would otherwise inherit the scroll. */
   const winH = window.visualViewport?.height ?? window.innerHeight;
   const FOCUSABLE = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
   const cut = [];
   const audited = [];
-  for (const dlg of document.querySelectorAll('[role="dialog"]')) {
+  for (const dlg of document.querySelectorAll('[role="dialog"], dialog[open]')) {
     if (dlg.hidden || !visible(dlg)) continue;
     const foc = [...dlg.querySelectorAll(FOCUSABLE)]
       .filter(el => visible(el) && !el.closest('[hidden]') && el.type !== 'hidden');
     if (!foc.length) continue;
     const last = foc[foc.length - 1];
+    const scrolled = [dlg, ...dlg.querySelectorAll('*')].map(el => [el, el.scrollTop, el.scrollLeft]);
     last.scrollIntoView({ block: 'nearest' });
     const r = last.getBoundingClientRect();
+    for (const [el, top, left] of scrolled) { el.scrollTop = top; el.scrollLeft = left; }
     audited.push(label(dlg));
     if (r.top < -0.5 || r.bottom > winH + 0.5) {
       cut.push(`${label(dlg)} → ${label(last)} at ${round(r.top)}–${round(r.bottom)}, window is 0–${round(winH)}`);

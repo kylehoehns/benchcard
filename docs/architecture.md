@@ -222,15 +222,15 @@ URL share — there is still no way to put a coach's roster in a link, and there
 must not be.
 
 When onboarding finishes, a four-step **tour** runs once per device
-(`state.tourSeen`, persisted, so it never repeats): the squad row, the strategy
-picker, the timeline and the bench button. It is a spotlight rather than a
-modal — a cutout over the coach's own screen, explained in place — because the
-alternative is a slideshow of a rotation they have never seen. Each step names
-a fallback anchor: the action bar is phone-only, so on desktop the last step
-lands on the identical button beside the card. Whether a step scrolls to its
-anchor is read off the anchor's computed position rather than declared per
-step; a `position: fixed` one is already where it is going to be, and
-scrolling to it walks the page to the top for nothing.
+(`state.tourSeen`, persisted, so it never repeats): the players phrase (#27),
+the strategy picker, the timeline and the bench button. It is a spotlight
+rather than a modal — a cutout over the coach's own screen, explained in
+place — because the alternative is a slideshow of a rotation they have never
+seen. Each step names a fallback anchor: the action bar is phone-only, so on
+desktop the last step lands on the identical button beside the card. Whether a
+step scrolls to its anchor is read off the anchor's computed position rather
+than declared per step; a `position: fixed` one is already where it is going to
+be, and scrolling to it walks the page to the top for nothing.
 
 **How it works** (Settings → *How it works*) is the reference sheet — the strategies and when a
 coach would pick each, what every rule does, how a tournament day carries over,
@@ -572,17 +572,18 @@ On a phone the layout puts the card *directly under the rotation it describes*
 — the card is the product, so it should be what scrolling reaches, not the tail
 of the page. Below 1100px the two columns dissolve into a single flex list
 (`display: contents` on `.col-main` / `.col-side`) and each block carries an
-explicit `order`, so Game format sits between the squad and the plan (it is
-the input the rotation is built from), **Rules is the last of the five inputs,
-directly above the rotation it constrains**, card head, card and the bench
-button slot in after the timeline, and Across-the-day, Stint-by-stint and Card
-options fall below. Rules was at 11 of 13 — under the card and under the bench
-button — for as long as the list existed, which put the one feature no
-competitor has at the bottom of the page; the list is renumbered whole and
-`index.html` carries the same order, because above 1100px `order` does nothing
-and source order is the reading order. The flex `gap` is zeroed there — the blocks already carry margins, and a
-gap double-counts every seam. The rule is `@media screen`, so the print path,
-which flattens everything through `.print-path`, is untouched.
+explicit `order`. The sentence sits above that list at every width, and since
+#27 it stands in for the Squad and Game format blocks the list used to open
+with. After This game come the inputs, Plan and Balance, and **Rules is the
+last of the inputs, directly above the rotation it constrains**; card head, card and the bench button slot
+in after the timeline, and Across-the-day, Stint-by-stint and Card options fall
+below. Rules was at 11 of 13 — under the card and under the bench button — for
+as long as the list existed, which put the one feature no competitor has at the
+bottom of the page; the list is renumbered whole and `index.html` carries the
+same order, because above 1100px `order` does nothing and source order is the
+reading order. The flex `gap` is zeroed there — the blocks already carry margins,
+and a gap double-counts every seam. The rule is `@media screen`, so the print
+path, which flattens everything through `.print-path`, is untouched.
 
 Touch minimums (44px) are gated `@media (pointer: coarse), screen and
 (max-width: 620px)`. The pointer half alone was a trap: it never fires in a
@@ -843,13 +844,12 @@ of the game and `maxSubs` is below 5, the sentence names the lever. It is
 deliberately **not** an engine issue code: the trade is one a coach is entitled
 to make, and a red row would call it a failure.
 
-A stored override that no
-longer names five real players is discarded on load — a stale one is worse than
-none, and "real" means present as well as on the roster: sitting a player out
-in Squad drops any override naming them, the same way removing them does. An
-override is a five the coach picked by hand, so with one of them not in the gym
-it is not a lineup, and it would otherwise ride into bench mode and onto the
-printed card.
+A stored override that no longer names five real players is discarded on load
+— a stale one is worse than none, and "real" means present as well as on the
+roster: marking a player absent in Who's here (#27) drops any override naming
+them, the same way removing them does. An override is a five the coach picked by
+hand, so with one of them not in the gym it is not a lineup, and it would
+otherwise ride into bench mode and onto the printed card.
 ## Card
 
 3.45 x 5.0 in by default, tiled on letter with dashed cut lines, sized to tuck
@@ -914,7 +914,7 @@ a count in an accent pill; with none, it names what the section holds
 (*minutes, pairs, starters*) in muted type — `.count.zero` unsets the pill,
 because an empty state rendered as a badge reads as an alert about something
 the coach has not done. It says nothing at all only when there is no roster,
-the same call `availCountText` makes when it declines to write "0 of 0".
+because a "0 of 0" count would be empty noise.
 ## Blocked states say why
 
 When a plan cannot be produced, the card stage explains the reason instead of

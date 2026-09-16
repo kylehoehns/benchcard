@@ -21,6 +21,7 @@ import { renderCardFold } from './card.js';
 import { state, game, plans, teamName, noRoster, setAvailable, ruleCount,
          sentenceParts, planSay, stepFormat, GRAN_CHOICES } from './state.js';
 import { openSheet, closeSheet } from './trap.js';
+import { colorName } from './storage.js';
 
 let renderAll = () => {};
 let soon = () => {};
@@ -267,7 +268,9 @@ function paintFormatBody() {
 
 // "Every 4 min", "Only at breaks" (decision 6) -- the sheet row's own
 // capitalization of the sentence's lowercase phrase, not a second phrase.
-const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+// `colorName` (storage.js) is the same one-liner under a color-specific name;
+// aliased here rather than re-derived.
+const capitalize = colorName;
 
 function paintIntervalBody() {
   const box = $('#sheetIntervalBody');
