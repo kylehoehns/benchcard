@@ -40,7 +40,7 @@ export function initTour(setViewFn) {
  * points at the same button beside the card instead. Step 3 is the exception
  * and always was: `#timeline` is never conditional. (The banner used to claim
  * every step had two, and step 2 had one until A21 gave it `#planFold`.)
- * A step whose anchors are all missing still shows its copy, centred, rather
+ * A step whose anchors are all missing still shows its copy, centerd, rather
  * than silently dropping a quarter of the explanation.
  *
  * What a fallback does NOT cover: an anchor inside a shut `<details>`. Chrome
@@ -57,7 +57,7 @@ const TOUR = [
   },
   {
     /* `#planFold` shuts on first paint for anyone not on Even, and a
-       spotlight on a control inside a shut fold is either centred copy or a
+       spotlight on a control inside a shut fold is either centerd copy or a
        ring around nothing. Open it first, exactly as step 1 does for the
        squad, and name the fold itself as the fallback anchor so this step
        has two like every other one. */
@@ -166,7 +166,7 @@ function placeTour() {
     hole.style.height = `${Math.max(0, bottom - top)}px`;
     // put the card in whichever side of the cutout has more room, and never
     // let it cover the cutout: overlapping the spotlight is strictly worse
-    // than sitting slightly off-centre from it
+    // than sitting slightly off-center from it
     const bh = box.offsetHeight;
     const below = vh - bottom - gap - edge, above = top - gap - edge;
     const boxTop = below >= bh || below >= above ? bottom + gap : top - gap - bh;
@@ -220,7 +220,7 @@ function tourGo(i) {
     // Centring an anchor taller than the ring can be leaves the spotlit slice
     // straddling the middle of the screen with the card nowhere to go. Park a
     // tall anchor's top near the top instead -- clear of the sticky bar, and
-    // leaving the bottom third free for the copy. Everything else centres,
+    // leaving the bottom third free for the copy. Everything else centers,
     // which is what `block: 'center'` used to buy.
     const y = r.height > vh * 0.52 ? r.top - vh * 0.15 : r.top - (vh - r.height) / 2;
     scrollTo({ top: Math.max(0, scrollY + y), behavior: 'auto' });
@@ -241,7 +241,7 @@ export function startTour() {
   if (!wrap || !wrap.hidden || !state.onboarded) return;
   // three of the four anchors live in the games view. Re-run from Help while
   // the roster is showing and they are all `hidden`, so every step would fall
-  // back to centred copy with nothing spotlit.
+  // back to centerd copy with nothing spotlit.
   // `instant`: the tour measures anchor rects immediately, and its scrim would
   // spend the transition underneath the snapshot overlay
   if (state.view !== 'games') setView('games', true);

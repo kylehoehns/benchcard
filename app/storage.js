@@ -164,32 +164,32 @@ export const DEFAULT_SETTINGS = Object.freeze({
      has always hardcoded, so every record written before these keys existed
      means exactly what it did. Read by `newGame` ONLY when there is no game to
      clone from -- the clone still wins inside a day and across "New day", so
-     no behaviour a coach relies on moves. It never reaches the solver, and it
+     no behavior a coach relies on moves. It never reaches the solver, and it
      is not in the plan signature: the game's own `periods`/`periodMinutes`
      already are. The per-game override is the Rules fold, unchanged.
      Substitution granularity is deliberately NOT here -- it is a preference
      rather than a league rule, and it stays one tap where it is. */
   periods: 4,
   periodMinutes: 8,
-  /* The team's colour, in Settings and in the tint it hands the K1 controls
+  /* The team's color, in Settings and in the tint it hands the K1 controls
      (see app/render.js's applyTint). 'graphite' is neutral ink, and it is
      what every record written before this key existed means. The values
      themselves live only in tokens.css -- this file names the nine slots,
      never a hex. */
-  colour: 'graphite',
+  color: 'graphite',
 });
 
 const TIE_BREAKS = Object.freeze(['behind', 'levels']);
 
-/* The nine team colours, in the order the picker lists them and the order
+/* The nine team colors, in the order the picker lists them and the order
    the contrast test walks. One list: the picker, sanitizeSettings and
    contrast.test.js all read this rather than typing the names twice. Each
    name is its value capitalized -- 'graphite' -> 'Graphite' -- so a display
    name is derived, not a second array. */
-export const COLOURS = Object.freeze([
+export const COLORS = Object.freeze([
   'graphite', 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple',
 ]);
-export const colourName = c => c.charAt(0).toUpperCase() + c.slice(1);
+export const colorName = c => c.charAt(0).toUpperCase() + c.slice(1);
 
 /* Stricter than `num` alone, and every number in the settings block goes
    through it: `Number(null)`, `Number('')` and `Number([])` are all 0, which
@@ -212,7 +212,7 @@ export const sanitizeSettings = raw => {
     minMinutes: Math.round(num(strictNum(s.minMinutes), DEFAULT_SETTINGS.minMinutes, 0, 60)),
     /* Strict `=== true`, not `!!`: every other truthy value in a hand-edited
        or future record is a claim we cannot read, and the safe reading of an
-       unreadable claim is the behaviour the app has always had. */
+       unreadable claim is the behavior the app has always had. */
     seasonDefault: s.seasonDefault === true,
     /* The team's game format. Strict for the reason the league minimum is:
        `Number(null)` and `Number('')` are both 0, and 0 periods is not a game
@@ -224,8 +224,11 @@ export const sanitizeSettings = raw => {
     periodMinutes: Math.round(num(
       strictNum(s.periodMinutes), DEFAULT_SETTINGS.periodMinutes, 1, 40)),
     // an unknown string, a wrong case, or anything that is not one of the
-    // nine names is a record we cannot paint -- fall back to the neutral one
-    colour: COLOURS.includes(s.colour) ? s.colour : DEFAULT_SETTINGS.colour,
+    // nine names is a record we cannot paint -- fall back to the neutral one.
+    // #61 renamed this key: a valid `color` wins, else a valid value under
+    // the pre-#61 key, else graphite.
+    color: COLORS.includes(s.color) ? s.color
+      : COLORS.includes(s.colour) ? s.colour : DEFAULT_SETTINGS.color, // legacy-spelling
   };
 };
 
@@ -332,12 +335,12 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame }) {
          never shown in bench mode and never in the shared image. An absent or
          junk value means 3, which makes the whole feature inert. */
       tier: num(p.tier, 3, 1, 5),
-      /* The colour slot, fixed to the player rather than to their position in
+      /* The color slot, fixed to the player rather than to their position in
          the list. It used to be the array index, which meant dragging one
-         player up the roster recoloured everyone below them -- a coach who has
+         player up the roster recolored everyone below them -- a coach who has
          learned "Leighton is the purple one" loses that for rearranging their
          list. Absent means "take my current index", so existing records keep
-         exactly the colours they have today. */
+         exactly the colors they have today. */
       hue: p.hue == null ? i : num(p.hue, i, 0, 999),
     }));
 
@@ -444,7 +447,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame }) {
 
    The allow-list is not a trust: a record written by a newer build, a hand-
    edited backup or a half-finished rename all arrive as a string `applyView`
-   would happily hide every view for, so anything unrecognised lands on Today,
+   would happily hide every view for, so anything unrecognized lands on Today,
    which is the view the app is for (#23).
 
    `VIEW_WAS` is the legacy half of the same question. The Roster tab became
@@ -500,7 +503,7 @@ export function sanitize(raw, helpers) {
     version: 6,
     onboarded: !!raw.onboarded || anyPlayers,
     // the first-run tour is once per device, so this has to survive a reload;
-    // an unrecognised value means "not seen yet", which is the safe way round
+    // an unrecognized value means "not seen yet", which is the safe way round
     tourSeen: !!raw.tourSeen,
     teams,
     activeTeam: num(raw.activeTeam, 0, 0, teams.length - 1),

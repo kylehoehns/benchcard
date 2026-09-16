@@ -99,8 +99,8 @@
    then is to spend fewer bytes, or to re-record the baseline deliberately.
    `requests` still 40 of 41.
 
-   #25 (team colour) measured 975.8 KB against that 954.7 KB ceiling: nine
-   colours times four theme blocks in tokens.css, the picker markup and its
+   #25 (team color) measured 975.8 KB against that 954.7 KB ceiling: nine
+   colors times four theme blocks in tokens.css, the picker markup and its
    CSS. `bytesAbs` cannot move (see above), and budgets.json cannot be
    re-pinned by hand or re-recorded without erasing `requests`. So the
    percentage moves instead, and the absolute part shrinks: 25% + 34816 ->

@@ -92,7 +92,7 @@ test('the summary hint is repainted by the format handlers, not only by a full r
 });
 
 test('the Rules count still counts only the player rules', () => {
-  // it always did — the A11 report expected a behaviour change here and there
+  // it always did — the A11 report expected a behavior change here and there
   // was none to make. Pinned so a later "tidy-up" cannot fold the format into
   // it. #26 moved the count itself into `ruleCount(g)` (state.js); this reads
   // the function it moved to rather than the call site game-setup.js left

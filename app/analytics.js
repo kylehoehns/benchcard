@@ -124,7 +124,7 @@ export function bucketRoster(n) {
 }
 
 /* The whole privacy guarantee lives in this function, which is why it is pure
-   and tested. Returns null for anything it does not recognise — an unknown
+   and tested. Returns null for anything it does not recognize — an unknown
    event never becomes a request. */
 export function payload(name, props) {
   const schema = Object.prototype.hasOwnProperty.call(EVENTS, name) ? EVENTS[name] : null;

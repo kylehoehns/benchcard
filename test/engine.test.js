@@ -419,7 +419,7 @@ test('targets that under-fill still plan, and the spare minutes go somewhere', (
 });
 
 test('spare minutes are shared in proportion, so a small ask stays small', () => {
-  /* The reproduction a coach hit, and the behaviour that replaced it. Ten
+  /* The reproduction a coach hit, and the behavior that replaced it. Ten
      available, one player dialled to 4 minutes and the rest left at 16: the
      asks total 148 of 160, and the missing 12 have to be played by somebody.
 

@@ -57,7 +57,7 @@ What the tree looks like today, checked against the ticket:
 
 1. **A saved `games` opens the Game screen.** `games` keeps meaning the game
    screen, and `today` is a new stored value. Nothing is translated. A missing
-   or unrecognised value opens Today.
+   or unrecognized value opens Today.
 2. **An out-of-range saved game is clamped, not sent to Today.** No new rule:
    the clamp `sanitizeTeam` already applies stands. The first-paint table gets
    a row for it, so the first frame and the loader still agree.
@@ -124,7 +124,7 @@ three filed), unless stated:
    game at the clamped `activeGame`), Team, Season or Settings. For each, the
    pre-paint script stamps `data-boot` so the first frame shows only that
    screen. `test/first-paint.test.js` has a row for each of the five screens,
-   for legacy `roster`, for an unrecognised value (Today), and for an
+   for legacy `roster`, for an unrecognized value (Today), and for an
    out-of-range `activeGame` on `games`, and the script and `loadState` agree
    on every row.
 8. **URL.** `location.href` after boot and after every navigation in items
@@ -170,7 +170,7 @@ Change:
 - `app/toast.js`: the default undo refresh shows the screen `state.view` names.
 - `app/tour.js`, `app/onboarding.js`, `app/timeline.js`: their `setView`
   calls, only as far as the new model needs.
-- `app/storage.js`: `VIEWS` gains `today`; the unrecognised fallback becomes
+- `app/storage.js`: `VIEWS` gains `today`; the unrecognized fallback becomes
   `today`. `app/state.js`: `freshState` `view` becomes `today`.
 - `app/app.css`: Today, the header, the menu, the `data-boot` rules.
 - `app/sw.js`: bump `VERSION`, set `SHELL`.
@@ -207,7 +207,7 @@ Must not change:
     places today (`renderTeams`, `renderSettings`, `removeTeam`). The menu,
     the Team entry and the header use one helper, not a fourth copy.
   - "+ Game"'s push (`newGame(n, lastGame(), state.settings)`),
-    `startNewDay`, `addTeam` and `removeTeam` move with their behaviour
+    `startNewDay`, `addTeam` and `removeTeam` move with their behavior
     intact. Do not write a second version of any of them.
   - The Season entry's count reads `team().season.games` the same way
     `season-view.js` counts it.

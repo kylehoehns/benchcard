@@ -481,7 +481,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
   //
   // The strip is ~142px wide on a 390px phone and a dot cannot usefully go
   // below 12px, so it holds about 12 of them. An 8x20 game has 40 stints: drawn
-  // one-per-stint they overflow both sides of a centred, overflow-hidden strip
+  // one-per-stint they overflow both sides of a centerd, overflow-hidden strip
   // and everything past ~stint 11 is clipped -- including the `.now` dot, which
   // is the one thing a coach is looking for down there. Past DOT_WINDOW stints
   // the strip windows around the current stint instead. The exact position is

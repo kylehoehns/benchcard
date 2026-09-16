@@ -200,8 +200,8 @@ test('a missing dimension is labelled rather than dropped, and a fieldless event
 });
 
 test('an event name the schema does not know is surfaced, never silently dropped', () => {
-  const out = summarize([...ROWS, { event: 'card_favourited', est: '9' }, { event: '', est: '2' }]);
-  assert.deepEqual(out.unknown, [{ event: 'card_favourited', est: 9 }, { event: '(blank)', est: 2 }]);
+  const out = summarize([...ROWS, { event: 'card_favorited', est: '9' }, { event: '', est: '2' }]);
+  assert.deepEqual(out.unknown, [{ event: 'card_favorited', est: 9 }, { event: '(blank)', est: 2 }]);
 });
 
 test('a twelfth event is decoded by declaration order, with no list of the eleven anywhere', () => {

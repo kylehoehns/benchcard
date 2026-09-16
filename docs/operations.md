@@ -250,7 +250,7 @@ Two things address that, and they are different problems:
   is untouched.
 - **`<noscript>`** is *not* an SEO device; Googlebot runs the JS. It is for the
   human whose browser does not, and a `<noscript><style>` in the head hides
-  `.app` so they get the explanation instead of a dead grey page.
+  `.app` so they get the explanation instead of a dead gray page.
 
 `og.png` (1200×630) is generated, not drawn: the real card, screenshotted from
 the running app, composed beside the headline. Regenerate it the same way if the

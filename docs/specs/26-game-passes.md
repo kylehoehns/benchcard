@@ -33,9 +33,9 @@ build rests on:
   its own plan. `effectiveStints(g, p)` is the rotation with bench-mode swaps
   folded in (the one the card prints). Each stint carries `period`,
   `minutes` and `onFloor`. A blocked plan is `p.ok === false`.
-- **Player colour** is `colorOf(id)` (`state.js`), an `oklch()` string built
+- **Player color** is `colorOf(id)` (`state.js`), an `oklch()` string built
   from `--pc-l`/`--pc-c`.
-- **Status colours exist** in `app/tokens.css` for every theme block:
+- **Status colors exist** in `app/tokens.css` for every theme block:
   `--ok` (green) and `--warn` (amber). The current dot uses `--err` (red).
 - **Evening out the day** is `g.useCarryover` (`CONTEXT.md`); `newGame` turns
   it on for every game after the first.
@@ -112,7 +112,7 @@ the direction #18 already points.
 10. **One element per mini-rotation row.** 109 nodes of room for four passes
     of twelve rows means about one node per row. Each row is a single
     element whose background is a `linear-gradient` with hard stops: player
-    colour where they are on the floor, transparent elsewhere, including the
+    color where they are on the floor, transparent elsewhere, including the
     gaps between periods. The status dot is a `::before`, not a node.
 
 ## What would settle it
@@ -138,8 +138,8 @@ order, booted with `view: 'today'`:
    tip-off element.
 4. **Status.** Passes 0–2 show the text `Planned` beside a dot whose computed
    `background-color` equals the computed value of `--ok`. Pass 3 shows
-   `Needs a fix` beside a dot whose colour equals `--warn`. No dot on any
-   pass uses a player colour or `--err`.
+   `Needs a fix` beside a dot whose color equals `--warn`. No dot on any
+   pass uses a player color or `--err`.
 5. **Summary.** Exactly:
    - pass 0: `12 players · even minutes`
    - pass 1: `11 players · even minutes · evens out the day · 2 rules`
@@ -151,9 +151,9 @@ order, booted with `view: 'today'`:
    on **real pixels** (a CDP screenshot of the pass, decoded in the page onto
    a canvas): for every row and every stint `k` of
    `effectiveStints(g, plans[i])`, the pixel at the row's vertical middle and
-   the horizontal middle of stint `k`'s slot is the player's colour **if and
+   the horizontal middle of stint `k`'s slot is the player's color **if and
    only if** that player is in `onFloor` for stint `k`, and otherwise is the
-   pass's background. "The player's colour" is the pixel of a probe element
+   pass's background. "The player's color" is the pixel of a probe element
    painted with `background: colorOf(id)` in the same screenshot, within 3
    per channel. Between the last stint of one period and the first of the
    next there is a gap at least 2px wide where every row shows the pass's
@@ -194,7 +194,7 @@ Change:
 
 - `app/teams-view.js`: `renderTabs` paints passes (only on Today).
 - `app/state.js`: new pure exports `ruleCount(g)`, `passSummary(g, i)`,
-  `passBlocks(g, p)` and `rowGradient(blocks, g, colour)` (see Design).
+  `passBlocks(g, p)` and `rowGradient(blocks, g, color)` (see Design).
 - `app/game-setup.js`: `renderConsCount` uses `ruleCount`.
 - `app/render.js`: entering Today paints the passes.
 - `app/index.html`: `#todayNewDay` moves into `#barToday`; `.today-acts`
@@ -228,10 +228,10 @@ under `app/vendor/`.
   - the label: `gameLabel(g, i)`;
   - the rotation: `effectiveStints(g, plans[i])` (so the pass matches the
     card after a bench-mode swap), never `p.stints` directly;
-  - player colour: `colorOf(id)`;
+  - player color: `colorOf(id)`;
   - availability: `availIds(g)`;
   - the league minimum: `leagueMinutes()`;
-  - status colours: `--ok` and `--warn` from `tokens.css`, not new hex values;
+  - status colors: `--ok` and `--warn` from `tokens.css`, not new hex values;
   - `ceiling()` from `scripts/budgets.mjs` and `budgets.json` for item 10,
     not a copied number;
   - the existing `reloadWithRecord` fixture loader and the smoke passes'
@@ -239,12 +239,12 @@ under `app/vendor/`.
 - **No animation of `left`/`width`.** Blocks are placed once per paint with
   percentages; nothing animates them.
 - **Guidelines:**
-  - **L1:** each pass is a surface (white on the grey ground, rounded).
+  - **L1:** each pass is a surface (white on the gray ground, rounded).
   - **C6:** Team and Season stay rows at least 48px.
-  - **K2:** player colours appear only in the mini rotation, and never as a
+  - **K2:** player colors appear only in the mini rotation, and never as a
     status.
   - **K3:** Planned is `--ok`, Needs a fix is `--warn`; neither is a team
-    colour.
+    color.
   - **A2:** the pass is named for what it opens (item 8).
 - **Words:** `Planned`, `Needs a fix`, `evens out the day`, `New day`,
   `Add a game` (`CONTEXT.md`). The pass is not called a "tile" or "row" in
@@ -281,11 +281,11 @@ Today (390px)
   stints on the floor in the same period merge into one block; a run never
   crosses a period. Built from `effectiveStints(g, p)`. Returns `[]` for a
   blocked plan.
-- **`rowGradient(blocks, g, colour)`** — `state.js`, pure. Turns one
+- **`rowGradient(blocks, g, color)`** — `state.js`, pure. Turns one
   player's blocks into a `linear-gradient(to right, …)` string with hard
   stops. The row's width is split into one equal-per-minute track per period
   with a fixed gap between periods (the gap is a `calc()` or percentage the
-  developer picks, at least 2px at 390px). Colour where a block is,
+  developer picks, at least 2px at 390px). Color where a block is,
   `transparent` everywhere else.
 - **Rendering** — `renderTabs` builds, per pass, about seven elements plus
   one per row: a top line (tip-off, then the status text with its dot as a
@@ -309,7 +309,7 @@ The seams `/tdd` builds at:
   (`1 player`, `1 rule`) and each strategy's words; `passBlocks` merging
   consecutive stints, splitting at a period change, leaving out absent
   players, following a bench-mode override, and returning `[]` for a blocked
-  plan; `rowGradient` putting colour exactly on a block's span, transparent
+  plan; `rowGradient` putting color exactly on a block's span, transparent
   across each period gap, and nothing else. Covers items 5, 6 (the model
   half) and 9.
 - **`node --test test/league-min.test.js test/game-format.test.js`** —
@@ -334,7 +334,7 @@ The seams `/tdd` builds at:
 - **`npm test`** — item 13.
 - **`/browser-verify`** at 390×844, then 320px with 32px root text, light and
   dark: a screenshot of Today with `FOUR`; the mini rotation's period gaps;
-  the status colours; tapping a pass and coming back.
+  the status colors; tapping a pass and coming back.
 
 ## Out of scope
 

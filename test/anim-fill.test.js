@@ -31,7 +31,7 @@ import { readFileSync } from 'node:fs';
  * entrance keyframe involved ends at the element's natural state
  * (`opacity: 1; transform: none`), so the forwards half of `both` was buying
  * nothing at all and only the backwards half had any effect. They were all
- * defilled in the same change: behaviour-preserving where the animation plays,
+ * defilled in the same change: behavior-preserving where the animation plays,
  * failure-proof where it does not. The allowance is therefore ZERO. */
 
 const ROOT = new URL('../app/', import.meta.url);

@@ -226,7 +226,7 @@ test('a player already above their share gives minutes back', () => {
   near(sum(t, k), 160, 'still adds up');
 });
 
-test('one game corrects by at most the cap, even after the adjustments are centred', () => {
+test('one game corrects by at most the cap, even after the adjustments are centerd', () => {
   /* The bug this pins: clamping the deficits and then subtracting their mean
      so the set sums to the budget shifts everyone by a constant afterwards,
      which let the biggest mover land a few tenths past the cap. The band is a

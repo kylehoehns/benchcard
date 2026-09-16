@@ -92,12 +92,12 @@ function pngSize(buf) {
    filter bytes are untouched, only the compression of them changes -- so this
    is not an image-optimisation project, it is not throwing away a byte of what
    the image shows, and it needs nothing that is not already in node.
-   Deliberately not a colour quantiser, a resampler or an external binary: the
+   Deliberately not a color quantiser, a resampler or an external binary: the
    whole virtue of this script is that it has no dependencies.
 
    The guard is real and can fail: the rebuilt file is re-parsed and its
    scanlines compared against the original's, and anything that does not match
-   exactly -- or any file that does not get smaller -- is discarded in favour of
+   exactly -- or any file that does not get smaller -- is discarded in favor of
    what Chrome handed back. */
 function chunks(buf) {
   const out = [];

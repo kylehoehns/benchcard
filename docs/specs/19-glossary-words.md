@@ -80,7 +80,7 @@ Must not change:
   the `data-strat` values and the `v` values in `LEVELS` / `SHAPES`, element ids (`#gamemode`,
   `#gmOpen`, `#abBench`, `#helpBtn`, `help-*` anchors). Code identifiers stay
   (`openGameMode`, `gamemode.js`), per the glossary's _In code_ lines.
-- `app/engine.js`, `app/budget.js`, `app/storage.js`, `app/roster.js` behaviour.
+- `app/engine.js`, `app/budget.js`, `app/storage.js`, `app/roster.js` behavior.
   `engine.js`'s "Balanced against minutes already played today." uses the word
   as a description, not the strategy name; leave it.
 - The printed card (`card.js` rendering, `card.css`). Nothing on the card uses

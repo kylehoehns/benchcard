@@ -1,6 +1,6 @@
 ---
 name: new-guard
-description: How to write, falsify and trust a guard in this repo -- a check that judges the tree (a smoke check, a CI script, a hook, a test that reads source or docs) -- and the five ways guards here have gone green against a broken tree. Use when adding or editing such a check under test/, scripts/ or .claude/hooks/, when writing a mutation harness, and whenever a check reports a suspiciously perfect result. A test that runs app behaviour through a seam is built with /tdd instead.
+description: How to write, falsify and trust a guard in this repo -- a check that judges the tree (a smoke check, a CI script, a hook, a test that reads source or docs) -- and the five ways guards here have gone green against a broken tree. Use when adding or editing such a check under test/, scripts/ or .claude/hooks/, when writing a mutation harness, and whenever a check reports a suspiciously perfect result. A test that runs app behavior through a seam is built with /tdd instead.
 allowed-tools: Bash(node --test*), Bash(npm test), Bash(node scripts/*)
 ---
 

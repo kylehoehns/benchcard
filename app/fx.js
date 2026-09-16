@@ -9,7 +9,7 @@
 import { animate, stagger, ok } from './vendor/motion.mjs';
 
 /* The preference is not fixed for the life of the tab — a phone can flip it
- * from Control Centre / Accessibility mid-game — so it is watched rather than
+ * from Control Center / Accessibility mid-game — so it is watched rather than
  * sampled once at load. `enabled` is a `let` on purpose: importers get a live
  * binding and every call site here reads it per call, so nothing has to be
  * re-wired when it changes.

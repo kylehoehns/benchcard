@@ -159,7 +159,7 @@ person would suggest.
    Carolina's coach corner links a competitor by name *and* links a Buy Me a
    Coffee page belonging to a volunteer hobbyist — this exact model, already
    accepted institutionally. Stark County's resources page ends "More coming
-   soon!" and names its admin. QuickScores alone serves 750+ organisations with
+   soon!" and names its admin. QuickScores alone serves 750+ organizations with
    that identical page structure, and no rec department found links any of our
    direct competitors. Blocked today by having no contact address on the site.
 2. **r/basketballcoach** (15,155 members), after genuinely being a member.
@@ -207,7 +207,7 @@ exists, so nothing the phone reports can confirm or refute the last one.
 
 Two things outlived it and both stay: every hover rule in `app.css` now sits
 behind `@media (hover: hover)`, correct on its own merits and confirmed on a
-real iPhone; and the lesson that a control iOS does not recognise as
+real iPhone; and the lesson that a control iOS does not recognize as
 interactive is a bad bet, whatever the markup says.
 
 ---

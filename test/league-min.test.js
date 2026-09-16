@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
  * Source-read, same idiom as game-format.test.js and note-placement.test.js:
  * neither renderer has a DOM harness in this repo, and what has to hold is
  * WHERE the number is read, not what it renders to on one fixture. The
- * behaviour of the reader itself is exercised for real below.
+ * behavior of the reader itself is exercised for real below.
  */
 
 const read = f => readFileSync(new URL(`../app/${f}`, import.meta.url), 'utf8');

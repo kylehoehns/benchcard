@@ -92,7 +92,7 @@ test('the last two games-view rows wrap, and only at big text', () => {
      whole of a remaining 12px sideways pan on the games view: the section
      heading row (a title plus Shuffle, which is `white-space: nowrap` and had
      nowhere to go) and the bench button, whose label made it wider than the
-     centred flex line it sits in, so it hung off both edges.
+     centerd flex line it sits in, so it hung off both edges.
 
      Both fixes live in the big-text block on purpose, unlike the bar's. At
      default text neither row overflows anything, so wrapping them at every
@@ -260,10 +260,10 @@ test('the timeline gives its names back at big text, without losing the word', (
     'the gutter is still a fixed width, which is the 102px that left the names 0px wide');
 
   /* The word is not deleted, here or anywhere: it is what says which end of
-     the squad a row is at to a coach who cannot use the colour. A rule that
+     the squad a row is at to a coach who cannot use the color. A rule that
      hides it would pass every width assertion and lose the meaning. */
   assert.ok(!/\.tl-tot\s+\.ex\s*{[^}]*(display:\s*none|visibility:\s*hidden)/.test(bare),
-    'MOST / FEWEST is hidden rather than moved, so the colour is carrying the meaning alone');
+    'MOST / FEWEST is hidden rather than moved, so the color is carrying the meaning alone');
 
   /* And only at big text. At normal size the fixed gutter is the design -- it
      is what keeps the column of totals flush when some rows carry a word and

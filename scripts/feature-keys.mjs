@@ -93,7 +93,7 @@ export const read = (name) => SURFACES[name].slice(app(SURFACES[name].file));
  *
  * DELIBERATELY NOT A KEY, so the next iteration does not re-file it: the
  * per-day switch "Balance against minutes already played today". `#help` names
- * the control; `about.html` describes the behaviour ("the day balances across
+ * the control; `about.html` describes the behavior ("the day balances across
  * every game by default") without naming it. A20's list is the contract, that
  * switch is not on it, and naming an in-app control label is exactly the
  * detail slice 3 moves OFF the public page.

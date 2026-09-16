@@ -28,7 +28,7 @@ Two consequences worth stating, because both have teeth:
 ## Passes, in order
 
 1. **Correctness**, weighted toward `engine.js`, `budget.js`, `storage.js` and
-   `roster.js`. They are pure and heavily tested; a behaviour change in them
+   `roster.js`. They are pure and heavily tested; a behavior change in them
    that the task did not ask for is the highest-value finding in the repo.
 2. **The card.** 3.45 × 5in, legible at arm's length. It is the product.
 3. **Mobile first.** 390×844 before anything else.
@@ -61,7 +61,7 @@ Two consequences worth stating, because both have teeth:
 
 **Important — fix before merge:**
 
-- A real defect in the four pure modules, or a behaviour change in them the
+- A real defect in the four pure modules, or a behavior change in them the
   task did not ask for.
 - `left`, `top`, `width` or `height` animated on a hot path.
 - A rule proved only by `css.includes`, or copy proved only by a grep. Neither

@@ -488,7 +488,7 @@ test('the format belongs to the team, and one squad’s never reaches the other'
  *
  * A25: the settings surface says of itself, in index.html, that it is
  * legible on first opening because "the first things in it are ones
- * they recognise -- the theme and the help sheet". For most of its life
+ * they recognize -- the theme and the help sheet". For most of its life
  * they were the LAST things in it: measured at 390x844, "How this
  * works" opened at y=1459 of a 1938px page, two screens below five rows
  * of league rules a coach may never touch. Backup is last on purpose

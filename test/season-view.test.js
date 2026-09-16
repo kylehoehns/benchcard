@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
  * Source-level rather than rendered, for the same reason `leak.test.js` is: a
  * rendered check only ever sees the season it was handed, and these have to
  * hold for every season -- including the one with a player who left in
- * November. The behaviour underneath it (what gets filed, and with whose
+ * November. The behavior underneath it (what gets filed, and with whose
  * minutes) is `test/season.test.js`; this file is about the view over it.
  */
 
@@ -58,9 +58,9 @@ test('deleting a game goes through undoable, and asks for no confirm', () => {
     'season-view.js asks for a confirm — removing a team is the one confirm in this app');
 });
 
-test('the ledger paints in the app\'s own colour slots', () => {
+test('the ledger paints in the app\'s own color slots', () => {
   assert.match(view, /colorOf\(/,
-    'season-view.js no longer uses `colorOf` — a player\'s colour is `player.hue`, the '
+    'season-view.js no longer uses `colorOf` — a player\'s color is `player.hue`, the '
     + 'same stable slot the rest of the app reads');
 });
 

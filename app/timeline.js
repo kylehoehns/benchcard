@@ -345,8 +345,8 @@ export function renderTimeline() {
     } else if (now) now.remove();
 
     /* Orange and blue used to be the only thing saying which end of the squad
-       a number sat at, which is nothing at all to a colour-blind coach or a
-       screen reader. Say it: the word carries the meaning and the colour is
+       a number sat at, which is nothing at all to a color-blind coach or a
+       screen reader. Say it: the word carries the meaning and the color is
        now decoration on top of it. */
     const m = mins[id] ?? 0;
     const extreme = nameHi && m === hi ? 'most' : nameLo && m === lo ? 'fewest' : '';

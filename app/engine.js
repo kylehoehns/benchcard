@@ -501,7 +501,7 @@ export function minPossibleSpread(stints, nAvail) {
  *
  * Two things keep this honest. It is scored, never forced: the weight
  * below sits far under the minutes term, so balance is what the solver
- * does with the freedom fairness leaves it, not a licence to spend
+ * does with the freedom fairness leaves it, not a license to spend
  * anyone's minutes. And with every player on the default tier the term
  * is identically zero, so a coach who ignores the feature gets exactly
  * the plan they got before it existed.
@@ -538,11 +538,11 @@ function balanceShape(kind, i, n) {
   return 0;
 }
 
-/* Belt and braces on the paragraph above: centre whatever the shape produced
+/* Belt and braces on the paragraph above: center whatever the shape produced
    so it averages to zero for this particular stint count. A cosine over eight
    samples is not exactly balanced, and the residue is a standing bias the
    solver can never satisfy. */
-function centred(values) {
+function centerd(values) {
   if (!values.length) return values;
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
   return values.map(v => v - mean);
@@ -1050,7 +1050,7 @@ function balanceTargets(ctx, kind) {
   if (amp < 1e-9) return null;
 
   const n = ctx.stints.length;
-  const f = centred(ctx.stints.map((_, i) => balanceShape(shape, i, n)));
+  const f = centerd(ctx.stints.map((_, i) => balanceShape(shape, i, n)));
   return f.map(v => base + amp * v);
 }
 

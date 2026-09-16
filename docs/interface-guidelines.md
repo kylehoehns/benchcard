@@ -103,7 +103,7 @@ button ("Sample team ⌄") opens a popover with a checkmark on the current team 
 **N4. Settings opens from a gear button in Today's header, and nowhere else.**
 Top right, icon-only, with the accessible name "Settings". No other screen has a
 settings entry, and no screen has settings of its own. This is a deliberate
-choice: NN/g lists the gear among icons people may not recognise, and Android
+choice: NN/g lists the gear among icons people may not recognize, and Android
 recommends settings in the top bar. Revisit if coaches can't find it. *Material:
 Settings pattern. Research: NN/g, icon usability. Benchcard: decided
 2026-09-14.*
@@ -139,7 +139,7 @@ Design principles; Modality.*
 
 **S1. One Settings screen, with two sections.** The top section is headed with
 the active team's name and holds everything that belongs to that team: default
-game format, team colour, players changing at once, league minimum, how odd
+game format, team color, players changing at once, league minimum, how odd
 minutes fall, and whether new games even out the season. The second is headed
 *Benchcard* and holds appearance, backup and restore, How it works (with the
 tour), and About, contact and the tip jar. The heading is the scope, so a coach
@@ -159,7 +159,7 @@ while the app is open. See K4.
 
 ## Layout and surfaces
 
-**L1. Content layer: a soft grey ground with white grouped surfaces.** Lists are
+**L1. Content layer: a soft gray ground with white grouped surfaces.** Lists are
 inset groups with rounded corners. Separate objects (a game pass, a sheet) get a
 surface; a timeline doesn't need a box. *Apple: Color (grouped backgrounds).
 Material: Color system (surface roles).*
@@ -195,7 +195,7 @@ them. Sheets have 28px top corners. *Material: I/O 2026 spacing; Bottom sheets.
 Apple: Toolbars (concentric corners).*
 
 **L7. One layout that adapts by width, not a separate desktop design.** Under
-600px: one column, pushed screens. 600–839px: the same, with sheets as centred
+600px: one column, pushed screens. 600–839px: the same, with sheets as centerd
 dialogs. 840px and up (tablets, laptops, an unfolded iPhone Duo): Today on the
 left, the open game on the right. The same features at every width. *Material:
 Breakpoints. Apple: Designing for iPhone Duo.*
@@ -258,9 +258,9 @@ including any floating bar. *Apple: Modality. Material: Dialogs (full screen).*
 
 ---
 
-## Colour
+## Color
 
-Graphite by default. The players are the colour. A team colour, if chosen, marks
+Graphite by default. The players are the color. A team color, if chosen, marks
 what you can press.
 
 | Token | Light | Dark |
@@ -270,22 +270,22 @@ what you can press.
 | Ink (the Graphite tint) | `#1C1C1E` | `#F4F4F6` |
 | Secondary text | `#6C6C72` | `#98989F` |
 
-Team colours: Graphite (default), Hardwood, Royal, Navy, Maroon, Red, Forest,
+Team colors: Graphite (default), Hardwood, Royal, Navy, Maroon, Red, Forest,
 Gold, Purple. Each has a light and a dark value; Gold needs dark text on its fill.
 
 **K1. The tint goes on three things only.** The primary action's fill, the
 tappable phrases in a game's sentence, and a selected state. Never on back
-buttons, headers, list labels or icons. Apple: use brand colour "for primary
+buttons, headers, list labels or icons. Apple: use brand color "for primary
 actions or status indicators… consider moving it into the content layer." With
 Graphite, tappable phrases get a soft underline, since the tint is the ink.
 *Apple: Branding (updated 2026-09-09); Color.*
 
-**K2. Player colours mean a player and nothing else.** They never signal state.
-Wherever a colour identifies a player, a name or number is there too. *Apple:
+**K2. Player colors mean a player and nothing else.** They never signal state.
+Wherever a color identifies a player, a name or number is there too. *Apple:
 Color (inclusive color).*
 
-**K3. Status colours are their own set.** Planned is green, needs-a-fix is amber,
-destructive is red. None is a team colour, and none is offered as one. *Apple:
+**K3. Status colors are their own set.** Planned is green, needs-a-fix is amber,
+destructive is red. None is a team color, and none is offered as one. *Apple:
 Color ("Avoid using the same color to mean different things").*
 
 **K4. Follow the phone's light or dark setting by default, and offer an
@@ -299,7 +299,7 @@ on a lighter surface than the screen behind them. *Android: Dark theme. Web:
 web.dev. Apple: Dark Mode (differs). Benchcard: decided 2026-09-14.*
 
 **K5. Contrast: 4.5:1 for text, aiming for 7:1 on small text; 3:1 for controls.**
-Every colour has a light, a dark and a `prefers-contrast: more` value. *Apple:
+Every color has a light, a dark and a `prefers-contrast: more` value. *Apple:
 Dark Mode. Material: Color (contrast levels). Web: WCAG 2.2.*
 
 ---
@@ -390,7 +390,7 @@ gets a haptic only from the native switch. Neither is ever the only feedback.
 ## The phone around us
 
 **D1. Installed as `standalone`; nothing depends on other display modes.** iOS
-supports only `standalone` and `browser`. The manifest colours come from the
+supports only `standalone` and `browser`. The manifest colors come from the
 ground token. *Web: web.dev, App design; WebKit, Safari 26.0.*
 
 **D2. Keep the screen on in bench mode.** Request a Screen Wake Lock when bench
@@ -443,7 +443,7 @@ case reads naturally on both platforms and matches how the app already talks.
 from team". Not "OK", "Submit" or "Done" when a more specific word exists.
 *Material: Dialogs. Apple: Buttons.*
 
-**W3. No help icons, no paragraphs beside controls.** At most one grey line under
+**W3. No help icons, no paragraphs beside controls.** At most one gray line under
 a group, when a choice truly needs it. The full explanation lives in How it works.
 *Apple: Design principles ("Be concise").*
 

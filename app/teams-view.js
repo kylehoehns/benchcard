@@ -20,9 +20,9 @@
 import { $, on, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
-import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay, activeColour,
+import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay, activeColor,
          colorOf, passSummary, passBlocks, rowGradient } from './state.js';
-import { DEFAULT_SETTINGS, colourName } from './storage.js';
+import { DEFAULT_SETTINGS, colorName } from './storage.js';
 // season-view.js is already in the boot graph (app.js calls `initSeason`),
 // so this names no new request -- it is the one place a filed game is
 // counted, and Today's Season entry reads it the same way (#23 review).
@@ -315,20 +315,20 @@ export function renderSettings() {
     b.setAttribute('aria-pressed', String(is));
   }
 
-  /* #25: the row's read-back and the picker's current mark. `#teamColourSwatch`
+  /* #25: the row's read-back and the picker's current mark. `#teamColorSwatch`
      needs no write here -- it carries no `data-tint` of its own, so it reads
-     `--tint` straight off `<html>` (see the CSS comment above `.colour-swatch`)
-     and stays in step with `applyTint()` for free. `colourName` is storage.js's
+     `--tint` straight off `<html>` (see the CSS comment above `.color-swatch`)
+     and stays in step with `applyTint()` for free. `colorName` is storage.js's
      one capitalizer (#18/#25's "do not re-derive" rule), not re-typed here.
-     `activeColour()` (state.js) is the same accessor `applyTint` (render.js)
+     `activeColor()` (state.js) is the same accessor `applyTint` (render.js)
      reads, so the row and the tint it describes cannot disagree. */
-  const opts = $('#colourOpts');
+  const opts = $('#colorOpts');
   if (!opts) return;
-  const colour = activeColour();
-  const name = $('#teamColourName');
-  if (name) name.textContent = colourName(colour);
-  for (const b of opts.querySelectorAll('.colour-opt[data-colour]')) {
-    const is = b.dataset.colour === colour;
+  const color = activeColor();
+  const name = $('#teamColorName');
+  if (name) name.textContent = colorName(color);
+  for (const b of opts.querySelectorAll('.color-opt[data-color]')) {
+    const is = b.dataset.color === color;
     b.classList.toggle('on', is);
     b.setAttribute('aria-pressed', String(is));
   }
@@ -518,7 +518,7 @@ export function renderTabs() {
   }
 }
 
-/* "+ Game"'s own push, moved with its behaviour intact: a new game copies the
+/* "+ Game"'s own push, moved with its behavior intact: a new game copies the
    format, who is at the gym and the rules from the last game in the day, and
    opens straight onto its own screen. */
 function addGame() {
@@ -534,7 +534,7 @@ function addGame() {
 }
 
 /* Its own function rather than an inline handler: the wording and the undo
-   behaviour are the point, and this used to have a second entry point in the
+   behavior are the point, and this used to have a second entry point in the
    setup fold that had to say exactly the same thing.
 
    This is also the moment the day becomes history. `archiveDay` files every

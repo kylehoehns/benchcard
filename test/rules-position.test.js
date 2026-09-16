@@ -99,7 +99,7 @@ test('and the zero hint is not styled as a badge', () => {
   assert.match(rule, /background: none/,
     'the zero hint keeps the pill background, which reads as an alert about something the '
     + 'coach has not done');
-  assert.doesNotMatch(rule, /var\(--accent\)/, 'the zero hint is painted in the accent colour');
+  assert.doesNotMatch(rule, /var\(--accent\)/, 'the zero hint is painted in the accent color');
   assert.match(rule, /color: var\(--faint\)/, 'the zero hint is not muted');
   /* Order matters: it has to come after the pill it unsets, or it loses at
      equal specificity. This file's own siblings record that trap twice. */

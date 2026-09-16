@@ -138,7 +138,7 @@ a { color: inherit; }
 @media (hover: hover) { .btn.primary:hover { background: var(--tint-2); } }
 .btn.ghost { background: none; border-color: transparent; color: var(--ink-2); }
 @media (hover: hover) { .btn.ghost:hover { background: var(--surface-2); } }
-/* Destructive, and coloured like it. Every other button in the app is either
+/* Destructive, and colored like it. Every other button in the app is either
    the accent or a ghost, so red is unambiguous rather than decorative. */
 .btn.danger { background: var(--err); border-color: transparent; color: #fff; }
 @media (hover: hover) { .btn.danger:hover { background: color-mix(in srgb, var(--err) 86%, #000); } }
@@ -320,9 +320,9 @@ a { color: inherit; }
    past it (#23 review, item 2, the bug this class inherits the fix for). */
 .pass-when { font-size: var(--fs-footnote); color: var(--muted); font-variant-numeric: tabular-nums; }
 /* K3: Planned is `--ok`, Needs a fix is `--warn` -- both tokens, never a new
-   hex and never a team colour. The dot is a `::before`, not a node
+   hex and never a team color. The dot is a `::before`, not a node
    (decision 10): item 10's node budget has no room for a fifth element per
-   pass just to colour a status that two CSS classes already say. */
+   pass just to color a status that two CSS classes already say. */
 .pass-status { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-footnote); font-weight: 600; }
 .pass-status::before { content: ''; width: .5rem; height: .5rem; border-radius: 50%; flex: none; }
 .pass-status.ok { color: var(--ok); }
@@ -338,7 +338,7 @@ a { color: inherit; }
    `left`/`width`/`top`/`height`, and nothing paints or positions a block
    with a second element. `rowGradient` uses `transparent` where the player
    is off the floor, so those stretches read as `.today-game`'s own surface
-   showing through the row, not a second grey -- there is no background rule
+   showing through the row, not a second gray -- there is no background rule
    to set here: `renderPass` (teams-view.js) sets the inline `background`
    shorthand on every row, which would reset any `background-color` given to
    `.pass-row` in this file. */
@@ -439,7 +439,7 @@ a { color: inherit; }
   background: var(--line); height: var(--bar);
   transition: background var(--t) var(--ease), transform var(--t) var(--spring); }
 /* Wider spread than the first cut, and the empty steps are faint rather than
-   solid. With both at full contrast the tall grey bars above the fill read as
+   solid. With both at full contrast the tall gray bars above the fill read as
    the loudest thing in the row, so an unset player looked heavier than a
    levelled one -- the staircase was saying "more" about the wrong end. */
 .bal-step:nth-child(1) { --bar: 6px; }
@@ -1147,7 +1147,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   font-size: var(--fs-footnote); font-weight: 600; color: var(--muted); }
 .gm-scope button.on { background: var(--surface); color: var(--tint); box-shadow: var(--shadow-sm); }
 /* The third item is an action, not a third segment of the toggle, so it is
-   coloured like one -- a coach must not tap it expecting a mode. */
+   colored like one -- a coach must not tap it expecting a mode. */
 .gm-scope button.act { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
 /* Three items plus "Swap in for Aiden" do not fit one 390px line, so the group
    drops to its own row rather than squeezing the labels.
@@ -1331,7 +1331,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   display: grid; place-items: center;
 }
 .ab-side svg { width: 1.25rem; height: 1.25rem; }
-/* Matches `.ab-main:disabled`: a blocked plan greys both bar buttons, so the
+/* Matches `.ab-main:disabled`: a blocked plan grays both bar buttons, so the
    printer reads as unavailable rather than as a button that did nothing. */
 .ab-side:disabled { opacity: .45; cursor: default; }
 /* Keep the *document* clear of the fixed bar -- but only the document, and only
@@ -1346,7 +1346,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    still here.
  *
  * The `:has()` override is written as an override rather than a condition so a
-   browser without it keeps the safe, over-padded behaviour instead of losing
+   browser without it keeps the safe, over-padded behavior instead of losing
    the clearance entirely. */
 @media (max-width: 900px) {
   .wrap { padding-bottom: 2rem; }
@@ -1456,10 +1456,10 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
      - `min(92dvh, 100%)` on the box, so it is bounded by the wrap's content
        box as well as by the viewport;
      - plain `92vh`/`inset: 0` underneath for anything without `dvh`, which is
-       exactly today's behaviour and no worse.
+       exactly today's behavior and no worse.
 
    `env(safe-area-inset-*)` goes on the WRAP's padding rather than inside the
-   box, so the whole sheet centres clear of the home indicator and the notch.
+   box, so the whole sheet centers clear of the home indicator and the notch.
    Padding the scroll container instead would only add a strip of dead space
    you have to scroll to the very bottom to discover. */
 .keyswrap { position: fixed; inset: 0; height: 100dvh; z-index: 320;
@@ -1548,13 +1548,13 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .help-p b, .help-dl b { color: var(--ink); font-weight: 600; }
 .help-tour { width: 100%; justify-content: center; margin-top: 1.5rem; }
 
-/* ===================== #25: team colour row + picker =====================
-   `.colour-row-btn` is the Settings row's own button (swatch + current
-   name), opening `#colourPicker` -- a `.keyswrap` dialog like `#help` and
-   `#confirm` above it, so `.colourbox` only sets the width and the rest of
+/* ===================== #25: team color row + picker =====================
+   `.color-row-btn` is the Settings row's own button (swatch + current
+   name), opening `#colorPicker` -- a `.keyswrap` dialog like `#help` and
+   `#confirm` above it, so `.colorbox` only sets the width and the rest of
    the shell (`.keyswrap`, `.keysbox`, `.keys-hd`) is unchanged.
 
-   `.colour-swatch` reads `--tint` by default, which is right for the row's
+   `.color-swatch` reads `--tint` by default, which is right for the row's
    own swatch (no `data-tint` of its own, so it just inherits <html>'s) and
    for the picker's eight non-Graphite swatches (each DOES carry its own
    `data-tint`, matched by the compound selectors in tokens.css). Graphite
@@ -1562,30 +1562,30 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    instead, via the one override below, rather than inheriting whichever
    team is currently active.
 
-   `.colour-opt.on` is the picker's "current one marked" (item 4's design):
+   `.color-opt.on` is the picker's "current one marked" (item 4's design):
    it reads `--tint-soft`/`--tint-line`, both INHERITED from <html>, so the
-   highlight is always the ACTIVE team's colour, never the option's own --
+   highlight is always the ACTIVE team's color, never the option's own --
    that is what the swatch is for. */
-.colour-row-btn { display: inline-flex; align-items: center; gap: .5rem; }
-.colour-swatch { display: inline-block; width: 1.15rem; height: 1.15rem; border-radius: 50%;
+.color-row-btn { display: inline-flex; align-items: center; gap: .5rem; }
+.color-swatch { display: inline-block; width: 1.15rem; height: 1.15rem; border-radius: 50%;
   background: var(--tint); box-shadow: inset 0 0 0 1px var(--line-2); flex: none; }
-.colour-opt[data-colour="graphite"] .colour-swatch { background: var(--ink); }
+.color-opt[data-color="graphite"] .color-swatch { background: var(--ink); }
 
-.colourbox { width: min(22rem, 92vw); text-align: left; }
-.colour-opts { display: flex; flex-direction: column; gap: .3rem; margin-top: .5rem; }
+.colorbox { width: min(22rem, 92vw); text-align: left; }
+.color-opts { display: flex; flex-direction: column; gap: .3rem; margin-top: .5rem; }
 /* 48px, not just the 44px floor the spec sets: matches `#view-settings
    .setrow`'s own floor (app.css :2777) rather than a second number. */
-.colour-opt { display: flex; align-items: center; gap: .7rem; width: 100%; min-height: 48px;
+.color-opt { display: flex; align-items: center; gap: .7rem; width: 100%; min-height: 48px;
   padding: .5rem .8rem; border: 1px solid var(--line); border-radius: var(--r-sm);
   background: none; font: inherit; font-size: var(--fs-body); color: var(--ink); text-align: left; }
-.colour-opt.on { background: var(--tint-soft); border-color: var(--tint-line); font-weight: 600; }
-@media (hover: hover) { .colour-opt:hover { border-color: var(--line-2); } }
+.color-opt.on { background: var(--tint-soft); border-color: var(--tint-line); font-weight: 600; }
+@media (hover: hover) { .color-opt:hover { border-color: var(--line-2); } }
 
 /* ========================= first-run tour =========================
    A spotlight, not a modal: the coach reads about the squad row while looking
    at their own squad row. The cutout is one absolutely positioned box with a
    huge spread shadow — no SVG mask, no clip-path, and it inherits the ring
-   colour, so it stays a two-property update per step.
+   color, so it stays a two-property update per step.
 
    Deliberately not transitioned. The hole is re-measured on every scroll and
    resize frame while the tour is up, and a transition on top/left/width would
@@ -1797,7 +1797,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    accident, so the bottom edge fades into the figure's own paper. Both are
    photographs of light surfaces whatever theme the app is in -- the card is
    white because it is paper (see card.css) and the bench shot was captured in
-   light -- so the two colours are literals rather than tokens, and a dark-mode
+   light -- so the two colors are literals rather than tokens, and a dark-mode
    token here would paint a black band across a white card. */
 .wel-pane-shot::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0;
   height: 2.4rem; pointer-events: none;
@@ -2024,7 +2024,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   border-radius: var(--r-lg); padding: clamp(1.15rem, 3vw, 1.6rem); box-shadow: var(--shadow); }
 .wel-card textarea { min-height: 9.5rem; }
 /* Padded to 44px rather than boxed, the same trade `.foot-link` and `.linkish`
-   both make. The colour and the underline come from the `.wel-about,
+   both make. The color and the underline come from the `.wel-about,
    `.wel-tail-row` rule in the footer block below, so all three footer links
    are one treatment; only the box is set here. */
 .wel-about { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .55rem; }
@@ -2076,10 +2076,10 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 #welCount.ready { color: var(--ok); }
 
 /* #25 item 5: the sentence style #27 will use. Graphite reads ink with a 2px
-   underline at the accent-line alpha (--phrase-line carries that colour for
-   Graphite); every other team colour reads its own fill with no underline --
+   underline at the accent-line alpha (--phrase-line carries that color for
+   Graphite); every other team color reads its own fill with no underline --
    --phrase-line goes transparent for those (see tokens.css), so one rule
-   covers every colour rather than a second rule turning the line off. Only
+   covers every color rather than a second rule turning the line off. Only
    the style ships here; the sentence itself is #27's, out of scope. */
 .phrase { color: var(--phrase); text-decoration: underline;
   text-decoration-color: var(--phrase-line); text-decoration-thickness: 2px; }
@@ -2140,7 +2140,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .fold > summary:has(.helpq)::after { margin-left: .1rem; }
 details.dz > summary:has(.helpq) .count { margin-left: 0; }
 details.dz > summary .helpq { margin-block: -.85rem; }
-/* `.gm-cta` is a centred wrapping row, so the bench "?" travels with the
+/* `.gm-cta` is a centerd wrapping row, so the bench "?" travels with the
    button it explains rather than as a flex item of its own -- see the note in
    index.html. The tight gap is the whole point: at the row's own `.55rem` it
    sat almost equidistant between "Use this on the bench" and "Print". */
@@ -2194,7 +2194,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    them was one engine's failure-to-restart away from being a blank screen with
    no way back. Chrome restarts them, which is why every browser check in this
    repo was green on it for as long as it shipped. Dropping the fill is
-   behaviour-preserving where the animation plays and failure-proof where it
+   behavior-preserving where the animation plays and failure-proof where it
    does not. `test/anim-fill.test.js` holds the line at zero. */
 @keyframes viewIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 
@@ -2339,7 +2339,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      the section heading's row (a title plus **Shuffle**, which cannot shrink
      and had nowhere to go) and the **Use this on the bench** button, whose
      label is the longest in the app and whose `white-space: nowrap` made it
-     wider than the column it sits in, overflowing both sides of a centred
+     wider than the column it sits in, overflowing both sides of a centerd
      flex line. Wrapping is the answer in both cases, and it is the same answer
      the bar and the picker above already take: nothing here can get smaller,
      so it goes onto a second line instead of off the edge. */
@@ -2541,7 +2541,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 
      The word moves under the number instead of beside it. Keeping it matters:
      it is what says which end of the squad a row is at to a coach who cannot
-     use the colour, and `renderTimeline`'s own comment says so. `width: auto`
+     use the color, and `renderTimeline`'s own comment says so. `width: auto`
      on a block child of the `auto` track makes the track `max(number, word)`
      -- 63.2px, not 146.8px -- so the label gets **132.9px** at 320 and
      **202.9px** at 390, where eight of twelve real names now fit whole.
@@ -2556,7 +2556,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .tl-tot .ex { display: block; width: auto; margin-left: 0; text-align: right; }
 
   /* #24: the three sheets that share `.keyswrap` (the shortcuts list, help
-     and the one confirm) centre in a track narrowed by the wrap's own
+     and the one confirm) center in a track narrowed by the wrap's own
      `clamp(.7rem, 3vw, 1.5rem)` padding, but each box's own width is a bare
      `vw` -- a share of the whole viewport, not of that padded track. At a
      32px root `.helpbox`'s `94vw` outgrew the track by more than the padding
@@ -2636,7 +2636,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .srow { grid-template-columns: 4.6rem 1fr 4.1rem 44px; }
   /* Reorder arrows: stacked they can only ever be 22px tall, because the row is
      as tall as one 44px input and no taller. So on touch the pair goes side by
-     side in a 5.5rem column and the avatar stands down -- the player's colour
+     side in a 5.5rem column and the avatar stands down -- the player's color
      moves to the row's left edge, which carries it just as well in a list. Five
      columns here, not six: keep in step with .rhead below. (On a phone the
      phone block after this one narrows it further; a coarse-pointer tablet has
@@ -2735,7 +2735,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 .sn-row { display: flex; align-items: center; gap: .55rem;
   padding: .5rem .1rem; border-bottom: 1px solid var(--line); }
 .sn-dot { flex: 0 0 auto; width: .62rem; height: .62rem; border-radius: 50%; background: var(--line-2); }
-/* A player who has left has no colour slot -- `player.hue` is a roster fact
+/* A player who has left has no color slot -- `player.hue` is a roster fact
    and they are not on the roster. Hollow, so the row still reads as a person
    rather than as a missing value. */
 .sn-dot.gone { background: none; border: 1px solid var(--line-2); }
@@ -2798,13 +2798,13 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 .setrow .note { margin: .2rem 0 0; }
 /* The read-back under "Players changing at once": the one note here that is an
    ANSWER rather than a description, since it changes with the control. In the
-   same muted grey as the paragraph above it a coach reads straight past both.
-   `--ink` and a weight bump is the whole difference -- no box, no colour of
+   same muted gray as the paragraph above it a coach reads straight past both.
+   `--ink` and a weight bump is the whole difference -- no box, no color of
    its own, nothing that would read as a warning. */
 #maxSubsRead { color: var(--ink); font-weight: 500; margin-top: .45rem; }
 .setrow > .btn { flex: none; }
 /* Fields default to `width: 100%`, which inside a flex row is a control that
-   eats the label. Fixed width, 44px tall, centred digits -- the same target
+   eats the label. Fixed width, 44px tall, centerd digits -- the same target
    rule everything else in this app is measured against.
 
    The wrap exists for two things the bare field did badly. (1) The unit: the
@@ -2860,7 +2860,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    `<a>`, not a div holding one, so the whole 48px row is the tap target and
    not just the text inside it. No underline -- the chevron is what marks it
    as a link, the same way `.foot-link` reads as one without ever gaining one.
-   Colour and focus-visible both come from the base rules above (`a { color:
+   Color and focus-visible both come from the base rules above (`a { color:
    inherit }`, the global `:focus-visible`) -- nothing here overrides either. */
 .linkrow { text-decoration: none; justify-content: space-between; }
 .linkrow-chev { flex: none; color: var(--faint); font-size: var(--fs-headline); }

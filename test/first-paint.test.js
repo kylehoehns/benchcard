@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { loadState, KEY, BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
-         V3_KEY, COLOURS } from '../app/storage.js';
+         V3_KEY, COLORS } from '../app/storage.js';
 
 /* THE FIRST FRAME AND THE LOADER MUST ANSWER THE SAME QUESTION.
  *
@@ -85,9 +85,13 @@ const roster = () => [
 ];
 const team = (players) => ({ id: 't1', name: 'Hawks', players, day: { name: '', games: [newGame()] },
   season: { games: [] }, settings: {}, activeGame: 0 });
-// #25 item 8: a team carrying a colour, for the tint-stamp fixtures below.
-const teamColoured = (colour, players = roster()) =>
-  ({ ...team(players), settings: { colour } });
+// #25 item 8: a team carrying a color, for the tint-stamp fixtures below.
+const teamColored = (color, players = roster()) =>
+  ({ ...team(players), settings: { color } });
+// #61: a team saved before the settings-key rename, holding only the pre-#61
+// key -- for the legacy-fallback rows below.
+const teamLegacyColored = (legacyColor, players = roster()) =>
+  ({ ...team(players), settings: { colour: legacyColor } }); // legacy-spelling
 // a whole record, the way saveState writes one
 const rec = (players = roster(), onboarded = players.length > 0, view = 'games') => ({
   version: 6, onboarded, tourSeen: false, teams: [team(players)], activeTeam: 0,
@@ -120,7 +124,7 @@ const firstPaint = (store) => {
   const stamps = runPrePaint(store);
   const stamped = 'data-boot' in stamps ? `data-boot=${stamps['data-boot']}` : null;
   /* Today is the markup default and must stay unstamped (#23): that is what
-     makes a throw in the script degrade to today's behaviour instead of to a
+     makes a throw in the script degrade to today's behavior instead of to a
      blank frame, and stamping a view app.css has no rule for would hide every
      view. */
   assert.ok(stamped === null || VIEW_STAMPS.some(v => stamped === `data-boot=${v}`),
@@ -128,10 +132,10 @@ const firstPaint = (store) => {
   return stamped === null ? 'today' : stamped.slice('data-boot='.length);
 };
 
-/* Same script, the colour half: what `data-tint` the first frame carries.
+/* Same script, the color half: what `data-tint` the first frame carries.
    Graphite is today's app and needs no attribute (see tokens.css's own base
    blocks), so its absence reads as 'graphite', the same default `sanitize`
-   gives `settings.colour`. */
+   gives `settings.color`. */
 const firstPaintTint = (store) => runPrePaint(store)['data-tint'] || 'graphite';
 
 /* What `app.js` will show a moment later. Line for line, app.js's boot call is
@@ -155,11 +159,11 @@ const afterBoot = (store) => {
   }
 };
 
-/* #25 item 8, the colour half of the same question: what `sanitize` makes of
-   `teams[activeTeam].settings.colour` for the real boot, read through
+/* #25 item 8, the color half of the same question: what `sanitize` makes of
+   `teams[activeTeam].settings.color` for the real boot, read through
    `loadState` exactly as `afterBoot` reads the view above it -- never
    recomputed by hand. */
-const afterBootColour = (store) => {
+const afterBootColor = (store) => {
   const prev = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
@@ -168,7 +172,7 @@ const afterBootColour = (store) => {
   try {
     const loaded = loadState(H);
     const s = loaded && loaded.state;
-    return (s && s.teams[s.activeTeam]?.settings.colour) || 'graphite';
+    return (s && s.teams[s.activeTeam]?.settings.color) || 'graphite';
   } finally {
     if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
     else delete globalThis.localStorage;
@@ -184,7 +188,7 @@ const CASES = [
   ['a returning coach', { [KEY]: j(rec()) }, 'games'],
   ['a coach mid-onboarding, flag set before the first player',
     { [KEY]: j(rec([], true)) }, 'games'],
-  /* No `view` key at all -- #23's Today is what an unrecognised or absent
+  /* No `view` key at all -- #23's Today is what an unrecognized or absent
      view opens on now, not the games shell. */
   ['a record with players but no flag (a v6 record we never wrote)',
     { [KEY]: j({ version: 6, teams: [team(roster())] }) }, 'today'],
@@ -235,7 +239,7 @@ const CASES = [
 
   /* --- A42/#23: the stored view, which is the other half of the boot call ---
      Every one of the five screens gets its own row, plus A40's legacy key and
-     the ways a view value can be wrong -- an unrecognised or missing one now
+     the ways a view value can be wrong -- an unrecognized or missing one now
      opens Today rather than Games. `'constructor'` is in here because the
      mapping is a Map for exactly that reason. */
   ['a coach who left the app on Today', { [KEY]: j(rec(roster(), true, 'today')) }, 'today'],
@@ -245,7 +249,7 @@ const CASES = [
   ['a coach who left the app on Settings', { [KEY]: j(rec(roster(), true, 'settings')) }, 'settings'],
   ['a record written before the Roster tab became Team',
     { [KEY]: j(rec(roster(), true, 'roster')) }, 'team'],
-  ['a view key nothing recognises', { [KEY]: j(rec(roster(), true, 'nope')) }, 'today'],
+  ['a view key nothing recognizes', { [KEY]: j(rec(roster(), true, 'nope')) }, 'today'],
   ['a view key that is a prototype member',
     { [KEY]: j(rec(roster(), true, 'constructor')) }, 'today'],
   ['a view key that is not a string', { [KEY]: j(rec(roster(), true, 7)) }, 'today'],
@@ -292,35 +296,42 @@ for (const [name, store, want] of CASES) {
   });
 }
 
-/* #25 item 8: the team colour, same shape as the view table above -- each row
+/* #25 item 8: the team color, same shape as the view table above -- each row
    is asserted against `want` on its own before the two sides are compared. */
-const COLOUR_CASES = [
-  ['a returning coach with no colour set', { [KEY]: j(rec()) }, 'graphite'],
-  ['a returning coach whose team is Royal', { [KEY]: j({ ...rec(), teams: [teamColoured('royal')] }) }, 'royal'],
-  ['a returning coach whose team is Hardwood', { [KEY]: j({ ...rec(), teams: [teamColoured('hardwood')] }) }, 'hardwood'],
-  /* THE ACTIVE-TEAM CASE. Two teams, two different colours -- a script that
+const COLOR_CASES = [
+  ['a returning coach with no color set', { [KEY]: j(rec()) }, 'graphite'],
+  ['a returning coach whose team is Royal', { [KEY]: j({ ...rec(), teams: [teamColored('royal')] }) }, 'royal'],
+  ['a returning coach whose team is Hardwood', { [KEY]: j({ ...rec(), teams: [teamColored('hardwood')] }) }, 'hardwood'],
+  /* THE ACTIVE-TEAM CASE. Two teams, two different colors -- a script that
      reads `teams[0]` regardless of `activeTeam` passes every row above this
      one and fails only here, which is the exact failure named in the spec's
      Proof section ("red when the script ignores activeTeam"). */
   ['a second team is active and it is Forest, the first is Royal',
-    { [KEY]: j({ ...rec(), activeTeam: 1, teams: [teamColoured('royal'), teamColoured('forest')] }) }, 'forest'],
-  ['an unrecognised colour falls back to graphite',
-    { [KEY]: j({ ...rec(), teams: [teamColoured('teal')] }) }, 'graphite'],
-  ['a colour that is not a string falls back to graphite',
-    { [KEY]: j({ ...rec(), teams: [teamColoured(42)] }) }, 'graphite'],
+    { [KEY]: j({ ...rec(), activeTeam: 1, teams: [teamColored('royal'), teamColored('forest')] }) }, 'forest'],
+  ['an unrecognized color falls back to graphite',
+    { [KEY]: j({ ...rec(), teams: [teamColored('teal')] }) }, 'graphite'],
+  ['a color that is not a string falls back to graphite',
+    { [KEY]: j({ ...rec(), teams: [teamColored(42)] }) }, 'graphite'],
   ['an out-of-range activeTeam clamps to the last team, which is Maroon',
-    { [KEY]: j({ ...rec(), activeTeam: 99, teams: [teamColoured('royal'), teamColoured('maroon')] }) }, 'maroon'],
+    { [KEY]: j({ ...rec(), activeTeam: 99, teams: [teamColored('royal'), teamColored('maroon')] }) }, 'maroon'],
   ['a good backup, no primary, team is Gold',
-    { [BACKUP_KEY]: j({ ...rec(), teams: [teamColoured('gold')] }) }, 'gold'],
-  ['a v3 record (no settings at all) has no colour to read',
+    { [BACKUP_KEY]: j({ ...rec(), teams: [teamColored('gold')] }) }, 'gold'],
+  ['a v3 record (no settings at all) has no color to read',
     { [V3_KEY]: j({ version: 3, players: roster(), day: { name: '', games: [newGame()] } }) }, 'graphite'],
-  ['a first-run device has no team to read a colour from', {}, 'graphite'],
+  ['a first-run device has no team to read a color from', {}, 'graphite'],
+  /* #61: a record saved before the settings-key rename holds only the
+     pre-#61 key, and the first frame must still find it, with the same
+     precedence sanitizeSettings uses (storage.test.js). */
+  ['a returning coach saved before #61, holding only the pre-#61 key, Navy',
+    { [KEY]: j({ ...rec(), teams: [teamLegacyColored('navy')] }) }, 'navy'],
+  ['color wins over a pre-#61 value when both are on the record',
+    { [KEY]: j({ ...rec(), teams: [{ ...team(roster()), settings: { color: 'royal', colour: 'navy' } }] }) }, 'royal'], // legacy-spelling
 ];
 
-for (const [name, store, want] of COLOUR_CASES) {
+for (const [name, store, want] of COLOR_CASES) {
   test(`first paint's tint agrees with the boot: ${name}`, () => {
-    assert.ok(COLOURS.includes(want), `fixture expectation "${want}" is not one of COLOURS`);
-    const boot = afterBootColour(store);
+    assert.ok(COLORS.includes(want), `fixture expectation "${want}" is not one of COLORS`);
+    const boot = afterBootColor(store);
     assert.equal(boot, want, `loadState resolves "${boot}" for ${name}; the fixture expects "${want}"`);
     const paint = firstPaintTint(store);
     assert.equal(paint, boot,
@@ -381,7 +392,7 @@ test('the pre-paint script never throws, whatever it finds', () => {
  * pre-paint script therefore says welcome too, because agreeing is the whole
  * job. The fallback that matters is the outer catch: if the SCRIPT breaks,
  * nothing is stamped and the markup default stands, which is games — today's
- * behaviour, and the returning coach's case rather than the once-ever one. */
+ * behavior, and the returning coach's case rather than the once-ever one. */
 test('a storage that refuses to answer lands where the boot lands', () => {
   const denied = { getItem: () => { throw new Error('denied'); } };
   let stamped = null;

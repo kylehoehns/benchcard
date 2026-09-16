@@ -33,6 +33,19 @@ case "$path" in
     ;;
 esac
 
+# #61: American spelling everywhere. One word list, in scripts/spelling.mjs --
+# this hook holds no copy of it, it just runs the check on the one edited
+# file. Advisory only: it never blocks, it only appends to the note.
+case "$path" in
+  */app/vendor/*) ;;
+  *)
+    if [ -f "$root/scripts/spelling.mjs" ]; then
+      spelling=$(node "$root/scripts/spelling.mjs" "$path" 2>/dev/null)
+      [ -n "$spelling" ] && notes="${notes:+$notes }American spelling (scripts/spelling.mjs): $spelling"
+    fi
+    ;;
+esac
+
 [ -z "$notes" ] && exit 0
 
 jq -n --arg c "$notes" '{

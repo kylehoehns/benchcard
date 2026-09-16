@@ -361,7 +361,7 @@ test('the paste path is a quiet link, not a second top-level button', () => {
  * only `persisted()` may be believed, because a sentence on the Backup
  * screen is drawn from it.
  *
- * The table is generated from two behaviour maps rather than hand-listed,
+ * The table is generated from two behavior maps rather than hand-listed,
  * so a shape added to either is covered without editing an assertion --
  * which is the mutation arm this file cares about.
  * ================================================================== */

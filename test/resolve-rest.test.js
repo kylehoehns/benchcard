@@ -67,7 +67,7 @@ function setup(n, opts = {}) {
 /* What `Rest of game` does today: one named kid -- the lightest on the bench,
    which is the order the bench is offered in -- inherits every one of the sat
    player's remaining stints. Reproduced here so the comparison in the fairness
-   test is against the real behaviour and not a straw man. */
+   test is against the real behavior and not a straw man. */
 function oneForOne(g, p, k, outId) {
   const played = S.minutesFrom(S.effectiveStints(g, p).slice(0, k), S.availIds(g));
   const floor = S.effectiveLineup(g, p, k);

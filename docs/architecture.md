@@ -39,7 +39,7 @@ Everything below is relative to `app/`.
 - `share.js` — the same card as a PNG, painted from the laid-out DOM onto a
   canvas, for `navigator.share` with a clipboard/download fallback. The image
   keeps a taller bottom margin than its other three, with `benchcard.app`
-  centred in it: the in-card mark is 7px, which is about five device pixels
+  centerd in it: the in-card mark is 7px, which is about five device pixels
   once a phone scales the picture into a message bubble. A URL and nothing
   else — the band is outside the card rect, so it costs the card no space.
 - `backup.js` — the whole record out to a JSON file and back. Deliberately
@@ -154,7 +154,7 @@ tier times stints played -- so even minutes pin the mean stint strength exactly.
 A curve averaging above it asks for strength the roster does not have. The first
 version ramped `start` from full amplitude down to the mean (+0.5 average); the
 solver flattened into a compromise satisfying nothing, and it read exactly like
-a weight set too low. `centred()` re-zeroes whatever the shape produces, because
+a weight set too low. `centerd()` re-zeroes whatever the shape produces, because
 a cosine over eight samples is not exactly balanced either.
 
 Amplitude is `bestFive - base`, so `start` genuinely aims the top five at the
@@ -288,7 +288,7 @@ now clears the animation for its duration (`.rlist.dragging .rrow`).
 On a touch pointer (or any screen under 620px) the arrows are not a stacked
 pair but a row of two 44×44 buttons, and the avatar stands down to pay for the
 width: a roster row is exactly as tall as one 44px input, so stacked arrows can
-never be more than 22px each. The player's colour moves to a 3px stripe on the
+never be more than 22px each. The player's color moves to a 3px stripe on the
 row's left edge, which reads at least as well in a list.
 
 Under 620px even that pair is too expensive. A phone row is 368px wide, and
@@ -369,14 +369,14 @@ help sheet first is also what makes the page legible — a settings surface whos
 only contents are abstract policy is undiscoverable.
 
 The team zone opens on the team's own name (`#teamName`) and the game format,
-then **Team colour**: one of nine choices (Graphite, Hardwood, Royal, Navy,
+then **Team color**: one of nine choices (Graphite, Hardwood, Royal, Navy,
 Maroon, Red, Forest, Gold, Purple), each with a swatch. Graphite is the default
 and the neutral choice; the other eight tint the primary buttons, tappable
 phrases and selected states so two teams read visibly different at a glance.
-A picker dialog opens on tap, and the picker marks the current colour and
-applies a new one instantly. The colour is stored per team, so two squads with
-two colours stay visibly different when you switch between them. The tint
-follows the theme — each colour has a light and a dark value — and the
+A picker dialog opens on tap, and the picker marks the current color and
+applies a new one instantly. The color is stored per team, so two squads with
+two colors stay visibly different when you switch between them. The tint
+follows the theme — each color has a light and a dark value — and the
 `--tint*` tokens live in `tokens.css` alongside the `--accent` neutrals (#21).
 
 Then **Players changing at once** (1–5, default 3): `maxSubs`, which has
@@ -401,22 +401,22 @@ and deliberately does **not** say "no limit", because the floor is still
 pulling and a promise about both bounds would be false.
 
 The hero is a **rotation timeline** — players down the side, the game clock
-across, colour-coded blocks where each is on the floor. Blocks are positioned
+across, color-coded blocks where each is on the floor. Blocks are positioned
 by elapsed minutes rather than stint index, so unequal stint lengths land in
 the right place, and consecutive stints merge into one block so a long run
 reads as a run. Fairness, back-to-back sits and the closing group are all
 visible at a glance in a way a table of rows never made them.
 
 Each row ends in that player's total minutes, and the highest and lowest totals
-in the squad are called out — in words (`MOST` / `FEWEST`) as well as colour, so
-the judgement survives colour blindness and a screen reader. A callout is an
+in the squad are called out — in words (`MOST` / `FEWEST`) as well as color, so
+the judgement survives color blindness and a screen reader. A callout is an
 outlier, so an end is only named when it is a minority of the squad — at most a
 third. Twelve players splitting 16/12 four-to-eight names the four who lead;
 fifteen splitting 16/8 ten-to-five names the five who are short, not the ten
 who are not. When neither end is small enough — an even plan, or a 6/6 split —
 nothing is tagged and the gutter collapses rather than shouting at every row.
 
-Players carry identity: a colour from a perceptually even hue set (lightness
+Players carry identity: a color from a perceptually even hue set (lightness
 and chroma themed once, only the hue varies per player), used in the squad
 pills, the timeline, the budget sliders and the day chart. The stint-by-stint
 table still exists, demoted to a disclosure.
@@ -439,7 +439,7 @@ background.
 `#view-today` is the one view that ships visible (#23), so a first-ever visitor
 used to paint the Today shell and watch it flip to the welcome screen a beat
 later. A pre-paint script stamps `data-boot` on `<html>` with the view the boot
-is going to land on, and another stamps `data-tint` with the active team's colour
+is going to land on, and another stamps `data-tint` with the active team's color
 (#25); `app.css` hides the Today shell (and the bar and the foot) and reveals
 that view for its stamp, and the token blocks apply for the tint. `applyView`
 removes `data-boot` the first time it runs; `data-tint` stays, because
@@ -487,16 +487,16 @@ One consequence worth knowing: the printed card is auto-fitted from canvas
 stack matching `.card`'s exactly, and the re-fit on font load — is a trap
 `AGENTS.md` owns and this file does not restate.
 
-Motion, colour and touch behaviour run off tokens in one place: easing curves
-(nothing linear), four durations, a neutral grey palette with ink as the
+Motion, color and touch behavior run off tokens in one place: easing curves
+(nothing linear), four durations, a neutral gray palette with ink as the
 primary tint, a `prefers-contrast: more` variant, and full light/dark (the
-Graphite look, #21). A team's colour (Graphite through Purple) overrides that
+Graphite look, #21). A team's color (Graphite through Purple) overrides that
 neutral tint on the primary buttons, selected states and tappable phrases (#25);
-each colour declares its own `--tint*` tokens for the current theme, and
+each color declares its own `--tint*` tokens for the current theme, and
 `applyTint()` stamps `data-tint` on `<html>` so the CSS blocks apply — the same
 pattern as `data-theme`. `prefers-reduced-motion` disables all of it, and
 **the preference is watched, not sampled** — a phone can flip it from Control
-Centre mid-game, so `fx.js` exports `enabled` as a live binding and re-reads
+Center mid-game, so `fx.js` exports `enabled` as a live binding and re-reads
 the query on `change`. That gating is not decoration: the CSS
 `@media (prefers-reduced-motion: reduce)` block can only neutralise CSS
 animations and transitions, and everything discrete here (Motion, the timeline
@@ -714,7 +714,7 @@ breakpoint, where the top-left X is already an easy target.
 
 The dot strip is **a window, not the whole game**, past 12 stints. It is ~142px
 wide on a 390px phone, which is about twelve usable dots; an 8×20 game has forty
-of them, and drawn one-per-stint they overflowed a centred, clipped strip so that
+of them, and drawn one-per-stint they overflowed a centerd, clipped strip so that
 everything past stint 11 — the current-stint dot included — was invisible. Above
 twelve stints it draws twelve around the current one, dimming the dot at a
 truncated edge so the strip reads as a window. The exact position is never
@@ -731,7 +731,7 @@ out of the row's flex gap, not out of the dots.
 Stints are **swipeable**, buttons and dots included. The body is
 `touch-action: pan-y`, which leaves the vertical scroll with the browser and
 routes horizontal moves to the app; that has to be declared up front, because a
-touch gesture's scrolling behaviour is fixed before the first `pointermove`
+touch gesture's scrolling behavior is fixed before the first `pointermove`
 lands. The swipe drives the prev/next buttons rather than repeating their
 logic, so their `disabled` state is also what marks the ends of the game — at
 either end the drag rubber-bands and snaps back, and the end of the game is

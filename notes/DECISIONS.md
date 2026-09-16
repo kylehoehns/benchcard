@@ -31,7 +31,7 @@ running informally.
 ---
 
 - Benchcard: substitution rotations for youth basketball
-- Add MIT licence
+- Add MIT license
 - Settle the deploy origin on benchcard.app; extract state.js seam
 - Queue analytics and CI/CD work
 - Add analytics behind an off-by-default constant; narrow the privacy promise
@@ -106,7 +106,7 @@ running informally.
 - Close out the launch checklist: analytics, the card, the tip jar
 - Remove photo roster scanning
 - Make the Spread tile say what it means
-- Show the level word on a phone, and stop reordering from recolouring everyone
+- Show the level word on a phone, and stop reordering from recoloring everyone
 - Delete a team properly, and finish the period-label fix
 - Split the CSS out of index.html
 - about.html: share tokens.css instead of copying the palette
@@ -248,7 +248,7 @@ running informally.
 - Queue the three approved items, and close C7
 - Reconcile the queued notes with the no-users-yet ruling
 - Half-sheet: a second column of stints, once one will not hold them
-- Share PNG: centre benchcard.app in a taller bottom band
+- Share PNG: center benchcard.app in a taller bottom band
 - about.html: a section index under the hero card
 - Guard the seven static pages the way the shell is guarded
 - Guard the one CSS defect no dead-* test can see
@@ -298,7 +298,7 @@ running informally.
 - A25: the empty Season view names the spreadsheet it is going to give you
 - Record the two A25 fixes that shipped, and a third confirmation of the dirty-port hazard
 - A25: the roster stops panning 208px at 320px on 200% text
-- A25: six selected-state controls stop being announced by colour alone
+- A25: six selected-state controls stop being announced by color alone
 - Record the two A25 fixes that shipped, and a guard that scored its own comment
 - A25: the season ledger stops panning off the right edge at 200% text
 - A25: Settings opens with the two things a coach recognizes, not five league rules

@@ -61,35 +61,35 @@ on('#themeSeg', 'onclick', (e) => {
 });
 /* #25: the picker is the `.keyswrap` dialog pattern (`trap.js`'s
    openTrap/closeTrap), same shape as `#help` -- see shortcuts.js's
-   openHelp/closeHelp. Choosing a colour only needs the tint attribute and
+   openHelp/closeHelp. Choosing a color only needs the tint attribute and
    the settings row repainted -- nothing else on screen reads the team
-   colour -- so this saves and calls `applyTint()` / `renderSettings()`
+   color -- so this saves and calls `applyTint()` / `renderSettings()`
    directly rather than `renderAll()`, same shape as the theme handler
    above. `save()` surfaces a failed write the same way `render()`'s does:
    it writes the recovery banner itself (state.js); only the extra toast
    `render()` fires via `saveJustFailed()` is skipped, same as the theme
    handler. Then this closes the picker and returns focus to
-   `#teamColourBtn` -- `closeTrap` is what restores focus to the trigger
+   `#teamColorBtn` -- `closeTrap` is what restores focus to the trigger
    `openTrap` recorded. */
-function closeColourPicker() {
-  const p = $('#colourPicker');
+function closeColorPicker() {
+  const p = $('#colorPicker');
   if (!p || p.hidden) return;
   p.hidden = true;
   closeTrap(p);
 }
-on('#teamColourBtn', 'onclick', (e) => {
-  const p = $('#colourPicker');
+on('#teamColorBtn', 'onclick', (e) => {
+  const p = $('#colorPicker');
   if (!p || !p.hidden) return;
   p.hidden = false;
-  openTrap(p, closeColourPicker, e.currentTarget);
+  openTrap(p, closeColorPicker, e.currentTarget);
 });
-on('#colourPickerClose', 'onclick', closeColourPicker);
-on('#colourOpts', 'onclick', (e) => {
-  const b = e.target.closest('button[data-colour]');
+on('#colorPickerClose', 'onclick', closeColorPicker);
+on('#colorOpts', 'onclick', (e) => {
+  const b = e.target.closest('button[data-color]');
   const s = team()?.settings;
   if (!b || !s) return;
-  if (b.dataset.colour !== s.colour) { s.colour = b.dataset.colour; save(); applyTint(); renderSettings(); }
-  closeColourPicker();
+  if (b.dataset.color !== s.color) { s.color = b.dataset.color; save(); applyTint(); renderSettings(); }
+  closeColorPicker();
 });
 on('#dayName', 'oninput', e => { state.day.name = e.target.value; save(); });
 on('#teamName', 'oninput', e => {
@@ -165,7 +165,7 @@ on('#shareCard', 'onclick', () => {
      takes ~10ms, so there is no window to double-tap in, and the share sheet
      is modal on the platforms that have one -- whereas a `finally` that never
      fires (a share promise that simply never settles is a real browser
-     behaviour) would leave a coach with a dead button and no way back. */
+     behavior) would leave a coach with a dead button and no way back. */
   let how;
   try {
     how = shareCards(cards, {

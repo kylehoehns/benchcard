@@ -68,9 +68,9 @@ Wait for the animation, not the boot.
 **Check both axes.** Every overflow probe here was horizontal until 2026-08-25,
 and a toast 160px above the top of the viewport passed all of them.
 
-## 5. Colour: resolve through a 1×1 canvas
+## 5. Color: resolve through a 1×1 canvas
 
-**Player colours are `oklch()`; the palette is not.** `tokens.css`, `app.css`
+**Player colors are `oklch()`; the palette is not.** `tokens.css`, `app.css`
 and `card.css` contain zero `oklch()` — 32 hex literals and 33 `rgba()`. The
 one runtime `oklch()` is the per-player hue built in `state.js:27` (plus
 `about.html`'s demo markup). It still matters, because parsing

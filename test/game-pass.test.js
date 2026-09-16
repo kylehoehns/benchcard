@@ -181,11 +181,11 @@ function parseStops(gradient) {
   assert.ok(m, `not a linear-gradient(to right, …): ${gradient}`);
   return m[1].split(', ').map(tok => {
     const at = tok.lastIndexOf(' ');
-    return { colour: tok.slice(0, at), pos: tok.slice(at + 1) };
+    return { color: tok.slice(0, at), pos: tok.slice(at + 1) };
   });
 }
 
-test('rowGradient puts colour exactly on a block\'s span and transparent across the period gap', () => {
+test('rowGradient puts color exactly on a block\'s span and transparent across the period gap', () => {
   const g = { periods: 2, periodMinutes: 10 };
   const blocks = [{ period: 1, from: 0, to: 10 }, { period: 2, from: 0, to: 5 }];
   const gradient = S.rowGradient(blocks, g, 'oklch(1 2 3)');
@@ -197,7 +197,7 @@ test('rowGradient puts colour exactly on a block\'s span and transparent across 
 test('rowGradient is nothing but transparent when a player has no blocks', () => {
   const g = { periods: 4, periodMinutes: 8 };
   const stops = parseStops(S.rowGradient([], g, 'oklch(1 2 3)'));
-  assert.ok(stops.every(s => s.colour === 'transparent'), 'a row with no blocks used a player colour');
+  assert.ok(stops.every(s => s.color === 'transparent'), 'a row with no blocks used a player color');
   assert.equal(stops[0].pos, '0%');
   assert.equal(stops[stops.length - 1].pos, '100%');
 });
@@ -207,7 +207,7 @@ test('rowGradient never widens the gap or the track for a wider period count', (
   const g = { periods: 4, periodMinutes: 8 };
   const blocks = [{ period: 3, from: 0, to: 8 }];
   const stops = parseStops(S.rowGradient(blocks, g, 'oklch(1 2 3)'));
-  const coloured = stops.filter(s => s.colour !== 'transparent').map(s => s.pos);
+  const colored = stops.filter(s => s.color !== 'transparent').map(s => s.pos);
   // track = (100 - 3*1)/4 = 24.25; period index 2 starts at 2*24.25 + 2*1 = 50.5
-  assert.deepEqual(coloured, ['50.5%', '74.75%']);
+  assert.deepEqual(colored, ['50.5%', '74.75%']);
 });

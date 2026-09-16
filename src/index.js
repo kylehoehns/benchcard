@@ -17,7 +17,7 @@
  * sends it. `payload()` is imported from the app's own analytics module rather
  * than reimplemented, so the client and the server cannot drift about what a
  * legal event is: one whitelist, one place, already tested. Anything it does
- * not recognise is dropped on the floor, not stored and not echoed back.
+ * not recognize is dropped on the floor, not stored and not echoed back.
  *
  * **It degrades.** If the Analytics Engine binding is absent — a preview
  * deploy, a plan without it — the event is written to the log instead, which

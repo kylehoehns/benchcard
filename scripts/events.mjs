@@ -280,7 +280,7 @@ export function report({ window, events, total, unknown, asked }) {
   L.push(`  ${pad('TOTAL of the above', 22)}${rpad(commas(total), 9)}`, '');
 
   if (unknown.length) {
-    L.push('UNRECOGNISED EVENT NAMES — in the dataset, not in EVENTS today');
+    L.push('UNRECOGNIZED EVENT NAMES — in the dataset, not in EVENTS today');
     for (const u of unknown) L.push(`  ${pad(u.event, 22)}${rpad(commas(u.est), 9)}`);
     L.push('  A renamed or removed event, or an older deploy still reporting.', '');
   }

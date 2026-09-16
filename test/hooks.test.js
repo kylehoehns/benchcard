@@ -22,6 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { WORDS } from '../scripts/spelling.mjs';
 
 const HOOKS = new URL('../.claude/hooks/', import.meta.url);
 const ROOT = new URL('../', import.meta.url);
@@ -238,6 +239,38 @@ test('a file outside PRECACHE gets no shell reminder', () => {
 test('editing a guard reminds you to run it red', () => {
   const r = run('after-edit.sh', { tool_input: { file_path: '/repo/test/engine.test.js' } });
   assert.match(r.context, /RED/);
+});
+
+/* ---------- after-edit: the spelling reminder (#61) ----------
+ * The hook holds no word list of its own: it shells out to
+ * scripts/spelling.mjs, the same module the guard test imports. Real files
+ * in a scratch dir, since the CLI has to actually read the path it is given. */
+
+const spellingScratch = mkdtempSync(join(tmpdir(), 'after-edit-spelling-'));
+const spellingFixture = (name, text) => {
+  const f = join(spellingScratch, name);
+  writeFileSync(f, text);
+  return f;
+};
+
+/* Built from the one word list rather than typed out here -- typing either
+ * spelling directly into this file's own source would trip the tree scan in
+ * spelling.test.js, since this file is not one of the four it allows to carry
+ * one. */
+const [britishColor, americanColor] = WORDS.find(([b]) => b === 'colo' + 'ur');
+const [britishFavor, americanFavor] = WORDS.find(([b]) => b === 'favo' + 'ur');
+
+test('an edited file carrying a British spelling gets an advisory note naming the line and the American word', () => {
+  const f = spellingFixture('british.js', `// the team's ${britishFavor}ite ${britishColor}\n`);
+  const r = run('after-edit.sh', { tool_input: { file_path: f } });
+  assert.equal(r.decision, null, 'the spelling reminder must never block');
+  assert.match(r.context, new RegExp(americanFavor));
+  assert.match(r.context, /:1:/, 'the note names the line');
+});
+
+test('an edited file with clean spelling gets no note', () => {
+  const f = spellingFixture('clean.js', `// the team's ${americanFavor}ite ${americanColor}\n`);
+  assert.equal(run('after-edit.sh', { tool_input: { file_path: f } }).context, '');
 });
 
 /* ---------- fail-closed ----------
