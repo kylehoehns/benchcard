@@ -2425,6 +2425,29 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      width instead. */
   .sn-row .sn-x { flex-basis: 100%; }
 
+  /* #24 CI fix, round 2 (Linux font metrics again): the fix above wraps the
+     LEDGER rows, but "Game by game"'s own summary row -- the game title
+     (`.sn-gt`, `flex: 1; min-width: 0`, ellipsis) beside its meta
+     (`.sn-gm`, "10 played · 4×8", `flex: 0 0 auto`) -- has no wrap rule at
+     all, and it is `.helpq`'s comment's exact tell: measured on this machine
+     at a 32px root, `.sn-gt` shrinks all the way to 0px (min-width: 0 lets
+     it) and `.sn-gm` still does not fit beside it in the ~186px column the
+     row is given, so the row's own `scrollWidth` (297px) overflows past its
+     `clientWidth` (186px) while its `getBoundingClientRect` stays inside
+     320px -- an overflow no per-element right-edge probe can see, only
+     `document.documentElement.scrollWidth` (364px at a 40px root here). It
+     surfaced as `#toasts` sizing to that wider initial containing block, not
+     as `.sn-gm` or `.sn-gt` reaching past the viewport, the same symptom the
+     `.helpq` comment above already names for the same reason. Wrapping is
+     the fix, not a wider `.sn-gt` floor: `.sn-gm` drops to its own line and
+     the title keeps the ellipsis it already has on the first. Checked at
+     32/34/36/38/40px roots: `document.documentElement.scrollWidth` stays at
+     320 with this rule at every one, where the unfixed tree measured
+     328/347/364px at 36/38/40 (32 and 34 already held on this machine's
+     narrower glyphs, which is exactly why the CI runner's own wider ones
+     were needed to see this). */
+  .sn-game > summary { flex-wrap: wrap; }
+
   /* And the timeline, where the failure is not a pan at all -- the page stays
      320px wide the whole time -- but a column squeezed to nothing, the same
      shape as the toast message A29 fixed. MOST / FEWEST sits in a fixed
