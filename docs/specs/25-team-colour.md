@@ -49,7 +49,7 @@ Measured with `scripts/tokens-css.mjs`'s `contrast()`:
 
 | Light fill | White label | Ink `#1C1C1E` label | `#000000` label |
 | --- | --- | --- | --- |
-| Hardwood `#D2500A` | 4.29 | 3.96 | 4.90 |
+| Hardwood `#D2500A` | 4.29 | 3.96 | 4.89 |
 | Gold `#A87200` | 4.14 | 4.11 | 5.07 |
 
 Every other light fill clears 4.5:1 with a white label (lowest: Red 6.16).
