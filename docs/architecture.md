@@ -438,6 +438,14 @@ player name and total on one line, track underneath. Once the timeline itself is
 phone qualifies) it lays out one row: name, track and total side by side. At
 about 34em the name column widens again for desktop.
 
+The timeline's row itself is a plain container, not the button. Each player's
+name is a real `<button>` that opens the player's minute breakdown; tapping it
+again closes the panel. The row pitch in the one-row layout is 2.25rem (36px at
+the default text size), tall enough for nine players to fit above the action bar
+on a 390×844 phone. In the stacked layout the button is 48px tall, meeting the
+minimum size guidance. Both Enter and Space open the breakdown, since it is a
+native button rather than a hand-rolled control.
+
 Theme follows the phone. `auto` is the default, and it is resolved to a real
 `data-theme` value — by a small inline script before first paint, and by
 `applyTheme()` once the state is loaded — because the dark palette hangs off
@@ -661,7 +669,7 @@ Mobile specifics that came out of real use:
   state hides the `.rhead` column labels: headings over an empty table read as
   something that failed to load.
 - **A blank timeline always offers a way out of itself.** "Resolve the errors
-  above" is only useful if the coach can reach the control that caused them. The
+  below" is only useful if the coach can reach the control that caused them. The
   Plan sheet opens at full height, so `timelineEmpty` reads the plan's issues:
   a rules-caused error (`RULE_ERRORS` — minimums, caps, pair/avoid conflicts,
   pinned fives) adds **Fix the rules** (opens the Plan sheet at the Rules group),

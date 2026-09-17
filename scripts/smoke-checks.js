@@ -27,10 +27,20 @@
      when it is pinned to the one-row layout's row pitch -- 2.25rem (36px),
      short of both floors by design, because a taller button there would
      overlap the next row (see the spec's "one conflict, and the call
-     made"). `scripts/smoke/game-rows-fit.mjs` owns that number instead,
-     against `min(48, pitch) - 0.5`; in the stacked layout `.tl-name` keeps
-     its own `min-height: 48px` and stays counted here like any other
-     control.
+     made"). `problemsFor` in `scripts/smoke/game-rows-fit.mjs` owns that
+     number instead, against `min(48, pitch) - 0.5`; in the stacked layout
+     `.tl-name` keeps its own `min-height: 48px` and stays counted here like
+     any other control.
+
+     `rowPitch` below and `problemsFor`'s own pitch both compute the row
+     pitch the same way -- the distance from this row's top to the next
+     row's top, or (for the last row) from the previous row's top to this
+     one's -- so a change to one formula without the other would show up as
+     a mismatch between which rows this file skips and which the other
+     file's floor allows. This file cannot `import` that one (it is read as
+     raw source and evaluated in the page, not loaded as a module), so
+     nothing but this comment ties the two together; keep both in step by
+     hand.
 
      "One-row layout" is read off `.tl-row`'s own computed
      `grid-template-areas` rather than the viewport width: the stacked rule

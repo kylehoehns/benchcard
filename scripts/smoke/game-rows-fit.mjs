@@ -1,4 +1,4 @@
-import { evalIn, SETTLE, HEIGHT } from './dom.mjs';
+import { evalIn, SETTLE, HEIGHT, landWiped } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { nameOf } from './registry.mjs';
 
@@ -13,14 +13,17 @@ const NAME_SEL = `${ROW_SEL} .tl-name`;
    bullet: covers items 1 (all 9 rows, and Start game, on screen with no
    scrolling) and 3 (the name button's own tap-target geometry).
 
-   THE LANDING mirrors `tryLanding` (`app-large-text.mjs`) rather than
-   calling it: that helper's own assertions are about the sample-flash toast,
-   not the rows underneath it, and a `?try=9` link is the one path this app
-   ships that lands nine players straight onto the games view with no rich
-   fixture to build first (`onboarding.js`'s `initOnboarding` reads `try`
-   only while `state.onboarded` is false, so the wipe has to come first, and
+   THE LANDING shares its wipe -> navigate -> wait -> cleanup shape with
+   `tryLanding` (`app-large-text.mjs`) through `landWiped` (`dom.mjs`), which
+   owns that shape now; this function only supplies the URL and the wait
+   condition. It does not call `tryLanding` itself: that function's own
+   assertions are about the sample-flash toast, not the rows underneath it,
+   and a `?try=9` link is the one path this app ships that lands nine
+   players straight onto the games view with no rich fixture to build first
+   (`onboarding.js`'s `initOnboarding` reads `try` only while
+   `state.onboarded` is false, so the wipe has to come first, and
    `browserChecks`'s own on-new-document script would otherwise re-seed
-   `benchcard.v3` ahead of it — see `tryLanding`'s own comment for both
+   `benchcard.v3` ahead of it — see `landWiped`'s own comment for both
    facts). The wait condition differs on purpose: `tryLanding` waits for the
    toast; this waits for the ninth row, which is the thing this check reads.
 
@@ -38,19 +41,7 @@ const NAME_SEL = `${ROW_SEL} .tl-name`;
    everything after it expects `RICH`, not a freshly wiped nine-player
    sample. */
 async function landOnNine(c, origin) {
-  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument',
-    { source: `try { localStorage.clear(); } catch {}` });
-  try {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: `${origin}/index.html?try=9` });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && document.querySelectorAll('${ROW_SEL}').length < 9; i++)
-        await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
-  } finally {
-    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  }
+  await landWiped(c, `${origin}/index.html?try=9`, `document.querySelectorAll('${ROW_SEL}').length >= 9`);
 }
 
 const MEASURE = `(() => {
@@ -82,7 +73,14 @@ const MEASURE = `(() => {
    against), the same "row pitch" the one-row layout in app.css is built to
    a 2.25rem number for. Consecutive name buttons must not overlap either,
    since a button reaching into the next row's space would be reachable but
-   would mis-tap into the wrong player. */
+   would mis-tap into the wrong player.
+
+   The pitch here is read off `m.rows` (the `.tl-row` rects), the same
+   element `rowPitch` in `scripts/smoke-checks.js` measures, and the same
+   formula -- next row's top minus this row's, or this row's minus the
+   previous row's for the last one -- so the two never drift apart. It is
+   only applied to the `.tl-name` height (`m.names`), since item 3 is about
+   the button's own tap-target size, not the row's. */
 function problemsFor(scheme, m) {
   const problems = [];
   if (m.count !== 9) { problems.push(`${scheme}: ${m.count} rows carry a data-id, not 9`); return problems; }
@@ -99,8 +97,9 @@ function problemsFor(scheme, m) {
 
   m.names.forEach((r, i) => {
     if (r.w < 48) problems.push(`${scheme}: .tl-name row ${i + 1} is ${r.w}px wide, under 48px`);
-    const next = m.names[i + 1], prev = m.names[i - 1];
-    const pitch = next ? next.t - r.t : prev ? r.t - prev.t : null;
+    const row = m.rows[i], nextRow = m.rows[i + 1], prevRow = m.rows[i - 1];
+    const pitch = nextRow ? nextRow.t - row.t : prevRow ? row.t - prevRow.t : null;
+    const next = m.names[i + 1];
     if (pitch != null) {
       const floor = Math.min(48, pitch) - 0.5;
       if (r.h < floor) problems.push(`${scheme}: .tl-name row ${i + 1} is ${r.h}px tall, under ${floor} (min(48, pitch ${pitch}) - 0.5)`);

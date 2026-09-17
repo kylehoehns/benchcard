@@ -730,14 +730,17 @@ a { color: inherit; }
      under the ninth row at 390 x 844 (see docs/specs/72-fit-nine-rows.md,
      "the one conflict, and the call made"). No vertical padding: the pitch
      IS the row's min-height, and any padding would only shrink the button
-     inside it. */
+     inside it. Stated once as --row-pitch, set here on `.tl-row` (its
+     descendant `.tl-name` below inherits it) rather than on `.tl` itself,
+     for the same reason --lab is set on `.tl-head`/`.tl-row` above: a
+     container query cannot restyle the container element it matches on. */
   .tl-row {
     grid-template-columns: var(--lab) 1fr var(--tot); grid-template-areas: "lab trk tot";
-    row-gap: 0; padding: 0; min-height: 2.25rem;
+    row-gap: 0; padding: 0; --row-pitch: 2.25rem; min-height: var(--row-pitch);
   }
   /* Stretch the label cell to the row's own height, and stretch the button
-     inside it to fill that cell -- `.tl-name`'s `min-height: 2.25rem` below
-     is what actually sets the number; this is what lets it reach the full
+     inside it to fill that cell -- `.tl-name`'s `min-height: var(--row-pitch)`
+     below is what actually sets the number; this is what lets it reach the full
      height rather than sitting centered inside a taller box with dead space
      above and below it. The track and the total keep the row's own
      `align-items: center` (unchanged), so only the label is affected. */
@@ -746,8 +749,10 @@ a { color: inherit; }
      it measures every `.tl-name` against `min(48, pitch) - 0.5`, not 48 flat,
      because a target taller than the pitch would overlap the next row. The
      generic touch sweeps (scripts/smoke-checks.js) skip `.tl-name` here for
-     the same reason -- see the comments there. */
-  .tl-name { min-height: 2.25rem; }
+     the same reason -- see the comments there. `--row-pitch` is set once on
+     `.tl-row` above and inherited here, so the two rules can never drift
+     apart. */
+  .tl-name { min-height: var(--row-pitch); }
   .tl-track { height: 1rem; }
 }
 /* #69 decision 7: widen the label back to the desktop value once the

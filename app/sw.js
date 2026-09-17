@@ -19,7 +19,7 @@
    whenever a precached file changes -- `npm test` names it in the SHELL
    failure and `scripts/check-sw-version.mjs` enforces it across commits --
    but a forgotten bump is now a stale LABEL, not a stale SHELL. */
-const VERSION = '288';
+const VERSION = '289';
 
 /* Fingerprint of every file PRECACHE names, and the half of the cache name
    that actually busts it. `test/sw.test.js` recomputes it from the bytes on
@@ -29,7 +29,7 @@ const VERSION = '288';
    `activate` below deletes the old one. It lives HERE rather than in the test
    so that the edit updating it lands on the line below VERSION. Deleting it
    fails the suite too. */
-const SHELL = '41b2f6ba4c52';
+const SHELL = '144442b12549';
 
 const CACHE = `benchcard-v${VERSION}-${SHELL}`;
 
