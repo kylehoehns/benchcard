@@ -672,10 +672,14 @@ a { color: inherit; }
   position: absolute; top: 0; font-size: var(--fs-footnote); font-weight: 500;
   color: var(--muted); transform: translateX(.3rem);
 }
+/* #72: the row is a plain container now, not the control -- it lost
+   min-height (the NAME BUTTON below carries the tap-target floor) and
+   `cursor: pointer` (moved to `.tl-name`), because the row itself carries no
+   role, no tabindex and no click handler any more. */
 .tl-row {
   display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lab tot" "trk trk";
   gap: .6rem; row-gap: .22rem; align-items: center;
-  min-height: 48px; padding: .3rem .3rem .4rem; border-radius: var(--r-xs);
+  padding: .3rem .3rem .4rem; border-radius: var(--r-xs);
   transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .tl-lab { grid-area: lab; display: flex; align-items: center; gap: .4rem; min-width: 0; }
@@ -684,6 +688,19 @@ a { color: inherit; }
    test/timeline-names.test.js pins that) reads at the same size and weight as
    any other row label, not a footnote. */
 .tl-lab .nm { font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* #72: the name is the tap target now, not the row -- a real
+   `<button type="button" class="tl-name">` around the dot and the name,
+   styled to disappear so it still reads as the plain label it replaces (no
+   chrome, no underline, no tint -- K1 does not allow tint here). Stacked
+   layout (below) gives it the full 48px I1 asks for; the one-row layout
+   (@container, further down) can only give it the row's own pitch, since a
+   taller button there would overlap the next row -- see the spec's "one
+   conflict, and the call made". */
+.tl-name {
+  display: flex; align-items: center; gap: .4rem; width: 100%;
+  background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit;
+  text-align: left; cursor: pointer; min-height: 48px;
+}
 .tl-track {
   grid-area: trk; position: relative; height: 1.5rem; border-radius: var(--r-xs);
   background: var(--track); overflow: hidden;
@@ -707,10 +724,30 @@ a { color: inherit; }
      three areas, not clear the names and hope auto-placement (which put
      every item in the same cell instead of spreading them across the three
      explicit columns) sorts them out. */
+  /* #72: the row pitch -- top of one row to the top of the next -- is
+     2.25rem here (36px at the default text size). That is 5px taller than
+     the prototype's ~31px, for a bigger target, and leaves ~40px of slack
+     under the ninth row at 390 x 844 (see docs/specs/72-fit-nine-rows.md,
+     "the one conflict, and the call made"). No vertical padding: the pitch
+     IS the row's min-height, and any padding would only shrink the button
+     inside it. */
   .tl-row {
     grid-template-columns: var(--lab) 1fr var(--tot); grid-template-areas: "lab trk tot";
-    row-gap: 0; padding: .13rem 0;
+    row-gap: 0; padding: 0; min-height: 2.25rem;
   }
+  /* Stretch the label cell to the row's own height, and stretch the button
+     inside it to fill that cell -- `.tl-name`'s `min-height: 2.25rem` below
+     is what actually sets the number; this is what lets it reach the full
+     height rather than sitting centered inside a taller box with dead space
+     above and below it. The track and the total keep the row's own
+     `align-items: center` (unchanged), so only the label is affected. */
+  .tl-lab { align-self: stretch; align-items: stretch; }
+  /* Smoke `game rows fit` (scripts/smoke/game-rows-fit.mjs) owns this number:
+     it measures every `.tl-name` against `min(48, pitch) - 0.5`, not 48 flat,
+     because a target taller than the pitch would overlap the next row. The
+     generic touch sweeps (scripts/smoke-checks.js) skip `.tl-name` here for
+     the same reason -- see the comments there. */
+  .tl-name { min-height: 2.25rem; }
   .tl-track { height: 1rem; }
 }
 /* #69 decision 7: widen the label back to the desktop value once the
@@ -785,7 +822,6 @@ a { color: inherit; }
 @media (hover: hover) { .tl:hover .tl-row:not(:hover) { opacity: .45; } }
 @media (hover: hover) { .tl-row:hover { background: var(--surface-2); } }
 
-.tl-row { cursor: pointer; }
 .tl-row.pin { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--c); }
 .tl.pinned .tl-row:not(.pin) { opacity: .38; }
 @media (hover: hover) { .tl.pinned:hover .tl-row:not(:hover):not(.pin) { opacity: .38; } }

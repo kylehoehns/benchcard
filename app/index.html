@@ -577,10 +577,13 @@
               <span class="spacer"></span>
               <button class="btn ghost sm press" id="regen"><span class="i" data-icon="shuffle"></span>Shuffle</button>
             </div>
-            <div id="issues" role="status" aria-live="polite"></div>
             <!-- #69 decision 7: the timeline is not boxed. `.surface` (a
                  bordered card) used to wrap it; both ids stay, unwrapped. -->
             <div id="timeline" class="tl"></div>
+            <!-- #72: moved below the timeline, so all 9 rows fit above the
+                 fold on a phone -- the errors this reports are now read
+                 after the rotation they explain, not before it. -->
+            <div id="issues" role="status" aria-live="polite"></div>
             <div class="statrow" id="stats" style="margin-top:1.05rem"></div>
           </section>
 
@@ -1690,8 +1693,9 @@
     if (!tl) return;
     var rows = '';
     for (var i = 0; i < Math.min(16, players.length); i++) {
-      rows += '<div class="tl-row"><div class="tl-lab"><span class="dot"></span>' +
-        '<span class="nm"></span></div><div class="tl-track"></div><div class="tl-tot"></div></div>';
+      rows += '<div class="tl-row"><div class="tl-lab"><span class="tl-name" aria-hidden="true">' +
+        '<span class="dot"></span><span class="nm"></span></span></div>' +
+        '<div class="tl-track"></div><div class="tl-tot"></div></div>';
     }
     tl.innerHTML = '<div class="tl-skel" aria-hidden="true">' +
       '<div class="tl-head"><div></div><div class="tl-periods"></div><div></div></div>' +
