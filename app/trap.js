@@ -425,9 +425,30 @@ export function openSheet(dialog, trigger, { full = false } = {}) {
   focusTarget(dialog).focus({ preventScroll: true });
 }
 
+// Which kind of input the coach used last. A sheet always hands focus back
+// to the phrase that opened it, which is right for VoiceOver and for Tab --
+// but Safari paints its keyboard ring on that programmatic focus (Chrome
+// does not), so a sheet slid shut with a finger left a box drawn around the
+// phrase. `returnFocus` below reads these to tell a finger close from an
+// Escape close; capture phase so a handler that stops the event still counts.
+let lastPointerAt = 0;
+let lastKeyAt = 0;
+document.addEventListener('pointerdown', () => { lastPointerAt = Date.now(); }, true);
+document.addEventListener('keydown', () => { lastKeyAt = Date.now(); }, true);
+
 function returnFocus(dialog) {
   const t = sheetTrigger.get(dialog);
-  if (t && document.contains(t) && t.getClientRects().length) t.focus({ preventScroll: true });
+  if (!t || !document.contains(t) || !t.getClientRects().length) return;
+  // Finger or mouse: focus still moves, the ring just isn't drawn (app.css
+  // reads the attribute). It comes off again the moment the coach leaves the
+  // phrase or touches a key, so a keyboard user's next ring is the real one.
+  if (lastPointerAt > lastKeyAt) {
+    t.dataset.noring = '';
+    const drop = () => { delete t.dataset.noring; };
+    t.addEventListener('blur', drop, { once: true });
+    t.addEventListener('keydown', drop, { once: true });
+  }
+  t.focus({ preventScroll: true });
 }
 
 // The drag-in-progress reset both close paths below start from: drop any

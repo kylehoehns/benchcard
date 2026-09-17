@@ -1,6 +1,7 @@
-import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, step, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { evalJSON, click, closedWithFocus, drag, flick, resizeCheck, settle, settlePane, sheetRect, setGame, statusOk, tap, tapPane, titleFocused, waitClosed } from './sheet-drive.mjs';
+import { evalJSON, click, closedWithFocus, settle, settlePane, sheetRect, setGame, statusOk, tap, tapPane, titleFocused, waitClosed } from './sheet-drive.mjs';
+import { planClosePass } from './plan-closes.mjs';
 
 /* #28's own guard (docs/specs/28-plan-sheet.md's Proof section), extended by
  * #73 (docs/specs/73-sheet-polish.md) for its own "plan sheet" row: the Plan
@@ -36,7 +37,7 @@ export async function planSheetPass(c, origin) {
     // activeGame: 0) -- no `.today-game` row to click first.
     await tap(c, `document.getElementById('phraseStrategy').click()`);
 
-    let rect = await sheetRect(c, '#sheetPlan');
+    const rect = await sheetRect(c, '#sheetPlan');
     ck(rect.open, '#sheetPlan did not open on tapping "Plan, even minutes"');
     ck(rect.top <= HEIGHT * 0.15, `#sheetPlan's top edge is ${Math.round(rect.top)}px, want <= 15% of ${HEIGHT}`);
     const tf = await titleFocused(c, 'sheetPlanTitle'); // item 4
@@ -544,53 +545,8 @@ export async function planSheetPass(c, origin) {
     await tap(c, `[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'Even').click()`);
     await tap(c, `document.getElementById('sheetPlanClose').click()`);
 
-    /* ---- item 10: sheet behavior ---- */
-    await tap(c, `document.getElementById('phraseStrategy').click()`);
-    await evalIn(c, `history.back()`);
-    await settle(c);
-    const historyBack = await evalJSON(c, `JSON.stringify({
-      openDialogs: [...document.querySelectorAll('dialog[open]')].length,
-    })`);
-    ck(historyBack.openDialogs === 0, `${historyBack.openDialogs} dialog(s) still open after history.back()`);
-
-    // history.back() lands on Today for real -- back to Hawks before continuing.
-    await tap(c, `document.querySelectorAll('.today-game')[0].click()`);
-    await tap(c, `document.getElementById('phraseStrategy').click()`);
-    await click(c, WIDTH / 2, 10);
-    let r20 = await closedWithFocus(c, '#sheetPlan', '#phraseStrategy');
-    ck(r20.closed, 'backdrop click did not close #sheetPlan within the slide');
-    ck(r20.focusBack, 'focus not back on #phraseStrategy after a backdrop close');
-
-    await tap(c, `document.getElementById('phraseStrategy').click()`);
-    rect = await sheetRect(c, '#sheetPlan');
-    if (ck(!!rect.handle, '#sheetPlan has no .bsheet-handle to drag')) {
-      await drag(c, rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.4);
-      r20 = await closedWithFocus(c, '#sheetPlan', '#phraseStrategy');
-      ck(r20.closed, '40%-height drag did not close #sheetPlan within the slide');
-      ck(r20.focusBack, 'focus not back on #phraseStrategy after a drag close');
-    }
-
-    // item 20: a flick closes the whole sheet even from a pushed pane.
-    await tap(c, `document.getElementById('phraseRules').click()`);
-    await tapPane(c, `document.querySelector('#constraints .add-rule').click()`);
-    rect = await sheetRect(c, '#sheetPlan');
-    if (ck(!!rect.handle, '#sheetPlan has no .bsheet-handle to flick')) {
-      await flick(c, rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.15);
-      r20 = await closedWithFocus(c, '#sheetPlan', '#phraseRules');
-      ck(r20.closed, 'flick from Add-a-rule did not close #sheetPlan within the slide');
-      ck(r20.focusBack, 'focus not back on #phraseRules after a flick close');
-    }
-
-    // the handle toggles half and full.
-    await tap(c, `document.getElementById('phraseStrategy').click()`);
-    await resizeCheck(c, '#sheetPlan', ck, top => Math.abs(top - HEIGHT * 0.5) <= HEIGHT * 0.05);
-
-    // one sheet at a time.
-    await tap(c, `document.getElementById('phrasePlayers').click()`);
-    const oneOpen = await evalJSON(c, `JSON.stringify([...document.querySelectorAll('dialog[open]')].map(d => d.id))`);
-    ck(oneOpen.length === 1 && oneOpen[0] === 'sheetWho',
-      `opening Who's here while the Plan sheet was open left ${JSON.stringify(oneOpen)} open, want exactly ["sheetWho"]`);
-    await tap(c, `document.getElementById('sheetWhoClose').click()`);
+    /* ---- item 10 and item 20: closing and resizing ---- */
+    await planClosePass(c, ck);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }
