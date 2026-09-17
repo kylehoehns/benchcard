@@ -136,18 +136,55 @@ a { color: inherit; }
 .seg button.on { background: var(--seg-on); color: var(--tint); box-shadow: var(--shadow-sm); }
 .seg.wide { display: flex; width: 100%; padding: 2px; }
 .seg.wide button { flex: 1; padding: .58rem .3rem; font-size: var(--fs-secondary); }
-/* #29 decision 5: Timeline | Card, the bare (non-`.wide`) shape -- everything
-   above is already correct for it.
+/* #29 decision 5: Timeline | Card, the bare (non-`.wide`) shape.
    No gap under it, for the reason `.s-rot > .block-hd` gives above: this seg
-   stands where "Rotation" and its 48px Shuffle used to, and its own buttons
-   are 48px tall with their labels centered, so the lower half of the seg is
-   already the space. It has to be earned rather than spent: the seg's box is
-   52px (48px buttons inside `.seg`'s own 2px track inset) where the header it
-   replaced was 48px, and smoke `game rows fit` has all nine rows above the
-   Start game bar at 390x844 by about 9px on CI, where a wider fallback font
-   wraps the sample sentence onto a fourth line. Twelve px of gap here is more
-   than that whole margin. */
-#viewSeg { margin-bottom: 0; }
+   stands where "Rotation" and its 48px Shuffle used to, and smoke `game rows
+   fit` has all nine rows above the Start game bar at 390x844 by about 9px on
+   CI, where a wider fallback font wraps the sample sentence onto a fourth
+   line. Twelve px of gap here is more than that whole margin.
+
+   The two rules below are the prototype's own `.seg` (notes/mockups/
+   prototype/index.html lines 69-70), which the shared `.seg` above had drifted
+   from on this one control:
+
+   `inline-grid` with `1fr` columns makes the two read as equal halves. Left to
+   the shared `.seg`, each button sizes to its own word, so "Timeline" (82px)
+   comes out wider than "Card" (59px) and the control looks lopsided against
+   the mockup. `flex: 1` cannot fix that here: the track shrink-wraps, and a
+   flex item's `min-width: auto` floor is its own word, so "Timeline" just pins
+   its half and "Card" takes what is left. Equal `1fr` columns in a shrink-
+   wrapped grid all take the widest column's size, which is the behavior this
+   needs. Grid, not `.seg.wide`, because the track should still shrink-wrap
+   rather than span the screen.
+
+   32px, not the 48px the shared rule gives every other seg: 48px is what a
+   finger needs, which is not the same as what the control paints. iOS's own
+   segmented control is 32pt for exactly this reason. `::after` puts the
+   tappable box back to 48px without moving a pixel on screen, and the touch
+   sweep probes that real hit area rather than the painted one (see
+   `scripts/smoke-checks.js`), so this still has to clear the floor. That
+   takes the control from 52px to 36px, which is the mockup's own height.
+
+   `z-index` because the timeline starts flush under the seg, and the 8px the
+   `::after` reaches down lands on `.tl-periods` -- position: relative, so it
+   would otherwise win the hit test and the bottom third of the target would
+   be dead. The strip it covers is the H1/H2 labels, which nothing taps; the
+   first control below, `.tl-name`, starts 16px clear of the `::after`. Going
+   up it takes the bottom 3px of the last sentence phrase's 48px box, which is
+   padding under that phrase's ink and leaves it 45px -- over the 44px floor,
+   and a tap landing that close to the seg was ambiguous either way.
+
+   Side padding in px, like the prototype, not the shared rule's `.9rem`:
+   equal halves mean the wider word is paid for twice, and at 320px with 32px
+   text a rem here is 28.8px a side, which put the track past the right edge
+   (smoke `app shell at 320px/32px text`). `max-width` and `min-width: 0` are
+   the backstop for any state px padding does not save: the halves shrink and
+   the label wraps, rather than the page growing a sideways scroll. */
+#viewSeg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  max-width: 100%; margin-bottom: 0; }
+#viewSeg button { min-height: 32px; padding: .3rem 12px; min-width: 0; position: relative; }
+#viewSeg button::after { content: ''; position: absolute; left: 0; right: 0;
+  top: 50%; height: 48px; transform: translateY(-50%); z-index: 1; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
