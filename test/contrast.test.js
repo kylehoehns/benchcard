@@ -126,6 +126,28 @@ test('every control token clears its floor against every ground, in all four the
   assert.deepEqual(bad, [], bad.join('\n  '));
 });
 
+/* A segmented control paints on its own ground, `--seg-track`, which is not in
+ * GROUNDS: only two colors ever land on it, and putting it there would demand
+ * that `--faint`, `--info` and the rest clear a floor on a surface they never
+ * touch. The two that do touch it are checked here instead.
+ *
+ * `--seg-track` had to go darker than `--surface-2` for the pill to read at
+ * all in light mode, and that is exactly the move that costs contrast -- so
+ * the pair is pinned rather than left to a hand measurement that was true on
+ * the day someone took it. `--seg-on` is the raised chip the selected label
+ * sits on, which is a different ground from the track around it. */
+test('a segmented control\'s own two labels clear the text floor on the grounds they land on', () => {
+  const bad = [];
+  for (const t of THEMES) {
+    for (const [fg, bgTok] of [['--ink', '--seg-track'], ['--tint', '--seg-on']]) {
+      const ground = colorOf(t.tokens, bgTok);
+      const r = contrast(effective(colorOf(t.tokens, fg), ground), ground);
+      if (r < t.textFloor - 1e-9) bad.push(`${t.name}: ${fg} on ${bgTok} is ${r.toFixed(2)}:1, needs >= ${t.textFloor}:1`);
+    }
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
 /* #25 (team color), items 2 and 6: the nine colors are found by the same
  * list the app uses (`COLORS`, next to `TIE_BREAKS` in storage.js) -- a
  * tenth color added there with no blocks in tokens.css, or a color with a

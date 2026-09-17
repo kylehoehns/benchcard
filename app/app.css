@@ -128,11 +128,22 @@ a { color: inherit; }
 
 /* #69 decision 10: an inset pill, not an outlined one -- the 9px/7px radii are
    the prototype's own hand-picked values (notes/mockups/prototype/index.html),
-   not on the `--r-*` scale, and the "on" segment is raised off `--surface-2`
-   with its own token (`--seg-on`) and a shadow rather than sitting flush. */
-.seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--surface-2); border-radius: 9px; }
-.seg button { min-height: 48px; padding: .36rem 1rem; border-radius: 7px; font-size: var(--fs-secondary); font-weight: 600; color: var(--muted); }
-@media (hover: hover) { .seg button:hover { color: var(--ink); } }
+   not on the `--r-*` scale, and the "on" segment is raised off the track with
+   its own token (`--seg-on`) and a shadow rather than sitting flush.
+
+   An inset pill only reads if the track is darker than what it sits on. The
+   track was `--surface-2`, which in light mode is #F6F6F8 -- lighter than
+   `--bg` -- so there was nothing to see but the raised chip, and the control
+   did not read as a pill at all. `--seg-track` is the prototype's own value
+   and carries the fix; tokens.css has the why.
+
+   Labels are `--ink`, the prototype's own, not `--muted`: on a track dark
+   enough to see, `--muted` is 4.27:1 and misses AA. That is the same wall
+   decision 11 of #69 hit. Hover tints the track rather than the label, since
+   an ink label has nowhere darker to go. */
+.seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--seg-track); border-radius: 9px; }
+.seg button { min-height: 48px; padding: .36rem 1rem; border-radius: 7px; font-size: var(--fs-secondary); font-weight: 600; color: var(--ink); }
+@media (hover: hover) { .seg button:not(.on):hover { background: color-mix(in srgb, var(--ink) 6%, transparent); } }
 .seg button.on { background: var(--seg-on); color: var(--tint); box-shadow: var(--shadow-sm); }
 .seg.wide { display: flex; width: 100%; padding: 2px; }
 .seg.wide button { flex: 1; padding: .58rem .3rem; font-size: var(--fs-secondary); }
@@ -2596,7 +2607,7 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
  * ========================================================================= */
 /* `#stratseg` is `.seg.wide` (the shared primitive, #69), so this only adds
    the side/top margins the prototype's strategy control has -- the 2px
-   `--surface-2` inset track is already `.seg`'s own look, untouched.
+   `--seg-track` inset track is already `.seg`'s own look, untouched.
    `width: auto` (an ID beats `.seg.wide`'s own `width: 100%`) lets the side
    margins actually show instead of overflowing the sheet. Scoped by id so
    Settings' other `.seg.wide` rows (`#maxSubsSeg` etc.) are untouched. */
