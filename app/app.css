@@ -180,6 +180,13 @@ a { color: inherit; }
    tracking. `.block-hd` is only ever "Rotation" and (above 1099px, before
    `.cardtoggle h3` below overrides it back to a row) "The card". */
 .block-hd h3 { font-size: var(--fs-footnote); color: var(--muted); font-weight: 700; }
+/* #72: no gap under "Rotation". Its Shuffle is 48px tall with the label
+   centered, so the button's own lower half is already the space. The 12px
+   this saves, with .tl-head's smaller gap, is what lets a sentence that wraps
+   to four lines still leave all nine rows above the Start game bar at
+   390x844 (smoke `game rows fit`; CI's wider Linux fallback font wraps the
+   sample sentence to four lines, as longer sentences do on a phone). */
+.s-rot > .block-hd { margin-bottom: 0; }
 .block-hd .hint { margin-left: auto; font-size: var(--fs-footnote); color: var(--faint); font-variant-numeric: tabular-nums; }
 /* #69 item 4: Shuffle is swept at 48px on the game screen; scoped to the id
    because `.btn.sm` is a shared small-button size used well beyond it. */
@@ -663,7 +670,7 @@ a { color: inherit; }
    case that needs the extra room. */
 .tl { --lab: 9.5rem; --tot: 2rem; container-type: inline-size; }
 .tl:not(.even) { --tot: 5.2rem; }
-.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: .45rem; }
+.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: .25rem; }
 .tl-head > div:first-child, .tl-head > div:last-child { display: none; }
 .tl-periods { position: relative; height: 1.1rem; padding: 0 .3rem; }
 /* #69 decision 7: no uppercase, no heavy weight -- a quiet footnote above the
