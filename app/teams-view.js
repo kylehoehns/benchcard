@@ -420,6 +420,15 @@ function removeTeam() {
  * (item 8): the mini rotation is `aria-hidden`, and its accessible name is
  * set with `aria-label` instead of read off the visible text.
  */
+// The pass's own status word and dot (`.pass-status`): "Planned"/ok or
+// "Needs a fix"/warn, read straight off `plans[i].ok` -- never re-derived.
+// `renderPass` (the mini pass on Today) and `renderTabs`'s game-screen sub
+// line (#69 decision 5) both show it, so it is one function, not two copies
+// of the same class string and label.
+function passStatusEl(ok) {
+  return el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix');
+}
+
 function renderPass(g, i) {
   const p = plans[i];
   const ok = !!(p && p.ok);
@@ -429,7 +438,7 @@ function renderPass(g, i) {
 
   const top = el('div', 'pass-top');
   if (g.when) top.append(el('span', 'pass-when', g.when));
-  top.append(el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix'));
+  top.append(passStatusEl(ok));
   b.append(top);
 
   b.append(el('span', 'pass-title', full));
@@ -441,7 +450,7 @@ function renderPass(g, i) {
     rot.setAttribute('aria-hidden', 'true');
     for (const { id, blocks } of passBlocks(g, p)) {
       const row = el('div', 'pass-row');
-      row.style.background = rowGradient(blocks, g, colorOf(id));
+      row.style.background = rowGradient(blocks, g, colorOf(id), 'var(--track)');
       rot.append(row);
     }
     b.append(rot);
@@ -461,8 +470,24 @@ export function renderTabs() {
   // #label does not change the view. `gameLabel` is the one game label,
   // reused here exactly as Today's own entries reuse it below.
   if (state.view === 'games') {
+    const g = game(), i = state.activeGame, label = gameLabel(g, i);
     const t = $('#barTitle');
-    if (t) t.textContent = gameLabel(game(), state.activeGame);
+    if (t) t.textContent = label;
+
+    // #69 decision 5: the one large title on the game screen is the
+    // opponent, reusing `gameLabel`; the sub line reuses `passStatusEl`
+    // above -- the pass's own status word and dot -- rather than a second
+    // copy of either. `#barTitle` above stays live for other back screens,
+    // but is visually hidden here (render.js's `applyView`) so it does not
+    // also read as a second visible `h1`.
+    const gt = $('#gameTitle');
+    if (gt) gt.textContent = label;
+    const gs = $('#gameSub');
+    if (gs) {
+      gs.textContent = '';
+      if (g.when) gs.append(g.when + ' · ');
+      gs.append(passStatusEl(!!(plans[i] && plans[i].ok)));
+    }
   }
 
   const box = $('#todayGames');

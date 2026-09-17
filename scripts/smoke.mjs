@@ -56,6 +56,8 @@ import { overlayPass } from './smoke/overlay.mjs';
 import { touchPass } from './smoke/touch.mjs';
 import { settingsRowPass } from './smoke/settings-rows.mjs';
 import { whoRowsPass } from './smoke/who-rows.mjs';
+import { todayGameRowsPass } from './smoke/today-game-rows.mjs';
+import { gameTitlePass } from './smoke/game-title.mjs';
 import { sentenceSheetsPass } from './smoke/sentence-sheets.mjs';
 import { narrowPass } from './smoke/narrow.mjs';
 import { sweepPass } from './smoke/sweep.mjs';
@@ -105,6 +107,8 @@ const RUN = {
   touch: ctx => touchPass(ctx.c, ctx.origin, ctx.source),
   settingsrows: ctx => settingsRowPass(ctx.c, ctx.source),
   whorows: ctx => whoRowsPass(ctx.c, ctx.source),
+  todaygamerows: ctx => todayGameRowsPass(ctx.c, ctx.source),
+  gametitle: ctx => gameTitlePass(ctx.c, ctx.origin),
   sentencesheets: ctx => sentenceSheetsPass(ctx.c, ctx.origin),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
@@ -258,6 +262,9 @@ async function browserChecks(origin, only) {
     /* #26. Reloads onto its own `FOUR` fixture and puts RICH back before
        returning, same courtesy as the two rows above. */
     report.checks.push(await safeCheck('gamepasses', () => gamePassesPass(c, origin)));
+    /* #69 decision 5, item 8: the title block, against RICH's own game 0 --
+       `gamepasses` above already put RICH back before returning. */
+    report.checks.push(await safeCheck('gametitle', () => gameTitlePass(c, origin)));
     /* #25. It reloads with a two-team record (Royal, then Graphite) and
        switches team, so RICH is put back before the wake lock pass, which
        expects the fixture as goRich left it. */
@@ -287,6 +294,11 @@ async function browserChecks(origin, only) {
        read "not open") is replaced with the swept one. */
     report.checks = report.checks.filter(k => k.name !== "who's here rows ≥ 48px");
     report.checks.push(await safeCheck('whorows', () => whoRowsPass(c, source)));
+    /* Same reshuffle again: the cold array's single-viewport verdict for
+       item 4's control list (Today only, no game open) is replaced with the
+       swept one. */
+    report.checks = report.checks.filter(k => k.name !== 'today and game controls ≥ 48px');
+    report.checks.push(await safeCheck('todaygamerows', () => todayGameRowsPass(c, source)));
     report.checks.push(await safeCheck('sentencesheets', () => sentenceSheetsPass(c, origin)));
     report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
     report.checks.push(await safeCheck('sweep', () => sweepPass(c)));

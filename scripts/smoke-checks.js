@@ -154,34 +154,108 @@
         `pass` and an empty measured set is vacuously short-free. So `pass`
         now requires the view to actually be open AND at least one row
         measured, not just none of the rows found being short. */
+  /* Shared by 3a-3c below (#22 settings rows, #27 who's-here rows, #69
+        today-and-game controls): count what is visible among a caller-picked
+        set of elements, measure each against the same 47.99 tolerance
+        (getBoundingClientRect can report a box a hair under its CSS
+        min-height at 2x device scale, and 47.5 is far enough under 48 to
+        pass a floor set a half-pixel short of the real one -- verified
+        against `min-height: 47.5px`), and report the same three-way message:
+        gated on the view actually being open, then 0-found, then a short
+        list, then a clean total. Extracted rather than a third near-identical
+        copy of the loop -- `scripts/smoke/width-sweep.mjs` already extracted
+        this shape once, one layer up, for the browser-driving half; this is
+        its in-page counterpart. `gateOpen: true` (item4) means there is no
+        "not open" state to gate on, so `notOpenMsg` is never read for it. */
+  function minSizeCheck(name, { gateOpen, notOpenMsg, elements, emptyMsg, dim, fmt, noun, slice }) {
+    const short = [];
+    let count = 0;
+    if (gateOpen) {
+      for (const el of elements()) {
+        if (!visible(el)) continue;
+        count++;
+        const r = el.getBoundingClientRect();
+        if (dim(r) < 47.99) short.push(fmt(el, r));
+      }
+    }
+    add(name, gateOpen && count > 0 && short.length === 0,
+      !gateOpen ? notOpenMsg
+        : !count ? emptyMsg
+        : short.length ? `${short.length}/${count} under 48px: ${short.slice(0, slice).join(', ')}`
+        : `${count} ${noun}, all ≥ 48px`);
+  }
+
+  /* 3a. #22: every row in #view-settings -- each setting row, each link row
+        (About, Contact, Buy me a coffee -- `.setrow` doubles as the base for
+        both) and the backup row -- at least 48px, a floor higher than the
+        44px sweep above and scoped to this one view (I1; the app-wide 44px
+        sweep is #37's, not this ticket's).
+
+        A ROW IS DEFINED STRUCTURALLY, not by `.setrow`/`.backuprow` -- a
+        guard-falsifier renamed both classes throughout `#view-settings` and
+        this check kept reporting "0 rows" as a pass, because the old
+        `querySelectorAll('.setrow, .backuprow')` found nothing to measure and
+        nothing-to-measure took the same branch as nothing-open. So a row here
+        is: a direct child of one of `#view-settings`'s `.side-box` sections
+        that (a) either IS an interactive control (button, a[href], input,
+        [role=group]) or contains one, AND (b) is laid out as a flex row the
+        way every real row is -- `.setrow`/`.backuprow`'s own base rule sets
+        `display: flex`, and it is also the one thing an impostor row has to
+        fake to look like a row (verified: a `<div>` with a button inside it
+        but no flex layout, added above About, was invisible to this rule
+        until it also set `display: flex`, and then measured short and was
+        caught). (a) alone is what keeps headings and notes out: `.side-hd`,
+        `.set-h` and every `.note` paragraph in this view contain no control
+        and drop out there, no class name needed. (a) alone is also why a
+        bare `<a>` row still counts even if `display` stops being read from
+        `.setrow` -- the anchor is a control itself, not a container of one --
+        which is what still catches the About/Contact/Buy-me-a-coffee rows
+        after a rename, short, rather than them silently disappearing.
+
+        The one thing (a)+(b) together deliberately leaves out is Backup's own
+        "or paste a backup" trigger (`.pastein`): a control sits directly
+        inside it, but it is a plain block, not a flex row -- the design's own
+        comment calls it "a quiet way in underneath, never a second top-level
+        button", and spec item 7 names only the backup ROW (singular), not
+        every control the Backup box holds. Measured: `.pastein` is 44px tall
+        at every width this check runs at, so counting it here would fail the
+        real, unmodified page -- (b) is what keeps that specific control out
+        without naming it.
+
+        Same shape as "last control in an open dialog is reachable" above for
+        WHERE it runs: `smoke.mjs`'s `settingsRowPass` is what actually opens
+        Settings before reading this back, at three widths. Unlike that check,
+        though, nothing-open is a FAILURE here, not a pass held for later --
+        a guard-falsifier that dropped `setView('settings')` from the cog's
+        click handler left `#view-settings` never opening and this check kept
+        reporting PASS "0 rows" anyway, because only `shortRows.length` gated
+        `pass` and an empty measured set is vacuously short-free. So `pass`
+        now requires the view to actually be open AND at least one row
+        measured, not just none of the rows found being short. */
   const ROW_CONTROL_SEL = 'button, a[href], input, [role="group"]';
   const settingsView = document.getElementById('view-settings');
   const settingsOpen = !!settingsView && visible(settingsView);
-  const shortRows = [];
-  let rowCount = 0;
-  if (settingsOpen) {
-    for (const box of settingsView.querySelectorAll('.side-box')) {
-      for (const row of box.children) {
-        if (!visible(row)) continue;
-        const isControl = row.matches(ROW_CONTROL_SEL);
-        const hasControl = isControl || !!row.querySelector(ROW_CONTROL_SEL);
-        if (!hasControl) continue;                                    // heading or note
-        if (getComputedStyle(row).display !== 'flex' && !isControl) continue; // e.g. .pastein
-        rowCount++;
-        const r = row.getBoundingClientRect();
-        // 47.99, not 48 or 47.5: getBoundingClientRect can report a box a
-        // hair under its CSS min-height (subpixel layout at 2x device scale),
-        // and 47.5 is far enough under 48 to pass a floor set a half-pixel
-        // short of the real one -- verified against `min-height: 47.5px`.
-        if (r.height < 47.99) shortRows.push(`${label(row)} ${round(r.height)}px`);
+  minSizeCheck('settings rows ≥ 48px', {
+    gateOpen: settingsOpen,
+    notOpenMsg: '#view-settings not open',
+    emptyMsg: '#view-settings open but 0 rows found -- structural row detection matched nothing',
+    elements: function* () {
+      if (!settingsView) return;
+      for (const box of settingsView.querySelectorAll('.side-box')) {
+        for (const row of box.children) {
+          const isControl = row.matches(ROW_CONTROL_SEL);
+          const hasControl = isControl || !!row.querySelector(ROW_CONTROL_SEL);
+          if (!hasControl) continue;                                    // heading or note
+          if (getComputedStyle(row).display !== 'flex' && !isControl) continue; // e.g. .pastein
+          yield row;
+        }
       }
-    }
-  }
-  add('settings rows ≥ 48px', settingsOpen && rowCount > 0 && shortRows.length === 0,
-    !settingsOpen ? '#view-settings not open'
-      : !rowCount ? '#view-settings open but 0 rows found -- structural row detection matched nothing'
-      : shortRows.length ? `${shortRows.length}/${rowCount} under 48px: ${shortRows.slice(0, 4).join(', ')}`
-      : `${rowCount} rows, all ≥ 48px`);
+    },
+    dim: r => r.height,
+    fmt: (el, r) => `${label(el)} ${round(r.height)}px`,
+    noun: 'rows',
+    slice: 4,
+  });
 
   /* 3b. #27 item 10: every row in the Who's here sheet, at least 48px, at the
         same three phone widths `touchPass` and `settingsRowPass` sweep
@@ -195,22 +269,43 @@
         clean because there was nothing short to find. */
   const whoSheet = document.getElementById('sheetWho');
   const whoOpen = !!whoSheet && whoSheet.open;
-  const whoShortRows = [];
-  let whoRowCount = 0;
-  if (whoOpen) {
-    for (const row of document.querySelectorAll('#sheetWhoBody .sheetrow')) {
-      if (!visible(row)) continue;
-      whoRowCount++;
-      const r = row.getBoundingClientRect();
-      // Same 47.99 tolerance as the settings check above, for the same reason.
-      if (r.height < 47.99) whoShortRows.push(`${label(row)} ${round(r.height)}px`);
-    }
-  }
-  add("who's here rows ≥ 48px", whoOpen && whoRowCount > 0 && whoShortRows.length === 0,
-    !whoOpen ? '#sheetWho not open'
-      : !whoRowCount ? '#sheetWho open but 0 rows found -- structural row detection matched nothing'
-      : whoShortRows.length ? `${whoShortRows.length}/${whoRowCount} under 48px: ${whoShortRows.slice(0, 4).join(', ')}`
-      : `${whoRowCount} rows, all ≥ 48px`);
+  minSizeCheck("who's here rows ≥ 48px", {
+    gateOpen: whoOpen,
+    notOpenMsg: '#sheetWho not open',
+    emptyMsg: '#sheetWho open but 0 rows found -- structural row detection matched nothing',
+    elements: () => document.querySelectorAll('#sheetWhoBody .sheetrow'),
+    dim: r => r.height,
+    fmt: (el, r) => `${label(el)} ${round(r.height)}px`,
+    noun: 'rows',
+    slice: 4,
+  });
+
+  /* 3c. #69 (restyle Today and the game screen) "What would settle it" item 4:
+        the controls the restyle itself names, all at least 48x48 -- a floor
+        higher than the app-wide 44px sweep above, the same shape as the
+        settings-row and who's-here-row checks (a fixed, named list, not
+        structural discovery), because item 4 is a fixed, named list too.
+        `today-game-rows.mjs` drives Today, the game screen and the game
+        screen with every fold open, at the three phone widths the other two
+        row checks sweep at. No "open" gate of its own: the list is already
+        scoped to whichever of Today/the game screen is on show, so an empty
+        result is 0-found, not not-open. */
+  const ITEM4_SEL = [
+    '#teamBtn', '#todayNewDay', '#settingsBtn', '.today-game', '#todayAddGame',
+    '#todayTeam', '#todaySeason', '#backBtn', '.phrase', '.tl-row',
+    '#regen', '.fold > summary', 'details.dz > summary', '.seg button',
+    '#abBench', '#abCard',
+  ].join(', ');
+  minSizeCheck('today and game controls ≥ 48px', {
+    gateOpen: true,
+    notOpenMsg: null,
+    emptyMsg: "none of item 4's controls were found on screen",
+    elements: () => [...document.querySelectorAll(ITEM4_SEL)].filter((el) => !el.closest('[hidden]')),
+    dim: (r) => Math.min(round(r.width), round(r.height)),
+    fmt: (el, r) => `${label(el)} ${round(r.width)}×${round(r.height)}`,
+    noun: 'controls',
+    slice: 6,
+  });
 
   /* 4. The last control in an open dialog is reachable.
 

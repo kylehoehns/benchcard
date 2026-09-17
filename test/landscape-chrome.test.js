@@ -20,7 +20,7 @@ const body = start > -1 ? css.slice(start, css.indexOf('\n}', start)) : '';
 test('the chrome landscape block sits after every bar rule it overrides', () => {
   assert.ok(start > -1, 'the planning-views landscape block is gone');
   /* A media query adds no specificity, so a later copy of any of these wins. */
-  for (const sel of ['@media (max-width: 620px)', '@media (max-width: 19em)', '.actionbar {', '.ab-main {', '.dayhead input.daytitle {']) {
+  for (const sel of ['@media (max-width: 620px)', '@media (max-width: 19em)', '.actionbar {', '.ab-main {', '.dayhead .game-h1 {']) {
     const at = css.indexOf(sel);
     assert.ok(at > -1, `${sel} is gone`);
     assert.ok(at < start, `${sel} is declared after the landscape block and would win`);

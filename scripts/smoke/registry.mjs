@@ -103,6 +103,10 @@ export const ROWS = Object.freeze([
   { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich' },
   { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich' },
   { id: 'gamepasses', name: 'game passes', selectable: true, setup: 'rich' },
+  // #69 decision 5, item 8: the game screen's title block -- one visible h1
+  // (the opponent), a sub line with the tip-off and the reused status word --
+  // see game-title.mjs.
+  { id: 'gametitle', name: 'game title: one h1, opponent + status sub-line', selectable: true, setup: 'rich' },
   { id: 'teamcolor', name: 'team color tints K1 only, and switches with the team', selectable: true, setup: 'rich' },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich' },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich' },
@@ -111,6 +115,10 @@ export const ROWS = Object.freeze([
   // #27 item 10: the Who's here sheet swept the same way settingsrows sweeps
   // Settings — see who-rows.mjs.
   { id: 'whorows', name: `who's here rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
+  // #69 item 4: the restyle's own named control list on Today and the game
+  // screen, swept the same way settingsrows sweeps Settings -- see
+  // today-game-rows.mjs.
+  { id: 'todaygamerows', name: `today and game controls ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
   // #27's own guard (see docs/specs/27-sentence-and-sheets.md's Proof
   // section): the sentence, and the Who's here / Format / Sub interval
   // sheets it opens, driven with real buttons, keys and pointer events.

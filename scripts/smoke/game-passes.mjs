@@ -97,11 +97,14 @@ async function samplePixels(c, points, scrollX, scrollY) {
  * for boundary `pi` spans `[pi*100/periods + pi*G/periods - G, pi*100/periods
  * + pi*G/periods]`, and the naive point sits `pi*G/periods` inside that span
  * for any `G > 0` -- so this does not copy `ROW_GAP_PCT`. */
-// "The pass's background" (item 6) is the button's own, not a row's: a
-// row's background is the inline linear-gradient rowGradient sets, which is
-// transparent off a player's color -- so what shows through off-floor and
-// in the period gaps is whatever sits behind the row, i.e. the pass
-// button's computed background-color.
+// #69 decision 13: off a player's color, a row's inline linear-gradient
+// (rowGradient, state.js) now paints `--track` -- the same off-floor color
+// the full timeline uses -- and only the period gaps stay transparent, so
+// only THOSE show the pass button's own computed background-color through.
+// `--track` is read off a probe element rather than parsed out of
+// tokens.css, the same reason `probeRects` below reads a player's color off
+// one: a computed style is what the row actually painted, not a second copy
+// of the token table that could drift from it.
 async function checkRotation(c, origin, i, problems) {
   const prep = JSON.parse(await evalIn(c, `(async () => {
     const mod = await import('${origin}/state.js');
@@ -123,11 +126,16 @@ async function checkRotation(c, origin, i, problems) {
       document.body.appendChild(d);
       probeRects[id] = d.getBoundingClientRect().toJSON();
     });
-    return JSON.stringify({ periods: g.periods, periodMinutes: g.periodMinutes, stints, rows, bg, probeRects, scrollX: window.scrollX, scrollY: window.scrollY });
+    const trackProbe = document.createElement('div');
+    trackProbe.style.cssText = 'position:fixed;left:0;top:99999px;width:9px;height:9px;z-index:99999;background:var(--track);';
+    document.body.appendChild(trackProbe);
+    const track = getComputedStyle(trackProbe).backgroundColor;
+    return JSON.stringify({ periods: g.periods, periodMinutes: g.periodMinutes, stints, rows, bg, track, probeRects, scrollX: window.scrollX, scrollY: window.scrollY });
   })()`));
 
-  const { periods, periodMinutes, stints, rows, bg, probeRects, scrollX, scrollY } = prep;
+  const { periods, periodMinutes, stints, rows, bg, track, probeRects, scrollX, scrollY } = prep;
   const bgRgb = parseRgb(bg);
+  const trackRgb = parseRgb(track);
   if (rows.some(r => r.rect.height < 3 || r.rect.height > 6)) {
     problems.push(`pass ${i}: a mini-rotation row is ${rows.map(r => r.rect.height).join(',')}px tall, want 3-6px`);
   }
@@ -176,10 +184,10 @@ async function checkRotation(c, origin, i, problems) {
 
   for (let n = 0; n < stintPoints.length; n++) {
     const pt = stintPoints[n], px = stintPx[n];
-    const want = pt.onFloor ? probePx[pt.rowId] : bgRgb;
+    const want = pt.onFloor ? probePx[pt.rowId] : trackRgb;
     if (!closeEnough(px, want)) {
       problems.push(`pass ${i}, ${pt.rowId}, period ${pt.period} ${pt.from}-${pt.to}min: pixel ${JSON.stringify(px)}, `
-        + `want ${pt.onFloor ? 'its color ' : 'the background '}${JSON.stringify(want)} (onFloor=${pt.onFloor})`);
+        + `want ${pt.onFloor ? 'its color ' : 'the track color '}${JSON.stringify(want)} (onFloor=${pt.onFloor})`);
     }
   }
   const badGaps = new Set();

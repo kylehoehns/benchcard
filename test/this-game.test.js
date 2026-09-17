@@ -73,7 +73,7 @@ test('Opponent, Tip-off and Remove are one box, outside the card fold', () => {
   }
 });
 
-test('"This game" reads before the squad in the phone stack', () => {
+test('"This game" reads after the setup blocks, but still above the card', () => {
   const at = css.indexOf('@media screen and (max-width: 1099px)');
   assert.ok(at > 0, 'the phone stack media block moved -- re-point this test');
   const block = css.slice(at, css.indexOf('\n}', css.indexOf('.s-cardopts', at)));
@@ -82,11 +82,14 @@ test('"This game" reads before the squad in the phone stack', () => {
     assert.ok(m, `no order: declared for ${sel} in the phone stack`);
     return Number(m[1]);
   };
-  // #27 removed .s-squad (the sentence replaced it, and sits above .cols
-  // entirely -- not part of this order: list at all); .s-plan is the setup
-  // block that now reads first after "This game".
-  assert.ok(orderOf('.s-thisgame') < orderOf('.s-plan'),
-    '"This game" no longer reads first on a phone');
+  // #69 decision 8 moved Rotation to the top of the phone stack (order 0),
+  // ahead of Plan, Balance and Rules -- so "This game" (Opponent, Tip-off,
+  // Remove) no longer reads first; it is now the LAST of the setup blocks,
+  // reading below all four before the card starts.
+  for (const above of ['.s-rot', '.s-plan', '.s-balance', '#consdetails']) {
+    assert.ok(orderOf(above) < orderOf('.s-thisgame'),
+      `"This game" now reads before ${above} -- it should be the last of the setup blocks`);
+  }
   assert.ok(orderOf('.s-thisgame') < orderOf('.s-cardopts'),
     '"This game" sank back down beside the card options');
 });

@@ -319,24 +319,29 @@ the touch check across games/roster/folds-open at 320, 360 and 390 rather than
 measuring one screen at one width, which is what let both of these live.
 ## Interface
 
-**Today is home; there is no tab bar (#23, N1).** The app opens on Today: a
-button naming the active team, which opens a `popover` menu to switch teams or
-add one (C8), New day and a gear for Settings, the day's games, then Team and
-Season as two entries underneath, and Add a game. Game, Team, Season and Settings
-are each one screen away from Today rather than siblings on a nav — opening
-one pushes a browser-history entry, so the back button, the browser's own
-back and Android's back gesture all land back on Today, through the one path
-`setView` (render.js) owns. The split that used to be *policy vs plan* across
-three tabs and a cog is now *what changes between games* — the day's games,
-Team, Season, all reachable from Today — versus *what is set once a season* —
-Settings, behind the gear that only ever shows on Today (N4).
+**Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
+active team's name in plain text with a chevron-down icon, which opens a
+`popover` menu to switch teams or add one (C8), New day as plain text, a gear
+for Settings, the day's games, then Team and Season as two entries underneath,
+and Add a game. Game, Team, Season and Settings are each one screen away from
+Today rather than siblings on a nav — opening one pushes a browser-history
+entry, so the back button, the browser's own back and Android's back gesture
+all land back on Today, through the one path `setView` (render.js) owns. The
+split that used to be *policy vs plan* across three tabs and a cog is now
+*what changes between games* — the day's games, Team, Season, all reachable
+from Today — versus *what is set once a season* — Settings, behind the gear
+that only ever shows on Today (N4). All controls in the Today header are at
+least 48 pixels (#69).
 
 **One header, two states.** `.bar` no longer changes shape one member at a
 time; it holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
-`#barBack` (an icon-only *Back to Today* and the screen's own title — reused
-from `gameLabel` on the game screen, else `Team` / `Season` / `Settings`), and
-`applyView` toggles which half is visible with the `hidden` attribute — never
-both, because a coach is always on Today or exactly one screen away from it.
+`#barBack` (a round chevron button labeled *Back to Today* and the screen's
+title, `Team` / `Season` / `Settings`; on the game screen that title is
+`hidden`, because the page shows its own), and `applyView` toggles which half is visible with the `hidden`
+attribute — never both, because a coach is always on Today or exactly one screen
+away from it. On the game screen, the opponent name shows as a large in-page h1
+title with a sub-line showing tip-off time and status, so the header stays clean
+(#69).
 
 **Print stands on the games view only.** It is the one control in the bar that
 belongs to a single view: Games is the only place printing means anything, and
@@ -405,7 +410,8 @@ across, color-coded blocks where each is on the floor. Blocks are positioned
 by elapsed minutes rather than stint index, so unequal stint lengths land in
 the right place, and consecutive stints merge into one block so a long run
 reads as a run. Fairness, back-to-back sits and the closing group are all
-visible at a glance in a way a table of rows never made them.
+visible at a glance in a way a table of rows never made them. Blocks are flat
+(no gloss or opacity overlay) and sized from the token scale (#69).
 
 Each row ends in that player's total minutes, and the highest and lowest totals
 in the squad are called out — in words (`MOST` / `FEWEST`) as well as color, so
@@ -419,13 +425,16 @@ nothing is tagged and the gutter collapses rather than shouting at every row.
 Players carry identity: a color from a perceptually even hue set (lightness
 and chroma themed once, only the hue varies per player), used in the squad
 pills, the timeline, the budget sliders and the day chart. The stint-by-stint
-table still exists, demoted to a disclosure.
+table still exists, demoted to a disclosure. Full names show at the secondary
+type size, and the timeline no longer has a box around it (#69).
 
-Period dividers cross the track and the blocks alike, and the two want opposite
-ink — in dark mode the blocks are the *light* thing, so the themed hairline
-vanished inside exactly the long runs a coach needs to read. A divider and a
-block are both full track height, so each divider is wholly over one or the
-other; `renderTimeline` marks the covered ones and they switch to dark ink.
+Period dividers are now 3px gaps in the track color, appearing as notches cut
+through both blocks and empty track (#69). The period labels above the track
+read in a quiet, muted footnote size with no uppercase — they introduce the
+track, not interrupt it. When the timeline is narrow (320px with large text) the layout stacks:
+player name and total on one line, track underneath. Once the timeline itself is about 20em wide (a container query, so a 390px
+phone qualifies) it lays out one row: name, track and total side by side. At
+about 34em the name column widens again for desktop.
 
 Theme follows the phone. `auto` is the default, and it is resolved to a real
 `data-theme` value — by a small inline script before first paint, and by
@@ -574,20 +583,23 @@ of the page. Below 1100px the two columns dissolve into a single flex list
 (`display: contents` on `.col-main` / `.col-side`) and each block carries an
 explicit `order`. The sentence sits above that list at every width, and since
 #27 it stands in for the Squad and Game format blocks the list used to open
-with. After This game come the inputs, Plan and Balance, and **Rules is the
-last of the inputs, directly above the rotation it constrains**; card head, card and the bench button slot
-in after the timeline, and Across-the-day, Stint-by-stint and Card options fall
-below. Rules was at 11 of 13 — under the card and under the bench button — for
-as long as the list existed, which put the one feature no competitor has at the
-bottom of the page; the list is renumbered whole and `index.html` carries the
-same order, because above 1100px `order` does nothing and source order is the
-reading order. The flex `gap` is zeroed there — the blocks already carry margins,
-and a gap double-counts every seam. The rule is `@media screen`, so the print
-path, which flattens everything through `.print-path`, is untouched.
+with. The rotation reads first (#69), directly after the sentence, where a coach
+opens the phone to see the plan; then the inputs Plan and Balance, then Rules,
+and then This game (opponent, tip-off, remove); card head, card and the bench
+button slot in after the timeline, and Across-the-day, Stint-by-stint and Card
+options fall below. Rules was at 11 of 13 — under the card and under the bench
+button — for as long as the list existed, which put the one feature no competitor
+has at the bottom of the page; the list is renumbered whole and `index.html`
+carries the same order, because above 1100px `order` does nothing and source order
+is the reading order. The flex `gap` is zeroed there — the blocks already carry
+margins, and a gap double-counts every seam. The rule is `@media screen`, so the
+print path, which flattens everything through `.print-path`, is untouched.
 
 Touch minimums (44px) are gated `@media (pointer: coarse), screen and
 (max-width: 620px)`. The pointer half alone was a trap: it never fires in a
 resized desktop browser, so nothing behind it was ever exercised in testing.
+The controls #69 restyled on Today and the game screen hold 48px at every
+width, and the smoke check `today and game controls ≥ 48px` sweeps them.
 
 **Destructive actions are undoable, not confirmed.** Removing a player,
 removing a game, starting a new day and clearing in-game changes all happen
@@ -612,6 +624,12 @@ Mobile specifics that came out of real use:
   available player, `aria-hidden` since it is not a roster list), and a line of
   setup — player count, strategy, any rules, and whether it evens out later
   games. A blocked plan has no picture. Tapping opens the game screen.
+  Each pass is a card: neutral surface with 20px radius, no border, with 0.75rem
+  gap between them (#69). The status color is shown as a dot only, not the text
+  color. Tip-off time, opponent name, and summary are sized from the type scale:
+  secondary, large, and secondary respectively. The mini rotation rows (who plays
+  when) use the track color for off-floor stretches; the gaps between periods stay
+  transparent.
   The stack replaced a strip of tabs (#23) that had to cap a label at 20
   characters. A pass has no such cap: `.pass-title` only truncates, with a
   plain CSS tail ellipsis, when one name is wider than its own row, and the

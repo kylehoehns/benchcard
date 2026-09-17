@@ -43,16 +43,20 @@ test('the stacked reading order is a whole, gapless renumbering', () => {
     + 'is the thing this list exists to stop being a hidden input');
 });
 
-test('Rules reads as the last INPUT, above the rotation and the card', () => {
+test('Rules reads as the last INPUT, above the card', () => {
   const at = sel => {
     const hit = ORDER.find(o => o.sel === sel);
     assert.ok(hit, `${sel} has no place in the stacked reading order`);
     return hit.n;
   };
+  /* #69 decision 8 moved Rotation to the very top of the phone stack, right
+     under the sentence -- ahead of every input, Rules included -- so `.s-rot`
+     is no longer one of the things Rules has to read above. It is still the
+     LAST of the inputs below Rotation, which the loop below still checks. */
   /* Below it, in the order a coach reads them. `.s-day` is in the list too:
      promoting Rules to just above it would still leave it under the card,
      which is the half of the ticket that is easy to get wrong. */
-  for (const below of ['.s-rot', '.s-cardhd', '#sheet', '.gm-cta', '.s-day', '#tabledetails']) {
+  for (const below of ['.s-cardhd', '#sheet', '.gm-cta', '.s-day', '#tabledetails']) {
     assert.ok(at('#consdetails') < at(below),
       `Rules is below ${below} again — the constraint engine is back in the drawer at the `
       + 'bottom of the page, which is the whole of A21b');
