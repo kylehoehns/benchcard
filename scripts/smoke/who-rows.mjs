@@ -1,4 +1,4 @@
-import { evalIn, step, TODAY_HOME } from './dom.mjs';
+import { toGameOne, TODAY_HOME } from './dom.mjs';
 import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
 import { widthSweep } from './width-sweep.mjs';
 
@@ -7,19 +7,11 @@ import { widthSweep } from './width-sweep.mjs';
    same phone-widths rationale, one copy of the three numbers). Opened
    through the real trigger, same as `overlay.mjs`'s "who's here sheet"
    state: from Today, into the first game, then the players phrase.
-   Getting there is two `step()`s of its own, awaited separately, rather
-   than one script with three clicks back to back: the Today -> Games ->
-   Today -> Games round trip each click makes rebuilds the screen, and
-   `#phrasePlayers`'s own handler is only live once that rebuild has
-   actually run -- chaining all three in a single synchronous script
-   outran it and opened nothing (caught by running this state's own tab
-   count against zero, per rule 2a, before landing on this fix). Only the
-   sheet's own open is left for `widthSweep`'s `open` field, matching
-   `settingsRowPass`'s one-click shape. */
-async function toGameOne(c) {
-  await evalIn(c, step(TODAY_HOME));
-  await evalIn(c, step(`document.querySelector('.today-game').click()`));
-}
+   Getting there is `toGameOne` (`dom.mjs`, shared with `plan-rows.mjs`) --
+   see its own comment for why Today -> Games is awaited on its own before
+   the sheet's trigger runs. Only the sheet's own open is left for
+   `widthSweep`'s `open` field, matching `settingsRowPass`'s one-click
+   shape. */
 const WHO_STATES = [
   { name: "who's here", open: `document.getElementById('phrasePlayers').click()` },
 ];

@@ -52,6 +52,18 @@ export const onScreen = (c, id) => evalIn(c, `!!(document.getElementById('${id}'
 // from.
 export const TODAY_HOME = `document.querySelector('#barBack').hidden || document.querySelector('#backBtn').click()`;
 
+/* Today -> the first game, awaited as two separate `step()`s rather than one
+   script with both clicks chained: the Today -> Games rebuild has to land
+   before a phrase's own handler (`#phrasePlayers`, `#phraseStrategy`, ...) is
+   live to receive the next click, a trap `who-rows.mjs` hit first (caught by
+   running that state's own tab count against zero, per rule 2a, before
+   landing on this fix). `who-rows.mjs` and `plan-rows.mjs` both open a sheet
+   this way, so it is one copy rather than two. */
+export async function toGameOne(c) {
+  await evalIn(c, step(TODAY_HOME));
+  await evalIn(c, step(`document.querySelector('.today-game').click()`));
+}
+
 /* The same assertion `sweepPass` makes, and for the same reason: `scrollWidth`
    is clamped by `overflow-x: clip` on a shrink-to-fit container, so the thing
    clip cannot hide is an element's own edge. `pans` is the other half —

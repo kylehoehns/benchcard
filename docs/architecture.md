@@ -173,10 +173,9 @@ The UI is `balance.js`, split across two screens because the two halves have
 different lifetimes: `renderLevelControls` sits on the **roster** page — the
 screen labelled **Team** (levels live on the player and are a season-long
 judgement) and `renderBalance` sits with the
-**plan** (the shape is per game, stored as `game.balance`). Both folds are shut
-by default and build their bodies only on open -- `<details>` keeps children in
-the DOM either way, and eagerly building ten rows of five buttons cost 127 DOM
-nodes for every coach who never opens it.
+**plan** (the shape is per game, stored as `game.balance`). The balance shape
+is chosen on a level-2 page inside the Plan sheet (#28); `renderBalance` paints
+that page and no longer checks a fold.
 
 The meter drags. Pointer handlers on `.bal-steps` read the level from the row's
 own geometry, so a finger can wander off the strip and still be understood, and
@@ -241,19 +240,21 @@ only make it harder to edit. It ends with **Show me around again**, which closes
 the sheet and re-runs the tour — switching back to the Games view first, since
 three of the four anchors live there.
 
-Settings is not the only door into it. Five **?** controls on the Games view
-open the same sheet scrolled to the section that describes the control they sit
-beside — Plan, Lineup balance, Rules, Across the day, and *Use this on the
-bench*. The rule is one **?** per section of the sheet, not one per control:
-each is a `data-help="<section id>"` in the markup and `shortcuts.js` is the
-only thing that reads it, so a sixth is an edit to `index.html` alone. The
-target is the in-app sheet rather than `advanced.html` on purpose — it never
-leaves the app, so it works in a gym with no signal, needs no page load and has
-no back button. *Reading the card* has no **?**, because its header is itself a
-button and the only other place to hang one is hidden while the card is folded,
-which is the default. The scroll is a single `scrollTop` write on `.keysbox`:
-`scrollIntoView` defaults `inline` to `'nearest'` and would move the sheet
-sideways, which is the same bug the tour carries a note about.
+Settings is not the only door into it. Three **?** controls open the same
+sheet scrolled to the section that describes the control they sit beside: the
+Across the day fold, and *Use this on the bench* in both places it appears.
+Plan, Lineup balance and Rules lost theirs when they moved into the Plan sheet
+(#28); their sections of the help sheet stay. The rule is one **?** per section
+of the sheet, not one per control: each is a `data-help="<section id>"` in the
+markup and `shortcuts.js` is the only thing that reads it, so another is an
+edit to `index.html` alone. The target is the in-app sheet rather than
+`advanced.html` on purpose — it never leaves the app, so it works in a gym with
+no signal, needs no page load and has no back button. *Reading the card* has no
+**?**, because its header is itself a button and the only other place to hang
+one is hidden while the card is folded, which is the default. The scroll is a
+single `scrollTop` write on `.keysbox`: `scrollIntoView` defaults `inline` to
+`'nearest'` and would move the sheet sideways, which is the same bug the tour
+carries a note about.
 
 Roster order is the order everything else reads in, so it is directly
 draggable: press the order column or the avatar of a row and move it. The
@@ -315,8 +316,9 @@ crossed under 44 somewhere around 350–365px — a 360px Android. Below 380px t
 meter therefore stacks: the strip takes the whole row and the level word moves
 to its own line beneath it. That costs ~17px of row height on a small phone and
 keeps the word, which is the part a coach reads. `scripts/smoke.mjs` now sweeps
-the touch check across games/roster/folds-open at 320, 360 and 390 rather than
-measuring one screen at one width, which is what let both of these live.
+the touch check across games, roster and the Plan sheet (level 1 and add page)
+at 320, 360 and 390 rather than measuring one screen at one width, which is what
+let both of these live.
 ## Interface
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
@@ -584,16 +586,15 @@ of the page. Below 1100px the two columns dissolve into a single flex list
 explicit `order`. The sentence sits above that list at every width, and since
 #27 it stands in for the Squad and Game format blocks the list used to open
 with. The rotation reads first (#69), directly after the sentence, where a coach
-opens the phone to see the plan; then the inputs Plan and Balance, then Rules,
-and then This game (opponent, tip-off, remove); card head, card and the bench
-button slot in after the timeline, and Across-the-day, Stint-by-stint and Card
-options fall below. Rules was at 11 of 13 — under the card and under the bench
-button — for as long as the list existed, which put the one feature no competitor
-has at the bottom of the page; the list is renumbered whole and `index.html`
-carries the same order, because above 1100px `order` does nothing and source order
-is the reading order. The flex `gap` is zeroed there — the blocks already carry
-margins, and a gap double-counts every seam. The rule is `@media screen`, so the
-print path, which flattens everything through `.print-path`, is untouched.
+opens the phone to see the plan; then the Plan sheet (#28, which holds the
+strategy, rules, lineup balance and evening out), and then This game (opponent,
+tip-off, remove); card head, card and the bench button slot in after the
+timeline, and Stint-by-stint and Card options fall below. The Plan sheet
+replaced the Plan, Rules and Lineup balance folds that used to read at positions
+3, 11 and 4 — putting the strategy, constraints and evening-out controls in one
+place, opened at full height. The flex `gap` is zeroed there — the blocks already
+carry margins, and a gap double-counts every seam. The rule is `@media screen`,
+so the print path, which flattens everything through `.print-path`, is untouched.
 
 Touch minimums (44px) are gated `@media (pointer: coarse), screen and
 (max-width: 620px)`. The pointer half alone was a trap: it never fires in a
@@ -660,15 +661,14 @@ Mobile specifics that came out of real use:
   state hides the `.rhead` column labels: headings over an empty table read as
   something that failed to load.
 - **A blank timeline always offers a way out of itself.** "Resolve the errors
-  above" is only useful if the coach can reach the control that caused them, and
-  on a phone the Rules fold is collapsed and several screens down. `timelineEmpty`
-  reads the plan's issues: a rules-caused error (`RULE_ERRORS` — minimums, caps,
-  pair/avoid conflicts, pinned fives) adds **Fix the rules**, Platoon without a
-  unit adds **Fill a unit**, and an empty roster gets the roster CTA. Both
-  buttons go through `jumpToEditor()`, which opens the enclosing `<details>`
-  before scrolling — landing on a collapsed summary is worse than not moving.
-  Errors fixed elsewhere (not enough players, closers, unit sizes) get no
-  button, because their control is already on screen.
+  above" is only useful if the coach can reach the control that caused them. The
+  Plan sheet opens at full height, so `timelineEmpty` reads the plan's issues:
+  a rules-caused error (`RULE_ERRORS` — minimums, caps, pair/avoid conflicts,
+  pinned fives) adds **Fix the rules** (opens the Plan sheet at the Rules group),
+  Platoon without a unit adds **Fill a unit** (opens it at the top), and an empty
+  roster gets the roster CTA. Both buttons go through `jumpToEditor()`, which
+  opens the sheet before scrolling. Errors fixed elsewhere (not enough players,
+  closers, unit sizes) get no button, because their control is already on screen.
 - **The substitution interval is a chip group, not a `<select>`.** Eight long
   options in a native picker fills a phone screen for a one-tap decision.
 - **Destructive actions leave the day's own list.** "Remove game" sits in the

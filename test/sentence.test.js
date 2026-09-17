@@ -9,35 +9,14 @@ import assert from 'node:assert/strict';
  * module's own exports, on hand-built games and plans -- never through a
  * rendered DOM, which is `game-setup.js`'s job and the smoke suite's seam.
  *
- * Same document/global stub as test/league-min.test.js: state.js reaches for
- * `document` and `matchMedia` at import time even though nothing here touches
- * either.
+ * The document/matchMedia stub, `withTeam` and `player` are shared with
+ * test/plan-sheet.test.js through test/state-fixture.js -- see that file's
+ * own comment for why it lives there and not under test/helpers/. (A
+ * near-identical stub lives a third time in test/league-min.test.js, out of
+ * scope for the finding this shares against.)
  */
 
-globalThis.document ??= {
-  querySelector: () => null,
-  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }) }) }),
-  addEventListener: () => {},
-};
-globalThis.addEventListener ??= () => {};
-globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
-
-const S = await import('../app/state.js');
-
-/* One team, N players, and a day of games -- the shape `sentenceParts` and
-   `evensOutLine` both read off `state`. `withTeam` swaps it in and restores
-   the real one after, same idiom as `withSettings` in test/league-min.test.js. */
-const withTeam = (players, games, fn) => {
-  const saved = S.state.teams;
-  S.state.teams = [{
-    id: 't', name: 'T', players,
-    day: { name: '', games }, season: { games: [] }, activeGame: 0, settings: {},
-  }];
-  S.state.activeTeam = 0;
-  try { return fn(); } finally { S.state.teams = saved; }
-};
-
-const player = (id) => ({ id, name: id });
+import { S, withTeam, player } from './state-fixture.js';
 
 // The shape every game below starts from -- RICH's own format and interval,
 // no rules, no carryover -- with `S.emptyConstraints()` for the constraints
@@ -54,7 +33,7 @@ const bareGame = (extra) => ({
 test('sentenceParts: 1 player, By hand, perPeriod interval, 1 rule', () => {
   const g = bareGame({ periods: 2, periodMinutes: 20, granMode: 'perPeriod', granValue: 3,
     strategy: 'minutes', constraints: { ...S.emptyConstraints(), pairs: [['a', 'b']] } });
-  const parts = withTeam([player('a')], [g], () => S.sentenceParts(g, 0));
+  const parts = withTeam([player('a')], [g], {}, () => S.sentenceParts(g, 0));
   assert.equal(parts.players, '1 player');
   assert.equal(parts.format, '2 × 20');
   assert.equal(parts.interval, '3× a period');
@@ -69,7 +48,7 @@ test('sentenceParts: 1 player, By hand, perPeriod interval, 1 rule', () => {
 test('sentenceParts: breaksOnly interval, Closers reads "a closing group", 3 rules', () => {
   const g = bareGame({ granMode: 'breaksOnly', granValue: 1, strategy: 'closers',
     constraints: { ...S.emptyConstraints(), avoids: [[1, 2], [3, 4], [5, 6]] } });
-  const parts = withTeam([player('a')], [g], () => S.sentenceParts(g, 0));
+  const parts = withTeam([player('a')], [g], {}, () => S.sentenceParts(g, 0));
   assert.equal(parts.interval, 'only at breaks');
   assert.equal(parts.strategy, 'a closing group');
   assert.equal(parts.rules, '3 rules');
@@ -77,45 +56,45 @@ test('sentenceParts: breaksOnly interval, Closers reads "a closing group", 3 rul
 
 test('sentenceParts: a stored everyN value not in GRAN_CHOICES still gets words', () => {
   const g = bareGame({ granValue: 7 });
-  assert.equal(withTeam([player('a')], [g], () => S.intervalWords(g)), 'every 7 min');
+  assert.equal(withTeam([player('a')], [g], {}, () => S.intervalWords(g)), 'every 7 min');
 });
 
 test('sentenceParts: zero rules reads "no rules"', () => {
   const g = bareGame({});
-  assert.equal(withTeam([player('a')], [g], () => S.sentenceParts(g, 0)).rules, 'no rules');
+  assert.equal(withTeam([player('a')], [g], {}, () => S.sentenceParts(g, 0)).rules, 'no rules');
 });
 
 test('evensOutLine: one earlier game named by its tip-off', () => {
   const games = [bareGame({ when: '9:00' }), bareGame({ useCarryover: true })];
-  assert.equal(withTeam([player('a')], games, () => S.evensOutLine(1)),
+  assert.equal(withTeam([player('a')], games, {}, () => S.evensOutLine(1)),
     'Evens out the 9:00 game.');
 });
 
 test('evensOutLine: two earlier games, joined "a and b"', () => {
   const games = [bareGame({ when: '9:00' }), bareGame({ when: '11:30' }),
     bareGame({ useCarryover: true })];
-  assert.equal(withTeam([player('a')], games, () => S.evensOutLine(2)),
+  assert.equal(withTeam([player('a')], games, {}, () => S.evensOutLine(2)),
     'Evens out the 9:00 and 11:30 games.');
 });
 
 test('evensOutLine: an earlier game with no tip-off falls back to its opponent', () => {
   const games = [bareGame({ when: '9:00' }), bareGame({ when: '', label: 'Owls' }),
     bareGame({ useCarryover: true })];
-  assert.equal(withTeam([player('a')], games, () => S.evensOutLine(2)),
+  assert.equal(withTeam([player('a')], games, {}, () => S.evensOutLine(2)),
     'Evens out the 9:00 and Owls games.');
 });
 
 test('evensOutLine: an earlier game with neither names none of them', () => {
   const games = [bareGame({ when: '', label: '' }), bareGame({ useCarryover: true })];
-  assert.equal(withTeam([player('a')], games, () => S.evensOutLine(1)),
+  assert.equal(withTeam([player('a')], games, {}, () => S.evensOutLine(1)),
     'Evens out the earlier game.');
 });
 
 test('evensOutLine: no line for game 0, and no line when useCarryover is off', () => {
   const games0 = [bareGame({ useCarryover: true })];
-  assert.equal(withTeam([player('a')], games0, () => S.evensOutLine(0)), '');
+  assert.equal(withTeam([player('a')], games0, {}, () => S.evensOutLine(0)), '');
   const games1 = [bareGame({ when: '9:00' }), bareGame({ useCarryover: false })];
-  assert.equal(withTeam([player('a')], games1, () => S.evensOutLine(1)), '');
+  assert.equal(withTeam([player('a')], games1, {}, () => S.evensOutLine(1)), '');
 });
 
 test('planSay: a range of minutes, plural changes', () => {

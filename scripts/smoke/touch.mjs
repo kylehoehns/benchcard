@@ -61,6 +61,13 @@ const TOUCH_STATES = [
   { name: 'games, plan sheet open',
     open: `document.querySelector('.today-game').click();
            document.querySelector('#phraseStrategy').click()` },
+  /* #28 item 11: the add page is its own level-2 pane with its own controls
+     (the type chips, the tiles, the stepper buttons and `Add rule` itself),
+     none of which the level-1 state above ever measures. */
+  { name: 'games, plan sheet, add a rule',
+    open: `document.querySelector('.today-game').click();
+           document.querySelector('#phraseStrategy').click();
+           document.querySelector('.add-rule').click()` },
 
 ];
 
@@ -109,8 +116,15 @@ export async function touchPass(c, origin, source) {
     // "color picker open" state above would leave the dialog's trap active
     // for `${TODAY_HOME}` below, which a real tap could never trigger while
     // a full-screen `.keyswrap` overlay covers the back button.
+    // `#planBack` pops the add-a-rule pane above back to level 1 first
+    // (resetPlanChrome and popPane's own reset discard the module-level
+    // draft the same way a real Back tap does, decision 10) -- closing the
+    // dialog directly, as before, would leave `#planMain` hidden and
+    // `#planSub` shown for whichever check opens `#sheetPlan` next. It is a
+    // no-op click when no sub pane is pushed (`popPane` returns false).
     close: `document.querySelector('#colorPickerClose')?.click();
       document.querySelector('#sheetWho')?.close();
+      document.querySelector('#planBack')?.click();
       document.querySelector('#sheetPlan')?.close();
       ${TODAY_HOME};
       for (const d of document.querySelectorAll('details')) d.open = false`,

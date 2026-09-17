@@ -104,3 +104,19 @@ export async function statusMatches(c, statusSel) {
     return JSON.stringify({ want, got, match: want === got });
   })()`);
 }
+
+// The `statusMatches` check every open sheet's status line gets, folded into
+// one wrapper: `sentence-sheets.mjs` and `plan-sheet.mjs` each had their own,
+// word-for-word identical but for `sentence-sheets.mjs`'s second assertion
+// (its three sheets' status line also has to match the minutes-each/blocked
+// wording, which #28's Plan sheet does not additionally claim -- `planSay`
+// is the single source for both, so there is nothing left for a Plan-sheet
+// caller to check twice). `extra`, an optional `(r, ck, sel) => void`, is
+// exactly that second assertion, left to the caller rather than baked in
+// here; `sel` is passed through so an `extra` shared across several
+// selectors can still name the right one in its own failure message.
+export async function statusOk(c, sel, ck, extra) {
+  const r = await statusMatches(c, sel);
+  ck(r.match, `${sel} reads "${r.got}", want planSay's own "${r.want}"`);
+  if (extra) extra(r, ck, sel);
+}

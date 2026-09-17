@@ -118,6 +118,10 @@ export const ROWS = Object.freeze([
   // #28 item 11: the Plan sheet swept the same way `whorows` sweeps Who's
   // here -- see plan-rows.mjs.
   { id: 'planrows', name: `plan rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
+  // #28 review finding: the sheet's other controls (segments, chips, tiles,
+  // stepper buttons, the back button, ✕, "Add rule"), at level 1 and the add
+  // page -- see plan-controls.mjs.
+  { id: 'planctrls', name: 'plan sheet controls ≥ 48px', selectable: true, setup: 'rich' },
   // #69 item 4: the restyle's own named control list on Today and the game
   // screen, swept the same way settingsrows sweeps Settings -- see
   // today-game-rows.mjs.

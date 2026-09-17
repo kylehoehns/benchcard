@@ -246,8 +246,8 @@ for (const key of ['players', 'day', 'season', 'settings', 'activeGame']) {
    default, which is what an unsanitized record means. */
 export const leagueMinutes = () => state.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes;
 
-/* One rule, one count (#26 item 9). `renderConsCount` (game-setup.js) and
-   each game's pass on Today both show this number, so it is computed once,
+/* One rule, one count (#26 item 9). `passSummary` and `sentenceParts` below
+   and each game's pass on Today both show this number, so it is computed once,
    exactly as `renderConstraints` (rules.js) lists rules: a starting five or a
    last-period five is 1 rule, not 5 (the badge used to add `.length`, which
    counted five), and an "always on" pair (`keepOnFloor`) counts, which the

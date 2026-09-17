@@ -6,33 +6,12 @@ import assert from 'node:assert/strict';
  * `ruleComplete`. Exercised on hand-built games, never through a rendered
  * DOM -- that is rules.js's job and the smoke suite's seam.
  *
- * Same document/matchMedia stub as test/sentence.test.js: state.js reaches
- * for `document` and `matchMedia` at import time even though nothing here
- * touches either.
+ * The document/matchMedia stub, `withTeam` and `player` are shared with
+ * test/sentence.test.js through test/state-fixture.js -- see that file's own
+ * comment for why it lives there and not under test/helpers/.
  */
 
-globalThis.document ??= {
-  querySelector: () => null,
-  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }) }) }),
-  addEventListener: () => {},
-};
-globalThis.addEventListener ??= () => {};
-globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
-
-const S = await import('../app/state.js');
-
-const withTeam = (players, games, settings, fn) => {
-  const saved = S.state.teams;
-  S.state.teams = [{
-    id: 't', name: 'T', players,
-    day: { name: '', games }, season: { games: [] }, activeGame: 0,
-    settings: settings || {},
-  }];
-  S.state.activeTeam = 0;
-  try { return fn(); } finally { S.state.teams = saved; }
-};
-
-const player = (id, name) => ({ id, name: name || id });
+import { S, withTeam, player } from './state-fixture.js';
 
 // Same shape test/sentence.test.js's bareGame builds from -- RICH's own
 // format and interval, no rules, no carryover.

@@ -1,6 +1,15 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { evalJSON, click, drag, settle, sheetRect, setGame, statusMatches } from './sheet-drive.mjs';
+import { evalJSON, click, drag, settle, sheetRect, setGame, statusOk } from './sheet-drive.mjs';
+
+// item 6's second assertion, on top of `statusOk`'s own `planSay`-equality
+// check: all three sheets' status line also has to read either the
+// minutes-each wording or "Plan blocked: ", which #28's Plan sheet does not
+// additionally claim -- see `statusOk`'s own comment (sheet-drive.mjs) for
+// why that check does not bake this in.
+const minutesOrBlocked = (r, ck, sel) => ck(
+  /^\d+(\.\d+)? (to \d+(\.\d+)? )?minutes each, \d+ changes?$/.test(r.got) || r.got.startsWith('Plan blocked: '),
+  `${sel} reads "${r.got}", which matches neither the minutes-each wording nor "Plan blocked: "`);
 
 /* #27's own guard (docs/specs/27-sentence-and-sheets.md's Proof section): the
  * sentence, and the three sheets its phrases open, driven with the real
@@ -138,7 +147,7 @@ export async function sentenceSheetsPass(c, origin) {
     })`);
     ck(afterAbsent.phrase === '10 players', `the players phrase reads "${afterAbsent.phrase}" after marking one absent, want "10 players"`);
     ck(afterAbsent.rows === 10, `#timeline has ${afterAbsent.rows} player rows after marking one absent, want 10`);
-    await statusOk(c, '#sheetWhoStatus', ck);
+    await statusOk(c, '#sheetWhoStatus', ck, minutesOrBlocked);
 
     // Tap Devon Ellis again: back to 11.
     await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
@@ -270,7 +279,7 @@ export async function sentenceSheetsPass(c, origin) {
       value: document.querySelector('#sheetFormatBody .sheetstep:last-child .sheetstep-value').textContent,
     })`);
     ck(afterMore.value === '9', `the minutes stepper reads "${afterMore.value}" after "More minutes", want "9"`);
-    await statusOk(c, '#sheetFormatStatus', ck);
+    await statusOk(c, '#sheetFormatStatus', ck, minutesOrBlocked);
 
     // Range ends: drive minutes to 20 (More disabled), then to 4 (Fewer disabled).
     await evalIn(c, setGame(`s.game().periodMinutes = 20;`));
@@ -322,7 +331,7 @@ export async function sentenceSheetsPass(c, origin) {
     ck(afterBreaks.open, 'the sheet closed after choosing "Only at breaks"');
     ck(afterBreaks.pressed === 'true', 'the checkmark did not move to "Only at breaks"');
     ck(afterBreaks.phrase === 'only at breaks', `the interval phrase reads "${afterBreaks.phrase}" after "Only at breaks", want "only at breaks"`);
-    await statusOk(c, '#sheetIntervalStatus', ck);
+    await statusOk(c, '#sheetIntervalStatus', ck, minutesOrBlocked);
     // restore RICH's own interval (every 4 min) for what follows.
     await evalIn(c, setGame(`Object.assign(s.game(), { granMode: 'everyN', granValue: 4 });`));
     await evalIn(c, step(`document.getElementById('sheetIntervalClose').click()`));
@@ -378,13 +387,4 @@ export async function sentenceSheetsPass(c, origin) {
       : 'the sentence reads exactly, item 2\'s evens-out line, Who\'s here, Format and Sub interval all edit '
         + 'and re-plan, every close path and the resize work, one sheet at a time, and the retired folds stay gone',
   };
-}
-
-// item 6, shared by all three sheets: the open dialog's own status line
-// against `planSay(g, plans[activeGame])`.
-async function statusOk(c, sel, ck) {
-  const r = await statusMatches(c, sel);
-  ck(r.match, `${sel} reads "${r.got}", want planSay's own "${r.want}"`);
-  ck(/^\d+(\.\d+)? (to \d+(\.\d+)? )?minutes each, \d+ changes?$/.test(r.got) || r.got.startsWith('Plan blocked: '),
-    `${sel} reads "${r.got}", which matches neither the minutes-each wording nor "Plan blocked: "`);
 }

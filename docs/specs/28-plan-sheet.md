@@ -94,8 +94,8 @@ build rests on:
   - smoke: `scripts/smoke/overlay.mjs` (`shows: '#planFold[open]'`) and
     `scripts/smoke/sentence-sheets.mjs` (turns `useCarryover` on through
     `#consdetails input[type=checkbox]`).
-- **The `?` controls.** After this ticket, only the two `help-bench` ones
-  remain. The help sheet's `help-plan`, `help-balance` and `help-rules`
+- **The `?` controls.** After this ticket, three remain: Across the day's
+  `help-season` and the two `help-bench` ones. The help sheet's `help-plan`, `help-balance` and `help-rules`
   sections stay, as How it works content.
 - **RICH** (smoke): 11 players (`p0` Marcus Williams … `p10` Nia Brooks);
   `p2` is level 5 and `p10` level 1; games Hawks 9:00 and Ravens 11:30, both

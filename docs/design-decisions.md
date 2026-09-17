@@ -146,8 +146,9 @@ its alternative is an assertion, so the rejected options are kept here too.
   added "for completeness" fails the build rather than shipping a child's
   rotation level to their parents.
 - **And it can plan the next game.** *Even out the season so far*, a switch in
-  the Rules section, opens each player's minute target adjusted by how far off
-  their share of the season they are. It is an **input, not solver machinery**:
+  the Plan sheet's Across the season group (#28), opens each player's minute
+  target adjusted by how far off their share of the season they are. It is an
+  **input, not solver machinery**:
   everything it produces arrives as `constraints.targetMinutes`, which the
   engine has always taken, and nothing in `engine.js` changed for it.
   "Their share" is **attendance-weighted, one game at a time** — a filed game's

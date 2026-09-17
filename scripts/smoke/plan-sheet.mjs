@@ -1,6 +1,6 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { evalJSON, click, drag, settle, settlePane, sheetRect, setGame, statusMatches, tap, tapPane } from './sheet-drive.mjs';
+import { evalJSON, click, drag, settle, settlePane, sheetRect, setGame, statusOk, tap, tapPane } from './sheet-drive.mjs';
 
 /* #28's own guard (docs/specs/28-plan-sheet.md's Proof section): the Plan
  * sheet, its Rules and Lineups groups and the "across the day/season"
@@ -9,10 +9,10 @@ import { evalJSON, click, drag, settle, settlePane, sheetRect, setGame, statusMa
  * "What would settle it". State is read from `state.js`'s own exports, never
  * recomputed here.
  *
- * Drive helpers (`evalJSON`..`statusMatches`) live in `sheet-drive.mjs`,
- * shared with #27's `sentence-sheets.mjs`; `settlePane` is #28's own
- * addition, for a level-2 push/pop's 260ms slide (`PANE_MS`, trap.js), which
- * plain `settle` does not wait out.
+ * Drive helpers (`evalJSON`..`statusOk`) live in `sheet-drive.mjs`, shared
+ * with #27's `sentence-sheets.mjs`; `settlePane` is #28's own addition, for
+ * a level-2 push/pop's 260ms slide (`PANE_MS`, trap.js), which plain
+ * `settle` does not wait out.
  *
  * Leaves Hawks and Ravens as it found them (Even, no rules, `useCarryover`
  * off, balance Steady). */
@@ -518,7 +518,7 @@ export async function planSheetPass(c, origin) {
     /* ---- item 9: the announcement ---- */
     await tap(c, `document.getElementById('phraseStrategy').click()`);
     await tap(c, `[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'By hand').click()`);
-    await statusOk(c, ck);
+    await statusOk(c, '#sheetPlanStatus', ck);
     await tap(c, `[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'Even').click()`);
     await tap(c, `document.getElementById('sheetPlanClose').click()`);
 
@@ -581,10 +581,4 @@ export async function planSheetPass(c, origin) {
       : 'opening, strategies, rules, add-a-rule, lineup balance, evening out, the retired '
         + 'folds, the status line and every sheet behavior all hold',
   };
-}
-
-// item 9, shared: the open dialog's own status line against `planSay`.
-async function statusOk(c, ck) {
-  const r = await statusMatches(c, '#sheetPlanStatus');
-  ck(r.match, `#sheetPlanStatus reads "${r.got}", want planSay's own "${r.want}"`);
 }

@@ -2455,8 +2455,11 @@ dialog.bsheet.dragging { transition: none; }
 /* The prototype's chips are borderless `--surface` pills everywhere in this
    sheet (the kind chips above and the Closing-window chips) -- `.chip`'s own
    `--line-2` border is onboarding's own look, so this is scoped to the
-   grouped sheet rather than changed on the shared primitive. */
-dialog.bsheet.grouped .chip { border-color: transparent; }
+   grouped sheet rather than changed on the shared primitive. Decision 5 also
+   holds this sheet's chips to 48px tall, a floor higher than the shared
+   `.chip`'s 44px (line ~3150) -- scoped the same way, so onboarding's chips
+   keep their own floor. */
+dialog.bsheet.grouped .chip { border-color: transparent; min-height: 48px; display: inline-flex; align-items: center; }
 .pstep-row { display: flex; align-items: center; justify-content: space-between;
   gap: .8rem; }
 .pstep-val { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
@@ -2524,7 +2527,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    longer than 15 characters. This name wraps instead (decision 8). */
 .plr .nm { min-width: 0; max-width: 100%; overflow: visible; text-overflow: clip;
   white-space: normal; font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
-.plr.on { border-color: var(--tint); box-shadow: inset 0 0 0 1.5px var(--tint); background: var(--surface); }
+.plr.on { border-color: var(--tint); box-shadow: inset 0 0 0 2.5px var(--tint); background: var(--surface); }
 .plr.on .av { background: none; color: var(--c); }
 .plr-check { position: absolute; top: .5rem; right: .5rem; color: var(--tint);
   font-weight: 700; font-size: var(--fs-secondary); }
