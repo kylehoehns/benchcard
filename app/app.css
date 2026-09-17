@@ -2542,16 +2542,12 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    both animate at once -- `openPlanSheet` and `pushPane`/`popPane` toggle
    `[hidden]` on whichever one is not the current pane, so the transform only
    ever plays on the pane becoming visible. */
-#sheetPlanBody { position: relative; overflow: hidden; }
-/* `padding-bottom: 100vh` so a header anywhere in either pane can reach the
-   top of the scrolling box (`openPlanSheet`'s `scrollIntoView`): the sheet's
-   own content -- Rules empty, one or two groups after it -- is shorter than
-   one screen, so without this the browser clamps the scroll at its own
-   content's end well before a lower group's header reaches the top. 100vh is
-   always taller than `#sheetPlanBody`'s own client height (at most 92vh, and
-   less once its header/footer chrome is subtracted), so it covers every
-   viewport rather than a value measured against one device. */
-#planMain, #planSub { min-height: 100%; padding-bottom: 100vh; }
+/* Clip X only, for the pane slide; Y must still scroll, or the strategy
+   picker (above a scrolled-to header) and the foot of Add a rule are out of
+   reach. `openPlanSheet` sets `#planMain`'s `min-height` to just what a lower
+   header needs to reach the top, never a screen of empty space. */
+#sheetPlanBody { position: relative; overflow-x: hidden; overflow-y: auto; }
+#planMain, #planSub { min-height: 100%; }
 @media (prefers-reduced-motion: no-preference) {
   .pane-in { animation: planPaneIn var(--t) var(--ease) both; }
   @keyframes planPaneIn { from { transform: translateX(100%); } to { transform: translateX(0); } }

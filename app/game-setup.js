@@ -158,10 +158,19 @@ export function openPlanSheet(section, trigger) {
   if (sub) { sub.hidden = true; sub.classList.remove('pane-in'); }
   resetPlanChrome();
   openSheet(dialog, trigger, { full: true });
+  // The body scrolls, not `#planMain`. Y by hand: `scrollIntoView` moves X
+  // too, which would shift the clipped pane slide. A lower header can only
+  // reach the top with a body's height below it, so grow the pane just that.
+  const body = $('#sheetPlanBody');
   const sel = PLAN_SECTION_HEADER[section];
   const target = sel && $(sel);
-  if (target) target.scrollIntoView({ block: 'start' });
-  else if (main) main.scrollTop = 0;
+  if (!body || !main) return;
+  main.style.minHeight = '';
+  body.scrollTop = 0;
+  if (!target) return;
+  const top = target.getBoundingClientRect().top - body.getBoundingClientRect().top;
+  main.style.minHeight = `${top + body.clientHeight}px`;
+  body.scrollTop = top;
 }
 
 function wireSentence() {
