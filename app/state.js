@@ -17,6 +17,7 @@ import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budge
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS } from './storage.js';
 import { el, clone, uid } from './dom.js';
+import { callNames } from './roster.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
    Lightness and chroma are themed once in CSS; only the hue varies here. */
@@ -71,13 +72,24 @@ export const emptyConstraints = () => ({
   units: [],
 });
 
+/* #28 defect 4: each line is one short sentence, in the prototype's voice --
+   the Plan sheet's `#stratwhy` (`strategy.js`) is the only reader (checked:
+   `grep -rl STRATEGIES app test scripts` names only `state.js` itself and
+   `strategy.js`), so shortening here does not touch the Help sheet's own,
+   separately-worded strategy copy in `index.html`, or `about.html` /
+   `advanced.html` / `docs/architecture.md`, which never read this constant.
+   The old, longer sentences wrapped to four lines at a 320px/32px root and
+   two at 390px, past the group-footer "one line at most" guideline (W3);
+   these fit the prototype's single short line at 390px. Closers does not
+   reuse the prototype's exact wording ("last two stints") because the
+   closing window's stint count is a setting a coach can change
+   (`c.closing.stints`, default 2) -- it is not always two, so the line stays
+   general instead of naming a number the engine does not guarantee. */
 export const STRATEGIES = {
-  balanced: 'Everyone gets as close to equal minutes as the clock allows.',
-  // "always adds up" was aspirational: the coach can leave the budget short,
-  // and short of the whole game the plan shares the difference out.
-  minutes:  'Set each player’s minutes by hand. They hold exactly when they add up to the whole game.',
-  closers:  'Even minutes early, then a group you pick holds the floor to finish.',
-  platoon:  'Fixed fives that alternate wholesale. No mixing, no optimizing.',
+  balanced: 'As close to equal as the clock allows.',
+  minutes:  'You set each player’s minutes by hand.',
+  closers:  'Even minutes early, then your closing group finishes the game.',
+  platoon:  'Fixed groups of five take turns, whole group for whole group.',
 };
 
 /* The substitution grid a coach can choose from. It lives here rather than in
@@ -234,8 +246,8 @@ for (const key of ['players', 'day', 'season', 'settings', 'activeGame']) {
    default, which is what an unsanitized record means. */
 export const leagueMinutes = () => state.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes;
 
-/* One rule, one count (#26 item 9). `renderConsCount` (game-setup.js) and
-   each game's pass on Today both show this number, so it is computed once,
+/* One rule, one count (#26 item 9). `passSummary` and `sentenceParts` below
+   and each game's pass on Today both show this number, so it is computed once,
    exactly as `renderConstraints` (rules.js) lists rules: a starting five or a
    last-period five is 1 rule, not 5 (the badge used to add `.length`, which
    counted five), and an "always on" pair (`keepOnFloor`) counts, which the
@@ -253,6 +265,114 @@ export function ruleCount(g) {
     + (c.lastPeriodFive.length ? 1 : 0)
     + (c.maxConsecutive ? 1 : 0)
     + (leagueMinutes() > 0 ? 1 : 0);
+}
+
+/* #28 decision 5: the Plan sheet's Rules section, as plain sentences, in the
+ * table's own order -- league minimum, minimum, cap, together, apart, one of
+ * two on, starting five, last-period five, rest limit. Reads exactly the
+ * fields `ruleCount` above counts, the same way, so `ruleItems(g).length ===
+ * ruleCount(g)` always holds (a test pins it) -- this is not a second count,
+ * it is the same one rule by rule. Names are the on-court call names from
+ * `callNames(state.players)` (`roster.js`), never a first-name helper
+ * re-derived here, joined with `joinNames`.
+ *
+ * Each item carries `{ kind, text, removable }` plus whatever `removeRule`
+ * needs to delete exactly that rule and nothing else -- an id, a pair of ids,
+ * or nothing at all for the three rules a game holds at most one of. */
+export function ruleItems(g) {
+  const c = g.constraints;
+  const avail = new Set(availIds(g));
+  const calls = callNames(state.players);
+  const nm = id => calls[id] || byId(id)?.name || id;
+  const items = [];
+
+  const lmin = leagueMinutes();
+  if (lmin > 0) items.push({ kind: 'leagueMinimum', text: `Everyone plays at least ${lmin} min`, removable: false });
+
+  for (const [id, v] of Object.entries(c.minMinutes)) {
+    if (!avail.has(id)) continue;
+    items.push({ kind: 'minimum', text: `${nm(id)} plays at least ${v} min`, removable: true, id });
+  }
+  for (const [id, v] of Object.entries(c.maxMinutes)) {
+    if (!avail.has(id)) continue;
+    items.push({ kind: 'cap', text: `${nm(id)} plays at most ${v} min`, removable: true, id });
+  }
+  for (const pair of c.pairs) {
+    items.push({ kind: 'together', text: `${joinNames(pair.map(nm))} play together`, removable: true, pair });
+  }
+  for (const pair of c.avoids) {
+    items.push({ kind: 'apart', text: `${joinNames(pair.map(nm))} never play together`, removable: true, pair });
+  }
+  for (const pair of (c.keepOnFloor || [])) {
+    items.push({ kind: 'keepon', text: `${nm(pair[0])} or ${nm(pair[1])} is always on the floor`, removable: true, pair });
+  }
+  if (c.openingFive.length) {
+    const names = c.openingFive.map(nm);
+    items.push({ kind: 'starts', removable: true,
+      text: `${joinNames(names)} ${names.length === 1 ? 'starts' : 'start'} the game` });
+  }
+  if (c.lastPeriodFive.length) {
+    const names = c.lastPeriodFive.map(nm);
+    items.push({ kind: 'lastq', removable: true,
+      text: `${joinNames(names)} ${names.length === 1 ? 'starts' : 'start'} the last period` });
+  }
+  if (c.maxConsecutive) {
+    items.push({ kind: 'rest', removable: true,
+      text: `Nobody plays more than ${c.maxConsecutive} stint${c.maxConsecutive > 1 ? 's' : ''} in a row` });
+  }
+
+  return items;
+}
+
+/* `keepOnFloor` is newer than the records already in a coach's browser, and
+   only `sanitizeTeam` fills it in. Created lazily in one place so no reader
+   -- this file's own `ruleCount`/`removeRule` or rules.js's Add-a-rule page
+   -- has to think about the absent key. */
+export const keepOnList = c => (c.keepOnFloor || (c.keepOnFloor = []));
+
+/* #28 decision 6/9: deletes exactly the rule an `item` from `ruleItems`
+ * names, the same mutation the chip ✕ in rules.js already makes -- moved
+ * here so Remove rule (which needs an undoable snapshot taken first) and the
+ * chip removal are the same code, not two copies that could drift. The
+ * league minimum is not removable (see `ruleItems`); called on it, this is a
+ * deliberate no-op rather than a throw, since a detail page never shows a
+ * Remove button for it. */
+export function removeRule(c, item) {
+  const samePair = pr => pr[0] === item.pair[0] && pr[1] === item.pair[1]
+    || pr[0] === item.pair[1] && pr[1] === item.pair[0];
+  switch (item.kind) {
+    case 'minimum': delete c.minMinutes[item.id]; break;
+    case 'cap': delete c.maxMinutes[item.id]; break;
+    case 'together': { const i = c.pairs.findIndex(samePair); if (i >= 0) c.pairs.splice(i, 1); break; }
+    case 'apart': { const i = c.avoids.findIndex(samePair); if (i >= 0) c.avoids.splice(i, 1); break; }
+    case 'keepon': { const list = keepOnList(c);
+      const i = list.findIndex(samePair); if (i >= 0) list.splice(i, 1); break; }
+    case 'starts': c.openingFive = []; break;
+    case 'lastq': c.lastPeriodFive = []; break;
+    case 'rest': c.maxConsecutive = 0; break;
+    default: break; // 'leagueMinimum', or anything unrecognized: not removable from here
+  }
+}
+
+/* #28 decision 7: whether a draft is complete enough to enable `Add rule`,
+ * for each of the eight kinds. `draft` is the one shape the Add-a-rule page
+ * keeps as module state (`{ kind, id, minutes, a, b, ids, n }`) -- this reads
+ * only the fields each kind uses and never assumes the others are absent. */
+export function ruleComplete(kind, draft) {
+  const d = draft || {};
+  const wholeInRange = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+  switch (kind) {
+    case 'minimum': return !!d.id && wholeInRange(d.minutes, 1, 40);
+    case 'cap': return !!d.id && wholeInRange(d.minutes, 0, 40);
+    case 'together': case 'apart': case 'keepon':
+      return !!d.a && !!d.b && d.a !== d.b;
+    case 'starts': case 'lastq': {
+      const n = (d.ids || []).length;
+      return n >= 1 && n <= 5;
+    }
+    case 'rest': return Number.isInteger(d.n) && d.n >= 1 && d.n <= 4;
+    default: return false;
+  }
 }
 
 /* #25: the active team's color, read the same way `leagueMinutes` above

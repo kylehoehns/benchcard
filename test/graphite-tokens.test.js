@@ -61,7 +61,7 @@ test('the four ticket tokens hold the ticket values, exactly, in both theme bloc
  * --pc-track, the shadows"), but a shadow's VALUE is a multi-part box-shadow
  * list, not a single color -- extractColors pulls the literal color(s) out
  * of it instead of trying to parse the whole declaration as one. */
-const NEUTRAL_DIRECT = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3',
+const NEUTRAL_DIRECT = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3', '--sheet',
   '--ink', '--ink-2', '--muted', '--faint', '--line', '--line-2',
   '--accent', '--accent-2', '--accent-soft', '--accent-line', '--accent-ink',
   '--info', '--info-soft', '--pc-track'];

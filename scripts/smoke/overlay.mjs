@@ -32,7 +32,7 @@ export const STATES = [
     close: `$('#bulktoggle').click(); $('#backBtn').click()` },
   { name: 'games view, every disclosure open',
     open: `$('.today-game').click(); for (const d of document.querySelectorAll('details')) d.open = true`,
-    shows: '#planFold[open]',
+    shows: '#dayFold[open]',
     close: `for (const d of document.querySelectorAll('details')) d.open = false; $('#backBtn').click()` },
   /* #27 item 10: the first of the three new sheets, opened through its real
      trigger (the sentence's players phrase) rather than by hand -- the same
@@ -43,6 +43,41 @@ export const STATES = [
   { name: "who's here sheet",
     open: `$('.today-game').click(); $('#phrasePlayers').click()`, shows: '#sheetWho[open]',
     close: `$('#sheetWho').close(); $('#backBtn').click()` },
+  /* #28's Plan sheet, opened through its real trigger like every other state
+     here. Four states: level 1, and each of the three level-2 pages it owns. */
+  { name: 'plan sheet',
+    open: `$('.today-game').click(); $('#phraseStrategy').click()`, shows: '#sheetPlan[open]',
+    close: `$('#sheetPlan').close(); $('#backBtn').click()` },
+  /* A rule's detail needs a rule on the game first, which the harness's
+     RICH fixture does not seed (Hawks ships with none) -- seeded the same
+     way `plan-sheet.mjs`'s own item 4 seeds one, by editing
+     `game().constraints` in the page and calling `renderAll()`, rather than
+     driving the whole Add-a-rule flow just to get one row to tap. `close`
+     clears it the same way, so the fixture is exactly as it was found for
+     every check that runs after this one. */
+  { name: 'plan sheet, a rule',
+    open: `$('.today-game').click(); $('#phraseRules').click();
+           await (async () => {
+             const st = await import('/state.js');
+             st.game().constraints.minMinutes = { p0: 16 };
+             (await import('/render.js')).renderAll();
+           })();
+           $('#constraints .prow:not(.add-rule)').click();`,
+    shows: '#planSub .plan-rule-sentence',
+    close: `await (async () => {
+              const st = await import('/state.js');
+              st.game().constraints.minMinutes = {};
+              (await import('/render.js')).renderAll();
+            })();
+            $('#sheetPlan').close(); $('#backBtn').click()` },
+  { name: 'plan sheet, add a rule',
+    open: `$('.today-game').click(); $('#phraseRules').click(); $('#constraints .add-rule').click()`,
+    shows: '#planAddRuleBtn:not([hidden])',
+    close: `$('#sheetPlan').close(); $('#backBtn').click()` },
+  { name: 'plan sheet, lineup balance',
+    open: `$('.today-game').click(); $('#phraseStrategy').click(); $('#planLineups .prow').click()`,
+    shows: '#planSub .prow-shape',
+    close: `$('#sheetPlan').close(); $('#backBtn').click()` },
   { name: 'season view',
     open: `$('#todaySeason').click()`, shows: '#view-season',
     close: `$('#backBtn').click()` },

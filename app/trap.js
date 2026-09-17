@@ -143,18 +143,26 @@ function wireSheet(dialog) {
   // backdrop -- every real row and button inside it is a child element, so
   // a tap that reaches one of those never matches this target.
   dialog.addEventListener('click', e => { if (e.target === dialog) closeSheet(dialog); });
-  // The native `cancel` event: Escape, and Android's back gesture (decision 11).
-  dialog.addEventListener('cancel', e => { e.preventDefault(); closeSheet(dialog); });
+  // The native `cancel` event: Escape, and Android's back gesture. At level 2
+  // (#28 decision 10) this pops one level; `popPane` returns false when the
+  // dialog has no open sub pane (every #27 sheet, and the Plan sheet at
+  // level 1), which falls through to the old decision-11 behavior of
+  // closing the whole sheet.
+  dialog.addEventListener('cancel', e => {
+    e.preventDefault();
+    if (popPane(dialog)) return;
+    closeSheet(dialog);
+  });
   const handle = dialog.querySelector('.bsheet-handle');
   if (handle) wireHandle(dialog, handle);
 }
 
-export function openSheet(dialog, trigger) {
+export function openSheet(dialog, trigger, { full = false } = {}) {
   if (!dialog) return;
   closeSheets();
   wireSheet(dialog);
   sheetTrigger.set(dialog, trigger || document.activeElement);
-  setSheetHeight(dialog, false);
+  setSheetHeight(dialog, full);
   dialog.showModal();
   (trapNodes(dialog)[0] || dialog).focus({ preventScroll: true });
 }
@@ -169,6 +177,80 @@ export function closeSheet(dialog) {
 // Any screen change, including a `popstate`, calls this first (decision 11).
 export function closeSheets() {
   for (const d of document.querySelectorAll('dialog.bsheet[open]')) closeSheet(d);
+}
+
+/* ================================================================== *
+ * sheet level-2 panes (#28 decision 16)
+ *
+ * A caller marks its two panes `data-pane="main"` / `data-pane="sub"`;
+ * `pushPane`/`popPane` do the generic parts -- hiding/showing, remembering
+ * the main pane's scroll position, moving focus, and the slide -- while
+ * header text, the icon swap and any draft state stay with the caller
+ * (game-setup.js, rules.js). `wireSheet` above routes the native `cancel`
+ * event through `popPane` first, so Escape and Android's back gesture go
+ * back one level before they fall through to closing the sheet.
+ *
+ * The slide is a `transform`, never `top`/`left`/`width`/`height` (the
+ * constraint): `app.css` starts the sub pane translated off to the right
+ * and the `pane-in` class transitions it to rest. `hidden` still governs
+ * which pane is in the accessibility tree and the tab order; the main pane
+ * sits fully underneath the sub pane either way, so hiding it the instant
+ * the push starts is not seen. Reduced motion skips the transition, so both
+ * panes land at rest in the same frame instead of `PANE_MS` apart.
+ * ================================================================== */
+
+const paneScroll = new WeakMap(); // main pane -> the scroller's scrollTop when pushed
+const panePusher = new WeakMap(); // sub pane -> the button that pushed it
+const paneOnPop = new WeakMap();  // sub pane -> callback fired once it is popped
+const PANE_MS = 260; // matches --t in tokens.css
+
+const panesOf = dialog => ({
+  main: dialog.querySelector('[data-pane="main"]'),
+  sub: dialog.querySelector('[data-pane="sub"]'),
+});
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// `onPop`, when given, fires once `popPane` actually pops this push --
+// whether that came from the caller's own back button or from the native
+// `cancel` event (Escape, Android back) routed through `wireSheet` above.
+// Without it, a caller wiring only its back button's `onclick` misses the
+// chrome reset (title, back button, right-slot control) on the cancel path.
+export function pushPane(dialog, trigger, onPop) {
+  const { main, sub } = panesOf(dialog);
+  if (!main || !sub) return;
+  // Neither pane scrolls itself (#28's own `#sheetPlanBody` does, so
+  // `openPlanSheet`'s `scrollIntoView` can reach a header in either one) --
+  // the position to remember and restore is the shared parent's, not main's
+  // own (always 0). Without this, a sub pane pushed while main was scrolled
+  // opened part-way down the sheet's own scroll instead of at its own top.
+  const scroller = main.parentElement;
+  paneScroll.set(main, scroller.scrollTop);
+  scroller.scrollTop = 0;
+  panePusher.set(sub, trigger || document.activeElement);
+  if (onPop) paneOnPop.set(sub, onPop); else paneOnPop.delete(sub);
+  main.hidden = true;
+  sub.classList.remove('pane-in');
+  sub.hidden = false;
+  if (reducedMotion()) sub.classList.add('pane-in');
+  // Two rAFs: the first lets `hidden` removal land, the second starts the
+  // transition from the off-screen position rather than skipping it -- one
+  // rAF alone can still land in the same frame as the style recalc.
+  else requestAnimationFrame(() => requestAnimationFrame(() => sub.classList.add('pane-in')));
+  (trapNodes(sub)[0] || sub).focus({ preventScroll: true });
+}
+
+export function popPane(dialog) {
+  const { main, sub } = panesOf(dialog);
+  if (!main || !sub || sub.hidden) return false;
+  main.hidden = false;
+  main.parentElement.scrollTop = paneScroll.get(main) || 0;
+  sub.classList.remove('pane-in');
+  const t = panePusher.get(sub);
+  if (t && document.contains(t) && t.getClientRects().length) t.focus({ preventScroll: true });
+  if (reducedMotion()) sub.hidden = true;
+  else setTimeout(() => { sub.hidden = true; }, PANE_MS);
+  paneOnPop.get(sub)?.();
+  return true;
 }
 
 /* Re-render safety net, not strictly a trap: a repaint throws away the node

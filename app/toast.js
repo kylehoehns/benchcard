@@ -98,13 +98,31 @@ function dismissToast(t) {
   setTimeout(() => t.remove(), 600);
 }
 
+/* #28 decision 13: `showModal()` makes everything outside the open dialog
+   inert, `#toasts` included -- an Undo a coach cannot reach is not an undo.
+   So while a sheet is open the snackbar mounts inside it instead, pinned
+   above its status line by sitting right before it in the DOM; `#toasts`
+   is used exactly as before when no sheet is open. The host is found fresh
+   each call rather than cached, since which sheet (if any) is open changes
+   between one toast and the next. */
+function toastHost() {
+  const dialog = document.querySelector('dialog.bsheet[open]');
+  if (!dialog) return $('#toasts');
+  let host = dialog.querySelector(':scope > .bsheet-toasts');
+  if (!host) {
+    host = el('div', 'bsheet-toasts');
+    dialog.insertBefore(host, dialog.querySelector('.bsheet-status'));
+  }
+  return host;
+}
+
 /* One toast, optionally with one action button. Undo is the common case but
    not the only useful one -- a bulk paste wants "Skip them", which throws away
    the repeats rather than the whole paste -- so the button's label and what it
    does are the caller's. A toast with no action reads as a confirmation and
    dwells half as long: nothing is waiting on the coach. */
 function actionToast(message, label, act) {
-  const box = $('#toasts');
+  const box = toastHost();
   if (!box) return;
   clearTimeout(toastTimer);
   [...box.children].forEach(c => c.remove());
@@ -161,7 +179,10 @@ function showUndo(message, snap, refresh) {
    "the app repainted". Only snapshot toasts carry `data-undo`; an `offer`
    acts on ids, takes nothing back, and is left alone. */
 export function retireUndo() {
-  const t = $('#toasts .toast[data-undo]');
+  // not scoped to `#toasts`: an undo toast for Remove rule (#28) lives inside
+  // the open Plan sheet instead (see `toastHost`), and there is only ever one
+  // undo toast live at a time regardless of which of the two it is in.
+  const t = document.querySelector('.toast[data-undo]');
   if (t) dismissToast(t);
 }
 
@@ -172,8 +193,12 @@ export function offer(message, label, act) {
 }
 
 // lift clear of whatever else owns the bottom edge -- the phone action bar,
-// or game mode's stint nav, which is the one thing a coach must not lose
+// or game mode's stint nav, which is the one thing a coach must not lose.
+// A toast inside a sheet (#28 decision 13) has nothing to lift clear of: the
+// sheet already sits above the action bar and game mode never opens with a
+// sheet open, so the fixed-position math below only applies to `#toasts`.
 function liftToasts(box) {
+  if (box.id !== 'toasts') { box.classList.remove('lifted'); box.style.removeProperty('--toast-lift'); return; }
   const gmFoot = $('#gamemode')?.hidden === false ? $('#gamemode .gm-foot') : null;
   const ab = $('#actionbar');
   const bar = gmFoot || (ab && !ab.hidden && getComputedStyle(ab).display !== 'none' ? ab : null);

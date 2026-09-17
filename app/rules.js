@@ -1,9 +1,13 @@
-/* The rules body (`#constraints`).
+/* The Rules group, and the switch groups beside it, inside the Plan sheet
+ * (#28). `renderConstraints` paints level 1: the Rules rows (from the pure
+ * `ruleItems(g)` in state.js), the "Add a rule" row, and the three switch
+ * groups that are not really rules (`#planPairs`, `#planDay`, `#planSeason`).
+ * It never repaints an open level-2 page.
  *
- * Owns `openRule` -- which "add a rule" chip is expanded -- and the two
- * functions that draw the section: the active rules as removable chips, the
- * kind picker, the editor for whichever kind is open, and the two switches
- * that are not really rules (`hardPairs`, `useCarryover`).
+ * The two level-2 pages this file owns -- a rule's detail, and Add a rule --
+ * are built into `#planSub` and pushed with `pushPlanPane` (game-setup.js),
+ * which sets the header chrome and wires `resetPlanChrome` as the pop
+ * callback so the chrome resets whichever way the coach goes back.
  *
  * Like every other view seam, the one thing it cannot own is the repaint
  * scheduler: `soon` and `PLAN_ONLY` live with the `render()` dispatcher in
@@ -12,10 +16,13 @@
  */
 import { icon } from './icons.js';
 import { el, $ } from './dom.js';
-import { deriveShortNames, fmtMinutes } from './engine.js';
-import { state, game, byId, plans, seasonAdjust, leagueMinutes } from './state.js';
+import { fmtMinutes } from './engine.js';
+import { state, game, byId, plans, seasonAdjust, availIds,
+         ruleItems, removeRule, ruleComplete, keepOnList } from './state.js';
 import { pickFive } from './pills.js';
-import { renderConsCount } from './game-setup.js';
+import { pushPlanPane } from './game-setup.js';
+import { popPane } from './trap.js';
+import { undoable } from './toast.js';
 
 let soon = () => {};
 let PLAN_ONLY = [];
@@ -25,146 +32,118 @@ export function initRules(scheduler, planOnly) {
   PLAN_ONLY = planOnly;
 }
 
-/* ---------------- rules ----------------
- * Additive rather than tabular. A grid of ten empty min/cap boxes is mostly
- * waste -- a coach sets a limit on one or two players a game -- so nothing
- * shows until a rule exists, and each one reads back as a plain sentence.
- * -------------------------------------------------------------------- */
-let openRule = null;
-
-/* `keepOnFloor` is newer than the records already in a coach's browser, and
-   only `sanitizeTeam` fills it in. Created lazily in one place so neither the
-   chip list nor the editor has to think about the absent key. */
-const keepOnList = c => (c.keepOnFloor || (c.keepOnFloor = []));
+/* ---------------- level 1: the rules list and the switch groups -------- */
 
 export function renderConstraints() {
   const g = game(), c = g.constraints;
-  /* Before the empty-roster return below: the badge on the collapsed row is
-     this section's own summary, and every rule edit in this file repaints the
-     body by calling straight back in here rather than through a section the
-     scheduler knows about. Without this the count only moved on a full render. */
-  renderConsCount();
-  const out = new Set(g.out);
-  const avail = state.players.filter(p => !out.has(p.id));
-  const box = $('#constraints'); box.textContent = '';
-  if (!avail.length) { box.append(el('div', 'empty', 'Nobody available.')); return; }
+  const avail = availIds(g);
 
-  const shorts = deriveShortNames(state.players);
-  const nm = id => shorts[id] || byId(id)?.name || id;
+  // The header and footer sit on the sheet background, outside the white
+  // card (decision 3) -- `wrap` (`#constraints`) holds all three as
+  // siblings; only `box` gets the `.pgrp` card look.
+  const wrap = $('#constraints');
+  wrap.className = '';
+  wrap.textContent = '';
+  wrap.append(el('div', 'pgrp-h', 'Rules'));
 
-  /* ---- active rules, as removable chips ---- */
-  const chips = el('div', 'rulechips');
-  const chip = (text, onX, tone) => {
-    const k = el('span', 'rchip' + (tone ? ' ' + tone : ''));
-    k.append(el('span', null, text));
-    const x = el('button', 'x press');
-    x.type = 'button';
-    x.append(icon('x', { size: '.9em', stroke: 2.4 }));
-    x.setAttribute('aria-label', 'Remove rule');
-    x.onclick = () => { onX(); renderConstraints(); soon(...PLAN_ONLY); };
-    k.append(x);
-    return k;
-  };
+  const box = el('div', 'pgrp');
+  const items = ruleItems(g);
+  items.forEach((item, idx) => box.append(ruleRow(item, idx)));
 
-  for (const [id, v] of Object.entries(c.minMinutes)) {
-    if (!avail.some(p => p.id === id)) continue;
-    chips.append(chip(`${nm(id)} plays at least ${v} min`, () => delete c.minMinutes[id]));
-  }
-  for (const [id, v] of Object.entries(c.maxMinutes)) {
-    if (!avail.some(p => p.id === id)) continue;
-    chips.append(chip(`${nm(id)} capped at ${v} min`, () => delete c.maxMinutes[id]));
-  }
-  c.pairs.forEach((pr, i) => chips.append(chip(`${nm(pr[0])} + ${nm(pr[1])} together`, () => c.pairs.splice(i, 1), 'ok')));
-  c.avoids.forEach((pr, i) => chips.append(chip(`${nm(pr[0])} / ${nm(pr[1])} apart`, () => c.avoids.splice(i, 1), 'err')));
-  /* Untoned on purpose: green and red are a matched pair here -- must share the
-     floor, must not -- and a third green chip would blur what the color says. */
-  keepOnList(c).forEach((pr, i) => chips.append(chip(`${nm(pr[0])} or ${nm(pr[1])} always on`, () => c.keepOnFloor.splice(i, 1))));
-  if (c.openingFive.length) chips.append(chip(`Starts: ${c.openingFive.map(nm).join(' ')}`, () => { c.openingFive = []; }));
-  if (c.lastPeriodFive.length) chips.append(chip(`Last period: ${c.lastPeriodFive.map(nm).join(' ')}`, () => { c.lastPeriodFive = []; }));
-  if (c.maxConsecutive) chips.append(chip(`Max ${c.maxConsecutive} stint${c.maxConsecutive > 1 ? 's' : ''} in a row`, () => { c.maxConsecutive = 0; }));
+  const addRow = el('button', 'prow add-rule');
+  addRow.type = 'button';
+  addRow.append(icon('plus', { size: '1rem', cls: 'prow-icon' }), el('span', 'prow-t', 'Add a rule'));
+  addRow.disabled = !avail.length;
+  addRow.onclick = () => renderAddRule(addRow);
+  box.append(addRow);
+  wrap.append(box);
 
-  /* The league floor is a rule, set in Settings rather than here: `computeAll`
-     composes it into a CLONE of the constraints on the way to the solver, so it
-     never appears in the maps above. Saying "no rules yet, the plan just evens
-     out the minutes" while every available player carries a floor contradicts
-     `#issues` four inches away, which names each of them (A24b). Not a chip --
-     it is not removable from here, and an X that cannot undo it would be a
-     worse lie than the sentence was. */
-  const lmin = leagueMinutes();
-  if (chips.children.length) box.append(chips);
-  if (lmin > 0) {
-    box.append(el('p', 'note',
-      `Everyone available plays at least ${lmin} min. Your league minimum, set in Settings.`));
-  } else if (!chips.children.length) {
-    box.append(el('p', 'note', 'No rules yet. The plan just evens out the minutes.'));
-  }
+  if (!avail.length) wrap.append(el('p', 'pgrp-f', 'Nobody available.'));
+  else if (!items.length) wrap.append(el('p', 'pgrp-f', 'No rules yet. The plan just evens out the minutes.'));
 
-  /* ---- add a rule ---- */
-  const addHd = el('div', 'pickhd');
-  addHd.append(el('span', 't', 'Add a rule'));
-  box.append(addHd);
-
-  const KINDS = [
-    ['limit', 'Minutes limit'], ['starts', 'Starting five'], ['lastq', 'Last period'],
-    ['together', 'Play together'], ['apart', 'Keep apart'], ['keepon', 'Always one on'],
-    ['rest', 'Rest limit'],
-  ];
-  const kinds = el('div', 'chips');
-  for (const [k, t] of KINDS) {
-    const b = el('button', 'chip press' + (openRule === k ? ' sel' : ''), t);
-    b.type = 'button';
-    // A real toggle -- clicking the open kind closes it again -- so `.sel`
-    // has a matching state to announce, the way every other `.chip` in the
-    // app already announces its own.
-    b.setAttribute('aria-pressed', String(openRule === k));
-    b.onclick = () => { openRule = openRule === k ? null : k; renderConstraints(); };
-    kinds.append(b);
-  }
-  box.append(kinds);
-  if (openRule) box.append(ruleEditor(openRule, avail, c));
-
-  /* ---- switches that are not really rules ---- */
-  const sw = el('div', 'rule-switches');
-  const mk = (checked, label2, note, onch, opts = {}) => {
-    const w = el('div');
-    const l = el('label', 'switch');
-    const i2 = el('input'); i2.type = 'checkbox'; i2.checked = checked;
-    if (opts.fk) i2.dataset.fk = opts.fk;
-    i2.onchange = () => {
-      onch(i2.checked);
-      /* A switch whose consequence is drawn from the solve has to wait for
-         one, so it repaints itself through the scheduler instead -- and rides
-         `data-fk` back to the checkbox afterwards. The others describe only
-         what was just clicked, so they repaint immediately. */
-      if (opts.afterSolve) soon('constraints', ...PLAN_ONLY);
-      else { renderConstraints(); soon(...PLAN_ONLY); }
-    };
-    l.append(i2, el('span', null, label2));
-    w.append(l);
-    if (note) w.append(el('p', 'note', note));
-    if (opts.body) w.append(opts.body);
-    return w;
-  };
-  sw.append(mk(c.hardPairs, 'Force “together” pairs every stint',
-    'Left off, the plan maximises their shared floor time and reports it.',
-    v => { c.hardPairs = v; }));
-  if (state.activeGame > 0) {
-    sw.append(mk(g.useCarryover, 'Balance against minutes already played today',
-      'Later games even out the whole day rather than each game on its own.',
-      v => { g.useCarryover = v; }));
-  }
-  /* Season carryover (B3). The switch does not exist until the season does:
-     a coach who has never finished a game sees nothing new here at all. */
-  if ((state.season?.games || []).length) {
-    const host = el('div', 'seasonadj');
-    host.id = 'seasonadj';
-    sw.append(mk(g.useSeasonTargets, 'Even out the season so far',
-      'Opens each player’s minutes ahead or behind by how far they are off their share of the season. At most two stints either way, and never over a limit or a locked number.',
-      v => { g.useSeasonTargets = v; },
-      { fk: 'seasoncarry', afterSolve: true, body: host }));
-  }
-  box.append(sw);
+  renderPairsGroup(c);
+  renderDayGroup(g);
+  renderSeasonGroup(g);
   renderSeasonAdjust();
+}
+
+function ruleRow(item, idx) {
+  const b = el('button', 'prow');
+  b.type = 'button';
+  b.append(el('span', 'prow-t', item.text));
+  b.append(icon('chevron_right', { size: '.8rem', cls: 'prow-chev' }));
+  b.onclick = () => openRuleDetail(item, idx, b);
+  return b;
+}
+
+function switchRow(label, checked, disabled, onChange, fk) {
+  const row = el('label', 'prow');
+  const input = el('input');
+  input.type = 'checkbox';
+  input.setAttribute('switch', '');
+  input.checked = checked;
+  input.disabled = disabled;
+  if (fk) input.dataset.fk = fk;
+  input.onchange = () => onChange(input.checked);
+  // The label sits on the left, the switch at the row's right end (the
+  // prototype's layout) -- the row itself is still the whole target either
+  // way, since `<label>` links both children to the input.
+  row.append(el('span', 'prow-t', label), input);
+  return row;
+}
+
+function renderPairsGroup(c) {
+  const wrap = $('#planPairs');
+  if (!wrap) return;
+  wrap.textContent = '';
+  if (!c.pairs.length) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const box = el('div', 'pgrp');
+  box.append(switchRow('Force together pairs every stint', c.hardPairs, false, v => {
+    c.hardPairs = v; renderConstraints(); soon(...PLAN_ONLY);
+  }));
+  wrap.append(box);
+  wrap.append(el('p', 'pgrp-f', 'Left off, the plan maximises their shared floor time and reports it.'));
+}
+
+function renderDayGroup(g) {
+  const wrap = $('#planDay');
+  if (!wrap) return;
+  wrap.textContent = '';
+  wrap.append(el('div', 'pgrp-h', 'Across the day'));
+  const box = el('div', 'pgrp');
+  const first = state.activeGame === 0;
+  box.append(switchRow('Even out earlier games', !first && g.useCarryover, first, v => {
+    g.useCarryover = v; renderConstraints(); soon(...PLAN_ONLY);
+  }));
+  wrap.append(box);
+  wrap.append(el('p', 'pgrp-f', first
+    ? "This is the first game today, so there's nothing to even out."
+    : 'Players who got fewer minutes earlier today get more here.'));
+}
+
+function renderSeasonGroup(g) {
+  const wrap = $('#planSeason');
+  if (!wrap) return;
+  const hasSeason = (state.season?.games || []).length > 0;
+  wrap.hidden = !hasSeason;
+  wrap.textContent = '';
+  if (!hasSeason) return;
+  wrap.append(el('div', 'pgrp-h', 'Across the season'));
+  const box = el('div', 'pgrp');
+  box.append(switchRow('Even out the season so far', g.useSeasonTargets, false, v => {
+    g.useSeasonTargets = v;
+    // Its consequence comes from a solve, so it waits for one rather than
+    // repainting immediately -- `data-fk` rides the checkbox's own identity
+    // back through that repaint (`withFocus`, trap.js).
+    soon('constraints', ...PLAN_ONLY);
+  }, 'seasoncarry'));
+  wrap.append(box);
+  wrap.append(el('p', 'pgrp-f', 'Opens each player’s minutes ahead or behind by how far they are off their share '
+    + 'of the season. At most two stints either way, and never over a limit or a locked number.'));
+  const host = el('div', 'seasonadj');
+  host.id = 'seasonadj';
+  wrap.append(host);
 }
 
 /* What the adjustment did, and why, in the numbers the solver was handed.
@@ -181,7 +160,8 @@ export function renderConstraints() {
  * absent or the format changes, and `constraints` cannot be in `AFTER_EDIT`
  * because the rule editor holds a select and two number inputs the coach may
  * be part-way through. It contains no focusable control, so rebuilding it in
- * place is safe. */
+ * place is safe. Only its host's DOM location moved (#28): it now sits inside
+ * `#planSeason` rather than the old `.rule-switches` block. */
 export function renderSeasonAdjust() {
   const host = document.querySelector('#seasonadj');
   if (!host) return;
@@ -190,7 +170,7 @@ export function renderSeasonAdjust() {
   const a = seasonAdjust[g.id];
   if (!a || !a.on) return;
   const nm = id => byId(id)?.name || id;   // sentences about a child, so full names
-  const say = t => host.append(el('p', 'note', t));
+  const say = t => host.append(el('p', 'pgrp-f', t));
 
   if (a.reason === 'strategy') {
     return say(g.strategy === 'platoon'
@@ -239,69 +219,195 @@ export function renderSeasonAdjust() {
   }
 }
 
-function ruleEditor(kind, avail, c) {
-  const wrap = el('div', 'ruleedit');
-  const sel = (ph) => {
-    const s2 = el('select');
-    s2.append(el('option', null, ph));
-    for (const p of avail) { const o = el('option', null, p.name || p.id); o.value = p.id; s2.append(o); }
-    return s2;
+/* ---------------- level 2: a rule's detail ------------------------------ */
+
+function openRuleDetail(item, idx, trigger) {
+  const sub = $('#planSub');
+  sub.textContent = '';
+  sub.append(el('p', 'plan-rule-sentence', item.text));
+  if (item.removable) {
+    const grp = el('div', 'pgrp');
+    const rm = el('button', 'prow prow-center prow-danger', 'Remove rule');
+    rm.type = 'button';
+    rm.onclick = () => removeRuleFlow(item, idx);
+    grp.append(rm);
+    sub.append(grp);
+  } else {
+    sub.append(el('p', 'pgrp-f', 'Your league minimum. Change it in Settings.'));
+  }
+  pushPlanPane(trigger, { title: 'Rule' });
+}
+
+function removeRuleFlow(item, idx) {
+  const g = game(), c = g.constraints;
+  undoable('Rule removed.', () => removeRule(c, item), isUndo => {
+    renderConstraints();
+    soon(...PLAN_ONLY);
+    // Only on the way OUT: an undo repaints level 1 in place and the sheet
+    // was already there (item 4's "the sheet is still open").
+    if (!isUndo) {
+      popPane($('#sheetPlan'));
+      focusRuleRowAfterRemove(idx);
+    }
+  });
+}
+
+function focusRuleRowAfterRemove(idx) {
+  const rows = [...$('#constraints').querySelectorAll('.prow')].filter(b => !b.classList.contains('add-rule'));
+  (rows[idx] || $('#constraints .add-rule'))?.focus({ preventScroll: true });
+}
+
+/* ---------------- level 2: Add a rule ----------------------------------- */
+
+// Decision 9's order and the prototype's plainer labels. `scripts/feature-
+// keys.mjs`'s `shipped().rule` reads this exact array by name and shape, so
+// an eighth kind here is an eighth kind there rather than a silent gap (A19).
+const KINDS = [
+  ['minimum', 'Plays at least'],
+  ['cap', 'Plays at most'],
+  ['apart', 'Never together'],
+  ['together', 'Always together'],
+  ['keepon', 'One of two always on'],
+  ['starts', 'Starting five'],
+  ['lastq', 'Last-period five'],
+  ['rest', 'Rest limit'],
+];
+
+// The draft is module state, reset on each push (Design > State).
+let draft = { kind: 'minimum' };
+
+function defaultMinutes(g) {
+  const total = g.periods * g.periodMinutes;
+  return Math.max(1, Math.min(12, total));
+}
+
+function renderAddRule(trigger) {
+  const g = game();
+  draft = { kind: 'minimum', minutes: defaultMinutes(g) };
+  const sub = $('#planSub');
+  sub.textContent = '';
+  const kindsBox = el('div', 'chips plan-kinds');
+  sub.append(kindsBox);
+  const body = el('div');
+  body.id = 'planKindBody';
+  sub.append(body);
+  paintKindChips(kindsBox);
+  renderKindBody();
+  pushPlanPane(trigger, { title: 'Add a rule', showAddRule: true });
+}
+
+function paintKindChips(box) {
+  box.textContent = '';
+  for (const [k, label] of KINDS) {
+    const b = el('button', 'chip press' + (draft.kind === k ? ' sel' : ''), label);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(draft.kind === k));
+    b.onclick = () => {
+      // Changing the kind keeps the minutes and clears the players.
+      draft = { kind: k, minutes: draft.minutes, n: k === 'rest' ? 2 : undefined };
+      paintKindChips(box);
+      renderKindBody();
+    };
+    box.append(b);
+  }
+}
+
+function pstepRow(label, get, set, lo, hi, noun) {
+  const row = el('div', 'prow pstep-row');
+  row.append(el('span', 'prow-t', label));
+  const val = el('span', 'pstep-val', '');
+  const wrap = el('div', 'pstep');
+  const minus = el('button', 'pstep-btn', '−');
+  minus.type = 'button';
+  minus.setAttribute('aria-label', `Fewer ${noun}`);
+  const plus = el('button', 'pstep-btn', '+');
+  plus.type = 'button';
+  plus.setAttribute('aria-label', `More ${noun}`);
+  const sync = () => {
+    const v = get();
+    val.textContent = String(v);
+    minus.disabled = v <= lo;
+    plus.disabled = v >= hi;
   };
+  const step = d => { set(Math.max(lo, Math.min(hi, get() + d))); sync(); syncAddRuleBtn(); };
+  minus.onclick = () => step(-1);
+  plus.onclick = () => step(1);
+  sync();
+  wrap.append(minus, plus);
+  row.append(val, wrap);
+  return row;
+}
 
-  if (kind === 'limit') {
-    const who = sel('Choose a player…');
-    const min = el('input', 'mini'); min.type = 'number'; min.min = '0'; min.placeholder = 'min'; min.inputMode = 'numeric';
-    const cap = el('input', 'mini'); cap.type = 'number'; cap.min = '0'; cap.placeholder = 'cap'; cap.inputMode = 'numeric';
-    const add = el('button', 'btn sm press', 'Add');
-    add.onclick = () => {
-      if (!who.value) return;
-      if (min.value !== '') c.minMinutes[who.value] = Number(min.value);
-      if (cap.value !== '') c.maxMinutes[who.value] = Number(cap.value);
-      openRule = null; renderConstraints(); soon(...PLAN_ONLY);
-    };
-    wrap.append(who, min, cap, add);
-    wrap.append(el('p', 'note', 'Fill either box. A minimum guarantees floor time; a cap holds someone back.'));
-    return wrap;
+function renderKindBody() {
+  const g = game(), c = g.constraints;
+  const body = $('#planKindBody');
+  if (!body) return;
+  body.textContent = '';
+
+  if (draft.kind === 'minimum' || draft.kind === 'cap') {
+    body.append(pickFive(draft.id ? [draft.id] : [], (id, on) => {
+      draft.id = on ? id : null;
+      renderKindBody();
+    }, { max: 1, replace: true, title: 'Pick a player' }));
+    const grp = el('div', 'pgrp');
+    const lo = draft.kind === 'cap' ? 0 : 1;
+    grp.append(pstepRow('Minutes', () => draft.minutes, v => { draft.minutes = v; }, lo, 40, 'minutes'));
+    body.append(grp);
+  } else if (draft.kind === 'together' || draft.kind === 'apart' || draft.kind === 'keepon') {
+    body.append(pickFive([draft.a, draft.b].filter(Boolean), (id, on) => {
+      if (on) { if (!draft.a) draft.a = id; else if (!draft.b) draft.b = id; }
+      else if (draft.a === id) { draft.a = draft.b; draft.b = null; }
+      else if (draft.b === id) draft.b = null;
+      renderKindBody();
+    }, { max: 2, title: 'Pick two players' }));
+  } else if (draft.kind === 'starts' || draft.kind === 'lastq') {
+    body.append(pickFive(draft.ids || [], (id, on) => {
+      draft.ids = on ? [...(draft.ids || []), id] : (draft.ids || []).filter(x => x !== id);
+      renderKindBody();
+    }, { max: 5, title: 'Pick up to five' }));
+  } else if (draft.kind === 'rest') {
+    const grp = el('div', 'pgrp');
+    grp.append(pstepRow('Stints in a row', () => draft.n, v => { draft.n = v; }, 1, 4, 'stints'));
+    body.append(grp);
   }
 
-  if (kind === 'together' || kind === 'apart' || kind === 'keepon') {
-    const a = sel('Player…'), b = sel('Player…');
-    const list = kind === 'together' ? c.pairs : kind === 'apart' ? c.avoids : keepOnList(c);
-    const add = el('button', 'btn sm press', 'Add');
-    add.onclick = () => {
-      if (!a.value || !b.value || a.value === b.value) return;
-      if (!list.some(x => x.includes(a.value) && x.includes(b.value))) list.push([a.value, b.value]);
-      openRule = null; renderConstraints(); soon(...PLAN_ONLY);
-    };
-    wrap.append(a, b, add);
-    // "apart" is about the floor and this is about the bench, so say which.
-    if (kind === 'keepon') {
-      wrap.append(el('p', 'note', 'One of these two is on the floor every stint: a ball handler, or a big. They are never both resting at once.'));
-    }
-    return wrap;
-  }
+  const replaces = (draft.kind === 'starts' && c.openingFive.length)
+    || (draft.kind === 'lastq' && c.lastPeriodFive.length)
+    || (draft.kind === 'rest' && c.maxConsecutive);
+  if (replaces) body.append(el('p', 'pgrp-f', 'Replaces the one you have.'));
 
-  if (kind === 'rest') {
-    const chips = el('div', 'chips');
-    for (const n of [1, 2, 3, 4]) {
-      const b = el('button', 'chip press' + (c.maxConsecutive === n ? ' sel' : ''), `${n} stint${n > 1 ? 's' : ''}`);
-      b.type = 'button';
-      // The picker's own editor, and the same `.sel` chip as the kinds above.
-      b.setAttribute('aria-pressed', String(c.maxConsecutive === n));
-      b.onclick = () => { c.maxConsecutive = c.maxConsecutive === n ? 0 : n; openRule = null; renderConstraints(); soon(...PLAN_ONLY); };
-      chips.append(b);
-    }
-    wrap.classList.add('stack');
-    wrap.append(chips, el('p', 'note', 'The most stints anyone plays back to back. Needs bench depth to apply.'));
-    return wrap;
-  }
+  syncAddRuleBtn();
+}
 
-  // starts / lastq -> the same five-picker used for closers
-  const key = kind === 'starts' ? 'openingFive' : 'lastPeriodFive';
-  wrap.classList.add('stack');
-  wrap.append(pickFive(c[key], (id, on) => {
-    c[key] = on ? [...c[key], id] : c[key].filter(x => x !== id);
-    renderConstraints(); soon(...PLAN_ONLY);
-  }, { title: kind === 'starts' ? 'On the floor at tip-off' : 'On the floor to start the last period' }));
-  return wrap;
+function syncAddRuleBtn() {
+  const add = $('#planAddRuleBtn');
+  if (!add) return;
+  add.disabled = !ruleComplete(draft.kind, draft);
+  add.onclick = commitAddRule;
+}
+
+// Adds [a, b] to a pair list unless some pair already names both -- the same
+// "no duplicate rule" check for `together`, `apart` and `keepon` below.
+const addPairOnce = (list, a, b) => {
+  if (!list.some(pr => pr.includes(a) && pr.includes(b))) list.push([a, b]);
+};
+
+function commitAddRule() {
+  const g = game(), c = g.constraints;
+  if (!ruleComplete(draft.kind, draft)) return;
+  switch (draft.kind) {
+    case 'minimum': c.minMinutes[draft.id] = draft.minutes; break;
+    case 'cap': c.maxMinutes[draft.id] = draft.minutes; break;
+    case 'together': addPairOnce(c.pairs, draft.a, draft.b); break;
+    case 'apart': addPairOnce(c.avoids, draft.a, draft.b); break;
+    case 'keepon': addPairOnce(keepOnList(c), draft.a, draft.b); break;
+    case 'starts': c.openingFive = [...draft.ids]; break;
+    case 'lastq': c.lastPeriodFive = [...draft.ids]; break;
+    case 'rest': c.maxConsecutive = draft.n; break;
+    default: return;
+  }
+  renderConstraints();
+  soon(...PLAN_ONLY);
+  popPane($('#sheetPlan'));
+  $('#constraints .add-rule')?.focus({ preventScroll: true });
 }

@@ -482,8 +482,11 @@
       <dialog class="bsheet noprint" id="sheetWho" aria-labelledby="sheetWhoTitle">
         <div class="bsheet-hd">
           <button type="button" class="bsheet-handle" aria-label="Full height"></button>
-          <h2 id="sheetWhoTitle">Who's here</h2>
-          <button type="button" class="bsheet-close" id="sheetWhoClose" aria-label="Close">✕</button>
+          <div class="bsheet-hd-row">
+            <span class="bsheet-hd-l"></span>
+            <h2 id="sheetWhoTitle">Who's here</h2>
+            <span class="bsheet-hd-r"><button type="button" class="bsheet-close" id="sheetWhoClose" aria-label="Close">✕</button></span>
+          </div>
         </div>
         <div class="bsheet-body" id="sheetWhoBody"></div>
         <p class="bsheet-status" role="status" id="sheetWhoStatus"></p>
@@ -491,8 +494,11 @@
       <dialog class="bsheet noprint" id="sheetFormat" aria-labelledby="sheetFormatTitle">
         <div class="bsheet-hd">
           <button type="button" class="bsheet-handle" aria-label="Full height"></button>
-          <h2 id="sheetFormatTitle">Format</h2>
-          <button type="button" class="bsheet-close" id="sheetFormatClose" aria-label="Close">✕</button>
+          <div class="bsheet-hd-row">
+            <span class="bsheet-hd-l"></span>
+            <h2 id="sheetFormatTitle">Format</h2>
+            <span class="bsheet-hd-r"><button type="button" class="bsheet-close" id="sheetFormatClose" aria-label="Close">✕</button></span>
+          </div>
         </div>
         <div class="bsheet-body" id="sheetFormatBody"></div>
         <p class="bsheet-status" role="status" id="sheetFormatStatus"></p>
@@ -500,78 +506,70 @@
       <dialog class="bsheet noprint" id="sheetInterval" aria-labelledby="sheetIntervalTitle">
         <div class="bsheet-hd">
           <button type="button" class="bsheet-handle" aria-label="Full height"></button>
-          <h2 id="sheetIntervalTitle">Sub interval</h2>
-          <button type="button" class="bsheet-close" id="sheetIntervalClose" aria-label="Close">✕</button>
+          <div class="bsheet-hd-row">
+            <span class="bsheet-hd-l"></span>
+            <h2 id="sheetIntervalTitle">Sub interval</h2>
+            <span class="bsheet-hd-r"><button type="button" class="bsheet-close" id="sheetIntervalClose" aria-label="Close">✕</button></span>
+          </div>
         </div>
         <div class="bsheet-body" id="sheetIntervalBody"></div>
         <p class="bsheet-status" role="status" id="sheetIntervalStatus"></p>
       </dialog>
 
-      <div class="cols print-path">
-        <div class="col-main noprint">
-
-          <!-- Plan folds, like every other setup block on this page. It was
-               the one section left permanently open, and it was the expensive
-               one: `#stratbody` changes shape per strategy, so with Plan open
-               the rotation itself started at y=1049 (platoon), 1103 (closers)
-               and 1267 (minutes) on an 844px phone -- off the first screen
-               entirely, for the three strategies a coach has deliberately
-               chosen. Shut, all three start around y=560.
-
-               It opens for a coach still on the default (app.js), because
-               Balanced costs nothing to leave open and that segment is the
-               only place outside the skippable tour where the app says what
-               it can do. The summary carries the answer in words, so a shut
-               block still says which plan is running.
-
-               The strategy SENTENCE sits below the segment, not in the
-               summary: every other summary hint on this page is a value
-               ("9 of 9", "2 x 20 min"), and a sentence above the control it
-               describes explained a choice that had not been made yet. -->
-          <details class="block fold s-plan" id="planFold" open>
-            <summary><h3>Plan</h3><span class="hint" id="stratnote"></span><button class="helpq press" type="button" data-help="help-plan" aria-label="How the plan choices work">?</button></summary>
+      <!-- The Plan sheet (#28): one dialog, two panes. `#planMain` is level
+           1 (Strategy, Rules, Lineups, Across the day, Across the season);
+           `#planSub` is level 2, filled fresh by whichever row pushed it
+           (a rule's detail or Add a rule in rules.js, Lineup balance in
+           balance.js) -- only one is ever built at a time (C5). The header's
+           left slot is empty at level 1 and the back button at level 2; the
+           right slot is ✕ except on the Add-a-rule page, where it is the
+           `Add rule` commit button (C4, W2). `trap.js`'s `pushPane`/`popPane`
+           do the generic showing/hiding/focus/scroll-memory/slide; the title
+           text and which right-slot control shows are this sheet's own
+           chrome, in `game-setup.js`. -->
+      <dialog class="bsheet grouped noprint" id="sheetPlan" aria-labelledby="sheetPlanTitle">
+        <div class="bsheet-hd">
+          <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+          <div class="bsheet-hd-row">
+            <button type="button" class="bsheet-hd-l backBtn" id="planBack" aria-label="Back to Plan" hidden>
+              <span class="i" data-icon="chevron_left"></span>
+            </button>
+            <h2 id="sheetPlanTitle"></h2>
+            <span class="bsheet-hd-r">
+              <button type="button" class="bsheet-close" id="sheetPlanClose" aria-label="Close">✕</button>
+              <button type="button" class="planAddRule" id="planAddRuleBtn" hidden disabled>Add rule</button>
+            </span>
+          </div>
+        </div>
+        <div class="bsheet-body" id="sheetPlanBody">
+          <div id="planMain" data-pane="main">
             <div class="seg wide" id="stratseg" role="group" aria-label="Planning strategy">
               <button class="press" data-strat="balanced">Even</button>
               <button class="press" data-strat="minutes">By hand</button>
               <button class="press" data-strat="closers">Closers</button>
               <button class="press" data-strat="platoon">Platoon</button>
             </div>
-            <p class="note" id="stratwhy"></p>
+            <p class="pgrp-f" id="stratwhy"></p>
             <div id="stratbody"></div>
-          </details>
 
-          <!-- The shape only. Which end of the game your stronger lineups go
-               is a call about tonight's opponent, so it lives with the plan;
-               the levels it works from are season-long and live on the roster
-               page. Folded shut by default -- with every player on the same
-               level the whole feature is inert. -->
-          <section class="block s-balance">
-            <details class="fold" id="balanceFold">
-              <summary><h3>Lineup balance</h3><span class="hint" id="balancehint"></span><button class="helpq press" type="button" data-help="help-balance" aria-label="How lineup balance works">?</button></summary>
-              <div id="balancebody"></div>
-            </details>
-          </section>
+            <div id="constraints"></div>
+            <div id="planPairs" hidden></div>
+            <div id="planLineups"></div>
+            <div id="planDay"></div>
+            <div id="planSeason" hidden></div>
+          </div>
+          <div id="planSub" data-pane="sub" hidden></div>
+        </div>
+        <p class="bsheet-status" role="status" id="sheetPlanStatus"></p>
+      </dialog>
 
-          <!-- The constraint engine, and it reads as the LAST INPUT rather
-               than as a drawer trailing the page. It used to sit below, after
-               "Across the day": measured at 390x844 that put it at y 2646 of a
-               3,411px page, 11th of the 13 things that render, below the card
-               AND below the bench button, with an empty summary. `ROADMAP.md`
-               calls this the one thing no competitor has (A21b).
+      <div class="cols print-path">
+        <div class="col-main noprint">
 
-               It stays a `.dz` and not a `.fold` on purpose -- two prominence
-               tiers, today's setup against the drawer, is the information
-               design and it survived the study. Being eleventh was the defect,
-               not being quiet.
-
-               Below 1100px the `order:` list in app.css is what actually
-               orders this column, so BOTH have to say the same thing: this
-               element sits between Lineup balance and Rotation in the source
-               for the wide layout, and at order 5 for the stacked one. -->
-          <details class="dz" id="consdetails">
-            <summary>Rules <span class="count" id="conscount"></span><button class="helpq press" type="button" data-help="help-rules" aria-label="How rules work">?</button></summary>
-            <div class="dz-bd" id="constraints"></div>
-          </details>
+          <!-- #28: Plan, Lineup balance and Rules moved into `#sheetPlan`
+               above -- opened from the sentence's Plan/Rules/evens-out
+               phrases (`#phraseStrategy`/`#phraseRules`/`#phraseEvens`,
+               `game-setup.js`), not from a fold on this page. -->
 
           <section class="block s-rot">
             <div class="block-hd">
@@ -1495,7 +1493,7 @@
         game, then prints it on a card that fits in your pocket. There is no account, and
         your roster never leaves your device.</p>
 
-      <h4 class="help-h" id="help-plan">Choosing a plan</h4>
+      <h4 class="help-h">Choosing a plan</h4>
       <dl class="help-dl">
         <dt>Even</dt>
         <dd>Everybody plays as close to the same number of minutes as the clock allows.
@@ -1515,7 +1513,7 @@
           if the groups themselves are even.</dd>
       </dl>
 
-      <h4 class="help-h" id="help-balance">Lineup balance</h4>
+      <h4 class="help-h">Lineup balance</h4>
       <p class="help-p">Even minutes decides how long everyone plays, not who plays
         together, so five players picked purely for fairness can be your five
         youngest at once. Give each player a level on the <b>Team</b> page, on the
@@ -1535,7 +1533,7 @@
         <dd>Strong to open and close, softer through the middle. The one to pick to get developing players real minutes in a game you expect to be decided late.</dd>
       </dl>
 
-      <h4 class="help-h" id="help-rules">Rules</h4>
+      <h4 class="help-h">Rules</h4>
       <p class="help-p">Rules are things you need to be true; the plan works around them.
         Add them under <b>Rules</b>, remove one by tapping its ✕.</p>
       <dl class="help-dl">

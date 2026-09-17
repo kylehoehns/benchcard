@@ -1,4 +1,4 @@
-import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, TODAY_HOME } from './dom.mjs';
+import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
@@ -115,8 +115,13 @@ export const APP_LARGE_TEXT_STATES = [
      the bottom of a long roster is the one most likely to fall past either
      edge at a 32px root. Reused from `STATES` by reference rather than
      retyped, so the open/close scripts cannot drift between the two passes
-     that drive them. */
-  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet"]
+     that drive them. #28 adds its own two: level 1, where the segment and
+     every group sit at once, and Add a rule, its own level-2 page with the
+     kind chips and the picker (a rule's detail needs a seeded rule, which
+     this fixture does not carry, so it is left to `plan sheet` (smoke.mjs)
+     the same way `sentence-sheets.mjs` covers what this pass cannot). */
+  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet",
+      'plan sheet', 'plan sheet, add a rule']
     .map(n => STATES.find(s => s.name === n)),
   /* #26 item 12: "at 320px with 32px root text ... Today with FOUR has no
      horizontal overflow and nothing stranded above the viewport" -- every
@@ -393,6 +398,16 @@ export async function tryLanding(c, origin, n) {
   return `${b.w}×${b.h} at y ${b.t}`;
 }
 
+/* #28 item 11: the two Plan-sheet states named in "What would settle it" get
+   the dialog-relative probe too, on top of the viewport-relative one every
+   state already gets above -- see `DIALOG_OVERFLOW_PROBE` (`dom.mjs`) for why
+   a second probe is worth having even though the two agree today. Not every
+   state: the other dialogs this pass already visits (`help sheet`,
+   `shortcuts sheet`, `who's here sheet`, `team color picker`) are not this
+   ticket's surface, and adding an assertion nobody asked to a screen nobody
+   changed is exactly the "while I am in here" `AGENTS.md` rules out. */
+const DIALOG_CHECKED_STATES = new Set(['plan sheet', 'plan sheet, add a rule']);
+
 export async function appLargeTextPass(c, origin) {
   const problems = [];
   let allowed = 0;
@@ -428,6 +443,13 @@ export async function appLargeTextPass(c, origin) {
         } else if (o.worst) allowed++;
         const up = JSON.parse(await evalIn(c, STRANDED_ABOVE));
         if (up.worst) problems.push(`${where}: ${up.worst.el} starts at y ${up.worst.top}, above the top of a fixed overlay`);
+        if (DIALOG_CHECKED_STATES.has(v.name)) {
+          const dd = JSON.parse(await evalIn(c, DIALOG_OVERFLOW_PROBE));
+          // rule 2a of /new-guard: a check that measured nothing fails, rather
+          // than passing silently because the dialog it expected never opened.
+          if (!dd.dialog) problems.push(`${where}: no open dialog to check for a dialog-relative overflow`);
+          else if (dd.worst) problems.push(`${where}: ${dd.worst.el} reaches ${dd.worst.out}px past the dialog's own ${dd.dw}px-wide box`);
+        }
       } catch (e) {
         problems.push(`${where}: ${e.message.split('\n')[0]}`);
       } finally {

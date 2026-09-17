@@ -280,6 +280,54 @@
     slice: 4,
   });
 
+  /* 3c-plan. #28 item 11: every row (`.prow`) AND tile (`.plr`, the player
+        pickers `pickFive` paints -- the closing-window picker at level 1, and
+        several rule kinds' player pickers on the add page) is at least 48px
+        tall, at the same three phone widths the other row checks sweep
+        (`plan-rows.mjs` drives the sweep; this cell is what it reads back at
+        each width). `#sheetPlan` holds two panes (`#planMain`, `#planSub`),
+        only one shown at a time, so this reads both classes from the dialog
+        as a whole and lets `!el.closest('[hidden]')` drop whichever pane is
+        not on show -- the same exclusion `minSizeCheck`'s caller-picked
+        `elements()` already does for other hidden subtrees. Same "open but
+        nothing measured is a failure" shape as the who's-here-row check
+        above. */
+  const planSheet = document.getElementById('sheetPlan');
+  const planOpen = !!planSheet && planSheet.open;
+  minSizeCheck('plan rows ≥ 48px', {
+    gateOpen: planOpen,
+    notOpenMsg: '#sheetPlan not open',
+    emptyMsg: '#sheetPlan open but 0 rows/tiles found -- structural row/tile detection matched nothing',
+    elements: () => [...document.querySelectorAll('#sheetPlan .prow, #sheetPlan .plr')].filter((el) => !el.closest('[hidden]')),
+    dim: r => r.height,
+    fmt: (el, r) => `${label(el)} ${round(r.height)}px`,
+    noun: 'rows/tiles',
+    slice: 4,
+  });
+
+  /* 3c-plan2. #28 review finding: item 11 also asks the sheet's OTHER
+        controls -- not only its rows -- to clear 48x48: the strategy
+        segments, the kind/closing chips, the player tiles, the stepper
+        buttons, the back button, the ✕ and "Add rule". Same fixed-list shape
+        as the today-and-game-controls check below, scoped to `#sheetPlan`
+        and gated on the dialog being open the same way `plan rows ≥ 48px`
+        above is. `!el.closest('[hidden]')` drops whichever pane (level 1 or
+        the add page) is not on show, same as the row check. */
+  const PLAN_CONTROL_SEL = [
+    '#stratseg button', '.prow', '.chip', '.plr', '.pstep-btn',
+    '#planBack', '#sheetPlanClose', '#planAddRuleBtn',
+  ].map((s) => `#sheetPlan ${s}`).join(', ');
+  minSizeCheck('plan sheet controls ≥ 48px', {
+    gateOpen: planOpen,
+    notOpenMsg: '#sheetPlan not open',
+    emptyMsg: '#sheetPlan open but 0 controls found -- structural control detection matched nothing',
+    elements: () => [...document.querySelectorAll(PLAN_CONTROL_SEL)].filter((el) => !el.closest('[hidden]')),
+    dim: (r) => Math.min(round(r.width), round(r.height)),
+    fmt: (el, r) => `${label(el)} ${round(r.width)}×${round(r.height)}`,
+    noun: 'controls',
+    slice: 6,
+  });
+
   /* 3c. #69 (restyle Today and the game screen) "What would settle it" item 4:
         the controls the restyle itself names, all at least 48x48 -- a floor
         higher than the app-wide 44px sweep above, the same shape as the

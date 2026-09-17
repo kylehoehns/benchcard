@@ -18,7 +18,7 @@ import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { pickFive } from './pills.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES, STRATEGY_WORDS } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES } from './state.js';
 
 let soon = () => {};
 let PLAN_ONLY = [];
@@ -40,14 +40,10 @@ export function renderStrategy() {
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', String(on));
   }
-  /* The summary hint, in the idiom every other fold on this page uses: a
-     VALUE, not a sentence. Squad says "9 of 9", Game format says "2 x 20
-     min", so Plan says what the plan does in two or three words and the full
-     sentence from `STRATEGIES` renders below the segment that chose it.
-     `STRATEGY_WORDS` lives in state.js (#26) so the pass summary on Today
-     reads the same words -- a strategy missing here shows an empty hint,
-     which is what a missing sentence already did. */
-  $('#stratnote').textContent = STRATEGY_WORDS[g.strategy] || '';
+  /* `#stratnote` (the fold-era summary hint) is gone with the fold (#28) --
+     the sentence's `#phraseStrategy` already says what the plan does in a
+     few words (STRATEGY_WORDS, state.js), so the sheet only needs the full
+     sentence, as a group footer under the segment that chose it. */
   $('#stratwhy').textContent = STRATEGIES[g.strategy] || '';
   const box = $('#stratbody'); box.textContent = '';
   if (g.strategy === 'minutes') box.append(minutesEditor(g));
@@ -80,6 +76,7 @@ function minutesEditor(g) {
   msg.id = 'budgetMsg';
   wrap.append(msg);
 
+  const grp = el('div', 'pgrp');
   for (const id of ids) {
     const row = el('div', 'srow' + (locked.has(id) ? ' locked' : ''));
     row.dataset.id = id;
@@ -129,18 +126,21 @@ function minutesEditor(g) {
       renderStrategy(); soon();
     };
     row.append(lk);
-    wrap.append(row);
+    grp.append(row);
   }
+  wrap.append(grp);
 
-  const acts = el('div', 'budget-acts');
-  const spread = el('button', 'btn sm press', 'Even out the rest');
+  const acts = el('div', 'pgrp');
+  const spread = el('button', 'prow', 'Even out the rest');
+  spread.type = 'button';
   spread.id = 'budgetSpread';
   spread.title = 'Share the unassigned minutes among the unlocked players';
   spread.onclick = () => {
     rebalanceSlots(g, null);
     renderStrategy(); soon(...PLAN_ONLY);
   };
-  const reset = el('button', 'btn ghost sm press', 'Reset to even');
+  const reset = el('button', 'prow', 'Reset to even');
+  reset.type = 'button';
   reset.onclick = () => { c.targetSlots = {}; c.lockedTargets = []; renderStrategy(); soon(...PLAN_ONLY); };
   acts.append(spread, reset);
   wrap.append(acts);
@@ -289,34 +289,30 @@ function platoonEditor(g) {
   if (!c.units.length) c.units = [[]];
 
   c.units.forEach((unit, i) => {
-    const card = el('div', 'unit');
-    const hd = el('div', 'uhd');
-    hd.append(el('span', 't', `Unit ${i + 1}`));
-    hd.append(el('span', 'spacer'));
-    if (c.units.length > 1) {
-      /* The glyph is the whole visible label, so it is the whole ACCESSIBLE
-         name too -- "times, button", repeated once per unit, with nothing to
-         say which one it deletes. Smoke's accessible-name check passes it
-         because `×` is not empty, which is that check working correctly.
-         Named the way the roster's own ✕ is, and typed the way every other
-         button this app builds is. */
-      const rm = el('button', 'xbtn', '×');
-      rm.type = 'button';
-      rm.setAttribute('aria-label', `Remove unit ${i + 1}`);
-      rm.onclick = () => { c.units.splice(i, 1); renderStrategy(); soon(); };
-      hd.append(rm);
-    }
-    card.append(hd);
+    // The header sits on the sheet background above the card (decision 3),
+    // so it is `grp`'s sibling, not its child.
+    const hdr = el('div', 'pgrp-h', `Unit ${i + 1}`);
+    const grp = el('div', 'pgrp');
     const taken = new Set(c.units.filter((_, j) => j !== i).flat());
-    card.append(pickFive(unit, (id, on) => {
+    grp.append(pickFive(unit, (id, on) => {
       c.units[i] = on ? [...c.units[i], id] : c.units[i].filter(x => x !== id);
       renderStrategy(); soon(...PLAN_ONLY);
     }, { title: 'On the floor', taken }));
-    wrap.append(card);
+    if (c.units.length > 1) {
+      // A `.prow` whose whole visible text says which unit it removes --
+      // decision 5. `×`-only names read as "times, button" with nothing to
+      // say which one it deletes (test/button-names.test.js's original case).
+      const rm = el('button', 'prow prow-center prow-danger', `Remove unit ${i + 1}`);
+      rm.type = 'button';
+      rm.onclick = () => { c.units.splice(i, 1); renderStrategy(); soon(); };
+      grp.append(rm);
+    }
+    wrap.append(hdr, grp);
   });
 
-  const add = el('button', 'btn sm', '+ Add unit');
-  add.style.marginTop = '.7rem';
+  const add = el('button', 'prow');
+  add.type = 'button';
+  add.append(icon('plus', { size: '1rem', cls: 'prow-icon' }), el('span', 'prow-t', 'Add unit'));
   add.onclick = () => { c.units.push([]); renderStrategy(); soon(); };
   wrap.append(add);
   return wrap;

@@ -16,11 +16,11 @@
  * documents for every other section.
  * ================================================================== */
 import { riseIn } from './fx.js';
-import { $, set, style, el } from './dom.js';
+import { $, set, el } from './dom.js';
 import { renderCardFold } from './card.js';
-import { state, game, plans, teamName, noRoster, setAvailable, ruleCount,
+import { state, game, plans, teamName, noRoster, setAvailable,
          sentenceParts, planSay, stepFormat, GRAN_CHOICES } from './state.js';
-import { openSheet, closeSheet } from './trap.js';
+import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
 import { colorName } from './storage.js';
 
 let renderAll = () => {};
@@ -49,37 +49,6 @@ export function renderSetup() {
   set('#printScope', 'value', state.ui.printScope);
   set('#showMinutes', 'checked', state.ui.showMinutes);
   renderCardFold();
-  renderConsCount();
-}
-
-
-/* The badge on the collapsed Rules row. Exported and called by
-   `renderConstraints` as well as from here, because `setup` is in neither
-   AFTER_EDIT nor PLAN_ONLY: adding a rule repaints the rules body and nothing
-   else, so the badge held the count as of the last FULL render and a coach's
-   first rule of the session changed the collapsed row not at all.
-
-   At zero it is not a badge at all. `display: none` used to leave the row
-   reading `› RULES` and nothing else, which is the one feature `ROADMAP.md`
-   calls unclaimed territory introducing itself with a blank (A21b). It names
-   what it holds instead, and `.zero` unsets the accent-soft pill so the hint
-   does not read as an alert about something the coach has not done. */
-const CONS_HINT = 'minutes, pairs, starters';
-
-export function renderConsCount() {
-  const g = game();
-  /* `ruleCount` (state.js) is the one place this number is computed: it
-     counts each rule exactly as `renderConstraints` (rules.js) lists them --
-     a starting five or a last-period five once, not by `.length` -- and
-     includes the league floor, which is not stored on the game at all
-     (`computeAll` composes it in on the way to the solver). Reading it here
-     instead of re-deriving it is what keeps this badge, the Rules list and
-     the sentence's rules phrase from disagreeing (#26 decision 3). */
-  const n = ruleCount(g);
-  const hint = n ? '' : noRoster() ? '' : CONS_HINT;
-  set('#conscount', 'textContent', n ? String(n) : hint);
-  set('#conscount', 'className', n ? 'count' : 'count zero');
-  style('#conscount', 'display', n || hint ? '' : 'none');
 }
 
 
@@ -119,6 +88,7 @@ function refreshSheetStatus(g) {
   set('#sheetWhoStatus', 'textContent', text);
   set('#sheetFormatStatus', 'textContent', text);
   set('#sheetIntervalStatus', 'textContent', text);
+  set('#sheetPlanStatus', 'textContent', text);
 }
 
 export function renderSentence() {
@@ -135,18 +105,63 @@ export function renderSentence() {
   refreshSheetStatus(g);
 }
 
-/* Decision 4: until the Plan sheet exists (#28), the strategy and rules
-   phrases open the existing folds rather than a sheet of their own, move
-   focus to the control the ticket names, and scroll it into view. They
-   never call `openSheet` -- opening a fold does not touch the one-sheet-open
-   rule. */
-function openFoldAt(foldSel, focusSel) {
-  const fold = $(foldSel);
-  if (!fold) return;
-  fold.open = true;
-  fold.scrollIntoView({ block: 'center' });
-  const focusTarget = $(focusSel);
-  focusTarget?.focus({ preventScroll: true });
+/* ================================================================== *
+ * The Plan sheet (#28)
+ *
+ * `openPlanSheet` is the one opener every phrase (and, per decision 15,
+ * the timeline's two CTAs) calls. It always resets the dialog to level 1
+ * first (decision 14/16's "each open starts at level 1"), then scrolls the
+ * named section's group to the top of the scrolling body. The level-2 push
+ * and pop themselves live in `rules.js` and `balance.js` -- the pages that
+ * build a `#planSub` body -- through `pushPane`/`popPane` (`trap.js`);
+ * `resetPlanChrome` is exported so those callers can pass it as `pushPane`'s
+ * `onPop`, so the header (title, back button, right-slot control) resets on
+ * every path back to level 1, including Escape and Android's back gesture,
+ * not only a tap on the back button itself.
+ * ================================================================== */
+
+export function resetPlanChrome() {
+  set('#sheetPlanTitle', 'textContent', 'Plan');
+  const back = $('#planBack'); if (back) back.hidden = true;
+  const close = $('#sheetPlanClose'); if (close) close.hidden = false;
+  const add = $('#planAddRuleBtn'); if (add) { add.hidden = true; add.disabled = true; }
+}
+
+/* The shared half of pushing a level-2 page (decision 16): the header chrome
+   (title, back button, which right-slot control shows) and the push itself,
+   with `resetPlanChrome` wired as `pushPane`'s `onPop` so the chrome always
+   resets, on the back button, Escape or Android's back gesture alike. The
+   page's own body (a rule's detail, Add a rule, Lineup balance) is the
+   caller's -- built into `#planSub` before this runs, since `pushPane` moves
+   focus to its first focusable node. */
+export function pushPlanPane(trigger, { title, showAddRule = false } = {}) {
+  set('#sheetPlanTitle', 'textContent', title);
+  const back = $('#planBack'); if (back) back.hidden = false;
+  const close = $('#sheetPlanClose'); if (close) close.hidden = showAddRule;
+  const add = $('#planAddRuleBtn'); if (add) add.hidden = !showAddRule;
+  pushPane($('#sheetPlan'), trigger, resetPlanChrome);
+}
+
+const PLAN_SECTION_HEADER = {
+  strategy: null,       // top of the sheet already -- nothing to scroll to
+  rules: '#constraints',
+  evens: '#planDay',
+};
+
+export function openPlanSheet(section, trigger) {
+  const dialog = $('#sheetPlan');
+  if (!dialog) return;
+  // Always level 1: pop any open sub pane without its pop animation or undo
+  // toast -- this is a fresh open, not a coach tapping back.
+  const main = $('#planMain'), sub = $('#planSub');
+  if (main) main.hidden = false;
+  if (sub) { sub.hidden = true; sub.classList.remove('pane-in'); }
+  resetPlanChrome();
+  openSheet(dialog, trigger, { full: true });
+  const sel = PLAN_SECTION_HEADER[section];
+  const target = sel && $(sel);
+  if (target) target.scrollIntoView({ block: 'start' });
+  else if (main) main.scrollTop = 0;
 }
 
 function wireSentence() {
@@ -157,15 +172,17 @@ function wireSentence() {
   const interval = $('#phraseInterval');
   if (interval) interval.onclick = () => { paintIntervalBody(); openSheet($('#sheetInterval'), interval); };
   const strategy = $('#phraseStrategy');
-  if (strategy) strategy.onclick = () => openFoldAt('#planFold', '#stratseg button.on');
+  if (strategy) strategy.onclick = () => openPlanSheet('strategy', strategy);
   const rules = $('#phraseRules');
-  if (rules) rules.onclick = () => openFoldAt('#consdetails', '#consdetails summary');
+  if (rules) rules.onclick = () => openPlanSheet('rules', rules);
   const evens = $('#phraseEvens');
-  if (evens) evens.onclick = () => openFoldAt('#consdetails', '#consdetails summary');
+  if (evens) evens.onclick = () => openPlanSheet('evens', evens);
 
   on('#sheetWhoClose', () => closeSheet($('#sheetWho')));
   on('#sheetFormatClose', () => closeSheet($('#sheetFormat')));
   on('#sheetIntervalClose', () => closeSheet($('#sheetInterval')));
+  on('#sheetPlanClose', () => closeSheet($('#sheetPlan')));
+  on('#planBack', () => popPane($('#sheetPlan')));
 }
 
 function on(sel, fn) { const n = $(sel); if (n) n.onclick = fn; }

@@ -58,13 +58,10 @@ const TOUR = [
     body: 'Everyone on the roster starts in. Tap the number of players to mark someone absent for a no-show or foul trouble, and the rotation rebuilds around who is left.',
   },
   {
-    /* `#planFold` shuts on first paint for anyone not on Even, and a
-       spotlight on a control inside a shut fold is either centered copy or a
-       ring around nothing. Open it first, exactly as step 1 does for the
-       squad, and name the fold itself as the fallback anchor so this step
-       has two like every other one. */
-    sel: ['#stratseg', '#planFold'],
-    before: () => { const f = $('#planFold'); if (f) f.open = true; },
+    /* #28: the Plan sheet replaced `#planFold`, so there is no fold to open
+       first any more -- the sentence's `#phraseStrategy` is static markup on
+       screen at every width, same as step 1's `#phrasePlayers`. */
+    sel: ['#phraseStrategy'],
     title: 'How the minutes get shared',
     lines: [
       ['Even', 'as close to equal as the clock allows.'],
