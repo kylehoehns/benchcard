@@ -6,8 +6,11 @@ import { widthSweep } from './width-sweep.mjs';
    the fixed control list the restyle names -- #teamBtn, #todayNewDay,
    #settingsBtn, .today-game, #todayAddGame, #todayTeam, #todaySeason,
    #backBtn, each .phrase, each timeline row, #regen, each fold summary,
-   .seg buttons, #abBench, #abCard -- all at least 48x48, at the same three
-   phone widths `touchPass` and `settingsRowPass` sweep. Today alone does not
+   .seg buttons, #abBench -- all at least 48x48, at the same three
+   phone widths `touchPass` and `settingsRowPass` sweep. #29 retired #abCard
+   (the phone bar's printer button); #shareBtn, its replacement door into the
+   card sheet, is checked by `timeline-card-sheet.mjs` instead, alongside the
+   rest of that sheet's own controls. Today alone does not
    show the game screen's controls (the back button, the phrases, the
    timeline, the action bar, the fold summaries), so a second state opens a
    game; a third also opens every fold, since a fold summary and the

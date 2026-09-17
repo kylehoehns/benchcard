@@ -121,8 +121,20 @@ export const APP_LARGE_TEXT_STATES = [
      this fixture does not carry, so it is left to `plan sheet` (smoke.mjs)
      the same way `sentence-sheets.mjs` covers what this pass cannot). */
   ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet",
-      'plan sheet', 'plan sheet, add a rule']
+      'plan sheet', 'plan sheet, add a rule', 'card sheet open']
     .map(n => STATES.find(s => s.name === n)),
+  /* #29 item 8: "the game screen on Card and the card sheet have no
+     horizontal overflow" at a 32px root -- "card sheet open" is reused by
+     reference above; the games view itself is only ever measured on
+     Timeline by `VIEWS` (#23's own list), so a coach's actual choice, the
+     card, was never on screen in this cell. Switches `#viewSeg` the same
+     way a tap does; closes the same way, back to Timeline, so nothing
+     downstream inherits the choice. */
+  { name: 'game screen on Card',
+    open: `${TODAY_HOME}; document.querySelector('.today-game').click();
+           document.querySelector('#viewSeg button[data-view="card"]').click()`,
+    close: `document.querySelector('#viewSeg button[data-view="timeline"]').click();
+            document.querySelector('#backBtn').click()` },
   /* #26 item 12: "at 320px with 32px root text ... Today with FOUR has no
      horizontal overflow and nothing stranded above the viewport" -- every
      state above this one measures Today (and the other four chromes) on

@@ -77,7 +77,14 @@ const READ_COLORS = `(() => {
   return JSON.stringify({
     primaryBg: bg('.btn.primary'), primaryFg: fg('.btn.primary'),
     abMainBg: bg('#abBench'), gmNavNextBg: bg('#gmNext2'),
-    segOnFg: fg('#maxSubsSeg button.on'), switchBg: bg('#showMinutes'),
+    segOnFg: fg('#maxSubsSeg button.on'),
+    // #29 decision 3: \`#showMinutes\` moved into the card sheet's row list and
+    // took decision 12's \`input[switch]\` component (the sheet-row switch
+    // already established elsewhere) rather than the older \`.switch input\`
+    // pair -- \`var(--tint)\` now paints \`input[switch]:checked::before\`, a
+    // pseudo-element, not the input's own background, same shape as
+    // \`dotNowBg\` below.
+    switchBg: (() => { const e = $('#showMinutes'); return e ? getComputedStyle(e, '::before').backgroundColor : null; })(),
     helpHFg: fg('.help-h'), teamCheckFg: fg('.teammenu-check'),
     setTeamHdFg: fg('#setTeamHd'), backBtnFg: fg('#backBtn'),
     // item 4 tinted, the rest of the list: the welcome screen's
@@ -240,7 +247,7 @@ export async function teamColorPass(c, origin) {
       ['.ab-main (#abBench) background', r.abMainBg, ROYAL_FILL],
       ['.gm-nav.next (#gmNext2) background', r.gmNavNextBg, ROYAL_FILL],
       ['.seg button.on (#maxSubsSeg) text', r.segOnFg, ROYAL_FILL],
-      ['.switch input:checked (#showMinutes) background', r.switchBg, ROYAL_FILL],
+      ['input[switch]:checked::before (#showMinutes) background', r.switchBg, ROYAL_FILL],
       ['.sheetrow.sel (#sheetInterval) background', sheet.chipBg, ROYAL_FILL],
       ['.sheetrow.sel (#sheetInterval) label', sheet.chipFg, ROYAL_LABEL],
       ['.wel-seg-b.sel (#welTabPlan) text', r.welSegFg, ROYAL_FILL],

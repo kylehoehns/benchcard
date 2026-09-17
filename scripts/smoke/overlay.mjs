@@ -136,6 +136,15 @@ export const STATES = [
   { name: 'game mode, swap picker',
     open: `$('#gmOpen').click(); $('#gmFloor .gm-p').click()`, shows: '#gamemode .gm-p.picked',
     close: `$('#gmClose').click()` },
+  /* #29 decision 3: `#shareBtn` is the one door into the card sheet -- a
+     native `<dialog>` nested inside `#view-games`, unlike `#gamemode`
+     above (a plain overlay `div` outside it), so `showModal()` throws
+     while that ancestor is `hidden` on Today. Opened the same way
+     "who's here sheet" and "plan sheet" are: a game first, then the
+     sheet's own trigger. */
+  { name: 'card sheet open',
+    open: `$('.today-game').click(); $('#shareBtn').click()`, shows: '#sheetCard[open]',
+    close: `$('#sheetCard').close(); $('#backBtn').click()` },
   { name: 'welcome screen', forced: true,
     open: `$('#view-welcome').hidden = false`, shows: '#view-welcome',
     close: `$('#view-welcome').hidden = true` },

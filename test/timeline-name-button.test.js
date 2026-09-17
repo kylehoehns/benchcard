@@ -43,10 +43,17 @@ test('a real button.tl-name is built with the row, and carries aria-expanded', (
   // has nowhere else to land.
 });
 
-test('the empty-state sentence points down at the errors, not up', () => {
+// #29 decision 7: the blocked branch no longer carries its own fixed wording
+// ("No rotation yet. Resolve the errors below.") -- it reads the reason from
+// the engine's own first error through `blockedFix` (state.js), so the one
+// heading pinned here is the only text this branch still owns; the message
+// itself is `blocked-fix.test.js`'s seam, not this one's.
+test('the blocked heading reads "This plan can\'t be built" and reads the reason from blockedFix', () => {
   const empty = functionBody(src, 'timelineEmpty');
-  assert.match(empty, /No rotation yet\. Resolve the errors below\./,
-    '#issues now renders below #timeline, so the sentence must say "below"');
-  assert.doesNotMatch(empty, /Resolve the errors above/,
-    'the old "above" wording must not still be present');
+  assert.match(empty, /This plan can't be built/,
+    'the blocked heading must read "This plan can\'t be built"');
+  assert.match(empty, /\bblockedFix\(/,
+    'the reason must come from blockedFix, not a wording fixed here');
+  assert.doesNotMatch(empty, /No rotation yet\. Resolve the errors (above|below)\./,
+    'the old fixed wording must not still be present');
 });

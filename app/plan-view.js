@@ -1,12 +1,12 @@
 /* ================================================================== *
  * plan-view.js -- the four read-only readouts of a plan
  *
- * `renderStats` (the tile row), `renderIssues` (the engine's alerts),
- * `renderPlanTable` (the full stint grid plus the minute bars) and
- * `renderDayTotals` (the across-the-day chart). Nothing here mutates a
- * plan: they all read `plans` / `dayTotals` and paint. That is why they
- * make one seam -- they share no state with each other beyond the plan
- * cache, and none of them owns a control a coach types into.
+ * `renderSummary` (the one-line minutes/changes summary), `renderIssues`
+ * (the engine's alerts), `renderPlanTable` (the full stint grid plus the
+ * minute bars) and `renderDayTotals` (the across-the-day chart). Nothing
+ * here mutates a plan: they all read `plans` / `dayTotals` and paint. That
+ * is why they make one seam -- they share no state with each other beyond
+ * the plan cache, and none of them owns a control a coach types into.
  *
  * One outward dependency, and only from the day chart: the "+ Add a game"
  * call to action in the empty state pushes a game and needs a full
@@ -15,94 +15,40 @@
  * dispatcher stays in app.js until render.js.
  * ================================================================== */
 import { fmtMinutes } from './engine.js';
-import { countTo, pulse, riseIn } from './fx.js';
+import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
 import { track } from './analytics.js';
-import { state, plans, dayTotals, game, availIds, noRoster, colorOf, gameLabel, newGame, lastGame, effectiveStints, effectiveMinutes, spreadOf } from './state.js';
+import { state, plans, dayTotals, game, availIds, noRoster, colorOf, gameLabel, newGame, lastGame, effectiveStints, effectiveMinutes, spreadOf, summaryLine } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 
 let renderAll = () => {};
-
-/* Whether the active game's plan was even last time the tiles were painted,
-   and which game that was. Module state because the beat below is a
-   transition, and renderStats sees only one side of it at a time. Starts
-   unset so a plan that is already even at boot does not announce itself. */
-let wasEven = { game: null, even: null };
 
 export function initPlanView(renderAllFn) {
   renderAll = renderAllFn;
 }
 
-export function renderStats() {
-  const box = $('#stats'); box.textContent = '';
+/* #29 decision 6: replaces the stat tiles. One sentence, read off the
+   rotation the coach is actually looking at -- `effectiveMinutes` /
+   `effectiveStints`, hand swaps folded in, never `p.minutes` / `p.stints` --
+   because the card prints those and a summary that disagrees with the card
+   is the bug this whole seam exists to close. Hidden with no roster or a
+   blocked plan (decision 7's panel says why instead); `#regen` (Shuffle) is
+   on the same row in the markup and keeps its own disabled state from
+   `renderCards`' sweep. */
+export function renderSummary() {
+  const row = $('#summaryRow'), box = $('#summary');
   const p = plans[state.activeGame], g = game();
-  /* A tile's value is either plain text or one or more counters — `num(n, key)`
-     — which count from whatever they last showed rather than snapping. The
-     whole row is rebuilt on every render, so the memory has to be keyed by
-     name; see `countTo`. */
-  const num = (n, key, fmt) => ({ n, key, fmt });
-  const st = (k, v, sub, cls) => {
-    const d = el('div', 'st' + (cls ? ' ' + cls : ''));
-    d.append(el('div', 'k', k));
-    const val = el('div', 'v');
-    for (const part of (Array.isArray(v) ? v : [v])) {
-      if (typeof part === 'string') { val.append(part); continue; }
-      const s = el('span');
-      countTo(s, part.n, 'st:' + part.key, part.fmt);
-      val.append(s);
-    }
-    if (sub) val.append(el('small', null, sub));
-    d.append(val);
-    return d;
-  };
-  if (noRoster()) return;   // "Squad 0 / Status —" is a scoreboard for a game nobody has entered
-  box.append(st('Squad', num(availIds(g).length, 'squad')));
-  if (!p || !p.ok) { box.append(st('Status', '—', 'blocked')); return; }
-  /* Read off the rotation the coach is actually looking at, hand swaps folded
-     in — the card prints those, and a tile row that disagrees with the card
-     is the bug this whole seam exists to close. Identity-equal to the plan's
-     own arrays until somebody swaps a five. */
+  if (noRoster() || !p || !p.ok) {
+    if (row) row.hidden = true;
+    if (box) box.textContent = '';
+    return;
+  }
+  if (row) row.hidden = false;
   const stints = effectiveStints(g, p);
   const mins = effectiveMinutes(g, p);
-  const spreadMin = spreadOf(mins);
-  const lo = Math.min(...Object.values(mins)), hi = Math.max(...Object.values(mins));
-  box.append(st('Minutes', lo === hi
-    ? num(hi, 'min-hi', fmtMinutes)
-    : [num(lo, 'min-lo', fmtMinutes), '–', num(hi, 'min-hi', fmtMinutes)], 'each'));
-  /* Spread reaching zero is the whole point of the app, and it used to arrive
-     as a silently different "0 min". So the unit gives way to the word — "0
-     even" is what the tile actually means, where "0 min" reads as a quantity
-     of minutes — and the moment it happens gets one beat: the tile pulses and
-     the word settles into place. Once only, and only on the way in; leaving
-     even is not an event. */
-  const even = spreadMin === 0;
-  const spread = st('Spread', num(spreadMin, 'spread', fmtMinutes), even ? 'even' : 'min',
-    even ? 'good' : spreadMin > 8 ? 'hot' : '');
-  /* "Spread" on its own is a word, not an explanation -- the person who
-     specified this app had to ask what the number meant, which is as clear a
-     verdict as that gets. The tile now says it in full, and names the two
-     players it is measured between, because "16 min" is abstract and "Aide has
-     8, Leig has 24" is the thing a coach would act on. Hover on a desktop,
-     read by a screen reader anywhere; the tile itself stays one number. */
-  const lowest = Object.entries(mins).filter(([, m]) => m === lo).map(([id]) => p.shortNames[id]);
-  const highest = Object.entries(mins).filter(([, m]) => m === hi).map(([id]) => p.shortNames[id]);
-  const explain = even
-    ? 'Spread is the gap between the most and the fewest minutes. It is zero: everybody plays the same.'
-    : `Spread is the gap between the most and the fewest minutes. ${highest.slice(0, 3).join(', ')} ${highest.length === 1 ? 'has' : 'have'} ${fmtMinutes(hi)}; ${lowest.slice(0, 3).join(', ')} ${lowest.length === 1 ? 'has' : 'have'} ${fmtMinutes(lo)}.`;
-  spread.title = explain;
-  spread.setAttribute('aria-label', `Spread ${fmtMinutes(spreadMin)} minutes. ${explain}`);
-  box.append(spread);
-  if (even && wasEven.game === g.id && wasEven.even === false) {
-    pulse(spread);
-    riseIn([spread.querySelector('small')], { from: 5 });
-  }
-  /* Keyed by game, so flicking to a tab that is already even is not a
-     celebration — nothing changed, the coach just looked somewhere else. */
-  wasEven = { game: g.id, even };
-  box.append(st('Stints', num(stints.length, 'stints')));
   const subs = stints.slice(1).reduce((a, r) => a + r.in.length, 0);
-  box.append(st('Subs', num(subs, 'subs')));
+  if (box) box.textContent = summaryLine(mins, subs);
 }
 
 export function renderIssues() {
@@ -112,6 +58,15 @@ export function renderIssues() {
   const rank = { error: 0, warn: 1, info: 2 };
   const ico = { error: 'circle-alert', warn: 'triangle-alert', info: 'info' };
   const list = [...p.issues];
+  /* #29 decision 7: while blocked, `timelineEmpty` already shows the first
+     error (the same one `blockedFix`, state.js, picks) as the reason the
+     plan can't be built -- repeating it here as a red row too says the same
+     thing twice. Everything else -- warnings, infos, any later error -- still
+     lists normally. */
+  if (!p.ok) {
+    const i = list.findIndex(x => x.severity === 'error');
+    if (i >= 0) list.splice(i, 1);
+  }
   /* Platoon is explicitly "no optimisation", so the engine's balanced-floor
      info ("best possible spread ... is 4 minutes") sits under a plan that is
      not trying to hit it and reads as an accusation. The engine is right about
@@ -174,7 +129,7 @@ export function renderPlanTable() {
     return;
   }
   const sh = p.shortNames;
-  // same reason as renderStats: the grid and the bars quote the rotation the
+  // same reason as renderSummary: the grid and the bars quote the rotation the
   // card prints, hand swaps and all
   const stints = effectiveStints(game(), p);
   const mins = effectiveMinutes(game(), p);

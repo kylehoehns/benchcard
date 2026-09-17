@@ -146,6 +146,11 @@ export const ROWS = Object.freeze([
   // whether a row wraps, the balance value clearing its label, and every
   // sheet's status line clear of the last row -- see sheet-spacing.mjs.
   { id: 'sheetspacing', name: 'sheet spacing', selectable: true, setup: 'rich' },
+  // #29's own guard (see docs/specs/29-timeline-card-sheet.md's Proof
+  // section): Timeline | Card, a reload keeping the choice, the card sheet
+  // reached from #shareBtn, changing Size, P, Stint by stint and the
+  // blocked panel's three fixes -- see timeline-card-sheet.mjs.
+  { id: 'timelinecardsheet', name: 'game screen: Timeline | Card and the card sheet', selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },

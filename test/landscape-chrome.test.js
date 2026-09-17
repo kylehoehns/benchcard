@@ -31,6 +31,8 @@ test('it trims vertically only, and never below the 44px touch floor', () => {
   for (const prop of ['padding-left', 'padding-right', 'width:', 'gap:', 'display: none']) {
     assert.ok(!body.includes(prop), `${prop} in the landscape block trims the app horizontally`);
   }
-  assert.ok(/\.ab-main, \.ab-side \{ min-height: 44px; \}/.test(body),
-    'the action bar buttons lost their 44px floor');
+  // #29: #abCard (the action-bar printer) and its `.ab-side` rules are gone --
+  // the action bar carries only #abBench now.
+  assert.ok(/\.ab-main \{ min-height: 44px; \}/.test(body),
+    'the action bar button lost its 44px floor');
 });

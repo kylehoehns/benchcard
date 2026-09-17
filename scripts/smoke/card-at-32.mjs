@@ -8,8 +8,15 @@ import { nameOf } from './registry.mjs';
    are untouched by #24, so this MEASURES that stays true rather than
    implementing anything: the card's own font stack is set from canvas
    `measureText`, independent of the root rem this ticket changes. */
+/* #29 decisions 2 and 5: `.card` (inside `#sheet`) only shows on screen in
+   the Card view; a fresh/reloaded page lands on Timeline (the default), so
+   this clicks `#viewSeg`'s Card button first -- the same click
+   `smoke-checks.js`'s own "card is 3.45 × 5in" check makes -- rather than
+   measuring a `.card` that exists but is not laid out. */
 async function measureCard(c) {
   return JSON.parse(await evalIn(c, `(() => {
+    const viewCard = document.querySelector('#viewSeg button[data-view="card"]');
+    if (viewCard) viewCard.click();
     const card = document.querySelector('.card:not(.card-copy)');
     if (!card) return JSON.stringify(null);
     const z = card.currentCSSZoom || 1;

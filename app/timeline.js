@@ -17,9 +17,9 @@ import { fmtClock, fmtMinutes } from './engine.js';
 import { riseIn, popIn, countTo, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
-import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes } from './state.js';
-import { resumeAt } from './card.js';
-import { openPlanSheet } from './game-setup.js';
+import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, blockedFix } from './state.js';
+import { resumeAt, fitPreview } from './card.js';
+import { openPlanSheet, openWhoSheet } from './game-setup.js';
 
 /* Set by initTimeline; see the note above on why this is injected. */
 let setView = () => {};
@@ -27,6 +27,33 @@ let setView = () => {};
 /* Called once at startup from app.js's wiring block. */
 export function initTimeline(setViewFn) {
   setView = setViewFn;
+}
+
+/* #29 decisions 5 and 7: which of `#timeline` / `#sheet` shows.
+ *
+ * `state.ui.gameView` is the coach's own choice, but a blocked plan overrides
+ * it rather than asking the Card view to explain a card that does not exist:
+ * `timelineEmpty` (above) already carries the one blocked panel, so blocked
+ * always shows `#timeline`, in either view, and leaves `gameView` itself
+ * untouched -- unblocking resumes whichever view was chosen. `#viewSeg`'s
+ * `.on`/`aria-pressed` sync is the same delegated-click shape `applyTheme`
+ * (render.js) already keeps `#themeSeg` in. */
+export function applyGameView() {
+  const p = plans[state.activeGame];
+  const blocked = !p || !p.ok;
+  const onCard = !blocked && state.ui.gameView === 'card';
+  const tl = $('#timeline'), sheet = $('#sheet');
+  if (tl) tl.hidden = onCard;
+  if (sheet) sheet.hidden = !onCard;
+  const seg = $('#viewSeg');
+  if (seg) {
+    for (const b of seg.querySelectorAll('button[data-view]')) {
+      const on = b.dataset.view === state.ui.gameView;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    }
+  }
+  if (onCard) fitPreview();
 }
 
 let tlPinned = null;   // player whose breakdown is showing
@@ -116,46 +143,27 @@ function rosterCta() {
   return e;
 }
 
-/* Errors a coach fixes in the Plan sheet's Rules group, as opposed to on the
-   roster (not enough players) or in the strategy editor (closers, units).
-   #28: both CTAs below open the Plan sheet directly (`openPlanSheet`,
-   game-setup.js) rather than scrolling to a fold -- there is no fold left to
-   scroll to. */
-const RULE_ERRORS = new Set(['MIN_EXCEEDS_GAME', 'MIN_ABOVE_CAP', 'MINS_UNSATISFIABLE',
-  'CAPS_UNSATISFIABLE', 'PAIR_AVOID_CONFLICT', 'FORCED_GROUP_TOO_BIG', 'FORCED_GROUP_AVOID',
-  'FORCED_OVER_CAP', 'AVOID_IMPOSSIBLE']);
-
-/* An unsolved plan blanks the timeline, and "resolve the errors above" is only
- * useful if the error tells you what to *do*. Platoon is the case a coach hits
- * by accident — picking it wipes the rotation until a unit is filled, which
- * reads as a crash — so that one gets its own sentence and a way back to the
- * editor instead of a shrug. A plan refused by its own rules gets the same
- * treatment, pointed at the Rules group (decision 15). */
+/* #29 decision 7: the non-roster branch (a roster exists but the plan is
+   blocked) reads the engine's own first error through `blockedFix`
+   (state.js) rather than re-deriving which sheet fixes what -- Platoon's
+   missing unit and a rules conflict both come out of the same one mapping
+   now, so there is exactly one place that can drift from the engine's codes.
+   The no-roster case (`rosterCta`) is untouched. */
 function timelineEmpty(g, p) {
   if (noRoster()) return rosterCta();
   const box = el('div', 'empty');
-  const units = g?.constraints?.units || [];
-  const platoon = g?.strategy === 'platoon' && !units.some(u => u.length === 5);
-  // `run` gets the button itself, since `openPlanSheet` wants the trigger to
-  // return focus to on close.
-  const cta = (label, run) => {
-    const b = el('button', 'btn sm press', label);
+  box.append(el('div', 'se-t', "This plan can't be built"));
+  const fix = blockedFix(p?.issues);
+  box.append(el('div', 'se-s', fix ? fix.message : 'Set up the game to see the rotation.'));
+  if (fix) {
+    const b = el('button', 'btn sm press', fix.label);
     b.type = 'button';
-    b.onclick = () => run(b);
+    // 'who' opens Who's here the way `#phrasePlayers` does (game-setup.js's
+    // own opener, reused rather than re-derived); 'strategy'/'rules' open the
+    // Plan sheet's matching group through its one opener, `openPlanSheet`.
+    b.onclick = () => fix.opener === 'who' ? openWhoSheet(b) : openPlanSheet(fix.opener, b);
     box.append(b);
-  };
-  if (!platoon) {
-    box.append(el('div', null, 'No rotation yet. Resolve the errors below.'));
-    // the offending rule is the one thing that can undo this, and it is behind
-    // a group the coach has probably never opened
-    if ((p?.issues || []).some(i => i.severity === 'error' && RULE_ERRORS.has(i.code))) {
-      cta('Fix the rules', b => openPlanSheet('rules', b));
-    }
-    return box;
   }
-  box.append(el('div', null, 'Platoon plays whole fives, so there is nothing to plan until one exists.'));
-  box.append(el('div', null, `Pick five players for Unit ${Math.max(1, units.findIndex(u => u.length !== 5) + 1)}.`));
-  cta('Fill a unit', b => openPlanSheet('strategy', b));
   return box;
 }
 

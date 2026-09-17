@@ -16,12 +16,8 @@ const PLAYERS = [
 ].map(([name, number], i) => ({ id: 'p' + i, name, number, shortName: '' }));
 
 export const UI = {
-  // cardOpen: below 1100px the card preview is folded behind a disclosure by
-  // default, and a folded card measures 0×0 -- the size check would be
-  // guarding nothing. Opened here so the check sees a laid-out card, which is
-  // the state it exists to police.
   copies: 2, showMinutes: true, printScope: 'game', cardId: 'short',
-  cardSize: 'pocket', theme: 'light', cardOpen: true,
+  cardSize: 'pocket', theme: 'light',
 };
 
 /* THE LEAN FIXTURE. One team, one game, no filed season, every player on the

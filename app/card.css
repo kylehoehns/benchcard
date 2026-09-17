@@ -10,14 +10,23 @@
    print block stays beside the object it prints. */
 
 /* ============================ the card, as an object ============================ */
+/* #29 decision 10: no bordered box, matching the prototype -- the card sits
+   directly on its own tinted background with its own paper shadow (`.card`'s
+   `--shadow-paper`, untouched) for depth instead of an outline. */
 .stage {
   position: relative; border-radius: var(--r-lg); padding: 1.5rem 1rem;
   background:
     radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
     var(--bg-2);
-  border: 1px solid var(--line);
   display: flex; flex-wrap: wrap; gap: .18in; justify-content: center;
 }
+/* #29 decision 2/5: `#sheet` and `#sheetCardPreview` are toggled by setting
+   `hidden`, not by removal -- but both are `display: contents` flex/grid
+   descendants or otherwise carry an author `display` from the rule above,
+   which the `[hidden]` UA style alone cannot outrank (the same trap noted at
+   `#view-games.card-shut` before it was removed). This screen-only rule is
+   what makes the attribute take. */
+.stage[hidden] { display: none; }
 .card {
   width: 3.45in; height: 5.0in; padding: .11in; background: #fff; color: #000;
   zoom: var(--cardzoom, 1);

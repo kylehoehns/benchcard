@@ -271,7 +271,7 @@ function closeGameMode() {
   document.body.style.overflow = '';
   gmPick = null;
   save();
-  render('cards', 'timeline', 'stats');
+  render('cards', 'timeline', 'summary', 'gameview');
   closeTrap($('#gamemode'));
   onClose(reachedEnd);
 }

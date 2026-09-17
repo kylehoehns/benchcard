@@ -14,7 +14,7 @@
 import { parseRoster, repeatIndexes } from './roster.js';
 import { icon } from './icons.js';
 import { $, on, set, uid } from './dom.js';
-import { renderCards, renderCardFold, CARD_FONT } from './card.js';
+import { renderCards, refreshCardSheetPreview, CARD_FONT } from './card.js';
 import { shareCards } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
 import { initTimeline } from './timeline.js';
@@ -35,7 +35,7 @@ import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, soon, setView, applyTheme, applyTint, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, removePlayer , nextHue, hueSlots, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team } from './state.js';
-import { openTrap, closeTrap } from './trap.js';
+import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
 /* The gear only ever shows on Today (N4) -- it lives inside `#barToday`,
@@ -58,6 +58,18 @@ on('#themeSeg', 'onclick', (e) => {
   if (!b || b.dataset.theme === state.ui.theme) return;
   state.ui.theme = b.dataset.theme;
   save(); applyTheme();
+});
+/* #29 decision 5: Timeline | Card. Same delegated shape as `#themeSeg`
+   above -- `applyGameView` (timeline.js) is the one place that reads
+   `state.ui.gameView` back onto `#timeline`/`#sheet` and `#viewSeg` itself,
+   so this handler only saves the choice and asks the `gameview` render key
+   to run again. */
+on('#viewSeg', 'onclick', (e) => {
+  const b = e.target.closest('button[data-view]');
+  if (!b || b.dataset.view === state.ui.gameView) return;
+  state.ui.gameView = b.dataset.view;
+  save();
+  render('gameview');
 });
 /* #25: the picker is the `.keyswrap` dialog pattern (`trap.js`'s
    openTrap/closeTrap), same shape as `#help` -- see shortcuts.js's
@@ -103,14 +115,6 @@ on('#label', 'oninput', e => { game().label = e.target.value; soon('tabs', 'tota
 on('#when', 'oninput', e => { game().when = e.target.value; soon('tabs', 'cards'); });
 on('#copies', 'onchange', e => { state.ui.copies = Number(e.target.value); save(); renderCards(); });
 
-on('#cardToggle', 'onclick', () => {
-  state.ui.cardOpen = !state.ui.cardOpen;
-  save();
-  renderCardFold();
-  // opening it should show it: the strip can sit anywhere in a long page, and
-  // expanding something below the fold reads as nothing having happened
-  if (state.ui.cardOpen) $('#sheet')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-});
 on('#cardId', 'onchange', e => { state.ui.cardId = e.target.value; save(); renderCards(); });
 on('#cardSize', 'onchange', e => {
   state.ui.cardSize = e.target.value === 'half' ? 'half' : 'pocket';
@@ -134,14 +138,16 @@ function printCard() {
 }
 on('#print', 'onclick', printCard);
 
-/* The phone action bar's second button. It carried a printer icon and scrolled
-   to the card instead of printing -- and below 1100px the card preview is
-   folded shut by default, so `scrollIntoView` ran against a `display: none`
-   element and the button did nothing at all. A printer that silently does
-   nothing is about the worst button in the app; it prints now, which is what it
-   has always looked like it does. */
-on('#abCard', 'onclick', printCard);
-
+/* #29 decision 4: `#shareBtn` (top bar) is the one door into `#sheetCard`.
+   Opens even while blocked -- the sheet then shows why
+   (`refreshCardSheetPreview`, card.js) and Print/Share image are disabled by
+   the existing `[data-needs-card]` sweep -- so this handler never checks
+   `p.ok` itself. */
+on('#shareBtn', 'onclick', e => {
+  refreshCardSheetPreview();
+  openSheet($('#sheetCard'), e.currentTarget, { full: true });
+});
+on('#sheetCardClose', 'onclick', () => closeSheet($('#sheetCard')));
 
 /* Share the card as an image. `shareCards` paints synchronously so the tap's
    activation still stands when `navigator.share` is called -- do not put an

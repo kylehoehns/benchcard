@@ -221,6 +221,16 @@ test('card size falls back to pocket unless the record says half-sheet', () => {
   assert.equal(sanitize(junk, H).ui.cardSize, 'pocket');
 });
 
+test('gameView defaults to timeline, round-trips card, rejects junk, and drops cardOpen (#29)', () => {
+  assert.equal(sanitize(good(), H).ui.gameView, 'timeline', 'no gameView at all defaults to timeline');
+  const card = good(); card.ui.gameView = 'card';
+  assert.equal(sanitize(card, H).ui.gameView, 'card');
+  const junk = good(); junk.ui.gameView = 'grid';
+  assert.equal(sanitize(junk, H).ui.gameView, 'timeline');
+  const old = good(); old.ui.cardOpen = true;
+  assert.equal(sanitize(old, H).ui.cardOpen, undefined, 'cardOpen is no longer kept');
+});
+
 test('tourSeen persists so the first-run tour never runs twice', () => {
   assert.equal(sanitize(good(), H).tourSeen, false);
   const seen = good(); seen.tourSeen = true;
