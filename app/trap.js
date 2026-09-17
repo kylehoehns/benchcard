@@ -149,12 +149,12 @@ function wireSheet(dialog) {
   if (handle) wireHandle(dialog, handle);
 }
 
-export function openSheet(dialog, trigger) {
+export function openSheet(dialog, trigger, { full = false } = {}) {
   if (!dialog) return;
   closeSheets();
   wireSheet(dialog);
   sheetTrigger.set(dialog, trigger || document.activeElement);
-  setSheetHeight(dialog, false);
+  setSheetHeight(dialog, full);
   dialog.showModal();
   (trapNodes(dialog)[0] || dialog).focus({ preventScroll: true });
 }
