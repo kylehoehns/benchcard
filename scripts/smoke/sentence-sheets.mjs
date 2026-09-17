@@ -1,6 +1,6 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { evalJSON, checkTitleFocused, click, closedWithFocus, drag, flick, resizeCheck, settle, sheetRect, setGame, statusOk } from './sheet-drive.mjs';
+import { evalJSON, checkTitleFocused, click, closedWithFocus, drag, dragCloseFade, flick, resizeCheck, settle, sheetRect, setGame, statusOk } from './sheet-drive.mjs';
 
 // item 6's second assertion, on top of `statusOk`'s own `planSay`-equality
 // check: all three sheets' status line also has to read either the
@@ -202,7 +202,15 @@ export async function sentenceSheetsPass(c, origin) {
     await settle(c);
     rect = await sheetRect(c, '#sheetWho');
     if (ck(!!rect.handle, '#sheetWho has no .bsheet-handle to drag')) {
-      await drag(c, rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.4);
+      // Finding 7: the backdrop has to keep fading, in step with the slide,
+      // after the release -- not hold at the drag's own opacity for the
+      // whole close and then vanish at once. `dragCloseFade` samples the
+      // opacity just before release and again ~120ms into the close, while
+      // #sheetWho is still open (still sliding, not yet snapped shut).
+      const fade = await dragCloseFade(c, '#sheetWho', rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.4);
+      ck(fade.stillOpen, '#sheetWho was already closed 120ms after a drag release, want it still sliding shut');
+      ck(fade.midOpacity < fade.beforeRelease,
+        `the backdrop opacity is ${fade.midOpacity} 120ms after a drag release, want it below ${fade.beforeRelease} (its value just before release)`);
       r10 = await closedWithFocus(c, '#sheetWho', '#phrasePlayers');
       ck(r10.closed, 'a downward drag past a quarter of the sheet\'s height did not close #sheetWho within the slide');
       ck(r10.focusBack, 'focus did not return to the players phrase after closing #sheetWho by dragging');

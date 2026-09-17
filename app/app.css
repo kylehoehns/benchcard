@@ -69,7 +69,7 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; b
    `test/tap-action.test.js` is what stops a ninth arriving bare. */
 summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 a { color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--r-xs); }
+:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--r-xs); }
 ::selection { background: var(--accent-soft); }
 
 /* EVERY `:hover` RULE IN THIS FILE IS WRAPPED IN `@media (hover: hover)`, AND
@@ -2386,6 +2386,14 @@ dialog.bsheet::backdrop { background: color-mix(in srgb, #000 32%, transparent);
   dialog.bsheet::backdrop { transition: opacity var(--t) var(--ease); }
 }
 dialog.bsheet.dragging, dialog.bsheet.dragging::backdrop { transition: none; }
+/* Fix pass finding 8: under 4x CPU throttle, dragging repainted #document,
+   the dialog and its scrolling body on every frame (123 Paint events over 41
+   frames, ~53ms). `will-change: transform` promotes the dialog to its own
+   layer only while `.dragging` is on, so `writeDrag`'s per-frame transform
+   write (trap.js) composites instead of repainting the page under it; the
+   class comes off at drag end (`endDrag`) and on the FLIP settle
+   (`setSheetHeight`), so the layer is not held open past the gesture. */
+dialog.bsheet.dragging { will-change: transform; }
 /* Item 10: the one class that plays the close slide -- `closeSheet` (✕,
    Escape, backdrop, drag/flick) adds it and waits for `transitionend`;
    `closeSheets()` (a screen change, `popstate`, or `openSheet` closing
@@ -2426,17 +2434,27 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
   border-radius: var(--r-full); background: color-mix(in srgb, var(--faint) 60%, transparent); }
 /* #73 item 2: the ring moves off the 48px hit box (which sits over the
    title, see the comment above `.bsheet-handle`) and onto the visible pill
-   instead, so a keyboard/VoiceOver focus never covers the title. Same
-   outline the global `:focus-visible` rule (app.css, near the top) draws --
-   duplicated here, not `var()`-derived from it, because the ring has to move
-   to a different box, not just be re-colored. */
+   instead, so a keyboard/VoiceOver focus never covers the title. Fix pass
+   finding 3: `--focus-ring`/`--focus-ring-offset` (tokens.css) are the same
+   two tokens the global `:focus-visible` rule (app.css, near the top) reads
+   -- the ring itself still has to move to a different box here, not just be
+   re-colored, so the rule stays its own, but the values it draws with can no
+   longer drift from the global rule's the way a hand-retyped `2px solid
+   var(--accent)` already had. */
 .bsheet-handle:focus-visible { outline: none; }
-.bsheet-handle:focus-visible::before { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--r-xs); }
+.bsheet-handle:focus-visible::before { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--r-xs); }
 .bsheet-hd-row { display: grid; grid-template-columns: 1fr auto 1fr;
   align-items: center; column-gap: .5rem; padding-top: 1rem; min-height: 3.125rem; }
+/* #73 fix pass finding 6: `white-space: normal` (not `nowrap` + ellipsis) so
+   a title that does not fit its column at a 320px/32px root -- the
+   Add-a-rule pane's "Add a rule" is the one the finding names -- wraps to a
+   second line instead of being clipped down to "Add …"; every title this
+   sheet ever sets (see game-setup.js/rules.js/balance.js) is a short fixed
+   string, so at the default 390px/16px root the column is always wide
+   enough and this still reads as one line, same as before. */
 .bsheet-hd-row h2 { grid-column: 2; margin: 0; text-align: center;
   font-size: var(--fs-headline); font-weight: 600; letter-spacing: -.02em;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  white-space: normal; overflow-wrap: break-word; }
 /* #73 item 1/A1: the title is a focus TARGET (`tabindex="-1"`, `openSheet`/
    `pushPane` in trap.js), not a control -- it never reaches the Tab order and
    draws no ring when focus lands on it programmatically. */
@@ -2455,9 +2473,14 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
   width: 2.25rem; height: 2.25rem; border-radius: var(--r-full); background: var(--surface-2); }
 @media (hover: hover) { .backBtn:hover .i { background: var(--surface-3); } }
 /* Decision 9: the Add-a-rule page's commit control, in the right slot in
-   place of the close button (C4, W2). */
+   place of the close button (C4, W2). #73 fix pass finding 6: `white-space:
+   nowrap` so a narrow header column (320px/32px) shrinks the title (above)
+   rather than breaking this one-word-per-line -- "Add rule" always reads on
+   one line, the header grid's `auto`/`1fr` tracks give the title column what
+   it needs first instead. */
 .planAddRule { border: 0; background: none; font: inherit; font-weight: 600;
-  font-size: var(--fs-headline); color: var(--ink); padding: 0 .3rem; min-height: 48px; }
+  font-size: var(--fs-headline); color: var(--ink); padding: 0 .3rem; min-height: 48px;
+  white-space: nowrap; }
 .planAddRule:disabled { opacity: .35; }
 
 /* #73 item 9: 1rem of bottom padding, so the last row clears the status
@@ -2570,8 +2593,31 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
    `.chip`'s 44px (line ~3150) -- scoped the same way, so onboarding's chips
    keep their own floor. */
 dialog.bsheet.grouped .chip { border-color: transparent; min-height: 48px; display: inline-flex; align-items: center; }
-.pstep-row { display: flex; align-items: center; justify-content: space-between;
-  gap: .8rem; }
+/* #73 fix pass finding 5: at a 320px/32px root the label no longer fits
+   beside the value and +/- pair (`.pstep-val`'s fixed rem width and
+   `.pstep-btn`'s 48px floor both grow in real px while the row's own width,
+   set by the viewport, does not) -- `.prow-t`'s general rule sets
+   `flex: 1; min-width: 0`, whose 0% flex-basis makes the browser shrink the
+   label to nothing rather than wrap it (the hypothetical size the wrap
+   decision reads is the flex-basis, not the label's own content). Scoping
+   `flex-basis: auto` here restores content-based sizing so wrapping is
+   possible, and `flex-wrap: wrap` on the row lets it actually happen: the
+   label takes the row's full width on its own line once it and
+   `.pstep-tail` no longer both fit on one. `justify-content` no longer does
+   the right-alignment (a wrapped row has only one item per line) --
+   `.pstep-tail`'s own `margin-left: auto` does, both together and alone on a
+   wrapped second line. At 390px (and 320px/16px) everything still fits on
+   one line, so wrap never triggers and the row reads exactly as before. */
+.pstep-row { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .8rem; }
+.pstep-row .prow-t { flex-basis: auto; }
+/* `min-width: 0` (not the flex default, `auto`) is what lets this box itself
+   shrink below its own content size when it does not fit the row's width --
+   `.pstep-val` stays fixed (`flex: none`), but `.pstep`'s own `overflow:
+   hidden` already lets IT and its buttons shrink down to the buttons' own
+   48px floor (`min-width`), the same mechanism a one-line row already relies
+   on; without this, `.pstep-tail`'s automatic minimum size would hold the
+   line to its unshrunk content width and push its right edge past the row. */
+.pstep-tail { display: flex; align-items: center; gap: .8rem; margin-left: auto; min-width: 0; }
 /* #73 item 5: a fixed width (not content-sized), so this box's left AND
    right edges -- and so the `.pstep` pair's left edge right after it -- land
    at the same x on every row of a sheet, whatever the label's own length.

@@ -36,6 +36,29 @@ export async function drag(c, x, y0, y1, steps = 8) {
   await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
 }
 
+// Fix pass finding 1's guard hole: `drag` above dispatches every move back
+// to back, so the wall-clock gap between its first and last sample is close
+// to 0ms -- `dragSpeed` (trap.js) reads that as a flick every time, so a
+// `resizeCheck` built on `drag` alone exercises `releaseAction`'s SPEED
+// branch even when it means to prove the DISTANCE one (item 12's thresholds
+// "stay"). This spreads the same path over real wall-clock time (>= 300ms:
+// 8 steps * 40ms) and then holds still at `y1` before releasing, so the
+// trailing-100ms window `dragSpeed` reads holds no samples at all --
+// `dragSpeed` returns 0 (fewer than two samples in the window, same as its
+// own "fewer than two samples is 0" case) and the release genuinely goes
+// through distance, not speed. `flick` below stays the fast path for item
+// 20's flick-close check.
+export async function dragSlow(c, x, y0, y1, steps = 8) {
+  await c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y: y0, button: 'left', clickCount: 1 });
+  for (let i = 1; i <= steps; i++) {
+    const y = y0 + (y1 - y0) * (i / steps);
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left' });
+    await new Promise(r => setTimeout(r, 40));
+  }
+  await new Promise(r => setTimeout(r, 150)); // a hold: the trailing 100ms reads no movement
+  await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
+}
+
 export async function settle(c) {
   await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
   // Every edit these two passes drive goes through `soon(...)` (render.js),
@@ -92,6 +115,39 @@ export async function flick(c, x, y0, y1) {
   await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
 }
 
+// The backdrop's own computed opacity -- item 15's `--scrim` read the way a
+// human eye (or the review that found finding 7) would, through
+// `getComputedStyle(dialog, '::backdrop')`, never `dialog.style.getPropertyValue`
+// (that would only prove trap.js wrote the custom property, not that the CSS
+// cascade actually applied it to the pseudo-element the coach sees).
+export async function backdropOpacity(c, sel) {
+  const v = await evalJSON(c, `JSON.stringify(getComputedStyle(document.querySelector(${JSON.stringify(sel)}), '::backdrop').opacity)`);
+  return Number(v);
+}
+
+// Fix pass finding 7: a drag release that closes the sheet has to fade the
+// backdrop IN STEP with the slide, not hold it at the drag's own opacity for
+// the whole ~280ms close and then snap to clear. This presses and moves
+// exactly like `drag` above, but samples the backdrop's opacity just before
+// the release (the value the drag itself left behind) and again ~120ms after
+// it -- squarely inside `--t` (260ms) plus its own fallback margin, so the
+// dialog is still open (still sliding) when the second sample is taken.
+export async function dragCloseFade(c, sel, x, y0, y1, steps = 8) {
+  await c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y: y0, button: 'left', clickCount: 1 });
+  for (let i = 1; i <= steps; i++) {
+    const y = y0 + (y1 - y0) * (i / steps);
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left' });
+  }
+  const beforeRelease = await backdropOpacity(c, sel);
+  await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
+  await new Promise(r => setTimeout(r, 120));
+  const mid = await evalJSON(c, `JSON.stringify({
+    open: document.querySelector(${JSON.stringify(sel)})?.open ?? null,
+    opacity: getComputedStyle(document.querySelector(${JSON.stringify(sel)}), '::backdrop').opacity,
+  })`);
+  return { beforeRelease, midOpacity: Number(mid.opacity), stillOpen: mid.open === true };
+}
+
 // #73 item 4: right after opening (or a push, item 1's Plan-sheet clause),
 // focus is the sheet's own title (`h2`, tabindex="-1") -- never the handle,
 // which item 2 gives its own, later, tab stop (trap.js's `focusTarget`).
@@ -138,12 +194,15 @@ export async function sheetRect(c, sel) {
 // The half <-> full resize check both passes share, word-for-word but for
 // each sheet's own half-height math (Who's here's half band vs. Plan's flat
 // 50vh) -- `halfOk(topPx)` is that one caller-owned predicate. Drags up past
-// ~30% of the sheet's own height to full, checks the handle's aria-label
-// flips too (item 17), then a plain click on the handle back to half.
+// ~30% of the sheet's own height to full with the SLOW path (finding 1's
+// guard hole -- a fast `drag` would pass this through `releaseAction`'s
+// speed branch, never proving the distance one), checks the handle's
+// aria-label flips too (item 17), then a plain click on the handle back to
+// half.
 export async function resizeCheck(c, sel, ck, halfOk) {
   const rect = await sheetRect(c, sel);
   if (!ck(!!rect.handle, `${sel} has no .bsheet-handle to drag (resize)`)) return;
-  await drag(c, rect.handle.x, rect.handle.y, rect.handle.y - rect.height * 0.3);
+  await dragSlow(c, rect.handle.x, rect.handle.y, rect.handle.y - rect.height * 0.3);
   await settle(c);
   const full = await sheetRect(c, sel);
   const fullLabel = await evalJSON(c, `JSON.stringify(document.querySelector(${JSON.stringify(sel)} + ' .bsheet-handle')?.getAttribute('aria-label'))`);

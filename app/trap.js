@@ -137,6 +137,22 @@ export function rubberBand(overshoot, cap = 60) {
   return cap * overshoot / (overshoot + cap);
 }
 
+// Fix pass finding 1 (#73): `moveDrag` used to feed every upward `raw` into
+// `rubberBand` from the first pixel, so `|dy|` could never reach `cap` (60)
+// -- below the ~63px a 420px-tall half sheet needs to cross item 12's "15%
+// up from half goes full" threshold. This tracks the finger 1:1 while `raw`
+// is still within `roomUp` -- the distance the sheet's top would travel to
+// reach the full top, measured once at `beginDrag`, not per move -- and
+// rubber-bands only the overshoot past that edge. `roomUp = 0` (an
+// already-full sheet, nothing further to travel to) collapses to the old,
+// single-branch behavior: every upward pixel is overshoot.
+export function dragOffset(raw, roomUp) {
+  if (raw >= 0) return raw;
+  if (raw >= -roomUp) return raw;
+  const overshoot = -raw - roomUp;
+  return -(roomUp + rubberBand(overshoot, 60));
+}
+
 // Not `half`: card.css already styles `.card.half` (the half-size print
 // card), and a bottom sheet and a card can both be on screen at once — a
 // second, unrelated `.half` would collide and the later stylesheet would win
@@ -214,12 +230,33 @@ function writeDrag(dialog, st) {
   dialog.style.setProperty('--scrim', String(scrim));
 }
 
+// Finding 1's `roomUp`: the distance the sheet's own top edge would travel
+// to reach the full top, measured once (a real layout read, but only ever
+// at `beginDrag`, never inside the per-frame move handler item 19 guards).
+// An already-full sheet has nothing further to travel to, so this returns 0
+// without touching the DOM at all -- `dragOffset` then rubber-bands every
+// upward pixel, same as before. For a half sheet, `.full`'s own CSS height
+// wins the cascade over `.bsheet-half`'s (declared earlier in app.css) the
+// instant it is added, so toggling it on and back off in the same tick reads
+// the full-height top with no visible flash -- the same before/after diff
+// `setSheetHeight`'s own FLIP already relies on, just discarded here instead
+// of applied as a transform.
+function roomUpFor(dialog) {
+  if (dialog.classList.contains('full')) return 0;
+  const before = dialog.getBoundingClientRect().top;
+  dialog.classList.add('full');
+  const after = dialog.getBoundingClientRect().top;
+  dialog.classList.remove('full');
+  return Math.max(0, before - after);
+}
+
 function beginDrag(dialog, y) {
   cancelClosing(dialog);
   const st = {
     base: currentTranslateY(dialog),
     height: dialog.getBoundingClientRect().height, // read once, at the start
     full: dialog.classList.contains('full'),
+    roomUp: roomUpFor(dialog), // read once, at the start (finding 1)
     startY: y, dy: 0, moved: false, raf: null,
     samples: [{ t: performance.now(), y }],
   };
@@ -236,7 +273,7 @@ function moveDrag(dialog, y) {
   if (!st) return;
   if (Math.abs(y - st.startY) > 4) st.moved = true;
   const raw = y - st.startY + st.base;
-  st.dy = raw < 0 ? -rubberBand(-raw, 60) : raw;
+  st.dy = dragOffset(raw, st.roomUp);
   st.samples.push({ t: performance.now(), y });
   if (st.samples.length > 24) st.samples.splice(0, st.samples.length - 24);
   if (st.raf == null) st.raf = requestAnimationFrame(() => { st.raf = null; writeDrag(dialog, st); });
@@ -296,31 +333,48 @@ function wireHeaderDrag(dialog, header) {
 // down -- otherwise it scrolls as normal. The `scrollTop` read happens once,
 // at the first move of a touch (deciding whether this gesture is a drag at
 // all), never on every move of an already-started drag.
+//
+// Fix pass finding 2: a permanent `{ passive: false }` touchmove listener
+// forces the browser to wait for this handler on EVERY touch move in the
+// body -- even an ordinary scroll, which never calls `preventDefault` --
+// taking every list scroll in a sheet off the fast (main-thread-uncoupled)
+// path. The non-passive listener now exists only for the span of a touch
+// that actually started at `scrollTop <= 0` (a genuine drag candidate):
+// attached in `touchstart`, removed the instant the gesture is decided not
+// to be a drag after all (mid-touch scrolling, or the first move going up)
+// or the touch ends/cancels -- a touch that starts already scrolled never
+// gets a listener at all, so the browser treats it as passive from the
+// first move.
 function wireBodyDrag(dialog, body) {
   let id = null, startY = 0, started = false;
-  body.addEventListener('touchstart', e => {
-    if (body.scrollTop > 0) { id = null; return; }
-    const t = e.touches[0];
-    id = t.identifier; startY = t.clientY; started = false;
-  }, { passive: true });
-  body.addEventListener('touchmove', e => {
-    if (id === null) return;
+  const onMove = e => {
     const t = [...e.touches].find(x => x.identifier === id);
     if (!t) return;
     if (!started) {
-      if (body.scrollTop > 0 || t.clientY - startY <= 0) { id = null; return; }
+      if (body.scrollTop > 0 || t.clientY - startY <= 0) { stop(); return; }
       started = true;
       beginDrag(dialog, startY);
     }
     e.preventDefault();
     moveDrag(dialog, t.clientY);
-  }, { passive: false });
+  };
+  const stop = () => {
+    body.removeEventListener('touchmove', onMove);
+    id = null; started = false;
+  };
+  body.addEventListener('touchstart', e => {
+    if (body.scrollTop > 0) return;
+    const t = e.touches[0];
+    id = t.identifier; startY = t.clientY; started = false;
+    body.addEventListener('touchmove', onMove, { passive: false });
+  }, { passive: true });
   const end = e => {
     if (id === null) return;
     const t = [...e.changedTouches].find(x => x.identifier === id);
     const y = t ? t.clientY : startY;
-    id = null;
-    if (started) { started = false; endDrag(dialog, y); }
+    const wasStarted = started;
+    stop();
+    if (wasStarted) endDrag(dialog, y);
   };
   body.addEventListener('touchend', end);
   body.addEventListener('touchcancel', end);
@@ -378,12 +432,22 @@ function returnFocus(dialog) {
 
 // The drag-in-progress reset both close paths below start from: drop any
 // pending close, any pending drag session, and the finger-tracking transform
-// it left behind.
+// and `--scrim` it left behind. Fix pass finding 7: `closeSheet` used to
+// leave `writeDrag`'s inline `--scrim` in place when it added `.closing` --
+// an inline style always beats a class rule, so `.closing { --scrim: 0 }`
+// (app.css) never took effect and the backdrop held at the drag's own
+// opacity for the whole slide, then vanished at once when the dialog
+// actually closed. Clearing it here, before `.closing` goes on, hands the
+// custom property back to the class rule, so the change from the drag's
+// opacity to 0 is a normal cascade change that the backdrop's own
+// `transition: opacity` (app.css) picks up and fades over `--t`, same as
+// every other close path already did.
 function resetDragTransform(dialog) {
   cancelClosing(dialog);
   dragOf.delete(dialog);
   dialog.classList.remove('dragging');
   dialog.style.transform = '';
+  dialog.style.removeProperty('--scrim');
 }
 
 // The one close path that never slides: a screen change (`closeSheets`,

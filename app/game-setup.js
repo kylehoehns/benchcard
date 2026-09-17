@@ -286,7 +286,14 @@ export function stepperRow(label, get, set, lo, hi, noun, afterChange) {
   plus.onclick = () => step(1);
   sync();
   wrap.append(minus, plus);
-  row.append(val, wrap);
+  // #73 fix pass finding 5: the value and the +/- pair share one wrapper so
+  // `.pstep-row` can wrap the label to its own line at a 320px/32px root
+  // (where the label no longer fits beside them) while keeping the value and
+  // buttons together, right-aligned, on the line under it -- see app.css's
+  // `.pstep-tail` for the layout this markup enables.
+  const tail = el('div', 'pstep-tail');
+  tail.append(val, wrap);
+  row.append(tail);
   return row;
 }
 

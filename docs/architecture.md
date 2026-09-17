@@ -30,7 +30,8 @@ Everything below is relative to `app/`.
 - `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game. Pure apart from `localStorage`.
 - `dom.js` — forgiving DOM one-liners shared by the UI modules, plus the
   shared `ctx2d` canvas everything that sizes type by measurement uses.
-- `trap.js` — focus trap for the overlays, plus the `data-fk` focus/caret restore.
+- `trap.js` — focus trap for the overlays, the `data-fk` focus/caret restore,
+  and the bottom sheets' open, close, push and drag (#73).
 - `state.js` — the app record: state shape and migration, load/save glue, the
   accessors every view reads through, the slot budget and the plan cache.
   Imports only the pure modules, so the view seams can depend on it freely.
@@ -623,6 +624,17 @@ so a restore refills it in place rather than reassigning. There are no
 
 **Bench mode traps focus.** It sits on top of the page rather than replacing
 it, so without a trap Tab walks into the form underneath.
+
+**Bottom sheets are `<dialog>`s, so they need no trap (#73).** `showModal()`
+already inerts the page and keeps Tab inside. `openSheet` only adds what it
+leaves undone: focus lands on the sheet's title (an `h2` with `tabindex="-1"`),
+not the handle, so no ring flashes on a tap; Tab reaches the handle next, whose
+ring is drawn on its visible pill. Closing returns focus to the phrase that
+opened the sheet. Motion is transform and opacity only: the sheet slides down
+while the backdrop fades, half and full height animate, a release looks at
+speed (0.5 px/ms over the last 100ms) as well as distance, a drag past the
+edge rubber-bands, and the backdrop follows the finger. Reduced motion closes
+at once. The release math is pure and tested in `test/trap.test.js`.
 
 Mobile specifics that came out of real use:
 

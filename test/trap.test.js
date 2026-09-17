@@ -2,20 +2,14 @@
  * (#73, items 12-13) -- the one seam the spec's Proof table names for
  * `node --test`: "Pure release/rubber-band/speed functions exported from
  * app/trap.js". `trap.js` calls `document.addEventListener` at import time,
- * so this mirrors test/state-fixture.js's own document/matchMedia stub
- * rather than restructuring the module. */
+ * so this needs the same document/matchMedia stub test/state-fixture.js
+ * holds for state.js -- reused from test/dom-stub.js rather than a second
+ * hand copy (the two had already drifted once: this file's own copy carried
+ * an unused extra `querySelectorAll`). */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-
-globalThis.document ??= {
-  querySelector: () => null,
-  querySelectorAll: () => [],
-  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }) }) }),
-  addEventListener: () => {},
-};
-globalThis.addEventListener ??= () => {};
-globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
+import './dom-stub.js';
 
 const T = await import('../app/trap.js');
 
@@ -97,4 +91,54 @@ test('rubberBand: never reaches the cap however far the finger goes', () => {
 test('rubberBand: monotonically increasing', () => {
   assert.ok(T.rubberBand(10, 60) < T.rubberBand(20, 60));
   assert.ok(T.rubberBand(20, 60) < T.rubberBand(100, 60));
+});
+
+/* ---------------- dragOffset: 1:1 up to roomUp, banded past it ---------- *
+ * Finding 1 (#73 fix pass): the old `moveDrag` fed every upward `raw` into
+ * `rubberBand` from the first pixel, so `|dy|` could never reach `cap` (60)
+ * -- unreachable even though `releaseAction`'s "15% up from half goes full"
+ * needs ~63px of travel at a 420px-tall half sheet. `dragOffset(raw, roomUp)`
+ * tracks the finger 1:1 while `raw` is still within `roomUp` (the distance
+ * the sheet's top would travel to reach the full top, measured once at
+ * `beginDrag`), and only rubber-bands the overshoot past that edge -- so a
+ * half sheet's own drag distance is never capped at 60px before it even
+ * reaches the full position. */
+
+test('dragOffset: downward movement passes through unchanged, whatever roomUp is', () => {
+  assert.equal(T.dragOffset(80, 100), 80);
+  assert.equal(T.dragOffset(80, 0), 80);
+});
+
+test('dragOffset: upward movement within roomUp tracks the finger 1:1', () => {
+  assert.equal(T.dragOffset(-50, 100), -50);
+});
+
+test('dragOffset: upward movement exactly at roomUp is still 1:1 -- room, not yet overshoot', () => {
+  assert.equal(T.dragOffset(-100, 100), -100);
+});
+
+test('dragOffset: 63px up with 350px of room is reached 1:1 -- the threshold releaseAction reads', () => {
+  // The bug this replaces: rubberBand(63, 60) = 60*63/123 = ~30.7, so the old
+  // code could never deliver |dy| >= 63 to releaseAction. With 350px of room
+  // (a half sheet's top is far from full's), 63px of upward finger movement
+  // is still within it, so it passes through 1:1.
+  assert.equal(T.dragOffset(-63, 350), -63);
+});
+
+test('dragOffset: upward movement past roomUp rubber-bands only the overshoot', () => {
+  // raw = -160, roomUp = 100 -> overshoot = 60 -> rubberBand(60, 60) = 30
+  // (checkable by hand, same curve the rubberBand tests above use) ->
+  // result = -(100 + 30) = -130.
+  assert.equal(T.dragOffset(-160, 100), -130);
+});
+
+test('dragOffset: an already-full sheet (roomUp 0) rubber-bands from the first upward pixel', () => {
+  // roomUp = 0 -> the old, single-branch behavior for a sheet with nothing
+  // further to travel to: raw = -100 -> rubberBand(100, 60) = 60*100/160 = 37.5.
+  assert.equal(T.dragOffset(-100, 0), -37.5);
+});
+
+test('dragOffset: never travels past roomUp + cap, however far the finger goes', () => {
+  const dy = T.dragOffset(-100000, 100);
+  assert.ok(dy > -160); // -(roomUp + cap) = -(100 + 60)
 });

@@ -1,6 +1,8 @@
 /* Shared state.js test fixtures for the pure-helper tests in
  * test/sentence.test.js (#27) and test/plan-sheet.test.js (#28): the
- * document/matchMedia stub state.js needs at import time even though neither
+ * document/matchMedia stub state.js needs at import time (now split into
+ * ./dom-stub.js -- #73, shared with test/trap.test.js -- since two hand
+ * copies of the same object had already drifted once) even though neither
  * file's tests touch a DOM, plus the one-team `withTeam` harness and its
  * `player` builder -- copied identically in both files until this one.
  *
@@ -24,13 +26,7 @@
  * shape too -- calling it with one argument, as every sentence.test.js site
  * does, still returns the same `{ id, name: id }` either way. */
 
-globalThis.document ??= {
-  querySelector: () => null,
-  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }) }) }),
-  addEventListener: () => {},
-};
-globalThis.addEventListener ??= () => {};
-globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
+import './dom-stub.js';
 
 export const S = await import('../app/state.js');
 

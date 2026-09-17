@@ -55,14 +55,67 @@ function buttonsBigEnough(rows) {
   return rows.every(r => r.minusW >= 48 && r.minusH >= 48);
 }
 
+// Fix pass finding 5: at 320px width with a 32px root font, `.pstep-row`'s
+// label (`.prow-t`) used to collapse to 0 width (its flex-basis is 0, so the
+// wrap-vs-shrink algorithm always chose shrink) and its text painted UNDER
+// the value and buttons instead of wrapping to a line of its own. Reads
+// each row's own box plus the label's, value's and both buttons' -- no
+// dependency on how the fix lays them out, only on the boxes every stepper
+// row already exposes through existing selectors.
+async function pstepGeometry(c, containerSel) {
+  return evalJSON(c, `JSON.stringify([...document.querySelectorAll(${JSON.stringify(containerSel)} + ' .pstep-row')].map(r => {
+    const row = r.getBoundingClientRect();
+    const label = r.querySelector('.prow-t');
+    const lr = label.getBoundingClientRect();
+    const val = r.querySelector('.pstep-val').getBoundingClientRect();
+    const btns = [...r.querySelectorAll('.pstep-btn')].map(b => b.getBoundingClientRect());
+    const box = x => ({ left: x.left, right: x.right, top: x.top, bottom: x.bottom });
+    return { row: box(row), label: { ...box(lr), scrollWidth: label.scrollWidth, clientWidth: label.clientWidth },
+      val: box(val), btns: btns.map(box) };
+  }))`);
+}
+
+// Two boxes "overlap" when both their horizontal AND vertical spans overlap
+// by more than half a pixel -- two boxes that merely share an edge (the
+// label's own line sitting directly above the value/buttons' line) are not
+// an overlap.
+function boxesOverlap(a, b) {
+  return a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+}
+
+// item 5's fix pass clause: the label's own box is at least as wide as its
+// text (never collapsed to 0 and clipped), the label does not overlap the
+// value or either button (adjacent buttons sharing one border are fine --
+// `boxesOverlap`'s half-pixel margin already treats a shared edge as "not
+// overlapping"), and both buttons stay inside the row's own box.
+function stepperLabelsFit(rows) {
+  return rows.every(r => {
+    const labelWide = (r.label.right - r.label.left) > 0 && r.label.scrollWidth <= r.label.clientWidth + 0.5;
+    const noOverlap = !boxesOverlap(r.label, r.val) && !r.btns.some(b => boxesOverlap(r.label, b));
+    const btnsInRow = r.btns.every(b => b.left >= r.row.left - 0.5 && b.right <= r.row.right + 0.5);
+    return labelWide && noOverlap && btnsInRow;
+  });
+}
+
+// `checkGeometry`: item 5's fix-pass clause (label fits, nothing overlaps,
+// buttons stay inside the row) only claims 320px/32px, the one cell the
+// label collapsed at -- callers pass it true only for that pass, so a
+// regression at 390px (never the reported failure, and not what the finding
+// measured) cannot fail this check for an unrelated reason.
+async function stepperGeometryOk(c, ck, containerSel, where, label) {
+  const rows = await pstepGeometry(c, containerSel);
+  ck(stepperLabelsFit(rows), `${where}: ${label}'s stepper label(s) do not fit/overlap: ${JSON.stringify(rows)}`);
+}
+
 // item 5, Format: Periods and Minutes each are both on screen at once.
-async function checkFormatColumns(c, ck, where) {
+async function checkFormatColumns(c, ck, where, checkGeometry = false) {
   await tap(c, `document.getElementById('phraseFormat').click()`);
   const rows = await pstepCols(c, '#sheetFormatBody');
   if (ck(rows.length === 2, `${where}: #sheetFormatBody has ${rows.length} stepper row(s), want 2`)) {
     ck(colsAligned(rows), `${where}: Format's stepper columns do not line up: ${JSON.stringify(rows)}`);
     ck(buttonsBigEnough(rows), `${where}: a Format stepper button is under 48×48: ${JSON.stringify(rows)}`);
   }
+  if (checkGeometry) await stepperGeometryOk(c, ck, '#sheetFormatBody', where, 'Format');
   await tap(c, `document.getElementById('sheetFormatClose').click()`);
 }
 
@@ -70,20 +123,49 @@ async function checkFormatColumns(c, ck, where) {
 // "Stints in a row" for a rest-limit rule) -- the two states are measured
 // separately and compared to each other, since both are never on screen
 // together the way Format's two rows are.
-async function checkAddRuleColumns(c, ck, where) {
+async function checkAddRuleColumns(c, ck, where, checkGeometry = false) {
   await tap(c, `document.getElementById('phraseRules').click()`);
   await tap(c, `document.querySelector('#constraints .add-rule').click()`);
   const minuteRows = await pstepCols(c, '#planKindBody');
   ck(minuteRows.length === 1, `${where}: Add a rule's "Minutes" kind shows ${minuteRows.length} stepper row(s), want 1`);
+  if (checkGeometry) await stepperGeometryOk(c, ck, '#planKindBody', where, 'Add a rule (Minutes)');
   await tap(c, `[...document.querySelectorAll('#planSub .plan-kinds .chip')]
     .find(b => b.textContent.trim() === 'Rest limit').click()`);
   const restRows = await pstepCols(c, '#planKindBody');
   ck(restRows.length === 1, `${where}: Add a rule's "Rest limit" kind shows ${restRows.length} stepper row(s), want 1`);
+  if (checkGeometry) await stepperGeometryOk(c, ck, '#planKindBody', where, 'Add a rule (Rest limit)');
   if (minuteRows.length === 1 && restRows.length === 1) {
     const both = [minuteRows[0], restRows[0]];
     ck(colsAligned(both), `${where}: Add a rule's stepper column moves between kinds: ${JSON.stringify(both)}`);
     ck(buttonsBigEnough(both), `${where}: an Add-a-rule stepper button is under 48×48: ${JSON.stringify(both)}`);
   }
+  await tap(c, `document.getElementById('sheetPlanClose').click()`);
+}
+
+// Fix pass finding 6: at 320px/32px, the Add-a-rule header's title (h2) used
+// to ellipsize down to "Add …" while the action button ("Add rule") wrapped
+// to two lines instead. Reads computed style, the same shape `checkWhoWrap`
+// (below) already uses for a truncation claim, rather than pixel geometry:
+// the title must not carry the nowrap+overflow:hidden+ellipsis combination
+// that is what actually truncates it, and the action must carry
+// `white-space: nowrap` so the browser can never break it onto a second
+// line.
+async function checkAddRuleHeader(c, ck, where) {
+  await tap(c, `document.getElementById('phraseRules').click()`);
+  await tap(c, `document.querySelector('#constraints .add-rule').click()`);
+  const r = await evalJSON(c, `(() => {
+    const h2 = document.getElementById('sheetPlanTitle');
+    const btn = document.getElementById('planAddRuleBtn');
+    const th = getComputedStyle(h2);
+    const bh = getComputedStyle(btn);
+    return JSON.stringify({
+      titleText: h2.textContent,
+      titleTruncates: th.whiteSpace === 'nowrap' && th.overflow === 'hidden' && th.textOverflow === 'ellipsis',
+      actionWhiteSpace: bh.whiteSpace,
+    });
+  })()`);
+  ck(!r.titleTruncates, `${where}: the Add-a-rule title ("${r.titleText}") still truncates -- white-space/overflow/text-overflow are all still set to clip it`);
+  ck(r.actionWhiteSpace === 'nowrap', `${where}: the Add-a-rule action's white-space is "${r.actionWhiteSpace}", want "nowrap" so it can never wrap to two lines`);
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
 }
 
@@ -227,8 +309,9 @@ export async function sheetSpacingPass(c, origin) {
       await goRich(c, origin);
       await seed(c);
 
-      await checkFormatColumns(c, ck, '320px/32px');
-      await checkAddRuleColumns(c, ck, '320px/32px');
+      await checkFormatColumns(c, ck, '320px/32px', true);
+      await checkAddRuleColumns(c, ck, '320px/32px', true);
+      await checkAddRuleHeader(c, ck, '320px/32px');
       await checkLineupGap(c, ck, '320px/32px');
     } finally {
       await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
