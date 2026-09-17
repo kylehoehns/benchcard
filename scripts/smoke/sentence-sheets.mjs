@@ -1,6 +1,6 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { evalJSON, click, drag, settle, sheetRect, setGame, statusOk } from './sheet-drive.mjs';
+import { evalJSON, checkTitleFocused, click, closedWithFocus, drag, dragCloseFade, flick, resizeCheck, settle, sheetRect, setGame, statusOk } from './sheet-drive.mjs';
 
 // item 6's second assertion, on top of `statusOk`'s own `planSay`-equality
 // check: all three sheets' status line also has to read either the
@@ -93,6 +93,7 @@ export async function sentenceSheetsPass(c, origin) {
     const halfLo = HEIGHT * 0.40, halfHi = HEIGHT * 0.60;
     ck(rect.top >= halfLo && rect.top <= halfHi,
       `#sheetWho's top edge is ${Math.round(rect.top)}px (${Math.round(rect.top / HEIGHT * 100)}% of ${HEIGHT}), want 40-60%`);
+    await checkTitleFocused(c, ck, 'sheetWhoTitle', '#sheetWho');
 
     const who = await evalJSON(c, `(() => {
       const rows = [...document.querySelectorAll('#sheetWhoBody .sheetrow')];
@@ -170,61 +171,67 @@ export async function sentenceSheetsPass(c, origin) {
     })`);
     ck(focusOnOpen.inside, 'focus did not land inside #sheetWho on open');
 
-    // Close by the ✕ button, and confirm focus returns to the trigger.
+    // Close by the ✕ button. Item 10: the dialog slides shut rather than
+    // closing at once, so `closedWithFocus` polls up to `--t` + 100ms
+    // instead of reading `open` the instant the click returns, then confirms
+    // focus returned to the trigger (item 3).
     await evalIn(c, step(`document.getElementById('sheetWhoClose').click()`));
-    await settle(c);
-    let closedState = await evalJSON(c, `JSON.stringify({
-      open: document.getElementById('sheetWho').open,
-      focusBack: document.activeElement === document.getElementById('phrasePlayers'),
-    })`);
-    ck(!closedState.open, 'the ✕ button did not close #sheetWho');
-    ck(closedState.focusBack, 'focus did not return to the players phrase after closing #sheetWho with ✕');
+    let r10 = await closedWithFocus(c, '#sheetWho', '#phrasePlayers');
+    ck(r10.closed, 'the ✕ button did not close #sheetWho within the slide');
+    ck(r10.focusBack, 'focus did not return to the players phrase after closing #sheetWho with ✕');
 
     // Close by Escape.
     await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
     await settle(c);
     await c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
-    await settle(c);
-    ck(!(await evalJSON(c, `JSON.stringify(document.getElementById('sheetWho').open)`)), 'Escape did not close #sheetWho');
+    r10 = await closedWithFocus(c, '#sheetWho', '#phrasePlayers');
+    ck(r10.closed, 'Escape did not close #sheetWho within the slide');
+    ck(r10.focusBack, 'focus did not return to the players phrase after closing #sheetWho with Escape');
 
     // Close by a backdrop click, above the (half-height) sheet's top edge.
     await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
     await settle(c);
     await click(c, WIDTH / 2, 10);
-    await settle(c);
-    ck(!(await evalJSON(c, `JSON.stringify(document.getElementById('sheetWho').open)`)), 'a backdrop click did not close #sheetWho');
+    r10 = await closedWithFocus(c, '#sheetWho', '#phrasePlayers');
+    ck(r10.closed, 'a backdrop click did not close #sheetWho within the slide');
+    ck(r10.focusBack, 'focus did not return to the players phrase after closing #sheetWho with a backdrop click');
 
     // Close by a downward drag on the handle, past a quarter of its height.
     await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
     await settle(c);
     rect = await sheetRect(c, '#sheetWho');
     if (ck(!!rect.handle, '#sheetWho has no .bsheet-handle to drag')) {
-      await drag(c, rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.4);
-      await settle(c);
-      ck(!(await evalJSON(c, `JSON.stringify(document.getElementById('sheetWho').open)`)),
-        'a downward drag past a quarter of the sheet\'s height did not close #sheetWho');
+      // Finding 7: the backdrop has to keep fading, in step with the slide,
+      // after the release -- not hold at the drag's own opacity for the
+      // whole close and then vanish at once. `dragCloseFade` samples the
+      // opacity just before release and again ~120ms into the close, while
+      // #sheetWho is still open (still sliding, not yet snapped shut).
+      const fade = await dragCloseFade(c, '#sheetWho', rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.4);
+      ck(fade.stillOpen, '#sheetWho was already closed 120ms after a drag release, want it still sliding shut');
+      ck(fade.midOpacity < fade.beforeRelease,
+        `the backdrop opacity is ${fade.midOpacity} 120ms after a drag release, want it below ${fade.beforeRelease} (its value just before release)`);
+      r10 = await closedWithFocus(c, '#sheetWho', '#phrasePlayers');
+      ck(r10.closed, 'a downward drag past a quarter of the sheet\'s height did not close #sheetWho within the slide');
+      ck(r10.focusBack, 'focus did not return to the players phrase after closing #sheetWho by dragging');
+    }
+
+    // Close by a fast downward flick: item 12's speed threshold, not the 25%
+    // distance one -- a 15% flick stays well short of the distance close.
+    await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
+    await settle(c);
+    rect = await sheetRect(c, '#sheetWho');
+    if (ck(!!rect.handle, '#sheetWho has no .bsheet-handle to flick')) {
+      await flick(c, rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.15);
+      r10 = await closedWithFocus(c, '#sheetWho', '#phrasePlayers');
+      ck(r10.closed, 'a fast downward flick (15% of height) did not close #sheetWho within the slide');
+      ck(r10.focusBack, 'focus did not return to the players phrase after closing #sheetWho with a flick');
     }
 
     /* ---- resizing: drag up from half to full, then click back to half ---- */
     await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
     await settle(c);
-    rect = await sheetRect(c, '#sheetWho');
-    if (ck(!!rect.handle, '#sheetWho has no .bsheet-handle to drag (resize)')) {
-      await drag(c, rect.handle.x, rect.handle.y, rect.handle.y - rect.height * 0.3);
-      await settle(c);
-      const full = await sheetRect(c, '#sheetWho');
-      const fullHandleName = await evalJSON(c, `JSON.stringify(document.querySelector('#sheetWho .bsheet-handle').getAttribute('aria-label'))`);
-      ck(full.top <= HEIGHT * 0.15,
-        `#sheetWho's top edge is ${Math.round(full.top)}px (${Math.round(full.top / HEIGHT * 100)}%) after dragging up, want ≤15%`);
-      ck(fullHandleName === 'Half height', `the handle reads "${fullHandleName}" at full height, want "Half height"`);
-      // click it again: back to half.
-      await click(c, full.handle.x, full.handle.y);
-      await settle(c);
-      const backToHalf = await sheetRect(c, '#sheetWho');
-      ck(backToHalf.top >= halfLo && backToHalf.top <= halfHi,
-        `#sheetWho did not return to half height after clicking the handle again (top ${Math.round(backToHalf.top)}px)`);
-    }
+    await resizeCheck(c, '#sheetWho', ck, top => top >= halfLo && top <= halfHi);
 
     /* ---- one sheet at a time ---- */
     await evalIn(c, step(`document.getElementById('phraseFormat').click()`));
@@ -232,17 +239,18 @@ export async function sentenceSheetsPass(c, origin) {
     const openDialogs = await evalJSON(c, `JSON.stringify([...document.querySelectorAll('dialog[open]')].map(d => d.id))`);
     ck(openDialogs.length === 1 && openDialogs[0] === 'sheetFormat',
       `opening Format while Who's here was open left ${JSON.stringify(openDialogs)} open, want exactly ["sheetFormat"]`);
+    await checkTitleFocused(c, ck, 'sheetFormatTitle', '#sheetFormat');
 
-    /* ---- item 4: Format ---- */
+    /* ---- item 5: Format's stepper rows, the shared `.pstep-row` shape ---- */
     const fmt = await evalJSON(c, `(() => {
       const box = document.getElementById('sheetFormatBody');
-      const steps = [...box.querySelectorAll('.sheetstep')].map(row => ({
-        label: row.querySelector('.sheetstep-label')?.textContent,
-        minus: row.querySelector('.sheetstep-btn:first-of-type')?.getAttribute('aria-label'),
-        plus: row.querySelector('.sheetstep-btn:last-of-type')?.getAttribute('aria-label'),
-        value: row.querySelector('.sheetstep-value')?.textContent,
-        minusDisabled: row.querySelector('.sheetstep-btn:first-of-type')?.disabled,
-        plusDisabled: row.querySelector('.sheetstep-btn:last-of-type')?.disabled,
+      const steps = [...box.querySelectorAll('.pstep-row')].map(row => ({
+        label: row.querySelector('.prow-t')?.textContent,
+        minus: row.querySelector('.pstep-btn:first-of-type')?.getAttribute('aria-label'),
+        plus: row.querySelector('.pstep-btn:last-of-type')?.getAttribute('aria-label'),
+        value: row.querySelector('.pstep-val')?.textContent,
+        minusDisabled: row.querySelector('.pstep-btn:first-of-type')?.disabled,
+        plusDisabled: row.querySelector('.pstep-btn:last-of-type')?.disabled,
       }));
       return JSON.stringify(steps);
     })()`);
@@ -261,10 +269,10 @@ export async function sentenceSheetsPass(c, origin) {
     // own period count is `stepFormat`'s value fed straight to `computeAll`,
     // which `test/sentence.test.js` already covers -- this proves the wiring
     // from the tap to `game().periods`, not the solver again.)
-    await evalIn(c, step(`document.querySelector('#sheetFormatBody .sheetstep:first-child .sheetstep-btn:first-of-type').click()`));
+    await evalIn(c, step(`document.querySelector('#sheetFormatBody .pstep-row:first-child .pstep-btn:first-of-type').click()`));
     await settle(c);
     const afterFewer = await evalJSON(c, `(async () => JSON.stringify({
-      value: document.querySelector('#sheetFormatBody .sheetstep:first-child .sheetstep-value').textContent,
+      value: document.querySelector('#sheetFormatBody .pstep-row:first-child .pstep-val').textContent,
       phrase: document.getElementById('phraseFormat').textContent,
       periods: (await import('/state.js')).game().periods,
     }))()`);
@@ -273,10 +281,10 @@ export async function sentenceSheetsPass(c, origin) {
     ck(afterFewer.periods === 3, `game().periods is ${afterFewer.periods} after "Fewer periods", want 3`);
 
     // More minutes: 8 -> 9.
-    await evalIn(c, step(`document.querySelector('#sheetFormatBody .sheetstep:last-child .sheetstep-btn:last-of-type').click()`));
+    await evalIn(c, step(`document.querySelector('#sheetFormatBody .pstep-row:last-child .pstep-btn:last-of-type').click()`));
     await settle(c);
     const afterMore = await evalJSON(c, `JSON.stringify({
-      value: document.querySelector('#sheetFormatBody .sheetstep:last-child .sheetstep-value').textContent,
+      value: document.querySelector('#sheetFormatBody .pstep-row:last-child .pstep-val').textContent,
     })`);
     ck(afterMore.value === '9', `the minutes stepper reads "${afterMore.value}" after "More minutes", want "9"`);
     await statusOk(c, '#sheetFormatStatus', ck, minutesOrBlocked);
@@ -285,12 +293,12 @@ export async function sentenceSheetsPass(c, origin) {
     await evalIn(c, setGame(`s.game().periodMinutes = 20;`));
     await evalIn(c, step(`document.getElementById('phraseFormat').click()`));
     await settle(c);
-    const atHi = await evalJSON(c, `JSON.stringify(document.querySelector('#sheetFormatBody .sheetstep:last-child .sheetstep-btn:last-of-type').disabled)`);
+    const atHi = await evalJSON(c, `JSON.stringify(document.querySelector('#sheetFormatBody .pstep-row:last-child .pstep-btn:last-of-type').disabled)`);
     ck(atHi === true, '"More minutes" is not disabled at 20, the top of the 4-20 range');
     await evalIn(c, setGame(`s.game().periodMinutes = 4; s.game().periods = 4;`));
     await evalIn(c, step(`document.getElementById('sheetFormatClose').click(); document.getElementById('phraseFormat').click()`));
     await settle(c);
-    const atLo = await evalJSON(c, `JSON.stringify(document.querySelector('#sheetFormatBody .sheetstep:last-child .sheetstep-btn:first-of-type').disabled)`);
+    const atLo = await evalJSON(c, `JSON.stringify(document.querySelector('#sheetFormatBody .pstep-row:last-child .pstep-btn:first-of-type').disabled)`);
     ck(atLo === true, '"Fewer minutes" is not disabled at 4, the bottom of the 4-20 range');
     // restore RICH's own format (4 x 8) for the interval section below.
     await evalIn(c, setGame(`s.game().periodMinutes = 8; s.game().periods = 4;`));
@@ -300,6 +308,7 @@ export async function sentenceSheetsPass(c, origin) {
     /* ---- item 5: Sub interval ---- */
     await evalIn(c, step(`document.getElementById('phraseInterval').click()`));
     await settle(c);
+    await checkTitleFocused(c, ck, 'sheetIntervalTitle', '#sheetInterval');
     const interval = await evalJSON(c, `(() => {
       const rows = [...document.querySelectorAll('#sheetIntervalBody .sheetrow')];
       return JSON.stringify({

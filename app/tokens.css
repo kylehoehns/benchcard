@@ -97,6 +97,16 @@
   --accent-line: rgba(28, 28, 30, .32);
   --accent-ink: #FFFFFF;
 
+  /* Fix pass finding 3 (#73): the ring app.css's global `:focus-visible` and
+     `.bsheet-handle:focus-visible::before` both draw -- one token pair so
+     the two rules read the same values instead of each retyping them
+     (they had already drifted apart once in review). `outline` itself has
+     no shorthand for its offset, so that stays a second token rather than
+     folding into `--focus-ring`; `border-radius` stays each rule's own
+     `var(--r-xs)`, already a token, not a third one here. */
+  --focus-ring: 2px solid var(--accent);
+  --focus-ring-offset: 3px;
+
   /* #25: the team color. Declared here at Graphite's own values -- the same
      literals as --accent/--accent-2/--accent-soft/--accent-line/--accent-ink
      above -- so no attribute, or data-tint="graphite", is exactly today's

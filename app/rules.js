@@ -20,7 +20,7 @@ import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds,
          ruleItems, removeRule, ruleComplete, keepOnList } from './state.js';
 import { pickFive } from './pills.js';
-import { pushPlanPane } from './game-setup.js';
+import { pushPlanPane, stepperRow } from './game-setup.js';
 import { popPane } from './trap.js';
 import { undoable } from './toast.js';
 
@@ -312,32 +312,6 @@ function paintKindChips(box) {
   }
 }
 
-function pstepRow(label, get, set, lo, hi, noun) {
-  const row = el('div', 'prow pstep-row');
-  row.append(el('span', 'prow-t', label));
-  const val = el('span', 'pstep-val', '');
-  const wrap = el('div', 'pstep');
-  const minus = el('button', 'pstep-btn', '−');
-  minus.type = 'button';
-  minus.setAttribute('aria-label', `Fewer ${noun}`);
-  const plus = el('button', 'pstep-btn', '+');
-  plus.type = 'button';
-  plus.setAttribute('aria-label', `More ${noun}`);
-  const sync = () => {
-    const v = get();
-    val.textContent = String(v);
-    minus.disabled = v <= lo;
-    plus.disabled = v >= hi;
-  };
-  const step = d => { set(Math.max(lo, Math.min(hi, get() + d))); sync(); syncAddRuleBtn(); };
-  minus.onclick = () => step(-1);
-  plus.onclick = () => step(1);
-  sync();
-  wrap.append(minus, plus);
-  row.append(val, wrap);
-  return row;
-}
-
 function renderKindBody() {
   const g = game(), c = g.constraints;
   const body = $('#planKindBody');
@@ -351,7 +325,7 @@ function renderKindBody() {
     }, { max: 1, replace: true, title: 'Pick a player' }));
     const grp = el('div', 'pgrp');
     const lo = draft.kind === 'cap' ? 0 : 1;
-    grp.append(pstepRow('Minutes', () => draft.minutes, v => { draft.minutes = v; }, lo, 40, 'minutes'));
+    grp.append(stepperRow('Minutes', () => draft.minutes, v => { draft.minutes = v; }, lo, 40, 'minutes', syncAddRuleBtn));
     body.append(grp);
   } else if (draft.kind === 'together' || draft.kind === 'apart' || draft.kind === 'keepon') {
     body.append(pickFive([draft.a, draft.b].filter(Boolean), (id, on) => {
@@ -367,7 +341,7 @@ function renderKindBody() {
     }, { max: 5, title: 'Pick up to five' }));
   } else if (draft.kind === 'rest') {
     const grp = el('div', 'pgrp');
-    grp.append(pstepRow('Stints in a row', () => draft.n, v => { draft.n = v; }, 1, 4, 'stints'));
+    grp.append(stepperRow('Stints in a row', () => draft.n, v => { draft.n = v; }, 1, 4, 'stints', syncAddRuleBtn));
     body.append(grp);
   }
 

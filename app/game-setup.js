@@ -251,34 +251,49 @@ function paintWhoBody() {
 const PERIODS_LO = 1, PERIODS_HI = 4;
 const MINUTES_LO = 4, MINUTES_HI = 20;
 
-function stepperRow(label, key, lo, hi, noun) {
-  const row = el('div', 'sheetstep');
-  row.append(el('span', 'sheetstep-label', label));
-  const minus = el('button', 'sheetstep-btn', '−');
+// #73 item 5: the one stepper builder Format and Add a rule (rules.js) both
+// use -- `.prow.pstep-row > .prow-t(label) + .pstep-val + .pstep(− +)`, a
+// grid with a fixed-width value column so every row's − / value / + edges
+// line up regardless of the label's own width. Lives here (not rules.js)
+// because game-setup.js is the module both files already import from
+// (rules.js already imports `pushPlanPane` from here), so no new module
+// joins the boot graph. `get`/`set` (rather than a state key) is what lets
+// rules.js's draft object share this with Format's `game()` fields; the
+// clamp itself is still `stepFormat` (state.js), never re-derived.
+export function stepperRow(label, get, set, lo, hi, noun, afterChange) {
+  const row = el('div', 'prow pstep-row');
+  row.append(el('span', 'prow-t', label));
+  const val = el('span', 'pstep-val', '');
+  const wrap = el('div', 'pstep');
+  const minus = el('button', 'pstep-btn', '−');
   minus.type = 'button';
   minus.setAttribute('aria-label', `Fewer ${noun}`);
-  const val = el('span', 'sheetstep-value', '');
-  const plus = el('button', 'sheetstep-btn', '+');
+  const plus = el('button', 'pstep-btn', '+');
   plus.type = 'button';
   plus.setAttribute('aria-label', `More ${noun}`);
   const sync = () => {
-    const v = game()[key];
+    const v = get();
     val.textContent = String(v);
     minus.disabled = v <= lo;
     plus.disabled = v >= hi;
   };
   const step = d => {
-    const g = game();
-    g[key] = stepFormat(g[key], d, lo, hi);
+    set(stepFormat(get(), d, lo, hi));
     sync();
-    // a format edit, same as the number fields it replaces: the full
-    // AFTER_EDIT set, not just the availability-only PLAN_ONLY subset.
-    soon('strategy', ...AFTER_EDIT);
+    afterChange?.();
   };
   minus.onclick = () => step(-1);
   plus.onclick = () => step(1);
   sync();
-  row.append(minus, val, plus);
+  wrap.append(minus, plus);
+  // #73 fix pass finding 5: the value and the +/- pair share one wrapper so
+  // `.pstep-row` can wrap the label to its own line at a 320px/32px root
+  // (where the label no longer fits beside them) while keeping the value and
+  // buttons together, right-aligned, on the line under it -- see app.css's
+  // `.pstep-tail` for the layout this markup enables.
+  const tail = el('div', 'pstep-tail');
+  tail.append(val, wrap);
+  row.append(tail);
   return row;
 }
 
@@ -286,8 +301,15 @@ function paintFormatBody() {
   const box = $('#sheetFormatBody');
   if (!box) return;
   box.textContent = '';
-  box.append(stepperRow('Periods', 'periods', PERIODS_LO, PERIODS_HI, 'periods'));
-  box.append(stepperRow('Minutes each', 'periodMinutes', MINUTES_LO, MINUTES_HI, 'minutes'));
+  const grp = el('div', 'pgrp');
+  // a format edit, same as the number fields it replaces: the full
+  // AFTER_EDIT set, not just the availability-only PLAN_ONLY subset.
+  const afterChange = () => soon('strategy', ...AFTER_EDIT);
+  grp.append(stepperRow('Periods', () => game().periods, v => { game().periods = v; },
+    PERIODS_LO, PERIODS_HI, 'periods', afterChange));
+  grp.append(stepperRow('Minutes each', () => game().periodMinutes, v => { game().periodMinutes = v; },
+    MINUTES_LO, MINUTES_HI, 'minutes', afterChange));
+  box.append(grp);
 }
 
 /* --------------------------- Sub interval ---------------------------- */
