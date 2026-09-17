@@ -1,4 +1,4 @@
-import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME } from './dom.mjs';
+import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME, landWiped } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
@@ -281,32 +281,19 @@ const STRANDED_ABOVE = `(() => {
  * is the one A35 added and the reason this cell was worth closing. */
 export async function firstRun(c, origin) {
   /* CLEARING THE RECORD IN THE CURRENT DOCUMENT IS NOT ENOUGH, and the first
-     draft of this that did so failed with all three keys back — which is why
-     the precondition below exists. `browserChecks` registers an
-     `addScriptToEvaluateOnNewDocument` that re-seeds `benchcard.v3` on EVERY
-     document, so a wiped record is refilled before the app's first line runs
-     and the reload lands on the games view. (`goRich`'s comment already says
-     that write "still fires on every new document"; it is inert only because
-     v6 wins the read order — with v6 gone it is the record.)
-
-     So the wipe rides in a SECOND on-new-document script, added later and
-     therefore run later, and it is removed again straight afterwards: leaving
-     it registered would empty the record under `staticPass` too. The seed
-     script is left alone, because `smoke-checks.js` reads
-     `window.__SMOKE_VIEWPORT` out of it and `staticPass` still runs. */
-  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument',
-    { source: `try { localStorage.clear(); } catch {}` });
-  try {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && document.querySelector('#view-welcome')?.hidden !== false; i++)
-        await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
-  } finally {
-    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  }
+     draft of this that did so failed with all three keys back: `browserChecks`
+     registers an `addScriptToEvaluateOnNewDocument` that re-seeds
+     `benchcard.v3` on EVERY document, so a wiped record is refilled before the
+     app's first line runs and the reload lands on the games view. (`goRich`'s
+     comment already says that write "still fires on every new document"; it
+     is inert only because v6 wins the read order — with v6 gone it is the
+     record.) `landWiped` (`dom.mjs`) is what rides a second, later
+     on-new-document script to win that race and removes it again straight
+     afterwards — see its own comment for why leaving it registered would
+     empty the record under `staticPass` too. The seed script is left alone,
+     because `smoke-checks.js` reads `window.__SMOKE_VIEWPORT` out of it and
+     `staticPass` still runs. */
+  await landWiped(c, origin + '/index.html', "document.querySelector('#view-welcome')?.hidden === false");
   const r = JSON.parse(await evalIn(c, `JSON.stringify({
     host: location.host,
     shown: document.querySelector('#view-welcome')?.hidden === false,
@@ -334,30 +321,17 @@ const FLASH_LEAD = 'Sample team loaded.';
 
 /* The `?try=N` landing, which is the only path left that raises that flash.
  *
- * Wiped and navigated like `firstRun` above, for a reason that is one step
- * further on: `initOnboarding` reads the parameter only while
- * `state.onboarded` is false, and `browserChecks`'s on-new-document script
- * re-seeds `benchcard.v3` on every document — so without the wipe this would
- * land on the games view of a seeded team with no toast at all, and the state
- * would measure the games view a second time. Same removal afterwards, for the
- * same reason: left registered it would empty the record under `staticPass`.
+ * Wiped and navigated with `landWiped` (`dom.mjs`), like `firstRun` above,
+ * for a reason that is one step further on: `initOnboarding` reads the
+ * parameter only while `state.onboarded` is false, and `browserChecks`'s
+ * on-new-document script re-seeds `benchcard.v3` on every document — so
+ * without the wipe this would land on the games view of a seeded team with
+ * no toast at all, and the state would measure the games view a second time.
  *
  * Returns the flash's measured box for the pass detail, and throws with what
  * it found if the flash is not on screen carrying its own sentence. */
 export async function tryLanding(c, origin, n) {
-  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument',
-    { source: `try { localStorage.clear(); } catch {}` });
-  try {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: `${origin}/index.html?try=${n}` });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('#toasts .toast .tmsg'); i++)
-        await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
-  } finally {
-    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  }
+  await landWiped(c, `${origin}/index.html?try=${n}`, "document.querySelector('#toasts .toast .tmsg')");
   const r = JSON.parse(await evalIn(c, `(() => {
     const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
     const msg = document.querySelector('#toasts .toast .tmsg');

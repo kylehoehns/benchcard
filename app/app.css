@@ -180,6 +180,13 @@ a { color: inherit; }
    tracking. `.block-hd` is only ever "Rotation" and (above 1099px, before
    `.cardtoggle h3` below overrides it back to a row) "The card". */
 .block-hd h3 { font-size: var(--fs-footnote); color: var(--muted); font-weight: 700; }
+/* #72: no gap under "Rotation". Its Shuffle is 48px tall with the label
+   centered, so the button's own lower half is already the space. The 12px
+   this saves, with .tl-head's smaller gap, is what lets a sentence that wraps
+   to four lines still leave all nine rows above the Start game bar at
+   390x844 (smoke `game rows fit`; CI's wider Linux fallback font wraps the
+   sample sentence to four lines, as longer sentences do on a phone). */
+.s-rot > .block-hd { margin-bottom: 0; }
 .block-hd .hint { margin-left: auto; font-size: var(--fs-footnote); color: var(--faint); font-variant-numeric: tabular-nums; }
 /* #69 item 4: Shuffle is swept at 48px on the game screen; scoped to the id
    because `.btn.sm` is a shared small-button size used well beyond it. */
@@ -663,7 +670,7 @@ a { color: inherit; }
    case that needs the extra room. */
 .tl { --lab: 9.5rem; --tot: 2rem; container-type: inline-size; }
 .tl:not(.even) { --tot: 5.2rem; }
-.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: .45rem; }
+.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: .25rem; }
 .tl-head > div:first-child, .tl-head > div:last-child { display: none; }
 .tl-periods { position: relative; height: 1.1rem; padding: 0 .3rem; }
 /* #69 decision 7: no uppercase, no heavy weight -- a quiet footnote above the
@@ -672,10 +679,14 @@ a { color: inherit; }
   position: absolute; top: 0; font-size: var(--fs-footnote); font-weight: 500;
   color: var(--muted); transform: translateX(.3rem);
 }
+/* #72: the row is a plain container now, not the control -- it lost
+   min-height (the NAME BUTTON below carries the tap-target floor) and
+   `cursor: pointer` (moved to `.tl-name`), because the row itself carries no
+   role, no tabindex and no click handler any more. */
 .tl-row {
   display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lab tot" "trk trk";
   gap: .6rem; row-gap: .22rem; align-items: center;
-  min-height: 48px; padding: .3rem .3rem .4rem; border-radius: var(--r-xs);
+  padding: .3rem .3rem .4rem; border-radius: var(--r-xs);
   transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .tl-lab { grid-area: lab; display: flex; align-items: center; gap: .4rem; min-width: 0; }
@@ -684,6 +695,19 @@ a { color: inherit; }
    test/timeline-names.test.js pins that) reads at the same size and weight as
    any other row label, not a footnote. */
 .tl-lab .nm { font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* #72: the name is the tap target now, not the row -- a real
+   `<button type="button" class="tl-name">` around the dot and the name,
+   styled to disappear so it still reads as the plain label it replaces (no
+   chrome, no underline, no tint -- K1 does not allow tint here). Stacked
+   layout (below) gives it the full 48px I1 asks for; the one-row layout
+   (@container, further down) can only give it the row's own pitch, since a
+   taller button there would overlap the next row -- see the spec's "one
+   conflict, and the call made". */
+.tl-name {
+  display: flex; align-items: center; gap: .4rem; width: 100%;
+  background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit;
+  text-align: left; cursor: pointer; min-height: 48px;
+}
 .tl-track {
   grid-area: trk; position: relative; height: 1.5rem; border-radius: var(--r-xs);
   background: var(--track); overflow: hidden;
@@ -707,10 +731,35 @@ a { color: inherit; }
      three areas, not clear the names and hope auto-placement (which put
      every item in the same cell instead of spreading them across the three
      explicit columns) sorts them out. */
+  /* #72: the row pitch -- top of one row to the top of the next -- is
+     2.25rem here (36px at the default text size). That is 5px taller than
+     the prototype's ~31px, for a bigger target, and leaves ~40px of slack
+     under the ninth row at 390 x 844 (see docs/specs/72-fit-nine-rows.md,
+     "the one conflict, and the call made"). No vertical padding: the pitch
+     IS the row's min-height, and any padding would only shrink the button
+     inside it. Stated once as --row-pitch, set here on `.tl-row` (its
+     descendant `.tl-name` below inherits it) rather than on `.tl` itself,
+     for the same reason --lab is set on `.tl-head`/`.tl-row` above: a
+     container query cannot restyle the container element it matches on. */
   .tl-row {
     grid-template-columns: var(--lab) 1fr var(--tot); grid-template-areas: "lab trk tot";
-    row-gap: 0; padding: .13rem 0;
+    row-gap: 0; padding: 0; --row-pitch: 2.25rem; min-height: var(--row-pitch);
   }
+  /* Stretch the label cell to the row's own height, and stretch the button
+     inside it to fill that cell -- `.tl-name`'s `min-height: var(--row-pitch)`
+     below is what actually sets the number; this is what lets it reach the full
+     height rather than sitting centered inside a taller box with dead space
+     above and below it. The track and the total keep the row's own
+     `align-items: center` (unchanged), so only the label is affected. */
+  .tl-lab { align-self: stretch; align-items: stretch; }
+  /* Smoke `game rows fit` (scripts/smoke/game-rows-fit.mjs) owns this number:
+     it measures every `.tl-name` against `min(48, pitch) - 0.5`, not 48 flat,
+     because a target taller than the pitch would overlap the next row. The
+     generic touch sweeps (scripts/smoke-checks.js) skip `.tl-name` here for
+     the same reason -- see the comments there. `--row-pitch` is set once on
+     `.tl-row` above and inherited here, so the two rules can never drift
+     apart. */
+  .tl-name { min-height: var(--row-pitch); }
   .tl-track { height: 1rem; }
 }
 /* #69 decision 7: widen the label back to the desktop value once the
@@ -785,7 +834,6 @@ a { color: inherit; }
 @media (hover: hover) { .tl:hover .tl-row:not(:hover) { opacity: .45; } }
 @media (hover: hover) { .tl-row:hover { background: var(--surface-2); } }
 
-.tl-row { cursor: pointer; }
 .tl-row.pin { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--c); }
 .tl.pinned .tl-row:not(.pin) { opacity: .38; }
 @media (hover: hover) { .tl.pinned:hover .tl-row:not(:hover):not(.pin) { opacity: .38; } }

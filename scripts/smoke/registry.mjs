@@ -100,6 +100,13 @@ export const ROWS = Object.freeze([
   { id: 'fcp', name: 'first contentful paint (informational)', selectable: true, setup: 'cold' },
   { id: 'cardfont', name: 'card font loads before the card is fitted', selectable: true, setup: 'rich' },
   { id: 'fixture', name: 'rich fixture is live', selectable: true, setup: 'rich' },
+  // #72 (see docs/specs/72-fit-nine-rows.md's Proof section): all 9 timeline
+  // rows and #abBench on screen with no scrolling, .tl-name's own tap-target
+  // geometry in the one-row layout, and the pin toggle by click and by Enter
+  // -- see game-rows-fit.mjs. Runs its own `?try=9` landing rather than
+  // reading the rich fixture, so it sits right after `fixture` and restores
+  // RICH itself before `todayback` needs it.
+  { id: 'gamerowsfit', name: 'game rows fit, 390×844', selectable: true, setup: 'rich' },
   { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich' },
   { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich' },
   { id: 'gamepasses', name: 'game passes', selectable: true, setup: 'rich' },

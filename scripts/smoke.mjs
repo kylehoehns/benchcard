@@ -48,6 +48,7 @@ import { ROWS, nameOf } from './smoke/registry.mjs';
 
 import { cardFontPass } from './smoke/card-font.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
+import { gameRowsFitPass } from './smoke/game-rows-fit.mjs';
 import { todayAndBackPass } from './smoke/today-and-back.mjs';
 import { todayKeysAndUndoPass } from './smoke/today-keys-and-undo.mjs';
 import { gamePassesPass } from './smoke/game-passes.mjs';
@@ -101,6 +102,7 @@ const JSON_OUT = has('--json');
 const RUN = {
   cardfont: ctx => cardFontPass(ctx.c, ctx.origin),
   fixture: ctx => fixturePass(ctx.c),
+  gamerowsfit: ctx => gameRowsFitPass(ctx.c, ctx.origin),
   todayback: ctx => todayAndBackPass(ctx.c, ctx.origin),
   todaykeys: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin),
   gamepasses: ctx => gamePassesPass(ctx.c, ctx.origin),
@@ -260,6 +262,11 @@ async function browserChecks(origin, only) {
        check after it and printing no table at all. */
     report.checks.push(await safeCheck('cardfont', () => cardFontPass(c, origin)));
     report.checks.push(await safeCheck('fixture', () => fixturePass(c)));
+    /* #72: its own `?try=9` landing, in light and dark -- reloads onto a
+       freshly wiped nine-player sample rather than reading the rich fixture,
+       and restores RICH itself before returning (see game-rows-fit.mjs), so
+       everything below still finds the fixture `goRich` left above. */
+    report.checks.push(await safeCheck('gamerowsfit', () => gameRowsFitPass(c, origin)));
     /* Both of these reload their own fixture and put RICH back the way they
        found it (`view: 'games'`, one team), same courtesy the wake-lock
        reload below pays. */

@@ -145,7 +145,7 @@ function timelineEmpty(g, p) {
     box.append(b);
   };
   if (!platoon) {
-    box.append(el('div', null, 'No rotation yet. Resolve the errors above.'));
+    box.append(el('div', null, 'No rotation yet. Resolve the errors below.'));
     // the offending rule is the one thing that can undo this, and it is behind
     // a group the coach has probably never opened
     if ((p?.issues || []).some(i => i.severity === 'error' && RULE_ERRORS.has(i.code))) {
@@ -231,15 +231,13 @@ export function renderTimeline() {
     for (const id of ids) {
       const row = el('div', 'tl-row');
       row.dataset.id = id;
-      row.tabIndex = 0;
-      row.setAttribute('role', 'button');
-      row.onclick = () => { tlPinned = tlPinned === id ? null : id; renderTimeline(); };
-      row.onkeydown = e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.onclick(); }
-      };
       row.style.setProperty('--c', colorOf(id));
       const lab = el('div', 'tl-lab');
-      lab.append(el('span', 'dot'), el('span', 'nm', tlName(p, id)));
+      const nameBtn = el('button', 'tl-name');
+      nameBtn.type = 'button';
+      nameBtn.append(el('span', 'dot'), el('span', 'nm', tlName(p, id)));
+      nameBtn.onclick = () => { tlPinned = tlPinned === id ? null : id; renderTimeline(); };
+      lab.append(nameBtn);
       const track = el('div', 'tl-track');
       stints.forEach((s2, i) => {
         if (i === 0 || s2.period === stints[i - 1].period) return;
@@ -354,13 +352,14 @@ export function renderTimeline() {
        let aria-expanded carry the pin state, since the tap opens the detail
        panel beneath. */
     const onCount = stints.reduce((a, s2) => a + (s2.onFloor.includes(id) ? 1 : 0), 0);
-    row.setAttribute('aria-label',
+    const nameBtn = row.querySelector('.tl-name');
+    nameBtn.setAttribute('aria-label',
       `${tlName(p, id)}, ${fmtMinutes(m)} minutes` +
       (extreme ? `, the ${extreme} on the team` : '') +
       `, on the floor for ${onCount} of ${stints.length} stints`);
-    row.setAttribute('aria-expanded', String(id === tlPinned));
-    if (id === tlPinned) row.setAttribute('aria-controls', 'tlDetail');
-    else row.removeAttribute('aria-controls');
+    nameBtn.setAttribute('aria-expanded', String(id === tlPinned));
+    if (id === tlPinned) nameBtn.setAttribute('aria-controls', 'tlDetail');
+    else nameBtn.removeAttribute('aria-controls');
   }
 
   renderPinned(p, stints, mins, starts);

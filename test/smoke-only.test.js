@@ -76,9 +76,9 @@ test('--only "nope" exits non-zero, fast, with no table', () => {
   assertNeverLaunchedChrome(invalid, '--only "nope"');
 });
 
-test('the refusal lists the 30 selectable rows, one per line', () => {
-  assert.equal(validNames.length, 30,
-    `expected the 30 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
+test('the refusal lists the 31 selectable rows, one per line', () => {
+  assert.equal(validNames.length, 31,
+    `expected the 31 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
   // one per line, not comma-joined or wrapped
   assert.equal(new Set(validNames).size, validNames.length, 'a duplicated row name in the list');
 });

@@ -22,6 +22,57 @@
     return s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0';
   };
 
+  /* #72: `.tl-name` (the timeline row's own name button) is excluded from
+     both generic touch-target sweeps below (44px and item 4's 48px) ONLY
+     when it is pinned to the one-row layout's row pitch -- 2.25rem (36px),
+     short of both floors by design, because a taller button there would
+     overlap the next row (see the spec's "one conflict, and the call
+     made"). `problemsFor` in `scripts/smoke/game-rows-fit.mjs` owns that
+     number instead, against `min(48, pitch) - 0.5`; in the stacked layout
+     `.tl-name` keeps its own `min-height: 48px` and stays counted here like
+     any other control.
+
+     `rowPitch` below and `problemsFor`'s own pitch both compute the row
+     pitch the same way -- the distance from this row's top to the next
+     row's top, or (for the last row) from the previous row's top to this
+     one's -- so a change to one formula without the other would show up as
+     a mismatch between which rows this file skips and which the other
+     file's floor allows. This file cannot `import` that one (it is read as
+     raw source and evaluated in the page, not loaded as a module), so
+     nothing but this comment ties the two together; keep both in step by
+     hand.
+
+     "One-row layout" is read off `.tl-row`'s own computed
+     `grid-template-areas` rather than the viewport width: the stacked rule
+     names two grid rows ('"lab tot" "trk trk"', 4 quote marks); the
+     `@container (min-width: 20em)` rule collapses that to one
+     ('"lab trk tot"', 2) -- so this asks which CSS rule actually matched,
+     not a width this file would have to keep in sync with app.css by hand.
+     "Its height equals its row pitch" is read structurally too: the
+     distance from this row's own top to the next `.tl-row`'s top (or, for
+     the last row, from the previous one's), since only the one-row layout
+     ever makes the button's height equal that distance -- the stacked
+     layout's `.tl-name` sits above a separate `.tl-track` row, always
+     shorter than the whole row's pitch. */
+  const rowPitch = row => {
+    const rows = [...document.querySelectorAll('.tl-row')];
+    const i = rows.indexOf(row);
+    if (i < 0) return null;
+    if (i + 1 < rows.length) return rows[i + 1].getBoundingClientRect().top - row.getBoundingClientRect().top;
+    if (i > 0) return row.getBoundingClientRect().top - rows[i - 1].getBoundingClientRect().top;
+    return null;
+  };
+  const skipRowPitchName = el => {
+    if (!el.classList.contains('tl-name')) return false;
+    const row = el.closest('.tl-row');
+    if (!row) return false;
+    const quotes = (getComputedStyle(row).gridTemplateAreas.match(/"/g) || []).length;
+    if (quotes !== 2) return false; // stacked layout: two named grid rows, not one
+    const pitch = rowPitch(row);
+    if (pitch == null) return false;
+    return Math.abs(el.getBoundingClientRect().height - pitch) < 1;
+  };
+
   const checks = [];
   const add = (name, pass, detail) => checks.push({ name, pass, detail });
 
@@ -86,6 +137,7 @@
   for (const el of document.querySelectorAll(SEL)) {
     if (!visible(el) || el.closest('.card') || el.closest('[hidden]')) continue;
     if (el.type === 'hidden') continue;
+    if (skipRowPitchName(el)) continue; // #72: game-rows-fit.mjs owns this floor instead
     /* `dd` joined this list when about.html's FAQ tripped the check with a link
        inside a sentence. It is the same kind of container as `p` and `li` — a
        run of body text — so this is the exemption reaching a case it always
@@ -340,7 +392,7 @@
         result is 0-found, not not-open. */
   const ITEM4_SEL = [
     '#teamBtn', '#todayNewDay', '#settingsBtn', '.today-game', '#todayAddGame',
-    '#todayTeam', '#todaySeason', '#backBtn', '.phrase', '.tl-row',
+    '#todayTeam', '#todaySeason', '#backBtn', '.phrase', '.tl-name',
     '#regen', '.fold > summary', 'details.dz > summary', '.seg button',
     '#abBench', '#abCard',
   ].join(', ');
@@ -348,7 +400,12 @@
     gateOpen: true,
     notOpenMsg: null,
     emptyMsg: "none of item 4's controls were found on screen",
-    elements: () => [...document.querySelectorAll(ITEM4_SEL)].filter((el) => !el.closest('[hidden]')),
+    // #72: `.tl-row` (the old target) is replaced by `.tl-name` (the row's
+    // own button now) -- skipRowPitchName excludes it here too, in the
+    // one-row layout, for the same reason it is skipped in the 44px sweep
+    // above.
+    elements: () => [...document.querySelectorAll(ITEM4_SEL)]
+      .filter((el) => !el.closest('[hidden]') && !skipRowPitchName(el)),
     dim: (r) => Math.min(round(r.width), round(r.height)),
     fmt: (el, r) => `${label(el)} ${round(r.width)}×${round(r.height)}`,
     noun: 'controls',
