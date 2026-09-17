@@ -172,9 +172,17 @@ a { color: inherit; }
    first control below, `.tl-name`, starts 16px clear of the `::after`. Going
    up it takes the bottom 3px of the last sentence phrase's 48px box, which is
    padding under that phrase's ink and leaves it 45px -- over the 44px floor,
-   and a tap landing that close to the seg was ambiguous either way. */
-#viewSeg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; margin-bottom: 0; }
-#viewSeg button { min-height: 32px; padding: .3rem .9rem; position: relative; }
+   and a tap landing that close to the seg was ambiguous either way.
+
+   Side padding in px, like the prototype, not the shared rule's `.9rem`:
+   equal halves mean the wider word is paid for twice, and at 320px with 32px
+   text a rem here is 28.8px a side, which put the track past the right edge
+   (smoke `app shell at 320px/32px text`). `max-width` and `min-width: 0` are
+   the backstop for any state px padding does not save: the halves shrink and
+   the label wraps, rather than the page growing a sideways scroll. */
+#viewSeg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  max-width: 100%; margin-bottom: 0; }
+#viewSeg button { min-height: 32px; padding: .3rem 12px; min-width: 0; position: relative; }
 #viewSeg button::after { content: ''; position: absolute; left: 0; right: 0;
   top: 50%; height: 48px; transform: translateY(-50%); z-index: 1; }
 
