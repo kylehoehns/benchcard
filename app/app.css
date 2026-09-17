@@ -1391,8 +1391,20 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    scoped to `#sheetCard` rather than widened on the shared class. Text
    already wraps inside a `.gm-cta .btn` past 24px root (above), so an equal
    pair stays side by side there instead of overflowing. */
-#sheetCard .gm-cta { flex-wrap: nowrap; }
-#sheetCard .gm-cta .btn { flex: 1; }
+#sheetCard .gm-cta { flex-wrap: nowrap; padding: 0 1rem; }
+#sheetCard .gm-cta .btn { flex: 1; min-width: 0; }
+/* Look pass: at a large root the pair cannot stay a pair. Measured at
+   320px/32px, `flex: 1` could not shrink two buttons below their own
+   min-content ("Share image" plus its icon) and the row ran from -14px to
+   334px on a 320px screen -- cut off at both ends, which is exactly the
+   thing an equal-width pair was meant to fix. They stack full width
+   instead, one thumb-width target each. The 16em threshold sits between
+   360px/24px (15em, stacked) and 320px/16px (20em, still a pair), so a
+   small phone at ordinary text keeps the prototype's side-by-side row. */
+@container (max-width: 16em) {
+  #sheetCard .gm-cta { flex-wrap: wrap; }
+  #sheetCard .gm-cta .btn { flex: 1 0 100%; }
+}
 /* #29 decision 8: `#gmOpen` and its "?" kept the `.gmq` pair, but the row
    they used to share with Print and Share is gone (those moved into
    `#sheetCard`) -- `.gm-start` is that same centered-row shape on its own,
@@ -2321,7 +2333,13 @@ dialog.bsheet.grouped .bsheet-body { padding: 0 0 1rem; }
    body (and the footnote inside it) room above the iOS home indicator.
    Scoped to the id so the other three grouped sheets, which already get it
    once through `.bsheet-status`, do not get it a second time. */
-#sheetCard .bsheet-body { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+/* Look pass: a size container, the same idiom `.tl` (~line 671) and
+   `.bsheet-hd` (~line 2399) already use, so the two large-text rules below
+   read the sheet's own inline-size rather than the viewport. `em` is what
+   tells 320px/32px apart from 320px/16px: a doubled root halves the same
+   box's em count (10em against 20em) where a media query sees one width. */
+#sheetCard .bsheet-body { padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  container-type: inline-size; }
 /* #73 item 9: every sheet's status line gets the same top divider and its
    own background, grouped or not -- the survey found the overlay this once
    avoided is gone (#74 made the body scroll under it, not behind it), so
@@ -2601,6 +2619,25 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
 #sheetCard .pgrp .prow-t { flex-basis: auto; }
 #sheetCard .pgrp .prow-ctl { display: flex; align-items: center; gap: .75rem; min-width: 0; margin-left: auto; }
 #sheetCard .pgrp .prow > input[switch] { margin-left: auto; }
+/* Look pass: wrapping stopped the label and the value colliding, but the
+   value was still cut mid-word -- a `<select>` reports `scrollWidth ===
+   clientWidth` whatever its text does, so nothing measured it until the
+   selected option was drawn with the select's own font and compared. At
+   320px/32px the wrapped line is 192px and the chevron plus its gap took
+   56px of it, leaving 136px against "Short names" at 174px and "This game"
+   at 143px. The chevron is decoration (`aria-hidden`, and the whole row is
+   the label that opens the picker), so it goes at that size and both values
+   fit whole. "Pocket · 3.45 × 5 in" wants 264px and fits at no single-line
+   size a 32px root allows, so the ellipsis is what it degrades to -- a
+   deliberate shortening rather than a word sliced in half. 12em sits
+   between 320px/32px (10em) and 360px/24px (15em), where every value
+   already fits. */
+#sheetCard .pgrp .prow-select { text-overflow: ellipsis; }
+@container (max-width: 12em) {
+  #sheetCard .pgrp .prow-chev { display: none; }
+  #sheetCard .pgrp .prow-ctl { width: 100%; }
+  #sheetCard .pgrp .prow-select { flex: 1; }
+}
 @media (hover: hover) { button.prow:hover { background: var(--surface-2); } }
 .prow-center { justify-content: center; text-align: center; }
 .prow-danger { color: var(--err); font-weight: 600; }

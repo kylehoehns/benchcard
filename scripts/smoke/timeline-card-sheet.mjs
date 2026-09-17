@@ -84,6 +84,61 @@ async function cardSheetRowsOk(c, ck, where) {
   }
 }
 
+// Look pass: the two things the fix-pass row guard above could not see.
+//
+// First, the Print/Share pair. At 320px/32px `flex: 1` could not shrink two
+// buttons below their own min-content, so the row ran from -14px to 334px on
+// a 320px screen -- both ends cut off. The pair also sat edge to edge where
+// the prototype aligns it with the options group below it, so both edges are
+// checked against `.pgrp`'s own, not against a number typed in here.
+//
+// Second, whether a <select> shows its selected option or slices it. A
+// <select> reports `scrollWidth === clientWidth` whatever its text does --
+// the measure the row guard uses for labels is blind here -- so this draws
+// the selected option with the select's own computed font and compares.
+// "Pocket · 3.45 × 5 in" needs 264px against a 192px line at 320px/32px and
+// fits at no single-line size a 32px root allows, so it is the one value
+// allowed to be shortened, and only with an ellipsis to show for it.
+const ELLIPSIS_OK = 'cardSize';
+async function cardSheetWidthOk(c, ck, where, width) {
+  const m = await evalJSON(c, `(() => {
+    const box = n => { const b = n.getBoundingClientRect();
+      return { left: Math.round(b.left * 10) / 10, right: Math.round(b.right * 10) / 10 }; };
+    const cv = document.createElement('canvas').getContext('2d');
+    return JSON.stringify({
+      pgrp: box(document.querySelector('#sheetCard .pgrp')),
+      cta: [...document.querySelectorAll('#sheetCard .gm-cta .btn')].map(b => ({ id: b.id, ...box(b) })),
+      selects: [...document.querySelectorAll('#sheetCard .pgrp select')].map(s => {
+        const cs = getComputedStyle(s);
+        cv.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        const text = s.options[s.selectedIndex].textContent;
+        return { id: s.id, text,
+          need: Math.round(cv.measureText(text).width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)),
+          have: Math.round(s.clientWidth), ellipsis: cs.textOverflow };
+      }),
+    });
+  })()`);
+  if (!ck(m.cta.length === 2, `${where}: #sheetCard's .gm-cta holds ${m.cta.length} button(s), want Print and Share image`)) return;
+  for (const b of m.cta) {
+    ck(b.left >= -0.5 && b.right <= width + 0.5,
+      `${where}: #${b.id} runs ${b.left}px to ${b.right}px in a ${width}px viewport -- it is cut off`);
+  }
+  // Side by side or stacked, the pair fills the group's width exactly: the
+  // leftmost button starts where the group starts and the rightmost ends
+  // where it ends. Read off `.pgrp`, so this holds at any root size without
+  // a pixel typed in here.
+  const left = Math.min(...m.cta.map(b => b.left)), right = Math.max(...m.cta.map(b => b.right));
+  ck(Math.abs(left - m.pgrp.left) <= 1 && Math.abs(right - m.pgrp.right) <= 1,
+    `${where}: Print and Share image span ${left}-${right}, the options group ${m.pgrp.left}-${m.pgrp.right} -- they do not line up`);
+  for (const s of m.selects) {
+    if (s.need <= s.have + 0.5) continue;
+    ck(s.id === ELLIPSIS_OK,
+      `${where}: #${s.id}'s value "${s.text}" needs ${s.need}px of a ${s.have}px control -- it is cut`);
+    ck(s.ellipsis === 'ellipsis',
+      `${where}: #${s.id}'s value "${s.text}" is ${s.need - s.have}px too wide and text-overflow is "${s.ellipsis}" -- a value that cannot fit is shortened, never sliced`);
+  }
+}
+
 // Fix pass finding 4: `refreshCardSheetPreview()` used to run before
 // `openSheet(...)` in `#shareBtn`'s handler (app.js), so `fitStage` read
 // `#sheetCardPreview.clientWidth: 0` (the dialog was still closed, so
@@ -240,6 +295,7 @@ export async function timelineCardSheetPass(c, origin) {
     /* ---- fix pass finding 1: row geometry at 390px/16px (the sheet is
        already open from the check just above) ---- */
     await cardSheetRowsOk(c, ck, '390px/16px');
+    await cardSheetWidthOk(c, ck, '390px/16px', WIDTH);
 
     /* ---- item 3: changing Size changes the preview ---- */
     const beforeSize = await evalJSON(c, `(() => {
@@ -357,6 +413,7 @@ export async function timelineCardSheetPass(c, origin) {
       await goRich(c, origin);
       await tap(c, `document.getElementById('shareBtn').click()`);
       await cardSheetRowsOk(c, ck, '360px/24px');
+      await cardSheetWidthOk(c, ck, '360px/24px', MID_TEXT_WIDTH);
       await tap(c, `document.getElementById('sheetCardClose').click()`);
     } finally {
       await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
@@ -369,6 +426,7 @@ export async function timelineCardSheetPass(c, origin) {
       await goRich(c, origin);
       await tap(c, `document.getElementById('shareBtn').click()`);
       await cardSheetRowsOk(c, ck, '320px/32px');
+      await cardSheetWidthOk(c, ck, '320px/32px', LARGE_TEXT_WIDTH);
       await tap(c, `document.getElementById('sheetCardClose').click()`);
     } finally {
       await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
