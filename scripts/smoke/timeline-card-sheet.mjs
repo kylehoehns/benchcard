@@ -1,7 +1,8 @@
-import { evalIn, step, WIDTH } from './dom.mjs';
-import { nameOf } from './registry.mjs';
+import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
+import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
 import { goRich } from './fixtures.mjs';
 import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
+import { boxesOverlap } from './sheet-spacing.mjs';
 
 /* #29's own guard (docs/specs/29-timeline-card-sheet.md's Proof section):
    "Smoke, a new check `game screen: Timeline | Card and the card sheet`
@@ -37,6 +38,105 @@ const BREAK_STRATEGY = `const g = s.game(); g.strategy = 'platoon'; g.constraint
 const FIX_STRATEGY = `s.game().strategy = 'balanced';`;
 const BREAK_RULES = `s.game().constraints.minMinutes = { p0: 999 };`;
 const FIX_RULES = `s.game().constraints.minMinutes = {};`;
+
+// The spec's own middle cell (360px/24px) -- neither the default root nor
+// `LARGE_TEXT_PX`/`LARGE_TEXT_WIDTH` (320/32, `registry.mjs`), so it has no
+// existing name to import; local to this one check.
+const MID_TEXT_WIDTH = 360, MID_TEXT_PX = 24;
+
+// Fix pass finding 1: `.prow-t`'s flex-basis: 0 (its general rule, app.css)
+// let a wide <select> or the switch win the row's width and squeeze the
+// label to nothing, which then painted UNDER the control instead of beside
+// it -- measured at 320px/32px: Names 97px, Size 58px, Print 63px, Minutes
+// strip 44px under the switch; at 360px/24px: Size 43px, Names 34px, Print
+// 29px. Reads each `.prow`'s own box, its label's, and its control's --
+// `.prow-ctl` (the select+chevron pair) where the row has one, the bare
+// switch input where it does not -- no dependency on how the fix lays them
+// out, matching `sheet-spacing.mjs`'s `pstepGeometry` for the identical bug
+// class in `.pstep-row`.
+async function prowGeometry(c) {
+  return evalJSON(c, `JSON.stringify([...document.querySelectorAll('#sheetCard .pgrp .prow')].map(r => {
+    const row = r.getBoundingClientRect();
+    const label = r.querySelector('.prow-t');
+    const lr = label.getBoundingClientRect();
+    const ctl = r.querySelector('.prow-ctl') || r.querySelector('input[switch]');
+    const cr = ctl.getBoundingClientRect();
+    const box = x => ({ left: x.left, right: x.right, top: x.top, bottom: x.bottom });
+    return { text: label.textContent, row: box(row),
+      label: { ...box(lr), scrollWidth: label.scrollWidth, clientWidth: label.clientWidth },
+      ctl: box(cr) };
+  }))`);
+}
+
+// Every row: at least 48px tall, its label's own box not clipped
+// (scrollWidth <= clientWidth -- never collapsed and overflowing), and the
+// label never overlapping its control (stacked under it is fine; painted
+// under it is not). `#sheetCard` must be open when this runs.
+async function cardSheetRowsOk(c, ck, where) {
+  const rows = await prowGeometry(c);
+  if (!ck(rows.length === 5, `${where}: #sheetCard has ${rows.length} .prow row(s), want 5 -- is the sheet open?`)) return;
+  for (const r of rows) {
+    const h = r.row.bottom - r.row.top;
+    ck(h >= 47.5, `${where}: "${r.text}" row is ${h.toFixed(1)}px tall, want >= 48px`);
+    const labelFits = (r.label.right - r.label.left) > 0 && r.label.scrollWidth <= r.label.clientWidth + 0.5;
+    ck(labelFits, `${where}: "${r.text}"'s label is clipped (scrollWidth ${r.label.scrollWidth}px > clientWidth ${r.label.clientWidth}px)`);
+    ck(!boxesOverlap(r.label, r.ctl), `${where}: "${r.text}"'s label overlaps its control -- label ${JSON.stringify(r.label)}, control ${JSON.stringify(r.ctl)}`);
+  }
+}
+
+// Fix pass finding 4: `refreshCardSheetPreview()` used to run before
+// `openSheet(...)` in `#shareBtn`'s handler (app.js), so `fitStage` read
+// `#sheetCardPreview.clientWidth: 0` (the dialog was still closed, so
+// `avail <= 0`) and fell back to the unzoomed `--cardzoom: 1`. `.stage`'s
+// own `display: flex` then shrinks the oversized card's outer box to fit
+// anyway (its default `flex-shrink: 1`), so a plain "does the card's box
+// stay inside its container" measurement passes either way -- it is the
+// zoom itself, not the box, that stays wrong. `.card.half`'s CSS width is a
+// fixed 8in (768px, card.css): on this 390px phone that cannot show unzoomed
+// without a real fit ever running, so a `--cardzoom` still at the literal
+// fallback `1` is a direct, independent sign the sheet was measured while
+// still closed -- checking it does not re-derive `fitStage`'s own ratio.
+// The bug only shows on the FIRST open of a fresh page load (after that,
+// `clientWidth` is no longer 0 and every later fit is already correct), so
+// each call here starts from its own `goRich` reload -- `#sheetCard` has
+// never been opened in that page load -- rather than reusing a sheet this
+// pass already opened once. `size` goes into the fixture's own `ui.cardSize`
+// (a `goRich` override, not a live post-boot mutation): `#sheet`'s cards are
+// built once at boot from that saved value, and `refreshCardSheetPreview`
+// only ever clones `#sheet .card` -- it does not rebuild at whatever
+// `state.ui.cardSize` happens to hold when it runs. So a size change that
+// skips `renderCards` (as a raw `state.ui.cardSize = ...` would) never
+// reaches the sheet, which matches how a real reload -- Size set last time,
+// picked up fresh -- actually arrives.
+async function firstOpenFits(c, ck, origin, size, where) {
+  await goRich(c, origin, { cardSize: size });
+  await tap(c, `document.getElementById('shareBtn').click()`);
+  const r = await evalJSON(c, `(() => {
+    const host = document.getElementById('sheetCardPreview');
+    const card = host.querySelector('.card:not(.card-copy)');
+    if (!card) return 'null';
+    const cs = getComputedStyle(host);
+    const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const hr = host.getBoundingClientRect();
+    const cr = card.getBoundingClientRect();
+    return JSON.stringify({
+      contentWidth: hr.width - padX, cardWidth: cr.width,
+      zoom: parseFloat(getComputedStyle(card).zoom),
+    });
+  })()`);
+  if (ck(r !== null, `${where}: #sheetCardPreview has no live .card on first open`)) {
+    ck(r.cardWidth <= r.contentWidth + 1,
+      `${where}: the fitted card is ${r.cardWidth.toFixed(1)}px wide, #sheetCardPreview's content box is only ${r.contentWidth.toFixed(1)}px -- fitted before the sheet opened (finding 4)`);
+    // 8in (768px, card.css's `.card.half`) cannot show unzoomed on a 390px
+    // phone -- a zoom still at 0.9+ means the fit ran against a closed (0px)
+    // stage (finding 4), not the real, open one.
+    if (size === 'half') {
+      ck(r.zoom < 0.9,
+        `${where}: --cardzoom is ${r.zoom} -- a .card.half (768px) fit to a ${r.contentWidth.toFixed(1)}px stage without zooming means fitStage read the sheet before it opened (finding 4)`);
+    }
+  }
+  await tap(c, `document.getElementById('sheetCardClose').click()`);
+}
 
 export async function timelineCardSheetPass(c, origin) {
   const problems = [];
@@ -136,6 +236,10 @@ export async function timelineCardSheetPass(c, origin) {
     ck(sheet1.cardSize === 'pocket', `#cardSize reads "${sheet1.cardSize}", want "pocket" (RICH's own ui.cardSize)`);
     ck(sheet1.cardId === 'short', `#cardId reads "${sheet1.cardId}", want "short" (RICH's own ui.cardId)`);
     ck(sheet1.showMinutes === true, `#showMinutes.checked is ${sheet1.showMinutes}, want true (RICH's own ui.showMinutes)`);
+
+    /* ---- fix pass finding 1: row geometry at 390px/16px (the sheet is
+       already open from the check just above) ---- */
+    await cardSheetRowsOk(c, ck, '390px/16px');
 
     /* ---- item 3: changing Size changes the preview ---- */
     const beforeSize = await evalJSON(c, `(() => {
@@ -244,6 +348,39 @@ export async function timelineCardSheetPass(c, origin) {
     await tap(c, `document.getElementById('sheetPlanClose').click()`);
     await evalIn(c, setGame(FIX_RULES));
     await settle(c);
+
+    /* ---- fix pass finding 1: row geometry at 360px/24px and 320px/32px,
+       the other two cells the finding measured ---- */
+    await c.send('Page.setFontSizes', { fontSizes: { standard: MID_TEXT_PX, fixed: MID_TEXT_PX } });
+    try {
+      await c.send('Emulation.setDeviceMetricsOverride', { width: MID_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+      await goRich(c, origin);
+      await tap(c, `document.getElementById('shareBtn').click()`);
+      await cardSheetRowsOk(c, ck, '360px/24px');
+      await tap(c, `document.getElementById('sheetCardClose').click()`);
+    } finally {
+      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+      await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    }
+
+    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
+    try {
+      await c.send('Emulation.setDeviceMetricsOverride', { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+      await goRich(c, origin);
+      await tap(c, `document.getElementById('shareBtn').click()`);
+      await cardSheetRowsOk(c, ck, '320px/32px');
+      await tap(c, `document.getElementById('sheetCardClose').click()`);
+    } finally {
+      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+      await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    }
+
+    /* ---- fix pass finding 4: the preview fits on the sheet's FIRST open,
+       at both Size values -- each call starts from its own reload, since
+       the bug this guards only shows before `#sheetCard` has ever opened in
+       a page load. */
+    await firstOpenFits(c, ck, origin, 'pocket', 'first open, pocket');
+    await firstOpenFits(c, ck, origin, 'half', 'first open, half');
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }

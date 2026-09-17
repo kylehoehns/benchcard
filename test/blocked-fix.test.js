@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './dom-stub.js';
-const { blockedFix } = await import('../app/state.js');
+const { blockedFix, BLOCKED_TITLE } = await import('../app/state.js');
 
 /* Decision 7: the blocked panel's one exported pure error-to-fix mapping.
    First error in the issues list wins; every other error code falls back to
@@ -48,4 +48,11 @@ test('blockedFix: a warning or info ahead of the error is skipped', () => {
 test('blockedFix: no error at all returns null', () => {
   assert.equal(blockedFix([]), null);
   assert.equal(blockedFix([{ severity: 'info', code: 'NO_SUBS_ALL_GAME', message: 'x' }]), null);
+});
+
+/* #29 fix pass finding 7: the blocked panel's title is typed once here so
+   timeline.js and card.js read the same string instead of each carrying
+   their own copy of the literal. */
+test('BLOCKED_TITLE: the blocked panel title string', () => {
+  assert.equal(BLOCKED_TITLE, "This plan can't be built");
 });

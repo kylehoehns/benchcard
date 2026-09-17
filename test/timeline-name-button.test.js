@@ -48,12 +48,23 @@ test('a real button.tl-name is built with the row, and carries aria-expanded', (
 // the engine's own first error through `blockedFix` (state.js), so the one
 // heading pinned here is the only text this branch still owns; the message
 // itself is `blocked-fix.test.js`'s seam, not this one's.
-test('the blocked heading reads "This plan can\'t be built" and reads the reason from blockedFix', () => {
+//
+// #29 fix pass finding 7: the heading itself stopped being a literal here --
+// card.js's own blocked preview needed the identical wording, so it now
+// lives once, as `BLOCKED_TITLE` (state.js), and both read it.
+test('the blocked heading reads BLOCKED_TITLE and reads the reason from blockedFix', () => {
   const empty = functionBody(src, 'timelineEmpty');
-  assert.match(empty, /This plan can't be built/,
-    'the blocked heading must read "This plan can\'t be built"');
+  assert.match(empty, /\bBLOCKED_TITLE\b/,
+    'the blocked heading must read BLOCKED_TITLE (state.js), not a wording fixed here');
+  assert.doesNotMatch(empty, /This plan can't be built/,
+    'the literal must not still be typed out in timelineEmpty');
   assert.match(empty, /\bblockedFix\(/,
     'the reason must come from blockedFix, not a wording fixed here');
   assert.doesNotMatch(empty, /No rotation yet\. Resolve the errors (above|below)\./,
     'the old fixed wording must not still be present');
+});
+
+test('BLOCKED_TITLE is imported from state.js', () => {
+  assert.match(src, /import\s*\{[^}]*\bBLOCKED_TITLE\b[^}]*\}\s*from\s*['"]\.\/state\.js['"]/,
+    'timeline.js must import BLOCKED_TITLE from state.js alongside blockedFix');
 });

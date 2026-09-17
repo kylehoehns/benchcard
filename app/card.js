@@ -11,7 +11,7 @@
 import { fmtClock, fmtMinutes } from './engine.js';
 import { $, el, set, ctx2d } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix } from './state.js';
+import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
 
 /* Where an unfinished game has got to, or null. `live.at` is the stint the
    coach last had open; stint 0 is indistinguishable from "never started" and
@@ -284,7 +284,7 @@ export function refreshCardSheetPreview() {
   const p = plans[state.activeGame];
   if (!p || !p.ok) {
     const fix = blockedFix(p?.issues);
-    host.append(stageEmpty("This plan can't be built",
+    host.append(stageEmpty(BLOCKED_TITLE,
       fix ? fix.message : 'Add your players and the card shows up here.'));
     return;
   }
@@ -294,7 +294,12 @@ export function refreshCardSheetPreview() {
 
 export function renderCards() {
   const sheet = $('#sheet'); sheet.textContent = '';
-  fitPreview();
+  // Fix pass finding 5: fitting `#sheet` here duplicated `applyGameView`'s
+  // own `if (onCard) fitPreview()` (timeline.js) -- render.js's section
+  // lists always run 'cards' before 'gameview', so both ran on every Card
+  // view render. `applyGameView` is the sole owner now; `#cardSize`'s own
+  // handler (app.js) adds 'gameview' to its render(...) call so a size
+  // change still refits.
   const note = $('#cardnote'); note.textContent = '';
   const live = plans[state.activeGame];
   const blocked = !live || !live.ok;
@@ -335,7 +340,7 @@ export function renderCards() {
   if (ab) ab.hidden = state.view !== 'games' || !state.onboarded;
   sheet.classList.toggle('blank', blocked);
   if (blocked) {
-    const why = live?.issues.find(i => i.severity === 'error');
+    const why = blockedFix(live?.issues);
     sheet.append(stageEmpty('No card yet', noRoster() ? 'Add your players and the card shows up here.'
       : why ? why.message : 'Set up the game to see the card.'));
     // #29 decision 2: refreshed here too, so the card sheet's own preview

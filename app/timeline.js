@@ -17,7 +17,7 @@ import { fmtClock, fmtMinutes } from './engine.js';
 import { riseIn, popIn, countTo, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
-import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, blockedFix } from './state.js';
+import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
 import { resumeAt, fitPreview } from './card.js';
 import { openPlanSheet, openWhoSheet } from './game-setup.js';
 
@@ -152,7 +152,7 @@ function rosterCta() {
 function timelineEmpty(g, p) {
   if (noRoster()) return rosterCta();
   const box = el('div', 'empty');
-  box.append(el('div', 'se-t', "This plan can't be built"));
+  box.append(el('div', 'se-t', BLOCKED_TITLE));
   const fix = blockedFix(p?.issues);
   box.append(el('div', 'se-s', fix ? fix.message : 'Set up the game to see the rotation.'));
   if (fix) {

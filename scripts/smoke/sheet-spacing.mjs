@@ -79,7 +79,7 @@ async function pstepGeometry(c, containerSel) {
 // by more than half a pixel -- two boxes that merely share an edge (the
 // label's own line sitting directly above the value/buttons' line) are not
 // an overlap.
-function boxesOverlap(a, b) {
+export function boxesOverlap(a, b) {
   return a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
 }
 

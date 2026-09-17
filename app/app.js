@@ -118,7 +118,10 @@ on('#copies', 'onchange', e => { state.ui.copies = Number(e.target.value); save(
 on('#cardId', 'onchange', e => { state.ui.cardId = e.target.value; save(); renderCards(); });
 on('#cardSize', 'onchange', e => {
   state.ui.cardSize = e.target.value === 'half' ? 'half' : 'pocket';
-  save(); render('setup', 'cards');
+  // Fix pass finding 5: renderCards no longer fits `#sheet` itself, so a
+  // size change needs 'gameview' in the same render(...) call for
+  // applyGameView's fit to run when Card view is on.
+  save(); render('setup', 'cards', 'gameview');
 });
 on('#printScope', 'onchange', e => { state.ui.printScope = e.target.value; save(); renderCards(); });
 on('#showMinutes', 'onchange', e => { state.ui.showMinutes = e.target.checked; save(); renderCards(); });
@@ -144,8 +147,13 @@ on('#print', 'onclick', printCard);
    the existing `[data-needs-card]` sweep -- so this handler never checks
    `p.ok` itself. */
 on('#shareBtn', 'onclick', e => {
-  refreshCardSheetPreview();
+  // Fix pass finding 4: the sheet has to be open (a non-zero `clientWidth`)
+  // before the preview is fitted -- `openSheet`'s `showModal()` is
+  // synchronous (trap.js), so the fit that follows reads the real box
+  // rather than falling back to `--cardzoom: 1` on the very first open.
+  // Matches the order `applyGameView` (timeline.js) already uses.
   openSheet($('#sheetCard'), e.currentTarget, { full: true });
+  refreshCardSheetPreview();
 });
 on('#sheetCardClose', 'onclick', () => closeSheet($('#sheetCard')));
 

@@ -712,34 +712,42 @@
         <div class="pgrp">
           <label class="prow" for="printScope">
             <span class="prow-t">Print</span>
-            <select id="printScope" class="prow-select">
-              <option value="game">This game</option>
-              <option value="day">Every game today</option>
-            </select>
-            <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            <span class="prow-ctl">
+              <select id="printScope" class="prow-select">
+                <option value="game">This game</option>
+                <option value="day">Every game today</option>
+              </select>
+              <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            </span>
           </label>
           <label class="prow" for="copies">
             <span class="prow-t">Copies</span>
-            <select id="copies" class="prow-select">
-              <option value="1">1</option><option value="2">2</option><option value="4">4</option>
-            </select>
-            <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            <span class="prow-ctl">
+              <select id="copies" class="prow-select">
+                <option value="1">1</option><option value="2">2</option><option value="4">4</option>
+              </select>
+              <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            </span>
           </label>
           <label class="prow" for="cardSize">
             <span class="prow-t">Size</span>
-            <select id="cardSize" class="prow-select">
-              <option value="pocket">Pocket · 3.45 × 5 in</option>
-              <option value="half">Half sheet · 8 × 5.1 in</option>
-            </select>
-            <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            <span class="prow-ctl">
+              <select id="cardSize" class="prow-select">
+                <option value="pocket">Pocket · 3.45 × 5 in</option>
+                <option value="half">Half sheet · 8 × 5.1 in</option>
+              </select>
+              <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            </span>
           </label>
           <label class="prow" for="cardId">
             <span class="prow-t">Names</span>
-            <select id="cardId" class="prow-select">
-              <option value="short">Short names</option>
-              <option value="number">Jersey numbers</option>
-            </select>
-            <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            <span class="prow-ctl">
+              <select id="cardId" class="prow-select">
+                <option value="short">Short names</option>
+                <option value="number">Jersey numbers</option>
+              </select>
+              <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            </span>
           </label>
           <!-- Decision 12: the same switch primitive the Plan sheet's own
                rows use (`input[switch]`, card.css untouched, app.css

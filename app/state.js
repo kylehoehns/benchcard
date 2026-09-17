@@ -911,6 +911,11 @@ export function summaryLine(mins, subs) {
   return `${minutesPart} · ${subs} change${subs === 1 ? '' : 's'}`;
 }
 
+/* The blocked panel's title (#29 decisions 5/7): one string, read by both
+   timeline.js's empty-rotation panel and card.js's card-sheet preview, so a
+   wording change only has one place to land. */
+export const BLOCKED_TITLE = "This plan can't be built";
+
 /* The blocked panel's one code-to-fix mapping (#29 decision 7). Pure: takes
    the plan's own `issues` array and returns the first error's message plus
    the one button that fixes it, or null when there is no error to show.

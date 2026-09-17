@@ -118,11 +118,18 @@ export const RICH = {
    `browserChecks`, immediately after the payload snapshot. The reload is
    required rather than tidy: `loadState` runs at boot and nothing re-reads
    localStorage afterwards. */
-export async function goRich(c, origin) {
+/* `ui` overrides one or more `RICH.ui` fields before the write -- #29's
+   "first open" check needs a record that already says 'half' the way a
+   returning coach's saved choice would, not a live mutation after boot that
+   `renderCards` never re-runs against (state.js's `cardSize` is read where
+   `#sheet`'s cards are built, not observed). Every other caller passes
+   nothing and gets exactly the old RICH. */
+export async function goRich(c, origin, ui) {
+  const record = ui ? { ...RICH, ui: { ...RICH.ui, ...ui } } : RICH;
   await evalIn(c, `(() => {
     localStorage.removeItem('benchcard.v3');
     localStorage.removeItem('benchcard.v6.bak');
-    localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(RICH))});
+    localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(record))});
     return 1;
   })()`);
   const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
