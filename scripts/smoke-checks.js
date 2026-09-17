@@ -105,6 +105,18 @@
   /* 2. The card is the product: 3.45 × 5in pocket, 8 × 5.1in half-sheet.
         `.card` carries a `zoom` to fit narrow screens, so divide it back out —
         the printed size is the unzoomed layout size. */
+  /* #29 decisions 2 and 5: `#sheet` (the live `.card`) only shows on screen
+     when `state.ui.gameView === 'card'`; Timeline is the default a cold load
+     lands on, so `.card` would measure 0×0 -- present but not laid out --
+     without this. Same click a coach makes ("taps Card"); switched back to
+     Timeline afterward so nothing below (the 44px sweep included) measures a
+     view this check did not ask for. `#viewSeg`'s own click handler is
+     synchronous (app.js), so the measurement right after `.click()` sees the
+     fitted result, no wait needed. */
+  const viewCard = document.querySelector('#viewSeg button[data-view="card"]');
+  const viewTimeline = document.querySelector('#viewSeg button[data-view="timeline"]');
+  if (viewCard) viewCard.click();
+
   /* `.card-copy` are the extra print copies. They are deliberately not laid
      out on screen, so they measure 0×0 here -- excluded rather than counted as
      the wrong size. Their printed size is the same nodes under print media,
@@ -126,6 +138,8 @@
       : wrong.length ? wrong.join('; ')
       : `${cards.length} card(s), all ${round(cards[0].getBoundingClientRect().width / (cards[0].currentCSSZoom || 1))}×` +
         `${round(cards[0].getBoundingClientRect().height / (cards[0].currentCSSZoom || 1))}px`);
+
+  if (viewTimeline) viewTimeline.click();
 
   /* 3. Touch targets ≥44px. A coach taps this standing up, in a hurry.
         Inline links inside running prose are exempt — they are text, not
@@ -394,7 +408,7 @@
     '#teamBtn', '#todayNewDay', '#settingsBtn', '.today-game', '#todayAddGame',
     '#todayTeam', '#todaySeason', '#backBtn', '.phrase', '.tl-name',
     '#regen', '.fold > summary', 'details.dz > summary', '.seg button',
-    '#abBench', '#abCard',
+    '#abBench',
   ].join(', ');
   minSizeCheck('today and game controls ≥ 48px', {
     gateOpen: true,

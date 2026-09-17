@@ -251,11 +251,11 @@ markup and `shortcuts.js` is the only thing that reads it, so another is an
 edit to `index.html` alone. The target is the in-app sheet rather than
 `advanced.html` on purpose — it never leaves the app, so it works in a gym with
 no signal, needs no page load and has no back button. *Reading the card* has no
-**?**, because its header is itself a button and the only other place to hang
-one is hidden while the card is folded, which is the default. The scroll is a
-single `scrollTop` write on `.keysbox`: `scrollIntoView` defaults `inline` to
-`'nearest'` and would move the sheet sideways, which is the same bug the tour
-carries a note about.
+**?**, because its header is itself a button and the card's own surface is now
+a sheet whose header holds exactly one control, the ✕ that closes it (#29, C4).
+The scroll is a single `scrollTop` write on `.keysbox`: `scrollIntoView`
+defaults `inline` to `'nearest'` and would move the sheet sideways, which is
+the same bug the tour carries a note about.
 
 Roster order is the order everything else reads in, so it is directly
 draggable: press the order column or the avatar of a row and move it. The
@@ -708,12 +708,12 @@ separate times and still read as janky, and the structural reason is worth
 keeping: `.gm` is the whole view, surface *and* type, so growing it out of a
 44px button scaled every glyph from ~11% and that smear was the jank. The grow
 also had to *measure* where to start from, and got it wrong twice in
-production — 0x0 against the card preview, which is folded away by default
-below 1100px, so the animation silently never ran on mobile at all; and
-`top: 855` against an 844px viewport when the coach beat the action bar's own
-slide-in. Both degraded to a plain CSS fade, which is indistinguishable from
-"the animation did not run". Nothing on the way into bench mode may measure the
-page again; `test/gamemode-open.test.js` pins that. Under reduced motion
+production — 0x0 against a card preview that was not on screen, so the
+animation silently never ran on mobile at all; and `top: 855` against an 844px
+viewport when the coach beat the action bar's own slide-in. Both degraded to a
+plain CSS fade, which is indistinguishable from "the animation did not run".
+Nothing on the way into bench mode may measure the page again;
+`test/gamemode-open.test.js` pins that. Under reduced motion
 `sheetUp` declines and the CSS `gmIn` keyframe takes over, which the global
 reduce rule collapses to an instant state change. A tap anywhere finishes the
 transition on the spot rather than waiting it out (`armInterrupt`), and a tap
@@ -860,7 +860,7 @@ this kid get", and only one of them may ever reach a coach's eyes. `state.js`
 owns it: `effectiveStints` is the rotation with the coach's fives folded in and
 the in/out columns recomputed, `effectiveMinutes` totals them, and every
 readout goes through the pair — the card, bench mode, the timeline blocks and
-totals, the detail panel, the stat tiles, the stint grid, the minute bars and
+totals, the detail panel, the summary line, the stint grid, the minute bars and
 the across-the-day chart. Both short-circuit to the plan's own arrays by
 identity when nothing has been swapped, which is every game before tip-off, so
 the engine's numbers are what prints rather than a re-rounding of them. The one

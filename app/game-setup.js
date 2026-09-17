@@ -17,7 +17,6 @@
  * ================================================================== */
 import { riseIn } from './fx.js';
 import { $, set, el } from './dom.js';
-import { renderCardFold } from './card.js';
 import { state, game, plans, teamName, noRoster, setAvailable,
          sentenceParts, planSay, stepFormat, GRAN_CHOICES } from './state.js';
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
@@ -45,10 +44,8 @@ export function renderSetup() {
   set('#copies', 'value', state.ui.copies);
   set('#cardId', 'value', state.ui.cardId);
   set('#cardSize', 'value', state.ui.cardSize);
-  set('.s-cardhd .hint', 'textContent', state.ui.cardSize === 'half' ? '8 × 5.1 in' : '3.45 × 5 in');
   set('#printScope', 'value', state.ui.printScope);
   set('#showMinutes', 'checked', state.ui.showMinutes);
-  renderCardFold();
 }
 
 
@@ -173,9 +170,17 @@ export function openPlanSheet(section, trigger) {
   body.scrollTop = top;
 }
 
+/* Who's here's own opener, shared with the blocked panel's "Change who's
+   here" button (#29 decision 7) so there is one implementation of opening
+   this sheet rather than a second one drifting apart from the sentence's. */
+export function openWhoSheet(trigger) {
+  paintWhoBody();
+  openSheet($('#sheetWho'), trigger);
+}
+
 function wireSentence() {
   const players = $('#phrasePlayers');
-  if (players) players.onclick = () => { paintWhoBody(); openSheet($('#sheetWho'), players); };
+  if (players) players.onclick = () => openWhoSheet(players);
   const format = $('#phraseFormat');
   if (format) format.onclick = () => { paintFormatBody(); openSheet($('#sheetFormat'), format); };
   const interval = $('#phraseInterval');

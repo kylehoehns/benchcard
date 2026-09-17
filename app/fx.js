@@ -72,12 +72,6 @@ export function riseIn(els, { delay = 0.028, from = 10 } = {}) {
     { ...SNAP, delay: stagger(delay) });
 }
 
-/** A short attention pulse — used when a value the coach cares about changes. */
-export function pulse(el) {
-  if (!enabled || !el) return;
-  animate(el, { transform: ['scale(1)', 'scale(1.08)', 'scale(1)'] }, { duration: 0.34, easing: 'ease-out' });
-}
-
 /** Spring an element in from slightly small. */
 export function popIn(el, opts = {}) {
   if (!enabled || !el) return;

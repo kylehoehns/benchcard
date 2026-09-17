@@ -15,12 +15,12 @@
 import { $ } from './dom.js';
 import { withFocus, closeSheets } from './trap.js';
 import { renderCards } from './card.js';
-import { renderTimeline } from './timeline.js';
+import { renderTimeline, applyGameView } from './timeline.js';
 import { renderBalance } from './balance.js';
 import { renderConstraints, renderSeasonAdjust } from './rules.js';
 import { renderStrategy, refreshBudgetActuals } from './strategy.js';
 import { renderRoster, renderLevels } from './roster-view.js';
-import { renderStats, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
+import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
 import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
 import { renderSeason } from './season-view.js';
@@ -69,12 +69,21 @@ const SECTIONS = {
      editor holds a select and two number inputs a coach may be part-way
      through -- so the panel refreshes on its own. */
   seasonadj:   () => renderSeasonAdjust(),
-  stats:       () => renderStats(),
+  // #29 decision 6: replaces the stat tiles -- renamed, not just re-pointed,
+  // so every caller (below, and `gamemode.js`) has to follow deliberately
+  // rather than silently keep working under a name that no longer matches.
+  summary:     () => renderSummary(),
   issues:      () => renderIssues(),
   plan:        () => renderPlanTable(),
   timeline:    () => renderTimeline(),
   totals:      () => renderDayTotals(),
   cards:       () => renderCards(),
+  /* #29 decisions 5 and 7: which of `#timeline` / `#sheet` shows, and the
+     `#viewSeg` sync -- after `cards` so a just-solved plan's blocked/ok state
+     (which `cards` itself does not decide, but both read off the same fresh
+     `plans[state.activeGame]` `computeAll` produced this render) is settled
+     before this reads it. */
+  gameview:    () => applyGameView(),
   /* The season ledger at the foot of the roster page. Not in AFTER_EDIT or
      PLAN_ONLY: nothing a coach edits about today changes what is already
      filed. It repaints on a full render, which is what "New day" and a
@@ -83,10 +92,10 @@ const SECTIONS = {
 };
 const ALL = Object.keys(SECTIONS);
 // everything a plan change touches, minus the containers a coach types into
-export const AFTER_EDIT = ['teams', 'tabs', 'sentence', 'strategy', 'budget', 'seasonadj', 'balance', 'stats', 'issues', 'plan', 'timeline', 'totals', 'cards'];
+export const AFTER_EDIT = ['teams', 'tabs', 'sentence', 'strategy', 'budget', 'seasonadj', 'balance', 'summary', 'issues', 'plan', 'timeline', 'totals', 'cards', 'gameview'];
 // as above but leaving the strategy body alone -- controls that repaint
 // themselves in place (sliders, pickers) must not be rebuilt mid-interaction
-export const PLAN_ONLY = ['tabs', 'sentence', 'budget', 'seasonadj', 'stats', 'issues', 'plan', 'timeline', 'totals', 'cards'];
+export const PLAN_ONLY = ['tabs', 'sentence', 'budget', 'seasonadj', 'summary', 'issues', 'plan', 'timeline', 'totals', 'cards', 'gameview'];
 
 export function render(...keys) {
   if (!state.onboarded) return;
@@ -402,6 +411,10 @@ function applyView(v, from) {
     if (onBack) barTitleEl.textContent = screenTitle(v);
     barTitleEl.hidden = v === 'games';
   }
+  /* #29 decision 4: the one door into the card sheet, shown only on the game
+     screen -- same shape as `#barTitle` swapping the other way, just above. */
+  const shareBtnEl = $('#shareBtn');
+  if (shareBtnEl) shareBtnEl.hidden = v !== 'games';
   /* #23 review, third round: entering Games has to show what `state` says,
      not whichever game the screen last painted. Everything above this line
      only ever toggled visibility and wrote the header title -- the opponent

@@ -4,20 +4,23 @@ import { readFileSync } from 'node:fs';
 
 /* "This game" -- Opponent, Tip-off and Remove -- may not live inside the card.
  *
- * It used to. The box sat at the bottom of `.s-cardopts`, and that block is
- * `display: none` while the card is folded (`#view-games.card-shut
- * .s-cardopts`). `storage.js` seeds `ui.cardOpen` FALSE, so on a phone a coach
+ * It used to. The box sat at the bottom of `.s-cardopts`, and that block was
+ * `display: none` while the card was folded (`#view-games.card-shut
+ * .s-cardopts`). `storage.js` seeded `ui.cardOpen` FALSE, so on a phone a coach
  * who had never opened the card preview could not see the opponent field, the
  * tip-off field or "Remove this game" at all -- measured, 2026-08-24: all
  * three had zero client rects at 390x844 on a default state. With the card
  * open they were still the last block on a 3,281px page.
  *
- * Two things are pinned here and they are different claims:
- *   1. STRUCTURE -- the three controls sit together in one box that is not
- *      inside anything `.card-shut` hides. This is the bug that hid them.
+ * #29 removed the fold entirely -- `renderCardFold`, `.cardtoggle` and every
+ * `.card-shut` rule are gone, and the card moved into a sheet a coach reaches
+ * from `#shareBtn` -- so the bug this file was written against cannot recur
+ * the old way. What still matters, and is still pinned here:
+ *   1. STRUCTURE -- the three controls still sit together in one box.
  *   2. READING ORDER -- below 1100px `.col-main` is `display: contents`, so
  *      source order proves nothing and the `order:` list in `app.css` is the
- *      only reading order there. "This game" reads before the squad.
+ *      only reading order there. "This game" still reads right after the
+ *      rotation and before Across the day.
  *
  * Source-level, like note-placement and print-gate: no DOM, so it holds for
  * every state rather than the one a rendered check happened to be given.
@@ -51,49 +54,31 @@ function element(src, needle) {
 
 const IDS = ['id="label"', 'id="when"', 'id="removeGame"'];
 
-test('Opponent, Tip-off and Remove are one box, outside the card fold', () => {
+test('Opponent, Tip-off and Remove are one box', () => {
   const box = element(html, 'class="side-box noprint s-thisgame"');
   for (const id of IDS) {
     assert.ok(box.includes(id), `${id} left the "This game" box`);
   }
-
-  /* Everything `.card-shut` hides on a phone. Read out of the CSS rather than
-     hard-coded, so a fourth selector added to that rule is checked too. */
-  const rule = css.match(/((?:#view-games\.card-shut[^,{]+,\s*)*#view-games\.card-shut[^,{]+)\{\s*display:\s*none/);
-  assert.ok(rule, 'the .card-shut hide rule moved -- re-point this test');
-  const hidden = rule[1].split(',').map(s => s.replace('#view-games.card-shut', '').trim());
-  assert.ok(hidden.length >= 3, `only ${hidden.length} selectors folded away with the card`);
-
-  for (const sel of hidden) {
-    const needle = sel.startsWith('#') ? `id="${sel.slice(1)}"` : `${sel.slice(1)}"`;
-    const region = element(html, needle);
-    for (const id of IDS) {
-      assert.ok(!region.includes(id), `${id} is inside ${sel}, which the card fold hides`);
-    }
-  }
 });
 
-test('"This game" reads after the setup blocks, but still above the card', () => {
+test('"This game" reads after the rotation, but still above Across the day', () => {
   const at = css.indexOf('@media screen and (max-width: 1099px)');
   assert.ok(at > 0, 'the phone stack media block moved -- re-point this test');
-  const block = css.slice(at, css.indexOf('\n}', css.indexOf('.s-cardopts', at)));
+  const block = css.slice(at, css.indexOf('\n}', css.indexOf('.s-day', at)));
   const orderOf = (sel) => {
     const m = block.match(new RegExp(`\\${sel}\\s*\\{[^}]*order:\\s*(\\d+)`));
     assert.ok(m, `no order: declared for ${sel} in the phone stack`);
     return Number(m[1]);
   };
-  // #69 decision 8 moved Rotation to the top of the phone stack (order 0),
-  // ahead of "This game" -- so "This game" (Opponent, Tip-off, Remove) no
-  // longer reads first; it is the first of the setup blocks left in this
-  // list, reading below Rotation before the card starts. #28 moved Plan,
-  // Lineup balance and Rules into `#sheetPlan` (a dialog, not part of the
-  // phone stack), so they are no longer entries to check here.
-  for (const above of ['.s-rot']) {
-    assert.ok(orderOf(above) < orderOf('.s-thisgame'),
-      `"This game" now reads before ${above} -- it should be the last of the setup blocks`);
-  }
-  assert.ok(orderOf('.s-thisgame') < orderOf('.s-cardopts'),
-    '"This game" sank back down beside the card options');
+  // #29 removed `.s-cardopts` and the fold -- the card now lives inside
+  // `.s-rot` (Timeline/Card) or in `#sheetCard`, a dialog with no `order:` of
+  // its own. So "This game" (Opponent, Tip-off, Remove) is checked against
+  // its actual phone-stack neighbors instead: it reads right after the
+  // rotation and right before Across the day.
+  assert.ok(orderOf('.s-rot') < orderOf('.s-thisgame'),
+    '"This game" now reads before the rotation');
+  assert.ok(orderOf('.s-thisgame') < orderOf('.s-day'),
+    '"This game" now reads after Across the day');
 });
 
 test('removing a game is still undoable and still refuses the last game', () => {

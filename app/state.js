@@ -188,7 +188,7 @@ const freshState = (players) => ({
   teams: [newTeam('', players)],
   activeTeam: 0,
   view: 'today',
-  ui: { copies: 2, showMinutes: false, printScope: 'game', cardId: 'short', cardSize: 'pocket', theme: 'auto', tipDone: false, prints: 0 },
+  ui: { copies: 2, showMinutes: false, printScope: 'game', cardId: 'short', cardSize: 'pocket', gameView: 'timeline', theme: 'auto', tipDone: false, prints: 0 },
 });
 
 // v1/v2 identified players by line number. Migrate positionally so the ids
@@ -898,6 +898,41 @@ export const spreadOf = mins => {
   const v = Object.values(mins);
   return v.length ? Math.round((Math.max(...v) - Math.min(...v)) * 100) / 100 : 0;
 };
+
+/* The summary line under the rotation (#29 decision 6): the minute range and
+   the change count, read off `effectiveMinutes` / `effectiveStints` by the
+   caller -- never `p.minutes` / `p.stints` -- so a hand swap the coach made
+   is what the line describes. Pure: takes the numbers already computed
+   rather than a plan, so it is testable without a game/plan fixture. */
+export function summaryLine(mins, subs) {
+  const vals = Object.values(mins);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const minutesPart = lo === hi ? `${fmtMinutes(hi)} min each` : `${fmtMinutes(lo)}–${fmtMinutes(hi)} min each`;
+  return `${minutesPart} · ${subs} change${subs === 1 ? '' : 's'}`;
+}
+
+/* The blocked panel's title (#29 decisions 5/7): one string, read by both
+   timeline.js's empty-rotation panel and card.js's card-sheet preview, so a
+   wording change only has one place to land. */
+export const BLOCKED_TITLE = "This plan can't be built";
+
+/* The blocked panel's one code-to-fix mapping (#29 decision 7). Pure: takes
+   the plan's own `issues` array and returns the first error's message plus
+   the one button that fixes it, or null when there is no error to show.
+   `opener` names which sheet the button opens -- 'who' (Who's here, the
+   `#phrasePlayers` opener), 'strategy' or 'rules' (the Plan sheet's groups,
+   `openPlanSheet`) -- left symbolic here because opening a sheet is not pure.
+   Lives here, not in timeline.js, because card.js's card-sheet preview needs
+   the same mapping's `message` for its own blocked state (decision 7) and
+   timeline.js already imports card.js -- a reverse import would cycle. */
+export function blockedFix(issues) {
+  const err = (issues || []).find(i => i.severity === 'error');
+  if (!err) return null;
+  if (err.code === 'NOT_ENOUGH_PLAYERS') return { message: err.message, label: "Change who's here", opener: 'who' };
+  if (err.code === 'UNITS_MISSING' || err.code === 'UNIT_WRONG_SIZE') return { message: err.message, label: 'Fill a unit', opener: 'strategy' };
+  if (err.code === 'CLOSERS_TOO_MANY' || err.code === 'CLOSERS_AVOID') return { message: err.message, label: 'Change the rules', opener: 'strategy' };
+  return { message: err.message, label: 'Change the rules', opener: 'rules' };
+}
 
 /* ================================================================== *
  * season carryover -- an INPUT, not new solver machinery (B3)

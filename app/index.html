@@ -396,6 +396,15 @@
     <div class="bar-back" id="barBack" hidden>
       <button class="btn icon ghost press" id="backBtn" type="button" aria-label="Back to Today"><span class="i" data-icon="chevron-left"></span></button>
       <h1 class="bar-title" id="barTitle"></h1>
+      <span class="spacer"></span>
+      <!-- #29 decision 4: the one door into the card sheet. Shown only on the
+           game screen (`applyView`, render.js); a round icon button so it
+           reads as "share", not "print" -- the printer glyph and
+           `data-needs-card` stay on `#print`/`#shareCard` inside the sheet,
+           which is the one place that needs to disable while blocked. This
+           button opens the sheet even while blocked, so it is never itself
+           disabled. -->
+      <button class="btn icon ghost press" id="shareBtn" type="button" aria-label="Share the card" hidden><span class="i" data-icon="share"></span></button>
     </div>
   </header>
 
@@ -564,7 +573,7 @@
       </dialog>
 
       <div class="cols print-path">
-        <div class="col-main noprint">
+        <div class="col-main print-path">
 
           <!-- #28: Plan, Lineup balance and Rules moved into `#sheetPlan`
                above -- opened from the sentence's Plan/Rules/evens-out
@@ -572,35 +581,56 @@
                `game-setup.js`), not from a fold on this page. -->
 
           <section class="block s-rot">
-            <div class="block-hd">
-              <h3>Rotation</h3>
-              <span class="spacer"></span>
-              <button class="btn ghost sm press" id="regen"><span class="i" data-icon="shuffle"></span>Shuffle</button>
+            <!-- #29 decision 5: Timeline | Card, the `.seg` primitive (not
+                 `.wide` -- two short text buttons, left-aligned at their own
+                 content width, not stretched full-width; `.seg`'s own
+                 `display: inline-flex` already keeps it out of the block's
+                 full width without a wrapper). `applyGameView` (timeline.js)
+                 keeps `.on`/`aria-pressed` in sync, the same shape
+                 `applyTheme` already keeps `#themeSeg` in. -->
+            <div class="seg noprint" id="viewSeg" role="group" aria-label="Timeline or Card">
+              <button class="press" type="button" data-view="timeline" aria-pressed="true">Timeline</button>
+              <button class="press" type="button" data-view="card" aria-pressed="false">Card</button>
             </div>
+            <!-- #29 decision 2: still the one print source. On the Card view
+                 this is shown at its own true size, scaled to the column by
+                 `--cardzoom` (`fitPreview`, card.js) -- the same element print
+                 uses, never a second render of it. `renderCards`/
+                 `applyGameView` toggle `hidden`; `.stage[hidden]` (card.css)
+                 is what makes that toggle take on screen. -->
+            <div class="stage print-path" id="sheet" hidden></div>
             <!-- #69 decision 7: the timeline is not boxed. `.surface` (a
                  bordered card) used to wrap it; both ids stay, unwrapped. -->
-            <div id="timeline" class="tl"></div>
+            <div id="timeline" class="tl noprint"></div>
             <!-- #72: moved below the timeline, so all 9 rows fit above the
                  fold on a phone -- the errors this reports are now read
                  after the rotation they explain, not before it. -->
-            <div id="issues" role="status" aria-live="polite"></div>
-            <div class="statrow" id="stats" style="margin-top:1.05rem"></div>
+            <div id="issues" class="noprint" role="status" aria-live="polite"></div>
+            <!-- #29 decision 6: replaces the stat tiles -- one sentence
+                 (`renderSummary`, plan-view.js) plus Shuffle, reusing
+                 `.block-hd`'s existing title-plus-Shuffle row layout verbatim
+                 (it was never tied to the `<h3>` it used to hold). -->
+            <div class="block-hd noprint" id="summaryRow">
+              <span id="summary"></span>
+              <span class="spacer"></span>
+              <button class="btn ghost sm press" id="regen"><span class="i" data-icon="shuffle"></span>Shuffle</button>
+            </div>
           </section>
 
-          <section class="block s-day">
+          <section class="block s-day noprint">
             <details class="fold" id="dayFold">
               <summary><h3>Across the day</h3><span class="hint" id="dayhint"></span><button class="helpq press" type="button" data-help="help-season" aria-label="How a tournament day and the season work">?</button></summary>
               <div class="surface" id="daytotals"></div>
             </details>
           </section>
 
-          <details class="dz" id="tabledetails">
+          <details class="dz noprint" id="tabledetails">
             <summary>Stint by stint</summary>
             <div class="dz-bd" id="plan"></div>
           </details>
         </div>
 
-        <aside class="col-side print-path">
+        <aside class="col-side noprint">
           <!-- Who you are playing, and the one control that removes the game.
                It used to sit inside `.s-cardopts`, at the bottom of the right
                rail under the card options, and that was wrong twice over: on a
@@ -629,93 +659,108 @@
             </div>
             <button class="btn ghost danger sm press" id="removeGame" hidden style="margin-top:.9rem">Remove this game</button>
           </div>
-          <!-- A header on a wide screen, a disclosure on a phone. The card is
-               still the thing this app makes, but a coach building a rotation
-               is looking at the timeline, and the full preview was pushing it
-               off the screen. Same element either way so nothing has to be
-               rendered twice; below 1100px it takes the button behavior. -->
-          <button class="block-hd noprint s-cardhd cardtoggle" id="cardToggle" type="button"
-                  aria-expanded="true" aria-controls="sheet">
-            <span class="i ct-ico" data-icon="printer"></span>
-            <h3>The card</h3>
-            <span class="hint">3.45 × 5 in</span>
-            <span class="i ct-chev" data-icon="chevron-right"></span>
-          </button>
-          <!-- Above the stage, not below it: this is the explanation for why
-               there are four previews, and a coach who reads it after scrolling
-               past all four has already spent the confusion it was meant to
-               prevent. -->
-          <div id="cardnote" class="alert info noprint" style="margin-bottom:.85rem"></div>
-          <div class="stage print-path" id="sheet"></div>
-          <!-- BELOW 900px this row is Share card and nothing else. The phone
-               action bar already carries bench and print, in thumb reach, and
-               a coach on their own phone read the duplicate row as clutter:
-               "Share card is the only unique thing." Above 900px there is no
-               action bar, so this row is the only path to any of them and
-               keeps all four. `app.css` owns the hide; nothing is removed from
-               the DOM, because `#print` is found by three separate mechanisms
-               (see the note on the button itself). -->
-          <div class="gm-cta noprint">
-            <!-- The one "?" that is not on a section header, and the reason
-                 is the door it stands beside: `shortcuts.js` refuses every key
-                 while a sheet is up, so `#help` cannot be opened from INSIDE
-                 game mode. A20 slice 3 moved the three bench scopes off
-                 about.html on the recorded promise that `#help` is the surface
-                 a coach at the bench can reach -- this is what makes that
-                 promise true. Below 900px the bench control is `#abBench` and
-                 the twin of this button sits beside it in `#actionbar`; this
-                 one is the desktop half of that pair.
-
-                 The wrapper is the one node this slice spends and it is not
-                 decoration: `.gm-cta` is a centered `flex-wrap: wrap` row, so
-                 at 320px on 200% text every button takes its own line and a
-                 bare "?" would wrap to a line of its own, attached to
-                 nothing. Inside a wrapper it stays beside the button it
-                 explains at every width -- and the ambiguity it also fixes is
-                 that at 390px the "?" sat 6px from the bench button and 9px
-                 from Print, which reads as belonging to neither. -->
+          <!-- #29 decision 8: Print, Share image and the card options moved
+               into `#sheetCard` below -- only Start game and its "?" stay out
+               here, above 900px only (`#actionbar` carries the phone's bench
+               control). `.gm-start`, deliberately not `.gm-cta`: that class
+               now belongs to the sheet's own Print/Share row. -->
+          <div class="gm-start noprint">
             <span class="gmq">
               <button class="btn press" id="gmOpen">
 <span class="i" data-icon="maximize-2"></span> <span class="ab-lab">Start game</span>
               </button>
               <button class="helpq press" type="button" data-help="help-bench" aria-label="How changing the plan mid-game works">?</button>
             </span>
-            <!-- Print lives HERE, beside the card, and nowhere else: it used to
-                 stand in the top bar on every view, which reads as "print THIS"
-                 over Settings or Team, and hiding it off the other three made
-                 the whole right-hand cluster reflow every time the coach opened
-                 Settings. The action bar keeps its own printer for thumb reach
-                 on a phone; this one is what desktop has, and the top bar is now
-                 identical on all four views. -->
-            <button class="btn primary press" id="print" data-needs-card aria-label="Print the card">
-<span class="i" data-icon="printer"></span> Print
-            </button>
-            <!-- "Text me your rotation" is how a card actually reaches another
-                 coach; printing needs a printer. -->
-            <button class="btn press" id="shareCard" data-needs-card>
-<span class="i" data-icon="share-2"></span> Share card
-            </button>
-          </div>
-          <div class="noprint s-cardopts" style="margin-top:1rem">
-            <div class="side-box">
-            <div class="side-hd">Card options</div>
-            <div class="row">
-              <div><label class="f" for="printScope">Print</label>
-                <select id="printScope"><option value="game">this game</option><option value="day">every game today</option></select></div>
-              <div><label class="f" for="copies">Copies</label>
-                <select id="copies"><option value="1">1</option><option value="2">2</option><option value="4">4</option></select></div>
-              <div><label class="f" for="cardId">Names</label>
-                <select id="cardId"><option value="short">short names</option><option value="number">jersey numbers</option></select></div>
-              <div><label class="f" for="cardSize">Card</label>
-                <select id="cardSize"><option value="pocket">pocket 3.45 × 5 in</option><option value="half">half-sheet 8 × 5.1 in</option></select></div>
-            </div>
-            <label class="switch" style="margin-top:.85rem"><input type="checkbox" id="showMinutes"><span>Minutes strip on the card</span></label>
-            <p class="note">Cut on the dashed line. Underlined = just came in.</p>
-            </div>
           </div>
         </aside>
       </div>
     </div>
+
+    <!-- #29 decision 3: the card sheet -- one door in (`#shareBtn`,
+         `.bar-back`), everything about the card in one place: the preview
+         (a clone of `#sheet`, decision 2), why it is blocked when it is,
+         Print and Share image, and every card option. -->
+    <dialog class="bsheet grouped noprint" id="sheetCard" aria-labelledby="sheetCardTitle">
+      <div class="bsheet-hd">
+        <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+        <div class="bsheet-hd-row">
+          <span class="bsheet-hd-l"></span>
+          <h2 id="sheetCardTitle" tabindex="-1">The card</h2>
+          <span class="bsheet-hd-r"><button type="button" class="bsheet-close" id="sheetCardClose" aria-label="Close">✕</button></span>
+        </div>
+      </div>
+      <div class="bsheet-body">
+        <!-- #29 decision 2: a clone of `#sheet`'s own cards, not a second
+             render of the plan -- `refreshCardSheetPreview` (card.js) fills
+             this. `.stage` so `--cardzoom` (fitPreview) reaches the cards
+             inside it the same way it reaches `#sheet`'s own. -->
+        <div class="stage" id="sheetCardPreview"></div>
+        <!-- Above the buttons, not below: this is the explanation for why a
+             plan needs two cards, and a coach who reads it after tapping
+             Print has already spent the confusion it was meant to prevent. -->
+        <div id="cardnote" class="alert info noprint"></div>
+        <div class="gm-cta noprint">
+          <button class="btn primary press" id="print" data-needs-card aria-label="Print the card">
+<span class="i" data-icon="printer"></span> Print
+          </button>
+          <!-- "Text me your rotation" is how a card actually reaches another
+               coach; printing needs a printer. -->
+          <button class="btn press" id="shareCard" data-needs-card>
+<span class="i" data-icon="share-2"></span> Share image
+          </button>
+        </div>
+        <div class="pgrp">
+          <label class="prow" for="printScope">
+            <span class="prow-t">Print</span>
+            <span class="prow-ctl">
+              <select id="printScope" class="prow-select">
+                <option value="game">This game</option>
+                <option value="day">Every game today</option>
+              </select>
+              <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            </span>
+          </label>
+          <label class="prow" for="copies">
+            <span class="prow-t">Copies</span>
+            <span class="prow-ctl">
+              <select id="copies" class="prow-select">
+                <option value="1">1</option><option value="2">2</option><option value="4">4</option>
+              </select>
+              <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            </span>
+          </label>
+          <label class="prow" for="cardSize">
+            <span class="prow-t">Size</span>
+            <span class="prow-ctl">
+              <select id="cardSize" class="prow-select">
+                <option value="pocket">Pocket · 3.45 × 5 in</option>
+                <option value="half">Half sheet · 8 × 5.1 in</option>
+              </select>
+              <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            </span>
+          </label>
+          <label class="prow" for="cardId">
+            <span class="prow-t">Names</span>
+            <span class="prow-ctl">
+              <select id="cardId" class="prow-select">
+                <option value="short">Short names</option>
+                <option value="number">Jersey numbers</option>
+              </select>
+              <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
+            </span>
+          </label>
+          <!-- Decision 12: the same switch primitive the Plan sheet's own
+               rows use (`input[switch]`, card.css untouched, app.css
+               unchanged) -- not `.switch`, the label+input pair used outside
+               a grouped sheet. -->
+          <label class="prow" for="showMinutes">
+            <span class="prow-t">Minutes strip</span>
+            <input type="checkbox" id="showMinutes" switch>
+          </label>
+        </div>
+        <p class="pgrp-f">Cut on the dashed line. Underlined = just came in.</p>
+      </div>
+    </dialog>
   </main>
 
   <!-- ============================ FIRST RUN ============================ -->
@@ -1419,19 +1464,21 @@
     </div>
   </div>
 
-  <!-- Phone action bar: the card and game mode are ~2 screens down, and a coach
-       standing courtside should not have to scroll to reach either.
+  <!-- Phone action bar: game mode is ~2 screens down, and a coach standing
+       courtside should not have to scroll to reach it.
        This bar only exists below 900px, and below 900px it is the ONLY bench
-       and print control -- `.gm-cta`'s pair is hidden there (A39). The two
-       breakpoints carry different rows on purpose: the in-card row keeps what
-       the action bar does not. -->
+       control -- `.gm-start`'s copy is hidden there (A39). #29 decision 8
+       retired the printer button that used to sit beside it: the card sheet
+       (`#sheetCard`) is one tap away from `#shareBtn` in the top bar at every
+       width, including this one, so a second, narrower path to Print/Share
+       was a control that did the same thing worse. -->
   <div class="actionbar noprint" id="actionbar" hidden>
     <button class="ab-main press" id="abBench">
       <span class="i" data-icon="maximize-2"></span>
       <span class="ab-lab">Start game</span>
     </button>
     <!-- The bench "?" travels with the bench button. Above 900px that button is
-         `#gmOpen` and the "?" beside it lives in `.gm-cta`; below 900px this bar
+         `#gmOpen` and the "?" beside it lives in `.gm-start`; below 900px this bar
          IS the bench control, so the door into `#help` has to be here or a phone
          has none at all -- `shortcuts.js` refuses every key while a sheet is up,
          so `#help` cannot be opened from inside game mode, and there is no
@@ -1439,9 +1486,6 @@
          ever on screen: `.actionbar` is `display: none` above 900px and `.gmq`
          is `display: none` below it. -->
     <button class="helpq press" type="button" data-help="help-bench" aria-label="How changing the plan mid-game works">?</button>
-    <button class="ab-side press" id="abCard" data-needs-card aria-label="Print the card">
-      <span class="i" data-icon="printer"></span>
-    </button>
   </div>
 
   <div class="tour noprint" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle">

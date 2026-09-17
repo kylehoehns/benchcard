@@ -515,9 +515,9 @@ export function sanitize(raw, helpers) {
       printScope: raw.ui?.printScope === 'day' ? 'day' : 'game',
       cardId: raw.ui?.cardId === 'number' ? 'number' : 'short',
       cardSize: raw.ui?.cardSize === 'half' ? 'half' : 'pocket',
-      // Card preview folded away by default -- it only applies below the
-      // two-column breakpoint, where it was costing 41% of the page.
-      cardOpen: !!raw.ui?.cardOpen,
+      // Timeline or Card on the game screen (#29). An old record's cardOpen
+      // (the folded card preview it replaces) is simply dropped.
+      gameView: raw.ui?.gameView === 'card' ? 'card' : 'timeline',
       /* The tip jar, asked once and never again. `tipDone` is set by taking
          the link *or* by declining -- either way the coach has answered, and
          asking a second time is how a free tool starts feeling like shareware.

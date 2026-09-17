@@ -16,12 +16,8 @@ const PLAYERS = [
 ].map(([name, number], i) => ({ id: 'p' + i, name, number, shortName: '' }));
 
 export const UI = {
-  // cardOpen: below 1100px the card preview is folded behind a disclosure by
-  // default, and a folded card measures 0×0 -- the size check would be
-  // guarding nothing. Opened here so the check sees a laid-out card, which is
-  // the state it exists to police.
   copies: 2, showMinutes: true, printScope: 'game', cardId: 'short',
-  cardSize: 'pocket', theme: 'light', cardOpen: true,
+  cardSize: 'pocket', theme: 'light',
 };
 
 /* THE LEAN FIXTURE. One team, one game, no filed season, every player on the
@@ -122,11 +118,18 @@ export const RICH = {
    `browserChecks`, immediately after the payload snapshot. The reload is
    required rather than tidy: `loadState` runs at boot and nothing re-reads
    localStorage afterwards. */
-export async function goRich(c, origin) {
+/* `ui` overrides one or more `RICH.ui` fields before the write -- #29's
+   "first open" check needs a record that already says 'half' the way a
+   returning coach's saved choice would, not a live mutation after boot that
+   `renderCards` never re-runs against (state.js's `cardSize` is read where
+   `#sheet`'s cards are built, not observed). Every other caller passes
+   nothing and gets exactly the old RICH. */
+export async function goRich(c, origin, ui) {
+  const record = ui ? { ...RICH, ui: { ...RICH.ui, ...ui } } : RICH;
   await evalIn(c, `(() => {
     localStorage.removeItem('benchcard.v3');
     localStorage.removeItem('benchcard.v6.bak');
-    localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(RICH))});
+    localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(record))});
     return 1;
   })()`);
   const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));

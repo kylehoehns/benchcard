@@ -9,7 +9,11 @@ import { readFileSync } from 'node:fs';
  * no card to turn into an image. That was found and fixed once, on `#print`
  * and `#shareCard`, and stayed live for months on `#abCard`: the action bar's
  * printer, which is the one a coach actually taps on a phone. Three controls
- * for two actions, each remembering the rule separately.
+ * for two actions, each remembering the rule separately -- `#abCard` is gone
+ * as of #29 (`#shareBtn` replaces it as the one door into the card sheet, and
+ * only opens the sheet; it carries no printer icon and no `data-needs-card`
+ * of its own, per that ticket's decision 4), so two triggers is now the
+ * expected count, not evidence the walker stopped looking.
  *
  * So this test refuses to name them. It DISCOVERS the controls by role --
  * every element bound to a handler that reaches `window.print()` or
@@ -77,9 +81,9 @@ function attrsOf(id) {
 test('the discovery actually found the print and share controls', () => {
   assert.ok(SINKS.has('printCard'),
     'no function reaching window.print() was found in app.js — the walker is broken, not the app');
-  assert.ok(triggers.length >= 3,
+  assert.ok(triggers.length >= 2,
     `only ${triggers.length} print/share trigger(s) discovered (${triggers.map(t => t.sel).join(', ')}) — `
-    + 'the app has at least three; the walker has stopped seeing them');
+    + 'the app has at least two (#print, #shareCard); the walker has stopped seeing them');
 });
 
 test('every control that prints or shares is gated on a plan being printable', () => {

@@ -13,8 +13,10 @@ const css = readFileSync(new URL('app.css', ROOT), 'utf8');
 
 const BIG = '@media (max-width: 19em)';
 /* The 620px block that carries the bar's stages -- there are several blocks at
-   that width, and this is the one that lets the bar wrap. */
-const PHONE_AT = css.lastIndexOf('@media (max-width: 620px)', css.indexOf('.statrow { gap: 1rem; }'));
+   that width, and this is the one that lets the bar wrap. Anchored on the
+   bar's own wrap rule rather than a neighboring selector, which #29 removed
+   (`.statrow`, the stat tiles' own 620px gap rule). */
+const PHONE_AT = css.lastIndexOf('@media (max-width: 620px)', css.indexOf('.bar { gap: .4rem;'));
 const PHONE_BLOCK = css.slice(PHONE_AT, css.indexOf('\n}', PHONE_AT));
 
 test('the big-text query is in em, not px', () => {
@@ -102,7 +104,10 @@ test('the last two games-view rows wrap, and only at big text', () => {
   const big = css.slice(at, css.indexOf('\n}', at));
   assert.match(big, /\.block-hd\s*{[^}]*flex-wrap:\s*wrap/,
     'the section heading row can no longer wrap, so Shuffle can hang off the edge again at big text');
-  assert.match(big, /\.gm-cta\s+\.btn\s*{[^}]*white-space:\s*normal/,
+  // #29 decision 8: `.gm-start` (Start game, above 900px) carries the same
+  // wrap-at-big-text rule `.gm-cta` (the card sheet's own Print/Share row)
+  // already did -- one declaration, both selectors.
+  assert.match(big, /\.gm-cta\s+\.btn,\s*\.gm-start\s+\.btn\s*{[^}]*white-space:\s*normal/,
     'the bench button is nowrap again at big text, which makes it wider than its own column');
 
   /* And nowhere else: `.btn` is nowrap by design everywhere else in the app,

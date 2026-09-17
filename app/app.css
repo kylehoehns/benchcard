@@ -130,6 +130,18 @@ a { color: inherit; }
 .seg button.on { background: var(--seg-on); color: var(--tint); box-shadow: var(--shadow-sm); }
 .seg.wide { display: flex; width: 100%; padding: 2px; }
 .seg.wide button { flex: 1; padding: .58rem .3rem; font-size: var(--fs-secondary); }
+/* #29 decision 5: Timeline | Card, the bare (non-`.wide`) shape -- everything
+   above is already correct for it.
+   No gap under it, for the reason `.s-rot > .block-hd` gives above: this seg
+   stands where "Rotation" and its 48px Shuffle used to, and its own buttons
+   are 48px tall with their labels centered, so the lower half of the seg is
+   already the space. It has to be earned rather than spent: the seg's box is
+   52px (48px buttons inside `.seg`'s own 2px track inset) where the header it
+   replaced was 48px, and smoke `game rows fit` has all nine rows above the
+   Start game bar at 390x844 by about 9px on CI, where a wider fallback font
+   wraps the sample sentence onto a fourth line. Twelve px of gap here is more
+   than that whole margin. */
+#viewSeg { margin-bottom: 0; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
@@ -169,6 +181,16 @@ a { color: inherit; }
    48x48. */
 #todayNewDay { font-size: var(--fs-headline); color: var(--ink); min-height: 48px; padding: .3rem .5rem; }
 #settingsBtn { width: 48px; height: 48px; }
+/* #29 decision 3: "Share the card" is the one door into the card sheet, so
+   it gets the same unconditional 48x48 `#settingsBtn` already has, rather
+   than `.btn.icon`'s 44px coarse-pointer floor. Round like `#backBtn`
+   (fix pass finding 3): same 2.25rem circle in `--surface-2`, scoped to the
+   id so no other icon button picks it up. */
+#shareBtn { width: 48px; height: 48px; }
+#shareBtn .i { width: 2.25rem; height: 2.25rem; border-radius: var(--r-full); background: var(--surface-2); }
+@media (hover: hover) {
+  #shareBtn:hover .i { background: var(--surface-3); }
+}
 
 .wrap { max-width: 1340px; margin: 0 auto; padding: clamp(1rem, 2.2vw, 1.8rem) clamp(.85rem, 2.6vw, 1.5rem) 4rem; }
 
@@ -177,9 +199,13 @@ a { color: inherit; }
 .block-hd { display: flex; align-items: baseline; gap: .7rem; margin-bottom: .75rem; }
 /* #69 decision 9: sentence case, like the prototype's own `.grp-h` (notes/
    mockups/prototype/index.html) -- footnote size, muted, no uppercase or
-   tracking. `.block-hd` is only ever "Rotation" and (above 1099px, before
-   `.cardtoggle h3` below overrides it back to a row) "The card". */
+   tracking. */
 .block-hd h3 { font-size: var(--fs-footnote); color: var(--muted); font-weight: 700; }
+/* #29 decision 6: the summary line replaces "Rotation" -- `#summaryRow`
+   reuses `.block-hd`'s own title-plus-Shuffle row layout verbatim (it was
+   never tied to the `<h3>` it used to hold), so only the text itself needs a
+   rule, matched to the same footnote size/muted color `.block-hd h3` used. */
+#summary { font-size: var(--fs-footnote); color: var(--muted); }
 /* #72: no gap under "Rotation". Its Shuffle is 48px tall with the label
    centered, so the button's own lower half is already the space. The 12px
    this saves, with .tl-head's smaller gap, is what lets a sentence that wraps
@@ -210,7 +236,6 @@ a { color: inherit; }
      second one to every seam and cost ~140px of scroll. */
   .cols { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
   .col-main, .col-side { display: contents; }
-  .gm-cta { margin-bottom: clamp(1.15rem, 2vw, 1.75rem); }
   /* #69 decision 8: Rotation reads first, directly under the sentence, and
      This game (opponent, tip-off, remove) drops to after Rules -- a coach
      opens the phone stack to see the plan, not to retype the opponent's name.
@@ -229,58 +254,18 @@ a { color: inherit; }
      #28: Plan, Lineup balance and Rules moved into `#sheetPlan`, a dialog,
      for the same reason the sheets above need no entry -- `.s-plan`,
      `.s-balance` and `#consdetails` go, and the list is three shorter again,
-     renumbered whole. */
+     renumbered whole.
+
+     #29: the card sheet, `#sheetCard`, replaces the fold -- another dialog,
+     so it needs no `order:` either, the same reasoning. `#sheet`, `#cardnote`
+     and `.gm-cta` all moved inside `.s-rot` or into that dialog, so they drop
+     out of this list entirely; only `.gm-start` (Start game and its "?",
+     decision 8) is new here, in the fold's old spot. */
   .s-rot   { order: 0; }
   .s-thisgame { order: 1; }
-  .s-cardhd { order: 2; }
-  #cardnote { order: 3; }
-  #sheet   { order: 4; }
-  .gm-cta  { order: 5; }
-  .s-day   { order: 6; }
-  #tabledetails { order: 7; }
-  .s-cardopts { order: 8; }
-}
-
-/* ---- the card disclosure -------------------------------------------------
-   Above the breakpoint this is the plain section header it has always been --
-   the side column has room for the preview and nothing is hidden. Below it,
-   the same element becomes a 44px disclosure and the preview, the note and the
-   card options fold away behind it.
-
-   Why fold at all: on a 390px phone the card block measured 1,505px of a
-   3,659px page -- 41%, more than the squad, strategy, timeline and day
-   sections put together. The coach building a rotation is reading the
-   timeline; the card is what they take to the gym. It stays one tap away and
-   the bench-mode button stays on screen either way. */
-.cardtoggle { width: 100%; font: inherit; color: inherit; text-align: left;
-  background: none; border: 0; padding: 0; }
-.cardtoggle .ct-ico, .cardtoggle .ct-chev { display: none; }
-
-@media screen and (max-width: 1099px) {
-  /* #69 decision 9: a grouped row -- `--surface`, 12px radius, no border,
-     at least 48px. */
-  .cardtoggle { display: flex; align-items: center; gap: .6rem; min-height: 48px;
-    padding: .55rem .8rem; background: var(--surface); border: 0;
-    border-radius: var(--r-sm); cursor: pointer; margin-bottom: .85rem;
-    transition: background var(--t) var(--ease); }
-  @media (hover: hover) { .cardtoggle:hover { background: var(--surface-2); } }
-  .cardtoggle .ct-ico { display: inline-flex; color: var(--muted); }
-  .cardtoggle .ct-chev { display: inline-flex; color: var(--faint); margin-left: .1rem;
-    transition: transform var(--t) var(--ease); }
-  .cardtoggle h3 { text-transform: none; letter-spacing: -.01em; font-size: var(--fs-body);
-    color: var(--ink); }
-  .cardtoggle .hint { margin-left: auto; }
-  .cardtoggle[aria-expanded="true"] .ct-chev { transform: rotate(90deg); }
-
-  /* Collapsed: the preview, its explanation and the print options go away.
-     `display: none` and not `hidden`, because these are `display: contents`
-     flex children with author display rules that would outrank the attribute
-     -- the same trap that once let the last game be deleted. */
-  #view-games.card-shut #sheet,
-  #view-games.card-shut #cardnote,
-  #view-games.card-shut .s-cardopts { display: none; }
-  /* the bench button carries the whole block when the preview is folded */
-  #view-games.card-shut .gm-cta { margin-top: 0; }
+  .s-day   { order: 2; }
+  #tabledetails { order: 3; }
+  .gm-start { order: 4; }
 }
 
 /* ---- Today's header: the team button and its menu (#23) ----------------
@@ -670,7 +655,12 @@ a { color: inherit; }
    case that needs the extra room. */
 .tl { --lab: 9.5rem; --tot: 2rem; container-type: inline-size; }
 .tl:not(.even) { --tot: 5.2rem; }
-.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: .25rem; }
+/* #29: no gap under the Q1-Q4 labels either. `align-items: end` already
+   leaves the label's own descender space between its text and the first row,
+   so the 4px this used to add read as nothing -- and the fold budget #72 set
+   out (nine rows plus the Start game bar inside 844px) has to pay for a 52px
+   Timeline | Card seg where a 48px header row used to be. */
+.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: 0; }
 .tl-head > div:first-child, .tl-head > div:last-child { display: none; }
 .tl-periods { position: relative; height: 1.1rem; padding: 0 .3rem; }
 /* #69 decision 7: no uppercase, no heavy weight -- a quiet footnote above the
@@ -859,19 +849,9 @@ a { color: inherit; }
 .tld-slot { font-size: var(--fs-footnote); font-variant-numeric: tabular-nums; padding: .2rem .55rem;
   border-radius: var(--r-full); background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
 
-/* ============================ stats ============================ */
-.statrow { display: flex; gap: 1.35rem; flex-wrap: wrap; }
-.st { display: flex; flex-direction: column; gap: .06rem; }
-/* #69 decision 9: sentence case, like the prototype's `.grp-h` -- no
-   uppercase or tracking on the stats row labels ("Squad", "Minutes"...). */
-.st .k { font-size: var(--fs-footnote); color: var(--faint); font-weight: 600; }
-.st .v { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.038em; font-variant-numeric: tabular-nums; }
-/* inline-block so the word can be animated: a transform on an inline box is
-   ignored, and this one rises into place the moment a plan comes out even. */
-.st .v small { display: inline-block; font-size: var(--fs-footnote); font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: .12em; }
-.st.good .v small { color: var(--ok); }
-.st.good .v { color: var(--ok); }
-.st.hot .v { color: var(--accent); }
+/* #29 decision 6: the stat tiles (`.statrow`/`.st`, "Squad", "Status",
+   "Minutes", "Spread", "Stints", "Subs" and their count-up animation) are
+   gone, replaced by `#summary`'s one line above. */
 
 /* ============================ alerts ============================ */
 .alert {
@@ -1418,6 +1398,33 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-dot.edge:not(.now)::before { opacity: .4; transform: scale(.75); }
 
 .gm-cta { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center; margin-top: .85rem; }
+/* Fix pass finding 8: the card sheet's own Print/Share pair should span the
+   sheet's full width as two equal buttons (the prototype), not sit centered
+   at content width. `.gm-cta` is also the boot-recovery panel's row
+   (index.html) -- unrelated furniture, not the card sheet -- so this is
+   scoped to `#sheetCard` rather than widened on the shared class. Text
+   already wraps inside a `.gm-cta .btn` past 24px root (above), so an equal
+   pair stays side by side there instead of overflowing. */
+#sheetCard .gm-cta { flex-wrap: nowrap; padding: 0 1rem; }
+#sheetCard .gm-cta .btn { flex: 1; min-width: 0; }
+/* Look pass: at a large root the pair cannot stay a pair. Measured at
+   320px/32px, `flex: 1` could not shrink two buttons below their own
+   min-content ("Share image" plus its icon) and the row ran from -14px to
+   334px on a 320px screen -- cut off at both ends, which is exactly the
+   thing an equal-width pair was meant to fix. They stack full width
+   instead, one thumb-width target each. The 16em threshold sits between
+   360px/24px (15em, stacked) and 320px/16px (20em, still a pair), so a
+   small phone at ordinary text keeps the prototype's side-by-side row. */
+@container (max-width: 16em) {
+  #sheetCard .gm-cta { flex-wrap: wrap; }
+  #sheetCard .gm-cta .btn { flex: 1 0 100%; }
+}
+/* #29 decision 8: `#gmOpen` and its "?" kept the `.gmq` pair, but the row
+   they used to share with Print and Share is gone (those moved into
+   `#sheetCard`) -- `.gm-start` is that same centered-row shape on its own,
+   not `.gm-cta` renamed, because the two rows are now hidden by different
+   rules (`.gm-start` below 900px, `.gm-cta`'s Print/Share never hide). */
+.gm-start { display: flex; justify-content: center; margin-top: .85rem; }
 
 /* Phone held sideways. Game mode is one tall column, which on a 390px-high
    viewport put 846px of content behind 247px of window -- the coach saw three
@@ -1515,15 +1522,6 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   box-shadow: 0 1px 2px rgba(0,0,0,.14);
 }
 .ab-main:disabled { opacity: .45; box-shadow: none; }
-.ab-side {
-  flex: none; width: 52px; min-height: 52px; border-radius: var(--r);
-  background: var(--surface); border: 1px solid var(--line-2); color: var(--ink);
-  display: grid; place-items: center;
-}
-.ab-side svg { width: 1.25rem; height: 1.25rem; }
-/* Matches `.ab-main:disabled`: a blocked plan grays both bar buttons, so the
-   printer reads as unavailable rather than as a button that did nothing. */
-.ab-side:disabled { opacity: .45; cursor: default; }
 /* Keep the *document* clear of the fixed bar -- but only the document, and only
    when there is a bar.
  *
@@ -2343,6 +2341,19 @@ dialog.bsheet.grouped { background: var(--sheet); box-shadow: var(--shadow-lg), 
    but bottom padding so the last group clears the status line's divider --
    matches the plain `.bsheet-body` rule below. */
 dialog.bsheet.grouped .bsheet-body { padding: 0 0 1rem; }
+/* Fix pass finding 2: every other `.bsheet` gets its bottom safe-area
+   clearance from `.bsheet-status`'s own padding below -- the card sheet
+   deliberately carries no status line (decision 3), so nothing gave its
+   body (and the footnote inside it) room above the iOS home indicator.
+   Scoped to the id so the other three grouped sheets, which already get it
+   once through `.bsheet-status`, do not get it a second time. */
+/* Look pass: a size container, the same idiom `.tl` (~line 671) and
+   `.bsheet-hd` (~line 2399) already use, so the two large-text rules below
+   read the sheet's own inline-size rather than the viewport. `em` is what
+   tells 320px/32px apart from 320px/16px: a doubled root halves the same
+   box's em count (10em against 20em) where a media query sees one width. */
+#sheetCard .bsheet-body { padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  container-type: inline-size; }
 /* #73 item 9: every sheet's status line gets the same top divider and its
    own background, grouped or not -- the survey found the overlay this once
    avoided is gone (#74 made the body scroll under it, not behind it), so
@@ -2587,6 +2598,60 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
    row's own `gap` (`.prow`, above) is the floor between them either way. */
 .prow-v { flex: 0 1 auto; min-width: 0; text-align: right; color: var(--muted); }
 .prow-chev { flex: none; color: var(--faint); }
+/* #29 decision 3: the card options are native `<select>`s inside a `.prow`
+   row (so a tap opens the phone's own picker), not a button that opens
+   another sheet -- no prior `.prow` row held a real form control, so this is
+   new. Shares `.prow-v`'s shape (right-aligned, muted, free to shrink) with
+   the platform chrome stripped off: `.prow-chev` beside it is the only
+   affordance a tap needs.
+   Scoped `#sheetCard .pgrp .prow-select`, two classes deep, not the bare
+   class: `#view-games select` (decision 9's borderless-field rule) and its
+   dark-theme twin `[data-theme="dark"] #view-games select` each carry an id,
+   so a lone id+class selector still loses to the dark one's id+attribute+
+   element on the tie-break; the extra `.pgrp` class is what wins outright. */
+#sheetCard .pgrp .prow-select { flex: 0 1 auto; min-width: 0; width: auto; text-align: right;
+  color: var(--muted); font: inherit; font-size: var(--fs-body);
+  background: none; border: 0; padding: 0; margin: 0; min-height: 0;
+  appearance: none; -webkit-appearance: none; cursor: pointer; }
+#sheetCard .pgrp .prow-select:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+/* Fix pass finding 1: same bug and the same fix as `.pstep-row` below --
+   `.prow-t`'s general rule (`flex: 1`, above) has a 0% flex-basis, so at a
+   large root a wide <select> (or the switch on Minutes strip) wins the
+   row's width and the label is squeezed to nothing, then paints under the
+   control -- measured at 320px/32px: Names 97px, Size 58px, Print 63px, the
+   Minutes strip row 44px under the switch. `flex-basis: auto` restores the
+   label's own content width, `flex-wrap: wrap` on the row lets it drop to
+   its own line once the label and the control no longer both fit;
+   `.prow-ctl` (the select+chevron pair) moves together as one unit rather
+   than each deciding to wrap on its own, mirroring `.pstep-tail`'s reason
+   for existing. `margin-left: auto` right-aligns the control on its own
+   wrapped line the way `.prow-t`'s flex-grow already did on one line; at
+   390px/16px nothing wraps, so the row is unchanged. Scoped to `#sheetCard`,
+   not `.prow` generally -- other sheets' rows were not checked against this
+   fix. */
+#sheetCard .pgrp .prow { flex-wrap: wrap; }
+#sheetCard .pgrp .prow-t { flex-basis: auto; }
+#sheetCard .pgrp .prow-ctl { display: flex; align-items: center; gap: .75rem; min-width: 0; margin-left: auto; }
+#sheetCard .pgrp .prow > input[switch] { margin-left: auto; }
+/* Look pass: wrapping stopped the label and the value colliding, but the
+   value was still cut mid-word -- a `<select>` reports `scrollWidth ===
+   clientWidth` whatever its text does, so nothing measured it until the
+   selected option was drawn with the select's own font and compared. At
+   320px/32px the wrapped line is 192px and the chevron plus its gap took
+   56px of it, leaving 136px against "Short names" at 174px and "This game"
+   at 143px. The chevron is decoration (`aria-hidden`, and the whole row is
+   the label that opens the picker), so it goes at that size and both values
+   fit whole. "Pocket · 3.45 × 5 in" wants 264px and fits at no single-line
+   size a 32px root allows, so the ellipsis is what it degrades to -- a
+   deliberate shortening rather than a word sliced in half. 12em sits
+   between 320px/32px (10em) and 360px/24px (15em), where every value
+   already fits. */
+#sheetCard .pgrp .prow-select { text-overflow: ellipsis; }
+@container (max-width: 12em) {
+  #sheetCard .pgrp .prow-chev { display: none; }
+  #sheetCard .pgrp .prow-ctl { width: 100%; }
+  #sheetCard .pgrp .prow-select { flex: 1; }
+}
 @media (hover: hover) { button.prow:hover { background: var(--surface-2); } }
 .prow-center { justify-content: center; text-align: center; }
 .prow-danger { color: var(--err); font-weight: 600; }
@@ -2837,46 +2902,39 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    of its own, so it needs no matching override here. */
 .fold > summary:has(.helpq)::after, details.dz > summary:has(.helpq)::after { margin-left: .1rem; }
 details.dz > summary .helpq { margin-block: -.85rem; }
-/* `.gm-cta` is a centered wrapping row, so the bench "?" travels with the
+/* `.gm-start` is a centered row of one, so the bench "?" travels with the
    button it explains rather than as a flex item of its own -- see the note in
    index.html. The tight gap is the whole point: at the row's own `.55rem` it
-   sat almost equidistant between "Use this on the bench" and "Print". */
+   sat almost equidistant between "Use this on the bench" and the button. */
 .gmq { display: inline-flex; align-items: center; gap: .1rem; max-width: 100%; min-width: 0; }
 /* Both floors have to come off or the wrapper undoes the phone rule below it.
-   `#gmOpen` was a direct child of the wrapping `.gm-cta` line and shrank with
+   `#gmOpen` was a direct child of the wrapping `.gm-start` line and shrank with
    it; inside an `inline-flex` it took its max-content width instead and the
    pair measured 439px in a 320px viewport at 200% text -- caught by smoke's
    large-text pass, not by anything at 390px. `max-width` bounds the wrapper to
    the line and `min-width: 0` lets the label use the `white-space: normal` the
    narrow block already gives it. */
 .gmq > .btn { min-width: 0; }
-.gm-cta .helpq { margin-left: 0; }
+.gm-start .helpq { margin-left: 0; }
 /* `.helpq` carries `margin-left: auto` for the summary rows it was written for;
    in the bar that would shove it against the printer instead of leaving it
    attached to the bench button it explains. */
 .actionbar .helpq { margin-left: 0; color: var(--muted); }
 
 /* A39. The two breakpoints carry different rows, deliberately -- do not
-   "simplify" this back into one row for both.
+ * "simplify" this back into one row for both.
  *
  * Below 900px `#actionbar` exists, pinned to the bottom in thumb reach, and it
- * already holds bench and print. This row repeated both about two screens down
- * the page, so the phone showed each of them twice; Share card is the only
- * control here the bar does not have. Found on a real phone.
- * Above 900px there is no action bar at all and this row is the ONLY path to
- * bench, print or share, so it keeps everything.
+ * already holds bench and print. `.gm-start` repeated the bench button about
+ * two screens down the page, so the phone showed it twice. Above 900px there
+ * is no action bar at all, so `.gm-start` is the only path to it and stays.
  *
- * A CSS hide, never `hidden` and never removal: `card.js`'s `[data-needs-card]`
- * sweep gates `#print`, `test/print-gate.test.js` discovers its handler, and the
- * `p` shortcut clicks it from any view. A `display: none` button still takes a
- * programmatic click -- verified at 390px, print dialog and all.
- *
- * `.gmq` goes as a unit because it is the button plus its "?": hiding only the
- * button would leave a bare "?" attached to nothing, which is the exact failure
- * the wrapper was added to prevent. The "?" is not lost -- its phone twin is in
- * `#actionbar`, beside the bench control it describes. */
+ * #29 decision 8: Print and Share image moved into `#sheetCard`, reachable at
+ * every width through `#shareBtn` (the top bar), so this rule no longer needs
+ * to reach into a shared row to hide only part of it -- `.gm-start` hides
+ * whole. */
 @media (max-width: 900px) {
-  .gm-cta .gmq, .gm-cta #print { display: none; }
+  .gm-start { display: none; }
 }
 
 /* ============================ views ============================ */
@@ -2944,7 +3002,6 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .seg button { padding: .36rem .72rem; font-size: var(--fs-footnote); }
   .btn { padding: .55rem .8rem; }
   .btn.icon { width: 2rem; padding: .45rem; }
-  .statrow { gap: 1rem; }
 }
 
 /* The last of the horizontal padding and the gaps. Measured, it buys 4px: the
@@ -3041,7 +3098,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      the bar and the picker above already take: nothing here can get smaller,
      so it goes onto a second line instead of off the edge. */
   .block-hd { flex-wrap: wrap; }
-  .gm-cta .btn { white-space: normal; text-align: center; }
+  .gm-cta .btn, .gm-start .btn { white-space: normal; text-align: center; }
 
   /* "Add a game" (#23) used to be a `.btn` here, one of a `flex: 1` pair
      with New day that could not shrink below its own label at a 32px root.
@@ -3329,7 +3386,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   /* 44px is the floor for both buttons, so the action bar gives up padding and
      8px of slack above that floor, and nothing else. */
   .actionbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-inset-bottom)); }
-  .ab-main, .ab-side { min-height: 44px; }
+  .ab-main { min-height: 44px; }
   .foot { margin-bottom: 3.6rem; }
 }
 

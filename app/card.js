@@ -11,7 +11,7 @@
 import { fmtClock, fmtMinutes } from './engine.js';
 import { $, el, set, ctx2d } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes } from './state.js';
+import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
 
 /* Where an unfinished game has got to, or null. `live.at` is the stint the
    coach last had open; stint 0 is indistinguishable from "never started" and
@@ -233,19 +233,73 @@ function buildCard(plan, rows, page, pageCount, title, when, minutes = plan.minu
 /* The card is laid out at its true print size so screen px map 1:1 to inches;
    an 8in half-sheet is simply wider than a phone. Preview-only `zoom` shrinks
    it to fit the column (print resets it to 1), so the coach sees the whole
-   card instead of a slice of one. */
-function fitPreview() {
-  const sheet = $('#sheet');
-  if (!sheet) return;
-  const avail = sheet.clientWidth - 32;   // .stage padding, 1rem a side
+   card instead of a slice of one.
+
+   #29 decision 10 / #56: reads the stage's own computed horizontal padding
+   rather than a hard-coded 32 (wrong the moment a coach turns the OS text
+   size up, which is what widens `.stage`'s padding at a 32px root and is
+   exactly the overflow #56 reported), and fits every stage on the game
+   screen carries -- `#sheet` and, once the card sheet exists, its own
+   preview -- to its own width rather than assuming they match. */
+function fitStage(stage) {
+  if (!stage) return;
+  const cs = getComputedStyle(stage);
+  const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+  const avail = stage.clientWidth - padX;
   const wanted = cardSize().w * 96;
-  sheet.style.setProperty('--cardzoom', avail > 0 ? Math.min(1, avail / wanted).toFixed(4) : 1);
+  stage.style.setProperty('--cardzoom', avail > 0 ? Math.min(1, avail / wanted).toFixed(4) : 1);
+}
+export function fitPreview() {
+  fitStage($('#sheet'));
+  fitStage($('#sheetCardPreview'));
 }
 addEventListener('resize', fitPreview);
 
+/* The "nothing to show yet" panel a stage falls back to -- same markup
+   whether it is `#sheet` itself (no card to print) or the card sheet's own
+   preview (no card to clone), only the title and message differ. */
+function stageEmpty(title, message) {
+  const d = el('div', 'stage-empty');
+  const si = el('div', 'se-ico');
+  si.append(icon('printer', { size: '1.6rem', stroke: 1.6 }));
+  d.append(si);
+  d.append(el('div', 'se-t', title));
+  d.append(el('div', 'se-s', message));
+  return d;
+}
+
+/* #29 decision 2: the card sheet's own preview is a clone of `#sheet`'s
+   non-copy cards, not a second render -- `renderCards` below is the one
+   place that builds a `.card`, and cloning is what keeps this from becoming
+   a second, driftable implementation of it. Refreshed here (called from
+   `renderCards` while the sheet is open) and once more when the sheet opens
+   (`app.js`), matching decision 2's "refreshed whenever renderCards runs
+   while the sheet is open and when it opens". Blocked reuses `blockedFix`'s
+   `message` only -- decision 7 explicitly withholds the fix button here
+   ("the sheet is one level and the fix is another sheet"). */
+export function refreshCardSheetPreview() {
+  const host = $('#sheetCardPreview');
+  if (!host) return;
+  host.textContent = '';
+  const p = plans[state.activeGame];
+  if (!p || !p.ok) {
+    const fix = blockedFix(p?.issues);
+    host.append(stageEmpty(BLOCKED_TITLE,
+      fix ? fix.message : 'Add your players and the card shows up here.'));
+    return;
+  }
+  for (const c of document.querySelectorAll('#sheet .card:not(.card-copy)')) host.append(c.cloneNode(true));
+  fitPreview();
+}
+
 export function renderCards() {
   const sheet = $('#sheet'); sheet.textContent = '';
-  fitPreview();
+  // Fix pass finding 5: fitting `#sheet` here duplicated `applyGameView`'s
+  // own `if (onCard) fitPreview()` (timeline.js) -- render.js's section
+  // lists always run 'cards' before 'gameview', so both ran on every Card
+  // view render. `applyGameView` is the sole owner now; `#cardSize`'s own
+  // handler (app.js) adds 'gameview' to its render(...) call so a size
+  // change still refits.
   const note = $('#cardnote'); note.textContent = '';
   const live = plans[state.activeGame];
   const blocked = !live || !live.ok;
@@ -286,15 +340,12 @@ export function renderCards() {
   if (ab) ab.hidden = state.view !== 'games' || !state.onboarded;
   sheet.classList.toggle('blank', blocked);
   if (blocked) {
-    const why = live?.issues.find(i => i.severity === 'error');
-    const d = el('div', 'stage-empty');
-    const si = el('div', 'se-ico');
-    si.append(icon('printer', { size: '1.6rem', stroke: 1.6 }));
-    d.append(si);
-    d.append(el('div', 'se-t', 'No card yet'));
-    d.append(el('div', 'se-s', noRoster() ? 'Add your players and the card shows up here.'
+    const why = blockedFix(live?.issues);
+    sheet.append(stageEmpty('No card yet', noRoster() ? 'Add your players and the card shows up here.'
       : why ? why.message : 'Set up the game to see the card.'));
-    sheet.append(d);
+    // #29 decision 2: refreshed here too, so the card sheet's own preview
+    // (a clone of `#sheet`) stays in sync while it is open, not just on open.
+    if ($('#sheetCard')?.open) refreshCardSheetPreview();
     return;
   }
   const which = state.ui.printScope === 'day' ? state.day.games.map((_, i) => i) : [state.activeGame];
@@ -333,15 +384,5 @@ export function renderCards() {
     ic.append(icon('info', { size: '1.05em' }));
     note.append(ic, el('span', null, notes.join(' ')));
   }
-}
-
-/* The card disclosure. Only meaningful below the two-column breakpoint -- the
-   class is harmless above it, where the CSS ignores it entirely, so the state
-   survives a rotation from landscape back to portrait instead of being reset
-   by a resize handler nobody would think to look for. */
-export function renderCardFold() {
-  const v = $('#view-games'), b = $('#cardToggle');
-  if (!v || !b) return;
-  v.classList.toggle('card-shut', !state.ui.cardOpen);
-  b.setAttribute('aria-expanded', String(!!state.ui.cardOpen));
+  if ($('#sheetCard')?.open) refreshCardSheetPreview();
 }
