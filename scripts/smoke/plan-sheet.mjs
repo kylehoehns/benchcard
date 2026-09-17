@@ -88,6 +88,22 @@ export async function planSheetPass(c, origin) {
       `the Rules header sits ${rulesHdOff}px from the scrolling body's top, want within 8px`);
     await tap(c, `document.getElementById('sheetPlanClose').click()`);
 
+    // Reopened from the strategy phrase after a Rules open, the picker is back
+    // in view, and the body scrolls (once it did not: the picker stayed
+    // scrolled off the top with no way to reach it).
+    await tap(c, `document.getElementById('phraseStrategy').click()`);
+    const reopened = await evalJSON(c, `(() => {
+      const body = document.getElementById('sheetPlanBody');
+      return JSON.stringify({
+        segOff: document.getElementById('stratseg').getBoundingClientRect().top - body.getBoundingClientRect().top,
+        overflowY: getComputedStyle(body).overflowY,
+      });
+    })()`);
+    ck(reopened.segOff >= 0 && reopened.segOff <= 24,
+      `#stratseg sits ${Math.round(reopened.segOff)}px from the body's top after reopening from the strategy phrase, want 0-24px`);
+    ck(reopened.overflowY === 'auto', `#sheetPlanBody's overflow-y is ${reopened.overflowY}, want auto so the coach can scroll it`);
+    await tap(c, `document.getElementById('sheetPlanClose').click()`);
+
     // Ravens, useCarryover on: the evens phrase scrolls to "Across the day".
     await tap(c, `document.getElementById('backBtn').click()`);
     await tap(c, `document.querySelectorAll('.today-game')[1].click()`);
