@@ -75,6 +75,16 @@
      segment -- both from the prototype's own light/dark palette objects. */
   --track: #EBEBEF;
   --seg-on: #FFFFFF;
+  /* A segmented control's inset track, the prototype's own value. Not
+     `--surface-2`: that is #F6F6F8 here, which is LIGHTER than `--bg`, so the
+     pill vanished into the page in light mode and only the raised "on" chip
+     read as anything at all. Decision 11 of #69 tried moving `--surface-2`
+     itself to this value and could not -- `--muted`, `--faint` and `--info`
+     all land on `--surface-2` elsewhere and none of them clears 4.5:1 on
+     #E8E8ED. A token of its own, carrying only the two colors a segmented
+     control actually paints, has no such problem: see `.seg` in app.css,
+     whose labels are `--ink` (13.93:1 here) like the prototype's. */
+  --seg-track: #E8E8ED;
   /* #28 (the Plan sheet): the grouped-sheet background, the prototype's own
      value. Lighter than --bg in dark mode (K4), so groups on it still read
      as raised surfaces -- see the dark block below. */
@@ -173,6 +183,9 @@
   --surface-3: #2E2E30;
   --track: #26262A;
   --seg-on: #4A4A4F;
+  /* The prototype's dark value, and the reason the bug was light-only: this
+     already sat well clear of `--bg` (#0B0B0C), so the pill read here. */
+  --seg-track: #2C2C2F;
   --sheet: #141416;
   --ink: #F4F4F6;
   --ink-2: #C7C7CC;
