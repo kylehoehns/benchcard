@@ -34,7 +34,7 @@ import { initToast, undoable, offer, flash, tipAfterPrint, tipAfterGame } from '
 import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, soon, setView, applyTheme, applyTint, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, removePlayer , nextHue, hueSlots, reseed,
-         replaceState, emptyConstraints, newGame, migrateLegacy, noRoster, team } from './state.js';
+         replaceState, emptyConstraints, newGame, migrateLegacy, team } from './state.js';
 import { openTrap, closeTrap } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -352,16 +352,6 @@ for (const n of document.querySelectorAll('.i[data-icon]')) {
 if (matchMedia('(max-width: 620px)').matches) {
   const df = $('#dayFold'); if (df) df.open = false;
 }
-
-/* Plan folds on the same terms, with one extra condition: it stays open while
-   the strategy is still the default. Even has no body at all, so an open
-   Plan costs an Even coach ~60px and keeps the one control that says what
-   this app does on the first screen. A coach who has picked By hand, Closers
-   or Platoon has already made that choice -- and those three carry an editor
-   tall enough to push the rotation off the phone entirely -- so for them the
-   summary hint is the answer and the fold shuts. First paint only, same rule
-   as the folds above. */
-if (!noRoster() && game()?.strategy !== 'balanced') { const pf = $('#planFold'); if (pf) pf.open = false; }
 
 /* Analytics: counters only, and only if ANALYTICS has been filled in. See
    analytics.js -- the payload builder is what makes "your roster never leaves

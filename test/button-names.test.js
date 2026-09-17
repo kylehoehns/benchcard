@@ -50,11 +50,14 @@ for (const g of found) {
   });
 }
 
-test('the unit-remove button says WHICH unit', () => {
+test('the unit-remove control still says WHICH unit', () => {
+  /* #28 replaced the glyph-only `×` button this file's own comment describes
+     with a full-text `.prow` row ("Remove unit N") -- decision 5's "a `Remove
+     unit N` row". The row's visible text IS its accessible name, so the glyph
+     problem this file guards against cannot recur here; what still has to
+     hold is that the index survives the restyle. */
   const src = decomment(readFileSync(new URL('strategy.js', dir), 'utf8'));
-  const at = src.indexOf("el('button', 'xbtn', '×')");
-  assert.notEqual(at, -1, 'the platoon unit-remove button moved; move this case with it');
-  assert.match(src.slice(at, at + 300), /aria-label',\s*`[^`]*\$\{i \+ 1\}/,
-    'the unit-remove buttons all carry the same name again. On a screen holding three units '
-    + 'that is three identical "Remove unit" buttons — the index is what makes it usable.');
+  assert.match(src, /`Remove unit \$\{i \+ 1\}`/,
+    'the unit-remove rows all carry the same name again. On a screen holding three units '
+    + 'that is three identical "Remove unit" rows — the index is what makes it usable.');
 });

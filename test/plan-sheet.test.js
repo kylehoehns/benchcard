@@ -120,13 +120,13 @@ test('ruleItems: decision 5 sentences, in order, for a game with one of each rul
   const texts = items.map(i => i.text);
   assert.deepEqual(texts, [
     'Everyone plays at least 10 min',
-    'Marcus Williams plays at least 16 min',
-    'Devon Ellis plays at most 20 min',
-    'Hana Kim and Eli Tran play together',
-    'A Four and A Five never share the floor',
+    'Marcus plays at least 16 min',
+    'Devon plays at most 20 min',
+    'Hana and Eli play together',
+    'A Four and A Five never play together',
     'A Six or A Seven is always on the floor',
-    'Marcus Williams starts the game',
-    'Marcus Williams, Devon Ellis and Hana Kim start the last period',
+    'Marcus starts the game',
+    'Marcus, Devon and Hana start the last period',
     'Nobody plays more than 1 stint in a row',
   ]);
 });
@@ -143,7 +143,7 @@ test('ruleItems: skips a minimum for a player who is not available', () => {
   const g = bareGame({ out: ['p1'], constraints: { ...S.emptyConstraints(), minMinutes: { p0: 16, p1: 12 } } });
   const players = [player('p0', 'Marcus Williams'), player('p1', 'Devon Ellis')];
   const items = withTeam(players, [g], {}, () => S.ruleItems(g));
-  assert.deepEqual(items.map(i => i.text), ['Marcus Williams plays at least 16 min']);
+  assert.deepEqual(items.map(i => i.text), ['Marcus plays at least 16 min']);
 });
 
 test('ruleItems: a rest limit above one reads the plural', () => {

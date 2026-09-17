@@ -32,7 +32,7 @@ export const STATES = [
     close: `$('#bulktoggle').click(); $('#backBtn').click()` },
   { name: 'games view, every disclosure open',
     open: `$('.today-game').click(); for (const d of document.querySelectorAll('details')) d.open = true`,
-    shows: '#planFold[open]',
+    shows: '#dayFold[open]',
     close: `for (const d of document.querySelectorAll('details')) d.open = false; $('#backBtn').click()` },
   /* #27 item 10: the first of the three new sheets, opened through its real
      trigger (the sentence's players phrase) rather than by hand -- the same
@@ -43,6 +43,21 @@ export const STATES = [
   { name: "who's here sheet",
     open: `$('.today-game').click(); $('#phrasePlayers').click()`, shows: '#sheetWho[open]',
     close: `$('#sheetWho').close(); $('#backBtn').click()` },
+  /* #28's Plan sheet, opened through its real trigger like every other state
+     here. Three states: level 1, and each of the two level-2 pages it owns
+     (a rule's detail is the third level-2 page, but it needs a rule on the
+     game first, which the harness's fixture does not seed). */
+  { name: 'plan sheet',
+    open: `$('.today-game').click(); $('#phraseStrategy').click()`, shows: '#sheetPlan[open]',
+    close: `$('#sheetPlan').close(); $('#backBtn').click()` },
+  { name: 'plan sheet, add a rule',
+    open: `$('.today-game').click(); $('#phraseRules').click(); $('#constraints .add-rule').click()`,
+    shows: '#planAddRuleBtn:not([hidden])',
+    close: `$('#sheetPlan').close(); $('#backBtn').click()` },
+  { name: 'plan sheet, lineup balance',
+    open: `$('.today-game').click(); $('#phraseStrategy').click(); $('#planLineups .prow').click()`,
+    shows: '#planSub .prow-shape',
+    close: `$('#sheetPlan').close(); $('#backBtn').click()` },
   { name: 'season view',
     open: `$('#todaySeason').click()`, shows: '#view-season',
     close: `$('#backBtn').click()` },

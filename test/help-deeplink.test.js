@@ -40,7 +40,11 @@ const links = [...html.matchAll(/data-help="([^"]+)"/g)].map(m => m[1]);
 const targets = [...sheet.matchAll(/<h4 class="help-h" id="([^"]+)">/g)].map(m => m[1]);
 
 test('every "?" points at a section that exists inside #help', () => {
-  assert.ok(links.length >= 5, `expected the slice-4 deep links, found ${links.length}`);
+  /* #28 removed the "?" that sat on `#planFold`, `#balanceFold` and
+     `#consdetails` — those three sections' content stays in #help (the
+     ticket's survey), but nothing deep-links to it any more, so the count
+     dropped from 6 (5 unique) to 3 (2 unique: help-season, help-bench x2). */
+  assert.ok(links.length >= 3, `expected the slice-4 deep links, found ${links.length}`);
   for (const id of links) {
     assert.ok(sheet.includes(`id="${id}"`),
       `a "?" deep-links to #${id}, which is not a section of the help sheet — `

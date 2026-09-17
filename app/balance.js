@@ -23,10 +23,12 @@
  * the solver's balance term identically zero. A coach who never opens
  * this fold gets exactly the plan they got before it existed.
  * ================================================================== */
-import { $, on, el } from './dom.js';
+import { $, el } from './dom.js';
 import { state, save, colorOf, game } from './state.js';
 import { DEFAULT_TIER } from './engine.js';
 import { tick } from './fx.js';
+import { icon } from './icons.js';
+import { pushPlanPane } from './game-setup.js';
 
 /* Named, not numbered. "Level 4 of 5" is a position in a rotation; "4/5" is
    a grade. The solver only ever sees the index. */
@@ -58,78 +60,102 @@ let AFTER_EDIT = [];
 export function initBalance(soonFn, afterEdit) {
   soon = soonFn;
   AFTER_EDIT = afterEdit;
-  on('#balanceFold', 'ontoggle', renderBalance);
 }
 
 /* ------------------------------------------------------------------ *
- * the shape — games screen
+ * the shape — Plan sheet, Lineups group (#28)
  *
  * Which end of the game your stronger lineups fall on is a call about
  * tonight's opponent, so it sits with the plan and is stored per game.
  * The levels it works from are season-long and live on the roster page.
+ *
+ * `renderBalance` now paints the level-1 summary row into `#planLineups`;
+ * the live picker (once the row's own body, behind a fold) is the level-2
+ * page `#balancebody`, pushed by `openBalanceDetail`. Decision 11: no fold
+ * to check any more, and the `bal-intro` paragraph is gone (W3 — a group
+ * footer is one line, and that intro was never that).
  * ------------------------------------------------------------------ */
+
+// It used to send coaches to a heading called "Player levels". There has
+// been no such heading since the levels stopped being a fold and moved
+// into the roster row itself, so this points at what is actually on the
+// screen: the row of steps under each name. The tab it names is the LABEL
+// the bar shows ("Team" since A40 slice 1), not the view key.
+function noLevelsLine() {
+  const p = el('p', 'pgrp-f');
+  p.append('Every player is on the same level, so this has nothing to work with yet. Set a level under each name on the ');
+  p.append(el('b', '', 'Team'));
+  p.append(' page.');
+  return p;
+}
+
 export function renderBalance() {
-  const box = $('#balancebody');
-  if (!box) return;
-  box.textContent = '';
+  const wrap = $('#planLineups');
+  if (!wrap) return;
+  wrap.textContent = '';
 
   const g = game();
   if (!g) return;
 
-  const levelled = state.players.filter(p => tierOf(p) !== DEFAULT_TIER).length;
+  const levelled = levelledCount();
   const current = SHAPES.some(s => s.v === g.balance) ? g.balance : 'even';
 
-  /* The summary line has to answer "is this doing anything?" without opening
-     the fold, because until levels are set the honest answer is no. */
-  const hint = $('#balancehint');
-  if (hint) {
-    hint.textContent = !state.players.length ? ''
-      : levelled === 0 ? 'off · no levels set'
-      : `${SHAPES.find(s => s.v === current).label.toLowerCase()} · ${levelled} set`;
-  }
+  // The header sits on the sheet background above the card (decision 3).
+  wrap.append(el('div', 'pgrp-h', 'Lineups'));
+  const box = el('div', 'pgrp');
 
-  const fold = $('#balanceFold');
-  if (fold && !fold.open) return;
-  if (!state.players.length) {
-    box.append(el('p', 'note', 'Add your players first.'));
-    return;
-  }
+  const row = el('button', 'prow');
+  row.type = 'button';
+  row.append(el('span', 'prow-t', 'Lineup balance'));
+  row.append(el('span', 'prow-v', SHAPES.find(s => s.v === current).label));
+  row.append(icon('chevron_right', { size: '.8rem', cls: 'prow-chev' }));
+  row.onclick = () => openBalanceDetail(row);
+  box.append(row);
+  wrap.append(box);
 
-  const intro = el('p', 'note bal-intro');
-  intro.textContent = 'Minutes stay even. This only changes who is on the floor together, so a stint is never all your strongest or all your youngest.';
-  box.append(intro);
+  // Nothing to shape until somebody has a level, and a control that silently
+  // does nothing is worse than one that says why.
+  if (!levelled) wrap.append(noLevelsLine());
+}
 
-  const seg = el('div', 'seg wide');
-  seg.setAttribute('role', 'group');
-  seg.setAttribute('aria-label', 'How lineup strength is spread across the game');
-  for (const s of SHAPES) {
-    const b = el('button', 'press' + (s.v === current ? ' on' : ''), s.label);
-    b.type = 'button';
-    b.setAttribute('aria-pressed', String(s.v === current));
-    b.onclick = () => { g.balance = s.v; save(); soon('balance', ...AFTER_EDIT); };
-    seg.append(b);
+function shapeRow(s, current, g) {
+  const b = el('button', 'prow prow-shape' + (s.v === current ? ' on' : ''));
+  b.type = 'button';
+  b.setAttribute('aria-pressed', String(s.v === current));
+  const txt = el('div', 'prow-shape-t');
+  txt.append(el('span', 'prow-t', s.label));
+  txt.append(el('span', 'prow-sub', s.blurb));
+  b.append(txt);
+  if (s.v === current) {
+    const check = el('span', 'prow-check', '✓');
+    check.setAttribute('aria-hidden', 'true');
+    b.append(check);
   }
-  const wrap = el('div', 'bal-shape');
-  wrap.append(seg);
-  wrap.append(el('p', 'note bal-blurb', SHAPES.find(s => s.v === current).blurb));
-  box.append(wrap);
+  b.onclick = () => {
+    g.balance = s.v;
+    save();
+    soon('balance', ...AFTER_EDIT);
+    renderBalanceDetail();
+  };
+  return b;
+}
 
-  /* Nothing to shape until somebody has a level, and a control that silently
-     does nothing is worse than one that says why. */
-  if (!levelled) {
-    // `.note` is the whole treatment; a `bal-empty` hook rode along here with
-    // no rule and no reader, and went in the 2026-08-24 dead-class sweep.
-    const p0 = el('p', 'note');
-    /* It used to send coaches to a heading called "Player levels". There has
-       been no such heading since the levels stopped being a fold and moved
-       into the roster row itself, so this now points at what is actually on
-       the screen: the row of steps under each name. The tab it names is the
-       LABEL the bar shows ("Team" since A40 slice 1), not the view key. */
-    p0.append('Every player is on the same level, so this has nothing to work with yet. Set a level under each name on the ');
-    const a = el('b', '', 'Team');
-    p0.append(a, ' page.');
-    box.append(p0);
-  }
+// Live: tapping a row sets the shape, moves the check, and stays on the page.
+function renderBalanceDetail() {
+  const g = game();
+  const current = SHAPES.some(s => s.v === g.balance) ? g.balance : 'even';
+  const sub = $('#planSub');
+  if (!sub) return;
+  sub.textContent = '';
+  const grp = el('div', 'pgrp');
+  for (const s of SHAPES) grp.append(shapeRow(s, current, g));
+  sub.append(grp);
+  if (!levelledCount()) sub.append(noLevelsLine());
+}
+
+function openBalanceDetail(trigger) {
+  renderBalanceDetail();
+  pushPlanPane(trigger, { title: 'Lineup balance' });
 }
 
 /* ------------------------------------------------------------------ *

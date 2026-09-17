@@ -67,7 +67,7 @@ const THEMES = [
   { name: 'dark + more contrast', tokens: darkMore, textFloor: 7, controlFloor: 4.5 },
 ];
 
-const GROUNDS = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3'];
+const GROUNDS = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3', '--sheet'];
 const TEXT_TOKENS = ['--ink', '--ink-2', '--muted', '--faint', '--ok', '--warn', '--err', '--info'];
 const CONTROL_TOKENS = ['--accent', '--ok', '--warn', '--err'];
 const STATUS = ['ok', 'warn', 'err', 'info'];

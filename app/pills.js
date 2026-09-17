@@ -3,56 +3,26 @@
  * The "tap up to N" picker that serves the closers list, the platoon units
  * and the starting-five rules -- it has no single owner (the strategy body
  * *and* the rules body both build one), which is why it lives in a leaf
- * module rather than either of theirs. `fitPills` is its own name-measuring
- * helper, module-private now that #27 replaced the other grid that used to
- * import it (the squad row) with the Who's here sheet.
+ * module rather than either of theirs.
  *
  * Imports state / dom / engine only, so any view seam can take it.
  */
 import { deriveShortNames } from './engine.js';
-import { el, ctx2d } from './dom.js';
-import { state, game, availIds, colorOf, initials, byId, elideMiddle } from './state.js';
-
-/* A squad pill caps its name at 15ch and clips with a tail ellipsis, and the
-   tail is the surname -- a roster with an "Isabella Torres" and an "Isabella
-   Ruiz" put up two pills both reading "Isabella…" for the tap that decides who
-   plays today. Same fix as the game tabs and the card header: elide the middle.
-   Sized by measurement rather than a character count, because 15ch is a
-   different number of letters for "Willi" than for "Ilinca", and measured on a
-   canvas so a roster of 15 costs no layout. The CSS ellipsis stays as the
-   backstop for anything this misjudges. */
-function fitPills(box) {
-  const spans = box.querySelectorAll('.plr .nm');
-  if (!spans.length) return;
-  // The picker builds its grid before anyone mounts it, and a detached node has
-  // no computed style to read the cap off. One retry, never a loop.
-  if (!spans[0].isConnected) {
-    requestAnimationFrame(() => { if (spans[0].isConnected) fitPills(box); });
-    return;
-  }
-  const cs = getComputedStyle(spans[0]);
-  const avail = parseFloat(cs.maxWidth);
-  if (!(avail > 0)) return;                  // no cap in this layout: leave it alone
-  ctx2d.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-  const ls = parseFloat(cs.letterSpacing) || 0;
-  const w = t => ctx2d.measureText(t).width + t.length * ls + 1;  // canvas lands a hair under the laid-out box
-  for (const nm of spans) {
-    const full = nm.dataset.full ?? nm.textContent;
-    nm.dataset.full = full;
-    let n = full.length - 1;
-    if (w(full) <= avail) { nm.textContent = full; continue; }
-    while (n > 6 && w(elideMiddle(full, n)) > avail) n--;
-    nm.textContent = elideMiddle(full, n);
-  }
-  // A first paint before Inter arrives measures the fallback face; redo it once.
-  if (document.fonts?.status !== 'loaded') document.fonts?.ready.then(() => fitPills(box));
-}
+import { el } from './dom.js';
+import { state, game, availIds, colorOf, initials, byId } from './state.js';
+import { callNames } from './roster.js';
 
 // A reusable "tap up to N players" grid -- the same control serves closers and units.
 export function pickFive(selected, onToggle, opts = {}) {
   const g = game();
   const ids = availIds(g);
   const shorts = deriveShortNames(state.players);
+  // #28 decision 8: the tile's visible name is the on-court call name --
+  // "Maya", or "Maya R."/the full name on a collision -- never elided
+  // (`fitPills`, the squad pill's canvas-measured middle-ellipsis, does not
+  // apply here: this tile wraps instead). The accessible name stays the
+  // player's full name below, same as the squad pill.
+  const names = callNames(state.players);
   const max = opts.max ?? 5;
   const taken = opts.taken || new Set();
 
@@ -63,21 +33,29 @@ export function pickFive(selected, onToggle, opts = {}) {
   const grid = el('div', 'pick');
   for (const id of ids) {
     const on = selected.includes(id);
-    const blocked = !on && (taken.has(id) || selected.length >= max);
+    // #28 decision 8: with `opts.replace` (the Add-a-rule single-player picks,
+    // `max: 1`), a full group never blocks a new tile -- the caller's own
+    // draft holds one id, so tapping a second tile just overwrites it. Every
+    // other picker (closers, units, starting fives) keeps the old block.
+    const blocked = !on && (taken.has(id) || (!opts.replace && selected.length >= max));
     const b = el('button', 'plr press ' + (on ? 'on' : 'off'));
     b.type = 'button';
     b.style.setProperty('--c', colorOf(id));
     b.setAttribute('aria-pressed', String(on));
     const full = byId(id)?.name || id;
-    // Named explicitly, like the squad pills: the initials bubble is content,
-    // and once the name elides the accessible name would carry the ellipsis.
+    // Named explicitly, like the squad pills: the initials/number is content,
+    // and the full name is the clearer accessible name than the on-court one.
     b.setAttribute('aria-label', full);
-    b.append(el('span', 'av', initials(byId(id) || { name: shorts[id] })), el('span', 'nm', full));
+    b.append(el('span', 'av', initials(byId(id) || { name: shorts[id] })), el('span', 'nm', names[id] || full));
+    if (on) {
+      const check = el('span', 'plr-check', '✓');
+      check.setAttribute('aria-hidden', 'true');
+      b.append(check);
+    }
     b.disabled = blocked;
     b.onclick = () => onToggle(id, !on);
     grid.append(b);
   }
-  fitPills(grid);
   const box = el('div');
   box.append(hd, grid);
   return box;

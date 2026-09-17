@@ -280,6 +280,28 @@
     slice: 4,
   });
 
+  /* 3c-plan. #28 item 11: every row in the Plan sheet, at least 48px, at the
+        same three phone widths the other row checks sweep (`plan-rows.mjs`
+        drives the sweep; this cell is what it reads back at each width).
+        `#sheetPlan` holds two panes (`#planMain`, `#planSub`), only one shown
+        at a time, so this reads `.prow` from the dialog as a whole and lets
+        `!el.closest('[hidden]')` drop whichever pane is not on show -- the
+        same exclusion `minSizeCheck`'s caller-picked `elements()` already
+        does for other hidden subtrees. Same "open but nothing measured is a
+        failure" shape as the who's-here-row check above. */
+  const planSheet = document.getElementById('sheetPlan');
+  const planOpen = !!planSheet && planSheet.open;
+  minSizeCheck('plan rows ≥ 48px', {
+    gateOpen: planOpen,
+    notOpenMsg: '#sheetPlan not open',
+    emptyMsg: '#sheetPlan open but 0 rows found -- structural row detection matched nothing',
+    elements: () => [...document.querySelectorAll('#sheetPlan .prow')].filter((el) => !el.closest('[hidden]')),
+    dim: r => r.height,
+    fmt: (el, r) => `${label(el)} ${round(r.height)}px`,
+    noun: 'rows',
+    slice: 4,
+  });
+
   /* 3c. #69 (restyle Today and the game screen) "What would settle it" item 4:
         the controls the restyle itself names, all at least 48x48 -- a floor
         higher than the app-wide 44px sweep above, the same shape as the

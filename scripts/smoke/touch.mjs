@@ -55,6 +55,12 @@ const TOUCH_STATES = [
   { name: "games, who's here sheet open",
     open: `document.querySelector('.today-game').click();
            document.querySelector('#phrasePlayers').click()` },
+  /* #28: the Plan sheet, full height (its own default) through its real
+     trigger -- the segment buttons, the lock icons and every group's rows
+     are new controls this sweep has never measured. */
+  { name: 'games, plan sheet open',
+    open: `document.querySelector('.today-game').click();
+           document.querySelector('#phraseStrategy').click()` },
 
 ];
 
@@ -105,6 +111,7 @@ export async function touchPass(c, origin, source) {
     // a full-screen `.keyswrap` overlay covers the back button.
     close: `document.querySelector('#colorPickerClose')?.click();
       document.querySelector('#sheetWho')?.close();
+      document.querySelector('#sheetPlan')?.close();
       ${TODAY_HOME};
       for (const d of document.querySelectorAll('details')) d.open = false`,
   });

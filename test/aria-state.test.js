@@ -24,10 +24,8 @@ const SITES = [
     anchor: "$('#welGran')", within: 700, attr: 'aria-pressed' },
   { file: 'teams-view.js', what: 'the team menu',
     anchor: 'state.teams.forEach', within: 500, attr: 'aria-current' },
-  { file: 'rules.js', what: "the Rules type picker",
-    anchor: "openRule === k ? ' sel' : ''", within: 400, attr: 'aria-pressed' },
-  { file: 'rules.js', what: 'the rest-limit chips',
-    anchor: "c.maxConsecutive === n ? ' sel' : ''", within: 400, attr: 'aria-pressed' },
+  { file: 'rules.js', what: "the Add-a-rule kind picker",
+    anchor: "draft.kind === k ? ' sel' : ''", within: 400, attr: 'aria-pressed' },
 ];
 
 for (const s of SITES) {

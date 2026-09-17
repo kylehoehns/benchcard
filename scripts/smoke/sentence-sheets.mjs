@@ -1,5 +1,6 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
+import { evalJSON, click, drag, settle, sheetRect, setGame, statusMatches } from './sheet-drive.mjs';
 
 /* #27's own guard (docs/specs/27-sentence-and-sheets.md's Proof section): the
  * sentence, and the three sheets its phrases open, driven with the real
@@ -12,81 +13,11 @@ import { nameOf } from './registry.mjs';
  * instance) rather than recomputed here: `plans[state.activeGame]` and
  * `planSay(g, p)` are the same values the app itself would show, so a bug
  * that reached both the DOM and a hand-typed expectation here would still be
- * caught. Geometry is `getBoundingClientRect`, never `getClientRects`
- * (`/browser-verify`).
+ * caught.
  *
- * The drag and the backdrop click are real `Input.dispatchMouseEvent`s at
- * page coordinates -- a script `.click()` on the dialog element is not what
- * a backdrop tap is (trap.js's own close-on-backdrop guards `e.target ===
- * dialog`, which only an event landing outside every child produces), and a
- * handle drag has to engage `setPointerCapture`, which only a real pointer
- * sequence does.
- */
-
-async function evalJSON(c, expr) {
-  return JSON.parse(await evalIn(c, expr));
-}
-
-async function click(c, x, y) {
-  await c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
-  await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
-}
-
-async function drag(c, x, y0, y1, steps = 8) {
-  await c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y: y0, button: 'left', clickCount: 1 });
-  for (let i = 1; i <= steps; i++) {
-    const y = y0 + (y1 - y0) * (i / steps);
-    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left' });
-  }
-  await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
-}
-
-async function settle(c) {
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-  // Every edit this file drives goes through `soon(...)` (render.js), which
-  // debounces 140ms before it actually repaints -- there is no animation to
-  // wait on for a plain textContent swap, so two quiet rAF pairs alone races
-  // it. 220ms clears the debounce with margin.
-  await new Promise(r => setTimeout(r, 220));
-}
-
-// The dialog's own box, and the handle's, for the geometry and drag checks.
-async function sheetRect(c, sel) {
-  return evalJSON(c, `(() => {
-    const d = document.querySelector(${JSON.stringify(sel)});
-    if (!d) return 'null';
-    const r = d.getBoundingClientRect();
-    const h = d.querySelector('.bsheet-handle')?.getBoundingClientRect();
-    return JSON.stringify({ open: d.open, top: r.top, height: r.height,
-      handle: h ? { x: h.left + h.width / 2, y: h.top + h.height / 2 } : null });
-  })()`);
-}
-
-// A direct `game()` edit in the page, followed by the same re-plan a real
-// edit schedules -- used below to reach the range ends and the blocked-plan
-// state no button reaches in one tap. `mutate` is a JS statement string with
-// `s` (state.js) already imported for it.
-function setGame(mutate) {
-  return step(`(async () => {
-    const s = await import('/state.js');
-    ${mutate}
-    const rr = await import('/render.js');
-    rr.renderAll();
-  })()`);
-}
-
-// item 6: the DOM's own status text against `planSay(g, plans[activeGame])`,
-// read from `state.js` -- never recomputed here.
-async function statusMatches(c, statusSel) {
-  return evalJSON(c, `(async () => {
-    const s = await import('/state.js');
-    const g = s.game();
-    const p = s.plans[s.state.activeGame];
-    const want = s.planSay(g, p);
-    const got = document.querySelector(${JSON.stringify(statusSel)})?.textContent || '';
-    return JSON.stringify({ want, got, match: want === got });
-  })()`);
-}
+ * The eight drive helpers (`evalJSON` through `statusMatches`) live in
+ * `sheet-drive.mjs`, shared with #28's `plan-sheet.mjs` -- see that file's
+ * own comment for why. */
 
 export async function sentenceSheetsPass(c, origin) {
   const problems = [];
@@ -116,17 +47,16 @@ export async function sentenceSheetsPass(c, origin) {
        Driven the way the ticket itself says to prove it: "turn Ravens'
        useCarryover on, open Ravens". The switch is real (rules.js, only once
        `state.activeGame > 0`), reached through Today -> the second game
-       pass -> the rules phrase, which opens the same `#consdetails` fold
-       `openFoldAt` already uses -- no direct state write. */
+       pass -> the rules phrase, which now opens `#sheetPlan`'s "Across the
+       day" group (#28) rather than the retired `#consdetails` fold -- no
+       direct state write. */
     await evalIn(c, step(`document.getElementById('backBtn').click()`));
     await settle(c);
     await evalIn(c, step(`document.querySelectorAll('.today-game')[1].click()`));
     await settle(c);
     await evalIn(c, step(`document.getElementById('phraseRules').click()`));
     await settle(c);
-    await evalIn(c, step(`[...document.querySelectorAll('#consdetails input[type=checkbox]')]
-      .find(cb => cb.closest('label')?.textContent.includes('Balance against minutes already played today'))
-      .click()`));
+    await evalIn(c, step(`document.querySelector('#planDay input[switch]').click()`));
     await settle(c);
     const s2 = await evalJSON(c, `(() => {
       const line = document.getElementById('sentenceEvens');
@@ -137,9 +67,9 @@ export async function sentenceSheetsPass(c, origin) {
     ck(s2.text === 'Evens out the 9:00 game.', `the second line reads "${s2.text}", want "Evens out the 9:00 game."`);
     // back to Hawks, useCarryover off, for every section below -- same
     // switch, same path, then back to Hawks through Today.
-    await evalIn(c, step(`[...document.querySelectorAll('#consdetails input[type=checkbox]')]
-      .find(cb => cb.closest('label')?.textContent.includes('Balance against minutes already played today'))
-      .click()`));
+    await evalIn(c, step(`document.querySelector('#planDay input[switch]').click()`));
+    await settle(c);
+    await evalIn(c, step(`document.getElementById('sheetPlanClose').click()`));
     await settle(c);
     await evalIn(c, step(`document.getElementById('backBtn').click()`));
     await settle(c);

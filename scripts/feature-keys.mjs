@@ -197,13 +197,20 @@ const between = (src, open, close) => {
 export const shipped = () => {
   const gm = app('gamemode.js');
   const index = app('index.html');
+  /* #28 split the app's one "Minutes limit" kind into `minimum` and `cap`
+   * (Plays at least / Plays at most), but `#help`'s doc kept them as one
+   * `<dt>Minutes limit</dt>` -- unchanged, per the ticket's survey. Folded
+   * back to one `limit` entry here so the list below still means "the
+   * doc's own concepts", not the app's internal split. */
+  const ruleKinds = [...between(app('rules.js'), 'const KINDS = [', '\n];')
+    .matchAll(/\['(\w+)',\s*'[^']+'\]/g)]
+    .map((m) => (m[1] === 'minimum' || m[1] === 'cap') ? 'limit' : m[1]);
   return {
     strategy: [...between(app('state.js'), 'export const STRATEGIES = {', '\n};')
       .matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1]),
     shape: [...between(app('balance.js'), 'const SHAPES = [', '\n];')
       .matchAll(/\bv:\s*'([^']+)'/g)].map((m) => m[1]),
-    rule: [...between(app('rules.js'), 'const KINDS = [', '\n  ];')
-      .matchAll(/\['(\w+)',\s*'[^']+'\]/g)].map((m) => m[1]),
+    rule: [...new Set(ruleKinds)],
     /* Every scope the swap sheet can offer: the keyed pair list, plus any bare
      * action button beside it. Both halves are open-ended on purpose -- a
      * fourth scope has to show up here whatever shape it arrives in. */

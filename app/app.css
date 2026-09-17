@@ -217,24 +217,21 @@ a { color: inherit; }
      width, and a modal `<dialog>` paints in the top layer regardless of
      where it sits in the flow. So this list is two shorter, renumbered
      whole rather than left with a gap: a gap here is a note to nobody, the
-     same reasoning Rules' own renumbering below already used. */
+     same reasoning Rules' own renumbering below already used.
+
+     #28: Plan, Lineup balance and Rules moved into `#sheetPlan`, a dialog,
+     for the same reason the sheets above need no entry -- `.s-plan`,
+     `.s-balance` and `#consdetails` go, and the list is three shorter again,
+     renumbered whole. */
   .s-rot   { order: 0; }
-  .s-plan  { order: 1; }
-  .s-balance { order: 2; }
-  /* Rules is the fourth INPUT and reads with the other three, not as a
-     drawer trailing the page: it was order 11 of 13, below the card and
-     below the bench button, and `ROADMAP.md` calls the constraint engine the
-     one thing no competitor has (A21b). It matches the source order the wide
-     layout uses. */
-  #consdetails { order: 3; }
-  .s-thisgame { order: 4; }
-  .s-cardhd { order: 5; }
-  #cardnote { order: 6; }
-  #sheet   { order: 7; }
-  .gm-cta  { order: 8; }
-  .s-day   { order: 9; }
-  #tabledetails { order: 10; }
-  .s-cardopts { order: 11; }
+  .s-thisgame { order: 1; }
+  .s-cardhd { order: 2; }
+  #cardnote { order: 3; }
+  #sheet   { order: 4; }
+  .gm-cta  { order: 5; }
+  .s-day   { order: 6; }
+  #tabledetails { order: 7; }
+  .s-cardopts { order: 8; }
 }
 
 /* ---- the card disclosure -------------------------------------------------
@@ -434,12 +431,10 @@ a { color: inherit; }
 /* ---- lineup balance ------------------------------------------------------
    A five-step control, not a number. The steps fill left-to-right like a
    signal meter so the level reads at a glance without anybody having to think
-   "four out of five". 44px targets throughout: this is set standing up. */
-.bal-intro { margin: 0 0 1rem; max-width: 62ch; }
-.bal-shape .seg { width: 100%; }
-.bal-shape .seg button { padding-left: .45rem; padding-right: .45rem; font-size: var(--fs-footnote);
-  white-space: nowrap; }
-.bal-blurb { margin: .6rem 0 1.15rem; max-width: 62ch; min-height: 2.6em; }
+   "four out of five". 44px targets throughout: this is set standing up.
+   #28: the shape picker moved into the Plan sheet's `.prow-shape` rows below;
+   `.bal-intro`, `.bal-shape` and `.bal-blurb` were its fold-era look and
+   nothing emits them any more. */
 /* The meter as a second line inside a roster row. `grid-column: 1 / -1` spans
    whatever column count the row has at this width -- the roster row changes
    shape twice on the way down to 390px, and hard-coding a span would break at
@@ -960,17 +955,20 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(1.16); border-
 input[type=range]:disabled { opacity: .5; }
 
 /* ============================ pickers ============================ */
+/* Decision 5/8: `pickFive`'s own header IS the group header wherever it sits
+   ("Who closes", "On the floor", "Pick a player" and friends) -- sentence
+   case, not the squad-pill-era uppercase tracked label, so it reads like
+   `.pgrp-h` beside it rather than a different kind of heading. */
 .pickhd { display: flex; align-items: baseline; gap: .5rem; margin: .9rem 0 .45rem; }
-.pickhd .t { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
+.pickhd .t { font-size: var(--fs-footnote); color: var(--muted); font-weight: 600; }
 .pickhd .c { margin-left: auto; font-size: var(--fs-footnote); color: var(--muted); font-variant-numeric: tabular-nums; }
-.pickhd .c.full { color: var(--ok); font-weight: 600; }
+/* `.full` (all N picked) stays `--muted`, same as `.pgrp-h` beside it -- a
+   group header's right-hand value, not a status (decision 8: the count is
+   informational, `--ok` is reserved for a status color). */
 .pick { display: flex; flex-wrap: wrap; gap: .42rem; }
 .pick .plr:disabled { opacity: .32; cursor: not-allowed; }
 .pick .plr.off { opacity: .62; }
 .pick .plr.off .nm { text-decoration: none; }
-.unit { border: 1px solid var(--line); border-radius: var(--r-sm); padding: .72rem .85rem; margin-top: .6rem; animation: rise var(--t) var(--ease) both; }
-.unit .uhd { display: flex; align-items: center; gap: .5rem; }
-.unit .uhd .t { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 600; }
 
 /* rules builder */
 .rulechips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.1rem; }
@@ -2280,10 +2278,17 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    whether the dialog renders at all. */
 dialog.bsheet {
   position: fixed; inset: auto 0 0 0; margin: 0; width: 100%; max-width: 100%;
-  border: 0; border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 0;
+  border: 0; border-radius: var(--r-sheet) var(--r-sheet) 0 0; padding: 0;
   background: var(--surface); color: var(--ink); box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
+/* #28 decision 3: the Plan sheet sits on a token of its own, lighter than
+   `--bg` in dark mode (K4) rather than the ordinary surface the other three
+   sheets use. `.bsheet-status` follows it, with no top border of its own --
+   the group above it already reads as a distinct surface. */
+dialog.bsheet.grouped { background: var(--sheet); }
+dialog.bsheet.grouped .bsheet-body { padding: 0; }
+dialog.bsheet.grouped .bsheet-status { background: var(--sheet); border-top: 0; }
 dialog.bsheet[open] { display: flex; flex-direction: column; }
 /* Half and full are the two resting heights `setSheetHeight` (trap.js)
    toggles; a drag only ever sets `transform` (never `height`) while it is in
@@ -2315,34 +2320,55 @@ dialog.bsheet::backdrop { background: color-mix(in srgb, #000 32%, transparent);
 }
 dialog.bsheet.dragging { transition: none; }
 
-.bsheet-hd {
-  display: grid; grid-template-columns: 1fr auto;
-  grid-template-areas: "handle handle" "title close";
-  align-items: center; column-gap: .5rem;
-  padding: .3rem .9rem .7rem; border-bottom: 1px solid var(--line); flex: none;
-}
+/* #28 decision 2: the shell rule for all four sheets. No bottom border --
+   the prototype's header sits flush on the body, whether that body is a
+   plain surface or (Plan) a group of its own. `.bsheet-hd-row` is the
+   three-column strip below the handle: a left slot (empty at level 1, the
+   back button at level 2), the centered title, and a right slot (close, or
+   Add rule). */
+.bsheet-hd { position: relative; display: flex; flex-direction: column; padding: 0 .9rem .7rem; flex: none; }
 /* A real button (decision 9 / I3), not a decorative bar: the visible pill is
    a `::before` so the hit area can be the full width of the header without a
    giant painted stripe. `touch-action: none` keeps the browser from turning
    the drag into a page scroll gesture, which is what a bare `touch-action:
    pan-y` ancestor would otherwise do to the first pointermove. */
 /* 48px hit area (the touch sweep failed it at 26px), the grip bar itself
-   staying a thin 4px pill inside it via the `::before` below -- the visual
+   staying a thin pill inside it via the `::before` below -- the visual
    mark and the tappable box are deliberately different sizes, the same way
-   the 44px `.linkish` text does it elsewhere in this file. */
-.bsheet-handle { grid-area: handle; justify-self: center;
-  position: relative; width: 100%; max-width: 5rem; height: 48px;
+   the 44px `.linkish` text does it elsewhere in this file. Decision 6 (#28):
+   positioned out of flow so its 48px hit box can overlap the (non-interactive)
+   title row below rather than pushing the header taller -- the visible pill
+   itself sits a fixed .375rem from the sheet's top edge, matching the
+   prototype, instead of centering inside the full hit box. */
+.bsheet-handle { position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 5rem; height: 48px; z-index: 1;
   background: none; border: 0; padding: 0; cursor: grab; touch-action: none; }
-.bsheet-handle::before { content: ''; position: absolute; top: 50%; left: 50%;
-  transform: translate(-50%, -50%); width: 2.6rem; height: 4px;
-  border-radius: var(--r-full); background: var(--line-2); }
-.bsheet-hd h2 { grid-area: title; margin: 0; font-size: var(--fs-headline);
-  font-weight: 700; letter-spacing: -.02em; }
-.bsheet-close { grid-area: close; display: inline-flex; align-items: center;
-  justify-content: center; width: 2.5rem; height: 2.5rem; border: 0;
+.bsheet-handle::before { content: ''; position: absolute; top: .375rem; left: 50%;
+  transform: translateX(-50%); width: 2.25rem; height: 5px;
+  border-radius: var(--r-full); background: color-mix(in srgb, var(--faint) 60%, transparent); }
+.bsheet-hd-row { display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; column-gap: .5rem; padding-top: 1rem; min-height: 3.125rem; }
+.bsheet-hd-row h2 { grid-column: 2; margin: 0; text-align: center;
+  font-size: var(--fs-headline); font-weight: 600; letter-spacing: -.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bsheet-hd-l { grid-column: 1; display: flex; align-items: center; justify-content: flex-start; min-height: 48px; }
+.bsheet-hd-r { grid-column: 3; display: flex; align-items: center; justify-content: flex-end; gap: .1rem; min-height: 48px; }
+.bsheet-close { display: inline-flex; align-items: center;
+  justify-content: center; width: 3rem; height: 3rem; border: 0;
   border-radius: var(--r-full); background: none; font: inherit;
   font-size: var(--fs-headline); color: var(--ink-2); }
 @media (hover: hover) { .bsheet-close:hover { background: var(--surface-2); } }
+/* Decision 10: the level-2 back button, the same look as `#backBtn`. */
+.backBtn { display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; padding: 0; border: 0; background: none; }
+.backBtn .i { display: inline-flex; align-items: center; justify-content: center;
+  width: 2.25rem; height: 2.25rem; border-radius: var(--r-full); background: var(--surface-2); }
+@media (hover: hover) { .backBtn:hover .i { background: var(--surface-3); } }
+/* Decision 9: the Add-a-rule page's commit control, in the right slot in
+   place of the close button (C4, W2). */
+.planAddRule { border: 0; background: none; font: inherit; font-weight: 600;
+  font-size: var(--fs-headline); color: var(--ink); padding: 0 .3rem; min-height: 48px; }
+.planAddRule:disabled { opacity: .35; }
 
 .bsheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain;
   padding: 0 1.1rem; }
@@ -2352,6 +2378,181 @@ dialog.bsheet.dragging { transition: none; }
 .bsheet-status { margin: 0; flex: none; font-size: var(--fs-footnote);
   color: var(--muted); border-top: 1px solid var(--line);
   padding: .6rem 1.1rem calc(.6rem + env(safe-area-inset-bottom)); }
+
+/* #28 decision 13: the snackbar mounted inside an open sheet, right above its
+   status line -- `.toast` itself needs nothing extra, only a flow slot that
+   will not be squeezed by `.bsheet-body`'s `flex: 1`. */
+.bsheet-toasts { flex: none; padding: 0 1.1rem .5rem; }
+
+/* ======================== the Plan sheet's groups (#28) =================
+ * Decision 3: iOS-style grouped rows, `--surface` islands on the sheet's own
+ * `--sheet` background. `.prow` is deliberately not `.sheetrow` (#27's
+ * borderless, ungrouped list) -- the two sheet shapes read differently on
+ * purpose (C1/C2), and a shared name would have let one page's tweak bleed
+ * into the other's.
+ * ========================================================================= */
+/* `#stratseg` is `.seg.wide` (the shared primitive, #69), so this only adds
+   the side/top margins the prototype's strategy control has -- the 2px
+   `--surface-2` inset track is already `.seg`'s own look, untouched.
+   `width: auto` (an ID beats `.seg.wide`'s own `width: 100%`) lets the side
+   margins actually show instead of overflowing the sheet. Scoped by id so
+   Settings' other `.seg.wide` rows (`#maxSubsSeg` etc.) are untouched. */
+#stratseg { width: auto; margin: .5rem 1rem 0; }
+/* The header and footer sit on the sheet background, outside the white card
+   (a course correction against decision 3's own W3 read: the prototype's
+   header/footer are never inside `.pgrp`, and a footer that ellipsized was
+   losing whole sentences -- "Players who got fewer minutes earlier today
+   get mor…" -- rather than wrapping them). Callers append them as `.pgrp`'s
+   siblings, 2rem from the edge; the box itself keeps a 1rem margin, so the
+   header/footer text sits one more rem in than the card under it. `.pgrp`
+   gets its own top margin only when nothing already made room for it --
+   `.pgrp-h + .pgrp` zeroes that out, since the header's own 1.5rem of top
+   padding is that room. */
+.pgrp { margin: 1.1rem 1rem 0; background: var(--surface); border-radius: var(--r-sm); overflow: hidden; }
+.pgrp-h + .pgrp { margin-top: 0; }
+.pgrp-h { padding: 1.5rem 2rem .45rem; font-size: var(--fs-footnote); color: var(--muted); }
+.pgrp-f { padding: .45rem 2rem 0; font-size: var(--fs-footnote);
+  color: var(--muted); line-height: 1.35; }
+
+.prow { display: flex; align-items: center; gap: .75rem; width: 100%;
+  min-height: 48px; padding: 0 1rem; border: 0; background: none; font: inherit;
+  font-size: var(--fs-body); color: var(--ink); text-align: left; }
+.prow + .prow { position: relative; }
+.prow + .prow::before { content: ''; position: absolute; top: 0; left: 1rem; right: 0;
+  height: 1px; background: var(--line); }
+.prow-t { flex: 1; min-width: 0; }
+.prow-v { flex: none; color: var(--muted); }
+.prow-chev { flex: none; color: var(--faint); }
+@media (hover: hover) { button.prow:hover { background: var(--surface-2); } }
+.prow-center { justify-content: center; text-align: center; }
+.prow-danger { color: var(--err); font-weight: 600; }
+.prow-icon { color: var(--muted); }
+.prow.add-rule .prow-t { color: inherit; }
+
+/* Decision 7: a rule's own sentence, above the Remove-rule group. */
+.plan-rule-sentence { margin: 1.125rem 1.5rem 0; font-size: var(--fs-title);
+  font-weight: 600; letter-spacing: -.01em; }
+
+/* Decision 11: the Lineup-balance rows -- a label, a blurb second line, and a
+   checkmark on the chosen one. Live: the check moves without leaving the page. */
+.prow-shape { align-items: flex-start; padding-top: .6rem; padding-bottom: .6rem; }
+.prow-shape-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.prow-sub { font-size: var(--fs-secondary); color: var(--muted); }
+.prow-check { flex: none; color: var(--ink); font-weight: 700; }
+
+/* Decision 9: the Add-a-rule kind chips, and the stepper it shares with Rest
+   limit. `.chips`/`.chip` stay the shared primitive (onboarding uses them
+   too); this scopes the sheet's own padding, since the chips sit inside a
+   group's edge rather than a page's. */
+.plan-kinds { padding: 1rem 1rem 0; }
+/* "One of two always on" is longer than every other kind label and, at a
+   32px root in a 320px viewport, wider than the sheet itself; `.chip`'s own
+   `white-space: nowrap` (the shared primitive) is what every other, shorter
+   chip wants, but here it is what pins this one wide enough to overflow.
+   Scoped to this group only, so the shared primitive stays nowrap everywhere
+   else it is used. */
+.plan-kinds .chip { white-space: normal; text-align: center; }
+/* The prototype's chips are borderless `--surface` pills everywhere in this
+   sheet (the kind chips above and the Closing-window chips) -- `.chip`'s own
+   `--line-2` border is onboarding's own look, so this is scoped to the
+   grouped sheet rather than changed on the shared primitive. */
+dialog.bsheet.grouped .chip { border-color: transparent; }
+.pstep-row { display: flex; align-items: center; justify-content: space-between;
+  gap: .8rem; }
+.pstep-val { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+.pstep { display: flex; align-items: center; border-radius: 9px;
+  background: var(--surface-2); overflow: hidden; }
+.pstep-btn { display: flex; align-items: center; justify-content: center;
+  width: 2.75rem; height: 2rem; min-width: 48px; min-height: 48px;
+  border: 0; background: none; font: inherit; font-size: var(--fs-headline);
+  font-weight: 700; color: var(--ink); }
+.pstep-btn:disabled { opacity: .35; }
+.pstep-btn + .pstep-btn { border-left: 1px solid var(--line); }
+
+/* Decision 12: switches, distinct from the `.switch` label+input pair used
+   elsewhere -- here the checkbox carries the boolean `switch` attribute and
+   the whole `.prow` is its label.
+
+   The track is the spec's `3.1875rem × 1.9375rem` (decision 12), but the
+   `<input>` itself is what `smoke-checks.js`'s "last control in an open
+   dialog is reachable" measures when it is the last focusable node in
+   `#sheetPlan` -- a real `.prow` row can end the dialog's body (the day or
+   season group), same as the help sheet's own control once did. So the
+   INPUT's own box is 2.75rem tall (44px, the check's floor) with the track
+   drawn as a centered pseudo-element at the spec's height; the row's own
+   48px `align-items: center` keeps it looking exactly like the spec's
+   3.1875 × 1.9375 pill. */
+input[switch] { appearance: none; flex: none; width: 3.1875rem; height: 2.75rem;
+  background: none; position: relative; margin: 0; cursor: pointer; }
+input[switch]::before { content: ''; position: absolute; top: 50%; left: 0;
+  transform: translateY(-50%); width: 100%; height: 1.9375rem; border-radius: var(--r-full);
+  background: var(--surface-2); transition: background var(--t-fast) var(--ease); }
+input[switch]::after { content: ''; position: absolute; top: 50%; left: .125rem;
+  transform: translateY(-50%); width: 1.6875rem; height: 1.6875rem; border-radius: 50%; background: #fff;
+  box-shadow: var(--shadow-sm); transition: transform var(--t-fast) var(--spring), background var(--t-fast) var(--ease); }
+input[switch]:checked::before { background: var(--tint); }
+/* `--tint-ink` (K1), not the off state's literal white: dark Graphite's
+   `--tint` is itself near-white (`#F4F4F6`), so a white knob on it reads as
+   nothing there, and every dark team color pairs a light `--tint` with a
+   dark `--tint-ink` for exactly this reason (it is already how ink reads on
+   a tint-filled button elsewhere). */
+input[switch]:checked::after { transform: translateY(-50%) translateX(1.25rem); background: var(--tint-ink); }
+input[switch]:disabled { opacity: .4; cursor: default; }
+
+/* Decision 8: the tile look the prototype's player pickers use -- `pickFive`
+   (`pills.js`) is the only caller left, and every caller lives inside this
+   sheet, so the grid is restyled directly rather than scoped under an
+   ancestor selector. */
+.pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: .625rem; margin: 0 1rem; }
+.plr { position: relative; flex-direction: column; align-items: flex-start;
+  justify-content: flex-start; gap: .3rem; min-height: 4.375rem; padding: .75rem;
+  border-radius: var(--r); border: 1px solid transparent; background: var(--surface);
+  text-align: left; }
+/* The squad pill's `.av` (above) is a colored disc with the number centered
+   in it; this tile's number is plain text, no bubble (decision 8). Same
+   specificity as that rule, so every property it painted needs an explicit
+   reset here, not just the ones this look adds -- `border-radius`,
+   `box-shadow` and `display` otherwise survive from the pill rule and draw a
+   squashed colored oval behind the number. */
+.plr .av { display: block; width: auto; height: auto; border-radius: 0; box-shadow: none;
+  font-variant-numeric: normal; letter-spacing: normal;
+  font-size: var(--fs-secondary); font-weight: 700; color: var(--c); background: none; }
+/* Same reset for `.nm`: the pill's `max-width: 15ch` + `overflow: hidden` +
+   `text-overflow: ellipsis` + `white-space: nowrap` would otherwise still be
+   sitting underneath, ready to clip the on-court name the moment it is
+   longer than 15 characters. This name wraps instead (decision 8). */
+.plr .nm { min-width: 0; max-width: 100%; overflow: visible; text-overflow: clip;
+  white-space: normal; font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
+.plr.on { border-color: var(--tint); box-shadow: inset 0 0 0 1.5px var(--tint); background: var(--surface); }
+.plr.on .av { background: none; color: var(--c); }
+.plr-check { position: absolute; top: .5rem; right: .5rem; color: var(--tint);
+  font-weight: 700; font-size: var(--fs-secondary); }
+.pick .plr:disabled { opacity: .4; }
+/* `.plr.off` (pills.js) means "not currently selected", not "unavailable" --
+   `.pick .plr.off` already drops the squad pill's line-through; this drops
+   its dimming too, so only `:disabled` (the group is full) reads as unusable. */
+.pick .plr.off { opacity: 1; }
+.pickhd { margin: 1.1rem 1rem .5rem; }
+
+/* Decision 10: the level-1/level-2 slide. `#planMain` and `#planSub` never
+   both animate at once -- `openPlanSheet` and `pushPane`/`popPane` toggle
+   `[hidden]` on whichever one is not the current pane, so the transform only
+   ever plays on the pane becoming visible. */
+#sheetPlanBody { position: relative; overflow: hidden; }
+/* `padding-bottom: 100vh` so a header anywhere in either pane can reach the
+   top of the scrolling box (`openPlanSheet`'s `scrollIntoView`): the sheet's
+   own content -- Rules empty, one or two groups after it -- is shorter than
+   one screen, so without this the browser clamps the scroll at its own
+   content's end well before a lower group's header reaches the top. 100vh is
+   always taller than `#sheetPlanBody`'s own client height (at most 92vh, and
+   less once its header/footer chrome is subtracted), so it covers every
+   viewport rather than a value measured against one device. */
+#planMain, #planSub { min-height: 100%; padding-bottom: 100vh; }
+@media (prefers-reduced-motion: no-preference) {
+  .pane-in { animation: planPaneIn var(--t) var(--ease) both; }
+  @keyframes planPaneIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+}
 
 .sheetempty { margin: 0; padding: 1.6rem .2rem; color: var(--muted);
   font-size: var(--fs-secondary); text-align: center; }

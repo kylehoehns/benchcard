@@ -88,3 +88,43 @@ export const OVERFLOW_PROBE = `(() => {
   }
   return JSON.stringify({ vw, pans, worst });
 })()`;
+
+/* #28's own overflow probe, for a `dialog[open]`: every visible descendant
+   checked against the DIALOG's own `getBoundingClientRect`, not the
+   viewport's. `dialog.bsheet` is `width: 100%; max-width: 100%`, so today the
+   dialog's box and the viewport are the same width and `OVERFLOW_PROBE` above
+   would catch anything this one does -- verified on this tree, at 320px with
+   a 32px root, for both the Plan sheet's level 1 and its Add-a-rule page,
+   before this probe existed. This one is still worth having: it is the exact
+   claim "What would settle it" item 11 makes ("no horizontal overflow ...
+   with the Plan sheet open"), read against the box the coach actually sees
+   the sheet occupy rather than an equality (dialog width == viewport width)
+   that only holds because of one CSS rule elsewhere. If that rule ever
+   changes -- a narrower, centered sheet, say -- `OVERFLOW_PROBE` would go on
+   reporting the viewport clean while this one caught a control the coach
+   cannot reach inside the sheet itself.
+   `overflow: hidden` on `dialog.bsheet` clips visually but does not change a
+   descendant's own `getBoundingClientRect` -- CSS overflow never does -- so
+   this does not need the ancestor-scroll skip `OVERFLOW_PROBE` carries for a
+   `overflow: auto` scroller; nothing here can be legitimately reachable by
+   scrolling sideways, because nothing in this sheet scrolls on the X axis. */
+export const DIALOG_OVERFLOW_PROBE = `(() => {
+  const dialog = document.querySelector('dialog[open]');
+  if (!dialog) return JSON.stringify({ dialog: false });
+  const d = dialog.getBoundingClientRect();
+  const vis = el => el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true });
+  let worst = null;
+  for (const el of dialog.querySelectorAll('*')) {
+    const r = el.getBoundingClientRect();
+    if ((!r.width && !r.height) || !vis(el)) continue;
+    const over = r.right > d.right + 1 ? Math.round(r.right - d.right)
+      : r.left < d.left - 1 ? Math.round(d.left - r.left) : null;
+    if (over === null) continue;
+    if (!worst || over > worst.out) worst = {
+      el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
+        + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')),
+      out: over,
+    };
+  }
+  return JSON.stringify({ dialog: true, dw: Math.round(d.width), worst });
+})()`;

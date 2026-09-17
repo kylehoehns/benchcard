@@ -83,10 +83,12 @@ test('"This game" reads after the setup blocks, but still above the card', () =>
     return Number(m[1]);
   };
   // #69 decision 8 moved Rotation to the top of the phone stack (order 0),
-  // ahead of Plan, Balance and Rules -- so "This game" (Opponent, Tip-off,
-  // Remove) no longer reads first; it is now the LAST of the setup blocks,
-  // reading below all four before the card starts.
-  for (const above of ['.s-rot', '.s-plan', '.s-balance', '#consdetails']) {
+  // ahead of "This game" -- so "This game" (Opponent, Tip-off, Remove) no
+  // longer reads first; it is the first of the setup blocks left in this
+  // list, reading below Rotation before the card starts. #28 moved Plan,
+  // Lineup balance and Rules into `#sheetPlan` (a dialog, not part of the
+  // phone stack), so they are no longer entries to check here.
+  for (const above of ['.s-rot']) {
     assert.ok(orderOf(above) < orderOf('.s-thisgame'),
       `"This game" now reads before ${above} -- it should be the last of the setup blocks`);
   }

@@ -48,33 +48,38 @@ test('leagueMinutes reads the active team, and off is 0', () => {
 });
 
 test('the Rules count counts the league minimum', () => {
-  const setup = read('game-setup.js');
-  const expr = /const n = ([\s\S]*?);\s*\n\s*const hint/.exec(setup);
-  assert.ok(expr, 'the #conscount count expression has moved — find it and re-pin it');
-  assert.match(expr[1], /ruleCount\(/,
-    'the Rules badge no longer reads ruleCount(g) — that is the one place (state.js) the '
-    + 'league floor is counted in, since it is not stored on the game itself (computeAll '
-    + 'composes it into a clone). Re-deriving the count here would let the badge and '
-    + 'ruleCount disagree again (A24b / #26 decision 3)');
-  assert.match(read('state.js'), /leagueMinutes\(\) > 0 \? 1 : 0/,
+  /* #28 retired the collapsed Rules row's `#conscount` badge -- the sentence's
+     `#phraseRules` phrase and the Plan sheet's Rules group both read straight
+     from `ruleCount`/`ruleItems` (state.js) on every repaint instead, so
+     there is no separate count expression left in game-setup.js to re-derive
+     the league floor from. What still has to hold is that state.js's own
+     count and its own row list agree with each other about it. */
+  const stateJs = read('state.js');
+  assert.match(stateJs, /leagueMinutes\(\) > 0 \? 1 : 0/,
     'ruleCount(g) in state.js no longer counts the league minimum when it is on');
+  assert.match(stateJs, /if \(lmin > 0\) items\.push/,
+    'ruleItems(g) in state.js no longer lists the league minimum as a row of its own — the '
+    + 'Rules group and ruleCount would disagree about it again (A24b / #26 decision 3)');
 });
 
 test('the Rules drawer only says "just evens out the minutes" when nothing else is on', () => {
   const rules = read('rules.js');
-  const FALSE_WHEN_SET = 'The plan just evens out the minutes.';
+  const FALSE_WHEN_SET = 'No rules yet. The plan just evens out the minutes.';
   const at = rules.indexOf(FALSE_WHEN_SET);
   assert.ok(at > -1, 'the zero-state sentence is gone — if it was reworded, re-pin it here');
-  /* The sentence must sit in a branch that has already ruled the league floor
-     out. Anything else is the app denying a rule it is enforcing. */
-  const before = rules.slice(0, at);
-  const guard = /leagueMinutes\(\)[\s\S]*?\belse\b[\s\S]*$/.test(before.slice(-900));
-  assert.ok(guard,
-    `"${FALSE_WHEN_SET}" is no longer guarded by the league minimum — with the setting on `
-    + 'it is false, and #issues four inches away is naming every player it applies to');
-  assert.match(rules, /league minimum/,
-    'the drawer never mentions the league minimum, so the one rule a coach cannot see from '
-    + 'here is the one rule that is on');
+  /* #28: the guard moved from a local `leagueMinutes()` check to
+     `ruleItems(g).length` -- `ruleItems` (state.js) already puts the league
+     minimum in the same list this file counts, so an empty list here already
+     means no rule is on, the league floor included. Re-deriving the check
+     from `leagueMinutes()` a second time here is exactly the kind of second
+     copy that let the badge and the drawer disagree before (A24b). */
+  const before = rules.slice(Math.max(0, at - 400), at);
+  assert.match(before, /!items\.length/,
+    `"${FALSE_WHEN_SET}" is no longer guarded by ruleItems(g).length — with the league minimum `
+    + 'on, ruleItems is non-empty and #issues four inches away is naming every player it applies to');
+  assert.match(read('state.js'), /if \(lmin > 0\) items\.push/,
+    'ruleItems(g) no longer lists the league minimum as its own row — the one rule a coach '
+    + 'cannot see from the Rules group is the one rule that is on');
 });
 
 /* One source, or the two screens drift apart again — which is the whole bug.

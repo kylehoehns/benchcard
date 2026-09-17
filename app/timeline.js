@@ -19,6 +19,7 @@ import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes } from './state.js';
 import { resumeAt } from './card.js';
+import { openPlanSheet } from './game-setup.js';
 
 /* Set by initTimeline; see the note above on why this is injected. */
 let setView = () => {};
@@ -115,23 +116,11 @@ function rosterCta() {
   return e;
 }
 
-/* "Take me to the control that caused this." One implementation, because both
- * dead ends below need it and a second copy would drift. Opens the fold the
- * target sits in first — scrolling to a collapsed <details> lands the coach on
- * a summary with nothing under it. */
-function jumpToEditor(sel, focusSel) {
-  const t = $(sel);
-  if (!t) return;
-  const fold = t.closest('details');
-  if (fold) fold.open = true;
-  t.scrollIntoView({ behavior: fxOn ? 'smooth' : 'auto', block: 'center' });
-  ((focusSel && t.querySelector(focusSel)) || t.querySelector('button, input'))?.focus({ preventScroll: true });
-}
-
-/* Errors a coach fixes in the Rules fold, as opposed to on the roster (not
- * enough players) or in the strategy editor (closers, units). The fold is
- * collapsed by default on a phone and sits several screens down, so an error
- * caused by something inside it is otherwise a dead end. */
+/* Errors a coach fixes in the Plan sheet's Rules group, as opposed to on the
+   roster (not enough players) or in the strategy editor (closers, units).
+   #28: both CTAs below open the Plan sheet directly (`openPlanSheet`,
+   game-setup.js) rather than scrolling to a fold -- there is no fold left to
+   scroll to. */
 const RULE_ERRORS = new Set(['MIN_EXCEEDS_GAME', 'MIN_ABOVE_CAP', 'MINS_UNSATISFIABLE',
   'CAPS_UNSATISFIABLE', 'PAIR_AVOID_CONFLICT', 'FORCED_GROUP_TOO_BIG', 'FORCED_GROUP_AVOID',
   'FORCED_OVER_CAP', 'AVOID_IMPOSSIBLE']);
@@ -141,30 +130,32 @@ const RULE_ERRORS = new Set(['MIN_EXCEEDS_GAME', 'MIN_ABOVE_CAP', 'MINS_UNSATISF
  * by accident — picking it wipes the rotation until a unit is filled, which
  * reads as a crash — so that one gets its own sentence and a way back to the
  * editor instead of a shrug. A plan refused by its own rules gets the same
- * treatment, pointed at the Rules fold. */
+ * treatment, pointed at the Rules group (decision 15). */
 function timelineEmpty(g, p) {
   if (noRoster()) return rosterCta();
   const box = el('div', 'empty');
   const units = g?.constraints?.units || [];
   const platoon = g?.strategy === 'platoon' && !units.some(u => u.length === 5);
+  // `run` gets the button itself, since `openPlanSheet` wants the trigger to
+  // return focus to on close.
   const cta = (label, run) => {
     const b = el('button', 'btn sm press', label);
     b.type = 'button';
-    b.onclick = run;
+    b.onclick = () => run(b);
     box.append(b);
   };
   if (!platoon) {
     box.append(el('div', null, 'No rotation yet. Resolve the errors above.'));
     // the offending rule is the one thing that can undo this, and it is behind
-    // a fold the coach has probably never opened
+    // a group the coach has probably never opened
     if ((p?.issues || []).some(i => i.severity === 'error' && RULE_ERRORS.has(i.code))) {
-      cta('Fix the rules', () => jumpToEditor('#constraints', '.rchip .x'));
+      cta('Fix the rules', b => openPlanSheet('rules', b));
     }
     return box;
   }
   box.append(el('div', null, 'Platoon plays whole fives, so there is nothing to plan until one exists.'));
   box.append(el('div', null, `Pick five players for Unit ${Math.max(1, units.findIndex(u => u.length !== 5) + 1)}.`));
-  cta('Fill a unit', () => jumpToEditor('#stratbody'));
+  cta('Fill a unit', b => openPlanSheet('strategy', b));
   return box;
 }
 

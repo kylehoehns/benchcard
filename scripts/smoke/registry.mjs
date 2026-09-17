@@ -115,6 +115,9 @@ export const ROWS = Object.freeze([
   // #27 item 10: the Who's here sheet swept the same way settingsrows sweeps
   // Settings — see who-rows.mjs.
   { id: 'whorows', name: `who's here rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
+  // #28 item 11: the Plan sheet swept the same way `whorows` sweeps Who's
+  // here -- see plan-rows.mjs.
+  { id: 'planrows', name: `plan rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
   // #69 item 4: the restyle's own named control list on Today and the game
   // screen, swept the same way settingsrows sweeps Settings -- see
   // today-game-rows.mjs.
@@ -123,6 +126,10 @@ export const ROWS = Object.freeze([
   // section): the sentence, and the Who's here / Format / Sub interval
   // sheets it opens, driven with real buttons, keys and pointer events.
   { id: 'sentencesheets', name: 'sentence and sheets', selectable: true, setup: 'rich' },
+  // #28's own guard (see docs/specs/28-plan-sheet.md's Proof section): the
+  // Plan sheet, its Rules and Lineups groups and the "across the day/season"
+  // switches, driven with real buttons, keys and pointer events.
+  { id: 'plansheet', name: 'plan sheet', selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },
