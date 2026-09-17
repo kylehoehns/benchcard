@@ -141,6 +141,33 @@
 
   if (viewTimeline) viewTimeline.click();
 
+  /* What a thumb lands on, which is not always what the control paints. A
+     control may stretch its tappable box past its ink with a pseudo-element:
+     iOS's own segmented control is 32pt for exactly that reason, and
+     `#viewSeg` (Timeline | Card) follows it. A pseudo-element is not its own
+     hit-test target, so `elementFromPoint` hands back the element it belongs
+     to -- probe `floor / 2` out from the center in each direction and the
+     answer is whether a finger aiming at a `floor`-sized target would land on
+     this control.
+
+     Every caller keeps the painted box too and takes the larger of the two,
+     so this only ever relaxes: nothing that passed on its box alone can start
+     failing because a probe came back false. Shared by the 44px sweep below
+     and by `minSizeCheck`'s 48px row sweeps, so one control wearing an
+     extended hit area reads the same way to all of them. */
+  function hitBox(el, floor) {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2, p = floor / 2;
+    const lands = (dx, dy) => {
+      const t = document.elementFromPoint(cx + dx, cy + dy);
+      return !!t && (t === el || el.contains(t));
+    };
+    return {
+      width: Math.max(r.width, lands(-p, 0) && lands(p, 0) ? floor : 0),
+      height: Math.max(r.height, lands(0, -p) && lands(0, p) ? floor : 0),
+    };
+  }
+
   /* 3. Touch targets ≥44px. A coach taps this standing up, in a hurry.
         Inline links inside running prose are exempt — they are text, not
         controls, and padding them to 44px would wreck the paragraph. So is
@@ -148,8 +175,15 @@
   const SEL = 'button, a[href], input, select, textarea, [role="button"], [role="switch"], [role="tab"]';
   const small = [];
   let tapCount = 0;
+  /* An open sheet is a modal `<dialog>`, and the browser makes everything
+     behind one inert — a tap there is not delivered at all. So a control
+     under a backdrop has no target size to measure. It is measured in the
+     states where nothing is open, which is where it can actually be tapped. */
+  const modals = [...document.querySelectorAll('dialog[open]')].filter((d) => d.matches(':modal'));
+  const behindAModal = (el) => modals.length > 0 && !modals.some((d) => d.contains(el));
   for (const el of document.querySelectorAll(SEL)) {
     if (!visible(el) || el.closest('.card') || el.closest('[hidden]')) continue;
+    if (behindAModal(el)) continue;
     if (el.type === 'hidden') continue;
     if (skipRowPitchName(el)) continue; // #72: game-rows-fit.mjs owns this floor instead
     /* `dd` joined this list when about.html's FAQ tripped the check with a link
@@ -164,8 +198,7 @@
     /* A checkbox or radio wrapped in a label is tapped by the label, so the
        label's box is the real target — the 38×22 control inside it is not. */
     const box = (el.type === 'checkbox' || el.type === 'radio') && el.closest('label') || el;
-    const r = box.getBoundingClientRect();
-    // A hit area can be extended past the box; count the largest of the two.
+    const r = hitBox(box, 43.5);
     const min = Math.min(round(r.width), round(r.height));
     if (min < 43.5) small.push(`${label(el)} ${round(r.width)}×${round(r.height)}`);
   }
@@ -240,7 +273,9 @@
       for (const el of elements()) {
         if (!visible(el)) continue;
         count++;
-        const r = el.getBoundingClientRect();
+        // The hit area, not the ink -- see `hitBox`. 47.99 is the tolerance
+        // the comment above explains; it is also what the probe reaches for.
+        const r = hitBox(el, 47.99);
         if (dim(r) < 47.99) short.push(fmt(el, r));
       }
     }
