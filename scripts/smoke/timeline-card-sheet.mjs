@@ -96,11 +96,18 @@ async function cardSheetRowsOk(c, ck, where) {
 // <select> reports `scrollWidth === clientWidth` whatever its text does --
 // the measure the row guard uses for labels is blind here -- so this draws
 // the selected option with the select's own computed font and compares.
-// "Pocket · 3.45 × 5 in" needs 264px against a 192px line at 320px/32px and
-// fits at no single-line size a 32px root allows, so it is the one value
-// allowed to be shortened, and only with an ellipsis to show for it.
-const ELLIPSIS_OK = 'cardSize';
-async function cardSheetWidthOk(c, ck, where, width) {
+//
+// `short` says whether a shortened value is allowed at this size. At the
+// design size (390px, 16px root) it is not: every option has to read in
+// full. Grow the text and at some point a value cannot fit on one line at
+// all -- "Pocket · 3.45 × 5 in" needs 264px against 192px at 320px/32px --
+// so above the design size a value may be shortened, but only with an
+// ellipsis to show for it, never sliced. Which value runs out of room first
+// is not pinned here on purpose: a select paints its own text in whatever
+// font the platform gives form controls, and CI's is wider than a Mac's --
+// "Short names" needs 174px here and 203px there. The rule that matters is
+// the same on both: it fits, or it ends in an ellipsis.
+async function cardSheetWidthOk(c, ck, where, width, short = true) {
   const m = await evalJSON(c, `(() => {
     const box = n => { const b = n.getBoundingClientRect();
       return { left: Math.round(b.left * 10) / 10, right: Math.round(b.right * 10) / 10 }; };
@@ -132,7 +139,7 @@ async function cardSheetWidthOk(c, ck, where, width) {
     `${where}: Print and Share image span ${left}-${right}, the options group ${m.pgrp.left}-${m.pgrp.right} -- they do not line up`);
   for (const s of m.selects) {
     if (s.need <= s.have + 0.5) continue;
-    ck(s.id === ELLIPSIS_OK,
+    ck(short,
       `${where}: #${s.id}'s value "${s.text}" needs ${s.need}px of a ${s.have}px control -- it is cut`);
     ck(s.ellipsis === 'ellipsis',
       `${where}: #${s.id}'s value "${s.text}" is ${s.need - s.have}px too wide and text-overflow is "${s.ellipsis}" -- a value that cannot fit is shortened, never sliced`);
@@ -295,7 +302,7 @@ export async function timelineCardSheetPass(c, origin) {
     /* ---- fix pass finding 1: row geometry at 390px/16px (the sheet is
        already open from the check just above) ---- */
     await cardSheetRowsOk(c, ck, '390px/16px');
-    await cardSheetWidthOk(c, ck, '390px/16px', WIDTH);
+    await cardSheetWidthOk(c, ck, '390px/16px', WIDTH, false);
 
     /* ---- item 3: changing Size changes the preview ---- */
     const beforeSize = await evalJSON(c, `(() => {

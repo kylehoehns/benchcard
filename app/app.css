@@ -131,8 +131,17 @@ a { color: inherit; }
 .seg.wide { display: flex; width: 100%; padding: 2px; }
 .seg.wide button { flex: 1; padding: .58rem .3rem; font-size: var(--fs-secondary); }
 /* #29 decision 5: Timeline | Card, the bare (non-`.wide`) shape -- everything
-   above is already correct for it; only the gap to what follows is new. */
-#viewSeg { margin-bottom: .75rem; }
+   above is already correct for it.
+   No gap under it, for the reason `.s-rot > .block-hd` gives above: this seg
+   stands where "Rotation" and its 48px Shuffle used to, and its own buttons
+   are 48px tall with their labels centered, so the lower half of the seg is
+   already the space. It has to be earned rather than spent: the seg's box is
+   52px (48px buttons inside `.seg`'s own 2px track inset) where the header it
+   replaced was 48px, and smoke `game rows fit` has all nine rows above the
+   Start game bar at 390x844 by about 9px on CI, where a wider fallback font
+   wraps the sample sentence onto a fourth line. Twelve px of gap here is more
+   than that whole margin. */
+#viewSeg { margin-bottom: 0; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
@@ -646,7 +655,12 @@ a { color: inherit; }
    case that needs the extra room. */
 .tl { --lab: 9.5rem; --tot: 2rem; container-type: inline-size; }
 .tl:not(.even) { --tot: 5.2rem; }
-.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: .25rem; }
+/* #29: no gap under the Q1-Q4 labels either. `align-items: end` already
+   leaves the label's own descender space between its text and the first row,
+   so the 4px this used to add read as nothing -- and the fold budget #72 set
+   out (nine rows plus the Start game bar inside 844px) has to pay for a 52px
+   Timeline | Card seg where a 48px header row used to be. */
+.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: 0; }
 .tl-head > div:first-child, .tl-head > div:last-child { display: none; }
 .tl-periods { position: relative; height: 1.1rem; padding: 0 .3rem; }
 /* #69 decision 7: no uppercase, no heavy weight -- a quiet footnote above the
