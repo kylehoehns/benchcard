@@ -274,6 +274,10 @@ reason before the code exists is its proof that it can.
 - **Prefer transform/opacity for animation.** Anything animating `left`, `top`,
   `width` or `height` on a hot path is a bug to fix, not a pattern to copy.
 - **Verify in a real browser**, not by reading code. Screenshot layout changes.
+- **Redesign screens match the prototype.** Work on #18 and its children must
+  look like `notes/mockups/prototype/` — read its README first — and a PR that
+  changes a redesigned screen shows a side-by-side screenshot next to the
+  matching prototype PNG.
 - **Third-party code changes only through `app/vendor/fetch.sh`.** A CI job
   re-runs it and fails if the tree differs by a byte.
 - **The privacy claim is narrow on purpose**: "your roster and your players
