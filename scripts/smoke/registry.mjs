@@ -141,6 +141,11 @@ export const ROWS = Object.freeze([
   // Plan sheet, its Rules and Lineups groups and the "across the day/season"
   // switches, driven with real buttons, keys and pointer events.
   { id: 'plansheet', name: 'plan sheet', selectable: true, setup: 'rich' },
+  // #73's own guard (see docs/specs/73-sheet-polish.md's Proof section):
+  // stepper column equality at 390px and 320px/32px, equal row padding
+  // whether a row wraps, the balance value clearing its label, and every
+  // sheet's status line clear of the last row -- see sheet-spacing.mjs.
+  { id: 'sheetspacing', name: 'sheet spacing', selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },

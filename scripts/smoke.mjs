@@ -63,6 +63,7 @@ import { todayGameRowsPass } from './smoke/today-game-rows.mjs';
 import { gameTitlePass } from './smoke/game-title.mjs';
 import { sentenceSheetsPass } from './smoke/sentence-sheets.mjs';
 import { planSheetPass } from './smoke/plan-sheet.mjs';
+import { sheetSpacingPass } from './smoke/sheet-spacing.mjs';
 import { narrowPass } from './smoke/narrow.mjs';
 import { sweepPass } from './smoke/sweep.mjs';
 import { appLargeTextPass } from './smoke/app-large-text.mjs';
@@ -118,6 +119,7 @@ const RUN = {
   gametitle: ctx => gameTitlePass(ctx.c, ctx.origin),
   sentencesheets: ctx => sentenceSheetsPass(ctx.c, ctx.origin),
   plansheet: ctx => planSheetPass(ctx.c, ctx.origin),
+  sheetspacing: ctx => sheetSpacingPass(ctx.c, ctx.origin),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
   applargetext: ctx => appLargeTextPass(ctx.c, ctx.origin),
@@ -324,6 +326,7 @@ async function browserChecks(origin, only) {
     report.checks.push(await safeCheck('todaygamerows', () => todayGameRowsPass(c, source)));
     report.checks.push(await safeCheck('sentencesheets', () => sentenceSheetsPass(c, origin)));
     report.checks.push(await safeCheck('plansheet', () => planSheetPass(c, origin)));
+    report.checks.push(await safeCheck('sheetspacing', () => sheetSpacingPass(c, origin)));
     report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
     report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep

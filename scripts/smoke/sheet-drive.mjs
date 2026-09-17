@@ -1,4 +1,4 @@
-import { evalIn, step } from './dom.mjs';
+import { evalIn, step, HEIGHT } from './dom.mjs';
 
 /* Shared by the two "own guard" behavioral passes -- #27's `sentence-sheets.mjs`
  * and #28's `plan-sheet.mjs` -- both of which drive a real dialog with real
@@ -67,6 +67,62 @@ export async function tapPane(c, js) {
   await settlePane(c);
 }
 
+// #73 item 10: `closeSheet` (✕, Escape, backdrop, drag/flick) now slides
+// rather than closing at once, so a check right after the action would race
+// the `--t` + 100ms transition (trap.js) -- this polls instead of reading
+// `dialog.open` the instant the action returns.
+export async function waitClosed(c, sel, timeoutMs = 700) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const open = await evalJSON(c, `JSON.stringify(document.querySelector(${JSON.stringify(sel)})?.open ?? null)`);
+    if (open === false) return true;
+    await new Promise(r => setTimeout(r, 30));
+  }
+  return false;
+}
+
+// #73 item 20's "fast flick" close path: one `mouseMoved` spanning the whole
+// distance, released immediately -- the fewest possible round trips, so the
+// wall-clock time `dragSpeed` (trap.js) reads between its first and last
+// sample is short enough to register as a flick rather than a slow drag that
+// happens to cross the same distance.
+export async function flick(c, x, y0, y1) {
+  await c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y: y0, button: 'left', clickCount: 1 });
+  await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y: y1, button: 'left' });
+  await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
+}
+
+// #73 item 4: right after opening (or a push, item 1's Plan-sheet clause),
+// focus is the sheet's own title (`h2`, tabindex="-1") -- never the handle,
+// which item 2 gives its own, later, tab stop (trap.js's `focusTarget`).
+export async function titleFocused(c, titleId) {
+  return evalJSON(c, `JSON.stringify({
+    onTitle: document.activeElement?.id === ${JSON.stringify(titleId)},
+    isHandle: document.activeElement?.classList?.contains('bsheet-handle') || false,
+  })`);
+}
+
+// `sentence-sheets.mjs`'s own shape on top of `titleFocused` above, for its
+// three sheets opened at level 1 (Who's here, Format, Sub interval): naming
+// the handle specifically when that is where focus landed, since that is the
+// regression item 1/2 exist to catch. `plan-sheet.mjs`'s pushes read
+// `titleFocused` directly instead -- there focus is one field among several
+// gathered in the same round trip, not its own check.
+export async function checkTitleFocused(c, ck, titleId, label) {
+  const tf = await titleFocused(c, titleId);
+  ck(tf.onTitle && !tf.isHandle, tf.isHandle
+    ? `focus landed on the handle on opening ${label}, want ${titleId}`
+    : `focus did not land on ${titleId} on opening ${label}`);
+}
+
+// #73 items 3/10/20: the shape every close path (✕, Escape, backdrop, drag,
+// flick) checks -- closed within the slide, and focus back on the trigger.
+export async function closedWithFocus(c, dialogSel, triggerSel) {
+  const closed = await waitClosed(c, dialogSel);
+  const focusBack = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector(${JSON.stringify(triggerSel)}))`);
+  return { closed, focusBack };
+}
+
 // The dialog's own box, and the handle's, for the geometry and drag checks.
 export async function sheetRect(c, sel) {
   return evalJSON(c, `(() => {
@@ -77,6 +133,26 @@ export async function sheetRect(c, sel) {
     return JSON.stringify({ open: d.open, top: r.top, height: r.height,
       handle: h ? { x: h.left + h.width / 2, y: h.top + h.height / 2 } : null });
   })()`);
+}
+
+// The half <-> full resize check both passes share, word-for-word but for
+// each sheet's own half-height math (Who's here's half band vs. Plan's flat
+// 50vh) -- `halfOk(topPx)` is that one caller-owned predicate. Drags up past
+// ~30% of the sheet's own height to full, checks the handle's aria-label
+// flips too (item 17), then a plain click on the handle back to half.
+export async function resizeCheck(c, sel, ck, halfOk) {
+  const rect = await sheetRect(c, sel);
+  if (!ck(!!rect.handle, `${sel} has no .bsheet-handle to drag (resize)`)) return;
+  await drag(c, rect.handle.x, rect.handle.y, rect.handle.y - rect.height * 0.3);
+  await settle(c);
+  const full = await sheetRect(c, sel);
+  const fullLabel = await evalJSON(c, `JSON.stringify(document.querySelector(${JSON.stringify(sel)} + ' .bsheet-handle')?.getAttribute('aria-label'))`);
+  ck(full.top <= HEIGHT * 0.15, `${sel}'s top edge is ${Math.round(full.top)}px after dragging up, want <= 15%`);
+  ck(fullLabel === 'Half height', `the handle reads "${fullLabel}" at full height, want "Half height"`);
+  await click(c, full.handle.x, full.handle.y);
+  await settle(c);
+  const half = await sheetRect(c, sel);
+  ck(halfOk(half.top), `${sel}'s top is ${Math.round(half.top)}px after clicking the handle again, want half height`);
 }
 
 // A direct `game()` edit in the page, followed by the same re-plan a real

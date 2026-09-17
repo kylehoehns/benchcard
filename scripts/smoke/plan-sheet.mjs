@@ -1,24 +1,22 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { evalJSON, click, drag, settle, settlePane, sheetRect, setGame, statusOk, tap, tapPane } from './sheet-drive.mjs';
+import { evalJSON, click, closedWithFocus, drag, flick, resizeCheck, settle, settlePane, sheetRect, setGame, statusOk, tap, tapPane, titleFocused, waitClosed } from './sheet-drive.mjs';
 
-/* #28's own guard (docs/specs/28-plan-sheet.md's Proof section): the Plan
- * sheet, its Rules and Lineups groups and the "across the day/season"
- * switches, driven with real buttons, keys and pointer events. Runs on
- * `RICH`, which lands on the Hawks game already open. Covers items 1-10 of
- * "What would settle it". State is read from `state.js`'s own exports, never
- * recomputed here.
+/* #28's own guard (docs/specs/28-plan-sheet.md's Proof section), extended by
+ * #73 (docs/specs/73-sheet-polish.md) for its own "plan sheet" row: the Plan
+ * sheet, its Rules and Lineups groups, the "across the day/season" switches,
+ * and #73's focus/close/resize behavior, all driven with real buttons, keys
+ * and pointer events. Runs on `RICH`, which lands on the Hawks game already
+ * open. State is read from `state.js`'s own exports, never recomputed here.
  *
- * Drive helpers (`evalJSON`..`statusOk`) live in `sheet-drive.mjs`, shared
- * with #27's `sentence-sheets.mjs`; `settlePane` is #28's own addition, for
- * a level-2 push/pop's 260ms slide (`PANE_MS`, trap.js), which plain
- * `settle` does not wait out.
+ * Drive helpers (`evalJSON`..`waitClosed`) live in `sheet-drive.mjs`, shared
+ * with #27's `sentence-sheets.mjs`.
  *
  * Leaves Hawks and Ravens as it found them (Even, no rules, `useCarryover`
  * off, balance Steady). */
 
-// item 1: a group header's offset from the scrolling body's own top, shared
-// by the Rules and "Across the day" open-scrolled-to-section checks below.
+// item 1: a group header's offset from the scrolling body's top, shared by
+// the Rules and "Across the day" scrolled-to-section checks below.
 async function headerOffset(c, headerSel) {
   return evalJSON(c, `(() => {
     const hd = document.querySelector(${JSON.stringify(headerSel)});
@@ -41,6 +39,8 @@ export async function planSheetPass(c, origin) {
     let rect = await sheetRect(c, '#sheetPlan');
     ck(rect.open, '#sheetPlan did not open on tapping "Plan, even minutes"');
     ck(rect.top <= HEIGHT * 0.15, `#sheetPlan's top edge is ${Math.round(rect.top)}px, want <= 15% of ${HEIGHT}`);
+    const tf = await titleFocused(c, 'sheetPlanTitle'); // item 4
+    ck(tf.onTitle && !tf.isHandle, 'focus on open is not #sheetPlanTitle');
     const handleName = await evalJSON(c, `JSON.stringify(document.querySelector('#sheetPlan .bsheet-handle')?.getAttribute('aria-label'))`);
     ck(handleName === 'Half height', `the handle reads "${handleName}", want "Half height"`);
 
@@ -73,16 +73,17 @@ export async function planSheetPass(c, origin) {
     ck(JSON.stringify(seg.pressed) === JSON.stringify(['true', 'false', 'false', 'false']),
       `#stratseg aria-pressed is ${JSON.stringify(seg.pressed)}, want only "Even" pressed`);
 
-    // Closing returns focus to the trigger.
-    await tap(c, `document.getElementById('sheetPlanClose').click()`);
-    const closedBack = await evalJSON(c, `JSON.stringify(document.activeElement === document.getElementById('phraseStrategy'))`);
-    ck(closedBack, 'focus did not return to #phraseStrategy after closing #sheetPlan with the close button');
+    // Closing (item 10: waits out the slide) returns focus to the trigger.
+    await evalIn(c, step(`document.getElementById('sheetPlanClose').click()`));
+    const r10 = await closedWithFocus(c, '#sheetPlan', '#phraseStrategy');
+    ck(r10.closed, '✕ did not close #sheetPlan within the slide');
+    ck(r10.focusBack, 'focus not back on #phraseStrategy after ✕');
 
     // Rules phrase: same dialog, full height, "Rules" near the top.
     await tap(c, `document.getElementById('phraseRules').click()`);
     const rulesOpen = await sheetRect(c, '#sheetPlan');
     // `.full` is 92vh (app.css), an 8%-of-viewport gap above it -- not 0.
-    ck(rulesOpen.top <= HEIGHT * 0.1, `#sheetPlan's top edge is ${Math.round(rulesOpen.top)}px opened at "Rules", want it at full height (<= 10% of ${HEIGHT})`);
+    ck(rulesOpen.top <= HEIGHT * 0.1, `#sheetPlan's top is ${Math.round(rulesOpen.top)}px at "Rules", want <= 10% of ${HEIGHT}`);
     const rulesHdOff = await headerOffset(c, '#constraints .pgrp-h');
     ck(rulesHdOff !== null && Math.abs(rulesHdOff) <= 8,
       `the Rules header sits ${rulesHdOff}px from the scrolling body's top, want within 8px`);
@@ -180,7 +181,7 @@ export async function planSheetPass(c, origin) {
       msgClass: document.getElementById('budgetMsg')?.className,
     })`);
     ck(afterSpread.spreadDisabled === true, '#budgetSpread is not disabled after "Even out the rest"');
-    ck((afterSpread.msgClass || '').includes('exact'), `the budget message class is "${afterSpread.msgClass}", want it to include "exact"`);
+    ck((afterSpread.msgClass || '').includes('exact'), `the budget message class is "${afterSpread.msgClass}", want "exact"`);
 
     // Reset to even clears targets/locks.
     await tap(c, `[...document.querySelectorAll('#stratbody .prow')].find(b => b.textContent === 'Reset to even').click()`);
@@ -258,13 +259,15 @@ export async function planSheetPass(c, origin) {
     ck(rules1.lastIsAdd, '"Add a rule" is not the last row in #constraints');
     ck(rules1.phrase === '2 rules', `the rules phrase reads "${rules1.phrase}", want "2 rules"`);
 
-    // Tap the first row.
-    await tapPane(c, `[...document.querySelectorAll('#constraints .prow')]
+    // Blurred first: a scripted click alone won't move focus, so the push's
+    // own focus-move (item 1) would otherwise go unproven.
+    await tapPane(c, `document.activeElement.blur(); [...document.querySelectorAll('#constraints .prow')]
       .filter(b => !b.classList.contains('add-rule'))[0].click()`);
     const detail = await evalJSON(c, `JSON.stringify({
       backLabel: document.getElementById('planBack')?.getAttribute('aria-label'),
       backHidden: document.getElementById('planBack')?.hidden,
       title: document.getElementById('sheetPlanTitle')?.textContent,
+      tFoc: document.activeElement === document.getElementById('sheetPlanTitle'),
       sentence: document.querySelector('#planSub .plan-rule-sentence')?.textContent,
       removeBtn: [...document.querySelectorAll('#planSub .prow')].some(b => b.textContent === 'Remove rule'),
       openDialogs: [...document.querySelectorAll('dialog[open]')].map(d => d.id),
@@ -272,10 +275,11 @@ export async function planSheetPass(c, origin) {
     ck(detail.backHidden === false && detail.backLabel === 'Back to Plan',
       `the back button is hidden=${detail.backHidden}, label "${detail.backLabel}", want visible and "Back to Plan"`);
     ck(detail.title === 'Rule', `the level-2 title reads "${detail.title}", want "Rule"`);
+    ck(detail.tFoc, 'focus not on title after the detail push');
     ck(detail.sentence === 'Marcus plays at least 16 min', `the rule sentence reads "${detail.sentence}"`);
     ck(detail.removeBtn, '"Remove rule" is missing on the detail page');
     ck(JSON.stringify(detail.openDialogs) === JSON.stringify(['sheetPlan']),
-      `${JSON.stringify(detail.openDialogs)} dialog(s) open on the rule detail page, want only sheetPlan`);
+      `${JSON.stringify(detail.openDialogs)} open on the rule detail page, want only sheetPlan`);
 
     // Remove rule.
     await tapPane(c, `[...document.querySelectorAll('#planSub .prow')].find(b => b.textContent === 'Remove rule').click()`);
@@ -344,9 +348,7 @@ export async function planSheetPass(c, origin) {
     ck(afterEscOne.title === 'Plan', `the title reads "${afterEscOne.title}" after one Escape, want "Plan" (back at level 1)`);
     await c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
-    await settle(c);
-    const afterEscTwo = await evalJSON(c, `JSON.stringify(document.getElementById('sheetPlan').open)`);
-    ck(!afterEscTwo, 'a second Escape did not close the sheet');
+    ck(await waitClosed(c, '#sheetPlan'), 'a second Escape did not close the sheet within the slide');
 
     // restore Hawks: no rules.
     await evalIn(c, setGame(`const g = s.game(); g.constraints.minMinutes = {}; g.constraints.pairs = [];`));
@@ -354,9 +356,10 @@ export async function planSheetPass(c, origin) {
 
     /* ---- item 5: Add a rule ---- */
     await tap(c, `document.getElementById('phraseRules').click()`);
-    await tapPane(c, `document.querySelector('#constraints .add-rule').click()`);
+    await tapPane(c, `document.activeElement.blur(); document.querySelector('#constraints .add-rule').click()`);
     const addPage = await evalJSON(c, `JSON.stringify({
       title: document.getElementById('sheetPlanTitle')?.textContent,
+      tFoc: document.activeElement === document.getElementById('sheetPlanTitle'),
       backHidden: document.getElementById('planBack')?.hidden,
       closeHidden: document.getElementById('sheetPlanClose')?.hidden,
       addLabel: document.getElementById('planAddRuleBtn')?.textContent,
@@ -366,6 +369,7 @@ export async function planSheetPass(c, origin) {
       pressed: [...document.querySelectorAll('#planSub .plan-kinds .chip')].map(b => b.getAttribute('aria-pressed')),
     })`);
     ck(addPage.title === 'Add a rule', `the level-2 title reads "${addPage.title}", want "Add a rule"`);
+    ck(addPage.tFoc, 'focus not on title after the add-rule push');
     ck(addPage.backHidden === false, 'the back button is hidden on the Add-a-rule page');
     ck(addPage.closeHidden === true, 'the ✕ is on show on the Add-a-rule page, want it swapped for "Add rule"');
     ck(addPage.addHidden === false, '"Add rule" is hidden on the Add-a-rule page');
@@ -443,15 +447,17 @@ export async function planSheetPass(c, origin) {
     await tap(c, `document.getElementById('phraseStrategy').click()`);
     const balRow = await evalJSON(c, `JSON.stringify(document.querySelector('#planLineups .prow-v')?.textContent)`);
     ck(balRow === 'Steady', `the Lineup balance row reads "${balRow}", want "Steady"`);
-    await tapPane(c, `document.querySelector('#planLineups .prow').click()`);
+    await tapPane(c, `document.activeElement.blur(); document.querySelector('#planLineups .prow').click()`);
     const shapes = await evalJSON(c, `JSON.stringify({
       labels: [...document.querySelectorAll('#planSub .prow-shape .prow-t')].map(t => t.textContent),
       pressed: [...document.querySelectorAll('#planSub .prow-shape')].map(b => b.getAttribute('aria-pressed')),
+      tFoc: document.activeElement === document.getElementById('sheetPlanTitle'),
     })`);
     ck(JSON.stringify(shapes.labels) === JSON.stringify(['Steady', 'Start strong', 'Finish strong', 'Both ends']),
       `the lineup balance rows read ${JSON.stringify(shapes.labels)}`);
     ck(shapes.pressed[0] === 'true' && shapes.pressed.slice(1).every(p => p === 'false'),
       `aria-pressed is ${JSON.stringify(shapes.pressed)}, want only "Steady" pressed`);
+    ck(shapes.tFoc, 'focus not on title after the balance push');
 
     await tap(c, `[...document.querySelectorAll('#planSub .prow-shape')].find(b => b.textContent.includes('Both ends')).click()`);
     const bothEnds = await evalJSON(c, `(async () => JSON.stringify({
@@ -463,7 +469,7 @@ export async function planSheetPass(c, origin) {
     ck(bothEnds.balance === 'both', `game().balance is "${bothEnds.balance}" after "Both ends", want "both"`);
     ck(bothEnds.pressed[3] === 'true' && bothEnds.pressed.slice(0, 3).every(p => p === 'false'),
       `aria-pressed is ${JSON.stringify(bothEnds.pressed)} after "Both ends", want only the 4th pressed`);
-    ck(bothEnds.title === 'Lineup balance', `the title reads "${bothEnds.title}" after choosing a shape, want to stay on "Lineup balance"`);
+    ck(bothEnds.title === 'Lineup balance', `the title reads "${bothEnds.title}" after picking a shape, want "Lineup balance"`);
 
     await tapPane(c, `document.getElementById('planBack').click()`);
     const balRowAfter = await evalJSON(c, `JSON.stringify(document.querySelector('#planLineups .prow-v')?.textContent)`);
@@ -551,33 +557,33 @@ export async function planSheetPass(c, origin) {
     await tap(c, `document.querySelectorAll('.today-game')[0].click()`);
     await tap(c, `document.getElementById('phraseStrategy').click()`);
     await click(c, WIDTH / 2, 10);
-    await settle(c);
-    ck(!(await evalJSON(c, `JSON.stringify(document.getElementById('sheetPlan').open)`)), 'a backdrop click did not close #sheetPlan');
+    let r20 = await closedWithFocus(c, '#sheetPlan', '#phraseStrategy');
+    ck(r20.closed, 'backdrop click did not close #sheetPlan within the slide');
+    ck(r20.focusBack, 'focus not back on #phraseStrategy after a backdrop close');
 
     await tap(c, `document.getElementById('phraseStrategy').click()`);
     rect = await sheetRect(c, '#sheetPlan');
     if (ck(!!rect.handle, '#sheetPlan has no .bsheet-handle to drag')) {
       await drag(c, rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.4);
-      await settle(c);
-      ck(!(await evalJSON(c, `JSON.stringify(document.getElementById('sheetPlan').open)`)),
-        'a downward drag past a quarter of the sheet\'s height did not close #sheetPlan');
+      r20 = await closedWithFocus(c, '#sheetPlan', '#phraseStrategy');
+      ck(r20.closed, '40%-height drag did not close #sheetPlan within the slide');
+      ck(r20.focusBack, 'focus not back on #phraseStrategy after a drag close');
+    }
+
+    // item 20: a flick closes the whole sheet even from a pushed pane.
+    await tap(c, `document.getElementById('phraseRules').click()`);
+    await tapPane(c, `document.querySelector('#constraints .add-rule').click()`);
+    rect = await sheetRect(c, '#sheetPlan');
+    if (ck(!!rect.handle, '#sheetPlan has no .bsheet-handle to flick')) {
+      await flick(c, rect.handle.x, rect.handle.y, rect.handle.y + rect.height * 0.15);
+      r20 = await closedWithFocus(c, '#sheetPlan', '#phraseRules');
+      ck(r20.closed, 'flick from Add-a-rule did not close #sheetPlan within the slide');
+      ck(r20.focusBack, 'focus not back on #phraseRules after a flick close');
     }
 
     // the handle toggles half and full.
     await tap(c, `document.getElementById('phraseStrategy').click()`);
-    rect = await sheetRect(c, '#sheetPlan');
-    if (ck(!!rect.handle, '#sheetPlan has no .bsheet-handle to drag (resize)')) {
-      await drag(c, rect.handle.x, rect.handle.y, rect.handle.y - rect.height * 0.3);
-      await settle(c);
-      const full = await sheetRect(c, '#sheetPlan');
-      ck(full.top <= HEIGHT * 0.15, `#sheetPlan's top edge is ${Math.round(full.top)}px after dragging up, want <= 15%`);
-      await click(c, full.handle.x, full.handle.y);
-      await settle(c);
-      // a plain tap on the handle while full toggles back to half (50vh).
-      const backToHalf = await sheetRect(c, '#sheetPlan');
-      ck(Math.abs(backToHalf.top - HEIGHT * 0.5) <= HEIGHT * 0.05,
-        `#sheetPlan's top is ${Math.round(backToHalf.top)}px after clicking the handle again, want close to half (${Math.round(HEIGHT * 0.5)}px)`);
-    }
+    await resizeCheck(c, '#sheetPlan', ck, top => Math.abs(top - HEIGHT * 0.5) <= HEIGHT * 0.05);
 
     // one sheet at a time.
     await tap(c, `document.getElementById('phrasePlayers').click()`);
