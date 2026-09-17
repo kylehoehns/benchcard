@@ -142,30 +142,49 @@ async function checkAddRuleColumns(c, ck, where, checkGeometry = false) {
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
 }
 
-// Fix pass finding 6: at 320px/32px, the Add-a-rule header's title (h2) used
-// to ellipsize down to "Add …" while the action button ("Add rule") wrapped
-// to two lines instead. Reads computed style, the same shape `checkWhoWrap`
-// (below) already uses for a truncation claim, rather than pixel geometry:
-// the title must not carry the nowrap+overflow:hidden+ellipsis combination
-// that is what actually truncates it, and the action must carry
-// `white-space: nowrap` so the browser can never break it onto a second
-// line.
-async function checkAddRuleHeader(c, ck, where) {
+// Fix pass finding 6 (second pass): at 320px/32px, `.bsheet-hd-row`'s
+// `1fr auto 1fr` columns still split the row's width three ways once "Add
+// rule" (nowrap, ~140px) claims the right slot, so the title's column
+// shrank to ~30px and its (now-wrapping, not truncating) text broke one word
+// per line -- "Add" / "a" / "rule", three lines. Reads the title's own box
+// height against its line-height (rounded) rather than literal pixel widths,
+// since the fix is free to choose any layout that keeps the title readable;
+// also checks the title's box against the back button's and the action's,
+// since the fix moves the title onto its own row and a wrong offset could
+// overlap either. At 390px/16px the header must be pixel-identical to
+// before: one row, the title on the same row as the back button and
+// centered on the sheet within 2px -- `wide` selects which shape is
+// expected.
+async function checkAddRuleHeader(c, ck, where, wide) {
   await tap(c, `document.getElementById('phraseRules').click()`);
   await tap(c, `document.querySelector('#constraints .add-rule').click()`);
   const r = await evalJSON(c, `(() => {
     const h2 = document.getElementById('sheetPlanTitle');
-    const btn = document.getElementById('planAddRuleBtn');
+    const back = document.getElementById('planBack');
+    const action = document.getElementById('planAddRuleBtn');
+    const sheet = document.getElementById('sheetPlan');
     const th = getComputedStyle(h2);
-    const bh = getComputedStyle(btn);
+    const box = x => { const b = x.getBoundingClientRect();
+      return { left: b.left, right: b.right, top: b.top, bottom: b.bottom }; };
+    const sr = sheet.getBoundingClientRect();
     return JSON.stringify({
       titleText: h2.textContent,
-      titleTruncates: th.whiteSpace === 'nowrap' && th.overflow === 'hidden' && th.textOverflow === 'ellipsis',
-      actionWhiteSpace: bh.whiteSpace,
+      lineHeight: parseFloat(th.lineHeight),
+      title: box(h2), back: box(back), action: box(action),
+      sheetMid: (sr.left + sr.right) / 2,
     });
   })()`);
-  ck(!r.titleTruncates, `${where}: the Add-a-rule title ("${r.titleText}") still truncates -- white-space/overflow/text-overflow are all still set to clip it`);
-  ck(r.actionWhiteSpace === 'nowrap', `${where}: the Add-a-rule action's white-space is "${r.actionWhiteSpace}", want "nowrap" so it can never wrap to two lines`);
+  const lines = Math.round((r.title.bottom - r.title.top) / r.lineHeight);
+  const maxLines = wide ? 1 : 2;
+  ck(lines <= maxLines, `${where}: the Add-a-rule title ("${r.titleText}") is ${lines} line(s) tall, want <= ${maxLines}`);
+  ck(!boxesOverlap(r.title, r.back), `${where}: the Add-a-rule title overlaps the back button -- title ${JSON.stringify(r.title)}, back ${JSON.stringify(r.back)}`);
+  ck(!boxesOverlap(r.title, r.action), `${where}: the Add-a-rule title overlaps the action -- title ${JSON.stringify(r.title)}, action ${JSON.stringify(r.action)}`);
+  if (wide) {
+    const sameRow = r.title.top < r.back.bottom && r.back.top < r.title.bottom;
+    ck(sameRow, `${where}: the Add-a-rule title is not on the back button's row -- title ${JSON.stringify(r.title)}, back ${JSON.stringify(r.back)}`);
+    const titleMid = (r.title.left + r.title.right) / 2;
+    ck(Math.abs(titleMid - r.sheetMid) <= 2, `${where}: the Add-a-rule title's center (${titleMid.toFixed(1)}) is ${Math.abs(titleMid - r.sheetMid).toFixed(1)}px from the sheet's center (${r.sheetMid.toFixed(1)}), want <= 2px`);
+  }
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
 }
 
@@ -282,6 +301,7 @@ export async function sheetSpacingPass(c, origin) {
     await tap(c, `document.getElementById('sheetFormatClose').click()`);
 
     await checkAddRuleColumns(c, ck, '390px');
+    await checkAddRuleHeader(c, ck, '390px', true);
     await tap(c, `document.getElementById('phraseRules').click()`);
     await tap(c, `document.querySelector('#constraints .add-rule').click()`);
     await checkStatusGap(c, ck, "390px, Add a rule", '#sheetPlanBody', '#sheetPlanStatus');
@@ -311,7 +331,7 @@ export async function sheetSpacingPass(c, origin) {
 
       await checkFormatColumns(c, ck, '320px/32px', true);
       await checkAddRuleColumns(c, ck, '320px/32px', true);
-      await checkAddRuleHeader(c, ck, '320px/32px');
+      await checkAddRuleHeader(c, ck, '320px/32px', false);
       await checkLineupGap(c, ck, '320px/32px');
     } finally {
       await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });

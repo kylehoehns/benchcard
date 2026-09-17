@@ -2411,8 +2411,14 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
    trap.js). `touch-action: none` keeps a touch drag anywhere in it from
    turning into a page-scroll gesture on the first move, same reason the
    handle itself already had it. */
+/* #73 fix pass finding 6 (second pass): a size container (the `.tl` idiom,
+   ~line 671) so the narrow-header rule below reads `.bsheet-hd`'s own
+   inline-size, not the viewport -- the row's three columns need to know how
+   much room "Add rule" actually leaves the title, which a media query
+   cannot see. */
 .bsheet-hd { position: relative; display: flex; flex-direction: column;
-  padding: 0 .9rem .7rem; flex: none; touch-action: none; }
+  padding: 0 .9rem .7rem; flex: none; touch-action: none;
+  container-type: inline-size; }
 /* A real button (decision 9 / I3), not a decorative bar: the visible pill is
    a `::before` so the hit area can be the full width of the header without a
    giant painted stripe. `touch-action: none` keeps the browser from turning
@@ -2459,6 +2465,31 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
    `pushPane` in trap.js), not a control -- it never reaches the Tab order and
    draws no ring when focus lands on it programmatically. */
 .bsheet-hd-row h2:focus { outline: none; }
+/* #73 fix pass finding 6 (second pass): at 320px/32px, `.bsheet-hd`'s own
+   inline-size (padding-box minus its own horizontal padding) is ~262px --
+   ~8.2em once the 32px root is the conversion factor -- while the same
+   header at 390px/16px is ~361px, ~22.6em: a doubled root doubles every
+   rem/em padding right along with the narrower viewport, so `em` (not `px`)
+   is what tells the two states apart, the same reasoning `.tl`'s own
+   `@container` (~line 671) already relies on. 16em sits well inside that
+   gap. `:has(.planAddRule:not([hidden]))` scopes the rule to the one header
+   that ever crowds -- the Add-a-rule pane's right slot holds a `nowrap`
+   "Add rule" button; the other three sheets, and the Plan sheet at level 1,
+   have no such element and are untouched even under 16em, matching the
+   survey's finding that their titles already fit. Below the threshold the
+   title drops onto a full-width second row under the back/action row,
+   still centered; above it (or when the query cannot match) the row keeps
+   its one-line `1fr auto 1fr` shape unchanged. */
+@container (max-width: 16em) {
+  .bsheet-hd-row:has(.planAddRule:not([hidden])) {
+    grid-template-columns: auto 1fr auto;
+    row-gap: .3rem;
+  }
+  .bsheet-hd-row:has(.planAddRule:not([hidden])) h2 {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
 .bsheet-hd-l { grid-column: 1; display: flex; align-items: center; justify-content: flex-start; min-height: 48px; }
 .bsheet-hd-r { grid-column: 3; display: flex; align-items: center; justify-content: flex-end; gap: .1rem; min-height: 48px; }
 .bsheet-close { display: inline-flex; align-items: center;
