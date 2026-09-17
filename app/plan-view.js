@@ -8,25 +8,17 @@
  * is why they make one seam -- they share no state with each other beyond
  * the plan cache, and none of them owns a control a coach types into.
  *
- * One outward dependency, and only from the day chart: the "+ Add a game"
- * call to action in the empty state pushes a game and needs a full
- * repaint, so `initPlanView(renderAll)` takes it in the same way every
- * other view seam takes `render` / `setView` / the scheduler. The
- * dispatcher stays in app.js until render.js.
+ * No outward dependency any more (#30): the day chart's own "+ Add a game"
+ * call to action, the one thing here that ever pushed a game and needed a
+ * full repaint, went with Season taking over the empty state -- Today
+ * already owns Add a game (#26).
  * ================================================================== */
 import { fmtMinutes } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { track } from './analytics.js';
-import { state, plans, dayTotals, game, availIds, noRoster, colorOf, gameLabel, newGame, lastGame, effectiveStints, effectiveMinutes, spreadOf, summaryLine } from './state.js';
+import { state, plans, dayTotals, game, availIds, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, summaryLine } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
-
-let renderAll = () => {};
-
-export function initPlanView(renderAllFn) {
-  renderAll = renderAllFn;
-}
 
 /* #29 decision 6: replaces the stat tiles. One sentence, read off the
    rotation the coach is actually looking at -- `effectiveMinutes` /
@@ -226,23 +218,17 @@ export function longestSit(stints, ids) {
 const maxSubsNow = () => state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs;
 
 export function renderDayTotals() {
+  const section = $('#daySection');
   const box = $('#daytotals'); box.textContent = '';
   const n = state.day.games.length;
   set('#dayhint', 'textContent', n > 1 ? `${n} games` : '');
-  if (state.day.games.length < 2) {
-    const e = el('div', 'day-empty');
-    e.append(el('span', null, 'Tournament? Add a second game and later games rebalance against this one.'));
-    const b = el('button', 'btn sm press', '+ Add a game');
-    b.onclick = () => {
-      state.day.games.push(newGame(state.day.games.length, lastGame(), state.settings));
-      state.activeGame = state.day.games.length - 1;
-      track('day_game_count', { games: state.day.games.length });
-      renderAll();
-    };
-    e.append(b);
-    box.append(e);
-    return;
-  }
+  /* #30 decision 4: under two games there is nothing to chart, and Today
+     already owns adding a game (#26), so the section is hidden rather than
+     asking for one here. With no `#daySection` (the game screen no longer
+     has one) this is a no-op, the same guard every other `$(...)` call in
+     this file already leans on. */
+  if (section) section.hidden = n < 2;
+  if (n < 2) return;
   const totals = state.players.map(p => dayTotals[p.id] || 0);
   const hi = Math.max(...totals, 1), lo = Math.min(...totals);
   const sorted = [...state.players].sort((a, b) => (dayTotals[b.id] || 0) - (dayTotals[a.id] || 0));

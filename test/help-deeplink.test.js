@@ -42,9 +42,11 @@ const targets = [...sheet.matchAll(/<h4 class="help-h" id="([^"]+)">/g)].map(m =
 test('every "?" points at a section that exists inside #help', () => {
   /* #28 removed the "?" that sat on `#planFold`, `#balanceFold` and
      `#consdetails` — those three sections' content stays in #help (the
-     ticket's survey), but nothing deep-links to it any more, so the count
-     dropped from 6 (5 unique) to 3 (2 unique: help-season, help-bench x2). */
-  assert.ok(links.length >= 3, `expected the slice-4 deep links, found ${links.length}`);
+     ticket's survey), but nothing deep-links to it any more. #30 then moved
+     "Across the day" to the Season screen and dropped its own "?" (a help
+     icon beside a control is banned there), and `help-season`'s anchor came
+     off its `h4` with it, so the count is now 2 (1 unique: help-bench x2). */
+  assert.ok(links.length >= 2, `expected the slice-4 deep links, found ${links.length}`);
   for (const id of links) {
     assert.ok(sheet.includes(`id="${id}"`),
       `a "?" deep-links to #${id}, which is not a section of the help sheet — `

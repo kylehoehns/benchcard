@@ -48,6 +48,7 @@ import { ROWS, nameOf } from './smoke/registry.mjs';
 
 import { cardFontPass } from './smoke/card-font.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
+import { seasonPass } from './smoke/season.mjs';
 import { gameRowsFitPass } from './smoke/game-rows-fit.mjs';
 import { todayAndBackPass } from './smoke/today-and-back.mjs';
 import { todayKeysAndUndoPass } from './smoke/today-keys-and-undo.mjs';
@@ -104,6 +105,7 @@ const JSON_OUT = has('--json');
 const RUN = {
   cardfont: ctx => cardFontPass(ctx.c, ctx.origin),
   fixture: ctx => fixturePass(ctx.c),
+  season: ctx => seasonPass(ctx.c, ctx.origin),
   gamerowsfit: ctx => gameRowsFitPass(ctx.c, ctx.origin),
   todayback: ctx => todayAndBackPass(ctx.c, ctx.origin),
   todaykeys: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin),
@@ -266,6 +268,9 @@ async function browserChecks(origin, only) {
        check after it and printing no table at all. */
     report.checks.push(await safeCheck('cardfont', () => cardFontPass(c, origin)));
     report.checks.push(await safeCheck('fixture', () => fixturePass(c)));
+    /* #30's own guard, right after the fixture check it depends on:
+       `fixturePass` above already leaves Today as its own baseline. */
+    report.checks.push(await safeCheck('season', () => seasonPass(c, origin)));
     /* #72: its own `?try=9` landing, in light and dark -- reloads onto a
        freshly wiped nine-player sample rather than reading the rich fixture,
        and restores RICH itself before returning (see game-rows-fit.mjs), so

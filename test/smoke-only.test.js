@@ -76,9 +76,11 @@ test('--only "nope" exits non-zero, fast, with no table', () => {
   assertNeverLaunchedChrome(invalid, '--only "nope"');
 });
 
-test('the refusal lists the 33 selectable rows, one per line', () => {
-  assert.equal(validNames.length, 33,
-    `expected the 33 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
+test('the refusal lists the 34 selectable rows, one per line', () => {
+  // 34 since #30, which added its own guard (`season`, in scripts/smoke/season.mjs)
+  // to REGISTRY — was 33 before.
+  assert.equal(validNames.length, 34,
+    `expected the 34 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
   // one per line, not comma-joined or wrapped
   assert.equal(new Set(validNames).size, validNames.length, 'a duplicated row name in the list');
 });

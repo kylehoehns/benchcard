@@ -23,7 +23,7 @@ import { renderRoster, renderLevels } from './roster-view.js';
 import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
 import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
-import { renderSeason } from './season-view.js';
+import { renderSeason, seasonGames } from './season-view.js';
 import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel, activeColor } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { retireUndo, flash } from './toast.js';
@@ -339,6 +339,10 @@ addEventListener('popstate', (e) => {
    each of the day's games. The other three screens are just their name; an
    in-page heading that repeated it would say it twice. */
 const SCREEN_TITLE = { team: 'Team', season: 'Season', settings: 'Settings' };
+// Screens with their own in-page `h1` (`#gameTitle`, `#seasonTitle`), so
+// `#barTitle` would only be a second copy of the same text (#69 decision 5,
+// #30 decision 2).
+const NO_BAR_TITLE = new Set(['games', 'season']);
 // every screen storage.js's own allow-list names, minus Today -- the one
 // case with no back button and no title, because it is the one nothing goes
 // back FROM (#23 review, item D: was a hand-typed second copy of VIEWS).
@@ -409,12 +413,22 @@ function applyView(v, from) {
   const barTitleEl = $('#barTitle');
   if (barTitleEl) {
     if (onBack) barTitleEl.textContent = screenTitle(v);
-    barTitleEl.hidden = v === 'games';
+    /* #30 decision 2: Season now has its own in-page `h1#seasonTitle`, the
+       same reason Games hides `#barTitle` above -- a set, not a second
+       hand-typed `||`, because the next screen with its own title should
+       join this line rather than grow another comparison. */
+    barTitleEl.hidden = NO_BAR_TITLE.has(v);
   }
   /* #29 decision 4: the one door into the card sheet, shown only on the game
      screen -- same shape as `#barTitle` swapping the other way, just above. */
   const shareBtnEl = $('#shareBtn');
   if (shareBtnEl) shareBtnEl.hidden = v !== 'games';
+  /* #30 decision 1: the header carries the export, shown only on Season, and
+     only once there is a file to save -- a header button that hands back a
+     header row and no rows is a support email. `renderSeason` also hides it
+     on the empty-season repaint; this covers arriving at Season directly. */
+  const exportBtnEl = $('#seasonExport');
+  if (exportBtnEl) exportBtnEl.hidden = v !== 'season' || !seasonGames().length;
   /* #23 review, third round: entering Games has to show what `state` says,
      not whichever game the screen last painted. Everything above this line
      only ever toggled visibility and wrote the header title -- the opponent

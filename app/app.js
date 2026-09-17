@@ -25,10 +25,9 @@ import { initStrategy } from './strategy.js';
 import { initRoster } from './roster-view.js';
 import { initTour } from './tour.js';
 import { initOnboarding } from './onboarding.js';
-import { initPlanView } from './plan-view.js';
 import { initGameSetup } from './game-setup.js';
 import { initTeams, renderSettings } from './teams-view.js';
-import { initSeason } from './season-view.js';
+import { initSeason, exportSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
 import { initToast, undoable, offer, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
@@ -156,6 +155,11 @@ on('#shareBtn', 'onclick', e => {
   refreshCardSheetPreview();
 });
 on('#sheetCardClose', 'onclick', () => closeSheet($('#sheetCard')));
+
+/* #30 decision 1: `#seasonExport` (top bar, Season only) is the one door
+   into the season CSV -- same shape as `#shareBtn` above. `applyView` and
+   `renderSeason` both keep it hidden with nothing filed. */
+on('#seasonExport', 'onclick', exportSeason);
 
 /* Share the card as an image. `shareCards` paints synchronously so the tap's
    activation still stands when `navigator.share` is called -- do not put an
@@ -360,13 +364,6 @@ for (const n of document.querySelectorAll('.i[data-icon]')) {
   if (!n.firstChild) n.append(icon(n.dataset.icon, { size: '1em' }));
 }
 
-// On a phone the rotation and the card matter most; Across-the-day is
-// reference. Collapse it by default there, but only on first paint so a
-// coach who opens it keeps it open.
-if (matchMedia('(max-width: 620px)').matches) {
-  const df = $('#dayFold'); if (df) df.open = false;
-}
-
 /* Analytics: counters only, and only if ANALYTICS has been filled in. See
    analytics.js -- the payload builder is what makes "your roster never leaves
    your device" true rather than a promise. */
@@ -393,7 +390,6 @@ initTour(setView);
 initRules(soon, PLAN_ONLY);
 initStrategy(soon, PLAN_ONLY);
 initOnboarding(setView, renderAll);
-initPlanView(renderAll);
 initGameSetup(renderAll, soon, PLAN_ONLY, AFTER_EDIT);
 initShortcuts(setView);
 setView(state.onboarded ? (state.view || 'today') : 'welcome');

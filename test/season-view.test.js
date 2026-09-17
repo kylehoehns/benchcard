@@ -23,15 +23,15 @@ test('the ledger reads the season, not the day', () => {
     + 'in the record, and re-solving them would rewrite history from today\'s roster');
 });
 
-/* The CSV button is rendered with the ledger, so before the first day is filed
-   this view has no controls at all. If the empty state does not name the
-   spreadsheet, nothing on the screen says the season can leave the app. */
-test('the empty season still names the spreadsheet', () => {
-  const empty = view.match(/'Nothing filed yet[^']*'/)?.[0];
+/* The export moved to the header (`#seasonExport`), where it is hidden with
+   nothing filed, so the empty body no longer has to promise a file on the
+   coach's behalf -- it only has to say where a filed day will show up. The
+   sentence is pinned exactly: decision 7's own wording. */
+test('the empty season names exactly where a filed day will show up', () => {
+  const empty = view.match(/"Nothing filed yet\. New day[^"]*"|'Nothing filed yet\. New day[^']*'/)?.[0];
   assert.ok(empty, 'the season empty state is gone or reworded past recognition');
-  assert.match(empty, /CSV|spreadsheet/,
-    'the empty Season view names no control and no file — a coach who has filed nothing '
-    + 'has no way to learn the season can be exported at all');
+  assert.equal(empty.slice(1, -1), "Nothing filed yet. New day on Today files the day's games here.",
+    'the empty Season copy must match the spec exactly');
 });
 
 /* The season is deliberately NOT swept against the roster (see storage.js): a
@@ -110,9 +110,56 @@ globalThis.document = {
 globalThis.addEventListener ??= () => {};
 globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
 const S = await import('../app/state.js');
-const { seasonCsv, totals } = await import('../app/season-view.js');
+const { seasonCsv, totals, offNote, seasonDays, gameRowTitle } = await import('../app/season-view.js');
 const { seasonFilename, backupFilename } = await import('../app/backup.js');
 const { seasonShare } = await import('../app/storage.js');
+
+/* B3 -- the ledger rows now carry the behind/ahead words directly, and the
+   filed-games list groups by day. `offNote` is exported so this is pinned
+   against `seasonShare`'s own deficit, never re-derived: the spec's own
+   literal examples (docs/specs/30-season-screen.md, "What would settle it"
+   item 2). */
+test('the behind/ahead word rounds the deficit, and is silent at zero', () => {
+  assert.equal(offNote(7.2), ' · 7 behind', 'a positive deficit reads behind, rounded');
+  assert.equal(offNote(-9.4), ' · 9 ahead', 'a negative deficit reads ahead, rounded and un-signed');
+  assert.equal(offNote(0), '', 'level reads as no word at all, not "0 behind"');
+});
+
+/* Filed games group by day, newest day first, and keep filed order within a
+   day -- decision 5. Grouped on the record's own `date` field (never
+   resorted by anything else), which is also what the CSV's own column order
+   reads (oldest first there, the one place the two disagree on purpose). */
+test('filed games group by day, newest day first, filed order kept within a day', () => {
+  S.state.teams = [{
+    id: 't1', name: 'Wildcats', activeGame: 0,
+    players: [{ id: 'p0', name: 'Marcus', number: '1', shortName: '', tier: 3, hue: 0 }],
+    day: { name: '', games: [] },
+    season: {
+      games: [
+        { id: 'g1', date: '2026-09-14', day: '', opponent: 'Falcons', periods: 4, periodMinutes: 8, minutes: { p0: 10 } },
+        { id: 'g2', date: '2026-09-21', day: '', opponent: 'Hawks', periods: 4, periodMinutes: 8, minutes: { p0: 12 } },
+        { id: 'g3', date: '2026-09-21', day: '', opponent: 'Comets', periods: 4, periodMinutes: 8, minutes: { p0: 14 } },
+      ],
+    },
+  }];
+  S.state.activeTeam = 0;
+  const days = seasonDays(S.team().season.games);
+  assert.deepEqual(days.map(d => d.date), ['2026-09-21', '2026-09-14'],
+    'the newest day (2026-09-21) must sort first, not last');
+  assert.deepEqual(days[0].games.map(g => g.id), ['g2', 'g3'],
+    'two games filed the same day keep the order they were filed in, not opponent order');
+});
+
+/* A game with neither an opponent nor a day name titles "Game N", 1-based
+   within its own day -- decision 5. Distinct from `gameTitle` (untouched:
+   it feeds the CSV header and the delete toast, and always carries a date
+   prefix this row title must not repeat, since the day heading above it
+   already carries the date). */
+test('a game with no opponent and no day name titles "Game N" within its day', () => {
+  assert.equal(gameRowTitle({ opponent: 'Falcons' }, 1), 'vs Falcons');
+  assert.equal(gameRowTitle({ day: 'Jamboree' }, 1), 'Jamboree');
+  assert.equal(gameRowTitle({}, 2), 'Game 2', 'neither an opponent nor a day name falls back to its place in the day');
+});
 
 /* Six on the roster, one who has left, three games. The fixture carries one of
    every case the wide table has to tell apart:
