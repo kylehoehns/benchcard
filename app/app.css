@@ -70,6 +70,12 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; b
 summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 a { color: inherit; }
 :focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--r-xs); }
+/* Closing a sheet hands focus back to the phrase that opened it. Safari
+   treats that programmatic focus as keyboard focus and draws the ring; Chrome
+   does not. trap.js sets this attribute only when the close came from a
+   finger or a mouse, and removes it as soon as the phrase is left or a key is
+   pressed, so the ring a keyboard user needs is never the one suppressed. */
+[data-noring]:focus-visible { outline: none; }
 ::selection { background: var(--accent-soft); }
 
 /* EVERY `:hover` RULE IN THIS FILE IS WRAPPED IN `@media (hover: hover)`, AND

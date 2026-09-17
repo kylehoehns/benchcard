@@ -173,10 +173,44 @@ export async function checkTitleFocused(c, ck, titleId, label) {
 
 // #73 items 3/10/20: the shape every close path (✕, Escape, backdrop, drag,
 // flick) checks -- closed within the slide, and focus back on the trigger.
+//
+// `noring` is the trigger's data-noring attribute. Handing focus back is right
+// for VoiceOver and for Tab, but Safari paints its keyboard ring on that
+// programmatic focus (Chrome does not), so a sheet shut with a finger left a
+// box drawn around the phrase. trap.js sets the attribute when the close came
+// from a pointer and app.css drops the outline while it is there. The painted
+// ring only shows up in WebKit; the attribute is the same in both, so this is
+// what Chrome can check.
 export async function closedWithFocus(c, dialogSel, triggerSel) {
   const closed = await waitClosed(c, dialogSel);
-  const focusBack = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector(${JSON.stringify(triggerSel)}))`);
-  return { closed, focusBack };
+  const back = await evalJSON(c, `(() => {
+    const t = document.querySelector(${JSON.stringify(triggerSel)});
+    return JSON.stringify({ focusBack: document.activeElement === t, noring: t ? 'noring' in t.dataset : false });
+  })()`);
+  return { closed, ...back };
+}
+
+// The other half of the data-noring check, run straight after a pointer close
+// that left the attribute on the trigger: a key press means the coach is back
+// on the keyboard, so the ring comes off hold, and the Escape close that
+// follows -- a keyboard close -- never sets the attribute at all. `open`
+// reopens the sheet between the two.
+export async function ringGivenBack(c, ck, dialogSel, triggerSel, open) {
+  const key = async (k, code) => {
+    for (const type of ['keyDown', 'keyUp']) {
+      await c.send('Input.dispatchKeyEvent', { type, key: k, code: k, windowsVirtualKeyCode: code });
+    }
+  };
+  await key('Tab', 9);
+  const held = await evalJSON(c, `JSON.stringify('noring' in document.querySelector(${JSON.stringify(triggerSel)}).dataset)`);
+  ck(!held, `data-noring stayed on ${triggerSel} after a key press, so a keyboard user would lose their ring`);
+
+  await open();
+  await key('Escape', 27);
+  const r = await closedWithFocus(c, dialogSel, triggerSel);
+  ck(r.closed, `Escape did not close ${dialogSel} within the slide`);
+  ck(r.focusBack, `focus not back on ${triggerSel} after an Escape close`);
+  ck(!r.noring, `data-noring is set on ${triggerSel} after an Escape close, which would hide the ring a keyboard user needs`);
 }
 
 // The dialog's own box, and the handle's, for the geometry and drag checks.
