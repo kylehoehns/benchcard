@@ -127,7 +127,7 @@ a { color: inherit; }
 .seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--surface-2); border-radius: 9px; }
 .seg button { min-height: 48px; padding: .36rem 1rem; border-radius: 7px; font-size: var(--fs-secondary); font-weight: 600; color: var(--muted); }
 @media (hover: hover) { .seg button:hover { color: var(--ink); } }
-.seg button.on { background: var(--seg-on); color: var(--tint); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.seg button.on { background: var(--seg-on); color: var(--tint); box-shadow: var(--shadow-sm); }
 .seg.wide { display: flex; width: 100%; padding: 2px; }
 .seg.wide button { flex: 1; padding: .58rem .3rem; font-size: var(--fs-secondary); }
 

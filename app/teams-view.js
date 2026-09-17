@@ -420,6 +420,15 @@ function removeTeam() {
  * (item 8): the mini rotation is `aria-hidden`, and its accessible name is
  * set with `aria-label` instead of read off the visible text.
  */
+// The pass's own status word and dot (`.pass-status`): "Planned"/ok or
+// "Needs a fix"/warn, read straight off `plans[i].ok` -- never re-derived.
+// `renderPass` (the mini pass on Today) and `renderTabs`'s game-screen sub
+// line (#69 decision 5) both show it, so it is one function, not two copies
+// of the same class string and label.
+function passStatusEl(ok) {
+  return el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix');
+}
+
 function renderPass(g, i) {
   const p = plans[i];
   const ok = !!(p && p.ok);
@@ -429,7 +438,7 @@ function renderPass(g, i) {
 
   const top = el('div', 'pass-top');
   if (g.when) top.append(el('span', 'pass-when', g.when));
-  top.append(el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix'));
+  top.append(passStatusEl(ok));
   b.append(top);
 
   b.append(el('span', 'pass-title', full));
@@ -466,20 +475,18 @@ export function renderTabs() {
     if (t) t.textContent = label;
 
     // #69 decision 5: the one large title on the game screen is the
-    // opponent, reusing `gameLabel`; the sub line reuses the pass's own
-    // status word and dot (`.pass-status`) rather than a second copy of
-    // either -- do not re-derive plan status, read `plans[i].ok` as
-    // `renderPass` does. `#barTitle` above stays live for other back
-    // screens, but is visually hidden here (render.js's `applyView`) so it
-    // does not also read as a second visible `h1`.
+    // opponent, reusing `gameLabel`; the sub line reuses `passStatusEl`
+    // above -- the pass's own status word and dot -- rather than a second
+    // copy of either. `#barTitle` above stays live for other back screens,
+    // but is visually hidden here (render.js's `applyView`) so it does not
+    // also read as a second visible `h1`.
     const gt = $('#gameTitle');
     if (gt) gt.textContent = label;
     const gs = $('#gameSub');
     if (gs) {
       gs.textContent = '';
-      const ok = !!(plans[i] && plans[i].ok);
       if (g.when) gs.append(g.when + ' · ');
-      gs.append(el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix'));
+      gs.append(passStatusEl(!!(plans[i] && plans[i].ok)));
     }
   }
 

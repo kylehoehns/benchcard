@@ -22,10 +22,11 @@ export async function gameTitlePass(c, origin) {
   await evalIn(c, step(`document.querySelector('.today-game').click()`));
 
   const info = JSON.parse(await evalIn(c, `(() => {
-    // > 1px, not just non-zero: \`.title-vh\` (app.css) clips \`#barTitle\` to a
-    // 1x1 box on purpose, to keep it in the accessibility tree rather than
-    // \`hidden\`-ing it outright -- a plain truthy width/height check would
-    // still count that box as "visible" and never catch a second title.
+    // > 1px, not just non-zero: guards against a possible future regression
+    // where \`#barTitle\` is hidden by clipping it to a near-zero box instead
+    // of the \`hidden\` attribute \`applyView\` actually sets (render.js) -- a
+    // plain non-zero check would still count a 1x1 clipped box as "visible"
+    // and miss a second title reappearing that way.
     const visible = el => {
       if (!el) return false;
       const r = el.getBoundingClientRect();
@@ -40,13 +41,16 @@ export async function gameTitlePass(c, origin) {
       visibleTexts: h1s.map(h => h.textContent),
       titleText: gameTitle ? gameTitle.textContent : null,
       subText: gameSub ? gameSub.textContent : null,
-      // A 1x1 clipped box (\`.title-vh\`, the sr-only idiom) still reports
-      // \`checkVisibility()\` true by default -- that call only asks about
-      // \`display: none\`/detachment, not size -- so a screen reader's rotor
-      // still announces "Panthers" from #barTitle a second time even though
-      // the bounding-rect check above is satisfied. #69 decision 5: the games
-      // view has to hide it for real (\`hidden\`/\`display: none\`), not just
-      // clip it, so \`checkVisibility()\` itself reads false there.
+      // render.js's \`applyView\` sets \`barTitleEl.hidden = v === 'games'\` --
+      // the \`hidden\` attribute, a real \`display: none\`, not a class that
+      // only clips the box to 1x1. \`checkVisibility()\` is still the right
+      // read-back rather than a second bounding-rect check: it is what would
+      // catch a future regression that clipped \`#barTitle\` instead of truly
+      // hiding it -- a clipped-but-present box still reports
+      // \`checkVisibility()\` true by default (that call only asks about
+      // \`display: none\`/detachment, not size), so a screen reader's rotor
+      // would still announce "Panthers" from it a second time even though
+      // the bounding-rect check above was satisfied.
       barTitleReallyVisible: barTitle ? barTitle.checkVisibility() : null,
     });
   })()`));
