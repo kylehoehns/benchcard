@@ -185,29 +185,37 @@ function parseStops(gradient) {
   });
 }
 
-test('rowGradient puts color exactly on a block\'s span and transparent across the period gap', () => {
+test('rowGradient puts color on a block\'s span, off-floor time on the track color, and stays transparent across the period gap', () => {
   const g = { periods: 2, periodMinutes: 10 };
   const blocks = [{ period: 1, from: 0, to: 10 }, { period: 2, from: 0, to: 5 }];
-  const gradient = S.rowGradient(blocks, g, 'oklch(1 2 3)');
+  const gradient = S.rowGradient(blocks, g, 'oklch(1 2 3)', 'oklch(0 0 0)');
   assert.equal(gradient, 'linear-gradient(to right, oklch(1 2 3) 0%, oklch(1 2 3) 49.5%, '
     + 'transparent 49.5%, transparent 50.5%, oklch(1 2 3) 50.5%, oklch(1 2 3) 75.25%, '
-    + 'transparent 75.25%, transparent 100%)');
+    + 'oklch(0 0 0) 75.25%, oklch(0 0 0) 100%)');
 });
 
-test('rowGradient is nothing but transparent when a player has no blocks', () => {
+test('rowGradient is nothing but track color, with the period gaps still transparent, when a player has no blocks', () => {
   const g = { periods: 4, periodMinutes: 8 };
-  const stops = parseStops(S.rowGradient([], g, 'oklch(1 2 3)'));
-  assert.ok(stops.every(s => s.color === 'transparent'), 'a row with no blocks used a player color');
+  const stops = parseStops(S.rowGradient([], g, 'oklch(1 2 3)', 'oklch(0 0 0)'));
+  assert.ok(stops.every(s => s.color === 'oklch(0 0 0)' || s.color === 'transparent'),
+    'a row with no blocks used a color other than the track color or transparent');
+  assert.ok(!stops.some(s => s.color === 'oklch(1 2 3)'), 'a row with no blocks used the player color');
+  assert.equal(stops[0].color, 'oklch(0 0 0)');
   assert.equal(stops[0].pos, '0%');
+  assert.equal(stops[stops.length - 1].color, 'oklch(0 0 0)');
   assert.equal(stops[stops.length - 1].pos, '100%');
+  // 4 periods means 3 gaps, each a transparent-to-transparent pair.
+  assert.equal(stops.filter(s => s.color === 'transparent').length, 6);
 });
 
 test('rowGradient never widens the gap or the track for a wider period count', () => {
   // 4 periods of 8 minutes, one block covering the whole of period 3 (index 2).
   const g = { periods: 4, periodMinutes: 8 };
   const blocks = [{ period: 3, from: 0, to: 8 }];
-  const stops = parseStops(S.rowGradient(blocks, g, 'oklch(1 2 3)'));
-  const colored = stops.filter(s => s.color !== 'transparent').map(s => s.pos);
+  const stops = parseStops(S.rowGradient(blocks, g, 'oklch(1 2 3)', 'oklch(0 0 0)'));
+  const colored = stops.filter(s => s.color === 'oklch(1 2 3)').map(s => s.pos);
   // track = (100 - 3*1)/4 = 24.25; period index 2 starts at 2*24.25 + 2*1 = 50.5
   assert.deepEqual(colored, ['50.5%', '74.75%']);
+  const tracked = stops.filter(s => s.color === 'oklch(0 0 0)').map(s => s.pos);
+  assert.deepEqual(tracked, ['0%', '24.25%', '25.25%', '49.5%', '75.75%', '100%']);
 });

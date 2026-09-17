@@ -330,14 +330,6 @@ export function renderTimeline() {
 
     for (let i = runs.length; i < blocks.length; i++) blockOut(blocks[i]);
 
-    /* A period divider sitting inside a run needs dark ink; one on the empty
-       track needs the themed hairline. Which is which changes with the plan,
-       so it is decided here rather than at build time. */
-    for (const d of track.querySelectorAll('.tl-div')) {
-      const at = +d.dataset.at;
-      d.classList.toggle('onblk', runs.some(r => r.start < at && at < r.end));
-    }
-
     let now = track.querySelector('.tl-now');
     if (resume) {
       if (!now) { now = el('i', 'tl-now'); now.setAttribute('aria-hidden', 'true'); track.append(now); }

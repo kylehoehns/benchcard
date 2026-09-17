@@ -117,15 +117,18 @@ a { color: inherit; }
   background: color-mix(in srgb, var(--bg) 76%, transparent);
   backdrop-filter: saturate(180%) blur(24px);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
-  border-bottom: 1px solid var(--line);
 }
 .spacer { flex: 1; }
 
-.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: var(--r-full); border: 1px solid var(--line); }
-.seg button { padding: .36rem 1rem; border-radius: var(--r-full); font-size: var(--fs-secondary); font-weight: 600; color: var(--muted); }
+/* #69 decision 10: an inset pill, not an outlined one -- the 9px/7px radii are
+   the prototype's own hand-picked values (notes/mockups/prototype/index.html),
+   not on the `--r-*` scale, and the "on" segment is raised off `--surface-2`
+   with its own token (`--seg-on`) and a shadow rather than sitting flush. */
+.seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--surface-2); border-radius: 9px; }
+.seg button { min-height: 48px; padding: .36rem 1rem; border-radius: 7px; font-size: var(--fs-secondary); font-weight: 600; color: var(--muted); }
 @media (hover: hover) { .seg button:hover { color: var(--ink); } }
-.seg button.on { background: var(--surface); color: var(--tint); box-shadow: var(--shadow-sm); }
-.seg.wide { display: flex; width: 100%; padding: 4px; }
+.seg button.on { background: var(--seg-on); color: var(--tint); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.seg.wide { display: flex; width: 100%; padding: 2px; }
 .seg.wide button { flex: 1; padding: .58rem .3rem; font-size: var(--fs-secondary); }
 
 .btn {
@@ -147,14 +150,44 @@ a { color: inherit; }
 .btn.icon { padding: .5rem; width: 2.2rem; }
 .btn.sm { padding: .34rem .72rem; font-size: var(--fs-footnote); }
 
+/* #69 decision 4: the back control is a round chevron, not a square icon
+   button -- a plain 48px hit area (no border, no fill of its own) around a
+   2.25rem circle in `--surface-2` that carries the glyph. The accessible
+   name ("Back to Today") is unchanged; the prototype's text label is not
+   copied. Scoped to the id, not `.btn.icon`, so every other icon button
+   (Settings, sheet closes, roster) keeps its own look. */
+#backBtn { width: 48px; height: 48px; padding: 0; border: 0; background: none; }
+#backBtn .i { width: 2.25rem; height: 2.25rem; border-radius: var(--r-full); background: var(--surface-2); }
+@media (hover: hover) {
+  #backBtn:hover { background: none; }
+  #backBtn:hover .i { background: var(--surface-3); }
+}
+
+/* #69 decision 12: "New day" is plain text too, same size and weight as the
+   team button beside it, still at least 48x48. The gear stays an icon but
+   grows from `.btn.icon`'s 44px (coarse-pointer only) to an unconditional
+   48x48. */
+#todayNewDay { font-size: var(--fs-headline); color: var(--ink); min-height: 48px; padding: .3rem .5rem; }
+#settingsBtn { width: 48px; height: 48px; }
+
 .wrap { max-width: 1340px; margin: 0 auto; padding: clamp(1rem, 2.2vw, 1.8rem) clamp(.85rem, 2.6vw, 1.5rem) 4rem; }
 
 /* ============================ blocks ============================ */
 .block { margin-bottom: clamp(1.15rem, 2vw, 1.75rem); }
 .block-hd { display: flex; align-items: baseline; gap: .7rem; margin-bottom: .75rem; }
-.block-hd h3 { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+/* #69 decision 9: sentence case, like the prototype's own `.grp-h` (notes/
+   mockups/prototype/index.html) -- footnote size, muted, no uppercase or
+   tracking. `.block-hd` is only ever "Rotation" and (above 1099px, before
+   `.cardtoggle h3` below overrides it back to a row) "The card". */
+.block-hd h3 { font-size: var(--fs-footnote); color: var(--muted); font-weight: 700; }
 .block-hd .hint { margin-left: auto; font-size: var(--fs-footnote); color: var(--faint); font-variant-numeric: tabular-nums; }
-.surface { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 1.05rem; }
+/* #69 item 4: Shuffle is swept at 48px on the game screen; scoped to the id
+   because `.btn.sm` is a shared small-button size used well beyond it. */
+#regen { min-height: 48px; }
+/* #69 decision 10: card/group surfaces drop their 1px border -- only
+   `#daytotals` (Across the day) still uses this class; the timeline's own
+   `.surface` wrapper is gone outright (decision 7), not just unbordered. */
+.surface { background: var(--surface); border-radius: var(--r); padding: 1.05rem; }
 
 .cols { display: grid; gap: clamp(1.1rem, 2vw, 1.8rem); grid-template-columns: minmax(0, 1fr); align-items: start; }
 @media (min-width: 1100px) {
@@ -171,10 +204,12 @@ a { color: inherit; }
   .cols { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
   .col-main, .col-side { display: contents; }
   .gm-cta { margin-bottom: clamp(1.15rem, 2vw, 1.75rem); }
-  /* This game (opponent, tip-off, remove) reads first, directly under the game
-     tabs. Said out loud as 0 rather than left to the flex default, because
-     this list IS the reading order below 1100px and a blank means "look it up
-     in the spec" to the next person editing it. */
+  /* #69 decision 8: Rotation reads first, directly under the sentence, and
+     This game (opponent, tip-off, remove) drops to after Rules -- a coach
+     opens the phone stack to see the plan, not to retype the opponent's name.
+     Said out loud as 0 rather than left to the flex default, because this
+     list IS the reading order below 1100px and a blank means "look it up in
+     the spec" to the next person editing it. */
   /* #27: the sentence (`#sentence`, `#sentenceEvens`) and the three sheets
      (`dialog.bsheet`) replaced `.s-squad` and `.s-fmt`, the two entries this
      list used to open with. Neither needs an `order:` of its own -- the
@@ -183,7 +218,7 @@ a { color: inherit; }
      where it sits in the flow. So this list is two shorter, renumbered
      whole rather than left with a gap: a gap here is a note to nobody, the
      same reasoning Rules' own renumbering below already used. */
-  .s-thisgame { order: 0; }
+  .s-rot   { order: 0; }
   .s-plan  { order: 1; }
   .s-balance { order: 2; }
   /* Rules is the fourth INPUT and reads with the other three, not as a
@@ -192,7 +227,7 @@ a { color: inherit; }
      one thing no competitor has (A21b). It matches the source order the wide
      layout uses. */
   #consdetails { order: 3; }
-  .s-rot   { order: 4; }
+  .s-thisgame { order: 4; }
   .s-cardhd { order: 5; }
   #cardnote { order: 6; }
   #sheet   { order: 7; }
@@ -218,11 +253,13 @@ a { color: inherit; }
 .cardtoggle .ct-ico, .cardtoggle .ct-chev { display: none; }
 
 @media screen and (max-width: 1099px) {
-  .cardtoggle { display: flex; align-items: center; gap: .6rem; min-height: 44px;
-    padding: .55rem .8rem; background: var(--surface); border: 1px solid var(--line);
-    border-radius: var(--r); cursor: pointer; margin-bottom: .85rem;
-    transition: border-color var(--t) var(--ease), background var(--t) var(--ease); }
-  @media (hover: hover) { .cardtoggle:hover { border-color: var(--line-2); } }
+  /* #69 decision 9: a grouped row -- `--surface`, 12px radius, no border,
+     at least 48px. */
+  .cardtoggle { display: flex; align-items: center; gap: .6rem; min-height: 48px;
+    padding: .55rem .8rem; background: var(--surface); border: 0;
+    border-radius: var(--r-sm); cursor: pointer; margin-bottom: .85rem;
+    transition: background var(--t) var(--ease); }
+  @media (hover: hover) { .cardtoggle:hover { background: var(--surface-2); } }
   .cardtoggle .ct-ico { display: inline-flex; color: var(--muted); }
   .cardtoggle .ct-chev { display: inline-flex; color: var(--faint); margin-left: .1rem;
     transition: transform var(--t) var(--ease); }
@@ -254,16 +291,19 @@ a { color: inherit; }
 
 /* The team button. Visible text is the team's own name (or `Team N`) --
    never an aria-label overriding it, so a screen reader hears exactly what
-   is on screen (A2). The chevron is decoration. */
-.teambtn { display: inline-flex; align-items: center; gap: .35rem; min-height: 44px;
-  padding: .4rem .7rem; border-radius: var(--r-sm); border: 1px solid var(--line-2);
-  background: var(--surface); font: inherit; font-size: var(--fs-body); font-weight: 600;
-  letter-spacing: -.02em; color: var(--ink); max-width: 60vw; }
+   is on screen (A2). The chevron is decoration.
+
+   #69 decision 12: plain text, no box -- `--fs-headline` 600, ink, a
+   chevron-down, at least 48x48. */
+.teambtn { display: inline-flex; align-items: center; gap: .35rem; min-height: 48px; min-width: 48px;
+  padding: .2rem .3rem; border-radius: var(--r-sm); border: 0;
+  background: none; font: inherit; font-size: var(--fs-headline); font-weight: 600;
+  letter-spacing: -.01em; color: var(--ink); max-width: 60vw; }
 /* Rotated `chevron_right` rather than a new icon key: same glyph as `#backBtn`
    and the game-mode nav, pointed down to say "opens a list here". */
 .teambtn-chev svg { transform: rotate(90deg); }
 .teambtn-chev { color: var(--muted); }
-@media (hover: hover) { .teambtn:hover { border-color: var(--muted); } }
+@media (hover: hover) { .teambtn:hover { background: var(--surface-2); } }
 #teamBtnLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* The team menu: a native `popover` (C8), so Escape, an outside click and the
@@ -312,58 +352,67 @@ a { color: inherit; }
  * class stays `.today-game` (decision 7): the id-based smoke hooks and the
  * `.today-game` selector both still find it, only what is inside changed.
  */
-.today-games { display: flex; flex-direction: column; gap: .6rem; margin: 1.1rem 0; }
+/* #69 decision 13: the pass restyle -- a plain `--surface` card at the
+   prototype's 20px radius (`--r-lg`), no border, more breathing room in the
+   padding, and .75rem between passes rather than .6rem. */
+.today-games { display: flex; flex-direction: column; gap: .75rem; margin: 1.1rem 0; }
 .today-game { display: flex; flex-direction: column; align-items: stretch; gap: .3rem;
-  width: 100%; min-height: 44px; padding: .8rem .95rem; border-radius: var(--r);
-  border: 1px solid var(--line); background: var(--surface); font: inherit; text-align: left; }
-@media (hover: hover) { .today-game:hover { border-color: var(--line-2); } }
+  width: 100%; min-height: 48px; padding: 1rem 1.125rem; border-radius: var(--r-lg);
+  border: 0; background: var(--surface); font: inherit; text-align: left; }
+@media (hover: hover) { .today-game:hover { background: var(--surface-2); } }
 
 .pass-top { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
-/* `--fs-footnote`, a token rather than an absolute unit, so a reader's
+/* `--fs-secondary`, a token rather than an absolute unit, so a reader's
    larger-text setting can grow the tip-off time the same as everything else
    on the pass, instead of it staying pinned while the title around it grows
    past it (#23 review, item 2, the bug this class inherits the fix for). */
-.pass-when { font-size: var(--fs-footnote); color: var(--muted); font-variant-numeric: tabular-nums; }
-/* K3: Planned is `--ok`, Needs a fix is `--warn` -- both tokens, never a new
-   hex and never a team color. The dot is a `::before`, not a node
-   (decision 10): item 10's node budget has no room for a fifth element per
-   pass just to color a status that two CSS classes already say. */
-.pass-status { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-footnote); font-weight: 600; }
+.pass-when { font-size: var(--fs-secondary); font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* K3: the status TEXT stays muted -- only the dot carries `--ok`/`--warn`,
+   per decision 13. The dot is a `::before`, not a node (decision 10): item
+   10's node budget has no room for a fifth element per pass just to color a
+   status that two CSS classes already say. */
+.pass-status { display: flex; align-items: center; gap: .4rem; font-size: var(--fs-footnote);
+  font-weight: 600; color: var(--muted); }
 .pass-status::before { content: ''; width: .5rem; height: .5rem; border-radius: 50%; flex: none; }
-.pass-status.ok { color: var(--ok); }
 .pass-status.ok::before { background: var(--ok); }
-.pass-status.warn { color: var(--warn); }
 .pass-status.warn::before { background: var(--warn); }
 
 .pass-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--fs-body); font-weight: 600; }
+  font-size: var(--fs-large); font-weight: 700; letter-spacing: -.03em; }
 
 /* One element per row (decision 10): the background IS the picture, painted
    by `rowGradient` (state.js) with hard stops -- nothing here animates
    `left`/`width`/`top`/`height`, and nothing paints or positions a block
-   with a second element. `rowGradient` uses `transparent` where the player
-   is off the floor, so those stretches read as `.today-game`'s own surface
-   showing through the row, not a second gray -- there is no background rule
-   to set here: `renderPass` (teams-view.js) sets the inline `background`
-   shorthand on every row, which would reset any `background-color` given to
-   `.pass-row` in this file. */
-.pass-rot { display: flex; flex-direction: column; gap: 1px; margin: .1rem 0; }
+   with a second element. `rowGradient` uses `--track` where the player is
+   off the floor and `transparent` at the period gaps, so a gap still reads
+   as `.today-game`'s own surface showing through, while the off-floor
+   stretches now carry the same track color the timeline uses -- there is no
+   background rule to set here: `renderPass` (teams-view.js) sets the inline
+   `background` shorthand on every row, which would reset any
+   `background-color` given to `.pass-row` in this file. */
+.pass-rot { display: flex; flex-direction: column; gap: 3px; margin: .1rem 0; }
 .pass-rot .pass-row { height: 4px; border-radius: 1px; }
 
 .pass-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: var(--muted); font-size: var(--fs-footnote); }
+  color: var(--muted); font-size: var(--fs-secondary); }
 
 .today-entry::after { content: '\203a'; color: var(--faint); font-size: var(--fs-headline);
   flex: none; margin-left: .1rem; }
 
 .today-acts { display: flex; gap: .6rem; margin-bottom: 1.6rem; }
-.today-acts .btn { flex: 1; }
+/* #69 decision 14: "Add a game" is a grouped row (`.today-entry`, decision
+   9), not a bordered `.btn` -- it keeps that class's surface/radius/height
+   and only drops the trailing chevron, since it opens a new game rather
+   than a page. */
+.today-entry.noarrow::after { content: none; }
 
+/* #69 decision 9: a grouped row -- `--surface`, 12px radius (`--r-sm`), no
+   border, at least 48px. */
 .today-entry { display: flex; align-items: center; gap: .2rem .9rem; flex-wrap: wrap;
-  width: 100%; min-height: 44px; padding: .8rem .95rem; margin-bottom: .6rem;
-  border-radius: var(--r); border: 1px solid var(--line); background: var(--surface);
+  width: 100%; min-height: 48px; padding: .8rem .95rem; margin-bottom: .6rem;
+  border-radius: var(--r-sm); border: 0; background: var(--surface);
   font: inherit; text-align: left; }
-@media (hover: hover) { .today-entry:hover { border-color: var(--line-2); } }
+@media (hover: hover) { .today-entry:hover { background: var(--surface-2); } }
 /* Same reason as `.pass-when` above: a token, not a fixed size, so a
    reader's larger-text setting can grow this label too. */
 .today-entry-lab { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.01em; }
@@ -530,15 +579,28 @@ a { color: inherit; }
 }
 
 /* ============================ day + games ============================ */
+/* #69 decision 5: the game screen's one large title is the opponent
+   (`#gameTitle`), not an editable day-name input any more -- `#dayName`
+   moved to a normal field in the "This game" box. Sizes from the
+   prototype's `.lt h1` / `.lt .sub` (notes/mockups/prototype/index.html),
+   mapped onto the seven-step scale per decision 3 (34px/15px -> `--fs-large`
+   / `--fs-secondary`). */
 .dayhead { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
-.dayhead input.daytitle {
-  display: block; width: 100%; max-width: 30rem; border: 0; background: none; padding: 0 0 .35rem;
-  font-size: var(--fs-large); font-weight: 700; letter-spacing: -.042em;
-  border-bottom: 2px solid transparent; transition: border-color var(--t-fast) var(--ease);
+.dayhead .game-h1 {
+  margin: 0; font-size: var(--fs-large); font-weight: 700; letter-spacing: -.025em;
+  color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.dayhead input.daytitle::placeholder { color: var(--faint); }
-@media (hover: hover) { .dayhead input.daytitle:hover { border-bottom-color: var(--line-2); } }
-.dayhead input.daytitle:focus { outline: none; border-bottom-color: var(--accent); }
+/* #69 decision 5: a flex container collapses the trailing space in its
+   text-node child at the edge of the next flex item, the same as it would at
+   a block edge -- "9:00 · " ran straight into the dot with no gap at all.
+   .375rem (6px at the body size) is the prototype's own `.lt .sub` value. */
+.dayhead .game-sub {
+  margin: .1rem 0 0; font-size: var(--fs-secondary); color: var(--muted);
+  display: flex; align-items: center; gap: .375rem;
+}
+/* Reuses `.pass-status`'s own dot and weight; only the size follows the sub
+   line's own step here rather than a pass's footnote. */
+.dayhead .game-sub .pass-status { font-size: inherit; }
 
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 
@@ -584,50 +646,103 @@ a { color: inherit; }
    Schumacher" into "Austin S…" on every desktop row — a truncated name reads
    as broken in a way a deliberate abbreviation does not. 9.5rem fits a name of
    about twenty characters; longer ones ellipsize, which is the same three
-   absurd names that ellipsize on a 320px phone. Only the three-column desktop
-   layout uses this: under 620px the row restacks to `1fr auto` and the label
-   already has the width of the screen. */
-.tl { --lab: 9.5rem; --tot: 5.6rem; }
-.tl-head { display: grid; grid-template-columns: var(--lab) 1fr var(--tot); gap: .6rem; align-items: end; margin-bottom: .45rem; }
-.tl-periods { position: relative; height: 1.1rem; }
+   absurd names that ellipsize on a 320px phone.
+   #69 decision 7: mobile-first now, and keyed off the timeline's own width
+   (`container-type: inline-size`) rather than the viewport -- a phone in
+   portrait is wide enough to show dot+name+track+total on one row, so the
+   `@container` below promotes the block/inline layout up from a stacked
+   `1fr auto` pair the moment `.tl` itself has ~20em (390px at a 16px root,
+   the width this screen ships at; 320px/32px text -- the large-text smoke
+   check's floor -- keeps it stacked, since doubling the root doubles the em
+   per px right along with it). */
+/* #69 decision 7: 9.5rem/5.6rem left the track (what a coach is actually
+   reading) about 105px of a 368px row -- 29%, measured -- because the label
+   and total gutters were sized for a desktop column and never shrunk for a
+   phone. --lab drops to 6.5rem the moment the one-row layout turns on
+   (ellipsis is acceptable there; the smoke gametitle check pins the track at
+   >= 50% of the row at 390px) and widens back to 9.5rem only once the
+   container is genuinely desktop-wide (34em -- .tl sits in the fluid main
+   column, not the fixed 396px one, so a phone never reaches it). --tot
+   starts at the width the number alone needs; `:not(.even)` widens it again
+   for the MOST/FEWEST word column (`.tl-tot .ex`, below), which is the only
+   case that needs the extra room. */
+.tl { --lab: 9.5rem; --tot: 2rem; container-type: inline-size; }
+.tl:not(.even) { --tot: 5.2rem; }
+.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: .45rem; }
+.tl-head > div:first-child, .tl-head > div:last-child { display: none; }
+.tl-periods { position: relative; height: 1.1rem; padding: 0 .3rem; }
+/* #69 decision 7: no uppercase, no heavy weight -- a quiet footnote above the
+   track, the same ink as any other muted label. */
 .tl-periods span {
-  position: absolute; top: 0; font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--faint); transform: translateX(.3rem);
+  position: absolute; top: 0; font-size: var(--fs-footnote); font-weight: 500;
+  color: var(--muted); transform: translateX(.3rem);
 }
 .tl-row {
-  display: grid; grid-template-columns: var(--lab) 1fr var(--tot); gap: .6rem; align-items: center;
-  padding: .13rem 0; border-radius: var(--r-xs);
+  display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lab tot" "trk trk";
+  gap: .6rem; row-gap: .22rem; align-items: center;
+  min-height: 48px; padding: .3rem .3rem .4rem; border-radius: var(--r-xs);
   transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
-.tl-lab { display: flex; align-items: center; gap: .4rem; min-width: 0; }
+.tl-lab { grid-area: lab; display: flex; align-items: center; gap: .4rem; min-width: 0; }
 .tl-lab .dot { width: .58rem; height: .58rem; border-radius: 50%; background: var(--c); flex: none; }
-.tl-lab .nm { font-size: var(--fs-footnote); font-weight: 600; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* #69 decision 7: the full name (tlName in timeline.js keeps it full --
+   test/timeline-names.test.js pins that) reads at the same size and weight as
+   any other row label, not a footnote. */
+.tl-lab .nm { font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-track {
-  position: relative; height: 1.55rem; border-radius: var(--r-xs);
-  background: var(--pc-track); overflow: hidden;
+  grid-area: trk; position: relative; height: 1.5rem; border-radius: var(--r-xs);
+  background: var(--track); overflow: hidden;
+}
+/* The one-row layout: label, track and total side by side, the same three
+   columns as the Q1-Q4 labels above them (`.tl-head`/`.tl-periods`) so the
+   track and its period markers line up in both layouts. */
+@container (min-width: 20em) {
+  /* A container query cannot restyle the container element itself (`.tl`
+     establishes this container) -- only its descendants -- so --lab has to
+     be set on `.tl-head`/`.tl-row` directly, not on `.tl`. That was the bug:
+     the earlier `.tl { --lab: 6.5rem }` here silently never applied, and the
+     track stayed at the 9.5rem desktop width even after this block matched. */
+  .tl-head, .tl-row { --lab: 6.5rem; }
+  .tl-head { grid-template-columns: var(--lab) 1fr var(--tot); }
+  .tl-head > div:first-child, .tl-head > div:last-child { display: block; }
+  .tl-periods { padding: 0; }
+  /* One row, not `grid-template-areas: none` -- `.tl-lab`/`.tl-track`/
+     `.tl-tot` keep the same `grid-area: lab/trk/tot` they use in the
+     stacked layout, so this only has to name a new arrangement of the same
+     three areas, not clear the names and hope auto-placement (which put
+     every item in the same cell instead of spreading them across the three
+     explicit columns) sorts them out. */
+  .tl-row {
+    grid-template-columns: var(--lab) 1fr var(--tot); grid-template-areas: "lab trk tot";
+    row-gap: 0; padding: .13rem 0;
+  }
+  .tl-track { height: 1rem; }
+}
+/* #69 decision 7: widen the label back to the desktop value once the
+   container is genuinely wide -- `.s-rot` sits in `.cols`' fluid main
+   column (not the fixed 396px one), so this only fires once the window
+   itself is desktop-wide, never on a phone in portrait or landscape. */
+@container (min-width: 34em) {
+  .tl-head, .tl-row { --lab: 9.5rem; }
 }
 /* Moves are played as a transform (see flipFrom/blockMove in app.js), never as
    a left/width transition — with a full squad that relaid out every block on
    every frame of a shuffle. transform-origin pins the scale to the left edge
-   so the inverse maths is a plain percentage of the block's own width. */
+   so the inverse maths is a plain percentage of the block's own width.
+
+   #69 decision 7: flat -- no gloss, no opacity -- and a 4px corner
+   (`--r-2xs`) instead of the old hand-picked 5px. */
 .tl-blk {
-  position: absolute; top: 0; bottom: 0; border-radius: 5px;
-  background: var(--c); opacity: .92;
+  position: absolute; top: 0; bottom: 0; border-radius: var(--r-2xs);
+  background: var(--c);
   transform-origin: 0 50%;
 }
-.tl-blk::after {
-  content: ''; position: absolute; inset: 0; border-radius: 5px;
-  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 55%);
-}
-/* Period boundaries. A divider is full height and so is a block, so each one
-   is either entirely over the empty track or entirely over a block -- and the
-   two want opposite ink. `--line-2` is a light hairline in dark mode, which
-   over a bright (L 72%) block reads at 1.15:1, i.e. a quarter boundary that
-   disappears exactly inside the long runs where a coach needs it. renderTimeline
-   marks the covered ones `.onblk`. */
-.tl-div { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-2); opacity: .9; z-index: 1; }
-.tl-div.onblk { background: rgba(20, 20, 20, .34); }
-[data-theme="dark"] .tl-div.onblk { background: rgba(8, 8, 8, .46); }
+/* Period boundaries. #69 decision 7 turns the old hairline divider into a
+   3px gap: opaque `--track`, the track's own color, so it reads as a notch
+   cut through a block and disappears seamlessly over the bare track --
+   one rule for both cases, where the old line needed an `.onblk` variant
+   (and a separate dark-mode shade) to keep contrast either way. */
+.tl-div { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--track); z-index: 1; }
 /* "The game is here." Only drawn while a game is genuinely part-played (see
    resumeAt in card.js), because a reload closes bench mode and the plan page
    otherwise looks identical to a game that has not started. The ring is what
@@ -641,7 +756,9 @@ a { color: inherit; }
   width: .42rem; height: .42rem; border-radius: 50%;
   background: var(--accent); transform: translate(-50%, -35%);
 }
-.tl-tot { text-align: right; font-size: var(--fs-footnote); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+/* #69 decision 7: 600, not 700 -- the total is a tabular number next to the
+   name, not a heading. */
+.tl-tot { grid-area: tot; text-align: right; font-size: var(--fs-footnote); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .tl-tot.hi { color: var(--accent); } .tl-tot.lo { color: var(--info); }
 /* The word, not the hue, is what says which end of the squad this is. Small
    enough to stay a footnote to the number, never the other way round. */
@@ -672,26 +789,6 @@ a { color: inherit; }
    went with the change rather than staying as dead cascade. */
 @media (hover: hover) { .tl:hover .tl-row:not(:hover) { opacity: .45; } }
 @media (hover: hover) { .tl-row:hover { background: var(--surface-2); } }
-/* On a phone the label and total columns left the track barely half the
-   screen — 26px per stint at 8 stints, 13px at 16. Stack instead: name and
-   total share a line (so the column of totals is still scannable) and the
-   track gets the full width underneath. */
-@media (max-width: 620px) {
-  .tl-row {
-    grid-template-columns: 1fr auto;
-    grid-template-areas: "lab tot" "trk trk";
-    row-gap: .22rem; padding: .3rem .3rem .4rem;
-  }
-  .tl-lab { grid-area: lab; }
-  .tl-tot { grid-area: tot; }
-  .tl-track { grid-area: trk; height: 1.5rem; }
-  .tl-lab .nm { font-size: var(--fs-secondary); }
-  .tl-tot { font-size: var(--fs-footnote); }
-  .tl-head { grid-template-columns: 1fr; }
-  .tl-head > div:first-child, .tl-head > div:last-child { display: none; }
-  .tl-periods { padding: 0 .3rem; }
-  .tl-row.pin { box-shadow: inset 3px 0 0 var(--c); }
-}
 
 .tl-row { cursor: pointer; }
 .tl-row.pin { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--c); }
@@ -722,7 +819,9 @@ a { color: inherit; }
 /* ============================ stats ============================ */
 .statrow { display: flex; gap: 1.35rem; flex-wrap: wrap; }
 .st { display: flex; flex-direction: column; gap: .06rem; }
-.st .k { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--faint); font-weight: 600; }
+/* #69 decision 9: sentence case, like the prototype's `.grp-h` -- no
+   uppercase or tracking on the stats row labels ("Squad", "Minutes"...). */
+.st .k { font-size: var(--fs-footnote); color: var(--faint); font-weight: 600; }
 .st .v { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.038em; font-variant-numeric: tabular-nums; }
 /* inline-block so the word can be animated: a transform on an inline box is
    ignored, and this one rises into place the moment a plan comes out even. */
@@ -750,6 +849,12 @@ a { color: inherit; }
 
 /* ============================ fields ============================ */
 .f { display: block; font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; margin-bottom: .35rem; }
+/* #69 decision 9: the game screen's field labels ("Day or tournament",
+   "Opponent", "Tip-off"...) read in sentence case, no uppercase/tracking --
+   but `.f` is also the roster paste box's and settings' label class, out of
+   #69's scope, so the plain-case override is scoped to `#view-games` rather
+   than changing `.f` itself. */
+#view-games .f { text-transform: none; letter-spacing: normal; }
 input[type=text], input[type=number], select, textarea {
   width: 100%; padding: .58rem .72rem; border: 1px solid var(--line-2); border-radius: var(--r-sm);
   background: var(--surface); -webkit-appearance: none;
@@ -757,6 +862,20 @@ input[type=text], input[type=number], select, textarea {
 }
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: var(--surface-2); }
 @media (hover: hover) { input:hover, select:hover, textarea:hover { border-color: var(--muted); } }
+/* #69 decision 10: "Day or tournament", "Opponent", "Tip-off" and the print
+   options already sit inside a `--surface` group (`.side-box`) -- a border
+   drawn in the same color as that box reads as a stray line, not a field, so
+   the prototype (`.field`) fills the input instead of outlining it. Scoped
+   to `#view-games`: the roster/settings/welcome inputs share this same rule
+   and are out of #69's scope. `min-height: 48px` matches every other touch
+   target on this screen (`.btn`, `.teambtn`...), all set the same literal
+   way. */
+#view-games input[type=text], #view-games select {
+  border-color: transparent; background: var(--bg); min-height: 48px;
+}
+[data-theme="dark"] #view-games input[type=text], [data-theme="dark"] #view-games select {
+  background: var(--bg);
+}
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
 input::placeholder { color: var(--faint); }
 textarea { min-height: 8rem; resize: vertical; }
@@ -906,17 +1025,27 @@ input[type=range]:disabled { opacity: .5; }
 @media (hover: hover) { .btn.primary:disabled:hover { background: var(--tint); border-color: transparent; } }
 
 /* ============================ disclosures ============================ */
-details.dz { border-top: 1px solid var(--line); }
+/* #69 decision 9: a grouped row -- `--surface`, 12px radius, no border, at
+   least 48px, sentence case (no uppercase/letter-spacing), label in ink,
+   chevron in `--faint`. The border-top that used to separate this from the
+   block above is gone with it; the margin below stands in its place. */
+details.dz { margin-bottom: .6rem; }
 details.dz > summary {
-  list-style: none; cursor: pointer; display: flex; align-items: center; gap: .55rem; padding: .85rem 0;
-  font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700;
-  transition: color var(--t-fast) var(--ease);
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: .55rem;
+  padding: .85rem .95rem; border-radius: var(--r-sm); background: var(--surface);
+  min-height: 48px; font-size: var(--fs-body); color: var(--ink); font-weight: 600;
+  transition: background var(--t-fast) var(--ease);
 }
-@media (hover: hover) { details.dz > summary:hover { color: var(--ink); } }
+@media (hover: hover) { details.dz > summary:hover { background: var(--surface-2); } }
 details.dz > summary::-webkit-details-marker { display: none; }
-details.dz > summary::before { content: '›'; font-size: var(--fs-secondary); line-height: 1; display: inline-block; transition: transform var(--t) var(--spring); }
-details.dz[open] > summary::before { transform: rotate(90deg); }
-details.dz > summary .count { margin-left: auto; background: var(--accent-soft); color: var(--accent); padding: .12rem .5rem; border-radius: var(--r-full); font-size: var(--fs-footnote); letter-spacing: 0; }
+/* #69 decision 9: the chevron sits on the right, same as `.fold` below -- it
+   used to open `::before` the label on a `.dz` row while `.fold`'s sat
+   `::after` it, so the two disclosure styles pointed opposite ways on the
+   same screen. */
+details.dz > summary::after { content: '›'; margin-left: auto; font-size: var(--fs-secondary); line-height: 1; display: inline-block;
+  color: var(--faint); transition: transform var(--t) var(--spring); }
+details.dz[open] > summary::after { transform: rotate(90deg); }
+details.dz > summary .count { background: var(--accent-soft); color: var(--accent); padding: .12rem .5rem; border-radius: var(--r-full); font-size: var(--fs-footnote); letter-spacing: 0; }
 /* Zero rules is a HINT, not a badge. The row used to say `› RULES` and nothing
    else -- the pill is hidden at zero, so the one feature no competitor has
    introduced itself with a blank. It names what it holds instead; and it has
@@ -1281,6 +1410,10 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .side-box { border: 1px solid var(--line); border-radius: var(--r); padding: .95rem; background: var(--surface); }
 .side-hd { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--faint);
   font-weight: 700; margin-bottom: .75rem; }
+/* #69 decision 9: "This game" and "Card options" read in sentence case --
+   but `.side-hd` is also the roster's and settings' group heading, out of
+   #69's scope, so scoped to `#view-games`. */
+#view-games .side-hd { text-transform: none; letter-spacing: normal; }
 .day-empty { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; color: var(--muted); font-size: var(--fs-secondary); }
 /* `min()`, not a bare `14rem`. The floor keeps the sentence and the button
    side by side when there is room, but 14rem is a text measure — it doubles
@@ -1318,16 +1451,22 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-top: 1px solid var(--line);
   animation: abIn var(--t) var(--ease);
 }
 @keyframes abIn { from { transform: translateY(100%); } to { transform: none; } }
 @media (max-width: 900px) { .actionbar:not([hidden]) { display: flex; } }
+/* #69 decision 6: the prototype's primary button -- 54px tall, 600 weight,
+   still `--tint` (K1 allows tint on the primary action). `--r` is already
+   the prototype's 16px radius, unchanged. Flat, like the prototype's own
+   `.primary`: the tinted glow this button used to carry (`0 8px 20px -10px
+   var(--tint)`) bled past the pill into the bar's own frosted background,
+   reading as a colored wash behind the whole bar rather than depth under one
+   button. Only the plain, neutral lift stays. */
 .ab-main {
   flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
-  min-height: 52px; border-radius: var(--r); background: var(--tint); color: var(--tint-ink);
+  min-height: 54px; border-radius: var(--r); background: var(--tint); color: var(--tint-ink);
   font-size: var(--fs-body); font-weight: 600; letter-spacing: -.01em;
-  box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 8px 20px -10px var(--tint);
+  box-shadow: 0 1px 2px rgba(0,0,0,.14);
 }
 .ab-main:disabled { opacity: .45; box-shadow: none; }
 .ab-side {
@@ -2080,45 +2219,43 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 @media (hover: hover) { .linkish:hover { border-bottom-color: var(--accent-line); } }
 #welCount.ready { color: var(--ok); }
 
-/* #25 item 5: the sentence style #27 will use. Graphite reads ink with a 2px
-   underline at the accent-line alpha (--phrase-line carries that color for
-   Graphite); every other team color reads its own fill with no underline --
-   --phrase-line goes transparent for those (see tokens.css), so one rule
-   covers every color rather than a second rule turning the line off. Only
-   the style ships here; the sentence itself is #27's, out of scope. */
+/* #25 item 5: color/underline from `--phrase`/`--phrase-line` -- Graphite's
+   own underline, transparent for every other team color (tokens.css), so one
+   rule covers every color. background/border/font reset the UA's button
+   chrome so a `.phrase` (a real `<button>` inside `.sentence`) reads as
+   underlined text running inline, not a little box.
+   #69 decision 2: sized to the 48px floor. `inline-flex` + `min-height` gives
+   the inline-level `<button>` a real box; `min-width` covers "4 × 8", the one
+   phrase whose padding still came in 0.73px short; `vertical-align: baseline`
+   (not `middle`) lines its text up with the plain words either side, and
+   `text-align: left` stops a two-line wrap (a 32px root) centering under the
+   UA's own `button { text-align: center }`. */
 .phrase { color: var(--phrase); text-decoration: underline;
-  text-decoration-color: var(--phrase-line); text-decoration-thickness: 2px; }
-/* The phrase style above is inherited color/underline only -- every `.phrase`
-   here is a real `<button>` inside a `<p>`, so the UA's own button chrome
-   (background, border, its own font) has to be unset for it to read as
-   underlined text running inline with the sentence rather than five little
-   boxes. */
-.phrase { background: none; border: 0; padding: 0; margin: 0; font: inherit;
-  cursor: pointer; }
-/* Touch check fallout: an inline `<button>` is only as tall as the text it
-   holds (24.8px at the body size), so every phrase failed the app-wide 44px
-   sweep. `inline-flex` with a `min-height` gives it a real box while keeping
-   it inline-level, so it still runs word to word in `.sentence`'s flow
-   rather than dropping to its own line; the small horizontal padding (with
-   an equal negative margin so the words either side do not drift apart)
-   covers the narrowest phrase ("4 × 8"), whose width alone was also under
-   44px. 48px, not the 44px floor, because #18 asks for 48px where a target
-   has the room, and a one-line sentence does. */
-.phrase { display: inline-flex; align-items: center; justify-content: center;
-  min-height: 48px; padding: 0 .3em; margin: 0 -.3em; vertical-align: middle; }
+  text-decoration-color: var(--phrase-line); text-decoration-thickness: 2px;
+  background: none; border: 0; font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: flex-start; text-align: left;
+  min-height: 48px; min-width: 48px; padding: 0 .3em; margin: 0 -.3em; vertical-align: baseline; }
 
 /* ============================== #27: the sentence ============================== */
 /* Above `.cols` entirely (decision 1), so it needs no `order:` entry in the
    phone stack list below -- it already reads first, at every width, from its
    position in the markup alone. */
-/* `line-height: 3` (48px at the body size) rather than the usual `1.55`: a
-   `.phrase` button on a wrapped line is 48px tall regardless of this value
-   (the UA grows that one line to fit it), so a smaller line-height here
-   would leave the lines that hold a button visibly taller than plain-text
-   lines, an uneven ladder rather than a sentence. Matching it makes every
-   line the same height whether or not it happens to break on a button. */
-.sentence { margin: 0 0 .2rem; font-size: var(--fs-body); line-height: 3;
-  color: var(--ink-2); }
+/* #69 decisions 2 and 3: the prototype's own `.sent` (notes/mockups/
+   prototype/index.html) is 25px/600/-.022em, mapped onto `--fs-sentence`.
+   Plain words take `--muted`; the phrases keep their own `--phrase` color and
+   underline (`.phrase`, above) -- `--ink-2` was too dark against a phrase's
+   ink-strength Graphite underline, reading as though every word were a
+   choice. `text-underline-offset` and `text-decoration-skip-ink: none` are
+   the prototype's own `.sent button` values (5px at 25px is ~.2em). `line-
+   height: max(48px, 1.38em)` keeps the prototype's own 1.38 ratio (tight
+   plain-text lines) while never letting a line drop under 48px -- decision 2
+   -- so a wrapped `.phrase` (48px tall regardless, see below) never overlaps
+   the line above or below it. `em` here tracks `--fs-sentence`, so 32px root
+   text (the smoke large-text pass) grows the floor past 48px right along
+   with the type instead of the two falling out of step. */
+.sentence { margin: 0 0 .2rem; font-size: var(--fs-sentence); font-weight: 600;
+  letter-spacing: -.022em; line-height: max(48px, 1.38em); color: var(--muted);
+  text-underline-offset: .2em; text-decoration-skip-ink: none; }
 .sentence:last-of-type { margin-bottom: 1rem; }
 
 /* ============================== #27: the sheets ============================== */
@@ -2249,22 +2386,29 @@ dialog.bsheet.dragging { transition: none; }
 /* Collapsible sections. Open by default on a roomy screen; the phone rules
    below close the reference ones so the rotation and the card sit near the top
    instead of two screens down. */
+/* #69 decision 9: a grouped row -- `--surface`, 12px radius, no border, at
+   least 48px, sentence case (no uppercase/letter-spacing), label in ink,
+   chevron in `--faint`. Unconditional, not phone-only: this used to reach
+   48px only under the coarse-pointer/phone rule further down, which is
+   removed with it. */
 .fold > summary {
-  list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: .7rem;
-  margin-bottom: .75rem; -webkit-tap-highlight-color: transparent;
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: .7rem;
+  min-height: 48px; padding: .85rem .95rem; margin-bottom: .75rem;
+  border-radius: var(--r-sm); background: var(--surface);
+  -webkit-tap-highlight-color: transparent; transition: background var(--t-fast) var(--ease);
 }
 .fold > summary::-webkit-details-marker { display: none; }
-.fold > summary h3 { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em;
-  color: var(--muted); font-weight: 700; }
+.fold > summary h3 { font-size: var(--fs-body); color: var(--ink); font-weight: 600; }
 .fold > summary::after {
   content: '›'; margin-left: auto; color: var(--faint); font-size: var(--fs-headline); line-height: 1;
   transition: transform var(--t) var(--spring);
 }
 .fold[open] > summary::after { transform: rotate(90deg); }
-@media (hover: hover) { .fold > summary:hover h3 { color: var(--ink); } }
-.fold > summary .hint { margin-left: 0; }
+@media (hover: hover) { .fold > summary:hover { background: var(--surface-2); } }
+/* #69 decision 9: the hint reads muted, not the label's own ink -- it was
+   unstyled before and fell back to the summary's inherited color. */
+.fold > summary .hint { margin-left: 0; color: var(--muted); font-size: var(--fs-footnote); }
 .fold[open] > *:not(summary) { animation: rise var(--t) var(--ease) both; }
-@media (pointer: coarse), screen and (max-width: 620px) { .fold > summary, details.dz > summary { min-height: 44px; align-items: center; } }
 
 /* The "?" that opens `#help` at the section describing the control it sits
    beside (A20 slice 4). One per help SECTION, never one per control -- the
@@ -2274,12 +2418,11 @@ dialog.bsheet.dragging { transition: none; }
    Square, not tall: `min-height` covers height and not width, which is how a
    41.5px-wide link shipped on `advanced.html`. Both axes are pinned here.
 
-   `align-self` rather than a change to the summary's `align-items`: the
-   summaries align their label and their hint on the BASELINE, and a 44px box
-   on that baseline would hang below the row. On a phone every one of these
-   rows is already `min-height: 44px` from the rule above, so at 390px the
-   button costs no height at all; on a mouse the row grows to meet it, which
-   is the adaptation and not the baseline.
+   `align-self` rather than relying on the summary's own `align-items`: since
+   #69, `.fold > summary` and `details.dz > summary` are both `align-items:
+   center` and already at least 48px (the rule above, unconditional, not
+   phone-only), so a 44px "?" already fits inside the row without changing
+   its height on any pointer type.
 
    The `.dz` row pays its own padding back, because `details.dz > summary` has
    `.85rem` of it top and bottom and a 44px child on top of that would make
@@ -2292,15 +2435,16 @@ dialog.bsheet.dragging { transition: none; }
   color: var(--faint); cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .helpq:focus-visible { color: var(--accent); background: var(--accent-soft); }
 @media (hover: hover) { .helpq:hover { color: var(--accent); background: var(--accent-soft); } }
-/* The chevron owns `margin-left: auto` on a `.fold` summary and the count pill
-   owns it on a `.dz` one; two `auto`s split the free space and would strand the
-   "?" in the middle of the row, so each context hands the auto to exactly one.
-   The `.dz` count gives it up rather than the "?" -- a badge reads better
-   beside its label than adrift at the far end of the row, and `renderConsCount`
-   can still hide that element outright (an empty roster), so an `auto` living
-   on it is an auto that can disappear. */
-.fold > summary:has(.helpq)::after { margin-left: .1rem; }
-details.dz > summary:has(.helpq) .count { margin-left: 0; }
+/* The chevron owns `margin-left: auto` on both a `.fold` summary and a `.dz`
+   one (#69 decision 9 put them on the same, right-hand side) -- but the "?" also
+   carries its own `margin-left: auto` (the rule above), and two `auto`s on
+   the same row split the free space between them, stranding the "?" in the
+   middle rather than flush against the chevron. So whenever a `.helpq` is
+   present, it takes the auto and the chevron falls back to a plain `.1rem`
+   -- the "?" is what should end up adrift from the label, the chevron just
+   rides along beside it. The `.dz` count pill never carries an auto margin
+   of its own, so it needs no matching override here. */
+.fold > summary:has(.helpq)::after, details.dz > summary:has(.helpq)::after { margin-left: .1rem; }
 details.dz > summary .helpq { margin-block: -.85rem; }
 /* `.gm-cta` is a centered wrapping row, so the bench "?" travels with the
    button it explains rather than as a flex item of its own -- see the note in
@@ -2508,11 +2652,12 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .block-hd { flex-wrap: wrap; }
   .gm-cta .btn { white-space: normal; text-align: center; }
 
-  /* Today's own pair, "Add a game" and "New day" (#23), the same `.btn`
-     nowrap case again: two `flex: 1` buttons side by side cannot shrink
-     below their own label's min-content, so at a 32px root they overflowed
-     the 320px column they share. */
-  .today-acts .btn { white-space: normal; text-align: center; }
+  /* "Add a game" (#23) used to be a `.btn` here, one of a `flex: 1` pair
+     with New day that could not shrink below its own label at a 32px root.
+     New day moved into the header bar (#69 decision 12) and Add a game
+     became a `.today-entry` (decision 14), which already wraps its own
+     content -- see the base rule's `flex-wrap: wrap` -- so nothing is left
+     to fix at this breakpoint. */
 
   /* The same answer a third time, for the summary rows carrying a "?" (A20
      slice 4). A `.helpq` is 44px in BOTH directions on purpose, and 44px is
@@ -2748,6 +2893,18 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      cases this block already handles (`.dayrow`, `.rlist .rrow`); at any
      ordinary width `40vw` is wider than `8.125rem` and this changes nothing. */
   .row { grid-template-columns: repeat(auto-fit, minmax(min(8.125rem, 40vw), 1fr)); }
+
+  /* #69 decision 6: "Start game" plus its decorative icon (`aria-hidden`
+     in icons.js -- the accessible name is the label alone) no longer fit one
+     row at a 32px root, and wrapped the label to two lines squeezed beside
+     the icon (98px tall, measured). Dropping the icon buys back its width,
+     but the label (157px, measured) still does not fit the 147px `#abBench`
+     is left with once the bar's own padding and gap are spent -- the same
+     `.bar` squeeze this block already answers above, on the bar's other
+     fixed sibling (the "?" and the print button, both floored already and
+     with nowhere further to shrink). */
+  #abBench .i { display: none; }
+  .actionbar { gap: .3rem; padding-left: .5rem; padding-right: .5rem; }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach
@@ -2768,15 +2925,16 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    above it can. The one exception is the day title itself: #24 decision 4's
    amendment (docs/specs/24-text-size.md) lets a short-viewport-HEIGHT block
    move a large title down to another step on the scale for exactly this
-   vertical room, so `.dayhead input.daytitle` takes the sentence step here,
-   its pre-#24 value. Bounded by max-height like the game-mode block, so a
+   vertical room, so `.dayhead .game-h1` (#69: the opponent's title, formerly
+   the day-name input this rule pre-dates) takes the sentence step here, its
+   pre-#24 value. Bounded by max-height like the game-mode block, so a
    landscape tablet -- which has the height already -- is untouched. Must
    stay after the 620px and 19em blocks: all three share specificity on
    `.bar`. */
 @media (orientation: landscape) and (max-height: 560px) {
   .bar { padding-top: calc(.3rem + env(safe-area-inset-top)); padding-bottom: .3rem; }
   .dayhead { margin-bottom: .7rem; }
-  .dayhead input.daytitle { font-size: var(--fs-sentence); }
+  .dayhead .game-h1 { font-size: var(--fs-sentence); }
   /* 44px is the floor for both buttons, so the action bar gives up padding and
      8px of slack above that floor, and nothing else. */
   .actionbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-inset-bottom)); }
@@ -2809,7 +2967,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .rord { flex-direction: row; gap: 0; align-self: stretch; }
   .obtn { flex: 1; min-height: 44px; min-width: 44px; color: var(--muted); }
   .tld-x, .gm-x, .bsheet-close { min-width: 44px; min-height: 44px; }
-  .seg button { min-height: 44px; }
+  .seg button { min-height: 48px; }
   .switch { min-height: 44px; }           /* the label is the target, not the 22px track */
   .gm-b, .gm-p { min-height: 44px; }
   .gm-exit { display: grid; }

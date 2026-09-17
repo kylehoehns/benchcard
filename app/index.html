@@ -422,8 +422,14 @@
   <main class="view wrap noprint" id="view-today">
     <h1 class="today-h1">Today</h1>
     <div class="today-games" id="todayGames"></div>
+    <!-- #69 decision 14: the same grouped-row look as Team/Season below
+         (`.today-entry`, decision 9), left-aligned with a leading icon
+         instead of a trailing chevron -- `.noarrow` drops that pseudo-
+         element. Same id, same handler (`addGame`, teams-view.js). -->
     <div class="today-acts">
-      <button class="btn press" id="todayAddGame" type="button">Add a game</button>
+      <button class="today-entry noarrow press" id="todayAddGame" type="button">
+        <span class="i" data-icon="plus"></span><span class="today-entry-lab">Add a game</span>
+      </button>
     </div>
     <button class="today-entry press" id="todayTeam" type="button"></button>
     <button class="today-entry press" id="todaySeason" type="button"></button>
@@ -432,6 +438,21 @@
   <!-- ============================ GAMES ============================ -->
   <main class="view print-path" id="view-games" hidden>
     <div class="wrap print-path">
+
+      <!-- #69 decision 5: the one large title on the game screen is
+           the opponent, not the day name -- `renderTabs` (teams-view.js)
+           writes `gameLabel(...)` into `#gameTitle` and a reused status
+           word/dot into `#gameSub`. `#barTitle` (in `.bar-back`) keeps
+           carrying this same text for every OTHER back screen, so it stays
+           in the DOM; on this view alone `applyView` (render.js) sets its
+           `hidden` attribute so it does not also read as a second `h1` --
+           to a screen reader as much as to the eye. It sits directly under
+           the header, above the sentence: the prototype (`light-game-
+           timeline.png`) reads title, sub line, sentence, in that order. -->
+      <div class="dayhead noprint">
+        <h1 class="game-h1" id="gameTitle"></h1>
+        <p class="game-sub" id="gameSub"></p>
+      </div>
 
       <!-- #27: the sentence. It replaces the Squad and Game format folds
            (a coach read "Squad" and "Game format" as two settings screens,
@@ -485,10 +506,6 @@
         <div class="bsheet-body" id="sheetIntervalBody"></div>
         <p class="bsheet-status" role="status" id="sheetIntervalStatus"></p>
       </dialog>
-
-      <div class="dayhead noprint">
-        <input type="text" id="dayName" class="daytitle" placeholder="Name this day…" aria-label="Day or tournament name">
-      </div>
 
       <div class="cols print-path">
         <div class="col-main noprint">
@@ -563,10 +580,10 @@
               <button class="btn ghost sm press" id="regen"><span class="i" data-icon="shuffle"></span>Shuffle</button>
             </div>
             <div id="issues" role="status" aria-live="polite"></div>
-            <div class="surface">
-              <div id="timeline" class="tl"></div>
-              <div class="statrow" id="stats" style="margin-top:1.05rem"></div>
-            </div>
+            <!-- #69 decision 7: the timeline is not boxed. `.surface` (a
+                 bordered card) used to wrap it; both ids stay, unwrapped. -->
+            <div id="timeline" class="tl"></div>
+            <div class="statrow" id="stats" style="margin-top:1.05rem"></div>
           </section>
 
           <section class="block s-day">
@@ -590,12 +607,21 @@
                folds SHUT by default (`storage.js` seeds `cardOpen` false), so
                `#view-games.card-shut .s-cardopts { display: none }` hid
                Opponent, Tip-off and Remove outright for a coach who had never
-               opened the card. `order: 0` in the phone stack puts it directly
-               under the game tabs, where "This game" means something.
+               opened the card. It still keeps its own named `order:` in the
+               phone stack rather than the flex default, but #69 decision 8
+               moved that number to after Rules -- Rotation reads first there
+               now, right under the sentence.
                `#removeGame` keeps its `undoable()` and its `< 2` guard -- a
                day must always have a game. -->
           <div class="side-box noprint s-thisgame" style="margin-bottom:.9rem">
             <div class="side-hd">This game</div>
+            <!-- #69 decision 5: the day/tournament name, moved out of the
+                 large-title spot at the top of the page (now the opponent's
+                 h1). A normal labeled field, same as Opponent and Tip-off
+                 beside it -- no new CSS, the existing `.f`/input pattern. -->
+            <div class="row">
+              <div><label class="f" for="dayName">Day or tournament</label><input type="text" id="dayName" placeholder="Name this day…"></div>
+            </div>
             <div class="row">
               <div><label class="f" for="label">Opponent</label><input type="text" id="label" placeholder="Panthers"></div>
               <div><label class="f" for="when">Tip-off</label><input type="text" id="when" placeholder="Sat 9:00"></div>

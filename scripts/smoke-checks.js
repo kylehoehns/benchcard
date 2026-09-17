@@ -212,6 +212,35 @@
       : whoShortRows.length ? `${whoShortRows.length}/${whoRowCount} under 48px: ${whoShortRows.slice(0, 4).join(', ')}`
       : `${whoRowCount} rows, all ≥ 48px`);
 
+  /* 3c. #69 (restyle Today and the game screen) "What would settle it" item 4:
+        the controls the restyle itself names, all at least 48x48 -- a floor
+        higher than the app-wide 44px sweep above, the same shape as the
+        settings-row and who's-here-row checks (a fixed, named list, not
+        structural discovery), because item 4 is a fixed, named list too.
+        `today-game-rows.mjs` drives Today, the game screen and the game
+        screen with every fold open, at the three phone widths the other two
+        row checks sweep at. */
+  const ITEM4_SEL = [
+    '#teamBtn', '#todayNewDay', '#settingsBtn', '.today-game', '#todayAddGame',
+    '#todayTeam', '#todaySeason', '#backBtn', '.phrase', '.tl-row',
+    '#regen', '.fold > summary', 'details.dz > summary', '.seg button',
+    '#abBench', '#abCard',
+  ].join(', ');
+  const item4Short = [];
+  let item4Count = 0;
+  for (const el of document.querySelectorAll(ITEM4_SEL)) {
+    if (!visible(el) || el.closest('[hidden]')) continue;
+    item4Count++;
+    const r = el.getBoundingClientRect();
+    const min = Math.min(round(r.width), round(r.height));
+    // Same 47.99 tolerance as the settings/who's-here row checks above.
+    if (min < 47.99) item4Short.push(`${label(el)} ${round(r.width)}×${round(r.height)}`);
+  }
+  add('today and game controls ≥ 48px', item4Count > 0 && item4Short.length === 0,
+    !item4Count ? 'none of item 4\'s controls were found on screen'
+      : item4Short.length ? `${item4Short.length}/${item4Count} under 48px: ${item4Short.slice(0, 6).join(', ')}`
+      : `${item4Count} controls, all ≥ 48px`);
+
   /* 4. The last control in an open dialog is reachable.
 
         The help sheet shipped for months with "Show me around again" below the

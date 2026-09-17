@@ -441,7 +441,7 @@ function renderPass(g, i) {
     rot.setAttribute('aria-hidden', 'true');
     for (const { id, blocks } of passBlocks(g, p)) {
       const row = el('div', 'pass-row');
-      row.style.background = rowGradient(blocks, g, colorOf(id));
+      row.style.background = rowGradient(blocks, g, colorOf(id), 'var(--track)');
       rot.append(row);
     }
     b.append(rot);
@@ -461,8 +461,26 @@ export function renderTabs() {
   // #label does not change the view. `gameLabel` is the one game label,
   // reused here exactly as Today's own entries reuse it below.
   if (state.view === 'games') {
+    const g = game(), i = state.activeGame, label = gameLabel(g, i);
     const t = $('#barTitle');
-    if (t) t.textContent = gameLabel(game(), state.activeGame);
+    if (t) t.textContent = label;
+
+    // #69 decision 5: the one large title on the game screen is the
+    // opponent, reusing `gameLabel`; the sub line reuses the pass's own
+    // status word and dot (`.pass-status`) rather than a second copy of
+    // either -- do not re-derive plan status, read `plans[i].ok` as
+    // `renderPass` does. `#barTitle` above stays live for other back
+    // screens, but is visually hidden here (render.js's `applyView`) so it
+    // does not also read as a second visible `h1`.
+    const gt = $('#gameTitle');
+    if (gt) gt.textContent = label;
+    const gs = $('#gameSub');
+    if (gs) {
+      gs.textContent = '';
+      const ok = !!(plans[i] && plans[i].ok);
+      if (g.when) gs.append(g.when + ' · ');
+      gs.append(el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix'));
+    }
   }
 
   const box = $('#todayGames');

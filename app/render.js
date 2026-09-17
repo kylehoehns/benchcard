@@ -389,7 +389,19 @@ function applyView(v, from) {
   const today = $('#barToday'), back = $('#barBack');
   if (today) today.hidden = v !== 'today';
   if (back) back.hidden = !onBack;
-  if (onBack) { const t = $('#barTitle'); if (t) t.textContent = screenTitle(v); }
+  /* #69 decision 5: the games view has its own in-page `h1` (`#gameTitle`),
+     so `#barTitle` -- otherwise a second copy of the same text -- is hidden
+     there outright with the `hidden` attribute rather than visually clipped:
+     a clipped-but-present box still answers `checkVisibility()` true (that
+     call only asks about `display: none` and detachment, not size), so a
+     screen reader's rotor read "Panthers" twice even though nothing was
+     visibly doubled on screen. It keeps its text and shows as before on the
+     other back screens. */
+  const barTitleEl = $('#barTitle');
+  if (barTitleEl) {
+    if (onBack) barTitleEl.textContent = screenTitle(v);
+    barTitleEl.hidden = v === 'games';
+  }
   /* #23 review, third round: entering Games has to show what `state` says,
      not whichever game the screen last painted. Everything above this line
      only ever toggled visibility and wrote the header title -- the opponent

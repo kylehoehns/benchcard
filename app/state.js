@@ -726,13 +726,14 @@ export function passBlocks(g, p) {
 const ROW_GAP_PCT = 1;
 
 /* One player's blocks (`passBlocks`) as a `linear-gradient(to right, …)`
-   string with hard stops (#26 decision 10): the player's color exactly where
-   a block says they are on the floor, `transparent` everywhere else,
-   including the gap between periods. The row is one equal-per-minute track
-   per period -- `g.periodMinutes` is every period's length, so a block's
-   `from`/`to` divide by it for a fraction of that period's track. Pure: reads
-   nothing off `state`. */
-export function rowGradient(blocks, g, color) {
+   string with hard stops (#26 decision 10; #69 decision 13): the player's
+   color exactly where a block says they are on the floor, `trackColor`
+   everywhere else inside a period, and `transparent` across the gap between
+   periods. The row is one equal-per-minute track per period --
+   `g.periodMinutes` is every period's length, so a block's `from`/`to`
+   divide by it for a fraction of that period's track. Pure: reads nothing
+   off `state`. */
+export function rowGradient(blocks, g, color, trackColor) {
   const periods = g.periods, periodMinutes = g.periodMinutes;
   const track = (100 - (periods - 1) * ROW_GAP_PCT) / periods;
   const pct = n => `${Math.round(n * 10000) / 10000}%`;
@@ -745,11 +746,11 @@ export function rowGradient(blocks, g, color) {
     const periodBlocks = blocks.filter(b => b.period === pi + 1).sort((a, b) => a.from - b.from);
     let cursor = 0;
     for (const b of periodBlocks) {
-      if (b.from > cursor) push(frac(cursor), frac(b.from), 'transparent');
+      if (b.from > cursor) push(frac(cursor), frac(b.from), trackColor);
       push(frac(b.from), frac(b.to), color);
       cursor = b.to;
     }
-    if (cursor < periodMinutes) push(frac(cursor), frac(periodMinutes), 'transparent');
+    if (cursor < periodMinutes) push(frac(cursor), frac(periodMinutes), trackColor);
   }
   return `linear-gradient(to right, ${stops.join(', ')})`;
 }

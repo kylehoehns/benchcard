@@ -281,8 +281,10 @@ test('the two short-viewport-height blocks still move a large title down to the 
      the viewport's WIDTH at big text -- may move a large title down to
      another step on the scale: a step, never a `vw` cap, and never below the
      sentence step. Both titles' pre-#24 values landed there (`.wel-h`'s
-     clamp topped out near 1.62rem, `.dayhead input.daytitle` was a flat
-     1.5rem), so both take `var(--fs-sentence)` here. */
+     clamp topped out near 1.62rem, the day title -- `.dayhead input.daytitle`,
+     now `.dayhead .game-h1` since #69 turned it from an editable day-name
+     input into the opponent's `h1` -- was a flat 1.5rem), so both take
+     `var(--fs-sentence)` here. */
   const shortAt = bare.indexOf('@media (max-height: 700px)');
   assert.ok(shortAt > -1, 'the short-viewport-height welcome block is gone');
   const short = bare.slice(shortAt, bare.indexOf('\n}', shortAt));
@@ -292,6 +294,6 @@ test('the two short-viewport-height blocks still move a large title down to the 
   const landscapeAt = bare.lastIndexOf('@media (orientation: landscape) and (max-height: 560px)');
   assert.ok(landscapeAt > -1, 'the short-landscape day-title block is gone');
   const landscape = bare.slice(landscapeAt, bare.indexOf('\n}', landscapeAt));
-  assert.match(landscape, /\.dayhead input\.daytitle\s*{[^}]*font-size:\s*var\(--fs-sentence\)/,
+  assert.match(landscape, /\.dayhead \.game-h1\s*{[^}]*font-size:\s*var\(--fs-sentence\)/,
     'the game title no longer shrinks under the short-landscape block');
 });
