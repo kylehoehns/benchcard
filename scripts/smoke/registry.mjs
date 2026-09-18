@@ -168,6 +168,13 @@ export const ROWS = Object.freeze([
   // the day, so it reloads RICH before returning, exactly as `teamscreen`
   // above does after emptying the roster.
   { id: 'addgameflow', name: 'add a game: three steps', selectable: true, setup: 'rich' },
+  // #33 decision 15 (item 7): tabbing the game screen never leaves focus
+  // under the floating bar or action bar -- see focus-clear.mjs.
+  { id: 'focusclear', name: 'tab order stays clear of the floating bar and action bar', selectable: true, setup: 'rich' },
+  // #33 "What would settle it" items 1-6 and 10: the floating chrome itself
+  // -- the collapsing bar title, the round chips, the full-width action
+  // bar and the solid fallbacks. See floating-controls.mjs.
+  { id: 'floatingcontrols', name: 'the floating bar and action bar', selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },

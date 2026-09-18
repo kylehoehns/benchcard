@@ -17,15 +17,13 @@
  * pointing at it. This derives its scope from the directory and from the hrefs
  * in the files, so both of those fail here.
  *
- * WHY index.html's `.foot` IS CUT OUT OF THE GRAPH. `render.js:197` sets
- * `.foot { display: none }` on the welcome view, and welcome is the view a
- * cold visitor -- and a rendering crawler -- lands on. So the footer's "How it
- * works" is in the source of "/" and is NOT on the page anyone arrives at. The
- * only live path off the welcome screen is the "What is this?" link
- * (`.wel-about`), and the whole six-page long tail hangs off that one anchor.
- * Cutting the footer out is what makes this test able to say so: with the
- * footer counted, deleting `.wel-about` would still look fine here, and the
- * charts would go dark behind a hidden link with the suite green.
+ * WHY THE WELCOME SCREEN'S LINK IS WHAT MATTERS. A cold visitor -- and a
+ * rendering crawler -- lands on the welcome view, and the only live path off
+ * it is the "What is this?" link (`.wel-about`); the whole six-page long
+ * tail hangs off that one anchor. #33 removed the footer that used to also
+ * carry an `href="./about"` in the source (and had to be cut out of this
+ * walk by hand so that a deleted `.wel-about` still went red here, not green
+ * behind the footer's hidden copy) -- there is nothing left to cut.
  *
  * Confirmed in a browser at 390x844 on 2026-08-26, because a source href is
  * not a link a reader can follow: "What is this?" is visible on welcome, the
@@ -51,16 +49,11 @@ const strip = src => src
   .replace(/<!--[\s\S]*?-->/g, '')
   .replace(/<noscript>[\s\S]*?<\/noscript>/gi, '');
 
-/* `.foot` on index.html is display:none on the welcome view -- see the header.
-   Scoped to index.html: the chart pages and about.html have plain footers that
-   are always on screen. */
+/* #33 removed index.html's `.foot` footer -- the one thing this used to cut
+   out by hand (it carried a source-only `href="./about"` a rendering crawler
+   on the welcome view never actually saw). Nothing left needs cutting. */
 function crawlable(name) {
-  const src = strip(read(name));
-  if (name !== 'index.html') return src;
-  const start = src.indexOf('<footer class="foot');
-  assert.ok(start > 0, 'index.html no longer has the .foot footer this test cuts out');
-  const end = src.indexOf('</footer>', start);
-  return src.slice(0, start) + src.slice(end);
+  return strip(read(name));
 }
 
 /* An href becomes a page name, or null if it is not a page on this site.
@@ -120,15 +113,13 @@ test('every URL in sitemap.xml is a page the crawl actually reaches', () => {
   for (const loc of locs) assert.ok(seen.has(loc), `sitemap lists ${loc} and no page links to it`);
 });
 
-test('the welcome screen, not the hidden footer, is what links off "/"', () => {
+test('the welcome screen is what a first visit links off "/" with', () => {
   /* The load-bearing anchor, stated once so a future edit to the welcome
-     screen has to argue with it. Two iterations rebuilt that screen this week;
+     screen has to argue with it. Several iterations have rebuilt that screen;
      the next one should know this link is holding up six pages. */
-  const withoutFoot = crawlable('index.html');
-  assert.ok(withoutFoot.includes('href="./about"'),
-    'nothing outside index.html\'s hidden .foot links to about — the six chart pages just went dark');
-  assert.ok(/<a class="wel-about" href="\.\/about"/.test(withoutFoot),
-    'the welcome screen\'s "What is this?" link is gone; the only about hrefs left are in the hidden footer, a comment or <noscript>');
+  const src = crawlable('index.html');
+  assert.ok(/<a class="wel-about" href="\.\/about"/.test(src),
+    'the welcome screen\'s "What is this?" link is gone');
 });
 
 /* ------------------------------------------------------------------ *

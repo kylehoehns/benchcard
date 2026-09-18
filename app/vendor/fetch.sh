@@ -56,7 +56,7 @@ done
 # ---- icons (path data is extracted into ../icons.js by hand; see README)
 echo "vendoring lucide icons (ISC) -> ../icons.js"
 mkdir -p icons
-for n in x chevron-left chevron-right lock lock-open maximize-2 rotate-ccw coffee \
+for n in x chevron-left chevron-right lock lock-open maximize-2 rotate-ccw \
          printer plus arrow-up arrow-down \
          shuffle triangle-alert info circle-alert play \
          grip-vertical share-2 share settings; do

@@ -10,6 +10,21 @@
    way to make `el.hidden = true` mean hidden. */
 [hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
+/* #33 decision 14: an in-page jump (a keyboard shortcut, a focus move) must
+   not land a target underneath the floating bar or action bar -- both of
+   which sit OVER the content now rather than pushing it down, so the UA's
+   own scroll-into-view has nothing telling it they are there. `--bar-h` and
+   `--ab-h` are written by `render.js`'s `measureChromeHeights` (the same
+   ResizeObserver decision 4's `--bar-side` uses): a static value cannot
+   work, since the bar wraps to two rows at 320px with a 32px root. */
+/* The fallbacks are load-bearing, not tidiness: `var()` with no fallback is
+   a GUARANTEED-INVALID value while the property is unset, which throws away
+   the whole declaration rather than most of it -- so between first paint and
+   `render.js`'s first measurement there would be no scroll-padding at all,
+   and a boot that failed before `applyView` would leave the app with none
+   ever. 4.5rem is the bar's own one-row height at the default root size;
+   `--ab-h`'s 0px matches the four screens that have no action bar. */
+html { scroll-padding-top: calc(var(--bar-h, 4.5rem) + .5rem); scroll-padding-bottom: calc(var(--ab-h, 0px) + .5rem); }
 /* docs/specs/24-text-size.md decision 1: the root follows the OS text-size
    setting on iOS/iPadOS WebKit, where `-apple-system-body` tracks Dynamic
    Type. Gated on `-webkit-touch-callout`, supported by iOS/iPadOS WebKit
@@ -120,9 +135,22 @@ a { color: inherit; }
   display: flex; align-items: center; gap: .8rem;
   padding: .6rem clamp(.85rem, 2.6vw, 1.5rem);
   padding-top: calc(.6rem + env(safe-area-inset-top));
-  background: color-mix(in srgb, var(--bg) 76%, transparent);
+}
+/* #33 decision 7 (L3: a fade, not a bar). The scrim used to be a background
+   and a backdrop-filter on `.bar` itself, which ends on a hard edge -- the
+   exact "opaque bar" L3 says not to draw. Moving both onto a `::before`
+   behind the bar's own content lets a `mask-image` fade them out together
+   before they reach the content-facing (bottom) edge, so the blur trails off
+   rather than stopping on a line. `.bar` keeps the stacking context's
+   `z-index: 50`; the pseudo sits at `-1` inside it, behind the buttons and
+   title but still above the page. */
+.bar::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(var(--bg), var(--bg));
   backdrop-filter: saturate(180%) blur(24px);
   -webkit-backdrop-filter: saturate(180%) blur(24px);
+  mask-image: linear-gradient(to bottom, black 0%, black 75%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 75%, transparent 100%);
 }
 .spacer { flex: 1; }
 
@@ -223,7 +251,6 @@ a { color: inherit; }
    copied. Scoped to the id, not `.btn.icon`, so every other icon button
    (Settings, sheet closes, roster) keeps its own look. */
 #backBtn { width: 48px; height: 48px; padding: 0; border: 0; background: none; }
-#backBtn .i { width: 2.25rem; height: 2.25rem; border-radius: var(--r-full); background: var(--surface-2); }
 @media (hover: hover) {
   #backBtn:hover { background: none; }
   #backBtn:hover .i { background: var(--surface-3); }
@@ -237,18 +264,38 @@ a { color: inherit; }
 #settingsBtn { width: 48px; height: 48px; }
 /* #29 decision 3: "Share the card" is the one door into the card sheet, so
    it gets the same unconditional 48x48 `#settingsBtn` already has, rather
-   than `.btn.icon`'s 44px coarse-pointer floor. Round like `#backBtn`
-   (fix pass finding 3): same 2.25rem circle in `--surface-2`, scoped to the
-   id so no other icon button picks it up. */
+   than `.btn.icon`'s 44px coarse-pointer floor. */
 #shareBtn { width: 48px; height: 48px; }
-#shareBtn .i { width: 2.25rem; height: 2.25rem; border-radius: var(--r-full); background: var(--surface-2); }
 @media (hover: hover) {
   #shareBtn:hover .i { background: var(--surface-3); }
 }
+/* #33 decision 9: `#teamAdd` gets the same unconditional 48x48 hit area the
+   other four header controls already had -- `.btn.icon`'s 44px coarse-pointer
+   floor is not enough now that it sits beside a round `#shareBtn` on the same
+   game screen. */
+#teamAdd { width: 48px; height: 48px; }
+/* #33 decision 9: one fill for the five header controls that ride directly on
+   the bar's glass -- `#backBtn`, `#shareBtn`, `#settingsBtn` and `#teamAdd`
+   each already carry a `.i` icon span; `#teamBtn` holds text instead of an
+   icon, so its own button element IS the fill, shaped to a pill (`--r-full`)
+   rather than a circle. Translucent + blurred (not the opaque `--surface-2`
+   these used before) so each reads as its own small floating chip over the
+   bar's scrim rather than a solid cutout in it -- AC3/decision 8 still swap
+   this to opaque `--surface-2` when transparency or a blur is unavailable. */
+#backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn {
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+}
+#backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i {
+  width: 2.25rem; height: 2.25rem; border-radius: var(--r-full);
+}
+#teamBtn { border-radius: var(--r-full); }
 /* #30 decision 1: the header carries the export -- a text button, not an
    icon, so it keeps `.btn`'s own width; only the height needs the same 48px
    floor `#shareBtn` above gets unconditionally (I1/C6), rather than the
-   44px coarse-pointer floor every other `.btn` settles for. */
+   44px coarse-pointer floor every other `.btn` settles for. Plain text, not
+   one of decision 9's round five (#33 decision 10). */
 #seasonExport { min-height: 48px; }
 
 .wrap { max-width: 1340px; margin: 0 auto; padding: clamp(1rem, 2.2vw, 1.8rem) clamp(.85rem, 2.6vw, 1.5rem) 4rem; }
@@ -336,8 +383,40 @@ a { color: inherit; }
    declaring their own. */
 .bar-today, .bar-back { display: flex; align-items: center; gap: .8rem; flex: 1; min-width: 0; }
 .bar-today[hidden], .bar-back[hidden] { display: none; }
-.bar-title { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.03em;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* #33 decision 3: a centered overlay on `.bar` itself, not in either half's
+   flex flow -- in flow it would push `New day` and the gear around on Today,
+   and at 320px/32px-root it would force the bar to wrap a third row.
+   `pointer-events: none` because it is decoration duplicating a heading
+   already on screen (or, on Settings, the screen's only heading, reached the
+   ordinary way through the document, not by tapping a translucent overlay).
+   `.bar` is `position: sticky`, which is enough of a containing block for
+   this to position against.
+
+   Centered with `inset` + `margin: auto 0`, deliberately not a
+   `left: 50%; transform: translate(-50%, -50%)` pair: decision 10 requires
+   the computed `transform` to be `none` in both states under
+   `prefers-reduced-motion: reduce`, and a transform used for static
+   centering is still a transform. `inset`'s left/right pair is decision 4's
+   own formula (`--bar-side` measured by `render.js`'s `measureBarSide`, the
+   3.25rem fallback only ever painting for the one frame before the first
+   measurement lands) -- `.5rem` each side is the spec's `1rem` total gap
+   split in two. `margin: auto 0` centers vertically off `top`/`bottom: 0`
+   without a transform: with both set and no explicit height, the browser
+   distributes the leftover space evenly into the auto top/bottom margins.
+
+   Decision 1: hidden by default and faded in by `.bar.title-in`, toggled by
+   the `IntersectionObserver` `watchLargeTitle` sets up; decision 10/M3:
+   opacity only, so `prefers-reduced-motion` (the sweep below) leaves nothing
+   to suppress but the fade itself. */
+.bar-title {
+  position: absolute; inset: 0 calc(var(--bar-side, 3.25rem) + .5rem);
+  margin: auto 0; height: max-content;
+  pointer-events: none; z-index: 1; text-align: center;
+  font-size: var(--fs-body); font-weight: 700; letter-spacing: -.03em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  opacity: 0; transition: opacity var(--t-fast) var(--ease);
+}
+.bar.title-in .bar-title { opacity: 1; }
 
 /* The team button. Visible text is the team's own name (or `Team N`) --
    never an aria-label overriding it, so a screen reader hears exactly what
@@ -1494,14 +1573,53 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
   display: none; gap: .5rem; align-items: center;
   padding: .6rem clamp(.7rem, 3vw, 1rem);
-  padding-bottom: calc(.6rem + env(safe-area-inset-bottom));
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  /* #33 AC4 (L5): `safe-area-max-inset-bottom` is the browser's own settled
+     value for the home indicator, which does not move once loaded --
+     `safe-area-inset-bottom` is the live one, which on Chrome/Android can
+     shrink and grow as the URL bar slides, jumping the bar with it. The
+     fallback keeps every engine that does not know the `-max-` variable on
+     the value it already had. */
+  padding-bottom: calc(.6rem + env(safe-area-max-inset-bottom, env(safe-area-inset-bottom)));
   animation: abIn var(--t) var(--ease);
 }
 @keyframes abIn { from { transform: translateY(100%); } to { transform: none; } }
+/* #33 decision 7: same masked scrim as `.bar`, mirrored -- the action bar's
+   content-facing edge is its TOP, since content scrolls up underneath it, so
+   the fade runs the other way. */
+.actionbar::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(var(--bg), var(--bg));
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  mask-image: linear-gradient(to top, black 0%, black 75%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 75%, transparent 100%);
+}
 @media (max-width: 900px) { .actionbar:not([hidden]) { display: flex; } }
+/* #33 decision 8: solid fallbacks, one shared block, two triggers -- a reader
+   who asked for less transparency or more contrast, or an engine with no
+   backdrop-filter to blur at all. Both get the identical flat result: the
+   mask and the blur only mean anything over a translucent scrim, so there is
+   nothing to fade once the scrim itself is opaque `--bg`. AC3 (solid under
+   these conditions) wins over L3 (a fade, not a bar) exactly where they
+   meet, which is what L2's own sentence says too. `--bg` and `--surface-2`
+   already resolve per theme (tokens.css), so nothing here needs to name
+   `:root[data-theme="dark"]` itself -- there is no color literal here for a
+   bare `:root` to lose a specificity fight over. CSS has no way to OR an
+   `@media` feature query with an `@supports` one, so the same declarations
+   are written twice on purpose rather than nested (which would be AND). */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .bar::before, .actionbar::before {
+    background: var(--bg); mask-image: none; -webkit-mask-image: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn {
+    background: var(--surface-2); backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bar::before, .actionbar::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
+  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn { background: var(--surface-2); }
+}
 /* #69 decision 6: the prototype's primary button -- 54px tall, 600 weight,
    still `--tint` (K1 allows tint on the primary action). `--r` is already
    the prototype's 16px radius, unchanged. Flat, like the prototype's own
@@ -1519,21 +1637,19 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 /* Keep the *document* clear of the fixed bar -- but only the document, and only
    when there is a bar.
  *
- * `.wrap` used to reserve 6.5rem for it as well, which bought nothing: the
-   whole footer sits between the last section and the bottom of the page, so
-   the last section is never next to the bar. All it did was open 144px of
-   blank between "Stint by stint" and the footer -- that padding plus the
-   footer's own 2.5rem top margin -- which on a phone reads as the page having
-   ended early. The clearance the bar actually needs is on `.foot`, and it is
-   still here.
+ * #33 decision 13: this clearance used to live on `.foot`, the last thing on
+   the page, with `.wrap` itself padded only 2rem. Now that the footer is
+   gone, `.wrap` IS the last thing before the bottom of the page, so the same
+   6.5rem the two used to split between them (2rem `.wrap` + 4.5rem `.foot`'s
+   own top margin) moves onto `.wrap` whole -- the total a coach sees is
+   unchanged.
  *
  * The `:has()` override is written as an override rather than a condition so a
    browser without it keeps the safe, over-padded behavior instead of losing
    the clearance entirely. */
 @media (max-width: 900px) {
-  .wrap { padding-bottom: 2rem; }
-  .foot { margin-bottom: 4.5rem; }
-  body:has(#actionbar[hidden]) .foot { margin-bottom: 0; }
+  .wrap { padding-bottom: 6.5rem; }
+  body:has(#actionbar[hidden]) .wrap { padding-bottom: 2rem; }
 }
 
 /* ============================ undo toast ============================ */
@@ -1794,37 +1910,11 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .tour-dots i { width: .42rem; height: .42rem; border-radius: var(--r-full); background: var(--line-2); }
 .tour-dots i.on { background: var(--accent); }
 
-/* ============================ footer ============================ */
-.foot { border-top: 1px solid var(--line); margin-top: 2.5rem; }
-.foot-in { max-width: 1340px; margin: 0 auto; padding: 1.2rem clamp(.85rem, 2.6vw, 1.5rem);
-  padding-bottom: calc(1.2rem + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; }
-/* Two registers in one block: the claim, then the reason it exists. The second
-   half is what gives the tip link a "me" -- the word had no antecedent anywhere
-   on the site, since the About page is first person but never names anyone. It
-   also makes the ask concrete: hosting is a number, "support my work" is not. */
-.foot-note { color: var(--faint); font-size: var(--fs-footnote); flex: 1 1 22rem; min-width: 0;
-  line-height: 1.5; }
-.foot-note b { color: var(--ink-2); font-weight: 600; }
-.foot-why { display: block; margin-top: .25rem; max-width: 52ch; }
-/* A real <a href> rather than a sheet, on purpose: /about.html is the only
-   crawlable prose on the site and this is the link that leads there. 44px tall
-   for a thumb, but padded rather than boxed so it does not read as a button
-   competing with the tip. */
-.foot-link { color: var(--muted); font-size: var(--fs-footnote); font-weight: 500; text-decoration: none;
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 .25rem;
-  border-bottom: 1px solid transparent; }
-.foot-link:focus-visible { color: var(--accent); border-bottom-color: var(--accent-line); }
-@media (hover: hover) { .foot-link:hover { color: var(--accent); border-bottom-color: var(--accent-line); } }
-/* min-height, not just padding: this link was 38px and had been hidden behind
-   an empty TIP_URL since launch, so the touch-target check had never once
-   seen it. It went red the moment the tip jar was switched on. */
-.tip { margin-left: auto; display: inline-flex; align-items: center; gap: .45rem;
-  min-height: 44px; padding: .5rem .95rem;
-  border-radius: var(--r-full); border: 1px solid var(--line-2); color: var(--ink-2); text-decoration: none; font-size: var(--fs-secondary); font-weight: 600; }
-@media (hover: hover) { .tip:hover { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); } }
-.tip-ico { transition: transform var(--t) var(--spring); }
-@media (hover: hover) { .tip:hover .tip-ico { transform: rotate(-12deg) scale(1.14); } }
-@media (max-width: 620px) { .tip { margin-left: 0; } }
+/* #33 decision 13: the footer, and `.foot`/`.foot-in`/`.foot-note`/`.foot-why`/
+   `.foot-link`/`.tip`/`.tip-ico` with it -- its three destinations (How it
+   works, Contact, the tip jar) already exist in Settings. Not `.tip-toast`/
+   `.tip-lead` below: those style the unrelated tip-jar TOAST (`toast.js`),
+   which still fires after a print or a finished game. */
 @media (max-width: 620px) { .wrap { padding-left: .7rem; padding-right: .7rem; } }
 
 /* ============================ first run ============================ */
@@ -1832,9 +1922,10 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    `data-boot="welcome"` on <html> when the record it reads says the boot is
    going to land on the welcome screen; these rules make the first frame agree,
    because `#view-games` is the one view that ships visible and a first-ever
-   visitor used to watch it flip. `.bar` and `.foot` are in here because
-   `applyView` hides them on welcome too, and a flash of the top bar is the same
-   bug in a smaller box.
+   visitor used to watch it flip. `.bar` is in here because `applyView` hides
+   it on welcome too, and a flash of the top bar is the same bug in a smaller
+   box. (`.foot` used to be listed beside it for the same reason; #33 removed
+   the footer outright.)
 
    #23 MOVED THE DEFAULT FROM GAMES TO TODAY. `#view-today` is now the one
    view that ships visible, so a stamp is needed for `games` as well as for
@@ -1850,13 +1941,12 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    time it runs, which is what stops a stale stamp hiding Today from a coach
    who has just finished onboarding. */
 html[data-boot="welcome"] #view-today,
-html[data-boot="welcome"] .bar,
-html[data-boot="welcome"] .foot { display: none !important; }
+html[data-boot="welcome"] .bar { display: none !important; }
 html[data-boot="welcome"] #view-welcome[hidden] { display: flex !important; }
 /* A42, #23: a coach who left the app on Games, Team, Season or Settings also
    used to paint the games shell (now the Today shell) first. Only two things
-   change per view -- Today goes, the stored one arrives -- because `.bar` and
-   `.foot` belong to every one of those screens as much as to Today. `block` is
+   change per view -- Today goes, the stored one arrives -- because `.bar`
+   belongs to every one of those screens as much as to Today. `block` is
    what `.view` (Games) and `.view.wrap` (the rest) resolve to (a <main> with no
    author `display`), pinned to that by test/first-paint.test.js the same way
    the welcome rule's `grid` is. */
@@ -1874,16 +1964,17 @@ html[data-boot="settings"] #view-settings[hidden] { display: block !important; }
    two round trips away, used to flip them, so a reload on one of these four
    screens painted Today's OWN header over the right screen for the first
    frame. `#settingsBtn` lives inside `#barToday`, so hiding it takes the gear
-   with it; no separate rule for the gear. `#barTitle` is left empty here on
-   purpose -- filled by `applyView` a moment later, same as every other piece
-   of this screen's own content (the roster, the season list, the card) that
-   the pre-paint stamp never tries to paint. Reading it right for Games would
-   mean copying `gameLabel` in here, a second implementation of the one thing
-   this whole mechanism exists to forbid (see the big comment above); Team,
-   Season and Settings have no field to copy FROM at this point -- the only
-   place their titles live is `SCREEN_TITLE` in render.js, a module two round
-   trips away same as `gameLabel` -- so all four leave the title blank rather
-   than have three of them read right and one read wrong. */
+   with it; no separate rule for the gear.
+
+   #33 moved `#barTitle` out of `#barBack` and made it a centered overlay on
+   `.bar` itself, so none of the rules below name it any more, and it needs
+   none. It ships empty in the markup and, more to the point, `.bar-title`'s
+   own default is `opacity: 0` -- the class that fades it in, `.bar.title-in`,
+   is added by `watchLargeTitle` in render.js and cannot be on the element
+   before any script has run. So on the first frame it is blank AND invisible
+   without a `data-boot` rule of its own, which is the right answer for all
+   four screens: each one's title is the large `[data-large-title]` heading in
+   its own `<main>`, and the bar's copy is not meant to be showing yet. */
 html[data-boot="games"] #barToday,
 html[data-boot="team"] #barToday,
 html[data-boot="season"] #barToday,
@@ -3165,60 +3256,20 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 .fold > summary .hint { margin-left: 0; color: var(--muted); font-size: var(--fs-footnote); }
 .fold[open] > *:not(summary) { animation: rise var(--t) var(--ease) both; }
 
-/* The "?" that opens `#help` at the section describing the control it sits
-   beside (A20 slice 4). One per help SECTION, never one per control -- the
-   list of them is `data-help` in the markup, and `shortcuts.js` is what
-   reads it.
-
-   Square, not tall: `min-height` covers height and not width, which is how a
-   41.5px-wide link shipped on `advanced.html`. Both axes are pinned here.
-
-   `align-self` rather than relying on the summary's own `align-items`: since
-   #69, `.fold > summary` and `details.dz > summary` are both `align-items:
-   center` and already at least 48px (the rule above, unconditional, not
-   phone-only), so a 44px "?" already fits inside the row without changing
-   its height on any pointer type.
-
-   The `.dz` row pays its own padding back, because `details.dz > summary` has
-   `.85rem` of it top and bottom and a 44px child on top of that would make
-   the Rules drawer a 71px row. */
-.helpq { flex: 0 0 auto; align-self: center; display: inline-grid; place-items: center;
-  width: 44px; min-width: 44px; height: 44px; min-height: 44px;
-  margin-left: auto; padding: 0;
-  background: none; border: 0; border-radius: var(--r-full);
-  font: inherit; font-size: var(--fs-body); font-weight: 700; line-height: 1;
-  color: var(--faint); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.helpq:focus-visible { color: var(--accent); background: var(--accent-soft); }
-@media (hover: hover) { .helpq:hover { color: var(--accent); background: var(--accent-soft); } }
-/* The chevron owns `margin-left: auto` on both a `.fold` summary and a `.dz`
-   one (#69 decision 9 put them on the same, right-hand side) -- but the "?" also
-   carries its own `margin-left: auto` (the rule above), and two `auto`s on
-   the same row split the free space between them, stranding the "?" in the
-   middle rather than flush against the chevron. So whenever a `.helpq` is
-   present, it takes the auto and the chevron falls back to a plain `.1rem`
-   -- the "?" is what should end up adrift from the label, the chevron just
-   rides along beside it. The `.dz` count pill never carries an auto margin
-   of its own, so it needs no matching override here. */
-.fold > summary:has(.helpq)::after, details.dz > summary:has(.helpq)::after { margin-left: .1rem; }
-details.dz > summary .helpq { margin-block: -.85rem; }
-/* `.gm-start` is a centered row of one, so the bench "?" travels with the
-   button it explains rather than as a flex item of its own -- see the note in
-   index.html. The tight gap is the whole point: at the row's own `.55rem` it
-   sat almost equidistant between "Use this on the bench" and the button. */
-.gmq { display: inline-flex; align-items: center; gap: .1rem; max-width: 100%; min-width: 0; }
-/* Both floors have to come off or the wrapper undoes the phone rule below it.
-   `#gmOpen` was a direct child of the wrapping `.gm-start` line and shrank with
-   it; inside an `inline-flex` it took its max-content width instead and the
-   pair measured 439px in a 320px viewport at 200% text -- caught by smoke's
-   large-text pass, not by anything at 390px. `max-width` bounds the wrapper to
-   the line and `min-width: 0` lets the label use the `white-space: normal` the
-   narrow block already gives it. */
+/* #33 decision 11 (W3: no help icons beside a control): both "?" affordances,
+   the `.helpq` rule they used and the `[data-help]` wiring in shortcuts.js
+   are gone. `#help` is still reachable from Settings' own "How it works"
+   row (`#helpBtn`); nothing deep-links into a section of it any more.
+   `.gmq` stays -- it still wraps `#gmOpen`, out of scope per decision 17 --
+   but no longer needs to reserve room for a second child beside it. */
+.gmq { display: inline-flex; align-items: center; max-width: 100%; min-width: 0; }
+/* `#gmOpen` was a direct child of the wrapping `.gm-start` line and shrank
+   with it; inside an `inline-flex` it takes its max-content width instead,
+   which measured past the row at a 320px viewport and 200% text -- caught by
+   smoke's large-text pass, not by anything at 390px. `max-width` bounds the
+   wrapper to the line and `min-width: 0` lets the label use the
+   `white-space: normal` the narrow block already gives it. */
 .gmq > .btn { min-width: 0; }
-.gm-start .helpq { margin-left: 0; }
-/* `.helpq` carries `margin-left: auto` for the summary rows it was written for;
-   in the bar that would shove it against the printer instead of leaving it
-   attached to the bench button it explains. */
-.actionbar .helpq { margin-left: 0; color: var(--muted); }
 
 /* A39. The two breakpoints carry different rows, deliberately -- do not
  * "simplify" this back into one row for both.
@@ -3614,9 +3665,15 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   .dayhead .game-h1 { font-size: var(--fs-sentence); }
   /* 44px is the floor for both buttons, so the action bar gives up padding and
      8px of slack above that floor, and nothing else. */
-  .actionbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-inset-bottom)); }
+  /* Same `safe-area-max-inset-bottom` as the base rule (#33 AC4): this block
+     overrides `padding-bottom` outright, so leaving the live `env()` here
+     would have handed landscape back exactly the jumping bar the base rule
+     stopped. */
+  .actionbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-max-inset-bottom, env(safe-area-inset-bottom))); }
   .ab-main { min-height: 44px; }
-  .foot { margin-bottom: 3.6rem; }
+  /* #33 decision 13: was `.foot { margin-bottom: 3.6rem; }` -- moved onto
+     `.wrap` with the base-breakpoint clearance above, for the same reason. */
+  .wrap { padding-bottom: 3.6rem; }
 }
 
 /* Touch minimums. Gated on a coarse pointer OR a phone-width screen: the

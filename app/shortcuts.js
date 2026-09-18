@@ -37,16 +37,6 @@ export function initShortcuts(setViewFn) {
      help sheet is a no-op when it is not open, which is exactly the case from
      Settings. */
   on('#helpTourSettings', 'onclick', tourAgain);
-  /* The in-app "?" affordances (A20 slice 4). The markup is the list -- one
-     `data-help` per `#help` section, on the control that section is about --
-     so adding a sixth is an edit to index.html and nothing here.
-     `preventDefault` is load-bearing for the three that sit inside a
-     `<summary>`: a click on a summary's descendant toggles the fold as its
-     default action, and cancelling the event anywhere on the way up cancels
-     that too. */
-  for (const q of document.querySelectorAll('[data-help]')) {
-    q.onclick = e => { e.preventDefault(); openHelp(q.dataset.help); };
-  }
   document.addEventListener('keydown', onKey);
 }
 

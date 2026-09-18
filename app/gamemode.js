@@ -144,7 +144,7 @@ export function openGameMode() {
    it would take the overlay along and would also make every `position: fixed`
    child position against it instead of the viewport. */
 function pageBehind() {
-  return ['.bar', '#view-games', '#view-team', '.foot']
+  return ['.bar', '#view-games', '#view-team']
     .map(sel => document.querySelector(sel))
     .filter(n => n && !n.hidden && getComputedStyle(n).display !== 'none');
 }

@@ -704,7 +704,7 @@ test('the Settings tip link is wired from TIP_URL, not a URL written into markup
   assert.ok(settings.includes('data-tip-link'),
     'the Settings coffee row must carry [data-tip-link] so toast.js finds it');
   assert.ok(!settings.includes('id="tipLink"'),
-    '#tipLink is already spoken for by the footer -- the Settings row must not reuse it');
+    '#33 removed the footer\'s own #tipLink -- the Settings row needs no id of its own, so it must not grow one');
   const toast = readFileSync(new URL('../app/toast.js', import.meta.url), 'utf8');
   assert.match(toast, /querySelectorAll\(\s*['"]\[data-tip-link\]['"]\s*\)/,
     'toast.js must wire every [data-tip-link] element from TIP_URL, covering the new Settings row');

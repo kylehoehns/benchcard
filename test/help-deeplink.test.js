@@ -2,129 +2,72 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-/* The in-app "?" affordances, and the one thing they are not allowed to do.
+/* #33 decision 11 (W3: no help icons, no paragraphs beside controls).
  *
- * A20 slice 4: a "?" beside a control opens `#help` scrolled to the section
- * that describes it. The whole point of pointing at `#help` rather than at
- * `advanced.html` is that it never leaves the PWA -- it works in a gym with no
- * signal, costs no page load and has no back button -- so everything pinned
- * here is about the deep link staying inside the sheet.
+ * This file used to guard the "?" deep-link mechanism: a `.helpq` button
+ * beside a control, wired through `data-help`, that opened `#help` scrolled
+ * to the section describing that control. The redesign removes the
+ * mechanism outright rather than trimming it, so this file now guards its
+ * absence -- the W3 guard decision 11 calls for.
  *
- * COMMENTS ARE STRIPPED BEFORE ANY SOURCE IS READ. Every assertion below is a
- * negative one anchored on a NAME, and this repo has now shipped two guards
- * that scored their own explanatory comment; the mirror of that failure is a
- * comment EXPLAINING an absence and failing the guard for it, which is exactly
- * what `shortcuts.js`'s note about `scrollIntoView` would do.
+ * `#help` itself is not gone: Settings' own "How it works" row (`#helpBtn`)
+ * still opens it, at the top, with no deep link. That is `settings.test.js`'s
+ * job to pin, not this file's.
  */
 
 const ROOT = new URL('../', import.meta.url);
 const read = f => readFileSync(new URL(f, ROOT), 'utf8');
 
 const html = read('app/index.html');
-const css = read('app/app.css');
-/* Block comments only: `//` inside a string literal (`'https://...'`) is not a
-   comment, and there are no line comments in the file this reads. */
-const src = read('app/shortcuts.js').replace(/\/\*[\s\S]*?\*\//g, '');
+/* Comments stripped before the CSS/JS checks: both files are allowed to say,
+   historically, that a `.helpq` rule used to live here -- what must be gone
+   is a RULE, a selector that still matches something, not the word. */
+const css = read('app/app.css').replace(/\/\*[\s\S]*?\*\//g, ' ');
+const js = read('app/shortcuts.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
 
-// the sheet, sliced by its own id the way the coverage guard slices it
-const sheet = (() => {
-  const at = html.indexOf('id="help"');
-  assert.ok(at > -1, '#help is gone');
-  const start = html.lastIndexOf('<div', at);
-  const end = html.indexOf('id="keys"', at);
-  assert.ok(end > start, 'cannot find the end of the help sheet');
-  return html.slice(start, end);
-})();
+test('no element carries data-help', () => {
+  assert.doesNotMatch(html, /data-help/,
+    'a data-help attribute survives in app/index.html -- decision 11 deletes the deep-link mechanism entirely');
+});
 
-const links = [...html.matchAll(/data-help="([^"]+)"/g)].map(m => m[1]);
-const targets = [...sheet.matchAll(/<h4 class="help-h" id="([^"]+)">/g)].map(m => m[1]);
+test('no "?" help control is wired up', () => {
+  assert.doesNotMatch(html, /class="helpq/, 'a .helpq button is still in the markup');
+  assert.doesNotMatch(css, /\.helpq\b/, '.helpq still has a rule in app.css');
+  assert.doesNotMatch(js, /data-help|helpq/, 'shortcuts.js still wires up a data-help/.helpq control');
+});
 
-test('every "?" points at a section that exists inside #help', () => {
-  /* #28 removed the "?" that sat on `#planFold`, `#balanceFold` and
-     `#consdetails` — those three sections' content stays in #help (the
-     ticket's survey), but nothing deep-links to it any more. #30 then moved
-     "Across the day" to the Season screen and dropped its own "?" (a help
-     icon beside a control is banned there), and `help-season`'s anchor came
-     off its `h4` with it, so the count is now 2 (1 unique: help-bench x2). */
-  assert.ok(links.length >= 2, `expected the slice-4 deep links, found ${links.length}`);
-  for (const id of links) {
-    assert.ok(sheet.includes(`id="${id}"`),
-      `a "?" deep-links to #${id}, which is not a section of the help sheet — `
-      + 'the sheet would open at the top and the coach would have to hunt');
+test('openHelp still opens #help with no section to scroll to', () => {
+  // #helpBtn is Settings' own "How it works" row, and the one remaining
+  // caller now that the deep links are gone; it must keep working.
+  assert.match(js, /on\('#helpBtn',\s*'onclick',\s*\(\)\s*=>\s*openHelp\(\)\)/,
+    '#helpBtn no longer opens #help with no section');
+});
+
+/* #33 decision 16, "What would settle it" item 9: `#help`'s own copy is the
+ * one place in the app most likely to go stale, since nothing else reads it
+ * back -- a control it names can be renamed or removed elsewhere with no
+ * test here noticing, unless this checks the literal words. The four
+ * phrases below are the ones decision 16 names by name: each pointed at a
+ * control this redesign renamed or removed (Season went from a tab to its
+ * own screen; Print's size options moved under a "Size" row, not a "Print"
+ * one; the day chart moved off this screen's own copy to the Season screen;
+ * Rules moved into the Plan sheet, off any "under Rules" section of its
+ * own). `\bPrint\b` -- not `/print/i` -- so the verb ("prints it on a
+ * card", "the printed plan") stays allowed; only the capitalized control
+ * name is banned. */
+test('#help names only controls that exist (decision 16)', () => {
+  const start = html.indexOf('id="help" hidden tabindex="-1" role="dialog"');
+  assert.ok(start >= 0, '#help dialog not found in app/index.html');
+  const end = html.indexOf('<!-- ====================== keyboard shortcuts', start);
+  assert.ok(end > start, 'could not find the end of the #help dialog');
+  const body = html.slice(start, end);
+  const banned = [
+    ['Season tab', /Season tab/],
+    ['Print', /\bPrint\b/],
+    ['Across the day', /Across the day/],
+    ['under Rules', /under\s+(?:<b>)?Rules/],
+  ];
+  for (const [label, re] of banned) {
+    assert.doesNotMatch(body, re, `#help still says "${label}" -- decision 16 named that a control this redesign removed`);
   }
-});
-
-test('and every anchored section is pointed at by one', () => {
-  /* The other direction, because an id nothing links to is a hook that
-     survives every refactor walking past it — the `#cardHint` shape.
-     "Reading the card" deliberately carries no id: its header is a <button>
-     and the only other place to hang a "?" is `display: none` by default. */
-  assert.deepEqual([...targets].sort(), [...new Set(links)].sort(),
-    'the anchored help sections and the "?" targets have drifted apart');
-});
-
-test('a "?" is a real control: named, typed, and square at 44px', () => {
-  const btns = [...html.matchAll(/<button[^>]*data-help="[^"]*"[^>]*>/g)].map(m => m[0]);
-  assert.equal(btns.length, links.length, 'a data-help landed on something that is not a button');
-  for (const b of btns) {
-    assert.match(b, /aria-label="[^"]+"/, `a "?" with no accessible name: ${b}`);
-    assert.match(b, /type="button"/, `a "?" with no type: ${b}`);
-    assert.match(b, /class="[^"]*\bhelpq\b/, `a "?" outside the .helpq rule: ${b}`);
-  }
-  /* Both axes, not just `min-height`. `advanced.html` shipped a 41.5px-WIDE
-     footer link under a rule that already carried `min-height: 44px`, and
-     smoke is what caught it — height is not width. */
-  const at = css.indexOf('.helpq {');
-  assert.ok(at > -1, '.helpq has no rule');
-  const rule = css.slice(at, css.indexOf('}', at));
-  for (const axis of ['width', 'height']) {
-    assert.match(rule, new RegExp(`(^|[;{\\s])${axis}: 44px`),
-      `.helpq does not pin its ${axis} at 44px — the app's touch floor is 44 in BOTH directions`);
-    assert.match(rule, new RegExp(`min-${axis}: 44px`),
-      `.helpq has no min-${axis} floor, so a text-size change can shrink it under 44px`);
-  }
-});
-
-test('opening the sheet at a section never moves it sideways', () => {
-  /* `scrollIntoView`'s `inline` defaults to 'nearest', which scrolls the
-     horizontal axis the moment the anchor does not fit across. It has already
-     cost this repo one shipped bug (see tour.js and test/tour-scroll.test.js),
-     and a dialog is worse than a document: there is no page to scroll back. */
-  assert.doesNotMatch(src, /\.scrollIntoView\(/,
-    'the help sheet must scroll Y by hand — scrollIntoView moves X as well');
-  assert.doesNotMatch(src, /scrollLeft/,
-    'nothing in the help sheet may write or read a horizontal scroll offset');
-  assert.doesNotMatch(src, /scrollTo\(/,
-    'scrolling the dialog is a scrollTop write on .keysbox, not a scrollTo');
-  const writes = src.match(/\.scrollTop = [^;]+/g) || [];
-  assert.equal(writes.length, 2,
-    'expected exactly two scrollTop writes in shortcuts.js — the reset on open and the deep link');
-});
-
-test('the deep link reads the sticky header rather than restyling it', () => {
-  /* `test/dialog-viewport.test.js` owns the shell's shape: `dvh` with a `vh`
-     fallback, safe-area insets on the wrap, a sticky `.keys-hd` with no
-     negative top margin. The deep link has to subtract that header's height
-     (it is pinned at `top: 0`, so an anchor scrolled to its own offset lands
-     underneath it) and must do it by MEASURING, never by touching the rule. */
-  assert.match(src, /\.keys-hd/, 'the deep link no longer accounts for the sticky header');
-  assert.match(src, /offsetHeight/, 'the header height is hard-coded rather than measured');
-});
-
-test('the "?" does not toggle the fold it sits in', () => {
-  /* Three of the five live inside a <summary>, where a click on any descendant
-     toggles the <details> as its default action. Cancelling the event cancels
-     that; without it the "?" opens the sheet AND collapses the section behind
-     it. */
-  assert.match(src, /data-help/, 'the "?" affordances are no longer wired');
-  assert.match(src, /e\.preventDefault\(\);\s*openHelp\(/,
-    'the "?" handler does not cancel the click, so it toggles the fold it sits in');
-});
-
-test('#helpBtn is not handed the click Event as a section id', () => {
-  /* `openHelp` takes an argument now. `on(sel, "onclick", fn)` calls `fn`
-     with the event, so passing it by name would have Settings' "Open" ask the
-     sheet to scroll to `#[object PointerEvent]`. */
-  assert.doesNotMatch(src, /on\('#helpBtn',\s*'onclick',\s*openHelp\s*\)/,
-    "Settings' help button passes openHelp the click Event — wrap it");
 });

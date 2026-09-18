@@ -24,7 +24,8 @@ import { nameOf } from './registry.mjs';
  * unchanged since #21 and read here the same way, for the same reason.
  *
  * A handful of the "unchanged" items below (`#setTeamHd`, the back button,
- * `#backBtn`'s icon, `.foot-link`, `.linkish`, and `.stage`'s glow) do not
+ * `#backBtn`'s icon, `.note` (#33 removed the footer link this used to be),
+ * `.linkish`, and `.stage`'s glow) do not
  * read `--accent` at all -- they are secondary ink, a different neutral
  * token, or (`.stage`) a `color-mix()` this file cannot re-serialize by
  * hand -- so proving them unchanged means comparing the SAME element's
@@ -97,15 +98,17 @@ const READ_COLORS = `(() => {
     colorOptOnBg: bg('#colorOpts .color-opt.on'),
     // item 4 unchanged, the rest of the list: one more uppercase eyebrow
     // heading beside .help-h (Settings' own "Backup and restore"), the
-    // minute-bar fill, the footer link and the paste-box's own .linkish,
-    // #backBtn's icon (secondary ink, not --accent, so read for the
-    // invariant comparison below rather than a literal), the logo mark on
-    // the welcome screen, and the card preview's glow (.stage, card.css
-    // -- also read for the invariant comparison, since its color-mix()
-    // output cannot be hand-typed without re-deriving what the browser
-    // computes).
+    // minute-bar fill, the first .note in document order (the welcome
+    // screen's "No account..." line -- #33 removed the footer link this
+    // used to read, but .note shares its color: var(--muted) rule) and the
+    // paste-box's own .linkish, #backBtn's icon (secondary ink, not
+    // --accent, so read for the invariant comparison below rather than a
+    // literal), the logo mark on the welcome screen, and the card preview's
+    // glow (.stage, card.css -- also read for the invariant comparison,
+    // since its color-mix() output cannot be hand-typed without re-deriving
+    // what the browser computes).
     setHFg: fg('.set-h'), mrowBg: bg('.mrow .track i'),
-    footFg: fg('.foot-link'), linkishFg: fg('#welRestore'),
+    footFg: fg('.note'), linkishFg: fg('#welRestore'),
     iconFg: (() => { const e = $('#backBtn svg'); return e ? getComputedStyle(e).color : null; })(),
     logoFill: (() => { const e = $('.wel-mark circle'); return e ? getComputedStyle(e).fill : null; })(),
     stageBg: (() => { const e = $('.stage'); return e ? getComputedStyle(e).backgroundImage : null; })(),
@@ -289,7 +292,7 @@ export async function teamColorPass(c, origin) {
     // changes `.btn.primary` in the same task, with no reload. Re-read
     // everything, both to check the switch and to prove the tokens the spec
     // gives no literal for (`#setTeamHd`, the back button, its icon,
-    // `.foot-link`, `.linkish`, `.stage`'s glow) are the same color on the
+    // `.note`, `.linkish`, `.stage`'s glow) are the same color on the
     // Graphite team as they were on Royal, and that the picker's mark and
     // the phrase style, which DO read the tint, changed.
     await evalIn(c, step(`document.querySelectorAll('#teamMenu .teammenu-item')[1]?.click()`));
@@ -300,7 +303,7 @@ export async function teamColorPass(c, origin) {
     }
     const invariant = [
       ['#setTeamHd', r.setTeamHdFg, a.setTeamHdFg], ['back button (#backBtn)', r.backBtnFg, a.backBtnFg],
-      ['#backBtn’s icon', r.iconFg, a.iconFg], ['.foot-link', r.footFg, a.footFg],
+      ['#backBtn’s icon', r.iconFg, a.iconFg], ['.note', r.footFg, a.footFg],
       ['.linkish (#welRestore)', r.linkishFg, a.linkishFg], ['.stage (card.css) glow', r.stageBg, a.stageBg],
     ];
     for (const [label, before, afterVal] of invariant) {
