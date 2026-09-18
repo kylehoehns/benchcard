@@ -245,6 +245,11 @@ a { color: inherit; }
 @media (hover: hover) {
   #shareBtn:hover .i { background: var(--surface-3); }
 }
+/* #30 decision 1: the header carries the export -- a text button, not an
+   icon, so it keeps `.btn`'s own width; only the height needs the same 48px
+   floor `#shareBtn` above gets unconditionally (I1/C6), rather than the
+   44px coarse-pointer floor every other `.btn` settles for. */
+#seasonExport { min-height: 48px; }
 
 .wrap { max-width: 1340px; margin: 0 auto; padding: clamp(1rem, 2.2vw, 1.8rem) clamp(.85rem, 2.6vw, 1.5rem) 4rem; }
 
@@ -314,12 +319,14 @@ a { color: inherit; }
      so it needs no `order:` either, the same reasoning. `#sheet`, `#cardnote`
      and `.gm-cta` all moved inside `.s-rot` or into that dialog, so they drop
      out of this list entirely; only `.gm-start` (Start game and its "?",
-     decision 8) is new here, in the fold's old spot. */
+     decision 8) is new here, in the fold's old spot.
+
+     #30: "Across the day" (`.s-day`) moved to the Season screen, so it drops
+     out of this list too, renumbered whole once more. */
   .s-rot   { order: 0; }
   .s-thisgame { order: 1; }
-  .s-day   { order: 2; }
-  #tabledetails { order: 3; }
-  .gm-start { order: 4; }
+  #tabledetails { order: 2; }
+  .gm-start { order: 3; }
 }
 
 /* ---- Today's header: the team button and its menu (#23) ----------------
@@ -627,7 +634,10 @@ a { color: inherit; }
    mapped onto the seven-step scale per decision 3 (34px/15px -> `--fs-large`
    / `--fs-secondary`). */
 .dayhead { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
-.dayhead .game-h1 {
+/* #30 decision 2: Season's own large title reuses these rules by joining the
+   selector list -- not a copy, because a value changed here for one screen
+   and not the other is the wrong-title bug this file has already had once. */
+.dayhead .game-h1, .dayhead .season-h1 {
   margin: 0; font-size: var(--fs-large); font-weight: 700; letter-spacing: -.025em;
   color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -635,7 +645,7 @@ a { color: inherit; }
    text-node child at the edge of the next flex item, the same as it would at
    a block edge -- "9:00 · " ran straight into the dot with no gap at all.
    .375rem (6px at the body size) is the prototype's own `.lt .sub` value. */
-.dayhead .game-sub {
+.dayhead .game-sub, .dayhead .season-sub {
   margin: .1rem 0 0; font-size: var(--fs-secondary); color: var(--muted);
   display: flex; align-items: center; gap: .375rem;
 }
@@ -1521,16 +1531,6 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    but `.side-hd` is also the roster's and settings' group heading, out of
    #69's scope, so scoped to `#view-games`. */
 #view-games .side-hd { text-transform: none; letter-spacing: normal; }
-.day-empty { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; color: var(--muted); font-size: var(--fs-secondary); }
-/* `min()`, not a bare `14rem`. The floor keeps the sentence and the button
-   side by side when there is room, but 14rem is a text measure — it doubles
-   with the reader's root while the column does not, so at a 32px root it was a
-   448px floor in a 320px column and the widest thing on the games view, 505px
-   past the right edge. Capped at the column it keeps the side-by-side layout
-   wherever that fits and lets the line wrap where it does not, which is what
-   `flex-wrap` on the parent is already for. */
-.day-empty span { flex: 1; min-width: min(14rem, 100%); }
-
 /* The backup box at the foot of the roster. Wrapping, not scrolling: two full
    width buttons stacked on a phone read better than two squeezed side by side,
    and neither is a mid-game control that has to be reachable in a hurry. */
@@ -2627,6 +2627,12 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
 .pgrp-h { padding: 1.5rem 2rem .45rem; font-size: var(--fs-footnote); color: var(--muted); }
 .pgrp-f { padding: .45rem 2rem 0; font-size: var(--fs-footnote);
   color: var(--muted); line-height: 1.35; }
+/* #30 decision 5: Season's own screen modifier, not a second grammar. `.pgrp`'s
+   side margin is a SHEET inset (there is no other padding to clear); `.wrap`
+   already gives `#view-season` its own side padding, so the same margin here
+   would double it. Top spacing is unaffected: `.sn-day` (below) sits directly
+   above each `.pgrp` and needs the gap `.pgrp`'s own top margin gives it. */
+#view-season .pgrp { margin-left: 0; margin-right: 0; }
 
 /* #73 item 7: fixed vertical padding (not `min-height` alone), so a row that
    wraps to two lines keeps the same distance from its first line's top and
@@ -3272,52 +3278,26 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      (#21 CI fix), since a wide system font hit the same one-line label well
      below a 32px root too. Nothing left to do at this size specifically. */
 
-  /* And the season ledger, the last view still off the edge. Every `.sn-row`
-     is dot + name + "5 games · 7 behind" + the minutes, and three of those
-     four never shrink: at a 32px root the meta is 220px of max-content and
-     `.sn-min`'s 3.2rem is 102px, so the row's floor is 368px in a 320px
-     screen and the page went 132px wide (452 against a 320 `clientWidth`).
-
-     Wrapping the row is the whole fix and it is the only one that keeps the
-     row readable. Measured three ways: letting `.sn-min` shrink
-     (`flex: 0 1 auto`) leaves 68px of pan; letting the META shrink clears the
-     pan and costs the NAME, which is `flex: 1; min-width: 0` and gives up
-     every pixel it has first -- "Casey Lindqvist" measured 0px wide with the
-     meta wrapped to three lines beside it. Wrapping puts the three parts on
-     three lines in reading order instead, and the minutes stay in their
-     tabular column.
-
-     No source-order trap here, unlike `.setrow .minwrap` and `.rlist .rrow`
-     above: the `.sn-row` base rule ~145 lines below sets `display: flex` and
-     never sets `flex-wrap`, so there is nothing below to lose to. A bare
-     `.sn-min` override in this block WOULD have lost -- checked. */
-  .sn-row { flex-wrap: wrap; }
-
-  /* #24 CI fix (Linux font metrics, not a rule difference): wrapping the ROW
-     puts `.sn-min` on its own line once the line above it is full, but
-     `.sn-x` -- "2 games * 16 behind" -- is `flex: 0 0 auto` with no
-     `white-space: nowrap`, so it is free to wrap internally and never has to;
-     the wrap algorithm hands it its one-line max-content width and it shares
-     line one with the dot and the shrunk name. That width grows with the
-     root: 229px at a 32px root here, 324px on the CI runner's wider glyphs at
-     the same root -- 4px past a 320px viewport, invisible on this machine
-     because its glyphs measure narrower for the same string. `flex-basis:
-     100%` is the fix, not a wider allowance: it claims the whole line for
-     itself, which both starts `.sn-x` on a new line (nothing already on line
-     one shrinks to fit beside a 100%-basis item) and gives its own text a
-     width to wrap inside instead of a one-line measurement with nowhere to
-     grow past 320. Needs the extra `.sn-row` class for specificity -- the
-     base `.sn-x` rule (`flex: 0 0 auto`, no `!important`) sits ~215 lines
-     below this block and a bare override here would lose to it on source
-     order, the same trap the `.sn-min` comment above already names. Checked
-     at 34/36/38/40px roots, where the unfixed span reaches 304/322/340/357px:
-     with this rule every one of them wraps to two lines within the row's own
-     width instead. */
-  .sn-row .sn-x { flex-basis: 100%; }
+  /* And the season ledger, the last view still off the edge. `.sn-row` is a
+     three-column grid -- name, track, minutes -- and only the middle track
+     can give up space: `.sn-name` is `min-width: 0` already and the minutes
+     column is a fixed `3rem` no CI font metrics push past. #30 decision 8:
+     below a 19em root the row collapses to two lines instead, the name
+     spanning the full row and the track and minutes sharing the line below
+     it -- readable at every width this query covers, where shrinking the
+     track alone would eventually reach zero. */
+  /* Needs `.sn-list .sn-row`/`.sn-list .sn-name`, not the bare classes: the
+     base rules live ~245 lines BELOW this block and would otherwise win on
+     source order at equal specificity -- the same trap `.setrow .minwrap`
+     and `.rlist .rrow` above already name, and the one that let this ship
+     with the three-column template still applied and `.sn-name` measuring
+     310px in a 275px row before it was caught. */
+  .sn-list .sn-row { grid-template-columns: 1fr auto; row-gap: .2rem; }
+  .sn-list .sn-name { grid-column: 1 / -1; }
 
   /* #24 CI fix, round 2 (Linux font metrics again): the fix above wraps the
      LEDGER rows, but "Game by game"'s own summary row -- the game title
-     (`.sn-gt`, `flex: 1; min-width: 0`, ellipsis) beside its meta
+     (`.sn-gt`, `flex: 1; min-width: 0`) beside its meta
      (`.sn-gm`, "10 played · 4×8", `flex: 0 0 auto`) -- has no wrap rule at
      all, and it is `.helpq`'s comment's exact tell: measured on this machine
      at a 32px root, `.sn-gt` shrinks all the way to 0px (min-width: 0 lets
@@ -3330,7 +3310,8 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      as `.sn-gm` or `.sn-gt` reaching past the viewport, the same symptom the
      `.helpq` comment above already names for the same reason. Wrapping is
      the fix, not a wider `.sn-gt` floor: `.sn-gm` drops to its own line and
-     the title keeps the ellipsis it already has on the first. Checked at
+     the title (review #3 after #30: `overflow-wrap: break-word`, no longer
+     ellipsis) wraps onto its own lines above it instead. Checked at
      32/34/36/38/40px roots: `document.documentElement.scrollWidth` stays at
      320 with this rule at every one, where the unfixed tree measured
      328/347/364px at 36/38/40 (32 and 34 already held on this machine's
@@ -3551,51 +3532,94 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    is its content, so one long name would push the minutes column off the
    edge instead of ellipsing. */
 .sn-h:first-child { margin-top: 0; }
-.sn-count { margin-left: .5rem; text-transform: none; letter-spacing: 0; }
 .sn-empty { margin: 0; }
 .sn-list { border-top: 1px solid var(--line); }
-.sn-row { display: flex; align-items: center; gap: .55rem;
-  padding: .5rem .1rem; border-bottom: 1px solid var(--line); }
-.sn-dot { flex: 0 0 auto; width: .62rem; height: .62rem; border-radius: 50%; background: var(--line-2); }
-/* A player who has left has no color slot -- `player.hue` is a roster fact
-   and they are not on the roster. Hollow, so the row still reads as a person
-   rather than as a missing value. */
-.sn-dot.gone { background: none; border: 1px solid var(--line-2); }
-.sn-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--fs-secondary); }
+/* #30 decision 3: a grid, not a flex row -- three tracks (name, bar, minutes)
+   rather than something that grows with the name, which is also what makes
+   the big-text collapse (below, in the big-text block) a single
+   `grid-template-columns` swap instead of a second layout system.
+
+   Review #4 (after #30): the bar used to be the fixed one (`5.5rem`, ~88px at
+   390px) and the name the flexible one -- the opposite of the prototype,
+   where the bar is the dominant element and the eye lands on it.
+
+   A first pass tried `1fr 2fr` (bar double the name's share of whatever is
+   left after the fixed `3rem` minutes column), which does grow the bar --
+   but the prototype's own name column is only ever "Maya" or "Eli", never a
+   real roster's "Casey Lindqvist" or a footnote's "3 games * 16 behind"
+   (`.sn-x`, `--fs-footnote`), and 1/3 of the row at 390px is not enough for
+   either: an ordinary two-word name wrapped to two lines and an ordinary
+   footnote wrapped to two, so a common row went from one line to three.
+   `minmax(0, 9.5rem)` instead CAPS the name at 152px (9.5rem at a 16px root)
+   rather than giving it a share at all -- wide enough that a two-word name
+   and its footnote both hold one line at 390px, the bar still takes
+   whatever that leaves after minutes (roughly 155-165px here, still
+   clearing 88px by more than half), and the `0` floor means the column can
+   still shrink to nothing rather than overflow, the same guarantee `1fr`
+   gave: at a 32px root (`app-large-text.mjs`'s own check) a column sized to
+   look right at 16px was wide enough on its own to overflow a 320px
+   viewport in "Filed games" (`.sn-body .sn-row`, two children -- name and
+   minutes, no bar -- so the item that would have absorbed a plain-fixed
+   name column's overflow was never there to shrink instead); `minmax`'s
+   floor is what a bare `9.5rem` would not have had. `.sn-track` (no in-flow
+   content -- `.sn-fill` is `position: absolute`) sizes to zero rather than
+   to its content, so its `1fr` share can never be the reason a row
+   overflows either; only the `3rem` on minutes is a plain fixed width,
+   unchanged from before this review and already proven safe at that root by
+   the same check. */
+.sn-row { display: grid; grid-template-columns: minmax(0, 9rem) 1fr 3rem; align-items: center;
+  gap: .6rem; padding: .5rem .1rem; border-bottom: 1px solid var(--line); }
+.sn-name { min-width: 0; }
+.sn-nm { display: block; font-size: var(--fs-body); font-weight: 500; overflow-wrap: break-word; }
 .sn-nm.gone { color: var(--faint); font-style: italic; }
-.sn-x { flex: 0 0 auto; font-size: var(--fs-footnote); color: var(--faint); }
+.sn-x { display: block; font-size: var(--fs-footnote); color: var(--faint); }
+/* The prototype's bar: a rounded track on the gray ground (L1 -- it needs no
+   box of its own), the fill painted the player's own color (K2). */
+.sn-track { position: relative; height: .4rem; border-radius: 999px; background: var(--line-2); overflow: hidden; }
+.sn-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; }
 /* Tabular figures: the numbers are read as a column, and proportional digits
    make a 7 and a 1 sit differently in it. */
-.sn-min { flex: 0 0 3.2rem; text-align: right; font-weight: 600; font-size: var(--fs-secondary);
+.sn-min { text-align: right; font-weight: 600; font-size: var(--fs-body);
   font-variant-numeric: tabular-nums; }
-.sn-h { margin: 1.35rem 0 .35rem; font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .09em;
-  text-transform: uppercase; color: var(--accent); }
+/* #30 decision 3: restyled to the prototype's group label -- footnote size,
+   `--muted`, sentence case. It used to be uppercase, letter-spaced and
+   `--accent`; that read as a section chrome the prototype never has. */
+.sn-h { margin: 1.35rem 0 .35rem; font-size: var(--fs-footnote); font-weight: 700;
+  color: var(--muted); }
+/* #30 decision 5: the day heading above each `.pgrp`, one step down from
+   `.sn-h` in weight since it is inside the group, not naming it. */
+.sn-day { margin: 1.1rem 1rem .4rem; font-size: var(--fs-footnote); color: var(--muted); }
+.sn-day:first-of-type { margin-top: .6rem; }
 .sn-game { border-bottom: 1px solid var(--line); }
-.sn-game > summary { display: flex; align-items: center; gap: .6rem; min-height: 44px;
-  cursor: pointer; list-style: none; padding: .2rem .1rem; }
+.sn-game:last-child { border-bottom: 0; }
+/* `.prow` already gives the 48px floor, the flex row and the padding
+   (decision 5's own "at least 48px" -- was 44, the fold's older floor);
+   this only adds what a `<summary>` still needs on top of it. */
+.sn-game > summary.prow { cursor: pointer; list-style: none; }
 .sn-game > summary::-webkit-details-marker { display: none; }
-.sn-gt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--fs-secondary); font-weight: 600; }
-.sn-gm { flex: 0 0 auto; font-size: var(--fs-footnote); color: var(--faint); }
+/* Review #3 (after #30): this used to ellipsis, and the full opponent name
+   had nowhere else to show -- opening the row shows the minutes, not the
+   title. Wraps instead, same as `.sn-nm` (a long unbroken word still breaks
+   rather than pushing `.sn-gm` off the row); `.prow`'s own fixed vertical
+   padding (not a bare `min-height`) is what lets the row grow to a second
+   line and keep the same edge distance a one-line row has. */
+.sn-gt { overflow-wrap: break-word; font-weight: 600; }
+.sn-gm { color: var(--faint); font-size: var(--fs-footnote); }
 /* The disclosure arrow, drawn rather than iconed: it is one glyph and it has
    to turn, and a rotate on a pseudo-element costs no DOM and no icon fetch. */
 .sn-game > summary::after { content: ''; flex: 0 0 auto; width: .42rem; height: .42rem;
   border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
   transform: rotate(-45deg) translate(-.1rem, .1rem); transition: transform var(--t) var(--ease); }
 .sn-game[open] > summary::after { transform: rotate(45deg) translate(0, 0); }
-.sn-body { padding: .1rem 0 .8rem; }
+.sn-body { padding: .1rem 1rem .8rem; }
 .sn-body .sn-row:last-of-type { border-bottom: 0; }
 /* Same `.btn` nowrap case as `#removeTeam` and `.levelsfoot .btn`: "Delete
    this game" is a one-line label a wide system font can push past the
    column on its own (#21 CI fix). */
-.sn-del { margin-top: .6rem; white-space: normal; text-align: center; }
-/* Export. `.btn`'s own padding lands near 41px, and this is set standing up in
-   a gym like everything else, so it is pinned to 44 explicitly. Full width at
-   phone size for the same reason the Backup row's buttons stretch: a wide
-   target is an easier one. */
-.sn-csv { min-height: 44px; width: 100%; max-width: 22rem; justify-content: center; }
-.sn-csvnote { margin: .5rem 0 0; }
+/* #30 "What would settle it" item 9: Delete is a control on Season and
+   this screen's own floor is 48px (I1/C6), not the 44px `.btn` settles for
+   on a phone elsewhere -- same reason `#seasonExport` above gets its own. */
+.sn-del { margin-top: .6rem; min-height: 48px; white-space: normal; text-align: center; }
 
 /* =========================== team settings ===========================
    Two labelled zones, stacked, in the app's own `.side-box` grammar rather

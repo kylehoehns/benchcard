@@ -135,6 +135,17 @@ export const APP_LARGE_TEXT_STATES = [
            document.querySelector('#viewSeg button[data-view="card"]').click()`,
     close: `document.querySelector('#viewSeg button[data-view="timeline"]').click();
             document.querySelector('#backBtn').click()` },
+  /* #30 decision 8: the season ledger row collapses to two lines at this same
+     cell (see app.css's `19em` block) -- `season` (`VIEWS`, above) only ever
+     measures the totals list and the empty filed-games ledger; a `.sn-game`
+     fold's own summary row (title + meta, `.prow`) is a different layout and
+     was never on screen here. Opened through its real trigger, same as every
+     other state in this list. */
+  { name: 'season, filed game open',
+    open: `document.querySelector('#todaySeason').click();
+           document.querySelector('#view-season details.sn-game').open = true`,
+    close: `document.querySelectorAll('#view-season details.sn-game').forEach(d => d.open = false);
+            document.querySelector('#backBtn').click()` },
   /* #26 item 12: "at 320px with 32px root text ... Today with FOUR has no
      horizontal overflow and nothing stranded above the viewport" -- every
      state above this one measures Today (and the other four chromes) on

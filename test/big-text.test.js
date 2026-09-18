@@ -170,28 +170,31 @@ test('the settings panel wraps its two widest rows at big text', () => {
     'the backup buttons wrap outside the big-text block, which changes normal-text layout');
 });
 
-test('the season ledger rows wrap, and only at big text', () => {
-  /* The last view still off the edge: 132px of pan at 320px and a 32px root,
-     with five games filed. A `.sn-row` is a dot, a name, "5 games · 7 behind"
-     and the minutes, and three of the four never shrink -- the meta is
-     `flex: 0 0 auto` at 220px of max-content and `.sn-min` is a fixed 3.2rem,
-     102px at that root -- so the row's floor is 368px in a 320px screen.
-
-     Wrapping is the only one of the three candidates that keeps the row
-     readable: letting `.sn-min` shrink leaves 68px of pan, and letting the
-     meta shrink clears the pan by taking every pixel off the NAME, which is
-     `flex: 1; min-width: 0` and measured 0px wide when it was tried. */
+test('the season ledger rows collapse to two lines, and only at big text', () => {
+  /* `.sn-row` is a three-column grid -- name, track, minutes -- and only the
+     middle track can give up space; below a 19em root there is nothing left
+     for it to give. #30 decision 8: the name spans the full row on its own
+     line, and the track and minutes share the line below it, rather than
+     shrinking the track to nothing or letting the row pan off the edge. */
   const at = css.indexOf(BIG);
   const big = css.slice(at, css.indexOf('\n}', at));
 
-  assert.match(big, /\.sn-row\s*{[^}]*flex-wrap:\s*wrap/,
-    'the season ledger rows cannot wrap again, so the view pans off the right edge at big text');
+  /* `.sn-list .sn-row`, not the bare class: the base `.sn-row` rule (three
+     columns) sits ~245 lines BELOW this block and would win on source order
+     at equal specificity, exactly the trap `.setrow .minwrap` and
+     `.rlist .rrow` are already pinned against a few tests up -- a bare
+     `.sn-row` override here measured `.sn-name` at 310px in a 275px row
+     before this was caught. */
+  assert.match(big, /\.sn-list \.sn-row\s*{[^}]*grid-template-columns:\s*1fr auto/,
+    'the season ledger row no longer collapses to two columns at big text, or lost the extra specificity that makes it win');
+  assert.match(big, /\.sn-list \.sn-name\s*{[^}]*grid-column:\s*1\s*\/\s*-1/,
+    'the season ledger name cell no longer spans the full row at big text, or lost the extra specificity that makes it win');
 
-  /* And nowhere else: at normal text the row is one tidy line, and the minutes
-     column only reads as a column while the rows are single lines. */
+  /* And nowhere else: at normal text the row is one tidy line with three
+     columns, and the minutes column only reads as a column while it does. */
   const others = css.slice(0, at) + css.slice(at + big.length);
-  assert.ok(!/\.sn-row\s*{[^}]*flex-wrap:\s*wrap/.test(others),
-    'the ledger rows wrap outside the big-text block, which breaks the minutes column at normal text');
+  assert.ok(!/\.sn-list \.sn-row\s*{[^}]*grid-template-columns:\s*1fr auto/.test(others),
+    'the ledger row collapses to two columns outside the big-text block, which breaks the minutes column at normal text');
 });
 
 /* ---- the toast, which is not a breakpoint fix and must not become one ----

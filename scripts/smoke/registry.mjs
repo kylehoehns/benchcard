@@ -100,6 +100,11 @@ export const ROWS = Object.freeze([
   { id: 'fcp', name: 'first contentful paint (informational)', selectable: true, setup: 'cold' },
   { id: 'cardfont', name: 'card font loads before the card is fitted', selectable: true, setup: 'rich' },
   { id: 'fixture', name: 'rich fixture is live', selectable: true, setup: 'rich' },
+  // #30's own guard (see docs/specs/30-season-screen.md's Proof section):
+  // Season's minutes-so-far order, a filed game's rows and Delete, the day
+  // chart's move off the game screen, touch sizes and Export's placement --
+  // see season.mjs.
+  { id: 'season', name: 'season: minutes so far, filed games, the day chart', selectable: true, setup: 'rich' },
   // #72 (see docs/specs/72-fit-nine-rows.md's Proof section): all 9 timeline
   // rows and #abBench on screen with no scrolling, .tl-name's own tap-target
   // geometry in the one-row layout, and the pin toggle by click and by Enter

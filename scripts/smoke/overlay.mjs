@@ -32,7 +32,7 @@ export const STATES = [
     close: `$('#bulktoggle').click(); $('#backBtn').click()` },
   { name: 'games view, every disclosure open',
     open: `$('.today-game').click(); for (const d of document.querySelectorAll('details')) d.open = true`,
-    shows: '#dayFold[open]',
+    shows: '#tabledetails[open]',
     close: `for (const d of document.querySelectorAll('details')) d.open = false; $('#backBtn').click()` },
   /* #27 item 10: the first of the three new sheets, opened through its real
      trigger (the sentence's players phrase) rather than by hand -- the same
@@ -81,11 +81,16 @@ export const STATES = [
   { name: 'season view',
     open: `$('#todaySeason').click()`, shows: '#view-season',
     close: `$('#backBtn').click()` },
-  /* No `season view, every game open` state, deliberately: the harness's record
-     has a day but no FILED games, so the ledger has no folds to open, and
-     seeding four of them would put ~250 nodes on a cold load that is budgeted
-     to 40 of slack. The rows inside a game block are the same `.sn-row` markup
-     as the totals list above them, which this state does measure. */
+  /* #30: the RICH fixture now files three season games (`fixtures.mjs`), so
+     the ledger has folds to open -- each one a `<details class="sn-game">`,
+     the app's own `.sn-game > summary.prow` disclosure. Opened the same way
+     the games-view disclosures above are, rather than seeding a fourth game
+     just to reach this state: the harness never pays a cold-load cost for it,
+     since this is a `rich`-setup row and the fixture is already loaded. */
+  { name: 'season view, every game open',
+    open: `$('#todaySeason').click(); for (const d of document.querySelectorAll('#view-season details')) d.open = true`,
+    shows: '#view-season details.sn-game[open]',
+    close: `for (const d of document.querySelectorAll('#view-season details')) d.open = false; $('#backBtn').click()` },
   { name: 'settings view',
     open: `$('#settingsBtn').click()`, shows: '#view-settings',
     close: `$('#backBtn').click()` },

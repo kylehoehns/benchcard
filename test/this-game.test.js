@@ -20,7 +20,8 @@ import { readFileSync } from 'node:fs';
  *   2. READING ORDER -- below 1100px `.col-main` is `display: contents`, so
  *      source order proves nothing and the `order:` list in `app.css` is the
  *      only reading order there. "This game" still reads right after the
- *      rotation and before Across the day.
+ *      rotation and before Rules (#30 moved Across the day off this stack
+ *      entirely, onto the Season screen).
  *
  * Source-level, like note-placement and print-gate: no DOM, so it holds for
  * every state rather than the one a rendered check happened to be given.
@@ -61,10 +62,10 @@ test('Opponent, Tip-off and Remove are one box', () => {
   }
 });
 
-test('"This game" reads after the rotation, but still above Across the day', () => {
+test('"This game" reads after the rotation, but still above the rules', () => {
   const at = css.indexOf('@media screen and (max-width: 1099px)');
   assert.ok(at > 0, 'the phone stack media block moved -- re-point this test');
-  const block = css.slice(at, css.indexOf('\n}', css.indexOf('.s-day', at)));
+  const block = css.slice(at, css.indexOf('\n}', css.indexOf('#tabledetails', at)));
   const orderOf = (sel) => {
     const m = block.match(new RegExp(`\\${sel}\\s*\\{[^}]*order:\\s*(\\d+)`));
     assert.ok(m, `no order: declared for ${sel} in the phone stack`);
@@ -72,13 +73,14 @@ test('"This game" reads after the rotation, but still above Across the day', () 
   };
   // #29 removed `.s-cardopts` and the fold -- the card now lives inside
   // `.s-rot` (Timeline/Card) or in `#sheetCard`, a dialog with no `order:` of
-  // its own. So "This game" (Opponent, Tip-off, Remove) is checked against
-  // its actual phone-stack neighbors instead: it reads right after the
-  // rotation and right before Across the day.
+  // its own. #30 then moved "Across the day" to the Season screen, so it
+  // drops out of this list too. So "This game" (Opponent, Tip-off, Remove) is
+  // checked against its actual phone-stack neighbors: it reads right after
+  // the rotation and right before Rules (`#tabledetails`).
   assert.ok(orderOf('.s-rot') < orderOf('.s-thisgame'),
     '"This game" now reads before the rotation');
-  assert.ok(orderOf('.s-thisgame') < orderOf('.s-day'),
-    '"This game" now reads after Across the day');
+  assert.ok(orderOf('.s-thisgame') < orderOf('#tabledetails'),
+    '"This game" now reads after Rules');
 });
 
 test('removing a game is still undoable and still refuses the last game', () => {

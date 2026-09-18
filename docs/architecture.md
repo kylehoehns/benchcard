@@ -66,9 +66,10 @@ Everything below is relative to `app/`.
 - The views, one module each — `roster-view.js`, `teams-view.js` (Today: the
   team-switcher menu, the day's games, the Team and Season entries below them,
   and the active team's name at the head of Settings),
-  `season-view.js` (the Season view: minutes per player, game by game, and the
-  one place a game filed by mistake can be deleted), `game-setup.js`,
-  `strategy.js`, `balance.js`,
+  `season-view.js` (the Season view: the minutes ledger per player, the
+  across-the-day chart when two or more games are on today, filed games
+  grouped by day, and the one place a game filed by mistake can be deleted),
+  `game-setup.js`, `strategy.js`, `balance.js`,
   `rules.js`, `pills.js`, `plan-view.js`, `timeline.js`, `gamemode.js`,
   `tour.js`, `onboarding.js`, `shortcuts.js` (the keyboard and
   the two reference sheets) and `toast.js` (undo, the tip jar, flash).
@@ -241,9 +242,9 @@ only make it harder to edit. It ends with **Show me around again**, which closes
 the sheet and re-runs the tour — switching back to the Games view first, since
 three of the four anchors live there.
 
-Settings is not the only door into it. Three **?** controls open the same
-sheet scrolled to the section that describes the control they sit beside: the
-Across the day fold, and *Use this on the bench* in both places it appears.
+Settings is not the only door into it. Two **?** controls open the same
+sheet scrolled to the section that describes the control they sit beside:
+*Use this on the bench* in both places it appears.
 Plan, Lineup balance and Rules lost theirs when they moved into the Plan sheet
 (#28); their sections of the help sheet stay. The rule is one **?** per section
 of the sheet, not one per control: each is a `data-help="<section id>"` in the

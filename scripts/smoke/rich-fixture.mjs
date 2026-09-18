@@ -34,14 +34,13 @@ export async function fixturePass(c) {
        died with "Inspected target navigated or closed" mid-\`fixturePass\`).
        One settle is the fix, here and at every \`#backBtn\` click below. */
     await ${SETTLE};
-    $('.today-game').click();
-    await ${SETTLE};
-    out.dayRows = document.querySelectorAll('#daytotals .dayrow').length;
-    out.dayGames = document.querySelectorAll('#daytotals .legend span').length;
-    $('#backBtn').click();
-    await ${SETTLE};
     $('#todaySeason').click();
     await ${SETTLE};
+    /* #30 moved "Across the day" (\`#daytotals\`) from the game screen to the
+       Season screen, unfolded rather than behind a fold -- so both it and the
+       filed-games ledger are read from the same screen now. */
+    out.dayRows = document.querySelectorAll('#daytotals .dayrow').length;
+    out.dayGames = document.querySelectorAll('#daytotals .legend span').length;
     out.filedGames = document.querySelectorAll('#view-season details.sn-game').length;
     $('#backBtn').click();
     await ${SETTLE};

@@ -20,9 +20,8 @@
  * A dialog was never right either -- a dialog is for something you
  * dismiss, and this is something a coach reads and edits.
  *
- * Nothing inside changed with the move. Same markup, same copy, same
- * ids: `#seasonbox` and `#seasonCount` are still the only two things
- * this file reaches for outside itself.
+ * `#seasonbox`, `#seasonSub` and `#seasonExport` are the ids this file
+ * reaches for outside itself.
  *
  * GAME-FIRST, NOT A GRID. Twelve players by ten games is 120 cells: at
  * 390px a table either pans sideways (which this app does not do, and a
@@ -101,25 +100,59 @@ export function totals(games) {
    unexplained 96, 96, 100, 100 reads as a bug. No unit: the heading carries
    "minutes" for the list. Rounded, and silent at 0 -- level is the quiet
    case and a tenth of a minute is not something a coach acts on. */
-const offNote = off => {
+export const offNote = off => {
   const n = Math.round(off);
   return n > 0 ? ` · ${n} behind` : n < 0 ? ` · ${-n} ahead` : '';
 };
 
 const nameOf = id => (byId(id)?.name || '').trim();
 
-/* One row, in both lists. Whether `byId` finds them is the whole "a player who
-   has left" decision: their minutes are real, their color slot is not. */
-function playerRow(id, min, extra) {
+/* Filed games grouped by day, newest day first; within a day the games keep
+   the order they were filed in, so a tournament reads 9:00 then 11:30. The
+   record's own `date` (`YYYY-MM-DD`) sorts correctly as plain text, so this
+   never touches `Date`. Exported so the smoke check and the grouping test
+   run the same function `renderSeason` does, rather than a second sort. */
+export function seasonDays(games) {
+  const byDate = new Map();
+  for (const g of games) {
+    if (!byDate.has(g.date)) byDate.set(g.date, []);
+    byDate.get(g.date).push(g);
+  }
+  return [...byDate.entries()]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, dayGames]) => ({ date, games: dayGames }));
+}
+
+/* A filed game's OWN row title, distinct from `gameTitle`: the day heading
+   above it already carries the date, so repeating it here would say the
+   same thing twice. `n` is the game's 1-based place within its own day. */
+export function gameRowTitle(g, n) {
+  return g.opponent ? `vs ${g.opponent}` : (g.day || `Game ${n}`);
+}
+
+/* One row, in both lists: the season totals (a track scaled to the largest
+   total, `maxMin`) and a single game's minutes (no `maxMin`, no track).
+   Whether `byId` finds them is the whole "a player who has left" decision:
+   their minutes are real, their color slot is not -- the fill goes
+   `var(--line-2)` instead of a player color, because a color that means no
+   one is worse than no color at all (K2). */
+function playerRow(id, min, extra, maxMin) {
   const p = byId(id);
   const row = el('div', 'sn-row');
-  const dot = el('span', 'sn-dot' + (p ? '' : ' gone'));
-  if (p) dot.style.background = colorOf(id);
-  row.append(dot);
+  const name = el('div', 'sn-name');
   const nm = el('span', 'sn-nm', p ? (nameOf(id) || 'Unnamed') : 'Left the team');
   if (!p) nm.classList.add('gone');
-  row.append(nm);
-  if (extra) row.append(el('span', 'sn-x', extra));
+  name.append(nm);
+  if (extra) name.append(el('span', 'sn-x', extra));
+  row.append(name);
+  if (maxMin != null) {
+    const track = el('span', 'sn-track');
+    const fill = el('span', 'sn-fill');
+    fill.style.width = `${maxMin > 0 ? Math.min(100, (min / maxMin) * 100) : 0}%`;
+    fill.style.background = p ? colorOf(id) : 'var(--line-2)';
+    track.append(fill);
+    row.append(track);
+  }
   row.append(el('span', 'sn-min', fmtMinutes(min)));
   return row;
 }
@@ -226,6 +259,11 @@ export function seasonCsv(games = seasonGames()) {
   return [head, ...rows].map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
 }
 
+/* The one door `#seasonExport` (index.html, wired in app.js) calls through --
+   decision 1. Bytes, filename, BOM and flash copy are all unchanged; only
+   where the button lives moved, from the body to the header. */
+export const exportSeason = () => saveCsv(seasonGames());
+
 function saveCsv(games) {
   try {
     /* The BOM is what stops Excel on Windows reading "José" as "JosÃ©". It
@@ -242,62 +280,87 @@ function saveCsv(games) {
 
 export function renderSeason() {
   const box = $('#seasonbox');
+  const filed = $('#seasonFiled');
   if (!box) return;
   box.textContent = '';
+  if (filed) filed.textContent = '';
   const games = seasonGames();
-  const count = $('#seasonCount');
+  const sub = $('#seasonSub');
+  /* The same test `applyView` (render.js) uses to show this button, read off
+     the one fact both places already share -- `state.view` -- rather than a
+     second hand-typed answer to "is Season the open screen" living here.
+     Review #1 (after #30): this used to only ever HIDE, on the theory that
+     showing it was `applyView`'s job alone. But `deleteGame` below hands
+     `undoable` a custom refresh (`() => renderAll()`), which repaints this
+     section without ever calling `setView`/`applyView` -- so undoing the
+     deletion of the season's last filed game brought the game back but left
+     Export stuck hidden until the coach left Season and returned. Computing
+     both directions here, from the same fact `applyView` reads, means
+     whichever of the two runs last agrees with the other. */
+  const exportBtn = $('#seasonExport');
+  if (exportBtn) exportBtn.hidden = state.view !== 'season' || !games.length;
+
+  /* The count line and the empty note below are one message, not two. This
+     line used to read "Nothing filed yet" with nothing filed, directly above a
+     paragraph opening with those same four words -- which looks like a repaint
+     that ran once too often, not like a screen that knows it is empty. So with
+     nothing to count the line goes away entirely and the paragraph carries the
+     whole message. Both directions are set in one place for the reason review
+     #1 gives about Export just above: a refresh that never reaches `applyView`
+     must still leave the two agreeing. */
+  if (sub) {
+    sub.hidden = !games.length;
+    sub.textContent = games.length ? `${games.length} game${games.length === 1 ? '' : 's'} filed` : '';
+  }
 
   if (!games.length) {
-    if (count) count.textContent = '';
-    /* Short, because the paragraph above it has already said when games get
-       filed; saying it twice reads as an app that thinks you missed it.
-
-       It does name the spreadsheet, though. The CSV button below is rendered
-       WITH the ledger and so does not exist yet, which left this view with
-       zero interactive controls and the words CSV, spreadsheet and export
-       nowhere on it — a coach who has not filed a day has no way to learn the
-       season can leave this app at all. Naming it here is a promise the very
-       next screen keeps, not a control that is missing. */
+    /* No group label and no export: with nothing filed there is nothing to
+       group and nothing to save. This line says where a filed day will show
+       up, which is the one thing a coach who has never used the feature
+       cannot guess. */
     box.append(el('p', 'note sn-empty',
-      'Nothing filed yet. Your first day will land here, and with it a spreadsheet (CSV) you can save.'));
+      "Nothing filed yet. New day on Today files the day's games here."));
     return;
   }
-  if (count) count.textContent = `${games.length} game${games.length === 1 ? '' : 's'}`;
-
-  /* Rendered here rather than sitting in the markup so it comes and goes with
-     the ledger: with nothing filed there is nothing to export, and a button
-     that hands back a header row and no rows is a support email. Same shape as
-     the Backup group in Settings -- note, then the control, then the content. */
-  const b = el('button', 'btn press sn-csv', 'Save a spreadsheet');
-  b.type = 'button';
-  b.onclick = () => saveCsv(games);
-  box.append(b);
-  box.append(el('p', 'note sn-csvnote',
-    'One row per player, one column per game. A CSV: it opens in Excel, Numbers or Sheets.'));
 
   /* The unit lives in this heading rather than beside every number: a column
      of "70" reads instantly, a column of "70 min" is noise twelve times over. */
-  box.append(el('h4', 'sn-h', 'Minutes this season'));
+  box.append(el('h2', 'sn-h', 'Minutes so far'));
   const list = el('div', 'sn-list');
-  for (const r of totals(games)) {
-    list.append(playerRow(r.id, r.min, `${r.games} game${r.games === 1 ? '' : 's'}${offNote(r.off)}`));
+  const rows = totals(games);
+  const maxMin = rows.reduce((m, r) => Math.max(m, r.min), 0);
+  for (const r of rows) {
+    list.append(playerRow(r.id, r.min, `${r.games} game${r.games === 1 ? '' : 's'}${offNote(r.off)}`, maxMin));
   }
   box.append(list);
 
-  /* Newest first: the game a coach wants is almost always the one that just
-     happened -- either to read it to a parent or, if "New day" filed a game
-     nobody played, to delete it. */
-  box.append(el('h4', 'sn-h', 'Game by game'));
-  for (const g of [...games].reverse()) box.append(gameBlock(g));
+  if (!filed) return;
+  /* Newest day first: the day a coach wants is almost always the one that
+     just happened -- either to read it to a parent or, if "New day" filed a
+     day nobody played, to delete a game out of it. Within a day the games
+     keep the order they were filed in, so a tournament reads 9:00 then
+     11:30 -- `seasonDays` is the one place that order is decided. */
+  filed.append(el('h2', 'sn-h', 'Filed games'));
+  for (const day of seasonDays(games)) {
+    filed.append(el('div', 'sn-day',
+      `${dateLabel(day.date)} · ${day.games.length} game${day.games.length === 1 ? '' : 's'}`));
+    const grp = el('div', 'pgrp');
+    day.games.forEach((g, i) => grp.append(gameBlock(g, i + 1)));
+    filed.append(grp);
+  }
 }
 
-function gameBlock(g) {
+/* `n` is the game's 1-based place within its own day (`renderSeason`'s day
+   loop) -- the fallback title `gameRowTitle` uses when the game has neither
+   an opponent nor a day name. The row title is never `gameTitle`: that one
+   always carries the date, and the day heading above this row already does. */
+function gameBlock(g, n) {
   const d = el('details', 'sn-game');
-  const sum = el('summary');
-  sum.append(el('span', 'sn-gt', gameTitle(g)));
+  const sum = el('summary', 'prow');
+  sum.append(el('span', 'prow-t sn-gt', gameRowTitle(g, n)));
   const played = Object.values(g.minutes || {}).filter(m => m > 0).length;
   const fmt = g.periods && g.periodMinutes ? `${g.periods}×${g.periodMinutes}` : '';
-  sum.append(el('span', 'sn-gm', [`${played} played`, fmt].filter(Boolean).join(' · ')));
+  sum.append(el('span', 'prow-v sn-gm', [`${played} played`, fmt].filter(Boolean).join(' · ')));
   d.append(sum);
 
   const body = el('div', 'sn-body');

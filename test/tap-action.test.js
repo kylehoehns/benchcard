@@ -152,14 +152,18 @@ test('the guard can see the pages it claims to, and its parser is not lying', ()
      read as a page with nothing to find. */
   assert.deepEqual(pagesWithSummaries(), ['about.html', 'index.html'],
     'the set of pages carrying a <summary> changed; the new one needs the rule too');
-  // Two since #28, which retired the Plan, Balance and Rules folds
-  // (`#planFold`, `#balanceFold`, `#consdetails`) in favor of the Plan sheet
-  // -- was five since #27, which retired the Squad and Game format folds
-  // (`#squadFold`, `#fmtFold`) in favor of the sentence and its Who's here /
-  // Format sheets -- was seven since A49, which deleted the welcome screen's
-  // "Enter my team" disclosure, the eighth and the one A47 was reported
-  // against.
-  assert.equal(summaryCount('index.html'), 2, 'the app shell no longer has two summaries');
+  // One since #30, which moved the across-the-day chart off the game screen
+  // (`#dayFold`, a static `<details>` in index.html) onto Season, unfolded --
+  // its filed-game folds (`.sn-game`) are painted entirely by season-view.js,
+  // not markup this scan reads, so they are not a second `<summary>` to
+  // count here. Was two since #28, which retired the Plan, Balance and Rules
+  // folds (`#planFold`, `#balanceFold`, `#consdetails`) in favor of the Plan
+  // sheet -- was five since #27, which retired the Squad and Game format
+  // folds (`#squadFold`, `#fmtFold`) in favor of the sentence and its Who's
+  // here / Format sheets -- was seven since A49, which deleted the welcome
+  // screen's "Enter my team" disclosure, the eighth and the one A47 was
+  // reported against.
+  assert.equal(summaryCount('index.html'), 1, 'the app shell no longer has one summary');
   assert.equal(summaryCount('about.html'), 8, 'about.html no longer has eight FAQ rows');
 
   // The parser really does read a real rule out of a real sheet...

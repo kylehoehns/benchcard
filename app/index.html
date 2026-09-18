@@ -405,6 +405,11 @@
            button opens the sheet even while blocked, so it is never itself
            disabled. -->
       <button class="btn icon ghost press" id="shareBtn" type="button" aria-label="Share the card" hidden><span class="i" data-icon="share"></span></button>
+      <!-- #30 decision 1: the one door into the season CSV. Shown only on
+           Season, and only once a game is filed (`applyView`,
+           `renderSeason`) -- same shape as `#shareBtn` above, but a visible
+           text button rather than an icon, per the mockup. -->
+      <button class="btn ghost press" id="seasonExport" type="button" title="Save the season as a spreadsheet" hidden>Export</button>
     </div>
   </header>
 
@@ -617,12 +622,8 @@
             </div>
           </section>
 
-          <section class="block s-day noprint">
-            <details class="fold" id="dayFold">
-              <summary><h3>Across the day</h3><span class="hint" id="dayhint"></span><button class="helpq press" type="button" data-help="help-season" aria-label="How a tournament day and the season work">?</button></summary>
-              <div class="surface" id="daytotals"></div>
-            </details>
-          </section>
+          <!-- #30 decision 4: "Across the day" moved to the Season screen,
+               unfolded (`#view-season`, below). -->
 
           <details class="dz noprint" id="tabledetails">
             <summary>Stint by stint</summary>
@@ -1020,26 +1021,37 @@
   </main>
 
   <!-- ============================ SEASON ============================ -->
-  <!-- The ledger, painted by season-view.js. It spent its first slices at the
-       foot of the roster page because a third nav tab was judged not to fit at
-       360px; re-measured with the real bar, it does — see the header in
-       season-view.js. Everything inside is unchanged, markup and copy both:
-       this view is a move, not a rewrite. -->
+  <!-- The ledger, painted by season-view.js, plus the across-the-day chart
+       (#daySection, painted by plan-view.js's renderDayTotals -- #30
+       decision 4 moved it here, unfolded, from the game screen). -->
   <main class="view wrap noprint" id="view-season" hidden style="max-width:820px">
-    <!-- The screen's own title -- "Season" -- is the back header's now
-         (render.js); this view's own h1 went with it, so the count that used
-         to sit beside it (`#seasonCount`, painted by season-view.js) moved
-         into the box below. No `.side-hd` either: the note stays inside the
-         box it describes -- a `p.note` loose in a view is what
-         test/note-placement.test.js exists to stop. -->
-    <div class="side-box">
-      <p class="note sn-count" id="seasonCount"></p>
-      <p class="note" style="margin:0 0 .9rem">
-        Every game you have finished with this team, and what each player actually played.
-        Games are filed when you choose <b>New day</b>.
-      </p>
-      <div id="seasonbox"></div>
+    <!-- #30 decision 2: Season regains its own large title -- it went to the
+         back header when Season became a tab (#23), and that was the wrong
+         call: every other back screen keeps its own `h1` and `#barTitle`
+         hides instead (`.game-h1`'s pattern, extended here). -->
+    <div class="dayhead">
+      <h1 class="season-h1" id="seasonTitle">Season</h1>
+      <p class="season-sub" id="seasonSub"></p>
     </div>
+
+    <!-- Minutes so far, or (with nothing filed) the one paragraph that says
+         where a filed day will show up -- both painted by `renderSeason`
+         (season-view.js). Never a direct child `p.note` of this view: it is
+         always nested one box deep, which is what
+         test/note-placement.test.js checks for. -->
+    <div id="seasonbox"></div>
+
+    <!-- #30 decision 4: no `<details>`, no `.surface` box, no `?` (W3 bans a
+         help icon beside a control) -- `renderDayTotals` hides this section
+         itself under two games today. -->
+    <section class="block" id="daySection" hidden>
+      <h2 class="sn-h">Across the day</h2>
+      <span class="hint" id="dayhint"></span>
+      <div id="daytotals"></div>
+    </section>
+
+    <!-- Filed games, by day -- painted by `renderSeason` (season-view.js). -->
+    <div id="seasonFiled"></div>
   </main>
 
   <!-- =========================== SETTINGS ===========================
@@ -1609,7 +1621,7 @@
         every available player in every game. A minimum you set on one player still wins
         when it is higher, and a cap you set still wins when it is lower.</p>
 
-      <h4 class="help-h" id="help-season">A tournament day, and the season</h4>
+      <h4 class="help-h">A tournament day, and the season</h4>
       <p class="help-p">Add a game with <b>Add a game</b> on Today and it copies the format, who is at
         the gym and your rules. Only the opponent and tip-off are new. From the second
         game on there is a switch called <b>Balance against minutes already played

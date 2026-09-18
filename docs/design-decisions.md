@@ -120,11 +120,12 @@ its alternative is an assertion, so the rejected options are kept here too.
   the day, so tapping it twice files a game nobody played, and this is the only
   correction path there is. No levels, ever — `test/leak.test.js` covers the
   ledger for the same reason it covers the card.
-- **And it can be handed to someone else.** *Save a spreadsheet* at the top of
-  the Season box writes the ledger as one wide CSV — `Player | Sep 14 vs
-  Falcons | … | Total`, one row per player, one column per game — which is the
-  shape a coach pastes into a parent email and the shape a league timesheet
-  asks for, and the shape the ledger on screen cannot be. It is the ledger's
+- **And it can be handed to someone else.** An **Export** button in the Season
+  screen's header (visible only when a game is filed) writes the ledger as one
+  wide CSV — `Player | Sep 14 vs Falcons | … | Total`, one row per player, one
+  column per game — which is the shape a coach pastes into a parent email and
+  the shape a league timesheet asks for, and the shape the ledger on screen
+  cannot be. It is the ledger's
   twin, so it is built in `season-view.js` next to the wording it shares
   (*Left the team* included) rather than in `backup.js`; it borrows only the
   filename stamp and the `<a download>` from there, because a **report is not a
