@@ -236,6 +236,23 @@ export const FOUR = (() => {
   return record;
 })();
 
+/* #34 decision 14: RICH with BOTH of its games mid-play, so the resume bar's
+   own pick between them (`resumeBarAt`, card.js) is actually falsifiable --
+   a fixture with only one part-played game cannot tell "picks the game
+   that's underway" apart from "picks the LATER one", which is what AC1 asks.
+   `games[1].label` is swapped for a long real name rather than "Ravens": the
+   spec's own acceptance value for AC1 is this exact string, and a short
+   fixture name would still pass while leaving the wrap case (AC5, the 320px
+   shot) unexercised by every other row that reloads this same record. */
+export function partPlayed(record = RICH) {
+  const withLive = JSON.parse(JSON.stringify(record));
+  const games = withLive.teams[0].day.games;
+  games[0].live = { at: 2, overrides: {} };
+  games[1].live = { at: 3, overrides: {} };
+  games[1].label = 'Northwest Valley Thunderbirds';
+  return withLive;
+}
+
 /* A clone of `record` with a second team ("JV Ravens", a copy of the first)
    pushed on -- RICH ships with one, and the #23 checks below need two before
    the team menu's "switch team" and checkmark mean anything. `id` gets a

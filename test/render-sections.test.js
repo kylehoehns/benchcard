@@ -32,6 +32,11 @@ const KEEP = new Map([
   ['levels', "since #31 the meter is the open player sheet's own control: it repaints itself in place (`repaintLevels`) on the edit that moved it"],
   ['constraints', 'the rule editor holds a select and two number inputs mid-edit; `seasonadj` is its plan-dependent half and IS in both lists'],
   ['season', 'the filed-games ledger: nothing about today changes it, so it repaints on a full render only'],
+  // #34 decision 7: nothing a coach can edit changes which game is
+  // part-played, so `resume` has no AFTER_EDIT/PLAN_ONLY place -- it is
+  // painted by applyView directly (on every view change, beside #actionbar's
+  // own hidden line) and by boot's own renderAll() on first paint.
+  ['resume', "painted by applyView on every view change and by boot's renderAll(); no edit changes which game is part-played"],
 ]);
 
 const listOf = (name) => {

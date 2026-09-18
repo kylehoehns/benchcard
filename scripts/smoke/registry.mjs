@@ -175,6 +175,12 @@ export const ROWS = Object.freeze([
   // -- the collapsing bar title, the round chips, the full-width action
   // bar and the solid fallbacks. See floating-controls.mjs.
   { id: 'floatingcontrols', name: 'the floating bar and action bar', selectable: true, setup: 'rich' },
+  // #34's own guard (see docs/specs/34-resume-bar.md's Proof section): the
+  // bar names the later part-played game, a tap resumes on the right stint,
+  // it hides everywhere else and does not reopen bench mode on a reload, its
+  // geometry and solid fallbacks hold at 320-390px, and focus never lands
+  // under it -- see resume-bar.mjs.
+  { id: 'resumebar', name: 'resume bar on Today', selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },

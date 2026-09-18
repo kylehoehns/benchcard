@@ -133,6 +133,9 @@ export function openGameMode() {
   gm.hidden = false;
   keepAwake();
   const ab0 = $('#actionbar'); if (ab0) ab0.hidden = true;
+  // #34 decision 10: bench mode can also open straight off Today now, via
+  // the resume bar -- hidden the same way #actionbar is, above.
+  const rb0 = $('#resumeBar'); if (rb0) rb0.hidden = true;
   document.body.style.overflow = 'hidden';
   renderGameMode();
   enterGameMode(gm);
@@ -144,7 +147,10 @@ export function openGameMode() {
    it would take the overlay along and would also make every `position: fixed`
    child position against it instead of the viewport. */
 function pageBehind() {
-  return ['.bar', '#view-games', '#view-team']
+  // #34 decision 9: the resume bar can now open bench mode straight off
+  // Today, so Today's own view joins the two screens `#abBench`/`#gmOpen`
+  // already open it from.
+  return ['.bar', '#view-games', '#view-team', '#view-today']
     .map(sel => document.querySelector(sel))
     .filter(n => n && !n.hidden && getComputedStyle(n).display !== 'none');
 }
@@ -271,7 +277,11 @@ function closeGameMode() {
   document.body.style.overflow = '';
   gmPick = null;
   save();
-  render('cards', 'timeline', 'summary', 'gameview');
+  // #34 decision 10: `resume` repaints on close too -- its own hidden state
+  // may have changed (this game may no longer be part-played, or another one
+  // now is), and there is no manual `#resumeBar.hidden` line here the way
+  // `#actionbar`'s is above, because `renderResumeBar` re-derives it fresh.
+  render('cards', 'timeline', 'summary', 'gameview', 'resume');
   closeTrap($('#gamemode'));
   onClose(reachedEnd);
 }

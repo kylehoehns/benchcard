@@ -22,7 +22,7 @@ import { renderStrategy, refreshBudgetActuals } from './strategy.js';
 import { renderRoster, renderLevels, resetEditMode } from './roster-view.js';
 import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
 import { renderSetup, renderSentence } from './game-setup.js';
-import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
+import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './teams-view.js';
 import { renderSeason, seasonGames } from './season-view.js';
 import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, activeColor } from './state.js';
 import { track, bucketRoster } from './analytics.js';
@@ -44,6 +44,10 @@ const SECTIONS = {
   roster:      () => renderRoster(),
   teams:       () => renderTeams(),
   tabs:        () => renderTabs(),
+  // #34 decision 6/7: not in AFTER_EDIT or PLAN_ONLY -- nothing a coach can
+  // edit changes which game is part-played. Painted by `applyView` on a real
+  // transition into Today, and by boot's own `renderAll()` on first paint.
+  resume:      () => renderResumeBar(),
   setup:       () => renderSetup(),
   /* #27: the sentence, and the announcement inside whichever sheet is open
      (`refreshSheetStatus`, game-setup.js) -- both read the just-solved plan,
@@ -506,12 +510,17 @@ function measureBarSideIfHeaderChanged(v) {
    here): `measureChromeHeights` also runs straight out of `applyView`,
    which sets `#actionbar.hidden` itself, so the value is right on the same
    task regardless of what the observer does with it after. */
+/* #34 decision 11: `--ab-h` is "the bottom floating bar", not `#actionbar`
+   specifically -- `#resumeBar` is the other one, and the two are never both
+   showing (one is the game screen's, the other is Today's), so whichever of
+   them is not hidden is the height the scroll padding above needs. */
 function measureChromeHeights() {
   const root = document.documentElement;
   const bar = document.querySelector('.bar');
   root.style.setProperty('--bar-h', `${bar ? bar.getBoundingClientRect().height : 0}px`);
-  const ab = document.querySelector('#actionbar');
-  root.style.setProperty('--ab-h', `${ab && !ab.hidden ? ab.getBoundingClientRect().height : 0}px`);
+  const bottom = [document.querySelector('#actionbar'), document.querySelector('#resumeBar')]
+    .find(el => el && !el.hidden);
+  root.style.setProperty('--ab-h', `${bottom ? bottom.getBoundingClientRect().height : 0}px`);
 }
 
 /* Recomputed on view change (`applyView`, below) and from a `ResizeObserver`
@@ -543,6 +552,9 @@ function initBarMeasurements() {
   barResizeObserver.observe(bar);
   const ab = document.querySelector('#actionbar');
   if (ab) barResizeObserver.observe(ab);
+  // #34 decision 11: the other bottom floating bar joins the same pair.
+  const rb = document.querySelector('#resumeBar');
+  if (rb) barResizeObserver.observe(rb);
 }
 
 function applyView(v, from) {
@@ -571,6 +583,11 @@ function applyView(v, from) {
   document.querySelector('.bar').style.display = v === 'welcome' ? 'none' : '';
   const ab = document.querySelector('#actionbar');
   if (ab) ab.hidden = v !== 'games' || !state.onboarded;
+  // #34 decision 6: Today's own floating primary action, painted right
+  // beside #actionbar's own hidden line for the same reason -- both are
+  // decided by the view this call is switching TO, and `measureChromeHeights`
+  // below has to see whichever one this leaves showing.
+  renderResumeBar();
   /* NOTHING here touches `#print`, and that is the point. This function used to
      set `$('#print').hidden = v !== 'games'` -- Print belongs to the game
      screen, and standing over Settings or Team it read as "print THIS". But
@@ -683,7 +700,9 @@ function applyView(v, from) {
      landing on Today the same way the games branch above does: boot's own
      `renderAll()` a few lines later covers it, by which point `state.view`
      is already 'today'. */
-  if (v === 'today' && from !== 'today' && from !== null) render('tabs');
+  // #34 decision 7: `resume` rides along -- a real transition into Today is
+  // exactly when which game is part-played may have changed underneath it.
+  if (v === 'today' && from !== 'today' && from !== null) render('tabs', 'resume');
 }
 
 /* `auto` has to be resolved to a real value here. Removing the attribute does

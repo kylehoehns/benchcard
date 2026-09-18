@@ -134,7 +134,7 @@ uses. The python server 404s on all of them, and a local server that disagrees
 with production is a class of bug nothing can see. Run tests with `npm test`
 from the repo root (`node --test`, no dependencies to install).
 
-`npm run smoke` runs the browser checks — **41 of them** (40 with `--no-tests`,
+`npm run smoke` runs the browser checks — **44 of them** (43 with `--no-tests`,
 which skips the one check that runs the unit suite) — printed as a pass/fail
 table: no horizontal overflow at 390×844, the card is still 3.45 × 5in, no
 console errors, every touch target ≥44px across 320–390px, every row in

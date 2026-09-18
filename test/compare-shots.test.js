@@ -40,7 +40,7 @@ test('importing scripts/compare-shots.mjs does not launch Chrome or serve app/',
 function plainShotsFor(view, theme) {
   return SHOTS.filter(s => s.view === view && s.theme === theme
     && !s.longNames && !s.bottom && !s.full && !s.firstRun && !s.titleCollapsed
-    && s.width === WIDTH && s.rootPx === 16);
+    && !s.partPlayed && s.width === WIDTH && s.rootPx === 16);
 }
 
 test('SHOTS covers every VIEWS name in both light and dark', () => {
@@ -65,13 +65,13 @@ test('SHOTS includes a screen scrolled to its bottom, light and dark', () => {
 });
 
 test('SHOTS includes a full-height capture, light and dark', () => {
-  const shots = SHOTS.filter(s => s.full);
+  const shots = SHOTS.filter(s => s.full && !s.partPlayed);
   assert.equal(shots.length, 2, `want a light+dark full-height shot, found ${shots.length}`);
   assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
 });
 
 test('SHOTS includes exactly one 320px/32px-root shot, light only, no twin', () => {
-  const shots = SHOTS.filter(s => s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX);
+  const shots = SHOTS.filter(s => s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX && !s.partPlayed);
   assert.equal(shots.length, 1, `want exactly one 320px/32px shot, found ${shots.length}`);
   assert.equal(shots[0].theme, 'light', 'the large-text cell is about layout and runs light only');
   assert.ok(!shots[0].twin, 'the large-text cell never runs dark, so it should declare no twin');
@@ -95,6 +95,31 @@ test('SHOTS includes the title-collapsed state, light and dark', () => {
   assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
   assert.ok(shots.every(s => !s.bottom && !s.full),
     'the title-collapsed shot should be its own scroll depth, not reuse bottom/full');
+});
+
+/* #34 decision 16: the part-played bar on Today, behind one new
+ * `partPlayed` flag -- `plainShotsFor` above excludes it, or these would be
+ * read as a second plain Today pair and `plainShotsFor('today', ...)` would
+ * find two. */
+test('SHOTS includes the resume-bar pair, light and dark', () => {
+  const shots = SHOTS.filter(s => s.partPlayed && s.view === 'today'
+    && !s.full && s.width === WIDTH && s.rootPx === 16);
+  assert.equal(shots.length, 2, `want a light+dark resume-bar shot, found ${shots.length}`);
+  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+});
+
+test('SHOTS includes the resume-bar-full pair, light and dark', () => {
+  const shots = SHOTS.filter(s => s.partPlayed && s.full);
+  assert.equal(shots.length, 2, `want a light+dark resume-bar-full shot, found ${shots.length}`);
+  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+});
+
+test('SHOTS includes exactly one resume-bar-320 shot, light only, no twin', () => {
+  const shots = SHOTS.filter(s => s.partPlayed
+    && s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX);
+  assert.equal(shots.length, 1, `want exactly one resume-bar-320 shot, found ${shots.length}`);
+  assert.equal(shots[0].theme, 'light', 'the wrapping cell is about layout and runs light only');
+  assert.ok(!shots[0].twin, 'resume-bar-320 never runs dark, so it should declare no twin');
 });
 
 /* ---------- shotProblems: items 2 and 3 ---------- */

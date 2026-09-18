@@ -1595,6 +1595,14 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   -webkit-mask-image: linear-gradient(to top, black 0%, black 75%, transparent 100%);
 }
 @media (max-width: 900px) { .actionbar:not([hidden]) { display: flex; } }
+/* #34 decision 1/13: `#resumeBar` reuses `.actionbar`'s whole shell (the
+   scrim, blur, safe-area padding, entrance animation and solid fallbacks --
+   all selected by class above, so none of it is repeated here), but shows at
+   EVERY width, not just below 900px: Today's own primary action is not the
+   narrow-phone concession the game screen's bench button is. An id rule
+   beats a class rule, so `.actionbar`'s own display rule above is untouched
+   -- this turns `#resumeBar` on rather than loosening it. */
+#resumeBar:not([hidden]) { display: flex; }
 /* #33 decision 8: solid fallbacks, one shared block, two triggers -- a reader
    who asked for less transparency or more contrast, or an engine with no
    backdrop-filter to blur at all. Both get the identical flat result: the
@@ -1634,6 +1642,14 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   box-shadow: 0 1px 2px rgba(0,0,0,.14);
 }
 .ab-main:disabled { opacity: .45; box-shadow: none; }
+/* #34 decision 4: the resume bar's label can run to two real names
+   ("Northwest Valley Thunderbirds · Q2 4:00 · Resume") -- it wraps, never
+   clips. `min-width: 0` is what lets a flex item shrink to wrap at all;
+   without it the label's intrinsic width wins and the text runs past the
+   button instead. Centered, and given a little more vertical room, because a
+   coach reads a wrapped label as one phrase, not two columns. */
+#resumeBtn { text-align: center; padding-block: .5rem; }
+#resumeBtn .ab-lab { min-width: 0; }
 /* Keep the *document* clear of the fixed bar -- but only the document, and only
    when there is a bar.
  *
@@ -1649,7 +1665,9 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    the clearance entirely. */
 @media (max-width: 900px) {
   .wrap { padding-bottom: 6.5rem; }
-  body:has(#actionbar[hidden]) .wrap { padding-bottom: 2rem; }
+  /* #34 decision 12: two bars can now hold this clearance open -- collapse it
+     only once BOTH are hidden. */
+  body:has(#actionbar[hidden]):has(#resumeBar[hidden]) .wrap { padding-bottom: 2rem; }
 }
 
 /* ============================ undo toast ============================ */

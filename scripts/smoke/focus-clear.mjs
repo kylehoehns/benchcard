@@ -24,6 +24,15 @@
 import { evalIn, step, TODAY_HOME } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 
+/* The rect-overlap test itself, as a string rather than a function: every
+ * caller (this file and #34's resume-bar.mjs, which tabs Today the same
+ * way to check focus never lands under `#resumeBar`) needs it INSIDE a
+ * browser-evaluated expression, not as a Node-side value, so a plain
+ * exported function would still have to be `.toString()`'d back into text at
+ * every call site -- two ways to say the same thing. One exported literal,
+ * interpolated wherever the walk needs it, is the one copy. */
+export const OVERLAPS = '(a, b) => !!b && !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom)';
+
 /* The floor is a floor, NOT a stopping point, and that distinction is the
  * whole check. Stopping at the eighth control tabbed through only the top of
  * the game screen -- the sentence's own phrases, all of them on screen
@@ -65,7 +74,7 @@ export async function focusClearPass(c) {
       const r = el.getBoundingClientRect();
       const bar = document.querySelector('.bar')?.getBoundingClientRect();
       const ab = document.querySelector('#actionbar:not([hidden])')?.getBoundingClientRect();
-      const overlaps = (a, b) => !!b && !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+      const overlaps = ${OVERLAPS};
       const label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
         + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join(''));
       return JSON.stringify({ label, scrollY: Math.round(window.scrollY),

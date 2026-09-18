@@ -70,6 +70,7 @@ import { teamScreenPass } from './smoke/team-screen.mjs';
 import { addGameFlowPass } from './smoke/add-game-flow.mjs';
 import { focusClearPass } from './smoke/focus-clear.mjs';
 import { floatingControlsPass } from './smoke/floating-controls.mjs';
+import { resumeBarPass } from './smoke/resume-bar.mjs';
 import { narrowPass } from './smoke/narrow.mjs';
 import { sweepPass } from './smoke/sweep.mjs';
 import { appLargeTextPass } from './smoke/app-large-text.mjs';
@@ -132,6 +133,7 @@ const RUN = {
   addgameflow: ctx => addGameFlowPass(ctx.c, ctx.origin),
   focusclear: ctx => focusClearPass(ctx.c),
   floatingcontrols: ctx => floatingControlsPass(ctx.c, ctx.origin),
+  resumebar: ctx => resumeBarPass(ctx.c, ctx.origin),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
   applargetext: ctx => appLargeTextPass(ctx.c, ctx.origin),
@@ -356,6 +358,10 @@ async function browserChecks(origin, only) {
     report.checks.push(await safeCheck('focusclear', () => focusClearPass(c)));
     // #33 items 1-6 and 10: same place, same reason -- it ends back on Today.
     report.checks.push(await safeCheck('floatingcontrols', () => floatingControlsPass(c, origin)));
+    // #34's own guard: it reloads through several fixtures of its own
+    // (including a wipe, for the first-run case) and restores RICH before
+    // returning, exactly as `teamscreen` and `addgameflow` above do.
+    report.checks.push(await safeCheck('resumebar', () => resumeBarPass(c, origin)));
     report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
     report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep

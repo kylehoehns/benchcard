@@ -1684,6 +1684,18 @@
     </button>
   </div>
 
+  <!-- #34 decision 1: a sibling of #actionbar, not a state of it -- Today's
+       own floating primary action, reusing #actionbar's shell (the class,
+       not the id) for the scrim, blur, safe-area and z-index #33 already
+       built. `#resumeBar:not([hidden])` in app.css turns it on; `.actionbar`'s
+       own class rule stays untouched. -->
+  <div class="actionbar noprint" id="resumeBar" hidden>
+    <button class="ab-main press" id="resumeBtn" type="button">
+      <span class="i" data-icon="play"></span>
+      <span class="ab-lab"></span>
+    </button>
+  </div>
+
   <div class="tour noprint" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle">
     <div class="tour-hole" id="tourHole" aria-hidden="true"></div>
     <div class="tour-box" id="tourBox">
