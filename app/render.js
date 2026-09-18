@@ -465,7 +465,7 @@ function applyView(v, from) {
      caller with its own reason to always repaint regardless of which screen
      (`restoreBackup`'s `show()`, a wholesale state replace) keeps its own
      `renderAll()` call same as before; the callers that only needed one
-     because entering Games needed it (`addGame`, both onboarding paths) had
+     because entering Games needed it (`commitFlow`, both onboarding paths) had
      theirs removed, now that this covers them.
 
      ALSO excludes `from === null` -- the very first `setView` call of the

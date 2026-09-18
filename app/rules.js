@@ -18,7 +18,7 @@ import { icon } from './icons.js';
 import { el, $ } from './dom.js';
 import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds,
-         ruleItems, removeRule, ruleComplete, keepOnList } from './state.js';
+         ruleItems, removeRule, ruleComplete, keepOnList, EVEN_OUT_DAY_LABEL } from './state.js';
 import { pickFive } from './pills.js';
 import { pushPlanPane, stepperRow } from './game-setup.js';
 import { popPane } from './trap.js';
@@ -76,7 +76,9 @@ function ruleRow(item, idx) {
   return b;
 }
 
-function switchRow(label, checked, disabled, onChange, fk) {
+/* Exported for #32 step 3, which shows the same "Even out earlier games"
+   switch inside the Add-a-game flow. One switch builder, two callers. */
+export function switchRow(label, checked, disabled, onChange, fk) {
   const row = el('label', 'prow');
   const input = el('input');
   input.type = 'checkbox';
@@ -113,7 +115,7 @@ function renderDayGroup(g) {
   wrap.append(el('div', 'pgrp-h', 'Across the day'));
   const box = el('div', 'pgrp');
   const first = state.activeGame === 0;
-  box.append(switchRow('Even out earlier games', !first && g.useCarryover, first, v => {
+  box.append(switchRow(EVEN_OUT_DAY_LABEL, !first && g.useCarryover, first, v => {
     g.useCarryover = v; renderConstraints(); soon(...PLAN_ONLY);
   }));
   wrap.append(box);

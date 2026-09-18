@@ -377,6 +377,33 @@ from Today — versus *what is set once a season* — Settings, behind the gear
 that only ever shows on Today (N4). All controls in the Today header are at
 least 48 pixels (#69).
 
+**Adding a game asks three questions (#32).** *Add a game* on Today used to drop
+a copy of the last game into the day and leave the coach on the game screen to
+fix whatever the copy had guessed wrong. It now opens `#addGameFlow`, a
+full-screen `<dialog>` that covers everything including the action bar (N8,
+C10), and asks what actually differs between this game and the last one: *Who
+are you playing?* (opponent and tip-off), *Who's here?* (one tile per roster
+player, three across, carrying the last game's answer, where tapping a tile
+toggles that player to Absent against a running count), and *How should minutes
+split?* (the four strategies with the one-line descriptions `STRATEGIES` holds,
+over the *Even out earlier games* switch `rules.js` builds for the Plan sheet).
+It is still one tap when nothing differs: step 1 carries a *Same as 9:00?* card
+whose summary line comes from the same `sentenceParts` a game pass reads, over a
+**Use it** button. `newGame(len, lastGame(), settings)` builds the draft when the
+flow opens, and **Use it** and **Plan it** commit that same object, so the
+shortcut and walking all three steps unchanged cannot land on different games.
+The draft stays detached until one of them is pressed — a half-answered game is
+not in `state.day.games`, so it never paints on Today, never reaches storage and
+is never what an undo snapshot catches.
+
+**Back walks that flow rather than throwing it away.** `showModal()` fires a
+cancelable `cancel` for Escape and for Android's back gesture alike, so
+`oncancel` prevents the close and steps back one, and from step 1 asks to leave.
+A gesture is never the only way to do something (I3): ✕ *Close* is top left on
+every step, and "‹ Back" joins the primary button in the footer from step 2 on.
+Closing with an opponent or a tip-off typed asks "Discard this game?" first,
+through the same `guardClose` seam and in-dialog ask row the paste sheet uses.
+
 **One header, two states.** `.bar` no longer changes shape one member at a
 time; it holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
 `#barBack` (a round chevron button labeled *Back to Today* and the screen's

@@ -68,7 +68,19 @@ const TOUCH_STATES = [
     open: `document.querySelector('.today-game').click();
            document.querySelector('#phraseStrategy').click();
            document.querySelector('.add-rule').click()` },
-
+  /* #32 item 10: every button in the Add-a-game flow is a touch target --
+     the ✕, "‹ Back", the primary, "Use it", eleven player tiles and four
+     option cards, none of which any state above this one draws. Last in the
+     list, and the shared `close` below closes the dialog: a modal covers
+     everything, so a state after it would be measuring the flow again. */
+  { name: 'add a game, step 1',
+    open: `document.querySelector('#addGameFlow')?.close();
+           ${TODAY_HOME};
+           document.querySelector('#todayAddGame').click()` },
+  { name: 'add a game, step 2',
+    open: `document.querySelector('#agNext').click()` },
+  { name: 'add a game, step 3',
+    open: `document.querySelector('#agNext').click()` },
 ];
 
 /* #26 item 12: "the pass and #todayNewDay are touch targets of at least
@@ -122,7 +134,8 @@ export async function touchPass(c, origin, source) {
     // dialog directly, as before, would leave `#planMain` hidden and
     // `#planSub` shown for whichever check opens `#sheetPlan` next. It is a
     // no-op click when no sub pane is pushed (`popPane` returns false).
-    close: `document.querySelector('#colorPickerClose')?.click();
+    close: `document.querySelector('#addGameFlow')?.close();
+      document.querySelector('#colorPickerClose')?.click();
       document.querySelector('#sheetWho')?.close();
       document.querySelector('#planBack')?.click();
       document.querySelector('#sheetPlan')?.close();

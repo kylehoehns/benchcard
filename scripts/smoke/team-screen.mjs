@@ -5,7 +5,7 @@ import '../../test/dom-stub.js';
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 import { goRich, PLAYERS, tierOf } from './fixtures.mjs';
-import { click, drag, evalJSON, setGame, tap, settle, waitClosed } from './sheet-drive.mjs';
+import { drag, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
 
 /* #31's own guard (docs/specs/31-roster-and-player-sheet.md, Proof P8):
@@ -301,34 +301,9 @@ const pasteState = c => evalJSON(c, `(() => {
   });
 })()`);
 
-const typeInto = (c, sel, text) => tap(c, `(() => {
-  const t = document.querySelector(${JSON.stringify(sel)});
-  t.value = ${JSON.stringify(text)};
-  t.dispatchEvent(new Event('input', { bubbles: true }));
-})()`);
-
-async function escape(c) {
-  for (const type of ['keyDown', 'keyUp']) {
-    await c.send('Input.dispatchKeyEvent', { type, key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
-  }
-  await settle(c);
-}
-
-/* A REAL mouse press, not `.click()` from a script. Chrome refuses to let a
-   `cancel` handler keep a dialog open unless the page has had a genuine
-   interaction ("Blocked aborting a dialog because the user has not
-   interacted with the page"), and the discard ask below is exactly that
-   handler -- so a scripted click would close the sheet over the typed text
-   for a reason no coach could ever hit. */
-async function realTap(c, sel) {
-  // the roster is eleven rows tall, so the group below it starts off screen:
-  // a mouse event at a page coordinate lands on whatever is actually there.
-  await tap(c, `document.querySelector(${JSON.stringify(sel)})?.scrollIntoView({ block: 'center' })`);
-  const r = await evalJSON(c, `(() => { const b = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect();
-    return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2 }); })()`);
-  await click(c, r.x, r.y);
-  await settle(c);
-}
+// `typeInto`, `realTap`: moved into sheet-drive.mjs (I6) -- word-for-word the
+// same helpers `add-game-flow.mjs` carried its own copy of.
+const typeInto = typeIn;
 
 async function pasteSheetOk(c, ck) {
   await realTap(c, '#pasteRow');
@@ -352,7 +327,7 @@ async function pasteSheetOk(c, ck) {
   ck(s.confirm === 'Add player', `with one line typed the confirm reads "${s.confirm}", want "Add player"`);
 
   // Escape with text in the box: the sheet stays, and asks.
-  await escape(c);
+  await key(c, 'Escape', 27);
   s = await pasteState(c);
   ck(s.open, 'Escape threw away typed text without asking');
   ck(s.askShown, 'Escape closed nothing but never asked either -- there is no discard ask');

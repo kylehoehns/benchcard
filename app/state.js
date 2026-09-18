@@ -73,11 +73,14 @@ export const emptyConstraints = () => ({
 });
 
 /* #28 defect 4: each line is one short sentence, in the prototype's voice --
-   the Plan sheet's `#stratwhy` (`strategy.js`) is the only reader (checked:
-   `grep -rl STRATEGIES app test scripts` names only `state.js` itself and
-   `strategy.js`), so shortening here does not touch the Help sheet's own,
-   separately-worded strategy copy in `index.html`, or `about.html` /
-   `advanced.html` / `docs/architecture.md`, which never read this constant.
+   the Plan sheet's `#stratwhy` (`strategy.js`) and, since #32, step 3 of the
+   add-a-game flow (`teams-view.js`) are its only readers (checked: `grep -rl
+   STRATEGIES app test scripts` names state.js itself, strategy.js and
+   teams-view.js, plus tests and scripts that read the same source text --
+   none of them a second, separately-worded copy), so shortening here does
+   not touch the Help sheet's own, separately-worded strategy copy in
+   `index.html`, or `about.html` / `advanced.html` / `docs/architecture.md`,
+   which never read this constant.
    The old, longer sentences wrapped to four lines at a 320px/32px root and
    two at 390px, past the group-footer "one line at most" guideline (W3);
    these fit the prototype's single short line at 390px. Closers does not
@@ -712,6 +715,11 @@ export const STRATEGY_WORDS = {
   platoon: 'fixed fives',
 };
 
+/* The one switch label two callers build (rules.js's own carryover switch and
+   #32 step 3 in the Add-a-game flow, both via `switchRow`) -- one string, so
+   they cannot drift into naming the same setting two different ways. */
+export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
+
 /* The pass's one-line summary (#26 item 5, decision 2): "<N> player(s) ·
    <strategy words>", then "evens out the day" for a later game with carryover
    on, then "<N> rule(s)" when `ruleCount(g)` is above 0. Built only from
@@ -782,6 +790,32 @@ export function evensOutLine(i) {
   const plural = earlier.length > 1;
   if (names.some(nm => !nm)) return `Evens out the earlier game${plural ? 's' : ''}.`;
   return `Evens out the ${joinNames(names)} game${plural ? 's' : ''}.`;
+}
+
+/* #32 decision 10: the "Same as …?" card on step 1 of Add a game -- its two
+   lines, or null when there is nothing worth offering to copy.
+
+   Null in two cases, and the second is the one that matters (decision 6):
+   `state.day.games` is never actually empty -- `newTeam`, `sanitizeTeam` and
+   "New day" all seed one game -- so a card suppressed on the COUNT would be
+   dead code. What a brand-new team really has is one unplanned Game 1 and an
+   empty roster, and "Same as Game 1? 0 players, 4 × 8, even minutes" offers
+   to copy nothing. So the test is whether the last game has anyone at it.
+
+   The name is `when || gameLabel(g, i)` -- tip-off, then opponent, then
+   "Game N" -- which is `evensOutLine`'s own precedence above, so the two
+   lines cannot disagree about what a game is called. The summary is three of
+   `sentenceParts`'s five phrases joined; none of them is re-derived here. */
+export function sameAsLast() {
+  const games = state.day.games;
+  const i = games.length - 1;
+  const g = games[i];
+  if (!g || !availIds(g).length) return null;
+  const { players, format, strategy } = sentenceParts(g, i);
+  return {
+    title: `Same as ${g.when || gameLabel(g, i)}?`,
+    summary: `${players}, ${format}, ${strategy}`,
+  };
 }
 
 /* The status line inside an open sheet (decision 10, item 6): the minute

@@ -57,10 +57,18 @@ export async function todayKeysAndUndoPass(c, origin) {
   }
   if (!(await onToday())) problems.push('undoing New day left Today');
 
-  // Add a game opens the new game's own screen.
+  /* Add a game opens the new game's own screen -- through the three-step
+     flow (#32), which is what the button does now: the tap opens the dialog
+     and the third step's "Plan it" is what commits the game and opens it.
+     The claim this check makes is unchanged; only the path to it is. One
+     `step()` per tap, because `step` settles after each and the commit runs
+     the dialog's close animation. */
   await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
+  const flowOpenOnAdd = await evalIn(c, `!!document.getElementById('addGameFlow')?.open`);
+  if (!flowOpenOnAdd) problems.push('Add a game did not open the three-step flow');
+  for (let i = 0; i < 3; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
   const onGamesAfterAdd = await onGames();
-  if (!onGamesAfterAdd) problems.push('Add a game did not open the new game\'s screen');
+  if (!onGamesAfterAdd) problems.push('"Plan it" did not open the new game\'s screen');
   const titleAfterAdd = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
   if (!/Game \d/.test(titleAfterAdd) && !/Hawks|Ravens/.test(titleAfterAdd)) {
     problems.push(`the new game's title reads "${titleAfterAdd}"`);
@@ -176,7 +184,11 @@ export async function todayKeysAndUndoPass(c, origin) {
 
   // Add a game opens the new game's own, still-empty opponent input -- not
   // whichever game (Hawks, activeGame 0) the Games screen last painted.
+  // Through the flow (#32), the same as above: the game exists once "Plan
+  // it" has been pressed, and stepping straight through types nothing, so
+  // the opponent input on the screen it opens is still empty.
   await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
+  for (let i = 0; i < 3; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
   const addedOpp = await evalIn(c, `document.getElementById('label')?.value ?? null`);
   if (addedOpp !== '') problems.push(`Add a game: the opponent input reads "${addedOpp}", want it empty (the new game's own)`);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
