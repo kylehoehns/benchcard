@@ -2731,13 +2731,24 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
    settled both onto `--fs-sentence` and `--fs-secondary` for this sheet.
    `min-width: 0` and `overflow-wrap` on the text side are the same long-name
    fix `.rrow .prow-t` and `.sn-nm` already use -- a long name wraps here
-   instead of pushing the block past the sheet's own edge at 320px/32px. */
-.pident { --c: var(--muted); display: flex; align-items: center; gap: .875rem; padding: .75rem 1rem 1.25rem; }
+   instead of pushing the block past the sheet's own edge at 320px/32px.
+
+   The badge does not shrink, so at 320px/32px it took 112px of the row and
+   left the name about a third of the screen -- enough to cut an ORDINARY
+   first name in half ("Marc / us / Willi / ams"). `flex-wrap` plus a
+   flex-basis in `ch` is what fixes it: the basis is the width the name asks
+   for, so when the badge cannot leave that much the whole text side drops
+   onto its own line and gets the full row instead. `min-width: 0` stays, so
+   a name too long for even that line still wraps rather than panning the
+   sheet -- the `min-content` spelling would have made the widest word the
+   floor and brought the sideways pan back. 12ch is the shortest basis that
+   still keeps badge and name side by side at 390px/16px. */
+.pident { --c: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: .875rem; padding: .75rem 1rem 1.25rem; }
 .pident-av { flex: none; width: 3.5rem; height: 3.5rem; border-radius: 50%;
   display: grid; place-items: center; font-size: var(--fs-title); font-weight: 700;
   background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
   box-shadow: inset 0 0 0 var(--av-ring) var(--c); font-variant-numeric: tabular-nums; }
-.pident-t { min-width: 0; }
+.pident-t { flex: 1 1 12ch; min-width: 0; }
 .pident-name { font-size: var(--fs-sentence); font-weight: 700; overflow-wrap: break-word; }
 .pident-level { font-size: var(--fs-secondary); color: var(--muted); }
 

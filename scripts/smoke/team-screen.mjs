@@ -379,6 +379,32 @@ async function pasteSheetOk(c, ck) {
   ck(await waitClosed(c, '#sheetPaste'), 'the ✕ did not close the paste sheet with an empty box');
 }
 
+/* The identity block is a badge beside a name, and the badge does not shrink.
+   At 320px/32px it takes 112px of a 320px screen, which left the name about a
+   third of the row -- narrow enough that `overflow-wrap: break-word` cut an
+   ORDINARY first name in half ("Marc / us / Willi / ams"). Nothing else could
+   see it: the text still fit its box, so there was no overflow to report and
+   no sideways pan for `identLongNameOk` to catch.
+
+   Measured on the rich fixture's ordinary "Marcus Williams", not on a
+   deliberately long name, and counted in line boxes rather than in widths: a
+   Range around a word that has ALREADY been broken reports the union of its
+   two line boxes, which is never wider than the box that broke it, so a width
+   comparison here says everything is fine while the name is in pieces. The
+   long-name cell keeps its own check below; one word wider than the whole
+   screen does have to break somewhere, but an ordinary name never does. */
+async function identNotBrokenMidWord(c, ck) {
+  const g = await evalJSON(c, `JSON.stringify((() => {
+    const el = document.getElementById('playerIdentName');
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const text = el.textContent.trim();
+    return { text, lines: r.getClientRects().length, words: text.split(/\\s+/).length };
+  })())`);
+  ck(g.lines <= g.words,
+    `at 320px/32px the identity name "${g.text}" paints on ${g.lines} line(s) for ${g.words} word(s) -- it is being broken mid-word`);
+}
+
 /* A10: the same bug `prowFieldsOk` guards above, at the cell where it is
    worst -- 320px/32px, the narrowest phone at the largest reader text
    (`LARGE_TEXT_WIDTH`/`LARGE_TEXT_PX`, registry.mjs). Not `oneLine`: a label
@@ -391,6 +417,7 @@ async function fieldsAtLargeTextOk(c, ck) {
     await settle(c);
     await tap(c, `document.querySelector('#rosterlist .rrow').click()`);
     await prowFieldsOk(c, ck, '#sheetPlayer', '320px/32px', false);
+    await identNotBrokenMidWord(c, ck);
     await tap(c, `document.getElementById('sheetPlayerClose').click()`);
     await tap(c, `document.getElementById('teamAdd').click()`);
     await prowFieldsOk(c, ck, '#sheetAddPlayer', '320px/32px', false);
