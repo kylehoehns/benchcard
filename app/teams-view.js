@@ -27,6 +27,14 @@ import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiv
 // back), and this is the one place it is called from -- both the paint and
 // the tap. No cycle: gamemode.js does not import teams-view.js.
 import { resumeBarAt } from './card.js';
+/* #35 decision 8. Two pure predicates -- no DOM, no state, just `(view, wide)`
+   -- so this is a value import, not the behavior injection `renderAll` and
+   `setView` get above. render.js imports this file, so the graph does close
+   here; both bindings are read inside the render functions and never while
+   this module is evaluating, which is the condition an ES module cycle has to
+   meet. Copying the two expressions into this file instead would put the
+   840px breakpoint in a second place. */
+import { todayPaneShowing, gamePaneShowing } from './render.js';
 import { openGameMode } from './gamemode.js';
 // One switch builder for the whole app (#32): the Plan sheet's "Even out
 // earlier games" row and step 3's are the same control.
@@ -496,7 +504,11 @@ function renderPass(g, i) {
 export function renderResumeBar() {
   const bar = $('#resumeBar');
   if (!bar) return;
-  const r = state.onboarded && state.view === 'today' ? resumeBarAt() : null;
+  /* #35 decision 8: "is Today on screen?", not "is Today the current screen?".
+     Above 840px Today is the left rail under every view, so the Resume bar --
+     which belongs to Today, and is pinned to the rail's width there -- is
+     offered under the game screen, Team, Season and Settings as well. */
+  const r = state.onboarded && todayPaneShowing(state.view) ? resumeBarAt() : null;
   bar.hidden = !r;
   if (r) {
     set('#resumeBtn .ab-lab', 'textContent',
@@ -509,10 +521,16 @@ export function renderTabs() {
   // opponent field -- `setView` only sets it on a view CHANGE, and typing in
   // #label does not change the view. `gameLabel` is the one game label,
   // reused here exactly as Today's own entries reuse it below.
-  if (state.view === 'games') {
+  /* #35 decision 8: the game pane, not the game view. Above 840px the open
+     game is the right pane's resting state, so it is on screen while Today is
+     the current screen too, and its title and sub line have to keep up. */
+  if (gamePaneShowing(state.view)) {
     const g = game(), i = state.activeGame, label = gameLabel(g, i);
+    /* `#barTitle` is the exception, and stays on the view: the bar belongs to
+       the screen the coach is on, not to a pane beside it. Writing the game's
+       name into it while she is reading Today would title the window wrong. */
     const t = $('#barTitle');
-    if (t) t.textContent = label;
+    if (t && state.view === 'games') t.textContent = label;
 
     // #69 decision 5: the one large title on the game screen is the
     // opponent, reusing `gameLabel`; the sub line reuses `passStatusEl`
@@ -540,8 +558,14 @@ export function renderTabs() {
      thing here that costs more than a couple of elements -- on every slider
      move, hidden the whole time, is work nobody sees. `applyView` (render.js)
      calls `render('tabs')` once, on the way in, when Today becomes the
-     screen again, so the passes are never more than one edit stale. */
-  if (box && state.view === 'today') {
+     screen again, so the passes are never more than one edit stale.
+
+     #35 decision 9: at 840px and up Today is the left rail and the coach CAN
+     see those four mini rotations while she edits the game beside them, so
+     the work is no longer wasted and the guard has to let it through. Below
+     840px nothing changes -- `todayPaneShowing` is `state.view === 'today'`
+     there, which is the line this replaced. */
+  if (box && todayPaneShowing(state.view)) {
     box.textContent = '';
     state.day.games.forEach((g, i) => box.append(renderPass(g, i)));
   }

@@ -47,6 +47,23 @@ export const NARROW = 360;
  * that has been traded away before) — and write the reason down here. */
 export const SWEEP_FLOOR = 300, SWEEP_HI = 420;
 
+/* #35's three bands, as the harness measures them. `SHEET_MIN` is where a
+ * bottom sheet becomes a centered dialog and `WIDE_MIN` is where Today becomes
+ * a fixed left rail; `RAIL` is that rail's width, and `LAPTOP` is the wide
+ * window every pass that wants "comfortably past the breakpoint" uses. They
+ * live here, beside `SWEEP_FLOOR`/`SWEEP_HI` and named once, rather than
+ * inline in the passes that sweep them -- the row names below are built from
+ * the same constants the passes measure with, which is the whole point of this
+ * module.
+ *
+ * SWEEP_EXTRA is decision 14: three discrete widths on top of the 300-420
+ * band, not a wider band. Sweeping every integer from 300 to LAPTOP is 4,900
+ * widths across five views for no extra signal -- the three numbers in the
+ * acceptance criteria are the three that matter, and one of them (599, the
+ * width below `SHEET_MIN`) is `widelayout`'s job rather than the sweep's. */
+export const SHEET_MIN = 600, WIDE_MIN = 840, RAIL = 360, LAPTOP = 1280;
+export const SWEEP_EXTRA = [SHEET_MIN, WIDE_MIN, LAPTOP];
+
 // The three widths `touchPass` and `settingsRowPass` sweep every state at —
 // the full rationale lives with `touchPass` in `touch.mjs`.
 export const TOUCH_WIDTHS = [320, 360, 390];
@@ -181,8 +198,14 @@ export const ROWS = Object.freeze([
   // geometry and solid fallbacks hold at 320-390px, and focus never lands
   // under it -- see resume-bar.mjs.
   { id: 'resumebar', name: 'resume bar on Today', selectable: true, setup: 'rich' },
+  // #35's own guard (see docs/specs/35-wide-screens.md's Proof section): the
+  // two-pane layout at 1280px and 840px -- the rail at left 0 and the open
+  // screen starting where it ends, Team replacing the right pane and back
+  // putting the game back, one bottom bar -- and the sheet centered at 600px
+  // but still flush to the bottom at 599px. See wide-layout.mjs.
+  { id: 'widelayout', name: `wide layout: ${RAIL}px rail at ${WIDE_MIN}px+, centered sheet at ${SHEET_MIN}px`, selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
-  { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
+  { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px plus ${SWEEP_EXTRA.join('/')}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },
   { id: 'typescale', name: 'type scale: 7 sizes, 4 weights', selectable: true, setup: 'rich' },
   { id: 'static', name: 'static pages: 2 guides + 6 charts', selectable: true, setup: 'rich' },

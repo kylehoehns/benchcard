@@ -557,6 +557,77 @@ function initBarMeasurements() {
   if (rb) barResizeObserver.observe(rb);
 }
 
+/* ---------------- the wide layout (#35) ----------------
+ *
+ * #35 decision 8. 840 is written down once on each side of the line -- here,
+ * and as the `min-width` of `@media screen and (min-width: 840px)` in
+ * app.css -- and `test/wide-layout.test.js` is what holds the two together.
+ * The query below is built FROM this constant rather than typed again, so
+ * there is no third copy.
+ *
+ * Module-scoped, like `darkQuery` below: one `MediaQueryList`, asked for its
+ * `.matches` at call time. Nothing caches the answer -- a laptop window is
+ * dragged narrow and wide again, and a cached boolean would be one resize
+ * behind the layout it describes. */
+export const WIDE_MIN = 840;
+const wideQuery = matchMedia(`(min-width: ${WIDE_MIN}px)`);
+/* Crossing the breakpoint changes which panes are on screen without changing
+   the view, so nothing else would repaint: dragging a window from 800px to
+   900px reveals Today beside the game, and the passes in it were last built
+   whenever Today was last the current screen. A full render, not `('tabs')`
+   -- the game pane arriving on a narrow-to-wide crossing is in the same
+   position. `renderAll` is declared above and is the same call `applyView`
+   makes. */
+wideQuery.addEventListener('change', () => {
+  renderAll();
+  /* `renderAll` repaints the sections; it does not decide which bottom bar is
+     on screen. That decision is `wideQuery.matches` AND the view, and the
+     only thing that changed here is the query -- so without these two lines
+     a window dragged from 839px to 840px keeps the floating Start-game bar's
+     `hidden` flag from the width it was last navigated at. The bar itself
+     stops being drawn either way (the CSS gate is `@media (max-width:
+     839px)`), but a stale flag is what `measureChromeHeights` reads: it takes
+     `--ab-h` from the first bottom bar WITHOUT a `hidden` attribute, so a
+     stale one measures a bar that is not drawn and strands the rail's last
+     game entry under the Resume bar -- and dragging back the other way leaves
+     `hidden` set on a bar the narrow layout means to show. `state.view` is
+     the right argument: `welcome` is already folded into `today` there, and
+     `syncActionBar`'s own `!state.onboarded` term covers that screen. */
+  syncActionBar(state.view);
+  measureChromeHeights();
+});
+
+/* `wide` is an argument with a default rather than a read inside the body, so
+   each predicate is a pure function of `(view, wide)` that a test can ask
+   about a width the machine running it does not have -- while a caller that
+   just wants "now" writes `todayPaneShowing(state.view)` and gets the live
+   query. The default is evaluated per call, so nothing is cached. */
+export const todayPaneShowing = (view, wide = wideQuery.matches) => wide || view === 'today';
+/* Not the mirror of `todayPaneShowing`: Today is the rail under every screen,
+   but the game is only the RIGHT pane's resting state (decision 7) -- Team,
+   Season and Settings cover it, so `wide` alone is not enough. */
+export const gamePaneShowing = (view, wide = wideQuery.matches) =>
+  view === 'games' || (wide && view === 'today');
+
+/* #35 decision 7: above 840px the floating Start-game bar is gone -- the game
+   is the right pane and the inline `.gm-start` row carries Start game there.
+   The CSS gate that stops drawing it is `@media (max-width: 839px)`; this
+   flag is what makes it gone to `measureChromeHeights` too, which picks the
+   first of the two bottom bars WITHOUT a `hidden` attribute and would
+   otherwise measure a `display: none` #actionbar at 0px while #resumeBar --
+   the one bar left at this width -- is on screen over the rail, stranding the
+   last game entry underneath it.
+
+   A function rather than a line inside `applyView` because two things change
+   the answer and only one of them is a navigation: the view, and which side
+   of 840px the window is on. Both callers are above/below -- `applyView` for
+   the first, the `wideQuery` listener for the second -- so there is one
+   decision with two triggers rather than two copies that can drift. */
+function syncActionBar(v) {
+  const ab = document.querySelector('#actionbar');
+  if (ab) ab.hidden = v !== 'games' || !state.onboarded || wideQuery.matches;
+}
+
 function applyView(v, from) {
   /* #27 decision 11: a sheet pushes no history entry of its own, so any
      screen change -- including a `popstate`, which is how the browser's
@@ -571,6 +642,16 @@ function applyView(v, from) {
      finish onboarding. Removed here rather than in the boot call because this
      is the one place view visibility is decided (index.html, app.css). */
   document.documentElement.removeAttribute('data-boot');
+  /* #35 decision 3: `data-view` is how CSS learns the current screen -- the
+     wide layout's rules key off it, and `data-boot` cannot be that attribute
+     (it is stamped for only four of the six views and is removed the line
+     above, the first time this runs). Written beside the line that already
+     sets `state.view`, from the same argument, so there is one decision and
+     two readers rather than two decisions. It is a projection for the
+     cascade, never read back as state: `v`, not `state.view`, because
+     `welcome` is the one value the CSS has to be able to see and
+     `state.view` folds it into `today`. */
+  document.documentElement.dataset.view = v;
   state.view = v === 'welcome' ? 'today' : v;
   save();
   $('#view-welcome').hidden = v !== 'welcome';
@@ -581,8 +662,9 @@ function applyView(v, from) {
   $('#view-settings').hidden = v !== 'settings';
   // the chrome is meaningless before there is a team
   document.querySelector('.bar').style.display = v === 'welcome' ? 'none' : '';
-  const ab = document.querySelector('#actionbar');
-  if (ab) ab.hidden = v !== 'games' || !state.onboarded;
+  // #35 decision 7, and the same call the `wideQuery` listener makes -- see
+  // `syncActionBar` above for why the decision lives in one function.
+  syncActionBar(v);
   // #34 decision 6: Today's own floating primary action, painted right
   // beside #actionbar's own hidden line for the same reason -- both are
   // decided by the view this call is switching TO, and `measureChromeHeights`
@@ -660,49 +742,61 @@ function applyView(v, from) {
      the data, so leaving (even mid-edit) resets it before the coach can find
      it still on next time they arrive. */
   if (v !== 'team' && from === 'team') resetEditMode();
-  /* #23 review, third round: entering Games has to show what `state` says,
-     not whichever game the screen last painted. Everything above this line
-     only ever toggled visibility and wrote the header title -- the opponent
-     input, the card and the rest of the Games screen's own content are
-     `render()`'s job, and nothing here called it. Today's game entries,
-     `printCard`'s `setView('games', true)` off Today, `startTour`'s own copy
-     of that same line, and `popstate` landing on games all go through this
-     one function, so this is the one place that can own "the screen shows
-     what state says" without a `renderAll()` sprinkled after each of those
-     calls. Run last, not first: `render()` reads `state.view` (`renderTabs`'s
-     own header-title branch among others) and it has to see 'games', which
-     `state.view = v` above has by now already set.
+  /* A REAL TRANSITION, which is what every repaint below is gated on -- so it
+     is asked once here rather than restated in each of them.
 
-     Gated on a REAL transition (`from !== 'games'`) so a same-screen
-     `setView('games', ...)` -- `viewRefresh`'s default undo refresh calls
-     `setView(state.view)` on every undoable edit, and most of those happen
-     while already on Games -- does not repaint everything a second time; the
-     efficiency review already flagged that shape of double work once. A
-     caller with its own reason to always repaint regardless of which screen
-     (`restoreBackup`'s `show()`, a wholesale state replace) keeps its own
-     `renderAll()` call same as before; the callers that only needed one
-     because entering Games needed it (`commitFlow`, both onboarding paths) had
-     theirs removed, now that this covers them.
+     `from !== v` excludes a same-screen `setView`: `viewRefresh`'s default
+     undo refresh calls `setView(state.view)` on every undoable edit, and most
+     of those happen while already on Games, so without this each one would
+     repaint everything a second time; the efficiency review already flagged
+     that shape of double work once. A caller with its own reason to always
+     repaint regardless of which screen (`restoreBackup`'s `show()`, a
+     wholesale state replace) keeps its own `renderAll()` call same as before;
+     the callers that only needed one because entering Games needed it
+     (`commitFlow`, both onboarding paths) had theirs removed, now that this
+     covers them.
 
-     ALSO excludes `from === null` -- the very first `setView` call of the
-     session, boot's own (app.js). Boot's own explicit `renderAll()` runs a
-     few lines after it regardless of which screen was resolved, because
-     Today, Team, Season, Settings and Welcome never got a render out of
-     `applyView` either; a coach who left the app on Games -- probably the
-     most common single case there is -- would otherwise pay for two full
-     renders on every reload rather than the one every other screen already
-     paid. */
-  if (v === 'games' && from !== 'games' && from !== null) render();
-  /* #26 decision 6: `renderTabs` skips building Today's passes while another
-     screen is on show, so a real transition INTO Today has to repaint them
-     here or a coach who edited a game and tapped back would see whatever the
-     passes looked like before the edit. `from !== null` excludes boot's own
-     landing on Today the same way the games branch above does: boot's own
-     `renderAll()` a few lines later covers it, by which point `state.view`
-     is already 'today'. */
-  // #34 decision 7: `resume` rides along -- a real transition into Today is
-  // exactly when which game is part-played may have changed underneath it.
-  if (v === 'today' && from !== 'today' && from !== null) render('tabs', 'resume');
+     `from !== null` excludes the very first `setView` call of the session,
+     boot's own (app.js). Boot's own explicit `renderAll()` runs a few lines
+     after it regardless of which screen was resolved, because Today, Team,
+     Season, Settings and Welcome never got a render out of `applyView`
+     either; a coach who left the app on Games -- probably the most common
+     single case there is -- would otherwise pay for two full renders on every
+     reload rather than the one every other screen already paid. */
+  if (from !== null && from !== v) {
+    /* #23 review, third round: entering Games has to show what `state` says,
+       not whichever game the screen last painted. Everything above this line
+       only ever toggled visibility and wrote the header title -- the opponent
+       input, the card and the rest of the Games screen's own content are
+       `render()`'s job, and nothing here called it. Today's game entries,
+       `printCard`'s `setView('games', true)` off Today, `startTour`'s own copy
+       of that same line, and `popstate` landing on games all go through this
+       one function, so this is the one place that can own "the screen shows
+       what state says" without a `renderAll()` sprinkled after each of those
+       calls. Run last, not first: `render()` reads `state.view` (`renderTabs`'s
+       own header-title branch among others) and it has to see 'games', which
+       `state.view = v` above has by now already set.
+
+       #35 decision 10 SUBSUMES this branch and the Today one below, which is
+       why it shares the call. At 840px and up both panes are on screen
+       whatever the view is, so the two narrow rules -- repaint Games on the
+       way into Games, repaint Today's passes on the way into Today -- are
+       each half of the answer: a coach who picks Team from the rail leaves a
+       game pane behind her that neither would touch. So at that width every
+       section repaints on every view change, which is one full repaint per
+       view change and not a hot path. */
+    if (wideQuery.matches || v === 'games') render();
+    /* #26 decision 6: `renderTabs` skips building Today's passes while another
+       screen is on show, so a real transition INTO Today has to repaint them
+       here or a coach who edited a game and tapped back would see whatever the
+       passes looked like before the edit. Boot's own landing on Today is
+       excluded by the gate above for the same reason the Games branch is:
+       boot's `renderAll()` a few lines later covers it, by which point
+       `state.view` is already 'today'.
+       #34 decision 7: `resume` rides along -- a real transition into Today is
+       exactly when which game is part-played may have changed underneath it. */
+    else if (v === 'today') render('tabs', 'resume');
+  }
 }
 
 /* `auto` has to be resolved to a real value here. Removing the attribute does

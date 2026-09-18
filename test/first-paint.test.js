@@ -110,13 +110,17 @@ const VIEW_STAMPS = ['welcome', 'games', 'team', 'season', 'settings'];
    documentElement that records EVERY attribute stamped on it -- #25 item 8
    adds a second `setAttribute` call (`data-tint`) to the same script, beside
    the view's own `data-boot`, so a single overwritten variable would lose
-   whichever call ran first. */
-const runPrePaint = (store) => {
+   whichever call ran first.
+
+   `storage` replaces that Map-backed stub for the one test that needs a
+   `getItem` which THROWS rather than answering; the doc stub and the run are
+   the same ones every other caller gets, which is the point of asking here. */
+const runPrePaint = (store, storage) => {
   const stamps = {};
   const doc = { documentElement: { setAttribute: (k, v) => { stamps[k] = v; } } };
   // eslint-disable-next-line no-new-func
   new Function('localStorage', 'document', prePaintScript())(
-    { getItem: k => (k in store ? store[k] : null) }, doc);
+    storage || { getItem: k => (k in store ? store[k] : null) }, doc);
   return stamps;
 };
 
@@ -137,6 +141,27 @@ const firstPaint = (store) => {
    blocks), so its absence reads as 'graphite', the same default `sanitize`
    gives `settings.color`. */
 const firstPaintTint = (store) => runPrePaint(store)['data-tint'] || 'graphite';
+
+/* #35 decision 3, the third attribute the same script stamps: `data-view` is
+   how the cascade learns the current screen, and the wide layout's rules key
+   off it. Unlike `data-boot` it is written for EVERY view -- there is no
+   "today is the markup default" case, because the wide block has a rule for
+   today as well (the right pane's resting state is the open game) -- so
+   there is no absence to read as a default here. An absent or wrong stamp is
+   a first frame laid out for the wrong screen at 840px and up: the rail
+   missing, or the wrong `<main>` filling the right pane, until `applyView`
+   runs a round trip later.
+
+   Read through the same `runPrePaint` as the two above, which records every
+   attribute the script stamps rather than one overwritten string. */
+const firstPaintView = (store) => runPrePaint(store)['data-view'];
+
+/* Every value `data-view` can be stamped with. `data-boot`'s own list
+   (`VIEW_STAMPS`) plus today, which is exactly the view `data-boot`
+   deliberately does not stamp -- and therefore the one that needs this
+   attribute most. Hand-typed, like `VIEW_STAMPS` above, so it is the fixed
+   set the app ships rather than a re-derivation from the source it checks. */
+const VIEW_ATTR_VALUES = ['welcome', 'today', 'games', 'team', 'season', 'settings'];
 
 /* What `app.js` will show a moment later. Line for line, app.js's boot call is
    `setView(state.onboarded ? (state.view || 'today') : 'welcome')`, and
@@ -293,8 +318,32 @@ for (const [name, store, want] of CASES) {
     assert.equal(paint, boot,
       `the first frame paints "${paint}" and then the boot switches to "${boot}" for ${name} — `
       + 'that is the flash A41 fixed, in one direction or the other');
+    /* #35 decision 3: the same answer again, as `data-view`, for the cascade.
+       Asserted on every row rather than on a list of its own, so a view that
+       reaches the table reaches this too — including today, which `data-boot`
+       leaves unstamped and which the wide layout still has a rule for. */
+    const stamped = firstPaintView(store);
+    assert.ok(VIEW_ATTR_VALUES.includes(stamped),
+      `the first frame stamps data-view="${stamped}" for ${name}, which is not one of `
+      + `${VIEW_ATTR_VALUES.join(', ')} — the wide layout has no rule for it`);
+    assert.equal(stamped, boot,
+      `the first frame stamps data-view="${stamped}" and the boot lands on "${boot}" for ${name} — `
+      + 'at 840px and up that is a first frame laid out for the wrong screen: the rail missing, '
+      + 'or the wrong pane filling the right-hand side, until applyView runs a round trip later');
   });
 }
+
+/* THE COVERAGE ARM, which no single row above can make. The assertion inside
+   the loop is only as good as the values the table actually reaches: drop the
+   welcome rows and every remaining row still passes while the one view the
+   wide layout excludes goes unchecked. So the table's own answers are
+   compared, as a set, against the six values `data-view` can carry. */
+test('the first-paint table reaches every view data-view can be stamped with', () => {
+  const reached = [...new Set(CASES.map(([, , want]) => want))].sort();
+  assert.deepEqual(reached, [...VIEW_ATTR_VALUES].sort(),
+    'the fixtures above no longer cover every view the pre-paint script can stamp, so the '
+    + 'data-view assertion in the loop is checking fewer screens than the app has');
+});
 
 /* #25 item 8: the team color, same shape as the view table above -- each row
    is asserted against `want` on its own before the two sides are compared. */
@@ -395,12 +444,15 @@ test('the pre-paint script never throws, whatever it finds', () => {
  * behavior, and the returning coach's case rather than the once-ever one. */
 test('a storage that refuses to answer lands where the boot lands', () => {
   const denied = { getItem: () => { throw new Error('denied'); } };
-  let stamped = null;
-  const doc = { documentElement: { setAttribute: (k, v) => { stamped = `${k}=${v}`; } } };
-  assert.doesNotThrow(() => {
-    // eslint-disable-next-line no-new-func
-    new Function('localStorage', 'document', prePaintScript())(denied, doc);
-  });
+  /* Through `runPrePaint`, which already records EVERY attribute the script
+     stamps rather than one overwritten string -- it learned that when #25
+     item 8 added `data-tint`, and this test carried its own single-variable
+     copy of the same stub until #35 caught it: `data-view` is stamped
+     unconditionally (render.js's `applyView` keeps writing it, so unlike
+     `data-boot` there is no "today is the default" case), so it always ran
+     after `data-boot` and overwrote it. */
+  let stamps;
+  assert.doesNotThrow(() => { stamps = runPrePaint({}, denied); });
 
   const prev = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: denied });
@@ -411,7 +463,7 @@ test('a storage that refuses to answer lands where the boot lands', () => {
     else delete globalThis.localStorage;
   }
   assert.equal(boot, 'welcome', 'loadState no longer treats an unreadable storage as a first run');
-  assert.equal(stamped === 'data-boot=welcome' ? 'welcome' : 'games', boot,
+  assert.equal(stamps['data-boot'] === 'welcome' ? 'welcome' : 'games', boot,
     'the first frame and the boot disagree when storage is denied');
 });
 
