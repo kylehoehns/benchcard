@@ -188,8 +188,9 @@ export const APP_LARGE_TEXT_STATES = [
      sees, and the one screen in the app this cell had never visited.
      `overlayPass` has audited it since it was written; this pass enumerates
      every screen `VIEWS` names and the welcome screen is not one of them —
-     it is the screen you get INSTEAD of those five, with `.bar`, `.foot` and
-     `#actionbar` all taken off the screen by `applyView`. A different chrome
+     it is the screen you get INSTEAD of those five, with `.bar` and
+     `#actionbar` both taken off the screen by `applyView` (#33 removed the
+     footer this note used to list beside them). A different chrome
      is exactly the argument this list already makes for game mode.
 
      It is reached by a REAL FIRST RUN — clear the record, reload — not by

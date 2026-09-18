@@ -366,11 +366,11 @@ test('app.css closes every comment exactly once', () => {
     'a comment delimiter survives outside a comment in app.css');
 });
 
-test('the welcome stamp still hides the bar and the foot', () => {
-  for (const sel of ['.bar', '.foot']) {
-    assert.ok(css.includes(`html[data-boot="welcome"] ${sel}`),
-      `the welcome rule no longer hides ${sel}`);
-  }
+test('the welcome stamp still hides the bar', () => {
+  /* #33 removed the footer this used to also check for (`.foot`, gone from
+     both the markup and this selector list). */
+  assert.ok(css.includes('html[data-boot="welcome"] .bar'),
+    'the welcome rule no longer hides .bar');
 });
 
 test('the pre-paint script never throws, whatever it finds', () => {

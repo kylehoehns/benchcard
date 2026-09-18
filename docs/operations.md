@@ -223,9 +223,12 @@ Two things address that, and they are different problems:
   behind a `.js` class that the head script adds **only when
   `IntersectionObserver` exists** — so a crawler that does not run scripts, the
   reader this page is for, gets the whole page painted. `test/about-reveal.test.js`
-  pins that; do not add a reveal rule outside the `.js` guard. The footer's **How it works** link is the only path a
-  crawler has into it, which is why the footer is no longer hidden wholesale when
-  `TIP_URL` is empty — only the tip link is.
+  pins that; do not add a reveal rule outside the `.js` guard. #33 deleted the
+  footer, which used to carry the link a crawler follows into this page. Two
+  links in `index.html`'s own markup carry it now: the welcome screen's **How it
+  works** (`<a class="wel-about" href="./about">`, which is the one
+  `test/link-graph.test.js` hangs the whole six-page chart tail off, so treat it
+  as load-bearing) and the **About** row in Settings.
 - **The roster-size pages** — `7-player-basketball-rotation-chart.html` through
   `12-…` — are the long tail. Google's autocomplete suggests every one of those
   variants across unrelated seeds, no competitor has a page for any of them, and
@@ -311,13 +314,10 @@ never asked at all. `test/install.test.js` pins those rules the way
 `test/tip.test.js` pins the tip's.
 ## Money
 
-There is none. A tip jar link in the footer, and a second in the Benchcard
-zone of Settings since #22 (both carry `[data-tip-link]`, and `toast.js` wires
-both from the same `TIP_URL`), switched **on** — `TIP_URL` at the
-top of `toast.js` holds a live Buy Me a Coffee URL, and `about.html` hard-codes
-the same one with `analytics.test.js` pinning the two together. Set it to `null`
-to hide both links (not the footer itself: the footer carries the only
-crawlable link to `about.html`). The market research behind that decision:
+There is none. The Benchcard zone of Settings carries a **Buy me a coffee** link
+with `[data-tip-link]`, wired to `TIP_URL` at the top of `toast.js`. `about.html`
+hard-codes the same URL, and `analytics.test.js` pins the two together (#33 removed
+the footer's tip link). Set `TIP_URL` to `null` to hide the Settings link. The market research behind that decision:
 GameChanger gives coaches every premium feature free and monetises parents
 instead, so coach-side tooling is expected to be free, and paid-upfront tools
 above about $3 collect hostile reviews.

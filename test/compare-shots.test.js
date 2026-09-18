@@ -39,7 +39,7 @@ test('importing scripts/compare-shots.mjs does not launch Chrome or serve app/',
 
 function plainShotsFor(view, theme) {
   return SHOTS.filter(s => s.view === view && s.theme === theme
-    && !s.longNames && !s.bottom && !s.full && !s.firstRun
+    && !s.longNames && !s.bottom && !s.full && !s.firstRun && !s.titleCollapsed
     && s.width === WIDTH && s.rootPx === 16);
 }
 
@@ -81,6 +81,20 @@ test('SHOTS includes the empty first-run screen, light and dark', () => {
   const shots = SHOTS.filter(s => s.firstRun);
   assert.equal(shots.length, 2, `want a light+dark first-run shot, found ${shots.length}`);
   assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+});
+
+/* #33 decision 1's `.bar.title-in` state -- item 11's own required addition
+ * to this table. A screen scrolled just past its `[data-large-title]`, not
+ * to the bottom (that is the `bottom` state above, and a different scroll
+ * depth); `capture()` verifies `.bar` actually carries `title-in` after the
+ * scroll before writing the PNG, so a shot that never collapsed cannot read
+ * as one that did. */
+test('SHOTS includes the title-collapsed state, light and dark', () => {
+  const shots = SHOTS.filter(s => s.titleCollapsed);
+  assert.equal(shots.length, 2, `want a light+dark title-collapsed shot, found ${shots.length}`);
+  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+  assert.ok(shots.every(s => !s.bottom && !s.full),
+    'the title-collapsed shot should be its own scroll depth, not reuse bottom/full');
 });
 
 /* ---------- shotProblems: items 2 and 3 ---------- */

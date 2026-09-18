@@ -24,7 +24,7 @@ import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from '.
 import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
 import { renderSeason, seasonGames } from './season-view.js';
-import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, game, gameLabel, activeColor } from './state.js';
+import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, activeColor } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { retireUndo, flash } from './toast.js';
 // storage.js is already in the boot graph (state.js imports it for
@@ -129,6 +129,20 @@ export function render(...keys) {
      that would have to be added to three lists to stay in step. */
   renderSettings();
   withFocus(() => { for (const k of which) SECTIONS[k](); });
+  /* #33 decisions 3-5: last, because the bar title is a COPY of words this
+     function has just written. `applyView` syncs it too, but it has to run
+     before the paint below (it is what makes the view visible in the first
+     place), so on a real transition into a game its copy is of the game the
+     screen was showing a moment ago -- the opponent's name one game behind.
+     It also keeps the copy honest when nothing navigated at all: the team's
+     name changes as a coach types it into the roster.
+
+     `syncBarTitle` is two `textContent` touches and an attribute, cheap
+     enough to run every time. Re-measuring the overlay's box is not, so that
+     goes through `measureBarSideIfHeaderChanged`, which pays for the rects
+     only when the words actually moved -- see its own comment. */
+  syncBarTitle(state.view);
+  measureBarSideIfHeaderChanged(state.view);
 }
 
 export const renderAll = () => render();
@@ -336,21 +350,199 @@ addEventListener('popstate', (e) => {
   window.scrollTo(0, 0);
 });
 
-/* The screen's own title, shown once, top-left of its header. `gameLabel` is
-   the one game label (state.js) -- reused here exactly as Today reuses it for
-   each of the day's games. The other three screens are just their name; an
-   in-page heading that repeated it would say it twice. */
-const SCREEN_TITLE = { team: 'Team', season: 'Season', settings: 'Settings' };
-// Screens with their own in-page `h1` (`#gameTitle`, `#seasonTitle`), so
-// `#barTitle` would only be a second copy of the same text (#69 decision 5,
-// #30 decision 2).
-const NO_BAR_TITLE = new Set(['games', 'season', 'team']);
 // every screen storage.js's own allow-list names, minus Today -- the one
 // case with no back button and no title, because it is the one nothing goes
 // back FROM (#23 review, item D: was a hand-typed second copy of VIEWS).
 const BACK_VIEWS = VIEWS.filter(v => v !== 'today');
-function screenTitle(v) {
-  return v === 'games' ? gameLabel(game(), state.activeGame) : (SCREEN_TITLE[v] || '');
+
+/* #33: the `<main>` each view owns, keyed the same as `v` everywhere else in
+   this file. `welcome` is deliberately absent -- the bar is hidden there
+   (below), so there is nothing for the bar title to mirror. */
+const VIEW_MAIN_ID = { today: 'view-today', games: 'view-games', team: 'view-team', season: 'view-season', settings: 'view-settings' };
+
+/* #33 decisions 3, 5 and 6: `#barTitle` is a copy of the view's own large
+   title, read from the DOM at collapse time rather than hand-typed --
+   hand-typing it made Team's bar say "Team" while its large title said the
+   team's own name. Settings has no large title (`light-settings.png`), so
+   its bar title is the static `data-bar-title` on its `<main>` and stays
+   exposed to assistive tech; the four views with a `[data-large-title]` of
+   their own hide the copy from the accessibility tree so exactly one `h1`
+   per screen is announced, as before. */
+function syncBarTitle(v) {
+  const barTitleEl = $('#barTitle');
+  if (!barTitleEl) return;
+  const mainId = VIEW_MAIN_ID[v];
+  const main = mainId && document.getElementById(mainId);
+  const largeTitle = main && main.querySelector('[data-large-title]');
+  if (largeTitle) {
+    barTitleEl.textContent = largeTitle.textContent;
+    barTitleEl.setAttribute('aria-hidden', 'true');
+  } else {
+    barTitleEl.textContent = (main && main.dataset.barTitle) || '';
+    barTitleEl.setAttribute('aria-hidden', main ? 'false' : 'true');
+  }
+}
+
+/* #33 decision 1: one `IntersectionObserver`, re-targeted on every view
+   change rather than one per view -- `requests` is pinned at 39 (Survey), so
+   this stays inside `render.js` instead of a module of its own. It watches
+   whichever `[data-large-title]` element the CURRENT view owns and toggles
+   `.bar.title-in` the moment that element leaves the viewport, which is what
+   fades the bar title in (app.css). Settings owns no large title to watch --
+   its bar title is static and shown at all times (decision 5), so it gets
+   `.title-in` unconditionally instead of an observer with nothing to watch.
+
+   `rootMargin` is the whole of "without disappearing" (L4, AC1, NN/g). The
+   bar floats OVER the content now, so a plain `threshold: 0` observer does
+   not fire until the large title has left the viewport entirely -- by which
+   point it has spent a whole bar's height hidden BEHIND the bar with the
+   small title not yet faded in, and the screen has no title at all for that
+   stretch. Shrinking the observer's root by the bar's own height moves the
+   hand-off to the moment the large title slides under the bar, so one title
+   is always on screen. It has to be a pixel number, and the bar's height is
+   not a constant (it wraps to two rows at 320px with a 32px root), so it is
+   measured here and the observer is rebuilt by `initBarMeasurements`'s
+   `ResizeObserver` whenever that height changes. */
+let titleObserver = null;
+let titleView = null;
+let titleRootTop = null;
+function watchLargeTitle(v) {
+  if (titleObserver) { titleObserver.disconnect(); titleObserver = null; }
+  titleView = v;
+  titleRootTop = null;
+  const bar = document.querySelector('.bar');
+  if (!bar) return;
+  if (v === 'settings') { bar.classList.add('title-in'); return; }
+  bar.classList.remove('title-in');
+  const mainId = VIEW_MAIN_ID[v];
+  const main = mainId && document.getElementById(mainId);
+  const target = main && main.querySelector('[data-large-title]');
+  if (!target) return;
+  titleRootTop = Math.round(bar.getBoundingClientRect().height);
+  titleObserver = new IntersectionObserver((entries) => {
+    for (const e of entries) bar.classList.toggle('title-in', !e.isIntersecting);
+  }, { threshold: 0, rootMargin: `-${titleRootTop}px 0px 0px 0px` });
+  titleObserver.observe(target);
+}
+
+/* #33 decision 4: the overlay's width is measured, not guessed -- a fixed
+   percentage clips Team's right-hand pair (Edit + `+`, ~102px at 390px) on
+   narrow phones. Reads whichever half of the bar is currently on screen
+   (`#barToday` or `#barBack`) and writes the wider of its leading and
+   trailing control clusters, split at `.spacer`, as `--bar-side` on `.bar`
+   itself -- a custom property set there is inherited by `.bar-title`, its
+   child, for free.
+
+   What is measured is each cluster's DISTANCE FROM THE BAR'S OWN EDGE, not
+   the sum of the buttons' widths. The overlay is absolutely positioned, so
+   its `inset` is resolved against `.bar`'s PADDING box, while the buttons
+   start one `clamp(.85rem, 2.6vw, 1.5rem)` of side padding inside that --
+   and on Today the trailing cluster is two buttons with an `.8rem` flex gap
+   between them, which a sum of widths does not see either. Both gaps were
+   missing from the old formula, which put the overlay's box about 6px on top
+   of the back button at 390px and about 13px on top of `New day`. An edge
+   distance has no such arithmetic to get wrong: whatever padding, gap or
+   margin sits between the bar's edge and the outermost control is inside the
+   number by construction. */
+function measureBarSide() {
+  const bar = document.querySelector('.bar');
+  if (!bar) return;
+  const today = $('#barToday'), back = $('#barBack');
+  const half = today && !today.hidden ? today : (back && !back.hidden ? back : null);
+  if (!half) return;
+  const barRect = bar.getBoundingClientRect();
+  let leading = 0, trailing = 0, afterSpacer = false;
+  for (const child of half.children) {
+    if (child.classList.contains('spacer')) { afterSpacer = true; continue; }
+    const r = child.getBoundingClientRect();
+    // A `popover` (`#teamMenu`) and every `hidden` action measure 0x0 while
+    // closed; counting one would push the overlay off a cluster that is not
+    // on screen.
+    if (r.width === 0) continue;
+    if (afterSpacer) trailing = Math.max(trailing, barRect.right - r.left);
+    else leading = Math.max(leading, r.right - barRect.left);
+  }
+  bar.style.setProperty('--bar-side', `${Math.max(leading, trailing)}px`);
+}
+
+/* `measureBarSide` is a forced synchronous layout: a `getBoundingClientRect`
+   on `.bar` and one per control in the half on screen, then a style write.
+   That is fine where a screen change or a resize triggers it, but `render()`
+   calls it too (see the comment at the bottom of `render`), and `render` is
+   the hot path -- it runs off the 140ms edit queue and from about twenty call
+   sites, most of them edits the header cannot see: a budget slider settling,
+   a rule's number, a card regenerate.
+
+   So the end-of-render call goes through here, which compares the words the
+   bar is currently showing against the words it was showing the last time the
+   side was measured, and only pays for the rects when they differ. Those
+   reads are `textContent` -- no layout. Two strings, because two things move
+   the boundary: the overlay's own text, and `#teamBtn`'s label, which IS
+   Today's leading control (a coach renaming the team in the roster widens it).
+   The view is in the key as well so that arriving on a screen whose title
+   happens to match the last one still measures -- the controls either side of
+   the overlay differ per screen even when the words do not.
+
+   Only `render`'s call is gated. `applyView` and the `ResizeObserver` call
+   `measureBarSide` directly, because a rotation or a text-size change moves
+   the boundary without changing a single character. */
+let barSideKey = null;
+function measureBarSideIfHeaderChanged(v) {
+  const barTitleEl = $('#barTitle'), teamBtn = $('#teamBtn');
+  const key = `${v} ${barTitleEl ? barTitleEl.textContent : ''} ${teamBtn ? teamBtn.textContent : ''}`;
+  if (key === barSideKey) return;
+  barSideKey = key;
+  measureBarSide();
+}
+
+/* #33 decision 14: `html`'s `scroll-padding-top`/`-bottom` need a NUMBER, not
+   a guess -- the bar wraps to two rows at 320px with a 32px root, so its
+   height is not a constant, and the action bar's own height depends on
+   whether it is showing at all. Written onto `<html>`, not `.bar`, so a
+   custom property set on one floating element reaches the scroll container
+   that reads it -- a property set on `.bar` itself would not reach a
+   sibling. The explicit `!ab.hidden` check below does not lean on a
+   ResizeObserver firing at the exact moment `[hidden]` flips (untested
+   here): `measureChromeHeights` also runs straight out of `applyView`,
+   which sets `#actionbar.hidden` itself, so the value is right on the same
+   task regardless of what the observer does with it after. */
+function measureChromeHeights() {
+  const root = document.documentElement;
+  const bar = document.querySelector('.bar');
+  root.style.setProperty('--bar-h', `${bar ? bar.getBoundingClientRect().height : 0}px`);
+  const ab = document.querySelector('#actionbar');
+  root.style.setProperty('--ab-h', `${ab && !ab.hidden ? ab.getBoundingClientRect().height : 0}px`);
+}
+
+/* Recomputed on view change (`applyView`, below) and from a `ResizeObserver`
+   on `.bar` and `#actionbar` -- a rotation, a text-size change or the bar
+   wrapping to a second row at 320px with a 32px root all change which
+   cluster is widest, or how tall either bar is, without the view itself
+   changing. One observer pair, module-scoped so a second boot (there is
+   only one, but so was the module-scoped title observer above) does not
+   double-observe. */
+let barResizeObserver = null;
+function initBarMeasurements() {
+  if (barResizeObserver) return;
+  const bar = document.querySelector('.bar');
+  if (!bar) return;
+  barResizeObserver = new ResizeObserver(() => {
+    measureBarSide();
+    measureChromeHeights();
+    /* The collapse observer's `rootMargin` is the bar's height in pixels, so
+       it goes stale the moment the bar wraps a row or the reader changes the
+       text size. Rebuilt, not adjusted: `rootMargin` is read once when an
+       `IntersectionObserver` is constructed and cannot be written after.
+       Gated on the height actually having changed, or a bar that resizes for
+       any other reason (the title fading in does not, but a `hidden` action
+       bar flipping does) would tear down and re-observe on every frame. */
+    if (titleObserver && Math.round(bar.getBoundingClientRect().height) !== titleRootTop) {
+      watchLargeTitle(titleView);
+    }
+  });
+  barResizeObserver.observe(bar);
+  const ab = document.querySelector('#actionbar');
+  if (ab) barResizeObserver.observe(ab);
 }
 
 function applyView(v, from) {
@@ -377,7 +569,6 @@ function applyView(v, from) {
   $('#view-settings').hidden = v !== 'settings';
   // the chrome is meaningless before there is a team
   document.querySelector('.bar').style.display = v === 'welcome' ? 'none' : '';
-  document.querySelector('.foot').style.display = v === 'welcome' ? 'none' : '';
   const ab = document.querySelector('#actionbar');
   if (ab) ab.hidden = v !== 'games' || !state.onboarded;
   /* NOTHING here touches `#print`, and that is the point. This function used to
@@ -404,23 +595,19 @@ function applyView(v, from) {
   const today = $('#barToday'), back = $('#barBack');
   if (today) today.hidden = v !== 'today';
   if (back) back.hidden = !onBack;
-  /* #69 decision 5: the games view has its own in-page `h1` (`#gameTitle`),
-     so `#barTitle` -- otherwise a second copy of the same text -- is hidden
-     there outright with the `hidden` attribute rather than visually clipped:
-     a clipped-but-present box still answers `checkVisibility()` true (that
-     call only asks about `display: none` and detachment, not size), so a
-     screen reader's rotor read "Panthers" twice even though nothing was
-     visibly doubled on screen. It keeps its text and shows as before on the
-     other back screens. */
-  const barTitleEl = $('#barTitle');
-  if (barTitleEl) {
-    if (onBack) barTitleEl.textContent = screenTitle(v);
-    /* #30 decision 2: Season now has its own in-page `h1#seasonTitle`, the
-       same reason Games hides `#barTitle` above -- a set, not a second
-       hand-typed `||`, because the next screen with its own title should
-       join this line rather than grow another comparison. */
-    barTitleEl.hidden = NO_BAR_TITLE.has(v);
-  }
+  /* #33 decisions 1, 3-6: `#barTitle` is now a centered overlay on `.bar`
+     itself, shown on Today too (not just the four "back" screens), so it is
+     synced and (re-)observed here rather than inside the `onBack` branches
+     above. `syncBarTitle` writes today's words; `watchLargeTitle` re-targets
+     the collapse observer at the view's own `[data-large-title]` element, or
+     marks Settings' bar title always-in since it has none to watch.
+     `measureBarSide`/`initBarMeasurements` (decision 4) keep `--bar-side`
+     current so the overlay's `max-width` never clips a wide cluster.
+     `measureChromeHeights` (decision 14) runs after `#actionbar.hidden` is
+     set, below, so `--ab-h` reads the view this call is switching TO. */
+  syncBarTitle(v);
+  watchLargeTitle(v);
+  initBarMeasurements();
   /* #29 decision 4: the one door into the card sheet, shown only on the game
      screen -- same shape as `#barTitle` swapping the other way, just above. */
   const shareBtnEl = $('#shareBtn');
@@ -439,6 +626,18 @@ function applyView(v, from) {
   if (teamAddEl) teamAddEl.hidden = v !== 'team';
   const teamEditEl = $('#teamEdit');
   if (teamEditEl) teamEditEl.hidden = v !== 'team' || state.players.length <= 1;
+  /* #33 decision 4 and 14, and it has to be HERE -- below every `hidden` flag
+     above, not beside `syncBarTitle`. Both numbers are read off the bar as it
+     will actually be drawn, and the four actions that come and go with the
+     screen (`#shareBtn`, `#seasonExport`, `#teamAdd`, `#teamEdit`) are only
+     settled on this line. Measuring before them meant `--bar-side` described
+     the screen being LEFT, and the `ResizeObserver` does not cover for it:
+     hiding a button inside a fixed-height bar does not change the bar's own
+     size, so nothing fires and the stale number stands until the next
+     rotation. `--ab-h` is measured here for the same reason, after
+     `#actionbar.hidden` is set above. */
+  measureBarSide();
+  measureChromeHeights();
   /* #31 A2: the real transition away from Team, same shape as the Games/Today
      branches below -- Edit mode is meant to be a property of the screen, not
      the data, so leaving (even mid-edit) resets it before the coach can find

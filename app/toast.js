@@ -35,17 +35,15 @@ let setView = () => {};
 export function initToast(renderAllFn, setViewFn) {
   renderAll = renderAllFn;
   setView = setViewFn;
-  // No tip URL configured: hide the tip link, not the whole footer. The footer
-  // also carries a link to /about -- the one page on this site a crawler can
-  // read without running the app -- so hiding the footer wholesale took that
-  // with it, back when TIP_URL was empty. It is set now. (Not the ONLY link
-  // any more: the welcome screen's .wel-about is the one test/link-graph.test.js
-  // hangs the six chart pages off, because the footer is hidden on welcome.)
+  // No tip URL configured: hide the tip link(s), not any surrounding row --
+  // #33 removed the footer these used to hang off (it carried a link to
+  // /about too, the one page on this site a crawler can read without running
+  // the app; the welcome screen's .wel-about and Settings' own About row are
+  // what test/link-graph.test.js hangs the six chart pages off now).
   //
-  // `[data-tip-link]`, not `#tipLink`: #22 added a second tip row, in
-  // Settings, and an id has to stay unique while the footer still carries
-  // `#tipLink` (#37 removes the footer, not this ticket). One selector wires
-  // both rather than a second copy of this block.
+  // `[data-tip-link]`, not an id: #22 added a second tip row, in Settings,
+  // before #33 removed the footer's own `#tipLink` -- one selector still
+  // wires both rows that are left rather than a second copy of this block.
   for (const tip of document.querySelectorAll('[data-tip-link]')) {
     if (TIP_URL) tip.href = TIP_URL; else tip.hidden = true;
   }
@@ -279,7 +277,7 @@ function showTip(lead) {
 
   const t = el('div', 'toast tip-toast');
   const msg = el('span', 'tmsg');
-  msg.append(el('b', 'tip-lead', lead), ' Benchcard is free, with no ads and no account. If you’d like to help cover the hosting and keep it getting better, a coffee goes a long way.');
+  msg.append(el('b', 'tip-lead', lead), ' There is no cost to use Benchcard, no ads and no account. If you’d like to help cover the hosting and keep it getting better, a coffee goes a long way.');
   t.append(msg);
 
   const a = el('a', 'tundo press');

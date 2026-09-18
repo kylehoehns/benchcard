@@ -1,9 +1,22 @@
 /* #69 decision 5, "What would settle it" item 8: opening a game shows one
  * large title on screen -- the opponent -- with a sub line under it reading
  * "<tip-off> · <status>", reusing the pass's own status word and dot rather
- * than a second copy of that text. `#barTitle` (the header's own title,
- * `renderTabs`'s `gameLabel(...)`) stays in the DOM for the other back
- * screens but must not also be a second visible `h1` here.
+ * than a second copy of that text. `#barTitle` (the header's own title)
+ * stays in the DOM for the other back screens but must not also read as a
+ * second title here.
+ *
+ * #33 changed HOW it stays out of the way, not whether it does. It used to
+ * be `hidden` on this view -- a real `display: none` -- so "one h1" could be
+ * answered with `checkVisibility()`. It is now a centered overlay that is
+ * always laid out and faded in by `.bar.title-in` once the large title has
+ * scrolled under the bar, so at the top of the game screen it is present,
+ * the size of its box, and painted at `opacity: 0`. Two things replace the
+ * old check, one per audience: to the EYE, its computed opacity is 0 while
+ * the large title is on screen; to a SCREEN READER, it carries
+ * `aria-hidden="true"` here, so `#gameTitle` is still the only announced
+ * heading. Neither is the other's proof -- an overlay faded out but still in
+ * the accessibility tree is a rotor with "Hawks" in it twice, and one hidden
+ * from the tree but painted over the large title is a visible double.
  *
  * The expected title/tip-off/status text is the RICH fixture's own first
  * game (`fixtures.mjs`: `id: 'g0', label: 'Hawks', when: '9:00'`, a plain
@@ -23,14 +36,18 @@ export async function gameTitlePass(c, origin) {
 
   const info = JSON.parse(await evalIn(c, `(() => {
     // > 1px, not just non-zero: guards against a possible future regression
-    // where \`#barTitle\` is hidden by clipping it to a near-zero box instead
-    // of the \`hidden\` attribute \`applyView\` actually sets (render.js) -- a
-    // plain non-zero check would still count a 1x1 clipped box as "visible"
-    // and miss a second title reappearing that way.
+    // where a heading is kept off the screen by clipping it to a near-zero
+    // box rather than by the means the app actually uses -- a plain non-zero
+    // check would still count a 1x1 clipped box as "visible" and miss a
+    // second title reappearing that way.
     const visible = el => {
       if (!el) return false;
       const r = el.getBoundingClientRect();
-      return r.width > 1 && r.height > 1 && getComputedStyle(el).visibility !== 'hidden';
+      const cs = getComputedStyle(el);
+      // #33: \`opacity\` joins the test because it is now how \`#barTitle\` is
+      // kept off this screen. A fully transparent heading paints nothing,
+      // which is the question this line is asking.
+      return r.width > 1 && r.height > 1 && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0;
     };
     const h1s = [...document.querySelectorAll('#view-games h1, .bar h1')].filter(visible);
     const gameTitle = document.getElementById('gameTitle');
@@ -41,17 +58,16 @@ export async function gameTitlePass(c, origin) {
       visibleTexts: h1s.map(h => h.textContent),
       titleText: gameTitle ? gameTitle.textContent : null,
       subText: gameSub ? gameSub.textContent : null,
-      // render.js's \`applyView\` sets \`barTitleEl.hidden = v === 'games'\` --
-      // the \`hidden\` attribute, a real \`display: none\`, not a class that
-      // only clips the box to 1x1. \`checkVisibility()\` is still the right
-      // read-back rather than a second bounding-rect check: it is what would
-      // catch a future regression that clipped \`#barTitle\` instead of truly
-      // hiding it -- a clipped-but-present box still reports
-      // \`checkVisibility()\` true by default (that call only asks about
-      // \`display: none\`/detachment, not size), so a screen reader's rotor
-      // would still announce "Panthers" from it a second time even though
-      // the bounding-rect check above was satisfied.
-      barTitleReallyVisible: barTitle ? barTitle.checkVisibility() : null,
+      // #33 decision 6: the accessibility half of "one title". The overlay
+      // is in the tree now (it is Settings' only heading), so what keeps a
+      // screen reader from announcing "Hawks" twice here is \`aria-hidden\`,
+      // not \`display: none\`. Read as the attribute rather than through
+      // \`checkVisibility()\`, which by default answers a different question
+      // (\`display: none\` and detachment) and would report an
+      // \`aria-hidden\` overlay as visible.
+      barTitleAriaHidden: barTitle ? barTitle.getAttribute('aria-hidden') : null,
+      barTitleOpacity: barTitle ? getComputedStyle(barTitle).opacity : null,
+      barTitleText: barTitle ? barTitle.textContent.trim() : null,
     });
   })()`));
 
@@ -69,8 +85,13 @@ export async function gameTitlePass(c, origin) {
   if (!info.subText || !info.subText.includes(WANT.status)) {
     problems.push(`#gameSub is ${JSON.stringify(info.subText)}, want it to include ${JSON.stringify(WANT.status)}`);
   }
-  if (info.barTitleReallyVisible !== false) {
-    problems.push(`#barTitle.checkVisibility() is ${info.barTitleReallyVisible} on the games view, want false -- a screen reader still hears "Panthers" from it a second time`);
+  if (info.barTitleAriaHidden !== 'true') {
+    problems.push(`#barTitle's aria-hidden is ${JSON.stringify(info.barTitleAriaHidden)} on the games view, want "true" `
+      + `-- a screen reader hears ${JSON.stringify(info.barTitleText)} from it a second time`);
+  }
+  if (parseFloat(info.barTitleOpacity) !== 0) {
+    problems.push(`#barTitle is painted at opacity ${info.barTitleOpacity} at the top of the game screen, want 0 `
+      + '-- the large title has not gone anywhere yet, so the header copy must not be showing');
   }
 
   /* #69 decision 7: the one-row timeline used to spend most of a 368px

@@ -369,6 +369,16 @@
        both at once. `applyView` in render.js toggles `hidden` on the two
        halves and, off Today, writes the title into `#barTitle`. -->
   <header class="bar noprint">
+    <!-- #33 decision 3: a centered overlay on `.bar` itself, not inside either
+         half -- in flow it would push `New day` and the gear around on Today,
+         and at 320px with a 32px root it would force the bar to wrap a third
+         row. `position: absolute` + `pointer-events: none` (app.css) takes it
+         out of both halves' flex flow entirely. `render.js`'s `syncBarTitle`
+         keeps its text a live copy of the current view's own large title (or
+         Settings' static `data-bar-title`), and toggles `aria-hidden` so it is
+         never a second announced heading where a large title already exists
+         (decision 6). -->
+    <h1 class="bar-title" id="barTitle" aria-hidden="true"></h1>
     <div class="bar-today" id="barToday">
       <!-- The team switcher. A native `popover` (C8) anchored to this button
            rather than a dropdown built by hand -- Escape, outside-click and
@@ -395,7 +405,6 @@
     </div>
     <div class="bar-back" id="barBack" hidden>
       <button class="btn icon ghost press" id="backBtn" type="button" aria-label="Back to Today"><span class="i" data-icon="chevron-left"></span></button>
-      <h1 class="bar-title" id="barTitle"></h1>
       <span class="spacer"></span>
       <!-- #31 decision 2: Team's two actions, shown only on Team (`applyView`,
            render.js) the same way `#shareBtn` below is shown only on a game.
@@ -440,7 +449,7 @@
        teams-view.js -- the containers are static markup so the boot has
        somewhere to put a skeleton, but nothing inside them is. -->
   <main class="view wrap noprint" id="view-today">
-    <h1 class="today-h1">Today</h1>
+    <h1 class="today-h1" data-large-title>Today</h1>
     <div class="today-games" id="todayGames"></div>
     <!-- #69 decision 14: the same grouped-row look as Team/Season below
          (`.today-entry`, decision 9), left-aligned with a leading icon
@@ -470,7 +479,7 @@
            the header, above the sentence: the prototype (`light-game-
            timeline.png`) reads title, sub line, sentence, in that order. -->
       <div class="dayhead noprint">
-        <h1 class="game-h1" id="gameTitle"></h1>
+        <h1 class="game-h1" id="gameTitle" data-large-title></h1>
         <p class="game-sub" id="gameSub"></p>
       </div>
 
@@ -667,16 +676,16 @@
             <button class="btn ghost danger sm press" id="removeGame" hidden style="margin-top:.9rem">Remove this game</button>
           </div>
           <!-- #29 decision 8: Print, Share image and the card options moved
-               into `#sheetCard` below -- only Start game and its "?" stay out
-               here, above 900px only (`#actionbar` carries the phone's bench
+               into `#sheetCard` below -- only Start game stays out here,
+               above 900px only (`#actionbar` carries the phone's bench
                control). `.gm-start`, deliberately not `.gm-cta`: that class
-               now belongs to the sheet's own Print/Share row. -->
+               now belongs to the sheet's own Print/Share row. #33 decision
+               11 (W3): the "?" beside it is gone. -->
           <div class="gm-start noprint">
             <span class="gmq">
               <button class="btn press" id="gmOpen">
 <span class="i" data-icon="maximize-2"></span> <span class="ab-lab">Start game</span>
               </button>
-              <button class="helpq press" type="button" data-help="help-bench" aria-label="How changing the plan mid-game works">?</button>
             </span>
           </div>
         </aside>
@@ -999,14 +1008,16 @@
 
          #31: the screen is the roster read the way a coach reads it on paper
          -- one line per kid, tapped to open everything about them. Its own
-         large `h1` is the team's name (`team` joins `NO_BAR_TITLE` in
-         render.js, the arrangement `games` and `season` already have), and
-         the two actions on the right of the header -- Edit and `+` -- are
+         large `h1` is the team's name, and `data-large-title` on it is what
+         the header copies into `#barTitle` once it scrolls away (#33
+         decision 5, `syncBarTitle` in render.js -- the same arrangement
+         `games` and `season` have). The two actions on the right of the
+         header -- Edit and `+` -- are
          shown only here, the way `#shareBtn` is shown only on a game. The
          rows themselves, the second group under them and the empty state are
          all painted by `roster-view.js`. -->
     <div class="dayhead">
-      <h1 class="team-h1" id="teamTitle">Team</h1>
+      <h1 class="team-h1" id="teamTitle" data-large-title>Team</h1>
       <!-- "11 players": the prototype's muted sub, and the same count the
            roster footer used to carry, so it keeps the id that already had a
            writer. -->
@@ -1168,7 +1179,7 @@
          call: every other back screen keeps its own `h1` and `#barTitle`
          hides instead (`.game-h1`'s pattern, extended here). -->
     <div class="dayhead">
-      <h1 class="season-h1" id="seasonTitle">Season</h1>
+      <h1 class="season-h1" data-large-title>Season</h1>
       <p class="season-sub" id="seasonSub"></p>
     </div>
 
@@ -1208,7 +1219,7 @@
 
        Behind a cog rather than a fourth tab: the tab budget is spent (see the
        bar), and what is left here is set once and then left alone. -->
-  <main class="view wrap noprint" id="view-settings" hidden style="max-width:820px">
+  <main class="view wrap noprint" id="view-settings" hidden data-bar-title="Settings" style="max-width:820px">
 
     <!-- The team box. Heading `#setTeamHd` is painted by `renderSettings()` in
          teams-view.js, the one place a team's name is read with its `Team N`
@@ -1515,9 +1526,9 @@
         <span class="linkrow-chev" aria-hidden="true">›</span>
       </a>
       <!-- `data-tip-link` is the one selector `toast.js` reads TIP_URL
-           through -- the footer's `#tipLink` carries it too. No id here: this
-           row needs no reader of its own, and the footer already keeps
-           `tipLink` unique. Hidden the same way: no TIP_URL, no row. -->
+           through. #33 removed the footer's own `#tipLink`, so this is the
+           only tip-jar link left; still no id, since it needs no reader of
+           its own. Hidden the same way: no TIP_URL, no row. -->
       <a class="setrow linkrow" data-tip-link href="#" target="_blank" rel="noopener noreferrer">
         <span class="setrow-t">Buy me a coffee</span>
         <span class="linkrow-chev" aria-hidden="true">›</span>
@@ -1663,20 +1674,14 @@
        (`#sheetCard`) is one tap away from `#shareBtn` in the top bar at every
        width, including this one, so a second, narrower path to Print/Share
        was a control that did the same thing worse. -->
+  <!-- #33 decision 11 (W3): the bench "?" that used to sit beside this button
+       is gone, which is what makes `#abBench` span the bar's full width
+       (`.ab-main` is already `flex: 1`). -->
   <div class="actionbar noprint" id="actionbar" hidden>
     <button class="ab-main press" id="abBench">
       <span class="i" data-icon="maximize-2"></span>
       <span class="ab-lab">Start game</span>
     </button>
-    <!-- The bench "?" travels with the bench button. Above 900px that button is
-         `#gmOpen` and the "?" beside it lives in `.gm-start`; below 900px this bar
-         IS the bench control, so the door into `#help` has to be here or a phone
-         has none at all -- `shortcuts.js` refuses every key while a sheet is up,
-         so `#help` cannot be opened from inside game mode, and there is no
-         keyboard on a phone to press "?" with either. Exactly one of the two is
-         ever on screen: `.actionbar` is `display: none` above 900px and `.gmq`
-         is `display: none` below it. -->
-    <button class="helpq press" type="button" data-help="help-bench" aria-label="How changing the plan mid-game works">?</button>
   </div>
 
   <div class="tour noprint" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle">
@@ -1773,7 +1778,9 @@
 
       <h4 class="help-h">Rules</h4>
       <p class="help-p">Rules are things you need to be true; the plan works around them.
-        Add them under <b>Rules</b>, remove one by tapping its ✕.</p>
+        Open a game and tap the rules words in the sentence under its title. That
+        is where you add one, and each rule you have added carries its own ✕ to
+        take it away.</p>
       <dl class="help-dl">
         <dt>Minutes limit</dt>
         <dd>A floor, a ceiling, or both, for one player. “At least 10” guarantees floor
@@ -1809,9 +1816,9 @@
         other two. From the second game on there is a switch called <b>Even out earlier
         games</b>. Leave it on and the day evens out across every game, so a kid who sat
         more in game 1 gets it back in game 2. Turn it off and each game is fair on its
-        own. <b>Across the day</b> shows the running totals.</p>
+        own. The <b>Season</b> screen shows the running totals for the day.</p>
       <p class="help-p"><b>New day</b> files every game you have finished into the
-        <b>Season</b> tab, which keeps what each player actually played and exports as a
+        <b>Season</b> screen, which keeps what each player actually played and exports as a
         spreadsheet. Once a season has games in it, every game gets a second switch called
         <b>Even out the season so far</b>. It starts the players who are behind for
         the season a stint or two up, and the ones ahead a stint or two down. The switch
@@ -1827,13 +1834,13 @@
         for that stretch, and the <b>underlined</b> names are the
         ones who just came on. <b>START</b> is your opening five and <b>NO SUBS</b>
         means nobody changes at that break. Cut along the dashed line.</p>
-      <p class="help-p">Two sizes, under <b>Print</b>. <b>Pocket size</b> is 3.45 × 5 in,
+      <p class="help-p">Two sizes, under <b>Size</b>. <b>Pocket size</b> is 3.45 × 5 in,
         two to a sheet across, and is the one that lives in a notebook.
         <b>Half-sheet</b> is 8 × 5.1 in, two down the page: the same card in bigger type
         on a clipboard, and it lays the stints out in two columns, so a long game stays
         on one card.</p>
 
-      <h4 class="help-h" id="help-bench">Changing the plan mid-game</h4>
+      <h4 class="help-h">Changing the plan mid-game</h4>
       <p class="help-p"><b>Bench mode</b> opens the game one stint at a time.
         Tap whoever is coming off and pick how long the change lasts.</p>
       <dl class="help-dl">
@@ -1876,26 +1883,10 @@
     </div>
   </div>
 
-  <footer class="foot noprint">
-    <div class="foot-in">
-      <span class="foot-note">
-        <b>Benchcard is free</b>, and your roster never leaves your device.
-        <span class="foot-why">Built by an engineer who coaches, and got tired of
-        working the minutes out by hand before every game. If it has saved you a
-        Saturday morning, a coffee covers the hosting.</span>
-      </span>
-      <a class="foot-link" href="./about">How it works</a>
-      <!-- Deliberately a plain address and not a "get in touch!" pitch: the
-           reader this is for is a league or YMCA sports director deciding
-           whether to link the app, and they need a way to reach a person, not
-           to be sold to. Same class as the About link so it inherits the 44px
-           tap target the smoke check enforces. -->
-      <a class="foot-link" href="mailto:hello@benchcard.app">Contact</a>
-      <a class="tip press" id="tipLink" data-tip-link href="#" target="_blank" rel="noopener noreferrer">
-<span class="tip-ico i" data-icon="coffee"></span><span>Buy me a coffee</span>
-      </a>
-    </div>
-  </footer>
+  <!-- #33 decision 13: the footer, and `.foot`/`.foot-in`/`.foot-note`/
+       `.foot-why`/`.foot-link`/`.tip`/`.tip-ico` with it, is gone. Its three
+       destinations (How it works, Contact, the tip jar) already exist in
+       Settings -- `#helpBtn` and the two `.setrow.linkrow` rows beside it. -->
 </div>
 <script>
 /* Paints the timeline's shape while the modules are still on the wire. Runs

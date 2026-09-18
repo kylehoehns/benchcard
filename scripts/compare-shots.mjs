@@ -84,7 +84,7 @@ const otherTheme = t => (t === 'light' ? 'dark' : 'light');
 
 const pair = (name, view, theme, extra = {}) => ({
   name: `${name}-${theme}`, view, theme, width: WIDTH, rootPx: 16,
-  full: false, bottom: false, longNames: false, firstRun: false,
+  full: false, bottom: false, longNames: false, firstRun: false, titleCollapsed: false,
   twin: `${name}-${otherTheme(theme)}`,
   ...extra,
 });
@@ -106,6 +106,15 @@ const EXTRA_SHOTS = [
     firstRun: false, twin: null },
   // The empty first-run screen -- a genuinely wiped record, not RICH.
   ...THEMES.map(theme => pair('first-run', null, theme, { firstRun: true })),
+  // #33 item 11: `.bar.title-in` (decision 1) -- scrolled just past the large
+  // title, not to the bottom (a different, shallower scroll depth than the
+  // `bottom` state above, which also uses Season). Season, not Today: RICH's
+  // Today screen is only 853px tall against an 844px viewport, 9px of scroll
+  // room -- nowhere near enough to carry its large title out of view, a real
+  // capture-time failure this file's own `capture()` caught before ever
+  // writing a PNG (`.bar` never gained `title-in`). Season's ledger, day
+  // chart and filed games give it real room to scroll.
+  ...THEMES.map(theme => pair('title-collapsed', 'season', theme, { titleCollapsed: true })),
 ];
 
 export const SHOTS = Object.freeze([...BASE_SHOTS, ...EXTRA_SHOTS].map(Object.freeze));
@@ -283,6 +292,19 @@ async function capture(c, origin, want, outDir) {
     const view = VIEWS.find(v => v.name === want.view);
     if (view) await evalIn(c, step(view.open));
     if (want.bottom) await evalIn(c, step(`window.scrollTo(0, document.body.scrollHeight)`));
+    if (want.titleCollapsed) {
+      /* #33 item 11: `.bar.title-in` (decision 1), not the `bottom` state
+         above -- a shallow scroll, just past the large title, not to the
+         screen's own bottom. Verified before writing the PNG: a scroll that
+         did not actually clear `[data-large-title]` (a shorter title, a
+         taller viewport) would otherwise write a shot that looks like every
+         other plain one and silently prove nothing about the collapse. */
+      await evalIn(c, step(`window.scrollTo(0, 240)`));
+      const collapsed = await evalIn(c, `document.querySelector('.bar').classList.contains('title-in')`);
+      if (!collapsed) {
+        throw new Error(`${want.name}: .bar never gained title-in after scrolling -- this shot would not show the collapsed state`);
+      }
+    }
   }
 
   if (want.full) {
@@ -320,7 +342,7 @@ async function capture(c, origin, want, outDir) {
   return {
     name: want.name, file, view: want.view, theme: want.theme, width: want.width,
     rootPx: want.rootPx, full: want.full, bottom: want.bottom, longNames: want.longNames,
-    firstRun: want.firstRun, twin: want.twin, measured,
+    firstRun: want.firstRun, titleCollapsed: want.titleCollapsed, twin: want.twin, measured,
     digest: createHash('sha256').update(buf).digest('hex'),
   };
 }

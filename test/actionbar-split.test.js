@@ -37,15 +37,6 @@ const bar = (() => {
   return html.slice(start, html.indexOf('</div>', html.indexOf('id="abBench"')) + 6);
 })();
 
-const startRow = (() => {
-  const at = html.indexOf('class="gm-start noprint"');
-  assert.ok(at > -1, '.gm-start is gone');
-  const start = html.lastIndexOf('<div', at);
-  const end = html.indexOf('</div>', html.indexOf('id="gmOpen"'));
-  assert.ok(end > start, 'cannot find the end of the desktop Start-game row');
-  return html.slice(start, end);
-})();
-
 test('the phone bar owns bench, and only bench', () => {
   assert.match(bar, /id="abBench"/, 'the action bar lost its bench button');
   assert.doesNotMatch(bar, /id="print"|id="shareCard"/,
@@ -60,24 +51,14 @@ test('below 900px the desktop Start-game row hides, because the bar already has 
   assert.match(rule, /display:\s*none/, 'the phone rule does not hide .gm-start');
 });
 
-test('the bench "?" has a home at BOTH breakpoints, and only one shows at a time', () => {
-  /* `#help` cannot be opened from inside game mode — `shortcuts.js` refuses
-     every key while a sheet is up — and A20 slice 3 moved the three bench
-     scopes off about.html on the promise that `#help` is the surface a coach at
-     the bench can reach. That promise is only true while a "?" stands beside
-     whichever bench control the viewport has. */
-  // A fresh RegExp per call: `g` mutates `.lastIndex` on `.test()` (what
-  // `assert.match` uses), so one shared instance would silently skip past a
-  // real match in the second string it is asked to check.
-  const q = () => /data-help="help-bench"/g;
-  assert.match(bar, q(), 'the phone has no bench "?" — below 900px there is no way into #help at all');
-  assert.match(startRow, q(), 'the desktop Start-game row lost its bench "?" — there is no action bar above 900px');
-  assert.equal((html.match(q()) || []).length, 2,
-    'expected exactly two bench "?" buttons, one per breakpoint');
-  /* Mutually exclusive by construction: the bar is display:none above 900px and
-     only turns on inside the same query that hides `.gm-start`. */
+test('the phone bar and the desktop row stay mutually exclusive', () => {
+  /* #33 decision 11 (W3) removed the bench "?" this test used to pin at both
+     breakpoints. What still has to hold is the reason this file exists at
+     all: the bar is display:none above 900px and only turns on inside the
+     same query that hides `.gm-start`, so a coach never sees both Start-game
+     controls at once. */
   assert.match(css, /\.actionbar \{[^}]*display: none/,
-    '.actionbar no longer defaults to display:none, so both "?" would show at once on desktop');
+    '.actionbar no longer defaults to display:none — the phone and desktop Start-game rows could both show at once');
   assert.match(css, /@media \(max-width: 900px\) \{ \.actionbar:not\(\[hidden\]\) \{ display: flex/,
     'the action bar is no longer gated on the same 900px breakpoint the desktop row is');
 });

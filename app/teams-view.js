@@ -486,9 +486,12 @@ export function renderTabs() {
     // #69 decision 5: the one large title on the game screen is the
     // opponent, reusing `gameLabel`; the sub line reuses `passStatusEl`
     // above -- the pass's own status word and dot -- rather than a second
-    // copy of either. `#barTitle` above stays live for other back screens,
-    // but is visually hidden here (render.js's `applyView`) so it does not
-    // also read as a second visible `h1`.
+    // copy of either. `#barTitle` above holds the same words, but #33 made it
+    // a centered overlay that is laid out at all times: at the top of this
+    // screen it is painted at `opacity: 0` and marked `aria-hidden="true"`
+    // (`syncBarTitle` in render.js), so it is neither a second visible `h1`
+    // nor a second announced one. It fades in only once the large title has
+    // scrolled under the bar, by which point it is the only title left.
     const gt = $('#gameTitle');
     if (gt) gt.textContent = label;
     const gs = $('#gameSub');

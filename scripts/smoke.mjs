@@ -68,6 +68,8 @@ import { sheetSpacingPass } from './smoke/sheet-spacing.mjs';
 import { timelineCardSheetPass } from './smoke/timeline-card-sheet.mjs';
 import { teamScreenPass } from './smoke/team-screen.mjs';
 import { addGameFlowPass } from './smoke/add-game-flow.mjs';
+import { focusClearPass } from './smoke/focus-clear.mjs';
+import { floatingControlsPass } from './smoke/floating-controls.mjs';
 import { narrowPass } from './smoke/narrow.mjs';
 import { sweepPass } from './smoke/sweep.mjs';
 import { appLargeTextPass } from './smoke/app-large-text.mjs';
@@ -128,6 +130,8 @@ const RUN = {
   timelinecardsheet: ctx => timelineCardSheetPass(ctx.c, ctx.origin),
   teamscreen: ctx => teamScreenPass(ctx.c, ctx.origin),
   addgameflow: ctx => addGameFlowPass(ctx.c, ctx.origin),
+  focusclear: ctx => focusClearPass(ctx.c),
+  floatingcontrols: ctx => floatingControlsPass(ctx.c, ctx.origin),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
   applargetext: ctx => appLargeTextPass(ctx.c, ctx.origin),
@@ -347,6 +351,11 @@ async function browserChecks(origin, only) {
        like `teamscreen` above -- it reloads RICH before returning and every
        pass below finds the two-game Saturday it expects. */
     report.checks.push(await safeCheck('addgameflow', () => addGameFlowPass(c, origin)));
+    // #33 decision 15: right after the game screen is back to a known state
+    // (addgameflow above already reloads RICH, which lands on it).
+    report.checks.push(await safeCheck('focusclear', () => focusClearPass(c)));
+    // #33 items 1-6 and 10: same place, same reason -- it ends back on Today.
+    report.checks.push(await safeCheck('floatingcontrols', () => floatingControlsPass(c, origin)));
     report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
     report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep

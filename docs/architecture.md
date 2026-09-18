@@ -241,23 +241,12 @@ what the app does with a roster. It is static markup in `index.html`, not
 built in JS: it is prose, it never depends on state, and generating it would
 only make it harder to edit. It ends with **Show me around again**, which closes
 the sheet and re-runs the tour — switching back to the Games view first, since
-three of the four anchors live there.
-
-Settings is not the only door into it. Two **?** controls open the same
-sheet scrolled to the section that describes the control they sit beside:
-*Use this on the bench* in both places it appears.
-Plan, Lineup balance and Rules lost theirs when they moved into the Plan sheet
-(#28); their sections of the help sheet stay. The rule is one **?** per section
-of the sheet, not one per control: each is a `data-help="<section id>"` in the
-markup and `shortcuts.js` is the only thing that reads it, so another is an
-edit to `index.html` alone. The target is the in-app sheet rather than
-`advanced.html` on purpose — it never leaves the app, so it works in a gym with
-no signal, needs no page load and has no back button. *Reading the card* has no
-**?**, because its header is itself a button and the card's own surface is now
-a sheet whose header holds exactly one control, the ✕ that closes it (#29, C4).
-The scroll is a single `scrollTop` write on `.keysbox`: `scrollIntoView`
-defaults `inline` to `'nearest'` and would move the sheet sideways, which is
-the same bug the tour carries a note about.
+three of the four anchors live there. One control opens it now — `#helpBtn`, the
+**Open** button on the *How it works* row in Settings. The **?** buttons that used
+to sit beside individual controls are gone, along with the `data-help` attribute
+that told each one which section to scroll to (#33, W3). The scroll is a single `scrollTop` write on
+`.keysbox`: `scrollIntoView` defaults `inline` to `'nearest'` and would move the
+sheet sideways, which is the same bug the tour carries a note about.
 
 **The Team screen is the roster the way a coach reads it on paper (#31).** The
 team's own name is a large in-page `h1` with a muted *N players* under it (the
@@ -404,23 +393,53 @@ every step, and "‹ Back" joins the primary button in the footer from step 2 on
 Closing with an opponent or a tip-off typed asks "Discard this game?" first,
 through the same `guardClose` seam and in-dialog ask row the paste sheet uses.
 
-**One header, two states.** `.bar` no longer changes shape one member at a
-time; it holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
-`#barBack` (a round chevron button labeled *Back to Today* and the screen's
-title), and `applyView` toggles which half is visible with the `hidden`
-attribute — never both, because a coach is always on Today or exactly one screen
-away from it. `applyView` always *writes* the title, and hides it on every
-screen that carries its own in-page `h1` — the game, Season and, since #31,
-Team — which leaves Settings as the only screen the bar titles. That is one
-set (`NO_BAR_TITLE`) rather than a chain of comparisons, so the next screen
-with its own title joins a list instead of growing another `||`. On the game
-screen, the opponent name shows as a large in-page h1 title with a sub-line
-showing tip-off time and status, so the header stays clean (#69).
+**One header, two states.** `.bar` floats above content with no border or opaque
+background (L2, L3). Instead of a line, a `::before` scrim fades using
+`backdrop-filter`, and both fade under `prefers-reduced-transparency: reduce`,
+`prefers-contrast: more`, or where `backdrop-filter` is unavailable (#33).
 
-The right of that header is per screen, and at most two controls (C1): the
-share button on a game, the export on Season once there is a file to save, and
-*Edit* plus `+` on Team. Each is hidden by `applyView` the same way, on the one
-view it belongs to.
+The bar holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
+`#barBack` (a round chevron button labeled *Back to Today*), toggled by
+`applyView` with the `hidden` attribute — never both, because a coach is always
+on Today or exactly one screen away from it.
+
+The bar's title is a centered overlay, `#barTitle`, positioned absolutely inside
+`.bar` and `pointer-events: none` so it takes no space in either half (#33
+decisions 3–5). On the four screens that own a large title (Today, a game, Team,
+Season), the overlay's text is copied at runtime from whichever element carries
+`data-large-title` in the view's `<main>` — a single source of truth that stays
+honest when a coach renames the team in the roster. Settings has no large title,
+so its bar title reads the static `data-bar-title` on its `<main>` and is shown
+at all times. An `IntersectionObserver` in `render.js` (`watchLargeTitle`)
+watches the view's `[data-large-title]` element and toggles `.bar.title-in` as
+it slides under the bar, fading the overlay in or out. The observer's `rootMargin`
+is shrunk by the bar's measured height so exactly one title is always on screen.
+
+The bar title's width is measured, not guessed (#33 decision 4): `render.js` runs
+`measureBarSide`, which measures how far the outermost control in each cluster
+reaches in from the bar's own edge, takes the larger of the two and writes it as
+`--bar-side`. The overlay's `inset` is set from that, so its box stops short of
+the buttons on either side instead of sliding under them on a narrow phone. It
+is an edge distance rather than a sum of button widths on purpose: padding,
+flex gaps and margins are all inside the number that way, and none of them can
+be forgotten. The heights of the bar and action bar are measured
+into `--bar-h` and `--ab-h` to feed `html`'s `scroll-padding-top` and
+`-bottom`, so focus never lands under floating chrome (#33 decision 14).
+
+Five header controls became translucent chips (#33 decision 9): `#backBtn`,
+`#shareBtn`, `#settingsBtn` and `#teamAdd` are 48px hit areas around a 2.25rem
+circle, and `#teamBtn` is the same treatment as a pill, because its content is
+the team's name rather than one glyph. All five use `--r-full`, a
+`color-mix` fill over `--surface-2` and a `backdrop-filter`, and all five go
+flat and opaque under reduced transparency, more contrast, or no
+`backdrop-filter` support. `#todayNewDay`, `#teamEdit` and `#seasonExport` stay
+plain text with no chip (decision 10) — a screen's chrome tops out at two
+filled controls or it reads as a toolbar.
+
+The right of the bar carries at most two actions per screen (C1): the share
+button on a game, the export on Season once there is a file to save, and *Edit*
+plus `+` on Team. Each is hidden by `applyView` the same way, on the one view
+it belongs to.
 
 **Print stands on the games view only.** It is the one control in the bar that
 belongs to a single view: Games is the only place printing means anything, and
