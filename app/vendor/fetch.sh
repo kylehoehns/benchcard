@@ -57,8 +57,8 @@ done
 echo "vendoring lucide icons (ISC) -> ../icons.js"
 mkdir -p icons
 for n in x chevron-left chevron-right lock lock-open maximize-2 rotate-ccw coffee \
-         printer plus arrow-up arrow-down clipboard-list \
-         shuffle triangle-alert info trash-2 circle-alert play \
+         printer plus arrow-up arrow-down \
+         shuffle triangle-alert info circle-alert play \
          grip-vertical share-2 share settings; do
   curl -sSL --retry 3 --retry-delay 2 --max-time 20 \
     "https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/${n}.svg" -o "icons/${n}.svg"

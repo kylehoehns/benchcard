@@ -488,42 +488,6 @@ a { color: inherit; }
    #28: the shape picker moved into the Plan sheet's `.prow-shape` rows below;
    `.bal-intro`, `.bal-shape` and `.bal-blurb` were its fold-era look and
    nothing emits them any more. */
-/* The meter as a second line inside a roster row. `grid-column: 1 / -1` spans
-   whatever column count the row has at this width -- the roster row changes
-   shape twice on the way down to 390px, and hard-coding a span would break at
-   one of them. */
-.rrow .bal-meter { grid-column: 1 / -1; display: grid;
-  grid-template-columns: 1fr auto; align-items: center; gap: .6rem;
-  margin-top: .15rem; padding-top: .25rem; border-top: 1px solid var(--line); }
-/* The steps have to share the row's width, not sit at their standalone 30px:
-   inside a roster row that left them 12px wide, which is a 44px rule broken by
-   the change meant to make the feature easier to reach. */
-.rrow .bal-meter .bal-steps { display: grid; grid-template-columns: repeat(5, 1fr);
-  gap: .25rem;
-  /* the standalone list's mobile rule sets `grid-area: steps` on every
-     `.bal-steps`, and inside a meter with no named areas that drops the strip
-     into an implicit track ~64px wide -- 12px a step, under the touch minimum */
-  grid-area: auto; }
-.rrow .bal-meter .bal-step { width: auto; padding-bottom: 8px; min-height: 44px; }
-.rrow .bal-meter .bal-step::after { max-width: 3rem; margin: 0 auto; }
-/* Same leak as the steps above: the standalone list's mobile rule sets
-   `grid-area: lv`, and inside a meter with no named areas that pushes the word
-   onto a row of its own -- which is why it sat orphaned under the strip instead
-   of beside it, and why the row was 27px taller than it needed to be. */
-.rrow .bal-meter .bal-lv { grid-area: auto; width: auto; white-space: nowrap; }
-.rlist .rrow { padding-bottom: .5rem; }
-.levelsfoot { margin-top: 1.1rem; display: flex; flex-direction: column;
-  align-items: flex-start; gap: .5rem; }
-.levelsfoot .note { max-width: 62ch; }
-/* "Put everyone back to the same level": `.btn` is `white-space: nowrap` by
-   design, and a wide system font can push this one-line label past a narrow
-   column on its own, not just at the enlarged-text size the @media
-   (max-width: 19em) block below already covers. `.levelsfoot` is a column
-   flex with `align-items: flex-start`, so once the text may wrap the button
-   shrinks to the space there is, at any text size (#21 CI fix). */
-.levelsfoot .btn { white-space: normal; text-align: center; }
-#levelskey { margin: .9rem 0 .35rem; }
-#levelskey .bal-key { grid-template-columns: 1fr; }
 
 /* A staircase, not five identical marks. The first version drew every step the
    same height and lit the selected one, which meant nothing on the control
@@ -555,61 +519,21 @@ a { color: inherit; }
 .bal-step.on::after { transform: scaleX(1.06); }
 @media (hover: hover) { .bal-step:hover:not(.fill)::after { background: color-mix(in srgb, var(--c) 45%, var(--line-2)); } }
 
-/* Says the direction in words, once, rather than labelling every row. Shares
-   the row grid exactly so the two ends sit over the two ends of the meter. */
-.bal-key { display: grid; grid-template-columns: 2rem 1fr auto auto; gap: .6rem;
-  align-items: center; margin: 0 0 .4rem; }
-.bal-key-ends { grid-column: 3; display: flex; justify-content: space-between;
-  align-items: center; gap: .5rem; }
-.bal-key-ends span { font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .07em;
-  text-transform: uppercase; color: var(--faint); white-space: nowrap; }
-.bal-key-arrow { flex: 1; height: 1px; min-width: 1.2rem;
-  background: linear-gradient(to right, var(--line), var(--line-2)); }
 .bal-lv { font-size: var(--fs-footnote); color: var(--muted); width: 5.2rem; text-align: right;
   font-variant-numeric: tabular-nums; }
-/* Five 44px targets plus an avatar plus a name does not fit 390px, and the
-   answer is not a smaller target -- this is set standing up, one-handed. The
-   row stacks instead: name on top, the meter beneath it at full width, which
-   makes every step comfortably wider than the minimum rather than barely
-   under it. */
-@media (max-width: 620px) {
-  .bal-key { grid-template-columns: 1fr; }
-  .bal-key-ends { grid-column: 1; }
-  /* Three columns, two rows: the level word moves up beside the name instead
-     of being dropped. Hiding it was a space decision made before the row
-     stacked -- once the meter has its own line there is room on the first one,
-     and the word is the part a coach reads. A meter with no label is a row of
-     bars. */
-  /* The word stays on a phone. It was hidden here when the meter was optional
-     and the name sat right above it; now that this is the feature a coach comes
-     to the roster for, "Go-to" is the part they read. Five 44px steps plus a
-     5.2rem label still fits 390px -- measured, not assumed. */
-  .rrow .bal-meter { grid-template-columns: 1fr auto; }
-  .bal-lv { grid-area: lv; display: block; width: auto; }
-  .bal-steps { grid-area: steps; display: grid; grid-template-columns: repeat(5, 1fr);
-    gap: .3rem; margin-top: -.15rem; }
-  /* narrower than the row so the meter reads as a control rather than as five
-     blocks butting up against both edges of the screen */
-  .bal-step { width: auto; padding-bottom: 10px; }
-  .bal-step::after { max-width: 3.2rem; margin: 0 auto; }
-}
-
-/* The in-row meter cannot keep the level word beside the strip on a small
-   phone. Five steps sharing whatever is left of the row measured 41.9px at
-   320px and crossed under 44 at about 365 -- so a 360px Android was setting a
-   child's level through a target narrower than the rule, and the smoke touch
-   pass never saw it because it ran at 390 only.
-   The arithmetic, so the next person does not have to re-derive it: a 44px
-   step needs `viewport >= 285.6px + the level word`, and the longest label
-   ("Developing") is ~68px, which puts the crossing at ~354px. 380 is the
-   threshold with headroom.
-   The trade is height, not the word: the word is what a coach reads, so it
-   keeps its place and moves to its own line under the strip, and the strip
-   takes the whole row -- 56px a step at 320px, still over 44 down to 260. */
-@media (max-width: 380px) {
-  .rrow .bal-meter { grid-template-columns: 1fr; row-gap: .05rem; }
-  .rrow .bal-meter .bal-lv { justify-self: end; font-size: var(--fs-footnote); }
-}
+/* #31: the level meter's one home is the player sheet's Level row. The strip
+   takes the full width of the group -- 56px a step at 320px, measured the
+   same way the old in-row meter was -- with the level's own word under it,
+   right-aligned. `levelMeter` (balance.js) is unchanged; this is the restyle.
+   The word is what a coach reads, so it is never hidden. */
+.prow-level { padding-top: .6rem; padding-bottom: .6rem; }
+.prow-level .bal-meter { flex: 1; min-width: 0; display: grid; row-gap: .05rem; }
+.prow-level .bal-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
+.prow-level .bal-step { width: auto; padding-bottom: 10px; }
+/* narrower than the row so the meter reads as a control rather than as five
+   blocks butting up against both edges of the sheet */
+.prow-level .bal-step::after { max-width: 3.2rem; margin: 0 auto; }
+.prow-level .bal-lv { width: auto; justify-self: end; }
 
 /* The 385px stage used to live here, six hundred lines above the 620px block,
    where it did nothing at all: both match on a phone, both name `.bar`, and
@@ -636,8 +560,10 @@ a { color: inherit; }
 .dayhead { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
 /* #30 decision 2: Season's own large title reuses these rules by joining the
    selector list -- not a copy, because a value changed here for one screen
-   and not the other is the wrong-title bug this file has already had once. */
-.dayhead .game-h1, .dayhead .season-h1 {
+   and not the other is the wrong-title bug this file has already had once.
+   #31's Team title (the team's own name, over an "11 players" sub) joins the
+   same two lists for the same reason. */
+.dayhead .game-h1, .dayhead .season-h1, .dayhead .team-h1 {
   margin: 0; font-size: var(--fs-large); font-weight: 700; letter-spacing: -.025em;
   color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -645,7 +571,7 @@ a { color: inherit; }
    text-node child at the edge of the next flex item, the same as it would at
    a block edge -- "9:00 · " ran straight into the dot with no gap at all.
    .375rem (6px at the body size) is the prototype's own `.lt .sub` value. */
-.dayhead .game-sub, .dayhead .season-sub {
+.dayhead .game-sub, .dayhead .season-sub, .dayhead .team-sub {
   margin: .1rem 0 0; font-size: var(--fs-secondary); color: var(--muted);
   display: flex; align-items: center; gap: .375rem;
 }
@@ -1201,75 +1127,83 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .legend span:nth-child(2) i { opacity: .66; } .legend span:nth-child(3) i { opacity: .42; } .legend span:nth-child(4) i { opacity: .28; }
 
 /* ============================ roster ============================ */
-.rlist { display: flex; flex-direction: column; gap: .4rem; }
-/* six columns, and they must stay identical to .rhead below or the labels
-   sit over the wrong values -- the order column was added to one and not the
-   other once already. */
-.rrow {
-  --c: var(--muted);
-  /* 2.75rem, not 2.4rem, on the jersey-number column: 2.4rem is 38.4px and the
-     input fills the column, so `input.num` was a 38.4px touch target at every
-     width -- the 44px rule broken everywhere, always, rather than only on a
-     narrow phone. The name column is `1fr` and absorbs the 5.6px. */
-  display: grid; grid-template-columns: 1.7rem 2.75rem 3.2rem 1fr 5.2rem 2.2rem; gap: .5rem; align-items: center;
-  padding: .4rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--line);
-  background: var(--surface); animation: rowIn var(--t-fast) var(--ease) both;
-}
+/* #31: the roster list IS the `.pgrp` / `.prow` grammar the sheets and
+   Settings use -- one line per kid, the whole row a button onto that
+   player's sheet. So the six-column grid that used to live here is gone with
+   the fields it carried (`.rlist`, `.rhead`, `.rfoot`, the inline inputs and
+   the ✕): a row holds nothing a mis-tap can edit, because a player is edited
+   in their own sheet (C6). What is left is what a roster row adds to a
+   settings row -- the badge in the player's own color, the drag, and Edit
+   mode's order column. */
+/* The row wraps, and the name keeps its narrowest real width.
+   A settings row is a label and a value; a roster row adds a 2rem badge and,
+   in Edit mode, three 48px buttons ahead of it. Measured at 320px with a 32px
+   root: the badge (64px), the three gaps (24px each) and the chevron left
+   `.prow-t` exactly 0px, and `flex: 1 1 0%` with `min-width: 0` (the shared
+   `.prow` grammar) shrank it to that rather than wrapping -- so "Marcus
+   Williams" overflowed a zero-width box and painted straight over "Regular".
+   `min-content` is the longest word, and `flex-wrap` gives the level word and
+   the chevron a second line when even that will not fit, the same move
+   `#sheetCard .pgrp .prow` makes for the card options. At 390px nothing
+   wraps and nothing moves. */
+.rrow { --c: var(--muted); animation: rowIn var(--t-fast) var(--ease) both; flex-wrap: wrap; }
+.rrow .prow-t { min-width: min-content; }
 @keyframes rowIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 .rrow .av { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-size: var(--fs-footnote); font-weight: 700;
+  flex: none;
   background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
   box-shadow: inset 0 0 0 var(--av-ring) var(--c); font-variant-numeric: tabular-nums; }
-.rrow input { padding: .44rem .5rem; border-color: transparent; background: none; }
-@media (hover: hover) { .rrow input:hover { border-color: var(--line-2); } }
-.rrow input.num, .rrow input.short { text-align: center; font-variant-numeric: tabular-nums; }
-/* two kids wearing one number: mark both fields, quietly. The row is not the
-   error -- the pair is -- so this tints rather than shouts, and the banner
-   above the list is what names them. */
-.rrow input.num.dupe { color: var(--warn); background: var(--warn-soft); border-color: var(--warn); font-weight: 600; }
-.rhead { display: grid; grid-template-columns: 1.7rem 2.75rem 3.2rem 1fr 5.2rem 2.2rem; gap: .5rem;
-  font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--faint); font-weight: 600; padding: 0 .55rem .5rem; }
-.rhead span:nth-child(3), .rhead span:nth-child(5) { text-align: center; }
-.rord { display: flex; flex-direction: column; gap: 1px; }
-.obtn { font-size: var(--fs-footnote); line-height: 1; padding: .16rem .1rem; border-radius: 4px; color: var(--faint); }
+/* Edit mode (#31 item 7, decision 7): the order column, ahead of the badge.
+   Grip, up and down are each a 48px target at EVERY width -- the rule that
+   used to hide the arrows below 620px is deleted, because a phone is the
+   only device this app is designed for and I3 wants a visible button for
+   every drag. Pinned by test/roster-order.test.js. The row gives up its own
+   side padding to pay for the column; the buttons' own targets are what
+   keeps it 48px tall. */
+.rrow-edit { padding-left: .25rem; padding-top: 0; padding-bottom: 0; }
+.rord { display: flex; align-items: center; flex: none; }
+.obtn { width: 48px; height: 48px; display: grid; place-items: center;
+  border-radius: var(--r-xs); color: var(--muted); line-height: 1; }
 @media (hover: hover) { .obtn:hover:not(:disabled) { color: var(--ink); background: var(--surface-2); } }
 .obtn:disabled { opacity: .22; cursor: default; }
-/* the grip is the phone's reorder handle; the arrow pair takes over above 620px */
-.rgrip { display: none; }
 
 /* drag to reorder: the grab area is the order column and the avatar, so the
    rest of the row still scrolls the page under a thumb. */
 .rrow .rord, .rrow .av { touch-action: none; cursor: grab; }
 .rrow.drag .rord, .rrow.drag .av { cursor: grabbing; }
-.rlist.dragging { user-select: none; -webkit-user-select: none; }
+#rosterlist.dragging { user-select: none; -webkit-user-select: none; }
 /* `animation: rowIn ... both` keeps applying its last keyframe forever, and a
    filling animation outranks inline style -- so every `row.style.transform`
    the drag set was silently discarded and nothing moved. Drop the fill for the
    duration of the drag; the animation has long finished by then and its end
    state is the row's natural one, so nothing flashes. */
-.rlist.dragging .rrow { animation: none; transition: transform var(--t-fast) var(--ease); }
-.rlist.dragging .rrow.drag { transition: none; position: relative; z-index: 5;
-  box-shadow: var(--shadow-lg); border-color: var(--c); }
-.rlist.no-anim .rrow { animation: none !important; }
-.rfoot { display: flex; align-items: center; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
-.rcount { margin-left: auto; font-size: var(--fs-footnote); color: var(--faint); font-variant-numeric: tabular-nums; }
-/* The card-name note rides in the footer so it lives with the control it
-   describes; full basis puts it on its own line under the buttons rather than
-   squeezing the row. */
-.rfoot .note { flex: 0 0 100%; margin: .15rem 0 0; max-width: 62ch; }
+#rosterlist.dragging .rrow { animation: none; transition: transform var(--t-fast) var(--ease); }
+#rosterlist.dragging .rrow.drag { transition: none; position: relative; z-index: 5;
+  box-shadow: var(--shadow-lg); border-radius: var(--r-sm); background: var(--surface); }
+#rosterlist.no-anim .rrow { animation: none !important; }
+/* The dragged row is lifted off the group, so the divider its neighbor draws
+   above it would hang in the air under it. */
+#rosterlist.dragging .rrow.drag + .rrow::before { opacity: 0; }
+
+/* Decision 8: the first-run state, designed rather than inherited (W4) -- a
+   heading, one sentence of what to do, and both ways to do it. Centered on a
+   screen that is otherwise empty; no dashed box, because there is no list for
+   it to stand in for yet. */
+.team-empty { text-align: center; padding: 2.4rem 1rem 1rem; }
+.team-empty-t { font-size: var(--fs-title); font-weight: 700; margin: 0 0 .35rem; }
+.team-empty-s { font-size: var(--fs-secondary); color: var(--muted); margin: 0 auto; max-width: 34ch; }
+.team-empty-acts { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; margin-top: 1.2rem; }
+.team-empty-acts .btn { min-height: 48px; }
+
+/* The blocked-rotation state on the games view still uses this -- same empty
+   state, but there it has to offer the way out as well as name the problem
+   (timeline.js). */
 .roster-empty { text-align: center; padding: 3rem 1rem; border: 1px dashed var(--line-2); border-radius: var(--r); }
 .roster-empty .se-ico { font-size: var(--fs-large); margin-bottom: .6rem; opacity: .8; }
 .roster-empty .se-t { font-size: var(--fs-body); font-weight: 700; margin-bottom: .3rem; }
 .roster-empty .se-s { font-size: var(--fs-secondary); color: var(--muted); }
-/* the same empty state stands in for the blocked rotation on the games view,
-   where it has to offer the way out as well as name the problem */
 .roster-empty .re-acts { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; margin-top: 1.1rem; }
 .roster-empty .re-acts .btn { min-height: 44px; }
-.xbtn { color: var(--faint); padding: .42rem; border-radius: var(--r-xs); line-height: 1; font-size: var(--fs-headline); }
-@media (hover: hover) { .xbtn:hover { color: var(--err); background: var(--err-soft); } }
-@media (max-width: 620px) {
-  .rrow, .rhead { grid-template-columns: 1.5rem 2rem 2.6rem 1fr 4.2rem 2rem; gap: .3rem; }
-  .rrow input { padding: .42rem .35rem; }
-}
 
 /* ============================ game mode ============================ */
 .gm {
@@ -2134,7 +2068,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 
 /* `--nmw` is the name column, and it is ONE number because the quarter strip
    has to start exactly where the tracks do. `min()` caps it as a share of the
-   viewport, which is the same answer `.dayrow` and `.rlist .rrow` already
+   viewport, which is the same answer `.dayrow` already
    give: a `rem` track is a TEXT measure, so at a 32px root a bare 4.2rem is
    134px of a 212px content box and the row is wider than the screen before
    the bars have any width at all. */
@@ -2395,6 +2329,11 @@ dialog.bsheet.grouped { background: var(--sheet); box-shadow: var(--shadow-lg), 
    but bottom padding so the last group clears the status line's divider --
    matches the plain `.bsheet-body` rule below. */
 dialog.bsheet.grouped .bsheet-body { padding: 0 0 1rem; }
+/* #31 P6: the card-name note, which sits between two groups rather than
+   inside one. Same inset as `.pgrp-f` (the footnote under a group), so the
+   sentence lines up with the group it describes instead of running to the
+   sheet's own edges. */
+dialog.bsheet.grouped .bsheet-body > .note { padding: .45rem 2rem 0; margin: 0; }
 /* Fix pass finding 2: every other `.bsheet` gets its bottom safe-area
    clearance from `.bsheet-status`'s own padding below -- the card sheet
    deliberately carries no status line (decision 3), so nothing gave its
@@ -2598,6 +2537,17 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
    will not be squeezed by `.bsheet-body`'s `flex: 1`. */
 .bsheet-toasts { flex: none; padding: 0 1.1rem .5rem; }
 
+/* C4: a commit sheet's confirm -- full width at the foot of the body, named
+   for the result ("Add player", "Add 3 players") and never "Done". Sits in
+   the scrolling body rather than in a bar of its own: a sheet at rest is half
+   the screen, so the button is on screen without one, and `#sheetPaste`'s
+   discard ask takes exactly this slot when it appears. */
+.bsheet-cta { display: flex; flex-direction: column; gap: .5rem; padding: 1.1rem 1rem 0; }
+.bsheet-cta .btn { width: 100%; min-height: 48px; white-space: normal; }
+/* Decision 5: the question the ask puts above its two answers. */
+.bsheet-ask-t { margin: 0 0 .2rem; font-size: var(--fs-secondary);
+  color: var(--muted); text-align: center; }
+
 /* ======================== the Plan sheet's groups (#28) =================
  * Decision 3: iOS-style grouped rows, `--surface` islands on the sheet's own
  * `--sheet` background. `.prow` is deliberately not `.sheetrow` (#27's
@@ -2633,6 +2583,13 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
    would double it. Top spacing is unaffected: `.sn-day` (below) sits directly
    above each `.pgrp` and needs the gap `.pgrp`'s own top margin gives it. */
 #view-season .pgrp { margin-left: 0; margin-right: 0; }
+/* #31: Team takes the same screen modifier for the same reason -- `.wrap`
+   gives `#view-team` its own side padding, and the sheet inset on top of it
+   would be 32px of margin against a 390px screen. Named by the two groups
+   the screen paints, not as `#view-team .pgrp`: this screen's three sheets
+   live INSIDE `#view-team` (the way `#sheetCard` lives inside `#view-games`),
+   and inside a sheet that inset is the only side padding there is. */
+#rosterlist, #teamActions .pgrp { margin-left: 0; margin-right: 0; }
 
 /* #73 item 7: fixed vertical padding (not `min-height` alone), so a row that
    wraps to two lines keeps the same distance from its first line's top and
@@ -2713,6 +2670,28 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
   #sheetCard .pgrp .prow-select { flex: 1; }
 }
 @media (hover: hover) { button.prow:hover { background: var(--surface-2); } }
+/* #31: a text field inside a `.prow` row -- Number, Name and Card name in the
+   player sheet. `#sheetCard .pgrp .prow-select` above is the prior art: the
+   row is the label, the control sits where the value sits and keeps the row's
+   own type, with the platform chrome stripped off. Two classes deep so it
+   beats the `input[type="text"]` rules (an element+attribute selector) that
+   give every other field in the app its border, its padding and its own 44px
+   floor -- here the ROW is the 48px target, and a second floor inside it
+   would make every row 70px tall. */
+.pgrp .prow-in { flex: 1 1 auto; min-width: 0; width: auto; text-align: right;
+  font: inherit; font-size: var(--fs-body); color: var(--ink);
+  background: none; border: 0; border-radius: 0; padding: 0; margin: 0; min-height: 0; }
+.pgrp .prow-in::placeholder { color: var(--faint); }
+.pgrp .prow-in:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+.pgrp .prow-in-num { font-variant-numeric: tabular-nums; }
+/* two kids wearing one number: mark the number, quietly. The row is not the
+   error -- the pair is -- so this tints rather than shouts, and the banner
+   above the roster is what names them. Since #31 the only jersey-number field
+   in the app is the player sheet's, so the mark is on that -- and it has to
+   sit after `.pgrp .prow-in` above, which strips exactly these three
+   properties off the field. */
+.pgrp .prow-in.dupe { color: var(--warn); background: var(--warn-soft);
+  box-shadow: inset 0 0 0 1px var(--warn); border-radius: var(--r-xs); font-weight: 600; }
 .prow-center { justify-content: center; text-align: center; }
 .prow-danger { color: var(--err); font-weight: 600; }
 .prow-icon { color: var(--muted); }
@@ -3217,66 +3196,21 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      fixture renders none of this and measures it as clean. The three tracks
      are `rem`, i.e. a text measure: at a 32px root the name column alone is
      153.6px and the minutes column 83.2px, so 275px of a 288px content box was
-     spent before the bar had any width and `.v` landed at 332px. Exactly the
-     `.rlist .rrow` case a few rules down, and the same answer -- cap each fixed
+     spent before the bar had any width and `.v` landed at 332px. The same
+     answer the roster's own row grid took before #31 retired it -- cap each fixed
      track at the share of the viewport it can have, and let the bar's track
      floor at 0 rather than at its own min-content. */
   .dayrow { grid-template-columns: min(4.8rem, 34vw) minmax(0, 1fr) min(2.6rem, 20vw); }
 
-  /* The roster list, which was the last view still off the edge: the rows
-     stopped 32px past a 320px right edge and the header strip 106px past it,
-     and since `.app` is the containing block for `#toasts`, the fixed toast
-     rail inherited the header's 426px — one defect wearing three faces.
-
-     Not a wrapping problem. The row is a four-track grid whose three fixed
-     tracks are `rem`, and a `rem` track is a *text* measure: at a 32px root
-     2.75rem is 88px, so 264px of a 320px screen went on the grip, the jersey
-     number and the delete button before the name column began. `min()` caps
-     each track at the share of the viewport it can have; `max(44px, …)` holds
-     the floor at the touch minimum, without which this block's own 300px end
-     (19em is 304px at default text) would shrink the tracks under `.xbtn`'s
-     44px and push the page wide — the exact failure the `.srow` note above
-     already records.
-
-     `minmax(0, 1fr)` is the second half and is not cosmetic: a bare `1fr`
-     floors at min-content, which for `.rhead` is the word "Player" — 79px no
-     capping elsewhere can recover, and the whole of the header's extra 74px.
-
-     Needs `.rlist .rrow` and `.view .rhead`: the four-column template lives in
-     the 620px block ~60 lines BELOW this one and would otherwise win on source
-     order — the same trap as `.setrow .minwrap` above. The inline padding goes
-     with it, because a 44.8px track cannot also carry 30px of input padding
-     and still show two digits. */
-  .rlist .rrow, .view .rhead {
-    grid-template-columns:
-      max(44px, min(2.75rem, 14vw)) max(44px, min(2.75rem, 14vw))
-      minmax(0, 1fr) max(44px, min(2.75rem, 14vw));
-  }
-  .rlist .rrow input { padding-inline: .1rem; }
-
-  /* The levels key above the list, the last 6px of the roster's overflow.
-     "DEVELOPING" and "GO-TO" are `nowrap` on purpose, so the flex line's
-     min-content is the two words plus the arrow's own `min-width: 1.2rem`
-     floor — 38px of decoration at a 32px root. The arrow says "there is a
-     direction"; `justify-content: space-between` says it for free by holding
-     the two words at the two ends, so the floor is what gives.
-     One declaration, not two: tightening the .5rem gap fixes the same 6px on
-     its own, so shipping both would have left one of them dead. Checked each
-     way round rather than assumed.
-
-     #24: footnote is now the scale's floor (T3 -- nothing below it), so
-     "DEVELOPING" and "GO-TO" are wider than the .66rem they were when the
-     arrow's min-width alone closed the gap. Wrapping is the same one-line
-     answer this block gives everywhere else a nowrap pair cannot shrink
-     enough. */
-  .bal-key .bal-key-arrow { min-width: 0; }
-  .bal-key-ends { flex-wrap: wrap; row-gap: .1rem; }
-
-  /* "Put everyone back to the same level" was the whole of the roster's
-     remaining 208px pan here, the `.gm-cta` and `.backuprow` case exactly --
-     now handled unconditionally by `.levelsfoot .btn` near its base rule
-     (#21 CI fix), since a wide system font hit the same one-line label well
-     below a 32px root too. Nothing left to do at this size specifically. */
+  /* The roster list, which used to be the last view still off the edge here,
+     is a `.pgrp` list of flex rows since #31 -- no fixed `rem` tracks left to
+     cap, and the only thing in a row that cannot shrink is the 2rem badge.
+     The Level meter's five steps are a grid of `1fr`s inside the player
+     sheet, which shares the sheet's own width. "Put everyone back to the same
+     level" was the rest of the roster's 208px pan here, the `.gm-cta` and
+     `.backuprow` case exactly (#21 CI fix); it is a `.prow` row now, so its
+     label is wrapping text rather than a nowrap `.btn`. Nothing to do at this
+     size. */
 
   /* And the season ledger, the last view still off the edge. `.sn-row` is a
      three-column grid -- name, track, minutes -- and only the middle track
@@ -3289,7 +3223,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   /* Needs `.sn-list .sn-row`/`.sn-list .sn-name`, not the bare classes: the
      base rules live ~245 lines BELOW this block and would otherwise win on
      source order at equal specificity -- the same trap `.setrow .minwrap`
-     and `.rlist .rrow` above already name, and the one that let this ship
+     above already names, and the one that let this ship
      with the three-column template still applied and `.sn-name` measuring
      310px in a 275px row before it was caught. */
   .sn-list .sn-row { grid-template-columns: 1fr auto; row-gap: .2rem; }
@@ -3373,7 +3307,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      260px -- wider than `#welSetup`'s own card leaves it inside `.wel-in`'s
      30rem cap and the welcome screen's padding. `min(…, 40vw)` gives the
      track a second, viewport-relative floor for exactly the narrow-column
-     cases this block already handles (`.dayrow`, `.rlist .rrow`); at any
+     cases this block already handles (`.dayrow`, `.sn-row`); at any
      ordinary width `40vw` is wider than `8.125rem` and this changes nothing. */
   .row { grid-template-columns: repeat(auto-fit, minmax(min(8.125rem, 40vw), 1fr)); }
 
@@ -3431,24 +3365,12 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 @media (pointer: coarse), screen and (max-width: 620px) {
   .btn, .plr, .chip { min-height: 44px; }
   .btn.icon { min-width: 44px; }          /* was 32px wide on a phone */
-  .lockbtn, .xbtn { min-width: 44px; min-height: 44px; }
+  .lockbtn { min-width: 44px; min-height: 44px; }
   /* The lock column is 2rem by default, so a 44px button overflowed its track
      and pushed the whole page 1px wide -- a phone that scrolls sideways for no
      reason. Widen the column to match the touch minimum; the slider gives up
      the 12px. */
   .srow { grid-template-columns: 4.6rem 1fr 4.1rem 44px; }
-  /* Reorder arrows: stacked they can only ever be 22px tall, because the row is
-     as tall as one 44px input and no taller. So on touch the pair goes side by
-     side in a 5.5rem column and the avatar stands down -- the player's color
-     moves to the row's left edge, which carries it just as well in a list. Five
-     columns here, not six: keep in step with .rhead below. (On a phone the
-     phone block after this one narrows it further; a coarse-pointer tablet has
-     the width to keep both arrows and the card-name column.) */
-  .rrow, .rhead { grid-template-columns: 5.5rem 2.6rem 1fr 4.2rem 2rem; }
-  .rrow .av, .rhead span:nth-child(2) { display: none; }
-  .rrow { padding-left: .3rem; border-left: 3px solid var(--c); }
-  .rord { flex-direction: row; gap: 0; align-self: stretch; }
-  .obtn { flex: 1; min-height: 44px; min-width: 44px; color: var(--muted); }
   .tld-x, .gm-x, .bsheet-close { min-width: 44px; min-height: 44px; }
   .seg button { min-height: 48px; }
   .switch { min-height: 44px; }           /* the label is the target, not the 22px track */
@@ -3457,43 +3379,6 @@ details.dz > summary .helpq { margin-block: -.85rem; }
   input[type="text"], input[type="number"], select { min-height: 44px; }
 }
 
-/* Phone roster: the name is the one column a coach reads down the list, and on
-   a 368px row the chrome was eating it. An arrow pair side by side (44px each,
-   because stacked they could only be 22px tall) plus the card-name override
-   left the name 102px of the 176px the longest sample name needs, so most of
-   them clipped mid-character -- an <input> has no ellipsis to soften it. So at
-   phone width the arrows collapse to the single grip that was already the drag
-   handle, and the card-name override moves behind the footer's "Card names"
-   toggle. Four columns here, not five: keep .rhead in step. */
-@media (max-width: 620px) {
-  /* the number column is 2.75rem here too -- see the note on `.rrow` */
-  .rrow, .rhead { grid-template-columns: 2.75rem 2.75rem 1fr 2.75rem; }
-  .rrow .short, .rhead span:nth-child(5) { display: none; }
-  .rrow .obtn { display: none; }
-  .rrow .rgrip { display: grid; place-items: center; }
-  /* "Card names" on: the override comes back on its own line under the name
-     instead of taking 72px back off it. The row doubles in height, which is
-     why it is a toggle and not the default. */
-  .rlist.cardnames .rrow {
-    grid-template-areas: "ord num name del" "ord card card del"; row-gap: .15rem;
-  }
-  .rlist.cardnames .rrow .rord { grid-area: ord; }
-  .rlist.cardnames .rrow .num { grid-area: num; }
-  .rlist.cardnames .rrow .pname { grid-area: name; }
-  .rlist.cardnames .rrow .xbtn { grid-area: del; }
-  .rlist.cardnames .rrow .short {
-    grid-area: card; display: block; width: 5.5rem; justify-self: start;
-    text-align: left; border-color: var(--line);
-  }
-  /* the label sits on the first row only -- repeated down fifteen rows it read
-     as noise, and it is doing a column header's job, not a row's */
-  .rlist.cardnames .rrow:first-child::before {
-    content: "prints on the card"; grid-area: card; justify-self: end;
-    align-self: center; font-size: var(--fs-footnote); color: var(--faint);
-  }
-}
-@media (min-width: 621px) { #cardnames { display: none; } }
-#cardnames[aria-pressed="true"] { color: var(--ink); border-color: var(--line-2); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important;
@@ -3613,7 +3498,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 .sn-game[open] > summary::after { transform: rotate(45deg) translate(0, 0); }
 .sn-body { padding: .1rem 1rem .8rem; }
 .sn-body .sn-row:last-of-type { border-bottom: 0; }
-/* Same `.btn` nowrap case as `#removeTeam` and `.levelsfoot .btn`: "Delete
+/* Same `.btn` nowrap case as `#removeTeam`: "Delete
    this game" is a one-line label a wide system font can push past the
    column on its own (#21 CI fix). */
 /* #30 "What would settle it" item 9: Delete is a control on Season and

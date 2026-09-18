@@ -397,6 +397,12 @@
       <button class="btn icon ghost press" id="backBtn" type="button" aria-label="Back to Today"><span class="i" data-icon="chevron-left"></span></button>
       <h1 class="bar-title" id="barTitle"></h1>
       <span class="spacer"></span>
+      <!-- #31 decision 2: Team's two actions, shown only on Team (`applyView`,
+           render.js) the same way `#shareBtn` below is shown only on a game.
+           C1 allows two on the right: Edit, which becomes Done while the list
+           is in reorder mode, and a `+` named for what it adds. -->
+      <button class="btn ghost press" id="teamEdit" type="button" aria-pressed="false" hidden>Edit</button>
+      <button class="btn icon ghost press" id="teamAdd" type="button" aria-label="Add a player" hidden><span class="i" data-icon="plus"></span></button>
       <!-- #29 decision 4: the one door into the card sheet. Shown only on the
            game screen (`applyView`, render.js); a round icon button so it
            reads as "share", not "print" -- the printer glyph and
@@ -989,34 +995,149 @@
          own. What is left is the roster and nothing else: the players are what
          a coach opens this tab for, and there is no per-team policy here to
          find. The team's name, its rules and removing it all live under its
-         name in Settings now. The screen's own title -- "Team" -- is the back
-         header's now (render.js), shown once there rather than a second time
-         here. -->
-    <div id="dupewarn" role="status" aria-live="polite"></div>
-    <div id="levelskey" hidden></div>
-    <div class="rhead"><span></span><span></span><span>#</span><span>Player</span><span>On card</span><span></span></div>
-    <div class="rlist" id="rosterlist"></div>
-    <div class="rfoot">
-      <button class="btn press" id="addplayer"><span class="i" data-icon="plus"></span>Add player</button>
-      <button class="btn ghost press" id="bulktoggle"><span class="i" data-icon="clipboard-list"></span>Paste a list</button>
-      <button class="btn ghost press" id="cardnames" type="button" aria-pressed="false">Card names</button>
-      <span class="rcount" id="rosterCount"></span>
-      <!-- Inside the footer, not loose above the page: this sentence is about
-           the "On card" column and the phone-only button that reveals it, and
-           it should disappear the day they do. -->
-      <p class="note">The card prints a short name. Override it when two kids collide.</p>
-    </div>
-    <div id="levelsfoot" class="levelsfoot" hidden></div>
+         name in Settings now.
 
-    <div id="bulkwrap" hidden class="side-box" style="margin-top:1rem">
-      <div class="side-hd">Paste your roster</div>
-      <textarea id="bulk" spellcheck="false" placeholder="12 Maya Webb&#10;4 Eli Tran&#10;Devon Ellis"></textarea>
-      <p class="note">One per line. Numbers are read from either end: &ldquo;12 Maya Webb&rdquo; or &ldquo;Maya Webb #12&rdquo;.</p>
-      <div style="display:flex;align-items:center;gap:.75rem;margin-top:.75rem;flex-wrap:wrap">
-        <button class="btn primary press" id="bulkadd">Add players</button>
-        <span class="note" id="bulkCount" style="margin:0"></span>
+         #31: the screen is the roster read the way a coach reads it on paper
+         -- one line per kid, tapped to open everything about them. Its own
+         large `h1` is the team's name (`team` joins `NO_BAR_TITLE` in
+         render.js, the arrangement `games` and `season` already have), and
+         the two actions on the right of the header -- Edit and `+` -- are
+         shown only here, the way `#shareBtn` is shown only on a game. The
+         rows themselves, the second group under them and the empty state are
+         all painted by `roster-view.js`. -->
+    <div class="dayhead">
+      <h1 class="team-h1" id="teamTitle">Team</h1>
+      <!-- "11 players": the prototype's muted sub, and the same count the
+           roster footer used to carry, so it keeps the id that already had a
+           writer. -->
+      <p class="team-sub" id="rosterCount"></p>
+    </div>
+    <!-- Decision 9: a duplicate jersey number is a fact about the whole
+         roster, not about one player, so it stays out here between the title
+         and the list rather than moving into a player's own sheet. -->
+    <div id="dupewarn" role="status" aria-live="polite"></div>
+    <div class="pgrp" id="rosterlist"></div>
+    <!-- Decision 6: the second group -- "Paste a list", and "Put everyone
+         back to the same level" once anyone is off the default. Painted
+         rather than static so the group itself disappears with its rows
+         (W3: no empty box). -->
+    <div id="teamActions"></div>
+    <!-- Decision 8: the first-run state is designed, not inherited. A
+         heading, one sentence of what to do, and both ways to do it (W4). -->
+    <div id="teamEmpty" class="team-empty" hidden>
+      <h2 class="team-empty-t">No players yet</h2>
+      <p class="team-empty-s">Add them one at a time, or paste your whole roster at once.</p>
+      <div class="team-empty-acts">
+        <button class="btn primary press" id="emptyAdd" type="button">Add a player</button>
+        <button class="btn press" id="emptyPaste" type="button">Paste a list</button>
       </div>
     </div>
+
+    <!-- The player sheet (#31 item 3). Everything about one kid in one place,
+         the way the prototype's own player page reads
+         (notes/mockups/prototype/index.html:614-622) with the three fields the
+         ticket adds. The rows are static markup, like `#sheetCard`'s options:
+         only the values, the heading and the level control change per player,
+         and `roster-view.js` fills those in `openPlayerSheet`. -->
+    <dialog class="bsheet grouped noprint" id="sheetPlayer" aria-labelledby="sheetPlayerTitle">
+      <div class="bsheet-hd">
+        <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+        <div class="bsheet-hd-row">
+          <span class="bsheet-hd-l"></span>
+          <h2 id="sheetPlayerTitle" tabindex="-1">Player</h2>
+          <span class="bsheet-hd-r"><button type="button" class="bsheet-close" id="sheetPlayerClose" aria-label="Close">✕</button></span>
+        </div>
+      </div>
+      <div class="bsheet-body">
+        <div class="pgrp">
+          <label class="prow" for="playerNumber">
+            <span class="prow-t">Number</span>
+            <input class="prow-in prow-in-num" id="playerNumber" type="text" inputmode="numeric" maxlength="2" placeholder="–" autocomplete="off">
+          </label>
+          <label class="prow" for="playerName">
+            <span class="prow-t">Name</span>
+            <input class="prow-in" id="playerName" type="text" placeholder="Name" autocomplete="off">
+          </label>
+          <label class="prow" for="playerShort">
+            <span class="prow-t">Card name</span>
+            <input class="prow-in" id="playerShort" type="text" maxlength="5" autocomplete="off">
+          </label>
+        </div>
+        <!-- Beside the field it is about, not loose on the page: this sentence
+             is about the card name above it, and it should disappear the day
+             that row does. -->
+        <p class="note">The card prints a short name. Override it when two kids collide.</p>
+        <div class="pgrp-h">Level</div>
+        <div class="pgrp">
+          <div class="prow prow-level" id="playerLevel"></div>
+        </div>
+        <!-- Decision 6: the explanation that used to sit under the whole
+             roster, now under the one control it explains. Written by
+             roster-view.js, because its middle clause follows the team's
+             tie-break setting. -->
+        <p class="pgrp-f" id="playerLevelNote"></p>
+        <div class="pgrp">
+          <button class="prow prow-center prow-danger press" type="button" id="playerRemove">Remove from team</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- The two commit sheets (#31 items 5 and 6). C4: a sheet that only
+         takes effect when the coach says so puts its ✕ at the top LEFT and
+         names its confirm for the result -- never "Done". Both confirms are
+         written by `confirmAddLabel` (roster.js) so one player and several
+         are spelled the same way in both places. -->
+    <dialog class="bsheet grouped noprint" id="sheetAddPlayer" aria-labelledby="sheetAddTitle">
+      <div class="bsheet-hd">
+        <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+        <div class="bsheet-hd-row">
+          <span class="bsheet-hd-l"><button type="button" class="bsheet-close" id="sheetAddClose" aria-label="Close">✕</button></span>
+          <h2 id="sheetAddTitle" tabindex="-1">Add a player</h2>
+          <span class="bsheet-hd-r"></span>
+        </div>
+      </div>
+      <div class="bsheet-body">
+        <div class="pgrp">
+          <label class="prow" for="addNumber">
+            <span class="prow-t">Number</span>
+            <input class="prow-in prow-in-num" id="addNumber" type="text" inputmode="numeric" maxlength="2" placeholder="–" autocomplete="off">
+          </label>
+          <label class="prow" for="addName">
+            <span class="prow-t">Name</span>
+            <input class="prow-in" id="addName" type="text" placeholder="Name" autocomplete="off">
+          </label>
+        </div>
+        <div class="bsheet-cta">
+          <button class="btn primary press" id="addPlayerGo" type="button"></button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="bsheet noprint" id="sheetPaste" aria-labelledby="sheetPasteTitle">
+      <div class="bsheet-hd">
+        <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+        <div class="bsheet-hd-row">
+          <span class="bsheet-hd-l"><button type="button" class="bsheet-close" id="sheetPasteClose" aria-label="Close">✕</button></span>
+          <h2 id="sheetPasteTitle" tabindex="-1">Paste a list</h2>
+          <span class="bsheet-hd-r"></span>
+        </div>
+      </div>
+      <div class="bsheet-body">
+        <textarea id="pasteText" spellcheck="false" aria-label="Your roster, one player per line" placeholder="12 Maya Webb&#10;4 Eli Tran&#10;Devon Ellis"></textarea>
+        <p class="note">One per line. Numbers are read from either end: &ldquo;12 Maya Webb&rdquo; or &ldquo;Maya Webb #12&rdquo;.</p>
+        <div class="bsheet-cta" id="pasteFoot">
+          <button class="btn primary press" id="pasteGo" type="button"></button>
+        </div>
+        <!-- Decision 5: the ask lives here, in the sheet's own footer, because
+             a `showModal()` dialog inerts everything outside it -- a second
+             overlay would paint behind this one and take no taps. -->
+        <div class="bsheet-cta" id="pasteAsk" hidden>
+          <p class="bsheet-ask-t">Discard what you typed?</p>
+          <button class="btn press" id="pasteKeep" type="button">Keep editing</button>
+          <button class="btn danger press" id="pasteDiscard" type="button">Discard</button>
+        </div>
+      </div>
+    </dialog>
 
   </main>
 

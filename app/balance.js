@@ -52,6 +52,12 @@ const tierOf = p => {
   return Number.isFinite(n) && n >= 1 && n <= 5 ? Math.round(n) : DEFAULT_TIER;
 };
 
+/* The word for a player's level, for a place that shows the level without
+   showing the control -- the roster row spells it out (#31 item 1). `tierOf`
+   stays private; this is the one reading of it the rest of the app needs, so
+   nobody re-derives the default-tier rule. */
+export const levelName = p => LEVELS.find(l => l.v === tierOf(p)).label;
+
 /* Injected, like the other view seams: app.js owns the repaint scheduler and
    importing it back from here would close the graph into a cycle. */
 let soon = () => {};
@@ -76,16 +82,17 @@ export function initBalance(soonFn, afterEdit) {
  * footer is one line, and that intro was never that).
  * ------------------------------------------------------------------ */
 
-// It used to send coaches to a heading called "Player levels". There has
-// been no such heading since the levels stopped being a fold and moved
-// into the roster row itself, so this points at what is actually on the
-// screen: the row of steps under each name. The tab it names is the LABEL
-// the bar shows ("Team" since A40 slice 1), not the view key.
+// It used to send coaches to a heading called "Player levels", then to the
+// row of steps under each name. Since #31 the steps are not on the roster
+// either: a row is one button that opens that player's sheet, and the level
+// control lives in it. So the directions name the door, not the control. The
+// tab it names is the LABEL the bar shows ("Team" since A40 slice 1), not the
+// view key.
 function noLevelsLine() {
   const p = el('p', 'pgrp-f');
-  p.append('Every player is on the same level, so this has nothing to work with yet. Set a level under each name on the ');
+  p.append('Every player is on the same level, so this has nothing to work with yet. Open a player on the ');
   p.append(el('b', '', 'Team'));
-  p.append(' page.');
+  p.append(' page to set their level.');
   return p;
 }
 
@@ -180,19 +187,11 @@ function openBalanceDetail(trigger) {
  * child is listed twice.
  * ------------------------------------------------------------------ */
 
-/* The key line, once above the list rather than a label on every row. The
-   staircase says "more" on its own, but a control nobody has seen before
-   should not need inferring. */
-export function levelKey() {
-  const key = el('div', 'bal-key');
-  const ends = el('div', 'bal-key-ends');
-  ends.append(el('span', '', LEVELS[0].label));
-  ends.append(el('i', 'bal-key-arrow'));
-  ends.append(el('span', '', LEVELS[LEVELS.length - 1].label));
-  key.append(ends);
-  key.setAttribute('aria-hidden', 'true');   // every step already says its own level
-  return key;
-}
+/* #31: the key line that used to sit above the roster's meters is gone with
+   the list it labelled. The meter now appears once, inside one player's own
+   sheet, under a "Level" heading and above a footnote that says what the
+   steps mean -- so a legend repeating the end labels had nothing left to
+   explain. `LEVELS[0]` / `LEVELS[4]` are still the names `levelName` reads. */
 
 /* The key half of the WAI-ARIA radiogroup contract, which the steps below
    wear the roles for. Space or Enter selects the step the user is ON — the

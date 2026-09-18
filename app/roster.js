@@ -196,3 +196,14 @@ export function callNames(players) {
   }
   return out;
 }
+
+/**
+ * What the confirm button on the two add sheets says (#31, C4/W2: a commit
+ * sheet's confirm is named for the result, never "Add" or "Done"). The paste
+ * sheet re-reads its textarea on every keystroke, so one player and several
+ * are the same button and the two spellings belong in one place.
+ */
+export function confirmAddLabel(n) {
+  const k = Math.floor(Number(n));
+  return Number.isFinite(k) && k > 1 ? `Add ${k} players` : 'Add player';
+}

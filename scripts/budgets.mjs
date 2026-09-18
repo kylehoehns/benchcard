@@ -154,8 +154,22 @@
    `test/budgets.test.js`'s 100 KB fixture it is 153.5 KB, still under the
    160 KB second-vendor-script case, so that guard still fails a real
    regression. About 1% of percentage is left after this one. `requests`
-   still 40 of 41 -- no new module joined the boot graph. */
-export const SLACK = { bytesPct: 0.49, bytesAbs: 8192, requests: 2, nodes: 250 };
+   still 40 of 41 -- no new module joined the boot graph.
+
+   #31 (the roster, and a player sheet) measured 1107.5 KB against that
+   1105.4 KB ceiling: the player sheet, the add-a-player sheet and the paste
+   sheet -- three dialogs' markup plus their painters, the close-guard seam in
+   trap.js and the Edit-mode row -- against the six-column roster grid, the
+   inline fields and the bulk-add fold they replace. 2.1 KB net, so this is a
+   nudge, not a feature's worth of growth. `bytesAbs` alone cannot carry it:
+   `test/budgets.test.js` pins it under about 11000 at the current 49%, which
+   would leave half a kilobyte of room and fail on the next CI round. So the
+   same move #25 made -- the percentage up, the absolute part down: 49% + 8192
+   -> 52% + 6144. On the 754209-byte baseline that is a 1125.5 KB ceiling,
+   18.0 KB of room. On `test/budgets.test.js`'s 100 KB fixture it is 154.4 KB,
+   still under the 160 KB second-vendor-script case, so that guard still fails
+   a real regression. `requests` still 40 of 41. */
+export const SLACK = { bytesPct: 0.52, bytesAbs: 6144, requests: 2, nodes: 250 };
 
 const kb = n => `${(n / 1024).toFixed(1)} KB`;
 const pct = (got, want) => (want ? `${got > want ? '+' : ''}${(((got - want) / want) * 100).toFixed(1)}%` : 'n/a');

@@ -1,6 +1,7 @@
-/* The roster page: the player list, the two reorder affordances and the
-   pointer-driven drag that backs them, plus the team controls that sit above
-   the list. Split out of app.js.
+/* The roster page: the player list, the three sheets it opens (one player,
+   add a player, paste a list), the two reorder affordances Edit mode shows
+   and the pointer-driven drag that backs them, plus the team controls that
+   sit above the list. Split out of app.js.
 
    The scheduler (`soon` / `AFTER_EDIT`) comes in through `initRoster` rather
    than being imported, for the same reason as every other view seam: it
@@ -8,22 +9,32 @@
    the module graph into a cycle. `undoable` used to arrive the same way and
    is now imported straight from toast.js, which is a leaf. */
 import { deriveShortNames } from './engine.js';
-import { dropIndex, duplicateNumbers, focusAfterRemoval } from './roster.js';
+import { confirmAddLabel, dropIndex, duplicateNumbers, focusAfterRemoval, parseRoster, repeatIndexes } from './roster.js';
 import { riseIn, flip, tick, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
-import { $, set, el } from './dom.js';
-import { withFocus } from './trap.js';
-import { undoable } from './toast.js';
-import { state, colorOf, initials, removePlayer, byId, joinNames } from './state.js';
-import { levelMeter, levelKey, levelledCount, resetLevels, repaintLevels } from './balance.js';
+import { $, set, el, uid } from './dom.js';
+import { withFocus, openSheet, closeSheet, guardClose } from './trap.js';
+import { undoable, offer } from './toast.js';
+import { state, colorOf, initials, removePlayer, byId, joinNames, teamName, nextHue, hueSlots } from './state.js';
+import { levelMeter, levelName, levelledCount, resetLevels, repaintLevels } from './balance.js';
 
 let soon = () => {};
 let AFTER_EDIT = [];
+
+/* Edit mode is a property of the screen, not of the data: leaving Team and
+   coming back gives the tapping list, which is what a coach expects of a mode
+   they turned on to move one player. */
+let editing = false;
 
 export function initRoster(scheduler, afterEdit) {
   soon = scheduler;
   AFTER_EDIT = afterEdit;
 }
+
+/* A jersey number is digits, in both places one can be typed -- the player
+   sheet and the add sheet. `inputMode="numeric"` is a hint to the keyboard,
+   not a rule, so the field enforces it as the coach types. */
+const digitsOnly = s => s.replace(/[^0-9]/g, '');
 
 function movePlayer(id, dir) {
   const i = state.players.findIndex(p => p.id === id);
@@ -44,12 +55,14 @@ function movePlayer(id, dir) {
  * Pointer events, so a finger and a mouse take the same path. The grab area
  * is the order column and the avatar only: `touch-action: none` has to be
  * scoped to the handle or the whole roster stops scrolling under a thumb.
- * The GRIP is the non-pointer path, not the arrows: `app.css:1881` hides
- * `.rrow .obtn` below 620px, so at the 390px baseline this file designs for the
- * arrows measure 0x0 and only the grip is on screen, taking Up/Down keys. The
- * arrows are the desktop half of the same pair and keep working there. Either
- * way a press only becomes a drag past a 5px threshold, and the click that
- * follows a real drag is swallowed.
+ * Since #31 (decision 7) the grip and the two arrows are all on screen at
+ * every width: the `max-width: 620px` rule that used to hide `.rrow .obtn`
+ * is gone, because a phone is the only device this app is designed for and a
+ * drag needs a visible button that does the same thing (I3). The grip is
+ * still the non-pointer path -- it takes Up/Down keys, and its accessible
+ * name says so and names the position it reached. Either way a press only
+ * becomes a drag past a 5px threshold, and the click that follows a real
+ * drag is swallowed.
  *
  * Nothing is re-rendered. The rows are moved in the DOM and `state.players`
  * is spliced to match, which keeps the nodes (and anything typed into them)
@@ -182,7 +195,7 @@ function rosterDrop(d) {
   /* Re-disable the ends. `:not(.rgrip)` is load-bearing: the grip shares
      `.obtn` with the arrows and is the FIRST of the three, so a bare `.obtn`
      here disabled the top row's grip (0.22 opacity, no focus, no drag -- the
-     only reorder affordance a phone has) and shifted the pair by one, leaving
+     one reorder affordance a finger has) and shifted the pair by one, leaving
      the last row's Up disabled and every row's Down stale. */
   order.forEach((r, i) => {
     const [up, dn] = r.querySelectorAll('.obtn:not(.rgrip)');
@@ -222,25 +235,32 @@ function dupeMessage(dupes) {
   return sentences.join(' ');
 }
 
+/* The per-field marker follows the field: since #31 the only number a coach
+   can type into is the one in the open player sheet, so that is the one place
+   a collision can be marked on the control itself. The notice is still about
+   the whole roster (decision 9), which is why it is painted separately. */
+function markDupeField(others) {
+  const num = $('#playerNumber');
+  const sheet = $('#sheetPlayer');
+  if (!num || !sheet) return;
+  const with_ = sheet.open ? others.get(sheet.dataset.pid) : null;
+  num.classList.toggle('dupe', !!with_);
+  if (with_) {
+    num.setAttribute('aria-invalid', 'true');
+    num.title = `Same number as ${with_}`;
+  } else {
+    num.removeAttribute('aria-invalid');
+    num.removeAttribute('title');
+  }
+}
+
 function paintDupes() {
   const dupes = duplicateNumbers(state.players);
   const others = new Map();          // id -> the names it collides with
   for (const d of dupes) {
     for (const id of d.ids) others.set(id, joinPlayerNames(d.ids.filter(x => x !== id)));
   }
-  for (const row of document.querySelectorAll('#rosterlist .rrow')) {
-    const num = row.querySelector('.num');
-    if (!num) continue;
-    const with_ = others.get(row.dataset.id);
-    num.classList.toggle('dupe', !!with_);
-    if (with_) {
-      num.setAttribute('aria-invalid', 'true');
-      num.title = `Same number as ${with_}`;
-    } else {
-      num.removeAttribute('aria-invalid');
-      num.removeAttribute('title');
-    }
-  }
+  markDupeField(others);
   const box = $('#dupewarn');
   if (!box) return;
   box.textContent = '';
@@ -285,145 +305,396 @@ function removalCosts(id) {
 }
 
 export function renderRoster() {
+  const n = state.players.length;
   const box = $('#rosterlist'); box.textContent = '';
   set('#teamName', 'value', state.teamName || '');
   renderTeamControls();
-  renderLevelControls();
+  renderTeamActions();
   if (!box.dataset.dnd) { box.dataset.dnd = '1'; box.addEventListener('pointerdown', rosterDown); }
-  set('#rosterCount', 'textContent', state.players.length
-    ? `${state.players.length} player${state.players.length === 1 ? '' : 's'}` : '');
+  set('#teamTitle', 'textContent', teamName() || 'Team');
+  set('#rosterCount', 'textContent', n ? `${n} player${n === 1 ? '' : 's'}` : '');
 
-  // column labels for a table with no rows: the first screen a new coach sees
-  // should not look like something failed to load
-  $('.rhead')?.toggleAttribute('hidden', !state.players.length);
+  /* Decision 8: with nobody on the roster the group box itself goes, rather
+     than standing open and empty above a designed empty state (W3). */
+  box.hidden = !n;
+  const empty = $('#teamEmpty');
+  if (empty) empty.hidden = n > 0;
 
-  if (!state.players.length) {
-    const e = el('div', 'roster-empty');
-    e.append(el('div', 'se-ico', '🏀'));
-    e.append(el('div', 'se-t', 'No players yet'));
-    e.append(el('div', 'se-s', 'Add them one at a time, or paste your whole roster at once.'));
-    box.append(e);
+  if (!n) {
     paintDupes();
     return;
   }
 
-  const shorts = deriveShortNames(state.players);
   state.players.forEach((p, idx) => {
-    const row = el('div', 'rrow');
-    row.dataset.id = p.id;
-    row.style.setProperty('--c', colorOf(p.id));
-
-    /* Two reorder affordances, one shown at a time by CSS: the arrow pair on a
-       mouse, and a single grip on a phone -- side by side the arrows cost 88px
-       of a 368px row, which is most of what the name needs. The grip is the
-       same drag handle the arrows were (rosterDown grabs anything in .rord)
-       and takes Up/Down keys, so the keyboard path survives the swap. */
-    const ord = el('div', 'rord');
-    const grip = el('button', 'obtn rgrip press');
-    grip.append(icon('grip-vertical', { size: '1.05em', stroke: 2.4 }));
-    grip.type = 'button';
-    grip.dataset.fk = `r:${p.id}:ord`;
-    /* The position is IN the name, and that is the whole announcement.
-       `movePlayer` rebuilds the rows and `withFocus` puts focus back by
-       `data-fk` -- which is keyed to the PLAYER, so the grip that comes back
-       is the one that moved, not the one now sitting where it used to be. The
-       old node is detached by then, so the restore is a real focus event on a
-       new element, and a screen reader reads the newly focused control's name
-       aloud. It just used to read the same words every time: measured at
-       390x844, ArrowUp fired a second `focusin` on `r:p1:ord` carrying the
-       identical string, which is exactly why the reorder was silent. With the
-       position in the name that same event now says "position 1 of 11".
-
-       So: no live region, no visually-hidden class, no announcer, and nothing
-       new to keep in step. Deliberately NOT extended to Shuffle or a strategy
-       change -- announce what the coach did when the feedback is otherwise
-       invisible; do not announce what they explicitly asked for. The new plan
-       IS the answer to a Shuffle, and it is already on screen. */
-    grip.setAttribute(
-      'aria-label',
-      `Reorder ${p.name || 'player'}, position ${idx + 1} of ${state.players.length}: `
-      + 'drag, or press the up and down arrow keys',
-    );
-    grip.onkeydown = e => {
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-      e.preventDefault();
-      movePlayer(p.id, e.key === 'ArrowUp' ? -1 : 1);
-    };
-    const up = el('button', 'obtn press');
-    up.append(icon('arrow-up', { size: '.85em', stroke: 2.4 }));
-    up.type = 'button'; up.disabled = idx === 0;
-    up.dataset.fk = `r:${p.id}:up`;
-    up.setAttribute('aria-label', `Move ${p.name || 'player'} up`);
-    up.onclick = () => movePlayer(p.id, -1);
-    const dn = el('button', 'obtn press');
-    dn.append(icon('arrow-down', { size: '.85em', stroke: 2.4 }));
-    dn.type = 'button'; dn.disabled = idx === state.players.length - 1;
-    dn.dataset.fk = `r:${p.id}:dn`;
-    dn.setAttribute('aria-label', `Move ${p.name || 'player'} down`);
-    dn.onclick = () => movePlayer(p.id, 1);
-    ord.append(grip, up, dn);
-    row.append(ord);
-
-    row.append(el('div', 'av', initials(p)));
-
-    const num = el('input', 'num'); num.type = 'text'; num.inputMode = 'numeric';
-    num.value = p.number || ''; num.placeholder = '–'; num.maxLength = 2;
-    num.dataset.fk = `r:${p.id}:num`;
-    num.setAttribute('aria-label', `Jersey number for ${p.name}`);
-    num.oninput = () => {
-      p.number = num.value.replace(/[^0-9]/g, ''); num.value = p.number;
-      row.querySelector('.av').textContent = initials(p);
-      paintDupes();
-      soon(...AFTER_EDIT);
-    };
-
-    const nm = el('input', 'pname'); nm.type = 'text'; nm.value = p.name; nm.placeholder = 'Name';
-    nm.dataset.fk = `r:${p.id}:name`;
-    nm.setAttribute('aria-label', 'Player name');
-    nm.oninput = () => {
-      p.name = nm.value;
-      if (!p.number) row.querySelector('.av').textContent = initials(p);
-      paintDupes();   // the notice names the players; a rename restates it
-      soon('constraints', ...AFTER_EDIT);
-    };
-
-    const sh = el('input', 'short'); sh.type = 'text'; sh.value = p.shortName || '';
-    sh.placeholder = shorts[p.id] || '—'; sh.maxLength = 5;
-    sh.dataset.fk = `r:${p.id}:short`;
-    sh.setAttribute('aria-label', `Card name for ${p.name}`);
-    sh.oninput = () => { p.shortName = sh.value.toUpperCase(); sh.value = p.shortName; soon(...AFTER_EDIT); };
-
-    const x = el('button', 'xbtn press');
-    x.type = 'button';
-    x.append(icon('trash-2', { size: '.95em' }));
-    x.title = `Remove ${p.name}`;
-    x.onclick = () => {
-      const who = p.name || 'Player';
-      undoable([`Removed ${who}.`, ...removalCosts(p.id)].join(' '), () => removePlayer(p.id));
-      /* `undoable` has rebuilt the list by the time it returns, and the button
-         the coach just pressed went with it. `withFocus` cannot carry this one
-         -- it restores by `data-fk`, and this row's key no longer exists -- so
-         name the successor the way a list deletion should. Without it focus
-         lands on `<body>`: measured, not assumed. */
-      const rows = document.querySelectorAll('#rosterlist .rrow');
-      const to = focusAfterRemoval(idx, rows.length);
-      (rows[to]?.querySelector('.xbtn') || $('#addplayer'))?.focus({ preventScroll: true });
-    };
-
-    row.append(num, nm, sh, x);
-    /* A second line inside the same row rather than a row of its own, so the
-       level belongs to the player visibly.
-     *
-       It was behind a toggle for exactly one day. The toggle was there to spare
-       coaches who would never use this the extra row height -- but a coach
-       working rotations on a spreadsheet is precisely who this is for, and a
-       feature they have to find first is one most of them never will. It is the
-       part of the app that does something their paper cannot. So it is on. */
-    row.append(levelMeter(p));
-    box.append(row);
+    box.append(editing ? editRow(p, idx) : playerRow(p));
   });
   paintDupes();
   riseIn(box.querySelectorAll('.rrow'), { delay: 0.018, from: 6 });
+}
+
+/* #31 item 7: Edit in the header swaps the tapping list for the reorder list
+   and back. The flag lives here, with the two row builders it chooses
+   between; the button is wired in app.js beside the other Team controls, and
+   its own label is the state a coach reads ("Edit" / "Done"), which is why
+   `aria-pressed` follows it rather than standing in for it. */
+export function toggleEditMode(btn) {
+  editing = !editing;
+  if (btn) {
+    btn.textContent = editing ? 'Done' : 'Edit';
+    btn.setAttribute('aria-pressed', String(editing));
+  }
+  renderRoster();
+}
+
+/* What a coach reads down the list. A player with no name still needs a row
+   they can open, so the row says so rather than showing a blank line. */
+const rowName = p => p.name || 'Unnamed';
+
+/* What both kinds of row are before their contents: the player's id, which is
+   how the drag and `repaintRow` find a row again, and the player's own color,
+   which the badge reads off the row as `--c`. */
+function rowShell(tag, cls, p) {
+  const row = el(tag, cls);
+  row.dataset.id = p.id;
+  row.style.setProperty('--c', colorOf(p.id));
+  return row;
+}
+
+/* One line per kid, the way a coach reads a roster on paper (#31 item 1): the
+   number in their color, the name, the word for their level, and a chevron
+   that says the row opens. The whole row is one button (C6), so there is
+   nothing in the list a mis-tap can edit -- everything about a player is
+   edited in their own sheet. */
+function playerRow(p) {
+  const row = rowShell('button', 'prow rrow', p);
+  row.type = 'button';
+  row.append(el('span', 'av', initials(p)));
+  row.append(el('span', 'prow-t', rowName(p)));
+  row.append(el('span', 'prow-v', levelName(p)));
+  row.append(icon('chevron_right', { size: '.8rem', cls: 'prow-chev' }));
+  row.onclick = () => openPlayerSheet(p, row);
+  return row;
+}
+
+/* One row, repainted where it stands.
+ *
+ * The list is deliberately not in `AFTER_EDIT` (`render.js`, and the KEEP
+ * reason in `test/render-sections.test.js`): it is rebuilt by its own edits,
+ * because rebuilding it replays `rowIn` down all eleven rows. That is right
+ * for a row joining or leaving, and wrong for the three things a sheet can
+ * change about a player who is already in the list -- their number, their
+ * name and their level -- which the coach is changing while that list shows
+ * above the sheet. So those are written back onto the row they came from.
+ * Found by `data-id` rather than held in a variable, so nothing here can go
+ * stale against a rebuild that happened in between. */
+function repaintRow(p) {
+  const row = document.querySelector(`#rosterlist .rrow[data-id="${CSS.escape(p.id)}"]`);
+  if (!row) return;
+  const av = row.querySelector('.av'); if (av) av.textContent = initials(p);
+  const nm = row.querySelector('.prow-t'); if (nm) nm.textContent = rowName(p);
+  const lv = row.querySelector('.prow-v'); if (lv) lv.textContent = levelName(p);
+}
+
+/* Edit mode's row (#31 item 7, decision 7): the drag grip AND both move
+   buttons, at every width -- a phone is the only device this app is designed
+   for, and I3 wants a visible button for every drag. Nothing here is a text
+   field and there is no remove: C6 puts removal in the row's own detail,
+   which is the player sheet. */
+function editRow(p, idx) {
+  const row = rowShell('div', 'prow rrow rrow-edit', p);
+
+  const ord = el('div', 'rord');
+  const grip = el('button', 'obtn rgrip press');
+  grip.append(icon('grip-vertical', { size: '1.05em', stroke: 2.4 }));
+  grip.type = 'button';
+  grip.dataset.fk = `r:${p.id}:ord`;
+  /* The position is IN the name, and that is the whole announcement.
+     `movePlayer` rebuilds the rows and `withFocus` puts focus back by
+     `data-fk` -- which is keyed to the PLAYER, so the grip that comes back
+     is the one that moved, not the one now sitting where it used to be. The
+     old node is detached by then, so the restore is a real focus event on a
+     new element, and a screen reader reads the newly focused control's name
+     aloud. It just used to read the same words every time: measured at
+     390x844, ArrowUp fired a second `focusin` on `r:p1:ord` carrying the
+     identical string, which is exactly why the reorder was silent. With the
+     position in the name that same event now says "position 1 of 11".
+
+     So: no live region, no visually-hidden class, no announcer, and nothing
+     new to keep in step. Deliberately NOT extended to Shuffle or a strategy
+     change -- announce what the coach did when the feedback is otherwise
+     invisible; do not announce what they explicitly asked for. The new plan
+     IS the answer to a Shuffle, and it is already on screen. */
+  grip.setAttribute(
+    'aria-label',
+    `Reorder ${p.name || 'player'}, position ${idx + 1} of ${state.players.length}: `
+    + 'drag, or press the up and down arrow keys',
+  );
+  grip.onkeydown = e => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
+    movePlayer(p.id, e.key === 'ArrowUp' ? -1 : 1);
+  };
+  const up = el('button', 'obtn press');
+  up.append(icon('arrow-up', { size: '.85em', stroke: 2.4 }));
+  up.type = 'button'; up.disabled = idx === 0;
+  up.dataset.fk = `r:${p.id}:up`;
+  up.setAttribute('aria-label', `Move ${p.name || 'player'} up`);
+  up.onclick = () => movePlayer(p.id, -1);
+  const dn = el('button', 'obtn press');
+  dn.append(icon('arrow-down', { size: '.85em', stroke: 2.4 }));
+  dn.type = 'button'; dn.disabled = idx === state.players.length - 1;
+  dn.dataset.fk = `r:${p.id}:dn`;
+  dn.setAttribute('aria-label', `Move ${p.name || 'player'} down`);
+  dn.onclick = () => movePlayer(p.id, 1);
+  ord.append(grip, up, dn);
+  row.append(ord);
+  row.append(el('span', 'av', initials(p)));
+  row.append(el('span', 'prow-t', rowName(p)));
+  return row;
+}
+
+/* ---- the player sheet (#31 item 3) ---------------------------------------
+ *
+ * One kid, one place: the number, the name, the name the card prints, the
+ * level, and the way off the team. The rows are static markup in index.html
+ * (the same arrangement `#sheetCard` uses for its options) -- this fills in
+ * the values and rewires the four handlers to the player being opened, so
+ * there is one set of fields rather than one per player.
+ *
+ * Every field edits `p` directly and repaints through `soon`, exactly as the
+ * roster row's own inputs used to: the list behind the sheet still has to
+ * show the new name, and the plan still has to be re-solved. */
+function openPlayerSheet(p, trigger) {
+  const dialog = $('#sheetPlayer');
+  if (!dialog) return;
+  const num = $('#playerNumber'), nm = $('#playerName'), sh = $('#playerShort');
+  // the heading is the player's name, so it is rewritten as the name is typed
+  const showTitle = () => set('#sheetPlayerTitle', 'textContent', p.name || 'Player');
+
+  dialog.dataset.pid = p.id;   // how `paintDupes` knows whose number is on show
+  showTitle();
+  num.value = p.number || '';
+  nm.value = p.name || '';
+  sh.value = p.shortName || '';
+  /* The automatic short name as the placeholder, so the field shows what the
+     card prints today and typing over it is plainly an override. */
+  sh.placeholder = deriveShortNames(state.players)[p.id] || '—';
+  num.setAttribute('aria-label', `Jersey number for ${p.name || 'this player'}`);
+  sh.setAttribute('aria-label', `Card name for ${p.name || 'this player'}`);
+
+  num.oninput = () => {
+    p.number = digitsOnly(num.value); num.value = p.number;
+    repaintRow(p);
+    paintDupes();
+    soon(...AFTER_EDIT);
+  };
+  nm.oninput = () => {
+    p.name = nm.value;
+    showTitle();
+    repaintRow(p);
+    paintDupes();   // the notice names the players; a rename restates it
+    soon('constraints', ...AFTER_EDIT);
+  };
+  sh.oninput = () => { p.shortName = sh.value.toUpperCase(); sh.value = p.shortName; soon(...AFTER_EDIT); };
+
+  const lv = $('#playerLevel');
+  lv.textContent = '';
+  lv.append(levelMeter(p));
+  set('#playerLevelNote', 'textContent', levelsNote());
+
+  const rm = $('#playerRemove');
+  rm.onclick = () => {
+    const idx = state.players.findIndex(x => x.id === p.id);
+    const who = p.name || 'Player';
+    /* `undoable` repaints through `setView(state.view)`, which closes every
+       open sheet on its way (applyView, render.js) -- so this sheet is gone
+       and the snackbar lands in `#toasts` where the coach can still reach it,
+       with no second close path of its own. */
+    undoable([`Removed ${who}.`, ...removalCosts(p.id)].join(' '), () => removePlayer(p.id));
+    /* The row the coach came from went with the player, and `withFocus`
+       cannot carry this one -- it restores by `data-fk`, and this row's key no
+       longer exists -- so name the successor the way a list deletion should.
+       Without it focus lands on `<body>`. */
+    const rows = document.querySelectorAll('#rosterlist .rrow');
+    const to = focusAfterRemoval(idx, rows.length);
+    (rows[to] || $('#teamAdd'))?.focus({ preventScroll: true });
+  };
+
+  openSheet(dialog, trigger);
+  paintDupes();   // the sheet's own number field carries the collision marker
+}
+
+/* The footnote under the sheet's Level row. */
+function levelsNote() {
+  /* "never change anyone's minutes" used to be the middle clause, and it is
+     not true: everyone's SHARE is worked out without levels (budget.js never
+     sees them -- test/leak.test.js pins that), but when the stints do not
+     divide evenly the solver still has to pick who lands on the high side of
+     the rounding, and levels move that pick by a stint. Claim the part the
+     test actually guards.
+
+     The second clause has to follow the team's tie-break stance, or it is
+     false in a state the app can be in. Under the default the share really is
+     worked out without levels; under 'levels' the coach has asked them to
+     settle the odd stint, which is the one thing that moves. Everything else
+     about the sentence is true either way. */
+  const byLevel = (state.settings?.tieBreak ?? 'behind') === 'levels';
+  return `Levels stay with your team from game to game. ${byLevel
+    ? 'They shape who is on the floor together, and the tie-break setting asks them to settle the odd stint when the clock will not divide evenly.'
+    : 'They shape who is on the floor together; everyone’s share of the minutes is worked out without them.'} They are never printed and never shown in bench mode.`;
+}
+
+/* ---- the two ways to add (#31 items 5 and 6) -----------------------------
+ *
+ * Both are commit sheets: nothing happens to the roster until the confirm at
+ * the bottom is pressed, and the confirm is named for what it will do. The
+ * two spellings of that name live in `confirmAddLabel` (roster.js) rather
+ * than in either sheet, because the paste sheet re-reads its box on every
+ * keystroke and would otherwise hold a second copy of the plural rule. */
+
+/* A new kid, typed or pasted: both doors make the same record, so the default
+   level and the empty card-name override are decided once. The hue is the
+   caller's, because one at a time takes the next free one and a paste has to
+   spread a whole list across the wheel. */
+const newPlayer = (name, number, hue) =>
+  ({ id: uid('p'), name, number, shortName: '', tier: 3, hue });
+
+/* A row joined or left the list, so the list IS rebuilt -- it is deliberately
+   not in `AFTER_EDIT` (see `repaintRow`), and this is the edit that should
+   replay its entrance. Then the plan is re-solved with the rules, because who
+   is on the team is what the rules are about. */
+function rosterChanged() {
+  renderRoster();
+  soon('constraints', ...AFTER_EDIT);
+}
+
+export function openAddPlayerSheet(trigger) {
+  const dialog = $('#sheetAddPlayer');
+  if (!dialog) return;
+  const num = $('#addNumber'), nm = $('#addName');
+  num.value = ''; nm.value = '';
+  set('#addPlayerGo', 'textContent', confirmAddLabel(1));
+  num.oninput = () => { num.value = digitsOnly(num.value); };
+  $('#addPlayerGo').onclick = () => {
+    state.players.push(newPlayer(nm.value.trim(), num.value, nextHue()));
+    closeSheet(dialog);
+    rosterChanged();
+  };
+  openSheet(dialog, trigger);
+}
+
+export function openPasteSheet(trigger) {
+  const dialog = $('#sheetPaste');
+  if (!dialog) return;
+  const ta = $('#pasteText');
+  ta.value = '';
+  showPasteAsk(false);
+  paintPasteConfirm();
+  ta.oninput = paintPasteConfirm;
+  $('#pasteGo').onclick = commitPaste;
+  $('#pasteKeep').onclick = () => { showPasteAsk(false); ta.focus(); };
+  $('#pasteDiscard').onclick = () => { ta.value = ''; showPasteAsk(false); closeSheet(dialog); };
+  /* C4: closing on top of typed text asks first. The guard is consulted by
+     every close a coach can make -- the ✕, Escape, Android's back gesture and
+     a backdrop tap all end up in `closeSheet` -- and returns true for "asked,
+     stay open". With an empty box there is nothing to lose and the close goes
+     straight through. */
+  guardClose(dialog, () => {
+    if (!ta.value.trim()) return false;
+    showPasteAsk(true);
+    return true;
+  });
+  openSheet(dialog, trigger);
+}
+
+function showPasteAsk(on) {
+  const ask = $('#pasteAsk'), foot = $('#pasteFoot');
+  if (!ask || !foot) return;
+  ask.hidden = !on;
+  foot.hidden = on;
+  // the ask replaced the control the coach was reaching for, so focus follows
+  if (on) $('#pasteKeep')?.focus({ preventScroll: true });
+}
+
+function paintPasteConfirm() {
+  set('#pasteGo', 'textContent', confirmAddLabel(parseRoster($('#pasteText').value).length));
+}
+
+/* Paste appends, and it must keep doing so -- twins with the same first name
+   are real, so a silent dedupe would quietly delete a kid. What it must not do
+   is say nothing when a coach pastes the same list twice: the roster doubles,
+   and the card copes by disambiguating to MARW / MARW2 / MARW3, which is a
+   card nobody can read. So: add everything, then name the repeats and offer to
+   drop just those. Ignoring the offer leaves the paste exactly as it landed. */
+function commitPaste() {
+  const parsed = parseRoster($('#pasteText').value);
+  if (!parsed.length) return;
+  const repeats = repeatIndexes(state.players, parsed);
+  const slots = hueSlots(parsed.length);
+  const added = parsed.map((x, i) => newPlayer(x.name, x.number, slots[i]));
+  state.players.push(...added);
+  $('#pasteText').value = '';   // nothing left to lose, so the close guard lets go
+  closeSheet($('#sheetPaste'));
+  rosterChanged();
+  if (!repeats.length) return;
+  const n = repeats.length;
+  const ids = repeats.map(i => added[i].id);
+  offer(`${n} of these ${n === 1 ? 'was' : 'were'} already on the roster.`, 'Skip them', () => {
+    for (const id of ids) removePlayer(id);
+    rosterChanged();
+  });
+}
+
+/* The `levels` render key. NOT `renderRoster`, which is what it used to be:
+   changing one player's level rebuilt every row in the list and replayed
+   `riseIn`'s stagger down all of them. Since #31 the level control is not in
+   the list at all -- it is the meter in the open player sheet -- so the meter
+   repaints itself and only the actions group outside the list is rebuilt,
+   where the reset row appears as soon as anyone is off the default. */
+export function renderLevels() {
+  repaintLevels();
+  renderTeamActions();
+  /* The word for the level is on the roster row too, and the row the coach
+     just changed is sitting behind the open sheet. */
+  for (const p of state.players) repaintRow(p);
+}
+
+/* The second group under the roster (#31 decision 6): the other way to add
+   players, and -- only once somebody is off the default -- the one levels
+   control that stays on this screen. Its wording is unchanged from the old
+   `#levelsfoot`; the explanation that used to sit beside it is now the
+   footnote under Level in the player sheet, where the control is. */
+function renderTeamActions() {
+  const box = $('#teamActions');
+  if (!box) return;
+  box.textContent = '';
+  box.hidden = !state.players.length;
+  if (!state.players.length) return;
+
+  const grp = el('div', 'pgrp');
+
+  const paste = actionRow('Paste a list');
+  paste.id = 'pasteRow';
+  // the chevron says this row opens something, the way a roster row's does
+  paste.append(icon('chevron_right', { size: '.8rem', cls: 'prow-chev' }));
+  paste.onclick = () => openPasteSheet(paste);
+  grp.append(paste);
+
+  if (levelledCount()) {
+    const reset = actionRow('Put everyone back to the same level');
+    reset.onclick = resetLevels;
+    grp.append(reset);
+  }
+
+  box.append(grp);
+}
+
+// one row of that group: the same `.prow` a roster row and a sheet row are
+function actionRow(label) {
+  const row = el('button', 'prow');
+  row.type = 'button';
+  row.append(el('span', 'prow-t', label));
+  return row;
 }
 
 /* Roster page: the controls that change how many teams there are. `Add` is
@@ -431,66 +702,6 @@ export function renderRoster() {
    only team would leave the app with no roster and no way back to onboarding.
    The buttons themselves are wired in app.js, beside the other team actions --
    this only paints their state. */
-/* The Levels toggle and everything that follows from it. Kept beside the other
-   roster actions rather than in a fold of its own: a fold below the list is
-   what made this feel like a separate feature instead of a column of the
-   roster. */
-/* The `levels` render key. NOT `renderRoster`, which is what it used to be:
-   changing one player's level rebuilt every row in the list and replayed
-   `riseIn`'s stagger down all of them, so dragging a meter made the whole
-   roster flicker. Nothing in a row except the meter depends on the tier, so
-   the meters repaint themselves and only the two boxes OUTSIDE the list are
-   rebuilt -- the key, and the foot, where the reset button appears as soon as
-   anyone is off the default. */
-export function renderLevels() {
-  repaintLevels();
-  renderLevelControls();
-}
-
-function renderLevelControls() {
-  const has = state.players.length > 0;
-
-  /* The key goes directly above the rows it explains. It sat under the list in
-     the first cut, which meant reading twelve meters before being told which
-     end was which. */
-  const key = $('#levelskey');
-  if (key) {
-    key.textContent = '';
-    key.hidden = !has;
-    if (has) key.append(levelKey());
-  }
-
-  // the explanation and the reset sit below; they are read once, not scanned
-  const foot = $('#levelsfoot');
-  if (!foot) return;
-  foot.textContent = '';
-  foot.hidden = !has;
-  if (!has) return;
-  const note = el('p', 'note');
-  /* "never change anyone's minutes" used to be the middle clause, and it is
-     not true: everyone's SHARE is worked out without levels (budget.js never
-     sees them -- test/leak.test.js pins that), but when the stints do not
-     divide evenly the solver still has to pick who lands on the high side of
-     the rounding, and levels move that pick by a stint. Claim the part the
-     test actually guards. */
-  /* The second clause has to follow the team's tie-break stance, or it is
-     false in a state the app can be in. Under the default the share really is
-     worked out without levels; under 'levels' the coach has asked them to
-     settle the odd stint, which is the one thing that moves. Everything else
-     about the sentence is true either way. */
-  const byLevel = (state.settings?.tieBreak ?? 'behind') === 'levels';
-  note.textContent = `Levels stay with your team from game to game. ${byLevel
-    ? 'They shape who is on the floor together, and the setting below asks them to settle the odd stint when the clock will not divide evenly.'
-    : 'They shape who is on the floor together; everyone’s share of the minutes is worked out without them.'} They are never printed and never shown in bench mode.`;
-  foot.append(note);
-  if (levelledCount()) {
-    const reset = el('button', 'btn ghost sm press', 'Put everyone back to the same level');
-    reset.type = 'button';
-    reset.onclick = resetLevels;
-    foot.append(reset);
-  }
-}
-
 function renderTeamControls() {
   const many = state.teams.length > 1;
   /* Always offered, including for the only team: a season ends, and refusing

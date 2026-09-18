@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseRosterLine, parseRoster, dropIndex, callNames, duplicateNumbers, repeatIndexes,
-  focusAfterRemoval } from '../app/roster.js';
+  focusAfterRemoval, confirmAddLabel } from '../app/roster.js';
 
 const p = s => parseRosterLine(s);
 
@@ -203,4 +203,27 @@ test('removing the last row focuses the new last row, not a gap past the end', (
 
 test('removing the only row leaves nothing in the list to focus', () => {
   assert.equal(focusAfterRemoval(0, 0), -1);
+});
+
+/* ---- what the confirm button on the two add sheets says ------------------
+ *
+ * #31: "Add a player" and "Paste a list" are commit sheets, so C4 asks each
+ * for a confirm named for the result rather than "Add" or "Done", and W1 asks
+ * for sentence case. One player and several are the same button on the paste
+ * sheet -- it re-reads the textarea on every keystroke -- so the two spellings
+ * are one function, and the values here are the spec's own (item 5: exactly
+ * "Add player"; item 6: exactly "Add 3 players" with three lines typed). */
+
+test('one player to add is named without a count', () => {
+  assert.equal(confirmAddLabel(1), 'Add player');
+});
+
+test('several players to add are counted in the button', () => {
+  assert.equal(confirmAddLabel(3), 'Add 3 players');
+  assert.equal(confirmAddLabel(11), 'Add 11 players');
+});
+
+test('nothing to add yet still reads as the singular, never "Add 0 players"', () => {
+  assert.equal(confirmAddLabel(0), 'Add player');
+  assert.equal(confirmAddLabel(undefined), 'Add player');
 });
