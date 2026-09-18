@@ -286,15 +286,19 @@ export function renderSeason() {
   if (filed) filed.textContent = '';
   const games = seasonGames();
   const sub = $('#seasonSub');
-  /* Only ever HIDES here (decision 1's "empty-season repaint": deleting the
-     last filed game while Season is the open screen). Showing it is
-     `applyView`'s job (render.js), which also knows whether Season is the
-     screen currently on show -- an unconditional assignment here undid that
-     check on every full repaint, including the one `renderAll` runs right
-     after `setView('games')` at boot, so the header carried Export onto the
-     games screen too. */
+  /* The same test `applyView` (render.js) uses to show this button, read off
+     the one fact both places already share -- `state.view` -- rather than a
+     second hand-typed answer to "is Season the open screen" living here.
+     Review #1 (after #30): this used to only ever HIDE, on the theory that
+     showing it was `applyView`'s job alone. But `deleteGame` below hands
+     `undoable` a custom refresh (`() => renderAll()`), which repaints this
+     section without ever calling `setView`/`applyView` -- so undoing the
+     deletion of the season's last filed game brought the game back but left
+     Export stuck hidden until the coach left Season and returned. Computing
+     both directions here, from the same fact `applyView` reads, means
+     whichever of the two runs last agrees with the other. */
   const exportBtn = $('#seasonExport');
-  if (exportBtn && !games.length) exportBtn.hidden = true;
+  if (exportBtn) exportBtn.hidden = state.view !== 'season' || !games.length;
 
   if (!games.length) {
     if (sub) sub.textContent = 'Nothing filed yet';
@@ -310,7 +314,7 @@ export function renderSeason() {
 
   /* The unit lives in this heading rather than beside every number: a column
      of "70" reads instantly, a column of "70 min" is noise twelve times over. */
-  box.append(el('h4', 'sn-h', 'Minutes so far'));
+  box.append(el('h2', 'sn-h', 'Minutes so far'));
   const list = el('div', 'sn-list');
   const rows = totals(games);
   const maxMin = rows.reduce((m, r) => Math.max(m, r.min), 0);
@@ -325,7 +329,7 @@ export function renderSeason() {
      day nobody played, to delete a game out of it. Within a day the games
      keep the order they were filed in, so a tournament reads 9:00 then
      11:30 -- `seasonDays` is the one place that order is decided. */
-  filed.append(el('h4', 'sn-h', 'Filed games'));
+  filed.append(el('h2', 'sn-h', 'Filed games'));
   for (const day of seasonDays(games)) {
     filed.append(el('div', 'sn-day',
       `${dateLabel(day.date)} · ${day.games.length} game${day.games.length === 1 ? '' : 's'}`));

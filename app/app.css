@@ -3297,7 +3297,7 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 
   /* #24 CI fix, round 2 (Linux font metrics again): the fix above wraps the
      LEDGER rows, but "Game by game"'s own summary row -- the game title
-     (`.sn-gt`, `flex: 1; min-width: 0`, ellipsis) beside its meta
+     (`.sn-gt`, `flex: 1; min-width: 0`) beside its meta
      (`.sn-gm`, "10 played · 4×8", `flex: 0 0 auto`) -- has no wrap rule at
      all, and it is `.helpq`'s comment's exact tell: measured on this machine
      at a 32px root, `.sn-gt` shrinks all the way to 0px (min-width: 0 lets
@@ -3310,7 +3310,8 @@ details.dz > summary .helpq { margin-block: -.85rem; }
      as `.sn-gm` or `.sn-gt` reaching past the viewport, the same symptom the
      `.helpq` comment above already names for the same reason. Wrapping is
      the fix, not a wider `.sn-gt` floor: `.sn-gm` drops to its own line and
-     the title keeps the ellipsis it already has on the first. Checked at
+     the title (review #3 after #30: `overflow-wrap: break-word`, no longer
+     ellipsis) wraps onto its own lines above it instead. Checked at
      32/34/36/38/40px roots: `document.documentElement.scrollWidth` stays at
      320 with this rule at every one, where the unfixed tree measured
      328/347/364px at 36/38/40 (32 and 34 already held on this machine's
@@ -3533,11 +3534,40 @@ details.dz > summary .helpq { margin-block: -.85rem; }
 .sn-h:first-child { margin-top: 0; }
 .sn-empty { margin: 0; }
 .sn-list { border-top: 1px solid var(--line); }
-/* #30 decision 3: a grid, not a flex row -- the track is a fixed-width middle
-   column rather than something that grows with the name, which is also what
-   makes the big-text collapse (below, in the big-text block) a single
-   `grid-template-columns` swap instead of a second layout system. */
-.sn-row { display: grid; grid-template-columns: 1fr 5.5rem 3rem; align-items: center;
+/* #30 decision 3: a grid, not a flex row -- three tracks (name, bar, minutes)
+   rather than something that grows with the name, which is also what makes
+   the big-text collapse (below, in the big-text block) a single
+   `grid-template-columns` swap instead of a second layout system.
+
+   Review #4 (after #30): the bar used to be the fixed one (`5.5rem`, ~88px at
+   390px) and the name the flexible one -- the opposite of the prototype,
+   where the bar is the dominant element and the eye lands on it.
+
+   A first pass tried `1fr 2fr` (bar double the name's share of whatever is
+   left after the fixed `3rem` minutes column), which does grow the bar --
+   but the prototype's own name column is only ever "Maya" or "Eli", never a
+   real roster's "Casey Lindqvist" or a footnote's "3 games * 16 behind"
+   (`.sn-x`, `--fs-footnote`), and 1/3 of the row at 390px is not enough for
+   either: an ordinary two-word name wrapped to two lines and an ordinary
+   footnote wrapped to two, so a common row went from one line to three.
+   `minmax(0, 9.5rem)` instead CAPS the name at 152px (9.5rem at a 16px root)
+   rather than giving it a share at all -- wide enough that a two-word name
+   and its footnote both hold one line at 390px, the bar still takes
+   whatever that leaves after minutes (roughly 155-165px here, still
+   clearing 88px by more than half), and the `0` floor means the column can
+   still shrink to nothing rather than overflow, the same guarantee `1fr`
+   gave: at a 32px root (`app-large-text.mjs`'s own check) a column sized to
+   look right at 16px was wide enough on its own to overflow a 320px
+   viewport in "Filed games" (`.sn-body .sn-row`, two children -- name and
+   minutes, no bar -- so the item that would have absorbed a plain-fixed
+   name column's overflow was never there to shrink instead); `minmax`'s
+   floor is what a bare `9.5rem` would not have had. `.sn-track` (no in-flow
+   content -- `.sn-fill` is `position: absolute`) sizes to zero rather than
+   to its content, so its `1fr` share can never be the reason a row
+   overflows either; only the `3rem` on minutes is a plain fixed width,
+   unchanged from before this review and already proven safe at that root by
+   the same check. */
+.sn-row { display: grid; grid-template-columns: minmax(0, 9rem) 1fr 3rem; align-items: center;
   gap: .6rem; padding: .5rem .1rem; border-bottom: 1px solid var(--line); }
 .sn-name { min-width: 0; }
 .sn-nm { display: block; font-size: var(--fs-body); font-weight: 500; overflow-wrap: break-word; }
@@ -3567,7 +3597,13 @@ details.dz > summary .helpq { margin-block: -.85rem; }
    this only adds what a `<summary>` still needs on top of it. */
 .sn-game > summary.prow { cursor: pointer; list-style: none; }
 .sn-game > summary::-webkit-details-marker { display: none; }
-.sn-gt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+/* Review #3 (after #30): this used to ellipsis, and the full opponent name
+   had nowhere else to show -- opening the row shows the minutes, not the
+   title. Wraps instead, same as `.sn-nm` (a long unbroken word still breaks
+   rather than pushing `.sn-gm` off the row); `.prow`'s own fixed vertical
+   padding (not a bare `min-height`) is what lets the row grow to a second
+   line and keep the same edge distance a one-line row has. */
+.sn-gt { overflow-wrap: break-word; font-weight: 600; }
 .sn-gm { color: var(--faint); font-size: var(--fs-footnote); }
 /* The disclosure arrow, drawn rather than iconed: it is one glyph and it has
    to turn, and a rotate on a pseudo-element costs no DOM and no icon fetch. */

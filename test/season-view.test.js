@@ -64,6 +64,44 @@ test('the ledger paints in the app\'s own color slots', () => {
     + 'same stable slot the rest of the app reads');
 });
 
+/* Review finding #2 (after #30): spec decisions 3, 4 and 5 all read `h2.sn-h`
+   for the three group labels, but "Minutes so far" and "Filed games" were
+   `el('h4', 'sn-h', ...)` while "Across the day" (index.html) is `<h2
+   class="sn-h">` -- an outline that read h1 -> h4 -> h2 -> h4 on one screen.
+   Compared cross-file, not pinned to "h2" by itself, so a change that moves
+   ALL THREE to the same other level still fails here -- the guard is that the
+   three agree, not that any one of them is a literal "h2". */
+test('the three sn-h group labels share one heading level', () => {
+  const html = read('index.html');
+  const htmlTag = /<(h[1-6]) class="sn-h">Across the day<\/\1>/.exec(html)?.[1];
+  assert.ok(htmlTag, '"Across the day" (index.html) is no longer a heading tagged sn-h');
+  const jsTags = [...view.matchAll(/el\('(h[1-6])',\s*'sn-h',\s*'(?:Minutes so far|Filed games)'\)/g)]
+    .map(m => m[1]);
+  assert.equal(jsTags.length, 2,
+    'season-view.js should build exactly two sn-h group labels, "Minutes so far" and "Filed games"');
+  for (const tag of jsTags) {
+    assert.equal(tag, htmlTag,
+      `a season group label is ${tag}, but "Across the day" is ${htmlTag} -- decisions 3-5 all read the same heading level`);
+  }
+});
+
+/* Review finding #3 (after #30): a long opponent name (`vs Iowa City Regional
+   Invi…`) truncated with an ellipsis, and opening the disclosure shows the
+   minutes rows, not the title -- the full name was unreachable, and two
+   similarly-named opponents were indistinguishable. The row can grow (`.prow`
+   already gives it a fixed vertical padding rather than a bare `min-height`,
+   which is what lets a wrapped label keep its own edge distance), so the
+   title wraps instead of being cut. */
+test('a filed game\'s title wraps instead of being cut off', () => {
+  const css = read('app.css');
+  const rule = /\.sn-gt\s*\{([^}]*)\}/.exec(css)?.[1];
+  assert.ok(rule, '.sn-gt rule is gone from app.css');
+  assert.ok(!/text-overflow:\s*ellipsis/.test(rule),
+    '.sn-gt still ellipses a long opponent name -- the full name has to be readable without opening the row');
+  assert.ok(!/white-space:\s*nowrap/.test(rule),
+    '.sn-gt still forces one line, so a long opponent name has nowhere to wrap to');
+});
+
 test('the season is a section the dispatcher knows about, and not an edit target', () => {
   const render = read('render.js');
   assert.match(render, /season:\s*\(\) => renderSeason\(\)/,

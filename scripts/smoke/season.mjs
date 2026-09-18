@@ -13,6 +13,7 @@
  * checked absent from every other screen. */
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, SETTLE } from './dom.mjs';
 import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
+import { goRich } from './fixtures.mjs';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
 
@@ -86,6 +87,49 @@ export async function seasonPass(c, origin) {
     if (d.footnote !== w.footnote) problems.push(`row ${i} (${w.name}): footnote ${JSON.stringify(d.footnote)}, want ${JSON.stringify(w.footnote)}`);
     if (d.minText !== w.minText) problems.push(`row ${i} (${w.name}): minutes ${JSON.stringify(d.minText)}, want ${JSON.stringify(w.minText)}`);
     if (Math.abs(d.fillPct - w.pct) > 0.5) problems.push(`row ${i} (${w.name}): fill ${d.fillPct}%, want ${w.pct.toFixed(1)}%`);
+  }
+
+  /* ---- review #4: the minutes bar is the prototype's dominant element, not
+     a sliver -- but the prototype's own name column is only ever "Maya" or
+     "Eli", never a real roster's "Casey Lindqvist" or a footnote's "3 games *
+     16 behind" (`.sn-x`, `--fs-footnote`). A first pass gave the bar an `fr`
+     SHARE of the row (`1fr 2fr 3rem`), which grew it, but at 390px a third of
+     the row is not enough for an ordinary two-word name and its footnote --
+     both wrapped, so a one-line row became three. `minmax(0, 9rem) 1fr 3rem`
+     CAPS the name at 144px instead of giving it a share: wide enough that an
+     ordinary name and its footnote hold one line each, the bar still takes
+     whatever that leaves (145-190px across 320-390px here, well past the
+     original 88px), and the `0` floor keeps the column shrinkable rather than
+     fixed, so it still cannot be the reason a row overflows at a 32px root
+     (`app-large-text.mjs`'s "Filed games" case, `.sn-body .sn-row`, that a
+     plain fixed rem width broke). Measured live rather than read off the CSS
+     source: a source regex cannot tell a share that renders wider, or a name
+     that still fits one line, from one that only reads that way. */
+  const rowShapes = JSON.parse(await evalIn(c, `(() => {
+    const rows = [...document.querySelectorAll('#seasonbox .sn-list .sn-row')];
+    const lines = (el) => el ? Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)) : null;
+    return JSON.stringify(rows.map(r => {
+      const track = r.querySelector('.sn-track');
+      const nm = r.querySelector('.sn-nm');
+      const x = r.querySelector('.sn-x');
+      return {
+        name: nm ? nm.textContent : null,
+        nameLines: lines(nm),
+        footnote: x ? x.textContent : null,
+        footnoteLines: lines(x),
+        trackW: track ? track.getBoundingClientRect().width : null,
+      };
+    }));
+  })()`));
+  const track0 = rowShapes[0]?.trackW ?? 0;
+  if (track0 < 130) {
+    problems.push(`.sn-track is ${Math.round(track0)}px wide at ${WIDTH}px, want it meaningfully past the original ~88px (≥130px)`);
+  }
+  for (const wantName of ['Casey Lindqvist', 'Marcus Williams']) {
+    const row = rowShapes.find(r => r.name === wantName);
+    if (!row) { problems.push(`RICH fixture no longer has a "${wantName}" ledger row to check`); continue; }
+    if (row.nameLines !== 1) problems.push(`"${wantName}" wraps to ${row.nameLines} lines at ${WIDTH}px, want the name column wide enough for one`);
+    if (row.footnoteLines !== 1) problems.push(`"${wantName}"'s footnote (${JSON.stringify(row.footnote)}) wraps to ${row.footnoteLines} lines at ${WIDTH}px, want one`);
   }
 
   /* ---- a filed game, opened: its rows and its Delete button ---- */
@@ -176,6 +220,35 @@ export async function seasonPass(c, origin) {
   const onSeason = await evalIn(c, `(() => { const b = document.querySelector('#seasonExport'); return !!b && !b.hidden; })()`);
   if (!onSeason) problems.push('#seasonExport is not visible on Season with 3 games filed, want it shown');
 
+  /* ---- review #1: undoing the deletion of the season's LAST filed game must
+     bring Export back. `renderSeason` is hide-only for `#seasonExport`
+     (decision 1's comment); showing it is `applyView`'s job, but `deleteGame`
+     hands `undoable` its own refresh (`() => renderAll()`), which never runs
+     `setView`/`applyView` again. Deleting all three RICH games one at a time
+     drives the ledger to empty (Export correctly hides); Undo puts the last
+     one back, and Export must reappear without leaving Season. */
+  for (let i = 0; i < 3; i++) {
+    await evalIn(c, `(async () => { document.querySelector('#view-season .sn-del')?.click(); await ${SETTLE}; })()`);
+  }
+  const emptied = JSON.parse(await evalIn(c, `(() => JSON.stringify({
+    gamesLeft: document.querySelectorAll('#view-season details.sn-game').length,
+    exportHidden: document.querySelector('#seasonExport')?.hidden ?? true,
+  }))()`));
+  if (emptied.gamesLeft !== 0) problems.push(`${emptied.gamesLeft} filed game(s) remain after deleting all three, want 0`);
+  if (!emptied.exportHidden) problems.push('#seasonExport is visible with nothing filed, want it hidden');
+
+  await evalIn(c, `(async () => { document.querySelector('.toast .tundo')?.click(); await ${SETTLE}; })()`);
+  const undone = JSON.parse(await evalIn(c, `(() => JSON.stringify({
+    gamesLeft: document.querySelectorAll('#view-season details.sn-game').length,
+    exportHidden: document.querySelector('#seasonExport')?.hidden ?? true,
+  }))()`));
+  if (undone.gamesLeft !== 1) problems.push(`undoing the last delete left ${undone.gamesLeft} filed game(s) on screen, want 1`);
+  if (undone.exportHidden) {
+    problems.push('#seasonExport stayed hidden after Undo restored the last filed game — the button is only ever hidden, never shown, on a refresh that is not setView/applyView');
+  }
+
+  // restore the untouched fixture for every check that runs after this one
+  await goRich(c, origin);
   await evalIn(c, step(TODAY_HOME));
 
   return {
