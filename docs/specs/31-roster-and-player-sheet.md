@@ -176,6 +176,11 @@ value, so these are settled here rather than raised.
    roster, not about one player, so it keeps its `role="status"` line, moved to
    sit between the in-page title and the roster group.
 
+10. **The player sheet's `<h2>` still repeats the player's name above the new
+    identity block.** Every sheet keeps the same header shape (C3), and the
+    identity block is the prototype's visual identity for the player, not a
+    second accessible name replacing the dialog's own heading.
+
 ## What would settle it
 
 Measured against the RICH fixture (11 players) at 390×844 unless a width is

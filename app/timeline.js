@@ -141,7 +141,7 @@ function rosterCta() {
   /* #31: the Team screen's own first-run buttons, which are exactly the two
      controls showing while the roster is empty -- and this branch only runs
      when it is. `#addplayer` and `#bulktoggle` went with the old markup. */
-  acts.append(jump('Add player', '', '#emptyAdd'), jump('Paste a list', ' ghost', '#emptyPaste'));
+  acts.append(jump('Add a player', '', '#emptyAdd'), jump('Paste a list', ' ghost', '#emptyPaste'));
   e.append(acts);
   return e;
 }

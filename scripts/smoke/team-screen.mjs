@@ -1,7 +1,12 @@
+/* balance.js reads `document` at import time (through state.js/dom.js); this
+   is the Node side of the check, not the browser page, so it needs the same
+   stub test/*.js gives that module. */
+import '../../test/dom-stub.js';
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { goRich } from './fixtures.mjs';
-import { click, evalJSON, tap, settle, waitClosed } from './sheet-drive.mjs';
+import { goRich, PLAYERS, tierOf } from './fixtures.mjs';
+import { click, drag, evalJSON, setGame, tap, settle, waitClosed } from './sheet-drive.mjs';
+import { levelName } from '../../app/balance.js';
 
 /* #31's own guard (docs/specs/31-roster-and-player-sheet.md, Proof P8):
    "team screen: roster rows, the player sheet, add and paste", RICH fixture.
@@ -16,22 +21,11 @@ import { click, evalJSON, tap, settle, waitClosed } from './sheet-drive.mjs';
    everyone else at 3), never a second computation of what the app does. */
 
 /* The fixture's roster, in order, with the level name each player's `tier`
-   maps to (`LEVELS` in balance.js: 1 Developing ... 5 Go-to). Item 1 names
-   all three of these outcomes; the other eight rows are the "other nine read
-   Regular" half of the same sentence. */
-const ROSTER = [
-  ['Marcus Williams', '4', 'Regular'],
-  ['Devon Ellis', '7', 'Regular'],
-  ['Hana Kim', '9', 'Go-to'],
-  ['Eli Tran', '12', 'Regular'],
-  ['Ana Reyes', '3', 'Regular'],
-  ['Jordan Bell', '21', 'Regular'],
-  ['Sam Okafor', '5', 'Regular'],
-  ['Riley Novak', '8', 'Regular'],
-  ['Casey Lindqvist', '11', 'Regular'],
-  ['Theo Alvarez', '15', 'Regular'],
-  ['Nia Brooks', '2', 'Developing'],
-];
+   maps to -- `PLAYERS` and `tierOf` are the rich fixture's own (fixtures.mjs),
+   `levelName` is balance.js's, so this is never a second copy of either.
+   Item 1 names all three of these outcomes; the other eight rows are the
+   "other nine read Regular" half of the same sentence. */
+const ROSTER = PLAYERS.map(p => [p.name, p.number, levelName({ tier: tierOf(p) })]);
 
 async function toTeam(c) {
   await tap(c, TODAY_HOME);
@@ -75,13 +69,40 @@ async function nothingEditableOnTeam(c, ck) {
     `the Team screen still carries ${found.length} editing control(s) outside a sheet: ${found.slice(0, 5).join(', ')}`);
 }
 
+/* A1: `.rrow .rord, .rrow .av` and `rosterDown`'s handle check used to match
+   every roster row, tapping list included -- a pointer drag on a tapping
+   row's badge began a real drag (reordering the roster and swallowing the tap
+   that would have opened the sheet) instead of letting the page scroll under
+   a thumb. Both are now scoped to `.rrow-edit`: only an Edit row drags. */
+async function noDragOnTappingRow(c, ck) {
+  const before = await rosterRows(c);
+  const av = await evalJSON(c, `(() => {
+    const b = document.querySelector('#rosterlist .rrow .av').getBoundingClientRect();
+    return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2 });
+  })()`);
+  await drag(c, av.x, av.y, av.y + 80, 8);
+  await settle(c);
+  const dragging = await evalJSON(c, `JSON.stringify({
+    dragging: document.getElementById('rosterlist').classList.contains('dragging'),
+  })`);
+  ck(!dragging.dragging,
+    "a pointer drag on a tapping row's badge left #rosterlist mid-drag (.dragging)");
+  const after = await rosterRows(c);
+  ck(JSON.stringify(after.map(r => r.name)) === JSON.stringify(before.map(r => r.name)),
+    "a pointer drag on a tapping row's badge reordered the roster -- the tapping list is not a drag surface");
+  // A plain tap on the row (no reorder happened) may have opened the sheet --
+  // that is correct, and irrelevant here; leave it closed for the next check.
+  await evalIn(c, `document.getElementById('sheetPlayer')?.open && document.getElementById('sheetPlayer').close()`);
+}
+
 /* Item 3: the whole of one player, in one sheet. Every expected value is the
    RICH fixture's own row for Marcus Williams (`fixtures.mjs`: p0, number 4,
    tier 3, `shortName` empty). "MARC" is what the card would print for him if
-   he never sets one -- the spec's item 3 writes the placeholder as "Marcus",
-   which no roster in this app ever shows: `deriveShortNames` upper-cases and
-   cuts to four. The value here is the app's, and the slip is reported. */
-const MARCUS = { name: 'Marcus Williams', number: '4', short: 'MARC', level: 'Regular', tier: 3 };
+   he never sets one: `deriveShortNames` upper-cases and cuts to four. */
+const MARCUS = (() => {
+  const p = PLAYERS[0];
+  return { name: p.name, number: p.number, short: 'MARC', level: levelName({ tier: tierOf(p) }), tier: tierOf(p) };
+})();
 
 const sheetState = c => evalJSON(c, `(() => {
   const d = document.getElementById('sheetPlayer');
@@ -99,6 +120,9 @@ const sheetState = c => evalJSON(c, `(() => {
     levelWord: v('.bal-lv', 'text'),
     body: d ? d.textContent.replace(/\\s+/g, ' ') : '',
     remove: d ? [...d.querySelectorAll('button')].map(b => b.textContent.trim()).filter(t => /remove/i.test(t)) : [],
+    identAv: v('#playerIdentAv', 'text'),
+    identName: v('#playerIdentName', 'text'),
+    identLevel: v('#playerIdentLevel', 'text'),
   });
 })()`);
 
@@ -119,6 +143,23 @@ async function playerSheetOk(c, ck) {
     'the sheet never says levels are not printed -- the levels explanation did not move here');
   ck(s.remove.includes('Remove from team'),
     `the sheet offers ${s.remove.length ? s.remove.map(t => `"${t}"`).join(', ') : 'no remove row'}, want "Remove from team"`);
+  // A4: at the design size every field's label still fits on its own line.
+  await prowFieldsOk(c, ck, '#sheetPlayer', '390px/16px', true);
+
+  /* A5: the identity block above the fields -- prototype's own 56px badge,
+     name and level line, painted from the same values as the row it opened
+     from (never a second copy of `initials`/`levelName`). */
+  ck(s.identAv === MARCUS.number, `the identity badge reads "${s.identAv}", want "${MARCUS.number}"`);
+  ck(s.identName === MARCUS.name, `the identity name reads "${s.identName}", want "${MARCUS.name}"`);
+  ck(s.identLevel === MARCUS.level, `the identity level line reads "${s.identLevel}", want "${MARCUS.level}"`);
+
+  // A5: it stays live with the fields below it, the way the row behind it does.
+  await typeInto(c, '#playerName', 'Temp Name');
+  const renamed = await sheetState(c);
+  ck(renamed.identName === 'Temp Name',
+    `the identity name did not follow a Name edit -- reads "${renamed.identName}"`);
+  await typeInto(c, '#playerName', MARCUS.name);
+
   return true;
 }
 
@@ -153,25 +194,89 @@ async function removeAndUndoOk(c, ck) {
   ck(back.first === MARCUS.name, `Undo put "${back.first}" at the top of the list, want "${MARCUS.name}"`);
 }
 
+/* A4/A10: `#sheetCard .pgrp .prow-select`'s fix (app.css) never reached a
+   plain text field's row -- `.pgrp .prow-in`'s flex-basis of auto beats
+   `.prow-t`'s flex-basis of 0 the same way, so the label loses the row's
+   width. Measured before any fix: at 390px/16px "Card name" (the longest
+   label) is squeezed to 69.5px, just short of the ~70px "Card name" needs on
+   one line, so it wraps to two (48px tall against a 24px line) while
+   "Number"/"Name" still fit; at 320px/32px every label in #sheetPlayer and
+   #sheetAddPlayer collapses to 0 width outright, painting under the field
+   instead of beside it. `.prow-t` is blockified as a flex item, so a wrapped
+   label still reports one `getClientRects()` box -- only its OWN height
+   against its line-height says whether it wrapped, the same measure a
+   collapsed-to-0-width label already fails outright. */
+async function prowFieldGeometry(c, dialogSel) {
+  return evalJSON(c, `JSON.stringify([...document.querySelectorAll('${dialogSel} .pgrp .prow-in')].map(input => {
+    const label = input.closest('.prow').querySelector('.prow-t');
+    const lr = label.getBoundingClientRect();
+    const lh = parseFloat(getComputedStyle(label).lineHeight);
+    return { text: label.textContent, width: lr.width, height: lr.height, lh };
+  }))`);
+}
+
+async function prowFieldsOk(c, ck, dialogSel, where, oneLine) {
+  const fields = await prowFieldGeometry(c, dialogSel);
+  for (const f of fields) {
+    ck(f.width > 0, `${where}: "${f.text}"'s label in ${dialogSel} measures 0px wide`);
+    if (oneLine) ck(f.height <= f.lh * 1.5,
+      `${where}: "${f.text}"'s label in ${dialogSel} is ${f.height.toFixed(1)}px tall against a ${f.lh.toFixed(1)}px line, want one line`);
+  }
+}
+
 /* Item 5: the header `+`. A commit sheet, so C4 puts the ✕ top LEFT and gives
    the sheet a confirm named for the result -- "Add player", exactly, for one
    player. */
+const addState = c => evalJSON(c, `(() => {
+  const d = document.getElementById('sheetAddPlayer');
+  if (!d) return JSON.stringify({ open: false });
+  const ask = d.querySelector('#addAsk');
+  return JSON.stringify({
+    open: d.open,
+    closeSide: d.querySelector('.bsheet-close')?.closest('.bsheet-hd-l, .bsheet-hd-r')?.className ?? null,
+    fields: [...d.querySelectorAll('input')].map(i => i.id),
+    confirm: d.querySelector('.bsheet-cta .btn.primary')?.textContent.trim() ?? null,
+    confirmDisabled: d.querySelector('#addPlayerGo')?.disabled ?? null,
+    askShown: !!(ask && !ask.hidden),
+    askButtons: ask ? [...ask.querySelectorAll('button')].map(b => b.textContent.trim()) : [],
+  });
+})()`);
+
 async function addSheetOk(c, ck) {
   await tap(c, `document.getElementById('teamAdd').click()`);
-  const s = await evalJSON(c, `(() => {
-    const d = document.getElementById('sheetAddPlayer');
-    if (!d) return JSON.stringify({ open: false });
-    return JSON.stringify({
-      open: d.open,
-      closeSide: d.querySelector('.bsheet-close')?.closest('.bsheet-hd-l, .bsheet-hd-r')?.className ?? null,
-      fields: [...d.querySelectorAll('input')].map(i => i.id),
-      confirm: d.querySelector('.bsheet-cta .btn.primary')?.textContent.trim() ?? null,
-    });
-  })()`);
+  let s = await addState(c);
   if (!ck(s.open, 'the header + opened no "Add a player" sheet')) return;
   ck(s.closeSide === 'bsheet-hd-l', `the ✕ sits in ${s.closeSide ?? 'no header slot'}, want the left (C4)`);
   ck(s.fields.length === 2, `the add sheet holds ${s.fields.length} field(s) (${s.fields.join(', ')}), want a number and a name`);
   ck(s.confirm === 'Add player', `the add sheet's confirm reads "${s.confirm}", want "Add player"`);
+
+  /* A3: nothing typed is nothing to add -- the confirm starts disabled rather
+     than pushing a totally blank "Unnamed" player. */
+  ck(s.confirmDisabled === true, 'the add sheet\'s confirm is enabled with both fields empty');
+
+  await typeInto(c, '#addNumber', '9');
+  s = await addState(c);
+  ck(s.confirmDisabled === false, 'a jersey number alone does not enable the confirm');
+
+  await typeInto(c, '#addNumber', '');
+  await typeInto(c, '#addName', 'Sam');
+  s = await addState(c);
+  ck(s.confirmDisabled === false, 'a name alone does not enable the confirm');
+
+  /* A3: closing on top of typed content asks first, the same guard the paste
+     sheet already carries (C4/decision 5). */
+  await tap(c, `document.querySelector('#sheetAddPlayer .bsheet-close').click()`);
+  s = await addState(c);
+  ck(s.open, 'the ✕ threw away a typed name without asking');
+  ck(s.askShown, 'the ✕ closed the add sheet but never asked -- there is no discard ask');
+  ck(s.askButtons.join(' / ') === 'Keep editing / Discard',
+    `the add sheet's ask offers ${s.askButtons.join(' / ') || 'nothing'}, want "Keep editing / Discard"`);
+
+  await tap(c, `document.getElementById('addKeep').click()`);
+  s = await addState(c);
+  ck(s.open && !s.askShown, '"Keep editing" did not put the coach back in the add sheet');
+
+  await typeInto(c, '#addName', '');
   await tap(c, `document.querySelector('#sheetAddPlayer .bsheet-close').click()`);
   ck(await waitClosed(c, '#sheetAddPlayer'), 'the ✕ did not close the add sheet with nothing typed');
 }
@@ -191,6 +296,8 @@ const pasteState = c => evalJSON(c, `(() => {
     askShown: !!(ask && !ask.hidden),
     askText: ask ? ask.textContent.replace(/\\s+/g, ' ').trim() : null,
     askButtons: ask ? [...ask.querySelectorAll('button')].map(b => b.textContent.trim()) : [],
+    keepClass: d.querySelector('#pasteKeep')?.className ?? null,
+    discardClass: d.querySelector('#pasteDiscard')?.className ?? null,
   });
 })()`);
 
@@ -228,6 +335,14 @@ async function pasteSheetOk(c, ck) {
   let s = await pasteState(c);
   if (!ck(s.open, '"Paste a list" opened no sheet')) return;
 
+  /* A9: no desktop resize grabber on a phone sheet that already has its own
+     drag handle. */
+  const resize = await evalJSON(c, `JSON.stringify({
+    resize: getComputedStyle(document.getElementById('pasteText')).resize,
+  })`);
+  ck(resize.resize === 'none',
+    `#pasteText has resize: ${resize.resize}, want none -- this is a phone sheet, not a desktop textbox`);
+
   await typeInto(c, '#sheetPaste textarea', PASTE_THREE.replace(/\\n/g, '\n'));
   s = await pasteState(c);
   ck(s.confirm === 'Add 3 players', `with three lines typed the confirm reads "${s.confirm}", want "Add 3 players"`);
@@ -245,6 +360,14 @@ async function pasteSheetOk(c, ck) {
     `the ask reads ${JSON.stringify(s.askText)}, want "Discard what you typed?"`);
   ck(s.askButtons.join(' / ') === 'Keep editing / Discard',
     `the ask offers ${s.askButtons.join(' / ') || 'nothing'}, want "Keep editing / Discard"`);
+  /* A8: the safe choice is the filled one, the destructive one is quiet --
+     a coach who taps fast should land on "Keep editing" by default. */
+  const keepCls = (s.keepClass || '').split(/\s+/);
+  const discardCls = (s.discardClass || '').split(/\s+/);
+  ck(keepCls.includes('primary') && !keepCls.includes('danger'),
+    `"Keep editing" is "${s.keepClass}", want the filled primary button`);
+  ck(discardCls.includes('ghost') && discardCls.includes('danger') && !discardCls.includes('primary'),
+    `"Discard" is "${s.discardClass}", want the quiet ghost-danger button`);
 
   await tap(c, `document.getElementById('pasteKeep').click()`);
   s = await pasteState(c);
@@ -254,6 +377,63 @@ async function pasteSheetOk(c, ck) {
   await typeInto(c, '#sheetPaste textarea', '');
   await tap(c, `document.querySelector('#sheetPaste .bsheet-close').click()`);
   ck(await waitClosed(c, '#sheetPaste'), 'the ✕ did not close the paste sheet with an empty box');
+}
+
+/* A10: the same bug `prowFieldsOk` guards above, at the cell where it is
+   worst -- 320px/32px, the narrowest phone at the largest reader text
+   (`LARGE_TEXT_WIDTH`/`LARGE_TEXT_PX`, registry.mjs). Not `oneLine`: a label
+   wrapping here is the fix (`#sheetCard`'s own prior art), only a 0-width
+   label is the bug. */
+async function fieldsAtLargeTextOk(c, ck) {
+  await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });
+  try {
+    await c.send('Emulation.setDeviceMetricsOverride', { width: 320, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    await settle(c);
+    await tap(c, `document.querySelector('#rosterlist .rrow').click()`);
+    await prowFieldsOk(c, ck, '#sheetPlayer', '320px/32px', false);
+    await tap(c, `document.getElementById('sheetPlayerClose').click()`);
+    await tap(c, `document.getElementById('teamAdd').click()`);
+    await prowFieldsOk(c, ck, '#sheetAddPlayer', '320px/32px', false);
+    await tap(c, `document.querySelector('#sheetAddPlayer .bsheet-close').click()`);
+  } finally {
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  }
+}
+
+// A5: long enough to wrap the identity block's name line rather than fit it
+// (`sheet-spacing.mjs`'s own fixture for the same purpose elsewhere).
+const LONG_NAME = 'Maximilian Alexander Featherstone-Whitmore';
+
+/* A5: the identity block must not clip or pan a long name at 320px/32px --
+   the same long-name safety `.rrow .prow-t`/`.sn-nm` already give the roster
+   row and card name (`app.css`'s `overflow-wrap: break-word` on
+   `.pident-name`, `min-width: 0` on `.pident-t`). Mutates p5 (`Jordan Bell`,
+   `fixtures.mjs`) through `setGame`, never a second player list. */
+async function identLongNameOk(c, ck) {
+  await tap(c, setGame(`s.team().players.find(p => p.id === 'p5').name = ${JSON.stringify(LONG_NAME)};`));
+  await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });
+  try {
+    await c.send('Emulation.setDeviceMetricsOverride', { width: 320, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    await settle(c);
+    await tap(c, `document.querySelectorAll('#rosterlist .rrow')[5].click()`);
+    const g = await evalJSON(c, `JSON.stringify((() => {
+      const body = document.querySelector('#sheetPlayer .bsheet-body');
+      return {
+        bodyScrollWidth: body.scrollWidth,
+        bodyClientWidth: body.clientWidth,
+        name: document.getElementById('playerIdentName').textContent.trim(),
+      };
+    })())`);
+    ck(g.name === LONG_NAME, `the identity name reads "${g.name}", want the long name in place`);
+    ck(g.bodyScrollWidth <= g.bodyClientWidth + 1,
+      `the sheet body scrolls sideways (${g.bodyScrollWidth}px wide against a ${g.bodyClientWidth}px box) with a long name in the identity block`);
+    await tap(c, `document.getElementById('sheetPlayerClose').click()`);
+  } finally {
+    await tap(c, setGame(`s.team().players.find(p => p.id === 'p5').name = ${JSON.stringify('Jordan Bell')};`));
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  }
 }
 
 /* Item 7: Edit mode. The list stops being a list of doors and becomes a list
@@ -286,6 +466,24 @@ async function editModeOk(c, ck) {
   ck(on.text === 'Done', `in Edit mode the header button reads "${on.text}", want "Done"`);
   ck(on.pressed === 'true', `in Edit mode the header button is aria-pressed="${on.pressed}", want true`);
 
+  /* A2: Edit is a property of the screen, not the data -- leaving Team mid-edit
+     (even without pressing Done) and coming back must land on the tapping
+     list, the way a coach expects of a mode they turned on to move one
+     player. `toTeam` leaves for Today and comes straight back. */
+  await toTeam(c);
+  const afterReturn = await evalJSON(c, `JSON.stringify({
+    text: document.getElementById('teamEdit').textContent.trim(),
+    pressed: document.getElementById('teamEdit').getAttribute('aria-pressed'),
+    grips: document.querySelectorAll('#rosterlist .rgrip').length,
+  })`);
+  ck(afterReturn.text === 'Edit',
+    `after leaving and returning to Team the header button reads "${afterReturn.text}", want "Edit"`);
+  ck(afterReturn.pressed === 'false',
+    `after leaving and returning to Team the header button is aria-pressed="${afterReturn.pressed}", want false`);
+  ck(afterReturn.grips === 0,
+    `after leaving and returning to Team, Edit mode's grip is still in the list (${afterReturn.grips})`);
+  await tap(c, `document.getElementById('teamEdit').click()`);
+
   for (const width of [WIDTH, 320]) {
     if (width !== WIDTH) await atWidth(c, width);
     const rows = await editState(c);
@@ -301,7 +499,7 @@ async function editModeOk(c, ck) {
       const [grip, up, dn] = r.ord;
       ck(grip.grip, `${name}'s first reorder control is not the drag grip at ${width}px`);
       for (const b of r.ord) {
-        ck(Math.min(b.w, b.h) >= 43.5,
+        ck(Math.min(b.w, b.h) >= 47.5,
           `${name}'s "${b.name}" measures ${b.w.toFixed(1)}x${b.h.toFixed(1)} at ${width}px, want >= 48px`);
       }
       ck(/arrow keys/.test(grip.name),
@@ -336,6 +534,14 @@ async function emptyStateOk(c, ck) {
   for (let i = 0; i < ROSTER.length; i++) {
     await tap(c, `document.querySelector('#rosterlist .rrow')?.click()`);
     await tap(c, `document.getElementById('playerRemove')?.click()`);
+    /* A2: with exactly one player left there is nothing to reorder, so
+       #teamEdit must not offer to. */
+    if (i === ROSTER.length - 2) {
+      const oneLeft = await evalJSON(c, `JSON.stringify({
+        hidden: document.getElementById('teamEdit').hidden,
+      })`);
+      ck(oneLeft.hidden, 'with one player left, #teamEdit is still shown -- there is nothing to reorder');
+    }
   }
   const s = await evalJSON(c, `(() => {
     const e = document.getElementById('teamEmpty');
@@ -348,6 +554,7 @@ async function emptyStateOk(c, ck) {
       listShown: !!(box && !box.hidden && box.getBoundingClientRect().height > 0),
       actionsShown: (() => { const a = document.getElementById('teamActions');
         return !!(a && !a.hidden && a.getBoundingClientRect().height > 0); })(),
+      teamEditHidden: document.getElementById('teamEdit').hidden,
       heading: e?.querySelector('h2')?.textContent.trim() ?? null,
       line: e?.querySelector('p')?.textContent.trim() ?? null,
       acts,
@@ -366,6 +573,7 @@ async function emptyStateOk(c, ck) {
     `the empty state offers ${s.acts.join(' / ') || 'nothing'}, want both "Add a player" and "Paste a list"`);
   ck(s.right <= s.vw + 0.5, `the empty state reaches ${s.right.toFixed(1)}px past a ${s.vw}px screen`);
   ck(s.count === '', `the title still reads "${s.count}" with nobody on the roster`);
+  ck(s.teamEditHidden, 'with nobody on the roster, #teamEdit is still shown -- there is nothing to reorder');
 }
 
 export async function teamScreenPass(c, origin) {
@@ -376,9 +584,12 @@ export async function teamScreenPass(c, origin) {
     await toTeam(c);
     await rosterListOk(c, ck);
     await nothingEditableOnTeam(c, ck);
+    await noDragOnTappingRow(c, ck);
     if (await playerSheetOk(c, ck)) await removeAndUndoOk(c, ck);
     await addSheetOk(c, ck);
     await pasteSheetOk(c, ck);
+    await fieldsAtLargeTextOk(c, ck);
+    await identLongNameOk(c, ck);
     await editModeOk(c, ck);
     await emptyStateOk(c, ck);
   } catch (e) {

@@ -143,15 +143,8 @@ test('dragOffset: never travels past roomUp + cap, however far the finger goes',
   assert.ok(dy > -160); // -(roomUp + cap) = -(100 + 60)
 });
 
-/* ---------------- the close guard (#31 decision 5) --------------------
- *
- * A commit sheet has to ask before it throws away typed text (C4), and it
- * cannot ask in a second overlay: `confirmAction` (toast.js) paints a
- * `div#confirm` at `z-index: 320`, which a `showModal()` dialog in the
- * browser's top layer covers outright, and C5 caps the app at one overlay
- * anyway. So the ask happens INSIDE the sheet, and `closeSheet` asks the
- * dialog's registered guard first: one seam for the ✕, Escape and a
- * backdrop tap, which all end up here.
+/* #31 decision 5, the close guard: rationale at app/trap.js:485-501
+ * (canonical), not re-derived here.
  *
  * Driven against a stub dialog rather than a real one: the seam is "does
  * `closeSheet` consult the registry and honor the answer", which is the

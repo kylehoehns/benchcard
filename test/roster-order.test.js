@@ -13,9 +13,8 @@ import { readFileSync } from 'node:fs';
  * 0.22 opacity, unfocusable and undraggable, the last row's Up arrow was
  * disabled instead of its Down, and no row's Down was updated at all.
  *
- * #31 moves the pair into Edit mode and deletes the rule that hid the arrows
- * (decision 7): a phone is the only device this app is designed for, and I3
- * wants a visible button for every drag, so an Edit row now shows grip +
+ * #31 moves the pair into Edit mode (decision 7, rationale at
+ * app/roster-view.js:93-99, canonical): an Edit row now shows grip +
  * move-up + move-down at every width. This file is re-pointed at that row.
  * Both halves are still pinned because either one alone is satisfiable while
  * the roster is unusable: correct selectors over a row that shows nothing
@@ -45,6 +44,16 @@ function fnSource(name, missing) {
   return code.slice(at, end < 0 ? code.length : end);
 }
 
+// The same slice, but off the RAW (commented) source -- for the one case
+// that is about a comment's own wording, where `code` has already thrown the
+// comment away and a case built on `code` would measure nothing.
+function fnSourceRaw(name, missing) {
+  const at = js.indexOf(`function ${name}`);
+  assert.notEqual(at, -1, missing);
+  const end = js.indexOf('\nfunction ', at + 1);
+  return js.slice(at, end < 0 ? js.length : end);
+}
+
 // The Edit row, so a case about it never reads the tapping row above it.
 const editRow = fnSource('editRow',
   'editRow is gone or renamed; Edit mode is where reordering lives since #31');
@@ -52,10 +61,13 @@ const editRow = fnSource('editRow',
 test('an Edit row carries the grip and both move buttons', () => {
   assert.ok(/'obtn rgrip press'/.test(editRow),
     'the Edit row lost its drag grip -- it is the only reorder surface a pointer has');
-  const arrows = [...editRow.matchAll(/el\('button', 'obtn press'\)/g)];
+  const arrows = [...editRow.matchAll(/el\('button', '([^']*)'\)/g)]
+    .filter(([, cls]) => cls.split(/\s+/).includes('obtn') && !cls.split(/\s+/).includes('rgrip'));
   assert.equal(arrows.length, 2,
     `the Edit row builds ${arrows.length} move button(s), want move-up and move-down. I3: every `
     + 'drag needs a visible button that does the same thing, and Edit mode is where they live.');
+  assert.ok(/icon\('arrow-up'/.test(editRow) && /icon\('arrow-down'/.test(editRow),
+    "the Edit row's move buttons stopped building the up/down icons a coach reads as a move control");
   assert.ok(/up\.disabled = idx === 0/.test(editRow) && /dn\.disabled = idx === state\.players\.length - 1/.test(editRow),
     'the ends stopped disabling themselves, so the first row offers a move up that does nothing');
 });
@@ -90,6 +102,46 @@ test('no width hides the move buttons', () => {
     `CSS hides a roster reorder button again (${hiding.join(' / ')}). A phone is the only device `
     + 'this app is designed for, so a rule that hides the arrows hides them everywhere that '
     + 'matters, and the grip carries `.obtn` too.');
+});
+
+/* Fix pass finding B1: `movePlayer` reorders by rebuilding every row
+ * (`renderRoster`) inside the very `flip()` call meant to animate the old
+ * rows into their new places -- but `renderRoster` starts with
+ * `box.textContent = ''`, which detaches every row `flip` measured before
+ * anything moves. `flip`'s own loop skips a detached element
+ * (`!e.isConnected`), so every press quietly measures for an animation that
+ * can never play. The arrows are a single adjacent swap, exactly what
+ * `rosterDrop` already does cheaply for a drag's drop -- so they route
+ * through that path instead, and `movePlayer` is left only where a full
+ * rebuild is harmless: the grip's keyboard path, which has no pointer to
+ * keep visually anchored the way a drag does. */
+test('the arrows move through rosterDrop’s cheap path, not movePlayer’s rebuild', () => {
+  assert.ok(/up\.onclick = \(\) => arrowMove\(p\.id, -1\)/.test(editRow),
+    'the Up arrow no longer calls arrowMove(p.id, -1) -- it should reuse rosterDrop’s cheap '
+    + 'splice+DOM-move+redisable path instead of movePlayer’s full-rebuild path');
+  assert.ok(/dn\.onclick = \(\) => arrowMove\(p\.id, 1\)/.test(editRow),
+    'the Down arrow no longer calls arrowMove(p.id, 1) -- same finding as the Up arrow');
+  const arrowMoveSrc = fnSource('arrowMove',
+    'arrowMove is gone or renamed; the arrow buttons have nothing cheap left to call');
+  assert.ok(/rosterDrop\(/.test(arrowMoveSrc),
+    'arrowMove no longer calls rosterDrop -- the whole point of this finding was reusing its '
+    + 'cheap path instead of movePlayer’s renderRoster rebuild');
+});
+
+test('movePlayer stays wired to the grip’s keyboard path only', () => {
+  const grip = editRow.slice(editRow.indexOf('grip.onkeydown'), editRow.indexOf('const up ='));
+  assert.ok(/movePlayer\(/.test(grip),
+    'the grip’s ArrowUp/ArrowDown handler stopped calling movePlayer');
+});
+
+test('movePlayer’s own comment does not promise an animation renderRoster prevents', () => {
+  const mp = fnSourceRaw('movePlayer',
+    'movePlayer is gone or renamed; the grip’s keyboard path moved with it');
+  assert.ok(!/then animate each row from where it was/.test(mp),
+    'movePlayer still promises an animation flip() cannot deliver here -- renderRoster wipes '
+    + 'and rebuilds every row inside the very callback flip measured, so every "before" element '
+    + 'is disconnected (`!e.isConnected`) by the time flip tries to animate it, and nothing ever '
+    + 'moves');
 });
 
 /* A cancelled pointer is not a drop. An incoming call, the OS claiming the

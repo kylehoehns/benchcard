@@ -168,7 +168,16 @@
    -> 52% + 6144. On the 754209-byte baseline that is a 1125.5 KB ceiling,
    18.0 KB of room. On `test/budgets.test.js`'s 100 KB fixture it is 154.4 KB,
    still under the 160 KB second-vendor-script case, so that guard still fails
-   a real regression. `requests` still 40 of 41. */
+   a real regression. `requests` still 40 of 41.
+
+   The fix pass on that same PR (A5's identity block, B1's cheap arrow-move
+   path reusing `rosterDrop`, and the C2-C5 duplicate-comment and label
+   cleanups) measured 1119.4 KB against the 1125.5 KB ceiling above -- 6.1 KB
+   of room, not 18.0 KB, now that the feature is actually finished rather than
+   estimated mid-review. Still under it, so this is a truthful correction of
+   the number recorded above, not another widening: `bytesPct`/`bytesAbs`
+   stay exactly as `#31` first set them. `requests` still 40 of 41; DOM nodes
+   1363, well under the 1769 budget. */
 export const SLACK = { bytesPct: 0.52, bytesAbs: 6144, requests: 2, nodes: 250 };
 
 const kb = n => `${(n / 1024).toFixed(1)} KB`;

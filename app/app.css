@@ -892,6 +892,12 @@ input[type=text], input[type=number], select, textarea {
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
 input::placeholder { color: var(--faint); }
 textarea { min-height: 8rem; resize: vertical; }
+/* A phone sheet, not a desktop textbox -- this app has no pointer-driven
+   resize affordance anywhere else, and the sheet above already owns its own
+   drag handle (.bsheet-handle) at the top. A native resize grabber at the
+   bottom-right corner is a desktop leftover with no coach who could reach for
+   it, and at a short sheet height it can sit on top of the note below. */
+#pasteText { resize: none; }
 select {
   appearance: none; cursor: pointer; padding-right: 2rem;
   background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
@@ -1154,12 +1160,10 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
   background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
   box-shadow: inset 0 0 0 var(--av-ring) var(--c); font-variant-numeric: tabular-nums; }
 /* Edit mode (#31 item 7, decision 7): the order column, ahead of the badge.
-   Grip, up and down are each a 48px target at EVERY width -- the rule that
-   used to hide the arrows below 620px is deleted, because a phone is the
-   only device this app is designed for and I3 wants a visible button for
-   every drag. Pinned by test/roster-order.test.js. The row gives up its own
-   side padding to pay for the column; the buttons' own targets are what
-   keeps it 48px tall. */
+   Grip, up and down are each a 48px target at EVERY width -- rationale at
+   app/roster-view.js:93-99 (canonical). Pinned by test/roster-order.test.js.
+   The row gives up its own side padding to pay for the column; the buttons'
+   own targets are what keeps it 48px tall. */
 .rrow-edit { padding-left: .25rem; padding-top: 0; padding-bottom: 0; }
 .rord { display: flex; align-items: center; flex: none; }
 .obtn { width: 48px; height: 48px; display: grid; place-items: center;
@@ -1168,8 +1172,10 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .obtn:disabled { opacity: .22; cursor: default; }
 
 /* drag to reorder: the grab area is the order column and the avatar, so the
-   rest of the row still scrolls the page under a thumb. */
-.rrow .rord, .rrow .av { touch-action: none; cursor: grab; }
+   rest of the row still scrolls the page under a thumb. Scoped to
+   `.rrow-edit` (#31 A1): the tapping list's own `.av` is not a drag surface,
+   and `touch-action: none` there was a scroll dead zone under every badge. */
+.rrow-edit .rord, .rrow-edit .av { touch-action: none; cursor: grab; }
 .rrow.drag .rord, .rrow.drag .av { cursor: grabbing; }
 #rosterlist.dragging { user-select: none; -webkit-user-select: none; }
 /* `animation: rowIn ... both` keeps applying its last keyframe forever, and a
@@ -2537,11 +2543,11 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
    will not be squeezed by `.bsheet-body`'s `flex: 1`. */
 .bsheet-toasts { flex: none; padding: 0 1.1rem .5rem; }
 
-/* C4: a commit sheet's confirm -- full width at the foot of the body, named
-   for the result ("Add player", "Add 3 players") and never "Done". Sits in
-   the scrolling body rather than in a bar of its own: a sheet at rest is half
-   the screen, so the button is on screen without one, and `#sheetPaste`'s
-   discard ask takes exactly this slot when it appears. */
+/* C4: a commit sheet's confirm -- full width at the foot of the body (naming
+   rationale at app/roster.js:200-203, canonical). Sits in the scrolling body
+   rather than in a bar of its own: a sheet at rest is half the screen, so the
+   button is on screen without one, and `#sheetPaste`'s discard ask takes
+   exactly this slot when it appears. */
 .bsheet-cta { display: flex; flex-direction: column; gap: .5rem; padding: 1.1rem 1rem 0; }
 .bsheet-cta .btn { width: 100%; min-height: 48px; white-space: normal; }
 /* Decision 5: the question the ask puts above its two answers. */
@@ -2684,6 +2690,23 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
 .pgrp .prow-in::placeholder { color: var(--faint); }
 .pgrp .prow-in:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
 .pgrp .prow-in-num { font-variant-numeric: tabular-nums; }
+/* Fix pass finding (#31 A4/A10): same bug and the same fix as
+   `#sheetCard .pgrp .prow-select` above -- `.prow-t`'s general rule (`flex:
+   1`, 0% basis) loses the row's width to `.prow-in`'s `flex: 1 1 auto`
+   (auto basis) once the two no longer both fit at their natural size.
+   Measured before this fix: at 390px/16px "Card name" (the longest label)
+   was squeezed to 69.5px against the ~70px "Card name" needs, wrapping to
+   two lines; at 320px/32px every label in these two sheets collapsed to 0
+   width outright, painting under the field instead of beside it.
+   `flex-basis: auto` restores each label's own content width, `flex-wrap:
+   wrap` on the row lets the field drop to its own line once the label and
+   the field no longer both fit -- alone on that line, the field's own
+   `flex: 1 1 auto` still grows to fill it, and `text-align: right`
+   (`.prow-in`, above) keeps its value where a coach's eye already expects
+   it. Scoped to `#sheetPlayer, #sheetAddPlayer`, not `.prow` generally --
+   other sheets' rows were not checked against this fix. */
+#sheetPlayer .pgrp .prow, #sheetAddPlayer .pgrp .prow { flex-wrap: wrap; }
+#sheetPlayer .pgrp .prow-t, #sheetAddPlayer .pgrp .prow-t { flex-basis: auto; }
 /* two kids wearing one number: mark the number, quietly. The row is not the
    error -- the pair is -- so this tints rather than shouts, and the banner
    above the roster is what names them. Since #31 the only jersey-number field
@@ -2696,6 +2719,27 @@ dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
 .prow-danger { color: var(--err); font-weight: 600; }
 .prow-icon { color: var(--muted); }
 .prow.add-rule .prow-t { color: inherit; }
+
+/* #31 A5: the identity block the prototype's own player sheet opens with
+   (survey: "a 56px badge, a 24px/700 name, a 15px muted level line") above
+   the Number/Name/Card-name fields. `--c` is set on the block by
+   `openPlayerSheet` (roster-view.js), the same custom property `.rrow .av`
+   already reads off its own row -- `.pident-av` is that badge at 56px
+   (3.5rem) instead of 32px, same tint math. 24px is not on the type scale
+   (T2/T3; `--fs-sentence` at 25px is the nearest step and wins), 15px has no
+   token of its own either -- the spec's own look-to-match table already
+   settled both onto `--fs-sentence` and `--fs-secondary` for this sheet.
+   `min-width: 0` and `overflow-wrap` on the text side are the same long-name
+   fix `.rrow .prow-t` and `.sn-nm` already use -- a long name wraps here
+   instead of pushing the block past the sheet's own edge at 320px/32px. */
+.pident { --c: var(--muted); display: flex; align-items: center; gap: .875rem; padding: .75rem 1rem 1.25rem; }
+.pident-av { flex: none; width: 3.5rem; height: 3.5rem; border-radius: 50%;
+  display: grid; place-items: center; font-size: var(--fs-title); font-weight: 700;
+  background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
+  box-shadow: inset 0 0 0 var(--av-ring) var(--c); font-variant-numeric: tabular-nums; }
+.pident-t { min-width: 0; }
+.pident-name { font-size: var(--fs-sentence); font-weight: 700; overflow-wrap: break-word; }
+.pident-level { font-size: var(--fs-secondary); color: var(--muted); }
 
 /* Decision 7: a rule's own sentence, above the Remove-rule group. */
 .plan-rule-sentence { margin: 1.125rem 1.5rem 0; font-size: var(--fs-title);

@@ -1049,6 +1049,20 @@
         </div>
       </div>
       <div class="bsheet-body">
+        <!-- #31 A5: the prototype's own identity block (56px badge, 24px/700
+             name, muted level line) above the fields -- painted from the same
+             player `roster-view.js` opened the sheet for, never a second copy
+             of `initials`/`levelName`. Decision 10: the `<h2>` above still
+             repeats the name -- every sheet keeps the same header shape (C3),
+             and this block is the prototype's visual identity, not a second
+             announcement replacing the dialog's own accessible name. -->
+        <div class="pident" id="playerIdent">
+          <span class="pident-av" id="playerIdentAv" aria-hidden="true"></span>
+          <div class="pident-t">
+            <div class="pident-name" id="playerIdentName"></div>
+            <div class="pident-level" id="playerIdentLevel"></div>
+          </div>
+        </div>
         <div class="pgrp">
           <label class="prow" for="playerNumber">
             <span class="prow-t">Number</span>
@@ -1082,11 +1096,8 @@
       </div>
     </dialog>
 
-    <!-- The two commit sheets (#31 items 5 and 6). C4: a sheet that only
-         takes effect when the coach says so puts its ✕ at the top LEFT and
-         names its confirm for the result -- never "Done". Both confirms are
-         written by `confirmAddLabel` (roster.js) so one player and several
-         are spelled the same way in both places. -->
+    <!-- The two commit sheets (#31 items 5 and 6, C4). Confirm-naming
+         rationale at app/roster.js:200-203 (canonical), not re-derived here. -->
     <dialog class="bsheet grouped noprint" id="sheetAddPlayer" aria-labelledby="sheetAddTitle">
       <div class="bsheet-hd">
         <button type="button" class="bsheet-handle" aria-label="Full height"></button>
@@ -1107,8 +1118,14 @@
             <input class="prow-in" id="addName" type="text" placeholder="Name" autocomplete="off">
           </label>
         </div>
-        <div class="bsheet-cta">
-          <button class="btn primary press" id="addPlayerGo" type="button"></button>
+        <div class="bsheet-cta" id="addFoot">
+          <button class="btn primary press" id="addPlayerGo" type="button" disabled></button>
+        </div>
+        <!-- A3: mirrors #sheetPaste's own ask (C4/decision 5, rationale at app/trap.js:485-501). -->
+        <div class="bsheet-cta" id="addAsk" hidden>
+          <p class="bsheet-ask-t">Discard what you typed?</p>
+          <button class="btn primary press" id="addKeep" type="button">Keep editing</button>
+          <button class="btn ghost danger press" id="addDiscard" type="button">Discard</button>
         </div>
       </div>
     </dialog>
@@ -1133,8 +1150,8 @@
              overlay would paint behind this one and take no taps. -->
         <div class="bsheet-cta" id="pasteAsk" hidden>
           <p class="bsheet-ask-t">Discard what you typed?</p>
-          <button class="btn press" id="pasteKeep" type="button">Keep editing</button>
-          <button class="btn danger press" id="pasteDiscard" type="button">Discard</button>
+          <button class="btn primary press" id="pasteKeep" type="button">Keep editing</button>
+          <button class="btn ghost danger press" id="pasteDiscard" type="button">Discard</button>
         </div>
       </div>
     </dialog>

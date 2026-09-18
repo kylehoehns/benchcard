@@ -19,7 +19,7 @@ import { renderTimeline, applyGameView } from './timeline.js';
 import { renderBalance } from './balance.js';
 import { renderConstraints, renderSeasonAdjust } from './rules.js';
 import { renderStrategy, refreshBudgetActuals } from './strategy.js';
-import { renderRoster, renderLevels } from './roster-view.js';
+import { renderRoster, renderLevels, resetEditMode } from './roster-view.js';
 import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
 import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
@@ -432,12 +432,18 @@ function applyView(v, from) {
   const exportBtnEl = $('#seasonExport');
   if (exportBtnEl) exportBtnEl.hidden = v !== 'season' || !seasonGames().length;
   /* #31 decision 2: Team's two header actions (C1 allows two), shown only on
-     Team -- same shape as `#shareBtn` above, and one condition for the pair
-     rather than the same comparison written twice. */
-  for (const id of ['#teamEdit', '#teamAdd']) {
-    const actionEl = $(id);
-    if (actionEl) actionEl.hidden = v !== 'team';
-  }
+     Team -- same shape as `#shareBtn` above. `#teamEdit` carries a second
+     condition (#31 A2): with nobody, or exactly one player, on the roster
+     there is nothing Edit mode could reorder. */
+  const teamAddEl = $('#teamAdd');
+  if (teamAddEl) teamAddEl.hidden = v !== 'team';
+  const teamEditEl = $('#teamEdit');
+  if (teamEditEl) teamEditEl.hidden = v !== 'team' || state.players.length <= 1;
+  /* #31 A2: the real transition away from Team, same shape as the Games/Today
+     branches below -- Edit mode is meant to be a property of the screen, not
+     the data, so leaving (even mid-edit) resets it before the coach can find
+     it still on next time they arrive. */
+  if (v !== 'team' && from === 'team') resetEditMode();
   /* #23 review, third round: entering Games has to show what `state` says,
      not whichever game the screen last painted. Everything above this line
      only ever toggled visibility and wrote the header title -- the opponent

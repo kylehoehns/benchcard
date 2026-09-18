@@ -10,7 +10,7 @@
    is now imported straight from toast.js, which is a leaf. */
 import { deriveShortNames } from './engine.js';
 import { confirmAddLabel, dropIndex, duplicateNumbers, focusAfterRemoval, parseRoster, repeatIndexes } from './roster.js';
-import { riseIn, flip, tick, enabled as fxOn } from './fx.js';
+import { riseIn, tick, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
 import { $, set, el, uid } from './dom.js';
 import { withFocus, openSheet, closeSheet, guardClose } from './trap.js';
@@ -21,10 +21,29 @@ import { levelMeter, levelName, levelledCount, resetLevels, repaintLevels } from
 let soon = () => {};
 let AFTER_EDIT = [];
 
-/* Edit mode is a property of the screen, not of the data: leaving Team and
-   coming back gives the tapping list, which is what a coach expects of a mode
-   they turned on to move one player. */
+/* Edit mode is meant to be a property of the screen, not of the data: leaving
+   Team and coming back should give the tapping list, which is what a coach
+   expects of a mode they turned on to move one player. This flag is
+   module-level, though, so nothing resets it on its own -- `resetEditMode`
+   below is what `render.js`'s `applyView` calls on the real transition out of
+   Team, so the coach who left mid-edit never finds it still on. */
 let editing = false;
+
+/* Called from `render.js` on the real transition away from Team (#31 A2). A
+   no-op, and no repaint, if Edit was already off. Syncs `#teamEdit`'s own
+   label/`aria-pressed` the same way `toggleEditMode` below does -- that
+   function takes its button by reference (the click's own `e.currentTarget`),
+   but this call has none, so it looks the one fixed id up itself. */
+export function resetEditMode() {
+  if (!editing) return;
+  editing = false;
+  const btn = $('#teamEdit');
+  if (btn) {
+    btn.textContent = 'Edit';
+    btn.setAttribute('aria-pressed', 'false');
+  }
+  renderRoster();
+}
 
 export function initRoster(scheduler, afterEdit) {
   soon = scheduler;
@@ -36,19 +55,39 @@ export function initRoster(scheduler, afterEdit) {
    not a rule, so the field enforces it as the coach types. */
 const digitsOnly = s => s.replace(/[^0-9]/g, '');
 
+/* The grip's keyboard path only (B1): `renderRoster` starts with
+   `box.textContent = ''`, which detaches every row `flip` measured below
+   before anything moves, so `flip`'s own `!e.isConnected` check always skips
+   them and no row is ever actually animated from where it was -- a rebuild,
+   not a FLIP, dressed as one. That is harmless for a key press, which has no
+   pointer to keep visually anchored, so the rebuild (and `withFocus`, which
+   puts the pressed control back by `data-fk`) stays; the arrows below use
+   `rosterDrop`'s cheap path instead, which really does move without a
+   rebuild. */
 function movePlayer(id, dir) {
   const i = state.players.findIndex(p => p.id === id);
   const j = i + dir;
   if (i < 0 || j < 0 || j >= state.players.length) return;
-  const rows = document.querySelectorAll('#rosterlist .rrow');
-  // FLIP: measure, reorder, then animate each row from where it was
-  // withFocus keeps the pressed control under the finger/caret: the rows are
-  // rebuilt, so without it a second press has nothing focused to press.
-  flip(rows, () => withFocus(() => {
+  withFocus(() => {
     [state.players[i], state.players[j]] = [state.players[j], state.players[i]];
     renderRoster();
-  }));
+  });
   soon('constraints', ...AFTER_EDIT);
+}
+
+/* B1: the arrows are always a single adjacent swap -- exactly what
+   `rosterDrop` already does for a drag's drop, cheaply: splice the two
+   affected rows, move the real DOM nodes instead of rebuilding them, and
+   re-disable the ends. Reused rather than re-derived, and it is also why the
+   arrows need no `withFocus`: their own button node never leaves the DOM, so
+   focus simply stays where it was. */
+function arrowMove(id, dir) {
+  const i = state.players.findIndex(p => p.id === id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= state.players.length) return;
+  const box = $('#rosterlist');
+  const rows = [...box.querySelectorAll('.rrow')];
+  rosterDrop({ box, row: rows[i], rows, from: i, to: j });
 }
 
 /* ---- drag to reorder ----------------------------------------------------
@@ -80,6 +119,9 @@ const DRAG_SPEED = 16;  // px per frame at the very edge
 
 function rosterDown(e) {
   if (e.button > 0 || dnd) return;
+  // A1: only an Edit row is a drag surface -- the tapping list's own `.av`
+  // must let a pointer scroll the page under it, not start a reorder.
+  if (!e.target.closest('.rrow-edit')) return;
   if (!e.target.closest('.rord, .av')) return;
   const row = e.target.closest('.rrow');
   const box = $('#rosterlist');
@@ -395,6 +437,21 @@ function repaintRow(p) {
   const lv = row.querySelector('.prow-v'); if (lv) lv.textContent = levelName(p);
 }
 
+/* #31 A5: the player sheet's own identity block, same idea as `repaintRow`
+   above -- found by the dialog's own `data-pid` rather than held in a
+   variable, so a number, name or level edit made while the sheet is open
+   repaints it in place. `data-pid` is set by `openPlayerSheet` before the
+   dialog's own `showModal()` runs, so this also paints the very first open,
+   not only a later edit -- and does nothing for any player who is not the
+   one the dialog is currently keyed to. */
+function repaintIdent(p) {
+  const dialog = $('#sheetPlayer');
+  if (!dialog || dialog.dataset.pid !== p.id) return;
+  set('#playerIdentAv', 'textContent', initials(p));
+  set('#playerIdentName', 'textContent', rowName(p));
+  set('#playerIdentLevel', 'textContent', levelName(p));
+}
+
 /* Edit mode's row (#31 item 7, decision 7): the drag grip AND both move
    buttons, at every width -- a phone is the only device this app is designed
    for, and I3 wants a visible button for every drag. Nothing here is a text
@@ -439,13 +496,13 @@ function editRow(p, idx) {
   up.type = 'button'; up.disabled = idx === 0;
   up.dataset.fk = `r:${p.id}:up`;
   up.setAttribute('aria-label', `Move ${p.name || 'player'} up`);
-  up.onclick = () => movePlayer(p.id, -1);
+  up.onclick = () => arrowMove(p.id, -1);
   const dn = el('button', 'obtn press');
   dn.append(icon('arrow-down', { size: '.85em', stroke: 2.4 }));
   dn.type = 'button'; dn.disabled = idx === state.players.length - 1;
   dn.dataset.fk = `r:${p.id}:dn`;
   dn.setAttribute('aria-label', `Move ${p.name || 'player'} down`);
-  dn.onclick = () => movePlayer(p.id, 1);
+  dn.onclick = () => arrowMove(p.id, 1);
   ord.append(grip, up, dn);
   row.append(ord);
   row.append(el('span', 'av', initials(p)));
@@ -472,6 +529,9 @@ function openPlayerSheet(p, trigger) {
   const showTitle = () => set('#sheetPlayerTitle', 'textContent', p.name || 'Player');
 
   dialog.dataset.pid = p.id;   // how `paintDupes` knows whose number is on show
+  // A5: the identity block's badge reads the same `--c` a roster row's own does.
+  $('#playerIdent').style.setProperty('--c', colorOf(p.id));
+  repaintIdent(p);
   showTitle();
   num.value = p.number || '';
   nm.value = p.name || '';
@@ -485,6 +545,7 @@ function openPlayerSheet(p, trigger) {
   num.oninput = () => {
     p.number = digitsOnly(num.value); num.value = p.number;
     repaintRow(p);
+    repaintIdent(p);   // A5: the badge reads the number first (`initials`)
     paintDupes();
     soon(...AFTER_EDIT);
   };
@@ -492,6 +553,7 @@ function openPlayerSheet(p, trigger) {
     p.name = nm.value;
     showTitle();
     repaintRow(p);
+    repaintIdent(p);
     paintDupes();   // the notice names the players; a rename restates it
     soon('constraints', ...AFTER_EDIT);
   };
@@ -546,11 +608,8 @@ function levelsNote() {
 
 /* ---- the two ways to add (#31 items 5 and 6) -----------------------------
  *
- * Both are commit sheets: nothing happens to the roster until the confirm at
- * the bottom is pressed, and the confirm is named for what it will do. The
- * two spellings of that name live in `confirmAddLabel` (roster.js) rather
- * than in either sheet, because the paste sheet re-reads its box on every
- * keystroke and would otherwise hold a second copy of the plural rule. */
+ * Both are commit sheets (C4): the confirm's two spellings are
+ * `confirmAddLabel`, app/roster.js:200-203 (canonical), not re-derived here. */
 
 /* A new kid, typed or pasted: both doors make the same record, so the default
    level and the empty card-name override are decided once. The hue is the
@@ -568,18 +627,45 @@ function rosterChanged() {
   soon('constraints', ...AFTER_EDIT);
 }
 
+function paintAddConfirm() {
+  const num = $('#addNumber'), nm = $('#addName');
+  set('#addPlayerGo', 'textContent', confirmAddLabel(1));
+  // A3: nothing typed is nothing to add -- no pushing a blank "Unnamed" player.
+  $('#addPlayerGo').disabled = !num.value.trim() && !nm.value.trim();
+}
+
+function showAddAsk(on) {
+  const ask = $('#addAsk'), foot = $('#addFoot');
+  if (!ask || !foot) return;
+  ask.hidden = !on;
+  foot.hidden = on;
+  if (on) $('#addKeep')?.focus({ preventScroll: true });
+}
+
 export function openAddPlayerSheet(trigger) {
   const dialog = $('#sheetAddPlayer');
   if (!dialog) return;
   const num = $('#addNumber'), nm = $('#addName');
   num.value = ''; nm.value = '';
-  set('#addPlayerGo', 'textContent', confirmAddLabel(1));
-  num.oninput = () => { num.value = digitsOnly(num.value); };
+  showAddAsk(false);
+  paintAddConfirm();
+  num.oninput = () => { num.value = digitsOnly(num.value); paintAddConfirm(); };
+  nm.oninput = paintAddConfirm;
   $('#addPlayerGo').onclick = () => {
     state.players.push(newPlayer(nm.value.trim(), num.value, nextHue()));
     closeSheet(dialog);
     rosterChanged();
   };
+  $('#addKeep').onclick = () => { showAddAsk(false); nm.focus(); };
+  $('#addDiscard').onclick = () => { num.value = ''; nm.value = ''; showAddAsk(false); closeSheet(dialog); };
+  /* A3/C4: same close guard as the paste sheet (`guardClose`, trap.js) --
+     closing on top of typed content asks first, and an empty sheet has
+     nothing to lose. */
+  guardClose(dialog, () => {
+    if (!num.value.trim() && !nm.value.trim()) return false;
+    showAddAsk(true);
+    return true;
+  });
   openSheet(dialog, trigger);
 }
 
@@ -656,7 +742,7 @@ export function renderLevels() {
   renderTeamActions();
   /* The word for the level is on the roster row too, and the row the coach
      just changed is sitting behind the open sheet. */
-  for (const p of state.players) repaintRow(p);
+  for (const p of state.players) { repaintRow(p); repaintIdent(p); }
 }
 
 /* The second group under the roster (#31 decision 6): the other way to add
