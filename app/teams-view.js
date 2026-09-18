@@ -23,6 +23,11 @@ import { track } from './analytics.js';
 import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay, activeColor,
          colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, STRATEGIES, EVEN_OUT_DAY_LABEL } from './state.js';
+// #34 decision 5/6: the picker lives in card.js (state.js cannot import it
+// back), and this is the one place it is called from -- both the paint and
+// the tap. No cycle: gamemode.js does not import teams-view.js.
+import { resumeBarAt } from './card.js';
+import { openGameMode } from './gamemode.js';
 // One switch builder for the whole app (#32): the Plan sheet's "Even out
 // earlier games" row and step 3's are the same control.
 import { switchRow } from './rules.js';
@@ -91,6 +96,16 @@ export function initTeams(renderAllFn, setViewFn) {
   on('#todayNewDay', 'onclick', startNewDay);
   on('#todayTeam', 'onclick', () => setView('team'));
   on('#todaySeason', 'onclick', () => setView('season'));
+  // #34 decision 8: stays on Today -- no setView, no history entry. The
+  // picker is called again here rather than trusting the paint's last
+  // answer, so a slow tap after a same-tick state change still opens the
+  // game the bar is actually showing.
+  on('#resumeBtn', 'onclick', () => {
+    const r = resumeBarAt();
+    if (!r) return;
+    state.activeGame = r.i;
+    openGameMode();
+  });
   // The menu is anchored to the button that opens it (C8), not to a fixed
   // point on the screen. `toggle` (not `beforetoggle`) is what fires AFTER
   // the popover's own box exists, which is what makes measuring ITS size --
@@ -471,6 +486,22 @@ function renderPass(g, i) {
   b.setAttribute('aria-label', g.when ? `${full}, ${g.when}, ${statusWord}` : `${full}, ${statusWord}`);
   b.onclick = () => { state.activeGame = i; setView('games'); };
   return b;
+}
+
+/* #34 decision 6: sets `#resumeBar`'s hidden state and writes the label in
+   one function, exactly like `renderTabs` does for the entries below it.
+   Only offered on Today, and only once onboarded -- the same guard
+   `#actionbar`'s own hidden line uses, so a part-played game never shows a
+   floating primary action on the welcome screen. */
+export function renderResumeBar() {
+  const bar = $('#resumeBar');
+  if (!bar) return;
+  const r = state.onboarded && state.view === 'today' ? resumeBarAt() : null;
+  bar.hidden = !r;
+  if (r) {
+    set('#resumeBtn .ab-lab', 'textContent',
+      `${gameLabel(state.day.games[r.i], r.i)} · ${r.where} · Resume`);
+  }
 }
 
 export function renderTabs() {

@@ -16,7 +16,7 @@
  * quietly undoing AC4 in landscape only). So item 4's declaration check
  * below walks the live CSSOM and audits EVERY rule that sets the property,
  * not the one the base block happens to contain. */
-import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
 import { nameOf, LARGE_TEXT_WIDTH } from './registry.mjs';
 /* The five screens and the click that reaches each one, from the one list
    that already holds them -- `sweep.mjs`'s `VIEWS`, which `app-large-text.mjs`
@@ -53,13 +53,6 @@ const VIEWS = SCREENS.map(({ name }) => ({
   view: name, main: `view-${name}`, hasLarge: !NO_LARGE_TITLE.has(name),
 }));
 const GO = Object.fromEntries(SCREENS.map(({ name, open }) => [name, open]));
-
-const alpha = c => {
-  const m = /rgba?\(([^)]+)\)/.exec(c || '');
-  if (!m) return null;
-  const parts = m[1].split(/[,/]/).map(s => s.trim());
-  return parts.length > 3 ? Number(parts[3]) : 1;
-};
 
 export async function floatingControlsPass(c, origin) {
   const problems = [];
@@ -288,7 +281,7 @@ export async function floatingControlsPass(c, origin) {
 
   /* ---- item 5: the solid fallbacks ---- */
   const SCRIMS = ['.bar::before', '.actionbar::before'];
-  for (const [feature, value] of [['prefers-reduced-transparency', 'reduce'], ['prefers-contrast', 'more']]) {
+  for (const [feature, value] of SOLID_FALLBACK_MEDIA) {
     await c.send('Emulation.setEmulatedMedia', { features: [{ name: feature, value }] });
     await evalIn(c, `${SETTLE}`);
     const solid = JSON.parse(await evalIn(c, `(() => {

@@ -1,0 +1,540 @@
+[
+  {
+    "name": "today-light",
+    "file": "today-light.png",
+    "view": "today",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "today-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "d46c36cfd23fd1b682e4a53a2f990a4bccecea4b351d23744ef712e9915261f4"
+  },
+  {
+    "name": "today-dark",
+    "file": "today-dark.png",
+    "view": "today",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "today-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "f97393bf0d80140a93d5a26451b0ae50202f970174452a2a255572b8e194c4f1"
+  },
+  {
+    "name": "games-light",
+    "file": "games-light.png",
+    "view": "games",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "games-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "3af3469b797ed5232a56461fefbf7c5f5589dd42fd284e4994378add6d6f44f1"
+  },
+  {
+    "name": "games-dark",
+    "file": "games-dark.png",
+    "view": "games",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "games-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "9ba77352fd86d8155433093adda76b7e48f9f97fa7979caeb5bd004e00656bb6"
+  },
+  {
+    "name": "team-light",
+    "file": "team-light.png",
+    "view": "team",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "team-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "386656af6d2036544b211f7a3f3cfeb0905523d2b5b9527440c722452f36863e"
+  },
+  {
+    "name": "team-dark",
+    "file": "team-dark.png",
+    "view": "team",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "team-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "9e29d6694921132f18df84e2448e6f69c2f55435d8c55b543690aa504028acfc"
+  },
+  {
+    "name": "season-light",
+    "file": "season-light.png",
+    "view": "season",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "season-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "aa71d18d11ed49084e63bbdc6ecfb41c297f2d01032c97741d8eed29093e687e"
+  },
+  {
+    "name": "season-dark",
+    "file": "season-dark.png",
+    "view": "season",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "season-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "8cb28ddf5f7fd1a958a1ec12102161e95a13ef13a0b2170cc5142dbcb97f13ec"
+  },
+  {
+    "name": "settings-light",
+    "file": "settings-light.png",
+    "view": "settings",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "settings-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "0248e501ecd81772cc9a22712347087768edd5caead5c8a8d98e5283bd849243"
+  },
+  {
+    "name": "settings-dark",
+    "file": "settings-dark.png",
+    "view": "settings",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "settings-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "6590c84dd1747a6eeef2df1c4af690c60786fd631cdebb3097164d7db65d48e0"
+  },
+  {
+    "name": "long-name-light",
+    "file": "long-name-light.png",
+    "view": "team",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": true,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "long-name-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "ae5f5c1d957d6883e0c354fa4d2f8465d646c5adce955597ebe0ad49af1ca1f9"
+  },
+  {
+    "name": "long-name-dark",
+    "file": "long-name-dark.png",
+    "view": "team",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": true,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "long-name-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "cdae82a7583c276c21e5c97bb0c92f4bb6ecc534b65ef683a52f4ff978fab30c"
+  },
+  {
+    "name": "bottom-light",
+    "file": "bottom-light.png",
+    "view": "season",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": true,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "bottom-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "92be93db15643bfa32e5d018f8e8a973e56b70e31fa7ca6b4e0bffd94cdd2e61"
+  },
+  {
+    "name": "bottom-dark",
+    "file": "bottom-dark.png",
+    "view": "season",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": true,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "bottom-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "42cd8f16abe94275eb975a164993d19989acabedee6c7b0e7430008c71aea8fd"
+  },
+  {
+    "name": "full-light",
+    "file": "full-light.png",
+    "view": "settings",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": true,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "full-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "eb4dec69a968fe287b5415006e244e4347d2d3f5033feabf490060bab1bd3735"
+  },
+  {
+    "name": "full-dark",
+    "file": "full-dark.png",
+    "view": "settings",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": true,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "full-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "6354af5b4cb11eaba75febe9828bf184dccb19ea1682de958d6058c6f07245e5"
+  },
+  {
+    "name": "large-text-320",
+    "file": "large-text-320.png",
+    "view": "today",
+    "theme": "light",
+    "width": 320,
+    "rootPx": 32,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": null,
+    "measured": {
+      "fontSizePx": 32,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "797206217acff05b89fe980f2d594a95faf1b2645f2aab379e7b112f94a1f9cc"
+  },
+  {
+    "name": "first-run-light",
+    "file": "first-run-light.png",
+    "view": null,
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": true,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "first-run-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "571778a5d06afcb9315113fa67942bd4f483bc6a0c76cc07e44da32745c9c8e4"
+  },
+  {
+    "name": "first-run-dark",
+    "file": "first-run-dark.png",
+    "view": null,
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": true,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "twin": "first-run-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "4df2c0b784c545fc2c515fee14047e43e8887e6cf36b9dd0ab6e5886d57c66d9"
+  },
+  {
+    "name": "title-collapsed-light",
+    "file": "title-collapsed-light.png",
+    "view": "season",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": true,
+    "partPlayed": false,
+    "twin": "title-collapsed-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "16ee7786369a8d87232244675659c080cd8007c9a2591eb8ce4c4a11f73ebe06"
+  },
+  {
+    "name": "title-collapsed-dark",
+    "file": "title-collapsed-dark.png",
+    "view": "season",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": true,
+    "partPlayed": false,
+    "twin": "title-collapsed-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "d6b08a95e9d351a4e5e7d7f48dcd198f853c0983b6b775a229703f284a7e8279"
+  },
+  {
+    "name": "resume-bar-light",
+    "file": "resume-bar-light.png",
+    "view": "today",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": true,
+    "twin": "resume-bar-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "9af279e579271705db3f49d621cfd1cb79c76a54ab1d97e2c8ddf6f84bf5f266"
+  },
+  {
+    "name": "resume-bar-dark",
+    "file": "resume-bar-dark.png",
+    "view": "today",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": true,
+    "twin": "resume-bar-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "77e6174e89fc7203b64f5c225415fcc8838451fdc71232754060132c5ffab80c"
+  },
+  {
+    "name": "resume-bar-full-light",
+    "file": "resume-bar-full-light.png",
+    "view": "today",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": true,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": true,
+    "twin": "resume-bar-full-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "99d681f6fea976759749be7ccb75dbd31295e7921fe884607360d7a35abeeca3"
+  },
+  {
+    "name": "resume-bar-full-dark",
+    "file": "resume-bar-full-dark.png",
+    "view": "today",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": true,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": true,
+    "twin": "resume-bar-full-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "6e82a9f06f58a9178b18ef1a03033edcc10456f4c0177dd3d173b76afa5f3816"
+  },
+  {
+    "name": "resume-bar-320",
+    "file": "resume-bar-320.png",
+    "view": "today",
+    "theme": "light",
+    "width": 320,
+    "rootPx": 32,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": true,
+    "twin": null,
+    "measured": {
+      "fontSizePx": 32,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "52689f3aba7c60fa1eb7bf5b2da2a19ffc0f7c8ff67ecb6d6a1997d0454bac34"
+  },
+  {
+    "name": "resume-bar-bottom-320",
+    "file": "resume-bar-bottom-320.png",
+    "view": "today",
+    "theme": "light",
+    "width": 320,
+    "rootPx": 32,
+    "full": false,
+    "bottom": true,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": true,
+    "twin": null,
+    "measured": {
+      "fontSizePx": 32,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "5301949097ad1944a425fa520486d63c179f61cde9b2dfb43608db821fda6deb"
+  }
+]

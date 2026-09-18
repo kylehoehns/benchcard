@@ -38,7 +38,7 @@ import { launch, cdp } from './smoke/chrome.mjs';
 import { serve } from './serve.mjs';
 import { parseTokensCss, colorOf } from './tokens-css.mjs';
 import { evalIn, step, SETTLE, WIDTH, HEIGHT } from './smoke/dom.mjs';
-import { goRich, LONG_NAME } from './smoke/fixtures.mjs';
+import { goRich, LONG_NAME, RICH, partPlayed as partPlayedFixture, reloadWithRecord } from './smoke/fixtures.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './smoke/registry.mjs';
@@ -85,6 +85,7 @@ const otherTheme = t => (t === 'light' ? 'dark' : 'light');
 const pair = (name, view, theme, extra = {}) => ({
   name: `${name}-${theme}`, view, theme, width: WIDTH, rootPx: 16,
   full: false, bottom: false, longNames: false, firstRun: false, titleCollapsed: false,
+  partPlayed: false,
   twin: `${name}-${otherTheme(theme)}`,
   ...extra,
 });
@@ -115,6 +116,28 @@ const EXTRA_SHOTS = [
   // writing a PNG (`.bar` never gained `title-in`). Season's ledger, day
   // chart and filed games give it real room to scroll.
   ...THEMES.map(theme => pair('title-collapsed', 'season', theme, { titleCollapsed: true })),
+  // #34 decision 16: the part-played Resume bar on Today -- its own plain
+  // pair at 390x844, a full-document-height pair (the honest version of
+  // `bottom: true`: RICH's Today is 853px against an 844px viewport, nine
+  // pixels of scroll room, so a bottom scroll there would prove nothing),
+  // and 320px at a 32px root for the long-name wrap case item 4 requires.
+  ...THEMES.map(theme => pair('resume-bar', 'today', theme, { partPlayed: true })),
+  ...THEMES.map(theme => pair('resume-bar-full', 'today', theme, { partPlayed: true, full: true })),
+  { name: 'resume-bar-320', view: 'today', theme: 'light', width: LARGE_TEXT_WIDTH,
+    rootPx: LARGE_TEXT_PX, full: false, bottom: false, longNames: false,
+    firstRun: false, titleCollapsed: false, partPlayed: true, twin: null },
+  /* AND THAT CELL SCROLLED TO ITS END. `bottom: true` is worthless on Today
+     at 390px (nine pixels of scroll room, as the entry above says), but at
+     320px with a 32px root the bar wraps to five lines, Today grows well past
+     one screen, and the end of the scroll is exactly where a bar taller than
+     `.wrap`'s clearance strands content -- measured at 84px of `#todaySeason`
+     left under a 310px bar before the clearance learned to read `--ab-h`.
+     `resume-bar-full` cannot show this: a full-document capture has no last
+     screenful to be stranded in. Light only, like every other large-text
+     cell, so it declares no twin. */
+  { name: 'resume-bar-bottom-320', view: 'today', theme: 'light', width: LARGE_TEXT_WIDTH,
+    rootPx: LARGE_TEXT_PX, full: false, bottom: true, longNames: false,
+    firstRun: false, titleCollapsed: false, partPlayed: true, twin: null },
 ];
 
 export const SHOTS = Object.freeze([...BASE_SHOTS, ...EXTRA_SHOTS].map(Object.freeze));
@@ -278,6 +301,13 @@ async function capture(c, origin, want, outDir) {
 
   if (want.firstRun) {
     await goFirstRun(c, origin, want.theme);
+  } else if (want.partPlayed) {
+    /* #34 decision 16: the part-played Resume bar, over `reloadWithRecord`
+       rather than `goRich` -- `partPlayed()` needs `view: 'today'` baked
+       into the record itself so the reload lands there directly, the same
+       way `FOUR` (fixtures.mjs) sets it for its own Today-first checks. */
+    const themed = { ...RICH, view: 'today', ui: { ...RICH.ui, theme: want.theme } };
+    await reloadWithRecord(c, origin, partPlayedFixture(themed));
   } else {
     await goRich(c, origin, { theme: want.theme });
     if (want.longNames) await evalIn(c, setLongName);
@@ -291,7 +321,6 @@ async function capture(c, origin, want, outDir) {
     if (want.view && want.view !== 'today' && today) await evalIn(c, step(today.open));
     const view = VIEWS.find(v => v.name === want.view);
     if (view) await evalIn(c, step(view.open));
-    if (want.bottom) await evalIn(c, step(`window.scrollTo(0, document.body.scrollHeight)`));
     if (want.titleCollapsed) {
       /* #33 item 11: `.bar.title-in` (decision 1), not the `bottom` state
          above -- a shallow scroll, just past the large title, not to the
@@ -304,6 +333,25 @@ async function capture(c, origin, want, outDir) {
       if (!collapsed) {
         throw new Error(`${want.name}: .bar never gained title-in after scrolling -- this shot would not show the collapsed state`);
       }
+    }
+  }
+
+  /* OUTSIDE the branches above, not inside the `goRich` one. This used to sit
+     in the `else`, so a `firstRun` or `partPlayed` shot asking for `bottom`
+     was silently never scrolled -- #34's own part-played bottom cell came out
+     BYTE-IDENTICAL to the unscrolled `resume-bar-320` (same sha256 in
+     `measurements.json`) and every check downstream passed, because
+     `twinProblems` only ever compares a light/dark PAIR and the large-text
+     cells declare no twin.
+     So the scroll is asserted before a PNG is written, exactly the way
+     `titleCollapsed` above asserts its own: a `bottom` shot that did not
+     move is a picture of a state nobody asked for. */
+  if (want.bottom) {
+    await evalIn(c, step(`window.scrollTo(0, document.body.scrollHeight)`));
+    const scrolled = await evalIn(c, `Math.round(window.scrollY)`);
+    if (!scrolled) {
+      throw new Error(`${want.name}: the page never scrolled (scrollY 0), so this shot would be `
+        + 'identical to the unscrolled one and would prove nothing about the bottom of the screen');
     }
   }
 
@@ -342,7 +390,8 @@ async function capture(c, origin, want, outDir) {
   return {
     name: want.name, file, view: want.view, theme: want.theme, width: want.width,
     rootPx: want.rootPx, full: want.full, bottom: want.bottom, longNames: want.longNames,
-    firstRun: want.firstRun, titleCollapsed: want.titleCollapsed, twin: want.twin, measured,
+    firstRun: want.firstRun, titleCollapsed: want.titleCollapsed, partPlayed: want.partPlayed,
+    twin: want.twin, measured,
     digest: createHash('sha256').update(buf).digest('hex'),
   };
 }

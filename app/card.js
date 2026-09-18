@@ -25,6 +25,24 @@ export function resumeAt(p = plans[state.activeGame], g = game()) {
   return { at, where: `${row.periodName || 'Q' + row.period} ${fmtClock(row.startSec)}` };
 }
 
+/* #34 decision 5: which part-played game the floating resume bar offers, on
+   a day that can hold more than one. Walks from the END of `state.day.games`
+   so two games both underway resolve to the one the coach was more recently
+   away from. Lives here, next to resumeAt, rather than in state.js: state.js
+   cannot import card.js, because card.js already imports state.js. */
+export function resumeBarAt() {
+  const gs = state.day.games;
+  for (let i = gs.length - 1; i >= 0; i--) {
+    /* Explicit `null`, never `undefined`: `resumeAt`'s first parameter
+       defaults to `plans[state.activeGame]`, so handing it a missing plan
+       would quietly pair the ACTIVE game's plan with game `i`. `resumeAt`
+       bails on a falsy plan, so `null` gives the honest answer. */
+    const r = resumeAt(plans[i] ?? null, gs[i]);
+    if (r) return { i, ...r };
+  }
+  return null;
+}
+
 /* The one thing that says a game is already underway. A reload drops the coach
    back here with bench mode shut -- on iOS, switching to the clock app and back
    is often enough -- and "Start game" reads as *start*, so the coach has

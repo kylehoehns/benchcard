@@ -826,19 +826,22 @@ sniffed by platform (interface guideline D2, D5): where it is absent, or the
 request is rejected, this is a silent no-op — bench mode opens, steps and
 closes exactly as it did before, nothing shown and nothing logged.
 
-**A part-played game says so from the plan page.** A reload closes bench mode —
+**A part-played game says so in two places.** A reload closes bench mode —
 on iOS, switching to the clock or the scorebook app and coming back is often
 enough — and the coach landed back on Games with no sign a game was underway,
 under a button reading "Start game", which reads as *start*. The state was
 always fine; the page was just silent about it. `resumeAt()` in `card.js` is the
 one answer to "is this game part-played": stint 0 is indistinguishable from
 never started and the last stint is a game that is over (bench mode restarts that
-one), so only the middle counts. It relabels the bench button — "Resume · Q2
-4:00", with a play icon — and the timeline draws a `.tl-now` playhead down every
-row at the same point. The marker is per-track rather than one line across the
-body, because the track is a middle column on desktop and a full-width row on a
-phone. Bench mode is deliberately **not** reopened on load: a coach who reloaded
-*because* something was wrong would be trapped in it.
+one), so only the middle counts. The game screen relabels the bench button —
+"Resume · Q2 4:00", with a play icon — and the timeline draws a `.tl-now`
+playhead down every row at the same point. The marker is per-track rather than
+one line across the body, because the track is a middle column on desktop and a
+full-width row on a phone. On Today, a part-played game floats a Resume bar at
+the bottom of the screen, reading "{opponent or Game N} · {period and clock} ·
+Resume", which opens bench mode at the stint the coach left off at. Both surfaces
+read the same `resumeAt()` logic. Bench mode is deliberately **not** reopened on
+load: a coach who reloaded *because* something was wrong would be trapped in it.
 
 Leaving is a **thumb reach on a phone**: as well as the X in the top bar there
 is a **Done** button at the left end of the stint bar, because bench mode is the

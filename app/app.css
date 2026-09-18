@@ -1595,6 +1595,14 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   -webkit-mask-image: linear-gradient(to top, black 0%, black 75%, transparent 100%);
 }
 @media (max-width: 900px) { .actionbar:not([hidden]) { display: flex; } }
+/* #34 decision 1/13: `#resumeBar` reuses `.actionbar`'s whole shell (the
+   scrim, blur, safe-area padding, entrance animation and solid fallbacks --
+   all selected by class above, so none of it is repeated here), but shows at
+   EVERY width, not just below 900px: Today's own primary action is not the
+   narrow-phone concession the game screen's bench button is. An id rule
+   beats a class rule, so `.actionbar`'s own display rule above is untouched
+   -- this turns `#resumeBar` on rather than loosening it. */
+#resumeBar:not([hidden]) { display: flex; }
 /* #33 decision 8: solid fallbacks, one shared block, two triggers -- a reader
    who asked for less transparency or more contrast, or an engine with no
    backdrop-filter to blur at all. Both get the identical flat result: the
@@ -1634,6 +1642,14 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   box-shadow: 0 1px 2px rgba(0,0,0,.14);
 }
 .ab-main:disabled { opacity: .45; box-shadow: none; }
+/* #34 decision 4: the resume bar's label can run to two real names
+   ("Northwest Valley Thunderbirds · Q2 4:00 · Resume") -- it wraps, never
+   clips. `min-width: 0` is what lets a flex item shrink to wrap at all;
+   without it the label's intrinsic width wins and the text runs past the
+   button instead. Centered, and given a little more vertical room, because a
+   coach reads a wrapped label as one phrase, not two columns. */
+#resumeBtn { text-align: center; padding-block: .5rem; }
+#resumeBtn .ab-lab { min-width: 0; }
 /* Keep the *document* clear of the fixed bar -- but only the document, and only
    when there is a bar.
  *
@@ -1649,7 +1665,20 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    the clearance entirely. */
 @media (max-width: 900px) {
   .wrap { padding-bottom: 6.5rem; }
-  body:has(#actionbar[hidden]) .wrap { padding-bottom: 2rem; }
+  /* #34 decision 12: two bars can now hold this clearance open -- collapse it
+     only once BOTH are hidden. */
+  body:has(#actionbar[hidden]):has(#resumeBar[hidden]) .wrap { padding-bottom: 2rem; }
+  /* 6.5rem is a FIXED 208px at a 200% reader's root, but the Resume bar GROWS
+     with the same text: measured on this tree at 320px with a 32px root, its
+     label wraps to five lines and the bar is 310px tall, leaving 84px of
+     `#todaySeason` stranded underneath it at the very bottom of the scroll,
+     with no way to bring it out. Nothing clips and nothing overflows
+     sideways, so no probe here could see it. `--ab-h` is the bar's measured
+     height (render.js's `measureChromeHeights`), so the clearance follows the
+     bar instead of guessing at it. An override again, not a condition: a
+     browser without `:has()` keeps today's behavior, and a screen with no bar
+     up is untouched. */
+  body:has(#resumeBar:not([hidden])) .wrap { padding-bottom: max(6.5rem, calc(var(--ab-h, 0px) + 1.5rem)); }
 }
 
 /* ============================ undo toast ============================ */
@@ -3674,6 +3703,11 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   /* #33 decision 13: was `.foot { margin-bottom: 3.6rem; }` -- moved onto
      `.wrap` with the base-breakpoint clearance above, for the same reason. */
   .wrap { padding-bottom: 3.6rem; }
+  /* The Resume bar's clearance from the base block, on landscape's own
+     tighter floor. Without this line the `:has()` override up there outranks
+     the 3.6rem above (a `:has(#id)` selector carries an id's specificity) and
+     hands landscape back the full 6.5rem it exists to give up. */
+  body:has(#resumeBar:not([hidden])) .wrap { padding-bottom: max(3.6rem, calc(var(--ab-h, 0px) + 1.5rem)); }
 }
 
 /* Touch minimums. Gated on a coarse pointer OR a phone-width screen: the

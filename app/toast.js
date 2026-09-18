@@ -198,8 +198,10 @@ export function offer(message, label, act) {
 function liftToasts(box) {
   if (box.id !== 'toasts') { box.classList.remove('lifted'); box.style.removeProperty('--toast-lift'); return; }
   const gmFoot = $('#gamemode')?.hidden === false ? $('#gamemode .gm-foot') : null;
-  const ab = $('#actionbar');
-  const bar = gmFoot || (ab && !ab.hidden && getComputedStyle(ab).display !== 'none' ? ab : null);
+  // #34 decision 12: Today's own floating primary action is a third
+  // candidate -- a toast on Today with a part-played game must clear it too.
+  const showing = el => el && !el.hidden && getComputedStyle(el).display !== 'none' ? el : null;
+  const bar = gmFoot || showing($('#actionbar')) || showing($('#resumeBar'));
   const lift = bar ? bar.offsetHeight : 0;
   box.classList.toggle('lifted', lift > 0);
   box.style.setProperty('--toast-lift', `${lift}px`);

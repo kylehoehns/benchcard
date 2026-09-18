@@ -39,6 +39,30 @@ export const SETTLE = `(async () => {
 export const step = js => `(async () => { const $ = s => document.querySelector(s); ${js};
   await ${SETTLE}; })()`;
 
+/* The alpha channel of a computed color, or null if it is not an `rgb()`/
+   `rgba()` at all. `floating-controls.mjs` and `resume-bar.mjs` both ask the
+   same question of the same scrims -- "is this fallback actually OPAQUE" --
+   and carried a byte-for-byte identical copy of this until it moved here.
+   Computed style always hands back `rgb(...)` or `rgba(...)`, in either the
+   comma or the slash spelling, which is why both separators are split on. */
+export const alpha = c => {
+  const m = /rgba?\(([^)]+)\)/.exec(c || '');
+  if (!m) return null;
+  const parts = m[1].split(/[,/]/).map(s => s.trim());
+  return parts.length > 3 ? Number(parts[3]) : 1;
+};
+
+/* The two user preferences `docs/interface-guidelines.md` L2 says a
+   translucent, blurred surface must turn solid under, as CDP
+   `Emulation.setEmulatedMedia` features. One fact, one copy: every pass that
+   audits a floating surface's fallback (`floating-controls.mjs` for `.bar`
+   and `#actionbar`, `resume-bar.mjs` for `#resumeBar`) emulates the SAME two,
+   and a third query added to L2 must reach all of them at once. */
+export const SOLID_FALLBACK_MEDIA = [
+  ['prefers-reduced-transparency', 'reduce'],
+  ['prefers-contrast', 'more'],
+];
+
 // Is `#id` the screen currently on show? Both #23 checks below ask this of
 // more than one screen (Today, and on the keys/undo side, Games too), so it
 // is one helper rather than a `!!(document.getElementById(...) && ...)` at
