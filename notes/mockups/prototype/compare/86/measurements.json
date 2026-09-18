@@ -1,0 +1,344 @@
+[
+  {
+    "name": "today-light",
+    "file": "today-light.png",
+    "view": "today",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "today-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "cc721d9615e5574a92048ad7dd223e26d753674d99e8aa70719db01d330d826e"
+  },
+  {
+    "name": "today-dark",
+    "file": "today-dark.png",
+    "view": "today",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "today-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "9e0a5e4d379d84aaabeb643c551513489c309172ad14bfe90e85ace5d0989e05"
+  },
+  {
+    "name": "games-light",
+    "file": "games-light.png",
+    "view": "games",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "games-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "5e08a119ffd5f120e5b8539f897a52bf5cc4d162fb26d97142d71d3b547974ac"
+  },
+  {
+    "name": "games-dark",
+    "file": "games-dark.png",
+    "view": "games",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "games-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "2d636bae71e83a72a4fe69495107f2b0d3d218ef2092d4ce175909d558f66610"
+  },
+  {
+    "name": "team-light",
+    "file": "team-light.png",
+    "view": "team",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "team-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "8cbe98e08bdb13bf4e156561c4867cbbca9e1fc34c2f055d5c51e68f1351e122"
+  },
+  {
+    "name": "team-dark",
+    "file": "team-dark.png",
+    "view": "team",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "team-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "425fe720b7564ea85db398464ed7d95a1996976b696952657615cf4c64047933"
+  },
+  {
+    "name": "season-light",
+    "file": "season-light.png",
+    "view": "season",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "season-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "81abd4e1f20f30f607641203fe49f02ed3a45f3813e8b1861fede74e3a62a92b"
+  },
+  {
+    "name": "season-dark",
+    "file": "season-dark.png",
+    "view": "season",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "season-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "37d97e5e103c08079960173824ce330350c184c934c6949c51dd928d088aad7a"
+  },
+  {
+    "name": "settings-light",
+    "file": "settings-light.png",
+    "view": "settings",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "settings-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "031567d385161314ebed00483896fd06685a948fdcf779e591f8460f0b596597"
+  },
+  {
+    "name": "settings-dark",
+    "file": "settings-dark.png",
+    "view": "settings",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "settings-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "885d7b7a706cf1d3b8af2c263e32a00ac5a61a472d5904192fe76b126daca7ef"
+  },
+  {
+    "name": "long-name-light",
+    "file": "long-name-light.png",
+    "view": "team",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": true,
+    "firstRun": false,
+    "twin": "long-name-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "0cda5ace782b13b66bb939b3bcaae606a68c169bcab881db902ba0e9264709a0"
+  },
+  {
+    "name": "long-name-dark",
+    "file": "long-name-dark.png",
+    "view": "team",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": true,
+    "firstRun": false,
+    "twin": "long-name-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "cf818f50635b2adee37fa22d50bdd983d868554f1d5b85f7b2f6af989a358fc3"
+  },
+  {
+    "name": "bottom-light",
+    "file": "bottom-light.png",
+    "view": "season",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": true,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "bottom-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "b048755cb56ecc01c51a255ecd41964ca90b6b552a5cbca1694995f7b67bf11c"
+  },
+  {
+    "name": "bottom-dark",
+    "file": "bottom-dark.png",
+    "view": "season",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": true,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "bottom-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "047b881edd4796b5d0b86f8058867d638808fe9473f1936bf96729727bd3b827"
+  },
+  {
+    "name": "full-light",
+    "file": "full-light.png",
+    "view": "settings",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": true,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "full-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "55bdefd9d6a15e7a560e3e6e8c043142df5b1fa29fdf0607cad52fea3f8ea64a"
+  },
+  {
+    "name": "full-dark",
+    "file": "full-dark.png",
+    "view": "settings",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": true,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": "full-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "b5de675f822f95930ccd49c76438a88f95bea4204042c6f636fb3eab149eba0d"
+  },
+  {
+    "name": "large-text-320",
+    "file": "large-text-320.png",
+    "view": "today",
+    "theme": "light",
+    "width": 320,
+    "rootPx": 32,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "twin": null,
+    "measured": {
+      "fontSizePx": 32,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "49b598bc427050e145a3e4ff07f360f93e3762e15c52e933565ddc42088de594"
+  },
+  {
+    "name": "first-run-light",
+    "file": "first-run-light.png",
+    "view": null,
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": true,
+    "twin": "first-run-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "571778a5d06afcb9315113fa67942bd4f483bc6a0c76cc07e44da32745c9c8e4"
+  },
+  {
+    "name": "first-run-dark",
+    "file": "first-run-dark.png",
+    "view": null,
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": true,
+    "twin": "first-run-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "4df2c0b784c545fc2c515fee14047e43e8887e6cf36b9dd0ab6e5886d57c66d9"
+  }
+]

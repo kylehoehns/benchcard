@@ -206,6 +206,13 @@ never run a blanket `node scripts/smoke.mjs --update-budgets`, which would
 erase the pin. Widen a ceiling in `scripts/budgets.mjs` instead, deliberately,
 and say why in the commit.
 
+Shipping a redesign ticket and need a screenshot compare set? `node
+scripts/compare-shots.mjs --issue <n>` is the one committed harness — it
+writes PNGs and `measurements.json` to
+`notes/mockups/prototype/compare/<n>/`, proving every shot's root font size
+by measurement and every dark shot by painted color rather than trusting
+either silently (#86). Do not write a second throwaway capture script.
+
 Nothing outside `app/` is deployed — `wrangler.jsonc` names `assets.directory`
 as `"app"`. That is deliberate: it replaced an `.assetsignore` denylist that
 would have published the old ticket list at `benchcard.app/TICKETS.md`. Keep the

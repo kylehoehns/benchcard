@@ -4,7 +4,7 @@
 import '../../test/dom-stub.js';
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { goRich, PLAYERS, tierOf } from './fixtures.mjs';
+import { goRich, PLAYERS, tierOf, LONG_NAME } from './fixtures.mjs';
 import { drag, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
 
@@ -402,10 +402,6 @@ async function fieldsAtLargeTextOk(c, ck) {
     await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
   }
 }
-
-// A5: long enough to wrap the identity block's name line rather than fit it
-// (`sheet-spacing.mjs`'s own fixture for the same purpose elsewhere).
-const LONG_NAME = 'Maximilian Alexander Featherstone-Whitmore';
 
 /* A5: the identity block must not clip or pan a long name at 320px/32px --
    the same long-name safety `.rrow .prow-t`/`.sn-nm` already give the roster
