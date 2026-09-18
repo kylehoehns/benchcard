@@ -27,6 +27,12 @@ export const UI = {
   cardSize: 'pocket', theme: 'light',
 };
 
+/* A5: long enough to wrap the identity block's name line rather than fit it.
+ * `team-screen.mjs` and `sheet-spacing.mjs` each held their own copy of this
+ * string before #86, which is a third place for it to drift the moment one
+ * changed and the other two did not -- one export, three importers. */
+export const LONG_NAME = 'Maximilian Alexander Featherstone-Whitmore';
+
 /* THE LEAN FIXTURE. One team, one game, no filed season, every player on the
    default level. This is the ONLY state the cold load ever sees, and therefore
    the only state the byte/node/request budget is measured against — see the

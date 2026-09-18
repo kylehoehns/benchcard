@@ -1,6 +1,6 @@
 import { evalIn, HEIGHT, WIDTH } from './dom.mjs';
 import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
-import { goRich } from './fixtures.mjs';
+import { goRich, LONG_NAME } from './fixtures.mjs';
 import { evalJSON, setGame, settle, tap } from './sheet-drive.mjs';
 
 /* #73 item 21's "sheet spacing" row (docs/specs/73-sheet-polish.md's Proof
@@ -15,10 +15,10 @@ import { evalJSON, setGame, settle, tap } from './sheet-drive.mjs';
  * `app-large-text.mjs` uses), because the spec ties both to that root. Items
  * 7 and 9 carry no width qualifier, so they run once, at the default root. */
 
-// Long enough to wrap the Who's here row at 390px, not just at 320px: the
-// spec's own examples ("Alexandria Vasquez-Delacroix") fit on one line at
-// this width, so this check needs more length, not more zoom.
-const LONG_NAME = 'Maximilian Alexander Featherstone-Whitmore';
+// `LONG_NAME` (fixtures.mjs) is long enough to wrap the Who's here row at
+// 390px, not just at 320px: the spec's own examples ("Alexandria
+// Vasquez-Delacroix") fit on one line at this width, so this check needs
+// more length, not more zoom.
 
 // One rule short enough to read on one line, one long enough (five names)
 // to wrap, and the longest balance label -- the three states items 5, 7 and
