@@ -27,9 +27,28 @@ export const STATES = [
   { name: 'team view',
     open: `$('#todayTeam').click()`, shows: '#view-team',
     close: `$('#backBtn').click()` },
-  { name: 'team + bulk add',
-    open: `$('#todayTeam').click(); $('#bulktoggle').click()`, shows: '#bulkwrap',
-    close: `$('#bulktoggle').click(); $('#backBtn').click()` },
+  /* #31: the Team screen's three sheets and its Edit mode, in place of the
+     old `team + bulk add` fold. Each opens through its real trigger -- a
+     roster row, the header `+`, the "Paste a list" row, the header "Edit" --
+     and the sheets close with the dialog's own `close()` rather than their ✕,
+     the same way "who's here sheet" does: this pass audits accessibility, and
+     `team screen: roster rows, the player sheet, add and paste` is what covers
+     the close paths. `close()` also steps around the paste sheet's discard
+     guard, which nothing here has typed into anyway. Edit mode is a screen
+     state rather than an overlay, but it swaps every row in the list for a
+     different control set, so it is audited like one and toggled back off. */
+  { name: 'team player sheet',
+    open: `$('#todayTeam').click(); $('#rosterlist .rrow').click()`, shows: '#sheetPlayer[open]',
+    close: `$('#sheetPlayer').close(); $('#backBtn').click()` },
+  { name: 'team add a player',
+    open: `$('#todayTeam').click(); $('#teamAdd').click()`, shows: '#sheetAddPlayer[open]',
+    close: `$('#sheetAddPlayer').close(); $('#backBtn').click()` },
+  { name: 'team paste a list',
+    open: `$('#todayTeam').click(); $('#pasteRow').click()`, shows: '#sheetPaste[open]',
+    close: `$('#sheetPaste').close(); $('#backBtn').click()` },
+  { name: 'team edit mode',
+    open: `$('#todayTeam').click(); $('#teamEdit').click()`, shows: '#rosterlist .rrow-edit',
+    close: `$('#teamEdit').click(); $('#backBtn').click()` },
   { name: 'games view, every disclosure open',
     open: `$('.today-game').click(); for (const d of document.querySelectorAll('details')) d.open = true`,
     shows: '#tabledetails[open]',

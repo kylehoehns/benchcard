@@ -482,6 +482,31 @@ function closeSheetNow(dialog) {
   returnFocus(dialog);
 }
 
+/* ---- the close guard (#31 decision 5) ------------------------------------
+ *
+ * A commit sheet must ask before it throws away text a coach typed (C4), and
+ * it cannot ask in a second overlay: `confirmAction` (toast.js) is a
+ * `div#confirm` at `z-index: 320`, and a sheet opened with `showModal()` sits
+ * in the browser's top layer with everything outside it inert -- so the ask
+ * would paint behind the sheet and take no taps. C5 caps the app at one
+ * overlay besides.
+ *
+ * So a dialog opts in to being asked first. The guard returns true for "I
+ * have handled this, stay open" (the paste sheet swaps its footer for the ask
+ * row) and false for "nothing to lose, go ahead". `closeSheet` below is the
+ * one place it is consulted, which is what makes the ✕, Escape and a backdrop
+ * tap take the same path -- all three end up there. `closeSheets` deliberately
+ * does NOT consult it: that is the screen-change path, and a coach who has
+ * navigated away is not waiting to answer a question about a sheet they can
+ * no longer see. */
+const closeGuards = new WeakMap();   // dialog -> () => boolean
+
+export function guardClose(dialog, ask) {
+  if (!dialog) return;
+  if (ask) closeGuards.set(dialog, ask);
+  else closeGuards.delete(dialog);
+}
+
 // Item 10: adds `.closing` (app.css: slides the sheet to `translateY(100%)`
 // and the backdrop to clear, both over `--t`/`--ease`) and calls the native
 // `close()` once that transition ends, with a `--t` + 100ms timeout fallback
@@ -490,6 +515,8 @@ function closeSheetNow(dialog) {
 // instant path (item 18).
 export function closeSheet(dialog) {
   if (!dialog || !dialog.open) return;
+  const ask = closeGuards.get(dialog);
+  if (ask && ask()) return;                   // the guard took it (see above)
   if (reducedMotion()) { closeSheetNow(dialog); return; }
   resetDragTransform(dialog);
   dialog.classList.add('closing');

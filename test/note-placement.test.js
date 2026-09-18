@@ -68,10 +68,19 @@ test('a note nested one box deep is not reported', () => {
   assert.deepEqual(looseNotes(fixture), []);
 });
 
-test('the roster page keeps the card-name note beside the card-name control', () => {
-  const roster = html.slice(html.indexOf('id="view-team"'));
-  const foot = roster.slice(roster.indexOf('<div class="rfoot">'));
-  const end = foot.indexOf('</div>', foot.indexOf('id="cardnames"'));
-  assert.match(foot.slice(0, end), /The card prints a short name/,
-    'the short-name note left the footer that holds #cardnames');
+/* #31: the card name is a field in the player's own sheet now, not a column
+   the roster footer toggled, so the note moves with it. Still the same rule
+   -- the note sits with the control it describes -- read between the field
+   and the next group heading, which is where it would end up if it were left
+   behind at the bottom of the sheet or drifted under the Level group. */
+test('the player sheet keeps the card-name note beside the card-name field', () => {
+  const sheet = html.slice(html.indexOf('id="sheetPlayer"'));
+  const body = sheet.slice(0, sheet.indexOf('</dialog>'));
+  const field = body.indexOf('id="playerShort"');
+  assert.ok(field > 0, 'the player sheet has no card-name field to describe');
+  const after = body.slice(field);
+  const nextGroup = after.indexOf('pgrp-h');
+  assert.match(after.slice(0, nextGroup < 0 ? after.length : nextGroup),
+    /<p class="note">The card prints a short name/,
+    'the short-name note left the card-name row it describes');
 });

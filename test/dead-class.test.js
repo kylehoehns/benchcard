@@ -48,6 +48,8 @@ const HOOKS = new Set([
   'paste-open',  // app.js binds the restore box's disclosure
   'paste-text',  // app.js reads the pasted backup; `textarea` styles it
   'paste-go',    // app.js binds the restore button
+  'rgrip',       // roster-view.js selects the arrows APART from the grip
+                 // (`.obtn:not(.rgrip)`); `.obtn` is what styles all three
 ]);
 
 const stripJsComments = (s) =>

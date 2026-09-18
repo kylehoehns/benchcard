@@ -142,3 +142,61 @@ test('dragOffset: never travels past roomUp + cap, however far the finger goes',
   const dy = T.dragOffset(-100000, 100);
   assert.ok(dy > -160); // -(roomUp + cap) = -(100 + 60)
 });
+
+/* #31 decision 5, the close guard: rationale at app/trap.js:485-501
+ * (canonical), not re-derived here.
+ *
+ * Driven against a stub dialog rather than a real one: the seam is "does
+ * `closeSheet` consult the registry and honor the answer", which is the
+ * whole of the decision, and nothing about it needs a layout. Reduced
+ * motion is forced on for these so the close path is the synchronous one
+ * -- the slide is `closeSheet`'s other half and is not what is under test. */
+function fakeDialog() {
+  const d = {
+    open: true, closes: 0, classes: new Set(),
+    classList: { add: c => d.classes.add(c), remove: c => d.classes.delete(c) },
+    style: { removeProperty() {}, transform: '' },
+    addEventListener() {}, removeEventListener() {},
+    querySelector: () => null,
+    close() { d.open = false; d.closes++; },
+  };
+  return d;
+}
+
+function withReducedMotion(fn) {
+  const was = globalThis.matchMedia;
+  globalThis.matchMedia = () => ({ matches: true, addEventListener() {} });
+  try { return fn(); } finally { globalThis.matchMedia = was; }
+}
+
+test('a sheet with nothing to guard closes as it always did', () => {
+  const d = fakeDialog();
+  withReducedMotion(() => T.closeSheet(d));
+  assert.equal(d.open, false);
+  assert.equal(d.closes, 1);
+});
+
+test('a guard that takes the close keeps the sheet open', () => {
+  const d = fakeDialog();
+  let asked = 0;
+  T.guardClose(d, () => { asked++; return true; });   // true: "I have asked, do not close"
+  withReducedMotion(() => T.closeSheet(d));
+  assert.equal(asked, 1, 'closeSheet never consulted the guard');
+  assert.equal(d.open, true, 'the sheet closed over its own guard, so the typed text is gone');
+  assert.equal(d.closes, 0);
+});
+
+test('a guard with nothing to lose lets the close through', () => {
+  const d = fakeDialog();
+  T.guardClose(d, () => false);   // an empty textarea: nothing to ask about
+  withReducedMotion(() => T.closeSheet(d));
+  assert.equal(d.open, false);
+});
+
+test('a cleared guard hands the close back', () => {
+  const d = fakeDialog();
+  T.guardClose(d, () => true);
+  T.guardClose(d, null);
+  withReducedMotion(() => T.closeSheet(d));
+  assert.equal(d.open, false, 'the guard outlived the sheet that registered it');
+});

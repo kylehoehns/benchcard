@@ -250,8 +250,9 @@ its alternative is an assertion, so the rejected options are kept here too.
   so `'levels'` solves *identically* to `'behind'`; and `applyTieBreak` already
   excludes anyone the coach has spoken for, so a floor, a cap, a lock or a
   hand-set target still outranks it. The claim in the `SPREAD_FLOOR` line
-  follows what actually separated the two groups, and the roster page's level
-  note stops saying the share is worked out without levels when it is not --
+  follows what actually separated the two groups, and the level note in the
+  player sheet stops saying the share is worked out without levels when it is
+  not --
   copy that is false in a state the app can be in is why the option is opt-in
   rather than a weight folded into the default.
 - **Players carry generated ids.** Constraints, availability and carryover all

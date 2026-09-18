@@ -66,6 +66,7 @@ import { sentenceSheetsPass } from './smoke/sentence-sheets.mjs';
 import { planSheetPass } from './smoke/plan-sheet.mjs';
 import { sheetSpacingPass } from './smoke/sheet-spacing.mjs';
 import { timelineCardSheetPass } from './smoke/timeline-card-sheet.mjs';
+import { teamScreenPass } from './smoke/team-screen.mjs';
 import { narrowPass } from './smoke/narrow.mjs';
 import { sweepPass } from './smoke/sweep.mjs';
 import { appLargeTextPass } from './smoke/app-large-text.mjs';
@@ -124,6 +125,7 @@ const RUN = {
   plansheet: ctx => planSheetPass(ctx.c, ctx.origin),
   sheetspacing: ctx => sheetSpacingPass(ctx.c, ctx.origin),
   timelinecardsheet: ctx => timelineCardSheetPass(ctx.c, ctx.origin),
+  teamscreen: ctx => teamScreenPass(ctx.c, ctx.origin),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
   applargetext: ctx => appLargeTextPass(ctx.c, ctx.origin),
@@ -335,6 +337,10 @@ async function browserChecks(origin, only) {
     report.checks.push(await safeCheck('plansheet', () => planSheetPass(c, origin)));
     report.checks.push(await safeCheck('sheetspacing', () => sheetSpacingPass(c, origin)));
     report.checks.push(await safeCheck('timelinecardsheet', () => timelineCardSheetPass(c, origin)));
+    /* #31. Its last item empties the roster through the app's own remove path
+       to reach the first-run state, so it reloads RICH before returning --
+       every pass below assumes the eleven players are back. */
+    report.checks.push(await safeCheck('teamscreen', () => teamScreenPass(c, origin)));
     report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
     report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep

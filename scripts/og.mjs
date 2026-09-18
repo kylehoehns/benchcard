@@ -470,7 +470,6 @@ try {
     const box = await evalJS(`(() => {
       const card = document.querySelector('#sheet .card');
       if (!card) return 'no card';
-      const names = [...document.querySelectorAll('#rosterlist .rrow')].length;
       const html = card.outerHTML;
       document.body.className = '';
       document.body.setAttribute('style', 'margin:0;background:#fff');
@@ -478,7 +477,7 @@ try {
       const el = document.querySelector('.card');
       el.style.boxShadow = 'none';
       const r = el.getBoundingClientRect();
-      return { w: Math.round(r.width), h: Math.round(r.height), names,
+      return { w: Math.round(r.width), h: Math.round(r.height),
                five: el.querySelectorAll('.five .nm').length };
     })()`);
     if (typeof box === 'string' || !box) throw new Error(`could not reach the welcome card: ${box}`);

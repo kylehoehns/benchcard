@@ -440,6 +440,15 @@ export async function timelineCardSheetPass(c, origin) {
       await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
     }
 
+    /* C5: with no roster at all, Timeline's own empty-state CTA presses
+       `#emptyAdd` -- Team's own first-run button (`rosterCta`, timeline.js)
+       -- so the two must read the same words rather than drift apart. */
+    await goRich(c, origin);
+    await tap(c, setGame(`s.team().players.length = 0;`));
+    const want = await evalJSON(c, `JSON.stringify(document.getElementById('emptyAdd')?.textContent.trim())`);
+    const got = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .roster-empty button')?.textContent.trim() ?? null)`);
+    ck(got === want, `the Timeline empty-roster button reads "${got}", want "${want}" (#emptyAdd's own label)`);
+
     /* ---- fix pass finding 4: the preview fits on the sheet's FIRST open,
        at both Size values -- each call starts from its own reload, since
        the bug this guards only shows before `#sheetCard` has ever opened in

@@ -25,7 +25,9 @@ test('the chrome landscape block sits after every bar rule it overrides', () => 
   // this guard looks for grew a `, .dayhead .season-h1` -- the old bare
   // `.dayhead .game-h1 {` string now first matches an unrelated, later
   // `@media` override (line ~3371) instead of the rule this guard means.
-  for (const sel of ['@media (max-width: 620px)', '@media (max-width: 19em)', '.actionbar {', '.ab-main {', '.dayhead .game-h1, .dayhead .season-h1 {']) {
+  // #31 grew the same selector list again for the Team screen's own heading
+  // (`.team-h1`), for the same reason #30 grew it: one rule, not a third copy.
+  for (const sel of ['@media (max-width: 620px)', '@media (max-width: 19em)', '.actionbar {', '.ab-main {', '.dayhead .game-h1, .dayhead .season-h1, .dayhead .team-h1 {']) {
     const at = css.indexOf(sel);
     assert.ok(at > -1, `${sel} is gone`);
     assert.ok(at < start, `${sel} is declared after the landscape block and would win`);

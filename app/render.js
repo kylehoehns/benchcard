@@ -19,7 +19,7 @@ import { renderTimeline, applyGameView } from './timeline.js';
 import { renderBalance } from './balance.js';
 import { renderConstraints, renderSeasonAdjust } from './rules.js';
 import { renderStrategy, refreshBudgetActuals } from './strategy.js';
-import { renderRoster, renderLevels } from './roster-view.js';
+import { renderRoster, renderLevels, resetEditMode } from './roster-view.js';
 import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
 import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings } from './teams-view.js';
@@ -57,10 +57,12 @@ const SECTIONS = {
   // without rebuilding a slider the coach may have hold of
   budget:      () => refreshBudgetActuals(),
   balance:     () => renderBalance(),
-  /* in-place only: the meters live inside the roster rows, and rebuilding
-     those rows to change one meter replayed the list's entrance animation on
-     every row. Same rule as `budget` above -- do not rebuild a control the
-     coach may still have hold of. */
+  /* in-place only: the one meter on screen is the one in the open player
+     sheet, and rebuilding the sheet to change it would take the control out
+     from under the thumb that is dragging it. Same rule as `budget` above --
+     do not rebuild a control the coach may still have hold of. The actions
+     group below the roster is rebuilt, because the reset row appears there
+     the moment somebody leaves the default level. */
   levels:      () => renderLevels(),
   constraints: () => renderConstraints(),
   /* in-place only, and the one thing in the rules section that depends on a
@@ -342,7 +344,7 @@ const SCREEN_TITLE = { team: 'Team', season: 'Season', settings: 'Settings' };
 // Screens with their own in-page `h1` (`#gameTitle`, `#seasonTitle`), so
 // `#barTitle` would only be a second copy of the same text (#69 decision 5,
 // #30 decision 2).
-const NO_BAR_TITLE = new Set(['games', 'season']);
+const NO_BAR_TITLE = new Set(['games', 'season', 'team']);
 // every screen storage.js's own allow-list names, minus Today -- the one
 // case with no back button and no title, because it is the one nothing goes
 // back FROM (#23 review, item D: was a hand-typed second copy of VIEWS).
@@ -429,6 +431,19 @@ function applyView(v, from) {
      on the empty-season repaint; this covers arriving at Season directly. */
   const exportBtnEl = $('#seasonExport');
   if (exportBtnEl) exportBtnEl.hidden = v !== 'season' || !seasonGames().length;
+  /* #31 decision 2: Team's two header actions (C1 allows two), shown only on
+     Team -- same shape as `#shareBtn` above. `#teamEdit` carries a second
+     condition (#31 A2): with nobody, or exactly one player, on the roster
+     there is nothing Edit mode could reorder. */
+  const teamAddEl = $('#teamAdd');
+  if (teamAddEl) teamAddEl.hidden = v !== 'team';
+  const teamEditEl = $('#teamEdit');
+  if (teamEditEl) teamEditEl.hidden = v !== 'team' || state.players.length <= 1;
+  /* #31 A2: the real transition away from Team, same shape as the Games/Today
+     branches below -- Edit mode is meant to be a property of the screen, not
+     the data, so leaving (even mid-edit) resets it before the coach can find
+     it still on next time they arrive. */
+  if (v !== 'team' && from === 'team') resetEditMode();
   /* #23 review, third round: entering Games has to show what `state` says,
      not whichever game the screen last painted. Everything above this line
      only ever toggled visibility and wrote the header title -- the opponent

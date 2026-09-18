@@ -156,6 +156,11 @@ export const ROWS = Object.freeze([
   // reached from #shareBtn, changing Size, P, Stint by stint and the
   // blocked panel's three fixes -- see timeline-card-sheet.mjs.
   { id: 'timelinecardsheet', name: 'game screen: Timeline | Card and the card sheet', selectable: true, setup: 'rich' },
+  // #31's own guard (see docs/specs/31-roster-and-player-sheet.md's Proof
+  // section): the roster list's rows, the player sheet and its remove, the
+  // add-a-player and paste sheets (including the discard ask), Edit mode and
+  // the empty state -- see team-screen.mjs.
+  { id: 'teamscreen', name: 'team screen: roster rows, the player sheet, add and paste', selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },

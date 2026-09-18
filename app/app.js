@@ -11,9 +11,8 @@
  * takes `render` / `renderAll` / `soon` / `setView` through its `init*`
  * function instead, which is what keeps the import graph a tree.
  * ================================================================== */
-import { parseRoster, repeatIndexes } from './roster.js';
 import { icon } from './icons.js';
-import { $, on, set, uid } from './dom.js';
+import { $, on, set } from './dom.js';
 import { renderCards, refreshCardSheetPreview, CARD_FONT } from './card.js';
 import { shareCards } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
@@ -22,17 +21,17 @@ import { initGameMode, openGameMode, renderGameMode, clearOverrides } from './ga
 import { initBalance } from './balance.js';
 import { initRules } from './rules.js';
 import { initStrategy } from './strategy.js';
-import { initRoster } from './roster-view.js';
+import { initRoster, openAddPlayerSheet, openPasteSheet, toggleEditMode } from './roster-view.js';
 import { initTour } from './tour.js';
 import { initOnboarding } from './onboarding.js';
 import { initGameSetup } from './game-setup.js';
 import { initTeams, renderSettings } from './teams-view.js';
 import { initSeason, exportSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
-import { initToast, undoable, offer, flash, tipAfterPrint, tipAfterGame } from './toast.js';
+import { initToast, undoable, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, soon, setView, applyTheme, applyTint, AFTER_EDIT, PLAN_ONLY } from './render.js';
-import { state, save, game, teamName, removePlayer , nextHue, hueSlots, reseed,
+import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
@@ -197,47 +196,23 @@ on('#shareCard', 'onclick', () => {
   });
 });
 
-on('#addplayer', 'onclick', () => {
-  state.players.push({ id: uid('p'), name: '', number: '', shortName: '', tier: 3, hue: nextHue() });
-  renderAll();
-  const rows = document.querySelectorAll('#rosterlist .rrow');
-  rows[rows.length - 1]?.querySelectorAll('input')[1]?.focus();
-});
-on('#bulktoggle', 'onclick', () => { const w = $('#bulkwrap'); w.hidden = !w.hidden; if (!w.hidden) $('#bulk').focus(); });
-/* Phone-only: the card-name override costs the name column 72px it needs more,
-   so it lives on a second line the coach opts into. Deliberately not persisted
-   -- it is a one-off fix-up, not a mode to come back to. */
-on('#cardnames', 'onclick', e => {
-  const on2 = $('#rosterlist').classList.toggle('cardnames');
-  e.currentTarget.setAttribute('aria-pressed', String(on2));
-});
-/* Paste appends, and it must keep doing so -- twins with the same first name
-   are real, so a silent dedupe would quietly delete a kid. What it must not do
-   is say nothing when a coach pastes the same list twice: the roster doubles,
-   and the card copes by disambiguating to MARW / MARW2 / MARW3, which is a
-   card nobody can read. So: add everything, then name the repeats and offer to
-   drop just those. Ignoring the offer leaves the paste exactly as it landed. */
-on('#bulkadd', 'onclick', () => {
-  const parsed = parseRoster($('#bulk').value);
-  if (!parsed.length) return;
-  const repeats = repeatIndexes(state.players, parsed);
-  const slots = hueSlots(parsed.length);
-  const added = parsed.map((x, i) => ({ id: uid('p'), name: x.name, number: x.number, shortName: '', tier: 3, hue: slots[i] }));
-  state.players.push(...added);
-  $('#bulk').value = ''; $('#bulkwrap').hidden = true;
-  renderAll();
-  if (!repeats.length) return;
-  const n = repeats.length;
-  const ids = repeats.map(i => added[i].id);
-  offer(`${n} of these ${n === 1 ? 'was' : 'were'} already on the roster.`, 'Skip them', () => {
-    for (const id of ids) removePlayer(id);
-    renderAll();
-  });
-});
-on('#bulk', 'oninput', () => {
-  const n = parseRoster($('#bulk').value).length;
-  set('#bulkCount', 'textContent', n ? `${n} player${n === 1 ? '' : 's'} detected` : '');
-});
+/* #31: the two doors onto the roster. The sheets themselves -- what they
+   hold, what their confirms say and what pressing one does -- belong to
+   roster-view.js (decision 4: one file, so the precache list and the two
+   copy guards that read that file by name are both left alone). This is only
+   the wiring for the static buttons that open them: the header `+`, and the
+   two calls to action on the empty state. "Paste a list" in the roster's own
+   actions group is painted by roster-view.js and wired there. */
+on('#teamEdit', 'onclick', e => toggleEditMode(e.currentTarget));
+on('#teamAdd', 'onclick', e => openAddPlayerSheet(e.currentTarget));
+on('#emptyAdd', 'onclick', e => openAddPlayerSheet(e.currentTarget));
+on('#emptyPaste', 'onclick', e => openPasteSheet(e.currentTarget));
+/* The three ✕s, same one-liner as `#sheetCardClose` above. `closeSheet` is
+   what consults the paste sheet's discard guard, so the ✕ asks before it
+   throws typed text away without knowing anything about the ask itself. */
+on('#sheetPlayerClose', 'onclick', () => closeSheet($('#sheetPlayer')));
+on('#sheetAddClose', 'onclick', () => closeSheet($('#sheetAddPlayer')));
+on('#sheetPasteClose', 'onclick', () => closeSheet($('#sheetPaste')));
 
 /* ---- backup -------------------------------------------------------------
  * The whole record, out to a file the coach owns and back in again. See

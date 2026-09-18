@@ -9,11 +9,18 @@ import { evalIn, SETTLE } from './dom.mjs';
    ask every check to use, not a three-kid toy. Written straight to the storage
    key so the app boots with a plan already on screen — `sanitize` fills in
    every field left out here. */
-const PLAYERS = [
+export const PLAYERS = [
   ['Marcus Williams', '4'], ['Devon Ellis', '7'], ['Hana Kim', '9'], ['Eli Tran', '12'],
   ['Ana Reyes', '3'], ['Jordan Bell', '21'], ['Sam Okafor', '5'], ['Riley Novak', '8'],
   ['Casey Lindqvist', '11'], ['Theo Alvarez', '15'], ['Nia Brooks', '2'],
 ].map(([name, number], i) => ({ id: 'p' + i, name, number, shortName: '' }));
+
+/* The rich fixture's tier assignment, named so a check that wants a level
+   word can derive it (with `LEVELS` in balance.js) instead of hand-copying
+   one per row: 5 (Go-to) on Hana Kim (p2), 1 (Developing) on Nia Brooks
+   (p10), 3 (Regular) on everyone else -- the split item 1's roster rows
+   exist to show. */
+export const tierOf = p => (p.id === 'p2' ? 5 : p.id === 'p10' ? 1 : 3);
 
 export const UI = {
   copies: 2, showMinutes: true, printScope: 'game', cardId: 'short',
@@ -85,10 +92,7 @@ export const RICH = {
   ui: UI,
   teams: [{
     id: 't0', name: 'Smoke Test',
-    players: PLAYERS.map(p => ({
-      ...p,
-      tier: p.id === 'p2' ? 5 : p.id === 'p10' ? 1 : 3,
-    })),
+    players: PLAYERS.map(p => ({ ...p, tier: tierOf(p) })),
     day: {
       name: 'Saturday',
       games: [

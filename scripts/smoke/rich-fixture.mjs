@@ -19,7 +19,14 @@ export async function fixturePass(c) {
     const out = { host: location.host };
     $('#todayTeam').click();
     await ${SETTLE};
-    out.resetLevels = [...document.querySelectorAll('#view-team button')]
+    /* #31 decision 6: the one levels control still on this screen sits in
+       \`#teamActions\`, the group under the roster, and it only appears once
+       somebody is off the default level -- which is the precondition being
+       proved. Scoped to that group rather than to \`#view-team\`, because
+       \`#view-team\` now also contains three dialogs, and a button that had
+       drifted into a closed sheet would still answer a \`#view-team\` query
+       while no coach could see it. */
+    out.resetLevels = [...document.querySelectorAll('#teamActions button')]
       .filter(b => /back to the same level/i.test(b.textContent)).length;
     $('#backBtn').click();
     /* Going home from a pushed screen is a REAL \`history.back()\` now (#23

@@ -109,7 +109,11 @@ test('the rules question is asked structurally, so a new kind of rule is covered
 });
 
 test('the toast is built from the costs, not from a fixed sentence', () => {
-  const click = rv.slice(rv.indexOf('x.onclick'), rv.indexOf('row.append(num'));
+  /* #31: removal moved out of the roster row and into the player's own sheet
+     (C6 -- a row is removed from its detail), so the handler to read is the
+     sheet's, between its own `onclick` and the `openSheet` call that ends
+     `openPlayerSheet`. */
+  const click = rv.slice(rv.indexOf('rm.onclick'), rv.indexOf('openSheet(dialog'));
   assert.match(click, /removalCosts\(p\.id\)/, 'the removal toast stopped asking what the removal costs');
   assert.match(click, /undoable\(/, 'removing a player is undoable; it is not the app’s one confirm');
 });

@@ -90,9 +90,10 @@ Everything below is relative to `app/`.
 Outside it: `test/*.test.js` (`node --test`) and
 `scripts/check-sw-version.mjs`, the CI guard on the service-worker version.
 
-726 tests, including 400-scenario property-based fuzzing of the engine.
-Generation runs 20–50 ms across every configuration tried, including a
-20-player roster and a 20-stint game.
+The suite includes 400-scenario property-based fuzzing of the engine (the
+README carries the test count; it is not repeated here). Generation runs
+20–50 ms across every configuration tried, including a 20-player roster and a
+20-stint game.
 ## Planning strategies
 
 - **Even** (default) -- as close to equal as the clock allows. One click.
@@ -172,10 +173,10 @@ mode, not the shared PNG, not analytics. That is a product decision about
 children, not a technical one, and `test/leak.test.js` enforces it at the
 source: `card.js`, `gamemode.js` and `share.js` may not reference `tier` at all.
 The UI is `balance.js`, split across two screens because the two halves have
-different lifetimes: `renderLevelControls` sits on the **roster** page — the
-screen labelled **Team** (levels live on the player and are a season-long
-judgement) and `renderBalance` sits with the
-**plan** (the shape is per game, stored as `game.balance`). The balance shape
+different lifetimes: `levelMeter` sits on the **Team** screen — since #31 in
+one player's own sheet rather than in a strip under every name, because a level
+lives on the player and is a season-long judgement — and `renderBalance` sits
+with the **plan** (the shape is per game, stored as `game.balance`). The balance shape
 is chosen on a level-2 page inside the Plan sheet (#28); `renderBalance` paints
 that page and no longer checks a fold.
 
@@ -258,15 +259,74 @@ The scroll is a single `scrollTop` write on `.keysbox`: `scrollIntoView`
 defaults `inline` to `'nearest'` and would move the sheet sideways, which is
 the same bug the tour carries a note about.
 
-Roster order is the order everything else reads in, so it is directly
-draggable: press the order column or the avatar of a row and move it. The
-handle is deliberately only those two — `touch-action: none` has to be scoped
-narrowly or the roster stops scrolling under a thumb — and the up/down arrows
-stay as the keyboard and screen-reader path. A press becomes a drag past 5px,
-so tapping an arrow still just moves the row one slot; the click that would
+**The Team screen is the roster the way a coach reads it on paper (#31).** The
+team's own name is a large in-page `h1` with a muted *N players* under it (the
+header leaves its own title off this screen for that reason — *One header, two
+states* below), then one grouped list in which each player is a single button:
+their number in a badge tinted with their color, their name, the word for their
+level, and a chevron. Nothing in a row can be edited, so the list stays
+readable at arm's length and a mis-tap cannot change a jersey number. Under it
+a second group holds **Paste a list**, and **Put everyone back to the same
+level** once anybody is off the default. A duplicate jersey number is a fact
+about the whole roster rather than about one player, so its notice stays out
+here between the title and the list. With nobody on the roster both groups go
+and a designed empty state takes over — a heading, one sentence of what to do,
+and both ways to do it — rather than an empty box.
+
+**Everything about one player is in their sheet.** A row opens `#sheetPlayer`:
+Number, Name, Card name (with the derived short name as the placeholder, so
+typing over it is plainly an override), the level meter, the note that says
+what a level does, and **Remove from team**. The rows are static markup and
+`openPlayerSheet` fills in the values and rewires the handlers for whoever was
+tapped, so there is one set of fields rather than one per player. An edit that
+only changes a word in the list — the number, the name, the level — writes that
+one row back by `data-id` (`repaintRow`) instead of re-rendering: the list is
+sitting right behind the open sheet and a rebuild would replay every row's
+entrance. A player joining or leaving *does* rebuild it, which is the edit
+that should. Removal goes through `undoable`, so the snackbar names the player
+and whatever else went with them (`removalCosts`) and undo puts them back at
+their old index.
+
+**Adding is two commit sheets** (C4): nothing reaches the roster until the
+confirm at the bottom is pressed, and that confirm is named for what pressing
+it will do. The header `+` opens *Add a player* (a number, a name, **Add
+player**);
+*Paste a list* takes the shapes `parseRoster` accepts and counts what is in the
+box, so its confirm reads **Add 3 players**. Both spellings come from
+`confirmAddLabel` in `roster.js`, so neither sheet carries its own plural rule.
+Closing the paste sheet on top of typed text asks first, and the ask is *inside*
+the sheet, in its own footer: a `showModal()` dialog makes everything outside it
+inert, so the confirm overlay would have painted behind the sheet and taken no
+taps. The seam is `guardClose` in `trap.js` — a dialog registers a callback and
+`closeSheet` consults it, which is what makes the ✕, Escape, the platform back
+gesture and a backdrop tap ask the same question. `closeSheets` deliberately
+does not: a coach who has changed screens is not waiting to answer about a
+sheet they can no longer see.
+
+**Reordering is a mode.** *Edit* in the header swaps every row for a reorder
+row carrying a drag grip and a move-up and a move-down button, each 48px, at
+every width — the old rule hid the arrows below 620px and left a phone with
+only the drag, which is backwards for the one device this app is designed for.
+The grip takes <kbd>↑</kbd>/<kbd>↓</kbd> as well, and its accessible name
+carries the position it is at ("position 1 of 11"): that path is `movePlayer`,
+which rebuilds the rows so `withFocus` can restore focus by `data-fk`, and the
+move is announced by that focus event rather than by a live region, which it
+could not be while every announcement was the same words. The two arrow buttons
+take the cheap path instead — `arrowMove` calls `rosterDrop`, which moves the
+two affected nodes and splices `state.players` — because an arrow's own button
+never leaves the DOM, so focus stays put and nothing needs restoring. There is
+no remove in the reorder row — a row is removed from its own detail, and that
+is the sheet.
+
+Roster order is the order everything else reads in, so a row on an Edit screen
+is directly draggable too: press the order column or the avatar and move it.
+The handle is deliberately only those two, and only while Edit is on — the
+selector is `.rrow-edit .rord, .rrow-edit .av`, because `touch-action: none` has
+to be scoped narrowly or the roster stops scrolling under a thumb, and the
+tapping list has no reason to be draggable at all. A press becomes a drag past 5px, so
+tapping an arrow still just moves the row one slot; the click that would
 otherwise follow a real drag is swallowed. A drop moves the row nodes and
-splices `state.players` rather than re-rendering, which keeps whatever is
-half-typed in a field alive.
+splices `state.players` rather than re-rendering.
 
 A drag near either edge of the viewport scrolls the page, easing in over the
 last 60px so a drop low on the screen does not bolt. Everything the drag
@@ -286,41 +346,21 @@ displaced slide home and the `state.players` splice is a no-op.
 One trap worth remembering: `.rrow` has `animation: rowIn ... both`, and a
 filling animation outranks inline style, so its final `transform: none` was
 quietly discarding every transform the drag set — the row never moved. The drag
-now clears the animation for its duration (`.rlist.dragging .rrow`).
+now clears the animation for its duration (`#rosterlist.dragging .rrow`).
 
-On a touch pointer (or any screen under 620px) the arrows are not a stacked
-pair but a row of two 44×44 buttons, and the avatar stands down to pay for the
-width: a roster row is exactly as tall as one 44px input, so stacked arrows can
-never be more than 22px each. The player's color moves to a 3px stripe on the
-row's left edge, which reads at least as well in a list.
-
-Under 620px even that pair is too expensive. A phone row is 368px wide, and
-88px of arrows plus a 67px card-name field left the name input 102px of the
-176px the longest sample name wants — so eleven of fifteen names clipped
-mid-character, with no ellipsis, because an `<input>` just cuts. The name is
-the only column a coach reads down the list, so at phone width the arrows
-collapse into a single 44px grip (`.rgrip`, the drag handle they always were)
-and the card-name column moves behind a **Card names** toggle in the roster
-footer, which drops the override onto a second line of each row rather than
-taking the width back off the name. The name gets 209px and every sample name
-fits. The grip takes <kbd>↑</kbd>/<kbd>↓</kbd> when focused, so losing the
-arrow buttons does not lose the keyboard path, and `movePlayer()` now runs its
-re-render inside `withFocus()` so a second press has something to press.
-
-Two things in that row were under the 44px minimum until they were measured.
-The jersey-number column was `2.4rem` — 38.4px — in every grid, and the input
-fills its column, so `input.num` was under the rule at every width rather than
-only on a narrow phone; it is `2.75rem` now, and the name column (`1fr`)
-absorbs it. The level meter is worse-behaved, because its five steps share
-whatever the row has left: a 44px step needs `viewport >= 285.6px + the level
-word`, and the word is per-player ("Developing" is the widest), so the strip
-crossed under 44 somewhere around 350–365px — a 360px Android. Below 380px the
-meter therefore stacks: the strip takes the whole row and the level word moves
-to its own line beneath it. That costs ~17px of row height on a small phone and
-keeps the word, which is the part a coach reads. `scripts/smoke.mjs` now sweeps
-the touch check across games, roster and the Plan sheet (level 1 and add page)
-at 320, 360 and 390 rather than measuring one screen at one width, which is what
-let both of these live.
+The row a coach taps used to be the editable one: six columns holding the grip
+and arrows, a number input, a name input, an optional card-name input behind a
+**Card names** toggle, a remove ✕ and the level meter, on a 368px phone. Two of
+those controls were under the 44px minimum until somebody measured them by
+hand — the jersey-number input, which filled a `2.4rem` column at every width,
+and a level step, which got whatever the row had left and crossed under 44px
+somewhere around a 360px Android. #31 moved every one of those controls into
+the player sheet or the reorder row, so neither is in the list any more, and
+the meter's one home is the sheet's Level row, where the strip has a whole
+group's width to share out.
+The lesson outlived the row: `scripts/smoke/touch.mjs` sweeps the touch check
+across the app's screens and the sheets they open, at 320, 360 and 390, rather
+than measuring one screen at one width — which is what let both of those live.
 ## Interface
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
@@ -340,12 +380,20 @@ least 48 pixels (#69).
 **One header, two states.** `.bar` no longer changes shape one member at a
 time; it holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
 `#barBack` (a round chevron button labeled *Back to Today* and the screen's
-title, `Team` / `Season` / `Settings`; on the game screen that title is
-`hidden`, because the page shows its own), and `applyView` toggles which half is visible with the `hidden`
+title), and `applyView` toggles which half is visible with the `hidden`
 attribute — never both, because a coach is always on Today or exactly one screen
-away from it. On the game screen, the opponent name shows as a large in-page h1
-title with a sub-line showing tip-off time and status, so the header stays clean
-(#69).
+away from it. `applyView` always *writes* the title, and hides it on every
+screen that carries its own in-page `h1` — the game, Season and, since #31,
+Team — which leaves Settings as the only screen the bar titles. That is one
+set (`NO_BAR_TITLE`) rather than a chain of comparisons, so the next screen
+with its own title joins a list instead of growing another `||`. On the game
+screen, the opponent name shows as a large in-page h1 title with a sub-line
+showing tip-off time and status, so the header stays clean (#69).
+
+The right of that header is per screen, and at most two controls (C1): the
+share button on a game, the export on Season once there is a file to save, and
+*Edit* plus `+` on Team. Each is hidden by `applyView` the same way, on the one
+view it belongs to.
 
 **Print stands on the games view only.** It is the one control in the bar that
 belongs to a single view: Games is the only place printing means anything, and
@@ -487,8 +535,10 @@ sidebar thumbnail.
 The UI takes the phone's own system font stack; **Inter Variable**, vendored,
 loads only for the printed card's face — one file covers every weight the card
 uses and renders identically on Android and Windows instead of falling back to
-Roboto or Segoe (#21). Icons are **Lucide**, with only the path data extracted into `icons.js` (4.7 KB
-for 25 icons) rather than shipping a runtime. Motion drives spring transitions,
+Roboto or Segoe (#21). Icons are **Lucide**, with only the path data extracted into `icons.js` rather
+than shipping a runtime — one entry per name in `vendor/fetch.sh`'s list, held
+to it in both directions by `test/dead-icon.test.js`, so an icon nothing draws
+stops being downloaded in the same commit. Motion drives spring transitions,
 staggered entrances and FLIP reordering; continuous interactions like dragging a
 minute slider deliberately stay on CSS transitions, where spawning a spring per
 input event would cost more than it buys.
@@ -676,11 +726,10 @@ Mobile specifics that came out of real use:
   "Only 0 players available; you need at least 5" and its "resolve the errors
   above" for the roster view's own empty state plus **Add player** / **Paste a
   list**, and drops the "Squad 0 of 0" scoreboard. The buttons `.click()` the
-  real controls on the roster view rather than reimplementing them. A squad
-  that is genuinely under strength — 4 of 11 present — still gets the red
-  error, because there it is the right message. On the roster page the same
-  state hides the `.rhead` column labels: headings over an empty table read as
-  something that failed to load.
+  Team screen's own first-run buttons rather than reimplementing them — the two
+  controls that are on screen while the roster is empty, which is the only time
+  this branch runs. A squad that is genuinely under strength — 4 of 11 present —
+  still gets the red error, because there it is the right message.
 - **A blank timeline always offers a way out of itself.** "Resolve the errors
   below" is only useful if the coach can reach the control that caused them. The
   Plan sheet opens at full height, so `timelineEmpty` reads the plan's issues:
