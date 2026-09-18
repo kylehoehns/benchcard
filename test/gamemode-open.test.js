@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { stripComments } from './js-comments.js';
 
 /* gamemode.js reaches for the DOM at import time, so these read the source.
    What is being pinned is a decision that already failed silently once. */
@@ -134,6 +135,31 @@ test('a reload does not force the coach back into bench mode', () => {
   const calls = app.match(/^\s*openGameMode\(/gm) || [];
   assert.equal(calls.length, 0,
     'openGameMode must only ever be called from a control the coach pressed');
+
+  /* #34 gave the app a SECOND entry point into bench mode -- Today's Resume
+     bar -- and the claim above is only as strong as the files it reads. The
+     bar's own painter (`renderResumeBar`) runs on every transition into
+     Today, including the one a reload lands on, so an `openGameMode()` that
+     drifted out of the tap handler and into module scope or into a render
+     function would reopen bench mode on load exactly the way this test
+     exists to prevent, while app.js stayed clean. */
+  const teams = stripComments(readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8'));
+  const sites = teams.match(/(?<![\w$.])openGameMode\s*\(/g) || [];
+  assert.equal(sites.length, 1,
+    'teams-view.js should call openGameMode exactly once -- from #resumeBtn\'s click handler and nowhere else');
+  const at = teams.search(/(?<![\w$.])openGameMode\s*\(/);
+  const wire = teams.indexOf("on('#resumeBtn'");
+  assert.ok(wire > -1, "the #resumeBtn wiring moved; this guard is reading nothing");
+  // Brace-match the handler so a call nested inside it still reads as inside.
+  const open = teams.indexOf('{', wire);
+  let depth = 0, end = open;
+  for (; end < teams.length; end++) {
+    if (teams[end] === '{') depth++;
+    else if (teams[end] === '}') { depth--; if (depth === 0) break; }
+  }
+  assert.ok(at > open && at < end,
+    'the only openGameMode() in teams-view.js must sit inside #resumeBtn\'s click handler -- '
+    + 'at module scope or in a render function it would open bench mode without a tap');
 });
 
 test('the stint dots are a picture, not twelve unhittable buttons', () => {

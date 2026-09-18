@@ -66,6 +66,27 @@ test('resumeBarAt picks the only part-played game when just the first one is und
   });
 });
 
+/* `resumeAt(p = plans[state.activeGame], g = game())` carries defaults for
+   BOTH of its arguments, so passing an `undefined` plan silently substitutes
+   the ACTIVE game's plan while keeping the game that was passed in -- a plan
+   paired with a game it was not built from. `resumeBarAt` walks
+   `state.day.games` by index, so the moment `plans` is shorter than that list
+   (a day's games written before the recompute that follows them lands) the
+   default fires. Nothing visible reaches this today; the fix is that the
+   substitution cannot happen at all. */
+test('resumeBarAt ignores a game with no plan rather than borrowing the active game\'s', () => {
+  const { players, games, settings } = twoGameDay();
+  withTeam(players, games, settings, () => {
+    S.computeAll();
+    games[0].live.at = 2;
+    games[1].live.at = 3;
+    S.plans.length = 1; // plans shorter than state.day.games; plans[1] is undefined
+    const r = resumeBarAt();
+    assert.equal(r && r.i, 0,
+      'game 1 has no plan, so the bar must fall back to game 0, not offer game 1 on game 0\'s plan');
+  });
+});
+
 test("resumeBarAt's where matches resumeAt's own where for the picked game", () => {
   const { players, games, settings } = twoGameDay();
   withTeam(players, games, settings, () => {

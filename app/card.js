@@ -33,7 +33,11 @@ export function resumeAt(p = plans[state.activeGame], g = game()) {
 export function resumeBarAt() {
   const gs = state.day.games;
   for (let i = gs.length - 1; i >= 0; i--) {
-    const r = resumeAt(plans[i], gs[i]);
+    /* Explicit `null`, never `undefined`: `resumeAt`'s first parameter
+       defaults to `plans[state.activeGame]`, so handing it a missing plan
+       would quietly pair the ACTIVE game's plan with game `i`. `resumeAt`
+       bails on a falsy plan, so `null` gives the honest answer. */
+    const r = resumeAt(plans[i] ?? null, gs[i]);
     if (r) return { i, ...r };
   }
   return null;

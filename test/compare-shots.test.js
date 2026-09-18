@@ -59,7 +59,9 @@ test('SHOTS includes a long real name, light and dark', () => {
 });
 
 test('SHOTS includes a screen scrolled to its bottom, light and dark', () => {
-  const shots = SHOTS.filter(s => s.bottom);
+  // `!s.partPlayed` so #34's own bottom-scrolled large-text cell below is not
+  // read as a third member of this plain light/dark pair.
+  const shots = SHOTS.filter(s => s.bottom && !s.partPlayed);
   assert.equal(shots.length, 2, `want a light+dark bottom-scrolled shot, found ${shots.length}`);
   assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
 });
@@ -115,11 +117,27 @@ test('SHOTS includes the resume-bar-full pair, light and dark', () => {
 });
 
 test('SHOTS includes exactly one resume-bar-320 shot, light only, no twin', () => {
-  const shots = SHOTS.filter(s => s.partPlayed
+  const shots = SHOTS.filter(s => s.partPlayed && !s.bottom
     && s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX);
   assert.equal(shots.length, 1, `want exactly one resume-bar-320 shot, found ${shots.length}`);
   assert.equal(shots[0].theme, 'light', 'the wrapping cell is about layout and runs light only');
   assert.ok(!shots[0].twin, 'resume-bar-320 never runs dark, so it should declare no twin');
+});
+
+/* AND THAT SAME CELL SCROLLED TO ITS END, which nothing above covers and
+ * which is the one place the bar's own height can strand content. The plain
+ * `bottom` pair is Season at 390px/16px; `resume-bar-full` is a
+ * full-document capture, so it shows the whole page at once and never shows
+ * a fixed bar against the LAST screenful. Measured on this tree before the
+ * clearance fix: a 310px bar over 208px of `.wrap` padding left
+ * `#todaySeason` 84px underneath it with nowhere left to scroll. Light only,
+ * for the same reason as the other large-text cells -- layout, not paint. */
+test('SHOTS includes the resume bar at 320px/32px scrolled to its bottom', () => {
+  const shots = SHOTS.filter(s => s.partPlayed && s.bottom
+    && s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX);
+  assert.equal(shots.length, 1, `want exactly one resume-bar-bottom-320 shot, found ${shots.length}`);
+  assert.equal(shots[0].theme, 'light', 'the wrapping cell is about layout and runs light only');
+  assert.ok(!shots[0].twin, 'resume-bar-bottom-320 never runs dark, so it should declare no twin');
 });
 
 /* ---------- shotProblems: items 2 and 3 ---------- */

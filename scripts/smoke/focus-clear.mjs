@@ -24,14 +24,14 @@
 import { evalIn, step, TODAY_HOME } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 
-/* The rect-overlap test itself, as a string rather than a function: every
- * caller (this file and #34's resume-bar.mjs, which tabs Today the same
- * way to check focus never lands under `#resumeBar`) needs it INSIDE a
- * browser-evaluated expression, not as a Node-side value, so a plain
- * exported function would still have to be `.toString()`'d back into text at
- * every call site -- two ways to say the same thing. One exported literal,
- * interpolated wherever the walk needs it, is the one copy. */
-export const OVERLAPS = '(a, b) => !!b && !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom)';
+/* The rect-overlap test itself, as a string rather than a function: it is
+ * needed INSIDE a browser-evaluated expression, not as a Node-side value, so
+ * a plain function would have to be `.toString()`'d back into text anyway --
+ * two ways to say the same thing. It used to be exported, for #34's
+ * resume-bar.mjs, which tabs Today against `#resumeBar` the same way this
+ * file tabs the game screen; the whole WALK is shared now (`tabWalk` below),
+ * so this literal has one reader again. */
+const OVERLAPS = '(a, b) => !!b && !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom)';
 
 /* The floor is a floor, NOT a stopping point, and that distinction is the
  * whole check. Stopping at the eighth control tabbed through only the top of
@@ -45,6 +45,78 @@ export const OVERLAPS = '(a, b) => !!b && !(a.right <= b.left || a.left >= b.rig
 const MIN_CONTROLS = 8;
 const MAX_TABS = 80; // generous ceiling so a stuck or cyclic tab order cannot hang the harness
 
+/* The walk itself, driven once for two passes: this file's (the game screen,
+ * against `.bar` and `#actionbar`) and #34's resume-bar.mjs (Today, against
+ * `#resumeBar`). Both do exactly the same forty lines -- plant a focusable
+ * probe at the top of a view, press real Tab keys over CDP up to `MAX_TABS`
+ * times, skip anything inside the floating chrome, mark each element the
+ * first time it is reached so a second visit ends the lap, read the focused
+ * rect against the bar rects with `OVERLAPS`, and tidy the probe and the
+ * markers away again -- and differed only in the names, the view, what to
+ * skip and which bars to test. Two copies of a probe this fiddly is two
+ * places for the wrap-around artefact below to be fixed in.
+ *
+ * `name` gives both the probe's id (`__<name>Probe`) and the marker attribute
+ * (`data-<name>tabbed`), so the two can never drift apart. `bars` are
+ * selectors, and a selector is its own label in the failure message.
+ *
+ * The probe is marked from the moment it is created, not only once Tab has
+ * left it. Without that, a lap that runs out of forward content wraps around
+ * the whole document and lands back on the probe, which the walk then counts
+ * as an ordinary NEW control (it reads `input#__<name>Probe` back
+ * as if a coach could tab to it) -- a bookkeeping artefact, not a control on
+ * the page. Marking it up front makes the wrap a `done`, the same way any
+ * other already-visited element stops the walk. Measured on this tree, the
+ * game screen's own walk had the artefact too: 25 controls before, 24 after,
+ * down to the same scrollY 550 -- the one that went is the probe itself,
+ * which the lap came back around to. So both passes mark, and the floor of 8
+ * below is judged against the honest count. */
+export async function tabWalk(c, { name, probeParent, skip = [], bars = [], maxTabs = MAX_TABS }) {
+  const probeId = `__${name}Probe`;
+  const marker = `data-${name}tabbed`;
+  await evalIn(c, `(() => {
+    const p = document.createElement('input');
+    p.id = ${JSON.stringify(probeId)};
+    p.setAttribute(${JSON.stringify(marker)}, '1');
+    document.querySelector(${JSON.stringify(probeParent)}).prepend(p);
+    p.focus();
+  })()`);
+
+  let visited = 0, maxScrollY = 0;
+  const labels = [], overlaps = [];
+  for (let i = 0; i < maxTabs; i++) {
+    await c.send('Input.dispatchKeyEvent', { type: 'keyDown', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
+    await c.send('Input.dispatchKeyEvent', { type: 'keyUp', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
+    const info = JSON.parse(await evalIn(c, `(() => {
+      const el = document.activeElement;
+      if (!el || el === document.body || el.hasAttribute(${JSON.stringify(marker)})) return JSON.stringify({ done: true });
+      if (${JSON.stringify(skip)}.some(s => el.closest(s))) return JSON.stringify({ inChrome: true });
+      el.setAttribute(${JSON.stringify(marker)}, '1');
+      const r = el.getBoundingClientRect();
+      const overlaps = ${OVERLAPS};
+      const label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
+        + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join(''));
+      return JSON.stringify({ label, scrollY: Math.round(window.scrollY),
+        under: ${JSON.stringify(bars)}.filter(s => overlaps(r, document.querySelector(s)?.getBoundingClientRect())) });
+    })()`));
+    if (info.done) break;
+    if (info.inChrome) continue;
+    visited++;
+    labels.push(info.label);
+    if (info.scrollY > maxScrollY) maxScrollY = info.scrollY;
+    for (const sel of info.under) {
+      overlaps.push(`${info.label} overlaps ${sel} (control ${visited} of the tab sequence, at scrollY ${info.scrollY})`);
+    }
+  }
+
+  await evalIn(c, `(() => {
+    document.getElementById(${JSON.stringify(probeId)})?.remove();
+    for (const el of document.querySelectorAll('[${marker}]')) el.removeAttribute(${JSON.stringify(marker)});
+  })()`);
+
+  return { visited, labels, overlaps, maxScrollY };
+}
+
 export async function focusClearPass(c) {
   const problems = [];
   // Guarantee the game screen regardless of what state this pass inherits --
@@ -53,47 +125,10 @@ export async function focusClearPass(c) {
   await evalIn(c, step(TODAY_HOME));
   await evalIn(c, step(`document.querySelector('.today-game').click()`));
 
-  await evalIn(c, `(() => {
-    const view = document.getElementById('view-games');
-    const p = document.createElement('input');
-    p.id = '__focusProbe';
-    view.prepend(p);
-    p.focus();
-  })()`);
-
-  let visited = 0, maxScrollY = 0;
-  const overlaps = [];
-  for (let i = 0; i < MAX_TABS; i++) {
-    await c.send('Input.dispatchKeyEvent', { type: 'keyDown', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
-    await c.send('Input.dispatchKeyEvent', { type: 'keyUp', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
-    const info = JSON.parse(await evalIn(c, `(() => {
-      const el = document.activeElement;
-      if (!el || el === document.body || el.hasAttribute('data-focustabbed')) return JSON.stringify({ done: true });
-      if (el.closest('.bar') || el.closest('#actionbar')) return JSON.stringify({ inChrome: true });
-      el.setAttribute('data-focustabbed', '1');
-      const r = el.getBoundingClientRect();
-      const bar = document.querySelector('.bar')?.getBoundingClientRect();
-      const ab = document.querySelector('#actionbar:not([hidden])')?.getBoundingClientRect();
-      const overlaps = ${OVERLAPS};
-      const label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-        + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join(''));
-      return JSON.stringify({ label, scrollY: Math.round(window.scrollY),
-        overlapsBar: overlaps(r, bar), overlapsAb: overlaps(r, ab) });
-    })()`));
-    if (info.done) break;
-    if (info.inChrome) continue;
-    visited++;
-    if (info.scrollY > maxScrollY) maxScrollY = info.scrollY;
-    if (info.overlapsBar || info.overlapsAb) {
-      overlaps.push(`${info.label} overlaps ${info.overlapsBar ? '.bar' : '#actionbar'} `
-        + `(control ${visited} of the tab sequence, at scrollY ${info.scrollY})`);
-    }
-  }
-
-  await evalIn(c, `(() => {
-    document.getElementById('__focusProbe')?.remove();
-    for (const el of document.querySelectorAll('[data-focustabbed]')) el.removeAttribute('data-focustabbed');
-  })()`);
+  const { visited, overlaps, maxScrollY } = await tabWalk(c, {
+    name: 'focus', probeParent: '#view-games',
+    skip: ['.bar', '#actionbar'], bars: ['.bar', '#actionbar:not([hidden])'],
+  });
   await evalIn(c, step(TODAY_HOME));
 
   if (visited < MIN_CONTROLS) {

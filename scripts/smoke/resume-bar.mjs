@@ -11,18 +11,11 @@
  * RICH's games mid-play, so "picks the game that's underway" and "picks the
  * LATER one" are actually different claims -- a fixture with only one
  * part-played game could not tell them apart. */
-import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, landWiped } from './dom.mjs';
-import { nameOf } from './registry.mjs';
-import { OVERLAPS } from './focus-clear.mjs';
+import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, landWiped, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
+import { nameOf, LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './registry.mjs';
+import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
 import { RICH, partPlayed, reloadWithRecord, goRich } from './fixtures.mjs';
-
-const alpha = c => {
-  const m = /rgba?\(([^)]+)\)/.exec(c || '');
-  if (!m) return null;
-  const parts = m[1].split(/[,/]/).map(s => s.trim());
-  return parts.length > 3 ? Number(parts[3]) : 1;
-};
 
 // Decision 14's exact fixture and item 1's exact string -- the SECOND
 // game's label, "Northwest Valley Thunderbirds", not the first's "Hawks".
@@ -111,7 +104,13 @@ export async function resumeBarPass(c, origin) {
   notes.push('item 4: no auto-open on reload');
 
   /* ---- item 5: geometry at 320/360/390px, and the solid fallbacks ---- */
-  for (const w of [320, 360, 390]) {
+  /* The narrowest phone anyone carries, the narrowest one in real use, and
+     the width the whole harness measures at -- all three already named in
+     registry.mjs, where each carries its own rationale (NARROW's is the
+     middle one: a small Android, with an iPhone SE 2/3 just above it at
+     375). Spelling any of them as a literal here would be a second copy of a
+     number that is already decided. */
+  for (const w of [LARGE_TEXT_WIDTH, NARROW, WIDTH]) {
     await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
     await evalIn(c, `${SETTLE}`);
     const geo = JSON.parse(await evalIn(c, `(() => {
@@ -128,7 +127,7 @@ export async function resumeBarPass(c, origin) {
   await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
   await evalIn(c, `${SETTLE}`);
 
-  for (const [feature, value] of [['prefers-reduced-transparency', 'reduce'], ['prefers-contrast', 'more']]) {
+  for (const [feature, value] of SOLID_FALLBACK_MEDIA) {
     await c.send('Emulation.setEmulatedMedia', { features: [{ name: feature, value }] });
     await evalIn(c, `${SETTLE}`);
     const solid = JSON.parse(await evalIn(c, `(() => {
@@ -153,57 +152,22 @@ export async function resumeBarPass(c, origin) {
     problems.push(`html's scroll-padding-bottom is ${Math.round(scrollPad.pad)}px, want at least #resumeBar's ${Math.round(scrollPad.barH)}px`);
   }
 
-  /* The probe carries `data-resumetabbed` from the moment it is created, not
-     only once Tab has left it: without that, a lap that runs out of forward
-     content wraps around the whole document and lands back on the probe
-     itself, which the walk then counted as an ordinary NEW control (it read
-     `input#__resumeFocusProbe` back as if a coach could tab to it) -- a
-     bookkeeping artefact, not a control on the page. Marking it up front
-     makes the wrap a `done`, the same way any other already-visited element
-     stops the walk. */
-  await evalIn(c, `(() => {
-    const p = document.createElement('input');
-    p.id = '__resumeFocusProbe';
-    p.setAttribute('data-resumetabbed', '1');
-    document.getElementById('view-today').prepend(p);
-    p.focus();
-  })()`);
-  let visited = 0;
-  const overlaps = [];
-  const labels = [];
-  for (let i = 0; i < 80; i++) {
-    await c.send('Input.dispatchKeyEvent', { type: 'keyDown', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
-    await c.send('Input.dispatchKeyEvent', { type: 'keyUp', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
-    const info = JSON.parse(await evalIn(c, `(() => {
-      const el = document.activeElement;
-      if (!el || el === document.body || el.hasAttribute('data-resumetabbed')) return JSON.stringify({ done: true });
-      /* The probe is prepended INSIDE #view-today, so DOM order puts
-         #barToday's own controls (team switcher, New day, the gear) before
-         it -- a forward-only tab walk starting there never reaches them on
-         a normal lap. A lap that runs off the end of the document instead
-         WRAPS back around past them before it reaches the marked probe
-         above, which would otherwise count three chrome buttons that live
-         outside Today as if they were Today's own content. Skipping '.bar'
-         the same way '#resumeBar' is already skipped keeps the count the
-         same whether or not a given run happens to wrap. */
-      if (el.closest('#resumeBar') || el.closest('.bar')) return JSON.stringify({ inChrome: true });
-      el.setAttribute('data-resumetabbed', '1');
-      const r = el.getBoundingClientRect();
-      const bar = document.getElementById('resumeBar')?.getBoundingClientRect();
-      const overlaps = ${OVERLAPS};
-      const label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '');
-      return JSON.stringify({ label, overlapsBar: overlaps(r, bar) });
-    })()`));
-    if (info.done) break;
-    if (info.inChrome) continue;
-    visited++;
-    labels.push(info.label);
-    if (info.overlapsBar) overlaps.push(`${info.label} overlaps #resumeBar (control ${visited} of the tab sequence)`);
-  }
-  await evalIn(c, `(() => {
-    document.getElementById('__resumeFocusProbe')?.remove();
-    for (const el of document.querySelectorAll('[data-resumetabbed]')) el.removeAttribute('data-resumetabbed');
-  })()`);
+  /* One walk, shared with focus-clear.mjs (`tabWalk`), which tabs the game
+     screen against `.bar` and `#actionbar` the same way -- see its own
+     comment for why the probe is marked from the moment it is created.
+
+     The probe is prepended INSIDE #view-today, so DOM order puts #barToday's
+     own controls (team switcher, New day, the gear) before it -- a
+     forward-only walk starting there never reaches them on a normal lap. A
+     lap that runs off the end of the document instead WRAPS back around past
+     them, which would otherwise count three chrome buttons that live outside
+     Today as if they were Today's own content. Skipping '.bar' the same way
+     '#resumeBar' is skipped keeps the count the same whether or not a given
+     run happens to wrap. */
+  const { visited, labels, overlaps } = await tabWalk(c, {
+    name: 'resumeFocus', probeParent: '#view-today',
+    skip: ['#resumeBar', '.bar'], bars: ['#resumeBar'],
+  });
   /* The floor, verified on this tree 2026-09-18 by printing this same
      `labels` list from both seams the Proof section names: `node
      scripts/smoke.mjs --only "resume bar on Today"` and the full `npm run
@@ -215,9 +179,9 @@ export async function resumeBarPass(c, origin) {
      `#barToday`'s three chrome buttons are excluded above too, for the
      reason given there. Five is therefore the true count, not a number
      chosen to make a failing run pass: MIN_CONTROLS 8 was calibrated
-     against an isolated run that, before the fix above, wrapped a lap
-     around the whole document and mis-counted the chrome and its own probe
-     as Today's controls. */
+     against an isolated run that, before `tabWalk` marked the probe up
+     front, wrapped a lap around the whole document and mis-counted the
+     chrome and its own probe as Today's controls. */
   const MIN_CONTROLS = 5;
   if (visited < MIN_CONTROLS) {
     problems.push(`only ${visited} distinct control(s) reached tabbing Today (${labels.join(', ') || 'none'}), `
@@ -225,6 +189,70 @@ export async function resumeBarPass(c, origin) {
   }
   problems.push(...overlaps.slice(0, 3));
   notes.push(`item 6: scroll-padding covers the bar; ${visited} control(s) tabbed clear of it: ${labels.join(', ')}`);
+
+  /* ---- item 6's other half: the END of Today has to be reachable ----
+   *
+   * `scroll-padding-bottom` only tells the browser where to stop when IT
+   * scrolls something into view; it does nothing about how far the page can
+   * scroll at all. That is `.wrap`'s bottom padding, and it was a flat
+   * `6.5rem` -- 208px at a 200% reader's root. Measured on this tree at
+   * 320px with a 32px root, the bar's label wraps to five lines and the bar
+   * is 310px tall, so 84px of `#todaySeason` stayed underneath it at the
+   * very bottom of the scroll with no way to bring it out. Nothing clipped
+   * and nothing overflowed sideways, so neither `app-large-text.mjs`'s
+   * `STRANDED_ABOVE` (which only looks above the viewport top) nor any
+   * overflow probe in the harness could see it.
+   *
+   * A font size cannot be re-applied without a reload (see
+   * app-large-text.mjs's own note), so this reloads the part-played record
+   * at the narrow width rather than resizing the document in place. Both are
+   * put back in `finally`: this row runs mid-sequence and every row after it
+   * assumes 390px and a 16px root. */
+  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
+  try {
+    await c.send('Emulation.setDeviceMetricsOverride',
+      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    const recBig = partPlayed(RICH);
+    recBig.view = 'today';
+    await reloadWithRecord(c, origin, recBig);
+    const under = JSON.parse(await evalIn(c, `(async () => {
+      window.scrollTo(0, 1e6);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const barEl = document.getElementById('resumeBar');
+      const view = document.getElementById('view-today');
+      if (!barEl || barEl.hidden || !view || view.hidden) {
+        return JSON.stringify({ ready: false, bar: !!barEl && !barEl.hidden, today: !!view && !view.hidden });
+      }
+      const bar = barEl.getBoundingClientRect();
+      const vis = el => el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true });
+      let last = null, counted = 0;
+      for (const el of view.querySelectorAll('*')) {
+        const r = el.getBoundingClientRect();
+        if ((!r.width && !r.height) || !vis(el)) continue;
+        counted++;
+        if (!last || r.bottom > last.bottom) last = { bottom: r.bottom, el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') };
+      }
+      return JSON.stringify({ ready: true, counted, last, scrollY: Math.round(window.scrollY),
+        barTop: bar.top, barH: bar.height, pad: getComputedStyle(view).paddingBottom });
+    })()`));
+    const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+    if (!under.ready) {
+      problems.push(`${where}: #resumeBar up ${under.bar}, Today showing ${under.today} -- this clearance check measured nothing`);
+    } else if (!under.counted) {
+      problems.push(`${where}: no visible element inside #view-today -- this clearance check measured nothing`);
+    } else if (!under.scrollY) {
+      problems.push(`${where}: the page never scrolled (scrollY 0), so nothing here exercised the bottom of Today`);
+    } else if (under.last.bottom > under.barTop + 1) {
+      problems.push(`${where}: at the very bottom of the scroll ${under.last.el} still reaches `
+        + `${Math.round(under.last.bottom)}px, ${Math.round(under.last.bottom - under.barTop)}px under #resumeBar's top edge `
+        + `(a ${Math.round(under.barH)}px bar over ${under.pad} of .wrap clearance) -- that content cannot be scrolled out`);
+    } else {
+      notes.push(`item 6: the last of Today (${under.last.el}) clears a ${Math.round(under.barH)}px bar at ${where}`);
+    }
+  } finally {
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  }
 
   // Restore the plain fixture: this row runs between `floatingcontrols` and
   // `narrow` in a full run, and every row after it assumes RICH's own two
