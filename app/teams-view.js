@@ -17,12 +17,19 @@
  * `#removeGame` is wired from inside `renderTabs` -- its hidden state
  * depends on how many games the day has, so it is repainted with them.
  * ================================================================== */
-import { $, on, el } from './dom.js';
+import { $, on, set, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay, activeColor,
-         colorOf, passSummary, passBlocks, rowGradient } from './state.js';
+         colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
+         initials, STRATEGIES, EVEN_OUT_DAY_LABEL } from './state.js';
+// One switch builder for the whole app (#32): the Plan sheet's "Even out
+// earlier games" row and step 3's are the same control.
+import { switchRow } from './rules.js';
 import { DEFAULT_SETTINGS, colorName } from './storage.js';
+// The one close path and the one "ask before discarding" hook, shared with
+// every bottom sheet (#32 uses them from a full-screen dialog).
+import { closeSheet, guardClose, rememberTrigger, showAskRow } from './trap.js';
 // season-view.js is already in the boot graph (app.js calls `initSeason`),
 // so this names no new request -- it is the one place a filed game is
 // counted, and Today's Season entry reads it the same way (#23 review).
@@ -78,7 +85,9 @@ export function initTeams(renderAllFn, setViewFn) {
   on('#removeTeam', 'onclick', removeTeam);
   // "+ Game", "New day" and the two entries below them are static buttons on
   // Today now, not rebuilt every render -- bound once, like #removeTeam above.
-  on('#todayAddGame', 'onclick', addGame);
+  // "+ Game" opens the three-step flow (#32); `wireAddGameFlow` binds it
+  // along with the rest of the flow's controls.
+  wireAddGameFlow();
   on('#todayNewDay', 'onclick', startNewDay);
   on('#todayTeam', 'onclick', () => setView('team'));
   on('#todaySeason', 'onclick', () => setView('season'));
@@ -543,19 +552,330 @@ export function renderTabs() {
   }
 }
 
-/* "+ Game"'s own push, moved with its behavior intact: a new game copies the
-   format, who is at the gym and the rules from the last game in the day, and
-   opens straight onto its own screen. */
-function addGame() {
-  state.day.games.push(newGame(state.day.games.length, lastGame(), state.settings));
+/* ---------------- Add a game, in three steps (#32) --------------------
+ *
+ * The one-tap "+ Game" is gone: it dropped a copy of the last game into the
+ * day and left the coach on a screen full of controls to undo it with. The
+ * flow asks the three questions that copy was guessing at -- who you are
+ * playing, who is here, how the minutes split -- and is still one tap when
+ * the answer is "same as last time" (N8: always skippable).
+ *
+ * `newGame(len, lastGame(), settings)` builds the draft at OPEN, and both
+ * "Use it" (step 1's card) and "Plan it" (step 3) commit that same object.
+ * There is no second copy path, which is what makes "Use it" and walking all
+ * three steps without changing anything land on identical games.
+ *
+ * The steps themselves are one list below -- the question each one asks
+ * beside the builder that fills its body -- so a heading and its content
+ * cannot drift apart and "how many steps" is counted rather than written
+ * down in a second place.
+ */
+const FLOW_STEPS = [
+  { q: 'Who are you playing?', build: stepWho },
+  { q: "Who's here?", build: stepHere },
+  { q: 'How should minutes split?', build: stepSplit },
+];
+const STEPS = FLOW_STEPS.length;
+
+let draft = null;
+let flowStep = 1;
+
+/* I1: resume rather than restart when `draft` survived the last close. It
+   survives by default -- it is module state, and the close Chrome will not
+   let us veto runs none of our code (see the `close` listener below). The
+   close paths that DO run code clear it first: Discard and a commit null it
+   outright, and a plain close with nothing typed is nulled by that listener.
+   So a draft still here is one with something in it worth coming back to.
+
+   I9: the spec's own pseudocode names this `openAddGame(trigger)` -- opened
+   by hand (`showModal()`, not `openSheet`) because `openSheet` also runs the
+   `.bsheet` slide/height/cancel machinery #32's full-screen flow does not
+   use, so `rememberTrigger` is called directly instead of picking that whole
+   path up. Without it, `returnFocus` (trap.js) has nothing to send focus
+   back to when the flow closes -- the ✕/Escape/Discard paths (`closeSheet`)
+   all end up there. */
+function openAddGame(trigger) {
+  const d = $('#addGameFlow');
+  if (!d) return;
+  if (!draft) {
+    draft = newGame(state.day.games.length, lastGame(), state.settings);
+    flowStep = 1;
+  }
+  rememberTrigger(d, trigger);
+  showFlowAsk(false);
+  d.showModal();
+  paintFlow();
+}
+
+function paintFlow() {
+  if (!draft) return;
+  // I2: `flowBack()` repaints under whatever the ask left behind -- a step
+  // change is itself the answer "keep editing", so it can never still be
+  // asking about the step it just left.
+  showFlowAsk(false);
+  const body = $('#agBody');
+  if (!body) return;
+  set('#agStep', 'textContent', `${flowStep} of ${STEPS}`);
+  const prog = $('#agProg');
+  if (prog) {
+    // `index.html` ships `#agProg` empty -- one segment per `FLOW_STEPS`
+    // entry, built here, so the dot count can never drift from the step
+    // count the way a hand-authored `<i>` per markup would.
+    if (prog.children.length !== STEPS) {
+      prog.replaceChildren(...Array.from({ length: STEPS }, () => document.createElement('i')));
+    }
+    [...prog.children].forEach((seg, i) => seg.classList.toggle('on', i === flowStep - 1));
+  }
+  body.replaceChildren(stepBody(flowStep));
+  set('#agBack', 'hidden', flowStep === 1);
+  set('#agNext', 'textContent', flowStep === STEPS ? 'Plan it' : 'Next');
+  // The whole screen changed under the coach, so focus goes to what it now
+  // asks -- the same move `openSheet` makes to a sheet's own title.
+  body.querySelector('h2')?.focus({ preventScroll: true });
+}
+
+function stepBody(n) {
+  const { q, build } = FLOW_STEPS[n - 1];
+  const wrap = el('div');
+  const h = el('h2', 'flow-q', q);
+  h.tabIndex = -1;
+  wrap.append(h);
+  build(wrap, q);
+  return wrap;
+}
+
+/* The `.f` label + input pair the game screen uses for these same two fields
+   (index.html's "This game" box). The label wraps its input here instead of
+   pointing at an id: #label and #when are already taken by that box, and a
+   second element with either id would be the duplicate the shell tests catch. */
+function flowField(label, value, placeholder, onInput) {
+  const l = el('label', 'flow-f');
+  l.append(el('span', 'f', label));
+  const i = el('input');
+  i.type = 'text';
+  i.value = value;
+  i.placeholder = placeholder;
+  i.oninput = () => onInput(i.value);
+  l.append(i);
+  return l;
+}
+
+/* Step 1. The two fields write straight into the draft, so what is typed
+   survives stepping forward and back, and is what the discard ask is about.
+   The card underneath is the one-tap path (N8): `sameAsLast()` has already
+   decided whether there is anything worth copying, and "Use it" commits the
+   very draft `openAddGame` built -- no second copy. */
+function stepWho(wrap) {
+  wrap.append(
+    flowField('Opponent', draft.label, 'Panthers', v => { draft.label = v; }),
+    flowField('Tip-off', draft.when, 'Sat 9:00', v => { draft.when = v; }),
+  );
+  const same = sameAsLast();
+  if (!same) return;
+  const card = el('div', 'flow-card');
+  const use = el('button', 'btn primary press', 'Use it');
+  use.type = 'button';
+  use.onclick = commitFlow;
+  card.append(el('p', 'flow-card-t', same.title), el('p', 'flow-card-s', same.summary), use);
+  wrap.append(card);
+}
+
+/* Step 2. The Plan sheet's picker tiles (`.pick` / `.plr` / `.plr-check`),
+   pointed at availability instead of a five: the number in the player's own
+   color, the first name bold and the surname muted under it, a ✓ while they
+   are here. The visible "✓" is decorative -- the accessible name carries the
+   state, as ", Absent", the same split `whoRow` draws on the Who sheet. */
+const tileName = p => p.name || 'Unnamed';
+
+function paintTile(b, p, present) {
+  b.className = 'plr press ' + (present ? 'on' : 'off');
+  b.setAttribute('aria-pressed', String(present));
+  b.setAttribute('aria-label', present ? tileName(p) : `${tileName(p)}, Absent`);
+  const check = b.querySelector('.plr-check');
+  if (check) check.hidden = !present;
+}
+
+function tile(p, present) {
+  const b = el('button');
+  b.type = 'button';
+  b.style.setProperty('--c', colorOf(p.id));
+  const name = tileName(p).trim();
+  const cut = name.lastIndexOf(' ');
+  /* Each part gets its own element so each can be its own ellipsized line
+     (B1, app.css). The space between them is kept as a real text node so
+     `.nm`'s textContent is still "First Last" -- the smoke check reads it
+     that way, and so does anything that copies a name out of the DOM. */
+  const nm = el('span', 'nm');
+  nm.append(el('span', 'plr-first', cut > 0 ? name.slice(0, cut) : name));
+  if (cut > 0) nm.append(' ', el('span', 'plr-sur', name.slice(cut + 1)));
+  const check = el('span', 'plr-check', '✓');
+  check.setAttribute('aria-hidden', 'true');
+  b.append(el('span', 'av', initials(p)), nm, check);
+  // The tile carries its own answer rather than reading it back out of the
+  // attribute it just wrote -- one place decides what "here" means.
+  let here = present;
+  paintTile(b, p, here);
+  b.onclick = () => {
+    here = !here;
+    // setAvailable, never a bare `draft.out` edit: sitting a player down has
+    // to take any override naming them with it (state.js).
+    setAvailable(draft, p.id, here);
+    paintTile(b, p, here);
+    paintHereCount();
+  };
+  return b;
+}
+
+// "11 of 11", repainted on every tap -- the only part of step 2 that changes.
+const hereCount = () => `${availIds(draft).length} of ${state.players.length}`;
+function paintHereCount() {
+  const c = $('#agBody .flow-count');
+  if (c) c.textContent = hereCount();
+}
+
+function stepHere(wrap) {
+  if (!state.players.length) {
+    /* I10: unlike the Who sheet's own empty state (game-setup.js) this one is
+       reachable on a brand-new team's very first game, where Next still walks
+       on to step 3 and lets a coach plan for nobody -- copy is the only fix
+       in scope (no navigation added), so it names where the roster gets
+       filled in rather than repeating game-setup.js's plain line. */
+    wrap.append(el('p', 'sheetempty', 'No players on the roster yet. Build your roster on the Team page, then come back.'));
+    return;
+  }
+  const grid = el('div', 'pick');
+  const out = new Set(draft.out);
+  for (const p of state.players) grid.append(tile(p, !out.has(p.id)));
+  wrap.append(grid, el('p', 'flow-count', hereCount()));
+  /* Only when there was a game to copy from: it tells the coach the tiles
+     already carry last game's answer, so the job is to fix what changed
+     rather than to fill the whole thing in. */
+  if (lastGame()) {
+    wrap.append(el('p', 'flow-note', "Copied from the last game. Tap anyone who's changed."));
+  }
+}
+
+/* Step 3. The four words come off `#stratseg` itself rather than a list
+   written here -- the Plan sheet's picker and this one have to read the same,
+   and two lists is how they stop. The sentence under each is `STRATEGIES`,
+   the one map that holds them. */
+function stepSplit(wrap, q) {
+  const group = el('div', 'flow-opts');
+  group.setAttribute('role', 'radiogroup');
+  group.setAttribute('aria-label', q);
+  for (const src of document.querySelectorAll('#stratseg button[data-strat]')) {
+    const key = src.dataset.strat;
+    const b = el('button', 'opt press');
+    b.type = 'button';
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', String(draft.strategy === key));
+    b.append(el('span', 'opt-t', src.textContent.trim()), el('span', 'opt-d', STRATEGIES[key]));
+    b.onclick = () => {
+      draft.strategy = key;
+      for (const n of group.children) n.setAttribute('aria-checked', String(n === b));
+    };
+    group.append(b);
+  }
+  wrap.append(group);
+  /* The Plan sheet's own switch builder (rules.js), not a second one: this is
+     the same control, bound to the same field of the same game. */
+  wrap.append(switchRow(EVEN_OUT_DAY_LABEL, draft.useCarryover, false,
+    (v) => { draft.useCarryover = v; }));
+}
+
+function flowNext() {
+  if (flowStep < STEPS) { flowStep++; paintFlow(); } else commitFlow();
+}
+
+/* I3: the footer's "‹ Back" and Android's back gesture are the same action.
+   From step 1 there is nothing behind the flow, so it asks to leave. */
+function flowBack() {
+  if (flowStep > 1) { flowStep--; paintFlow(); } else requestCloseFlow();
+}
+
+/* Every close a coach can make goes through `closeSheet`, which is the one
+   place the discard guard below is consulted. */
+function requestCloseFlow() { closeSheet($('#addGameFlow')); }
+
+// I7: the same ask-row toggle `showAddAsk`/`showPasteAsk` (roster-view.js)
+// use, shared out of trap.js next to `guardClose`.
+function showFlowAsk(show) { showAskRow('#agAsk', '#agFoot', '#agKeep', show); }
+
+/* The two ways the flow ends for good, committing and discarding. The draft
+   is dropped FIRST so the guard below has nothing left to ask about: the
+   answer is either in the day now or thrown away on purpose. */
+function closeFlow() {
+  draft = null;
+  showFlowAsk(false);
+  closeSheet($('#addGameFlow'));
+}
+
+// "Plan it" and "Use it" both end here: one commit path, not two.
+function commitFlow() {
+  if (!draft) return;
+  state.day.games.push(draft);
   state.activeGame = state.day.games.length - 1;
   track('day_game_count', { games: state.day.games.length });
-  // `setView('games')` renders it: always called from Today (#todayAddGame,
-  // wired below), so this is always a real transition into Games and
-  // `applyView` does the render itself now (#23 review, third round). A
-  // second `renderAll()` here would be exactly the double work that review
-  // flagged.
+  closeFlow();
+  // `applyView` renders on a real transition into Games (#23 review, third
+  // round) -- a `renderAll()` here would be exactly the double work it flagged.
   setView('games');
+}
+
+/* C4: a commit sheet asks before it throws away typed text, and it cannot ask
+   in a second overlay -- `#confirm` is a plain div and `showModal()` inerts
+   it. Same guard the paste and add-a-player sheets use (`guardClose`,
+   trap.js); true means "asked, stay open". */
+function askBeforeDiscard() {
+  if (!draft || (!draft.label.trim() && !draft.when.trim())) return false;
+  showFlowAsk(true);
+  return true;
+}
+
+function wireAddGameFlow() {
+  const d = $('#addGameFlow');
+  if (!d) return;
+  on('#todayAddGame', 'onclick', () => openAddGame($('#todayAddGame')));
+  // ✕ asks from any step rather than walking back to step 1 first.
+  on('#agClose', 'onclick', requestCloseFlow);
+  on('#agBack', 'onclick', flowBack);
+  on('#agNext', 'onclick', flowNext);
+  on('#agKeep', 'onclick', () => { showFlowAsk(false); $('#agNext')?.focus({ preventScroll: true }); });
+  on('#agDiscard', 'onclick', closeFlow);
+  /* `cancel` is the one event Escape AND Android's back gesture both fire.
+     Preventing it and stepping back is what makes the gesture walk the flow
+     instead of throwing the whole thing away on the first press. */
+  on('#addGameFlow', 'oncancel', (e) => { e.preventDefault(); flowBack(); });
+  /* I1: a second close request right behind the first is one Chrome will not
+     let `oncancel` veto. Measured against a bare `<dialog>` with the app's
+     own scripts stripped out, on a data: page and again on a real http
+     origin, so neither an opaque origin nor Benchcard's own Escape handling
+     produced it: `cancel` still fires and `preventDefault()` still runs, but
+     Chrome closes the dialog anyway once the page's activation for the close
+     watcher is spent, and a handler has no way to buy more of it back.
+
+     Nothing of ours runs on that forced path at all. The dialog's own `close`
+     event does NOT fire there either -- the log ends at the second vetoed
+     `cancel`, re-sampled 1.5s later in case it were merely late. So the flow
+     cannot save anything at force-close time, and the fix is that it does not
+     have to: `draft` is module state that simply outlives the dialog, and
+     `openAddGame` above resumes it instead of starting over. Doing nothing is
+     the whole mechanism.
+
+     The listener below is for the ordinary closes, where `closeSheet` calls
+     `d.close()` and `close` does fire: it is what makes a flow with nothing
+     typed in it start over at step 1 next time rather than resume a blank.
+
+     A history-based (pushState / popstate) alternative was ruled out, not
+     just left simpler: a modal dialog's own close watcher is first in line
+     for a close request while it is open, so back would never reach
+     `popstate` at all. C4's "ask first" cannot hold for a close this handler
+     is never told about; not losing the answer is what is left to do. */
+  on('#addGameFlow', 'onclose', () => {
+    if (draft && !draft.label.trim() && !draft.when.trim()) draft = null;
+    showFlowAsk(false);
+  });
+  guardClose(d, askBeforeDiscard);
 }
 
 /* Its own function rather than an inline handler: the wording and the undo

@@ -76,11 +76,12 @@ test('--only "nope" exits non-zero, fast, with no table', () => {
   assertNeverLaunchedChrome(invalid, '--only "nope"');
 });
 
-test('the refusal lists the 35 selectable rows, one per line', () => {
-  // 35 since #31, which added its own guard (`teamscreen`, in
-  // scripts/smoke/team-screen.mjs) to REGISTRY — was 34 after #30's `season`.
-  assert.equal(validNames.length, 35,
-    `expected the 35 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
+test('the refusal lists the 36 selectable rows, one per line', () => {
+  // 36 since #32, which added its own guard (`addgameflow`, in
+  // scripts/smoke/add-game-flow.mjs) to REGISTRY — was 35 after #31's
+  // `teamscreen`, and 34 after #30's `season`.
+  assert.equal(validNames.length, 36,
+    `expected the 36 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
   // one per line, not comma-joined or wrapped
   assert.equal(new Set(validNames).size, validNames.length, 'a duplicated row name in the list');
 });

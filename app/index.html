@@ -445,7 +445,7 @@
     <!-- #69 decision 14: the same grouped-row look as Team/Season below
          (`.today-entry`, decision 9), left-aligned with a leading icon
          instead of a trailing chevron -- `.noarrow` drops that pseudo-
-         element. Same id, same handler (`addGame`, teams-view.js). -->
+         element. Same id, same handler (`openAddGame`, teams-view.js). -->
     <div class="today-acts">
       <button class="today-entry noarrow press" id="todayAddGame" type="button">
         <span class="i" data-icon="plus"></span><span class="today-entry-lab">Add a game</span>
@@ -1574,6 +1574,47 @@
     </div>
   </main>
 
+  <!-- ======================== ADD A GAME (#32) ========================
+       N8/C10: adding a game is a full-screen three-step flow, not a bottom
+       sheet -- a step count, a ✕ top left, and always skippable (step 1's
+       "Same as 11:30? Use it" commits the copy in one tap). `showModal()`
+       puts it in the top layer, so it covers the whole chrome including the
+       phone action bar without a `z-index` of its own.
+
+       Top level, outside every `.view`: `showModal()` throws on a dialog
+       whose ancestor is `hidden`, and this opens from Today.
+
+       NO STEP CONTENT HERE. All three steps are built into `#agBody` by
+       `teams-view.js`, so nothing in this shell can drift out of step with
+       the draft it is editing. The ask row mirrors `#pasteAsk`/`#addAsk`
+       above (C4, rationale at app/trap.js:485-501): a `showModal()` dialog
+       inerts everything outside it, so the question has to live inside. -->
+  <dialog class="flow noprint" id="addGameFlow" aria-label="New game">
+    <div class="flow-bar">
+      <div class="flow-bar-row">
+        <button type="button" class="bsheet-close" id="agClose" aria-label="Close">✕</button>
+        <span class="flow-t">New game</span>
+        <span class="flow-step" id="agStep"></span>
+      </div>
+      <!-- Decoration: `#agStep` beside it already says "1 of 3" in words, so
+           reading these out would say it twice. The segments themselves are
+           built by `paintFlow` (teams-view.js), one per `FLOW_STEPS` entry,
+           so the count here is never a second, hand-authored copy. -->
+      <div class="flow-prog" id="agProg" aria-hidden="true"></div>
+    </div>
+    <div class="flow-body" id="agBody"></div>
+    <!-- I3: Android back is a gesture, so it gets a visible twin. -->
+    <div class="flow-foot" id="agFoot">
+      <button class="btn ghost press" id="agBack" type="button" hidden>‹ Back</button>
+      <button class="btn primary press" id="agNext" type="button">Next</button>
+    </div>
+    <div class="bsheet-cta" id="agAsk" hidden>
+      <p class="bsheet-ask-t">Discard this game?</p>
+      <button class="btn primary press" id="agKeep" type="button">Keep editing</button>
+      <button class="btn ghost danger press" id="agDiscard" type="button">Discard</button>
+    </div>
+  </dialog>
+
   <!-- ============================ GAME MODE ============================ -->
   <div class="gm noprint" id="gamemode" hidden tabindex="-1" role="dialog" aria-modal="true" aria-label="Bench mode">
     <div class="gm-bar">
@@ -1760,10 +1801,13 @@
         when it is higher, and a cap you set still wins when it is lower.</p>
 
       <h4 class="help-h">A tournament day, and the season</h4>
-      <p class="help-p">Add a game with <b>Add a game</b> on Today and it copies the format, who is at
-        the gym and your rules. Only the opponent and tip-off are new. From the second
-        game on there is a switch called <b>Balance against minutes already played
-        today</b>. Leave it on and the day evens out across every game, so a kid who sat
+      <p class="help-p"><b>Add a game</b> on Today asks three questions -- who you're playing, who's
+        here, and how minutes should split -- then carries over the format, who is at the
+        gym and your rules from the last game, so only the opponent and tip-off are new.
+        If nothing about the game has changed, the first question offers a
+        <b>Same as …?</b> card with a one-tap <b>Use it</b> that skips straight past the
+        other two. From the second game on there is a switch called <b>Even out earlier
+        games</b>. Leave it on and the day evens out across every game, so a kid who sat
         more in game 1 gets it back in game 2. Turn it off and each game is fair on its
         own. <b>Across the day</b> shows the running totals.</p>
       <p class="help-p"><b>New day</b> files every game you have finished into the

@@ -67,6 +67,7 @@ import { planSheetPass } from './smoke/plan-sheet.mjs';
 import { sheetSpacingPass } from './smoke/sheet-spacing.mjs';
 import { timelineCardSheetPass } from './smoke/timeline-card-sheet.mjs';
 import { teamScreenPass } from './smoke/team-screen.mjs';
+import { addGameFlowPass } from './smoke/add-game-flow.mjs';
 import { narrowPass } from './smoke/narrow.mjs';
 import { sweepPass } from './smoke/sweep.mjs';
 import { appLargeTextPass } from './smoke/app-large-text.mjs';
@@ -126,6 +127,7 @@ const RUN = {
   sheetspacing: ctx => sheetSpacingPass(ctx.c, ctx.origin),
   timelinecardsheet: ctx => timelineCardSheetPass(ctx.c, ctx.origin),
   teamscreen: ctx => teamScreenPass(ctx.c, ctx.origin),
+  addgameflow: ctx => addGameFlowPass(ctx.c, ctx.origin),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
   applargetext: ctx => appLargeTextPass(ctx.c, ctx.origin),
@@ -341,6 +343,10 @@ async function browserChecks(origin, only) {
        to reach the first-run state, so it reloads RICH before returning --
        every pass below assumes the eleven players are back. */
     report.checks.push(await safeCheck('teamscreen', () => teamScreenPass(c, origin)));
+    /* #32. It pushes games into the day through the flow's own buttons, so --
+       like `teamscreen` above -- it reloads RICH before returning and every
+       pass below finds the two-game Saturday it expects. */
+    report.checks.push(await safeCheck('addgameflow', () => addGameFlowPass(c, origin)));
     report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
     report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep

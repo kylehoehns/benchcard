@@ -1,4 +1,4 @@
-import { evalIn, step, HEIGHT } from './dom.mjs';
+import { evalIn, step, HEIGHT, TODAY_HOME } from './dom.mjs';
 
 /* Shared by the two "own guard" behavioral passes -- #27's `sentence-sheets.mjs`
  * and #28's `plan-sheet.mjs` -- both of which drive a real dialog with real
@@ -88,6 +88,53 @@ export async function tap(c, js) {
 export async function tapPane(c, js) {
   await evalIn(c, step(js));
   await settlePane(c);
+}
+
+/* I6: `add-game-flow.mjs` and `team-screen.mjs` each carried their own copy
+   of `realTap`/a key dispatcher/`typeIn`, comment and all -- one place now,
+   same as every other shared driver in this file. */
+
+// A REAL mouse press, not `.click()` from a script. Chrome refuses to let a
+// `cancel` handler keep a dialog open unless the page has had a genuine
+// interaction ("Blocked aborting a dialog because the user has not
+// interacted with the page"), and a discard ask is exactly that handler --
+// so a scripted click would close the sheet over typed text for a reason no
+// coach could ever hit.
+export async function realTap(c, sel) {
+  // some rows start off screen: a mouse event at a page coordinate lands on
+  // whatever is actually there, so it has to be scrolled into view first.
+  await tap(c, `document.querySelector(${JSON.stringify(sel)})?.scrollIntoView({ block: 'center' })`);
+  const r = await evalJSON(c, `(() => { const b = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect();
+    return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2 }); })()`);
+  await click(c, r.x, r.y);
+  await settle(c);
+}
+
+// A real key press via CDP, not a synthetic DOM event -- Escape dispatched
+// this way is what fires a dialog's `cancel`/close-watcher machinery.
+export async function key(c, k, code) {
+  for (const type of ['keyDown', 'keyUp']) {
+    await c.send('Input.dispatchKeyEvent', { type, key: k, code: k, windowsVirtualKeyCode: code });
+  }
+  await settle(c);
+}
+
+export const typeIn = (c, sel, text) => tap(c, `(() => {
+  const t = document.querySelector(${JSON.stringify(sel)});
+  t.value = ${JSON.stringify(text)};
+  t.dispatchEvent(new Event('input', { bubbles: true }));
+})()`);
+
+/* Get to Today, then open #32's flow for real. It lives here rather than in
+   either of the two files that call it because both of them are #32's own
+   guard: `add-game-flow.mjs` drives the behavior, `add-game-fit.mjs` the
+   hard-size look checks, and a second copy of these two lines in the second
+   file would be the same duplication the `realTap` note above records. The
+   press has to be a real one (see `realTap`), so this cannot live in
+   `dom.mjs` next to `toGameOne` -- that file is imported by this one. */
+export async function openAddGameFlow(c) {
+  await tap(c, TODAY_HOME);
+  await realTap(c, '#todayAddGame');
 }
 
 // #73 item 10: `closeSheet` (✕, Escape, backdrop, drag/flick) now slides

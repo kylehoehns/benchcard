@@ -13,7 +13,7 @@ import { confirmAddLabel, dropIndex, duplicateNumbers, focusAfterRemoval, parseR
 import { riseIn, tick, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
 import { $, set, el, uid } from './dom.js';
-import { withFocus, openSheet, closeSheet, guardClose } from './trap.js';
+import { withFocus, openSheet, closeSheet, guardClose, showAskRow } from './trap.js';
 import { undoable, offer } from './toast.js';
 import { state, colorOf, initials, removePlayer, byId, joinNames, teamName, nextHue, hueSlots } from './state.js';
 import { levelMeter, levelName, levelledCount, resetLevels, repaintLevels } from './balance.js';
@@ -634,13 +634,9 @@ function paintAddConfirm() {
   $('#addPlayerGo').disabled = !num.value.trim() && !nm.value.trim();
 }
 
-function showAddAsk(on) {
-  const ask = $('#addAsk'), foot = $('#addFoot');
-  if (!ask || !foot) return;
-  ask.hidden = !on;
-  foot.hidden = on;
-  if (on) $('#addKeep')?.focus({ preventScroll: true });
-}
+// I7: the same ask-row toggle `showPasteAsk` below and teams-view.js's
+// `showFlowAsk` use, shared out of trap.js next to `guardClose`.
+function showAddAsk(on) { showAskRow('#addAsk', '#addFoot', '#addKeep', on); }
 
 export function openAddPlayerSheet(trigger) {
   const dialog = $('#sheetAddPlayer');
@@ -693,14 +689,7 @@ export function openPasteSheet(trigger) {
   openSheet(dialog, trigger);
 }
 
-function showPasteAsk(on) {
-  const ask = $('#pasteAsk'), foot = $('#pasteFoot');
-  if (!ask || !foot) return;
-  ask.hidden = !on;
-  foot.hidden = on;
-  // the ask replaced the control the coach was reaching for, so focus follows
-  if (on) $('#pasteKeep')?.focus({ preventScroll: true });
-}
+function showPasteAsk(on) { showAskRow('#pasteAsk', '#pasteFoot', '#pasteKeep', on); }
 
 function paintPasteConfirm() {
   set('#pasteGo', 'textContent', confirmAddLabel(parseRoster($('#pasteText').value).length));

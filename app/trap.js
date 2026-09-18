@@ -415,11 +415,21 @@ function wireSheet(dialog) {
 const sheetTitle = root => root.querySelector('.bsheet-hd h2');
 const focusTarget = root => sheetTitle(root) || trapNodes(root)[0] || root;
 
+// I9: the one place a dialog's opener gets recorded, so `returnFocus` below
+// has somewhere to send focus back to on close. `openSheet` is the usual
+// caller, but a dialog opened by hand (`showModal()` direct, bypassing the
+// `.bsheet` machinery `openSheet` also runs -- #32's flow is the one case)
+// still needs this one line without the rest of it.
+export function rememberTrigger(dialog, trigger) {
+  if (!dialog) return;
+  sheetTrigger.set(dialog, trigger || document.activeElement);
+}
+
 export function openSheet(dialog, trigger, { full = false } = {}) {
   if (!dialog) return;
   closeSheets();
   wireSheet(dialog);
-  sheetTrigger.set(dialog, trigger || document.activeElement);
+  rememberTrigger(dialog, trigger);
   setSheetHeight(dialog, full, false); // not open yet -- nothing to FLIP from
   dialog.showModal();
   focusTarget(dialog).focus({ preventScroll: true });
@@ -505,6 +515,20 @@ export function guardClose(dialog, ask) {
   if (!dialog) return;
   if (ask) closeGuards.set(dialog, ask);
   else closeGuards.delete(dialog);
+}
+
+/* I7: the ask row a `guardClose` callback above shows is the same shape
+   everywhere it is used -- swap the footer for a row asking "Keep editing"
+   or "Discard", focus follow the ask -- and used to be a third near-verbatim
+   copy (roster-view.js's `showAddAsk`/`showPasteAsk`, teams-view.js's
+   `showFlowAsk`). One helper, three selector sets. */
+export function showAskRow(askSel, footSel, keepSel, show) {
+  const ask = $(askSel), foot = $(footSel);
+  if (!ask || !foot) return;
+  ask.hidden = !show;
+  foot.hidden = show;
+  // the ask replaced the control the coach was reaching for, so focus follows
+  if (show) $(keepSel)?.focus({ preventScroll: true });
 }
 
 // Item 10: adds `.closing` (app.css: slides the sheet to `translateY(100%)`

@@ -284,7 +284,10 @@ its alternative is an assertion, so the rejected options are kept here too.
   constraints are deep-copied -- sharing the object would let an edit on game 2
   silently rewrite game 1's plan and therefore the whole day's carryover.
   "New day" keeps the format (you play the same league every week) but clears
-  absences.
+  absences. The copy itself did not change when #32 put a three-step flow in
+  front of it (`architecture.md`, Interface); what changed is that the coach is
+  shown what is being inherited and can take it in one tap, instead of finding
+  out on the game screen.
 - **The team name is the fallback identity, not a decoration.** Asked for once
   at onboarding and editable in Settings, under the team's own name (#22 moved
   it off the roster page), it heads the card when a game

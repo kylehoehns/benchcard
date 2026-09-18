@@ -2410,6 +2410,201 @@ dialog.bsheet.dragging { will-change: transform; }
    whatever was already open) never adds it, so those stay instant. */
 dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
 
+/* ==================== Add a game, three steps (#32) ====================
+ * N8/C10: a full-screen flow, not a bottom sheet. Like `dialog.bsheet`
+ * above it needs no `z-index` (`showModal()` promotes it to the top layer)
+ * and no place in the phone `order:` list -- and `display` stays OFF this
+ * rule for exactly the same reason it does there, so the UA's own
+ * `dialog:not([open]) { display: none }` keeps deciding whether it renders.
+ */
+dialog.flow {
+  position: fixed; inset: 0; margin: 0; width: 100%; max-width: 100%;
+  height: 100%; max-height: 100%;
+  border: 0; border-radius: 0; padding: 0;
+  background: var(--bg); color: var(--ink);
+}
+dialog.flow[open] { display: flex; flex-direction: column; }
+/* Full screen, so the backdrop is never seen -- but it is what paints over
+   the chrome in the frame before the flow lands, so it matches the app's own
+   background rather than showing black through the rise. */
+dialog.flow::backdrop { background: var(--bg); }
+/* M2: the same rise the sheets play, and the same `.closing` slide
+   `closeSheet` (trap.js) drives -- without a transform transition of its own
+   the flow would sit on screen for that function's whole timeout fallback
+   before it vanished. Reduced motion skips the block, and `closeSheet` takes
+   its own instant path. */
+@media (prefers-reduced-motion: no-preference) {
+  dialog.flow { transition: transform var(--t) var(--ease); }
+  dialog.flow[open] { @starting-style { transform: translateY(100%); } }
+}
+dialog.flow.closing { transform: translateY(100%); }
+
+/* The bar: ✕, the title, the step count, and the three segments under them.
+   `auto 1fr auto` rather than a fixed left column, so a 32px root grows the
+   ✕ and shrinks the title's own column instead of overflowing the row --
+   but a grid item's default `min-width: auto` will not let the title shrink
+   past its own text, so `min-width: 0` is what lets the middle column give
+   way at all.
+
+   It gives way by WRAPPING, not by truncating. `nowrap` + ellipsis was tried
+   (I8) and is not what is here: at 320px/32px the title needs 163px and the
+   column can spare 83px, so it painted "Ne…" -- the screen losing its own
+   name while every line count still read clean. The spec says the header
+   reads "New game" and never offers truncation as a fallback. Shrinking the
+   font to fit was the other candidate and is worse than either: at a 32px
+   root the coach has ASKED for large text, and sizing the title off the
+   viewport instead would quietly opt them out of it.
+
+   So the title keeps its size and takes a second line when it must. Its two
+   words are short enough to wrap at the space between them, never mid-word
+   (`flowBarFitsAt32` measures both). The ✕ stays centered because the row is
+   `align-items: center`, so a taller middle column centers it rather than
+   pushing it up -- that is what the earlier reading of this as "the ✕ is
+   off-center" actually was. The step count keeps `nowrap`: "1 of 3" fits its
+   own `auto` column at either root size. */
+/* Side padding in `px`, not `rem`: at a 32px root a `.6rem` gutter is 19px a
+   side, and those 38px are room the title needs. The gutter is a gap between
+   the controls and the screen edge -- it does not carry text, so it does not
+   need to grow with the text. The ✕ inside it still does. */
+.flow-bar { flex: none; padding: calc(.35rem + env(safe-area-inset-top)) 10px 0; }
+.flow-bar-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .3rem; }
+.flow-t { min-width: 0; overflow-wrap: normal;
+  text-align: center; font-size: var(--fs-headline); font-weight: 600; }
+.flow-step { white-space: nowrap; font-size: var(--fs-secondary); color: var(--muted);
+  font-variant-numeric: tabular-nums; padding-right: .4rem; }
+
+/* The wrap above buys room; at a 32px root it does not buy enough. Three
+   things cannot share a 300px row when one of them is a 48px touch target and
+   another is "1 of 3" at 28px: this machine had 3px to spare and CI, whose
+   font metrics are its own, was 14px short and painted the title cut off.
+   Three pixels is not a margin, it is a coincidence. So past the point where
+   the row is genuinely too small, the title takes a row of its own and has
+   the whole width -- 300px for a word that needs about 100 -- and the ✕ and
+   the step count keep the row above.
+
+   `em` in a media query is the one length that resolves against the browser's
+   DEFAULT font size, which is the phone's text-size setting, rather than
+   against the root element. That makes this the only query in CSS that can
+   ask "has this coach asked for large text?" instead of "is this screen
+   small?", which is the question, since the row fits fine on a 320px screen
+   at 16px. Measured both ways (`matchMedia` under `Page.setFontSizes`): at a
+   16px default 14em is 224px and matches no phone the sweep covers; at 32px
+   it is 448px and matches all of them. */
+@media (max-width: 14em) {
+  .flow-bar-row { grid-template-columns: auto 1fr; }
+  #agClose { grid-area: 1 / 1; }
+  .flow-step { grid-area: 1 / 2; justify-self: end; padding-right: 0; }
+  .flow-t { grid-area: 2 / 1 / 3 / -1; }
+}
+.flow-prog { display: flex; gap: .3rem; padding: .4rem .4rem .2rem; }
+.flow-prog i { flex: 1; height: 4px; border-radius: var(--r-full); background: var(--line);
+  transition: background var(--t-fast) var(--ease); }
+.flow-prog i.on { background: var(--tint); }
+
+.flow-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: .6rem 0 1rem; }
+/* The step's question, in the same token `.today-h1` uses. */
+.flow-q { font-size: var(--fs-large); font-weight: 700; line-height: 1.2;
+  margin: .2rem 0 1.1rem; padding: 0 1rem; }
+
+/* Step 1's two fields, the app's own `.f` label + input pair. Sentence case,
+   the same override `#view-games .f` carries for these two exact labels. */
+.flow-f { display: block; padding: 0 1rem; margin-bottom: .85rem; }
+dialog.flow .f { text-transform: none; letter-spacing: normal; }
+
+/* N8: the one-tap path. A surface the two typed fields are not on, so the
+   shortcut reads as an offer rather than a third field. */
+.flow-card { margin: 1.2rem 1rem 0; padding: .85rem .9rem; border-radius: var(--r);
+  background: var(--surface); border: 1px solid var(--line); }
+.flow-card-t { font-size: var(--fs-body); font-weight: 600; margin: 0; }
+.flow-card-s { font-size: var(--fs-secondary); color: var(--muted); margin: .18rem 0 .7rem; }
+.flow-card .btn { width: 100%; min-height: 44px; }
+
+/* Step 2's tiles are the Plan sheet's own picker (`.pick` / `.plr` /
+   `.plr-check`, above). Two things this screen adds: the surname reads under
+   the first name in the muted ink, and "absent" is a tile that has lost its
+   fill and kept a hairline ring, rather than the dimming `.plr.off` means in
+   a five-picker (there, off is "not chosen"; here it is "not in the gym"). */
+.plr-sur { font-weight: 400; color: var(--muted); }
+/* B1: widening `.pick`'s columns was the first thing tried (fewer, roomier
+   tiles) and it measured worse, not better -- the spec's own step 2 ("laid
+   out three across", docs/specs/32-add-a-game.md) and `stepTwoReads`
+   (add-game-flow.mjs) both hold the flow to exactly three columns at
+   390×844/16px, so the grid itself is not the thing this fix can touch.
+   What was actually clipping: `.nm`'s reset (decision 8, above) left it
+   `overflow: visible`, which gives a grid item an *automatic minimum size*
+   equal to its own unbroken content -- one name longer than a column can
+   hold grows that column (and, since `.pick .plr:not(.off)` sizes evenly,
+   every column with it) past what `.pick`'s own box can hold, measured
+   293px of tiles in a 256px sheet at 320px/32px with a name longer than the
+   fixture's own longest. `min-width: 0` on the tile is what stops that
+   automatic minimum size from reaching the grid track.
+
+   That alone still left the name itself clipped: a word wider than its own
+   column has nowhere to wrap, so `.nm` overflowed its box silently --
+   measured at 390×844/16px on 7 of 11 tiles, "Rajeshwaran Balasubramanian"
+   losing 37px of 124px. Two fixes were tried for that and both are recorded
+   here because both LOOK fine in a width comparison:
+
+     - `overflow: hidden` plus a two-line clamp measures clean across the
+       width while cutting a third line off 9 of those 11 tiles (48px of 96px
+       on the longest). It moves the loss one axis over.
+     - `overflow-wrap: break-word` clips nothing on either axis, and is
+       worse to read: the column is narrower than ordinary first names at
+       this size, so it splits them -- "Konstantin/os", "Bartholom/ew",
+       "Wetheringt/on". That is #31's "Marc/us/Willi/ams" defect again.
+
+   The column cannot hold these names at any weight, so the fix is to stop
+   asking it to. Each part of the name is its own block line and ellipsizes
+   on its own: "Konstantino…" over "Papadopoulo…". Nothing is ever split
+   mid-word, every tile is the prototype's uniform two-line height rather
+   than a ragged three or four, and a name that already fits is untouched
+   ("Marcus" over "Williams"). The full name is still in the tile's
+   `aria-label`, and the jersey number above it disambiguates a shared
+   prefix. Verified over all 73 shots in notes/mockups/prototype/compare/32/,
+   which measure both axes per box, plus `tileGridFitsAt` (add-game-flow.mjs)
+   for the split-word case. */
+dialog.flow .plr { min-width: 0; }
+dialog.flow .plr .nm { display: block; min-width: 0; }
+dialog.flow .plr .plr-first, dialog.flow .plr .plr-sur { display: block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+dialog.flow .plr.off { background: none; border-color: var(--line-2); }
+dialog.flow .plr.off .av { opacity: .55; }
+.flow-count { margin: .7rem 1rem 0; font-size: var(--fs-secondary); color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.flow-note { margin: .3rem 1rem 0; font-size: var(--fs-footnote); color: var(--muted); }
+
+/* Step 3's four choices: a card each, name over the one line `STRATEGIES`
+   holds for it, the chosen one ringed the way a chosen tile is. */
+.flow-opts { display: grid; gap: .5rem; margin: 0 1rem .4rem; }
+.opt { display: grid; gap: .15rem; width: 100%; min-height: 48px; text-align: left;
+  padding: .75rem .9rem; border-radius: var(--r); border: 1px solid var(--line);
+  background: var(--surface); font: inherit; color: var(--ink); }
+.opt[aria-checked="true"] { border-color: var(--tint); box-shadow: inset 0 0 0 2.5px var(--tint); }
+.opt-t { font-size: var(--fs-body); font-weight: 600; }
+.opt-d { font-size: var(--fs-secondary); color: var(--muted); }
+
+/* I3: "‹ Back" sized to its content, the primary filling the rest.
+
+   `flex-wrap` and a `rem` basis on the primary, because at a 32px root the two
+   of them do not fit a 320px row: "‹ Back" and "Plan it" are both `nowrap`, and
+   CI measured the primary reaching 33px past the dialog's own box on step 3
+   (5px on step 2, where the label is shorter). Neither button may shrink --
+   `nowrap` text does not shrink, it overflows, and dropping `nowrap` would
+   break a two-word label across lines inside a 48px button.
+
+   So when they cannot share a row the primary takes one of its own, full
+   width, with "‹ Back" left above it. The basis is what triggers that, and it
+   is in `rem` on purpose: it grows with the text, so the wrap happens exactly
+   when the text is what made the row too small. At a 16px root 9rem is 144px
+   and the pair fits every width from 300px up; at 32px it is 288px and the
+   primary wraps. Wrapping is also the better answer on a phone -- the button
+   that commits is then the full width of the thumb. */
+.flow-foot { flex: none; display: flex; flex-wrap: wrap; align-items: stretch;
+  gap: .5rem; padding: .75rem 1rem calc(.75rem + env(safe-area-inset-bottom)); }
+.flow-foot .btn { min-height: 48px; white-space: nowrap; }
+.flow-foot .btn.primary { flex: 1 1 9rem; }
+#agAsk { padding-bottom: calc(1.1rem + env(safe-area-inset-bottom)); }
+
 /* #28 decision 2: the shell rule for all four sheets. No bottom border --
    the prototype's header sits flush on the body, whether that body is a
    plain surface or (Plan) a group of its own. `.bsheet-hd-row` is the

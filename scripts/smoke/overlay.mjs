@@ -169,6 +169,15 @@ export const STATES = [
   { name: 'card sheet open',
     open: `$('.today-game').click(); $('#shareBtn').click()`, shows: '#sheetCard[open]',
     close: `$('#sheetCard').close(); $('#backBtn').click()` },
+  /* #32: the Add-a-game flow, opened from Today through its real trigger.
+     A full-screen `<dialog>` in the top layer, so nothing this pass has
+     audited before covers its controls -- the ✕, the step count, the two
+     fields and the footer pair. Closed with the dialog's own `close()`, the
+     same way every sheet above is: the close paths are `add a game: three
+     steps`'s job, this pass audits accessibility. */
+  { name: 'add a game flow',
+    open: `$('#todayAddGame').click()`, shows: '#addGameFlow[open]',
+    close: `$('#addGameFlow').close()` },
   { name: 'welcome screen', forced: true,
     open: `$('#view-welcome').hidden = false`, shows: '#view-welcome',
     close: `$('#view-welcome').hidden = true` },

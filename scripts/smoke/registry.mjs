@@ -161,6 +161,13 @@ export const ROWS = Object.freeze([
   // add-a-player and paste sheets (including the discard ask), Edit mode and
   // the empty state -- see team-screen.mjs.
   { id: 'teamscreen', name: 'team screen: roster rows, the player sheet, add and paste', selectable: true, setup: 'rich' },
+  // #32's own guard (see docs/specs/32-add-a-game.md's Proof section): the
+  // three-step Add-a-game flow -- full screen over the chrome, the back
+  // gesture stepping back through it, "Use it" and "Plan it" committing the
+  // draft, and the discard ask -- see add-game-flow.mjs. It pushes games into
+  // the day, so it reloads RICH before returning, exactly as `teamscreen`
+  // above does after emptying the roster.
+  { id: 'addgameflow', name: 'add a game: three steps', selectable: true, setup: 'rich' },
   { id: 'narrow', name: `no sideways pan at ${NARROW}px`, selectable: true, setup: 'rich' },
   { id: 'sweep', name: `no overflow, ${SWEEP_FLOOR}–${SWEEP_HI}px`, selectable: true, setup: 'rich' },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich' },
