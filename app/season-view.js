@@ -300,8 +300,20 @@ export function renderSeason() {
   const exportBtn = $('#seasonExport');
   if (exportBtn) exportBtn.hidden = state.view !== 'season' || !games.length;
 
+  /* The count line and the empty note below are one message, not two. This
+     line used to read "Nothing filed yet" with nothing filed, directly above a
+     paragraph opening with those same four words -- which looks like a repaint
+     that ran once too often, not like a screen that knows it is empty. So with
+     nothing to count the line goes away entirely and the paragraph carries the
+     whole message. Both directions are set in one place for the reason review
+     #1 gives about Export just above: a refresh that never reaches `applyView`
+     must still leave the two agreeing. */
+  if (sub) {
+    sub.hidden = !games.length;
+    sub.textContent = games.length ? `${games.length} game${games.length === 1 ? '' : 's'} filed` : '';
+  }
+
   if (!games.length) {
-    if (sub) sub.textContent = 'Nothing filed yet';
     /* No group label and no export: with nothing filed there is nothing to
        group and nothing to save. This line says where a filed day will show
        up, which is the one thing a coach who has never used the feature
@@ -310,7 +322,6 @@ export function renderSeason() {
       "Nothing filed yet. New day on Today files the day's games here."));
     return;
   }
-  if (sub) sub.textContent = `${games.length} game${games.length === 1 ? '' : 's'} filed`;
 
   /* The unit lives in this heading rather than beside every number: a column
      of "70" reads instantly, a column of "70 min" is noise twelve times over. */

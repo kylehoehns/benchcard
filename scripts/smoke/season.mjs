@@ -230,12 +230,22 @@ export async function seasonPass(c, origin) {
   for (let i = 0; i < 3; i++) {
     await evalIn(c, `(async () => { document.querySelector('#view-season .sn-del')?.click(); await ${SETTLE}; })()`);
   }
+  /* The count line under the title and the empty note say the same four words
+     with nothing filed, so the empty screen must not print them twice --
+     "Nothing filed yet" above "Nothing filed yet. New day on Today files the
+     day's games here." reads as a repaint that ran once too often. Counted in
+     the rendered text rather than by asking whether one element is hidden, so
+     the check still holds if the emptiness is said some other way later. */
   const emptied = JSON.parse(await evalIn(c, `(() => JSON.stringify({
     gamesLeft: document.querySelectorAll('#view-season details.sn-game').length,
     exportHidden: document.querySelector('#seasonExport')?.hidden ?? true,
+    saysEmpty: (document.querySelector('#view-season')?.innerText.match(/Nothing filed yet/g) || []).length,
   }))()`));
   if (emptied.gamesLeft !== 0) problems.push(`${emptied.gamesLeft} filed game(s) remain after deleting all three, want 0`);
   if (!emptied.exportHidden) problems.push('#seasonExport is visible with nothing filed, want it hidden');
+  if (emptied.saysEmpty !== 1) {
+    problems.push(`the empty Season says "Nothing filed yet" ${emptied.saysEmpty} time(s), want exactly 1`);
+  }
 
   await evalIn(c, `(async () => { document.querySelector('.toast .tundo')?.click(); await ${SETTLE}; })()`);
   const undone = JSON.parse(await evalIn(c, `(() => JSON.stringify({
