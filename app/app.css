@@ -2505,6 +2505,16 @@ dialog.flow.closing { transform: translateY(100%); }
 /* The step's question, in the same token `.today-h1` uses. */
 .flow-q { font-size: var(--fs-large); font-weight: 700; line-height: 1.2;
   margin: .2rem 0 1.1rem; padding: 0 1rem; }
+/* The step heading is a focus TARGET, not a control -- `stepBody` gives it
+   `tabindex="-1"` and `paintFlow` focuses it on every step change so the
+   screen reader announces what the screen now asks. It never reaches the Tab
+   order, so a ring on it is noise. `.bsheet-hd-row h2:focus` says the same
+   thing for every bottom sheet (#73 item 1/A1); the flow's heading was
+   missed, so opening the flow from the keyboard drew a box around "Who are
+   you playing?" -- focus lands programmatically, but Chrome judges
+   `:focus-visible` by the modality of the interaction BEFORE it, so a
+   keyboard open matched and a tap did not. */
+.flow-q:focus { outline: none; }
 
 /* Step 1's two fields, the app's own `.f` label + input pair. Sentence case,
    the same override `#view-games .f` carries for these two exact labels. */
