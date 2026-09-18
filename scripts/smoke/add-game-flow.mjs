@@ -127,6 +127,73 @@ async function focusReturnsToTrigger(c, ck) {
     + 'every other sheet suppresses the ring after a pointer close, this one draws it (I9)');
 }
 
+/* The step heading is a focus TARGET, not a control: `stepBody` gives it
+   `tabIndex = -1` and `paintFlow` focuses it on every step change so the
+   screen reader announces what the screen now asks. It never reaches the Tab
+   order, so a ring on it is noise -- the coach did not put it there and
+   cannot Tab to it. `.bsheet-hd-row h2:focus` already says exactly this for
+   every bottom sheet in the app (#73 item 1/A1); the flow's own heading was
+   simply never given the same rule, so the global `:focus-visible` outline
+   painted a box around "Who are you playing?" the moment the flow opened.
+
+   BOTH halves matter. `focused` is the anti-vacuity half: if the heading
+   ever stops being focused, the ring question becomes unmeasurable and this
+   check would pass having proved nothing, so it fails loudly instead. The
+   ring half reads the two properties that can draw one -- `outline`, which
+   is what the global rule uses, and `box-shadow`, which is what `.wel-h2`
+   uses for the same job -- rather than testing `:focus-visible` matching,
+   because what the coach sees is the paint, not the selector. */
+async function headingDrawsNoRing(c, ck) {
+  await openFlow(c);
+  await readHeadingRing(c, ck, 'a tap');
+  await realTap(c, '#agClose');
+  await waitClosed(c, '#addGameFlow');
+
+  // The keyboard path opens the same flow. Chrome decides `:focus-visible`
+  // from the modality of the interaction that preceded the focus move, so a
+  // heading focused after Enter is judged differently from the same heading
+  // focused after a tap -- which is why a tap-only check reads clean over a
+  // screen the coach sees a ring on.
+  await tap(c, TODAY_HOME);
+  // A real key press is what puts Chrome in keyboard modality; `.click()`
+  // then runs the same `openAddGame` the button runs without a pointer event
+  // resetting it. Dispatching Enter at the button instead does not work --
+  // CDP delivers the key but Chrome synthesizes no activation from it.
+  await key(c, 'Tab');
+  await evalJSON(c, `(() => { document.querySelector('#todayAddGame').click(); return 'null'; })()`);
+  await readHeadingRing(c, ck, 'the keyboard');
+  // Nothing was typed either time, so ✕ closes at once and the checks after
+  // this one start from a closed flow.
+  await realTap(c, '#agClose');
+  await waitClosed(c, '#addGameFlow');
+}
+
+async function readHeadingRing(c, ck, how) {
+  const r = await evalJSON(c, `(() => {
+    const h = document.querySelector('#agBody h2');
+    if (!h) return JSON.stringify({ found: false });
+    const cs = getComputedStyle(h);
+    const a = document.activeElement;
+    return JSON.stringify({
+      found: true,
+      open: !!document.getElementById('addGameFlow')?.open,
+      active: a ? (a.id || a.tagName + '.' + a.className) : 'none',
+      focused: a === h,
+      text: (h.textContent || '').trim(),
+      outline: cs.outlineStyle === 'none' ? '' : cs.outlineStyle + ' ' + cs.outlineWidth,
+      shadow: cs.boxShadow === 'none' ? '' : cs.boxShadow,
+    });
+  })()`);
+  ck(r.found, `the flow has no step heading to measure after opening with ${how}`);
+  ck(r.focused, `the step heading is not the focused element after opening with ${how} -- `
+    + `the ring check below would measure nothing (open=${r.open}, active=${r.active})`);
+  ck(!r.outline, `opened with ${how}, the step heading "${r.text}" draws an outline ring `
+    + `(${r.outline}) -- it is a focus target, not a control, and every bottom sheet `
+    + 'heading is already exempt');
+  ck(!r.shadow, `opened with ${how}, the step heading "${r.text}" draws a box-shadow ring `
+    + `(${r.shadow})`);
+}
+
 /* A close request (Escape here, the back gesture on the phone) fires the
    dialog's `cancel` event whether or not the page has fresh interaction --
    measured against a bare `<dialog>` (see the `close`-listener comment in
@@ -509,6 +576,7 @@ export async function addGameFlowPass(c, origin) {
       // last three checks each want a flow of their own.
       await realTap(c, '#agClose');
       await waitClosed(c, '#addGameFlow');
+      await headingDrawsNoRing(c, ck);
       await focusReturnsToTrigger(c, ck);
       await useItCopies(c, ck);
       await planItCommits(c, ck);
