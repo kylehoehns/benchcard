@@ -2,6 +2,9 @@
    measurement and a RICH record for everything else. Moved out of
    `smoke.mjs` unchanged. */
 import { evalIn, SETTLE } from './dom.mjs';
+/* The app's own sample cast, for `SAMPLE_TEAM` below -- `app/roster.js` is
+   where it lives and the only place it is written down. */
+import { sampleRoster, SAMPLE_TEAM_NAME } from '../../app/roster.js';
 
 /* #35 fix: seed the NEXT document, never the one about to be navigated away
  * from.
@@ -268,6 +271,40 @@ export const FOUR = (() => {
       constraints: { minMinutes: { p0: 40 } } },
   ];
   team.activeGame = 0;
+  record.view = 'today';
+  return record;
+})();
+
+/* #37 criterion 2: THE APP'S OWN SAMPLE TEAM, as a record.
+ *
+ * `sampleRoster()` in `app/roster.js` is the only cast -- the ten names a
+ * coach gets from "Try a sample team", parsed by the same `parseRoster` a
+ * pasted list goes through. This never writes a second list of names: a name
+ * changed there changes what this measures, which is the point. The roster is
+ * the one thing that differs from `RICH`; everything else (the day, the game,
+ * the ui block) is RICH's own, so a row measured here and a row measured
+ * there differ by the roster and nothing else.
+ *
+ * RICH is the harder case (15-character "Marcus Williams" / "Casey
+ * Lindqvist" against the sample's 12-character "Harper Pratt"), and both are
+ * measured rather than one being argued from the other. */
+export const SAMPLE_PLAYERS = sampleRoster()
+  .map((p, i) => ({ id: 's' + i, name: p.name, number: p.number, shortName: '', tier: 3 }));
+
+export const SAMPLE_TEAM = (() => {
+  const record = JSON.parse(JSON.stringify(RICH));
+  const team = record.teams[0];
+  team.name = SAMPLE_TEAM_NAME;
+  team.players = SAMPLE_PLAYERS;
+  /* The sample's own roster never played RICH's season, and a filed game
+     keyed to `p0`-`p10` would attribute minutes to players this record does
+     not have. An empty ledger is the state a coach who just took the sample
+     is actually in. */
+  team.season = { games: [] };
+  team.day.games = team.day.games.map(g => ({ ...g, out: [] }));
+  /* Today, not Team: `reloadWithRecord` waits for `.today-game` before it
+     hands back, and the check walks to Team through `#todayTeam` the way a
+     coach does. */
   record.view = 'today';
   return record;
 })();

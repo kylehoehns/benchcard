@@ -1,5 +1,5 @@
 import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
-import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
+import { nameOf, TOUCH_CHECK, TOUCH_FLOOR, TOUCH_WIDTHS } from './registry.mjs';
 import { widthSweep } from './width-sweep.mjs';
 import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
 
@@ -127,7 +127,7 @@ async function fourTodayTouch(c, origin, source) {
     for (const w of TOUCH_WIDTHS) {
       await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: 844, deviceScaleFactor: 2, mobile: true });
       await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-      const chk = (await evalIn(c, source)).checks.find(k => k.name === 'touch targets ≥ 44px');
+      const chk = (await evalIn(c, source)).checks.find(k => k.name === TOUCH_CHECK);
       const where = `today, FOUR@${w}px`;
       if (!chk) { bad.push(`${where}: the touch check is gone from smoke-checks.js`); continue; }
       audited++;
@@ -145,7 +145,7 @@ export async function touchPass(c, origin, source) {
   const four = await fourTodayTouch(c, origin, source);
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: TOUCH_STATES,
-    checkName: 'touch targets ≥ 44px',
+    checkName: TOUCH_CHECK,
     countRe: [/(\d+) controls/, /\/(\d+) under/],
     label: (st, w) => `${st.name}@${w}px`,
     missing: 'the touch check is gone from smoke-checks.js',
@@ -181,8 +181,8 @@ export async function touchPass(c, origin, source) {
     name: nameOf('touch'),
     pass: allBad.length === 0,
     detail: allBad.length
-      ? `${allBad.length}/${totalAudited} measurement(s) under 44px: ${allBad.slice(0, 4).join(' | ')}`
+      ? `${allBad.length}/${totalAudited} measurement(s) under ${TOUCH_FLOOR}px: ${allBad.slice(0, 4).join(' | ')}`
       : `${totalAudited} measurements (today, FOUR + ${TOUCH_STATES.map(s => s.name).join(' + ')} × `
-        + `${TOUCH_WIDTHS.join('/')}px), up to ${totalSeen} controls, all ≥ 44px`,
+        + `${TOUCH_WIDTHS.join('/')}px), up to ${totalSeen} controls, all ≥ ${TOUCH_FLOOR}px`,
   };
 }

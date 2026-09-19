@@ -82,14 +82,14 @@ body {
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem;
        max-width: 42.3rem; margin: 0 auto; padding: .9rem 1.15rem .3rem; }
 /* `min-height` because the wordmark is a live link home, not decoration: under
-   the 44px floor the rest of the app holds itself to. It costs no bar height
+   the 48px floor the rest of the app holds itself to. It costs no bar height
    while the pill shares the row; it only pays when the row wraps. */
-.mark { display: flex; align-items: center; min-height: 44px; gap: .5rem; text-decoration: none; color: inherit; }
+.mark { display: flex; align-items: center; min-height: 48px; gap: .5rem; text-decoration: none; color: inherit; }
 .mark b { font-size: 1.05rem; font-weight: 660; letter-spacing: -.03em; }
 .spacer { flex: 1; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-  min-height: 44px; padding: 0 1.05rem; border-radius: 999px;
+  min-height: 48px; padding: 0 1.05rem; border-radius: 999px;
   font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
   text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
   background: var(--surface); cursor: pointer;
@@ -241,14 +241,14 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 /* The section index. Rows, not chips: these are eight full headings, and a
    wrapping chip row cannot shrink an over-wide chip -- at 320px on a 32px root
    one of them would hang off the right edge. A row cannot overflow, it wraps,
-   and it is a 44px target by construction. */
+   and it is a 48px target by construction. */
 .jumpto { display: flex; flex-direction: column; margin: 0 0 2.6rem; }
 .jumpto-hd {
   margin: 0 0 .1rem; font-size: .82rem; font-weight: 620; letter-spacing: .04em;
   text-transform: uppercase; color: var(--muted);
 }
 .jumpto a {
-  display: flex; align-items: center; min-height: 44px; padding: .3rem 0;
+  display: flex; align-items: center; min-height: 48px; padding: .3rem 0;
   border-bottom: 1px solid var(--line); color: var(--ink-2);
   text-decoration: none; font-size: .97rem;
 }
@@ -261,8 +261,8 @@ footer {
   font-size: .92rem; color: var(--muted);
   display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center;
 }
-/* Standalone controls, not words in a sentence, so the 44px floor applies. */
-footer a { display: flex; align-items: center; min-height: 44px; }
+/* Standalone controls, not words in a sentence, so the 48px floor applies. */
+footer a { display: flex; align-items: center; min-height: 48px; }
 
 /* ---- the sticky bar, and the one width where it must NOT stick -----------
    `min-width` IN REM IS THE GUARD. `.top` wraps to two rows once the wordmark
@@ -680,7 +680,7 @@ footer a { display: flex; align-items: center; min-height: 44px; }
     <span>Benchcard — free, offline, and yours.</span>
     <a href="./">Open the app</a>
     <!-- Spelled out rather than "About": a 41.5px-wide footer link is under
-         the 44px floor the rest of the site holds itself to, and smoke's
+         the 48px floor the rest of the site holds itself to, and smoke's
          static-page pass caught it. -->
     <a href="./about">What Benchcard is</a>
     <a href="mailto:hello@benchcard.app">hello@benchcard.app</a>

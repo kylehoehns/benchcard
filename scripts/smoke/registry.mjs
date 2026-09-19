@@ -68,6 +68,18 @@ export const SWEEP_EXTRA = [SHEET_MIN, WIDE_MIN, LAPTOP];
 // the full rationale lives with `touchPass` in `touch.mjs`.
 export const TOUCH_WIDTHS = [320, 360, 390];
 
+/* The floor (I1, `docs/interface-guidelines.md`) and the NAME the in-page
+ * touch check reports it under. `smoke-checks.js` builds the same name from
+ * its own `TOUCH_FLOOR` -- it is read as text and evaluated in the page, so
+ * it cannot import this -- but every module on this side looks the check up
+ * by name (`touch.mjs` twice, `static.mjs`'s `STATIC_A11Y`, `smoke.mjs`'s
+ * filter) and the row below prints it, which was five hand-typed copies of
+ * one string until #37 had to change all five at once. A copy that misses is
+ * silent rather than loud: `STATIC_A11Y.has(name)` DROPS a verdict whose name
+ * it does not recognize, so a stale spelling reads as seven clean pages. */
+export const TOUCH_FLOOR = 48;
+export const TOUCH_CHECK = `touch targets ≥ ${TOUCH_FLOOR}px`;
+
 // A 200% reader's root, and the narrowest phone anyone carries — the full
 // rationale for this one cell lives with `staticPass` in `static.mjs`.
 export const LARGE_TEXT_PX = 32;       // a 200% reader, via CDP `Page.setFontSizes`
@@ -139,7 +151,7 @@ export const ROWS = Object.freeze([
   { id: 'teamcolor', name: 'team color tints K1 only, and switches with the team', selectable: true, setup: 'rich' },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich' },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich' },
-  { id: 'touch', name: `touch targets ≥ 44px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
+  { id: 'touch', name: `${TOUCH_CHECK}, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
   { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
   // #27 item 10: the Who's here sheet swept the same way settingsrows sweeps
   // Settings — see who-rows.mjs.

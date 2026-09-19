@@ -9,10 +9,11 @@
    * **Recorded baselines** — bytes, request count, DOM nodes. Nobody knows
      what the "right" number is, so we do not invent one: we record today's and
      fail when it grows, and the diff shows up in review as a number going up,
-     which is the whole point. `requests` and `nodes` come from budgets.json.
-     `bytes` no longer does: it is hand-pinned below as `BYTES_BASELINE`,
-     because the only command that rewrites budgets.json would erase the
-     hand-set `requests` pin and is denied. See that pin's comment.
+     which is the whole point. `requests` comes from budgets.json. `bytes` and
+     `nodes` no longer do: they are hand-pinned below as `BYTES_BASELINE` and
+     `NODES_BASELINE`, because the only command that rewrites budgets.json
+     would erase the hand-set `requests` pin and is denied. See those pins'
+     comments.
 
    The photo scanner used to add a second, harder rule here: its ~9.6 MB OCR
    bundle had to stay out of the initial payload, and one request was a
@@ -270,7 +271,8 @@
    that route, so the pin is taken here, where a ceiling is allowed to live.
    Nothing reads budgets.json's `bytes` for the check any more -- `pinned()`
    below replaces it -- so there is still exactly one live answer, and it is
-   this one. `requests` and `nodes` are untouched and still come from the file.
+   this one. `requests` and `nodes` were left in the file at that point;
+   `nodes` came out the same way two tickets later, in the entry below.
 
    `BYTES_BASELINE` is a measurement, not a guess: a full cold load of the
    commit this ships with, 1216873 bytes at 390x844, taken with
@@ -298,14 +300,35 @@
    DOM nodes 1368 of 1769. */
 export const BYTES_BASELINE = 1_216_873;
 
+/* #37: the node baseline, re-pinned DOWNWARD. `budgets.json` records 1519 from
+   a 2026-08-24 run; a full cold load of the commit this ships with measures
+   1367 at 390x844, taken with `node scripts/smoke.mjs --json --no-tests`. The
+   gap is #30-#36 deleting markup -- the folds and their summaries, the old
+   inline rule editor, the bulk-add box -- so the recorded number had quietly
+   become 152 nodes of free headroom on top of the 250 the slack already
+   allows.
+
+   It is pinned here rather than re-recorded in `budgets.json` for exactly the
+   reason `BYTES_BASELINE` above is, and that entry carries the reasoning.
+   `pinned()` below replaces the file's value, so there is still one live
+   answer per metric. `requests` is untouched and still comes from the file,
+   hand pin and all.
+
+   WHEN A TICKET GENUINELY ADDS NODES: this is a regression alarm, not a design
+   constraint (see the note at the top of this file). Measure your own cold
+   load, re-pin here, and say what you measured -- do not widen `SLACK.nodes`
+   instead, and do not reach for `--update-budgets`. */
+export const NODES_BASELINE = 1_367;
+
 export const SLACK = { bytesPct: 0.02, bytesAbs: 24_576, requests: 2, nodes: 250 };
 
 /**
- * The recorded baseline with `bytes` taken from the hand pin above.
- * Returns null unchanged so a missing budgets.json still fails loudly.
+ * The recorded baseline with `bytes` and `nodes` taken from the hand pins
+ * above. Returns null unchanged so a missing budgets.json still fails loudly.
  * @param {{bytes:number, requests:number, nodes:number}|null} recorded
  */
-export const pinned = recorded => (recorded ? { ...recorded, bytes: BYTES_BASELINE } : recorded);
+export const pinned = recorded =>
+  (recorded ? { ...recorded, bytes: BYTES_BASELINE, nodes: NODES_BASELINE } : recorded);
 
 const kb = n => `${(n / 1024).toFixed(1)} KB`;
 const pct = (got, want) => (want ? `${got > want ? '+' : ''}${(((got - want) / want) * 100).toFixed(1)}%` : 'n/a');

@@ -1,5 +1,5 @@
 import { evalIn, HEIGHT, OVERFLOW_PROBE } from './dom.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './registry.mjs';
 
 /* The pages no browser check had ever loaded.
  *
@@ -175,7 +175,7 @@ export async function staticPass(c, source, origin) {
       : `${visited.length} pages × ${STATIC_WIDTHS.join('/')}px + ${LARGE_TEXT_WIDTH}px@${LARGE_TEXT_PX}px text, `
         + `${images} image(s) with alt, no overflow`
         + (allowed ? ` (${allowed} recorded residue)` : '')
-        + ', ids and lang clean, touch targets ≥ 44px',
+        + `, ids and lang clean, ${TOUCH_CHECK}`,
   };
 }
 
@@ -196,5 +196,5 @@ const STATIC_A11Y = new Set([
   'images declare alt text',
   'ids unique, aria references resolve',
   'document lang, title, tab order',
-  'touch targets ≥ 44px',
+  TOUCH_CHECK,
 ]);

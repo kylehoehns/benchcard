@@ -728,7 +728,7 @@ place, opened at full height. The flex `gap` is zeroed there — the blocks alre
 carry margins, and a gap double-counts every seam. The rule is `@media screen`,
 so the print path, which flattens everything through `.print-path`, is untouched.
 
-Touch minimums (44px) are gated `@media (pointer: coarse), screen and
+Touch minimums (48px) are gated `@media (pointer: coarse), screen and
 (max-width: 620px)`. The pointer half alone was a trap: it never fires in a
 resized desktop browser, so nothing behind it was ever exercised in testing.
 The controls #69 restyled on Today and the game screen hold 48px at every

@@ -180,6 +180,24 @@ test('SHOTS includes the four wide states, light and dark, captured as a laptop'
   }
 });
 
+/* #37: the middle phone width. The touch floor is swept at 320, 360 and 390,
+ * and every shot above is 320, 390 or wider -- so the width where a control
+ * is widest before it has to wrap, and where a roster name is closest to its
+ * row's edge, was the one nobody ever looked at. Team carries the roster rows
+ * criterion 2 measures; settings carries the rows criterion 1 raised. 360 is
+ * typed here from the spec rather than read out of `TOUCH_WIDTHS`, the same
+ * independent second reading the 600px test above takes. */
+test('SHOTS includes the 360px pairs, light and dark', () => {
+  for (const name of ['touch-360-team', 'touch-360-settings']) {
+    const shots = namedPair(name);
+    assertLightDarkPair(shots, name);
+    for (const s of shots) {
+      assert.equal(s.width, 360, `${s.name} is captured at ${s.width}px, want 360px`);
+      assert.equal(s.rootPx, 16, `${s.name} asks for a ${s.rootPx}px root -- this pair is about width, not text size`);
+    }
+  }
+});
+
 /* The flag has to reach the override, or it is a field nobody reads.
  * `deviceMetrics` is the one place the `Emulation.setDeviceMetricsOverride`
  * payload is built, exported for the same reason `shotProblems` is: it is

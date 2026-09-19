@@ -41,7 +41,7 @@ import { evalIn, step, SETTLE, WIDTH, HEIGHT } from './smoke/dom.mjs';
 import { goRich, LONG_NAME, RICH, partPlayed as partPlayedFixture, reloadWithRecord, seeded } from './smoke/fixtures.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, SHEET_MIN, WIDE_MIN, LAPTOP } from './smoke/registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, SHEET_MIN, WIDE_MIN, LAPTOP, TOUCH_WIDTHS } from './smoke/registry.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -81,6 +81,10 @@ export const THEME_BG = Object.freeze({
  * large-text shot never runs dark, so it declares no twin. */
 const THEMES = ['light', 'dark'];
 const otherTheme = t => (t === 'light' ? 'dark' : 'light');
+
+/* #37: the middle width of the touch sweep, read from its own list so this
+ * table and the sweep can never name two different "360"s. */
+const MID_TOUCH = TOUCH_WIDTHS[1];
 
 /* The shape of a shot with every modifier off, written ONCE: both builders
  * below start from it, so a new modifier is declared here and nowhere else.
@@ -220,6 +224,16 @@ const EXTRA_SHOTS = [
     { firstRunStep: 2, width: LAPTOP, mobile: false })),
   ...THEMES.map(theme => pair('first-run-wide-840', null, theme,
     { firstRunStep: 2, width: WIDE_MIN, mobile: false })),
+  /* #37 Proof 9: 360px, the common small Android and the middle of
+     `TOUCH_WIDTHS` (Reuse: the same three widths the touch sweep measures at,
+     never a second list). Every shot above is 320, 390 or wider, so the width
+     where a 48px control is widest before it wraps, and where a roster name
+     sits closest to its row's edge, was the one no picture ever showed. Team
+     for the roster rows criterion 2 measures, settings for the rows criterion
+     1 raised to 48px; plain pairs, so no `full`/`bottom` modifier claims a
+     state another cell already owns. */
+  ...THEMES.map(theme => pair('touch-360-team', 'team', theme, { width: MID_TOUCH })),
+  ...THEMES.map(theme => pair('touch-360-settings', 'settings', theme, { width: MID_TOUCH })),
 ];
 
 export const SHOTS = Object.freeze([...BASE_SHOTS, ...EXTRA_SHOTS].map(Object.freeze));

@@ -97,13 +97,20 @@ function emitted() {
   return found;
 }
 
+/* The sheets `index.html` links, as `[name, source]`. Both shell sweeps in
+   this file want them -- one for the rules they carry, the other for the
+   classes those rules name -- so which sheets the shell loads is read out of
+   the markup once, here. */
+const shellSheets = () =>
+  [...read('index.html').matchAll(/<link rel="stylesheet" href="\.\/([^"]+)"/g)]
+    .map((m) => [m[1], read(m[1])]);
+
 function styled() {
   const html = read('index.html');
-  const sheets = [...html.matchAll(/<link rel="stylesheet" href="\.\/([^"]+)"/g)].map((m) => m[1]);
   /* The noscript block is a stylesheet too -- `.app` is only ever styled
      there, and a sweep that ignored it would report a false positive. */
   const inline = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
-  const css = [...sheets.map(read), ...inline].join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
+  const css = [...shellSheets().map(([, src]) => src), ...inline].join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
   const set = new Set();
   let m; const re = /\.(-?[a-zA-Z_][\w-]*)/g;
   while ((m = re.exec(css))) set.add(m[1]);
@@ -263,6 +270,103 @@ test('classes a page\'s own script adds count as uses, and .js/.in are the proof
   const noScript = html.replace(/classList\.add\('js'\)/, '0');
   assert.ok(sweep(noScript).dead.some((d) => d.startsWith('.js ')),
     'with the script-added class gone, .js must be reported dead');
+});
+
+/* ------------------------------------------------------------------ *
+ * The shell, the other way round.
+ *
+ * The first test in this file asks "does every class the shell emits have a
+ * rule?". Nobody asked the reverse, so a rule whose markup was deleted just
+ * sat in the sheet: the #37 sweep found the old minutes-budget action row
+ * (`.budget-acts`), the old Rules fold's inline editor (`.ruleedit` and its
+ * `.mini`, `.rule-switches`), the fold chrome itself (`.fold`), the
+ * zero-count pill on a fold summary, and two boxes earlier tickets deleted
+ * outright (`.surface`, `.squad`) still styled and unreachable. The
+ * standalone half above already runs this direction per page; this asks the
+ * same question of the three sheets `index.html` links.
+ *
+ * A class counts as used if `index.html` or an `app/*.html` page puts it in a
+ * `class` attribute, if `emitted()` above can see it, or if it appears as a
+ * token in a quoted string in any shell script -- `'plr press ' + (on ? 'on'
+ * : 'off')` and `querySelectorAll('.rrow')` are both real emission idioms
+ * that no attribute and no `el()` call spells out. Reading every string is
+ * deliberately generous: a false "used" leaves one dead rule in place, while
+ * a false "unused" deletes a rule a coach can see. Template interpolations
+ * are cut first, since `${shape.count}` is code, not a class name.
+ *
+ * The allow list starts empty, and should stay that way: a class this sweep
+ * calls dead when it is not needs a line here with the reason, the way HOOKS
+ * carries the reason for the other direction.
+ * ------------------------------------------------------------------ */
+
+const SHELL_KEEP = new Map([]);
+
+/* Every whitespace-separated token, and every `.name` inside a selector, of
+   every quoted string in a script. */
+function stringTokens(src, add) {
+  for (const m of src.matchAll(/'([^'\n]*)'|"([^"\n]*)"|`([^`\n]*)`/g)) {
+    const lit = (m[1] ?? m[2] ?? m[3]).replace(/\$\{[^}]*\}/g, ' ');
+    lit.split(/\s+/).forEach(add);
+    for (const c of lit.matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)) add(c[1]);
+  }
+}
+
+function shellUses() {
+  const set = new Set(emitted().keys());
+  const add = (t) => { if (/^-?[a-zA-Z_][\w-]*$/.test(t)) set.add(t); };
+  for (const f of readdirSync(new URL('.', ROOT))) {
+    if (f.endsWith('.js') && f !== 'sw.js') stringTokens(stripJsComments(read(f)), add);
+    if (!f.endsWith('.html')) continue;
+    /* A selector is not a use, so the page's own sheet is cut out first --
+       the same reading `pageUses` takes. */
+    const body = read(f).replace(/<style[^>]*>[\s\S]*?<\/style>/g, ' ').replace(/<!--[\s\S]*?-->/g, ' ');
+    for (const m of body.matchAll(/\bclass="([^"]*)"/g)) m[1].split(/\s+/).forEach(add);
+    for (const s of body.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) {
+      stringTokens(stripJsComments(s[1]), add);
+    }
+  }
+  return set;
+}
+
+function shellSweep(sheets = shellSheets()) {
+  const uses = shellUses();
+  const defined = new Map();
+  const dead = new Map();
+  for (const [file, css] of sheets) {
+    for (const [c, sel] of selectorClasses(css)) {
+      if (!defined.has(c)) defined.set(c, `${file}: ${sel}`);
+      if (uses.has(c) || SHELL_KEEP.has(c) || dead.has(c)) continue;
+      dead.set(c, `.${c} (${file}: ${sel})`);
+    }
+  }
+  return { defined, dead: [...dead.values()] };
+}
+
+test('no shell stylesheet carries a rule for a class nothing can put on an element', () => {
+  const { defined, dead } = shellSweep();
+  assert.ok(defined.size > 300, `the shell sheets define ${defined.size} classes -- the sweep read nothing`);
+  assert.deepEqual(dead, [],
+    'the sheets index.html links carry rules no shell file and no standalone page can reach. '
+    + 'Delete them, or add the class to SHELL_KEEP with the reason.');
+});
+
+/* The two idioms a `class="..."` reader would miss, pinned: blind the string
+   reader and both go dead, which is what a naive sweep would have deleted. */
+test('classes built by concatenation or read back as a selector count as uses', () => {
+  const uses = shellUses();
+  for (const c of ['off', 'rrow']) {
+    assert.ok(uses.has(c), `.${c} is emitted by a script and must count as used`);
+  }
+  const blind = shellSweep().dead;
+  assert.ok(!blind.some((d) => d.startsWith('.off ') || d.startsWith('.rrow ')),
+    'neither class may be reported dead while the scripts still build them');
+});
+
+test('the shell sweep can see a rule nobody uses', () => {
+  const injected = shellSheets().map(([f, css]) =>
+    f === 'app.css' ? [f, `${css}\n.zz-shell-orphan { color: red }\n`] : [f, css]);
+  assert.ok(shellSweep(injected).dead.some((d) => d.startsWith('.zz-shell-orphan')),
+    'a shell rule for a class no element carries must be reported');
 });
 
 test('the standalone sweep is reading real sheets, not an empty set', () => {

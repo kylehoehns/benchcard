@@ -58,6 +58,28 @@ test('the hand-pinned bytes baseline catches a 60 KB regression at the real size
   );
 });
 
+/* #37: DOM nodes went the other way. `budgets.json` records 1519 from a run
+   five tickets ago; #30-#36 deleted the folds, the old editors and the bulk-add
+   markup, so a cold load is 1367 nodes now. Re-recording the file is denied
+   (`--update-budgets` would erase the hand-set `requests` pin, and a hand edit
+   to `budgets.json` is denied outright), so the tighter number is pinned in
+   `budgets.mjs` beside the bytes one and reaches the check through `pinned()`.
+   The number here is the one that branch measured, so a check reading the
+   stale 1519 would let 152 nodes of regression through unnoticed. */
+const MEASURED_NODES = 1367;
+
+test('the DOM-node baseline is the hand pin, not the stale recorded number', () => {
+  assert.ok(recorded.initialPayload.nodes > MEASURED_NODES,
+    'budgets.json no longer holds the looser number this pin exists to replace');
+  const real = pinned({ ...recorded.initialPayload });
+  assert.equal(real.nodes, MEASURED_NODES, 'pinned() must take nodes from the hand pin, not budgets.json');
+  assert.equal(
+    named(compare(real, { ...real, lazy: [], nodes: MEASURED_NODES + SLACK.nodes + 1 }), 'DOM nodes').pass,
+    false,
+    'a node count past the pinned baseline plus slack still has to fail',
+  );
+});
+
 test('a shrinking payload is never a failure', () => {
   const checks = compare(base, measure({ bytes: 1, requests: 1, nodes: 1 }));
   assert.deepEqual(checks.filter(c => !c.pass), []);

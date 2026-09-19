@@ -44,7 +44,7 @@ import { serve } from './serve.mjs';
 import { launch, cdp } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, evalIn, SETTLE } from './smoke/dom.mjs';
 import { SEED, goRich } from './smoke/fixtures.mjs';
-import { ROWS, nameOf } from './smoke/registry.mjs';
+import { ROWS, nameOf, TOUCH_CHECK } from './smoke/registry.mjs';
 
 import { cardFontPass } from './smoke/card-font.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
@@ -318,7 +318,7 @@ async function browserChecks(origin, only) {
     /* The swept touch pass replaces the first pass's single-viewport verdict
        rather than sitting beside it: two checks answering the same question
        with different coverage is how the weaker one gets believed. */
-    report.checks = report.checks.filter(k => k.name !== 'touch targets ≥ 44px');
+    report.checks = report.checks.filter(k => k.name !== TOUCH_CHECK);
     report.checks.push(await safeCheck('touch', () => touchPass(c, origin, source)));
     /* Same reshuffle as touch, one line up: the single-viewport verdict
        `smoke-checks.js` already contributed to the cold array (Settings

@@ -10,6 +10,23 @@
    that only explains its failures makes you re-run it to learn anything. */
 (() => {
   const IN = 96; // CSS px per inch
+
+  /* #37: ONE touch floor, spelled once. Guideline I1 in
+     `docs/interface-guidelines.md` owns the number (48px) and nothing here
+     restates it as a different one. This file used to spell the same idea
+     three ways -- `43.5` in the generic sweep, `43.5` in the dialog check and
+     `47.99` in `minSizeCheck` -- so raising the floor meant finding all three.
+
+     `TOUCH_TOL` is the measurement tolerance, not slack in the rule:
+     `getBoundingClientRect` can report a box a hair under its CSS
+     `min-height` at a 2x device scale, so every comparison below is against
+     `TOUCH_MIN` (47.5). It is far enough under 48 to survive that rounding
+     and still catch a control set a half-pixel short of the floor (verified
+     on #22 against `min-height: 47.5px`). The name and detail strings read
+     `TOUCH_FLOOR`, so the reported number cannot drift from the measured
+     one. */
+  const TOUCH_FLOOR = 48, TOUCH_TOL = 0.5;
+  const TOUCH_MIN = TOUCH_FLOOR - TOUCH_TOL;
   const round = n => Math.round(n * 100) / 100;
   const label = el => {
     const cls = (el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
@@ -23,8 +40,9 @@
   };
 
   /* #72: `.tl-name` (the timeline row's own name button) is excluded from
-     both generic touch-target sweeps below (44px and item 4's 48px) ONLY
-     when it is pinned to the one-row layout's row pitch -- 2.25rem (36px),
+     both generic touch-target sweeps below (the app-wide one and item 4's,
+     both 48px) ONLY when it is pinned to the one-row layout's row pitch --
+     2.25rem (36px),
      short of both floors by design, because a taller button there would
      overlap the next row (see the spec's "one conflict, and the call
      made"). `problemsFor` in `scripts/smoke/game-rows-fit.mjs` owns that
@@ -109,7 +127,7 @@
      when `state.ui.gameView === 'card'`; Timeline is the default a cold load
      lands on, so `.card` would measure 0×0 -- present but not laid out --
      without this. Same click a coach makes ("taps Card"); switched back to
-     Timeline afterward so nothing below (the 44px sweep included) measures a
+     Timeline afterward so nothing below (the touch sweep included) measures a
      view this check did not ask for. `#viewSeg`'s own click handler is
      synchronous (app.js), so the measurement right after `.click()` sees the
      fitted result, no wait needed. */
@@ -152,9 +170,10 @@
 
      Every caller keeps the painted box too and takes the larger of the two,
      so this only ever relaxes: nothing that passed on its box alone can start
-     failing because a probe came back false. Shared by the 44px sweep below
-     and by `minSizeCheck`'s 48px row sweeps, so one control wearing an
-     extended hit area reads the same way to all of them. */
+     failing because a probe came back false. Shared by the touch sweep below
+     and by `minSizeCheck`'s row sweeps -- one 48px floor since #37 -- so one
+     control wearing an extended hit area reads the same way to all of
+     them. */
   function hitBox(el, floor) {
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2, p = floor / 2;
@@ -168,9 +187,9 @@
     };
   }
 
-  /* 3. Touch targets ≥44px. A coach taps this standing up, in a hurry.
+  /* 3. Touch targets ≥48px (I1). A coach taps this standing up, in a hurry.
         Inline links inside running prose are exempt — they are text, not
-        controls, and padding them to 44px would wreck the paragraph. So is
+        controls, and padding them to the floor would wreck the paragraph. So is
         anything inside `.card`: that is print output, never tapped. */
   const SEL = 'button, a[href], input, select, textarea, [role="button"], [role="switch"], [role="tab"]';
   const small = [];
@@ -198,68 +217,19 @@
     /* A checkbox or radio wrapped in a label is tapped by the label, so the
        label's box is the real target — the 38×22 control inside it is not. */
     const box = (el.type === 'checkbox' || el.type === 'radio') && el.closest('label') || el;
-    const r = hitBox(box, 43.5);
+    const r = hitBox(box, TOUCH_MIN);
     const min = Math.min(round(r.width), round(r.height));
-    if (min < 43.5) small.push(`${label(el)} ${round(r.width)}×${round(r.height)}`);
+    if (min < TOUCH_MIN) small.push(`${label(el)} ${round(r.width)}×${round(r.height)}`);
   }
-  add('touch targets ≥ 44px', small.length === 0,
-    small.length ? `${small.length}/${tapCount} under 44px: ${small.slice(0, 6).join(', ')}`
-      : `${tapCount} controls, all ≥ 44px`);
+  add(`touch targets ≥ ${TOUCH_FLOOR}px`, small.length === 0,
+    small.length ? `${small.length}/${tapCount} under ${TOUCH_FLOOR}px: ${small.slice(0, 6).join(', ')}`
+      : `${tapCount} controls, all ≥ ${TOUCH_FLOOR}px`);
 
-  /* 3b. #22: every row in #view-settings -- each setting row, each link row
-        (About, Contact, Buy me a coffee -- `.setrow` doubles as the base for
-        both) and the backup row -- at least 48px, a floor higher than the
-        44px sweep above and scoped to this one view (I1; the app-wide 44px
-        sweep is #37's, not this ticket's).
-
-        A ROW IS DEFINED STRUCTURALLY, not by `.setrow`/`.backuprow` -- a
-        guard-falsifier renamed both classes throughout `#view-settings` and
-        this check kept reporting "0 rows" as a pass, because the old
-        `querySelectorAll('.setrow, .backuprow')` found nothing to measure and
-        nothing-to-measure took the same branch as nothing-open. So a row here
-        is: a direct child of one of `#view-settings`'s `.side-box` sections
-        that (a) either IS an interactive control (button, a[href], input,
-        [role=group]) or contains one, AND (b) is laid out as a flex row the
-        way every real row is -- `.setrow`/`.backuprow`'s own base rule sets
-        `display: flex`, and it is also the one thing an impostor row has to
-        fake to look like a row (verified: a `<div>` with a button inside it
-        but no flex layout, added above About, was invisible to this rule
-        until it also set `display: flex`, and then measured short and was
-        caught). (a) alone is what keeps headings and notes out: `.side-hd`,
-        `.set-h` and every `.note` paragraph in this view contain no control
-        and drop out there, no class name needed. (a) alone is also why a
-        bare `<a>` row still counts even if `display` stops being read from
-        `.setrow` -- the anchor is a control itself, not a container of one --
-        which is what still catches the About/Contact/Buy-me-a-coffee rows
-        after a rename, short, rather than them silently disappearing.
-
-        The one thing (a)+(b) together deliberately leaves out is Backup's own
-        "or paste a backup" trigger (`.pastein`): a control sits directly
-        inside it, but it is a plain block, not a flex row -- the design's own
-        comment calls it "a quiet way in underneath, never a second top-level
-        button", and spec item 7 names only the backup ROW (singular), not
-        every control the Backup box holds. Measured: `.pastein` is 44px tall
-        at every width this check runs at, so counting it here would fail the
-        real, unmodified page -- (b) is what keeps that specific control out
-        without naming it.
-
-        Same shape as "last control in an open dialog is reachable" above for
-        WHERE it runs: `smoke.mjs`'s `settingsRowPass` is what actually opens
-        Settings before reading this back, at three widths. Unlike that check,
-        though, nothing-open is a FAILURE here, not a pass held for later --
-        a guard-falsifier that dropped `setView('settings')` from the cog's
-        click handler left `#view-settings` never opening and this check kept
-        reporting PASS "0 rows" anyway, because only `shortRows.length` gated
-        `pass` and an empty measured set is vacuously short-free. So `pass`
-        now requires the view to actually be open AND at least one row
-        measured, not just none of the rows found being short. */
   /* Shared by 3a-3c below (#22 settings rows, #27 who's-here rows, #69
         today-and-game controls): count what is visible among a caller-picked
-        set of elements, measure each against the same 47.99 tolerance
-        (getBoundingClientRect can report a box a hair under its CSS
-        min-height at 2x device scale, and 47.5 is far enough under 48 to
-        pass a floor set a half-pixel short of the real one -- verified
-        against `min-height: 47.5px`), and report the same three-way message:
+        set of elements, measure each against `TOUCH_MIN` (the one floor and
+        its tolerance, at the top of this file), and report the same
+        three-way message:
         gated on the view actually being open, then 0-found, then a short
         list, then a clean total. Extracted rather than a third near-identical
         copy of the loop -- `scripts/smoke/width-sweep.mjs` already extracted
@@ -273,24 +243,25 @@
       for (const el of elements()) {
         if (!visible(el)) continue;
         count++;
-        // The hit area, not the ink -- see `hitBox`. 47.99 is the tolerance
-        // the comment above explains; it is also what the probe reaches for.
-        const r = hitBox(el, 47.99);
-        if (dim(r) < 47.99) short.push(fmt(el, r));
+        // The hit area, not the ink -- see `hitBox`, which reaches for the
+        // same `TOUCH_MIN` this measures against.
+        const r = hitBox(el, TOUCH_MIN);
+        if (dim(r) < TOUCH_MIN) short.push(fmt(el, r));
       }
     }
     add(name, gateOpen && count > 0 && short.length === 0,
       !gateOpen ? notOpenMsg
         : !count ? emptyMsg
-        : short.length ? `${short.length}/${count} under 48px: ${short.slice(0, slice).join(', ')}`
-        : `${count} ${noun}, all ≥ 48px`);
+        : short.length ? `${short.length}/${count} under ${TOUCH_FLOOR}px: ${short.slice(0, slice).join(', ')}`
+        : `${count} ${noun}, all ≥ ${TOUCH_FLOOR}px`);
   }
 
   /* 3a. #22: every row in #view-settings -- each setting row, each link row
         (About, Contact, Buy me a coffee -- `.setrow` doubles as the base for
-        both) and the backup row -- at least 48px, a floor higher than the
-        44px sweep above and scoped to this one view (I1; the app-wide 44px
-        sweep is #37's, not this ticket's).
+        both) and the backup row -- at least 48px, scoped to this one view.
+        It was a floor higher than the sweep above when it was written; #37
+        raised the app-wide sweep to the same 48px (I1), and this stays as
+        the check that measures a ROW rather than a control.
 
         A ROW IS DEFINED STRUCTURALLY, not by `.setrow`/`.backuprow` -- a
         guard-falsifier renamed both classes throughout `#view-settings` and
@@ -318,10 +289,10 @@
         inside it, but it is a plain block, not a flex row -- the design's own
         comment calls it "a quiet way in underneath, never a second top-level
         button", and spec item 7 names only the backup ROW (singular), not
-        every control the Backup box holds. Measured: `.pastein` is 44px tall
-        at every width this check runs at, so counting it here would fail the
-        real, unmodified page -- (b) is what keeps that specific control out
-        without naming it.
+        every control the Backup box holds. Measured: `.pastein` was 44px
+        tall at every width this check runs at, so counting it would have
+        failed the real, unmodified page; #37 took its link to 48px, and (b)
+        is still what keeps that specific control out without naming it.
 
         Same shape as "last control in an open dialog is reachable" above for
         WHERE it runs: `smoke.mjs`'s `settingsRowPass` is what actually opens
@@ -430,20 +401,25 @@
   });
 
   /* 3c. #69 (restyle Today and the game screen) "What would settle it" item 4:
-        the controls the restyle itself names, all at least 48x48 -- a floor
-        higher than the app-wide 44px sweep above, the same shape as the
+        the controls the restyle itself names, all at least 48x48 -- the floor the
+        app-wide sweep above now holds too (#37), the same shape as the
         settings-row and who's-here-row checks (a fixed, named list, not
         structural discovery), because item 4 is a fixed, named list too.
         `today-game-rows.mjs` drives Today, the game screen and the game
         screen with every fold open, at the three phone widths the other two
         row checks sweep at. No "open" gate of its own: the list is already
         scoped to whichever of Today/the game screen is on show, so an empty
-        result is 0-found, not not-open. */
+        result is 0-found, not not-open.
+
+        `.fold > summary` was in this list until #37 deleted the fold chrome
+        along with the rest of the old interface: `details.dz > summary`
+        ("Stint by stint") is the one disclosure left, and a selector that
+        can match nothing is a line that reads as coverage while measuring
+        none. */
   const ITEM4_SEL = [
     '#teamBtn', '#todayNewDay', '#settingsBtn', '.today-game', '#todayAddGame',
     '#todayTeam', '#todaySeason', '#backBtn', '.phrase', '.tl-name',
-    '#regen', '.fold > summary', 'details.dz > summary', '.seg button',
-    '#abBench',
+    '#regen', 'details.dz > summary', '.seg button', '#abBench',
   ].join(', ');
   minSizeCheck('today and game controls ≥ 48px', {
     gateOpen: true,
@@ -451,7 +427,7 @@
     emptyMsg: "none of item 4's controls were found on screen",
     // #72: `.tl-row` (the old target) is replaced by `.tl-name` (the row's
     // own button now) -- skipRowPitchName excludes it here too, in the
-    // one-row layout, for the same reason it is skipped in the 44px sweep
+    // one-row layout, for the same reason it is skipped in the touch sweep
     // above.
     elements: () => [...document.querySelectorAll(ITEM4_SEL)]
       .filter((el) => !el.closest('[hidden]') && !skipRowPitchName(el)),
@@ -471,7 +447,7 @@
 
         So: for every open dialog, take the last thing you can focus, scroll it
         into view the way a thumb would, and insist it is fully inside the
-        window and still a 44px target. One check, every dialog, including the
+        window and still a 48px target. One check, every dialog, including the
         ones nobody has written yet -- which is the point, since the three that
         share the `.keysbox` shell were all broken and only the tall one was
         ever noticed.
@@ -500,13 +476,13 @@
     audited.push(label(dlg));
     if (r.top < -0.5 || r.bottom > winH + 0.5) {
       cut.push(`${label(dlg)} → ${label(last)} at ${round(r.top)}–${round(r.bottom)}, window is 0–${round(winH)}`);
-    } else if (Math.min(round(r.width), round(r.height)) < 43.5) {
+    } else if (Math.min(round(r.width), round(r.height)) < TOUCH_MIN) {
       cut.push(`${label(dlg)} → ${label(last)} only ${round(r.width)}×${round(r.height)}`);
     }
   }
   add('last control in an open dialog is reachable', cut.length === 0,
     cut.length ? cut.slice(0, 3).join('; ')
-      : audited.length ? `${audited.length} open: ${audited.join(', ')}, last control on screen and ≥ 44px`
+      : audited.length ? `${audited.length} open: ${audited.join(', ')}, last control on screen and ≥ ${TOUCH_FLOOR}px`
       : 'no dialog open');
 
   /* ---------- accessibility ----------
