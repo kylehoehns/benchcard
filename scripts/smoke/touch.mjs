@@ -56,7 +56,8 @@ const TOUCH_STATES = [
            document.querySelector('#todaySeason').click()` },
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
   /* #25: the picker's last choice and its close control both have to stay
-     on screen and ≥ 44px (the ticket's mobile-first constraint) -- the same
+     on screen and ≥ `TOUCH_FLOOR` (the ticket's mobile-first constraint, 44px
+     when #25 wrote this and 48px since #37) -- the same
      claim every other state here makes, at the same three widths. */
   { name: 'settings, color picker open',
     open: `document.querySelector('#settingsBtn').click();

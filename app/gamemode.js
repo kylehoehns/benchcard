@@ -501,7 +501,8 @@ export function renderGameMode({ keepFloor = false } = {}) {
   // The dots are a PICTURE of where the game is, not a control. They were
   // buttons that jumped to a stint, and a dot is not a place a thumb can go:
   // measured in game mode on a 390px phone they are 17.8px wide with eight
-  // stints and 11.9px with twelve, against the app's own 44px rule, and the
+  // stints and 11.9px with twelve, against the app's own touch floor (44px
+  // when this was measured, 48px since #37), and the
   // strip is `flex: 1; min-width: 0` between two controls that are not -- so
   // at 150% text a dot is 2.4px and at 200% it is 4.7px. Twelve of them are
   // also twelve tab stops, each announcing "Stint 4 of 12" on the way past,

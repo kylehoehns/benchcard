@@ -7,7 +7,7 @@
 /* 360, not 320. The narrowest phone in real use is a small Android at 360 and
    an iPhone SE 2/3 at 375; 320 is a 2016 SE. Claiming a floor the chrome cannot
    actually hold would mean either a permanently red check or five controls
-   squeezed under the 44px touch minimum, and the second is worse than the bug
+   squeezed under `TOUCH_FLOOR`, and the second is worse than the bug
    this exists to catch. */
 export const NARROW = 360;
 
@@ -43,7 +43,7 @@ export const NARROW = 360;
  * So there is ~48px of headroom under the claim, deliberately: a check pinned
  * to the exact limit goes red on any harmless change and stops being read.
  * Raise SWEEP_FLOOR only against a measured floor that genuinely cannot be
- * crossed without breaking something worse (the 44px touch minimum is the one
+ * crossed without breaking something worse (`TOUCH_FLOOR` below is the one
  * that has been traded away before) — and write the reason down here. */
 export const SWEEP_FLOOR = 300, SWEEP_HI = 420;
 

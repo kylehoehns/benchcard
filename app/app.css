@@ -1888,8 +1888,10 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 
 .colorbox { width: min(22rem, 92vw); text-align: left; }
 .color-opts { display: flex; flex-direction: column; gap: .3rem; margin-top: .5rem; }
-/* 48px, not just the 44px floor the spec sets: matches `#view-settings
-   .setrow`'s own floor (app.css :2777) rather than a second number. */
+/* Matches `#view-settings .setrow`'s own floor (app.css :2777) rather than
+   stating a second number: both are the 48px floor guideline I1 owns. (This
+   said "48px, not just the 44px floor the spec sets" until #37 raised the
+   floor and the two numbers became one.) */
 .color-opt { display: flex; align-items: center; gap: .7rem; width: 100%; min-height: 48px;
   padding: .5rem .8rem; border: 1px solid var(--line); border-radius: var(--r-sm);
   background: none; font: inherit; font-size: var(--fs-body); color: var(--ink); text-align: left; }
@@ -3967,8 +3969,10 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    this game" is a one-line label a wide system font can push past the
    column on its own (#21 CI fix). */
 /* #30 "What would settle it" item 9: Delete is a control on Season and
-   this screen's own floor is 48px (I1/C6), not the 44px `.btn` settles for
-   on a phone elsewhere -- same reason `#seasonExport` above gets its own. */
+   this screen's own floor is 48px (I1/C6). It used to be the exception --
+   `.btn` settled for 44px on a phone elsewhere -- and since #37 the shared
+   primitive is 48 too, so this line only pins what the row already gets.
+   Same reason `#seasonExport` above gets its own. */
 .sn-del { margin-top: .6rem; min-height: 48px; white-space: normal; text-align: center; }
 
 /* =========================== team settings ===========================
