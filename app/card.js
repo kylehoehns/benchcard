@@ -267,9 +267,15 @@ function fitStage(stage) {
   const wanted = cardSize().w * 96;
   stage.style.setProperty('--cardzoom', avail > 0 ? Math.min(1, avail / wanted).toFixed(4) : 1);
 }
-// #36 step 3 adds a third stage (`#frStage`) with no id of its own to add
-// here -- every stage on the page shares the `.stage` class, so fitting all
-// of them is what keeps a fourth from needing a fourth line.
+/* Every stage on the page, found by class: #36 step 3 adds a third
+   (`#frStage`) and a fourth would need no line here either.
+
+   IT ONLY SEES ATTACHED STAGES. `cardPreviewInto` ends in a call to this, so a
+   host that is still detached when it is filled -- which is what #36's
+   `paintFr` does, building the step body as an argument to `paintFlowShell`
+   -- is not in this list and keeps whatever `--cardzoom` it had, meaning
+   none. A caller in that shape has to call this again once the node is in the
+   document; `paintFr` (onboarding.js) does, and says so. */
 export function fitPreview() {
   for (const s of document.querySelectorAll('.stage')) fitStage(s);
 }

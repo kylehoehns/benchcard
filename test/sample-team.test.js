@@ -61,7 +61,7 @@ test('there is one fictional cast, not two', () => {
   // so its placeholder is a string literal in onboarding.js now, not an
   // attribute in index.html.
   const step = body(app('onboarding.js'), 'function stepTeam(');
-  const ph = step.match(/frField\('textarea', 'Your players, one per line', fr\.roster,\s*\n?\s*'([^']*)'/)?.[1];
+  const ph = step.match(/flowField\('textarea', 'Your players, one per line', fr\.roster,\s*\n?\s*'([^']*)'/)?.[1];
   assert.ok(ph, '#frRoster has no placeholder to share a cast with');
   const placeholder = parseRoster(ph.replace(/\\n/g, '\n')).map((p) => p.name);
   assert.equal(placeholder.length, 3, 'the placeholder cast changed shape');
@@ -101,7 +101,13 @@ test('filling the form creates nothing, and it is offered inside the form', () =
   // the form" claim A51 made, now true of the box that still exists.
   const step = body(onb, 'function stepTeam(');
   assert.match(step, /id = 'frFill'/, 'the fill button is gone from step 1');
-  assert.match(step, /fill\.onclick = \(\) => \{ fillSample\(\); paintFr\(\); \}/,
+  // The handler's SHAPE is not this test's business -- it writes the two
+  // values in place now rather than repainting the step, and either satisfies
+  // A49 -- so only the call it has to make is matched. What the button
+  // actually puts in the boxes is proven against a real browser by
+  // `scripts/smoke/first-run-flow.mjs` ("#frFill does not fill the same
+  // unedited sample prefix"), which this file cannot do.
+  assert.match(step, /fill\.onclick = \(\)[\s\S]*?\bfillSample\(\)/,
     'nothing in step 1 offers the fill any more -- A49 built it for the coach who wants to edit a sample');
 });
 

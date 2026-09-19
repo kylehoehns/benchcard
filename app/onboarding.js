@@ -7,11 +7,13 @@
  * rows and the two format steppers are `game-setup.js`'s own `paintGranRows`
  * and `stepperRow` run against this module's draft instead of a second copy.
  *
- * Two things this module cannot own: `setView` and `renderAll` both live in
- * app.js until render.js is extracted, so they come in through
- * `initOnboarding` rather than being imported back (which would close the
- * graph into a cycle). `startTour` is imported directly — tour.js was split
- * off first precisely so this module could.
+ * One thing this module cannot own: `setView` lives in app.js until render.js
+ * is extracted, so it comes in through `initOnboarding` rather than being
+ * imported back (which would close the graph into a cycle). It took
+ * `renderAll` the same way until #36 — the last caller left with
+ * `finishOnboarding`, and an injection nothing calls is a dependency the
+ * graph carries and no reader can trace. `startTour` is imported directly —
+ * tour.js was split off first precisely so this module could.
  */
 
 import { generatePlan } from './engine.js';
@@ -21,15 +23,30 @@ import { state, editHappened, markFirstRunPending, HUES } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { startTour } from './tour.js';
 import { flash } from './toast.js';
-import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell } from './trap.js';
+import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
 import { stepperRow, paintGranRows, PERIODS_LO, PERIODS_HI, MINUTES_LO, MINUTES_HI } from './game-setup.js';
-import { cardPreviewInto } from './card.js';
+import { cardPreviewInto, fitPreview } from './card.js';
+
+/* The lineup floor. Five on the floor is what a game needs, so a roster
+   shorter than that cannot leave step 1 yet.
+
+   EXPORTED AS A PREDICATE, not written out at each site, because three places
+   ask the same question -- the count line below, `onRosterInput` while the
+   coach types, and `paintFr` on every repaint -- and three copies of `n < 5`
+   is a rule a test can only agree with by writing a fourth.
+
+   The floor itself stays module-private: the predicate is the answer callers
+   and `test/first-run.test.js` want, and exporting the number too would be an
+   export with no reader outside this file (`test/dead-export.test.js`). */
+const LINEUP_MIN = 5;
+export const shortOfLineup = (n) => n < LINEUP_MIN;
 
 /* Step 1's `#frCount` line. An empty box reads as an instruction rather than
- * "0 players", and the floor is 5 -- fewer than that is not a lineup. */
+ * "0 players", and the floor is `LINEUP_MIN` -- fewer than that is not a
+ * lineup. */
 export function countLine(n) {
   if (!n) return 'Paste from wherever your roster lives. Jersey numbers are optional.';
-  if (n < 5) return `${n} player${n === 1 ? '' : 's'} so far. 5 needed to field a lineup.`;
+  if (shortOfLineup(n)) return `${n} player${n === 1 ? '' : 's'} so far. ${LINEUP_MIN} needed to field a lineup.`;
   return `${n} players so far.`;
 }
 
@@ -335,9 +352,8 @@ function showStage(which) {
   }
 }
 
-/* Set by initOnboarding. See the header: these are app.js's, not ours. */
+/* Set by initOnboarding. See the header: this is app.js's, not ours. */
 let setView = () => {};
-let renderAll = () => {};
 
 /* #36's flow draft. Nothing outside `fr` (the module state the flow steps
    share) is written until it is committed through `startTeam`, which is why
@@ -489,25 +505,26 @@ function openFirstRun(trigger, withSample) {
   paintFr();
 }
 
-function frStepBody(n) {
-  const { q, build } = FR_STEPS[n - 1];
-  const wrap = el('div');
-  const h = el('h2', 'flow-q', q);
-  h.tabIndex = -1;
-  wrap.append(h);
-  build(wrap, q);
-  return wrap;
-}
-
 function paintFr() {
   if (!fr) return;
   showFrAsk(false);
   const last = frStep === FR_TOTAL;
-  paintFlowShell(FR, frStep, FR_TOTAL, frStepBody(frStep), {
+  paintFlowShell(FR, frStep, FR_TOTAL, flowStepBody(FR_STEPS, frStep), {
     nextText: last ? 'Go to the game' : 'Next',
-    nextDisabled: frStep === 1 && rosterCount() < 5,
+    nextDisabled: frStep === 1 && shortOfLineup(rosterCount()),
     backHidden: frStep === 1 || last,      // decision 6: step 3 has no Back
   });
+  /* AFTER the shell attaches the body, never before. `stepCard` builds
+     `#frStage` and hands it to `cardPreviewInto`, which ends in `fitPreview()`
+     -- but that walks `document.querySelectorAll('.stage')` (card.js), and the
+     body is still DETACHED while it is being evaluated as an argument above.
+     So the stage step 3 just built was not in that list, and without this
+     second call it would never get a `--cardzoom`: the card would be left at
+     its full 3.45in and squashed to whatever the stage happened to be wide
+     (`.stage` is a flex container, so the card shrinks rather than spilling,
+     which is why no overflow check can see it). Harmless at 390, where the
+     honest zoom is 1 anyway; visible on a narrow phone. */
+  if (last) fitPreview();
 }
 
 /* Step 1. The two fields write straight into `fr` on input, and repaint only
@@ -520,31 +537,16 @@ function onRosterInput(v) {
   const n = rosterCount();
   set('#frCount', 'textContent', countLine(n));
   set('#frFill', 'hidden', n > 0);
-  set('#frNext', 'disabled', n < 5);
-}
-
-/* The `.f` label + input pair the flow already uses (`teams-view.js`'s own
-   `flowField`, not imported here -- that one is module-private and this is
-   the same two-line shape, not a second implementation of anything stateful). */
-function frField(tag, label, value, placeholder, onInput) {
-  const l = el('label', 'flow-f');
-  l.append(el('span', 'f', label));
-  const i = el(tag);
-  if (tag === 'input') i.type = 'text';
-  i.value = value;
-  if (placeholder) i.placeholder = placeholder;
-  i.oninput = () => onInput(i.value);
-  l.append(i);
-  return [l, i];
+  set('#frNext', 'disabled', shortOfLineup(n));
 }
 
 function stepTeam(wrap) {
-  const [teamField, teamInput] = frField('input', 'Team name', fr.teamName,
+  const [teamField, teamInput] = flowField('input', 'Team name', fr.teamName,
     'Wildcats 6th Grade', v => { fr.teamName = v; });
   teamInput.id = 'frTeam';
   // The placeholder cast is roster.js's own sample, first three -- one
   // fictional cast, not a second one invented for this box (test/sample-team.test.js).
-  const [rosterField, rosterInput] = frField('textarea', 'Your players, one per line', fr.roster,
+  const [rosterField, rosterInput] = flowField('textarea', 'Your players, one per line', fr.roster,
     '12 Maya Webb\n4 Eli Tran\nDevon Ellis', onRosterInput);
   rosterInput.id = 'frRoster';
   rosterInput.spellcheck = false;
@@ -560,7 +562,21 @@ function stepTeam(wrap) {
   fill.type = 'button';
   fill.id = 'frFill';
   fill.hidden = rosterCount() > 0;
-  fill.onclick = () => { fillSample(); paintFr(); };
+  /* IN PLACE, not `paintFr()`. Filling writes two strings into the draft, and
+     rebuilding the whole step to show them is the thing the comment above
+     `onRosterInput` rules out -- that function is already the in-place update
+     for exactly this (the count line, this button, `#frNext`), so this writes
+     the two values and calls it. The caret goes to the box the sample just
+     landed in, which is what the coach edits next and is also where a
+     rebuild's focus move (the shell focuses the step heading) would not have
+     left it. */
+  fill.onclick = () => {
+    fillSample();                          // writes fr.teamName / fr.roster / fr.filled
+    teamInput.value = fr.teamName;
+    rosterInput.value = fr.roster;
+    onRosterInput(fr.roster);
+    rosterInput.focus({ preventScroll: true });
+  };
 
   wrap.append(teamField, rosterField, count, fill);
 }
@@ -604,7 +620,16 @@ function commitFirstRun() {
    `#frShareRow` is real markup (survey 8), moved into place here and parked
    back by `parkShareRow` when the flow leaves this step. */
 function stepCard(wrap) {
-  const stage = el('div', 'stage fr-stage');
+  /* `.stage` alone, no modifier of this step's own. It shipped with a second
+     class and a `.fr-stage` rule repeating `display: flex`,
+     `justify-content: center` and a 1rem inset -- every line of which `.stage`
+     itself already sets in card.css, which loads AFTER app.css, so a
+     single-class rule there could not win anyway. Measured on step 3 at 390px
+     the stage read 4.8px of side padding, card.css's own narrow-phone value,
+     not the 16px that rule asked for. The narrow inset is the one that should
+     win here: the card is fitted to whatever width the stage leaves it, and
+     step 3 exists to show the card. */
+  const stage = el('div', 'stage');
   stage.id = 'frStage';                     // literal, so test/dead-id.test.js reads it
   wrap.append(stage, el('p', 'flow-note',
     'This card waits on the game screen whenever you need it.'));
@@ -675,9 +700,8 @@ function requestCloseFr() {
   closeSheet($('#firstRunFlow'));
 }
 
-export function initOnboarding(setViewFn, renderAllFn) {
+export function initOnboarding(setViewFn) {
   setView = setViewFn;
-  renderAll = renderAllFn;
 
   /* #36 decision 7: both doors open `#firstRunFlow` at step 1 -- "Set up my
      team" empty, "Try a sample team" with the draft already filled. */

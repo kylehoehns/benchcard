@@ -1,6 +1,6 @@
-import { landWiped } from './dom.mjs';
+import { HEIGHT, WIDTH, landWiped } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
-import { nameOf } from './registry.mjs';
+import { LARGE_TEXT_WIDTH, nameOf } from './registry.mjs';
 import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
 /* #36's own guard (docs/specs/36-first-run.md, Proof seam 7): "the flow in a
@@ -30,11 +30,17 @@ import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
  * ONE wiped landing; `stepThreeShowsACard` onward needs a SECOND, fresh one,
  * the same way `game-rows-fit.mjs` calls `landWiped` twice (light, then
  * dark) rather than trying to make one landing answer two different
- * questions. The rich fixture is restored at the end regardless of outcome,
- * the same courtesy `teamscreen` and `addgameflow` pay. */
+ * questions. That second landing is also the NARROW one -- 320px, the width
+ * at which step 3's card fit is observable at all; see `firstRunPass` for why
+ * the narrowing has to come before the flow paints. The rich fixture and 390
+ * are both restored at the end regardless of outcome, the same courtesy
+ * `teamscreen` and `addgameflow` pay. */
 
 const READY = `!document.getElementById('view-welcome').hidden`;
 const land = (c, origin) => landWiped(c, `${origin}/index.html`, READY);
+
+const viewport = (c, width) => c.send('Emulation.setDeviceMetricsOverride',
+  { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
 
 /* Everything one round trip can answer about the open flow -- the same
  * shape `add-game-flow.mjs`'s own `flowState` reads for `#addGameFlow`. */
@@ -306,6 +312,55 @@ async function stepThreeShowsACard(c, ck) {
   ck(stage.printNeeds && stage.shareNeeds, '#frPrint/#frShare do not both carry data-needs-card');
   ck(stage.printDisabled === false && stage.shareDisabled === false, '#frPrint/#frShare are not both enabled');
   ck(!stage.printPrimary && !stage.sharePrimary, '#frPrint/#frShare carry .primary, and neither should');
+
+  /* AND THE FIT, which is why this whole second landing runs at
+     `LARGE_TEXT_WIDTH` instead of 390 (see `firstRunPass` below).
+     `cardPreviewInto` ends in `fitPreview()`, and `fitPreview` is
+     `document.querySelectorAll('.stage')` (card.js) -- so a `#frStage` built
+     and filled while it is still DETACHED, as `stepCard` does when `paintFr`
+     evaluates the body as an argument to `paintFlowShell`, is not in that
+     list and never gets a `--cardzoom` at all. The card then paints at its
+     true print width, 3.45in = 331.2px, whatever the stage is.
+
+     NEITHER HALF OF THIS IS SPARE. `--cardzoom` unset is the direct symptom
+     and reads the same at every width; the geometry below is what a coach
+     actually sees, and it is only observable where the correct zoom is not 1
+     -- at 390 the card fits at zoom 1 and an unfitted stage looks identical.
+     Nothing else in the harness covers it: `OVERFLOW_PROBE` skips any element
+     under a sideways-scrollable ancestor, and `.flow-body`'s `overflow-y:
+     auto` (app.css) makes its `overflow-x` compute to `auto`.
+
+     GEOMETRY, NOT OVERFLOW, and measured UNZOOMED -- `r.width /
+     currentCSSZoom`, the same divide `scripts/smoke-checks.js` uses for the
+     sheet's own card. An unfitted card does not spill out of the stage to be
+     caught by a width comparison: `.stage` is `display:flex` (card.css), so
+     the card is a flex item and the default `flex-shrink: 1` squashes it to
+     the stage's width instead. Measured on the unfixed tree it read 310px
+     wide by 480 tall -- the height untouched, the width crushed -- which is
+     the shape this asserts against: a card that was fitted is 3.45in x 5in
+     unzoomed at any stage width, and a card that was only shrunk is not. */
+  const IN = 96;
+  const fit = await evalJSON(c, `(() => {
+    const st = document.getElementById('frStage');
+    if (!st) return JSON.stringify({ found: false });
+    const card = st.querySelector('.card');
+    const r = card && card.getBoundingClientRect();
+    const z = card ? (card.currentCSSZoom || 1) : 1;
+    return JSON.stringify({
+      found: true,
+      zoom: getComputedStyle(st).getPropertyValue('--cardzoom').trim(),
+      card: r ? [Math.round(r.width / z), Math.round(r.height / z)] : null,
+    });
+  })()`);
+  if (ck(fit.found, '#frStage is not in the document on step 3')) {
+    ck(fit.zoom !== '', '#frStage carries no --cardzoom, so nothing ever fitted it');
+    if (ck(!!fit.card, '#frStage holds no .card to measure')) {
+      const want = [3.45 * IN, 5 * IN];
+      ck(Math.abs(fit.card[0] - want[0]) <= 1 && Math.abs(fit.card[1] - want[1]) <= 1,
+        `step 3's card is ${fit.card[0]}x${fit.card[1]} unzoomed at ${LARGE_TEXT_WIDTH}px`
+        + `, want ${Math.round(want[0])}x${Math.round(want[1])}`);
+    }
+  }
   return stage.cards;
 }
 
@@ -353,8 +408,19 @@ export async function firstRunPass(c, origin) {
     await discardSavesNothing(c, ck);
     await sampleFillsAndSavesNothing(c, ck);
 
-    await land(c, origin); // fresh: step 3 commits for real, a one-way door
+    /* Fresh: step 3 commits for real, a one-way door. AND NARROW, for the
+       card fit `stepThreeShowsACard` reads at the end -- 320px is where the
+       correct `--cardzoom` is not 1, so it is the only width at which a
+       mis-fitted card is distinguishable from a fitted one.
+       THE NARROWING HAS TO HAPPEN BEFORE THE FLOW PAINTS, not after:
+       `card.js` fits every `.stage` on `resize`, so resizing a step 3 that
+       is already on screen would repair the very thing being measured and
+       report clean. 390 goes back before the tour, which is the width the
+       rest of this pass and everything after it measures at. */
+    await viewport(c, LARGE_TEXT_WIDTH);
+    await land(c, origin);
     const cardCount = await stepThreeShowsACard(c, ck);
+    await viewport(c, WIDTH);
     if (cardCount !== null) {
       await finishStartsTheTour(c, ck);
       await landsOnTheGame(c, ck, cardCount);
@@ -363,6 +429,7 @@ export async function firstRunPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   }
 
+  await viewport(c, WIDTH).catch(() => {});
   await goRich(c, origin).catch(() => {});
 
   return {

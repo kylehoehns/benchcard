@@ -374,7 +374,7 @@ initTimeline(setView);
 initTour(setView);
 initRules(soon, PLAN_ONLY);
 initStrategy(soon, PLAN_ONLY);
-initOnboarding(setView, renderAll);
+initOnboarding(setView);
 initGameSetup(renderAll, soon, PLAN_ONLY, AFTER_EDIT);
 initShortcuts(setView);
 setView(state.onboarded ? (state.view || 'today') : 'welcome');

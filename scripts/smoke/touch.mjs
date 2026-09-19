@@ -1,4 +1,4 @@
-import { evalIn, TODAY_HOME } from './dom.mjs';
+import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
 import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
 import { widthSweep } from './width-sweep.mjs';
 import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
@@ -94,19 +94,18 @@ const TOUCH_STATES = [
      `state.day.games[0]` -- and every pass `smoke.mjs` runs after `touch`,
      up to `teamscreen`'s own `goRich`, shares this same page load with no
      reload in between. So this state's own `open` snapshots the fixture and
-     the shared `close` puts it back whole, the same rule `overlay.mjs`'s
-     trio follows for the identical mutation. */
-  { name: 'first run, step 1 with the sample',
+     the shared `close` puts it back whole, through the one
+     `FR_SNAPSHOT`/`FR_RESTORE` pair in dom.mjs that `overlay.mjs` drives its
+     identical trio with -- and the names come from `FIRST_RUN_STEPS` there
+     for the same reason. */
+  { name: FIRST_RUN_STEPS[0],
     open: `document.querySelector('#addGameFlow')?.close();
            ${TODAY_HOME};
            document.querySelector('#welTry').click()` },
-  { name: 'first run, step 2',
+  { name: FIRST_RUN_STEPS[1],
     open: `document.querySelector('#frNext').click()` },
-  { name: 'first run, step 3',
-    open: `window.__frSnap = await (async () => {
-             const st = await import('/state.js');
-             return JSON.parse(JSON.stringify(st.state));
-           })();
+  { name: FIRST_RUN_STEPS[2],
+    open: `${FR_SNAPSHOT};
            document.querySelector('#frNext').click()` },
 ];
 
@@ -166,12 +165,7 @@ export async function touchPass(c, origin, source) {
     // undone by `Object.assign` a line later.
     close: `document.querySelector('#addGameFlow')?.close();
       document.querySelector('#firstRunFlow')?.close();
-      if (window.__frSnap) { await (async () => {
-        const st = await import('/state.js');
-        Object.assign(st.state, window.__frSnap);
-        delete window.__frSnap;
-        (await import('/render.js')).renderAll();
-      })(); }
+      if (window.__frSnap) { ${FR_RESTORE}; }
       document.querySelector('#colorPickerClose')?.click();
       document.querySelector('#sheetWho')?.close();
       document.querySelector('#planBack')?.click();

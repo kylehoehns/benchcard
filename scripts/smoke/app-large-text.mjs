@@ -1,4 +1,4 @@
-import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME, landWiped } from './dom.mjs';
+import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME, landWiped, FIRST_RUN_STEPS } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
@@ -232,17 +232,22 @@ export const APP_LARGE_TEXT_STATES = [
      leave a filled form behind it and `welcome screen, first run` above wipes
      the whole record: nothing after this trio needs the rich fixture back,
      the state below it wipes again on its own navigation, and `staticPass`
-     never touches `index.html` again this run. */
-  { name: 'first run, step 1 with the sample',
+     never touches `index.html` again this run -- so no snapshot here, unlike
+     `overlay`'s and `touch`'s copies of this trio.
+
+     THE NAMES ARE `FIRST_RUN_STEPS` (dom.mjs), shared with those two. Only
+     the names: what opens and closes a step differs per pass, and this one's
+     close is the flow's own `#frClose` rather than a native `close()`. */
+  { name: FIRST_RUN_STEPS[0],
     open: `document.querySelector('#welTry').click()`,
     close: `document.querySelector('#frClose')?.click();
             document.querySelector('#frDiscard')?.click()` },
-  { name: 'first run, step 2',
+  { name: FIRST_RUN_STEPS[1],
     open: `document.querySelector('#welTry').click();
            document.querySelector('#frNext').click()`,
     close: `document.querySelector('#frClose')?.click();
             document.querySelector('#frDiscard')?.click()` },
-  { name: 'first run, step 3',
+  { name: FIRST_RUN_STEPS[2],
     open: `document.querySelector('#welTry').click();
            document.querySelector('#frNext').click();
            document.querySelector('#frNext').click()`,

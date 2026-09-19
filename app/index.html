@@ -913,16 +913,10 @@
         <!-- ONE FOOTER ROW OF PEERS, not three stacked fragments. It was a
              prompt on its own line, two accent links under it and an
              underlined third below that, which read as leftovers rather than
-             as a footer. All three are the same quiet treatment now.
-
-             NONE OF IT IS BEHIND `#welStart`, and it must not be: a browser
-             that evicts local storage lands a RETURNING coach on this screen
-             holding a backup file, which is the exact case the file exists
-             for, and putting Restore behind the flow would hide
-             the way back in behind a button that says the opposite. Paste is
-             beside it because a .json in an email attachment is awkward to
-             hand to a mobile browser -- same file, same parser, same undo, so
-             it must not read as a second choice to make.
+             as a footer. All three are the same quiet treatment now. Why none
+             of it sits behind `#welStart` is argued once, on `.wel-tail`
+             above -- it was argued twice here until #36's fix pass, and two
+             copies of one argument is the defect this repo names first.
 
              `class="wel-about"` on the anchor is load-bearing AND is matched
              as an exact attribute: test/link-graph.test.js hangs the whole

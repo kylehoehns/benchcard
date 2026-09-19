@@ -76,6 +76,42 @@ export const onScreen = (c, id) => evalIn(c, `!!(document.getElementById('${id}'
 // from.
 export const TODAY_HOME = `document.querySelector('#barBack').hidden || document.querySelector('#backBtn').click()`;
 
+/* #36: the three first-run steps as a state list, and the fixture snapshot
+   they need, in one place.
+
+   Three passes drive the same trio -- `overlay.mjs`, `touch.mjs` and
+   `app-large-text.mjs` -- and each had its own hand-typed copy of these three
+   names. A state name is the key `app-large-text.mjs` already reuses
+   `overlay.mjs`'s states BY (`STATES.find(s => s.name === n)`), so three
+   spellings of the same trio is a rename away from a silent `undefined`.
+   What each pass does to open and close them genuinely differs (`touch` chains
+   from the state before it, `app-large-text` leaves through `#frClose`), so
+   only the names are shared. */
+export const FIRST_RUN_STEPS = [
+  'first run, step 1 with the sample',
+  'first run, step 2',
+  'first run, step 3',
+];
+
+/* Step 3 commits a real team (`commitFirstRun`, decision 4), overwriting
+   `state.players`/`state.teamName`/`state.day.games[0]` on a page load that
+   `overlay` and `touch` share with every pass after them up to `teamscreen`'s
+   own `goRich`. Both take the same snapshot before opening step 3 and put it
+   back whole afterwards, so the pair lives here rather than being typed twice:
+   a restore that drifted from its snapshot would corrupt a later pass's
+   fixture, and the failure would land in some other check's name. */
+export const FR_SNAPSHOT = `window.__frSnap = await (async () => {
+  const st = await import('/state.js');
+  return JSON.parse(JSON.stringify(st.state));
+})()`;
+
+export const FR_RESTORE = `await (async () => {
+  const st = await import('/state.js');
+  Object.assign(st.state, window.__frSnap);
+  delete window.__frSnap;
+  (await import('/render.js')).renderAll();
+})()`;
+
 /* Today -> the first game, awaited as two separate `step()`s rather than one
    script with both clicks chained: the Today -> Games rebuild has to land
    before a phrase's own handler (`#phrasePlayers`, `#phraseStrategy`, ...) is

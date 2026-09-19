@@ -2,20 +2,10 @@ import './dom-stub.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { countLine, newDraft, startTeam } from '../app/onboarding.js';
-import { S, withTeam, player } from './state-fixture.js';
+import { countLine, newDraft, shortOfLineup, startTeam } from '../app/onboarding.js';
+import { S, bareGame, withTeam, player } from './state-fixture.js';
 
 const html = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
-
-// The shape every game below starts from, same as test/sentence.test.js's
-// own `bareGame` -- `S.emptyConstraints()` for the constraints a case does
-// not set on top.
-const bareGame = (extra) => ({
-  periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, strategy: 'balanced',
-  out: [], useCarryover: false, label: '', when: '',
-  constraints: S.emptyConstraints(),
-  ...extra,
-});
 
 /* Proof item 1: the count line under `#frCount`, and the rule that disables
  * `#frNext` on step 1. Pure function, no DOM — the exact strings come from
@@ -39,10 +29,14 @@ for (const [label, n, want] of COUNT_LINE_CASES) {
   });
 }
 
+/* `shortOfLineup` is the app's own predicate, imported, not restated: a test
+ * that declares `const disabled = n => n < 5` and asserts against that agrees
+ * with itself whatever `#frNext` actually does. 4 and 5 are the spec's two
+ * numbers ("leaves `#frNext.disabled === true`" at 3, "`false`" at 5), and 5
+ * is the boundary -- the one value a moved floor changes the answer for. */
 test('Next stays disabled below 5 players and enables at 5', () => {
-  const disabled = (n) => n < 5;
-  assert.equal(disabled(4), true);
-  assert.equal(disabled(5), false);
+  assert.equal(shortOfLineup(4), true);
+  assert.equal(shortOfLineup(5), false);
 });
 
 /* Proof item 2: the draft defaults and the commit. Expected values are the
@@ -112,6 +106,11 @@ test('#frClose is the first child of .flow-bar-row', () => {
   assert.match(firstChild, /id="frClose"/, '#frClose is not the first child of .flow-bar-row');
 });
 
+/* Proof item 3 names this one, so it stays -- but `test/print-gate.test.js`
+ * is the authority: it discovers the print/share triggers out of app.js and
+ * asserts the set of `data-needs-card` carriers is EXACTLY that set, which
+ * this cannot. Read as a locator (these two ids, in this markup), not as the
+ * gate. */
 test('#frPrint and #frShare carry data-needs-card', () => {
   const doc = html();
   for (const id of ['frPrint', 'frShare']) {

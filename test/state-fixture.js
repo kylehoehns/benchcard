@@ -1,10 +1,12 @@
 /* Shared state.js test fixtures for the pure-helper tests in
- * test/sentence.test.js (#27) and test/plan-sheet.test.js (#28): the
+ * test/sentence.test.js (#27), test/plan-sheet.test.js (#28) and
+ * test/first-run.test.js (#36): the
  * document/matchMedia stub state.js needs at import time (now split into
  * ./dom-stub.js -- #73, shared with test/trap.test.js -- since two hand
- * copies of the same object had already drifted once) even though neither
- * file's tests touch a DOM, plus the one-team `withTeam` harness and its
- * `player` builder -- copied identically in both files until this one.
+ * copies of the same object had already drifted once) even though none of
+ * those files' tests touch a DOM, plus the one-team `withTeam` harness, its
+ * `player` builder and the `bareGame` shape -- copied identically in each
+ * file until this one.
  *
  * A plain file straight in test/, not test/helpers/state-fixture.js or any
  * other subdirectory: node --test's default glob runs every .js file
@@ -42,3 +44,19 @@ export const withTeam = (players, games, settings, fn) => {
 };
 
 export const player = (id, name) => ({ id, name: name || id });
+
+/* The shape every game in those files starts from -- RICH's own format and
+ * interval, no rules, no carryover -- with `S.emptyConstraints()` for the
+ * constraints a test does not care about, the same source `newGame` itself
+ * seeds from (state.js). `extra` overrides top level; a test that needs one
+ * constraint set spreads `S.emptyConstraints()` itself so the rest stay empty.
+ *
+ * It lived as a byte-for-byte copy in sentence.test.js and plan-sheet.test.js,
+ * and #36's own test file made a third. Here once instead: the files that
+ * needed it already imported `S`, `withTeam` and `player` from this module. */
+export const bareGame = (extra) => ({
+  periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, strategy: 'balanced',
+  out: [], useCarryover: false, label: '', when: '',
+  constraints: S.emptyConstraints(),
+  ...extra,
+});

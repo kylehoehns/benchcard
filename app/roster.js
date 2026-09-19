@@ -79,9 +79,12 @@ const SAMPLE_LINES = [
  *  back to `SAMPLE_SIZE`.
  *
  *  TEXT is the primary form and the parsed roster is derived from it (A49):
- *  the welcome screen's "Try a sample team" fills `#welRoster` with this and
- *  lets the coach edit it, which is the use the comment at the head of this
- *  block always described. One clamp, one cast, two shapes. */
+ *  "Try a sample team" fills an editable box with this rather than handing
+ *  over a finished roster, which is the use the comment at the head of this
+ *  block always described. The box was the welcome screen's `#welRoster`
+ *  until #36; it is step 1's `#frRoster` in `#firstRunFlow` now, and the
+ *  reason the text form comes first is unchanged. One clamp, one cast, two
+ *  shapes. */
 export function sampleRosterText(n) {
   const k = Math.floor(Number(n));
   const size = Number.isFinite(k) && k > 0 ? Math.max(5, Math.min(SAMPLE_LINES.length, k)) : SAMPLE_SIZE;

@@ -2114,10 +2114,11 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    -- the form when it is opened, the restore links -- and that is a scroll a
    coach has asked for rather than one they arrive in. */
 .wel-hero { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* The two panes. Exactly one is on screen, so the landing pane carries the
-   flex column and the setup pane is an ordinary block that scrolls. */
+/* The welcome screen is one pane now. It was two, `hidden`-swapped, until #36
+   moved setup into `#firstRunFlow` and deleted the setup pane -- so the
+   `[hidden]` rule that restored `display: none` against the `display: flex`
+   below went with it: nothing sets `hidden` on this element any more. */
 .wel-landing { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.wel-landing[hidden] { display: none; }
 /* The wordmark is a lockup now, not the heading (A51): the h1 carries the
    promise and the name sits above it, which is where a name goes. */
 .wel-lockup { display: flex; align-items: center; justify-content: center; gap: .45rem;
@@ -2850,11 +2851,13 @@ dialog.flow .pgrp { margin: 0 1rem; }
 .fr-f { padding: 0 1rem; }
 .fr-gran { margin: 0 1rem; }
 
-/* #36 step 3: the card preview, inset the same as everything else on the
-   step, and centered -- a pocket card is narrower than the dialog and a
-   left-hung preview would read as a mistake, not a card. */
-.fr-stage { padding: 0 1rem; display: flex; justify-content: center; }
-/* Step 3's Print/Share row, moved out of its parked spot in the dialog
+/* #36 step 3's card preview has no rule of its own here. It had one --
+   `.fr-stage`, centering and insetting the preview -- and every declaration
+   in it was already `.stage`'s (card.css), which loads after this sheet and
+   so wins every single-class tie. `stepCard` builds a plain `.stage` now;
+   card.css is where a stage's padding is decided, for this one as for the
+   sheet's.
+   Step 3's Print/Share row, moved out of its parked spot in the dialog
    (`stepCard`, onboarding.js) into the wrap the other steps' content sits in
    -- same side margins as `.flow-card` above. */
 .fr-cta { margin: 1rem 1rem 0; }
@@ -3229,9 +3232,12 @@ dialog.flow .pgrp { margin: 0 1rem; }
 .prow-check { flex: none; color: var(--ink); font-weight: 700; }
 
 /* Decision 9: the Add-a-rule kind chips, and the stepper it shares with Rest
-   limit. `.chips`/`.chip` stay the shared primitive (onboarding uses them
-   too); this scopes the sheet's own padding, since the chips sit inside a
-   group's edge rather than a page's. */
+   limit. `.chips`/`.chip` stay the shared primitive -- the welcome pane drew
+   them too until #36 moved its setup into `#firstRunFlow`, which uses
+   steppers and rows instead; the only other chip row left is the
+   Closing-window one (strategy.js), which renders into `#stratbody` -- this
+   same sheet. This scopes the sheet's own padding,
+   since the chips sit inside a group's edge rather than a page's. */
 .plan-kinds { padding: 1rem 1rem 0; }
 /* "One of two always on" is longer than every other kind label and, at a
    32px root in a 320px viewport, wider than the sheet itself; `.chip`'s own
@@ -3242,11 +3248,12 @@ dialog.flow .pgrp { margin: 0 1rem; }
 .plan-kinds .chip { white-space: normal; text-align: center; }
 /* The prototype's chips are borderless `--surface` pills everywhere in this
    sheet (the kind chips above and the Closing-window chips) -- `.chip`'s own
-   `--line-2` border is onboarding's own look, so this is scoped to the
-   grouped sheet rather than changed on the shared primitive. Decision 5 also
-   holds this sheet's chips to 48px tall, a floor higher than the shared
-   `.chip`'s 44px (line ~3150) -- scoped the same way, so onboarding's chips
-   keep their own floor. */
+   `--line-2` border was the welcome pane's look, and decision 5's 48px floor
+   is taller than the same primitive's 44px (line ~3150). Both overrides are
+   scoped to the grouped sheet rather than folded into the primitive: every
+   chip in the app happens to sit in this sheet since #36 retired the welcome
+   pane's own, so the base rule has no live user, but it is still what a new
+   chip row anywhere else would start from. */
 dialog.bsheet.grouped .chip { border-color: transparent; min-height: 48px; display: inline-flex; align-items: center; }
 /* #73 fix pass finding 5: at a 320px/32px root the label no longer fits
    beside the value and +/- pair (`.pstep-val`'s fixed rem width and
@@ -3789,11 +3796,13 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 
   /* #24: `.row`'s field columns are a text measure now (item 1), so at a 32px
      root the single-column floor the grid already falls back to is itself
-     260px -- wider than `#welSetup`'s own card leaves it inside `.wel-in`'s
-     30rem cap and the welcome screen's padding. `min(…, 40vw)` gives the
-     track a second, viewport-relative floor for exactly the narrow-column
-     cases this block already handles (`.dayrow`, `.sn-row`); at any
-     ordinary width `40vw` is wider than `8.125rem` and this changes nothing. */
+     260px -- wider than a narrow column can give it. The case that found it
+     was the welcome screen's own setup card, inside `.wel-in`'s 30rem cap
+     and the screen's padding; #36 replaced that card with `#firstRunFlow`,
+     so the rule is now carried by the other narrow-column cases this block
+     already handles (`.dayrow`, `.sn-row`). `min(…, 40vw)` gives the track a
+     second, viewport-relative floor for those; at any ordinary width `40vw`
+     is wider than `8.125rem` and this changes nothing. */
   .row { grid-template-columns: repeat(auto-fit, minmax(min(8.125rem, 40vw), 1fr)); }
 
   /* #69 decision 6: "Start game" plus its decorative icon (`aria-hidden`

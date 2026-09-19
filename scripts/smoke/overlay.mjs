@@ -1,4 +1,4 @@
-import { evalIn, step } from './dom.mjs';
+import { evalIn, step, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 
 /* ---------- the states the first pass never sees ----------
@@ -187,32 +187,27 @@ export const STATES = [
      shares one page load with `touch` and everything `smoke.mjs` runs after
      it up to `teamscreen`'s own `goRich`, none of which reload in between.
      So the fixture is snapshotted before it opens and put back whole in
-     `close`, the same rule `plan sheet, a rule` already follows for its own
-     mutation above. Steps 1-2 never reach `commitFirstRun` (only the step
+     `close` -- `FR_SNAPSHOT`/`FR_RESTORE` (dom.mjs), the same pair `touch`
+     uses for the same mutation -- the same rule `plan sheet, a rule` already
+     follows for its own mutation above. The names come from
+     `FIRST_RUN_STEPS` there too, since `app-large-text.mjs` matches states
+     out of this array by name. Steps 1-2 never reach `commitFirstRun` (only the step
      2 -> 3 transition does), so there is nothing to restore after them and
      `close` is the dialog's own native `close()`, same as `add a game flow`
      above -- this pass audits accessibility, not the flow's own close paths,
      which `first-run-flow.mjs` covers. */
-  { name: 'first run, step 1 with the sample',
+  { name: FIRST_RUN_STEPS[0],
     open: `$('#welTry').click()`, shows: '#firstRunFlow[open]',
     close: `$('#firstRunFlow').close()` },
-  { name: 'first run, step 2',
+  { name: FIRST_RUN_STEPS[1],
     open: `$('#welTry').click(); $('#frNext').click()`, shows: '#firstRunFlow[open]',
     close: `$('#firstRunFlow').close()` },
-  { name: 'first run, step 3',
-    open: `window.__frSnap = await (async () => {
-             const st = await import('/state.js');
-             return JSON.parse(JSON.stringify(st.state));
-           })();
+  { name: FIRST_RUN_STEPS[2],
+    open: `${FR_SNAPSHOT};
            $('#welTry').click(); $('#frNext').click(); $('#frNext').click()`,
     shows: '#firstRunFlow[open]',
     close: `$('#firstRunFlow').close();
-            await (async () => {
-              const st = await import('/state.js');
-              Object.assign(st.state, window.__frSnap);
-              delete window.__frSnap;
-              (await import('/render.js')).renderAll();
-            })();
+            ${FR_RESTORE};
             $('#backBtn').click()` },
   { name: 'welcome screen', forced: true,
     open: `$('#view-welcome').hidden = false`, shows: '#view-welcome',

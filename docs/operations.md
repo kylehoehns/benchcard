@@ -160,9 +160,10 @@ app's own suggestion, and those pages would feed their own sizes back into the
 numbers that justify them. Loading a sample therefore fires nothing at all
 (`plan_generated` cannot fire either: `app.js` fires it at boot behind
 `state.onboarded`, which is still false while `initOnboarding` runs), and
-neither does **filling the form with it** — a roster submitted exactly as the
-app wrote it is our suggestion, not a team, so `finishOnboarding` compares the
-box against the text it filled in and defers the count the same way. A
+neither does **filling the first run's roster box with it** — a roster
+submitted exactly as the app wrote it is our suggestion, not a team, so
+`commitFirstRun` compares the box against the text it filled in and defers the
+count the same way. A
 read-and-reset flag on `state.js` defers the count to the first edit, read in
 `soon()` — an edit is the coach saying "this is now my team" — and it carries
 the roster size **at that moment**, so a coach who trims the sample to eight is

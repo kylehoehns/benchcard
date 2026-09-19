@@ -42,7 +42,7 @@ import { switchRow } from './rules.js';
 import { DEFAULT_SETTINGS, colorName } from './storage.js';
 // The one close path and the one "ask before discarding" hook, shared with
 // every bottom sheet (#32 uses them from a full-screen dialog).
-import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell } from './trap.js';
+import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
 // season-view.js is already in the boot graph (app.js calls `initSeason`),
 // so this names no new request -- it is the one place a filed game is
 // counted, and Today's Season entry reads it the same way (#23 review).
@@ -676,34 +676,8 @@ function paintFlow() {
   // change is itself the answer "keep editing", so it can never still be
   // asking about the step it just left.
   showFlowAsk(false);
-  paintFlowShell(AG, flowStep, STEPS, stepBody(flowStep),
+  paintFlowShell(AG, flowStep, STEPS, flowStepBody(FLOW_STEPS, flowStep),
     { nextText: flowStep === STEPS ? 'Plan it' : 'Next' });
-}
-
-function stepBody(n) {
-  const { q, build } = FLOW_STEPS[n - 1];
-  const wrap = el('div');
-  const h = el('h2', 'flow-q', q);
-  h.tabIndex = -1;
-  wrap.append(h);
-  build(wrap, q);
-  return wrap;
-}
-
-/* The `.f` label + input pair the game screen uses for these same two fields
-   (index.html's "This game" box). The label wraps its input here instead of
-   pointing at an id: #label and #when are already taken by that box, and a
-   second element with either id would be the duplicate the shell tests catch. */
-function flowField(label, value, placeholder, onInput) {
-  const l = el('label', 'flow-f');
-  l.append(el('span', 'f', label));
-  const i = el('input');
-  i.type = 'text';
-  i.value = value;
-  i.placeholder = placeholder;
-  i.oninput = () => onInput(i.value);
-  l.append(i);
-  return l;
 }
 
 /* Step 1. The two fields write straight into the draft, so what is typed
@@ -712,10 +686,11 @@ function flowField(label, value, placeholder, onInput) {
    decided whether there is anything worth copying, and "Use it" commits the
    very draft `openAddGame` built -- no second copy. */
 function stepWho(wrap) {
-  wrap.append(
-    flowField('Opponent', draft.label, 'Panthers', v => { draft.label = v; }),
-    flowField('Tip-off', draft.when, 'Sat 9:00', v => { draft.when = v; }),
-  );
+  const [opponent] = flowField('input', 'Opponent', draft.label, 'Panthers',
+    v => { draft.label = v; });
+  const [tipoff] = flowField('input', 'Tip-off', draft.when, 'Sat 9:00',
+    v => { draft.when = v; });
+  wrap.append(opponent, tipoff);
   const same = sameAsLast();
   if (!same) return;
   const card = el('div', 'flow-card');

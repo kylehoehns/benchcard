@@ -15,7 +15,7 @@
  * seam in the same split. Nothing here touches app state, which is why it
  * could move first.
  * ================================================================== */
-import { $ } from './dom.js';
+import { $, el } from './dom.js';
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
   'textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
@@ -569,6 +569,48 @@ export function paintFlowShell(ids, n, total, node, opts = {}) {
   // the whole screen changed under the coach, so focus goes to what it now
   // asks -- the same move `openSheet` makes to a sheet's own title
   body?.querySelector('h2')?.focus({ preventScroll: true });
+}
+
+/* The body `paintFlowShell` above is given, built from the caller's own steps
+   array -- a list of `{ q, build }`, which is the shape both flows already
+   wrote by hand.
+
+   HERE RATHER THAN IN EITHER FLOW because the focus contract is shared and was
+   split across three files: the painter focuses `body h2`, and each flow
+   separately emitted an `h2.flow-q` with `tabIndex = -1` to receive it. A flow
+   that built its heading any other way would silently lose focus on every
+   step, with nothing to fail. Now the heading that is focused and the heading
+   that is built are one piece of code. */
+export function flowStepBody(steps, n) {
+  const { q, build } = steps[n - 1];
+  const wrap = el('div');
+  const h = el('h2', 'flow-q', q);
+  h.tabIndex = -1;
+  wrap.append(h);
+  build(wrap, q);
+  return wrap;
+}
+
+/* The `.f` label + control pair both flows' text fields are made of. The label
+   WRAPS its control instead of pointing at an id: `#label` and `#when` are
+   already taken by the game screen's "This game" box, and a second element
+   with either id would be the duplicate the shell tests catch.
+
+   `tag` because first run's roster box is a `<textarea>` and everything else
+   about the pair is identical; `type` is only meaningful on an `<input>`.
+   Returns `[label, control]` -- the label is what gets appended, and the
+   control is what a caller that needs an id on the field (first run does, for
+   its own smoke driving) reaches for without a query. */
+export function flowField(tag, label, value, placeholder, onInput) {
+  const l = el('label', 'flow-f');
+  l.append(el('span', 'f', label));
+  const i = el(tag);
+  if (tag === 'input') i.type = 'text';
+  i.value = value;
+  if (placeholder) i.placeholder = placeholder;
+  i.oninput = () => onInput(i.value);
+  l.append(i);
+  return [l, i];
 }
 
 // Item 10: adds `.closing` (app.css: slides the sheet to `translateY(100%)`
