@@ -38,7 +38,7 @@ import { launch, cdp } from './smoke/chrome.mjs';
 import { serve } from './serve.mjs';
 import { parseTokensCss, colorOf } from './tokens-css.mjs';
 import { evalIn, step, SETTLE, WIDTH, HEIGHT } from './smoke/dom.mjs';
-import { goRich, LONG_NAME, RICH, partPlayed as partPlayedFixture, reloadWithRecord } from './smoke/fixtures.mjs';
+import { goRich, LONG_NAME, RICH, partPlayed as partPlayedFixture, reloadWithRecord, seeded } from './smoke/fixtures.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, SHEET_MIN, WIDE_MIN, LAPTOP } from './smoke/registry.mjs';
@@ -301,10 +301,7 @@ export function twinProblems(records) {
  * same rule item 3 states for every other shot, applied to the one state
  * `goRich`'s override cannot reach. */
 async function goFirstRun(c, origin, theme) {
-  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', {
-    source: `try { localStorage.clear(); } catch {}`,
-  });
-  try {
+  await seeded(c, `try { localStorage.clear(); } catch {}`, async () => {
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
     await loaded;
@@ -312,9 +309,7 @@ async function goFirstRun(c, origin, theme) {
       for (let i = 0; i < 60 && !(document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden); i++)
         await new Promise(r => setTimeout(r, 50));
       await ${SETTLE}; })()`);
-  } finally {
-    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  }
+  });
   await evalIn(c, step(`(async () => {
     const s = await import('/state.js');
     s.state.ui.theme = ${JSON.stringify(theme)};

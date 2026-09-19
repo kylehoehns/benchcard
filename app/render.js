@@ -778,14 +778,15 @@ function applyView(v, from) {
        `state.view = v` above has by now already set.
 
        #35 decision 10 SUBSUMES this branch and the Today one below, which is
-       why it shares the call. At 840px and up both panes are on screen
-       whatever the view is, so the two narrow rules -- repaint Games on the
-       way into Games, repaint Today's passes on the way into Today -- are
-       each half of the answer: a coach who picks Team from the rail leaves a
-       game pane behind her that neither would touch. So at that width every
-       section repaints on every view change, which is one full repaint per
-       view change and not a hot path. */
-    if (wideQuery.matches || v === 'games') render();
+       why it shares the call -- narrowed by the efficiency review's own
+       finding: `gamePaneShowing(v)` is exactly "games at every width, or
+       today while wide" (decision 7), so it is games and the wide entry into
+       today that need the game pane's own content fresh, not every wide
+       navigation. Team, Season and Settings cover the game pane at this
+       width (decision 7) and stay fresh through their own edits' `soon()`
+       calls (#26 decision 6) -- painting them here was the exact wasted work
+       that decision removed, back for a pane nobody can see. */
+    if (gamePaneShowing(v)) render();
     /* #26 decision 6: `renderTabs` skips building Today's passes while another
        screen is on show, so a real transition INTO Today has to repaint them
        here or a coach who edited a game and tapped back would see whatever the

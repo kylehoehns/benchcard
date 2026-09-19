@@ -36,6 +36,15 @@ import { readFileSync } from 'node:fs';
  * first, for its side effect on globalThis. */
 import './dom-stub.js';
 import { todayPaneShowing, gamePaneShowing } from '../app/render.js';
+/* A third copy of #35's two breakpoints: `scripts/smoke/registry.mjs` cannot
+ * import `app/render.js` (it calls `matchMedia` at evaluation time, which
+ * throws under plain Node -- the same reason this file reaches for
+ * `dom-stub.js` above), so it carries its own `WIDE_MIN`/`SHEET_MIN`
+ * constants rather than reading render.js's. A reasonable answer, but one
+ * that has to be held to the other two the same way render.js's own copy is
+ * -- reconciled here, against the same `app/render.js` export and the same
+ * CSS blocks this file already reads, rather than a second guard file. */
+import { WIDE_MIN as REGISTRY_WIDE_MIN, SHEET_MIN as REGISTRY_SHEET_MIN } from '../scripts/smoke/registry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 // Both files are read the same way -- text, with the comments stripped, for
@@ -83,6 +92,18 @@ test('WIDE_MIN in render.js is the same number as the wide block\'s min-width', 
      840px)')` typed out by hand would go on matching while WIDE_MIN moved. */
   assert.match(renderSrc, /matchMedia\(`\(min-width: \$\{WIDE_MIN\}px\)`\)/,
     'the wide media query in render.js is not built from WIDE_MIN, so it is a third copy of the breakpoint');
+  /* `scripts/smoke/registry.mjs`'s own `WIDE_MIN` and `SHEET_MIN` -- a third
+     copy of each breakpoint, held to the same two things this test already
+     read: render.js's `WIDE_MIN` (above) and the CSS's own `min-width`s
+     (`SHEET_Q`, `PANE_Q`). Neither direction can be derived from the other,
+     so both are asserted. */
+  assert.equal(REGISTRY_WIDE_MIN, wideMin,
+    `scripts/smoke/registry.mjs's WIDE_MIN is ${REGISTRY_WIDE_MIN}, but app/render.js's WIDE_MIN is ${wideMin} -- `
+    + 'the smoke sweep and wide-layout.mjs would drive the browser at the wrong width while this guard stayed green');
+  const sheetMin = Number(SHEET_Q.match(/min-width:\s*(\d+)px/)[1]);
+  assert.equal(REGISTRY_SHEET_MIN, sheetMin,
+    `scripts/smoke/registry.mjs's SHEET_MIN is ${REGISTRY_SHEET_MIN}, but the CSS sheet block's min-width is `
+    + `${sheetMin} -- registry.mjs has a third, unreconciled copy of the sheet breakpoint`);
 });
 
 /* `--rail` is the 360px column (decision 4), and the "reuse, do not
@@ -252,4 +273,27 @@ test('at 840px and up the game pane is on screen on Today too, but Team, Season 
       `${view} covers the game in the right pane (decision 7), so the game pane is not on screen `
       + 'and painting it is the wasted work #26 decision 6 removed');
   }
+});
+
+/* #35 fix (efficiency review): `applyView`'s wide-repaint branch used to read
+ * `if (wideQuery.matches || v === 'games') render();`, which runs a FULL
+ * `render()` -- `computeAll()` plus all fifteen sections -- on every wide
+ * navigation, including one into Team, Season or Settings, where the game
+ * pane the coach just left behind is hidden and none of those three screens'
+ * own sections need it (they stay fresh through `soon()` on edit, per #26
+ * decision 6). `gamePaneShowing(v)` is already the exact predicate for
+ * "is the game pane on screen": true for `games` at every width, and true for
+ * `today` only when wide (decision 7) -- which is precisely `games` and
+ * `today`, the two views the fix narrows the branch to. So the branch is
+ * asserted to read `gamePaneShowing(v)` and NOT the old unconditional
+ * `wideQuery.matches` -- a guard on the exact regression the review flagged,
+ * proved against the predicate's own truth table just above rather than a
+ * hand-typed one here. */
+test("applyView's wide repaint runs render() only when the game pane is on screen, not on every wide navigation", () => {
+  assert.ok(!/if \(wideQuery\.matches \|\| v === 'games'\) render\(\);/.test(renderSrc),
+    'applyView still repaints unconditionally whenever wideQuery.matches -- Team, Season and Settings '
+    + 'would pay for a full render() they never asked for and #26 decision 6 removed once already');
+  assert.match(renderSrc, /if \(gamePaneShowing\(v\)\) render\(\);/,
+    "applyView's wide repaint branch is not gamePaneShowing(v) -- render() should run exactly when the "
+    + 'game pane is on screen (games at every width, today at 840px+), not on some other condition');
 });

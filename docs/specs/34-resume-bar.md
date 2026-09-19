@@ -363,8 +363,8 @@ on with an id selector rather than by loosening the class rule.
 - The new smoke check and the new `SHOTS` entries are guards: `/new-guard`
   applies, and each must be shown to go red before it is trusted green.
 - If `scripts/budgets.mjs` overruns, widen it deliberately and say why in the
-  commit. If the percentage has no room left, re-record `bytes` in
-  `scripts/budgets.json` **by hand** — never
+  commit. If the percentage has no room left, re-pin `BYTES_BASELINE` in
+  `scripts/budgets.mjs` to your own measured cold load. Never
   `node scripts/smoke.mjs --update-budgets`, which would erase the `requests`
   pin.
 

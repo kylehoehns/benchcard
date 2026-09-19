@@ -135,7 +135,7 @@ const RUN = {
   focusclear: ctx => focusClearPass(ctx.c),
   floatingcontrols: ctx => floatingControlsPass(ctx.c, ctx.origin),
   resumebar: ctx => resumeBarPass(ctx.c, ctx.origin),
-  widelayout: ctx => wideLayoutPass(ctx.c),
+  widelayout: ctx => wideLayoutPass(ctx.c, ctx.origin),
   narrow: ctx => narrowPass(ctx.c),
   sweep: ctx => sweepPass(ctx.c),
   applargetext: ctx => appLargeTextPass(ctx.c, ctx.origin),
@@ -368,7 +368,7 @@ async function browserChecks(origin, only) {
        restores 390x844 before returning, exactly as `narrow` below does --
        so it sits with the other width passes, ahead of them because both of
        those assume the boot-time layout. */
-    report.checks.push(await safeCheck('widelayout', () => wideLayoutPass(c)));
+    report.checks.push(await safeCheck('widelayout', () => wideLayoutPass(c, origin)));
     report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
     report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
     /* After the sweep, because it reloads the app at a 32px root and the sweep

@@ -2075,8 +2075,14 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
      its direct children include four fixed overlays and a `<dialog>`, and
      auto-placing those is a far bigger blast radius than five margins.
      `#storagewarn` rides in the right pane with the rest -- a rare banner,
-     and a full-width variant would be a second layout to maintain. */
-  #view-games, #view-team, #view-season, #view-settings, #storagewarn {
+     and a full-width variant would be a second layout to maintain. It gets
+     the same Welcome exclusion as the rail itself (above): a failed save or
+     a recovery notice can show up before onboarding is done, and there is no
+     rail there for the banner to sit beside. */
+  #view-games, #view-team, #view-season, #view-settings {
+    margin-left: var(--rail);
+  }
+  html:not([data-view="welcome"]) #storagewarn {
     margin-left: var(--rail);
   }
   /* Decision 7: the right pane's resting state is the open game, so the wide

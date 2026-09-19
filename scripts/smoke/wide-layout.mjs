@@ -1,7 +1,8 @@
-import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, step, landWiped, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { nameOf, RAIL, WIDE_MIN, SHEET_MIN, LAPTOP } from './registry.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
+import { goRich } from './fixtures.mjs';
 
 /* #35's own guard (docs/specs/35-wide-screens.md, Proof 3): the two-pane
  * layout, driven in the real app over CDP and measured with
@@ -28,10 +29,11 @@ import { evalJSON, tap } from './sheet-drive.mjs';
  * a green row having proved nothing at all.
  */
 
-// 39 assertions in a healthy run, measured: the two wide widths, 3 for the
-// window dragged across the breakpoint without navigating, the sheet at 600px
-// and at 599px, and the Resume bar's own when the fixture has a part-played
-// game to offer. Well under that means a probe came back empty.
+// 42 assertions in a healthy run, measured: 3 for #storagewarn on a wiped
+// Welcome, the two wide widths, 3 for the window dragged across the
+// breakpoint without navigating, the sheet at 600px and at 599px, and the
+// Resume bar's own when the fixture has a part-played game to offer. Well
+// under that means a probe came back empty.
 const AUDIT_FLOOR = 30;
 
 // The centered sheet's cap (decision 11) and the width that must still show a
@@ -95,13 +97,62 @@ async function atWidth(c, w) {
   await new Promise(r => setTimeout(r, 400));
 }
 
-export async function wideLayoutPass(c) {
+export async function wideLayoutPass(c, origin) {
   const problems = [];
   let audited = 0;
   const ck = (cond, msg) => { audited++; if (!cond) problems.push(msg); return cond; };
   const read = () => evalJSON(c, PROBE);
 
   try {
+    /* ---- decision 4's rail exclusion, and #storagewarn (quality review of
+     * #35): the wide block's rail rule deliberately excludes Welcome
+     * (`html:not([data-view="welcome"])`), so a coach who has not finished
+     * onboarding never gets a 360px rail with nothing in it. `#storagewarn`
+     * shares the same `margin-left: var(--rail)` declaration as the rail
+     * views, so without the same exclusion a failed save surfaced while
+     * Welcome is still showing pushes the banner 360px right of a rail that
+     * does not exist.
+     *
+     * WHY HERE AND NOT test/wide-layout.test.js: that file reads the
+     * stylesheet as text (its own header says so) and cannot tell where the
+     * banner's box actually lands -- exactly the reason this whole pass is a
+     * browser and not a test. `landWiped` (`dom.mjs`) is the existing idiom
+     * for reaching a genuinely first-run Welcome; `save()` (`state.js`) is
+     * called for real, through a `Storage.prototype.setItem` failure, so the
+     * banner is populated by the same code path a coach's full storage would
+     * hit rather than a string written into `#storagewarn` by hand. `goRich`
+     * restores the fixture the rest of this pass (and `narrowPass`,
+     * `sweepPass` right after it) assumes is loaded, the same courtesy
+     * `resumebar` and `teamscreen` already extend the row after them. */
+    await atWidth(c, LAPTOP);
+    await landWiped(c, origin + '/index.html',
+      "document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden");
+    await evalIn(c, step(`(async () => {
+      const s = await import('/state.js');
+      const real = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (k, v) {
+        if (k === 'benchcard.v6') throw new DOMException('quota exceeded', 'QuotaExceededError');
+        return real.call(this, k, v);
+      };
+      try { s.save(); } finally { Storage.prototype.setItem = real; }
+    })()`));
+    const warn = await evalJSON(c, `(() => {
+      const el = document.querySelector('#storagewarn');
+      const r = el.getBoundingClientRect();
+      return JSON.stringify({
+        view: document.documentElement.dataset.view || null,
+        text: el.textContent,
+        left: Math.round(r.left),
+      });
+    })()`);
+    ck(warn.view === 'welcome',
+      `expected the wiped landing to still be Welcome, got data-view="${warn.view}"`);
+    ck(!!warn.text, 'save() through a forced setItem failure did not populate #storagewarn -- nothing to measure');
+    ck(warn.left === 0,
+      `Welcome at ${LAPTOP}px: #storagewarn starts at ${warn.left}px, want 0 -- decision 4 excludes `
+      + 'Welcome from the rail and the banner must too');
+    await goRich(c, origin);
+
     /* ---- items 1 and 2: the two-pane layout at 1280px and 840px ---- */
     for (const w of WIDE_WIDTHS) {
       await atWidth(c, w);
