@@ -1594,7 +1594,13 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   mask-image: linear-gradient(to top, black 0%, black 75%, transparent 100%);
   -webkit-mask-image: linear-gradient(to top, black 0%, black 75%, transparent 100%);
 }
-@media (max-width: 900px) { .actionbar:not([hidden]) { display: flex; } }
+/* #35 decision 7: 839px, not 900px. Above 840px the game screen is the right
+   pane of the two-pane layout and the inline `.gm-start` row carries Start
+   game there, so the floating bar retires -- and with it gone, `#resumeBar`
+   is the only bottom bar left above 840px, which is what keeps
+   `measureChromeHeights`'s one-bar assumption (render.js) true. 839/840 pair
+   the way 1099/1100 already do. */
+@media (max-width: 839px) { .actionbar:not([hidden]) { display: flex; } }
 /* #34 decision 1/13: `#resumeBar` reuses `.actionbar`'s whole shell (the
    scrim, blur, safe-area padding, entrance animation and solid fallbacks --
    all selected by class above, so none of it is repeated here), but shows at
@@ -1663,7 +1669,12 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
  * The `:has()` override is written as an override rather than a condition so a
    browser without it keeps the safe, over-padded behavior instead of losing
    the clearance entirely. */
-@media (max-width: 900px) {
+/* #35 decision 7: 839px, not 900px -- the same move the action bar's own
+   display gate above makes, and for the same reason. The clearance exists for
+   the floating bars; above 840px `#actionbar` is gone and `#resumeBar` is
+   pinned to the rail, which has its own `padding-bottom: calc(var(--ab-h) +
+   1.5rem)` in the wide block. */
+@media (max-width: 839px) {
   .wrap { padding-bottom: 6.5rem; }
   /* #34 decision 12: two bars can now hold this clearance open -- collapse it
      only once BOTH are hidden. */
@@ -2012,6 +2023,80 @@ html[data-boot="games"] #barBack[hidden],
 html[data-boot="team"] #barBack[hidden],
 html[data-boot="season"] #barBack[hidden],
 html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
+
+/* ============ wide screens: Today and the game side by side (#35) ============
+ * #35 decisions 3, 4, 6 and 7. HERE, below the `data-boot` rules above, and
+ * the position is load bearing: `html[data-boot="games"] #view-today` and
+ * `html:not([data-view="welcome"]) #view-today` have identical specificity,
+ * so source order is the whole of the tie-break and the rail has to win.
+ *
+ * `screen and`, never a bare `min-width: 840px` -- a bare query matches print
+ * as well, and `margin-left: var(--rail)` would then shove the printed card
+ * 360px to the right on every sheet of paper. The repo already writes
+ * `@media screen and (max-width: 1099px)` for exactly this reason.
+ *
+ * `html[data-view]` is how the cascade learns the current screen (decision 3):
+ * `applyView` writes it beside the line that already sets `state.view`, and
+ * index.html's boot stamp writes it beside `data-boot`, so the first frame is
+ * right too. It is a projection of `state.view` into the DOM for the cascade,
+ * not a second copy of it -- nothing reads it back as state. */
+@media screen and (min-width: 840px) {
+  /* The rail's width, written down ONCE. Three rules below need it -- the
+     rail's own box, the right pane's `margin-left` and the Resume bar's
+     width -- and they have to move together or the panes overlap. Not
+     resizable and not remembered (out of scope); 360px, fixed. */
+  :root { --rail: 360px; }
+  /* Decision 4: Today is the left rail, on screen whatever `state.view`
+     says. The `hidden` attribute goes on tracking the view for the narrow
+     layout's sake, so this has to beat `[hidden] { display: none !important }`
+     at the top of the file -- the same `display: … !important` idiom the
+     `data-boot` rules above already use.
+
+     `--bar-h` and `--ab-h` are `measureChromeHeights`'s (render.js), reused,
+     never measured again here: the bar wraps to two rows at a large text
+     size and the Resume bar grows with the same text, so neither is a
+     constant this sheet could hard-code. The fallback on `--bar-h` is what
+     the first frame gets before any script has run.
+
+     Welcome is excluded so first run stays one full-width screen at every
+     width. */
+  html:not([data-view="welcome"]) #view-today,
+  html:not([data-view="welcome"]) #view-today[hidden] {
+    display: block !important;
+    position: fixed; inset: var(--bar-h, 4.5rem) auto 0 0;
+    width: var(--rail); max-width: var(--rail); margin: 0;
+    overflow-y: auto; overscroll-behavior: contain;
+    border-right: 1px solid var(--line);
+    padding-bottom: calc(var(--ab-h, 0px) + 1.5rem);
+  }
+  /* Decision 6: the right pane is a margin, not a grid. `.wrap`'s own
+     `margin: 0 auto` keeps `auto` on the right, so the content still caps at
+     its own `max-width` inside the space that is left. No grid on `.app`:
+     its direct children include four fixed overlays and a `<dialog>`, and
+     auto-placing those is a far bigger blast radius than five margins.
+     `#storagewarn` rides in the right pane with the rest -- a rare banner,
+     and a full-width variant would be a second layout to maintain. It gets
+     the same Welcome exclusion as the rail itself (above): a failed save or
+     a recovery notice can show up before onboarding is done, and there is no
+     rail there for the banner to sit beside. */
+  #view-games, #view-team, #view-season, #view-settings {
+    margin-left: var(--rail);
+  }
+  html:not([data-view="welcome"]) #storagewarn {
+    margin-left: var(--rail);
+  }
+  /* Decision 7: the right pane's resting state is the open game, so the wide
+     layout is never half empty -- Today on the left, the game on the right,
+     and Team, Season or Settings covering the game when one is open. Back
+     from any of those returns to Today, which is the game again. */
+  html[data-view="today"] #view-games[hidden] { display: block !important; }
+  /* Decision 7, second consequence: `#actionbar` is gone above this width
+     (its gate is `max-width: 839px`), so `#resumeBar` is the only floating
+     bottom bar left -- which is what keeps `measureChromeHeights`'s
+     one-bar assumption true. It belongs to Today, so it is pinned to Today's
+     column rather than spanning the window. */
+  #resumeBar { left: 0; right: auto; width: var(--rail); }
+}
 /* ONE SCREEN (A52). The hero is sized to the viewport you can actually see and
    the stage inside it takes whatever is left, so the two doors sit above the
    fold on any device instead of at a pixel count that happened to be true on a
@@ -2529,6 +2614,61 @@ dialog.bsheet.dragging { will-change: transform; }
    `closeSheets()` (a screen change, `popstate`, or `openSheet` closing
    whatever was already open) never adds it, so those stay instant. */
 dialog.bsheet.closing { transform: translateY(100%); --scrim: 0; }
+
+/* ============ from 600px a sheet is a centered dialog (#35) ============
+ * #35 decision 11. `screen and`, never a bare `min-width`: a bare query
+ * matches print too, and print has no sheets to center but does have a card
+ * that must not move. Everything below 600px is untouched, down to the last
+ * pixel -- decision 2 is that every rule this ticket adds lives inside one of
+ * its two `min-width` blocks.
+ *
+ * The drag handle goes first: a centered dialog has no bottom edge to be
+ * pulled down past, so the affordance would be promising a gesture
+ * `beginDrag` (trap.js, decision 13) now refuses. */
+@media screen and (min-width: 600px) {
+  /* `inset: 0` + `margin: auto` is the centering; `height: auto` lets the
+     sheet be as tall as its content and `max-height` caps it. `.bsheet-body`
+     is already `flex: 1; overflow-y: auto`, so the body scrolls inside the
+     dialog with nothing further to change.
+
+     `display` is STILL not declared here, for exactly the reason the base
+     rule gives: an author `display` on `dialog.bsheet` beats the UA's
+     `dialog:not([open]) { display: none }` at equal specificity, and all
+     three sheets would sit on screen, visible and tappable, before anyone
+     opened one.
+
+     The base rule's second shadow -- `0 80px 0 0 var(--surface)` -- goes.
+     It exists to fill the gap under a sheet dragged past the bottom edge,
+     and a centered dialog has no bottom edge to be dragged past. */
+  dialog.bsheet {
+    inset: 0; margin: auto;
+    width: min(560px, calc(100% - 2rem)); max-width: 560px;
+    height: auto; max-height: min(92vh, 92dvh);
+    border-radius: var(--r-sheet);
+    box-shadow: var(--shadow-lg);
+  }
+  /* The two resting heights `setSheetHeight` (trap.js) toggles are a bottom
+     sheet's idea: 50dvh and 92dvh are "how far up the screen the top edge
+     sits", which means nothing once the dialog is centered and sized to its
+     own content. The class still comes and goes; it just no longer sets a
+     height. */
+  dialog.bsheet.bsheet-half, dialog.bsheet.full { height: auto; }
+  /* The Plan sheet carries the same slab on its own token, so it needs the
+     same override. */
+  dialog.bsheet.grouped { box-shadow: var(--shadow-lg); }
+  .bsheet-handle { display: none; }
+  /* #35 decision 12: the slide becomes a fade. A centered dialog sliding up
+     from the bottom of the screen reads as a bug. Inside
+     `prefers-reduced-motion: no-preference`, like the slide it replaces, so
+     a reader who asked for less motion still gets neither.
+     `opacity` joins the transition list here: without it `@starting-style`'s
+     `opacity: 0` would be a jump cut rather than a fade. */
+  @media (prefers-reduced-motion: no-preference) {
+    dialog.bsheet { transition: opacity var(--t) var(--ease), transform var(--t) var(--ease); }
+    dialog.bsheet[open] { @starting-style { transform: none; opacity: 0; } }
+    dialog.bsheet.closing { transform: none; opacity: 0; }
+  }
+}
 
 /* ==================== Add a game, three steps (#32) ====================
  * N8/C10: a full-screen flow, not a bottom sheet. Like `dialog.bsheet`
@@ -3303,16 +3443,20 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 /* A39. The two breakpoints carry different rows, deliberately -- do not
  * "simplify" this back into one row for both.
  *
- * Below 900px `#actionbar` exists, pinned to the bottom in thumb reach, and it
+ * Below 840px `#actionbar` exists, pinned to the bottom in thumb reach, and it
  * already holds bench and print. `.gm-start` repeated the bench button about
- * two screens down the page, so the phone showed it twice. Above 900px there
+ * two screens down the page, so the phone showed it twice. Above 840px there
  * is no action bar at all, so `.gm-start` is the only path to it and stays.
+ *
+ * #35 decision 7 moved this boundary from 900px to 839px, with the action
+ * bar's own two gates, so it pairs with `min-width: 840px` -- the width at
+ * which the game screen becomes the right pane and the floating bar retires.
  *
  * #29 decision 8: Print and Share image moved into `#sheetCard`, reachable at
  * every width through `#shareBtn` (the top bar), so this rule no longer needs
  * to reach into a shared row to hide only part of it -- `.gm-start` hides
  * whole. */
-@media (max-width: 900px) {
+@media (max-width: 839px) {
   .gm-start { display: none; }
 }
 

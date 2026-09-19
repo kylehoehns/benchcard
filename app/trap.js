@@ -251,6 +251,18 @@ function roomUpFor(dialog) {
 }
 
 function beginDrag(dialog, y) {
+  /* #35 decision 13. From 600px up a sheet is a centered dialog, and the drag
+     it would otherwise start is a gesture with nowhere to go: `endDrag`
+     dismisses a sheet pulled DOWN past the bottom edge, and a dialog floating
+     in the middle of the screen has no bottom edge to be pulled past -- it
+     would simply slide out from under the coach's finger and snap back.
+     Measured, not a second copy of the 600px breakpoint: the rule is "only a
+     sheet that touches the bottom can be pulled down past it", and 1px of
+     slack covers subpixel layout. Returning before `dragOf.set` is what makes
+     this stick -- `moveDrag` and `endDrag` both no-op on a dialog with no
+     drag state, so the whole gesture is a no-op without either of them
+     needing to ask the question again. */
+  if (innerHeight - dialog.getBoundingClientRect().bottom > 1) return null;
   cancelClosing(dialog);
   const st = {
     base: currentTranslateY(dialog),

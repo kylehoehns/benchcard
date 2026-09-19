@@ -195,7 +195,10 @@ and the committer ran it again on the same bytes — about twelve pairs for one
 ticket, half of them repeats. A tree a commit already recorded as green is not
 re-run to say so again.
 
-The payload budget is a **recorded** baseline in `scripts/budgets.json`.
+The payload budget is a **recorded** baseline. `requests` and `nodes` live in
+`scripts/budgets.json`; `bytes` is hand-pinned as `BYTES_BASELINE` in
+`scripts/budgets.mjs`, because nothing can rewrite `budgets.json` without
+erasing the `requests` pin (#35).
 **Bytes and nodes are regression alarms, not constraints**: the shell is
 precached, so
 after the first load neither number costs a coach anything, and node or byte
@@ -203,8 +206,10 @@ cost is not a reason to reject a fix. Their ceilings are deliberately wide.
 **`requests` is the one real pin** — it is hand-set at 40 of 41 and is what
 stops a new module quietly joining the boot graph. Never re-record it, and
 never run a blanket `node scripts/smoke.mjs --update-budgets`, which would
-erase the pin. Widen a ceiling in `scripts/budgets.mjs` instead, deliberately,
-and say why in the commit.
+erase the pin. Re-pin the `bytes` baseline to your own measured cold load in
+`scripts/budgets.mjs` instead, deliberately, and say what you measured there
+and in the commit. Do not widen the percentage in place of re-pinning: that
+ratchet ran from #22 to #33 and ended with a ceiling 61% above a stale number.
 
 Shipping a redesign ticket and need a screenshot compare set? `node
 scripts/compare-shots.mjs --issue <n>` is the one committed harness — it

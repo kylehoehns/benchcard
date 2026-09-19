@@ -38,10 +38,10 @@ import { launch, cdp } from './smoke/chrome.mjs';
 import { serve } from './serve.mjs';
 import { parseTokensCss, colorOf } from './tokens-css.mjs';
 import { evalIn, step, SETTLE, WIDTH, HEIGHT } from './smoke/dom.mjs';
-import { goRich, LONG_NAME, RICH, partPlayed as partPlayedFixture, reloadWithRecord } from './smoke/fixtures.mjs';
+import { goRich, LONG_NAME, RICH, partPlayed as partPlayedFixture, reloadWithRecord, seeded } from './smoke/fixtures.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './smoke/registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, SHEET_MIN, WIDE_MIN, LAPTOP } from './smoke/registry.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -82,13 +82,38 @@ export const THEME_BG = Object.freeze({
 const THEMES = ['light', 'dark'];
 const otherTheme = t => (t === 'light' ? 'dark' : 'light');
 
+/* The shape of a shot with every modifier off, written ONCE: both builders
+ * below start from it, so a new modifier is declared here and nowhere else.
+ * `mobile` is what that is worth -- it had to be hand-typed into four
+ * separate entries the day it arrived, and the entry that missed it would
+ * have been captured as whatever `capture()` felt like defaulting to. */
+const SHOT = Object.freeze({
+  view: null, theme: 'light', width: WIDTH, rootPx: 16,
+  full: false, bottom: false, longNames: false, firstRun: false,
+  titleCollapsed: false, partPlayed: false,
+  /* #35 decision 15: `mobile` joins the shot shape, defaulting to the phone
+     every other shot in this table is. It was hardcoded `true` at every
+     `Emulation.setDeviceMetricsOverride` call in this file, which is simply
+     wrong for a laptop-width shot -- mobile emulation carries touch input and
+     mobile viewport handling with it. */
+  mobile: true,
+  /* #35 decision 15: a dialog to open before the shot is taken -- a selector
+     and the click that opens it, or null. Same "prove the modifier happened"
+     shape as `bottom` and `titleCollapsed`. */
+  sheet: null,
+});
+
 const pair = (name, view, theme, extra = {}) => ({
-  name: `${name}-${theme}`, view, theme, width: WIDTH, rootPx: 16,
-  full: false, bottom: false, longNames: false, firstRun: false, titleCollapsed: false,
-  partPlayed: false,
+  ...SHOT,
+  name: `${name}-${theme}`, view, theme,
   twin: `${name}-${otherTheme(theme)}`,
   ...extra,
 });
+
+/* A cell that runs light only -- the large-text ones, which are about layout
+ * rather than paint. Its name carries no theme suffix and it declares no
+ * twin, which is the whole of the difference from `pair`. */
+const solo = (name, view, extra = {}) => ({ ...SHOT, name, view, twin: null, ...extra });
 
 const BASE_SHOTS = VIEWS.flatMap(v => THEMES.map(theme => pair(v.name, v.name, theme)));
 
@@ -102,9 +127,7 @@ const EXTRA_SHOTS = [
   ...THEMES.map(theme => pair('full', 'settings', theme, { full: true })),
   // 320px at a 32px root -- bug 1's own repro cell, on Today. Light only: it
   // is about layout, not paint, so it declares no twin.
-  { name: 'large-text-320', view: 'today', theme: 'light', width: LARGE_TEXT_WIDTH,
-    rootPx: LARGE_TEXT_PX, full: false, bottom: false, longNames: false,
-    firstRun: false, twin: null },
+  solo('large-text-320', 'today', { width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
   // The empty first-run screen -- a genuinely wiped record, not RICH.
   ...THEMES.map(theme => pair('first-run', null, theme, { firstRun: true })),
   // #33 item 11: `.bar.title-in` (decision 1) -- scrolled just past the large
@@ -123,9 +146,8 @@ const EXTRA_SHOTS = [
   // and 320px at a 32px root for the long-name wrap case item 4 requires.
   ...THEMES.map(theme => pair('resume-bar', 'today', theme, { partPlayed: true })),
   ...THEMES.map(theme => pair('resume-bar-full', 'today', theme, { partPlayed: true, full: true })),
-  { name: 'resume-bar-320', view: 'today', theme: 'light', width: LARGE_TEXT_WIDTH,
-    rootPx: LARGE_TEXT_PX, full: false, bottom: false, longNames: false,
-    firstRun: false, titleCollapsed: false, partPlayed: true, twin: null },
+  solo('resume-bar-320', 'today',
+    { width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX, partPlayed: true }),
   /* AND THAT CELL SCROLLED TO ITS END. `bottom: true` is worthless on Today
      at 390px (nine pixels of scroll room, as the entry above says), but at
      320px with a 32px root the bar wraps to five lines, Today grows well past
@@ -135,12 +157,49 @@ const EXTRA_SHOTS = [
      `resume-bar-full` cannot show this: a full-document capture has no last
      screenful to be stranded in. Light only, like every other large-text
      cell, so it declares no twin. */
-  { name: 'resume-bar-bottom-320', view: 'today', theme: 'light', width: LARGE_TEXT_WIDTH,
-    rootPx: LARGE_TEXT_PX, full: false, bottom: true, longNames: false,
-    firstRun: false, titleCollapsed: false, partPlayed: true, twin: null },
+  solo('resume-bar-bottom-320', 'today',
+    { width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX, partPlayed: true, bottom: true }),
+  /* #35 Proof 5: the wide layout, which no shot above can show -- every one
+     of them is 390px or narrower, where this ticket changes nothing at all.
+     A laptop, so `mobile: false` (decision 15).
+       wide-today  -- Today as the 360px rail with the open game beside it,
+                      the arrangement the ticket is named after;
+       wide-game   -- the game screen as the current view, rail still there;
+       wide-bottom -- Season scrolled to its end in the right pane, with the
+                      rail (its own scroller) beside it: the clipping case
+                      the look check exists for;
+       wide-840    -- the breakpoint itself, where the right pane is at its
+                      narrowest (840 - 360 = 480px) and anything that does
+                      not fit shows first. */
+  ...THEMES.map(theme => pair('wide-today', 'today', theme, { width: LAPTOP, mobile: false })),
+  ...THEMES.map(theme => pair('wide-game', 'games', theme, { width: LAPTOP, mobile: false })),
+  ...THEMES.map(theme => pair('wide-bottom', 'season', theme, { width: LAPTOP, mobile: false, bottom: true })),
+  ...THEMES.map(theme => pair('wide-840', 'today', theme, { width: WIDE_MIN, mobile: false })),
+  /* #35 Proof 5's last state: the middle band, where the layout is still one
+     column but a bottom sheet has become a centered dialog. The card sheet is
+     the one reachable from the game screen's own chrome (#shareBtn), which is
+     why this pair opens on the game. The click and the dialog it must open
+     are both declared, so a capture that clicked and got nothing fails
+     instead of writing a picture of the game screen. */
+  ...THEMES.map(theme => pair('mid-sheet', 'games', theme, {
+    width: SHEET_MIN,
+    sheet: { selector: 'dialog.bsheet[open]', open: `document.getElementById('shareBtn').click()` },
+  })),
 ];
 
 export const SHOTS = Object.freeze([...BASE_SHOTS, ...EXTRA_SHOTS].map(Object.freeze));
+
+/* ---------- deviceMetrics: what Chrome is actually asked for ----------
+ *
+ * The one place the `Emulation.setDeviceMetricsOverride` payload for a shot
+ * is built, so the `mobile` flag has exactly one reader. Pure and exported
+ * for the same reason `shotProblems` is: `test/compare-shots.test.js` can
+ * check the rule without launching a browser. `height` is a parameter
+ * because a `full: true` shot overrides a second time with the document's
+ * own height. */
+export const deviceMetrics = (want, height) => ({
+  width: want.width, height, deviceScaleFactor: 2, mobile: want.mobile !== false,
+});
 
 /* ---------- shotProblems: the font-size and paint rule ----------
  *
@@ -242,10 +301,7 @@ export function twinProblems(records) {
  * same rule item 3 states for every other shot, applied to the one state
  * `goRich`'s override cannot reach. */
 async function goFirstRun(c, origin, theme) {
-  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', {
-    source: `try { localStorage.clear(); } catch {}`,
-  });
-  try {
+  await seeded(c, `try { localStorage.clear(); } catch {}`, async () => {
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
     await loaded;
@@ -253,9 +309,7 @@ async function goFirstRun(c, origin, theme) {
       for (let i = 0; i < 60 && !(document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden); i++)
         await new Promise(r => setTimeout(r, 50));
       await ${SETTLE}; })()`);
-  } finally {
-    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  }
+  });
   await evalIn(c, step(`(async () => {
     const s = await import('/state.js');
     s.state.ui.theme = ${JSON.stringify(theme)};
@@ -296,8 +350,7 @@ const READ_PAINT = `JSON.stringify({
  * and is not. */
 async function capture(c, origin, want, outDir) {
   await c.send('Page.setFontSizes', { fontSizes: { standard: want.rootPx, fixed: want.rootPx } });
-  await c.send('Emulation.setDeviceMetricsOverride',
-    { width: want.width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  await c.send('Emulation.setDeviceMetricsOverride', deviceMetrics(want, HEIGHT));
 
   if (want.firstRun) {
     await goFirstRun(c, origin, want.theme);
@@ -336,6 +389,22 @@ async function capture(c, origin, want, outDir) {
     }
   }
 
+  /* #35 decision 15: the `sheet` modifier -- the click that opens a dialog,
+     then the dialog itself, asserted open before a PNG is written. Outside
+     the branches above for the same reason the `bottom` block below is: a
+     modifier that only works on one kind of shot is a modifier that silently
+     does nothing on the rest. A click that opened no dialog (a renamed
+     button, a view that never got there) would write a picture of the screen
+     behind the sheet and look like every other shot of that screen. */
+  if (want.sheet) {
+    await evalIn(c, step(want.sheet.open));
+    const opened = await evalIn(c, `!!document.querySelector(${JSON.stringify(want.sheet.selector)})`);
+    if (!opened) {
+      throw new Error(`${want.name}: nothing matched ${want.sheet.selector} after the sheet click, `
+        + 'so this shot would be of the screen behind the sheet and would prove nothing about it');
+    }
+  }
+
   /* OUTSIDE the branches above, not inside the `goRich` one. This used to sit
      in the `else`, so a `firstRun` or `partPlayed` shot asking for `bottom`
      was silently never scrolled -- #34's own part-played bottom cell came out
@@ -360,8 +429,7 @@ async function capture(c, origin, want, outDir) {
     // Grow the viewport explicitly (bug 1's fix), then re-apply the font
     // size and re-measure -- a re-apply that does not take is a failure, not
     // a retry loop.
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: want.width, height: contentHeight, deviceScaleFactor: 2, mobile: true });
+    await c.send('Emulation.setDeviceMetricsOverride', deviceMetrics(want, contentHeight));
     await c.send('Page.setFontSizes', { fontSizes: { standard: want.rootPx, fixed: want.rootPx } });
     await evalIn(c, `(async () => { await ${SETTLE}; })()`);
   }

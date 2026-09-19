@@ -3,6 +3,40 @@
    `smoke.mjs` unchanged. */
 import { evalIn, SETTLE } from './dom.mjs';
 
+/* #35 fix: seed the NEXT document, never the one about to be navigated away
+ * from.
+ *
+ * `goRich`, `goSeed` and `reloadWithRecord` all used to write the fixture by
+ * evaluating `localStorage.setItem` on the page that was still loaded, and
+ * only then call `Page.navigate`. That leaves a window, between the write and
+ * the new document's own scripts running, in which the OUTGOING page can
+ * still write to `localStorage` itself -- and #35's own wide-query `change`
+ * listener does exactly that: dropping the viewport across the 840px
+ * breakpoint fires `renderAll()` then `save()` on whatever page is still
+ * loaded, which can land after this file's own write and silently replace
+ * the fixture it just seeded. The new document then boots from whatever the
+ * outgoing page last saved, not the fixture asked for.
+ *
+ * `Page.addScriptToEvaluateOnNewDocument` closes the window structurally: the
+ * source runs in the NEW document, before that document's own scripts (so
+ * before anything the app itself could write), and nothing the outgoing page
+ * does can race a write that has not happened on the outgoing page at all.
+ * `goFirstRun` in `scripts/compare-shots.mjs` already uses this exact idiom
+ * to clear storage before a first-run navigation; this is the same idiom
+ * shared by every caller that seeds a record rather than clearing one, so
+ * there is one seeding pattern in this file, not four copies of the same
+ * fix. Removes the script again in a `finally`, exactly as `goFirstRun` does
+ * -- left registered, it would go on running on every navigation after this
+ * one, including ones nothing here expects to be reseeded. */
+export async function seeded(c, source, fn) {
+  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source });
+  try {
+    return await fn();
+  } finally {
+    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  }
+}
+
 /* ---------- the roster the harness plans with ---------- */
 
 /* 11 players at 4×8 with subs every 4 minutes: the realistic case the rules
@@ -136,18 +170,18 @@ export const RICH = {
    nothing and gets exactly the old RICH. */
 export async function goRich(c, origin, ui) {
   const record = ui ? { ...RICH, ui: { ...RICH.ui, ...ui } } : RICH;
-  await evalIn(c, `(() => {
+  await seeded(c, `(() => {
     localStorage.removeItem('benchcard.v3');
     localStorage.removeItem('benchcard.v6.bak');
     localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(record))});
-    return 1;
-  })()`);
-  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url: origin + '/index.html' });
-  await loaded;
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
+  })()`, async () => {
+    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+    await c.send('Page.navigate', { url: origin + '/index.html' });
+    await loaded;
+    await evalIn(c, `(async () => { await document.fonts.ready;
+      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
+      await ${SETTLE}; })()`);
+  });
 }
 
 /* Reload straight onto `SEED` (`benchcard.v3`), the way `game passes` (#26)
@@ -157,17 +191,18 @@ export async function goRich(c, origin, ui) {
    `browserChecks`). Waits for `.card` rather than `.today-game` (`reloadWithRecord`
    below) because `SEED` boots straight onto the games view, not Today. */
 export async function goSeed(c, origin) {
-  await evalIn(c, `(() => {
+  await seeded(c, `(() => {
     localStorage.removeItem('benchcard.v6');
     localStorage.removeItem('benchcard.v6.bak');
     localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))});
-  })()`);
-  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url: origin + '/index.html' });
-  await loaded;
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
+  })()`, async () => {
+    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+    await c.send('Page.navigate', { url: origin + '/index.html' });
+    await loaded;
+    await evalIn(c, `(async () => { await document.fonts.ready;
+      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
+      await ${SETTLE}; })()`);
+  });
 }
 
 /* Swap in `record` and reload, the way the #23 checks below need to: a
@@ -179,19 +214,20 @@ export async function goSeed(c, origin) {
    `.today-game` rather than `.card` (`goRich` above) because every #23 check
    reloads onto Today, never straight onto a game. */
 export async function reloadWithRecord(c, origin, record) {
-  await evalIn(c, `(() => {
+  await seeded(c, `(() => {
     localStorage.removeItem('benchcard.v3');
     localStorage.removeItem('benchcard.v6.bak');
     localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(record))});
-  })()`);
-  for (const url of [`${origin}/index.html?_smoke=${Date.now()}`, `${origin}/index.html`]) {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url });
-    await loaded;
-  }
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.querySelector('.today-game'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
+  })()`, async () => {
+    for (const url of [`${origin}/index.html?_smoke=${Date.now()}`, `${origin}/index.html`]) {
+      const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+      await c.send('Page.navigate', { url });
+      await loaded;
+    }
+    await evalIn(c, `(async () => { await document.fonts.ready;
+      for (let i = 0; i < 60 && !document.querySelector('.today-game'); i++) await new Promise(r => setTimeout(r, 50));
+      await ${SETTLE}; })()`);
+  });
 }
 
 /* ---------- FOUR (#26) ----------

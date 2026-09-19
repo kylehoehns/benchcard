@@ -150,6 +150,12 @@
     // today is the markup default, so it is stamped as nothing at all
     if (welcome) view = 'welcome';
     if (view !== 'today') document.documentElement.setAttribute('data-boot', view);
+    /* #35 decision 3: the same resolved view, as `data-view`, so the wide
+       layout's rules are right on the first frame too. Unconditional, unlike
+       `data-boot` above -- the wide block has a rule for `today` as well, and
+       `applyView` (render.js) keeps writing this attribute for the rest of
+       the session instead of removing it. */
+    document.documentElement.setAttribute('data-view', view);
 
     /* #25 item 8: the team color, stamped from the SAME winning record
        resolved above -- `raw` and `decided` -- rather than re-reading the

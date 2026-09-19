@@ -8,9 +8,11 @@
 
    * **Recorded baselines** — bytes, request count, DOM nodes. Nobody knows
      what the "right" number is, so we do not invent one: we record today's and
-     fail when it grows. Re-record deliberately with
-     `node scripts/smoke.mjs --update-budgets`, and the diff shows up in review
-     as a number going up, which is the whole point.
+     fail when it grows, and the diff shows up in review as a number going up,
+     which is the whole point. `requests` and `nodes` come from budgets.json.
+     `bytes` no longer does: it is hand-pinned below as `BYTES_BASELINE`,
+     because the only command that rewrites budgets.json would erase the
+     hand-set `requests` pin and is denied. See that pin's comment.
 
    The photo scanner used to add a second, harder rule here: its ~9.6 MB OCR
    bundle had to stay out of the initial payload, and one request was a
@@ -256,7 +258,54 @@
    of its 41 ceiling, unchanged -- everything #33 adds lives in
    `app/render.js`, no new module joined the boot graph, and the two new smoke
    modules are harness the page never fetches. DOM nodes 1362 of 1769. */
-export const SLACK = { bytesPct: 0.595, bytesAbs: 384, requests: 2, nodes: 250 };
+/* #35 is the ticket the note above said would come, and it went over: a full
+   cold `npm run smoke` measured 1188.4 KB against the 1175.1 KB ceiling. So
+   this is the re-pin that note prescribes, and the ratchet stops here.
+
+   `bytes` in budgets.json still reads 754209 (736.5 KB), a 2026-08-24
+   measurement five tickets stale. It could not be corrected: `--update-budgets`
+   is denied because it would erase the hand-set `requests` pin, and
+   `guard-edit.sh` denies a hand edit to that file outright, naming this file as
+   the place to change a ceiling instead. Both guards and AGENTS.md agree on
+   that route, so the pin is taken here, where a ceiling is allowed to live.
+   Nothing reads budgets.json's `bytes` for the check any more -- `pinned()`
+   below replaces it -- so there is still exactly one live answer, and it is
+   this one. `requests` and `nodes` are untouched and still come from the file.
+
+   `BYTES_BASELINE` is a measurement, not a guess: a full cold load of the
+   commit this ships with, 1216873 bytes at 390x844, taken with
+   `node scripts/smoke.mjs --json --no-tests`. It agrees with the tree file by
+   file -- Stylesheet 294421 against 293871 bytes of app.css + tokens.css +
+   card.css on disk, Document 119624 against 119439 bytes of index.html -- so
+   the 61% gap to the old baseline is five tickets of real growth, not double
+   counting.
+
+   The slack goes back to a shape that means something: 59.5% + 384 bytes
+   becomes 2% + 24 KB. Against the real baseline that is 48913 bytes of room,
+   under the 60000 a second copy of a 60 KB vendor script would cost, which is
+   the regression this alarm exists to catch -- and now it is measured against
+   the app's actual size rather than a 100 KB fixture's. The ceiling is
+   1265786 bytes, 1236.1 KB.
+
+   WHEN THIS GOES OVER AGAIN: re-pin `BYTES_BASELINE` here to your own measured
+   cold load and say what you measured, the way this entry does. Keep
+   `baseline * bytesPct + bytesAbs` under 60000. Do not reach for
+   `--update-budgets`, and do not widen the percentage instead of re-pinning --
+   that is the ratchet this entry exists to end. `requests` measured 40 of its
+   41 ceiling, unchanged: everything #35 adds is CSS and two exports in
+   `app/render.js`, no new module joined the boot graph, and the new smoke
+   module `scripts/smoke/wide-layout.mjs` is harness the page never fetches.
+   DOM nodes 1368 of 1769. */
+export const BYTES_BASELINE = 1_216_873;
+
+export const SLACK = { bytesPct: 0.02, bytesAbs: 24_576, requests: 2, nodes: 250 };
+
+/**
+ * The recorded baseline with `bytes` taken from the hand pin above.
+ * Returns null unchanged so a missing budgets.json still fails loudly.
+ * @param {{bytes:number, requests:number, nodes:number}|null} recorded
+ */
+export const pinned = recorded => (recorded ? { ...recorded, bytes: BYTES_BASELINE } : recorded);
 
 const kb = n => `${(n / 1024).toFixed(1)} KB`;
 const pct = (got, want) => (want ? `${got > want ? '+' : ''}${(((got - want) / want) * 100).toFixed(1)}%` : 'n/a');
@@ -297,8 +346,9 @@ export function compare(baseline, measured) {
       pass,
       detail: pass
         ? `${fmt(got)} vs ${fmt(want)} recorded (${pct(got, want)}, budget ${fmt(max)})`
-        : `${fmt(got)} over the ${fmt(max)} budget (recorded ${fmt(want)}, ${pct(got, want)}). `
-          + 'If the growth is intended, re-record with `node scripts/smoke.mjs --update-budgets`.',
+        : `${fmt(got)} over the ${fmt(max)} budget (baseline ${fmt(want)}, ${pct(got, want)}). `
+          + 'If the growth is intended, re-pin the baseline by hand in scripts/budgets.mjs and say why. '
+          + '`node scripts/smoke.mjs --update-budgets` is denied: it would erase the hand-set `requests` pin.',
     });
   }
   return checks;

@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { SHOTS, shotProblems, twinProblems, postCaptureProblems } from '../scripts/compare-shots.mjs';
+import { SHOTS, shotProblems, twinProblems, postCaptureProblems, deviceMetrics } from '../scripts/compare-shots.mjs';
 import { VIEWS } from '../scripts/smoke/sweep.mjs';
 import { WIDTH } from '../scripts/smoke/dom.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from '../scripts/smoke/registry.mjs';
@@ -43,6 +43,20 @@ function plainShotsFor(view, theme) {
     && !s.partPlayed && s.width === WIDTH && s.rootPx === 16);
 }
 
+/* "a light/dark pair and nothing else" -- the claim nine of the tests below
+ * make about their own state, in one place so a tenth cannot make it
+ * differently or make half of it. `label` keeps each failure naming the state
+ * it is about; the two assertions are the ones every one of them wrote out by
+ * hand, unchanged. */
+function assertLightDarkPair(shots, label) {
+  assert.equal(shots.length, 2, `want a light+dark ${label} shot, found ${shots.length}`);
+  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+}
+
+// The two shots `pair()` builds for one state name, found by name rather than
+// by the modifiers that happen to be set on them.
+const namedPair = name => SHOTS.filter(s => s.name === `${name}-light` || s.name === `${name}-dark`);
+
 test('SHOTS covers every VIEWS name in both light and dark', () => {
   for (const v of VIEWS) {
     assert.equal(plainShotsFor(v.name, 'light').length, 1,
@@ -53,23 +67,21 @@ test('SHOTS covers every VIEWS name in both light and dark', () => {
 });
 
 test('SHOTS includes a long real name, light and dark', () => {
-  const shots = SHOTS.filter(s => s.longNames);
-  assert.equal(shots.length, 2, `want a light+dark long-name shot, found ${shots.length}`);
-  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+  assertLightDarkPair(SHOTS.filter(s => s.longNames), 'long-name');
 });
 
 test('SHOTS includes a screen scrolled to its bottom, light and dark', () => {
-  // `!s.partPlayed` so #34's own bottom-scrolled large-text cell below is not
-  // read as a third member of this plain light/dark pair.
-  const shots = SHOTS.filter(s => s.bottom && !s.partPlayed);
-  assert.equal(shots.length, 2, `want a light+dark bottom-scrolled shot, found ${shots.length}`);
-  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+  /* `!s.partPlayed` so #34's own bottom-scrolled large-text cell below is not
+     read as a third member of this plain light/dark pair, and `s.width ===
+     WIDTH` so #35's `wide-bottom` pair (the same scroll at 1280px, where both
+     panes are on screen) is not either. Both are narrowings of the filter,
+     not of the claim: this test still says there is exactly one
+     bottom-scrolled pair at the phone width every other plain shot uses. */
+  assertLightDarkPair(SHOTS.filter(s => s.bottom && !s.partPlayed && s.width === WIDTH), 'bottom-scrolled');
 });
 
 test('SHOTS includes a full-height capture, light and dark', () => {
-  const shots = SHOTS.filter(s => s.full && !s.partPlayed);
-  assert.equal(shots.length, 2, `want a light+dark full-height shot, found ${shots.length}`);
-  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+  assertLightDarkPair(SHOTS.filter(s => s.full && !s.partPlayed), 'full-height');
 });
 
 test('SHOTS includes exactly one 320px/32px-root shot, light only, no twin', () => {
@@ -80,9 +92,7 @@ test('SHOTS includes exactly one 320px/32px-root shot, light only, no twin', () 
 });
 
 test('SHOTS includes the empty first-run screen, light and dark', () => {
-  const shots = SHOTS.filter(s => s.firstRun);
-  assert.equal(shots.length, 2, `want a light+dark first-run shot, found ${shots.length}`);
-  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+  assertLightDarkPair(SHOTS.filter(s => s.firstRun), 'first-run');
 });
 
 /* #33 decision 1's `.bar.title-in` state -- item 11's own required addition
@@ -93,8 +103,7 @@ test('SHOTS includes the empty first-run screen, light and dark', () => {
  * as one that did. */
 test('SHOTS includes the title-collapsed state, light and dark', () => {
   const shots = SHOTS.filter(s => s.titleCollapsed);
-  assert.equal(shots.length, 2, `want a light+dark title-collapsed shot, found ${shots.length}`);
-  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+  assertLightDarkPair(shots, 'title-collapsed');
   assert.ok(shots.every(s => !s.bottom && !s.full),
     'the title-collapsed shot should be its own scroll depth, not reuse bottom/full');
 });
@@ -104,16 +113,12 @@ test('SHOTS includes the title-collapsed state, light and dark', () => {
  * read as a second plain Today pair and `plainShotsFor('today', ...)` would
  * find two. */
 test('SHOTS includes the resume-bar pair, light and dark', () => {
-  const shots = SHOTS.filter(s => s.partPlayed && s.view === 'today'
-    && !s.full && s.width === WIDTH && s.rootPx === 16);
-  assert.equal(shots.length, 2, `want a light+dark resume-bar shot, found ${shots.length}`);
-  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+  assertLightDarkPair(SHOTS.filter(s => s.partPlayed && s.view === 'today'
+    && !s.full && s.width === WIDTH && s.rootPx === 16), 'resume-bar');
 });
 
 test('SHOTS includes the resume-bar-full pair, light and dark', () => {
-  const shots = SHOTS.filter(s => s.partPlayed && s.full);
-  assert.equal(shots.length, 2, `want a light+dark resume-bar-full shot, found ${shots.length}`);
-  assert.deepEqual(shots.map(s => s.theme).sort(), ['dark', 'light']);
+  assertLightDarkPair(SHOTS.filter(s => s.partPlayed && s.full), 'resume-bar-full');
 });
 
 test('SHOTS includes exactly one resume-bar-320 shot, light only, no twin', () => {
@@ -138,6 +143,78 @@ test('SHOTS includes the resume bar at 320px/32px scrolled to its bottom', () =>
   assert.equal(shots.length, 1, `want exactly one resume-bar-bottom-320 shot, found ${shots.length}`);
   assert.equal(shots[0].theme, 'light', 'the wrapping cell is about layout and runs light only');
   assert.ok(!shots[0].twin, 'resume-bar-bottom-320 never runs dark, so it should declare no twin');
+});
+
+/* #35 decision 15 and Proof 5: the wide layout's own look check. Four states
+ * -- Today and the game side by side, the game screen itself, both panes at
+ * the bottom of a long scroll, and the breakpoint itself at 840px -- each
+ * light and dark.
+ *
+ * `mobile: false` is the point of the flag: every
+ * `Emulation.setDeviceMetricsOverride` in the harness hardcoded `mobile:
+ * true`, which paints a 1280px laptop as a 1280px phone (touch emulation,
+ * mobile viewport handling). The widths and the flag are typed here from the
+ * spec, not read back out of the table they describe. */
+test('SHOTS includes the four wide states, light and dark, captured as a laptop', () => {
+  const WIDE = [['wide-today', 1280], ['wide-game', 1280], ['wide-bottom', 1280], ['wide-840', 840]];
+  for (const [name, width] of WIDE) {
+    const shots = namedPair(name);
+    assertLightDarkPair(shots, name);
+    for (const s of shots) {
+      assert.equal(s.width, width, `${s.name} is captured at ${s.width}px, want ${width}px`);
+      assert.equal(s.mobile, false,
+        `${s.name} is captured with mobile: ${s.mobile} -- a ${width}px laptop shot is not a phone`);
+    }
+  }
+});
+
+/* The flag has to reach the override, or it is a field nobody reads.
+ * `deviceMetrics` is the one place the `Emulation.setDeviceMetricsOverride`
+ * payload is built, exported for the same reason `shotProblems` is: it is
+ * pure, so the rule can be checked without launching Chrome. Height is passed
+ * in because a full-height shot grows it after the first override. */
+test('deviceMetrics carries the shot\'s own mobile flag into the override', () => {
+  assert.equal(typeof deviceMetrics, 'function',
+    'compare-shots.mjs does not export deviceMetrics, so nothing proves the mobile flag is ever read');
+  assert.deepEqual(deviceMetrics({ width: 1280, mobile: false }, 844),
+    { width: 1280, height: 844, deviceScaleFactor: 2, mobile: false },
+    'a laptop shot still asks Chrome for a phone');
+  assert.deepEqual(deviceMetrics({ width: 390, mobile: true }, 844),
+    { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  // The default is the phone every shot before #35 was.
+  assert.equal(deviceMetrics({ width: 390 }, 844).mobile, true,
+    'a shot that declares no mobile flag must still be captured as a phone');
+});
+
+test('every shot in SHOTS declares a mobile flag', () => {
+  const missing = SHOTS.filter(s => typeof s.mobile !== 'boolean').map(s => s.name);
+  assert.deepEqual(missing, [],
+    `these shots declare no mobile flag, so what Chrome is asked for is decided elsewhere: ${missing.join(', ')}`);
+});
+
+/* #35 decision 15 and Proof 5's last state: the centered sheet at 600px,
+ * light and dark. 600 is the spec's own breakpoint, typed here rather than
+ * imported from the registry the harness reads -- the two disagreeing is the
+ * signal this test exists to give.
+ *
+ * `sheet` is the new modifier: a selector for the dialog plus the click that
+ * opens it. Both halves are required, because the click is what capture()
+ * runs and the selector is what it then asserts actually opened -- the same
+ * "prove the modifier happened" shape `bottom` and `titleCollapsed` already
+ * have, and the reason #34's part-played bottom cell shipped byte-identical
+ * to the unscrolled one. */
+test('SHOTS includes the centered-sheet pair at 600px, light and dark', () => {
+  const shots = namedPair('mid-sheet');
+  assertLightDarkPair(shots, 'mid-sheet');
+  for (const s of shots) {
+    assert.equal(s.width, 600, `${s.name} is captured at ${s.width}px, want 600px -- the sheet band starts there`);
+    assert.equal(s.view, 'games',
+      `${s.name} opens on ${s.view}, but the card sheet is reached from the game screen's own chrome`);
+    assert.ok(s.sheet && typeof s.sheet.selector === 'string' && s.sheet.selector,
+      `${s.name} names no sheet selector, so nothing proves the dialog ever opened`);
+    assert.ok(s.sheet && typeof s.sheet.open === 'string' && s.sheet.open.includes('click'),
+      `${s.name} names no click to open the sheet, so the shot would be of the game screen`);
+  }
 });
 
 /* ---------- shotProblems: items 2 and 3 ---------- */

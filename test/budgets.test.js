@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { compare, summarize, ceiling, SLACK } from '../scripts/budgets.mjs';
+import { compare, summarize, ceiling, pinned, BYTES_BASELINE, SLACK } from '../scripts/budgets.mjs';
 
 const ORIGIN = 'http://127.0.0.1:4321';
 const recorded = JSON.parse(readFileSync(new URL('../scripts/budgets.json', import.meta.url), 'utf8'));
@@ -30,7 +30,9 @@ test('growth inside the slack passes; past it fails and says how to re-record', 
   const over = compare(base, measure({ bytes: ceiling('bytes', base.bytes) + 1 }));
   const check = named(over, 'initial payload');
   assert.equal(check.pass, false);
-  assert.match(check.detail, /--update-budgets/);
+  // and it names the route that is actually open, not the one both guards deny
+  assert.match(check.detail, /scripts\/budgets\.mjs/);
+  assert.match(check.detail, /--update-budgets` is denied/);
 });
 
 test('slack is small enough to catch a real regression', () => {
@@ -38,6 +40,22 @@ test('slack is small enough to catch a real regression', () => {
   assert.equal(named(compare(base, measure({ bytes: 160_000 })), 'initial payload').pass, false);
   assert.equal(named(compare(base, measure({ requests: 10 + SLACK.requests + 1 })), 'request count').pass, false);
   assert.equal(named(compare(base, measure({ nodes: 1000 + SLACK.nodes + 1 })), 'DOM nodes').pass, false);
+});
+
+/* The test above measures the 60 KB rule against a 100 KB fixture, which is a
+   twelfth of the app. Slack is a percentage, so clearing that bar says almost
+   nothing about clearing it at the app's real size -- which is the number the
+   ratchet in budgets.mjs kept moving. This measures it where it counts. */
+test('the hand-pinned bytes baseline catches a 60 KB regression at the real size', () => {
+  const real = pinned({ ...base, bytes: 1 });
+  assert.equal(real.bytes, BYTES_BASELINE, 'pinned() must take bytes from the hand pin, not the caller');
+
+  const room = ceiling('bytes', real.bytes) - real.bytes;
+  assert.ok(room < 60_000, `${room} bytes of room lets a second copy of a 60 KB vendor script through`);
+  assert.equal(
+    named(compare(real, { ...real, lazy: [], bytes: real.bytes + 60_000 }), 'initial payload').pass,
+    false,
+  );
 });
 
 test('a shrinking payload is never a failure', () => {
