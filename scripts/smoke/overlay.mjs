@@ -178,6 +178,42 @@ export const STATES = [
   { name: 'add a game flow',
     open: `$('#todayAddGame').click()`, shows: '#addGameFlow[open]',
     close: `$('#addGameFlow').close()` },
+  /* #36: the three first-run steps, opened through `#welTry` -- the door that
+     opens the flow with the sample already in the draft (decision 7), the
+     same one `app-large-text.mjs`'s own trio uses. Step 3 commits a team
+     through `commitFirstRun` (decision 4: it renders the real card through
+     `renderCards`, so the team has to exist by then), which overwrites
+     `state.players`/`state.teamName`/`state.day.games[0]` -- and this pass
+     shares one page load with `touch` and everything `smoke.mjs` runs after
+     it up to `teamscreen`'s own `goRich`, none of which reload in between.
+     So the fixture is snapshotted before it opens and put back whole in
+     `close`, the same rule `plan sheet, a rule` already follows for its own
+     mutation above. Steps 1-2 never reach `commitFirstRun` (only the step
+     2 -> 3 transition does), so there is nothing to restore after them and
+     `close` is the dialog's own native `close()`, same as `add a game flow`
+     above -- this pass audits accessibility, not the flow's own close paths,
+     which `first-run-flow.mjs` covers. */
+  { name: 'first run, step 1 with the sample',
+    open: `$('#welTry').click()`, shows: '#firstRunFlow[open]',
+    close: `$('#firstRunFlow').close()` },
+  { name: 'first run, step 2',
+    open: `$('#welTry').click(); $('#frNext').click()`, shows: '#firstRunFlow[open]',
+    close: `$('#firstRunFlow').close()` },
+  { name: 'first run, step 3',
+    open: `window.__frSnap = await (async () => {
+             const st = await import('/state.js');
+             return JSON.parse(JSON.stringify(st.state));
+           })();
+           $('#welTry').click(); $('#frNext').click(); $('#frNext').click()`,
+    shows: '#firstRunFlow[open]',
+    close: `$('#firstRunFlow').close();
+            await (async () => {
+              const st = await import('/state.js');
+              Object.assign(st.state, window.__frSnap);
+              delete window.__frSnap;
+              (await import('/render.js')).renderAll();
+            })();
+            $('#backBtn').click()` },
   { name: 'welcome screen', forced: true,
     open: `$('#view-welcome').hidden = false`, shows: '#view-welcome',
     close: `$('#view-welcome').hidden = true` },

@@ -185,6 +185,14 @@ export const ROWS = Object.freeze([
   // the day, so it reloads RICH before returning, exactly as `teamscreen`
   // above does after emptying the roster.
   { id: 'addgameflow', name: 'add a game: three steps', selectable: true, setup: 'rich' },
+  // #36's own guard (see docs/specs/36-first-run.md's Proof section): the
+  // welcome screen, all three first-run steps, every way out (Back, the
+  // cancel gesture, discard, the sample) and finishing onto the tour and the
+  // game itself -- see first-run-flow.mjs. Runs its own wiped landing (twice
+  // -- step 3 commits for real, a one-way door) rather than reading the rich
+  // fixture, the same way `gamerowsfit` lands on `?try=9`, and restores RICH
+  // itself before `focusclear` needs it.
+  { id: 'firstrun', name: 'first run: welcome, three steps, every way out', selectable: true, setup: 'rich' },
   // #33 decision 15 (item 7): tabbing the game screen never leaves focus
   // under the floating bar or action bar -- see focus-clear.mjs.
   { id: 'focusclear', name: 'tab order stays clear of the floating bar and action bar', selectable: true, setup: 'rich' },

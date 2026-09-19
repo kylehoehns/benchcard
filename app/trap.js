@@ -543,6 +543,34 @@ export function showAskRow(askSel, footSel, keepSel, show) {
   if (show) $(keepSel)?.focus({ preventScroll: true });
 }
 
+/* #36: the step/progress/body/back/next painter `teams-view.js`'s add-a-game
+   flow and `onboarding.js`'s first-run flow both need, pulled out here rather
+   than kept as add-a-game's own private function -- a second flow copying it
+   by hand is the drift `showAskRow` above already exists to avoid. `ids` is
+   the caller's own selector set (`#agStep`/`#frStep` and so on), so this
+   module still knows nothing about either flow's ids or state. */
+export function paintFlowShell(ids, n, total, node, opts = {}) {
+  const { nextText = 'Next', nextDisabled = false, backHidden = n === 1 } = opts;
+  const step = $(ids.step); if (step) step.textContent = `${n} of ${total}`;
+  const prog = $(ids.prog);
+  if (prog) {
+    // one segment per step, built here so the dot count can never drift from
+    // the step count the way a hand-authored `<i>` per markup would
+    if (prog.children.length !== total)
+      prog.replaceChildren(...Array.from({ length: total },
+        () => document.createElement('i')));
+    [...prog.children].forEach((seg, i) => seg.classList.toggle('on', i === n - 1));
+  }
+  const body = $(ids.body);
+  if (body) body.replaceChildren(node);
+  const back = $(ids.back); if (back) back.hidden = backHidden;
+  const next = $(ids.next);
+  if (next) { next.textContent = nextText; next.disabled = nextDisabled; }
+  // the whole screen changed under the coach, so focus goes to what it now
+  // asks -- the same move `openSheet` makes to a sheet's own title
+  body?.querySelector('h2')?.focus({ preventScroll: true });
+}
+
 // Item 10: adds `.closing` (app.css: slides the sheet to `translateY(100%)`
 // and the backdrop to clear, both over `--t`/`--ease`) and calls the native
 // `close()` once that transition ends, with a `--t` + 100ms timeout fallback

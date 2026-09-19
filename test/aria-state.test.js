@@ -20,8 +20,11 @@ import { readFileSync } from 'node:fs';
 const SITES = [
   { file: 'strategy.js', what: 'the strategy segmented control',
     anchor: "querySelectorAll('#stratseg button')", within: 400, attr: 'aria-pressed' },
-  { file: 'onboarding.js', what: "the welcome screen's sub-frequency chips",
-    anchor: "$('#welGran')", within: 700, attr: 'aria-pressed' },
+  // #36 moved the sub-frequency picker out of onboarding.js's own
+  // renderWelcome (deleted) into game-setup.js's paintGranRows, which both
+  // the sub-interval sheet and first-run step 2 now call.
+  { file: 'game-setup.js', what: 'the sub-frequency rows',
+    anchor: 'GRAN_CHOICES.forEach((c, idx) => {', within: 400, attr: 'aria-pressed' },
   { file: 'teams-view.js', what: 'the team menu',
     anchor: 'state.teams.forEach', within: 500, attr: 'aria-current' },
   { file: 'rules.js', what: "the Add-a-rule kind picker",

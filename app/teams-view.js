@@ -42,7 +42,7 @@ import { switchRow } from './rules.js';
 import { DEFAULT_SETTINGS, colorName } from './storage.js';
 // The one close path and the one "ask before discarding" hook, shared with
 // every bottom sheet (#32 uses them from a full-screen dialog).
-import { closeSheet, guardClose, rememberTrigger, showAskRow } from './trap.js';
+import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell } from './trap.js';
 // season-view.js is already in the boot graph (app.js calls `initSeason`),
 // so this names no new request -- it is the one place a filed game is
 // counted, and Today's Season entry reads it the same way (#23 review).
@@ -665,31 +665,19 @@ function openAddGame(trigger) {
   paintFlow();
 }
 
+// #36: this flow's own id set, handed to the shared painter both flows use
+// now (`paintFlowShell`, trap.js) so the step/progress/body/back/next
+// painting lives in one place instead of two near-identical copies.
+const AG = { step: '#agStep', prog: '#agProg', body: '#agBody', back: '#agBack', next: '#agNext' };
+
 function paintFlow() {
   if (!draft) return;
   // I2: `flowBack()` repaints under whatever the ask left behind -- a step
   // change is itself the answer "keep editing", so it can never still be
   // asking about the step it just left.
   showFlowAsk(false);
-  const body = $('#agBody');
-  if (!body) return;
-  set('#agStep', 'textContent', `${flowStep} of ${STEPS}`);
-  const prog = $('#agProg');
-  if (prog) {
-    // `index.html` ships `#agProg` empty -- one segment per `FLOW_STEPS`
-    // entry, built here, so the dot count can never drift from the step
-    // count the way a hand-authored `<i>` per markup would.
-    if (prog.children.length !== STEPS) {
-      prog.replaceChildren(...Array.from({ length: STEPS }, () => document.createElement('i')));
-    }
-    [...prog.children].forEach((seg, i) => seg.classList.toggle('on', i === flowStep - 1));
-  }
-  body.replaceChildren(stepBody(flowStep));
-  set('#agBack', 'hidden', flowStep === 1);
-  set('#agNext', 'textContent', flowStep === STEPS ? 'Plan it' : 'Next');
-  // The whole screen changed under the coach, so focus goes to what it now
-  // asks -- the same move `openSheet` makes to a sheet's own title.
-  body.querySelector('h2')?.focus({ preventScroll: true });
+  paintFlowShell(AG, flowStep, STEPS, stepBody(flowStep),
+    { nextText: flowStep === STEPS ? 'Plan it' : 'Next' });
 }
 
 function stepBody(n) {

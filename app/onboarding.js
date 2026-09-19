@@ -1,26 +1,37 @@
 /* First run.
  *
- * The welcome pane is the only screen a coach sees before there is a team, so
- * it owns its own copy of the granularity chips and its own roster box rather
- * than reusing the setup fold's — the setup fold does not exist yet at this
- * point in the boot.
+ * The welcome pane is the only screen a coach sees before there is a team.
+ * Its landing doors open `#firstRunFlow` (#36), a three-step dialog built the
+ * same way #32's `#addGameFlow` is: `paintFlowShell` (trap.js) paints the
+ * step/progress/body/back/next chrome both flows share, and the sub-interval
+ * rows and the two format steppers are `game-setup.js`'s own `paintGranRows`
+ * and `stepperRow` run against this module's draft instead of a second copy.
  *
- * Two things it cannot own: `setView` and `renderAll` both live in app.js
- * until render.js is extracted, so they come in through `initOnboarding`
- * rather than being imported back (which would close the graph into a cycle).
- * `startTour` is imported directly — tour.js was split off first precisely so
- * this module could.
+ * Two things this module cannot own: `setView` and `renderAll` both live in
+ * app.js until render.js is extracted, so they come in through
+ * `initOnboarding` rather than being imported back (which would close the
+ * graph into a cycle). `startTour` is imported directly — tour.js was split
+ * off first precisely so this module could.
  */
 
 import { generatePlan } from './engine.js';
 import { parseRoster, sampleRoster, sampleRosterText, callNames, SAMPLE_TEAM_NAME } from './roster.js';
 import { $, on, set, el, uid } from './dom.js';
-import { state, editHappened, markFirstRunPending, GRAN_CHOICES, HUES } from './state.js';
+import { state, editHappened, markFirstRunPending, HUES } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { startTour } from './tour.js';
 import { flash } from './toast.js';
+import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell } from './trap.js';
+import { stepperRow, paintGranRows, PERIODS_LO, PERIODS_HI, MINUTES_LO, MINUTES_HI } from './game-setup.js';
+import { cardPreviewInto } from './card.js';
 
-let welGran = { mode: 'everyN', value: 4 };
+/* Step 1's `#frCount` line. An empty box reads as an instruction rather than
+ * "0 players", and the floor is 5 -- fewer than that is not a lineup. */
+export function countLine(n) {
+  if (!n) return 'Paste from wherever your roster lives. Jersey numbers are optional.';
+  if (n < 5) return `${n} player${n === 1 ? '' : 's'} so far. 5 needed to field a lineup.`;
+  return `${n} players so far.`;
+}
 
 /* ------------------------------------------------------------------ *
  * A51/A52: the plan a stranger meets before they have typed anything
@@ -324,69 +335,56 @@ function showStage(which) {
   }
 }
 
-function renderWelcome() {
-  const box = $('#welGran');
-  if (!box) return;
-  box.textContent = '';
-  for (const c of GRAN_CHOICES) {
-    const on = welGran.mode === c.mode && (c.mode === 'breaksOnly' || welGran.value === c.value);
-    const b = el('button', 'chip press' + (on ? ' sel' : ''), c.label);
-    b.type = 'button';
-    // The same chips as the games view's sub-frequency picker, down to the
-    // labels -- and that one has carried `aria-pressed` since it was written
-    // (game-setup.js). This copy is the first thing a new coach meets, so it
-    // is the worse of the two to leave silent.
-    b.setAttribute('aria-pressed', String(on));
-    b.onclick = () => { welGran = { mode: c.mode, value: c.value }; renderWelcome(); };
-    box.append(b);
-  }
-}
-
 /* Set by initOnboarding. See the header: these are app.js's, not ours. */
 let setView = () => {};
 let renderAll = () => {};
 
+/* #36's flow draft. Nothing outside `fr` (the module state the flow steps
+   share) is written until it is committed through `startTeam`, which is why
+   this has its own defaults rather than reading them off `GRAN_CHOICES[0]`
+   or `newGame`'s -- the two happen to agree, but a draft that read the
+   game's own defaults could never prove it wrote anything at all. */
+export const newDraft = () => ({
+  teamName: '', roster: '', filled: null,
+  periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4,
+});
+
 /* Everything the two ways in share: a squad, a name, and the game the coach
-   described in the fields above. Only what happens AFTER differs -- a typed
+   described in the draft. Only what happens AFTER differs -- a typed
    roster is counted and gets the tour, a sample is neither (A35, DECISION 1).
-   The format fields are read here for both, so a coach who set six-minute
-   quarters and then asked for the sample gets six-minute quarters. */
-function startTeam(players, teamName) {
+   `draft` carries the format fields now, not the DOM: #36 moved the two
+   steppers and the chips into the flow's own step 2, so there is no
+   `#welPeriods` / `#welMinutes` / `welGran` left on the page to read. */
+export function startTeam(players, teamName, draft) {
   state.players = players.map((x, i) => ({ id: uid('p'), name: x.name, number: x.number, shortName: '', tier: 3, hue: i }));
   state.teamName = teamName;
   const g = state.day.games[0];
   // 40, not 20: `storage.js` sanitizes periodMinutes to 40, and a lower cap
   // here meant a record with a 24-minute half loaded fine but could never be
   // typed back in
-  g.periods = Math.max(1, Math.min(8, Number($('#welPeriods').value) || 4));
-  g.periodMinutes = Math.max(1, Math.min(40, Number($('#welMinutes').value) || 8));
-  g.granMode = welGran.mode;
-  g.granValue = welGran.value;
+  g.periods = Math.max(1, Math.min(8, Number(draft.periods) || 4));
+  g.periodMinutes = Math.max(1, Math.min(40, Number(draft.periodMinutes) || 8));
+  g.granMode = draft.granMode;
+  g.granValue = draft.granValue;
   g.constraints.targetSlots = {};
   g.constraints.targetCapacity = null;
   state.onboarded = true;
   state.view = 'games';
 }
 
-/* What `fillSample` last wrote into `#welRoster`, or '' -- the whole of A35's
-   DECISION 1 arriving through A49's new door. A coach who fills the form with
-   our eleven names and taps "Build my first card" without touching them is
-   submitting OUR suggestion, so counting it there would make
-   `first_run_complete{roster}` measure the app's own sample -- exactly the
-   pollution the sample path has always avoided. Compared as text, so any edit
-   at all (a name, a number, a deleted line) makes it theirs. */
-let filledText = '';
+/* "Try a sample team": it fills the DRAFT and creates NOTHING (A49). No team,
+   no navigation, no flash, no analytics -- there is nothing to undo, so there
+   is no undo sentence to get wrong, and the coach lands in the same step they
+   would have typed into. The name goes in too: "Sample team" in a field they
+   are about to edit reads as a prompt to replace it.
 
-/* "Try a sample team": it fills the form in place and creates NOTHING (A49).
-   No team, no navigation, no flash, no analytics -- there is nothing to undo,
-   so there is no undo sentence to get wrong, and the coach lands in the same
-   box they would have pasted into. The name goes in too: "Sample team" in a
-   field they are about to edit reads as a prompt to replace it.
-
-   The count line under the box is rendered by the `oninput` handler below, so
-   this dispatches the event rather than writing a second copy of that copy --
-   and `#welCount` is `aria-live`, which makes "11 players. Ready." the
-   announcement for a coach who cannot see the box fill.
+   #36 moved this from writing `#welRoster`/`#welTeam` directly to writing
+   `fr` -- step 1 (`stepTeam`) reads the draft when it paints, so there is
+   still exactly one place that puts the sample on screen. `fr.filled` is
+   what `commitFirstRun` compares the submitted roster against: A35 DECISION
+   1 is that a sample submitted untouched must never fire `first_run_complete`
+   with our own suggestion, and comparing text (not a boolean) means any edit
+   at all -- a name, a number, a deleted line -- makes it theirs.
 
    DEFAULTS TO `DEMO_N`, not to roster.js's own `SAMPLE_SIZE`, and that is the
    fix for a real seam: the hero above this form solves an eleven-player game
@@ -399,12 +397,9 @@ let filledText = '';
    question from what this screen demonstrates. `?try=N` is unaffected -- it
    goes through `loadSample` with a size the chart page names. */
 function fillSample(n = DEMO_N) {
-  const box = $('#welRoster');
-  if (!box) return;
-  $('#welTeam').value = SAMPLE_TEAM_NAME;
-  box.value = sampleRosterText(n);
-  filledText = box.value;
-  box.dispatchEvent(new Event('input'));
+  fr.teamName = SAMPLE_TEAM_NAME;
+  fr.roster = sampleRosterText(n);
+  fr.filled = fr.roster;
 }
 
 /* The sample team, built and put on the screen. SINCE A49 THIS IS THE `?try=N`
@@ -427,7 +422,12 @@ function fillSample(n = DEMO_N) {
    No tour: this IS the tour, in the coach's own hands, and two explainers
    stacked on a 390px screen is worse than either. `tourSeen` is untouched. */
 function loadSample(n) {
-  startTeam(sampleRoster(n), SAMPLE_TEAM_NAME);
+  // `startTeam` reads its format off a draft since #36; `?try=N` never ran a
+  // flow to build one, so it hands over `newDraft()`'s own defaults -- the
+  // same 4 periods / 8 minutes / every-4 sub this path always used, back when
+  // it read `#welPeriods`/`#welMinutes` (both defaulted to 4 and 8 in the
+  // markup) and the module's own `welGran` (everyN/4) directly.
+  startTeam(sampleRoster(n), SAMPLE_TEAM_NAME, newDraft());
   markFirstRunPending();
   // `setView('games')` renders it: always called from welcome, always a real
   // transition into Games, so `applyView` does the render itself now (#23
@@ -454,75 +454,252 @@ function loadSample(n) {
   flash('Sample team loaded. Change any name to make it yours, or remove it in Settings.');
 }
 
-function finishOnboarding() {
-  const parsed = parseRoster($('#welRoster').value);
-  if (parsed.length < 5) {
-    const c = $('#welCount');
-    c.className = 'note';
-    c.textContent = parsed.length
-      ? `That is ${parsed.length} player${parsed.length === 1 ? '' : 's'}. You need at least 5 to field a lineup.`
-      : 'Add your players above to get started.';
-    // the focus move is the sighted cue; aria-invalid is the other half of it,
-    // and it has to come off again the moment the coach starts fixing the box
-    $('#welRoster').setAttribute('aria-invalid', 'true');
-    $('#welRoster').focus();
-    return;
-  }
-  $('#welRoster').removeAttribute('aria-invalid');
-  const ours = filledText && $('#welRoster').value === filledText;
-  startTeam(parsed, $('#welTeam').value.trim());
-  if (ours) {
-    /* Our own sample, submitted untouched: defer the count to the first edit
-       exactly as the `?try=N` path does, so the size recorded is one the coach
-       chose. See `filledText` above and A35 DECISION 1. `editHappened()` is
-       deferred with it -- an unedited sample is not "I have checked the
-       roster", which is the claim that line is making below. */
+/* ------------------------------------------------------------------ *
+ * #36: three steps, one dialog (`#firstRunFlow`), the same shape as
+ * #32's `#addGameFlow` -- see `paintFlowShell` (trap.js) and
+ * `wireAddGameFlow` (teams-view.js), which this mirrors exactly.
+ * ------------------------------------------------------------------ */
+
+// This flow's own id set, handed to the shared painter both flows use.
+const FR = { step: '#frStep', prog: '#frProg', body: '#frBody', back: '#frBack', next: '#frNext' };
+
+const FR_STEPS = [
+  { q: "Who's on the team?",     build: stepTeam },
+  { q: 'How long is a game?',    build: stepFormat_ },
+  { q: "Here's your first card", build: stepCard },
+];
+const FR_TOTAL = FR_STEPS.length;
+
+// The draft. Nothing outside `fr` is written until `commitFirstRun`.
+let fr = null;
+let frStep = 1;
+
+/* `#welStart` opens at step 1 empty; `#welTry` opens at step 1 with the
+   sample already in the draft -- both go through this one function so there
+   is one place that resets `fr`/`frStep` and shows the dialog. */
+function openFirstRun(trigger, withSample) {
+  const d = $('#firstRunFlow');
+  if (!d) return;
+  fr = newDraft();
+  frStep = 1;
+  if (withSample) fillSample();          // writes fr.teamName / fr.roster / fr.filled
+  rememberTrigger(d, trigger);
+  showFrAsk(false);
+  d.showModal();
+  paintFr();
+}
+
+function frStepBody(n) {
+  const { q, build } = FR_STEPS[n - 1];
+  const wrap = el('div');
+  const h = el('h2', 'flow-q', q);
+  h.tabIndex = -1;
+  wrap.append(h);
+  build(wrap, q);
+  return wrap;
+}
+
+function paintFr() {
+  if (!fr) return;
+  showFrAsk(false);
+  const last = frStep === FR_TOTAL;
+  paintFlowShell(FR, frStep, FR_TOTAL, frStepBody(frStep), {
+    nextText: last ? 'Go to the game' : 'Next',
+    nextDisabled: frStep === 1 && rosterCount() < 5,
+    backHidden: frStep === 1 || last,      // decision 6: step 3 has no Back
+  });
+}
+
+/* Step 1. The two fields write straight into `fr` on input, and repaint only
+   the count line and the Next button -- never the whole body, which would
+   steal the caret. Parsing is `parseRoster` and nothing else (Reuse). */
+const rosterCount = () => parseRoster(fr.roster).length;
+
+function onRosterInput(v) {
+  fr.roster = v;
+  const n = rosterCount();
+  set('#frCount', 'textContent', countLine(n));
+  set('#frFill', 'hidden', n > 0);
+  set('#frNext', 'disabled', n < 5);
+}
+
+/* The `.f` label + input pair the flow already uses (`teams-view.js`'s own
+   `flowField`, not imported here -- that one is module-private and this is
+   the same two-line shape, not a second implementation of anything stateful). */
+function frField(tag, label, value, placeholder, onInput) {
+  const l = el('label', 'flow-f');
+  l.append(el('span', 'f', label));
+  const i = el(tag);
+  if (tag === 'input') i.type = 'text';
+  i.value = value;
+  if (placeholder) i.placeholder = placeholder;
+  i.oninput = () => onInput(i.value);
+  l.append(i);
+  return [l, i];
+}
+
+function stepTeam(wrap) {
+  const [teamField, teamInput] = frField('input', 'Team name', fr.teamName,
+    'Wildcats 6th Grade', v => { fr.teamName = v; });
+  teamInput.id = 'frTeam';
+  // The placeholder cast is roster.js's own sample, first three -- one
+  // fictional cast, not a second one invented for this box (test/sample-team.test.js).
+  const [rosterField, rosterInput] = frField('textarea', 'Your players, one per line', fr.roster,
+    '12 Maya Webb\n4 Eli Tran\nDevon Ellis', onRosterInput);
+  rosterInput.id = 'frRoster';
+  rosterInput.spellcheck = false;
+  rosterInput.setAttribute('aria-describedby', 'frCount');
+
+  const count = el('p', 'note', countLine(rosterCount()));
+  count.id = 'frCount';
+  count.setAttribute('aria-live', 'polite');
+
+  // Offered while the box is empty, same rule `#welFill` used to follow --
+  // a coach who arrived through "Try a sample team" never sees it at all.
+  const fill = el('button', 'btn ghost sm press', 'Fill with a sample team');
+  fill.type = 'button';
+  fill.id = 'frFill';
+  fill.hidden = rosterCount() > 0;
+  fill.onclick = () => { fillSample(); paintFr(); };
+
+  wrap.append(teamField, rosterField, count, fill);
+}
+
+/* Step 2: two `stepperRow`s and `paintGranRows`, both against `fr` instead of
+   `game()` (Reuse: no second stepper, no third sub-interval list). */
+function stepFormat_(wrap) {
+  const grp = el('div', 'pgrp');
+  grp.append(
+    stepperRow('Periods', () => fr.periods, v => { fr.periods = v; },
+               PERIODS_LO, PERIODS_HI, 'periods'),
+    stepperRow('Minutes each', () => fr.periodMinutes, v => { fr.periodMinutes = v; },
+               MINUTES_LO, MINUTES_HI, 'minutes'),
+  );
+  wrap.append(grp, el('span', 'f fr-f', 'How often do you sub?'));
+  const box = el('div', 'fr-gran');
+  wrap.append(box);
+  paintGranRows(box, () => fr, c => { fr.granMode = c.mode; fr.granValue = c.value; });
+}
+
+/* Committed on Next from step 2, before step 3 paints (decision 4): step 3
+   shows the real card through `renderCards()`, so the team has to exist by
+   then. `startTeam` keeps its shape and takes the draft instead of reading
+   DOM fields. */
+function commitFirstRun() {
+  const players = parseRoster(fr.roster);
+  startTeam(players, fr.teamName, fr);
+  if (fr.filled !== null && fr.roster === fr.filled) {
+    // our own sample, submitted untouched -- defer exactly as `?try=` does
+    // (A35 DECISION 1), so the size recorded is one the coach chose
     markFirstRunPending();
   } else {
-    track('first_run_complete', { roster: bucketRoster(state.players.length) });
-    // a roster typed from scratch is the most emphatic "I have checked the
-    // roster" there is, and this path never touches soon()
+    track('first_run_complete', { roster: bucketRoster(players.length) });
     editHappened();
   }
-  // `setView('games')` renders it: always called from welcome, always a real
-  // transition into Games, so `applyView` does the render itself now (#23
-  // review, third round).
-  setView('games');
+  setView('games');                          // renders the card into #sheet
+}
+
+/* Step 3: a clone of #sheet's own cards, through the one card builder
+   (Reuse) -- there is no draft-plan renderer to show one before this.
+   `#frShareRow` is real markup (survey 8), moved into place here and parked
+   back by `parkShareRow` when the flow leaves this step. */
+function stepCard(wrap) {
+  const stage = el('div', 'stage fr-stage');
+  stage.id = 'frStage';                     // literal, so test/dead-id.test.js reads it
+  wrap.append(stage, el('p', 'flow-note',
+    'This card waits on the game screen whenever you need it.'));
+  cardPreviewInto(stage);
+  const row = $('#frShareRow');
+  if (row) { row.hidden = false; wrap.append(row); }
+}
+
+// Puts `#frShareRow` back where the markup ships it -- the next sibling of
+// `#firstRunFlow` -- and re-hides it, so the next open finds it there.
+function parkShareRow() {
+  const row = $('#frShareRow');
+  const dialog = $('#firstRunFlow');
+  if (!row || !dialog) return;
+  row.hidden = true;
+  dialog.after(row);
+}
+
+function frNext() {
+  if (frStep < FR_TOTAL) {
+    if (frStep === 2) commitFirstRun();
+    frStep++;
+    paintFr();
+  } else finishFr();
+}
+
+/* I3: the footer's "‹ Back" and Android's back gesture are the same action.
+   Step 3 has no Back button (decision 6, `paintFr`'s `backHidden`), but the
+   gesture still reaches this function directly -- so a `cancel` event on
+   step 3 finishes the flow rather than doing nothing. */
+function frBack() {
+  if (frStep === FR_TOTAL) return finishFr();
+  if (frStep > 1) { frStep--; paintFr(); } else requestCloseFr();
+}
+
+/* C4: a commit surface asks before losing typed text. Nothing is left to
+   lose once the team is committed (step 3), so there is nothing to ask. */
+function askBeforeDiscardTeam() {
+  if (!fr || frStep === FR_TOTAL) return false;
+  if (!fr.teamName.trim() && !fr.roster.trim()) return false;
+  showFrAsk(true);
+  return true;
+}
+
+function showFrAsk(show) { showAskRow('#frAsk', '#frFoot', '#frKeep', show); }
+
+function closeFr() {
+  fr = null;
+  showFrAsk(false);
+  parkShareRow();
+  closeSheet($('#firstRunFlow'));
+}
+
+function finishFr() {
+  const first = !state.tourSeen;
+  closeFr();
   // after the entrance settles, not during it: the tour measures rects, and
   // the squad pills and timeline blocks are still flying into place here
-  if (!state.tourSeen) setTimeout(startTour, 520);
+  if (first) setTimeout(startTour, 520);
+}
+
+/* Decision 6: ✕ on step 3 ends the flow the same way "Go to the game" does
+   -- the team already exists, so closing and finishing are the same act --
+   while ✕ on steps 1-2 asks first through `closeSheet`'s guard, exactly as
+   `wireAddGameFlow`'s `requestCloseFlow` does for `#addGameFlow`. */
+function requestCloseFr() {
+  if (frStep === FR_TOTAL) { finishFr(); return; }
+  closeSheet($('#firstRunFlow'));
 }
 
 export function initOnboarding(setViewFn, renderAllFn) {
   setView = setViewFn;
   renderAll = renderAllFn;
 
-  on('#welGo', 'onclick', finishOnboarding);
+  /* #36 decision 7: both doors open `#firstRunFlow` at step 1 -- "Set up my
+     team" empty, "Try a sample team" with the draft already filled. */
+  on('#welStart', 'onclick', () => openFirstRun($('#welStart'), false));
+  on('#welTry', 'onclick', () => openFirstRun($('#welTry'), true));
 
-  /* A52: two panes, one at a time. Setup is a second SCREEN rather than a box
-     that appears under the first one, so the landing screen stays a landing
-     screen and the form gets the whole viewport to itself.
+  /* Wiring mirrors `wireAddGameFlow` (teams-view.js) exactly. */
+  on('#frClose', 'onclick', requestCloseFr);
+  on('#frBack', 'onclick', frBack);
+  on('#frNext', 'onclick', frNext);
+  on('#frKeep', 'onclick', () => { showFrAsk(false); $('#frNext')?.focus({ preventScroll: true }); });
+  on('#frDiscard', 'onclick', closeFr);
+  /* `cancel` is the one event Escape AND Android's back gesture both fire --
+     see `wireAddGameFlow`'s own comment on the same line for the Chrome
+     force-close case this cannot do anything about either. */
+  on('#firstRunFlow', 'oncancel', (e) => { e.preventDefault(); frBack(); });
+  on('#firstRunFlow', 'onclose', () => {
+    if (fr && !fr.teamName.trim() && !fr.roster.trim()) fr = null;
+    showFrAsk(false);
+  });
+  guardClose($('#firstRunFlow'), askBeforeDiscardTeam);
 
-     Focus goes to the heading, not to the first field: a field would open the
-     keyboard over the screen a coach has just arrived at, and the heading is
-     what tells a screen reader they went somewhere. Scroll to the top for the
-     same reason -- arriving halfway down a page is not arriving. */
-  const pane = (setup) => {
-    set('#welLanding', 'hidden', setup);
-    set('#welSetup', 'hidden', !setup);
-    scrollTo({ top: 0, behavior: REDUCED.matches ? 'auto' : 'smooth' });
-    ($(setup ? '#welSetupHd' : '#welType'))?.focus({ preventScroll: true });
-  };
-  on('#welType', 'onclick', () => pane(true));
-  on('#welBack', 'onclick', () => pane(false));
-
-  /* Both doors land on setup; this one arrives with the roster in the box.
-     The pane is switched BEFORE the fill so `#welCount` -- which is the live
-     region under the box -- announces "11 players. Ready." into a screen that
-     is actually on. */
-  on('#welTry', 'onclick', () => { pane(true); fillSample(); });
-  // The same fill for a coach who walked in by typing and then changed their mind.
-  on('#welFill', 'onclick', () => fillSample());
   // `renderDemo` rebuilds the cells, and new cells replay the grow on their own.
   /* The bench tab is a view of THIS plan (see `benchFigure`), so a re-solve has
      to rebuild it too or the two tabs drift apart the first time anyone taps
@@ -535,26 +712,6 @@ export function initOnboarding(setViewFn, renderAllFn) {
   on('#welTabPlan', 'onclick', () => showStage('plan'));
   on('#welTabPaper', 'onclick', () => showStage('paper'));
   on('#welTabScreen', 'onclick', () => showStage('screen'));
-  on('#welRoster', 'oninput', () => {
-    const n = parseRoster($('#welRoster').value).length;
-    const c = $('#welCount');
-    $('#welRoster').removeAttribute('aria-invalid');
-    /* The fill offers to do something the box has already had done to it, so
-       it goes while there is anything in there and comes back if the coach
-       clears it. A coach who arrived through "Start with a sample team" never
-       sees it at all, which is the point. */
-    set('#welFill', 'hidden', n > 0);
-    c.className = 'note' + (n >= 5 ? ' ready' : '');
-    c.textContent = n === 0
-      ? 'Paste from wherever your roster lives. Jersey numbers are optional.'
-      : n < 5 ? `${n} player${n === 1 ? '' : 's'}. 5 needed to field a lineup.`
-      : `${n} players. Ready.`;
-  });
-  on('#welRoster', 'onkeydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') finishOnboarding();
-  });
-
-  renderWelcome();
 
   /* The demo is the whole of A51 and it costs a returning coach nothing: ten
      rows and two images are built only when this screen is the one about to be

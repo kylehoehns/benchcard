@@ -200,45 +200,54 @@ export const APP_LARGE_TEXT_STATES = [
      games view and say "welcome screen" over it. That is the whole reason
      this entry costs a navigation.
 
-     MUST STAY LAST, with the two states below it: it destroys the rich fixture.
-     Nothing after it in this array would find `#gmOpen`, and `staticPass` (the
-     only pass after this one) navigates away from `index.html` for good. */
+     MUST STAY LAST, with the four states below it: it destroys the rich
+     fixture. Nothing after it in this array would find `#gmOpen`, and
+     `staticPass` (the only pass after this one) navigates away from
+     `index.html` for good. */
   { name: 'welcome screen, first run', firstRun: true },
-  /* AND THE FORM WITH THE SAMPLE IN IT (A49). A46 hid the roster form behind an
-     "Enter my team" disclosure and this pass had to open it as its own state;
-     A49 deleted the disclosure, so the state above sweeps the empty form for
-     free again and what is worth a second state is the form FULL -- ten names
-     in a textarea, the count line grown to "10 players. Ready.", and at 320px
-     on 200% text that is the tallest this screen ever gets.
+  /* AND THE THREE STEPS OF THE FLOW THE STATE ABOVE OPENS ONTO (#36). A46's
+     disclosure, A49's fill-in-place and A52's second pane are all gone now --
+     "Get started" is `#firstRunFlow`, a full-screen `<dialog>` with the same
+     shape `add a game, step 1/2/3` (below) already covers for `#addGameFlow`
+     -- so this is that same three-states-per-flow argument again, not a new
+     one: each step's body is a different layout (two fields and a roster box;
+     two steppers and the sub-frequency rows; a real card through
+     `cardPreviewInto`), which is `bench mode, swap picker`'s own reason for a
+     state per body repeated a third time in this file.
 
-     A51 MOVED THE BUTTON, not the behavior: `#welTry` in the hero now opens
-     the app (`loadSample`, which is what `?try=N` has always called) and the
-     fill lives on `#welFill` inside the roster box, for the coach who is
-     already typing. A52 then put the whole form behind `#welType`, so this
-     state opens it first and the two clicks are the coach's real path: ask for
-     the form, then fill it. The assertion is on the VALUES, because a state
-     that quietly stops measuring something is the same shape as a guard that
-     cannot fail -- if the fill silently stopped working this would go on
-     sweeping an empty form and report clean.
+     `#welTry` OPENS WITH THE SAMPLE ALREADY IN THE DRAFT (decision 7), so step
+     1 here is what used to need two clicks and a value check to reach --
+     "Set up my team" (`#welStart`) would open the same dialog empty, which is
+     already covered at the default root by `test/first-run.test.js`'s
+     `newDraft` case, and 320px at 200% text is a claim about a FULL roster
+     box, not an empty one.
 
-     WHAT THIS REPLACED, DELIBERATELY AND NOT SILENTLY: a state that raised the
-     sample flash, the longest copy the app puts in a toast (84 characters
-     against the rebalance message's 58). That sentence survives only on the
-     `?try=N` path now, which creates a team and lands on the games view, so it
-     is out of reach of a states loop that does not navigate — which is what
-     the state BELOW navigates for. `bench mode, undo toast` above measures a
-     toast with a button in it; this one has none. */
-  { name: 'welcome screen, sample filled',
-    open: `document.querySelector('#welType').click();
-           await new Promise(r => setTimeout(r, 200));
-           document.querySelector('#welFill').click();
-           await new Promise(r => setTimeout(r, 300));
-           if (document.querySelector('#welRoster').value.split('\\n').filter(Boolean).length < 5
-               || !document.querySelector('#welTeam').value.trim())
-             throw new Error('the sample never filled the form -- this state measured an empty one')`,
-    close: `document.querySelector('#welRoster').value = '';
-            document.querySelector('#welTeam').value = '';
-            document.querySelector('#welBack').click()` },
+     CLOSED THE SAME WAY ON ALL THREE: `#frClose` runs the flow's own close
+     request, which asks before losing a typed draft on steps 1-2 and finishes
+     outright on step 3 (decision 6 -- nothing is lost there, the team already
+     exists) -- so `#frDiscard` is always tried and is `undefined` on step 3,
+     where it does not exist and does not need to.
+
+     STEP 3 COMMITS A TEAM, same as `welcome screen, sample filled` used to
+     leave a filled form behind it and `welcome screen, first run` above wipes
+     the whole record: nothing after this trio needs the rich fixture back,
+     the state below it wipes again on its own navigation, and `staticPass`
+     never touches `index.html` again this run. */
+  { name: 'first run, step 1 with the sample',
+    open: `document.querySelector('#welTry').click()`,
+    close: `document.querySelector('#frClose')?.click();
+            document.querySelector('#frDiscard')?.click()` },
+  { name: 'first run, step 2',
+    open: `document.querySelector('#welTry').click();
+           document.querySelector('#frNext').click()`,
+    close: `document.querySelector('#frClose')?.click();
+            document.querySelector('#frDiscard')?.click()` },
+  { name: 'first run, step 3',
+    open: `document.querySelector('#welTry').click();
+           document.querySelector('#frNext').click();
+           document.querySelector('#frNext').click()`,
+    close: `document.querySelector('#frClose')?.click();
+            document.querySelector('#frDiscard')?.click()` },
   /* AND THE SENTENCE THE STATE ABOVE STOPPED MEASURING (A50). The sample flash
      is the longest copy the app puts in a toast, and its whole job is telling a
      first-run coach how to undo the thing they just did — so 320px at 200% text
@@ -343,7 +352,7 @@ export async function firstRun(c, origin) {
     host: location.host,
     shown: document.querySelector('#view-welcome')?.hidden === false,
     bar: getComputedStyle(document.querySelector('.bar')).display,
-    buttons: ['#welGo', '#welTry'].filter(s => document.querySelector(s)).length,
+    buttons: ['#welStart', '#welTry'].filter(s => document.querySelector(s)).length,
     seeded: Object.keys(localStorage).some(k => (localStorage.getItem(k) || '').includes('Smoke Test')),
   })`));
   const wrong = [

@@ -55,9 +55,15 @@ test('nothing in the sample looks like a bug a coach would report', () => {
 });
 
 test('there is one fictional cast, not two', () => {
-  const ph = app('index.html').match(/id="welRoster"[^>]*placeholder="([^"]*)"/)?.[1];
-  assert.ok(ph, '#welRoster has no placeholder to share a cast with');
-  const placeholder = parseRoster(ph.replace(/&#10;/g, '\n')).map((p) => p.name);
+  // #36 replaced the welcome pane's own roster box (`#welRoster`, static
+  // markup with a `placeholder="..."` attribute) with step 1 of the
+  // first-run flow: `#frRoster` is a textarea `stepTeam` builds at runtime,
+  // so its placeholder is a string literal in onboarding.js now, not an
+  // attribute in index.html.
+  const step = body(app('onboarding.js'), 'function stepTeam(');
+  const ph = step.match(/frField\('textarea', 'Your players, one per line', fr\.roster,\s*\n?\s*'([^']*)'/)?.[1];
+  assert.ok(ph, '#frRoster has no placeholder to share a cast with');
+  const placeholder = parseRoster(ph.replace(/\\n/g, '\n')).map((p) => p.name);
   assert.equal(placeholder.length, 3, 'the placeholder cast changed shape');
   assert.deepEqual(sampleRoster(5).slice(0, 3).map((p) => p.name), placeholder,
     'the sample no longer opens with the placeholder names -- that is a second invented cast, which the item forbids');
@@ -67,68 +73,18 @@ test('the sample team is named so it cannot be mistaken for the coach own team',
   assert.match(SAMPLE_TEAM_NAME, /sample/i, 'a plausible club name here is a fake team a coach could mistake for theirs');
 });
 
-/* A49 removed a `<details>` disclosure from this screen. A52 put the roster
-   form behind a tap again, and this test is the record of WHICH HALF of A49
-   survives that, because the two halves were never the same claim.
-
-   THE HALF THAT DID NOT SURVIVE was the no-script argument: a `<summary>`
-   opens with no JavaScript running, so the form could not be lost to a dead
-   module graph. A49 checked it and it was worth nothing -- there is no
-   `<form>`, no `type="submit"` and no submit listener anywhere in `app/`, so
-   `#welGo` is a JS onclick and this screen has needed the module graph since
-   it was written. A hidden form costs a dead graph exactly nothing extra.
-
-   THE HALF THAT SURVIVES, and is pinned below, is A47's: a control iOS does
-   not recognize as interactive is a bad bet, whatever the markup says. Six
-   rounds went into a two-tap bug on the one button-styled `<summary>` in the
-   app. So the reveal is a plain `<button>`, it is one tap, and `<details>` and
-   `<summary>` are still banned from this screen.
-
-   The form ships `hidden` and `#welType` is the only thing that opens it, so
-   that is now asserted rather than forbidden -- a reveal that no longer exists
-   would leave a screen with no way to type a roster at all. */
-test('setup is a second pane, reached and left by one tap of a real button', () => {
-  const html = app('index.html');
-  const welcome = html.slice(html.indexOf('id="view-welcome"'), html.indexOf('id="view-team"'))
-    // comments out: this screen's comments TALK about the disclosure that was
-    // removed, and a guard that reads prose is measuring the wrong thing
-    .replace(/<!--[\s\S]*?-->/g, ' ');
-  assert.ok(welcome.includes('id="welRoster"'), 'the welcome screen did not parse');
-  assert.ok(!/<details|<summary/.test(welcome),
-    'the roster form is behind a disclosure again -- A47 is the bug that lived on one');
-  /* Two panes, and the setup one ships closed. Both halves matter: a landing
-     pane that never hides leaves the coach looking at two screens at once, and
-     a setup pane that ships open is not a landing screen at all. */
-  assert.match(welcome, /id="welSetup"[^>]*\bhidden\b/,
-    'the setup pane no longer ships closed, so the first screen is not one screen (A52)');
-  assert.ok(!/id="welLanding"[^>]*\bhidden\b/.test(welcome),
-    'the landing pane ships hidden, so a coach arrives on the setup form');
-  /* The two ways between them are plain buttons -- never a <summary>, which is
-     the one lesson that survives A47 -- and the opener names where it goes. */
-  const opener = welcome.match(/<button[^>]*id="welType"[^>]*>/);
-  assert.ok(opener, '#welType is gone, so nothing reaches the setup pane');
-  assert.match(opener[0], /aria-controls="welSetup"/, '#welType does not say what it opens');
-  assert.ok(/<button[^>]*id="welBack"/.test(welcome),
-    'nothing leads back out of setup, so the landing screen is a one-way door');
-
-  /* Comments out, the same reason they come out of the markup above: this
-     module's comments TALK about the disclosure and about `<summary>`, and a
-     guard that reads prose is scoring the explanation instead of the code. */
-  const onb = app('onboarding.js')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/^[ \t]*\/\/.*$/gm, ' ');
-  assert.ok(!/<summary|createElement\(\s*['"]summary/.test(onb),
-    'onboarding.js builds a summary for this screen');
-  /* ONE function moves between the panes. Two would be two places to forget to
-     hide the other one, which is the whole failure mode here. */
-  const swaps = [...onb.matchAll(/#welLanding|#welSetup\b/g)].length;
-  assert.equal(swaps, 2,
-    `${swaps} references to the two panes in onboarding.js; one swapper touches each once`);
-  assert.match(onb, /on\('#welType', 'onclick', \(\) => pane\(true\)\)/,
-    'nothing takes the coach to setup');
-  assert.match(onb, /on\('#welBack', 'onclick', \(\) => pane\(false\)\)/,
-    'nothing brings the coach back');
-});
+/* This test pinned A47/A49/A52's shape: a landing pane and a setup pane,
+   `hidden`-swapped by `pane()`, reached and left by `#welType`/`#welBack`.
+   #36 deletes that shape outright -- "Set up my team" and "Try a sample
+   team" both open `#firstRunFlow`, a `<dialog>` sibling to `#addGameFlow`
+   (see `test/anim-fill.test.js`'s own retirement note on the sibling case
+   this same rewrite hit) -- so there is no second pane, no `pane()`, no
+   `#welType`/`#welBack`/`#welSetup` left to pin. The one-tap-of-a-real-button
+   claim this test carried forward from A47 still holds: `#welStart`/`#welTry`
+   are plain `<button>`s and `test/first-run.test.js`'s own shell-markup test
+   already checks `#firstRunFlow` ships closed (no `open` attribute) and sits
+   outside every `.view`, which is the "one screen at a time" half of A52 in
+   the shape this app now has. */
 
 test('filling the form creates nothing, and it is offered inside the form', () => {
   const onb = app('onboarding.js');
@@ -139,40 +95,36 @@ test('filling the form creates nothing, and it is offered inside the form', () =
     assert.ok(!fill.includes(forbidden),
       `fillSample calls ${forbidden} -- filling a form must create nothing, count nothing and go nowhere (A49)`);
   }
-  const init = body(onb, 'export function initOnboarding(');
-  assert.match(init, /on\('#welFill', 'onclick', \(\) => fillSample\(\)\)/,
-    'nothing offers the fill any more -- A49 built it for the coach who wants to edit a sample');
-  const html = app('index.html');
-  const card = html.slice(html.indexOf('class="wel-card"'), html.indexOf('id="welGo"'));
-  assert.ok(card.includes('id="welFill"'),
-    'the fill is offered outside the box it fills, which is what A51 moved it out of');
+  // #36 moved the fill button from the old `#welCard` region (wired
+  // separately in initOnboarding) into step 1 itself: `stepTeam` builds it
+  // right beside the roster box it fills, which is the same "offered inside
+  // the form" claim A51 made, now true of the box that still exists.
+  const step = body(onb, 'function stepTeam(');
+  assert.match(step, /id = 'frFill'/, 'the fill button is gone from step 1');
+  assert.match(step, /fill\.onclick = \(\) => \{ fillSample\(\); paintFr\(\); \}/,
+    'nothing in step 1 offers the fill any more -- A49 built it for the coach who wants to edit a sample');
 });
 
-/* THE TWO DOORS BOTH LAND ON SETUP (A52), and the sample one arrives with the
-   roster already in the box. That is A49's `fillSample` again: A51 pointed this
-   button at `loadSample` because a sample that answered "what does this make?"
-   with a second helping of the form was the whole complaint, and the stage on
-   the landing screen answers that question now -- the plan, the card and bench
-   mode, before a coach taps anything.
+/* BOTH DOORS OPEN THE SAME FLOW (#36 decision 7), and the sample one arrives
+   with the draft already filled. That is A49's `fillSample` again: A51
+   pointed this button at `loadSample` because a sample that answered "what
+   does this make?" with a second helping of the form was the whole
+   complaint, and the stage on the landing screen answers that question now --
+   the plan, the card and bench mode, before a coach taps anything.
 
-   What must not drift is the counting. `first_run_complete` is the only
-   roster-size signal the app has and the six chart pages are built on that
-   distribution, so a sample the app itself suggested must never fire it. Both
-   halves of that are pinned: the fill records what it wrote, and
-   `finishOnboarding` defers when the box comes back unchanged. */
-test('both doors land on setup, and the sample one fills the box on the way', () => {
+   The ?try= deep link keeps its own function and its own behavior: somebody
+   who clicked "try it with nine players" on a chart page asked to see the
+   card, not a form. */
+test('both doors open the flow, and the sample one fills the draft on the way', () => {
   const init = body(app('onboarding.js'), 'export function initOnboarding(');
-  assert.match(init, /on\('#welTry', 'onclick', \(\) => \{ pane\(true\); fillSample\(\); \}\)/,
-    'the sample door no longer opens setup with the roster in it');
-  assert.match(init, /on\('#welType', 'onclick', \(\) => pane\(true\)\)/,
-    'the typing door no longer opens setup');
-  /* The deep link keeps the OTHER behavior and the other function: somebody
-     who clicked "try it with nine players" on a chart page asked to see the
-     card, not a form. */
+  assert.match(init, /on\('#welStart', 'onclick', \(\) => openFirstRun\(\$\('#welStart'\), false\)\)/,
+    'the typing door no longer opens the flow empty');
+  assert.match(init, /on\('#welTry', 'onclick', \(\) => openFirstRun\(\$\('#welTry'\), true\)\)/,
+    'the sample door no longer opens the flow with the draft filled');
   assert.match(init, /loadSample\(want\)/,
     'the ?try= deep link no longer builds the team and shows the card');
   assert.ok(!/on\('#welTry'[^\n]*loadSample/.test(init),
-    'the hero button jumps past setup again -- ?try= is the only path that should');
+    'the hero button calls loadSample directly again -- ?try= is the only path that should');
 });
 
 test('loading the sample counts nothing, and the first edit counts instead', () => {
@@ -188,22 +140,25 @@ test('loading the sample counts nothing, and the first edit counts instead', () 
   assert.match(soon, /track\('first_run_complete', \{ roster: bucketRoster\(state\.players\.length\) \}\)/,
     'the deferred count must send the size AT THE MOMENT OF THE EDIT, not the size we suggested');
 
-  const fin = body(app('onboarding.js'), 'function finishOnboarding(');
-  assert.match(fin, /track\('first_run_complete'/,
+  // #36 replaced `finishOnboarding` with `commitFirstRun`, which runs on
+  // Next from step 2 rather than on a form submit -- same two claims either
+  // way: a typed roster is counted immediately, and an untouched sample
+  // (`fr.filled` still equal to `fr.roster`) defers instead.
+  const commit = body(app('onboarding.js'), 'function commitFirstRun(');
+  assert.match(commit, /track\('first_run_complete'/,
     'a typed roster must still be counted immediately -- only the sample waits');
 
   /* A49 opened a second way for our own suggestion to be counted: fill the
-     form from the sample, tap "Build my first card" without touching it, and
-     the typed-roster path above would fire `first_run_complete{roster:10}` for
-     a roster the app itself wrote. So the submitted text is compared against
-     what the fill wrote, and an untouched sample defers exactly as `?try=`
-     does. */
-  assert.match(fin, /filledText/,
-    'finishOnboarding no longer knows whether it is submitting our own sample untouched');
-  assert.match(fin, /markFirstRunPending\(\)/,
-    'an untouched sample submitted through the form is counted immediately, which measures our own suggestion (A35 DECISION 1)');
+     draft from the sample, tap Next without touching it, and the typed-roster
+     path above would fire `first_run_complete{roster:10}` for a roster the
+     app itself wrote. So the submitted text is compared against what the
+     fill wrote, and an untouched sample defers exactly as `?try=` does. */
+  assert.match(commit, /fr\.filled !== null && fr\.roster === fr\.filled/,
+    'commitFirstRun no longer knows whether it is submitting our own sample untouched');
+  assert.match(commit, /markFirstRunPending\(\)/,
+    'an untouched sample submitted through the flow is counted immediately, which measures our own suggestion (A35 DECISION 1)');
   const fill = body(app('onboarding.js'), 'function fillSample(');
-  assert.match(fill, /filledText = /, 'the fill records nothing for finishOnboarding to compare against');
+  assert.match(fill, /fr\.filled = fr\.roster/, 'the fill records nothing for commitFirstRun to compare against');
 });
 
 /* A38: the toast that tells a new coach how to undo the sample named "Teams",

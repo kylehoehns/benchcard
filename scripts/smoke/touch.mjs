@@ -81,6 +81,33 @@ const TOUCH_STATES = [
     open: `document.querySelector('#agNext').click()` },
   { name: 'add a game, step 3',
     open: `document.querySelector('#agNext').click()` },
+  /* #36: the three first-run steps, appended after the Add-a-game trio and
+     resetting from it the way that trio itself resets from whatever ran
+     before it -- `close` (below, shared by every state here) runs once, at
+     the end of this whole array, not after each state (`widthSweep`'s own
+     contract), so `#addGameFlow` would otherwise still be open here. Opened
+     through `#welTry`, the door that fills the sample into the draft
+     (decision 7), the same one `overlay.mjs`'s identical trio and
+     `app-large-text.mjs`'s use. Step 3 commits a team through
+     `commitFirstRun` (decision 4: it renders the real card, so the team has
+     to exist by then), which overwrites `state.players`/`state.teamName`/
+     `state.day.games[0]` -- and every pass `smoke.mjs` runs after `touch`,
+     up to `teamscreen`'s own `goRich`, shares this same page load with no
+     reload in between. So this state's own `open` snapshots the fixture and
+     the shared `close` puts it back whole, the same rule `overlay.mjs`'s
+     trio follows for the identical mutation. */
+  { name: 'first run, step 1 with the sample',
+    open: `document.querySelector('#addGameFlow')?.close();
+           ${TODAY_HOME};
+           document.querySelector('#welTry').click()` },
+  { name: 'first run, step 2',
+    open: `document.querySelector('#frNext').click()` },
+  { name: 'first run, step 3',
+    open: `window.__frSnap = await (async () => {
+             const st = await import('/state.js');
+             return JSON.parse(JSON.stringify(st.state));
+           })();
+           document.querySelector('#frNext').click()` },
 ];
 
 /* #26 item 12: "the pass and #todayNewDay are touch targets of at least
@@ -134,7 +161,17 @@ export async function touchPass(c, origin, source) {
     // dialog directly, as before, would leave `#planMain` hidden and
     // `#planSub` shown for whichever check opens `#sheetPlan` next. It is a
     // no-op click when no sub pane is pushed (`popPane` returns false).
+    // The first-run restore has to run before `${TODAY_HOME}` below: it puts
+    // `state.view` back too, and a `#backBtn` click first would just be
+    // undone by `Object.assign` a line later.
     close: `document.querySelector('#addGameFlow')?.close();
+      document.querySelector('#firstRunFlow')?.close();
+      if (window.__frSnap) { await (async () => {
+        const st = await import('/state.js');
+        Object.assign(st.state, window.__frSnap);
+        delete window.__frSnap;
+        (await import('/render.js')).renderAll();
+      })(); }
       document.querySelector('#colorPickerClose')?.click();
       document.querySelector('#sheetWho')?.close();
       document.querySelector('#planBack')?.click();

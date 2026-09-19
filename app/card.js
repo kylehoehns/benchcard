@@ -267,9 +267,11 @@ function fitStage(stage) {
   const wanted = cardSize().w * 96;
   stage.style.setProperty('--cardzoom', avail > 0 ? Math.min(1, avail / wanted).toFixed(4) : 1);
 }
+// #36 step 3 adds a third stage (`#frStage`) with no id of its own to add
+// here -- every stage on the page shares the `.stage` class, so fitting all
+// of them is what keeps a fourth from needing a fourth line.
 export function fitPreview() {
-  fitStage($('#sheet'));
-  fitStage($('#sheetCardPreview'));
+  for (const s of document.querySelectorAll('.stage')) fitStage(s);
 }
 addEventListener('resize', fitPreview);
 
@@ -295,8 +297,7 @@ function stageEmpty(title, message) {
    while the sheet is open and when it opens". Blocked reuses `blockedFix`'s
    `message` only -- decision 7 explicitly withholds the fix button here
    ("the sheet is one level and the fix is another sheet"). */
-export function refreshCardSheetPreview() {
-  const host = $('#sheetCardPreview');
+export function cardPreviewInto(host) {
   if (!host) return;
   host.textContent = '';
   const p = plans[state.activeGame];
@@ -306,9 +307,13 @@ export function refreshCardSheetPreview() {
       fix ? fix.message : 'Add your players and the card shows up here.'));
     return;
   }
-  for (const c of document.querySelectorAll('#sheet .card:not(.card-copy)')) host.append(c.cloneNode(true));
+  for (const c of document.querySelectorAll('#sheet .card:not(.card-copy)'))
+    host.append(c.cloneNode(true));
   fitPreview();
 }
+// #36: step 3's `#frStage` clones the same way the card sheet's own preview
+// does -- `cardPreviewInto` above is that one place, now with two callers.
+export function refreshCardSheetPreview() { cardPreviewInto($('#sheetCardPreview')); }
 
 export function renderCards() {
   const sheet = $('#sheet'); sheet.textContent = '';

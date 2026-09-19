@@ -85,10 +85,22 @@ test('SHOTS includes a full-height capture, light and dark', () => {
 });
 
 test('SHOTS includes exactly one 320px/32px-root shot, light only, no twin', () => {
-  const shots = SHOTS.filter(s => s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX && !s.partPlayed);
+  const shots = SHOTS.filter(s => s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX
+    && !s.partPlayed && !s.firstRunStep);
   assert.equal(shots.length, 1, `want exactly one 320px/32px shot, found ${shots.length}`);
   assert.equal(shots[0].theme, 'light', 'the large-text cell is about layout and runs light only');
   assert.ok(!shots[0].twin, 'the large-text cell never runs dark, so it should declare no twin');
+});
+
+// #36 item 10: the same 320px/32px repro cell, applied to the first-run
+// flow's own step 1 -- kept in its own domain (`s.firstRunStep`) the same
+// way `resume-bar-320` below is kept out of the plain cell's count above,
+// rather than widening that count to mean two different things.
+test('SHOTS includes exactly one first-run 320px/32px shot, light only, no twin', () => {
+  const shots = SHOTS.filter(s => s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX && s.firstRunStep);
+  assert.equal(shots.length, 1, `want exactly one first-run 320px/32px shot, found ${shots.length}`);
+  assert.equal(shots[0].theme, 'light', 'the large-text cell is about layout and runs light only');
+  assert.ok(!shots[0].twin, 'the first-run 320px/32px cell never runs dark, so it should declare no twin');
 });
 
 test('SHOTS includes the empty first-run screen, light and dark', () => {
