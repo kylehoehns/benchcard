@@ -34,12 +34,16 @@ test('the chrome landscape block sits after every bar rule it overrides', () => 
   }
 });
 
-test('it trims vertically only, and never below the 44px touch floor', () => {
+test('it trims vertically only, and never below the 48px touch floor', () => {
   for (const prop of ['padding-left', 'padding-right', 'width:', 'gap:', 'display: none']) {
     assert.ok(!body.includes(prop), `${prop} in the landscape block trims the app horizontally`);
   }
-  // #29: #abCard (the action-bar printer) and its `.ab-side` rules are gone --
-  // the action bar carries only #abBench now.
-  assert.ok(/\.ab-main \{ min-height: 44px; \}/.test(body),
-    'the action bar button lost its 44px floor');
+  /* #29: #abCard (the action-bar printer) and its `.ab-side` rules are gone --
+     the action bar carries only #abBench now.
+     #37 review: `.ab-main` is not a `.btn`, so the coarse-pointer 48px
+     primitive never reaches it -- this line is the only thing holding the
+     app's primary action to guideline I1 in landscape on a short screen, and
+     it read 44px until #37's review found it. */
+  assert.ok(/\.ab-main \{ min-height: 48px; \}/.test(body),
+    'the action bar button lost its 48px floor');
 });

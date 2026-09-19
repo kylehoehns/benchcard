@@ -137,9 +137,9 @@ from the repo root (`node --test`, no dependencies to install).
 `npm run smoke` runs the browser checks — **46 of them** (45 with `--no-tests`,
 which skips the one check that runs the unit suite) — printed as a pass/fail
 table: no horizontal overflow at 390×844, the card is still 3.45 × 5in, no
-console errors, every touch target ≥44px across 320–390px, every row in
+console errors, every touch target ≥48px across 320–390px, every row in
 Settings ≥48px across the same three widths, the last control in an open
-dialog on screen and still 44px, every control accessibly named, ids
+dialog on screen and still 48px, every control accessibly named, ids
 unique and aria references resolving, alt text, `lang`/title/tab order, the
 card's own font loading before it is fitted, the three budgets, and the suite.
 `scripts/smoke.mjs` is the entry point: flags, the check registry, the run
@@ -197,10 +197,11 @@ and the committer ran it again on the same bytes — about twelve pairs for one
 ticket, half of them repeats. A tree a commit already recorded as green is not
 re-run to say so again.
 
-The payload budget is a **recorded** baseline. `requests` and `nodes` live in
-`scripts/budgets.json`; `bytes` is hand-pinned as `BYTES_BASELINE` in
-`scripts/budgets.mjs`, because nothing can rewrite `budgets.json` without
-erasing the `requests` pin (#35).
+The payload budget is a **recorded** baseline. `requests` comes from
+`scripts/budgets.json`; `bytes` and `nodes` are hand-pinned as
+`BYTES_BASELINE` and `NODES_BASELINE` in `scripts/budgets.mjs`, because
+nothing can rewrite `budgets.json` without erasing the `requests` pin (#35,
+#37).
 **Bytes and nodes are regression alarms, not constraints**: the shell is
 precached, so
 after the first load neither number costs a coach anything, and node or byte

@@ -210,8 +210,11 @@ a { color: inherit; }
    be dead. The strip it covers is the H1/H2 labels, which nothing taps; the
    first control below, `.tl-name`, starts 16px clear of the `::after`. Going
    up it takes the bottom 3px of the last sentence phrase's 48px box, which is
-   padding under that phrase's ink and leaves it 45px -- over the 44px floor,
-   and a tap landing that close to the seg was ambiguous either way.
+   padding under that phrase's ink and leaves it 45px -- over the 44px floor
+   it was measured against, and a tap landing that close to the seg was
+   ambiguous either way. (#37 raised the floor to 48: `.phrase` carries its
+   own 48px box and the touch sweep measures that box at all three widths,
+   not the ink the `::after` overlaps.)
 
    Side padding in px, like the prototype, not the shared rule's `.9rem`:
    equal halves mean the wider word is paid for twice, and at 320px with 32px
@@ -258,19 +261,19 @@ a { color: inherit; }
 
 /* #69 decision 12: "New day" is plain text too, same size and weight as the
    team button beside it, still at least 48x48. The gear stays an icon but
-   grows from `.btn.icon`'s 44px (coarse-pointer only) to an unconditional
+   grows from `.btn.icon`'s coarse-pointer-only floor to an unconditional
    48x48. */
 #todayNewDay { font-size: var(--fs-headline); color: var(--ink); min-height: 48px; padding: .3rem .5rem; }
 #settingsBtn { width: 48px; height: 48px; }
 /* #29 decision 3: "Share the card" is the one door into the card sheet, so
    it gets the same unconditional 48x48 `#settingsBtn` already has, rather
-   than `.btn.icon`'s 44px coarse-pointer floor. */
+   than `.btn.icon`'s coarse-pointer-only floor. */
 #shareBtn { width: 48px; height: 48px; }
 @media (hover: hover) {
   #shareBtn:hover .i { background: var(--surface-3); }
 }
 /* #33 decision 9: `#teamAdd` gets the same unconditional 48x48 hit area the
-   other four header controls already had -- `.btn.icon`'s 44px coarse-pointer
+   other four header controls already had -- `.btn.icon`'s coarse-pointer
    floor is not enough now that it sits beside a round `#shareBtn` on the same
    game screen. */
 #teamAdd { width: 48px; height: 48px; }
@@ -294,7 +297,7 @@ a { color: inherit; }
 /* #30 decision 1: the header carries the export -- a text button, not an
    icon, so it keeps `.btn`'s own width; only the height needs the same 48px
    floor `#shareBtn` above gets unconditionally (I1/C6), rather than the
-   44px coarse-pointer floor every other `.btn` settles for. Plain text, not
+   coarse-pointer-only floor every other `.btn` settles for. Plain text, not
    one of decision 9's round five (#33 decision 10). */
 #seasonExport { min-height: 48px; }
 
@@ -323,11 +326,6 @@ a { color: inherit; }
 /* #69 item 4: Shuffle is swept at 48px on the game screen; scoped to the id
    because `.btn.sm` is a shared small-button size used well beyond it. */
 #regen { min-height: 48px; }
-/* #69 decision 10: card/group surfaces drop their 1px border -- only
-   `#daytotals` (Across the day) still uses this class; the timeline's own
-   `.surface` wrapper is gone outright (decision 7), not just unbordered. */
-.surface { background: var(--surface); border-radius: var(--r); padding: 1.05rem; }
-
 .cols { display: grid; gap: clamp(1.1rem, 2vw, 1.8rem); grid-template-columns: minmax(0, 1fr); align-items: start; }
 @media (min-width: 1100px) {
   .cols { grid-template-columns: minmax(0, 1fr) 396px; }
@@ -466,7 +464,7 @@ a { color: inherit; }
   min-width: min(14rem, calc(100vw - 1.7rem));
   max-width: min(22rem, calc(100vw - 1.7rem)); }
 .teammenu:popover-open { display: flex; flex-direction: column; gap: .1rem; }
-.teammenu-item { display: flex; align-items: center; gap: .6rem; min-height: 44px;
+.teammenu-item { display: flex; align-items: center; gap: .6rem; min-height: 48px;
   width: 100%; padding: 0 .7rem; border-radius: var(--r-sm); border: 0; background: none;
   font: inherit; font-size: var(--fs-secondary); text-align: left; color: var(--ink); }
 @media (hover: hover) { .teammenu-item:hover { background: var(--surface-2); } }
@@ -563,7 +561,7 @@ a { color: inherit; }
 /* ---- lineup balance ------------------------------------------------------
    A five-step control, not a number. The steps fill left-to-right like a
    signal meter so the level reads at a glance without anybody having to think
-   "four out of five". 44px targets throughout: this is set standing up.
+   "four out of five". 48px targets throughout (I1): this is set standing up.
    #28: the shape picker moved into the Plan sheet's `.prow-shape` rows below;
    `.bal-intro`, `.bal-shape` and `.bal-blurb` were its fold-era look and
    nothing emits them any more. */
@@ -577,9 +575,9 @@ a { color: inherit; }
    trapping the page: vertical movement still scrolls, sideways movement
    reaches the pointer handlers in balance.js. */
 .bal-steps { display: flex; gap: 3px; touch-action: pan-y; }
-.bal-step { width: 30px; min-height: 44px; display: grid; place-items: end center;
+.bal-step { width: 30px; min-height: 48px; display: grid; place-items: end center;
   border-radius: var(--r-sm); position: relative; padding-bottom: 12px; }
-/* the bar is a child pseudo so the tap target stays 44px while the mark is small */
+/* the bar is a child pseudo so the tap target stays 48px while the mark is small */
 .bal-step::after { content: ''; width: 100%; border-radius: 3px;
   background: var(--line); height: var(--bar);
   transition: background var(--t) var(--ease), transform var(--t) var(--spring); }
@@ -601,13 +599,19 @@ a { color: inherit; }
 .bal-lv { font-size: var(--fs-footnote); color: var(--muted); width: 5.2rem; text-align: right;
   font-variant-numeric: tabular-nums; }
 /* #31: the level meter's one home is the player sheet's Level row. The strip
-   takes the full width of the group -- 56px a step at 320px, measured the
-   same way the old in-row meter was -- with the level's own word under it,
+   takes the full width of the group, with the level's own word under it,
    right-aligned. `levelMeter` (balance.js) is unchanged; this is the restyle.
-   The word is what a coach reads, so it is never hidden. */
+   The word is what a coach reads, so it is never hidden.
+
+   #37 review: the gap was `.3rem` and a step measured 47.36px wide at 320px
+   -- under I1's 48px floor, and nothing measured it, because no smoke state
+   opened this sheet. The narrowest phone gives the strip 256px, so five
+   steps clear 48px only while the four gaps together stay inside 16px:
+   `.25rem` is 4px and lands a step on exactly 48. `team, player sheet open`
+   in `scripts/smoke/touch.mjs` is what measures it now, at 320/360/390. */
 .prow-level { padding-top: .6rem; padding-bottom: .6rem; }
 .prow-level .bal-meter { flex: 1; min-width: 0; display: grid; row-gap: .05rem; }
-.prow-level .bal-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
+.prow-level .bal-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: .25rem; }
 .prow-level .bal-step { width: auto; padding-bottom: 10px; }
 /* narrower than the row so the meter reads as a control rather than as five
    blocks butting up against both edges of the sheet */
@@ -661,7 +665,6 @@ a { color: inherit; }
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 
 /* ============================ squad ============================ */
-.squad { display: flex; flex-wrap: wrap; gap: .5rem; }
 .plr {
   --c: var(--muted);
   display: inline-flex; align-items: center; gap: .5rem;
@@ -1025,8 +1028,6 @@ input[type=checkbox].box:checked::after { content: '✓'; color: var(--tint-ink)
 .meter.over i { background: var(--err); }
 .budget-msg { font-size: var(--fs-footnote); margin: 0 0 .55rem; color: var(--muted); transition: color var(--t-fast) var(--ease); }
 .budget-msg.under { color: var(--warn); } .budget-msg.over { color: var(--err); } .budget-msg.exact { color: var(--ok); }
-.budget-acts { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
-.budget-acts .btn:disabled { opacity: .45; cursor: default; }
 .srow { --c: var(--accent); display: grid; grid-template-columns: 4.6rem 1fr 4.1rem 2rem; gap: .55rem; align-items: center; padding: .12rem 0; }
 .srow .nm { display: flex; align-items: center; gap: .38rem; font-weight: 600; font-size: var(--fs-footnote); letter-spacing: -.015em; overflow: hidden; }
 .srow .nm .dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--c); flex: none; }
@@ -1036,8 +1037,8 @@ input[type=checkbox].box:checked::after { content: '✓'; color: var(--tint-ink)
 .srow.locked .v { color: var(--accent); }
 /* What the plan actually gives, on the row that asked for something else. The
    coach's number stays put -- this is a correction printed under it, never a
-   silent substitution. Two lines fit inside the row's own height (the 44px
-   lock button sets it on touch), so nothing shifts when it appears. */
+   silent substitution. Two lines fit inside the row's own height (the lock
+   button's own touch floor sets it), so nothing shifts when it appears. */
 .srow .v .act { display: block; margin-top: .02rem; font-size: var(--fs-footnote); font-weight: 600;
                 line-height: 1.1; letter-spacing: -.01em; white-space: nowrap; color: var(--warn); }
 .lockbtn { padding: .3rem; border-radius: var(--r-xs); color: var(--muted); font-size: var(--fs-secondary); line-height: 1; opacity: .38; }
@@ -1082,23 +1083,6 @@ input[type=range]:disabled { opacity: .5; }
 .rchip.err { border-color: color-mix(in srgb, var(--err) 38%, transparent); color: var(--err); }
 .rchip .x { padding: 0 .3rem; color: var(--faint); font-size: var(--fs-body); line-height: 1; border-radius: var(--r-full); }
 @media (hover: hover) { .rchip .x:hover { color: var(--err); } }
-.ruleedit { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-top: .75rem;
-  padding: .8rem; border: 1px solid var(--line-2); border-radius: var(--r);
-  background: var(--surface-2); animation: rise var(--t) var(--ease) both; }
-.ruleedit.stack { display: block; }
-.ruleedit select { flex: 1; min-width: 8rem; }
-/* The two number boxes in the Minutes-limit editor. `.mini` was emitted from
-   the first commit with no rule anywhere, so both inherited
-   `input[type=number] { width: 100% }` -- a flex basis of the whole row -- and
-   each wrapped onto a line of its own, turning a one-line editor into a
-   four-row stack. They hold two digits, so the basis is small enough that the
-   pair always shares a line with the select -- at 320px a 4rem basis missed by
-   half a pixel and stranded `cap` on a line of its own, twice the width of
-   `min`. Below that the Add button drops to the next line, which is the same
-   shape the Play-together editor takes. */
-.ruleedit .mini { flex: 1 1 3.2rem; min-width: 3rem; text-align: center; padding-left: .4rem; padding-right: .4rem; }
-.ruleedit .note { width: 100%; margin-top: .2rem; }
-.rule-switches { margin-top: 1.4rem; display: flex; flex-direction: column; gap: 1rem; }
 
 /* What the season carryover did, under the switch that turned it on. Indented
    to the switch's label so it reads as that control's consequence rather than
@@ -1139,22 +1123,13 @@ details.dz > summary {
 }
 @media (hover: hover) { details.dz > summary:hover { background: var(--surface-2); } }
 details.dz > summary::-webkit-details-marker { display: none; }
-/* #69 decision 9: the chevron sits on the right, same as `.fold` below -- it
-   used to open `::before` the label on a `.dz` row while `.fold`'s sat
-   `::after` it, so the two disclosure styles pointed opposite ways on the
-   same screen. */
+/* #69 decision 9: the chevron sits on the right. It used to open `::before`
+   the label on a `.dz` row while the fold chrome's sat `::after` it, so the
+   two disclosure styles pointed opposite ways on the same screen. #37
+   deleted that chrome, and `.dz` is the one disclosure style left. */
 details.dz > summary::after { content: '›'; margin-left: auto; font-size: var(--fs-secondary); line-height: 1; display: inline-block;
   color: var(--faint); transition: transform var(--t) var(--spring); }
 details.dz[open] > summary::after { transform: rotate(90deg); }
-details.dz > summary .count { background: var(--accent-soft); color: var(--accent); padding: .12rem .5rem; border-radius: var(--r-full); font-size: var(--fs-footnote); letter-spacing: 0; }
-/* Zero rules is a HINT, not a badge. The row used to say `› RULES` and nothing
-   else -- the pill is hidden at zero, so the one feature no competitor has
-   introduced itself with a blank. It names what it holds instead; and it has
-   to unset the pill above, because rendering "minutes, pairs, starters" in
-   accent-soft would read as an alert about something a coach has not done.
-   Same idiom as `#fmthint` a few rows up: a value in muted type. */
-details.dz > summary .count.zero { background: none; color: var(--faint); padding: 0;
-  font-size: var(--fs-footnote); text-transform: none; letter-spacing: 0; font-weight: 600; }
 details.dz .dz-bd { padding-bottom: 1.1rem; animation: rise var(--t) var(--ease) both; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
@@ -1288,7 +1263,7 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .roster-empty .se-t { font-size: var(--fs-body); font-weight: 700; margin-bottom: .3rem; }
 .roster-empty .se-s { font-size: var(--fs-secondary); color: var(--muted); }
 .roster-empty .re-acts { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; margin-top: 1.1rem; }
-.roster-empty .re-acts .btn { min-height: 44px; }
+.roster-empty .re-acts .btn { min-height: 48px; }
 
 /* ============================ game mode ============================ */
 .gm {
@@ -1383,10 +1358,10 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 
 .gm-scope { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: var(--r-full);
   border: 1px solid var(--line); }
-/* 44px, not the 26 this group measured before a third button joined it: these
-   are mid-game controls tapped standing up in a gym, and 44 is the floor this
-   app holds everything else to. */
-.gm-scope button { padding: .55rem .7rem; min-height: 44px; border-radius: var(--r-full);
+/* 48px, not the 26 this group measured before a third button joined it: these
+   are mid-game controls tapped standing up in a gym, and 48 is the floor this
+   app holds everything else to (#37 / I1; it was 44 until the floor rose). */
+.gm-scope button { padding: .55rem .7rem; min-height: 48px; border-radius: var(--r-full);
   font-size: var(--fs-footnote); font-weight: 600; color: var(--muted); }
 .gm-scope button.on { background: var(--surface); color: var(--tint); box-shadow: var(--shadow-sm); }
 /* The third item is an action, not a third segment of the toggle, so it is
@@ -1463,9 +1438,10 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   display: flex; gap: 0; justify-content: center; flex-wrap: nowrap; }
 /* A `div`, and it always should have been: a dot is 17.8px wide with eight
    stints, 11.9px with twelve and 2.4px at 150% text, which is not a target a
-   thumb can hit under any reading of the 44px rule -- see renderGameMode.
+   thumb can hit under any reading of the touch rule -- see renderGameMode.
    The 44px height stays because it is what holds this row to the same line
-   box as the two real controls beside it, not because anything taps it.
+   box as the two real controls beside it, not because anything taps it: a
+   measured layout number, which is why #37's 48px floor left it alone.
    (When these were buttons, `padding: 0` was load-bearing: a button keeps the
    UA's 6px side padding even at min-width: 0, so twelve dots wanted 145px in
    a 142px strip and the last one was sliced down the middle. A div has none,
@@ -1534,8 +1510,9 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   .gm-sec { margin-bottom: 0; }
   .gm-lab { margin-bottom: .35rem; }
   .gm-floor { gap: .35rem; }
-  /* .32rem against a 2rem avatar lands the row on 44px exactly -- the floor
-     of a touch target, and what makes all five fit above the fold. */
+  /* .32rem against a 2rem avatar lands the row's padded content on 44px --
+     `.gm-p`'s own touch floor at the foot of this sheet sets the height, and
+     this padding is what makes all five fit above the fold. */
   .gm-p { padding: .32rem .7rem; gap: .6rem; }
   .gm-p .av { width: 2rem; height: 2rem; }
   .gm-next { padding: .6rem .8rem; }
@@ -1736,13 +1713,13 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    thing on the second row and would otherwise sit under the first word. */
 .toast .tundo, .toast .tmsg + .tx { margin-left: auto; }
 .toast .tundo {
-  flex: none; min-height: 44px; padding: 0 .95rem; border-radius: var(--r-sm);
+  flex: none; min-height: 48px; padding: 0 .95rem; border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--bg) 24%, transparent); color: var(--bg);
   font-size: var(--fs-secondary); font-weight: 700; letter-spacing: -.005em;
 }
 @media (hover: hover) { .toast .tundo:hover { background: color-mix(in srgb, var(--bg) 36%, transparent); } }
 .toast .tx {
-  flex: none; width: 40px; min-height: 44px; display: grid; place-items: center;
+  flex: none; width: 40px; min-height: 48px; display: grid; place-items: center;
   color: color-mix(in srgb, var(--bg) 65%, transparent); border-radius: var(--r-sm);
 }
 @media (hover: hover) { .toast .tx:hover { color: var(--bg); } }
@@ -1844,7 +1821,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 /* Cancel first and wider: the safe choice should be the easy one to hit, and
    the destructive one should not be where the thumb already is. */
 .confirm-acts { display: flex; gap: .5rem; }
-.confirm-acts .btn { flex: 1; min-height: 44px; justify-content: center; }
+.confirm-acts .btn { flex: 1; min-height: 48px; justify-content: center; }
 .keys-hd .keys-t { flex: 1; text-align: left; }
 .keys-list { margin: .7rem 0 0; }
 .keys-row { display: flex; align-items: center; gap: .8rem; padding: .5rem 0;
@@ -1911,8 +1888,10 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 
 .colorbox { width: min(22rem, 92vw); text-align: left; }
 .color-opts { display: flex; flex-direction: column; gap: .3rem; margin-top: .5rem; }
-/* 48px, not just the 44px floor the spec sets: matches `#view-settings
-   .setrow`'s own floor (app.css :2777) rather than a second number. */
+/* Matches `#view-settings .setrow`'s own floor (app.css :2777) rather than
+   stating a second number: both are the 48px floor guideline I1 owns. (This
+   said "48px, not just the 44px floor the spec sets" until #37 raised the
+   floor and the two numbers became one.) */
 .color-opt { display: flex; align-items: center; gap: .7rem; width: 100%; min-height: 48px;
   padding: .5rem .8rem; border: 1px solid var(--line); border-radius: var(--r-sm);
   background: none; font: inherit; font-size: var(--fs-body); color: var(--ink); text-align: left; }
@@ -1944,7 +1923,7 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .tour-bd .tour-l:first-child { margin-top: 0; }
 .tour-bd b { color: var(--ink); font-weight: 600; }
 .tour-acts { display: flex; align-items: center; gap: .5rem; margin-top: 1.05rem; }
-.tour-acts .btn { min-height: 44px; }
+.tour-acts .btn { min-height: 48px; }
 .tour-acts #tourNext { min-width: 5.6rem; justify-content: center; }
 .tour-dots { display: flex; gap: .32rem; margin: 0 auto; }
 .tour-dots i { width: .42rem; height: .42rem; border-radius: var(--r-full); background: var(--line-2); }
@@ -2374,11 +2353,11 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 /* The form itself, and since A49 it is unconditional -- no disclosure, no
    toggle, no state. The two lighter doors sit above it and it carries its own
    top margin instead of the `[open]` rule that used to supply one. */
-/* Padded to 44px rather than boxed, the same trade `.foot-link` and `.linkish`
+/* Padded to 48px rather than boxed, the same trade `.foot-link` and `.linkish`
    both make. The color and the underline come from the `.wel-about,
    `.wel-tail-row` rule in the footer block below, so all three footer links
    are one treatment; only the box is set here. */
-.wel-about { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .55rem; }
+.wel-about { display: inline-flex; align-items: center; min-height: 48px; padding: 0 .55rem; }
 /* Every full-width button on this screen: the two doors under the figures.
    #36 deletes the third ("Build my first card", inside the setup pane) along
    with the pane -- one column of choices, not a row a thumb has to aim
@@ -2416,9 +2395,9 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-tail .pastebox { max-width: 24rem; margin: .5rem auto 0; align-items: center; }
 /* A button that reads as a link: it opens the system file picker, so it is not
    navigation, but it must not compete with "Build my first card". Padded to
-   44px rather than boxed, the same trade `.foot-link` makes. */
+   48px rather than boxed, the same trade `.foot-link` makes. */
 .linkish { background: none; border: 0; border-bottom: 1px solid transparent; cursor: pointer;
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 .25rem;
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 .25rem;
   font: inherit; font-weight: 600; color: var(--accent); }
 .linkish:focus-visible { border-bottom-color: var(--accent-line); }
 @media (hover: hover) { .linkish:hover { border-bottom-color: var(--accent-line); } }
@@ -2750,7 +2729,7 @@ dialog.flow .f { text-transform: none; letter-spacing: normal; }
   background: var(--surface); border: 1px solid var(--line); }
 .flow-card-t { font-size: var(--fs-body); font-weight: 600; margin: 0; }
 .flow-card-s { font-size: var(--fs-secondary); color: var(--muted); margin: .18rem 0 .7rem; }
-.flow-card .btn { width: 100%; min-height: 44px; }
+.flow-card .btn { width: 100%; min-height: 48px; }
 
 /* Step 2's tiles are the Plan sheet's own picker (`.pick` / `.plr` /
    `.plr-check`, above). Two things this screen adds: the surname reads under
@@ -2905,7 +2884,7 @@ dialog.flow .pgrp { margin: 0 1rem; }
 /* 48px hit area (the touch sweep failed it at 26px), the grip bar itself
    staying a thin pill inside it via the `::before` below -- the visual
    mark and the tappable box are deliberately different sizes, the same way
-   the 44px `.linkish` text does it elsewhere in this file. Decision 6 (#28):
+   the `.linkish` text does it elsewhere in this file. Decision 6 (#28):
    positioned out of flow so its 48px hit box can overlap the (non-interactive)
    title row below rather than pushing the header taller -- the visible pill
    itself sits a fixed .375rem from the sheet's top edge, matching the
@@ -3149,9 +3128,9 @@ dialog.flow .pgrp { margin: 0 1rem; }
    row is the label, the control sits where the value sits and keeps the row's
    own type, with the platform chrome stripped off. Two classes deep so it
    beats the `input[type="text"]` rules (an element+attribute selector) that
-   give every other field in the app its border, its padding and its own 44px
-   floor -- here the ROW is the 48px target, and a second floor inside it
-   would make every row 70px tall. */
+   give every other field in the app its border, its padding and its own
+   touch floor -- here the ROW is the 48px target, and a second floor inside
+   it would make every row 70px tall. */
 .pgrp .prow-in { flex: 1 1 auto; min-width: 0; width: auto; text-align: right;
   font: inherit; font-size: var(--fs-body); color: var(--ink);
   background: none; border: 0; border-radius: 0; padding: 0; margin: 0; min-height: 0; }
@@ -3249,7 +3228,8 @@ dialog.flow .pgrp { margin: 0 1rem; }
 /* The prototype's chips are borderless `--surface` pills everywhere in this
    sheet (the kind chips above and the Closing-window chips) -- `.chip`'s own
    `--line-2` border was the welcome pane's look, and decision 5's 48px floor
-   is taller than the same primitive's 44px (line ~3150). Both overrides are
+   was taller than the same primitive's 44px until #37 raised it to 48 too.
+   Both overrides are
    scoped to the grouped sheet rather than folded into the primitive: every
    chip in the app happens to sit in this sheet since #36 retired the welcome
    pane's own, so the base rule has no live user, but it is still what a new
@@ -3306,11 +3286,11 @@ dialog.bsheet.grouped .chip { border-color: transparent; min-height: 48px; displ
    dialog is reachable" measures when it is the last focusable node in
    `#sheetPlan` -- a real `.prow` row can end the dialog's body (the day or
    season group), same as the help sheet's own control once did. So the
-   INPUT's own box is 2.75rem tall (44px, the check's floor) with the track
-   drawn as a centered pseudo-element at the spec's height; the row's own
-   48px `align-items: center` keeps it looking exactly like the spec's
-   3.1875 × 1.9375 pill. */
-input[switch] { appearance: none; flex: none; width: 3.1875rem; height: 2.75rem;
+   INPUT's own box is 3rem tall (48px, the check's floor since #37) with the
+   track drawn as a centered pseudo-element at the spec's height; the row's
+   own 48px `align-items: center` keeps it looking exactly like the spec's
+   3.1875 × 1.9375 pill, and the box now fills the row exactly. */
+input[switch] { appearance: none; flex: none; width: 3.1875rem; height: 3rem;
   background: none; position: relative; margin: 0; cursor: pointer; }
 input[switch]::before { content: ''; position: absolute; top: 50%; left: 0;
   transform: translateY(-50%); width: 100%; height: 1.9375rem; border-radius: var(--r-full);
@@ -3405,33 +3385,6 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   color: var(--muted); }
 .sheetrow.sel .sheetrow-state { color: inherit; }
 
-/* Collapsible sections. Open by default on a roomy screen; the phone rules
-   below close the reference ones so the rotation and the card sit near the top
-   instead of two screens down. */
-/* #69 decision 9: a grouped row -- `--surface`, 12px radius, no border, at
-   least 48px, sentence case (no uppercase/letter-spacing), label in ink,
-   chevron in `--faint`. Unconditional, not phone-only: this used to reach
-   48px only under the coarse-pointer/phone rule further down, which is
-   removed with it. */
-.fold > summary {
-  list-style: none; cursor: pointer; display: flex; align-items: center; gap: .7rem;
-  min-height: 48px; padding: .85rem .95rem; margin-bottom: .75rem;
-  border-radius: var(--r-sm); background: var(--surface);
-  -webkit-tap-highlight-color: transparent; transition: background var(--t-fast) var(--ease);
-}
-.fold > summary::-webkit-details-marker { display: none; }
-.fold > summary h3 { font-size: var(--fs-body); color: var(--ink); font-weight: 600; }
-.fold > summary::after {
-  content: '›'; margin-left: auto; color: var(--faint); font-size: var(--fs-headline); line-height: 1;
-  transition: transform var(--t) var(--spring);
-}
-.fold[open] > summary::after { transform: rotate(90deg); }
-@media (hover: hover) { .fold > summary:hover { background: var(--surface-2); } }
-/* #69 decision 9: the hint reads muted, not the label's own ink -- it was
-   unstyled before and fell back to the summary's inherited color. */
-.fold > summary .hint { margin-left: 0; color: var(--muted); font-size: var(--fs-footnote); }
-.fold[open] > *:not(summary) { animation: rise var(--t) var(--ease) both; }
-
 /* #33 decision 11 (W3: no help icons beside a control): both "?" affordances,
    the `.helpq` rule they used and the `[data-help]` wiring in shortcuts.js
    are gone. `#help` is still reachable from Settings' own "How it works"
@@ -3508,7 +3461,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    sideways.
 
    Every stage here trades away chrome, never target size: `.btn.icon` is 2rem
-   in this block and the touch-minimum block below puts it back to 44px. A bar
+   in this block and the touch-minimum block below puts it back to 48px. A bar
    that fits by shrinking a control to 32px has swapped one broken rule for
    another, and that mistake has been made here once already. */
 @media (max-width: 620px) {
@@ -3647,7 +3600,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      rather than as anything in the row itself. The "?" takes a second line
      inside its own summary instead: still 44px, still inside the control it
      belongs to, and untouched at every width where the row fits. */
-  .fold > summary, details.dz > summary { flex-wrap: wrap; }
+  details.dz > summary { flex-wrap: wrap; }
 
   /* The first-run screen, which panned further than anything else: 41px. The
      wordmark is one unbreakable word, its `clamp()` tops out in `rem`, and at
@@ -3846,14 +3799,17 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   .bar { padding-top: calc(.3rem + env(safe-area-inset-top)); padding-bottom: .3rem; }
   .dayhead { margin-bottom: .7rem; }
   .dayhead .game-h1 { font-size: var(--fs-sentence); }
-  /* 44px is the floor for both buttons, so the action bar gives up padding and
-     8px of slack above that floor, and nothing else. */
+  /* #37 review: 48px is the floor (I1), so the action bar gives up padding and
+     6px of the slack above that floor, and nothing else. `.ab-main` is not a
+     `.btn`, so the coarse-pointer primitive never reaches it -- this line is
+     the whole floor here, and it read 44px until the review caught it.
+     `test/landscape-chrome.test.js` pins the number. */
   /* Same `safe-area-max-inset-bottom` as the base rule (#33 AC4): this block
      overrides `padding-bottom` outright, so leaving the live `env()` here
      would have handed landscape back exactly the jumping bar the base rule
      stopped. */
   .actionbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-max-inset-bottom, env(safe-area-inset-bottom))); }
-  .ab-main { min-height: 44px; }
+  .ab-main { min-height: 48px; }
   /* #33 decision 13: was `.foot { margin-bottom: 3.6rem; }` -- moved onto
      `.wrap` with the base-breakpoint clearance above, for the same reason. */
   .wrap { padding-bottom: 3.6rem; }
@@ -3866,22 +3822,28 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 
 /* Touch minimums. Gated on a coarse pointer OR a phone-width screen: the
    pointer query never fires in a resized desktop browser, so everything behind
-   it went untested — and a 390px screen is a phone whatever the pointer says. */
+   it went untested — and a 390px screen is a phone whatever the pointer says.
+
+   #37: 48px, not 44. Guideline I1 owns the number and the rest of this sheet
+   already used it (`.seg button`, `.color-opt`, `.setrow`, the sheets); this
+   block was the last place still spelling the floor as 44, which left every
+   `.btn`, every text field and every icon button under it. One edit here
+   lifts them all, which is why controls are not padded one at a time. */
 @media (pointer: coarse), screen and (max-width: 620px) {
-  .btn, .plr, .chip { min-height: 44px; }
-  .btn.icon { min-width: 44px; }          /* was 32px wide on a phone */
-  .lockbtn { min-width: 44px; min-height: 44px; }
-  /* The lock column is 2rem by default, so a 44px button overflowed its track
+  .btn, .plr, .chip { min-height: 48px; }
+  .btn.icon { min-width: 48px; }          /* was 32px wide on a phone */
+  .lockbtn { min-width: 48px; min-height: 48px; }
+  /* The lock column is 2rem by default, so a 48px button overflowed its track
      and pushed the whole page 1px wide -- a phone that scrolls sideways for no
      reason. Widen the column to match the touch minimum; the slider gives up
-     the 12px. */
-  .srow { grid-template-columns: 4.6rem 1fr 4.1rem 44px; }
-  .tld-x, .gm-x, .bsheet-close { min-width: 44px; min-height: 44px; }
+     the 16px. */
+  .srow { grid-template-columns: 4.6rem 1fr 4.1rem 48px; }
+  .tld-x, .gm-x, .bsheet-close { min-width: 48px; min-height: 48px; }
   .seg button { min-height: 48px; }
-  .switch { min-height: 44px; }           /* the label is the target, not the 22px track */
-  .gm-b, .gm-p { min-height: 44px; }
+  .switch { min-height: 48px; }           /* the label is the target, not the 22px track */
+  .gm-b, .gm-p { min-height: 48px; }
   .gm-exit { display: grid; }
-  input[type="text"], input[type="number"], select { min-height: 44px; }
+  input[type="text"], input[type="number"], select { min-height: 48px; }
 }
 
 
@@ -4007,8 +3969,10 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    this game" is a one-line label a wide system font can push past the
    column on its own (#21 CI fix). */
 /* #30 "What would settle it" item 9: Delete is a control on Season and
-   this screen's own floor is 48px (I1/C6), not the 44px `.btn` settles for
-   on a phone elsewhere -- same reason `#seasonExport` above gets its own. */
+   this screen's own floor is 48px (I1/C6). It used to be the exception --
+   `.btn` settled for 44px on a phone elsewhere -- and since #37 the shared
+   primitive is 48 too, so this line only pins what the row already gets.
+   Same reason `#seasonExport` above gets its own. */
 .sn-del { margin-top: .6rem; min-height: 48px; white-space: normal; text-align: center; }
 
 /* =========================== team settings ===========================
@@ -4040,7 +4004,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 #maxSubsRead { color: var(--ink); font-weight: 500; margin-top: .45rem; }
 .setrow > .btn { flex: none; }
 /* Fields default to `width: 100%`, which inside a flex row is a control that
-   eats the label. Fixed width, 44px tall, centered digits -- the same target
+   eats the label. Fixed width, touch-floor tall, centered digits -- the same target
    rule everything else in this app is measured against.
 
    The wrap exists for two things the bare field did badly. (1) The unit: the
@@ -4054,11 +4018,11 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 
    The field narrowed from 5.5rem to 4.25rem when the unit went in, so the pair
    costs the row about what the bare field did and the note keeps its width.
-   The value never exceeds two digits (max="60"), and 68x44 still clears the
-   44px target rule in both directions. */
+   The value never exceeds two digits (max="60"), and 68 wide still clears
+   the target rule in both directions. */
 .minwrap { flex: none; align-self: flex-start; display: flex; align-items: center; gap: .4rem; }
 .minwrap > span { color: var(--muted); font-size: var(--fs-secondary); }
-.setrow input.minmins { flex: none; width: 4.25rem; min-height: 44px; text-align: center;
+.setrow input.minmins { flex: none; width: 4.25rem; min-height: 48px; text-align: center;
   font-variant-numeric: tabular-nums; }
 /* Same shape as `.sn-h`: a heading for a group inside a box, one step down
    from the zone's own `.side-hd`. Always dividing a zone rather than opening
@@ -4077,9 +4041,9 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 .setrow + .set-h { border-top: 1px solid var(--line); }
 
 /* =========================== #22: one Settings screen ===========================
-   The 48px floor (I1) is scoped to `#view-settings` alone -- the app-wide 44px
-   sweep everywhere else is #37's, not this ticket's, so this must never become
-   a blanket `.setrow` rule. Covers every setting row, every link row (`.setrow`
+   The 48px floor (I1) is written here for `#view-settings`'s rows -- the
+   app-wide sweep is the same 48px since #37, and this stays a row rule
+   rather than becoming a blanket `.setrow` one. Covers every setting row, every link row (`.setrow`
    doubles as `.linkrow`'s base) and the backup row. `scripts/smoke.mjs` reads
    this back at 320/360/390px on the RICH fixture. */
 #view-settings .setrow, #view-settings .backuprow { min-height: 48px; }

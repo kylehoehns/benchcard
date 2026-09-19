@@ -1,5 +1,5 @@
 import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
-import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
+import { nameOf, TOUCH_CHECK, TOUCH_FLOOR, TOUCH_WIDTHS } from './registry.mjs';
 import { widthSweep } from './width-sweep.mjs';
 import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
 
@@ -38,10 +38,26 @@ const TOUCH_STATES = [
   { name: 'today', open: TODAY_HOME },
   { name: 'games', open: `document.querySelector('.today-game').click()` },
   { name: 'team', open: `document.querySelector('#todayTeam').click()` },
-  { name: 'season', open: `document.querySelector('#todaySeason').click()` },
+  /* #37 review: `.bal-step` -- the level meter's five steps, built by
+     `app/balance.js` as `role="radio"` buttons and rendered into
+     `#playerLevel` -- is named at the top of this file as one of the two
+     controls the widened sweep exists for, and no state here ever opened the
+     sheet that holds it. It sat at 44px, asserted by a comment in `app.css`
+     rather than measured by anything. Opened the way `overlay.mjs` opens it:
+     the Team screen, then the first roster row. */
+  { name: 'team, player sheet open',
+    open: `document.querySelector('#todayTeam').click();
+           document.querySelector('#rosterlist .rrow').click()` },
+  /* Closes the player sheet above the way `add a game, step 1` closes
+     `#addGameFlow`: a state that needs a clean slate clears the previous
+     state's dialog itself (`widthSweep` runs `close` once, at the end). */
+  { name: 'season',
+    open: `document.querySelector('#sheetPlayer')?.close();
+           document.querySelector('#todaySeason').click()` },
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
   /* #25: the picker's last choice and its close control both have to stay
-     on screen and ≥ 44px (the ticket's mobile-first constraint) -- the same
+     on screen and ≥ `TOUCH_FLOOR` (the ticket's mobile-first constraint, 44px
+     when #25 wrote this and 48px since #37) -- the same
      claim every other state here makes, at the same three widths. */
   { name: 'settings, color picker open',
     open: `document.querySelector('#settingsBtn').click();
@@ -127,7 +143,7 @@ async function fourTodayTouch(c, origin, source) {
     for (const w of TOUCH_WIDTHS) {
       await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: 844, deviceScaleFactor: 2, mobile: true });
       await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-      const chk = (await evalIn(c, source)).checks.find(k => k.name === 'touch targets ≥ 44px');
+      const chk = (await evalIn(c, source)).checks.find(k => k.name === TOUCH_CHECK);
       const where = `today, FOUR@${w}px`;
       if (!chk) { bad.push(`${where}: the touch check is gone from smoke-checks.js`); continue; }
       audited++;
@@ -145,7 +161,7 @@ export async function touchPass(c, origin, source) {
   const four = await fourTodayTouch(c, origin, source);
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: TOUCH_STATES,
-    checkName: 'touch targets ≥ 44px',
+    checkName: TOUCH_CHECK,
     countRe: [/(\d+) controls/, /\/(\d+) under/],
     label: (st, w) => `${st.name}@${w}px`,
     missing: 'the touch check is gone from smoke-checks.js',
@@ -181,8 +197,8 @@ export async function touchPass(c, origin, source) {
     name: nameOf('touch'),
     pass: allBad.length === 0,
     detail: allBad.length
-      ? `${allBad.length}/${totalAudited} measurement(s) under 44px: ${allBad.slice(0, 4).join(' | ')}`
+      ? `${allBad.length}/${totalAudited} measurement(s) under ${TOUCH_FLOOR}px: ${allBad.slice(0, 4).join(' | ')}`
       : `${totalAudited} measurements (today, FOUR + ${TOUCH_STATES.map(s => s.name).join(' + ')} × `
-        + `${TOUCH_WIDTHS.join('/')}px), up to ${totalSeen} controls, all ≥ 44px`,
+        + `${TOUCH_WIDTHS.join('/')}px), up to ${totalSeen} controls, all ≥ ${TOUCH_FLOOR}px`,
   };
 }

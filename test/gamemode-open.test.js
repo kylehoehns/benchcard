@@ -166,8 +166,9 @@ test('the stint dots are a picture, not twelve unhittable buttons', () => {
   /* They were `<button>`s that jumped to a stint. Measured in game mode on a
      390px phone: 17.8px wide with eight stints, 11.9px with twelve, 2.4px at
      150% text and 4.7px at 200% -- the strip is `flex: 1; min-width: 0`
-     between two controls that are not, so it is what gives. Against a 44px
-     rule the app applies everywhere else, and twelve of them were also twelve
+     between two controls that are not, so it is what gives. Against the touch
+     floor the app applies everywhere else (44px then, 48px since #37), and
+     twelve of them were also twelve
      tab stops between Previous and Next, each announcing "Stint 4 of 12" on
      the way past.
 

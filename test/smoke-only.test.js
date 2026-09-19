@@ -88,27 +88,31 @@ test('the refusal lists the 41 selectable rows, one per line', () => {
 });
 
 test('the swept touch check is in the list; the single-viewport one is not', () => {
-  // Constraint: `touch targets ≥ 44px` (no width range) is filtered out of
+  // Constraint: `touch targets ≥ 48px` (no width range) is filtered out of
   // every full run and is therefore not a name `--only` can ever match, while
-  // the swept `touch targets ≥ 44px, 320–390px` is one of the 16.
-  assert.ok(validNames.some(n => n.startsWith('touch targets ≥ 44px,')),
+  // the swept `touch targets ≥ 48px, 320–390px` is one of the 16.
+  assert.ok(validNames.some(n => n.startsWith('touch targets ≥ 48px,')),
     'the swept touch row should be selectable');
-  assert.ok(!validNames.includes('touch targets ≥ 44px'),
+  assert.ok(!validNames.includes('touch targets ≥ 48px'),
     'the single-viewport touch row is filtered from every full run and must not be a valid --only name');
 });
 
 /* Spec #40, item 4: `no console errors`, the three budget rows and
- * `node --test` are refused the same way as an unknown name. These six are
- * fixed literals in the registry (none of them come from a computed
- * constant), so pinning them here is the same kind of pin `budgets.mjs`'s
- * three names already get in `scripts/smoke.mjs`'s own comment. */
+ * `node --test` are refused the same way as an unknown name. Every one of
+ * these six is typed out here rather than imported, so this is a second,
+ * independent reading of the name the harness reports -- the first five are
+ * fixed literals in the registry anyway, and the sixth (`touch targets ≥
+ * 48px`, built from `TOUCH_CHECK` in `registry.mjs` since #37) is exactly the
+ * kind of computed name that must not check itself. Same kind of pin
+ * `budgets.mjs`'s three names already get in `scripts/smoke.mjs`'s own
+ * comment. */
 const NON_SELECTABLE = [
   'no console errors',
   'initial payload ≤ budget',
   'request count ≤ budget',
   'DOM nodes ≤ budget',
   'node --test',
-  'touch targets ≥ 44px',
+  'touch targets ≥ 48px',
 ];
 
 for (const name of NON_SELECTABLE) {

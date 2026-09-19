@@ -3,8 +3,8 @@
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
-import { nameOf } from './registry.mjs';
-import { goRich, PLAYERS, tierOf, LONG_NAME } from './fixtures.mjs';
+import { nameOf, TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './registry.mjs';
+import { goRich, PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
 import { drag, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
 
@@ -52,7 +52,7 @@ async function rosterListOk(c, ck) {
     ck(r.level === level, `${name}'s row reads "${r.level}", want "${level}"`);
     ck(r.chevron, `${name}'s row has no chevron, so nothing says it opens`);
     ck(r.tag === 'BUTTON', `${name}'s row is a <${r.tag.toLowerCase()}>, want one button for the whole row`);
-    ck(r.height >= 47.5, `${name}'s row is ${r.height.toFixed(1)}px tall, want >= 48px`);
+    ck(r.height >= TOUCH_MIN, `${name}'s row is ${r.height.toFixed(1)}px tall, want >= ${TOUCH_FLOOR}px`);
   });
 }
 
@@ -449,6 +449,85 @@ const editState = c => evalJSON(c, `JSON.stringify([...document.querySelectorAll
   return { tag: r.tagName, ord };
 }))`);
 
+/* #37 criterion 2: the roster row at every phone width, on two rosters.
+ *
+ * `rosterListOk` above measures the rows once, at 390px, and a row that fits
+ * there can still lose the name at 320 or 360 -- the widths a coach's phone
+ * actually is. `TOUCH_WIDTHS` (registry.mjs) is the list the touch sweep and
+ * every row sweep already use; this is not a fourth copy of it.
+ *
+ * Three claims per row, because "48px tall" alone passed a row whose name was
+ * quietly cut in half:
+ *   - the row clears the 48px floor (I1), with the repo's own 0.5px
+ *     `getBoundingClientRect` tolerance;
+ *   - `.prow-t` is not clipped -- its `scrollWidth` fits its own `clientWidth`,
+ *     which is what `text-overflow`/`overflow: hidden` hides;
+ *   - and it does not paint past the row's own CONTENT box, which is the case
+ *     an unclipped name that simply overhangs its padding would otherwise
+ *     slip through.
+ *
+ * The count is asserted before anything about the rows: a selector that
+ * matched nothing would otherwise report "every row fine" about no rows at
+ * all. */
+const rosterFit = c => evalJSON(c, `JSON.stringify([...document.querySelectorAll('#rosterlist .rrow')].map(r => {
+  const t = r.querySelector('.prow-t');
+  const rb = r.getBoundingClientRect();
+  const cs = getComputedStyle(r);
+  const contentRight = rb.right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth);
+  const tb = t && t.getBoundingClientRect();
+  return {
+    name: t ? t.textContent.trim() : null,
+    height: rb.height,
+    scrollWidth: t ? t.scrollWidth : 0,
+    clientWidth: t ? t.clientWidth : 0,
+    past: tb ? tb.right - contentRight : 0,
+  };
+}))`);
+
+async function rosterRowsFitOk(c, ck, who, want) {
+  /* #37 review: `TOUCH_WIDTHS` ends at `WIDTH`, so the restore below was
+     re-applying a width already in force -- a device-metrics override plus a
+     `settle` for nothing, twice over, once per caller. The restore still has
+     to happen when the sweep leaves off anywhere else (a throw part-way, or
+     `TOUCH_WIDTHS` growing a wider last entry), so the width that actually
+     took is tracked rather than the restore being dropped. Recorded only
+     AFTER `atWidth` resolves: a throw inside it leaves `at` on the previous
+     width, which restores. */
+  let at = null;
+  try {
+    for (const w of TOUCH_WIDTHS) {
+      await atWidth(c, w);
+      at = w;
+      const rows = await rosterFit(c);
+      if (!ck(rows.length === want,
+        `${who}@${w}px: ${rows.length} roster row(s) measured, want ${want}`)) continue;
+      for (const r of rows) {
+        if (!ck(r.name, `${who}@${w}px: a roster row carries no .prow-t, so no name was measured`)) continue;
+        ck(r.height >= TOUCH_MIN,
+          `${who}@${w}px: ${r.name}'s row is ${r.height.toFixed(1)}px tall, want >= ${TOUCH_FLOOR}px`);
+        ck(r.scrollWidth <= r.clientWidth + 0.5,
+          `${who}@${w}px: ${r.name} is clipped -- the name needs ${r.scrollWidth}px in a ${r.clientWidth}px box`);
+        ck(r.past <= 0.5,
+          `${who}@${w}px: ${r.name} paints ${r.past.toFixed(1)}px past the row's own content box`);
+      }
+    }
+  } finally {
+    if (at !== WIDTH) await atWidth(c, WIDTH);
+  }
+}
+
+/* The same three claims against the app's OWN sample team -- the roster a
+   coach who taps "Try a sample team" is looking at, `sampleRoster()`'s cast
+   (fixtures.mjs `SAMPLE_TEAM`), never a second list of names here. Runs last
+   and reloads its own record, because `emptyStateOk` above leaves RICH's
+   roster empty; `teamScreenPass`'s own `goRich` puts RICH back afterwards for
+   whatever runs next. */
+async function sampleRosterRowsOk(c, origin, ck) {
+  await reloadWithRecord(c, origin, SAMPLE_TEAM);
+  await toTeam(c);
+  await rosterRowsFitOk(c, ck, 'the sample team', SAMPLE_PLAYERS.length);
+}
+
 async function atWidth(c, width) {
   await c.send('Emulation.setDeviceMetricsOverride',
     { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
@@ -497,8 +576,8 @@ async function editModeOk(c, ck) {
       const [grip, up, dn] = r.ord;
       ck(grip.grip, `${name}'s first reorder control is not the drag grip at ${width}px`);
       for (const b of r.ord) {
-        ck(Math.min(b.w, b.h) >= 47.5,
-          `${name}'s "${b.name}" measures ${b.w.toFixed(1)}x${b.h.toFixed(1)} at ${width}px, want >= 48px`);
+        ck(Math.min(b.w, b.h) >= TOUCH_MIN,
+          `${name}'s "${b.name}" measures ${b.w.toFixed(1)}x${b.h.toFixed(1)} at ${width}px, want >= ${TOUCH_FLOOR}px`);
       }
       ck(/arrow keys/.test(grip.name),
         `${name}'s grip is named "${grip.name}", which never mentions the arrow keys`);
@@ -581,6 +660,7 @@ export async function teamScreenPass(c, origin) {
   try {
     await toTeam(c);
     await rosterListOk(c, ck);
+    await rosterRowsFitOk(c, ck, 'RICH', ROSTER.length);
     await nothingEditableOnTeam(c, ck);
     await noDragOnTappingRow(c, ck);
     if (await playerSheetOk(c, ck)) await removeAndUndoOk(c, ck);
@@ -590,6 +670,7 @@ export async function teamScreenPass(c, origin) {
     await identLongNameOk(c, ck);
     await editModeOk(c, ck);
     await emptyStateOk(c, ck);
+    await sampleRosterRowsOk(c, origin, ck);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }
@@ -602,6 +683,8 @@ export async function teamScreenPass(c, origin) {
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : 'the roster list holds, and nothing on Team is editable outside a sheet',
+      : `the roster list holds at ${TOUCH_WIDTHS.join('/')}px on both rosters `
+        + `(${ROSTER.length} rich rows, ${SAMPLE_PLAYERS.length} sample rows, none clipped), `
+        + 'and nothing on Team is editable outside a sheet',
   };
 }

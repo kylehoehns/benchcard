@@ -176,7 +176,7 @@ body {
    column at exactly the 40rem it has always been. */
 .wrap { max-width: 42.3rem; margin: 0 auto; padding: 0 1.15rem; }
 
-/* --- top bar: one 44px target back to the app, thumb-safe on a phone --- */
+/* --- top bar: one 48px target back to the app, thumb-safe on a phone --- */
 /* `flex-wrap` so the "Open the app" pill drops under the wordmark instead of
    hanging off the right edge once the reader's text size grows -- the same fix
    the chart pages' top bar carries. This page has its own stylesheet and does
@@ -184,15 +184,15 @@ body {
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem;
        max-width: 42.3rem; margin: 0 auto; padding: .9rem 1.15rem .3rem; }
 /* `min-height` because the wordmark is a live link home, not decoration, and it
-   was 27px tall -- under the 44px floor the rest of the app holds itself to.
+   was 27px tall -- under the 48px floor the rest of the app holds itself to.
    It costs no bar height while the CTA pill shares the row (that pill is
-   already 44px); it only pays when the row wraps at large text. */
-.mark { display: flex; align-items: center; min-height: 44px; gap: .5rem; text-decoration: none; color: inherit; }
+   already 48px); it only pays when the row wraps at large text. */
+.mark { display: flex; align-items: center; min-height: 48px; gap: .5rem; text-decoration: none; color: inherit; }
 .mark b { font-size: 1.05rem; font-weight: 660; letter-spacing: -.03em; }
 .spacer { flex: 1; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-  min-height: 44px; padding: 0 1.05rem; border-radius: 999px;
+  min-height: 48px; padding: 0 1.05rem; border-radius: 999px;
   font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
   text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
   background: var(--surface); cursor: pointer;
@@ -410,12 +410,12 @@ ul li::marker { color: var(--accent); }
 
 /* A20 slice 3. Every section that handed its detail to `advanced.html` ends
    with one link forward, so the deep page is reachable from the thing it
-   explains rather than only from the footer. `inline-flex` with a 44px floor
+   explains rather than only from the footer. `inline-flex` with a 48px floor
    because smoke's static pass measures the LINK BOX: slice 2 shipped a 41.5px
    footer link on a page whose CSS already carried a height floor, and height
    is not width. */
 .more { margin: 1.1rem 0 0; }
-.more a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 580; }
+.more a { display: inline-flex; align-items: center; min-height: 48px; font-weight: 580; }
 
 /* A20 slice 3. Eight questions, collapsed one at a time -- the section was
    2,383px of a 15,819px page, which is what the ask was about.
@@ -441,7 +441,7 @@ ul li::marker { color: var(--accent); }
    none of them wraps scrollable or zoomable content. */
 summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .qa summary {
-  display: flex; align-items: center; gap: .75rem; min-height: 44px;
+  display: flex; align-items: center; gap: .75rem; min-height: 48px;
   padding: .5rem 0; cursor: pointer; list-style: none;
   font-weight: 620; color: var(--ink);
 }
@@ -457,10 +457,10 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 .qa p { margin: 0 0 1.05rem; color: var(--ink-2); }
 
 /* The roster-size links. Chips rather than a list: six sizes is a picker, and
-   44px keeps it tappable. Same rule set as the one on those pages. */
+   48px keeps it tappable. Same rule set as the one on those pages. */
 .sizes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
 .sizes a {
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 .95rem;
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 .95rem;
   border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
   color: var(--ink); text-decoration: none; font-size: .95rem; font-weight: 580;
 }
@@ -469,7 +469,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
    six two-word chips and these are nine full headings, and a wrapping chip row
    cannot shrink an over-wide chip -- at 320px with a 32px root one of these
    would hang a long way off the right edge, on the page that already pans 7px
-   there. Rows instead. A row cannot overflow, it wraps, and it is a 44px
+   there. Rows instead. A row cannot overflow, it wraps, and it is a 48px
    target by construction. Rules top and bottom rather than borders on every
    row, so nine links read as one object and not as nine buttons. */
 .jumpto { display: flex; flex-direction: column; margin: 0 0 2.6rem; }
@@ -478,7 +478,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
   text-transform: uppercase; color: var(--muted);
 }
 .jumpto a {
-  display: flex; align-items: center; min-height: 44px; padding: .3rem 0;
+  display: flex; align-items: center; min-height: 48px; padding: .3rem 0;
   border-bottom: 1px solid var(--line); color: var(--ink-2);
   text-decoration: none; font-size: .97rem;
 }
@@ -492,10 +492,10 @@ footer {
   display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center;
 }
 /* The footer links are standalone controls, not words inside a sentence, so the
-   44px floor applies to them the same as anywhere else. They are already flex
+   48px floor applies to them the same as anywhere else. They are already flex
    items (blockified), so a min-height grows the box rather than overlapping the
    line beside it. */
-footer a { display: flex; align-items: center; min-height: 44px; }
+footer a { display: flex; align-items: center; min-height: 48px; }
 
 /* ---- the reveals ---------------------------------------------------------
    Opacity and a small transform, nothing else, and every rule is behind
@@ -652,7 +652,7 @@ footer a { display: flex; align-items: center; min-height: 44px; }
        so no new prose was invented here, and headings that long in a wrapping
        chip row overflow 320px at a 32px root -- the one width this page has no
        slack at, since it already pans 7px there. Rows cannot overflow at any
-       text size, and each is its own 44px target. -->
+       text size, and each is its own 48px target. -->
   <nav class="jumpto" aria-labelledby="onthispage">
     <p id="onthispage" class="jumpto-hd">On this page</p>
     <a href="#problem">The problem it solves</a>
@@ -1184,7 +1184,7 @@ footer a { display: flex; align-items: center; min-height: 44px; }
          no date at all, so the guard is the reason the line is allowed to
          exist. The machine and human forms must agree; the guard checks that
          too. -->
-    <span>Last updated <time datetime="2026-09-16">16 September 2026</time></span>
+    <span>Last updated <time datetime="2026-09-19">19 September 2026</time></span>
   </footer>
 </div>
 

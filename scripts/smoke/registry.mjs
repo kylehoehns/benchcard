@@ -7,7 +7,7 @@
 /* 360, not 320. The narrowest phone in real use is a small Android at 360 and
    an iPhone SE 2/3 at 375; 320 is a 2016 SE. Claiming a floor the chrome cannot
    actually hold would mean either a permanently red check or five controls
-   squeezed under the 44px touch minimum, and the second is worse than the bug
+   squeezed under `TOUCH_FLOOR`, and the second is worse than the bug
    this exists to catch. */
 export const NARROW = 360;
 
@@ -43,7 +43,7 @@ export const NARROW = 360;
  * So there is ~48px of headroom under the claim, deliberately: a check pinned
  * to the exact limit goes red on any harmless change and stops being read.
  * Raise SWEEP_FLOOR only against a measured floor that genuinely cannot be
- * crossed without breaking something worse (the 44px touch minimum is the one
+ * crossed without breaking something worse (`TOUCH_FLOOR` below is the one
  * that has been traded away before) — and write the reason down here. */
 export const SWEEP_FLOOR = 300, SWEEP_HI = 420;
 
@@ -67,6 +67,28 @@ export const SWEEP_EXTRA = [SHEET_MIN, WIDE_MIN, LAPTOP];
 // The three widths `touchPass` and `settingsRowPass` sweep every state at —
 // the full rationale lives with `touchPass` in `touch.mjs`.
 export const TOUCH_WIDTHS = [320, 360, 390];
+
+/* The floor (I1, `docs/interface-guidelines.md`) and the NAME the in-page
+ * touch check reports it under. `smoke-checks.js` builds the same name from
+ * its own `TOUCH_FLOOR` -- it is read as text and evaluated in the page, so
+ * it cannot import this -- but every module on this side looks the check up
+ * by name (`touch.mjs` twice, `static.mjs`'s `STATIC_A11Y`, `smoke.mjs`'s
+ * filter) and the row below prints it, which was five hand-typed copies of
+ * one string until #37 had to change all five at once. A copy that misses is
+ * silent rather than loud: `STATIC_A11Y.has(name)` DROPS a verdict whose name
+ * it does not recognize, so a stale spelling reads as seven clean pages. */
+export const TOUCH_FLOOR = 48;
+/* The measurement tolerance that goes with it, for the checks on THIS side
+ * that measure a box themselves instead of reading the in-page verdict back
+ * (`team-screen.mjs`'s roster rows, `timeline-card-sheet.mjs`'s card-sheet
+ * rows). `smoke-checks.js` spells the same pair at the top of its IIFE and
+ * says there what the half pixel buys and what it costs; the two constants
+ * are tied together by `test/touch-floor.test.js`, which reads that file as
+ * text the way `smoke.mjs` does. Before #37's review this side spelled it
+ * three ways -- `TOUCH_FLOOR - 0.5`, a bare `47.5`, and nothing at all. */
+export const TOUCH_TOL = 0.5;
+export const TOUCH_MIN = TOUCH_FLOOR - TOUCH_TOL;
+export const TOUCH_CHECK = `touch targets ≥ ${TOUCH_FLOOR}px`;
 
 // A 200% reader's root, and the narrowest phone anyone carries — the full
 // rationale for this one cell lives with `staticPass` in `static.mjs`.
@@ -139,7 +161,7 @@ export const ROWS = Object.freeze([
   { id: 'teamcolor', name: 'team color tints K1 only, and switches with the team', selectable: true, setup: 'rich' },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich' },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich' },
-  { id: 'touch', name: `touch targets ≥ 44px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
+  { id: 'touch', name: `${TOUCH_CHECK}, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
   { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_WIDTHS[0]}–${TOUCH_WIDTHS.at(-1)}px`, selectable: true, setup: 'rich' },
   // #27 item 10: the Who's here sheet swept the same way settingsrows sweeps
   // Settings — see who-rows.mjs.

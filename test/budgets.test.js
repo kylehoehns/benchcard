@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { compare, summarize, ceiling, pinned, BYTES_BASELINE, SLACK } from '../scripts/budgets.mjs';
+import { compare, summarize, ceiling, pinned, BYTES_BASELINE, NODES_BASELINE, SLACK } from '../scripts/budgets.mjs';
 
 const ORIGIN = 'http://127.0.0.1:4321';
 const recorded = JSON.parse(readFileSync(new URL('../scripts/budgets.json', import.meta.url), 'utf8'));
@@ -55,6 +55,25 @@ test('the hand-pinned bytes baseline catches a 60 KB regression at the real size
   assert.equal(
     named(compare(real, { ...real, lazy: [], bytes: real.bytes + 60_000 }), 'initial payload').pass,
     false,
+  );
+});
+
+/* #37: what this adds over the bytes test above is the other half of the
+   swap -- that `budgets.json` still holds the looser number, so `pinned()`
+   is doing real work rather than agreeing with the file. The reasoning for
+   the pin itself lives at `NODES_BASELINE` in `scripts/budgets.mjs` and is
+   not retold here; the number is imported from there for the same reason,
+   so re-pinning it (which that comment tells the next ticket to do) cannot
+   fail this test with a message about `pinned()`. */
+test('the DOM-node baseline is the hand pin, not the stale recorded number', () => {
+  assert.ok(recorded.initialPayload.nodes > NODES_BASELINE,
+    'budgets.json no longer holds the looser number this pin exists to replace');
+  const real = pinned({ ...recorded.initialPayload });
+  assert.equal(real.nodes, NODES_BASELINE, 'pinned() must take nodes from the hand pin, not budgets.json');
+  assert.equal(
+    named(compare(real, { ...real, lazy: [], nodes: NODES_BASELINE + SLACK.nodes + 1 }), 'DOM nodes').pass,
+    false,
+    'a node count past the pinned baseline plus slack still has to fail',
   );
 });
 

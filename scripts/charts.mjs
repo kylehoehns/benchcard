@@ -377,15 +377,15 @@ body {
    on one line and drops it under the wordmark on two. */
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .9rem 0 .3rem; }
 /* \`min-height\` because the wordmark is a live link home, not decoration, and it
-   was 27px tall -- under the 44px floor the rest of the app holds itself to.
+   was 27px tall -- under the 48px floor the rest of the app holds itself to.
    It costs no bar height while the CTA pill shares the row (that pill is
-   already 44px); it only pays when the row wraps at large text. */
-.mark { display: flex; align-items: center; min-height: 44px; gap: .5rem; text-decoration: none; color: inherit; }
+   already 48px); it only pays when the row wraps at large text. */
+.mark { display: flex; align-items: center; min-height: 48px; gap: .5rem; text-decoration: none; color: inherit; }
 .mark b { font-size: 1.05rem; font-weight: 660; letter-spacing: -.03em; }
 .spacer { flex: 1; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-  min-height: 44px; padding: 0 1.05rem; border-radius: 999px;
+  min-height: 48px; padding: 0 1.05rem; border-radius: 999px;
   font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
   text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
   background: var(--surface);
@@ -409,10 +409,10 @@ h2 { font-size: 1.15rem; letter-spacing: -.03em; font-weight: 640; margin: 0 0 .
 p { margin: .8rem 0; color: var(--ink-2); }
 a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: .07em; }
 /* The sibling links. Chips rather than a list: six roster sizes is a picker,
-   and 44px keeps it tappable on a phone. */
+   and 48px keeps it tappable on a phone. */
 .sizes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
 .sizes a {
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 .95rem;
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 .95rem;
   border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
   color: var(--ink); text-decoration: none; font-size: .95rem; font-weight: 580;
 }
@@ -424,10 +424,10 @@ footer {
   display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center;
 }
 /* The footer links are standalone controls, not words inside a sentence, so the
-   44px floor applies to them the same as anywhere else. They are already flex
+   48px floor applies to them the same as anywhere else. They are already flex
    items (blockified), so a min-height grows the box rather than overlapping the
    line beside it. */
-footer a { display: flex; align-items: center; min-height: 44px; }
+footer a { display: flex; align-items: center; min-height: 48px; }
 
 /* 19em is the app's own name for "the reader has turned their text up" --
    304px at a default root, so a 320px phone at normal text never sees this,

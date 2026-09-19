@@ -40,6 +40,11 @@ test('importing scripts/compare-shots.mjs does not launch Chrome or serve app/',
 function plainShotsFor(view, theme) {
   return SHOTS.filter(s => s.view === view && s.theme === theme
     && !s.longNames && !s.bottom && !s.full && !s.firstRun && !s.titleCollapsed
+    /* #37: `sheet` joins the list of modifiers that make a cell not plain. It
+       did not have to before, because the only sheet cell was `mid-sheet` at
+       600px and the width clause below already excluded it. A shot with a
+       dialog open is a picture of that dialog, not of the screen behind it. */
+    && !s.sheet
     && !s.partPlayed && s.width === WIDTH && s.rootPx === 16);
 }
 
@@ -76,8 +81,12 @@ test('SHOTS includes a screen scrolled to its bottom, light and dark', () => {
      WIDTH` so #35's `wide-bottom` pair (the same scroll at 1280px, where both
      panes are on screen) is not either. Both are narrowings of the filter,
      not of the claim: this test still says there is exactly one
-     bottom-scrolled pair at the phone width every other plain shot uses. */
-  assertLightDarkPair(SHOTS.filter(s => s.bottom && !s.partPlayed && s.width === WIDTH), 'bottom-scrolled');
+     bottom-scrolled pair at the phone width every other plain shot uses.
+     #37 adds `!s.sheet` for the same reason: `player-sheet-bottom` scrolls a
+     dialog's own scroller, not the screen, so it is not a third member of
+     this pair either. */
+  assertLightDarkPair(SHOTS.filter(s => s.bottom && !s.partPlayed && !s.sheet && s.width === WIDTH),
+    'bottom-scrolled');
 });
 
 test('SHOTS includes a full-height capture, light and dark', () => {
@@ -180,6 +189,24 @@ test('SHOTS includes the four wide states, light and dark, captured as a laptop'
   }
 });
 
+/* #37: the middle phone width. The touch floor is swept at 320, 360 and 390,
+ * and every shot above is 320, 390 or wider -- so the width where a control
+ * is widest before it has to wrap, and where a roster name is closest to its
+ * row's edge, was the one nobody ever looked at. Team carries the roster rows
+ * criterion 2 measures; settings carries the rows criterion 1 raised. 360 is
+ * typed here from the spec rather than read out of `TOUCH_WIDTHS`, the same
+ * independent second reading the 600px test above takes. */
+test('SHOTS includes the 360px pairs, light and dark', () => {
+  for (const name of ['touch-360-team', 'touch-360-settings']) {
+    const shots = namedPair(name);
+    assertLightDarkPair(shots, name);
+    for (const s of shots) {
+      assert.equal(s.width, 360, `${s.name} is captured at ${s.width}px, want 360px`);
+      assert.equal(s.rootPx, 16, `${s.name} asks for a ${s.rootPx}px root -- this pair is about width, not text size`);
+    }
+  }
+});
+
 /* The flag has to reach the override, or it is a field nobody reads.
  * `deviceMetrics` is the one place the `Emulation.setDeviceMetricsOverride`
  * payload is built, exported for the same reason `shotProblems` is: it is
@@ -227,6 +254,32 @@ test('SHOTS includes the centered-sheet pair at 600px, light and dark', () => {
     assert.ok(s.sheet && typeof s.sheet.open === 'string' && s.sheet.open.includes('click'),
       `${s.name} names no click to open the sheet, so the shot would be of the game screen`);
   }
+});
+
+/* #37 item 1: the player sheet, light and dark. It is the only surface that
+ * draws `.bal-step`, so without this cell the one visible change of this
+ * ticket's 44px-to-48px sweep has no picture and the look check cannot see
+ * it. Same `sheet` shape as `mid-sheet` above: the click is what capture()
+ * runs, the selector is what it then asserts actually opened. */
+test('SHOTS includes the player sheet, light and dark, unscrolled and scrolled to its end', () => {
+  for (const name of ['player-sheet', 'player-sheet-bottom']) {
+    const shots = namedPair(name);
+    assertLightDarkPair(shots, name);
+    for (const s of shots) {
+      assert.equal(s.view, 'team',
+        `${s.name} opens on ${s.view}, but the player sheet is reached from a roster row on Team`);
+      assert.ok(s.sheet && typeof s.sheet.selector === 'string' && s.sheet.selector,
+        `${s.name} names no sheet selector, so nothing proves the dialog ever opened`);
+      assert.ok(s.sheet && typeof s.sheet.open === 'string' && s.sheet.open.includes('click'),
+        `${s.name} names no click to open the sheet, so the shot would be of the Team screen`);
+    }
+  }
+  // The level meter is below the fold on an unscrolled sheet, so exactly one
+  // of the two pairs has to scroll or `.bal-step` is in no picture at all.
+  assert.deepEqual(namedPair('player-sheet').map(s => s.bottom), [false, false],
+    'the plain player-sheet pair should not scroll -- the other pair is the scrolled one');
+  assert.deepEqual(namedPair('player-sheet-bottom').map(s => s.bottom), [true, true],
+    'player-sheet-bottom does not scroll, so nothing in SHOTS shows the level meter');
 });
 
 /* ---------- shotProblems: items 2 and 3 ---------- */
