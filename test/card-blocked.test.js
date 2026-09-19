@@ -11,15 +11,18 @@ import { functionBody } from './js-comments.js';
    before the fix and watching the assertion catch it. */
 const src = readFileSync(new URL('../app/card.js', import.meta.url), 'utf8');
 
-// #29 fix pass finding 7: the card sheet's own blocked preview
-// (refreshCardSheetPreview) shares state.js's one BLOCKED_TITLE rather than
-// carrying its own copy of the literal.
-test('refreshCardSheetPreview reads BLOCKED_TITLE, not its own copy of the literal', () => {
-  const body = functionBody(src, 'refreshCardSheetPreview');
+// #29 fix pass finding 7: the card sheet's own blocked preview shares
+// state.js's one BLOCKED_TITLE rather than carrying its own copy of the
+// literal. #36 moved the body this pins into `cardPreviewInto` --
+// `refreshCardSheetPreview` is a thin wrapper now (`cardPreviewInto($('#sheetCardPreview'))`)
+// so #36's step 3 (`#frStage`) can share the same blocked branch instead of a
+// second copy of it.
+test('cardPreviewInto reads BLOCKED_TITLE, not its own copy of the literal', () => {
+  const body = functionBody(src, 'cardPreviewInto');
   assert.match(body, /\bBLOCKED_TITLE\b/,
-    'refreshCardSheetPreview must read BLOCKED_TITLE (state.js), not a wording fixed here');
+    'cardPreviewInto must read BLOCKED_TITLE (state.js), not a wording fixed here');
   assert.doesNotMatch(body, /This plan can't be built/,
-    'the literal must not still be typed out in refreshCardSheetPreview');
+    'the literal must not still be typed out in cardPreviewInto');
 });
 
 test('BLOCKED_TITLE is imported from state.js', () => {

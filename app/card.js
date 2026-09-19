@@ -267,9 +267,17 @@ function fitStage(stage) {
   const wanted = cardSize().w * 96;
   stage.style.setProperty('--cardzoom', avail > 0 ? Math.min(1, avail / wanted).toFixed(4) : 1);
 }
+/* Every stage on the page, found by class: #36 step 3 adds a third
+   (`#frStage`) and a fourth would need no line here either.
+
+   IT ONLY SEES ATTACHED STAGES. `cardPreviewInto` ends in a call to this, so a
+   host that is still detached when it is filled -- which is what #36's
+   `paintFr` does, building the step body as an argument to `paintFlowShell`
+   -- is not in this list and keeps whatever `--cardzoom` it had, meaning
+   none. A caller in that shape has to call this again once the node is in the
+   document; `paintFr` (onboarding.js) does, and says so. */
 export function fitPreview() {
-  fitStage($('#sheet'));
-  fitStage($('#sheetCardPreview'));
+  for (const s of document.querySelectorAll('.stage')) fitStage(s);
 }
 addEventListener('resize', fitPreview);
 
@@ -295,8 +303,7 @@ function stageEmpty(title, message) {
    while the sheet is open and when it opens". Blocked reuses `blockedFix`'s
    `message` only -- decision 7 explicitly withholds the fix button here
    ("the sheet is one level and the fix is another sheet"). */
-export function refreshCardSheetPreview() {
-  const host = $('#sheetCardPreview');
+export function cardPreviewInto(host) {
   if (!host) return;
   host.textContent = '';
   const p = plans[state.activeGame];
@@ -306,9 +313,13 @@ export function refreshCardSheetPreview() {
       fix ? fix.message : 'Add your players and the card shows up here.'));
     return;
   }
-  for (const c of document.querySelectorAll('#sheet .card:not(.card-copy)')) host.append(c.cloneNode(true));
+  for (const c of document.querySelectorAll('#sheet .card:not(.card-copy)'))
+    host.append(c.cloneNode(true));
   fitPreview();
 }
+// #36: step 3's `#frStage` clones the same way the card sheet's own preview
+// does -- `cardPreviewInto` above is that one place, now with two callers.
+export function refreshCardSheetPreview() { cardPreviewInto($('#sheetCardPreview')); }
 
 export function renderCards() {
   const sheet = $('#sheet'); sheet.textContent = '';

@@ -706,28 +706,17 @@ test('the timeline skeleton paints for a coach on the current schema', () => {
   assert.equal(rows(paint({ [KEY]: '{ not json' })), 0);
 });
 
-test('the welcome screen input lets a coach type back what the sanitizer accepts', () => {
-  // `periodMinutes` sanitizes to 40, and the welcome screen's own number
-  // input must accept up to that same ceiling: a record with a 24-minute
-  // half loaded fine, planned fine and could never be typed in again if the
-  // field's own max fell behind the sanitizer's. The in-game format control
-  // is a stepper now (#27, decision 5) -- its own 4-20 range is deliberately
-  // narrower than storage's ceiling (a stray high value is shown as-is and
-  // only snaps into range on the first tap, see stepFormat in
-  // test/sentence.test.js), so it is no longer part of this check.
-  const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
-  const maxOf = (id) => {
-    const tag = html.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`))[0];
-    return Number(tag.match(/max="(\d+)"/)[1]);
-  };
-  const ceiling = Number(
-    readFileSync(new URL('../app/storage.js', import.meta.url), 'utf8')
-      .match(/periodMinutes: num\(g\.periodMinutes, \d+, \d+, (\d+)\)/)[1]);
-  assert.equal(maxOf('welMinutes'), ceiling, 'the welcome screen asks the same question');
-  const onboarding = readFileSync(new URL('../app/onboarding.js', import.meta.url), 'utf8');
-  assert.match(onboarding, new RegExp(`Math\\.min\\(${ceiling}, Number\\(\\$\\('#welMinutes'\\)`),
-    'onboarding clamps the welcome value in JS as well, and must use the same ceiling');
-});
+/* This test used to read `#welMinutes`, a plain `<input type="number">` on
+   the welcome screen's own setup pane, and check its `max` against the same
+   ceiling `periodMinutes` sanitizes to. #36 deletes that input along with the
+   whole setup pane: the first-run flow's step 2 asks the same question with
+   `stepperRow` + `stepFormat` instead (reuse, not a second control), the same
+   MINUTES_LO/MINUTES_HI = 4/20 range the in-game fold already uses -- which
+   is the narrower range this test's own comment already said the in-game
+   control had moved to in #27, and `stepFormat`'s clamping is covered
+   generically (any min/max) by test/sentence.test.js. There is no ceiling
+   left at this seam to compare against storage's: the stepper's range is
+   deliberately narrower, not "the same question" any more. */
 
 /* ================================================================== *
  * v4 → v5: a season keeps its finished games

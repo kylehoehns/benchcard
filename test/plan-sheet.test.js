@@ -11,16 +11,7 @@ import assert from 'node:assert/strict';
  * comment for why it lives there and not under test/helpers/.
  */
 
-import { S, withTeam, player } from './state-fixture.js';
-
-// Same shape test/sentence.test.js's bareGame builds from -- RICH's own
-// format and interval, no rules, no carryover.
-const bareGame = (extra) => ({
-  periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, strategy: 'balanced',
-  out: [], useCarryover: false, label: '', when: '',
-  constraints: S.emptyConstraints(),
-  ...extra,
-});
+import { S, bareGame, withTeam, player } from './state-fixture.js';
 
 /* ---------------- ruleComplete ---------------- */
 

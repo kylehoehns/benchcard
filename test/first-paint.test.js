@@ -613,6 +613,17 @@ test('the pre-paint script and sanitize allow exactly the same views', () => {
     'the pre-paint script names the superseded view key more than once');
 });
 
+/* #36, criterion 8's other half: the pre-paint script can only ever stamp
+   `welcome` (never a fourth "flow" state -- see the empty-store case in
+   CASES above), so the first frame is the flow only if the dialog itself
+   ships open. It must not. */
+test('#firstRunFlow ships without `open`, so the first frame cannot be the flow', () => {
+  const tag = html.match(/<dialog[^>]*id="firstRunFlow"[^>]*>/);
+  assert.ok(tag, '#firstRunFlow is not a dialog in the markup');
+  assert.ok(!/\sopen(\s|>)/.test(tag[0]),
+    '#firstRunFlow ships with `open` -- a brand new device would see the flow, not the welcome screen');
+});
+
 test('only index.html carries the pre-paint view script', () => {
   // the guides and the six chart pages have the theme script and no views; a
   // copy there would be styling elements that do not exist

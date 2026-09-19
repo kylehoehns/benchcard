@@ -91,6 +91,14 @@ const SHOT = Object.freeze({
   view: null, theme: 'light', width: WIDTH, rootPx: 16,
   full: false, bottom: false, longNames: false, firstRun: false,
   titleCollapsed: false, partPlayed: false,
+  /* #36 item 10: which numbered first-run step to land the shot on (0 means
+     "just the wiped landing", `firstRun`'s own unchanged meaning above), and
+     whether to fill it with a full, real roster instead of the sample fill
+     every other numbered step uses -- see `goFirstRun` below. Kept off the
+     `firstRun` flag itself so the pre-existing "exactly one landing pair"
+     shape of that flag (test/compare-shots.test.js) does not have to widen
+     to mean something else. */
+  firstRunStep: 0, firstRunLongNames: false,
   /* #35 decision 15: `mobile` joins the shot shape, defaulting to the phone
      every other shot in this table is. It was hardcoded `true` at every
      `Emulation.setDeviceMetricsOverride` call in this file, which is simply
@@ -185,6 +193,33 @@ const EXTRA_SHOTS = [
     width: SHEET_MIN,
     sheet: { selector: 'dialog.bsheet[open]', open: `document.getElementById('shareBtn').click()` },
   })),
+  /* #36 item 10: the three numbered first-run steps themselves, each light
+     and dark -- the empty step 1 (matching the add-game step 1 mockup this
+     markup shares), step 2's format steppers at their real defaults, and
+     step 3's actual committed card. Reached with #welStart and step 1's own
+     "Fill with a sample team" button (Reuse), never a hand-typed roster. */
+  ...THEMES.map(theme => pair('first-run-1', null, theme, { firstRunStep: 1 })),
+  ...THEMES.map(theme => pair('first-run-2', null, theme, { firstRunStep: 2 })),
+  ...THEMES.map(theme => pair('first-run-3', null, theme, { firstRunStep: 3 })),
+  /* #36 item 10: a roster of full real names -- SAMPLE_LINES in full (Reuse:
+     sampleRosterText, never a second roster typed by hand), scrolled to the
+     bottom of #frBody, the one look-check state that proves a long, real
+     roster does not clip or hide inside the box. */
+  ...THEMES.map(theme => pair('first-run-long-names', null, theme,
+    { firstRunStep: 1, firstRunLongNames: true })),
+  /* #36 item 10: 320px at a 32px root, step 1 -- the same repro cell
+     `large-text-320` runs on Today, applied to the first-run flow. Light
+     only, like every other large-text cell: it is about layout, not paint. */
+  solo('first-run-320', null,
+    { firstRunStep: 1, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
+  /* #36 item 10: the 840px and 1280px wide layouts -- decision 14's own cap
+     (.flow-bar-row/.flow-prog/.flow-body/.flow-foot clamped to 34rem and
+     centered at 840px+). Step 2, light and dark: the steppers and
+     GRAN_CHOICES rows are exactly the content that cap constrains. */
+  ...THEMES.map(theme => pair('first-run-wide-1280', null, theme,
+    { firstRunStep: 2, width: LAPTOP, mobile: false })),
+  ...THEMES.map(theme => pair('first-run-wide-840', null, theme,
+    { firstRunStep: 2, width: WIDE_MIN, mobile: false })),
 ];
 
 export const SHOTS = Object.freeze([...BASE_SHOTS, ...EXTRA_SHOTS].map(Object.freeze));
@@ -300,7 +335,7 @@ export function twinProblems(records) {
  * app's own `applyTheme`, never by emulating `prefers-color-scheme` -- the
  * same rule item 3 states for every other shot, applied to the one state
  * `goRich`'s override cannot reach. */
-async function goFirstRun(c, origin, theme) {
+async function goFirstRun(c, origin, theme, opts = {}) {
   await seeded(c, `try { localStorage.clear(); } catch {}`, async () => {
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
@@ -316,6 +351,49 @@ async function goFirstRun(c, origin, theme) {
     const rr = await import('/render.js');
     rr.applyTheme();
   })()`));
+
+  const atStep = opts.step || 0;
+  if (atStep === 0) return; // the plain landing -- unchanged from before #36
+
+  // #welStart, never #welTry: a numbered-step shot needs a draft this file
+  // controls the exact contents of. "Fill with a sample team" inside step 1
+  // (Reuse: `#frFill`, wired to the same `fillSample`) is used below instead,
+  // so first-run-1 stays genuinely empty, matching the add-game step 1
+  // mockup this markup shares.
+  await evalIn(c, step(`document.getElementById('welStart').click()`));
+
+  if (opts.longNames) {
+    // "a roster of full real names" -- SAMPLE_LINES itself (roster.js), in
+    // full (12 lines, not DEMO_N's 9) so the box has enough content to
+    // actually need scrolling at 390x844. Reuse: sampleRosterText, never a
+    // second roster typed out by hand here.
+    await evalIn(c, step(`(async () => {
+      const r = await import('/roster.js');
+      const t = document.getElementById('frRoster');
+      t.value = r.sampleRosterText(12);
+      t.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`));
+    // `#frRoster` is the thing that actually overflows -- a plain
+    // `<textarea>` (`min-height: 8rem`) scrolls its own content, not
+    // `.flow-body` around it, so it is the textarea's own `scrollTop` that
+    // has to move. Proved, not assumed -- the same "modifier actually
+    // happened" rule `titleCollapsed`/`bottom` already follow.
+    await evalIn(c, step(`(() => {
+      const t = document.getElementById('frRoster');
+      t.scrollTop = t.scrollHeight;
+    })()`));
+    const scrolled = await evalIn(c, `Math.round(document.getElementById('frRoster').scrollTop)`);
+    if (!scrolled) {
+      throw new Error('first-run-long-names: #frRoster never scrolled (scrollTop 0), so this shot '
+        + 'would look identical to an unscrolled step 1 and prove nothing about a long roster');
+    }
+  } else if (atStep >= 2) {
+    // Steps 2 and 3 both need 5+ players just to get there.
+    await evalIn(c, step(`document.getElementById('frFill').click()`));
+  }
+
+  if (atStep >= 2) await evalIn(c, step(`document.getElementById('frNext').click()`));
+  if (atStep >= 3) await evalIn(c, step(`document.getElementById('frNext').click()`)); // commits, decision 4
 }
 
 /* Mutates the roster in place, through the app's own state module -- never a
@@ -352,8 +430,8 @@ async function capture(c, origin, want, outDir) {
   await c.send('Page.setFontSizes', { fontSizes: { standard: want.rootPx, fixed: want.rootPx } });
   await c.send('Emulation.setDeviceMetricsOverride', deviceMetrics(want, HEIGHT));
 
-  if (want.firstRun) {
-    await goFirstRun(c, origin, want.theme);
+  if (want.firstRun || want.firstRunStep) {
+    await goFirstRun(c, origin, want.theme, { step: want.firstRunStep || 0, longNames: want.firstRunLongNames });
   } else if (want.partPlayed) {
     /* #34 decision 16: the part-played Resume bar, over `reloadWithRecord`
        rather than `goRich` -- `partPlayed()` needs `view: 'today'` baked
@@ -459,6 +537,7 @@ async function capture(c, origin, want, outDir) {
     name: want.name, file, view: want.view, theme: want.theme, width: want.width,
     rootPx: want.rootPx, full: want.full, bottom: want.bottom, longNames: want.longNames,
     firstRun: want.firstRun, titleCollapsed: want.titleCollapsed, partPlayed: want.partPlayed,
+    firstRunStep: want.firstRunStep, firstRunLongNames: want.firstRunLongNames,
     twin: want.twin, measured,
     digest: createHash('sha256').update(buf).digest('hex'),
   };

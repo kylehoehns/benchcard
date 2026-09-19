@@ -16,19 +16,7 @@ import assert from 'node:assert/strict';
  * scope for the finding this shares against.)
  */
 
-import { S, withTeam, player } from './state-fixture.js';
-
-// The shape every game below starts from -- RICH's own format and interval,
-// no rules, no carryover -- with `S.emptyConstraints()` for the constraints
-// a test does not care about, same source `newGame` itself seeds from
-// (state.js). `extra` overrides top level; a test that needs one constraint
-// set spreads `S.emptyConstraints()` itself so the rest stay empty.
-const bareGame = (extra) => ({
-  periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, strategy: 'balanced',
-  out: [], useCarryover: false, label: '', when: '',
-  constraints: S.emptyConstraints(),
-  ...extra,
-});
+import { S, bareGame, withTeam, player } from './state-fixture.js';
 
 test('sentenceParts: 1 player, By hand, perPeriod interval, 1 rule', () => {
   const g = bareGame({ periods: 2, periodMinutes: 20, granMode: 'perPeriod', granValue: 3,

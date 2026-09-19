@@ -162,8 +162,11 @@ on('#seasonExport', 'onclick', exportSeason);
 
 /* Share the card as an image. `shareCards` paints synchronously so the tap's
    activation still stands when `navigator.share` is called -- do not put an
-   await in front of it. */
-on('#shareCard', 'onclick', () => {
+   await in front of it. Named and zero-argument (rather than inline) since
+   #36's step 3 needs the exact same rule behind `#frShare`, and
+   test/print-gate.test.js resolves an `on` binding's handler one hop to a
+   named top-level function -- an inline arrow would not be discoverable. */
+function shareCardImage() {
   const cards = [...document.querySelectorAll('#sheet .card:not(.card-copy)')];
   if (!cards.length) return;
   const g = game();
@@ -194,7 +197,14 @@ on('#shareCard', 'onclick', () => {
     console.warn('share failed', err);
     flash('Could not share the image. Print still works.');
   });
-});
+}
+on('#shareCard', 'onclick', shareCardImage);
+
+/* #36 step 3: the same two buttons, reusing `printCard`/`shareCardImage`
+   rather than a card built from the draft plan -- `buildCard` stays
+   module-private. */
+on('#frPrint', 'onclick', printCard);
+on('#frShare', 'onclick', shareCardImage);
 
 /* #31: the two doors onto the roster. The sheets themselves -- what they
    hold, what their confirms say and what pressing one does -- belong to
@@ -364,7 +374,7 @@ initTimeline(setView);
 initTour(setView);
 initRules(soon, PLAN_ONLY);
 initStrategy(soon, PLAN_ONLY);
-initOnboarding(setView, renderAll);
+initOnboarding(setView);
 initGameSetup(renderAll, soon, PLAN_ONLY, AFTER_EDIT);
 initShortcuts(setView);
 setView(state.onboarded ? (state.view || 'today') : 'welcome');

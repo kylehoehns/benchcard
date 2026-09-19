@@ -68,6 +68,7 @@ import { sheetSpacingPass } from './smoke/sheet-spacing.mjs';
 import { timelineCardSheetPass } from './smoke/timeline-card-sheet.mjs';
 import { teamScreenPass } from './smoke/team-screen.mjs';
 import { addGameFlowPass } from './smoke/add-game-flow.mjs';
+import { firstRunPass } from './smoke/first-run-flow.mjs';
 import { focusClearPass } from './smoke/focus-clear.mjs';
 import { floatingControlsPass } from './smoke/floating-controls.mjs';
 import { resumeBarPass } from './smoke/resume-bar.mjs';
@@ -132,6 +133,7 @@ const RUN = {
   timelinecardsheet: ctx => timelineCardSheetPass(ctx.c, ctx.origin),
   teamscreen: ctx => teamScreenPass(ctx.c, ctx.origin),
   addgameflow: ctx => addGameFlowPass(ctx.c, ctx.origin),
+  firstrun: ctx => firstRunPass(ctx.c, ctx.origin),
   focusclear: ctx => focusClearPass(ctx.c),
   floatingcontrols: ctx => floatingControlsPass(ctx.c, ctx.origin),
   resumebar: ctx => resumeBarPass(ctx.c, ctx.origin),
@@ -355,8 +357,12 @@ async function browserChecks(origin, only) {
        like `teamscreen` above -- it reloads RICH before returning and every
        pass below finds the two-game Saturday it expects. */
     report.checks.push(await safeCheck('addgameflow', () => addGameFlowPass(c, origin)));
+    /* #36. It wipes storage to reach the welcome screen and drives the three
+       steps, so -- like `teamscreen` and `addgameflow` above -- it reloads
+       RICH before returning and every pass below finds the fixture again. */
+    report.checks.push(await safeCheck('firstrun', () => firstRunPass(c, origin)));
     // #33 decision 15: right after the game screen is back to a known state
-    // (addgameflow above already reloads RICH, which lands on it).
+    // (firstrun above already reloads RICH, which lands on it).
     report.checks.push(await safeCheck('focusclear', () => focusClearPass(c)));
     // #33 items 1-6 and 10: same place, same reason -- it ends back on Today.
     report.checks.push(await safeCheck('floatingcontrols', () => floatingControlsPass(c, origin)));

@@ -2114,30 +2114,11 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    -- the form when it is opened, the restore links -- and that is a scroll a
    coach has asked for rather than one they arrive in. */
 .wel-hero { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-/* The two panes. Exactly one is on screen, so the landing pane carries the
-   flex column and the setup pane is an ordinary block that scrolls. */
+/* The welcome screen is one pane now. It was two, `hidden`-swapped, until #36
+   moved setup into `#firstRunFlow` and deleted the setup pane -- so the
+   `[hidden]` rule that restored `display: none` against the `display: flex`
+   below went with it: nothing sets `hidden` on this element any more. */
 .wel-landing { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.wel-landing[hidden], .wel-setup[hidden] { display: none; }
-/* NO ANIMATION, and nothing on this pane may grow one with a backwards fill.
-   `rise` starts at `opacity: 0`; an animation does not run on a
-   `display: none` element, so `animation-fill-mode: both` applies that FROM
-   state and whether the pane ever escapes it depends on the engine restarting
-   the animation when `hidden` comes off. Chrome restarts it, which is why
-   every browser check in this repo was green.
-
-   A blank screen was reported from an iPhone on 2026-08-26 -- in a private
-   tab, so no cache was involved -- and this is the best candidate for it, but
-   IT IS NOT CONFIRMED: there is no WebKit on this machine and no simulator, so
-   nobody here has watched it fail. What IS certain is that a pane whose
-   visibility depends on an animation running is a bad bet for the one screen
-   that must always paint, so the animation is gone rather than merely
-   defilled. `test/anim-fill.test.js` keeps the fill off this path. */
-.wel-setup { width: 100%; text-align: left; }
-.wel-backrow { margin: 0 0 .35rem; }
-.wel-back { padding-left: 0; }
-.wel-h2 { font-size: var(--fs-sentence); letter-spacing: -.035em;
-  font-weight: 700; margin: 0 0 .2rem; }
-.wel-h2:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
 /* The wordmark is a lockup now, not the heading (A51): the h1 carries the
    promise and the name sits above it, which is where a name goes. */
 .wel-lockup { display: flex; align-items: center; justify-content: center; gap: .45rem;
@@ -2393,37 +2374,18 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 /* The form itself, and since A49 it is unconditional -- no disclosure, no
    toggle, no state. The two lighter doors sit above it and it carries its own
    top margin instead of the `[open]` rule that used to supply one. */
-/* NO ENTRANCE ANIMATION. This box lives inside `#welSetup`, which ships
-   `hidden` and is revealed by JS when a coach taps a door -- and an animation
-   does not run on a `display: none` element, so `rise` never started and
-   `animation-fill-mode: both` left this box pinned at its FROM state,
-   `opacity: 0`. The pane unhid around an invisible form: a blank screen, in
-   Chrome, on production. Measured 2026-08-26 -- `#welSetup .wel-card` came
-   back `opacity: 0`, `animationName: rise`, and `document.body.innerText` was
-   the empty string.
-
-   THE DIFFERENCE FROM `.wel-h` AND `.wel-sub` ABOVE, which keep theirs: those
-   are inside `#view-welcome`, and the pre-paint `data-boot` rule gives that
-   view `display: flex !important` while it is still `hidden`, so they are laid
-   out and their animations run on the first frame. Nothing force-displays
-   `#welSetup`. `test/anim-fill.test.js` draws exactly that line. */
-.wel-card { text-align: left; margin-top: .8rem; background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r-lg); padding: clamp(1.15rem, 3vw, 1.6rem); box-shadow: var(--shadow); }
-.wel-card textarea { min-height: 9.5rem; }
 /* Padded to 44px rather than boxed, the same trade `.foot-link` and `.linkish`
    both make. The color and the underline come from the `.wel-about,
    `.wel-tail-row` rule in the footer block below, so all three footer links
    are one treatment; only the box is set here. */
 .wel-about { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .55rem; }
-/* Every full-width button on this screen: the two doors under the figures and
-   "Build my first card" inside the form. One column of choices, not a row a
-   thumb has to aim inside. */
+/* Every full-width button on this screen: the two doors under the figures.
+   #36 deletes the third ("Build my first card", inside the setup pane) along
+   with the pane -- one column of choices, not a row a thumb has to aim
+   inside. */
 .wel-go { width: 100%; margin-top: .62rem; padding: .82rem 1rem; font-size: var(--fs-body); }
-.wel-type { margin-top: .34rem; }
+.wel-start { margin-top: .34rem; }
 .wel-foot { text-align: center; margin-top: .62rem; }
-/* A49's fill, demoted to a link inside the box it fills. */
-.wel-fill { margin-top: .1rem; }
-.wel-fill[hidden] { display: none; }
 /* One hairline footer under the hero. `.wel-restore` was one of three stacked
    blocks here and is gone with them; the ids and the paste box are unchanged,
    so `backup.js` and its tests still find everything they bind to. */
@@ -2460,7 +2422,6 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   font: inherit; font-weight: 600; color: var(--accent); }
 .linkish:focus-visible { border-bottom-color: var(--accent-line); }
 @media (hover: hover) { .linkish:hover { border-bottom-color: var(--accent-line); } }
-#welCount.ready { color: var(--ok); }
 
 /* #25 item 5: color/underline from `--phrase`/`--phrase-line` -- Graphite's
    own underline, transparent for every other team color (tokens.css), so one
@@ -2752,7 +2713,9 @@ dialog.flow.closing { transform: translateY(100%); }
    it is 448px and matches all of them. */
 @media (max-width: 14em) {
   .flow-bar-row { grid-template-columns: auto 1fr; }
-  #agClose { grid-area: 1 / 1; }
+  /* Both flows' close button, not just add-a-game's -- #36's first-run flow
+     reuses `.flow-bar-row` and its ✕ needs the same fold. */
+  .flow-bar-row .bsheet-close { grid-area: 1 / 1; }
   .flow-step { grid-area: 1 / 2; justify-self: end; padding-right: 0; }
   .flow-t { grid-area: 2 / 1 / 3 / -1; }
 }
@@ -2873,7 +2836,47 @@ dialog.flow .plr.off .av { opacity: .55; }
   gap: .5rem; padding: .75rem 1rem calc(.75rem + env(safe-area-inset-bottom)); }
 .flow-foot .btn { min-height: 48px; white-space: nowrap; }
 .flow-foot .btn.primary { flex: 1 1 9rem; }
-#agAsk { padding-bottom: calc(1.1rem + env(safe-area-inset-bottom)); }
+/* #36: `#frAsk` swaps into the same footer the same way `#agAsk` does, so this
+   is the ask row's own class rather than one flow's id. */
+.flow-ask { padding-bottom: calc(1.1rem + env(safe-area-inset-bottom)); }
+
+/* #36 step 2: the two steppers (`stepperRow`, game-setup.js) sit in their own
+   `.pgrp` -- but `.pgrp`'s own top margin (below) assumes it follows a
+   `.pgrp-h`, which nothing on this step has, so it is zeroed here rather than
+   inheriting a gap meant for a heading that is not there. */
+dialog.flow .pgrp { margin: 0 1rem; }
+/* The "How often do you sub?" label above `paintGranRows`'s own rows -- the
+   same `.f` treatment the games view's sub-frequency picker uses, inset to
+   match the stepper group above it. */
+.fr-f { padding: 0 1rem; }
+.fr-gran { margin: 0 1rem; }
+
+/* #36 step 3's card preview has no rule of its own here. It had one --
+   `.fr-stage`, centering and insetting the preview -- and every declaration
+   in it was already `.stage`'s (card.css), which loads after this sheet and
+   so wins every single-class tie. `stepCard` builds a plain `.stage` now;
+   card.css is where a stage's padding is decided, for this one as for the
+   sheet's.
+   Step 3's Print/Share row, moved out of its parked spot in the dialog
+   (`stepCard`, onboarding.js) into the wrap the other steps' content sits in
+   -- same side margins as `.flow-card` above. */
+.fr-cta { margin: 1rem 1rem 0; }
+
+/* Decision 14: full-screen flows fill the phone width by design, and at
+   840px a `#firstRunFlow` step read as an unbroken 1280px-wide line of text
+   -- so both flows cap at a column and center it, same width as `.wel-in`
+   above, past the width where Team and Season's own wide layout kicks in
+   (`#view-team`/`#view-season`, above). Nothing narrower changes.
+   `screen and`, same reason decision 4's rail block above states: a bare
+   `min-width: 840px` also matches print, and `dialog.flow` already carries
+   `.noprint`, so this cap would be dead weight on a printed page rather than
+   dangerous -- but test/wide-layout.test.js holds every 840px query in this
+   sheet to the same rule, screen or not, so there is no second one to forget. */
+@media screen and (min-width: 840px) {
+  .flow-bar-row, .flow-prog, .flow-body > *, .flow-foot {
+    max-width: 34rem; margin-inline: auto; width: 100%;
+  }
+}
 
 /* #28 decision 2: the shell rule for all four sheets. No bottom border --
    the prototype's header sits flush on the body, whether that body is a
@@ -3229,9 +3232,12 @@ dialog.flow .plr.off .av { opacity: .55; }
 .prow-check { flex: none; color: var(--ink); font-weight: 700; }
 
 /* Decision 9: the Add-a-rule kind chips, and the stepper it shares with Rest
-   limit. `.chips`/`.chip` stay the shared primitive (onboarding uses them
-   too); this scopes the sheet's own padding, since the chips sit inside a
-   group's edge rather than a page's. */
+   limit. `.chips`/`.chip` stay the shared primitive -- the welcome pane drew
+   them too until #36 moved its setup into `#firstRunFlow`, which uses
+   steppers and rows instead; the only other chip row left is the
+   Closing-window one (strategy.js), which renders into `#stratbody` -- this
+   same sheet. This scopes the sheet's own padding,
+   since the chips sit inside a group's edge rather than a page's. */
 .plan-kinds { padding: 1rem 1rem 0; }
 /* "One of two always on" is longer than every other kind label and, at a
    32px root in a 320px viewport, wider than the sheet itself; `.chip`'s own
@@ -3242,11 +3248,12 @@ dialog.flow .plr.off .av { opacity: .55; }
 .plan-kinds .chip { white-space: normal; text-align: center; }
 /* The prototype's chips are borderless `--surface` pills everywhere in this
    sheet (the kind chips above and the Closing-window chips) -- `.chip`'s own
-   `--line-2` border is onboarding's own look, so this is scoped to the
-   grouped sheet rather than changed on the shared primitive. Decision 5 also
-   holds this sheet's chips to 48px tall, a floor higher than the shared
-   `.chip`'s 44px (line ~3150) -- scoped the same way, so onboarding's chips
-   keep their own floor. */
+   `--line-2` border was the welcome pane's look, and decision 5's 48px floor
+   is taller than the same primitive's 44px (line ~3150). Both overrides are
+   scoped to the grouped sheet rather than folded into the primitive: every
+   chip in the app happens to sit in this sheet since #36 retired the welcome
+   pane's own, so the base rule has no live user, but it is still what a new
+   chip row anywhere else would start from. */
 dialog.bsheet.grouped .chip { border-color: transparent; min-height: 48px; display: inline-flex; align-items: center; }
 /* #73 fix pass finding 5: at a 320px/32px root the label no longer fits
    beside the value and +/- pair (`.pstep-val`'s fixed rem width and
@@ -3577,7 +3584,8 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   /* The `.btn` nowrap case for the fourth time in this block, and the whole of
      what the first-run screen was panning: `.btn` is `white-space: nowrap` by
      design, so "Show me with a sample team" measures 352px at a 32px root in a
-     264px column. One class covers all three full-width buttons on the screen.
+     264px column. One class covers both full-width buttons on the screen (#36
+     dropped the setup pane's own third one, "Build my first card").
      It surfaced as `#toasts` at 380px, the same third face the roster-list
      note further down already records. */
   .wel-go { white-space: normal; }
@@ -3788,11 +3796,13 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 
   /* #24: `.row`'s field columns are a text measure now (item 1), so at a 32px
      root the single-column floor the grid already falls back to is itself
-     260px -- wider than `#welSetup`'s own card leaves it inside `.wel-in`'s
-     30rem cap and the welcome screen's padding. `min(…, 40vw)` gives the
-     track a second, viewport-relative floor for exactly the narrow-column
-     cases this block already handles (`.dayrow`, `.sn-row`); at any
-     ordinary width `40vw` is wider than `8.125rem` and this changes nothing. */
+     260px -- wider than a narrow column can give it. The case that found it
+     was the welcome screen's own setup card, inside `.wel-in`'s 30rem cap
+     and the screen's padding; #36 replaced that card with `#firstRunFlow`,
+     so the rule is now carried by the other narrow-column cases this block
+     already handles (`.dayrow`, `.sn-row`). `min(…, 40vw)` gives the track a
+     second, viewport-relative floor for those; at any ordinary width `40vw`
+     is wider than `8.125rem` and this changes nothing. */
   .row { grid-template-columns: repeat(auto-fit, minmax(min(8.125rem, 40vw), 1fr)); }
 
   /* #69 decision 6: "Start game" plus its decorative icon (`aria-hidden`

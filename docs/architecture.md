@@ -31,7 +31,8 @@ Everything below is relative to `app/`.
 - `dom.js` — forgiving DOM one-liners shared by the UI modules, plus the
   shared `ctx2d` canvas everything that sizes type by measurement uses.
 - `trap.js` — focus trap for the overlays, the `data-fk` focus/caret restore,
-  and the bottom sheets' open, close, push and drag (#73).
+  the bottom sheets' open, close, push and drag (#73), and the step painter the
+  two full-screen flows share (#36).
 - `state.js` — the app record: state shape and migration, load/save glue, the
   accessors every view reads through, the slot budget and the plan cache.
   Imports only the pure modules, so the view seams can depend on it freely.
@@ -199,31 +200,56 @@ calls `preventDefault()` and owns the pointer path, so a click handler would be
 a second commit route racing the drag.
 ## First run
 
-The app opens empty and asks for the coach's team — name, players, format —
-rather than a seeded fake roster, which reads like a demo. Players can be typed,
-pasted in any of the usual shapes (`12 Marcus Webb`, `Marcus Webb #12`,
-`Devon Ellis`).
+The app opens empty and asks for the coach's team rather than seeding a fake
+roster, which reads like a demo. The welcome screen offers two doors — **Set up
+my team** and **Try a sample team** — and both open `#firstRunFlow`, a
+full-screen `<dialog>` of three steps (#36): *Who's on the team?* (a name and a
+roster box), *How long is a game?* (periods, minutes each, how often to sub),
+and then the coach's own first card, with Print and Share image on it. Players
+are typed or pasted in any of the usual shapes (`12 Marcus Webb`,
+`Marcus Webb #12`, `Devon Ellis`), counted by `parseRoster` as they are typed,
+and Next stays disabled until five of them parse.
+
+It is the add-a-game flow's shell, down to the one painter both flows call: ✕
+on every step, "‹ Back" in the footer from step 2 on, and "Discard this team?"
+before typed text is lost, through the same `guardClose` seam. The two dialogs
+stay separate markup — what drifts between two flows is the painting, not
+twenty lines of tags.
+
+**Nothing is written until Next is pressed on step 2.** Step 3 shows a real
+card, and the app has exactly one card builder, which reads the saved record —
+so the team is created at the end of step 2 and step 3 clones the card the game
+screen has just rendered, rather than drawing a second one from the draft.
+Creating it also switches to the game screen underneath the open dialog, which
+is what makes "Go to the game" a plain close with nothing to transition.
+Leaving before that point stores nothing at all. Step 3 has no Back, because by
+then there is nothing left to abandon, and a back gesture there finishes the
+flow rather than dead-ending.
 
 A **sample team** is the opt-in exception, and it is opt-in on purpose: nothing
-is seeded unless the coach asks. "Try a sample team" sits above the form and
-**fills it in** — ten players and the name **"Sample team"**, deliberately not
-a plausible club name — for the coach with nothing to paste. It creates no
-team, saves nothing and goes nowhere: the coach edits the box or taps "Build my
-first card" exactly as if they had typed it, so there is nothing to undo and no
-removal sentence to get wrong. The cast lives in `roster.js` as lines of text
+is seeded unless the coach asks. "Try a sample team" opens the flow with step 1
+already filled — nine players and the name **"Sample team"**, deliberately not
+a plausible club name — for the coach with nothing to paste, and a *Fill with a
+sample team* button inside step 1 does the same for a coach who came through the
+other door and found the box empty. Nine is the roster the welcome screen's own
+rotation solves, so the team in the box is the team the coach just watched. It
+creates no team, saves nothing and goes nowhere: the coach edits the box or
+walks the steps exactly as if they had typed it, so there is nothing to undo and
+no removal sentence to get wrong. The cast lives in `roster.js` as lines of text
 that go back through `parseRoster`, so the sample is parsed by the same code a
 paste is, and it
-opens with `#welRoster`'s own placeholder names so there is one fictional cast
+opens with `#frRoster`'s own placeholder names so there is one fictional cast
 in the app rather than two. The six roster-size landing pages link in with
 `?try=N`, and that path is the **one** that still builds the team and shows the
 card — somebody who clicked "see this as a card" asked for the card, not for a
-filled-in form, so it also still flashes how to remove what it made. It is read
+filled-in box and three steps, so it also still flashes how to remove what it
+made. It is read
 only when there is no team and stripped from the URL
 immediately: it carries one integer and nothing about anybody, and it is not a
 URL share — there is still no way to put a coach's roster in a link, and there
 must not be.
 
-When onboarding finishes, a four-step **tour** runs once per device
+When the first-run flow finishes, a four-step **tour** runs once per device
 (`state.tourSeen`, persisted, so it never repeats): the players phrase (#27),
 the strategy picker, the timeline and the bench button. It is a spotlight
 rather than a modal — a cutout over the coach's own screen, explained in
@@ -785,8 +811,11 @@ Mobile specifics that came out of real use:
   roster gets the roster CTA. Both buttons go through `jumpToEditor()`, which
   opens the sheet before scrolling. Errors fixed elsewhere (not enough players,
   closers, unit sizes) get no button, because their control is already on screen.
-- **The substitution interval is a chip group, not a `<select>`.** Eight long
-  options in a native picker fills a phone screen for a one-tap decision.
+- **The substitution interval is a list of rows, not a `<select>`.** Eight long
+  options in a native picker fills a phone screen for a one-tap decision. One
+  builder draws that list (`paintGranRows` in `game-setup.js`), for the game
+  screen's own sheet and for step 2 of the first run — the two used to be the
+  same eight choices drawn twice, once as rows and once as chips (#36).
 - **Destructive actions leave the day's own list.** "Remove game" sits in the
   game screen's own header behind Undo, not among the day's games on Today.
 ## Bench mode

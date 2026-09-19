@@ -252,9 +252,11 @@ function paintWhoBody() {
 
 // Decision 5: periods step within 1-4, minutes within 4-20, one at a time.
 // Settings keeps its own wider 1-8 / 1-40 number fields (`#setPeriods`,
-// `#setPerMins`) -- these are the sheet's own, separate range.
-const PERIODS_LO = 1, PERIODS_HI = 4;
-const MINUTES_LO = 4, MINUTES_HI = 20;
+// `#setPerMins`) -- these are the sheet's own, separate range. Exported for
+// #36's first-run flow, step 2: the same two steppers, the same range, on a
+// draft instead of `game()` (Constraints/Reuse: no second range typed out).
+export const PERIODS_LO = 1, PERIODS_HI = 4;
+export const MINUTES_LO = 4, MINUTES_HI = 20;
 
 // #73 item 5: the one stepper builder Format and Add a rule (rules.js) both
 // use -- `.prow.pstep-row > .prow-t(label) + .pstep-val + .pstep(− +)`, a
@@ -325,12 +327,16 @@ function paintFormatBody() {
 // aliased here rather than re-derived.
 const capitalize = colorName;
 
-function paintIntervalBody() {
-  const box = $('#sheetIntervalBody');
+/* #36 Constraints/Reuse: `GRAN_CHOICES` through this one builder, so the
+   first-run flow's step 2 gets the same rows the sub-interval sheet does
+   rather than a third hand-written list. `get`/`onPick` are what let a draft
+   object (`fr`, onboarding.js) share this with the sheet's own `game()` --
+   the write itself, and what happens after it, stay the caller's. */
+export function paintGranRows(box, get, onPick) {
   if (!box) return;
   box.textContent = '';
   GRAN_CHOICES.forEach((c, idx) => {
-    const g = game();
+    const g = get();
     const on_ = g.granMode === c.mode && (c.mode === 'breaksOnly' || g.granValue === c.value);
     const label = capitalize(c.phrase);
     const b = el('button', 'sheetrow' + (on_ ? ' sel' : ''));
@@ -342,14 +348,20 @@ function paintIntervalBody() {
     mark.setAttribute('aria-hidden', 'true');
     b.append(mark);
     b.onclick = () => {
-      Object.assign(game(), { granMode: c.mode, granValue: c.value });
+      onPick(c);
       // The checkmark moves to a different row -- unlike a Who's here row or
       // a stepper, which update themselves, this repaints the whole list --
       // then puts focus back on the row that used to be at this position.
-      paintIntervalBody();
+      paintGranRows(box, get, onPick);
       box.children[idx]?.focus({ preventScroll: true });
-      soon('strategy', ...AFTER_EDIT);
     };
     box.append(b);
+  });
+}
+
+function paintIntervalBody() {
+  paintGranRows($('#sheetIntervalBody'), game, c => {
+    Object.assign(game(), { granMode: c.mode, granValue: c.value });
+    soon('strategy', ...AFTER_EDIT);
   });
 }

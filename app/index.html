@@ -811,19 +811,19 @@
        `.keyswrap` already uses. The stage is the only elastic part, so a short
        viewport shrinks the figures and never the buttons.
 
-       SETUP IS A SECOND SCREEN, not a box under the first one. The reasoning
-       is on the `<section>` itself, further down. -->
+       SETUP IS A DIALOG, not a second screen (#36). `#firstRunFlow` covers
+       the whole chrome the way `#addGameFlow` does, so there is nothing here
+       for `sanitize`'s view allow-list or `data-boot` to know about. -->
   <main class="view welcome noprint" id="view-welcome" hidden>
     <div class="wel-in">
-      <!-- TWO PANES, ONE AT A TIME. The landing screen is a landing screen and
-           nothing else; "I'll type my roster" takes a coach to setup the way a
-           second page would, and Back returns. Not a real view: `sanitize`'s
-           allow-list is `games | team | season | settings` and the pre-paint
-           script resolves against it, so a fifth key would ripple into storage,
-           into `data-boot` and into test/first-paint.js for a screen that
-           exists once per install. Two panes and one class buy the same thing
-           for a coach and cost none of it. -->
-      <div class="wel-landing" id="welLanding">
+      <!-- ONE LANDING SCREEN, and nothing else on it: "Set up my team" and
+           "Try a sample team" both open `#firstRunFlow` (onboarding.js), the
+           three-step dialog defined beside `#addGameFlow` further down. Not a
+           real view: `sanitize`'s allow-list is `games | team | season |
+           settings` and the pre-paint script resolves against it, so a fifth
+           key would ripple into storage, into `data-boot` and into
+           test/first-paint.js for a screen that exists once per install. -->
+      <div class="wel-landing">
       <div class="wel-hero">
         <p class="wel-lockup">
           <span class="wel-mark" aria-hidden="true">
@@ -873,24 +873,25 @@
         </div>
       </div>
 
-      <!-- The two doors. BOTH GO TO SETUP; one arrives with the roster already
-           in the box. That is A49's `fillSample` again, and the objection A51
-           raised against it is spent: A49's sample answered "what does this
-           make?" with a second helping of the form, because nothing on the
-           screen had answered it yet. The stage above answers it now -- the
-           plan, the card and bench mode, before a coach taps anything -- so by
-           the time they reach this pair the question is what to type, and the
-           honest answer to that is "here, have ten names".
+      <!-- The two doors (#36, decision 7). BOTH OPEN `#firstRunFlow`, one with
+           the sample already in step 1's box -- that is A49's `fillSample`
+           again, and the objection A51 raised against it is spent: A49's
+           sample answered "what does this make?" with a second helping of the
+           form, because nothing on the screen had answered it yet. The stage
+           above answers it now -- the plan, the card and bench mode, before a
+           coach taps anything -- so by the time they reach this pair the
+           question is what to type, and the honest answer to that is "here,
+           have ten names".
 
-           It still counts nothing. `finishOnboarding` compares the box against
+           It still counts nothing. `commitFirstRun` compares the box against
            what `fillSample` wrote and defers an untouched sample through
            `markFirstRunPending()`, so `first_run_complete` has never measured
            our own suggestion. `loadSample` keeps the OTHER path and only that
            one: somebody who clicked "try it with nine players" on a chart page
            asked to see the card, not a form. -->
       <div class="wel-doors">
-        <button type="button" class="btn primary press wel-go" id="welTry" aria-controls="welSetup">Start with a sample team</button>
-        <button type="button" class="btn press wel-go wel-type" id="welType" aria-controls="welSetup">I&rsquo;ll type my roster</button>
+        <button type="button" class="btn primary press wel-go wel-start" id="welStart">Set up my team</button>
+        <button type="button" class="btn press wel-go" id="welTry">Try a sample team</button>
         <p class="note wel-foot">No account. Your roster never leaves your device.</p>
       </div>
 
@@ -899,10 +900,10 @@
            stacked blocks, which is what pushed 165px of links below a screen
            that is meant to read as one.
 
-           IT IS NOT BEHIND `#welType` AND MUST NOT BE. A browser that evicts
+           IT IS NOT BEHIND `#welStart` AND MUST NOT BE. A browser that evicts
            local storage lands a RETURNING coach on this screen holding a
            backup file, which is the exact case the file exists for -- and
-           making them tap "I'll type my roster" to find Restore would hide the
+           making them open the flow to find Restore would hide the
            way back in behind a button that says the opposite. The paste link
            is beside it for the same reason it has always existed: a .json in
            an email attachment is awkward to hand to a mobile browser, and it
@@ -912,16 +913,10 @@
         <!-- ONE FOOTER ROW OF PEERS, not three stacked fragments. It was a
              prompt on its own line, two accent links under it and an
              underlined third below that, which read as leftovers rather than
-             as a footer. All three are the same quiet treatment now.
-
-             NONE OF IT IS BEHIND `#welType`, and it must not be: a browser
-             that evicts local storage lands a RETURNING coach on this screen
-             holding a backup file, which is the exact case the file exists
-             for, and putting Restore behind "I'll type my roster" would hide
-             the way back in behind a button that says the opposite. Paste is
-             beside it because a .json in an email attachment is awkward to
-             hand to a mobile browser -- same file, same parser, same undo, so
-             it must not read as a second choice to make.
+             as a footer. All three are the same quiet treatment now. Why none
+             of it sits behind `#welStart` is argued once, on `.wel-tail`
+             above -- it was argued twice here until #36's fix pass, and two
+             copies of one argument is the defect this repo names first.
 
              `class="wel-about"` on the anchor is load-bearing AND is matched
              as an exact attribute: test/link-graph.test.js hangs the whole
@@ -941,53 +936,6 @@
         </div>
       </div>
       </div><!-- /.wel-landing -->
-
-      <!-- THE SETUP SCREEN. `#welType` opens it and hides the landing pane in
-           the same breath, so a coach is never looking at both and the first
-           screen stays a first screen. Back returns.
-
-           A49 removed a `<details>` from this screen and A52 is not putting it
-           back: the half of A49 that survives is A47's, that a control iOS does
-           not recognize as interactive is a bad bet, and both `#welType` and
-           `#welBack` are plain buttons. The half that did not survive was the
-           no-script argument, which A49 itself proved worthless -- `#welGo` is
-           a JS onclick and there is no <form> anywhere in this app, so this
-           screen has needed the module graph since it was written. -->
-      <section class="wel-setup" id="welSetup" hidden aria-labelledby="welSetupHd">
-        <p class="wel-backrow">
-          <button type="button" class="linkish press wel-back" id="welBack">Back</button>
-        </p>
-        <!-- Focused when the pane opens, which is what makes this read as
-             arriving somewhere rather than as a box appearing under a button. -->
-        <h2 class="wel-h2" id="welSetupHd" tabindex="-1">Set up your team</h2>
-        <div class="wel-card">
-          <label class="f" for="welTeam">What do you call this team?</label>
-          <input type="text" id="welTeam" placeholder="Wildcats 6th Grade" autocomplete="off">
-
-          <label class="f" for="welRoster" style="margin-top:1.15rem">Your players, one per line</label>
-          <textarea id="welRoster" spellcheck="false" aria-describedby="welCount" placeholder="12 Maya Webb&#10;4 Eli Tran&#10;Devon Ellis"></textarea>
-          <!-- One element is the hint, the running count and the error, so it is
-               both the textarea's description and a live region. `describedby`
-               covers "Get started" bouncing focus back here — the message is read
-               as part of the field. `aria-live` covers the other way in, Cmd+Enter
-               from inside the box, where focus never moves and nothing would be
-               announced at all. Polite, not assertive: it queues behind the
-               keystroke echo instead of interrupting a coach mid-name. -->
-          <p class="note" id="welCount" aria-live="polite">Paste from wherever your roster lives. Jersey numbers are optional.</p>
-          <p class="note wel-fill"><button type="button" class="linkish press" id="welFill">Fill this in with a sample team</button></p>
-
-          <label class="f" style="margin-top:1.15rem">How long is a game?</label>
-          <div class="row">
-            <div><label class="f" for="welPeriods">Periods</label><input type="number" id="welPeriods" value="4" min="1" max="8" inputmode="numeric"></div>
-            <div><label class="f" for="welMinutes">Min / period</label><input type="number" id="welMinutes" value="8" min="1" max="40" inputmode="numeric"></div>
-          </div>
-
-          <label class="f" style="margin-top:1.15rem">How often do you sub?</label>
-          <div id="welGran" class="chips"></div>
-
-          <button class="btn primary press wel-go" id="welGo">Build my first card</button>
-        </div>
-      </section>
     </div>
   </main>
 
@@ -1625,12 +1573,65 @@
       <button class="btn ghost press" id="agBack" type="button" hidden>‹ Back</button>
       <button class="btn primary press" id="agNext" type="button">Next</button>
     </div>
-    <div class="bsheet-cta" id="agAsk" hidden>
+    <div class="bsheet-cta flow-ask" id="agAsk" hidden>
       <p class="bsheet-ask-t">Discard this game?</p>
       <button class="btn primary press" id="agKeep" type="button">Keep editing</button>
       <button class="btn ghost danger press" id="agDiscard" type="button">Discard</button>
     </div>
   </dialog>
+
+  <!-- ===================== GET STARTED, IN THREE STEPS (#36) =====================
+       Criterion 8's first frame is the welcome screen, so the flow is a
+       dialog beside it rather than a fourth `.view` -- the same reasoning as
+       `#addGameFlow` right above, and the same shared painter
+       (`paintFlowShell`, app/trap.js) now paints both.
+
+       COMMITTED ON NEXT FROM STEP 2, not step 3: step 3 shows the real card
+       through `renderCards()`, the one place `.card` is built, and there is
+       no draft-card renderer to show one before that (decision 4).
+       `setView('games')` runs while this dialog is still open --
+       `closeSheets()` ignores `dialog.flow`, so the game screen renders
+       behind the modal and "Go to the game" on step 3 is just a close
+       (decision 5).
+
+       NO STEP CONTENT HERE, same as `#addGameFlow`: all three steps are
+       built into `#frBody` by onboarding.js. Step 3's Print/Share row is the
+       one exception -- `#frPrint`/`#frShare` have to be real markup for
+       `test/print-gate.test.js`, so `#frShareRow` ships here, hidden, and
+       step 3 moves it into place. -->
+  <dialog class="flow noprint" id="firstRunFlow" aria-label="Get started">
+    <div class="flow-bar">
+      <div class="flow-bar-row">
+        <button type="button" class="bsheet-close" id="frClose" aria-label="Close">✕</button>
+        <span class="flow-t">Get started</span>
+        <span class="flow-step" id="frStep"></span>
+      </div>
+      <div class="flow-prog" id="frProg" aria-hidden="true"></div>
+    </div>
+    <div class="flow-body" id="frBody"></div>
+    <div class="flow-foot" id="frFoot">
+      <button class="btn ghost press" id="frBack" type="button" hidden>‹ Back</button>
+      <button class="btn primary press" id="frNext" type="button">Next</button>
+    </div>
+    <div class="bsheet-cta flow-ask" id="frAsk" hidden>
+      <p class="bsheet-ask-t">Discard this team?</p>
+      <button class="btn primary press" id="frKeep" type="button">Keep editing</button>
+      <button class="btn ghost danger press" id="frDiscard" type="button">Discard</button>
+    </div>
+  </dialog>
+
+  <!-- Step 3's Print and Share: real markup, not `el()`-built, so
+       `test/print-gate.test.js` (survey 8: one hop of named zero-arg
+       functions) finds them. `stepCard` (onboarding.js) moves this row into
+       its own wrapper and clears `hidden`; leaving step 3 puts it back. -->
+  <div class="gm-cta fr-cta" id="frShareRow" hidden>
+    <button class="btn press" id="frPrint" data-needs-card aria-label="Print the card">
+      <span class="i" data-icon="printer"></span> Print
+    </button>
+    <button class="btn press" id="frShare" data-needs-card>
+      <span class="i" data-icon="share-2"></span> Share image
+    </button>
+  </div>
 
   <!-- ============================ GAME MODE ============================ -->
   <div class="gm noprint" id="gamemode" hidden tabindex="-1" role="dialog" aria-modal="true" aria-label="Bench mode">

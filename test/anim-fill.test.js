@@ -102,40 +102,21 @@ test('the guard would catch the rule it was written for', () => {
   assert.deepEqual(backwardsFilled('/* .wel-setup { animation: rise 1s both } */ .y { color: red }'), []);
 });
 
-/* The two first-run panes are SIBLINGS, and nothing but the DOM can say so.
+/* The two first-run panes were SIBLINGS, and nothing but the DOM could say so.
  *
  * A52 shipped with `#welSetup` nested INSIDE `#welLanding`, so `pane(true)`
  * hid the landing pane and took the setup pane down with it: both doors led to
  * a blank screen, in Chrome, with an empty console. It survived because the
  * check that was run was a TAG COUNT -- 19 `<div` against 19 `</div>` in the
  * view -- and a balanced count says nothing at all about nesting. One `</div>`
- * had gone missing in an unrelated edit to the footer below it.
+ * had gone missing in an unrelated edit to the footer below it. This used to
+ * parse the markup and assert the two came out at the same stack depth under
+ * `.wel-in`.
  *
- * This parses the markup rather than counting it: walk the view, keep a stack,
- * and assert the two panes come out at the same depth under `.wel-in`. It is
- * the cheap half of what a browser would tell you, and it runs in `node --test`
- * where a browser does not.
- */
-test('the landing and setup panes are siblings, not one inside the other', () => {
-  const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
-  const view = html.slice(html.indexOf('id="view-welcome"'), html.indexOf('id="view-team"'))
-    .replace(/<!--[\s\S]*?-->/g, ' ');
-  const VOID = new Set(['br', 'img', 'input', 'hr', 'meta', 'link', 'path', 'circle', 'source', 'use']);
-  const stack = [];
-  const depth = {};
-  for (const m of view.matchAll(/<(\/?)([a-z][a-z0-9]*)\b([^>]*)>/gi)) {
-    const [, close, tag, attrs] = m;
-    if (close) { stack.pop(); continue; }
-    const id = (attrs.match(/\bid="([^"]+)"/) || [])[1];
-    if (id === 'welLanding' || id === 'welSetup') depth[id] = stack.slice();
-    if (!VOID.has(tag.toLowerCase()) && !/\/\s*$/.test(attrs)) stack.push(tag.toLowerCase());
-  }
-  assert.ok(depth.welLanding, '#welLanding is gone from the welcome view');
-  assert.ok(depth.welSetup, '#welSetup is gone from the welcome view');
-  assert.equal(depth.welSetup.length, depth.welLanding.length,
-    `#welSetup sits ${depth.welSetup.length - depth.welLanding.length} level(s) deeper than #welLanding. `
-    + 'They must be siblings: hiding one pane to show the other cannot work if one contains the other, '
-    + 'and the result is a blank screen with no error.');
-  assert.deepEqual(depth.welSetup, depth.welLanding,
-    'the two first-run panes no longer share a parent');
-});
+ * #36 deletes `#welSetup` outright -- the setup pane it named is not a screen
+ * this app has any more, "Get started" is a `<dialog>` (`#firstRunFlow`,
+ * sibling to `#addGameFlow`) rather than a second pane switched by `hidden`.
+ * There is no sibling relationship left to prove: a dialog does not nest
+ * inside `#welLanding` at all, `test/first-run.test.js`'s own shell-markup
+ * test already checks it sits outside every `.view`, and `hidden`-swap nesting
+ * is a bug class that requires two panes in the first place. */
