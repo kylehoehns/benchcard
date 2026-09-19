@@ -197,10 +197,11 @@ and the committer ran it again on the same bytes — about twelve pairs for one
 ticket, half of them repeats. A tree a commit already recorded as green is not
 re-run to say so again.
 
-The payload budget is a **recorded** baseline. `requests` and `nodes` live in
-`scripts/budgets.json`; `bytes` is hand-pinned as `BYTES_BASELINE` in
-`scripts/budgets.mjs`, because nothing can rewrite `budgets.json` without
-erasing the `requests` pin (#35).
+The payload budget is a **recorded** baseline. `requests` comes from
+`scripts/budgets.json`; `bytes` and `nodes` are hand-pinned as
+`BYTES_BASELINE` and `NODES_BASELINE` in `scripts/budgets.mjs`, because
+nothing can rewrite `budgets.json` without erasing the `requests` pin (#35,
+#37).
 **Bytes and nodes are regression alarms, not constraints**: the shell is
 precached, so
 after the first load neither number costs a coach anything, and node or byte

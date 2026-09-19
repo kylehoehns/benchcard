@@ -814,6 +814,94 @@
     "digest": "74d235d18c2463ac9f7d0e4decc73ae8de1ab404eed6ccfdcb07ede9eed81291"
   },
   {
+    "name": "player-sheet-light",
+    "file": "player-sheet-light.png",
+    "view": "team",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "firstRunStep": 0,
+    "firstRunLongNames": false,
+    "twin": "player-sheet-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "7e0cec58983290d093b32798f4aad7865dd3d01ec6b3b555d53a778b6e561d64"
+  },
+  {
+    "name": "player-sheet-dark",
+    "file": "player-sheet-dark.png",
+    "view": "team",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "firstRunStep": 0,
+    "firstRunLongNames": false,
+    "twin": "player-sheet-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "1fed29b59ce51ea0c9bb8d8bd6f2505fcb2b506dfffa97957502d49eb258e5db"
+  },
+  {
+    "name": "player-sheet-bottom-light",
+    "file": "player-sheet-bottom-light.png",
+    "view": "team",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": true,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "firstRunStep": 0,
+    "firstRunLongNames": false,
+    "twin": "player-sheet-bottom-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "a9747d4a9c9c107f740bbd04e30de42668367d73fda7033c64809c5d9c81bf99"
+  },
+  {
+    "name": "player-sheet-bottom-dark",
+    "file": "player-sheet-bottom-dark.png",
+    "view": "team",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": true,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "firstRunStep": 0,
+    "firstRunLongNames": false,
+    "twin": "player-sheet-bottom-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "faa588c075c2e1db9665b72129ff089ea5ea232ef11438b2a65abb5bad00c128"
+  },
+  {
     "name": "first-run-1-light",
     "file": "first-run-1-light.png",
     "view": null,
@@ -921,7 +1009,7 @@
       "fontSizePx": 16,
       "bg": "rgb(244, 244, 246)"
     },
-    "digest": "1e9e667dad316bf7df4464ce4bd35f8889f9e1b821cff1ad2494dbbf33c87ea5"
+    "digest": "66906df49a2c8a0a828e78ec77481c3a2b05ca3aa4fe271166029505b51f183f"
   },
   {
     "name": "first-run-3-dark",
@@ -943,7 +1031,7 @@
       "fontSizePx": 16,
       "bg": "rgb(11, 11, 12)"
     },
-    "digest": "35c73bc7d07600448edf77519fcc895b6e21ae7535f358e6550a6f754a3c5ff8"
+    "digest": "5be092150a81699b6619a6dd18e7baf0d276add8c29f048c73c16bbb9b3eb5d7"
   },
   {
     "name": "first-run-long-names-light",

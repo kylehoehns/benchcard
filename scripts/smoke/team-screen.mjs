@@ -3,7 +3,7 @@
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
-import { nameOf, TOUCH_FLOOR, TOUCH_WIDTHS } from './registry.mjs';
+import { nameOf, TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './registry.mjs';
 import { goRich, PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
 import { drag, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
@@ -26,13 +26,6 @@ import { levelName } from '../../app/balance.js';
    Item 1 names all three of these outcomes; the other eight rows are the
    "other nine read Regular" half of the same sentence. */
 const ROSTER = PLAYERS.map(p => [p.name, p.number, levelName({ tier: tierOf(p) })]);
-
-/* I1's floor, minus the repo's 0.5px `getBoundingClientRect` tolerance --
-   the same pair `smoke-checks.js` measures every control against, named once
-   here rather than spelled as a bare `47.5` in each of the three places below
-   that ask for it. Failure messages read `TOUCH_FLOOR` too, so the number a
-   reader is told to hit is the number that was measured. */
-const ROW_MIN = TOUCH_FLOOR - 0.5;
 
 async function toTeam(c) {
   await tap(c, TODAY_HOME);
@@ -59,7 +52,7 @@ async function rosterListOk(c, ck) {
     ck(r.level === level, `${name}'s row reads "${r.level}", want "${level}"`);
     ck(r.chevron, `${name}'s row has no chevron, so nothing says it opens`);
     ck(r.tag === 'BUTTON', `${name}'s row is a <${r.tag.toLowerCase()}>, want one button for the whole row`);
-    ck(r.height >= ROW_MIN, `${name}'s row is ${r.height.toFixed(1)}px tall, want >= ${TOUCH_FLOOR}px`);
+    ck(r.height >= TOUCH_MIN, `${name}'s row is ${r.height.toFixed(1)}px tall, want >= ${TOUCH_FLOOR}px`);
   });
 }
 
@@ -492,15 +485,25 @@ const rosterFit = c => evalJSON(c, `JSON.stringify([...document.querySelectorAll
 }))`);
 
 async function rosterRowsFitOk(c, ck, who, want) {
+  /* #37 review: `TOUCH_WIDTHS` ends at `WIDTH`, so the restore below was
+     re-applying a width already in force -- a device-metrics override plus a
+     `settle` for nothing, twice over, once per caller. The restore still has
+     to happen when the sweep leaves off anywhere else (a throw part-way, or
+     `TOUCH_WIDTHS` growing a wider last entry), so the width that actually
+     took is tracked rather than the restore being dropped. Recorded only
+     AFTER `atWidth` resolves: a throw inside it leaves `at` on the previous
+     width, which restores. */
+  let at = null;
   try {
     for (const w of TOUCH_WIDTHS) {
       await atWidth(c, w);
+      at = w;
       const rows = await rosterFit(c);
       if (!ck(rows.length === want,
         `${who}@${w}px: ${rows.length} roster row(s) measured, want ${want}`)) continue;
       for (const r of rows) {
         if (!ck(r.name, `${who}@${w}px: a roster row carries no .prow-t, so no name was measured`)) continue;
-        ck(r.height >= ROW_MIN,
+        ck(r.height >= TOUCH_MIN,
           `${who}@${w}px: ${r.name}'s row is ${r.height.toFixed(1)}px tall, want >= ${TOUCH_FLOOR}px`);
         ck(r.scrollWidth <= r.clientWidth + 0.5,
           `${who}@${w}px: ${r.name} is clipped -- the name needs ${r.scrollWidth}px in a ${r.clientWidth}px box`);
@@ -509,7 +512,7 @@ async function rosterRowsFitOk(c, ck, who, want) {
       }
     }
   } finally {
-    await atWidth(c, WIDTH);
+    if (at !== WIDTH) await atWidth(c, WIDTH);
   }
 }
 
@@ -573,7 +576,7 @@ async function editModeOk(c, ck) {
       const [grip, up, dn] = r.ord;
       ck(grip.grip, `${name}'s first reorder control is not the drag grip at ${width}px`);
       for (const b of r.ord) {
-        ck(Math.min(b.w, b.h) >= ROW_MIN,
+        ck(Math.min(b.w, b.h) >= TOUCH_MIN,
           `${name}'s "${b.name}" measures ${b.w.toFixed(1)}x${b.h.toFixed(1)} at ${width}px, want >= ${TOUCH_FLOOR}px`);
       }
       ck(/arrow keys/.test(grip.name),

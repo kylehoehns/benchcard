@@ -20,11 +20,21 @@
      `TOUCH_TOL` is the measurement tolerance, not slack in the rule:
      `getBoundingClientRect` can report a box a hair under its CSS
      `min-height` at a 2x device scale, so every comparison below is against
-     `TOUCH_MIN` (47.5). It is far enough under 48 to survive that rounding
-     and still catch a control set a half-pixel short of the floor (verified
-     on #22 against `min-height: 47.5px`). The name and detail strings read
-     `TOUCH_FLOOR`, so the reported number cannot drift from the measured
-     one. */
+     `TOUCH_MIN` (47.5). What that costs is exactly half a pixel of the rule,
+     and the boundary is sharp: a control pinned at `height: 47.5px` is NOT
+     reported, one at `47.4px` is. Both halves were run, in this tree, on
+     #37's review: `47.5px` forced onto Settings' rows printed "up to 14
+     rows, all >= 48px" (a pass, which is what the tolerance buys the
+     rounding), and `47.4px` forced onto each of `minSizeCheck`'s three row
+     sweeps in turn went red naming its own rows at 47.39px -- 14/14
+     `div.setrow`, 11/11 `button.sheetrow`, and item 4's `#todayAddGame` /
+     `#todayTeam` / `#todaySeason` at 3/8. Those three used to compare
+     against `47.99`; #37 retired that literal with the other two, so they
+     now buy the same half pixel the rest of the file does in exchange for
+     one floor instead of three numbers.
+
+     The name and detail strings read `TOUCH_FLOOR`, so the reported number
+     cannot drift from the measured one. */
   const TOUCH_FLOOR = 48, TOUCH_TOL = 0.5;
   const TOUCH_MIN = TOUCH_FLOOR - TOUCH_TOL;
   const round = n => Math.round(n * 100) / 100;
@@ -214,9 +224,19 @@
     const inProse = el.tagName === 'A' && !!el.closest('p, li, dd, .hint, .note, .banner');
     if (inProse) continue;
     tapCount++;
-    /* A checkbox or radio wrapped in a label is tapped by the label, so the
-       label's box is the real target — the 38×22 control inside it is not. */
-    const box = (el.type === 'checkbox' || el.type === 'radio') && el.closest('label') || el;
+    /* An `<input>` wrapped in a `<label>` is tapped by the label — a tap
+       anywhere in it lands on the field — so the label's box is the real
+       target and the control inside it is not: a 38×22 switch, or a
+       borderless 24px-tall `.prow-in` text field. It used to read
+       `checkbox || radio`, which was the same rule stated for the only two
+       kinds the sweep had ever reached; #37's review added the player sheet
+       to `TOUCH_STATES` and the three `.prow-in` fields arrived at 24px tall
+       inside 50px rows. `app.css`'s `.pgrp .prow-in` comment is where that
+       shape was decided ("here the ROW is the 48px target, and a second
+       floor inside it would make every row 70px tall"). Six labels in the
+       app wrap an input and every one of them is a `.prow` row, so the
+       label's own floor is what this still measures. */
+    const box = el.tagName === 'INPUT' && el.closest('label') || el;
     const r = hitBox(box, TOUCH_MIN);
     const min = Math.min(round(r.width), round(r.height));
     if (min < TOUCH_MIN) small.push(`${label(el)} ${round(r.width)}×${round(r.height)}`);

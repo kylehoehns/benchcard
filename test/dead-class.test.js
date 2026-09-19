@@ -56,8 +56,22 @@ const stripJsComments = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
     .split('\n').map((l) => l.replace(/(^|[^:'"`\\])\/\/.*$/, '$1')).join('\n');
 
-function emitted() {
-  const files = ['index.html', ...readdirSync(new URL('.', ROOT)).filter((f) => f.endsWith('.js') && f !== 'sw.js')];
+/* Nothing on disk changes while this file runs, so each reader below reads
+   the tree once. `shellSweep` alone runs four times, and before this each
+   call re-read index.html and every `app/*.js` twice over. The one test that
+   needs a mutated sheet builds its own `[name, source]` pairs and hands them
+   straight to `shellSweep`, so it never reaches the memo. */
+const memo = (fn) => { let v; return () => (v === undefined ? (v = fn()) : v); };
+
+/* The scripts the shell can put a class from: every `app/*.js` except
+   `sw.js`, which serves bytes and never touches the DOM. `emitted()` below
+   and `shellUses()` further down both want that list, so it is spelled once,
+   the way `shellSheets()` spells the sheet list once for the two sweeps that
+   want it. */
+const shellScripts = memo(() => readdirSync(new URL('.', ROOT)).filter((f) => f.endsWith('.js') && f !== 'sw.js'));
+
+const emitted = memo(() => {
+  const files = ['index.html', ...shellScripts()];
   const found = new Map();
   const add = (c, where) => {
     if (!c || !/^[a-zA-Z_-][\w-]*$/.test(c)) return;
@@ -95,15 +109,15 @@ function emitted() {
     });
   }
   return found;
-}
+});
 
 /* The sheets `index.html` links, as `[name, source]`. Both shell sweeps in
    this file want them -- one for the rules they carry, the other for the
    classes those rules name -- so which sheets the shell loads is read out of
    the markup once, here. */
-const shellSheets = () =>
+const shellSheets = memo(() =>
   [...read('index.html').matchAll(/<link rel="stylesheet" href="\.\/([^"]+)"/g)]
-    .map((m) => [m[1], read(m[1])]);
+    .map((m) => [m[1], read(m[1])]));
 
 function styled() {
   const html = read('index.html');
@@ -311,14 +325,16 @@ function stringTokens(src, add) {
   }
 }
 
-function shellUses() {
+const shellUses = memo(() => {
   const set = new Set(emitted().keys());
   const add = (t) => { if (/^-?[a-zA-Z_][\w-]*$/.test(t)) set.add(t); };
+  for (const f of shellScripts()) stringTokens(stripJsComments(read(f)), add);
   for (const f of readdirSync(new URL('.', ROOT))) {
-    if (f.endsWith('.js') && f !== 'sw.js') stringTokens(stripJsComments(read(f)), add);
     if (!f.endsWith('.html')) continue;
     /* A selector is not a use, so the page's own sheet is cut out first --
-       the same reading `pageUses` takes. */
+       the same reading `pageUses` takes. Comments go too, which is why this
+       does not simply call `pageUses`: a class left behind in commented-out
+       markup must not count as a use. */
     const body = read(f).replace(/<style[^>]*>[\s\S]*?<\/style>/g, ' ').replace(/<!--[\s\S]*?-->/g, ' ');
     for (const m of body.matchAll(/\bclass="([^"]*)"/g)) m[1].split(/\s+/).forEach(add);
     for (const s of body.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) {
@@ -326,7 +342,7 @@ function shellUses() {
     }
   }
   return set;
-}
+});
 
 function shellSweep(sheets = shellSheets()) {
   const uses = shellUses();
@@ -350,23 +366,38 @@ test('no shell stylesheet carries a rule for a class nothing can put on an eleme
     + 'Delete them, or add the class to SHELL_KEEP with the reason.');
 });
 
-/* The two idioms a `class="..."` reader would miss, pinned: blind the string
-   reader and both go dead, which is what a naive sweep would have deleted. */
+/* The two idioms a `class="..."` reader would miss, pinned: neither class is
+   ever written as a literal attribute, so a sweep that only read markup
+   would have called both dead and somebody would have deleted the rules. */
 test('classes built by concatenation or read back as a selector count as uses', () => {
   const uses = shellUses();
+  const shellSrc = shellScripts().map((f) => read(f)).join('\n');
   for (const c of ['off', 'rrow']) {
     assert.ok(uses.has(c), `.${c} is emitted by a script and must count as used`);
+    assert.ok(!new RegExp(`class="[^"]*\\b${c}\\b`).test(read('index.html')),
+      `.${c} must not be reachable from a class attribute, or this test proves nothing`);
+    assert.ok(new RegExp(`\\b${c}\\b`).test(shellSrc), `.${c} must still be built by a shell script`);
   }
   const blind = shellSweep().dead;
   assert.ok(!blind.some((d) => d.startsWith('.off ') || d.startsWith('.rrow ')),
     'neither class may be reported dead while the scripts still build them');
 });
 
-test('the shell sweep can see a rule nobody uses', () => {
-  const injected = shellSheets().map(([f, css]) =>
-    f === 'app.css' ? [f, `${css}\n.zz-shell-orphan { color: red }\n`] : [f, css]);
-  assert.ok(shellSweep(injected).dead.some((d) => d.startsWith('.zz-shell-orphan')),
-    'a shell rule for a class no element carries must be reported');
+/* Once per sheet, not once for `app.css`: the sweep walks `sheets` in a loop
+   and its bite on the other two was never shown. `tokens.css` and `card.css`
+   are much smaller than `app.css`, so "the loop only really ran on the first
+   one" is exactly the failure this would not have caught. */
+test('the shell sweep can see a rule nobody uses, in every sheet it reads', () => {
+  const sheets = shellSheets();
+  assert.equal(sheets.length, 3, `index.html links ${sheets.length} sheets -- the reader found the wrong set`);
+  for (const [target] of sheets) {
+    const orphan = `zz-orphan-${target.replace(/\W/g, '-')}`;
+    const injected = sheets.map(([f, css]) =>
+      (f === target ? [f, `${css}\n.${orphan} { color: red }\n`] : [f, css]));
+    const dead = shellSweep(injected).dead;
+    assert.ok(dead.some((d) => d.startsWith(`.${orphan} (${target}:`)),
+      `a rule in ${target} for a class no element carries must be reported, and named to ${target}`);
+  }
 });
 
 test('the standalone sweep is reading real sheets, not an empty set', () => {

@@ -287,9 +287,17 @@ export const FOUR = (() => {
  *
  * RICH is the harder case (15-character "Marcus Williams" / "Casey
  * Lindqvist" against the sample's 12-character "Harper Pratt"), and both are
- * measured rather than one being argued from the other. */
+ * measured rather than one being argued from the other.
+ *
+ * Only the fields "Try a sample team" itself supplies are written, the way
+ * `PLAYERS` above does it: `sanitize` fills the rest, and #37's review found
+ * this copying two of its answers back at it. `tier` was spelled `3` here,
+ * which is `sanitize`'s own default, so a check reading a level word off a
+ * roster row was comparing the app against a number this file had already
+ * decided. `hue` is left out for the same reason -- `sanitize` derives it from
+ * the roster position, so writing it would be a second copy of that rule. */
 export const SAMPLE_PLAYERS = sampleRoster()
-  .map((p, i) => ({ id: 's' + i, name: p.name, number: p.number, shortName: '', tier: 3 }));
+  .map((p, i) => ({ id: 's' + i, name: p.name, number: p.number, shortName: '' }));
 
 export const SAMPLE_TEAM = (() => {
   const record = JSON.parse(JSON.stringify(RICH));

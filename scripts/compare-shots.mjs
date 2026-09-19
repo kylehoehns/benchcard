@@ -129,6 +129,14 @@ const solo = (name, view, extra = {}) => ({ ...SHOT, name, view, twin: null, ...
 
 const BASE_SHOTS = VIEWS.flatMap(v => THEMES.map(theme => pair(v.name, v.name, theme)));
 
+/* #37: the click that opens the player sheet and the dialog it must open,
+ * shared by the two cells below that both need it -- one unscrolled, one
+ * scrolled to the sheet's end. */
+const PLAYER_SHEET = {
+  selector: 'dialog#sheetPlayer[open]',
+  open: `document.querySelector('#rosterlist .rrow').click()`,
+};
+
 const EXTRA_SHOTS = [
   // A long real name in the identity block -- LONG_NAME on the roster.
   ...THEMES.map(theme => pair('long-name', 'team', theme, { longNames: true })),
@@ -196,6 +204,22 @@ const EXTRA_SHOTS = [
   ...THEMES.map(theme => pair('mid-sheet', 'games', theme, {
     width: SHEET_MIN,
     sheet: { selector: 'dialog.bsheet[open]', open: `document.getElementById('shareBtn').click()` },
+  })),
+  /* #37 item 1: the player sheet, the only surface that draws `.bal-step` --
+     the level meter's five steps, raised from 44px to 48px here and paid for
+     by tightening `.prow-level .bal-steps` to a .25rem gap so the row keeps
+     its height. Every other cell in this table is a screen or the card sheet,
+     so that change had no picture and the look check could not see it.
+     Opened the way the touch sweep opens it (scripts/smoke/touch.mjs): the
+     Team screen, then the first roster row. */
+  ...THEMES.map(theme => pair('player-sheet', 'team', theme, { sheet: PLAYER_SHEET })),
+  /* ...and that sheet scrolled to its own end, which is where the level meter
+     actually sits -- it is below the fold on an unscrolled sheet, so the pair
+     above cannot show it. `bottom` on a sheet cell scrolls the sheet's own
+     scroller (capture() below), because the window does not move while a
+     sheet is open. */
+  ...THEMES.map(theme => pair('player-sheet-bottom', 'team', theme, {
+    sheet: PLAYER_SHEET, bottom: true,
   })),
   /* #36 item 10: the three numbered first-run steps themselves, each light
      and dark -- the empty step 1 (matching the add-game step 1 mockup this
@@ -508,11 +532,27 @@ async function capture(c, origin, want, outDir) {
      `titleCollapsed` above asserts its own: a `bottom` shot that did not
      move is a picture of a state nobody asked for. */
   if (want.bottom) {
-    await evalIn(c, step(`window.scrollTo(0, document.body.scrollHeight)`));
-    const scrolled = await evalIn(c, `Math.round(window.scrollY)`);
+    /* #37: a bottom sheet scrolls INSIDE itself. `window` does not move at
+       all while one is open, so `bottom` on a sheet cell was exactly the
+       silent no-op the paragraph above is about -- it would have written a
+       second copy of the unscrolled sheet. When a sheet is open, scroll the
+       sheet's own scroller instead, and assert that one moved. */
+    const sel = want.sheet && JSON.stringify(want.sheet.selector);
+    await evalIn(c, step(want.sheet
+      ? `const d = $(${sel});
+         const sc = [...d.querySelectorAll('*')].find(e => e.scrollHeight > e.clientHeight + 1);
+         if (sc) sc.scrollTop = sc.scrollHeight`
+      : `window.scrollTo(0, document.body.scrollHeight)`));
+    const scrolled = await evalIn(c, want.sheet
+      ? `(() => {
+           const d = document.querySelector(${sel});
+           const sc = [...d.querySelectorAll('*')].find(e => e.scrollHeight > e.clientHeight + 1);
+           return Math.round(sc ? sc.scrollTop : 0);
+         })()`
+      : `Math.round(window.scrollY)`);
     if (!scrolled) {
-      throw new Error(`${want.name}: the page never scrolled (scrollY 0), so this shot would be `
-        + 'identical to the unscrolled one and would prove nothing about the bottom of the screen');
+      throw new Error(`${want.name}: ${want.sheet ? 'the sheet' : 'the page'} never scrolled (scrollTop 0), `
+        + 'so this shot would be identical to the unscrolled one and would prove nothing about the bottom of it');
     }
   }
 

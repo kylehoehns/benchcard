@@ -561,7 +561,7 @@ a { color: inherit; }
 /* ---- lineup balance ------------------------------------------------------
    A five-step control, not a number. The steps fill left-to-right like a
    signal meter so the level reads at a glance without anybody having to think
-   "four out of five". Touch-sized targets throughout: this is set standing up.
+   "four out of five". 48px targets throughout (I1): this is set standing up.
    #28: the shape picker moved into the Plan sheet's `.prow-shape` rows below;
    `.bal-intro`, `.bal-shape` and `.bal-blurb` were its fold-era look and
    nothing emits them any more. */
@@ -575,9 +575,9 @@ a { color: inherit; }
    trapping the page: vertical movement still scrolls, sideways movement
    reaches the pointer handlers in balance.js. */
 .bal-steps { display: flex; gap: 3px; touch-action: pan-y; }
-.bal-step { width: 30px; min-height: 44px; display: grid; place-items: end center;
+.bal-step { width: 30px; min-height: 48px; display: grid; place-items: end center;
   border-radius: var(--r-sm); position: relative; padding-bottom: 12px; }
-/* the bar is a child pseudo so the tap target stays 44px while the mark is small */
+/* the bar is a child pseudo so the tap target stays 48px while the mark is small */
 .bal-step::after { content: ''; width: 100%; border-radius: 3px;
   background: var(--line); height: var(--bar);
   transition: background var(--t) var(--ease), transform var(--t) var(--spring); }
@@ -599,13 +599,19 @@ a { color: inherit; }
 .bal-lv { font-size: var(--fs-footnote); color: var(--muted); width: 5.2rem; text-align: right;
   font-variant-numeric: tabular-nums; }
 /* #31: the level meter's one home is the player sheet's Level row. The strip
-   takes the full width of the group -- 56px a step at 320px, measured the
-   same way the old in-row meter was -- with the level's own word under it,
+   takes the full width of the group, with the level's own word under it,
    right-aligned. `levelMeter` (balance.js) is unchanged; this is the restyle.
-   The word is what a coach reads, so it is never hidden. */
+   The word is what a coach reads, so it is never hidden.
+
+   #37 review: the gap was `.3rem` and a step measured 47.36px wide at 320px
+   -- under I1's 48px floor, and nothing measured it, because no smoke state
+   opened this sheet. The narrowest phone gives the strip 256px, so five
+   steps clear 48px only while the four gaps together stay inside 16px:
+   `.25rem` is 4px and lands a step on exactly 48. `team, player sheet open`
+   in `scripts/smoke/touch.mjs` is what measures it now, at 320/360/390. */
 .prow-level { padding-top: .6rem; padding-bottom: .6rem; }
 .prow-level .bal-meter { flex: 1; min-width: 0; display: grid; row-gap: .05rem; }
-.prow-level .bal-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: .3rem; }
+.prow-level .bal-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: .25rem; }
 .prow-level .bal-step { width: auto; padding-bottom: 10px; }
 /* narrower than the row so the meter reads as a control rather than as five
    blocks butting up against both edges of the sheet */
@@ -3791,14 +3797,17 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   .bar { padding-top: calc(.3rem + env(safe-area-inset-top)); padding-bottom: .3rem; }
   .dayhead { margin-bottom: .7rem; }
   .dayhead .game-h1 { font-size: var(--fs-sentence); }
-  /* 44px is the floor for both buttons, so the action bar gives up padding and
-     8px of slack above that floor, and nothing else. */
+  /* #37 review: 48px is the floor (I1), so the action bar gives up padding and
+     6px of the slack above that floor, and nothing else. `.ab-main` is not a
+     `.btn`, so the coarse-pointer primitive never reaches it -- this line is
+     the whole floor here, and it read 44px until the review caught it.
+     `test/landscape-chrome.test.js` pins the number. */
   /* Same `safe-area-max-inset-bottom` as the base rule (#33 AC4): this block
      overrides `padding-bottom` outright, so leaving the live `env()` here
      would have handed landscape back exactly the jumping bar the base rule
      stopped. */
   .actionbar { padding-top: .35rem; padding-bottom: calc(.35rem + env(safe-area-max-inset-bottom, env(safe-area-inset-bottom))); }
-  .ab-main { min-height: 44px; }
+  .ab-main { min-height: 48px; }
   /* #33 decision 13: was `.foot { margin-bottom: 3.6rem; }` -- moved onto
      `.wrap` with the base-breakpoint clearance above, for the same reason. */
   .wrap { padding-bottom: 3.6rem; }

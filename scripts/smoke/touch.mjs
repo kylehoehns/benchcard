@@ -38,7 +38,22 @@ const TOUCH_STATES = [
   { name: 'today', open: TODAY_HOME },
   { name: 'games', open: `document.querySelector('.today-game').click()` },
   { name: 'team', open: `document.querySelector('#todayTeam').click()` },
-  { name: 'season', open: `document.querySelector('#todaySeason').click()` },
+  /* #37 review: `.bal-step` -- the level meter's five steps, built by
+     `app/balance.js` as `role="radio"` buttons and rendered into
+     `#playerLevel` -- is named at the top of this file as one of the two
+     controls the widened sweep exists for, and no state here ever opened the
+     sheet that holds it. It sat at 44px, asserted by a comment in `app.css`
+     rather than measured by anything. Opened the way `overlay.mjs` opens it:
+     the Team screen, then the first roster row. */
+  { name: 'team, player sheet open',
+    open: `document.querySelector('#todayTeam').click();
+           document.querySelector('#rosterlist .rrow').click()` },
+  /* Closes the player sheet above the way `add a game, step 1` closes
+     `#addGameFlow`: a state that needs a clean slate clears the previous
+     state's dialog itself (`widthSweep` runs `close` once, at the end). */
+  { name: 'season',
+    open: `document.querySelector('#sheetPlayer')?.close();
+           document.querySelector('#todaySeason').click()` },
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
   /* #25: the picker's last choice and its close control both have to stay
      on screen and ≥ 44px (the ticket's mobile-first constraint) -- the same

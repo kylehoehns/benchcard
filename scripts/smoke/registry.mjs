@@ -78,6 +78,16 @@ export const TOUCH_WIDTHS = [320, 360, 390];
  * silent rather than loud: `STATIC_A11Y.has(name)` DROPS a verdict whose name
  * it does not recognize, so a stale spelling reads as seven clean pages. */
 export const TOUCH_FLOOR = 48;
+/* The measurement tolerance that goes with it, for the checks on THIS side
+ * that measure a box themselves instead of reading the in-page verdict back
+ * (`team-screen.mjs`'s roster rows, `timeline-card-sheet.mjs`'s card-sheet
+ * rows). `smoke-checks.js` spells the same pair at the top of its IIFE and
+ * says there what the half pixel buys and what it costs; the two constants
+ * are tied together by `test/touch-floor.test.js`, which reads that file as
+ * text the way `smoke.mjs` does. Before #37's review this side spelled it
+ * three ways -- `TOUCH_FLOOR - 0.5`, a bare `47.5`, and nothing at all. */
+export const TOUCH_TOL = 0.5;
+export const TOUCH_MIN = TOUCH_FLOOR - TOUCH_TOL;
 export const TOUCH_CHECK = `touch targets ≥ ${TOUCH_FLOOR}px`;
 
 // A 200% reader's root, and the narrowest phone anyone carries — the full

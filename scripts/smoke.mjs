@@ -3,9 +3,10 @@
 
    Every polish iteration was hand-rolling the same four browser checks — no
    horizontal overflow at 390px, the card is still 3.45 × 5in, no console
-   errors, every touch target ≥44px — plus `node --test`. This runs all of it
-   in one call and prints a pass/fail table. It now also carries the
-   accessibility checks and the performance budget (see `budgets.mjs`).
+   errors, every touch target ≥48px (guideline I1 owns that number) — plus
+   `node --test`. This runs all of it in one call and prints a pass/fail
+   table. It now also carries the accessibility checks and the performance
+   budget (see `budgets.mjs`).
 
        node scripts/smoke.mjs                  # serve app/, drive Chrome, run tests
        node scripts/smoke.mjs --no-tests       # browser checks only (fast)

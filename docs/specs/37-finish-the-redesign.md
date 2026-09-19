@@ -150,7 +150,14 @@ The issue's six acceptance criteria, with the values this spec pins.
 - `scripts/budgets.mjs` — `NODES_BASELINE`.
 - `scripts/compare-shots.mjs` — extend `SHOTS` with the 360px cells this
   ticket's look check needs. Extend the existing list; do not write a second
-  capture script.
+  capture script. It also gained the player sheet, unscrolled and scrolled to
+  its own end: that sheet is the only surface that draws `.bal-step`, one of
+  the two controls this ticket raises, and no cell in the table opened it. To
+  make the scrolled cell possible, `bottom` learned to scroll an open sheet's
+  own scroller — the window does not move while a sheet is open, so `bottom`
+  on a sheet cell had been a silent no-op.
+- `test/compare-shots.test.js` — a guard for the two new cells, and `sheet`
+  added to the modifiers that make a cell "not plain".
 - `AGENTS.md`, `docs/architecture.md` — criterion 5.
 - `notes/mockups/prototype/compare/37/` — the committed compare shots.
 

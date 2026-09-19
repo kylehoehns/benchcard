@@ -1,5 +1,5 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './registry.mjs';
 import { goRich } from './fixtures.mjs';
 import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
 import { boxesOverlap } from './sheet-spacing.mjs';
@@ -77,7 +77,7 @@ async function cardSheetRowsOk(c, ck, where) {
   if (!ck(rows.length === 5, `${where}: #sheetCard has ${rows.length} .prow row(s), want 5 -- is the sheet open?`)) return;
   for (const r of rows) {
     const h = r.row.bottom - r.row.top;
-    ck(h >= 47.5, `${where}: "${r.text}" row is ${h.toFixed(1)}px tall, want >= 48px`);
+    ck(h >= TOUCH_MIN, `${where}: "${r.text}" row is ${h.toFixed(1)}px tall, want >= ${TOUCH_FLOOR}px`);
     const labelFits = (r.label.right - r.label.left) > 0 && r.label.scrollWidth <= r.label.clientWidth + 0.5;
     ck(labelFits, `${where}: "${r.text}"'s label is clipped (scrollWidth ${r.label.scrollWidth}px > clientWidth ${r.label.clientWidth}px)`);
     ck(!boxesOverlap(r.label, r.ctl), `${where}: "${r.text}"'s label overlaps its control -- label ${JSON.stringify(r.label)}, control ${JSON.stringify(r.ctl)}`);
