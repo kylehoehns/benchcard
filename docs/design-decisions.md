@@ -109,28 +109,28 @@ its alternative is an assertion, so the rejected options are kept here too.
   unlike constraints, its minutes are not swept against the current roster,
   because a kid who left in November still played those minutes in October.
 - **And it can be read, and corrected.** The **Season** view — opened from its
-  own entry on Today (#23) — is the ledger over that record: minutes this season per player,
-  most first, then one collapsible row per game holding what everyone played in
-  it. Game-first rather than a grid on purpose — twelve players by ten games is
-  120 cells, and at 390px a table of them either pans sideways or shrinks past
+  own entry on Today (#23) — shows minutes this season per player, most first,
+  then one collapsible row per game holding what everyone played in it.
+  Game-first rather than a grid on purpose — twelve players by ten games is 120
+  cells, and at 390px a table of them either pans sideways or shrinks past
   reading, so it is two lists a phone can hold. An id with no player on the
   roster is shown as *Left the team*, hollow dot and minutes intact, which is
   what "history, not instruction" looks like on screen. Each game carries a
   **Delete this game**, through `undoable`: "New day" finishes whatever is in
   the day, so tapping it twice files a game nobody played, and this is the only
   correction path there is. No levels, ever — `test/leak.test.js` covers the
-  ledger for the same reason it covers the card.
+  Season view for the same reason it covers the card.
 - **And it can be handed to someone else.** An **Export** button in the Season
-  screen's header (visible only when a game is filed) writes the ledger as one
+  screen's header (visible only when a game is filed) writes those minutes as one
   wide CSV — `Player | Sep 14 vs Falcons | … | Total`, one row per player, one
   column per game — which is the shape a coach pastes into a parent email and
-  the shape a league timesheet asks for, and the shape the ledger on screen
-  cannot be. It is the ledger's
+  the shape a league timesheet asks for, and the shape the Season view on screen
+  cannot be. It is the Season view's
   twin, so it is built in `season-view.js` next to the wording it shares
   (*Left the team* included) rather than in `backup.js`; it borrows only the
   filename stamp and the `<a download>` from there, because a **report is not a
   backup** — nothing reads it back and it never goes near `sanitize`. Columns
-  run oldest first, which is the one place it disagrees with the ledger: a
+  run oldest first, which is the one place it disagrees with the Season view: a
   spreadsheet reads left to right as time. **A player who was not at a game
   reads as an em dash, and a `0` means she was there and did not get on the
   floor** — a `minutes` map holds a key for everyone who was available, so the
@@ -138,7 +138,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   turning up to games played before she joined the team and to games after she
   left. Her `Total` is still a number, and it still sums (Excel and Sheets skip
   a dash in a `SUM` exactly as they skip a blank). The count of games beside
-  her name in the ledger is the same attendance, read from `seasonShare`, so
+  her name in the Season view is the same attendance, read from `seasonShare`, so
   the two surfaces cannot say different things about the same child. RFC 4180 quoting
   (opponents and team names are free text and one of them is eventually
   `Falcons, B`), CRLF, and a UTF-8 BOM so Excel on Windows renders *Tomás*

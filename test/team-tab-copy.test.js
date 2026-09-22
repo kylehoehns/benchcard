@@ -68,6 +68,27 @@ function sentenceAround(text, at) {
   return text.slice(start, end ? at + end.index + 1 : text.length).trim();
 }
 
+/* The sentence immediately before the one `sentenceAround` returns. An FAQ
+   answer can open with "Everyone starts on the same level..." and only then,
+   one sentence later, say "...and it stays on the Team page" -- "it" carries
+   the referent, so a check that only reads the sentence with the match in it
+   would fail a true positive the moment a level/roster sentence and its
+   pronoun sit one apart. Used only to widen the ABOUT_LEVELS_OR_ROSTER check,
+   never the SETTING_TERM one: a preceding sentence should not excuse a Team
+   tab/page sentence that names a setting itself. */
+function sentenceBefore(text, at) {
+  let start = 0;
+  for (let i = at - 1; i >= 0; i--) {
+    if (/[.!?]/.test(text[i]) && /\s/.test(text[i + 1] || '')) { start = i + 1; break; }
+  }
+  if (start === 0) return '';
+  let end = start - 1;
+  for (let i = start - 2; i >= 0; i--) {
+    if (/[.!?]/.test(text[i]) && /\s/.test(text[i + 1] || '')) { return text.slice(i + 1, end + 1).trim(); }
+  }
+  return text.slice(0, end + 1).trim();
+}
+
 /* A sentence naming the Team tab/page is about a team SETTING -- the thing
  * #22 moved off it -- unless it is naming the tab/page only to place levels
  * (out of scope here: #31) or the roster. These are the words a sentence
@@ -75,29 +96,54 @@ function sentenceAround(text, at) {
  * carries one of them, #22 left a pointer at the old address. */
 const SETTING_TERM = [
   /\bat least\b/i, /\bminimum\b/i, /\bat once\b/i, /\bodd minutes\b/i,
-  /\bformat\b/i, /\bperiods?\b/i, /\bseason\b/i, /\bteam name\b/i,
+  /\bformat\b/i, /\bperiods?\b/i,
+  /* NOT `/\bseason\b/i` on its own: About and Advanced both place the levels
+     control with "on the Team page, once a season rather than once a game" --
+     a cadence ("how often you set it"), not the Season team setting. The
+     lookbehind excludes only that idiom, so a real Season-setting mention
+     ("the season ledger", "a season", "this season") still matches. */
+  /(?<!once a )season\b/i,
+  /\bteam name\b/i,
   /\bremove this team\b/i,
 ];
 const ABOUT_LEVELS_OR_ROSTER = /\blevel(s)?\b|\broster\b/i;
 
-test('a Team tab/page mention that survives comment-stripping in index.html is about levels or the roster, never a setting', () => {
-  const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
-  const visible = normalizeText(stripHtmlComments(html));
-  const matches = [...visible.matchAll(TEAM_LOC)];
-  assert.ok(matches.length > 0,
-    'no match at all found nothing to discriminate -- levels help copy moved or was reworded; ' +
-    'check this guard is still reading something before trusting it');
-  for (const m of matches) {
-    const sentence = sentenceAround(visible, m.index);
-    const term = SETTING_TERM.find((re) => re.test(sentence));
-    assert.equal(term, undefined,
-      `index.html: "${sentence}" names a team setting alongside "${m[0]}" (matched ${term}) -- ` +
-      'a team setting may be pointing a coach at the old Team tab/page location');
-    assert.match(sentence, ABOUT_LEVELS_OR_ROSTER,
-      `index.html: "${sentence}" is not about levels or the roster -- ` +
-      'a team setting may be pointing a coach at the old Team tab/page location');
-  }
-});
+/* Same rule on all three pages a coach might read: a surviving "Team
+ * tab/page" mention is fine only when the sentence it sits in is about
+ * levels or the roster, never a setting. `useContext` is the one real
+ * difference between them -- About and Advanced (#75 item 6 / #47) widen the
+ * levels-or-roster check to the sentence before the match too, because an FAQ
+ * answer can carry the referent ("levels...") one sentence before the pronoun
+ * that names the page; index.html's original check never needed that. */
+const TEAM_TAB_PAGES = [
+  { file: 'index.html', useContext: false },
+  { file: 'about.html', useContext: true },
+  { file: 'advanced.html', useContext: true },
+];
+
+for (const { file, useContext } of TEAM_TAB_PAGES) {
+  test(`a Team tab/page mention that survives comment-stripping in ${file} is about levels or the roster, never a setting`, () => {
+    const html = readFileSync(new URL(`../app/${file}`, import.meta.url), 'utf8');
+    const visible = normalizeText(stripHtmlComments(html));
+    const matches = [...visible.matchAll(TEAM_LOC)];
+    assert.ok(matches.length > 0,
+      `no match at all found in ${file} -- levels copy moved or was reworded; ` +
+      'check this guard is still reading something before trusting it');
+    for (const m of matches) {
+      const sentence = sentenceAround(visible, m.index);
+      const term = SETTING_TERM.find((re) => re.test(sentence));
+      assert.equal(term, undefined,
+        `${file}: "${sentence}" names a team setting alongside "${m[0]}" (matched ${term}) -- ` +
+        'a team setting may be pointing a coach at the old Team tab/page location');
+      const context = useContext ? `${sentenceBefore(visible, m.index)} ${sentence}` : sentence;
+      assert.match(context, ABOUT_LEVELS_OR_ROSTER,
+        (useContext
+          ? `${file}: "${sentence}" (with the sentence before it: "${context}") is not about levels `
+          : `${file}: "${sentence}" is not about levels `) +
+        'or the roster -- a team setting may be pointing a coach at the old Team tab/page location');
+    }
+  });
+}
 
 test('a Team tab/page/screen mention in app/*.js strings is about levels or the roster, never a setting', () => {
   /* Scanning STRINGS rather than raw code minus comments: `jsStrings` already

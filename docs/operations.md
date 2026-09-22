@@ -256,12 +256,13 @@ Two things address that, and they are different problems:
   human whose browser does not, and a `<noscript><style>` in the head hides
   `.app` so they get the explanation instead of a dead gray page.
 
-`og.png` (1200×630) is generated, not drawn: the real card, screenshotted from
-the running app, composed beside the headline. Regenerate it the same way if the
-card design changes — a stale preview of an old card is the one image everyone
-sees. `icon-512.png` is the brand mark full-bleed on `--accent` at 62% so it
-survives a maskable safe zone; 192 and the 180px `apple-touch-icon` are `sips`
-downscales of it.
+`og.png` (2400×1260) is generated with `node scripts/og.mjs`, not drawn: a
+composition showing the game screen on a phone, the mark in the Hardwood team color
+(read from `--tint` in `tokens.css`), and the headline. The four icon PNGs and favicon.ico are
+generated from the mark SVG at each size with the `--icons` flag. Regenerate
+og.png when the app design changes or the sample game's rule changes, and
+regenerate icons when the mark color changes — `node scripts/og.mjs --bench
+app/bench-sample.png --card app/card-sample.png --icons` does both.
 
 **Offline.** `sw.js` precaches the shell on install and serves it cache-first:
 `index.html`, `about.html`, the three stylesheets, every local module in the
@@ -329,7 +330,7 @@ day of games opening on a Today home screen, per-game constraints, cumulative
 day minutes, light and dark themes, and the printed card.
 
 It is deployed, at `benchcard.app`, with analytics on -- see "Deployment" and
-"Analytics". Season history is done too: `season-view.js` keeps the ledger, the
+"Analytics". Season history is done too: `season-view.js` keeps the Season, the
 CSV and the carryover across games. What is still not done: a foul-tally
 companion card. Offline is done: a service worker precaches the shell, so after one visit the
 app boots with the network gone -- see "Search, sharing and install". A new

@@ -17,7 +17,7 @@
 
 ## The problem
 
-Every youth league promises equal playing time. Almost nobody delivers it,
+Every youth league promises equal minutes. Almost nobody delivers it,
 because working it out is genuinely hard: eight to twelve kids, four quarters,
 a minimum each, a cap on the stars, two who can't be on the floor together, a
 ball handler who should always be out there — and one child who missed three
@@ -40,18 +40,19 @@ phone in your hand while play is live.
 | **Closers** | even minutes early, a group you pick finishes the game |
 | **Platoon** | fixed fives alternating wholesale |
 
-**Constraints that compose with any of them** — minimum and maximum minutes,
-play-together and keep-apart pairs, "always one of these two on the floor", a
-pinned opening five and last-period five, and a limit on stints in a row.
+**Rules that compose with any of them** — Minimum and Cap, Together and
+Apart, One of two on, a Starting five and Last-period five, and a Rest
+limit.
 
 **Across the season, not just the afternoon.** Attendance is irregular, and
-that is what actually creates unfairness: one kid on 27 shifts and another on
-20 by February. The season ledger carries the shortfall into the next game's
+that is what actually creates unfairness: one kid on 27 stints and another on
+20 by February. The season tracks how far each player is behind or ahead of
+fair share, and evening out the season carries that into the next game's
 targets.
 
 **When the game breaks the plan** — foul trouble, an injury, a kid who has to
-leave — re-solve from minutes actually played. The plan is not a static
-artefact.
+leave — bench mode re-plans the remaining stints around minutes actually
+played. The plan is not a static artefact.
 
 **On paper, on purpose.** The output is a 3.45 × 5in card, legible at arm's
 length. A coach's hands are full and anything needing more than one tap while

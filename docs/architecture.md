@@ -67,8 +67,8 @@ Everything below is relative to `app/`.
 - The views, one module each — `roster-view.js`, `teams-view.js` (Today: the
   team-switcher menu, the day's games, the Team and Season entries below them,
   and the active team's name at the head of Settings),
-  `season-view.js` (the Season view: the minutes ledger per player, the
-  across-the-day chart when two or more games are on today, filed games
+  `season-view.js` (the Season view: minutes per player across every filed game,
+  the across-the-day chart when two or more games are on today, filed games
   grouped by day, and the one place a game filed by mistake can be deleted),
   `game-setup.js`, `strategy.js`, `balance.js`,
   `rules.js`, `pills.js`, `plan-view.js`, `timeline.js`, `gamemode.js`,
