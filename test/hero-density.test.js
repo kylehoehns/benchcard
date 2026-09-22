@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+import { pngSize as parsePng } from '../scripts/png-size.mjs';
 
 /* The About page's hero card, at both densities.
  *
@@ -24,13 +25,13 @@ const ROOT = new URL('../app/', import.meta.url);
 const about = readFileSync(new URL('about.html', ROOT), 'utf8');
 const sw = readFileSync(new URL('sw.js', ROOT), 'utf8');
 
-/* PNG: 8 bytes of signature, 8 of chunk header, then width and height as
-   big-endian uint32s. Nothing else in the file needs parsing to know the
+/* `pngSize` (scripts/png-size.mjs) is the one IHDR parse -- scripts/og.mjs
+   and test/static-pages.test.js read the same function rather than each
+   carrying its own copy. Nothing else in the file needs parsing to know the
    dimensions, and the dimensions are the whole claim a srcset makes. */
 function pngSize(file) {
   const b = readFileSync(new URL(file, ROOT));
-  assert.equal(b.toString('latin1', 1, 4), 'PNG', `${file} is not a PNG`);
-  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), bytes: b.length };
+  return { ...parsePng(b, file), bytes: b.length };
 }
 
 const hero = about.match(/<img[^>]*srcset=[^>]*>/);

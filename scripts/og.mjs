@@ -42,6 +42,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 import { serve } from './serve.mjs';
+import { pngSize } from './png-size.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -105,14 +106,6 @@ const PHONE_W = 390, PHONE_H = 844;
 /* Wide enough that index.html keeps the card in an always-open aside rather
    than the phone disclosure (the breakpoint is 1100px). */
 const DESK_W = 1440, DESK_H = 1000;
-
-/* A PNG's IHDR is fixed-offset: 8 bytes of signature, 8 of chunk header, then
-   width and height as big-endian uint32s. Reading the dimensions back out of
-   the bytes we just wrote is the only way to *know* the 2× is twice the 1×,
-   rather than trusting that Chrome multiplied the way we expected. */
-function pngSize(buf) {
-  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
-}
 
 /* Chrome's PNG encoder deflates for speed, and it costs about a quarter of
    every file this script writes. Re-deflating the *same* pixels at zlib's
@@ -343,32 +336,58 @@ const withLive = () => {
    1200x630 card down to the 400-600px it actually gets drawn at, so they were
    unreadable exactly where the image is seen and clutter everywhere else.
 
-   THE PHONE RUNS OFF THE BOTTOM EDGE, and getting that to look deliberate is
-   the only fiddly part of this file. Two numbers do it, and they are not the
-   same number:
+   THE PHONE RUNS OFF THE BOTTOM EDGE, on purpose: the frame is fixed at
+   `PHONE_LEFT`/`PHONE_TOP`, the same coordinates the human approved (a
+   scratch render, `og-B-hardwood-2x.png`), and the image inside it is the
+   FULL 390×844 capture at its natural scale, never trimmed. The body's own
+   `overflow: hidden` is what ends the picture, not the image or the frame --
+   so what shows is whatever the top `PHONE_H - (OG_H - PHONE_TOP) / scale`
+   pixels of the live screenshot are. For the no-`live` game screen that is
+   the title, the status line, the sentence and into the Timeline, which is
+   the point: a fixed frame over a live screenshot means a taller sentence or
+   an extra rule still crops in the same honest place, it just shows less of
+   the Timeline, rather than a hard-coded crop height silently drifting away
+   from what the frame can actually show.
 
-     `cut`  where the FRAME should end. The bench rows share borders and have
-            no gap between them at all, so the one piece of real whitespace in
-            this layout is the ~19px band between the NEXT SUB card and the
-            BENCH label. The frame edge has to land inside it or it slices a
-            name in half, which reads as a screenshot that overflowed rather
-            than an edge somebody chose.
-     the image  the FULL 390x844 capture, never trimmed to `cut`. Trimming it
-            was the bug: the device then ended exactly at the frame bottom, so
-            its bezel and a strip of dead screen were both visible, and a
-            tilted phone showed its own squared-off bottom corner sitting in
-            the middle of the picture. Left full, the screen simply carries on
-            past the page and the only thing the edge cuts is app content.
+   This replaced a `cut` computed from the Timeline's own row rects -- built
+   for BENCH MODE's tightly-stacked rows, where the one gap worth landing an
+   edge in is the ~19px band below the last row. Pointed at the game screen
+   instead, `cut` walked to the LAST row that fits the full 844px phone
+   height, which sits far down the capture, and the frame's top followed it
+   there: the title scrolled off above the frame and "Start game" -- the
+   button below the Timeline -- showed at the bottom instead. `checkCrop`
+   below is what replaced it: not a geometry input any more, a live
+   assertion that the fixed frame's crop line still falls inside the
+   Timeline and short of that button, so a layout change that would silently
+   reopen the same bug fails the build instead.
 
    The tilt is -1.4deg, not the -2.6 this carried before. A rotated bottom edge
    travels (deviceWidth / 2) * tan(angle): 4.8px here, 9px at -2.6. The gap is
    19 css px, so half of it is the budget, and -2.6 spent more than it had --
    which is why every render before this one clipped a row on one side. */
+/* The mark's seam lines, on the 24-unit grid every drawing of it shares
+   (the composition's brand mark below, the icon mark further down, and the
+   inline favicon SVG in index.html/about.html/advanced.html). One constant
+   so the two places that draw it in this file cannot quietly diverge. */
+const SEAMS = '<path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>'
+  + '<path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>';
+
+/* Layout B, as approved: flat ground, ink text, a near-black bezel -- none of
+   this is the team color, so unlike `tint` it is a literal here rather than a
+   `getComputedStyle` read. `GROUND`/`INK` are the same values About and
+   Advanced already paint with in light mode (tokens.css); og.png is one
+   image for both themes (#75 Decisions), so it is pinned to the light pair
+   rather than reading either page's computed style. */
+const GROUND = '#F4F4F6';
+const INK = '#1C1C1E';
+const BEZEL = '#111';
+
 const TILT = -1.4;
 const PHONE_IN = 374;            // screen width in the composition
-const composition = (shot, cut, tint) => {
+const PHONE_LEFT = 734;
+const PHONE_TOP = 64;
+const composition = (shot, tint) => {
   const scale = PHONE_IN / PHONE_W;
-  const top = Math.round(OG_H - 11 - cut * scale);
   const radius = Math.round(PHONE_IN * 0.145);
   return `
 <style>
@@ -380,8 +399,8 @@ const composition = (shot, cut, tint) => {
   html, body { width: ${OG_W}px; height: ${OG_H}px; overflow: hidden; }
   body {
     font-family: 'InterVar', -apple-system, sans-serif;
-    background: linear-gradient(133deg, #FDFCFB 0%, #F7F5F1 52%, #EDEAE3 100%);
-    color: #17150F; position: relative;
+    background: ${GROUND};
+    color: ${INK}; position: relative;
   }
   .brand { position: absolute; left: 76px; top: 66px; display: flex; align-items: center; gap: 14px; }
   .brand span { font-size: 29px; font-weight: 680; letter-spacing: -.022em; }
@@ -395,10 +414,10 @@ const composition = (shot, cut, tint) => {
   h1 { font-size: 66px; line-height: 1.02; font-weight: 730; letter-spacing: -.04em; }
   h1 em { font-style: normal; color: ${tint}; }
 
-  .phone { position: absolute; right: 60px; top: ${top}px; width: ${PHONE_IN + 22}px;
-    background: #14120E; border-radius: ${radius}px; padding: 11px 11px 0;
+  .phone { position: absolute; left: ${PHONE_LEFT}px; top: ${PHONE_TOP}px; width: ${PHONE_IN + 22}px;
+    background: ${BEZEL}; border-radius: ${radius}px; padding: 11px;
     transform: rotate(${TILT}deg);
-    box-shadow: 0 44px 84px -20px rgba(40,30,14,.34), 0 8px 22px rgba(40,30,14,.16); }
+    box-shadow: 0 44px 84px -20px rgba(0,0,0,.35), 0 8px 22px rgba(0,0,0,.16); }
   /* Tall enough to leave the page under its own steam. The body's own
      overflow:hidden is what ends the picture, not this element. */
   .phone .win { width: ${PHONE_IN}px; height: ${Math.round(PHONE_H * scale)}px; overflow: hidden;
@@ -409,8 +428,7 @@ const composition = (shot, cut, tint) => {
   <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="10.5" fill="${tint}"/>
     <g stroke="#F4F4F6" stroke-width="1.35" fill="none" opacity=".55">
-      <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
-      <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
+      ${SEAMS}
     </g>
   </svg>
   <span>Benchcard</span>
@@ -438,8 +456,7 @@ const composition = (shot, cut, tint) => {
 const markSvg = (size, fill) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
   <rect width="24" height="24" fill="${fill}"/>
   <g stroke="#F4F4F6" stroke-width="1.35" fill="none" opacity=".6">
-    <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
-    <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
+    ${SEAMS}
   </g>
 </svg>`;
 
@@ -509,23 +526,37 @@ try {
   if (tintOn !== 'hardwood') throw new Error(`Hardwood did not paint: data-tint is ${JSON.stringify(tintOn)}`);
   const tint = (await evalJS(`getComputedStyle(document.documentElement).getPropertyValue('--tint').trim()`) || '').toUpperCase();
   if (!/^#[0-9A-F]{6}$/.test(tint)) throw new Error(`--tint did not read back as a hex color: ${JSON.stringify(tint)}`);
-  /* Where the composition's bottom edge should fall -- see `composition`. Read
-     off the live layout rather than hard-coded: the last Timeline row that
-     fits inside the phone's own height, and the whitespace gap after it. A
-     literal here would rot silently the moment the Timeline's row spacing or
-     the roster size changes -- the image would still render, it would just
-     go back to cutting a name in half. */
-  const cut = await evalJS(`(() => {
+  /* `composition`'s frame is fixed (`PHONE_LEFT`/`PHONE_TOP`), so the native
+     pixel the body's overflow:hidden crops the screenshot at is a known
+     number: `(OG_H - PHONE_TOP) / scale`. Read the live layout to check that
+     line still falls inside the Timeline and short of "Start game" (below
+     840px that is `#abBench`, in the fixed `#actionbar`, not the wider
+     screen's `#gmOpen`) -- the bug this check exists to catch showed the
+     button instead of the title, because the frame that used to be
+     positioned FROM a measurement of the Timeline's rows put both in the
+     wrong place at once. A literal pixel budget here would pass today and
+     rot silently the moment the sentence wraps a line or the Timeline's row
+     height changes. */
+  const scale = PHONE_IN / PHONE_W;
+  const visibleNative = (OG_H - PHONE_TOP) / scale;
+  const crop = await evalJS(`(() => {
+    const title = document.querySelector('#gameTitle');
     const rows = [...document.querySelectorAll('#timeline .tl-row')];
-    if (!rows.length) return 0;
-    const within = rows.filter(r => r.getBoundingClientRect().bottom + scrollY <= ${PHONE_H});
-    const last = within.length ? within[within.length - 1] : rows[0];
-    const after = rows[rows.indexOf(last) + 1] || document.querySelector('#summaryRow') || document.querySelector('#issues');
-    const bottom = last.getBoundingClientRect().bottom + scrollY;
-    const nextTop = after ? after.getBoundingClientRect().top + scrollY : bottom + 20;
-    return Math.round((bottom + nextTop) / 2);
+    const btn = document.querySelector('#abBench');
+    if (!title || !rows.length || !btn) return null;
+    return {
+      titleTop: title.getBoundingClientRect().top,
+      firstRowTop: rows[0].getBoundingClientRect().top,
+      btnTop: btn.getBoundingClientRect().top,
+    };
   })()`);
-  if (!cut) throw new Error('could not measure the crop point: #timeline has no .tl-row');
+  if (!crop) throw new Error('could not measure the crop: #gameTitle, #timeline .tl-row or #abBench missing');
+  if (crop.titleTop >= visibleNative)
+    throw new Error(`the fixed phone frame crops above the title: title top ${crop.titleTop}, frame shows to ${visibleNative}`);
+  if (crop.firstRowTop >= visibleNative)
+    throw new Error(`the fixed phone frame does not reach the Timeline: first row top ${crop.firstRowTop}, frame shows to ${visibleNative}`);
+  if (crop.btnTop < visibleNative)
+    throw new Error(`the fixed phone frame reaches "Start game": button top ${crop.btnTop}, frame shows to ${visibleNative}`);
   const phone = (await c.send('Page.captureScreenshot', { format: 'png' })).data;
 
   /* 1a. bench mode, with the game live — bench-sample.png keeps showing a
@@ -681,7 +712,7 @@ try {
     { width: OG_W, height: OG_H, deviceScaleFactor: 2, mobile: false });
   await c.send('Page.navigate', { url: origin + '/about' });
   await new Promise(r => setTimeout(r, 900));
-  await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body>${composition('data:image/png;base64,' + phone, cut, tint)}</body>`)}; 1`);
+  await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body>${composition('data:image/png;base64,' + phone, tint)}</body>`)}; 1`);
   await evalJS('document.fonts.ready.then(() => 1)');
   await new Promise(r => setTimeout(r, 900));
   const og = (await c.send('Page.captureScreenshot', { format: 'png' })).data;

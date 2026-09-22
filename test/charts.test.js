@@ -266,30 +266,21 @@ test('head hygiene matches the two pages that came before', () => {
   }
 });
 
-test('every page the site publishes describes its share card the same way', () => {
-  /* All eight pages point at the same og.png, so all eight owe it the same
-     four sub-properties. `alt` is the one that matters twice over: it is the
-     only accessible description of the card a screen reader gets when the link
-     is unfurled in a group chat, and a scraper reads its absence as a
-     lower-quality card. index.html had all four; the other seven had only
-     width and height until 2026-08-24. Byte-identical on purpose — one image,
-     one description — and the chart pages get theirs from OG_ALT in
-     scripts/charts.mjs, so a hand edit fails the disk-vs-generator test above
-     before it reaches this one. */
-  const ALT = 'Benchcard&rsquo;s game screen on a phone: the sentence &ldquo;11 players, 4 × 8, subbing every 4 min for even minutes, with 1 rule&rdquo; above a timeline of each player&rsquo;s minutes, beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
+test('every page the site publishes points at the same share image', () => {
+  /* All eight pages point at the same og.png, and get there with `og:image`,
+     its MIME type and `twitter:image` — the same URL/type sub-properties
+     regardless of what size the image is or what it depicts. The width,
+     height and alt text are the part that actually describes the image, and
+     those are `test/static-pages.test.js`'s job: it reads the size back from
+     og.png's own bytes and checks every page's alt text against every other
+     page's, rather than a literal copy of both here that would drift the
+     moment either changed and only one file got the memo. */
   for (const name of ['index.html', 'about.html', 'advanced.html', ...SIZES.map(file)]) {
     const page = read(name);
     for (const needle of [
       '<meta property="og:image" content="https://benchcard.app/og.png">',
       '<meta property="og:image:type" content="image/png">',
-      '<meta property="og:image:width" content="2400">',
-      '<meta property="og:image:height" content="1260">',
-      `<meta property="og:image:alt" content="${ALT}">`,
-      /* X reads twitter:image:alt, not the Open Graph one, so the same
-         description has to be declared twice or the card is undescribed on
-         that surface. Same string — it is still the same image. */
       '<meta name="twitter:image" content="https://benchcard.app/og.png">',
-      `<meta name="twitter:image:alt" content="${ALT}">`,
     ]) assert.ok(page.includes(needle), `${name} is missing ${needle}`);
   }
 });
