@@ -49,7 +49,7 @@ const ORIGIN = 'https://benchcard.app';
    to index.html's and about.html's; test/charts.test.js pins all eight. Already
    entity-escaped, so it is interpolated raw rather than through esc().
    Used twice per page: X reads twitter:image:alt and ignores og:image:alt. */
-const OG_ALT = 'Benchcard&rsquo;s bench mode open on a phone: the five players on the floor with minutes played, and the next substitution &mdash; who is coming off and who is going on &mdash; beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
+const OG_ALT = 'Benchcard&rsquo;s game screen on a phone: the sentence &ldquo;11 players, 4 × 8, subbing every 4 min for even minutes, with 1 rule&rdquo; above a timeline of each player&rsquo;s minutes, beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
 
 export const SIZES = [7, 8, 9, 10, 11, 12];
 /* Two spellings, and they are NOT interchangeable -- keeping them apart is
@@ -215,10 +215,17 @@ export function facts(plan) {
  * is not the place for an explainer -- it is the place to hand over the
  * artefact and point at the app.
  */
+/* "an 8-player", "an 11-player": the article the roster size's own spoken
+   number takes, not the digit's usual "eight"/"eleven" one. English reads
+   8/11/18 aloud starting with a vowel sound ("eight", "eleven", "eighteen"),
+   and the teens' 80s cousins do the same ("eighty-one"..."eighty-nine"), so
+   those get "an"; every other roster size on this site gets "a" (#75 item 8). */
+export const article = n => (n === 8 || n === 11 || n === 18 || (n >= 80 && n <= 89)) ? 'an' : 'a';
+
 const COPY = {
   title: n => `${n}-player basketball rotation chart | Benchcard`,
   description: (n, f) =>
-    `A printable substitution chart for a ${n}-player basketball roster: four 8-minute ` +
+    `A printable substitution chart for ${article(n)} ${n}-player basketball roster: four 8-minute ` +
     `quarters, subs every 4 minutes, ${f.minutes}. Free, no signup, works offline.`,
   h1: n => `${n}-player basketball rotation chart`,
   /* Written. Both lines take their numbers from the generated plan, so neither
@@ -338,8 +345,8 @@ ${shared.icon}
 <meta property="og:description" content="${esc(desc)}">
 <meta property="og:image" content="${ORIGIN}/og.png">
 <meta property="og:image:type" content="image/png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1260">
 <meta property="og:image:alt" content="${OG_ALT}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${esc(title)}">

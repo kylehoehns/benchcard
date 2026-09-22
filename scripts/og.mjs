@@ -1,27 +1,42 @@
 #!/usr/bin/env node
-/* Regenerate app/og.png — the 1200×630 image every link preview shows.
+/* Regenerate app/og.png — the 2400×1260 image every link preview shows (a
+ * 1200×630 composition, captured at deviceScaleFactor 2 for a sharp 2x).
  *
  *   node scripts/og.mjs            # write app/og.png
  *   node scripts/og.mjs --out x.png
- *   node scripts/og.mjs --bench app/bench-sample.png   # also write the phone shot
+ *   node scripts/og.mjs --bench app/bench-sample.png   # also write the bench-mode phone shot
  *   node scripts/og.mjs --card  app/card-sample.png    # also write the About hero, 1x + @2x
+ *   node scripts/og.mjs --icons                        # also (re)draw the four icon PNGs + favicon.ico
  *
- * The hero is a real screenshot of bench mode, taken out of the running app
- * rather than mocked up: seed a roster, open the sideline view, capture the
- * phone, then compose it beside the headline at 1200×630. That is the whole
- * reason this is a script and not a Figma export — when bench mode changes,
- * the share image is one command behind it instead of quietly going stale.
+ * The hero is a real screenshot of the game screen (title, status line,
+ * sentence, Timeline), taken out of the running app rather than mocked up:
+ * seed a roster, land on the game, capture the phone, then compose it beside
+ * the headline. That is the whole reason this is a script and not a Figma
+ * export — when the game screen changes, the share image is one command
+ * behind it instead of quietly going stale.
  *
- * It used to be the printed card. The card is still what a coach takes to the
- * gym, but the phone is what most people will actually open, and a link
- * preview should show the thing you get.
+ * It used to be the printed card, then bench mode. The card is still what a
+ * coach takes to the gym and bench mode is still how they run it, but the
+ * game screen is the first thing anyone sees, and a link preview should show
+ * the thing you get.
+ *
+ * The team color is Hardwood, and it comes from the SEED's own
+ * `settings.color`, sanitized the same way the app sanitizes any team's
+ * (storage.js's `COLORS`) and painted the same way any team's is
+ * (`applyTint`, render.js). Nothing here sets `data-tint` by hand, and
+ * nothing here types `#D2500A` — the hex is read back off the live page with
+ * `getComputedStyle(...).getPropertyValue('--tint')`, because tokens.css is
+ * the one place that value lives.
  *
  * Zero dependencies: the same static server and CDP client the smoke harness
  * uses. Composition is HTML rendered by Chrome, not canvas drawing calls, so
- * the type is the app's own Inter at the app's own weights.
+ * the type is the app's own Inter at the app's own weights. The four icon
+ * PNGs and favicon.ico are drawn the same way, behind `--icons`: the mark's
+ * SVG rendered by Chrome at each size, and favicon.ico is that same 48px PNG
+ * wrapped in an ICO header, built in node with no dependency.
  */
 import { spawn } from 'node:child_process';
-import { readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, writeFile, mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -71,6 +86,19 @@ const CARD_OUT_2X = CARD_OUT ? CARD_OUT.replace(/(\.png)?$/i, '') + '@2x.png' : 
 const welIdx = args.indexOf('--welcard');
 const WEL_OUT = welIdx >= 0 && args[welIdx + 1] ? resolve(args[welIdx + 1]) : null;
 const WEL_OUT_2X = WEL_OUT ? WEL_OUT.replace(/(\.png)?$/i, '') + '@2x.png' : null;
+
+/* The icon set (#75 item 2): index.html:274 notes favicon.ico was made by
+   hand from icon-192, with no generator. These sizes and paths are that
+   generator's whole output, same current sizes and same on-disk paths, so
+   the next color change is one command instead of a hand edit. */
+const ICONS = args.includes('--icons');
+const ICON_TARGETS = [
+  { size: 192, out: join(APP, 'icon-192.png') },
+  { size: 512, out: join(APP, 'icon-512.png') },
+  { size: 180, out: join(APP, 'apple-touch-icon.png') },
+  { size: 48, out: null },   // wrapped into favicon.ico, not written on its own
+];
+const FAVICON_OUT = join(APP, 'favicon.ico');
 
 const OG_W = 1200, OG_H = 630;
 const PHONE_W = 390, PHONE_H = 844;
@@ -135,6 +163,30 @@ function recompressPng(buf) {
     if (!scanlines(out).equals(raw)) return buf;
   } catch { return buf; }
   return out.length < buf.length ? out : buf;
+}
+
+/* Wraps a 48×48 PNG in a one-image ICO container (test/favicon.test.js reads
+   this format back): a 6-byte header (reserved=0, type=1 for icon, image
+   count), then one 16-byte directory entry (width, height, a 32-bit color
+   depth, the PNG's byte length, and its offset — 22, immediately after the
+   header and this one entry), then the PNG itself, verbatim. Modern ICO
+   readers accept a raw PNG payload in place of a legacy BMP one; that is what
+   lets this be built in node with no image-encoding dependency. */
+function buildIco(png48) {
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);   // reserved
+  header.writeUInt16LE(1, 2);   // type: 1 = icon
+  header.writeUInt16LE(1, 4);   // one image
+  const entry = Buffer.alloc(16);
+  entry[0] = 48;                // width in pixels (0 would mean 256)
+  entry[1] = 48;                // height in pixels
+  entry[2] = 0;                 // color count: 0 = not a palette image
+  entry[3] = 0;                 // reserved
+  entry.writeUInt16LE(1, 4);    // color planes
+  entry.writeUInt16LE(32, 6);   // bits per pixel
+  entry.writeUInt32LE(png48.length, 8);  // size of the image data
+  entry.writeUInt32LE(22, 12);           // offset: 6 header + 16 entry
+  return Buffer.concat([header, entry, png48]);
 }
 
 /* ---------- static server (mirrors scripts/smoke.mjs) ---------- */
@@ -209,9 +261,27 @@ function cdp(url) {
 
 /* ---------- the state the hero is captured from ----------
    Eleven players with real-length names -- the composition has to survive a
-   "Noah Castellan", not a roster of three-letter placeholders. `live.at: 2`
-   parks the game partway through the second period so the shot has something
-   to say: minutes already played, a next-sub block, players marked just on.
+   "Noah Castellan", not a roster of three-letter placeholders. The game
+   screen shot (og.png, `--card`) is taken with no `live` state at all, before
+   the game starts, so the status line reads "Planned" (#92 is explicitly out
+   of scope for this change). `--bench` adds `live: { at: 2 }` to a COPY of
+   this game, parking it partway through the second period so that shot has
+   something to say: minutes already played, a next-sub block, players marked
+   just on. Same roster, same rule, same seed number either way, so the same
+   rotation (see `withLive` below).
+
+   `settings.color: 'hardwood'` is the one rule change from before: it is not
+   read by this script and not typed into the composition. It goes into the
+   record the app itself loads, is sanitized by `COLORS` (storage.js) exactly
+   as any team's color is, and is painted by `applyTint` (render.js) at boot,
+   through index.html's own pre-paint script -- the same pipeline a real
+   coach's own color choice goes through. The hex comes back out with
+   `getComputedStyle`, once the app has painted it, not from a literal here.
+
+   `constraints.avoids: [['p7', 'p6']]` (Noah, Mia) is the game's one rule --
+   the same "Noah / Mia apart" rule about.html's rule-chip mock already shows
+   (about.html ~963). It is what turns "with no rules" (which reads as "no
+   rules in the game") into "with 1 rule".
 
    ELEVEN, not ten, and it is the same eleven the About page draws by hand.
    That page's argument is that forty player-slots do not divide by eleven, and
@@ -238,12 +308,13 @@ const SEED = {
     ['Elena Moreau', '3'], ['Kade Brennan', '6'], ['Mia Vega', '21'], ['Noah Castellan', '5'],
     ['Rafael Ortiz', '8'], ['Simone Aldridge', '11'], ['Ty Nakamura', '15'],
   ].map(([name, number], i) => ({ id: 'p' + i, name, number, shortName: '' })),
+  settings: { color: 'hardwood' },
   day: {
     name: 'Saturday',
     games: [{
       id: 'g0', label: 'Panthers', when: 'Sat 9:00', periods: 4, periodMinutes: 8,
       granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 7,
-      live: { at: 2, overrides: {} },
+      constraints: { avoids: [['p7', 'p6']] },
     }],
   },
   activeGame: 0, view: 'games',
@@ -251,6 +322,15 @@ const SEED = {
     copies: 1, showMinutes: true, printScope: 'game', cardId: 'short',
     cardSize: 'pocket', theme: 'light', cardOpen: false,
   },
+};
+
+/* The `--bench` capture, and only that capture, needs the game already
+   partway played. A copy rather than a mutation, so nothing above can ever
+   read a SEED that quietly grew a `live` block depending on import order. */
+const withLive = () => {
+  const s = JSON.parse(JSON.stringify(SEED));
+  s.day.games[0].live = { at: 2, overrides: {} };
+  return s;
 };
 
 /* ---------- the composition ----------
@@ -286,7 +366,7 @@ const SEED = {
    which is why every render before this one clipped a row on one side. */
 const TILT = -1.4;
 const PHONE_IN = 374;            // screen width in the composition
-const composition = (shot, cut) => {
+const composition = (shot, cut, tint) => {
   const scale = PHONE_IN / PHONE_W;
   const top = Math.round(OG_H - 11 - cut * scale);
   const radius = Math.round(PHONE_IN * 0.145);
@@ -311,9 +391,9 @@ const composition = (shot, cut) => {
      same height. */
   .say { position: absolute; left: 76px; top: 236px; width: 600px; }
   .eyebrow { font-size: 17px; font-weight: 640; letter-spacing: .13em; text-transform: uppercase;
-    color: #C33F08; margin-bottom: 20px; }
+    color: ${tint}; margin-bottom: 20px; }
   h1 { font-size: 66px; line-height: 1.02; font-weight: 730; letter-spacing: -.04em; }
-  h1 em { font-style: normal; color: #C33F08; }
+  h1 em { font-style: normal; color: ${tint}; }
 
   .phone { position: absolute; right: 60px; top: ${top}px; width: ${PHONE_IN + 22}px;
     background: #14120E; border-radius: ${radius}px; padding: 11px 11px 0;
@@ -327,8 +407,8 @@ const composition = (shot, cut) => {
 </style>
 <div class="brand">
   <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10.5" fill="#C33F08"/>
-    <g stroke="#FFF3EC" stroke-width="1.35" fill="none" opacity=".55">
+    <circle cx="12" cy="12" r="10.5" fill="${tint}"/>
+    <g stroke="#F4F4F6" stroke-width="1.35" fill="none" opacity=".55">
       <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
       <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
     </g>
@@ -342,6 +422,26 @@ const composition = (shot, cut) => {
 <div class="phone"><div class="win"><img src="${shot}" alt=""></div></div>
 `;
 };
+
+/* ---------- the icon mark (#75 item 2) ----------
+   Same 24-unit design grid and the same seam paths as the brand mark drawn
+   above and in the favicon data URI (index.html, about.html, advanced.html),
+   scaled to whatever pixel size Chrome is asked to render at -- an SVG
+   `viewBox` does that scaling for free, stroke width included, so one markup
+   string is every icon. The one difference from the brand mark: the existing
+   icon files have no visible disc against a different background (sampled
+   from the shipped PNGs while building this script, corner pixel to corner
+   pixel) -- they are a solid Hardwood square, edge to edge, with the seams
+   drawn straight across it, which is what a phone masks into a rounded icon
+   itself. Filling to the edge is the "current safe area and padding": there
+   is none to preserve beyond what is here. */
+const markSvg = (size, fill) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+  <rect width="24" height="24" fill="${fill}"/>
+  <g stroke="#F4F4F6" stroke-width="1.35" fill="none" opacity=".6">
+    <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
+    <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
+  </g>
+</svg>`;
 
 /* The welcome screen's roster size, read from the module that owns it. A
    literal here would be a second answer to a question `onboarding.js` already
@@ -366,48 +466,89 @@ try {
   const evalJS = async expression =>
     (await c.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })).result.value;
 
-  // 1. capture bench mode at phone size, 2× so it stays sharp scaled down
-  await c.send('Emulation.setDeviceMetricsOverride',
-    { width: PHONE_W, height: PHONE_H, deviceScaleFactor: 2, mobile: true });
-  await c.send('Page.navigate', { url: origin + '/' });
-  await new Promise(r => setTimeout(r, 1200));
-  /* CLEAR FIRST, and do not remove this line. The navigation above boots the
-     app as a fresh install, and a fresh install WRITES `benchcard.v6` with
-     `onboarded: false` before this runs. `loadState` reads v6 ahead of v3 and
-     honours a complete record that says "not onboarded" -- that is deliberate,
-     it is the coach who removed their last team -- so the seed below was read
-     by nothing and every shot this script took was of the welcome screen.
-     Found 2026-08-26; `#gmOpen` cannot open a plan that does not exist, which
-     is how it surfaced ("could not open bench mode: still hidden").
+  /* Boot a fresh install, then reload with STATE seeded into localStorage --
+     the sequence every capture below starts from, only the state and the
+     settle time after the second navigation differ.
+
+     CLEAR FIRST, and do not remove that half of the one-liner below. The
+     first navigation boots the app as a fresh install, and a fresh install
+     WRITES `benchcard.v6` with `onboarded: false` before this runs.
+     `loadState` reads v6 ahead of v3 and honours a complete record that says
+     "not onboarded" -- that is deliberate, it is the coach who removed their
+     last team -- so a seed written without clearing first is read by nothing
+     and every shot this script takes is of the welcome screen instead. Found
+     2026-08-26; `#gmOpen` cannot open a plan that does not exist, which is
+     how it surfaced ("could not open bench mode: still hidden").
      `scripts/smoke.mjs` never had the bug because it seeds through
      `Page.addScriptToEvaluateOnNewDocument`, which runs before the app does. */
-  await evalJS(`localStorage.clear(); localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))}); 1`);
-  await c.send('Page.navigate', { url: origin + '/' });
-  await new Promise(r => setTimeout(r, 2200));
-  const open = await evalJS(`(() => { const b = document.querySelector('#gmOpen'); if (!b) return 'no button'; b.click(); return document.querySelector('#gamemode').hidden ? 'still hidden' : 'open'; })()`);
-  if (open !== 'open') throw new Error(`could not open bench mode: ${open}`);
+  const seedAndLoad = async (state, settleMs) => {
+    await c.send('Page.navigate', { url: origin + '/' });
+    await new Promise(r => setTimeout(r, 1200));
+    await evalJS(`localStorage.clear(); localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(state))}); 1`);
+    await c.send('Page.navigate', { url: origin + '/' });
+    await new Promise(r => setTimeout(r, settleMs));
+  };
+
+  // 1. capture the game screen at phone size, 3× so it stays sharp once it is
+  //    embedded in the composition and that is captured again at 2×.
+  await c.send('Emulation.setDeviceMetricsOverride',
+    { width: PHONE_W, height: PHONE_H, deviceScaleFactor: 3, mobile: true });
+  await seedAndLoad(SEED, 2200);
+  /* SEED's own `view: 'games'` and `activeGame: 0` land here with no click:
+     this is the game screen already, the way a coach who last had a game open
+     would see it too. */
+  const landed = await evalJS(`document.querySelector('#gameTitle') && !document.querySelector('#view-games').hidden ? 'ok' : 'not on the game screen'`);
+  if (landed !== 'ok') throw new Error(`could not reach the game screen: ${landed}`);
   await evalJS('document.fonts.ready.then(() => 1)');
   await new Promise(r => setTimeout(r, 700));
+  /* Hardwood has to have actually painted, not just been requested -- a typo
+     in `settings.color` or a sanitizer that silently fell back to graphite
+     would otherwise ship an ember-less but also Hardwood-less image and
+     nothing here would catch it. */
+  const tintOn = await evalJS(`document.documentElement.getAttribute('data-tint')`);
+  if (tintOn !== 'hardwood') throw new Error(`Hardwood did not paint: data-tint is ${JSON.stringify(tintOn)}`);
+  const tint = (await evalJS(`getComputedStyle(document.documentElement).getPropertyValue('--tint').trim()`) || '').toUpperCase();
+  if (!/^#[0-9A-F]{6}$/.test(tint)) throw new Error(`--tint did not read back as a hex color: ${JSON.stringify(tint)}`);
   /* Where the composition's bottom edge should fall -- see `composition`. Read
-     off the live layout rather than hard-coded, because the thing it has to
-     land inside is 19px wide and moves whenever bench mode's spacing does. A
-     literal here would rot silently: the image would still render, it would
-     just go back to cutting a name in half. */
+     off the live layout rather than hard-coded: the last Timeline row that
+     fits inside the phone's own height, and the whitespace gap after it. A
+     literal here would rot silently the moment the Timeline's row spacing or
+     the roster size changes -- the image would still render, it would just
+     go back to cutting a name in half. */
   const cut = await evalJS(`(() => {
-    const n = document.querySelector('#gmNext');
-    const lab = document.querySelector('#gmBenchLab');
-    if (!n || !lab) return 0;
-    return Math.round((n.getBoundingClientRect().bottom + lab.getBoundingClientRect().top) / 2 + scrollY);
+    const rows = [...document.querySelectorAll('#timeline .tl-row')];
+    if (!rows.length) return 0;
+    const within = rows.filter(r => r.getBoundingClientRect().bottom + scrollY <= ${PHONE_H});
+    const last = within.length ? within[within.length - 1] : rows[0];
+    const after = rows[rows.indexOf(last) + 1] || document.querySelector('#summaryRow') || document.querySelector('#issues');
+    const bottom = last.getBoundingClientRect().bottom + scrollY;
+    const nextTop = after ? after.getBoundingClientRect().top + scrollY : bottom + 20;
+    return Math.round((bottom + nextTop) / 2);
   })()`);
-  if (!cut) throw new Error('could not measure the crop point: #gmNext or #gmBenchLab missing');
+  if (!cut) throw new Error('could not measure the crop point: #timeline has no .tl-row');
   const phone = (await c.send('Page.captureScreenshot', { format: 'png' })).data;
+
+  /* 1a. bench mode, with the game live — bench-sample.png keeps showing a
+     game in progress, which is the point of bench mode. Same roster, same
+     rule, same seed number as the og shot, so the same rotation; only `live`
+     differs. */
   if (BENCH_OUT) {
-    const b = recompressPng(Buffer.from(phone, 'base64'));
+    await c.send('Emulation.setDeviceMetricsOverride',
+      { width: PHONE_W, height: PHONE_H, deviceScaleFactor: 2, mobile: true });
+    await seedAndLoad(withLive(), 2200);
+    const open = await evalJS(`(() => { const b = document.querySelector('#gmOpen'); if (!b) return 'no button'; b.click(); return document.querySelector('#gamemode').hidden ? 'still hidden' : 'open'; })()`);
+    if (open !== 'open') throw new Error(`could not open bench mode: ${open}`);
+    await evalJS('document.fonts.ready.then(() => 1)');
+    await new Promise(r => setTimeout(r, 700));
+    const bench = (await c.send('Page.captureScreenshot', { format: 'png' })).data;
+    const b = recompressPng(Buffer.from(bench, 'base64'));
     await writeFile(BENCH_OUT, b);
     console.log(`bench: ${BENCH_OUT} — ${PHONE_W * 2}×${PHONE_H * 2}, ${(b.length / 1024).toFixed(1)} KB`);
   }
 
-  /* 1b. the printed card, from the state the phone was just photographed in.
+  /* 1b. the printed card, from the same no-`live` seed the game screen was
+     photographed in — reseeded explicitly, since 1a (when it runs) leaves
+     `withLive()`'s copy in storage instead.
      Captured on a desktop viewport because index.html only keeps the card in
      an always-open aside above 1100px, then lifted out of `#sheet` onto a bare
      white body: `#sheet` sets `--cardzoom` to fit the column, and the card has
@@ -416,8 +557,7 @@ try {
   if (CARD_OUT) {
     await c.send('Emulation.setDeviceMetricsOverride',
       { width: DESK_W, height: DESK_H, deviceScaleFactor: 2, mobile: false });
-    await c.send('Page.navigate', { url: origin + '/' });
-    await new Promise(r => setTimeout(r, 2400));
+    await seedAndLoad(SEED, 2400);
     const box = await evalJS(`(() => {
       const card = document.querySelector('#sheet .card');
       if (!card) return 'no card';
@@ -497,19 +637,61 @@ try {
     console.log(`welcome card: ${WEL_OUT_2X} — ${s2.w}×${s2.h}, ${(two.length / 1024).toFixed(1)} KB`);
   }
 
-  // 2. compose, at 1200×630 and 1× — an og image is displayed at its own size
+  /* 1c. the four icon PNGs + favicon.ico, drawn from the same mark SVG at
+     each size (#75 item 2: "the icons have no generator today"). Each file
+     is checked against its own previous size, not a fixed budget, because
+     the budget is "did this redraw bloat it", not an absolute number. */
+  if (ICONS) {
+    await c.send('Emulation.setDeviceMetricsOverride',
+      { width: 512, height: 512, deviceScaleFactor: 1, mobile: false });
+    await c.send('Page.navigate', { url: origin + '/about' });
+    await new Promise(r => setTimeout(r, 300));
+    let png48 = null;
+    for (const { size, out } of ICON_TARGETS) {
+      await c.send('Emulation.setDeviceMetricsOverride',
+        { width: size, height: size, deviceScaleFactor: 1, mobile: false });
+      await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body style="margin:0">${markSvg(size, tint)}</body>`)}; 1`);
+      await evalJS('document.fonts.ready.then(() => 1)');
+      await new Promise(r => setTimeout(r, 200));
+      const data = (await c.send('Page.captureScreenshot', { format: 'png' })).data;
+      const buf = recompressPng(Buffer.from(data, 'base64'));
+      const dims = pngSize(buf);
+      if (dims.w !== size || dims.h !== size)
+        throw new Error(`icon at size ${size} came out ${dims.w}×${dims.h}`);
+      if (size === 48) { png48 = buf; continue; }
+      const target = out;
+      let before = 0;
+      try { before = (await stat(target)).size; } catch { /* first draw */ }
+      if (before && buf.length > before * 1.5)
+        throw new Error(`${target} grew from ${before} to ${buf.length} bytes, more than +50%`);
+      await writeFile(target, buf);
+      console.log(`icon: ${target} — ${size}×${size}, ${(buf.length / 1024).toFixed(1)} KB`);
+    }
+    const ico = buildIco(png48);
+    let beforeIco = 0;
+    try { beforeIco = (await stat(FAVICON_OUT)).size; } catch { /* first draw */ }
+    if (beforeIco && ico.length > beforeIco * 1.5)
+      throw new Error(`${FAVICON_OUT} grew from ${beforeIco} to ${ico.length} bytes, more than +50%`);
+    await writeFile(FAVICON_OUT, ico);
+    console.log(`icon: ${FAVICON_OUT} — 48×48, ${(ico.length / 1024).toFixed(1)} KB`);
+  }
+
+  // 2. compose, at 1200×630 captured at deviceScaleFactor 2 — 2400×1260 out
   await c.send('Emulation.setDeviceMetricsOverride',
-    { width: OG_W, height: OG_H, deviceScaleFactor: 1, mobile: false });
+    { width: OG_W, height: OG_H, deviceScaleFactor: 2, mobile: false });
   await c.send('Page.navigate', { url: origin + '/about' });
   await new Promise(r => setTimeout(r, 900));
-  await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body>${composition('data:image/png;base64,' + phone, cut)}</body>`)}; 1`);
+  await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body>${composition('data:image/png;base64,' + phone, cut, tint)}</body>`)}; 1`);
   await evalJS('document.fonts.ready.then(() => 1)');
   await new Promise(r => setTimeout(r, 900));
   const og = (await c.send('Page.captureScreenshot', { format: 'png' })).data;
 
   const bytes = recompressPng(Buffer.from(og, 'base64'));
+  const ogDims = pngSize(bytes);
+  if (ogDims.w !== OG_W * 2 || ogDims.h !== OG_H * 2)
+    throw new Error(`og.png came out ${ogDims.w}×${ogDims.h}, expected ${OG_W * 2}×${OG_H * 2}`);
   await writeFile(OUT, bytes);
-  console.log(`og: ${OUT} — ${OG_W}×${OG_H}, ${(bytes.length / 1024).toFixed(1)} KB`);
+  console.log(`og: ${OUT} — ${ogDims.w}×${ogDims.h}, ${(bytes.length / 1024).toFixed(1)} KB`);
 } finally {
   c.close();
   proc.kill();

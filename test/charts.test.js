@@ -14,7 +14,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { SIZES, file, slug, pages, planFor, cardMetrics, measuredNames } from '../scripts/charts.mjs';
+import { SIZES, file, slug, pages, planFor, cardMetrics, measuredNames, article } from '../scripts/charts.mjs';
 
 const url = p => new URL('../app/' + p, import.meta.url);
 const read = p => readFileSync(url(p), 'utf8');
@@ -23,6 +23,15 @@ const sitemap = read('sitemap.xml');
 const sw = read('sw.js');
 
 /* ---------------- 1. the pages are what the generator says ---------------- */
+
+test('article picks "a" or "an" the way the roster-size copy needs', () => {
+  // an before 8, 11, 18 and 80-89; a everywhere else (item 8 of #75)
+  assert.equal(article(6), 'a');
+  assert.equal(article(8), 'an');
+  assert.equal(article(11), 'an');
+  assert.equal(article(18), 'an');
+  assert.equal(article(12), 'a');
+});
 
 test('every roster-size page on disk matches what scripts/charts.mjs renders', () => {
   /* This is the test that makes the whole approach safe. The cards are real
@@ -267,14 +276,14 @@ test('every page the site publishes describes its share card the same way', () =
      one description — and the chart pages get theirs from OG_ALT in
      scripts/charts.mjs, so a hand edit fails the disk-vs-generator test above
      before it reaches this one. */
-  const ALT = 'Benchcard&rsquo;s bench mode open on a phone: the five players on the floor with minutes played, and the next substitution &mdash; who is coming off and who is going on &mdash; beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
-  for (const name of ['index.html', 'about.html', ...SIZES.map(file)]) {
+  const ALT = 'Benchcard&rsquo;s game screen on a phone: the sentence &ldquo;11 players, 4 × 8, subbing every 4 min for even minutes, with 1 rule&rdquo; above a timeline of each player&rsquo;s minutes, beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
+  for (const name of ['index.html', 'about.html', 'advanced.html', ...SIZES.map(file)]) {
     const page = read(name);
     for (const needle of [
       '<meta property="og:image" content="https://benchcard.app/og.png">',
       '<meta property="og:image:type" content="image/png">',
-      '<meta property="og:image:width" content="1200">',
-      '<meta property="og:image:height" content="630">',
+      '<meta property="og:image:width" content="2400">',
+      '<meta property="og:image:height" content="1260">',
       `<meta property="og:image:alt" content="${ALT}">`,
       /* X reads twitter:image:alt, not the Open Graph one, so the same
          description has to be declared twice or the card is undescribed on

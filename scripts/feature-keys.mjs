@@ -100,33 +100,45 @@ export const read = (name) => SURFACES[name].slice(app(SURFACES[name].file));
  */
 export const FEATURES = [
   /* #19 renamed the strategy in-app to Even / By hand and the balance shape
-   * `even` to Steady, but only in-app: about.html and advanced.html are out
-   * of #19's scope and still say Balanced / Minutes / Even. `even` is
-   * therefore a name for TWO different keys depending which surface it sits
-   * on -- the strategy on #help, the balance shape on about.html and
-   * advanced.html -- so `term` is given per surface rather than as one
-   * list, and each key claims only the word its own surface actually uses. A
-   * word shared across keys in one list let either key satisfy the other's
-   * mutation. */
-  { key: 'strategy:balanced', src: 'state.js STRATEGIES',
-    term: { '#help': ['even'], 'about.html': ['balanced'], 'advanced.html': ['balanced'] } },
-  { key: 'strategy:minutes', src: 'state.js STRATEGIES',
-    term: { '#help': ['by hand'], 'about.html': ['minutes'], 'advanced.html': ['minutes'] } },
+   * `even` to Steady, but only in-app: about.html and advanced.html stayed
+   * out of #19's scope and kept saying Balanced / Minutes / Even. #75 (item 6,
+   * against CONTEXT.md) brought both pages onto the strategy's glossary name
+   * too, so all three surfaces now call it Even -- which is exactly the
+   * collision the old comment here warned about: `even` would then name TWO
+   * keys on the SAME surface, the strategy AND the balance shape. `term` for
+   * `shape:even` is narrowed to the surface that still uses the bare word
+   * (`#help`'s "Steady" is a different word, so it never collided); about.html
+   * and advanced.html instead prove the shape by the one sentence that names
+   * it ("every stint about as strong as every other"), via `text`, so the two
+   * keys never claim the same chunk. */
+  { key: 'strategy:balanced', src: 'state.js STRATEGIES', term: ['even'] },
+  { key: 'strategy:minutes', src: 'state.js STRATEGIES', term: ['by hand'] },
   { key: 'strategy:closers', src: 'state.js STRATEGIES', term: ['closers'] },
   { key: 'strategy:platoon', src: 'state.js STRATEGIES', term: ['platoon'] },
 
   { key: 'shape:even', src: 'balance.js SHAPES',
-    term: { '#help': ['steady'], 'about.html': ['even'], 'advanced.html': ['even'] } },
+    term: { '#help': ['steady'] }, text: ['every stint about as strong as every other'] },
   { key: 'shape:start', src: 'balance.js SHAPES', term: ['start strong'], text: ['start strong'] },
   { key: 'shape:finish', src: 'balance.js SHAPES', term: ['finish strong'], text: ['finish strong'] },
   { key: 'shape:both', src: 'balance.js SHAPES', term: ['both ends'], text: ['both ends'] },
 
-  { key: 'rule:limit', src: 'rules.js KINDS', term: ['minutes limit'], text: ['minutes limit'] },
+  /* #75 item 6: about.html and advanced.html dropped "minutes limit" (one
+   * phrase for the app's `minimum`/`cap` pair, per `shipped()`'s note below)
+   * for the glossary's own two rules, named side by side ("Minimum and Cap"),
+   * and the app's other three mixed rule names for Together / Apart / One of
+   * two on. `#help` is unchanged and still uses the app's internal wording --
+   * that mismatch is #75's own Decisions section, not a new one -- so each of
+   * these keys is per-surface the same way `shape:even` now is. */
+  { key: 'rule:limit', src: 'rules.js KINDS',
+    term: { '#help': ['minutes limit'], 'about.html': ['minimum'], 'advanced.html': ['minimum'] } },
   { key: 'rule:starts', src: 'rules.js KINDS', term: ['starting five'], text: ['starting five'] },
   { key: 'rule:lastq', src: 'rules.js KINDS', term: ['last period'] },
-  { key: 'rule:together', src: 'rules.js KINDS', term: ['play together'], text: ['play together'] },
-  { key: 'rule:apart', src: 'rules.js KINDS', term: ['keep apart'], text: ['keep apart'] },
-  { key: 'rule:keepon', src: 'rules.js KINDS', term: ['always one on'], text: ['always one on'] },
+  { key: 'rule:together', src: 'rules.js KINDS',
+    term: { '#help': ['play together'], 'about.html': ['together'], 'advanced.html': ['together'] } },
+  { key: 'rule:apart', src: 'rules.js KINDS',
+    term: { '#help': ['keep apart'], 'about.html': ['apart'], 'advanced.html': ['apart'] } },
+  { key: 'rule:keepon', src: 'rules.js KINDS',
+    term: { '#help': ['always one on'], 'about.html': ['one of two on'], 'advanced.html': ['one of two on'] } },
   { key: 'rule:rest', src: 'rules.js KINDS', term: ['rest limit'], text: ['rest limit'] },
 
   /* The bench scopes are pinned by the LABEL the button carries, not by its
