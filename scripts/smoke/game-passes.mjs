@@ -221,15 +221,16 @@ export async function gamePassesPass(c, origin) {
       const kids = [...view.children].map(el => el.id ? '#' + el.id
         : el.classList.contains('today-acts') ? 'today-acts' : el.tagName.toLowerCase());
       const passCount = document.querySelectorAll('#todayGames > .today-game').length;
-      const newDayIn = !!document.getElementById('barToday')?.contains(document.getElementById('todayNewDay'));
-      return JSON.stringify({ kids, passCount, newDayIn });
+      // #100 removed "New day" (#todayNewDay) from #barToday entirely.
+      const newDayGone = !document.getElementById('todayNewDay');
+      return JSON.stringify({ kids, passCount, newDayGone });
     })()`));
     if (order.passCount !== 4) problems.push(`#todayGames has ${order.passCount} .today-game buttons, want 4`);
     const wantKids = ['h1', '#todayGames', 'today-acts', '#todayTeam', '#todaySeason'];
     if (JSON.stringify(order.kids) !== JSON.stringify(wantKids)) {
       problems.push(`#view-today's children are ${JSON.stringify(order.kids)}, want ${JSON.stringify(wantKids)}`);
     }
-    if (!order.newDayIn) problems.push('#todayNewDay is not inside #barToday');
+    if (!order.newDayGone) problems.push('#todayNewDay is still in the markup; "New day" was supposed to be removed');
 
     // Items 2, 3, 5, 6 (rotation presence), 8.
     const passes = JSON.parse(await evalIn(c, `(() => {

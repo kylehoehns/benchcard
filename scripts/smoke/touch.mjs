@@ -125,9 +125,10 @@ const TOUCH_STATES = [
            document.querySelector('#frNext').click()` },
 ];
 
-/* #26 item 12: "the pass and #todayNewDay are touch targets of at least
- * 44px" — measured against `FOUR` (four passes on screen at once, the state
- * the ticket's own fit claim is about), not `RICH`'s two-game Today.
+/* #26 item 12: "the pass is a touch target of at least 44px" (#100 removed
+ * #todayNewDay, which used to be swept alongside it) — measured against
+ * `FOUR` (four passes on screen at once, the state the ticket's own fit
+ * claim is about), not `RICH`'s two-game Today.
  *
  * A standalone reload-measure-reload rather than a `TOUCH_STATES` entry: that
  * array runs every state back to back with no navigation between them (only

@@ -230,21 +230,24 @@ export async function seasonPass(c, origin) {
   for (let i = 0; i < 3; i++) {
     await evalIn(c, `(async () => { document.querySelector('#view-season .sn-del')?.click(); await ${SETTLE}; })()`);
   }
-  /* The count line under the title and the empty note say the same four words
-     with nothing filed, so the empty screen must not print them twice --
-     "Nothing filed yet" above "Nothing filed yet. New day on Today files the
-     day's games here." reads as a repaint that ran once too often. Counted in
-     the rendered text rather than by asking whether one element is hidden, so
-     the check still holds if the emptiness is said some other way later. */
+  /* The count line under the title used to read "Nothing filed yet" with
+     nothing filed, directly above a paragraph opening with the same four
+     words -- which reads as a repaint that ran once too often, not a screen
+     that knows it is empty. So with nothing to count the line goes away
+     entirely (`sub.textContent = ''`) and the paragraph (#100: "Games file
+     here once their day has passed.") carries the whole message alone.
+     Counted in the rendered text rather than by asking whether one element
+     is hidden, so the check still holds if the emptiness is said some other
+     way later. */
   const emptied = JSON.parse(await evalIn(c, `(() => JSON.stringify({
     gamesLeft: document.querySelectorAll('#view-season details.sn-game').length,
     exportHidden: document.querySelector('#seasonExport')?.hidden ?? true,
-    saysEmpty: (document.querySelector('#view-season')?.innerText.match(/Nothing filed yet/g) || []).length,
+    saysEmpty: (document.querySelector('#view-season')?.innerText.match(/Games file here/g) || []).length,
   }))()`));
   if (emptied.gamesLeft !== 0) problems.push(`${emptied.gamesLeft} filed game(s) remain after deleting all three, want 0`);
   if (!emptied.exportHidden) problems.push('#seasonExport is visible with nothing filed, want it hidden');
   if (emptied.saysEmpty !== 1) {
-    problems.push(`the empty Season says "Nothing filed yet" ${emptied.saysEmpty} time(s), want exactly 1`);
+    problems.push(`the empty Season says "Games file here" ${emptied.saysEmpty} time(s), want exactly 1`);
   }
 
   await evalIn(c, `(async () => { document.querySelector('.toast .tundo')?.click(); await ${SETTLE}; })()`);

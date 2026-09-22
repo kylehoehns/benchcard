@@ -42,20 +42,9 @@ export async function todayKeysAndUndoPass(c, origin) {
   if (gmOpenAfterS || gmOpenAfterB) problems.push('S or B did something off the Game screen, where neither is wired');
   if (!(await onToday())) problems.push('S/B moved the screen off Today');
 
-  // New day + Undo on Today.
-  const gamesBefore = await evalIn(c, `document.querySelectorAll('.today-game').length`);
-  await evalIn(c, step(`document.getElementById('todayNewDay')?.click()`));
-  const gamesAfterNewDay = await evalIn(c, `document.querySelectorAll('.today-game').length`);
-  const stillTodayAfterNewDay = await onToday();
-  const undoShown = await evalIn(c, `!!document.querySelector('#toasts .toast[data-undo]')`);
-  if (!undoShown) problems.push('New day did not show an Undo toast');
-  if (!stillTodayAfterNewDay) problems.push('New day left Today');
-  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
-  const gamesAfterUndo = await evalIn(c, `document.querySelectorAll('.today-game').length`);
-  if (gamesAfterUndo !== gamesBefore) {
-    problems.push(`New day + Undo left ${gamesAfterUndo} game(s), started with ${gamesBefore}`);
-  }
-  if (!(await onToday())) problems.push('undoing New day left Today');
+  // #100 removed "New day" -- filing now runs on its own, with its own
+  // fixture-driven Undo coverage in `dated-day.mjs`. Nothing to click here
+  // any more.
 
   /* Add a game opens the new game's own screen -- through the three-step
      flow (#32), which is what the button does now: the tap opens the dialog
@@ -223,7 +212,7 @@ export async function todayKeysAndUndoPass(c, origin) {
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
-      : 'V both ways, P from Today (window.print stubbed), S/B inert off Games, New day + Undo, '
+      : 'V both ways, P from Today (window.print stubbed), S/B inert off Games, '
         + 'Add a game, Remove this game -> Today -> Undo -> that game, remove team + Undo -> Settings',
   };
 }

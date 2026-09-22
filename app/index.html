@@ -398,12 +398,10 @@
       <div class="teammenu" id="teamMenu" popover aria-label="Teams"></div>
       <div class="spacer"></div>
       <button class="keys-hint press" id="keysHint" type="button" aria-label="Keyboard shortcuts"><kbd>?</kbd><span>Shortcuts</span></button>
-      <!-- #26 decision 8: a text button, between the spacer and the gear.
+      <!-- #100 removed "New day" (`#todayNewDay`) -- a day files itself once
+           it has passed, so there is nothing here left to press.
            `.keys-hint` above is `display: none` below 760px, so on a phone
-           this and the gear are the header's only two actions. Its handler
-           (`startNewDay`) is unchanged; only the id's home in the markup
-           moved, out of `.today-acts` below. -->
-      <button class="btn ghost press" id="todayNewDay" type="button">New day</button>
+           the gear is the header's only remaining action. -->
       <!-- The gear only ever shows here, on Today (N4) -- `#barToday` is
            hidden on every other screen, and there is no second way to reach
            it. -->
@@ -1351,8 +1349,8 @@
           <p class="note">
             Every game you add can open with “Even out the season so far” already on,
             so you do not tick it each week. You can still change it per game under
-            Rules. Until you have filed a finished game with New day there is no season
-            to even out, and both settle a new game the same way.
+            Rules. Until a finished day has filed there is no season to even out,
+            and both settle a new game the same way.
           </p>
         </div>
         <div class="seg wide" id="seasonDefSeg" role="group" aria-label="How a new game starts">
@@ -1836,7 +1834,7 @@
         games</b>. Leave it on and the day evens out across every game, so a kid who sat
         more in game 1 gets it back in game 2. Turn it off and each game is fair on its
         own. The <b>Season</b> screen shows the running totals for the day.</p>
-      <p class="help-p"><b>New day</b> files every game you have finished into the
+      <p class="help-p">Once a day is over, every game you finished on it files itself into the
         <b>Season</b> screen, which keeps what each player actually played and exports as a
         spreadsheet. Once a season has games in it, every game gets a second switch called
         <b>Even out the season so far</b>. It starts the players who are behind for

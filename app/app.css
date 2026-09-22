@@ -259,11 +259,9 @@ a { color: inherit; }
   #backBtn:hover .i { background: var(--surface-3); }
 }
 
-/* #69 decision 12: "New day" is plain text too, same size and weight as the
-   team button beside it, still at least 48x48. The gear stays an icon but
-   grows from `.btn.icon`'s coarse-pointer-only floor to an unconditional
-   48x48. */
-#todayNewDay { font-size: var(--fs-headline); color: var(--ink); min-height: 48px; padding: .3rem .5rem; }
+/* #100 removed "New day" (`#todayNewDay`) along with its rule here -- the
+   gear stays an icon but grows from `.btn.icon`'s coarse-pointer-only floor
+   to an unconditional 48x48 (#69 decision 12). */
 #settingsBtn { width: 48px; height: 48px; }
 /* #29 decision 3: "Share the card" is the one door into the card sheet, so
    it gets the same unconditional 48x48 `#settingsBtn` already has, rather

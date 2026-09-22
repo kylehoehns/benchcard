@@ -51,7 +51,8 @@ its alternative is an assertion, so the rejected options are kept here too.
   and `settings.periodMinutes` (4 and 8 = the literals `newGame` always carried)
   are read by `newGame` **only when there is no game to clone from**. The format
   was already sticky — `newGame` deep-copies it off the game it clones, and
-  every **Add a game** and **New day** hands it `lastGame()` — so a default that won
+  every **Add a game** and every day's own fresh first game (`fileIfPast`, #100)
+  hands it `lastGame()` — so a default that won
   over the clone would snap game 2 of a tournament day back off the odd format
   a coach had just set. The default therefore earns its keep somewhere else:
   `newTeam`'s first game and `sanitizeTeam`'s no-games fallback pass the
@@ -95,9 +96,10 @@ its alternative is an assertion, so the rejected options are kept here too.
 - **A day that ends is kept, not thrown away.** `teams[].season.games` holds
   every finished game — its date, format, opponent and the per-player minutes
   actually played. A game is finished when it is in the day at the moment the
-  coach taps **New day** *and its plan solved*: there is deliberately no
-  "Finish game" button, because the bug being fixed is that a coach loses a day
-  without ever being asked, and an answer that only works when they remember to
+  day's own date passes *and its plan solved* (`fileIfPast`, #100): there is
+  deliberately no "Finish game" button, and — since #100 — no "New day" button
+  either, because the bug being fixed is that a coach loses a day without ever
+  being asked, and an answer that only works when they remember to
   press something reproduces it for the coach who is busiest. `plan.ok` is the
   one honest signal available with no UI — a game that never produced a
   rotation was never played — and deleting a game beforehand already takes it
@@ -116,9 +118,9 @@ its alternative is an assertion, so the rejected options are kept here too.
   reading, so it is two lists a phone can hold. An id with no player on the
   roster is shown as *Left the team*, hollow dot and minutes intact, which is
   what "history, not instruction" looks like on screen. Each game carries a
-  **Delete this game**, through `undoable`: "New day" finishes whatever is in
-  the day, so tapping it twice files a game nobody played, and this is the only
-  correction path there is. No levels, ever — `test/leak.test.js` covers the
+  **Delete this game**, through `undoable`: filing finishes whatever is in the
+  day once it has passed, so a day nobody played still files a game, and this
+  is the only correction path there is. No levels, ever — `test/leak.test.js` covers the
   Season view for the same reason it covers the card.
 - **And it can be handed to someone else.** An **Export** button in the Season
   screen's header (visible only when a game is filed) writes those minutes as one
@@ -283,8 +285,9 @@ its alternative is an assertion, so the rejected options are kept here too.
   the opponent, the tip time and the seed are per-game. The inherited
   constraints are deep-copied -- sharing the object would let an edit on game 2
   silently rewrite game 1's plan and therefore the whole day's carryover.
-  "New day" keeps the format (you play the same league every week) but clears
-  absences. The copy itself did not change when #32 put a three-step flow in
+  A fresh day's own first game (`fileIfPast`, #100) keeps the format (you play
+  the same league every week) but clears absences. The copy itself did not
+  change when #32 put a three-step flow in
   front of it (`architecture.md`, Interface); what changed is that the coach is
   shown what is being inherited and can take it in one tap, instead of finding
   out on the game screen.

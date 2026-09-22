@@ -153,6 +153,11 @@ export const ROWS = Object.freeze([
   { id: 'gamerowsfit', name: 'game rows fit, 390×844', selectable: true, setup: 'rich' },
   { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich' },
   { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich' },
+  // #100's own guard (see docs/specs/100-dated-days.md's Proof section,
+  // smoke row): no `#todayNewDay` anywhere on Today, and a fixture with a
+  // day dated in the past boots to that day filed into the season, under
+  // its own date, with the Undo toast shown -- see dated-day.mjs.
+  { id: 'dateddayfiling', name: 'a past-dated day files itself on boot, no "New day"', selectable: true, setup: 'rich' },
   { id: 'gamepasses', name: 'game passes', selectable: true, setup: 'rich' },
   // #69 decision 5, item 8: the game screen's title block -- one visible h1
   // (the opponent), a sub line with the tip-off and the reused status word --

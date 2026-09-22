@@ -3,7 +3,7 @@ import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
 import { widthSweep } from './width-sweep.mjs';
 
 /* #69 (restyle Today and the game screen), "What would settle it" item 4:
-   the fixed control list the restyle names -- #teamBtn, #todayNewDay,
+   the fixed control list the restyle names -- #teamBtn,
    #settingsBtn, .today-game, #todayAddGame, #todayTeam, #todaySeason,
    #backBtn, each .phrase, each timeline row, #regen, each fold summary,
    .seg buttons, #abBench -- all at least 48x48, at the same three

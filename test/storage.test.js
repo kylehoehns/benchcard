@@ -188,6 +188,40 @@ test('sanitize is idempotent', () => {
   assert.deepEqual(sanitize(once, H), once);
 });
 
+/* ---- #100: a day has a real calendar date ---- */
+
+const TODAY = new Date(2026, 8, 28); // 2026-09-28
+const NEXT_BOOT = new Date(2026, 8, 29); // a later sanitize, same stored day
+
+test('an absent day.date is the migration: it lands on today, the phone\'s own day', () => {
+  const s = sanitize(good(), { ...H, today: TODAY });
+  assert.equal(s.teams[0].day.date, '2026-09-28');
+});
+
+test('a valid day.date is kept exactly as it was', () => {
+  const raw = good();
+  raw.day.date = '2025-12-25';
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.equal(s.teams[0].day.date, '2025-12-25', 'a real date must not be overwritten by today');
+});
+
+test('a malformed day.date is treated as absent, not kept as junk', () => {
+  for (const bad of ['2026-13-40', 42, '', null, '2026-02-30', 'yesterday']) {
+    const raw = good();
+    raw.day.date = bad;
+    const s = sanitize(raw, { ...H, today: TODAY });
+    assert.equal(s.teams[0].day.date, '2026-09-28',
+      `${JSON.stringify(bad)} should fall back to today, not survive`);
+  }
+});
+
+test('a migrated day.date is stable: it does not drift forward on a later boot', () => {
+  const once = sanitize(good(), { ...H, today: TODAY });
+  const twice = sanitize(once, { ...H, today: NEXT_BOOT });
+  assert.equal(twice.teams[0].day.date, '2026-09-28',
+    'once a day is dated, it keeps that date no matter when it is next sanitized');
+});
+
 test('in-game overrides survive a reload, and stale ones are dropped', () => {
   const raw = good();
   raw.players.push(
@@ -903,12 +937,21 @@ test('one team\'s season is its own', () => {
 
 /* ---- the pure writers: one place knows what a finished game looks like ---- */
 
+test('seasonGame takes the day\'s date exactly as handed, never "now"', () => {
+  /* #100: a day carries its own date now, and it may not be today -- a
+     part-played game filed the morning after must keep yesterday's date, not
+     the moment `seasonGame` happens to run. So `date` is passed through
+     unchanged rather than derived from a clock. */
+  const g = seasonGame(
+    { id: 'g1', periods: 4, periodMinutes: 8 }, { a: 10 }, { date: '2026-09-27' });
+  assert.equal(g.date, '2026-09-27', 'the day\'s own date, not today\'s');
+});
+
 test('seasonGame takes the minutes it is handed, not the plan\'s', () => {
-  const when = new Date(2026, 10, 8, 20, 30);
   const g = seasonGame(
     { id: 'g1', label: '  Northgate  ', periods: 4, periodMinutes: 8 },
     { a: 18.5, b: 13.5 },
-    { dayName: ' Sat at Northgate ', when });
+    { dayName: ' Sat at Northgate ', date: '2026-11-08' });
   assert.deepEqual(g, { id: 'g1', date: '2026-11-08', day: 'Sat at Northgate',
     opponent: 'Northgate', periods: 4, periodMinutes: 8, minutes: { a: 18.5, b: 13.5 } });
   assert.deepEqual(sanitize({ teams: [{ ...v4().teams[0], season: { games: [g] } }] }, H)

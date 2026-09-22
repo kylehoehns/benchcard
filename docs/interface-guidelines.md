@@ -435,7 +435,7 @@ an iPhone and an Android phone. *Apple: Dark Mode. Android: font scaling.*
 ## Words
 
 **W1. Sentence case everywhere: buttons, menus, titles, headers.** "Add a game",
-"New day", "By hand". Apple prefers Title Case for buttons and menus; sentence
+"Remove team", "By hand". Apple prefers Title Case for buttons and menus; sentence
 case reads naturally on both platforms and matches how the app already talks.
 *Apple: Menus (differs). Benchcard.*
 

@@ -27,7 +27,7 @@ Everything below is relative to `app/`.
 - `icons.js` — Lucide path data, extracted at vendor time.
 - `fx.js` — animation vocabulary over the vendored Motion library.
 - `budget.js` — minute-budget allocation in stint slots. Pure.
-- `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game. Pure apart from `localStorage`.
+- `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100) and day migration (adding a `date` field to a day if absent). Pure apart from `localStorage`.
 - `dom.js` — forgiving DOM one-liners shared by the UI modules, plus the
   shared `ctx2d` canvas everything that sizes type by measurement uses.
 - `trap.js` — focus trap for the overlays, the `data-fk` focus/caret restore,
@@ -76,7 +76,10 @@ Everything below is relative to `app/`.
   the two reference sheets) and `toast.js` (undo, the tip jar, flash).
 - `app.js` / `index.html` — the entry point and the markup. `app.js` is now the
   wiring only: the controls no single module owns, and the boot block that
-  hands each module its callbacks.
+  hands each module its callbacks. The boot also runs `fileIfPast` (#100) after
+  the first render, and a `visibilitychange` listener runs it again when the app
+  returns to the foreground — unless bench mode is open, in which case it waits
+  until bench mode closes.
 - `tokens.css` / `app.css` / `card.css` — the styles, in that load order and
   for that reason. `tokens.css` is the palette, type, radii and easings plus
   the two theme blocks (dark mode is nothing but the second block — no
@@ -380,9 +383,11 @@ than measuring one screen at one width — which is what let both of those live.
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
 active team's name in plain text with a chevron-down icon, which opens a
-`popover` menu to switch teams or add one (C8), New day as plain text, a gear
-for Settings, the day's games, then Team and Season as two entries underneath,
-and Add a game. Game, Team, Season and Settings are each one screen away from
+`popover` menu to switch teams or add one (C8), a gear for Settings, the
+day's games, then Team and Season as two entries underneath, and Add a game.
+A day files itself into the season once it has passed (#100) — there is no
+"New day" button any more. Game, Team, Season and Settings are each one
+screen away from
 Today rather than siblings on a nav — opening one pushes a browser-history
 entry, so the back button, the browser's own back and Android's back gesture
 all land back on Today, through the one path `setView` (render.js) owns. The
@@ -424,7 +429,7 @@ background (L2, L3). Instead of a line, a `::before` scrim fades using
 `backdrop-filter`, and both fade under `prefers-reduced-transparency: reduce`,
 `prefers-contrast: more`, or where `backdrop-filter` is unavailable (#33).
 
-The bar holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
+The bar holds `#barToday` (the team button, `#keysHint`, the gear) and
 `#barBack` (a round chevron button labeled *Back to Today*), toggled by
 `applyView` with the `hidden` attribute — never both, because a coach is always
 on Today or exactly one screen away from it.
@@ -458,7 +463,7 @@ circle, and `#teamBtn` is the same treatment as a pill, because its content is
 the team's name rather than one glyph. All five use `--r-full`, a
 `color-mix` fill over `--surface-2` and a `backdrop-filter`, and all five go
 flat and opaque under reduced transparency, more contrast, or no
-`backdrop-filter` support. `#todayNewDay`, `#teamEdit` and `#seasonExport` stay
+`backdrop-filter` support. `#teamEdit` and `#seasonExport` stay
 plain text with no chip (decision 10) — a screen's chrome tops out at two
 filled controls or it reads as a toolbar.
 
@@ -482,7 +487,7 @@ switches to Games before it prints; a key that dies on three views out of four
 would be worse than no key.
 
 The tab budget this used to measure is retired along with the tabs: Today's
-header carries the team button, the keys hint, New day and the gear, and every
+header carries the team button, the keys hint and the gear, and every
 other screen carries only a back button and a title, so there is no longer a
 row of sibling controls competing for the same 390px.
 
@@ -854,6 +859,12 @@ the moment a tab is hidden. `navigator.wakeLock` is feature-detected, never
 sniffed by platform (interface guideline D2, D5): where it is absent, or the
 request is rejected, this is a silent no-op — bench mode opens, steps and
 closes exactly as it did before, nothing shown and nothing logged.
+
+**Filing waits while bench mode is open (#100).** A game running past midnight
+must not be filed out from under the coach mid-stint. `fileIfPast` checks that
+bench mode is not open before filing; when it closes, the app immediately runs
+it again in case the day is now due. This keeps games from disappearing into the
+season while a coach is actively using them.
 
 **A part-played game says so in two places.** A reload closes bench mode —
 on iOS, switching to the clock or the scorebook app and coming back is often

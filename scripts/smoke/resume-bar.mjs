@@ -157,7 +157,7 @@ export async function resumeBarPass(c, origin) {
      comment for why the probe is marked from the moment it is created.
 
      The probe is prepended INSIDE #view-today, so DOM order puts #barToday's
-     own controls (team switcher, New day, the gear) before it -- a
+     own controls (team switcher, the gear) before it -- a
      forward-only walk starting there never reaches them on a normal lap. A
      lap that runs off the end of the document instead WRAPS back around past
      them, which would otherwise count three chrome buttons that live outside

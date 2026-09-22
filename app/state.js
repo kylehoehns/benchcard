@@ -15,7 +15,7 @@
 import { generatePlan, fmtMinutes, buildStints, DEFAULT_TIER } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
-         sanitizeSettings, DEFAULT_SETTINGS } from './storage.js';
+         sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 
@@ -1454,12 +1454,73 @@ export function resolveRest(g, p, from, sitIds = []) {
  * and the caller wraps this in `undoable`, which snapshots the whole
  * record, so Undo un-archives for free with no second code path.
  * ================================================================== */
-export function archiveDay(when = new Date()) {
+export function archiveDay() {
   const t = team();
   if (!t.season || !Array.isArray(t.season.games)) t.season = { games: [] };
   const finished = state.day.games
     .map((g, i) => [g, plans[i]])
     .filter(([, p]) => p && p.ok)
-    .map(([g, p]) => seasonGame(g, effectiveMinutes(g, p), { dayName: state.day.name, when }));
+    .map(([g, p]) => seasonGame(g, effectiveMinutes(g, p),
+      { dayName: state.day.name, date: state.day.date }));
   return addSeasonGames(t.season, finished);
+}
+
+/**
+ * #100: whether a day is due to file -- dated strictly before today, the
+ * phone's own day. A day dated today has not finished; a day dated tomorrow
+ * (reachable only through a hand-edited backup) has not started either.
+ * `YYYY-MM-DD` strings compare the same way their dates do, so no `Date` is
+ * built from either side. "Today" is injectable so a pinned clock can stand
+ * in for the phone's own day in a test.
+ */
+export const dayIsPast = (day, today = new Date()) => day.date < seasonDate(today);
+
+/**
+ * #100 review, finding 3: whether the current day is due to file -- past-
+ * dated (`dayIsPast`) and bench mode not open. `fileIfPast` below and
+ * `app.js`'s boot/foreground/bench-mode-close trigger each used to run their
+ * own copy of the bench-mode check; this is their one shared home. Reads
+ * `#gamemode` directly, the way `fileIfPast` always has -- importing
+ * gamemode.js here would cycle back through toast.js. "Today" is injectable
+ * so a pinned clock can stand in for the phone's own day in a test.
+ */
+export const dueToFile = (today = new Date()) => {
+  const gm = document.querySelector('#gamemode');
+  if (gm && gm.hidden === false) return false;
+  return dayIsPast(state.day, today);
+};
+
+// "Sat, Sep 27" -- the coach's own locale, short weekday, short month, day.
+const weekdayLabel = iso => {
+  const d = localDate(iso);
+  return d ? d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+};
+
+/**
+ * #100: the filing entry point. When `state.day` is due (`dueToFile`), files
+ * its solved games into the season under its own date and replaces it with
+ * one fresh game dated `today` -- exactly what "New day" used to build
+ * (`newGame(0, lastGame(), settings)`, `out = []`, no name). A no-op while
+ * bench mode is open: a stint in progress must not be filed out from under
+ * the coach mid-game -- see `dueToFile`. Called after boot's first render,
+ * on `visibilitychange` to visible, and when bench mode closes; "today" is
+ * injectable so a pinned clock can stand in for the phone's own day in a
+ * test.
+ *
+ * Returns the toast message it showed (one toast every time it actually
+ * files, even when nothing solved -- a day vanishing silently reads as data
+ * loss), or null when nothing was due or bench mode is open.
+ */
+export function fileIfPast(today = new Date()) {
+  if (!dueToFile(today)) return null;
+
+  const filedDate = state.day.date;
+  const kept = archiveDay();
+  const g = newGame(0, lastGame(), state.settings);
+  g.out = [];
+  state.day = { name: '', games: [g], date: seasonDate(today) };
+  state.activeGame = 0;
+  return kept
+    ? `${weekdayLabel(filedDate)}: ${kept} game${kept === 1 ? '' : 's'} saved to the season.`
+    : `${weekdayLabel(filedDate)} is over. Started a new day.`;
 }

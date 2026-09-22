@@ -77,8 +77,18 @@ test('every mid-game edit offers an undo, and takes the previous offer down', ()
      Everything still arrives by injection: toast.js imports `clearPick` from
      gamemode.js, so importing back the other way would close a cycle. */
   const app = readFileSync(new URL('../app/app.js', import.meta.url), 'utf8');
-  assert.match(app, /initGameMode\(render, tipAfterGame, \{ undoable, flash \}\)/,
+  /* #100: the second argument is no longer the bare `tipAfterGame` function --
+     it also has to fire `fileOverdueDay()` on bench-mode close (one of the
+     three moments a day that has gone past midnight gets filed). Matched as
+     the whole `initGameMode(render, ..., { undoable, flash })` call, with
+     both names required somewhere inside the middle argument, so the claim
+     stays "both still run on close", not "close calls exactly this text". */
+  const callSrc = app.slice(app.indexOf('initGameMode(render,'));
+  const call = callSrc.slice(0, callSrc.indexOf('\n'));
+  assert.match(call, /\{ undoable, flash \}\);$/,
     'app.js must hand undoable and flash to initGameMode');
+  assert.match(call, /tipAfterGame\(/, 'app.js must still tip after a game on close');
+  assert.match(call, /fileOverdueDay\(\)/, 'app.js must file an overdue day on bench-mode close (#100)');
   assert.match(src, /export function initGameMode\(renderFn, onCloseFn, toastFns\)/,
     'initGameMode should take the render, the close hook and the toast API');
   assert.doesNotMatch(src, /from '\.\/toast\.js'/,
