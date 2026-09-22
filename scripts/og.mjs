@@ -446,16 +446,17 @@ const composition = (shot, tint) => {
    above and in the favicon data URI (index.html, about.html, advanced.html),
    scaled to whatever pixel size Chrome is asked to render at -- an SVG
    `viewBox` does that scaling for free, stroke width included, so one markup
-   string is every icon. The one difference from the brand mark: the existing
-   icon files have no visible disc against a different background (sampled
-   from the shipped PNGs while building this script, corner pixel to corner
-   pixel) -- they are a solid Hardwood square, edge to edge, with the seams
-   drawn straight across it, which is what a phone masks into a rounded icon
-   itself. Filling to the edge is the "current safe area and padding": there
-   is none to preserve beyond what is here. */
-const markSvg = (size, fill) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-  <rect width="24" height="24" fill="${fill}"/>
-  <g stroke="#F4F4F6" stroke-width="1.35" fill="none" opacity=".6">
+   string is every icon. The layout is the one the shipped icons already had
+   (measured off main's icon-512.png): a solid square of the team color, and
+   on it the ball drawn in outline -- circle and seams, solid light strokes
+   with round ends -- about 60% of the width, which keeps it inside a
+   maskable icon's safe zone. Only the colors change. The widened viewBox is
+   what does the padding: 37 units across puts the 21-unit ball at 57% plus
+   its stroke. */
+const markSvg = (size, fill) => `<svg width="${size}" height="${size}" viewBox="-6.5 -6.5 37 37" xmlns="http://www.w3.org/2000/svg">
+  <rect x="-6.5" y="-6.5" width="37" height="37" fill="${fill}"/>
+  <g stroke="#F4F4F6" stroke-width="1.05" stroke-linecap="round" fill="none">
+    <circle cx="12" cy="12" r="10.5"/>
     ${SEAMS}
   </g>
 </svg>`;
