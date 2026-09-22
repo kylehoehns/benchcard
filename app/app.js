@@ -32,7 +32,8 @@ import { initToast, undoable, flash, tipAfterPrint, tipAfterGame } from './toast
 import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, soon, setView, applyTheme, applyTint, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, reseed,
-         replaceState, emptyConstraints, newGame, migrateLegacy, team } from './state.js';
+         replaceState, emptyConstraints, newGame, migrateLegacy, team,
+         dayIsPast, fileIfPast } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -358,6 +359,22 @@ window.addEventListener('appinstalled', () => track('pwa_installed'));
 // picked Closers months ago and never touches the segment reads as Even
 if (state.onboarded) track('plan_generated', { strategy: game()?.strategy });
 
+/* #100: the day files itself once it is over -- there is no "New day"
+   button any more. Bench-mode-open is checked here as well as inside
+   `fileIfPast` itself: `fileIfPast` is the single source of truth for
+   whether filing happens at all (and is what the node tests hold to that),
+   but `undoable` shows a toast unconditionally once its `mutate` runs, so
+   this guard is what keeps a no-op from ever reaching `undoable` and
+   putting up an empty toast. Called after boot's first render, on
+   `visibilitychange` to visible, and when bench mode closes, below. */
+function fileOverdueDay(today = new Date()) {
+  const gm = $('#gamemode');
+  if (gm && gm.hidden === false) return;
+  if (!dayIsPast(state.day, today)) return;
+  let message = null;
+  undoable(() => message, () => { message = fileIfPast(today); }, () => renderAll());
+}
+
 /* Wire the modules together. Everything a module cannot import for itself
    is handed to it here: the dispatcher and the scheduler out of render.js,
    and gamemode's second argument, which is the tip prompt's bench-mode
@@ -369,7 +386,7 @@ initTeams(renderAll, setView);
 initSeason(renderAll);
 initBalance(soon, AFTER_EDIT);
 initRoster(soon, AFTER_EDIT);
-initGameMode(render, tipAfterGame, { undoable, flash });
+initGameMode(render, (reachedEnd) => { tipAfterGame(reachedEnd); fileOverdueDay(); }, { undoable, flash });
 initTimeline(setView);
 initTour(setView);
 initRules(soon, PLAN_ONLY);
@@ -393,7 +410,15 @@ setView(state.onboarded ? (state.view || 'today') : 'welcome');
 try {
   renderAll();
   if (window.benchcard) window.benchcard.booted = true;
+  fileOverdueDay();
 } catch (e) {
   console.error(e);
   window.benchcard?.fail('boot');
 }
+
+/* #100: a phone left on the lock screen overnight never fires a boot -- only
+   a visibility change does, so that is the other place a day that has gone
+   past midnight gets filed. */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') fileOverdueDay();
+});

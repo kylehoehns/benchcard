@@ -436,8 +436,12 @@
         ("Stint by stint") is the one disclosure left, and a selector that
         can match nothing is a line that reads as coverage while measuring
         none. */
+  // #100 removed "New day" (`#todayNewDay`) from this list along with the
+  // button -- the same reason `.fold > summary` was retired above: a
+  // selector that can match nothing is a line that reads as coverage while
+  // measuring none.
   const ITEM4_SEL = [
-    '#teamBtn', '#todayNewDay', '#settingsBtn', '.today-game', '#todayAddGame',
+    '#teamBtn', '#settingsBtn', '.today-game', '#todayAddGame',
     '#todayTeam', '#todaySeason', '#backBtn', '.phrase', '.tl-name',
     '#regen', 'details.dz > summary', '.seg button', '#abBench',
   ].join(', ');

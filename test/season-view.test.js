@@ -25,12 +25,14 @@ test('the ledger reads the season, not the day', () => {
 
 /* The export moved to the header (`#seasonExport`), where it is hidden with
    nothing filed, so the empty body no longer has to promise a file on the
-   coach's behalf -- it only has to say where a filed day will show up. The
-   sentence is pinned exactly: decision 7's own wording. */
-test('the empty season names exactly where a filed day will show up', () => {
-  const empty = view.match(/"Nothing filed yet\. New day[^"]*"|'Nothing filed yet\. New day[^']*'/)?.[0];
+   coach's behalf -- it only has to say when a filed day will show up. #100
+   removed "New day": a day files itself once it has passed, so the wording
+   says that instead of naming a button. The sentence is pinned exactly:
+   the spec's own wording. */
+test('the empty season names exactly when a filed day will show up', () => {
+  const empty = view.match(/"Games file here[^"]*"|'Games file here[^']*'/)?.[0];
   assert.ok(empty, 'the season empty state is gone or reworded past recognition');
-  assert.equal(empty.slice(1, -1), "Nothing filed yet. New day on Today files the day's games here.",
+  assert.equal(empty.slice(1, -1), 'Games file here once their day has passed.',
     'the empty Season copy must match the spec exactly');
 });
 

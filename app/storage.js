@@ -285,15 +285,45 @@ export const seasonDate = (d = new Date()) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
 
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/* Real, so "2026-02-30" (February has 28 days in 2026) is caught the same
+   way "2026-13-40" is: constructing the date and reading the parts back
+   catches a value `Date` would otherwise silently roll into March. */
+const isRealCalendarDate = (y, mo, d) => {
+  const dt = new Date(y, mo - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+};
+const validDayDate = v => {
+  const m = typeof v === 'string' && DATE_RE.exec(v);
+  return !!m && isRealCalendarDate(Number(m[1]), Number(m[2]), Number(m[3]));
+};
+
+/**
+ * A `YYYY-MM-DD` string as a local midnight `Date`, for display -- built
+ * from parts, never `new Date(iso)`, which is UTC for this shape and reads a
+ * day early for anyone west of Greenwich. Null for anything that is not that
+ * shape, so a caller can fall back to an empty label rather than "Invalid
+ * Date". The one parser for this shape; season-view.js's own date label and
+ * the filed-day toast both read a `Date` through this rather than each
+ * parsing the string over again.
+ */
+export const localDate = iso => {
+  const m = DATE_RE.exec(String(iso || ''));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+};
+
 /**
  * One finished game, from the game and the minutes actually played. The caller
  * supplies the minutes because only `state.js` can answer "who was really on
  * the floor" -- `effectiveMinutes`, never `plan.minutes`, so a coach's hand
- * swaps in bench mode are what gets counted.
+ * swaps in bench mode are what gets counted. `date` is the DAY's own date
+ * (#100), passed through exactly as handed -- never "now": a game filed the
+ * morning after it was played still belongs to the day it was played on.
  */
-export const seasonGame = (g, minutes, { dayName = '', when = new Date() } = {}) => ({
+export const seasonGame = (g, minutes, { dayName = '', date } = {}) => ({
   id: g.id,
-  date: seasonDate(when),
+  date,
   day: String(dayName || '').trim(),
   opponent: String(g.label || '').trim(),
   periods: g.periods,
@@ -319,7 +349,7 @@ export function addSeasonGames(season, games) {
  * and which of those games is open -- everything the solver reads. The rest of
  * the record (onboarded, tourSeen, ui) belongs to the device, not the team.
  */
-export function sanitizeTeam(raw, { emptyConstraints, newGame }) {
+export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date() }) {
   if (!isObj(raw)) raw = {};
 
   const players = (Array.isArray(raw.players) ? raw.players : [])
@@ -431,7 +461,14 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame }) {
     name: typeof raw.name === 'string' ? raw.name
       : typeof raw.teamName === 'string' ? raw.teamName : '',
     players: uniquePlayers,
-    day: { name: typeof day.name === 'string' ? day.name : '', games },
+    day: {
+      name: typeof day.name === 'string' ? day.name : '',
+      // #100: a day has a real calendar date now. No version branch -- an
+      // absent or malformed one IS the migration, and it lands on today so a
+      // day already open when this shipped does not file itself on the spot.
+      date: validDayDate(day.date) ? day.date : seasonDate(today),
+      games,
+    },
     // v4 has no season. An absent one is not a broken one -- it is a coach who
     // has not finished a game yet, which is also every brand new team.
     season: sanitizeSeason(raw.season),

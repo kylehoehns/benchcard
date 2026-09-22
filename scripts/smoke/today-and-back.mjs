@@ -58,7 +58,9 @@ export async function todayAndBackPass(c, origin) {
   if (!/Season/.test(today.seasonEntry) || !/3 games filed/.test(today.seasonEntry)) {
     problems.push(`the Season entry reads "${today.seasonEntry}", want "Season" and "3 games filed"`);
   }
-  if (!today.hasAddGame || !today.hasNewDay) problems.push('Today is missing "Add a game" or "New day"');
+  if (!today.hasAddGame) problems.push('Today is missing "Add a game"');
+  // #100: "New day" is gone -- a day files itself once it has passed.
+  if (today.hasNewDay) problems.push('#todayNewDay is still on Today; "New day" was supposed to be removed');
   if (!today.keysHintExists) problems.push('#keysHint is gone from Today\'s header');
 
   /* #23 review, third round: opening a DIFFERENT game from Today has to show

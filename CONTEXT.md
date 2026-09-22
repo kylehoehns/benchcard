@@ -49,17 +49,21 @@ One matchup on the day, with an opponent, a tip-off, a format and its own plan.
 Who a game is against.
 _In code_: `label` on a game today, `opponent` on a filed game
 
-**Tip-off**:
-When a game starts, as the coach typed it ("Sat 9:00"); free text, not a date.
+**Tip-off** (decided 2026-09-22, #64):
+The time a game starts, on its day's date; optional. Games in a day are played,
+shown and evened out in tip-off order.
 _Avoid_: tip time, start time
 
-**Day**:
-The games a team plays between one New day and the next, usually one game and
-sometimes a tournament's worth.
+**Day** (decided 2026-09-22, #64):
+The games a team plays on one calendar date, usually one game and sometimes a
+tournament's worth. Every day has a date; a name ("Spring Classic") is
+optional.
 _Avoid_: session, tournament (a tournament is one kind of day)
 
-**New day**:
-The action that files the day's games into the season and starts an empty day.
+**Filing** (decided 2026-09-22, #64):
+What happens to a day once its date has passed: its games go into the season on
+that date. It happens on its own; there is no button.
+_Avoid_: New day (the old manual action this replaced), archiving
 
 **Format**:
 How long a game is: a number of periods of a number of minutes each ("4 × 8").
@@ -271,7 +275,7 @@ _Avoid_: day carryover, tournament carryover
 _In code_: `useCarryover`, `carryover`
 
 **Filed game**:
-A game kept in the season when New day runs, with the minutes it actually
+A game kept in the season once its day is filed, with the minutes it actually
 produced.
 _Avoid_: archived, saved, finished, history
 _In code_: `season.games`, `seasonGame`
@@ -334,8 +338,9 @@ finish if the rest of the plan holds.
 ## The app
 
 **Today** (decided 2026-09-14):
-The home screen: the team's games for the day, and the way to its team, season
-and settings.
+The home screen: the team's upcoming days and their games, and the way to its
+team, season and settings. Its title is the team's name (#64); "Today" is only
+the screen's name in these docs, and the heading over today's own games.
 _Avoid_: home, dashboard, Games (as a screen)
 
 **Game pass** (decided 2026-09-14):

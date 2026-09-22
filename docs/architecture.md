@@ -380,9 +380,11 @@ than measuring one screen at one width — which is what let both of those live.
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
 active team's name in plain text with a chevron-down icon, which opens a
-`popover` menu to switch teams or add one (C8), New day as plain text, a gear
-for Settings, the day's games, then Team and Season as two entries underneath,
-and Add a game. Game, Team, Season and Settings are each one screen away from
+`popover` menu to switch teams or add one (C8), a gear for Settings, the
+day's games, then Team and Season as two entries underneath, and Add a game.
+A day files itself into the season once it has passed (#100) — there is no
+"New day" button any more. Game, Team, Season and Settings are each one
+screen away from
 Today rather than siblings on a nav — opening one pushes a browser-history
 entry, so the back button, the browser's own back and Android's back gesture
 all land back on Today, through the one path `setView` (render.js) owns. The
@@ -424,7 +426,7 @@ background (L2, L3). Instead of a line, a `::before` scrim fades using
 `backdrop-filter`, and both fade under `prefers-reduced-transparency: reduce`,
 `prefers-contrast: more`, or where `backdrop-filter` is unavailable (#33).
 
-The bar holds `#barToday` (the team button, `#keysHint`, New day, the gear) and
+The bar holds `#barToday` (the team button, `#keysHint`, the gear) and
 `#barBack` (a round chevron button labeled *Back to Today*), toggled by
 `applyView` with the `hidden` attribute — never both, because a coach is always
 on Today or exactly one screen away from it.
@@ -458,7 +460,7 @@ circle, and `#teamBtn` is the same treatment as a pill, because its content is
 the team's name rather than one glyph. All five use `--r-full`, a
 `color-mix` fill over `--surface-2` and a `backdrop-filter`, and all five go
 flat and opaque under reduced transparency, more contrast, or no
-`backdrop-filter` support. `#todayNewDay`, `#teamEdit` and `#seasonExport` stay
+`backdrop-filter` support. `#teamEdit` and `#seasonExport` stay
 plain text with no chip (decision 10) — a screen's chrome tops out at two
 filled controls or it reads as a toolbar.
 
@@ -482,7 +484,7 @@ switches to Games before it prints; a key that dies on three views out of four
 would be worse than no key.
 
 The tab budget this used to measure is retired along with the tabs: Today's
-header carries the team button, the keys hint, New day and the gear, and every
+header carries the team button, the keys hint and the gear, and every
 other screen carries only a back button and a title, so there is no longer a
 row of sibling controls competing for the same 390px.
 

@@ -27,11 +27,11 @@ const NAMES = ['Marcus', 'Eli', 'Devon', 'Kade', 'Aaron', 'Jack',
 /* One team, ten players, a two-game Saturday. Written straight onto the
    record rather than through the accessors, because that is the shape the
    sanitiser produces. */
-function setup({ games = 2, dayName = 'Sat at Northgate' } = {}) {
+function setup({ games = 2, dayName = 'Sat at Northgate', date = '2026-11-08' } = {}) {
   const t = {
     id: 't1', name: 'Wildcats', activeGame: 0,
     players: NAMES.map((name, i) => ({ id: 'p' + i, name, number: String(i + 1), shortName: '', tier: 3, hue: i })),
-    day: { name: dayName, games: [] },
+    day: { name: dayName, date, games: [] },
     season: { games: [] },
   };
   for (let i = 0; i < games; i++) {
@@ -51,7 +51,7 @@ const total = m => Math.round(Object.values(m).reduce((a, x) => a + x, 0) * 100)
 
 test('a day of games lands in the season with its minutes', () => {
   const t = setup();
-  const added = S.archiveDay(new Date(2026, 10, 8, 20, 30));
+  const added = S.archiveDay();
 
   assert.equal(added, 2, 'both games finished');
   assert.equal(t.season.games.length, 2);
@@ -60,7 +60,7 @@ test('a day of games lands in the season with its minutes', () => {
   assert.equal(a.id, 'g0');
   assert.equal(a.opponent, 'Northgate');
   assert.equal(a.day, 'Sat at Northgate');
-  assert.equal(a.date, '2026-11-08', 'the coach\'s own day, not UTC');
+  assert.equal(a.date, '2026-11-08', 'the day\'s own date, not the moment it happens to file');
   assert.equal(a.periods, 4);
   assert.equal(a.periodMinutes, 8);
   assert.equal(b.opponent, 'Kingsway');
@@ -87,7 +87,7 @@ test('the season counts who actually played, not who the plan said', () => {
   const eff = S.effectiveMinutes(g, S.plans[0]);
   assert.notDeepEqual(eff, S.plans[0].minutes, 'the swap moved the minutes');
 
-  S.archiveDay(new Date(2026, 10, 8));
+  S.archiveDay();
   const filed = t.season.games[0].minutes;
   assert.deepEqual(filed, eff);
   assert.ok(filed[benched] > S.plans[0].minutes[benched], 'the kid who came on gained minutes');
@@ -175,20 +175,140 @@ test('replaceState swaps the record without losing the season accessor', () => {
   assert.ok(!Object.keys(S.state).includes('season'), 'and the accessor survived the sweep');
 });
 
-/* ---- where archiving is wired in ---- */
+/* ---- where filing is wired in ---- */
 
-test('"New day" archives inside the undo snapshot, not before it', () => {
+test('#100: filing runs inside the undo snapshot, not before it', () => {
   /* Order is the whole contract. `undoable` clones the record first and then
-     runs the mutation, so archiving inside it means Undo restores the season
-     exactly as it was along with the day -- no second un-archive path to keep
-     honest. Hoisting the call above `undoable(` would put the archived games
-     inside the snapshot and Undo would leave them behind, silently. */
-  const src = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8');
-  const body = src.slice(src.indexOf('function startNewDay'));
+     runs the mutation, so filing inside it means Undo restores the season
+     exactly as it was along with the day -- no second un-file path to keep
+     honest. Hoisting the call above `undoable(` would put the filed games
+     inside the snapshot and Undo would leave them behind, silently. `state.js`
+     cannot import the real `undoable` itself (it would import `toast.js`,
+     which imports `state` back) -- app.js is where the two meet. */
+  const src = readFileSync(new URL('../app/app.js', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('function fileOverdueDay'));
   const fn = body.slice(0, body.indexOf('\n}'));
-  assert.ok(fn.includes('archiveDay('), 'startNewDay must file the day into the season');
-  assert.ok(fn.indexOf('undoable(') < fn.indexOf('archiveDay('),
-    'archiveDay must run inside undoable\'s mutation, after the snapshot is taken');
+  assert.ok(fn.includes('fileIfPast('), 'fileOverdueDay must file the day into the season');
+  assert.ok(fn.indexOf('undoable(') < fn.indexOf('fileIfPast('),
+    'fileIfPast must run inside undoable\'s mutation, after the snapshot is taken');
+});
+
+/* ================================================================== *
+ * #100 -- a day has a real calendar date, and files itself once it has
+ * passed. `dayIsPast` and `fileIfPast` both take "today" as an argument,
+ * defaulting to `new Date()`, so a pinned clock can stand in for the
+ * phone's actual day. Every test below pins it to the same Monday.
+ * ================================================================== */
+const TODAY = new Date(2026, 8, 28); // 2026-09-28
+
+test('dayIsPast: only a day dated before today is due', () => {
+  assert.equal(S.dayIsPast({ date: '2026-09-27' }, TODAY), true, 'yesterday is past');
+  assert.equal(S.dayIsPast({ date: '2026-09-28' }, TODAY), false, 'today is not past');
+  assert.equal(S.dayIsPast({ date: '2026-09-29' }, TODAY), false, 'tomorrow is not past, even by a hand-edited backup');
+});
+
+/* ---- fileIfPast: the entry point ---- */
+
+test('fileIfPast: a past day files its solved games under its own date, and opens a fresh one dated today', () => {
+  const t = setup({ games: 3, date: '2026-09-27' });
+  // the third game cannot field a lineup, so its plan does not solve
+  t.day.games[2].out = S.state.players.slice(4).map(p => p.id);
+  S.computeAll();
+  assert.equal(S.plans[2].ok, false, 'fixture check: the third game does not solve');
+
+  const msg = S.fileIfPast(TODAY);
+
+  assert.equal(t.season.games.length, 2, 'only the two solved games filed');
+  assert.deepEqual(t.season.games.map(g => g.date), ['2026-09-27', '2026-09-27']);
+  assert.equal(t.day.games.length, 1, 'New day\'s own shape: one game');
+  assert.equal(t.day.date, '2026-09-28', 'the fresh day is stamped with today');
+  assert.equal(t.day.name, '', 'the fresh day has no name');
+  assert.deepEqual(t.day.games[0].out, [], 'nobody starts the new day sitting out');
+  assert.match(msg, /2 games saved to the season/);
+});
+
+test('fileIfPast: a day dated today does not file', () => {
+  const t = setup({ games: 2, date: '2026-09-28' });
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(msg, null, 'no toast for a day still open');
+  assert.equal(t.season.games.length, 0);
+  assert.equal(t.day.games.length, 2, 'the day is untouched');
+});
+
+test('fileIfPast: a day dated tomorrow does not file', () => {
+  // reachable today only through a hand-edited backup, but it must hold
+  const t = setup({ games: 2, date: '2026-09-29' });
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(msg, null);
+  assert.equal(t.season.games.length, 0);
+  assert.equal(t.day.games.length, 2);
+});
+
+test('fileIfPast: a part-played game files the minutes it actually produced', () => {
+  const t = setup({ games: 1, date: '2026-09-27' });
+  const g = t.day.games[0];
+  const p = S.plans[0];
+  const k = 2;
+  const on = p.stints[k].onFloor;
+  const benched = S.state.players.map(x => x.id).find(id => !on.includes(id));
+  g.live = { at: k, overrides: { [k]: [benched, ...on.slice(1)] } };
+  S.computeAll();
+  const eff = S.effectiveMinutes(g, S.plans[0]);
+  assert.notDeepEqual(eff, S.plans[0].minutes, 'fixture check: the swap moved the minutes');
+
+  S.fileIfPast(TODAY);
+  assert.deepEqual(t.season.games[0].minutes, eff, 'the season gets what was actually played');
+});
+
+test('fileIfPast: filing twice files each game once', () => {
+  const t = setup({ games: 2, date: '2026-09-27' });
+  S.fileIfPast(TODAY);
+  assert.equal(t.season.games.length, 2);
+  // the fresh day is dated today, so a second call the same "day" is a no-op
+  const second = S.fileIfPast(TODAY);
+  assert.equal(second, null, 'the new day is not itself past');
+  assert.equal(t.season.games.length, 2, 'nothing doubled');
+});
+
+test('fileIfPast: nothing solved still gets a toast, so a vanished day is never silent', () => {
+  const t = setup({ games: 1, date: '2026-09-27' });
+  t.day.games[0].out = S.state.players.slice(4).map(p => p.id);
+  S.computeAll();
+  assert.equal(S.plans[0].ok, false, 'fixture check: the only game does not solve');
+
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(t.season.games.length, 0);
+  assert.match(msg, /is over\. Started a new day\./);
+});
+
+test('fileIfPast: the toast names the day\'s own weekday, month and day', () => {
+  // 2026-09-26 is a real Saturday -- the spec's own worked example pairs a
+  // 2026-09-27 day with "Sat", but that date is a Sunday; the weekday here is
+  // read off the actual calendar, not hand-picked to match the prose.
+  const t = setup({ games: 2, date: '2026-09-26' });
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(msg, 'Sat, Sep 26: 2 games saved to the season.');
+  assert.equal(t.season.games.length, 2);
+});
+
+test('fileIfPast: one game files with singular copy', () => {
+  setup({ games: 1, date: '2026-09-26' });
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season.');
+});
+
+test('fileIfPast: a no-op while bench mode is open', () => {
+  const t = setup({ games: 2, date: '2026-09-27' });
+  const real = globalThis.document.querySelector;
+  globalThis.document.querySelector = sel => (sel === '#gamemode' ? { hidden: false } : real(sel));
+  try {
+    const msg = S.fileIfPast(TODAY);
+    assert.equal(msg, null, 'a stint in progress must not be filed out from under the coach');
+    assert.equal(t.season.games.length, 0);
+    assert.equal(t.day.games.length, 2, 'the day is untouched while bench mode is open');
+  } finally {
+    globalThis.document.querySelector = real;
+  }
 });
 
 /* ================================================================== *

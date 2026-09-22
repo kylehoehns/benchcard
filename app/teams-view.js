@@ -20,7 +20,7 @@
 import { $, on, set, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
-import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, archiveDay, activeColor,
+import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, STRATEGIES, EVEN_OUT_DAY_LABEL } from './state.js';
 // #34 decision 5/6: the picker lives in card.js (state.js cannot import it
@@ -96,12 +96,12 @@ export function initTeams(renderAllFn, setViewFn) {
   // #addTeam is gone (#22); the team menu's own "Add a team" entry calls
   // `addTeam` directly, and it is the only way in now.
   on('#removeTeam', 'onclick', removeTeam);
-  // "+ Game", "New day" and the two entries below them are static buttons on
-  // Today now, not rebuilt every render -- bound once, like #removeTeam above.
-  // "+ Game" opens the three-step flow (#32); `wireAddGameFlow` binds it
-  // along with the rest of the flow's controls.
+  // "+ Game" and the two entries below it are static buttons on Today now,
+  // not rebuilt every render -- bound once, like #removeTeam above. It opens
+  // the three-step flow (#32); `wireAddGameFlow` binds it along with the
+  // rest of the flow's controls. #100 removed "New day": a day files itself
+  // once it is over, so there is nothing here left to press.
   wireAddGameFlow();
-  on('#todayNewDay', 'onclick', startNewDay);
   on('#todayTeam', 'onclick', () => setView('team'));
   on('#todaySeason', 'onclick', () => setView('season'));
   // #34 decision 8: stays on Today -- no setView, no history entry. The
@@ -443,8 +443,8 @@ function removeTeam() {
    `renderTabs` keeps its name (and its render-dispatch key, 'tabs') for what
    it has always been: the thing that repaints when the day's games move --
    but what it paints is Today's list now, not a strip of tabs inside the
-   games view. Activating an entry opens that game's screen; "Add a game" and
-   "New day" are static buttons on Today, wired once in `initTeams`. */
+   games view. Activating an entry opens that game's screen; "Add a game" is
+   a static button on Today, wired once in `initTeams`. */
 /* One game pass (#26): tip-off, status, the game's own name as the title, a
  * mini rotation and a one-line summary. Reuses `gameLabel`, `passSummary`,
  * `passBlocks`, `rowGradient` and `colorOf` from state.js -- nothing here is
@@ -899,34 +899,7 @@ function wireAddGameFlow() {
   guardClose(d, askBeforeDiscard);
 }
 
-/* Its own function rather than an inline handler: the wording and the undo
-   behavior are the point, and this used to have a second entry point in the
-   setup fold that had to say exactly the same thing.
-
-   This is also the moment the day becomes history. `archiveDay` files every
-   game that solved into `team().season` before the day is replaced -- see the
-   note on it in state.js for why "New day" is where a game counts as
-   finished. It has to run inside `undoable`'s `mutate`, not before it: the
-   snapshot is taken first, so Undo puts the season back exactly as it was
-   along with the day, and there is no second un-archive path to keep honest.
-   `n` is read after the archive so the toast can say what was kept, because a
-   coach who taps this and sees only "cleared" has no way to know their
-   Saturday was not thrown away again. */
-function startNewDay() {
-  const had = state.day.games.length;
-  let kept = 0;
-  /* When something was kept, that is the news, so it leads -- and "cleared"
-     stops being the honest word for it. Nothing kept falls back to the old
-     wording, which is still exactly what happened. */
-  const msg = () => (kept
-    ? `${kept === 1 ? '1 game' : `${kept} games`} saved to the season. New day started.`
-    : (had > 1 ? `Cleared ${had} games for a new day.` : 'Started a new day.'));
-  undoable(msg, () => {
-    kept = archiveDay();
-    const g = newGame(0, lastGame(), state.settings);
-    g.out = [];
-    state.day = { name: '', games: [g] };
-    state.activeGame = 0;
-  });
-}
+/* #100 removed `startNewDay` -- a day files itself once it is over
+   (`fileIfPast` in state.js, wired from app.js) rather than waiting for a
+   tap. */
 

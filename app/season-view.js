@@ -42,7 +42,7 @@ import { $, el } from './dom.js';
 import { undoable, flash } from './toast.js';
 import { state, team, byId, colorOf, teamName } from './state.js';
 import { fmtMinutes } from './engine.js';
-import { seasonShare } from './storage.js';
+import { seasonShare, localDate } from './storage.js';
 import { downloadText, seasonFilename } from './backup.js';
 
 let renderAll = () => {};
@@ -158,15 +158,12 @@ function playerRow(id, min, extra, maxMin) {
 }
 
 /* "Sat 14 Sep" is a date a coach recognizes from a schedule; the stored form
-   is `YYYY-MM-DD` and is nobody's reading format. Parsed as parts rather than
-   `new Date(iso)`, which is UTC for this shape and lands on the day before for
-   anyone west of Greenwich -- an archive filed on Saturday must not read
-   Friday. */
+   is `YYYY-MM-DD` and is nobody's reading format. `localDate` (storage.js) is
+   the one parser for that shape -- built from parts, never `new Date(iso)`,
+   which is UTC and lands on the day before for anyone west of Greenwich. */
 function dateLabel(iso) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
-  if (!m) return '';
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const d = localDate(iso);
+  return d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 }
 
 /* Most games have an opponent typed on them and some have a day name instead
@@ -315,11 +312,11 @@ export function renderSeason() {
 
   if (!games.length) {
     /* No group label and no export: with nothing filed there is nothing to
-       group and nothing to save. This line says where a filed day will show
-       up, which is the one thing a coach who has never used the feature
-       cannot guess. */
+       group and nothing to save. This line says when a filed day will show
+       up (#100: automatically, once its day has passed), which is the one
+       thing a coach who has never used the feature cannot guess. */
     box.append(el('p', 'note sn-empty',
-      "Nothing filed yet. New day on Today files the day's games here."));
+      'Games file here once their day has passed.'));
     return;
   }
 
@@ -336,7 +333,7 @@ export function renderSeason() {
 
   if (!filed) return;
   /* Newest day first: the day a coach wants is almost always the one that
-     just happened -- either to read it to a parent or, if "New day" filed a
+     just happened -- either to read it to a parent or, if filing caught a
      day nobody played, to delete a game out of it. Within a day the games
      keep the order they were filed in, so a tournament reads 9:00 then
      11:30 -- `seasonDays` is the one place that order is decided. */
@@ -368,10 +365,11 @@ function gameBlock(g, n) {
   if (!rows.length) body.append(el('p', 'note', 'No minutes were recorded for this game.'));
   for (const [id, m] of rows) body.append(playerRow(id, m));
 
-  /* The only correction path there is. "New day" finishes whatever is in the
-     day, so tapping it twice files a game nobody played -- it says so, with
-     Undo, but Undo expires. No confirm: removing a team is the one confirm in
-     this app, and `undoable` is the net everywhere else. */
+  /* The only correction path there is. Filing finishes whatever is in the
+     day once it has passed, so a day nobody played still files a game -- the
+     toast says so, with Undo, but Undo expires. No confirm: removing a team
+     is the one confirm in this app, and `undoable` is the net everywhere
+     else. */
   const del = el('button', 'btn ghost danger sm press sn-del', 'Delete this game');
   del.type = 'button';
   del.onclick = () => deleteGame(g.id, gameTitle(g));
