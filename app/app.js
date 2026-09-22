@@ -33,7 +33,7 @@ import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, soon, setView, applyTheme, applyTint, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         dayIsPast, fileIfPast } from './state.js';
+         dueToFile, fileIfPast } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -360,17 +360,17 @@ window.addEventListener('appinstalled', () => track('pwa_installed'));
 if (state.onboarded) track('plan_generated', { strategy: game()?.strategy });
 
 /* #100: the day files itself once it is over -- there is no "New day"
-   button any more. Bench-mode-open is checked here as well as inside
-   `fileIfPast` itself: `fileIfPast` is the single source of truth for
-   whether filing happens at all (and is what the node tests hold to that),
-   but `undoable` shows a toast unconditionally once its `mutate` runs, so
-   this guard is what keeps a no-op from ever reaching `undoable` and
-   putting up an empty toast. Called after boot's first render, on
-   `visibilitychange` to visible, and when bench mode closes, below. */
+   button any more. `dueToFile` is the single source of truth for whether
+   filing happens at all -- both the "is it due" question and the
+   bench-mode-open guard live there, shared with `fileIfPast` itself, so
+   this is the one other place that would otherwise carry its own copy.
+   Checked again here, ahead of `undoable`, so a no-op never reaches
+   `undoable` and puts up an empty toast: `undoable` shows one
+   unconditionally once its `mutate` runs. Called after boot's first
+   render, on `visibilitychange` to visible, and when bench mode closes,
+   below. */
 function fileOverdueDay(today = new Date()) {
-  const gm = $('#gamemode');
-  if (gm && gm.hidden === false) return;
-  if (!dayIsPast(state.day, today)) return;
+  if (!dueToFile(today)) return;
   let message = null;
   undoable(() => message, () => { message = fileIfPast(today); }, () => renderAll());
 }

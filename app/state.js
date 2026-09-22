@@ -1475,6 +1475,21 @@ export function archiveDay() {
  */
 export const dayIsPast = (day, today = new Date()) => day.date < seasonDate(today);
 
+/**
+ * #100 review, finding 3: whether the current day is due to file -- past-
+ * dated (`dayIsPast`) and bench mode not open. `fileIfPast` below and
+ * `app.js`'s boot/foreground/bench-mode-close trigger each used to run their
+ * own copy of the bench-mode check; this is their one shared home. Reads
+ * `#gamemode` directly, the way `fileIfPast` always has -- importing
+ * gamemode.js here would cycle back through toast.js. "Today" is injectable
+ * so a pinned clock can stand in for the phone's own day in a test.
+ */
+export const dueToFile = (today = new Date()) => {
+  const gm = document.querySelector('#gamemode');
+  if (gm && gm.hidden === false) return false;
+  return dayIsPast(state.day, today);
+};
+
 // "Sat, Sep 27" -- the coach's own locale, short weekday, short month, day.
 const weekdayLabel = iso => {
   const d = localDate(iso);
@@ -1482,25 +1497,22 @@ const weekdayLabel = iso => {
 };
 
 /**
- * #100: the filing entry point. When `state.day` is due (`dayIsPast`), files
+ * #100: the filing entry point. When `state.day` is due (`dueToFile`), files
  * its solved games into the season under its own date and replaces it with
  * one fresh game dated `today` -- exactly what "New day" used to build
  * (`newGame(0, lastGame(), settings)`, `out = []`, no name). A no-op while
- * bench mode is open (`#gamemode` not `hidden`), read directly the same way
- * `renderStorageWarning` above reaches for `#storagewarn`: a stint in
- * progress must not be filed out from under the coach mid-game. Called after
- * boot's first render, on `visibilitychange` to visible, and when bench mode
- * closes; "today" is injectable so a pinned clock can stand in for the
- * phone's own day in a test.
+ * bench mode is open: a stint in progress must not be filed out from under
+ * the coach mid-game -- see `dueToFile`. Called after boot's first render,
+ * on `visibilitychange` to visible, and when bench mode closes; "today" is
+ * injectable so a pinned clock can stand in for the phone's own day in a
+ * test.
  *
  * Returns the toast message it showed (one toast every time it actually
  * files, even when nothing solved -- a day vanishing silently reads as data
  * loss), or null when nothing was due or bench mode is open.
  */
 export function fileIfPast(today = new Date()) {
-  const gm = document.querySelector('#gamemode');
-  if (gm && gm.hidden === false) return null;
-  if (!dayIsPast(state.day, today)) return null;
+  if (!dueToFile(today)) return null;
 
   const filedDate = state.day.date;
   const kept = archiveDay();

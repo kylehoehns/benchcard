@@ -177,21 +177,15 @@ test('replaceState swaps the record without losing the season accessor', () => {
 
 /* ---- where filing is wired in ---- */
 
-test('#100: filing runs inside the undo snapshot, not before it', () => {
-  /* Order is the whole contract. `undoable` clones the record first and then
-     runs the mutation, so filing inside it means Undo restores the season
-     exactly as it was along with the day -- no second un-file path to keep
-     honest. Hoisting the call above `undoable(` would put the filed games
-     inside the snapshot and Undo would leave them behind, silently. `state.js`
-     cannot import the real `undoable` itself (it would import `toast.js`,
-     which imports `state` back) -- app.js is where the two meet. */
-  const src = readFileSync(new URL('../app/app.js', import.meta.url), 'utf8');
-  const body = src.slice(src.indexOf('function fileOverdueDay'));
-  const fn = body.slice(0, body.indexOf('\n}'));
-  assert.ok(fn.includes('fileIfPast('), 'fileOverdueDay must file the day into the season');
-  assert.ok(fn.indexOf('undoable(') < fn.indexOf('fileIfPast('),
-    'fileIfPast must run inside undoable\'s mutation, after the snapshot is taken');
-});
+/* #100 review, finding 2: the claim that Undo restores the day and the
+   season used to be proven by reading app.js's source for the substring
+   "undoable(" ahead of "fileIfPast(" -- a check that would pass even if
+   Undo itself were broken, as long as the two calls stayed in that order.
+   The real, behavioral proof now lives at the seam that can actually watch
+   Undo run: `scripts/smoke/dated-day.mjs` ("a past-dated day files itself
+   on boot, no \"New day\"") boots a past-dated fixture, taps the toast's
+   Undo, and reads the saved record and Today itself back to confirm the
+   day and the season are exactly what they were before filing. */
 
 /* ================================================================== *
  * #100 -- a day has a real calendar date, and files itself once it has
@@ -205,6 +199,25 @@ test('dayIsPast: only a day dated before today is due', () => {
   assert.equal(S.dayIsPast({ date: '2026-09-27' }, TODAY), true, 'yesterday is past');
   assert.equal(S.dayIsPast({ date: '2026-09-28' }, TODAY), false, 'today is not past');
   assert.equal(S.dayIsPast({ date: '2026-09-29' }, TODAY), false, 'tomorrow is not past, even by a hand-edited backup');
+});
+
+test('dueToFile: combines dayIsPast with the bench-mode check, in one place', () => {
+  /* #100 review, finding 3: `app.js`'s `fileOverdueDay` and `fileIfPast`
+     here each had their own copy of "is bench mode open" -- one predicate,
+     in state.js, is the one home for the question both callers ask. */
+  setup({ games: 1, date: '2026-09-27' });
+  assert.equal(S.dueToFile(TODAY), true, 'a past day with bench mode closed is due');
+
+  const real = globalThis.document.querySelector;
+  globalThis.document.querySelector = sel => (sel === '#gamemode' ? { hidden: false } : real(sel));
+  try {
+    assert.equal(S.dueToFile(TODAY), false, 'bench mode open holds off filing even though the day is past');
+  } finally {
+    globalThis.document.querySelector = real;
+  }
+
+  setup({ games: 1, date: '2026-09-28' });
+  assert.equal(S.dueToFile(TODAY), false, "today's own day is not due");
 });
 
 /* ---- fileIfPast: the entry point ---- */

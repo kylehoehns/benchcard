@@ -1,4 +1,4 @@
-import { evalIn } from './dom.mjs';
+import { evalIn, step } from './dom.mjs';
 import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
 import { nameOf } from './registry.mjs';
 
@@ -17,9 +17,32 @@ const PAST_DAY = {
   teams: [{ ...RICH.teams[0], day: { ...RICH.teams[0].day, date: '2024-01-06' } }],
 };
 
+/* #100 review, finding 2: the same day, dated so far in the future
+   (2099-12-31, safely past this app's lifetime, never past-dated on any
+   clock this check will ever run under) that it can never file. Loading it
+   puts the SAME day and season content that PAST_DAY carries through
+   `sanitizeTeam` -- the app's own migration/normalization, which adds
+   fields raw fixture data does not have (`constraints`, `live`, and so on)
+   -- without ever running filing, so its saved record is the "before"
+   shape Undo has to restore, produced by the app itself rather than
+   retyped by hand. Only `day.date` differs from PAST_DAY on purpose: that
+   field is asserted against the literal '2024-01-06' below instead, since
+   this fixture's own date is the one field that is NOT what filing should
+   restore. */
+const NEVER_DAY = {
+  ...RICH,
+  teams: [{ ...RICH.teams[0], day: { ...RICH.teams[0].day, date: '2099-12-31' } }],
+};
+
 export async function datedDayPass(c, origin) {
   const problems = [];
   try {
+    await reloadWithRecord(c, origin, { ...NEVER_DAY, view: 'today' });
+    const before = JSON.parse(await evalIn(c, `JSON.stringify({
+      day: JSON.parse(localStorage.getItem('benchcard.v6')).teams[0].day,
+      seasonGames: JSON.parse(localStorage.getItem('benchcard.v6')).teams[0].season.games,
+    })`));
+
     await reloadWithRecord(c, origin, { ...PAST_DAY, view: 'today' });
 
     const after = JSON.parse(await evalIn(c, `JSON.stringify({
@@ -55,6 +78,37 @@ export async function datedDayPass(c, origin) {
     } else if (after.toastText !== 'Sat, Jan 6: 2 games saved to the season.') {
       problems.push(`the filing toast reads "${after.toastText}", want "Sat, Jan 6: 2 games saved to the season."`);
     }
+
+    /* #100 review, finding 2: Undo has to put the day AND the season back
+       exactly as they were before filing -- not just show a plausible
+       screen. Tap the toast's own Undo control (the same selector
+       `today-keys-and-undo.mjs` uses), then read the saved record and
+       Today itself, and compare against `before`, captured above from the
+       identical day and season content before anything filed. */
+    await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+
+    const undone = JSON.parse(await evalIn(c, `JSON.stringify({
+      gamesOnToday: document.querySelectorAll('.today-game').length,
+      gameLabels: [...document.querySelectorAll('.today-game')].map(n => n.textContent),
+      record: JSON.parse(localStorage.getItem('benchcard.v6')),
+    })`));
+    const u0 = undone.record?.teams?.[0];
+
+    if (undone.gamesOnToday !== 2) {
+      problems.push(`Undo: Today shows ${undone.gamesOnToday} game(s), want 2 (Hawks and Ravens, restored)`);
+    }
+    if (!u0 || u0.day.date !== '2024-01-06') {
+      problems.push(`Undo: the day's date reads "${u0 && u0.day.date}", want "2024-01-06" (the filed day, restored)`);
+    }
+    if (!u0 || u0.day.name !== before.day.name) {
+      problems.push(`Undo: the day's name reads "${u0 && u0.day.name}", want "${before.day.name}" (the day before it filed)`);
+    }
+    if (!u0 || JSON.stringify(u0.day.games) !== JSON.stringify(before.day.games)) {
+      problems.push('Undo: the day\'s games do not match what was there before filing (Hawks and Ravens, unfiled)');
+    }
+    if (!u0 || JSON.stringify(u0.season.games) !== JSON.stringify(before.seasonGames)) {
+      problems.push('Undo: the season\'s games do not match what was there before filing (RICH\'s 3, not the 2 Hawks/Ravens filed)');
+    }
   } catch (e) {
     problems.push(`threw: ${e.message}`);
   }
@@ -67,6 +121,7 @@ export async function datedDayPass(c, origin) {
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
       : 'no #todayNewDay on Today; a past-dated day files itself on boot, shows the Undo toast '
-        + 'with the right date and count, and Today opens on a fresh day',
+        + 'with the right date and count, Today opens on a fresh day, and tapping Undo restores '
+        + 'the day and the season exactly as they were before filing',
   };
 }

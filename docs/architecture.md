@@ -27,7 +27,7 @@ Everything below is relative to `app/`.
 - `icons.js` — Lucide path data, extracted at vendor time.
 - `fx.js` — animation vocabulary over the vendored Motion library.
 - `budget.js` — minute-budget allocation in stint slots. Pure.
-- `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game. Pure apart from `localStorage`.
+- `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100) and day migration (adding a `date` field to a day if absent). Pure apart from `localStorage`.
 - `dom.js` — forgiving DOM one-liners shared by the UI modules, plus the
   shared `ctx2d` canvas everything that sizes type by measurement uses.
 - `trap.js` — focus trap for the overlays, the `data-fk` focus/caret restore,
@@ -76,7 +76,10 @@ Everything below is relative to `app/`.
   the two reference sheets) and `toast.js` (undo, the tip jar, flash).
 - `app.js` / `index.html` — the entry point and the markup. `app.js` is now the
   wiring only: the controls no single module owns, and the boot block that
-  hands each module its callbacks.
+  hands each module its callbacks. The boot also runs `fileIfPast` (#100) after
+  the first render, and a `visibilitychange` listener runs it again when the app
+  returns to the foreground — unless bench mode is open, in which case it waits
+  until bench mode closes.
 - `tokens.css` / `app.css` / `card.css` — the styles, in that load order and
   for that reason. `tokens.css` is the palette, type, radii and easings plus
   the two theme blocks (dark mode is nothing but the second block — no
@@ -856,6 +859,12 @@ the moment a tab is hidden. `navigator.wakeLock` is feature-detected, never
 sniffed by platform (interface guideline D2, D5): where it is absent, or the
 request is rejected, this is a silent no-op — bench mode opens, steps and
 closes exactly as it did before, nothing shown and nothing logged.
+
+**Filing waits while bench mode is open (#100).** A game running past midnight
+must not be filed out from under the coach mid-stint. `fileIfPast` checks that
+bench mode is not open before filing; when it closes, the app immediately runs
+it again in case the day is now due. This keeps games from disappearing into the
+season while a coach is actively using them.
 
 **A part-played game says so in two places.** A reload closes bench mode —
 on iOS, switching to the clock or the scorebook app and coming back is often
