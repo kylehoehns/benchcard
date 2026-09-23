@@ -69,9 +69,16 @@ Decided while writing this spec (implementation, not user-facing trade-offs):
    A, C, B, D. Changing C's tip-off to `"08:00"` re-sorts to C, A, B, D, and the
    evening out of the games after it is re-planned against the new order (the
    plans for A under carryover differ before and after). Clearing A's tip-off
-   then gives C, B, D, A: a game that loses its time goes after the timed
-   games and after the untimed games already there (a stable sort of the
-   current array). The open game stays open across every re-sort.
+   then gives C, A, B, D: a game that loses its time goes after the timed
+   games and otherwise keeps its place (a stable sort of the current array).
+   The open game stays open across every re-sort.
+
+   *Corrected after the preview check.* The first draft of this item said
+   clearing A gives C, B, D, A, which contradicts the stable sort it names.
+   The stable sort is kept: a cleared game does not jump, which is the least
+   surprise for a coach. It is not strictly "the order they were added" once
+   a game has had a time and lost it, since nothing stores when a game was
+   added. Games that never had a time do stay in the order they were added.
 4. **Migration.** A v7 record (or backup restored through `restoreBackup`) with
    `when: "Sat 9:00"`, `when: "10:00"` or any other `when` loads with
    `tipoff: ""` and every other field of the game unchanged. A record with a

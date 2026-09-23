@@ -296,6 +296,29 @@ test('setTipoff treats a malformed value as absent, the same gate sanitize write
   });
 });
 
+/* #102 item 3 (corrected): C(08:00), A(09:00), B(''), D('') -- clearing A's
+ * tip-off gives C, A, B, D. A stable sort of the current array: a cleared
+ * game does not jump to the end, it keeps its place among the untimed
+ * games. */
+test('setTipoff clearing a tip-off keeps the game\'s place among the untimed ones (stable sort)', () => {
+  const C = S.newGame(0, null, FORMAT); C.tipoff = '08:00';
+  const A = S.newGame(1, null, FORMAT); A.tipoff = '09:00';
+  const B = S.newGame(2, null, FORMAT); B.tipoff = '';
+  const D = S.newGame(3, null, FORMAT); D.tipoff = '';
+  withDays(SIX, [
+    { name: '', date: '2026-09-26', games: [C, A, B, D] },
+  ], FORMAT, () => {
+    S.state.activeDay = 0;
+    S.state.activeGame = 1; // A is open
+    S.setTipoff('');
+    assert.deepEqual(S.team().days[0].games, [C, A, B, D],
+      'A loses its time but keeps its place ahead of B and D');
+    assert.equal(S.team().days[0].games[S.state.activeGame], A,
+      'the open game is still A across the re-sort');
+    assert.equal(A.tipoff, '');
+  });
+});
+
 /* #102 item 3: changing a tip-off through `setTipoff` re-sorts a carryover
  * day, and the games after the moved game are re-planned against the new
  * order -- not just re-labelled. The proof table's own words for this row:
