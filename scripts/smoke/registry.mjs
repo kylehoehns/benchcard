@@ -159,6 +159,11 @@ export const ROWS = Object.freeze([
   // its own date, with the Undo toast shown -- see dated-day.mjs.
   { id: 'dateddayfiling', name: 'a past-dated day files itself on boot, no "New day"', selectable: true, setup: 'rich' },
   { id: 'gamepasses', name: 'game passes', selectable: true, setup: 'rich' },
+  // #92's own guard (see docs/specs/92-underway-status.md's Proof section):
+  // a part-played game's Today card and game-screen sub line both read
+  // "Underway" with an --accent dot, while the fixture's other cards keep
+  // Planned/Needs a fix -- see pass-underway.mjs.
+  { id: 'passunderway', name: 'a part-played game reads Underway on Today and the game screen', selectable: true, setup: 'rich' },
   // #101's own guard (Proof row 5): a three-day fixture (2/1/3 games, a
   // 40-char day name) -- headings stack in order, the large title opens the
   // team menu, #backBtn names the team, adding a game for tomorrow lands as

@@ -26,6 +26,16 @@ export function resumeAt(p = plans[state.activeGame], g = game()) {
   return { at, where: `${row.periodName || 'Q' + row.period} ${fmtClock(row.startSec)}` };
 }
 
+/* #92, "What would settle it" item 1: the one place that decides a game
+   pass's status word and dot class. "Underway" is exactly `resumeAt`'s own
+   answer -- not a second check of `live.at` or the stint count, which
+   `resumeAt` already owns (see its own comment above). */
+export function passStatus(p, g) {
+  if (resumeAt(p ?? null, g) !== null) return { word: 'Underway', cls: 'now' };
+  if (p && p.ok) return { word: 'Planned', cls: 'ok' };
+  return { word: 'Needs a fix', cls: 'warn' };
+}
+
 /* #34 decision 5, widened by #101 item 8: which part-played game the
    floating resume bar offers, across every day the team holds, not only the
    one currently open. Walks days from the END of `team().days` -- the latest

@@ -764,11 +764,12 @@ Mobile specifics that came out of real use:
 
 - **Today's games are game passes (#26).** A coach opening the app on a
   tournament morning sees them stacked in tip-off order (#102): each shows when it tips off, the
-  opponent, whether the plan is ready (Planned, green) or blocked (Needs a fix,
-  amber), a small picture of who plays when and for how long (one row per
-  available player, `aria-hidden` since it is not a roster list), and a line of
-  setup — player count, strategy, any rules, and whether it evens out later
-  games. A blocked plan has no picture. Tapping opens the game screen.
+  opponent, and the game's status (#92): Underway (accent) if the game is part-played, Planned
+  (green) if the plan is ready, or Needs a fix (amber) if the plan is blocked. Each pass shows
+  a small picture of who plays when and for how long (one row per available player,
+  `aria-hidden` since it is not a roster list), and a line of setup — player count, strategy,
+  any rules, and whether it evens out later games. A blocked plan has no picture. Tapping opens
+  the game screen.
   Each pass is a card: neutral surface with 20px radius, no border, with 0.75rem
   gap between them (#69). The status color is shown as a dot only, not the text
   color. Tip-off time, opponent name, and summary are sized from the type scale:

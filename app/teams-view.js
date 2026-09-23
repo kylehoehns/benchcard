@@ -27,7 +27,7 @@ import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in card.js (state.js cannot import it
 // back), and this is the one place it is called from -- both the paint and
 // the tap. No cycle: gamemode.js does not import teams-view.js.
-import { resumeBarAt } from './card.js';
+import { resumeBarAt, passStatus } from './card.js';
 /* #35 decision 8. Two pure predicates -- no DOM, no state, just `(view, wide)`
    -- so this is a value import, not the behavior injection `renderAll` and
    `setView` get above. render.js imports this file, so the graph does close
@@ -458,18 +458,20 @@ function removeTeam() {
  * (item 8): the mini rotation is `aria-hidden`, and its accessible name is
  * set with `aria-label` instead of read off the visible text.
  */
-// The pass's own status word and dot (`.pass-status`): "Planned"/ok or
-// "Needs a fix"/warn, read straight off `plans[i].ok` -- never re-derived.
-// `renderPass` (the mini pass on Today) and `renderTabs`'s game-screen sub
-// line (#69 decision 5) both show it, so it is one function, not two copies
-// of the same class string and label.
-function passStatusEl(ok) {
-  return el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix');
+// The pass's own status word and dot (`.pass-status`): Underway/now,
+// Planned/ok or Needs a fix/warn -- `passStatus` (card.js) is the one place
+// that decides which, read straight off its `{ word, cls }` result rather
+// than re-derived here. `renderPass` (the mini pass on Today) and
+// `renderTabs`'s game-screen sub line (#69 decision 5) both show it, so it
+// is one function, not two copies of the same class string and label.
+function passStatusEl(s) {
+  return el('span', 'pass-status ' + s.cls, s.word);
 }
 
 function renderPass(g, i, d) {
   const p = dayPlans[d][i];
-  const ok = !!(p && p.ok);
+  const status = passStatus(p ?? null, g);
+  const hasPlan = !!(p && p.ok);
   const full = gameLabel(g, i);
   const when = tipoffLabel(g.tipoff);
 
@@ -477,14 +479,14 @@ function renderPass(g, i, d) {
 
   const top = el('div', 'pass-top');
   if (when) top.append(el('span', 'pass-when', when));
-  top.append(passStatusEl(ok));
+  top.append(passStatusEl(status));
   b.append(top);
 
   b.append(el('span', 'pass-title', full));
 
   // Decision 4: a blocked plan has no stints to draw, so there is no mini
   // rotation for it -- not an empty one.
-  if (ok) {
+  if (hasPlan) {
     const rot = el('div', 'pass-rot');
     rot.setAttribute('aria-hidden', 'true');
     for (const { id, blocks } of passBlocks(g, p)) {
@@ -497,7 +499,7 @@ function renderPass(g, i, d) {
 
   b.append(el('span', 'pass-summary', passSummary(g, i)));
 
-  const statusWord = ok ? 'planned' : 'needs a fix';
+  const statusWord = status.word.toLowerCase();
   b.setAttribute('aria-label', when ? `${full}, ${when}, ${statusWord}` : `${full}, ${statusWord}`);
   b.onclick = () => { openGame(d, i); setView('games'); };
   return b;
@@ -558,7 +560,7 @@ export function renderTabs() {
       // right here rather than only back on Today.
       gs.append(dayHeading(state.day) + ' · ');
       if (g.tipoff) gs.append(tipoffLabel(g.tipoff) + ' · ');
-      gs.append(passStatusEl(!!(plans[i] && plans[i].ok)));
+      gs.append(passStatusEl(passStatus(plans[i] ?? null, g)));
     }
   }
 
