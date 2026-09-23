@@ -26,6 +26,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { flat } from './prose.js';
 
 const ROOT = new URL('../', import.meta.url);
 const read = f => readFileSync(new URL(f, ROOT), 'utf8');
@@ -54,8 +55,8 @@ const DOCS = ['AGENTS.md', 'CLAUDE.md', 'REVIEW.md', 'README.md',
  * AGENTS.md wraps it across two lines -- the doc was right and the guard was
  * wrong, which is the failure mode /new-guard step 1 exists to catch. A marker
  * that happens not to wrap today would start lying the moment someone reflowed
- * a paragraph. */
-const flat = s => s.replace(/\s+/g, ' ');
+ * a paragraph. `flat` is `test/prose.js`'s -- the one flattener in this repo,
+ * not a second copy of it. */
 const text = Object.fromEntries(DOCS.map(f => [f, flat(read(f))]));
 const raw = Object.fromEntries(DOCS.map(f => [f, read(f)]));
 

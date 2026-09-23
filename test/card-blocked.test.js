@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { functionBody } from './js-comments.js';
+import { lacks } from './prose.js';
 
 /* card.js reaches through a live DOM the way timeline.js does (fitPreview,
    canvas measurement) -- test/timeline-name-button.test.js's own comment
@@ -21,7 +22,7 @@ test('cardPreviewInto reads BLOCKED_TITLE, not its own copy of the literal', () 
   const body = functionBody(src, 'cardPreviewInto');
   assert.match(body, /\bBLOCKED_TITLE\b/,
     'cardPreviewInto must read BLOCKED_TITLE (state.js), not a wording fixed here');
-  assert.doesNotMatch(body, /This plan can't be built/,
+  assert.ok(lacks(body, /This plan can't be built/),
     'the literal must not still be typed out in cardPreviewInto');
 });
 

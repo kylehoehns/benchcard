@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { stripComments, functionBody } from './js-comments.js';
+import { lacks } from './prose.js';
 
 /* ================================================================== *
  * team settings — v6
@@ -271,11 +272,11 @@ test('the plan says which reason is actually deciding it', () => {
 
   const flat = uneven();
   assert.match(say(), /ahead|rotates/, 'the default stance talks about the season or the day');
-  assert.doesNotMatch(say(), /rotation levels/);
+  assert.ok(lacks(say(), /rotation levels/));
 
   flat.settings.tieBreak = 'levels';
   S.computeAll();
-  assert.doesNotMatch(say(), /rotation levels/,
+  assert.ok(lacks(say(), /rotation levels/),
     'levels that are all the same decided nothing, so they get no credit');
 
   const tiered = uneven([5, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1]);

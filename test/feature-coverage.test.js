@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FEATURES, KEEP, SURFACES, read, covered, termsFor, normalise, shipped, chunksOf, textOf }
   from '../scripts/feature-keys.mjs';
+import { lacks } from './prose.js';
 
 /* The two reference surfaces have to name the same features (A20 slice 1).
  *
@@ -124,16 +125,16 @@ test('the surfaces are the ones this test means, and comments are not text', () 
   const about = textOf(read('about.html'));
 
   assert.ok(help.includes('how it works'), '#help should be sliced from its own title');
-  assert.ok(!help.includes('keyboard shortcuts'), 'the #help slice should stop before #keys');
+  assert.ok(lacks(help, 'keyboard shortcuts'), 'the #help slice should stop before #keys');
   assert.ok(help.length > 3000, `#help reads as ${help.length} chars -- the slice has collapsed`);
   assert.ok(about.length > 8000, `about.html reads as ${about.length} chars`);
 
   /* Both of these sentences exist ONLY inside an HTML comment. If either shows
    * up, every check above can be satisfied by a note to the next developer
    * instead of by a word a coach reads. */
-  assert.ok(!help.includes('static markup on purpose'),
+  assert.ok(lacks(help, 'static markup on purpose'),
     'a comment in #help is being read as page text');
-  assert.ok(!about.includes('deliberately not in the list above'),
+  assert.ok(lacks(about, 'deliberately not in the list above'),
     'a comment in about.html is being read as page text');
 
   /* The third surface, added with the page in A20 slice 2. Same two questions:
@@ -143,7 +144,7 @@ test('the surfaces are the ones this test means, and comments are not text', () 
   assert.ok(advanced.length > 6000, `advanced.html reads as ${advanced.length} chars`);
   assert.ok(advanced.includes('the four ways to split a game'),
     'advanced.html should be read whole, headings included');
-  assert.ok(!advanced.includes('there is no new raster asset on this page'),
+  assert.ok(lacks(advanced, 'there is no new raster asset on this page'),
     'a comment in advanced.html is being read as page text');
 
   /* And the chunk reader really does isolate a name from the sentence it sits

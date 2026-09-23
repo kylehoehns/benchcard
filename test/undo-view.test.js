@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { lacks } from './prose.js';
 
 /* Undo puts the record back; it has to put the *screen* back too.
  *
@@ -68,8 +69,8 @@ test('the remove-team confirm is made of whole sentences', () => {
   const fn = teams.slice(teams.indexOf('function removeTeam'), teams.indexOf("verb: 'Remove team'"));
   // an empty team gets a sentence of its own, not a phrase in front of one
   assert.match(fn, /'There are no players yet, but every game for this team goes with it\.'/);
-  assert.doesNotMatch(fn, /'no players yet'/);
+  assert.ok(lacks(fn, /'no players yet'/));
   // and the last-team tail is appended as a sentence, not glued on with a comma
-  assert.doesNotMatch(fn, /go with it, and Benchcard/);
+  assert.ok(lacks(fn, /go with it, and Benchcard/));
   assert.match(fn, /' Benchcard goes back to the start\./);
 });

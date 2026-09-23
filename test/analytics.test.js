@@ -192,6 +192,28 @@ const ABSOLUTE = [
   'no data (?:is )?(?:ever )?(?:sent|uploaded|leaves)',
 ].map(claim);
 
+/* #14. `claim()`'s `\s+` rewrite is what lets the four patterns above survive
+   a line wrap; without it a phrase like #help's real one -- wrapped between
+   "this" and "device" for months -- would slip straight past the two tests
+   below. Pin that directly: one sample per pattern, each wrapped across a
+   newline and indented the way this repo actually wraps markup (see
+   about.html's own trust paragraph). Remove the `\s+` rewrite from `claim()`
+   and this test goes red. */
+test('every ABSOLUTE pattern still matches its claim wrapped across a line, indented', () => {
+  const WRAPPED_SAMPLES = [
+    'Nothing\n        is uploaded.',
+    'Nothing ever leaves\n        your device.',
+    'Everything stays on\n        this device.',
+    'No data is ever\n        sent.',
+  ];
+  assert.equal(WRAPPED_SAMPLES.length, ABSOLUTE.length,
+    'one wrapped sample per ABSOLUTE pattern, or this pin is not testing all four');
+  ABSOLUTE.forEach((re, i) => {
+    assert.match(WRAPPED_SAMPLES[i], re,
+      `pattern ${i} (${re}) did not match its own wrapped sample -- the \\s+ rewrite stopped working`);
+  });
+});
+
 test('no user-facing copy makes an absolute "nothing leaves this device" claim', () => {
   /* EVERY served HTML file, not the two this started with. The six generated
      roster-size chart pages carry the same trust line as the app, and for

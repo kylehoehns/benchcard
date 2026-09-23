@@ -24,6 +24,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { lacks } from './prose.js';
 /* Proof 2's seam is the same ticket's, so it lives in the same file: the two
  * predicates, imported and called. Everything below the guards is a behavior
  * test -- real functions, real arguments, no source text.
@@ -207,7 +208,7 @@ test('the three action-bar gates read max-width: 839px, not 900px', () => {
       `no 839px gate carries ${anchor} (${what}) -- it is still on the old boundary, so between `
       + '840 and 899px the coach would see both Start-game controls at once');
   }
-  assert.ok(!css.includes('@media (max-width: 900px)'),
+  assert.ok(lacks(css, '@media (max-width: 900px)'),
     'a "@media (max-width: 900px)" gate is still in app.css -- all three move to 839px so they pair with min-width: 840px');
 });
 

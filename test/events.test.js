@@ -5,6 +5,7 @@ import { EVENTS } from '../app/analytics.js';
 import {
   CAVEATS, buildSql, comments, layout, question, questions, report, summarize, widths,
 } from '../scripts/events.mjs';
+import { lacks } from './prose.js';
 
 /* `scripts/events.mjs` reads counters written by a Worker that cannot run from
  * here, over an API no machine in this repo has ever had a token for. So the
@@ -98,7 +99,7 @@ test('the first string column is blob3, because blob1 is the event and blob2 the
   const sql = buildSql(30);
   assert.match(sql, /blob1 AS event/);
   assert.match(sql, /blob3 AS s1/);
-  assert.doesNotMatch(sql, /blob2 AS s1/);
+  assert.ok(lacks(sql, /blob2 AS s1/));
   assert.match(sql, /double1 AS n1/);
   assert.match(sql, /GROUP BY event, s1, n1/);
   assert.match(sql, /FORMAT JSONEachRow/);

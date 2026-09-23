@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { lacks } from './prose.js';
 
 const ROOT = new URL('../', import.meta.url);
 const SMOKE = new URL('scripts/smoke.mjs', ROOT).pathname;
@@ -97,7 +98,9 @@ test('the swept touch check is in the list; the single-viewport one is not', () 
   // the swept `touch targets ≥ 48px, 320–390px` is one of the 16.
   assert.ok(validNames.some(n => n.startsWith('touch targets ≥ 48px,')),
     'the swept touch row should be selectable');
-  assert.ok(!validNames.includes('touch targets ≥ 48px'),
+  // anchored, not a plain phrase: the swept name below legitimately contains
+  // this text as a prefix, and a substring lacks() would always see it
+  assert.ok(lacks(validNames.join('\n'), /^touch targets ≥ 48px$/m),
     'the single-viewport touch row is filtered from every full run and must not be a valid --only name');
 });
 
