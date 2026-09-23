@@ -17,6 +17,7 @@ export const WORDS = [
   ['organi' + 's', 'organiz'],
   ['recogni' + 's', 'recogniz'],
   ['licen' + 'ce', 'license'],
+  ['maxim' + 'is', 'maximiz'],
 ];
 
 /* A line carrying this marker is allowed to keep a British word, because it

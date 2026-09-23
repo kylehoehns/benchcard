@@ -105,7 +105,7 @@ function renderPairsGroup(c) {
     c.hardPairs = v; renderConstraints(); soon(...PLAN_ONLY);
   }));
   wrap.append(box);
-  wrap.append(el('p', 'pgrp-f', 'Left off, the plan maximises their shared floor time and reports it.'));
+  wrap.append(el('p', 'pgrp-f', 'Left off, the plan maximizes their shared floor time and reports it.'));
 }
 
 function renderDayGroup(g) {
