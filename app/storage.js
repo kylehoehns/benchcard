@@ -380,6 +380,22 @@ export const tipoffLabel = (hhmm, locale) => {
 };
 
 /**
+ * The printed card's top-right corner (#103): the day's short weekday and the
+ * game's tip-off, "Sat 9:00 AM" -- or just "Sat" when the game has no
+ * tip-off yet. Reuses `localDate` for the date (never `new Date('YYYY-MM-DD')`,
+ * which is UTC and reads a day early west of Greenwich) and `tipoffLabel` for
+ * the time, so there is exactly one place each is derived. `locale` is a
+ * parameter, same reason `tipoffLabel`'s is: `undefined` reads the phone's
+ * own, a test pins 'en-US'. Every day has a valid `date` (`sanitizeTeam`
+ * falls back to today), so an invalid one here only ever means a stub or a
+ * hand-edited record, not a real card.
+ */
+export const cornerLabel = (date, tipoff, locale) => {
+  const wd = localDate(date)?.toLocaleDateString(locale, { weekday: 'short' }) ?? '';
+  return [wd, tipoffLabel(tipoff, locale)].filter(Boolean).join(' ');
+};
+
+/**
  * Stable in-place sort of one day's games: timed games first, earliest tip-off
  * first (a plain string compare -- zero-padded "HH:MM" sorts correctly as
  * text), untimed games after in the order they already had. `Array#sort` is
