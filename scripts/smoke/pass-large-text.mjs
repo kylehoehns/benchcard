@@ -21,14 +21,13 @@
 import { evalIn, WIDTH, HEIGHT } from './dom.mjs';
 import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
 import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { GAME_SUMMARIES } from './game-passes.mjs';
 
-/* Ravens' full summary, from `game-passes.mjs`'s own `buildWant` (its `summary`
- * field for game 1, Ravens) -- never recomputed from `passSummary`, the way
- * `AGENTS.md`'s reuse rule asks. Written here as the one literal that string
- * already is, since `buildWant` needs a `tipoffs` array this check has no use
- * for and importing it just to throw that array away would be the heavier
- * copy, not the lighter one. */
-const RAVENS_SUMMARY = '11 players · even minutes · evens out the day · 2 rules';
+// Ravens' full summary, imported from `game-passes.mjs`'s own `GAME_SUMMARIES`
+// table (the one place that string is written down) -- never recomputed from
+// `passSummary`, the way `AGENTS.md`'s reuse rule asks, and never a second
+// copy of the literal either.
+const RAVENS_SUMMARY = GAME_SUMMARIES.Ravens;
 
 /* Every `.today-game` card's own measurements, read once per width/root pair
  * so both items below share one evaluate. `contentRight` is the card's own

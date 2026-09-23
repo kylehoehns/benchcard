@@ -108,9 +108,9 @@ rules outside the 19em block except `.pass-summary`'s `white-space`,
 - `app.css`, in the 19em block:
   `.pass-top { flex-wrap: wrap; }`,
   `.pass-when { white-space: nowrap; }`,
-  `.pass-title, .pass-summary { white-space: normal; overflow-wrap: anywhere; }`
-  (keeping `overflow: hidden` is fine once nothing overflows; drop the
-  ellipsis only if it matters to the measurement).
+  `.pass-title { white-space: normal; overflow-wrap: anywhere; }`. The
+  summary needs nothing here, since its base rule already wraps, and it is
+  built from short words, so it never needs a mid-word break.
 - A smoke check, `scripts/smoke/pass-large-text.mjs` (or a function added to
   `app-large-text.mjs` if that reads better), that loads `FOUR` at 320/32 and
   asserts item 1, then at 390/16 asserts item 2. It must go red on `main`

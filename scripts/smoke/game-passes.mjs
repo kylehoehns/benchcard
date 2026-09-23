@@ -24,6 +24,18 @@ const BASELINE_NODES = JSON.parse(
   readFileSync(new URL('../budgets.json', import.meta.url), 'utf8')
 ).initialPayload.nodes;
 
+// The FOUR fixture's own pass summaries, keyed by title -- the one place
+// this string set is written down. `buildWant` below reads it; anything else
+// in this file's smoke suite that needs one of these strings (`pass-large-
+// text.mjs`'s Ravens check) imports this table too rather than copying a
+// literal, so the two checks cannot drift apart.
+export const GAME_SUMMARIES = {
+  Panthers: '12 players · even minutes',
+  Ravens: '11 players · even minutes · evens out the day · 2 rules',
+  'Game 3': '12 players · a closing group',
+  Owls: '12 players · even minutes · 1 rule',
+};
+
 // One row per pass, from the spec's own table (items 2-6, 8) -- never read
 // back from `passSummary`/`passBlocks` themselves, which would only prove
 // those functions agree with themselves. `when`/`aria` are filled in from
@@ -32,16 +44,16 @@ const BASELINE_NODES = JSON.parse(
 // thing allowed to decide the AM/PM spacing an ICU version prints (#102).
 const buildWant = tipoffs => [
   { title: 'Panthers', when: tipoffs[0], status: 'Planned',
-    summary: '12 players · even minutes',
+    summary: GAME_SUMMARIES.Panthers,
     aria: `Panthers, ${tipoffs[0]}, planned`, rows: 12, rot: true },
   { title: 'Ravens', when: tipoffs[1], status: 'Planned',
-    summary: '11 players · even minutes · evens out the day · 2 rules',
+    summary: GAME_SUMMARIES.Ravens,
     aria: `Ravens, ${tipoffs[1]}, planned`, rows: 11, rot: true },
   { title: 'Game 3', when: tipoffs[2], status: 'Planned',
-    summary: '12 players · a closing group',
+    summary: GAME_SUMMARIES['Game 3'],
     aria: `Game 3, ${tipoffs[2]}, planned`, rows: 12, rot: true },
   { title: 'Owls', when: null, status: 'Needs a fix',
-    summary: '12 players · even minutes · 1 rule',
+    summary: GAME_SUMMARIES.Owls,
     aria: 'Owls, needs a fix', rows: 0, rot: false },
 ];
 
