@@ -77,23 +77,23 @@ not restated here, only listed, so there is still one answer per rule:
 | A dirty tree means another writer is here | reported at session start |
 
 `guard-edit.sh` and `after-edit.sh` are wired to the file tools
-(`.claude/settings.json`'s matcher) and never fire on a shell write. A shell
-write skips those two hooks. What catches it instead:
+(`.claude/settings.json`'s matcher) and never fire on a shell write. What
+catches it instead:
 
-- `app/vendor/**`: the `vendor drift` workflow, which re-runs `fetch.sh` on
-  any push or PR that touches it and fails on a byte of difference.
+- `app/vendor/**`: the `vendor drift` workflow.
 - the six chart pages: `test/charts.test.js`.
 - a precache bump missed: `test/sw.test.js`'s `SHELL` digest, and
   `scripts/check-sw-version.mjs` in CI.
 - a British spelling: `test/spelling.test.js`.
 - `scripts/budgets.json`: nothing. Review is the only check.
 
-`test/hooks.test.js` asserts all of it in both directions and runs in
-`npm test`, because a guard nobody guards is a guard nobody should trust. The
-ALLOW cases in it are real commands out of this repo's history and are as load
-bearing as the DENY ones: a hook that ate `grep -n update-budgets` would be
-switched off within a day, and a switched-off hook is worse than none, because
-the prose was deleted on the strength of it.
+`test/hooks.test.js` asserts every row of the enforcement table above in both
+directions and runs in `npm test`, because a guard nobody guards is a guard
+nobody should trust. The ALLOW cases in it are real commands out of this
+repo's history and are as load bearing as the DENY ones: a hook that ate
+`grep -n update-budgets` would be switched off within a day, and a
+switched-off hook is worse than none, because the prose was deleted on the
+strength of it.
 
 Procedures live in `.claude/skills/` rather than here, because they are
 sequences you follow rather than facts you need loaded at all times:

@@ -63,8 +63,9 @@ constraints and the repo's docs, so none is the owner's to decide:
    for the chart pages, `test/sw.test.js` and `check-sw-version.mjs` for the
    precache bump, `test/spelling.test.js` for spelling, and nothing for
    `scripts/budgets.json`, which says review is the only check.
-3. The sentence under the table that says `test/hooks.test.js` "asserts all
-   of it" stays true: it asserts the hooks, not that the hooks see every write.
+3. The sentence under the table about what `test/hooks.test.js` asserts stays
+   true, and says it asserts the table's rows, not the list beside it. (It was
+   "asserts all of it"; review found the new list made "it" ambiguous.)
 4. A new test in `test/hooks.test.js` reads each hook's matcher from
    `.claude/settings.json`. For `guard-edit.sh` and `after-edit.sh`, while
    the matcher has no `Bash`, the `AGENTS.md` table rows naming that hook
@@ -113,7 +114,7 @@ Must not change: any file in `.claude/hooks/`, `.claude/settings.json`,
 | --- | --- | --- |
 | the new settings-to-table test, with its red arms reported by hand | `node --test test/hooks.test.js` | 1, 4 |
 | existing hook ALLOW/DENY cases and evals | `npm test` | 5 |
-| the doc guards (`one-answer`, `sdlc`) over the edited `AGENTS.md` | `npm test` | 2, 3 |
+| review of the edited `AGENTS.md` — no guard reads the enforcement table's prose | review, not a test | 2, 3 |
 
 ## Out of scope
 

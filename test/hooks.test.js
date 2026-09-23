@@ -209,10 +209,9 @@ test('a file at the limit, a missing file and a large binary are all allowed', (
 });
 
 test('settings.json wires guard-read.sh to Read', () => {
-  const pre = JSON.parse(readFileSync(new URL('.claude/settings.json', ROOT), 'utf8')).hooks.PreToolUse;
-  const wired = pre.filter(h => h.hooks.some(x => x.command.endsWith('/guard-read.sh')));
-  assert.equal(wired.length, 1, 'guard-read.sh is not wired, so it guards nothing');
-  assert.equal(wired[0].matcher, 'Read');
+  const matchers = matchersFor('guard-read.sh');
+  assert.equal(matchers.length, 1, 'guard-read.sh is not wired, so it guards nothing');
+  assert.equal(matchers[0], 'Read');
 });
 
 /* ---------- after-edit: advisory, never blocking ---------- */
