@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { lacks } from './prose.js';
 
 /* ================================================================== *
  * the day ends, and its games become the season
@@ -391,7 +392,7 @@ test('the coach is told the season set the minutes, not their own hand', () => {
   const info = S.plans[0].issues.find(i => i.code === 'TARGETS_ACTIVE');
   assert.ok(info, 'the solver still reports that targets are in play');
   assert.match(info.message, /season/i);
-  assert.doesNotMatch(info.message, /set by hand for every player/,
+  assert.ok(lacks(info.message, /set by hand for every player/),
     'they were not set by hand -- a number that moved with a wrong reason beside it is worse than none');
 });
 

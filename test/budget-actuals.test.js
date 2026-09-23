@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { lacks } from './prose.js';
 
 /* The minutes budget used to state a number it could not keep.
  *
@@ -53,12 +54,12 @@ test('the lock button promises what it now delivers', () => {
      The lock is real now: excluded from the proportional share of spare
      minutes, and a minute off a locked target costs the same as breaking a
      floor or a cap. So the label may say so. */
-  assert.ok(!strategy.includes('Hold this number when evening out'),
+  assert.ok(lacks(strategy, 'Hold this number when evening out'),
     'the narrower promise no longer describes what the lock does');
   assert.match(strategy, /Hold this number exactly/);
 });
 
 test('the strategy blurb no longer claims the budget always adds up', () => {
-  assert.ok(!state.includes('The budget always adds up'),
+  assert.ok(lacks(state, 'The budget always adds up'),
     'the coach can leave it short -- that is the whole bug');
 });

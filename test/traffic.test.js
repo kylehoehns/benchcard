@@ -5,6 +5,7 @@ import {
   eventTotals, onboardings, report, silentCountries, stamp, verdict, zoneDays,
 } from '../scripts/traffic.mjs';
 import { fail, graphqlQuery, parseRows, readToken, sqlQuery, windowDays } from '../scripts/cf.mjs';
+import { lacks } from './prose.js';
 
 /* `scripts/traffic.mjs` answers one question — has anyone but me used this —
  * against two APIs neither CI nor a laptop without a token can reach. So every
@@ -49,14 +50,14 @@ test('the onboarding query returns rows, not a count -- the whole point of the s
   const sql = buildOnboardingSql(30);
   assert.match(sql, /SELECT timestamp,/);
   assert.match(sql, /ORDER BY timestamp ASC/);
-  assert.doesNotMatch(sql, /GROUP BY/); // an aggregate here would hide the timestamps
+  assert.ok(lacks(sql, /GROUP BY/)); // an aggregate here would hide the timestamps
   assert.doesNotMatch(sql, /count\(\)/);
 });
 
 test('the events query weights by sample interval rather than counting rows', () => {
   const sql = buildEventsSql(30);
   assert.match(sql, /sum\(_sample_interval\) AS est/);
-  assert.doesNotMatch(sql, /count\(\) AS est/);
+  assert.ok(lacks(sql, /count\(\) AS est/));
   assert.match(sql, /FROM benchcard_events/);
   assert.match(sql, /GROUP BY event, country/);
 });
@@ -158,7 +159,7 @@ test('the verdict counts onboardings and refuses to say which were you', () => {
   assert.match(v, /1 onboarding in this window/);
   assert.match(v, /does not guess which were you/);
   // It describes; it never concludes that a row is or is not the user.
-  assert.doesNotMatch(v, /that was you|this is you|nobody has used/i);
+  assert.ok(lacks(v, /that was you|this is you|nobody has used/i));
 });
 
 test('an onboarding from outside the home country is called out as the place to start', () => {
@@ -224,7 +225,7 @@ test('no zone line ever shows uniques without the countries beside them', () => 
 test('the header carries the window it was asked for, not the zone rows', () => {
   const out = report({ window: 7, runs: [], events: [], zone: zoneDays(ZONE_DATA), silent: [] });
   assert.match(out, /\(last 7 days\)/);
-  assert.doesNotMatch(out, /\[object Object\]/);
+  assert.ok(lacks(out, /\[object Object\]/));
 });
 
 test('an empty window renders rather than throwing', () => {

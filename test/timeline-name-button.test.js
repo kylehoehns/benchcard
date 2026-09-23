@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { functionBody } from './js-comments.js';
+import { lacks } from './prose.js';
 
 /* #72: the row itself stopped being the control -- a player's name is now a
    real `<button type="button" class="tl-name">`, so Enter/Space/click all
@@ -56,11 +57,11 @@ test('the blocked heading reads BLOCKED_TITLE and reads the reason from blockedF
   const empty = functionBody(src, 'timelineEmpty');
   assert.match(empty, /\bBLOCKED_TITLE\b/,
     'the blocked heading must read BLOCKED_TITLE (state.js), not a wording fixed here');
-  assert.doesNotMatch(empty, /This plan can't be built/,
+  assert.ok(lacks(empty, /This plan can't be built/),
     'the literal must not still be typed out in timelineEmpty');
   assert.match(empty, /\bblockedFix\(/,
     'the reason must come from blockedFix, not a wording fixed here');
-  assert.doesNotMatch(empty, /No rotation yet\. Resolve the errors (above|below)\./,
+  assert.ok(lacks(empty, /No rotation yet\. Resolve the errors (above|below)\./),
     'the old fixed wording must not still be present');
 });
 

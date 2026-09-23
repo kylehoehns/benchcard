@@ -277,6 +277,9 @@ reason before the code exists is its proof that it can.
   cite device measurements no machine here could have taken; a claim about
   `feature-keys.mjs` was relayed through two iterations before someone ran it
   and found it false. Scan whole files — a window of source is not a scope.
+  A phrase search also misses a phrase that wraps, and this repo wraps prose
+  at ~78 columns: flatten first, or write the pattern with `\s+`, before a
+  miss counts as an answer. `test/prose.js`'s `lacks` does this for tests.
 
 ## Rules
 
