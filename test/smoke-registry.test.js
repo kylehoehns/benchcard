@@ -52,6 +52,12 @@ assert.ok(SMOKE_FILES.length >= 30,
   `expected at least 30 .mjs files under scripts/smoke/, found ${SMOKE_FILES.length} — ` +
   'a guard that measured nothing must fail, not pass');
 
+// One path -> source map, read once, that every test below shares. Before
+// this, offendersMatching's two callers and the ...Pass scan each re-read
+// every file under scripts/smoke/ from disk, up to four reads per file for a
+// single `npm test` run.
+const fileSrc = new Map(SMOKE_FILES.map(f => [relative(SMOKE_DIR, f), readFileSync(f, 'utf8')]));
+
 /* ---------- item 1: smoke.mjs's own imports ---------- */
 
 const smokeSrc = readFileSync(SMOKE_ENTRY, 'utf8');
@@ -92,14 +98,13 @@ test('scripts/smoke.mjs carries no RUN map, no safeCheck, no hand-named reshuffl
 
 const REGISTRY_IMPORT_ALLOWED = new Set(['registry.mjs', 'card-at-32.mjs']);
 
-// Both tests below walk the same files with the same allow-list, differing
-// only in the pattern that makes a file an offender — one loop, not two.
+// Both tests below walk the same map with the same allow-list, differing
+// only in the pattern that makes a file an offender — one loop, not two, and
+// no re-read of any file (fileSrc was built once, above).
 function offendersMatching(pattern) {
   const offenders = [];
-  for (const file of SMOKE_FILES) {
-    const base = relative(SMOKE_DIR, file);
+  for (const [base, src] of fileSrc.entries()) {
     if (REGISTRY_IMPORT_ALLOWED.has(base)) continue;
-    const src = readFileSync(file, 'utf8');
     if (pattern.test(src)) offenders.push(base);
   }
   return offenders;
@@ -124,9 +129,7 @@ test('no check module under scripts/smoke/ calls nameOf', () => {
 
 test('every exported ...Pass function is the run of exactly one registry row, except card-at-32.mjs\'s own exception', async () => {
   const found = [];
-  for (const file of SMOKE_FILES) {
-    const base = relative(SMOKE_DIR, file);
-    const src = readFileSync(file, 'utf8');
+  for (const [base, src] of fileSrc.entries()) {
     for (const m of src.matchAll(/export\s+(?:async\s+)?function\s+(\w+Pass)\s*\(/g)) {
       found.push({ name: m[1], file: base });
     }
@@ -146,26 +149,60 @@ test('every exported ...Pass function is the run of exactly one registry row, ex
   assert.ok(runSources.length >= 30,
     `only ${runSources.length} row(s) in ROWS carry a run — expected the bulk of the registry to`);
 
+  const inRegistryCount = name => runSources.filter(src => src.includes(`${name}(`)).length;
+
   // A ...Pass function can also be a helper another check's own module calls
   // rather than a row of its own — `plan-closes.mjs`'s `planClosePass` runs
   // inside `planSheetPass`'s try block, sharing its `ck`, because #73 split it
   // out of `plan-sheet.mjs` when that file reached the size ceiling. So a
   // function counts as wired if it is EITHER exactly one registry row's run,
-  // OR called from exactly one other module's own source (never its own
-  // declaring file, which always "contains" its own declaration).
-  const fileSrc = new Map(SMOKE_FILES.map(f => [relative(SMOKE_DIR, f), readFileSync(f, 'utf8')]));
+  // OR reachable from exactly one OTHER `...Pass` function that is itself
+  // reachable this way — checked to a fixed point, not just one hop.
+  //
+  // A single hop ("called from exactly one other module's source") is not
+  // enough: it is not transitive, so two ...Pass functions that mention only
+  // each other (neither ever reached from a registry row) would each read as
+  // "called from exactly one other module" and both pass, though neither is
+  // wired into anything a full run executes. It is also not selective about
+  // WHO is doing the calling: any other file's source counts, including a
+  // module with no ...Pass export of its own, so a stray comment mentioning a
+  // removed row's function name (e.g. `wakeLockPass(` typed in a neighboring
+  // module's comment after `wakelock` was dropped from ROWS) would pass too.
+  // Seeding the reachable set from the registry and only ever accepting a new
+  // member on account of an ALREADY-reachable ...Pass function's own source
+  // closes both holes: an orphaned pair never bootstraps itself into
+  // reachability, and a comment in a module that exports no ...Pass function
+  // at all is never treated as a caller.
+  const key = p => `${p.name}\u0000${p.file}`;
+  const reachable = new Map(rows.map(p => [key(p), inRegistryCount(p.name) === 1]));
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const p of rows) {
+      const k = key(p);
+      if (reachable.get(k)) continue;
+      if (inRegistryCount(p.name) !== 0) continue; // 0 registry rows is the only case a caller can rescue
+      const callers = rows.filter(q => key(q) !== k && reachable.get(key(q)) &&
+        fileSrc.get(q.file).includes(`${p.name}(`));
+      if (callers.length === 1) {
+        reachable.set(k, true);
+        changed = true;
+      }
+    }
+  }
+
   for (const p of rows) {
-    const inRegistry = runSources.filter(src => src.includes(`${p.name}(`)).length;
+    const inRegistry = inRegistryCount(p.name);
     if (inRegistry === 1) continue;
-    const calledByOthers = [...fileSrc.entries()]
-      .filter(([file]) => file !== p.file)
-      .filter(([, src]) => src.includes(`${p.name}(`));
-    if (inRegistry === 0 && calledByOthers.length === 1) continue;
+    if (inRegistry === 0 && reachable.get(key(p))) continue;
+    const callers = rows.filter(q => key(q) !== key(p) && reachable.get(key(q)) &&
+      fileSrc.get(q.file).includes(`${p.name}(`));
     assert.fail(
-      `${p.name} (${p.file}) is wired into ${inRegistry} registry row run(s) and called from ` +
-      `${calledByOthers.length} other module(s), want exactly one of the two — ` +
-      (inRegistry === 0 && calledByOthers.length === 0
-        ? 'it is missing from registry.mjs entirely, and no other check module calls it'
+      `${p.name} (${p.file}) is wired into ${inRegistry} registry row run(s) and reachable from ` +
+      `${callers.length} other already-reachable ...Pass module(s), want exactly one of the two — ` +
+      (inRegistry === 0 && callers.length === 0
+        ? 'it is missing from registry.mjs entirely, and no already-reachable ...Pass module calls it'
         : 'it is wired into more than one place, so a rename would leave one silently orphaned'));
   }
 });
