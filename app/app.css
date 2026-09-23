@@ -547,10 +547,11 @@ a { color: inherit; }
 
 /* #126: column, not the row this used to be with only one child -- with the
    empty-state note showing (`#todayNoGames`), it must read as one gray line
-   above the button, not beside it. `.note`'s own `margin-top` already spaces
-   it from whatever sits above, so this drops the row gap rather than adding
-   a second one. */
-.today-acts { display: flex; flex-direction: column; margin-bottom: 1.6rem; }
+   above the button, not beside it. `.note`'s `margin-top` spaces it from
+   whatever sits above it, not from the button below, so the row `gap` stays
+   -- dropping it left the note flush on the button (0px between them,
+   measured at 390/320/1280px). */
+.today-acts { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1.6rem; }
 /* #69 decision 14: "Add a game" is a grouped row (`.today-entry`, decision
    9), not a bordered `.btn` -- it keeps that class's surface/radius/height
    and only drops the trailing chevron, since it opens a new game rather
