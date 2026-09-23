@@ -5,16 +5,18 @@
  * all: every other row in the registry needs a served `app/` and a real
  * browser, which is out of scope for `node --test`.
  *
- * The valid-name list is read back from the harness's own refusal message
- * rather than typed out again here — REGISTRY lives in `smoke.mjs` and is not
- * exported, and a second, hand-typed copy of the 20 names would drift from it
- * exactly the way `test/hooks.test.js`'s comment warns a guard can. */
+ * The valid-name list the harness refuses with is checked against
+ * `registry.mjs`'s own selectable rows, imported (#124) — not a second,
+ * hand-typed copy that would drift from it exactly the way
+ * `test/hooks.test.js`'s comment warns a guard can, and not a hand-pinned
+ * count either: the registry is the one place that number lives. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ROWS } from '../scripts/smoke/registry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const SMOKE = new URL('scripts/smoke.mjs', ROOT).pathname;
@@ -61,12 +63,15 @@ function assertNeverLaunchedChrome(r, label) {
     `Chrome's --user-data-dir was created here, so validation ran after launch(), not before it`);
 }
 
+// The refusal's valid-name list is everything after its first stderr line,
+// one name per line -- read the same way wherever a case below needs it, so
+// a change to that shape shows up once rather than in five separate splits.
+const parseNames = r => r.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean);
+
 const TABLE_HEADER = /benchcard smoke —/;
 
 const invalid = run(['--only', 'nope']);
-const validNames = invalid.status
-  ? invalid.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean)
-  : [];
+const validNames = invalid.status ? parseNames(invalid) : [];
 
 test('--only "nope" exits non-zero, fast, with no table', () => {
   assert.notEqual(invalid.status, 0);
@@ -76,18 +81,10 @@ test('--only "nope" exits non-zero, fast, with no table', () => {
   assertNeverLaunchedChrome(invalid, '--only "nope"');
 });
 
-test('the refusal lists the 46 selectable rows, one per line', () => {
-  // 46 since #126, which added `nogames` (scripts/smoke/no-games.mjs) to
-  // REGISTRY — was 45 after #66's `passlargetext`
-  // (scripts/smoke/pass-large-text.mjs), 44 after #92's `passunderway`
-  // (scripts/smoke/pass-underway.mjs), 43 after #101's `threedays`
-  // (scripts/smoke/three-days.mjs), 42 after #100's `dateddayfiling`
-  // (scripts/smoke/dated-day.mjs), 41 after #36's `firstrun`, 40 after #35's
-  // `widelayout`, 39 after #34's `resumebar`, 38 after #33's `focusclear`
-  // and `floatingcontrols`, 36 after #32's `addgameflow`, and 35 after #31's
-  // `teamscreen`.
-  assert.equal(validNames.length, 46,
-    `expected the 46 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
+test('the refusal lists exactly the registry\'s selectable rows, in order, one per line', () => {
+  const registryNames = ROWS.filter(r => r.selectable).map(r => r.name);
+  assert.deepEqual(validNames, registryNames,
+    `the refusal's name list does not match registry.mjs's selectable rows — got ${JSON.stringify(validNames)}`);
   // one per line, not comma-joined or wrapped
   assert.equal(new Set(validNames).size, validNames.length, 'a duplicated row name in the list');
 });
@@ -95,7 +92,8 @@ test('the refusal lists the 46 selectable rows, one per line', () => {
 test('the swept touch check is in the list; the single-viewport one is not', () => {
   // Constraint: `touch targets ≥ 48px` (no width range) is filtered out of
   // every full run and is therefore not a name `--only` can ever match, while
-  // the swept `touch targets ≥ 48px, 320–390px` is one of the 16.
+  // the swept `touch targets ≥ 48px, 320–390px` is one of the registry's
+  // selectable rows.
   assert.ok(validNames.some(n => n.startsWith('touch targets ≥ 48px,')),
     'the swept touch row should be selectable');
   // exact, not a substring: the swept name below legitimately contains this
@@ -131,7 +129,7 @@ for (const name of NON_SELECTABLE) {
     assert.notEqual(r.status, 0, `--only "${name}" should exit non-zero`);
     assert.ok(r.ms < FAST_MS, `took ${r.ms}ms — refusing "${name}" must not reach serve()/Chrome`);
     assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER, `--only "${name}" must never print a table`);
-    const names = r.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean);
+    const names = parseNames(r);
     assert.deepEqual(names, validNames,
       `--only "${name}" printed a different valid-name list than the "nope" case`);
     assert.ok(!names.includes(name), `"${name}" must not appear in its own valid-names list`);
@@ -154,34 +152,46 @@ test('--only combined with --update-budgets is refused, fast, with no table', ()
  * full run instead of being refused. And a bare `--only` with no name after
  * it -- as the last argument, or immediately followed by another `--flag` --
  * is refused the same way an unknown name is, rather than reading the next
- * flag as if it were the check name. */
-test('--only=nope (the = form) is refused the same way as --only nope', () => {
-  const r = run(['--only=nope']);
-  assert.notEqual(r.status, 0, '--only=nope must not be silently ignored into a full run');
-  assert.ok(r.ms < FAST_MS,
-    `took ${r.ms}ms — --only=<unknown> must be refused before serve()/Chrome`);
-  assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER, '--only=nope must never print a table');
-  const names = r.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean);
-  assert.deepEqual(names, validNames, '--only=nope printed a different valid-name list than --only nope');
-  assertNeverLaunchedChrome(r, '--only=nope');
-});
+ * flag as if it were the check name. Three shapes, one assertion sequence
+ * each, so they are one table rather than three copies of it. */
+const ARG_REFUSALS = [
+  {
+    testName: '--only=nope (the = form) is refused the same way as --only nope',
+    args: ['--only=nope'],
+    notEqualMsg: '--only=nope must not be silently ignored into a full run',
+    msLabel: '--only=<unknown>',
+    tableMsg: '--only=nope must never print a table',
+    namesMsg: '--only=nope printed a different valid-name list than --only nope',
+    chromeLabel: '--only=nope',
+  },
+  {
+    testName: 'a bare --only as the last argument is refused with the list',
+    args: ['--only'],
+    notEqualMsg: 'a bare --only with nothing after it must not fall through to a full run',
+    msLabel: 'a bare --only',
+    tableMsg: 'a bare --only must never print a table',
+    namesMsg: 'a bare --only printed a different valid-name list than --only nope',
+    chromeLabel: 'bare --only (last arg)',
+  },
+  {
+    testName: '--only immediately followed by another flag is refused with the list',
+    args: ['--only', '--json'],
+    notEqualMsg: '--only --json must not read --json as the check name',
+    msLabel: '--only --json',
+    tableMsg: '--only --json must never print a table',
+    namesMsg: '--only --json printed a different valid-name list than --only nope',
+    chromeLabel: '--only --json',
+  },
+];
 
-test('a bare --only as the last argument is refused with the list', () => {
-  const r = run(['--only']);
-  assert.notEqual(r.status, 0, 'a bare --only with nothing after it must not fall through to a full run');
-  assert.ok(r.ms < FAST_MS, `took ${r.ms}ms — a bare --only must be refused before serve()/Chrome`);
-  assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER, 'a bare --only must never print a table');
-  const names = r.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean);
-  assert.deepEqual(names, validNames, 'a bare --only printed a different valid-name list than --only nope');
-  assertNeverLaunchedChrome(r, 'bare --only (last arg)');
-});
-
-test('--only immediately followed by another flag is refused with the list', () => {
-  const r = run(['--only', '--json']);
-  assert.notEqual(r.status, 0, '--only --json must not read --json as the check name');
-  assert.ok(r.ms < FAST_MS, `took ${r.ms}ms — --only --json must be refused before serve()/Chrome`);
-  assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER, '--only --json must never print a table');
-  const names = r.stderr.trim().split('\n').slice(1).map(l => l.trim()).filter(Boolean);
-  assert.deepEqual(names, validNames, '--only --json printed a different valid-name list than --only nope');
-  assertNeverLaunchedChrome(r, '--only --json');
-});
+for (const { testName, args, notEqualMsg, msLabel, tableMsg, namesMsg, chromeLabel } of ARG_REFUSALS) {
+  test(testName, () => {
+    const r = run(args);
+    assert.notEqual(r.status, 0, notEqualMsg);
+    assert.ok(r.ms < FAST_MS, `took ${r.ms}ms — ${msLabel} must be refused before serve()/Chrome`);
+    assert.doesNotMatch(r.stdout + r.stderr, TABLE_HEADER, tableMsg);
+    const names = parseNames(r);
+    assert.deepEqual(names, validNames, namesMsg);
+    assertNeverLaunchedChrome(r, chromeLabel);
+  });
+}

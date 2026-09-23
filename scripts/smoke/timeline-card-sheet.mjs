@@ -1,5 +1,5 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
 import { goRich } from './fixtures.mjs';
 import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
 import { boxesOverlap } from './sheet-spacing.mjs';
@@ -463,7 +463,6 @@ export async function timelineCardSheetPass(c, origin) {
   await goRich(c, origin).catch(() => {});
 
   return {
-    name: nameOf('timelinecardsheet'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`

@@ -1,7 +1,7 @@
 import { evalIn, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE } from './dom.mjs';
 import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
 import { openAddGameFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { seasonDate } from '../../app/storage.js';
 
 /* #101 (docs/specs/101-plan-another-date.md), Proof row 5: a three-day
@@ -197,7 +197,6 @@ export async function threeDaysPass(c, origin) {
   }
 
   return {
-    name: nameOf('threedays'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`

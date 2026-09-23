@@ -1,4 +1,4 @@
-import { nameOf, NARROW } from './registry.mjs';
+import { NARROW } from './sizes.mjs';
 
 /* The chrome has to survive the narrowest phone anyone still carries.
  *
@@ -64,7 +64,6 @@ export async function narrowPass(c) {
 
   const pass = !r.pans && r.barFits && r.stranded.length === 0;
   return {
-    name: nameOf('narrow'),
     pass,
     detail: pass
       ? `page cannot pan, top bar fits in ${r.barW}px, nothing stranded`

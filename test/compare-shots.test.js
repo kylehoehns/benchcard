@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { SHOTS, shotProblems, twinProblems, postCaptureProblems, deviceMetrics } from '../scripts/compare-shots.mjs';
 import { VIEWS } from '../scripts/smoke/sweep.mjs';
 import { WIDTH } from '../scripts/smoke/dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from '../scripts/smoke/registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from '../scripts/smoke/sizes.mjs';
 
 const LIGHT_BG = 'rgb(244, 244, 246)';
 const DARK_BG = 'rgb(11, 11, 12)';

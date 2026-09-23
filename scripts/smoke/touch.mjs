@@ -1,5 +1,5 @@
 import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
-import { nameOf, TOUCH_CHECK, TOUCH_FLOOR, TOUCH_WIDTHS } from './registry.mjs';
+import { TOUCH_CHECK, TOUCH_FLOOR, TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
 import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
 
@@ -195,7 +195,6 @@ export async function touchPass(c, origin, source) {
   const totalAudited = four.audited + audited;
   const totalSeen = Math.max(four.seen, seen);
   return {
-    name: nameOf('touch'),
     pass: allBad.length === 0,
     detail: allBad.length
       ? `${allBad.length}/${totalAudited} measurement(s) under ${TOUCH_FLOOR}px: ${allBad.slice(0, 4).join(' | ')}`

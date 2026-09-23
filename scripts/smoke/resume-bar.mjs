@@ -12,7 +12,7 @@
  * LATER one" are actually different claims -- a fixture with only one
  * part-played game could not tell them apart. */
 import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, landWiped, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
-import { nameOf, LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './registry.mjs';
+import { LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs';
 import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
 import { RICH, partPlayed, reloadWithRecord, goRich } from './fixtures.mjs';
@@ -260,7 +260,6 @@ export async function resumeBarPass(c, origin) {
   await goRich(c, origin);
 
   return {
-    name: nameOf('resumebar'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}${problems.length > 4 ? ` (+${problems.length - 4} more)` : ''}`

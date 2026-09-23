@@ -1,5 +1,4 @@
 import { evalIn } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 
 /* #21 item 8: the UI no longer uses Inter, so nothing else on the page starts
    loading InterVar, and the coach's card must never stay sized for the
@@ -66,7 +65,6 @@ export async function cardFontPass(c, origin) {
     }
   }
   return {
-    name: nameOf('cardfont'),
     pass: problems.length === 0,
     detail: problems.length ? problems.join('; ') : `InterVar loaded, .five stays at ${r.before} once it has`,
   };

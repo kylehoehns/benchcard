@@ -1,5 +1,5 @@
 import { toGameOne, TODAY_HOME } from './dom.mjs';
-import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
+import { TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
 
 /* #28 item 11: every row AND tile in the Plan sheet, at least 48px, at the
@@ -42,7 +42,6 @@ export async function planRowsPass(c, source) {
   });
 
   return {
-    name: nameOf('planrows'),
     pass: bad.length === 0,
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`

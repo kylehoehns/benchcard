@@ -1,5 +1,5 @@
 import { toGameOne, TODAY_HOME } from './dom.mjs';
-import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
+import { TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
 
 /* #27 item 10: every row in the Who's here sheet, at least 48px, at the same
@@ -27,7 +27,6 @@ export async function whoRowsPass(c, source) {
   });
 
   return {
-    name: nameOf('whorows'),
     pass: bad.length === 0,
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`

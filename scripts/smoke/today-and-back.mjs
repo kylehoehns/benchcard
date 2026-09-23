@@ -1,6 +1,6 @@
 import { evalIn, SETTLE, step, WIDTH, HEIGHT, onScreen } from './dom.mjs';
 import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 export async function todayAndBackPass(c, origin) {
   const problems = [];
@@ -398,7 +398,6 @@ export async function todayAndBackPass(c, origin) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
   }
   return {
-    name: nameOf('todayback'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`

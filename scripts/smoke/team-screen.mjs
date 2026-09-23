@@ -3,7 +3,7 @@
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
-import { nameOf, TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './registry.mjs';
+import { TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './sizes.mjs';
 import { goRich, PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
 import { drag, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
@@ -679,7 +679,6 @@ export async function teamScreenPass(c, origin) {
   await goRich(c, origin).catch(() => {});
 
   return {
-    name: nameOf('teamscreen'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`

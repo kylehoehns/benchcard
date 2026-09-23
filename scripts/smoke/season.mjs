@@ -12,7 +12,7 @@
  * absence there and presence (with its legend) on Season, and Export is
  * checked absent from every other screen. */
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, SETTLE } from './dom.mjs';
-import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
+import { TOUCH_WIDTHS } from './sizes.mjs';
 import { goRich } from './fixtures.mjs';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
@@ -265,7 +265,6 @@ export async function seasonPass(c, origin) {
   await evalIn(c, step(TODAY_HOME));
 
   return {
-    name: nameOf('season'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

@@ -27,7 +27,7 @@
  * 09:00 in en-US (`9:00`, no leading zero) -- a substring check, so it does
  * not care whether ICU puts an ASCII space or U+202F before "AM". */
 import { evalIn, step, TODAY_HOME, OVERFLOW_PROBE, WIDTH, HEIGHT, SETTLE } from './dom.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const WANT = { title: 'Hawks', when: '9:00', status: 'Planned' };
 
@@ -143,7 +143,6 @@ export async function gameTitlePass(c, origin) {
   await evalIn(c, step(TODAY_HOME));
 
   return {
-    name: nameOf('gametitle'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.join(' | ')}`

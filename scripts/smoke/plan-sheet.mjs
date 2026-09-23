@@ -1,5 +1,4 @@
 import { evalIn, evensOutWant, step, HEIGHT } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 import { evalJSON, click, closedWithFocus, settle, settlePane, sheetRect, setGame, statusOk, tap, tapPane, titleFocused, waitClosed } from './sheet-drive.mjs';
 import { planClosePass } from './plan-closes.mjs';
 
@@ -557,7 +556,6 @@ export async function planSheetPass(c, origin) {
   }
 
   return {
-    name: nameOf('plansheet'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`

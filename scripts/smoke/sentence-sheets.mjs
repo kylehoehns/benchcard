@@ -1,5 +1,4 @@
 import { evalIn, evensOutWant, step, WIDTH, HEIGHT } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 import { evalJSON, checkTitleFocused, click, closedWithFocus, drag, dragCloseFade, flick, resizeCheck, settle, sheetRect, setGame, statusOk } from './sheet-drive.mjs';
 
 // item 6's second assertion, on top of `statusOk`'s own `planSay`-equality
@@ -394,7 +393,6 @@ export async function sentenceSheetsPass(c, origin) {
   }
 
   return {
-    name: nameOf('sentencesheets'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`

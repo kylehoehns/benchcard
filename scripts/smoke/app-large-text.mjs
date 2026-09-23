@@ -1,7 +1,7 @@
 import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME, landWiped, FIRST_RUN_STEPS } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { FOUR, reloadWithRecord } from './fixtures.mjs';
 
 /* ---- the same large-text cell, on the app shell ----
@@ -506,7 +506,6 @@ export async function appLargeTextPass(c, origin) {
       { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
   }
   return {
-    name: nameOf('applargetext'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

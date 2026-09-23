@@ -1,6 +1,5 @@
 import { evalIn, step } from './dom.mjs';
 import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
-import { nameOf } from './registry.mjs';
 
 /* #100 (docs/specs/100-dated-days.md), Proof row 4: "New day" is gone --
    `#todayNewDay` no longer exists anywhere on Today -- and a day dated
@@ -116,7 +115,6 @@ export async function datedDayPass(c, origin) {
   await goRich(c, origin); // restore RICH for every check that runs after this one
 
   return {
-    name: nameOf('dateddayfiling'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`

@@ -1,6 +1,5 @@
 import { evalIn, SETTLE, HEIGHT, landWiped } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
-import { nameOf } from './registry.mjs';
 
 /* [data-id] excludes the boot skeleton's bare `.tl-row` markup, the same
    filter `tryLanding` already relies on for its own player count (see that
@@ -184,7 +183,6 @@ export async function gameRowsFitPass(c, origin) {
     await goRich(c, origin);
   }
   return {
-    name: nameOf('gamerowsfit'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

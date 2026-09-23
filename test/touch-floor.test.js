@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { TOUCH_FLOOR, TOUCH_TOL, TOUCH_MIN, TOUCH_CHECK } from '../scripts/smoke/registry.mjs';
+import { TOUCH_FLOOR, TOUCH_TOL, TOUCH_MIN, TOUCH_CHECK } from '../scripts/smoke/sizes.mjs';
 
 /* The touch floor is spelled twice on purpose and pinned here.
  *

@@ -1,5 +1,5 @@
 import { evalIn, HEIGHT, WIDTH } from './dom.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { goRich, LONG_NAME } from './fixtures.mjs';
 import { evalJSON, setGame, settle, tap } from './sheet-drive.mjs';
 
@@ -343,7 +343,6 @@ export async function sheetSpacingPass(c, origin) {
   }
 
   return {
-    name: nameOf('sheetspacing'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`

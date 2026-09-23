@@ -17,7 +17,7 @@
  * below walks the live CSSOM and audits EVERY rule that sets the property,
  * not the one the base block happens to contain. */
 import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
-import { nameOf, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 /* The five screens and the click that reaches each one, from the one list
    that already holds them -- `sweep.mjs`'s `VIEWS`, which `app-large-text.mjs`
    imports for the same reason. A second hand-typed copy of "how do I get to
@@ -340,7 +340,6 @@ export async function floatingControlsPass(c, origin) {
   await evalIn(c, step(TODAY_HOME));
 
   return {
-    name: nameOf('floatingcontrols'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}${problems.length > 4 ? ` (+${problems.length - 4} more)` : ''}`

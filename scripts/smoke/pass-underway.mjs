@@ -15,7 +15,6 @@
 import { evalIn, step, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
 import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
 import { setGame } from './sheet-drive.mjs';
-import { nameOf } from './registry.mjs';
 
 const WANT = [
   { title: 'Panthers', status: 'Underway', cls: 'now' },
@@ -100,7 +99,6 @@ export async function passUnderwayPass(c, origin) {
     await reloadWithRecord(c, origin, RICH).catch(() => {});
   }
   return {
-    name: nameOf('passunderway'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

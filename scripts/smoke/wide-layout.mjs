@@ -1,6 +1,6 @@
 import { evalIn, step, landWiped, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
-import { nameOf, RAIL, WIDE_MIN, SHEET_MIN, LAPTOP } from './registry.mjs';
+import { RAIL, WIDE_MIN, SHEET_MIN, LAPTOP } from './sizes.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
 import { goRich } from './fixtures.mjs';
 
@@ -312,7 +312,6 @@ export async function wideLayoutPass(c, origin) {
 
   const pass = problems.length === 0;
   return {
-    name: nameOf('widelayout'),
     pass,
     detail: pass
       ? `${audited} measurements: ${RAIL}px rail at left 0 and the open screen at ${RAIL}px, `

@@ -1,5 +1,4 @@
 import { evalIn, step } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 
 /* #20: hold a screen wake lock while bench mode is on screen, release it the
    moment it is not. `navigator.wakeLock` is replaced in-page with a fake that
@@ -216,7 +215,6 @@ export async function wakeLockPass(c, origin, consoleErrors) {
   nums.push(`${types.length} request(s) across all scenarios, all type 'screen'`);
 
   return {
-    name: nameOf('wakelock'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.join(' | ')}`

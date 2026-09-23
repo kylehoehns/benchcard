@@ -1,6 +1,6 @@
 import { evalIn, step, SETTLE, onScreen, HEIGHT } from './dom.mjs';
 import { RICH, ONE_GAME, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
-import { nameOf, LAPTOP } from './registry.mjs';
+import { LAPTOP } from './sizes.mjs';
 
 /* #126's own guard (see docs/specs/126-remove-last-game.md's Proof section):
    removing a team's last game leaves Today with zero games, not a fallback
@@ -188,7 +188,6 @@ export async function noGamesPass(c, origin) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
   }
   return {
-    name: nameOf('nogames'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
