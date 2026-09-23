@@ -27,13 +27,14 @@ export function resumeAt(p = plans[state.activeGame], g = game()) {
 
 /* #34 decision 5, widened by #101 item 8: which part-played game the
    floating resume bar offers, across every day the team holds, not only the
-   one currently open. Walks days from the END of `team().days` and, within a
-   day, from the END of its games, so two games both underway resolve to the
-   one the coach was more recently away from -- the open day's own games
-   first, exactly the order this walked before #101. `dayPlans` is the same
-   per-day solve `computeAll` already keeps; nothing here re-solves. Lives
-   here, next to resumeAt, rather than in state.js: state.js cannot import
-   card.js, because card.js already imports state.js. */
+   one currently open. Walks days from the END of `team().days` -- the latest
+   date first, not the open day, which is only the same day when the open day
+   happens to be the last one -- and, within a day, from the END of its
+   games, so two games both underway resolve to the one the coach was most
+   recently away from. `dayPlans` is the same per-day solve `computeAll`
+   already keeps; nothing here re-solves. Lives here, next to resumeAt,
+   rather than in state.js: state.js cannot import card.js, because card.js
+   already imports state.js. */
 export function resumeBarAt() {
   const days = team().days;
   for (let d = days.length - 1; d >= 0; d--) {

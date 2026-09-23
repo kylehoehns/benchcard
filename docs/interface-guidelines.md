@@ -110,7 +110,7 @@ Settings pattern. Research: NN/g, icon usability. Benchcard: decided
 
 **N5. Every pushed screen has a visible back button, top left, as an icon.** A
 chevron in a round control, with an accessible name that says where it goes
-("Back to Today"). Installed web apps on iOS have no browser back button, and
+("Back to <team name>"). Installed web apps on iOS have no browser back button, and
 iOS's newer swipe-anywhere-back is documented for native apps, not web apps
 **(unverified)**. *Apple: Toolbars ("don't use a text label that says Back").
 Web: Apple Support, Open as web app.*
@@ -420,8 +420,7 @@ WCAG 2.2 success criteria now."
 ring at 3:1. `scroll-padding` matches the floating header and bottom action.
 *Web: WCAG 2.4.11, 2.4.13.*
 
-**A2. Every icon-only button has a name that says what happens.** "Back to
-Today", "Close", "Settings", "Share the card". *Web: WCAG 4.1.2.*
+**A2. Every icon-only button has a name that says what happens.** "Back to <team name>", "Close", "Settings", "Share the card". *Web: WCAG 4.1.2.*
 
 **A3. When the plan changes, say so.** A polite live region announces the new
 summary after an edit. *Web: WCAG 4.1.3.*

@@ -13,7 +13,12 @@ import { seasonDate } from '../../app/storage.js';
    below lands there, so its own heading and its sort position (first) are
    both live results of this run, never assumed. */
 
-const TEAM_NAME = RICH.teams[0].name; // 'Smoke Test' -- RICH's own, not retyped
+// Exactly 30 characters -- item 5's own number for the title that has to
+// wrap or truncate with no horizontal scroll. RICH's own team name ('Smoke
+// Test', 10 characters) never stresses that path, so THREE_DAY overrides it
+// below rather than reusing RICH.teams[0].name as earlier drafts of this
+// fixture did.
+const TEAM_NAME = 'Riverside Regional Junior Club';
 
 const addDays = n => {
   const d = new Date();
@@ -42,6 +47,7 @@ const THREE_DAY = {
   ...RICH,
   teams: [{
     ...RICH.teams[0],
+    name: TEAM_NAME,
     days: [
       { date: addDays(2), games: [mkGame('t0', 'Panthers', '9:00', 201), mkGame('t1', 'Ravens', '11:30', 202)] },
       { date: addDays(4), games: [mkGame('t2', 'Wolves', '10:00', 203)] },
@@ -58,6 +64,46 @@ const dayGroups = c => evalIn(c, `JSON.stringify([...document.querySelectorAll('
   heading: (g.querySelector('.day-heading')?.textContent || '').trim(),
   passes: g.querySelectorAll('.today-game').length,
 })))`).then(JSON.parse);
+
+/* Item 5's second half: the 30-character name must not push the title button
+   past the viewport's edge, and the gear (`#settingsBtn`) has to stay
+   reachable beside it -- on screen, visible, and the element a real tap at
+   its own center would actually hit, not just present in the DOM. `#teamBtn`
+   (not just `#teamBtnLabel`) is measured: a regression that widens the
+   button's own box past the label's ellipsis -- padding, gap, the chevron --
+   still pushes the page sideways without the label's text ever reaching the
+   edge. `document.documentElement.clientWidth/clientHeight` match
+   `OVERFLOW_PROBE`'s own viewport read; `window.innerWidth` reports a scaled,
+   wrong value once the 32px root font is emulated (measured on this tree:
+   400 in a 320px viewport). Read at both viewports the spec names (390x844
+   and 320px/32px text), never assumed from one. */
+const TITLE_GEAR_PROBE = `(() => {
+  const title = document.getElementById('teamBtn');
+  const gear = document.getElementById('settingsBtn');
+  const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+  const tr = title ? title.getBoundingClientRect() : null;
+  const gr = gear ? gear.getBoundingClientRect() : null;
+  const cx = gr ? gr.left + gr.width / 2 : null, cy = gr ? gr.top + gr.height / 2 : null;
+  const hit = gr ? document.elementFromPoint(cx, cy) : null;
+  return JSON.stringify({
+    titleLeft: tr ? tr.left : null, titleRight: tr ? tr.right : null, vw,
+    titleWithinViewport: !!tr && tr.left >= 0 && tr.right <= vw,
+    gearVisible: !!gear && gear.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true }),
+    gearOnScreen: !!gr && gr.left >= 0 && gr.top >= 0 && gr.right <= vw && gr.bottom <= vh,
+    gearTappable: !!gear && !!hit && (hit === gear || gear.contains(hit)),
+  });
+})()`;
+
+const checkTitleAndGear = async (c, problems, label) => {
+  const r = JSON.parse(await evalIn(c, TITLE_GEAR_PROBE));
+  if (!r.titleWithinViewport) {
+    problems.push(`${label}: #teamBtn reaches ${r.titleRight}px in a ${r.vw}px viewport`);
+  }
+  if (!r.gearOnScreen || !r.gearVisible || !r.gearTappable) {
+    problems.push(`${label}: #settingsBtn is not on screen and tappable `
+      + `(onScreen=${r.gearOnScreen}, visible=${r.gearVisible}, tappable=${r.gearTappable})`);
+  }
+};
 
 export async function threeDaysPass(c, origin) {
   const problems = [];
@@ -115,6 +161,9 @@ export async function threeDaysPass(c, origin) {
     if (o390.pans || o390.worst) {
       problems.push(`390×844: ${o390.worst ? `${o390.worst.el} reaches ${o390.worst.right}px` : 'page pans sideways'}`);
     }
+    // Item 5, at 390×844: the title stays in the viewport and the gear is
+    // still on screen and tappable beside it.
+    await checkTitleAndGear(c, problems, '390×844');
 
     // ...and at 320px/32px text (T2/T4). `Page.setFontSizes` only takes
     // effect on the next navigation (`app-large-text.mjs`'s own note), so
@@ -133,6 +182,9 @@ export async function threeDaysPass(c, origin) {
       problems.push(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text: `
         + `${o320.worst ? `${o320.worst.el} reaches ${o320.worst.right}px in a ${o320.vw}px viewport` : 'page pans sideways'}`);
     }
+    // Item 5, at 320px/32px text: the 30-character name wraps or truncates
+    // rather than pushing the title (or the gear) off screen.
+    await checkTitleAndGear(c, problems, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
   } catch (e) {
     problems.push(`threw: ${e.message.split('\n')[0]}`);
   } finally {
