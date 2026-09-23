@@ -297,14 +297,16 @@ its alternative is an assertion, so the rejected options are kept here too.
   has no opponent (where a generic `ROTATION` used to sit) and stands in as the
   day-title placeholder. It is stored raw and trimmed at every read, so typing
   a space does not fight the caret. The card header clamps it: `.when` never
-  shrinks, so a long name cannot push the date off the card, and the title
+  shrinks, so a long name cannot push the weekday and tip-off (`cornerLabel`,
+  #103) off the card, and the title
   itself elides through `fitHeadline` in `card.js` — the same middle cut
   squad pills use (`elideMiddle` in `state.js`), for the same reason: printing a day of tournament
   games gave three cards the identical header `VS RIVERSIDE REGIONAL TOURNAMENT
   QUART…`. Unlike the tabs it is sized by measurement, not a character count,
   because a pocket card and a half-sheet have very different header widths and
-  the half-sheet usually fits the whole label. The date and the `Q1-Q2` scope
-  are never elided, and the CSS `text-overflow: ellipsis` on `.opp` stays as
+  the half-sheet usually fits the whole label. The weekday/tip-off corner and
+  the `Q1-Q2` scope are never elided, and the CSS `text-overflow: ellipsis`
+  on `.opp` stays as
   the backstop for the frame before the webfont lands.
 - **Games chain within a day.** Game N is planned against the minutes actually
   assigned in games 1..N-1, so a kid who sat out game one gets caught up. The

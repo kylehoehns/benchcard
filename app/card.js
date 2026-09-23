@@ -12,7 +12,7 @@ import { fmtClock, fmtMinutes } from './engine.js';
 import { $, el, set, ctx2d } from './dom.js';
 import { icon } from './icons.js';
 import { state, plans, dayPlans, team, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
-import { tipoffLabel } from './storage.js';
+import { cornerLabel } from './storage.js';
 
 /* Where an unfinished game has got to, or null. `live.at` is the stint the
    coach last had open; stint 0 is indistinguishable from "never started" and
@@ -404,8 +404,9 @@ export function renderCards() {
       const title = many ? gameLabel(g, i).toUpperCase()
         : g.label ? 'VS ' + g.label.toUpperCase()
         : (teamName().toUpperCase() || 'ROTATION');
+      const corner = cornerLabel(state.day.date, g.tipoff);
       pages.forEach((rows, pg) => {
-        const c = buildCard(p, rows, pg, pages.length, title, tipoffLabel(g.tipoff), mins);
+        const c = buildCard(p, rows, pg, pages.length, title, corner, mins);
         // Copies are a print setting. Rendering all of them on screen made the
         // preview two identical cards deep -- ~500px of scroll on a phone
         // saying nothing the first one did not. They stay in the DOM because

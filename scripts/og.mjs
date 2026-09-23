@@ -43,6 +43,7 @@ import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 import { serve } from './serve.mjs';
 import { pngSize } from './png-size.mjs';
+import { seasonDate } from '../app/storage.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -294,6 +295,23 @@ function cdp(url) {
    them (BECK -> BRIA, ELIA -> ELEN, MARC -> MIA, SILA -> SIMO) and are still
    eleven distinct forms, which is what keeps the card honest. `about.html`
    draws the same eleven by hand and was renamed in the same change. */
+/* #103 decision 3: the card sample's corner ("Sat 9:00 AM") has to be true no
+   matter which day this script is run, so the day is dated the next Saturday
+   on or after today rather than left to fall through to "today" (`sanitize`'s
+   own fallback, `app/storage.js`) and print whatever weekday that happens to
+   be. Formatted by `seasonDate` (`app/storage.js`), reused rather than
+   re-derived, so there is one `YYYY-MM-DD` writer -- never a past Saturday,
+   which would file the day on boot the same way an old game does. This seeds
+   `benchcard.v3`, which boots through `sanitize` directly (not
+   `migrateLegacy`, which is only for the pre-v3 keys), and `sanitizeTeam`
+   keeps any syntactically valid `date` whether it is in the past or future,
+   so the date below survives the load unchanged. */
+const nextSaturday = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7));
+  return seasonDate(d);
+};
+
 const SEED = {
   version: 3, onboarded: true, tourSeen: true, teamName: 'Ravens',
   players: [
@@ -303,7 +321,7 @@ const SEED = {
   ].map(([name, number], i) => ({ id: 'p' + i, name, number, shortName: '' })),
   settings: { color: 'hardwood' },
   day: {
-    name: 'Saturday',
+    name: 'Saturday', date: nextSaturday(),
     games: [{
       id: 'g0', label: 'Hawks', tipoff: '09:00', periods: 4, periodMinutes: 8,
       granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 7,

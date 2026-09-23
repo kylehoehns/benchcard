@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { sanitize, sanitizeSettings, loadState, saveState, seasonGame, seasonDate, addSeasonGames,
          seasonShare, KEY, BACKUP_KEY, V6_KEY, V6_BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
-         V3_KEY, DEFAULT_SETTINGS, COLORS, validTipoff, tipoffLabel, sortDay } from '../app/storage.js';
+         V3_KEY, DEFAULT_SETTINGS, COLORS, validTipoff, tipoffLabel, sortDay, cornerLabel } from '../app/storage.js';
 import { SIZES, file as chartFile } from '../scripts/charts.mjs';
 
 /* Every document that paints themed content before its first frame, and so
@@ -1131,6 +1131,22 @@ test('tipoffLabel reads the locale time built from local parts, empty for no tip
   assert.equal(tipoffLabel(''), '');
   assert.match(tipoffLabel('09:00', 'en-US'), /^9:00\s*AM$/);
   assert.match(tipoffLabel('13:30', 'en-US'), /^1:30\s*PM$/);
+});
+
+/* #103: the card's corner. One pure function, reusing `localDate` (never
+   `new Date('YYYY-MM-DD')`, UTC) for the weekday and `tipoffLabel` for the
+   time -- `locale` is a parameter so this pins 'en-US'. Values are the
+   spec's own worked examples (docs/specs/103-card-weekday-tipoff.md, "What
+   would settle it" item 1), not recomputed the way cornerLabel itself would. */
+test('cornerLabel joins the weekday and the tip-off, en-US', () => {
+  assert.match(cornerLabel('2026-09-26', '09:00', 'en-US'), /^Sat\s9:00\s*AM$/);
+  assert.match(cornerLabel('2026-09-30', '12:30', 'en-US'), /^Wed\s12:30\s*PM$/);
+});
+
+test('cornerLabel drops the time when there is none, and the weekday when the date is invalid', () => {
+  assert.equal(cornerLabel('2026-09-26', '', 'en-US'), 'Sat');
+  assert.match(cornerLabel('not-a-date', '09:00', 'en-US'), /^9:00\s*AM$/);
+  assert.equal(cornerLabel('not-a-date', '', 'en-US'), '');
 });
 
 test('sortDay stably sorts timed games first by tip-off, untimed after in their own order', () => {
