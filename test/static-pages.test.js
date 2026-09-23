@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { trackedFiles } from '../scripts/spelling.mjs';
 import { pngSize } from '../scripts/png-size.mjs';
+import { parseGlossaryAvoid } from './glossary.js';
 
 /* #75: the mark went from ember to Hardwood everywhere it is drawn, and the
  * share image and its meta tags moved from 1200×630 to 2400×1260. Both are
@@ -102,28 +103,9 @@ function stripComments(s) {
   return s.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
 }
 
-/* CONTEXT.md's own `_Avoid_:` lines, parsed rather than retyped -- the spec
-   (`docs/specs/75-pages-and-images-after-redesign.md`, Constraints) says not
-   to re-derive the avoided words by hand. Each line sits right under a term
-   heading ("**Card name**:") and lists its retired words, comma-separated,
-   sometimes with a parenthetical qualifier ("Minutes (as a strategy name)").
-   Returns { term -> [phrase, ...] }, parenthetical stripped. */
-function parseGlossaryAvoid(md) {
-  const out = {};
-  let term = null;
-  for (const line of md.split('\n')) {
-    const heading = line.match(/^\*\*([^*]+)\*\*.*:$/);
-    if (heading) { term = heading[1].trim(); continue; }
-    const avoid = line.match(/^_Avoid_:\s*(.+)$/);
-    if (avoid && term) {
-      out[term] = avoid[1].split(',')
-        .map((p) => p.replace(/\([^)]*\)/g, '').trim())
-        .filter(Boolean);
-    }
-  }
-  return out;
-}
-
+/* `parseGlossaryAvoid` moved to test/glossary.js (#98) so rule-names.test.js
+   can read CONTEXT.md's `_Avoid_:` lines with the same parser rather than a
+   second hand-typed copy. */
 const AVOID_BY_TERM = parseGlossaryAvoid(readFileSync(new URL('../CONTEXT.md', import.meta.url), 'utf8'));
 
 /* Item 6 names eight glossary terms whose retired words must not survive on

@@ -148,6 +148,6 @@ test('the surfaces are the ones this test means, and comments are not text', () 
 
   /* And the chunk reader really does isolate a name from the sentence it sits
    * in, which is the whole reason `term` exists. */
-  assert.ok(chunksOf('<dt>Play together / Keep apart</dt>').has('keep apart'));
+  assert.ok(chunksOf('<dt>Together / Apart</dt>').has('apart'));
   assert.ok(!chunksOf('<p>a plan that is balanced across the game</p>').has('balanced'));
 });

@@ -311,7 +311,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
   const avoidSet = avoidSetOf(c.avoids);
   for (const [a, b] of c.pairs) {
     if (avoidSet.has(pairKey(a, b))) {
-      err('PAIR_AVOID_CONFLICT', `${label(a)} and ${label(b)} are set to both play together and never play together.`, [a, b]);
+      err('PAIR_AVOID_CONFLICT', `${label(a)} and ${label(b)} are set both Together and Apart.`, [a, b]);
     }
   }
 
@@ -339,7 +339,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
     for (const [a, b] of combinations(group, 2)) {
       if (avoidSet.has(pairKey(a, b))) {
-        err('FORCED_GROUP_AVOID', `${label(a)} and ${label(b)} are both pinned to the ${name} but are set to never play together.`, [a, b]);
+        err('FORCED_GROUP_AVOID', `${label(a)} and ${label(b)} are both pinned to the ${name} but are set Apart.`, [a, b]);
       }
     }
     for (const id of group) {
@@ -359,7 +359,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
     for (const [a, b] of combinations(c.closing.players, 2)) {
       if (avoidSet.has(pairKey(a, b))) {
-        err('CLOSERS_AVOID', `${label(a)} and ${label(b)} are both set to close but are set to never play together.`, [a, b]);
+        err('CLOSERS_AVOID', `${label(a)} and ${label(b)} are both set to close but are set Apart.`, [a, b]);
       }
     }
     const closeMinutes = stints.slice(-c.closing.stints).reduce((a, x) => a + x.minutes, 0);
@@ -445,7 +445,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       for (const [a, b] of combinations(u, 2)) {
         if (avoidSet.has(pairKey(a, b))) {
           warn('UNIT_AVOID',
-            `Unit ${i + 1} puts ${label(a)} and ${label(b)} on the floor together, but you have them set never to play together. The unit wins — drop the rule or change the unit.`,
+            `Unit ${i + 1} puts ${label(a)} and ${label(b)} on the floor together, but you have them set Apart. The unit wins — drop the rule or change the unit.`,
             [a, b]);
         }
       }
@@ -457,7 +457,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       .some(group => combinations(group, 2).every(([a, b]) => !avoidSet.has(pairKey(a, b))));
     if (!legal) {
       err('AVOID_IMPOSSIBLE',
-        `No legal lineup of ${ON_FLOOR} exists -- the "never together" rules rule out every combination. Drop one of them.`,
+        `No legal lineup of ${ON_FLOOR} exists -- the Apart rules rule out every combination. Drop one of them.`,
         c.avoids.flat());
     }
   }
