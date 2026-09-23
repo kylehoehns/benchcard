@@ -14,7 +14,7 @@
  * `--only` can prove alone, so it measures `cold`/`coldToday` itself, the
  * same way `goRich` measures the rich fixture, just against `SEED`/`v3`
  * instead. */
-import { evalIn, step, WIDTH, HEIGHT, SETTLE, TODAY_HOME } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, SETTLE, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
 import { FOUR, RICH, goSeed, reloadWithRecord } from './fixtures.mjs';
 import { nameOf } from './registry.mjs';
 import { ceiling } from '../budgets.mjs';
@@ -287,24 +287,14 @@ export async function gamePassesPass(c, origin) {
     // Item 4: the status dot's color is a real class rule, read off a probe
     // built with the same class the pass carries -- never a copied hex.
     const dotColors = JSON.parse(await evalIn(c, `(() => {
-      const probe = cls => {
-        const d = document.createElement('span');
-        d.className = 'pass-status ' + cls;
-        document.body.appendChild(d);
-        const v = getComputedStyle(d, '::before').backgroundColor;
-        d.remove();
-        return v;
-      };
+      const probe = ${PASS_STATUS_DOT_PROBE};
+      const cssVar = ${CSS_VAR_COLOR_PROBE};
       const btns = [...document.querySelectorAll('#todayGames .today-game')];
       const dots = btns.map(b => {
         const el = b.querySelector('.pass-status');
         return el ? getComputedStyle(el, '::before').backgroundColor : null;
       });
-      const errEl = document.createElement('div');
-      errEl.style.background = 'var(--err)';
-      document.body.appendChild(errEl);
-      const err = getComputedStyle(errEl).backgroundColor;
-      errEl.remove();
+      const err = cssVar('var(--err)');
       return JSON.stringify({ ok: probe('ok'), warn: probe('warn'), err, dots });
     })()`));
     dotColors.dots.forEach((d, i) => {

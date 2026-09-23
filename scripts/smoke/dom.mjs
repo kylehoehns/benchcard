@@ -65,6 +65,37 @@ export const alpha = c => {
   return parts.length > 3 ? Number(parts[3]) : 1;
 };
 
+/* A `.pass-status <cls>` dot's computed `::before` color, from a throwaway
+   span carrying the real class -- never a copied hex (AGENTS.md's own rule).
+   `game-passes.mjs` (item 4, the `ok`/`warn` dots) and `pass-underway.mjs`
+   (#92, the `now` dot) each drove this identical closure inline until it
+   moved here; both call it as `${PASS_STATUS_DOT_PROBE}` inside a page
+   expression, then invoke the resulting function with the class to probe. */
+export const PASS_STATUS_DOT_PROBE = `(cls => {
+  const d = document.createElement('span');
+  d.className = 'pass-status ' + cls;
+  document.body.appendChild(d);
+  const v = getComputedStyle(d, '::before').backgroundColor;
+  d.remove();
+  return v;
+})`;
+
+/* A CSS custom property's own computed color, from a throwaway element given
+   `background: var(--x)` and read back through `getComputedStyle` -- the
+   only way to ask the browser what a var() resolves to, rather than a copied
+   hex. `game-passes.mjs` (`--err`) and `pass-underway.mjs` (`--accent`) each
+   drove this identical create/append/read/remove sequence inline until it
+   moved here; both call it as `${CSS_VAR_COLOR_PROBE}('var(--x)')` inside a
+   page expression. */
+export const CSS_VAR_COLOR_PROBE = `(v => {
+  const d = document.createElement('div');
+  d.style.background = v;
+  document.body.appendChild(d);
+  const c = getComputedStyle(d).backgroundColor;
+  d.remove();
+  return c;
+})`;
+
 /* The two user preferences `docs/interface-guidelines.md` L2 says a
    translucent, blurred surface must turn solid under, as CDP
    `Emulation.setEmulatedMedia` features. One fact, one copy: every pass that

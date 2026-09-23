@@ -12,7 +12,7 @@
  * pushes into play; games 1-2 stay Planned and game 3 (Owls) stays Needs a
  * fix because its plan is blocked, exactly as `game-passes.mjs`'s own `WANT`
  * table already pins. */
-import { evalIn, step, TODAY_HOME } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
 import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
 import { setGame } from './sheet-drive.mjs';
 import { nameOf } from './registry.mjs';
@@ -67,21 +67,12 @@ export async function passUnderwayPass(c, origin) {
     // The dot's color is a real class rule, read off a probe built with the
     // same class the pass carries -- never a copied hex (AGENTS.md's own
     // rule) -- compared against `--accent` read the same way, matching
-    // `game-passes.mjs`'s own `dotColors` probe for `.ok`/`.warn`.
+    // `game-passes.mjs`'s own `dotColors` probe for `.ok`/`.warn` (both share
+    // `PASS_STATUS_DOT_PROBE`/`CSS_VAR_COLOR_PROBE`, dom.mjs).
     const dotColors = JSON.parse(await evalIn(c, `(() => {
-      const probe = cls => {
-        const d = document.createElement('span');
-        d.className = 'pass-status ' + cls;
-        document.body.appendChild(d);
-        const v = getComputedStyle(d, '::before').backgroundColor;
-        d.remove();
-        return v;
-      };
-      const accentEl = document.createElement('div');
-      accentEl.style.background = 'var(--accent)';
-      document.body.appendChild(accentEl);
-      const accent = getComputedStyle(accentEl).backgroundColor;
-      accentEl.remove();
+      const probe = ${PASS_STATUS_DOT_PROBE};
+      const cssVar = ${CSS_VAR_COLOR_PROBE};
+      const accent = cssVar('var(--accent)');
       const btns = [...document.querySelectorAll('#todayGames .today-game')];
       const dot0 = getComputedStyle(btns[0].querySelector('.pass-status'), '::before').backgroundColor;
       return JSON.stringify({ now: probe('now'), accent, dot0 });
