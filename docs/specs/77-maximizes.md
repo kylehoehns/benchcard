@@ -19,7 +19,7 @@ decide:
 
 - **The fragment is `maxim` + `is`, fixed to `maximiz`.** It follows the
   existing `organi` + `s` and `recogni` + `s` entries. It matches every form
-  (maximise, maximises, maximised, maximising) and none of the American ones.
+  of the British verb (-e, -es, -ed, -ing) and none of the American ones.
   On today's tree it matches only `app/rules.js:108`.
 - **Only this word.** The survey found other British `-ise` verbs (normalise,
   sanitise, serialise, optimise and more) in about 55 tracked files, mostly in
