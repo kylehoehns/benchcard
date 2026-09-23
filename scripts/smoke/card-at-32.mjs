@@ -93,6 +93,7 @@ export async function cardAt32Pass(c, origin, report) {
     : ` | 32px root: unchanged (${at32.w}×${at32.h}px, .five ${at32.five}, .chg ${at32.chg})`;
 
   await cardFitProbe(c, origin, check);
+  await multiGameProbe(c, origin, check);
 }
 
 /* #103 item 4: the ticket's own worst case for the corner (`cornerLabel`,
@@ -155,6 +156,103 @@ async function measureFit(c) {
       whenText: when.textContent,
     });
   })()`));
+}
+
+/* #103 fix pass finding 1: item 3 ("Multi-game card") had no executable
+   proof -- `printScope: 'day'`, three games on one day timed 09:00, 11:00
+   and untimed, corners `<wd> 9:00 AM`, `<wd> 11:00 AM`, `<wd>`. `<wd>` is
+   computed HERE, independently of `cornerLabel` (storage.js) and of the app
+   under test, from a locally-built `Date` the same way `cornerLabel` itself
+   is documented to -- not read off the page -- so a broken wiring shows up
+   as a text mismatch rather than two copies of the same bug agreeing.
+   Reuses FIT_DATE (the same Wednesday `cornerLabel`'s own unit test pins)
+   rather than adding a second literal date. Matches the time with `\s`
+   before AM/PM: ICU puts U+202F there, not an ASCII space. */
+const [MULTI_Y, MULTI_M, MULTI_D] = FIT_DATE.split('-').map(Number);
+const MULTI_WD = new Date(MULTI_Y, MULTI_M - 1, MULTI_D).toLocaleDateString('en-US', { weekday: 'short' });
+
+function multiGameRecord() {
+  return {
+    version: 7, onboarded: true, tourSeen: true, activeTeam: 0, view: 'games',
+    ui: { ...UI, gameView: 'card', printScope: 'day', cardSize: 'pocket' },
+    teams: [{
+      id: 't0', name: 'Smoke Test', players: PLAYERS,
+      days: [{
+        name: '', date: FIT_DATE,
+        games: [
+          { id: 'g0', label: 'Hawks', tipoff: '09:00', periods: 4, periodMinutes: 8,
+            granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 1234 },
+          { id: 'g1', label: 'Eagles', tipoff: '11:00', periods: 4, periodMinutes: 8,
+            granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 1234 },
+          { id: 'g2', label: 'Bears', tipoff: '', periods: 4, periodMinutes: 8,
+            granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 1234 },
+        ],
+      }],
+      activeDay: 0, activeGame: 0, season: { games: [] },
+    }],
+  };
+}
+
+async function loadMultiGameRecord(c, origin) {
+  await seeded(c, `(() => {
+    localStorage.removeItem('benchcard.v3');
+    localStorage.removeItem('benchcard.v7.bak');
+    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(multiGameRecord()))});
+  })()`, async () => {
+    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+    await c.send('Page.navigate', { url: origin + '/index.html' });
+    await loaded;
+    await waitForCard(c);
+  });
+}
+
+// Excludes `.card-copy` (UI.copies is 2) and reads the page mark along with
+// the corner text; a game that split across pages would carry it, and the
+// spec's worked strings above have none.
+async function measureMultiGame(c) {
+  return JSON.parse(await evalIn(c, `(() => {
+    const cards = [...document.querySelectorAll('.card:not(.card-copy)')];
+    return JSON.stringify(cards.map(c => c.querySelector('.when')?.textContent ?? null));
+  })()`));
+}
+
+async function multiGameProbe(c, origin, check) {
+  const problems = [];
+  try {
+    await loadMultiGameRecord(c, origin);
+    const whens = await measureMultiGame(c);
+    const want = [
+      new RegExp(`^${MULTI_WD} 9:00\\sAM$`),
+      new RegExp(`^${MULTI_WD} 11:00\\sAM$`),
+      new RegExp(`^${MULTI_WD}$`),
+    ];
+    if (whens.length !== want.length) {
+      problems.push(`expected 3 cards, found ${whens.length} (${JSON.stringify(whens)})`);
+    } else {
+      whens.forEach((w, i) => {
+        if (!want[i].test(w)) problems.push(`card ${i}: "${w}" does not match ${want[i]}`);
+      });
+    }
+  } catch (e) {
+    problems.push(`threw: ${e.message}`);
+  } finally {
+    // Restore the cold SEED state everything after this expects, same as
+    // cardFitProbe's own finally below.
+    await seeded(c, `(() => {
+      localStorage.removeItem('benchcard.v7');
+      localStorage.removeItem('benchcard.v7.bak');
+      localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))});
+    })()`, async () => {
+      const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+      await c.send('Page.navigate', { url: origin + '/index.html' });
+      await loaded;
+    });
+  }
+
+  check.pass = check.pass && problems.length === 0;
+  check.detail += problems.length
+    ? ` | multi-game probe (${MULTI_WD}, 3 games): ${problems.join('; ')}`
+    : ` | multi-game probe: 3-game day corners read "${MULTI_WD} 9:00 AM", "${MULTI_WD} 11:00 AM", "${MULTI_WD}"`;
 }
 
 async function cardFitProbe(c, origin, check) {

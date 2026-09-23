@@ -110,7 +110,8 @@ Must not change: `buildCard`'s signature and layout code, `app/card.css`
 | Seam | Runs from | Covers |
 | --- | --- | --- |
 | `cornerLabel` export | `node --test`, next to the `tipoffLabel` tests | 1 |
-| DOM-stub render of the card sheet (existing card tests' pattern) with a dated day, single and `printScope: 'day'` | `node --test` | 2, 3 |
+| source-reading assertion that `renderCards` computes `corner` from `cornerLabel(state.day.date, g.tipoff)` and hands it to `buildCard` | `node --test`, `test/card-minutes.test.js` | 2 |
+| smoke: `printScope: 'day'`, three games timed 09:00, 11:00 and untimed, each `.card-hd .when` matched against `<wd> 9:00 AM` / `<wd> 11:00 AM` / `<wd>` | `npm run smoke`, `card-at-32.mjs`'s `multiGameProbe` | 3 |
 | smoke: pocket and half card with `Riverside Wolverines` and `Wed 12:30 PM`, title/corner overlap and clipping probe; card is 3.45 × 5in | `npm run smoke` | 4 |
 | regenerate and look at the card sample | `node scripts/og.mjs --card app/card-sample.png` | 5 |
 | `/browser-verify` on the preview at 390×844: the card sheet's corner text and the 20-character case | preview | 2, 3, 4 |

@@ -258,11 +258,14 @@ Two things address that, and they are different problems:
 
 `og.png` (2400×1260) is generated with `node scripts/og.mjs`, not drawn: a
 composition showing the game screen on a phone, the mark in the Hardwood team color
-(read from `--tint` in `tokens.css`), and the headline. The four icon PNGs and favicon.ico are
-generated from the mark SVG at each size with the `--icons` flag. Regenerate
-og.png when the app design changes or the sample game's rule changes, and
-regenerate icons when the mark color changes — `node scripts/og.mjs --bench
-app/bench-sample.png --card app/card-sample.png --icons` does both.
+(read from `--tint` in `tokens.css`), and the headline. `card-sample.png` and
+`card-sample@2x.png` are screenshots of the printed card. `bench-sample.png`
+shows bench mode. The four icon PNGs and favicon.ico are generated from the mark
+SVG at each size with the `--icons` flag. Regenerate `card-sample.png` when the
+card design changes (including its corner, #103), `og.png` when the app design
+or the sample game's rule changes, and icons when the mark color changes —
+`node scripts/og.mjs --bench app/bench-sample.png --card app/card-sample.png
+--icons` regenerates all of them.
 
 **Offline.** `sw.js` precaches the shell on install and serves it cache-first:
 `index.html`, `about.html`, the three stylesheets, every local module in the

@@ -54,7 +54,9 @@ test('fractional stints do not accumulate float noise', () => {
 test('the card footer prints the effective minutes, not the plan', () => {
   assert.match(card, /Object\.entries\(minutes\)/,
     'the footer must read the minutes it was handed');
-  assert.match(card, /buildCard\(p, rows, pg, pages\.length, title, cornerLabel\(state\.day\.date, g\.tipoff\), mins\)/,
+  assert.match(card, /const corner = cornerLabel\(state\.day\.date, g\.tipoff\);/,
+    'renderCards must compute the corner once per game, next to title');
+  assert.match(card, /buildCard\(p, rows, pg, pages\.length, title, corner, mins\)/,
     'renderCards must hand the effective minutes to buildCard');
   assert.match(card, /const mins = effectiveMinutes\(g, p\)/,
     'the card must total through the shared helper, not a copy of its own');
