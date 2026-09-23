@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { element } from './markup.js';
 
 /* "This game" -- Opponent, Tip-off and Remove -- may not live inside the card.
  *
@@ -31,27 +32,6 @@ const read = f => readFileSync(new URL(`../app/${f}`, import.meta.url), 'utf8');
 const html = read('index.html').replace(/<!--[\s\S]*?-->/g, '');
 const css = read('app.css');
 const teamsView = read('teams-view.js');
-
-const VOID = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
-  'link', 'meta', 'param', 'source', 'track', 'wbr']);
-
-/* The source of the element whose opening tag contains `needle`, from `<` to
-   its matching close. Depth-counted rather than regex-matched: these boxes
-   nest divs, and a lazy match would stop at the first `</div>` and report a
-   subtree that ends before the thing being looked for. */
-function element(src, needle) {
-  const start = src.lastIndexOf('<', src.indexOf(needle));
-  assert.ok(start > 0, `${needle} is not in index.html`);
-  const tag = /<(\/?)([a-zA-Z][a-zA-Z0-9-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g;
-  tag.lastIndex = start;
-  let depth = 0;
-  for (let m; (m = tag.exec(src));) {
-    const [, close, name, attrs] = m;
-    if (close) { if (--depth === 0) return src.slice(start, tag.lastIndex); continue; }
-    if (!(/\/\s*$/.test(attrs) || VOID.has(name.toLowerCase()))) depth++;
-  }
-  assert.fail(`unbalanced markup around ${needle}`);
-}
 
 const IDS = ['id="label"', 'id="when"', 'id="removeGame"'];
 

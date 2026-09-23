@@ -963,7 +963,7 @@ a { color: inherit; }
 
 /* ============================ fields ============================ */
 .f { display: block; font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; margin-bottom: .35rem; }
-/* #69 decision 9: the game screen's field labels ("Day or tournament",
+/* #69 decision 9: the game screen's field labels ("Day name" (#112),
    "Opponent", "Tip-off"...) read in sentence case, no uppercase/tracking --
    but `.f` is also the roster paste box's and settings' label class, out of
    #69's scope, so the plain-case override is scoped to `#view-games` rather
@@ -982,7 +982,7 @@ input[type=text], input[type=number], input[type=date], input[type=time], select
 }
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: var(--surface-2); }
 @media (hover: hover) { input:hover, select:hover, textarea:hover { border-color: var(--muted); } }
-/* #69 decision 10: "Day or tournament", "Opponent", "Tip-off" and the print
+/* #69 decision 10: "Day name" (#112), "Opponent", "Tip-off" and the print
    options already sit inside a `--surface` group (`.side-box`) -- a border
    drawn in the same color as that box reads as a stray line, not a field, so
    the prototype (`.field`) fills the input instead of outlining it. Scoped
@@ -1016,6 +1016,17 @@ select {
 .row { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(8.125rem, 1fr)); }
 .row .wide { grid-column: span 2; }
 @media (max-width: 620px) { .row .wide { grid-column: 1 / -1; } }
+
+/* #112 look-check: `.row`'s `gap` only spaces columns within one row, so
+   stacked rows in "This game" (Date/Opponent, then Day name, then Tip-off)
+   touched at 390px. Scoped to `.s-thisgame` rather than widening `.row`
+   everywhere else it is used. */
+.s-thisgame .row + .row { margin-top: .9rem; }
+/* `#dayNameHint` is a `.note`, which carries a `.75rem` top margin meant to
+   separate it from the field ABOVE it -- inside "This game" that reads as
+   closer to the next row's label (Tip-off) than to its own `#dayName`
+   input. Pull it in to hug its field instead. */
+.s-thisgame .note { margin-top: .35rem; margin-bottom: 0; }
 
 .chips { display: flex; flex-wrap: wrap; gap: .38rem; }
 .chip {
