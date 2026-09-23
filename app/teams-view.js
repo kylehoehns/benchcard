@@ -9,10 +9,11 @@
  * removing a team, removing a game, clearing the day -- so both go through
  * `undoable`, imported straight from toast.js.
  *
- * Two injections through `initTeams`: `renderAll`, because switching team or
- * game changes everything downstream of it, and `setView`, because opening a
- * game, Team, Season or a fresh team's Settings is a screen change. Both
- * belong to render.js.
+ * Three injections through `initTeams`: `renderAll`, because switching team or
+ * game changes everything downstream of it; `setView`, because opening a
+ * game, Team, Season or a fresh team's Settings is a screen change; and
+ * `edit` (#122, `app/edit.js`), which the six Settings handlers below call
+ * instead of `renderAll` directly. `renderAll`/`setView` belong to render.js.
  *
  * `#removeGame` is wired from inside `renderTabs` -- its hidden state
  * depends on how many games the day has, so it is repainted with them.
@@ -51,6 +52,7 @@ import { seasonGames } from './season-view.js';
 
 let renderAll = () => {};
 let setView = () => {};
+let edit = () => {};
 
 const MAX_TEAMS = 12;   // matches the cap sanitize() applies on load
 
@@ -91,9 +93,10 @@ const SUBS_READ = [
   'Aims for at least one change a break, with no ceiling. Five is everyone on the floor, so there is nothing higher to ask for.',
 ];
 
-export function initTeams(renderAllFn, setViewFn) {
+export function initTeams(renderAllFn, setViewFn, editFn) {
   renderAll = renderAllFn;
   setView = setViewFn;
+  edit = editFn;
   // #addTeam is gone (#22); the team menu's own "Add a team" entry calls
   // `addTeam` directly, and it is the only way in now.
   on('#removeTeam', 'onclick', removeTeam);
@@ -131,11 +134,11 @@ export function initTeams(renderAllFn, setViewFn) {
     const v = Number(b.dataset.subs);
     if (v === s.maxSubs) return;
     s.maxSubs = v;
-    /* A full render, not `soon(...)`: this re-solves every plan in the day, and
+    /* A full render, not debounced: this re-solves every plan in the day, and
        nobody is mid-drag on a settings page. No analytics event -- both
        allow-lists would have to grow, and "did anyone move this" is not worth
        widening the privacy contract for. */
-    renderAll();
+    edit('teamSetting');
   });
 
   /* Same shape, same reasons: static buttons, delegated once, a full render
@@ -145,11 +148,11 @@ export function initTeams(renderAllFn, setViewFn) {
     const s = team()?.settings;
     if (!b || !s || b.dataset.tie === s.tieBreak) return;
     s.tieBreak = b.dataset.tie;
-    renderAll();
+    edit('teamSetting');
   });
 
-  /* The carryover default. Same delegated shape again, and `renderAll` for the
-     same reason -- but NOT for the same effect: nothing already planned moves,
+  /* The carryover default. Same delegated shape again, and `edit('teamSetting')`
+     for the same reason -- but NOT for the same effect: nothing already planned moves,
      because `newGame` is the only reader and it has already run for every game
      in the day. Every plan signature is unchanged, so the solve is a cache hit
      and the render is really just the seg repainting itself and the record
@@ -161,7 +164,7 @@ export function initTeams(renderAllFn, setViewFn) {
     const v = b.dataset.sdef === '1';
     if (v === s.seasonDefault) return;
     s.seasonDefault = v;
-    renderAll();
+    edit('teamSetting');
   });
 
   /* The league floor. `onchange`, not `oninput`: typing "1" on the way to "12"
@@ -176,14 +179,14 @@ export function initTeams(renderAllFn, setViewFn) {
     const v = raw === '' ? 0 : Math.round(Math.min(60, Math.max(0, Number(raw) || 0)));
     if (v === s.minMinutes) { e.target.value = String(v); return; }
     s.minMinutes = v;
-    renderAll();
+    edit('teamSetting');
   });
 
   /* The game format. `onchange` for the same reason the floor is -- a half
      typed "2" on the way to "20" is not a stance -- and blank falls back to the
      default rather than to 0, because a game with no periods is not a game.
-     `renderAll` repaints and saves, but nothing already planned moves: newGame
-     is the only reader and it has already run for every game in the day. */
+     `edit('teamSetting')` repaints and saves, but nothing already planned moves:
+     newGame is the only reader and it has already run for every game in the day. */
   const fmt = (sel, key, lo, hi) => on(sel, 'onchange', (e) => {
     const s = team()?.settings;
     if (!s) return;
@@ -192,7 +195,7 @@ export function initTeams(renderAllFn, setViewFn) {
     const v = Number.isFinite(n) ? Math.round(Math.min(hi, Math.max(lo, n))) : DEFAULT_SETTINGS[key];
     if (v === s[key]) { e.target.value = String(v); return; }
     s[key] = v;
-    renderAll();
+    edit('teamSetting');
   });
   fmt('#setPeriods', 'periods', 1, 8);
   fmt('#setPerMins', 'periodMinutes', 1, 40);
@@ -567,7 +570,7 @@ export function renderTabs() {
   const box = $('#todayGames');
   /* #26 decision 6: passes paint only while Today is the screen on show.
      `renderTabs` runs on every edit on the Game screen (AFTER_EDIT,
-     PLAN_ONLY in render.js), and building four mini rotations -- the one
+     PLAN_ONLY -- app/edit.js), and building four mini rotations -- the one
      thing here that costs more than a couple of elements -- on every slider
      move, hidden the whole time, is work nobody sees. `applyView` (render.js)
      calls `render('tabs')` once, on the way in, when Today becomes the

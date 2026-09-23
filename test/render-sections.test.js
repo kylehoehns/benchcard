@@ -21,9 +21,15 @@ import { readFileSync } from 'node:fs';
  * reason on the line — the shape `test/dead-export.test.js` uses. Read over
  * source text rather than by importing `render.js`: it pulls in fifteen view
  * modules and touches the DOM at import time.
+ *
+ * #122: `AFTER_EDIT`/`PLAN_ONLY` moved from `app/render.js` to `app/edit.js`,
+ * which is now their one definition -- so the two lists below are read from
+ * there instead. `SECTIONS` itself did not move, so it is still read off
+ * `app/render.js`.
  */
 
 const SRC = readFileSync(new URL('../app/render.js', import.meta.url), 'utf8');
+const EDIT_SRC = readFileSync(new URL('../app/edit.js', import.meta.url), 'utf8');
 
 /* In `SECTIONS` and in neither list, on purpose. */
 const KEEP = new Map([
@@ -40,8 +46,8 @@ const KEEP = new Map([
 ]);
 
 const listOf = (name) => {
-  const m = SRC.match(new RegExp(`^export const ${name} = \\[([^\\]]*)\\];`, 'm'));
-  assert.ok(m, `${name} is no longer declared as a single-line exported array in render.js`);
+  const m = EDIT_SRC.match(new RegExp(`^export const ${name} = \\[([^\\]]*)\\];`, 'm'));
+  assert.ok(m, `${name} is no longer declared as a single-line exported array in edit.js`);
   return m[1].split(',').map((s) => s.trim().replace(/^'|'$/g, '')).filter(Boolean);
 };
 
@@ -80,6 +86,25 @@ test('PLAN_ONLY stays a subset of AFTER_EDIT', () => {
     assert.ok(after.includes(k),
       `PLAN_ONLY names '${k}' but AFTER_EDIT does not: a plan change would repaint it and a plain edit would not`);
   }
+});
+
+/* #122 item 7: every kind's own keys, not just the two shared lists, must
+ * name real sections -- `EDITS` (edit.js) is what a coach's edit actually
+ * repaints now, and a typo'd key there would throw the moment that kind's
+ * debounce fires, exactly like a typo in AFTER_EDIT/PLAN_ONLY used to. Every
+ * literal key -- not the `...AFTER_EDIT`/`...PLAN_ONLY` spreads, already
+ * covered above -- inside every kind's `keys: [...]` array is checked; a
+ * kind whose own row is `keys: 'all'` or `keys: []` names no section to check. */
+test("every EDITS kind's own keys are real SECTIONS keys", () => {
+  const keys = sectionKeys();
+  const start = EDIT_SRC.indexOf('export const EDITS = {');
+  assert.ok(start >= 0, 'EDITS is no longer declared in edit.js');
+  const body = EDIT_SRC.slice(start, EDIT_SRC.indexOf('\n};', start));
+  const rows = [...body.matchAll(/keys:\s*\[([^\]]*)\]/g)];
+  assert.ok(rows.length > 10, 'EDITS scan found almost nothing -- the shape changed');
+  const named = rows.flatMap((m) => [...m[1].matchAll(/'([a-zA-Z]+)'/g)].map((mm) => mm[1]));
+  const bad = named.filter((k) => !keys.includes(k));
+  assert.deepEqual(bad, [], `EDITS names a key that is not in SECTIONS: ${bad.join(', ')}`);
 });
 
 test('the keep-list itself is still live', () => {

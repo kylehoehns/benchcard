@@ -8,12 +8,12 @@
  * its own -- see docs/architecture.md for the map.
  *
  * The one rule to keep: nothing imports back from this file. Every module
- * takes `render` / `renderAll` / `soon` / `setView` through its `init*`
+ * takes `render` / `renderAll` / `edit` / `setView` through its `init*`
  * function instead, which is what keeps the import graph a tree.
  * ================================================================== */
 import { icon } from './icons.js';
 import { $, on, set } from './dom.js';
-import { renderCards, refreshCardSheetPreview, CARD_FONT } from './card.js';
+import { refreshCardSheetPreview, CARD_FONT } from './card.js';
 import { shareCards } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
 import { initTimeline } from './timeline.js';
@@ -30,7 +30,8 @@ import { initSeason, exportSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
 import { initToast, undoable, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
-import { render, renderAll, soon, setView, applyTheme, applyTint, AFTER_EDIT, PLAN_ONLY } from './render.js';
+import { render, renderAll, setView, applyTheme, applyTint } from './render.js';
+import { edit } from './edit.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
          dueToFile, fileIfPast, moveGame, setTipoff } from './state.js';
@@ -46,7 +47,7 @@ import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 on('#settingsBtn', 'onclick', () => setView('settings'));
 on('#backBtn', 'onclick', () => setView('today'));
 for (const b of document.querySelectorAll('#stratseg button')) {
-  b.onclick = () => { game().strategy = b.dataset.strat; track('plan_generated', { strategy: b.dataset.strat }); renderAll(); };
+  b.onclick = () => { game().strategy = b.dataset.strat; track('plan_generated', { strategy: b.dataset.strat }); edit('strategy'); };
 }
 
 /* #22: the Appearance group replaces the theme cycler. Same delegated shape
@@ -58,7 +59,7 @@ on('#themeSeg', 'onclick', (e) => {
   const b = e.target.closest('button[data-theme]');
   if (!b || b.dataset.theme === state.ui.theme) return;
   state.ui.theme = b.dataset.theme;
-  save(); applyTheme();
+  edit('theme'); applyTheme();
 });
 /* #29 decision 5: Timeline | Card. Same delegated shape as `#themeSeg`
    above -- `applyGameView` (timeline.js) is the one place that reads
@@ -69,8 +70,7 @@ on('#viewSeg', 'onclick', (e) => {
   const b = e.target.closest('button[data-view]');
   if (!b || b.dataset.view === state.ui.gameView) return;
   state.ui.gameView = b.dataset.view;
-  save();
-  render('gameview');
+  edit('gameView');
 });
 /* #25: the picker is the `.keyswrap` dialog pattern (`trap.js`'s
    openTrap/closeTrap), same shape as `#help` -- see shortcuts.js's
@@ -101,39 +101,38 @@ on('#colorOpts', 'onclick', (e) => {
   const b = e.target.closest('button[data-color]');
   const s = team()?.settings;
   if (!b || !s) return;
-  if (b.dataset.color !== s.color) { s.color = b.dataset.color; save(); applyTint(); renderSettings(); }
+  if (b.dataset.color !== s.color) { s.color = b.dataset.color; edit('teamColor'); applyTint(); renderSettings(); }
   closeColorPicker();
 });
-on('#dayName', 'oninput', e => { state.day.name = e.target.value; save(); });
+on('#dayName', 'oninput', e => { state.day.name = e.target.value; edit('dayName'); });
 on('#teamName', 'oninput', e => {
   state.teamName = e.target.value;
-  save();
   // #112: the card reads it (it heads the card when a game has no opponent);
   // `#dayName`'s placeholder never did -- it is set once, in the markup.
-  soon('cards');
+  edit('teamName');
 });
-on('#label', 'oninput', e => { game().label = e.target.value; soon('tabs', 'totals', 'cards'); });
-on('#when', 'oninput', e => { setTipoff(e.target.value); soon('tabs', 'cards'); });
+on('#label', 'oninput', e => { game().label = e.target.value; edit('opponent'); });
+on('#when', 'oninput', e => { setTipoff(e.target.value); edit('tipoff'); });
 /* #101 item 3: moves the game to another day. `renderSetup` (game-setup.js)
    is the one place `#gameDate`'s value is repainted, and it is not in
    `AFTER_EDIT`/`PLAN_ONLY` (only a full render walks the `setup` section),
-   so a full `renderAll()` is what puts the input back on the moved game's
-   date -- and, when the source day emptied out, repaints Today's own list
-   of days underneath it. */
-on('#gameDate', 'onchange', e => { moveGame(e.target.value); renderAll(); });
-on('#copies', 'onchange', e => { state.ui.copies = Number(e.target.value); save(); renderCards(); });
+   so a full paint is what puts the input back on the moved game's date --
+   and, when the source day emptied out, repaints Today's own list of days
+   underneath it. */
+on('#gameDate', 'onchange', e => { moveGame(e.target.value); edit('gameDate'); });
+on('#copies', 'onchange', e => { state.ui.copies = Number(e.target.value); edit('cardOptions'); });
 
-on('#cardId', 'onchange', e => { state.ui.cardId = e.target.value; save(); renderCards(); });
+on('#cardId', 'onchange', e => { state.ui.cardId = e.target.value; edit('cardOptions'); });
 on('#cardSize', 'onchange', e => {
   state.ui.cardSize = e.target.value === 'half' ? 'half' : 'pocket';
-  // Fix pass finding 5: renderCards no longer fits `#sheet` itself, so a
-  // size change needs 'gameview' in the same render(...) call for
-  // applyGameView's fit to run when Card view is on.
-  save(); render('setup', 'cards', 'gameview');
+  // Fix pass finding 5: the size change needs 'gameview' painted in the same
+  // call for applyGameView's fit to run when Card view is on -- `cardSize`'s
+  // own keys (edit.js) are setup, cards, gameview.
+  edit('cardSize');
 });
-on('#printScope', 'onchange', e => { state.ui.printScope = e.target.value; save(); renderCards(); });
-on('#showMinutes', 'onchange', e => { state.ui.showMinutes = e.target.checked; save(); renderCards(); });
-on('#regen', 'onclick', () => { if (reseed(game())) flash('New rotation. The swaps you made by hand were cleared.'); renderAll(); });
+on('#printScope', 'onchange', e => { state.ui.printScope = e.target.value; edit('cardOptions'); });
+on('#showMinutes', 'onchange', e => { state.ui.showMinutes = e.target.checked; edit('cardOptions'); });
+on('#regen', 'onclick', () => { if (reseed(game())) flash('New rotation. The swaps you made by hand were cleared.'); edit('regen'); });
 function printCard() {
   track('card_printed', { size: state.ui.cardSize === 'half' ? 'half' : 'pocket' });
   /* Still needed after `#print` moved out of the top bar and into the games
@@ -385,23 +384,23 @@ function fileOverdueDay(today = new Date()) {
 }
 
 /* Wire the modules together. Everything a module cannot import for itself
-   is handed to it here: the dispatcher and the scheduler out of render.js,
-   and gamemode's second argument, which is the tip prompt's bench-mode
-   trigger -- gamemode.js calls it on close and knows nothing else about
-   the tip jar. This is the only place in the app that knows the whole
+   is handed to it here: the dispatcher and `edit` (#122, `app/edit.js`) out
+   of render.js, and gamemode's second argument, which is the tip prompt's
+   bench-mode trigger -- gamemode.js calls it on close and knows nothing else
+   about the tip jar. This is the only place in the app that knows the whole
    graph, which is the point of it being the entry point. */
 initToast(renderAll, setView);
-initTeams(renderAll, setView);
+initTeams(renderAll, setView, edit);
 initSeason(renderAll);
-initBalance(soon, AFTER_EDIT);
-initRoster(soon, AFTER_EDIT);
+initBalance(edit);
+initRoster(edit);
 initGameMode(render, (reachedEnd) => { tipAfterGame(reachedEnd); fileOverdueDay(); }, { undoable, flash });
 initTimeline(setView);
 initTour(setView);
-initRules(soon, PLAN_ONLY);
-initStrategy(soon, PLAN_ONLY);
+initRules(edit);
+initStrategy(edit);
 initOnboarding(setView);
-initGameSetup(renderAll, soon, PLAN_ONLY, AFTER_EDIT);
+initGameSetup(edit);
 initShortcuts(setView);
 setView(state.onboarded ? (state.view || 'today') : 'welcome');
 /* There was a `body.boot` class here, added before the first paint and removed

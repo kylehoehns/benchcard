@@ -281,7 +281,7 @@ test('at 840px and up the game pane is on screen on Today too, but Team, Season 
  * `render()` -- `computeAll()` plus all fifteen sections -- on every wide
  * navigation, including one into Team, Season or Settings, where the game
  * pane the coach just left behind is hidden and none of those three screens'
- * own sections need it (they stay fresh through `soon()` on edit, per #26
+ * own sections need it (they stay fresh through `edit()` on edit, per #26
  * decision 6). `gamePaneShowing(v)` is already the exact predicate for
  * "is the game pane on screen": true for `games` at every width, and true for
  * `today` only when wide (decision 7) -- which is precisely `games` and

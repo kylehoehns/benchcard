@@ -108,8 +108,11 @@ test('the season is a section the dispatcher knows about, and not an edit target
   const render = read('render.js');
   assert.match(render, /season:\s*\(\) => renderSeason\(\)/,
     'render.js no longer registers the season section, so nothing repaints the ledger');
-  const after = /export const AFTER_EDIT = \[(.*?)\];/s.exec(render)[1];
-  const planOnly = /export const PLAN_ONLY = \[(.*?)\];/s.exec(render)[1];
+  // #122: AFTER_EDIT/PLAN_ONLY moved to edit.js, which is now their one
+  // definition -- read from there instead of render.js.
+  const editSrc = read('edit.js');
+  const after = /export const AFTER_EDIT = \[(.*?)\];/s.exec(editSrc)[1];
+  const planOnly = /export const PLAN_ONLY = \[(.*?)\];/s.exec(editSrc)[1];
   for (const [name, list] of [['AFTER_EDIT', after], ['PLAN_ONLY', planOnly]]) {
     assert.ok(!list.includes("'season'"),
       `${name} repaints the season — nothing a coach edits about today changes a game `

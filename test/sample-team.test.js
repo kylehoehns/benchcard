@@ -140,10 +140,12 @@ test('loading the sample counts nothing, and the first edit counts instead', () 
   assert.match(onb, /markFirstRunPending\(\)/,
     'nothing defers first_run_complete, so a sample coach is never counted at all');
 
-  const soon = body(app('render.js'), 'export function soon(');
-  assert.match(soon, /takeFirstRunPending\(\)/,
+  // #122: the deferred count's one reader moved from render.js's `soon()`
+  // to `edit()`, app/edit.js -- every coach edit's save/repaint/hooks path.
+  const editFn = body(app('edit.js'), 'export function edit(');
+  assert.match(editFn, /takeFirstRunPending\(\)/,
     'the deferred count has no reader on the edit path');
-  assert.match(soon, /track\('first_run_complete', \{ roster: bucketRoster\(state\.players\.length\) \}\)/,
+  assert.match(editFn, /track\('first_run_complete', \{ roster: bucketRoster\(state\.players\.length\) \}\)/,
     'the deferred count must send the size AT THE MOMENT OF THE EDIT, not the size we suggested');
 
   // #36 replaced `finishOnboarding` with `commitFirstRun`, which runs on

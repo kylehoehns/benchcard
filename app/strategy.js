@@ -7,11 +7,11 @@
  * Even has no body at all, which is the point of it.
  *
  * Like every other view seam, the one thing it cannot own is the repaint
- * scheduler: `soon` and `PLAN_ONLY` live with the `render()` dispatcher in
- * app.js, so they come in through `initStrategy` at boot rather than this
- * module importing back into app.js and making the graph circular. The
- * `#stratseg` button wiring stays in app.js too -- picking a strategy is a
- * `renderAll()`, not a repaint of this section.
+ * path: every edit here goes through `edit(kind)` (#122, `app/edit.js`),
+ * handed in through `initStrategy` at boot rather than this module importing
+ * back into app.js and making the graph circular. The `#stratseg` button
+ * wiring stays in app.js too -- picking a strategy is `edit('strategy')`,
+ * not a repaint of this section.
  */
 import { fmtMinutes, deriveShortNames } from './engine.js';
 import { icon } from './icons.js';
@@ -20,12 +20,10 @@ import { pickFive } from './pills.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape,
          normalizeTargets, rebalanceSlots, plans, STRATEGIES } from './state.js';
 
-let soon = () => {};
-let PLAN_ONLY = [];
+let edit = () => {};
 
-export function initStrategy(scheduler, planOnly) {
-  soon = scheduler;
-  PLAN_ONLY = planOnly;
+export function initStrategy(editFn) {
+  edit = editFn;
 }
 
 export function renderStrategy() {
@@ -101,7 +99,7 @@ function minutesEditor(g) {
     r.oninput = () => {
       c.targetSlots[id] = Number(r.value);
       updateBudgetUI(g);
-      soon(...PLAN_ONLY);
+      edit('budget');
     };
     row.append(r);
 
@@ -123,7 +121,7 @@ function minutesEditor(g) {
     lk.append(icon(locked.has(id) ? 'lock' : 'lock-open', { size: '1.05em' }));
     lk.onclick = () => {
       c.lockedTargets = locked.has(id) ? c.lockedTargets.filter(x => x !== id) : [...c.lockedTargets, id];
-      renderStrategy(); soon();
+      renderStrategy(); edit('lockTarget');
     };
     row.append(lk);
     grp.append(row);
@@ -137,11 +135,11 @@ function minutesEditor(g) {
   spread.title = 'Share the unassigned minutes among the unlocked players';
   spread.onclick = () => {
     rebalanceSlots(g, null);
-    renderStrategy(); soon(...PLAN_ONLY);
+    renderStrategy(); edit('budget');
   };
   const reset = el('button', 'prow', 'Reset to even');
   reset.type = 'button';
-  reset.onclick = () => { c.targetSlots = {}; c.lockedTargets = []; renderStrategy(); soon(...PLAN_ONLY); };
+  reset.onclick = () => { c.targetSlots = {}; c.lockedTargets = []; renderStrategy(); edit('budget'); };
   acts.append(spread, reset);
   wrap.append(acts);
 
@@ -264,14 +262,14 @@ function closersEditor(g) {
     const b = el('button', 'chip press' + (on ? ' sel' : ''), `last ${fmtMinutes(n * shape.avg)} min`);
     b.type = 'button';
     b.setAttribute('aria-pressed', String(on));
-    b.onclick = () => { c.closing.stints = n; renderStrategy(); soon(...PLAN_ONLY); };
+    b.onclick = () => { c.closing.stints = n; renderStrategy(); edit('closers'); };
     chips.append(b);
   }
   wrap.append(chips);
 
   wrap.append(pickFive(c.closing.players, (id, on) => {
     c.closing.players = on ? [...c.closing.players, id] : c.closing.players.filter(x => x !== id);
-    renderStrategy(); soon(...PLAN_ONLY);
+    renderStrategy(); edit('closers');
   }, { title: 'Who closes' }));
   // Said at the picker as well as in the issues list: this is the control that
   // is doing nothing, and the issues list is a scroll away on a phone. Not with
@@ -296,7 +294,7 @@ function platoonEditor(g) {
     const taken = new Set(c.units.filter((_, j) => j !== i).flat());
     grp.append(pickFive(unit, (id, on) => {
       c.units[i] = on ? [...c.units[i], id] : c.units[i].filter(x => x !== id);
-      renderStrategy(); soon(...PLAN_ONLY);
+      renderStrategy(); edit('units');
     }, { title: 'On the floor', taken }));
     if (c.units.length > 1) {
       // A `.prow` whose whole visible text says which unit it removes --
@@ -304,7 +302,7 @@ function platoonEditor(g) {
       // say which one it deletes (test/button-names.test.js's original case).
       const rm = el('button', 'prow prow-center prow-danger', `Remove unit ${i + 1}`);
       rm.type = 'button';
-      rm.onclick = () => { c.units.splice(i, 1); renderStrategy(); soon(); };
+      rm.onclick = () => { c.units.splice(i, 1); renderStrategy(); edit('unitCount'); };
       grp.append(rm);
     }
     wrap.append(hdr, grp);
@@ -313,7 +311,7 @@ function platoonEditor(g) {
   const add = el('button', 'prow');
   add.type = 'button';
   add.append(icon('plus', { size: '1rem', cls: 'prow-icon' }), el('span', 'prow-t', 'Add unit'));
-  add.onclick = () => { c.units.push([]); renderStrategy(); soon(); };
+  add.onclick = () => { c.units.push([]); renderStrategy(); edit('unitCount'); };
   wrap.append(add);
   return wrap;
 }

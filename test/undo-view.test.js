@@ -39,17 +39,19 @@ test('the undo refresh knows it is an undo', () => {
  * miss a side effect -- and also what makes it destructive if the coach has
  * moved on. Reproduced in the browser: delete a player, fix a spelling in
  * another row, press Undo, and the spelling reverts too, silently. So the
- * offer retires on the next edit. `soon()` is the signal for "the coach
- * changed something", the same reason `editHappened` is called from there.
- * ------------------------------------------------------------------ */
-const render = readFileSync(new URL('../app/render.js', import.meta.url), 'utf8');
-
-test('an edit retires a pending undo', () => {
-  const fn = render.slice(render.indexOf('export function soon'));
-  assert.match(fn.slice(0, fn.indexOf('\n}')), /retireUndo\(\)/,
-    'soon() must retire the undo offer as well as the recovery notice');
-  assert.match(render, /import \{[^}]*\bretireUndo\b[^}]*\} from '\.\/toast\.js'/);
-});
+ * offer retires on the next edit.
+ *
+ * #122: `soon()` (`app/render.js`) is gone, and every edit now goes through
+ * `edit()` (`app/edit.js`), which is the one thing that calls `retireUndo`
+ * now -- proven by running it, in `test/edit.test.js`'s
+ * "the strategy kind retires a pending undo" (the real bug this issue fixed:
+ * the strategy segment used to call `renderAll()` directly and never retired
+ * undo) and "the theme kind is a preference: it retires undo but skips the
+ * first-run check" (every kind retires undo, including a preference). A
+ * source match here would only prove the words `retireUndo()` still appear
+ * somewhere in `edit.js`, not that every kind actually calls it -- running
+ * the behavior for both a record edit and a preference is the stronger
+ * proof of the same claim. */
 
 test('only snapshot undos are retired, not offers', () => {
   // `offer` acts on ids and takes nothing back, so a later edit leaves it be

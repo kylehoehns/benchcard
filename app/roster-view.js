@@ -3,7 +3,7 @@
    and the pointer-driven drag that backs them, plus the team controls that
    sit above the list. Split out of app.js.
 
-   The scheduler (`soon` / `AFTER_EDIT`) comes in through `initRoster` rather
+   `edit(kind)` (#122, `app/edit.js`) comes in through `initRoster` rather
    than being imported, for the same reason as every other view seam: it
    belongs to the dispatcher in render.js, and importing it back would close
    the module graph into a cycle. `undoable` used to arrive the same way and
@@ -18,8 +18,7 @@ import { undoable, offer } from './toast.js';
 import { state, colorOf, initials, removePlayer, byId, joinNames, teamName, nextHue, hueSlots } from './state.js';
 import { levelMeter, levelName, levelledCount, resetLevels, repaintLevels } from './balance.js';
 
-let soon = () => {};
-let AFTER_EDIT = [];
+let edit = () => {};
 
 /* Edit mode is meant to be a property of the screen, not of the data: leaving
    Team and coming back should give the tapping list, which is what a coach
@@ -45,9 +44,8 @@ export function resetEditMode() {
   renderRoster();
 }
 
-export function initRoster(scheduler, afterEdit) {
-  soon = scheduler;
-  AFTER_EDIT = afterEdit;
+export function initRoster(editFn) {
+  edit = editFn;
 }
 
 /* A jersey number is digits, in both places one can be typed -- the player
@@ -72,7 +70,7 @@ function movePlayer(id, dir) {
     [state.players[i], state.players[j]] = [state.players[j], state.players[i]];
     renderRoster();
   });
-  soon('constraints', ...AFTER_EDIT);
+  edit('reorder');
 }
 
 /* B1: the arrows are always a single adjacent swap -- exactly what
@@ -244,7 +242,7 @@ function rosterDrop(d) {
     if (up) up.disabled = i === 0;
     if (dn) dn.disabled = i === order.length - 1;
   });
-  soon('constraints', ...AFTER_EDIT);
+  edit('reorder');
 }
 
 /* ---- duplicate jersey numbers -------------------------------------------
@@ -547,7 +545,7 @@ function openPlayerSheet(p, trigger) {
     repaintRow(p);
     repaintIdent(p);   // A5: the badge reads the number first (`initials`)
     paintDupes();
-    soon(...AFTER_EDIT);
+    edit('player');
   };
   nm.oninput = () => {
     p.name = nm.value;
@@ -555,9 +553,9 @@ function openPlayerSheet(p, trigger) {
     repaintRow(p);
     repaintIdent(p);
     paintDupes();   // the notice names the players; a rename restates it
-    soon('constraints', ...AFTER_EDIT);
+    edit('playerName');
   };
-  sh.oninput = () => { p.shortName = sh.value.toUpperCase(); sh.value = p.shortName; soon(...AFTER_EDIT); };
+  sh.oninput = () => { p.shortName = sh.value.toUpperCase(); sh.value = p.shortName; edit('player'); };
 
   const lv = $('#playerLevel');
   lv.textContent = '';
@@ -624,7 +622,7 @@ const newPlayer = (name, number, hue) =>
    is on the team is what the rules are about. */
 function rosterChanged() {
   renderRoster();
-  soon('constraints', ...AFTER_EDIT);
+  edit('rosterChange');
 }
 
 function paintAddConfirm() {
