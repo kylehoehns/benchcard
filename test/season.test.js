@@ -510,7 +510,10 @@ test('the carryover panel repaints on a solve, and the rules section does not', 
   const render = readFileSync(new URL('../app/render.js', import.meta.url), 'utf8');
   assert.match(render, /seasonadj:\s*\(\) => renderSeasonAdjust\(\)/,
     'render.js no longer registers the carryover panel, so nothing refreshes it');
-  const list = key => render.match(new RegExp(`export const ${key} = \\[([^\\]]*)\\]`))[1];
+  // #122: AFTER_EDIT/PLAN_ONLY moved to edit.js, which is now their one
+  // definition -- read from there instead of render.js.
+  const editSrc = readFileSync(new URL('../app/edit.js', import.meta.url), 'utf8');
+  const list = key => editSrc.match(new RegExp(`export const ${key} = \\[([^\\]]*)\\]`))[1];
   for (const key of ['AFTER_EDIT', 'PLAN_ONLY']) {
     assert.ok(list(key).includes("'seasonadj'"), `${key} must refresh the carryover panel`);
     assert.ok(!list(key).includes("'constraints'"),

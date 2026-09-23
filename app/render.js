@@ -1,16 +1,19 @@
 /* ================================================================== *
- * render.js -- the dispatcher, the scheduler, the two views, the theme
+ * render.js -- the dispatcher, the two views, the theme
  *
  * The last thing out of app.js, and deliberately so: every view module
- * takes `render` / `renderAll` / `soon` / `setView` through its own
+ * takes `render` / `renderAll` / `edit` / `setView` through its own
  * `init*` function rather than importing them, so this file can import
  * all fifteen renderers without closing the graph into a cycle. Nothing
  * here may be imported *by* a view -- if a module needs to repaint, it
  * gets the callback handed to it at boot.
  *
  * `SECTIONS` is the whole repaint vocabulary: a key per independently
- * repaintable region, and the three lists below name the subsets an edit
- * is allowed to touch.
+ * repaintable region. #122: which of them an edit is allowed to touch, and
+ * when, moved to `AFTER_EDIT`/`PLAN_ONLY` and the `EDITS` table in
+ * `app/edit.js` -- this file no longer schedules a repaint itself, it only
+ * hands `edit.js` the painter (`render`) and `retireUndo` to call, through
+ * `initEdits` below.
  * ================================================================== */
 import { $ } from './dom.js';
 import { withFocus, closeSheets } from './trap.js';
@@ -24,9 +27,9 @@ import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from '.
 import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './teams-view.js';
 import { renderSeason, seasonGames } from './season-view.js';
-import { state, save, editHappened, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, takeFirstRunPending, activeColor } from './state.js';
-import { track, bucketRoster } from './analytics.js';
+import { state, save, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, activeColor } from './state.js';
 import { retireUndo, flash } from './toast.js';
+import { initEdits } from './edit.js';
 // storage.js is already in the boot graph (state.js imports it for
 // `sanitizeSettings`/`DEFAULT_SETTINGS`), so this names no new request --
 // it is the one allow-list `BACK_VIEWS` below is derived from (#23 review).
@@ -97,11 +100,6 @@ const SECTIONS = {
   season:      () => renderSeason(),
 };
 const ALL = Object.keys(SECTIONS);
-// everything a plan change touches, minus the containers a coach types into
-export const AFTER_EDIT = ['teams', 'tabs', 'sentence', 'strategy', 'budget', 'seasonadj', 'balance', 'summary', 'issues', 'plan', 'timeline', 'totals', 'cards', 'gameview'];
-// as above but leaving the strategy body alone -- controls that repaint
-// themselves in place (sliders, pickers) must not be rebuilt mid-interaction
-export const PLAN_ONLY = ['tabs', 'sentence', 'budget', 'seasonadj', 'summary', 'issues', 'plan', 'timeline', 'totals', 'cards', 'gameview'];
 
 export function render(...keys) {
   if (!state.onboarded) return;
@@ -151,32 +149,12 @@ export function render(...keys) {
 
 export const renderAll = () => render();
 
-let timer = null;
-let pending = new Set();
-export function soon(...keys) {
-  /* Only edit handlers get here, so this is the one place that can tell "the
-     coach changed something" from "the app repainted". The recovery notice
-     says "check the roster"; once the coach has edited, they have, and it
-     used to sit there through a whole rebuild from first-run pointing at a
-     roster they had just typed. */
-  editHappened();
-  /* Same signal, second reader: a pending undo would restore a snapshot taken
-     before this edit and take it back down with it. */
-  retireUndo();
-  /* Same signal, third reader, and the whole of A35's DECISION 1: a sample
-     team loads without counting anything, and the first edit is what turns it
-     into a roster worth counting -- the coach has just said it is theirs. The
-     size is read HERE rather than at load, so a coach who trims the sample to
-     eight is counted as eight. */
-  if (takeFirstRunPending()) track('first_run_complete', { roster: bucketRoster(state.players.length) });
-  for (const k of (keys.length ? keys : AFTER_EDIT)) pending.add(k);
-  clearTimeout(timer);
-  timer = setTimeout(() => {
-    const keys2 = [...pending];
-    pending = new Set();
-    render(...keys2);
-  }, 140);
-}
+/* #122: every edit's save/repaint/hooks path now runs through `edit(kind)`
+   (`app/edit.js`), which replaces this module's own `soon()`. `render` is
+   still the painter and `retireUndo` is still toast.js's own -- both are
+   handed to `edit.js` once, here, the same `init*` shape every view module
+   takes its own callbacks through. */
+initEdits({ paint: render, retireUndo });
 
 /* ---------------- views + history + theme ---------------- */
 /* Today is home (#23). `setView` is still the one way a screen changes, and
@@ -784,7 +762,7 @@ function applyView(v, from) {
        today while wide" (decision 7), so it is games and the wide entry into
        today that need the game pane's own content fresh, not every wide
        navigation. Team, Season and Settings cover the game pane at this
-       width (decision 7) and stay fresh through their own edits' `soon()`
+       width (decision 7) and stay fresh through their own edits' `edit()`
        calls (#26 decision 6) -- painting them here was the exact wasted work
        that decision removed, back for a pane nobody can see. */
     if (gamePaneShowing(v)) render();

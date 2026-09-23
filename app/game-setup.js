@@ -22,16 +22,10 @@ import { state, game, plans, noRoster, setAvailable,
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
 import { colorName, seasonDate } from './storage.js';
 
-let renderAll = () => {};
-let soon = () => {};
-let AFTER_EDIT = [];
-let PLAN_ONLY = [];
+let edit = () => {};
 
-export function initGameSetup(renderAllFn, soonFn, planOnly, afterEdit) {
-  renderAll = renderAllFn;
-  soon = soonFn;
-  PLAN_ONLY = planOnly;
-  AFTER_EDIT = afterEdit;
+export function initGameSetup(editFn) {
+  edit = editFn;
   wireSentence();
 }
 
@@ -239,7 +233,7 @@ function whoRow(g, p, on_) {
     paintWhoRow(b, nowOn);
     // Who's here is an availability edit -- the re-plan it schedules leaves
     // the strategy body alone, same as the pill it replaces.
-    soon('strategy', ...PLAN_ONLY);
+    edit('availability');
   };
   return b;
 }
@@ -320,7 +314,7 @@ function paintFormatBody() {
   const grp = el('div', 'pgrp');
   // a format edit, same as the number fields it replaces: the full
   // AFTER_EDIT set, not just the availability-only PLAN_ONLY subset.
-  const afterChange = () => soon('strategy', ...AFTER_EDIT);
+  const afterChange = () => edit('format');
   grp.append(stepperRow('Periods', () => game().periods, v => { game().periods = v; },
     PERIODS_LO, PERIODS_HI, 'periods', afterChange));
   grp.append(stepperRow('Minutes each', () => game().periodMinutes, v => { game().periodMinutes = v; },
@@ -371,6 +365,6 @@ export function paintGranRows(box, get, onPick) {
 function paintIntervalBody() {
   paintGranRows($('#sheetIntervalBody'), game, c => {
     Object.assign(game(), { granMode: c.mode, granValue: c.value });
-    soon('strategy', ...AFTER_EDIT);
+    edit('format');
   });
 }

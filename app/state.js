@@ -442,8 +442,9 @@ let recoveryNotice = !!loaded?.recovered;
 /* "a save that worked" is *not* the signal for retiring the recovery notice,
    however much it sounds like one: `render()` saves unconditionally, boot
    renders, and the `document.fonts.ready` re-fit renders again a moment
-   later — so the notice would be wiped before it was ever read. `soon()` is
-   the signal, because it is only ever reached from an edit handler. */
+   later — so the notice would be wiped before it was ever read. `edit()`
+   (`edit.js`) is the signal, because it is only ever reached from an edit
+   handler. */
 export const editHappened = () => {
   if (!recoveryNotice) return;
   recoveryNotice = false;

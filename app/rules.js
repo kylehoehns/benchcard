@@ -10,9 +10,9 @@
  * callback so the chrome resets whichever way the coach goes back.
  *
  * Like every other view seam, the one thing it cannot own is the repaint
- * scheduler: `soon` and `PLAN_ONLY` live with the `render()` dispatcher in
- * app.js, so they come in through `initRules` at boot rather than this
- * module importing back into app.js and making the graph circular.
+ * path: every edit here goes through `edit(kind)` (#122, `app/edit.js`),
+ * handed in through `initRules` at boot rather than this module importing
+ * back into app.js and making the graph circular.
  */
 import { icon } from './icons.js';
 import { el, $ } from './dom.js';
@@ -24,12 +24,10 @@ import { pushPlanPane, stepperRow } from './game-setup.js';
 import { popPane } from './trap.js';
 import { undoable } from './toast.js';
 
-let soon = () => {};
-let PLAN_ONLY = [];
+let edit = () => {};
 
-export function initRules(scheduler, planOnly) {
-  soon = scheduler;
-  PLAN_ONLY = planOnly;
+export function initRules(editFn) {
+  edit = editFn;
 }
 
 /* ---------------- level 1: the rules list and the switch groups -------- */
@@ -102,7 +100,7 @@ function renderPairsGroup(c) {
   wrap.hidden = false;
   const box = el('div', 'pgrp');
   box.append(switchRow('Force together pairs every stint', c.hardPairs, false, v => {
-    c.hardPairs = v; renderConstraints(); soon(...PLAN_ONLY);
+    c.hardPairs = v; renderConstraints(); edit('pairs');
   }));
   wrap.append(box);
   wrap.append(el('p', 'pgrp-f', 'Left off, the plan maximizes their shared floor time and reports it.'));
@@ -116,7 +114,7 @@ function renderDayGroup(g) {
   const box = el('div', 'pgrp');
   const first = state.activeGame === 0;
   box.append(switchRow(EVEN_OUT_DAY_LABEL, !first && g.useCarryover, first, v => {
-    g.useCarryover = v; renderConstraints(); soon(...PLAN_ONLY);
+    g.useCarryover = v; renderConstraints(); edit('dayCarryover');
   }));
   wrap.append(box);
   wrap.append(el('p', 'pgrp-f', first
@@ -138,7 +136,7 @@ function renderSeasonGroup(g) {
     // Its consequence comes from a solve, so it waits for one rather than
     // repainting immediately -- `data-fk` rides the checkbox's own identity
     // back through that repaint (`withFocus`, trap.js).
-    soon('constraints', ...PLAN_ONLY);
+    edit('seasonCarryover');
   }, 'seasoncarry'));
   wrap.append(box);
   wrap.append(el('p', 'pgrp-f', 'Opens each player’s minutes ahead or behind by how far they are off their share '
@@ -244,7 +242,7 @@ function removeRuleFlow(item, idx) {
   const g = game(), c = g.constraints;
   undoable('Rule removed.', () => removeRule(c, item), isUndo => {
     renderConstraints();
-    soon(...PLAN_ONLY);
+    edit('rule');
     // Only on the way OUT: an undo repaints level 1 in place and the sheet
     // was already there (item 4's "the sheet is still open").
     if (!isUndo) {
@@ -383,7 +381,7 @@ function commitAddRule() {
     default: return;
   }
   renderConstraints();
-  soon(...PLAN_ONLY);
+  edit('rule');
   popPane($('#sheetPlan'));
   $('#constraints .add-rule')?.focus({ preventScroll: true });
 }

@@ -163,11 +163,11 @@ numbers that justify them. Loading a sample therefore fires nothing at all
 neither does **filling the first run's roster box with it** — a roster
 submitted exactly as the app wrote it is our suggestion, not a team, so
 `commitFirstRun` compares the box against the text it filled in and defers the
-count the same way. A
-read-and-reset flag on `state.js` defers the count to the first edit, read in
-`soon()` — an edit is the coach saying "this is now my team" — and it carries
-the roster size **at that moment**, so a coach who trims the sample to eight is
-counted as eight. No event and no dimension was added for any of this.
+count the same way. A read-and-reset flag on `state.js` defers the count to
+the first edit, read in `edit()` (`app/edit.js`) — an edit is the coach saying
+"this is now my team" — and it carries the roster size **at that moment**, so
+a coach who trims the sample to eight is counted as eight. No event and no
+dimension was added for any of this.
 
 **Counters only, enforced structurally.** `payload()` knows every event and
 every field it may carry; a string field must match one of a fixed set of

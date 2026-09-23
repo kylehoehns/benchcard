@@ -58,14 +58,13 @@ const tierOf = p => {
    nobody re-derives the default-tier rule. */
 export const levelName = p => LEVELS.find(l => l.v === tierOf(p)).label;
 
-/* Injected, like the other view seams: app.js owns the repaint scheduler and
-   importing it back from here would close the graph into a cycle. */
-let soon = () => {};
-let AFTER_EDIT = [];
+/* Injected, like the other view seams: app.js owns `edit(kind)` (#122,
+   `app/edit.js`) and importing it back from here would close the graph into
+   a cycle. */
+let edit = () => {};
 
-export function initBalance(soonFn, afterEdit) {
-  soon = soonFn;
-  AFTER_EDIT = afterEdit;
+export function initBalance(editFn) {
+  edit = editFn;
 }
 
 /* ------------------------------------------------------------------ *
@@ -141,7 +140,7 @@ function shapeRow(s, current, g) {
   b.onclick = () => {
     g.balance = s.v;
     save();
-    soon('balance', ...AFTER_EDIT);
+    edit('lineupShape');
     renderBalanceDetail();
   };
   return b;
@@ -295,7 +294,7 @@ export function levelMeter(p) {
        the app did: `levels` WAS `renderRoster`, so the rows were rebuilt
        anyway and the distinction it drew existed only here. `levels` now
        repaints the meters in place (`repaintLevels`), so the claim holds. */
-    soon('levels', 'balance', ...AFTER_EDIT);
+    edit('level');
   };
 
   /* Drag, because reaching for a five-step meter and sliding it is what anyone
@@ -353,5 +352,5 @@ export function levelledCount() {
 export function resetLevels() {
   for (const p of state.players) p.tier = DEFAULT_TIER;
   save();
-  soon('levels', 'balance', ...AFTER_EDIT);
+  edit('level');
 }

@@ -49,7 +49,7 @@ Everything below is relative to `app/`.
   `sanitize`, so there is neither a second serializer nor a second parser to
   drift from the schema.
 - `render.js` — the repaint dispatcher: `SECTIONS` (one key per independently
-  repaintable region), `render` / `renderAll`, the debounced `soon`, the
+  repaintable region), `render` / `renderAll`, the
   view switch (`setView`: the one place a screen changes and the one place
   browser history is pushed, replaced or popped for it (#23) — flip the
   `hidden` flags on Today / Games / Team / Season / Settings, scroll to the
@@ -64,6 +64,15 @@ Everything below is relative to `app/`.
   nothing may import it back: a view that needs to repaint is handed the
   callback at boot, through its `init*` function. That rule is what keeps the
   import graph a tree.
+- `edit.js` (#122) — the one path every coach edit takes: `EDITS`, a table
+  from each kind of change (a slider drag, a typed field, a Settings toggle)
+  to whether it is a record edit or a preference, which `SECTIONS` keys it
+  repaints, and whether it paints now or after the same 140ms debounce
+  `render.js`'s own `soon` used to own; and `edit(kind)`, which every handler
+  calls instead of naming a repaint or a `SECTIONS` key itself. It imports no
+  view and touches no DOM — `render` and `retireUndo` are handed to it once,
+  at boot, through `initEdits`, the same `init*` shape the views take their
+  own callbacks through.
 - The views, one module each — `roster-view.js`, `teams-view.js` (Today: the
   team's name and team-switcher menu in the large title, multiple days stacked with headings and their games, the Team and Season entries below, and Add a game),
   `season-view.js` (the Season view: minutes per player across every filed game,

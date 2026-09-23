@@ -172,10 +172,11 @@ function showUndo(message, snap, refresh) {
    retires instead -- the next edit is the coach moving on, and an undo that
    silently loses work is worse than one that is no longer there.
 
-   `soon()` is the caller, for the same reason `editHappened` is called from
-   there: it is the one place that can tell "the coach changed something" from
-   "the app repainted". Only snapshot toasts carry `data-undo`; an `offer`
-   acts on ids, takes nothing back, and is left alone. */
+   `edit()` (`edit.js`) is the caller, for the same reason `editHappened` is
+   called from there: it is the one place that can tell "the coach changed
+   something" from "the app repainted". Only snapshot toasts carry
+   `data-undo`; an `offer` acts on ids, takes nothing back, and is left
+   alone. */
 export function retireUndo() {
   // not scoped to `#toasts`: an undo toast for Remove rule (#28) lives inside
   // the open Plan sheet instead (see `toastHost`), and there is only ever one

@@ -17,6 +17,7 @@ import { lacks } from './prose.js';
  * notes. */
 const strategy = readFileSync(new URL('../app/strategy.js', import.meta.url), 'utf8');
 const render = readFileSync(new URL('../app/render.js', import.meta.url), 'utf8');
+const edit = readFileSync(new URL('../app/edit.js', import.meta.url), 'utf8');
 const state = readFileSync(new URL('../app/state.js', import.meta.url), 'utf8');
 
 test('the budget row carries the minutes the plan actually gives', () => {
@@ -37,9 +38,11 @@ test('it repaints after a solve, not under the dragging finger', () => {
 });
 
 test('a slider drag reaches it -- PLAN_ONLY is the drag repaint list', () => {
-  const planOnly = render.match(/export const PLAN_ONLY = \[([^\]]*)\]/)[1];
+  // #122: PLAN_ONLY/AFTER_EDIT moved to edit.js, which is now their one
+  // definition -- read from there instead of render.js.
+  const planOnly = edit.match(/export const PLAN_ONLY = \[([^\]]*)\]/)[1];
   assert.ok(planOnly.includes("'budget'"), 'dragging a slider must refresh the actuals');
-  const afterEdit = render.match(/export const AFTER_EDIT = \[([^\]]*)\]/)[1];
+  const afterEdit = edit.match(/export const AFTER_EDIT = \[([^\]]*)\]/)[1];
   assert.ok(afterEdit.includes("'budget'"));
   // strategy rebuilds the rows; budget fills them in, so it has to come after
   assert.ok(afterEdit.indexOf("'strategy'") < afterEdit.indexOf("'budget'"));
