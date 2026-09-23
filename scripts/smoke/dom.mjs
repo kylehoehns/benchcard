@@ -15,6 +15,19 @@ export async function evalIn(c, expression) {
   return result.value;
 }
 
+/* #102: the "Evens out ..." sentence's second line, read through the same
+   `tipoffLabel` the sentence itself calls rather than a hard-coded "9:00 AM"
+   this ICU version's own AM/PM spacing (an ASCII space or U+202F) could
+   break. `plan-sheet.mjs` and `sentence-sheets.mjs` each drove this exact
+   expression until they were pulled here. */
+export async function evensOutWant(c, hhmm) {
+  const json = await evalIn(c, `(async () => {
+    const { tipoffLabel } = await import('/storage.js');
+    return JSON.stringify(\`Evens out the \${tipoffLabel('${hhmm}')} game.\`);
+  })()`);
+  return JSON.parse(json);
+}
+
 /* Wait until nothing is animating. `fx.js` fades controls in from opacity 0
    and `smoke-checks.js` skips anything at opacity 0, so a page measured
    mid-entrance is audited for whichever controls happened to have arrived:

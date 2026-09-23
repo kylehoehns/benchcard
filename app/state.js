@@ -613,8 +613,9 @@ function reopenSorted(dayIndex, games, g) {
 
 /**
  * Adds `g` to the day dated `date` (via `dayFor`), at the end of that day's
- * games, and opens it (`openGame`, below) -- the shape "Add a game" commits
- * (#32, #101 item 2).
+ * games, then sorts that day by tip-off and opens `g` at its sorted index
+ * (`reopenSorted`, above) -- the shape "Add a game" commits (#32, #101 item
+ * 2, #102 item 3).
  */
 export function addGame(g, date) {
   const i = dayFor(date);

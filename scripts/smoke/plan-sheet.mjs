@@ -1,4 +1,4 @@
-import { evalIn, step, HEIGHT } from './dom.mjs';
+import { evalIn, evensOutWant, step, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 import { evalJSON, click, closedWithFocus, settle, settlePane, sheetRect, setGame, statusOk, tap, tapPane, titleFocused, waitClosed } from './sheet-drive.mjs';
 import { planClosePass } from './plan-closes.mjs';
@@ -515,12 +515,10 @@ export async function planSheetPass(c, origin) {
     })`);
     ck(evensLine.hidden === false, 'turning on "Even out earlier games" did not show the sentence\'s second line');
     // #102: Hawks' 9:00 tip-off, read through the same `tipoffLabel` the
-    // sentence itself calls, rather than a hard-coded "9:00 AM" this ICU
-    // version's own AM/PM spacing (an ASCII space or U+202F) could break.
-    const wantEvens = await evalJSON(c, `(async () => {
-      const { tipoffLabel } = await import('/storage.js');
-      return JSON.stringify(\`Evens out the \${tipoffLabel('09:00')} game.\`);
-    })()`);
+    // sentence itself calls (`evensOutWant`, dom.mjs), rather than a
+    // hard-coded "9:00 AM" this ICU version's own AM/PM spacing (an ASCII
+    // space or U+202F) could break.
+    const wantEvens = await evensOutWant(c, '09:00');
     ck(evensLine.text === wantEvens, `the second line reads "${evensLine.text}", want "${wantEvens}"`);
 
     // toggle useSeasonTargets.

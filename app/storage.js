@@ -352,7 +352,7 @@ export function addSeasonGames(season, games) {
   return add.length;
 }
 
-const TIPOFF_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const TIPOFF_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 /**
  * `"HH:MM"` (24-hour, zero-padded) or `""` for anything else -- absent, a
@@ -375,7 +375,7 @@ export const validTipoff = v => (typeof v === 'string' && TIPOFF_RE.test(v) ? v 
 export const tipoffLabel = (hhmm, locale) => {
   const m = TIPOFF_RE.exec(String(hhmm || ''));
   if (!m) return '';
-  const d = new Date(2000, 0, 1, Number(m[1]), Number(hhmm.slice(3, 5)));
+  const d = new Date(2000, 0, 1, Number(m[1]), Number(m[2]));
   return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 };
 
