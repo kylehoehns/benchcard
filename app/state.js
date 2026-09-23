@@ -162,7 +162,7 @@ export function newGame(n, from, settings) {
    slot budget and the parsers never learn a team exists, because they are
    handed a roster and a game, not the record. The season belongs to the team
    for the same reason the roster does: two teams do not share a history. */
-export const newTeam = (name, players, settings) => {
+export const newTeam = (name, players, settings, today = new Date()) => {
   /* Sanitised first, not inline below, because the first game has to see it:
      a new team's opening game is the one place with nothing to clone, so the
      team's format default is the only thing that can answer it. */
@@ -173,7 +173,8 @@ export const newTeam = (name, players, settings) => {
     // No seeded fake roster. An app that opens pre-filled with strangers reads
     // like a demo; first run should ask for the coach's actual team.
     players: players || [],
-    day: { name: '', games: [newGame(0, null, s)] },
+    days: [{ name: '', date: seasonDate(today), games: [newGame(0, null, s)] }],
+    activeDay: 0,
     season: { games: [] },
     /* Copy on create, not a cascade (v6): two squads are usually in one league,
        and an inheritance link would be a second thing to explain and to get
@@ -233,13 +234,22 @@ export const state = loaded ? loaded.state : freshState();
  * accessors themselves, and keeps `clone(state)` snapshots clean.
  * ================================================================== */
 export const team = () => state.teams[state.activeTeam] || state.teams[0];
-for (const key of ['players', 'day', 'season', 'settings', 'activeGame']) {
+for (const key of ['players', 'season', 'settings', 'activeGame', 'activeDay']) {
   Object.defineProperty(state, key, {
     get: () => team()[key],
     set: v => { team()[key] = v; },
     enumerable: false, configurable: true,
   });
 }
+/* `state.day` used to be the record; now it is the OPEN day, the one at
+   `team().activeDay` in `team().days` (#101). Every existing reader --
+   `state.day.games`, `state.day.name` -- keeps working unchanged, pointed
+   at whichever day is open. */
+Object.defineProperty(state, 'day', {
+  get: () => team().days[team().activeDay],
+  set: v => { team().days[team().activeDay] = v; },
+  enumerable: false, configurable: true,
+});
 /* The league's floor, in minutes -- 0 is off. Exported because it is the one
    team setting that changes what the RULES section is telling the truth about:
    it composes into the per-player minimums the solver reads (`computeAll`), so
@@ -545,7 +555,7 @@ export const noRoster = () => !state.players.length;
    Slots, locks, the closing group and platoon units were unswept too. */
 export function removePlayer(id) {
   state.players = state.players.filter(p => p.id !== id);
-  for (const g of state.day.games) {
+  for (const g of team().days.flatMap(d => d.games)) {
     g.out = g.out.filter(x => x !== id);
     const c = g.constraints;
     delete c.minMinutes[id]; delete c.maxMinutes[id];
@@ -565,6 +575,89 @@ export function removePlayer(id) {
     const ov = g.live?.overrides;
     if (ov) for (const k of Object.keys(ov)) if (ov[k].includes(id)) delete ov[k];
   }
+}
+
+/* ================================================================== *
+ * #101 -- a team's games sit on a list of days, not one. These five walk
+ * `team().days` directly (the Constraint: "everything that must see every
+ * day ... walks `days` explicitly"), rather than through `state.day`, which
+ * stays the OPEN day only.
+ * ================================================================== */
+
+/**
+ * The day dated `date`, inserting one in date order (`sanitizeTeam`'s own
+ * sort) when none exists yet. Returns its index in `team().days`.
+ */
+export function dayFor(date) {
+  const days = team().days;
+  const i = days.findIndex(d => d.date === date);
+  if (i >= 0) return i;
+  const day = { name: '', date, games: [] };
+  const j = days.findIndex(d => d.date > date);
+  if (j < 0) { days.push(day); return days.length - 1; }
+  days.splice(j, 0, day);
+  return j;
+}
+
+/**
+ * Adds `g` to the day dated `date` (via `dayFor`), at the end of that day's
+ * games, and opens it (`openGame`, below) -- the shape "Add a game" commits
+ * (#32, #101 item 2).
+ */
+export function addGame(g, date) {
+  const i = dayFor(date);
+  const day = team().days[i];
+  day.games.push(g);
+  openGame(i, day.games.length - 1);
+  return i;
+}
+
+/**
+ * Moves the OPEN game to the day dated `date`, creating it in order if
+ * needed, and drops the source day once it has no games left ("no empty
+ * days"). A date before today or empty is ignored, same as the native date
+ * input's own `min` (#101 item 3); "today" is injectable. The game screen
+ * stays open on the moved game.
+ */
+export function moveGame(date, today = new Date()) {
+  if (!date || date < seasonDate(today)) return;
+  const t = team();
+  const day = t.days[t.activeDay];
+  const g = day.games[state.activeGame];
+  if (!g || day.date === date) return;
+
+  const dest = t.days[dayFor(date)];
+  day.games.splice(day.games.indexOf(g), 1);
+  dest.games.push(g);
+  if (!day.games.length) t.days.splice(t.days.indexOf(day), 1);
+
+  openGame(t.days.indexOf(dest), dest.games.length - 1);
+}
+
+/**
+ * Removes the OPEN game and drops its day once it has no games left ("no
+ * empty days"). Never removes the team's only game anywhere -- the caller
+ * (`teams-view.js`'s "Remove this game") is the one that decides whether to
+ * even offer it, on the same total.
+ */
+export function removeGame() {
+  const t = team();
+  if (t.days.reduce((n, d) => n + d.games.length, 0) < 2) return;
+  const day = t.days[t.activeDay];
+  day.games.splice(state.activeGame, 1);
+  if (day.games.length) {
+    state.activeGame = Math.min(state.activeGame, day.games.length - 1);
+    return;
+  }
+  const idx = t.activeDay;
+  t.days.splice(idx, 1);
+  openGame(Math.min(idx, t.days.length - 1), 0);
+}
+
+/** Opens game `i` of day `d` -- the Resume bar and Today's passes both land here. */
+export function openGame(d, i) {
+  team().activeDay = d;
+  state.activeGame = i;
 }
 
 /* Sitting a player out is the other half of the sweep above, and it was
@@ -657,7 +750,12 @@ export function rebalanceSlots(g, pinned) {
 /* ================================================================== *
  * plans -- recomputed, never stored. Deterministic from inputs + seed.
  * ================================================================== */
-export let plans = [], dayTotals = {};
+/* `dayPlans[d]` is day `d`'s solved games, one entry per team().days -- each
+   day solved on its own (#101 item 7), so a deficit game 1 of one day
+   corrects never reaches another day's carryover. `plans` stays the open
+   day's, `dayPlans[team().activeDay]`, so the ~50 existing readers of
+   `plans` do not need to know days exist. */
+export let plans = [], dayTotals = {}, dayPlans = [];
 
 // Solving is 20-50ms per game on a laptop and several times that on a phone,
 // and every game in the day gets re-solved on any change. Typing an opponent
@@ -796,18 +894,20 @@ export function evensOutLine(i) {
    lines, or null when there is nothing worth offering to copy.
 
    Null in two cases, and the second is the one that matters (decision 6):
-   `state.day.games` is never actually empty -- `newTeam`, `sanitizeTeam` and
-   "New day" all seed one game -- so a card suppressed on the COUNT would be
-   dead code. What a brand-new team really has is one unplanned Game 1 and an
-   empty roster, and "Same as Game 1? 0 players, 4 × 8, even minutes" offers
-   to copy nothing. So the test is whether the last game has anyone at it.
+   the team's last game -- the last game of its last day (#101) -- is never
+   actually missing: `newTeam`, `sanitizeTeam` and filing's fallback all seed
+   one game on one day, so a card suppressed on the COUNT would be dead code.
+   What a brand-new team really has is one unplanned Game 1 and an empty
+   roster, and "Same as Game 1? 0 players, 4 × 8, even minutes" offers to
+   copy nothing. So the test is whether the last game has anyone at it.
 
    The name is `when || gameLabel(g, i)` -- tip-off, then opponent, then
    "Game N" -- which is `evensOutLine`'s own precedence above, so the two
    lines cannot disagree about what a game is called. The summary is three of
    `sentenceParts`'s five phrases joined; none of them is re-derived here. */
 export function sameAsLast() {
-  const games = state.day.games;
+  const days = team().days;
+  const games = days[days.length - 1].games;
   const i = games.length - 1;
   const g = games[i];
   if (!g || !availIds(g).length) return null;
@@ -1142,32 +1242,18 @@ const tierOfPlayer = p => {
 export function computeAll() {
   const ps = state.players;
   const ids = ps.map(p => p.id);
-  const cum = Object.fromEntries(ids.map(id => [id, 0]));
-  let any = false;
   const live = new Set();
 
-  /* How far off their share everyone is, before today. Today's earlier games
-     are folded in below as they solve: without that, game 2 of a tournament
-     day corrects a deficit game 1 has already corrected and the kid is paid
-     twice. Archived games are effective minutes (that is what `archiveDay`
-     files); today's are PLANNED minutes, for the same reason `cum` is planned
-     -- a hand swap in game 1 must not silently re-solve game 2 underneath the
-     coach. */
+  /* How far off their share everyone is, before any of today's games. Read
+     once for the whole team: the season a game's deficit is measured against
+     does not change from one day to the next. Archived games are effective
+     minutes (that is what `archiveDay` files); a day's own games are PLANNED
+     minutes, folded in below as that day solves, for the same reason `cum`
+     is planned -- a hand swap in game 1 must not silently re-solve game 2
+     underneath the coach. */
   const base = seasonShare(team().season?.games);
-  const soFarPlayed = {}, soFarShare = {};
-  const noteToday = mins => {
-    const inGame = Object.keys(mins);
-    if (!inGame.length) return;
-    const share = inGame.reduce((a, id) => a + (mins[id] || 0), 0) / inGame.length;
-    for (const id of inGame) {
-      soFarPlayed[id] = (soFarPlayed[id] || 0) + (mins[id] || 0);
-      soFarShare[id] = (soFarShare[id] || 0) + share;
-    }
-  };
-  const deficitOf = id =>
-    (base.deficit[id] || 0) + (soFarShare[id] || 0) - (soFarPlayed[id] || 0);
 
-  /* The team's own setting, read once for the whole day. A record that has not
+  /* The team's own setting, read once for the whole team. A record that has not
      been through `sanitize` has no settings block, and the defaults are exactly
      what that means -- so this never throws and never plans to zero. */
   const maxSubs = state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs;
@@ -1182,122 +1268,144 @@ export function computeAll() {
      odd stint; 'behind' (the default, and every record written before the key
      existed) leaves it to the season, which is what the app has always done.
 
-     `tiers` is built once per day and is non-null ONLY under 'levels' -- it is
-     both the composition input below and the flag `sayWhyTheyAreShort` reads
-     to know which reason it is allowed to give. */
+     `tiers` is built once for the team and is non-null ONLY under 'levels' --
+     it is both the composition input below and the flag `sayWhyTheyAreShort`
+     reads to know which reason it is allowed to give. */
   const stance = state.settings?.tieBreak ?? DEFAULT_SETTINGS.tieBreak;
   const tiers = stance === 'levels'
     ? Object.fromEntries(ps.map(p => [p.id, tierOfPlayer(p)])) : null;
-  /* Composition, not replacement: `engine.js` reads the priority map for its
-     ORDER alone (`tieBreakOrder` sorts on it and nothing else), so a level
-     multiplied out past any credible deficit puts the levels first and leaves
-     the season deciding inside each level. Two consequences worth having:
-     nobody's level ever silently outranks a floor, a cap or a lock -- those are
-     excluded from the ramp before the order is even consulted -- and a roster
-     with no levels set is every tier equal, which is the deficit order again,
-     byte for byte the plan 'behind' would have produced. */
-  const priorityOf = id => (tiers ? tiers[id] * 1000 : 0) + deficitOf(id);
 
-  plans = state.day.games.map(g => {
-    live.add(g.id);
-    const out = new Set(g.out);
-    // slots are the UI's currency; the engine works in minutes. Normalise here
-    // rather than in the editor so the budget invariant holds even when the
-    // roster or format changed from another view.
-    if (g.strategy === 'minutes') normalizeTargets(g);
-    const carry = (g.useCarryover && any) ? { ...cum } : null;
-    /* Computed before the cache is consulted and folded into the signature:
-       the whole chain -- a game deleted from the ledger, an earlier game in
-       today's day re-solving -- then invalidates on its own, exactly as the
-       day carryover does. */
-    const seasonT = seasonTargetsFor(g, ids.filter(id => !out.has(id)), deficitOf);
-    /* The tie-break the engine uses when the clock does not divide evenly and
-       somebody has to play a stint less. `deficitOf` is the whole chain in one
-       number and always has been: it is the season deficit where a season
-       exists, and today's games are already folded into it as they solve, so
-       with no season at all it reduces to "who has played least so far today".
-       All zeroes -- game one of a fresh season -- and the engine falls through
-       to its own seeded rotation. Same value the carryover switch reads, so
-       the two can never disagree about who is behind; unlike the switch this
-       is always on, because there is no version of this where nobody gets the
-       odd stint. `priorityOf` wraps it with the team's stance: under 'behind'
-       it IS `deficitOf`, and under 'levels' the level leads and the deficit
-       decides inside it. */
-    const prio = Object.fromEntries(ids.filter(id => !out.has(id)).map(id => [id, priorityOf(id)]));
-    const sig = JSON.stringify([
-      // p.tier and g.balance belong here: both change the plan, and leaving
-      // either out means a coach re-tiers a player and the card does not move
-      ps.map(p => [p.id, p.name, p.shortName, p.tier]), g.out, g.periods, g.periodMinutes,
-      g.granMode, g.granValue, g.constraints, g.strategy, g.balance, g.seed, carry, seasonT, prio,
-      // team settings reach the solver too, so they belong in the signature
-      // for the same reason: change the number and the card must move
-      maxSubs, leagueMin,
-    ]);
-    const hit = planCache.get(g.id);
-    if (hit && hit.sig === sig) {
-      if (hit.plan.ok) {
+  /* Each day solved on its own (#101 item 7): `cum` and the soFar-today
+     ledger reset here, per day, so a deficit day 1's games already corrected
+     never crosses into day 2's carryover or its priority order. */
+  const solveDay = day => {
+    const cum = Object.fromEntries(ids.map(id => [id, 0]));
+    let any = false;
+    const soFarPlayed = {}, soFarShare = {};
+    const noteToday = mins => {
+      const inGame = Object.keys(mins);
+      if (!inGame.length) return;
+      const share = inGame.reduce((a, id) => a + (mins[id] || 0), 0) / inGame.length;
+      for (const id of inGame) {
+        soFarPlayed[id] = (soFarPlayed[id] || 0) + (mins[id] || 0);
+        soFarShare[id] = (soFarShare[id] || 0) + share;
+      }
+    };
+    const deficitOf = id =>
+      (base.deficit[id] || 0) + (soFarShare[id] || 0) - (soFarPlayed[id] || 0);
+    /* Composition, not replacement: `engine.js` reads the priority map for its
+       ORDER alone (`tieBreakOrder` sorts on it and nothing else), so a level
+       multiplied out past any credible deficit puts the levels first and leaves
+       the season deciding inside each level. Two consequences worth having:
+       nobody's level ever silently outranks a floor, a cap or a lock -- those are
+       excluded from the ramp before the order is even consulted -- and a roster
+       with no levels set is every tier equal, which is the deficit order again,
+       byte for byte the plan 'behind' would have produced. */
+    const priorityOf = id => (tiers ? tiers[id] * 1000 : 0) + deficitOf(id);
+
+    return day.games.map(g => {
+      live.add(g.id);
+      const out = new Set(g.out);
+      // slots are the UI's currency; the engine works in minutes. Normalise here
+      // rather than in the editor so the budget invariant holds even when the
+      // roster or format changed from another view.
+      if (g.strategy === 'minutes') normalizeTargets(g);
+      const carry = (g.useCarryover && any) ? { ...cum } : null;
+      /* Computed before the cache is consulted and folded into the signature:
+         the whole chain -- a game deleted from the ledger, an earlier game in
+         the day re-solving -- then invalidates on its own, exactly as the
+         day carryover does. */
+      const seasonT = seasonTargetsFor(g, ids.filter(id => !out.has(id)), deficitOf);
+      /* The tie-break the engine uses when the clock does not divide evenly and
+         somebody has to play a stint less. `deficitOf` is the whole chain in one
+         number and always has been: it is the season deficit where a season
+         exists, and the day's earlier games are already folded into it as they
+         solve, so with no season at all it reduces to "who has played least so
+         far today". All zeroes -- game one of a fresh season -- and the engine
+         falls through to its own seeded rotation. Same value the carryover
+         switch reads, so the two can never disagree about who is behind; unlike
+         the switch this is always on, because there is no version of this where
+         nobody gets the odd stint. `priorityOf` wraps it with the team's stance:
+         under 'behind' it IS `deficitOf`, and under 'levels' the level leads and
+         the deficit decides inside it. */
+      const prio = Object.fromEntries(ids.filter(id => !out.has(id)).map(id => [id, priorityOf(id)]));
+      const sig = JSON.stringify([
+        // p.tier and g.balance belong here: both change the plan, and leaving
+        // either out means a coach re-tiers a player and the card does not move
+        ps.map(p => [p.id, p.name, p.shortName, p.tier]), g.out, g.periods, g.periodMinutes,
+        g.granMode, g.granValue, g.constraints, g.strategy, g.balance, g.seed, carry, seasonT, prio,
+        // team settings reach the solver too, so they belong in the signature
+        // for the same reason: change the number and the card must move
+        maxSubs, leagueMin,
+      ]);
+      const hit = planCache.get(g.id);
+      if (hit && hit.sig === sig) {
+        if (hit.plan.ok) {
+          any = true;
+          for (const [id, m] of Object.entries(hit.plan.minutes)) cum[id] += m;
+          noteToday(hit.plan.minutes);
+        }
+        return syncOverrides(g, hit.plan);
+      }
+      const c = clone(g.constraints);
+      /* The league floor, composed into the per-player map the engine has always
+         read -- so `engine.js` is untouched and knows nothing about the setting.
+         A minimum the coach set by hand wins when it is higher; their CAP wins
+         when it is lower, because a cap is a deliberate "hold this kid back" and
+         raising past it would manufacture a MIN_ABOVE_CAP error they never
+         asked for. Everyone who is out is left alone: they are not available, so
+         no rule about available players reaches them. */
+      if (leagueMin > 0) {
+        for (const id of ids) {
+          if (out.has(id)) continue;
+          const cap = c.maxMinutes[id];
+          const want = Math.max(c.minMinutes[id] || 0, leagueMin);
+          c.minMinutes[id] = cap != null ? Math.min(cap, want) : want;
+        }
+      }
+      if (g.strategy === 'minutes') {
+        c.targetMinutes = {};
+        for (const [id, slots] of Object.entries(g.constraints.targetSlots || {})) {
+          if (!out.has(id)) c.targetMinutes[id] = slotsToMinutes(g, slots);
+        }
+      }
+      // never merged with a hand-set map: `seasonTargetsFor` returns null for
+      // the one strategy that has one, so these two can never both be set
+      if (seasonT) c.targetMinutes = seasonT;
+      if (g.strategy !== 'closers') c.closing = null;
+      if (g.strategy !== 'platoon') c.units = [];
+      const p = generatePlan({
+        players: ps, availableIds: ids.filter(id => !out.has(id)),
+        format: { periods: g.periods, periodMinutes: g.periodMinutes },
+        granularity: { mode: g.granMode, value: g.granValue },
+        constraints: c, strategy: g.strategy, balance: g.balance,
+        carryover: carry,
+        priority: prio,
+        seed: g.seed,
+        maxSubs,
+      });
+      if (seasonT) sayTheSeasonSetThem(p);
+      sayWhyTheyAreShort(p, prio, tiers);
+      planCache.set(g.id, { sig, plan: p });
+      if (p.ok) {
         any = true;
-        for (const [id, m] of Object.entries(hit.plan.minutes)) cum[id] += m;
-        noteToday(hit.plan.minutes);
+        for (const [id, m] of Object.entries(p.minutes)) cum[id] += m;
+        noteToday(p.minutes);
       }
-      return syncOverrides(g, hit.plan);
-    }
-    const c = clone(g.constraints);
-    /* The league floor, composed into the per-player map the engine has always
-       read -- so `engine.js` is untouched and knows nothing about the setting.
-       A minimum the coach set by hand wins when it is higher; their CAP wins
-       when it is lower, because a cap is a deliberate "hold this kid back" and
-       raising past it would manufacture a MIN_ABOVE_CAP error they never
-       asked for. Everyone who is out is left alone: they are not available, so
-       no rule about available players reaches them. */
-    if (leagueMin > 0) {
-      for (const id of ids) {
-        if (out.has(id)) continue;
-        const cap = c.maxMinutes[id];
-        const want = Math.max(c.minMinutes[id] || 0, leagueMin);
-        c.minMinutes[id] = cap != null ? Math.min(cap, want) : want;
-      }
-    }
-    if (g.strategy === 'minutes') {
-      c.targetMinutes = {};
-      for (const [id, slots] of Object.entries(g.constraints.targetSlots || {})) {
-        if (!out.has(id)) c.targetMinutes[id] = slotsToMinutes(g, slots);
-      }
-    }
-    // never merged with a hand-set map: `seasonTargetsFor` returns null for
-    // the one strategy that has one, so these two can never both be set
-    if (seasonT) c.targetMinutes = seasonT;
-    if (g.strategy !== 'closers') c.closing = null;
-    if (g.strategy !== 'platoon') c.units = [];
-    const p = generatePlan({
-      players: ps, availableIds: ids.filter(id => !out.has(id)),
-      format: { periods: g.periods, periodMinutes: g.periodMinutes },
-      granularity: { mode: g.granMode, value: g.granValue },
-      constraints: c, strategy: g.strategy, balance: g.balance,
-      carryover: carry,
-      priority: prio,
-      seed: g.seed,
-      maxSubs,
+      return syncOverrides(g, p);
     });
-    if (seasonT) sayTheSeasonSetThem(p);
-    sayWhyTheyAreShort(p, prio, tiers);
-    planCache.set(g.id, { sig, plan: p });
-    if (p.ok) {
-      any = true;
-      for (const [id, m] of Object.entries(p.minutes)) cum[id] += m;
-      noteToday(p.minutes);
-    }
-    return syncOverrides(g, p);
-  });
+  };
+
+  dayPlans = team().days.map(solveDay);
+  plans = dayPlans[team().activeDay];
+
   for (const key of [...planCache.keys()]) if (!live.has(key)) planCache.delete(key);
   for (const key of Object.keys(seasonAdjust)) if (!live.has(key)) delete seasonAdjust[key];
-  /* Two totals, deliberately. `cum` is the solver's input: carryover asks
-     "what has the plan already given this kid today", it is accumulated in
-     game order inside the loop above, and it must stay the planned number or
-     a hand swap in game 1 would silently re-solve game 2 underneath the
-     coach. `dayTotals` is what the day chart shows a human, so it counts the
-     fives actually on the floor -- and it can only be totalled here, after
-     the map, because `syncOverrides` may have dropped stale swaps mid-loop. */
+  /* Two totals, deliberately. `cum` is the solver's input, accumulated in
+     game order inside `solveDay` above. `dayTotals` is what the day chart
+     shows a human, for the OPEN day -- so it counts the fives actually on the
+     floor, and it can only be totalled here, after the map, because
+     `syncOverrides` may have dropped stale swaps mid-loop. */
   const eff = Object.fromEntries(ids.map(id => [id, 0]));
   state.day.games.forEach((g, i) => {
     const p = plans[i];
@@ -1454,14 +1562,16 @@ export function resolveRest(g, p, from, sitIds = []) {
  * and the caller wraps this in `undoable`, which snapshots the whole
  * record, so Undo un-archives for free with no second code path.
  * ================================================================== */
-export function archiveDay() {
+export function archiveDay(d = state.activeDay) {
   const t = team();
   if (!t.season || !Array.isArray(t.season.games)) t.season = { games: [] };
-  const finished = state.day.games
-    .map((g, i) => [g, plans[i]])
+  const day = t.days[d];
+  const dp = dayPlans[d] || [];
+  const finished = day.games
+    .map((g, i) => [g, dp[i]])
     .filter(([, p]) => p && p.ok)
     .map(([g, p]) => seasonGame(g, effectiveMinutes(g, p),
-      { dayName: state.day.name, date: state.day.date }));
+      { dayName: day.name, date: day.date }));
   return addSeasonGames(t.season, finished);
 }
 
@@ -1487,7 +1597,7 @@ export const dayIsPast = (day, today = new Date()) => day.date < seasonDate(toda
 export const dueToFile = (today = new Date()) => {
   const gm = document.querySelector('#gamemode');
   if (gm && gm.hidden === false) return false;
-  return dayIsPast(state.day, today);
+  return team().days.some(d => dayIsPast(d, today));
 };
 
 // "Sat, Sep 27" -- the coach's own locale, short weekday, short month, day.
@@ -1495,6 +1605,23 @@ const weekdayLabel = iso => {
   const d = localDate(iso);
   return d ? d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
 };
+
+/**
+ * #101 item 4: the heading Today gives each day it stacks -- shared with the
+ * game screen's own `#gameSub` lead-in, so the two never invent two names for
+ * the same date. "Today" and "Tomorrow" read off the phone's own day
+ * (injectable so a pinned clock can stand in, in a test); every other date
+ * reuses `weekdayLabel` rather than a second formatter. A day with a name
+ * appends " · <name>" to whichever label applies.
+ */
+export function dayHeading(day, today = new Date()) {
+  const iso = seasonDate(today);
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const base = day.date === iso ? 'Today'
+    : day.date === seasonDate(tomorrow) ? 'Tomorrow'
+    : weekdayLabel(day.date);
+  return day.name ? `${base} · ${day.name}` : base;
+}
 
 /**
  * #100: the filing entry point. When `state.day` is due (`dueToFile`), files
@@ -1513,14 +1640,45 @@ const weekdayLabel = iso => {
  */
 export function fileIfPast(today = new Date()) {
   if (!dueToFile(today)) return null;
+  const t = team();
 
-  const filedDate = state.day.date;
-  const kept = archiveDay();
-  const g = newGame(0, lastGame(), state.settings);
-  g.out = [];
-  state.day = { name: '', games: [g], date: seasonDate(today) };
-  state.activeGame = 0;
-  return kept
-    ? `${weekdayLabel(filedDate)}: ${kept} game${kept === 1 ? '' : 's'} saved to the season.`
-    : `${weekdayLabel(filedDate)} is over. Started a new day.`;
+  // Every past day, oldest first -- filing order, not storage order (`days`
+  // is already sorted by `sanitizeTeam`, but this does not lean on that).
+  const idxs = t.days.map((_, i) => i).filter(i => dayIsPast(t.days[i], today));
+  idxs.sort((a, b) => (t.days[a].date < t.days[b].date ? -1 : t.days[a].date > t.days[b].date ? 1 : 0));
+
+  const filedDate = t.days[idxs[0]].date;
+  const lastFiled = t.days[idxs[idxs.length - 1]];
+  const activeDayRef = t.days[t.activeDay];
+
+  let kept = 0;
+  for (const i of idxs) kept += archiveDay(i);
+
+  const removed = new Set(idxs);
+  t.days = t.days.filter((_, i) => !removed.has(i));
+
+  // "No empty days" (Decisions): when filing leaves none, one day dated
+  // today with one new game replaces them -- the fresh-day shape #100 built.
+  let fellBack = false;
+  if (!t.days.length) {
+    fellBack = true;
+    const g = newGame(0, lastFiled.games[lastFiled.games.length - 1], state.settings);
+    g.out = [];
+    t.days = [{ name: '', date: seasonDate(today), games: [g] }];
+    t.activeDay = 0;
+    state.activeGame = 0;
+  } else {
+    const newIdx = t.days.indexOf(activeDayRef);
+    if (newIdx < 0) { t.activeDay = 0; state.activeGame = 0; } else { t.activeDay = newIdx; }
+  }
+
+  const n = idxs.length;
+  const msg = n === 1
+    ? (kept
+      ? `${weekdayLabel(filedDate)}: ${kept} game${kept === 1 ? '' : 's'} saved to the season.`
+      : `${weekdayLabel(filedDate)} is over.`)
+    : (kept
+      ? `${n} past days: ${kept} game${kept === 1 ? '' : 's'} saved to the season.`
+      : `${n} past days are over.`);
+  return fellBack && kept === 0 ? `${msg} Started a new day.` : msg;
 }

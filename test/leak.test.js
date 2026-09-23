@@ -106,7 +106,8 @@ const LEVELLED = () => {
     .map((name, i) => ({ id: 'p' + i, name, number: String(i + 1), shortName: '', tier: (i % 5) + 1, hue: i }));
   S.state.teams = [{
     id: 't1', name: 'Wildcats', activeGame: 0, players,
-    day: { name: '', games: [] },
+    days: [{ name: '', date: '2026-09-22', games: [] }],
+    activeDay: 0,
     season: {
       games: [
         { id: 'g1', date: '2026-09-14', day: '', opponent: 'Falcons', periods: 4, periodMinutes: 8,

@@ -55,6 +55,7 @@ import { todayAndBackPass } from './smoke/today-and-back.mjs';
 import { todayKeysAndUndoPass } from './smoke/today-keys-and-undo.mjs';
 import { datedDayPass } from './smoke/dated-day.mjs';
 import { gamePassesPass } from './smoke/game-passes.mjs';
+import { threeDaysPass } from './smoke/three-days.mjs';
 import { wakeLockPass } from './smoke/wake-lock.mjs';
 import { overlayPass } from './smoke/overlay.mjs';
 import { touchPass } from './smoke/touch.mjs';
@@ -120,6 +121,7 @@ const RUN = {
   todaykeys: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin),
   dateddayfiling: ctx => datedDayPass(ctx.c, ctx.origin),
   gamepasses: ctx => gamePassesPass(ctx.c, ctx.origin),
+  threedays: ctx => threeDaysPass(ctx.c, ctx.origin),
   teamcolor: ctx => teamColorPass(ctx.c, ctx.origin),
   wakelock: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors),
   overlay: ctx => overlayPass(ctx.c, ctx.source),
@@ -304,6 +306,7 @@ async function browserChecks(origin, only) {
     /* #26. Reloads onto its own `FOUR` fixture and puts RICH back before
        returning, same courtesy as the two rows above. */
     report.checks.push(await safeCheck('gamepasses', () => gamePassesPass(c, origin)));
+    report.checks.push(await safeCheck('threedays', () => threeDaysPass(c, origin)));
     /* #69 decision 5, item 8: the title block, against RICH's own game 0 --
        `gamepasses` above already put RICH back before returning. */
     report.checks.push(await safeCheck('gametitle', () => gameTitlePass(c, origin)));

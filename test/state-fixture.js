@@ -36,8 +36,24 @@ export const withTeam = (players, games, settings, fn) => {
   const saved = S.state.teams;
   S.state.teams = [{
     id: 't', name: 'T', players,
-    day: { name: '', games }, season: { games: [] }, activeGame: 0,
+    days: [{ name: '', date: '2026-09-22', games }], activeDay: 0,
+    season: { games: [] }, activeGame: 0,
     settings: settings || {},
+  }];
+  S.state.activeTeam = 0;
+  try { return fn(); } finally { S.state.teams = saved; }
+};
+
+/* #101: `withTeam`'s own shape, but for a test that needs more than one day
+ * -- `days` is the caller's full list rather than one `games` array, and
+ * `activeDay` (default 0) says which of them is open. test/day-list.test.js
+ * and test/resume-bar.test.js each hand-built this save/restore swap before
+ * this was pulled out. */
+export const withDays = (players, days, settings, fn, activeDay = 0) => {
+  const saved = S.state.teams;
+  S.state.teams = [{
+    id: 't', name: 'T', players, days, activeDay,
+    season: { games: [] }, activeGame: 0, settings: settings || {},
   }];
   S.state.activeTeam = 0;
   try { return fn(); } finally { S.state.teams = saved; }

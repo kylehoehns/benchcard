@@ -77,9 +77,9 @@ export const LONG_NAME = 'Maximilian Alexander Featherstone-Whitmore';
 
    It stays on `benchcard.v3`, deliberately. That key is the returning coach
    with an old record on their phone, `sanitize` is shape-driven so reading it
-   is the migration, and moving this to v6 would move the recorded node
+   is the migration, and moving this to v7 would move the recorded node
    baseline for a reason that has nothing to do with the app. The rich fixture
-   below is on v6, so each schema branch is exercised by exactly one fixture
+   below is on v7, so each schema branch is exercised by exactly one fixture
    rather than neither being exercised on purpose. */
 export const SEED = {
   version: 3, onboarded: true, tourSeen: true, teamName: 'Smoke Test',
@@ -125,24 +125,25 @@ export const SEED = {
  *     and "was not there" are only distinguishable in a record that contains
  *     one of each — that is the fixture hole A27 was shipped through.
  *
- * v6, and the current schema on purpose: `smoke.mjs` seeded v3 while
+ * v7, the current schema, on purpose: `smoke.mjs` seeded v3 while
  * `storage.js` was on v6, so every run exercised the migration branch and
- * nothing exercised the branch a coach on this build actually uses. v6 wins
+ * nothing exercised the branch a coach on this build actually uses. v7 wins
  * the read order in `loadState`, so the v3 write that still fires on every new
  * document is inert once this is in place. */
 export const RICH = {
-  version: 6, onboarded: true, tourSeen: true, activeTeam: 0, view: 'games',
+  version: 7, onboarded: true, tourSeen: true, activeTeam: 0, view: 'games',
   ui: UI,
   teams: [{
     id: 't0', name: 'Smoke Test',
     players: PLAYERS.map(p => ({ ...p, tier: tierOf(p) })),
-    day: {
+    days: [{
       name: 'Saturday',
       games: [
         { id: 'g0', label: 'Hawks', when: '9:00', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 1234 },
         { id: 'g1', label: 'Ravens', when: '11:30', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 5678 },
       ],
-    },
+    }],
+    activeDay: 0,
     activeGame: 0,
     /* Three Saturdays, uneven on purpose: a ledger where everyone has the same
        total sorts arbitrarily and would hide a sort bug (A24a). Nia (`p10`) is
@@ -175,8 +176,8 @@ export async function goRich(c, origin, ui) {
   const record = ui ? { ...RICH, ui: { ...RICH.ui, ...ui } } : RICH;
   await seeded(c, `(() => {
     localStorage.removeItem('benchcard.v3');
-    localStorage.removeItem('benchcard.v6.bak');
-    localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(record))});
+    localStorage.removeItem('benchcard.v7.bak');
+    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(record))});
   })()`, async () => {
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
@@ -195,8 +196,8 @@ export async function goRich(c, origin, ui) {
    below) because `SEED` boots straight onto the games view, not Today. */
 export async function goSeed(c, origin) {
   await seeded(c, `(() => {
-    localStorage.removeItem('benchcard.v6');
-    localStorage.removeItem('benchcard.v6.bak');
+    localStorage.removeItem('benchcard.v7');
+    localStorage.removeItem('benchcard.v7.bak');
     localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))});
   })()`, async () => {
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
@@ -219,8 +220,8 @@ export async function goSeed(c, origin) {
 export async function reloadWithRecord(c, origin, record) {
   await seeded(c, `(() => {
     localStorage.removeItem('benchcard.v3');
-    localStorage.removeItem('benchcard.v6.bak');
-    localStorage.setItem('benchcard.v6', ${JSON.stringify(JSON.stringify(record))});
+    localStorage.removeItem('benchcard.v7.bak');
+    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(record))});
   })()`, async () => {
     for (const url of [`${origin}/index.html?_smoke=${Date.now()}`, `${origin}/index.html`]) {
       const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
@@ -258,7 +259,7 @@ export const FOUR = (() => {
   const record = JSON.parse(JSON.stringify(RICH));
   const team = record.teams[0];
   team.players.push({ id: 'p11', name: 'Kai Moreau', number: '10', shortName: '', tier: 3 });
-  team.day.games = [
+  team.days[0].games = [
     { id: 'g0', label: 'Panthers', when: '9:00', periods: 4, periodMinutes: 8,
       granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', useCarryover: false, seed: 1111 },
     { id: 'g1', label: 'Ravens', when: '11:30', periods: 4, periodMinutes: 8,
@@ -309,7 +310,7 @@ export const SAMPLE_TEAM = (() => {
      not have. An empty ledger is the state a coach who just took the sample
      is actually in. */
   team.season = { games: [] };
-  team.day.games = team.day.games.map(g => ({ ...g, out: [] }));
+  team.days[0].games = team.days[0].games.map(g => ({ ...g, out: [] }));
   /* Today, not Team: `reloadWithRecord` waits for `.today-game` before it
      hands back, and the check walks to Team through `#todayTeam` the way a
      coach does. */
@@ -327,7 +328,7 @@ export const SAMPLE_TEAM = (() => {
    shot) unexercised by every other row that reloads this same record. */
 export function partPlayed(record = RICH) {
   const withLive = JSON.parse(JSON.stringify(record));
-  const games = withLive.teams[0].day.games;
+  const games = withLive.teams[0].days[0].games;
   games[0].live = { at: 2, overrides: {} };
   games[1].live = { at: 3, overrides: {} };
   games[1].label = 'Northwest Valley Thunderbirds';

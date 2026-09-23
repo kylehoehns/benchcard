@@ -82,5 +82,5 @@ test('sanitize drops an override naming a player who is sitting out', () => {
     activeTeam: 0,
   };
   const s = sanitize(raw, { emptyConstraints, newGame });
-  assert.deepEqual(Object.keys(s.teams[0].day.games[0].live.overrides), ['3']);
+  assert.deepEqual(Object.keys(s.teams[0].days[0].games[0].live.overrides), ['3']);
 });

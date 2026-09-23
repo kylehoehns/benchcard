@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { sanitize, sanitizeSettings, loadState, saveState, seasonGame, seasonDate, addSeasonGames,
-         seasonShare, KEY, BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
+         seasonShare, KEY, BACKUP_KEY, V6_KEY, V6_BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
          V3_KEY, DEFAULT_SETTINGS, COLORS } from '../app/storage.js';
 import { SIZES, file as chartFile } from '../scripts/charts.mjs';
 
@@ -38,19 +38,19 @@ const good = () => ({
 test('a valid record round-trips unchanged in substance', () => {
   const s = sanitize(good(), H);
   assert.equal(s.teams[0].players.length, 2);
-  assert.equal(s.teams[0].day.games[0].constraints.maxMinutes.a, 12);
-  assert.deepEqual(s.teams[0].day.games[0].constraints.pairs, [['a', 'b']]);
-  assert.deepEqual(s.teams[0].day.games[0].out, ['b']);
+  assert.equal(s.teams[0].days[0].games[0].constraints.maxMinutes.a, 12);
+  assert.deepEqual(s.teams[0].days[0].games[0].constraints.pairs, [['a', 'b']]);
+  assert.deepEqual(s.teams[0].days[0].games[0].out, ['b']);
 });
 
 test('keepOnFloor persists like the other two pair rules, and is empty when the key is absent', () => {
   // every record written before the rule shipped has no key at all, and the
   // whole point of storing it beside pairs/avoids is that it needs no v7
-  assert.deepEqual(sanitize(good(), H).teams[0].day.games[0].constraints.keepOnFloor, []);
+  assert.deepEqual(sanitize(good(), H).teams[0].days[0].games[0].constraints.keepOnFloor, []);
 
   const raw = good();
   raw.day.games[0].constraints.keepOnFloor = [['a', 'b'], ['a', 'ghost'], 'nope'];
-  const c = sanitize(raw, H).teams[0].day.games[0].constraints;
+  const c = sanitize(raw, H).teams[0].days[0].games[0].constraints;
   assert.deepEqual(c.keepOnFloor, [['a', 'b']], 'dangling and malformed entries are dropped');
 });
 
@@ -67,10 +67,10 @@ test('constraints pointing at players who no longer exist are dropped, not kept 
   raw.day.games[0].constraints.openingFive = ['a', 'ghost'];
   raw.day.games[0].out.push('ghost');
   const s = sanitize(raw, H);
-  const c = s.teams[0].day.games[0].constraints;
+  const c = s.teams[0].days[0].games[0].constraints;
   assert.deepEqual(c.pairs, [['a', 'b']], 'the dangling pair is gone');
   assert.deepEqual(c.openingFive, ['a']);
-  assert.deepEqual(s.teams[0].day.games[0].out, ['b']);
+  assert.deepEqual(s.teams[0].days[0].games[0].out, ['b']);
   // this case was set up here from the start and never actually asserted, so
   // a minutes cap naming a stranger survived sanitize until multi-team
   assert.deepEqual(Object.keys(c.maxMinutes), ['a'], 'so is the dangling cap');
@@ -97,7 +97,7 @@ test('out-of-range numbers are clamped to something usable', () => {
   raw.day.games[0].constraints.maxConsecutive = 500;
   raw.activeGame = 99;
   const s = sanitize(raw, H);
-  const g = s.teams[0].day.games[0];
+  const g = s.teams[0].days[0].games[0];
   assert.ok(g.periods >= 1 && g.periods <= 8, `periods ${g.periods}`);
   assert.ok(g.periodMinutes >= 1, `periodMinutes ${g.periodMinutes}`);
   assert.ok(g.granValue >= 1, `granValue ${g.granValue}`);
@@ -113,8 +113,8 @@ test('unknown enum values fall back instead of breaking the UI', () => {
   raw.ui.printScope = 'galaxy';
   raw.view = 'nowhere';
   const s = sanitize(raw, H);
-  assert.equal(s.teams[0].day.games[0].granMode, 'everyN');
-  assert.equal(s.teams[0].day.games[0].strategy, 'balanced');
+  assert.equal(s.teams[0].days[0].games[0].granMode, 'everyN');
+  assert.equal(s.teams[0].days[0].games[0].strategy, 'balanced');
   assert.equal(s.ui.theme, 'auto');
   assert.equal(s.ui.printScope, 'game');
   assert.equal(s.view, 'today', 'an unrecognized view opens Today (#23)');
@@ -155,7 +155,7 @@ test('a save written before #19 loads with its strategy, balance and level uncha
   raw.day.games.push({ ...newGame(), id: 'g2', strategy: 'minutes', balance: 'even' });
   raw.day.games.push({ ...newGame(), id: 'g3', strategy: 'closers', balance: 'start' });
   const s = sanitize(raw, H);
-  const games = s.teams[0].day.games;
+  const games = s.teams[0].days[0].games;
   assert.equal(s.teams[0].players[0].tier, 3, 'tier 3 must stay 3, not become a level name');
   assert.equal(s.teams[0].players[1].tier, 5, 'tier 5 is not the fallback and must not be reset to it');
   assert.equal(games[0].strategy, 'balanced', 'balanced must not be rewritten to even/by-hand/etc');
@@ -170,14 +170,14 @@ test('a record with no games gets one rather than rendering nothing', () => {
   const raw = good();
   raw.day.games = [];
   const s = sanitize(raw, H);
-  assert.equal(s.teams[0].day.games.length, 1);
+  assert.equal(s.teams[0].days[0].games.length, 1);
 });
 
 test('a missing constraints object is filled in, not left undefined', () => {
   const raw = good();
   delete raw.day.games[0].constraints;
   const s = sanitize(raw, H);
-  const c = s.teams[0].day.games[0].constraints;
+  const c = s.teams[0].days[0].games[0].constraints;
   assert.deepEqual(c.pairs, []);
   assert.deepEqual(c.closing, { stints: 2, players: [] });
   assert.equal(c.maxConsecutive, 0);
@@ -195,14 +195,14 @@ const NEXT_BOOT = new Date(2026, 8, 29); // a later sanitize, same stored day
 
 test('an absent day.date is the migration: it lands on today, the phone\'s own day', () => {
   const s = sanitize(good(), { ...H, today: TODAY });
-  assert.equal(s.teams[0].day.date, '2026-09-28');
+  assert.equal(s.teams[0].days[0].date, '2026-09-28');
 });
 
 test('a valid day.date is kept exactly as it was', () => {
   const raw = good();
   raw.day.date = '2025-12-25';
   const s = sanitize(raw, { ...H, today: TODAY });
-  assert.equal(s.teams[0].day.date, '2025-12-25', 'a real date must not be overwritten by today');
+  assert.equal(s.teams[0].days[0].date, '2025-12-25', 'a real date must not be overwritten by today');
 });
 
 test('a malformed day.date is treated as absent, not kept as junk', () => {
@@ -210,7 +210,7 @@ test('a malformed day.date is treated as absent, not kept as junk', () => {
     const raw = good();
     raw.day.date = bad;
     const s = sanitize(raw, { ...H, today: TODAY });
-    assert.equal(s.teams[0].day.date, '2026-09-28',
+    assert.equal(s.teams[0].days[0].date, '2026-09-28',
       `${JSON.stringify(bad)} should fall back to today, not survive`);
   }
 });
@@ -218,7 +218,7 @@ test('a malformed day.date is treated as absent, not kept as junk', () => {
 test('a migrated day.date is stable: it does not drift forward on a later boot', () => {
   const once = sanitize(good(), { ...H, today: TODAY });
   const twice = sanitize(once, { ...H, today: NEXT_BOOT });
-  assert.equal(twice.teams[0].day.date, '2026-09-28',
+  assert.equal(twice.teams[0].days[0].date, '2026-09-28',
     'once a day is dated, it keeps that date no matter when it is next sanitized');
 });
 
@@ -236,7 +236,7 @@ test('in-game overrides survive a reload, and stale ones are dropped', () => {
     5: ['a', 'b', 'c', 'd', 'ghost'],    // names a departed player — dropped
   } };
   const s = sanitize(raw, H);
-  const live = s.teams[0].day.games[0].live;
+  const live = s.teams[0].days[0].games[0].live;
   assert.equal(live.at, 3);
   assert.deepEqual(Object.keys(live.overrides), ['2']);
   assert.deepEqual(live.overrides[2], ['a', 'b', 'c', 'd', 'e']);
@@ -244,7 +244,113 @@ test('in-game overrides survive a reload, and stale ones are dropped', () => {
 
 test('a game with no live block gets a valid one', () => {
   const s = sanitize(good(), H);
-  assert.deepEqual(s.teams[0].day.games[0].live, { at: 0, overrides: {} });
+  assert.deepEqual(s.teams[0].days[0].games[0].live, { at: 0, overrides: {} });
+});
+
+/* ---- #101: a team holds a list of days ---- */
+
+// The v7 team shape every case below starts from -- `days` is the one thing
+// that varies case to case; `extra` overrides a top-level field (activeDay,
+// activeGame) for the clamping case.
+const v7Record = (days, extra) => ({
+  version: 7, onboarded: true,
+  teams: [{
+    id: 't1', name: 'Hawks', players: good().players, activeGame: 0,
+    days, season: { games: [] }, settings: {},
+    ...extra,
+  }],
+});
+
+test('a v6 record with one day migrates to teams[].days = [day], the game and its plan intact', () => {
+  const raw = good();
+  raw.day.games[0].live = { at: 2, overrides: {} };
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.equal(s.teams[0].days.length, 1);
+  assert.equal(s.teams[0].days[0].name, 'Sat');
+  assert.equal(s.teams[0].days[0].date, '2026-09-28');
+  assert.equal(s.teams[0].days[0].games.length, 1);
+  assert.equal(s.teams[0].days[0].games[0].id, 'g1');
+  assert.equal(s.teams[0].days[0].games[0].live.at, 2, 'the plan and live progress ride along');
+  assert.equal(s.teams[0].activeGame, 0, 'activeGame still points at the same game');
+  assert.equal(s.teams[0].activeDay, 0);
+});
+
+test('a v7 record keeps its days, sorted by date, and a malformed date becomes today', () => {
+  const raw = v7Record([
+    { name: 'Sun', date: '2026-09-27', games: [{ ...newGame(), id: 'g2' }] },
+    { name: 'Sat', date: 'nope', games: [{ ...newGame(), id: 'g1' }] },
+  ]);
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.deepEqual(s.teams[0].days.map(d => d.date), ['2026-09-27', '2026-09-28'],
+    'a malformed date becomes today, which sorts after the 27th');
+  assert.deepEqual(s.teams[0].days.map(d => d.games[0].id), ['g2', 'g1']);
+});
+
+test('two days with the same date merge, games in stored order', () => {
+  const raw = v7Record([
+    { name: 'Sat', date: '2026-09-26', games: [{ ...newGame(), id: 'g1' }] },
+    { name: 'Sat evening', date: '2026-09-26', games: [{ ...newGame(), id: 'g2' }] },
+  ]);
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.equal(s.teams[0].days.length, 1, 'the two same-dated days merge into one');
+  assert.deepEqual(s.teams[0].days[0].games.map(g => g.id), ['g1', 'g2'],
+    'games land in stored order, first day first');
+});
+
+test('a day with no games is dropped', () => {
+  const raw = v7Record([
+    { name: '', date: '2026-09-26', games: [] },
+    { name: 'Sat', date: '2026-09-27', games: [{ ...newGame(), id: 'g1' }] },
+  ]);
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.equal(s.teams[0].days.length, 1);
+  assert.equal(s.teams[0].days[0].date, '2026-09-27');
+});
+
+test('a team with every day emptied falls back to one day dated today, one new game', () => {
+  const raw = v7Record([{ name: 'Sat', date: '2026-09-20', games: [] }]);
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.equal(s.teams[0].days.length, 1, 'no empty days, but never zero days either');
+  assert.equal(s.teams[0].days[0].date, '2026-09-28', 'today, not the emptied day\'s date');
+  assert.equal(s.teams[0].days[0].games.length, 1);
+});
+
+test('activeDay clamps into range, and activeGame clamps against that day\'s own games', () => {
+  const raw = v7Record([
+    { name: 'Sat', date: '2026-09-26', games: [{ ...newGame(), id: 'g1' }] },
+    { name: 'Sun', date: '2026-09-27',
+      games: [{ ...newGame(), id: 'g2' }, { ...newGame(), id: 'g3' }] },
+  ], { activeDay: 9, activeGame: 9 });
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.equal(s.teams[0].activeDay, 1, 'clamped to the last day');
+  assert.equal(s.teams[0].activeGame, 1, 'clamped to the last game of THAT day, not the first day\'s');
+});
+
+test('sanitize is idempotent over a multi-day team', () => {
+  const raw = v7Record([
+    { name: 'Sat', date: '2026-09-26', games: [{ ...newGame(), id: 'g1' }] },
+    { name: 'Sun', date: '2026-09-27', games: [{ ...newGame(), id: 'g2' }] },
+  ]);
+  const once = sanitize(raw, { ...H, today: TODAY });
+  const twice = sanitize(once, { ...H, today: NEXT_BOOT });
+  assert.deepEqual(twice, once);
+});
+
+test('the record saves under benchcard.v7 / benchcard.v7.bak and stamps version 7', () => {
+  assert.equal(KEY, 'benchcard.v7');
+  assert.equal(BACKUP_KEY, 'benchcard.v7.bak');
+  assert.equal(sanitize(good(), H).version, 7);
+});
+
+test('a v6 record under its own key loads through loadState, migrated, its day rebuilt as days', () => {
+  const raw = good();
+  raw.day.games[0].live = { at: 2, overrides: {} };
+  const r = withStore({ [V6_KEY]: JSON.stringify(raw) }, () => loadState(H));
+  assert.equal(r.migrated, true);
+  assert.equal(r.migratedFrom, 6);
+  assert.equal(r.state.teams[0].days.length, 1);
+  assert.equal(r.state.teams[0].days[0].games[0].id, 'g1');
+  assert.equal(r.state.teams[0].days[0].games[0].live.at, 2, 'the plan and live progress ride along');
 });
 
 test('card size falls back to pocket unless the record says half-sheet', () => {
@@ -309,7 +415,7 @@ test('a save written before #19 loads unchanged through loadState too, not sanit
   raw.day.games.push({ ...newGame(), id: 'g2', strategy: 'minutes', balance: 'even' });
   raw.day.games.push({ ...newGame(), id: 'g3', strategy: 'closers', balance: 'start' });
   const r = withStore({ [KEY]: JSON.stringify(raw) }, () => loadState(H));
-  const games = r.state.teams[0].day.games;
+  const games = r.state.teams[0].days[0].games;
   assert.equal(r.state.teams[0].players[0].tier, 3, 'tier 3 must stay 3 through loadState too');
   assert.equal(r.state.teams[0].players[1].tier, 5, 'tier 5 must stay 5 through loadState too');
   assert.equal(games[0].strategy, 'balanced', 'balanced must not be rewritten by loadState');
@@ -367,8 +473,8 @@ test('a main record that parses but is not a whole record recovers as incomplete
  * empty, take the backup, and hand the coach back the team they had just
  * deleted -- under a banner blaming a save failure that never happened. */
 const emptiedByDelete = () => ({
-  version: 6, onboarded: false, tourSeen: true,
-  teams: [{ id: 't9', name: '', players: [], day: { name: '', games: [] },
+  version: 7, onboarded: false, tourSeen: true,
+  teams: [{ id: 't9', name: '', players: [], days: [{ name: '', games: [] }], activeDay: 0,
             season: { games: [] }, settings: {}, activeGame: 0 }],
   activeTeam: 0, view: 'games', ui: {},
 });
@@ -485,17 +591,17 @@ test('a v3 record migrates to a single team with nothing lost', () => {
   raw.teamName = 'Wildcats 6th Grade';
   const s = sanitize(raw, H);
 
-  assert.equal(s.version, 6);
+  assert.equal(s.version, 7);
   assert.equal(s.teams.length, 1, 'one roster in, one team out');
   const t = s.teams[0];
   assert.equal(t.name, 'Wildcats 6th Grade', 'teamName becomes the team name');
   assert.equal(t.players.length, 2);
   assert.deepEqual(t.players.map(p => p.id), ['a', 'b'], 'player ids are untouched');
-  assert.equal(t.day.name, 'Sat');
-  assert.equal(t.day.games.length, 1);
-  assert.equal(t.day.games[0].constraints.maxMinutes.a, 12, 'constraints survive');
-  assert.deepEqual(t.day.games[0].constraints.pairs, [['a', 'b']]);
-  assert.deepEqual(t.day.games[0].out, ['b'], 'availability survives');
+  assert.equal(t.days[0].name, 'Sat');
+  assert.equal(t.days[0].games.length, 1);
+  assert.equal(t.days[0].games[0].constraints.maxMinutes.a, 12, 'constraints survive');
+  assert.deepEqual(t.days[0].games[0].constraints.pairs, [['a', 'b']]);
+  assert.deepEqual(t.days[0].games[0].out, ['b'], 'availability survives');
   assert.ok(t.id, 'the migrated team gets an id');
 });
 
@@ -510,7 +616,7 @@ test('a v4 record round-trips both teams', () => {
   assert.deepEqual(s.teams.map(t => t.name), ['Hawks', 'Ravens']);
   assert.equal(s.activeTeam, 1);
   assert.deepEqual(s.teams[1].players.map(p => p.id), ['z']);
-  assert.equal(s.teams[1].day.name, 'Sun');
+  assert.equal(s.teams[1].days[0].name, 'Sun');
 });
 
 test('one team cannot borrow another team\'s players', () => {
@@ -524,11 +630,11 @@ test('one team cannot borrow another team\'s players', () => {
   two.day.games[0].out = ['a'];
   const s = sanitize({ version: 4, teams: [one, two] }, H);
 
-  const c = s.teams[1].day.games[0].constraints;
+  const c = s.teams[1].days[0].games[0].constraints;
   assert.deepEqual(Object.keys(c.maxMinutes), ['z'], 'the other team\'s player is dropped');
   assert.deepEqual(c.pairs, [], 'a pair naming a stranger is not kept dangling');
-  assert.deepEqual(s.teams[1].day.games[0].out, [], 'nor is their availability');
-  assert.equal(s.teams[0].day.games[0].constraints.maxMinutes.a, 12, 'team one is untouched');
+  assert.deepEqual(s.teams[1].days[0].games[0].out, [], 'nor is their availability');
+  assert.equal(s.teams[0].days[0].games[0].constraints.maxMinutes.a, 12, 'team one is untouched');
 });
 
 test('activeTeam cannot point past the end', () => {
@@ -539,7 +645,7 @@ test('activeTeam cannot point past the end', () => {
 test('a record with an empty teams array still gets a team', () => {
   const s = sanitize({ version: 4, onboarded: true, teams: [] }, H);
   assert.equal(s.teams.length, 1, 'falls back to reading the record as one team');
-  assert.equal(s.teams[0].day.games.length, 1, 'and that team has a game');
+  assert.equal(s.teams[0].days[0].games.length, 1, 'and that team has a game');
 });
 
 test('teams are capped so a corrupt record cannot stall the boot', () => {
@@ -552,7 +658,7 @@ test('sanitize is idempotent across the migration', () => {
   const twice = sanitize(once, H);
   // ids are generated when absent, so compare everything else
   assert.deepEqual(twice.teams.map(t => ({ ...t, id: 0 })), once.teams.map(t => ({ ...t, id: 0 })));
-  assert.equal(twice.version, 6);
+  assert.equal(twice.version, 7);
 });
 
 test('onboarded survives a migration even with every player deleted', () => {
@@ -578,7 +684,7 @@ test('sanitize drops a live override holding an id that no longer exists', () =>
   const raw = good();
   raw.day.games[0].live = { at: 1, overrides: { 0: ['a', 'b', 'ghost', 'x', 'y'] } };
   const s = sanitize(raw, H);
-  assert.deepEqual(s.teams[0].day.games[0].live.overrides, {},
+  assert.deepEqual(s.teams[0].days[0].games[0].live.overrides, {},
     'an override that cannot be resolved must not survive a load');
 });
 
@@ -592,7 +698,7 @@ test('an override of exactly five real players does survive', () => {
   raw.day.games[0].out = [];   // `good()` sits 'b' out; see availability.test.js
   raw.day.games[0].live = { at: 0, overrides: { 2: ['a', 'b', 'c', 'd', 'e'] } };
   const s = sanitize(raw, H);
-  assert.deepEqual(s.teams[0].day.games[0].live.overrides[2], ['a', 'b', 'c', 'd', 'e']);
+  assert.deepEqual(s.teams[0].days[0].games[0].live.overrides[2], ['a', 'b', 'c', 'd', 'e']);
 });
 
 /* ================================================================== *
@@ -648,14 +754,14 @@ test('the pre-paint theme script reads the key the app actually writes', () => {
       `${file}'s pre-paint script does not read ${KEY}, the key storage.js writes`);
     assert.equal(keys[0], KEY,
       `${file} must try ${KEY} before any older key, or a stale record wins`);
-    for (const old of [V5_KEY, V4_KEY, V3_KEY]) {
+    for (const old of [V6_KEY, V5_KEY, V4_KEY, V3_KEY]) {
       assert.ok(keys.includes(old),
         `${file} should still fall back to ${old} for a coach who has not been migrated`);
     }
-    /* Newest first, all the way down: a returning coach whose v6 record has
+    /* Newest first, all the way down: a returning coach whose v7 record has
        not been written yet must not pay a flash of the wrong theme, and a
        coach who has one must not have an older key answer ahead of it. */
-    assert.deepEqual(keys, [KEY, V5_KEY, V4_KEY, V3_KEY],
+    assert.deepEqual(keys, [KEY, V6_KEY, V5_KEY, V4_KEY, V3_KEY],
       `${file} must try the keys newest first, or a stale record wins`);
   }
 });
@@ -697,7 +803,7 @@ const skeletonScript = () => {
 test('the timeline skeleton reads the key the app actually writes', () => {
   const keys = [...skeletonScript().matchAll(/localStorage\.getItem\('([^']+)'\)|get\('([^']+)'\)/g)]
     .map(m => m[1] || m[2]);
-  assert.deepEqual(keys, [KEY, V5_KEY, V4_KEY, V3_KEY],
+  assert.deepEqual(keys, [KEY, V6_KEY, V5_KEY, V4_KEY, V3_KEY],
     'the skeleton must try the keys newest first, the same chain as the theme script');
 });
 
@@ -788,7 +894,7 @@ const v4 = () => ({
 test('a v4 record migrates forward with an empty season and nothing else lost', () => {
   const s = sanitize(v4(), H);
 
-  assert.equal(s.version, 6);
+  assert.equal(s.version, 7);
   assert.equal(s.teams.length, 2, 'both teams survive');
   assert.deepEqual(s.teams.map(t => t.name), ['Hawks', 'Ravens']);
   assert.equal(s.activeTeam, 1);
@@ -805,12 +911,12 @@ test('a v4 record migrates forward with an empty season and nothing else lost', 
   assert.deepEqual(t.players.map(p => p.shortName), ['', 'ELI']);
   assert.deepEqual(t.players.map(p => p.tier), [5, 2], 'levels survive');
   assert.deepEqual(t.players.map(p => p.hue), [3, 7], 'colors survive');
-  assert.equal(t.day.name, 'Sat');
-  assert.equal(t.day.games[0].label, 'Northgate');
-  assert.deepEqual(t.day.games[0].out, ['b'], 'availability survives');
-  assert.equal(t.day.games[0].live.at, 2, 'how far into the game survives');
-  assert.equal(t.day.games[0].constraints.maxMinutes.a, 12, 'constraints survive');
-  assert.deepEqual(t.day.games[0].constraints.pairs, [['a', 'b']]);
+  assert.equal(t.days[0].name, 'Sat');
+  assert.equal(t.days[0].games[0].label, 'Northgate');
+  assert.deepEqual(t.days[0].games[0].out, ['b'], 'availability survives');
+  assert.equal(t.days[0].games[0].live.at, 2, 'how far into the game survives');
+  assert.equal(t.days[0].games[0].constraints.maxMinutes.a, 12, 'constraints survive');
+  assert.deepEqual(t.days[0].games[0].constraints.pairs, [['a', 'b']]);
   assert.equal(s.teams[1].players[0].name, 'Nia Brooks');
   assert.equal(s.tourSeen, true);
   assert.equal(s.view, 'team',
@@ -1001,7 +1107,7 @@ test('a v4 record under the old key loads, migrated, when there is nothing newer
   const r = withStore({ [V4_KEY]: JSON.stringify(v4()) }, () => loadState(H));
   assert.equal(r.migrated, true);
   assert.equal(r.migratedFrom, 4);
-  assert.equal(r.state.version, 6);
+  assert.equal(r.state.version, 7);
   assert.equal(r.state.teams.length, 2);
   assert.deepEqual(r.state.teams[0].players.map(p => p.name), ['Marcus Webb', 'Eli Tran']);
   assert.deepEqual(r.state.teams[0].season, { games: [] });
@@ -1020,7 +1126,7 @@ test('the v4 record is read, never written — a downgraded coach still finds it
     assert.equal(saveState(r.state), null);
     assert.equal(m.get(V4_KEY), before, 'v4 is left exactly as it was');
     assert.ok(m.has(KEY), 'the migrated record is written under the current key');
-    assert.equal(JSON.parse(m.get(KEY)).version, 6);
+    assert.equal(JSON.parse(m.get(KEY)).version, 7);
   } finally {
     if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
     else delete globalThis.localStorage;
@@ -1098,7 +1204,7 @@ test('a v5 record has no settings block at all, or this file is testing nothing'
 test('a v5 record migrates forward with default settings and nothing else lost', () => {
   const s = sanitize(v5record(), H);
 
-  assert.equal(s.version, 6);
+  assert.equal(s.version, 7);
   assert.equal(s.teams.length, 2, 'both teams survive');
   for (const t of s.teams) {
     assert.deepEqual(t.settings, { ...DEFAULT_SETTINGS },
@@ -1114,12 +1220,12 @@ test('a v5 record migrates forward with default settings and nothing else lost',
   assert.deepEqual(t.players.map(p => p.name), ['Marcus Webb', 'Eli Tran']);
   assert.deepEqual(t.players.map(p => p.tier), [5, 2], 'levels survive');
   assert.deepEqual(t.players.map(p => p.hue), [3, 7], 'colors survive');
-  assert.equal(t.day.name, 'Sat');
-  assert.equal(t.day.games[0].label, 'Northgate');
-  assert.deepEqual(t.day.games[0].out, ['b'], 'availability survives');
-  assert.equal(t.day.games[0].live.at, 2);
-  assert.equal(t.day.games[0].constraints.maxMinutes.a, 12, 'constraints survive');
-  assert.deepEqual(t.day.games[0].constraints.pairs, [['a', 'b']]);
+  assert.equal(t.days[0].name, 'Sat');
+  assert.equal(t.days[0].games[0].label, 'Northgate');
+  assert.deepEqual(t.days[0].games[0].out, ['b'], 'availability survives');
+  assert.equal(t.days[0].games[0].live.at, 2);
+  assert.equal(t.days[0].games[0].constraints.maxMinutes.a, 12, 'constraints survive');
+  assert.deepEqual(t.days[0].games[0].constraints.pairs, [['a', 'b']]);
   assert.equal(t.season.games.length, 2, 'the season survives, which is the whole of v5');
   assert.deepEqual(t.season.games[0].minutes, { a: 18.5, b: 13.5 },
     'the minutes a coach would quote to a parent are untouched');
@@ -1285,11 +1391,11 @@ test('one team\'s settings are its own — there is no cascade', () => {
 
 /* ---- what loadState does with a v5 key ---- */
 
-test('a v5 record under the old key loads, migrated, when there is no v6 yet', () => {
+test('a v5 record under the old key loads, migrated, when there is no v7 yet', () => {
   const r = withStore({ [V5_KEY]: JSON.stringify(v5record()) }, () => loadState(H));
   assert.equal(r.migrated, true);
   assert.equal(r.migratedFrom, 5);
-  assert.equal(r.state.version, 6);
+  assert.equal(r.state.version, 7);
   assert.equal(r.state.teams.length, 2);
   assert.deepEqual(r.state.teams[0].players.map(p => p.name), ['Marcus Webb', 'Eli Tran']);
   assert.equal(r.state.teams[0].season.games.length, 2, 'the season came with it');
@@ -1308,8 +1414,8 @@ test('the v5 record is read, never written — a downgraded coach still finds it
     const r = loadState(H);
     assert.equal(saveState(r.state), null);
     assert.equal(m.get(V5_KEY), before, 'v5 is left exactly as it was');
-    assert.ok(m.has(KEY), 'the migrated record is written under v6');
-    assert.equal(JSON.parse(m.get(KEY)).version, 6);
+    assert.ok(m.has(KEY), 'the migrated record is written under v7');
+    assert.equal(JSON.parse(m.get(KEY)).version, 7);
   } finally {
     if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
     else delete globalThis.localStorage;
@@ -1434,19 +1540,19 @@ test('a one-game season is a real season, just a small one', () => {
 
 test('season carryover is off on a record written before it existed', () => {
   const s = sanitize(good(), H);
-  assert.equal(s.teams[0].day.games[0].useSeasonTargets, false,
+  assert.equal(s.teams[0].days[0].games[0].useSeasonTargets, false,
     'a coach who has never opened the season must see no change whatsoever');
 });
 
 test('season carryover round-trips once a coach turns it on', () => {
   const rec = good();
   rec.day.games[0].useSeasonTargets = true;
-  assert.equal(sanitize(rec, H).teams[0].day.games[0].useSeasonTargets, true);
+  assert.equal(sanitize(rec, H).teams[0].days[0].games[0].useSeasonTargets, true);
   // and it is a boolean whatever was on the record
   rec.day.games[0].useSeasonTargets = 'yes please';
-  assert.equal(sanitize(rec, H).teams[0].day.games[0].useSeasonTargets, true);
+  assert.equal(sanitize(rec, H).teams[0].days[0].games[0].useSeasonTargets, true);
   rec.day.games[0].useSeasonTargets = 0;
-  assert.equal(sanitize(rec, H).teams[0].day.games[0].useSeasonTargets, false);
+  assert.equal(sanitize(rec, H).teams[0].days[0].games[0].useSeasonTargets, false);
 });
 
 /* ================================================================== *

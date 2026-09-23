@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, withTeam, player } from './state-fixture.js';
+import { S, withTeam, withDays, player } from './state-fixture.js';
 import { resumeAt, resumeBarAt } from '../app/card.js';
 
 /* #34 decision 5 and "What would settle it" item 7: `resumeBarAt()` picks
@@ -97,4 +97,25 @@ test("resumeBarAt's where matches resumeAt's own where for the picked game", () 
     const want = resumeAt(S.plans[r.i], games[r.i]);
     assert.equal(r.where, want.where);
   });
+});
+
+/* #101 item 8: the bar is no longer scoped to `state.day` -- a part-played
+ * game on a day that is NOT the one currently open still has to show it.
+ * `withTeam` only builds a one-day team, so this test uses `withDays`
+ * (state-fixture.js) instead, the two-day harness test/day-list.test.js's
+ * own cases share. */
+test('resumeBarAt finds a part-played game on a day that is not the open one', () => {
+  const { players, games: satGames, settings } = twoGameDay();
+  const sunGame = S.newGame(0, null, settings);
+  withDays(players, [
+    { name: '', date: '2026-09-26', games: satGames },
+    { name: '', date: '2026-09-27', games: [sunGame] },
+  ], settings, () => {
+    S.computeAll();
+    satGames[0].live.at = 2; // part-played, but on the day that is NOT open
+    const r = resumeBarAt();
+    assert.ok(r, 'a part-played game on a closed day must still surface');
+    assert.equal(r.d, 0, 'it is Saturday (day 0), not the open Sunday');
+    assert.equal(r.i, 0);
+  }, 1); // Sunday (day 1) is open; Saturday is not
 });

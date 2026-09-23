@@ -112,7 +112,7 @@ async function checkRotation(c, origin, i, problems) {
     const p = mod.plans[${i}];
     const stints = mod.effectiveStints(g, p).map(s => ({ period: s.period, minutes: s.minutes, onFloor: s.onFloor }));
     const avail = mod.availIds(g);
-    const passEl = document.querySelectorAll('#todayGames > .today-game')[${i}];
+    const passEl = document.querySelectorAll('#todayGames .today-game')[${i}];
     passEl.scrollIntoView({ block: 'center' });
     await new Promise(r => setTimeout(r, 60));
     const rowEls = [...passEl.querySelectorAll('.pass-rot .pass-row')];
@@ -220,13 +220,15 @@ export async function gamePassesPass(c, origin) {
       const view = document.getElementById('view-today');
       const kids = [...view.children].map(el => el.id ? '#' + el.id
         : el.classList.contains('today-acts') ? 'today-acts' : el.tagName.toLowerCase());
-      const passCount = document.querySelectorAll('#todayGames > .today-game').length;
+      const passCount = document.querySelectorAll('#todayGames .today-game').length;
       // #100 removed "New day" (#todayNewDay) from #barToday entirely.
       const newDayGone = !document.getElementById('todayNewDay');
       return JSON.stringify({ kids, passCount, newDayGone });
     })()`));
     if (order.passCount !== 4) problems.push(`#todayGames has ${order.passCount} .today-game buttons, want 4`);
-    const wantKids = ['h1', '#todayGames', 'today-acts', '#todayTeam', '#todaySeason'];
+    // #101 item 2 put the team switcher's popover (`#teamMenu`) right after
+    // the large title it hangs off of, ahead of `#todayGames`.
+    const wantKids = ['h1', '#teamMenu', '#todayGames', 'today-acts', '#todayTeam', '#todaySeason'];
     if (JSON.stringify(order.kids) !== JSON.stringify(wantKids)) {
       problems.push(`#view-today's children are ${JSON.stringify(order.kids)}, want ${JSON.stringify(wantKids)}`);
     }
@@ -234,7 +236,7 @@ export async function gamePassesPass(c, origin) {
 
     // Items 2, 3, 5, 6 (rotation presence), 8.
     const passes = JSON.parse(await evalIn(c, `(() => {
-      const btns = [...document.querySelectorAll('#todayGames > .today-game')];
+      const btns = [...document.querySelectorAll('#todayGames .today-game')];
       return JSON.stringify(btns.map(b => {
         const statusEl = b.querySelector('.pass-status');
         const rot = b.querySelector('.pass-rot');
@@ -282,7 +284,7 @@ export async function gamePassesPass(c, origin) {
         d.remove();
         return v;
       };
-      const btns = [...document.querySelectorAll('#todayGames > .today-game')];
+      const btns = [...document.querySelectorAll('#todayGames .today-game')];
       const dots = btns.map(b => {
         const el = b.querySelector('.pass-status');
         return el ? getComputedStyle(el, '::before').backgroundColor : null;
@@ -306,7 +308,7 @@ export async function gamePassesPass(c, origin) {
     // Item 7: tapping a pass opens its game, header title included. Checked
     // on pass 0 and pass 3 -- the labelled and the "Game N" case.
     for (const i of [0, 3]) {
-      await evalIn(c, step(`document.querySelectorAll('#todayGames > .today-game')[${i}].click()`));
+      await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[${i}].click()`));
       const g = JSON.parse(await evalIn(c, `(async () => {
         const mod = await import('${origin}/state.js');
         return JSON.stringify({
@@ -324,7 +326,7 @@ export async function gamePassesPass(c, origin) {
     // Item 11: editing on the Game screen must not touch #todayGames' own
     // nodes while Today is hidden (decision 6); going back to Today then
     // shows the edited plan.
-    await evalIn(c, step(`document.querySelectorAll('#todayGames > .today-game')[0].click()`));
+    await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[0].click()`));
     const marksBefore = JSON.parse(await evalIn(c, `(() => {
       const box = document.getElementById('todayGames');
       [...box.children].forEach((el, i) => { el.dataset.smokeMark = 'm' + i + '_' + Math.random().toString(36).slice(2); });
@@ -350,7 +352,7 @@ export async function gamePassesPass(c, origin) {
     }
     await evalIn(c, step(TODAY_HOME));
     const repainted = JSON.parse(await evalIn(c, `(() => {
-      const b = document.querySelectorAll('#todayGames > .today-game')[0];
+      const b = document.querySelectorAll('#todayGames .today-game')[0];
       return JSON.stringify({
         summary: b.querySelector('.pass-summary')?.textContent ?? null,
         rowCount: b.querySelectorAll('.pass-rot .pass-row').length,

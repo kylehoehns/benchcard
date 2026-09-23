@@ -685,11 +685,12 @@ function applyView(v, from) {
      anywhere: `printCard` does `setView('games', true)` first, so the key
      goes to the card rather than dying on the four screens the button is not
      rendered on. */
-  /* One header per screen state (N4, N5, C1): Today's own -- the team button,
-     the keys hint, the gear -- lives in `#barToday`; the other four share
-     `#barBack`, an icon-only "Back to Today" and the title. Both are inside
-     the same `.bar` shell so there is still exactly one header element, the
-     same one every view has always shared. */
+  /* One header per screen state (N4, N5, C1): Today's own -- the keys hint,
+     the gear -- lives in `#barToday` (#101 moved the team button itself into
+     Today's own `<h1>`, N3); the other four share `#barBack`, an icon-only
+     "Back to <team>" (`renderTeams`, teams-view.js) and the title. Both are
+     inside the same `.bar` shell so there is still exactly one header
+     element, the same one every view has always shared. */
   const onBack = BACK_VIEWS.includes(v);
   const today = $('#barToday'), back = $('#barBack');
   if (today) today.hidden = v !== 'today';

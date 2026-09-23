@@ -1,8 +1,8 @@
 // Persistence for a local-only app. There is no server to recover from, so a
 // corrupt or half-written record must not cost the coach their roster.
 
-export const KEY = 'benchcard.v6';
-export const BACKUP_KEY = 'benchcard.v6.bak';
+export const KEY = 'benchcard.v7';
+export const BACKUP_KEY = 'benchcard.v7.bak';
 /* Older schemas are read, never written. A new key rather than a new shape
    under the old one, because the service worker can leave a coach running
    yesterday's code against today's data: v3's sanitize looks for `players` at
@@ -20,7 +20,15 @@ export const BACKUP_KEY = 'benchcard.v6.bak';
    v6 is the same again: a v5 record is a v6 one without `teams[].settings`,
    and an absent settings block means today's defaults, so it loads with the
    app behaving exactly as it did yesterday. Its backup key is read for the
-   same reason v4's is. */
+   same reason v4's is.
+
+   v7 turns one day into a list: `teams[].day` becomes `teams[].days`, plus
+   `teams[].activeDay`. A v6 record has no `days`, which is the migration --
+   it becomes a one-day list holding exactly the day it had. A v6 build that
+   somehow read a v7 record under its own key would see no `day` and rebuild
+   an empty one, which is the misread a new key exists to avoid. */
+export const V6_KEY = 'benchcard.v6';
+export const V6_BACKUP_KEY = 'benchcard.v6.bak';
 export const V5_KEY = 'benchcard.v5';
 export const V5_BACKUP_KEY = 'benchcard.v5.bak';
 export const V4_KEY = 'benchcard.v4';
@@ -394,8 +402,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
     return out;
   };
 
-  const day = isObj(raw.day) ? raw.day : {};
-  let games = (Array.isArray(day.games) ? day.games : [])
+  const sanitizeGames = rawGames => (Array.isArray(rawGames) ? rawGames : [])
     .filter(isObj)
     .map(g => {
       const c = isObj(g.constraints) ? g.constraints : {};
@@ -448,12 +455,39 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         },
       };
     });
-  /* Hoisted, because the no-games fallback below has to see it. A team whose
+
+  /* Hoisted, because the fallback day below has to see it. A team whose
      record carries no game at all gets one built from the team's own format --
      the same answer `newTeam` gives, and the only sane one when there is
      nothing to clone from. */
   const settings = sanitizeSettings(raw.settings);
-  if (!games.length) games = [newGame(0, null, settings)];
+  const today0 = seasonDate(today);
+
+  /* #101: a day has become a list of days. No version branch -- a record
+     with `days` (an array) IS a v7 record; a record with no `days` and a
+     `day` object is the migration, and it is read as a one-day list holding
+     exactly that day. Each raw day is sanitized on its own, then merged by
+     date (games in stored order), then dropped if it ends up with no games,
+     then sorted -- so the shape is stable and running it twice is a no-op. */
+  const rawDays = Array.isArray(raw.days) ? raw.days : [raw.day];
+  const byDate = new Map();
+  for (const rawDay of rawDays) {
+    const d = isObj(rawDay) ? rawDay : {};
+    const date = validDayDate(d.date) ? d.date : today0;
+    const games = sanitizeGames(d.games);
+    const name = typeof d.name === 'string' ? d.name : '';
+    const existing = byDate.get(date);
+    if (existing) existing.games.push(...games);
+    else byDate.set(date, { name, date, games });
+  }
+  let days = [...byDate.values()]
+    .filter(d => d.games.length > 0)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  // no empty days, but never zero days either: a new team, or every day
+  // filed, gets one day dated today with one new game (#100's fallback).
+  if (!days.length) days = [{ name: '', date: today0, games: [newGame(0, null, settings)] }];
+
+  const activeDay = num(raw.activeDay, 0, 0, days.length - 1);
 
   return {
     id: typeof raw.id === 'string' && raw.id ? raw.id : 't' + Math.random().toString(36).slice(2, 8),
@@ -461,21 +495,15 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
     name: typeof raw.name === 'string' ? raw.name
       : typeof raw.teamName === 'string' ? raw.teamName : '',
     players: uniquePlayers,
-    day: {
-      name: typeof day.name === 'string' ? day.name : '',
-      // #100: a day has a real calendar date now. No version branch -- an
-      // absent or malformed one IS the migration, and it lands on today so a
-      // day already open when this shipped does not file itself on the spot.
-      date: validDayDate(day.date) ? day.date : seasonDate(today),
-      games,
-    },
+    days,
+    activeDay,
     // v4 has no season. An absent one is not a broken one -- it is a coach who
     // has not finished a game yet, which is also every brand new team.
     season: sanitizeSeason(raw.season),
     // v5 has no settings, and an absent block is not a broken one either -- it
     // is a coach who has never opened the page, so it means the defaults.
     settings,
-    activeGame: num(raw.activeGame, 0, 0, games.length - 1),
+    activeGame: num(raw.activeGame, 0, 0, days[activeDay].games.length - 1),
   };
 }
 
@@ -537,7 +565,7 @@ export function sanitize(raw, helpers) {
   const anyPlayers = teams.some(t => t.players.length);
 
   return {
-    version: 6,
+    version: 7,
     onboarded: !!raw.onboarded || anyPlayers,
     // the first-run tour is once per device, so this has to survive a reload;
     // an unrecognized value means "not seen yet", which is the safe way round
@@ -591,11 +619,11 @@ const present = key => { try { return localStorage.getItem(key) !== null; } catc
    the key. Bytes that broke, a half-written record, a `{}` left by something
    else -- none of those carry all three. So a complete record is allowed to say
    "this coach has no team", and that claim is honoured instead of overruled by
-   a backup. Only the v6 keys are asked: the older schemas are read and never
+   a backup. Only the v7 keys are asked: the older schemas are read and never
    written, so "a record we wrote and then emptied" is not a state they can be
    in. */
 const complete = raw => isObj(raw)
-  && raw.version === 6
+  && raw.version === 7
   && Array.isArray(raw.teams) && raw.teams.length > 0
   && typeof raw.onboarded === 'boolean';
 
@@ -636,7 +664,8 @@ export function loadState(helpers) {
      upgrade is exactly when a half-written new record is most likely, and at
      that moment there are two readable copies of the old one on the device.
      Not looking at the second would be dropping a roster we can see. */
-  for (const [key, from] of [[V5_KEY, 5], [V5_BACKUP_KEY, 5], [V4_KEY, 4], [V4_BACKUP_KEY, 4], [V3_KEY, 3]]) {
+  for (const [key, from] of [[V6_KEY, 6], [V6_BACKUP_KEY, 6],
+                              [V5_KEY, 5], [V5_BACKUP_KEY, 5], [V4_KEY, 4], [V4_BACKUP_KEY, 4], [V3_KEY, 3]]) {
     const old = sanitize(read(key), helpers);
     if (old && (hasRoster(old) || old.onboarded)) return { state: old, migrated: true, migratedFrom: from };
   }

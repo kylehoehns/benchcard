@@ -48,7 +48,9 @@ export async function todayAndBackPass(c, origin) {
   // second team, added so the menu below has something to switch to.
   if (today.teamBtn !== 'Smoke Test') problems.push(`Today's header names "${today.teamBtn}", not the active team`);
   if (today.gearName !== 'Settings') problems.push(`the gear's accessible name is "${today.gearName}", not "Settings"`);
-  if (today.heading !== 'Today') problems.push(`Today's heading reads "${today.heading}"`);
+  // #101 item 5: Today's own "Today" title is gone -- the large title is now
+  // the team's name and is the team-menu button (`#teamBtn`, checked below).
+  if (today.heading !== 'Smoke Test') problems.push(`Today's heading reads "${today.heading}", want the team's name`);
   if (today.games.length !== 2) problems.push(`Today lists ${today.games.length} game entries, want 2`);
   if (!today.games.some(g => /Hawks/.test(g.text) && /9:00/.test(g.text))) problems.push('the first game entry does not name "Hawks" and "9:00"');
   if (!today.games.some(g => /Ravens/.test(g.text) && /11:30/.test(g.text))) problems.push('the second game entry does not name "Ravens" and "11:30"');
@@ -275,7 +277,9 @@ export async function todayAndBackPass(c, origin) {
       };
     })())`));
     if (opened.length !== before + 1) problems.push(`${name}: history.length went ${before} -> ${opened.length}, want +1`);
-    if (opened.backName !== 'Back to Today') problems.push(`${name}: the back button's name is "${opened.backName}"`);
+    // #101 item 6: `#backBtn`'s accessible name is "Back to <team name>", not
+    // the fixed "Back to Today" -- rich2's active team is "Smoke Test" (line 47).
+    if (opened.backName !== 'Back to Smoke Test') problems.push(`${name}: the back button's name is "${opened.backName}"`);
     if (name !== 'games' && opened.title !== wantTitle) problems.push(`${name}: the title reads "${opened.title}", want "${wantTitle}"`);
     if (name === 'games' && !/Hawks/.test(opened.title || '')) problems.push(`games: the title reads "${opened.title}", want the game's label`);
     if (opened.gearVisible) problems.push(`${name}: the Settings gear is visible off Today`);

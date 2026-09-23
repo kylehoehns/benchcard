@@ -79,7 +79,7 @@ export async function todayKeysAndUndoPass(c, origin) {
     const { state } = await import('${origin}/state.js');
     const viewNow = state.view;
     let savedView = null;
-    try { savedView = JSON.parse(localStorage.getItem('benchcard.v6')).view; } catch {}
+    try { savedView = JSON.parse(localStorage.getItem('benchcard.v7')).view; } catch {}
     return JSON.stringify({ hiddenNow, viewNow, savedView });
   })()`));
   if (immediate.hiddenNow !== true) {

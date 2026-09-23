@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { KEY, V5_KEY, V4_KEY, V3_KEY } from '../app/storage.js';
+import { KEY, V6_KEY, V5_KEY, V4_KEY, V3_KEY } from '../app/storage.js';
 
 /* A broken boot must say so, and must still hand the coach their season.
  *
@@ -100,7 +100,7 @@ test('the panel costs nothing until it is needed', () => {
 
 test('the guard downloads the key the app actually writes, newest first', () => {
   const keys = [...guard.matchAll(/'(benchcard\.v\d+)'/g)].map(m => m[1]);
-  assert.deepEqual(keys, [KEY, V5_KEY, V4_KEY, V3_KEY],
+  assert.deepEqual(keys, [KEY, V6_KEY, V5_KEY, V4_KEY, V3_KEY],
     'the recovery download must try the keys newest first, the same chain as '
     + 'the theme script -- a coach whose boot broke mid-migration would '
     + 'otherwise be handed an empty file, which is worse than nothing');

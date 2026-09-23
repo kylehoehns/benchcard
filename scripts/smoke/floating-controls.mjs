@@ -25,13 +25,15 @@ import { nameOf, LARGE_TEXT_WIDTH } from './registry.mjs';
    move. */
 import { VIEWS as SCREENS } from './sweep.mjs';
 
-/* Decision 9's five: the header controls that ride directly on the bar's
+/* Decision 9's four: the header controls that ride directly on the bar's
    glass. `sel` is the control (the hit area item 3 sizes); `fill` is the
-   painted chip, which is the `.i` span for the four icon buttons and the
-   button itself for `#teamBtn`, whose content is text. `view` is the screen
-   that shows it -- four of the five are hidden everywhere else. */
+   painted chip, which is the `.i` span for every one of them. `view` is the
+   screen that shows it -- three of the four are hidden everywhere else.
+   #101: `#teamBtn` moved out of the bar and into Today's large title, so it
+   is no longer one of the bar's own glass chips -- it is still checked for
+   its 48px hit area, by `today-game-rows.mjs`, just not for the round
+   backdrop-filter fill this file measures. */
 const CHIPS = [
-  { sel: '#teamBtn', fill: '#teamBtn', view: 'today' },
   { sel: '#settingsBtn', fill: '#settingsBtn .i', view: 'today' },
   { sel: '#backBtn', fill: '#backBtn .i', view: 'games' },
   { sel: '#shareBtn', fill: '#shareBtn .i', view: 'games' },

@@ -14,10 +14,10 @@
 (function () {
   try {
     var get = function (k) {
-      // per key, so a corrupt v6 blob still lets v5, v4 or v3 answer
+      // per key, so a corrupt v7 blob still lets v6, v5, v4 or v3 answer
       try { return (JSON.parse(localStorage.getItem(k)) || {}).ui; } catch (e) { return null; }
     };
-    var ui = get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
+    var ui = get('benchcard.v7') || get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
     var t = ui && ui.theme;
     if (t !== 'light' && t !== 'dark') {
       t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
