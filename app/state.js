@@ -312,10 +312,10 @@ export function ruleItems(g) {
     items.push({ kind: 'cap', text: `${nm(id)} plays at most ${v} min`, removable: true, id });
   }
   for (const pair of c.pairs) {
-    items.push({ kind: 'together', text: `${joinNames(pair.map(nm))} play together`, removable: true, pair });
+    items.push({ kind: 'together', text: `${joinNames(pair.map(nm))} together`, removable: true, pair });
   }
   for (const pair of c.avoids) {
-    items.push({ kind: 'apart', text: `${joinNames(pair.map(nm))} never play together`, removable: true, pair });
+    items.push({ kind: 'apart', text: `${joinNames(pair.map(nm))} apart`, removable: true, pair });
   }
   for (const pair of (c.keepOnFloor || [])) {
     items.push({ kind: 'keepon', text: `${nm(pair[0])} or ${nm(pair[1])} is always on the floor`, removable: true, pair });

@@ -106,11 +106,11 @@ README carries the test count; it is not repeated here). Generation runs
 - **Closers** -- even minutes early, a group you pick finishes the game.
 - **Platoon** -- fixed fives alternating wholesale, no optimisation.
 
-Plus rules that compose with any of them: min/cap minutes, play-together and
-keep-apart pairs, pinned opening five and last-period five, and a
+Plus rules that compose with any of them: min/cap minutes, Together and
+Apart pairs, pinned opening five and last-period five, and a
 most-stints-in-a-row limit.
 
-There is a third pair relation, `keepOnFloor` -- "always one of these two on".
+There is a third pair relation, `keepOnFloor` -- "One of two on".
 It is worth spelling out why it is not one of the other two wearing a minus
 sign: `pairs` and `avoids` both constrain the **floor** (both on / never both
 on), and this one constrains the **bench** (never both off). A coach who wants

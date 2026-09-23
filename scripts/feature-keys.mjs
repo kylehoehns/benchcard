@@ -36,8 +36,8 @@ export const textOf = (html) =>
 
 /* The same text as separate nodes, so a NAME can be required to sit where the
  * page names things -- a heading, a `<dt>`, a bolded label -- rather than
- * anywhere an ordinary English word happens to fall. `<dt>Play together /
- * Keep apart</dt>` is two names, hence the split. */
+ * anywhere an ordinary English word happens to fall. `<dt>Together /
+ * Apart</dt>` is two names, hence the split. */
 export const partsOf = (text) => normalise(text).split(/[/|·]/)
   .map((t) => t.replace(/\s+/g, ' ').trim().replace(/^[.,:;'"]+|[.,:;'"]+$/g, '').trim())
   .filter(Boolean);
@@ -124,21 +124,21 @@ export const FEATURES = [
 
   /* #75 item 6: about.html and advanced.html dropped "minutes limit" (one
    * phrase for the app's `minimum`/`cap` pair, per `shipped()`'s note below)
-   * for the glossary's own two rules, named side by side ("Minimum and Cap"),
-   * and the app's other three mixed rule names for Together / Apart / One of
-   * two on. `#help` is unchanged and still uses the app's internal wording --
-   * that mismatch is #75's own Decisions section, not a new one -- so each of
-   * these keys is per-surface the same way `shape:even` now is. */
+   * for the glossary's own two rules, named side by side ("Minimum and Cap").
+   * `#help` is unchanged and still uses the app's internal "Minutes limit" --
+   * that mismatch is #75's own Decisions section, not a new one -- so this
+   * key is per-surface the same way `shape:even` is. #98 brought the three
+   * pair rules' names into line instead: `#help`'s own `<dt>`s now read
+   * Together / Apart / One of two on, the same words about.html and
+   * advanced.html already used, so those three keys below are plain arrays
+   * again rather than per-surface objects. */
   { key: 'rule:limit', src: 'rules.js KINDS',
     term: { '#help': ['minutes limit'], 'about.html': ['minimum'], 'advanced.html': ['minimum'] } },
   { key: 'rule:starts', src: 'rules.js KINDS', term: ['starting five'], text: ['starting five'] },
   { key: 'rule:lastq', src: 'rules.js KINDS', term: ['last period'] },
-  { key: 'rule:together', src: 'rules.js KINDS',
-    term: { '#help': ['play together'], 'about.html': ['together'], 'advanced.html': ['together'] } },
-  { key: 'rule:apart', src: 'rules.js KINDS',
-    term: { '#help': ['keep apart'], 'about.html': ['apart'], 'advanced.html': ['apart'] } },
-  { key: 'rule:keepon', src: 'rules.js KINDS',
-    term: { '#help': ['always one on'], 'about.html': ['one of two on'], 'advanced.html': ['one of two on'] } },
+  { key: 'rule:together', src: 'rules.js KINDS', term: ['together'] },
+  { key: 'rule:apart', src: 'rules.js KINDS', term: ['apart'] },
+  { key: 'rule:keepon', src: 'rules.js KINDS', term: ['one of two on'] },
   { key: 'rule:rest', src: 'rules.js KINDS', term: ['rest limit'], text: ['rest limit'] },
 
   /* The bench scopes are pinned by the LABEL the button carries, not by its

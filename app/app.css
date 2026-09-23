@@ -3236,12 +3236,13 @@ dialog.flow .pgrp { margin: 0 1rem; }
    same sheet. This scopes the sheet's own padding,
    since the chips sit inside a group's edge rather than a page's. */
 .plan-kinds { padding: 1rem 1rem 0; }
-/* "One of two always on" is longer than every other kind label and, at a
-   32px root in a 320px viewport, wider than the sheet itself; `.chip`'s own
-   `white-space: nowrap` (the shared primitive) is what every other, shorter
-   chip wants, but here it is what pins this one wide enough to overflow.
-   Scoped to this group only, so the shared primitive stays nowrap everywhere
-   else it is used. */
+/* "One of two always on" was the longest kind label and, at a 32px root in a
+   320px viewport, wider than the sheet itself; `.chip`'s own `white-space:
+   nowrap` (the shared primitive) is what every other, shorter chip wants, but
+   here it is what pinned that one wide enough to overflow. #98 shortened it
+   to "One of two on" -- "Last-period five" is now the longest label in this
+   group, and this override is scoped to the group rather than the one chip,
+   so the shared primitive stays nowrap everywhere else it is used. */
 .plan-kinds .chip { white-space: normal; text-align: center; }
 /* The prototype's chips are borderless `--surface` pills everywhere in this
    sheet (the kind chips above and the Closing-window chips) -- `.chip`'s own

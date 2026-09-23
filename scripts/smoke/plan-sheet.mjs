@@ -255,8 +255,8 @@ export async function planSheetPass(c, origin) {
         phrase: document.getElementById('phraseRules').textContent,
       });
     })()`);
-    ck(JSON.stringify(rules1.texts) === JSON.stringify(['Marcus plays at least 16 min', 'Devon and Hana play together']),
-      `#constraints reads ${JSON.stringify(rules1.texts)}, want ["Marcus plays at least 16 min","Devon and Hana play together"]`);
+    ck(JSON.stringify(rules1.texts) === JSON.stringify(['Marcus plays at least 16 min', 'Devon and Hana together']),
+      `#constraints reads ${JSON.stringify(rules1.texts)}, want ["Marcus plays at least 16 min","Devon and Hana together"]`);
     ck(rules1.lastIsAdd, '"Add a rule" is not the last row in #constraints');
     ck(rules1.phrase === '2 rules', `the rules phrase reads "${rules1.phrase}", want "2 rules"`);
 
@@ -376,8 +376,8 @@ export async function planSheetPass(c, origin) {
     ck(addPage.addHidden === false, '"Add rule" is hidden on the Add-a-rule page');
     ck(addPage.addLabel === 'Add rule', `the commit button reads "${addPage.addLabel}", want "Add rule"`);
     ck(addPage.addDisabled === true, '"Add rule" is not disabled with nothing picked yet');
-    const WANT_KINDS = ['Plays at least', 'Plays at most', 'Never together', 'Always together',
-      'One of two always on', 'Starting five', 'Last-period five', 'Rest limit'];
+    const WANT_KINDS = ['Plays at least', 'Plays at most', 'Apart', 'Together',
+      'One of two on', 'Starting five', 'Last-period five', 'Rest limit'];
     ck(JSON.stringify(addPage.kinds) === JSON.stringify(WANT_KINDS),
       `the kind chips read ${JSON.stringify(addPage.kinds)}, want ${JSON.stringify(WANT_KINDS)}`);
     ck(addPage.pressed[0] === 'true' && addPage.pressed.slice(1).every(p => p === 'false'),
@@ -417,27 +417,27 @@ export async function planSheetPass(c, origin) {
     ck(afterAdd.rows.includes('Hana plays at least 14 min'),
       `#constraints reads ${JSON.stringify(afterAdd.rows)}, want a row "Hana plays at least 14 min"`);
 
-    // Choosing "Always together" clears the pick and disables Add rule.
+    // Choosing "Together" clears the pick and disables Add rule.
     await tapPane(c, `document.querySelector('#constraints .add-rule').click()`);
-    await tap(c, `[...document.querySelectorAll('#planSub .plan-kinds .chip')].find(b => b.textContent === 'Always together').click()`);
+    await tap(c, `[...document.querySelectorAll('#planSub .plan-kinds .chip')].find(b => b.textContent === 'Together').click()`);
     const together0 = await evalJSON(c, `JSON.stringify({
       addDisabled: document.getElementById('planAddRuleBtn')?.disabled,
       pressed: [...document.querySelectorAll('#planSub .plr')].some(b => b.getAttribute('aria-pressed') === 'true'),
     })`);
-    ck(together0.addDisabled === true, '"Add rule" is not disabled right after choosing "Always together"');
-    ck(!together0.pressed, 'a tile is still picked right after choosing "Always together"');
+    ck(together0.addDisabled === true, '"Add rule" is not disabled right after choosing "Together"');
+    ck(!together0.pressed, 'a tile is still picked right after choosing "Together"');
 
     await tap(c, `document.querySelectorAll('#planSub .plr')[0].click()`);
     const together1 = await evalJSON(c, `JSON.stringify(document.getElementById('planAddRuleBtn')?.disabled)`);
-    ck(together1 === true, '"Add rule" is enabled with only one tile picked for "Always together"');
+    ck(together1 === true, '"Add rule" is enabled with only one tile picked for "Together"');
 
     await tap(c, `document.querySelectorAll('#planSub .plr')[1].click()`);
     const together2 = await evalJSON(c, `JSON.stringify({
       addDisabled: document.getElementById('planAddRuleBtn')?.disabled,
       thirdDisabled: document.querySelectorAll('#planSub .plr')[2]?.disabled,
     })`);
-    ck(together2.addDisabled === false, '"Add rule" is still disabled with two tiles picked for "Always together"');
-    ck(together2.thirdDisabled === true, 'a third tile is not disabled once two are picked for "Always together"');
+    ck(together2.addDisabled === false, '"Add rule" is still disabled with two tiles picked for "Together"');
+    ck(together2.thirdDisabled === true, 'a third tile is not disabled once two are picked for "Together"');
 
     await tap(c, `document.getElementById('sheetPlanClose').click()`);
     // restore Hawks: no rules.

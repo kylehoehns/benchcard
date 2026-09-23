@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { trackedFiles } from '../scripts/spelling.mjs';
 import { pngSize } from '../scripts/png-size.mjs';
+import { avoidRegexes } from './glossary.js';
+import { stripHtmlComments } from './html-comments.js';
 
 /* #75: the mark went from ember to Hardwood everywhere it is drawn, and the
  * share image and its meta tags moved from 1200×630 to 2400×1260. Both are
@@ -97,34 +99,13 @@ test('every page\'s og:image:alt and twitter:image:alt are the same text', () =>
 /* Comments dropped first, the same rule test/team-tab-copy.test.js states for
    the same reason: a developer note recording the fix ("no more 'Team tab'
    here") is prose about the code, not text a coach reads, and would
-   false-positive this guard if left in. */
+   false-positive this guard if left in. Built on the shared HTML-comment
+   stripper (test/html-comments.js, #98) rather than a second copy of that
+   regex; this page also has `<style>`/`<script>` blocks, so `/* *\/` is
+   stripped here too, on top of it. */
 function stripComments(s) {
-  return s.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  return stripHtmlComments(s).replace(/\/\*[\s\S]*?\*\//g, ' ');
 }
-
-/* CONTEXT.md's own `_Avoid_:` lines, parsed rather than retyped -- the spec
-   (`docs/specs/75-pages-and-images-after-redesign.md`, Constraints) says not
-   to re-derive the avoided words by hand. Each line sits right under a term
-   heading ("**Card name**:") and lists its retired words, comma-separated,
-   sometimes with a parenthetical qualifier ("Minutes (as a strategy name)").
-   Returns { term -> [phrase, ...] }, parenthetical stripped. */
-function parseGlossaryAvoid(md) {
-  const out = {};
-  let term = null;
-  for (const line of md.split('\n')) {
-    const heading = line.match(/^\*\*([^*]+)\*\*.*:$/);
-    if (heading) { term = heading[1].trim(); continue; }
-    const avoid = line.match(/^_Avoid_:\s*(.+)$/);
-    if (avoid && term) {
-      out[term] = avoid[1].split(',')
-        .map((p) => p.replace(/\([^)]*\)/g, '').trim())
-        .filter(Boolean);
-    }
-  }
-  return out;
-}
-
-const AVOID_BY_TERM = parseGlossaryAvoid(readFileSync(new URL('../CONTEXT.md', import.meta.url), 'utf8'));
 
 /* Item 6 names eight glossary terms whose retired words must not survive on
    About or Advanced: the season's old word, the league minimum's old phrase,
@@ -150,10 +131,7 @@ const TERMS = ['Season', 'League minimum', 'Even', 'By hand', 'Card name', 'Toge
 const PHRASE_OVERRIDE = { Minutes: /<h3>\s*Minutes\s*<\/h3>/i };
 const PHRASE_DROP = new Set(['pair']);
 
-const AVOID = TERMS.flatMap((term) => (AVOID_BY_TERM[term] || [])
-  .filter((phrase) => !PHRASE_DROP.has(phrase))
-  .map((phrase) => PHRASE_OVERRIDE[phrase]
-    || new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')));
+const AVOID = avoidRegexes(TERMS, PHRASE_DROP, PHRASE_OVERRIDE).map(([, re]) => re);
 
 assert.ok(AVOID.length >= 10, `only ${AVOID.length} avoided phrases parsed from CONTEXT.md; the parser broke`);
 

@@ -267,9 +267,9 @@ function focusRuleRowAfterRemove(idx) {
 const KINDS = [
   ['minimum', 'Plays at least'],
   ['cap', 'Plays at most'],
-  ['apart', 'Never together'],
-  ['together', 'Always together'],
-  ['keepon', 'One of two always on'],
+  ['apart', 'Apart'],
+  ['together', 'Together'],
+  ['keepon', 'One of two on'],
   ['starts', 'Starting five'],
   ['lastq', 'Last-period five'],
   ['rest', 'Rest limit'],
