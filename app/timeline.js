@@ -18,7 +18,8 @@ import { riseIn, popIn, countTo, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
-import { resumeAt, fitPreview } from './card.js';
+import { fitPreview } from './card.js';
+import { resumeAt } from './live.js';
 import { openPlanSheet, openWhoSheet } from './game-setup.js';
 
 /* Set by initTimeline; see the note above on why this is injected. */
@@ -275,7 +276,7 @@ export function renderTimeline() {
      rather than one across the body: the track is a middle column on desktop
      and a full-width row on a phone, so a body-level overlay would have to
      know the breakpoint and this does not. */
-  const resume = resumeAt(p, g);
+  const resume = resumeAt(p, g.live);
 
   if (tlPinned && !ids.includes(tlPinned)) tlPinned = null;
   box.classList.toggle('pinned', !!tlPinned);

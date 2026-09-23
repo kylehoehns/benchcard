@@ -211,12 +211,11 @@ test('dueToFile: combines dayIsPast with the bench-mode check, in one place', ()
   setup({ games: 1, date: '2026-09-27' });
   assert.equal(S.dueToFile(TODAY), true, 'a past day with bench mode closed is due');
 
-  const real = globalThis.document.querySelector;
-  globalThis.document.querySelector = sel => (sel === '#gamemode' ? { hidden: false } : real(sel));
+  S.setBenchOpen(true);
   try {
     assert.equal(S.dueToFile(TODAY), false, 'bench mode open holds off filing even though the day is past');
   } finally {
-    globalThis.document.querySelector = real;
+    S.setBenchOpen(false);
   }
 
   setup({ games: 1, date: '2026-09-28' });
@@ -315,15 +314,14 @@ test('fileIfPast: one game files with singular copy', () => {
 
 test('fileIfPast: a no-op while bench mode is open', () => {
   const t = setup({ games: 2, date: '2026-09-27' });
-  const real = globalThis.document.querySelector;
-  globalThis.document.querySelector = sel => (sel === '#gamemode' ? { hidden: false } : real(sel));
+  S.setBenchOpen(true);
   try {
     const msg = S.fileIfPast(TODAY);
     assert.equal(msg, null, 'a stint in progress must not be filed out from under the coach');
     assert.equal(t.season.games.length, 0);
     assert.equal(t.days[0].games.length, 2, 'the day is untouched while bench mode is open');
   } finally {
-    globalThis.document.querySelector = real;
+    S.setBenchOpen(false);
   }
 });
 

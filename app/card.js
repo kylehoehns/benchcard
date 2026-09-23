@@ -11,57 +11,9 @@
 import { fmtClock, fmtMinutes } from './engine.js';
 import { $, el, set, ctx2d } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayPlans, team, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
+import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
 import { cornerLabel } from './storage.js';
-
-/* Where an unfinished game has got to, or null. `live.at` is the stint the
-   coach last had open; stint 0 is indistinguishable from "never started" and
-   the last stint is a game that is over (game mode restarts that one), so
-   only the middle counts as underway. */
-export function resumeAt(p = plans[state.activeGame], g = game()) {
-  if (!p || !p.ok || !g) return null;
-  const at = g.live?.at || 0;
-  if (at <= 0 || at >= p.stints.length - 1) return null;
-  const row = p.stints[at];
-  return { at, where: `${row.periodName || 'Q' + row.period} ${fmtClock(row.startSec)}` };
-}
-
-/* #92, "What would settle it" item 1: the one place that decides a game
-   pass's status word and dot class. "Underway" is exactly `resumeAt`'s own
-   answer -- not a second check of `live.at` or the stint count, which
-   `resumeAt` already owns (see its own comment above). */
-export function passStatus(p, g) {
-  if (resumeAt(p ?? null, g) !== null) return { word: 'Underway', cls: 'now' };
-  if (p && p.ok) return { word: 'Planned', cls: 'ok' };
-  return { word: 'Needs a fix', cls: 'warn' };
-}
-
-/* #34 decision 5, widened by #101 item 8: which part-played game the
-   floating resume bar offers, across every day the team holds, not only the
-   one currently open. Walks days from the END of `team().days` -- the latest
-   date first, not the open day, which is only the same day when the open day
-   happens to be the last one -- and, within a day, from the END of its
-   games, so two games both underway resolve to the one the coach was most
-   recently away from. `dayPlans` is the same per-day solve `computeAll`
-   already keeps; nothing here re-solves. Lives here, next to resumeAt,
-   rather than in state.js: state.js cannot import card.js, because card.js
-   already imports state.js. */
-export function resumeBarAt() {
-  const days = team().days;
-  for (let d = days.length - 1; d >= 0; d--) {
-    const gs = days[d].games;
-    const dp = dayPlans[d] || [];
-    for (let i = gs.length - 1; i >= 0; i--) {
-      /* Explicit `null`, never `undefined`: `resumeAt`'s first parameter
-         defaults to `plans[state.activeGame]`, so handing it a missing plan
-         would quietly pair the ACTIVE game's plan with game `i`. `resumeAt`
-         bails on a falsy plan, so `null` gives the honest answer. */
-      const r = resumeAt(dp[i] ?? null, gs[i]);
-      if (r) return { d, i, ...r };
-    }
-  }
-  return null;
-}
+import { resumeAt } from './live.js';
 
 /* The one thing that says a game is already underway. A reload drops the coach
    back here with bench mode shut -- on iOS, switching to the clock app and back
@@ -70,7 +22,7 @@ export function resumeBarAt() {
    this is the app finally saying so. Bench mode is deliberately NOT reopened on
    load: a coach who reloaded because something was wrong would be trapped. */
 function labelBench(blocked) {
-  const r = blocked ? null : resumeAt();
+  const r = blocked ? null : resumeAt(plans[state.activeGame] ?? null, game()?.live);
   for (const sel of ['#abBench', '#gmOpen']) {
     const btn = $(sel);
     if (!btn) continue;

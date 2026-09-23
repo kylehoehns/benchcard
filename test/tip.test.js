@@ -42,6 +42,6 @@ test('answering either way is the end of it', () => {
 });
 
 test('it never appears over a live game', () => {
-  assert.match(src, /tipEligible[\s\S]{0,200}gamemode/,
+  assert.match(src, /tipEligible[\s\S]{0,200}benchOpen\(\)/,
     'bench mode is the one screen where an interruption costs something real');
 });

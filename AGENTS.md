@@ -218,10 +218,12 @@ nothing can rewrite `budgets.json` without erasing the `requests` pin (#35,
 precached, so
 after the first load neither number costs a coach anything, and node or byte
 cost is not a reason to reject a fix. Their ceilings are deliberately wide.
-**`requests` is the one real pin** — it is hand-set at 40 of 41 and is what
-stops a new module quietly joining the boot graph. Never re-record it, and
-never run a blanket `node scripts/smoke.mjs --update-budgets`, which would
-erase the pin. Re-pin the `bytes` baseline to your own measured cold load in
+**`requests` is the one real pin** — `REQUESTS_BASELINE` in
+`scripts/budgets.mjs`, held one under the measured cold load, and is what
+stops a new module quietly joining the boot graph. A module that joins on
+purpose re-pins it there and says which and why (#123). Never re-record it, and
+never run a blanket `node scripts/smoke.mjs --update-budgets`: every live
+baseline is a hand pin in `scripts/budgets.mjs`. Re-pin the `bytes` baseline to your own measured cold load in
 `scripts/budgets.mjs` instead, deliberately, and say what you measured there
 and in the commit. Do not widen the percentage in place of re-pinning: that
 ratchet ran from #22 to #33 and ended with a ceiling 61% above a stale number.

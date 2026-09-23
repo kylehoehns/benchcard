@@ -19,7 +19,8 @@ import { $, on, set, el, ctx2d } from './dom.js';
 import { openTrap, closeTrap } from './trap.js';
 import { track } from './analytics.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
-         resolveRest } from './state.js';
+         resolveRest, benchOpen, setBenchOpen } from './state.js';
+import { stage, stintIndex, openAt, stepAt } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
 let render = () => {};
@@ -58,7 +59,7 @@ function keepAwake() {
        earlier one from the same reopen race is already held, is released on
        arrival rather than stored, so a close-then-reopen that overlaps an
        in-flight request never ends up holding two. */
-    if ($('#gamemode').hidden || lockHeld()) releaseQuietly(s);
+    if (!benchOpen() || lockHeld()) releaseQuietly(s);
     else wakeLock = s;
   }).catch(() => {});
 }
@@ -84,7 +85,7 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
      tab with bench mode still on screen has to ask again. One listener for
      the module's whole life, not one per open, so it never stacks. */
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && $('#gamemode').hidden === false) keepAwake();
+    if (document.visibilityState === 'visible' && benchOpen()) keepAwake();
   });
 }
 
@@ -122,15 +123,17 @@ export function openGameMode() {
    * something at Q3 4:00 and you must not come back at Q1. But reopening on
    * the last stint of a game you already coached reads as stuck rather than
    * resumed, which is exactly how it was reported. So the one case that is
-   * unambiguously over is the one case that resets. */
-  if (live.at >= p.stints.length - 1) live.at = 0;
-  // the clamp writes to persisted state too (a shorter plan can leave `at`
-  // past the end), so it saves rather than waiting for closeGameMode
-  live.at = Math.min(live.at, p.stints.length - 1);
+   * unambiguously over is the one case that resets -- `openAt` (live.js)
+   * decides both that and the clamp a shorter plan can need (`at` left past
+   * its end), in the one place every `live.at` rule lives. */
+  live.at = openAt(p, live);
+  // the write above reaches persisted state too, so it saves rather than
+  // waiting for closeGameMode
   save();
   gmPick = null;
   const gm = $('#gamemode');
   gm.hidden = false;
+  setBenchOpen(true);
   keepAwake();
   const ab0 = $('#actionbar'); if (ab0) ab0.hidden = true;
   // #34 decision 10: bench mode can also open straight off Today now, via
@@ -255,7 +258,7 @@ function closeGameMode() {
      out on the phone, rather than opening this and backing straight out. */
   const p = plans[state.activeGame];
   const live = game()?.live;
-  const reachedEnd = !!(p && p.ok && live && live.at >= p.stints.length - 1);
+  const reachedEnd = stage(p, live) === 'finished';
   const gmEl = $('#gamemode');
   /* The open transition parks the sections at opacity 0 and clears it when the
      animation finishes. Close before it finishes -- which is one impatient tap
@@ -270,6 +273,7 @@ function closeGameMode() {
     n.style.transform = '';
   }
   gmEl.hidden = true;
+  setBenchOpen(false);
   letSleep();
   restorePage();
   const ab1 = $('#actionbar');
@@ -326,7 +330,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
   const g = game();
   if (!p || !p.ok) { closeGameMode(); return; }
   const live = liveOf(g);
-  const i = Math.max(0, Math.min(live.at, p.stints.length - 1));
+  const i = stintIndex(p, live);
   const row = p.stints[i];
   const floor = effLineup(p, g, i);
   const played = liveMinutes(p, g, i);     // stints already completed
@@ -536,7 +540,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
 let swipe = null;
 
 function gmSwipeDown(e) {
-  if (e.button > 0 || swipe || $('#gamemode').hidden) return;
+  if (e.button > 0 || swipe || !benchOpen()) return;
   swipe = { x0: e.clientX, y0: e.clientY, dx: 0, live: false, el: $('.gm-body') };
   addEventListener('pointermove', gmSwipeMove);
   addEventListener('pointerup', gmSwipeUp);
@@ -721,7 +725,7 @@ function gmStep(d) {
   if (!p) return;
   const l = liveOf(game());
   const was = l.at;
-  l.at = Math.max(0, Math.min(p.stints.length - 1, l.at + d));
+  l.at = stepAt(p, l, d);
   // only when the stint actually moved -- a tick at the last stint would say
   // "done" when nothing happened
   if (l.at !== was) tick();

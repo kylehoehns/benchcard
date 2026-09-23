@@ -328,7 +328,7 @@ export const SAMPLE_TEAM = (() => {
 })();
 
 /* #34 decision 14: RICH with BOTH of its games mid-play, so the resume bar's
-   own pick between them (`resumeBarAt`, card.js) is actually falsifiable --
+   own pick between them (`resumeBarAt`, live.js) is actually falsifiable --
    a fixture with only one part-played game cannot tell "picks the game
    that's underway" apart from "picks the LATER one", which is what AC1 asks.
    `games[1].label` is swapped for a long real name rather than "Ravens": the

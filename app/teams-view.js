@@ -25,10 +25,10 @@ import { state, plans, dayPlans, newGame, newTeam, team, lastGame, gameLabel, ga
          colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame } from './state.js';
 import { tipoffLabel } from './storage.js';
-// #34 decision 5/6: the picker lives in card.js (state.js cannot import it
-// back), and this is the one place it is called from -- both the paint and
-// the tap. No cycle: gamemode.js does not import teams-view.js.
-import { resumeBarAt, passStatus } from './card.js';
+// #34 decision 5/6: the picker lives in live.js, and this is the one place
+// it is called from -- both the paint and the tap. No cycle: gamemode.js
+// does not import teams-view.js.
+import { resumeBarAt, passStatus } from './live.js';
 /* #35 decision 8. Two pure predicates -- no DOM, no state, just `(view, wide)`
    -- so this is a value import, not the behavior injection `renderAll` and
    `setView` get above. render.js imports this file, so the graph does close
@@ -113,7 +113,7 @@ export function initTeams(renderAllFn, setViewFn, editFn) {
   // answer, so a slow tap after a same-tick state change still opens the
   // game the bar is actually showing.
   on('#resumeBtn', 'onclick', () => {
-    const r = resumeBarAt();
+    const r = resumeBarAt(team().days, dayPlans);
     if (!r) return;
     openGame(r.d, r.i);
     openGameMode();
@@ -462,7 +462,7 @@ function removeTeam() {
  * set with `aria-label` instead of read off the visible text.
  */
 // The pass's own status word and dot (`.pass-status`): Underway/now,
-// Planned/ok or Needs a fix/warn -- `passStatus` (card.js) is the one place
+// Planned/ok or Needs a fix/warn -- `passStatus` (live.js) is the one place
 // that decides which, read straight off its `{ word, cls }` result rather
 // than re-derived here. `renderPass` (the mini pass on Today) and
 // `renderTabs`'s game-screen sub line (#69 decision 5) both show it, so it
@@ -473,7 +473,7 @@ function passStatusEl(s) {
 
 function renderPass(g, i, d) {
   const p = dayPlans[d][i];
-  const status = passStatus(p ?? null, g);
+  const status = passStatus(p ?? null, g.live);
   const hasPlan = !!(p && p.ok);
   const full = gameLabel(g, i);
   const when = tipoffLabel(g.tipoff);
@@ -520,7 +520,7 @@ export function renderResumeBar() {
      Above 840px Today is the left rail under every view, so the Resume bar --
      which belongs to Today, and is pinned to the rail's width there -- is
      offered under the game screen, Team, Season and Settings as well. */
-  const r = state.onboarded && todayPaneShowing(state.view) ? resumeBarAt() : null;
+  const r = state.onboarded && todayPaneShowing(state.view) ? resumeBarAt(team().days, dayPlans) : null;
   bar.hidden = !r;
   if (r) {
     set('#resumeBtn .ab-lab', 'textContent',
@@ -563,7 +563,7 @@ export function renderTabs() {
       // right here rather than only back on Today.
       gs.append(dayHeading(state.day) + ' · ');
       if (g.tipoff) gs.append(tipoffLabel(g.tipoff) + ' · ');
-      gs.append(passStatusEl(passStatus(plans[i] ?? null, g)));
+      gs.append(passStatusEl(passStatus(plans[i] ?? null, g.live)));
     }
   }
 

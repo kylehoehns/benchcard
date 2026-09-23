@@ -56,11 +56,9 @@ test('a finished game starts over; an unfinished one resumes', () => {
      which is how it was reported. */
   const open = src.slice(src.indexOf('export function openGameMode'));
   const body = open.slice(0, open.indexOf('\n}'));
-  assert.match(body, /live\.at >= p\.stints\.length - 1/,
-    'reopening on the last stint should reset to the start');
-  assert.match(body, /live\.at = 0/);
-  assert.ok(!/live\.at = 0;\s*$/m.test(body.split('live.at >= p.stints.length - 1')[0]),
-    'the reset must be conditional, not unconditional');
+  assert.match(body, /live\.at = openAt\(p, live\)/,
+    'openGameMode must resolve its starting stint through live.js\'s openAt -- '
+    + 'the finished/part-played decision lives there once, not re-checked here');
 });
 
 test('every mid-game edit offers an undo, and takes the previous offer down', () => {
@@ -122,13 +120,19 @@ test('a part-played game says so on the plan page', () => {
      is often enough -- and the coach landed on Games with nothing saying a
      game was underway, over a button reading "Use on the bench", which reads
      as *start*. State survived fine; only the page was silent. */
-  const card = readFileSync(new URL('../app/card.js', import.meta.url), 'utf8');
-  const fn = card.slice(card.indexOf('export function resumeAt'));
-  const body = fn.slice(0, fn.indexOf('\n}'));
-  assert.match(body, /at <= 0/, 'stint 0 is indistinguishable from "never started"');
-  assert.match(body, /at >= p\.stints\.length - 1/,
+  const live = readFileSync(new URL('../app/live.js', import.meta.url), 'utf8');
+  const stageFn = live.slice(live.indexOf('export function stage'));
+  const stageBody = stageFn.slice(0, stageFn.indexOf('\n}'));
+  assert.match(stageBody, /at <= 0/, 'stint 0 is indistinguishable from "never started"');
+  assert.match(stageBody, /at >= p\.stints\.length - 1/,
     'the last stint is a game that is over -- game mode restarts that one');
-  assert.match(body, /periodName/, 'the label must follow halves as well as quarters');
+  const resumeFn = live.slice(live.indexOf('export function resumeAt'));
+  const resumeBody = resumeFn.slice(0, resumeFn.indexOf('\n}'));
+  assert.match(resumeBody, /stage\(p, live\)/,
+    'resumeAt must ask stage for the part-played decision, not re-check at itself');
+  assert.match(resumeBody, /periodName/, 'the label must follow halves as well as quarters');
+
+  const card = readFileSync(new URL('../app/card.js', import.meta.url), 'utf8');
   assert.match(card, /labelBench\(blocked\)/,
     'renderCards must relabel the bench buttons');
   assert.match(card, /Resume/, 'the button should say Resume, not start');

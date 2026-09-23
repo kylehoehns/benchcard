@@ -39,7 +39,7 @@ deny() {
 # The flag must come AFTER smoke.mjs in the same command word-run, which is how
 # it is actually invoked and is not how anyone greps for it.
 if printf '%s' "$cmd" | grep -qE 'smoke\.mjs[^|;&]*--update-budgets'; then
-  deny 'Blocked: a blanket --update-budgets re-records scripts/budgets.json wholesale and erases the hand-set `requests` pin (40 of 41), which is the one number in that file that is a real constraint rather than a regression alarm. Widen the specific ceiling in scripts/budgets.mjs instead, deliberately, and say why in the commit. AGENTS.md, "Layout".'
+  deny 'Blocked: a blanket --update-budgets re-records scripts/budgets.json wholesale. Every live baseline (bytes, nodes and the `requests` pin, the one real constraint) is hand-pinned in scripts/budgets.mjs. Re-pin the specific one in scripts/budgets.mjs instead, deliberately, and say why in the commit. AGENTS.md, "Layout".'
 fi
 
 if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])git[[:space:]]+add[[:space:]]+(-A|--all|\.)([[:space:]]|$)'; then

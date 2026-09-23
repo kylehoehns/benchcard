@@ -312,7 +312,7 @@ _Avoid_: sub line
 The full-screen, stint-by-stint view a coach uses on the phone while a game is
 being played.
 _Avoid_: game mode, live mode, on screen
-_In code_: `gamemode.js`, `openGameMode`
+_In code_: `gamemode.js`, `openGameMode`, `benchOpen`
 
 **Swap**:
 A coach's change to who is on the floor in bench mode, for this stint or the rest
@@ -329,7 +329,7 @@ _In code_: `resolveRest`
 **Part-played game**:
 A game that bench mode has moved past its first stint but not to its last.
 _Avoid_: in progress, live game
-_In code_: `live.at`, `resumeAt`
+_In code_: `live.js` (`stage`, `resumeAt`)
 
 **Played / projected**:
 In bench mode, a player's minutes from stints already completed, and where they

@@ -19,7 +19,7 @@ import { icon } from './icons.js';
 import { $, on, el, clone } from './dom.js';
 import { openTrap, closeTrap } from './trap.js';
 import { clearPick } from './gamemode.js';
-import { state, save, replaceState } from './state.js';
+import { state, save, replaceState, benchOpen } from './state.js';
 import { downloadBackup, backupFilename } from './backup.js';
 
 // ---------------------------------------------------------------------------
@@ -198,7 +198,7 @@ export function offer(message, label, act) {
 // sheet open, so the fixed-position math below only applies to `#toasts`.
 function liftToasts(box) {
   if (box.id !== 'toasts') { box.classList.remove('lifted'); box.style.removeProperty('--toast-lift'); return; }
-  const gmFoot = $('#gamemode')?.hidden === false ? $('#gamemode .gm-foot') : null;
+  const gmFoot = benchOpen() ? $('#gamemode .gm-foot') : null;
   // #34 decision 12: Today's own floating primary action is a third
   // candidate -- a toast on Today with a part-played game must clear it too.
   const showing = el => el && !el.hidden && getComputedStyle(el).display !== 'none' ? el : null;
@@ -235,7 +235,7 @@ function liftToasts(box) {
 const USES_BEFORE_ASKING = 3;
 
 function tipEligible() {
-  return !!TIP_URL && !state.ui.tipDone && $('#gamemode')?.hidden !== false;
+  return !!TIP_URL && !state.ui.tipDone && !benchOpen();
 }
 
 /* `ui.prints` keeps its name for the records already carrying it, but it now
@@ -346,7 +346,7 @@ const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) ||
 
 function installEligible() {
   return !state.ui.installDone && !standalone() &&
-    !!(installEvent || isIOS()) && $('#gamemode')?.hidden !== false;
+    !!(installEvent || isIOS()) && !benchOpen();
 }
 
 /* Says whether it took this moment, so the tip jar can stand down: one toast
@@ -471,9 +471,9 @@ const wasControlled = !!navigator.serviceWorker?.controller;
 let updateWaiting = false;
 
 function offerReload() {
-  // `hidden === false` is bench mode on screen -- the one place an
-  // interruption costs something real, exactly as the tip jar reads it
-  if (!updateWaiting || $('#gamemode')?.hidden === false) return;
+  // bench mode on screen is the one place an interruption costs something
+  // real, exactly as the tip jar reads it
+  if (!updateWaiting || benchOpen()) return;
   /* The flag stays set on purpose. This toast dwells nine seconds like any
      other offer, and a coach who was not looking at the phone for those nine
      seconds is left running the very stale code this exists to clear -- so it
