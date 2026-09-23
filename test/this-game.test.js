@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { element } from './markup.js';
+import { thisGameBox } from './markup.js';
 
 /* "This game" -- Opponent, Tip-off and Remove -- may not live inside the card.
  *
@@ -29,14 +29,13 @@ import { element } from './markup.js';
  */
 
 const read = f => readFileSync(new URL(`../app/${f}`, import.meta.url), 'utf8');
-const html = read('index.html').replace(/<!--[\s\S]*?-->/g, '');
 const css = read('app.css');
 const teamsView = read('teams-view.js');
 
 const IDS = ['id="label"', 'id="when"', 'id="removeGame"'];
 
 test('Opponent, Tip-off and Remove are one box', () => {
-  const box = element(html, 'class="side-box noprint s-thisgame"');
+  const { box } = thisGameBox();
   for (const id of IDS) {
     assert.ok(box.includes(id), `${id} left the "This game" box`);
   }

@@ -697,9 +697,18 @@
             </div>
             <!-- #102: its own row (C6) -- native `type="time"` picks a real
                  time rather than free text; `app.js` wires `oninput` to
-                 `setTipoff`, which sorts the day by it. -->
+                 `setTipoff`, which sorts the day by it. #118: a time input
+                 cannot show a placeholder, so a hint (`#whenHint`) says the
+                 field is optional and what setting it does --
+                 `aria-describedby` wires the two together for a screen
+                 reader too. Static, so it lives in the markup only; no
+                 script paints it. -->
             <div class="row">
-              <div><label class="f" for="when">Tip-off</label><input type="time" id="when"></div>
+              <div>
+                <label class="f" for="when">Tip-off</label>
+                <input type="time" id="when" aria-describedby="whenHint">
+                <p class="note" id="whenHint">Optional. Sets the order of the day's games.</p>
+              </div>
             </div>
             <button class="btn ghost danger sm press" id="removeGame" hidden style="margin-top:.9rem">Remove this game</button>
           </div>

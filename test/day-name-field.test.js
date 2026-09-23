@@ -1,8 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { lacks } from './prose.js';
-import { element } from './markup.js';
+import { thisGameBox } from './markup.js';
 
 /* #112: the day-name field, spec docs/specs/112-day-name-field.md.
  *
@@ -65,10 +64,7 @@ test('renderSetup repaints #dayNameHint when the game is on a different date', (
 
 /* ---------------------------------------------------------------------- */
 
-const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8')
-  .replace(/<!--[\s\S]*?-->/g, '');
-
-const box = element(html, 'class="side-box noprint s-thisgame"');
+const { html, box } = thisGameBox();
 
 test('the #dayName field is labelled "Day name"', () => {
   const m = box.match(/<label class="f" for="dayName">([^<]*)<\/label>/);
