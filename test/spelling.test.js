@@ -8,7 +8,7 @@ import { scan, trackedFiles, WORDS, LEGACY_MARK, ALLOWED } from '../scripts/spel
    the American word to use instead -- the same table the CLI and the hook
    print from. */
 
-test('scan finds each of the eight British fragments, case-insensitively, with the right American word', () => {
+test('scan finds each of the nine British fragments, case-insensitively, with the right American word', () => {
   for (const [british, american] of WORDS) {
     for (const line of [british, british.toUpperCase(),
       british[0].toUpperCase() + british.slice(1)]) {
