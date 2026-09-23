@@ -83,7 +83,11 @@
        it too. An unrecognized value lands on Today exactly as `sanitize` sends
        it there -- stamping a view the allow-list would reject paints a frame
        with every view hidden. The same-members check is in the test file; an
-       array, not an object, because `{}['constructor']` is truthy.
+       array, not an object, because `{}['constructor']` is truthy;
+     - #126: `teamHasGames` folds a stored `view: 'games'` to `today` for a
+       team with no games, the same fold `setView` (render.js) applies at
+       boot -- `sanitizeTeam`'s fallback (storage.js) only ever comes back
+       empty for a real, empty `days` array, never for the migration shapes.
 
    IT READS THE BACKUP KEY, AND THE OLD SCHEMAS, ON PURPOSE. `loadState` falls
    back to `benchcard.v7.bak` and then to v6/v5/v4/v3 and the two legacy keys, so a
@@ -149,6 +153,41 @@
         welcome = false;
       }
     }
+    /* #25 item 8 / #126: the active team, resolved once and reused by both
+       the color block below and the games fold right above it -- `raw` and
+       `decided` name the SAME winning record resolved above, so this is
+       never a third read of the keys.
+
+       Mirrors `sanitize`'s clause exactly (storage.js): `rawTeams` falls
+       back to `[raw]` for a v3-shaped record with no `teams` array;
+       `activeTeam` clamps into `[0, rawTeams.length - 1]` the same way
+       `num()` does (a non-finite value is 0, not out of range). */
+    var activeTeamObj = null;
+    if (decided && isObj(raw)) {
+      var rawTeams = Array.isArray(raw.teams) && raw.teams.length ? raw.teams : [raw];
+      var capped = rawTeams.slice(0, 12);
+      var atNum = Number(raw.activeTeam);
+      var at = Number.isFinite(atNum) ? Math.max(0, Math.min(capped.length - 1, atNum)) : 0;
+      activeTeamObj = capped[at];
+    }
+
+    /* #126: "games" needs a game. `sanitizeTeam`'s fallback (storage.js)
+       guarantees one UNLESS the record already carries a real `days` array
+       (the v7 shape) -- a v6 record's `day`, or no team at all, always ends
+       up with a game once `sanitize` runs. This is that same rule, read off
+       the raw record instead of the sanitized one, so the two never
+       disagree about the one frame a coach's eyes actually catch
+       (test/first-paint.test.js runs this script and `loadState` over one
+       table and fails on any difference). */
+    var teamHasGames = function (t) {
+      if (!isObj(t)) return true;
+      if (!Array.isArray(t.days)) return true;
+      return t.days.some(function (d) {
+        return isObj(d) && Array.isArray(d.games) && d.games.length > 0;
+      });
+    };
+    if (view === 'games' && !teamHasGames(activeTeamObj)) view = 'today';
+
     // today is the markup default, so it is stamped as nothing at all
     if (welcome) view = 'welcome';
     if (view !== 'today') document.documentElement.setAttribute('data-boot', view);
@@ -159,30 +198,16 @@
        the session instead of removing it. */
     document.documentElement.setAttribute('data-view', view);
 
-    /* #25 item 8: the team color, stamped from the SAME winning record
-       resolved above -- `raw` and `decided` -- rather than re-reading the
-       keys a third time. `raw` is untouched by the legacy v1/v2 block below
-       when `decided` is true (that block only runs `if (!decided)`), so this
-       is always the record `view` itself came from, or nothing.
-
-       Mirrors `sanitize`'s two relevant clauses exactly (storage.js):
-       `rawTeams` falls back to `[raw]` for a v3-shaped record with no
-       `teams` array; `activeTeam` clamps into `[0, rawTeams.length - 1]`
-       the same way `num()` does (a non-finite value is 0, not out of
-       range); an unrecognized or missing `color` is graphite, same as
-       `COLORS.includes(...)`. Graphite needs no attribute, same as the
-       base tokens.css blocks need no `[data-tint]` selector.
+    /* The team color, stamped from the same `activeTeamObj` resolved above.
+       An unrecognized or missing `color` is graphite, same as
+       `COLORS.includes(...)`. Graphite needs no attribute, same as the base
+       tokens.css blocks need no `[data-tint]` selector.
 
        #61 renamed this key: a valid `color` wins, else a valid value under
        the pre-#61 key, same precedence sanitizeSettings uses (storage.js). */
     var color = 'graphite';
-    if (decided && isObj(raw)) {
-      var rawTeams = Array.isArray(raw.teams) && raw.teams.length ? raw.teams : [raw];
-      var capped = rawTeams.slice(0, 12);
-      var atNum = Number(raw.activeTeam);
-      var at = Number.isFinite(atNum) ? Math.max(0, Math.min(capped.length - 1, atNum)) : 0;
-      var activeTeamObj = capped[at];
-      var teamSettings = activeTeamObj && isObj(activeTeamObj.settings) ? activeTeamObj.settings : {};
+    if (activeTeamObj) {
+      var teamSettings = isObj(activeTeamObj.settings) ? activeTeamObj.settings : {};
       var COLORS = ['graphite', 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
       var rawColor = COLORS.indexOf(teamSettings.color) >= 0 ? teamSettings.color
         : COLORS.indexOf(teamSettings.colour) >= 0 ? teamSettings.colour : null; // legacy-spelling
@@ -466,6 +491,15 @@
          instead of a trailing chevron -- `.noarrow` drops that pseudo-
          element. Same id, same handler (`openAddGame`, teams-view.js). -->
     <div class="today-acts">
+      <!-- #126: one gray line (W3), no heading -- Today still has Team and
+           Season below it, unlike Team's own empty state. Reuses `.note`
+           rather than a new look (Constraints: reuse, do not re-derive).
+           Painted by `renderTabs` (teams-view.js), hidden whenever
+           `hasGames()` is true. Sits beside the add-a-game action it
+           describes, one box inside the view root -- test/note-placement.
+           test.js reads a bare `p.note` there as page-level prose that
+           outlives the box it describes. -->
+      <p class="note" id="todayNoGames" hidden>No games yet. Add one to see it here.</p>
       <button class="today-entry noarrow press" id="todayAddGame" type="button">
         <span class="i" data-icon="plus"></span><span class="today-entry-lab">Add a game</span>
       </button>
@@ -668,8 +702,9 @@
                phone stack rather than the flex default, but #69 decision 8
                moved that number to after Rules -- Rotation reads first there
                now, right under the sentence.
-               `#removeGame` keeps its `undoable()` and its `< 2` guard -- a
-               day must always have a game. -->
+               `#removeGame` keeps its `undoable()`. It shows whenever there
+               is a game (#126): the game screen can't be reached without
+               one, so there is no count left to guard it on. -->
           <div class="side-box noprint s-thisgame" style="margin-bottom:.9rem">
             <div class="side-hd">This game</div>
             <div class="row">

@@ -545,7 +545,13 @@ a { color: inherit; }
 .today-entry::after { content: '\203a'; color: var(--faint); font-size: var(--fs-headline);
   flex: none; margin-left: .1rem; }
 
-.today-acts { display: flex; gap: .6rem; margin-bottom: 1.6rem; }
+/* #126: column, not the row this used to be with only one child -- with the
+   empty-state note showing (`#todayNoGames`), it must read as one gray line
+   above the button, not beside it. `.note`'s `margin-top` spaces it from
+   whatever sits above it, not from the button below, so the row `gap` stays
+   -- dropping it left the note flush on the button (0px between them,
+   measured at 390/320/1280px). */
+.today-acts { display: flex; flex-direction: column; gap: .6rem; margin-bottom: 1.6rem; }
 /* #69 decision 14: "Add a game" is a grouped row (`.today-entry`, decision
    9), not a bordered `.btn` -- it keeps that class's surface/radius/height
    and only drops the trailing chevron, since it opens a new game rather
@@ -2103,8 +2109,11 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   /* Decision 7: the right pane's resting state is the open game, so the wide
      layout is never half empty -- Today on the left, the game on the right,
      and Team, Season or Settings covering the game when one is open. Back
-     from any of those returns to Today, which is the game again. */
-  html[data-view="today"] #view-games[hidden] { display: block !important; }
+     from any of those returns to Today, which is the game again.
+     #126: `:not(.no-games)` -- with no games there is no game to rest on, so
+     the right pane stays empty rather than forcing a frame with nothing in
+     it (`.no-games` is toggled on `<html>` in `applyView`, render.js). */
+  html[data-view="today"]:not(.no-games) #view-games[hidden] { display: block !important; }
   /* Decision 7, second consequence: `#actionbar` is gone above this width
      (its gate is `max-width: 839px`), so `#resumeBar` is the only floating
      bottom bar left -- which is what keeps `measureChromeHeights`'s

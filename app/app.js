@@ -34,7 +34,7 @@ import { render, renderAll, setView, applyTheme, applyTint } from './render.js';
 import { edit } from './edit.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         dueToFile, fileIfPast, moveGame, setTipoff } from './state.js';
+         dueToFile, fileIfPast, moveGame, setTipoff, hasGames } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -134,6 +134,9 @@ on('#printScope', 'onchange', e => { state.ui.printScope = e.target.value; edit(
 on('#showMinutes', 'onchange', e => { state.ui.showMinutes = e.target.checked; edit('cardOptions'); });
 on('#regen', 'onclick', () => { if (reseed(game())) flash('New rotation. The swaps you made by hand were cleared.'); edit('regen'); });
 function printCard() {
+  // #126: no games, nothing to print -- the game screen is unreachable, so
+  // this does nothing rather than opening the print dialog over Today.
+  if (!hasGames()) return;
   track('card_printed', { size: state.ui.cardSize === 'half' ? 'half' : 'pocket' });
   /* Still needed after `#print` moved out of the top bar and into the games
      view beside the card. The button is now unreachable by pointer off Games,

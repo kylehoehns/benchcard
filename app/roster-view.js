@@ -337,7 +337,8 @@ function paintDupes() {
 function removalCosts(id) {
   const tag = `"${id}"`;
   const out = [];
-  if (state.day.games.some(g => JSON.stringify([g.constraints, g.out, g.live?.overrides ?? 0]).includes(tag)))
+  // #126: no games, no cost -- `state.day` is undefined rather than a throw.
+  if ((state.day?.games ?? []).some(g => JSON.stringify([g.constraints, g.out, g.live?.overrides ?? 0]).includes(tag)))
     out.push('Their rules went too.');
   if (state.season.games.some(g => Object.hasOwn(g.minutes, id)))
     out.push('The season keeps their minutes, not their name.');

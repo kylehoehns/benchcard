@@ -62,7 +62,7 @@ test('"This game" reads after the rotation, but still above the rules', () => {
     '"This game" now reads after Rules');
 });
 
-test('removing a game is still undoable and still refuses the last game', () => {
+test('removing a game is still undoable, and now removes the last one too (#126)', () => {
   const at = teamsView.indexOf("$('#removeGame')");
   assert.ok(at > 0, 'the #removeGame wiring moved -- re-point this test');
   const wiring = teamsView.slice(at, teamsView.indexOf('\n}', at));
@@ -70,12 +70,9 @@ test('removing a game is still undoable and still refuses the last game', () => 
   // not that. Undo is the affordance here.
   assert.ok(!/\bconfirm\(/.test(wiring), '#removeGame grew a confirm dialog');
   assert.match(wiring, /undoable\(/);
-  // #101 item 10: a TEAM must always have a game, or game() is undefined and
-  // every render downstream throws -- the count spans every day, not just
-  // the open one, so a day's only game is still removable once another day
-  // holds the team's other game. The guard is belt (hidden) and braces (the
-  // early return), both on that same team-wide total.
-  assert.match(wiring, /const totalGames = team\(\)\.days\.reduce\(/);
-  assert.match(wiring, /hidden = totalGames < 2/);
-  assert.match(wiring, /if \(totalGames < 2\) return/);
+  // #126: the game screen needs a game, so it can't be reached without one --
+  // "Remove this game" shows whenever the game screen is showing, with no
+  // count to guard the click on.
+  assert.match(wiring, /hidden = false/);
+  assert.ok(!/if \(totalGames < 2\) return/.test(wiring), 'a below-two guard came back');
 });

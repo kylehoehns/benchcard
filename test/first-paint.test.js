@@ -85,6 +85,10 @@ const roster = () => [
 ];
 const team = (players) => ({ id: 't1', name: 'Hawks', players, day: { name: '', games: [newGame()] },
   season: { games: [] }, settings: {}, activeGame: 0 });
+// #126: a real v7 team whose days are a real, empty array -- the one shape
+// `sanitizeTeam`'s fallback no longer fills, so it loads with no games.
+const teamNoGames = (players = []) => ({ id: 't1', name: 'Hawks', players,
+  days: [], activeDay: 0, season: { games: [] }, settings: {}, activeGame: 0 });
 // #25 item 8: a team carrying a color, for the tint-stamp fixtures below.
 const teamColored = (color, players = roster()) =>
   ({ ...team(players), settings: { color } });
@@ -177,7 +181,15 @@ const afterBoot = (store) => {
   });
   try {
     const loaded = loadState(H);
-    return loaded && loaded.state.onboarded ? (loaded.state.view || 'today') : 'welcome';
+    if (!loaded || !loaded.state.onboarded) return 'welcome';
+    const view = loaded.state.view || 'today';
+    // #126: `sanitize` does not fold a no-games team's stored `view: 'games'`
+    // -- `setView` does, at boot (render.js). `days` never holds an empty
+    // day (removeGame drops one the moment its last game goes), so "any day"
+    // is "any game", the same reading `hasGames()` gives it.
+    const t = loaded.state.teams[loaded.state.activeTeam];
+    if (view === 'games' && t && t.days.length === 0) return 'today';
+    return view;
   } finally {
     if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
     else delete globalThis.localStorage;
@@ -307,6 +319,12 @@ const CASES = [
   ['an out-of-range activeGame on a coach left on Games',
     { [KEY]: j({ version: 7, onboarded: true, view: 'games',
       teams: [{ ...team(roster()), activeGame: 99 }] }) }, 'games'],
+  /* #126: a coach who removed their last game and left the app on Games --
+     `sanitize` cannot fill a real, empty `days` array back in, so this is a
+     no-games team by the time the boot's own `setView` sees it, and it folds
+     to Today the same way a stale `view: 'games'` history entry does. */
+  ['a coach left on Games but the team has no games',
+    { [KEY]: j({ version: 7, onboarded: true, view: 'games', teams: [teamNoGames(roster())] }) }, 'today'],
 ];
 
 for (const [name, store, want] of CASES) {

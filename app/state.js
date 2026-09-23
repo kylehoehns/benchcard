@@ -515,8 +515,14 @@ export function renderStorageWarning() {
   box.append(a);
 }
 
-export const game = () => state.day.games[state.activeGame];
-export const lastGame = () => state.day.games[state.day.games.length - 1];
+/* #126: "does this team have a game?" in one place. `team().days` never
+   holds an empty day (removeGame drops one the moment its last game goes,
+   sanitizeTeam never inserts one), so the day count and the game count agree
+   -- this is the one question every other file asks THIS, rather than
+   counting days or games itself. */
+export const hasGames = () => team().days.length > 0;
+export const game = () => state.day?.games[state.activeGame];
+export const lastGame = () => state.day?.games[state.day.games.length - 1];
 export const gameLabel = (g, i) => g.label || `Game ${i + 1}`;
 /* Tournament labels share a long prefix and differ only at the end -- "Riverside
    Regional Tournament Semifinal vs Northgate" and "...Final vs Kingsway" both
@@ -667,13 +673,12 @@ export function setTipoff(v) {
 
 /**
  * Removes the OPEN game and drops its day once it has no games left ("no
- * empty days"). Never removes the team's only game anywhere -- the caller
- * (`teams-view.js`'s "Remove this game") is the one that decides whether to
- * even offer it, on the same total.
+ * empty days"). Can empty the team down to zero days (#126) -- the caller
+ * (`teams-view.js`'s "Remove this game") shows whenever the game screen is
+ * showing, with no count to guard on.
  */
 export function removeGame() {
   const t = team();
-  if (t.days.reduce((n, d) => n + d.games.length, 0) < 2) return;
   const day = t.days[t.activeDay];
   day.games.splice(state.activeGame, 1);
   if (day.games.length) {
@@ -682,7 +687,7 @@ export function removeGame() {
   }
   const idx = t.activeDay;
   t.days.splice(idx, 1);
-  openGame(Math.min(idx, t.days.length - 1), 0);
+  openGame(t.days.length ? Math.min(idx, t.days.length - 1) : 0, 0);
 }
 
 /** Opens game `i` of day `d` -- the Resume bar and Today's passes both land here. */
@@ -941,6 +946,7 @@ export function evensOutLine(i) {
    re-derived here. */
 export function sameAsLast() {
   const days = team().days;
+  if (!days.length) return null;
   const games = days[days.length - 1].games;
   const i = games.length - 1;
   const g = games[i];
@@ -1431,7 +1437,7 @@ export function computeAll() {
   };
 
   dayPlans = team().days.map(solveDay);
-  plans = dayPlans[team().activeDay];
+  plans = dayPlans[team().activeDay] ?? [];
 
   for (const key of [...planCache.keys()]) if (!live.has(key)) planCache.delete(key);
   for (const key of Object.keys(seasonAdjust)) if (!live.has(key)) delete seasonAdjust[key];
@@ -1439,14 +1445,17 @@ export function computeAll() {
      game order inside `solveDay` above. `dayTotals` is what the day chart
      shows a human, for the OPEN day -- so it counts the fives actually on the
      floor, and it can only be totalled here, after the map, because
-     `syncOverrides` may have dropped stale swaps mid-loop. */
+     `syncOverrides` may have dropped stale swaps mid-loop. With no day at all
+     (#126), there is nothing to total. */
   const eff = Object.fromEntries(ids.map(id => [id, 0]));
-  state.day.games.forEach((g, i) => {
-    const p = plans[i];
-    if (!p || !p.ok) return;
-    const m = effectiveMinutes(g, p);
-    for (const id of Object.keys(m)) if (id in eff) eff[id] += m[id];
-  });
+  if (state.day) {
+    state.day.games.forEach((g, i) => {
+      const p = plans[i];
+      if (!p || !p.ok) return;
+      const m = effectiveMinutes(g, p);
+      for (const id of Object.keys(m)) if (id in eff) eff[id] += m[id];
+    });
+  }
   for (const id of ids) eff[id] = Math.round(eff[id] * 100) / 100;
   dayTotals = eff;
 }

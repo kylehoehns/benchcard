@@ -27,7 +27,7 @@ import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from '.
 import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './teams-view.js';
 import { renderSeason, seasonGames } from './season-view.js';
-import { state, save, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, activeColor } from './state.js';
+import { state, save, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, activeColor, hasGames } from './state.js';
 import { retireUndo, flash } from './toast.js';
 import { initEdits } from './edit.js';
 // storage.js is already in the boot graph (state.js imports it for
@@ -100,10 +100,17 @@ const SECTIONS = {
   season:      () => renderSeason(),
 };
 const ALL = Object.keys(SECTIONS);
+/* #126: the game screen's own sections -- everything that reads a game or a
+   day's plan. `hasGames()` is the one question that decides whether they run
+   at all; a guard in each of these fourteen renderers would be fourteen
+   places to keep the answer in step with `hasGames()` instead of one. */
+const GAME_SECTIONS = new Set(['setup', 'sentence', 'strategy', 'budget', 'balance',
+  'constraints', 'seasonadj', 'summary', 'issues', 'plan', 'timeline', 'totals',
+  'cards', 'gameview']);
 
 export function render(...keys) {
   if (!state.onboarded) return;
-  const which = keys.length ? keys : ALL;
+  const which = (keys.length ? keys : ALL).filter(k => hasGames() || !GAME_SECTIONS.has(k));
   computeAll();
   /* `computeAll` is where a rotation that no longer matches the coach's hand
      swaps drops them (see `syncOverrides`). It is silent by design -- pure
@@ -130,6 +137,12 @@ export function render(...keys) {
      else. A single textContent write on every render is cheaper than a section
      that would have to be added to three lists to stay in step. */
   renderSettings();
+  /* #126: "Show me around again" -- the Benchcard zone, not per-team policy
+     (test/settings.test.js reads every id `renderSettings` itself touches as
+     exactly the per-team list, so this stays out of that function). The tour
+     walks the game screen, unreachable with no games. */
+  const tourBtn = $('#helpTourSettings');
+  if (tourBtn) tourBtn.hidden = !hasGames();
   withFocus(() => { for (const k of which) SECTIONS[k](); });
   /* #33 decisions 3-5: last, because the bar title is a COPY of words this
      function has just written. `applyView` syncs it too, but it has to run
@@ -232,8 +245,15 @@ let pushed = false;   // true while the current entry is [Today, shown], not jus
    its own (nothing left to go back from). */
 let pendingSelfBack = 0;
 
+/* #126: the game screen needs a game -- both the real destination and the
+   `popstate` echo of a stale `{ view: 'games' }` history entry fold through
+   here, so there is one place, not two, that decides "games" means "today"
+   when the team has none. */
+const foldView = v => (v === 'games' && !hasGames()) ? 'today' : v;
+
 export function setView(v, instant) {
   if (!state.onboarded) v = 'welcome';
+  v = foldView(v);
   const from = shown;
   /* A fresh boot, or the "there was nothing to back out to" moment right
      after onboarding finishes or a restore replaces the welcome screen --
@@ -325,7 +345,7 @@ addEventListener('popstate', (e) => {
     applyView('welcome', from);
     return;
   }
-  const v = (e.state && e.state.view) || 'today';
+  const v = foldView((e.state && e.state.view) || 'today');
   pushed = v !== 'today';
   shown = v;
   applyView(v, from);
@@ -630,6 +650,11 @@ function applyView(v, from) {
      `welcome` is the one value the CSS has to be able to see and
      `state.view` folds it into `today`. */
   document.documentElement.dataset.view = v;
+  /* #126: the wide layout's "Today plus the game pane" resting state
+     (app.css) has to know a coach with no games is not just between games --
+     there is no frame to hold open. One class beside `data-view`, not a
+     second `hasGames()` check inside the CSS rule it drives. */
+  document.documentElement.classList.toggle('no-games', !hasGames());
   state.view = v === 'welcome' ? 'today' : v;
   save();
   $('#view-welcome').hidden = v !== 'welcome';

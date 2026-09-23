@@ -530,7 +530,8 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
      exactly that day. Each raw day is sanitized on its own, then merged by
      date (games in stored order), then dropped if it ends up with no games,
      then sorted -- so the shape is stable and running it twice is a no-op. */
-  const rawDays = Array.isArray(raw.days) ? raw.days : [raw.day];
+  const hadDaysArray = Array.isArray(raw.days);
+  const rawDays = hadDaysArray ? raw.days : [raw.day];
   const byDate = new Map();
   for (const rawDay of rawDays) {
     const d = isObj(rawDay) ? rawDay : {};
@@ -548,9 +549,12 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
   // dragged from an older build that never sorted, still lands in item 3's
   // order the moment it loads.
   for (const d of days) sortDay(d.games);
-  // no empty days, but never zero days either: a new team, or every day
-  // filed, gets one day dated today with one new game (#100's fallback).
-  if (!days.length) days = [{ name: '', date: today0, games: [newGame(0, null, settings)] }];
+  // no empty days, but never zero days either for a migration or junk: a v6
+  // record, or one with no `days` array at all, gets one day dated today
+  // with one new game (#100's fallback). A real v7 `days` array left empty
+  // is a coach who removed every game (#126) -- that stays zero days, or
+  // the removal would come back on every reload.
+  if (!days.length && !hadDaysArray) days = [{ name: '', date: today0, games: [newGame(0, null, settings)] }];
 
   const activeDay = num(raw.activeDay, 0, 0, days.length - 1);
 
@@ -568,7 +572,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
     // v5 has no settings, and an absent block is not a broken one either -- it
     // is a coach who has never opened the page, so it means the defaults.
     settings,
-    activeGame: num(raw.activeGame, 0, 0, days[activeDay].games.length - 1),
+    activeGame: num(raw.activeGame, 0, 0, (days[activeDay]?.games.length ?? 0) - 1),
   };
 }
 

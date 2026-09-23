@@ -307,12 +307,20 @@ test('a day with no games is dropped', () => {
   assert.equal(s.teams[0].days[0].date, '2026-09-27');
 });
 
-test('a team with every day emptied falls back to one day dated today, one new game', () => {
+test('#126: a v7 record with every day emptied loads with zero days, not a fallback game', () => {
   const raw = v7Record([{ name: 'Sat', date: '2026-09-20', games: [] }]);
   const s = sanitize(raw, { ...H, today: TODAY });
-  assert.equal(s.teams[0].days.length, 1, 'no empty days, but never zero days either');
-  assert.equal(s.teams[0].days[0].date, '2026-09-28', 'today, not the emptied day\'s date');
-  assert.equal(s.teams[0].days[0].games.length, 1);
+  assert.equal(s.teams[0].days.length, 0, 'a real days array means the coach removed every game -- no fallback');
+  assert.equal(s.teams[0].activeDay, 0);
+  assert.equal(s.teams[0].activeGame, 0);
+});
+
+test('#126: a v7 record with days: [] loads with zero days, activeDay and activeGame both 0', () => {
+  const raw = v7Record([]);
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.equal(s.teams[0].days.length, 0);
+  assert.equal(s.teams[0].activeDay, 0);
+  assert.equal(s.teams[0].activeGame, 0);
 });
 
 test('activeDay clamps into range, and activeGame clamps against that day\'s own games', () => {

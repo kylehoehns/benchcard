@@ -344,6 +344,16 @@ export function partPlayed(record = RICH) {
   return withLive;
 }
 
+/* #126: RICH with its second game (Ravens) dropped, so `no-games.mjs` starts
+   from a coach one Remove away from an empty day rather than building that
+   state itself -- Hawks (`RICH`'s own `games[0]`) is what the check's toast
+   and reopened game-screen title are checked against. */
+export const ONE_GAME = (() => {
+  const record = JSON.parse(JSON.stringify(RICH));
+  record.teams[0].days[0].games = [record.teams[0].days[0].games[0]];
+  return record;
+})();
+
 /* A clone of `record` with a second team ("JV Ravens", a copy of the first)
    pushed on -- RICH ships with one, and the #23 checks below need two before
    the team menu's "switch team" and checkmark mean anything. `id` gets a
