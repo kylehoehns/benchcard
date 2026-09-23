@@ -32,8 +32,8 @@ const S = await import('../app/state.js');
 
 const withSettings = (settings, fn) => {
   const saved = S.state.teams;
-  S.state.teams = [{ id: 't', name: 'T', players: [], day: { name: '', games: [] },
-                     season: { games: [] }, activeGame: 0, settings }];
+  S.state.teams = [{ id: 't', name: 'T', players: [], days: [{ name: '', date: '2026-09-22', games: [] }],
+                     activeDay: 0, season: { games: [] }, activeGame: 0, settings }];
   S.state.activeTeam = 0;
   try { return fn(); } finally { S.state.teams = saved; }
 };

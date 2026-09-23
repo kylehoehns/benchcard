@@ -30,8 +30,8 @@ const NAMES = ['Marcus', 'Eli', 'Devon', 'Kade', 'Aaron', 'Jack',
 function setup({ maxSubs = 3, players = NAMES.length } = {}) {
   const t = S.newTeam('Wildcats', NAMES.slice(0, players).map((name, i) =>
     ({ id: 'p' + i, name, number: String(i + 1), shortName: '', tier: 3, hue: i })));
-  t.day.games[0].id = 'g0';
-  t.day.games[0].seed = 7;
+  t.days[0].games[0].id = 'g0';
+  t.days[0].games[0].seed = 7;
   t.settings.maxSubs = maxSubs;
   S.state.teams = [t];
   S.state.activeTeam = 0;
@@ -172,8 +172,8 @@ test('replaceState swaps the record without losing the settings accessor', () =>
 const uneven = (tiers) => {
   const t = S.newTeam('Wildcats', NAMES.slice(0, 11).map((name, i) =>
     ({ id: 'p' + i, name, number: String(i + 1), shortName: '', tier: tiers ? tiers[i] : 3, hue: i })));
-  t.day.games[0].id = 'g0';
-  t.day.games[0].seed = 7;
+  t.days[0].games[0].id = 'g0';
+  t.days[0].games[0].seed = 7;
   S.state.teams = [t];
   S.state.activeTeam = 0;
   S.computeAll();
@@ -226,7 +226,7 @@ test('the stance is a tie-break and nothing more: a minimum still wins', () => {
      outranks the stance every time. */
   const t = uneven([5, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1]);
   t.settings.tieBreak = 'levels';
-  t.day.games[0].constraints.minMinutes = { p10: 16 };
+  t.days[0].games[0].constraints.minMinutes = { p10: 16 };
   S.computeAll();
 
   assert.ok(S.plans[0].ok);
@@ -313,7 +313,7 @@ test('a league minimum puts a floor under every available player', () => {
 
 test('a cap the coach set by hand still wins, rather than becoming an error they never asked for', () => {
   const t = setup();
-  t.day.games[0].constraints.maxMinutes.p0 = 6;
+  t.days[0].games[0].constraints.maxMinutes.p0 = 6;
   t.settings.minMinutes = 12;
   S.computeAll();
   const p = S.plans[0];
@@ -325,7 +325,7 @@ test('a cap the coach set by hand still wins, rather than becoming an error they
 
 test('a minimum the coach set by hand still wins when it is the higher of the two', () => {
   const t = setup();
-  t.day.games[0].constraints.minMinutes.p0 = 20;
+  t.days[0].games[0].constraints.minMinutes.p0 = 20;
   t.settings.minMinutes = 8;
   S.computeAll();
   assert.ok(S.plans[0].minutes.p0 >= 20, `played ${S.plans[0].minutes.p0}`);
@@ -333,7 +333,7 @@ test('a minimum the coach set by hand still wins when it is the higher of the tw
 
 test('a player who is out is not given a minimum they cannot play', () => {
   const t = setup();
-  t.day.games[0].out = ['p0'];
+  t.days[0].games[0].out = ['p0'];
   t.settings.minMinutes = 10;
   S.computeAll();
   assert.ok(S.plans[0].ok, S.plans[0].issues.map(i => i.message).join(' | '));
@@ -371,20 +371,20 @@ test('the per-player boundary warning is collapsed, because the league floor set
 test('a new game opens on its own by default, which is what every older record means', () => {
   const t = setup();
   assert.equal(t.settings.seasonDefault, false, 'absent means off');
-  assert.equal(S.newGame(1, t.day.games[0], t.settings).useSeasonTargets, false);
-  assert.equal(S.newGame(1, t.day.games[0]).useSeasonTargets, false,
+  assert.equal(S.newGame(1, t.days[0].games[0], t.settings).useSeasonTargets, false);
+  assert.equal(S.newGame(1, t.days[0].games[0]).useSeasonTargets, false,
     'no settings block at all is still off');
 });
 
 test('with the default on, a new game opens already evening out the season', () => {
   const t = setup();
   t.settings.seasonDefault = true;
-  assert.equal(S.newGame(1, t.day.games[0], t.settings).useSeasonTargets, true);
+  assert.equal(S.newGame(1, t.days[0].games[0], t.settings).useSeasonTargets, true);
 });
 
 test('the default never reaches back into a game that already exists', () => {
   const t = setup();
-  const g = t.day.games[0];
+  const g = t.days[0].games[0];
   assert.equal(g.useSeasonTargets, false);
   t.settings.seasonDefault = true;
   S.computeAll();
@@ -429,13 +429,13 @@ test('an older record with no format keys still opens on four eights', () => {
 test('a brand new team opens on the format it was given, which is where the app used to guess', () => {
   const t = S.newTeam('Hawks', [], { periods: 2, periodMinutes: 20 });
   assert.equal(t.settings.periods, 2);
-  assert.equal(t.day.games[0].periods, 2, 'the opening game is the one thing with nothing to clone');
-  assert.equal(t.day.games[0].periodMinutes, 20);
+  assert.equal(t.days[0].games[0].periods, 2, 'the opening game is the one thing with nothing to clone');
+  assert.equal(t.days[0].games[0].periodMinutes, 20);
 });
 
 test('the clone still wins, so a day played at an odd format stays at it', () => {
   const t = setup();
-  const g0 = t.day.games[0];
+  const g0 = t.days[0].games[0];
   Object.assign(g0, { periods: 2, periodMinutes: 20 });
   t.settings.periods = 4; t.settings.periodMinutes = 8;
   const g1 = S.newGame(1, g0, t.settings);
@@ -445,7 +445,7 @@ test('the clone still wins, so a day played at an odd format stays at it', () =>
 
 test('the format default never reaches back into a game that already exists', () => {
   const t = setup();
-  const g = t.day.games[0];
+  const g = t.days[0].games[0];
   assert.equal(g.periods, 4);
   t.settings.periods = 6; t.settings.periodMinutes = 6;
   S.computeAll();
@@ -480,7 +480,7 @@ test('the format belongs to the team, and one squad’s never reaches the other'
   const b = S.newTeam('B', [], a.settings);
   b.settings.periods = 4;
   assert.equal(a.settings.periods, 2, 'copy on create, not a cascade');
-  assert.equal(b.day.games[0].periods, 2, 'B was created from A’s format, before it was changed');
+  assert.equal(b.days[0].games[0].periods, 2, 'B was created from A’s format, before it was changed');
 });
 
 /* ================================================================== *

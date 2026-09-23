@@ -104,14 +104,14 @@ test('the parts a coach would notice come back intact', () => {
   assert.equal(back.teams[0].players.length, 12);
   assert.deepEqual(back.teams[0].players.map(p => p.tier), [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2]);
   assert.deepEqual(back.teams[0].players.map(p => p.hue), [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]);
-  const g = back.teams[0].day.games[0];
+  const g = back.teams[0].days[0].games[0];
   assert.deepEqual(g.out, ['p10', 'p11']);
   assert.deepEqual(g.constraints.units, [['p0', 'p1', 'p2', 'p3', 'p4'], ['p5', 'p6']]);
   assert.deepEqual(g.constraints.lockedTargets, ['p0']);
   assert.deepEqual(g.live.overrides, { 2: ['p0', 'p1', 'p2', 'p3', 'p4'] });
   assert.equal(g.live.at, 3);
   assert.equal(g.seed, 12345);
-  assert.equal(back.teams[1].day.games[0].granMode, 'breaksOnly');
+  assert.equal(back.teams[1].days[0].games[0].granMode, 'breaksOnly');
   assert.equal(back.ui.theme, 'dark');
   assert.equal(back.ui.prints, 4);
   const season = back.teams[1].season.games;
@@ -160,7 +160,7 @@ const v5file = () => {
   return JSON.stringify(r, null, 2);
 };
 
-test('a v5 backup file still imports into a v6 app, with nothing lost', () => {
+test('a v5 backup file still imports into today\'s app, with nothing lost', () => {
   const raw = JSON.parse(v5file());
   for (const t of raw.teams) {
     assert.equal('settings' in t, false, 'the fixture must be a genuine pre-v6 file');
@@ -168,13 +168,13 @@ test('a v5 backup file still imports into a v6 app, with nothing lost', () => {
 
   const back = readBackup(v5file(), H);
   assert.ok(back, 'a v5 file is one of ours and must be readable');
-  assert.equal(back.version, 6);
+  assert.equal(back.version, 7);
   assert.equal(back.teams.length, 2);
   assert.equal(back.teams[0].players.length, 12, 'the roster is the point of the file');
   assert.deepEqual(back.teams[0].players.map(p => p.tier), [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2]);
-  assert.deepEqual(back.teams[0].day.games[0].out, ['p10', 'p11']);
-  assert.equal(back.teams[0].day.games[0].constraints.maxConsecutive, 3);
-  assert.deepEqual(back.teams[0].day.games[0].live.overrides, { 2: ['p0', 'p1', 'p2', 'p3', 'p4'] });
+  assert.deepEqual(back.teams[0].days[0].games[0].out, ['p10', 'p11']);
+  assert.equal(back.teams[0].days[0].games[0].constraints.maxConsecutive, 3);
+  assert.deepEqual(back.teams[0].days[0].games[0].live.overrides, { 2: ['p0', 'p1', 'p2', 'p3', 'p4'] });
   assert.deepEqual(back.teams[1].season.games[0].minutes, { p0b: 18.5, p1b: 13.5 },
     'the season a coach would quote to a parent survives the schema bump');
   assert.equal(back.ui.theme, 'dark');
@@ -207,7 +207,7 @@ test('a v3 file imports, because sanitize already understands that shape', () =>
     activeGame: 0, teamName: 'Wildcats', ui: { copies: 2 },
   };
   const back = readBackup(JSON.stringify(v3), H);
-  assert.equal(back.version, 6);
+  assert.equal(back.version, 7);
   assert.equal(back.teams.length, 1);
   assert.equal(back.teams[0].name, 'Wildcats');
   assert.equal(back.teams[0].players[0].name, 'Marcus Webb');
@@ -259,13 +259,13 @@ const v4File = () => {
 test('a v4 backup file imports into today\'s app with nothing lost', () => {
   const back = readBackup(v4File(), H);
   assert.ok(back, 'a v4 file is still one of ours');
-  assert.equal(back.version, 6);
+  assert.equal(back.version, 7);
   assert.equal(back.teams.length, 2);
   assert.deepEqual(back.teams.map(t => t.name), ['Wildcats 6th Grade', 'Wildcats 4th Grade']);
   assert.equal(back.teams[0].players.length, 12);
   assert.deepEqual(back.teams[0].players.map(p => p.hue), [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]);
   assert.deepEqual(back.teams[0].players.map(p => p.tier), [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2]);
-  const g = back.teams[0].day.games[0];
+  const g = back.teams[0].days[0].games[0];
   assert.deepEqual(g.out, ['p10', 'p11']);
   assert.deepEqual(g.live.overrides, { 2: ['p0', 'p1', 'p2', 'p3', 'p4'] });
   assert.deepEqual(g.constraints.units, [['p0', 'p1', 'p2', 'p3', 'p4'], ['p5', 'p6']]);

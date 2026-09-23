@@ -20,7 +20,7 @@ import { $, set, el } from './dom.js';
 import { state, game, plans, teamName, noRoster, setAvailable,
          sentenceParts, planSay, stepFormat, GRAN_CHOICES } from './state.js';
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
-import { colorName } from './storage.js';
+import { colorName, seasonDate } from './storage.js';
 
 let renderAll = () => {};
 let soon = () => {};
@@ -39,6 +39,10 @@ export function renderSetup() {
   const g = game();
   set('#dayName', 'value', state.day.name);
   set('#dayName', 'placeholder', teamName() || 'Name this day…');
+  // #101 item 3: `moveGame` (app.js) is the one path that changes it; `min`
+  // matches the flow's own Date field -- no dates before today either way.
+  set('#gameDate', 'value', state.day.date);
+  set('#gameDate', 'min', seasonDate());
   set('#label', 'value', g.label);
   set('#when', 'value', g.when);
   set('#copies', 'value', state.ui.copies);

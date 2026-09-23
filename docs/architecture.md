@@ -27,7 +27,7 @@ Everything below is relative to `app/`.
 - `icons.js` — Lucide path data, extracted at vendor time.
 - `fx.js` — animation vocabulary over the vendored Motion library.
 - `budget.js` — minute-budget allocation in stint slots. Pure.
-- `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100) and day migration (adding a `date` field to a day if absent). Pure apart from `localStorage`.
+- `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100), `teams[].days` (a list), `teams[].activeDay` to track the open day, and migration from v6's single `day` to v7's `days` list. Pure apart from `localStorage`.
 - `dom.js` — forgiving DOM one-liners shared by the UI modules, plus the
   shared `ctx2d` canvas everything that sizes type by measurement uses.
 - `trap.js` — focus trap for the overlays, the `data-fk` focus/caret restore,
@@ -65,8 +65,7 @@ Everything below is relative to `app/`.
   callback at boot, through its `init*` function. That rule is what keeps the
   import graph a tree.
 - The views, one module each — `roster-view.js`, `teams-view.js` (Today: the
-  team-switcher menu, the day's games, the Team and Season entries below them,
-  and the active team's name at the head of Settings),
+  team's name and team-switcher menu in the large title, multiple days stacked with headings and their games, the Team and Season entries below, and Add a game),
   `season-view.js` (the Season view: minutes per player across every filed game,
   the across-the-day chart when two or more games are on today, filed games
   grouped by day, and the one place a game filed by mistake can be deleted),
@@ -382,9 +381,7 @@ than measuring one screen at one width — which is what let both of those live.
 ## Interface
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
-active team's name in plain text with a chevron-down icon, which opens a
-`popover` menu to switch teams or add one (C8), a gear for Settings, the
-day's games, then Team and Season as two entries underneath, and Add a game.
+active team's name as the large title and team-switcher button, a gear for Settings, multiple days stacked in date order each with its own heading and games, then Team and Season as two entries underneath, and Add a game.
 A day files itself into the season once it has passed (#100) — there is no
 "New day" button any more. Game, Team, Season and Settings are each one
 screen away from
@@ -392,7 +389,7 @@ Today rather than siblings on a nav — opening one pushes a browser-history
 entry, so the back button, the browser's own back and Android's back gesture
 all land back on Today, through the one path `setView` (render.js) owns. The
 split that used to be *policy vs plan* across three tabs and a cog is now
-*what changes between games* — the day's games, Team, Season, all reachable
+*what changes between games* — games and days, Team, Season, all reachable
 from Today — versus *what is set once a season* — Settings, behind the gear
 that only ever shows on Today (N4). All controls in the Today header are at
 least 48 pixels (#69).
@@ -429,17 +426,16 @@ background (L2, L3). Instead of a line, a `::before` scrim fades using
 `backdrop-filter`, and both fade under `prefers-reduced-transparency: reduce`,
 `prefers-contrast: more`, or where `backdrop-filter` is unavailable (#33).
 
-The bar holds `#barToday` (the team button, `#keysHint`, the gear) and
-`#barBack` (a round chevron button labeled *Back to Today*), toggled by
+The bar holds `#keysHint` and the gear on Today, and `#barBack` (a round chevron button with an accessible name "Back to <team name>") on other screens, toggled by
 `applyView` with the `hidden` attribute — never both, because a coach is always
-on Today or exactly one screen away from it.
+on Today or exactly one screen away from it. The team menu (`#teamBtn`) moved from the bar into Today's large title.
 
 The bar's title is a centered overlay, `#barTitle`, positioned absolutely inside
 `.bar` and `pointer-events: none` so it takes no space in either half (#33
 decisions 3–5). On the four screens that own a large title (Today, a game, Team,
 Season), the overlay's text is copied at runtime from whichever element carries
 `data-large-title` in the view's `<main>` — a single source of truth that stays
-honest when a coach renames the team in the roster. Settings has no large title,
+honest when a coach renames the team in the roster. On Today, the large title is the team name and also the team menu button (`#teamBtn`). Settings has no large title,
 so its bar title reads the static `data-bar-title` on its `<main>` and is shown
 at all times. An `IntersectionObserver` in `render.js` (`watchLargeTitle`)
 watches the view's `[data-large-title]` element and toggles `.bar.title-in` as
@@ -723,8 +719,8 @@ of the page. Below 1100px the two columns dissolve into a single flex list
 explicit `order`. The sentence sits above that list at every width, and since
 #27 it stands in for the Squad and Game format blocks the list used to open
 with. The rotation reads first (#69), directly after the sentence, where a coach
-opens the phone to see the plan; then the Plan sheet (#28, which holds the
-strategy, rules, lineup balance and evening out), and then This game (opponent,
+opens the phone to see the plan; the day heading starts the *This game* section, then the Plan sheet (#28, which holds the
+strategy, rules, lineup balance and evening out), and then *This game* (date, opponent,
 tip-off, remove); card head, card and the bench button slot in after the
 timeline, and Stint-by-stint and Card options fall below. The Plan sheet
 replaced the Plan, Rules and Lineup balance folds that used to read at positions

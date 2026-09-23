@@ -91,8 +91,12 @@ test('removing a game is still undoable and still refuses the last game', () => 
   // not that. Undo is the affordance here.
   assert.ok(!/\bconfirm\(/.test(wiring), '#removeGame grew a confirm dialog');
   assert.match(wiring, /undoable\(/);
-  // a day must always have a game, or game() is undefined and every render
-  // downstream throws. The guard is belt (hidden) and braces (the early return).
-  assert.match(wiring, /hidden = state\.day\.games\.length < 2/);
-  assert.match(wiring, /if \(state\.day\.games\.length < 2\) return/);
+  // #101 item 10: a TEAM must always have a game, or game() is undefined and
+  // every render downstream throws -- the count spans every day, not just
+  // the open one, so a day's only game is still removable once another day
+  // holds the team's other game. The guard is belt (hidden) and braces (the
+  // early return), both on that same team-wide total.
+  assert.match(wiring, /const totalGames = team\(\)\.days\.reduce\(/);
+  assert.match(wiring, /hidden = totalGames < 2/);
+  assert.match(wiring, /if \(totalGames < 2\) return/);
 });

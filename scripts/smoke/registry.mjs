@@ -159,6 +159,12 @@ export const ROWS = Object.freeze([
   // its own date, with the Undo toast shown -- see dated-day.mjs.
   { id: 'dateddayfiling', name: 'a past-dated day files itself on boot, no "New day"', selectable: true, setup: 'rich' },
   { id: 'gamepasses', name: 'game passes', selectable: true, setup: 'rich' },
+  // #101's own guard (Proof row 5): a three-day fixture (2/1/3 games, a
+  // 40-char day name) -- headings stack in order, the large title opens the
+  // team menu, #backBtn names the team, adding a game for tomorrow lands as
+  // a new leading day, no overflow at 390 or 320px/32px text -- see
+  // three-days.mjs.
+  { id: 'threedays', name: 'three days: headings, title, back label, add for tomorrow, no overflow', selectable: true, setup: 'rich' },
   // #69 decision 5, item 8: the game screen's title block -- one visible h1
   // (the opponent), a sub line with the tip-off and the reused status word --
   // see game-title.mjs.

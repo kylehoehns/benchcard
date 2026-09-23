@@ -31,7 +31,8 @@ function setup({ games = 2, dayName = 'Sat at Northgate', date = '2026-11-08' } 
   const t = {
     id: 't1', name: 'Wildcats', activeGame: 0,
     players: NAMES.map((name, i) => ({ id: 'p' + i, name, number: String(i + 1), shortName: '', tier: 3, hue: i })),
-    day: { name: dayName, date, games: [] },
+    days: [{ name: dayName, date, games: [] }],
+    activeDay: 0,
     season: { games: [] },
   };
   for (let i = 0; i < games; i++) {
@@ -39,7 +40,7 @@ function setup({ games = 2, dayName = 'Sat at Northgate', date = '2026-11-08' } 
     g.id = 'g' + i;
     g.label = ['Northgate', 'Kingsway'][i] || '';
     g.seed = 1000 + i;
-    t.day.games.push(g);
+    t.days[0].games.push(g);
   }
   S.state.teams = [t];
   S.state.activeTeam = 0;
@@ -74,7 +75,7 @@ test('the season counts who actually played, not who the plan said', () => {
      would make the season the plan's opinion of the afternoon rather than the
      afternoon. */
   const t = setup({ games: 1 });
-  const g = t.day.games[0];
+  const g = t.days[0].games[0];
   const p = S.plans[0];
 
   const k = 2;                                    // some mid-game stint
@@ -99,7 +100,7 @@ test('a game that never produced a rotation is not a game that was played', () =
   // four available cannot field a lineup, so the plan fails -- there is no
   // honest set of minutes to file, and `p.ok` is the signal
   const t = setup({ games: 2 });
-  t.day.games[1].out = S.state.players.slice(4).map(p => p.id);
+  t.days[0].games[1].out = S.state.players.slice(4).map(p => p.id);
   S.computeAll();
   assert.equal(S.plans[1].ok, false, 'fixture check: the second game does not solve');
 
@@ -120,7 +121,7 @@ test('a team with no season yet gets one rather than throwing', () => {
   assert.equal(S.archiveDay(), 1);
   assert.equal(t.season.games.length, 1);
   t.season = { games: 'not an array' };
-  S.state.teams[0].day.games[0].id = 'g-later';
+  S.state.teams[0].days[0].games[0].id = 'g-later';
   S.computeAll();
   assert.equal(S.archiveDay(), 1, 'a junk season is replaced, not appended to');
   assert.equal(t.season.games.length, 1);
@@ -129,7 +130,8 @@ test('a team with no season yet gets one rather than throwing', () => {
 test('the season belongs to the team, and follows the active one', () => {
   const first = setup({ games: 1 });
   const second = { ...first, id: 't2', name: 'Ravens', season: { games: [] },
-                   day: { name: '', games: [{ ...S.newGame(0), id: 'gz' }] } };
+                   days: [{ name: '', date: '2026-11-08', games: [{ ...S.newGame(0), id: 'gz' }] }],
+                   activeDay: 0 };
   S.state.teams.push(second);
   S.archiveDay();
   assert.equal(first.season.games.length, 1);
@@ -225,7 +227,7 @@ test('dueToFile: combines dayIsPast with the bench-mode check, in one place', ()
 test('fileIfPast: a past day files its solved games under its own date, and opens a fresh one dated today', () => {
   const t = setup({ games: 3, date: '2026-09-27' });
   // the third game cannot field a lineup, so its plan does not solve
-  t.day.games[2].out = S.state.players.slice(4).map(p => p.id);
+  t.days[0].games[2].out = S.state.players.slice(4).map(p => p.id);
   S.computeAll();
   assert.equal(S.plans[2].ok, false, 'fixture check: the third game does not solve');
 
@@ -233,10 +235,10 @@ test('fileIfPast: a past day files its solved games under its own date, and open
 
   assert.equal(t.season.games.length, 2, 'only the two solved games filed');
   assert.deepEqual(t.season.games.map(g => g.date), ['2026-09-27', '2026-09-27']);
-  assert.equal(t.day.games.length, 1, 'New day\'s own shape: one game');
-  assert.equal(t.day.date, '2026-09-28', 'the fresh day is stamped with today');
-  assert.equal(t.day.name, '', 'the fresh day has no name');
-  assert.deepEqual(t.day.games[0].out, [], 'nobody starts the new day sitting out');
+  assert.equal(t.days[0].games.length, 1, 'New day\'s own shape: one game');
+  assert.equal(t.days[0].date, '2026-09-28', 'the fresh day is stamped with today');
+  assert.equal(t.days[0].name, '', 'the fresh day has no name');
+  assert.deepEqual(t.days[0].games[0].out, [], 'nobody starts the new day sitting out');
   assert.match(msg, /2 games saved to the season/);
 });
 
@@ -245,7 +247,7 @@ test('fileIfPast: a day dated today does not file', () => {
   const msg = S.fileIfPast(TODAY);
   assert.equal(msg, null, 'no toast for a day still open');
   assert.equal(t.season.games.length, 0);
-  assert.equal(t.day.games.length, 2, 'the day is untouched');
+  assert.equal(t.days[0].games.length, 2, 'the day is untouched');
 });
 
 test('fileIfPast: a day dated tomorrow does not file', () => {
@@ -254,12 +256,12 @@ test('fileIfPast: a day dated tomorrow does not file', () => {
   const msg = S.fileIfPast(TODAY);
   assert.equal(msg, null);
   assert.equal(t.season.games.length, 0);
-  assert.equal(t.day.games.length, 2);
+  assert.equal(t.days[0].games.length, 2);
 });
 
 test('fileIfPast: a part-played game files the minutes it actually produced', () => {
   const t = setup({ games: 1, date: '2026-09-27' });
-  const g = t.day.games[0];
+  const g = t.days[0].games[0];
   const p = S.plans[0];
   const k = 2;
   const on = p.stints[k].onFloor;
@@ -285,7 +287,7 @@ test('fileIfPast: filing twice files each game once', () => {
 
 test('fileIfPast: nothing solved still gets a toast, so a vanished day is never silent', () => {
   const t = setup({ games: 1, date: '2026-09-27' });
-  t.day.games[0].out = S.state.players.slice(4).map(p => p.id);
+  t.days[0].games[0].out = S.state.players.slice(4).map(p => p.id);
   S.computeAll();
   assert.equal(S.plans[0].ok, false, 'fixture check: the only game does not solve');
 
@@ -318,7 +320,7 @@ test('fileIfPast: a no-op while bench mode is open', () => {
     const msg = S.fileIfPast(TODAY);
     assert.equal(msg, null, 'a stint in progress must not be filed out from under the coach');
     assert.equal(t.season.games.length, 0);
-    assert.equal(t.day.games.length, 2, 'the day is untouched while bench mode is open');
+    assert.equal(t.days[0].games.length, 2, 'the day is untouched while bench mode is open');
   } finally {
     globalThis.document.querySelector = real;
   }
@@ -356,7 +358,7 @@ test('a season nobody has opened changes nothing at all', () => {
   const before = { ...S.plans[0].minutes };
   seasonOf(t);
   S.computeAll();
-  assert.equal(t.day.games[0].useSeasonTargets, false, 'off by default, and not inherited');
+  assert.equal(t.days[0].games[0].useSeasonTargets, false, 'off by default, and not inherited');
   assert.deepEqual(S.plans[0].minutes, before, 'a filed season is history until a coach asks for it');
   assert.equal(adjOf('g0'), undefined, 'and nothing is even computed');
 });
@@ -364,7 +366,7 @@ test('a season nobody has opened changes nothing at all', () => {
 test('the switch opens the player who is behind higher, and the plan follows', () => {
   const t = setup({ games: 1 });
   seasonOf(t);                                   // p0 six down, p9 six up
-  t.day.games[0].useSeasonTargets = true;
+  t.days[0].games[0].useSeasonTargets = true;
   S.computeAll();
 
   const a = adjOf('g0');
@@ -384,7 +386,7 @@ test('the switch opens the player who is behind higher, and the plan follows', (
 test('the coach is told the season set the minutes, not their own hand', () => {
   const t = setup({ games: 1 });
   seasonOf(t);
-  t.day.games[0].useSeasonTargets = true;
+  t.days[0].games[0].useSeasonTargets = true;
   S.computeAll();
   const info = S.plans[0].issues.find(i => i.code === 'TARGETS_ACTIVE');
   assert.ok(info, 'the solver still reports that targets are in play');
@@ -400,7 +402,7 @@ test('a locked row is a promise and carryover does not touch it', () => {
      on its way past the lock. */
   const t = setup({ games: 1 });
   seasonOf(t, { light: 'p1' });
-  const g = t.day.games[0];
+  const g = t.days[0].games[0];
   g.constraints.lockedTargets = ['p1'];
   g.useSeasonTargets = true;
   S.computeAll();
@@ -415,7 +417,7 @@ test('a locked row is a promise and carryover does not touch it', () => {
 test('hand-set minutes are the hand-set targets, and carryover stands aside', () => {
   const t = setup({ games: 1 });
   seasonOf(t);
-  const g = t.day.games[0];
+  const g = t.days[0].games[0];
   g.strategy = 'minutes';
   g.useSeasonTargets = true;
   S.computeAll();
@@ -431,7 +433,7 @@ test('hand-set minutes are the hand-set targets, and carryover stands aside', ()
 test('a cap on the game is not crossed to catch anybody up', () => {
   const t = setup({ games: 1 });
   seasonOf(t, { by: 6 });                        // p0 eighteen minutes down
-  const g = t.day.games[0];
+  const g = t.days[0].games[0];
   g.constraints.maxMinutes = { p0: 18 };
   g.useSeasonTargets = true;
   S.computeAll();
@@ -442,7 +444,7 @@ test('a cap on the game is not crossed to catch anybody up', () => {
 test('an id that has left the roster counts toward the mean and breaks nothing', () => {
   const t = setup({ games: 1 });
   seasonOf(t, { extra: { pGONE: 16, pALSOGONE: 16 } });
-  t.day.games[0].useSeasonTargets = true;
+  t.days[0].games[0].useSeasonTargets = true;
   S.computeAll();
   const a = adjOf('g0');
   assert.equal(S.plans[0].ok, true, 'a season id that is no longer on the roster is not a crash');
@@ -455,7 +457,7 @@ test('a player who joined late is neither owed nor in credit', () => {
   seasonOf(t);
   // the new kid was at none of the filed games
   t.players.push({ id: 'pNEW', name: 'Rowan', number: '20', shortName: '', tier: 3, hue: 10 });
-  t.day.games[0].useSeasonTargets = true;
+  t.days[0].games[0].useSeasonTargets = true;
   S.computeAll();
   const a = adjOf('g0');
   assert.equal(a.deficit.pNEW, 0, 'you cannot be behind on games you were not at');
@@ -470,7 +472,7 @@ test('two games in a day do not correct the same deficit twice', () => {
      not silently re-solve game 2 underneath the coach. */
   const t = setup({ games: 2 });
   seasonOf(t);
-  for (const g of t.day.games) g.useSeasonTargets = true;
+  for (const g of t.days[0].games) g.useSeasonTargets = true;
   S.computeAll();
 
   const one = adjOf('g0'), two = adjOf('g1');
@@ -485,7 +487,7 @@ test('turning the switch back off restores exactly the plan that was there', () 
   // opt-in safe: it is a lens, not an edit
   const t = setup({ games: 1 });
   seasonOf(t);
-  const g = t.day.games[0];
+  const g = t.days[0].games[0];
   const before = { ...S.plans[0].minutes };
   const constraintsBefore = JSON.stringify(g.constraints);
   g.useSeasonTargets = true;

@@ -94,7 +94,7 @@ const teamLegacyColored = (legacyColor, players = roster()) =>
   ({ ...team(players), settings: { colour: legacyColor } }); // legacy-spelling
 // a whole record, the way saveState writes one
 const rec = (players = roster(), onboarded = players.length > 0, view = 'games') => ({
-  version: 6, onboarded, tourSeen: false, teams: [team(players)], activeTeam: 0,
+  version: 7, onboarded, tourSeen: false, teams: [team(players)], activeTeam: 0,
   view, ui: { copies: 2, theme: 'auto' },
 });
 const j = v => JSON.stringify(v);
@@ -215,8 +215,8 @@ const CASES = [
     { [KEY]: j(rec([], true)) }, 'games'],
   /* No `view` key at all -- #23's Today is what an unrecognized or absent
      view opens on now, not the games shell. */
-  ['a record with players but no flag (a v6 record we never wrote)',
-    { [KEY]: j({ version: 6, teams: [team(roster())] }) }, 'today'],
+  ['a record with players but no flag (a v7 record we never wrote)',
+    { [KEY]: j({ version: 7, teams: [team(roster())] }) }, 'today'],
 
   // --- the rows a cheaper check gets wrong ---
   ['a primary that will not parse, over a good backup',
@@ -226,7 +226,7 @@ const CASES = [
   ['an incomplete primary (no version), over a good backup',
     { [KEY]: j({ teams: [team([])], onboarded: false }), [BACKUP_KEY]: j(rec()) }, 'games'],
   ['an incomplete primary (no teams), over a good backup',
-    { [KEY]: j({ version: 6, onboarded: false }), [BACKUP_KEY]: j(rec()) }, 'games'],
+    { [KEY]: j({ version: 7, onboarded: false }), [BACKUP_KEY]: j(rec()) }, 'games'],
   ['a primary that is not an object, over a good backup',
     { [KEY]: '[]', [BACKUP_KEY]: j(rec()) }, 'games'],
   ['a primary that is null, over a good backup',
@@ -255,9 +255,9 @@ const CASES = [
 
   // --- the edges sanitize has opinions about ---
   ['players that are not players (no id)',
-    { [KEY]: j({ version: 6, teams: [team([{ name: 'ghost' }])], onboarded: false }) }, 'welcome'],
+    { [KEY]: j({ version: 7, teams: [team([{ name: 'ghost' }])], onboarded: false }) }, 'welcome'],
   ['a thirteenth team is the only one with players (sanitize keeps twelve)',
-    { [KEY]: j({ version: 6, onboarded: false,
+    { [KEY]: j({ version: 7, onboarded: false,
       teams: [...Array(12)].map(() => team([])).concat([team(roster())]) }) }, 'welcome'],
   ['an empty object', { [KEY]: '{}' }, 'welcome'],
   ['an empty object over a good backup', { [KEY]: '{}', [BACKUP_KEY]: j(rec()) }, 'games'],
@@ -280,7 +280,7 @@ const CASES = [
   ['a view key that is not a string', { [KEY]: j(rec(roster(), true, 7)) }, 'today'],
   ['a view key that is an object', { [KEY]: j(rec(roster(), true, { team: 1 })) }, 'today'],
   ['a record with no view at all',
-    { [KEY]: j({ version: 6, onboarded: true, teams: [team(roster())] }) }, 'today'],
+    { [KEY]: j({ version: 7, onboarded: true, teams: [team(roster())] }) }, 'today'],
   ['a coach on Settings whose primary will not parse, over a backup on Settings',
     { [KEY]: '{not json', [BACKUP_KEY]: j(rec(roster(), true, 'settings')) }, 'settings'],
   ['a backup on the old Roster key, with no primary',
@@ -305,7 +305,7 @@ const CASES = [
      nor the pre-paint script (which never reads `activeGame`) treats it as
      anything other than an ordinary `view: 'games'` record. */
   ['an out-of-range activeGame on a coach left on Games',
-    { [KEY]: j({ version: 6, onboarded: true, view: 'games',
+    { [KEY]: j({ version: 7, onboarded: true, view: 'games',
       teams: [{ ...team(roster()), activeGame: 99 }] }) }, 'games'],
 ];
 

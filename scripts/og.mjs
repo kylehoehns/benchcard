@@ -490,8 +490,8 @@ try {
 
      CLEAR FIRST, and do not remove that half of the one-liner below. The
      first navigation boots the app as a fresh install, and a fresh install
-     WRITES `benchcard.v6` with `onboarded: false` before this runs.
-     `loadState` reads v6 ahead of v3 and honours a complete record that says
+     WRITES `benchcard.v7` with `onboarded: false` before this runs.
+     `loadState` reads v7 ahead of v3 and honours a complete record that says
      "not onboarded" -- that is deliberate, it is the coach who removed their
      last team -- so a seed written without clearing first is read by nothing
      and every shot this script takes is of the welcome screen instead. Found

@@ -15,20 +15,21 @@
    applyTheme() re-runs the same resolution once the state is really loaded.
 
    Every key we have written, newest first, and the same lines live in
-   about.html: v6 is what storage.js writes, v5, v4 and v3 are only ever read
-   (a coach who upgraded still has one), so reading an old key alone -- as this
-   once did -- meant a fresh install had nothing to read and fell through to
-   prefers-color-scheme, which is exactly the flash the script exists to
-   prevent. A returning coach must not pay a flash of the wrong theme for a
-   schema bump, so a new key goes at the FRONT of this chain, never the back.
-   test/storage.test.js pins the key here to storage.js's KEY. */
+   about.html: v7 is what storage.js writes, v6, v5, v4 and v3 are only ever
+   read (a coach who upgraded still has one), so reading an old key alone --
+   as this once did -- meant a fresh install had nothing to read and fell
+   through to prefers-color-scheme, which is exactly the flash the script
+   exists to prevent. A returning coach must not pay a flash of the wrong
+   theme for a schema bump, so a new key goes at the FRONT of this chain,
+   never the back. test/storage.test.js pins the key here to storage.js's
+   KEY. */
 (function () {
   try {
     var get = function (k) {
-      // per key, so a corrupt v6 blob still lets v5, v4 or v3 answer
+      // per key, so a corrupt v7 blob still lets v6, v5, v4 or v3 answer
       try { return (JSON.parse(localStorage.getItem(k)) || {}).ui; } catch (e) { return null; }
     };
-    var ui = get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
+    var ui = get('benchcard.v7') || get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
     var t = ui && ui.theme;
     if (t !== 'light' && t !== 'dark') {
       t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -74,7 +75,7 @@
      - a player counts when it is an object with a non-empty string id
        (`sanitizeTeam`), across the first twelve teams only (`sanitize`);
      - `onboarded` is `raw.onboarded || anyPlayers` (`sanitize`);
-     - `complete` is version 6 + a non-empty teams array + a boolean
+     - `complete` is version 7 + a non-empty teams array + a boolean
        `onboarded` (A36/A37's vital signs);
      - `viewOf` is `sanitize`'s allow-list and its ONE legacy translation,
        `roster -> team` (A40's `VIEW_WAS`). A backup file written before that
@@ -85,7 +86,7 @@
        array, not an object, because `{}['constructor']` is truthy.
 
    IT READS THE BACKUP KEY, AND THE OLD SCHEMAS, ON PURPOSE. `loadState` falls
-   back to `benchcard.v6.bak` and then to v5/v4/v3 and the two legacy keys, so a
+   back to `benchcard.v7.bak` and then to v6/v5/v4/v3 and the two legacy keys, so a
    check that stopped at the primary would answer "first run" for a coach whose
    primary is missing or corrupt but whose backup holds a season -- flashing the
    welcome screen at somebody with history, which is the worst version of the
@@ -113,7 +114,7 @@
     };
     var onboarded = function (r) { return !!r.onboarded || anyPlayers(r); };
     var complete = function (r) {
-      return r.version === 6 && Array.isArray(r.teams) && r.teams.length > 0
+      return r.version === 7 && Array.isArray(r.teams) && r.teams.length > 0
         && typeof r.onboarded === 'boolean';
     };
     var VIEWS = ['today', 'games', 'team', 'season', 'settings'];
@@ -122,10 +123,11 @@
       return VIEWS.indexOf(v) < 0 ? 'today' : v;
     };
     var welcome = true, view = 'today', decided = false, raw, i;
-    var v6 = ['benchcard.v6', 'benchcard.v6.bak'];
-    var older = ['benchcard.v5', 'benchcard.v5.bak', 'benchcard.v4', 'benchcard.v4.bak', 'benchcard.v3'];
-    for (i = 0; i < v6.length && !decided; i++) {
-      raw = read(v6[i]);
+    var v7 = ['benchcard.v7', 'benchcard.v7.bak'];
+    var older = ['benchcard.v6', 'benchcard.v6.bak', 'benchcard.v5', 'benchcard.v5.bak',
+      'benchcard.v4', 'benchcard.v4.bak', 'benchcard.v3'];
+    for (i = 0; i < v7.length && !decided; i++) {
+      raw = read(v7[i]);
       // sanitize returns null for anything that is not an object, and the
       // loader's `hasRoster(s) || s.onboarded` collapses into `onboarded`
       if (isObj(raw) && (onboarded(raw) || complete(raw))) {
@@ -252,7 +254,7 @@
   function save() {
     var raw = '', note = document.getElementById('recoverNote');
     try {
-      var keys = ['benchcard.v6', 'benchcard.v5', 'benchcard.v4', 'benchcard.v3'];
+      var keys = ['benchcard.v7', 'benchcard.v6', 'benchcard.v5', 'benchcard.v4', 'benchcard.v3'];
       for (var i = 0; i < keys.length && !raw; i++) raw = localStorage.getItem(keys[i]) || '';
     } catch (e) {}
     if (!raw) { note.textContent = 'There is nothing saved on this device to download.'; return; }
@@ -386,16 +388,6 @@
          (decision 6). -->
     <h1 class="bar-title" id="barTitle" aria-hidden="true"></h1>
     <div class="bar-today" id="barToday">
-      <!-- The team switcher. A native `popover` (C8) anchored to this button
-           rather than a dropdown built by hand -- Escape, outside-click and
-           the top layer all come free. Visible text is the team's own name
-           (or `Team N`, unnamed), written by `renderTeams` in teams-view.js;
-           the chevron is decoration. -->
-      <button class="teambtn press" id="teamBtn" type="button" popovertarget="teamMenu">
-        <span id="teamBtnLabel"></span>
-        <span class="i teambtn-chev" data-icon="chevron-right" aria-hidden="true"></span>
-      </button>
-      <div class="teammenu" id="teamMenu" popover aria-label="Teams"></div>
       <div class="spacer"></div>
       <button class="keys-hint press" id="keysHint" type="button" aria-label="Keyboard shortcuts"><kbd>?</kbd><span>Shortcuts</span></button>
       <!-- #100 removed "New day" (`#todayNewDay`) -- a day files itself once
@@ -453,7 +445,21 @@
        teams-view.js -- the containers are static markup so the boot has
        somewhere to put a skeleton, but nothing inside them is. -->
   <main class="view wrap noprint" id="view-today">
-    <h1 class="today-h1" data-large-title>Today</h1>
+    <!-- The team switcher lives on the team name itself (N3): a native
+         `popover` (C8) anchored to this button rather than a dropdown built
+         by hand -- Escape, outside-click and the top layer all come free.
+         Visible text is the team's own name (or `Team N`, unnamed), written
+         by `renderTeams` in teams-view.js; the chevron is decoration. This
+         is Today's large title (`data-large-title`), so `syncBarTitle`
+         (render.js) copies its textContent -- just the team name, since the
+         chevron icon contributes none -- into `#barTitle` when scrolled. -->
+    <h1 class="today-h1" data-large-title>
+      <button class="teambtn press" id="teamBtn" type="button" popovertarget="teamMenu">
+        <span id="teamBtnLabel"></span>
+        <span class="i teambtn-chev" data-icon="chevron-right" aria-hidden="true"></span>
+      </button>
+    </h1>
+    <div class="teammenu" id="teamMenu" popover aria-label="Teams"></div>
     <div class="today-games" id="todayGames"></div>
     <!-- #69 decision 14: the same grouped-row look as Team/Season below
          (`.today-entry`, decision 9), left-aligned with a leading icon
@@ -674,6 +680,10 @@
               <div><label class="f" for="dayName">Day or tournament</label><input type="text" id="dayName" placeholder="Name this day…"></div>
             </div>
             <div class="row">
+              <!-- #101: moves the game to another day (`app.js` wires
+                   `onchange` to `moveGame`). `min` is today -- no dates
+                   before today, same rule as the add-a-game flow. -->
+              <div><label class="f" for="gameDate">Date</label><input type="date" id="gameDate"></div>
               <div><label class="f" for="label">Opponent</label><input type="text" id="label" placeholder="Panthers"></div>
               <div><label class="f" for="when">Tip-off</label><input type="text" id="when" placeholder="Sat 9:00"></div>
             </div>
@@ -1915,7 +1925,7 @@
 
    The key chain is the same one the pre-paint theme script at the top of this
    file walks, and for the same reason: newest first, one try/catch per key so
-   a corrupt v6 blob still lets v5, v4 or v3 answer. This read `benchcard.v3`
+   a corrupt v7 blob still lets v6, v5, v4 or v3 answer. This read `benchcard.v3`
    alone long after v4 shipped, so on the current schema there was no such key
    at all -- it parsed `null` and returned before drawing anything, and the
    skeleton has been absent on every cold load since the multi-team migration.
@@ -1924,10 +1934,10 @@
 (function () {
   try {
     var get = function (k) {
-      // per key, so a corrupt v6 blob still lets v5, v4 or v3 answer
+      // per key, so a corrupt v7 blob still lets v6, v5, v4 or v3 answer
       try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; }
     };
-    var s = get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
+    var s = get('benchcard.v7') || get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
     if (!s || !s.onboarded) return;
     /* The roster lives under `teams[activeTeam]` since v4. A v3 record has it
        at the top level and loads as a one-team record, so `s` itself is the

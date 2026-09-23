@@ -597,15 +597,17 @@ export function flowStepBody(steps, n) {
    with either id would be the duplicate the shell tests catch.
 
    `tag` because first run's roster box is a `<textarea>` and everything else
-   about the pair is identical; `type` is only meaningful on an `<input>`.
+   about the pair is identical; `type` is only meaningful on an `<input>`, and
+   defaults to `'text'` so #101's one caller of a `'date'` field is the only
+   one that has to say so.
    Returns `[label, control]` -- the label is what gets appended, and the
    control is what a caller that needs an id on the field (first run does, for
    its own smoke driving) reaches for without a query. */
-export function flowField(tag, label, value, placeholder, onInput) {
+export function flowField(tag, label, value, placeholder, onInput, type = 'text') {
   const l = el('label', 'flow-f');
   l.append(el('span', 'f', label));
   const i = el(tag);
-  if (tag === 'input') i.type = 'text';
+  if (tag === 'input') i.type = type;
   i.value = value;
   if (placeholder) i.placeholder = placeholder;
   i.oninput = () => onInput(i.value);

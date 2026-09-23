@@ -418,12 +418,18 @@ a { color: inherit; }
    never an aria-label overriding it, so a screen reader hears exactly what
    is on screen (A2). The chevron is decoration.
 
-   #69 decision 12: plain text, no box -- `--fs-headline` 600, ink, a
-   chevron-down, at least 48x48. */
+   #69 decision 12: plain text, no box -- a chevron-down, at least 48x48.
+   #101 moved this button inside Today's `<h1 class="today-h1">`, so it no
+   longer sets its own font-size/weight/letter-spacing/color -- it inherits
+   `.today-h1`'s size and the base `h1,h2,h3,h4` weight/tracking through the
+   `button { font: inherit; color: inherit }` rule above, the same size
+   `.game-h1`/`.season-h1`/`.team-h1` already share (below). `max-width:
+   100%` keeps it from overflowing the h1's own width now that it is not
+   also bounded by the bar's `60vw`; `#teamBtnLabel`'s ellipsis (below) is
+   what actually keeps a long name from causing horizontal scroll (item 5). */
 .teambtn { display: inline-flex; align-items: center; gap: .35rem; min-height: 48px; min-width: 48px;
   padding: .2rem .3rem; border-radius: var(--r-sm); border: 0;
-  background: none; font: inherit; font-size: var(--fs-headline); font-weight: 600;
-  letter-spacing: -.01em; color: var(--ink); max-width: 60vw; }
+  background: none; max-width: 100%; }
 /* Rotated `chevron_right` rather than a new icon key: same glyph as `#backBtn`
    and the game-mode nav, pointed down to say "opens a list here". */
 .teambtn-chev svg { transform: rotate(90deg); }
@@ -480,7 +486,15 @@ a { color: inherit; }
 /* #69 decision 13: the pass restyle -- a plain `--surface` card at the
    prototype's 20px radius (`--r-lg`), no border, more breathing room in the
    padding, and .75rem between passes rather than .6rem. */
-.today-games { display: flex; flex-direction: column; gap: .75rem; margin: 1.1rem 0; }
+.today-games { display: flex; flex-direction: column; gap: 1.5rem; margin: 1.1rem 0; }
+/* #101: one group per day (`renderTabs`, teams-view.js), each its own
+   heading (`dayHeading`, state.js) over that day's passes -- the passes'
+   own gap stays the `.75rem` `.today-games` used to carry when it held them
+   directly. The heading is plain text, never a button (headings are not
+   buttons -- L4/#69 decision 12 both hold), so it reuses `.block-hd h3`'s
+   sentence-case footnote/muted convention above rather than a second one. */
+.day-group { display: flex; flex-direction: column; gap: .75rem; }
+.day-heading { font-size: var(--fs-footnote); color: var(--muted); font-weight: 700; }
 .today-game { display: flex; flex-direction: column; align-items: stretch; gap: .3rem;
   width: 100%; min-height: 48px; padding: 1rem 1.125rem; border-radius: var(--r-lg);
   border: 0; background: var(--surface); font: inherit; text-align: left; }
@@ -948,7 +962,12 @@ a { color: inherit; }
    #69's scope, so the plain-case override is scoped to `#view-games` rather
    than changing `.f` itself. */
 #view-games .f { text-transform: none; letter-spacing: normal; }
-input[type=text], input[type=number], select, textarea {
+/* #101 item 3 added `#gameDate` (input[type=date]) alongside Opponent and
+   Tip-off in the same `.row` -- it gets the same box these already do, or it
+   renders at its native intrinsic width instead of the grid track's, which
+   is wider than 320px can hold at 32px text (measured: 336px, `app shell at
+   320px/32px text`). */
+input[type=text], input[type=number], input[type=date], select, textarea {
   width: 100%; padding: .58rem .72rem; border: 1px solid var(--line-2); border-radius: var(--r-sm);
   background: var(--surface); -webkit-appearance: none;
   transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
@@ -963,7 +982,7 @@ input[type=text], input[type=number], select, textarea {
    and are out of #69's scope. `min-height: 48px` matches every other touch
    target on this screen (`.btn`, `.teambtn`...), all set the same literal
    way. */
-#view-games input[type=text], #view-games select {
+#view-games input[type=text], #view-games input[type=date], #view-games select {
   border-color: transparent; background: var(--bg); min-height: 48px;
 }
 [data-theme="dark"] #view-games input[type=text], [data-theme="dark"] #view-games select {

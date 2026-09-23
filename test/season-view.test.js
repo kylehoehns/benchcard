@@ -173,7 +173,8 @@ test('filed games group by day, newest day first, filed order kept within a day'
   S.state.teams = [{
     id: 't1', name: 'Wildcats', activeGame: 0,
     players: [{ id: 'p0', name: 'Marcus', number: '1', shortName: '', tier: 3, hue: 0 }],
-    day: { name: '', games: [] },
+    days: [{ name: '', date: '2026-09-22', games: [] }],
+    activeDay: 0,
     season: {
       games: [
         { id: 'g1', date: '2026-09-14', day: '', opponent: 'Falcons', periods: 4, periodMinutes: 8, minutes: { p0: 10 } },
@@ -215,7 +216,8 @@ function season({ names = ['Marcus', 'Eli', 'Devon', 'Kade', 'Aaron', 'Jack'],
   S.state.teams = [{
     id: 't1', name: teamName, activeGame: 0,
     players: names.map((name, i) => ({ id: 'p' + i, name, number: String(i + 1), shortName: '', tier: 3, hue: i })),
-    day: { name: '', games: [] },
+    days: [{ name: '', date: '2026-09-22', games: [] }],
+    activeDay: 0,
     season: {
       games: [
         { id: 'g1', date: '2026-09-14', day: '', opponent: opponents[0], periods: 4, periodMinutes: 8,

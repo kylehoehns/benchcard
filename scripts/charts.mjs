@@ -286,7 +286,7 @@ function fromAbout() {
   const themeEnd = src.indexOf('</script>', themeStart) + '</script>'.length;
   const theme = src.slice(themeStart, themeEnd);
   const icon = src.match(/<link rel="icon"[^>]*>/)[0];
-  if (!theme.includes('benchcard.v6') || !icon.includes('data:image/svg')) {
+  if (!theme.includes('benchcard.v7') || !icon.includes('data:image/svg')) {
     throw new Error('about.html no longer has the shape this generator lifts from');
   }
   return { theme, icon };

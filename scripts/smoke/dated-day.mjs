@@ -14,7 +14,7 @@ import { nameOf } from './registry.mjs';
    'short', day: 'numeric' }` -- not read back from the app's own formatter. */
 const PAST_DAY = {
   ...RICH,
-  teams: [{ ...RICH.teams[0], day: { ...RICH.teams[0].day, date: '2024-01-06' } }],
+  teams: [{ ...RICH.teams[0], days: [{ ...RICH.teams[0].days[0], date: '2024-01-06' }] }],
 };
 
 /* #100 review, finding 2: the same day, dated so far in the future
@@ -31,7 +31,7 @@ const PAST_DAY = {
    restore. */
 const NEVER_DAY = {
   ...RICH,
-  teams: [{ ...RICH.teams[0], day: { ...RICH.teams[0].day, date: '2099-12-31' } }],
+  teams: [{ ...RICH.teams[0], days: [{ ...RICH.teams[0].days[0], date: '2099-12-31' }] }],
 };
 
 export async function datedDayPass(c, origin) {
@@ -39,8 +39,8 @@ export async function datedDayPass(c, origin) {
   try {
     await reloadWithRecord(c, origin, { ...NEVER_DAY, view: 'today' });
     const before = JSON.parse(await evalIn(c, `JSON.stringify({
-      day: JSON.parse(localStorage.getItem('benchcard.v6')).teams[0].day,
-      seasonGames: JSON.parse(localStorage.getItem('benchcard.v6')).teams[0].season.games,
+      days: JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].days,
+      seasonGames: JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].season.games,
     })`));
 
     await reloadWithRecord(c, origin, { ...PAST_DAY, view: 'today' });
@@ -50,7 +50,7 @@ export async function datedDayPass(c, origin) {
       hasNewDayBtn: !!document.getElementById('todayNewDay'),
       gamesOnToday: document.querySelectorAll('.today-game').length,
       toastText: document.querySelector('#toasts .toast[data-undo] .tmsg')?.textContent.trim() ?? null,
-      record: JSON.parse(localStorage.getItem('benchcard.v6')),
+      record: JSON.parse(localStorage.getItem('benchcard.v7')),
     })`));
 
     if (after.hasNewDayBtn) problems.push('#todayNewDay is still on Today; "New day" was supposed to be removed');
@@ -69,8 +69,8 @@ export async function datedDayPass(c, origin) {
     if (t0 && !t0.season.games.some(g => g.date === '2024-01-06' && g.opponent === 'Ravens')) {
       problems.push('the filed Ravens game is not dated 2024-01-06 (the day it was played on)');
     }
-    if (t0 && t0.day.date === '2024-01-06') problems.push('the day on screen is still dated 2024-01-06 -- filing did not replace it');
-    if (t0 && !/^\d{4}-\d{2}-\d{2}$/.test(t0.day.date || '')) problems.push(`the fresh day's date reads "${t0 && t0.day.date}", want a real YYYY-MM-DD`);
+    if (t0 && t0.days[0].date === '2024-01-06') problems.push('the day on screen is still dated 2024-01-06 -- filing did not replace it');
+    if (t0 && !/^\d{4}-\d{2}-\d{2}$/.test(t0.days[0].date || '')) problems.push(`the fresh day's date reads "${t0 && t0.days[0].date}", want a real YYYY-MM-DD`);
     if (after.gamesOnToday !== 1) problems.push(`Today shows ${after.gamesOnToday} game(s) after filing, want 1 (the fresh day)`);
 
     if (!after.toastText) {
@@ -90,20 +90,20 @@ export async function datedDayPass(c, origin) {
     const undone = JSON.parse(await evalIn(c, `JSON.stringify({
       gamesOnToday: document.querySelectorAll('.today-game').length,
       gameLabels: [...document.querySelectorAll('.today-game')].map(n => n.textContent),
-      record: JSON.parse(localStorage.getItem('benchcard.v6')),
+      record: JSON.parse(localStorage.getItem('benchcard.v7')),
     })`));
     const u0 = undone.record?.teams?.[0];
 
     if (undone.gamesOnToday !== 2) {
       problems.push(`Undo: Today shows ${undone.gamesOnToday} game(s), want 2 (Hawks and Ravens, restored)`);
     }
-    if (!u0 || u0.day.date !== '2024-01-06') {
-      problems.push(`Undo: the day's date reads "${u0 && u0.day.date}", want "2024-01-06" (the filed day, restored)`);
+    if (!u0 || u0.days[0].date !== '2024-01-06') {
+      problems.push(`Undo: the day's date reads "${u0 && u0.days[0].date}", want "2024-01-06" (the filed day, restored)`);
     }
-    if (!u0 || u0.day.name !== before.day.name) {
-      problems.push(`Undo: the day's name reads "${u0 && u0.day.name}", want "${before.day.name}" (the day before it filed)`);
+    if (!u0 || u0.days[0].name !== before.days[0].name) {
+      problems.push(`Undo: the day's name reads "${u0 && u0.days[0].name}", want "${before.days[0].name}" (the day before it filed)`);
     }
-    if (!u0 || JSON.stringify(u0.day.games) !== JSON.stringify(before.day.games)) {
+    if (!u0 || JSON.stringify(u0.days[0].games) !== JSON.stringify(before.days[0].games)) {
       problems.push('Undo: the day\'s games do not match what was there before filing (Hawks and Ravens, unfiled)');
     }
     if (!u0 || JSON.stringify(u0.season.games) !== JSON.stringify(before.seasonGames)) {

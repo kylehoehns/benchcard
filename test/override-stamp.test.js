@@ -94,7 +94,10 @@ test('a plan that cannot be solved leaves the swaps and the stamp alone', () => 
 test('every plan computeAll returns goes through the chokepoint', () => {
   const body = src.slice(src.indexOf('export function computeAll'));
   const fn = body.slice(0, body.indexOf('\n}\n'));
-  const returns = fn.match(/^\s*return .*/gm) || [];
+  // #101: each day solves inside `day.games.map(g => { ... })`, so one
+  // `return` opens that map -- a block, not a plan -- and is not itself a
+  // hand-back; the lines inside it still are, and are still checked below.
+  const returns = (fn.match(/^\s*return .*/gm) || []).filter(r => !r.trim().endsWith('{'));
   assert.ok(returns.length >= 2, 'computeAll has a cache-hit path and a solve path');
   for (const r of returns) {
     assert.match(r, /syncOverrides\(/,

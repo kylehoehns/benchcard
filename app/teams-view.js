@@ -20,9 +20,9 @@
 import { $, on, set, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
-import { state, plans, newGame, newTeam, team, lastGame, gameLabel, game, activeColor,
+import { state, plans, dayPlans, newGame, newTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
-         initials, STRATEGIES, EVEN_OUT_DAY_LABEL } from './state.js';
+         initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame } from './state.js';
 // #34 decision 5/6: the picker lives in card.js (state.js cannot import it
 // back), and this is the one place it is called from -- both the paint and
 // the tap. No cycle: gamemode.js does not import teams-view.js.
@@ -39,7 +39,7 @@ import { openGameMode } from './gamemode.js';
 // One switch builder for the whole app (#32): the Plan sheet's "Even out
 // earlier games" row and step 3's are the same control.
 import { switchRow } from './rules.js';
-import { DEFAULT_SETTINGS, colorName } from './storage.js';
+import { DEFAULT_SETTINGS, colorName, seasonDate } from './storage.js';
 // The one close path and the one "ask before discarding" hook, shared with
 // every bottom sheet (#32 uses them from a full-screen dialog).
 import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
@@ -111,7 +111,7 @@ export function initTeams(renderAllFn, setViewFn) {
   on('#resumeBtn', 'onclick', () => {
     const r = resumeBarAt();
     if (!r) return;
-    state.activeGame = r.i;
+    openGame(r.d, r.i);
     openGameMode();
   });
   // The menu is anchored to the button that opens it (C8), not to a fixed
@@ -236,7 +236,12 @@ export function renderTeams() {
   const label = $('#teamBtnLabel');
   const menu = $('#teamMenu');
   if (!label || !menu) return;
-  label.textContent = teamLabel(team(), state.activeTeam);
+  const activeName = teamLabel(team(), state.activeTeam);
+  label.textContent = activeName;
+  // #101 item 6: `#backBtn`'s accessible name follows the team, same as the
+  // large title it collapses from -- updated here, alongside it, whenever a
+  // rename or a team switch repaints this button.
+  $('#backBtn')?.setAttribute('aria-label', `Back to ${activeName}`);
   menu.textContent = '';
   state.teams.forEach((t, i) => {
     const item = el('button', 'teammenu-item press');
@@ -461,8 +466,8 @@ function passStatusEl(ok) {
   return el('span', 'pass-status ' + (ok ? 'ok' : 'warn'), ok ? 'Planned' : 'Needs a fix');
 }
 
-function renderPass(g, i) {
-  const p = plans[i];
+function renderPass(g, i, d) {
+  const p = dayPlans[d][i];
   const ok = !!(p && p.ok);
   const full = gameLabel(g, i);
 
@@ -492,7 +497,7 @@ function renderPass(g, i) {
 
   const statusWord = ok ? 'planned' : 'needs a fix';
   b.setAttribute('aria-label', g.when ? `${full}, ${g.when}, ${statusWord}` : `${full}, ${statusWord}`);
-  b.onclick = () => { state.activeGame = i; setView('games'); };
+  b.onclick = () => { openGame(d, i); setView('games'); };
   return b;
 }
 
@@ -512,7 +517,7 @@ export function renderResumeBar() {
   bar.hidden = !r;
   if (r) {
     set('#resumeBtn .ab-lab', 'textContent',
-      `${gameLabel(state.day.games[r.i], r.i)} · ${r.where} · Resume`);
+      `${gameLabel(team().days[r.d].games[r.i], r.i)} · ${r.where} · Resume`);
   }
 }
 
@@ -546,6 +551,10 @@ export function renderTabs() {
     const gs = $('#gameSub');
     if (gs) {
       gs.textContent = '';
+      // #101 item 3: the day's heading leads the sub line, the same label
+      // Today gives it, so a game moved to another date reads as moved
+      // right here rather than only back on Today.
+      gs.append(dayHeading(state.day) + ' · ');
       if (g.when) gs.append(g.when + ' · ');
       gs.append(passStatusEl(!!(plans[i] && plans[i].ok)));
     }
@@ -567,7 +576,16 @@ export function renderTabs() {
      there, which is the line this replaced. */
   if (box && todayPaneShowing(state.view)) {
     box.textContent = '';
-    state.day.games.forEach((g, i) => box.append(renderPass(g, i)));
+    // #101 item 4: one group per day, stacked in date order (`team().days`
+    // is kept sorted -- `dayFor`/`sanitizeTeam` are the only things that
+    // insert one, and both insert in order) -- a heading (`dayHeading`)
+    // over that day's own passes.
+    team().days.forEach((day, d) => {
+      const group = el('div', 'day-group');
+      group.append(el('h2', 'day-heading', dayHeading(day)));
+      day.games.forEach((g, i) => group.append(renderPass(g, i, d)));
+      box.append(group);
+    });
   }
 
   const teamBtn = $('#todayTeam');
@@ -592,15 +610,18 @@ export function renderTabs() {
 
   const rmBtn = $('#removeGame');
   if (rmBtn) {
-    rmBtn.hidden = state.day.games.length < 2;
+    // #101 item 10: offered whenever the TEAM has two or more games in
+    // total, not just the open day -- a day's only game is still removable
+    // once another day exists to hold the team's other game.
+    const totalGames = team().days.reduce((n, d) => n + d.games.length, 0);
+    rmBtn.hidden = totalGames < 2;
     rmBtn.onclick = () => {
-      // belt and braces: a day must always have a game, or game() is undefined
-      // and every render downstream throws.
-      if (state.day.games.length < 2) return;
+      // belt and braces: a team must always have a game, or game() is
+      // undefined and every render downstream throws.
+      if (totalGames < 2) return;
       const label = gameLabel(state.day.games[state.activeGame], state.activeGame);
       undoable(`Removed ${label}. The day rebalanced.`, () => {
-        state.day.games.splice(state.activeGame, 1);
-        state.activeGame = Math.max(0, state.activeGame - 1);
+        removeGame();
         // Removing the open game returns to Today; undo restores the game
         // and reopens its Game screen (the snapshot holds `view: 'games'`
         // and the old `activeGame`, so the default undo refresh reopens it).
@@ -656,7 +677,14 @@ function openAddGame(trigger) {
   const d = $('#addGameFlow');
   if (!d) return;
   if (!draft) {
-    draft = newGame(state.day.games.length, lastGame(), state.settings);
+    // #101 item 2: defaults to the team's LAST day (not necessarily the
+    // open one -- a coach can be viewing an earlier day's game when she
+    // taps Add a game), same day `sameAsLast()` and `lastGame()` already
+    // read for the shortcut card below.
+    const days = team().days;
+    const last = days[days.length - 1];
+    draft = newGame(last.games.length, last.games[last.games.length - 1], state.settings);
+    draft.date = last.date;
     flowStep = 1;
   }
   rememberTrigger(d, trigger);
@@ -686,11 +714,19 @@ function paintFlow() {
    decided whether there is anything worth copying, and "Use it" commits the
    very draft `openAddGame` built -- no second copy. */
 function stepWho(wrap) {
+  // #101 item 2: the Date field, above Opponent and Tip-off -- `min` is
+  // today (`seasonDate`, never a second formatter), and changing it
+  // re-derives `useCarryover` the same way `newGame`'s own `n > 0` rule
+  // does: on, only when the target date already has a day (so already has
+  // a game), off for a date that would start a new day.
+  const [dateField, dateInput] = flowField('input', 'Date', draft.date, null,
+    v => { draft.date = v; draft.useCarryover = team().days.some(d => d.date === v); }, 'date');
+  dateInput.min = seasonDate();
   const [opponent] = flowField('input', 'Opponent', draft.label, 'Panthers',
     v => { draft.label = v; });
   const [tipoff] = flowField('input', 'Tip-off', draft.when, 'Sat 9:00',
     v => { draft.when = v; });
-  wrap.append(opponent, tipoff);
+  wrap.append(dateField, opponent, tipoff);
   const same = sameAsLast();
   if (!same) return;
   const card = el('div', 'flow-card');
@@ -834,8 +870,7 @@ function closeFlow() {
 // "Plan it" and "Use it" both end here: one commit path, not two.
 function commitFlow() {
   if (!draft) return;
-  state.day.games.push(draft);
-  state.activeGame = state.day.games.length - 1;
+  addGame(draft, draft.date);
   track('day_game_count', { games: state.day.games.length });
   closeFlow();
   // `applyView` renders on a real transition into Games (#23 review, third

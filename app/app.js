@@ -33,14 +33,16 @@ import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, soon, setView, applyTheme, applyTint, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         dueToFile, fileIfPast } from './state.js';
+         dueToFile, fileIfPast, moveGame } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
 /* The gear only ever shows on Today (N4) -- it lives inside `#barToday`,
    which `applyView` hides everywhere else -- so it has one job. The back
-   button is the same shape on the other four screens: `Back to Today` (N5)
-   is always exactly what it does. */
+   button is the same shape on the other four screens: it always returns to
+   Today, though #101 item 6 gives it the team's own name -- "Back to
+   <team>" -- rather than the literal word "Today" (`renderTeams`,
+   teams-view.js, keeps that label current). */
 on('#settingsBtn', 'onclick', () => setView('settings'));
 on('#backBtn', 'onclick', () => setView('today'));
 for (const b of document.querySelectorAll('#stratseg button')) {
@@ -112,6 +114,13 @@ on('#teamName', 'oninput', e => {
 });
 on('#label', 'oninput', e => { game().label = e.target.value; soon('tabs', 'totals', 'cards'); });
 on('#when', 'oninput', e => { game().when = e.target.value; soon('tabs', 'cards'); });
+/* #101 item 3: moves the game to another day. `renderSetup` (game-setup.js)
+   is the one place `#gameDate`'s value is repainted, and it is not in
+   `AFTER_EDIT`/`PLAN_ONLY` (only a full render walks the `setup` section),
+   so a full `renderAll()` is what puts the input back on the moved game's
+   date -- and, when the source day emptied out, repaints Today's own list
+   of days underneath it. */
+on('#gameDate', 'onchange', e => { moveGame(e.target.value); renderAll(); });
 on('#copies', 'onchange', e => { state.ui.copies = Number(e.target.value); save(); renderCards(); });
 
 on('#cardId', 'onchange', e => { state.ui.cardId = e.target.value; save(); renderCards(); });

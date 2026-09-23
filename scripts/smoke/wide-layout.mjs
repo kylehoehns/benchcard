@@ -131,7 +131,7 @@ export async function wideLayoutPass(c, origin) {
       const s = await import('/state.js');
       const real = Storage.prototype.setItem;
       Storage.prototype.setItem = function (k, v) {
-        if (k === 'benchcard.v6') throw new DOMException('quota exceeded', 'QuotaExceededError');
+        if (k === 'benchcard.v7') throw new DOMException('quota exceeded', 'QuotaExceededError');
         return real.call(this, k, v);
       };
       try { s.save(); } finally { Storage.prototype.setItem = real; }

@@ -252,7 +252,7 @@ async function backStepsThrough(c, ck) {
 async function forceCloseKeepsDraft(c, ck) {
   const before = (await dayGames(c)).length;
   await openFlow(c);
-  await typeIn(c, '#agBody input', 'Panthers');
+  await typeIn(c, '#agBody input[type=text]', 'Panthers');
   await realTap(c, '#agNext'); // a real interaction: the one close request this can veto
   await key(c, 'Escape', 27); // steps back to step 1, spending that activation
   await key(c, 'Escape', 27); // nothing touched since -- force-closes the dialog
@@ -261,7 +261,7 @@ async function forceCloseKeepsDraft(c, ck) {
   ck(after === before, `the forced close left ${after} game(s) in the day, want the ${before} it started with`);
 
   await openFlow(c);
-  const kept = await evalJSON(c, `JSON.stringify(document.querySelector('#agBody input').value)`);
+  const kept = await evalJSON(c, `JSON.stringify(document.querySelector('#agBody input[type=text]').value)`);
   ck(kept === 'Panthers', `reopening after a forced close shows the opponent field as "${kept}", want "Panthers" kept`);
   await realTap(c, '#agClose');
   await realTap(c, '#agDiscard');
@@ -484,7 +484,7 @@ async function planItCommits(c, ck) {
 async function discardAsks(c, ck) {
   const before = (await dayGames(c)).length;
   await openFlow(c);
-  await typeIn(c, '#agBody input', 'Panthers');
+  await typeIn(c, '#agBody input[type=text]', 'Panthers');
   await realTap(c, '#agClose');
   let s = await flowState(c);
   if (!ck(s.open, '✕ closed the flow over typed text with no ask at all')) return;
@@ -497,7 +497,7 @@ async function discardAsks(c, ck) {
   s = await flowState(c);
   const typed = await bodyState(c);
   ck(s.open && !s.askShown && s.footShown, '"Keep editing" did not return to the flow');
-  ck(await evalJSON(c, `JSON.stringify(document.querySelector('#agBody input').value === 'Panthers')`),
+  ck(await evalJSON(c, `JSON.stringify(document.querySelector('#agBody input[type=text]').value === 'Panthers')`),
     '"Keep editing" lost the typed opponent');
   ck(typed.fields.length === 2, 'the fields are gone after "Keep editing"');
 
@@ -518,7 +518,7 @@ async function discardAsks(c, ck) {
    asked about. */
 async function askDoesNotStrandOverRepaint(c, ck) {
   await openFlow(c);
-  await typeIn(c, '#agBody input', 'Panthers');
+  await typeIn(c, '#agBody input[type=text]', 'Panthers');
   await realTap(c, '#agNext');
   let s = await flowState(c);
   if (!ck(s.step === '2 of 3', `two-step setup left the flow on "${s.step}", want "2 of 3"`)) return;
@@ -545,7 +545,7 @@ async function landsOnToday(c, ck) {
   await tap(c, TODAY_HOME);
   const seen = await evalJSON(c, `(async () => {
     const s = await import('/state.js');
-    const btns = [...document.querySelectorAll('#todayGames > .today-game')];
+    const btns = [...document.querySelectorAll('#todayGames .today-game')];
     const last = btns.at(-1);
     const i = s.state.day.games.length - 1;
     return JSON.stringify({
