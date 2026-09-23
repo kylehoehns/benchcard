@@ -27,6 +27,7 @@ Everything below is relative to `app/`.
 - `icons.js` — Lucide path data, extracted at vendor time.
 - `fx.js` — animation vocabulary over the vendored Motion library.
 - `budget.js` — minute-budget allocation in stint slots. Pure.
+- `live.js` — where a game stands (not started, part-played, or finished), which stint to show, where to resume, and what status word to display. Pure. Exports `stage`, `stintIndex`, `resumeAt`, `passStatus`, `openAt`, `stepAt`, and `resumeBarAt` (#123).
 - `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100), `teams[].days` (a list, each day's games sorted by tip-off time, #102), `teams[].activeDay` to track the open day, and migration from v6's single `day` to v7's `days` list. Pure apart from `localStorage`.
 - `dom.js` — forgiving DOM one-liners shared by the UI modules, plus the
   shared `ctx2d` canvas everything that sizes type by measurement uses.
@@ -34,7 +35,8 @@ Everything below is relative to `app/`.
   the bottom sheets' open, close, push and drag (#73), and the step painter the
   two full-screen flows share (#36).
 - `state.js` — the app record: state shape and migration, load/save glue, the
-  accessors every view reads through, the slot budget and the plan cache.
+  accessors every view reads through, the slot budget and the plan cache,
+  and `benchOpen()` / `setBenchOpen(v)` to track whether bench mode is open (#123).
   Imports only the pure modules, so the view seams can depend on it freely.
 - `card.js` — the printed card: sizes, canvas auto-fit, pagination, the preview
   zoom and the phone disclosure. The card is the product, so it is its own file.
@@ -878,7 +880,7 @@ season while a coach is actively using them.
 on iOS, switching to the clock or the scorebook app and coming back is often
 enough — and the coach landed back on Games with no sign a game was underway,
 under a button reading "Start game", which reads as *start*. The state was
-always fine; the page was just silent about it. `resumeAt()` in `card.js` is the
+always fine; the page was just silent about it. `resumeAt()` in `live.js` is the
 one answer to "is this game part-played": stint 0 is indistinguishable from
 never started and the last stint is a game that is over (bench mode restarts that
 one), so only the middle counts. The game screen relabels the bench button —

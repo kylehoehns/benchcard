@@ -56,11 +56,9 @@ test('a finished game starts over; an unfinished one resumes', () => {
      which is how it was reported. */
   const open = src.slice(src.indexOf('export function openGameMode'));
   const body = open.slice(0, open.indexOf('\n}'));
-  assert.match(body, /live\.at >= p\.stints\.length - 1/,
-    'reopening on the last stint should reset to the start');
-  assert.match(body, /live\.at = 0/);
-  assert.ok(!/live\.at = 0;\s*$/m.test(body.split('live.at >= p.stints.length - 1')[0]),
-    'the reset must be conditional, not unconditional');
+  assert.match(body, /live\.at = openAt\(p, live\)/,
+    'openGameMode must resolve its starting stint through live.js\'s openAt -- '
+    + 'the finished/part-played decision lives there once, not re-checked here');
 });
 
 test('every mid-game edit offers an undo, and takes the previous offer down', () => {
@@ -122,13 +120,17 @@ test('a part-played game says so on the plan page', () => {
      is often enough -- and the coach landed on Games with nothing saying a
      game was underway, over a button reading "Use on the bench", which reads
      as *start*. State survived fine; only the page was silent. */
-  const card = readFileSync(new URL('../app/card.js', import.meta.url), 'utf8');
-  const fn = card.slice(card.indexOf('export function resumeAt'));
-  const body = fn.slice(0, fn.indexOf('\n}'));
-  assert.match(body, /at <= 0/, 'stint 0 is indistinguishable from "never started"');
-  assert.match(body, /at >= p\.stints\.length - 1/,
+  const live = readFileSync(new URL('../app/live.js', import.meta.url), 'utf8');
+  const stageFn = live.slice(live.indexOf('export function stage'));
+  const stageBody = stageFn.slice(0, stageFn.indexOf('\n}'));
+  assert.match(stageBody, /at <= 0/, 'stint 0 is indistinguishable from "never started"');
+  assert.match(stageBody, /at >= p\.stints\.length - 1/,
     'the last stint is a game that is over -- game mode restarts that one');
-  assert.match(body, /periodName/, 'the label must follow halves as well as quarters');
+  const resumeFn = live.slice(live.indexOf('export function resumeAt'));
+  const resumeBody = resumeFn.slice(0, resumeFn.indexOf('\n}'));
+  assert.match(resumeBody, /periodName/, 'the label must follow halves as well as quarters');
+
+  const card = readFileSync(new URL('../app/card.js', import.meta.url), 'utf8');
   assert.match(card, /labelBench\(blocked\)/,
     'renderCards must relabel the bench buttons');
   assert.match(card, /Resume/, 'the button should say Resume, not start');
@@ -197,4 +199,24 @@ test('the stint dots are a picture, not twelve unhittable buttons', () => {
   const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
   assert.match(html, /id="gmDots" aria-hidden="true"/,
     'the dot strip is announced again, one dot at a time, next to the sentence that already says it');
+});
+
+test('closing bench mode repaints the game screen\'s own sub line, not just the panes behind it', () => {
+  /* #123's Goal: a game's place is one answer everywhere. Found in a browser
+     at 390x844 (RICH, game 0's live.at = 2): step to the last stint and close
+     with #gmClose -- Today's pass turns Planned and #gmOpen reads "Start
+     game", but the game screen's own #gameSub kept reading "... Underway"
+     until the coach left Games and came back. #gameSub is painted by
+     `renderTabs` (app/teams-view.js), dispatched through render.js's 'tabs'
+     kind -- the same passStatus(live.js) call the pass and the button read,
+     so the fix is asking for that repaint too, not a second place that
+     decides the word. */
+  const fn = src.slice(src.indexOf('function closeGameMode'));
+  const body = fn.slice(0, fn.indexOf('\n}'));
+  const call = body.match(/render\(([^)]*)\)/);
+  assert.ok(call, 'closeGameMode must still repaint on its way out');
+  const kinds = call[1].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, ''));
+  assert.ok(kinds.includes('tabs'),
+    "closeGameMode's render(...) call must include 'tabs' -- renderTabs is what paints #gameSub, "
+    + 'and none of cards/timeline/summary/gameview/resume repaint it');
 });

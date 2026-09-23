@@ -1609,6 +1609,18 @@ export function archiveDay(d = state.activeDay) {
   return addSeasonGames(t.season, finished);
 }
 
+/* #123: whether bench mode is open, in one place. Every module that asked
+ * this before read `#gamemode`'s `hidden` property itself -- `dueToFile`
+ * here, four places in `toast.js`, one in `shortcuts.js` and three inside
+ * `gamemode.js` -- which is the DOM-read twin of the `live.at` bug `live.js`
+ * fixes: nine copies of one fact that could disagree. It is a module
+ * variable, not part of `state`: `state` is saved and Undo-snapshotted, and
+ * whether a screen is open is neither. `gamemode.js` calls `setBenchOpen` on
+ * the same line it shows or hides `#gamemode`. */
+let benchIsOpen = false;
+export const benchOpen = () => benchIsOpen;
+export const setBenchOpen = v => { benchIsOpen = !!v; };
+
 /**
  * #100: whether a day is due to file -- dated strictly before today, the
  * phone's own day. A day dated today has not finished; a day dated tomorrow
@@ -1623,14 +1635,11 @@ export const dayIsPast = (day, today = new Date()) => day.date < seasonDate(toda
  * #100 review, finding 3: whether the current day is due to file -- past-
  * dated (`dayIsPast`) and bench mode not open. `fileIfPast` below and
  * `app.js`'s boot/foreground/bench-mode-close trigger each used to run their
- * own copy of the bench-mode check; this is their one shared home. Reads
- * `#gamemode` directly, the way `fileIfPast` always has -- importing
- * gamemode.js here would cycle back through toast.js. "Today" is injectable
- * so a pinned clock can stand in for the phone's own day in a test.
+ * own copy of the bench-mode check; this is their one shared home. "Today" is
+ * injectable so a pinned clock can stand in for the phone's own day in a test.
  */
 export const dueToFile = (today = new Date()) => {
-  const gm = document.querySelector('#gamemode');
-  if (gm && gm.hidden === false) return false;
+  if (benchOpen()) return false;
   return team().days.some(d => dayIsPast(d, today));
 };
 

@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { S, withTeam, withDays, player } from './state-fixture.js';
-import { resumeAt, resumeBarAt } from '../app/card.js';
+import { resumeAt, resumeBarAt } from '../app/live.js';
 
-/* #34 decision 5 and "What would settle it" item 7: `resumeBarAt()` picks
- * WHICH part-played game the floating bar resumes, on a day that can hold
- * more than one. It walks `state.day.games` from the end so that when two
+/* #34 decision 5 and "What would settle it" item 7: `resumeBarAt(days,
+ * dayPlans)` picks WHICH part-played game the floating bar resumes, on a day
+ * that can hold more than one. It walks `days` from the end so that when two
  * games are both mid-play the coach lands back on the one they were most
  * recently away from, rather than always the earliest game on the day.
  *
@@ -30,7 +30,7 @@ test('resumeBarAt is null when neither game has a live.at at all', () => {
   const { players, games, settings } = twoGameDay();
   withTeam(players, games, settings, () => {
     S.computeAll();
-    assert.equal(resumeBarAt(), null);
+    assert.equal(resumeBarAt(S.team().days, S.dayPlans), null);
   });
 });
 
@@ -41,7 +41,7 @@ test('resumeBarAt is null when the only non-zero live.at values are stint 0 or t
     const p0 = S.plans[0];
     games[0].live.at = p0.stints.length - 1; // last stint: game over, not "part-played"
     games[1].live.at = 0; // stint 0: indistinguishable from never started
-    assert.equal(resumeBarAt(), null);
+    assert.equal(resumeBarAt(S.team().days, S.dayPlans), null);
   });
 });
 
@@ -51,7 +51,7 @@ test('resumeBarAt picks the LATER game when both are part-played', () => {
     S.computeAll();
     games[0].live.at = 2;
     games[1].live.at = 3;
-    const r = resumeBarAt();
+    const r = resumeBarAt(S.team().days, S.dayPlans);
     assert.equal(r.i, 1, 'the later game (index 1) wins, not the earlier one');
   });
 });
@@ -61,27 +61,27 @@ test('resumeBarAt picks the only part-played game when just the first one is und
   withTeam(players, games, settings, () => {
     S.computeAll();
     games[0].live.at = 2;
-    const r = resumeBarAt();
+    const r = resumeBarAt(S.team().days, S.dayPlans);
     assert.equal(r.i, 0);
   });
 });
 
-/* `resumeAt(p = plans[state.activeGame], g = game())` carries defaults for
-   BOTH of its arguments, so passing an `undefined` plan silently substitutes
-   the ACTIVE game's plan while keeping the game that was passed in -- a plan
-   paired with a game it was not built from. `resumeBarAt` walks
-   `state.day.games` by index, so the moment `plans` is shorter than that list
-   (a day's games written before the recompute that follows them lands) the
-   default fires. Nothing visible reaches this today; the fix is that the
-   substitution cannot happen at all. */
-test('resumeBarAt ignores a game with no plan rather than borrowing the active game\'s', () => {
+/* `resumeAt` used to default both of its arguments -- the plan to
+   `plans[state.activeGame]` and the game to `game()` -- so passing an
+   `undefined` plan silently substituted the ACTIVE game's plan while keeping
+   the game that was passed in. `resumeBarAt` walks `days`' games by index, so
+   the moment `dayPlans` is shorter than that list (a day's games written
+   before the recompute that follows them lands) that substitution used to
+   fire. `resumeAt` and `resumeBarAt` now take no default arguments at all, so
+   the substitution cannot happen. */
+test('resumeBarAt ignores a game with no plan rather than borrowing another game\'s', () => {
   const { players, games, settings } = twoGameDay();
   withTeam(players, games, settings, () => {
     S.computeAll();
     games[0].live.at = 2;
     games[1].live.at = 3;
-    S.plans.length = 1; // plans shorter than state.day.games; plans[1] is undefined
-    const r = resumeBarAt();
+    const dayPlans = [[S.plans[0]]]; // dayPlans shorter than the day's games; index 1 is undefined
+    const r = resumeBarAt(S.team().days, dayPlans);
     assert.equal(r && r.i, 0,
       'game 1 has no plan, so the bar must fall back to game 0, not offer game 1 on game 0\'s plan');
   });
@@ -93,8 +93,8 @@ test("resumeBarAt's where matches resumeAt's own where for the picked game", () 
     S.computeAll();
     games[0].live.at = 2;
     games[1].live.at = 3;
-    const r = resumeBarAt();
-    const want = resumeAt(S.plans[r.i], games[r.i]);
+    const r = resumeBarAt(S.team().days, S.dayPlans);
+    const want = resumeAt(S.plans[r.i], games[r.i].live);
     assert.equal(r.where, want.where);
   });
 });
@@ -113,7 +113,7 @@ test('resumeBarAt finds a part-played game on a day that is not the open one', (
   ], settings, () => {
     S.computeAll();
     satGames[0].live.at = 2; // part-played, but on the day that is NOT open
-    const r = resumeBarAt();
+    const r = resumeBarAt(S.team().days, S.dayPlans);
     assert.ok(r, 'a part-played game on a closed day must still surface');
     assert.equal(r.d, 0, 'it is Saturday (day 0), not the open Sunday');
     assert.equal(r.i, 0);

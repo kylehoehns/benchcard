@@ -216,9 +216,11 @@ test('the update is offered, never taken', () => {
 test('never over a live game, and never on a first visit', () => {
   const fn = toast.slice(toast.indexOf('function offerReload'));
   const body = fn.slice(0, fn.indexOf('\n}'));
-  assert.match(body, /gamemode'\)\?\.hidden === false/,
+  assert.match(body, /benchOpen\(\)/,
     'bench mode on screen suppresses it -- and the polarity is the bug worth pinning: '
     + 'read the other way round this never fires at all');
+  assert.doesNotMatch(body, /!\s*benchOpen\(\)/,
+    'negated, this would suppress the reload offer exactly when bench mode is NOT open');
   const listener = toast.slice(toast.indexOf("addEventListener('controllerchange'"));
   assert.match(listener.slice(0, 300), /wasControlled/,
     'the first worker claiming an uncontrolled page is not an update to offer');

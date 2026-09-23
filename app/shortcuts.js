@@ -19,7 +19,7 @@ import { $, on } from './dom.js';
 import { openTrap, closeTrap } from './trap.js';
 import { startTour } from './tour.js';
 import { openGameMode } from './gamemode.js';
-import { state } from './state.js';
+import { state, benchOpen } from './state.js';
 
 let setView = () => {};
 
@@ -140,7 +140,7 @@ function onKey(e) {
   if (e.key === '?') { e.preventDefault(); $('#keys').hidden ? openKeys() : closeKeys(); return; }
   // the sheet is the top layer: nothing underneath it moves while it is up
   if (!$('#keys').hidden) return;
-  const gmOpen = !$('#gamemode').hidden;
+  const gmOpen = benchOpen();
   if (gmOpen) {
     // Escape is the focus trap's job -- see openTrap
     if (e.key === 'ArrowRight') { $('#gmNext2').click(); return; }

@@ -311,8 +311,8 @@ export const BYTES_BASELINE = 1_216_873;
    It is pinned here rather than re-recorded in `budgets.json` for exactly the
    reason `BYTES_BASELINE` above is, and that entry carries the reasoning.
    `pinned()` below replaces the file's value, so there is still one live
-   answer per metric. `requests` is untouched and still comes from the file,
-   hand pin and all.
+   answer per metric. (`requests` came from the file until #123 pinned it
+   here too; see `REQUESTS_BASELINE`.)
 
    WHEN A TICKET GENUINELY ADDS NODES: this is a regression alarm, not a design
    constraint (see the note at the top of this file). Measure your own cold
@@ -320,15 +320,35 @@ export const BYTES_BASELINE = 1_216_873;
    instead, and do not reach for `--update-budgets`. */
 export const NODES_BASELINE = 1_367;
 
+/* #123: the request baseline, re-pinned by hand for the first time. Every
+   note above says `requests` is the one real constraint, held one under the
+   truth so a new module in the boot graph has to say so out loud. This is
+   that. #122 added `app/edit.js` and spent the one spare request (41 of
+   41, silently: it passed). #123 adds `app/live.js`, the pure module that
+   decides where a game stands, and the cold load at 390x844 measures 42.
+   Both are real modules on purpose: each is a pure seam the architecture
+   review asked for, and folding either into an existing file would undo the
+   point of the ticket. So the pin moves 39 -> 41: one under the measured 42,
+   the same shape it has always had, with one spare again.
+
+   `budgets.json` still holds 39 and is not edited (a hook denies it, and
+   `--update-budgets` would re-record the other numbers too). `pinned()` below
+   takes `requests` from here, as it does `bytes` and `nodes`.
+
+   WHEN THE NEXT MODULE JOINS THE BOOT GRAPH: measure the cold load, re-pin
+   here to one under it, and say which module and why. Do not raise
+   `SLACK.requests`. */
+export const REQUESTS_BASELINE = 41;
+
 export const SLACK = { bytesPct: 0.02, bytesAbs: 24_576, requests: 2, nodes: 250 };
 
 /**
- * The recorded baseline with `bytes` and `nodes` taken from the hand pins
+ * The recorded baseline with `bytes`, `requests` and `nodes` taken from the hand pins
  * above. Returns null unchanged so a missing budgets.json still fails loudly.
  * @param {{bytes:number, requests:number, nodes:number}|null} recorded
  */
 export const pinned = recorded =>
-  (recorded ? { ...recorded, bytes: BYTES_BASELINE, nodes: NODES_BASELINE } : recorded);
+  (recorded ? { ...recorded, bytes: BYTES_BASELINE, requests: REQUESTS_BASELINE, nodes: NODES_BASELINE } : recorded);
 
 const kb = n => `${(n / 1024).toFixed(1)} KB`;
 const pct = (got, want) => (want ? `${got > want ? '+' : ''}${(((got - want) / want) * 100).toFixed(1)}%` : 'n/a');
@@ -371,7 +391,7 @@ export function compare(baseline, measured) {
         ? `${fmt(got)} vs ${fmt(want)} recorded (${pct(got, want)}, budget ${fmt(max)})`
         : `${fmt(got)} over the ${fmt(max)} budget (baseline ${fmt(want)}, ${pct(got, want)}). `
           + 'If the growth is intended, re-pin the baseline by hand in scripts/budgets.mjs and say why. '
-          + '`node scripts/smoke.mjs --update-budgets` is denied: it would erase the hand-set `requests` pin.',
+          + '`node scripts/smoke.mjs --update-budgets` is denied: every live baseline is a hand pin in scripts/budgets.mjs.',
     });
   }
   return checks;

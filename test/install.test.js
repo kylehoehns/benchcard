@@ -48,7 +48,7 @@ test('never installed twice, and never to an app already installed', () => {
   const body = fn.slice(0, fn.indexOf('\n}'));
   assert.match(body, /state\.ui\.installDone/);
   assert.match(body, /standalone\(\)/);
-  assert.match(body, /gamemode/, 'bench mode is the one screen that must not be interrupted');
+  assert.match(body, /benchOpen\(\)/, 'bench mode is the one screen that must not be interrupted');
   assert.match(src, /matchMedia[\s\S]{0,120}display-mode: standalone/);
   assert.match(src, /navigator\.standalone/, 'iOS reports installed its own way');
 });

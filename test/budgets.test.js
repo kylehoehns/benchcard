@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { compare, summarize, ceiling, pinned, BYTES_BASELINE, NODES_BASELINE, SLACK } from '../scripts/budgets.mjs';
+import { compare, summarize, ceiling, pinned, BYTES_BASELINE, NODES_BASELINE, REQUESTS_BASELINE, SLACK } from '../scripts/budgets.mjs';
 
 const ORIGIN = 'http://127.0.0.1:4321';
 const recorded = JSON.parse(readFileSync(new URL('../scripts/budgets.json', import.meta.url), 'utf8'));
@@ -74,6 +74,20 @@ test('the DOM-node baseline is the hand pin, not the stale recorded number', () 
     named(compare(real, { ...real, lazy: [], nodes: NODES_BASELINE + SLACK.nodes + 1 }), 'DOM nodes').pass,
     false,
     'a node count past the pinned baseline plus slack still has to fail',
+  );
+});
+
+/* #123: the request pin moved out of `budgets.json` into `REQUESTS_BASELINE`
+   (its comment carries why). The file still holds the older, tighter 39, so
+   this proves `pinned()` reads the hand pin, and that one request past the
+   pin plus its slack still fails. */
+test('the request baseline is the hand pin, and one more module past it still fails', () => {
+  const real = pinned({ ...recorded.initialPayload });
+  assert.equal(real.requests, REQUESTS_BASELINE, 'pinned() must take requests from the hand pin, not budgets.json');
+  assert.equal(
+    named(compare(real, { ...real, lazy: [], requests: REQUESTS_BASELINE + SLACK.requests + 1 }), 'request count').pass,
+    false,
+    'a request count past the pinned baseline plus slack still has to fail',
   );
 });
 
