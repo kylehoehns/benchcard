@@ -493,7 +493,7 @@ function measureBarSide() {
 let barSideKey = null;
 function measureBarSideIfHeaderChanged(v) {
   const barTitleEl = $('#barTitle'), teamBtn = $('#teamBtn');
-  const key = `${v} ${barTitleEl ? barTitleEl.textContent : ''} ${teamBtn ? teamBtn.textContent : ''}`;
+  const key = `${v}\0${barTitleEl ? barTitleEl.textContent : ''}\0${teamBtn ? teamBtn.textContent : ''}`;
   if (key === barSideKey) return;
   barSideKey = key;
   measureBarSide();

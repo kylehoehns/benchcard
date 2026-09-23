@@ -1,0 +1,52 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+/* #95. A raw 0x00 byte makes `grep` treat a file as binary and silently find
+   nothing in it -- `measureBarSideIfHeaderChanged` in app/render.js carried
+   two of them as cache-key separators, typed raw instead of as the `\0`
+   escape, and every grep for the function's own name came back empty.
+
+   `git ls-files app` is the same mechanism test/spelling.test.js's
+   `trackedFiles()` (scripts/spelling.mjs) already uses for a whole-tree scan,
+   scoped to app/ so it recurses into app/vendor/ on its own -- no second file
+   walker with different rules about what counts. Unlike that helper, this
+   list is NOT filtered by "does it already contain a NUL byte": that filter
+   would hide the exact bug this test exists to catch. */
+const ROOT = new URL('../', import.meta.url);
+
+function trackedAppFiles() {
+  const out = execFileSync('git', ['ls-files', 'app'], { encoding: 'utf8' });
+  const all = out.split('\n').filter(Boolean);
+  if (!all.length) throw new Error('no-nul-bytes: `git ls-files app` returned nothing');
+  return all;
+}
+
+/* Images, icons and fonts: the binary extensions actually present under
+   app/ today (`git ls-files app/ | sed 's/.*\\.//' | sort -u`), the same
+   three categories the spec names and the same list .claude/hooks/guard-
+   read.sh already treats as non-text. Everything else tracked under app/ --
+   .js, .html, .css, .xml, .webmanifest, .txt, .sh, .mjs, .md and files
+   without an extension like app/_headers -- is text and gets scanned. */
+const BINARY_EXTENSIONS = ['.png', '.ico', '.svg', '.woff2', '.woff', '.jpg', '.jpeg', '.gif', '.webp'];
+const isText = (f) => !BINARY_EXTENSIONS.some((ext) => f.toLowerCase().endsWith(ext));
+
+test('trackedAppFiles reads the real app/ tree, not nothing', () => {
+  const files = trackedAppFiles();
+  assert.ok(files.length > 10, 'a scan that reads no files finds no bugs');
+  for (const f of ['app/render.js', 'app/sw.js', 'app/vendor/icons/x.svg']) {
+    assert.ok(files.includes(f), `trackedAppFiles() must include ${f}`);
+  }
+});
+
+test('no tracked text file under app/ contains a 0x00 byte', () => {
+  const offenders = [];
+  for (const file of trackedAppFiles().filter(isText)) {
+    const bytes = readFileSync(new URL(file, ROOT));
+    const at = bytes.indexOf(0);
+    if (at !== -1) offenders.push(`${file}: 0x00 at byte offset ${at}`);
+  }
+  assert.deepEqual(offenders, [],
+    `NUL byte(s) found -- these files will silently miss every grep:\n${offenders.join('\n')}`);
+});
