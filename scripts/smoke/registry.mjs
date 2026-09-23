@@ -164,6 +164,12 @@ export const ROWS = Object.freeze([
   // "Underway" with an --accent dot, while the fixture's other cards keep
   // Planned/Needs a fix -- see pass-underway.mjs.
   { id: 'passunderway', name: 'a part-played game reads Underway on Today and the game screen', selectable: true, setup: 'rich' },
+  // #66's own guard (see docs/specs/66-pass-large-text.md's Proof section): at
+  // 320px/32px text every Today card's own pieces (summary, title, tip-off,
+  // status, the top row) fit their own box with nothing ellipsized or
+  // clipped, the status clears the card's own content edge, and at
+  // 390px/16px the summary and title stay one line -- see pass-large-text.mjs.
+  { id: 'passlargetext', name: `Today cards wrap at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text, one line at 390px/16px`, selectable: true, setup: 'rich' },
   // #101's own guard (Proof row 5): a three-day fixture (2/1/3 games, a
   // 40-char day name) -- headings stack in order, the large title opens the
   // team menu, #backBtn names the team, adding a game for tomorrow lands as

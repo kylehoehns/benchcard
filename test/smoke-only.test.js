@@ -76,16 +76,17 @@ test('--only "nope" exits non-zero, fast, with no table', () => {
   assertNeverLaunchedChrome(invalid, '--only "nope"');
 });
 
-test('the refusal lists the 44 selectable rows, one per line', () => {
-  // 44 since #92, which added `passunderway` (scripts/smoke/pass-underway.mjs)
-  // to REGISTRY — was 43 after #101's `threedays`
+test('the refusal lists the 45 selectable rows, one per line', () => {
+  // 45 since #66, which added `passlargetext` (scripts/smoke/pass-large-text.mjs)
+  // to REGISTRY — was 44 after #92's `passunderway`
+  // (scripts/smoke/pass-underway.mjs), 43 after #101's `threedays`
   // (scripts/smoke/three-days.mjs), 42 after #100's `dateddayfiling`
   // (scripts/smoke/dated-day.mjs), 41 after #36's `firstrun`, 40 after #35's
   // `widelayout`, 39 after #34's `resumebar`, 38 after #33's `focusclear`
   // and `floatingcontrols`, 36 after #32's `addgameflow`, and 35 after #31's
   // `teamscreen`.
-  assert.equal(validNames.length, 44,
-    `expected the 44 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
+  assert.equal(validNames.length, 45,
+    `expected the 45 --only-able rows, got ${validNames.length}: ${JSON.stringify(validNames)}`);
   // one per line, not comma-joined or wrapped
   assert.equal(new Set(validNames).size, validNames.length, 'a duplicated row name in the list');
 });
