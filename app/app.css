@@ -1017,6 +1017,17 @@ select {
 .row .wide { grid-column: span 2; }
 @media (max-width: 620px) { .row .wide { grid-column: 1 / -1; } }
 
+/* #112 look-check: `.row`'s `gap` only spaces columns within one row, so
+   stacked rows in "This game" (Date/Opponent, then Day name, then Tip-off)
+   touched at 390px. Scoped to `.s-thisgame` rather than widening `.row`
+   everywhere else it is used. */
+.s-thisgame .row + .row { margin-top: .9rem; }
+/* `#dayNameHint` is a `.note`, which carries a `.75rem` top margin meant to
+   separate it from the field ABOVE it -- inside "This game" that reads as
+   closer to the next row's label (Tip-off) than to its own `#dayName`
+   input. Pull it in to hug its field instead. */
+.s-thisgame .note { margin-top: .35rem; margin-bottom: 0; }
+
 .chips { display: flex; flex-wrap: wrap; gap: .38rem; }
 .chip {
   border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2);
