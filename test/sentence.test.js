@@ -53,27 +53,27 @@ test('sentenceParts: zero rules reads "no rules"', () => {
 });
 
 test('evensOutLine: one earlier game named by its tip-off', () => {
-  const games = [bareGame({ when: '9:00' }), bareGame({ useCarryover: true })];
-  assert.equal(withTeam([player('a')], games, {}, () => S.evensOutLine(1)),
-    'Evens out the 9:00 game.');
+  const games = [bareGame({ tipoff: '09:00' }), bareGame({ useCarryover: true })];
+  assert.match(withTeam([player('a')], games, {}, () => S.evensOutLine(1)),
+    /^Evens out the 9:00\s*AM game\.$/);
 });
 
 test('evensOutLine: two earlier games, joined "a and b"', () => {
-  const games = [bareGame({ when: '9:00' }), bareGame({ when: '11:30' }),
+  const games = [bareGame({ tipoff: '09:00' }), bareGame({ tipoff: '11:30' }),
     bareGame({ useCarryover: true })];
-  assert.equal(withTeam([player('a')], games, {}, () => S.evensOutLine(2)),
-    'Evens out the 9:00 and 11:30 games.');
+  assert.match(withTeam([player('a')], games, {}, () => S.evensOutLine(2)),
+    /^Evens out the 9:00\s*AM and 11:30\s*AM games\.$/);
 });
 
 test('evensOutLine: an earlier game with no tip-off falls back to its opponent', () => {
-  const games = [bareGame({ when: '9:00' }), bareGame({ when: '', label: 'Owls' }),
+  const games = [bareGame({ tipoff: '09:00' }), bareGame({ tipoff: '', label: 'Owls' }),
     bareGame({ useCarryover: true })];
-  assert.equal(withTeam([player('a')], games, {}, () => S.evensOutLine(2)),
-    'Evens out the 9:00 and Owls games.');
+  assert.match(withTeam([player('a')], games, {}, () => S.evensOutLine(2)),
+    /^Evens out the 9:00\s*AM and Owls games\.$/);
 });
 
 test('evensOutLine: an earlier game with neither names none of them', () => {
-  const games = [bareGame({ when: '', label: '' }), bareGame({ useCarryover: true })];
+  const games = [bareGame({ tipoff: '', label: '' }), bareGame({ useCarryover: true })];
   assert.equal(withTeam([player('a')], games, {}, () => S.evensOutLine(1)),
     'Evens out the earlier game.');
 });
@@ -81,7 +81,7 @@ test('evensOutLine: an earlier game with neither names none of them', () => {
 test('evensOutLine: no line for game 0, and no line when useCarryover is off', () => {
   const games0 = [bareGame({ useCarryover: true })];
   assert.equal(withTeam([player('a')], games0, {}, () => S.evensOutLine(0)), '');
-  const games1 = [bareGame({ when: '9:00' }), bareGame({ useCarryover: false })];
+  const games1 = [bareGame({ tipoff: '09:00' }), bareGame({ useCarryover: false })];
   assert.equal(withTeam([player('a')], games1, {}, () => S.evensOutLine(1)), '');
 });
 

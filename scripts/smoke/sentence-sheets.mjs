@@ -73,7 +73,14 @@ export async function sentenceSheetsPass(c, origin) {
       return JSON.stringify({ hidden: line?.hidden, text: btn?.textContent });
     })()`);
     ck(s2.hidden === false, 'Ravens has useCarryover on but the second line stayed hidden');
-    ck(s2.text === 'Evens out the 9:00 game.', `the second line reads "${s2.text}", want "Evens out the 9:00 game."`);
+    // #102: Hawks' 9:00 tip-off, read through the same `tipoffLabel` the
+    // sentence itself calls, rather than a hard-coded "9:00 AM" this ICU
+    // version's own AM/PM spacing (an ASCII space or U+202F) could break.
+    const wantS2 = await evalJSON(c, `(async () => {
+      const { tipoffLabel } = await import('/storage.js');
+      return JSON.stringify(\`Evens out the \${tipoffLabel('09:00')} game.\`);
+    })()`);
+    ck(s2.text === wantS2, `the second line reads "${s2.text}", want "${wantS2}"`);
     // back to Hawks, useCarryover off, for every section below -- same
     // switch, same path, then back to Hawks through Today.
     await evalIn(c, step(`document.querySelector('#planDay input[switch]').click()`));

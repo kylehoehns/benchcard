@@ -514,7 +514,14 @@ export async function planSheetPass(c, origin) {
       text: document.getElementById('phraseEvens')?.textContent,
     })`);
     ck(evensLine.hidden === false, 'turning on "Even out earlier games" did not show the sentence\'s second line');
-    ck(evensLine.text === 'Evens out the 9:00 game.', `the second line reads "${evensLine.text}", want "Evens out the 9:00 game."`);
+    // #102: Hawks' 9:00 tip-off, read through the same `tipoffLabel` the
+    // sentence itself calls, rather than a hard-coded "9:00 AM" this ICU
+    // version's own AM/PM spacing (an ASCII space or U+202F) could break.
+    const wantEvens = await evalJSON(c, `(async () => {
+      const { tipoffLabel } = await import('/storage.js');
+      return JSON.stringify(\`Evens out the \${tipoffLabel('09:00')} game.\`);
+    })()`);
+    ck(evensLine.text === wantEvens, `the second line reads "${evensLine.text}", want "${wantEvens}"`);
 
     // toggle useSeasonTargets.
     await tap(c, `document.getElementById('phraseRules').click()`);

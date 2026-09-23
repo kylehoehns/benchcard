@@ -966,8 +966,9 @@ a { color: inherit; }
    Tip-off in the same `.row` -- it gets the same box these already do, or it
    renders at its native intrinsic width instead of the grid track's, which
    is wider than 320px can hold at 32px text (measured: 336px, `app shell at
-   320px/32px text`). */
-input[type=text], input[type=number], input[type=date], select, textarea {
+   320px/32px text`). #102 adds `input[type=time]` the same way, for the same
+   reason -- it is now the Tip-off field's own control. */
+input[type=text], input[type=number], input[type=date], input[type=time], select, textarea {
   width: 100%; padding: .58rem .72rem; border: 1px solid var(--line-2); border-radius: var(--r-sm);
   background: var(--surface); -webkit-appearance: none;
   transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
@@ -982,7 +983,7 @@ input[type=text], input[type=number], input[type=date], select, textarea {
    and are out of #69's scope. `min-height: 48px` matches every other touch
    target on this screen (`.btn`, `.teambtn`...), all set the same literal
    way. */
-#view-games input[type=text], #view-games input[type=date], #view-games select {
+#view-games input[type=text], #view-games input[type=date], #view-games input[type=time], #view-games select {
   border-color: transparent; background: var(--bg); min-height: 48px;
 }
 [data-theme="dark"] #view-games input[type=text], [data-theme="dark"] #view-games select {

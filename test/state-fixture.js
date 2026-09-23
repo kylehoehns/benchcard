@@ -72,7 +72,7 @@ export const player = (id, name) => ({ id, name: name || id });
  * needed it already imported `S`, `withTeam` and `player` from this module. */
 export const bareGame = (extra) => ({
   periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, strategy: 'balanced',
-  out: [], useCarryover: false, label: '', when: '',
+  out: [], useCarryover: false, label: '', tipoff: '',
   constraints: S.emptyConstraints(),
   ...extra,
 });

@@ -305,7 +305,7 @@ const SEED = {
   day: {
     name: 'Saturday',
     games: [{
-      id: 'g0', label: 'Hawks', when: 'Sat 9:00', periods: 4, periodMinutes: 8,
+      id: 'g0', label: 'Hawks', tipoff: '09:00', periods: 4, periodMinutes: 8,
       granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 7,
       constraints: { avoids: [['p7', 'p6']] },
     }],

@@ -9,8 +9,8 @@ import assert from 'node:assert/strict';
  * Same shape as `test/sentence.test.js` and `test/plan-sheet.test.js`: the
  * shared document stub and the one-team `withTeam` harness from
  * `test/state-fixture.js`, no DOM. Every expected string here is the spec's
- * own ("11 players, 4 × 8, even minutes", "Same as 11:30?"), never a second
- * computation of what `sentenceParts` does.
+ * own ("11 players, 4 × 8, even minutes", "Same as 11:30 AM?"), never a
+ * second computation of what `sentenceParts` does.
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { S, withTeam, player } from './state-fixture.js';
@@ -24,7 +24,7 @@ const SETTINGS = { periods: 4, periodMinutes: 8, minMinutes: 0, maxSubs: 3, tieB
 // A game the way the rich fixture writes one, with `newGame`'s own defaults
 // filled in for everything the fixture leaves out.
 const fixtureGame = (over = {}) => ({
-  id: 'g0', label: 'Ravens', when: '11:30',
+  id: 'g0', label: 'Ravens', tipoff: '11:30',
   periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4,
   out: [], useCarryover: false, useSeasonTargets: false,
   constraints: S.emptyConstraints(), strategy: 'balanced', balance: 'even',
@@ -36,10 +36,9 @@ const fixtureGame = (over = {}) => ({
 
 test('the Same as card names the last game by its tip-off and summarizes it', () => {
   withTeam(ELEVEN, [fixtureGame()], SETTINGS, () => {
-    assert.deepEqual(S.sameAsLast(), {
-      title: 'Same as 11:30?',
-      summary: '11 players, 4 × 8, even minutes',
-    });
+    const card = S.sameAsLast();
+    assert.match(card.title, /^Same as 11:30\s*AM\?$/);
+    assert.equal(card.summary, '11 players, 4 × 8, even minutes');
   });
 });
 
@@ -47,7 +46,7 @@ test('the Same as card names the last game by its tip-off and summarizes it', ()
    "New day" all seed one game -- so the card is suppressed on the state a
    brand-new team is actually in: one unplanned Game 1 with nobody at it. */
 test('there is no Same as card when the last game has nobody at it', () => {
-  withTeam([], [fixtureGame({ label: '', when: '' })], SETTINGS, () => {
+  withTeam([], [fixtureGame({ label: '', tipoff: '' })], SETTINGS, () => {
     assert.equal(S.sameAsLast(), null);
   });
 });
@@ -58,19 +57,15 @@ test('there is no Same as card when every player on the last game is absent', ()
   });
 });
 
-/* Decision 10: tip-off, then opponent, then "Game N" -- `evensOutLine`'s own
-   precedence, so the two lines cannot disagree about what a game is called. */
-test('with no tip-off the Same as card names the last game by its opponent', () => {
-  withTeam(ELEVEN, [fixtureGame({ when: '', label: 'Ravens' })], SETTINGS, () => {
-    assert.equal(S.sameAsLast().title, 'Same as Ravens?');
-  });
-});
-
-test('with neither tip-off nor opponent the Same as card falls back to Game N', () => {
-  withTeam(ELEVEN, [fixtureGame({ id: 'g0' }), fixtureGame({ id: 'g1', when: '', label: '' })],
-    SETTINGS, () => {
-      assert.equal(S.sameAsLast().title, 'Same as Game 2?');
+/* #102 item 5: this REPLACES the old fallback to the opponent -- with no
+   tip-off the card reads the plain "Same as the last game?", whatever the
+   opponent says (or does not say). */
+test('with no tip-off the Same as card reads "Same as the last game?", opponent or not', () => {
+  for (const label of ['Ravens', '']) {
+    withTeam(ELEVEN, [fixtureGame({ tipoff: '', label })], SETTINGS, () => {
+      assert.equal(S.sameAsLast().title, 'Same as the last game?');
     });
+  }
 });
 
 /* ---------------------------- the draft (items 4 and 8) ------------------- */
@@ -110,7 +105,7 @@ test('the draft copies the last game, mints its own seed and evens out the day',
     // The opponent and the tip-off are the two things that are never copied:
     // they are what step 1 asks for.
     assert.equal(draft.label, '');
-    assert.equal(draft.when, '');
+    assert.equal(draft.tipoff, '');
   });
 });
 

@@ -50,7 +50,7 @@ function setup(n, opts = {}) {
   S.state.players.length = 0;
   for (let i = 0; i < n; i++) S.state.players.push({ id: `p${i}`, name: `Player ${i}`, tier: 3 });
   const g = {
-    id: 'g1', label: '', when: '', out: opts.out || [], seed: opts.seed ?? 1,
+    id: 'g1', label: '', tipoff: '', out: opts.out || [], seed: opts.seed ?? 1,
     periods: opts.periods ?? 4, periodMinutes: opts.periodMinutes ?? 8,
     granMode: opts.granMode ?? 'everyN', granValue: opts.granValue ?? 3,
     strategy: opts.strategy ?? 'balanced', balance: opts.balance ?? 'even',

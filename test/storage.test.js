@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { sanitize, sanitizeSettings, loadState, saveState, seasonGame, seasonDate, addSeasonGames,
          seasonShare, KEY, BACKUP_KEY, V6_KEY, V6_BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
-         V3_KEY, DEFAULT_SETTINGS, COLORS } from '../app/storage.js';
+         V3_KEY, DEFAULT_SETTINGS, COLORS, validTipoff, tipoffLabel, sortDay } from '../app/storage.js';
 import { SIZES, file as chartFile } from '../scripts/charts.mjs';
 
 /* Every document that paints themed content before its first frame, and so
@@ -18,7 +18,7 @@ const emptyConstraints = () => ({
   openingFive: [], lastPeriodFive: [], hardPairs: false, maxConsecutive: 0,
   targetSlots: {}, lockedTargets: [], closing: { stints: 2, players: [] }, units: [],
 });
-const newGame = () => ({ id: 'gnew', label: '', when: '', periods: 4, periodMinutes: 8,
+const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8,
   granMode: 'everyN', granValue: 4, out: [], useCarryover: false, strategy: 'balanced',
   seed: 1, constraints: emptyConstraints() });
 const H = { emptyConstraints, newGame };
@@ -334,6 +334,47 @@ test('sanitize is idempotent over a multi-day team', () => {
   const once = sanitize(raw, { ...H, today: TODAY });
   const twice = sanitize(once, { ...H, today: NEXT_BOOT });
   assert.deepEqual(twice, once);
+});
+
+test('#102: an old `when` is dropped on load, whatever it said, with no version branch', () => {
+  const raw = v7Record([{ name: 'Sat', date: '2026-09-26', games: [
+    { ...newGame(), id: 'g1', when: 'Sat 9:00' },
+    { ...newGame(), id: 'g2', when: '10:00' },
+  ] }]);
+  const s = sanitize(raw, { ...H, today: TODAY });
+  const games = s.teams[0].days[0].games;
+  assert.equal(games[0].tipoff, '', 'free text is not a time');
+  assert.equal(games[1].tipoff, '', 'even one that looks like a time -- it was typed, not picked');
+  assert.equal(games[0].id, 'g1', 'every other field rides along a dropped tipoff');
+  assert.equal(games[0].periods, 4);
+});
+
+test('#102: a record with a valid tipoff keeps it; a malformed one is treated as absent', () => {
+  const raw = v7Record([{ name: 'Sat', date: '2026-09-26', games: [
+    { ...newGame(), id: 'g1', tipoff: '09:00' },
+    { ...newGame(), id: 'g2', tipoff: '9:00' },
+    { ...newGame(), id: 'g3', tipoff: '25:00' },
+    { ...newGame(), id: 'g4', tipoff: '12:60' },
+    { ...newGame(), id: 'g5', tipoff: 42 },
+  ] }]);
+  const s = sanitize(raw, { ...H, today: TODAY });
+  const byId = Object.fromEntries(s.teams[0].days[0].games.map(g => [g.id, g.tipoff]));
+  assert.equal(byId.g1, '09:00');
+  assert.equal(byId.g2, '');
+  assert.equal(byId.g3, '');
+  assert.equal(byId.g4, '');
+  assert.equal(byId.g5, '');
+});
+
+test('#102: loading sorts a day by tip-off -- timed first, earliest first, untimed after in order', () => {
+  const raw = v7Record([{ name: 'Sat', date: '2026-09-26', games: [
+    { ...newGame(), id: 'B', tipoff: '' },
+    { ...newGame(), id: 'C', tipoff: '13:00' },
+    { ...newGame(), id: 'A', tipoff: '09:00' },
+    { ...newGame(), id: 'D', tipoff: '' },
+  ] }]);
+  const s = sanitize(raw, { ...H, today: TODAY });
+  assert.deepEqual(s.teams[0].days[0].games.map(g => g.id), ['A', 'C', 'B', 'D']);
 });
 
 test('the record saves under benchcard.v7 / benchcard.v7.bak and stamps version 7', () => {
@@ -1068,6 +1109,38 @@ test('seasonGame stamps the coach\'s own day, not UTC', () => {
   // a Saturday game archived at 8pm Pacific is not Sunday's game
   assert.equal(seasonDate(new Date(2026, 10, 8, 20, 30)), '2026-11-08');
   assert.equal(seasonDate(new Date(2027, 0, 1, 0, 5)), '2027-01-01');
+});
+
+/* ---- #102: validTipoff, tipoffLabel, sortDay ---- */
+
+test('validTipoff accepts zero-padded HH:MM and rejects everything else', () => {
+  for (const [v, want, why] of [
+    ['09:00', '09:00'],
+    ['23:59', '23:59'],
+    ['00:00', '00:00'],
+    ['', '', 'absent is fine, and stays absent'],
+    ['9:00', '', 'not zero-padded'],
+    ['25:00', '', 'no such hour'],
+    ['12:60', '', 'no such minute'],
+    [42, '', 'not even a string'],
+    ['Sat 9:00', '', 'old free text'],
+  ]) assert.equal(validTipoff(v), want, why);
+});
+
+test('tipoffLabel reads the locale time built from local parts, empty for no tip-off', () => {
+  assert.equal(tipoffLabel(''), '');
+  assert.match(tipoffLabel('09:00', 'en-US'), /^9:00\s*AM$/);
+  assert.match(tipoffLabel('13:30', 'en-US'), /^1:30\s*PM$/);
+});
+
+test('sortDay stably sorts timed games first by tip-off, untimed after in their own order', () => {
+  const b = { id: 'b', tipoff: '' };
+  const c = { id: 'c', tipoff: '13:00' };
+  const a = { id: 'a', tipoff: '09:00' };
+  const d = { id: 'd', tipoff: '' };
+  const games = [b, c, a, d];
+  sortDay(games);
+  assert.deepEqual(games.map(g => g.id), ['a', 'c', 'b', 'd']);
 });
 
 test('a game copies its minutes rather than aliasing the plan\'s object', () => {

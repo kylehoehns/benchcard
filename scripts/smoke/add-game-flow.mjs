@@ -77,11 +77,22 @@ const flowState = c => evalJSON(c, `(() => {
 const dayGames = c => evalJSON(c, `(async () => {
   const s = await import('/state.js');
   return JSON.stringify(s.state.day.games.map(g => ({
-    label: g.label, when: g.when, periods: g.periods, periodMinutes: g.periodMinutes,
+    label: g.label, tipoff: g.tipoff, periods: g.periods, periodMinutes: g.periodMinutes,
     granMode: g.granMode, granValue: g.granValue, strategy: g.strategy,
     out: [...g.out].sort(), constraints: g.constraints, seed: g.seed,
     useCarryover: g.useCarryover,
   })));
+})()`);
+
+// #102's own "Same as <tip-off>?" title, read through `tipoffLabel` --
+// storage.js's one time-label function, the same one `sameAsLast` (state.js)
+// calls to build it -- rather than recomputed here with a second formatting
+// call that could drift from the app's own locale/zero-pad rules.
+const sameAsText = c => evalJSON(c, `(async () => {
+  const s = await import('/state.js');
+  const { tipoffLabel } = await import('/storage.js');
+  const last = s.state.day.games.at(-1);
+  return JSON.stringify(last.tipoff ? \`Same as \${tipoffLabel(last.tipoff)}?\` : 'Same as the last game?');
 })()`);
 
 /* Item 1: full screen over the chrome, "New game", "1 of 3", a ✕ named
@@ -279,7 +290,7 @@ const bodyState = c => evalJSON(c, `(() => {
     || n.textContent || '').replace(/\\s+/g, ' ').trim();
   return JSON.stringify({
     text: (b.textContent || '').replace(/\\s+/g, ' ').trim(),
-    fields: [...b.querySelectorAll('input[type=text]')].map(named),
+    fields: [...b.querySelectorAll('input[type=text], input[type=time]')].map(named),
     buttons: [...b.querySelectorAll('button')].map(named),
   });
 })()`);
@@ -296,12 +307,12 @@ async function stepOneReads(c, ck) {
     `step 1 asks "${s.heading}", want "Who are you playing?"`);
   ck(s.headingFocused, 'step 1 opened without moving focus to its question -- the screen changed under the coach');
 
-  const last = (await dayGames(c)).at(-1);
   const b = await bodyState(c);
   ck(b.fields.join(' | ') === 'Opponent | Tip-off',
     `step 1's fields are labeled "${b.fields.join(' | ')}", want "Opponent | Tip-off"`);
-  ck(b.text.includes(`Same as ${last.when}?`),
-    `step 1 shows no "Same as ${last.when}?" card over the last game (its body reads "${b.text.slice(0, 120)}")`);
+  const sameAs = await sameAsText(c);
+  ck(b.text.includes(sameAs),
+    `step 1 shows no "${sameAs}" card over the last game (its body reads "${b.text.slice(0, 120)}")`);
   ck(b.text.includes('11 players, 4 × 8, even minutes'),
     `the card's summary line is missing "11 players, 4 × 8, even minutes" (body reads "${b.text.slice(0, 160)}")`);
   ck(b.buttons.includes('Use it'),
@@ -511,7 +522,7 @@ async function discardAsks(c, ck) {
 /* I2: the ask replaces the footer of whatever step is behind it -- it is not
    its own screen. Reach step 2, type an opponent-shaped answer there is
    nothing to lose over (typing only matters on step 1's fields, but the ask
-   only asks about `draft.label`/`draft.when`, both step 1 -- so type there),
+   only asks about `draft.label`/`draft.tipoff`, both step 1 -- so type there),
    open the ask with ✕, then step back with the back gesture rather than
    answering it. `flowBack` repaints the body underneath for the earlier
    step; the ask has to go with it, or it strands over content it was never
@@ -537,6 +548,43 @@ async function askDoesNotStrandOverRepaint(c, ck) {
   await realTap(c, '#agClose');
   await realTap(c, '#agDiscard');
   ck(await waitClosed(c, '#addGameFlow'), 'cleanup: "Discard" did not close the flow');
+}
+
+/* #102 (docs/specs/102-tip-off-time.md): the tip-off field is a real
+   `input[type=time]`, and the pass it lands on reads the phone's own locale
+   time, not the raw "HH:MM" the field stores. `tipoffLabel` is read out of
+   the running `storage.js` for the "want" side too -- the one time-label
+   function every display site (including this pass) calls -- so this proves
+   the pass agrees with that function rather than with a second formatting
+   guess written here. */
+async function tipoffSetsAndReadsAsLocaleTime(c, ck) {
+  const before = (await dayGames(c)).length;
+  await openFlow(c);
+  await typeIn(c, '#agBody input[type=text]', 'Comets');
+  await typeIn(c, '#agBody input[type=time]', '19:30');
+  await realTap(c, '#agNext');
+  await realTap(c, '#agNext');
+  await realTap(c, '#agNext');
+  if (!ck(await waitClosed(c, '#addGameFlow'), '"Plan it" did not close the flow after setting a tip-off')) return;
+
+  const after = await dayGames(c);
+  if (!ck(after.length === before + 1,
+    `setting a tip-off left ${after.length} game(s) in the day, want ${before + 1}`)) return;
+  // Not `.at(-1)`: by this point the day also holds two untimed games from
+  // `useItCopies`/`planItCommits` above, and a *timed* new game (#102's own
+  // sort) lands ahead of them, not after -- so the new game is found by its
+  // own label instead of assumed to be last.
+  const made = after.find(g => g.label === 'Comets');
+  if (!ck(made, `no game labeled "Comets" is in the day after setting a tip-off (day: ${JSON.stringify(after)})`)) return;
+  ck(made.tipoff === '19:30', `the new game's tip-off is "${made.tipoff}", want "19:30"`);
+
+  await tap(c, TODAY_HOME);
+  const r = await evalJSON(c, `(async () => {
+    const { tipoffLabel } = await import('/storage.js');
+    const el = [...document.querySelectorAll('.pass-when')].at(-1);
+    return JSON.stringify({ text: el ? el.textContent.trim() : null, want: tipoffLabel('19:30') });
+  })()`);
+  ck(r.text === r.want, `the new pass's tip-off reads "${r.text}", want tipoffLabel's own "${r.want}"`);
 }
 
 /* Item 9: the committed game is on Today, last in the day, reading the same
@@ -580,6 +628,7 @@ export async function addGameFlowPass(c, origin) {
       await focusReturnsToTrigger(c, ck);
       await useItCopies(c, ck);
       await planItCommits(c, ck);
+      await tipoffSetsAndReadsAsLocaleTime(c, ck);
       await discardAsks(c, ck);
       await askDoesNotStrandOverRepaint(c, ck);
       await forceCloseKeepsDraft(c, ck);

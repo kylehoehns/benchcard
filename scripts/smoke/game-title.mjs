@@ -19,11 +19,13 @@
  * from the tree but painted over the large title is a visible double.
  *
  * The expected title/tip-off/status text is the RICH fixture's own first
- * game (`fixtures.mjs`: `id: 'g0', label: 'Hawks', when: '9:00'`, a plain
+ * game (`fixtures.mjs`: `id: 'g0', label: 'Hawks', tipoff: '09:00'`, a plain
  * balanced plan with no rules, so `plans[0].ok` is true) -- pinned by hand,
  * never read back from `gameLabel` or `renderPass`'s own status text, the
  * same way `game-passes.mjs`'s `WANT` table pins game 0's answer under a
- * different fixture. */
+ * different fixture. `WANT.when` stays the digits `tipoffLabel` prints for
+ * 09:00 in en-US (`9:00`, no leading zero) -- a substring check, so it does
+ * not care whether ICU puts an ASCII space or U+202F before "AM". */
 import { evalIn, step, TODAY_HOME, OVERFLOW_PROBE, WIDTH, HEIGHT, SETTLE } from './dom.mjs';
 import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
 
