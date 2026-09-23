@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { element } from './markup.js';
+import { thisGameBox } from './markup.js';
 
 /* #118: the Tip-off hint, spec docs/specs/118-tipoff-hint.md.
  *
@@ -20,10 +20,7 @@ import { element } from './markup.js';
  * -- so folding Tip-off cases in would answer a different field's question
  * under the wrong file's name. */
 
-const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8')
-  .replace(/<!--[\s\S]*?-->/g, '');
-
-const box = element(html, 'class="side-box noprint s-thisgame"');
+const { box } = thisGameBox();
 
 test('#whenHint is a .note right after #when, reading exactly the spec\'s copy', () => {
   const m = box.match(/<input[^>]*\bid="when"[^>]*>\s*<p class="note" id="whenHint">([^<]*)<\/p>/);

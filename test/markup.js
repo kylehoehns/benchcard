@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 /* The tag-walking helper this-game.test.js and day-name-field.test.js both
  * need to pull one element's markup out of app/index.html as source text --
@@ -34,4 +35,16 @@ export function element(src, needle) {
     if (!(/\/\s*$/.test(attrs) || VOID.has(name.toLowerCase()))) depth++;
   }
   assert.fail(`unbalanced markup around ${needle}`);
+}
+
+// app/index.html, comments stripped, plus the "This game" box (Date, Opponent,
+// Day name, Tip-off, Remove) pulled out with `element()`. this-game.test.js,
+// day-name-field.test.js and tipoff-hint.test.js all start from
+// this same box; shared here rather than each reading and re-slicing
+// index.html itself, the way this file's own header describes for VOID and
+// `element()`.
+export function thisGameBox() {
+  const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8')
+    .replace(/<!--[\s\S]*?-->/g, '');
+  return { html, box: element(html, 'class="side-box noprint s-thisgame"') };
 }
