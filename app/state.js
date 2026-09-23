@@ -1634,7 +1634,10 @@ export const dueToFile = (today = new Date()) => {
 };
 
 // "Sat, Sep 27" -- the coach's own locale, short weekday, short month, day.
-const weekdayLabel = iso => {
+// Exported (#112): the day-name hint under `#dayName` (game-setup.js's
+// `renderSetup`) reuses this rather than a second formatter -- one answer,
+// one place.
+export const weekdayLabel = iso => {
   const d = localDate(iso);
   return d ? d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
 };

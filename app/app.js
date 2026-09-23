@@ -108,8 +108,8 @@ on('#dayName', 'oninput', e => { state.day.name = e.target.value; save(); });
 on('#teamName', 'oninput', e => {
   state.teamName = e.target.value;
   save();
-  // the day title and the card both read it; neither rebuilds this input
-  set('#dayName', 'placeholder', teamName() || 'Name this day…');
+  // #112: the card reads it (it heads the card when a game has no opponent);
+  // `#dayName`'s placeholder never did -- it is set once, in the markup.
   soon('cards');
 });
 on('#label', 'oninput', e => { game().label = e.target.value; soon('tabs', 'totals', 'cards'); });

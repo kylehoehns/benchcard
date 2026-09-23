@@ -17,8 +17,8 @@
  * ================================================================== */
 import { riseIn } from './fx.js';
 import { $, set, el } from './dom.js';
-import { state, game, plans, teamName, noRoster, setAvailable,
-         sentenceParts, planSay, stepFormat, GRAN_CHOICES } from './state.js';
+import { state, game, plans, noRoster, setAvailable,
+         sentenceParts, planSay, stepFormat, GRAN_CHOICES, weekdayLabel } from './state.js';
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
 import { colorName, seasonDate } from './storage.js';
 
@@ -38,7 +38,12 @@ export function initGameSetup(renderAllFn, soonFn, planOnly, afterEdit) {
 export function renderSetup() {
   const g = game();
   set('#dayName', 'value', state.day.name);
-  set('#dayName', 'placeholder', teamName() || 'Name this day…');
+  // #112: the hint under the field, read by `aria-describedby` too -- says
+  // every game on this date shares whatever name is typed here. Reuses
+  // `weekdayLabel` (state.js), the same formatter `dayHeading` uses, rather
+  // than a second one. No script sets `#dayName`'s placeholder -- the
+  // markup's own `Spring Classic (optional)` is the only place it lives.
+  set('#dayNameHint', 'textContent', `Shared by every game on ${weekdayLabel(state.day.date)}`);
   // #101 item 3: `moveGame` (app.js) is the one path that changes it; `min`
   // matches the flow's own Date field -- no dates before today either way.
   set('#gameDate', 'value', state.day.date);

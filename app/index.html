@@ -672,19 +672,28 @@
                day must always have a game. -->
           <div class="side-box noprint s-thisgame" style="margin-bottom:.9rem">
             <div class="side-hd">This game</div>
-            <!-- #69 decision 5: the day/tournament name, moved out of the
-                 large-title spot at the top of the page (now the opponent's
-                 h1). A normal labeled field, same as Opponent and Tip-off
-                 beside it -- no new CSS, the existing `.f`/input pattern. -->
-            <div class="row">
-              <div><label class="f" for="dayName">Day or tournament</label><input type="text" id="dayName" placeholder="Name this day…"></div>
-            </div>
             <div class="row">
               <!-- #101: moves the game to another day (`app.js` wires
                    `onchange` to `moveGame`). `min` is today -- no dates
                    before today, same rule as the add-a-game flow. -->
               <div><label class="f" for="gameDate">Date</label><input type="date" id="gameDate"></div>
               <div><label class="f" for="label">Opponent</label><input type="text" id="label" placeholder="Panthers"></div>
+            </div>
+            <!-- #112: the day's own name, moved out of the large-title spot
+                 at the top of the page (now the opponent's h1) and out of
+                 #69's original "Day or tournament" label/placeholder --
+                 CONTEXT.md's Day glossary entry avoids "tournament" as a word
+                 for a day and gives "Spring Classic" as its own example name.
+                 It reads after Date since the name belongs to the date, with
+                 a hint (`#dayNameHint`, painted by `renderSetup`) saying it is
+                 shared by every game on that date -- `aria-describedby` wires
+                 the two together for a screen reader too. -->
+            <div class="row">
+              <div>
+                <label class="f" for="dayName">Day name</label>
+                <input type="text" id="dayName" placeholder="Spring Classic (optional)" aria-describedby="dayNameHint">
+                <p class="note" id="dayNameHint"></p>
+              </div>
             </div>
             <!-- #102: its own row (C6) -- native `type="time"` picks a real
                  time rather than free text; `app.js` wires `oninput` to
