@@ -721,7 +721,7 @@ explicit `order`. The sentence sits above that list at every width, and since
 with. The rotation reads first (#69), directly after the sentence, where a coach
 opens the phone to see the plan; the day heading starts the *This game* section, then the Plan sheet (#28, which holds the
 strategy, rules, lineup balance and evening out), and then *This game* (date, opponent,
-tip-off, remove); card head, card and the bench button slot in after the
+day name, tip-off, remove); card head, card and the bench button slot in after the
 timeline, and Stint-by-stint and Card options fall below. The Plan sheet
 replaced the Plan, Rules and Lineup balance folds that used to read at positions
 3, 11 and 4 — putting the strategy, constraints and evening-out controls in one

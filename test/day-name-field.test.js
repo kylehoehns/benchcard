@@ -17,44 +17,34 @@ import { element } from './markup.js';
  * `dom.js`'s `set()` can assign properties onto it) rather than the
  * `querySelector: () => null` stub `dom-stub.js` gives every OTHER pure-state
  * test file: those files never read what a renderer painted, this one does.
- * It is built and installed on `globalThis` BEFORE `state.js`/`game-setup.js`
- * load -- both reach `document` (directly, and through `trap.js`'s
- * `addEventListener` and `fx.js`'s `matchMedia`) at import time, so it has to
- * exist first. Static `import` is hoisted ahead of any assignment textually
- * before it, which is exactly the ordering problem; `await import(...)`
- * (league-min.test.js's own move) runs in place instead. */
+ * So this file installs `dom-stub.js`'s stub first -- it must be in place
+ * before `state.js`/`game-setup.js` load, since both reach `document`
+ * (directly, and through `trap.js`'s `addEventListener` and `fx.js`'s
+ * `matchMedia`) at import time -- then overrides just `querySelector` to read
+ * from the `els` map below, before `game-setup.js` itself loads. Static
+ * `import` is hoisted ahead of any assignment textually before it, which is
+ * exactly the ordering problem; `await import(...)` (league-min.test.js's
+ * own move) runs `game-setup.js`'s load in place, after the override. */
+
+import { withDays, bareGame, S } from './state-fixture.js';
 
 const IDS = ['dayName', 'dayNameHint', 'gameDate', 'label', 'when',
   'copies', 'cardId', 'cardSize', 'printScope', 'showMinutes'];
 const els = new Map(IDS.map(id => ['#' + id, {}]));
-globalThis.document = {
-  querySelector: sel => els.get(sel) || null,
-  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }) }) }),
-  addEventListener: () => {},
-};
-globalThis.addEventListener ??= () => {};
-globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
+globalThis.document.querySelector = sel => els.get(sel) || null;
 
-const S = await import('../app/state.js');
 const { renderSetup } = await import('../app/game-setup.js');
 
-// Same one-team shape test/state-fixture.js's `withTeam` builds, but with the
-// team's own name settable -- `withTeam` hardcodes it to `'T'`, and this file
-// needs `teamName()` (state.js) to read something a coach would recognize as
-// wrong in `#dayName`'s placeholder if it ever showed up there.
-const withGame = (name, dayName, date, fn) => {
-  const saved = S.state.teams;
-  S.state.teams = [{
-    id: 't', name, players: [],
-    days: [{ name: dayName, date, games: [{
-      periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, strategy: 'balanced',
-      out: [], useCarryover: false, label: '', tipoff: '', constraints: S.emptyConstraints(),
-    }] }],
-    activeDay: 0, season: { games: [] }, activeGame: 0, settings: {},
-  }];
-  S.state.activeTeam = 0;
-  try { return fn(); } finally { S.state.teams = saved; }
-};
+// The one-team, one-day, one-game shape test/state-fixture.js's `withDays`
+// and `bareGame` already build, with the team's own name settable after
+// delegation -- `withDays` hardcodes it to `'T'`, and this file needs
+// `teamName()` (state.js) to read something a coach would recognize as wrong
+// in `#dayName`'s placeholder if it ever showed up there.
+const withGame = (name, dayName, date, fn) => withDays([],
+  [{ name: dayName, date, games: [bareGame()] }], {}, () => {
+    S.state.teams[0].name = name;
+    return fn();
+  });
 
 test('renderSetup never overwrites #dayName\'s placeholder with the team name', () => {
   els.get('#dayName').placeholder = 'Spring Classic (optional)';
