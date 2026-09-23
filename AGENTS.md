@@ -70,11 +70,23 @@ not restated here, only listed, so there is still one answer per rule:
 | No blanket `--update-budgets` | denied, `guard-bash.sh` |
 | No `git add -A` / `git add .` | denied, `guard-bash.sh` |
 | No `Co-Authored-By` trailer | denied, `guard-bash.sh` |
-| No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` |
+| No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` — file tools only, not a shell write |
 | A text file over 60 KB is read in parts (`grep -n`, then offset and limit) | denied, `guard-read.sh` |
-| A precached file changed → bump `VERSION`, set `SHELL` | reminded, `after-edit.sh` |
-| A British spelling in an edited file | reminded, `after-edit.sh` |
+| A precached file changed → bump `VERSION`, set `SHELL` | reminded, `after-edit.sh` — file tools only, not a shell write |
+| A British spelling in an edited file | reminded, `after-edit.sh` — file tools only, not a shell write |
 | A dirty tree means another writer is here | reported at session start |
+
+`guard-edit.sh` and `after-edit.sh` are wired to the file tools
+(`.claude/settings.json`'s matcher) and never fire on a shell write. A shell
+write skips those two hooks. What catches it instead:
+
+- `app/vendor/**`: the `vendor drift` workflow, which re-runs `fetch.sh` on
+  any push or PR that touches it and fails on a byte of difference.
+- the six chart pages: `test/charts.test.js`.
+- a precache bump missed: `test/sw.test.js`'s `SHELL` digest, and
+  `scripts/check-sw-version.mjs` in CI.
+- a British spelling: `test/spelling.test.js`.
+- `scripts/budgets.json`: nothing. Review is the only check.
 
 `test/hooks.test.js` asserts all of it in both directions and runs in
 `npm test`, because a guard nobody guards is a guard nobody should trust. The

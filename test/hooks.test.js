@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WORDS } from '../scripts/spelling.mjs';
+import { flat } from './prose.js';
 
 const HOOKS = new URL('../.claude/hooks/', import.meta.url);
 const ROOT = new URL('../', import.meta.url);
@@ -304,4 +305,54 @@ test('the advisory hook fails OPEN, since blocking on a reminder would be worse'
     });
   } catch (e) { status = e.status; }
   assert.notEqual(status, 2, 'after-edit.sh must never block a tool call');
+});
+
+/* ---------- #13: the table's claim can't outrun the matcher it describes ----------
+ * guard-edit.sh and after-edit.sh are wired (above, and in settings.json) to
+ * the file tools only, so a shell write (`sed -i`, `>`, `tee`, a Python
+ * one-liner) reaches a protected file with neither hook firing. AGENTS.md's
+ * "What is enforced" table has to say that plainly next to every row naming
+ * one of those two hooks, or it reads as if the rule holds for every write.
+ *
+ * The matcher is read live from settings.json rather than copied as a string
+ * -- the one source of truth for what a hook is actually wired to -- so if a
+ * Bash matcher is ever added to either hook, this stops requiring the
+ * sentence instead of silently going stale. */
+
+const SETTINGS = JSON.parse(readFileSync(new URL('.claude/settings.json', ROOT), 'utf8'));
+
+// Every matcher `script` is registered under, across every hook event.
+function matchersFor(script) {
+  const out = [];
+  for (const entries of Object.values(SETTINGS.hooks)) {
+    for (const entry of entries) {
+      if (entry.hooks.some(h => h.command.endsWith(`/${script}`))) out.push(entry.matcher ?? '');
+    }
+  }
+  return out;
+}
+
+const coversBash = matchers => matchers.some(m => m.split('|').includes('Bash'));
+
+// AGENTS.md table rows (lines starting with the markdown pipe) that name a
+// given hook script, by its backticked name -- not any prose mentioning it.
+const rowsNaming = (agentsText, script) =>
+  agentsText.split('\n').filter(line => line.startsWith('|') && line.includes('`' + script + '`'));
+
+const NOT_COVERED = 'not a shell write';
+
+test('a table row naming guard-edit.sh or after-edit.sh says a shell write is not covered, while its matcher lacks Bash', () => {
+  const agents = readFileSync(new URL('AGENTS.md', ROOT), 'utf8');
+  for (const script of ['guard-edit.sh', 'after-edit.sh']) {
+    const matchers = matchersFor(script);
+    assert.ok(matchers.length > 0, `${script} is not wired to anything in settings.json`);
+    if (coversBash(matchers)) continue; // the claim stops being required once Bash is covered
+
+    const rows = rowsNaming(agents, script);
+    assert.ok(rows.length > 0, `AGENTS.md's table names no row for ${script}, so nothing was checked`);
+    for (const row of rows) {
+      assert.ok(flat(row).includes(NOT_COVERED),
+        `AGENTS.md's ${script} row ("${row.trim()}") doesn't say a shell write is not covered`);
+    }
+  }
 });
