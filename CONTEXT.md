@@ -215,7 +215,7 @@ _Avoid_: maximum, ceiling, limit
 **Together**:
 A rule that two players share the floor as much as the plan allows, and in every
 stint when the game's rules force it.
-_Avoid_: pair, play together
+_Avoid_: pair, play together, always together
 
 **Apart**:
 A rule that two players are never on the floor at the same time.
@@ -223,7 +223,7 @@ _Avoid_: avoid, keep apart, never together
 
 **One of two on**:
 A rule that at least one of two players is always on the floor.
-_Avoid_: keep on floor, never both off
+_Avoid_: keep on floor, never both off, always one on, one of two always on
 _In code_: `keepOnFloor`
 
 **Starting five**:

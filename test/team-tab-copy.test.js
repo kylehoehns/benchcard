@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { jsStrings } from './js-strings.js';
+import { stripHtmlComments as stripHtmlOnly } from './html-comments.js';
 
 /* #22 (spec item 10): every team setting's coach-facing home moved off the
  * Team tab and into Settings, under the team's own name. Two help-sheet
@@ -34,9 +35,12 @@ const TEAM_LOC = /\bTeam\s+(tab|page|screen)\b/gi;
  * -> team` view rename, says "Team page" in a sentence about routing, not
  * about where a setting lives, and would false-positive this guard if only
  * the markup-comment syntax were stripped. Both are dropped for the same
- * reason: prose ABOUT the code is not text a coach reads. */
+ * reason: prose ABOUT the code is not text a coach reads. Built on the
+ * shared HTML-comment stripper (test/html-comments.js, #98) rather than a
+ * second copy of that regex; the `/* *\/` half is index.html-specific, so it
+ * stays here rather than moving into the shared helper. */
 function stripHtmlComments(s) {
-  return s.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
+  return stripHtmlOnly(s).replace(/\/\*[\s\S]*?\*\//g, ' ');
 }
 
 /* Tags and entities stood between "Team" and "tab"/"page" in real copy --

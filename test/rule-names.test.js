@@ -2,17 +2,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { jsStrings } from './js-strings.js';
-import { parseGlossaryAvoid } from './glossary.js';
+import { avoidRegexes } from './glossary.js';
+import { stripHtmlComments } from './html-comments.js';
 import { trackedFiles } from '../scripts/spelling.mjs';
 
 /* #98: the Plan sheet's rule picker, bench mode's blocked-plan messages, the
    rules list and the help sheet each named the three pair rules differently.
    CONTEXT.md's glossary gives one name for each -- Together, Apart, One of
    two on -- and this guard bans the retired names it lists, read through the
-   same `_Avoid_:` parser test/static-pages.test.js already uses (#98
-   Constraints: "reuse, do not re-derive"; docs/specs/98-pair-rule-names.md
-   Design: "Do not type them in again"). */
-const AVOID_BY_TERM = parseGlossaryAvoid(readFileSync(new URL('../CONTEXT.md', import.meta.url), 'utf8'));
+   same `_Avoid_:` parser and phrase-to-regex builder test/static-pages.test.js
+   already uses (#98 Constraints: "reuse, do not re-derive"; docs/specs/98-
+   pair-rule-names.md Design: "Do not type them in again"). */
 const TERMS = ['Together', 'Apart', 'One of two on'];
 
 /* Two phrases are dropped from the three terms' `_Avoid_` lists, each for a
@@ -34,19 +34,9 @@ const TERMS = ['Together', 'Apart', 'One of two on'];
    comment (card.js, storage.js, trap.js), which `jsStrings` already drops. */
 const PHRASE_DROP = new Set(['pair', 'avoid']);
 
-const PHRASES = TERMS.flatMap((term) => (AVOID_BY_TERM[term] || [])
-  .filter((phrase) => !PHRASE_DROP.has(phrase.toLowerCase())));
+const WORD_RES = avoidRegexes(TERMS, PHRASE_DROP);
 
-assert.ok(PHRASES.length >= 4, `only ${PHRASES.length} avoided phrases parsed from CONTEXT.md; the parser broke`);
-
-const WORD_RES = PHRASES.map((phrase) =>
-  [phrase, new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')]);
-
-/* Comments are prose ABOUT the code, not text a coach reads -- the same rule
-   test/static-pages.test.js and test/team-tab-copy.test.js apply to HTML. */
-function stripHtmlComments(s) {
-  return s.replace(/<!--[\s\S]*?-->/g, ' ');
-}
+assert.ok(WORD_RES.length >= 4, `only ${WORD_RES.length} avoided phrases parsed from CONTEXT.md; the parser broke`);
 
 const APP_JS_FILES = trackedFiles().filter((f) => /^app\/[^/]+\.js$/.test(f));
 assert.ok(APP_JS_FILES.length > 20, `only ${APP_JS_FILES.length} app/*.js files found; the file list is wrong`);
