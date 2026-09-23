@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flat, lacks } from './prose.js';
+import { flat, lacks, wrapSafe } from './prose.js';
 
 /* #14. This repo hard-wraps prose at about 78 columns, so a phrase can split
    across two lines. `flat` collapses any run of whitespace -- a line wrap
@@ -23,4 +23,11 @@ test('a RegExp phrase with a literal space matches across a newline', () => {
 test('a single-line string behaves like !includes', () => {
   assert.equal(lacks('@media (max-width: 900px) { .x { display: none } }', '@media (max-width: 900px)'), false);
   assert.equal(lacks('@media (max-width: 640px) { .x { display: none } }', '@media (max-width: 900px)'), true);
+});
+
+/* #14 review: the space -> \s+ regex-source rewrite was written twice --
+   here (via lacks) and in analytics.test.js's own claim(). wrapSafe is the
+   one place it lives now; both call it. */
+test('wrapSafe turns each literal space in a regex source into \\s+', () => {
+  assert.equal(wrapSafe('stays on your device'), 'stays\\s+on\\s+your\\s+device');
 });

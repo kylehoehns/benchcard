@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { ANALYTICS, EVENTS, payload, bucketRoster, track, startAnalytics, errorWhere } from '../app/analytics.js';
 import { jsStrings } from './js-strings.js';
+import { wrapSafe } from './prose.js';
 
 /* These tests exist for one reason: the promise on the welcome screen says a
    roster never leaves the device, and `payload` is the only thing standing
@@ -184,7 +185,7 @@ test('the strategy list matches the app', () => {
    Hoisted out of the HTML test because the same four phrasings are now asked
    of two file types. One list, one place: two copies of this question is the
    defect this repo keeps finding. */
-const claim = (s) => new RegExp(s.replace(/ /g, '\\s+'), 'i');
+const claim = (s) => new RegExp(wrapSafe(s), 'i');
 const ABSOLUTE = [
   'nothing is uploaded',
   'nothing (?:ever )?leaves (?:your|this) device',
