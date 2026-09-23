@@ -56,6 +56,17 @@ owner. Every open question is decided here from the tree, `CONTEXT.md` and
 - **`labelBench` stays in `card.js`.** It paints buttons, which is view work.
   It calls `resumeAt(plans[state.activeGame] ?? null, game()?.live)` with its
   arguments spelled out.
+- **The request budget is re-pinned here, on purpose.** Found at the first
+  proof run: `live.js` joins the boot graph and the cold load measures 42
+  requests against a ceiling of 41 (#122's `edit.js` had already spent the
+  one spare). `AGENTS.md` says a module that joins on purpose has to say so
+  out loud, and the hook on `budgets.json` says to re-pin in
+  `scripts/budgets.mjs` instead. So `REQUESTS_BASELINE = 41` moves there,
+  one under the measured 42, the shape the pin has always had. Folding
+  `live.js` into an existing module to dodge the count would undo the
+  ticket, which asks for a separate pure module. `AGENTS.md` and the
+  `guard-bash.sh` message, which described the old pin, are updated to
+  point at it.
 - **The existing tests are kept and repointed.** `test/pass-status.test.js`
   and `test/resume-bar.test.js` build real plans and stay as they are, apart
   from the new signatures. The new `test/live.test.js` is the plain-input
@@ -130,6 +141,8 @@ Changes:
 - `app/state.js`: `benchOpen`/`setBenchOpen`, and `dueToFile` uses it;
 - `app/toast.js`, `app/shortcuts.js`: the bench-open reads;
 - `app/sw.js`;
+- `scripts/budgets.mjs`, `test/budgets.test.js`, `AGENTS.md` and
+  `.claude/hooks/guard-bash.sh`: the request pin (see Decisions);
 - `test/`, and comments in `scripts/smoke/` that name `card.js` as the home
   of these functions.
 

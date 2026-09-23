@@ -1613,7 +1613,7 @@ export function archiveDay(d = state.activeDay) {
  * this before read `#gamemode`'s `hidden` property itself -- `dueToFile`
  * here, four places in `toast.js`, one in `shortcuts.js` and three inside
  * `gamemode.js` -- which is the DOM-read twin of the `live.at` bug `live.js`
- * fixes: five copies of one fact that could disagree. It is a module
+ * fixes: nine copies of one fact that could disagree. It is a module
  * variable, not part of `state`: `state` is saved and Undo-snapshotted, and
  * whether a screen is open is neither. `gamemode.js` calls `setBenchOpen` on
  * the same line it shows or hides `#gamemode`. */

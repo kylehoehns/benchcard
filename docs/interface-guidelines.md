@@ -125,7 +125,7 @@ predictive back animation runs inside an installed web app is **(unverified)**.
 **N7. A game in progress floats above Today.** When a game is part-played, a
 floating "Panthers · Q2 4:00 · Resume" bar sits at the bottom of Today. Apple's
 tab bar accessory and Material's floating toolbar are the same idea. *Apple: Tab
-bars (accessory). Material: Toolbars (floating). Benchcard: `resumeAt()`.*
+bars (accessory). Material: Toolbars (floating). Benchcard: `live.js: resumeAt()`.*
 
 **N8. Multi-step tasks are full screen, and always skippable.** Adding a game and
 first run use a full-screen flow with a step count and a close button. Apple:

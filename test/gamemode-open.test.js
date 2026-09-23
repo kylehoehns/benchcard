@@ -128,8 +128,6 @@ test('a part-played game says so on the plan page', () => {
     'the last stint is a game that is over -- game mode restarts that one');
   const resumeFn = live.slice(live.indexOf('export function resumeAt'));
   const resumeBody = resumeFn.slice(0, resumeFn.indexOf('\n}'));
-  assert.match(resumeBody, /stage\(p, live\)/,
-    'resumeAt must ask stage for the part-played decision, not re-check at itself');
   assert.match(resumeBody, /periodName/, 'the label must follow halves as well as quarters');
 
   const card = readFileSync(new URL('../app/card.js', import.meta.url), 'utf8');

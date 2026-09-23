@@ -8,10 +8,12 @@ import { lacks } from './prose.js';
  * arithmetic outside live.js/storage.js; no read of #gamemode's hidden; card.js
  * has no resumeAt/passStatus/resumeBarAt export and no live read; live.js
  * imports only ./engine.js" -- covers items 2, 3, 4 and 5. Two screens
- * disagreeing about a part-played game (#113) came from five places each
- * reading `live.at` their own way, and five more each reading `#gamemode`'s
- * `hidden` their own way. Both are now one function apiece in `live.js` and
- * `state.js`; this guard is what keeps a sixth copy from growing back. */
+ * disagreeing about a part-played game (#113) came from `live.at` being read
+ * and clamped in five different places (see `live.js`'s header comment) and
+ * `#gamemode`'s `hidden` being read directly in several more (the count is on
+ * `setBenchOpen`'s comment in `state.js`). Both are now one function apiece
+ * in `live.js` and `state.js`; this guard is what keeps a new copy of either
+ * from growing back. */
 
 const APP = new URL('../app/', import.meta.url);
 const APP_FILES = readdirSync(APP).filter(f => f.endsWith('.js'));
@@ -41,17 +43,39 @@ test('every app/ file other than live.js and storage.js leaves live.at alone', (
     + 'other named exception); every other file must ask stage/stintIndex/resumeAt/openAt/stepAt instead');
 });
 
-test("no file in app/ reads #gamemode's hidden property off the selector directly", () => {
+// A `#gamemode` selector stashed in a variable before its `.hidden` is read --
+// `const gm = document.querySelector('#gamemode'); if (gm && gm.hidden === false) …`
+// -- is the same read the direct-chain shape below catches, one step removed.
+// It is what `dueToFile` did before #123; a write through the same variable,
+// `gm.hidden = true;`, is still how gamemode.js shows and hides the panel, so
+// only a read is an offense.
+const GM_SELECTOR_DECL = /\b(?:const|let|var)\s+(\w+)\s*=\s*(?:\$|document\.querySelector)\(\s*['"]#gamemode['"]\s*\)/g;
+
+function storedSelectorReadsHidden(src) {
+  for (const m of src.matchAll(GM_SELECTOR_DECL)) {
+    const name = m[1];
+    const usage = new RegExp(`\\b${name}\\??\\.\\s*hidden\\b`, 'g');
+    for (const u of src.matchAll(usage)) {
+      const after = src.slice(u.index + u[0].length);
+      // The one allowed shape: a plain write, `name.hidden = <expr>;`. Anything
+      // else on `.hidden` -- ===, !, a bare read in a condition -- is a read.
+      if (!/^\s*=\s*[^=]/.test(after)) return true;
+    }
+  }
+  return false;
+}
+
+test("no file in app/ reads #gamemode's hidden property, directly or through a stored selector", () => {
   assert.ok(APP_FILES.length > 10,
     `app/ file listing came back with only ${APP_FILES.length} entries; this guard is reading the wrong directory`);
   const offenders = [];
   for (const f of APP_FILES) {
     const src = read(f);
-    if (/#gamemode['"]\)\s*\?{0,2}\.\s*hidden/.test(src)) offenders.push(f);
+    if (/#gamemode['"]\)\s*\?{0,2}\.\s*hidden/.test(src) || storedSelectorReadsHidden(src)) offenders.push(f);
   }
   assert.deepEqual(offenders, [],
     "every read of \"is bench mode open\" must go through state.js's benchOpen(); setting it, as gm.hidden = ..., "
-    + 'is still allowed');
+    + 'is still allowed, directly or through a variable holding the same selector');
 });
 
 test('card.js exports none of resumeAt, passStatus or resumeBarAt', () => {
