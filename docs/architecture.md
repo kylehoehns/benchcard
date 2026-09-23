@@ -392,7 +392,7 @@ than measuring one screen at one width — which is what let both of those live.
 ## Interface
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
-active team's name as the large title and team-switcher button, a gear for Settings, multiple days stacked in date order each with its own heading and games (each day's games shown in tip-off order, #102), then Team and Season as two entries underneath, and Add a game.
+active team's name as the large title and team-switcher button, a gear for Settings, multiple days stacked in date order each with its own heading and games (each day's games shown in tip-off order, #102), then Team and Season as two entries underneath, and Add a game. When the team has no games (#126), the games section shows a note instead of any days, with Add a game still present.
 A day files itself into the season once it has passed (#100) — there is no
 "New day" button any more. Game, Team, Season and Settings are each one
 screen away from
@@ -420,6 +420,8 @@ whose summary line comes from the same `sentenceParts` a game pass reads, over a
 **Use it** button. `newGame(len, lastGame(), settings)` builds the draft when the
 flow opens, and **Use it** and **Plan it** commit that same object, so the
 shortcut and walking all three steps unchanged cannot land on different games.
+When the team has no games (#126), there is no last game to copy: the draft is
+`newGame(0, null, settings)` dated today, and no *Same as …?* card is offered.
 The draft stays detached until one of them is pressed — a half-answered game is
 not in `state.day.games`, so it never paints on Today, never reaches storage and
 is never what an undo snapshot catches.
