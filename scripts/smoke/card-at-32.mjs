@@ -1,6 +1,7 @@
 import { evalIn, SETTLE } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 import { seeded, PLAYERS, UI, SEED } from './fixtures.mjs';
+import { seasonDate } from '../../app/storage.js';
 
 /* #24 item 5: the card does not scale. Extends the `cardsize` row rather than
    adding a new one — same seam, same name, so `--only "card is 3.45 × 5in"`
@@ -101,10 +102,15 @@ export async function cardAt32Pass(c, origin, report) {
    longest of the spec's worked examples. `.when` is `flex: none` and the
    title's own available width already subtracts the corner's measured width
    (`buildCard`), so this MEASURES that stays true rather than re-implementing
-   the fit math here. `2026-09-30` is the same Wednesday
-   `test/storage.test.js`'s own `cornerLabel` case uses -- not re-derived, so
-   there is one literal date backing both the unit proof and this layout one. */
-const FIT_DATE = '2026-09-30';
+   the fit math here. FIT_DATE is the next Wednesday on or after the day this
+   runs, never a fixed literal: a day dated in the past files itself on boot
+   (`dated-day.mjs`), which would take the card this measures with it. */
+const nextWednesday = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + ((3 - d.getDay() + 7) % 7));
+  return seasonDate(d);
+};
+const FIT_DATE = nextWednesday();
 const FIT_OPPONENT = 'Riverside Wolverines'; // 20 characters
 const FIT_TIPOFF = '12:30';
 
@@ -165,8 +171,7 @@ async function measureFit(c) {
    under test, from a locally-built `Date` the same way `cornerLabel` itself
    is documented to -- not read off the page -- so a broken wiring shows up
    as a text mismatch rather than two copies of the same bug agreeing.
-   Reuses FIT_DATE (the same Wednesday `cornerLabel`'s own unit test pins)
-   rather than adding a second literal date. Matches the time with `\s`
+   Reuses FIT_DATE rather than adding a second date. Matches the time with `\s`
    before AM/PM: ICU puts U+202F there, not an ASCII space. */
 const [MULTI_Y, MULTI_M, MULTI_D] = FIT_DATE.split('-').map(Number);
 const MULTI_WD = new Date(MULTI_Y, MULTI_M - 1, MULTI_D).toLocaleDateString('en-US', { weekday: 'short' });
