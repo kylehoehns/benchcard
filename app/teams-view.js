@@ -23,6 +23,7 @@ import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, newTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame } from './state.js';
+import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in card.js (state.js cannot import it
 // back), and this is the one place it is called from -- both the paint and
 // the tap. No cycle: gamemode.js does not import teams-view.js.
@@ -470,11 +471,12 @@ function renderPass(g, i, d) {
   const p = dayPlans[d][i];
   const ok = !!(p && p.ok);
   const full = gameLabel(g, i);
+  const when = tipoffLabel(g.tipoff);
 
   const b = el('button', 'today-game press');
 
   const top = el('div', 'pass-top');
-  if (g.when) top.append(el('span', 'pass-when', g.when));
+  if (when) top.append(el('span', 'pass-when', when));
   top.append(passStatusEl(ok));
   b.append(top);
 
@@ -496,7 +498,7 @@ function renderPass(g, i, d) {
   b.append(el('span', 'pass-summary', passSummary(g, i)));
 
   const statusWord = ok ? 'planned' : 'needs a fix';
-  b.setAttribute('aria-label', g.when ? `${full}, ${g.when}, ${statusWord}` : `${full}, ${statusWord}`);
+  b.setAttribute('aria-label', when ? `${full}, ${when}, ${statusWord}` : `${full}, ${statusWord}`);
   b.onclick = () => { openGame(d, i); setView('games'); };
   return b;
 }
@@ -555,7 +557,7 @@ export function renderTabs() {
       // Today gives it, so a game moved to another date reads as moved
       // right here rather than only back on Today.
       gs.append(dayHeading(state.day) + ' · ');
-      if (g.when) gs.append(g.when + ' · ');
+      if (g.tipoff) gs.append(tipoffLabel(g.tipoff) + ' · ');
       gs.append(passStatusEl(!!(plans[i] && plans[i].ok)));
     }
   }
@@ -724,8 +726,8 @@ function stepWho(wrap) {
   dateInput.min = seasonDate();
   const [opponent] = flowField('input', 'Opponent', draft.label, 'Panthers',
     v => { draft.label = v; });
-  const [tipoff] = flowField('input', 'Tip-off', draft.when, 'Sat 9:00',
-    v => { draft.when = v; });
+  const [tipoff] = flowField('input', 'Tip-off', draft.tipoff, null,
+    v => { draft.tipoff = v; }, 'time');
   wrap.append(dateField, opponent, tipoff);
   const same = sameAsLast();
   if (!same) return;
@@ -883,7 +885,7 @@ function commitFlow() {
    it. Same guard the paste and add-a-player sheets use (`guardClose`,
    trap.js); true means "asked, stay open". */
 function askBeforeDiscard() {
-  if (!draft || (!draft.label.trim() && !draft.when.trim())) return false;
+  if (!draft || (!draft.label.trim() && !draft.tipoff.trim())) return false;
   showFlowAsk(true);
   return true;
 }
@@ -928,7 +930,7 @@ function wireAddGameFlow() {
      `popstate` at all. C4's "ask first" cannot hold for a close this handler
      is never told about; not losing the answer is what is left to do. */
   on('#addGameFlow', 'onclose', () => {
-    if (draft && !draft.label.trim() && !draft.when.trim()) draft = null;
+    if (draft && !draft.label.trim() && !draft.tipoff.trim()) draft = null;
     showFlowAsk(false);
   });
   guardClose(d, askBeforeDiscard);

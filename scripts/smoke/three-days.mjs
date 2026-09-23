@@ -35,8 +35,8 @@ const weekday = n => {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
-const mkGame = (id, label, when, seed) => ({
-  id, label, when, periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4,
+const mkGame = (id, label, tipoff, seed) => ({
+  id, label, tipoff, periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4,
   out: [], strategy: 'balanced', seed,
 });
 
@@ -49,10 +49,10 @@ const THREE_DAY = {
     ...RICH.teams[0],
     name: TEAM_NAME,
     days: [
-      { date: addDays(2), games: [mkGame('t0', 'Panthers', '9:00', 201), mkGame('t1', 'Ravens', '11:30', 202)] },
+      { date: addDays(2), games: [mkGame('t0', 'Panthers', '09:00', 201), mkGame('t1', 'Ravens', '11:30', 202)] },
       { date: addDays(4), games: [mkGame('t2', 'Wolves', '10:00', 203)] },
       { date: addDays(7), name: DAY_NAME, games: [
-        mkGame('t3', 'Comets', '9:00', 204), mkGame('t4', 'Hawks', '11:00', 205), mkGame('t5', 'Owls', '1:00', 206),
+        mkGame('t3', 'Comets', '09:00', 204), mkGame('t4', 'Hawks', '11:00', 205), mkGame('t5', 'Owls', '01:00', 206),
       ] },
     ],
     activeDay: 0,

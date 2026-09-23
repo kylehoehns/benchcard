@@ -93,15 +93,15 @@ test('dayPlans holds one solved day per entry, in team.days order; plans is the 
 test('sameAsLast offers the team\'s last game -- the last day\'s last game, not the open day\'s', () => {
   const players = [player('a'), player('b'), player('c'), player('d'), player('e')];
   const satG0 = S.newGame(0, null, FORMAT);
-  satG0.label = 'Hawks';
+  satG0.tipoff = '09:00';
   const sunG0 = S.newGame(0, null, FORMAT);
-  sunG0.label = 'Ravens';
+  sunG0.tipoff = '11:30';
   withDays(players, [
     { name: '', date: '2026-09-26', games: [satG0] }, // the open day (activeDay 0)
     { name: '', date: '2026-09-27', games: [sunG0] }, // the team's LAST day
   ], FORMAT, () => {
     assert.equal(S.state.activeDay, 0, 'fixture check: Saturday is the open day');
-    assert.equal(S.sameAsLast().title, 'Same as Ravens?',
+    assert.match(S.sameAsLast().title, /^Same as 11:30\s*AM\?$/,
       'sameAsLast should name the last day\'s last game, not the open day\'s');
   });
 });
@@ -137,6 +137,23 @@ test('addGame to a date that already has a day appends at the end of it', () => 
   });
 });
 
+/* #102 item 3: addGame sorts the day it lands in, and opens the new game at
+   its sorted index -- not the index it was pushed at. */
+test('addGame sorts the day by tip-off and opens the new game at its sorted index', () => {
+  const early = S.newGame(0, null, FORMAT); early.tipoff = '09:00';
+  const untimed = S.newGame(1, null, FORMAT);
+  const gNew = S.newGame(2, null, FORMAT); gNew.tipoff = '08:00';
+  withDays(SIX, [
+    { name: '', date: '2026-09-26', games: [early, untimed] },
+  ], FORMAT, () => {
+    S.addGame(gNew, '2026-09-26');
+    assert.deepEqual(S.team().days[0].games, [gNew, early, untimed],
+      'the new 8:00 game sorts ahead of the 9:00 one; the untimed game stays after both');
+    assert.equal(S.state.activeDay, 0);
+    assert.equal(S.state.activeGame, 0, 'opens at the sorted index, not the push index');
+  });
+});
+
 /* ---------------------------- item 3: moveGame ---------------------------- */
 
 test('moveGame moves the open game to another date, dropping its now-empty source day', () => {
@@ -167,6 +184,25 @@ test('moveGame leaves the source day alone when it still has other games', () =>
     S.moveGame('2026-09-27');
     assert.deepEqual(S.team().days.map(d => d.date), ['2026-09-26', '2026-09-27']);
     assert.deepEqual(S.team().days[0].games, [g1], 'the day keeps the game that did not move');
+  });
+});
+
+/* #102 item 3: moveGame sorts the day the game lands in, and opens the game
+   at its sorted index there. */
+test('moveGame sorts the day it lands in', () => {
+  const dest0 = S.newGame(0, null, FORMAT); dest0.tipoff = '10:00';
+  const moving = S.newGame(0, null, FORMAT); moving.tipoff = '09:00';
+  withDays(SIX, [
+    { name: '', date: '2026-09-26', games: [moving] },
+    { name: '', date: '2026-09-27', games: [dest0] },
+  ], FORMAT, () => {
+    S.state.activeDay = 0;
+    S.state.activeGame = 0;
+    S.moveGame('2026-09-27');
+    assert.deepEqual(S.team().days.map(d => d.date), ['2026-09-27']);
+    assert.deepEqual(S.team().days[0].games, [moving, dest0], '9:00 sorts ahead of 10:00');
+    assert.equal(S.state.activeDay, 0);
+    assert.equal(S.state.activeGame, 0, 'opens at the sorted index');
   });
 });
 
@@ -226,6 +262,109 @@ test('openGame sets both activeDay and activeGame', () => {
     S.openGame(1, 1);
     assert.equal(S.state.activeDay, 1);
     assert.equal(S.state.activeGame, 1);
+  });
+});
+
+/* ---------------------------- #102: setTipoff ---------------------------- */
+
+test('setTipoff writes, sorts the day and re-points activeGame at the same game', () => {
+  const first = S.newGame(0, null, FORMAT); first.tipoff = '09:00';
+  const open = S.newGame(1, null, FORMAT);
+  withDays(SIX, [
+    { name: '', date: '2026-09-26', games: [first, open] },
+  ], FORMAT, () => {
+    S.state.activeDay = 0;
+    S.state.activeGame = 1; // `open` is open, currently after `first`
+    S.setTipoff('08:00');
+    assert.deepEqual(S.team().days[0].games, [open, first],
+      '8:00 sorts ahead of the 9:00 game already there');
+    assert.equal(S.state.activeDay, 0);
+    assert.equal(S.state.activeGame, 0, 'activeGame follows the same game to its new index');
+    assert.equal(open.tipoff, '08:00');
+  });
+});
+
+test('setTipoff treats a malformed value as absent, the same gate sanitize writes through', () => {
+  const g0 = S.newGame(0, null, FORMAT);
+  withDays(SIX, [
+    { name: '', date: '2026-09-26', games: [g0] },
+  ], FORMAT, () => {
+    S.state.activeDay = 0;
+    S.state.activeGame = 0;
+    S.setTipoff('9:00');
+    assert.equal(g0.tipoff, '', 'not zero-padded, so treated as absent');
+  });
+});
+
+/* #102 item 3 (corrected): C(08:00), A(09:00), B(''), D('') -- clearing A's
+ * tip-off gives C, A, B, D. A stable sort of the current array: a cleared
+ * game does not jump to the end, it keeps its place among the untimed
+ * games. */
+test('setTipoff clearing a tip-off keeps the game\'s place among the untimed ones (stable sort)', () => {
+  const C = S.newGame(0, null, FORMAT); C.tipoff = '08:00';
+  const A = S.newGame(1, null, FORMAT); A.tipoff = '09:00';
+  const B = S.newGame(2, null, FORMAT); B.tipoff = '';
+  const D = S.newGame(3, null, FORMAT); D.tipoff = '';
+  withDays(SIX, [
+    { name: '', date: '2026-09-26', games: [C, A, B, D] },
+  ], FORMAT, () => {
+    S.state.activeDay = 0;
+    S.state.activeGame = 1; // A is open
+    S.setTipoff('');
+    assert.deepEqual(S.team().days[0].games, [C, A, B, D],
+      'A loses its time but keeps its place ahead of B and D');
+    assert.equal(S.team().days[0].games[S.state.activeGame], A,
+      'the open game is still A across the re-sort');
+    assert.equal(A.tipoff, '');
+  });
+});
+
+/* #102 item 3: changing a tip-off through `setTipoff` re-sorts a carryover
+ * day, and the games after the moved game are re-planned against the new
+ * order -- not just re-labelled. The proof table's own words for this row:
+ * "dayPlans with a carryover day". Mirrors the spec's own worked example --
+ * A tips off first (opens the day carryover-cold), C tips off later with `f`
+ * sitting out entirely, so whichever game follows C inherits `f`'s deficit
+ * through the carryover. */
+test('setTipoff re-sorts a carryover day: the game that ends up behind the moved game is replanned to match a day built directly in that order', () => {
+  const A = S.newGame(0, null, FORMAT); A.tipoff = '09:00'; A.useCarryover = true;
+  const B = S.newGame(1, null, FORMAT); B.tipoff = '';
+  const C = S.newGame(1, null, FORMAT); C.tipoff = '13:00'; C.out = ['f']; C.useCarryover = true;
+  const D = S.newGame(1, null, FORMAT); D.tipoff = '';
+
+  withDays(SIX, [
+    { name: '', date: '2026-09-26', games: [A, C, B, D] }, // sorted: A, C, B, D
+  ], FORMAT, () => {
+    S.computeAll();
+    const day = S.team().days[0];
+    const beforeA = structuredClone(S.dayPlans[0][day.games.indexOf(A)].minutes);
+
+    S.openGame(0, day.games.indexOf(C));
+    S.setTipoff('08:00'); // C moves ahead of A
+    assert.deepEqual(day.games, [C, A, B, D], 'fixture check: C sorts ahead of A');
+
+    S.computeAll();
+    const afterA = S.dayPlans[0][day.games.indexOf(A)].minutes;
+    assert.notDeepEqual(afterA, beforeA,
+      'A now opens behind C\'s carryover instead of opening the day cold');
+
+    // Reference: the same four games, cloned onto fresh ids so the plan
+    // cache cannot just hand back the run above, built directly in the
+    // C, A, B, D order -- the plan a real re-sort should land on.
+    const saved = S.state.teams;
+    const cloneWithNewId = g => ({ ...structuredClone(g), id: g.id + '-ref' });
+    S.state.teams = [{
+      id: 't', name: 'T', players: SIX, days: [
+        { name: '', date: '2026-09-26', games: [C, A, B, D].map(cloneWithNewId) },
+      ], activeDay: 0, season: { games: [] }, activeGame: 0, settings: FORMAT,
+    }];
+    S.state.activeTeam = 0;
+    S.computeAll();
+    const reference = S.dayPlans[0][1].minutes; // A's clone, at index 1
+    S.state.teams = saved;
+
+    assert.deepEqual(afterA, reference,
+      'the re-sorted plan matches the same day built directly in the new order');
   });
 });
 

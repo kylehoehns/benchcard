@@ -16,7 +16,7 @@ const emptyConstraints = () => ({
   openingFive: [], lastPeriodFive: [], hardPairs: false, maxConsecutive: 0,
   targetSlots: {}, lockedTargets: [], closing: { stints: 2, players: [] }, units: [],
 });
-const newGame = () => ({ id: 'gnew', label: '', when: '', periods: 4, periodMinutes: 8,
+const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8,
   granMode: 'everyN', granValue: 4, out: [], useCarryover: false, strategy: 'balanced',
   balance: 'even', live: { at: 0, overrides: {} }, seed: 1, constraints: emptyConstraints() });
 const migrateLegacy = () => null;
@@ -46,7 +46,7 @@ const populated = () => ({
         name: 'Saturday at Northgate',
         games: [
           {
-            id: 'g1', label: 'Northgate', when: '9:00', periods: 4, periodMinutes: 8,
+            id: 'g1', label: 'Northgate', tipoff: '09:00', periods: 4, periodMinutes: 8,
             granMode: 'everyN', granValue: 4, out: ['p10', 'p11'], useCarryover: false,
             strategy: 'closers', balance: 'finish', seed: 12345,
             live: { at: 3, overrides: { 2: ['p0', 'p1', 'p2', 'p3', 'p4'] } },
@@ -64,7 +64,7 @@ const populated = () => ({
             },
           },
           {
-            id: 'g2', label: 'Kingsway', when: '11:30', periods: 2, periodMinutes: 16,
+            id: 'g2', label: 'Kingsway', tipoff: '11:30', periods: 2, periodMinutes: 16,
             granMode: 'perPeriod', granValue: 2, out: [], useCarryover: true,
             strategy: 'platoon', balance: 'both', seed: 999,
             live: { at: 0, overrides: {} }, constraints: emptyConstraints(),

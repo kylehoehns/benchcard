@@ -685,7 +685,12 @@
                    before today, same rule as the add-a-game flow. -->
               <div><label class="f" for="gameDate">Date</label><input type="date" id="gameDate"></div>
               <div><label class="f" for="label">Opponent</label><input type="text" id="label" placeholder="Panthers"></div>
-              <div><label class="f" for="when">Tip-off</label><input type="text" id="when" placeholder="Sat 9:00"></div>
+            </div>
+            <!-- #102: its own row (C6) -- native `type="time"` picks a real
+                 time rather than free text; `app.js` wires `oninput` to
+                 `setTipoff`, which sorts the day by it. -->
+            <div class="row">
+              <div><label class="f" for="when">Tip-off</label><input type="time" id="when"></div>
             </div>
             <button class="btn ghost danger sm press" id="removeGame" hidden style="margin-top:.9rem">Remove this game</button>
           </div>

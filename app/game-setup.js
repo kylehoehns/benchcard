@@ -44,7 +44,7 @@ export function renderSetup() {
   set('#gameDate', 'value', state.day.date);
   set('#gameDate', 'min', seasonDate());
   set('#label', 'value', g.label);
-  set('#when', 'value', g.when);
+  set('#when', 'value', g.tipoff);
   set('#copies', 'value', state.ui.copies);
   set('#cardId', 'value', state.ui.cardId);
   set('#cardSize', 'value', state.ui.cardSize);

@@ -352,6 +352,51 @@ export function addSeasonGames(season, games) {
   return add.length;
 }
 
+const TIPOFF_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+/**
+ * `"HH:MM"` (24-hour, zero-padded) or `""` for anything else -- absent, a
+ * stranger's typed text ("Sat 9:00"), an unpadded hour ("9:00") or an out of
+ * range one ("25:00", "12:60"). The one gate `sanitizeGames` and `setTipoff`
+ * (state.js) both write a game's `tipoff` through, so a malformed value can
+ * only ever mean "no tip-off" -- never a half-valid time on screen.
+ */
+export const validTipoff = v => (typeof v === 'string' && TIPOFF_RE.test(v) ? v : '');
+
+/**
+ * The one time-label function (#102): every display site -- the pass, its
+ * aria-label, `#gameSub`, "Evens out ...", "Same as ...?" and the card's
+ * corner -- reads a tip-off through this rather than calling
+ * `toLocaleTimeString` itself. Built from local parts (`new Date(2000, 0, 1,
+ * h, m)`), never a parsed string -- a `Date` built from `"09:00"` directly
+ * would be read as UTC. `locale` defaults to `undefined` (the phone's own),
+ * a parameter rather than baked in so a test can pin `'en-US'`.
+ */
+export const tipoffLabel = (hhmm, locale) => {
+  const m = TIPOFF_RE.exec(String(hhmm || ''));
+  if (!m) return '';
+  const d = new Date(2000, 0, 1, Number(m[1]), Number(m[2]));
+  return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+};
+
+/**
+ * Stable in-place sort of one day's games: timed games first, earliest tip-off
+ * first (a plain string compare -- zero-padded "HH:MM" sorts correctly as
+ * text), untimed games after in the order they already had. `Array#sort` is
+ * itself stable, so two games with the same tip-off, or two with none, keep
+ * their relative order for free -- the whole change #102 makes to a day's
+ * order is calling this after the array changes.
+ */
+export function sortDay(games) {
+  games.sort((a, b) => {
+    if (a.tipoff && b.tipoff) return a.tipoff < b.tipoff ? -1 : a.tipoff > b.tipoff ? 1 : 0;
+    if (a.tipoff) return -1;
+    if (b.tipoff) return 1;
+    return 0;
+  });
+  return games;
+}
+
 /**
  * Coerce one team into a valid shape. A team owns its roster, its day of games
  * and which of those games is open -- everything the solver reads. The rest of
@@ -412,7 +457,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
       return {
         id: typeof g.id === 'string' && g.id ? g.id : 'g' + Math.random().toString(36).slice(2, 8),
         label: typeof g.label === 'string' ? g.label : '',
-        when: typeof g.when === 'string' ? g.when : '',
+        tipoff: validTipoff(g.tipoff),
         periods: num(g.periods, 4, 1, 8),
         periodMinutes: num(g.periodMinutes, 8, 1, 40),
         granMode: ['everyN', 'perPeriod', 'breaksOnly'].includes(g.granMode) ? g.granMode : 'everyN',
@@ -483,6 +528,10 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
   let days = [...byDate.values()]
     .filter(d => d.games.length > 0)
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  // #102: tip-off order is the stored order -- a hand-edited backup, or one
+  // dragged from an older build that never sorted, still lands in item 3's
+  // order the moment it loads.
+  for (const d of days) sortDay(d.games);
   // no empty days, but never zero days either: a new team, or every day
   // filed, gets one day dated today with one new game (#100's fallback).
   if (!days.length) days = [{ name: '', date: today0, games: [newGame(0, null, settings)] }];

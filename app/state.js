@@ -15,7 +15,8 @@
 import { generatePlan, fmtMinutes, buildStints, DEFAULT_TIER } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
-         sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate } from './storage.js';
+         sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
+         validTipoff, tipoffLabel, sortDay } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 
@@ -112,7 +113,7 @@ export const GRAN_CHOICES = [
 
 export function newGame(n, from, settings) {
   const g = {
-    id: uid('g'), label: '', when: '',
+    id: uid('g'), label: '', tipoff: '',
     /* The team's game format (v6, slice 4). 4 and 8 are the literals this line
        has always carried, so absent settings mean exactly what they did. The
        clone below still overwrites both when there IS a game to copy: the
@@ -207,7 +208,7 @@ export function migrateLegacy([v2, v1]) {
   if (old.day) return { version: 3, players, day: old.day, activeGame: old.activeGame || 0, ui: old.ui || {} };
   const g = newGame(0);
   Object.assign(g, {
-    label: old.opponent || '', when: old.gameDate || '', periods: old.periods,
+    label: old.opponent || '', tipoff: old.gameDate || '', periods: old.periods,
     periodMinutes: old.periodMinutes, granMode: old.granMode, granValue: old.granValue,
     out: old.out || [],
   });
@@ -600,15 +601,27 @@ export function dayFor(date) {
 }
 
 /**
+ * The one step `addGame`, `moveGame` and `setTipoff` all take after touching
+ * a day's tip-off order (#102 item 3): sort `games` by tip-off and re-open
+ * `g` at its new index in the day at `dayIndex`, so the open game follows
+ * itself across the re-sort rather than staying at the index it had before.
+ */
+function reopenSorted(dayIndex, games, g) {
+  sortDay(games);
+  openGame(dayIndex, games.indexOf(g));
+}
+
+/**
  * Adds `g` to the day dated `date` (via `dayFor`), at the end of that day's
- * games, and opens it (`openGame`, below) -- the shape "Add a game" commits
- * (#32, #101 item 2).
+ * games, then sorts that day by tip-off and opens `g` at its sorted index
+ * (`reopenSorted`, above) -- the shape "Add a game" commits (#32, #101 item
+ * 2, #102 item 3).
  */
 export function addGame(g, date) {
   const i = dayFor(date);
   const day = team().days[i];
   day.games.push(g);
-  openGame(i, day.games.length - 1);
+  reopenSorted(i, day.games, g);
   return i;
 }
 
@@ -631,7 +644,24 @@ export function moveGame(date, today = new Date()) {
   dest.games.push(g);
   if (!day.games.length) t.days.splice(t.days.indexOf(day), 1);
 
-  openGame(t.days.indexOf(dest), dest.games.length - 1);
+  reopenSorted(t.days.indexOf(dest), dest.games, g);
+}
+
+/**
+ * Writes `tipoff` on the OPEN game -- through `validTipoff`, the same gate
+ * `sanitizeGames` writes a game's tip-off through, so a malformed value here
+ * means exactly what it does on load: absent -- sorts its day and re-points
+ * `activeGame` at the same game across the re-sort (#102 item 3). `#when`'s
+ * input handler (app.js, game-setup.js) calls this rather than writing
+ * `tipoff` on the game directly.
+ */
+export function setTipoff(v) {
+  const d = team().activeDay;
+  const day = team().days[d];
+  const g = day.games[state.activeGame];
+  if (!g) return;
+  g.tipoff = validTipoff(v);
+  reopenSorted(d, day.games, g);
 }
 
 /**
@@ -884,7 +914,7 @@ export function evensOutLine(i) {
   const g = games[i];
   if (!g || i === 0 || !g.useCarryover) return '';
   const earlier = games.slice(0, i);
-  const names = earlier.map(e => e.when || e.label || null);
+  const names = earlier.map(e => tipoffLabel(e.tipoff) || e.label || null);
   const plural = earlier.length > 1;
   if (names.some(nm => !nm)) return `Evens out the earlier game${plural ? 's' : ''}.`;
   return `Evens out the ${joinNames(names)} game${plural ? 's' : ''}.`;
@@ -901,10 +931,13 @@ export function evensOutLine(i) {
    roster, and "Same as Game 1? 0 players, 4 × 8, even minutes" offers to
    copy nothing. So the test is whether the last game has anyone at it.
 
-   The name is `when || gameLabel(g, i)` -- tip-off, then opponent, then
-   "Game N" -- which is `evensOutLine`'s own precedence above, so the two
-   lines cannot disagree about what a game is called. The summary is three of
-   `sentenceParts`'s five phrases joined; none of them is re-derived here. */
+   #102: the title reads the last game's tip-off, formatted through the one
+   time-label function, or `"the last game"` when it has none -- no opponent
+   or "Game N" fallback. This REPLACES the old fallback to the opponent
+   (`evensOutLine` above keeps its own opponent fallback; the two lines are
+   no longer required to agree on what an untimed game is called). The
+   summary is three of `sentenceParts`'s five phrases joined; none of them is
+   re-derived here. */
 export function sameAsLast() {
   const days = team().days;
   const games = days[days.length - 1].games;
@@ -913,7 +946,7 @@ export function sameAsLast() {
   if (!g || !availIds(g).length) return null;
   const { players, format, strategy } = sentenceParts(g, i);
   return {
-    title: `Same as ${g.when || gameLabel(g, i)}?`,
+    title: g.tipoff ? `Same as ${tipoffLabel(g.tipoff)}?` : 'Same as the last game?',
     summary: `${players}, ${format}, ${strategy}`,
   };
 }

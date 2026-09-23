@@ -74,7 +74,7 @@ const emptyConstraints = () => ({
   openingFive: [], lastPeriodFive: [], hardPairs: false, maxConsecutive: 0,
   targetSlots: {}, lockedTargets: [], closing: { stints: 2, players: [] }, units: [],
 });
-const newGame = () => ({ id: 'gnew', label: '', when: '', periods: 4, periodMinutes: 8,
+const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8,
   granMode: 'everyN', granValue: 4, out: [], useCarryover: false, strategy: 'balanced',
   seed: 1, constraints: emptyConstraints() });
 const H = { emptyConstraints, newGame, migrateLegacy };

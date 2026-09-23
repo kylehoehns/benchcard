@@ -84,7 +84,7 @@ export const LONG_NAME = 'Maximilian Alexander Featherstone-Whitmore';
 export const SEED = {
   version: 3, onboarded: true, tourSeen: true, teamName: 'Smoke Test',
   players: PLAYERS,
-  day: { name: 'Saturday', games: [{ id: 'g0', label: 'Hawks', when: '9:00', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 1234 }] },
+  day: { name: 'Saturday', games: [{ id: 'g0', label: 'Hawks', tipoff: '09:00', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 1234 }] },
   activeGame: 0, view: 'games',
   ui: UI,
 };
@@ -139,8 +139,8 @@ export const RICH = {
     days: [{
       name: 'Saturday',
       games: [
-        { id: 'g0', label: 'Hawks', when: '9:00', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 1234 },
-        { id: 'g1', label: 'Ravens', when: '11:30', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 5678 },
+        { id: 'g0', label: 'Hawks', tipoff: '09:00', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 1234 },
+        { id: 'g1', label: 'Ravens', tipoff: '11:30', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', seed: 5678 },
       ],
     }],
     activeDay: 0,
@@ -240,13 +240,22 @@ export async function reloadWithRecord(c, origin, record) {
  * booted straight onto Today with four games -- the fixture `docs/specs/
  * 26-game-passes.md`'s "What would settle it" table names, verbatim:
  *
- *   0 Panthers  9:00  balanced, everyone in, no rules,        useCarryover false
- *   1 Ravens   11:30  balanced, p11 out, a pair (p0+p1) and    useCarryover true
+ *   0 Panthers  9:00 AM balanced, everyone in, no rules,        useCarryover false
+ *   1 Ravens   11:30 AM balanced, p11 out, a pair (p0+p1) and    useCarryover true
  *              a starting five (p0-p4)
- *   2 (none)    2:00  closers, everyone in, no rules,          useCarryover false
- *   3 Owls     (none) balanced, everyone in, a min of 40 for   useCarryover false
+ *   2 (none)    2:00 PM closers, everyone in, no rules,          useCarryover false
+ *   3 Owls     (none)  balanced, everyone in, a min of 40 for   useCarryover false
  *              p0 at 4x8 -- more than the game holds, so this
  *              one plan is blocked ("Needs a fix")
+ *
+ * #102: each tip-off is zero-padded 24h ("14:00", not "2:00"), and every
+ * game but Owls carries one -- chosen (9:00, 11:30, 14:00) so that sorting
+ * the day by tip-off (sanitizeTeam -> sortDay, storage.js) leaves this exact
+ * literal order alone; the untimed Owls already sorts last on its own. Had
+ * one of the first three been earlier than Panthers, `sortDay` would move it
+ * ahead at load and silently change which games are "earlier" for Ravens's
+ * carryover -- this file picks times that make that reordering a no-op
+ * instead of chasing it through the solver.
  *
  * Each game omits `constraints` unless the table names a rule for it --
  * `sanitizeTeam` fills in `emptyConstraints()` either way, so a bare game
@@ -260,14 +269,14 @@ export const FOUR = (() => {
   const team = record.teams[0];
   team.players.push({ id: 'p11', name: 'Kai Moreau', number: '10', shortName: '', tier: 3 });
   team.days[0].games = [
-    { id: 'g0', label: 'Panthers', when: '9:00', periods: 4, periodMinutes: 8,
+    { id: 'g0', label: 'Panthers', tipoff: '09:00', periods: 4, periodMinutes: 8,
       granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', useCarryover: false, seed: 1111 },
-    { id: 'g1', label: 'Ravens', when: '11:30', periods: 4, periodMinutes: 8,
+    { id: 'g1', label: 'Ravens', tipoff: '11:30', periods: 4, periodMinutes: 8,
       granMode: 'everyN', granValue: 4, out: ['p11'], strategy: 'balanced', useCarryover: true, seed: 2222,
       constraints: { pairs: [['p0', 'p1']], openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] } },
-    { id: 'g2', label: '', when: '2:00', periods: 4, periodMinutes: 8,
+    { id: 'g2', label: '', tipoff: '14:00', periods: 4, periodMinutes: 8,
       granMode: 'everyN', granValue: 4, out: [], strategy: 'closers', useCarryover: false, seed: 3333 },
-    { id: 'g3', label: 'Owls', when: '', periods: 4, periodMinutes: 8,
+    { id: 'g3', label: 'Owls', tipoff: '', periods: 4, periodMinutes: 8,
       granMode: 'everyN', granValue: 4, out: [], strategy: 'balanced', useCarryover: false, seed: 4444,
       constraints: { minMinutes: { p0: 40 } } },
   ];

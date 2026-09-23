@@ -1,4 +1,4 @@
-import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, evensOutWant, step, WIDTH, HEIGHT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 import { evalJSON, checkTitleFocused, click, closedWithFocus, drag, dragCloseFade, flick, resizeCheck, settle, sheetRect, setGame, statusOk } from './sheet-drive.mjs';
 
@@ -73,7 +73,12 @@ export async function sentenceSheetsPass(c, origin) {
       return JSON.stringify({ hidden: line?.hidden, text: btn?.textContent });
     })()`);
     ck(s2.hidden === false, 'Ravens has useCarryover on but the second line stayed hidden');
-    ck(s2.text === 'Evens out the 9:00 game.', `the second line reads "${s2.text}", want "Evens out the 9:00 game."`);
+    // #102: Hawks' 9:00 tip-off, read through the same `tipoffLabel` the
+    // sentence itself calls (`evensOutWant`, dom.mjs), rather than a
+    // hard-coded "9:00 AM" this ICU version's own AM/PM spacing (an ASCII
+    // space or U+202F) could break.
+    const wantS2 = await evensOutWant(c, '09:00');
+    ck(s2.text === wantS2, `the second line reads "${s2.text}", want "${wantS2}"`);
     // back to Hawks, useCarryover off, for every section below -- same
     // switch, same path, then back to Hawks through Today.
     await evalIn(c, step(`document.querySelector('#planDay input[switch]').click()`));

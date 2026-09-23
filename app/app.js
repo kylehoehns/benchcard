@@ -33,7 +33,7 @@ import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, soon, setView, applyTheme, applyTint, AFTER_EDIT, PLAN_ONLY } from './render.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         dueToFile, fileIfPast, moveGame } from './state.js';
+         dueToFile, fileIfPast, moveGame, setTipoff } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -113,7 +113,7 @@ on('#teamName', 'oninput', e => {
   soon('cards');
 });
 on('#label', 'oninput', e => { game().label = e.target.value; soon('tabs', 'totals', 'cards'); });
-on('#when', 'oninput', e => { game().when = e.target.value; soon('tabs', 'cards'); });
+on('#when', 'oninput', e => { setTipoff(e.target.value); soon('tabs', 'cards'); });
 /* #101 item 3: moves the game to another day. `renderSetup` (game-setup.js)
    is the one place `#gameDate`'s value is repainted, and it is not in
    `AFTER_EDIT`/`PLAN_ONLY` (only a full render walks the `setup` section),

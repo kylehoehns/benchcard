@@ -27,7 +27,7 @@ Everything below is relative to `app/`.
 - `icons.js` — Lucide path data, extracted at vendor time.
 - `fx.js` — animation vocabulary over the vendored Motion library.
 - `budget.js` — minute-budget allocation in stint slots. Pure.
-- `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100), `teams[].days` (a list), `teams[].activeDay` to track the open day, and migration from v6's single `day` to v7's `days` list. Pure apart from `localStorage`.
+- `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100), `teams[].days` (a list, each day's games sorted by tip-off time, #102), `teams[].activeDay` to track the open day, and migration from v6's single `day` to v7's `days` list. Pure apart from `localStorage`.
 - `dom.js` — forgiving DOM one-liners shared by the UI modules, plus the
   shared `ctx2d` canvas everything that sizes type by measurement uses.
 - `trap.js` — focus trap for the overlays, the `data-fk` focus/caret restore,
@@ -381,7 +381,7 @@ than measuring one screen at one width — which is what let both of those live.
 ## Interface
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
-active team's name as the large title and team-switcher button, a gear for Settings, multiple days stacked in date order each with its own heading and games, then Team and Season as two entries underneath, and Add a game.
+active team's name as the large title and team-switcher button, a gear for Settings, multiple days stacked in date order each with its own heading and games (each day's games shown in tip-off order, #102), then Team and Season as two entries underneath, and Add a game.
 A day files itself into the season once it has passed (#100) — there is no
 "New day" button any more. Game, Team, Season and Settings are each one
 screen away from
@@ -763,7 +763,7 @@ at once. The release math is pure and tested in `test/trap.test.js`.
 Mobile specifics that came out of real use:
 
 - **Today's games are game passes (#26).** A coach opening the app on a
-  tournament morning sees them stacked: each shows when it tips off, the
+  tournament morning sees them stacked in tip-off order (#102): each shows when it tips off, the
   opponent, whether the plan is ready (Planned, green) or blocked (Needs a fix,
   amber), a small picture of who plays when and for how long (one row per
   available player, `aria-hidden` since it is not a roster list), and a line of

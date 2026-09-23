@@ -26,17 +26,20 @@ const BASELINE_NODES = JSON.parse(
 
 // One row per pass, from the spec's own table (items 2-6, 8) -- never read
 // back from `passSummary`/`passBlocks` themselves, which would only prove
-// those functions agree with themselves.
-const WANT = [
-  { title: 'Panthers', when: '9:00', status: 'Planned',
+// those functions agree with themselves. `when`/`aria` are filled in from
+// the running page's own `tipoffLabel` (`gamePassesPass`, below) rather than
+// a hard-coded "9:00 AM" -- storage.js's one time-label function is the only
+// thing allowed to decide the AM/PM spacing an ICU version prints (#102).
+const buildWant = tipoffs => [
+  { title: 'Panthers', when: tipoffs[0], status: 'Planned',
     summary: '12 players · even minutes',
-    aria: 'Panthers, 9:00, planned', rows: 12, rot: true },
-  { title: 'Ravens', when: '11:30', status: 'Planned',
+    aria: `Panthers, ${tipoffs[0]}, planned`, rows: 12, rot: true },
+  { title: 'Ravens', when: tipoffs[1], status: 'Planned',
     summary: '11 players · even minutes · evens out the day · 2 rules',
-    aria: 'Ravens, 11:30, planned', rows: 11, rot: true },
-  { title: 'Game 3', when: '2:00', status: 'Planned',
+    aria: `Ravens, ${tipoffs[1]}, planned`, rows: 11, rot: true },
+  { title: 'Game 3', when: tipoffs[2], status: 'Planned',
     summary: '12 players · a closing group',
-    aria: 'Game 3, 2:00, planned', rows: 12, rot: true },
+    aria: `Game 3, ${tipoffs[2]}, planned`, rows: 12, rot: true },
   { title: 'Owls', when: null, status: 'Needs a fix',
     summary: '12 players · even minutes · 1 rule',
     aria: 'Owls, needs a fix', rows: 0, rot: false },
@@ -209,6 +212,14 @@ export async function gamePassesPass(c, origin) {
     await reloadWithRecord(c, origin, FOUR);
     fourToday = await evalIn(c, `document.querySelectorAll('#view-today *').length`);
     roomCeiling = ceiling('nodes', BASELINE_NODES);
+
+    // #102: FOUR's own three tip-offs (fixtures.mjs), read through the same
+    // `tipoffLabel` the pass prints -- see `buildWant`'s own comment.
+    const tipoffs = JSON.parse(await evalIn(c, `(async () => {
+      const { tipoffLabel } = await import('${origin}/storage.js');
+      return JSON.stringify(['09:00', '11:30', '14:00'].map(t => tipoffLabel(t)));
+    })()`));
+    const WANT = buildWant(tipoffs);
     const total = cold + (fourToday - coldToday);
     if (total > roomCeiling) {
       problems.push(`cold ${cold} + (fourToday ${fourToday} - coldToday ${coldToday}) = ${total}, `
