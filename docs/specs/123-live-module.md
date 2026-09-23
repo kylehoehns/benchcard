@@ -67,6 +67,13 @@ owner. Every open question is decided here from the tree, `CONTEXT.md` and
   ticket, which asks for a separate pure module. `AGENTS.md` and the
   `guard-bash.sh` message, which described the old pin, are updated to
   point at it.
+- **Closing bench mode repaints the game screen's sub line too.** Found at
+  the browser check: after stepping to the last stint and closing, the button
+  read "Start game" and Today's pass read "Planned", but `#gameSub` still
+  read "Underway". `main` does the same. `closeGameMode` repainted the pass
+  and the button but not `renderTabs`, which paints `#gameSub`. This is a
+  second screen disagreeing about the same game, the bug the Goal exists to
+  end, so it is fixed here rather than filed.
 - **The existing tests are kept and repointed.** `test/pass-status.test.js`
   and `test/resume-bar.test.js` build real plans and stay as they are, apart
   from the new signatures. The new `test/live.test.js` is the plain-input

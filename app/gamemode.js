@@ -285,7 +285,11 @@ function closeGameMode() {
   // may have changed (this game may no longer be part-played, or another one
   // now is), and there is no manual `#resumeBar.hidden` line here the way
   // `#actionbar`'s is above, because `renderResumeBar` re-derives it fresh.
-  render('cards', 'timeline', 'summary', 'gameview', 'resume');
+  // #123's Goal: 'tabs' repaints too -- it is what paints the game screen's
+  // own #gameSub (renderTabs, teams-view.js), and closing a game whose stage
+  // just changed (for example reaching the end) left it reading the old
+  // passStatus word until the coach left Games and came back.
+  render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs');
   closeTrap($('#gamemode'));
   onClose(reachedEnd);
 }

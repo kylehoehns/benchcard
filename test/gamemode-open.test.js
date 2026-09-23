@@ -200,3 +200,23 @@ test('the stint dots are a picture, not twelve unhittable buttons', () => {
   assert.match(html, /id="gmDots" aria-hidden="true"/,
     'the dot strip is announced again, one dot at a time, next to the sentence that already says it');
 });
+
+test('closing bench mode repaints the game screen\'s own sub line, not just the panes behind it', () => {
+  /* #123's Goal: a game's place is one answer everywhere. Found in a browser
+     at 390x844 (RICH, game 0's live.at = 2): step to the last stint and close
+     with #gmClose -- Today's pass turns Planned and #gmOpen reads "Start
+     game", but the game screen's own #gameSub kept reading "... Underway"
+     until the coach left Games and came back. #gameSub is painted by
+     `renderTabs` (app/teams-view.js), dispatched through render.js's 'tabs'
+     kind -- the same passStatus(live.js) call the pass and the button read,
+     so the fix is asking for that repaint too, not a second place that
+     decides the word. */
+  const fn = src.slice(src.indexOf('function closeGameMode'));
+  const body = fn.slice(0, fn.indexOf('\n}'));
+  const call = body.match(/render\(([^)]*)\)/);
+  assert.ok(call, 'closeGameMode must still repaint on its way out');
+  const kinds = call[1].split(',').map(s => s.trim().replace(/^['"]|['"]$/g, ''));
+  assert.ok(kinds.includes('tabs'),
+    "closeGameMode's render(...) call must include 'tabs' -- renderTabs is what paints #gameSub, "
+    + 'and none of cards/timeline/summary/gameview/resume repaint it');
+});
