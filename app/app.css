@@ -515,6 +515,7 @@ a { color: inherit; }
 .pass-status::before { content: ''; width: .5rem; height: .5rem; border-radius: 50%; flex: none; }
 .pass-status.ok::before { background: var(--ok); }
 .pass-status.warn::before { background: var(--warn); }
+.pass-status.now::before { background: var(--accent); }
 
 .pass-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: var(--fs-large); font-weight: 700; letter-spacing: -.03em; }
