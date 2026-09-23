@@ -46,7 +46,7 @@ Everything below is relative to `app/`.
   else — the band is outside the card rect, so it costs the card no space.
 - `backup.js` — the whole record out to a JSON file and back. Deliberately
   small: export is `JSON.stringify(state)` and import is `storage.js`'s
-  `sanitize`, so there is neither a second serialiser nor a second parser to
+  `sanitize`, so there is neither a second serializer nor a second parser to
   drift from the schema.
 - `render.js` — the repaint dispatcher: `SECTIONS` (one key per independently
   repaintable region), `render` / `renderAll`, the debounced `soon`, the
@@ -104,7 +104,7 @@ README carries the test count; it is not repeated here). Generation runs
   add up to the whole game; short of that the spare minutes get shared out and
   each row says what it will really play.
 - **Closers** -- even minutes early, a group you pick finishes the game.
-- **Platoon** -- fixed fives alternating wholesale, no optimisation.
+- **Platoon** -- fixed fives alternating wholesale, no optimization.
 
 Plus rules that compose with any of them: min/cap minutes, Together and
 Apart pairs, pinned opening five and last-period five, and a
@@ -642,7 +642,7 @@ pattern as `data-theme`. `prefers-reduced-motion` disables all of it, and
 **the preference is watched, not sampled** — a phone can flip it from Control
 Center mid-game, so `fx.js` exports `enabled` as a live binding and re-reads
 the query on `change`. That gating is not decoration: the CSS
-`@media (prefers-reduced-motion: reduce)` block can only neutralise CSS
+`@media (prefers-reduced-motion: reduce)` block can only neutralize CSS
 animations and transitions, and everything discrete here (Motion, the timeline
 block FLIP) runs through the Web Animations API, whose timing lives on the
 animation object where no media query reaches it. Turning the preference on

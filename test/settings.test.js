@@ -128,7 +128,7 @@ test('adding a team copies from the team the coach was on', () => {
 /* ---- the accessor, and why it must stay non-enumerable ---- */
 
 test('state.settings is a non-enumerable accessor, so no record gains a second copy', () => {
-  /* `saveState` and `backupText` both serialise with JSON.stringify, which
+  /* `saveState` and `backupText` both serialize with JSON.stringify, which
      walks own *enumerable* properties. An enumerable getter here would write
      the active team's settings a second time at the top of the record, and on
      the next load the two would disagree -- the same trap `players`, `day` and

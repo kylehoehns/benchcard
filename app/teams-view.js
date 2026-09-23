@@ -167,7 +167,7 @@ export function initTeams(renderAllFn, setViewFn) {
   /* The league floor. `onchange`, not `oninput`: typing "1" on the way to "12"
      would otherwise re-solve every plan in the day against a one-minute rule
      and flash its warnings at a coach mid-keystroke. Blank is off, and the
-     field is re-painted from the sanitised number so a coach who types 99 or
+     field is re-painted from the sanitized number so a coach who types 99 or
      -4 sees what actually took. */
   on('#minMins', 'onchange', (e) => {
     const s = team()?.settings;

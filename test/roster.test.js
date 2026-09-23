@@ -21,7 +21,7 @@ test('a trailing number is picked up in its common forms', () => {
   }
 });
 
-test('single-digit and zero-padded numbers normalise', () => {
+test('single-digit and zero-padded numbers normalize', () => {
   assert.deepEqual(p('4 Eli Tran'), { number: '4', name: 'Eli Tran' });
   assert.deepEqual(p('04 Eli Tran'), { number: '4', name: 'Eli Tran' });
 });
@@ -136,7 +136,7 @@ test('blank numbers are not duplicates -- most of a roster may have none', () =>
   assert.deepEqual(dn([['', 'A'], ['', 'B'], ['  ', 'C']]), []);
 });
 
-test('a pasted 07 and a typed 7 are one number, normalised the way the parser does', () => {
+test('a pasted 07 and a typed 7 are one number, normalized the way the parser does', () => {
   assert.deepEqual(dn([['07', 'Zed'], ['7', 'Devon']]), [{ number: '7', ids: ['p0', 'p1'] }]);
 });
 

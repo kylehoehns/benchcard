@@ -23,7 +23,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { FEATURES, KEEP, SURFACES, covered, termsFor, normalise, partsOf, app } from './feature-keys.mjs';
+import { FEATURES, KEEP, SURFACES, covered, termsFor, normalize, partsOf, app } from './feature-keys.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const TEST = 'test/feature-coverage.test.js';
@@ -41,7 +41,7 @@ function mutate(html, feature, surfaceName) {
     out += t;
   }
   for (const phrase of feature.text || []) {
-    out = out.replace(new RegExp(esc(normalise(phrase)), 'ig'), 'REDACTED');
+    out = out.replace(new RegExp(esc(normalize(phrase)), 'ig'), 'REDACTED');
   }
   return out;
 }

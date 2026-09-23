@@ -317,7 +317,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   single-game "best possible spread" benchmark is wrong and gets replaced by an
   explanation of who is being caught up. Platoon suppresses the same benchmark,
   in the view rather than the engine: the number is still correct about the
-  format, but under a strategy that is by definition not optimising minutes it
+  format, but under a strategy that is by definition not optimizing minutes it
   reads as an accusation.
 - **Everyone plays before halftime, and it is a default rather than a setting.**
   Even *totals* were never the whole promise: a kid who does not start, sits a

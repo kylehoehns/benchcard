@@ -8,6 +8,9 @@ import { readFileSync } from 'node:fs';
    Each British fragment is built from pieces so this file's own source never
    contains the fragment it is looking for -- the module is scanned like every
    other tracked file, with no exclusion for itself. */
+const ISE = 'is';
+const NOT_ISM_OR_IST = '(?=[aei])';
+
 export const WORDS = [
   ['colo' + 'ur', 'color'],
   ['gr' + 'ey', 'gray'],
@@ -18,6 +21,28 @@ export const WORDS = [
   ['recogni' + 's', 'recogniz'],
   ['licen' + 'ce', 'license'],
   ['maxim' + 'is', 'maximiz'],
+  /* #109: British -ise verbs, all sharing this one suffix. Six of these
+     stems are also prefixes of a correct American word ending -ism/-ist
+     (optimism, optimist; generalist; formalism; capitalism, capitalist;
+     mechanism; normalism), so their fragment adds a lookahead that only
+     matches when the next letter is a, e or i -- every -ise/-ised/-ises/
+     -ising/-isation/-iser form, never -ism or -ist. */
+  ['author' + ISE, 'authoriz'],
+  ['capital' + ISE + NOT_ISM_OR_IST, 'capitaliz'],
+  ['crystall' + ISE, 'crystalliz'],
+  ['formal' + ISE + NOT_ISM_OR_IST, 'formaliz'],
+  ['general' + ISE + NOT_ISM_OR_IST, 'generaliz'],
+  ['mechan' + ISE + NOT_ISM_OR_IST, 'mechaniz'],
+  ['monet' + ISE, 'monetiz'],
+  ['neutral' + ISE, 'neutraliz'],
+  ['normal' + ISE + NOT_ISM_OR_IST, 'normaliz'],
+  ['optim' + ISE + NOT_ISM_OR_IST, 'optimiz'],
+  ['priorit' + ISE, 'prioritiz'],
+  ['quant' + ISE, 'quantiz'],
+  ['sanit' + ISE, 'sanitiz'],
+  ['serial' + ISE, 'serializ'],
+  ['standard' + ISE, 'standardiz'],
+  ['summar' + ISE, 'summariz'],
 ];
 
 /* A line carrying this marker is allowed to keep a British word, because it

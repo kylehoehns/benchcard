@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FEATURES, KEEP, SURFACES, read, covered, termsFor, normalise, shipped, chunksOf, textOf }
+import { FEATURES, KEEP, SURFACES, read, covered, termsFor, normalize, shipped, chunksOf, textOf }
   from '../scripts/feature-keys.mjs';
 import { lacks } from './prose.js';
 
@@ -93,7 +93,7 @@ test('no two feature keys resolve to the same name on the same surface', () => {
     for (const f of FEATURES) {
       const words = [...termsFor(f, name), ...(f.text || [])];
       for (const w of words) {
-        const norm = normalise(w);
+        const norm = normalize(w);
         const holder = claimedBy.get(norm);
         if (holder && holder !== f.key) collisions.push(`${name}: "${w}" names both ${holder} and ${f.key}`);
         else claimedBy.set(norm, f.key);

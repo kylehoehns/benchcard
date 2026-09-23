@@ -135,7 +135,7 @@ person would suggest.
   while play is live is dead on arrival. The advantage is doing one thing better
   than anyone; the fastest way to lose it is to become a worse GameChanger.
 - **A native app.** Every free tool in this category is web-only and every
-  monetised one is native. No reviewer asks for a web version — they defect to
+  monetized one is native. No reviewer asks for a web version — they defect to
   one. App Store search for "basketball substitution rotation" returns ten
   basketball video games and zero coaching tools.
 - **Accounts and a server.** No accounts is the product's soul and a repeated

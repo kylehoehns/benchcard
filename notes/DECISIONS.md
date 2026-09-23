@@ -25,7 +25,7 @@ individuals replaced by the decision they made. Nothing is added and nothing is
 dropped: all 384 are here, including the false starts.
 
 The formal SDLC layer — `.claude/hooks/`, `.claude/skills/`, `REVIEW.md` —
-arrives at the end and formalises a loop the earlier entries show already
+arrives at the end and formalizes a loop the earlier entries show already
 running informally.
 
 ---

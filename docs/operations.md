@@ -323,7 +323,7 @@ There is none. The Benchcard zone of Settings carries a **Buy me a coffee** link
 with `[data-tip-link]`, wired to `TIP_URL` at the top of `toast.js`. `about.html`
 hard-codes the same URL, and `analytics.test.js` pins the two together (#33 removed
 the footer's tip link). Set `TIP_URL` to `null` to hide the Settings link. The market research behind that decision:
-GameChanger gives coaches every premium feature free and monetises parents
+GameChanger gives coaches every premium feature free and monetizes parents
 instead, so coach-side tooling is expected to be free, and paid-upfront tools
 above about $3 collect hostile reviews.
 ## Status

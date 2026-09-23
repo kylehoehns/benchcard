@@ -9,7 +9,7 @@
 
    Two rules hold this module to one page of code:
 
-   1. **There is no second serialiser.** Export is `JSON.stringify(state)`.
+   1. **There is no second serializer.** Export is `JSON.stringify(state)`.
       The accessors on `state` (`players`, `day`, `activeGame`, `teamName`) are
       non-enumerable precisely so that walk yields the record shape, which
       means the exported bytes are what `saveState` already writes -- pretty-

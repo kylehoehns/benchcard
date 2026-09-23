@@ -27,7 +27,7 @@ const NAMES = ['Marcus', 'Eli', 'Devon', 'Kade', 'Aaron', 'Jack',
 
 /* One team, ten players, a two-game Saturday. Written straight onto the
    record rather than through the accessors, because that is the shape the
-   sanitiser produces. */
+   sanitizer produces. */
 function setup({ games = 2, dayName = 'Sat at Northgate', date = '2026-11-08' } = {}) {
   const t = {
     id: 't1', name: 'Wildcats', activeGame: 0,
@@ -146,7 +146,7 @@ test('the season belongs to the team, and follows the active one', () => {
 /* ---- the accessor, and why it must stay non-enumerable ---- */
 
 test('state.season is a non-enumerable accessor, so no record gains a second copy', () => {
-  /* `saveState` and `backupText` both serialise with JSON.stringify, which
+  /* `saveState` and `backupText` both serialize with JSON.stringify, which
      walks own *enumerable* properties. An enumerable getter here would write
      the active team's season a second time at the top of the record, and on
      the next load the two would disagree -- the same trap `players` and `day`

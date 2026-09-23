@@ -21,10 +21,11 @@ decide:
   existing `organi` + `s` and `recogni` + `s` entries. It matches every form
   of the British verb (-e, -es, -ed, -ing) and none of the American ones.
   On today's tree it matches only `app/rules.js:108`.
-- **Only this word.** The survey found other British `-ise` verbs (normalise,
-  sanitise, serialise, optimise and more) in about 55 tracked files, mostly in
-  comments. Adding them is a sweep of its own and goes to a follow-up issue,
-  not this change.
+- **Only this word.** The survey found other British `-ise` verbs (normal·ise,
+  sanit·ise, serial·ise, optim·ise and more) in about 55 tracked files, mostly
+  in comments. Adding them is a sweep of its own and goes to a follow-up issue,
+  not this change. (#109 did that sweep; each word above is split with `·` so
+  this historical record does not itself trip the wider list it describes.)
 
 ## What would settle it
 

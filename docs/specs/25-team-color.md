@@ -173,7 +173,7 @@ Must not change:
 
 - **Reuse, do not re-derive:**
   - One list of the nine colors, in order, in JS (next to `TIE_BREAKS` in
-    `storage.js`). The picker, the sanitiser and the contrast test read it.
+    `storage.js`). The picker, the sanitizer and the contrast test read it.
     The display name is derived from it or kept beside it, not typed twice.
   - The values live only in `tokens.css`. No hex from the table above appears
     in a JS file.

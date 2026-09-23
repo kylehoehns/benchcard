@@ -429,7 +429,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       warn('UNIT_LEFTOVERS', `${benched.map(label).join(', ')} ${benched.length === 1 ? 'is' : 'are'} not in any unit and will not play.`, benched);
     }
     /* A unit is used exactly as declared -- there is nothing for the solver to
-       optimise -- so a "never together" pair sitting inside one was honoured
+       optimize -- so a "never together" pair sitting inside one was honoured
        silently and the plan came back clean. Two instructions that contradict
        each other is the coach's call to make, but they have to be told there
        is a contradiction. Found by fuzzing platoon, which until now had never
@@ -662,7 +662,7 @@ export function generatePlan(input) {
   const forcedByStint = buildForced(stints, c, format);
   let lineups;
   if (input.strategy === 'platoon' && c.units.length) {
-    // the coach has already decided the fives; there is nothing to optimise
+    // the coach has already decided the fives; there is nothing to optimize
     lineups = platoonLineups(ctx, c.units);
   } else {
     /* Two passes, and the split is the whole point of the tie-break above.
@@ -996,7 +996,7 @@ function tieBreakOrder(ctx, priority, seed) {
     .sort((a, b) => a.k - b.k || (a.id < b.id ? -1 : 1))
     .map(x => x.id);
 
-  /* Quantised to a hundredth of a minute before it is compared. Season shares
+  /* Quantized to a hundredth of a minute before it is compared. Season shares
      are averages and land on values like 0.0000000004 apart; sorting on the
      raw float would let arithmetic noise outrank the rotation. */
   const q = id => Math.round((Number(priority && priority[id]) || 0) * 100);

@@ -19,4 +19,4 @@ paths are the policy; do not invent your own.
 - Each finding: severity as `REVIEW.md` defines it — including its cap on
   Nits — `file:line`, the problem, and the fix.
 
-Return a prioritised list, Blockers first, or "no quality issues found".
+Return a prioritized list, Blockers first, or "no quality issues found".

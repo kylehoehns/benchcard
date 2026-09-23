@@ -46,7 +46,7 @@ function stripHtmlComments(s) {
 /* Tags and entities stood between "Team" and "tab"/"page" in real copy --
  * `<b>Team</b> tab` and `Team&nbsp;tab` both read as one phrase to a coach
  * and to a screen reader, and both used to slip past a regex that wanted a
- * literal space right after "Team". Normalise the same way a browser
+ * literal space right after "Team". Normalize the same way a browser
  * renders it, before matching: drop every tag, decode the one entity this
  * copy uses for a hard space, and collapse the whitespace multi-line markup
  * leaves behind -- every sentence in this file is indented onto its own

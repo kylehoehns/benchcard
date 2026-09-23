@@ -20,4 +20,4 @@ You review the diff you are handed for **duplication and missed reuse only**.
 - Each finding: `file:line`, what is duplicated and where the original lives,
   and the consolidation.
 
-Return a short, prioritised list, or "no reuse issues found".
+Return a short, prioritized list, or "no reuse issues found".

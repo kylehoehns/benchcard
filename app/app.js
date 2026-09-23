@@ -236,7 +236,7 @@ on('#sheetPasteClose', 'onclick', () => closeSheet($('#sheetPaste')));
 
 /* ---- backup -------------------------------------------------------------
  * The whole record, out to a file the coach owns and back in again. See
- * backup.js for why there is no second serialiser and no second parser. */
+ * backup.js for why there is no second serializer and no second parser. */
 on('#exportBackup', 'onclick', () => {
   try {
     downloadBackup(state, backupFilename(teamName()));

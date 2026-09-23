@@ -61,7 +61,7 @@ means the same thing twice running.
 
 ## What is enforced, and what is only written down
 
-Most of this file is judgement and cannot be mechanised. Eight rules can be, and
+Most of this file is judgement and cannot be mechanized. Eight rules can be, and
 are, in `.claude/hooks/` — they are stated in their own sections above and are
 not restated here, only listed, so there is still one answer per rule:
 

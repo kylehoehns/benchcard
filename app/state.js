@@ -164,7 +164,7 @@ export function newGame(n, from, settings) {
    handed a roster and a game, not the record. The season belongs to the team
    for the same reason the roster does: two teams do not share a history. */
 export const newTeam = (name, players, settings, today = new Date()) => {
-  /* Sanitised first, not inline below, because the first game has to see it:
+  /* Sanitized first, not inline below, because the first game has to see it:
      a new team's opening game is the one place with nothing to clone, so the
      team's format default is the only thing that can answer it. */
   const s = sanitizeSettings(settings);
@@ -227,7 +227,7 @@ export const state = loaded ? loaded.state : freshState();
  * `state.day`. Not one of them cares *which* team is active -- they want
  * the one on screen. So the old names stay, as accessors onto it.
  *
- * Non-enumerable on purpose. `saveState` serialises with JSON.stringify,
+ * Non-enumerable on purpose. `saveState` serializes with JSON.stringify,
  * which walks own *enumerable* properties: an enumerable getter here
  * would write a second copy of the active roster into every saved record
  * beside `teams`, and on the next load the two would disagree. It also
@@ -1339,7 +1339,7 @@ export function computeAll() {
     return day.games.map(g => {
       live.add(g.id);
       const out = new Set(g.out);
-      // slots are the UI's currency; the engine works in minutes. Normalise here
+      // slots are the UI's currency; the engine works in minutes. Normalize here
       // rather than in the editor so the budget invariant holds even when the
       // roster or format changed from another view.
       if (g.strategy === 'minutes') normalizeTargets(g);
@@ -1492,7 +1492,7 @@ export function computeAll() {
 export function resolveRest(g, p, from, sitIds = []) {
   if (!p || !p.ok) return { ok: false, reason: 'noplan' };
   /* The same two `seasonTargetsFor` refuses, for the same reasons: platoon's
-     units are exact fives with nothing to optimise, and `minutes` is the
+     units are exact fives with nothing to optimize, and `minutes` is the
      hand-set-targets surface and its numbers are whole-game. */
   if (g.strategy === 'minutes' || g.strategy === 'platoon') return { ok: false, reason: 'strategy' };
 
