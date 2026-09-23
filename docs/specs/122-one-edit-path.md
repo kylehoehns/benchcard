@@ -46,10 +46,11 @@ None is the owner's to make.
   - onboarding, the tour, and the tip and install flags.
   - None of these are coach edits of a plan, and several already carry their own undo.
 - **The table replaces `AFTER_EDIT`/`PLAN_ONLY` as a caller-facing idea.** The key lists stay the one source of truth for their contents, but they live with the table. View modules stop receiving them through `init*`, and stop naming `SECTIONS` keys at all.
-- **When to paint stays per kind, as today.**
+- **When to paint stays per kind, as today; saving does not wait for it.**
   - `soon` (debounced, 140ms) for typing and sliders.
   - An immediate full `render()` where today's code does one on purpose: the settings segs (re-solving every plan), `#gameDate`, `#regen` and the strategy seg.
-  - This changes where the choice lives, not when painting happens, so no timing a coach feels changes.
+  - This changes where the paint choice lives, not when painting happens, so no timing a coach feels changes.
+  - **Saving is immediate for every kind, including a debounced one.** Before `edit.js` existed, `#dayName` and `#teamName` called `save()` synchronously on every keystroke; routing them through the debounced branch would have left the record unwritten until the painter finally ran 140ms later, losing a keystroke typed just before the tab closes or backgrounds. `edit(kind)` calls `save()` at once for every kind — a debounced kind's own keys still merge into the union and wait for the window; only the repaint waits.
 
 ## What would settle it
 

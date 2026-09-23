@@ -111,6 +111,13 @@ export function edit(kind) {
   if (spec.keys.length === 0) { save(); return; }
   if (spec.now) { paint(...spec.keys); return; }
 
+  /* Debounced kinds still save at once -- only the repaint waits for the
+     140ms window. Before this, the record was written only when the
+     painter finally ran, so a coach who typed and closed the tab within
+     140ms of their last keystroke lost it (review finding on #122: this
+     used to be true of every debounced kind, `dayName`/`teamName` included,
+     which had their own synchronous save before this file existed). */
+  save();
   for (const k of spec.keys) pending.add(k);
   clearTimeout(timer);
   timer = setTimeout(() => {

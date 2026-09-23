@@ -150,3 +150,35 @@ test('debounced edits inside the window merge into one paint with the union of t
   assert.deepEqual(paints, [['tabs', 'totals', 'cards']],
     "opponent's and tipoff's keys must merge into one paint, not fire twice");
 });
+
+/* Review finding on #122: before this, a debounced kind (`dayName`,
+ * `teamName`, `opponent`, `tipoff`) only saved when the painter finally ran,
+ * after the 140ms debounce -- so a coach who typed and closed the tab within
+ * 140ms of their last keystroke lost that keystroke. Decision: `edit(kind)`
+ * writes the record at once for every kind; only the repaint waits. Proven
+ * at edit.js's own seam by a real write to storage -- `save()` (state.js)
+ * is the function under test, and `localStorage.setItem` firing before the
+ * debounce timer does is the one externally-observable sign it ran. */
+test('a debounced kind saves synchronously: the record is written before the paint timer fires', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const store = new Map();
+  const prev = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, v),
+      removeItem: (k) => store.delete(k),
+    },
+  });
+  t.after(() => {
+    if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
+    else delete globalThis.localStorage;
+  });
+
+  const { paints } = stub();
+  edit('dayName');
+  assert.ok(store.size > 0,
+    "edit('dayName') must write to storage synchronously, not wait for the debounced paint");
+  assert.deepEqual(paints, [], 'the repaint must still wait for the 140ms debounce window');
+});
