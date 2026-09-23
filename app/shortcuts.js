@@ -19,7 +19,7 @@ import { $, on } from './dom.js';
 import { openTrap, closeTrap } from './trap.js';
 import { startTour } from './tour.js';
 import { openGameMode } from './gamemode.js';
-import { state, benchOpen } from './state.js';
+import { state, benchOpen, hasGames } from './state.js';
 
 let setView = () => {};
 
@@ -72,6 +72,10 @@ function openHelp(section) {
   if (!h || !h.hidden) return;
   const trigger = document.activeElement;
   h.hidden = false;
+  // #126: the tour walks the game screen, unreachable with no games -- its
+  // own row in the sheet goes with it.
+  const helpTour = $('#helpTour');
+  if (helpTour) helpTour.hidden = !hasGames();
   const box = h.querySelector('.keysbox');
   box.scrollTop = 0;
   if (section) scrollHelpTo(box, section);

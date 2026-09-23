@@ -11,7 +11,7 @@
    on request. */
 import { $, on, set, el } from './dom.js';
 import { openTrap, closeTrap } from './trap.js';
-import { state, save } from './state.js';
+import { state, save, hasGames } from './state.js';
 
 let setView = () => {};
 
@@ -238,6 +238,10 @@ function tourGo(i) {
 export function startTour() {
   const wrap = tourEl();
   if (!wrap || !wrap.hidden || !state.onboarded) return;
+  // #126: three of the four anchors live in the games view, which is
+  // unreachable with no games -- the tour's own buttons are hidden in that
+  // state (shortcuts.js), but this is the belt to that braces.
+  if (!hasGames()) return;
   // three of the four anchors live in the games view. Re-run from Help while
   // the roster is showing and they are all `hidden`, so every step would fall
   // back to centered copy with nothing spotlit.

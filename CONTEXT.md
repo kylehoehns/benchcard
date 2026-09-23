@@ -340,7 +340,9 @@ finish if the rest of the plan holds.
 **Today** (decided 2026-09-14):
 The home screen: the team's upcoming days and their games, and the way to its
 team, season and settings. Its title is the team's name (#64); "Today" is only
-the screen's name in these docs, and the heading over today's own games.
+the screen's name in these docs, and the heading over today's own games. A
+team can have no games at all (#126) -- Today then shows a short note next to
+Add a game, instead of any passes.
 _Avoid_: home, dashboard, Games (as a screen)
 
 **Game pass** (decided 2026-09-14):

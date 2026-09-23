@@ -53,6 +53,7 @@ import { seasonPass } from './smoke/season.mjs';
 import { gameRowsFitPass } from './smoke/game-rows-fit.mjs';
 import { todayAndBackPass } from './smoke/today-and-back.mjs';
 import { todayKeysAndUndoPass } from './smoke/today-keys-and-undo.mjs';
+import { noGamesPass } from './smoke/no-games.mjs';
 import { datedDayPass } from './smoke/dated-day.mjs';
 import { gamePassesPass } from './smoke/game-passes.mjs';
 import { passUnderwayPass } from './smoke/pass-underway.mjs';
@@ -121,6 +122,7 @@ const RUN = {
   gamerowsfit: ctx => gameRowsFitPass(ctx.c, ctx.origin),
   todayback: ctx => todayAndBackPass(ctx.c, ctx.origin),
   todaykeys: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin),
+  nogames: ctx => noGamesPass(ctx.c, ctx.origin),
   dateddayfiling: ctx => datedDayPass(ctx.c, ctx.origin),
   gamepasses: ctx => gamePassesPass(ctx.c, ctx.origin),
   passunderway: ctx => passUnderwayPass(ctx.c, ctx.origin),
@@ -304,6 +306,9 @@ async function browserChecks(origin, only) {
        reload below pays. */
     report.checks.push(await safeCheck('todayback', () => todayAndBackPass(c, origin)));
     report.checks.push(await safeCheck('todaykeys', () => todayKeysAndUndoPass(c, origin)));
+    /* #126. Reloads onto its own one-game fixture, empties it and puts RICH
+       back before returning, same courtesy as the row above. */
+    report.checks.push(await safeCheck('nogames', () => noGamesPass(c, origin)));
     /* #100. Reloads onto its own past-dated fixture and puts RICH back
        before returning, same courtesy as the two rows above. */
     report.checks.push(await safeCheck('dateddayfiling', () => datedDayPass(c, origin)));

@@ -13,8 +13,9 @@ import assert from 'node:assert/strict';
  * second computation of what `sentenceParts` does.
  */
 import { readFileSync, readdirSync } from 'node:fs';
-import { S, withTeam, player } from './state-fixture.js';
+import { S, withTeam, withDays, player } from './state-fixture.js';
 import { stripComments } from './js-comments.js';
+import { seasonDate } from '../app/storage.js';
 
 // The smoke harness's rich fixture: eleven players, 4 × 8, everyone here.
 const ELEVEN = Array.from({ length: 11 }, (_, i) => player(`p${i}`, `P${i}`));
@@ -133,6 +134,27 @@ test('with nothing worth copying the draft still carries the team settings', () 
     assert.equal(draft.periodMinutes, 12);
     assert.equal(draft.granValue, 4);
     assert.equal(draft.strategy, 'balanced');
+  });
+});
+
+/* ---------------------------- #126: the draft with no days ---------------- */
+
+/* `openAddGame`'s no-days branch (teams-view.js), written once here the same
+   way `openDraft` above pins the day-with-a-game branch: `newGame(0, null,
+   state.settings)`, dated with `seasonDate()` -- never a second date
+   formatter (Constraints: reuse, do not re-derive). */
+test('with no days the draft is newGame(0, null, settings), dated today, and offers no Same as card', () => {
+  const settings = { ...SETTINGS, periods: 3, periodMinutes: 12 };
+  withDays([], [], settings, () => {
+    assert.equal(S.sameAsLast(), null);
+    const draft = S.newGame(0, null, S.state.settings);
+    draft.date = seasonDate();
+    assert.equal(draft.periods, 3);
+    assert.equal(draft.periodMinutes, 12);
+    assert.deepEqual(draft.out, []);
+    assert.equal(draft.label, '');
+    assert.equal(draft.tipoff, '');
+    assert.equal(draft.date, seasonDate());
   });
 });
 

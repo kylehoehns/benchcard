@@ -15,15 +15,17 @@
  * `edit` (#122, `app/edit.js`), which the six Settings handlers below call
  * instead of `renderAll` directly. `renderAll`/`setView` belong to render.js.
  *
- * `#removeGame` is wired from inside `renderTabs` -- its hidden state
- * depends on how many games the day has, so it is repainted with them.
+ * `#removeGame` is wired from inside `renderTabs`, repainted with the rest
+ * of the game screen -- it shows whenever there is a game (#126), since the
+ * game screen can't be reached without one.
  * ================================================================== */
 import { $, on, set, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, newTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
-         initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame } from './state.js';
+         initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame,
+         hasGames } from './state.js';
 import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in live.js, and this is the one place
 // it is called from -- both the paint and the tap. No cycle: gamemode.js
@@ -536,7 +538,7 @@ export function renderTabs() {
   /* #35 decision 8: the game pane, not the game view. Above 840px the open
      game is the right pane's resting state, so it is on screen while Today is
      the current screen too, and its title and sub line have to keep up. */
-  if (gamePaneShowing(state.view)) {
+  if (gamePaneShowing(state.view) && hasGames()) {
     const g = game(), i = state.activeGame, label = gameLabel(g, i);
     /* `#barTitle` is the exception, and stays on the view: the bar belongs to
        the screen the coach is on, not to a pane beside it. Writing the game's
@@ -595,6 +597,11 @@ export function renderTabs() {
     });
   }
 
+  // #126: one gray line, "Add a game" stays the one prominent action beside
+  // it (not duplicated inside the note) -- P2/W3.
+  const noGames = $('#todayNoGames');
+  if (noGames) noGames.hidden = hasGames();
+
   const teamBtn = $('#todayTeam');
   if (teamBtn) {
     teamBtn.textContent = '';
@@ -617,17 +624,15 @@ export function renderTabs() {
 
   const rmBtn = $('#removeGame');
   if (rmBtn) {
-    // #101 item 10: offered whenever the TEAM has two or more games in
-    // total, not just the open day -- a day's only game is still removable
-    // once another day exists to hold the team's other game.
-    const totalGames = team().days.reduce((n, d) => n + d.games.length, 0);
-    rmBtn.hidden = totalGames < 2;
+    // #126: the game screen needs a game, so it can't be reached with none --
+    // shows whenever the game screen is showing, with no count to guard on.
+    rmBtn.hidden = false;
     rmBtn.onclick = () => {
-      // belt and braces: a team must always have a game, or game() is
-      // undefined and every render downstream throws.
-      if (totalGames < 2) return;
       const label = gameLabel(state.day.games[state.activeGame], state.activeGame);
-      undoable(`Removed ${label}. The day rebalanced.`, () => {
+      // #126: with the team's LAST game going, there is no day left to
+      // rebalance -- the toast drops that clause.
+      const last = team().days.reduce((n, d) => n + d.games.length, 0) < 2;
+      undoable(`Removed ${label}.${last ? '' : ' The day rebalanced.'}`, () => {
         removeGame();
         // Removing the open game returns to Today; undo restores the game
         // and reopens its Game screen (the snapshot holds `view: 'games'`
@@ -690,8 +695,17 @@ function openAddGame(trigger) {
     // read for the shortcut card below.
     const days = team().days;
     const last = days[days.length - 1];
-    draft = newGame(last.games.length, last.games[last.games.length - 1], state.settings);
-    draft.date = last.date;
+    // #126: no days at all -- the first game a coach who removed the last
+    // one adds back. Same draft a brand-new team gets (`newGame(0, null,
+    // ...)`, `newTeam`), dated today (`seasonDate`, never a second
+    // formatter).
+    if (last) {
+      draft = newGame(last.games.length, last.games[last.games.length - 1], state.settings);
+      draft.date = last.date;
+    } else {
+      draft = newGame(0, null, state.settings);
+      draft.date = seasonDate();
+    }
     flowStep = 1;
   }
   rememberTrigger(d, trigger);

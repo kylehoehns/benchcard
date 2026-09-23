@@ -153,6 +153,12 @@ export const ROWS = Object.freeze([
   { id: 'gamerowsfit', name: 'game rows fit, 390×844', selectable: true, setup: 'rich' },
   { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich' },
   { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich' },
+  // #126's own guard (see docs/specs/126-remove-last-game.md's Proof
+  // section): removing a team's last game empties the day rather than
+  // filling a fallback one back in -- Today's note and Add a game, no frame
+  // forced open beside it at 1280px, Undo, reload, and every way into a game
+  // screen that no longer exists staying blocked -- see no-games.mjs.
+  { id: 'nogames', name: 'no games: Today\'s empty state, blocked entry, undo', selectable: true, setup: 'rich' },
   // #100's own guard (see docs/specs/100-dated-days.md's Proof section,
   // smoke row): no `#todayNewDay` anywhere on Today, and a fixture with a
   // day dated in the past boots to that day filed into the season, under

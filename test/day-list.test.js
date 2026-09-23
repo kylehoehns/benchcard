@@ -390,3 +390,50 @@ test('fileIfPast files every past day under its own date, in one toast, and keep
     assert.equal(S.team().activeDay, 0, 'the surviving day is the open one');
   });
 });
+
+/* ---------------------------- #126: a team with no games ---------------------------- */
+
+test('hasGames is false with no days and true with one', () => {
+  withDays(SIX, [], FORMAT, () => {
+    assert.equal(S.hasGames(), false);
+  });
+  withDays(SIX, [{ name: '', date: '2026-09-26', games: [S.newGame(0, null, FORMAT)] }], FORMAT, () => {
+    assert.equal(S.hasGames(), true);
+  });
+});
+
+test('game() and lastGame() are undefined, not a throw, with no days', () => {
+  withDays(SIX, [], FORMAT, () => {
+    assert.equal(S.game(), undefined);
+    assert.equal(S.lastGame(), undefined);
+  });
+});
+
+test('sameAsLast is null with no days, not a throw', () => {
+  withDays(SIX, [], FORMAT, () => {
+    assert.equal(S.sameAsLast(), null);
+  });
+});
+
+test('computeAll does not throw with no days: plans and dayPlans are both empty', () => {
+  withDays(SIX, [], FORMAT, () => {
+    assert.doesNotThrow(() => S.computeAll());
+    assert.deepEqual(S.dayPlans, []);
+    assert.deepEqual(S.plans, []);
+  });
+});
+
+test('removeGame drops the team\'s only day when it removes the team\'s only game', () => {
+  const g0 = S.newGame(0, null, FORMAT);
+  withDays(SIX, [
+    { name: '', date: '2026-09-26', games: [g0] },
+  ], FORMAT, () => {
+    S.state.activeDay = 0;
+    S.state.activeGame = 0;
+    S.removeGame();
+    assert.equal(S.team().days.length, 0);
+    assert.equal(S.state.activeDay, 0);
+    assert.equal(S.state.activeGame, 0);
+    assert.equal(S.hasGames(), false);
+  });
+});
