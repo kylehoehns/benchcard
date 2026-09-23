@@ -56,6 +56,7 @@ import { todayKeysAndUndoPass } from './smoke/today-keys-and-undo.mjs';
 import { datedDayPass } from './smoke/dated-day.mjs';
 import { gamePassesPass } from './smoke/game-passes.mjs';
 import { passUnderwayPass } from './smoke/pass-underway.mjs';
+import { passLargeTextPass } from './smoke/pass-large-text.mjs';
 import { threeDaysPass } from './smoke/three-days.mjs';
 import { wakeLockPass } from './smoke/wake-lock.mjs';
 import { overlayPass } from './smoke/overlay.mjs';
@@ -123,6 +124,7 @@ const RUN = {
   dateddayfiling: ctx => datedDayPass(ctx.c, ctx.origin),
   gamepasses: ctx => gamePassesPass(ctx.c, ctx.origin),
   passunderway: ctx => passUnderwayPass(ctx.c, ctx.origin),
+  passlargetext: ctx => passLargeTextPass(ctx.c, ctx.origin),
   threedays: ctx => threeDaysPass(ctx.c, ctx.origin),
   teamcolor: ctx => teamColorPass(ctx.c, ctx.origin),
   wakelock: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors),
@@ -312,6 +314,9 @@ async function browserChecks(origin, only) {
        mid-play) and puts RICH back before returning, same courtesy as the
        row above. */
     report.checks.push(await safeCheck('passunderway', () => passUnderwayPass(c, origin)));
+    /* #66. Reloads its own FOUR fixture at 320px/32px then 390px/16px and
+       puts RICH back before returning, same courtesy as the row above. */
+    report.checks.push(await safeCheck('passlargetext', () => passLargeTextPass(c, origin)));
     report.checks.push(await safeCheck('threedays', () => threeDaysPass(c, origin)));
     /* #69 decision 5, item 8: the title block, against RICH's own game 0 --
        `gamepasses` above already put RICH back before returning. */

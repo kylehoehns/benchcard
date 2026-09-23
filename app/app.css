@@ -533,7 +533,13 @@ a { color: inherit; }
 .pass-rot { display: flex; flex-direction: column; gap: 3px; margin: .1rem 0; }
 .pass-rot .pass-row { height: 4px; border-radius: 1px; }
 
-.pass-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+/* #66's later decision: the summary wraps at every size, not only inside the
+   19em block below -- Ravens' full summary is already cut off on `main` at
+   390px/16px (scrollWidth 346px in a 332px box), and the issue's goal is that
+   the whole summary can be read, not just that it looks like one line at the
+   default size. A summary that fits still shows on one line; one that does
+   not now wraps instead of ending in "...". */
+.pass-summary { overflow: hidden; white-space: normal;
   color: var(--muted); font-size: var(--fs-secondary); }
 
 .today-entry::after { content: '\203a'; color: var(--faint); font-size: var(--fs-headline);
@@ -3789,6 +3795,19 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      with nowhere further to shrink). */
   #abBench .i { display: none; }
   .actionbar { gap: .3rem; padding-left: .5rem; padding-right: .5rem; }
+
+  /* #66: a Today pass's own top row and title, which `.pass-title` (above
+     the 19em block, T2's own base rule set) truncates with an ellipsis
+     rather than wraps. At a 32px root that cut off a real team name
+     ("Pant…") and ran the status word past the card's own padding -- T2 says
+     wrap, not shrink or hide, and this is the same one-line answer every
+     other row in this block already takes. `.pass-when` keeps its own
+     `nowrap` so "9:00 AM" breaks onto a new row with the status rather than
+     splitting into "9:00 / AM". `.pass-summary` already wraps at its base
+     rule above (#66's later decision), so it needs no rule here. */
+  .pass-top { flex-wrap: wrap; }
+  .pass-when { white-space: nowrap; }
+  .pass-title { white-space: normal; overflow-wrap: anywhere; }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach
