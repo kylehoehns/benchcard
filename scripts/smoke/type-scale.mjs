@@ -1,7 +1,6 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding } from './app-large-text.mjs';
-import { nameOf } from './registry.mjs';
 
 /* #24 item 3: the scale's runtime proof. Item 3's "What would settle it" is
    computed rem values, so this reads the SAME seven-size/four-weight set the
@@ -63,7 +62,6 @@ export async function typeScalePass(c, origin) {
     }
   }
   return {
-    name: nameOf('typescale'),
     pass: problems.length === 0 && elements > 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

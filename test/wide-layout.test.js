@@ -45,7 +45,7 @@ import { todayPaneShowing, gamePaneShowing } from '../app/render.js';
  * that has to be held to the other two the same way render.js's own copy is
  * -- reconciled here, against the same `app/render.js` export and the same
  * CSS blocks this file already reads, rather than a second guard file. */
-import { WIDE_MIN as REGISTRY_WIDE_MIN, SHEET_MIN as REGISTRY_SHEET_MIN } from '../scripts/smoke/registry.mjs';
+import { WIDE_MIN as REGISTRY_WIDE_MIN, SHEET_MIN as REGISTRY_SHEET_MIN } from '../scripts/smoke/sizes.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 // Both files are read the same way -- text, with the comments stripped, for

@@ -1,5 +1,5 @@
 import { TODAY_HOME } from './dom.mjs';
-import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
+import { TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
 
 /* #22, spec "What would settle it" item 7: every row in #view-settings --
@@ -23,7 +23,6 @@ export async function settingsRowPass(c, source) {
   });
 
   return {
-    name: nameOf('settingsrows'),
     pass: bad.length === 0,
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`

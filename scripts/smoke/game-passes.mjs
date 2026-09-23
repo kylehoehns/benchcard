@@ -16,7 +16,6 @@
  * instead. */
 import { evalIn, step, WIDTH, HEIGHT, SETTLE, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
 import { FOUR, RICH, goSeed, reloadWithRecord } from './fixtures.mjs';
-import { nameOf } from './registry.mjs';
 import { ceiling } from '../budgets.mjs';
 import { readFileSync } from 'node:fs';
 
@@ -387,7 +386,6 @@ export async function gamePassesPass(c, origin) {
     await reloadWithRecord(c, origin, RICH).catch(() => {});
   }
   return {
-    name: nameOf('gamepasses'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

@@ -1,5 +1,4 @@
 import { evalIn, step, toGameOne, TODAY_HOME } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 
 /* #28 review finding: item 11 asks the Plan sheet's OTHER controls -- not
    only its rows (`plan-rows.mjs` already sweeps those) -- to clear 48x48:
@@ -35,7 +34,6 @@ export async function planControlsPass(c, source) {
   await evalIn(c, step(TODAY_HOME));
 
   return {
-    name: nameOf('planctrls'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

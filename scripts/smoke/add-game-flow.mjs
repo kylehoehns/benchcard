@@ -1,5 +1,4 @@
 import { TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 import { goRich } from './fixtures.mjs';
 import { closedWithFocus, evalJSON, key, openAddGameFlow as openFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
 import { addGameFitChecks } from './add-game-fit.mjs';
@@ -644,7 +643,6 @@ export async function addGameFlowPass(c, origin) {
   await goRich(c, origin).catch(() => {});
 
   return {
-    name: nameOf('addgameflow'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`

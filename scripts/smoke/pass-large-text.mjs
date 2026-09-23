@@ -20,7 +20,7 @@
  * edge against the CARD's content edge, not the viewport's. */
 import { evalIn, WIDTH, HEIGHT } from './dom.mjs';
 import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { GAME_SUMMARIES } from './game-passes.mjs';
 
 // Ravens' full summary, imported from `game-passes.mjs`'s own `GAME_SUMMARIES`
@@ -185,7 +185,6 @@ export async function passLargeTextPass(c, origin) {
     await reloadWithRecord(c, origin, RICH).catch(() => {});
   }
   return {
-    name: nameOf('passlargetext'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

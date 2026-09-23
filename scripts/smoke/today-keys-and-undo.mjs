@@ -1,6 +1,5 @@
 import { evalIn, SETTLE, step, onScreen } from './dom.mjs';
 import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
-import { nameOf } from './registry.mjs';
 
 /* #23: Today's keyboard shortcuts and its undo-backed actions. Items 9 and
    11. Runs against the standard RICH record (`view: 'games'`, one team --
@@ -208,7 +207,6 @@ export async function todayKeysAndUndoPass(c, origin) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
   }
   return {
-    name: nameOf('todaykeys'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`

@@ -1,6 +1,6 @@
 import { HEIGHT, WIDTH, landWiped } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
-import { LARGE_TEXT_WIDTH, nameOf } from './registry.mjs';
+import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
 /* #36's own guard (docs/specs/36-first-run.md, Proof seam 7): "the flow in a
@@ -433,7 +433,6 @@ export async function firstRunPass(c, origin) {
   await goRich(c, origin).catch(() => {});
 
   return {
-    name: nameOf('firstrun'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`

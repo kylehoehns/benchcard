@@ -1,6 +1,5 @@
 import { evalIn, step, SETTLE } from './dom.mjs';
 import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
-import { nameOf } from './registry.mjs';
 
 /* #25 item 4 and item 7, together: with Royal active, the K1 controls read
  * the tint and nothing else on screen does; switching team changes them in
@@ -324,7 +323,6 @@ export async function teamColorPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   }
   return {
-    name: nameOf('teamcolor'),
     pass: problems.length === 0,
     detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
       : 'Royal tints all twelve of item 4’s controls, all sixteen of the unchanged list stay graphite ink, '

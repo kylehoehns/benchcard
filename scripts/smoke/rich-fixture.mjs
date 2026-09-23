@@ -1,5 +1,4 @@
 import { evalIn, SETTLE } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 
 /* A fixture is not a guard until something fails when it does not arrive.
  *
@@ -61,7 +60,6 @@ export async function fixturePass(c) {
     r.filedGames >= 3 ? null : `${r.filedGames} filed game(s) in the ledger, want 3`,
   ].filter(Boolean);
   return {
-    name: nameOf('fixture'),
     pass: missing.length === 0,
     detail: missing.length
       ? `${missing.length} precondition(s) missing on ${r.host}: ${missing.join('; ')}`

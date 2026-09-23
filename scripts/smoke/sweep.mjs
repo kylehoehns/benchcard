@@ -1,5 +1,5 @@
 import { evalIn, TODAY_HOME } from './dom.mjs';
-import { nameOf, SWEEP_FLOOR, SWEEP_HI, SWEEP_EXTRA } from './registry.mjs';
+import { SWEEP_FLOOR, SWEEP_HI, SWEEP_EXTRA } from './sizes.mjs';
 
 /* Every screen the chrome can be in, and the click that gets there (#23):
    Today is home, so it opens with nothing (or a back tap, if a previous
@@ -132,7 +132,6 @@ export async function sweepPass(c) {
   const pass = bad.length === 0 && !thin;
   const list = bad.slice(0, 6).map(b => `${b.view}@${b.w}px: ${b.el} reaches ${b.right}px`).join(', ');
   return {
-    name: nameOf('sweep'),
     pass,
     detail: pass
       ? `${WIDTHS.length * VIEWS.length} widths across ${VIEWS.map(v => v.name).join(' + ')} `

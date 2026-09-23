@@ -1,5 +1,4 @@
 import { evalIn, step, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 
 /* ---------- the states the first pass never sees ----------
 
@@ -255,7 +254,6 @@ export async function overlayPass(c, source) {
   }
   const forced = STATES.filter(s => s.forced).length;
   return {
-    name: nameOf('overlay'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

@@ -1,5 +1,5 @@
 import { evalIn, step } from './dom.mjs';
-import { TOUCH_WIDTHS } from './registry.mjs';
+import { TOUCH_WIDTHS } from './sizes.mjs';
 
 /* The sweep both `touchPass` and `settingsRowPass` are built from: read the
    harness's own viewport, drive one or more named states, sweep

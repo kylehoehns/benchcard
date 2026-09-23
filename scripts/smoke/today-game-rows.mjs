@@ -1,5 +1,5 @@
 import { TODAY_HOME } from './dom.mjs';
-import { nameOf, TOUCH_WIDTHS } from './registry.mjs';
+import { TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
 
 /* #69 (restyle Today and the game screen), "What would settle it" item 4:
@@ -35,7 +35,6 @@ export async function todayGameRowsPass(c, source) {
   });
 
   return {
-    name: nameOf('todaygamerows'),
     pass: bad.length === 0,
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`

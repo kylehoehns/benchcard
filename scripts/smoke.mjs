@@ -33,7 +33,14 @@
    helpers, the rich fixture, the row registry) each defined exactly once and
    imported here and by the passes that need them — see `docs/specs/58-split-
    smoke.md`. This file is the entry point: CLI parsing, the browser session
-   that runs every pass in order, budgets, and the table. */
+   that runs every row in order, budgets, and the table.
+
+   #124 moved the run order and the per-row pass wiring into `registry.mjs`
+   itself: adding a check now means writing its module and one entry there,
+   and this file never imports a check module by name. `ROWS` already carries
+   each rich row's own `run`; this file's job is walking that one list and
+   running whichever `run` it finds, the same way for the full run and for
+   `--only` alike (`runCheck` below). */
 
 import { execFile } from 'node:child_process';
 import { readFile, writeFile, rm } from 'node:fs/promises';
@@ -45,47 +52,8 @@ import { serve } from './serve.mjs';
 import { launch, cdp } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, evalIn, SETTLE } from './smoke/dom.mjs';
 import { SEED, goRich } from './smoke/fixtures.mjs';
-import { ROWS, nameOf, TOUCH_CHECK } from './smoke/registry.mjs';
-
-import { cardFontPass } from './smoke/card-font.mjs';
-import { fixturePass } from './smoke/rich-fixture.mjs';
-import { seasonPass } from './smoke/season.mjs';
-import { gameRowsFitPass } from './smoke/game-rows-fit.mjs';
-import { todayAndBackPass } from './smoke/today-and-back.mjs';
-import { todayKeysAndUndoPass } from './smoke/today-keys-and-undo.mjs';
-import { noGamesPass } from './smoke/no-games.mjs';
-import { datedDayPass } from './smoke/dated-day.mjs';
-import { gamePassesPass } from './smoke/game-passes.mjs';
-import { passUnderwayPass } from './smoke/pass-underway.mjs';
-import { passLargeTextPass } from './smoke/pass-large-text.mjs';
-import { threeDaysPass } from './smoke/three-days.mjs';
-import { wakeLockPass } from './smoke/wake-lock.mjs';
-import { overlayPass } from './smoke/overlay.mjs';
-import { touchPass } from './smoke/touch.mjs';
-import { settingsRowPass } from './smoke/settings-rows.mjs';
-import { whoRowsPass } from './smoke/who-rows.mjs';
-import { planRowsPass } from './smoke/plan-rows.mjs';
-import { planControlsPass } from './smoke/plan-controls.mjs';
-import { todayGameRowsPass } from './smoke/today-game-rows.mjs';
-import { gameTitlePass } from './smoke/game-title.mjs';
-import { sentenceSheetsPass } from './smoke/sentence-sheets.mjs';
-import { planSheetPass } from './smoke/plan-sheet.mjs';
-import { sheetSpacingPass } from './smoke/sheet-spacing.mjs';
-import { timelineCardSheetPass } from './smoke/timeline-card-sheet.mjs';
-import { teamScreenPass } from './smoke/team-screen.mjs';
-import { addGameFlowPass } from './smoke/add-game-flow.mjs';
-import { firstRunPass } from './smoke/first-run-flow.mjs';
-import { focusClearPass } from './smoke/focus-clear.mjs';
-import { floatingControlsPass } from './smoke/floating-controls.mjs';
-import { resumeBarPass } from './smoke/resume-bar.mjs';
-import { wideLayoutPass } from './smoke/wide-layout.mjs';
-import { narrowPass } from './smoke/narrow.mjs';
-import { sweepPass } from './smoke/sweep.mjs';
-import { appLargeTextPass } from './smoke/app-large-text.mjs';
-import { typeScalePass } from './smoke/type-scale.mjs';
-import { staticPass } from './smoke/static.mjs';
+import { ROWS, nameOf } from './smoke/registry.mjs';
 import { cardAt32Pass } from './smoke/card-at-32.mjs';
-import { teamColorPass } from './smoke/team-color.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(ROOT, 'app');
@@ -108,69 +76,21 @@ const JSON_OUT = has('--json');
 
 /* ---------- the run ----------
  *
- * Each rich row's own pass function, attached to its `ROWS` entry by id.
- * `ROWS` (in `registry.mjs`) carries no pass import, so nothing there can
- * create a load cycle; this is the one place every pass IS imported, so this
- * is where its `run` is attached. `--only` still validates and refuses
- * against the frozen `REGISTRY` below before `serve()` or Chrome ever start —
- * attaching `run` here is a plain object copy, nothing async and nothing that
- * touches the network. */
-const RUN = {
-  cardfont: ctx => cardFontPass(ctx.c, ctx.origin),
-  fixture: ctx => fixturePass(ctx.c),
-  season: ctx => seasonPass(ctx.c, ctx.origin),
-  gamerowsfit: ctx => gameRowsFitPass(ctx.c, ctx.origin),
-  todayback: ctx => todayAndBackPass(ctx.c, ctx.origin),
-  todaykeys: ctx => todayKeysAndUndoPass(ctx.c, ctx.origin),
-  nogames: ctx => noGamesPass(ctx.c, ctx.origin),
-  dateddayfiling: ctx => datedDayPass(ctx.c, ctx.origin),
-  gamepasses: ctx => gamePassesPass(ctx.c, ctx.origin),
-  passunderway: ctx => passUnderwayPass(ctx.c, ctx.origin),
-  passlargetext: ctx => passLargeTextPass(ctx.c, ctx.origin),
-  threedays: ctx => threeDaysPass(ctx.c, ctx.origin),
-  teamcolor: ctx => teamColorPass(ctx.c, ctx.origin),
-  wakelock: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors),
-  overlay: ctx => overlayPass(ctx.c, ctx.source),
-  touch: ctx => touchPass(ctx.c, ctx.origin, ctx.source),
-  settingsrows: ctx => settingsRowPass(ctx.c, ctx.source),
-  whorows: ctx => whoRowsPass(ctx.c, ctx.source),
-  planrows: ctx => planRowsPass(ctx.c, ctx.source),
-  planctrls: ctx => planControlsPass(ctx.c, ctx.source),
-  todaygamerows: ctx => todayGameRowsPass(ctx.c, ctx.source),
-  gametitle: ctx => gameTitlePass(ctx.c, ctx.origin),
-  sentencesheets: ctx => sentenceSheetsPass(ctx.c, ctx.origin),
-  plansheet: ctx => planSheetPass(ctx.c, ctx.origin),
-  sheetspacing: ctx => sheetSpacingPass(ctx.c, ctx.origin),
-  timelinecardsheet: ctx => timelineCardSheetPass(ctx.c, ctx.origin),
-  teamscreen: ctx => teamScreenPass(ctx.c, ctx.origin),
-  addgameflow: ctx => addGameFlowPass(ctx.c, ctx.origin),
-  firstrun: ctx => firstRunPass(ctx.c, ctx.origin),
-  focusclear: ctx => focusClearPass(ctx.c),
-  floatingcontrols: ctx => floatingControlsPass(ctx.c, ctx.origin),
-  resumebar: ctx => resumeBarPass(ctx.c, ctx.origin),
-  widelayout: ctx => wideLayoutPass(ctx.c, ctx.origin),
-  narrow: ctx => narrowPass(ctx.c),
-  sweep: ctx => sweepPass(ctx.c),
-  applargetext: ctx => appLargeTextPass(ctx.c, ctx.origin),
-  typescale: ctx => typeScalePass(ctx.c, ctx.origin),
-  static: ctx => staticPass(ctx.c, ctx.source, ctx.origin),
-};
-const REGISTRY = Object.freeze(ROWS.map(r => (RUN[r.id] ? { ...r, run: RUN[r.id] } : r)));
-
-/* A check that throws fails ITS OWN row, named, rather than the whole run:
- * without this, one broken pass (a selector that no longer exists, a page
- * that navigated away mid-evaluate) took the entire table down with it and
- * printed nothing at all -- a guard reporting nothing, the one shape
- * `/new-guard` names as a false green by omission, here worn the other way
- * round as a false SILENCE. `--only` already gets this for free (its own
- * `run` call is awaited straight from `main`, which prints the thrown error
- * and exits non-zero); this is the full-run path, where every check after
- * the one that throws would otherwise never run at all. */
-async function safeCheck(id, fn) {
+ * One runner for a rich row, used both by the full run's loop below and by
+ * `--only`'s rich branch: it calls the row's own `run`, adds the row's name
+ * to whatever comes back (a check returns `{ pass, detail }`; the row is what
+ * knows its own name), and turns a throw into a FAIL row rather than taking
+ * the rest of the run down with it -- a broken pass (a selector that no
+ * longer exists, a page that navigated away mid-evaluate) failing its own
+ * named row instead of printing no table at all is the one shape
+ * `/new-guard` names as a false green by omission, worn here the other way
+ * round as a false SILENCE. */
+async function runCheck(row, ctx) {
   try {
-    return await fn();
+    const result = await row.run(ctx);
+    return { name: row.name, ...result };
   } catch (e) {
-    return { name: nameOf(id), pass: false, detail: `threw before finishing: ${e.message.split('\n')[0]}` };
+    return { name: row.name, pass: false, detail: `threw before finishing: ${e.message.split('\n')[0]}` };
   }
 }
 
@@ -248,7 +168,7 @@ async function browserChecks(origin, only) {
     if (only && only.setup === 'rich') {
       const report = { viewport: [WIDTH, HEIGHT], checks: [] };
       await goRich(c, origin);
-      report.checks = [await only.run({ c, origin, source, consoleErrors })];
+      report.checks = [await runCheck(only, { c, origin, source, consoleErrors })];
       return { report, consoleErrors };
     }
 
@@ -287,135 +207,24 @@ async function browserChecks(origin, only) {
     /* Before anything else touches the page: fixturePass below clicks through
        Team/Season and back, which is harmless to the fixture checks but would
        no longer be the untouched cold state item 8 asks for.
-       Every row from here on is wrapped in `safeCheck` -- a check that
-       throws (a page that navigated away mid-evaluate, a selector that no
-       longer exists) fails its own named row instead of taking down every
-       check after it and printing no table at all. */
-    report.checks.push(await safeCheck('cardfont', () => cardFontPass(c, origin)));
-    report.checks.push(await safeCheck('fixture', () => fixturePass(c)));
-    /* #30's own guard, right after the fixture check it depends on:
-       `fixturePass` above already leaves Today as its own baseline. */
-    report.checks.push(await safeCheck('season', () => seasonPass(c, origin)));
-    /* #72: its own `?try=9` landing, in light and dark -- reloads onto a
-       freshly wiped nine-player sample rather than reading the rich fixture,
-       and restores RICH itself before returning (see game-rows-fit.mjs), so
-       everything below still finds the fixture `goRich` left above. */
-    report.checks.push(await safeCheck('gamerowsfit', () => gameRowsFitPass(c, origin)));
-    /* Both of these reload their own fixture and put RICH back the way they
-       found it (`view: 'games'`, one team), same courtesy the wake-lock
-       reload below pays. */
-    report.checks.push(await safeCheck('todayback', () => todayAndBackPass(c, origin)));
-    report.checks.push(await safeCheck('todaykeys', () => todayKeysAndUndoPass(c, origin)));
-    /* #126. Reloads onto its own one-game fixture, empties it and puts RICH
-       back before returning, same courtesy as the row above. */
-    report.checks.push(await safeCheck('nogames', () => noGamesPass(c, origin)));
-    /* #100. Reloads onto its own past-dated fixture and puts RICH back
-       before returning, same courtesy as the two rows above. */
-    report.checks.push(await safeCheck('dateddayfiling', () => datedDayPass(c, origin)));
-    /* #26. Reloads onto its own `FOUR` fixture and puts RICH back before
-       returning, same courtesy as the two rows above. */
-    report.checks.push(await safeCheck('gamepasses', () => gamePassesPass(c, origin)));
-    /* #92. Reloads its own `FOUR` fixture (gamepasses's own, one game driven
-       mid-play) and puts RICH back before returning, same courtesy as the
-       row above. */
-    report.checks.push(await safeCheck('passunderway', () => passUnderwayPass(c, origin)));
-    /* #66. Reloads its own FOUR fixture at 320px/32px then 390px/16px and
-       puts RICH back before returning, same courtesy as the row above. */
-    report.checks.push(await safeCheck('passlargetext', () => passLargeTextPass(c, origin)));
-    report.checks.push(await safeCheck('threedays', () => threeDaysPass(c, origin)));
-    /* #69 decision 5, item 8: the title block, against RICH's own game 0 --
-       `gamepasses` above already put RICH back before returning. */
-    report.checks.push(await safeCheck('gametitle', () => gameTitlePass(c, origin)));
-    /* #25. It reloads with a two-team record (Royal, then Graphite) and
-       switches team, so RICH is put back before the wake lock pass, which
-       expects the fixture as goRich left it. */
-    report.checks.push(await safeCheck('teamcolor', () => teamColorPass(c, origin)));
-    await goRich(c, origin);
 
-    report.checks.push(await safeCheck('wakelock', () => wakeLockPass(c, origin, consoleErrors)));
-    // The wake lock check stubs navigator.wakeLock, shadows
-    // document.visibilityState and leaves bench mode wherever its last
-    // scenario left it -- reload the rich fixture so every pass after this
-    // one sees the real API and the real boot state, as goRich left it above.
-    await goRich(c, origin);
-
-    report.checks.push(await safeCheck('overlay', () => overlayPass(c, source)));
-    /* The swept touch pass replaces the first pass's single-viewport verdict
-       rather than sitting beside it: two checks answering the same question
-       with different coverage is how the weaker one gets believed. */
-    report.checks = report.checks.filter(k => k.name !== TOUCH_CHECK);
-    report.checks.push(await safeCheck('touch', () => touchPass(c, origin, source)));
-    /* Same reshuffle as touch, one line up: the single-viewport verdict
-       `smoke-checks.js` already contributed to the cold array (Settings
-       closed, so it read "not open") is replaced with the swept one. */
-    report.checks = report.checks.filter(k => k.name !== 'settings rows ≥ 48px');
-    report.checks.push(await safeCheck('settingsrows', () => settingsRowPass(c, source)));
-    /* Same reshuffle again, one line further: the cold array's single-viewport
-       verdict for the Who's here sheet (which never opened it, so it always
-       read "not open") is replaced with the swept one. */
-    report.checks = report.checks.filter(k => k.name !== "who's here rows ≥ 48px");
-    report.checks.push(await safeCheck('whorows', () => whoRowsPass(c, source)));
-    /* Same reshuffle again, one line further: the cold array's single-viewport
-       verdict for the Plan sheet's rows (which never opened it, so it always
-       read "not open") is replaced with the swept one. */
-    report.checks = report.checks.filter(k => !k.name.startsWith('plan rows'));
-    report.checks.push(await safeCheck('planrows', () => planRowsPass(c, source)));
-    /* Same reshuffle again: the cold array's single-viewport verdict for the
-       Plan sheet's other controls (never open at cold load, so it always
-       read "not open") is replaced with the two-state one. */
-    report.checks = report.checks.filter(k => k.name !== 'plan sheet controls ≥ 48px');
-    report.checks.push(await safeCheck('planctrls', () => planControlsPass(c, source)));
-    /* Same reshuffle again: the cold array's single-viewport verdict for
-       item 4's control list (Today only, no game open) is replaced with the
-       swept one. */
-    report.checks = report.checks.filter(k => k.name !== 'today and game controls ≥ 48px');
-    report.checks.push(await safeCheck('todaygamerows', () => todayGameRowsPass(c, source)));
-    report.checks.push(await safeCheck('sentencesheets', () => sentenceSheetsPass(c, origin)));
-    report.checks.push(await safeCheck('plansheet', () => planSheetPass(c, origin)));
-    report.checks.push(await safeCheck('sheetspacing', () => sheetSpacingPass(c, origin)));
-    report.checks.push(await safeCheck('timelinecardsheet', () => timelineCardSheetPass(c, origin)));
-    /* #31. Its last item empties the roster through the app's own remove path
-       to reach the first-run state, so it reloads RICH before returning --
-       every pass below assumes the eleven players are back. */
-    report.checks.push(await safeCheck('teamscreen', () => teamScreenPass(c, origin)));
-    /* #32. It pushes games into the day through the flow's own buttons, so --
-       like `teamscreen` above -- it reloads RICH before returning and every
-       pass below finds the two-game Saturday it expects. */
-    report.checks.push(await safeCheck('addgameflow', () => addGameFlowPass(c, origin)));
-    /* #36. It wipes storage to reach the welcome screen and drives the three
-       steps, so -- like `teamscreen` and `addgameflow` above -- it reloads
-       RICH before returning and every pass below finds the fixture again. */
-    report.checks.push(await safeCheck('firstrun', () => firstRunPass(c, origin)));
-    // #33 decision 15: right after the game screen is back to a known state
-    // (firstrun above already reloads RICH, which lands on it).
-    report.checks.push(await safeCheck('focusclear', () => focusClearPass(c)));
-    // #33 items 1-6 and 10: same place, same reason -- it ends back on Today.
-    report.checks.push(await safeCheck('floatingcontrols', () => floatingControlsPass(c, origin)));
-    // #34's own guard: it reloads through several fixtures of its own
-    // (including a wipe, for the first-run case) and restores RICH before
-    // returning, exactly as `teamscreen` and `addgameflow` above do.
-    report.checks.push(await safeCheck('resumebar', () => resumeBarPass(c, origin)));
-    /* #35's own guard: it drives the app at 1280, 840, 600 and 599px and
-       restores 390x844 before returning, exactly as `narrow` below does --
-       so it sits with the other width passes, ahead of them because both of
-       those assume the boot-time layout. */
-    report.checks.push(await safeCheck('widelayout', () => wideLayoutPass(c, origin)));
-    report.checks.push(await safeCheck('narrow', () => narrowPass(c)));
-    report.checks.push(await safeCheck('sweep', () => sweepPass(c)));
-    /* After the sweep, because it reloads the app at a 32px root and the sweep
-       assumes the boot-time layout; before `staticPass`, which navigates away
-       from `index.html` for good. */
-    report.checks.push(await safeCheck('applargetext', () => appLargeTextPass(c, origin)));
-    /* #24: the scale at its default size, across the same states. Its own
-       `goRich` puts the RICH fixture back after `applargetext`'s destructive
-       tail (the welcome/sample states), so it does not inherit that pass's
-       last state. Before `staticPass`, same reason as the row above. */
-    report.checks.push(await safeCheck('typescale', () => typeScalePass(c, origin)));
-    /* Last of the browser passes, because it navigates away from the app and
-       nothing after it may assume `index.html` is still loaded. Still ahead of
-       the console verdict below, so the seven pages it visits are covered by
-       that too. */
-    report.checks.push(await safeCheck('static', () => staticPass(c, source, origin)));
+       Every rich row runs from here in registry order, one loop: `runCheck`
+       is what turns a throw into a FAIL row instead of taking the whole run
+       down with it. A row whose `replaces` names a cold verdict (the six
+       "swept" rows -- a sheet or view the cold load never actually opened, so
+       its cold verdict never measured anything) drops that name out of
+       `report.checks` first, so the two never both print; a row with
+       `resetAfter` (`teamcolor`, `wakelock`) reloads the rich fixture right
+       after, because both leave the page in a state the next row should not
+       inherit. */
+    for (const row of ROWS.filter(r => r.setup === 'rich')) {
+      if (row.replaces) {
+        const replaced = Array.isArray(row.replaces) ? row.replaces : [row.replaces];
+        report.checks = report.checks.filter(k => !replaced.includes(k.name));
+      }
+      report.checks.push(await runCheck(row, { c, origin, source, consoleErrors }));
+      if (row.resetAfter) await goRich(c, origin);
+    }
 
     /* Last, so it covers the overlay pass too: an exception thrown by opening
        game mode is exactly the kind of thing the opening screen cannot show
@@ -483,7 +292,7 @@ if (HAS_ONLY && has('--update-budgets')) {
   process.exit(1);
 }
 
-const VALID_ONLY = REGISTRY.filter(r => r.selectable);
+const VALID_ONLY = ROWS.filter(r => r.selectable);
 let ONLY = null;
 if (HAS_ONLY) {
   ONLY = VALID_ONLY.find(r => r.name === ONLY_NAME) || null;
@@ -531,7 +340,7 @@ if (ONLY) {
     console.log(JSON.stringify({ ...report, consoleErrors }, null, 2));
   } else {
     const pad = Math.max(...report.checks.map(c => c.name.length));
-    console.log(`\nbenchcard smoke — ${report.viewport[0]}×${report.viewport[1]}, 1 of ${REGISTRY.length} checks (--only)\n`);
+    console.log(`\nbenchcard smoke — ${report.viewport[0]}×${report.viewport[1]}, 1 of ${ROWS.length} checks (--only)\n`);
     for (const c of report.checks) printRow(pad, c);
     console.log('');
     console.log('skipped: node --test (--only implies --no-tests), 3 budget checks (--only)');
@@ -588,7 +397,7 @@ if (JSON_OUT) {
    drift. Printed to STDERR, not stdout, so `--json`'s stdout stays valid
    JSON even when the drift check is what fails the run. */
 if (!has('--update-budgets')) {
-  const expected = REGISTRY.filter(r => !(has('--no-tests') && r.id === 'nodetest')).map(r => r.name);
+  const expected = ROWS.filter(r => !(has('--no-tests') && r.id === 'nodetest')).map(r => r.name);
   const printed = report.checks.map(c => c.name);
   const inOrder = expected.length === printed.length && expected.every((n, i) => n === printed[i]);
   if (!inOrder) {

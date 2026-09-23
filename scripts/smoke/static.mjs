@@ -1,5 +1,5 @@
 import { evalIn, HEIGHT, OVERFLOW_PROBE } from './dom.mjs';
-import { nameOf, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './registry.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './sizes.mjs';
 
 /* The pages no browser check had ever loaded.
  *
@@ -168,7 +168,6 @@ export async function staticPass(c, source, origin) {
   }
 
   return {
-    name: nameOf('static'),
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`

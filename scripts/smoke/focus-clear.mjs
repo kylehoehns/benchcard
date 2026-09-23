@@ -22,7 +22,6 @@
  * and the same CDP dispatch is reused here rather than a second way to
  * press Tab. */
 import { evalIn, step, TODAY_HOME } from './dom.mjs';
-import { nameOf } from './registry.mjs';
 
 /* The rect-overlap test itself, as a string rather than a function: it is
  * needed INSIDE a browser-evaluated expression, not as a Node-side value, so
@@ -146,7 +145,6 @@ export async function focusClearPass(c) {
   problems.push(...overlaps.slice(0, 3));
 
   return {
-    name: nameOf('focusclear'),
     pass: problems.length === 0,
     detail: problems.length
       ? problems.join(' | ') + (overlaps.length > 3 ? ` (+${overlaps.length - 3} more)` : '')
