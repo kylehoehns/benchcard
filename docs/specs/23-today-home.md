@@ -35,7 +35,7 @@ What the tree looks like today, checked against the ticket:
   "+ Game" and "New day", painted by `renderTabs()`. Both in `teams-view.js`.
 - **There is no Today screen.** `#view-games` is the day and the open game
   together.
-- **Saved screen.** `storage.js` sanitises `view` to one of `games`, `team`,
+- **Saved screen.** `storage.js` sanitizes `view` to one of `games`, `team`,
   `season`, `settings`, translating legacy `roster` to `team`, and anything
   else to `games`. The index.html pre-paint script copies that allow-list and
   stamps `data-boot`; `test/first-paint.test.js` runs the real script against

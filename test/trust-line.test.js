@@ -18,7 +18,7 @@
  *
  * The canonical form is the SHORTER one, and it was already in use in three
  * places before this file existed. "Your roster and your players" names one
- * noun twice -- a roster is the players -- so standardising on the short form
+ * noun twice -- a roster is the players -- so standardizing on the short form
  * is a delete rather than a rewrite.
  */
 import { test } from 'node:test';
@@ -56,7 +56,7 @@ test('no surface states the claim in a form other than the canonical one', () =>
     }
   }
   assert.deepEqual(offenders, [],
-    `the privacy claim is worded more than one way. Two wordings of a trust claim is two claims. Standardise on "${CANONICAL}":\n  ` + offenders.join('\n  '));
+    `the privacy claim is worded more than one way. Two wordings of a trust claim is two claims. Standardize on "${CANONICAL}":\n  ` + offenders.join('\n  '));
 });
 
 test('the generator emits the canonical form, or the six chart pages drift back', () => {
@@ -66,7 +66,7 @@ test('the generator emits the canonical form, or the six chart pages drift back'
     'scripts/charts.mjs does not emit the canonical claim. Editing the six generated pages by hand is undone by the next `npm run charts`, so the generator is the only place this can be fixed.');
 });
 
-test('the claim still appears at all, so standardising cannot become deleting', () => {
+test('the claim still appears at all, so standardizing cannot become deleting', () => {
   const stating = SURFACES.filter(({ text }) =>
     text.replace(/\s+/g, ' ').toLowerCase().includes(CANONICAL));
   assert.ok(stating.length >= 4,

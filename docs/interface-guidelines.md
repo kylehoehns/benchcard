@@ -461,7 +461,7 @@ a group, when a choice truly needs it. The full explanation lives in How it work
 | Settings entry | Not specified for iPhone | Top bar or its menu | Gear on Today only (N4) |
 | Primary action | Tinted item at the toolbar's trailing edge | FAB or extended FAB at the bottom | Full-width floating button at the bottom (C2) |
 | Sheet confirm | "Done" trailing, Cancel leading | Name the result, never "Done" | Live sheets: ✕ only; commit sheets: ✕ and a named verb (C4) |
-| Capitalisation | Title Case for buttons and menus | No rule found in this research | Sentence case (W1) |
+| Capitalization | Title Case for buttons and menus | No rule found in this research | Sentence case (W1) |
 | Touch target | 44 × 44pt | 48 × 48dp | 48px (I1) |
 | Control material | Liquid Glass | Tonal fills | Neutral translucency with a solid fallback; no imitation lensing (L2) |
 | Motion | System motion tied to gestures | Springs; Expressive bounces | One easing, no bounce (M1) |
@@ -583,4 +583,4 @@ unless noted.
 The navigation research is older than the platform guidance: NN/g's core studies
 date from 2015–2016, have been updated since, and tested websites rather than
 installed apps. No neutral guideline for installed web apps exists; the W3C Design
-Tokens format (stable 2025-10) standardises token files only.
+Tokens format (stable 2025-10) standardizes token files only.

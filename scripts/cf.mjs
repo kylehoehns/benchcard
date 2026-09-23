@@ -29,7 +29,7 @@
  * you source): a token in a shell history is a token you have leaked.
  *
  * The account and zone ids ARE NOT SECRETS. They identify which account and
- * which hostname to ask about; they authorise nothing on their own, they are
+ * which hostname to ask about; they authorize nothing on their own, they are
  * visible in the URL of any dashboard page, and defaulting them is what makes
  * these scripts one command rather than a paragraph of setup.
  */

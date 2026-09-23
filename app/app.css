@@ -3482,7 +3482,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    flex only wraps when a line is actually full, and measured, the bar stays on
    one line down to 337px and drops Print onto a second row below that. The
    stages below still exist and their job is the same as before -- keep the bar
-   on one row for as long as possible -- but they are now an optimisation
+   on one row for as long as possible -- but they are now an optimization
    rather than the thing standing between the coach and a page that pans
    sideways.
 

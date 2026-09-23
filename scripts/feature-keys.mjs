@@ -21,7 +21,7 @@ export const stripped = (html) => html
   .replace(/<style[^>]*>[\s\S]*?<\/style>/g, ' ')
   .replace(/<script[\s\S]*?<\/script>/g, ' ');
 
-export const normalise = (s) => s
+export const normalize = (s) => s
   .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
   .replace(/&rsquo;|&lsquo;|[‘’]/g, "'")
   .replace(/&ldquo;|&rdquo;|[“”]/g, '"')
@@ -32,13 +32,13 @@ export const normalise = (s) => s
 /* Everything a reader sees, as one run of text: for phrasings distinctive
  * enough that anywhere on the page counts. */
 export const textOf = (html) =>
-  normalise(stripped(html).replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  normalize(stripped(html).replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 
 /* The same text as separate nodes, so a NAME can be required to sit where the
  * page names things -- a heading, a `<dt>`, a bolded label -- rather than
  * anywhere an ordinary English word happens to fall. `<dt>Together /
  * Apart</dt>` is two names, hence the split. */
-export const partsOf = (text) => normalise(text).split(/[/|·]/)
+export const partsOf = (text) => normalize(text).split(/[/|·]/)
   .map((t) => t.replace(/\s+/g, ' ').trim().replace(/^[.,:;'"]+|[.,:;'"]+$/g, '').trim())
   .filter(Boolean);
 

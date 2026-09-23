@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { backupFilename, backupText, readBackup, keepStored } from '../app/backup.js';
 
 /* The point of this file is one property: a backup is lossless. Export writes
-   the record the sanitiser produced and import runs the same sanitiser, so
+   the record the sanitizer produced and import runs the same sanitizer, so
    `sanitize(read(write(sanitize(x))))` must deep-equal `sanitize(x)` -- and
    the fixture below is deliberately fully populated, because the failure this
    guards against is a *new* field being added to the schema and silently not
@@ -293,7 +293,7 @@ test('a v4 file has no season, and gets an empty one rather than a broken one', 
 });
 
 test('a restored v4 file matches what the same record loads as from storage', () => {
-  // one sanitiser, one answer: importing a file and booting off the record
+  // one sanitizer, one answer: importing a file and booting off the record
   // must not be able to disagree
   const raw = populated();
   raw.version = 4;

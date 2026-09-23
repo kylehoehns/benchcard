@@ -50,7 +50,7 @@ const DOCS = ['AGENTS.md', 'CLAUDE.md', 'REVIEW.md', 'README.md',
   ...skills.map(s => `${SKILL_DIR}/${s}/SKILL.md`),
   ...readdirSync(new URL('.claude/agents', ROOT)).filter(f => f.endsWith('.md')).map(f => `.claude/agents/${f}`)];
 
-/* Every comparison below runs against whitespace-normalised text, and this is
+/* Every comparison below runs against whitespace-normalized text, and this is
  * not a detail. The first run of this guard failed on "service worker" because
  * AGENTS.md wraps it across two lines -- the doc was right and the guard was
  * wrong, which is the failure mode /new-guard step 1 exists to catch. A marker

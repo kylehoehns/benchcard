@@ -71,5 +71,5 @@ test('the Android prompt is deferred, not fired on arrival', () => {
 
 test('the dismissal is remembered the way tipDone is', () => {
   assert.match(storage, /installDone: !!raw\.ui\?\.installDone/,
-    'it is a `ui` flag on the v4 record, sanitised like every other one');
+    'it is a `ui` flag on the v4 record, sanitized like every other one');
 });

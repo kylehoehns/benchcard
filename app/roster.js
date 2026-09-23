@@ -103,8 +103,8 @@ export function sampleRoster(n) {
  * roster may legitimately have none.
  *
  * Leading zeros are stripped before comparing, the same way `parseRosterLine`
- * normalises them, so a pasted "07" and a typed "7" are one number and not two.
- * Returns [{ number, ids }] in first-appearance order, `number` normalised.
+ * normalizes them, so a pasted "07" and a typed "7" are one number and not two.
+ * Returns [{ number, ids }] in first-appearance order, `number` normalized.
  */
 export function duplicateNumbers(players) {
   const by = new Map();

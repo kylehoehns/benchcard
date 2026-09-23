@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
  * `::view-transition-group(root)` is painted on top of every named group, so
  * the bar's own snapshot is buried under the page image for the whole 260ms.
  * Working around that took a `clip-path` fed by a `getBoundingClientRect` on
- * every tap, and it could not be generalised to `#actionbar`, which had the
+ * every tap, and it could not be generalized to `#actionbar`, which had the
  * identical bug.
  *
  * The API bought exactly one thing: the outgoing view cross-fading out. The

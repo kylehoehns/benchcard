@@ -1102,7 +1102,7 @@ test('seasonGame takes the minutes it is handed, not the plan\'s', () => {
   assert.deepEqual(g, { id: 'g1', date: '2026-11-08', day: 'Sat at Northgate',
     opponent: 'Northgate', periods: 4, periodMinutes: 8, minutes: { a: 18.5, b: 13.5 } });
   assert.deepEqual(sanitize({ teams: [{ ...v4().teams[0], season: { games: [g] } }] }, H)
-    .teams[0].season.games[0], g, 'and what it builds is what the sanitiser accepts');
+    .teams[0].season.games[0], g, 'and what it builds is what the sanitizer accepts');
 });
 
 test('seasonGame stamps the coach\'s own day, not UTC', () => {

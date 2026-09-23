@@ -222,7 +222,7 @@ export function hueOf(c) {
 }
 
 /* Alpha is composited over the ground it is checked against, never read as
- * opaque -- spec item 6's own words, generalised to every token this file
+ * opaque -- spec item 6's own words, generalized to every token this file
  * checks (text, control and accent alike), not only the `-soft` tints. `bg`
  * is assumed opaque, which every ground token here is. */
 export function over(fg, bg) {

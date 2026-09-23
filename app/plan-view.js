@@ -59,7 +59,7 @@ export function renderIssues() {
     const i = list.findIndex(x => x.severity === 'error');
     if (i >= 0) list.splice(i, 1);
   }
-  /* Platoon is explicitly "no optimisation", so the engine's balanced-floor
+  /* Platoon is explicitly "no optimization", so the engine's balanced-floor
      info ("best possible spread ... is 4 minutes") sits under a plan that is
      not trying to hit it and reads as an accusation. The engine is right about
      the format and stays untouched; it is only irrelevant here, so drop it in

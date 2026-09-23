@@ -28,7 +28,7 @@ The ticket's claims about the tree hold:
   `#themeNow`, How it works `#helpBtn`) and a "Backup" box. About, Contact and
   Buy me a coffee exist only in the in-app `<footer class="foot">`.
 - The stored value is `state.ui.theme ∈ {'auto','light','dark'}`, default
-  `'auto'` (`storage.js` sanitises it, `state.js` defaults it).
+  `'auto'` (`storage.js` sanitizes it, `state.js` defaults it).
 - "Show me around again" is `#helpTour`, inside the help sheet (`#help`).
 
 ## Decisions the survey needed (human, 2026-09-15)

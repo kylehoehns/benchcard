@@ -59,7 +59,7 @@ export function rebalance({ slots, ids, capacity, maxPerPlayer, locked = [], pin
  *
  * Turns "how far each player is off their share of the season" into the
  * per-player minute targets the solver already accepts. It is an INPUT: no
- * cost term, no change to the objective, nothing here reaches the optimiser
+ * cost term, no change to the objective, nothing here reaches the optimizer
  * except as `constraints.targetMinutes`.
  *
  *   ids        who is available AND does not already have a target or a lock.

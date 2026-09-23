@@ -112,9 +112,9 @@ const DESK_W = 1440, DESK_H = 1000;
    every file this script writes. Re-deflating the *same* pixels at zlib's
    maximum settings is lossless by construction -- the scanlines and their
    filter bytes are untouched, only the compression of them changes -- so this
-   is not an image-optimisation project, it is not throwing away a byte of what
+   is not an image-optimization project, it is not throwing away a byte of what
    the image shows, and it needs nothing that is not already in node.
-   Deliberately not a color quantiser, a resampler or an external binary: the
+   Deliberately not a color quantizer, a resampler or an external binary: the
    whole virtue of this script is that it has no dependencies.
 
    The guard is real and can fail: the rebuilt file is re-parsed and its

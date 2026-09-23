@@ -64,7 +64,7 @@ const idMap = v => {
  * like. `seasonGame` is a constructor, not persistence, but splitting it
  * into a module of its own would be a second copy of this shape to
  * drift, which is the same argument backup.js makes for having no
- * second serialiser.
+ * second serializer.
  *
  * The season is HISTORY, and that is why it is swept differently from
  * everything else in a team. A constraint naming a departed player is
@@ -749,7 +749,7 @@ export function loadState(helpers) {
 export function saveState(state) {
   let payload;
   try { payload = JSON.stringify(state); }
-  catch { return 'could not serialise'; }
+  catch { return 'could not serialize'; }
   try {
     const prev = localStorage.getItem(KEY);
     /* Only a record we wrote WHOLE earns the backup slot, and `complete` is

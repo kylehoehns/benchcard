@@ -8,8 +8,12 @@ import { scan, trackedFiles, WORDS, LEGACY_MARK, ALLOWED } from '../scripts/spel
    the American word to use instead -- the same table the CLI and the hook
    print from. */
 
-test('scan finds each of the nine British fragments, case-insensitively, with the right American word', () => {
-  for (const [british, american] of WORDS) {
+test('scan finds each literal-fragment British word, case-insensitively, with the right American word', () => {
+  /* A fragment that carries a lookahead (#109's six -ism/-ist-guarded stems)
+     is regex source, not literal text -- using it as both the pattern and
+     the probe line would scan for its own syntax characters. Those six are
+     covered below, with real word forms, by the #109 stem test instead. */
+  for (const [british, american] of WORDS.filter(([b]) => !b.includes('('))) {
     for (const line of [british, british.toUpperCase(),
       british[0].toUpperCase() + british.slice(1)]) {
       const hits = scan(`x ${line} y`);
@@ -31,6 +35,52 @@ test('a line carrying the legacy marker comes back marked', () => {
   const hits = scan(`x ${british} y // ${LEGACY_MARK}`);
   assert.equal(hits.length, 1);
   assert.equal(hits[0].marked, true);
+});
+
+/* #109: British -ise verbs. Sixteen new stems join WORDS. Built from pieces,
+   like WORDS itself, so this file's own source never spells out the British
+   word it is testing for -- otherwise the whole-tree scan below would flag
+   this file. */
+
+const NEW_STEMS = [
+  ['author', 'authoriz'],
+  ['capital', 'capitaliz'],
+  ['crystall', 'crystalliz'],
+  ['formal', 'formaliz'],
+  ['general', 'generaliz'],
+  ['mechan', 'mechaniz'],
+  ['monet', 'monetiz'],
+  ['neutral', 'neutraliz'],
+  ['normal', 'normaliz'],
+  ['optim', 'optimiz'],
+  ['priorit', 'prioritiz'],
+  ['quant', 'quantiz'],
+  ['sanit', 'sanitiz'],
+  ['serial', 'serializ'],
+  ['standard', 'standardiz'],
+  ['summar', 'summariz'],
+];
+
+const IS = 'is';
+
+test('scan finds each of the 16 new British -ise stems in -ise/-ised/-isation/-iser forms', () => {
+  for (const [stem, americanStem] of NEW_STEMS) {
+    for (const suffix of ['e', 'ed', 'ation', 'er']) {
+      const british = stem + IS + suffix;
+      const hits = scan(`x ${british} y`);
+      assert.equal(hits.length, 1, `expected exactly one hit scanning "${british}"`);
+      assert.equal(hits[0].fragment.toLowerCase(), (stem + IS).toLowerCase());
+      assert.equal(hits[0].american, americanStem);
+      assert.equal(hits[0].marked, false);
+    }
+  }
+});
+
+test('scan finds nothing in a line of correct American words that share a stem with the new list', () => {
+  const line = 'promise otherwise raise rise noise exercise advertise precise '
+    + 'premise compromise enterprise concise improvise praise surprise wise '
+    + 'optimism optimist generalist formalism capitalism capitalist mechanism';
+  assert.deepEqual(scan(line), []);
 });
 
 /* The tree scan (a guard, under /new-guard): every tracked file outside

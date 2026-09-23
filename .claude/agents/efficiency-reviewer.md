@@ -19,4 +19,4 @@ handed in a gym.
   constraint.
 - Each finding: severity, `file:line`, the cost, and the fix.
 
-Return a short, prioritised list, or "no efficiency issues found".
+Return a short, prioritized list, or "no efficiency issues found".

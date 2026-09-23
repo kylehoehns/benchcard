@@ -222,7 +222,7 @@ export function soon(...keys) {
  * `::view-transition-group(root)` on top of every named group, burying the
  * bar's own snapshot for the whole 260ms. That needed a clip-path workaround
  * fed by a layout measurement taken on every tap, and it could not be
- * generalised to `#actionbar`, which had the identical bug. All the API ever
+ * generalized to `#actionbar`, which had the identical bug. All the API ever
  * bought was the *outgoing* view cross-fading out. That is a bad trade, so it
  * is gone, along with `--vt-bar`, `data-vt` and the `view-transition-name`s.
  * Do not bring it back, and do not reimplement the cross-fade by hand with two
