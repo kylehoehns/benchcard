@@ -23,13 +23,17 @@ function trackedAppFiles() {
   return all;
 }
 
-/* Images, icons and fonts: the binary extensions actually present under
-   app/ today (`git ls-files app/ | sed 's/.*\\.//' | sort -u`), the same
-   three categories the spec names and the same list .claude/hooks/guard-
-   read.sh already treats as non-text. Everything else tracked under app/ --
-   .js, .html, .css, .xml, .webmanifest, .txt, .sh, .mjs, .md and files
-   without an extension like app/_headers -- is text and gets scanned. */
-const BINARY_EXTENSIONS = ['.png', '.ico', '.svg', '.woff2', '.woff', '.jpg', '.jpeg', '.gif', '.webp'];
+/* Images and fonts: the binary extensions actually present under app/
+   today (`git ls-files app/ | sed 's/.*\\.//' | sort -u`) that are not
+   text, the two categories the spec names besides icons. .svg is NOT
+   here -- an SVG icon is text XML, not binary, so it belongs in the scan
+   like any other text file. This list is not the same as .claude/hooks/
+   guard-read.sh's: that one also skips .pdf and .ipynb, neither of which
+   appears under app/, and has no reason to track this list's contents.
+   Everything else tracked under app/ -- .js, .html, .css, .svg, .xml,
+   .webmanifest, .txt, .sh, .mjs, .md and files without an extension like
+   app/_headers -- is text and gets scanned. */
+const BINARY_EXTENSIONS = ['.png', '.ico', '.woff2', '.woff', '.jpg', '.jpeg', '.gif', '.webp'];
 const isText = (f) => !BINARY_EXTENSIONS.some((ext) => f.toLowerCase().endsWith(ext));
 
 test('trackedAppFiles reads the real app/ tree, not nothing', () => {
@@ -38,6 +42,8 @@ test('trackedAppFiles reads the real app/ tree, not nothing', () => {
   for (const f of ['app/render.js', 'app/sw.js', 'app/vendor/icons/x.svg']) {
     assert.ok(files.includes(f), `trackedAppFiles() must include ${f}`);
   }
+  assert.ok(isText('app/vendor/icons/x.svg'),
+    'app/vendor/icons/x.svg is text XML, not a binary icon format -- isText must keep it');
 });
 
 test('no tracked text file under app/ contains a 0x00 byte', () => {
