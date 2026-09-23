@@ -3807,7 +3807,11 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      rule above (#66's later decision), so it needs no rule here. */
   .pass-top { flex-wrap: wrap; }
   .pass-when { white-space: nowrap; }
-  .pass-title { white-space: normal; overflow-wrap: anywhere; }
+  /* `hyphens: auto` asks for a dictionary-point break with a mark
+     ("Panth-ers") instead of `overflow-wrap: anywhere` alone, which breaks
+     mid-word with none ("Panth" / "ers"); the latter stays as the fallback
+     for a name with no hyphenation point. `index.html` is `lang="en"`. */
+  .pass-title { white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach

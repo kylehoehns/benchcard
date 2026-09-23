@@ -53,7 +53,7 @@ const MEASURE = `(() => {
       return {
         scrollWidth: el.scrollWidth, clientWidth: el.clientWidth,
         right: r.right, top: r.top, height: r.height, lineHeight: lineHeightOf(el),
-        text: el.innerText,
+        text: el.innerText, hyphens: getComputedStyle(el).hyphens,
       };
     };
     return {
@@ -123,6 +123,14 @@ export async function passLargeTextPass(c, origin) {
       if (card.status && card.status.right > card.contentRight + 0.5) {
         problems.push(`${label}'s .pass-status right edge is ${card.status.right.toFixed(1)}px, `
           + `past the card's content edge at ${card.contentRight.toFixed(1)}px`);
+      }
+      // A mid-word break from `overflow-wrap: anywhere` alone lands with no
+      // mark ("Panth" / "ers", reads as two words) -- `hyphens: auto` asks
+      // Chrome for a dictionary-point break with a hyphen when the browser
+      // has one, keeping `overflow-wrap` only as the fallback for a name
+      // that has none. `lang="en"` on `index.html` is what lets it fire.
+      if (card.passTitle && card.passTitle.hyphens !== 'auto') {
+        problems.push(`${label}'s .pass-title computed hyphens is ${JSON.stringify(card.passTitle.hyphens)}, want "auto"`);
       }
     }
     checkRavensSummary(cards320, '320px/32px text', problems);
