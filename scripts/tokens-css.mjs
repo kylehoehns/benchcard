@@ -58,7 +58,7 @@ export function declsOf(body) {
  * the cascade's own rule for two rules of equal specificity is "the later
  * one wins", property by property, not "the first block found" and not "the
  * later block replaces the earlier one wholesale". A second `:root { … }`
- * appended anywhere in the file, or a second `[data-theme="dark"] { … }`,
+ * appended anywhere in the file, or a second `:root[data-theme="dark"] { … }`,
  * lands exactly the way a browser would apply it. */
 function mergeSelector(blocks, selector) {
   return blocks.filter((b) => b.selector === selector)
@@ -67,15 +67,15 @@ function mergeSelector(blocks, selector) {
 
 /* Resolve tokens.css into the four themes the spec (#21 item 6) checks:
  * light, dark, light + more contrast, dark + more contrast. The more-contrast
- * blocks layer over their OWN base theme, because `[data-theme="dark"]` and
- * `:root` (and, one level in, the two more-contrast selectors) all match the
- * same root element -- a property one side never redeclares still resolves
- * to the other side's value, it is not left undefined. */
+ * blocks layer over their OWN base theme, because `:root[data-theme="dark"]`
+ * and `:root` (and, one level in, the two more-contrast selectors) all match
+ * the same root element -- a property one side never redeclares still
+ * resolves to the other side's value, it is not left undefined. */
 export function parseTokensCss(raw) {
   const src = stripBlockComments(raw);
   const top = splitBlocks(src);
   const light = mergeSelector(top, ':root');
-  const darkOwn = mergeSelector(top, '[data-theme="dark"]');
+  const darkOwn = mergeSelector(top, ':root[data-theme="dark"]');
   const dark = { ...light, ...darkOwn };
 
   /* `.includes('prefers-contrast')` alone accepts `(prefers-contrast: less)`
@@ -91,8 +91,8 @@ export function parseTokensCss(raw) {
   /* #25 (team color): a per-color block, found BY EXACT SELECTOR TEXT the
    * same way the more-contrast arms above are -- the same selector trap
    * applies doubly here, since `:root[data-tint="royal"]` alone would outrank
-   * `[data-theme="dark"]` and paint light values on a dark phone. Every block
-   * therefore names its theme explicitly, both outside and inside the
+   * `:root[data-theme="dark"]` and paint light values on a dark phone. Every
+   * block therefore names its theme explicitly, both outside and inside the
    * more-contrast media query, and `tint(color)` looks each one up by that
    * exact text -- a color with no block for a given state resolves to the
    * base (Graphite) value there rather than throwing, and `hasLight` /
