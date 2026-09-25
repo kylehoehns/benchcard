@@ -669,7 +669,15 @@ a { color: inherit; }
    prototype's `.lt h1` / `.lt .sub` (notes/mockups/prototype/index.html),
    mapped onto the seven-step scale per decision 3 (34px/15px -> `--fs-large`
    / `--fs-secondary`). */
-.dayhead { margin-bottom: clamp(1rem, 2vw, 1.5rem); }
+/* min-width: 0 -- below 1100px `.col-main`/`.col-side` turn `display: contents`
+   (the stacked-layout rule above), which makes `.dayhead` itself a flex item
+   of `.cols`. A flex item's `min-width` initial value is `auto`, which
+   resolves to its content's min-content width, not 0 -- so a non-wrapping
+   descendant (`.game-sub` below) could otherwise force `.dayhead`, and so the
+   whole column, wider than the viewport instead of just overflowing inside
+   it. This is what a wide-enough font actually did: `#132`'s phone gutter
+   read `.dayhead`'s own right edge 37px past the gutter, not just its child's. */
+.dayhead { margin-bottom: clamp(1rem, 2vw, 1.5rem); min-width: 0; }
 /* #30 decision 2: Season's own large title reuses these rules by joining the
    selector list -- not a copy, because a value changed here for one screen
    and not the other is the wrong-title bug this file has already had once.
@@ -682,10 +690,16 @@ a { color: inherit; }
 /* #69 decision 5: a flex container collapses the trailing space in its
    text-node child at the edge of the next flex item, the same as it would at
    a block edge -- "9:00 · " ran straight into the dot with no gap at all.
-   .375rem (6px at the body size) is the prototype's own `.lt .sub` value. */
+   .375rem (6px at the body size) is the prototype's own `.lt .sub` value.
+   flex-wrap: wrap -- the games screen's own trailing `.pass-status` badge
+   (`#gameSub`, teams-view.js) is a real element, not text, so it can't
+   ellipsize like the title above it. Nowrap held it on one line past the
+   phone gutter the moment a font wide enough came along (a CI-only Linux
+   fallback, not anything on this Mac); wrapping lets the badge drop under
+   the day/tip-off text instead, at any width, on any font. */
 .dayhead .game-sub, .dayhead .season-sub, .dayhead .team-sub {
   margin: .1rem 0 0; font-size: var(--fs-secondary); color: var(--muted);
-  display: flex; align-items: center; gap: .375rem;
+  display: flex; align-items: center; flex-wrap: wrap; gap: .375rem;
 }
 /* Reuses `.pass-status`'s own dot and weight; only the size follows the sub
    line's own step here rather than a pass's footnote. */
@@ -1606,7 +1620,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .actionbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
   display: none; gap: .5rem; align-items: center;
-  padding: .6rem clamp(.7rem, 3vw, 1rem);
+  padding: .6rem 1rem;
   /* #33 AC4 (L5): `safe-area-max-inset-bottom` is the browser's own settled
      value for the home indicator, which does not move once loaded --
      `safe-area-inset-bottom` is the live one, which on Chrome/Android can
@@ -1732,7 +1746,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .toasts {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 250;
   display: flex; flex-direction: column-reverse; align-items: center; gap: .5rem;
-  padding: 0 clamp(.7rem, 3vw, 1rem);
+  padding: 0 1rem;
   padding-bottom: calc(.9rem + env(safe-area-inset-bottom));
   pointer-events: none;
 }
@@ -1986,12 +2000,8 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .tour-dots i { width: .42rem; height: .42rem; border-radius: var(--r-full); background: var(--line-2); }
 .tour-dots i.on { background: var(--accent); }
 
-/* #33 decision 13: the footer, and `.foot`/`.foot-in`/`.foot-note`/`.foot-why`/
-   `.foot-link`/`.tip`/`.tip-ico` with it -- its three destinations (How it
-   works, Contact, the tip jar) already exist in Settings. Not `.tip-toast`/
-   `.tip-lead` below: those style the unrelated tip-jar TOAST (`toast.js`),
-   which still fires after a print or a finished game. */
-@media (max-width: 620px) { .wrap { padding-left: .7rem; padding-right: .7rem; } }
+/* L6, #132: a phone's side gutter is 16px, not the 11.2px `.7rem` gave it. */
+@media (max-width: 620px) { .wrap { padding-left: 1rem; padding-right: 1rem; } }
 
 /* ============================ first run ============================ */
 /* The pre-paint half of it. The inline script in index.html's head stamps

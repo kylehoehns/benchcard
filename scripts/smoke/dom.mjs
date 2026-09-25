@@ -224,6 +224,20 @@ export const OVERFLOW_PROBE = `(() => {
    around them is shared. */
 export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
 
+/* The navigate -> wait-for-load -> wait-for-fonts -> poll-for-`.card` ->
+   SETTLE sequence a full-page reload needs before anything on the page can be
+   measured. `goRich` (`fixtures.mjs`), `appLargeTextPass` (`app-large-text.mjs`)
+   and `measureLargeText` (`phone-gutter.mjs`, under a font-size override) each
+   carried an identical copy of this until it moved here. */
+export async function navigateAndWaitForCard(c, url) {
+  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
+  await c.send('Page.navigate', { url });
+  await loaded;
+  await evalIn(c, `(async () => { await document.fonts.ready;
+    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
+    await ${SETTLE}; })()`);
+}
+
 export async function landWiped(c, url, readyJs) {
   const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: LOCALSTORAGE_WIPE });
   try {

@@ -1,7 +1,7 @@
 /* The fixtures the browser passes drive: a lean SEED for the cold-load
    measurement and a RICH record for everything else. Moved out of
    `smoke.mjs` unchanged. */
-import { evalIn, SETTLE } from './dom.mjs';
+import { evalIn, SETTLE, navigateAndWaitForCard } from './dom.mjs';
 /* The app's own sample cast, for `SAMPLE_TEAM` below -- `app/roster.js` is
    where it lives and the only place it is written down. */
 import { sampleRoster, SAMPLE_TEAM_NAME } from '../../app/roster.js';
@@ -179,12 +179,7 @@ export async function goRich(c, origin, ui) {
     localStorage.removeItem('benchcard.v7.bak');
     localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(record))});
   })()`, async () => {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
+    await navigateAndWaitForCard(c, origin + '/index.html');
   });
 }
 

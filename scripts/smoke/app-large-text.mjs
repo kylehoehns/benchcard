@@ -1,4 +1,4 @@
-import { evalIn, step, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME, landWiped, FIRST_RUN_STEPS } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
@@ -477,12 +477,7 @@ export async function appLargeTextPass(c, origin) {
   try {
     await c.send('Emulation.setDeviceMetricsOverride',
       { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
+    await navigateAndWaitForCard(c, origin + '/index.html');
 
     for (const v of APP_LARGE_TEXT_STATES) {
       const where = `${v.name}@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
