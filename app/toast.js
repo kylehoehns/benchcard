@@ -96,6 +96,14 @@ function dismissToast(t) {
   setTimeout(() => t.remove(), 600);
 }
 
+// The one live undo toast, if any -- not scoped to `#toasts`: an undo toast
+// for Remove rule (#28) lives inside the open Plan sheet instead (see
+// `toastHost`), and there is only ever one undo toast live at a time
+// regardless of which of the two it is in. Shared by `retireUndo` below and
+// `afterUndoClears`'s two callers, which ask whether one is up before
+// deciding to defer.
+const liveUndoToast = () => document.querySelector('.toast[data-undo]');
+
 /* #28 decision 13: `showModal()` makes everything outside the open dialog
    inert, `#toasts` included -- an Undo a coach cannot reach is not an undo.
    So while a sheet is open the snackbar mounts inside it instead, pinned
@@ -178,10 +186,7 @@ function showUndo(message, snap, refresh) {
    `data-undo`; an `offer` acts on ids, takes nothing back, and is left
    alone. */
 export function retireUndo() {
-  // not scoped to `#toasts`: an undo toast for Remove rule (#28) lives inside
-  // the open Plan sheet instead (see `toastHost`), and there is only ever one
-  // undo toast live at a time regardless of which of the two it is in.
-  const t = document.querySelector('.toast[data-undo]');
+  const t = liveUndoToast();
   if (t) dismissToast(t);
 }
 
@@ -271,8 +276,28 @@ export function tipAfterGame(reachedEnd) {
   if (uses >= USES_BEFORE_ASKING) setTimeout(() => showTip('Good game, coach.'), 700);
 }
 
+/* #135 decision 3: neither prompt may clear #toasts out from under a live
+   Undo -- most sharply Finish game's own, which is up at the exact moment
+   this timer fires. Both wait for the undo toast to leave (dismissed, or its
+   own UNDO_MS timeout -- reused, not a second duration) before re-running
+   their usual checks, since state can have changed by the time it does. */
+function afterUndoClears(fn) {
+  const t = liveUndoToast();
+  if (!t) { fn(); return; }
+  let done = false;
+  const go = () => { if (done) return; done = true; obs.disconnect(); fn(); };
+  const obs = new MutationObserver(() => { if (!t.isConnected) go(); });
+  obs.observe(t.parentNode, { childList: true });
+  // Belt and braces, the same shape dismissToast's own fallback takes: the
+  // undo toast cannot outlive its own dismiss (immediate) or auto-dismiss
+  // (UNDO_MS) by more than a beat, so this never strands the prompt behind a
+  // toast an animationend event failed to report as gone.
+  setTimeout(go, UNDO_MS + 1000);
+}
+
 function showTip(lead) {
   if (!tipEligible()) return;
+  if (liveUndoToast()) { afterUndoClears(() => showTip(lead)); return; }
   const box = $('#toasts');
   if (!box) return;
   clearTimeout(toastTimer);
@@ -360,6 +385,7 @@ function nudgeInstall(uses, delay) {
 
 function showInstall() {
   if (!installEligible()) return;
+  if (liveUndoToast()) { afterUndoClears(showInstall); return; }
   const box = $('#toasts');
   if (!box) return;
   clearTimeout(toastTimer);

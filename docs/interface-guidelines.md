@@ -285,7 +285,7 @@ Wherever a color identifies a player, a name or number is there too. *Apple:
 Color (inclusive color).*
 
 **K3. Status colors are their own set.** Underway is accent, Planned is green,
-needs-a-fix is amber, destructive is red. None is a team color, and none is
+needs-a-fix is amber, destructive is red, Finished is neutral. None is a team color, and none is
 offered as one. *Apple: Color ("Avoid using the same color to mean different
 things").*
 

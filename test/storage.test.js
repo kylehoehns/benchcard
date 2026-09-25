@@ -247,6 +247,26 @@ test('a game with no live block gets a valid one', () => {
   assert.deepEqual(s.teams[0].days[0].games[0].live, { at: 0, overrides: {} });
 });
 
+/* #135: `sanitizeGames` keeps `live.finished` only when the saved value is
+ * exactly `true`, and writes no key at all otherwise -- absent means "not
+ * finished", the same pattern `useSeasonTargets` uses. */
+test('a finished game keeps live.finished true through sanitize', () => {
+  const raw = good();
+  raw.day.games[0].live = { at: 3, overrides: {}, finished: true };
+  const s = sanitize(raw, H);
+  assert.deepEqual(s.teams[0].days[0].games[0].live, { at: 3, overrides: {}, finished: true });
+});
+
+test('live.finished is dropped, not kept as false, when it is not exactly true', () => {
+  const raw = good();
+  for (const bad of ['yes', 1, false]) {
+    raw.day.games[0].live = { at: 2, overrides: {}, finished: bad };
+    const s = sanitize(raw, H);
+    assert.deepEqual(s.teams[0].days[0].games[0].live, { at: 2, overrides: {} },
+      `finished: ${JSON.stringify(bad)} must not survive sanitize`);
+  }
+});
+
 /* ---- #101: a team holds a list of days ---- */
 
 // The v7 team shape every case below starts from -- `days` is the one thing

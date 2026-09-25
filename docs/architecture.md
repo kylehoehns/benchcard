@@ -884,8 +884,8 @@ enough — and the coach landed back on Games with no sign a game was underway,
 under a button reading "Start game", which reads as *start*. The state was
 always fine; the page was just silent about it. `resumeAt()` in `live.js` is the
 one answer to "is this game part-played": stint 0 is indistinguishable from
-never started and the last stint is a game that is over (bench mode restarts that
-one), so only the middle counts. The game screen relabels the bench button —
+never started, and the last stint is part-played until the coach taps Finish game
+(#135), so only a finished game is completely over. The game screen relabels the bench button —
 "Resume · Q2 4:00", with a play icon — and the timeline draws a `.tl-now`
 playhead down every row at the same point. The marker is per-track rather than
 one line across the body, because the track is a middle column on desktop and a

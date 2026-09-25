@@ -49,7 +49,9 @@ const populated = () => ({
             id: 'g1', label: 'Northgate', tipoff: '09:00', periods: 4, periodMinutes: 8,
             granMode: 'everyN', granValue: 4, out: ['p10', 'p11'], useCarryover: false,
             strategy: 'closers', balance: 'finish', seed: 12345,
-            live: { at: 3, overrides: { 2: ['p0', 'p1', 'p2', 'p3', 'p4'] } },
+            // #135: finished is a new field on live -- the header comment
+            // above says add it here so a backup round trip proves it.
+            live: { at: 3, overrides: { 2: ['p0', 'p1', 'p2', 'p3', 'p4'] }, finished: true },
             constraints: {
               ...emptyConstraints(),
               minMinutes: { p0: 8 }, maxMinutes: { p1: 14 },
@@ -110,6 +112,7 @@ test('the parts a coach would notice come back intact', () => {
   assert.deepEqual(g.constraints.lockedTargets, ['p0']);
   assert.deepEqual(g.live.overrides, { 2: ['p0', 'p1', 'p2', 'p3', 'p4'] });
   assert.equal(g.live.at, 3);
+  assert.equal(g.live.finished, true, 'a finished game stays finished through a backup restore');
   assert.equal(g.seed, 12345);
   assert.equal(back.teams[1].days[0].games[0].granMode, 'breaksOnly');
   assert.equal(back.ui.theme, 'dark');

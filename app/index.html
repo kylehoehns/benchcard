@@ -1736,6 +1736,10 @@
       <button class="gm-nav press" id="gmPrev" aria-label="Previous stint"><span class="i" data-icon="chevron-left"></span></button>
       <div class="gm-dots" id="gmDots" aria-hidden="true"></div>
       <button class="gm-nav next press" id="gmNext2" aria-label="Next stint"><span class="i" data-icon="chevron-right"></span></button>
+      <!-- #135: the last stint's replacement for Next, on a game the coach
+           has not finished yet. Hidden by default; renderGameMode shows it
+           and hides #gmNext2 together. -->
+      <button class="gm-nav next press" id="gmFinish" hidden>Finish game</button>
     </div>
   </div>
 

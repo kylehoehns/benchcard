@@ -93,6 +93,7 @@ import { firstRunPass } from './first-run-flow.mjs';
 import { focusClearPass } from './focus-clear.mjs';
 import { floatingControlsPass } from './floating-controls.mjs';
 import { resumeBarPass } from './resume-bar.mjs';
+import { finishGamePass } from './finish-game.mjs';
 import { wideLayoutPass } from './wide-layout.mjs';
 import { narrowPass } from './narrow.mjs';
 import { sweepPass } from './sweep.mjs';
@@ -273,6 +274,14 @@ export const ROWS = Object.freeze([
   // under it -- see resume-bar.mjs.
   { id: 'resumebar', name: 'resume bar on Today', selectable: true, setup: 'rich',
     run: ctx => resumeBarPass(ctx.c, ctx.origin) },
+  // #135's own guard (see docs/specs/135-finish-game.md's Proof section):
+  // closing on the last stint keeps a game Underway, resume opens on it,
+  // #gmFinish shows only there, tapping it closes bench mode, marks the game
+  // Finished with an --info dot, offers an Undo the tip/install must wait
+  // behind, and a finished game stays finished (with no un-finish) once it
+  // is reopened -- see finish-game.mjs.
+  { id: 'finishgame', name: 'a coach finishes a game with Finish game', selectable: true, setup: 'rich',
+    run: ctx => finishGamePass(ctx.c, ctx.origin) },
   // #35's own guard (see docs/specs/35-wide-screens.md's Proof section): the
   // two-pane layout at 1280px and 840px -- the rail at left 0 and the open
   // screen starting where it ends, Team replacing the right pane and back

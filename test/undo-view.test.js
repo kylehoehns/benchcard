@@ -56,8 +56,12 @@ test('the undo refresh knows it is an undo', () => {
 test('only snapshot undos are retired, not offers', () => {
   // `offer` acts on ids and takes nothing back, so a later edit leaves it be
   assert.match(toast, /dataset\.undo = '1'/);
+  // `retireUndo` finds the live undo toast through the one shared accessor
+  // (`liveUndoToast`, also used by the tip and install prompts to defer
+  // behind it) rather than its own copy of the selector.
   const fn = toast.slice(toast.indexOf('export function retireUndo'));
-  assert.match(fn.slice(0, fn.indexOf('\n}')), /\[data-undo\]/);
+  assert.match(fn.slice(0, fn.indexOf('\n}')), /liveUndoToast\(\)/);
+  assert.match(toast, /const liveUndoToast = \(\) => document\.querySelector\('\.toast\[data-undo\]'\)/);
   const off = toast.slice(toast.indexOf('export function offer'));
   assert.doesNotMatch(off.slice(0, off.indexOf('\n}')), /dataset\.undo/);
 });

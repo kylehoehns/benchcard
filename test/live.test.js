@@ -2,11 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { stage, stintIndex, resumeAt, passStatus, openAt, stepAt, resumeBarAt } from '../app/live.js';
 
-/* #123: `live.js`'s exports, proved with hand-built plans and `live` values
- * -- no `withTeam`, no `computeAll`, no DOM. Today's meanings, kept exactly
- * (the spec's own worked example): finished is `at >= stints.length - 1`
- * (so a one-stint plan is finished at 0); not started is `at <= 0`;
- * everything else is part-played. A missing `live` is `at: 0`. */
+/* #123/#135: `live.js`'s exports, proved with hand-built plans and `live`
+ * values -- no `withTeam`, no `computeAll`, no DOM. #135's rule: `stage`
+ * reads `live.finished` first -- `true` is `'finished'`, whatever `at` is --
+ * then falls back to `at`: not started is `at <= 0`, everything else
+ * (including the last stint, and past the end of a plan that got shorter)
+ * is part-played. A missing `live` is `at: 0`. */
 
 const stints = (n) => Array.from({ length: n }, (_, i) => ({
   period: 1, periodName: '', startSec: i * 60, endSec: (i + 1) * 60,
@@ -22,20 +23,30 @@ test('stage: a 4-stint plan at at 1 or 2 is part-played', () => {
   assert.equal(stage(plan(4), { at: 2 }), 'part-played');
 });
 
-test('stage: a 4-stint plan at at 3 (the last stint) is finished', () => {
-  assert.equal(stage(plan(4), { at: 3 }), 'finished');
+test('stage: a 4-stint plan at at 3 (the last stint) is part-played, not finished', () => {
+  assert.equal(stage(plan(4), { at: 3 }), 'part-played');
 });
 
-test('stage: a 4-stint plan past the end (at 7) is finished', () => {
-  assert.equal(stage(plan(4), { at: 7 }), 'finished');
+test('stage: a 4-stint plan past the end (at 7) is part-played', () => {
+  assert.equal(stage(plan(4), { at: 7 }), 'part-played');
+});
+
+test('stage: live.finished true is finished, whatever at is', () => {
+  assert.equal(stage(plan(4), { at: 0, finished: true }), 'finished');
+  assert.equal(stage(plan(4), { at: 2, finished: true }), 'finished');
+  assert.equal(stage(plan(4), { at: 3, finished: true }), 'finished');
 });
 
 test('stage: a missing live is at: 0, so it reads not-started', () => {
   assert.equal(stage(plan(4), undefined), 'not-started');
 });
 
-test('stage: a 1-stint plan is finished at 0', () => {
-  assert.equal(stage(plan(1), { at: 0 }), 'finished');
+test('stage: a 1-stint plan is not-started at 0, not finished', () => {
+  assert.equal(stage(plan(1), { at: 0 }), 'not-started');
+});
+
+test('stage: a 1-stint plan with finished: true is finished', () => {
+  assert.equal(stage(plan(1), { at: 0, finished: true }), 'finished');
 });
 
 test('stage: a missing plan is null', () => {
@@ -83,20 +94,25 @@ test('resumeAt: null when not-started (at 0)', () => {
   assert.equal(resumeAt(plan(4), { at: 0 }), null);
 });
 
-test('resumeAt: null when finished (the last stint)', () => {
-  assert.equal(resumeAt(plan(4), { at: 3 }), null);
+test('resumeAt: answers on the last stint, at 3', () => {
+  assert.deepEqual(resumeAt(plan(4), { at: 3 }), { at: 3, where: 'Q1 3:00' });
 });
 
-test('resumeAt: null when past the end', () => {
-  assert.equal(resumeAt(plan(4), { at: 7 }), null);
+test('resumeAt: clamps to the last stint when past the end', () => {
+  assert.deepEqual(resumeAt(plan(4), { at: 7 }), { at: 3, where: 'Q1 3:00' });
 });
 
 test('resumeAt: null for a missing live', () => {
   assert.equal(resumeAt(plan(4), undefined), null);
 });
 
-test('resumeAt: null for a 1-stint plan (finished at 0)', () => {
+test('resumeAt: null for a 1-stint plan (not-started at 0)', () => {
   assert.equal(resumeAt(plan(1), { at: 0 }), null);
+});
+
+test('resumeAt: null for any finished live', () => {
+  assert.equal(resumeAt(plan(4), { at: 0, finished: true }), null);
+  assert.equal(resumeAt(plan(4), { at: 3, finished: true }), null);
 });
 
 test('resumeAt: null when the plan is missing or blocked', () => {
@@ -104,14 +120,18 @@ test('resumeAt: null when the plan is missing or blocked', () => {
   assert.equal(resumeAt({ ok: false, stints: stints(4) }, { at: 2 }), null);
 });
 
-test('passStatus: Underway when part-played', () => {
+test('passStatus: Underway when part-played, including the last stint', () => {
   assert.deepEqual(passStatus(plan(4), { at: 2 }), { word: 'Underway', cls: 'now' });
+  assert.deepEqual(passStatus(plan(4), { at: 3 }), { word: 'Underway', cls: 'now' });
 });
 
 test('passStatus: Planned for any other ok plan', () => {
   assert.deepEqual(passStatus(plan(4), { at: 0 }), { word: 'Planned', cls: 'ok' });
-  assert.deepEqual(passStatus(plan(4), { at: 3 }), { word: 'Planned', cls: 'ok' });
   assert.deepEqual(passStatus(plan(4), undefined), { word: 'Planned', cls: 'ok' });
+});
+
+test('passStatus: Finished when live.finished is true', () => {
+  assert.deepEqual(passStatus(plan(4), { at: 0, finished: true }), { word: 'Finished', cls: 'done' });
 });
 
 test('passStatus: Needs a fix when the plan is missing or blocked, even with a mid-game live', () => {
@@ -120,17 +140,24 @@ test('passStatus: Needs a fix when the plan is missing or blocked, even with a m
     { word: 'Needs a fix', cls: 'warn' });
 });
 
+test('passStatus: Needs a fix when the plan is blocked or missing, even with finished: true', () => {
+  assert.deepEqual(passStatus(null, { at: 2, finished: true }), { word: 'Needs a fix', cls: 'warn' });
+  assert.deepEqual(passStatus({ ok: false, stints: stints(4) }, { at: 2, finished: true }),
+    { word: 'Needs a fix', cls: 'warn' });
+});
+
 test('openAt: a not-started or part-played game opens on its own stint', () => {
   assert.equal(openAt(plan(4), { at: 0 }), 0);
   assert.equal(openAt(plan(4), { at: 2 }), 2);
+  assert.equal(openAt(plan(4), { at: 3 }), 3);
 });
 
 test('openAt: a finished game opens on stint 0', () => {
-  assert.equal(openAt(plan(4), { at: 3 }), 0);
+  assert.equal(openAt(plan(4), { at: 2, finished: true }), 0);
 });
 
-test('openAt: a game past the end opens on stint 0', () => {
-  assert.equal(openAt(plan(4), { at: 7 }), 0);
+test('openAt: a game past the end clamps to the last stint', () => {
+  assert.equal(openAt(plan(4), { at: 7 }), 3);
 });
 
 test('stepAt: steps forward and back within range', () => {
@@ -188,4 +215,12 @@ test('resumeBarAt: returns { d, i, at, where } for the picked game', () => {
   const days = [day([{ live: { at: 2 } }])];
   const dayPlans = [[plan(4)]];
   assert.deepEqual(resumeBarAt(days, dayPlans), { d: 0, i: 0, at: 2, where: 'Q1 2:00' });
+});
+
+test('resumeBarAt: skips a finished game and picks a game on its last stint', () => {
+  const days = [day([{ live: { at: 3, finished: true } }, { live: { at: 3 } }])];
+  const dayPlans = [[plan(4), plan(4)]];
+  const r = resumeBarAt(days, dayPlans);
+  assert.deepEqual(r, { d: 0, i: 1, at: 3, where: 'Q1 3:00' },
+    'the finished game (index 0) is skipped; the part-played game on its last stint (index 1) is picked');
 });

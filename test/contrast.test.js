@@ -69,7 +69,7 @@ const THEMES = [
 
 const GROUNDS = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3', '--sheet'];
 const TEXT_TOKENS = ['--ink', '--ink-2', '--muted', '--faint', '--ok', '--warn', '--err', '--info'];
-const CONTROL_TOKENS = ['--accent', '--ok', '--warn', '--err'];
+const CONTROL_TOKENS = ['--accent', '--ok', '--warn', '--err', '--info'];
 const STATUS = ['ok', 'warn', 'err', 'info'];
 
 /* `fg` composited over `bg` if it carries alpha, `bg` used as-is otherwise --

@@ -297,8 +297,17 @@
    41 ceiling, unchanged: everything #35 adds is CSS and two exports in
    `app/render.js`, no new module joined the boot graph, and the new smoke
    module `scripts/smoke/wide-layout.mjs` is harness the page never fetches.
-   DOM nodes 1368 of 1769. */
-export const BYTES_BASELINE = 1_216_873;
+   DOM nodes 1368 of 1769.
+
+   #135 re-pinned it the way the entry above says: a full cold load of the
+   #135 branch measured 1266108 bytes at 390x844 with
+   `node scripts/smoke.mjs --json --no-tests`, 0.3 KB over the old 1265786
+   ceiling. The growth since #35 is several tickets of real CSS and app code,
+   the last of it #135's Finish game row, sheet copy and finished-game state.
+   The new room is 1266108 * 2% + 24576 = 49898 bytes, still under 60000.
+   `requests` measured 42 of its 43 ceiling and DOM nodes 1373 of 1617, both
+   unchanged by the pin. */
+export const BYTES_BASELINE = 1_266_108;
 
 /* #37: the node baseline, re-pinned DOWNWARD. `budgets.json` records 1519 from
    a 2026-08-24 run; a full cold load of the commit this ships with measures

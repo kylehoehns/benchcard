@@ -277,7 +277,7 @@ _In code_: `useCarryover`, `carryover`
 **Filed game**:
 A game kept in the season once its day is filed, with the minutes it actually
 produced.
-_Avoid_: archived, saved, finished, history
+_Avoid_: archived, saved, finished (that is a **Finished game**), history
 _In code_: `season.games`, `seasonGame`
 
 **Season**:
@@ -327,9 +327,14 @@ _Avoid_: sit and rebalance, re-solve, bench (as a verb)
 _In code_: `resolveRest`
 
 **Part-played game**:
-A game that bench mode has moved past its first stint but not to its last.
+A game that bench mode has moved past its first stint and that the coach has
+not finished.
 _Avoid_: in progress, live game
 _In code_: `live.js` (`stage`, `resumeAt`)
+
+**Finished game**:
+A game the coach marked finished with Finish game on its last stint.
+_In code_: `live.finished`, `live.js` (`stage`)
 
 **Played / projected**:
 In bench mode, a player's minutes from stints already completed, and where they
