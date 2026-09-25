@@ -89,19 +89,26 @@ const checkNoStaleToast = async (c, problems, label) => {
   }
 };
 
+// Hawks underway at live.at 2, one hand swap at stint 1 -- the exact seed
+// `rotationUndoPass` below drives item 1's Format edit from. Exported so
+// `app-large-text.mjs`'s own large-text state for the same edit (item 6)
+// reuses this literal rather than re-deriving a second "underway with one
+// swap" fixture that could quietly drift from this one.
+export const UNDERWAY_SEED = `
+  const p = s.plans[0];
+  const five = p.stints[1].onFloor.slice();
+  const benchId = s.state.players.map(pl => pl.id).find(id => !five.includes(id));
+  five[0] = benchId;
+  s.state.day.games[0].live = { at: 2, overrides: { 1: five } };
+`;
+
 export async function rotationUndoPass(c, origin) {
   const problems = [];
   const notes = [];
 
   try {
     /* ---- seed: Hawks underway at live.at 2, one hand swap at stint 1 ---- */
-    await evalIn(c, setGame(`
-      const p = s.plans[0];
-      const five = p.stints[1].onFloor.slice();
-      const benchId = s.state.players.map(pl => pl.id).find(id => !five.includes(id));
-      five[0] = benchId;
-      s.state.day.games[0].live = { at: 2, overrides: { 1: five } };
-    `));
+    await evalIn(c, setGame(UNDERWAY_SEED));
     await wait(SETTLE_MS);
 
     const baseline = JSON.parse(await evalIn(c, readGame));

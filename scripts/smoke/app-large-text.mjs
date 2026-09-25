@@ -3,6 +3,10 @@ import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { FOUR, reloadWithRecord } from './fixtures.mjs';
+import { setGame } from './sheet-drive.mjs';
+import { UNDERWAY_SEED } from './rotation-undo.mjs';
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---- the same large-text cell, on the app shell ----
  *
@@ -186,6 +190,35 @@ export const APP_LARGE_TEXT_STATES = [
            document.querySelector('#agNext').click();
            document.querySelector('#agNext').click()`,
     close: `document.querySelector('#addGameFlow').close()` },
+  /* #134 item 6: the "Rotation changed." Undo toast that ticket's own guard
+     (`rotation-undo.mjs`) raises lands INSIDE the open Format sheet, not the
+     page-level `#toasts` every state above uses -- `toastHost()` (toast.js)
+     mounts the snackbar inside whichever `dialog.bsheet[open]` is up, and no
+     state above this one ever puts a toast there. Seeded with
+     `UNDERWAY_SEED`, the exact "Hawks underway at live.at 2, one hand swap"
+     record `rotation-undo.mjs` drives its own item 1 Format edit from --
+     reused rather than re-derived, so the two fixtures cannot drift apart --
+     then the same − stepper on minutes per period that check taps.
+     `openRotationToastState` (above) returns to the games screen first: the
+     three `add a game` states just above leave the app on TODAY, and
+     `#sheetFormat` sits inside `#view-games` -- a `showModal()` dialog does
+     not render at all while an ancestor is `display: none`, `[open]` and its
+     own `display: flex` notwithstanding, so opening it without navigating
+     back first would raise a toast this pass could never see. It then does
+     the seeding and the tap as two separate `evalIn` calls with a real wait
+     between them (the debounce Format schedules its repaint behind), not one
+     `step`-wrapped string the way every plain `open` here is.
+     `TOAST_FIT_PROBE`, run on every state below, is the assertion item 6
+     actually needs: `OVERFLOW_PROBE` only checks the horizontal axis and
+     `STRANDED_ABOVE` only the top edge, so neither would have caught a toast
+     whose BOTTOM ran off the sheet. `close` takes the toast's own Undo (the
+     same restore `rotation-undo.mjs` item 2 already proves) rather than
+     leaving the edit in place, closes the sheet, then backs out to Today --
+     matching what every state above already leaves for whatever runs next. */
+  { name: 'mid-game rotation toast in the Format sheet', rotationToast: true,
+    close: `document.querySelector('.toast[data-undo] .tundo')?.click();
+            document.getElementById('sheetFormatClose')?.click();
+            document.getElementById('backBtn')?.click()` },
   /* #26 item 12: "at 320px with 32px root text ... Today with FOUR has no
      horizontal overflow and nothing stranded above the viewport" -- every
      state above this one measures Today (and the other four chromes) on
@@ -346,6 +379,59 @@ const STRANDED_ABOVE = `(() => {
   return JSON.stringify({ host: location.host, worst });
 })()`;
 
+/* #134 item 6's own opener for `mid-game rotation toast in the Format sheet`
+   above: seeds the same underway record `rotation-undo.mjs` seeds (imported
+   as `UNDERWAY_SEED`, never re-derived here), then drives the same − stepper
+   on minutes per period that check's item 1 taps. Two `evalIn` calls with a
+   real wait between them, not one `step`-wrapped string: Format is a
+   debounced edit kind (140ms), and `countTo` can still be animating a
+   changed number up to 250ms after that -- `rotation-undo.mjs`'s own
+   `SETTLE_MS`, matched here for the same reason. */
+async function openRotationToastState(c) {
+  // Land on the Hawks game (`.today-game`, the first row -- the same game
+  // `rotation-undo.mjs` seeds as `s.state.day.games[0]`) before anything
+  // else: the states above this one leave the app on Today, and
+  // `#sheetFormat` is a child of `#view-games`.
+  await evalIn(c, step(`${TODAY_HOME}; document.querySelector('.today-game').click()`));
+  await evalIn(c, setGame(UNDERWAY_SEED));
+  await wait(450);
+  await evalIn(c, step(`document.getElementById('phraseFormat').click()`));
+  await evalIn(c, step(
+    `document.querySelector('#sheetFormatBody .pstep-row:last-child .pstep-btn:first-of-type').click()`));
+  await wait(450);
+}
+
+/* #134 item 6: the toast an underway game's rotation change raises can mount
+ * INSIDE an open `dialog.bsheet` instead of the page-level `#toasts` every
+ * other toast in this file uses (`toastHost()`, toast.js) -- and neither
+ * probe above would have caught it running off the bottom of that sheet:
+ * `OVERFLOW_PROBE` only checks the horizontal axis, and `STRANDED_ABOVE` only
+ * looks above the top edge. Run on every state, not only the one above that
+ * raises a rotation toast: `.toast[data-undo]` is absent everywhere else, so
+ * the cost elsewhere is one empty query, and `bench mode, undo toast`'s own
+ * page-level toast gets the same check for free -- a regression there fails
+ * here too, which is the "does not regress toasts elsewhere" half of this
+ * fix. Checks all four edges against `[0, innerWidth] x [0, innerHeight]`,
+ * both for the toast's own box and for `.tundo`, since a message that fits
+ * while its Undo button does not would be just as unreachable. */
+const TOAST_FIT_PROBE = `(() => {
+  const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
+  let worst = null;
+  for (const t of document.querySelectorAll('.toast[data-undo]')) {
+    if (!t.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
+    for (const [label, el] of [['toast', t], ['.tundo', t.querySelector('.tundo')]]) {
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      const out = Math.max(0, -r.left, -r.top, r.right - vw, r.bottom - vh);
+      if (out > 0.5 && (!worst || out > worst.out)) {
+        worst = { label, out: Math.round(out * 10) / 10,
+          box: { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom) } };
+      }
+    }
+  }
+  return JSON.stringify({ vw, vh, worst });
+})()`;
+
 /* Wipe the record and reload, so the app puts up the welcome screen by its own
  * route (`setView` forces `welcome` while `state.onboarded` is false) instead
  * of the harness unhiding a `<main>`.
@@ -489,6 +575,7 @@ export async function appLargeTextPass(c, origin) {
         if (v.firstRun) await firstRun(c, origin);
         else if (v.tryLink) flash = await tryLanding(c, origin, v.tryLink);
         else if (v.four) await reloadWithRecord(c, origin, FOUR);
+        else if (v.rotationToast) await openRotationToastState(c);
         else await evalIn(c, step(v.open));
         const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
         const slack = APP_LARGE_TEXT_ALLOW[v.name] || 0;
@@ -499,6 +586,18 @@ export async function appLargeTextPass(c, origin) {
         } else if (o.worst) allowed++;
         const up = JSON.parse(await evalIn(c, STRANDED_ABOVE));
         if (up.worst) problems.push(`${where}: ${up.worst.el} starts at y ${up.worst.top}, above the top of a fixed overlay`);
+        const tf = JSON.parse(await evalIn(c, TOAST_FIT_PROBE));
+        if (tf.worst) {
+          problems.push(`${where}: the toast's ${tf.worst.label} is ${tf.worst.out}px outside `
+            + `[0, ${tf.vw}]x[0, ${tf.vh}] (box ${JSON.stringify(tf.worst.box)})`);
+        }
+        if (v.rotationToast) {
+          // rule 2a of /new-guard: without this, a Format edit that stopped
+          // raising a toast at all would leave `TOAST_FIT_PROBE` with nothing
+          // to measure and this state would pass having checked nothing.
+          const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo]')`));
+          if (!raised) problems.push(`${where}: no Undo toast was raised -- nothing was measured`);
+        }
         if (DIALOG_CHECKED_STATES.has(v.name)) {
           const dd = JSON.parse(await evalIn(c, DIALOG_OVERFLOW_PROBE));
           // rule 2a of /new-guard: a check that measured nothing fails, rather
