@@ -268,32 +268,46 @@ a { color: inherit; }
 
 /* #69 decision 4: the back control is a round chevron, not a square icon
    button -- a plain 48px hit area (no border, no fill of its own) around a
-   2.25rem circle in `--surface-2` that carries the glyph. The accessible
+   2.25rem circle in `--chip` that carries the glyph. The accessible
    name ("Back to Today") is unchanged; the prototype's text label is not
    copied. Scoped to the id, not `.btn.icon`, so every other icon button
    (Settings, sheet closes, roster) keeps its own look. */
 #backBtn { width: 48px; height: 48px; padding: 0; border: 0; background: none; }
 @media (hover: hover) {
   #backBtn:hover { background: none; }
-  #backBtn:hover .i { background: var(--surface-3); }
+  #backBtn:hover .i { background: var(--chip-hover); }
 }
 
 /* #100 removed "New day" (`#todayNewDay`) along with its rule here -- the
    gear stays an icon but grows from `.btn.icon`'s coarse-pointer-only floor
    to an unconditional 48x48 (#69 decision 12). */
 #settingsBtn { width: 48px; height: 48px; }
+/* #137: without this, `.btn.ghost:hover` (above) paints the outer 48px
+   button with `--surface-2`, a square behind the round `.i` chip -- the same
+   `.i`-only hover `#backBtn`/`#shareBtn` already use, so all four round
+   chips hover the same way. */
+@media (hover: hover) {
+  #settingsBtn:hover { background: none; }
+  #settingsBtn:hover .i { background: var(--chip-hover); }
+}
 /* #29 decision 3: "Share the card" is the one door into the card sheet, so
    it gets the same unconditional 48x48 `#settingsBtn` already has, rather
    than `.btn.icon`'s coarse-pointer-only floor. */
 #shareBtn { width: 48px; height: 48px; }
 @media (hover: hover) {
-  #shareBtn:hover .i { background: var(--surface-3); }
+  #shareBtn:hover .i { background: var(--chip-hover); }
 }
 /* #33 decision 9: `#teamAdd` gets the same unconditional 48x48 hit area the
    other four header controls already had -- `.btn.icon`'s coarse-pointer
    floor is not enough now that it sits beside a round `#shareBtn` on the same
    game screen. */
 #teamAdd { width: 48px; height: 48px; }
+/* #137: same fix as `#settingsBtn` above -- `.i`-only hover, transparent
+   outer, so all four round chips hover the same way. */
+@media (hover: hover) {
+  #teamAdd:hover { background: none; }
+  #teamAdd:hover .i { background: var(--chip-hover); }
+}
 /* #33 decision 9: one fill for the five header controls that ride directly on
    the bar's glass -- `#backBtn`, `#shareBtn`, `#settingsBtn` and `#teamAdd`
    each already carry a `.i` icon span; `#teamBtn` holds text instead of an
@@ -302,9 +316,7 @@ a { color: inherit; }
    these used before) so each reads as its own small floating chip over the
    bar's scrim rather than a solid cutout in it -- AC3/decision 8 still swap
    this to opaque `--chip` when transparency or a blur is unavailable.
-   #137: `--chip`, not `--surface-2` -- in light mode `--surface-2` is almost
-   `--bg` and the chips nearly vanished; `--chip` carries the prototype's own
-   gray instead (docs/specs/137-header-chip-fill.md), unchanged in dark. */
+   fill: `--chip`, see tokens.css (#137). */
 #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn {
   background: color-mix(in srgb, var(--chip) 72%, transparent);
   backdrop-filter: saturate(180%) blur(16px);
@@ -1691,8 +1703,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    bare `:root` to lose a specificity fight over. CSS has no way to OR an
    `@media` feature query with an `@supports` one, so the same declarations
    are written twice on purpose rather than nested (which would be AND).
-   #137: the chip fallback reads `--chip`, not `--surface-2` -- same reason
-   as the main rule above. */
+   fill: `--chip`, see tokens.css (#137). */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .bar::before, .actionbar::before {
     background: var(--bg); mask-image: none; -webkit-mask-image: none;

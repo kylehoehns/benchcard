@@ -470,11 +470,11 @@ Five header controls became translucent chips (#33 decision 9): `#backBtn`,
 `#shareBtn`, `#settingsBtn` and `#teamAdd` are 48px hit areas around a 2.25rem
 circle, and `#teamBtn` is the same treatment as a pill, because its content is
 the team's name rather than one glyph. All five use `--r-full`, a
-`color-mix` fill over `--surface-2` and a `backdrop-filter`, and all five go
-flat and opaque under reduced transparency, more contrast, or no
-`backdrop-filter` support. `#teamEdit` and `#seasonExport` stay
-plain text with no chip (decision 10) — a screen's chrome tops out at two
-filled controls or it reads as a toolbar.
+`color-mix` fill over `--chip` (its own token, not `--surface-2` -- see
+tokens.css, #137) and a `backdrop-filter`, and all five go flat and opaque
+under reduced transparency, more contrast, or no `backdrop-filter` support.
+`#teamEdit` and `#seasonExport` stay plain text with no chip (decision 10) —
+a screen's chrome tops out at two filled controls or it reads as a toolbar.
 
 The right of the bar carries at most two actions per screen (C1): the share
 button on a game, the export on Season once there is a file to save, and *Edit*

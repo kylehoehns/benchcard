@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseTokensCss, parseColor, colorOf, over, contrast } from '../scripts/tokens-css.mjs';
+import { parseTokensCss, parseColor, colorOf, over, contrast, luminance } from '../scripts/tokens-css.mjs';
 import { COLORS } from '../app/storage.js';
 
 /* #21 (Graphite look), item 6: every color token in app/tokens.css against
@@ -176,6 +176,20 @@ test('--chip is the prototype gray in light and unchanged from --surface-2 in da
   assert.equal(dark['--chip'], '#242426', 'dark --chip should be #242426, unchanged from --surface-2 (#137)');
 });
 
+/* #137 item 5: `--surface-3` (#F1F1F3) is LIGHTER than the new `--chip`
+ * (#E8E8ED) in light mode, so a chip hover rule that darkens by switching to
+ * `--surface-3` would actually lighten the chip. `--chip-hover` is a token of
+ * its own for this reason -- checked by relative luminance (the same measure
+ * `contrast()` is built on), not by eyeballing the two hex values, because a
+ * later edit to either token should be caught the same way a color literal
+ * would be. */
+test('the light chip hover fill is darker than the light chip fill', () => {
+  const chip = luminance(colorOf(light, '--chip'));
+  const hover = luminance(colorOf(light, '--chip-hover'));
+  assert.ok(hover < chip - 1e-9,
+    `light --chip-hover should be darker than light --chip: chip luminance ${chip}, hover luminance ${hover}`);
+});
+
 /* #137 item 4: the five header controls do not all draw with the same ink.
  * `#backBtn`, `#shareBtn`, `#settingsBtn` and `#teamAdd` are `.btn.icon.ghost`
  * (app/index.html) -- `.btn.ghost` in app.css sets `color: var(--ink-2)`,
@@ -202,6 +216,31 @@ test('the header chips\' own icon and label inks clear the text floor on --chip'
       const ground = colorOf(s.tokens, '--chip');
       const r = contrast(effective(colorOf(s.tokens, fg), ground), ground);
       if (r < s.textFloor - 1e-9) bad.push(`${s.name}: ${fg} on --chip is ${r.toFixed(2)}:1, needs >= ${s.textFloor}:1`);
+    }
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #137 item 5: the same icon and label inks checked on `--chip` above also
+ * land on `--chip-hover` while a pointer sits over one of the five controls,
+ * so the same sweep applies -- every base theme and every non-Graphite
+ * tint's four states. */
+test('the header chips\' own icon and label inks clear the text floor on --chip-hover', () => {
+  const bad = [];
+  const cases = [...THEMES, ...COLORS.flatMap((c) => {
+    const t = resolved.tint(c);
+    return [
+      { name: `${c} light`, tokens: t.light, textFloor: 4.5 },
+      { name: `${c} dark`, tokens: t.dark, textFloor: 4.5 },
+      { name: `${c} light + more contrast`, tokens: t.lightMore, textFloor: 7 },
+      { name: `${c} dark + more contrast`, tokens: t.darkMore, textFloor: 7 },
+    ];
+  })];
+  for (const s of cases) {
+    for (const fg of ['--ink-2', '--ink']) {
+      const ground = colorOf(s.tokens, '--chip-hover');
+      const r = contrast(effective(colorOf(s.tokens, fg), ground), ground);
+      if (r < s.textFloor - 1e-9) bad.push(`${s.name}: ${fg} on --chip-hover is ${r.toFixed(2)}:1, needs >= ${s.textFloor}:1`);
     }
   }
   assert.deepEqual(bad, [], bad.join('\n  '));
