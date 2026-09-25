@@ -7,13 +7,6 @@
  * live-guard.test.js / gamemode-open.test.js, app-large-text.mjs) per the
  * spec's own Proof table -- nothing here repeats them.
  *
- * The spec's own "What would settle it" preamble names its fixture's game 0
- * "Panthers". `RICH` (fixtures.mjs) has no Panthers game -- its game 0 is
- * Hawks (see `ONE_GAME`'s own comment there, and `pass-underway.mjs`'s WANT
- * table). Every "Panthers" the spec's items name is Hawks on this tree; this
- * check uses Hawks throughout and this is a spec/fixture mismatch worth a
- * human's attention, not a silent guess.
- *
  * A game's last stint and its "where" label are read off the page's own
  * plan and `fmtClock` (engine.js) -- the same generic clock formatter
  * `resumeAt` itself calls, never a copy of `resumeAt`'s own decision logic

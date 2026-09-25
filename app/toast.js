@@ -96,6 +96,14 @@ function dismissToast(t) {
   setTimeout(() => t.remove(), 600);
 }
 
+// The one live undo toast, if any -- not scoped to `#toasts`: an undo toast
+// for Remove rule (#28) lives inside the open Plan sheet instead (see
+// `toastHost`), and there is only ever one undo toast live at a time
+// regardless of which of the two it is in. Shared by `retireUndo` below and
+// `afterUndoClears`'s two callers, which ask whether one is up before
+// deciding to defer.
+const liveUndoToast = () => document.querySelector('.toast[data-undo]');
+
 /* #28 decision 13: `showModal()` makes everything outside the open dialog
    inert, `#toasts` included -- an Undo a coach cannot reach is not an undo.
    So while a sheet is open the snackbar mounts inside it instead, pinned
@@ -178,10 +186,7 @@ function showUndo(message, snap, refresh) {
    `data-undo`; an `offer` acts on ids, takes nothing back, and is left
    alone. */
 export function retireUndo() {
-  // not scoped to `#toasts`: an undo toast for Remove rule (#28) lives inside
-  // the open Plan sheet instead (see `toastHost`), and there is only ever one
-  // undo toast live at a time regardless of which of the two it is in.
-  const t = document.querySelector('.toast[data-undo]');
+  const t = liveUndoToast();
   if (t) dismissToast(t);
 }
 
@@ -270,10 +275,6 @@ export function tipAfterGame(reachedEnd) {
   if (!tipEligible()) return;
   if (uses >= USES_BEFORE_ASKING) setTimeout(() => showTip('Good game, coach.'), 700);
 }
-
-// The one live undo toast, if any -- shared by `afterUndoClears` below and
-// the two callers that ask whether one is up before deciding to defer.
-const liveUndoToast = () => document.querySelector('.toast[data-undo]');
 
 /* #135 decision 3: neither prompt may clear #toasts out from under a live
    Undo -- most sharply Finish game's own, which is up at the exact moment

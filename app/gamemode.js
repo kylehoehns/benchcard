@@ -292,7 +292,14 @@ function closeGameMode(isFinish = false) {
   // own #gameSub (renderTabs, teams-view.js), and closing a game whose stage
   // just changed (for example reaching the end) left it reading the old
   // passStatus word until the coach left Games and came back.
-  render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs');
+  //
+  // Skipped on a finish (`isFinish`): `gmFinish` still has one write left to
+  // make (`live.finished = true`), and its `undoable` repaints this exact
+  // set right after. Painting it here first would only paint the pre-finish
+  // state a moment before that repaint replaces it -- a real computeAll, a
+  // real save and six real section renders that nothing on screen ever
+  // shows. One tap, one of each.
+  if (!isFinish) render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs');
   closeTrap($('#gamemode'));
   onClose(isFinish);
 }
@@ -300,17 +307,19 @@ function closeGameMode(isFinish = false) {
 /* "Finish game", `#gmFinish`'s handler -- the last stint's replacement for
    Next, on a game the coach has not already finished. Closes the way ✕ and
    Done do (`closeGameMode`, passing `true` so `onClose` hears this was a
-   finish), then makes the one write as an `undoable`: `live.finished = true`
-   and nothing else -- `live.at` stays put on the last stint. The redo repaints
-   the same set `closeGameMode` does on its way out (#34 decision 10, #123's
-   Goal): this write can change where the game stands too. */
+   finish, and so it holds back its own repaint -- see the comment there),
+   then makes the one write as an `undoable`: `live.finished = true` and
+   nothing else -- `live.at` stays put on the last stint. The redo repaints
+   the same set `closeGameMode` would have (#34 decision 10, #123's Goal):
+   this write can change where the game stands too. `render` alone -- it
+   saves on its own, same as every other `undoable` refresh in this file. */
 function gmFinish() {
   const label = gameLabel(game(), state.activeGame);
   const live = liveOf(game());
   closeGameMode(true);
   undoable(`Marked ${label} finished.`, () => {
     live.finished = true;
-  }, () => { save(); render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs'); });
+  }, () => render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs'));
 }
 
 /* The next-sub block is the line the coach actually shouts, so it says real
