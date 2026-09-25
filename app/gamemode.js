@@ -76,10 +76,15 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
   if (toastFns?.undoable) undoable = toastFns.undoable;
   if (toastFns?.flash) flash = toastFns.flash;
   $('.gm-body')?.addEventListener('pointerdown', gmSwipeDown);
-  on('#gmClose', 'onclick', closeGameMode);
-  on('#gmDone', 'onclick', closeGameMode);   // phone-height twin of the top-left X
+  // wrapped, not passed bare: `on` assigns the handler straight to `onclick`,
+  // so a bare `closeGameMode` reference would receive the click Event as its
+  // new `isFinish` argument -- always truthy, so ✕ and Done would report a
+  // finish every time.
+  on('#gmClose', 'onclick', () => closeGameMode(false));
+  on('#gmDone', 'onclick', () => closeGameMode(false));   // phone-height twin of the top-left X
   on('#gmPrev', 'onclick', () => gmStep(-1));
   on('#gmNext2', 'onclick', () => gmStep(1));
+  on('#gmFinish', 'onclick', gmFinish);
   /* The browser drops the lock as soon as the tab is hidden -- there is no
      "keep this held in the background" option -- so returning to a visible
      tab with bench mode still on screen has to ask again. One listener for
@@ -120,12 +125,12 @@ export function openGameMode() {
   /* A finished game starts over; an unfinished one picks up where it was.
    *
    * Holding the position is the point during a game -- close it to check
-   * something at Q3 4:00 and you must not come back at Q1. But reopening on
-   * the last stint of a game you already coached reads as stuck rather than
-   * resumed, which is exactly how it was reported. So the one case that is
-   * unambiguously over is the one case that resets -- `openAt` (live.js)
-   * decides both that and the clamp a shorter plan can need (`at` left past
-   * its end), in the one place every `live.at` rule lives. */
+   * something at Q3 4:00 and you must not come back at Q1. #135: "finished"
+   * is the coach tapping Finish game, not reaching the last stint -- a game
+   * closed there without that tap is still part-played and reopens where it
+   * was. `openAt` (live.js) decides both that and the clamp a shorter plan
+   * can need (`at` left past its end), in the one place every `live.at` rule
+   * lives. */
   live.at = openAt(p, live);
   // the write above reaches persisted state too, so it saves rather than
   // waiting for closeGameMode
@@ -252,13 +257,11 @@ function armInterrupt(gm) {
   const timer = setTimeout(off, 900);
   document.addEventListener('pointerdown', finish, true);
 }
-function closeGameMode() {
-  /* Measured before anything is torn down. "Reached the end" means the coach
-     was sitting on the last stint when they closed -- they coached the game
-     out on the phone, rather than opening this and backing straight out. */
-  const p = plans[state.activeGame];
-  const live = game()?.live;
-  const reachedEnd = stage(p, live) === 'finished';
+/* `isFinish` is whether this close is the one Finish game makes, not whether
+   the coach reached the last stint (#135: reaching it no longer means
+   finished). The default (`false`) is what ✕ and Done pass; `gmFinish`
+   passes `true`. */
+function closeGameMode(isFinish = false) {
   const gmEl = $('#gamemode');
   /* The open transition parks the sections at opacity 0 and clears it when the
      animation finishes. Close before it finishes -- which is one impatient tap
@@ -291,7 +294,23 @@ function closeGameMode() {
   // passStatus word until the coach left Games and came back.
   render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs');
   closeTrap($('#gamemode'));
-  onClose(reachedEnd);
+  onClose(isFinish);
+}
+
+/* "Finish game", `#gmFinish`'s handler -- the last stint's replacement for
+   Next, on a game the coach has not already finished. Closes the way ✕ and
+   Done do (`closeGameMode`, passing `true` so `onClose` hears this was a
+   finish), then makes the one write as an `undoable`: `live.finished = true`
+   and nothing else -- `live.at` stays put on the last stint. The redo repaints
+   the same set `closeGameMode` does on its way out (#34 decision 10, #123's
+   Goal): this write can change where the game stands too. */
+function gmFinish() {
+  const label = gameLabel(game(), state.activeGame);
+  const live = liveOf(game());
+  closeGameMode(true);
+  undoable(`Marked ${label} finished.`, () => {
+    live.finished = true;
+  }, () => { save(); render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs'); });
 }
 
 /* The next-sub block is the line the coach actually shouts, so it says real
@@ -531,7 +550,15 @@ export function renderGameMode({ keepFloor = false } = {}) {
     dots.append(el('div', 'gm-dot' + (k < i ? ' done' : k === i ? ' now' : '') + (edge ? ' edge' : '')));
   }
   set('#gmPrev', 'disabled', i === 0);
-  set('#gmNext2', 'disabled', i >= p.stints.length - 1);
+  const lastStint = i >= p.stints.length - 1;
+  // #135: the last stint of a game the coach has not finished shows Finish
+  // game where Next sits; `#gmNext2` stays `disabled` even while hidden, so
+  // the swipe's edge check and the ArrowRight shortcut (both read
+  // `#gmNext2`) still cannot advance past it or finish the game.
+  set('#gmNext2', 'disabled', lastStint);
+  const showFinish = lastStint && stage(p, live) !== 'finished';
+  set('#gmNext2', 'hidden', showFinish);
+  set('#gmFinish', 'hidden', !showFinish);
 }
 
 /* ---- swipe between stints -----------------------------------------------

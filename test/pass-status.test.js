@@ -41,9 +41,27 @@ test('passStatus reads Planned when the plan is fine and the game is not underwa
     games[0].live = { at: 0, overrides: {} };
     assert.deepEqual(passStatus(p, games[0].live), { word: 'Planned', cls: 'ok' },
       'live.at 0 is "never started", not underway');
+  });
+});
+
+test('passStatus reads Underway on the last stint, until the coach finishes the game', () => {
+  const { players, games, settings } = oneGameTeam();
+  withTeam(players, games, settings, () => {
+    S.computeAll();
+    const p = S.plans[0];
     games[0].live = { at: p.stints.length - 1, overrides: {} };
-    assert.deepEqual(passStatus(p, games[0].live), { word: 'Planned', cls: 'ok' },
-      'the last stint is "game over", not underway');
+    assert.deepEqual(passStatus(p, games[0].live), { word: 'Underway', cls: 'now' },
+      'the last stint is underway until Finish game -- #135');
+  });
+});
+
+test('passStatus reads Finished when live.finished is true', () => {
+  const { players, games, settings } = oneGameTeam();
+  withTeam(players, games, settings, () => {
+    S.computeAll();
+    const p = S.plans[0];
+    games[0].live = { at: p.stints.length - 1, overrides: {}, finished: true };
+    assert.deepEqual(passStatus(p, games[0].live), { word: 'Finished', cls: 'done' });
   });
 });
 

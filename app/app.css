@@ -516,6 +516,10 @@ a { color: inherit; }
 .pass-status.ok::before { background: var(--ok); }
 .pass-status.warn::before { background: var(--warn); }
 .pass-status.now::before { background: var(--accent); }
+/* #135 decision 4: Finished is neutral, not a status that reads good or bad --
+   K3 gains "Finished is neutral". Text stays --muted, same as every status
+   above. */
+.pass-status.done::before { background: var(--info); }
 
 .pass-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: var(--fs-large); font-weight: 700; letter-spacing: -.03em; }
@@ -1457,6 +1461,17 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-nav:disabled { opacity: .35; }
 .gm-nav.next { background: var(--tint); border-color: transparent; color: var(--tint-ink); }
 @media (hover: hover) { .gm-nav.next:hover { background: var(--tint-2); } }
+/* #135: Finish game reads a whole word (W1, W2), not an icon -- the same
+   .gm-nav.next fill (K1) and the same 3.2rem/48px+ height, but its own
+   width: text-wide rather than the fixed 3.6rem square every other .gm-nav
+   button uses, so "Finish game" is never clipped.
+
+   font-size is `--fs-secondary`, the size every other button's label uses
+   (`.btn`, `.gm-exit`) -- not `--fs-sentence`, which is body-copy sized and,
+   at 320px/32px root, put the button at 371px: 51px past the viewport. The
+   height floor above still clears I1's 48px at any root size, since 3.2rem
+   alone is already 51.2px at a 16px root. */
+#gmFinish { width: auto; padding: 0 1.1rem; font-size: var(--fs-secondary); font-weight: 600; white-space: nowrap; }
 /* Bottom-left exit. Hidden on desktop, where the top-left X is an easy reach;
    on a phone it is the only exit a thumb can hit without regripping. Text, not
    a chevron, so it never reads as another stint control. */

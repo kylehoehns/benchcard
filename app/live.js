@@ -1,11 +1,16 @@
-/* live.js -- #113/#123: the one module that decides where a game stands.
-   Two screens disagreeing about whether a game was part-played (#113) came
-   from `live.at` being interpreted in five different places -- `resumeAt`,
-   `openGameMode`, `closeGameMode`, `renderGameMode` and `gmStep` each read
-   and clamped it their own way. Every rule about `live.at` lives here, once:
-   `stage` decides not-started/part-played/finished, and everything else
-   (`resumeAt`, `passStatus`, `openAt`, `stepAt`) is built on that one
-   decision rather than re-checking `at` itself.
+/* live.js -- #113/#123/#135: the one module that decides where a game
+   stands. Two screens disagreeing about whether a game was part-played
+   (#113) came from `live.at` being interpreted in five different places --
+   `resumeAt`, `openGameMode`, `closeGameMode`, `renderGameMode` and `gmStep`
+   each read and clamped it their own way. Every rule about `live.at` lives
+   here, once: `stage` decides not-started/part-played/finished, and
+   everything else (`resumeAt`, `passStatus`, `openAt`, `stepAt`) is built on
+   that one decision rather than re-checking `at` itself.
+
+   #135: "finished" is no longer "reached the last stint" -- it is a saved
+   fact, `live.finished === true`, set only by Finish game. `stage` reads
+   that flag first; a game on its last stint (or past the end of a plan that
+   got shorter) is part-played until the coach says otherwise.
 
    Pure: no DOM, no state.js, no game object -- a plan and a `live` value
    only, so it stays testable with hand-built plans. Imports only
@@ -14,8 +19,8 @@ import { fmtClock } from './engine.js';
 
 export function stage(p, live) {
   if (!p || !p.ok) return null;
+  if (live?.finished === true) return 'finished';
   const at = live?.at || 0;
-  if (at >= p.stints.length - 1) return 'finished';
   if (at <= 0) return 'not-started';
   return 'part-played';
 }
@@ -30,13 +35,15 @@ export function stintIndex(p, live) {
 
 export function resumeAt(p, live) {
   if (stage(p, live) !== 'part-played') return null;
-  const at = live.at;
+  const at = stintIndex(p, live);
   const row = p.stints[at];
   return { at, where: `${row.periodName || 'Q' + row.period} ${fmtClock(row.startSec)}` };
 }
 
 export function passStatus(p, live) {
-  if (stage(p, live) === 'part-played') return { word: 'Underway', cls: 'now' };
+  const s = stage(p, live);
+  if (s === 'finished') return { word: 'Finished', cls: 'done' };
+  if (s === 'part-played') return { word: 'Underway', cls: 'now' };
   if (p && p.ok) return { word: 'Planned', cls: 'ok' };
   return { word: 'Needs a fix', cls: 'warn' };
 }

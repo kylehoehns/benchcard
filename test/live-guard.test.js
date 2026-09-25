@@ -87,6 +87,29 @@ test('card.js exports none of resumeAt, passStatus or resumeBarAt', () => {
   }
 });
 
+// #135 item 13: the flag `stage` reads first must not grow a second reader.
+// The one allowed shape is gamemode.js's own write inside the Finish game
+// undoable, `live.finished = true;` -- nothing else, in any file.
+test('no file outside live.js and storage.js reads live.finished; gamemode.js may only write it true', () => {
+  assert.ok(APP_FILES.length > 10,
+    `app/ file listing came back with only ${APP_FILES.length} entries; this guard is reading the wrong directory`);
+  const offenders = [];
+  for (const f of APP_FILES) {
+    if (f === 'live.js' || f === 'storage.js') continue;
+    const src = read(f);
+    for (const m of src.matchAll(/live\.finished\b/g)) {
+      const lineStart = src.lastIndexOf('\n', m.index) + 1;
+      const nl = src.indexOf('\n', m.index);
+      const line = src.slice(lineStart, nl === -1 ? src.length : nl).trim();
+      const isAllowedWrite = f === 'gamemode.js' && /^live\.finished\s*=\s*true;$/.test(line);
+      if (!isAllowedWrite) offenders.push(`${f}: ${line}`);
+    }
+  }
+  assert.deepEqual(offenders, [],
+    'live.finished may only be written as `live.finished = true;` inside gamemode.js -- every other file, '
+    + 'and every other shape, must ask stage() instead');
+});
+
 test('live.js imports only ./engine.js', () => {
   const src = readFileSync(new URL('live.js', APP), 'utf8');
   const specifiers = [...src.matchAll(/^import\s+.*?\bfrom\s+'([^']+)';/gm)].map(m => m[1]);

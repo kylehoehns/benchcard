@@ -34,14 +34,37 @@ test('resumeBarAt is null when neither game has a live.at at all', () => {
   });
 });
 
-test('resumeBarAt is null when the only non-zero live.at values are stint 0 or the last stint', () => {
+test('resumeBarAt is null when the only non-zero live.at value is stint 0', () => {
+  const { players, games, settings } = twoGameDay();
+  withTeam(players, games, settings, () => {
+    S.computeAll();
+    games[0].live.at = 0; // stint 0: indistinguishable from never started
+    games[1].live.at = 0;
+    assert.equal(resumeBarAt(S.team().days, S.dayPlans), null);
+  });
+});
+
+test('resumeBarAt picks a game on its last stint -- #135, that is part-played, not finished', () => {
   const { players, games, settings } = twoGameDay();
   withTeam(players, games, settings, () => {
     S.computeAll();
     const p0 = S.plans[0];
-    games[0].live.at = p0.stints.length - 1; // last stint: game over, not "part-played"
-    games[1].live.at = 0; // stint 0: indistinguishable from never started
-    assert.equal(resumeBarAt(S.team().days, S.dayPlans), null);
+    games[0].live.at = p0.stints.length - 1;
+    const r = resumeBarAt(S.team().days, S.dayPlans);
+    assert.equal(r.i, 0, 'the last stint is still part-played until Finish game');
+  });
+});
+
+test('resumeBarAt skips a finished game', () => {
+  const { players, games, settings } = twoGameDay();
+  withTeam(players, games, settings, () => {
+    S.computeAll();
+    const p0 = S.plans[0];
+    games[0].live.at = p0.stints.length - 1;
+    games[0].live.finished = true;
+    games[1].live.at = 2;
+    const r = resumeBarAt(S.team().days, S.dayPlans);
+    assert.equal(r.i, 1, 'game 0 is finished, so the bar falls to game 1');
   });
 });
 

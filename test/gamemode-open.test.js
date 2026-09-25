@@ -124,8 +124,8 @@ test('a part-played game says so on the plan page', () => {
   const stageFn = live.slice(live.indexOf('export function stage'));
   const stageBody = stageFn.slice(0, stageFn.indexOf('\n}'));
   assert.match(stageBody, /at <= 0/, 'stint 0 is indistinguishable from "never started"');
-  assert.match(stageBody, /at >= p\.stints\.length - 1/,
-    'the last stint is a game that is over -- game mode restarts that one');
+  assert.match(stageBody, /live\?\.finished\s*===\s*true/,
+    '#135: finished is a saved fact the coach set with Finish game, not "reached the last stint"');
   const resumeFn = live.slice(live.indexOf('export function resumeAt'));
   const resumeBody = resumeFn.slice(0, resumeFn.indexOf('\n}'));
   assert.match(resumeBody, /periodName/, 'the label must follow halves as well as quarters');

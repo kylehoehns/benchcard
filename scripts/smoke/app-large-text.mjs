@@ -107,6 +107,25 @@ export const APP_LARGE_TEXT_STATES = [
     open: `document.querySelector('#gmOpen').click();
            document.querySelector('#gmFloor .gm-p').click()`,
     close: `document.querySelector('#gmClose').click()` },
+  /* #135 item 12: the last stint's own footer row -- #gmFinish beside #gmDone,
+     #gmPrev and the dots, none of which any state above puts on screen
+     together, because reaching the last stint is the one moment #gmNext2
+     is replaced rather than merely disabled. Stepped there with #gmNext2
+     itself (the same control a coach uses), not a fixture flag, since
+     `partPlayed` (fixtures.mjs) is named "must not change" by this ticket
+     and stepping is the real path to this footer anyway.
+
+     CLOSE STEPS BACK FIRST, with #gmPrev, because stepping is a plain save,
+     not an undoable edit -- there is no Undo to take the way `bench mode,
+     undo toast` above does. Left at the last stint, this state would hand
+     RICH's game 0 to every later state already part-played, so the close
+     walks it back to stint 0 before `#gmClose`, leaving the record exactly
+     as this state found it. */
+  { name: 'bench mode, last stint',
+    open: `document.querySelector('#gmOpen').click();
+           while (!document.querySelector('#gmNext2').disabled) { document.querySelector('#gmNext2').click(); }`,
+    close: `while (!document.querySelector('#gmPrev').disabled) { document.querySelector('#gmPrev').click(); }
+            document.querySelector('#gmClose').click()` },
   /* #24 item 4: the help sheet, the keyboard shortcuts dialog and the first
      tour step, none of which any state above this one opens. #27 item 10
      adds the Who's here sheet to the same reused list: a `dialog.bsheet` is
