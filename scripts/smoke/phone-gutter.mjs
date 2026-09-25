@@ -9,7 +9,7 @@
  * Both come from a live `getBoundingClientRect()` read in the page, never
  * from the stylesheet -- a floor set in CSS has to be proven by the box the
  * browser actually painted. */
-import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, toGameOne } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, navigateAndWaitForCard, toGameOne } from './dom.mjs';
 import { TOUCH_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
 import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
 
@@ -22,7 +22,7 @@ const TOL = 1;
  * wrong element (or none) the moment an unrelated `<div>` sits ahead of them
  * in source order.
  *
- * `home: true` states run `TODAY_HOME` as its OWN `step()` call, awaited
+ * Every state runs `TODAY_HOME` as its OWN `step()` call, awaited
  * before the click that follows it, rather than one script chaining both:
  * `setView('today')` applies its repaint synchronously but raises the actual
  * `history.back()` a moment later, and firing the next view's `click()` in
@@ -36,33 +36,33 @@ const TOL = 1;
  * `requestAnimationFrame` pair gives the pending `popstate` a turn first --
  * exactly the gap a real, unhurried tap always has. */
 const GUTTER_STATES = [
-  { name: 'games', home: true,
+  { name: 'games',
     click: `document.querySelector('.today-game').click()`,
     sels: [
       ['dayhead', `document.querySelector('#view-games .dayhead')`],
       ['sentence', `document.querySelector('#sentence')`],
       ['cols', `document.querySelector('#view-games .cols')`],
     ] },
-  { name: 'today', home: true, click: null,
+  { name: 'today', click: null,
     sels: [
       ['h1', `document.querySelector('.today-h1')`],
       ['game', `document.querySelectorAll('#todayGames .today-game')[0]`],
       ['team', `document.querySelector('#todayTeam')`],
       ['season', `document.querySelector('#todaySeason')`],
     ] },
-  { name: 'team', home: true,
+  { name: 'team',
     click: `document.querySelector('#todayTeam').click()`,
     sels: [
       ['dayhead', `document.querySelector('#view-team .dayhead')`],
       ['roster', `document.querySelector('#rosterlist')`],
     ] },
-  { name: 'season', home: true,
+  { name: 'season',
     click: `document.querySelector('#todaySeason').click()`,
     sels: [
       ['dayhead', `document.querySelector('#view-season .dayhead')`],
       ['box', `document.querySelector('#seasonbox')`],
     ] },
-  { name: 'settings', home: true,
+  { name: 'settings',
     click: `document.querySelector('#settingsBtn').click()`,
     sels: [
       ['first', `document.querySelectorAll('#view-settings .side-box')[0]`],
@@ -156,12 +156,7 @@ async function measureLargeText(c, origin) {
   try {
     await c.send('Emulation.setDeviceMetricsOverride',
       { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
+    await navigateAndWaitForCard(c, origin + '/index.html');
 
     const label = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
     const cell = await measureScreens(c, LARGE_TEXT_PX, label);
