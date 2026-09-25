@@ -92,6 +92,25 @@
      darker than the prototype, rather than reusing --surface-2 or
      --seg-track. The on track is unchanged (item 7). */
   --switch-track-off: #8E8E93;
+  /* #137: the header chips (`#backBtn`, `#shareBtn`, `#settingsBtn`,
+     `#teamAdd`, `#teamBtn`) used to fill from `--surface-2`, which in light
+     mode is almost the same color as `--bg` and made them nearly vanish. The
+     owner chose `--seg-track`'s own light value on purpose here, rather than
+     reaching for 3:1 against `--bg` -- see docs/specs/137-header-chip-fill.md
+     -- and left dark unchanged from `--surface-2`. A token of its own, not
+     `--seg-track` itself, because that one's comment says it carries only
+     the two colors a segmented control paints. */
+  --chip: #E8E8ED;
+  /* #137 item 5: `--surface-3` (#F1F1F3) is LIGHTER than `--chip` (#E8E8ED)
+     in light mode, so a hover rule that switched to `--surface-3` to darken
+     the chip would lighten it instead. `--chip-hover` is a step darker than
+     `--chip` for exactly that reason -- but only a small step: `--ink-2` on
+     `--chip` clears the `prefers-contrast: more` floor (7:1) at only 7.47:1,
+     and darkening the ground further pulls that ratio down, so `--chip-hover`
+     stays the darkest gray that still clears 7:1 there (7.07:1). In dark mode
+     it is `--surface-3`'s own dark value (#2E2E30) unchanged, since dark mode
+     never had the bug. */
+  --chip-hover: #E2E2E7;
   /* #28 (the Plan sheet): the grouped-sheet background, the prototype's own
      value. Lighter than --bg in dark mode (K4), so groups on it still read
      as raised surfaces -- see the dark block below. */
@@ -195,6 +214,12 @@
   --seg-track: #2C2C2F;
   /* #140, Q3: within the spec's 3.25-3.71:1 range against --surface here. */
   --switch-track-off: #757579;
+  /* #137: unchanged from `--surface-2` -- dark mode never had the bug, so the
+     header chips keep painting exactly what they painted before. */
+  --chip: #242426;
+  /* #137 item 5: unchanged from `--surface-3` -- dark mode never had the
+     hover bug, so the chip hover fill stays exactly what it painted before. */
+  --chip-hover: #2E2E30;
   --sheet: #141416;
   --ink: #F4F4F6;
   --ink-2: #C7C7CC;
