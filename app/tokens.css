@@ -175,7 +175,7 @@
   --ring: 0 0 0 3.5px var(--accent-soft);
   color-scheme: light;
 }
-[data-theme="dark"] {
+:root[data-theme="dark"] {
   --bg: #0B0B0C;
   --bg-2: #131314;
   --surface: #1C1C1E;
@@ -232,8 +232,8 @@
 
    THE SELECTOR TRAP APPLIES HERE TOO (see the comment above the
    more-contrast block below, and scripts/tokens-css.mjs's header):
-   `:root[data-tint="royal"]` alone would outrank `[data-theme="dark"]` and
-   paint light values on a dark phone, so every block names its theme
+   `:root[data-tint="royal"]` alone would outrank `:root[data-theme="dark"]`
+   and paint light values on a dark phone, so every block names its theme
    explicitly, both here and inside the more-contrast media query below.
    --phrase-line is transparent for every one of these -- #27's sentence
    style keeps its underline only for Graphite (see the base blocks above). */

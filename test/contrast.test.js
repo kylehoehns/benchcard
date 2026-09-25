@@ -15,7 +15,7 @@ import { COLORS } from '../app/storage.js';
  *
  * THE SELECTOR TRAP IS PART OF WHAT THIS FILE GUARDS. tokens.css's own
  * comment says a bare `:root` for the dark arm of the more-contrast block
- * would tie with `[data-theme="dark"]` at equal specificity and lose on
+ * would tie with `:root[data-theme="dark"]` at equal specificity and lose on
  * source order, painting the light values onto a dark phone. So the two
  * blocks inside the media query are found BY THEIR EXACT SELECTOR TEXT, not
  * by position -- swap `:root[data-theme="dark"]` for a bare `:root` and this
@@ -49,7 +49,7 @@ test('the more-contrast block keeps the two base selectors that survive equal sp
     'no block is selected on ":root:not([data-theme=\\"dark\\"])" -- found: ' + nested.join(', '));
   assert.ok(nested.includes(':root[data-theme="dark"]'),
     'no block is selected on ":root[data-theme=\\"dark\\"]" -- a bare `:root` here ties with '
-    + '[data-theme="dark"] at equal specificity and loses on source order, painting light values '
+    + ':root[data-theme="dark"] at equal specificity and loses on source order, painting light values '
     + 'onto a dark phone. found: ' + nested.join(', '));
 });
 
