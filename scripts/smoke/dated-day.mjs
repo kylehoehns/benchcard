@@ -4,16 +4,26 @@ import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
 /* #100 (docs/specs/100-dated-days.md), Proof row 4: "New day" is gone --
    `#todayNewDay` no longer exists anywhere on Today -- and a day dated
    before today files itself on boot, no tap required. `PAST_DAY` is RICH
-   with its one change: `day.date` pinned to 2024-01-06, a Saturday safely in
-   the past (so this stays true no matter what day the harness actually runs
-   on) -- everything else about the day, including its two solved games, is
-   RICH's own fixture, unmodified. The toast's exact wording
-   ("Sat, Jan 6: 2 games saved to the season.") is hand-computed from that
-   same fixed date, the way `en-US` renders `{ weekday: 'short', month:
-   'short', day: 'numeric' }` -- not read back from the app's own formatter. */
+   with its date pinned to 2024-01-06, a Saturday safely in the past (so this
+   stays true no matter what day the harness actually runs on). #133 item 9:
+   of the day's two games (`GAMES` below), only Hawks is started, so only
+   Hawks files. Everything else about the day is RICH's own fixture,
+   unmodified. The toast's exact wording ("Sat, Jan 6: 1 game saved to the
+   season. Ravens was never started, so it was left out.") is hand-computed
+   from that same fixed date, the way `en-US` renders `{ weekday: 'short',
+   month: 'short', day: 'numeric' }` -- not read back from the app's own
+   formatter. */
+// Hawks is finished the way Finish game saves it -- `live.at` 7, the last
+// of its 8 stints (4 periods, granValue 4 -- 2 stints per period),
+// `finished: true`. Ravens keeps RICH's own shape (no `live` at all), so it
+// reads as never started. Shared by PAST_DAY and NEVER_DAY below, so the
+// only field that differs between them is the day's own date.
+const GAMES = RICH.teams[0].days[0].games.map(g =>
+  (g.id === 'g0' ? { ...g, live: { at: 7, overrides: {}, finished: true } } : g));
+
 const PAST_DAY = {
   ...RICH,
-  teams: [{ ...RICH.teams[0], days: [{ ...RICH.teams[0].days[0], date: '2024-01-06' }] }],
+  teams: [{ ...RICH.teams[0], days: [{ ...RICH.teams[0].days[0], date: '2024-01-06', games: GAMES }] }],
 };
 
 /* #100 review, finding 2: the same day, dated so far in the future
@@ -21,7 +31,7 @@ const PAST_DAY = {
    clock this check will ever run under) that it can never file. Loading it
    puts the SAME day and season content that PAST_DAY carries through
    `sanitizeTeam` -- the app's own migration/normalization, which adds
-   fields raw fixture data does not have (`constraints`, `live`, and so on)
+   fields raw fixture data does not have (`constraints`, and so on)
    -- without ever running filing, so its saved record is the "before"
    shape Undo has to restore, produced by the app itself rather than
    retyped by hand. Only `day.date` differs from PAST_DAY on purpose: that
@@ -30,7 +40,7 @@ const PAST_DAY = {
    restore. */
 const NEVER_DAY = {
   ...RICH,
-  teams: [{ ...RICH.teams[0], days: [{ ...RICH.teams[0].days[0], date: '2099-12-31' }] }],
+  teams: [{ ...RICH.teams[0], days: [{ ...RICH.teams[0].days[0], date: '2099-12-31', games: GAMES }] }],
 };
 
 export async function datedDayPass(c, origin) {
@@ -57,25 +67,26 @@ export async function datedDayPass(c, origin) {
 
     const t0 = after.record?.teams?.[0];
     const seasonCount = t0?.season?.games?.length ?? -1;
-    // RICH ships with 3 filed games already; the past day's two solved games
-    // (Hawks, Ravens) join them.
-    if (seasonCount !== 5) {
-      problems.push(`the record's season has ${seasonCount} filed game(s) after boot, want 5 (RICH's 3 plus the 2 the past day filed)`);
+    // RICH ships with 3 filed games already; the past day's Hawks (finished)
+    // joins them, but never-started Ravens is left out (#133).
+    if (seasonCount !== 4) {
+      problems.push(`the record's season has ${seasonCount} filed game(s) after boot, want 4 (RICH's 3 plus the 1 the past day filed)`);
     }
     if (t0 && !t0.season.games.some(g => g.date === '2024-01-06' && g.opponent === 'Hawks')) {
       problems.push('the filed Hawks game is not dated 2024-01-06 (the day it was played on)');
     }
-    if (t0 && !t0.season.games.some(g => g.date === '2024-01-06' && g.opponent === 'Ravens')) {
-      problems.push('the filed Ravens game is not dated 2024-01-06 (the day it was played on)');
+    if (t0 && t0.season.games.some(g => g.opponent === 'Ravens')) {
+      problems.push('Ravens was never started and should not be in the season at all');
     }
     if (t0 && t0.days[0].date === '2024-01-06') problems.push('the day on screen is still dated 2024-01-06 -- filing did not replace it');
     if (t0 && !/^\d{4}-\d{2}-\d{2}$/.test(t0.days[0].date || '')) problems.push(`the fresh day's date reads "${t0 && t0.days[0].date}", want a real YYYY-MM-DD`);
     if (after.gamesOnToday !== 1) problems.push(`Today shows ${after.gamesOnToday} game(s) after filing, want 1 (the fresh day)`);
 
+    const wantToast = 'Sat, Jan 6: 1 game saved to the season. Ravens was never started, so it was left out.';
     if (!after.toastText) {
       problems.push('no Undo toast was shown after a past day filed');
-    } else if (after.toastText !== 'Sat, Jan 6: 2 games saved to the season.') {
-      problems.push(`the filing toast reads "${after.toastText}", want "Sat, Jan 6: 2 games saved to the season."`);
+    } else if (after.toastText !== wantToast) {
+      problems.push(`the filing toast reads "${after.toastText}", want "${wantToast}"`);
     }
 
     /* #100 review, finding 2: Undo has to put the day AND the season back

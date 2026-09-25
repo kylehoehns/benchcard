@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { lacks } from './prose.js';
+import { seasonShare } from '../app/storage.js';
+import { finishGame } from './state-fixture.js';
 
 /* ================================================================== *
  * the day ends, and its games become the season
@@ -25,10 +27,18 @@ const S = await import('../app/state.js');
 const NAMES = ['Marcus', 'Eli', 'Devon', 'Kade', 'Aaron', 'Jack',
                'Leighton', 'Nia', 'Cole', 'Reese'];
 
+// `finishGame` (test/state-fixture.js): the shape Finish game saves (#135).
+// `setup`'s own `started` option calls this per game; a test that needs only
+// ONE game finished, with another left never-started, calls it directly.
+
 /* One team, ten players, a two-game Saturday. Written straight onto the
    record rather than through the accessors, because that is the shape the
-   sanitizer produces. */
-function setup({ games = 2, dayName = 'Sat at Northgate', date = '2026-11-08' } = {}) {
+   sanitizer produces. `started` (#133) marks every game that solves
+   finished the way Finish game saves it (`finishGame` above), so a test
+   whose point is filing itself, not whether a game was played, does not
+   have to build that shape by hand. A game whose plan does not solve is
+   left alone: `stage` returns null for it either way. */
+function setup({ games = 2, dayName = 'Sat at Northgate', date = '2026-11-08', started = false } = {}) {
   const t = {
     id: 't1', name: 'Wildcats', activeGame: 0,
     players: NAMES.map((name, i) => ({ id: 'p' + i, name, number: String(i + 1), shortName: '', tier: 3, hue: i })),
@@ -46,16 +56,23 @@ function setup({ games = 2, dayName = 'Sat at Northgate', date = '2026-11-08' } 
   S.state.teams = [t];
   S.state.activeTeam = 0;
   S.computeAll();
+  if (started) {
+    t.days[0].games.forEach((g, i) => {
+      const p = S.plans[i];
+      if (p && p.ok) finishGame(g, p);
+    });
+    S.computeAll();
+  }
   return t;
 }
 
 const total = m => Math.round(Object.values(m).reduce((a, x) => a + x, 0) * 100) / 100;
 
 test('a day of games lands in the season with its minutes', () => {
-  const t = setup();
+  const t = setup({ started: true });
   const added = S.archiveDay();
 
-  assert.equal(added, 2, 'both games finished');
+  assert.equal(added.kept, 2, 'both games finished');
   assert.equal(t.season.games.length, 2);
   const [a, b] = t.season.games;
   assert.deepEqual(a.minutes, S.plans[0].minutes, 'an unswapped game files the plan it printed');
@@ -100,36 +117,50 @@ test('the season counts who actually played, not who the plan said', () => {
 test('a game that never produced a rotation is not a game that was played', () => {
   // four available cannot field a lineup, so the plan fails -- there is no
   // honest set of minutes to file, and `p.ok` is the signal
-  const t = setup({ games: 2 });
+  const t = setup({ games: 2, started: true });
   t.days[0].games[1].out = S.state.players.slice(4).map(p => p.id);
   S.computeAll();
   assert.equal(S.plans[1].ok, false, 'fixture check: the second game does not solve');
 
-  assert.equal(S.archiveDay(), 1);
+  assert.equal(S.archiveDay().kept, 1);
   assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
 });
 
+test('archiveDay: a game that was never started is left out and named', () => {
+  // #133 item 1's planning half: Northgate part-played (live.at 2), Kingsway
+  // never started (setup()'s default: no live at all).
+  const t = setup({ games: 2 });
+  const northgate = t.days[0].games[0];
+  northgate.live = { at: 2, overrides: {} };
+  S.computeAll();
+
+  const r = S.archiveDay();
+  assert.equal(r.kept, 1, 'only Northgate, part-played, files');
+  assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
+  assert.deepEqual(r.skipped, ['Kingsway'], 'Kingsway, never started, is reported by name');
+});
+
 test('archiving twice cannot double a kid\'s season', () => {
-  const t = setup();
-  assert.equal(S.archiveDay(), 2);
-  assert.equal(S.archiveDay(), 0, 'the same games are already filed');
+  const t = setup({ started: true });
+  assert.equal(S.archiveDay().kept, 2);
+  assert.equal(S.archiveDay().kept, 0, 'the same games are already filed');
   assert.equal(t.season.games.length, 2);
 });
 
 test('a team with no season yet gets one rather than throwing', () => {
-  const t = setup({ games: 1 });
+  const t = setup({ games: 1, started: true });
   delete t.season;
-  assert.equal(S.archiveDay(), 1);
+  assert.equal(S.archiveDay().kept, 1);
   assert.equal(t.season.games.length, 1);
   t.season = { games: 'not an array' };
   S.state.teams[0].days[0].games[0].id = 'g-later';
   S.computeAll();
-  assert.equal(S.archiveDay(), 1, 'a junk season is replaced, not appended to');
+  assert.equal(S.archiveDay().kept, 1, 'a junk season is replaced, not appended to');
   assert.equal(t.season.games.length, 1);
 });
 
 test('the season belongs to the team, and follows the active one', () => {
-  const first = setup({ games: 1 });
+  const first = setup({ games: 1, started: true });
   const second = { ...first, id: 't2', name: 'Ravens', season: { games: [] },
                    days: [{ name: '', date: '2026-11-08', games: [{ ...S.newGame(0), id: 'gz' }] }],
                    activeDay: 0 };
@@ -151,7 +182,7 @@ test('state.season is a non-enumerable accessor, so no record gains a second cop
      the active team's season a second time at the top of the record, and on
      the next load the two would disagree -- the same trap `players` and `day`
      have carried since multi-team. */
-  const t = setup({ games: 1 });
+  const t = setup({ games: 1, started: true });
   S.archiveDay();
 
   const d = Object.getOwnPropertyDescriptor(S.state, 'season');
@@ -167,7 +198,7 @@ test('state.season is a non-enumerable accessor, so no record gains a second cop
 
 test('replaceState swaps the record without losing the season accessor', () => {
   // undo and a restored backup both go through here
-  const t = setup({ games: 1 });
+  const t = setup({ games: 1, started: true });
   S.archiveDay();
   const snapshot = JSON.parse(JSON.stringify(S.state));
   t.season.games = [];
@@ -225,7 +256,7 @@ test('dueToFile: combines dayIsPast with the bench-mode check, in one place', ()
 /* ---- fileIfPast: the entry point ---- */
 
 test('fileIfPast: a past day files its solved games under its own date, and opens a fresh one dated today', () => {
-  const t = setup({ games: 3, date: '2026-09-27' });
+  const t = setup({ games: 3, date: '2026-09-27', started: true });
   // the third game cannot field a lineup, so its plan does not solve
   t.days[0].games[2].out = S.state.players.slice(4).map(p => p.id);
   S.computeAll();
@@ -276,7 +307,7 @@ test('fileIfPast: a part-played game files the minutes it actually produced', ()
 });
 
 test('fileIfPast: filing twice files each game once', () => {
-  const t = setup({ games: 2, date: '2026-09-27' });
+  const t = setup({ games: 2, date: '2026-09-27', started: true });
   S.fileIfPast(TODAY);
   assert.equal(t.season.games.length, 2);
   // the fresh day is dated today, so a second call the same "day" is a no-op
@@ -300,16 +331,117 @@ test('fileIfPast: the toast names the day\'s own weekday, month and day', () => 
   // 2026-09-26 is a real Saturday -- the spec's own worked example pairs a
   // 2026-09-27 day with "Sat", but that date is a Sunday; the weekday here is
   // read off the actual calendar, not hand-picked to match the prose.
-  const t = setup({ games: 2, date: '2026-09-26' });
+  const t = setup({ games: 2, date: '2026-09-26', started: true });
   const msg = S.fileIfPast(TODAY);
   assert.equal(msg, 'Sat, Sep 26: 2 games saved to the season.');
   assert.equal(t.season.games.length, 2);
 });
 
 test('fileIfPast: one game files with singular copy', () => {
-  setup({ games: 1, date: '2026-09-26' });
+  setup({ games: 1, date: '2026-09-26', started: true });
   const msg = S.fileIfPast(TODAY);
   assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season.');
+});
+
+/* ---- #133: a game that was never started is left out of the season ---- */
+
+test('fileIfPast: a never-started game is skipped and named in the toast', () => {
+  // item 1: Northgate part-played (live.at 2), Kingsway never started.
+  const t = setup({ games: 2, date: '2026-09-26' });
+  const northgate = t.days[0].games[0];
+  northgate.live = { at: 2, overrides: {} };
+  S.computeAll();
+  const eff = S.effectiveMinutes(northgate, S.plans[0]);
+
+  const msg = S.fileIfPast(TODAY);
+
+  assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
+  assert.deepEqual(t.season.games[0].minutes, eff);
+  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season. Kingsway was never started, so it was left out.');
+});
+
+test('fileIfPast: an unnamed skipped game reads "Game N"', () => {
+  // item 2: same as item 1, Kingsway's label is '' instead of a name.
+  const t = setup({ games: 2, date: '2026-09-26' });
+  t.days[0].games[0].live = { at: 2, overrides: {} };
+  t.days[0].games[1].label = '';
+  S.computeAll();
+
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season. Game 2 was never started, so it was left out.');
+});
+
+test('fileIfPast: two or more skipped games are counted, not named', () => {
+  // item 3: Northgate finished, Kingsway and an unnamed third game never
+  // started -- setup()'s own default already leaves a third game unnamed.
+  const t = setup({ games: 3, date: '2026-09-26' });
+  const northgate = t.days[0].games[0];
+  finishGame(northgate, S.plans[0]);
+  S.computeAll();
+
+  const msg = S.fileIfPast(TODAY);
+  assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
+  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season. 2 games were never started, so they were left out.');
+});
+
+test('fileIfPast: everything skipped still starts a new day, with an empty season', () => {
+  // item 4: Northgate, solved and never started, is the day's only game.
+  const t = setup({ games: 1, date: '2026-09-26' });
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(t.season.games.length, 0);
+  assert.equal(t.days[0].date, '2026-09-28', 'the fresh day is dated today');
+  assert.equal(msg, 'Sat, Sep 26 is over. Northgate was never started, so it was left out. Started a new day.');
+});
+
+test('fileIfPast: an unsolved game is not counted as skipped', () => {
+  // item 5: Northgate finished, Kingsway with 4 of 10 available -- its plan
+  // does not solve at all, so it was never playable and is silent, as today.
+  const t = setup({ games: 2, date: '2026-09-26' });
+  const northgate = t.days[0].games[0];
+  t.days[0].games[1].out = S.state.players.slice(4).map(p => p.id);
+  S.computeAll();
+  finishGame(northgate, S.plans[0]);
+  S.computeAll();
+  assert.equal(S.plans[1].ok, false, 'fixture check: Kingsway does not solve');
+
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season.');
+});
+
+test('fileIfPast: bench mode opened but still on stint 0 is left out, not counted as played', () => {
+  // item 7: pins the note at the top of the spec -- a game the coach opened
+  // in bench mode but closed without a Next or Finish game never advanced
+  // past stint 0, and one override there does not change that.
+  const t = setup({ games: 1, date: '2026-09-26' });
+  const g = t.days[0].games[0];
+  const p = S.plans[0];
+  const on = p.stints[0].onFloor;
+  const benched = S.state.players.map(x => x.id).find(id => !on.includes(id));
+  g.live = { at: 0, overrides: { 0: [benched, ...on.slice(1)] } };
+  S.computeAll();
+
+  const msg = S.fileIfPast(TODAY);
+  assert.equal(t.season.games.length, 0);
+  assert.equal(msg, 'Sat, Sep 26 is over. Northgate was never started, so it was left out. Started a new day.');
+});
+
+test('fileIfPast: the season used for carryover math counts only the filed game, not the skipped one', () => {
+  // item 8's planning half: seasonShare over the record filing produced must
+  // read exactly as if Kingsway had never existed.
+  const t = setup({ games: 2, date: '2026-09-26' });
+  const northgate = t.days[0].games[0];
+  finishGame(northgate, S.plans[0]);
+  S.computeAll();
+  const eff = S.effectiveMinutes(northgate, S.plans[0]);
+
+  S.fileIfPast(TODAY);
+
+  const builtFromNorthgateAlone = [{
+    id: 'g0', date: '2026-09-26', day: 'Sat at Northgate', opponent: 'Northgate',
+    periods: 4, periodMinutes: 8, minutes: eff,
+  }];
+  assert.deepEqual(seasonShare(t.season.games), seasonShare(builtFromNorthgateAlone),
+    'the skipped game must not shift the season the next game plans against');
 });
 
 test('fileIfPast: a no-op while bench mode is open', () => {

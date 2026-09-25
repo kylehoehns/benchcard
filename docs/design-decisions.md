@@ -96,14 +96,16 @@ its alternative is an assertion, so the rejected options are kept here too.
 - **A day that ends is kept, not thrown away.** `teams[].season.games` holds
   every finished game — its date, format, opponent and the per-player minutes
   actually played. A game is finished when it is in the day at the moment the
-  day's own date passes *and its plan solved* (`fileIfPast`, #100): there is
-  deliberately no "Finish game" button, and — since #100 — no "New day" button
-  either, because the bug being fixed is that a coach loses a day without ever
-  being asked, and an answer that only works when they remember to
-  press something reproduces it for the coach who is busiest. `plan.ok` is the
-  one honest signal available with no UI — a game that never produced a
-  rotation was never played — and deleting a game beforehand already takes it
-  out of the day. The minutes come from `effectiveMinutes`, never
+  day's own date passes *and its plan solved and the game was at least started*
+  (`fileIfPast`, #100, #133): there is deliberately no "Finish game" button, and
+  — since #100 — no "New day" button either, because the bug being fixed is that
+  a coach loses a day without ever being asked, and an answer that only works when
+  they remember to press something reproduces it for the coach who is busiest.
+  `plan.ok` is the one honest signal available with no UI — a game that never
+  produced a rotation was never played — and deleting a game beforehand already
+  takes it out of the day. Games that were never started, when nothing from the
+  plan was ever played, are left out entirely rather than filing their planned
+  minutes (#133). The minutes come from `effectiveMinutes`, never
   `plan.minutes`, so a hand swap in bench mode is counted as what happened.
   Archiving runs inside `undoable`'s mutation, after the snapshot, so Undo
   un-archives with no second code path, and it is idempotent by game id so

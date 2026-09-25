@@ -61,6 +61,11 @@ export const withDays = (players, days, settings, fn, activeDay = 0) => {
 
 export const player = (id, name) => ({ id, name: name || id });
 
+// The shape Finish game saves (#135): the last stint, no overrides, and the
+// saved `finished` fact `stage` (`live.js`) reads as `'finished'`. Copied
+// identically in test/season.test.js and test/day-list.test.js until now.
+export const finishGame = (g, p) => { g.live = { at: p.stints.length - 1, overrides: {}, finished: true }; };
+
 /* The shape every game in those files starts from -- RICH's own format and
  * interval, no rules, no carryover -- with `S.emptyConstraints()` for the
  * constraints a test does not care about, the same source `newGame` itself

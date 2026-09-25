@@ -62,7 +62,8 @@ _Avoid_: session, tournament (a tournament is one kind of day)
 
 **Filing** (decided 2026-09-22, #64):
 What happens to a day once its date has passed: its games go into the season on
-that date. It happens on its own; there is no button.
+that date. Games that were never started are left out; only games that were at least
+partially played are filed (#133). It happens on its own; there is no button.
 _Avoid_: New day (the old manual action this replaced), archiving
 
 **Format**:
