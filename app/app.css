@@ -298,12 +298,15 @@ a { color: inherit; }
    the bar's glass -- `#backBtn`, `#shareBtn`, `#settingsBtn` and `#teamAdd`
    each already carry a `.i` icon span; `#teamBtn` holds text instead of an
    icon, so its own button element IS the fill, shaped to a pill (`--r-full`)
-   rather than a circle. Translucent + blurred (not the opaque `--surface-2`
+   rather than a circle. Translucent + blurred (not the opaque `--chip`
    these used before) so each reads as its own small floating chip over the
    bar's scrim rather than a solid cutout in it -- AC3/decision 8 still swap
-   this to opaque `--surface-2` when transparency or a blur is unavailable. */
+   this to opaque `--chip` when transparency or a blur is unavailable.
+   #137: `--chip`, not `--surface-2` -- in light mode `--surface-2` is almost
+   `--bg` and the chips nearly vanished; `--chip` carries the prototype's own
+   gray instead (docs/specs/137-header-chip-fill.md), unchanged in dark. */
 #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn {
-  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  background: color-mix(in srgb, var(--chip) 72%, transparent);
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
 }
@@ -1682,24 +1685,26 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    mask and the blur only mean anything over a translucent scrim, so there is
    nothing to fade once the scrim itself is opaque `--bg`. AC3 (solid under
    these conditions) wins over L3 (a fade, not a bar) exactly where they
-   meet, which is what L2's own sentence says too. `--bg` and `--surface-2`
+   meet, which is what L2's own sentence says too. `--bg` and `--chip`
    already resolve per theme (tokens.css), so nothing here needs to name
    `:root[data-theme="dark"]` itself -- there is no color literal here for a
    bare `:root` to lose a specificity fight over. CSS has no way to OR an
    `@media` feature query with an `@supports` one, so the same declarations
-   are written twice on purpose rather than nested (which would be AND). */
+   are written twice on purpose rather than nested (which would be AND).
+   #137: the chip fallback reads `--chip`, not `--surface-2` -- same reason
+   as the main rule above. */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
   .bar::before, .actionbar::before {
     background: var(--bg); mask-image: none; -webkit-mask-image: none;
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
   #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn {
-    background: var(--surface-2); backdrop-filter: none; -webkit-backdrop-filter: none;
+    background: var(--chip); backdrop-filter: none; -webkit-backdrop-filter: none;
   }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .bar::before, .actionbar::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
-  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn { background: var(--surface-2); }
+  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn { background: var(--chip); }
 }
 /* #69 decision 6: the prototype's primary button -- 54px tall, 600 weight,
    still `--tint` (K1 allows tint on the primary action). `--r` is already

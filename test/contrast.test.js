@@ -164,6 +164,49 @@ test('the switch\'s own off track clears the control floor against --surface, in
   assert.deepEqual(bad, [], bad.join('\n  '));
 });
 
+/* #137: the header chips (`#backBtn`, `#shareBtn`, `#settingsBtn`, `#teamAdd`
+ * and `#teamBtn`) used to fill from `--surface-2`, which is almost the same
+ * as `--bg` in light mode and made them nearly vanish. The owner's decision
+ * (docs/specs/137-header-chip-fill.md) is a token of the chip's own: the
+ * prototype's `--seg-track` gray in light, unchanged from `--surface-2` in
+ * dark. Both values are pinned here literally, from the spec, not read back
+ * out of whatever app.css currently computes. */
+test('--chip is the prototype gray in light and unchanged from --surface-2 in dark', () => {
+  assert.equal(light['--chip'], '#E8E8ED', 'light --chip should be #E8E8ED, the prototype/--seg-track gray (#137)');
+  assert.equal(dark['--chip'], '#242426', 'dark --chip should be #242426, unchanged from --surface-2 (#137)');
+});
+
+/* #137 item 4: the five header controls do not all draw with the same ink.
+ * `#backBtn`, `#shareBtn`, `#settingsBtn` and `#teamAdd` are `.btn.icon.ghost`
+ * (app/index.html) -- `.btn.ghost` in app.css sets `color: var(--ink-2)`,
+ * inherited by their `.i` icon's `currentColor` stroke (app/icons.js). Their
+ * icon color is `--ink-2`, not `--ink`. `#teamBtn` is not a `.btn` at all: it
+ * sets no color of its own, so its label inherits the page's `--ink` (body's
+ * own rule) straight through. Both are checked on `--chip`, across the same
+ * four base themes AND every non-Graphite tint's four states (#25), because
+ * a tint block that ever redefined either ink should be caught here rather
+ * than trusted by inspection. */
+test('the header chips\' own icon and label inks clear the text floor on --chip', () => {
+  const bad = [];
+  const cases = [...THEMES, ...COLORS.flatMap((c) => {
+    const t = resolved.tint(c);
+    return [
+      { name: `${c} light`, tokens: t.light, textFloor: 4.5 },
+      { name: `${c} dark`, tokens: t.dark, textFloor: 4.5 },
+      { name: `${c} light + more contrast`, tokens: t.lightMore, textFloor: 7 },
+      { name: `${c} dark + more contrast`, tokens: t.darkMore, textFloor: 7 },
+    ];
+  })];
+  for (const s of cases) {
+    for (const fg of ['--ink-2', '--ink']) {
+      const ground = colorOf(s.tokens, '--chip');
+      const r = contrast(effective(colorOf(s.tokens, fg), ground), ground);
+      if (r < s.textFloor - 1e-9) bad.push(`${s.name}: ${fg} on --chip is ${r.toFixed(2)}:1, needs >= ${s.textFloor}:1`);
+    }
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
 /* #25 (team color), items 2 and 6: the nine colors are found by the same
  * list the app uses (`COLORS`, next to `TIE_BREAKS` in storage.js) -- a
  * tenth color added there with no blocks in tokens.css, or a color with a
