@@ -58,7 +58,14 @@ function splitTop(str, seps) {
 }
 
 const DARK_ATTR = /data-theme=["']dark["']/;
-const ROOT_ANCHOR = /^(:root|html)\b/;
+/* #131 fix-pass finding, item 7: `:where(:root)[data-theme="dark"]` and
+ * `:where(html)[data-theme="dark"]` are root-anchored too -- `:where()`
+ * always carries zero specificity, so wrapping `:root`/`html` in it changes
+ * nothing about WHICH element the rule can match, only how much it weighs
+ * against a sibling rule. `:where(.x)[data-theme="dark"]` still applies to
+ * any `.x` carrying the attribute, so only a `:where()` whose argument is
+ * exactly `:root` or `html` counts as anchored. */
+const ROOT_ANCHOR = /^(:root\b|html\b|:where\(\s*:root\s*\)|:where\(\s*html\s*\))/;
 const COMBINATORS = [' ', '\t', '\n', '>', '+', '~'];
 
 /* A selector list applies `[data-theme="dark"]` to something other than the
@@ -88,6 +95,11 @@ test('offendingSelectors accepts every root-anchored form #131 names, and reject
     ':root:not([data-theme="dark"])',
     ':root:not([data-theme="dark"]) [data-tint="x"]',
     ':root[data-theme="dark"] input, :root[data-theme="dark"] select',
+    // #131 fix-pass finding, item 7: the three descendant rules' own
+    // specificity-preserving form.
+    ':where(:root)[data-theme="dark"]',
+    ':where(html)[data-theme="dark"]',
+    ':where(:root)[data-theme="dark"] input, :where(:root)[data-theme="dark"] select',
   ];
   for (const sel of accept) {
     assert.deepEqual(offendingSelectors(sel), [], `should accept "${sel}"`);
@@ -96,6 +108,9 @@ test('offendingSelectors accepts every root-anchored form #131 names, and reject
     '[data-theme="dark"]',
     '[data-theme="dark"] input',
     '[data-theme="dark"] #view-games input[type=text]',
+    // a `:where()` anchored on anything other than :root/html is not an
+    // anchor at all -- it still matches any `.x` carrying the attribute.
+    ':where(.x)[data-theme="dark"]',
     '[data-theme="dark"] .tl-div.onblk',
     '.foo [data-theme="dark"]',
   ];

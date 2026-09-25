@@ -359,7 +359,7 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
    mode reads at about 1.15:1, so the ones that land on a block get dark ink. */
 .tl-div { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-2); opacity: .9; z-index: 1; }
 .tl-div.onblk { background: rgba(20, 20, 20, .34); }
-:root[data-theme="dark"] .tl-div.onblk { background: rgba(8, 8, 8, .46); }
+:where(:root)[data-theme="dark"] .tl-div.onblk { background: rgba(8, 8, 8, .46); }
 .tl-tot { text-align: right; font-size: .78rem; font-weight: 660; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .tl-tot.hi { color: var(--accent); } .tl-tot.lo { color: var(--info); }
 

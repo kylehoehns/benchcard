@@ -986,7 +986,7 @@ input[type=text], input[type=number], input[type=date], input[type=time], select
   background: var(--surface); -webkit-appearance: none;
   transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
-:root[data-theme="dark"] input, :root[data-theme="dark"] select, :root[data-theme="dark"] textarea { background: var(--surface-2); }
+:where(:root)[data-theme="dark"] input, :where(:root)[data-theme="dark"] select, :where(:root)[data-theme="dark"] textarea { background: var(--surface-2); }
 @media (hover: hover) { input:hover, select:hover, textarea:hover { border-color: var(--muted); } }
 /* #69 decision 10: "Day name" (#112), "Opponent", "Tip-off" and the print
    options already sit inside a `--surface` group (`.side-box`) -- a border
@@ -999,7 +999,7 @@ input[type=text], input[type=number], input[type=date], input[type=time], select
 #view-games input[type=text], #view-games input[type=date], #view-games input[type=time], #view-games select {
   border-color: transparent; background: var(--bg); min-height: 48px;
 }
-:root[data-theme="dark"] #view-games input[type=text], :root[data-theme="dark"] #view-games select {
+:where(:root)[data-theme="dark"] #view-games input[type=text], :where(:root)[data-theme="dark"] #view-games select {
   background: var(--bg);
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
@@ -3121,9 +3121,11 @@ dialog.flow .pgrp { margin: 0 1rem; }
    affordance a tap needs.
    Scoped `#sheetCard .pgrp .prow-select`, two classes deep, not the bare
    class: `#view-games select` (decision 9's borderless-field rule) and its
-   dark-theme twin `:root[data-theme="dark"] #view-games select` each carry an
-   id, so a lone id+class selector still loses to the dark one's id+attribute+
-   element on the tie-break; the extra `.pgrp` class is what wins outright. */
+   dark-theme twin `:where(:root)[data-theme="dark"] #view-games select`
+   (#131: `:where(:root)` weighs nothing, so this is still id+attribute+
+   element) each carry an id, so a lone id+class selector still loses to the
+   dark one's id+attribute+element on the tie-break; the extra `.pgrp` class
+   is what wins outright. */
 #sheetCard .pgrp .prow-select { flex: 0 1 auto; min-width: 0; width: auto; text-align: right;
   color: var(--muted); font: inherit; font-size: var(--fs-body);
   background: none; border: 0; padding: 0; margin: 0; min-height: 0;

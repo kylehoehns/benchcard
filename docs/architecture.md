@@ -585,7 +585,7 @@ native button rather than a hand-rolled control.
 Theme follows the phone. `auto` is the default, and it is resolved to a real
 `data-theme` value — by a small inline script before first paint, and by
 `applyTheme()` once the state is loaded — because the dark palette hangs off
-`[data-theme="dark"]` with no `prefers-color-scheme` rule behind it. The query
+`:root[data-theme="dark"]` with no `prefers-color-scheme` rule behind it. The query
 is watched, so a phone that turns dark at dusk turns the app with it; an
 explicit light/dark choice still wins, and `theme-color` follows the resolved
 background.

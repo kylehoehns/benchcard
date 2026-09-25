@@ -42,11 +42,17 @@ The ticket left two fixes open. This spec picks one, from the tree:
   is the same flaw. Each gets a leading `:root`. That is one token per
   selector, and it lets the guard in item 6 hold the whole of `app/`, with no
   list of exceptions.
-- **Their specificity also rises by one class.** `app.css:989` goes from
-  (0,1,1) to (0,2,1). A later rule that sets an input's `background` at
-  (0,1,1)–(0,2,0) used to win on source order and would now lose. So item 7
-  measures dark-mode input backgrounds before and after, instead of trusting
-  a read of the cascade.
+- **The three descendant rules keep their old specificity:
+  `:where(:root)[data-theme="dark"] …`.** The first build gave them a plain
+  `:root` prefix. That added one class, and item 7 then measured ten fields
+  on `main` that changed paint in dark mode: the four print selects, the
+  minutes switch and the five roster-sheet inputs. They went from
+  transparent to filled. Three deliberate overrides had been sized to win
+  against the old specificity: `#sheetCard .pgrp .prow-select` (1,2,0),
+  `.pgrp .prow-in` (0,2,0) and `input[switch]` (0,1,1). `:where(:root)` adds
+  nothing, so the rules are anchored at the root and weigh exactly what they
+  did. `tokens.css` keeps `:root[data-theme="dark"]` like its tint and
+  more-contrast siblings; nothing competes with it on the root (above).
 
 ## What would settle it
 

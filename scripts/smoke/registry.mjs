@@ -99,6 +99,7 @@ import { sweepPass } from './sweep.mjs';
 import { appLargeTextPass } from './app-large-text.mjs';
 import { typeScalePass } from './type-scale.mjs';
 import { staticPass } from './static.mjs';
+import { darkInputBgPass } from './dark-input-bg.mjs';
 
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
@@ -233,6 +234,12 @@ export const ROWS = Object.freeze([
   // the empty state -- see team-screen.mjs.
   { id: 'teamscreen', name: 'team screen: roster rows, the player sheet, add and paste', selectable: true, setup: 'rich',
     run: ctx => teamScreenPass(ctx.c, ctx.origin) },
+  // #131 fix-pass finding, item 7: dark theme's own borderless inputs
+  // (`#sheetCard .pgrp .prow-select`, `.pgrp .prow-in`, `input[switch]`)
+  // stay transparent, guarding the `:where(:root)` fix against the plain
+  // `:root` prefix that flipped them filled -- see dark-input-bg.mjs.
+  { id: 'darkinputbg', name: 'dark theme: print-sheet selects, minutes switch and roster fields stay transparent', selectable: true, setup: 'rich',
+    run: ctx => darkInputBgPass(ctx.c, ctx.origin) },
   // #32's own guard (see docs/specs/32-add-a-game.md's Proof section): the
   // three-step Add-a-game flow -- full screen over the chrome, the back
   // gesture stepping back through it, "Use it" and "Plan it" committing the
