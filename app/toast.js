@@ -19,7 +19,7 @@ import { icon } from './icons.js';
 import { $, on, el, clone } from './dom.js';
 import { openTrap, closeTrap } from './trap.js';
 import { clearPick } from './gamemode.js';
-import { state, save, replaceState, benchOpen } from './state.js';
+import { state, save, replaceState, benchOpen, suppressRotationOffer } from './state.js';
 import { downloadBackup, backupFilename } from './backup.js';
 
 // ---------------------------------------------------------------------------
@@ -73,8 +73,9 @@ let toastTimer = null;
    once to predict it and once to do it, which is a rule in two places. */
 export function undoable(message, mutate, refresh) {
   const snap = clone(state);
-  mutate();
-  (refresh || viewRefresh)();
+  // #134: this refresh already offers its own Undo below; a rotation move it
+  // causes must not raise a second, competing toast.
+  suppressRotationOffer(() => { mutate(); (refresh || viewRefresh)(); });
   showUndo(typeof message === 'function' ? message() : message, snap, refresh);
 }
 
@@ -162,12 +163,18 @@ function actionToast(message, label, act) {
    roster that no longer exists, so it moves them to Games; putting it back
    should put them back where they were, not leave them where the removal sent
    them. Callers that do not care ignore the flag. */
-function showUndo(message, snap, refresh) {
+// Exported for #134: a mid-game rotation change offers this same toast, from
+// render.js, with its own pre-edit snapshot -- not a second undo mechanism.
+export function showUndo(message, snap, refresh) {
   const t = actionToast(message, 'Undo', () => {
-    replaceState(snap);
-    clearPick();
-    save();
-    (refresh || viewRefresh)(true);
+    // #134: restoring must not itself look like a rotation move worth a
+    // second Undo offer.
+    suppressRotationOffer(() => {
+      replaceState(snap);
+      clearPick();
+      save();
+      (refresh || viewRefresh)(true);
+    });
   });
   if (t) t.dataset.undo = '1';
 }
