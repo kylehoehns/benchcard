@@ -148,6 +148,22 @@ test('a segmented control\'s own two labels clear the text floor on the grounds 
   assert.deepEqual(bad, [], bad.join('\n  '));
 });
 
+/* #140 (prototype control size), item 7 and Q3: the switch's off track is a
+ * new token, `--switch-track-off`, checked against `--surface` (the only
+ * ground a switch ever sits on) at the control floor -- 3:1 in light and
+ * dark, 4.5:1 in both more-contrast themes, the same floors `THEMES` already
+ * carries for every other control token. The on track is unchanged and out
+ * of scope (Q3, item 7's own last sentence). */
+test('the switch\'s own off track clears the control floor against --surface, in all four themes', () => {
+  const bad = [];
+  for (const t of THEMES) {
+    const ground = colorOf(t.tokens, '--surface');
+    const r = contrast(effective(colorOf(t.tokens, '--switch-track-off'), ground), ground);
+    if (r < t.controlFloor - 1e-9) bad.push(`${t.name}: --switch-track-off on --surface is ${r.toFixed(2)}:1, needs >= ${t.controlFloor}:1`);
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
 /* #25 (team color), items 2 and 6: the nine colors are found by the same
  * list the app uses (`COLORS`, next to `TIE_BREAKS` in storage.js) -- a
  * tenth color added there with no blocks in tokens.css, or a color with a

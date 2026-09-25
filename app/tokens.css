@@ -85,6 +85,13 @@
      control actually paints, has no such problem: see `.seg` in app.css,
      whose labels are `--ink` (13.93:1 here) like the prototype's. */
   --seg-track: #E8E8ED;
+  /* #140 (prototype control size), Q3: the switch's off track. The
+     prototype's own value (--surface-2, #F6F6F8 here) measures only 1.08:1
+     against --surface -- not enough to see the track at all, let alone clear
+     WCAG's 3:1 non-text floor -- so K5 wins and this stays its own token,
+     darker than the prototype, rather than reusing --surface-2 or
+     --seg-track. The on track is unchanged (item 7). */
+  --switch-track-off: #8E8E93;
   /* #28 (the Plan sheet): the grouped-sheet background, the prototype's own
      value. Lighter than --bg in dark mode (K4), so groups on it still read
      as raised surfaces -- see the dark block below. */
@@ -186,6 +193,8 @@
   /* The prototype's dark value, and the reason the bug was light-only: this
      already sat well clear of `--bg` (#0B0B0C), so the pill read here. */
   --seg-track: #2C2C2F;
+  /* #140, Q3: within the spec's 3.25-3.71:1 range against --surface here. */
+  --switch-track-off: #757579;
   --sheet: #141416;
   --ink: #F4F4F6;
   --ink-2: #C7C7CC;
@@ -416,6 +425,8 @@
     --warn: #694400; --warn-soft: rgba(136, 89, 0, .10);
     --err: #931D13; --err-soft: rgba(190, 37, 25, .10);
     --info: #4F4F54; --info-soft: rgba(28, 28, 30, .06);
+    /* #140, Q3: 5.97:1 against --surface here, clearing the 4.5:1 more-contrast floor. */
+    --switch-track-off: #636368;
   }
   :root[data-theme="dark"] {
     --muted: #BCBCC0;
@@ -424,6 +435,8 @@
     --warn: #E6B454; --warn-soft: rgba(198, 140, 29, .13);
     --err: #FFA58B; --err-soft: rgba(255, 101, 54, .13);
     --info: #BCBCC0; --info-soft: rgba(244, 244, 246, .08);
+    /* #140, Q3: 5.64:1 against --surface here, clearing the 4.5:1 more-contrast floor. */
+    --switch-track-off: #949499;
   }
 
   /* #25: the light+more and dark+more arm of each non-Graphite color. Same

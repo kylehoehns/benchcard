@@ -102,6 +102,7 @@ import { typeScalePass } from './type-scale.mjs';
 import { staticPass } from './static.mjs';
 import { darkInputBgPass } from './dark-input-bg.mjs';
 import { phoneGutterPass } from './phone-gutter.mjs';
+import { controlSizePass } from './control-size.mjs';
 
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
@@ -248,6 +249,12 @@ export const ROWS = Object.freeze([
   // #abBench/#resumeBtn hold the same 16px -- see phone-gutter.mjs.
   { id: 'phonegutter', name: `phone gutter: five screens, #abBench and #resumeBar, ${TOUCH_RANGE} + ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich',
     run: ctx => phoneGutterPass(ctx.c, ctx.origin) },
+  // #140 (prototype control size), "Drawn sizes" (Proof section): sentence
+  // pitch, seg button/track height, stepper pill/halves, row heights and
+  // switch-row containment, all measured as painted, not as a hit area --
+  // see control-size.mjs.
+  { id: 'controlsize', name: 'prototype control sizes: sentence, segs, steppers, switch rows', selectable: true, setup: 'rich',
+    run: ctx => controlSizePass(ctx.c, ctx.origin) },
   // #32's own guard (see docs/specs/32-add-a-game.md's Proof section): the
   // three-step Add-a-game flow -- full screen over the chrome, the back
   // gesture stepping back through it, "Use it" and "Plan it" committing the
