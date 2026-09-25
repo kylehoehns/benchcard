@@ -745,7 +745,15 @@
                 <p class="note" id="whenHint">Optional. Sets the order of the day's games.</p>
               </div>
             </div>
-            <button class="btn ghost danger sm press" id="removeGame" hidden style="margin-top:.9rem">Remove this game</button>
+          </div>
+          <!-- #141 (one control each), decision 1: the red list row, not
+               `btn ghost danger sm`. `.pgrp` is its own sibling here, not
+               nested inside `.side-box.s-thisgame` above -- that box already
+               draws its own card (border, radius, padding), and a `.pgrp`
+               inside it would be a card inside a card. This one reads as its
+               own card instead, right under "This game". -->
+          <div class="pgrp noprint">
+            <button class="prow prow-center prow-danger press" id="removeGame" type="button" hidden>Remove this game</button>
           </div>
           <!-- #29 decision 8: Print, Share image and the card options moved
                into `#sheetCard` below -- only Start game stays out here,
@@ -755,7 +763,7 @@
                11 (W3): the "?" beside it is gone. -->
           <div class="gm-start noprint">
             <span class="gmq">
-              <button class="btn press" id="gmOpen">
+              <button class="btn primary press" id="gmOpen">
 <span class="i" data-icon="maximize-2"></span> <span class="ab-lab">Start game</span>
               </button>
             </span>
@@ -908,12 +916,12 @@
 
         <!-- One stage, three views of the same game. -->
         <div class="wel-stage">
-          <div class="wel-seg" role="tablist" aria-label="What Benchcard makes">
-            <button class="wel-seg-b sel press" id="welTabPlan" type="button" role="tab"
+          <div class="seg wide" role="tablist" aria-label="What Benchcard makes">
+            <button class="sel press" id="welTabPlan" type="button" role="tab"
                     aria-selected="true" aria-controls="welPanePlan">The plan</button>
-            <button class="wel-seg-b press" id="welTabPaper" type="button" role="tab"
+            <button class="press" id="welTabPaper" type="button" role="tab"
                     aria-selected="false" aria-controls="welPanePaper">On paper</button>
-            <button class="wel-seg-b press" id="welTabScreen" type="button" role="tab"
+            <button class="press" id="welTabScreen" type="button" role="tab"
                     aria-selected="false" aria-controls="welPaneScreen">On screen</button>
           </div>
           <div class="wel-show">
@@ -1469,17 +1477,24 @@
         </div>
       </div>
 
-      <!-- Removing the team. A `setrow` like the rest of the box, not the old
-           `.teamrow`: `#addTeam` left with A40's `+ Team` chip in the strip, so
-           this row is `#removeTeam` alone, with `#teamCount` (painted by
-           `roster-view.js`'s `renderTeamControls`, unchanged) standing in for
-           the note a row with nothing else to say would otherwise carry. -->
+      <!-- `#teamCount` (painted by `roster-view.js`'s `renderTeamControls`,
+           unchanged) is the only thing left in this row now that Remove has
+           its own card below -- a `setrow` like the rest of the box, not the
+           old `.teamrow`: `#addTeam` left with A40's `+ Team` chip in the
+           strip, so nothing else needs this row either. -->
       <div class="setrow">
         <div class="setrow-b">
           <p class="note" id="teamCount"></p>
         </div>
-        <button class="btn ghost danger sm press" id="removeTeam" type="button">Remove this team</button>
       </div>
+    </div>
+
+    <!-- #141 (one control each), decision 1: the red list row, its own
+         `.pgrp` card rather than nested inside the team `.side-box` above --
+         that box already draws its own card, and a `.pgrp` inside it would
+         be a card inside a card. -->
+    <div class="pgrp">
+      <button class="prow prow-center prow-danger press" id="removeTeam" type="button">Remove this team</button>
     </div>
 
     <!-- The Benchcard box: Appearance first (S3/K4), then How it works, then

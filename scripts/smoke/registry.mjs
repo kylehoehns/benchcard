@@ -104,6 +104,10 @@ import { staticPass } from './static.mjs';
 import { darkInputBgPass } from './dark-input-bg.mjs';
 import { phoneGutterPass } from './phone-gutter.mjs';
 import { controlSizePass } from './control-size.mjs';
+import { removeRowsPass } from './remove-rows.mjs';
+import { barRowsPass } from './bar-rows.mjs';
+import { gameFieldMatchPass } from './game-field-match.mjs';
+import { gmOpenPass } from './gm-open.mjs';
 
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
@@ -256,6 +260,23 @@ export const ROWS = Object.freeze([
   // see control-size.mjs.
   { id: 'controlsize', name: 'prototype control sizes: sentence, segs, steppers, switch rows', selectable: true, setup: 'rich',
     run: ctx => controlSizePass(ctx.c, ctx.origin) },
+  // #141 (one control each), Proof "Remove rows are 48 with --err text" --
+  // see remove-rows.mjs's own comment for why only #removeGame/#removeTeam
+  // are measured here.
+  { id: 'removerows', name: '#removeGame and #removeTeam are .prow-danger rows', selectable: true, setup: 'rich',
+    run: ctx => removeRowsPass(ctx.c, ctx.origin) },
+  // #141 (one control each), Proof "Bar rows match main" -- see
+  // bar-rows.mjs's own comment for how the pinned literals were measured.
+  { id: 'barrows', name: '.mrow, .dayrow and .sn-row match the pre-#141 literals', selectable: true, setup: 'rich',
+    run: ctx => barRowsPass(ctx.c, ctx.origin) },
+  // #141 (one control each), Proof "Game fields match #teamName" -- see
+  // game-field-match.mjs's own comment.
+  { id: 'gamefieldmatch', name: '#gameDate, #label, #dayName and #when match #teamName', selectable: true, setup: 'rich',
+    run: ctx => gameFieldMatchPass(ctx.c, ctx.origin) },
+  // #141 (one control each), Proof "#gmOpen filled and full width at 840 and
+  // 1280" -- see gm-open.mjs's own comment.
+  { id: 'gmopen', name: '#gmOpen is filled and full width at 840/1280, hidden below 840', selectable: true, setup: 'rich',
+    run: ctx => gmOpenPass(ctx.c, ctx.origin) },
   // #32's own guard (see docs/specs/32-add-a-game.md's Proof section): the
   // three-step Add-a-game flow -- full screen over the chrome, the back
   // gesture stepping back through it, "Use it" and "Plan it" committing the

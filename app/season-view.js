@@ -138,7 +138,7 @@ export function gameRowTitle(g, n) {
    one is worse than no color at all (K2). */
 function playerRow(id, min, extra, maxMin) {
   const p = byId(id);
-  const row = el('div', 'sn-row');
+  const row = el('div', 'sn-row barrow');
   const name = el('div', 'sn-name');
   const nm = el('span', 'sn-nm', p ? (nameOf(id) || 'Unnamed') : 'Left the team');
   if (!p) nm.classList.add('gone');
@@ -369,18 +369,23 @@ function gameBlock(g, n) {
      day once it has passed, so a day nobody played still files a game -- the
      toast says so, with Undo, but Undo expires. No confirm: removing a team
      is the one confirm in this app, and `undoable` is the net everywhere
-     else. */
-  const del = el('button', 'btn ghost danger sm press sn-del', 'Delete this game');
+     else.
+
+     #141 (one control each), decision 1: the same red list row every other
+     remove action uses, in its own `.pgrp` -- W2's "Remove", not "Delete". */
+  const grp = el('div', 'pgrp');
+  const del = el('button', 'prow prow-center prow-danger press', 'Remove this game');
   del.type = 'button';
   del.onclick = () => deleteGame(g.id, gameTitle(g));
-  body.append(del);
+  grp.append(del);
+  body.append(grp);
   d.append(body);
   return d;
 }
 
 function deleteGame(id, title) {
   const t = team();
-  undoable(`Deleted ${title} from the season.`, () => {
+  undoable(`Removed ${title} from the season.`, () => {
     const games = t.season.games;
     const at = games.findIndex(g => g.id === id);
     if (at > -1) games.splice(at, 1);

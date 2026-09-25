@@ -149,7 +149,7 @@ export function renderPlanTable() {
   const max = Math.max(...entries.map(e => e[1]));
   const bars = el('div', null); bars.style.marginTop = '1rem';
   for (const [id, m] of entries) {
-    const row = el('div', 'mrow' + (m === max ? ' heavy' : m === entries[entries.length - 1][1] ? ' light' : ''));
+    const row = el('div', 'mrow barrow' + (m === max ? ' heavy' : m === entries[entries.length - 1][1] ? ' light' : ''));
     row.append(el('div', 'nm', sh[id]));
     // `trk`, not `track`: the analytics `track` is a module-scope import here
     const trk = el('div', 'track');
@@ -241,7 +241,7 @@ export function renderDayTotals() {
 
   for (const p of sorted) {
     const tot = dayTotals[p.id] || 0;
-    const row = el('div', 'dayrow');
+    const row = el('div', 'dayrow barrow');
     row.style.setProperty('--c', colorOf(p.id));
     const nm = el('div', 'nm');
     nm.append(el('span', 'dot'), el('span', null, plans.find(x => x?.ok)?.shortNames[p.id] || p.name));

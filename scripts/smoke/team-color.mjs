@@ -252,7 +252,7 @@ export async function teamColorPass(c, origin) {
       ['input[switch]:checked::before (#showMinutes) background', r.switchBg, ROYAL_FILL],
       ['.sheetrow.sel (#sheetInterval) background', sheet.chipBg, ROYAL_FILL],
       ['.sheetrow.sel (#sheetInterval) label', sheet.chipFg, ROYAL_LABEL],
-      ['.wel-seg-b.sel (#welTabPlan) text', r.welSegFg, ROYAL_FILL],
+      ['.seg button[aria-selected=true] (#welTabPlan) text', r.welSegFg, ROYAL_FILL],
       ['input[type=checkbox].box:checked background', r.checkboxBoxBg, ROYAL_FILL],
       ['.gm-p.picked border', gm.pickedBorder, ROYAL_FILL],
       ['.gm-scope button.on text', gm.scopeOnFg, ROYAL_FILL],
