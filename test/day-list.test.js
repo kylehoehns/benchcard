@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, player, withDays } from './state-fixture.js';
+import { S, player, withDays, finishGame } from './state-fixture.js';
 
 /* #101: a team's day of games has become a list of days
  * (docs/specs/101-plan-another-date.md). This file holds the state-layer
@@ -369,10 +369,6 @@ test('setTipoff re-sorts a carryover day: the game that ends up behind the moved
 });
 
 /* ---------------------------- item 9: filing every past day ---------------------------- */
-
-// The shape Finish game saves (#135): the last stint, no overrides, and the
-// saved `finished` fact `stage` (`live.js`) reads as `'finished'`.
-const finishGame = (g, p) => { g.live = { at: p.stints.length - 1, overrides: {}, finished: true }; };
 
 // #133: mark every game across every day started, so a test whose point is
 // filing across several days is not derailed by the newer rule that a

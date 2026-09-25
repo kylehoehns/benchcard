@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { lacks } from './prose.js';
 import { seasonShare } from '../app/storage.js';
+import { finishGame } from './state-fixture.js';
 
 /* ================================================================== *
  * the day ends, and its games become the season
@@ -26,11 +27,9 @@ const S = await import('../app/state.js');
 const NAMES = ['Marcus', 'Eli', 'Devon', 'Kade', 'Aaron', 'Jack',
                'Leighton', 'Nia', 'Cole', 'Reese'];
 
-// The shape Finish game saves (#135): the last stint, no overrides, and the
-// saved `finished` fact `stage` (`live.js`) reads as `'finished'`. `setup`'s
-// own `started` option calls this per game; a test that needs only ONE game
-// finished, with another left never-started, calls it directly.
-const finishGame = (g, p) => { g.live = { at: p.stints.length - 1, overrides: {}, finished: true }; };
+// `finishGame` (test/state-fixture.js): the shape Finish game saves (#135).
+// `setup`'s own `started` option calls this per game; a test that needs only
+// ONE game finished, with another left never-started, calls it directly.
 
 /* One team, ten players, a two-game Saturday. Written straight onto the
    record rather than through the accessors, because that is the shape the
