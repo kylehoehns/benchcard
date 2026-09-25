@@ -101,6 +101,13 @@
     return Math.abs(el.getBoundingClientRect().height - pitch) < 1;
   };
 
+  /* #140 (prototype control size), Q1: same shape as `skipRowPitchName`
+     above -- a phrase's hit area is its own line box (34.5 tall, app.css's
+     `.phrase` and `.sentence`), not the 48px floor this sweep otherwise
+     holds every control to. "prototype control sizes: sentence, segs,
+     steppers, switch rows" (control-size.mjs) owns that 34px floor instead. */
+  const skipPhrase = el => el.classList.contains('phrase');
+
   const checks = [];
   const add = (name, pass, detail) => checks.push({ name, pass, detail });
 
@@ -183,18 +190,75 @@
      failing because a probe came back false. Shared by the touch sweep below
      and by `minSizeCheck`'s row sweeps -- one 48px floor since #37 -- so one
      control wearing an extended hit area reads the same way to all of
-     them. */
+     them.
+
+     `elementFromPoint` answers for the viewport actually on screen, not the
+     document -- a probe past the bottom of a scrolled view returns nothing,
+     every time, whatever is really there. Every control this ever ran on
+     before #140 was already 48px on its own box (`Math.max` never needed the
+     probe to win), so this went unexercised for anything below the fold.
+     Settings is taller than the harness's own 844px viewport and #140 is the
+     first control down there to rely on the probe -- `scrollIntoView` first.
+     `{ block: 'center' }`, not `'nearest'`: `'nearest'` only promises the
+     control's own box is on screen, with as little as 0px to spare past its
+     edge, which is short of the `floor / 2` of clearance a probe needs
+     beyond that box on every side -- a control flush against the viewport's
+     bottom edge came back with its own box passing and its probe below
+     landing on nothing. Centering costs nothing a `'nearest'` scroll did not
+     already risk (every caller reads the freshly-scrolled position straight
+     back off `getBoundingClientRect`), and buys the probe the room it
+     needs, in whichever state has room to give it.
+
+     It puts every scroll position it moves back before returning, window
+     included: a sweep calls this once per control, in DOM order, and a
+     sheet whose body scrolls (`.bsheet-body`, `overflow-y: auto`) stays
+     open past the one control this measured -- `#sheetWho`'s own 11 rows
+     landed the body mid-list, and because a `<dialog>` keeps its scroll
+     position across `close()`/`showModal()`, that leftover position was
+     still there the next time something reopened it, in a later check on
+     the same page. `sentence and sheets` reopens `#sheetWho` after `who's
+     here rows ≥ 48px` swept every row here first, and its own tap on Devon
+     Ellis's row used the row's real screen position -- computed off-screen
+     of a sheet body scrolled to the last row this measured, past the
+     bottom of the dialog entirely -- and landed on nothing. */
+  /* Save/restore `scrollTop`/`scrollLeft` across a list of elements, so a
+     probe that calls `scrollIntoView` can put a sheet's own scroll position
+     back afterward. Shared by `hitBox` just below (which saves only the
+     ancestors of one control that actually scroll) and the "last control in
+     an open dialog is reachable" check further down (which saves every
+     element inside the dialog unconditionally) -- each still builds its own
+     element list, since the two walk different trees for different reasons,
+     but both save and restore that list the same way. */
+  function saveScroll(elements) {
+    return elements.map(el => [el, el.scrollTop, el.scrollLeft]);
+  }
+  function restoreScroll(saved) {
+    for (const [el, top, left] of saved) { el.scrollTop = top; el.scrollLeft = left; }
+  }
+
   function hitBox(el, floor) {
+    const scrollers = [];
+    for (let n = el.parentElement; n; n = n.parentElement) {
+      if (n.scrollTop || n.scrollLeft || n.scrollHeight > n.clientHeight || n.scrollWidth > n.clientWidth) {
+        scrollers.push(n);
+      }
+    }
+    const saved = saveScroll(scrollers);
+    const winX = window.scrollX, winY = window.scrollY;
+    el.scrollIntoView({ block: 'center', inline: 'center' });
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2, p = floor / 2;
     const lands = (dx, dy) => {
       const t = document.elementFromPoint(cx + dx, cy + dy);
       return !!t && (t === el || el.contains(t));
     };
-    return {
+    const result = {
       width: Math.max(r.width, lands(-p, 0) && lands(p, 0) ? floor : 0),
       height: Math.max(r.height, lands(0, -p) && lands(0, p) ? floor : 0),
     };
+    restoreScroll(saved);
+    window.scrollTo(winX, winY);
+    return result;
   }
 
   /* 3. Touch targets ≥48px (I1). A coach taps this standing up, in a hurry.
@@ -207,14 +271,29 @@
   /* An open sheet is a modal `<dialog>`, and the browser makes everything
      behind one inert — a tap there is not delivered at all. So a control
      under a backdrop has no target size to measure. It is measured in the
-     states where nothing is open, which is where it can actually be tapped. */
-  const modals = [...document.querySelectorAll('dialog[open]')].filter((d) => d.matches(':modal'));
+     states where nothing is open, which is where it can actually be tapped.
+
+     `#colorPicker`, `#help`, `#confirm`, `#keys`, `#gamemode` and `#tour`
+     are the same `.keyswrap`/`.gm`/`.tour` overlay shape (`trap.js`'s
+     openTrap/closeTrap) rather than a native `<dialog>` -- `role="dialog"
+     aria-modal="true"`, shown and hidden through the `hidden` attribute
+     instead of `showModal()`. The browser does not make what is behind one
+     of these inert the way it does for `<dialog>`, but visually and by
+     every ARIA reading a coach's screen reader gives, it is exactly as
+     modal, so it is treated the same way here: a covered control has no
+     target size to measure either, until #140 gave Settings' segs a
+     drawn-vs-hit-area gap for `hitBox`'s probe to actually need this — every
+     control behind them was already ≥48px on its own box before, so the gap
+     went unexercised. */
+  const modals = [...document.querySelectorAll('dialog[open]')].filter((d) => d.matches(':modal'))
+    .concat([...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].filter(visible));
   const behindAModal = (el) => modals.length > 0 && !modals.some((d) => d.contains(el));
   for (const el of document.querySelectorAll(SEL)) {
     if (!visible(el) || el.closest('.card') || el.closest('[hidden]')) continue;
     if (behindAModal(el)) continue;
     if (el.type === 'hidden') continue;
     if (skipRowPitchName(el)) continue; // #72: game-rows-fit.mjs owns this floor instead
+    if (skipPhrase(el)) continue; // #140: "prototype control sizes..." owns this floor instead
     /* `dd` joined this list when about.html's FAQ tripped the check with a link
        inside a sentence. It is the same kind of container as `p` and `li` — a
        run of body text — so this is the exemption reaching a case it always
@@ -452,9 +531,11 @@
     // #72: `.tl-row` (the old target) is replaced by `.tl-name` (the row's
     // own button now) -- skipRowPitchName excludes it here too, in the
     // one-row layout, for the same reason it is skipped in the touch sweep
-    // above.
+    // above. #140: `.phrase` is in `ITEM4_SEL` itself, so skipPhrase has to
+    // exclude it here too, for the same reason -- "prototype control
+    // sizes..." owns its floor instead.
     elements: () => [...document.querySelectorAll(ITEM4_SEL)]
-      .filter((el) => !el.closest('[hidden]') && !skipRowPitchName(el)),
+      .filter((el) => !el.closest('[hidden]') && !skipRowPitchName(el) && !skipPhrase(el)),
     dim: (r) => Math.min(round(r.width), round(r.height)),
     fmt: (el, r) => `${label(el)} ${round(r.width)}×${round(r.height)}`,
     noun: 'controls',
@@ -493,10 +574,10 @@
       .filter(el => visible(el) && !el.closest('[hidden]') && el.type !== 'hidden');
     if (!foc.length) continue;
     const last = foc[foc.length - 1];
-    const scrolled = [dlg, ...dlg.querySelectorAll('*')].map(el => [el, el.scrollTop, el.scrollLeft]);
+    const saved = saveScroll([dlg, ...dlg.querySelectorAll('*')]);
     last.scrollIntoView({ block: 'nearest' });
     const r = last.getBoundingClientRect();
-    for (const [el, top, left] of scrolled) { el.scrollTop = top; el.scrollLeft = left; }
+    restoreScroll(saved);
     audited.push(label(dlg));
     if (r.top < -0.5 || r.bottom > winH + 0.5) {
       cut.push(`${label(dlg)} → ${label(last)} at ${round(r.top)}–${round(r.bottom)}, window is 0–${round(winH)}`);
