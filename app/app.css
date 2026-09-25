@@ -1606,7 +1606,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .actionbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
   display: none; gap: .5rem; align-items: center;
-  padding: .6rem clamp(.7rem, 3vw, 1rem);
+  padding: .6rem 1rem;
   /* #33 AC4 (L5): `safe-area-max-inset-bottom` is the browser's own settled
      value for the home indicator, which does not move once loaded --
      `safe-area-inset-bottom` is the live one, which on Chrome/Android can
@@ -1732,7 +1732,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .toasts {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 250;
   display: flex; flex-direction: column-reverse; align-items: center; gap: .5rem;
-  padding: 0 clamp(.7rem, 3vw, 1rem);
+  padding: 0 1rem;
   padding-bottom: calc(.9rem + env(safe-area-inset-bottom));
   pointer-events: none;
 }
@@ -1986,12 +1986,8 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .tour-dots i { width: .42rem; height: .42rem; border-radius: var(--r-full); background: var(--line-2); }
 .tour-dots i.on { background: var(--accent); }
 
-/* #33 decision 13: the footer, and `.foot`/`.foot-in`/`.foot-note`/`.foot-why`/
-   `.foot-link`/`.tip`/`.tip-ico` with it -- its three destinations (How it
-   works, Contact, the tip jar) already exist in Settings. Not `.tip-toast`/
-   `.tip-lead` below: those style the unrelated tip-jar TOAST (`toast.js`),
-   which still fires after a print or a finished game. */
-@media (max-width: 620px) { .wrap { padding-left: .7rem; padding-right: .7rem; } }
+/* L6, #132: a phone's side gutter is 16px, not the 11.2px `.7rem` gave it. */
+@media (max-width: 620px) { .wrap { padding-left: 1rem; padding-right: 1rem; } }
 
 /* ============================ first run ============================ */
 /* The pre-paint half of it. The inline script in index.html's head stamps
