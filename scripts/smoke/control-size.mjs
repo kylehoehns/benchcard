@@ -1,6 +1,6 @@
 import { evalJSON, tap } from './sheet-drive.mjs';
 import { goRich } from './fixtures.mjs';
-import { TODAY_HOME } from './dom.mjs';
+import { TODAY_HOME, CSS_VAR_COLOR_PROBE } from './dom.mjs';
 
 /* #140 (prototype control size), "What would settle it" items 1, 3-6 -- the
  * "Drawn sizes" row of the spec's Proof table. Nothing before this pinned how
@@ -18,10 +18,10 @@ import { TODAY_HOME } from './dom.mjs';
  * different literal color per theme, so the fill is read back from the live
  * page in each theme rather than one theme standing in for both (the same
  * reasoning `gameRowsFitPass` gives for measuring both). `--seg-track` itself
- * is never re-typed here -- an offscreen probe element reads it back through
- * `getComputedStyle`, in the same rgb() shape the browser reports every other
- * computed color in, so the comparison is never a hex string against an rgb()
- * string.
+ * is never re-typed here -- `dom.mjs`'s `CSS_VAR_COLOR_PROBE` reads it back
+ * through `getComputedStyle`, in the same rgb() shape the browser reports
+ * every other computed color in, so the comparison is never a hex string
+ * against an rgb() string.
  *
  * `goRich` lands straight on the games view (it waits for `.card`, same as
  * `goSeed` -- see that function's own comment), so every phrase this reads
@@ -69,11 +69,7 @@ async function stepperMetrics(c, containerSel) {
     const rect = ${RECT};
     const pstep = row.querySelector('.pstep');
     const btns = [...row.querySelectorAll('.pstep-btn')].map(rect);
-    const probe = document.createElement('div');
-    probe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;background-color:var(--seg-track)';
-    document.body.appendChild(probe);
-    const segTrack = getComputedStyle(probe).backgroundColor;
-    probe.remove();
+    const segTrack = (${CSS_VAR_COLOR_PROBE})('var(--seg-track)');
     const pillRect = rect(pstep);
     return {
       rowRect: rect(row), pillW: pillRect.w, pillH: pillRect.h,
@@ -93,6 +89,18 @@ async function switchMetrics(c, sel) {
     const row = input.closest('.prow');
     return JSON.stringify({ inputRect: rect(input), rowRect: row ? rect(row) : null });
   })()`);
+}
+
+// Item 3: one assertion loop for every seg `segMetrics` returns, so
+// `#stratseg` (the Plan sheet's own seg) and the four Settings segs are held
+// to the same 36/32/14 rule rather than the Plan seg's own rows only ever
+// contributing to `segCount`.
+function checkSegMetrics(problems, theme, segs) {
+  for (const s of segs) {
+    if (!near(s.trackH, 36)) problems.push(`${theme}: ${s.sel} track is ${s.trackH}px tall, want 36 +/-${TOL}`);
+    if (!near(s.btnH, 32)) problems.push(`${theme}: ${s.sel} button is ${s.btnH}px tall, want 32 +/-${TOL}`);
+    if (!near(s.fontPx, 14, 0.5)) problems.push(`${theme}: ${s.sel} button text is ${s.fontPx}px, want 14`);
+  }
 }
 
 function checkStepperRows(problems, theme, where, rows) {
@@ -149,7 +157,9 @@ export async function controlSizePass(c, origin) {
       // Item 3, part 1 (#stratseg) and item 6, part 1 (the "Even out earlier
       // games" switch), both inside the Plan sheet's level-1 pane.
       await tap(c, `document.getElementById('phraseStrategy').click()`);
-      segCount += (await segMetrics(c)).length;
+      const planSegs = await segMetrics(c);
+      segCount += planSegs.length;
+      checkSegMetrics(problems, theme, planSegs);
       const dayMetrics = await switchMetrics(c, '#planDay input[switch]');
       checkSwitchRow(problems, theme, 'Plan sheet, Even out earlier games', dayMetrics);
       await tap(c, `document.getElementById('sheetPlanClose').click()`);
@@ -158,11 +168,7 @@ export async function controlSizePass(c, origin) {
       await tap(c, `document.getElementById('settingsBtn').click()`);
       const settingsSegs = await segMetrics(c);
       segCount += settingsSegs.length;
-      for (const s of settingsSegs) {
-        if (!near(s.trackH, 36)) problems.push(`${theme}: ${s.sel} track is ${s.trackH}px tall, want 36 +/-${TOL}`);
-        if (!near(s.btnH, 32)) problems.push(`${theme}: ${s.sel} button is ${s.btnH}px tall, want 32 +/-${TOL}`);
-        if (!near(s.fontPx, 14, 0.5)) problems.push(`${theme}: ${s.sel} button text is ${s.fontPx}px, want 14`);
-      }
+      checkSegMetrics(problems, theme, settingsSegs);
       // `#backBtn` (TODAY_HOME) always lands on Today (app.js wires it that
       // way regardless of which view it left), never back on the game
       // itself -- `.today-game` is the same second step `TOUCH_STATES` takes

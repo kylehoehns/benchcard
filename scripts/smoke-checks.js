@@ -221,13 +221,29 @@
      Ellis's row used the row's real screen position -- computed off-screen
      of a sheet body scrolled to the last row this measured, past the
      bottom of the dialog entirely -- and landed on nothing. */
+  /* Save/restore `scrollTop`/`scrollLeft` across a list of elements, so a
+     probe that calls `scrollIntoView` can put a sheet's own scroll position
+     back afterward. Shared by `hitBox` just below (which saves only the
+     ancestors of one control that actually scroll) and the "last control in
+     an open dialog is reachable" check further down (which saves every
+     element inside the dialog unconditionally) -- each still builds its own
+     element list, since the two walk different trees for different reasons,
+     but both save and restore that list the same way. */
+  function saveScroll(elements) {
+    return elements.map(el => [el, el.scrollTop, el.scrollLeft]);
+  }
+  function restoreScroll(saved) {
+    for (const [el, top, left] of saved) { el.scrollTop = top; el.scrollLeft = left; }
+  }
+
   function hitBox(el, floor) {
     const scrollers = [];
     for (let n = el.parentElement; n; n = n.parentElement) {
       if (n.scrollTop || n.scrollLeft || n.scrollHeight > n.clientHeight || n.scrollWidth > n.clientWidth) {
-        scrollers.push([n, n.scrollTop, n.scrollLeft]);
+        scrollers.push(n);
       }
     }
+    const saved = saveScroll(scrollers);
     const winX = window.scrollX, winY = window.scrollY;
     el.scrollIntoView({ block: 'center', inline: 'center' });
     const r = el.getBoundingClientRect();
@@ -240,7 +256,7 @@
       width: Math.max(r.width, lands(-p, 0) && lands(p, 0) ? floor : 0),
       height: Math.max(r.height, lands(0, -p) && lands(0, p) ? floor : 0),
     };
-    for (const [n, top, left] of scrollers) { n.scrollTop = top; n.scrollLeft = left; }
+    restoreScroll(saved);
     window.scrollTo(winX, winY);
     return result;
   }
@@ -558,10 +574,10 @@
       .filter(el => visible(el) && !el.closest('[hidden]') && el.type !== 'hidden');
     if (!foc.length) continue;
     const last = foc[foc.length - 1];
-    const scrolled = [dlg, ...dlg.querySelectorAll('*')].map(el => [el, el.scrollTop, el.scrollLeft]);
+    const saved = saveScroll([dlg, ...dlg.querySelectorAll('*')]);
     last.scrollIntoView({ block: 'nearest' });
     const r = last.getBoundingClientRect();
-    for (const [el, top, left] of scrolled) { el.scrollTop = top; el.scrollLeft = left; }
+    restoreScroll(saved);
     audited.push(label(dlg));
     if (r.top < -0.5 || r.bottom > winH + 0.5) {
       cut.push(`${label(dlg)} → ${label(last)} at ${round(r.top)}–${round(r.bottom)}, window is 0–${round(winH)}`);

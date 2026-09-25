@@ -3372,8 +3372,9 @@ dialog.bsheet.grouped .chip { border-color: transparent; min-height: 48px; displ
 .pstep-row .prow-t { flex-basis: auto; }
 /* `min-width: 0` (not the flex default, `auto`) is what lets this box itself
    shrink below its own content size when it does not fit the row's width --
-   `.pstep-val` and `.pstep` are both `flex: none` (fixed), so this only
-   matters at the row's own width limit, not either child's; without it,
+   `.pstep-val` is `flex: none` (fixed) and `.pstep` shrinks from its own
+   `width` instead (not `flex: none` -- see its own comment below), so this
+   only matters at the row's own width limit, not either child's; without it,
    `.pstep-tail`'s automatic minimum size would hold the line to its content
    width and push its right edge past the row. */
 .pstep-tail { display: flex; align-items: center; gap: .8rem; margin-left: auto; min-width: 0; }
