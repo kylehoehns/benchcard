@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, bareGame, withTeam, player } from './state-fixture.js';
+import { S, bareGame, withTeam, withDays, player } from './state-fixture.js';
 
 /* #134 Proof: "Rotation-moved detection for underway games; no detection for
  * not-started, finished, or an identical rotation" against `computeAll` and
@@ -61,6 +61,38 @@ for (const [label, live, message] of NOT_UNDERWAY) {
  * accessor, `team().days[team().activeDay]`, with an empty `days`), so
  * `dayUnderway` must not read `state.day.games` the way every other caller
  * -- which always has an active day -- gets away with. */
+/* Quality review (#134): `moved` was scoped to the whole active TEAM --
+ * `computeAll` solves every day of the team on every render (`dayPlans =
+ * team().days.map(solveDay)`), and `syncOverrides` adds to `moved` for any
+ * underway game in any of them. `dayUnderway`/the settled snapshot are
+ * scoped to `state.day` alone, so a team-wide edit that moved a game on a
+ * day the coach is not looking at made `render()` offer Undo -- and restore
+ * -- over the wrong day's game. `rotationMoved` must report only the active
+ * day's own games. */
+test('rotationMoved only reports the active day\'s game, not an off-screen day\'s', () => {
+  const g0 = bareGame({ id: 'g0', live: { at: 1, overrides: {} } });
+  const g1 = bareGame({ id: 'g1', live: { at: 1, overrides: {} } });
+  withDays(players, [
+    { name: '', date: '2026-09-26', games: [g0] },
+    { name: '', date: '2026-09-27', games: [g1] },
+  ], {}, () => {
+    S.computeAll();
+    S.rotationMoved(); // the first computeAll only adopts each game's baseline
+
+    // The off-screen day (day 1) moves; the active day is day 0.
+    g1.periodMinutes = 6;
+    S.computeAll();
+    assert.deepEqual(S.rotationMoved(), [],
+      'a move on an off-screen day must not be reported for the active day');
+
+    // Now the active day's own game moves.
+    g0.periodMinutes = 6;
+    S.computeAll();
+    assert.deepEqual(S.rotationMoved(), ['g0'],
+      'a move on the active day is reported');
+  }, 0);
+});
+
 test('dayUnderway does not throw and reports false with no active day', () => {
   const g = underway();
   withTeam(players, [g], {}, () => {

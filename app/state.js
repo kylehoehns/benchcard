@@ -1268,9 +1268,24 @@ export const overridesDropped = () => { const n = dropped; dropped = 0; return n
    function stays the same pure stamp-keeper it always was and never reads
    `live.at`/`live.finished` itself. Read-and-reset, exactly like
    `overridesDropped`; the id list (not just a count) is what lets a test
-   name which game moved without recomputing the stamp itself. */
+   name which game moved without recomputing the stamp itself.
+
+   Filled across every day of the active TEAM -- `computeAll` solves them
+   all on every render (`dayPlans = team().days.map(solveDay)`), so an
+   underway game two days away from the one on screen adds to this set too.
+   `rotationMoved` reports only the ACTIVE day's games (`state.day`), the
+   scope `dayUnderway`/the settled snapshot already use, so a team-wide edit
+   can never offer -- or restore -- Undo over a day the coach is not
+   looking at (quality review, #134). The set itself still clears in full:
+   an off-screen day's stamp has already moved to match its new rotation,
+   so there is nothing left to report for it next time either way. */
 let moved = new Set();
-export const rotationMoved = () => { const ids = [...moved]; moved.clear(); return ids; };
+export const rotationMoved = () => {
+  const activeIds = new Set((state.day?.games || []).map(g => g.id));
+  const ids = [...moved].filter(id => activeIds.has(id));
+  moved.clear();
+  return ids;
+};
 
 /* #134: "underway" is `stage()` returning `'part-played'` -- live.js's one
    rule, never re-derived from `live.at`/`live.finished` (live-guard.test.js

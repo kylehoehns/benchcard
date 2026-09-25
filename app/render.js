@@ -29,7 +29,6 @@ import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './team
 import { renderSeason, seasonGames } from './season-view.js';
 import { state, save, renderStorageWarning, computeAll, overridesDropped, rotationMoved, dayUnderway,
   rotationOfferSuppressed, saveJustFailed, activeColor, hasGames } from './state.js';
-import { clone } from './dom.js';
 import { retireUndo, flash, showUndo } from './toast.js';
 import { initEdits } from './edit.js';
 // storage.js is already in the boot graph (state.js imports it for
@@ -111,14 +110,23 @@ const GAME_SECTIONS = new Set(['setup', 'sentence', 'strategy', 'budget', 'balan
   'cards', 'gameview']);
 
 /* #134: the record right after the *previous* render settled, kept only
-   while some game in the day is underway (a `clone(state)` on every repaint
-   of every screen is not free, and only an underway game can ever offer this
-   Undo). By the time this render runs the current edit has already mutated
-   `state` -- edit.js's own shape -- so this is the one place left holding
-   what the edit is a change FROM, which is what Undo has to restore. */
+   while some game in the day is underway (a `clone(state)` -- a full
+   stringify-then-parse of all of `state` -- on every repaint of every screen
+   is not free, and only an underway game can ever offer this Undo). By the
+   time this render runs the current edit has already mutated `state` --
+   edit.js's own shape -- so this is the one place left holding what the
+   edit is a change FROM, which is what Undo has to restore.
+
+   Held as the `JSON.stringify` half of `clone` alone, not the parsed object:
+   most repaints while a game is underway are a swap tap that never moves the
+   rotation, so `moved.length` below is false far more often than true, and
+   the `JSON.parse` -- the half that actually allocates the independent
+   object tree Undo restores into -- only has to run on the repaint that
+   offers Undo, not on every one of them. */
 let settled = null;
 
 // Shared by both branches below, so the sentence can only ever read one way.
+const ROTATION_CHANGED = 'Rotation changed.';
 const SWAPS_CLEARED = ' The swaps you made by hand were cleared.';
 
 export function render(...keys) {
@@ -138,9 +146,11 @@ export function render(...keys) {
   const moved = rotationMoved();
   const cleared = overridesDropped();
   if (moved.length && priorSettled && !rotationOfferSuppressed()) {
-    showUndo('Rotation changed.' + (cleared ? SWAPS_CLEARED : ''), priorSettled);
+    // Parsed here, not held parsed: this is the one repaint in many that
+    // actually needs an independent object tree to restore into.
+    showUndo(ROTATION_CHANGED + (cleared ? SWAPS_CLEARED : ''), JSON.parse(priorSettled));
   } else if (cleared) {
-    flash('Rotation changed.' + SWAPS_CLEARED);
+    flash(ROTATION_CHANGED + SWAPS_CLEARED);
   }
   save();
   /* Same shape as `overridesDropped()` one line above, for the same kind of
@@ -183,7 +193,7 @@ export function render(...keys) {
      only when the words actually moved -- see its own comment. */
   syncBarTitle(state.view);
   measureBarSideIfHeaderChanged(state.view);
-  settled = dayUnderway() ? clone(state) : null;
+  settled = dayUnderway() ? JSON.stringify(state) : null;
 }
 
 export const renderAll = () => render();
