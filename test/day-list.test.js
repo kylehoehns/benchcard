@@ -370,16 +370,36 @@ test('setTipoff re-sorts a carryover day: the game that ends up behind the moved
 
 /* ---------------------------- item 9: filing every past day ---------------------------- */
 
+// The shape Finish game saves (#135): the last stint, no overrides, and the
+// saved `finished` fact `stage` (`live.js`) reads as `'finished'`.
+const finishGame = (g, p) => { g.live = { at: p.stints.length - 1, overrides: {}, finished: true }; };
+
+// #133: mark every game across every day started, so a test whose point is
+// filing across several days is not derailed by the newer rule that a
+// never-started game is left out.
+function startEveryGame() {
+  S.team().days.forEach((day, d) => {
+    day.games.forEach((g, i) => {
+      const p = S.dayPlans[d][i];
+      if (p && p.ok) finishGame(g, p);
+    });
+  });
+  S.computeAll();
+}
+
+// #101 item 9's worked example, and #133 item 6's: clock at 2026-09-28, days
+// dated 2026-09-26 (two games), 2026-09-27 (one) and 2026-09-29 (not past).
+const THREE_DAYS = () => [
+  { name: '', date: '2026-09-26', games: [S.newGame(0, null, FORMAT), S.newGame(1, null, FORMAT)] },
+  { name: '', date: '2026-09-27', games: [S.newGame(0, null, FORMAT)] },
+  { name: '', date: '2026-09-29', games: [S.newGame(0, null, FORMAT)] },
+];
+
 test('fileIfPast files every past day under its own date, in one toast, and keeps a day that is not past', () => {
-  // #101 item 9's worked example: clock at 2026-09-28, days dated
-  // 2026-09-26, 2026-09-27 and 2026-09-29.
   const TODAY = new Date(2026, 8, 28);
-  withDays(SIX, [
-    { name: '', date: '2026-09-26', games: [S.newGame(0, null, FORMAT), S.newGame(1, null, FORMAT)] },
-    { name: '', date: '2026-09-27', games: [S.newGame(0, null, FORMAT)] },
-    { name: '', date: '2026-09-29', games: [S.newGame(0, null, FORMAT)] },
-  ], FORMAT, () => {
+  withDays(SIX, THREE_DAYS(), FORMAT, () => {
     S.computeAll();
+    startEveryGame();
     const msg = S.fileIfPast(TODAY);
 
     assert.equal(msg, '2 past days: 3 games saved to the season.');
@@ -388,6 +408,26 @@ test('fileIfPast files every past day under its own date, in one toast, and keep
     assert.equal(S.team().days.length, 1, 'the 29th is the only day left');
     assert.equal(S.team().days[0].date, '2026-09-29', 'the 29th was kept, not filed or replaced');
     assert.equal(S.team().activeDay, 0, 'the surviving day is the open one');
+  });
+});
+
+/* ---------------------------- #133 item 6: several past days, mixed ---------------------------- */
+
+test('fileIfPast: several past days report their never-started games in one count, across all of them', () => {
+  // game A (2026-09-26) finishes; game B (2026-09-26) and game C (2026-09-27)
+  // stay never-started; 2026-09-29 is not past and stays put.
+  const TODAY = new Date(2026, 8, 28);
+  withDays(SIX, THREE_DAYS(), FORMAT, () => {
+    S.computeAll();
+    const gameA = S.team().days[0].games[0];
+    finishGame(gameA, S.dayPlans[0][0]);
+    S.computeAll();
+
+    const msg = S.fileIfPast(TODAY);
+
+    assert.equal(msg, '2 past days: 1 game saved to the season. 2 games were never started, so they were left out.');
+    assert.equal(S.team().days.length, 1, 'only the 29th is left in days');
+    assert.equal(S.team().days[0].date, '2026-09-29');
   });
 });
 

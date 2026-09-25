@@ -19,6 +19,7 @@ import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          validTipoff, tipoffLabel, sortDay } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
+import { stage } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
    Lightness and chroma are themed once in CSS; only the hue varies here. */
@@ -1585,15 +1586,18 @@ export function resolveRest(g, p, from, sitIds = []) {
  * `state.day` was replaced wholesale and the minutes every kid had just
  * played went with it. It is now the moment those games are kept.
  *
- * There is no "Finish game" button, and that is the decision, not an
- * omission. The bug is that a coach loses a day without ever being
- * asked; an answer that only works when they remember to press
- * something reproduces it for the coach who is busiest. So a game is
- * finished when it is in the day at the moment "New day" fires *and
- * its plan solved* -- `p.ok` is the one honest signal available with
- * no UI, because a game that never produced a rotation was never
- * played. Deleting a game before then is the coach saying it did not
- * happen, and deleting already takes it out of the day, so it never
+ * There is no confirmation when a day rolls over, and that is the
+ * decision, not an omission. The bug is that a coach loses a day
+ * without ever being asked; an answer that only works when they remember
+ * to press something reproduces it for the coach who is busiest. So a
+ * game is kept when it is in the day at the moment "New day" fires *and*
+ * it was actually started -- `stage(p, g.live)` (`live.js`) is the one
+ * honest signal, read once and never re-derived: `'not-started'` means
+ * nothing from the plan was ever played, and #133 leaves that game out
+ * rather than filing its planned minutes. A plan that never solved
+ * (`p.ok` false) was never playable either way and stays out silently, as
+ * it always has. Deleting a game before then is the coach saying it did
+ * not happen, and deleting already takes it out of the day, so it never
  * reaches here.
  *
  * The minutes are `effectiveMinutes`, never `plan.minutes`: a coach who
@@ -1610,12 +1614,18 @@ export function archiveDay(d = state.activeDay) {
   if (!t.season || !Array.isArray(t.season.games)) t.season = { games: [] };
   const day = t.days[d];
   const dp = dayPlans[d] || [];
-  const finished = day.games
-    .map((g, i) => [g, dp[i]])
-    .filter(([, p]) => p && p.ok)
-    .map(([g, p]) => seasonGame(g, effectiveMinutes(g, p),
-      { dayName: day.name, date: day.date }));
-  return addSeasonGames(t.season, finished);
+  const filed = [];
+  const skipped = [];
+  day.games.forEach((g, i) => {
+    const p = dp[i];
+    const st = stage(p, g.live);
+    if (st === 'part-played' || st === 'finished') {
+      filed.push(seasonGame(g, effectiveMinutes(g, p), { dayName: day.name, date: day.date }));
+    } else if (st === 'not-started') {
+      skipped.push(gameLabel(g, i));
+    }
+  });
+  return { kept: addSeasonGames(t.season, filed), skipped };
 }
 
 /* #123: whether bench mode is open, in one place. Every module that asked
@@ -1707,7 +1717,12 @@ export function fileIfPast(today = new Date()) {
   const activeDayRef = t.days[t.activeDay];
 
   let kept = 0;
-  for (const i of idxs) kept += archiveDay(i);
+  const skipped = [];
+  for (const i of idxs) {
+    const r = archiveDay(i);
+    kept += r.kept;
+    skipped.push(...r.skipped);
+  }
 
   const removed = new Set(idxs);
   t.days = t.days.filter((_, i) => !removed.has(i));
@@ -1735,5 +1750,14 @@ export function fileIfPast(today = new Date()) {
     : (kept
       ? `${n} past days: ${kept} game${kept === 1 ? '' : 's'} saved to the season.`
       : `${n} past days are over.`);
-  return fellBack && kept === 0 ? `${msg} Started a new day.` : msg;
+
+  // #133: a game that was never started is left out of the count above and
+  // named here instead -- one sentence, added only when the day(s) that
+  // filed actually skipped one. Two or more are counted, not named: a
+  // tournament day could skip five, and five names do not fit one toast.
+  const skipMsg = skipped.length === 1 ? ` ${skipped[0]} was never started, so it was left out.`
+    : skipped.length > 1 ? ` ${skipped.length} games were never started, so they were left out.`
+    : '';
+  const full = msg + skipMsg;
+  return fellBack && kept === 0 ? `${full} Started a new day.` : full;
 }
