@@ -82,6 +82,13 @@ export async function stepThreeVisuals(c, ck, label) {
     const range = document.createRange();
     range.selectNodeContents(h2);
     const lines = range.getClientRects().length;
+    // One line is a claim about a phone's own font. A runner with no phone
+    // system font (CI's Ubuntu) falls back to a wider desktop font no coach
+    // sees, so the line count is only judged when SF, Segoe or Roboto is here.
+    const ctx = document.createElement('canvas').getContext('2d');
+    const w = f => { ctx.font = '700 30px ' + f; return ctx.measureText('How should minutes split?').width; };
+    const phoneFont = ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto']
+      .some(f => w(f + ', monospace') !== w('monospace') || w(f + ', serif') !== w('serif'));
     const onCs = getComputedStyle(on, '::before');
     const offCs = getComputedStyle(off, '::before');
     const sw = document.querySelector('#agBody input[switch]');
@@ -89,6 +96,7 @@ export async function stepThreeVisuals(c, ck, label) {
     return JSON.stringify({
       found: true,
       lines,
+      phoneFont,
       titleSize: getComputedStyle(h2).fontSize,
       onWidth: onCs.width, onHeight: onCs.height,
       offWidth: offCs.width, offHeight: offCs.height,
@@ -98,7 +106,7 @@ export async function stepThreeVisuals(c, ck, label) {
   })()`);
   if (!ck(r.found, `${label}: step 3 needs its title and a checked and an unchecked option to compare`)) return;
   ck(r.titleSize === '30px', `${label}: the step 3 title is ${r.titleSize}, want 30px (--fs-flow)`);
-  ck(r.lines === 1, `${label}: the step 3 title wraps onto ${r.lines} line(s) at 390px, want 1`);
+  ck(!r.phoneFont || r.lines === 1, `${label}: the step 3 title wraps onto ${r.lines} line(s) at 390px, want 1`);
   ck(r.onWidth === '22px' && r.onHeight === '22px',
     `${label}: a checked option's radio circle is ${r.onWidth}x${r.onHeight}, want 22px x 22px`);
   ck(r.offWidth === '22px' && r.offHeight === '22px',
