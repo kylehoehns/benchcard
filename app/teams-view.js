@@ -481,10 +481,6 @@ function renderPass(g, i, d) {
   const when = tipoffLabel(g.tipoff);
 
   const b = el('button', 'today-game press');
-  // #139 item 3: Back's own door-lookup matches by game id -- this pass is
-  // rebuilt fresh by `renderTabs` on every return to Today, so nothing else
-  // survives the trip to be focused again.
-  b.dataset.gid = g.id;
   // #139 item 3: `data-fk`, the same focus-preservation key `withFocus`
   // (trap.js) already reads for an in-progress edit -- an undoable action
   // whose own refresh has no screen change of its own (`viewRefresh`) still

@@ -419,9 +419,10 @@ const VIEW_MAIN_ID = { today: 'view-today', games: 'view-games', team: 'view-tea
    their own hide the copy from the accessibility tree so exactly one `h1`
    per screen is announced, as before. */
 // #139 item 5: Today's tab title, decided with the maintainer -- the static
-// home title `index.html`'s own `<title>` already carries at boot, kept here
-// as the one place that sentence is spelled out for `syncBarTitle` below.
-const HOME_TITLE = 'Benchcard — basketball substitution rotation generator';
+// home title `index.html`'s own `<title>` already carries at boot. Read once
+// here, before any view change touches `document.title`, rather than
+// retyping that sentence a second time.
+const HOME_TITLE = document.title;
 
 function syncBarTitle(v) {
   const barTitleEl = $('#barTitle');
@@ -466,7 +467,7 @@ const onScreen = n => !!n && n.getClientRects().length > 0;
 // once onboarded.
 function focusDoorFor(from) {
   const gid = from === 'games' && state.day?.games[state.activeGame]?.id;
-  const sel = from === 'games' ? (gid ? `.today-game[data-gid="${CSS.escape(gid)}"]` : null) : VIEW_DOOR[from];
+  const sel = from === 'games' ? (gid ? `.today-game[data-fk="today-game:${CSS.escape(gid)}"]` : null) : VIEW_DOOR[from];
   // `sel` is null when `from` names no door at all (the game it opened is
   // gone, day included) -- falls through to `.today-h1` the same as a door
   // that resolved but is off-screen, rather than returning with focus left

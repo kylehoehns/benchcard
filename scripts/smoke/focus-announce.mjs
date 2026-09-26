@@ -112,13 +112,18 @@ export async function focusAnnouncePass(c, origin) {
     const today1 = { ...JSON.parse(JSON.stringify(RICH)), view: 'today' };
     await reloadWithRecord(c, origin, today1);
 
-    const HOME_TITLE = 'Benchcard — basketball substitution rotation generator';
+    // item 5: the expected home title comes from the served index.html's own
+    // `<title>`, not a second hand-typed copy of it -- `render.js`'s own
+    // `HOME_TITLE` reads the same tag at module load, so this check can still
+    // fail if Today's title were ever wrong.
+    const indexHtml = await (await fetch(`${origin}/index.html`)).text();
+    const HOME_TITLE = indexHtml.match(/<title>([^<]*)<\/title>/)[1];
     const t0 = await focusInfo(c);
     if (t0.title !== HOME_TITLE) problems.push(`item 5: Today's tab title reads ${JSON.stringify(t0.title)}, want ${JSON.stringify(HOME_TITLE)}`);
 
-    // item 1/5: the Hawks game pass, matched by data-gid (teams-view.js sets
+    // item 1/5: the Hawks game pass, matched by data-fk (teams-view.js sets
     // it on every rebuilt pass) -- lands on #gameTitle, titles "Hawks · Benchcard".
-    await enterOn(c, '.today-game[data-gid="g0"]');
+    await enterOn(c, '.today-game[data-fk="today-game:g0"]');
     let f = await focusInfo(c);
     if (f.id !== 'gameTitle') problems.push(`item 1: pushing Hawks landed focus on ${JSON.stringify(f.id)}, want #gameTitle`);
     if (!f.ringed) problems.push('item 1: #gameTitle is not :focus-visible after a real Enter push -- the ring should show for a keyboard-triggered push');
@@ -128,25 +133,25 @@ export async function focusAnnouncePass(c, origin) {
     notes.push('item 5: the tab title reads "Hawks · Benchcard" on the game screen');
 
     // item 3: Back (#backBtn) returns focus to the SAME game's pass, matched
-    // fresh by data-gid since renderTabs rebuilds the node on every return.
+    // fresh by data-fk since renderTabs rebuilds the node on every return.
     await tap(c, `document.getElementById('backBtn').click()`);
     f = await focusInfo(c);
     if (f.id) problems.push(`item 3: after Back, activeElement has id ${JSON.stringify(f.id)} -- want the Hawks pass, which has none`);
-    const backOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-game[data-gid="g0"]'))`);
-    if (backOk !== true) problems.push('item 3: Back did not return focus to the Hawks pass (.today-game[data-gid="g0"])');
-    else notes.push('item 3: #backBtn from the game screen returns focus to the same pass, matched by data-gid');
+    const backOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-game[data-fk="today-game:g0"]'))`);
+    if (backOk !== true) problems.push('item 3: Back did not return focus to the Hawks pass (.today-game[data-fk="today-game:g0"])');
+    else notes.push('item 3: #backBtn from the game screen returns focus to the same pass, matched by data-fk');
 
     // item 1/3/5, a second game: Ravens, so the game-id match is proved
     // against more than one id, and Back a second way (history.back()).
-    await enterOn(c, '.today-game[data-gid="g1"]');
+    await enterOn(c, '.today-game[data-fk="today-game:g1"]');
     f = await focusInfo(c);
     if (f.id !== 'gameTitle') problems.push(`item 1: pushing Ravens landed focus on ${JSON.stringify(f.id)}, want #gameTitle`);
     if (f.title !== 'Ravens · Benchcard') problems.push(`item 5: the tab title reads ${JSON.stringify(f.title)}, want "Ravens · Benchcard"`);
     await evalIn(c, step(`history.back()`));
     await wait(300);
-    const backOk2 = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-game[data-gid="g1"]'))`);
+    const backOk2 = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-game[data-fk="today-game:g1"]'))`);
     if (backOk2 !== true) problems.push('item 3: history.back() from the Ravens screen did not return focus to its own pass');
-    else notes.push('item 3: history.back() also returns focus to the door it left, matched by data-gid for a second game');
+    else notes.push('item 3: history.back() also returns focus to the door it left, matched by data-fk for a second game');
 
     // item 1/3/5: Team.
     await enterOn(c, '#todayTeam');
@@ -181,7 +186,7 @@ export async function focusAnnouncePass(c, origin) {
     notes.push('item 1: pushing Settings lands focus on #barTitle, titled "Settings · Benchcard", and Back returns it to #settingsBtn');
 
     // item 1's other clause: a mouse-triggered push shows no ring.
-    await realTap(c, '.today-game[data-gid="g0"]');
+    await realTap(c, '.today-game[data-fk="today-game:g0"]');
     f = await focusInfo(c);
     if (f.id !== 'gameTitle') problems.push(`item 1: a mouse tap on the Hawks pass landed focus on ${JSON.stringify(f.id)}, want #gameTitle still`);
     if (f.ringed) problems.push('item 1: #gameTitle shows a ring after a mouse-triggered push, want none');
@@ -194,9 +199,9 @@ export async function focusAnnouncePass(c, origin) {
     // full render right behind it: Remove this game's own Undo toast goes
     // through `viewRefresh`'s default full `render()`, called immediately
     // after `focusAfterTransition` lands here.
-    await enterOn(c, '.today-game[data-gid="g1"]');
+    await enterOn(c, '.today-game[data-fk="today-game:g1"]');
     await tap(c, `document.getElementById('removeGame').click()`);
-    const keptDoorOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-game[data-gid="g0"]'))`);
+    const keptDoorOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-game[data-fk="today-game:g0"]'))`);
     if (keptDoorOk !== true) problems.push(`item 3: removing the OPEN Ravens game (Hawks still in the day) left focus at ${JSON.stringify(await focusInfo(c))}, want the Hawks pass -- its door still exists`);
     else notes.push('item 3: removing the open game lands focus back on the remaining game’s own door, surviving the Undo toast’s own full render right behind it');
     // Undo the removal so the rest of this check (and the row after it) keeps
@@ -211,7 +216,7 @@ export async function focusAnnouncePass(c, origin) {
     oneGame.teams[0].days[0].games = [oneGame.teams[0].days[0].games[0]];
     oneGame.view = 'today';
     await reloadWithRecord(c, origin, oneGame);
-    await enterOn(c, '.today-game[data-gid="g0"]');
+    await enterOn(c, '.today-game[data-fk="today-game:g0"]');
     await tap(c, `document.getElementById('removeGame').click()`);
     const fallbackOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-h1'))`);
     if (fallbackOk !== true) problems.push(`item 3: removing the day's only game left focus at ${JSON.stringify(await focusInfo(c))}, want .today-h1 (no door left)`);
@@ -230,7 +235,7 @@ export async function focusAnnouncePass(c, origin) {
     else notes.push('item 4: a cold load onto Today does not force focus anywhere');
 
     const welcome = { version: 3, onboarded: false, players: [], day: { name: '', games: [] }, activeGame: 0, ui: {} };
-    await reloadWithRecordFallback(c, origin, welcome);
+    await reloadWithRecord(c, origin, welcome, `!document.getElementById('view-welcome').hidden`);
     const bootWelcome = await evalJSON(c, `JSON.stringify(document.activeElement === document.body || document.activeElement === null)`);
     if (bootWelcome !== true) problems.push(`item 4: activeElement on the welcome screen is ${JSON.stringify(await focusInfo(c))}, want BODY`);
     else notes.push('item 4: the welcome screen gets no forced focus move either');
@@ -412,15 +417,9 @@ export async function focusAnnouncePass(c, origin) {
       // item 6: "This stint"/"Rest of game" land focus on the button just
       // pressed.
       bf = await focusInfo(c);
-      if (bf.id || !(bf.cls || '').includes('') ) { /* id is expected null; class match below */ }
       const restFocused = await evalJSON(c, `JSON.stringify(document.activeElement === [...document.querySelectorAll('#gmBenchLab button')].find(b => b.dataset.scope === 'rest'))`);
       if (restFocused !== true) problems.push('item 6: tapping "Rest of game" did not leave focus on that same button');
       else notes.push('item 6: tapping a scope button lands focus on that same button');
-
-      // item 9's bench-row form: a div before a pick has already happened
-      // (any OTHER bench row, not the one about to be swapped in) -- read
-      // before the click below turns bench rows into buttons.
-      const benchPid = await evalJSON(c, `JSON.stringify(document.querySelector('#gmBench .gm-b')?.dataset?.pid ?? document.querySelector('#gmBench .gm-b') ? 'ok' : null)`);
     }
 
     // item 9's "no number" clause: mutate one roster player's number away,
@@ -430,9 +429,7 @@ export async function focusAnnouncePass(c, origin) {
       const s = await import('/state.js');
       const pl = s.state.players.find(p => p.id === 'p10');
       pl.number = '';
-      const rr = await import('/gamemode.js');
     })()`);
-    await evalIn(c, step(`(async () => { const rr = await import('/gamemode.js'); })()`));
     // gamemode.js exposes no direct re-render hook here; closing and
     // reopening bench mode repaints it off the mutated roster.
     await tap(c, `document.getElementById('gmClose').click()`);
@@ -606,13 +603,13 @@ export async function focusAnnouncePass(c, origin) {
     } else notes.push('item 13: a plain Shuffle writes "New rotation. " plus the current #summary text into #regenLive');
     // a repeat Shuffle re-announces even if the text comes out the same
     // (clear-then-next-frame): poll briefly since it is set one rAF later.
-    let sameSeed = null;
+    let sawEmpty = null;
     for (let i = 0; i < 10; i++) {
       const mid = await evalJSON(c, `JSON.stringify(document.getElementById('regenLive')?.textContent ?? null)`);
-      if (mid === '') { sameSeed = true; break; }
+      if (mid === '') { sawEmpty = true; break; }
       await wait(20);
     }
-    if (sameSeed === null) notes.push('item 13: #regenLive was not observed empty between Shuffles -- the clear-then-set race is timing-sensitive; not a hard failure since a second read below still confirms it repopulates');
+    if (sawEmpty === null) notes.push('item 13: #regenLive was not observed empty between Shuffles -- the clear-then-set race is timing-sensitive; not a hard failure since a second read below still confirms it repopulates');
     await wait(300);
     const regen2 = await evalJSON(c, `JSON.stringify(document.getElementById('regenLive')?.textContent ?? null)`);
     if (!regen2 || !regen2.startsWith('New rotation.')) problems.push(`item 13: after a second Shuffle, #regenLive reads ${JSON.stringify(regen2)}, want it to still read "New rotation. ..."`);
@@ -683,24 +680,3 @@ export async function focusAnnouncePass(c, origin) {
   };
 }
 
-/* `reloadWithRecord` waits for `.today-game`, which the welcome screen and
-   the empty-roster fixture (item 2's (a) scenario, landed on the games view)
-   never paint -- this variant waits for a caller-given ready expression
-   instead, the same shape `landWiped` (dom.mjs) already uses for a wiped
-   boot. */
-async function reloadWithRecordFallback(c, origin, record, readyJs = `document.body`) {
-  const { seeded } = await import('./fixtures.mjs');
-  const { navigateAndWaitForCard, evalIn: evalInFn, SETTLE } = await import('./dom.mjs');
-  await seeded(c, `(() => {
-    localStorage.removeItem('benchcard.v3');
-    localStorage.removeItem('benchcard.v7.bak');
-    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(record))});
-  })()`, async () => {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    await evalInFn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !(${readyJs}); i++) await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
-  });
-}
