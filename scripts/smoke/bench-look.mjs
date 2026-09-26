@@ -19,7 +19,7 @@
  * argument), not an emulated `prefers-color-scheme` -- the same mechanism
  * `finish-game.mjs`'s item 5 already uses for the same reason: RICH boots
  * onto the record it was given, `prefers-color-scheme` never enters into it. */
-import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, navigateAndWaitForCard, OVERFLOW_PROBE } from './dom.mjs';
+import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, navigateAndWaitForCard, OVERFLOW_PROBE, WORD_FLOOR_FN } from './dom.mjs';
 import { goRich, RICH, seeded } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
@@ -452,48 +452,16 @@ async function goRichWithLongName(c, origin) {
  * from the row itself (`.gm-p`/`.gm-b`), independent of whatever the avatar
  * or minutes beside it are doing today. A name still has to stay fully
  * inside its row and the viewport either way (`contained`); that is the
- * other half of "still visible" when a word cannot fit whole. */
+ * other half of "still visible" when a word cannot fit whole.
+ *
+ * The measuring itself (`measureWord`, the floor, `contained`) is
+ * `WORD_FLOOR_FN` (`dom.mjs`) now -- #144's own filed-game titles and
+ * opened-game names need the identical floor against a different pair of
+ * selectors, and this file's own copy became the shared one rather than
+ * leaving a second hand-typed probe beside it. */
 const NAME_WORD_PROBE = `(() => {
-  const measureWord = (el, word) => {
-    const cs = getComputedStyle(el);
-    const span = document.createElement('span');
-    span.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap;';
-    span.style.font = cs.font;
-    span.style.letterSpacing = cs.letterSpacing;
-    span.textContent = word;
-    document.body.appendChild(span);
-    const w = span.getBoundingClientRect().width;
-    span.remove();
-    return w;
-  };
-  const vw = document.documentElement.clientWidth;
-  const rows = [];
-  for (const nm of document.querySelectorAll('#gmFloor .gm-p .nm, #gmBench .gm-b .nm')) {
-    if (!nm.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
-    const text = [...nm.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
-    if (!text) continue;
-    // Split after a hyphen too, not only on whitespace: a hyphen is a normal
-    // soft-wrap point (UAX #14) the same as a space, so a name breaking there
-    // is "between words", not "inside" one -- the browser's own line breaker
-    // already treats it that way with no extra CSS asked for.
-    const words = text.split(/(?<=-)|\\s+/).filter(Boolean);
-    const longest = Math.max(...words.map(w => measureWord(nm, w)));
-    const row = nm.closest('.gm-p, .gm-b');
-    const rcs = getComputedStyle(row);
-    const rowContent = row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight);
-    const floor = Math.min(longest, rowContent);
-    const nameRect = nm.getBoundingClientRect();
-    const rowRect = row.getBoundingClientRect();
-    const contained = nameRect.left >= rowRect.left - 1 && nameRect.right <= rowRect.right + 1
-      && nameRect.left >= -1 && nameRect.right <= vw + 1;
-    rows.push({
-      text, width: nm.clientWidth,
-      longest: Math.round(longest * 10) / 10,
-      rowContent: Math.round(rowContent * 10) / 10,
-      floor: Math.round(floor * 10) / 10,
-      contained,
-    });
-  }
+  ${WORD_FLOOR_FN}
+  const rows = wordFloorRows('#gmFloor .gm-p .nm, #gmBench .gm-b .nm', '.gm-p, .gm-b');
   // The visible FILL ('.i', the translucent circle a coach actually sees),
   // not #gmClose's own 48px hit box: the hit box is a fixed 48px regardless
   // of root text size, but the fill is sized in rem (2.25rem) and at a 32px

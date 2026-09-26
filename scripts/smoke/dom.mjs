@@ -263,6 +263,65 @@ export const OVERFLOW_PROBE = `(() => {
   return JSON.stringify({ vw, pans, worst });
 })()`;
 
+/* #144's own squeeze check reuses this, #138's own first: the floor a name or
+   a title is held to at a large root, once something beside it is fighting
+   it for space, is `min(its longest single word, the row's own content-box
+   width)` -- not the longest word outright, since a word can be wider than
+   the row itself has room for (a real CI finding, `bench-look.mjs`'s own
+   comment at its first use has the run number), and not the row's full
+   content width either, since a short word should not be held to a floor it
+   never claimed. Parameterized by which elements are "names" (`nameSel`) and
+   which ancestor is their "row" (`rowSel`, read with `.closest`), so the same
+   measurement serves bench mode's `.gm-p`/`.gm-b .nm` rows and Season's own
+   filed-game titles and opened-game names, rather than a second hand-typed
+   copy of the same probe for each. Interpolated into a caller's own IIFE (the
+   same pattern `season-look.mjs`'s `TEXT_LEFT_FN` already uses) rather than
+   exported as a full expression on its own, since every caller wraps its
+   result in a JSON payload carrying its own extra fields alongside `rows`. */
+export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
+  const measureWord = (el, word) => {
+    const cs = getComputedStyle(el);
+    const span = document.createElement('span');
+    span.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap;';
+    span.style.font = cs.font;
+    span.style.letterSpacing = cs.letterSpacing;
+    span.textContent = word;
+    document.body.appendChild(span);
+    const w = span.getBoundingClientRect().width;
+    span.remove();
+    return w;
+  };
+  const vw = document.documentElement.clientWidth;
+  const rows = [];
+  for (const nm of document.querySelectorAll(nameSel)) {
+    if (!nm.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
+    const text = [...nm.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+    if (!text) continue;
+    // Split after a hyphen too, not only on whitespace: a hyphen is a normal
+    // soft-wrap point (UAX #14) the same as a space, so a name breaking there
+    // is "between words", not "inside" one -- the browser's own line breaker
+    // already treats it that way with no extra CSS asked for.
+    const words = text.split(/(?<=-)|\\s+/).filter(Boolean);
+    const longest = Math.max(...words.map(w => measureWord(nm, w)));
+    const row = nm.closest(rowSel);
+    const rcs = getComputedStyle(row);
+    const rowContent = row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight);
+    const floor = Math.min(longest, rowContent);
+    const nameRect = nm.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const contained = nameRect.left >= rowRect.left - 1 && nameRect.right <= rowRect.right + 1
+      && nameRect.left >= -1 && nameRect.right <= vw + 1;
+    rows.push({
+      text, width: nm.clientWidth,
+      longest: Math.round(longest * 10) / 10,
+      rowContent: Math.round(rowContent * 10) / 10,
+      floor: Math.round(floor * 10) / 10,
+      contained,
+    });
+  }
+  return rows;
+};`;
+
 /* The wipe -> navigate -> wait -> cleanup shape three passes share:
    `firstRun` and `tryLanding` (both `app-large-text.mjs`) and `landOnNine`
    (`game-rows-fit.mjs`) each need a page that boots with no seeded record --

@@ -22,7 +22,7 @@
  * Each of those three gets its own read below, named for the defect rather
  * than folded into the item-1/3 blocks above them, since that is what let a
  * broken tree read green the first time. */
-import { setWidth, TODAY_HOME, WIDTH, OVERFLOW_PROBE } from './dom.mjs';
+import { setWidth, TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN } from './dom.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
 import { goRich, reloadWithRecord, RICH } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
@@ -419,6 +419,9 @@ export async function seasonLookPass(c, origin) {
   const long = await seasonLongNamePass(c, origin);
   if (!long.pass) problems.push(...long.problems);
 
+  const squeeze = await seasonFiledSqueezePass(c, origin);
+  if (!squeeze.pass) problems.push(...squeeze.problems);
+
   return {
     pass: problems.length === 0,
     detail: problems.length
@@ -426,7 +429,7 @@ export async function seasonLookPass(c, origin) {
       : `Minutes so far row: 30px tall, 14px/400-500 ellipsis call name, 8px --r-full/--track bar, 13px muted tabular minutes, `
         + `no divider; one shared left edge; Filed games is one card; Across the day matches Minutes so far's numbers; `
         + `the "N games" line is hidden not gone; Across the day uses call names and round dots; filed games use the `
-        + `shared chevron; no uppercase or tracked-out text; ${five.detail}; ${long.detail}`,
+        + `shared chevron; no uppercase or tracked-out text; ${five.detail}; ${long.detail}; ${squeeze.detail}`,
   };
 }
 
@@ -585,5 +588,74 @@ async function seasonLongNamePass(c, origin) {
     pass: problems.length === 0,
     problems,
     detail: problems.length ? '' : `"${LONG_CALL_NAME}" ellipsizes and its minutes stay inside the group at 320px/16px and 320px/32px`,
+  };
+}
+
+/* Defect found on the branch preview (main has it too, restyled here so it is
+   fixed here): at 320px/32px, a filed game's own summary row (its title
+   beside its meta, `.sn-game > summary`) and an opened game's own player rows
+   (`.sn-body .sn-row` -- RICH's larger, bordered shape, "unchanged" per the
+   comment at `.sn-list .sn-row`'s own rule above; the ledger itself already
+   stacks correctly at this size) squeeze their text to a sliver: `.prow-t`'s
+   `flex: 1` is a 0% flex-basis (app.css), so it claims none of the row's own
+   hypothetical width before growing, and a filed game's meta (`.sn-gm`) or a
+   name row's track/minutes columns can still leave it almost nothing once the
+   row itself is this narrow. `WORD_FLOOR_FN` (dom.mjs) is #138's own
+   name-squeeze floor, reused rather than re-derived for a second selector
+   pair: `min(a text's longest single word, its own row's content-box
+   width)`. RICH's own filed games ("vs Falcons", "vs Comets", ...) and its
+   first opened game's own player names are what this reads -- no fixture
+   built for it. */
+const OPEN_FIRST_FILED_GAME = `document.querySelector('#seasonFiled details.sn-game').open = true`;
+
+const READ_FILED_SQUEEZE = `JSON.stringify((() => {
+  ${WORD_FLOOR_FN}
+  return {
+    titles: wordFloorRows('#seasonFiled .sn-game .sn-gt', 'summary'),
+    names: wordFloorRows('#seasonFiled .sn-body .sn-row .sn-nm', '.sn-row'),
+  };
+})())`;
+
+async function seasonFiledSqueezePass(c, origin) {
+  const problems = [];
+  const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
+  try {
+    await setWidth(c, LARGE_TEXT_WIDTH);
+    await goRich(c, origin);
+    await tap(c, TODAY_HOME);
+    await tap(c, OPEN_SEASON);
+    await tap(c, OPEN_FIRST_FILED_GAME);
+
+    const data = await evalJSON(c, READ_FILED_SQUEEZE);
+    if (!data.titles.length) {
+      // rule 2a of /new-guard: a check that measured nothing fails.
+      problems.push(`${where}: no filed-game title was on screen to measure`);
+    }
+    if (!data.names.length) {
+      problems.push(`${where}: no opened-game player name was on screen to measure`);
+    }
+    for (const row of [...data.titles, ...data.names]) {
+      if (row.width + 1 < row.floor) {
+        problems.push(`${where}: "${row.text}" is ${Math.round(row.width)}px wide, narrower than `
+          + `min(its longest word ${row.longest}px, its row's own content width ${row.rowContent}px) `
+          + `= ${Math.round(row.floor)}px`);
+      }
+    }
+    const o = await evalJSON(c, OVERFLOW_PROBE);
+    if (o.pans) problems.push(`${where}: Season pans sideways with a filed game open`);
+    if (o.worst) problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
+  } catch (e) {
+    problems.push(e.message.split('\n')[0]);
+  } finally {
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await setWidth(c, WIDTH);
+    await goRich(c, origin);
+  }
+  return {
+    pass: problems.length === 0,
+    problems,
+    detail: problems.length ? '' : `${where}: every filed-game title and opened-game name gets at least its row's `
+      + `content width or its longest word, whichever is smaller, and the page does not pan`,
   };
 }

@@ -4082,6 +4082,18 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   .sn-list .sn-row { grid-template-columns: 1fr auto; row-gap: .2rem; }
   .sn-list .sn-name { grid-column: 1 / -1; }
 
+  /* #144 squeeze fix: an OPENED game's own player rows (`.sn-body .sn-row`,
+     the larger bordered shape `.sn-list .sn-row` above is deliberately scoped
+     away from) squeeze the same way at this root, once there is no track to
+     give up space either -- "Hana Kim" measured a 0-10px column. Same
+     two-line collapse as the ledger just above, kept a separate rule rather
+     than combined into one selector: `test/big-text.test.js` pins
+     `.sn-list .sn-row`'s own rule text exactly, and a shared selector would
+     also mean this and the ledger's rule stop being two things this comment
+     and that one can each explain on their own. */
+  .sn-body .sn-row { grid-template-columns: 1fr auto; row-gap: .2rem; }
+  .sn-body .sn-name { grid-column: 1 / -1; }
+
   /* #24 CI fix, round 2 (Linux font metrics again): the fix above wraps the
      LEDGER rows, but "Game by game"'s own summary row -- the game title
      (`.sn-gt`, `flex: 1; min-width: 0`) beside its meta
@@ -4103,8 +4115,23 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      320 with this rule at every one, where the unfixed tree measured
      328/347/364px at 36/38/40 (32 and 34 already held on this machine's
      narrower glyphs, which is exactly why the CI runner's own wider ones
-     were needed to see this). */
-  .sn-game > summary { flex-wrap: wrap; }
+     were needed to see this).
+
+     Squeeze fix (#144): `flex-wrap: wrap` alone only moves `.sn-gm` onto its
+     own line once `.sn-gt` PLUS `.sn-gm` together overflow the row -- when
+     they do not (a short meta like "9 played · 4x8" beside a long title), the
+     flexbox line-breaking algorithm still keeps both on one line and hands
+     `.sn-gt` (`flex: 1`, a 0% basis) whatever `.sn-gm` and the chevron leave
+     over, which measured 6px wide for "vs Falcons" while "vs Comets" (a
+     shorter title) happened to fit -- the same one-letter-per-line squeeze as
+     the ledger's own name column, fixed the same way: the grid stack
+     `.sn-list .sn-row` already uses above, not a second technique. The title
+     spans the full row on its own line; the meta and chevron share the line
+     below it, same shape as a filed game's own name/track/minutes row. */
+  .sn-game > summary {
+    display: grid; grid-template-columns: 1fr auto; row-gap: .15rem; column-gap: .5rem;
+  }
+  .sn-game > summary .sn-gt { grid-column: 1 / -1; }
 
   /* And the timeline, where the failure is not a pan at all -- the page stays
      320px wide the whole time -- but a column squeezed to nothing, the same
