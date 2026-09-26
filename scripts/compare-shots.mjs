@@ -113,6 +113,12 @@ const SHOT = Object.freeze({
      and the click that opens it, or null. Same "prove the modifier happened"
      shape as `bottom` and `titleCollapsed`. */
   sheet: null,
+  /* #138 item 10: bench mode itself -- `#gmOpen` on the game screen, and
+     (with `benchPick`) a floor row tapped afterward for the picked state.
+     `#gamemode` is neither a `<dialog>` (the `sheet` modifier's shape) nor a
+     name in `VIEWS` (it never gets its own URL/nav entry), so it gets its
+     own two flags rather than being forced into either existing one. */
+  bench: false, benchPick: false,
 });
 
 const pair = (name, view, theme, extra = {}) => ({
@@ -258,6 +264,12 @@ const EXTRA_SHOTS = [
      state another cell already owns. */
   ...THEMES.map(theme => pair('touch-360-team', 'team', theme, { width: MID_TOUCH })),
   ...THEMES.map(theme => pair('touch-360-settings', 'settings', theme, { width: MID_TOUCH })),
+  /* #138 item 10: bench mode's own restyle -- the plain screen and the
+     picked-row state, each light and dark. `view: 'games'` lands on the game
+     screen first (`#gmOpen` lives there); `bench`/`benchPick` (above) do the
+     rest and prove each step actually landed. */
+  ...THEMES.map(theme => pair('bench', 'games', theme, { bench: true })),
+  ...THEMES.map(theme => pair('bench-selected', 'games', theme, { bench: true, benchPick: true })),
 ];
 
 export const SHOTS = Object.freeze([...BASE_SHOTS, ...EXTRA_SHOTS].map(Object.freeze));
@@ -490,6 +502,24 @@ async function capture(c, origin, want, outDir) {
     if (want.view && want.view !== 'today' && today) await evalIn(c, step(today.open));
     const view = VIEWS.find(v => v.name === want.view);
     if (view) await evalIn(c, step(view.open));
+    if (want.bench) {
+      /* #138 item 10: bench mode, asserted open before a PNG is written --
+         same "prove it happened" rule as `sheet` and `titleCollapsed` below,
+         applied to a `hidden`-toggled overlay rather than a `<dialog>`. */
+      await evalIn(c, step(`document.getElementById('gmOpen').click()`));
+      const opened = await evalIn(c, `!!document.querySelector('#gamemode:not([hidden])')`);
+      if (!opened) {
+        throw new Error(`${want.name}: #gamemode never lost [hidden] after the #gmOpen click`);
+      }
+      if (want.benchPick) {
+        await evalIn(c, step(`document.querySelector('#gmFloor .gm-p').click()`));
+        const picked = await evalIn(c, `!!document.querySelector('#gmFloor .gm-p.picked')`);
+        if (!picked) {
+          throw new Error(`${want.name}: no floor row gained .picked after the click -- `
+            + 'this shot would look identical to the plain bench state');
+        }
+      }
+    }
     if (want.titleCollapsed) {
       /* #33 item 11: `.bar.title-in` (decision 1), not the `bottom` state
          above -- a shallow scroll, just past the large title, not to the

@@ -304,9 +304,10 @@ a { color: inherit; }
    beats `.bsheet-close`'s own class rule, so the 36px fill below wins without
    touching that class (it still owns the 48px hit area, shared with every
    other sheet's ✕). Extending this hover pair's selector list, not copying
-   it -- Reuse. */
+   it -- Reuse. `.gm-x` (#138 items 1/9's round header buttons) draws the same
+   chip and is folded in here rather than given its own copy. */
 @media (hover: hover) {
-  #agClose:hover .i, #frClose:hover .i { background: var(--chip-hover); }
+  #agClose:hover .i, #frClose:hover .i, .gm-x:hover .i { background: var(--chip-hover); }
 }
 
 /* #100 removed "New day" (`#todayNewDay`) along with its rule here -- the
@@ -349,13 +350,13 @@ a { color: inherit; }
    this to opaque `--chip` when transparency or a blur is unavailable.
    fill: `--chip`, see tokens.css (#137). */
 #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
-#agClose .i, #frClose .i {
+#agClose .i, #frClose .i, .gm-x .i {
   background: color-mix(in srgb, var(--chip) 72%, transparent);
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
 }
 #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i,
-#agClose .i, #frClose .i {
+#agClose .i, #frClose .i, .gm-x .i {
   width: 2.25rem; height: 2.25rem; border-radius: var(--r-full);
 }
 #teamBtn { border-radius: var(--r-full); }
@@ -1407,13 +1408,22 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
   animation: gmIn var(--t) var(--ease);
 }
 @keyframes gmIn { from { opacity: 0; transform: scale(.965); } to { opacity: 1; transform: none; } }
-.gm-bar { display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; border-bottom: 1px solid var(--line); }
-.gm-x { width: 2.4rem; height: 2.4rem; border-radius: var(--r-full); color: var(--muted); font-size: var(--fs-headline);
-        display: grid; place-items: center; }
-@media (hover: hover) { .gm-x:hover { background: var(--surface-2); color: var(--ink); } }
-.gm-title { flex: 1; display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
-.gm-title > span:first-child { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
-.gm-clock { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.gm-bar { display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; }
+/* #138 item 1/9: the same round chip `#backBtn`/`#agClose` already draw --
+   a plain 48px hit area with no fill of its own, around a 2.25rem circle (the
+   `.i` span) that carries the translucent, blurred fill (extended into the
+   shared selector lists below, not copied). */
+.gm-x { width: 48px; height: 48px; padding: 0; border: 0; background: none; color: var(--ink-2);
+        font-size: var(--fs-headline); display: grid; place-items: center; }
+/* .gm-x's own hover fill is the shared #agClose/#frClose list above -- a
+   `.gm-x:hover { background: none; }` rule here would paint nothing beyond
+   this button's own unconditional `background: none` two lines up. */
+.gm-title { flex: 1; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+/* #138 item 1: the title is now the stint's own stretch of clock, so it reads
+   like a headline, not a muted label -- the subtitle (`.gm-clock`, the "N of
+   M" line) takes the small/muted treatment the title used to have. */
+.gm-title > span:first-child { font-size: var(--fs-headline); font-weight: 600; color: var(--ink); }
+.gm-clock { font-size: var(--fs-footnote); font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* The "your card is stale" line. Pinned under the bar, so it does not scroll
    away with the floor; muted rather than alarming, because the coach asked for
@@ -1421,7 +1431,12 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .gm-moved { margin: 0; padding: .5rem .9rem; font-size: var(--fs-footnote); line-height: 1.35;
   color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line); }
 
-.gm-body { flex: 1; overflow-y: auto; padding: 1rem .9rem 1.2rem; -webkit-overflow-scrolling: touch;
+/* #138 item 3: `.gm-foot` floats over this scroller now (it is no longer a
+   flex sibling, see `.gm-foot` below), so the bottom padding is reserved
+   space for it, not visual breathing room -- generous enough to clear the
+   foot even wrapped onto two lines (large text, `app-large-text.mjs`), since
+   both scale together in `rem`. */
+.gm-body { flex: 1; overflow-y: auto; padding: 1rem .9rem 9.5rem; -webkit-overflow-scrolling: touch;
   /* the browser keeps the vertical scroll; horizontal moves come to us as
      pointer events so a stint can be swiped past */
   touch-action: pan-y; will-change: transform; }
@@ -1430,64 +1445,73 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 /* Was an inline style on the element; it lives here so the landscape block
    below can override it without !important. */
 #gmBenchSec { margin-top: 1.15rem; }
-.gm-lab { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; margin-bottom: .55rem; }
+/* #138 item 7: sentence case, muted footnote -- the bench label; the floor's
+   own heading is gone (item 5, the accessible name moved to `#gmFloor`'s
+   `aria-label` in index.html). */
+.gm-lab { font-size: var(--fs-footnote); color: var(--muted); margin-bottom: .55rem; }
 
 .gm-floor { display: flex; flex-direction: column; gap: .45rem; }
 .gm-allon { margin-top: .6rem; font-size: var(--fs-secondary); color: var(--faint); text-align: center; }
+/* #138 item 4: white (the surface fill) and borderless when not selected --
+   `--line-2` is gone; the row is told apart from the page by its own fill,
+   the way the prototype's is. */
 .gm-p {
   --c: var(--muted);
   display: flex; align-items: center; gap: .75rem; width: 100%;
-  padding: .62rem .8rem; border-radius: var(--r); border: 1px solid var(--line-2);
+  padding: .62rem .8rem; border-radius: var(--r); border: 1px solid transparent;
   background: var(--surface); text-align: left;
 }
 .gm-p .av { width: 2.3rem; height: 2.3rem; border-radius: 50%; flex: none; display: grid; place-items: center;
   font-size: var(--fs-footnote); font-weight: 700; font-variant-numeric: tabular-nums;
   background: var(--c); color: #1A1A1A; }
-/* Same 1.04rem as the bench so the two halves match exactly, and a tight
-   line-height so the one name that has to wrap costs a pixel instead of
-   fifteen. No size fits 30 characters on one line here -- 254px of name
-   against 233px of room -- so the row has to absorb the wrap without growing:
-   two 1.15 lines (38px) still sit inside the 37px avatar's row height, so all
-   five rows stay ~59px and the lineup stays scannable at a glance. */
-.gm-p .nm { flex: 1; min-width: 0; font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.026em;
+/* #138 item 4: the type scale's 22px step (`--fs-title`, prototype README:
+   "22px bench names"), up from the previous 17px headline size. */
+.gm-p .nm { flex: 1; min-width: 0; font-size: var(--fs-title); font-weight: 600; letter-spacing: -.026em;
   line-height: 1.15; overflow-wrap: anywhere; }
 .gm-p .mn { font-size: var(--fs-secondary); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700; }
 .gm-p .mn .proj, .gm-b .mn .proj { color: var(--faint); font-weight: 500; }
-.gm-key { margin-left: auto; font-size: var(--fs-footnote); letter-spacing: .09em; color: var(--faint); font-weight: 600; }
-.gm-p.picked { border-color: var(--tint); box-shadow: var(--ring); }
+/* #138 item 4: a 2px inset outline, not the 3.5px soft `--ring` glow -- an
+   inset `box-shadow` follows `border-radius` the way a literal `outline`
+   does not, and `--tint` is ink by default, the team color when K1 sets one. */
+.gm-p.picked { box-shadow: inset 0 0 0 2px var(--tint); }
 
 /* Full-width rows, not name-width pills: picking who comes off is a full-width
    target, so picking who goes on has to be one too. A chip sized to the name
    makes "Ivy Osei" the smallest thing on screen at the moment it matters. */
-.gm-bench { display: flex; flex-direction: column; gap: .45rem; }
+.gm-bench { display: flex; flex-direction: column; gap: 0; }
+/* #138 item 8: the row itself carries no border, radius or fill in either
+   state -- a bench row reads as a flat list row picked or not, matching the
+   floor's own borderless look (item 4). Only the `<button>` vs `<div>`
+   element changes when a pick goes live; the CSS does not. */
 .gm-b {
   --c: var(--muted);
-  display: flex; align-items: center; gap: .5rem; width: 100%;
-  padding: .42rem .7rem .42rem .42rem; text-align: left;
-  border-radius: var(--r); border: 1px solid var(--line-2); background: var(--surface);
+  display: flex; align-items: center; gap: .6rem; width: 100%;
+  padding: .5rem .3rem; text-align: left;
+  border: 0; border-radius: 0; background: none;
+  box-shadow: inset 0 -1px 0 var(--line);
   /* Near the floor row's 1.12rem/660: the bench is the half the coach scans for
      a name, so it must not read as a second, smaller list. Stops just short so
      a 30-character name still clears the row on one line at 390px -- at the
      floor's own size it would wrap. */
   font-size: var(--fs-headline); font-weight: 600; letter-spacing: -.026em;
 }
+.gm-b:last-child { box-shadow: none; }
+/* #138 item 8: filled with the player's color, the same as the floor's own
+   badge (`.gm-p .av`) -- not the tinted disc with a hairline ring the bench
+   used before. */
 .gm-b .av { width: 1.85rem; height: 1.85rem; border-radius: 50%; display: grid; place-items: center;
-  font-size: var(--fs-footnote); font-weight: 700; background: color-mix(in srgb, var(--c) 20%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
-  box-shadow: inset 0 0 0 var(--av-ring) var(--c); }
+  font-size: var(--fs-footnote); font-weight: 700; background: var(--c); color: #1A1A1A; }
 /* flex:none plus min-width:0 on the name: a name too long to fit wraps rather
    than shoving played/projected off the right edge. */
-.gm-b .mn { flex: none; font-size: var(--fs-footnote); color: var(--ink-2); font-variant-numeric: tabular-nums; font-weight: 700; }
-.gm-b .nm { flex: 1; min-width: 0; }
+.gm-b .mn { flex: none; font-size: var(--fs-body); color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 400; }
+.gm-b .nm { flex: 1; min-width: 0; font-weight: 400; }
 /* No pick yet, so no bench row does anything. Read as a list, not as a row of
    buttons: full-width rows, hairline rules, no pill. Full ink -- dimming it
-   would only make a dim gym worse. */
-.gm:not(.swapping) .gm-bench { gap: 0; }
-.gm-b.inert { padding: .5rem .3rem; gap: .6rem;
-  border: 0; border-radius: 0; background: none; box-shadow: inset 0 -1px 0 var(--line); }
-.gm-b.inert:last-child { box-shadow: none; }
-.gm-hint { margin-left: auto; text-transform: none; letter-spacing: 0; font-size: var(--fs-footnote);
-  font-weight: 600; color: var(--ink-2); }
-.gm.swapping .gm-b { border-color: var(--accent-line); background: var(--accent-soft); }
+   would only make a dim gym worse. `.inert` no longer carries its own rules
+   (item 8): the list look above applies to every `.gm-b`, `<button>` or
+   `<div>`, so picking a floor player cannot change how the bench looks. */
+/* #138 item 8: bench rows keep the same look picked or not -- no more tint
+   on every row once a pick is live. */
 .gm.swapping .gm-floor .gm-p:not(.picked) { opacity: .4; }
 
 .gm-scope { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: var(--r-full);
@@ -1520,20 +1544,23 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    phone for a thumb to hit without meaning to. */
 .gm-lab.rowed { display: flex; align-items: center; gap: .6rem .6rem; flex-wrap: wrap; }
 
-.gm-next { border: 1px solid var(--accent-line); border-radius: var(--r); padding: .8rem .95rem;
-  background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
-.gm-next-hd { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .12em; color: var(--muted);
-  font-weight: 700; margin-bottom: .5rem; }
+/* #138 item 6: a soft gray fill -- `--sheet`, a fill token that is neither
+   `--surface` (the white floor rows) nor `--bg` (the page ground) -- no
+   border, no team tint (K2/K3: this box is ink and muted only). */
+.gm-next { border: 0; border-radius: var(--r); padding: .8rem .95rem; background: var(--sheet); }
+.gm-next-hd { font-size: var(--fs-footnote); font-weight: 600; color: var(--ink); margin-bottom: .5rem; }
 .gm-next-none { font-size: var(--fs-secondary); color: var(--muted); }
-.gm-next-row { display: flex; align-items: baseline; gap: .5rem; padding: .12rem 0; }
-.gm-next-row .mk { width: 1rem; font-size: var(--fs-footnote); }
-.gm-next-row .lb { width: 2.1rem; font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
-.gm-next-row .ns { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.gm-next-row.in .mk, .gm-next-row.in .lb, .gm-next-row.in .ns { color: var(--ok); }
-.gm-next-row.out .mk, .gm-next-row.out .lb, .gm-next-row.out .ns { color: var(--err); }
+/* Two columns, Off and On, each a plain column of names -- no icons, no
+   red/green (K2/K3): every color here is ink or muted. */
+.gm-next-cols { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.gm-next-col { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.gm-next-lb { font-size: var(--fs-footnote); color: var(--muted); margin-bottom: .1rem; }
+.gm-next-col .nm { font-size: var(--fs-body); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.gm-next-col.off .nm { color: var(--muted); font-weight: 500; }
+.gm-next-col.on .nm { color: var(--ink); font-weight: 600; }
 
 .gm-p .nm .tag { display: inline-block; margin-left: .5rem; padding: .1rem .42rem; border-radius: var(--r-full);
-  font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .09em; font-weight: 700; vertical-align: middle; }
+  font-size: var(--fs-footnote); font-weight: 700; vertical-align: middle; }
 .gm-p .nm .tag.in { background: var(--ok-soft); color: var(--ok); }
 
 /* flex-wrap is load-bearing at large text: Done, the two chevrons and the dot
@@ -1542,11 +1569,31 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    x=349, entirely off a 320px screen with no way to pan to it. Wrapping puts it
    on the next line instead. Nothing moves at a 16px root: the row is 320px wide
    there and has nothing to wrap. */
-.gm-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; padding: .8rem .9rem 1rem; border-top: 1px solid var(--line); }
-.gm-nav { flex: none; width: 3.6rem; height: 3.2rem; border-radius: var(--r); background: var(--surface);
+/* #138 item 3/L2/L3: no top border, no opaque bar -- the foot floats over
+   `.gm-body`'s content on its own `::before` scrim, the same masked-fade
+   technique `.bar`/`.actionbar` already use (extended below, not copied),
+   solid under reduced transparency / more contrast. Absolutely positioned
+   over `.gm-body` (rather than a flex sibling of it) so the content actually
+   scrolls underneath it, the way the prototype's controls float. */
+.gm-foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; padding: .8rem .9rem 1rem; }
+.gm-foot::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(var(--bg), var(--bg));
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  mask-image: linear-gradient(to top, black 0%, black 75%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, black 0%, black 75%, transparent 100%);
+}
+/* #138 item 9: `‹`/`›` round (width equals height); Done/Finish game turn
+   this same base into a pill just by setting their own width to `auto`
+   (`.gm-exit`, `#gmFinish` below) -- one radius serves both shapes. */
+.gm-nav { flex: none; width: 3.2rem; height: 3.2rem; border-radius: var(--r-full); background: var(--surface);
   border: 1px solid var(--line-2); font-size: var(--fs-sentence); color: var(--ink); display: grid; place-items: center; }
 @media (hover: hover) { .gm-nav:hover { background: var(--surface-2); } }
 .gm-nav:disabled { opacity: .35; }
+/* K1: the primary action carries the tint (ink by default, team color if
+   set); solid fill, surface-colored glyph. */
 .gm-nav.next { background: var(--tint); border-color: transparent; color: var(--tint-ink); }
 @media (hover: hover) { .gm-nav.next:hover { background: var(--tint-2); } }
 /* #135: Finish game reads a whole word (W1, W2), not an icon -- the same
@@ -1559,7 +1606,12 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    at 320px/32px root, put the button at 371px: 51px past the viewport. The
    height floor above still clears I1's 48px at any root size, since 3.2rem
    alone is already 51.2px at a 16px root. */
-#gmFinish { width: auto; padding: 0 1.1rem; font-size: var(--fs-secondary); font-weight: 600; white-space: nowrap; }
+/* #138 item 9: a pill like Done -- the raised surface, not `.next`'s primary
+   tint (that fill stays on `›`/`#gmNext2` alone); an id rule beats the
+   `.gm-nav.next` class pair it also carries. */
+#gmFinish { width: auto; padding: 0 1.1rem; font-size: var(--fs-secondary); font-weight: 600; white-space: nowrap;
+  background: var(--surface); border-color: var(--line-2); color: var(--ink); }
+@media (hover: hover) { #gmFinish:hover { background: var(--surface-2); } }
 /* Bottom-left exit. Hidden on desktop, where the top-left X is an easy reach;
    on a phone it is the only exit a thumb can hit without regripping. Text, not
    a chevron, so it never reads as another stint control. */
@@ -1744,19 +1796,19 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    are written twice on purpose rather than nested (which would be AND).
    fill: `--chip`, see tokens.css (#137). */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .bar::before, .actionbar::before {
+  .bar::before, .actionbar::before, .gm-foot::before {
     background: var(--bg); mask-image: none; -webkit-mask-image: none;
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
   #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
-  #agClose .i, #frClose .i {
+  #agClose .i, #frClose .i, .gm-x .i {
     background: var(--chip); backdrop-filter: none; -webkit-backdrop-filter: none;
   }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .bar::before, .actionbar::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
+  .bar::before, .actionbar::before, .gm-foot::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
   #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
-  #agClose .i, #frClose .i { background: var(--chip); }
+  #agClose .i, #frClose .i, .gm-x .i { background: var(--chip); }
 }
 /* #69 decision 6: the prototype's primary button -- 54px tall, 600 weight,
    still `--tint` (K1 allows tint on the primary action). `--r` is already
@@ -2353,9 +2405,6 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-bench .gm-p .nm { font-size: var(--fs-secondary); }
 .wel-bench .gm-next { padding: .55rem .7rem; }
 .wel-bench-sec { display: flex; flex-direction: column; gap: .38rem; }
-.wel-bench-sub { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
-.wel-bench-hint { font-size: var(--fs-footnote); font-weight: 500; letter-spacing: 0;
-  text-transform: none; color: var(--faint); }
 .wel-bench .gm-bench { gap: .38rem; }
 .wel-bench .gm-b { padding: .34rem .6rem .34rem .34rem; }
 .wel-bench .gm-b .av { width: 1.6rem; height: 1.6rem; font-size: var(--fs-footnote); }
@@ -4119,6 +4168,37 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   #frFill { white-space: normal; }
   .fr-cta { flex-wrap: wrap; }
   .fr-cta .btn { flex: 1 0 100%; }
+
+  /* Preview-check defect found on #138 (bench mode restyle), not in its own
+     "What would settle it" list: `.gm-p .nm`/`.gm-b .nm` are `flex: 1;
+     min-width: 0`, so at a 32px root the avatar and the minutes span
+     (`.mn`, itself scaled up) leave the name almost no room, and
+     `overflow-wrap: anywhere` breaks it one letter per line instead of
+     wrapping between words -- measured: "Ana Reyes" at `.nm` scrollWidth 29
+     > clientWidth 13. Dropping only the minutes under the name (keeping the
+     avatar beside it) still isn't enough room for a genuinely long single
+     word ("Christopherson" alone measures ~196px at this size, and the
+     avatar plus its gap eats too much of the row's ~211px to leave that
+     much for the name beside it even shrunk to nothing) -- the avatar moves
+     to its own line too, above the name, at this size only, so the name and
+     minutes each get the row's full width. 16px is untouched, since
+     `flex`/`min-width` on a grid child are simply ignored. */
+  .gm-p, .gm-b {
+    display: grid; grid-template-columns: 1fr; row-gap: .15rem;
+  }
+  .gm-p .av, .gm-b .av { justify-self: start; }
+
+  /* Same defect, the header: `#gmClose`'s visible fill (`.i`, `#agClose .i,
+     #frClose .i, .gm-x .i` above) is sized in rem (2.25rem) while the
+     button's own hit box stays a literal 48px -- at a 32px root the fill
+     paints 72px, wider than its own 48px button, and bleeds into
+     `.gm-title` beside it (measured: the fill's rect overlapped the title's
+     wrapped second line). Capping the fill at the button's own box keeps it
+     circular (still `border-radius: var(--r-full)`) and inside its own
+     48px hit area rather than painting over a neighbor -- I1 already
+     requires the hit area to be exactly this large, so the fill shrinking
+     to match it loses nothing. */
+  #agClose .i, #frClose .i, .gm-x .i { width: 48px; height: 48px; }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach

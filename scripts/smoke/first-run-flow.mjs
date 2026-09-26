@@ -73,6 +73,38 @@ const storedPlayers = c => evalJSON(c, `(async () => {
   return JSON.stringify(n);
 })()`);
 
+/* #138 item 12: the landing's own bench-mode demo (`benchFigure`, onboarding.js)
+ * follows the real screen's new look and words -- `.gm-next`/`.gm-b`, the same
+ * classes `bench-look.mjs` audits on the real bench screen, so a copy edit to
+ * one and not the other cannot pass silently. The three literals here are the
+ * spec's own examples (item 12): the header text, no arrow icons in the
+ * columns, and the bench line -- not a second computation of `benchFigure`'s
+ * own numbers. */
+async function benchDemoMatchesRealBenchMode(c, ck) {
+  await realTap(c, '#welTabScreen');
+  const s = await evalJSON(c, `(() => {
+    const pane = document.getElementById('welPaneScreen');
+    const next = pane?.querySelector('.gm-next');
+    const cols = next ? [...next.querySelectorAll('.gm-next-col')].map(col => ({
+      cls: col.className, label: col.querySelector('.gm-next-lb')?.textContent,
+    })) : [];
+    return JSON.stringify({
+      paneShown: pane ? !pane.hidden : false,
+      nextHd: next?.querySelector('.gm-next-hd')?.textContent ?? null,
+      icons: next ? next.querySelectorAll('svg, [data-icon]').length : null,
+      cols,
+      benchLine: pane?.querySelector('.gm-lab')?.textContent.trim() ?? null,
+    });
+  })()`);
+  if (!ck(s.paneShown, '#welTabScreen did not show #welPaneScreen')) return;
+  ck(s.nextHd === 'Next change at Q2 4:00', `item 12: the demo's Next change header reads ${JSON.stringify(s.nextHd)}, want "Next change at Q2 4:00"`);
+  ck(s.icons === 0, `item 12: the demo's Next change box still has ${s.icons} icon(s), want none`);
+  const off = s.cols.find(c => c.cls.includes('off')), on = s.cols.find(c => c.cls.includes('on'));
+  ck(!!off && off.label === 'Off', `item 12: no "Off" column in the demo (got ${JSON.stringify(off)})`);
+  ck(!!on && on.label === 'On', `item 12: no "On" column in the demo (got ${JSON.stringify(on)})`);
+  ck(s.benchLine === 'Bench · tap a player on the floor to swap', `item 12: the demo's bench line reads ${JSON.stringify(s.benchLine)}`);
+}
+
 /* Item 1: the landing, before any dialog opens. */
 async function landingReads(c, ck) {
   const s = await evalJSON(c, `(() => {
@@ -425,6 +457,7 @@ export async function firstRunPass(c, origin) {
   try {
     await land(c, origin);
     await landingReads(c, ck);
+    await benchDemoMatchesRealBenchMode(c, ck);
     await stepOneCounts(c, ck);
     await stepTwoDefaults(c, ck);
     await closeChipAndBackChevron(c, ck);
