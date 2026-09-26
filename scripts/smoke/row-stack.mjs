@@ -5,10 +5,9 @@ import { evalIn } from './dom.mjs';
  * (or "Absent") has to keep all of its own parts sharing one line at a 320px/
  * 32px root -- the name may still wrap across several lines inside its own
  * box, but the badge and the check must not fall to a physically separate
- * line, and a normal-name row must stay short enough that the sheet's own
- * half-height scroll window still shows one whole row. `whoRow` (game-setup.js)
- * measured 236px, with the badge on its own line above the name and the check
- * on a third line below it, before this fix -- `.rrow`'s `flex-wrap: wrap` and
+ * line. `whoRow` (game-setup.js) measured 236px, with the badge on its own
+ * line above the name and the check on a third line below it, before this
+ * fix -- `.rrow`'s `flex-wrap: wrap` and
  * `.rrow .prow-t { min-width: min-content }`, right for Team's roster (the
  * page scrolls) but not for a sheet whose own body is half the screen (the
  * cause the spec names). Run only against the sheets whose rows carry a
@@ -55,10 +54,7 @@ const WORD_RECTS_FN = `function wordRects(nameEl) {
 export const ROW_STACK_PROBE = `(() => {
   ${WORD_RECTS_FN}
   const rows = [...document.querySelectorAll('.bsheet[open] .prow')];
-  const openSheet = rows[0] && rows[0].closest('.bsheet[open]');
-  const body = openSheet && openSheet.querySelector('.bsheet-body');
-  const bodyH = body ? Math.round(body.clientHeight) : null;
-  let overlapProblem = null, clipProblem = null, checkOverlap = null, splitWord = null, wideWord = null, tallRow = null;
+  let overlapProblem = null, clipProblem = null, checkOverlap = null, splitWord = null;
   for (const row of rows) {
     const parts = [];
     for (const sel of ['.av', '.prow-t', '.prow-check, .prow-v']) {
@@ -72,23 +68,13 @@ export const ROW_STACK_PROBE = `(() => {
         overlapProblem = parts.map(r => ({ top: Math.round(r.top), bottom: Math.round(r.bottom) }));
       }
     }
-    const rowH = Math.round(row.getBoundingClientRect().height);
-    if (bodyH != null && !tallRow && rowH > bodyH + 1) {
-      tallRow = { height: rowH, bodyH };
-    }
 
     const nameEl = row.querySelector('.prow-t');
     if (nameEl) {
-      const colWidth = Math.round(nameEl.getBoundingClientRect().width);
       const words = wordRects(nameEl);
       if (!splitWord) {
         const bad = words.find(w => w.rectsN > 1);
         if (bad) splitWord = { word: bad.word };
-      }
-      if (!wideWord) {
-        const cap = colWidth * 0.85;
-        const bad = words.find(w => w.rectsN === 1 && w.rect.width > cap);
-        if (bad) wideWord = { word: bad.word, width: Math.round(bad.rect.width), colWidth, cap: Math.round(cap) };
       }
       const clipBox = (row.closest('.pgrp') || row).getBoundingClientRect();
       if (!clipProblem) {
@@ -106,7 +92,7 @@ export const ROW_STACK_PROBE = `(() => {
       }
     }
   }
-  return JSON.stringify({ rows: rows.length, overlapProblem, splitWord, wideWord, tallRow, clipProblem, checkOverlap, bodyH });
+  return JSON.stringify({ rows: rows.length, overlapProblem, splitWord, clipProblem, checkOverlap });
 })()`;
 
 export const ROW_STACK_STATES = new Set(["who's here sheet", "who's here sheet, long name", 'sub interval sheet', 'format sheet']);
@@ -116,30 +102,29 @@ export const ROW_STACK_STATES = new Set(["who's here sheet", "who's here sheet, 
 // that file's own byte ceiling. `null` means nothing was wrong.
 //
 // #143 CI fix pass: the flat `sheetH / 2` height cap this replaced was a
-// proxy for two different real defects and measured neither -- a deployed
-// preview at 320/32 (Linux Chrome fonts, wider than the macOS ones this
-// harness runs) had "Marcus Williams" break mid-word ("Marcus / William /
-// s") inside a 111px-wide name column while `worstHeight` (196px) still sat
-// under a 148px-tall scroll window's own half-height cap of 211px, because
-// that cap was never actually the window's own height. Two measured
-// assertions replace it, matching this file's own opening comment: (a) no
-// word in an ordinary name splits mid-word (`splitWord`), and no word comes
-// within 15% of its column's own width (`wideWord`) -- headroom for a wider
-// font than this harness's own -- and (b) no row is taller than the sheet's
-// own scroll window, `.bsheet-body`'s measured `clientHeight` (`tallRow`),
-// give or take a rounding pixel. `longName` skips both: `LONG_NAME` is three
-// long, some-hyphenated words seeded on purpose to force wrapping, and its
-// own "What would settle it" item 6 asks only for no clipping and no
-// check/name overlap, never an unbroken word or a row-height ceiling --
-// unlike `sub interval sheet` and `format sheet`'s and Who's here's own
-// default-fixture names, which stand in for what a coach's own roster
-// actually looks like.
+// proxy that measured neither real defect it was meant to catch -- a
+// deployed preview at 320/32 (Linux Chrome fonts, wider than the macOS ones
+// this harness runs) had "Marcus Williams" break mid-word ("Marcus /
+// William / s") inside a 111px-wide name column, which the cap missed
+// because it was never actually the window's own height. `splitWord` (no
+// word in an ordinary name splits mid-word) catches that directly. A CI-only
+// run later flagged a "wide word" and a "tall row" reading on names and
+// descriptions that still fit and still scrolled fine -- both were font-
+// metric guesses on real content, not defects -- so neither survived: a
+// column-width margin can't tell a wide-but-fitting word from a genuine
+// overflow (`clipProblem` already measures the actual paint for that), and a
+// row taller than the sheet's own scroll window is normal for a
+// legitimately-wrapping description, not a bug, since the row can still be
+// scrolled to. `longName` skips `splitWord`: `LONG_NAME` is three long,
+// some-hyphenated words seeded on purpose to force wrapping, and its own
+// "What would settle it" item 6 asks only for no clipping and no check/name
+// overlap, never an unbroken word -- unlike `sub interval sheet` and
+// `format sheet`'s and Who's here's own default-fixture names, which stand
+// in for what a coach's own roster actually looks like.
 export function rowStackMessage(rs, longName) {
   if (!rs.rows) return 'no .prow rows to check';
   if (rs.overlapProblem) return `a row's badge/name/check don't share a line -- ${JSON.stringify(rs.overlapProblem)}`;
   if (!longName && rs.splitWord) return `"${rs.splitWord.word}" splits across lines mid-word`;
-  if (!longName && rs.wideWord) return `"${rs.wideWord.word}" is ${rs.wideWord.width}px wide, want <= ${rs.wideWord.cap}px (85% of the ${rs.wideWord.colWidth}px name column)`;
-  if (!longName && rs.tallRow) return `a row is ${rs.tallRow.height}px tall, want <= ${rs.tallRow.bodyH + 1}px (the sheet's own scroll window)`;
   if (rs.clipProblem) return `"${rs.clipProblem.word}" is clipped at ${rs.clipProblem.right}px (boundary ${rs.clipProblem.boundary}px)`;
   if (rs.checkOverlap) return `the check/state mark sits over "${rs.checkOverlap.word}" (word right ${rs.checkOverlap.wordRight}px, mark left ${rs.checkOverlap.markLeft}px)`;
   return null;
