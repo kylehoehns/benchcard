@@ -39,11 +39,13 @@
  * No level, no tier. Same ban as the card (`test/leak.test.js`).
  * ================================================================== */
 import { $, el } from './dom.js';
+import { icon } from './icons.js';
 import { undoable, flash } from './toast.js';
 import { state, team, byId, colorOf, teamName } from './state.js';
 import { fmtMinutes } from './engine.js';
 import { seasonShare, localDate } from './storage.js';
 import { downloadText, seasonFilename } from './backup.js';
+import { callNames } from './roster.js';
 
 let renderAll = () => {};
 
@@ -131,19 +133,25 @@ export function gameRowTitle(g, n) {
 }
 
 /* One row, in both lists: the season totals (a track scaled to the largest
-   total, `maxMin`) and a single game's minutes (no `maxMin`, no track).
-   Whether `byId` finds them is the whole "a player who has left" decision:
-   their minutes are real, their color slot is not -- the fill goes
-   `var(--line-2)` instead of a player color, because a color that means no
-   one is worse than no color at all (K2). */
-function playerRow(id, min, extra, maxMin) {
+   total, `maxMin`, name in call-name form) and a single game's minutes (no
+   `maxMin`, no track, name in full so a filed row can still be matched to a
+   roster entry). Whether `byId` finds them is the whole "a player who has
+   left" decision: their minutes are real, their color slot is not -- the
+   fill goes `var(--line-2)` instead of a player color, because a color that
+   means no one is worse than no color at all (K2).
+   #144 item 3: `extra` ("2 games · 16 behind") is the ledger row's only
+   second line, and the prototype has none -- it moves into `.sr-only` text
+   (app.css's one hidden-text rule) rather than off the page, so a screen
+   reader still gets `offNote`'s own words, unchanged, while the row stays
+   one line visually. */
+function playerRow(id, min, extra, maxMin, callName) {
   const p = byId(id);
   const row = el('div', 'sn-row barrow');
   const name = el('div', 'sn-name');
-  const nm = el('span', 'sn-nm', p ? (nameOf(id) || 'Unnamed') : 'Left the team');
+  const display = !p ? 'Left the team' : (callName || nameOf(id) || 'Unnamed');
+  const nm = el('span', 'sn-nm', display);
   if (!p) nm.classList.add('gone');
   name.append(nm);
-  if (extra) name.append(el('span', 'sn-x', extra));
   row.append(name);
   if (maxMin != null) {
     const track = el('span', 'sn-track');
@@ -154,6 +162,16 @@ function playerRow(id, min, extra, maxMin) {
     row.append(track);
   }
   row.append(el('span', 'sn-min', fmtMinutes(min)));
+  // #144 item 3 (fix pass): the hidden second line comes after the minutes
+  // value in DOM order, not before it inside `.sn-name` -- the spec's own
+  // illustration reads "Nia, 12.5 minutes, 2 games, 16 behind", minutes
+  // before the "N games" note, so a screen reader's linear order has to
+  // match. `.sr-only` is `position: absolute`, so moving it here does not
+  // add a fourth column to `.barrow`'s 3-column grid.
+  // `extra` is only ever passed for a ledger row (never for a filed game's
+  // own `playerRow(id, m)` call), and never for a departed player (no
+  // `callName` for them, since `callNames` only covers the current roster).
+  if (extra) row.append(el('span', 'sr-only', extra));
   return row;
 }
 
@@ -323,11 +341,12 @@ export function renderSeason() {
   /* The unit lives in this heading rather than beside every number: a column
      of "70" reads instantly, a column of "70 min" is noise twelve times over. */
   box.append(el('h2', 'sn-h', 'Minutes so far'));
-  const list = el('div', 'sn-list');
+  const list = el('div', 'sn-list pgrp');
   const rows = totals(games);
   const maxMin = rows.reduce((m, r) => Math.max(m, r.min), 0);
+  const names = callNames(state.players);
   for (const r of rows) {
-    list.append(playerRow(r.id, r.min, `${r.games} game${r.games === 1 ? '' : 's'}${offNote(r.off)}`, maxMin));
+    list.append(playerRow(r.id, r.min, `${r.games} game${r.games === 1 ? '' : 's'}${offNote(r.off)}`, maxMin, names[r.id]));
   }
   box.append(list);
 
@@ -338,13 +357,19 @@ export function renderSeason() {
      keep the order they were filed in, so a tournament reads 9:00 then
      11:30 -- `seasonDays` is the one place that order is decided. */
   filed.append(el('h2', 'sn-h', 'Filed games'));
+  /* #144 fix pass, item 2: ONE card for every filed day, not one per day (a
+     RICH-shaped record -- one game per day -- used to draw a separate card
+     per game, exactly what #144 asked this screen to stop doing). Each
+     day's own subheader rides inside the shared card as a plain row, and
+     `.sn-day + .sn-game`'s own CSS (below) draws the seam between days --
+     `seasonDays` still decides the order, unchanged. */
+  const grp = el('div', 'pgrp');
   for (const day of seasonDays(games)) {
-    filed.append(el('div', 'sn-day',
+    grp.append(el('div', 'sn-day',
       `${dateLabel(day.date)} · ${day.games.length} game${day.games.length === 1 ? '' : 's'}`));
-    const grp = el('div', 'pgrp');
     day.games.forEach((g, i) => grp.append(gameBlock(g, i + 1)));
-    filed.append(grp);
   }
+  filed.append(grp);
 }
 
 /* `n` is the game's 1-based place within its own day (`renderSeason`'s day
@@ -358,6 +383,10 @@ function gameBlock(g, n) {
   const played = Object.values(g.minutes || {}).filter(m => m > 0).length;
   const fmt = g.periods && g.periodMinutes ? `${g.periods}×${g.periodMinutes}` : '';
   sum.append(el('span', 'prow-v sn-gm', [`${played} played`, fmt].filter(Boolean).join(' · ')));
+  /* #144 item 5: the same chevron Team's and Today's own disclosure rows
+     use, in place of a hand-drawn rotating arrow -- one affordance for "this
+     row opens onto more", not a second one this screen invented. */
+  sum.append(icon('chevron_right', { size: '.8rem', cls: 'prow-chev' }));
   d.append(sum);
 
   const body = el('div', 'sn-body');

@@ -113,13 +113,17 @@ its alternative is an assertion, so the rejected options are kept here too.
   unlike constraints, its minutes are not swept against the current roster,
   because a kid who left in November still played those minutes in October.
 - **And it can be read, and corrected.** The **Season** view — opened from its
-  own entry on Today (#23) — shows minutes this season per player, most first,
-  then one collapsible row per game holding what everyone played in it.
-  Game-first rather than a grid on purpose — twelve players by ten games is 120
-  cells, and at 390px a table of them either pans sideways or shrinks past
-  reading, so it is two lists a phone can hold. An id with no player on the
-  roster is shown as *Left the team*, hollow dot and minutes intact, which is
-  what "history, not instruction" looks like on screen. Each game carries a
+  own entry on Today (#23) — shows minutes this season per player, most
+  behind first, then one collapsible row per game holding what everyone played
+  in it, games grouped by day with the newest first. Game-first rather than a
+  grid on purpose — twelve players by ten games is 120 cells, and at 390px a
+  table of them either pans sideways or shrinks past reading, so it is two
+  lists a phone can hold. Each list sits in the grouped cards Team and Settings
+  use (`.pgrp` / `.prow`), and names are call names, the first-name form bench
+  mode uses (#144). A ledger row is one line: its "2 games · 16 behind" note is
+  visually hidden text a screen reader still reads. An id with no player on the
+  roster is shown as *Left the team*, with a gray bar and minutes intact, which
+  is what "history, not instruction" looks like on screen. Each filed game carries a
   **Remove this game**, through `undoable`: filing finishes whatever is in the
   day once it has passed, so a day nobody played still files a game, and this
   is the only correction path there is. No levels, ever — `test/leak.test.js` covers the

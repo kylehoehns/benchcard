@@ -64,6 +64,7 @@ import {
 import { cardFontPass } from './card-font.mjs';
 import { fixturePass } from './rich-fixture.mjs';
 import { seasonPass } from './season.mjs';
+import { seasonLookPass } from './season-look.mjs';
 import { gameRowsFitPass } from './game-rows-fit.mjs';
 import { todayAndBackPass } from './today-and-back.mjs';
 import { todayKeysAndUndoPass } from './today-keys-and-undo.mjs';
@@ -137,6 +138,13 @@ export const ROWS = Object.freeze([
   // see season.mjs.
   { id: 'season', name: 'season: minutes so far, filed games, the day chart', selectable: true, setup: 'rich',
     run: ctx => seasonPass(ctx.c, ctx.origin) },
+  // #144's own guard (docs/specs/144-season-lists.md's Proof section, "New
+  // smoke check"): the prototype's row sizes and one list grammar --
+  // .pgrp groups, call names, the hidden "N games · M behind"/per-game text,
+  // round legend dots, the shared chevron on filed games, no uppercase or
+  // tracked-out labels, and the 320px/32px clip check -- see season-look.mjs.
+  { id: 'season-look', name: 'season: one list style, prototype row sizes', selectable: true, setup: 'rich',
+    run: ctx => seasonLookPass(ctx.c, ctx.origin) },
   // #72 (see docs/specs/72-fit-nine-rows.md's Proof section): all 9 timeline
   // rows and #abBench on screen with no scrolling, .tl-name's own tap-target
   // geometry in the one-row layout, and the pin toggle by click and by Enter
@@ -275,8 +283,10 @@ export const ROWS = Object.freeze([
   { id: 'removerows', name: '#removeGame and #removeTeam are .prow-danger rows', selectable: true, setup: 'rich',
     run: ctx => removeRowsPass(ctx.c, ctx.origin) },
   // #141 (one control each), Proof "Bar rows match main" -- see
-  // bar-rows.mjs's own comment for how the pinned literals were measured.
-  { id: 'barrows', name: '.mrow, .dayrow and .sn-row match the pre-#141 literals', selectable: true, setup: 'rich',
+  // bar-rows.mjs's own comment for how the pinned literal was measured, and
+  // why #144 moved `.dayrow`/`.sn-row`'s own facts to season-look.mjs instead
+  // of re-pinning them here.
+  { id: 'barrows', name: '.mrow matches the pre-#141 literal', selectable: true, setup: 'rich',
     run: ctx => barRowsPass(ctx.c, ctx.origin) },
   // #141 (one control each), Proof "Game fields match the base input rule"
   // -- see game-field-match.mjs's own comment. #142 moved #teamName onto

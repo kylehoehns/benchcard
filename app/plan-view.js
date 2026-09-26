@@ -19,6 +19,7 @@ import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
 import { state, plans, dayTotals, game, availIds, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, summaryLine } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
+import { callNames } from './roster.js';
 
 /* #29 decision 6: replaces the stat tiles. One sentence, read off the
    rotation the coach is actually looking at -- `effectiveMinutes` /
@@ -217,6 +218,16 @@ export function longestSit(stints, ids) {
 
 const maxSubsNow = () => state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs;
 
+/* #144 item 4: what a screen reader reads for one player's row in "Across the
+   day" -- every game's minutes, by name, so "8 · 6" (sighted, on the bar's own
+   segments) is not the only place that fact lives. `gameLabel` is the one
+   name a game has (matches the legend's own wording); `perGame[i]` is the
+   same per-game minutes map `renderDayTotals` already builds, so this reads
+   the chart's own numbers rather than a second computation of them. */
+export function dayGamesText(games, perGame, id) {
+  return games.map((g, i) => `${gameLabel(g, i)}: ${fmtMinutes(perGame[i]?.[id] || 0)}`).join(', ');
+}
+
 export function renderDayTotals() {
   const section = $('#daySection');
   const box = $('#daytotals'); box.textContent = '';
@@ -238,13 +249,18 @@ export function renderDayTotals() {
      is already the effective sum (see computeAll); the segments have to match
      it or the bar would not add up to the number beside it. */
   const perGame = state.day.games.map((g, i) => (plans[i]?.ok ? effectiveMinutes(g, plans[i]) : null));
+  /* #144 item 4: call names, not the uppercase 4-letter card names
+     (`shortNames`) -- `callNames` is the same first-name form the ledger
+     uses (season-view.js), read here rather than the card's own compact
+     form which exists for a very different, space-starved surface. */
+  const names = callNames(state.players);
 
   for (const p of sorted) {
     const tot = dayTotals[p.id] || 0;
     const row = el('div', 'dayrow barrow');
     row.style.setProperty('--c', colorOf(p.id));
     const nm = el('div', 'nm');
-    nm.append(el('span', 'dot'), el('span', null, plans.find(x => x?.ok)?.shortNames[p.id] || p.name));
+    nm.append(el('span', 'dot'), el('span', null, names[p.id] || p.name));
     row.append(nm);
     const trk = el('div', 'trk');
     state.day.games.forEach((g, i) => {
@@ -252,12 +268,21 @@ export function renderDayTotals() {
       if (!m2) return;
       const seg = el('i');
       seg.style.width = `${(m2 / hi) * 100}%`;
-      seg.title = `${gameLabel(g, i)}: ${fmtMinutes(m2)} min`;
       trk.append(seg);
     });
+    row.append(trk);
     const v = el('div', 'v');
     countTo(v, tot, 'day:' + p.id, fmtMinutes);
-    row.append(trk, v);
+    row.append(v);
+    /* #144 item 4: the same per-game minutes the segments paint, as text --
+       a segment carries no text node of its own, so without this a screen
+       reader reaches the row's total and nothing about how it was made up.
+       (fix pass) Appended after the total (`.v`), not before it, so a
+       screen reader's linear order reads name, total minutes, then the
+       per-game breakdown -- the same minutes-before-note order as Minutes
+       so far's own row. `.sr-only` is `position: absolute`, so this does not
+       add a fourth column to `.barrow`'s 3-column grid. */
+    row.append(el('span', 'sr-only', dayGamesText(state.day.games, perGame, p.id)));
     box.append(row);
   }
 

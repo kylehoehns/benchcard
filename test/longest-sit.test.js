@@ -16,14 +16,11 @@ import { generatePlan } from '../app/engine.js';
  * the real solver rather than asserted, because it is advice: if a later
  * engine change stops it being true the sentence has to go with it.
  * plan-view.js reaches for a canvas and a media query at import time, so
- * the stubs below stand in for the document; nothing here renders.
+ * `dom-stub.js` stands in for the document; nothing here renders (shared
+ * with test/day-games-text.test.js, for the same reason).
  * ================================================================== */
-globalThis.matchMedia = () => ({ matches: false, addEventListener: () => {} });
+import './dom-stub.js';
 globalThis.window = globalThis;
-globalThis.document = {
-  querySelector: () => null,
-  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }) }) }),
-};
 const { longestSit } = await import('../app/plan-view.js');
 
 /* Four 4-minute stints, hand-written so the expected runs are obvious. */

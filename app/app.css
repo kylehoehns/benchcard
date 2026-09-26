@@ -389,6 +389,11 @@ a { color: inherit; }
    sample sentence to four lines, as longer sentences do on a phone). */
 .s-rot > .block-hd { margin-bottom: 0; }
 .block-hd .hint { margin-left: auto; font-size: var(--fs-footnote); color: var(--faint); font-variant-numeric: tabular-nums; }
+/* #144 item 4: "Across the day"'s own subheader (`#dayhint`, index.html) --
+   outside `.block-hd` here, so it inherited body-size ink with no rule of
+   its own until now. Muted footnote text, same voice as `.sn-day` beside it
+   on the same screen. */
+#dayhint { font-size: var(--fs-footnote); color: var(--muted); }
 /* #69 item 4: Shuffle is swept at 48px on the game screen; scoped to the id
    because `.btn.sm` is a shared small-button size used well beyond it. */
 #regen { min-height: 48px; }
@@ -1274,6 +1279,17 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .empty > .btn { margin-top: .9rem; }
 .note { color: var(--muted); font-size: var(--fs-footnote); margin-top: .75rem; }
 
+/* #144: the one visually-hidden rule the app has -- read by a screen reader,
+   painted nowhere. `aria-label` on a plain `div` is not read by every screen
+   reader (VoiceOver skips a `div` with no role), so a real text node, clipped
+   to nothing, is what both the season ledger and the day chart reach for
+   instead of two ad-hoc copies of this same clip trick. The standard
+   1px-clip-rect recipe: `display: none` would pull it out of the accessibility
+   tree entirely, and `width/height: 0` alone leaves it readable in some
+   browsers as a zero-size link/target. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
 /* #141 (one control each), item 3 ("One bar row"): `.mrow` (below), `.dayrow`
    (below) and `.sn-row` (Season's own ledger, further down this file) are the
    same label / track / value grid three times over, each with its own
@@ -1302,6 +1318,11 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
    this comment already pointed at before #141 gave that fact a shared rule
    instead of two copies of the same three custom properties. */
 .mrow, .dayrow { --barrow-cols: 4.8rem 1fr 2.6rem; --barrow-track-h: .62rem; --barrow-track: var(--pc-track); padding: .24rem 0; }
+/* #144 item 1: `#daytotals` is now a `.pgrp` (index.html) -- its rows, legend
+   and spread note get the same 1rem inset every other group's content sits
+   at, rather than running to the group's own edge. */
+#daytotals .dayrow { padding: .24rem 1rem; }
+#daytotals .legend, #daytotals > .note { padding-left: 1rem; padding-right: 1rem; }
 .mrow .nm { font-weight: 600; font-size: var(--fs-footnote); letter-spacing: -.01em; }
 .mrow .track i { display: block; height: 100%; border-radius: inherit; background: var(--accent); opacity: .58; transition: width var(--t-slow) var(--ease); }
 .mrow.heavy .track i { opacity: 1; }
@@ -1316,9 +1337,18 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .dayrow .trk i { display: block; height: 100%; background: var(--c); transition: width var(--t-slow) var(--ease); }
 .dayrow .trk i:nth-child(2) { opacity: .66; } .dayrow .trk i:nth-child(3) { opacity: .42; } .dayrow .trk i:nth-child(4) { opacity: .28; }
 .dayrow .v { font-weight: 600; font-size: var(--fs-footnote); }
+/* #144 fix pass, item 3: "Across the day" is the same ledger data as
+   "Minutes so far" (`.sn-list`), so its rows read as the same list style --
+   muted footnote minutes, not bold ink, and the name column at the ledger's
+   own 14px/500 rather than this bar's own 13px/600. Scoped to `#daytotals`,
+   `.dayrow`'s only screen, rather than widening the shared base rule above:
+   `.mrow` (a game screen's own plan bar, same anatomy, different voice)
+   reuses that rule unchanged if `.dayrow` is ever rendered a second place. */
+#daytotals .dayrow .nm { font-weight: 500; font-size: var(--fs-secondary); }
+#daytotals .dayrow .v { font-weight: 400; color: var(--muted); }
 .legend { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: .7rem; font-size: var(--fs-footnote); color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: .3rem; }
-.legend i { width: .58rem; height: .58rem; border-radius: 2px; background: var(--ink-2); }
+.legend i { width: .58rem; height: .58rem; border-radius: 50%; background: var(--ink-2); }
 .legend span:nth-child(2) i { opacity: .66; } .legend span:nth-child(3) i { opacity: .42; } .legend span:nth-child(4) i { opacity: .28; }
 
 /* ============================ roster ============================ */
@@ -4052,6 +4082,18 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   .sn-list .sn-row { grid-template-columns: 1fr auto; row-gap: .2rem; }
   .sn-list .sn-name { grid-column: 1 / -1; }
 
+  /* #144 squeeze fix: an OPENED game's own player rows (`.sn-body .sn-row`,
+     the larger bordered shape `.sn-list .sn-row` above is deliberately scoped
+     away from) squeeze the same way at this root, once there is no track to
+     give up space either -- "Hana Kim" measured a 0-10px column. Same
+     two-line collapse as the ledger just above, kept a separate rule rather
+     than combined into one selector: `test/big-text.test.js` pins
+     `.sn-list .sn-row`'s own rule text exactly, and a shared selector would
+     also mean this and the ledger's rule stop being two things this comment
+     and that one can each explain on their own. */
+  .sn-body .sn-row { grid-template-columns: 1fr auto; row-gap: .2rem; }
+  .sn-body .sn-name { grid-column: 1 / -1; }
+
   /* #24 CI fix, round 2 (Linux font metrics again): the fix above wraps the
      LEDGER rows, but "Game by game"'s own summary row -- the game title
      (`.sn-gt`, `flex: 1; min-width: 0`) beside its meta
@@ -4073,8 +4115,23 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      320 with this rule at every one, where the unfixed tree measured
      328/347/364px at 36/38/40 (32 and 34 already held on this machine's
      narrower glyphs, which is exactly why the CI runner's own wider ones
-     were needed to see this). */
-  .sn-game > summary { flex-wrap: wrap; }
+     were needed to see this).
+
+     Squeeze fix (#144): `flex-wrap: wrap` alone only moves `.sn-gm` onto its
+     own line once `.sn-gt` PLUS `.sn-gm` together overflow the row -- when
+     they do not (a short meta like "9 played · 4x8" beside a long title), the
+     flexbox line-breaking algorithm still keeps both on one line and hands
+     `.sn-gt` (`flex: 1`, a 0% basis) whatever `.sn-gm` and the chevron leave
+     over, which measured 6px wide for "vs Falcons" while "vs Comets" (a
+     shorter title) happened to fit -- the same one-letter-per-line squeeze as
+     the ledger's own name column, fixed the same way: the grid stack
+     `.sn-list .sn-row` already uses above, not a second technique. The title
+     spans the full row on its own line; the meta and chevron share the line
+     below it, same shape as a filed game's own name/track/minutes row. */
+  .sn-game > summary {
+    display: grid; grid-template-columns: 1fr auto; row-gap: .15rem; column-gap: .5rem;
+  }
+  .sn-game > summary .sn-gt { grid-column: 1 / -1; }
 
   /* And the timeline, where the failure is not a pan at all -- the page stays
      320px wide the whole time -- but a column squeezed to nothing, the same
@@ -4320,9 +4377,16 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    `min-width: 0` on the name is what keeps that true: a flex item's floor
    is its content, so one long name would push the minutes column off the
    edge instead of ellipsing. */
-.sn-h:first-child { margin-top: 0; }
 .sn-empty { margin: 0; }
-.sn-list { border-top: 1px solid var(--line); }
+/* #144 fix pass, item 1: `#daySection` carries the generic `.block` class
+   (index.html) for its own reasons, but that class's `margin-bottom`
+   (clamp(1.15rem, 2vw, 1.75rem), ~18.4px at 390px) would stack with the
+   "Filed games" heading's own `margin-top` (1rem, above) through margin
+   collapse's max-not-sum rule and make that gap the larger of the two --
+   the one inconsistent gap the fix pass found. Zeroed here so the heading's
+   own margin is what decides the gap, the same as it is above "Across the
+   day". */
+#daySection { margin-bottom: 0; }
 /* #30 decision 3: a grid, not a flex row -- three tracks (name, bar, minutes)
    rather than something that grows with the name, which is also what makes
    the big-text collapse (below, in the big-text block) a single
@@ -4365,7 +4429,6 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 .sn-name { min-width: 0; }
 .sn-nm { display: block; font-size: var(--fs-body); font-weight: 500; overflow-wrap: break-word; }
 .sn-nm.gone { color: var(--faint); font-style: italic; }
-.sn-x { display: block; font-size: var(--fs-footnote); color: var(--faint); }
 /* The prototype's bar: a rounded track on the gray ground (L1 -- it needs no
    box of its own), the fill painted the player's own color (K2). Position is
    still its own: no in-flow content, `.sn-fill` is `position: absolute`. */
@@ -4375,17 +4438,55 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    and size are the ledger's own (`.mrow`/`.dayrow`'s `.v` are smaller and use
    the footnote size instead). */
 .sn-min { font-weight: 600; font-size: var(--fs-body); }
+/* #144 item 2: the prototype's own row -- 30px tall at a 16px root, an 8px
+   `--track` bar and `--fs-footnote` muted minutes, no divider between rows
+   (the `.pgrp` these sit in draws none). Scoped to `.sn-list` so a filed
+   game's own minutes rows (`.sn-body .sn-row`, unchanged) keep their larger,
+   bordered shape -- those are a different list, opened on purpose, not the
+   quiet ledger a coach scans first. */
+.sn-list .sn-row { --barrow-track-h: .5rem; --barrow-track: var(--track);
+  min-height: 1.875rem; padding: 0 1rem; border-bottom: 0; }
+.sn-list .sn-nm { font-size: var(--fs-secondary); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sn-list .sn-min { font-size: var(--fs-footnote); font-weight: 400; color: var(--muted); }
 /* #30 decision 3: restyled to the prototype's group label -- footnote size,
    `--muted`, sentence case. It used to be uppercase, letter-spaced and
    `--accent`; that read as a section chrome the prototype never has. */
-.sn-h { margin: 1.35rem 0 .35rem; font-size: var(--fs-footnote); font-weight: 700;
+/* #144 fix pass, item 1: no left margin of its own -- `.wrap`'s 16px gutter
+   is the whole inset, the same left edge the title and `#dayhint` already
+   sit at. This used to add another 1rem on top of that gutter, so the
+   heading and the group it named sat inset from the title, not level with
+   it. Top margin is uniform (1rem) rather than zeroed on whichever heading
+   happened to be its parent's first child (`:first-child` matched all
+   three, one per container, not just the page's first) -- margin collapse
+   against `.dayhead`'s own 1rem bottom margin keeps "Minutes so far"'s gap
+   exactly where it was; `#daySection`'s own bottom margin is zeroed below
+   so "Filed games"'s gap collapses to the same 1rem instead of stacking a
+   second, larger one on top of it. */
+.sn-h { margin: 1rem 0 .35rem; font-size: var(--fs-footnote); font-weight: 700;
   color: var(--muted); }
-/* #30 decision 5: the day heading above each `.pgrp`, one step down from
-   `.sn-h` in weight since it is inside the group, not naming it. */
-.sn-day { margin: 1.1rem 1rem .4rem; font-size: var(--fs-footnote); color: var(--muted); }
-.sn-day:first-of-type { margin-top: .6rem; }
-.sn-game { border-bottom: 1px solid var(--line); }
-.sn-game:last-child { border-bottom: 0; }
+/* #144 fix pass, item 2: the day heading now rides inside the one shared
+   `.pgrp` (`renderSeason`, season-view.js) as a plain row rather than a
+   sibling before a card of its own, so it is padding, not margin.
+   look-defect fix pass: `padding-left` matches `.prow`'s own (1rem) rather
+   than 0 -- a day subheader lines up with the `.sn-game` rows it labels,
+   the same way a `.pgrp-h` lines up with its group's rows elsewhere (Team,
+   Settings), instead of sitting flush against the card's own left edge with
+   no padding. `h2.sn-h` and `#dayhint` are unaffected: they stay on the
+   title's own edge, one step further out, which is where the prototype's
+   "Minutes so far" sits. A day after the first draws the same seam a filed
+   game's own `.sn-game + .sn-game::before` draws, so a day boundary and a
+   game boundary read as one family of divider, not two. */
+.sn-day { padding: 1.1rem 0 .4rem 1rem; font-size: var(--fs-footnote); color: var(--muted); }
+.sn-day:first-child { padding-top: .8rem; }
+/* #144 item 5: a day boundary and a filed game's own boundary
+   (`.prow + .prow::before`'s exact inset, color and weight, restated here
+   because `<details>` siblings are not `.prow` siblings, so the selector has
+   to be `.sn-game + .sn-game`) read as one family of divider, not two -- the
+   same line, drawn by the two selectors this screen actually has. */
+.sn-day:not(:first-child), .sn-game + .sn-game { position: relative; }
+.sn-day:not(:first-child)::before, .sn-game + .sn-game::before {
+  content: ''; position: absolute; top: 0; left: 1rem; right: 0; height: 1px; background: var(--line); }
 /* `.prow` already gives the 48px floor, the flex row and the padding
    (decision 5's own "at least 48px" -- was 44, the fold's older floor);
    this only adds what a `<summary>` still needs on top of it. */
@@ -4399,12 +4500,6 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    line and keep the same edge distance a one-line row has. */
 .sn-gt { overflow-wrap: break-word; font-weight: 600; }
 .sn-gm { color: var(--faint); font-size: var(--fs-footnote); }
-/* The disclosure arrow, drawn rather than iconed: it is one glyph and it has
-   to turn, and a rotate on a pseudo-element costs no DOM and no icon fetch. */
-.sn-game > summary::after { content: ''; flex: 0 0 auto; width: .42rem; height: .42rem;
-  border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
-  transform: rotate(-45deg) translate(-.1rem, .1rem); transition: transform var(--t) var(--ease); }
-.sn-game[open] > summary::after { transform: rotate(45deg) translate(0, 0); }
 .sn-body { padding: .1rem 1rem .8rem; }
 .sn-body .sn-row:last-of-type { border-bottom: 0; }
 /* #141 (one control each), decision 1: Season's remove button is a

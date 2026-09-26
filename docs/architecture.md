@@ -77,9 +77,10 @@ Everything below is relative to `app/`.
   own callbacks through.
 - The views, one module each — `roster-view.js`, `teams-view.js` (Today: the
   team's name and team-switcher menu in the large title, multiple days stacked with headings and their games, the Team and Season entries below, and Add a game),
-  `season-view.js` (the Season view: minutes per player across every filed game,
-  the across-the-day chart when two or more games are on today, filed games
-  grouped by day, and the one place a game filed by mistake can be deleted),
+  `season-view.js` (the Season view, in grouped cards like Team's: minutes per
+  player across every filed game, the across-the-day chart when two or more
+  games are on today, filed games grouped by day in one card, and the one
+  place a game filed by mistake can be deleted),
   `game-setup.js`, `strategy.js`, `balance.js`,
   `rules.js`, `pills.js`, `plan-view.js`, `timeline.js`, `gamemode.js`,
   `tour.js`, `onboarding.js`, `shortcuts.js` (the keyboard and
