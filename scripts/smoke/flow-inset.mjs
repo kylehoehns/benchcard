@@ -23,6 +23,7 @@
  * step-3 card-fit measurement. */
 import { evalIn, landWiped, setWidth } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, openAddGameFlow, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
 const TOL = 1;
@@ -103,6 +104,55 @@ const READY = `!document.getElementById('view-welcome').hidden`;
 const land = (c, origin) => landWiped(c, `${origin}/index.html`, READY);
 const SAMPLE_ROSTER = '12 Maya Webb\n4 Eli Tran\nDevon Ellis\n3 Nia Bell\n15 Caleb Ruiz';
 
+// At 320px with a 32px root a button can break the inset two ways the sweep
+// above misses: its box sits past 16px, or its label is wider than the box
+// (`scrollWidth` > `clientWidth`) while the box itself stays inside.
+const largeTextButtonProbe = ids => `(() => {
+  const out = {};
+  for (const id of ${JSON.stringify(ids)}) {
+    const el = document.getElementById(id);
+    if (!el) { out[id] = { found: false }; continue; }
+    const r = el.getBoundingClientRect();
+    out[id] = { found: true, left: Math.round(r.left), right: Math.round(r.right),
+      scrollWidth: el.scrollWidth, clientWidth: el.clientWidth };
+  }
+  return JSON.stringify(out);
+})()`;
+
+async function measureLargeTextButtons(c, ids, label, ck) {
+  const out = JSON.parse(await evalIn(c, largeTextButtonProbe(ids)));
+  for (const id of ids) {
+    const m = out[id];
+    if (!ck(m && m.found, `#${id} is not in the document at ${label}`)) continue;
+    ck(m.scrollWidth <= m.clientWidth + TOL,
+      `#${id} at ${label}: content is ${m.scrollWidth}px wide, its own box is only ${m.clientWidth}px `
+      + '(content runs past its own border box)');
+    ck(m.left >= 16 - TOL, `#${id} at ${label}: left edge at ${m.left}px, want >= 16`);
+    ck(m.right <= LARGE_TEXT_WIDTH - 16 + TOL,
+      `#${id} at ${label}: right edge at ${m.right}px, want <= ${LARGE_TEXT_WIDTH - 16}`);
+  }
+}
+
+// A font size needs a reload (`app-large-text.mjs`), so this lands on its
+// own and puts the size back after.
+async function firstRunLargeTextButtons(c, ck, origin) {
+  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
+  try {
+    await setWidth(c, LARGE_TEXT_WIDTH);
+    await land(c, origin);
+    await realTap(c, '#welStart');
+    await measureLargeTextButtons(c, ['frFill'],
+      `first run step 1@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, ck);
+    await typeIn(c, '#frRoster', SAMPLE_ROSTER);
+    await realTap(c, '#frNext');
+    await realTap(c, '#frNext'); // commits the team for real -- lands on step 3
+    await measureLargeTextButtons(c, ['frPrint', 'frShare'],
+      `first run step 3@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, ck);
+  } finally {
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+  }
+}
+
 async function firstRunSweep(c, ck, origin) {
   // Steps 1 and 2: not a one-way door yet, so both widths can share the
   // ordinary loop the way `addGameSweep` above does.
@@ -136,6 +186,7 @@ export async function flowInsetPass(c, origin) {
   try {
     await addGameSweep(c, ck);
     await firstRunSweep(c, ck, origin);
+    await firstRunLargeTextButtons(c, ck, origin);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }

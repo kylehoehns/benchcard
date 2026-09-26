@@ -4113,6 +4113,14 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   .pass-top { flex-wrap: wrap; }
   .pass-when { white-space: nowrap; }
   .pass-title { white-space: normal; overflow-wrap: anywhere; }
+
+  /* #145: `#frFill` is a nowrap `.btn` wider than the inset column at a
+     32px root, so it wraps like `.wel-go` and `#removeGame` above. The
+     Print/Share pair cannot hold both labels as halves, so it stacks, the
+     way `#sheetCard .gm-cta` does. */
+  #frFill { white-space: normal; }
+  .fr-cta { flex-wrap: wrap; }
+  .fr-cta .btn { flex: 1 0 100%; }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach
