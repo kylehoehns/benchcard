@@ -441,3 +441,12 @@ export const GM_BODY_OVERFLOW_PROBE = `(() => {
     body: true, scrollWidth: Math.round(body.scrollWidth), clientWidth: Math.round(body.clientWidth), worst,
   });
 })()`;
+
+/* The large-text sweep's reading of GM_BODY_OVERFLOW_PROBE: a problem, or
+   null. rule 2a: an absent .gm-body fails rather than measuring nothing. */
+export async function gmBodyProblem(c) {
+  const gb = JSON.parse(await evalIn(c, GM_BODY_OVERFLOW_PROBE));
+  if (!gb.body) return 'no .gm-body to check for a body-relative sideways spill';
+  if (gb.scrollWidth > gb.clientWidth + 1) return `.gm-body scrollWidth ${gb.scrollWidth} exceeds its clientWidth ${gb.clientWidth}`;
+  return gb.worst ? `${gb.worst.el} reaches ${gb.worst.out}px past .gm-body's own box` : null;
+}

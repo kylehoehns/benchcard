@@ -350,7 +350,7 @@ export async function gamePassesPass(c, origin) {
     await evalIn(c, `(async () => {
       document.querySelector('#phrasePlayers')?.click();
       await ${SETTLE};
-      [...document.querySelectorAll('#sheetWho button.sheetrow')]
+      [...document.querySelectorAll('#sheetWho button.prow')]
         .find(b => b.textContent.includes('Devon Ellis'))?.click();
       await ${SETTLE};
     })()`);

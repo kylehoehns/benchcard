@@ -1,0 +1,90 @@
+[
+  {
+    "name": "sheet-who-light",
+    "file": "sheet-who-light.png",
+    "view": "games",
+    "theme": "light",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "firstRunStep": 0,
+    "firstRunLongNames": false,
+    "twin": "sheet-who-dark",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "15110fbb2022c5d7de2c518eb0f418e56f96b5db5c13101e4676145fac648f8a"
+  },
+  {
+    "name": "sheet-who-dark",
+    "file": "sheet-who-dark.png",
+    "view": "games",
+    "theme": "dark",
+    "width": 390,
+    "rootPx": 16,
+    "full": false,
+    "bottom": false,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "firstRunStep": 0,
+    "firstRunLongNames": false,
+    "twin": "sheet-who-light",
+    "measured": {
+      "fontSizePx": 16,
+      "bg": "rgb(11, 11, 12)"
+    },
+    "digest": "98f990965c7ff531e1e265cb9975bd1d4536838a0795966d8f52da1ce5fdeadd"
+  },
+  {
+    "name": "sheet-who-long-name-320",
+    "file": "sheet-who-long-name-320.png",
+    "view": "games",
+    "theme": "light",
+    "width": 320,
+    "rootPx": 32,
+    "full": false,
+    "bottom": false,
+    "longNames": true,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "firstRunStep": 0,
+    "firstRunLongNames": false,
+    "twin": null,
+    "measured": {
+      "fontSizePx": 32,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "ff66b520bded273900cc1a0de33a966d5e3cf9c9cd70055bf4d1b2b1821382da"
+  },
+  {
+    "name": "sheet-who-bottom-320",
+    "file": "sheet-who-bottom-320.png",
+    "view": "games",
+    "theme": "light",
+    "width": 320,
+    "rootPx": 32,
+    "full": false,
+    "bottom": true,
+    "longNames": false,
+    "firstRun": false,
+    "titleCollapsed": false,
+    "partPlayed": false,
+    "firstRunStep": 0,
+    "firstRunLongNames": false,
+    "twin": null,
+    "measured": {
+      "fontSizePx": 32,
+      "bg": "rgb(244, 244, 246)"
+    },
+    "digest": "94f39572051306a143de42f391e141b16247348215bf06df79bab78368a31e0d"
+  }
+]

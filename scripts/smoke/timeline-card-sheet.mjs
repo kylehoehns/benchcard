@@ -229,6 +229,23 @@ export async function timelineCardSheetPass(c, origin) {
       `#viewSeg aria-pressed reads ${JSON.stringify(seg.pressed)} on Card, want only Card pressed`);
     ck(seg.right <= WIDTH + 1, `#sheet's right edge sits at ${Math.round(seg.right)}px in a ${WIDTH}px viewport -- it pans sideways`);
 
+    /* ---- item 8: #sheet (the game's own Card view) is untouched by #143's
+       `#sheetCardPreview:has(.card:not(.half))` rule (card.css) -- that rule
+       names an id #sheet does not carry. Its pocket card still renders at
+       zoom 1, 331.2px wide -- the spec's own survey number for this exact
+       stage (docs/specs/143-sheets.md item 7), not re-derived from
+       `fitStage`'s formula. */
+    const sheetOwnCard = await evalJSON(c, `(() => {
+      const stage = document.getElementById('sheet');
+      const card = stage.querySelector('.card:not(.half)');
+      const cr = card.getBoundingClientRect();
+      return JSON.stringify({ w: cr.width, maxWidth: getComputedStyle(stage).maxWidth });
+    })()`);
+    ck(Math.abs(sheetOwnCard.w - 331.2) <= 1,
+      `#sheet's own pocket card measures ${sheetOwnCard.w.toFixed(1)}px wide, want 331.2px (unchanged by #143)`);
+    ck(sheetOwnCard.maxWidth === 'none',
+      `#sheet's own computed max-width reads "${sheetOwnCard.maxWidth}", want "none" -- #143's #sheetCardPreview-only rule must not reach it`);
+
     /* ---- item 1: a reload keeps Card chosen ---- */
     const reloaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await evalIn(c, `location.reload()`);
@@ -310,6 +327,41 @@ export async function timelineCardSheetPass(c, origin) {
       const r = el.getBoundingClientRect();
       return JSON.stringify({ half: el.classList.contains('half'), w: r.width });
     })()`);
+    /* ---- item 5: the pocket preview shrinks to ~.72 zoom (238px +/-4,
+       centered) so the sheet's five boxes -- the preview, Print, Share
+       image, and the first three option rows -- fit a 390px phone without
+       a scroll, the band it sits on stays inside the group's own inset,
+       and Share image loses its border (a "quiet" button). Reuses
+       `beforeSize` (pocket, captured just above, still the live size) --
+       must run before the tap below switches to "half", which the
+       `:has(.card:not(.half))` rule (card.css) deliberately does not
+       shrink. */
+    ck(beforeSize.w >= 234 && beforeSize.w <= 242,
+      `the pocket preview card measures ${beforeSize.w.toFixed(1)}px wide, want 238px +/-4 (about .72 zoom)`);
+    const band = await evalJSON(c, `(() => {
+      const host = document.getElementById('sheetCardPreview');
+      const hr = host.getBoundingClientRect();
+      const share = document.getElementById('shareCard');
+      const boxes = [hr,
+        ...[...document.querySelectorAll('#sheetCard .gm-cta .btn')].map(b => b.getBoundingClientRect()),
+        ...[...document.querySelectorAll('#sheetCard .pgrp .prow')].slice(0, 3).map(r => r.getBoundingClientRect())];
+      return JSON.stringify({
+        hostLeft: hr.left, hostRight: hr.right,
+        shareBorder: getComputedStyle(share).borderTopColor,
+        bottoms: boxes.map(b => b.bottom),
+      });
+    })()`);
+    ck(band.hostLeft >= 15.5,
+      `#sheetCardPreview's left edge sits at ${band.hostLeft.toFixed(1)}px, want >= 16px (inside the group's own inset)`);
+    ck(band.hostRight <= 374.5,
+      `#sheetCardPreview's right edge sits at ${band.hostRight.toFixed(1)}px, want <= 374px (inside the group's own inset)`);
+    ck(band.shareBorder === 'rgba(0, 0, 0, 0)',
+      `#shareCard's border color reads "${band.shareBorder}", want transparent -- a quiet button, no border`);
+    for (const b of band.bottoms) {
+      ck(b <= HEIGHT + 1,
+        `something in the card sheet reaches y=${b.toFixed(1)} in a ${HEIGHT}px viewport -- the preview, Print, Share image and the first three rows need to fit without a scroll`);
+    }
+
     await tap(c, `const s = document.getElementById('cardSize');
       s.value = 'half'; s.dispatchEvent(new Event('change', { bubbles: true }))`);
     const afterSize = await evalJSON(c, `(async () => {

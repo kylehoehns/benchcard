@@ -225,16 +225,16 @@ async function checkRowPadding(c, ck, where) {
 async function checkWhoWrap(c, ck, where) {
   await tap(c, `document.getElementById('phrasePlayers').click()`);
   const r = await evalJSON(c, `(() => {
-    const rows = [...document.querySelectorAll('#sheetWhoBody .sheetrow')];
-    const row = rows.find(x => x.querySelector('.sheetrow-t')?.textContent === ${JSON.stringify(LONG_NAME)});
+    const rows = [...document.querySelectorAll('#sheetWhoBody .prow')];
+    const row = rows.find(x => x.querySelector('.prow-t')?.textContent === ${JSON.stringify(LONG_NAME)});
     if (!row) return 'null';
-    const t = row.querySelector('.sheetrow-t');
+    const t = row.querySelector('.prow-t');
     const cs = getComputedStyle(t);
     return JSON.stringify({ h: row.getBoundingClientRect().height, whiteSpace: cs.whiteSpace, textOverflow: cs.textOverflow });
   })()`);
   if (ck(!!r, `${where}: no Who's here row reads "${LONG_NAME}" -- the name seed did not land`)) {
-    ck(r.whiteSpace === 'normal', `${where}: .sheetrow-t white-space is "${r.whiteSpace}", want "normal" so a long name wraps`);
-    ck(r.textOverflow !== 'ellipsis', `${where}: .sheetrow-t text-overflow is "${r.textOverflow}", want it not to ellipsize`);
+    ck(r.whiteSpace === 'normal', `${where}: .prow-t white-space is "${r.whiteSpace}", want "normal" so a long name wraps`);
+    ck(r.textOverflow !== 'ellipsis', `${where}: .prow-t text-overflow is "${r.textOverflow}", want it not to ellipsize`);
     ck(r.h > 55, `${where}: "${LONG_NAME}"'s row is ${Math.round(r.h)}px tall, want > 55px -- evidence it wrapped to a second line`);
   }
   await tap(c, `document.getElementById('sheetWhoClose').click()`);

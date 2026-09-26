@@ -61,6 +61,14 @@ export const STATES = [
   { name: "who's here sheet",
     open: `$('.today-game').click(); $('#phrasePlayers').click()`, shows: '#sheetWho[open]',
     close: `$('#sheetWho').close(); $('#backBtn').click()` },
+  /* #143: the other two sentence sheets Who's here sits beside, opened the
+     same way through their own phrase. */
+  { name: 'format sheet',
+    open: `$('.today-game').click(); $('#phraseFormat').click()`, shows: '#sheetFormat[open]',
+    close: `$('#sheetFormat').close(); $('#backBtn').click()` },
+  { name: 'sub interval sheet',
+    open: `$('.today-game').click(); $('#phraseInterval').click()`, shows: '#sheetInterval[open]',
+    close: `$('#sheetInterval').close(); $('#backBtn').click()` },
   /* #28's Plan sheet, opened through its real trigger like every other state
      here. Four states: level 1, and each of the three level-2 pages it owns. */
   { name: 'plan sheet',

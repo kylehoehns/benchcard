@@ -77,7 +77,11 @@ test('SHOTS covers every VIEWS name in both light and dark', () => {
 });
 
 test('SHOTS includes a long real name, light and dark', () => {
-  assertLightDarkPair(SHOTS.filter(s => s.longNames), 'long-name');
+  // #143 adds `sheet-who-long-name`, its own light/dark pair for the same
+  // `longNames` flag applied inside Who's here instead of the roster --
+  // `!s.sheet` keeps that pair out of this one's count, the same narrowing
+  // the bottom-scrolled test below already uses for the same reason.
+  assertLightDarkPair(SHOTS.filter(s => s.longNames && !s.sheet), 'long-name');
 });
 
 test('SHOTS includes a screen scrolled to its bottom, light and dark', () => {
@@ -99,8 +103,11 @@ test('SHOTS includes a full-height capture, light and dark', () => {
 });
 
 test('SHOTS includes exactly one 320px/32px-root shot, light only, no twin', () => {
+  // #143 adds three more 320px/32px-root cells of its own (Who's here long
+  // name, Who's here scrolled, the card sheet scrolled) -- `!s.sheet` keeps
+  // them out of this count, the same narrowing already used above.
   const shots = SHOTS.filter(s => s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX
-    && !s.partPlayed && !s.firstRunStep);
+    && !s.partPlayed && !s.firstRunStep && !s.sheet);
   assert.equal(shots.length, 1, `want exactly one 320px/32px shot, found ${shots.length}`);
   assert.equal(shots[0].theme, 'light', 'the large-text cell is about layout and runs light only');
   assert.ok(!shots[0].twin, 'the large-text cell never runs dark, so it should declare no twin');
@@ -310,6 +317,85 @@ test('SHOTS includes bench mode, plain and picked, light and dark', () => {
     assert.equal(s.benchPick, true,
       `${s.name} does not set benchPick, so it would look identical to the plain bench state`);
   }
+});
+
+/* #143: the four sentence sheets, light and dark, against their own
+ * prototype PNGs (notes/mockups/prototype/{light,dark}-sheet-{who,interval,
+ * format,card}.png) -- one background, one row, one check. Same "declares
+ * the click and the selector it must open" shape as `mid-sheet` and
+ * `player-sheet` above. */
+test('SHOTS includes the four sentence sheets, light and dark', () => {
+  const sheets = [
+    ['sheet-who', 'phrasePlayers', 'sheetWho'],
+    ['sheet-interval', 'phraseInterval', 'sheetInterval'],
+    ['sheet-format', 'phraseFormat', 'sheetFormat'],
+    ['sheet-card', 'shareBtn', 'sheetCard'],
+  ];
+  for (const [name, triggerId, dialogId] of sheets) {
+    const shots = namedPair(name);
+    assertLightDarkPair(shots, name);
+    for (const s of shots) {
+      assert.equal(s.view, 'games',
+        `${s.name} opens on ${s.view}, but every sentence sheet is reached from the game screen`);
+      assert.ok(s.sheet && s.sheet.selector.includes(dialogId),
+        `${s.name} names no #${dialogId} selector, so nothing proves the dialog ever opened`);
+      assert.ok(s.sheet && s.sheet.open.includes(triggerId),
+        `${s.name} does not click #${triggerId}, so the shot would be of the game screen behind it`);
+    }
+  }
+});
+
+/* Item 4: only Who's here draws a player's name, so it is the only one of
+ * the four sheets with a row that can wrap on a long one. A pair at 390,
+ * plus item 6's own 320px/32px-root repro cell, light only and no twin like
+ * every other large-text cell in this table. */
+test('SHOTS includes a long name in Who\'s here, at 390 and at 320px/32px', () => {
+  const pair390 = namedPair('sheet-who-long-name');
+  assertLightDarkPair(pair390, 'sheet-who-long-name');
+  for (const s of pair390) assert.equal(s.view, 'games');
+
+  const solo320 = SHOTS.filter(s => s.name === 'sheet-who-long-name-320');
+  assert.equal(solo320.length, 1, `want exactly one sheet-who-long-name-320 shot, found ${solo320.length}`);
+  assert.equal(solo320[0].theme, 'light', 'the large-text cell is about layout and runs light only');
+  assert.ok(!solo320[0].twin, 'sheet-who-long-name-320 never runs dark, so it should declare no twin');
+  assert.equal(solo320[0].width, LARGE_TEXT_WIDTH);
+  assert.equal(solo320[0].rootPx, LARGE_TEXT_PX);
+});
+
+/* RICH seats 11 players, more than a 390x844 sheet shows at once, so the
+ * list's own end has no picture without a scrolled shot -- same shape as
+ * `player-sheet-bottom` above, but for Who's here's own list. Pair at 390,
+ * plus the 320px/32px-root cell where the same rows grow taller still. */
+test('SHOTS includes Who\'s here scrolled to its own end, at 390 and at 320px/32px', () => {
+  const pair390 = namedPair('sheet-who-bottom');
+  assertLightDarkPair(pair390, 'sheet-who-bottom');
+  for (const s of pair390) {
+    assert.equal(s.view, 'games');
+    assert.equal(s.bottom, true, `${s.name} does not set bottom: true, so capture() never scrolls the sheet`);
+  }
+
+  const solo320 = SHOTS.filter(s => s.name === 'sheet-who-bottom-320');
+  assert.equal(solo320.length, 1, `want exactly one sheet-who-bottom-320 shot, found ${solo320.length}`);
+  assert.equal(solo320[0].theme, 'light', 'the large-text cell is about layout and runs light only');
+  assert.ok(!solo320[0].twin, 'sheet-who-bottom-320 never runs dark, so it should declare no twin');
+  assert.equal(solo320[0].bottom, true);
+  assert.equal(solo320[0].width, LARGE_TEXT_WIDTH);
+  assert.equal(solo320[0].rootPx, LARGE_TEXT_PX);
+});
+
+/* Item 5's own settings rows (Print, Copies, Size and the rest): the spec
+ * requires them on screen without scrolling at 390, so a `bottom` shot at
+ * that width would never move and prove nothing -- this cell only exists at
+ * the 320px/32px root, where the same rows grow past one screen. Light
+ * only, no twin, like every other large-text cell here. */
+test('SHOTS includes the card sheet scrolled to its own end at 320px/32px', () => {
+  const solo320 = SHOTS.filter(s => s.name === 'sheet-card-bottom-320');
+  assert.equal(solo320.length, 1, `want exactly one sheet-card-bottom-320 shot, found ${solo320.length}`);
+  assert.equal(solo320[0].theme, 'light', 'the large-text cell is about layout and runs light only');
+  assert.ok(!solo320[0].twin, 'sheet-card-bottom-320 never runs dark, so it should declare no twin');
+  assert.equal(solo320[0].bottom, true, 'sheet-card-bottom-320 does not set bottom: true, so capture() never scrolls the sheet');
+  assert.equal(solo320[0].width, LARGE_TEXT_WIDTH);
+  assert.equal(solo320[0].rootPx, LARGE_TEXT_PX);
 });
 
 /* ---------- shotProblems: items 2 and 3 ---------- */

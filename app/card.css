@@ -38,6 +38,27 @@
   transition: transform var(--t-slow) var(--ease), box-shadow var(--t-slow) var(--ease);
 }
 .card.half { width: 8in; height: 5.1in; padding: .2in; }
+/* #143 item 5: the pocket preview shrinks to about .72 zoom so Print/Share
+   and the first option rows fit a phone screen without scrolling -- scoped
+   to `#sheetCardPreview` by id, not to `.stage` itself, since `.stage` is
+   also the game Card view (`#sheet`) and first-run step 3 (`#frStage`), and
+   neither may change size. `:has(.card:not(.half))` keeps the half-sheet
+   card (the "Names" size switch) out of this rule entirely -- `fitStage`
+   (card.js) clamps a card's rendered width to whichever is smaller of its
+   own full size and the stage's available width, and the half card is
+   already wider than this, so narrowing the stage for it too would pin
+   both sizes to the same rendered width.
+
+   248px, not the naive 270 (238 target + the base rule's 32px of 1rem
+   padding): every width this ships at is under 620px, where the `@media`
+   rule below has already narrowed `.stage`'s own horizontal padding to
+   `.3rem` (9.6px) a side, so the card's fitted width is `248 - 9.6 =
+   238.4px` -- inside the 238±4 target read off the real padding, not the
+   base rule's.
+
+   Lives here, not app.css, because it names `.card`/`.half` in its
+   selector and this is the sheet that owns them (test/css-collide.test.js). */
+#sheetCardPreview:has(.card:not(.half)) { max-width: 248px; margin: 0 auto; }
 .card.half .card-hd .opp { font-size: 15px; }
 .card.half .card-hd .when { font-size: 11px; }
 .card.half .card-hd .card-mark { font-size: 9px; }

@@ -1,10 +1,11 @@
-import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, GM_BODY_OVERFLOW_PROBE, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { FOUR, reloadWithRecord } from './fixtures.mjs';
 import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
+import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -138,10 +139,14 @@ export const APP_LARGE_TEXT_STATES = [
      every group sit at once, and Add a rule, its own level-2 page with the
      kind chips and the picker (a rule's detail needs a seeded rule, which
      this fixture does not carry, so it is left to `plan sheet` (smoke.mjs)
-     the same way `sentence-sheets.mjs` covers what this pass cannot). */
+     the same way `sentence-sheets.mjs` covers what this pass cannot). #143
+     adds the other two sentence sheets Who's here sits beside: Format and
+     Sub interval, now the same `.pgrp`/`.prow` family. */
   ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet",
-      'plan sheet', 'plan sheet, add a rule', 'card sheet open']
+      'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'card sheet open']
     .map(n => STATES.find(s => s.name === n)),
+  // #143: no name above forces a mid-word break; this one does (row-stack.mjs).
+  ROW_STACK_LONG_NAME_STATE,
   /* #29 item 8: "the game screen on Card and the card sheet have no
      horizontal overflow" at a 32px root -- "card sheet open" is reused by
      reference above; the games view itself is only ever measured on
@@ -611,16 +616,10 @@ export async function appLargeTextPass(c, origin) {
           if (!dd.dialog) problems.push(`${where}: no open dialog to check for a dialog-relative overflow`);
           else if (dd.worst) problems.push(`${where}: ${dd.worst.el} reaches ${dd.worst.out}px past the dialog's own ${dd.dw}px-wide box`);
         }
-        if (GM_BODY_CHECKED_STATES.has(v.name)) {
-          const gb = JSON.parse(await evalIn(c, GM_BODY_OVERFLOW_PROBE));
-          // rule 2a: absent .gm-body must fail, not measure nothing.
-          if (!gb.body) problems.push(`${where}: no .gm-body to check for a body-relative sideways spill`);
-          else if (gb.scrollWidth > gb.clientWidth + 1) {
-            problems.push(`${where}: .gm-body scrollWidth ${gb.scrollWidth} exceeds its clientWidth ${gb.clientWidth}`);
-          } else if (gb.worst) {
-            problems.push(`${where}: ${gb.worst.el} reaches ${gb.worst.out}px past .gm-body's own box`);
-          }
-        }
+        const gbMsg = GM_BODY_CHECKED_STATES.has(v.name) && await gmBodyProblem(c);
+        if (gbMsg) problems.push(`${where}: ${gbMsg}`);
+        const rsMsg = ROW_STACK_STATES.has(v.name) && await rowStackProblem(c, v.name);
+        if (rsMsg) problems.push(`${where}: ${rsMsg}`);
       } catch (e) {
         problems.push(`${where}: ${e.message.split('\n')[0]}`);
       } finally {

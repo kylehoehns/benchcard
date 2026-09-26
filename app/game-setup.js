@@ -16,9 +16,10 @@
  * documents for every other section.
  * ================================================================== */
 import { riseIn } from './fx.js';
-import { $, set, el } from './dom.js';
+import { $, set, el, checkMark } from './dom.js';
 import { state, game, plans, noRoster, setAvailable,
-         sentenceParts, planSay, stepFormat, GRAN_CHOICES, weekdayLabel } from './state.js';
+         sentenceParts, planSay, stepFormat, GRAN_CHOICES, weekdayLabel,
+         initials, colorOf } from './state.js';
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
 import { colorName, seasonDate } from './storage.js';
 
@@ -206,24 +207,38 @@ function on(sel, fn) { const n = $(sel); if (n) n.onclick = fn; }
 
 /* ---------------------------- Who's here ---------------------------- */
 
+// #143: the trailing slot is a `.prow-check` mark (present) or a muted
+// "Absent" (`.prow-v`, not present) -- never both, never neither. Rebuilt
+// each paint rather than toggled in place, the same way `paintGranRows`
+// below moves its own check between rows.
 function paintWhoRow(b, on_) {
   b.setAttribute('aria-pressed', String(on_));
-  const state_ = b.querySelector('.sheetrow-state');
-  if (state_) state_.textContent = on_ ? '✓' : 'Absent';
+  const old = b.querySelector('.prow-check, .prow-v');
+  if (old) old.remove();
+  b.append(on_ ? checkMark() : el('span', 'prow-v', 'Absent'));
 }
 
 function whoRow(g, p, on_) {
-  const b = el('button', 'sheetrow');
+  // `.prow who-row`: the same row Format/Plan/Settings/Team use, plus
+  // `.who-row` widening the `.av` badge selector to the roster's own look
+  // (#143 Constraints/Reuse) -- not a new row class or a second badge style.
+  // Not `.rrow`: that class also carries `flex-wrap: wrap` and
+  // `.prow-t { min-width: min-content }`, right for Team's roster (the page
+  // scrolls under it) but wrong here -- at a 320px/32px root it wrapped the
+  // badge, the name and the check onto three separate lines (236px against
+  // the sheet's own 148px half-height window), a fix pass finding this
+  // ticket's own spec calls out by name.
+  const b = el('button', 'prow who-row');
   b.type = 'button';
+  b.style.setProperty('--c', colorOf(p.id));
+  const name = p.name || 'Unnamed';
   // Named with the player's name alone (item 3): the visible "Absent" text
   // beside it is decorative confirmation of `aria-pressed`, not part of the
   // accessible name, the same split `renderAvail` used to draw between its
   // pill's className and its `aria-label`.
-  b.setAttribute('aria-label', p.name || 'Unnamed');
-  b.append(el('span', 'sheetrow-t', p.name || 'Unnamed'));
-  const mark = el('span', 'sheetrow-state', '');
-  mark.setAttribute('aria-hidden', 'true');
-  b.append(mark);
+  b.setAttribute('aria-label', name);
+  b.append(el('span', 'av', initials(p)));
+  b.append(el('span', 'prow-t', name));
   paintWhoRow(b, on_);
   b.onclick = () => {
     const nowOn = b.getAttribute('aria-pressed') !== 'true';
@@ -247,8 +262,10 @@ function paintWhoBody() {
     return;
   }
   const out = new Set(g.out);
-  for (const p of state.players) box.append(whoRow(g, p, !out.has(p.id)));
-  riseIn(box.querySelectorAll('.sheetrow'), { delay: 0.012, from: 5 });
+  const grp = el('div', 'pgrp');
+  for (const p of state.players) grp.append(whoRow(g, p, !out.has(p.id)));
+  box.append(grp);
+  riseIn(grp.querySelectorAll('.prow'), { delay: 0.012, from: 5 });
 }
 
 /* ------------------------------ Format ------------------------------ */
@@ -342,14 +359,15 @@ export function paintGranRows(box, get, onPick) {
     const g = get();
     const on_ = g.granMode === c.mode && (c.mode === 'breaksOnly' || g.granValue === c.value);
     const label = capitalize(c.phrase);
-    const b = el('button', 'sheetrow' + (on_ ? ' sel' : ''));
+    // #143: `.prow`, the same row Format/Plan/Settings/Team use.
+    const b = el('button', 'prow');
     b.type = 'button';
     b.setAttribute('aria-pressed', String(on_));
     b.setAttribute('aria-label', label);
-    b.append(el('span', 'sheetrow-t', label));
-    const mark = el('span', 'sheetrow-state', on_ ? '✓' : '');
-    mark.setAttribute('aria-hidden', 'true');
-    b.append(mark);
+    b.append(el('span', 'prow-t', label));
+    // The chosen row carries `.prow-check` (balance.js's own chosen-row
+    // mark) instead of a filled `.sel` bar; unchosen rows carry no mark.
+    if (on_) b.append(checkMark());
     b.onclick = () => {
       onPick(c);
       // The checkmark moves to a different row -- unlike a Who's here row or
@@ -363,7 +381,12 @@ export function paintGranRows(box, get, onPick) {
 }
 
 function paintIntervalBody() {
-  paintGranRows($('#sheetIntervalBody'), game, c => {
+  const box = $('#sheetIntervalBody');
+  if (!box) return;
+  box.textContent = '';
+  const grp = el('div', 'pgrp');
+  box.append(grp);
+  paintGranRows(grp, game, c => {
     Object.assign(game(), { granMode: c.mode, granValue: c.value });
     edit('format');
   });

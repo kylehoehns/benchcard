@@ -100,11 +100,11 @@ export async function sentenceSheetsPass(c, origin) {
     await checkTitleFocused(c, ck, 'sheetWhoTitle', '#sheetWho');
 
     const who = await evalJSON(c, `(() => {
-      const rows = [...document.querySelectorAll('#sheetWhoBody .sheetrow')];
+      const rows = [...document.querySelectorAll('#sheetWhoBody .prow')];
       return JSON.stringify({
         order: rows.map(r => r.getAttribute('aria-label')),
         pressed: rows.map(r => r.getAttribute('aria-pressed')),
-        marks: rows.map(r => r.querySelector('.sheetrow-state')?.textContent),
+        marks: rows.map(r => r.querySelector('.prow-check, .prow-v')?.textContent),
       });
     })()`);
     ck(who.order.length === 11, `#sheetWhoBody has ${who.order.length} rows, want 11`);
@@ -122,7 +122,7 @@ export async function sentenceSheetsPass(c, origin) {
     // mousedown a real tap fires, which is what actually moves focus.
     async function tapDevon(c) {
       const r = await evalJSON(c, `(() => {
-        const b = [...document.querySelectorAll('#sheetWhoBody .sheetrow')]
+        const b = [...document.querySelectorAll('#sheetWhoBody .prow')]
           .find(x => x.getAttribute('aria-label') === 'Devon Ellis');
         const rr = b.getBoundingClientRect();
         return JSON.stringify({ x: rr.left + rr.width / 2, y: rr.top + rr.height / 2 });
@@ -132,12 +132,12 @@ export async function sentenceSheetsPass(c, origin) {
     await tapDevon(c);
     await settle(c);
     const devon = await evalJSON(c, `(() => {
-      const b = [...document.querySelectorAll('#sheetWhoBody .sheetrow')]
+      const b = [...document.querySelectorAll('#sheetWhoBody .prow')]
         .find(x => x.getAttribute('aria-label') === 'Devon Ellis');
       return JSON.stringify({
         open: document.getElementById('sheetWho').open,
         pressed: b?.getAttribute('aria-pressed'),
-        mark: b?.querySelector('.sheetrow-state')?.textContent,
+        mark: b?.querySelector('.prow-check, .prow-v')?.textContent,
         focused: document.activeElement === b,
       });
     })()`);
@@ -160,7 +160,7 @@ export async function sentenceSheetsPass(c, origin) {
     await tapDevon(c);
     await settle(c);
     const restored = await evalJSON(c, `JSON.stringify({
-      pressed: [...document.querySelectorAll('#sheetWhoBody .sheetrow')]
+      pressed: [...document.querySelectorAll('#sheetWhoBody .prow')]
         .find(b => b.getAttribute('aria-label') === 'Devon Ellis')?.getAttribute('aria-pressed'),
       phrase: document.getElementById('phrasePlayers').textContent,
     })`);
@@ -314,11 +314,11 @@ export async function sentenceSheetsPass(c, origin) {
     await settle(c);
     await checkTitleFocused(c, ck, 'sheetIntervalTitle', '#sheetInterval');
     const interval = await evalJSON(c, `(() => {
-      const rows = [...document.querySelectorAll('#sheetIntervalBody .sheetrow')];
+      const rows = [...document.querySelectorAll('#sheetIntervalBody .prow')];
       return JSON.stringify({
         labels: rows.map(r => r.getAttribute('aria-label')),
         pressed: rows.map(r => r.getAttribute('aria-pressed')),
-        marks: rows.map(r => r.querySelector('.sheetrow-state')?.textContent),
+        marks: rows.map(r => r.querySelector('.prow-check')?.textContent),
       });
     })()`);
     const WANT_ROWS = ['Every 2 min', 'Every 3 min', 'Every 4 min', 'Every 5 min', 'Every 6 min',
@@ -330,13 +330,13 @@ export async function sentenceSheetsPass(c, origin) {
       `${pressedAt.length} row(s) pressed (index ${JSON.stringify(pressedAt)}), want only "Every 4 min" (index 2)`);
     ck(interval.marks.filter(m => m === '✓').length === 1, 'more than one checkmark in the Sub interval sheet');
 
-    await evalIn(c, step(`[...document.querySelectorAll('#sheetIntervalBody .sheetrow')]
+    await evalIn(c, step(`[...document.querySelectorAll('#sheetIntervalBody .prow')]
       .find(b => b.getAttribute('aria-label') === 'Only at breaks').click()`));
     await settle(c);
     const afterBreaks = await evalJSON(c, `(async () => JSON.stringify({
       granMode: (await import('/state.js')).game().granMode,
       open: document.getElementById('sheetInterval').open,
-      pressed: [...document.querySelectorAll('#sheetIntervalBody .sheetrow')]
+      pressed: [...document.querySelectorAll('#sheetIntervalBody .prow')]
         .find(b => b.getAttribute('aria-label') === 'Only at breaks').getAttribute('aria-pressed'),
       phrase: document.getElementById('phraseInterval').textContent,
     }))()`);
