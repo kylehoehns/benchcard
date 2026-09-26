@@ -1250,52 +1250,51 @@
        bar), and what is left here is set once and then left alone. -->
   <main class="view wrap noprint" id="view-settings" hidden data-bar-title="Settings" style="max-width:820px">
 
-    <!-- The team box. Heading `#setTeamHd` is painted by `renderSettings()` in
-         teams-view.js, the one place a team's name is read with its `Team N`
-         fallback -- the markup below ships the fallback text so the box is
-         never blank for the frame before the first render. -->
-    <div class="side-box">
-      <!-- Filled with the active team's name by teams-view.js. The fallback
-           text ships in the markup so the heading is never blank for the frame
-           before the first render. -->
-      <div class="side-hd" id="setTeamHd">This team</div>
-      <!-- Said once, here, instead of at the end of every note in the box.
-           Each of the five used to close with "This one belongs to this team
-           alone." — five repetitions of one fact, under a heading that is only
-           the team's NAME and so does not say it at all. The scope belongs to
-           the box, not to each row in it. -->
-      <p class="note" style="margin:0 0 .15rem">Each team keeps its own settings.</p>
-
-      <!-- The team's own name. A `setrow` like every other row in this box now
-           that the box itself carries the name in its heading -- there is
-           nothing left on the Team tab to hold a label for it. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">Team name</div>
-          <p class="note">Heads the card when a game has no opponent, and names the day above your games.</p>
-        </div>
-        <input type="text" id="teamName" maxlength="40" autocomplete="off" placeholder="Wildcats 6th Grade"
+    <!-- #142: the team zone now uses the app's shared `.pgrp`/`.prow`
+         grammar (the same one Team and the sheets use) instead of the old
+         `.side-box`/`.setrow` grammar. `#setTeamHd` is still painted by
+         `renderSettings()` in teams-view.js, the one place a team's name is
+         read with its `Team N` fallback -- the markup below ships the
+         fallback text so the heading is never blank for the frame before the
+         first render. Every long explanation a row lost lives on in How it
+         works' own "Settings" section; only the group A footnote (a fact
+         about the whole box, not one row) stays here. -->
+    <h2 class="pgrp-h" id="setTeamHd">This team</h2>
+    <div class="pgrp">
+      <label class="prow">
+        <span class="prow-t">Team name</span>
+        <input class="prow-in" type="text" id="teamName" maxlength="40" autocomplete="off" placeholder="Wildcats 6th Grade"
                aria-label="Team name" data-fk="teamName">
-      </div>
+      </label>
 
-      <!-- The team's game format. Number fields, by the same line the league
-           minimum drew: a seg teaches a closed set of stances, a field
-           transcribes a value off a rulebook, and "four eights" is
-           transcription. Same `min`/`max` as the Rules fold's own inputs, so a
-           number that passes here can never be refused there. Reuses
-           `.minwrap` rather than growing a class — the layout it wants is
-           identical. Read by newGame ONLY when there is no game to clone
-           from; see DEFAULT_SETTINGS. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">A game is</div>
-          <p class="note">
-            Periods, and minutes in each period. A game you add copies the format from
-            the game before it, so this is what a game starts as when there is nothing
-            to copy: a brand new team, or your first game. You can still change it per
-            game from the game screen.
-          </p>
-        </div>
+      <!-- #25: the team color. Opens `#colorPicker` (a `.keyswrap` dialog,
+           same shape as `#help` and `#confirm`) rather than a `.seg` -- nine
+           options is too many names to read at once as a row of buttons, and
+           each one needs a swatch beside its name, which a `.seg` button has
+           no room for. `#teamColorSwatch` and `#teamColorName` are painted by
+           `renderSettings`, the one painter of team settings (teams-view.js);
+           `applyTint` (render.js) is the one function that stamps
+           `data-tint`, at boot, on switch, on add/remove/undo, and here. -->
+      <button class="prow" id="teamColorBtn" type="button" aria-haspopup="dialog">
+        <span class="prow-t">Team color</span>
+        <span class="prow-v">
+          <span class="color-swatch" id="teamColorSwatch" aria-hidden="true"></span>
+          <span id="teamColorName">Graphite</span>
+        </span>
+        <span class="prow-chev" aria-hidden="true">›</span>
+      </button>
+    </div>
+    <p class="pgrp-f">Each team keeps its own settings.</p>
+
+    <!-- Group B: what a new game starts as. Both rows are read by newGame
+         ONLY when there is no game to clone from -- see DEFAULT_SETTINGS.
+         "A game is" reuses `.minwrap`, the same layout Everyone plays at
+         least (group C) wants; the carryover switch is a `.seg` because it
+         is a genuinely closed pair of stances, the same line the tie-break
+         stance below draws. -->
+    <div class="pgrp">
+      <div class="prow">
+        <span class="prow-t">A game is</span>
         <div class="minwrap">
           <input class="minmins" id="setPeriods" type="number" min="1" max="8" step="1"
                  inputmode="numeric" aria-label="Periods in a game">
@@ -1305,49 +1304,24 @@
           <span aria-hidden="true">min</span>
         </div>
       </div>
-
-      <!-- #25: the team color. A `setrow` like the rest of the box, opening
-           `#colorPicker` (a `.keyswrap` dialog, same shape as `#help` and
-           `#confirm`) rather than a `.seg` -- nine options is too many names to
-           read at once as a row of buttons, and each one needs a swatch beside
-           its name, which a `.seg` button has no room for. `#teamColorSwatch`
-           and `#teamColorName` are painted by `renderSettings`, the one
-           painter of team settings (teams-view.js); `applyTint` (render.js)
-           is the one function that stamps `data-tint`, at boot, on switch, on
-           add/remove/undo, and here. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">Team color</div>
-          <p class="note">Tints the primary buttons and the selected states across the app.</p>
+      <div class="prow">
+        <span class="prow-t">A new game starts</span>
+        <div class="seg wide" id="seasonDefSeg" role="group" aria-label="How a new game starts">
+          <button class="press" type="button" data-sdef="0">On its own</button>
+          <button class="press" type="button" data-sdef="1">With the season</button>
         </div>
-        <button class="btn press color-row-btn" id="teamColorBtn" type="button" aria-haspopup="dialog">
-          <span class="color-swatch" id="teamColorSwatch" aria-hidden="true"></span>
-          <span id="teamColorName">Graphite</span>
-        </button>
       </div>
+    </div>
+    <p class="pgrp-f">What a new game starts as. Change any game from its own screen.</p>
 
-      <!-- The first real team setting: engine.js's DEFAULT_MAX_SUBS, which has
-           always been 3, moved to where a coach can see it. A PREFERENCE, and
-           the note says so — a plan can still go over, and carries a
-           SUBS_EXCEEDED warning naming the arithmetic when it does. `.seg.wide`
-           rather than the mock's compact stepper: that one measured 32×44 at
-           every width and failed the touch sweep.
-
-           `#maxSubsRead` is the live read-back, written by `renderSettings`;
-           `SUBS_READ` in teams-view.js holds the five sentences and the
-           claim-by-claim justification for each. The static note below lost
-           its "the plan says so when it cannot keep to your number" sentence
-           to it — the read-back makes that promise per option. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">Players changing at once</div>
-          <p class="note">
-            How many go on together at a substitution. Fewer keeps the floor settled;
-            more breaks up long stretches on the bench. Totals come out the same either
-            way.
-          </p>
-          <p class="note" id="maxSubsRead" aria-live="polite"></p>
-        </div>
+    <!-- Group C: who plays. `#maxSubsRead` is the live read-back written by
+         `renderSettings` -- `SUBS_READ` in teams-view.js holds the five
+         sentences -- and is this group's one footnote, in place of a static
+         paragraph, since it answers the current choice rather than
+         describing the row. -->
+    <div class="pgrp">
+      <div class="prow">
+        <span class="prow-t">Players changing at once</span>
         <div class="seg wide" id="maxSubsSeg" role="group" aria-label="How many players change at once">
           <button class="press" type="button" data-subs="1">1</button>
           <button class="press" type="button" data-subs="2">2</button>
@@ -1356,174 +1330,88 @@
           <button class="press" type="button" data-subs="5">5</button>
         </div>
       </div>
-
-      <!-- The tie-break stance. The odd stint has always gone to whoever is
-           furthest behind on the season; this is the first time a coach can
-           see that, or hand it to their rotation levels instead. Inert until
-           levels are set — every player starts on the middle level, so
-           "Best players" then settles it exactly as "Furthest behind" does. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">The odd minutes</div>
-          <p class="note">
-            When the clock will not divide evenly, somebody plays one stint less. Choose
-            who lands on the high side. Minimum minutes, caps and minutes you set by hand
-            all still win. Until you set levels on the Team page, both settle it the
-            same way.
-          </p>
-        </div>
+      <div class="prow">
+        <span class="prow-t">The odd minutes</span>
         <div class="seg wide" id="tieBreakSeg" role="group" aria-label="Who plays the odd stint">
           <button class="press" type="button" data-tie="behind">Furthest behind</button>
           <button class="press" type="button" data-tie="levels">Best players</button>
         </div>
       </div>
-
-      <!-- The league's floor. A number field rather than a third `.seg`, and
-           the reason is the value, not the budget: a seg TEACHES a closed set
-           of stances (that is why maxSubs and the odd minutes are segs), while
-           this one TRANSCRIBES a number a coach is reading off a rulebook.
-           There is no "what should I pick?" moment to answer, and no fixed set
-           of buttons is honest across formats -- a 12-minute floor is roomy in
-           a 2x20 game and arithmetically impossible in a 4x6, so a preset
-           would be an affordance that hands a coach MINS_UNSATISFIABLE. The
-           node budget was the stated reason first time round; it was re-decided
-           on the merits once that constraint was lifted, and the answer held.
-           The `min` suffix is what the budget HAD cost: the label is a sentence
-           fragment the value completes, and a bare "0" left it unfinished.
-           Blank and 0 both mean off. It composes into the per-player minimums
-           the engine already reads -- see computeAll -- so nothing in the
-           solver changed. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">Everyone plays at least</div>
-          <p class="note">
-            Minutes, for every player who is available. Leave it at 0 unless your league
-            has a rule. A minimum you set on one player still wins when it is higher, a
-            cap you set still wins when it is lower, and the plan says so if the game is
-            not long enough to give everyone that much.
-          </p>
-        </div>
+      <div class="prow">
+        <span class="prow-t">Everyone plays at least</span>
         <div class="minwrap">
           <input class="minmins" id="minMins" type="number" min="0" max="60" step="1"
                  inputmode="numeric" aria-label="Minutes everyone plays at least">
           <span aria-hidden="true">min</span>
         </div>
       </div>
+    </div>
+    <p class="pgrp-f" id="maxSubsRead" aria-live="polite"></p>
 
-      <!-- The carryover default. B3's switch is per game and opens off, so a
-           coach who has already decided re-ticks the same box every Saturday.
-           This is the first real "team default, per-game override" control and
-           the override already exists — the switch itself, in the rules panel.
-           A `.seg` rather than a field because this one genuinely is a closed
-           pair of stances, which is the line the tie-break and the league
-           minimum drew between the two controls. It is read once, by newGame,
-           at the moment a game is created: it is not a solver input, it is not
-           in the plan signature, and it never moves a game that already
-           exists. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">A new game starts</div>
-          <p class="note">
-            Every game you add can open with “Even out the season so far” already on,
-            so you do not tick it each week. You can still change it per game under
-            Rules. Until a finished day has filed there is no season to even out,
-            and both settle a new game the same way.
-          </p>
+    <!-- #25: the team color picker. Same `.keyswrap`/`.keysbox` dialog shape as
+         `#confirm` and `#help` below -- a close button in `.keys-hd`, trapped
+         and closed the same way (see shortcuts.js's `openHelp`/`closeHelp` for
+         the pattern app.js follows here). Nine full-width option buttons, one
+         per `COLORS` entry (storage.js), each a swatch and the name, painted
+         by `renderSettings` (the current one marked with `aria-pressed` and
+         `.on`, the same convention `#maxSubsSeg` uses). Tapping one saves,
+         applies, closes and returns focus to `#teamColorBtn`. Kept inside
+         `#view-settings` -- ahead of `#removeTeam` -- rather than beside
+         `#help`/`#confirm` further down the file: it is per-team policy,
+         painted by `renderSettings`, and `test/settings.test.js` pins every
+         id that function reaches to the team zone, above `#removeTeam`. The
+         `.keyswrap` shell is `position: fixed`, so nesting it here changes
+         nothing about where it draws. -->
+    <div class="keyswrap noprint" id="colorPicker" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="colorPickerTitle">
+      <div class="keysbox colorbox">
+        <div class="keys-hd">
+          <div class="keys-t" id="colorPickerTitle">Team color</div>
+          <button class="btn icon ghost press" id="colorPickerClose" aria-label="Close"><span class="i" data-icon="x"></span></button>
         </div>
-        <div class="seg wide" id="seasonDefSeg" role="group" aria-label="How a new game starts">
-          <button class="press" type="button" data-sdef="0">On its own</button>
-          <button class="press" type="button" data-sdef="1">With the season</button>
-        </div>
-      </div>
-
-      <!-- #25: the team color picker. Same `.keyswrap`/`.keysbox` dialog shape as
-           `#confirm` and `#help` below -- a close button in `.keys-hd`, trapped
-           and closed the same way (see shortcuts.js's `openHelp`/`closeHelp` for
-           the pattern app.js follows here). Nine full-width option buttons, one
-           per `COLORS` entry (storage.js), each a swatch and the name, painted
-           by `renderSettings` (the current one marked with `aria-pressed` and
-           `.on`, the same convention `#maxSubsSeg` uses). Tapping one saves,
-           applies, closes and returns focus to `#teamColorBtn`. Kept inside
-           `#view-settings` -- ahead of `#removeTeam` -- rather than beside
-           `#help`/`#confirm` further down the file: it is per-team policy,
-           painted by `renderSettings`, and `test/settings.test.js` pins every
-           id that function reaches to the team zone, above `#removeTeam`. The
-           `.keyswrap` shell is `position: fixed`, so nesting it here changes
-           nothing about where it draws. -->
-      <div class="keyswrap noprint" id="colorPicker" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="colorPickerTitle">
-        <div class="keysbox colorbox">
-          <div class="keys-hd">
-            <div class="keys-t" id="colorPickerTitle">Team color</div>
-            <button class="btn icon ghost press" id="colorPickerClose" aria-label="Close"><span class="i" data-icon="x"></span></button>
-          </div>
-          <!-- Each swatch carries its OWN `data-tint`, not just the option
-               button's `data-color` -- tokens.css's per-color blocks match a
-               descendant `[data-tint]` for exactly this reason (see the
-               selector-trap comment there), so every swatch shows its real
-               color no matter which one is currently active on `<html>`.
-               Graphite has no tokens.css block (it IS the base), so its swatch
-               reads `--ink` instead -- see the CSS rule in app.css -- rather
-               than inheriting whatever team is currently active. -->
-          <div class="color-opts" id="colorOpts" role="group" aria-label="Team color">
-            <button class="color-opt" type="button" data-color="graphite"><span class="color-swatch" aria-hidden="true"></span>Graphite</button>
-            <button class="color-opt" type="button" data-color="hardwood"><span class="color-swatch" data-tint="hardwood" aria-hidden="true"></span>Hardwood</button>
-            <button class="color-opt" type="button" data-color="royal"><span class="color-swatch" data-tint="royal" aria-hidden="true"></span>Royal</button>
-            <button class="color-opt" type="button" data-color="navy"><span class="color-swatch" data-tint="navy" aria-hidden="true"></span>Navy</button>
-            <button class="color-opt" type="button" data-color="maroon"><span class="color-swatch" data-tint="maroon" aria-hidden="true"></span>Maroon</button>
-            <button class="color-opt" type="button" data-color="red"><span class="color-swatch" data-tint="red" aria-hidden="true"></span>Red</button>
-            <button class="color-opt" type="button" data-color="forest"><span class="color-swatch" data-tint="forest" aria-hidden="true"></span>Forest</button>
-            <button class="color-opt" type="button" data-color="gold"><span class="color-swatch" data-tint="gold" aria-hidden="true"></span>Gold</button>
-            <button class="color-opt" type="button" data-color="purple"><span class="color-swatch" data-tint="purple" aria-hidden="true"></span>Purple</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- `#teamCount` (painted by `roster-view.js`'s `renderTeamControls`,
-           unchanged) is the only thing left in this row now that Remove has
-           its own card below -- a `setrow` like the rest of the box, not the
-           old `.teamrow`: `#addTeam` left with A40's `+ Team` chip in the
-           strip, so nothing else needs this row either. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <p class="note" id="teamCount"></p>
+        <!-- Each swatch carries its OWN `data-tint`, not just the option
+             button's `data-color` -- tokens.css's per-color blocks match a
+             descendant `[data-tint]` for exactly this reason (see the
+             selector-trap comment there), so every swatch shows its real
+             color no matter which one is currently active on `<html>`.
+             Graphite has no tokens.css block (it IS the base), so its swatch
+             reads `--ink` instead -- see the CSS rule in app.css -- rather
+             than inheriting whatever team is currently active. -->
+        <div class="color-opts" id="colorOpts" role="group" aria-label="Team color">
+          <button class="color-opt" type="button" data-color="graphite"><span class="color-swatch" aria-hidden="true"></span>Graphite</button>
+          <button class="color-opt" type="button" data-color="hardwood"><span class="color-swatch" data-tint="hardwood" aria-hidden="true"></span>Hardwood</button>
+          <button class="color-opt" type="button" data-color="royal"><span class="color-swatch" data-tint="royal" aria-hidden="true"></span>Royal</button>
+          <button class="color-opt" type="button" data-color="navy"><span class="color-swatch" data-tint="navy" aria-hidden="true"></span>Navy</button>
+          <button class="color-opt" type="button" data-color="maroon"><span class="color-swatch" data-tint="maroon" aria-hidden="true"></span>Maroon</button>
+          <button class="color-opt" type="button" data-color="red"><span class="color-swatch" data-tint="red" aria-hidden="true"></span>Red</button>
+          <button class="color-opt" type="button" data-color="forest"><span class="color-swatch" data-tint="forest" aria-hidden="true"></span>Forest</button>
+          <button class="color-opt" type="button" data-color="gold"><span class="color-swatch" data-tint="gold" aria-hidden="true"></span>Gold</button>
+          <button class="color-opt" type="button" data-color="purple"><span class="color-swatch" data-tint="purple" aria-hidden="true"></span>Purple</button>
         </div>
       </div>
     </div>
 
     <!-- #141 (one control each), decision 1: the red list row, its own
-         `.pgrp` card rather than nested inside the team `.side-box` above --
-         that box already draws its own card, and a `.pgrp` inside it would
-         be a card inside a card. -->
+         `.pgrp` card. `#teamCount` (painted by `roster-view.js`'s
+         `renderTeamControls`, unchanged) becomes this group's own footnote --
+         the only thing left to say about it once Remove has its own row. -->
     <div class="pgrp">
       <button class="prow prow-center prow-danger press" id="removeTeam" type="button">Remove this team</button>
     </div>
+    <p class="pgrp-f" id="teamCount"></p>
 
-    <!-- The Benchcard box: Appearance first (S3/K4), then How it works, then
-         the three links the in-app footer also carries until #37 removes it,
-         then Backup and restore last -- A25's decision, still binding. A25
-         fixed a page where "How this works" opened at y=1459 of a 1938px
-         page, two screens under five rows of league rules; those rows now
-         live in the team box above, but the ORDER survives them -- the things
-         a coach recognizes first, and the control that replaces everything on
-         the device last. Backup is the last block IN this box, not a fourth
-         `side-box` of its own -- the ticket's acceptance criterion is one
-         Benchcard section that ends with it, and a browser check at 390x844
-         found a third box rendering below this one before that held.
-         `test/settings.test.js` pins the order. -->
-    <div class="side-box" style="margin-top:1rem">
-      <div class="side-hd">Benchcard</div>
-
+    <!-- The Benchcard group: Appearance first (S3/K4), then How it works and
+         Show me around again as two rows (decision 2, C6: one action each),
+         then the three links the in-app footer also carries until #37
+         removes it. A25's order, still binding -- the things a coach
+         recognizes first. -->
+    <h2 class="pgrp-h">Benchcard</h2>
+    <div class="pgrp">
       <!-- Appearance. Three buttons, the same `.seg` pattern (and the same
            `.on` / `aria-pressed` convention) `#maxSubsSeg` uses above --
            `applyTheme()` in render.js marks the current one, the one place
-           `auto` is resolved and `data-theme` / `theme-color` are written.
-           Replaces the old icon cycler and its `#themeNow` read-back: a
-           three-way choice reads better as three named buttons than as a
-           button you have to press to find out what it will do next. -->
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">Appearance</div>
-        </div>
+           `auto` is resolved and `data-theme` / `theme-color` are written. -->
+      <div class="prow">
+        <span class="prow-t">Appearance</span>
         <div class="seg wide" id="themeSeg" role="group" aria-label="Appearance">
           <button class="press" type="button" data-theme="auto">Automatic</button>
           <button class="press" type="button" data-theme="light">Light</button>
@@ -1531,94 +1419,83 @@
         </div>
       </div>
 
-      <div class="setrow">
-        <div class="setrow-b">
-          <div class="setrow-t">How it works</div>
-          <p class="note">The reference sheet, and the guided tour again.</p>
-        </div>
-        <button class="btn press" id="helpBtn" type="button" aria-label="How it works">Open</button>
-        <!-- Calls exactly what `#helpTour`, inside the help sheet, calls --
-             `shortcuts.js` wires both to the one function rather than starting
-             the tour a second way. -->
-        <button class="btn press" id="helpTourSettings" type="button">Show me around again</button>
-      </div>
+      <button class="prow" id="helpBtn" type="button" aria-label="How it works">
+        <span class="prow-t">How it works</span>
+        <span class="prow-chev" aria-hidden="true">›</span>
+      </button>
+      <!-- Calls exactly what `#helpTour`, inside the help sheet, calls --
+           `shortcuts.js` wires both to the one function rather than starting
+           the tour a second way. Its own row now (decision 2), not sharing
+           How it works' -- one action per row. -->
+      <button class="prow" id="helpTourSettings" type="button">
+        <span class="prow-t">Show me around again</span>
+      </button>
 
-      <!-- About, Contact and Buy me a coffee: full-width link rows, `.setrow`
-           for the same flex/border/48px-floor rule as every row above, plus
-           `.linkrow` for the parts a row with an anchor for a root needs that
-           a `<div>` row does not (block-level `<a>`, no underline, a chevron
-           marking it as a link). Each one's accessible name is its visible
-           text -- the chevron is `aria-hidden`. -->
-      <a class="setrow linkrow" href="./about">
-        <span class="setrow-t">About</span>
-        <span class="linkrow-chev" aria-hidden="true">›</span>
+      <!-- About, Contact and Buy me a coffee: `a.prow` + `.prow-chev`, the
+           row IS the anchor so the whole 48px row is the tap target, not
+           just the text inside it. Each one's accessible name is its
+           visible text -- the chevron is `aria-hidden`. -->
+      <a class="prow" href="./about">
+        <span class="prow-t">About</span>
+        <span class="prow-chev" aria-hidden="true">›</span>
       </a>
       <!-- Deliberately a plain address and not a "get in touch!" pitch: the
            reader this is for is a league or YMCA sports director deciding
            whether to link the app, and they need a way to reach a person, not
            to be sold to. -->
-      <a class="setrow linkrow" href="mailto:hello@benchcard.app">
-        <span class="setrow-t">Contact</span>
-        <span class="linkrow-chev" aria-hidden="true">›</span>
+      <a class="prow" href="mailto:hello@benchcard.app">
+        <span class="prow-t">Contact</span>
+        <span class="prow-chev" aria-hidden="true">›</span>
       </a>
       <!-- `data-tip-link` is the one selector `toast.js` reads TIP_URL
            through. #33 removed the footer's own `#tipLink`, so this is the
            only tip-jar link left; still no id, since it needs no reader of
            its own. Hidden the same way: no TIP_URL, no row. -->
-      <a class="setrow linkrow" data-tip-link href="#" target="_blank" rel="noopener noreferrer">
-        <span class="setrow-t">Buy me a coffee</span>
-        <span class="linkrow-chev" aria-hidden="true">›</span>
+      <a class="prow" data-tip-link href="#" target="_blank" rel="noopener noreferrer">
+        <span class="prow-t">Buy me a coffee</span>
+        <span class="prow-chev" aria-hidden="true">›</span>
       </a>
+    </div>
 
-      <!-- Backup and restore: the last block in the Benchcard box, not a
-           fourth `side-box` -- the ticket's acceptance criterion is one
-           Benchcard SECTION that ends with it. `.setrow + .set-h` draws the
-           same divider line the rows above already draw between each other,
-           so the boundary reads the same way even though this block is not
-           itself a `.setrow`. Everything this app knows lives in one browser
-           key, and a browser is allowed to throw that away. It was at the
-           very bottom of the roster page for exactly the reason it is at the
-           bottom of this one: nowhere a coach can hit it in a gym. -->
-      <h4 class="set-h">Backup and restore</h4>
-      <p class="note" style="margin:0 0 .7rem">
-        Your roster is saved in this browser and nowhere else. Clearing your history can
-        erase it, and so can leaving Benchcard unopened for a week on an iPhone. Save a
-        file now and keep it somewhere you would keep a photo.
-      </p>
-      <!-- Shown only when the browser itself says this origin is persisted --
-           app.js unhides it from `keepStored()`, which reads
-           navigator.storage.persisted() and never persist()'s return value.
-           Hidden is the honest default: most browsers refuse the request, and
-           a sentence that appears whatever the answer is a promise, not a
-           report. It does not replace the paragraph above, because a
-           persisted origin can still be cleared by hand. -->
-      <p class="note" id="persistNote" style="margin:0 0 .7rem" hidden>
-        This browser has agreed to keep Benchcard’s data, so a week without opening it
-        will not clear your roster. Clearing your history still will.
-      </p>
-      <div class="backuprow">
-        <button class="btn press" id="exportBackup" type="button">Save a backup file</button>
-        <button class="btn ghost press" id="importBackup" type="button">Restore from a file</button>
-        <!-- The file picker is the browser's, so the button above is what the
-             coach sees and what the touch-target rule measures. `hidden` alone is
-             enough: a click on it still opens the picker. -->
-        <input type="file" id="backupFile" accept="application/json,.json" hidden>
-      </div>
+    <!-- Backup and restore: its own group, kept last (decision 5) -- the
+         control that replaces everything on the device, nowhere a coach can
+         hit it by accident. Restore is a plain row action (decision 4): it
+         can be undone for nine seconds and removes nothing. -->
+    <h2 class="pgrp-h">Backup and restore</h2>
+    <div class="pgrp">
+      <button class="prow" id="exportBackup" type="button">Save a backup file</button>
+      <button class="prow" id="importBackup" type="button">Restore from a file</button>
+      <!-- The file picker is the browser's, so the button above is what the
+           coach sees and what the touch-target rule measures. `hidden` alone is
+           enough: a click on it still opens the picker. -->
+      <input type="file" id="backupFile" accept="application/json,.json" hidden>
       <!-- The paste path, same as on first run: one Restore control with a
-           quiet way in underneath, never a second top-level button. -->
+           quiet way in underneath, never a second top-level button. Both are
+           real rows now (decision-driven by the shared grammar), not a
+           quiet inline link -- see settings-rows.mjs's own re-point. -->
       <div class="pastein">
-        <button type="button" class="linkish press paste-open">or paste a backup</button>
+        <button type="button" class="prow paste-open">or paste a backup</button>
         <div class="pastebox" hidden>
           <textarea class="paste-text" spellcheck="false" autocapitalize="off" autocorrect="off"
                     aria-label="Paste your backup" placeholder="Paste the contents of your backup file"></textarea>
-          <button type="button" class="btn press paste-go">Restore</button>
+          <button type="button" class="prow paste-go">Restore</button>
         </div>
       </div>
-      <p class="note" style="margin:.7rem 0 0">
-        Restoring replaces everything on this device with what is in the file. You get
-        nine seconds to undo it.
-      </p>
     </div>
+    <!-- Decision 6: `#persistNote` swaps with this default footnote in the
+         same `keepStored()` branch (app.js), so the group never shows two
+         footnotes at once. Everything this app knows lives in one browser
+         key, and a browser is allowed to throw that away. -->
+    <p class="pgrp-f" id="backupFootnote">Saved only in this browser. Keep a backup file somewhere safe.</p>
+    <!-- Shown only when the browser itself says this origin is persisted --
+         app.js unhides it from `keepStored()`, which reads
+         navigator.storage.persisted() and never persist()'s return value.
+         Hidden is the honest default: most browsers refuse the request, and
+         a sentence that appears whatever the answer is a promise, not a
+         report. -->
+    <p class="pgrp-f" id="persistNote" hidden>
+      This browser keeps Benchcard’s data. Clearing your history still erases it.
+    </p>
   </main>
 
   <!-- ======================== ADD A GAME (#32) ========================
@@ -1962,6 +1839,55 @@
           printed plan back.</dd>
       </dl>
 
+      <!-- #142: the explanations Settings' own rows lost when they moved to
+           the shared `.pgrp`/`.prow` grammar (one row, no room for a
+           paragraph under it). Each `dt` names the row it came from; the
+           `dd` is that row's old text, verbatim except where it names a
+           control this redesign renamed -- the old Rules fold is now the
+           Plan sheet's Across the season section (decision 16's own ban,
+           above, still applies). Backup's three old paragraphs (the intro
+           note, the persisted-storage line and the restore note) fold into
+           one dd: the row itself only keeps one footnote at a time, and this
+           is where the other two live in full. -->
+      <h4 class="help-h">Settings</h4>
+      <dl class="help-dl">
+        <dt>Team name</dt>
+        <dd>Heads the card when a game has no opponent, and names the day above your games.</dd>
+        <dt>Team color</dt>
+        <dd>Tints the primary buttons and the selected states across the app.</dd>
+        <dt>A game is</dt>
+        <dd>Periods, and minutes in each period. A game you add copies the format from
+          the game before it, so this is what a game starts as when there is
+          nothing to copy: a brand new team, or your first game. You can still
+          change it per game from the game screen.</dd>
+        <dt>A new game starts</dt>
+        <dd>Every game you add can open with “Even out the season so far” already on,
+          so you do not tick it each week. You can still change it per game in the
+          game's Plan, under Across the season. Until a finished day has filed there
+          is no season to even out, and both settle a new game the same way.</dd>
+        <dt>Players changing at once</dt>
+        <dd>How many go on together at a substitution. Fewer keeps the floor settled;
+          more breaks up long stretches on the bench. Totals come out the same either
+          way.</dd>
+        <dt>The odd minutes</dt>
+        <dd>When the clock will not divide evenly, somebody plays one stint less. Choose
+          who lands on the high side. Minimum minutes, caps and minutes you set by hand
+          all still win. Until you set levels on the Team page, both settle it the
+          same way.</dd>
+        <dt>Everyone plays at least</dt>
+        <dd>Minutes, for every player who is available. Leave it at 0 unless your
+          league has a rule. A minimum you set on one player still wins when it is
+          higher, a cap you set still wins when it is lower, and the plan says so if
+          the game is not long enough to give everyone that much.</dd>
+        <dt>Backup and restore</dt>
+        <dd>Your roster is saved in this browser and nowhere else. Clearing your history can
+          erase it, and so can leaving Benchcard unopened for a week on an iPhone. Save a
+          file now and keep it somewhere you would keep a photo. Some browsers agree to
+          keep Benchcard’s data. Then a week without opening it will not clear your
+          roster, but clearing your history still will. Restoring replaces everything on
+          this device with what is in the file. You get nine seconds to undo it.</dd>
+      </dl>
+
       <button class="btn press help-tour" id="helpTour" type="button">Show me around again</button>
     </div>
   </div>
@@ -1991,7 +1917,8 @@
   <!-- #33 decision 13: the footer, and `.foot`/`.foot-in`/`.foot-note`/
        `.foot-why`/`.foot-link`/`.tip`/`.tip-ico` with it, is gone. Its three
        destinations (How it works, Contact, the tip jar) already exist in
-       Settings -- `#helpBtn` and the two `.setrow.linkrow` rows beside it. -->
+       Settings -- `#helpBtn` and the two `a.prow` rows beside it (#142
+       moved these off `.setrow.linkrow`). -->
 </div>
 <script>
 /* Paints the timeline's shape while the modules are still on the wire. Runs

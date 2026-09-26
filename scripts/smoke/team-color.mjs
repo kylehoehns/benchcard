@@ -102,18 +102,18 @@ const READ_COLORS = `(() => {
     // the picker's current mark -- --tint-soft, no spec literal, so this is
     // read on both passes and compared for INEQUALITY below, not to a value.
     colorOptOnBg: bg('#colorOpts .color-opt.on'),
-    // item 4 unchanged, the rest of the list: one more uppercase eyebrow
-    // heading beside .help-h (Settings' own "Backup and restore"), the
-    // minute-bar fill, the first .note in document order (the welcome
-    // screen's "No account..." line -- #33 removed the footer link this
-    // used to read, but .note shares its color: var(--muted) rule) and the
-    // paste-box's own .linkish, #backBtn's icon (secondary ink, not
-    // --accent, so read for the invariant comparison below rather than a
-    // literal), the logo mark on the welcome screen, and the card preview's
-    // glow (.stage, card.css -- also read for the invariant comparison,
-    // since its color-mix() output cannot be hand-typed without re-deriving
-    // what the browser computes).
-    setHFg: fg('.set-h'), mrowBg: bg('.mrow .track i'),
+    // item 4 unchanged, the rest of the list: the minute-bar fill, the first
+    // .note in document order (the welcome screen's "No account..." line --
+    // #33 removed the footer link this used to read, but .note shares its
+    // color: var(--muted) rule) and the paste-box's own .linkish, #backBtn's
+    // icon (secondary ink, not --accent, so read for the invariant
+    // comparison below rather than a literal), the logo mark on the welcome
+    // screen, and the card preview's glow (.stage, card.css -- also read for
+    // the invariant comparison, since its color-mix() output cannot be
+    // hand-typed without re-deriving what the browser computes). #142
+    // retired Settings' own uppercase-accent .set-h heading -- every
+    // section header is h2.pgrp-h now, --muted like every other one.
+    mrowBg: bg('.mrow .track i'),
     footFg: fg('.note'), linkishFg: fg('#welRestore'),
     iconFg: (() => { const e = $('#backBtn svg'); return e ? getComputedStyle(e).color : null; })(),
     logoFill: (() => { const e = $('.wel-mark circle'); return e ? getComputedStyle(e).fill : null; })(),
@@ -278,7 +278,7 @@ export async function teamColorPass(c, origin) {
 
     const accentInk = [
       ['.help-h', r.helpHFg], ['.teammenu-check', r.teamCheckFg],
-      ['.set-h', r.setHFg], ['.mrow .track i (minute bar) background', r.mrowBg],
+      ['.mrow .track i (minute bar) background', r.mrowBg],
       ['.gm-scope button.act background', gm.scopeActBg], ['.gm-dot.now background', gm.dotNowBg],
       ['the logo (.wel-mark circle) fill', r.logoFill],
       ['::selection background', r.selectionBg, GRAPHITE_ACCENT_SOFT],

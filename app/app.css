@@ -647,18 +647,6 @@ a { color: inherit; }
 .today-entry-sub { color: var(--muted); font-size: var(--fs-secondary); flex: 1; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* `.setrow` already wraps its own row (#22 moved this out of `.teamrow`,
-   which is gone), but `.btn` is `white-space: nowrap` by design, so a wide
-   system font can still make "Remove this team" alone wider than the row has
-   to give -- the row wrapping does nothing for a single item that is itself
-   too wide. `.setrow > .btn { flex: none }` below fixes the button at its
-   own max-content width, same as `.gmq > .btn` had to be told `min-width: 0`
-   for -- without it, `white-space: normal` alone buys nothing, because a
-   flex item that cannot shrink never asks its content to wrap. `max-width:
-   100%` is the other half: it bounds the button to the line the row wrapping
-   already gave it (#21 CI fix). */
-#removeTeam { white-space: normal; text-align: center; min-width: 0; max-width: 100%; }
-
 /* ---- lineup balance ------------------------------------------------------
    A five-step control, not a number. The steps fill left-to-right like a
    signal meter so the level reads at a glance without anybody having to think
@@ -1688,11 +1676,6 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    but `.side-hd` is also the roster's and settings' group heading, out of
    #69's scope, so scoped to `#view-games`. */
 #view-games .side-hd { text-transform: none; letter-spacing: normal; }
-/* The backup box at the foot of the roster. Wrapping, not scrolling: two full
-   width buttons stacked on a phone read better than two squeezed side by side,
-   and neither is a mid-game control that has to be reachable in a hurry. */
-.backuprow { display: flex; gap: .55rem; flex-wrap: wrap; }
-.backuprow .btn { flex: 1 1 12rem; justify-content: center; }
 
 /* Pasting a backup instead of picking the file. Deliberately quieter than the
    Restore button above it — same parser, same undo, so it is a way in and not
@@ -2028,10 +2011,11 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .help-tour { width: 100%; justify-content: center; margin-top: 1.5rem; }
 
 /* ===================== #25: team color row + picker =====================
-   `.color-row-btn` is the Settings row's own button (swatch + current
-   name), opening `#colorPicker` -- a `.keyswrap` dialog like `#help` and
-   `#confirm` above it, so `.colorbox` only sets the width and the rest of
-   the shell (`.keyswrap`, `.keysbox`, `.keys-hd`) is unchanged.
+   `#teamColorBtn` is the Settings row's own button (swatch + current name),
+   a plain `.prow` since #142 -- opening `#colorPicker`, a `.keyswrap` dialog
+   like `#help` and `#confirm` above it, so `.colorbox` only sets the width
+   and the rest of the shell (`.keyswrap`, `.keysbox`, `.keys-hd`) is
+   unchanged.
 
    `.color-swatch` reads `--tint` by default, which is right for the row's
    own swatch (no `data-tint` of its own, so it just inherits <html>'s) and
@@ -2045,17 +2029,16 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
    it reads `--tint-soft`/`--tint-line`, both INHERITED from <html>, so the
    highlight is always the ACTIVE team's color, never the option's own --
    that is what the swatch is for. */
-.color-row-btn { display: inline-flex; align-items: center; gap: .5rem; }
 .color-swatch { display: inline-block; width: 1.15rem; height: 1.15rem; border-radius: 50%;
   background: var(--tint); box-shadow: inset 0 0 0 1px var(--line-2); flex: none; }
 .color-opt[data-color="graphite"] .color-swatch { background: var(--ink); }
 
 .colorbox { width: min(22rem, 92vw); text-align: left; }
 .color-opts { display: flex; flex-direction: column; gap: .3rem; margin-top: .5rem; }
-/* Matches `#view-settings .setrow`'s own floor (app.css :2777) rather than
-   stating a second number: both are the 48px floor guideline I1 owns. (This
-   said "48px, not just the 44px floor the spec sets" until #37 raised the
-   floor and the two numbers became one.) */
+/* Matches `.prow`'s own floor rather than stating a second number: both are
+   the 48px floor guideline I1 owns. (This said "48px, not just the 44px
+   floor the spec sets" until #37 raised the floor and the two numbers became
+   one.) */
 .color-opt { display: flex; align-items: center; gap: .7rem; width: 100%; min-height: 48px;
   padding: .5rem .8rem; border: 1px solid var(--line); border-radius: var(--r-sm);
   background: none; font: inherit; font-size: var(--fs-body); color: var(--ink); text-align: left; }
@@ -3296,13 +3279,18 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    live INSIDE `#view-team` (the way `#sheetCard` lives inside `#view-games`),
    and inside a sheet that inset is the only side padding there is. */
 #rosterlist, #teamActions .pgrp { margin-left: 0; margin-right: 0; }
-/* #141 (one control each), decision 1: the same reason as Season and Team,
-   just above -- `.wrap` already gives `#view-settings` its own side padding
-   and `.col-side` sits inside `#view-games`'s own `.wrap`, so `.pgrp`'s sheet
-   inset would double up beside `.side-box`, which carries no side margin of
-   its own. `#removeTeam`'s and `#removeGame`'s new `.pgrp` cards are the only
-   two this reaches today. */
+/* #141 (one control each), decision 1, and #142's own redesign: the same
+   reason as Season and Team, just above -- `.wrap` already gives
+   `#view-settings` its own side padding and `.col-side` sits inside
+   `#view-games`'s own `.wrap`, so `.pgrp`'s sheet inset would double up.
+   Every group in Settings is a `.pgrp` now, not just `#removeTeam`'s. */
 #view-settings .pgrp, .col-side .pgrp { margin-left: 0; margin-right: 0; }
+/* #142 decision 3: `.pgrp-h`/`.pgrp-f` default to a 2rem inset, matching a
+   sheet's own edge. Settings has no sheet edge to match -- `.wrap` is its
+   only inset -- so its header/footnote text should land 1rem past `.wrap`'s
+   own 16px gutter, the same total 32px `.sn-day` (above) lands at against
+   `#view-season`'s `.wrap`. */
+#view-settings .pgrp-h, #view-settings .pgrp-f { padding-left: 1rem; padding-right: 1rem; }
 
 /* #73 item 7: fixed vertical padding (not `min-height` alone), so a row that
    wraps to two lines keeps the same distance from its first line's top and
@@ -3427,6 +3415,12 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    other sheets' rows were not checked against this fix. */
 #sheetPlayer .pgrp .prow, #sheetAddPlayer .pgrp .prow { flex-wrap: wrap; }
 #sheetPlayer .pgrp .prow-t, #sheetAddPlayer .pgrp .prow-t { flex-basis: auto; }
+/* #142: Settings' `.seg.wide` rows (five subs buttons, two tie-break stances,
+   the periods x minutes pair) hit the same squeeze the two sheets above
+   found -- reuse the fix rather than a new row type: the label keeps its own
+   width and the row wraps, dropping the control to its own full-width line. */
+#view-settings .pgrp .prow { flex-wrap: wrap; }
+#view-settings .pgrp .prow-t { flex-basis: auto; }
 /* two kids wearing one number: mark the number, quietly. The row is not the
    error -- the pair is -- so this tints rather than shouts, and the banner
    above the roster is what names them. Since #31 the only jersey-number field
@@ -3948,26 +3942,27 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   .wel-h { font-size: min(var(--fs-large), 15vw); }
 
   /* The settings panel, which panned 112px at 320px — the widest of these and
-     the last one left. Two rows, and the same two shapes as everything above.
-     `.minwrap` (Periods × Min / period) is `flex: none`, so its base size is
-     max-content and it never shrinks: at a 32px root the two 4.25rem fields
-     plus `×` and `min` measure 378px against a 212px column, and adding
-     `flex-wrap` alone would do nothing, because an item that never shrinks
-     below max-content never has a line to wrap onto. Letting it shrink is the
-     other half; its automatic minimum is then one field, which fits. Needs
-     `.setrow .minwrap` rather than `.minwrap`: the base rule lives ~230 lines
-     BELOW this block and would otherwise win on source order.
-     The two backup buttons are the `.gm-cta` case exactly — `.btn` is
-     `white-space: nowrap` by design, so "Save a backup file" has a 302px
-     min-content in a 212px column and `flex: 1 1 12rem` cannot get it back. */
-  .setrow .minwrap { flex: 0 1 auto; flex-wrap: wrap; }
-  .backuprow .btn { white-space: normal; }
+     the last one left. `.minwrap` (Periods × Min / period) is `flex: none`,
+     so its base size is max-content and it never shrinks: at a 32px root the
+     two 4.25rem fields plus `×` and `min` measure 378px against a 212px
+     column, and adding `flex-wrap` alone would do nothing, because an item
+     that never shrinks below max-content never has a line to wrap onto.
+     Letting it shrink is the other half; its automatic minimum is then one
+     field, which fits. #142 moved the row onto `#view-settings .pgrp .prow`,
+     no `.setrow` left to hang the fix on -- needs an id selector rather than
+     the bare `.minwrap`, since the base rule is still ~230 lines below this
+     block and would otherwise win on source order.
+     The backup buttons (Save a backup file, Restore from a file) are each
+     their own full-width `.prow` since #142, not a `.gm-cta`-style pair
+     squeezed side by side, so their text wraps at this width with no
+     override needed -- nothing left to fix there. */
+  #view-settings .minwrap { flex: 0 1 auto; flex-wrap: wrap; }
 
   /* "Remove this game", the third instance of the `.btn` nowrap case on this
      page and the one no fixture could reach: `#removeGame` is hidden until the
      day holds two games, so a harness that seeds one game never renders it.
      Measured at 320px on a 32px root it reached 334px — the 14px the games
-     view was panning. Same one-line answer as `.backuprow` above. */
+     view was panning. Same one-line answer as the backup buttons above. */
   #removeGame { white-space: normal; }
 
   /* The day-totals chart, which only exists once the day holds TWO games --
@@ -3987,7 +3982,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      The Level meter's five steps are a grid of `1fr`s inside the player
      sheet, which shares the sheet's own width. "Put everyone back to the same
      level" was the rest of the roster's 208px pan here, the `.gm-cta` and
-     `.backuprow` case exactly (#21 CI fix); it is a `.prow` row now, so its
+     backup-button case exactly (#21 CI fix); it is a `.prow` row now, so its
      label is wrapping text rather than a nowrap `.btn`. Nothing to do at this
      size. */
 
@@ -4001,8 +3996,8 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      track alone would eventually reach zero. */
   /* Needs `.sn-list .sn-row`/`.sn-list .sn-name`, not the bare classes: the
      base rules live ~245 lines BELOW this block and would otherwise win on
-     source order at equal specificity -- the same trap `.setrow .minwrap`
-     above already names, and the one that let this ship
+     source order at equal specificity -- the same trap `#view-settings
+     .minwrap` above already names, and the one that let this ship
      with the three-column template still applied and `.sn-name` measuring
      310px in a 275px row before it was caught. */
   .sn-list .sn-row { grid-template-columns: 1fr auto; row-gap: .2rem; }
@@ -4338,33 +4333,11 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    rule of its own any more. */
 
 /* =========================== team settings ===========================
-   Two labelled zones, stacked, in the app's own `.side-box` grammar rather
-   than a new one: the surface has to read as part of the app the first time
-   it is opened, and a coach who has already scrolled a `.side-box` full of
-   rows has read this layout once.
-
-   The zone heading is the scope. The team zone carries the active team's
-   name (written by teams-view.js, which owns team identity everywhere else
-   too) and the app zone says "Benchcard" -- so which side a setting lands on
-   is stated on screen and never has to be remembered.
-
-   `.setrow` is label, note and control on one line: the note sits with its
-   control, which is the placement rule the whole app follows and which
-   test/note-placement.test.js pins at view level. It wraps rather than
-   squeezing -- a 44px control shrunk to fit a long label is the trade this
-   app does not make. */
-.setrow { display: flex; align-items: center; gap: .9rem; flex-wrap: wrap; padding: .6rem 0; }
-.setrow + .setrow { border-top: 1px solid var(--line); }
-.setrow-b { flex: 1 1 12rem; min-width: 0; }
-.setrow-t { font-weight: 600; font-size: var(--fs-body); letter-spacing: -.01em; }
-.setrow .note { margin: .2rem 0 0; }
-/* The read-back under "Players changing at once": the one note here that is an
-   ANSWER rather than a description, since it changes with the control. In the
-   same muted gray as the paragraph above it a coach reads straight past both.
-   `--ink` and a weight bump is the whole difference -- no box, no color of
-   its own, nothing that would read as a warning. */
-#maxSubsRead { color: var(--ink); font-weight: 500; margin-top: .45rem; }
-.setrow > .btn { flex: none; }
+   #142: Settings adopted the app's shared `.pgrp`/`.prow` grammar in full,
+   so the zone headings (`h2.pgrp-h`) and footnotes (`p.pgrp-f`) are the same
+   rules every other screen uses -- nothing Settings-only left to declare for
+   either. `#maxSubsRead` is one of those footnotes now (item 5: one footnote
+   per group, `--muted`, no color of its own). */
 /* Fields default to `width: 100%`, which inside a flex row is a control that
    eats the label. Fixed width, touch-floor tall, centered digits -- the same target
    rule everything else in this app is measured against.
@@ -4384,45 +4357,16 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    the target rule in both directions. */
 .minwrap { flex: none; align-self: flex-start; display: flex; align-items: center; gap: .4rem; }
 .minwrap > span { color: var(--muted); font-size: var(--fs-secondary); }
-.setrow input.minmins { flex: none; width: 4.25rem; min-height: 48px; text-align: center;
+/* #142: the field itself, now a plain `.prow` child rather than a `.setrow`
+   one -- same fixed width, touch floor and centered digits as before. */
+#view-settings input.minmins { flex: none; width: 4.25rem; min-height: 48px; text-align: center;
   font-variant-numeric: tabular-nums; }
-/* Same shape as `.sn-h`: a heading for a group inside a box, one step down
-   from the zone's own `.side-hd`. Always dividing a zone rather than opening
-   one -- Backup and restore, the only `.set-h` in the app, sits after Buy me
-   a coffee inside the Benchcard box, never first in a `.side-box` -- so the
-   1.5rem top margin below always has rows above it to separate from. A25's
-   `.side-box > .set-h:first-child { margin-top: 0 }` fix lived here for the
-   version of this box where Backup was its own `.side-box` and this heading
-   opened it; #22's fold-in retired it along with the box it corrected for. */
-.set-h { margin: 1.5rem 0 .4rem; font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .09em;
-  text-transform: uppercase; color: var(--accent); }
-/* The boundary above Backup and restore: the same line `.setrow + .setrow`
-   draws between every other pair of rows in this view, so the one block here
-   that is not itself a `.setrow` still reads as one more row starting, not a
-   different kind of break. */
-.setrow + .set-h { border-top: 1px solid var(--line); }
 
-/* =========================== #22: one Settings screen ===========================
-   The 48px floor (I1) is written here for `#view-settings`'s rows -- the
-   app-wide sweep is the same 48px since #37, and this stays a row rule
-   rather than becoming a blanket `.setrow` one. Covers every setting row, every link row (`.setrow`
-   doubles as `.linkrow`'s base) and the backup row. `scripts/smoke.mjs` reads
-   this back at 320/360/390px on the RICH fixture. */
-#view-settings .setrow, #view-settings .backuprow { min-height: 48px; }
-/* Same `.btn` nowrap case as `#removeTeam` above, and the same fix: "Show me
-   around again" is a five-word label a wide system font -- or a coach reading
-   at 200% text -- can push past the row on its own, taking the row past the
-   320px column with it (#21's class of bug, caught again at 320px/32px text
-   by `npm run smoke`'s large-text pass). `min-width: 0` lets a flex item that
-   cannot shrink (`.setrow > .btn { flex: none }`) wrap anyway; `max-width:
-   100%` bounds it to the line the row wrapping already gave it. */
-#helpTourSettings { white-space: normal; text-align: center; min-width: 0; max-width: 100%; }
-
-/* The About / Contact / Buy me a coffee rows: a `.setrow` that is itself the
-   `<a>`, not a div holding one, so the whole 48px row is the tap target and
-   not just the text inside it. No underline -- the chevron is what marks it
-   as a link, the same way `.foot-link` reads as one without ever gaining one.
-   Color and focus-visible both come from the base rules above (`a { color:
-   inherit }`, the global `:focus-visible`) -- nothing here overrides either. */
-.linkrow { text-decoration: none; justify-content: space-between; }
-.linkrow-chev { flex: none; color: var(--faint); font-size: var(--fs-headline); }
+/* The About / Contact / Buy me a coffee rows: `a.prow`, the row IS the
+   anchor, so the whole 48px row is the tap target and not just the text
+   inside it. `.prow`'s own flex (`.prow-t { flex: 1 }`, `.prow-chev { flex:
+   none }`) already pushes the chevron to the row's end -- only the anchor's
+   own underline needs turning off. Color and focus-visible both come from
+   the base rules above (`a { color: inherit }`, the global `:focus-visible`)
+   -- nothing here overrides either. */
+#view-settings a.prow { text-decoration: none; }

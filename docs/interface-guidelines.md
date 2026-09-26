@@ -137,14 +137,18 @@ Design principles; Modality.*
 
 ## Settings
 
-**S1. One Settings screen, with two sections.** The top section is headed with
-the active team's name and holds everything that belongs to that team: default
-game format, team color, players changing at once, league minimum, how odd
-minutes fall, and whether new games even out the season. The second is headed
-*Benchcard* and holds appearance, backup and restore, How it works (with the
-tour), and About, contact and the tip jar. The heading is the scope, so a coach
-never has to guess which team a setting landed on. *Benchcard: decided
-2026-09-14; the two-zone split already described in `architecture.md`.*
+**S1. One Settings screen, with three sections.** The top section is headed with
+the active team's name and holds everything that belongs to that team: the team's
+display name, team color, default game format, players changing at once, league
+minimum, how odd minutes fall, and whether new games even out the season, in
+grouped rows with at most one footnote per group. The second
+section is headed *Benchcard* and holds appearance, How it works (with the
+tour), and About, contact and the tip jar. The third is headed *Backup and
+restore* and holds file and paste backup controls. The heading is the scope, so
+a coach never has to guess which team a setting landed on. *Benchcard: decided
+2026-09-14; the two-zone split already described in `architecture.md`. #142
+gave backup and restore its own heading, last, and moved Settings onto
+Team's grouped rows.*
 
 **S2. No settings anywhere else.** The Team screen is the roster. The Plan sheet
 holds only choices about this game: strategy, rules, lineup balance, and evening

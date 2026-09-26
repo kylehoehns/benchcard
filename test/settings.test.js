@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { stripComments, functionBody } from './js-comments.js';
+import { stripComments, functionBody, indexHtml, cutView } from './js-comments.js';
 import { lacks } from './prose.js';
 
 /* ================================================================== *
@@ -502,24 +502,20 @@ test('the format belongs to the team, and one squad’s never reaches the other'
  * both, because a coach opens Settings under their team, not under
  * Benchcard's own choices.
  * ================================================================== */
-/* Comments dropped here, not in a second `visible()` copy further down --
-   one clean reading of index.html, not two. A developer note can carry the
+/* indexHtml and cutView moved to js-comments.js, shared with
+   settings-look.test.js -- see that file for what each one does and why.
+   Comments dropped there, not in a second `visible()` copy here -- one
+   clean reading of index.html, not two. A developer note can carry the
    very attribute or word a check is looking for (the paragraph above
    `#themeSeg` names "#themeNow"; the one above the coffee row's `<a>` names
    `data-tip-link` while explaining why it is there), and a check that reads
-   raw markup scores the comment instead of the control. `/* *\/` is dropped
-   too: index.html's two inline `<script>` blocks carry block comments of
-   their own, ahead of `#view-settings`, that this file never has reason to
-   read anyway. */
-const indexHtml = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8')
-  .replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
-const cutView = (html, id) => html.slice(html.indexOf(`id="${id}"`), html.indexOf('</main>', html.indexOf(`id="${id}"`)));
+   raw markup scores the comment instead of the control. */
 const views = () => {
   const html = indexHtml();
   return { settings: cutView(html, 'view-settings'), roster: cutView(html, 'view-team') };
 };
 
-/* stripComments and functionBody moved to js-comments.js, shared with
+/* stripComments and functionBody also live in js-comments.js, shared with
    view-before-settings.test.js -- see that file for what each one does and
    why. */
 
@@ -527,19 +523,19 @@ test('Settings keeps Appearance above Backup, and Backup keeps the bottom', () =
   const { settings } = views();
   const appearance = settings.indexOf('id="themeSeg"');
   const help = settings.indexOf('id="helpBtn"');
-  const backup = settings.indexOf('class="set-h">Backup and restore<');
+  const backup = settings.indexOf('<h2 class="pgrp-h">Backup and restore</h2>');
   assert.ok(appearance > -1 && help > -1 && backup > -1, 'the settings view lost one of its zones');
   assert.ok(appearance < help,
     'Appearance moved below How it works; S3/K4 puts Appearance first');
   assert.ok(help < backup,
     'the help sheet is back below Backup, on a page a new coach opens for help');
-  /* "Keeps the bottom": Backup's heading has to sit inside the LAST box in
-     the view, not just somewhere after Appearance -- a box added below it
+  /* "Keeps the bottom": Backup's heading has to sit inside the LAST group in
+     the view, not just somewhere after Appearance -- a group added below it
      would pass the ordering checks above and still bury the one control
      that replaces everything on the device. */
-  const lastBoxAt = settings.lastIndexOf('class="side-box"');
-  assert.ok(lastBoxAt > -1 && backup > lastBoxAt,
-    'Backup is not inside the last box in Settings; something was added below it');
+  const groupAt = settings.indexOf('class="pgrp"', backup);
+  assert.ok(groupAt > -1 && groupAt === settings.lastIndexOf('class="pgrp"'),
+    'Backup and restore\'s own group is not the last group in Settings; something was added below it');
 });
 
 test('the per-team settings live in Settings, under the team\'s own name -- not on the Team tab', () => {
@@ -560,7 +556,7 @@ test('the per-team settings live in Settings, under the team\'s own name -- not 
   const idRe = /\$\('#(\w+)'\)|\['#(\w+)'|getElementById\(\s*['"](\w+)['"]\s*\)|querySelector\(\s*['"]#(\w+)['"]\s*\)/g;
   const perTeam = [...new Set([...body.matchAll(idRe)].map((m) => m[1] || m[2] || m[3] || m[4]))];
   assert.ok(perTeam.length >= 7, `renderSettings should paint at least seven controls, found ${perTeam.length}`);
-  const benchcardAt = settings.indexOf('class="side-hd">Benchcard<');
+  const benchcardAt = settings.indexOf('<h2 class="pgrp-h">Benchcard</h2>');
   assert.ok(benchcardAt > -1, 'the Benchcard heading is gone from Settings');
   for (const id of perTeam) {
     assert.ok(!roster.includes(`id="${id}"`), `#${id} is back on the Team tab; per-team policy belongs in Settings now`);
@@ -617,7 +613,7 @@ test('Benchcard order: Appearance, How it works (with Show me around again), Abo
     About: settings.indexOf('>About<'),
     Contact: settings.indexOf('mailto:hello@benchcard.app'),
     'Buy me a coffee': settings.indexOf('>Buy me a coffee<'),
-    Backup: settings.indexOf('class="set-h">Backup and restore<'),
+    Backup: settings.indexOf('<h2 class="pgrp-h">Backup and restore</h2>'),
   };
   for (const [name, at] of Object.entries(marks)) {
     assert.ok(at > -1, `${name} is missing from Settings`);
@@ -627,13 +623,18 @@ test('Benchcard order: Appearance, How it works (with Show me around again), Abo
     assert.ok(marks[order[i - 1]] < marks[order[i]],
       `${order[i - 1]} must come before ${order[i]} in Settings`);
   }
-  // "Show me around again" belongs in the How it works row, not a row of its
-  // own further down -- no setrow boundary between the two buttons.
+  /* Decision 2: How it works and Show me around again are now two rows, one
+     action each (C6) -- the opposite of the old pin, which required they
+     share one row. In the new grammar the row IS the button
+     (`button.prow`), so a fresh `<button class="prow">` opening after How
+     it works' own closing tag is what a row split looks like; the old
+     markup's second button opened `class="btn press"`, never `"prow"`. */
   const helpRow = settings.slice(marks['How it works'], marks['Show me around again'] + 1);
-  assert.equal((helpRow.match(/class="setrow"/g) || []).length, 0,
-    'Show me around again must sit in the same row as How it works, not a new one');
-  const lastBoxAt = settings.lastIndexOf('class="side-box"');
-  assert.ok(marks.Backup > lastBoxAt, 'Backup is not inside the last box in Settings');
+  assert.match(helpRow, /<\/button>[\s\S]*<button class="prow"/,
+    'Show me around again must open its own row (a separate button.prow), not share How it works\' row');
+  const groupAt = settings.indexOf('class="pgrp"', marks.Backup);
+  assert.ok(groupAt > -1 && groupAt === settings.lastIndexOf('class="pgrp"'),
+    'Backup and restore\'s own group is not the last group in Settings; something was added below it');
 });
 
 test('nothing sits after Backup\'s own controls inside #view-settings', () => {
@@ -666,16 +667,16 @@ test('Settings link rows: About, Contact and Buy me a coffee labels are pinned t
   const rowText = (marker) => {
     const at = settings.indexOf(marker);
     assert.ok(at > -1, `${marker} is missing from Settings`);
-    const rowStart = settings.lastIndexOf('<a class="setrow linkrow"', at);
+    const rowStart = settings.lastIndexOf('<a class="prow"', at);
     const rowEnd = settings.indexOf('</a>', at);
     assert.ok(rowStart > -1 && rowEnd > -1, `could not find the link row around ${marker}`);
     return settings.slice(rowStart, rowEnd);
   };
-  assert.match(rowText('href="./about"'), /<span class="setrow-t">About<\/span>/,
+  assert.match(rowText('href="./about"'), /<span class="prow-t">About<\/span>/,
     'the ./about row must read "About"');
-  assert.match(rowText('href="mailto:hello@benchcard.app"'), /<span class="setrow-t">Contact<\/span>/,
+  assert.match(rowText('href="mailto:hello@benchcard.app"'), /<span class="prow-t">Contact<\/span>/,
     'the mailto: row must read "Contact"');
-  assert.match(rowText('data-tip-link'), /<span class="setrow-t">Buy me a coffee<\/span>/,
+  assert.match(rowText('data-tip-link'), /<span class="prow-t">Buy me a coffee<\/span>/,
     'the [data-tip-link] row must read "Buy me a coffee"');
 });
 
@@ -684,17 +685,19 @@ test('Team section order: Team name first, Remove this team last, both inside th
   const boxHd = settings.indexOf('id="setTeamHd"');
   const teamName = settings.indexOf('id="teamName"');
   const removeTeam = settings.indexOf('id="removeTeam"');
-  const benchcard = settings.indexOf('class="side-hd">Benchcard<');
+  const benchcard = settings.indexOf('<h2 class="pgrp-h">Benchcard</h2>');
   assert.ok(boxHd > -1 && teamName > -1 && removeTeam > -1 && benchcard > -1,
     'the team zone lost one of its landmarks');
   assert.ok(boxHd < teamName, 'the team heading must sit above the Team name row');
   assert.ok(teamName < removeTeam,
     'Team name must be the first row in the team zone, ahead of every other per-team control');
   assert.ok(removeTeam < benchcard, 'Remove this team must stay inside the team zone, above Benchcard');
+  /* #teamCount is Remove this team's own footnote now (decision 1's `.pgrp-f`
+     for that group) -- the only id still allowed to follow it here. */
   const idsAfterRemove = [...settings.slice(removeTeam + 1, benchcard).matchAll(/\sid="(\w+)"/g)]
     .map((m) => m[1]);
-  assert.deepEqual(idsAfterRemove, [],
-    `nothing should follow Remove this team in the team zone, found ${idsAfterRemove}`);
+  assert.deepEqual(idsAfterRemove, ['teamCount'],
+    `only #teamCount should follow Remove this team in the team zone, found ${idsAfterRemove}`);
 });
 
 test('the Settings tip link is wired from TIP_URL, not a URL written into markup', () => {

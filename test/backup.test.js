@@ -323,6 +323,11 @@ test('a v5 backup keeps the season through export and import', () => {
  * ------------------------------------------------------------------ */
 const appjs = readFileSync(new URL('../app/app.js', import.meta.url), 'utf8');
 const indexHtml = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
+// Comments stripped once, shared by every test below that has to read past
+// them -- a developer note can carry the very id or class name a check is
+// looking for.
+const strippedHtml = indexHtml.replace(/<!--[\s\S]*?-->/g, ' ');
+const strippedJs = appjs.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
 
 test('picking a file and pasting text land in one restore', () => {
   assert.equal((appjs.match(/readBackup\(/g) || []).length, 1,
@@ -339,7 +344,7 @@ test('both ways in are offered from both entry points', () => {
   const welcome = indexHtml.slice(indexHtml.indexOf('id="view-welcome"'), indexHtml.indexOf('id="view-team"'));
   // anchored on the heading a coach actually reads, not on a wrapper element:
   // the `<div id="backupbox">` this used to cut at existed only for this line
-  const backupBox = indexHtml.slice(indexHtml.indexOf('class="set-h">Backup and restore<'));
+  const backupBox = indexHtml.slice(indexHtml.indexOf('<h2 class="pgrp-h">Backup and restore</h2>'));
   for (const [name, html] of [['first run', welcome], ['settings', backupBox]]) {
     assert.match(html, /class="pastein/, `${name} offers no way to paste a backup`);
     assert.match(html, /welRestore|importBackup/, `${name} lost its file picker`);
@@ -347,11 +352,15 @@ test('both ways in are offered from both entry points', () => {
 });
 
 test('the paste path is a quiet link, not a second top-level button', () => {
-  // one Restore control per entry point; the paste box is revealed from under
-  // it, so it must not read as a second choice to make
+  /* One Restore control per entry point; the paste box is revealed from
+     under it, so it must not read as a second choice to make. #142: inside
+     Settings that quietness is now `.prow` (item 2: no visible `.btn` or
+     `.linkish` survives there) -- the welcome screen, untouched by this
+     redesign, still uses `.linkish`. */
   const links = [...indexHtml.matchAll(/<button[^>]*class="([^"]*paste-open[^"]*)"/g)].map((m) => m[1]);
   assert.equal(links.length, 2, 'both entry points, and only those');
-  for (const cls of links) assert.match(cls, /linkish/, 'a link, not a .btn');
+  assert.ok(links.some((cls) => /linkish/.test(cls)), 'the welcome screen paste link lost its .linkish treatment');
+  assert.ok(links.some((cls) => /\bprow\b/.test(cls)), 'the Settings paste row lost its .prow treatment');
 });
 
 /* ================================================================== *
@@ -426,15 +435,33 @@ test('nothing reassures a coach except the browser saying yes', () => {
      answer and nowhere else. Comments are stripped first: this rule is written
      out beside the element and beside the call, and a guard its own
      documentation can satisfy is not a guard. */
-  const note = indexHtml.replace(/<!--[\s\S]*?-->/g, ' ').match(/<p[^>]*id="persistNote"[^>]*>/);
+  const note = strippedHtml.match(/<p[^>]*id="persistNote"[^>]*>/);
   assert.ok(note, '#persistNote is gone; app.js unhides nothing');
   assert.match(note[0], /\shidden\b/, 'the persisted line must ship hidden -- refused is the common answer');
 
-  const js = readFileSync(new URL('../app/app.js', import.meta.url), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
-  const mentions = [...js.matchAll(/persistNote/g)].length;
+  const mentions = [...strippedJs.matchAll(/persistNote/g)].length;
   assert.ok(mentions > 0, 'app.js no longer touches the persisted line');
-  const guarded = [...js.matchAll(/keepStored\(\)[^;]*persistNote[^;]*;/g)].length;
+  const guarded = [...strippedJs.matchAll(/keepStored\(\)[^;]*persistNote[^;]*;/g)].length;
   assert.equal(mentions, guarded,
     'the persisted line is unhidden outside keepStored()’s answer: that is a promise, not a report');
+});
+
+test('the default Backup footnote hides in the same breath #persistNote is shown', () => {
+  /* Decision 6: a group shows one footnote at a time. #backupFootnote ships
+     visible (the default) and #persistNote hidden; when the browser grants
+     persistence they swap, in the same keepStored() branch that unhides
+     #persistNote, so there is never a moment with both or neither on screen. */
+  const footnote = strippedHtml.match(/<p[^>]*id="backupFootnote"[^>]*>/);
+  assert.ok(footnote, '#backupFootnote is gone; nothing is left to swap out');
+  assert.doesNotMatch(footnote[0], /\shidden\b/, '#backupFootnote must ship visible -- it is the default line');
+
+  const mentions = [...strippedJs.matchAll(/backupFootnote/g)].length;
+  assert.ok(mentions > 0, 'app.js no longer touches the default Backup footnote');
+  // the whole .then(...) block, not just up to the first ";" -- backupFootnote
+  // is the second statement inside it, after persistNote's own
+  const block = strippedJs.match(/keepStored\(\)[\s\S]*?\.catch\(/);
+  assert.ok(block, 'keepStored().then(...).catch(...) wiring not found');
+  const guarded = (block[0].match(/backupFootnote/g) || []).length;
+  assert.equal(mentions, guarded,
+    '#backupFootnote is hidden outside keepStored()’s answer: that is a promise, not a report');
 });
