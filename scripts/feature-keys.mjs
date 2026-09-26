@@ -147,7 +147,7 @@ export const FEATURES = [
    * fourth scope being added beside them. Found by mutation, not by reading. */
   { key: 'bench:stint', ships: 'This stint', src: 'gamemode.js', term: ['this stint'], text: ['this stint'] },
   { key: 'bench:rest', ships: 'Rest of game', src: 'gamemode.js', term: ['rest of game'], text: ['rest of game'] },
-  { key: 'bench:rebalance', ships: 'Sit, rebalance', src: 'gamemode.js', term: ['sit, rebalance'], text: ['sit, rebalance'] },
+  { key: 'bench:rebalance', ships: 'Sit for the rest', src: 'gamemode.js', term: ['sit for the rest'], text: ['sit for the rest'] },
 
   { key: 'season:carryover', src: 'rules.js useSeasonTargets', term: ['even out the season so far'], text: ['even out the season so far'] },
   { key: 'league:minimum', src: 'state.js leagueMinutes', text: ['everyone plays at least'] },

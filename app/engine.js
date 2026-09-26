@@ -297,14 +297,14 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       .map(id => `${label(id)} (${c.minMinutes[id]})`)
       .join(', ');
     err('MINS_UNSATISFIABLE',
-      `Required minimums total ${minSum} minutes but the game only has ${floorMinutes} floor-minutes (${gameMinutes} min x ${ON_FLOOR} players). Largest: ${top}.`,
+      `Required minimums total ${minSum} minutes but the game only totals ${floorMinutes} minutes (${gameMinutes} min × ${ON_FLOOR} players). Largest: ${top}.`,
       avail.filter(id => c.minMinutes[id]));
   }
 
   const capSum = avail.reduce((a, id) => a + (c.maxMinutes[id] != null ? c.maxMinutes[id] : gameMinutes), 0);
   if (capSum < floorMinutes) {
     err('CAPS_UNSATISFIABLE',
-      `Caps allow at most ${capSum} total minutes but the game needs ${floorMinutes} floor-minutes to keep ${ON_FLOOR} on the court. Raise a cap or add a player.`,
+      `Maximums allow at most ${capSum} total minutes but the game needs ${floorMinutes} minutes to keep ${ON_FLOOR} on the floor. Raise a maximum or add a player.`,
       avail.filter(id => c.maxMinutes[id] != null));
   }
 
@@ -325,11 +325,11 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
   }
 
-  for (const [a, b] of c.droppedPairs) warn('PAIR_DROPPED', `Pair ${label(a)} + ${label(b)} ignored: one of them is not available.`, [a, b]);
-  for (const [a, b] of c.droppedAvoids) warn('AVOID_DROPPED', `Avoid ${label(a)} / ${label(b)} ignored: one of them is not available.`, [a, b]);
+  for (const [a, b] of c.droppedPairs) warn('PAIR_DROPPED', `The Together rule for ${label(a)} and ${label(b)} is ignored: one of them is not available.`, [a, b]);
+  for (const [a, b] of c.droppedAvoids) warn('AVOID_DROPPED', `The Apart rule for ${label(a)} and ${label(b)} is ignored: one of them is not available.`, [a, b]);
   /* Dropped rather than collapsed into "the other one plays every minute",
      which is a much bigger instruction than the coach gave. */
-  for (const [a, b] of c.droppedKeepOn) warn('KEEPON_DROPPED', `"${label(a)} or ${label(b)} always on" ignored: one of them is not available.`, [a, b]);
+  for (const [a, b] of c.droppedKeepOn) warn('KEEPON_DROPPED', `The One of two on rule for ${label(a)} and ${label(b)} is ignored: one of them is not available.`, [a, b]);
   for (const id of c.droppedOpening) warn('OPENING_DROPPED', `${label(id)} is set to start but is not available.`, [id]);
   for (const id of c.droppedLastPeriod) warn('LAST_PERIOD_DROPPED', `${label(id)} is set to start the last period but is not available.`, [id]);
 
@@ -407,7 +407,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
 
   if (c.maxConsecutive) {
     if (avail.length <= ON_FLOOR) {
-      warn('CONSEC_IMPOSSIBLE', `With only ${avail.length} available, nobody can be rested — the consecutive-stint limit will be ignored.`, avail);
+      warn('CONSEC_IMPOSSIBLE', `With only ${avail.length} available, nobody can be rested — the Rest limit rule will be ignored.`, avail);
     }
   }
 
@@ -457,7 +457,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       .some(group => combinations(group, 2).every(([a, b]) => !avoidSet.has(pairKey(a, b))));
     if (!legal) {
       err('AVOID_IMPOSSIBLE',
-        `No legal lineup of ${ON_FLOOR} exists -- the Apart rules rule out every combination. Drop one of them.`,
+        `No legal lineup of ${ON_FLOOR} exists — the Apart rules rule out every combination. Drop one of them.`,
         c.avoids.flat());
     }
   }

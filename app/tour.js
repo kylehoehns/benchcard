@@ -55,7 +55,7 @@ const TOUR = [
        is no fold to open first, unlike the step below. */
     sel: ['#phrasePlayers'],
     title: 'Who is here tonight',
-    body: 'Everyone on the roster starts in. Tap the number of players to mark someone absent for a no-show or foul trouble, and the rotation rebuilds around who is left.',
+    body: "Everyone on the roster is available. Tap the number of players to mark who isn't here, and the rotation rebuilds.",
   },
   {
     /* #28: the Plan sheet replaced `#planFold`, so there is no fold to open

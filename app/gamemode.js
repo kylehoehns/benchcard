@@ -458,7 +458,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
        name off the bench. This one answers the name itself, so there is
        nothing left to wait for and it fires on the tap. Styled as a button,
        not a segment, so it does not pretend to be a third toggle. */
-    const rb = el('button', 'press act', 'Sit, rebalance');
+    const rb = el('button', 'press act', 'Sit for the rest');
     rb.type = 'button';
     rb.onclick = () => sitRest(p, g, i, gmPick, calls[gmPick] || shorts[gmPick]);
     sc.append(rb);
@@ -701,19 +701,19 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
    of `engine.js` and fails a new one that is neither mapped nor listed there
    as deliberately unmapped. */
 const SIT_RULES = {
-  MIN_EXCEEDS_GAME: 'a Minutes limit floor no longer fits in what is left',
-  MIN_ABOVE_CAP: 'a Minutes limit has a floor above its own cap',
-  MINS_UNSATISFIABLE: 'the Minutes limit floors add up to more than the rest of the game',
-  CAPS_UNSATISFIABLE: 'the Minutes limit caps do not cover the rest of the game',
-  FORCED_OVER_CAP: 'a Minutes limit cap will not cover a Last period stint',
+  MIN_EXCEEDS_GAME: 'a Plays at least minimum no longer fits in what is left',
+  MIN_ABOVE_CAP: 'a Plays at least minimum is set above its own Plays at most maximum',
+  MINS_UNSATISFIABLE: 'the Plays at least minimums add up to more than the rest of the game',
+  CAPS_UNSATISFIABLE: 'the Plays at most maximums do not cover the rest of the game',
+  FORCED_OVER_CAP: 'a Plays at most maximum will not cover the Last-period five',
   PAIR_AVOID_CONFLICT: 'a pair is set to both Together and Apart',
   AVOID_IMPOSSIBLE: 'the Apart rules cannot all be met with who is left',
   CLOSERS_AVOID: 'two players set to close are also set Apart',
-  FORCED_GROUP_AVOID: 'two players pinned to the same stint are set Apart',
+  FORCED_GROUP_AVOID: 'two players fixed to the same stint are set Apart',
   KEEPON_UNSATISFIABLE: 'a One of two on pair cannot be covered without them',
-  FORCED_GROUP_KEEPON: 'a pinned stint leaves a One of two on pair uncovered',
+  FORCED_GROUP_KEEPON: 'a fixed stint leaves a One of two on pair uncovered',
   CLOSERS_TOO_MANY: 'more players are set to close than fit on the floor',
-  FORCED_GROUP_TOO_BIG: 'more players are pinned to one stint than fit on the floor',
+  FORCED_GROUP_TOO_BIG: 'more players are fixed to one stint than fit on the floor',
   NOT_ENOUGH_PLAYERS: 'fewer than five players would be left available',
 };
 
@@ -742,16 +742,16 @@ function sitRest(p, g, i, outId, name) {
     renderGameMode();
     const rule = SIT_RULES[(r.issues || []).find(x => x.severity === 'error')?.code];
     flash({
-      strategy: 'Rebalancing does not apply to this strategy. Its minutes are set by hand.',
+      strategy: 'Sit for the rest does not apply to this strategy. Its minutes are set by hand.',
       nobody: 'Not enough players left to cover the rest of the game.',
-      nothing: 'Nothing left to rebalance. This is the last stint.',
+      nothing: 'Nothing left to share out. This is the last stint.',
     }[r.reason] || (rule
       ? `Sitting ${name} leaves no plan for the rest: ${rule}.`
       : `Sitting ${name} for the rest would break one of your rules.`));
     return;
   }
   tick();
-  undoable(`${name} is out for the rest. The rest of the game rebalanced.`, () => {
+  undoable(`${name} sits for the rest. The others share those minutes.`, () => {
     const live = liveOf(g);
     for (const [k, five] of Object.entries(r.overrides)) live.overrides[k] = five;
     gmPick = null;
