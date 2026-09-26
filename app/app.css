@@ -4289,18 +4289,24 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      to match it loses nothing. */
   #agClose .i, #frClose .i, .gm-x .i { width: 48px; height: 48px; }
 
-  /* #143 fix pass: Who's here's own row -- badge, name, check/"Absent" all on
-     one line (never stacked, the fix pass 2 regression `row-stack.mjs`
-     guards) -- leaves `.prow-t` only 50px at this root: the row's 256px
-     (`.pgrp`'s own 1rem inset each side) minus `.prow`'s `.8125rem` padding
-     each side, the 2rem badge, the two `.75rem` gaps and the check's own
-     width. `overflow-wrap: anywhere` above stops that from clipping or
-     drawing under the check, but a real two-word name still wrapped to
-     6+ lines in a 50px column. The same buy-back `.actionbar` and `.bar`
-     already take at this exact breakpoint -- half the padding, less than
-     half the gap -- leaves `.prow-t` about 110px instead, enough for an
-     ordinary name to wrap in two or three. */
-  .who-row { gap: .3rem; padding-left: .5rem; padding-right: .5rem; }
+  /* #143 CI fix pass: the buy-back below this comment used to stop at the
+     same half-padding, less-than-half-gap move `.actionbar` and `.bar` take
+     at this breakpoint, leaving `.prow-t` about 111px wide -- passed on this
+     harness's own macOS fonts, but a deployed preview measured on Linux
+     Chrome had "Williams" (116px there) break mid-word inside it
+     ("Marcus / William / s"), because 111px was never checked against an
+     actual word's width, only against a flat row-height guess. `row-stack.mjs`
+     now measures both directly: no word may split across lines, and no word
+     may come within 15% of its own column's width, headroom a wider font can
+     still spend. Getting there past the same padding/gap trim needed the
+     roster badge shrunk too (`.who-row .av`, 1.4rem here against the roster
+     list's 2rem, font-size left on the inherited `--fs-footnote` token rather
+     than a literal override `type-scale.test.js` would reject) -- widening
+     `.prow-t` to about 166px, comfortably past its own 141px (85%) cap for
+     this fixture's own longest word ("Lindqvist", 126px) -- while the badge
+     stays present and beside the name (K2) rather than gone. */
+  .who-row { gap: .15rem; padding-left: .1rem; padding-right: .1rem; }
+  .who-row .av { width: 1.4rem; height: 1.4rem; }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach
