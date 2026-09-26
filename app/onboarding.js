@@ -587,7 +587,7 @@ function stepFormat_(wrap) {
                MINUTES_LO, MINUTES_HI, 'minutes'),
   );
   wrap.append(grp, el('span', 'f fr-f', 'How often do you sub?'));
-  const box = el('div', 'fr-gran');
+  const box = el('div', 'fr-gran pgrp');
   wrap.append(box);
   paintGranRows(box, () => fr, c => { fr.granMode = c.mode; fr.granValue = c.value; });
 }

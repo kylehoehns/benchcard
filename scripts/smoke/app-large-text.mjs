@@ -138,9 +138,11 @@ export const APP_LARGE_TEXT_STATES = [
      every group sit at once, and Add a rule, its own level-2 page with the
      kind chips and the picker (a rule's detail needs a seeded rule, which
      this fixture does not carry, so it is left to `plan sheet` (smoke.mjs)
-     the same way `sentence-sheets.mjs` covers what this pass cannot). */
+     the same way `sentence-sheets.mjs` covers what this pass cannot). #143
+     adds the other two sentence sheets Who's here sits beside: Format and
+     Sub interval, now the same `.pgrp`/`.prow` family. */
   ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet",
-      'plan sheet', 'plan sheet, add a rule', 'card sheet open']
+      'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'card sheet open']
     .map(n => STATES.find(s => s.name === n)),
   /* #29 item 8: "the game screen on Card and the card sheet have no
      horizontal overflow" at a 32px root -- "card sheet open" is reused by

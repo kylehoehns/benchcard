@@ -88,6 +88,7 @@ import { todayGameRowsPass } from './today-game-rows.mjs';
 import { sentenceSheetsPass } from './sentence-sheets.mjs';
 import { planSheetPass } from './plan-sheet.mjs';
 import { sheetSpacingPass } from './sheet-spacing.mjs';
+import { sheetFamilyPass } from './sheet-family.mjs';
 import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
 import { teamScreenPass } from './team-screen.mjs';
 import { addGameFlowPass } from './add-game-flow.mjs';
@@ -248,6 +249,12 @@ export const ROWS = Object.freeze([
   // sheet's status line clear of the last row -- see sheet-spacing.mjs.
   { id: 'sheetspacing', name: 'sheet spacing', selectable: true, setup: 'rich',
     run: ctx => sheetSpacingPass(ctx.c, ctx.origin) },
+  // #143's own guard (see docs/specs/143-sheets.md's Proof section): the
+  // five list sheets share one --sheet background and .pgrp inset, Sub
+  // interval's chosen row is a check with no fill, and Who's here's badge
+  // matches the roster's own -- in light and dark -- see sheet-family.mjs.
+  { id: 'sheetfamily', name: 'the list sheets share one background, one row, one check', selectable: true, setup: 'rich',
+    run: ctx => sheetFamilyPass(ctx.c, ctx.origin) },
   // #29's own guard (see docs/specs/29-timeline-card-sheet.md's Proof
   // section): Timeline | Card, a reload keeping the choice, the card sheet
   // reached from #shareBtn, changing Size, P, Stint by stint and the

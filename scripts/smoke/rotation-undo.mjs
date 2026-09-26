@@ -176,7 +176,7 @@ export async function rotationUndoPass(c, origin) {
     // index 7 of GRAN_CHOICES (state.js) is "breaksOnly" -- the one choice
     // furthest from RICH's own "every 4 min", so this always picks a
     // different row rather than depending on which one starts selected.
-    await evalIn(c, step(`document.querySelectorAll('#sheetIntervalBody .sheetrow')[7].click()`));
+    await evalIn(c, step(`document.querySelectorAll('#sheetIntervalBody .prow')[7].click()`));
     await wait(SETTLE_MS);
     const afterInterval = JSON.parse(await evalIn(c, readGame));
     if (afterInterval.granMode !== 'breaksOnly') {
@@ -208,7 +208,7 @@ export async function rotationUndoPass(c, origin) {
       const s = await import('/state.js');
       const five = s.state.day.games[0].live.overrides['1'];
       const target = s.state.players.find(p => !five.includes(p.id));
-      const rows = [...document.querySelectorAll('#sheetWhoBody .sheetrow')];
+      const rows = [...document.querySelectorAll('#sheetWhoBody .prow')];
       const row = rows.find(r => r.getAttribute('aria-label') === (target.name || 'Unnamed'));
       row.click();
     })()`));

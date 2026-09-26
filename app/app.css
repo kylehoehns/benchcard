@@ -1719,6 +1719,11 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   #sheetCard .gm-cta { flex-wrap: wrap; }
   #sheetCard .gm-cta .btn { flex: 1 0 100%; }
 }
+/* #143 item 5: "quiet" -- a surface fill and ink text, no border. `.btn`'s
+   own base rule already gives both; only the border needs to go. The
+   preview-size rule that goes with this lives in card.css, beside `.card`
+   and `.half`, which it names (see the comment there). */
+#shareCard { border-color: transparent; }
 /* #29 decision 8: `#gmOpen` and its "?" kept the `.gmq` pair, but the row
    they used to share with Print and Share is gone (those moved into
    `#sheetCard`) -- `.gm-start` is that same row shape on its own, not
@@ -3348,10 +3353,10 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 
 /* ======================== the Plan sheet's groups (#28) =================
  * Decision 3: iOS-style grouped rows, `--surface` islands on the sheet's own
- * `--sheet` background. `.prow` is deliberately not `.sheetrow` (#27's
- * borderless, ungrouped list) -- the two sheet shapes read differently on
- * purpose (C1/C2), and a shared name would have let one page's tweak bleed
- * into the other's.
+ * `--sheet` background. #143: every list sheet (Who's here, Sub interval,
+ * Format, Plan, the Card sheet) now shares this one row grammar -- `.sheetrow`
+ * (#27's borderless, ungrouped list, once kept apart from `.prow` on
+ * purpose) is gone, and its rows are `.prow` rows like everyone else's.
  * ========================================================================= */
 /* `#stratseg` is `.seg.wide` (the shared primitive, #69), so this only adds
    the side/top margins the prototype's strategy control has -- the 2px
@@ -3799,26 +3804,6 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 
 .sheetempty { margin: 0; padding: 1.6rem .2rem; color: var(--muted);
   font-size: var(--fs-secondary); text-align: center; }
-
-/* C6: one control per row, at least 48px tall, a checkmark means chosen. */
-/* #73 item 7: same fixed padding + line-height fix as `.prow` above, so a
-   name that wraps to two lines (below) keeps the same edge-to-text distance
-   a one-line row has. */
-.sheetrow { display: flex; align-items: center; justify-content: space-between;
-  gap: .7rem; width: 100%; min-height: 48px; padding: .8125rem .1rem;
-  line-height: 1.375;
-  border: 0; border-top: 1px solid var(--line); background: none;
-  font: inherit; font-size: var(--fs-body); color: var(--ink); text-align: left; }
-.sheetrow:first-child { border-top: 0; }
-@media (hover: hover) { .sheetrow:not(.sel):hover { background: var(--surface-2); } }
-.sheetrow.sel { background: var(--tint); color: var(--tint-ink); font-weight: 600;
-  border-top-color: transparent; border-radius: var(--r-sm); }
-/* Item 7: a long player name wraps rather than losing its end to an
-   ellipsis. */
-.sheetrow-t { flex: 1; min-width: 0; overflow: visible; text-overflow: clip; white-space: normal; }
-.sheetrow-state { flex: none; font-size: var(--fs-secondary); font-weight: 600;
-  color: var(--muted); }
-.sheetrow.sel .sheetrow-state { color: inherit; }
 
 /* #33 decision 11 (W3: no help icons beside a control): both "?" affordances,
    the `.helpq` rule they used and the `[data-help]` wiring in shortcuts.js

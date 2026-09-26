@@ -188,12 +188,20 @@ const READ_COLORS = `(() => {
  * is the replacement "a real chip, present whether the fold is open" this
  * check named. It only exists once the sheet is opened (sheet bodies paint
  * on open), so this is read, then the sheet is closed again, before
- * `READ_COLORS` runs -- same courtesy `READ_GAME_MODE` pays bench mode. */
+ * `READ_COLORS` runs -- same courtesy `READ_GAME_MODE` pays bench mode.
+ *
+ * #143 moved the chosen row from a `--tint` fill to a transparent
+ * background with a `.prow-check` mark in `--ink` -- so this now belongs on
+ * the UNCHANGED side of the ledger (below), not the tinted one: the row's
+ * own background stays transparent and its mark stays ink on every team
+ * color, Royal included. */
 const READ_SHEET = `(() => {
-  const row = document.querySelector('#sheetInterval .sheetrow.sel');
+  const row = [...document.querySelectorAll('#sheetInterval .prow')]
+    .find(r => r.getAttribute('aria-pressed') === 'true');
+  const mark = row ? row.querySelector('.prow-check') : null;
   return JSON.stringify({
     chipBg: row ? getComputedStyle(row).backgroundColor : null,
-    chipFg: row ? getComputedStyle(row).color : null,
+    markFg: mark ? getComputedStyle(mark).color : null,
   });
 })()`;
 
@@ -268,8 +276,6 @@ export async function teamColorPass(c, origin) {
       ['.gm-nav.next (#gmNext2) background', r.gmNavNextBg, ROYAL_FILL],
       ['.seg button.on (#maxSubsSeg) text', r.segOnFg, ROYAL_FILL],
       ['input[switch]:checked::before (#showMinutes) background', r.switchBg, ROYAL_FILL],
-      ['.sheetrow.sel (#sheetInterval) background', sheet.chipBg, ROYAL_FILL],
-      ['.sheetrow.sel (#sheetInterval) label', sheet.chipFg, ROYAL_LABEL],
       ['.seg button[aria-selected=true] (#welTabPlan) text', r.welSegFg, ROYAL_FILL],
       ['input[type=checkbox].box:checked background', r.checkboxBoxBg, ROYAL_FILL],
       ['.gm-p.picked box-shadow color', gm.pickedShadowColor, ROYAL_FILL],
@@ -316,6 +322,15 @@ export async function teamColorPass(c, origin) {
     // `.phrase` and the checkbox above.
     if (r.tourDotOnBg !== GRAPHITE_INK) problems.push(`.tour-dots i.on is ${r.tourDotOnBg} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
     if (r.tlTotHiFg !== GRAPHITE_INK) problems.push(`.tl-tot.hi is ${r.tlTotHiFg} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
+    // #143: the Sub interval sheet's chosen row is a check, not a fill --
+    // its background stays transparent and its mark stays ink on every team
+    // color, so both belong on the unchanged side now.
+    if (sheet.chipBg !== TRANSPARENT) {
+      problems.push(`the chosen row's background (#sheetInterval) is ${sheet.chipBg} with Royal active, want ${TRANSPARENT} (a check, not a fill)`);
+    }
+    if (sheet.markFg !== GRAPHITE_INK) {
+      problems.push(`the chosen row's check (#sheetInterval) is ${sheet.markFg} with Royal active, want ${GRAPHITE_INK} (ink, not the team tint)`);
+    }
 
     // item 7: switching team (team menu's second entry, the Graphite one)
     // changes `.btn.primary` in the same task, with no reload. Re-read

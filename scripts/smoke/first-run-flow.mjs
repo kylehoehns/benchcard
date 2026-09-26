@@ -195,12 +195,19 @@ async function stepTwoDefaults(c, ck) {
         minusDisabled: btns[0]?.disabled, plusDisabled: btns[1]?.disabled,
       };
     });
-    const gran = [...document.querySelectorAll('.fr-gran .sheetrow')];
+    const gran = [...document.querySelectorAll('.fr-gran .prow')];
     const on = gran.find(b => b.getAttribute('aria-pressed') === 'true');
+    const off = gran.find(b => b.getAttribute('aria-pressed') === 'false');
+    const mark = on ? on.querySelector('.prow-check') : null;
     return JSON.stringify({
       rows, granCount: gran.length,
-      onLabel: on ? (on.querySelector('.sheetrow-t')?.textContent || '').trim() : null,
-      onMark: on ? (on.querySelector('.sheetrow-state')?.textContent || '').trim() : null,
+      onLabel: on ? (on.querySelector('.prow-t')?.textContent || '').trim() : null,
+      onMark: on ? (on.querySelector('.prow-check')?.textContent || '').trim() : null,
+      onBg: on ? getComputedStyle(on).backgroundColor : null,
+      onFg: on ? getComputedStyle(on).color : null,
+      markFg: mark ? getComputedStyle(mark).color : null,
+      markWeight: mark ? getComputedStyle(mark).fontWeight : null,
+      offHasMark: off ? !!off.querySelector('.prow-check') : null,
     });
   })()`);
   const [periods, minutes] = body.rows;
@@ -211,6 +218,15 @@ async function stepTwoDefaults(c, ck) {
   ck(body.granCount === 8, `${body.granCount} sub-interval choice(s) drawn, want the 8 in GRAN_CHOICES`);
   ck(body.onLabel === 'Every 4 min' && body.onMark === '✓',
     `the pressed sub-interval choice reads "${body.onLabel}" "${body.onMark}", want "Every 4 min" "✓"`);
+  // #143 items 2/3: the chosen row is a check, not a fill -- transparent
+  // background, `--ink` text, a weight-700 `.prow-check` in `--ink`; the
+  // unchosen row beside it carries no mark at all.
+  const GRAPHITE_INK = 'rgb(28, 28, 30)', TRANSPARENT = 'rgba(0, 0, 0, 0)';
+  ck(body.onBg === TRANSPARENT, `the chosen sub-interval row's background is ${body.onBg}, want transparent`);
+  ck(body.onFg === GRAPHITE_INK, `the chosen sub-interval row's text is ${body.onFg}, want ${GRAPHITE_INK} (--ink)`);
+  ck(body.markFg === GRAPHITE_INK, `the chosen sub-interval row's check is ${body.markFg}, want ${GRAPHITE_INK} (--ink)`);
+  ck(body.markWeight === '700', `the chosen sub-interval row's check font-weight is ${body.markWeight}, want 700`);
+  ck(body.offHasMark === false, "an unchosen sub-interval row carries a .prow-check mark, and it shouldn't");
 }
 
 // #145 item 8: the same chip and chevron `add-game-flow.mjs`'s own
@@ -341,9 +357,15 @@ async function stepThreeShowsACard(c, ck) {
       printNeeds: print?.hasAttribute('data-needs-card'), shareNeeds: share?.hasAttribute('data-needs-card'),
       printDisabled: print?.disabled, shareDisabled: share?.disabled,
       printPrimary: print?.classList.contains('primary'), sharePrimary: share?.classList.contains('primary'),
+      maxWidth: getComputedStyle(document.getElementById('frStage')).maxWidth,
     });
   })()`);
   ck(stage.cards >= 1, `#frStage holds ${stage.cards} .card(s), want at least 1`);
+  // #143 item 8: `#sheetCardPreview:has(.card:not(.half))` (card.css) names
+  // an id `#frStage` does not carry, so first-run step 3's own preview size
+  // must be untouched by it.
+  ck(stage.maxWidth === 'none',
+    `#frStage's computed max-width reads "${stage.maxWidth}", want "none" -- #143's #sheetCardPreview-only rule must not reach it`);
   ck(!!stage.opp, `the card's .opp reads "${stage.opp}", want a non-empty opponent`);
   ck(stage.printText === 'Print', `#frPrint reads "${stage.printText}", want "Print"`);
   ck(stage.shareText === 'Share image', `#frShare reads "${stage.shareText}", want "Share image"`);
@@ -454,6 +476,17 @@ export async function firstRunPass(c, origin) {
   const problems = [];
   const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
 
+  /* A wiped landing has no stored `ui.theme`, so it boots at the real
+     default, "auto" (render.js's `applyTheme`) -- resolved against the
+     HOST's own `prefers-color-scheme`, not a fixed value. #143 items 2/3
+     read `--ink` off the chosen sub-interval row below, and `--ink` itself
+     is theme-dependent, so without pinning the query this pass would read
+     right on a light-mode machine and wrong on a dark-mode one for a reason
+     that has nothing to do with the app. Pinned to light and cleared at the
+     end, the same `Emulation.setEmulatedMedia` calls `bench-look.mjs` already
+     uses for its own media-query passes. */
+  await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+
   try {
     await land(c, origin);
     await landingReads(c, ck);
@@ -488,6 +521,7 @@ export async function firstRunPass(c, origin) {
 
   await setWidth(c, WIDTH).catch(() => {});
   await goRich(c, origin).catch(() => {});
+  await c.send('Emulation.setEmulatedMedia', { features: [] }).catch(() => {});
 
   return {
     pass: problems.length === 0,
