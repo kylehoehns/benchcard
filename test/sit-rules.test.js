@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { sitRulesMap } from './sit-rules-map.js';
 
 /* A10 slice 2, part (b). When "Sit, rebalance" cannot solve the rest of the
    game, the toast now names the rule that stopped it instead of saying "one of
@@ -21,13 +22,8 @@ const engine = read('app/engine.js');
    2/6-dead guard once. */
 const bare = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-const mapped = () => {
-  const src = bare(gm);
-  const i = src.indexOf('const SIT_RULES = {');
-  assert.ok(i > 0, 'SIT_RULES is gone from gamemode.js');
-  const body = src.slice(i, src.indexOf('\n};', i));
-  return new Map([...body.matchAll(/^\s*([A-Z_]+):\s*'([^']+)'/gm)].map((m) => [m[1], m[2]]));
-};
+/* Shared with rule-words.test.js -- see test/sit-rules-map.js for why. */
+const mapped = sitRulesMap;
 
 /* Codes the toast deliberately does not name, with the reason on the line.
    Both are platoon-only, and `resolveRest` refuses `strategy === 'platoon'`

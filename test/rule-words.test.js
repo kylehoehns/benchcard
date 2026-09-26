@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { SIT_REFUSALS } from '../app/engine.js';
+import { stripComments } from './js-comments.js';
+import { sitRulesMap } from './sit-rules-map.js';
 
 /* #136: bench mode, the solver's warnings and the tour used rule names from
    before the redesign. `KINDS` in rules.js (`Plays at least`, `Plays at
@@ -9,14 +12,11 @@ import { readFileSync } from 'node:fs';
    the ones the old naming left behind, decided in
    docs/specs/136-rule-words.md ("What would settle it" item 1).
 
-   Comments are stripped the way `test/help-deeplink.test.js` does -- a
-   template literal is read as source text either way, so `${...}`
-   placeholders survive (they never contain a banned word) and only the
-   coach-visible characters around them are checked. */
+   `stripComments` (test/js-comments.js) is string-aware, so it drops both
+   block and line comments without eating a `${...}` placeholder or a `//`
+   inside a quoted string. */
 const read = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
-const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, ' ');
 
-const gm = stripComments(read('app/gamemode.js'));
 const engine = stripComments(read('app/engine.js'));
 const tour = stripComments(read('app/tour.js'));
 const planView = read('app/plan-view.js');
@@ -39,14 +39,7 @@ const warnMessage = (code) => {
   return m[1];
 };
 
-const sitRules = () => {
-  const i = gm.indexOf('const SIT_RULES = {');
-  assert.ok(i > 0, 'SIT_RULES is gone from gamemode.js');
-  const body = gm.slice(i, gm.indexOf('\n};', i));
-  const map = new Map([...body.matchAll(/^\s*([A-Z_]+):\s*'([^']+)'/gm)].map((m) => [m[1], m[2]]));
-  assert.ok(map.size > 10, `only ${map.size} SIT_RULES entries parsed -- the parser broke`);
-  return map;
-};
+const sitRules = sitRulesMap;
 
 /* docs/specs/136-rule-words.md, "What would settle it" item 1, one regex per
    phrase so a failure names which one came back. */
@@ -86,24 +79,35 @@ test('no banned word from #136 item 1 survives in SIT_RULES', () => {
    its exact `KINDS` label. Not every clause names one -- CLOSERS_TOO_MANY,
    FORCED_GROUP_TOO_BIG and NOT_ENOUGH_PLAYERS are about headcount, not a rule
    kind -- so only the clauses that used to carry a retired name are checked
-   here. */
-const EXPECT_LABEL = {
-  MIN_EXCEEDS_GAME: 'Plays at least',
-  MIN_ABOVE_CAP: 'Plays at least',
-  MINS_UNSATISFIABLE: 'Plays at least',
-  CAPS_UNSATISFIABLE: 'Plays at most',
-  FORCED_OVER_CAP: 'Plays at most',
-  PAIR_AVOID_CONFLICT: 'Together',
-  AVOID_IMPOSSIBLE: 'Apart',
-  CLOSERS_AVOID: 'Apart',
-  FORCED_GROUP_AVOID: 'Apart',
-  KEEPON_UNSATISFIABLE: 'One of two on',
-  FORCED_GROUP_KEEPON: 'One of two on',
+   here.
+
+   The labels themselves are read out of `KINDS` in rules.js, the way
+   `scripts/feature-keys.mjs`'s `shipped()` does (rules.js reaches for the DOM
+   at import time, so `KINDS` cannot be imported directly), rather than
+   hard-coded here a second time -- an eighth kind, or a relabeled one, is
+   then a gap in this map rather than a silent pass against a stale copy. */
+const KIND_LABEL = new Map([...rulesJs.matchAll(/\['(\w+)',\s*'([^']+)'\]/g)].map((m) => [m[1], m[2]]));
+assert.ok(KIND_LABEL.size >= 8, `only ${KIND_LABEL.size} KINDS entries parsed -- the parser broke`);
+
+const EXPECT_KIND = {
+  MIN_EXCEEDS_GAME: 'minimum',
+  MIN_ABOVE_CAP: 'minimum',
+  MINS_UNSATISFIABLE: 'minimum',
+  CAPS_UNSATISFIABLE: 'cap',
+  FORCED_OVER_CAP: 'cap',
+  PAIR_AVOID_CONFLICT: 'together',
+  AVOID_IMPOSSIBLE: 'apart',
+  CLOSERS_AVOID: 'apart',
+  FORCED_GROUP_AVOID: 'apart',
+  KEEPON_UNSATISFIABLE: 'keepon',
+  FORCED_GROUP_KEEPON: 'keepon',
 };
 
 test('SIT_RULES names a rule kind by its Add-a-rule label, not a retired name', () => {
   const rules = sitRules();
-  for (const [code, label] of Object.entries(EXPECT_LABEL)) {
+  for (const [code, kind] of Object.entries(EXPECT_KIND)) {
+    const label = KIND_LABEL.get(kind);
+    assert.ok(label, `KINDS lost the "${kind}" kind`);
     assert.ok(rules.has(code), `SIT_RULES no longer has ${code}`);
     assert.ok(rules.get(code).includes(label),
       `SIT_RULES.${code} ("${rules.get(code)}") does not name the "${label}" rule`);
@@ -114,13 +118,16 @@ test('SIT_RULES names a rule kind by its Add-a-rule label, not a retired name', 
    the plan's last stint) has no browser seam: `stintIndex` (live.js) clamps
    the bench screen's own stint index to `p.stints.length - 1` on every
    render, so no click can ever hand `sitRest` the boundary
-   `test/resolve-rest.test.js` drives `resolveRest` itself to directly. Its
-   `flash()` sentence in gamemode.js is a private literal with no other seam,
-   so it is read back out of source here, the same way SIT_RULES is above. */
-test('the "nothing" refusal toast in sitRest reads the #136 wording', () => {
-  const m = gm.match(/nothing:\s*'([^']*)'/);
-  assert.ok(m, 'the `nothing:` refusal clause is gone from gamemode.js');
-  assert.equal(m[1], 'Nothing left to share out. This is the last stint.');
+   `test/resolve-rest.test.js` drives `resolveRest` itself to directly.
+   `sitRest`'s refusal text lives in `SIT_REFUSALS` (app/engine.js),
+   a module with no DOM-time imports, so this asserts the real values by
+   import rather than by reading gamemode.js's source. */
+test('sitRest\'s refusal toasts read the #136 wording', () => {
+  assert.deepEqual(SIT_REFUSALS, {
+    strategy: 'Sit for the rest does not apply to this strategy. Its minutes are set by hand.',
+    nobody: 'Not enough players left to cover the rest of the game.',
+    nothing: 'Nothing left to share out. This is the last stint.',
+  });
 });
 
 /* Item 5: tour step 1's body, exactly. `TOUR` is not exported (`initTour`
@@ -157,5 +164,5 @@ test('removing a team\'s last-team toast no longer says "The day rebalanced"', (
 test('the "force pairs" switch names the Together rule by its KINDS label', () => {
   const m = rulesJs.match(/switchRow\('([^']*)',\s*c\.hardPairs/);
   assert.ok(m, 'renderPairsGroup\'s switchRow call for hardPairs is gone from rules.js');
-  assert.equal(m[1], 'Force Together every stint');
+  assert.equal(m[1], 'Force Together pairs every stint');
 });

@@ -978,7 +978,7 @@ Reality diverges from the plan, so a swap here **overrides** the plan for the
 current stint or the rest of the game rather than re-solving underneath the
 coach mid-game. Overrides persist per game and can be reset back to the plan.
 
-There is a third scope, **"Sit, rebalance"**, and it is the one case where the
+There is a third scope, **"Sit for the rest"**, and it is the one case where the
 app does re-solve: the picked player is out for the rest of the game and
 `resolveRest` (`state.js`) asks the solver to cover the remaining stints
 honouring what everyone has already played. It needs no replacement pick —

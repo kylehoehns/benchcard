@@ -11,7 +11,7 @@
    twelve view functions and stays in app.js until they are all modules, so
    app.js hands it in through `initGameMode` rather than gamemode.js importing
    back into app.js and making the graph circular. */
-import { fmtClock, fmtMinutes } from './engine.js';
+import { fmtClock, fmtMinutes, SIT_REFUSALS } from './engine.js';
 import { callNames } from './roster.js';
 import { swapIn, sheetUp, tick, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
@@ -741,11 +741,7 @@ function sitRest(p, g, i, outId, name) {
     gmPick = null;
     renderGameMode();
     const rule = SIT_RULES[(r.issues || []).find(x => x.severity === 'error')?.code];
-    flash({
-      strategy: 'Sit for the rest does not apply to this strategy. Its minutes are set by hand.',
-      nobody: 'Not enough players left to cover the rest of the game.',
-      nothing: 'Nothing left to share out. This is the last stint.',
-    }[r.reason] || (rule
+    flash(SIT_REFUSALS[r.reason] || (rule
       ? `Sitting ${name} leaves no plan for the rest: ${rule}.`
       : `Sitting ${name} for the rest would break one of your rules.`));
     return;

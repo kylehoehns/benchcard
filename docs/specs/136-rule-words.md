@@ -101,7 +101,8 @@ Every claim on the issue holds. Line numbers moved since it was written:
 | Engine warnings, by running `solve` on inputs that trigger each one (the existing engine tests already build most of them) and asserting the new text | `node --test` | 6, 7 |
 | `SIT_RULES` words: export it (or read it through `sitForTheRest`'s refusal path) and assert every value against the avoid list and the `KINDS` labels | `node --test` | 1, 6, 8 |
 | Avoid-list guard over the engine's `warn(` messages and `SIT_RULES`, comment-stripped the way `test/help-deeplink.test.js` does — a source-reading guard, named here as a seam under `/new-guard` | `node --test` | 1, 8 |
-| Button label, both refusal toasts, the sit toast and its Undo | extend the bench-mode smoke check that already sits a player (find it in `scripts/smoke/registry.mjs`) | 2, 3, 4 |
+| Button label, the sit toast and its Undo, and the "strategy" refusal toast | extend the bench-mode smoke check that already sits a player (find it in `scripts/smoke/registry.mjs`) | 2, 3, 4 |
+| The "nothing" refusal toast: `SIT_REFUSALS` (`app/engine.js`) imported directly, because no click can reach it — `live.js`'s `stintIndex` clamps the bench screen's stint index before `sitRest` ever sees the boundary | `node --test` | 4 |
 | Tour copy | `node --test` on `TOUR` (import it) or the existing tour smoke | 5 |
 | Everything else | full smoke | — |
 

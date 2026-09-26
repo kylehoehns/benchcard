@@ -1509,3 +1509,12 @@ function finish(lineups, ctx, issues, meta) {
     minPossibleSpread: floor, pairs: pairReport, shortNames: short, issues,
   };
 }
+
+/* The three ways `sitRest` (gamemode.js) refuses, keyed by `resolveRest`'s
+   `reason`. They live here, not in gamemode.js, so `node --test` can import
+   the wording: gamemode.js reaches for `matchMedia` at import time. */
+export const SIT_REFUSALS = {
+  strategy: 'Sit for the rest does not apply to this strategy. Its minutes are set by hand.',
+  nobody: 'Not enough players left to cover the rest of the game.',
+  nothing: 'Nothing left to share out. This is the last stint.',
+};
