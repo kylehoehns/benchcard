@@ -269,12 +269,12 @@ export async function rotationUndoPass(c, origin) {
        still with Undo. ---- */
     await evalIn(c, step(`document.getElementById('abBench').click()`));
     await evalIn(c, step(`document.querySelector('#gmFloor .gm-p')?.click()`));
-    const sitLabel = await evalIn(c, `JSON.stringify([...document.querySelectorAll('.gm-scope button')]
+    const sitLabel = await evalIn(c, `JSON.stringify([...document.querySelectorAll('#gmBenchLab button')]
       .find(b => b.textContent === 'Sit for the rest')?.textContent ?? null)`);
     if (JSON.parse(sitLabel) !== 'Sit for the rest') {
       problems.push(`item 2: the bench-mode button reads ${sitLabel}, want "Sit for the rest"`);
     }
-    await evalIn(c, step(`[...document.querySelectorAll('.gm-scope button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
+    await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
     await wait(SETTLE_MS);
     const toasts5 = JSON.parse(await evalIn(c, `JSON.stringify([...document.querySelectorAll('.toast[data-undo]')]
       .map(t => ({ text: t.querySelector('.tmsg')?.textContent ?? null, hasUndo: !!t.querySelector('.tundo') })))`));
@@ -304,7 +304,7 @@ export async function rotationUndoPass(c, origin) {
       const s = await import('/state.js');
       s.state.day.games[0].strategy = 'platoon';
     })()`);
-    await evalIn(c, step(`[...document.querySelectorAll('.gm-scope button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
+    await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
     await wait(SETTLE_MS);
     const flash4 = JSON.parse(await evalIn(c, `(() => {
       const t = document.querySelector('.toast:not([data-undo])');

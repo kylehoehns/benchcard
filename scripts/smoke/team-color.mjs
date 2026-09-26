@@ -42,8 +42,9 @@ import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
  * static markup, with no dialog opened. Three groups of the tinted/unchanged
  * elements do not exist in static markup at all, though, and are handled the
  * two ways the #59 review named:
- *   - `.gm-p.picked`, `.gm-scope button.on`/`.act` and `.gm-dot.now` are
- *     built by `renderGameMode()` only once bench mode is opened and a floor
+ *   - `.gm-p.picked`, `#gamemode .seg button.on`, "Sit for the rest" and
+ *     `.gm-dot.now` are built by `renderGameMode()` only once bench mode is
+ *     opened and a floor
  *     player picked -- the same navigation `overlay.mjs`'s "game mode, swap
  *     picker" state already drives -- so this check drives it too, once,
  *     read-only, and closes bench mode again before the team switch below.
@@ -176,8 +177,9 @@ const READ_COLORS = `(() => {
   });
 })()`;
 
-/* `.gm-p.picked`, `.gm-scope button.on`/`.act` and `.gm-dot.now` only exist
- * once bench mode is open with a floor player picked -- the same navigation
+/* `.gm-p.picked`, `#gamemode .seg button.on`, "Sit for the rest" and
+ * `.gm-dot.now` only exist once bench mode is open with a floor player
+ * picked -- the same navigation
  * `overlay.mjs`'s "game mode, swap picker" state drives (`$('#gmOpen').click();
  * $('#gmFloor .gm-p').click()`). Read-only: closed again before the team
  * switch below, so it leaves the fixture exactly as `reloadWithRecord` set it
@@ -198,16 +200,22 @@ const READ_SHEET = `(() => {
 // #138 moved the selected floor row's outline from a border to an inset
 // box-shadow (app.css: .gm-p.picked's box-shadow is inset 0 0 0 2px
 // var(--tint)), so the tint now paints there, not in borderColor.
+//
+// #147 item 3/8: the scope toggle is the shared `.seg` now (no `.gm-scope`
+// look survives), scoped to `#gamemode` since `.seg` also appears elsewhere
+// on the page (`#maxSubsSeg`, read separately below as `r.segOnFg`). "Sit for
+// the rest" no longer carries `.act` -- it is a plain `.btn` sibling found by
+// its own text, the same way `bench-details.mjs` finds it.
 const READ_GAME_MODE = `(() => {
   const $ = s => document.querySelector(s);
   const gp = $('#gamemode .gm-p.picked');
-  const on = $('.gm-scope button.on');
-  const act = $('.gm-scope button.act');
+  const on = $('#gamemode .seg button.on');
+  const sit = [...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent.trim() === 'Sit for the rest');
   const dot = $('.gm-dot.now');
   return JSON.stringify({
     pickedShadowColor: gp ? (getComputedStyle(gp).boxShadow.match(/rgba?\\([^)]+\\)/) || [null])[0] : null,
     scopeOnFg: on ? getComputedStyle(on).color : null,
-    scopeActBg: act ? getComputedStyle(act).backgroundColor : null,
+    sitBg: sit ? getComputedStyle(sit).backgroundColor : null,
     dotNowBg: dot ? getComputedStyle(dot, '::before').backgroundColor : null,
   });
 })()`;
@@ -265,11 +273,23 @@ export async function teamColorPass(c, origin) {
       ['.seg button[aria-selected=true] (#welTabPlan) text', r.welSegFg, ROYAL_FILL],
       ['input[type=checkbox].box:checked background', r.checkboxBoxBg, ROYAL_FILL],
       ['.gm-p.picked box-shadow color', gm.pickedShadowColor, ROYAL_FILL],
-      ['.gm-scope button.on text', gm.scopeOnFg, ROYAL_FILL],
+      ['#gamemode .seg button.on text', gm.scopeOnFg, ROYAL_FILL],
       ['.phrase text', r.phraseFg, ROYAL_FILL],
     ];
     for (const [label, got, want] of tinted) {
       if (got !== want) problems.push(`${label} is ${got} with Royal active, want ${want}`);
+    }
+    // #147 item 3/8: "Sit for the rest" is a plain `.btn` now (a surface
+    // fill), not `.btn.primary` and not filled with the tint or `--accent`
+    // (C2: the one filled button on this screen is ›/Finish game) -- pinned
+    // as NOT tint-filled, rather than to a literal background color, since
+    // `.btn`'s own fill token is not this spec's to re-derive here. A `null`
+    // (the button not found at all) must fail too, not pass by accident
+    // (`null !== ROYAL_FILL` would otherwise read as "not tint-filled").
+    if (gm.sitBg == null) {
+      problems.push('"Sit for the rest" was not found in #gmBenchLab while reading its background');
+    } else if (gm.sitBg === ROYAL_FILL) {
+      problems.push(`"Sit for the rest" background is ${gm.sitBg}, the same as the Royal tint -- it must not read tint-filled`);
     }
     // item 5: Graphite's phrase carries an underline, every other color's
     // does not (`--phrase-line` goes transparent) -- Royal is "every other
@@ -282,7 +302,7 @@ export async function teamColorPass(c, origin) {
     const accentInk = [
       ['.help-h', r.helpHFg], ['.teammenu-check', r.teamCheckFg],
       ['.mrow .track i (minute bar) background', r.mrowBg],
-      ['.gm-scope button.act background', gm.scopeActBg], ['.gm-dot.now background', gm.dotNowBg],
+      ['.gm-dot.now background', gm.dotNowBg],
       ['the logo (.wel-mark circle) fill', r.logoFill],
       ['::selection background', r.selectionBg, GRAPHITE_ACCENT_SOFT],
       ['a focused input’s border', r.inputFocusBorder],

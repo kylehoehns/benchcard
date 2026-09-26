@@ -229,7 +229,7 @@ export const shipped = () => {
      * fourth scope has to show up here whatever shape it arrives in. */
     bench: [...between(gm, 'for (const [k, t] of [', ']) {')
       .matchAll(/\[\s*'[^']*',\s*'([^']+)'\s*\]/g)].map((m) => m[1])
-      .concat([...gm.matchAll(/el\('button', 'press act', '([^']+)'\)/g)].map((m) => m[1])),
+      .concat([...gm.matchAll(/el\('button', 'press btn', '([^']+)'\)/g)].map((m) => m[1])),
     card: [...between(index, '<select id="cardSize" class="prow-select">', '</select>')
       .matchAll(/<option value="(\w+)"/g)].map((m) => m[1]),
   };

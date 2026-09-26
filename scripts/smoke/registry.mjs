@@ -112,6 +112,7 @@ import { barRowsPass } from './bar-rows.mjs';
 import { gameFieldMatchPass } from './game-field-match.mjs';
 import { gmOpenPass } from './gm-open.mjs';
 import { benchLookPass } from './bench-look.mjs';
+import { benchDetailsPass } from './bench-details.mjs';
 
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
@@ -307,6 +308,14 @@ export const ROWS = Object.freeze([
   // no ring, and the bottom controls' pill/round shapes -- see bench-look.mjs.
   { id: 'benchlook', name: 'bench mode matches the prototype', selectable: true, setup: 'rich',
     run: ctx => benchLookPass(ctx.c, ctx.origin) },
+  // #147's own guard (see docs/specs/147-bench-details.md's Proof section):
+  // Next change clears the floating foot at every stint and at 320px/32px
+  // text, the scope control is the shared .seg with Sit for the rest a plain
+  // .btn sibling after it (not inside it), no sideways spill at 320px/32px
+  // text with a player picked (closes #167), the last bench row stays
+  // reachable by scrolling, and #gmDone reads "Leave" -- see bench-details.mjs.
+  { id: 'benchdetails', name: 'bench mode: next change, scope control, no spill, reachable rows, Leave', selectable: true, setup: 'rich',
+    run: ctx => benchDetailsPass(ctx.c, ctx.origin) },
   // #32's own guard (see docs/specs/32-add-a-game.md's Proof section): the
   // three-step Add-a-game flow -- full screen over the chrome, the back
   // gesture stepping back through it, "Use it" and "Plan it" committing the
