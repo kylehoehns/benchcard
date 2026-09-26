@@ -125,17 +125,18 @@ export const FEATURES = [
   /* #75 item 6: about.html and advanced.html dropped "minutes limit" (one
    * phrase for the app's `minimum`/`cap` pair, per `shipped()`'s note below)
    * for the glossary's own two rules, named side by side ("Minimum and Cap").
-   * `#help` is unchanged and still uses the app's internal "Minutes limit" --
-   * that mismatch is #75's own Decisions section, not a new one -- so this
-   * key is per-surface the same way `shape:even` is. #98 brought the three
-   * pair rules' names into line instead: `#help`'s own `<dt>`s now read
-   * Together / Apart / One of two on, the same words about.html and
-   * advanced.html already used, so those three keys below are plain arrays
-   * again rather than per-surface objects. */
+   * #136 moved `#help` onto the Add a rule labels (`KINDS` in rules.js):
+   * its `<dt>`s read "Plays at least / Plays at most" and "Starting five /
+   * Last-period five", so those two keys are per-surface the same way
+   * `shape:even` is. #98 brought the three pair rules' names into line
+   * earlier: `#help`'s own `<dt>`s read Together / Apart / One of two on,
+   * the same words about.html and advanced.html already used, so those
+   * three keys below are plain arrays rather than per-surface objects. */
   { key: 'rule:limit', src: 'rules.js KINDS',
-    term: { '#help': ['minutes limit'], 'about.html': ['minimum'], 'advanced.html': ['minimum'] } },
+    term: { '#help': ['plays at least'], 'about.html': ['minimum'], 'advanced.html': ['minimum'] } },
   { key: 'rule:starts', src: 'rules.js KINDS', term: ['starting five'], text: ['starting five'] },
-  { key: 'rule:lastq', src: 'rules.js KINDS', term: ['last period'] },
+  { key: 'rule:lastq', src: 'rules.js KINDS',
+    term: { '#help': ['last-period five'], 'about.html': ['last period'], 'advanced.html': ['last period'] } },
   { key: 'rule:together', src: 'rules.js KINDS', term: ['together'] },
   { key: 'rule:apart', src: 'rules.js KINDS', term: ['apart'] },
   { key: 'rule:keepon', src: 'rules.js KINDS', term: ['one of two on'] },
@@ -210,10 +211,10 @@ export const shipped = () => {
   const gm = app('gamemode.js');
   const index = app('index.html');
   /* #28 split the app's one "Minutes limit" kind into `minimum` and `cap`
-   * (Plays at least / Plays at most), but `#help`'s doc kept them as one
-   * `<dt>Minutes limit</dt>` -- unchanged, per the ticket's survey. Folded
-   * back to one `limit` entry here so the list below still means "the
-   * doc's own concepts", not the app's internal split. */
+   * (Plays at least / Plays at most), and the docs still describe them in
+   * one entry (`#help`'s `<dt>Plays at least / Plays at most</dt>` since
+   * #136). Folded back to one `limit` entry here so the list below still
+   * means "the doc's own concepts", not the app's internal split. */
   const ruleKinds = [...between(app('rules.js'), 'const KINDS = [', '\n];')
     .matchAll(/\['(\w+)',\s*'[^']+'\]/g)]
     .map((m) => (m[1] === 'minimum' || m[1] === 'cap') ? 'limit' : m[1]);

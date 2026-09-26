@@ -166,3 +166,31 @@ test('the "force pairs" switch names the Together rule by its KINDS label', () =
   assert.ok(m, 'renderPairsGroup\'s switchRow call for hardPairs is gone from rules.js');
   assert.equal(m[1], 'Force Together pairs every stint');
 });
+
+/* The help sheet's Rules section (#help in index.html) is coach-visible copy
+   too: it still had a "Minutes limit" entry ("a floor, a ceiling ... capped
+   at 12") after the rest of the app moved to the KINDS labels. The section
+   runs from its `Rules` heading to the next `help-h` heading; every <dt> in
+   it must be built from KINDS labels, and none of item 1's words may come
+   back in it. */
+const helpRules = (() => {
+  const html = read('app/index.html').replace(/<!--[\s\S]*?-->/g, '');
+  const start = html.indexOf('<h4 class="help-h">Rules</h4>');
+  assert.ok(start > 0, 'the help sheet lost its Rules heading');
+  const end = html.indexOf('class="help-h"', start + 30);
+  return html.slice(start, end);
+})();
+
+test('no banned word from #136 item 1 survives in the help sheet\'s Rules section', () => {
+  const text = helpRules.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  const hits = scan('#help Rules', text);
+  assert.deepEqual(hits, [], `banned word(s) found:\n${hits.join('\n')}`);
+});
+
+test('each rule the help sheet names is named by its KINDS label', () => {
+  const labels = new Set(KIND_LABEL.values());
+  const dts = [...helpRules.matchAll(/<dt>([^<]+)<\/dt>/g)].map((m) => m[1].trim());
+  assert.ok(dts.length >= 4, `only ${dts.length} <dt>s in the help sheet's Rules section`);
+  const stray = dts.flatMap((dt) => dt.split(' / ')).filter((name) => !labels.has(name));
+  assert.deepEqual(stray, [], `help sheet names a rule no KINDS entry has: ${stray.join(', ')}`);
+});
