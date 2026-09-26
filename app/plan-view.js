@@ -271,13 +271,18 @@ export function renderDayTotals() {
       trk.append(seg);
     });
     row.append(trk);
-    /* #144 item 4: the same per-game minutes the segments paint, as text --
-       a segment carries no text node of its own, so without this a screen
-       reader reaches the row's total and nothing about how it was made up. */
-    row.append(el('span', 'sr-only', dayGamesText(state.day.games, perGame, p.id)));
     const v = el('div', 'v');
     countTo(v, tot, 'day:' + p.id, fmtMinutes);
     row.append(v);
+    /* #144 item 4: the same per-game minutes the segments paint, as text --
+       a segment carries no text node of its own, so without this a screen
+       reader reaches the row's total and nothing about how it was made up.
+       (fix pass) Appended after the total (`.v`), not before it, so a
+       screen reader's linear order reads name, total minutes, then the
+       per-game breakdown -- the same minutes-before-note order as Minutes
+       so far's own row. `.sr-only` is `position: absolute`, so this does not
+       add a fourth column to `.barrow`'s 3-column grid. */
+    row.append(el('span', 'sr-only', dayGamesText(state.day.games, perGame, p.id)));
     box.append(row);
   }
 

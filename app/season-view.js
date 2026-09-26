@@ -152,11 +152,6 @@ function playerRow(id, min, extra, maxMin, callName) {
   const nm = el('span', 'sn-nm', display);
   if (!p) nm.classList.add('gone');
   name.append(nm);
-  // #144 item 3: the ledger's second line is hidden text on every row it
-  // appears on, including a departed player's (no `callName` for them, since
-  // `callNames` only covers the current roster). `extra` is only ever passed
-  // for a ledger row (never for a filed game's own `playerRow(id, m)` call).
-  if (extra) name.append(el('span', 'sr-only', extra));
   row.append(name);
   if (maxMin != null) {
     const track = el('span', 'sn-track');
@@ -167,6 +162,16 @@ function playerRow(id, min, extra, maxMin, callName) {
     row.append(track);
   }
   row.append(el('span', 'sn-min', fmtMinutes(min)));
+  // #144 item 3 (fix pass): the hidden second line comes after the minutes
+  // value in DOM order, not before it inside `.sn-name` -- the spec's own
+  // illustration reads "Nia, 12.5 minutes, 2 games, 16 behind", minutes
+  // before the "N games" note, so a screen reader's linear order has to
+  // match. `.sr-only` is `position: absolute`, so moving it here does not
+  // add a fourth column to `.barrow`'s 3-column grid.
+  // `extra` is only ever passed for a ledger row (never for a filed game's
+  // own `playerRow(id, m)` call), and never for a departed player (no
+  // `callName` for them, since `callNames` only covers the current roster).
+  if (extra) row.append(el('span', 'sr-only', extra));
   return row;
 }
 

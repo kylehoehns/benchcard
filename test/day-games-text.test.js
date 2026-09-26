@@ -6,14 +6,11 @@ import assert from 'node:assert/strict';
    is that join, read at its own seam (`node --test`) rather than only
    through the browser check that reads the rendered row.
    `plan-view.js` reaches for a canvas and a media query at import time, so
-   the stubs below stand in for the document; nothing here renders
-   (`test/longest-sit.test.js` does the same for the same reason). */
-globalThis.matchMedia = () => ({ matches: false, addEventListener: () => {} });
+   `dom-stub.js` stands in for the document; nothing here renders
+   (`test/longest-sit.test.js` does the same for the same reason, and shares
+   this same stub). */
+import './dom-stub.js';
 globalThis.window = globalThis;
-globalThis.document = {
-  querySelector: () => null,
-  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }) }) }),
-};
 const { dayGamesText } = await import('../app/plan-view.js');
 
 const CASES = [

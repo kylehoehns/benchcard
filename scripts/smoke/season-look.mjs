@@ -29,6 +29,20 @@ import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
 
+/* The Range-based left-edge reader both page-side scripts below need (a div
+   whose text is a bare text node has no child element, so its own
+   border-box left edge does not move when only its padding-left changes --
+   see the comment at its first use). One source string, interpolated into
+   both `READ_SEASON_LOOK` and `READ_FIVE_GAMES`, so the two copies cannot
+   drift the way a hand-typed second copy already had. */
+const TEXT_LEFT_FN = `const textLeft = el => {
+    if (!el) return null;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const rects = range.getClientRects();
+    return rects.length ? rects[0].left : el.getBoundingClientRect().left;
+  };`;
+
 /* Item 2: the Minutes so far row, at the prototype's own sizes. Read from a
    live row rather than from the CSS source -- a source regex cannot tell a
    rule that applies from one that is overridden, or a computed 30px from a
@@ -67,13 +81,7 @@ const READ_SEASON_LOOK = `JSON.stringify((() => {
   // has no child element (its text is a bare text node) and its own
   // border-box left edge does not move when only its padding-left changes;
   // a Range on its contents measures the glyphs, not the box.
-  const textLeft = el => {
-    if (!el) return null;
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const rects = range.getClientRects();
-    return rects.length ? rects[0].left : el.getBoundingClientRect().left;
-  };
+  ${TEXT_LEFT_FN}
   const titleLeft = document.querySelector('.season-h1')?.getBoundingClientRect().left ?? null;
   const snH = [...document.querySelectorAll('#view-season .sn-h')];
   const snDays = [...document.querySelectorAll('#seasonFiled .sn-day')];
@@ -112,11 +120,21 @@ const READ_SEASON_LOOK = `JSON.stringify((() => {
   const hidden = r && r.querySelector('.sr-only');
   const hiddenCs = cs(hidden);
   const visibleX = document.querySelector('#seasonbox .sn-x');
+  // fix pass: the spec's own item-3 illustration reads "Nia, 12.5 minutes,
+  // 2 games, 16 behind" -- the minutes value before the hidden note, not
+  // after -- so a screen reader's linear order has to put .sn-min ahead of
+  // the hidden text, not the other way around.
+  const minBeforeHidden = (min && hidden)
+    ? !!(min.compareDocumentPosition(hidden) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
 
   // item 4 (basic wiring -- the 5-game/320px case is a second pass below).
   const dayNm = dayRow && dayRow.querySelector('.nm span:last-child');
   const dayNmCs = cs(dayNm);
   const dayHidden = dayRow && dayRow.querySelector('.sr-only');
+  // fix pass: same reading-order question as .sn-row above, for "Across the
+  // day"'s own total (.v) against its per-game hidden text.
+  const dayVBeforeHidden = (dayV && dayHidden)
+    ? !!(dayV.compareDocumentPosition(dayHidden) & Node.DOCUMENT_POSITION_FOLLOWING) : null;
   const legendI = document.querySelector('.legend i');
   const legendCs = cs(legendI);
   const hintCs = cs(document.querySelector('#dayhint'));
@@ -184,10 +202,12 @@ const READ_SEASON_LOOK = `JSON.stringify((() => {
     hiddenPosition: hiddenCs ? hiddenCs.position : null,
     hiddenWidth: hiddenCs ? hiddenCs.width : null,
     visibleXPresent: !!visibleX,
+    minBeforeHidden,
 
     dayName: dayNm ? dayNm.textContent : null,
     dayNameTransform: dayNmCs ? dayNmCs.textTransform : null,
     dayHiddenText: dayHidden ? dayHidden.textContent : null,
+    dayVBeforeHidden,
     legendRadius: legendCs ? legendCs.borderRadius : null,
     legendWidth: legendCs ? legendCs.width : null,
     hintFontSize: hintCs ? hintCs.fontSize : null,
@@ -334,6 +354,10 @@ export async function seasonLookPass(c, origin) {
       if (row.visibleXPresent) {
         problems.push('the ledger still shows a visible ".sn-x" subline -- item 3 wants it hidden, not repainted');
       }
+      if (row.minBeforeHidden === false) {
+        problems.push('the ledger row\'s hidden "N games" text sits before .sn-min in DOM order -- a screen reader '
+          + 'reads name, N games, behind, minutes, not name, minutes, N games, behind (spec item 3)');
+      }
 
       // item 4 (basic wiring; the 5-game/320px case is checked separately).
       if (!row.dayName) {
@@ -348,6 +372,10 @@ export async function seasonLookPass(c, origin) {
       }
       if (!row.dayHiddenText || !row.dayHiddenText.includes(':')) {
         problems.push(`"Across the day" row has no per-game hidden text (got "${row.dayHiddenText}")`);
+      }
+      if (row.dayVBeforeHidden === false) {
+        problems.push('"Across the day" row\'s hidden per-game text sits before its .v total in DOM order -- '
+          + 'a screen reader reads the per-game breakdown before the total minutes');
       }
       if (parseFloat(row.legendRadius) * 2 < parseFloat(row.legendWidth) - 0.5) {
         problems.push(`legend swatch border-radius (${row.legendRadius}) is less than half its width (${row.legendWidth}) -- not round`);
@@ -434,16 +462,10 @@ const READ_FIVE_GAMES = `JSON.stringify((() => {
   // edge check the main light/dark pass makes at 390px, against RICH's own
   // filed days (this record's season data is RICH's, untouched). A Range
   // measures the subheader's TEXT, not its div's own border-box (which does
-  // not move when only its padding-left changes -- season-look.mjs's own
-  // textLeft helper, restated here since this string is evaluated on its
-  // own).
-  const textLeft = el => {
-    if (!el) return null;
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    const rects = range.getClientRects();
-    return rects.length ? rects[0].left : el.getBoundingClientRect().left;
-  };
+  // not move when only its padding-left changes -- the shared TEXT_LEFT_FN
+  // source string above, interpolated here since this string is evaluated on
+  // its own).
+  ${TEXT_LEFT_FN}
   const snDayLefts = [...document.querySelectorAll('#seasonFiled .sn-day')].map(textLeft);
   const firstGameTitleLeft = textLeft(document.querySelector('#seasonFiled .sn-game .sn-gt'));
   return { hint, rows, snDayLefts, firstGameTitleLeft };
