@@ -64,7 +64,10 @@ async function measureAt(c, width) {
       out.summaries.push(rectOf(d.querySelector('summary')));
     }
     for (const d of document.querySelectorAll('#view-season details.sn-game')) d.open = true;
-    for (const b of document.querySelectorAll('#view-season .sn-del')) out.deletes.push(rectOf(b));
+    // #141 (one control each), decision 1: '.sn-del' is gone -- the remove
+    // button is now the same '.prow-danger' row every other remove action
+    // uses, scoped to '.sn-body' so this stays "one per filed game".
+    for (const b of document.querySelectorAll('#view-season .sn-body .prow-danger')) out.deletes.push(rectOf(b));
     for (const d of document.querySelectorAll('#view-season details.sn-game')) d.open = false;
     return JSON.stringify(out);
   })()`));
@@ -142,7 +145,7 @@ export async function seasonPass(c, origin) {
       name: r.querySelector('.sn-nm')?.textContent || '',
       minText: r.querySelector('.sn-min')?.textContent || '',
     }));
-    const del = body.querySelector('.sn-del');
+    const del = body.querySelector('.prow-danger');
     return JSON.stringify({ rows, delText: del ? del.textContent : null });
   })()`);
   const g0 = JSON.parse(firstGame);
@@ -158,8 +161,9 @@ export async function seasonPass(c, origin) {
         problems.push(`filed game row ${i}: ${JSON.stringify(d)}, want ${JSON.stringify(w)}`);
       }
     }
-    if (g0.delText !== 'Delete this game') {
-      problems.push(`filed game's delete control reads ${JSON.stringify(g0.delText)}, want "Delete this game"`);
+    // #141 item 2 (W2): "Remove", not "Delete".
+    if (g0.delText !== 'Remove this game') {
+      problems.push(`filed game's remove control reads ${JSON.stringify(g0.delText)}, want "Remove this game"`);
     }
   }
 
@@ -228,7 +232,15 @@ export async function seasonPass(c, origin) {
      drives the ledger to empty (Export correctly hides); Undo puts the last
      one back, and Export must reappear without leaving Season. */
   for (let i = 0; i < 3; i++) {
-    await evalIn(c, `(async () => { document.querySelector('#view-season .sn-del')?.click(); await ${SETTLE}; })()`);
+    await evalIn(c, `(async () => { document.querySelector('#view-season .sn-body .prow-danger')?.click(); await ${SETTLE}; })()`);
+    // #141 item 2: Season's toast, checked once on the first remove -- the
+    // other two would only repeat the same fact.
+    if (i === 0) {
+      const toastText = await evalIn(c, `document.querySelector('.toast .tmsg')?.textContent || ''`);
+      if (!/^Removed .* from the season\.$/.test(toastText)) {
+        problems.push(`removing a filed game toasts ${JSON.stringify(toastText)}, want "Removed <title> from the season."`);
+      }
+    }
   }
   /* The count line under the title used to read "Nothing filed yet" with
      nothing filed, directly above a paragraph opening with the same four
@@ -268,7 +280,7 @@ export async function seasonPass(c, origin) {
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${domRows.length} minutes rows in order, a filed game's ${wantGameRows.length} rows and Delete read back, `
+      : `${domRows.length} minutes rows in order, a filed game's ${wantGameRows.length} rows and Remove read back, `
         + `the day chart on Season only, Export 48×48 at ${TOUCH_WIDTHS.join('/')}px and nowhere else`,
   };
 }

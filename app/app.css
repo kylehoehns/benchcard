@@ -179,11 +179,31 @@ a { color: inherit; }
    enough on their own word/flex-basis that only the height needs the
    `::after`, not the width. */
 .seg button { min-height: 2rem; padding: .36rem 1rem; border-radius: 7px; font-size: var(--fs-secondary);
-  font-weight: 600; color: var(--ink); position: relative; }
+  font-weight: 500; color: var(--ink); position: relative; }
 .seg button::after { content: ''; position: absolute; left: 0; right: 0; top: 50%;
   height: 48px; transform: translateY(-50%); z-index: 1; }
-@media (hover: hover) { .seg button:not(.on):hover { background: color-mix(in srgb, var(--ink) 6%, transparent); } }
-.seg button.on { background: var(--seg-on); color: var(--tint); box-shadow: var(--shadow-sm); }
+/* Fix pass finding 1 (#141 regression): excluding only `.on` left the welcome
+   tabs' `aria-selected="true"` marker uncovered, and `:not(.on):hover`'s own
+   specificity (0,3,1) beat the selected rule below it (0,2,1) -- a media
+   query changes nothing about that, source order or not, since they are
+   different selectors -- so hovering the SELECTED welcome tab painted the
+   hover tint over `--seg-on` instead of leaving it alone. The deleted
+   `.wel-seg-b` hover rule excluded `.sel` for the same reason; this excludes
+   both markers a `.seg` can use. */
+@media (hover: hover) { .seg button:not(.on):not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--ink) 6%, transparent); } }
+/* #141 (one control each), item 1: the prototype's weight is 500, and 600 on
+   whichever button is selected -- #140 Q2 left the exact weight to this
+   ticket. Not every `.seg` marks its selected button the same way: the
+   settings/plan segs toggle `.on` (`classList.toggle('on', ...)`, `render.js`
+   and friends), while the welcome tabs (now `.seg.wide`, above) are real
+   `role="tab"` buttons and mark selection with `aria-selected="true"`
+   instead -- `.sel` carries no rule here, so `aria-selected` is the one this
+   reads (fix pass: `onboarding.js` no longer toggles `.sel` either, since
+   `aria-selected` is the one marker a coach's screen reader and this file
+   both need). Both selectors share one declaration rather than repeating it. */
+.seg button.on, .seg button[aria-selected="true"] {
+  background: var(--seg-on); color: var(--tint); box-shadow: var(--shadow-sm); font-weight: 600;
+}
 .seg.wide { display: flex; width: 100%; padding: 2px; }
 .seg.wide button { flex: 1; padding: .36rem .3rem; font-size: var(--fs-secondary); }
 /* #29 decision 5: Timeline | Card, the bare (non-`.wide`) shape.
@@ -241,11 +261,14 @@ a { color: inherit; }
    (smoke `app shell at 320px/32px text`). `max-width` and `min-width: 0` are
    the backstop for any state px padding does not save: the halves shrink and
    the label wraps, rather than the page growing a sideways scroll. */
+/* #141 (one control each), item 1: `#viewSeg` keeps only its own placement
+   -- the grid that makes "Timeline" and "Card" read as equal halves, its
+   margins and its `max-width` backstop at a wide root -- everything about
+   how a button draws (its 32/36 height, its padding, its `::after` hit area)
+   now comes from the shared `.seg` rule above, unchanged in this ticket. */
 #viewSeg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   max-width: 100%; margin-top: 1rem; margin-bottom: .625rem; }
-#viewSeg button { min-height: 32px; padding: .3rem 12px; min-width: 0; position: relative; }
-#viewSeg button::after { content: ''; position: absolute; left: 0; right: 0;
-  top: 50%; height: 48px; transform: translateY(-50%); z-index: 1; }
+#viewSeg button { min-width: 0; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
@@ -402,8 +425,13 @@ a { color: inherit; }
      out of this list too, renumbered whole once more. */
   .s-rot   { order: 0; }
   .s-thisgame { order: 1; }
-  #tabledetails { order: 2; }
-  .gm-start { order: 3; }
+  /* #141: Remove's `.pgrp` follows `.s-thisgame` in the DOM, so it needs an
+     `order` of its own. It goes last, before Start game: a destructive
+     action reads last. `.9rem` on `#tabledetails` matches `.s-thisgame`'s,
+     so the gap above Remove is the column's usual 2rem. */
+  #tabledetails { order: 2; margin-bottom: .9rem; }
+  .s-thisgame + .pgrp { order: 3; }
+  .gm-start { order: 4; }
 }
 
 /* ---- Today's header: the team button and its menu (#23) ----------------
@@ -1040,19 +1068,16 @@ input[type=text], input[type=number], input[type=date], input[type=time], select
 }
 :where(:root)[data-theme="dark"] input, :where(:root)[data-theme="dark"] select, :where(:root)[data-theme="dark"] textarea { background: var(--surface-2); }
 @media (hover: hover) { input:hover, select:hover, textarea:hover { border-color: var(--muted); } }
-/* #69 decision 10: "Day name" (#112), "Opponent", "Tip-off" and the print
-   options already sit inside a `--surface` group (`.side-box`) -- a border
-   drawn in the same color as that box reads as a stray line, not a field, so
-   the prototype (`.field`) fills the input instead of outlining it. Scoped
-   to `#view-games`: the roster/settings/welcome inputs share this same rule
-   and are out of #69's scope. `min-height: 48px` matches every other touch
-   target on this screen (`.btn`, `.teambtn`...), all set the same literal
-   way. */
+/* #141 (one control each), item 4: this used to fill the game screen's
+   fields with `--bg` and drop their border, on the theory that a border drawn
+   in `.side-box`'s own `--surface` reads as a stray line -- but that made
+   `#gameDate`/`#label`/`#dayName`/`#when` the one input style in the app, a
+   different background and border color than `#teamName` in Settings gets
+   from the base input rule right above. Only `min-height: 48px` (matches
+   every other touch target on this screen) is still this screen's own; no
+   `#view-games` input rule sets `background` or `border-color` any more. */
 #view-games input[type=text], #view-games input[type=date], #view-games input[type=time], #view-games select {
-  border-color: transparent; background: var(--bg); min-height: 48px;
-}
-:where(:root)[data-theme="dark"] #view-games input[type=text], :where(:root)[data-theme="dark"] #view-games select {
-  background: var(--bg);
+  min-height: 48px;
 }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
 input::placeholder { color: var(--faint); }
@@ -1250,6 +1275,21 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .empty > .btn { margin-top: .9rem; }
 .note { color: var(--muted); font-size: var(--fs-footnote); margin-top: .75rem; }
 
+/* #141 (one control each), item 3 ("One bar row"): `.mrow` (below), `.dayrow`
+   (below) and `.sn-row` (Season's own ledger, further down this file) are the
+   same label / track / value grid three times over, each with its own
+   columns, track height and track color declared separately. `.barrow` is
+   now the one shared rule -- the grid itself, the vertical centering, the
+   track's pill radius and the value column's alignment and tabular figures --
+   and each row carries it plus its own `--barrow-cols` / `--barrow-track-h` /
+   `--barrow-track`, plus whatever is truly its own: the day row's stacked
+   fill segments, the season row's border and heavier name. Nothing a coach
+   sees changes; `scripts/smoke/bar-rows.mjs` pins the computed columns, track
+   height/color and value alignment this refactor must still match. */
+.barrow { display: grid; grid-template-columns: var(--barrow-cols); align-items: center; gap: .6rem; }
+.barrow .track, .barrow .trk, .barrow .sn-track { height: var(--barrow-track-h); border-radius: var(--r-full); background: var(--barrow-track); overflow: hidden; }
+.barrow .v, .barrow .sn-min { text-align: right; font-variant-numeric: tabular-nums; }
+
 /* per-game minute bars.
    These had NO rule at all, in any stylesheet, since the first commit -- the
    markup ships `.mrow` / `.nm` / `.track` / `.v` plus `.heavy` and `.light`,
@@ -1259,22 +1299,24 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
    and sizes match it exactly. The bar is the accent rather than each player's
    hue: this chart is read as one plan, and heaviest and lightest are the only
    two rows that need picking out of it. */
-.mrow { display: grid; grid-template-columns: 4.8rem 1fr 2.6rem; gap: .6rem; align-items: center; padding: .24rem 0; }
+/* Same `--barrow-*` values on both: `.dayrow` below is the "same anatomy"
+   this comment already pointed at before #141 gave that fact a shared rule
+   instead of two copies of the same three custom properties. */
+.mrow, .dayrow { --barrow-cols: 4.8rem 1fr 2.6rem; --barrow-track-h: .62rem; --barrow-track: var(--pc-track); padding: .24rem 0; }
 .mrow .nm { font-weight: 600; font-size: var(--fs-footnote); letter-spacing: -.01em; }
-.mrow .track { height: .62rem; border-radius: var(--r-full); background: var(--pc-track); overflow: hidden; }
 .mrow .track i { display: block; height: 100%; border-radius: inherit; background: var(--accent); opacity: .58; transition: width var(--t-slow) var(--ease); }
 .mrow.heavy .track i { opacity: 1; }
 .mrow.light .track i { opacity: .34; }
-.mrow .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-footnote); }
+.mrow .v { font-weight: 600; font-size: var(--fs-footnote); }
 
 /* day stack bars */
-.dayrow { --c: var(--accent); display: grid; grid-template-columns: 4.8rem 1fr 2.6rem; gap: .6rem; align-items: center; padding: .24rem 0; }
+.dayrow { --c: var(--accent); }
 .dayrow .nm { display: flex; align-items: center; gap: .38rem; font-weight: 600; font-size: var(--fs-footnote); }
 .dayrow .nm .dot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--c); flex: none; }
-.dayrow .trk { height: .62rem; border-radius: var(--r-full); background: var(--pc-track); overflow: hidden; display: flex; gap: 2px; }
+.dayrow .trk { display: flex; gap: 2px; }
 .dayrow .trk i { display: block; height: 100%; background: var(--c); transition: width var(--t-slow) var(--ease); }
 .dayrow .trk i:nth-child(2) { opacity: .66; } .dayrow .trk i:nth-child(3) { opacity: .42; } .dayrow .trk i:nth-child(4) { opacity: .28; }
-.dayrow .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-footnote); }
+.dayrow .v { font-weight: 600; font-size: var(--fs-footnote); }
 .legend { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: .7rem; font-size: var(--fs-footnote); color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: .3rem; }
 .legend i { width: .58rem; height: .58rem; border-radius: 2px; background: var(--ink-2); }
@@ -1585,10 +1627,14 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 }
 /* #29 decision 8: `#gmOpen` and its "?" kept the `.gmq` pair, but the row
    they used to share with Print and Share is gone (those moved into
-   `#sheetCard`) -- `.gm-start` is that same centered-row shape on its own,
-   not `.gm-cta` renamed, because the two rows are now hidden by different
-   rules (`.gm-start` below 900px, `.gm-cta`'s Print/Share never hide). */
-.gm-start { display: flex; justify-content: center; margin-top: .85rem; }
+   `#sheetCard`) -- `.gm-start` is that same row shape on its own, not
+   `.gm-cta` renamed, because the two rows are now hidden by different rules
+   (`.gm-start` below 900px, `.gm-cta`'s Print/Share never hide).
+   #141 (one control each), item 5: `#gmOpen` is `.btn.primary` now, the
+   panel's one filled button, and stretches the panel's full width instead of
+   sitting centered at its own content width -- `justify-content: center`
+   is gone for the same reason. */
+.gm-start { display: flex; margin-top: .85rem; }
 
 /* Phone held sideways. Game mode is one tall column, which on a 390px-high
    viewport put 846px of content behind 247px of window -- the coach saw three
@@ -2417,14 +2463,16 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-shuf .i { width: 14px; height: 14px; }
 .wel-shuf[hidden] { display: none; }
 
-.wel-seg { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px;
-  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-full); }
-.wel-seg-b { min-height: 40px; padding: .45rem .4rem; border-radius: var(--r-full); border: 0;
-  background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-secondary); font-weight: 600;
-  cursor: pointer; white-space: nowrap;
-  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
-.wel-seg-b.sel { background: var(--surface); color: var(--tint); box-shadow: var(--shadow-sm); }
-@media (hover: hover) { .wel-seg-b:not(.sel):hover { color: var(--ink); } }
+/* #141 (one control each), item 1: the three welcome tabs were their own
+   `.wel-seg`/`.wel-seg-b` pair, 40px tall with no `::after` hit area of its
+   own -- the touch sweep never visits the welcome screen, so nothing caught
+   them failing I1. They are `.seg.wide` now (the shared primitive, the
+   `#stratseg`/Settings-seg shape), so they draw 32 on 36, get the shared
+   48px `::after`, and gain equal widths for free. `flex: none` is the one
+   placement rule they still need: `.wel-stage` is a flex column and
+   `.wel-show` beside them is `flex: 1 1 auto`, so without it the tabs would
+   share the stretch rather than sitting at their own content height. */
+.wel-stage .seg.wide { flex: none; }
 
 .wel-doors { flex: none; margin-top: .7rem; }
 
@@ -3173,6 +3221,13 @@ dialog.flow .pgrp { margin: 0 1rem; }
    live INSIDE `#view-team` (the way `#sheetCard` lives inside `#view-games`),
    and inside a sheet that inset is the only side padding there is. */
 #rosterlist, #teamActions .pgrp { margin-left: 0; margin-right: 0; }
+/* #141 (one control each), decision 1: the same reason as Season and Team,
+   just above -- `.wrap` already gives `#view-settings` its own side padding
+   and `.col-side` sits inside `#view-games`'s own `.wrap`, so `.pgrp`'s sheet
+   inset would double up beside `.side-box`, which carries no side margin of
+   its own. `#removeTeam`'s and `#removeGame`'s new `.pgrp` cards are the only
+   two this reaches today. */
+#view-settings .pgrp, .col-side .pgrp { margin-left: 0; margin-right: 0; }
 
 /* #73 item 7: fixed vertical padding (not `min-height` alone), so a row that
    wraps to two lines keeps the same distance from its first line's top and
@@ -3205,12 +3260,12 @@ dialog.flow .pgrp { margin: 0 1rem; }
    the platform chrome stripped off: `.prow-chev` beside it is the only
    affordance a tap needs.
    Scoped `#sheetCard .pgrp .prow-select`, two classes deep, not the bare
-   class: `#view-games select` (decision 9's borderless-field rule) and its
-   dark-theme twin `:where(:root)[data-theme="dark"] #view-games select`
-   (#131: `:where(:root)` weighs nothing, so this is still id+attribute+
-   element) each carry an id, so a lone id+class selector still loses to the
-   dark one's id+attribute+element on the tie-break; the extra `.pgrp` class
-   is what wins outright. */
+   class: `#view-games select` (this file, "fields") carries an id, so a lone
+   id+class selector still loses to it on the class-count tie-break (id ties,
+   `#view-games select` still has its own `select` type selector to break the
+   tie with); the extra `.pgrp` class is what wins outright. #141 removed the
+   dark-theme twin this used to also out-rank (it set only `background`,
+   which no `#view-games` input rule sets any more). */
 #sheetCard .pgrp .prow-select { flex: 0 1 auto; min-width: 0; width: auto; text-align: right;
   color: var(--muted); font: inherit; font-size: var(--fs-body);
   background: none; border: 0; padding: 0; margin: 0; min-height: 0;
@@ -3592,15 +3647,20 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    are gone. `#help` is still reachable from Settings' own "How it works"
    row (`#helpBtn`); nothing deep-links into a section of it any more.
    `.gmq` stays -- it still wraps `#gmOpen`, out of scope per decision 17 --
-   but no longer needs to reserve room for a second child beside it. */
-.gmq { display: inline-flex; align-items: center; max-width: 100%; min-width: 0; }
+   but no longer needs to reserve room for a second child beside it.
+   #141 item 5: `flex` and `width: 100%` replace `inline-flex`'s own
+   content-sized width, so the wrapper -- and the full-width button inside
+   it -- span the panel rather than sitting centered at their own size. */
+.gmq { display: flex; width: 100%; max-width: 100%; min-width: 0; }
 /* `#gmOpen` was a direct child of the wrapping `.gm-start` line and shrank
    with it; inside an `inline-flex` it takes its max-content width instead,
    which measured past the row at a 320px viewport and 200% text -- caught by
    smoke's large-text pass, not by anything at 390px. `max-width` bounds the
    wrapper to the line and `min-width: 0` lets the label use the
-   `white-space: normal` the narrow block already gives it. */
-.gmq > .btn { min-width: 0; }
+   `white-space: normal` the narrow block already gives it. `width: 100%`
+   (#141 item 5) is what actually stretches the button to `.gmq`'s own new
+   full width. */
+.gmq > .btn { min-width: 0; width: 100%; }
 
 /* A39. The two breakpoints carry different rows, deliberately -- do not
  * "simplify" this back into one row for both.
@@ -3747,9 +3807,6 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   /* The caption and its Shuffle, which is `.block-hd` exactly: a line of text
      and a control sharing a row with no width left between them. */
   .wel-cap { flex-wrap: wrap; }
-  /* The three tabs, which cannot sit on one line at a 32px root: "On screen"
-     alone is most of the width. Stacked, they are still three 40px targets. */
-  .wel-seg { grid-template-columns: minmax(0, 1fr); }
   /* The quarter strip, and only at this size. Four labels need ~120px after
      the name column and there are ~78px left, so they would clip to "Q" and
      say less than nothing. It is `aria-hidden` decoration: the eight cells and
@@ -4141,20 +4198,25 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    overflows either; only the `3rem` on minutes is a plain fixed width,
    unchanged from before this review and already proven safe at that root by
    the same check. */
-.sn-row { display: grid; grid-template-columns: minmax(0, 9rem) 1fr 3rem; align-items: center;
-  gap: .6rem; padding: .5rem .1rem; border-bottom: 1px solid var(--line); }
+/* #141 item 3: `.barrow` (near `.mrow`/`.dayrow`, above) supplies the grid,
+   centering, track radius and value alignment/tabular-nums now; this rule
+   keeps only what is truly the ledger's own -- its columns/track
+   height/color via `--barrow-*`, and its border and padding. */
+.sn-row { --barrow-cols: minmax(0, 9rem) 1fr 3rem; --barrow-track-h: .4rem; --barrow-track: var(--line-2);
+  padding: .5rem .1rem; border-bottom: 1px solid var(--line); }
 .sn-name { min-width: 0; }
 .sn-nm { display: block; font-size: var(--fs-body); font-weight: 500; overflow-wrap: break-word; }
 .sn-nm.gone { color: var(--faint); font-style: italic; }
 .sn-x { display: block; font-size: var(--fs-footnote); color: var(--faint); }
 /* The prototype's bar: a rounded track on the gray ground (L1 -- it needs no
-   box of its own), the fill painted the player's own color (K2). */
-.sn-track { position: relative; height: .4rem; border-radius: 999px; background: var(--line-2); overflow: hidden; }
+   box of its own), the fill painted the player's own color (K2). Position is
+   still its own: no in-flow content, `.sn-fill` is `position: absolute`. */
+.sn-track { position: relative; }
 .sn-fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; }
-/* Tabular figures: the numbers are read as a column, and proportional digits
-   make a 7 and a 1 sit differently in it. */
-.sn-min { text-align: right; font-weight: 600; font-size: var(--fs-body);
-  font-variant-numeric: tabular-nums; }
+/* Tabular figures and right-alignment now come from `.barrow`; font weight
+   and size are the ledger's own (`.mrow`/`.dayrow`'s `.v` are smaller and use
+   the footnote size instead). */
+.sn-min { font-weight: 600; font-size: var(--fs-body); }
 /* #30 decision 3: restyled to the prototype's group label -- footnote size,
    `--muted`, sentence case. It used to be uppercase, letter-spaced and
    `--accent`; that read as a section chrome the prototype never has. */
@@ -4187,15 +4249,10 @@ input[switch]:disabled { opacity: .4; cursor: default; }
 .sn-game[open] > summary::after { transform: rotate(45deg) translate(0, 0); }
 .sn-body { padding: .1rem 1rem .8rem; }
 .sn-body .sn-row:last-of-type { border-bottom: 0; }
-/* Same `.btn` nowrap case as `#removeTeam`: "Delete
-   this game" is a one-line label a wide system font can push past the
-   column on its own (#21 CI fix). */
-/* #30 "What would settle it" item 9: Delete is a control on Season and
-   this screen's own floor is 48px (I1/C6). It used to be the exception --
-   `.btn` settled for 44px on a phone elsewhere -- and since #37 the shared
-   primitive is 48 too, so this line only pins what the row already gets.
-   Same reason `#seasonExport` above gets its own. */
-.sn-del { margin-top: .6rem; min-height: 48px; white-space: normal; text-align: center; }
+/* #141 (one control each), decision 1: Season's remove button is a
+   `.prow-danger` row now, like every other remove action -- `.prow` already
+   pins 48px and `.prow-center` already centers it, so `.sn-del` carries no
+   rule of its own any more. */
 
 /* =========================== team settings ===========================
    Two labelled zones, stacked, in the app's own `.side-box` grammar rather

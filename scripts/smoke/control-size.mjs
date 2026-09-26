@@ -1,6 +1,6 @@
 import { evalJSON, tap } from './sheet-drive.mjs';
 import { goRich } from './fixtures.mjs';
-import { TODAY_HOME, CSS_VAR_COLOR_PROBE } from './dom.mjs';
+import { TODAY_HOME, CSS_VAR_COLOR_PROBE, evalIn } from './dom.mjs';
 
 /* #140 (prototype control size), "What would settle it" items 1, 3-6 -- the
  * "Drawn sizes" row of the spec's Proof table. Nothing before this pinned how
@@ -46,7 +46,10 @@ async function sentenceMetrics(c) {
 }
 
 // Item 3: each seg's button and track drawn height, and the button's own
-// font size (14px everywhere, unchanged -- Q2).
+// font size (14px everywhere, unchanged -- Q2). #141 item 1 adds each
+// button's own weight and whether it is the selected one, so
+// `checkSegMetrics` can hold every seg (not just the welcome tabs) to the
+// prototype's 500/600 split without a second, welcome-only copy of the rule.
 const SEG_SELECTORS = ['#stratseg', '#maxSubsSeg', '#tieBreakSeg', '#seasonDefSeg', '#themeSeg'];
 async function segMetrics(c) {
   const rows = await evalJSON(c, `JSON.stringify(${JSON.stringify(SEG_SELECTORS)}.map(sel => {
@@ -54,9 +57,76 @@ async function segMetrics(c) {
     const track = document.querySelector(sel);
     if (!track || track.getClientRects().length === 0) return { sel, visible: false };
     const btn = track.querySelector('button');
-    return { sel, visible: true, trackH: rect(track).h, btnH: rect(btn).h, fontPx: parseFloat(getComputedStyle(btn).fontSize) };
+    const btns = [...track.querySelectorAll('button')].map(b => ({
+      weight: parseFloat(getComputedStyle(b).fontWeight),
+      selected: b.classList.contains('on') || b.getAttribute('aria-selected') === 'true',
+    }));
+    return { sel, visible: true, trackH: rect(track).h, btnH: rect(btn).h, fontPx: parseFloat(getComputedStyle(btn).fontSize), btns };
   }))`);
   return rows.filter(r => r.visible);
+}
+
+// #141 (one control each) item 1: the welcome tabs are now `.seg.wide` --
+// `#view-welcome` is normally `hidden` once a coach is onboarded, so this
+// forces it open the same way `overlay.mjs`'s own 'welcome screen' state
+// does (`hidden = false`, no wipe/reload needed: nothing about a `.seg`'s own
+// metrics depends on the onboarding flow that normally reaches it), measures
+// the three tabs, then hides it again. The tabs' hit area is checked here
+// (unlike the other segs above) because the touch sweep never visits the
+// welcome screen (the ticket's own survey) -- `.seg button::after`'s 48px is
+// read back through `getComputedStyle(btn, '::after')` since a pseudo-element
+// has no `getBoundingClientRect` of its own.
+const WELCOME_TABLIST = '[role="tablist"][aria-label="What Benchcard makes"]';
+async function welcomeTabMetrics(c) {
+  await tap(c, `document.getElementById('view-welcome').hidden = false`);
+  const m = await evalJSON(c, `(() => {
+    const rect = ${RECT};
+    const track = document.querySelector(${JSON.stringify(WELCOME_TABLIST)});
+    if (!track) return JSON.stringify(null);
+    const btns = [...track.querySelectorAll('button[role="tab"]')].map(b => ({
+      h: rect(b).h,
+      weight: parseFloat(getComputedStyle(b).fontWeight),
+      selected: b.getAttribute('aria-selected') === 'true',
+      afterH: parseFloat(getComputedStyle(b, '::after').height),
+    }));
+    const sel = track.querySelector('button[role="tab"][aria-selected="true"]');
+    // Forced open on top of whatever view was already on screen (this
+    // function's own comment below), so the tab can land well past the
+    // viewport's own height -- scroll it into view before reading its rect,
+    // or the hover check below dispatches a mouseMoved at a point no longer
+    // over the button at all.
+    if (sel) sel.scrollIntoView({ block: 'center' });
+    const selRect = sel ? rect(sel) : null;
+    const selBg = sel ? getComputedStyle(sel).backgroundColor : null;
+    return JSON.stringify({ trackH: rect(track).h, btns, selRect, selBg });
+  })()`);
+
+  /* Fix pass finding 1: a selected welcome tab must keep `--seg-on` on hover,
+   * not repaint with the hover tint. Proved with a REAL CDP `mouseMoved` over
+   * the selected tab's own center, never a `.hover()`/class toggle in script
+   * -- `:hover` is a real UA state, not a class, and this suite's default
+   * mobile+touch emulation always resolves `(hover: hover)` to false (a
+   * finger cannot rest), which would make this assertion pass for the wrong
+   * reason. Touch emulation is switched off for exactly this one measurement
+   * and restored straight after, to the same `{ enabled: true, maxTouchPoints:
+   * 5 }` `scripts/smoke.mjs` itself sets up, so no later check in this pass
+   * (or the next one) runs under a different pointer than the rest of the
+   * suite. */
+  let selHoverBg = null;
+  if (m && m.selRect) {
+    const x = m.selRect.l + m.selRect.w / 2;
+    const y = m.selRect.t + m.selRect.h / 2;
+    await c.send('Emulation.setTouchEmulationEnabled', { enabled: false, maxTouchPoints: 1 });
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    selHoverBg = await evalIn(c, `getComputedStyle(document.querySelector(${JSON.stringify(WELCOME_TABLIST)})
+      .querySelector('button[role="tab"][aria-selected="true"]')).backgroundColor`);
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: -10, y: -10 });
+    await c.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  }
+
+  await tap(c, `document.getElementById('view-welcome').hidden = true`);
+  return m ? { ...m, selHoverBg } : m;
 }
 
 // Items 4 and 5: each stepper's pill (drawn 88x32, painted in --seg-track),
@@ -91,6 +161,14 @@ async function switchMetrics(c, sel) {
   })()`);
 }
 
+// #141 item 1: a `.seg` button is weight 500, and 600 if it is the selected
+// one -- shared by `checkSegMetrics` and `checkWelcomeTabs` below so the
+// 500/600 rule is written once rather than copied per caller.
+function checkSegWeight(problems, theme, label, b) {
+  const want = b.selected ? 600 : 500;
+  if (b.weight !== want) problems.push(`${theme}: ${label} (selected=${b.selected}) is weight ${b.weight}, want ${want}`);
+}
+
 // Item 3: one assertion loop for every seg `segMetrics` returns, so
 // `#stratseg` (the Plan sheet's own seg) and the four Settings segs are held
 // to the same 36/32/14 rule rather than the Plan seg's own rows only ever
@@ -100,6 +178,30 @@ function checkSegMetrics(problems, theme, segs) {
     if (!near(s.trackH, 36)) problems.push(`${theme}: ${s.sel} track is ${s.trackH}px tall, want 36 +/-${TOL}`);
     if (!near(s.btnH, 32)) problems.push(`${theme}: ${s.sel} button is ${s.btnH}px tall, want 32 +/-${TOL}`);
     if (!near(s.fontPx, 14, 0.5)) problems.push(`${theme}: ${s.sel} button text is ${s.fontPx}px, want 14`);
+    for (const b of s.btns) checkSegWeight(problems, theme, `${s.sel} a button`, b);
+  }
+}
+
+// #141 item 1: 36 track, 32 buttons, 48px hit area, 500/600 weight -- the
+// same four rules `checkSegMetrics` holds every other seg to, plus the hit
+// area the touch sweep never measures here.
+function checkWelcomeTabs(problems, theme, m) {
+  if (!m) { problems.push(`${theme}: the welcome tablist was not found -- nothing measured`); return; }
+  if (!near(m.trackH, 36)) problems.push(`${theme}: welcome tablist track is ${m.trackH}px tall, want 36 +/-${TOL}`);
+  if (m.btns.length !== 3) {
+    problems.push(`${theme}: the welcome tablist has ${m.btns.length} tab(s), want 3 -- a selector stopped matching, nothing else checked`);
+    return;
+  }
+  for (const b of m.btns) {
+    if (!near(b.h, 32)) problems.push(`${theme}: a welcome tab is ${b.h}px tall, want 32 +/-${TOL}`);
+    if (!near(b.afterH, 48)) problems.push(`${theme}: a welcome tab's hit area is ${b.afterH}px, want 48 +/-${TOL}`);
+    checkSegWeight(problems, theme, 'a welcome tab', b);
+  }
+  // Fix pass finding 1: hovering the selected tab must not repaint it.
+  if (m.selBg == null || m.selHoverBg == null) {
+    problems.push(`${theme}: the selected welcome tab's background was not read before/after hover -- nothing checked`);
+  } else if (m.selHoverBg !== m.selBg) {
+    problems.push(`${theme}: hovering the selected welcome tab repaints it (${m.selHoverBg} instead of ${m.selBg})`);
   }
 }
 
@@ -141,6 +243,7 @@ function checkSwitchRow(problems, theme, where, m) {
 export async function controlSizePass(c, origin) {
   const problems = [];
   let segCount = 0;
+  let welcomeCount = 0;
 
   try {
     for (const theme of ['light', 'dark']) {
@@ -153,6 +256,12 @@ export async function controlSizePass(c, origin) {
         if (sm.pitch < 34 || sm.pitch > 36) problems.push(`${theme}: sentence line pitch is ${sm.pitch}px, want 34-36 (34.5 expected)`);
         if (sm.phraseH < 34 || sm.phraseH > 36) problems.push(`${theme}: #phrasePlayers hit area is ${sm.phraseH}px tall, want 34-36 (never under 34)`);
       }
+
+      // #141 item 1: the three welcome tabs, forced open (see
+      // `welcomeTabMetrics`'s own comment).
+      const wt = await welcomeTabMetrics(c);
+      welcomeCount += wt ? wt.btns.length : 0;
+      checkWelcomeTabs(problems, theme, wt);
 
       // Item 3, part 1 (#stratseg) and item 6, part 1 (the "Even out earlier
       // games" switch), both inside the Plan sheet's level-1 pane.
@@ -199,6 +308,10 @@ export async function controlSizePass(c, origin) {
     if (segCount < SEG_SELECTORS.length * 2) {
       problems.push(`only ${segCount}/${SEG_SELECTORS.length * 2} seg measurements were taken -- a seg's sheet did not open, or its selector no longer matches`);
     }
+    // Rule 2a: 3 welcome tabs x 2 themes = 6 measured buttons expected.
+    if (welcomeCount < 3 * 2) {
+      problems.push(`only ${welcomeCount}/6 welcome tab measurements were taken -- the tablist or a tab's selector no longer matches`);
+    }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
@@ -209,7 +322,7 @@ export async function controlSizePass(c, origin) {
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `sentence pitch, phrase hit area, ${SEG_SELECTORS.length} seg tracks/buttons, Format and Add-a-rule `
-        + `steppers, and 2 switch rows all drawn to spec, light and dark`,
+      : `sentence pitch, phrase hit area, ${SEG_SELECTORS.length} seg tracks/buttons/weights, the 3 welcome tabs, `
+        + `Format and Add-a-rule steppers, and 2 switch rows all drawn to spec, light and dark`,
   };
 }

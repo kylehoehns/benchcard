@@ -120,7 +120,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   reading, so it is two lists a phone can hold. An id with no player on the
   roster is shown as *Left the team*, hollow dot and minutes intact, which is
   what "history, not instruction" looks like on screen. Each game carries a
-  **Delete this game**, through `undoable`: filing finishes whatever is in the
+  **Remove this game**, through `undoable`: filing finishes whatever is in the
   day once it has passed, so a day nobody played still files a game, and this
   is the only correction path there is. No levels, ever — `test/leak.test.js` covers the
   Season view for the same reason it covers the card.

@@ -319,7 +319,6 @@ function showStage(which) {
                                   ['#welTabPaper', '#welPanePaper', 'paper'],
                                   ['#welTabScreen', '#welPaneScreen', 'screen']]) {
     const on = key === which;
-    $(tab)?.classList.toggle('sel', on);
     $(tab)?.setAttribute('aria-selected', String(on));
     set(pane, 'hidden', !on);
   }

@@ -26,19 +26,40 @@ import { thisGameBox } from './markup.js';
  *
  * Source-level, like note-placement and print-gate: no DOM, so it holds for
  * every state rather than the one a rendered check happened to be given.
+ *
+ * #141 (one control each), decision 1 moved Remove out of the box itself: a
+ * `.pgrp` list row nested inside `.side-box.s-thisgame` would be a card
+ * inside a card, so Remove now reads as `.side-box.s-thisgame`'s own next
+ * sibling instead of a child of it. STRUCTURE below is updated to match --
+ * Opponent and Tip-off still live in the one box, and Remove still sits
+ * immediately under it with nothing else between, so the three still read
+ * together as one group even though only two are literally inside the box.
  */
 
 const read = f => readFileSync(new URL(`../app/${f}`, import.meta.url), 'utf8');
 const css = read('app.css');
 const teamsView = read('teams-view.js');
 
-const IDS = ['id="label"', 'id="when"', 'id="removeGame"'];
+const BOX_IDS = ['id="label"', 'id="when"'];
 
-test('Opponent, Tip-off and Remove are one box', () => {
+test('Opponent and Tip-off are in the "This game" box', () => {
   const { box } = thisGameBox();
-  for (const id of IDS) {
+  for (const id of BOX_IDS) {
     assert.ok(box.includes(id), `${id} left the "This game" box`);
   }
+  assert.ok(!box.includes('id="removeGame"'),
+    'id="removeGame" is back inside the box -- that nests a card inside a card (decision 1)');
+});
+
+test('Remove reads immediately under the box, not inside it', () => {
+  const { html, box } = thisGameBox();
+  const boxEnd = html.indexOf(box) + box.length;
+  assert.ok(boxEnd > box.length - 1, 'the "This game" box was not found in index.html');
+  // Only whitespace may separate the box from its own next sibling: no other
+  // element, and no other id, is allowed to sit between them.
+  const after = html.slice(boxEnd, html.indexOf('id="removeGame"') + 'id="removeGame"'.length);
+  assert.ok(/^\s*<div class="pgrp[^"]*">\s*<button\b[^>]*\bid="removeGame"/.test(after),
+    `Remove is not the box's own next sibling -- found "${after.slice(0, 120)}"`);
 });
 
 test('"This game" reads after the rotation, but still above the rules', () => {
