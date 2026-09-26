@@ -182,16 +182,25 @@ a { color: inherit; }
   font-weight: 500; color: var(--ink); position: relative; }
 .seg button::after { content: ''; position: absolute; left: 0; right: 0; top: 50%;
   height: 48px; transform: translateY(-50%); z-index: 1; }
-@media (hover: hover) { .seg button:not(.on):hover { background: color-mix(in srgb, var(--ink) 6%, transparent); } }
+/* Fix pass finding 1 (#141 regression): excluding only `.on` left the welcome
+   tabs' `aria-selected="true"` marker uncovered, and `:not(.on):hover`'s own
+   specificity (0,3,1) beat the selected rule below it (0,2,1) -- a media
+   query changes nothing about that, source order or not, since they are
+   different selectors -- so hovering the SELECTED welcome tab painted the
+   hover tint over `--seg-on` instead of leaving it alone. The deleted
+   `.wel-seg-b` hover rule excluded `.sel` for the same reason; this excludes
+   both markers a `.seg` can use. */
+@media (hover: hover) { .seg button:not(.on):not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--ink) 6%, transparent); } }
 /* #141 (one control each), item 1: the prototype's weight is 500, and 600 on
    whichever button is selected -- #140 Q2 left the exact weight to this
    ticket. Not every `.seg` marks its selected button the same way: the
    settings/plan segs toggle `.on` (`classList.toggle('on', ...)`, `render.js`
    and friends), while the welcome tabs (now `.seg.wide`, above) are real
    `role="tab"` buttons and mark selection with `aria-selected="true"`
-   instead -- `onboarding.js` keeps both that attribute and its own `.sel`
-   class, but `.sel` carries no rule here, so `aria-selected` is the one this
-   reads. Both selectors share one declaration rather than repeating it. */
+   instead -- `.sel` carries no rule here, so `aria-selected` is the one this
+   reads (fix pass: `onboarding.js` no longer toggles `.sel` either, since
+   `aria-selected` is the one marker a coach's screen reader and this file
+   both need). Both selectors share one declaration rather than repeating it. */
 .seg button.on, .seg button[aria-selected="true"] {
   background: var(--seg-on); color: var(--tint); box-shadow: var(--shadow-sm); font-weight: 600;
 }

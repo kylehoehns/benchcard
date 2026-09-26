@@ -4,6 +4,16 @@
 
 export const WIDTH = 390, HEIGHT = 844;
 
+/* Fix pass finding 3: `bar-rows.mjs` and `gm-open.mjs` each carried a
+   byte-for-byte identical `setWidth` -- override the device metrics at the
+   given width (keeping this suite's own HEIGHT and mobile emulation), then
+   wait two rAFs for the resulting reflow to settle before anything measures
+   it. One copy here, imported by both. */
+export async function setWidth(c, width) {
+  await c.send('Emulation.setDeviceMetricsOverride', { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+}
+
 /* Evaluate in the page and throw the page's own error, rather than letting a
    typo in a selector come back as a silent `undefined`. */
 export async function evalIn(c, expression) {

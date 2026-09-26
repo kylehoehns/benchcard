@@ -75,7 +75,14 @@ const READ_COLORS = `(() => {
   const bg = s => { const e = $(s); return e ? getComputedStyle(e).backgroundColor : null; };
   const fg = s => { const e = $(s); return e ? getComputedStyle(e).color : null; };
   return JSON.stringify({
-    primaryBg: bg('.btn.primary'), primaryFg: fg('.btn.primary'),
+    // Fix pass finding 2: scoped to #print, not the bare '.btn.primary' this
+    // used to be. #gmOpen (#141) now also carries .btn.primary and sits
+    // earlier in the DOM, so the bare selector silently started resolving to
+    // #gmOpen instead -- #print's own tint went unchecked with no test ever
+    // going red. #print is the card sheet's own Print button, which is what
+    // this reads by name everywhere else in this file (the Graphite re-check
+    // below reuses this same expression).
+    primaryBg: bg('#print.btn.primary'), primaryFg: fg('#print.btn.primary'),
     abMainBg: bg('#abBench'), gmNavNextBg: bg('#gmNext2'),
     segOnFg: fg('#maxSubsSeg button.on'),
     // #29 decision 3: \`#showMinutes\` moved into the card sheet's row list and
@@ -244,8 +251,8 @@ export async function teamColorPass(c, origin) {
     const r = JSON.parse(await evalIn(c, READ_COLORS));
 
     const tinted = [
-      ['.btn.primary background', r.primaryBg, ROYAL_FILL],
-      ['.btn.primary label', r.primaryFg, ROYAL_LABEL],
+      ['#print.btn.primary background', r.primaryBg, ROYAL_FILL],
+      ['#print.btn.primary label', r.primaryFg, ROYAL_LABEL],
       ['.ab-main (#abBench) background', r.abMainBg, ROYAL_FILL],
       ['.gm-nav.next (#gmNext2) background', r.gmNavNextBg, ROYAL_FILL],
       ['.seg button.on (#maxSubsSeg) text', r.segOnFg, ROYAL_FILL],
@@ -297,7 +304,7 @@ export async function teamColorPass(c, origin) {
     await evalIn(c, step(`document.querySelectorAll('#teamMenu .teammenu-item')[1]?.click()`));
     const a = JSON.parse(await evalIn(c, READ_COLORS));
     if (a.primaryBg !== GRAPHITE_INK) {
-      problems.push(`.btn.primary background is ${a.primaryBg} after switching to the Graphite team, `
+      problems.push(`#print.btn.primary background is ${a.primaryBg} after switching to the Graphite team, `
         + `want ${GRAPHITE_INK} — no reload happened in between`);
     }
     const invariant = [

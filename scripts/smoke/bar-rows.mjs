@@ -15,16 +15,11 @@
  * `getComputedStyle(...).backgroundColor` resolution every other check here
  * uses instead of a hand-typed literal for the color itself -- only the
  * numbers below are hand-typed, and they are measurements, not a formula. */
-import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, setWidth } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 
 const WIDTHS = [390, 1280];
 const TOL = 2;
-
-async function setWidth(c, width) {
-  await c.send('Emulation.setDeviceMetricsOverride', { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-}
 
 async function measureRow(c, rowSel, trackSel, valueSel) {
   return JSON.parse(await evalIn(c, `(() => {

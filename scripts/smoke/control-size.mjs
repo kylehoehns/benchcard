@@ -1,6 +1,6 @@
 import { evalJSON, tap } from './sheet-drive.mjs';
 import { goRich } from './fixtures.mjs';
-import { TODAY_HOME, CSS_VAR_COLOR_PROBE } from './dom.mjs';
+import { TODAY_HOME, CSS_VAR_COLOR_PROBE, evalIn } from './dom.mjs';
 
 /* #140 (prototype control size), "What would settle it" items 1, 3-6 -- the
  * "Drawn sizes" row of the spec's Proof table. Nothing before this pinned how
@@ -89,10 +89,44 @@ async function welcomeTabMetrics(c) {
       selected: b.getAttribute('aria-selected') === 'true',
       afterH: parseFloat(getComputedStyle(b, '::after').height),
     }));
-    return JSON.stringify({ trackH: rect(track).h, btns });
+    const sel = track.querySelector('button[role="tab"][aria-selected="true"]');
+    // Forced open on top of whatever view was already on screen (this
+    // function's own comment below), so the tab can land well past the
+    // viewport's own height -- scroll it into view before reading its rect,
+    // or the hover check below dispatches a mouseMoved at a point no longer
+    // over the button at all.
+    if (sel) sel.scrollIntoView({ block: 'center' });
+    const selRect = sel ? rect(sel) : null;
+    const selBg = sel ? getComputedStyle(sel).backgroundColor : null;
+    return JSON.stringify({ trackH: rect(track).h, btns, selRect, selBg });
   })()`);
+
+  /* Fix pass finding 1: a selected welcome tab must keep `--seg-on` on hover,
+   * not repaint with the hover tint. Proved with a REAL CDP `mouseMoved` over
+   * the selected tab's own center, never a `.hover()`/class toggle in script
+   * -- `:hover` is a real UA state, not a class, and this suite's default
+   * mobile+touch emulation always resolves `(hover: hover)` to false (a
+   * finger cannot rest), which would make this assertion pass for the wrong
+   * reason. Touch emulation is switched off for exactly this one measurement
+   * and restored straight after, to the same `{ enabled: true, maxTouchPoints:
+   * 5 }` `scripts/smoke.mjs` itself sets up, so no later check in this pass
+   * (or the next one) runs under a different pointer than the rest of the
+   * suite. */
+  let selHoverBg = null;
+  if (m && m.selRect) {
+    const x = m.selRect.l + m.selRect.w / 2;
+    const y = m.selRect.t + m.selRect.h / 2;
+    await c.send('Emulation.setTouchEmulationEnabled', { enabled: false, maxTouchPoints: 1 });
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    selHoverBg = await evalIn(c, `getComputedStyle(document.querySelector(${JSON.stringify(WELCOME_TABLIST)})
+      .querySelector('button[role="tab"][aria-selected="true"]')).backgroundColor`);
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: -10, y: -10 });
+    await c.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  }
+
   await tap(c, `document.getElementById('view-welcome').hidden = true`);
-  return m;
+  return m ? { ...m, selHoverBg } : m;
 }
 
 // Items 4 and 5: each stepper's pill (drawn 88x32, painted in --seg-track),
@@ -162,6 +196,12 @@ function checkWelcomeTabs(problems, theme, m) {
     if (!near(b.h, 32)) problems.push(`${theme}: a welcome tab is ${b.h}px tall, want 32 +/-${TOL}`);
     if (!near(b.afterH, 48)) problems.push(`${theme}: a welcome tab's hit area is ${b.afterH}px, want 48 +/-${TOL}`);
     checkSegWeight(problems, theme, 'a welcome tab', b);
+  }
+  // Fix pass finding 1: hovering the selected tab must not repaint it.
+  if (m.selBg == null || m.selHoverBg == null) {
+    problems.push(`${theme}: the selected welcome tab's background was not read before/after hover -- nothing checked`);
+  } else if (m.selHoverBg !== m.selBg) {
+    problems.push(`${theme}: hovering the selected welcome tab repaints it (${m.selHoverBg} instead of ${m.selBg})`);
   }
 }
 

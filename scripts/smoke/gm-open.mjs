@@ -11,15 +11,10 @@
  * of its own, but `.gm-start` always does, and `.cols`'s `align-items:
  * stretch` (narrow) / block layout (wide) both give it the panel's full
  * width either way -- the same width `#gmOpen` is being asked to match. */
-import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, CSS_VAR_COLOR_PROBE } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, CSS_VAR_COLOR_PROBE, setWidth } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 
 const TOL = 1;
-
-async function setWidth(c, width) {
-  await c.send('Emulation.setDeviceMetricsOverride', { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-}
 
 async function measure(c) {
   return JSON.parse(await evalIn(c, `(() => {
