@@ -307,7 +307,17 @@
    The new room is 1266108 * 2% + 24576 = 49898 bytes, still under 60000.
    `requests` measured 42 of its 43 ceiling and DOM nodes 1373 of 1617, both
    unchanged by the pin. */
-export const BYTES_BASELINE = 1_266_108;
+
+/* #139 re-pinned it again: a full cold load of the #139 branch, rebased on
+   #147, measured 1326881 bytes at 390x844 with
+   `node scripts/smoke.mjs --json --no-tests`, 1295.8 KB against the old
+   1285.2 KB ceiling. The growth since #135 is #136-#147's screen work plus
+   #139's focus and announce code: the live regions, the per-row screen-reader
+   labels and the focus calls in `app/gamemode.js`, `app/app.js` and
+   `app/toast.js`. The new room is 1326881 * 2% + 24576 = 51113 bytes, still
+   under 60000. `requests` measured 42 of its 43 ceiling and DOM nodes 1392 of
+   1617, both unchanged by the pin. */
+export const BYTES_BASELINE = 1_326_881;
 
 /* #37: the node baseline, re-pinned DOWNWARD. `budgets.json` records 1519 from
    a 2026-08-24 run; a full cold load of the commit this ships with measures

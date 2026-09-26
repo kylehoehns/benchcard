@@ -45,11 +45,31 @@ export function renderSummary() {
 }
 
 export function renderIssues() {
-  const box = $('#issues'); box.textContent = '';
+  const box = $('#issues');
   const p = plans[state.activeGame];
-  if (!p || noRoster()) return;   // the timeline is already asking for a roster; do not shout it in red too
-  const rank = { error: 0, warn: 1, info: 2 };
   const ico = { error: 'circle-alert', warn: 'triangle-alert', info: 'info' };
+  const list = (!p || noRoster()) ? [] : issuesList(p);
+  /* #139 item 14: same text as last time -- leave the existing child nodes
+     alone (same node identity) instead of tearing them down and rebuilding
+     identical rows on every render. */
+  const sig = JSON.stringify(list.map(i => [i.severity, i.message]));
+  if (sig === lastIssuesSig) return;
+  lastIssuesSig = sig;
+  box.textContent = '';
+  for (const i of list) {
+    const a = el('div', 'alert ' + i.severity);
+    const ic = el('span', 'ico');
+    ic.append(icon(ico[i.severity], { size: '1.05em' }));
+    a.append(ic, el('span', null, i.message));
+    box.append(a);
+  }
+}
+
+let lastIssuesSig = null;   // #139 item 14: the last text `renderIssues` painted
+
+// the timeline is already asking for a roster; do not shout it in red too
+function issuesList(p) {
+  const rank = { error: 0, warn: 1, info: 2 };
   const list = [...p.issues];
   /* #29 decision 7: while blocked, `timelineEmpty` already shows the first
      error (the same one `blockedFix`, state.js, picks) as the reason the
@@ -105,13 +125,7 @@ export function renderIssues() {
     list.unshift({ severity: 'info', code: 'NO_CLOSERS_PICKED', playerIds: [],
       message: 'Nobody is set to close yet, so this is still a balanced plan. Pick who finishes.' });
   }
-  for (const i of list.sort((x, y) => rank[x.severity] - rank[y.severity])) {
-    const a = el('div', 'alert ' + i.severity);
-    const ic = el('span', 'ico');
-    ic.append(icon(ico[i.severity], { size: '1.05em' }));
-    a.append(ic, el('span', null, i.message));
-    box.append(a);
-  }
+  return list.sort((x, y) => rank[x.severity] - rank[y.severity]);
 }
 
 export function renderPlanTable() {

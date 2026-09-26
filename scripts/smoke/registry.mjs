@@ -114,6 +114,7 @@ import { gameFieldMatchPass } from './game-field-match.mjs';
 import { gmOpenPass } from './gm-open.mjs';
 import { benchLookPass } from './bench-look.mjs';
 import { benchDetailsPass } from './bench-details.mjs';
+import { focusAnnouncePass } from './focus-announce.mjs';
 
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
@@ -381,6 +382,17 @@ export const ROWS = Object.freeze([
   // replaced -- see rotation-undo.mjs.
   { id: 'rotationundo', name: 'mid-game rotation change offers Undo', selectable: true, setup: 'rich',
     run: ctx => rotationUndoPass(ctx.c, ctx.origin) },
+  // #139's own guard (see docs/specs/139-focus-announce.md's Proof section):
+  // a pushed screen lands focus on its own heading and titles the tab, Back
+  // returns it to the door it came from (or falls back if that door is
+  // gone), no forced move at boot or on welcome, three callers that place
+  // their own focus keep winning, bench mode's stint-boundary and swap/sit/
+  // reset focus rules, #gmLive's stint-change text, aria-pressed and
+  // accessible names Chrome's own AX tree reports, toasts reachable inside
+  // an open sheet or bench mode, and Shuffle's/#issues' own announcements --
+  // see focus-announce.mjs.
+  { id: 'focusannounce', name: 'focus lands on the pushed heading, screens and Shuffle announce', selectable: true, setup: 'rich',
+    run: ctx => focusAnnouncePass(ctx.c, ctx.origin) },
   // #35's own guard (see docs/specs/35-wide-screens.md's Proof section): the
   // two-pane layout at 1280px and 840px -- the rail at left 0 and the open
   // screen starting where it ends, Team replacing the right pane and back

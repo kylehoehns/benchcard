@@ -46,7 +46,7 @@ import { switchRow } from './rules.js';
 import { DEFAULT_SETTINGS, colorName, seasonDate } from './storage.js';
 // The one close path and the one "ask before discarding" hook, shared with
 // every bottom sheet (#32 uses them from a full-screen dialog).
-import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
+import { closeSheet, closeSheetNow, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
 // season-view.js is already in the boot graph (app.js calls `initSeason`),
 // so this names no new request -- it is the one place a filed game is
 // counted, and Today's Season entry reads it the same way (#23 review).
@@ -481,6 +481,18 @@ function renderPass(g, i, d) {
   const when = tipoffLabel(g.tipoff);
 
   const b = el('button', 'today-game press');
+  // #139 item 3: Back's own door-lookup matches by game id -- this pass is
+  // rebuilt fresh by `renderTabs` on every return to Today, so nothing else
+  // survives the trip to be focused again.
+  b.dataset.gid = g.id;
+  // #139 item 3: `data-fk`, the same focus-preservation key `withFocus`
+  // (trap.js) already reads for an in-progress edit -- an undoable action
+  // whose own refresh has no screen change of its own (`viewRefresh`) still
+  // calls a full `render()` right after `focusAfterTransition` lands here, and
+  // without a stable key that second rebuild would replace this exact button
+  // and drop focus to BODY the moment its caller's own edit (e.g. Remove this
+  // game) is the thing that changed the screen.
+  b.dataset.fk = `today-game:${g.id}`;
 
   const top = el('div', 'pass-top');
   if (when) top.append(el('span', 'pass-when', when));
@@ -907,7 +919,15 @@ function commitFlow() {
   if (!draft) return;
   addGame(draft, draft.date);
   track('day_game_count', { games: state.day.games.length });
-  closeFlow();
+  draft = null;
+  showFlowAsk(false);
+  // #139 item 2: `closeFlow`'s own animated `closeSheet` leaves this dialog
+  // modal (and the rest of the page inert) for its whole slide -- long
+  // enough that `setView`'s focus landing on `#gameTitle` a moment later
+  // would be a silent no-op. This is the one caller that leaves the screen
+  // rather than staying on it, so it closes instantly instead, same as
+  // `closeSheets` already does for every `.bsheet` on any screen change.
+  closeSheetNow($('#addGameFlow'));
   // `applyView` renders on a real transition into Games (#23 review, third
   // round) -- a `renderAll()` here would be exactly the double work it flagged.
   setView('games');

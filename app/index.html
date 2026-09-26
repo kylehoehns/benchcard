@@ -411,7 +411,7 @@
          Settings' static `data-bar-title`), and toggles `aria-hidden` so it is
          never a second announced heading where a large title already exists
          (decision 6). -->
-    <h1 class="bar-title" id="barTitle" aria-hidden="true"></h1>
+    <h1 class="bar-title" id="barTitle" aria-hidden="true" tabindex="-1"></h1>
     <div class="bar-today" id="barToday">
       <div class="spacer"></div>
       <button class="keys-hint press" id="keysHint" type="button" aria-label="Keyboard shortcuts"><kbd>?</kbd><span>Shortcuts</span></button>
@@ -478,7 +478,7 @@
          is Today's large title (`data-large-title`), so `syncBarTitle`
          (render.js) copies its textContent -- just the team name, since the
          chevron icon contributes none -- into `#barTitle` when scrolled. -->
-    <h1 class="today-h1" data-large-title>
+    <h1 class="today-h1" data-large-title tabindex="-1">
       <button class="teambtn press" id="teamBtn" type="button" popovertarget="teamMenu">
         <span id="teamBtnLabel"></span>
         <span class="i teambtn-chev" data-icon="chevron-right" aria-hidden="true"></span>
@@ -523,7 +523,7 @@
            the header, above the sentence: the prototype (`light-game-
            timeline.png`) reads title, sub line, sentence, in that order. -->
       <div class="dayhead noprint">
-        <h1 class="game-h1" id="gameTitle" data-large-title></h1>
+        <h1 class="game-h1" id="gameTitle" data-large-title tabindex="-1"></h1>
         <p class="game-sub" id="gameSub"></p>
       </div>
 
@@ -679,6 +679,12 @@
               <span class="spacer"></span>
               <button class="btn ghost sm press" id="regen"><span class="i" data-icon="shuffle"></span>Shuffle</button>
             </div>
+            <!-- #139 item 13: a plain Shuffle -- one that clears no hand swaps
+                 and touches no underway game, so neither `flash` nor #134's
+                 "Rotation changed." toast fires -- announces itself here.
+                 `app.js`'s `#regen` handler writes this only in that one
+                 case, so a Shuffle is never announced twice. -->
+            <div class="sr-only" id="regenLive" role="status" aria-live="polite"></div>
           </section>
 
           <!-- #30 decision 4: "Across the day" moved to the Season screen,
@@ -1046,7 +1052,7 @@
          rows themselves, the second group under them and the empty state are
          all painted by `roster-view.js`. -->
     <div class="dayhead">
-      <h1 class="team-h1" id="teamTitle" data-large-title>Team</h1>
+      <h1 class="team-h1" id="teamTitle" data-large-title tabindex="-1">Team</h1>
       <!-- "11 players": the prototype's muted sub, and the same count the
            roster footer used to carry, so it keeps the id that already had a
            writer. -->
@@ -1208,7 +1214,7 @@
          call: every other back screen keeps its own `h1` and `#barTitle`
          hides instead (`.game-h1`'s pattern, extended here). -->
     <div class="dayhead">
-      <h1 class="season-h1" data-large-title>Season</h1>
+      <h1 class="season-h1" data-large-title tabindex="-1">Season</h1>
       <p class="season-sub" id="seasonSub"></p>
     </div>
 
@@ -1594,10 +1600,16 @@
 
   <!-- ============================ GAME MODE ============================ -->
   <div class="gm noprint" id="gamemode" hidden tabindex="-1" role="dialog" aria-modal="true" aria-label="Bench mode">
+    <!-- #139 item 7: the stint change, read once -- `renderGameMode` writes
+         this only when the stint index differs from the one it last wrote
+         (open, a pick and a swap all leave it alone). Static, not built per
+         render, so there is exactly one live node here regardless of how
+         many times bench mode repaints. -->
+    <div class="sr-only" id="gmLive" role="status"></div>
     <div class="gm-bar">
       <button class="gm-x press" id="gmClose" aria-label="Leave bench mode"><span class="i" data-icon="x"></span></button>
       <div class="gm-title"><span id="gmGame"></span><span class="gm-clock" id="gmClock"></span></div>
-      <button class="gm-x press" id="gmReset" title="Undo in-game changes" hidden><span class="i" data-icon="rotate-ccw"></span></button>
+      <button class="gm-x press" id="gmReset" aria-label="Back to the printed plan" hidden><span class="i" data-icon="rotate-ccw"></span></button>
     </div>
 
     <!-- The card in the coach's pocket goes stale the moment anything in here

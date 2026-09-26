@@ -118,6 +118,7 @@ function toastHost() {
   let host = dialog.querySelector(':scope > .bsheet-toasts');
   if (!host) {
     host = el('div', 'bsheet-toasts');
+    host.setAttribute('role', 'status');   // #139 item 12: live before its first toast lands
     dialog.insertBefore(host, dialog.querySelector('.bsheet-status'));
   }
   return host;

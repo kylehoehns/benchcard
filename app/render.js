@@ -129,6 +129,15 @@ let settled = null;
 const ROTATION_CHANGED = 'Rotation changed.';
 const SWAPS_CLEARED = ' The swaps you made by hand were cleared.';
 
+/* #139 item 13: did the branch below just show one of the two messages
+ * above? A caller (`#regen`'s handler) needs to know this to decide whether
+ * a plain Shuffle needs its own announcement -- reading this flag, set only
+ * where those messages are actually sent, is the one way to know without
+ * re-deriving `moved.length && priorSettled && !rotationOfferSuppressed()`
+ * or `cleared` a second time. */
+let rotationJustAnnounced = false;
+export const rotationAnnounced = () => rotationJustAnnounced;
+
 export function render(...keys) {
   if (!state.onboarded) return;
   const priorSettled = settled;
@@ -145,12 +154,15 @@ export function render(...keys) {
      since both already carry -- or are -- their own toast. */
   const moved = rotationMoved();
   const cleared = overridesDropped();
+  rotationJustAnnounced = false;
   if (moved.length && priorSettled && !rotationOfferSuppressed()) {
     // Parsed here, not held parsed: this is the one repaint in many that
     // actually needs an independent object tree to restore into.
     showUndo(ROTATION_CHANGED + (cleared ? SWAPS_CLEARED : ''), JSON.parse(priorSettled));
+    rotationJustAnnounced = true;
   } else if (cleared) {
     flash(ROTATION_CHANGED + SWAPS_CLEARED);
+    rotationJustAnnounced = true;
   }
   save();
   /* Same shape as `overridesDropped()` one line above, for the same kind of
@@ -406,6 +418,11 @@ const VIEW_MAIN_ID = { today: 'view-today', games: 'view-games', team: 'view-tea
    exposed to assistive tech; the four views with a `[data-large-title]` of
    their own hide the copy from the accessibility tree so exactly one `h1`
    per screen is announced, as before. */
+// #139 item 5: Today's tab title, decided with the maintainer -- the static
+// home title `index.html`'s own `<title>` already carries at boot, kept here
+// as the one place that sentence is spelled out for `syncBarTitle` below.
+const HOME_TITLE = 'Benchcard — basketball substitution rotation generator';
+
 function syncBarTitle(v) {
   const barTitleEl = $('#barTitle');
   if (!barTitleEl) return;
@@ -419,6 +436,56 @@ function syncBarTitle(v) {
     barTitleEl.textContent = (main && main.dataset.barTitle) || '';
     barTitleEl.setAttribute('aria-hidden', main ? 'false' : 'true');
   }
+  const heading = largeTitle ? largeTitle.textContent : main && main.dataset.barTitle;
+  /* #139 item 5: same source as the bar's own copy above -- one answer for
+     "what this screen is called" -- so a rename follows for free the next
+     time `render()`'s own end-of-function call runs this. Today always reads
+     the static home title regardless of what its own large title says (it
+     shows the team name, not "Today"). Welcome has no `VIEW_MAIN_ID` entry,
+     so `heading` stays undefined and `document.title` is left exactly as
+     boot's own static markup set it. */
+  document.title = v === 'today' ? HOME_TITLE : heading ? `${heading} · Benchcard` : document.title;
+}
+
+// #139 item 1: the heading a real transition into each pushed screen lands
+// focus on. `tabindex="-1"` in index.html lets it take focus without joining
+// the Tab order. Settings has no `[data-large-title]` of its own (see
+// `syncBarTitle`'s comment above); its heading lives in the bar, `#barTitle`.
+const VIEW_HEADING = { games: '#gameTitle', team: '#teamTitle', season: '.season-h1', settings: '#barTitle' };
+
+// #139 item 3: the door on Today that reopens each pushed screen, fixed for
+// team/season/settings; games is matched by id below (`renderTabs` rebuilds
+// every `.today-game` pass on each return, so the node itself never survives
+// the trip).
+const VIEW_DOOR = { team: '#todayTeam', season: '#todaySeason', settings: '#settingsBtn' };
+
+const onScreen = n => !!n && n.getClientRects().length > 0;
+
+// #139 item 3: focus the door that opened `from`, or Today's own heading if
+// that door is gone or hidden. Never BODY -- `.today-h1` is always on screen
+// once onboarded.
+function focusDoorFor(from) {
+  const gid = from === 'games' && state.day?.games[state.activeGame]?.id;
+  const sel = from === 'games' ? (gid ? `.today-game[data-gid="${CSS.escape(gid)}"]` : null) : VIEW_DOOR[from];
+  // `sel` is null when `from` names no door at all (the game it opened is
+  // gone, day included) -- falls through to `.today-h1` the same as a door
+  // that resolved but is off-screen, rather than returning with focus left
+  // wherever the repaint above dropped it.
+  const door = sel && document.querySelector(sel);
+  const target = onScreen(door) ? door : document.querySelector('.today-h1');
+  target?.focus({ preventScroll: true });
+}
+
+// #139 items 1, 3, 4: run once per real transition (the same gate the
+// section repaints just above use), after every render this transition
+// causes -- callers with their own focus call (item 2) run after `setView`
+// returns and win, since this happens synchronously inside it.
+function focusAfterTransition(v, from) {
+  if (v === 'welcome') return;              // item 4: never on the welcome screen
+  if (v === 'today') { focusDoorFor(from); return; }
+  const sel = VIEW_HEADING[v];
+  const h = sel && document.querySelector(sel);
+  h?.focus({ preventScroll: true });
 }
 
 /* #33 decision 1: one `IntersectionObserver`, re-targeted on every view
@@ -837,6 +904,11 @@ function applyView(v, from) {
        #34 decision 7: `resume` rides along -- a real transition into Today is
        exactly when which game is part-played may have changed underneath it. */
     else if (v === 'today') render('tabs', 'resume');
+    // #139 items 1, 3, 4: after the repaint above, so `.today-game` (rebuilt
+    // by `render('tabs', ...)`) and the pushed screen's own content both
+    // exist to focus. Synchronous, so a caller with its own focus call
+    // (item 2) that runs after `setView` returns overrides this.
+    focusAfterTransition(v, from);
   }
 }
 
