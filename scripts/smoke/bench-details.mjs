@@ -75,7 +75,7 @@ export async function benchDetailsPass(c, origin) {
           if (w === 320) {
             const tagged = rows.filter(row => row.tagged).map(row => row.h);
             const plain = rows.filter(row => !row.tagged).map(row => row.h);
-            if (tagged.length && plain.length && Math.max(...tagged) !== Math.max(...plain)) {
+            if (tagged.length && plain.length && Math.max(...tagged) > Math.max(...plain)) {
               problems.push(`${where}: a floor row with "just on" is ${Math.max(...tagged)}px tall against `
                 + `${Math.max(...plain)}px for one without -- the tag grew the row`);
             }
