@@ -94,6 +94,7 @@ import { focusClearPass } from './focus-clear.mjs';
 import { floatingControlsPass } from './floating-controls.mjs';
 import { resumeBarPass } from './resume-bar.mjs';
 import { finishGamePass } from './finish-game.mjs';
+import { rotationUndoPass } from './rotation-undo.mjs';
 import { wideLayoutPass } from './wide-layout.mjs';
 import { narrowPass } from './narrow.mjs';
 import { sweepPass } from './sweep.mjs';
@@ -296,6 +297,16 @@ export const ROWS = Object.freeze([
   // is reopened -- see finish-game.mjs.
   { id: 'finishgame', name: 'a coach finishes a game with Finish game', selectable: true, setup: 'rich',
     run: ctx => finishGamePass(ctx.c, ctx.origin) },
+  // #134's own guard (see docs/specs/134-undo-mid-game-rotation.md's Proof
+  // section): a mid-game rebuild of the rotation -- Format's minutes-per-period
+  // stepper, Sub interval, Who's here, or the Plan sheet's strategy seg --
+  // offers the same "Rotation changed." Undo toast an underway game's hand
+  // swaps get cleared by, Undo restores periods/period minutes, live.overrides,
+  // live.at and the plan table's played minutes exactly, and an existing
+  // undoable action ("out for the rest") keeps its own toast rather than being
+  // replaced -- see rotation-undo.mjs.
+  { id: 'rotationundo', name: 'mid-game rotation change offers Undo', selectable: true, setup: 'rich',
+    run: ctx => rotationUndoPass(ctx.c, ctx.origin) },
   // #35's own guard (see docs/specs/35-wide-screens.md's Proof section): the
   // two-pane layout at 1280px and 840px -- the rail at left 0 and the open
   // screen starting where it ends, Team replacing the right pane and back

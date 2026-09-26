@@ -27,8 +27,9 @@ import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from '.
 import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './teams-view.js';
 import { renderSeason, seasonGames } from './season-view.js';
-import { state, save, renderStorageWarning, computeAll, overridesDropped, saveJustFailed, activeColor, hasGames } from './state.js';
-import { retireUndo, flash } from './toast.js';
+import { state, save, renderStorageWarning, computeAll, overridesDropped, rotationMoved, dayUnderway,
+  rotationOfferSuppressed, saveJustFailed, activeColor, hasGames } from './state.js';
+import { retireUndo, flash, showUndo } from './toast.js';
 import { initEdits } from './edit.js';
 // storage.js is already in the boot graph (state.js imports it for
 // `sanitizeSettings`/`DEFAULT_SETTINGS`), so this names no new request --
@@ -108,15 +109,49 @@ const GAME_SECTIONS = new Set(['setup', 'sentence', 'strategy', 'budget', 'balan
   'constraints', 'seasonadj', 'summary', 'issues', 'plan', 'timeline', 'totals',
   'cards', 'gameview']);
 
+/* #134: the record right after the *previous* render settled, kept only
+   while some game in the day is underway (a `clone(state)` -- a full
+   stringify-then-parse of all of `state` -- on every repaint of every screen
+   is not free, and only an underway game can ever offer this Undo). By the
+   time this render runs the current edit has already mutated `state` --
+   edit.js's own shape -- so this is the one place left holding what the
+   edit is a change FROM, which is what Undo has to restore.
+
+   Held as the `JSON.stringify` half of `clone` alone, not the parsed object:
+   most repaints while a game is underway are a swap tap that never moves the
+   rotation, so `moved.length` below is false far more often than true, and
+   the `JSON.parse` -- the half that actually allocates the independent
+   object tree Undo restores into -- only has to run on the repaint that
+   offers Undo, not on every one of them. */
+let settled = null;
+
+// Shared by both branches below, so the sentence can only ever read one way.
+const ROTATION_CHANGED = 'Rotation changed.';
+const SWAPS_CLEARED = ' The swaps you made by hand were cleared.';
+
 export function render(...keys) {
   if (!state.onboarded) return;
+  const priorSettled = settled;
   const which = (keys.length ? keys : ALL).filter(k => hasGames() || !GAME_SECTIONS.has(k));
   computeAll();
   /* `computeAll` is where a rotation that no longer matches the coach's hand
-     swaps drops them (see `syncOverrides`). It is silent by design -- pure
-     bookkeeping over the day's games -- so the one place that can say so out
-     loud is here, once, after all of them have been checked. */
-  if (overridesDropped()) flash('Rotation changed. The swaps you made by hand were cleared.');
+     swaps drops them (see `syncOverrides`), and where an underway game's
+     rotation moving at all -- swaps or not -- is noticed (`rotationMoved`).
+     Both are silent by design -- pure bookkeeping over the day's games -- so
+     this is the one place that says so out loud, once, after every game has
+     been checked. A move offers Undo, back to the snapshot just before this
+     edit; anything else keeps today's plain notice. Suppressed during an
+     Undo's own restore and during an existing `undoable` refresh (#134),
+     since both already carry -- or are -- their own toast. */
+  const moved = rotationMoved();
+  const cleared = overridesDropped();
+  if (moved.length && priorSettled && !rotationOfferSuppressed()) {
+    // Parsed here, not held parsed: this is the one repaint in many that
+    // actually needs an independent object tree to restore into.
+    showUndo(ROTATION_CHANGED + (cleared ? SWAPS_CLEARED : ''), JSON.parse(priorSettled));
+  } else if (cleared) {
+    flash(ROTATION_CHANGED + SWAPS_CLEARED);
+  }
   save();
   /* Same shape as `overridesDropped()` one line above, for the same kind of
      event: a state change the coach has to be told about once. `save()` has
@@ -158,6 +193,7 @@ export function render(...keys) {
      only when the words actually moved -- see its own comment. */
   syncBarTitle(state.view);
   measureBarSideIfHeaderChanged(state.view);
+  settled = dayUnderway() ? JSON.stringify(state) : null;
 }
 
 export const renderAll = () => render();

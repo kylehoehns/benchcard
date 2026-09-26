@@ -1260,16 +1260,78 @@ let dropped = 0;
    day were holding stale fives. */
 export const overridesDropped = () => { const n = dropped; dropped = 0; return n; };
 
-function syncOverrides(g, p) {
+/* #134: a game underway rewrites the minutes already played whenever its
+   rotation changes shape, whether or not there were hand swaps to drop --
+   so this is a second, companion signal to `dropped` above, not a
+   replacement. `underway` is handed in by `computeAll` (via `stage()`,
+   live.js's one rule for the question) rather than re-derived here, so this
+   function stays the same pure stamp-keeper it always was and never reads
+   `live.at`/`live.finished` itself. Read-and-reset, exactly like
+   `overridesDropped`; the id list (not just a count) is what lets a test
+   name which game moved without recomputing the stamp itself.
+
+   Filled across every day of the active TEAM -- `computeAll` solves them
+   all on every render (`dayPlans = team().days.map(solveDay)`), so an
+   underway game two days away from the one on screen adds to this set too.
+   `rotationMoved` reports only the ACTIVE day's games (`state.day`), the
+   scope `dayUnderway`/the settled snapshot already use, so a team-wide edit
+   can never offer -- or restore -- Undo over a day the coach is not
+   looking at (quality review, #134). The set itself still clears in full:
+   an off-screen day's stamp has already moved to match its new rotation,
+   so there is nothing left to report for it next time either way. */
+let moved = new Set();
+export const rotationMoved = () => {
+  const activeIds = new Set((state.day?.games || []).map(g => g.id));
+  const ids = [...moved].filter(id => activeIds.has(id));
+  moved.clear();
+  return ids;
+};
+
+/* #134: "underway" is `stage()` returning `'part-played'` -- live.js's one
+   rule, never re-derived from `live.at`/`live.finished` (live-guard.test.js
+   enforces this). One name for the check `computeAll`'s two solve paths and
+   `dayUnderway` below all need. */
+const isUnderway = (p, live) => stage(p, live) === 'part-played';
+
+/* #134: whether `render()` may afford a `clone(state)` for its settled
+   snapshot. `plans` is index-aligned with `state.day.games`, set just above
+   in `computeAll`. `state.day` can be `undefined` here -- `removeGame`
+   (#126) drops a team to zero days the moment its last game goes, and
+   `render()` still repaints after that -- so no day is never "underway"
+   rather than a crash. */
+export const dayUnderway = () =>
+  !!state.day && state.day.games.some((g, i) => isUnderway(plans[i], g.live));
+
+/* #134: one flag, not one per caller (the spec's own words), set around
+   Undo's own restore and around an `undoable` action's mutate+refresh, both
+   of which repaint synchronously. `render()` asks `rotationOfferSuppressed()`
+   after `computeAll()` and skips offering its own Undo while either is live,
+   so a second toast never steps on "out for the rest"'s or an Undo's own. */
+let suppressed = false;
+export function suppressRotationOffer(fn) {
+  suppressed = true;
+  try { return fn(); } finally { suppressed = false; }
+}
+export const rotationOfferSuppressed = () => suppressed;
+
+function syncOverrides(g, p, underway = false) {
   const live = g.live;
   if (!p || !p.ok || !live) return p;
-  if (!Object.keys(live.overrides || {}).length) { live.stamp = ''; return p; }
+  const hasOverrides = Object.keys(live.overrides || {}).length > 0;
+  // no swaps and not underway: nothing to protect and nothing to notice
+  if (!hasOverrides && !underway) { live.stamp = ''; return p; }
+
   const stamp = rotationStamp(p);
   if (!live.stamp) { live.stamp = stamp; return p; }   // first sight: adopt it
   if (live.stamp === stamp) return p;
-  live.overrides = {};
-  live.stamp = '';
-  dropped++;
+
+  // the rotation moved: swaps (if any) no longer match it and go, exactly
+  // as `reseed` drops them; an underway game says so either way (#134),
+  // since the played minutes were rewritten whether or not there were
+  // swaps to protect
+  live.stamp = hasOverrides ? '' : stamp;
+  if (hasOverrides) { live.overrides = {}; dropped++; }
+  if (underway) moved.add(g.id);
   return p;
 }
 
@@ -1386,7 +1448,7 @@ export function computeAll() {
           for (const [id, m] of Object.entries(hit.plan.minutes)) cum[id] += m;
           noteToday(hit.plan.minutes);
         }
-        return syncOverrides(g, hit.plan);
+        return syncOverrides(g, hit.plan, isUnderway(hit.plan, g.live));
       }
       const c = clone(g.constraints);
       /* The league floor, composed into the per-player map the engine has always
@@ -1433,7 +1495,7 @@ export function computeAll() {
         for (const [id, m] of Object.entries(p.minutes)) cum[id] += m;
         noteToday(p.minutes);
       }
-      return syncOverrides(g, p);
+      return syncOverrides(g, p, isUnderway(p, g.live));
     });
   };
 

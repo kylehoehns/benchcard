@@ -749,15 +749,19 @@ The controls #69 restyled on Today and the game screen hold 48px at every
 width, and the smoke check `today and game controls ≥ 48px` sweeps them.
 
 **Destructive actions are undoable, not confirmed.** Removing a player,
-removing a game, starting a new day and clearing in-game changes all happen
-immediately and raise an undo toast for nine seconds. A `confirm()` asks at the
-wrong moment — before the coach can see what it did, and a game removal is only
-judgeable once the rest of the day has rebalanced. The snapshot is the whole of
-`state`: a day is a few KB, and a per-action inverse would have to know that
-removing a player also sweeps their id out of every game's out-list,
-constraints and carryover. `state` is a `const` binding everything closes over,
-so a restore refills it in place rather than reassigning. There are no
-`confirm()` calls left in the app.
+removing a game, starting a new day, clearing in-game changes and editing a game
+while it is underway all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
+at the wrong moment — before the coach can see what it did, and a game removal
+is only judgeable once the rest of the day has rebalanced. When a game is
+part-played and an edit changes its period count, period minutes, substitution
+interval, roster presence or planning strategy, the rotation rebuilds (#134): the
+coach's hand swaps are dropped (if any), and the played minutes are rewritten.
+The snackbar offers Undo to restore the periods, the swaps, the current stint and
+the minutes as they were. The snapshot is the whole of `state`: a day is a few
+KB, and a per-action inverse would have to know that removing a player also
+sweeps their id out of every game's out-list, constraints and carryover. `state`
+is a `const` binding everything closes over, so a restore refills it in place
+rather than reassigning. There are no `confirm()` calls left in the app.
 
 **Bench mode traps focus.** It sits on top of the page rather than replacing
 it, so without a trap Tab walks into the form underneath.
