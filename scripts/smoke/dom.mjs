@@ -123,6 +123,54 @@ export const SOLID_FALLBACK_MEDIA = [
 // every call site.
 export const onScreen = (c, id) => evalIn(c, `!!(document.getElementById('${id}') && !document.getElementById('${id}').hidden)`);
 
+// #145 item 8: a named set of one element's own computed-style properties,
+// or null if the selector matches nothing -- the way `add-game-flow.mjs` and
+// `first-run-flow.mjs` each prove `#agClose .i`/`#frClose .i` paint the exact
+// same chip `#backBtn .i` does, from the PAINTED result rather than a copied
+// hex or px literal (AGENTS.md's own rule: a computed style, never a value
+// recomputed the way the CSS itself computes it).
+export async function computedStyle(c, sel, props) {
+  return JSON.parse(await evalIn(c, `(() => {
+    const el = document.querySelector(${JSON.stringify(sel)});
+    if (!el) return JSON.stringify(null);
+    const cs = getComputedStyle(el);
+    const out = {};
+    for (const p of ${JSON.stringify(props)}) out[p] = cs[p];
+    return JSON.stringify(out);
+  })()`));
+}
+
+// #145 item 8, continued: `#agClose`/`#frClose` have to draw the exact
+// `#backBtn .i` chip (Reuse: that rule's own selector list is extended,
+// never copied), with an icon rather than a text glyph. One shared
+// assertion, called once per flow with its own close selector --
+// `add-game-flow.mjs` and `first-run-flow.mjs` each carried a byte-for-byte
+// copy of this, `CHIP_PROPS` included, until it moved here.
+const CHIP_PROPS = ['backgroundColor', 'backdropFilter', 'width', 'height', 'borderRadius'];
+
+export async function assertChipMatchesBackBtn(c, ck, closeSel) {
+  const want = await computedStyle(c, '#backBtn .i', CHIP_PROPS);
+  const got = await computedStyle(c, `${closeSel} .i`, CHIP_PROPS);
+  if (ck(got, `${closeSel} has no .i chip to measure`)) {
+    for (const p of CHIP_PROPS) {
+      ck(got[p] === want[p], `${closeSel} .i's ${p} is "${got[p]}", want #backBtn .i's own "${want[p]}"`);
+    }
+  }
+  const closeIcon = JSON.parse(await evalIn(c,
+    `JSON.stringify(document.querySelector('${closeSel} .i')?.dataset.icon || null)`));
+  ck(closeIcon === 'x', `${closeSel}'s icon is data-icon="${closeIcon}", want "x"`);
+}
+
+// The chevron twin of the assertion above, for `#agBack`/`#frBack`.
+export async function assertBackIsChevron(c, ck, backSel) {
+  const back = JSON.parse(await evalIn(c, `JSON.stringify({
+    icon: document.querySelector('${backSel} .i')?.dataset.icon || null,
+    text: (document.querySelector('${backSel}')?.textContent || '').trim(),
+  })`));
+  ck(back.icon === 'chevron-left', `${backSel}'s icon is data-icon="${back.icon}", want "chevron-left"`);
+  ck(back.text.includes('Back'), `${backSel} reads "${back.text}", want it to still say "Back"`);
+}
+
 // The "get back to Today" script every sweep below opens from. One copy,
 // here, because `sweepPass`, `touchPass`, `settingsRowPass` and
 // `appLargeTextPass` all need it and it moved unchanged out of `smoke.mjs`.

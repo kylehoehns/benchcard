@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
    built under /new-guard -- it reads tokens.css, app.css and index.html and
    judges what is written there, the same way test/big-text.test.js already
    does for the em/px breakpoint ordering. It does not run the app; the
-   typescale smoke row (scripts/smoke.mjs --only "type scale: 7 sizes, 4
+   typescale smoke row (scripts/smoke.mjs --only "type scale: 8 sizes, 4
    weights") is what proves the computed result in a browser.
 
    Comments are stripped before every scan below, the same way
@@ -28,6 +28,7 @@ const index = stripHtml(readApp('index.html'));
 
 const SCALE = {
   '--fs-large': '2.125rem',
+  '--fs-flow': '1.875rem',
   '--fs-sentence': '1.5625rem',
   '--fs-title': '1.375rem',
   '--fs-headline': '1.0625rem',
@@ -36,14 +37,14 @@ const SCALE = {
   '--fs-footnote': '.8125rem',
 };
 
-test('tokens.css declares exactly the seven --fs-* tokens, at their spec values', () => {
+test('tokens.css declares exactly the eight --fs-* tokens, at their spec values', () => {
   const declared = new Map();
   for (const m of tokens.matchAll(/(--fs-[A-Za-z0-9-]+)\s*:\s*([^;]+);/g)) {
     declared.set(m[1], m[2].trim());
   }
   const names = [...declared.keys()].sort();
   assert.deepEqual(names, Object.keys(SCALE).sort(),
-    `tokens.css must declare exactly the seven --fs-* tokens and no other, got: ${names.join(', ')}`);
+    `tokens.css must declare exactly the eight --fs-* tokens and no other, got: ${names.join(', ')}`);
   for (const [name, value] of Object.entries(SCALE)) {
     assert.equal(declared.get(name), value, `${name} must be ${value}, got ${declared.get(name)}`);
   }

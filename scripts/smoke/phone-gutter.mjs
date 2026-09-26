@@ -4,12 +4,17 @@
  * each edge on every screen the ticket names -- 32px at a 32px root -- not
  * the 11.2px (22.4px) the old `.7rem` phone rule gave every one of them.
  *
+ * #145 item 9 extends this rather than opening a new check (its own Proof
+ * row names either): `#view-welcome`, the landing before first run, gets the
+ * same 16px-gutter claim at every TOUCH_WIDTHS phone (all <= the item's own
+ * 600px ceiling) -- see `measureWelcome`, below.
+ *
  * "Left" and "right" are measured exactly as the spec's own "What would
  * settle it" table defines them: `rect.left`, and `innerWidth - rect.right`.
  * Both come from a live `getBoundingClientRect()` read in the page, never
  * from the stylesheet -- a floor set in CSS has to be proven by the box the
  * browser actually painted. */
-import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, navigateAndWaitForCard, toGameOne } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, landWiped, navigateAndWaitForCard, toGameOne } from './dom.mjs';
 import { TOUCH_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
 import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
 
@@ -172,6 +177,26 @@ async function measureLargeText(c, origin) {
   return { bad, audited };
 }
 
+// #145 item 9: the landing before first run, wiped so it always shows --
+// same `landWiped` idiom `flow-inset.mjs` uses for the same reason, at every
+// TOUCH_WIDTHS phone (all <= 600, the spec's own ceiling for this item).
+const WELCOME_READY = `!document.getElementById('view-welcome').hidden`;
+
+async function measureWelcome(c, origin) {
+  const bad = [];
+  let audited = 0;
+  for (const w of TOUCH_WIDTHS) {
+    await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    await landWiped(c, `${origin}/index.html`, WELCOME_READY);
+    // `#view-welcome` itself spans the full viewport -- `.wel-in`, the child
+    // `.welcome`'s own padding insets, is what actually sits at the gutter.
+    const r = JSON.parse(await evalIn(c, `JSON.stringify(${edgeExpr(`document.querySelector('#view-welcome .wel-in')`)})`));
+    bad.push(...checkEdges(r, 16, `#view-welcome .wel-in@${w}px`));
+    if (r) audited += 2;
+  }
+  return { bad, audited };
+}
+
 export async function phoneGutterPass(c, origin) {
   const bad = [];
   let audited = 0;
@@ -187,6 +212,9 @@ export async function phoneGutterPass(c, origin) {
 
     const large = await measureLargeText(c, origin);
     bad.push(...large.bad); audited += large.audited;
+
+    const welcome = await measureWelcome(c, origin);
+    bad.push(...welcome.bad); audited += welcome.audited;
   } finally {
     // Leave the fixture exactly as `goRich` (setup) left it, for whatever
     // runs next in a full run -- the same courtesy `darkInputBgPass` and
@@ -199,7 +227,7 @@ export async function phoneGutterPass(c, origin) {
     pass: bad.length === 0,
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) off the gutter: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (5 screens + #abBench/#resumeBtn, ${TOUCH_WIDTHS.join('/')}px, `
+      : `${audited} measurements (5 screens + #abBench/#resumeBtn + #view-welcome, ${TOUCH_WIDTHS.join('/')}px, `
         + `plus 5 screens + #abBench at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px), all left = right = the .wrap gutter`,
   };
 }

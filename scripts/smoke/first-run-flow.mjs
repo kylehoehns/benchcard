@@ -1,4 +1,4 @@
-import { HEIGHT, WIDTH, landWiped } from './dom.mjs';
+import { WIDTH, landWiped, assertChipMatchesBackBtn, assertBackIsChevron, setWidth } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
@@ -38,9 +38,6 @@ import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
 const READY = `!document.getElementById('view-welcome').hidden`;
 const land = (c, origin) => landWiped(c, `${origin}/index.html`, READY);
-
-const viewport = (c, width) => c.send('Emulation.setDeviceMetricsOverride',
-  { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
 
 /* Everything one round trip can answer about the open flow -- the same
  * shape `add-game-flow.mjs`'s own `flowState` reads for `#addGameFlow`. */
@@ -184,6 +181,15 @@ async function stepTwoDefaults(c, ck) {
     `the pressed sub-interval choice reads "${body.onLabel}" "${body.onMark}", want "Every 4 min" "✓"`);
 }
 
+// #145 item 8: the same chip and chevron `add-game-flow.mjs`'s own
+// `closeChipAndBackChevron` proves for `#agClose`/`#agBack` -- one flow's
+// worth of assertions per file, since each drives its own dialog. The
+// assertions themselves are shared (dom.mjs).
+async function closeChipAndBackChevron(c, ck) {
+  await assertChipMatchesBackBtn(c, ck, '#frClose');
+  await assertBackIsChevron(c, ck, '#frBack');
+}
+
 /* Item 6: `#frBack` (real tap, priming Chrome's "genuine interaction" rule
  * for the `cancel` event right behind it -- `realTap`'s own comment), then
  * Android's back gesture on step 1 with text still in the draft. */
@@ -313,6 +319,23 @@ async function stepThreeShowsACard(c, ck) {
   ck(stage.printDisabled === false && stage.shareDisabled === false, '#frPrint/#frShare are not both enabled');
   ck(!stage.printPrimary && !stage.sharePrimary, '#frPrint/#frShare carry .primary, and neither should');
 
+  // #145 item 3: Print and Share are equal halves filling the row between
+  // the insets, 48px tall -- geometry, not a class name, the same way this
+  // function already measures the card's own fit rather than trusting a CSS
+  // rule to have applied.
+  const halves = await evalJSON(c, `(() => {
+    const p = document.getElementById('frPrint').getBoundingClientRect();
+    const s = document.getElementById('frShare').getBoundingClientRect();
+    return JSON.stringify({ pw: p.width, sw: s.width, ph: p.height, sh: s.height,
+      left: Math.round(p.left), right: Math.round(s.right), width: window.innerWidth });
+  })()`);
+  ck(Math.abs(halves.pw - halves.sw) <= 1,
+    `#frPrint is ${halves.pw}px wide, #frShare is ${halves.sw}px -- want within 1px of each other`);
+  ck(halves.ph >= 48 && halves.sh >= 48,
+    `#frPrint/#frShare are ${halves.ph}px/${halves.sh}px tall, want at least 48px`);
+  ck(halves.left === 16 && halves.right === halves.width - 16,
+    `the Print/Share row runs ${halves.left} to ${halves.right} of ${halves.width}px, want 16 to ${halves.width - 16}`);
+
   /* AND THE FIT, which is why this whole second landing runs at
      `LARGE_TEXT_WIDTH` instead of 390 (see `firstRunPass` below).
      `cardPreviewInto` ends in `fitPreview()`, and `fitPreview` is
@@ -404,6 +427,7 @@ export async function firstRunPass(c, origin) {
     await landingReads(c, ck);
     await stepOneCounts(c, ck);
     await stepTwoDefaults(c, ck);
+    await closeChipAndBackChevron(c, ck);
     await backAndCancel(c, ck);
     await discardSavesNothing(c, ck);
     await sampleFillsAndSavesNothing(c, ck);
@@ -417,10 +441,10 @@ export async function firstRunPass(c, origin) {
        is already on screen would repair the very thing being measured and
        report clean. 390 goes back before the tour, which is the width the
        rest of this pass and everything after it measures at. */
-    await viewport(c, LARGE_TEXT_WIDTH);
+    await setWidth(c, LARGE_TEXT_WIDTH);
     await land(c, origin);
     const cardCount = await stepThreeShowsACard(c, ck);
-    await viewport(c, WIDTH);
+    await setWidth(c, WIDTH);
     if (cardCount !== null) {
       await finishStartsTheTour(c, ck);
       await landsOnTheGame(c, ck, cardCount);
@@ -429,7 +453,7 @@ export async function firstRunPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   }
 
-  await viewport(c, WIDTH).catch(() => {});
+  await setWidth(c, WIDTH).catch(() => {});
   await goRich(c, origin).catch(() => {});
 
   return {

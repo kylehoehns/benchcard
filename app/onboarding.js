@@ -625,9 +625,14 @@ function stepCard(wrap) {
      itself already sets in card.css, which loads AFTER app.css, so a
      single-class rule there could not win anyway. Measured on step 3 at 390px
      the stage read 4.8px of side padding, card.css's own narrow-phone value,
-     not the 16px that rule asked for. The narrow inset is the one that should
-     win here: the card is fitted to whatever width the stage leaves it, and
-     step 3 exists to show the card. */
+     not the 16px that rule asked for.
+
+     #145 decision 2 reverses the call this comment used to record: the stage
+     DOES get the 16px inset now, the same as every other direct child of a
+     flow step's wrapper (item 1's shared rule, app.css) -- `.stage`'s own
+     narrow-phone padding (card.css) still governs the card's OWN spacing
+     inside the stage, so at 320px the card shrinks from about 94% to about
+     84% of its prior size. That is accepted. */
   const stage = el('div', 'stage');
   stage.id = 'frStage';                     // literal, so test/dead-id.test.js reads it
   wrap.append(stage, el('p', 'flow-note',

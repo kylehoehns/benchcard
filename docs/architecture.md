@@ -223,11 +223,11 @@ are typed or pasted in any of the usual shapes (`12 Marcus Webb`,
 `Marcus Webb #12`, `Devon Ellis`), counted by `parseRoster` as they are typed,
 and Next stays disabled until five of them parse.
 
-It is the add-a-game flow's shell, down to the one painter both flows call: ✕
-on every step, "‹ Back" in the footer from step 2 on, and "Discard this team?"
-before typed text is lost, through the same `guardClose` seam. The two dialogs
-stay separate markup — what drifts between two flows is the painting, not
-twenty lines of tags.
+It is the add-a-game flow's shell, down to the one painter both flows call: a
+close chip on every step (the same 36px round control as elsewhere), a chevron
+back button in the footer from step 2 on, and "Discard this team?" before typed
+text is lost, through the same `guardClose` seam. The two dialogs stay separate
+markup — what drifts between two flows is the painting, not twenty lines of tags.
 
 **Nothing is written until Next is pressed on step 2.** Step 3 shows a real
 card, and the app has exactly one card builder, which reads the saved record —
@@ -416,10 +416,12 @@ toggles that player to Absent against a running count), and *How should minutes
 split?* (the four strategies with the one-line descriptions `STRATEGIES` holds,
 over the *Even out earlier games* switch `rules.js` builds for the Plan sheet).
 It is still one tap when nothing differs: step 1 carries a *Same as 9:00?* card
-whose summary line comes from the same `sentenceParts` a game pass reads, over a
-**Use it** button. `newGame(len, lastGame(), settings)` builds the draft when the
-flow opens, and **Use it** and **Plan it** commit that same object, so the
-shortcut and walking all three steps unchanged cannot land on different games.
+whose summary line comes from the same `sentenceParts` a game pass reads. The
+card is the whole button — tapping anywhere on it commits the draft — with
+*Use it* as right-aligned accent text. `newGame(len, lastGame(), settings)`
+builds the draft when the flow opens, and tapping the card and **Plan it** commit
+that same object, so the shortcut and walking all three steps unchanged cannot
+land on different games.
 When the team has no games (#126), there is no last game to copy: the draft is
 `newGame(0, null, settings)` dated today, and no *Same as …?* card is offered.
 The draft stays detached until one of them is pressed — a half-answered game is
@@ -429,10 +431,12 @@ is never what an undo snapshot catches.
 **Back walks that flow rather than throwing it away.** `showModal()` fires a
 cancelable `cancel` for Escape and for Android's back gesture alike, so
 `oncancel` prevents the close and steps back one, and from step 1 asks to leave.
-A gesture is never the only way to do something (I3): ✕ *Close* is top left on
-every step, and "‹ Back" joins the primary button in the footer from step 2 on.
-Closing with an opponent or a tip-off typed asks "Discard this game?" first,
-through the same `guardClose` seam and in-dialog ask row the paste sheet uses.
+A gesture is never the only way to do something (I3): a round close chip sits top
+left on every step (N5, C10), styled as the same 36px control `#backBtn` uses but
+with a close icon. A chevron back button joins the primary button in the footer
+from step 2 on, within thumb reach (I2). Closing with an opponent or a tip-off
+typed asks "Discard this game?" first, through the same `guardClose` seam and
+in-dialog ask row the paste sheet uses.
 
 **One header, two states.** `.bar` floats above content with no border or opaque
 background (L2, L3). Instead of a line, a `::before` scrim fades using

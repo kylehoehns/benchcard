@@ -1,7 +1,8 @@
-import { TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
+import { TODAY_HOME, WIDTH, HEIGHT, assertChipMatchesBackBtn, assertBackIsChevron } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { closedWithFocus, evalJSON, key, openAddGameFlow as openFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
 import { addGameFitChecks } from './add-game-fit.mjs';
+import { checkedTileHasNoRing, exactlyOneTintFill, stepThreeVisuals } from './add-game-visuals.mjs';
 
 /* #32's own guard (docs/specs/32-add-a-game.md, Proof seam 4): "add a game:
    three steps", RICH fixture, 390x844. It settles the acceptance items that
@@ -115,6 +116,22 @@ async function opensFullScreen(c, ck) {
   ck(s.segmentsOn === 1, `${s.segmentsOn} progress segment(s) are marked on, want exactly 1`);
   ck(s.onIndex === 0, `segment ${s.onIndex + 1} is marked on at step 1, want the first`);
   return true;
+}
+
+// #145 item 8: `#agClose`'s chip is the exact `#backBtn .i` chip (Reuse: the
+// selector list on that rule and its fallbacks is extended, never copied),
+// carrying an icon rather than a text glyph -- and `#agBack` carries the
+// chevron icon `#backBtn` itself uses, beside its own "Back" text. The
+// assertions themselves are shared with `first-run-flow.mjs` (dom.mjs).
+async function closeChipAndBackChevron(c, ck) {
+  await openFlow(c);
+  await assertChipMatchesBackBtn(c, ck, '#agClose');
+
+  await realTap(c, '#agNext');
+  await assertBackIsChevron(c, ck, '#agBack');
+
+  await realTap(c, '#agClose'); // nothing typed on step 2 -- closes at once
+  await waitClosed(c, '#addGameFlow');
 }
 
 /* I9: `openAddGame` used to call `showModal()` straight, bypassing
@@ -314,8 +331,11 @@ async function stepOneReads(c, ck) {
     `step 1 shows no "${sameAs}" card over the last game (its body reads "${b.text.slice(0, 120)}")`);
   ck(b.text.includes('11 players, 4 × 8, even minutes'),
     `the card's summary line is missing "11 players, 4 × 8, even minutes" (body reads "${b.text.slice(0, 160)}")`);
-  ck(b.buttons.includes('Use it'),
-    `step 1 offers no "Use it" button; its buttons are ${JSON.stringify(b.buttons)}`);
+  // #145 item 4: the card IS the button now, so its accessible name is its
+  // whole text (title, summary and "Use it" together) rather than "Use it"
+  // alone -- a substring match, not the exact-string one this used to be.
+  ck(b.buttons.some(t => t.includes('Use it')),
+    `step 1 offers no button naming "Use it"; its buttons are ${JSON.stringify(b.buttons)}`);
 }
 
 /* The step 2 grid: one entry per tile, with the accessible name the way a
@@ -343,6 +363,9 @@ async function stepTwoReads(c, ck) {
   const s = await flowState(c);
   if (!ck(s.step === '2 of 3', `Next from step 1 left the flow on "${s.step}"`)) return;
   ck(s.heading === "Who's here?", `step 2 asks "${s.heading}", want "Who's here?"`);
+  // #145 item 7: the bar fills every segment up to and including step 2, not
+  // step 2 alone.
+  ck(s.segmentsOn === 2, `at step 2 of 3, ${s.segmentsOn} progress segment(s) are on, want 2`);
 
   const players = await roster(c);
   let t = await tiles(c);
@@ -406,6 +429,8 @@ async function stepThreeReads(c, ck) {
   ck(s.heading === 'How should minutes split?',
     `step 3 asks "${s.heading}", want "How should minutes split?"`);
   ck(s.next === 'Plan it', `step 3's primary button reads "${s.next}", want "Plan it"`);
+  // #145 item 7: every segment fills by the last step.
+  ck(s.segmentsOn === 3, `at step 3 of 3, ${s.segmentsOn} progress segment(s) are on, want 3`);
 
   const sp = await splitState(c);
   if (!ck(sp.group && sp.options.length === 4,
@@ -438,7 +463,9 @@ async function useItCopies(c, ck) {
   const before = await dayGames(c);
   const prev = before.at(-1);
   await openFlow(c);
-  await realTap(c, '#agBody .flow-card .btn');
+  // #145 item 4: the card itself is the button now -- tapping anywhere on
+  // it, not a nested `.btn`, is what "Use it" has to still do.
+  await realTap(c, '#agBody .flow-card');
   if (!ck(await waitClosed(c, '#addGameFlow'), '"Use it" did not close the flow')) return;
 
   const after = await dayGames(c);
@@ -617,14 +644,18 @@ export async function addGameFlowPass(c, origin) {
     if (await opensFullScreen(c, ck)) {
       await backStepsThrough(c, ck);
       await stepOneReads(c, ck);
+      await exactlyOneTintFill(c, ck);
       await stepTwoReads(c, ck);
+      await checkedTileHasNoRing(c, ck, 'light');
       await stepThreeReads(c, ck);
+      await stepThreeVisuals(c, ck, 'light');
       // Nothing was typed on that walk through, so ✕ closes at once -- the
       // last three checks each want a flow of their own.
       await realTap(c, '#agClose');
       await waitClosed(c, '#addGameFlow');
       await headingDrawsNoRing(c, ck);
       await focusReturnsToTrigger(c, ck);
+      await closeChipAndBackChevron(c, ck);
       await useItCopies(c, ck);
       await planItCommits(c, ck);
       await tipoffSetsAndReadsAsLocaleTime(c, ck);
@@ -633,6 +664,17 @@ export async function addGameFlowPass(c, origin) {
       await forceCloseKeepsDraft(c, ck);
       await landsOnToday(c, ck);
       await addGameFitChecks(c, ck);
+
+      // #145 item 5's "light and dark" -- a dark reload, the same idiom
+      // `darkInputBgPass` uses, rather than emulating `prefers-color-scheme`.
+      await goRich(c, origin, { theme: 'dark' });
+      await openFlow(c);
+      await realTap(c, '#agNext');
+      await checkedTileHasNoRing(c, ck, 'dark');
+      await realTap(c, '#agNext');
+      await stepThreeVisuals(c, ck, 'dark');
+      await realTap(c, '#agClose');
+      await waitClosed(c, '#addGameFlow');
     }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
