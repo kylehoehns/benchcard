@@ -521,7 +521,7 @@ export async function focusAnnouncePass(c, origin) {
       const s = await import('/state.js');
       const five = s.state.day.games[0].live.overrides['1'];
       const target = s.state.players.find(p => !five.includes(p.id));
-      const rows = [...document.querySelectorAll('#sheetWhoBody .sheetrow')];
+      const rows = [...document.querySelectorAll('#sheetWhoBody .who-row')];
       const row = rows.find(r => r.getAttribute('aria-label') === (target.name || 'Unnamed'));
       row.click();
     })()`));
