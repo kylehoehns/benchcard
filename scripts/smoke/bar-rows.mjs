@@ -14,7 +14,18 @@
  * string, not the `rem` source), track color through the same
  * `getComputedStyle(...).backgroundColor` resolution every other check here
  * uses instead of a hand-typed literal for the color itself -- only the
- * numbers below are hand-typed, and they are measurements, not a formula. */
+ * numbers below are hand-typed, and they are measurements, not a formula.
+ *
+ * #144 moved `.dayrow` and `.sn-row` into a `.pgrp` card on purpose (item 1)
+ * and set `.sn-row`'s track to `var(--track)` on purpose (item 2), so their
+ * pre-#141 literals are no longer "nothing changed" -- they are exactly what
+ * #144 changed. Pinning a new literal for them here would just be a second,
+ * looser copy of what `season-look.mjs` (the #144 guard, Proof's "New smoke
+ * check") already owns for those two rows: it checks `.sn-row`'s track
+ * against `var(--track)` itself, not a hand-typed hex, the same way it
+ * already checks the radius against `var(--r-full)`. Only `.mrow` (the game
+ * screen's Plan sheet, which #144 does not touch) keeps its pinned literal
+ * here. */
 import { evalIn, step, TODAY_HOME, WIDTH, setWidth } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 
@@ -40,30 +51,23 @@ async function measureRow(c, rowSel, trackSel, valueSel) {
  * moved anything), by this same file's own `measureRow`, at 390 and 1280,
  * light and dark. The middle (bar) column is a flexible track, so its
  * resolved px width differs between 390 and 1280 -- both widths are pinned,
- * not just one. */
+ * not just one. Only `.mrow` remains: #144 owns `.dayrow` and `.sn-row` now
+ * (see the file comment above). */
 const WANT = {
   light: {
     390:  {
-      mrow:   { cols: '76.7969px 220.422px 41.5938px', trackH: 9.91, trackColor: 'rgba(28, 28, 30, 0.05)', valueAlign: 'right' },
-      dayrow: { cols: '76.7969px 220.422px 41.5938px', trackH: 9.91, trackColor: 'rgba(28, 28, 30, 0.05)', valueAlign: 'right' },
-      sn_row: { cols: '144px 143.625px 48px', trackH: 6.39, trackColor: 'rgba(28, 28, 30, 0.15)', valueAlign: 'right' },
+      mrow: { cols: '76.7969px 220.422px 41.5938px', trackH: 9.91, trackColor: 'rgba(28, 28, 30, 0.05)', valueAlign: 'right' },
     },
     1280: {
-      mrow:   { cols: '76.7969px 312.828px 41.5938px', trackH: 9.91, trackColor: 'rgba(28, 28, 30, 0.05)', valueAlign: 'right' },
-      dayrow: { cols: '76.7969px 634.422px 41.5938px', trackH: 9.91, trackColor: 'rgba(28, 28, 30, 0.05)', valueAlign: 'right' },
-      sn_row: { cols: '144px 557.625px 48px', trackH: 6.39, trackColor: 'rgba(28, 28, 30, 0.15)', valueAlign: 'right' },
+      mrow: { cols: '76.7969px 312.828px 41.5938px', trackH: 9.91, trackColor: 'rgba(28, 28, 30, 0.05)', valueAlign: 'right' },
     },
   },
   dark: {
     390:  {
-      mrow:   { cols: '76.7969px 220.422px 41.5938px', trackH: 9.91, trackColor: 'rgba(244, 244, 246, 0.06)', valueAlign: 'right' },
-      dayrow: { cols: '76.7969px 220.422px 41.5938px', trackH: 9.91, trackColor: 'rgba(244, 244, 246, 0.06)', valueAlign: 'right' },
-      sn_row: { cols: '144px 143.625px 48px', trackH: 6.39, trackColor: 'rgba(244, 244, 246, 0.16)', valueAlign: 'right' },
+      mrow: { cols: '76.7969px 220.422px 41.5938px', trackH: 9.91, trackColor: 'rgba(244, 244, 246, 0.06)', valueAlign: 'right' },
     },
     1280: {
-      mrow:   { cols: '76.7969px 312.828px 41.5938px', trackH: 9.91, trackColor: 'rgba(244, 244, 246, 0.06)', valueAlign: 'right' },
-      dayrow: { cols: '76.7969px 634.422px 41.5938px', trackH: 9.91, trackColor: 'rgba(244, 244, 246, 0.06)', valueAlign: 'right' },
-      sn_row: { cols: '144px 557.625px 48px', trackH: 6.39, trackColor: 'rgba(244, 244, 246, 0.16)', valueAlign: 'right' },
+      mrow: { cols: '76.7969px 312.828px 41.5938px', trackH: 9.91, trackColor: 'rgba(244, 244, 246, 0.06)', valueAlign: 'right' },
     },
   },
 };
@@ -88,32 +92,18 @@ export async function barRowsPass(c, origin) {
 
         // `.mrow`: the Plan sheet's minute bars, inside the "Stint by stint"
         // `<details>` on the game screen -- closed by default, so opened here.
+        // #144 does not touch the game screen, so this is the only row left
+        // to pin here (see the file comment above for `.dayrow`/`.sn-row`).
         await evalIn(c, `document.getElementById('tabledetails').open = true`);
         const mrow = await measureRow(c, '.mrow', '.track', '.v');
         check(problems, theme, width, '.mrow', mrow, WANT[theme][width].mrow);
         if (mrow) measured++;
-
-        // `.dayrow` and the ledger's `.sn-row` (the track variant, not the
-        // trackless per-game one) both live on Season (#30 moved the day
-        // chart there).
-        await evalIn(c, step(TODAY_HOME));
-        await evalIn(c, step(`document.querySelector('#todaySeason').click()`));
-        const dayrow = await measureRow(c, '.dayrow', '.trk', '.v');
-        check(problems, theme, width, '.dayrow', dayrow, WANT[theme][width].dayrow);
-        if (dayrow) measured++;
-
-        const snRow = await measureRow(c, '#seasonbox .sn-list .sn-row', '.sn-track', '.sn-min');
-        check(problems, theme, width, '.sn-row', snRow, WANT[theme][width].sn_row);
-        if (snRow) measured++;
-
-        await evalIn(c, step(TODAY_HOME));
-        await evalIn(c, step(`document.querySelector('.today-game').click()`));
       }
     }
     await setWidth(c, WIDTH);
 
-    // Rule 2a: 3 rows x 2 widths x 2 themes = 12 measurements expected.
-    if (measured < 12) problems.push(`only ${measured}/12 bar-row measurements were taken -- a selector stopped matching`);
+    // Rule 2a: 1 row x 2 widths x 2 themes = 4 measurements expected.
+    if (measured < 4) problems.push(`only ${measured}/4 bar-row measurements were taken -- a selector stopped matching`);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
@@ -125,6 +115,6 @@ export async function barRowsPass(c, origin) {
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `.mrow, .dayrow and .sn-row all match their own pinned columns, track height/color and value alignment, 390/1280px light and dark`,
+      : `.mrow matches its pinned columns, track height/color and value alignment, 390/1280px light and dark`,
   };
 }

@@ -22,18 +22,26 @@ async function readLedger(c) {
     const sv = await import('/season-view.js');
     const st = await import('/state.js');
     const eng = await import('/engine.js');
+    const roster = await import('/roster.js');
     const games = sv.seasonGames();
     const rows = sv.totals(games);
     const maxMin = rows.reduce((m, r) => Math.max(m, r.min), 0);
+    // #144 item 3: the top ledger shows callNames' first name (or the fuller
+    // disambiguated form on a collision), read live the same way, never a
+    // second full-name computation of our own.
+    const names = roster.callNames(st.state.players);
     const want = rows.map(r => ({
-      name: st.byId(r.id) ? ((st.byId(r.id).name || '').trim() || 'Unnamed') : 'Left the team',
+      name: st.byId(r.id) ? (names[r.id] || (st.byId(r.id).name || '').trim() || 'Unnamed') : 'Left the team',
+      // #144 item 3: "N games * N behind/ahead" is still offNote's own words,
+      // now carried in the row's one hidden-text element (app.css's single
+      // '.sr-only' rule) instead of a visible '.sn-x' span.
       footnote: \`\${r.games} game\${r.games === 1 ? '' : 's'}\${sv.offNote(r.off)}\`,
       minText: eng.fmtMinutes(r.min),
       pct: maxMin > 0 ? Math.min(100, (r.min / maxMin) * 100) : 0,
     }));
     const domRows = [...document.querySelectorAll('#seasonbox .sn-list .sn-row')].map(r => ({
       name: r.querySelector('.sn-nm')?.textContent || '',
-      footnote: r.querySelector('.sn-x')?.textContent || '',
+      footnote: r.querySelector('.sr-only')?.textContent || '',
       minText: r.querySelector('.sn-min')?.textContent || '',
       fillPct: parseFloat(r.querySelector('.sn-fill')?.style.width || '0'),
     }));
@@ -92,47 +100,28 @@ export async function seasonPass(c, origin) {
     if (Math.abs(d.fillPct - w.pct) > 0.5) problems.push(`row ${i} (${w.name}): fill ${d.fillPct}%, want ${w.pct.toFixed(1)}%`);
   }
 
-  /* ---- review #4: the minutes bar is the prototype's dominant element, not
-     a sliver -- but the prototype's own name column is only ever "Maya" or
-     "Eli", never a real roster's "Casey Lindqvist" or a footnote's "3 games *
-     16 behind" (`.sn-x`, `--fs-footnote`). A first pass gave the bar an `fr`
-     SHARE of the row (`1fr 2fr 3rem`), which grew it, but at 390px a third of
-     the row is not enough for an ordinary two-word name and its footnote --
-     both wrapped, so a one-line row became three. `minmax(0, 9rem) 1fr 3rem`
-     CAPS the name at 144px instead of giving it a share: wide enough that an
-     ordinary name and its footnote hold one line each, the bar still takes
-     whatever that leaves (145-190px across 320-390px here, well past the
-     original 88px), and the `0` floor keeps the column shrinkable rather than
-     fixed, so it still cannot be the reason a row overflows at a 32px root
-     (`app-large-text.mjs`'s "Filed games" case, `.sn-body .sn-row`, that a
-     plain fixed rem width broke). Measured live rather than read off the CSS
-     source: a source regex cannot tell a share that renders wider, or a name
-     that still fits one line, from one that only reads that way. */
+  /* ---- review #4, superseded by #144 item 2: the minutes bar must still be
+     the prototype's dominant element, not a sliver. #144 stopped the name
+     column wrapping at all (call names, one line, ellipsis if long --
+     `season-look.mjs` reads that CSS live), so the old two-word-name/footnote
+     wrap check no longer applies; what is still this file's own to check is
+     that the bar (`.sn-track`) is not squeezed back down to its pre-#30
+     sliver now that the row is 30px tall and padded 1rem each side. #144
+     item 2's `1rem` row padding (up from the old `.1rem`) trades roughly 29px
+     of row width for a shorter, ellipsis-capable name column; measured live
+     on RICH at 390px this settles at 115px -- still comfortably past the
+     original ~88px sliver, so the floor moves to 100px with it, not to
+     whatever a single run happens to measure. */
   const rowShapes = JSON.parse(await evalIn(c, `(() => {
     const rows = [...document.querySelectorAll('#seasonbox .sn-list .sn-row')];
-    const lines = (el) => el ? Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)) : null;
     return JSON.stringify(rows.map(r => {
       const track = r.querySelector('.sn-track');
-      const nm = r.querySelector('.sn-nm');
-      const x = r.querySelector('.sn-x');
-      return {
-        name: nm ? nm.textContent : null,
-        nameLines: lines(nm),
-        footnote: x ? x.textContent : null,
-        footnoteLines: lines(x),
-        trackW: track ? track.getBoundingClientRect().width : null,
-      };
+      return { trackW: track ? track.getBoundingClientRect().width : null };
     }));
   })()`));
   const track0 = rowShapes[0]?.trackW ?? 0;
-  if (track0 < 130) {
-    problems.push(`.sn-track is ${Math.round(track0)}px wide at ${WIDTH}px, want it meaningfully past the original ~88px (≥130px)`);
-  }
-  for (const wantName of ['Casey Lindqvist', 'Marcus Williams']) {
-    const row = rowShapes.find(r => r.name === wantName);
-    if (!row) { problems.push(`RICH fixture no longer has a "${wantName}" ledger row to check`); continue; }
-    if (row.nameLines !== 1) problems.push(`"${wantName}" wraps to ${row.nameLines} lines at ${WIDTH}px, want the name column wide enough for one`);
-    if (row.footnoteLines !== 1) problems.push(`"${wantName}"'s footnote (${JSON.stringify(row.footnote)}) wraps to ${row.footnoteLines} lines at ${WIDTH}px, want one`);
+  if (track0 < 100) {
+    problems.push(`.sn-track is ${Math.round(track0)}px wide at ${WIDTH}px, want it meaningfully past the original ~88px (≥100px)`);
   }
 
   /* ---- a filed game, opened: its rows and its Delete button ---- */
