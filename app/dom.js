@@ -28,6 +28,16 @@ export const clone = o => JSON.parse(JSON.stringify(o));
 
 export const uid = p => p + Math.random().toString(36).slice(2, 9);
 
+// #143: the bold ink check mark a chosen row carries -- a Who's here row
+// that's present, the picked row in game-setup.js's `paintGranRows`, or
+// balance.js's chosen shape row. Shared here so the three call sites don't
+// each keep their own copy of the same three lines.
+export const checkMark = () => {
+  const mark = el('span', 'prow-check', '✓');
+  mark.setAttribute('aria-hidden', 'true');
+  return mark;
+};
+
 /* One shared 2D context for text measurement. Several places size type by
    measuring it (the card auto-fit, the availability pills, game mode's call
    line) and a canvas measure costs no layout, unlike reading a laid-out box.

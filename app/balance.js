@@ -23,7 +23,7 @@
  * the solver's balance term identically zero. A coach who never opens
  * this fold gets exactly the plan they got before it existed.
  * ================================================================== */
-import { $, el } from './dom.js';
+import { $, el, checkMark } from './dom.js';
 import { state, save, colorOf, game } from './state.js';
 import { DEFAULT_TIER } from './engine.js';
 import { tick } from './fx.js';
@@ -132,11 +132,7 @@ function shapeRow(s, current, g) {
   txt.append(el('span', 'prow-t', s.label));
   txt.append(el('span', 'prow-sub', s.blurb));
   b.append(txt);
-  if (s.v === current) {
-    const check = el('span', 'prow-check', '✓');
-    check.setAttribute('aria-hidden', 'true');
-    b.append(check);
-  }
+  if (s.v === current) b.append(checkMark());
   b.onclick = () => {
     g.balance = s.v;
     save();

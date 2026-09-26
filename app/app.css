@@ -1374,10 +1374,27 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .rrow { --c: var(--muted); animation: rowIn var(--t-fast) var(--ease) both; flex-wrap: wrap; }
 .rrow .prow-t { min-width: min-content; }
 @keyframes rowIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
-.rrow .av { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-size: var(--fs-footnote); font-weight: 700;
+/* #143: `.who-row` widens this selector rather than reusing `.rrow` itself --
+   Who's here's own row needs the roster's badge look, not `.rrow`'s
+   `flex-wrap: wrap` (below) or its `.prow-t` floor, which would wrap the
+   badge, the name and the check onto three separate lines inside a
+   half-height sheet the way it wraps the level word under Team's roster,
+   which scrolls the whole page instead. */
+.rrow .av, .who-row .av { width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-size: var(--fs-footnote); font-weight: 700;
   flex: none;
   background: color-mix(in srgb, var(--c) 18%, transparent); color: color-mix(in srgb, var(--c) var(--av-ink), #000);
   box-shadow: inset 0 0 0 var(--av-ring) var(--c); font-variant-numeric: tabular-nums; }
+/* #143 fix pass: at a 320px/32px root the badge + gaps + check leave `.prow-t`
+   a narrower column than a single word of an ordinary name ("Marcus" alone,
+   `RICH`'s own `p0`) needs, let alone a long one -- `overflow-wrap: normal`
+   (the default `.prow-t` otherwise gets) does not create a break inside a
+   word, so the glyphs painted past the box's own right edge, into the
+   trailing check's own column, rather than wrapping under it. `overflow-wrap:
+   anywhere` is the same fix `.sn-nm`, `.pident-name` and `.flow-t` already
+   use for exactly this: a break inside the box's own width keeps every word
+   the box actually has room for, rather than clipped by `.pgrp`'s `overflow:
+   hidden` or drawn under the check beside it. */
+.who-row .prow-t { overflow-wrap: anywhere; }
 /* Edit mode (#31 item 7, decision 7): the order column, ahead of the badge.
    Grip, up and down are each a 48px target at EVERY width -- rationale at
    app/roster-view.js:93-99 (canonical). Pinned by test/roster-order.test.js.
@@ -4271,6 +4288,19 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      requires the hit area to be exactly this large, so the fill shrinking
      to match it loses nothing. */
   #agClose .i, #frClose .i, .gm-x .i { width: 48px; height: 48px; }
+
+  /* #143 fix pass: Who's here's own row -- badge, name, check/"Absent" all on
+     one line (never stacked, the fix pass 2 regression `row-stack.mjs`
+     guards) -- leaves `.prow-t` only 50px at this root: the row's 256px
+     (`.pgrp`'s own 1rem inset each side) minus `.prow`'s `.8125rem` padding
+     each side, the 2rem badge, the two `.75rem` gaps and the check's own
+     width. `overflow-wrap: anywhere` above stops that from clipping or
+     drawing under the check, but a real two-word name still wrapped to
+     6+ lines in a 50px column. The same buy-back `.actionbar` and `.bar`
+     already take at this exact breakpoint -- half the padding, less than
+     half the gap -- leaves `.prow-t` about 110px instead, enough for an
+     ordinary name to wrap in two or three. */
+  .who-row { gap: .3rem; padding-left: .5rem; padding-right: .5rem; }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach

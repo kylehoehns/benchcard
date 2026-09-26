@@ -143,6 +143,15 @@ const PLAYER_SHEET = {
   open: `document.querySelector('#rosterlist .rrow').click()`,
 };
 
+/* #143: the four sentence sheets, opened through their real triggers on the
+ * game screen -- the same sentence phrases `scripts/smoke/overlay.mjs` and
+ * `app-large-text.mjs` already click. `view: 'games'` (below) lands on the
+ * game screen first, so each `open` here is only the one click that follows. */
+const WHO_SHEET = { selector: 'dialog#sheetWho[open]', open: `document.getElementById('phrasePlayers').click()` };
+const INTERVAL_SHEET = { selector: 'dialog#sheetInterval[open]', open: `document.getElementById('phraseInterval').click()` };
+const FORMAT_SHEET = { selector: 'dialog#sheetFormat[open]', open: `document.getElementById('phraseFormat').click()` };
+const CARD_SHEET = { selector: 'dialog#sheetCard[open]', open: `document.getElementById('shareBtn').click()` };
+
 const EXTRA_SHOTS = [
   // A long real name in the identity block -- LONG_NAME on the roster.
   ...THEMES.map(theme => pair('long-name', 'team', theme, { longNames: true })),
@@ -270,6 +279,37 @@ const EXTRA_SHOTS = [
      rest and prove each step actually landed. */
   ...THEMES.map(theme => pair('bench', 'games', theme, { bench: true })),
   ...THEMES.map(theme => pair('bench-selected', 'games', theme, { bench: true, benchPick: true })),
+  /* #143: the four sentence sheets against their own prototype PNGs
+   * (notes/mockups/prototype/{light,dark}-sheet-{who,interval,format,card}.png)
+   * -- one background, one row, one check. Plain pairs at 390, the width
+   * every other plain shot in this table uses. */
+  ...THEMES.map(theme => pair('sheet-who', 'games', theme, { sheet: WHO_SHEET })),
+  ...THEMES.map(theme => pair('sheet-interval', 'games', theme, { sheet: INTERVAL_SHEET })),
+  ...THEMES.map(theme => pair('sheet-format', 'games', theme, { sheet: FORMAT_SHEET })),
+  ...THEMES.map(theme => pair('sheet-card', 'games', theme, { sheet: CARD_SHEET })),
+  /* A long real name in the identity block -- only Who's here draws a
+   * player's name (item 4), so it is the only one of the four with a row to
+   * wrap. Pair at 390, then the 320px/32px-root repro cell item 6 names,
+   * light only like every other large-text cell in this table. */
+  ...THEMES.map(theme => pair('sheet-who-long-name', 'games', theme, { sheet: WHO_SHEET, longNames: true })),
+  solo('sheet-who-long-name-320', 'games',
+    { sheet: WHO_SHEET, longNames: true, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
+  /* Scrolled to its own end -- RICH seats 11 players, more than a 390x844
+   * sheet shows at once (the "who's here rows" smoke check already measures
+   * "up to 11 rows"), so the badge/check pair at the list's end has no
+   * picture without this. Pair at 390, plus the 320px/32px-root cell, where
+   * the same rows grow taller still. */
+  ...THEMES.map(theme => pair('sheet-who-bottom', 'games', theme, { sheet: WHO_SHEET, bottom: true })),
+  solo('sheet-who-bottom-320', 'games',
+    { sheet: WHO_SHEET, bottom: true, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
+  /* Item 5's own settings rows (Print, Copies, Size and the rest) -- the
+   * spec requires them on screen without scrolling at 390, so a `bottom`
+   * shot there would never move and prove nothing. At the 320px/32px root
+   * the same rows grow past one screen, which is exactly where a clipped or
+   * stranded row would show. Light only, no twin, like every other
+   * large-text cell here. */
+  solo('sheet-card-bottom-320', 'games',
+    { sheet: CARD_SHEET, bottom: true, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
 ];
 
 export const SHOTS = Object.freeze([...BASE_SHOTS, ...EXTRA_SHOTS].map(Object.freeze));
@@ -548,6 +588,47 @@ async function capture(c, origin, want, outDir) {
     if (!opened) {
       throw new Error(`${want.name}: nothing matched ${want.sheet.selector} after the sheet click, `
         + 'so this shot would be of the screen behind the sheet and would prove nothing about it');
+    }
+
+    /* #143: Who's here seats 11 players and shows about 5 at a time, and
+       `setLongName` (below) renames the SIXTH one (p5) -- below the fold on
+       an unscrolled sheet, and NOT among the last five either (that is
+       `sheet-who-bottom`'s own state), so a plain `sheet-who-long-name` shot
+       would land on the same five rows as `sheet-who-light` and prove
+       nothing about a long name. Found by its accessible name (`whoRow` sets
+       no other player-identifying attribute) and centered with
+       `scrollIntoView`, then a visibility check confirms the row actually
+       moved onto screen before a PNG is written -- the same "prove the
+       modifier happened" rule `bottom` and `titleCollapsed` already follow.
+       Overlap, not full containment: at the 320px/32px root the row itself
+       can be taller than the sheet's own visible height, so "fully inside"
+       would be impossible to satisfy even when the scroll worked. */
+    if (want.longNames) {
+      const sel = JSON.stringify(want.sheet.selector);
+      const rowExpr = `[...document.querySelectorAll(${sel} + ' [aria-label]')]
+        .find(e => e.getAttribute('aria-label') === ${JSON.stringify(LONG_NAME)})`;
+      /* `block: 'start'`, not `'center'` -- at the 320px/32px root the row
+         itself (404px, five wrapped lines) is taller than the sheet's own
+         visible list window (148px: Who's here keeps its half-height sheet,
+         C3), so no scroll position shows the whole row in one shot either
+         way. `'center'` split the difference and stranded BOTH the row's top
+         and its last word off-screen at once, which reads as a hard clip
+         where there is none -- scrolling further would keep revealing the
+         rest, the same as any row taller than its window. `'start'` shows
+         the row the way a coach actually reaches it (scrolling down TO it),
+         so the shot reads as "more below", not "clipped". */
+      await evalIn(c, step(`(() => { const row = ${rowExpr}; if (row) row.scrollIntoView({ block: 'start' }); })()`));
+      const visible = await evalIn(c, `(() => {
+        const d = document.querySelector(${sel});
+        const row = ${rowExpr};
+        if (!d || !row) return false;
+        const r = row.getBoundingClientRect(), dr = d.getBoundingClientRect();
+        return r.bottom > dr.top && r.top < dr.bottom;
+      })()`);
+      if (!visible) {
+        throw new Error(`${want.name}: the long-named row never scrolled into view inside the sheet, `
+          + 'so this shot would not show a long name at all');
+      }
     }
   }
 

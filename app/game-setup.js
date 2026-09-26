@@ -16,7 +16,7 @@
  * documents for every other section.
  * ================================================================== */
 import { riseIn } from './fx.js';
-import { $, set, el } from './dom.js';
+import { $, set, el, checkMark } from './dom.js';
 import { state, game, plans, noRoster, setAvailable,
          sentenceParts, planSay, stepFormat, GRAN_CHOICES, weekdayLabel,
          initials, colorOf } from './state.js';
@@ -207,14 +207,6 @@ function on(sel, fn) { const n = $(sel); if (n) n.onclick = fn; }
 
 /* ---------------------------- Who's here ---------------------------- */
 
-// #143: the bold ink check mark a chosen row carries -- a Who's here row
-// that's present, or the picked row in `paintGranRows` below.
-function checkMark() {
-  const mark = el('span', 'prow-check', '✓');
-  mark.setAttribute('aria-hidden', 'true');
-  return mark;
-}
-
 // #143: the trailing slot is a `.prow-check` mark (present) or a muted
 // "Absent" (`.prow-v`, not present) -- never both, never neither. Rebuilt
 // each paint rather than toggled in place, the same way `paintGranRows`
@@ -227,10 +219,16 @@ function paintWhoRow(b, on_) {
 }
 
 function whoRow(g, p, on_) {
-  // `.prow rrow`: the same row Format/Plan/Settings/Team use, plus the
-  // roster list's own badge/wrap/divider modifier (#143 Constraints/Reuse) --
-  // not a new row class, and not a 58px inset invented for this sheet alone.
-  const b = el('button', 'prow rrow');
+  // `.prow who-row`: the same row Format/Plan/Settings/Team use, plus
+  // `.who-row` widening the `.av` badge selector to the roster's own look
+  // (#143 Constraints/Reuse) -- not a new row class or a second badge style.
+  // Not `.rrow`: that class also carries `flex-wrap: wrap` and
+  // `.prow-t { min-width: min-content }`, right for Team's roster (the page
+  // scrolls under it) but wrong here -- at a 320px/32px root it wrapped the
+  // badge, the name and the check onto three separate lines (236px against
+  // the sheet's own 148px half-height window), a fix pass finding this
+  // ticket's own spec calls out by name.
+  const b = el('button', 'prow who-row');
   b.type = 'button';
   b.style.setProperty('--c', colorOf(p.id));
   const name = p.name || 'Unnamed';
