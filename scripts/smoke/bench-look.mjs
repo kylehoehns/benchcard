@@ -19,7 +19,7 @@
  * argument), not an emulated `prefers-color-scheme` -- the same mechanism
  * `finish-game.mjs`'s item 5 already uses for the same reason: RICH boots
  * onto the record it was given, `prefers-color-scheme` never enters into it. */
-import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, navigateAndWaitForCard } from './dom.mjs';
+import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, navigateAndWaitForCard, OVERFLOW_PROBE } from './dom.mjs';
 import { goRich, RICH, seeded } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
@@ -406,8 +406,18 @@ async function runTheme(c, origin, theme, problems, notes) {
  * but RICH's own `view` is 'games' and this pass wants the game screen
  * directly, the same place `goRich` above already lands -- so this reseeds
  * with the same `seeded`/`navigateAndWaitForCard` idiom `goRich` itself uses,
- * only with one player's name changed. */
-const LONG_FLOOR_NAME = 'Bartholomew-Christopherson Novak';
+ * only with one player's name changed.
+ *
+ * The middle word is `Featherstonehaugh` (`add-game-fit.mjs` already uses the
+ * same surname on `Marcus Featherstonehaugh` as its own too-long-to-fit
+ * fixture), not `Christopherson`: CI's fonts render wider than this
+ * machine's, and on run 36251254331 `Christopherson` alone (227.4px) came in
+ * wider than the row's own content box (209px) -- a case the assertion below
+ * is written to accept, but only once it forces that branch. `Christopherson`
+ * fit inside the row locally (~196px), so the local run and CI were exercising
+ * different code paths for the same fixture. The longer word is wide enough
+ * on this machine's own fonts too, so both runs take the same branch. */
+const LONG_FLOOR_NAME = 'Bartholomew-Featherstonehaugh Novak';
 
 async function goRichWithLongName(c, origin) {
   const record = JSON.parse(JSON.stringify(RICH));
@@ -429,7 +439,20 @@ async function goRichWithLongName(c, origin) {
  * the same face/size/weight the row itself paints, not a guessed one. Reads
  * only the DIRECT text nodes of `.nm` (excluding a `.tag` child, "just on"),
  * the same technique item 7 above already uses for the bench label's own
- * sentence. */
+ * sentence.
+ *
+ * CI finding (run 36251254331): a word can be wider than the row itself has
+ * room for -- `Christopherson` at 227.4px against a 209px row on CI's fonts
+ * -- and no layout can show that whole without either breaking it or running
+ * it off the row. That is not the defect this exists to catch (names
+ * squeezed into a sliver by their SIBLINGS); the defect is the name not
+ * getting the row's own full content box. So the floor each name is held to
+ * is `min(longest word, the row's own content-box width)`, not the longest
+ * word outright -- `row.clientWidth` less its own left/right padding, read
+ * from the row itself (`.gm-p`/`.gm-b`), independent of whatever the avatar
+ * or minutes beside it are doing today. A name still has to stay fully
+ * inside its row and the viewport either way (`contained`); that is the
+ * other half of "still visible" when a word cannot fit whole. */
 const NAME_WORD_PROBE = `(() => {
   const measureWord = (el, word) => {
     const cs = getComputedStyle(el);
@@ -443,6 +466,7 @@ const NAME_WORD_PROBE = `(() => {
     span.remove();
     return w;
   };
+  const vw = document.documentElement.clientWidth;
   const rows = [];
   for (const nm of document.querySelectorAll('#gmFloor .gm-p .nm, #gmBench .gm-b .nm')) {
     if (!nm.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
@@ -454,7 +478,21 @@ const NAME_WORD_PROBE = `(() => {
     // already treats it that way with no extra CSS asked for.
     const words = text.split(/(?<=-)|\\s+/).filter(Boolean);
     const longest = Math.max(...words.map(w => measureWord(nm, w)));
-    rows.push({ text, width: nm.clientWidth, longest: Math.round(longest * 10) / 10 });
+    const row = nm.closest('.gm-p, .gm-b');
+    const rcs = getComputedStyle(row);
+    const rowContent = row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight);
+    const floor = Math.min(longest, rowContent);
+    const nameRect = nm.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const contained = nameRect.left >= rowRect.left - 1 && nameRect.right <= rowRect.right + 1
+      && nameRect.left >= -1 && nameRect.right <= vw + 1;
+    rows.push({
+      text, width: nm.clientWidth,
+      longest: Math.round(longest * 10) / 10,
+      rowContent: Math.round(rowContent * 10) / 10,
+      floor: Math.round(floor * 10) / 10,
+      contained,
+    });
   }
   // The visible FILL ('.i', the translucent circle a coach actually sees),
   // not #gmClose's own 48px hit box: the hit box is a fixed 48px regardless
@@ -489,9 +527,14 @@ async function runLargeText(c, origin, problems, notes) {
       problems.push(`${where}: no floor or bench name was on screen to measure`);
     } else {
       for (const row of r.rows) {
-        if (row.width + 0.5 < row.longest) {
+        if (row.width + 1 < row.floor) {
           problems.push(`${where}: "${row.text}" is ${Math.round(row.width)}px wide, `
-            + `narrower than its own longest word (${row.longest}px) -- a mid-word break`);
+            + `narrower than min(its longest word ${row.longest}px, its row's own content width `
+            + `${row.rowContent}px) = ${Math.round(row.floor)}px -- something beside the name is `
+            + `taking its space`);
+        }
+        if (!row.contained) {
+          problems.push(`${where}: "${row.text}" paints outside its own row or the viewport`);
         }
       }
       if (!r.rows.some(row => row.text === LONG_FLOOR_NAME)) {
@@ -501,7 +544,13 @@ async function runLargeText(c, origin, problems, notes) {
     if (r.overlap) {
       problems.push(`${where}: #gmClose ${JSON.stringify(r.close)} overlaps .gm-title ${JSON.stringify(r.title)}`);
     }
-    notes.push(`${where}: every floor/bench name keeps its longest word whole, and #gmClose does not overlap the title`);
+    const ov = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+    if (ov.pans || ov.worst) {
+      problems.push(`${where}: the page itself scrolls or overflows horizontally: ${JSON.stringify(ov)}`);
+    }
+    notes.push(`${where}: every floor/bench name gets at least its row's own content width or its `
+      + `longest word (whichever is smaller), stays on screen, #gmClose does not overlap the title, `
+      + `and the page does not pan sideways`);
   } finally {
     // Same rule the other large-text passes follow: never leave the emulated
     // font size on for whatever runs after this one.
