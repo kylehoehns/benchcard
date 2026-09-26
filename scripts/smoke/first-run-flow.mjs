@@ -1,4 +1,4 @@
-import { HEIGHT, WIDTH, landWiped, assertChipMatchesBackBtn, assertBackIsChevron } from './dom.mjs';
+import { WIDTH, landWiped, assertChipMatchesBackBtn, assertBackIsChevron, setWidth } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
@@ -38,9 +38,6 @@ import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
 const READY = `!document.getElementById('view-welcome').hidden`;
 const land = (c, origin) => landWiped(c, `${origin}/index.html`, READY);
-
-const viewport = (c, width) => c.send('Emulation.setDeviceMetricsOverride',
-  { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
 
 /* Everything one round trip can answer about the open flow -- the same
  * shape `add-game-flow.mjs`'s own `flowState` reads for `#addGameFlow`. */
@@ -444,10 +441,10 @@ export async function firstRunPass(c, origin) {
        is already on screen would repair the very thing being measured and
        report clean. 390 goes back before the tour, which is the width the
        rest of this pass and everything after it measures at. */
-    await viewport(c, LARGE_TEXT_WIDTH);
+    await setWidth(c, LARGE_TEXT_WIDTH);
     await land(c, origin);
     const cardCount = await stepThreeShowsACard(c, ck);
-    await viewport(c, WIDTH);
+    await setWidth(c, WIDTH);
     if (cardCount !== null) {
       await finishStartsTheTour(c, ck);
       await landsOnTheGame(c, ck, cardCount);
@@ -456,7 +453,7 @@ export async function firstRunPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   }
 
-  await viewport(c, WIDTH).catch(() => {});
+  await setWidth(c, WIDTH).catch(() => {});
   await goRich(c, origin).catch(() => {});
 
   return {

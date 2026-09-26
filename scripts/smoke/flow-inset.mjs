@@ -21,15 +21,12 @@
  * runs on step 2's own Next), so it gets its own fresh wiped landing per
  * width, the same shape `first-run-flow.mjs` already uses for its own
  * step-3 card-fit measurement. */
-import { HEIGHT, evalIn, landWiped } from './dom.mjs';
+import { evalIn, landWiped, setWidth } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { evalJSON, openAddGameFlow, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
 const TOL = 1;
 const WIDTHS = [390, 320];
-
-const setViewport = (c, width) => c.send('Emulation.setDeviceMetricsOverride',
-  { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
 
 // The probe itself: every visible descendant of `bodyId`, except the one
 // wrapper `flowStepBody` returns as the body's only child (see header
@@ -80,7 +77,7 @@ const restoreRoster = `(async () => {
 
 async function addGameSweep(c, ck) {
   for (const width of WIDTHS) {
-    await setViewport(c, width);
+    await setWidth(c, width);
 
     await openAddGameFlow(c);
     await measureInset(c, 'agBody', width, `add a game step 1 (with the "Same as" card)@${width}px`, ck);
@@ -99,7 +96,7 @@ async function addGameSweep(c, ck) {
     await waitClosed(c, '#addGameFlow');
     await evalIn(c, restoreRoster);
   }
-  await setViewport(c, 390);
+  await setWidth(c, 390);
 }
 
 const READY = `!document.getElementById('view-welcome').hidden`;
@@ -110,7 +107,7 @@ async function firstRunSweep(c, ck, origin) {
   // Steps 1 and 2: not a one-way door yet, so both widths can share the
   // ordinary loop the way `addGameSweep` above does.
   for (const width of WIDTHS) {
-    await setViewport(c, width);
+    await setWidth(c, width);
     await land(c, origin);
     await realTap(c, '#welStart');
     await measureInset(c, 'frBody', width, `first run step 1@${width}px`, ck);
@@ -121,7 +118,7 @@ async function firstRunSweep(c, ck, origin) {
   // Step 3 commits for real on THIS Next -- a fresh wiped landing per width,
   // the same shape `first-run-flow.mjs`'s own `stepThreeShowsACard` uses.
   for (const width of WIDTHS) {
-    await setViewport(c, width);
+    await setWidth(c, width);
     await land(c, origin);
     await realTap(c, '#welStart');
     await typeIn(c, '#frRoster', SAMPLE_ROSTER);
@@ -129,7 +126,7 @@ async function firstRunSweep(c, ck, origin) {
     await realTap(c, '#frNext');
     await measureInset(c, 'frBody', width, `first run step 3@${width}px`, ck);
   }
-  await setViewport(c, 390);
+  await setWidth(c, 390);
 }
 
 export async function flowInsetPass(c, origin) {
@@ -143,7 +140,7 @@ export async function flowInsetPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   }
 
-  await setViewport(c, 390).catch(() => {});
+  await setWidth(c, 390).catch(() => {});
   await goRich(c, origin).catch(() => {});
 
   return {
