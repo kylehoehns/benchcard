@@ -257,24 +257,74 @@ export async function rotationUndoPass(c, origin) {
     notes.push('item 3: the Plan sheet\'s strategy seg offers the same Undo, which restores strategy along with the rest');
     await evalIn(c, step(`document.getElementById('sheetPlanClose')?.click()`));
 
-    /* ---- item 5: "out for the rest" (an existing `undoable`) keeps its
+    /* ---- item 5: "Sit for the rest" (an existing `undoable`) keeps its
        own toast; it must not be replaced by a second one. `sitRest`
        (gamemode.js) only ever writes `live.overrides` for stints still
        ahead of `live.at` -- the base plan's own rotation never moves, so
        this also guards against a future change routing it through a real
-       `render()` and showing a second, competing toast. ---- */
+       `render()` and showing a second, competing toast.
+
+       #136 items 2-4: the button reads "Sit for the rest" and the sit toast
+       reads "<name> sits for the rest. The others share those minutes.",
+       still with Undo. ---- */
     await evalIn(c, step(`document.getElementById('abBench').click()`));
     await evalIn(c, step(`document.querySelector('#gmFloor .gm-p')?.click()`));
-    await evalIn(c, step(`[...document.querySelectorAll('.gm-scope button')].find(b => b.textContent === 'Sit, rebalance')?.click()`));
+    const sitLabel = await evalIn(c, `JSON.stringify([...document.querySelectorAll('.gm-scope button')]
+      .find(b => b.textContent === 'Sit for the rest')?.textContent ?? null)`);
+    if (JSON.parse(sitLabel) !== 'Sit for the rest') {
+      problems.push(`item 2: the bench-mode button reads ${sitLabel}, want "Sit for the rest"`);
+    }
+    await evalIn(c, step(`[...document.querySelectorAll('.gm-scope button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
     await wait(SETTLE_MS);
     const toasts5 = JSON.parse(await evalIn(c, `JSON.stringify([...document.querySelectorAll('.toast[data-undo]')]
-      .map(t => t.querySelector('.tmsg')?.textContent ?? null))`));
-    if (toasts5.length !== 1 || !(toasts5[0] || '').endsWith('is out for the rest. The rest of the game rebalanced.')) {
-      problems.push(`item 5: after "Sit, rebalance" the live undo toast(s) read ${JSON.stringify(toasts5)}, `
-        + 'want exactly one, ending "is out for the rest. The rest of the game rebalanced." -- not replaced');
+      .map(t => ({ text: t.querySelector('.tmsg')?.textContent ?? null, hasUndo: !!t.querySelector('.tundo') })))`));
+    if (toasts5.length !== 1 || !(toasts5[0].text || '').endsWith('sits for the rest. The others share those minutes.') || !toasts5[0].hasUndo) {
+      problems.push(`item 3: after "Sit for the rest" the live undo toast(s) read ${JSON.stringify(toasts5)}, `
+        + 'want exactly one, ending "sits for the rest. The others share those minutes." with Undo -- not replaced');
     }
     await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
-    notes.push('item 5: "out for the rest" keeps its own Undo toast, not replaced by a second one');
+    notes.push('item 5: "Sit for the rest" keeps its own Undo toast, not replaced by a second one');
+    notes.push('items 2, 3: the button reads "Sit for the rest" and its toast reads "<name> sits for the rest. The others share those minutes." with Undo');
+
+    /* ---- item 4, the "strategy" refusal: `resolveRest` (state.js) refuses
+       before it ever looks at who is on the floor when `g.strategy` is
+       'minutes' or 'platoon'. Re-seed the underway Hawks game fresh, open
+       bench mode and pick a floor player under its ordinary strategy first
+       -- `platoon` needs `units` this fixture never set up, and driving the
+       Plan sheet's own strategy seg would just show its "Rotation changed."
+       Undo toast instead of resolving anything -- then flip `g.strategy`
+       in place, on the same object `game()` still returns, without asking
+       for a re-solve: `sitRest`'s own re-solve is the one this item is
+       about, so the click is the only thing that should trigger one. */
+    await evalIn(c, setGame(UNDERWAY_SEED));
+    await wait(SETTLE_MS);
+    await evalIn(c, step(`document.getElementById('abBench').click()`));
+    await evalIn(c, step(`document.querySelector('#gmFloor .gm-p')?.click()`));
+    await evalIn(c, `(async () => {
+      const s = await import('/state.js');
+      s.state.day.games[0].strategy = 'platoon';
+    })()`);
+    await evalIn(c, step(`[...document.querySelectorAll('.gm-scope button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
+    await wait(SETTLE_MS);
+    const flash4 = JSON.parse(await evalIn(c, `(() => {
+      const t = document.querySelector('.toast:not([data-undo])');
+      return JSON.stringify(t ? (t.querySelector('.tmsg')?.textContent ?? null) : null);
+    })()`));
+    const wantStrategy = 'Sit for the rest does not apply to this strategy. Its minutes are set by hand.';
+    if (flash4 !== wantStrategy) {
+      problems.push(`item 4 (strategy): the refusal toast reads ${JSON.stringify(flash4)}, want ${JSON.stringify(wantStrategy)}`);
+    }
+    await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
+    notes.push('item 4: sitting a player while the game is set to a strategy Sit for the rest cannot re-solve refuses with the #136 wording');
+
+    /* item 4's other refusal ("nothing") fires when `resolveRest` is asked
+       to solve from one past the plan's last stint (`p.stints.length`) --
+       `stintIndex` (live.js) clamps the bench screen's own `i` to
+       `p.stints.length - 1` on every render, so no click through this UI can
+       ever reach it; `test/resolve-rest.test.js` already drives
+       `resolveRest` itself to that boundary. Its `flash()` sentence in
+       gamemode.js is covered as a guard, in `test/rule-words.test.js`,
+       rather than faked here. */
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {

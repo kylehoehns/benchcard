@@ -40,9 +40,9 @@ phone in your hand while play is live.
 | **Closers** | even minutes early, a group you pick finishes the game |
 | **Platoon** | fixed fives alternating wholesale |
 
-**Rules that compose with any of them** — Minimum and Cap, Together and
-Apart, One of two on, a Starting five and Last-period five, and a Rest
-limit.
+**Rules that compose with any of them** — Plays at least and Plays at
+most, Together and Apart, One of two on, a Starting five and Last-period
+five, and a Rest limit.
 
 **Across the season, not just the afternoon.** Attendance is irregular, and
 that is what actually creates unfairness: one kid on 27 stints and another on

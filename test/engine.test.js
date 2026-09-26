@@ -209,7 +209,9 @@ test('a keepOnFloor pair with one player away is dropped, not turned into "the o
     format: QUARTERS, granularity: EVERY_4, seed: 7, constraints: { keepOnFloor: [['p2', 'p5']] },
   });
   assert.ok(p.ok);
-  assert.ok(p.issues.some(i => i.code === 'KEEPON_DROPPED'));
+  const w = p.issues.find(i => i.code === 'KEEPON_DROPPED');
+  assert.ok(w);
+  assert.equal(w.message, 'The One of two on rule for PlayerC Last2 and PlayerF Last5 is ignored: one of them is not available.');
   assert.ok(p.minutes.p2 < 32, `p2 played ${p.minutes.p2} of 32`);
 });
 
@@ -257,20 +259,25 @@ test('a platoon unit with neither of them is a warning, and the unit wins', () =
   assert.ok(!p.issues.some(i => i.code === 'KEEPON_PARTIAL'));
 });
 
-test('minimums that exceed the floor-minutes name the offenders', () => {
+test('minimums that exceed the game total name the offenders', () => {
   const p = plan(10, { constraints: { minMinutes: { p0: 32, p1: 32, p2: 32, p3: 32, p4: 32, p5: 32 } } });
   assert.equal(p.ok, false);
   const e = errs(p).find(x => x.code === 'MINS_UNSATISFIABLE');
   assert.ok(e);
   assert.match(e.message, /192 minutes/);
-  assert.match(e.message, /160 floor-minutes/);
+  assert.match(e.message, /only totals 160 minutes/);
+  assert.match(e.message, /32 min × 5 players/);
 });
 
 test('caps too tight to field five is its own error', () => {
   const caps = Object.fromEntries(ids(10).map(id => [id, 8]));
   const p = plan(10, { constraints: { maxMinutes: caps } });
   assert.equal(p.ok, false);
-  assert.ok(errs(p).some(x => x.code === 'CAPS_UNSATISFIABLE'));
+  const e = errs(p).find(x => x.code === 'CAPS_UNSATISFIABLE');
+  assert.ok(e);
+  assert.match(e.message, /Maximums allow at most 80 total minutes/);
+  assert.match(e.message, /needs 160 minutes to keep 5 on the floor/);
+  assert.match(e.message, /Raise a maximum or add a player/);
 });
 
 test('an avoid graph with no legal five is caught before searching', () => {
@@ -282,7 +289,9 @@ test('an avoid graph with no legal five is caught before searching', () => {
     format: QUARTERS, granularity: EVERY_4, seed: 1, constraints: { avoids },
   });
   assert.equal(p.ok, false);
-  assert.ok(errs(p).some(x => x.code === 'AVOID_IMPOSSIBLE'));
+  const e = errs(p).find(x => x.code === 'AVOID_IMPOSSIBLE');
+  assert.ok(e);
+  assert.equal(e.message, 'No legal lineup of 5 exists — the Apart rules rule out every combination. Drop one of them.');
 });
 
 test('pair and avoid on the same two players is a contradiction', () => {
@@ -313,7 +322,21 @@ test('constraints naming an unavailable player warn instead of failing', () => {
     constraints: { pairs: [['p0', 'p9']] },
   });
   assert.ok(p.ok);
-  assert.ok(p.issues.some(i => i.code === 'PAIR_DROPPED'));
+  const w = p.issues.find(i => i.code === 'PAIR_DROPPED');
+  assert.ok(w);
+  assert.equal(w.message, 'The Together rule for PlayerA Last0 and PlayerJ Last9 is ignored: one of them is not available.');
+});
+
+test('an Apart rule naming an unavailable player is dropped, not turned into a conflict', () => {
+  const p = generatePlan({
+    players: roster(10), availableIds: ids(10).filter(id => id !== 'p9'),
+    format: QUARTERS, granularity: EVERY_4, seed: 3,
+    constraints: { avoids: [['p0', 'p9']] },
+  });
+  assert.ok(p.ok);
+  const w = p.issues.find(i => i.code === 'AVOID_DROPPED');
+  assert.ok(w);
+  assert.equal(w.message, 'The Apart rule for PlayerA Last0 and PlayerJ Last9 is ignored: one of them is not available.');
 });
 
 /* ---------------- tournament carryover ---------------- */
@@ -607,7 +630,9 @@ test('six available still rotates without stranding anyone', () => {
 test('a consecutive limit with no bench is flagged, not silently applied', () => {
   const p = plan(5, { constraints: { maxConsecutive: 2 } });
   assert.ok(p.ok);
-  assert.ok(p.issues.some(i => i.code === 'CONSEC_IMPOSSIBLE'));
+  const w = p.issues.find(i => i.code === 'CONSEC_IMPOSSIBLE');
+  assert.ok(w);
+  assert.equal(w.message, 'With only 5 available, nobody can be rested — the Rest limit rule will be ignored.');
 });
 
 test('a single-stint game is valid', () => {

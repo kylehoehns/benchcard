@@ -103,7 +103,7 @@ export const APP_LARGE_TEXT_STATES = [
            document.querySelector('#gmFloor .gm-p').click();
            await new Promise(r => setTimeout(r, 400));
            [...document.querySelectorAll('#gamemode button')]
-             .find(b => b.textContent.trim() === 'Sit, rebalance').click()`,
+             .find(b => b.textContent.trim() === 'Sit for the rest').click()`,
     close: `document.querySelector('.toast .tundo')?.click();
             await new Promise(r => setTimeout(r, 400));
             document.querySelector('#gmClose').click()` },

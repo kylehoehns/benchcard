@@ -632,7 +632,7 @@ export function renderTabs() {
       // #126: with the team's LAST game going, there is no day left to
       // rebalance -- the toast drops that clause.
       const last = team().days.reduce((n, d) => n + d.games.length, 0) < 2;
-      undoable(`Removed ${label}.${last ? '' : ' The day rebalanced.'}`, () => {
+      undoable(`Removed ${label}.${last ? '' : ' The day evened out.'}`, () => {
         removeGame();
         // Removing the open game returns to Today; undo restores the game
         // and reopens its Game screen (the snapshot holds `view: 'games'`

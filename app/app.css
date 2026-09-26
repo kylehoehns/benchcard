@@ -1526,7 +1526,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    start at the same x. Centring would have added a third alignment to a column
    that needs one. Left removes one instead.
 
-   It also moves `Sit, rebalance` off the right edge, and that one is worth
+   It also moves `Sit for the rest` off the right edge, and that one is worth
    having: it is the only button in the group that fires immediately rather
    than setting a mode, and the bottom-right corner is the easiest place on a
    phone for a thumb to hit without meaning to. */

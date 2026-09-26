@@ -269,5 +269,5 @@ export function renderDayTotals() {
   box.append(legend);
   box.append(el('p', 'note', hi === lo
     ? `Even across the day: everyone at ${fmtMinutes(hi)} minutes.`
-    : `Day spread ${fmtMinutes(hi - lo)} min. Heaviest ${fmtMinutes(hi)}, lightest ${fmtMinutes(lo)}. Later games rebalance against this automatically.`));
+    : `Day spread ${fmtMinutes(hi - lo)} min. Heaviest ${fmtMinutes(hi)}, lightest ${fmtMinutes(lo)}. Later games even out against this automatically.`));
 }

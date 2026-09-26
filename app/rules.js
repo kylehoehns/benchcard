@@ -99,7 +99,7 @@ function renderPairsGroup(c) {
   if (!c.pairs.length) { wrap.hidden = true; return; }
   wrap.hidden = false;
   const box = el('div', 'pgrp');
-  box.append(switchRow('Force together pairs every stint', c.hardPairs, false, v => {
+  box.append(switchRow('Force Together pairs every stint', c.hardPairs, false, v => {
     c.hardPairs = v; renderConstraints(); edit('pairs');
   }));
   wrap.append(box);
