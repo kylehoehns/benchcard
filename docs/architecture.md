@@ -955,12 +955,15 @@ logic, so their `disabled` state is also what marks the ends of the game — at
 either end the drag rubber-bands and snaps back, and the end of the game is
 felt rather than guessed at.
 
-The next change is named with **the clock time it happens at** — "Next sub ·
-Q2 4:00". "Coming off / going in" with no time on it reads as ambiguous,
-because the next break is often mid-period rather than the period boundary a
-coach assumes. Players who arrived at the current break carry a "just on" tag
-rather than a bare glyph, and that tag always matches the previous stint's
-"On" list.
+The next change box shows **when and who changes**, titled "Next change at 4:00"
+(or "Next change at Q2 8:00" when the change crosses a period boundary). Below
+the header, two columns headed Off and On list the players leaving and arriving,
+by call name (a first name, with a last initial only when two players share
+it). Off names are muted, On names are ink at 600: no arrows, no red or green.
+The time drops the period when it matches the current stint's, because the
+next break is often mid-period rather than the boundary a coach assumes.
+Players who arrived at the current break carry a "just on" tag rather than a
+bare glyph, and that tag always matches the previous stint's On column.
 
 Each player shows **played / projected** — minutes from the stints already
 completed, then where they finish if the plan holds. Mid-game the live question
@@ -970,9 +973,10 @@ so its order answers "who goes in next".
 
 A swap starts with the player coming **off**, so until one is picked no bench
 row does anything. Those rows are therefore not buttons at all — they render as
-a plain full-width list with hairline rules, and the "Bench" label carries
-"tap who comes off first". A disabled button styled like the live one is a
-trap: it looks tappable, swallows the tap and explains nothing. Dimming was
+a plain full-width list with no borders, and the bench label reads "Bench · tap
+a player on the floor to swap". When a floor player is picked, it changes to
+"Bench · tap who goes on for {name}". A disabled button styled like the live one
+is a trap: it looks tappable, swallows the tap and explains nothing. Dimming was
 rejected for the same reason the rest of bench mode is high contrast — a dim row
 in a dim gym is a legibility regression.
 

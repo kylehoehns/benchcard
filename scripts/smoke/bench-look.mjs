@@ -296,14 +296,25 @@ async function runTheme(c, origin, theme, problems, notes) {
     const av = row.querySelector('.av'), cs = getComputedStyle(av);
     const c = row.style.getPropertyValue('--c');
     const rowCs = getComputedStyle(row);
-    const mnCs = getComputedStyle(row.querySelector('.mn'));
+    const mn = row.querySelector('.mn');
+    const mnCs = getComputedStyle(mn);
+    // Every text-bearing node inside .mn EXCEPT .proj (the "/ 8" projected
+    // half, whose own muted weight is untouched by this item) -- the played
+    // digits are wrapped in a bold tag, whose own font-weight is set by a
+    // bare-tag rule regardless of what .mn's class rule sets on the parent
+    // span, so reading only .mn's computed style missed a bold digit
+    // sitting right inside it.
+    const mnNodeWeights = [mn, ...mn.querySelectorAll('*')]
+      .filter(n => !n.classList.contains('proj'))
+      .filter(n => [...n.childNodes].some(cn => cn.nodeType === 3 && cn.textContent.trim()))
+      .map(n => getComputedStyle(n).fontWeight);
     const nmCs = getComputedStyle(row.querySelector('.nm'));
     return JSON.stringify({
       bg: cs.backgroundColor, boxShadow: cs.boxShadow, outlineStyle: cs.outlineStyle, outline: cs.outlineWidth, c,
       rowBorderWidths: ['Top', 'Right', 'Bottom', 'Left'].map(s => parseFloat(rowCs['border' + s + 'Width'])),
       rowBorderStyles: ['Top', 'Right', 'Bottom', 'Left'].map(s => rowCs['border' + s + 'Style']),
       rowOutlineStyle: rowCs.outlineStyle, rowOutlineWidth: rowCs.outlineWidth,
-      mnColor: mnCs.color, mnWeight: mnCs.fontWeight, mnFontSize: mnCs.fontSize,
+      mnColor: mnCs.color, mnNodeWeights, mnFontSize: mnCs.fontSize,
       nmWeight: nmCs.fontWeight,
     });
   })()`));
@@ -313,8 +324,9 @@ async function runTheme(c, origin, theme, problems, notes) {
   else measured++;
   if (bench8.boxShadow !== 'none') problems.push(tag(`item 8: a bench badge has box-shadow ${bench8.boxShadow}, want none (no outlined ring)`));
   if (bench8.outlineStyle !== 'none' && parseFloat(bench8.outline) > 0) problems.push(tag('item 8: a bench badge has an outline, want none'));
-  if (bench8.mnColor !== mutedText) problems.push(tag(`item 8: .gm-b .mn paints ${bench8.mnColor}, want ${mutedText} (--muted, prototype: .fr .m)`));
-  if (bench8.mnWeight !== '400') problems.push(tag(`item 8: .gm-b .mn font-weight is ${bench8.mnWeight}, want 400`));
+  if (bench8.mnColor !== mutedText) problems.push(tag(`item 8: .gm-b .mn paints ${bench8.mnColor}, want ${mutedText} (--muted, prototype: .bench-l button .m)`));
+  if (bench8.mnNodeWeights.some(w => w !== '400')) problems.push(tag(`item 8: .gm-b .mn has a text node at font-weight ${bench8.mnNodeWeights.join('/')}, want 400 throughout (the played digits must not be bold, prototype: .bench-l button .m)`));
+  else measured++;
   if (bench8.mnFontSize !== bodyFont) problems.push(tag(`item 8: .gm-b .mn font-size is ${bench8.mnFontSize}, want ${bodyFont} (--fs-body, prototype: 17px)`));
   else measured++;
   if (bench8.nmWeight !== '400') problems.push(tag(`item 8: .gm-b .nm font-weight is ${bench8.nmWeight}, want 400 (prototype: .bench-l button, unbolded)`));

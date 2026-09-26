@@ -304,9 +304,10 @@ a { color: inherit; }
    beats `.bsheet-close`'s own class rule, so the 36px fill below wins without
    touching that class (it still owns the 48px hit area, shared with every
    other sheet's ✕). Extending this hover pair's selector list, not copying
-   it -- Reuse. */
+   it -- Reuse. `.gm-x` (#138 items 1/9's round header buttons) draws the same
+   chip and is folded in here rather than given its own copy. */
 @media (hover: hover) {
-  #agClose:hover .i, #frClose:hover .i { background: var(--chip-hover); }
+  #agClose:hover .i, #frClose:hover .i, .gm-x:hover .i { background: var(--chip-hover); }
 }
 
 /* #100 removed "New day" (`#todayNewDay`) along with its rule here -- the
@@ -1414,10 +1415,9 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
    shared selector lists below, not copied). */
 .gm-x { width: 48px; height: 48px; padding: 0; border: 0; background: none; color: var(--ink-2);
         font-size: var(--fs-headline); display: grid; place-items: center; }
-@media (hover: hover) {
-  .gm-x:hover { background: none; }
-  .gm-x:hover .i { background: var(--chip-hover); }
-}
+/* .gm-x's own hover fill is the shared #agClose/#frClose list above -- a
+   `.gm-x:hover { background: none; }` rule here would paint nothing beyond
+   this button's own unconditional `background: none` two lines up. */
 .gm-title { flex: 1; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
 /* #138 item 1: the title is now the stint's own stretch of clock, so it reads
    like a headline, not a muted label -- the subtitle (`.gm-clock`, the "N of
@@ -1796,7 +1796,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    are written twice on purpose rather than nested (which would be AND).
    fill: `--chip`, see tokens.css (#137). */
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .bar::before, .actionbar::before {
+  .bar::before, .actionbar::before, .gm-foot::before {
     background: var(--bg); mask-image: none; -webkit-mask-image: none;
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
@@ -1804,14 +1804,11 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
   #agClose .i, #frClose .i, .gm-x .i {
     background: var(--chip); backdrop-filter: none; -webkit-backdrop-filter: none;
   }
-  .gm-foot::before { background: var(--bg); mask-image: none; -webkit-mask-image: none;
-    backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .bar::before, .actionbar::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
+  .bar::before, .actionbar::before, .gm-foot::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
   #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
   #agClose .i, #frClose .i, .gm-x .i { background: var(--chip); }
-  .gm-foot::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
 }
 /* #69 decision 6: the prototype's primary button -- 54px tall, 600 weight,
    still `--tint` (K1 allows tint on the primary action). `--r` is already

@@ -331,7 +331,7 @@ scaling to 200%. Benchcard: decided 2026-09-15 (#24).*
 | --- | --- | --- | --- |
 | Large title | 2.125rem | 700 | Screen titles before scrolling |
 | Sentence | 1.5625rem | 600 | A game's summary sentence |
-| Title | 1.375rem | 700 | Sheet titles, names in bench mode |
+| Title | 1.375rem | 700 (600 in bench mode) | Sheet titles, floor names in bench mode |
 | Flow title | 1.875rem | 700 | Step titles in the first-run and add-a-game flows |
 | Headline | 1.0625rem | 600 | Buttons, row titles that need weight |
 | Body | 1rem | 400 | Everything else |

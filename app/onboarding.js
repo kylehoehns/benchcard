@@ -25,7 +25,7 @@ import { startTour } from './tour.js';
 import { flash } from './toast.js';
 import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
 import { stepperRow, paintGranRows, PERIODS_LO, PERIODS_HI, MINUTES_LO, MINUTES_HI } from './game-setup.js';
-import { buildNextCols } from './gamemode.js';
+import { buildNextCols, BENCH_IDLE_LABEL } from './gamemode.js';
 import { cardPreviewInto, fitPreview } from './card.js';
 
 /* The lineup floor. Five on the floor is what a game needs, so a roster
@@ -271,7 +271,7 @@ function benchFigure(pane) {
   const bench = el('div', 'wel-bench-sec');
   /* #138 item 12: bench mode's own label class and words -- sentence case,
      one line, no separate hint span. */
-  bench.append(el('p', 'gm-lab', 'Bench · tap a player on the floor to swap'));
+  bench.append(el('p', 'gm-lab', BENCH_IDLE_LABEL));
   const list = el('div', 'gm-bench');
   benchIx.forEach(i => {
     const row = el('div', 'gm-b inert');

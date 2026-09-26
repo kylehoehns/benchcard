@@ -332,6 +332,11 @@ export function benchHeaderText(row, i, total) {
   };
 }
 
+/* #138 item 7: the bench label's idle sentence, shared by bench mode itself
+   and onboarding.js's landing demo (item 12), which is built to look
+   identical to it. One string, not two typed copies. */
+export const BENCH_IDLE_LABEL = 'Bench · tap a player on the floor to swap';
+
 /* #138 item 6: the Next change box's "at" string -- the period name is
    dropped when the next stint is still in the current one, and kept
    (including a period named like "OT" or "H1") when it is not. */
@@ -413,9 +418,17 @@ export function renderGameMode({ keepFloor = false } = {}) {
   const projected = liveMinutes(p, g);     // where they finish if the plan holds
   const shorts = p.shortNames;
   const calls = callNames(availIds(g).map(byId).filter(Boolean));
-  const mtag = id => {
+  // #138 finding 1: floor rows keep the bold, ink played number (.gm-p .mn's
+  // own 700), but a bench row's played digit must not be -- `.gm-b .mn`
+  // already sets 400, and a bare `<b>` wrapping the digit there would still
+  // paint bold (the `b { font-weight: 700 }` rule targets it directly,
+  // beating the class rule on its parent). So bench gets its own, plain-text
+  // path, matching onboarding.js's mins().
+  const mtag = (id, bench = false) => {
     const d = el('span', 'mn');
-    d.append(el('b', null, fmtMinutes(played[id] || 0)));
+    d.append(bench
+      ? document.createTextNode(fmtMinutes(played[id] || 0))
+      : el('b', null, fmtMinutes(played[id] || 0)));
     d.append(el('span', 'proj', ` / ${fmtMinutes(projected[id] || 0)}`));
     return d;
   };
@@ -487,7 +500,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
   lab.className = 'gm-lab rowed';
   lab.append(document.createTextNode(gmPick
     ? `Bench · tap who goes on for ${calls[gmPick] || shorts[gmPick]}`
-    : 'Bench · tap a player on the floor to swap'));
+    : BENCH_IDLE_LABEL));
   if (gmPick) {
     const sc = el('div', 'gm-scope');
     for (const [k, t] of [['stint', 'This stint'], ['rest', 'Rest of game']]) {
@@ -521,7 +534,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
     // render a plain list until swapping in is actually possible.
     const b = el(gmPick ? 'button' : 'div', 'gm-b' + (gmPick ? ' press' : ' inert'));
     b.style.setProperty('--c', colorOf(id));
-    b.append(el('span', 'av', initials(pl)), el('span', 'nm', pl.name || shorts[id]), mtag(id));
+    b.append(el('span', 'av', initials(pl)), el('span', 'nm', pl.name || shorts[id]), mtag(id, true));
     if (gmPick) {
       b.type = 'button';
       b.onclick = () => { applySwap(p, g, i, gmPick, id,
