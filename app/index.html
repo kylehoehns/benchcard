@@ -751,7 +751,8 @@
                nested inside `.side-box.s-thisgame` above -- that box already
                draws its own card (border, radius, padding), and a `.pgrp`
                inside it would be a card inside a card. This one reads as its
-               own card instead, right under "This game". -->
+               own card instead. Below 1100px, app.css's `order:` rules move it
+               last in the stack, after Stint by stint. -->
           <div class="pgrp noprint">
             <button class="prow prow-center prow-danger press" id="removeGame" type="button" hidden>Remove this game</button>
           </div>

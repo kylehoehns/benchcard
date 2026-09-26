@@ -425,13 +425,13 @@ a { color: inherit; }
      out of this list too, renumbered whole once more. */
   .s-rot   { order: 0; }
   .s-thisgame { order: 1; }
-  /* #141 (one control each): Remove's own `.pgrp` sits right after
-     `.s-thisgame` in the DOM (decision 1's card-in-a-card rule keeps it out
-     of that box), so it needs the same `order` or the flex column above
-     would sort it back beside `.s-rot` at the default `order: 0`. */
-  .s-thisgame + .pgrp { order: 1; }
-  #tabledetails { order: 2; }
-  .gm-start { order: 3; }
+  /* #141: Remove's `.pgrp` follows `.s-thisgame` in the DOM, so it needs an
+     `order` of its own. It goes last, before Start game: a destructive
+     action reads last. `.9rem` on `#tabledetails` matches `.s-thisgame`'s,
+     so the gap above Remove is the column's usual 2rem. */
+  #tabledetails { order: 2; margin-bottom: .9rem; }
+  .s-thisgame + .pgrp { order: 3; }
+  .gm-start { order: 4; }
 }
 
 /* ---- Today's header: the team button and its menu (#23) ----------------
