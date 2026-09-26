@@ -167,7 +167,7 @@ It drives `index.html` for all of that, plus one pass over every screen at
 320px with the browser's default font size emulated at 32px (a reader on 200%
 text) — the app shell was held to a lower standard than the marketing pages
 until 2026-08-24, and a 228px sideways pan on the games view lived there the
-whole time. That pass now covers **29 states** — Today and the four screens it
+whole time. That pass covers Today and the four screens it
 opens, the sheets and overlays, both step flows, the welcome screen on a first
 run, the sample's flash after a `?try=` landing, and bench mode on the last stint
 (#135). The list itself is

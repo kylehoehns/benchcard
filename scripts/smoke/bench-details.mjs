@@ -7,7 +7,9 @@
  *     left behind), and "Sit for the rest" is a plain `.btn` sibling after
  *     it, not a third segment.
  *   item 4 (closes #167) -- no sideways spill at 320px/32px text with a
- *     player picked.
+ *     player picked, checked with a "just on" tagged floor row on screen
+ *     (stint 0 never carries one, so a plain fresh `goRich` open would
+ *     measure nothing about the tag).
  *   item 5 -- the last bench row stays reachable by scrolling `.gm-body`,
  *     with and without a pick, and its 9.5rem bottom padding is not
  *     narrowed to make that true.
@@ -19,7 +21,7 @@
  * item 8 (dark/team-color pinning of the seg and the sit button) lives in
  * `team-color.mjs`, which already owns every other bench-mode color pin.
  */
-import { evalIn, step, WIDTH, OVERFLOW_PROBE, CSS_VAR_COLOR_PROBE, setWidth } from './dom.mjs';
+import { evalIn, step, WIDTH, OVERFLOW_PROBE, CSS_VAR_COLOR_PROBE, GM_BODY_OVERFLOW_PROBE, setWidth } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
@@ -152,32 +154,54 @@ export async function benchDetailsPass(c, origin) {
     }
 
     /* ---- item 4 (closes #167): no sideways spill at 320px/32px text with
-       a player picked ---- */
+       a player picked, with a "just on" tagged floor row on screen.
+       Review finding on this diff's first pass: every 320/32 check opened
+       bench mode fresh (`i === 0`), where `prevFloor` is null and no row
+       can carry the tag (gamemode.js's `justOn`/`prevFloor`), so the tag's
+       own CSS (`.gm-p.fresh .nm` and `.gm-p .mn`'s `white-space: nowrap`,
+       app.css) went untested at a large-text root. One `#gmNext2` step
+       lands on stint 2, which this fixture already tags at 320/16 (the
+       item 1 loop above), so the row is on screen before either probe
+       runs. */
     await goRich(c, origin);
     await setWidth(c, LARGE_TEXT_WIDTH);
     await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
     try {
       await evalIn(c, step(OPEN_BENCH));
+      await evalIn(c, step(`document.getElementById('gmNext2').click()`));
+      const tagged = await evalIn(c, `document.querySelectorAll('#gmFloor .gm-p.fresh').length`);
+      if (!tagged) {
+        // rule 2a of /new-guard: without a tagged row on screen, the spill
+        // check below would measure stint 0 and prove nothing about the tag.
+        problems.push(`item 4: no "just on" tagged floor row on screen at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text -- nothing was measured`);
+      }
       await evalIn(c, step(PICK));
-      const spill = JSON.parse(await evalIn(c, `(() => {
-        const body = document.querySelector('.gm-body');
+      // reuse GM_BODY_OVERFLOW_PROBE (dom.mjs) for the scrollWidth-vs-
+      // clientWidth comparison rather than re-deriving it here.
+      const gb = JSON.parse(await evalIn(c, GM_BODY_OVERFLOW_PROBE));
+      if (!gb.body) problems.push('item 4: no .gm-body to check for a body-relative sideways spill');
+      else if (gb.scrollWidth > gb.clientWidth + 1) {
+        problems.push(`item 4 (#167): .gm-body scrollWidth ${gb.scrollWidth} exceeds its clientWidth ${gb.clientWidth} at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+      } else if (gb.worst) {
+        problems.push(`item 4 (#167): ${gb.worst.el} reaches ${gb.worst.out}px past .gm-body's own box`);
+      }
+      // layered on top of the probe: the seg/sit boxes themselves, which
+      // `GM_BODY_OVERFLOW_PROBE` does not name individually.
+      const boxes = JSON.parse(await evalIn(c, `(() => {
         const vw = document.documentElement.clientWidth;
         const seg = document.querySelector('#gmBenchLab .seg');
         const sit = [...document.getElementById('gmBenchLab').children].find(k => k.textContent.trim() === 'Sit for the rest');
         const segR = seg?.getBoundingClientRect(), sitR = sit?.getBoundingClientRect();
         return JSON.stringify({
-          scrollWidth: body.scrollWidth, clientWidth: body.clientWidth, vw,
+          vw,
           seg: segR && { l: Math.round(segR.left), r: Math.round(segR.right) },
           sit: sitR && { l: Math.round(sitR.left), r: Math.round(sitR.right) },
         });
       })()`));
-      if (spill.scrollWidth > spill.clientWidth + 1) {
-        problems.push(`item 4 (#167): .gm-body scrollWidth ${spill.scrollWidth} exceeds its clientWidth ${spill.clientWidth} at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
-      }
-      for (const [label, box] of [['.seg', spill.seg], ['Sit for the rest', spill.sit]]) {
+      for (const [label, box] of [['.seg', boxes.seg], ['Sit for the rest', boxes.sit]]) {
         if (!box) { problems.push(`item 4: ${label} not found while checking for spill`); continue; }
-        if (box.l < -0.5 || box.r > spill.vw + 0.5) {
-          problems.push(`item 4 (#167): ${label} spans ${box.l} to ${box.r} in a ${spill.vw}px viewport`);
+        if (box.l < -0.5 || box.r > boxes.vw + 0.5) {
+          problems.push(`item 4 (#167): ${label} spans ${box.l} to ${box.r} in a ${boxes.vw}px viewport`);
         }
       }
       const ov = JSON.parse(await evalIn(c, OVERFLOW_PROBE));

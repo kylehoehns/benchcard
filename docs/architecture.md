@@ -925,7 +925,7 @@ read the same `resumeAt()` logic. Bench mode is deliberately **not** reopened on
 load: a coach who reloaded *because* something was wrong would be trapped in it.
 
 Leaving is a **thumb reach on a phone**: as well as the X in the top bar there
-is a **Done** button at the left end of the stint bar, because bench mode is the
+is a **Leave** button at the left end of the stint bar, because bench mode is the
 one screen used standing up one-handed and the top-left corner is the worst
 place on a 390px screen to have to reach. It is text rather than a chevron so it
 never reads as a third stint control, and it is hidden above the coarse-pointer

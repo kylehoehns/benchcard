@@ -257,7 +257,7 @@ line of what happened ("Removed Harper") and Undo, for the window
 *Material 2: Snackbars. Research: NN/g, confirmation dialogs.*
 
 **C10. Bench mode and multi-step flows are full screen.** Close ✕ top left, and
-in bench mode a Done within thumb reach at the bottom. They cover everything,
+in bench mode a Leave button within thumb reach at the bottom. They cover everything,
 including any floating bar. *Apple: Modality. Material: Dialogs (full screen).*
 
 ---
