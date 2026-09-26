@@ -138,9 +138,9 @@ test('the wordmark is capped against the viewport at big text', () => {
     'the wordmark is no longer capped against the viewport, so it can outgrow a 320px screen');
 });
 
-test('the settings panel wraps its two widest rows at big text', () => {
+test('the settings panel wraps its widest row at big text', () => {
   /* The last of these, and the widest: 112px of sideways pan at 320px and a
-     32px root. Two rows, both already-familiar shapes.
+     32px root.
 
      `.minwrap` holds Periods × Min / period. It is `flex: none`, so its base
      size is max-content and it never shrinks -- and an item that never shrinks
@@ -149,25 +149,22 @@ test('the settings panel wraps its two widest rows at big text', () => {
 
      The selector is load-bearing too: the base `.minwrap` rule is declared
      BELOW this block, so a bare `.minwrap` here loses on source order the same
-     way the 385px stage lost on `.bar` for its whole life. */
+     way the 385px stage lost on `.bar` for its whole life. #142 moved the row
+     off `.setrow` (retired) onto `#view-settings .pgrp .prow`, so the fix
+     needs an id selector now rather than a two-class one -- an id outranks a
+     later bare class regardless of source order. The backup buttons (Save a
+     backup file, Restore from a file) are each their own full-width `.prow`
+     since #142, not a `.gm-cta`-style pair squeezed side by side, so their
+     text already wraps at this width and needs no big-text fix of its own. */
   const at = css.indexOf(BIG);
   const big = css.slice(at, css.indexOf('\n}', at));
 
-  const mw = big.match(/\.setrow\s+\.minwrap\s*{([^}]*)}/);
+  const mw = big.match(/#view-settings\s+\.minwrap\s*{([^}]*)}/);
   assert.ok(mw, 'the settings number pair can no longer wrap, so it pans 112px again at big text');
   assert.match(mw[1], /flex-wrap:\s*wrap/, 'the number pair has no wrap');
   assert.match(mw[1], /flex:\s*0\s+1/, 'the number pair cannot shrink, so its wrap never fires');
   assert.ok(css.lastIndexOf('.minwrap {') > at,
-    'the base .minwrap rule moved above the big-text block; the two-class selector is now needlessly specific');
-
-  assert.match(big, /\.backuprow\s+\.btn\s*{[^}]*white-space:\s*normal/,
-    'the backup buttons are nowrap again at big text, which makes them wider than their column');
-
-  /* And nowhere else: `.btn` is nowrap by design at normal text, and the
-     number pair is one tidy row there. */
-  const others = css.slice(0, at) + css.slice(at + big.length);
-  assert.ok(!/\.backuprow\s+\.btn\s*{[^}]*white-space:\s*normal/.test(others),
-    'the backup buttons wrap outside the big-text block, which changes normal-text layout');
+    'the base .minwrap rule moved above the big-text block; the id selector is now needlessly specific');
 });
 
 test('the season ledger rows collapse to two lines, and only at big text', () => {

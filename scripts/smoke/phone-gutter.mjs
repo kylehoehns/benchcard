@@ -21,11 +21,11 @@ import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
 const TOL = 1;
 
 /* Item 1's five screens, each named by its own JS expression rather than a
- * bare CSS selector -- `#view-settings`'s two `.side-box`es share a tag and a
- * class, so "first" and "last" are taken by array position, not by a
- * `:first-of-type`/`:last-of-type` pseudo-class that would silently pick the
- * wrong element (or none) the moment an unrelated `<div>` sits ahead of them
- * in source order.
+ * bare CSS selector -- `#view-settings` holds several `.pgrp` groups now
+ * (#142 moved it onto the app's shared grammar), so "first" and "last" are
+ * taken by array position, not by a `:first-of-type`/`:last-of-type`
+ * pseudo-class that would silently pick the wrong element (or none) the
+ * moment an unrelated `<div>` sits ahead of them in source order.
  *
  * Every state runs `TODAY_HOME` as its OWN `step()` call, awaited
  * before the click that follows it, rather than one script chaining both:
@@ -70,8 +70,8 @@ const GUTTER_STATES = [
   { name: 'settings',
     click: `document.querySelector('#settingsBtn').click()`,
     sels: [
-      ['first', `document.querySelectorAll('#view-settings .side-box')[0]`],
-      ['last', `(els => els[els.length - 1])(document.querySelectorAll('#view-settings .side-box'))`],
+      ['first', `document.querySelectorAll('#view-settings .pgrp')[0]`],
+      ['last', `(els => els[els.length - 1])(document.querySelectorAll('#view-settings .pgrp'))`],
     ] },
 ];
 

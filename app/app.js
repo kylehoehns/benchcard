@@ -258,7 +258,7 @@ on('#exportBackup', 'onclick', () => {
    `navigator.storage.persisted()` says, and only a `true` from the browser
    itself is allowed to put the reassuring line on screen. See backup.js for
    what each engine actually answered when this was measured. */
-keepStored().then(kept => { if (kept) set('#persistNote', 'hidden', false); })
+keepStored().then(kept => { if (kept) { set('#persistNote', 'hidden', false); set('#backupFootnote', 'hidden', true); } })
   .catch(() => {});
 
 function pickBackup() {

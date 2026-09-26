@@ -79,6 +79,7 @@ import { wakeLockPass } from './wake-lock.mjs';
 import { overlayPass } from './overlay.mjs';
 import { touchPass } from './touch.mjs';
 import { settingsRowPass } from './settings-rows.mjs';
+import { settingsLookPass } from './settings-look.mjs';
 import { whoRowsPass } from './who-rows.mjs';
 import { planRowsPass } from './plan-rows.mjs';
 import { planControlsPass } from './plan-controls.mjs';
@@ -197,6 +198,12 @@ export const ROWS = Object.freeze([
     run: ctx => touchPass(ctx.c, ctx.origin, ctx.source), replaces: TOUCH_CHECK },
   { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
     run: ctx => settingsRowPass(ctx.c, ctx.source), replaces: 'settings rows ≥ 48px' },
+  // #142's own guard (see docs/specs/142-settings-groups.md's Proof section,
+  // "Group look" row): no `.pgrp` border, header/footnote text at 32px,
+  // sentence case and one footnote per group, at 320/390px, light and dark
+  // -- see settings-look.mjs.
+  { id: 'settingslook', name: 'settings look: no border, 32px insets, sentence case, one footnote per group', selectable: true, setup: 'rich',
+    run: ctx => settingsLookPass(ctx.c, ctx.origin) },
   // #27 item 10: the Who's here sheet swept the same way settingsrows sweeps
   // Settings — see who-rows.mjs.
   { id: 'whorows', name: `who's here rows ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
@@ -270,9 +277,10 @@ export const ROWS = Object.freeze([
   // bar-rows.mjs's own comment for how the pinned literals were measured.
   { id: 'barrows', name: '.mrow, .dayrow and .sn-row match the pre-#141 literals', selectable: true, setup: 'rich',
     run: ctx => barRowsPass(ctx.c, ctx.origin) },
-  // #141 (one control each), Proof "Game fields match #teamName" -- see
-  // game-field-match.mjs's own comment.
-  { id: 'gamefieldmatch', name: '#gameDate, #label, #dayName and #when match #teamName', selectable: true, setup: 'rich',
+  // #141 (one control each), Proof "Game fields match the base input rule"
+  // -- see game-field-match.mjs's own comment. #142 moved #teamName onto
+  // `.pgrp .prow-in`, so the reference field is #minMins now.
+  { id: 'gamefieldmatch', name: '#gameDate, #label, #dayName and #when match #minMins', selectable: true, setup: 'rich',
     run: ctx => gameFieldMatchPass(ctx.c, ctx.origin) },
   // #141 (one control each), Proof "#gmOpen filled and full width at 840 and
   // 1280" -- see gm-open.mjs's own comment.

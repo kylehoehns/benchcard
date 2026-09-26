@@ -355,43 +355,37 @@
         : `${count} ${noun}, all ≥ ${TOUCH_FLOOR}px`);
   }
 
-  /* 3a. #22: every row in #view-settings -- each setting row, each link row
-        (About, Contact, Buy me a coffee -- `.setrow` doubles as the base for
-        both) and the backup row -- at least 48px, scoped to this one view.
-        It was a floor higher than the sweep above when it was written; #37
-        raised the app-wide sweep to the same 48px (I1), and this stays as
-        the check that measures a ROW rather than a control.
+  /* 3a. #22, re-pointed by #142: every row in #view-settings -- each setting
+        row, each link row (About, Contact, Buy me a coffee) and the backup
+        row -- at least 48px, scoped to this one view. It was a floor higher
+        than the sweep above when it was written; #37 raised the app-wide
+        sweep to the same 48px (I1), and this stays as the check that
+        measures a ROW rather than a control.
 
-        A ROW IS DEFINED STRUCTURALLY, not by `.setrow`/`.backuprow` -- a
-        guard-falsifier renamed both classes throughout `#view-settings` and
-        this check kept reporting "0 rows" as a pass, because the old
-        `querySelectorAll('.setrow, .backuprow')` found nothing to measure and
-        nothing-to-measure took the same branch as nothing-open. So a row here
-        is: a direct child of one of `#view-settings`'s `.side-box` sections
-        that (a) either IS an interactive control (button, a[href], input,
-        [role=group]) or contains one, AND (b) is laid out as a flex row the
-        way every real row is -- `.setrow`/`.backuprow`'s own base rule sets
+        A ROW IS DEFINED STRUCTURALLY, not by a class name -- a guard-
+        falsifier once renamed `.setrow`/`.backuprow` throughout
+        `#view-settings` and this check kept reporting "0 rows" as a pass,
+        because the old `querySelectorAll('.setrow, .backuprow')` found
+        nothing to measure and nothing-to-measure took the same branch as
+        nothing-open. #142 moved Settings onto the app's shared `.pgrp`/
+        `.prow` grammar, so the selector below is `#view-settings .pgrp >
+        .prow` -- still not the whole story by itself: a row here is one of
+        those that (a) either IS an interactive control (button, a[href],
+        input, [role=group]) or contains one, AND (b) is laid out as a flex
+        row the way every real row is -- `.prow`'s own base rule sets
         `display: flex`, and it is also the one thing an impostor row has to
-        fake to look like a row (verified: a `<div>` with a button inside it
-        but no flex layout, added above About, was invisible to this rule
-        until it also set `display: flex`, and then measured short and was
-        caught). (a) alone is what keeps headings and notes out: `.side-hd`,
-        `.set-h` and every `.note` paragraph in this view contain no control
-        and drop out there, no class name needed. (a) alone is also why a
-        bare `<a>` row still counts even if `display` stops being read from
-        `.setrow` -- the anchor is a control itself, not a container of one --
-        which is what still catches the About/Contact/Buy-me-a-coffee rows
-        after a rename, short, rather than them silently disappearing.
+        fake to look like a row. (a) alone is what keeps headings and
+        footnotes out: `h2.pgrp-h` and `p.pgrp-f` contain no control and drop
+        out there, no class name needed.
 
-        The one thing (a)+(b) together deliberately leaves out is Backup's own
-        "or paste a backup" trigger (`.pastein`): a control sits directly
-        inside it, but it is a plain block, not a flex row -- the design's own
-        comment calls it "a quiet way in underneath, never a second top-level
-        button", and spec item 7 names only the backup ROW (singular), not
-        every control the Backup box holds. Measured: `.pastein` was 44px
-        tall at every width this check runs at, so counting it would have
-        failed the real, unmodified page; #37 took its link to 48px, and (b)
-        is still what keeps that specific control out without naming it.
+        `.pastein > .prow` is added alongside: "or paste a backup" and
+        "Restore" are real `.prow` rows now (decision-driven by the shared
+        grammar, see index.html's own comment there), but they sit one level
+        deeper than a `.pgrp`'s direct children, inside the `.pastein`
+        wrapper -- so a bare `.pgrp > .prow` alone would miss both. `.paste-go`
+        stays out of the count until its box is opened: `visible()` in
+        `minSizeCheck` already skips it, the same way it always skipped any
+        other hidden control.
 
         Same shape as "last control in an open dialog is reachable" above for
         WHERE it runs: `smoke.mjs`'s `settingsRowPass` is what actually opens
@@ -412,14 +406,12 @@
     emptyMsg: '#view-settings open but 0 rows found -- structural row detection matched nothing',
     elements: function* () {
       if (!settingsView) return;
-      for (const box of settingsView.querySelectorAll('.side-box')) {
-        for (const row of box.children) {
-          const isControl = row.matches(ROW_CONTROL_SEL);
-          const hasControl = isControl || !!row.querySelector(ROW_CONTROL_SEL);
-          if (!hasControl) continue;                                    // heading or note
-          if (getComputedStyle(row).display !== 'flex' && !isControl) continue; // e.g. .pastein
-          yield row;
-        }
+      for (const row of settingsView.querySelectorAll('.pgrp > .prow, .pastein > .prow')) {
+        const isControl = row.matches(ROW_CONTROL_SEL);
+        const hasControl = isControl || !!row.querySelector(ROW_CONTROL_SEL);
+        if (!hasControl) continue;                                    // heading or note
+        if (getComputedStyle(row).display !== 'flex' && !isControl) continue; // an impostor row
+        yield row;
       }
     },
     dim: r => r.height,
