@@ -110,6 +110,7 @@ import { removeRowsPass } from './remove-rows.mjs';
 import { barRowsPass } from './bar-rows.mjs';
 import { gameFieldMatchPass } from './game-field-match.mjs';
 import { gmOpenPass } from './gm-open.mjs';
+import { benchLookPass } from './bench-look.mjs';
 
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
@@ -286,6 +287,16 @@ export const ROWS = Object.freeze([
   // 1280" -- see gm-open.mjs's own comment.
   { id: 'gmopen', name: '#gmOpen is filled and full width at 840/1280, hidden below 840', selectable: true, setup: 'rich',
     run: ctx => gmOpenPass(ctx.c, ctx.origin) },
+  // #138's own guard (see docs/specs/138-bench-restyle.md's Proof section):
+  // items 1-9 -- the round header/foot chips, no uppercase or letter-spaced
+  // text, no bar/foot borders with the foot's floating fade, the surface-
+  // filled borderless floor rows and their 2px --tint picked outline, the
+  // floor's accessible name, the --sheet Next change box (no border, no
+  // icons, ink/muted text only, the period reappearing across a boundary),
+  // the bench label's two sentences, the bench badges' own-color fill with
+  // no ring, and the bottom controls' pill/round shapes -- see bench-look.mjs.
+  { id: 'benchlook', name: 'bench mode matches the prototype', selectable: true, setup: 'rich',
+    run: ctx => benchLookPass(ctx.c, ctx.origin) },
   // #32's own guard (see docs/specs/32-add-a-game.md's Proof section): the
   // three-step Add-a-game flow -- full screen over the chrome, the back
   // gesture stepping back through it, "Use it" and "Plan it" committing the

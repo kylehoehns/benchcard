@@ -54,6 +54,12 @@ const HOOKS = new Set([
                  // `.flow-body > div > *`), but onboarding.js still needs the
                  // box `paintGranRows` fills, and first-run-flow.mjs's smoke
                  // check still finds its rows through `.fr-gran .sheetrow`.
+  'inert',       // #138 item 8: no longer its own rule -- `.gm-b` alone now
+                 // carries the list look in both states, so picking a floor
+                 // player cannot restyle the bench. gamemode.js still adds it
+                 // (a `<div>` vs `<button>`, not a CSS switch), and
+                 // bench-look.mjs's item 3 still selects unpicked rows
+                 // through it.
 ]);
 
 const stripJsComments = (s) =>

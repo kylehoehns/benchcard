@@ -45,6 +45,11 @@ function plainShotsFor(view, theme) {
        600px and the width clause below already excluded it. A shot with a
        dialog open is a picture of that dialog, not of the screen behind it. */
     && !s.sheet
+    /* #138: `bench` joins the list for the same reason `sheet` did in #37 --
+       `bench`/`bench-selected` both open on the "games" view, so without this
+       clause `plainShotsFor('games', ...)` would find three shots instead of
+       the one plain game-screen shot it is supposed to find. */
+    && !s.bench
     && !s.partPlayed && s.width === WIDTH && s.rootPx === 16);
 }
 
@@ -280,6 +285,31 @@ test('SHOTS includes the player sheet, light and dark, unscrolled and scrolled t
     'the plain player-sheet pair should not scroll -- the other pair is the scrolled one');
   assert.deepEqual(namedPair('player-sheet-bottom').map(s => s.bottom), [true, true],
     'player-sheet-bottom does not scroll, so nothing in SHOTS shows the level meter');
+});
+
+/* #138 item 10: bench mode, plain and with a floor row picked, light and
+ * dark. `#gamemode` is a `hidden`-toggled overlay rather than a `<dialog>`,
+ * so it gets its own `bench`/`benchPick` flags (not `sheet`) -- but the same
+ * "declares the click, not just the outcome" shape `sheet` already has. */
+test('SHOTS includes bench mode, plain and picked, light and dark', () => {
+  const plain = namedPair('bench');
+  assertLightDarkPair(plain, 'bench');
+  for (const s of plain) {
+    assert.equal(s.view, 'games',
+      `${s.name} opens on ${s.view}, but bench mode is reached from the game screen's #gmOpen`);
+    assert.equal(s.bench, true, `${s.name} does not set bench: true, so capture() never opens #gamemode`);
+    assert.equal(s.benchPick, false, `${s.name} sets benchPick, so it is not the plain (unpicked) state`);
+  }
+
+  const picked = namedPair('bench-selected');
+  assertLightDarkPair(picked, 'bench-selected');
+  for (const s of picked) {
+    assert.equal(s.view, 'games',
+      `${s.name} opens on ${s.view}, but bench mode is reached from the game screen's #gmOpen`);
+    assert.equal(s.bench, true, `${s.name} does not set bench: true, so capture() never opens #gamemode`);
+    assert.equal(s.benchPick, true,
+      `${s.name} does not set benchPick, so it would look identical to the plain bench state`);
+  }
 });
 
 /* ---------- shotProblems: items 2 and 3 ---------- */

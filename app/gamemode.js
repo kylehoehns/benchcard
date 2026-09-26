@@ -14,7 +14,6 @@
 import { fmtClock, fmtMinutes, SIT_REFUSALS } from './engine.js';
 import { callNames } from './roster.js';
 import { swapIn, sheetUp, tick, enabled as fxOn } from './fx.js';
-import { icon } from './icons.js';
 import { $, on, set, el, ctx2d } from './dom.js';
 import { openTrap, closeTrap } from './trap.js';
 import { track } from './analytics.js';
@@ -322,6 +321,51 @@ function gmFinish() {
   }, () => render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs'));
 }
 
+/* #138 item 1: the header's title (the stint's own stretch of clock) and
+   subtitle (its place among the game's stints), pulled out as a pure
+   function so the exact wording is a `node --test` case, not something only
+   a browser smoke check can pin. */
+export function benchHeaderText(row, i, total) {
+  return {
+    title: `${row.periodName || 'Q' + row.period} · ${fmtClock(row.startSec)} to ${fmtClock(row.endSec)}`,
+    subtitle: `${i + 1} of ${total}`,
+  };
+}
+
+/* #138 item 6: the Next change box's "at" string -- the period name is
+   dropped when the next stint is still in the current one, and kept
+   (including a period named like "OT" or "H1") when it is not. */
+export function nextAt(row, nextRow) {
+  const clock = fmtClock(nextRow.startSec);
+  return nextRow.period === row.period ? clock : `${nextRow.periodName || 'Q' + nextRow.period} ${clock}`;
+}
+
+/* #138 items 6 and 12: the Next change box's two columns, Off and On --
+   shared by bench mode itself and onboarding.js's landing demo (`benchFigure`),
+   which is built to look identical (see its own comment). `nameOf(x)` returns
+   `{ full, short }`; bench mode's own call passes the real/short-name pair
+   `fitCallRows` needs to shrink a row that does not fit, and the demo passes
+   the same string for both since it never shrinks. Each `nm` span starts on
+   `full` -- exactly what an unconditional caller like the demo wants, and no
+   different from what `fitCallRows` settles on before this ever paints, since
+   it runs synchronously against the `rows` this also returns. */
+export function buildNextCols(going, coming, nameOf) {
+  const cols = el('div', 'gm-next-cols');
+  const rows = [];
+  for (const [cls, label, list] of [['off', 'Off', going], ['on', 'On', coming]]) {
+    const c = el('div', 'gm-next-col ' + cls);
+    c.append(el('span', 'gm-next-lb', label));
+    for (const x of list) {
+      const { full, short } = nameOf(x);
+      const ns = el('span', 'nm', full);
+      c.append(ns);
+      rows.push([ns, full, short]);
+    }
+    cols.append(c);
+  }
+  return { cols, rows };
+}
+
 /* The next-sub block is the line the coach actually shouts, so it says real
    names -- the card's five-letter short names are a pocket-card constraint,
    not a screen one, and decoding "PRIY" mid-horn is work nobody needs. Three
@@ -376,9 +420,9 @@ export function renderGameMode({ keepFloor = false } = {}) {
     return d;
   };
 
-  set('#gmGame', 'textContent', (g.label ? 'vs ' + g.label : gameLabel(g, state.activeGame)) + ` · stint ${i + 1} of ${p.stints.length}`);
-  set('#gmMinsKey', 'textContent', 'played / projected');
-  set('#gmClock', 'textContent', `${row.periodName || 'Q' + row.period}  ${row.clock}`);
+  const header = benchHeaderText(row, i, p.stints.length);
+  set('#gmGame', 'textContent', header.title);
+  set('#gmClock', 'textContent', header.subtitle);
   set('#gmReset', 'hidden', !Object.keys(live.overrides).length);
   /* Counted against the plan, not off the key list: an override can be written
      with the same five the card already had (a re-solve often leaves a stint
@@ -441,10 +485,9 @@ export function renderGameMode({ keepFloor = false } = {}) {
   const lab = $('#gmBenchLab');
   lab.textContent = '';
   lab.className = 'gm-lab rowed';
-  lab.append(document.createTextNode(gmPick ? `Swap in for ${calls[gmPick] || shorts[gmPick]}` : 'Bench'));
-  // Nothing picked yet means nothing on the bench is tappable. Say so here
-  // rather than leaving the coach to tap a dead row and learn it the hard way.
-  if (!gmPick && bench.length) lab.append(el('span', 'gm-hint', ' tap who comes off first'));
+  lab.append(document.createTextNode(gmPick
+    ? `Bench · tap who goes on for ${calls[gmPick] || shorts[gmPick]}`
+    : 'Bench · tap a player on the floor to swap'));
   if (gmPick) {
     const sc = el('div', 'gm-scope');
     for (const [k, t] of [['stint', 'This stint'], ['rest', 'Rest of game']]) {
@@ -493,29 +536,17 @@ export function renderGameMode({ keepFloor = false } = {}) {
   const nx = $('#gmNext'); nx.textContent = '';
   if (i + 1 < p.stints.length) {
     const nrow = p.stints[i + 1];
-    const at = `${nrow.periodName || 'Q' + nrow.period} ${fmtClock(nrow.startSec)}`;
+    const at = nextAt(row, nrow);
     const next = effLineup(p, g, i + 1);
     const going = floor.filter(x => !next.includes(x));
     const coming = next.filter(x => !floor.includes(x));
 
-    nx.append(el('div', 'gm-next-hd', going.length || coming.length ? `Next sub · ${at}` : `Next break · ${at}`));
+    nx.append(el('div', 'gm-next-hd', going.length || coming.length ? `Next change at ${at}` : `Next break at ${at}`));
     if (!going.length && !coming.length) {
       nx.append(el('div', 'gm-next-none', 'Same five stay on.'));
     } else {
-      const rows = [];
-      const line = (cls, mark, label2, list) => {
-        if (!list.length) return;
-        const r = el('div', 'gm-next-row ' + cls);
-        const m2 = el('span', 'mk');
-        m2.append(icon(mark, { size: '.95em', stroke: 2.6 }));
-        const ns = el('span', 'ns');
-        r.append(m2, el('span', 'lb', label2), ns);
-        nx.append(r);
-        rows.push([ns, list.map(x => calls[x] || shorts[x]).join('  '),
-                       list.map(x => shorts[x]).join('  ')]);
-      };
-      line('out', 'arrow-down', 'Off', going);
-      line('in', 'arrow-up', 'On', coming);
+      const { cols, rows } = buildNextCols(going, coming, x => ({ full: calls[x] || shorts[x], short: shorts[x] }));
+      nx.append(cols);
       fitCallRows(rows);
     }
   } else {

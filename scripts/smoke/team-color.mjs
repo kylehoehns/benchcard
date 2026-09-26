@@ -195,6 +195,9 @@ const READ_SHEET = `(() => {
   });
 })()`;
 
+// #138 moved the selected floor row's outline from a border to an inset
+// box-shadow (app.css: .gm-p.picked's box-shadow is inset 0 0 0 2px
+// var(--tint)), so the tint now paints there, not in borderColor.
 const READ_GAME_MODE = `(() => {
   const $ = s => document.querySelector(s);
   const gp = $('#gamemode .gm-p.picked');
@@ -202,7 +205,7 @@ const READ_GAME_MODE = `(() => {
   const act = $('.gm-scope button.act');
   const dot = $('.gm-dot.now');
   return JSON.stringify({
-    pickedBorder: gp ? getComputedStyle(gp).borderColor : null,
+    pickedShadowColor: gp ? (getComputedStyle(gp).boxShadow.match(/rgba?\\([^)]+\\)/) || [null])[0] : null,
     scopeOnFg: on ? getComputedStyle(on).color : null,
     scopeActBg: act ? getComputedStyle(act).backgroundColor : null,
     dotNowBg: dot ? getComputedStyle(dot, '::before').backgroundColor : null,
@@ -261,7 +264,7 @@ export async function teamColorPass(c, origin) {
       ['.sheetrow.sel (#sheetInterval) label', sheet.chipFg, ROYAL_LABEL],
       ['.seg button[aria-selected=true] (#welTabPlan) text', r.welSegFg, ROYAL_FILL],
       ['input[type=checkbox].box:checked background', r.checkboxBoxBg, ROYAL_FILL],
-      ['.gm-p.picked border', gm.pickedBorder, ROYAL_FILL],
+      ['.gm-p.picked box-shadow color', gm.pickedShadowColor, ROYAL_FILL],
       ['.gm-scope button.on text', gm.scopeOnFg, ROYAL_FILL],
       ['.phrase text', r.phraseFg, ROYAL_FILL],
     ];

@@ -1608,8 +1608,10 @@
 
     <div class="gm-body">
       <div class="gm-sec">
-        <div class="gm-lab rowed">On the floor<span class="gm-key" id="gmMinsKey"></span></div>
-        <div class="gm-floor" id="gmFloor"></div>
+        <!-- No visible "On the floor" heading (the prototype has none); the
+             meaning -- and the played/projected pair beside every name -- is
+             kept for screen readers on the list itself. -->
+        <div class="gm-floor" id="gmFloor" aria-label="On the floor, minutes played of projected"></div>
         <!-- Five available means no bench at all. The sentence belongs under
              the floor it describes; a "BENCH" heading over an empty list plus
              a padded empty-state cost ~200px of nothing on a 390px screen. -->

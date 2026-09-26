@@ -25,6 +25,7 @@ import { startTour } from './tour.js';
 import { flash } from './toast.js';
 import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
 import { stepperRow, paintGranRows, PERIODS_LO, PERIODS_HI, MINUTES_LO, MINUTES_HI } from './game-setup.js';
+import { buildNextCols } from './gamemode.js';
 import { cardPreviewInto, fitPreview } from './card.js';
 
 /* The lineup floor. Five on the floor is what a game needs, so a roster
@@ -256,26 +257,21 @@ function benchFigure(pane) {
     floor.append(row);
   });
 
+  /* #138 item 12: the same look and words as bench mode's own Next change
+     box -- two columns, Off and On, no arrows. */
   const next = el('div', 'gm-next');
-  next.append(el('div', 'gm-next-hd', 'Next sub \u00b7 Q2 4:00'));
+  next.append(el('div', 'gm-next-hd', 'Next change at Q2 4:00'));
   const going = floorIx.filter(i => !onAt(i, S + 1));
   const coming = benchIx.filter(i => onAt(i, S + 1));
-  for (const [cls, mk, lb, list] of [['out', '\u2193', 'off', going],
-                                     ['in', '\u2191', 'on', coming]]) {
-    if (!list.length) continue;
-    const r = el('div', 'gm-next-row ' + cls);
-    r.append(el('span', 'mk', mk), el('span', 'lb', lb),
-             el('span', 'ns', list.map(i => call[`b${i}`]).join(' ')));
-    next.append(r);
-  }
+  next.append(buildNextCols(going, coming, i => ({ full: call[`b${i}`], short: call[`b${i}`] })).cols);
 
   /* The bench, in `gamemode.js`'s own `.gm-b` rows -- the half a coach scans
      for a name, and the half that gives the block enough height to fill the
      stage on a tall viewport. */
   const bench = el('div', 'wel-bench-sec');
-  const bh = el('p', 'wel-bench-hd wel-bench-sub');
-  bh.append(el('span', null, 'Bench'), el('span', 'wel-bench-hint', 'tap who comes off first'));
-  bench.append(bh);
+  /* #138 item 12: bench mode's own label class and words -- sentence case,
+     one line, no separate hint span. */
+  bench.append(el('p', 'gm-lab', 'Bench · tap a player on the floor to swap'));
   const list = el('div', 'gm-bench');
   benchIx.forEach(i => {
     const row = el('div', 'gm-b inert');

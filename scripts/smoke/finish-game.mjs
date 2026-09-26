@@ -42,6 +42,7 @@ const liveRead = `JSON.stringify(JSON.parse(localStorage.getItem('benchcard.v7')
 const benchState = `(() => JSON.stringify({
   gmHidden: document.getElementById('gamemode')?.hidden,
   gmGame: document.getElementById('gmGame')?.textContent || '',
+  gmClock: document.getElementById('gmClock')?.textContent || '',
   next2Hidden: document.getElementById('gmNext2')?.hidden,
   next2Disabled: document.getElementById('gmNext2')?.disabled,
   finishHidden: document.getElementById('gmFinish')?.hidden,
@@ -70,8 +71,8 @@ export async function finishGamePass(c, origin) {
     /* ---- step to the last stint; item 3's Finish-button checks ---- */
     await evalIn(c, stepToLastStint);
     const last = JSON.parse(await evalIn(c, benchState));
-    if (!/stint (\d+) of \1/.test(last.gmGame)) {
-      problems.push(`item 3: stepping did not reach the last stint (#gmGame reads ${JSON.stringify(last.gmGame)})`);
+    if (!/^(\d+) of \1$/.test(last.gmClock)) {
+      problems.push(`item 3: stepping did not reach the last stint (#gmClock reads ${JSON.stringify(last.gmClock)})`);
     }
     if (last.finishHidden !== false) problems.push('item 3: #gmFinish is hidden on the last stint, want showing');
     if (last.next2Hidden !== true) problems.push('item 3: #gmNext2 is not hidden on the last stint');
@@ -140,8 +141,8 @@ export async function finishGamePass(c, origin) {
     /* ---- item 2: resume opens on the last stint ---- */
     await evalIn(c, step(`document.getElementById('resumeBtn').click()`));
     const resumed = JSON.parse(await evalIn(c, benchState));
-    if (!/stint (\d+) of \1/.test(resumed.gmGame)) {
-      problems.push(`item 2: resuming did not reopen on the last stint (#gmGame reads ${JSON.stringify(resumed.gmGame)})`);
+    if (!/^(\d+) of \1$/.test(resumed.gmClock)) {
+      problems.push(`item 2: resuming did not reopen on the last stint (#gmClock reads ${JSON.stringify(resumed.gmClock)})`);
     }
     if (resumed.finishHidden !== false) problems.push('item 2: #gmFinish is not showing once resumed on the last stint');
     notes.push('item 2: resume opens straight on the last stint, with #gmFinish showing');
@@ -262,12 +263,12 @@ export async function finishGamePass(c, origin) {
     await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[0].click()`));
     await evalIn(c, step(`document.getElementById('gmOpen').click()`));
     const reopened = JSON.parse(await evalIn(c, benchState));
-    if (!/stint 1 of (\d+)/.test(reopened.gmGame)) {
-      problems.push(`item 9: reopening a finished game reads ${JSON.stringify(reopened.gmGame)}, want "stint 1 of N"`);
+    if (!/^1 of (\d+)$/.test(reopened.gmClock)) {
+      problems.push(`item 9: reopening a finished game reads ${JSON.stringify(reopened.gmClock)}, want "1 of N"`);
     }
     await evalIn(c, step(`document.getElementById('gmNext2').click(); document.getElementById('gmNext2').click();`));
-    const atThree = await evalIn(c, `document.getElementById('gmGame')?.textContent || ''`);
-    if (!/stint 3 of/.test(atThree)) problems.push(`item 9: stepping twice from stint 1 reads ${JSON.stringify(atThree)}, want "stint 3 of N"`);
+    const atThree = await evalIn(c, `document.getElementById('gmClock')?.textContent || ''`);
+    if (!/^3 of/.test(atThree)) problems.push(`item 9: stepping twice from stint 1 reads ${JSON.stringify(atThree)}, want "3 of N"`);
     await evalIn(c, step(`document.getElementById('gmClose').click()`));
     await evalIn(c, step(TODAY_HOME));
     const s9 = JSON.parse(await evalIn(c, passRead));

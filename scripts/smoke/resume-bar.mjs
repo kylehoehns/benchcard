@@ -51,12 +51,12 @@ export async function resumeBarPass(c, origin) {
   await evalIn(c, step(`document.getElementById('resumeBtn').click()`));
   const opened = JSON.parse(await evalIn(c, `(() => JSON.stringify({
     gmHidden: document.getElementById('gamemode')?.hidden,
-    gmGame: document.getElementById('gmGame')?.textContent || '',
+    gmClock: document.getElementById('gmClock')?.textContent || '',
     barHidden: document.getElementById('resumeBar')?.hidden,
   }))()`));
   if (opened.gmHidden !== false) problems.push('tapping #resumeBtn did not open bench mode (#gamemode is still hidden)');
-  if (!/stint 4 of 8/.test(opened.gmGame)) {
-    problems.push(`#gmGame reads ${JSON.stringify(opened.gmGame)}, want it to say "stint 4 of 8" -- live.at is 3, zero-based`);
+  if (!/^4 of 8$/.test(opened.gmClock)) {
+    problems.push(`#gmClock reads ${JSON.stringify(opened.gmClock)}, want it to say "4 of 8" -- live.at is 3, zero-based`);
   }
   if (opened.barHidden !== true) problems.push('#resumeBar is still showing once bench mode is open');
 
