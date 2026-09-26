@@ -70,6 +70,20 @@ const readToast = `(() => {
   });
 })()`;
 
+// Item 6 follow-up: a half sheet (`dialog.bsheet.bsheet-half`) has to stay at
+// its ordinary 422px-tall resting height at 390x844/16px root once the Undo
+// toast mounts inside it -- the `:has()` rule that grows the sheet for a
+// toast that does not fit (app.css) must not also let a long `.bsheet-body`
+// (Who's here's player list) pull the whole dialog taller than the toast
+// itself needs. Reads the dialog's own rect, not anything computed from the
+// body/header/status boxes the way the CSS derives it.
+const readSheetRect = sel => `(() => {
+  const d = document.querySelector(${JSON.stringify(sel)});
+  if (!d) return null;
+  const r = d.getBoundingClientRect();
+  return JSON.stringify({ top: r.top, height: r.height });
+})()`;
+
 const CLEARED = 'Rotation changed. The swaps you made by hand were cleared.';
 
 // Repeated after every one of the four edits below: click the toast's own
@@ -189,6 +203,7 @@ export async function rotationUndoPass(c, origin) {
 
     /* ---- item 3: Who's here (marking a player absent) ---- */
     await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
+    const beforeToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetWho')));
     await evalIn(c, step(`(async () => {
       const s = await import('/state.js');
       const five = s.state.day.games[0].live.overrides['1'];
@@ -201,6 +216,17 @@ export async function rotationUndoPass(c, origin) {
     const toast3 = JSON.parse(await evalIn(c, readToast));
     if (!toast3.shown || !(toast3.text || '').startsWith('Rotation changed.') || !toast3.hasUndo) {
       problems.push(`item 3 (who's here): toast reads ${JSON.stringify(toast3)}, want "Rotation changed." with Undo`);
+    }
+    // Item 6 follow-up: at 390x844/16px root, #sheetWho is a half sheet with
+    // room for the header, toast and status line without growing past 422px
+    // -- the toast showing must not change its height by more than 1px.
+    const afterToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetWho')));
+    if (!beforeToastRect || !afterToastRect) {
+      problems.push(`item 6: could not measure #sheetWho's rect (before ${JSON.stringify(beforeToastRect)}, `
+        + `after ${JSON.stringify(afterToastRect)})`);
+    } else if (Math.abs(afterToastRect.height - beforeToastRect.height) > 1) {
+      problems.push(`item 6: #sheetWho's height went from ${beforeToastRect.height} to ${afterToastRect.height} `
+        + 'when the Undo toast appeared at 390x844/16px root, want within 1px -- the body should scroll, not grow the sheet');
     }
     await clickUndo(c);
     const afterUndo3 = JSON.parse(await evalIn(c, readGame));

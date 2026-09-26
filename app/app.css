@@ -2641,6 +2641,10 @@ dialog.bsheet:has(.bsheet-toasts .toast) {
   height: auto; min-height: 50vh; min-height: 50dvh;
   max-height: 92vh; max-height: 92dvh;
 }
+/* Only header, toast and status may grow the sheet: a long body (Who's
+   here's list) would otherwise drag it to 92vh at ordinary text. A literal
+   0 basis stays definite under `height: auto`; flex's `0%` does not. */
+dialog.bsheet:has(.bsheet-toasts .toast) .bsheet-body { flex-basis: 0; min-height: 0; }
 /* `showModal()` paints this behind the sheet over the whole viewport, dimming
    the now-inert rotation and card above it. A flat black mix rather than
    `--bg`-based (the full-screen `.keyswrap` dialogs use) reads as a scrim at
