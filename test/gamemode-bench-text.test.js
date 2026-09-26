@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import './dom-stub.js';
-import { benchHeaderText, nextAt } from '../app/gamemode.js';
+import { benchHeaderText, nextAt, swapToastText } from '../app/gamemode.js';
 
 const HEADER_CASES = [
   ['Q1, stint 1 of 8 reads "Q1 · 8:00 to 4:00" / "1 of 8"',
@@ -41,5 +41,32 @@ const NEXT_AT_CASES = [
 test('nextAt: the "at" string', () => {
   for (const [label, row, nextRow, want] of NEXT_AT_CASES) {
     assert.equal(nextAt(row, nextRow), want, label);
+  }
+});
+
+/* #147 item 2: the swap toast names the minutes -- literals taken straight
+ * from the spec (147-bench-details.md, "What would settle it" item 2), never
+ * recomputed the way `liveMinutes`/`fmtMinutes` themselves compute them.
+ * `inMin`/`outMin` are each player's projected minutes AFTER the swap;
+ * `inBefore`/`outBefore` are their projected minutes before it, read only to
+ * decide whether the minutes clause is worth printing at all. */
+const SWAP_TOAST_CASES = [
+  ['This stint: minutes changed for both',
+    'Casey', 'Ana', 'stint', 20, 12, 16, 16,
+    'Casey on for Ana this stint. Casey now ends at 20 min, Ana at 12.'],
+  ['Rest of game: minutes changed for both',
+    'Casey', 'Ana', 'rest', 32, 0, 16, 16,
+    'Casey on for Ana for the rest of the game. Casey now ends at 32 min, Ana at 0.'],
+  ['no change in minutes: the clause is dropped entirely',
+    'Jordan', 'Sam', 'stint', 16, 16, 16, 16,
+    'Jordan on for Sam this stint.'],
+  ['fractional minutes go through fmtMinutes',
+    'Reese', 'Kira', 'rest', 20.5, 11.5, 16, 16,
+    'Reese on for Kira for the rest of the game. Reese now ends at 20.5 min, Kira at 11.5.'],
+];
+
+test('swapToastText: names the minutes, or drops the clause when they do not change', () => {
+  for (const [label, inName, outName, scope, inMin, outMin, inBefore, outBefore, want] of SWAP_TOAST_CASES) {
+    assert.equal(swapToastText(inName, outName, scope, inMin, outMin, inBefore, outBefore), want, label);
   }
 });

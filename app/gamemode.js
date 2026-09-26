@@ -337,6 +337,20 @@ export function benchHeaderText(row, i, total) {
    identical to it. One string, not two typed copies. */
 export const BENCH_IDLE_LABEL = 'Bench · tap a player on the floor to swap';
 
+/* #147 item 2: the swap toast's own wording, pulled out next to
+   `benchHeaderText` for the same reason -- a `node --test` case, not only a
+   browser smoke check, pins it. `inMin`/`outMin` are each player's projected
+   minutes AFTER the swap (`liveMinutes(p, g)`, `applySwap`'s own closure);
+   `inBefore`/`outBefore` are the same players' projected minutes before it,
+   read only to decide whether the clause is worth printing -- if neither
+   player's number actually moved, naming them again would be noise, not
+   news. */
+export function swapToastText(inName, outName, scope, inMin, outMin, inBefore, outBefore) {
+  const base = `${inName} on for ${outName} ${scope === 'rest' ? 'for the rest of the game' : 'this stint'}.`;
+  if (inMin === inBefore && outMin === outBefore) return base;
+  return `${base} ${inName} now ends at ${fmtMinutes(inMin)} min, ${outName} at ${fmtMinutes(outMin)}.`;
+}
+
 /* #138 item 6: the Next change box's "at" string -- the period name is
    dropped when the next stint is still in the current one, and kept
    (including a period named like "OT" or "H1") when it is not. */
@@ -424,12 +438,16 @@ export function renderGameMode({ keepFloor = false } = {}) {
   // paint bold (the `b { font-weight: 700 }` rule targets it directly,
   // beating the class rule on its parent). So bench gets its own, plain-text
   // path, matching onboarding.js's mins().
-  const mtag = (id, bench = false) => {
+  // #147 item 1: `justOn` appends the "just on" tag here, inline with the
+  // minutes, rather than the caller appending it to `.nm` -- see the
+  // `.gm-p .mn .tag` comment in app.css for why.
+  const mtag = (id, bench = false, justOn = false) => {
     const d = el('span', 'mn');
     d.append(bench
       ? document.createTextNode(fmtMinutes(played[id] || 0))
       : el('b', null, fmtMinutes(played[id] || 0)));
     d.append(el('span', 'proj', ` / ${fmtMinutes(projected[id] || 0)}`));
+    if (justOn) d.append(el('span', 'tag in', 'just on'));
     return d;
   };
 
@@ -478,10 +496,9 @@ export function renderGameMode({ keepFloor = false } = {}) {
         (prevFloor && !prevFloor.includes(id) ? ' fresh' : ''));
       b.style.setProperty('--c', colorOf(id));
       b.dataset.pid = id;      // how the `keepFloor` path finds this row again
-      const nameWrap = el('span', 'nm');
-      nameWrap.append(document.createTextNode(pl.name || shorts[id]));
-      if (prevFloor && !prevFloor.includes(id)) nameWrap.append(el('span', 'tag in', 'just on'));
-      b.append(el('span', 'av', initials(pl)), nameWrap, mtag(id));
+      const justOn = !!(prevFloor && !prevFloor.includes(id));
+      const nameWrap = el('span', 'nm', pl.name || shorts[id]);
+      b.append(el('span', 'av', initials(pl)), nameWrap, mtag(id, false, justOn));
       if (canSwap) {
         b.type = 'button';
         b.onclick = () => {
@@ -502,23 +519,31 @@ export function renderGameMode({ keepFloor = false } = {}) {
     ? `Bench · tap who goes on for ${calls[gmPick] || shorts[gmPick]}`
     : BENCH_IDLE_LABEL));
   if (gmPick) {
-    const sc = el('div', 'gm-scope');
+    // #147 item 3: the shared `.seg` (#141/PR #162), not a bespoke
+    // `.gm-scope` look -- "This stint" and "Rest of game" are a real choice,
+    // marked with `.on` the same way every other `.seg` here does.
+    const sc = el('div', 'seg');
     for (const [k, t] of [['stint', 'This stint'], ['rest', 'Rest of game']]) {
       const b = el('button', 'press' + (gmScope === k ? ' on' : ''), t);
       b.type = 'button';
       b.onclick = () => { gmScope = k; renderGameMode(); };
       sc.append(b);
     }
+    lab.append(sc);
     /* The third scope, and the only one that is an ACTION rather than a mode:
        the other two ask "how long does this swap last" and then wait for a
        name off the bench. This one answers the name itself, so there is
-       nothing left to wait for and it fires on the tap. Styled as a button,
-       not a segment, so it does not pretend to be a third toggle. */
-    const rb = el('button', 'press act', 'Sit for the rest');
+       nothing left to wait for and it fires on the tap.
+
+       #147 item 3: a sibling AFTER the segmented control, not a third
+       segment inside it -- plain `.btn` (a surface fill with a border), not
+       `.primary` and not filled with the tint or `--accent`. The one filled
+       button on this screen is ›/Finish game (C2); this one must not look
+       more "selected" than whichever segment actually is. */
+    const rb = el('button', 'press btn', 'Sit for the rest');
     rb.type = 'button';
     rb.onclick = () => sitRest(p, g, i, gmPick, calls[gmPick] || shorts[gmPick]);
-    sc.append(rb);
-    lab.append(sc);
+    lab.append(rb);
   }
 
   const bx = $('#gmBench'); bx.textContent = '';
@@ -716,9 +741,19 @@ function gmSlide(el, dir, btn) {
    Undo stays one level deep, as everywhere else in the app. */
 function applySwap(p, g, i, outId, inId, outName, inName) {
   const last = gmScope === 'rest' ? p.stints.length - 1 : i;
+  const scope = gmScope;
+  // Read before `mutate` runs, so the toast can tell whether the swap moved
+  // either player's projected minutes at all (`swapToastText`'s no-change
+  // path) -- the "after" read happens inside the message function itself,
+  // per `undoable`'s own contract: `message` runs after `mutate`, which is
+  // how the post-swap minutes get into the toast without re-solving twice.
+  const before = liveMinutes(p, g);
   tick();
   undoable(
-    `${inName} on for ${outName} ${gmScope === 'rest' ? 'for the rest of the game' : 'this stint'}.`,
+    () => {
+      const after = liveMinutes(p, g);
+      return swapToastText(inName, outName, scope, after[inId], after[outId], before[inId], before[outId]);
+    },
     () => {
       const live = liveOf(g);
       for (let k = i; k <= last; k++) {

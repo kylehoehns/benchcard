@@ -6,11 +6,12 @@ export const WIDTH = 390, HEIGHT = 844;
 
 /* Fix pass finding 3: `bar-rows.mjs` and `gm-open.mjs` each carried a
    byte-for-byte identical `setWidth` -- override the device metrics at the
-   given width (keeping this suite's own HEIGHT and mobile emulation), then
-   wait two rAFs for the resulting reflow to settle before anything measures
-   it. One copy here, imported by both. */
-export async function setWidth(c, width) {
-  await c.send('Emulation.setDeviceMetricsOverride', { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+   given width (keeping this suite's own HEIGHT and mobile emulation unless a
+   caller needs a different height too, #147's own short-phone heights among
+   them), then wait two rAFs for the resulting reflow to settle before
+   anything measures it. One copy here, imported by everyone who needs it. */
+export async function setWidth(c, width, height = HEIGHT) {
+  await c.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile: true });
   await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
 }
 
@@ -408,4 +409,35 @@ export const DIALOG_OVERFLOW_PROBE = `(() => {
     };
   }
   return JSON.stringify({ dialog: true, dw: Math.round(d.width), worst });
+})()`;
+
+/* #147 item 4/#167: the same container-relative shape as `DIALOG_OVERFLOW_PROBE`
+   above, for `.gm-body` (bench mode's scrolling body) instead of `dialog[open]`.
+   `.gm-body` is `overflow-y: auto`, which computes its own `overflow-x` to
+   `auto` too, so `OVERFLOW_PROBE` forgives sideways spill there by its own
+   design -- but `.gm-body`'s `touch-action: pan-y` blocks a sideways pan to
+   reach it, so this checks its own `scrollWidth` against its `clientWidth` too.
+   Proof: failed on today's code before #147's `.gm-scope` -> `.seg`+`.btn`
+   change (29 to 340 against a 320px `.gm-body`). */
+export const GM_BODY_OVERFLOW_PROBE = `(() => {
+  const body = document.querySelector('.gm-body');
+  if (!body) return JSON.stringify({ body: false });
+  const b = body.getBoundingClientRect();
+  const vis = el => el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true });
+  let worst = null;
+  for (const el of body.querySelectorAll('*')) {
+    const r = el.getBoundingClientRect();
+    if ((!r.width && !r.height) || !vis(el)) continue;
+    const over = r.right > b.right + 1 ? Math.round(r.right - b.right)
+      : r.left < b.left - 1 ? Math.round(b.left - r.left) : null;
+    if (over === null) continue;
+    if (!worst || over > worst.out) worst = {
+      el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
+        + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')),
+      out: over,
+    };
+  }
+  return JSON.stringify({
+    body: true, scrollWidth: Math.round(body.scrollWidth), clientWidth: Math.round(body.clientWidth), worst,
+  });
 })()`;

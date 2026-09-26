@@ -1498,7 +1498,21 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    "22px bench names"), up from the previous 17px headline size. */
 .gm-p .nm { flex: 1; min-width: 0; font-size: var(--fs-title); font-weight: 600; letter-spacing: -.026em;
   line-height: 1.15; overflow-wrap: anywhere; }
-.gm-p .mn { font-size: var(--fs-secondary); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700; }
+/* #147 item 1, design option A ("let the name ellipsize before the tag
+   wraps"): a just-on row's `.mn` is wider than the others (it carries the
+   "just on" tag), which leaves `.nm` less room than its neighbors -- enough,
+   for a long name, to wrap it onto a second line and grow the row past every
+   other one at 320px. `.fresh` is set on exactly the rows that carry the tag
+   (same condition, gamemode.js), so only those rows trade wrapping for
+   ellipsis; every other row keeps #138's own wrap-anywhere look unchanged. */
+.gm-p.fresh .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* #147 item 1: `white-space: nowrap` -- `.nm` is the one column with
+   `min-width: 0` (a squeeze-first flex item), so a long name gives way before
+   `.mn` ever does. Without this, `.mn`'s own min-content width still let it
+   wrap once the "just on" tag joined it, which grew the row exactly the way
+   moving the tag off `.nm` was meant to stop. */
+.gm-p .mn { font-size: var(--fs-secondary); font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 700;
+  white-space: nowrap; }
 .gm-p .mn .proj, .gm-b .mn .proj { color: var(--faint); font-weight: 500; }
 /* #138 item 4: a 2px inset outline, not the 3.5px soft `--ring` glow -- an
    inset `box-shadow` follows `border-radius` the way a literal `outline`
@@ -1544,17 +1558,12 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    on every row once a pick is live. */
 .gm.swapping .gm-floor .gm-p:not(.picked) { opacity: .4; }
 
-.gm-scope { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-2); border-radius: var(--r-full);
-  border: 1px solid var(--line); }
-/* 48px, not the 26 this group measured before a third button joined it: these
-   are mid-game controls tapped standing up in a gym, and 48 is the floor this
-   app holds everything else to (#37 / I1; it was 44 until the floor rose). */
-.gm-scope button { padding: .55rem .7rem; min-height: 48px; border-radius: var(--r-full);
-  font-size: var(--fs-footnote); font-weight: 600; color: var(--muted); }
-.gm-scope button.on { background: var(--surface); color: var(--tint); box-shadow: var(--shadow-sm); }
-/* The third item is an action, not a third segment of the toggle, so it is
-   colored like one -- a coach must not tap it expecting a mode. */
-.gm-scope button.act { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
+/* #147 item 3: the scope toggle is the shared `.seg` (#141/PR #162) -- no
+   bespoke `.gm-scope` look survives here. "Sit for the rest" is a plain
+   `.btn` sibling placed after the `.seg`, not a third segment inside it; base
+   `.btn` padding does not reach the 48px floor (#37 / I1) on its own, so this
+   group raises it the same way the segmented control always has. */
+.gm-lab.rowed .btn { min-height: 48px; }
 /* Three items plus "Swap in for Aiden" do not fit one 390px line, so the group
    drops to its own row rather than squeezing the labels.
  *
@@ -1589,9 +1598,14 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-next-col.off .nm { color: var(--muted); font-weight: 500; }
 .gm-next-col.on .nm { color: var(--ink); font-weight: 600; }
 
-.gm-p .nm .tag { display: inline-block; margin-left: .5rem; padding: .1rem .42rem; border-radius: var(--r-full);
+/* #147 item 1: inline with the minutes (`.mn`), not appended to the name
+   (`.nm`) -- `.nm` wraps at any character (`overflow-wrap: anywhere`) so a
+   trailing "just on" tag could push it to a second line and grow the row
+   past its neighbors at 320px. `.mn` does not wrap, so the tag can only ever
+   sit beside the minutes, never grow the row. */
+.gm-p .mn .tag { display: inline-block; margin-left: .4rem; padding: .1rem .42rem; border-radius: var(--r-full);
   font-size: var(--fs-footnote); font-weight: 700; vertical-align: middle; }
-.gm-p .nm .tag.in { background: var(--ok-soft); color: var(--ok); }
+.gm-p .mn .tag.in { background: var(--ok-soft); color: var(--ok); }
 
 /* flex-wrap is load-bearing at large text: Done, the two chevrons and the dot
    strip are all sized in rem, so at 320px on a 200% reader the row wanted 464px
@@ -1715,6 +1729,22 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    sitting centered at its own content width -- `justify-content: center`
    is gone for the same reason. */
 .gm-start { display: flex; margin-top: .85rem; }
+
+/* #147 item 1: a short portrait phone (320x640; 375x667 already clears with
+   room to spare, 390x844 easily does). Trims the same handful of spacings
+   the landscape block below trims -- `.gm-body`'s top padding, the label and
+   section gaps, and the floor row's own vertical padding -- just enough that
+   `#gmNext`'s bottom clears `.gm-foot`'s top at every stint. `.gm-p`'s
+   padding stops well short of taking a row under 48px (I1): trimmed it still
+   measures in the mid-50s. Bounded by `max-height` so a normal phone is
+   untouched, the same way the landscape block is bounded by it. */
+@media (orientation: portrait) and (max-height: 700px) {
+  .gm-body { padding-top: .65rem; }
+  .gm-sec { margin-bottom: .8rem; }
+  .gm-lab { margin-bottom: .35rem; }
+  .gm-floor { gap: .3rem; }
+  .gm-p { padding: .45rem .8rem; }
+}
 
 /* Phone held sideways. Game mode is one tall column, which on a 390px-high
    viewport put 846px of content behind 247px of window -- the coach saw three

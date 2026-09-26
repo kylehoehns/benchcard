@@ -1,4 +1,4 @@
-import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, GM_BODY_OVERFLOW_PROBE, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
@@ -10,38 +10,29 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---- the same large-text cell, on the app shell ----
  *
- * WHY IT EXISTS, and it is the uncomfortable part. The pass above covers seven
- * STATIC pages. `index.html` — the app, the page a coach actually uses — was
- * never checked at a large root at all: `sweepPass` walks 300–420px at the
- * DEFAULT font size, and the large-text cell only ever visited `DEAD_STATIC`.
- * So the app's own views were held to a lower standard than its marketing
- * pages, and a **228px** sideways pan on the games view was shippable the
- * whole time — `table.grid` measuring 675px in a 320px column at a 32px root.
- * Nothing was wrong with either existing check; the cell simply had no owner.
+ * WHY: `sweepPass` above covers seven static pages at 300-420px, default font
+ * size only -- `index.html` itself was never checked at a large root, and a
+ * 228px sideways pan on the games view (`table.grid` at 675px in a 320px
+ * column) was shippable the whole time. Nothing was wrong with either
+ * existing check; this cell simply had no owner.
  *
- * SAME ONE CELL, for the same reason: 320px at a 32px root is where the app's
- * `19em` large-text block is live and the column is still short. Every screen
- * `VIEWS` names, because the five chromes differ and only one of them has to
- * be wrong — that is the lesson `sweepPass` already wrote down about deriving
- * a view list instead of enumerating one.
+ * SAME CELL (320px/32px root, where the app's `19em` large-text block is
+ * live), every screen `VIEWS` names -- the five chromes differ and only one
+ * has to be wrong, the same reason `sweepPass` derives its view list rather
+ * than enumerating one.
  *
- * ONE NAVIGATION, then the views are switched in the page. A font size cannot
- * be changed without a reload — `Page.setFontSizes` on a laid-out document
- * leaves it unreflowed and reports a width that was never rendered — but a
- * view switch reflows on its own, so the reload is paid once, not four times.
+ * ONE NAVIGATION: a font size needs a reload to apply (`Page.setFontSizes` on
+ * a laid-out document reports an unreflowed width), but a view switch reflows
+ * on its own, so the reload is paid once.
  *
- * FOLDS ARE LEFT AS THEY BOOT, unlike `touchPass`. Measured both ways when
- * this shipped: every screen reports identically with every `<details>`
- * forced open, because the app's folds hide their content with CSS rather than
- * by removing the box, so a closed fold's children still have rects and are
- * still swept. Opening them would cost a settle per screen for nothing.
+ * FOLDS STAY AS THEY BOOT, unlike `touchPass`: every screen measures
+ * identically with every `<details>` forced open, since folded content is
+ * hidden by CSS, not removed, so a closed fold's children still have rects.
  *
- * THE ALLOWANCES ARE PER VIEW, never blanket, and each number is the smallest
- * that covers a residue accepted deliberately, with its reason on the key.
- * A blanket tolerance
- * is what would have let the 228px through. Tighten one by 1px and it must go
- * red; if it does not, the number is decoration. Do NOT raise one to silence a
- * new failure — that is a bug on the screen the coach stands in front of. */
+ * ALLOWANCES ARE PER VIEW, never blanket -- a blanket tolerance is what let
+ * the 228px through. Each number is the smallest covering a deliberate
+ * residue, tightened by 1px first to prove it is load-bearing. Do NOT raise
+ * one to silence a new failure -- that is a bug in front of the coach. */
 const APP_LARGE_TEXT_ALLOW = {
   /* EMPTY, and that is the finding, not an omission. Every screen measured
      clean in this cell once the three defects behind the 2026-08-24 report
@@ -50,22 +41,17 @@ const APP_LARGE_TEXT_ALLOW = {
      reason on the line and the smallest number that covers it — and tighten it
      by 1px first to prove the number is load-bearing. */
 };
-/* Every screen `VIEWS` names (Today plus the four it opens), plus BENCH
-   MODE — which is the state this pass could not see and the one a coach is
-   standing in when it matters most.
+/* Every screen `VIEWS` names (Today plus the four it opens), plus BENCH MODE
+ * -- the state this pass could not see, and the one a coach is standing in
+ * when it matters most. `VIEWS` is `sweepPass`'s own list (#23), read here
+ * rather than kept a second time; game mode is a full-screen overlay behind
+ * `#gmOpen` that no check had ever enumerated at a large root -- the
+ * consequence was `#gmNext2` ("Next stint") sitting at left 349 in a 320px
+ * viewport, wholly off screen and green everywhere.
  *
- * `VIEWS` is `sweepPass`'s own list (#23), read here rather than kept a
- * second time, and game mode is not on it: it is a full-screen overlay
- * behind `#gmOpen`. Nothing in this harness had ever enumerated it at a
- * large root, and the measured consequence was `#gmNext2` — "Next stint",
- * the primary action of the screen a coach uses with the clock running —
- * sitting at left 349 in a 320px viewport with no pan available. Wholly off
- * screen, unreachable, and green in every check.
- *
- * The swap picker is here too because picking a player changes the layout of
- * the bench list underneath it, so it is a different measurement, not the same
- * screen with a class on it. Both close themselves so the pass leaves the app
- * on the games screen for whatever runs next. */
+ * The swap picker is here too: picking a player changes the bench list's
+ * layout, a different measurement, not the same screen with a class on it.
+ * Both close themselves, leaving the app on the games screen. */
 export const APP_LARGE_TEXT_STATES = [
   ...VIEWS,
   /* AND THE TEAM MENU OPEN, on Today: a native popover is its own box in the
@@ -111,6 +97,16 @@ export const APP_LARGE_TEXT_STATES = [
     open: `document.querySelector('#gmOpen').click();
            document.querySelector('#gmFloor .gm-p').click()`,
     close: `document.querySelector('#gmClose').click()` },
+  /* #147 item 7: the swap toast's minutes clause; close takes the Undo. */
+  { name: 'bench mode, swap toast',
+    open: `document.querySelector('#gmOpen').click();
+           await new Promise(r => setTimeout(r, 400));
+           document.querySelector('#gmFloor .gm-p').click();
+           await new Promise(r => setTimeout(r, 400));
+           document.querySelector('#gmBench .gm-b').click()`,
+    close: `document.querySelector('.toast .tundo')?.click();
+            await new Promise(r => setTimeout(r, 400));
+            document.querySelector('#gmClose').click()` },
   /* #135 item 12: the last stint's own footer row -- #gmFinish beside #gmDone,
      #gmPrev and the dots, none of which any state above puts on screen
      together, because reaching the last stint is the one moment #gmNext2
@@ -555,6 +551,9 @@ const DIALOG_CHECKED_STATES = new Set(['plan sheet', 'plan sheet, add a rule',
      false` fails the state instead of quietly measuring Today. */
   'add a game, step 1', 'add a game, step 2', 'add a game, step 3']);
 
+// #147 item 4/#167: the one state with a player pick on screen.
+const GM_BODY_CHECKED_STATES = new Set(['bench mode, swap picker']);
+
 export async function appLargeTextPass(c, origin) {
   const problems = [];
   let allowed = 0;
@@ -598,12 +597,29 @@ export async function appLargeTextPass(c, origin) {
           const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo]')`));
           if (!raised) problems.push(`${where}: no Undo toast was raised -- nothing was measured`);
         }
+        if (v.name === 'bench mode, swap toast') {
+          // rule 2a: a failed swap would raise no toast to measure.
+          const msg = await evalIn(c, `document.querySelector('.toast .tmsg')?.textContent ?? null`);
+          if (!msg || !msg.includes(' on for ')) {
+            problems.push(`${where}: no swap toast text found (got ${JSON.stringify(msg)}) -- nothing was measured`);
+          }
+        }
         if (DIALOG_CHECKED_STATES.has(v.name)) {
           const dd = JSON.parse(await evalIn(c, DIALOG_OVERFLOW_PROBE));
           // rule 2a of /new-guard: a check that measured nothing fails, rather
           // than passing silently because the dialog it expected never opened.
           if (!dd.dialog) problems.push(`${where}: no open dialog to check for a dialog-relative overflow`);
           else if (dd.worst) problems.push(`${where}: ${dd.worst.el} reaches ${dd.worst.out}px past the dialog's own ${dd.dw}px-wide box`);
+        }
+        if (GM_BODY_CHECKED_STATES.has(v.name)) {
+          const gb = JSON.parse(await evalIn(c, GM_BODY_OVERFLOW_PROBE));
+          // rule 2a: absent .gm-body must fail, not measure nothing.
+          if (!gb.body) problems.push(`${where}: no .gm-body to check for a body-relative sideways spill`);
+          else if (gb.scrollWidth > gb.clientWidth + 1) {
+            problems.push(`${where}: .gm-body scrollWidth ${gb.scrollWidth} exceeds its clientWidth ${gb.clientWidth}`);
+          } else if (gb.worst) {
+            problems.push(`${where}: ${gb.worst.el} reaches ${gb.worst.out}px past .gm-body's own box`);
+          }
         }
       } catch (e) {
         problems.push(`${where}: ${e.message.split('\n')[0]}`);
