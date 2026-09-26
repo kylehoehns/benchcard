@@ -758,8 +758,10 @@ function stepWho(wrap) {
   const card = el('button', 'flow-card press');
   card.type = 'button';
   card.onclick = commitFlow;
-  card.append(el('p', 'flow-card-t', same.title), el('p', 'flow-card-s', same.summary),
-    el('span', 'flow-card-use', 'Use it'));
+  // Two flex children, so "Use it" sits beside the text (app.css).
+  const text = el('div', 'flow-card-text');
+  text.append(el('p', 'flow-card-t', same.title), el('p', 'flow-card-s', same.summary));
+  card.append(text, el('span', 'flow-card-use', 'Use it'));
   wrap.append(card);
 }
 

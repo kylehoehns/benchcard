@@ -2936,20 +2936,25 @@ dialog.flow .f { text-transform: none; letter-spacing: normal; }
 /* N8: the one-tap path. A surface the two typed fields are not on, so the
    shortcut reads as an offer rather than a third field. */
 /* #145 item 4: the card is a `<button>` now (teams-view.js), so this resets
-   the button chrome browsers add -- full width, left-aligned block text,
-   the app's own font, a pointer cursor -- on top of the surface/border look
-   it already had. `min-height: 48px` moved here from the `.btn` it no
-   longer wraps (I1: the card itself is the hit area now). */
-.flow-card { display: block; min-height: 48px; text-align: left;
-  font: inherit; color: inherit; cursor: pointer;
+   the button chrome browsers add -- left-aligned block text, the app's own
+   font, a pointer cursor -- on top of the surface/border look it already
+   had. `min-height: 48px` moved here from the `.btn` it no longer wraps
+   (I1: the card itself is the hit area now). A `<button>` shrinks to its
+   text even as a block, so the width is the shared 1rem inset said out
+   loud. Flex puts "Use it" beside the text, and wrapping drops it below
+   rather than overflow at 320px/32px. */
+.flow-card { display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: .5rem .75rem; width: calc(100% - 2rem); min-height: 48px;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
   margin-top: 1.2rem; padding: .85rem .9rem; border-radius: var(--r);
   background: var(--surface); border: 1px solid var(--line); }
+.flow-card-text { min-width: 0; }
 .flow-card-t { font-size: var(--fs-body); font-weight: 600; margin: 0; }
-.flow-card-s { font-size: var(--fs-secondary); color: var(--muted); margin: .18rem 0 .7rem; }
+.flow-card-s { font-size: var(--fs-secondary); color: var(--muted); margin: .18rem 0 0; }
 /* "Use it", right-aligned accent text -- the prototype's look. Color only:
    item 4's own count of `--tint` BACKGROUNDS on this step still finds
    exactly one (`#agNext`), since this sets `color`, not `background`. */
-.flow-card-use { display: block; text-align: right; color: var(--tint); font-weight: 600; }
+.flow-card-use { color: var(--tint); font-weight: 600; }
 
 /* Step 2's tiles are the Plan sheet's own picker (`.pick` / `.plr` /
    `.plr-check`, above). Two things this screen adds: the surname reads under
@@ -3001,13 +3006,11 @@ dialog.flow .plr .plr-first, dialog.flow .plr .plr-sur { display: block;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 dialog.flow .plr.off { background: none; border-color: var(--line-2); }
 dialog.flow .plr.off .av { opacity: .55; }
-/* #145 item 5: a checked-in tile keeps its surface fill and its ✓, but loses
-   the selection ring -- `--line-2` is the exact border color an out tile
-   above already carries, not a new value, so a checked-in and an out tile
-   read as the same weight of box. Scoped to `dialog.flow`: the Plan sheet's
-   own five-picker still means "selected" with `.plr.on` (base rule, above),
-   untouched. */
-dialog.flow .plr.on { border-color: var(--line-2); box-shadow: none; }
+/* #145 item 5: a checked-in tile is fill and ✓ only, like the prototype's
+   `.tile`. `transparent` keeps the border's width, so it lines up with an
+   out tile. Scoped to `dialog.flow`: the Plan sheet's picker still marks
+   "selected" with `.plr.on` (base rule, above). */
+dialog.flow .plr.on { border-color: transparent; box-shadow: none; }
 .flow-count { margin-top: .7rem; font-size: var(--fs-secondary); color: var(--muted);
   font-variant-numeric: tabular-nums; }
 .flow-note { margin-top: .3rem; font-size: var(--fs-footnote); color: var(--muted); }
