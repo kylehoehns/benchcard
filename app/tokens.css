@@ -36,7 +36,7 @@
 :root {
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
 
-  /* The type scale (#24, T2-T4): seven steps, sized in rem so the phone's own
+  /* The type scale (#24, T2-T4; #145 item 6 adds an eighth step): sized in rem so the phone's own
      text-size setting moves every one of them. `--fs-large` is used by three
      screen titles only (Today's h1, the game's day title, the welcome
      wordmark) -- everything else takes the nearest step by value (see
@@ -46,6 +46,14 @@
      versus Android is docs/specs/24-text-size.md decision 1, not restated
      here. */
   --fs-large: 2.125rem;
+  /* #145 item 6: no step in the scale sat at 30px, and the flow title
+     (`.flow-q`, app.css) needed one that still fits "How should minutes
+     split?" on one line at 390px -- `--fs-large` (34px) wrapped it. K5: this
+     is its own token, not a literal, so a later text-size pass still scales
+     it. Named for what it is used for, the way `--fs-large`'s own comment
+     names its three screen titles, since it does not fit the rank order
+     `--fs-sentence` down to `--fs-footnote` follows. */
+  --fs-flow: 1.875rem;
   --fs-sentence: 1.5625rem;
   --fs-title: 1.375rem;
   --fs-headline: 1.0625rem;

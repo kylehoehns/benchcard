@@ -300,6 +300,14 @@ a { color: inherit; }
   #backBtn:hover { background: none; }
   #backBtn:hover .i { background: var(--chip-hover); }
 }
+/* #145 item 8: `#agClose`/`#frClose` draw the exact same chip -- an id rule
+   beats `.bsheet-close`'s own class rule, so the 36px fill below wins without
+   touching that class (it still owns the 48px hit area, shared with every
+   other sheet's ✕). Extending this hover pair's selector list, not copying
+   it -- Reuse. */
+@media (hover: hover) {
+  #agClose:hover .i, #frClose:hover .i { background: var(--chip-hover); }
+}
 
 /* #100 removed "New day" (`#todayNewDay`) along with its rule here -- the
    gear stays an icon but grows from `.btn.icon`'s coarse-pointer-only floor
@@ -340,12 +348,14 @@ a { color: inherit; }
    bar's scrim rather than a solid cutout in it -- AC3/decision 8 still swap
    this to opaque `--chip` when transparency or a blur is unavailable.
    fill: `--chip`, see tokens.css (#137). */
-#backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn {
+#backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
+#agClose .i, #frClose .i {
   background: color-mix(in srgb, var(--chip) 72%, transparent);
   backdrop-filter: saturate(180%) blur(16px);
   -webkit-backdrop-filter: saturate(180%) blur(16px);
 }
-#backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i {
+#backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i,
+#agClose .i, #frClose .i {
   width: 2.25rem; height: 2.25rem; border-radius: var(--r-full);
 }
 #teamBtn { border-radius: var(--r-full); }
@@ -1755,13 +1765,15 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
     background: var(--bg); mask-image: none; -webkit-mask-image: none;
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
-  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn {
+  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
+  #agClose .i, #frClose .i {
     background: var(--chip); backdrop-filter: none; -webkit-backdrop-filter: none;
   }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .bar::before, .actionbar::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
-  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn { background: var(--chip); }
+  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
+  #agClose .i, #frClose .i { background: var(--chip); }
 }
 /* #69 decision 6: the prototype's primary button -- 54px tall, 600 weight,
    still `--tint` (K1 allows tint on the primary action). `--r` is already
@@ -2238,6 +2250,14 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   display: flex; flex-direction: column; align-items: center;
   padding: clamp(1rem, 4vw, 3rem) clamp(.85rem, 3vw, 1.5rem)
            calc(1.25rem + env(safe-area-inset-bottom)); }
+/* #145 item 9: at 320-390px the clamp above landed on its own floor,
+   13.6px -- narrower than the 16px gutter every other screen keeps
+   (`phone-gutter.mjs`, #132). Side padding only, flat 16px through the
+   ticket's own 600px ceiling; the clamp keeps setting top/bottom (unchanged)
+   and keeps governing width above 600px (unchanged, per the spec). */
+@media (max-width: 600px) {
+  .welcome { padding-left: 1rem; padding-right: 1rem; }
+}
 .wel-in { width: 100%; max-width: 30rem; text-align: center;
   flex: 1 1 auto; display: flex; flex-direction: column; }
 /* Everything that has to be on the first screen. Below it the page may run on
@@ -2882,9 +2902,21 @@ dialog.flow.closing { transform: translateY(100%); }
 .flow-prog i.on { background: var(--tint); }
 
 .flow-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: .6rem 0 1rem; }
-/* The step's question, in the same token `.today-h1` uses. */
-.flow-q { font-size: var(--fs-large); font-weight: 700; line-height: 1.2;
-  margin: .2rem 0 1.1rem; padding: 0 1rem; }
+/* #145 item 1: one 16px inset for every direct child of a flow step's own
+   wrapper -- the plain, un-classed `<div>` `flowStepBody` (trap.js) returns,
+   which `.flow-body` above holds exactly one of. Every per-class rule that
+   used to carry its own copy of this (`.flow-q`, `.flow-f`, `.flow-card`,
+   `.flow-count`, `.flow-note`, `.flow-opts`, `dialog.flow .pgrp`, `.fr-cta`,
+   and `.fr-f`/`.fr-gran`, both now gone) is stripped to whatever vertical
+   spacing it still owns. `.pick`'s own `margin: 0 1rem` (decision 8, below)
+   already agrees with this value and is left alone -- it is shared with
+   `pickFive` outside either flow, so it is not this rule's to delete. */
+.flow-body > div > * { margin-left: 1rem; margin-right: 1rem; }
+/* #145 item 6: `--fs-flow` (30px), not `--fs-large` (34px) -- at 34px "How
+   should minutes split?" wrapped onto two lines at 390px. Every flow title
+   moves together since they all share this one class. */
+.flow-q { font-size: var(--fs-flow); font-weight: 700; line-height: 1.2;
+  margin-top: .2rem; margin-bottom: 1.1rem; }
 /* The step heading is a focus TARGET, not a control -- `stepBody` gives it
    `tabindex="-1"` and `paintFlow` focuses it on every step change so the
    screen reader announces what the screen now asks. It never reaches the Tab
@@ -2898,16 +2930,26 @@ dialog.flow.closing { transform: translateY(100%); }
 
 /* Step 1's two fields, the app's own `.f` label + input pair. Sentence case,
    the same override `#view-games .f` carries for these two exact labels. */
-.flow-f { display: block; padding: 0 1rem; margin-bottom: .85rem; }
+.flow-f { display: block; margin-bottom: .85rem; }
 dialog.flow .f { text-transform: none; letter-spacing: normal; }
 
 /* N8: the one-tap path. A surface the two typed fields are not on, so the
    shortcut reads as an offer rather than a third field. */
-.flow-card { margin: 1.2rem 1rem 0; padding: .85rem .9rem; border-radius: var(--r);
+/* #145 item 4: the card is a `<button>` now (teams-view.js), so this resets
+   the button chrome browsers add -- full width, left-aligned block text,
+   the app's own font, a pointer cursor -- on top of the surface/border look
+   it already had. `min-height: 48px` moved here from the `.btn` it no
+   longer wraps (I1: the card itself is the hit area now). */
+.flow-card { display: block; min-height: 48px; text-align: left;
+  font: inherit; color: inherit; cursor: pointer;
+  margin-top: 1.2rem; padding: .85rem .9rem; border-radius: var(--r);
   background: var(--surface); border: 1px solid var(--line); }
 .flow-card-t { font-size: var(--fs-body); font-weight: 600; margin: 0; }
 .flow-card-s { font-size: var(--fs-secondary); color: var(--muted); margin: .18rem 0 .7rem; }
-.flow-card .btn { width: 100%; min-height: 48px; }
+/* "Use it", right-aligned accent text -- the prototype's look. Color only:
+   item 4's own count of `--tint` BACKGROUNDS on this step still finds
+   exactly one (`#agNext`), since this sets `color`, not `background`. */
+.flow-card-use { display: block; text-align: right; color: var(--tint); font-weight: 600; }
 
 /* Step 2's tiles are the Plan sheet's own picker (`.pick` / `.plr` /
    `.plr-check`, above). Two things this screen adds: the surname reads under
@@ -2959,17 +3001,36 @@ dialog.flow .plr .plr-first, dialog.flow .plr .plr-sur { display: block;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 dialog.flow .plr.off { background: none; border-color: var(--line-2); }
 dialog.flow .plr.off .av { opacity: .55; }
-.flow-count { margin: .7rem 1rem 0; font-size: var(--fs-secondary); color: var(--muted);
+/* #145 item 5: a checked-in tile keeps its surface fill and its ✓, but loses
+   the selection ring -- `--line-2` is the exact border color an out tile
+   above already carries, not a new value, so a checked-in and an out tile
+   read as the same weight of box. Scoped to `dialog.flow`: the Plan sheet's
+   own five-picker still means "selected" with `.plr.on` (base rule, above),
+   untouched. */
+dialog.flow .plr.on { border-color: var(--line-2); box-shadow: none; }
+.flow-count { margin-top: .7rem; font-size: var(--fs-secondary); color: var(--muted);
   font-variant-numeric: tabular-nums; }
-.flow-note { margin: .3rem 1rem 0; font-size: var(--fs-footnote); color: var(--muted); }
+.flow-note { margin-top: .3rem; font-size: var(--fs-footnote); color: var(--muted); }
 
 /* Step 3's four choices: a card each, name over the one line `STRATEGIES`
    holds for it, the chosen one ringed the way a chosen tile is. */
-.flow-opts { display: grid; gap: .5rem; margin: 0 1rem .4rem; }
-.opt { display: grid; gap: .15rem; width: 100%; min-height: 48px; text-align: left;
+.flow-opts { display: grid; gap: .5rem; margin-bottom: .4rem; }
+/* #145 item 6: a 22px radio circle in its own grid column, `.opt-t` and
+   `.opt-d` sharing the second -- the circle is a `::before` pseudo-element,
+   decoration that never reaches the accessibility tree (so no aria-hidden
+   node is needed), with `aria-checked` on the button itself still the real
+   state, unchanged. */
+.opt { display: grid; grid-template-columns: 22px 1fr; column-gap: .75rem; row-gap: .15rem;
+  align-items: start; width: 100%; min-height: 48px; text-align: left;
   padding: .75rem .9rem; border-radius: var(--r); border: 1px solid var(--line);
   background: var(--surface); font: inherit; color: var(--ink); }
 .opt[aria-checked="true"] { border-color: var(--tint); box-shadow: inset 0 0 0 2.5px var(--tint); }
+/* An empty ring off; a filled dot on, the inset --surface ring carving the
+   dot out of the fill (the prototype's own proportions). */
+.opt::before { content: ''; grid-row: 1 / span 2; width: 22px; height: 22px;
+  margin-top: .1rem; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--line-2); }
+.opt[aria-checked="true"]::before { border-color: var(--tint); background: var(--tint);
+  box-shadow: inset 0 0 0 4px var(--surface); }
 .opt-t { font-size: var(--fs-body); font-weight: 600; }
 .opt-d { font-size: var(--fs-secondary); color: var(--muted); }
 
@@ -3001,12 +3062,16 @@ dialog.flow .plr.off .av { opacity: .55; }
    `.pgrp` -- but `.pgrp`'s own top margin (below) assumes it follows a
    `.pgrp-h`, which nothing on this step has, so it is zeroed here rather than
    inheriting a gap meant for a heading that is not there. */
-dialog.flow .pgrp { margin: 0 1rem; }
+dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 /* The "How often do you sub?" label above `paintGranRows`'s own rows -- the
-   same `.f` treatment the games view's sub-frequency picker uses, inset to
-   match the stepper group above it. */
-.fr-f { padding: 0 1rem; }
-.fr-gran { margin: 0 1rem; }
+   same `.f` treatment the games view's sub-frequency picker uses. Both this
+   and the stepper group above it take their side inset from item 1's shared
+   rule now; neither has a side margin of its own left to keep.
+   #145 item 2: a group title's own gap after the group above it (L6,
+   8px-grid) rather than only the text's leading -- `dialog.flow .pgrp`'s own
+   bottom margin stays zero (it still owns the gap up to a `.pgrp-h`, not down
+   from it), so this label is where the 16px box gap goes. */
+.fr-f { margin-top: 1rem; }
 
 /* #36 step 3's card preview has no rule of its own here. It had one --
    `.fr-stage`, centering and insetting the preview -- and every declaration
@@ -3016,8 +3081,15 @@ dialog.flow .pgrp { margin: 0 1rem; }
    sheet's.
    Step 3's Print/Share row, moved out of its parked spot in the dialog
    (`stepCard`, onboarding.js) into the wrap the other steps' content sits in
-   -- same side margins as `.flow-card` above. */
-.fr-cta { margin: 1rem 1rem 0; }
+   -- same side inset as `.flow-card` above, from item 1's shared rule.
+   #145 item 3: Print and Share are equal, 48px-tall halves filling the row
+   -- the same `flex: 1` shape `#sheetCard .gm-cta .btn` already uses
+   (Reuse), scoped to this row rather than widening that rule's own
+   selector. Neither button carries `.primary` (index.html), so both stay
+   the plain outlined `.btn` look -- the footer's Next is the one filled
+   button on this screen. */
+.fr-cta { margin-top: 1rem; flex-wrap: nowrap; }
+.fr-cta .btn { flex: 1; min-width: 0; min-height: 48px; }
 
 /* Decision 14: full-screen flows fill the phone width by design, and at
    840px a `#firstRunFlow` step read as an unbroken 1280px-wide line of text

@@ -750,11 +750,16 @@ function stepWho(wrap) {
   wrap.append(dateField, opponent, tipoff);
   const same = sameAsLast();
   if (!same) return;
-  const card = el('div', 'flow-card');
-  const use = el('button', 'btn primary press', 'Use it');
-  use.type = 'button';
-  use.onclick = commitFlow;
-  card.append(el('p', 'flow-card-t', same.title), el('p', 'flow-card-s', same.summary), use);
+  /* #145 item 4: the card IS the button now, not a card with a second
+     filled button inside it -- the footer's `#agNext` is the one `--tint`
+     element on this step. "Use it" is right-aligned accent text, the
+     prototype's own look, not a second control: the whole card still does
+     what the button used to. */
+  const card = el('button', 'flow-card press');
+  card.type = 'button';
+  card.onclick = commitFlow;
+  card.append(el('p', 'flow-card-t', same.title), el('p', 'flow-card-s', same.summary),
+    el('span', 'flow-card-use', 'Use it'));
   wrap.append(card);
 }
 
@@ -856,9 +861,16 @@ function stepSplit(wrap, q) {
   }
   wrap.append(group);
   /* The Plan sheet's own switch builder (rules.js), not a second one: this is
-     the same control, bound to the same field of the same game. */
-  wrap.append(switchRow(EVEN_OUT_DAY_LABEL, draft.useCarryover, false,
+     the same control, bound to the same field of the same game. #145 item 6:
+     in its own `.pgrp` (Reuse -- the group Team and Season already use, not
+     a second one), the way `stepGranularity` (onboarding.js) already wraps
+     its own steppers -- `.prow`'s `width: 100%` needs a container that is
+     itself already inset, or it overflows the one item 1 gives every direct
+     child of this wrapper. */
+  const pgrp = el('div', 'pgrp');
+  pgrp.append(switchRow(EVEN_OUT_DAY_LABEL, draft.useCarryover, false,
     (v) => { draft.useCarryover = v; }));
+  wrap.append(pgrp);
 }
 
 function flowNext() {

@@ -3,11 +3,12 @@ import { goRich } from './fixtures.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding } from './app-large-text.mjs';
 
 /* #24 item 3: the scale's runtime proof. Item 3's "What would settle it" is
-   computed rem values, so this reads the SAME seven-size/four-weight set the
-   spec's own table lists (T2/T3), never the tokens.css values recomputed —
-   the tautology `/tdd` bans. `meta[name="text-scale"]` is asserted once, not
-   per state: it is document-level, not something a state can change. */
-const TYPESCALE_SIZES_PX = new Set([13, 14, 16, 17, 22, 25, 34]);
+   computed rem values, so this reads the SAME size/weight set the spec's own
+   table lists (T2/T3), never the tokens.css values recomputed — the
+   tautology `/tdd` bans. `meta[name="text-scale"]` is asserted once, not
+   per state: it is document-level, not something a state can change.
+   #145 item 6 adds 30px (--fs-flow, both flows' titles) to the set. */
+const TYPESCALE_SIZES_PX = new Set([13, 14, 16, 17, 22, 25, 30, 34]);
 const TYPESCALE_WEIGHTS = new Set([400, 500, 600, 700]);
 /* Every element with its own text, structurally, the same way
    `smoke-checks.js`'s touch-target scan finds controls rather than guessing a

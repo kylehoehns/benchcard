@@ -200,3 +200,21 @@ test('a cleared guard hands the close back', () => {
   withReducedMotion(() => T.closeSheet(d));
   assert.equal(d.open, false, 'the guard outlived the sheet that registered it');
 });
+
+/* ---------------- progressOn: item 7's "fill up to and including" ------ */
+
+// #145 item 7: both flows' progress bar fills every segment up to and
+// including the current step, not only the current one -- `paintFlowShell`
+// calls this once per segment index (0-based) against the 1-based step
+// number `n` it is given.
+test('progressOn: at step 2 of 3, segments 1 and 2 are on, 3 is not', () => {
+  assert.deepEqual([0, 1, 2].map(i => T.progressOn(i, 2)), [true, true, false]);
+});
+
+test('progressOn: at step 1, only the first segment is on', () => {
+  assert.deepEqual([0, 1, 2].map(i => T.progressOn(i, 1)), [true, false, false]);
+});
+
+test('progressOn: at the last step, every segment is on', () => {
+  assert.deepEqual([0, 1, 2].map(i => T.progressOn(i, 3)), [true, true, true]);
+});

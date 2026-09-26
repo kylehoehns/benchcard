@@ -50,6 +50,10 @@ const HOOKS = new Set([
   'paste-go',    // app.js binds the restore button
   'rgrip',       // roster-view.js selects the arrows APART from the grip
                  // (`.obtn:not(.rgrip)`); `.obtn` is what styles all three
+  'fr-gran',     // #145 item 1: its own spacing rule is gone (subsumed into
+                 // `.flow-body > div > *`), but onboarding.js still needs the
+                 // box `paintGranRows` fills, and first-run-flow.mjs's smoke
+                 // check still finds its rows through `.fr-gran .sheetrow`.
 ]);
 
 const stripJsComments = (s) =>

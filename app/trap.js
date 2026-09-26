@@ -543,6 +543,13 @@ export function showAskRow(askSel, footSel, keepSel, show) {
   if (show) $(keepSel)?.focus({ preventScroll: true });
 }
 
+// #145 item 7: the progress bar fills every segment up to and including the
+// current step, not only the current one -- `i` is a segment's 0-based
+// index, `n` the 1-based step number `paintFlowShell` was given.
+export function progressOn(i, n) {
+  return i <= n - 1;
+}
+
 /* #36: the step/progress/body/back/next painter `teams-view.js`'s add-a-game
    flow and `onboarding.js`'s first-run flow both need, pulled out here rather
    than kept as add-a-game's own private function -- a second flow copying it
@@ -559,7 +566,7 @@ export function paintFlowShell(ids, n, total, node, opts = {}) {
     if (prog.children.length !== total)
       prog.replaceChildren(...Array.from({ length: total },
         () => document.createElement('i')));
-    [...prog.children].forEach((seg, i) => seg.classList.toggle('on', i === n - 1));
+    [...prog.children].forEach((seg, i) => seg.classList.toggle('on', progressOn(i, n)));
   }
   const body = $(ids.body);
   if (body) body.replaceChildren(node);

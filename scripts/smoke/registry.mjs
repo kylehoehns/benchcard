@@ -90,6 +90,7 @@ import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
 import { teamScreenPass } from './team-screen.mjs';
 import { addGameFlowPass } from './add-game-flow.mjs';
 import { firstRunPass } from './first-run-flow.mjs';
+import { flowInsetPass } from './flow-inset.mjs';
 import { focusClearPass } from './focus-clear.mjs';
 import { floatingControlsPass } from './floating-controls.mjs';
 import { resumeBarPass } from './resume-bar.mjs';
@@ -294,6 +295,13 @@ export const ROWS = Object.freeze([
   // itself before `focusclear` needs it.
   { id: 'firstrun', name: 'first run: welcome, three steps, every way out', selectable: true, setup: 'rich',
     run: ctx => firstRunPass(ctx.c, ctx.origin) },
+  // #145 item 1's own guard (docs/specs/145-flow-spacing.md's Proof section):
+  // one shared 16px inset for every direct child of a flow step's wrapper,
+  // at 390px and 320px, on every step of both flows -- including add a
+  // game's "Same as" card and empty-roster states and first run's committed
+  // step 3 -- see flow-inset.mjs. Restores RICH itself before the next row.
+  { id: 'flowinset', name: 'flow inset: 16px on every side, 390px and 320px, both flows', selectable: true, setup: 'rich',
+    run: ctx => flowInsetPass(ctx.c, ctx.origin) },
   // #33 decision 15 (item 7): tabbing the game screen never leaves focus
   // under the floating bar or action bar -- see focus-clear.mjs.
   { id: 'focusclear', name: 'tab order stays clear of the floating bar and action bar', selectable: true, setup: 'rich',
@@ -341,7 +349,7 @@ export const ROWS = Object.freeze([
     run: ctx => sweepPass(ctx.c) },
   { id: 'applargetext', name: `app shell at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich',
     run: ctx => appLargeTextPass(ctx.c, ctx.origin) },
-  { id: 'typescale', name: 'type scale: 7 sizes, 4 weights', selectable: true, setup: 'rich',
+  { id: 'typescale', name: 'type scale: 8 sizes, 4 weights', selectable: true, setup: 'rich',
     run: ctx => typeScalePass(ctx.c, ctx.origin) },
   { id: 'static', name: 'static pages: 2 guides + 6 charts', selectable: true, setup: 'rich',
     run: ctx => staticPass(ctx.c, ctx.source, ctx.origin) },
