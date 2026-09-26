@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { indexHtml, cutView } from './js-comments.js';
 import { lacks } from './prose.js';
 
 /* #142: Settings has to look like the rest of the app -- the shared
@@ -9,15 +9,11 @@ import { lacks } from './prose.js';
  * long explanation a row loses has to keep its meaning in How it works, or
  * the redesign is a word count cut, not a move.
  *
- * Comments stripped first, same convention as settings.test.js's
- * indexHtml() -- a developer note can carry the very class name a check is
- * looking for. Not imported from there: that file's `views()`/`cutView()`
- * are scoped to zone-ordering pins inside #view-settings, and this file's
- * own cut (below) needs the #help dialog too. */
-const indexHtml = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8')
-  .replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
-
-const cutView = (html, id) => html.slice(html.indexOf(`id="${id}"`), html.indexOf('</main>', html.indexOf(`id="${id}"`)));
+ * indexHtml and cutView live in js-comments.js, shared with settings.test.js
+ * -- both files were hand-rolling the same pair. cutView takes an id, so
+ * this file's own cut (below, for #help) works unmodified; settings.test.js
+ * keeps its own `views()`, scoped to zone-ordering pins inside
+ * #view-settings, local to that file. */
 
 test('Settings carries none of the old card/row/header classes', () => {
   const view = cutView(indexHtml(), 'view-settings');

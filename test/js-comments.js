@@ -10,8 +10,22 @@
    mutation that nests a second function INSIDE it is still read as part of
    the same body. Moved out of settings.test.js rather than copied, because a
    second hand-rolled version of either is the "one answer lives in one
-   place" defect AGENTS.md's front matter names as the costliest one here. */
+   place" defect AGENTS.md's front matter names as the costliest one here.
+
+   `indexHtml` and `cutView` are the same fix for the same defect, #142's
+   review found: settings.test.js and settings-look.test.js each hand-rolled
+   an identical pair. `indexHtml` reads app/index.html and strips both
+   comment styles -- `<!-- -->` and `/* *\/` -- for the reason above:
+   index.html's own developer notes can carry the very class or id a markup
+   guard is looking for. `cutView` slices one `id="..."` view out of the
+   stripped document, up to its own `</main>`. */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+export const indexHtml = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8')
+  .replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
+
+export const cutView = (html, id) => html.slice(html.indexOf(`id="${id}"`), html.indexOf('</main>', html.indexOf(`id="${id}"`)));
 
 // string- and template-literal-aware, so a `//` inside a quoted URL
 // (toast.js's TIP_URL) is never mistaken for a line comment and does not eat

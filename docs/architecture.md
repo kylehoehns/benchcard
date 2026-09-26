@@ -504,48 +504,67 @@ header carries the team button, the keys hint and the gear, and every
 other screen carries only a back button and a title, so there is no longer a
 row of sibling controls competing for the same 390px.
 
-**Settings is two labelled zones.** The top one is headed with the active
-team's name and holds policy that belongs to that team alone; the bottom is
+**Settings is three grouped zones.** The layout matches Team: grouped rows
+(`#view-settings .pgrp`) with section headers as `h2.pgrp-h`, at most one
+footnote per group as `p.pgrp-f`. Groups sit 16px from the screen edge, and
+Settings indents headers and footnotes a further 1rem so they line up with
+the row text (32px in all). The top zone is headed
+with the active team's name and holds team-specific settings. The middle zone is
 headed *Benchcard* and holds Appearance, How it works (with **Show me around
-again**), About, Contact and Buy me a coffee, and backup/restore last (#22).
-The heading is the scope, so a coach with a rec team and a club team never has
-to remember which one a setting landed on. Deliberately one surface rather than
-two: "where do I save my stuff" should not require knowing whether saving is a
-team thing or an app thing before you can find it. Putting Appearance and the
-help sheet first is also what makes the page legible — a settings surface whose
-only contents are abstract policy is undiscoverable.
+again**), About, Contact and Buy me a coffee. The bottom zone is headed *Backup
+and restore* and holds file and paste backup controls. The heading is the scope,
+so a coach with a rec team and a club team never has to remember which one a
+setting landed on. Deliberately one surface rather than two: "where do I save my
+stuff" should not require knowing whether saving is a team thing or an app thing
+before you can find it. Putting Appearance and the help sheet first is also what
+makes the page legible — a settings surface whose only contents are abstract
+policy is undiscoverable.
 
-The team zone opens on the team's own name (`#teamName`) and the game format,
-then **Team color**: one of nine choices (Graphite, Hardwood, Royal, Navy,
-Maroon, Red, Forest, Gold, Purple), each with a swatch. Graphite is the default
-and the neutral choice; the other eight tint the primary buttons, tappable
-phrases and selected states so two teams read visibly different at a glance.
-A picker dialog opens on tap, and the picker marks the current color and
-applies a new one instantly. The color is stored per team, so two squads with
-two colors stay visibly different when you switch between them. The tint
-follows the theme — each color has a light and a dark value — and the
-`--tint*` tokens live in `tokens.css` alongside the `--accent` neutrals (#21).
+The team zone opens on a group of the team's own name (`#teamName`) and
+**Team color**: one of nine choices
+(Graphite, Hardwood, Royal, Navy, Maroon, Red, Forest, Gold, Purple), each with
+a swatch. Graphite is the default and the neutral choice; the other eight tint
+the primary buttons, tappable phrases and selected states so two teams read
+visibly different at a glance. A picker dialog opens on tap, and the picker marks
+the current color and applies a new one instantly. The color is stored per team,
+so two squads with two colors stay visibly different when you switch between
+them. The tint follows the theme — each color has a light and a dark value —
+and the `--tint*` tokens live in `tokens.css` alongside the `--accent` neutrals
+(#21).
 
-Then **Players changing at once** (1–5, default 3): `maxSubs`, which has
-always existed in `engine.js` and was invisible to a coach until it moved
-here. It is a *preference*, and the copy says so, because the solver treats it
-as one — see the design note below. Remove this team closes the zone.
+The second group holds the game format (**A game is**: periods and minutes
+per period) and **A new game starts**: whether each new game opens with the
+"Even out the season so far" switch on. Its footnote says these shape what a
+new game starts as, and that any game can be changed from its own screen.
 
-Five bare digits read as a rule, so the control carries a **live read-back**
-(`#maxSubsRead`, written by `renderSettings`): one sentence per option, naming
-what the solver actually does with the number. The sentences are a RANGE
-rather than a count, and that is not a stylistic choice — there are two bounds
-and only one of them is on screen. `DEFAULT_MIN_SUBS = 1` pulls toward at least
-one change per break with a cost of 20 a change short (`engine.js:1092`),
-exactly as `maxSubs` pushes against the top at 40 a change over
-(`engine.js:1091`); `minSubs` is exposed nowhere, so it is the same 1 under
-every option. Neither bound is hard — `repairChurn` gives up when no legal swap
-exists, and it clamps the floor to `avail.length - ON_FLOOR`, so a five-player
-squad changes nobody — which is why every sentence hedges with "aims for".
-At 5 the ceiling is unreachable (`ON_FLOOR` is 5, so `subs > 5` cannot happen
-and the over-cost can never fire), so that option alone says "no ceiling" —
-and deliberately does **not** say "no limit", because the floor is still
-pulling and a promise about both bounds would be false.
+The third group holds **Players changing at once** (1–5, default 3, `maxSubs`),
+**The odd minutes** (who gets the high side when the clock does not divide
+evenly), and **Everyone plays at least** (league minimum minutes, default 0).
+These three settings live together because they shape who plays, and the
+group's one footnote is the `maxSubs` read-back below. `maxSubs` has
+always existed in `engine.js` and was invisible to a coach until it moved here.
+It is a *preference*, and the copy says so, because the solver treats it as one
+— see the design note below. Five bare digits read as a rule, so the control
+carries a **live read-back** (`#maxSubsRead`, written by `renderSettings`):
+one sentence per option, naming what the solver actually does with the number.
+The sentences are a RANGE rather than a count, and that is not a stylistic
+choice — there are two bounds and only one of them is on screen.
+`DEFAULT_MIN_SUBS = 1` pulls toward at least one change per break with a cost
+of 20 a change short (`engine.js:1092`), exactly as `maxSubs` pushes against
+the top at 40 a change over (`engine.js:1091`); `minSubs` is exposed nowhere,
+so it is the same 1 under every option. Neither bound is hard — `repairChurn`
+gives up when no legal swap exists, and it clamps the floor to
+`avail.length - ON_FLOOR`, so a five-player squad changes nobody — which is
+why every sentence hedges with "aims for". At 5 the ceiling is unreachable
+(`ON_FLOOR` is 5, so `subs > 5` cannot happen and the over-cost can never
+fire), so that option alone says "no ceiling" — and deliberately does **not**
+say "no limit", because the floor is still pulling and a promise about both
+bounds would be false.
+
+The fourth group holds **Remove this team**, the zone's one destructive
+action, with a footnote (`#teamCount`) that reads "2 of 3 teams" when there
+is more than one. The longer explanations that used to sit under each Settings
+control now live in How it works, in its "Settings" section (#142).
 
 The hero is a **rotation timeline** — players down the side, the game clock
 across, color-coded blocks where each is on the floor. Blocks are positioned

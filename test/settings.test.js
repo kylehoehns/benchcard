@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { stripComments, functionBody } from './js-comments.js';
+import { stripComments, functionBody, indexHtml, cutView } from './js-comments.js';
 import { lacks } from './prose.js';
 
 /* ================================================================== *
@@ -502,24 +502,20 @@ test('the format belongs to the team, and one squad’s never reaches the other'
  * both, because a coach opens Settings under their team, not under
  * Benchcard's own choices.
  * ================================================================== */
-/* Comments dropped here, not in a second `visible()` copy further down --
-   one clean reading of index.html, not two. A developer note can carry the
+/* indexHtml and cutView moved to js-comments.js, shared with
+   settings-look.test.js -- see that file for what each one does and why.
+   Comments dropped there, not in a second `visible()` copy here -- one
+   clean reading of index.html, not two. A developer note can carry the
    very attribute or word a check is looking for (the paragraph above
    `#themeSeg` names "#themeNow"; the one above the coffee row's `<a>` names
    `data-tip-link` while explaining why it is there), and a check that reads
-   raw markup scores the comment instead of the control. `/* *\/` is dropped
-   too: index.html's two inline `<script>` blocks carry block comments of
-   their own, ahead of `#view-settings`, that this file never has reason to
-   read anyway. */
-const indexHtml = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8')
-  .replace(/<!--[\s\S]*?-->/g, ' ').replace(/\/\*[\s\S]*?\*\//g, ' ');
-const cutView = (html, id) => html.slice(html.indexOf(`id="${id}"`), html.indexOf('</main>', html.indexOf(`id="${id}"`)));
+   raw markup scores the comment instead of the control. */
 const views = () => {
   const html = indexHtml();
   return { settings: cutView(html, 'view-settings'), roster: cutView(html, 'view-team') };
 };
 
-/* stripComments and functionBody moved to js-comments.js, shared with
+/* stripComments and functionBody also live in js-comments.js, shared with
    view-before-settings.test.js -- see that file for what each one does and
    why. */
 
@@ -537,9 +533,9 @@ test('Settings keeps Appearance above Backup, and Backup keeps the bottom', () =
      the view, not just somewhere after Appearance -- a group added below it
      would pass the ordering checks above and still bury the one control
      that replaces everything on the device. */
-  const lastGroupAt = settings.lastIndexOf('class="pgrp"');
-  assert.ok(lastGroupAt > -1 && backup < lastGroupAt,
-    'Backup and restore is not the last group in Settings; something was added below it');
+  const groupAt = settings.indexOf('class="pgrp"', backup);
+  assert.ok(groupAt > -1 && groupAt === settings.lastIndexOf('class="pgrp"'),
+    'Backup and restore\'s own group is not the last group in Settings; something was added below it');
 });
 
 test('the per-team settings live in Settings, under the team\'s own name -- not on the Team tab', () => {
@@ -636,8 +632,9 @@ test('Benchcard order: Appearance, How it works (with Show me around again), Abo
   const helpRow = settings.slice(marks['How it works'], marks['Show me around again'] + 1);
   assert.match(helpRow, /<\/button>[\s\S]*<button class="prow"/,
     'Show me around again must open its own row (a separate button.prow), not share How it works\' row');
-  const lastGroupAt = settings.lastIndexOf('class="pgrp"');
-  assert.ok(marks.Backup < lastGroupAt, 'Backup and restore is not the last group in Settings');
+  const groupAt = settings.indexOf('class="pgrp"', marks.Backup);
+  assert.ok(groupAt > -1 && groupAt === settings.lastIndexOf('class="pgrp"'),
+    'Backup and restore\'s own group is not the last group in Settings; something was added below it');
 });
 
 test('nothing sits after Backup\'s own controls inside #view-settings', () => {
