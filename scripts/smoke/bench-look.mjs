@@ -19,8 +19,9 @@
  * argument), not an emulated `prefers-color-scheme` -- the same mechanism
  * `finish-game.mjs`'s item 5 already uses for the same reason: RICH boots
  * onto the record it was given, `prefers-color-scheme` never enters into it. */
-import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
+import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, navigateAndWaitForCard } from './dom.mjs';
+import { goRich, RICH, seeded } from './fixtures.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 // Same shape as CSS_VAR_COLOR_PROBE (dom.mjs) but for `color`, not
 // `background-color` -- item 6 asks about TEXT color inside #gmNext, and
@@ -387,6 +388,128 @@ async function runTheme(c, origin, theme, problems, notes) {
   await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
 }
 
+/* Found on the preview check, not #138's own "What would settle it" list:
+ * item 11 only asked the EXISTING 320px/32px rows in `app-large-text.mjs` to
+ * keep passing, and every one of them checks an edge running off screen --
+ * none reads a name squeezed into a sliver that still sits fully on screen.
+ * `.gm-p .nm` is `flex: 1; min-width: 0` (app.css), so at a 32px root the
+ * avatar (2.3rem) and the minutes span (`.mn`, itself scaled up) leave the
+ * name almost nothing to sit in, and app.css's `overflow-wrap: anywhere`
+ * breaks it one letter per line instead of wrapping between words --
+ * measured: "Ana Reyes" at `.nm` scrollWidth 29 > clientWidth 13.
+ *
+ * A real long name is renamed onto `p7` in a RICH clone, the same technique
+ * `LONG_NAME`/`reloadWithRecord` (fixtures.mjs) use elsewhere, so the check
+ * exercises a name that is long even at 16px, not only ones that only break
+ * once the root grows. `reloadWithRecord` itself is not reused here: it waits
+ * for `.today-game`, which is right for the callers that reload onto Today,
+ * but RICH's own `view` is 'games' and this pass wants the game screen
+ * directly, the same place `goRich` above already lands -- so this reseeds
+ * with the same `seeded`/`navigateAndWaitForCard` idiom `goRich` itself uses,
+ * only with one player's name changed. */
+const LONG_FLOOR_NAME = 'Bartholomew-Christopherson Novak';
+
+async function goRichWithLongName(c, origin) {
+  const record = JSON.parse(JSON.stringify(RICH));
+  const p7 = record.teams[0].players.find(pl => pl.id === 'p7');
+  p7.name = LONG_FLOOR_NAME;
+  await seeded(c, `(() => {
+    localStorage.removeItem('benchcard.v3');
+    localStorage.removeItem('benchcard.v7.bak');
+    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(record))});
+  })()`, async () => {
+    await navigateAndWaitForCard(c, origin + '/index.html');
+  });
+}
+
+/* Measures the longest SINGLE WORD of a name against the box it is actually
+ * painted in -- the falsifier for "no line break inside a word" -- by
+ * rendering each word off-screen in a throwaway span that copies the real
+ * element's `font` shorthand and `letter-spacing`, so the measurement uses
+ * the same face/size/weight the row itself paints, not a guessed one. Reads
+ * only the DIRECT text nodes of `.nm` (excluding a `.tag` child, "just on"),
+ * the same technique item 7 above already uses for the bench label's own
+ * sentence. */
+const NAME_WORD_PROBE = `(() => {
+  const measureWord = (el, word) => {
+    const cs = getComputedStyle(el);
+    const span = document.createElement('span');
+    span.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap;';
+    span.style.font = cs.font;
+    span.style.letterSpacing = cs.letterSpacing;
+    span.textContent = word;
+    document.body.appendChild(span);
+    const w = span.getBoundingClientRect().width;
+    span.remove();
+    return w;
+  };
+  const rows = [];
+  for (const nm of document.querySelectorAll('#gmFloor .gm-p .nm, #gmBench .gm-b .nm')) {
+    if (!nm.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
+    const text = [...nm.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+    if (!text) continue;
+    // Split after a hyphen too, not only on whitespace: a hyphen is a normal
+    // soft-wrap point (UAX #14) the same as a space, so a name breaking there
+    // is "between words", not "inside" one -- the browser's own line breaker
+    // already treats it that way with no extra CSS asked for.
+    const words = text.split(/(?<=-)|\\s+/).filter(Boolean);
+    const longest = Math.max(...words.map(w => measureWord(nm, w)));
+    rows.push({ text, width: nm.clientWidth, longest: Math.round(longest * 10) / 10 });
+  }
+  // The visible FILL ('.i', the translucent circle a coach actually sees),
+  // not #gmClose's own 48px hit box: the hit box is a fixed 48px regardless
+  // of root text size, but the fill is sized in rem (2.25rem) and at a 32px
+  // root paints larger than its own button, bleeding into whatever sits
+  // beside it -- the actual shape of this defect (screenshot: the circle
+  // paints over the title's wrapped second line).
+  const close = document.querySelector('#gmClose .i').getBoundingClientRect();
+  const title = document.querySelector('.gm-title').getBoundingClientRect();
+  const overlap = !(close.right <= title.left || close.left >= title.right ||
+                     close.bottom <= title.top || close.top >= title.bottom);
+  return JSON.stringify({
+    rows, overlap,
+    close: { l: Math.round(close.left), r: Math.round(close.right), t: Math.round(close.top), b: Math.round(close.bottom) },
+    title: { l: Math.round(title.left), r: Math.round(title.right), t: Math.round(title.top), b: Math.round(title.bottom) },
+  });
+})()`;
+
+async function runLargeText(c, origin, problems, notes) {
+  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
+  try {
+    await c.send('Emulation.setDeviceMetricsOverride',
+      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    await goRichWithLongName(c, origin);
+    await evalIn(c, step(OPEN_BENCH));
+
+    const r = JSON.parse(await evalIn(c, NAME_WORD_PROBE));
+    const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+
+    if (!r.rows.length) {
+      // rule 2a of /new-guard: a check that measured nothing fails.
+      problems.push(`${where}: no floor or bench name was on screen to measure`);
+    } else {
+      for (const row of r.rows) {
+        if (row.width + 0.5 < row.longest) {
+          problems.push(`${where}: "${row.text}" is ${Math.round(row.width)}px wide, `
+            + `narrower than its own longest word (${row.longest}px) -- a mid-word break`);
+        }
+      }
+      if (!r.rows.some(row => row.text === LONG_FLOOR_NAME)) {
+        problems.push(`${where}: "${LONG_FLOOR_NAME}" never appeared among the measured floor/bench names`);
+      }
+    }
+    if (r.overlap) {
+      problems.push(`${where}: #gmClose ${JSON.stringify(r.close)} overlaps .gm-title ${JSON.stringify(r.title)}`);
+    }
+    notes.push(`${where}: every floor/bench name keeps its longest word whole, and #gmClose does not overlap the title`);
+  } finally {
+    // Same rule the other large-text passes follow: never leave the emulated
+    // font size on for whatever runs after this one.
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await evalIn(c, step(`document.getElementById('gmClose')?.click()`)).catch(() => {});
+  }
+}
+
 export async function benchLookPass(c, origin) {
   const problems = [];
   const notes = [];
@@ -395,6 +518,7 @@ export async function benchLookPass(c, origin) {
     for (const theme of ['light', 'dark']) {
       await runTheme(c, origin, theme, problems, notes);
     }
+    await runLargeText(c, origin, problems, notes);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {

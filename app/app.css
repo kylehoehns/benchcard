@@ -4168,6 +4168,37 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   #frFill { white-space: normal; }
   .fr-cta { flex-wrap: wrap; }
   .fr-cta .btn { flex: 1 0 100%; }
+
+  /* Preview-check defect found on #138 (bench mode restyle), not in its own
+     "What would settle it" list: `.gm-p .nm`/`.gm-b .nm` are `flex: 1;
+     min-width: 0`, so at a 32px root the avatar and the minutes span
+     (`.mn`, itself scaled up) leave the name almost no room, and
+     `overflow-wrap: anywhere` breaks it one letter per line instead of
+     wrapping between words -- measured: "Ana Reyes" at `.nm` scrollWidth 29
+     > clientWidth 13. Dropping only the minutes under the name (keeping the
+     avatar beside it) still isn't enough room for a genuinely long single
+     word ("Christopherson" alone measures ~196px at this size, and the
+     avatar plus its gap eats too much of the row's ~211px to leave that
+     much for the name beside it even shrunk to nothing) -- the avatar moves
+     to its own line too, above the name, at this size only, so the name and
+     minutes each get the row's full width. 16px is untouched, since
+     `flex`/`min-width` on a grid child are simply ignored. */
+  .gm-p, .gm-b {
+    display: grid; grid-template-columns: 1fr; row-gap: .15rem;
+  }
+  .gm-p .av, .gm-b .av { justify-self: start; }
+
+  /* Same defect, the header: `#gmClose`'s visible fill (`.i`, `#agClose .i,
+     #frClose .i, .gm-x .i` above) is sized in rem (2.25rem) while the
+     button's own hit box stays a literal 48px -- at a 32px root the fill
+     paints 72px, wider than its own 48px button, and bleeds into
+     `.gm-title` beside it (measured: the fill's rect overlapped the title's
+     wrapped second line). Capping the fill at the button's own box keeps it
+     circular (still `border-radius: var(--r-full)`) and inside its own
+     48px hit area rather than painting over a neighbor -- I1 already
+     requires the hit area to be exactly this large, so the fill shrinking
+     to match it loses nothing. */
+  #agClose .i, #frClose .i, .gm-x .i { width: 48px; height: 48px; }
 }
 
 /* The planning views on a phone held sideways. Landscape is not where a coach
