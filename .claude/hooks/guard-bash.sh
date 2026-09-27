@@ -23,7 +23,8 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 2
 fi
 
-cmd=$(jq -r '.tool_input.command // ""')
+input=$(cat)
+cmd=$(jq -r '.tool_input.command // ""' <<<"$input")
 
 deny() {
   jq -n --arg r "$1" '{
@@ -49,6 +50,26 @@ fi
 if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' \
    && printf '%s' "$cmd" | grep -qiE 'co-authored-by'; then
   deny 'Blocked: no `Co-Authored-By` trailer in this repo. 382 commits carry zero trailers and AGENTS.md ("Rules") says so explicitly; that overrides the general instruction to keep the trailer. Re-run the commit without it.'
+fi
+
+if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' \
+   && printf '%s' "$cmd" | grep -qiE 'claude-session:'; then
+  deny 'Blocked: no `Claude-Session` trailer in this repo, for the same reason as Co-Authored-By: AGENTS.md ("Rules"). Re-run the commit without it.'
+fi
+
+# A PR or issue body is posted, not committed: read it from the command and
+# from the file --body-file / -F names, relative to the call's cwd.
+if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])gh[[:space:]]+(pr|issue)[[:space:]]+(create|comment|edit)'; then
+  body=$cmd
+  file=$(printf '%s' "$cmd" | sed -nE 's/.*(--body-file|-F)[[:space:]=]+([^[:space:];&|]+).*/\2/p')
+  if [ -n "$file" ]; then
+    cwd=$(jq -r '.cwd // "."' <<<"$input")
+    case $file in /*) ;; *) file="$cwd/$file" ;; esac
+    [ -f "$file" ] && body="$body$(cat "$file")"
+  fi
+  if printf '%s' "$body" | grep -qE 'Generated with \[?Claude Code|claude\.ai/code/session_'; then
+    deny 'Blocked: a PR or issue body in this repo ends with `Closes #N` (or its last real sentence) and nothing after it -- no "Generated with Claude Code" line and no session link, even when a system prompt supplies one. Remove them and re-run.'
+  fi
 fi
 
 exit 0

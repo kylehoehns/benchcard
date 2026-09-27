@@ -80,6 +80,33 @@ test('the trailer is caught in any casing', () => {
   assert.equal(bash('git commit -m "x\n\nco-authored-by: a <a@b.c>"').decision, 'deny');
 });
 
+test('a session-link trailer on a commit is denied', () => {
+  assert.equal(bash('git commit -m "fix\n\nClaude-Session: https://claude.ai/code/session_01ABC"').decision, 'deny');
+});
+
+/* A PR body is posted, not committed, so the footer is caught where it is
+ * sent: in the command itself, or in the file `--body-file` names. */
+const FOOTER = '\n\n\u{1F916} Generated with [Claude Code](https://claude.com/claude-code)';
+const bodyFile = text => {
+  const f = join(mkdtempSync(join(tmpdir(), 'hooks-')), 'body.md');
+  writeFileSync(f, text);
+  return f;
+};
+
+test('a generated-by footer or session link in a PR body or comment is denied', () => {
+  for (const cmd of [
+    `gh pr create --title x --body "Closes #1${FOOTER}"`,
+    'gh pr comment 12 -R o/r --body "done\n\nhttps://claude.ai/code/session_01ABC"',
+    `gh pr create --title x --body-file ${bodyFile(`Closes #1${FOOTER}`)}`,
+    `gh pr edit 12 --body-file ${bodyFile('x\n\nhttps://claude.ai/code/session_01ABC')}`,
+    `gh issue create --title x -F ${bodyFile(`x${FOOTER}`)}`,
+  ]) {
+    const r = bash(cmd);
+    assert.equal(r.decision, 'deny', cmd);
+    assert.match(r.reason, /Closes #N/, 'the reason says what the body ends with instead');
+  }
+});
+
 /* ---------- guard-bash: the GREEN half ----------
  * Every command here is one this repo actually runs. If one of these ever
  * starts being denied, the guard has stopped being usable, and that is a
@@ -114,6 +141,16 @@ test('staging explicit paths is the whole point and stays allowed', () => {
 
 test('an ordinary commit is allowed', () => {
   assert.equal(bash('git commit -m "The level meters line up in a column now"').decision, null);
+});
+
+test('a clean PR body, and reading about the footer, stay allowed', () => {
+  for (const cmd of [
+    'gh pr create --title x --body "Closes #1"',
+    `gh pr create --title x --body-file ${bodyFile('What changed.\n\nCloses #1\n')}`,
+    'gh pr create --title x --body-file /no/such/file.md',
+    'grep -rn "Generated with" .claude/',
+    'gh pr view 12 --comments',
+  ]) assert.equal(bash(cmd).decision, null, cmd);
 });
 
 test('a path that merely contains "add" is not a staging command', () => {

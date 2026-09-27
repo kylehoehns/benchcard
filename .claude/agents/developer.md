@@ -45,11 +45,17 @@ against.
   generated files, and the precache bump when a file `app/sw.js` precaches
   changes. `AGENTS.md` § Traps and § Rules say what to do about each; the
   orchestrator will also hand you the ones this spec touches.
-- Do not loosen an existing assertion, an allow map or a budget to get to
-  green. `AGENTS.md` § Layout says what each one is for.
-- Refactoring is not your job — `refactorer` takes one pass once you are green.
-- Tests run by the iterate-then-prove rule in `AGENTS.md` § Layout: targeted
-  runs per slice, `npm test` once before handing back, never the proof pair.
+- Keep every existing assertion, allow map and budget as it is. If green
+  seems to need one loosened, report that instead; `AGENTS.md` § Layout says
+  what each one is for.
+- Leave cleanup to `refactorer`, which takes one pass once you are green, and
+  leave committing to the orchestrator.
+- **Your finish line is a green `npm test`.** Per slice, run the one test file
+  (`node --test test/<file>`) and, for a smoke check the slice adds or
+  touches, that one row: `node scripts/smoke.mjs --no-tests --only "<check
+  name>"`. Run `npm test` once before you report. The orchestrator runs the
+  whole smoke suite once, at the commit (`AGENTS.md` § Layout), so a report
+  without it is complete.
 
 ## Report
 
