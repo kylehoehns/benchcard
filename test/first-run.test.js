@@ -3,29 +3,34 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { countLine, newDraft, shortOfLineup, startTeam } from '../app/onboarding.js';
+import { parseRoster, sampleRosterText } from '../app/roster.js';
 import { S, bareGame, withTeam, player } from './state-fixture.js';
 
 const html = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
 
-/* Proof item 1: the count line under `#frCount`, and the rule that disables
- * `#frNext` on step 1. Pure function, no DOM — the exact strings come from
- * the spec (docs/specs/36-first-run.md), not from re-deriving the copy the
- * way `countLine` itself builds it. */
+/* #146 item 2: the count line under `#frCount` now names the names it read,
+ * not just a count -- `countLine` takes the parsed list (`parseRoster`,
+ * reused rather than re-derived) so it reads exactly what the box holds.
+ * Pure function, no DOM — the exact strings are the spec's own
+ * (docs/specs/146-roster-in.md, item 2). */
 
 const COUNT_LINE_CASES = [
-  ['reads the empty box as an instruction', 0,
+  ['reads the empty box as an instruction', '',
     'Paste from wherever your roster lives. Jersey numbers are optional.'],
-  ['counts up to the 5-player floor, singular at 1', 1,
-    '1 player so far. 5 needed to field a lineup.'],
-  ['counts up to the 5-player floor, plural below it', 3,
-    '3 players so far. 5 needed to field a lineup.'],
-  ['drops the floor once it is met', 5, '5 players so far.'],
-  ['keeps counting past the floor', 12, '12 players so far.'],
+  ['names one player, singular, below the floor', 'Sam',
+    '1 player so far: Sam. 5 needed to field a lineup.'],
+  ['names every player below the floor', 'Sam, Jo, Kai',
+    '3 players so far: Sam, Jo and Kai. 5 needed to field a lineup.'],
+  ['drops the floor sentence and still names everyone once it is met',
+    sampleRosterText(12),
+    '12 players so far: Maya Webb #12, Eli Tran #4, Devon Ellis #7, Nia Bell #3, '
+    + 'Caleb Ruiz #15, Harper Pratt #9, Silas Hart #21, Jonah Reed #5, Ruby Marsh #11, '
+    + 'Isaac Lowe #8, Aisha Doyle #24 and Ryan Vance #6.'],
 ];
 
-for (const [label, n, want] of COUNT_LINE_CASES) {
+for (const [label, text, want] of COUNT_LINE_CASES) {
   test(`countLine ${label}`, () => {
-    assert.equal(countLine(n), want);
+    assert.equal(countLine(parseRoster(text)), want);
   });
 }
 

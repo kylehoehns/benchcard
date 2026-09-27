@@ -38,6 +38,25 @@ export const checkMark = () => {
   return mark;
 };
 
+// #146 item 3: the repeat row the paste sheet (roster-view.js) and first-run
+// step 1 (onboarding.js) both paint -- a name-and-count notice beside a
+// "Drop one" button -- built identically down to the class names, the same
+// reason `checkMark` above lives here rather than in either view that draws
+// it. `notice` and `name` are supplied by the caller (`repeatNotice`,
+// roster.js, computes the wording; this only lays it out) so this module
+// stays a leaf with no import of its own. `onDrop` is the caller's own
+// handler, since the two views remove the entry from two different fields.
+export const repeatRow = (notice, name, onDrop) => {
+  const row = el('div', 'paste-repeat');
+  row.append(el('span', '', notice));
+  const drop = el('button', 'btn ghost sm press', 'Drop one');
+  drop.type = 'button';
+  drop.setAttribute('aria-label', `Drop one ${name}`);
+  drop.onclick = onDrop;
+  row.append(drop);
+  return row;
+};
+
 /* One shared 2D context for text measurement. Several places size type by
    measuring it (the card auto-fit, the availability pills, game mode's call
    line) and a canvas measure costs no layout, unlike reading a laid-out box.

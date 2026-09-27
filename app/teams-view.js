@@ -40,6 +40,9 @@ import { resumeBarAt, passStatus } from './live.js';
    840px breakpoint in a second place. */
 import { todayPaneShowing, gamePaneShowing } from './render.js';
 import { openGameMode } from './gamemode.js';
+// #146 item 6: "Add a team" opens first run's own flow (no cycle --
+// onboarding.js does not import teams-view.js; see the note above `addTeam`).
+import { openAddTeam } from './onboarding.js';
 // One switch builder for the whole app (#32): the Plan sheet's "Even out
 // earlier games" row and step 3's are the same control.
 import { switchRow } from './rules.js';
@@ -270,7 +273,7 @@ export function renderTeams() {
   if (state.teams.length < MAX_TEAMS) {
     const add = el('button', 'teammenu-item teammenu-add press', 'Add a team');
     add.type = 'button';
-    add.onclick = () => { menu.hidePopover?.(); addTeam(); };
+    add.onclick = () => { menu.hidePopover?.(); addTeam(add); };
     menu.append(add);
   }
 }
@@ -377,31 +380,15 @@ export function renderSettings() {
   }
 }
 
-function addTeam() {
+/* #146 item 6: opens the same flow first run uses (`openAddTeam`,
+   onboarding.js) instead of dropping the coach into Settings with an empty
+   team already pushed onto the record. Nothing is written -- no team, no
+   game, no `track` call -- until Next commits on that flow's own step 1;
+   backing out of it now leaves the record exactly as it was, which used to
+   require deleting the leftover team by hand. */
+function addTeam(trigger) {
   if (state.teams.length >= MAX_TEAMS) return;
-  /* Copy on create (v6): the new team starts from the settings of the team it
-     was added from, and is then entirely its own. A coach with two squads is
-     usually in one league, so the copy is right far more often than the
-     defaults would be -- and it is a copy, not an inheritance, so changing one
-     team's number never reaches the other. */
-  state.teams.push(newTeam('', null, team()?.settings));
-  state.activeTeam = state.teams.length - 1;
-  track('team_added', { teams: state.teams.length });
-  // before the view swap: setView only toggles visibility, so without this the
-  // team row still shows yesterday's chips and the roster is the old team's
-  renderAll();
-  /* A new team has no players, so the games view would show it an empty plan
-     and a "no players yet" placeholder, and the Team tab is only the roster
-     now (#22) -- nothing there names the team either. Settings is where the
-     name field lives, under the new team's own (still unnamed) heading, so
-     that is where a fresh "Team N" gets called something. */
-  if (state.view !== 'settings') setView('settings');
-  // setView is synchronous -- it flips `hidden` and returns -- so the field is
-  // in a visible subtree by now and takes focus. It used to run through a View
-  // Transition and this had to wait on `finished`, because focusing into a
-  // still-`hidden` subtree silently does nothing.
-  const f = $('#teamName');
-  if (f) { f.focus(); f.select(); }
+  openAddTeam(trigger);
 }
 
 /* Removing the last team is allowed. A season ends, and "that team is done"

@@ -45,6 +45,28 @@ test('blockedFix: a warning or info ahead of the error is skipped', () => {
   assert.equal(fix.message, '6 players are set to close but only 5 fit on the floor.');
 });
 
+/* #146 item 5: a roster short of the floor gets a button that actually fixes
+ * it (W4) -- "Add players", not "Change who's here", which only toggles who
+ * is marked available and cannot add a player. The floor is the engine's own
+ * `ON_FLOOR`, read as a second argument rather than a new literal. */
+test('blockedFix: NOT_ENOUGH_PLAYERS with a roster under the floor opens Add players', () => {
+  const fix = blockedFix([{ severity: 'error', code: 'NOT_ENOUGH_PLAYERS', message: 'Only 3 available; 5 are needed on the floor.' }], 3);
+  assert.equal(fix.label, 'Add players');
+  assert.equal(fix.opener, 'add');
+});
+
+test('blockedFix: NOT_ENOUGH_PLAYERS with a roster at or above the floor still opens Who\'s here', () => {
+  const fix = blockedFix([{ severity: 'error', code: 'NOT_ENOUGH_PLAYERS', message: 'Only 4 available; 5 are needed on the floor.' }], 11);
+  assert.equal(fix.label, "Change who's here");
+  assert.equal(fix.opener, 'who');
+});
+
+test('blockedFix: no roster size still reads as "Change who\'s here" (existing single-arg callers)', () => {
+  const fix = blockedFix([{ severity: 'error', code: 'NOT_ENOUGH_PLAYERS', message: 'x' }]);
+  assert.equal(fix.label, "Change who's here");
+  assert.equal(fix.opener, 'who');
+});
+
 test('blockedFix: no error at all returns null', () => {
   assert.equal(blockedFix([]), null);
   assert.equal(blockedFix([{ severity: 'info', code: 'NO_SUBS_ALL_GAME', message: 'x' }]), null);

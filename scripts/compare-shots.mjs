@@ -42,6 +42,11 @@ import { goRich, LONG_NAME, RICH, partPlayed as partPlayedFixture, reloadWithRec
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, SHEET_MIN, WIDE_MIN, LAPTOP, TOUCH_WIDTHS } from './smoke/sizes.mjs';
+// #146: the same 12-line, one-repeat roster app-large-text.mjs's own paste
+// sheet/first-run large-text states type, and the same four-player rename
+// roster-in.mjs's own smoke check applies -- reused rather than re-derived.
+import { PLAYER_LIST_12 } from './smoke/app-large-text.mjs';
+import { FIXTURE4_MUTATE } from './smoke/roster-in.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -103,6 +108,12 @@ const SHOT = Object.freeze({
      shape of that flag (test/compare-shots.test.js) does not have to widen
      to mean something else. */
   firstRunStep: 0, firstRunLongNames: false,
+  /* #146 Look proof: "first-run step 1 with 12 names" -- a second, distinct
+     roster for step 1, off its own flag so it cannot widen `firstRunLongNames`
+     (SAMPLE_LINES, real names, no repeat) to mean something else. Types
+     `PLAYER_LIST_12` (app-large-text.mjs), the same 12-line, one-repeat list
+     the paste-sheet look-check states below also type. */
+  firstRunRepeat: false,
   /* #35 decision 15: `mobile` joins the shot shape, defaulting to the phone
      every other shot in this table is. It was hardcoded `true` at every
      `Emulation.setDeviceMetricsOverride` call in this file, which is simply
@@ -151,6 +162,56 @@ const WHO_SHEET = { selector: 'dialog#sheetWho[open]', open: `document.getElemen
 const INTERVAL_SHEET = { selector: 'dialog#sheetInterval[open]', open: `document.getElementById('phraseInterval').click()` };
 const FORMAT_SHEET = { selector: 'dialog#sheetFormat[open]', open: `document.getElementById('phraseFormat').click()` };
 const CARD_SHEET = { selector: 'dialog#sheetCard[open]', open: `document.getElementById('shareBtn').click()` };
+
+/* #146 Look proof's own four sheets/panels, opened through their real
+ * triggers the same way the four sentence sheets above are. */
+// The paste sheet, typed with PLAYER_LIST_12 (the same 12-line, one-repeat
+// list app-large-text.mjs's own "paste sheet, 12 names + a repeat" state
+// types) so the repeat line and count actually have a repeat to show, and
+// enough content for the `bottom` cell below to have somewhere to scroll --
+// `view: 'team'` (below) lands here first, so this is only the click and
+// the typing that follow.
+const PASTE_SHEET_REPEAT = {
+  selector: 'dialog#sheetPaste[open]',
+  open: `document.getElementById('pasteRow').click();
+         const ta = document.getElementById('pasteText');
+         ta.value = ${JSON.stringify(PLAYER_LIST_12)};
+         ta.dispatchEvent(new Event('input', { bubbles: true }));`,
+};
+// "Add a team" (the team menu's own entry, teams-view.js) opened onto
+// `#firstRunFlow` step 1 -- `view: 'today'` (below) lands here first, since
+// `#teamBtn` lives on Today's own large title.
+const ADD_TEAM_SHEET = {
+  selector: 'dialog#firstRunFlow[open]',
+  open: `document.getElementById('teamBtn').click();
+         document.querySelector('.teammenu-add').click();`,
+};
+// Who's here with the item 4 fixture -- FIXTURE4_MUTATE (roster-in.mjs)
+// renames the same four RICH players that smoke check reads back, reused
+// rather than a second hand-typed mutation, then re-renders before opening
+// the sheet the same way `phrasePlayers` (WHO_SHEET, above) does.
+const WHO_SHEET_SUFFIX = {
+  selector: 'dialog#sheetWho[open]',
+  open: `const s = await import('/state.js');
+         ${FIXTURE4_MUTATE}
+         const rr = await import('/render.js');
+         rr.renderAll();
+         document.getElementById('phrasePlayers').click();`,
+};
+// The 3-player blocked panel -- item 5's "Add players" branch, reached by
+// trimming RICH's own roster to 3 players the way app-large-text.mjs's own
+// "3-player blocked panel" state does, then opening the game the trimmed
+// roster now blocks. `view: 'today'` (below) lands here first, so `.today-
+// game` already exists to click.
+const BLOCKED_3_PANEL = {
+  selector: '#timeline .empty button',
+  open: `const s = await import('/state.js');
+         const rr = await import('/render.js');
+         s.state.players = s.state.players.slice(0, 3);
+         rr.renderAll();
+         await new Promise(r => setTimeout(r, 250));
+         document.querySelector('.today-game').click();`,
+};
 
 const EXTRA_SHOTS = [
   // A long real name in the identity block -- LONG_NAME on the roster.
@@ -310,6 +371,33 @@ const EXTRA_SHOTS = [
    * large-text cell here. */
   solo('sheet-card-bottom-320', 'games',
     { sheet: CARD_SHEET, bottom: true, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
+
+  /* #146 Look proof: "paste sheet with a repeat ... light and dark at 390,
+   * plus 320/32, plus the paste sheet scrolled to its bottom." */
+  ...THEMES.map(theme => pair('paste-repeat', 'team', theme, { sheet: PASTE_SHEET_REPEAT })),
+  ...THEMES.map(theme => pair('paste-repeat-bottom', 'team', theme, { sheet: PASTE_SHEET_REPEAT, bottom: true })),
+  solo('paste-repeat-320', 'team',
+    { sheet: PASTE_SHEET_REPEAT, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
+  /* #146 Look proof: "first-run step 1 with 12 names ... light and dark at
+   * 390, plus 320/32." */
+  ...THEMES.map(theme => pair('first-run-repeat-1', null, theme, { firstRunStep: 1, firstRunRepeat: true })),
+  solo('first-run-repeat-1-320', null,
+    { firstRunStep: 1, firstRunRepeat: true, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
+  /* #146 Look proof: "Add a team step 1 ... light and dark at 390, plus
+   * 320/32." */
+  ...THEMES.map(theme => pair('add-team-step1', 'today', theme, { sheet: ADD_TEAM_SHEET })),
+  solo('add-team-step1-320', 'today',
+    { sheet: ADD_TEAM_SHEET, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
+  /* #146 Look proof: "Who's here with the item 4 fixture ... light and dark
+   * at 390, plus 320/32." */
+  ...THEMES.map(theme => pair('who-suffix', 'games', theme, { sheet: WHO_SHEET_SUFFIX })),
+  solo('who-suffix-320', 'games',
+    { sheet: WHO_SHEET_SUFFIX, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
+  /* #146 Look proof: "the 3-player blocked panel ... light and dark at 390,
+   * plus 320/32." */
+  ...THEMES.map(theme => pair('blocked-3', 'today', theme, { sheet: BLOCKED_3_PANEL })),
+  solo('blocked-3-320', 'today',
+    { sheet: BLOCKED_3_PANEL, width: LARGE_TEXT_WIDTH, rootPx: LARGE_TEXT_PX }),
 ];
 
 export const SHOTS = Object.freeze([...BASE_SHOTS, ...EXTRA_SHOTS].map(Object.freeze));
@@ -477,6 +565,16 @@ async function goFirstRun(c, origin, theme, opts = {}) {
       throw new Error('first-run-long-names: #frRoster never scrolled (scrollTop 0), so this shot '
         + 'would look identical to an unscrolled step 1 and prove nothing about a long roster');
     }
+  } else if (opts.repeatRoster) {
+    // #146 Look proof: "first-run step 1 with 12 names" -- PLAYER_LIST_12
+    // (app-large-text.mjs), the same 12-line, one-repeat list its own
+    // "paste sheet, 12 names + a repeat" state types, typed into #frRoster
+    // the same way `longNames` (above) types SAMPLE_LINES into it.
+    await evalIn(c, step(`(() => {
+      const t = document.getElementById('frRoster');
+      t.value = ${JSON.stringify(PLAYER_LIST_12)};
+      t.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`));
   } else if (atStep >= 2) {
     // Steps 2 and 3 both need 5+ players just to get there.
     await evalIn(c, step(`document.getElementById('frFill').click()`));
@@ -521,7 +619,8 @@ async function capture(c, origin, want, outDir) {
   await c.send('Emulation.setDeviceMetricsOverride', deviceMetrics(want, HEIGHT));
 
   if (want.firstRun || want.firstRunStep) {
-    await goFirstRun(c, origin, want.theme, { step: want.firstRunStep || 0, longNames: want.firstRunLongNames });
+    await goFirstRun(c, origin, want.theme,
+      { step: want.firstRunStep || 0, longNames: want.firstRunLongNames, repeatRoster: want.firstRunRepeat });
   } else if (want.partPlayed) {
     /* #34 decision 16: the part-played Resume bar, over `reloadWithRecord`
        rather than `goRich` -- `partPlayed()` needs `view: 'today'` baked

@@ -53,6 +53,24 @@ const APP_LARGE_TEXT_ALLOW = {
  * The swap picker is here too: picking a player changes the bench list's
  * layout, a different measurement, not the same screen with a class on it.
  * Both close themselves, leaving the app on the games screen. */
+/* #146 item 7: a full roster, not the three-line placeholder every other
+ * paste/first-run state in this file leaves in the box -- the paste-repeats
+ * block and the count line both grow with the list, and neither was ever on
+ * screen at this cell past three names. Eleven distinct players plus one
+ * repeat (the first name again, without a number, same as the spec's own
+ * "one of the group lacks a number" rule for which entry "Drop one" removes)
+ * -- twelve lines, the same one list "paste sheet, 12 names + a repeat" and
+ * "first-run step 1, 12 names + a repeat" (below) both type, so the two
+ * cannot drift apart. */
+// Exported so compare-shots.mjs's own "12 names + a repeat" look-check
+// states (#146's Proof: "first-run step 1 with 12 names") type this exact
+// same list rather than a second one that could drift from this one.
+export const PLAYER_LIST_12 = [
+  '1 Alex Diaz', '2 Jordan Lee', '3 Sam Rivera', '4 Casey Brooks', '5 Taylor Munoz',
+  '6 Jamie Ortiz', '7 Morgan Diaz', '8 Riley Chen', '9 Drew Patel', '10 Avery Kim',
+  '11 Reese Nguyen', 'Alex Diaz',
+].join('\n');
+
 export const APP_LARGE_TEXT_STATES = [
   ...VIEWS,
   /* AND THE TEAM MENU OPEN, on Today: a native popover is its own box in the
@@ -233,6 +251,58 @@ export const APP_LARGE_TEXT_STATES = [
     close: `document.querySelector('.toast[data-undo] .tundo')?.click();
             document.getElementById('sheetFormatClose')?.click();
             document.getElementById('backBtn')?.click()` },
+  /* #146 item 7: the paste sheet with a full roster in the box, not the
+     three lines `team-screen.mjs`'s own paste check leaves it at -- opened
+     through the real trigger (`#pasteRow`, the Team screen's own action
+     row), typed by setting the field's value and dispatching its own
+     `input` event (`roster-view.js` wires `ta.oninput = paintPasteConfirm`
+     as a property, so a plain `Event('input')` reaches it same as a real
+     keystroke would). Left empty before closing, the same way
+     `team-screen.mjs`'s own paste check closes with nothing to lose. */
+  { name: 'paste sheet, 12 names + a repeat',
+    open: `${TODAY_HOME}; document.getElementById('todayTeam').click();
+           document.getElementById('pasteRow').click();
+           const ta = document.getElementById('pasteText');
+           ta.value = ${JSON.stringify(PLAYER_LIST_12)};
+           ta.dispatchEvent(new Event('input'));`,
+    close: `const ta = document.getElementById('pasteText');
+            ta.value = ''; ta.dispatchEvent(new Event('input'));
+            document.querySelector('#sheetPaste .bsheet-close')?.click();
+            document.getElementById('backBtn')?.click()` },
+  /* #146 item 7: "Add a team" (the team menu's own entry, `teams-view.js`)
+     opened onto its step 1 -- the same `stepTeam` body first run's own step 1
+     uses (`onboarding.js`, item 6's Design section), reused rather than a
+     second copy, so this state is the same layout `stepTeam` paints on
+     first run, just reached the other way in. Backing out asks (a name is
+     typed) and Discard leaves nothing behind, same as first run's own
+     discard-ask. */
+  { name: 'Add a team step 1',
+    open: `${TODAY_HOME}; document.getElementById('teamBtn').click();
+           document.querySelector('.teammenu-add').click();`,
+    close: `document.querySelector('#frClose')?.click();
+            document.querySelector('#frDiscard')?.click()` },
+  /* #146 item 7: the blocked panel's own "Add players" branch (item 5,
+     `blockedFix`, state.js) -- the floor is `state.players.length`, not how
+     many are marked available, so this trims the roster itself rather than
+     reusing `timeline-card-sheet.mjs`'s BREAK_WHO (which only marks players
+     absent and never crosses the floor). The removed players are parked on
+     `window` rather than dropped, so `close` can hand RICH back exactly as
+     every state after this one still expects it. */
+  { name: '3-player blocked panel',
+    open: `${TODAY_HOME};
+           const s = await import('/state.js');
+           const rr = await import('/render.js');
+           window.__hiddenPlayers = s.state.players.slice(3);
+           s.state.players = s.state.players.slice(0, 3);
+           rr.renderAll();
+           await new Promise(r => setTimeout(r, 250));
+           document.querySelector('.today-game').click();`,
+    close: `const s = await import('/state.js');
+            const rr = await import('/render.js');
+            s.state.players = s.state.players.concat(window.__hiddenPlayers || []);
+            delete window.__hiddenPlayers;
+            rr.renderAll();
+            document.getElementById('backBtn')?.click();` },
   /* #26 item 12: "at 320px with 32px root text ... Today with FOUR has no
      horizontal overflow and nothing stranded above the viewport" -- every
      state above this one measures Today (and the other four chromes) on
@@ -266,7 +336,7 @@ export const APP_LARGE_TEXT_STATES = [
      games view and say "welcome screen" over it. That is the whole reason
      this entry costs a navigation.
 
-     MUST STAY LAST, with the four states below it: it destroys the rich
+     MUST STAY LAST, with the five states below it: it destroys the rich
      fixture. Nothing after it in this array would find `#gmOpen`, and
      `staticPass` (the only pass after this one) navigates away from
      `index.html` for good. */
@@ -317,6 +387,18 @@ export const APP_LARGE_TEXT_STATES = [
     open: `document.querySelector('#welTry').click();
            document.querySelector('#frNext').click();
            document.querySelector('#frNext').click()`,
+    close: `document.querySelector('#frClose')?.click();
+            document.querySelector('#frDiscard')?.click()` },
+  /* #146 item 7: first-run step 1 with a full roster typed in, not the
+     three-line sample `#welTry` starts from -- the paste-repeats block and
+     the count line both grow with the list, and neither was ever on screen
+     at this cell past three names. Wiped and reloaded back onto the welcome
+     screen (`firstRun`, above), same as `FIRST_RUN_STEPS` itself needs to be
+     reached fresh; `#welStart` ("Set up my team"), the EMPTY starting point,
+     since `#welTry` already covers the three-line sample. `PLAYER_LIST_12`
+     (above) is the one list this state and "paste sheet, 12 names + a
+     repeat" both type, so the two cannot drift apart. */
+  { name: 'first-run step 1, 12 names + a repeat', firstRunTypedRoster: true,
     close: `document.querySelector('#frClose')?.click();
             document.querySelector('#frDiscard')?.click()` },
   /* AND THE SENTENCE THE STATE ABOVE STOPPED MEASURING (A50). The sample flash
@@ -488,6 +570,22 @@ export async function firstRun(c, origin) {
   if (wrong.length) throw new Error(`first run did not arrive on ${r.host}: ${wrong.join('; ')}`);
 }
 
+/* #146 item 7's own opener for `first-run step 1, 12 names + a repeat`
+   (above): wipes and reloads onto the welcome screen the same way `firstRun`
+   does, opens "Set up my team" (the empty start, `#welTry` already having
+   its own three-line-sample coverage elsewhere in this list), then writes
+   `PLAYER_LIST_12` into the roster field directly and dispatches its own
+   `input` event -- `flowField` (trap.js) wires `i.oninput = () => onInput(i.value)`
+   as a property, so a plain `Event('input')` reaches it the same as a real
+   keystroke would. */
+async function openFirstRunTypedRosterState(c, origin) {
+  await landWiped(c, origin + '/index.html', "document.querySelector('#view-welcome')?.hidden === false");
+  await evalIn(c, step(`document.querySelector('#welStart').click()`));
+  await evalIn(c, step(`const ta = document.getElementById('frRoster');
+    ta.value = ${JSON.stringify(PLAYER_LIST_12)};
+    ta.dispatchEvent(new Event('input'));`));
+}
+
 /* The exact sentence `onboarding.js` flashes on the `?try=N` landing. Pinned
    here as a PREFIX rather than the whole string: `test/sample-team.test.js`
    owns the wording (it fails if the sentence names a destination the nav does
@@ -593,6 +691,7 @@ export async function appLargeTextPass(c, origin) {
         else if (v.tryLink) flash = await tryLanding(c, origin, v.tryLink);
         else if (v.four) await reloadWithRecord(c, origin, FOUR);
         else if (v.rotationToast) await openRotationToastState(c);
+        else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin);
         else await evalIn(c, step(v.open));
         const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
         const slack = APP_LARGE_TEXT_ALLOW[v.name] || 0;

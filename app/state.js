@@ -12,7 +12,10 @@
  * directly, so they only become movable once those views are modules of
  * their own.
  * ================================================================== */
-import { generatePlan, fmtMinutes, buildStints, DEFAULT_TIER } from './engine.js';
+// #146 item 5: aliased -- this file already has its own unrelated local
+// `ON_FLOOR` (the season-carryover section below), so the import is renamed
+// rather than colliding with or touching that existing constant.
+import { generatePlan, fmtMinutes, buildStints, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
@@ -1161,10 +1164,18 @@ export const BLOCKED_TITLE = "This plan can't be built";
    Lives here, not in timeline.js, because card.js's card-sheet preview needs
    the same mapping's `message` for its own blocked state (decision 7) and
    timeline.js already imports card.js -- a reverse import would cycle. */
-export function blockedFix(issues) {
+export function blockedFix(issues, rosterSize) {
   const err = (issues || []).find(i => i.severity === 'error');
   if (!err) return null;
-  if (err.code === 'NOT_ENOUGH_PLAYERS') return { message: err.message, label: "Change who's here", opener: 'who' };
+  if (err.code === 'NOT_ENOUGH_PLAYERS') {
+    // #146 item 5 / W4: below the floor, Who's here cannot fix this -- there
+    // is no one left to mark available. `rosterSize` is optional so the
+    // existing single-argument callers (card.js) are unaffected; `?? Infinity`
+    // keeps them on 'who'. The floor is the engine's own `ON_FLOOR`
+    // (imported as `LINEUP_FLOOR` here), not a second '5' living here.
+    if ((rosterSize ?? Infinity) < LINEUP_FLOOR) return { message: err.message, label: 'Add players', opener: 'add' };
+    return { message: err.message, label: "Change who's here", opener: 'who' };
+  }
   if (err.code === 'UNITS_MISSING' || err.code === 'UNIT_WRONG_SIZE') return { message: err.message, label: 'Fill a unit', opener: 'strategy' };
   if (err.code === 'CLOSERS_TOO_MANY' || err.code === 'CLOSERS_AVOID') return { message: err.message, label: 'Change the rules', opener: 'strategy' };
   return { message: err.message, label: 'Change the rules', opener: 'rules' };

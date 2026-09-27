@@ -223,7 +223,8 @@ full-screen `<dialog>` of three steps (#36): *Who's on the team?* (a name and a
 roster box), *How long is a game?* (periods, minutes each, how often to sub),
 and then the coach's own first card, with Print and Share image on it. Players
 are typed or pasted in any of the usual shapes (`12 Marcus Webb`,
-`Marcus Webb #12`, `Devon Ellis`), counted by `parseRoster` as they are typed,
+`Marcus Webb #12`, `Devon Ellis`), or as a comma-separated list with no line
+breaks (`Sam, Jo, Kai`); they are counted by `parseRoster` as they are typed,
 and Next stays disabled until five of them parse.
 
 It is the add-a-game flow's shell, down to the one painter both flows call: a
@@ -290,6 +291,17 @@ that told each one which section to scroll to (#33, W3). The scroll is a single 
 `.keysbox`: `scrollIntoView` defaults `inline` to `'nearest'` and would move the
 sheet sideways, which is the same bug the tour carries a note about.
 
+**Adding a second team follows the first-run flow.** The team menu on Today
+(a checkmark-marked list in a popover off the team name button) offers **Add a
+team** once the team count is below the limit. Tapping it opens `#firstRunFlow`
+in add-team mode: steps "1 of 2" (*Who's on the team?*) and "2 of 2" (*Here's
+your first card*), with no sample team button and no intermediate settings
+step. Next on step 1 commits the team (a new `newTeam` with the name, roster,
+and the current team's settings copied over), makes it active, and fires
+`track('team_added')`. Backing out on step 1 adds nothing. Step 2
+(the card view) is unchanged from first run — **Go to the game** closes the
+dialog and lands on Game 1 of the new team with the plan built and no tour.
+
 **The Team screen is the roster the way a coach reads it on paper (#31).** The
 team's own name is a large in-page `h1` with a muted *N players* under it (the
 header leaves its own title off this screen for that reason — *One header, two
@@ -303,6 +315,13 @@ about the whole roster rather than about one player, so its notice stays out
 here between the title and the list. With nobody on the roster both groups go
 and a designed empty state takes over — a heading, one sentence of what to do,
 and both ways to do it — rather than an empty box.
+
+When two players share a name, each is shown with a suffix: a jersey number if
+one player has a number no one else in that group has, otherwise the player's
+card name in parentheses — so "Maya Webb #12" and "Maya Webb (MAYW2)". This
+suffix appears in every surface that displays the player's name: the Team roster
+list, Who's here rows, the Timeline, the Season ledger, and the swap toast in
+bench mode. The suffix is display-only and is never stored.
 
 **Everything about one player is in their sheet.** A row opens `#sheetPlayer`:
 Number, Name, Card name (with the derived short name as the placeholder, so
@@ -322,9 +341,13 @@ their old index.
 confirm at the bottom is pressed, and that confirm is named for what pressing
 it will do. The header `+` opens *Add a player* (a number, a name, **Add
 player**);
-*Paste a list* takes the shapes `parseRoster` accepts and counts what is in the
-box, so its confirm reads **Add 3 players**. Both spellings come from
-`confirmAddLabel` in `roster.js`, so neither sheet carries its own plural rule.
+*Paste a list* takes the shapes `parseRoster` accepts and updates a preview on
+every keystroke — a count and the names as parsed, like "3 players so far: Sam,
+Jo and Kai" — so its confirm reads **Add 3 players**. When two or more entries
+have the same name (case and spaces ignored), a "Drop one" button appears beside
+the repeat notice ("Sam is listed twice"), which removes one entry and repaints
+the preview. Both spellings come from `confirmAddLabel` in `roster.js`, so
+neither sheet carries its own plural rule.
 Closing the paste sheet on top of typed text asks first, and the ask is *inside*
 the sheet, in its own footer: a `showModal()` dialog makes everything outside it
 inert, so the confirm overlay would have painted behind the sheet and taken no
@@ -861,7 +884,9 @@ Mobile specifics that came out of real use:
   Team screen's own first-run buttons rather than reimplementing them — the two
   controls that are on screen while the roster is empty, which is the only time
   this branch runs. A squad that is genuinely under strength — 4 of 11 present —
-  still gets the red error, because there it is the right message.
+  still gets the red error with **Add players** (which opens the Team screen with
+  Paste a list already open), because there it is the right message and the
+  control that fixes it.
 - **A blank timeline always offers a way out of itself.** "Resolve the errors
   below" is only useful if the coach can reach the control that caused them. The
   Plan sheet opens at full height, so `timelineEmpty` reads the plan's issues:

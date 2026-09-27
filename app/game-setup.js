@@ -22,6 +22,7 @@ import { state, game, plans, noRoster, setAvailable,
          initials, colorOf } from './state.js';
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
 import { colorName, seasonDate } from './storage.js';
+import { distinctNames } from './roster.js';
 
 let edit = () => {};
 
@@ -218,7 +219,7 @@ function paintWhoRow(b, on_) {
   b.append(on_ ? checkMark() : el('span', 'prow-v', 'Absent'));
 }
 
-function whoRow(g, p, on_) {
+function whoRow(g, p, on_, names) {
   // `.prow who-row`: the same row Format/Plan/Settings/Team use, plus
   // `.who-row` widening the `.av` badge selector to the roster's own look
   // (#143 Constraints/Reuse) -- not a new row class or a second badge style.
@@ -231,7 +232,10 @@ function whoRow(g, p, on_) {
   const b = el('button', 'prow who-row');
   b.type = 'button';
   b.style.setProperty('--c', colorOf(p.id));
-  const name = p.name || 'Unnamed';
+  // #146 item 4: `names` (distinctNames over the whole roster, computed once
+  // by the caller rather than re-derived per row) carries the suffix a shared
+  // name needs; a player with no name at all still falls back to 'Unnamed'.
+  const name = names[p.id] || p.name || 'Unnamed';
   // Named with the player's name alone (item 3): the visible "Absent" text
   // beside it is decorative confirmation of `aria-pressed`, not part of the
   // accessible name, the same split `renderAvail` used to draw between its
@@ -262,8 +266,9 @@ function paintWhoBody() {
     return;
   }
   const out = new Set(g.out);
+  const names = distinctNames(state.players);
   const grp = el('div', 'pgrp');
-  for (const p of state.players) grp.append(whoRow(g, p, !out.has(p.id)));
+  for (const p of state.players) grp.append(whoRow(g, p, !out.has(p.id), names));
   box.append(grp);
   riseIn(grp.querySelectorAll('.prow'), { delay: 0.012, from: 5 });
 }

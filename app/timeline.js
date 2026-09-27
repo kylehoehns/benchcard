@@ -18,6 +18,7 @@ import { riseIn, popIn, countTo, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
+import { distinctNames } from './roster.js';
 import { fitPreview } from './card.js';
 import { resumeAt } from './live.js';
 import { openPlanSheet, openWhoSheet } from './game-setup.js';
@@ -158,15 +159,27 @@ function rosterCta() {
 export function blockedPanel(p) {
   const box = el('div', 'empty');
   box.append(el('div', 'se-t', BLOCKED_TITLE));
-  const fix = blockedFix(p?.issues);
+  const fix = blockedFix(p?.issues, state.players.length);
   box.append(el('div', 'se-s', fix ? fix.message : 'Set up the game to see the rotation.'));
   if (fix) {
     const b = el('button', 'btn sm press', fix.label);
     b.type = 'button';
     // 'who' opens Who's here the way `#phrasePlayers` does (game-setup.js's
     // own opener, reused rather than re-derived); 'strategy'/'rules' open the
-    // Plan sheet's matching group through its one opener, `openPlanSheet`.
-    b.onclick = () => fix.opener === 'who' ? openWhoSheet(b) : openPlanSheet(fix.opener, b);
+    // Plan sheet's matching group through its one opener, `openPlanSheet`;
+    // #146 item 5's 'add' crosses to Team and opens the roster's own paste
+    // sheet, `rosterCta`'s jump pattern above, reused rather than a second
+    // paste sheet, plus the box focus the spec asks for.
+    b.onclick = () => {
+      if (fix.opener === 'who') { openWhoSheet(b); return; }
+      if (fix.opener === 'add') {
+        setView('team');
+        $('#pasteRow')?.click();
+        $('#pasteText')?.focus({ preventScroll: true });
+        return;
+      }
+      openPlanSheet(fix.opener, b);
+    };
     box.append(b);
   }
   return box;
@@ -193,8 +206,14 @@ function timelineEmpty(g, p) {
    A name too long for the column ellipsizes (`.tl-lab .nm`, app.css); a
    first-name / last-initial ladder is the eventual shape there and is
    deliberately not built yet. */
-function tlName(p, id) {
-  return byId(id)?.name || p.shortNames[id] || id;
+/* #146 item 4: `distinctNames` (roster.js) is the one place a shared name's
+   suffix is computed -- ` #12` or ` (MAYW2)` -- so the timeline reads it
+   instead of the bare `byId(id)?.name`. `names` is that map, built from
+   `state.players` (the same array `byId` searches, so the two agree on which
+   id has a name at all) once per render by `renderTimeline` below, rather
+   than once per row. */
+function tlName(names, p, id) {
+  return names[id] || p.shortNames[id] || id;
 }
 
 export function renderTimeline() {
@@ -210,6 +229,10 @@ export function renderTimeline() {
     box.append(timelineEmpty(g, p));
     return;
   }
+
+  // #146 item 4 efficiency: one `distinctNames` call for this whole render,
+  // not one per `tlName` call in the loops below.
+  const names = distinctNames(state.players);
 
   /* Every number and block below is read off the *effective* rotation, not
      `p.stints`. A five the coach swapped by hand in bench mode is the rotation
@@ -255,7 +278,7 @@ export function renderTimeline() {
       const lab = el('div', 'tl-lab');
       const nameBtn = el('button', 'tl-name');
       nameBtn.type = 'button';
-      nameBtn.append(el('span', 'dot'), el('span', 'nm', tlName(p, id)));
+      nameBtn.append(el('span', 'dot'), el('span', 'nm', tlName(names, p, id)));
       nameBtn.onclick = () => { tlPinned = tlPinned === id ? null : id; renderTimeline(); };
       lab.append(nameBtn);
       const track = el('div', 'tl-track');
@@ -275,7 +298,7 @@ export function renderTimeline() {
     // names can change without the shape changing
     for (const id of ids) {
       const nm = box.querySelector(`.tl-row[data-id="${CSS.escape(id)}"] .nm`);
-      if (nm) nm.textContent = tlName(p, id);
+      if (nm) nm.textContent = tlName(names, p, id);
     }
   }
 
@@ -374,7 +397,7 @@ export function renderTimeline() {
     const onCount = stints.reduce((a, s2) => a + (s2.onFloor.includes(id) ? 1 : 0), 0);
     const nameBtn = row.querySelector('.tl-name');
     nameBtn.setAttribute('aria-label',
-      `${tlName(p, id)}, ${fmtMinutes(m)} minutes` +
+      `${tlName(names, p, id)}, ${fmtMinutes(m)} minutes` +
       (extreme ? `, the ${extreme} on the team` : '') +
       `, on the floor for ${onCount} of ${stints.length} stints`);
     nameBtn.setAttribute('aria-expanded', String(id === tlPinned));
@@ -382,7 +405,7 @@ export function renderTimeline() {
     else nameBtn.removeAttribute('aria-controls');
   }
 
-  renderPinned(p, stints, mins, starts);
+  renderPinned(names, p, stints, mins, starts);
 }
 
 /* A tapped row opens a plain-language read of that player's game: what they
@@ -392,7 +415,7 @@ export function renderTimeline() {
  * The panel is inserted directly beneath the row that was tapped. Rendering it
  * below the whole timeline put it ~700px off-screen on a phone with a full
  * squad — you could not see what you had just selected. */
-function renderPinned(p, stints, mins, starts) {
+function renderPinned(names, p, stints, mins, starts) {
   for (const old of document.querySelectorAll('.tld')) old.remove();
   if (!tlPinned) return;
 
@@ -402,7 +425,7 @@ function renderPinned(p, stints, mins, starts) {
   const host = el('div', 'tld');
   host.id = 'tlDetail';
   host.setAttribute('role', 'region');
-  host.setAttribute('aria-label', `${tlName(p, id)}, breakdown`);
+  host.setAttribute('aria-label', `${tlName(names, p, id)}, breakdown`);
   host.style.setProperty('--c', colorOf(id));
   const on = stints.map(s2 => s2.onFloor.includes(id));
   const runs = [], sits = [];
@@ -421,7 +444,7 @@ function renderPinned(p, stints, mins, starts) {
 
   const head = el('div', 'tld-hd');
   const dot = el('span', 'dot'); dot.style.background = colorOf(id);
-  head.append(dot, el('span', 'tld-nm', tlName(p, id)));
+  head.append(dot, el('span', 'tld-nm', tlName(names, p, id)));
   const close = el('button', 'tld-x press');
   close.append(icon('x', { size: '.9em', stroke: 2.4 }));
   close.type = 'button';

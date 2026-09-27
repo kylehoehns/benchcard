@@ -117,11 +117,13 @@ test('creating a team from nothing is the defaults, not a crash', () => {
 });
 
 test('adding a team copies from the team the coach was on', () => {
-  // the wiring, read rather than run: addTeam is behind a click handler in
-  // teams-view.js, and what matters is that it passes the ACTIVE team's block
-  const src = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8');
-  const fn = src.slice(src.indexOf('function addTeam'), src.indexOf('function addTeam') + 900);
-  assert.match(fn, /newTeam\('',\s*null,\s*team\(\)\?\.settings\)/,
+  // the wiring, read rather than run: #146 item 6 moved the actual team build
+  // from teams-view.js's addTeam into onboarding.js's commitAddTeam (the
+  // flow's own step-1 commit) -- what matters is that it still passes the
+  // ACTIVE team's settings block, not a fresh default.
+  const src = readFileSync(new URL('../app/onboarding.js', import.meta.url), 'utf8');
+  const fn = src.slice(src.indexOf('function commitAddTeam'), src.indexOf('function commitAddTeam') + 400);
+  assert.match(fn, /newTeam\(fr\.teamName,\s*players,\s*team\(\)\?\.settings\)/,
     'a new team must be created from the active team\'s settings');
 });
 
@@ -546,7 +548,7 @@ test('the per-team settings live in Settings, under the team\'s own name -- not 
      is the right seam: it is the one function that paints per-team policy, and
      every id it reaches is by definition a control that belongs to the team. */
   const tv = readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8');
-  const body = tv.slice(tv.indexOf('export function renderSettings() {'), tv.indexOf('\nfunction addTeam()'));
+  const body = tv.slice(tv.indexOf('export function renderSettings() {'), tv.indexOf('\nfunction addTeam(trigger)'));
   assert.ok(body.length > 200, 'renderSettings moved or was renamed; this guard is reading nothing');
   /* Four forms an id can reach the DOM through -- `$('#x')`, `['#x'...`
      (a lookup table keyed by selector), `document.getElementById('x')` and
@@ -572,9 +574,10 @@ test('the per-team settings live in Settings, under the team\'s own name -- not 
 /* ================================================================== *
  * #22 proof items 1, 2 and 5: the theme cycler is gone, Appearance is the
  * three named buttons the spec calls for, the Benchcard zone carries the
- * whole order through Backup, the team zone opens on the name and closes on
- * Remove this team, and addTeam() lands a coach in Settings rather than on
- * the Team tab it used to.
+ * whole order through Backup, and the team zone opens on the name and closes
+ * on Remove this team. (#22's own addTeam() clause -- it lands a coach in
+ * Settings -- is reversed by #146 item 6: addTeam() now opens a flow instead,
+ * and that flow's own test sits below the per-team-controls test.)
  *
  * `views()` reads through `indexHtml()`, which now strips comments itself
  * (see its own comment above), so it is safe for a "the word Theme is gone"
@@ -734,44 +737,25 @@ test('the Settings tour button calls exactly what #helpTour calls, not a second 
     'the Settings button must name the same handler #helpTour does');
 });
 
-test('adding a team opens Settings, not the Team tab, and focuses the name field', () => {
+// #146 item 6 reverses this: Add a team no longer lands a coach on Settings
+// with an empty team already on the record -- it opens the same flow first
+// run uses, and nothing is written until that flow's own Next commits.
+test('adding a team opens the shared flow, never Settings, and stays under the team cap', () => {
   const src = stripComments(readFileSync(new URL('../app/teams-view.js', import.meta.url), 'utf8'));
   const start = src.indexOf('function addTeam');
   const body = src.slice(start, src.indexOf('\nfunction removeTeam', start));
-  assert.ok(body.length > 100, 'addTeam moved or was renamed; this guard is reading nothing');
-  assert.match(body, /setView\(\s*['"]settings['"]\s*\)/,
-    'addTeam must land the coach on Settings, where the new team\'s name field now lives');
-  assert.doesNotMatch(body, /setView\(\s*['"]team['"]\s*\)/,
-    'addTeam must not still send the coach to the Team tab');
-  /* A setView("settings") gated on state.view is only right one way round:
-     `!== 'settings'` skips the (no-op) call when already there; `===
-     'settings'` is backwards -- it only ever navigates when the coach is
-     already on the page it is supposed to land them on, i.e. never from
-     anywhere else. Unconditional is fine too, so only the backwards gate is
-     refused. */
-  const gated = body.match(/if\s*\(\s*state\.view\s*(===|!==)\s*['"]settings['"]\s*\)\s*setView\(\s*['"]settings['"]\s*\)/);
-  if (gated) {
-    assert.equal(gated[1], '!==',
-      'a setView("settings") gated on state.view must use !== -- an === gate only navigates when ' +
-      'already on Settings, which never fires from anywhere a coach would actually be');
-  }
-  // order: the view has to be live before a field inside it can take focus --
-  // focusing into a still-hidden subtree is a no-op, not a deferred focus.
-  const viewAt = body.search(/setView\(\s*['"]settings['"]\s*\)/);
-  const focusAt = body.search(/\.focus\(\)/);
-  assert.ok(viewAt > -1 && focusAt > -1, 'addTeam must both switch to Settings and focus something');
-  assert.ok(viewAt < focusAt,
-    'setView("settings") must run before .focus() -- focusing into a still-hidden view is a no-op');
-  /* Not just "#teamName appears somewhere in the body": the element that
-     is actually focused and selected has to be the one read from #teamName,
-     word for word -- `$('#teamName') && $('#dayName')` still matches a bare
-     "reaches #teamName" check while focusing a different field entirely. */
-  const decl = body.match(/const\s+(\w+)\s*=\s*(\$\(\s*['"]#teamName['"]\s*\))\s*;/);
-  assert.ok(decl,
-    'addTeam must declare a variable as exactly $(\'#teamName\'), with nothing else on the right-hand side');
-  const name = decl[1];
-  assert.match(body, new RegExp(`\\b${name}\\.focus\\(\\)`),
-    `addTeam must focus the element read from #teamName (variable "${name}")`);
-  assert.match(body, new RegExp(`\\b${name}\\.select\\(\\)`),
-    `addTeam must select the element read from #teamName (variable "${name}")`);
+  // Comments are blanked to spaces, not removed (see js-comments.js), so the
+  // bound is on the code alone -- otherwise the doc comment above
+  // `removeTeam` would count as "addTeam" growing back into a second flow.
+  const code = body.replace(/\s+/g, '');
+  assert.ok(code.length > 20 && code.length < 200,
+    'addTeam moved, or grew back into a second copy of the flow it is meant to open');
+  assert.match(body, /state\.teams\.length\s*>=\s*MAX_TEAMS/,
+    'addTeam must still refuse past the team cap, as it always did');
+  assert.match(body, /openAddTeam\(/,
+    'addTeam must open the shared first-run flow (#146 item 6), not a screen of its own');
+  assert.doesNotMatch(body, /setView\(/,
+    'addTeam must not open any screen itself -- Settings is never opened for Add a team (#146 item 6)');
+  assert.doesNotMatch(body, /newTeam\(/,
+    'addTeam must not push a team onto the record itself -- nothing is written until the flow commits');
 });

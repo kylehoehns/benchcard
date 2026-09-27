@@ -1,5 +1,9 @@
 // Roster text parsing. Pure — shared by first-run and bulk paste.
 
+// #146 item 4: card names, for distinctNames' parenthesized suffix. engine.js
+// has no imports, so this does not create a cycle.
+import { deriveShortNames } from './engine.js';
+
 /**
  * Parse one line into { number, name }. Coaches paste rosters in whatever
  * shape their league emailed them, so accept the common ones:
@@ -29,12 +33,142 @@ export function parseRosterLine(line) {
   return { number: number.replace(/^0+(?=\d)/, ''), name: s };
 }
 
-/** Parse a block of text, one player per line. Blank lines are skipped. */
+/**
+ * Parse a block of text, one player per line. Blank lines are skipped.
+ *
+ * #146 item 1: a coach who pastes one line -- "Sam, Jo, Kai" -- gets nothing
+ * today, because there is no line break for the line-splitter to find. When
+ * the WHOLE text has no `\r` or `\n` and holds a comma, split on commas
+ * instead and parse each piece the same way a line would be. A piece with no
+ * letter in it ("12" alone) means the comma was a number separator, not a
+ * list separator -- "12, Maya Webb" is one player, not two -- so that blocks
+ * the split entirely and the text falls through to the line-parser, which
+ * reads it as the single line it is. A text with a line break never takes
+ * this path: "Webb, Maya\nTran, Eli" is two lines today and stays two lines.
+ */
+const commaPieces = s => s.split(',').map(p => p.trim()).filter(Boolean);
+
+/* Whether `s` reads as a comma list rather than lines -- see the doc comment
+ * on `parseRoster` for why. `dropRepeat` below splits the same way, so this
+ * is the one place that decision is made, not two. */
+const isCommaList = s => !/[\r\n]/.test(s) && s.includes(',') &&
+  commaPieces(s).length > 0 && commaPieces(s).every(p => /\p{L}/u.test(p));
+
 export function parseRoster(text) {
-  return String(text || '')
+  const s = String(text || '');
+  if (isCommaList(s)) return commaPieces(s).map(parseRosterLine).filter(Boolean);
+  return s
     .split(/[\r\n]+/)
     .map(parseRosterLine)
     .filter(Boolean);
+}
+
+/* Trim, lowercase, collapse inner spaces. One key function, shared by every
+   caller that has to answer "which entries share a name" --
+   `rosterPreview`/`dropRepeat`/`distinctNames` below, and `repeatIndexes`
+   further down -- so a repeat against the existing roster, a repeat inside
+   the text being typed, and a shared name on the roster itself are all
+   answered the same way, not three slightly different ones. */
+const nameKey = n => String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+/**
+ * #146 items 2-3: what the paste step shows before anything is added. Pure
+ * and generic -- `countLine` (onboarding.js) and the paste sheet's note
+ * (roster-view.js) each wrap `names` in their own sentence, joining with
+ * `joinNames` (state.js) themselves. This module stays pure and does not
+ * import state.js (that would cycle: state.js already imports `callNames`
+ * from here), so it hands back the unjoined list rather than a second join
+ * of its own -- one join function, in one place, used by every caller. The
+ * two facts every caller needs: the name list, numbered players read as
+ * "Maya Webb #12"; and the repeat groups, so callers can build "<name> is
+ * listed twice."/"Drop one <name>" without re-deriving the key.
+ */
+export function rosterPreview(entries) {
+  const list = entries || [];
+  const names = list.map(e => (e.number ? `${e.name} #${e.number}` : e.name));
+  const groups = new Map();
+  for (const e of list) {
+    const k = nameKey(e.name);
+    if (!k) continue;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(e);
+  }
+  const repeats = [...groups.values()]
+    .filter(g => g.length > 1)
+    .map(g => ({ name: g[0].name, count: g.length }));
+  return { names, repeats };
+}
+
+/**
+ * #146 item 3: the text after "Drop one" removes exactly the entry item 3
+ * points at, leaving every other line -- or comma piece -- exactly as typed.
+ * Split the same way `parseRoster` decides to split (commas only when the
+ * whole text has no line break and every piece holds a letter), keeping the
+ * raw separators so splicing one entry out never touches another's bytes. It
+ * removes the entry without a number when exactly one of the group lacks
+ * one; otherwise the last one in the group.
+ */
+export function dropRepeat(text, name) {
+  const s = String(text || '');
+  const targetKey = nameKey(name);
+  const parts = s.split(isCommaList(s) ? /(,)/ : /([\r\n]+)/);
+
+  const matches = [];
+  for (let i = 0; i < parts.length; i += 2) {
+    const parsed = parseRosterLine(parts[i]);
+    if (parsed && nameKey(parsed.name) === targetKey) matches.push(i);
+  }
+  if (matches.length < 2) return s;
+
+  const noNumber = matches.filter(i => !parseRosterLine(parts[i]).number);
+  const removeIdx = noNumber.length === 1 ? noNumber[0] : matches[matches.length - 1];
+
+  const out = parts.slice();
+  if (removeIdx + 1 < out.length) out.splice(removeIdx, 2);
+  else if (removeIdx - 1 >= 0) out.splice(removeIdx - 1, 2);
+  else out.splice(removeIdx, 1);
+  return out.join('').trim();
+}
+
+/**
+ * #146 item 3's repeat line. One function, shared by the paste sheet and
+ * first-run step 1, the way `confirmAddLabel` already keeps two sheets' one
+ * piece of button copy in one place instead of two.
+ */
+export function repeatNotice(name, count) {
+  return `${name} is listed ${count === 2 ? 'twice' : `${count} times`}.`;
+}
+
+/**
+ * #146 item 4: the full name a coach reads, told apart from a teammate who
+ * shares it. Grouped by `nameKey`. Inside a group, a jersey number that only
+ * one player there wears is the suffix; otherwise the player's own card name
+ * (`deriveShortNames`, engine.js -- the same abbreviator the card prints,
+ * never a second one) in parentheses. A unique name is returned bare.
+ *
+ * The one place this suffix is computed: `callNames` reads it for its last
+ * rung below, and every screen that shows a full name reads it from here too,
+ * so none of them re-derives it.
+ */
+export function distinctNames(players) {
+  const numKey = n => String(n ?? '').trim().replace(/^0+(?=\d)/, '');
+  const groups = new Map();
+  for (const p of players || []) {
+    const k = nameKey(p.name);
+    if (!k) continue;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(p);
+  }
+  const shortNames = deriveShortNames(players || []);
+  const out = {};
+  for (const p of players || []) {
+    const group = groups.get(nameKey(p.name));
+    if (!group || group.length < 2) { out[p.id] = p.name; continue; }
+    const num = numKey(p.number);
+    const sharedNumber = num && group.some(x => x !== p && numKey(x.number) === num);
+    out[p.id] = num && !sharedNumber ? `${p.name} #${num}` : `${p.name} (${shortNames[p.id]})`;
+  }
+  return out;
 }
 
 /**
@@ -129,10 +263,9 @@ export function duplicateNumbers(players) {
  * comes back byte-identical. Returns indexes into `incoming`.
  */
 export function repeatIndexes(existing, incoming) {
-  const key = n => String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const had = new Set((existing || []).map(p => key(p?.name)).filter(Boolean));
+  const had = new Set((existing || []).map(p => nameKey(p?.name)).filter(Boolean));
   const out = [];
-  (incoming || []).forEach((x, i) => { if (key(x?.name) && had.has(key(x?.name))) out.push(i); });
+  (incoming || []).forEach((x, i) => { if (nameKey(x?.name) && had.has(nameKey(x?.name))) out.push(i); });
   return out;
 }
 
@@ -189,13 +322,14 @@ export function callNames(players) {
   const firsts = count(p => forms(p).first.toLowerCase());
   const withLasts = count(p => forms(p).withLast.toLowerCase());
 
+  const distinct = distinctNames(players);
   const out = {};
   for (const p of players) {
     const f = forms(p);
     if (!f.first) { out[p.id] = ''; continue; }
     out[p.id] = firsts.get(f.first.toLowerCase()) === 1 ? f.first
       : withLasts.get(f.withLast.toLowerCase()) === 1 ? f.withLast
-      : f.full;
+      : (distinct[p.id] ?? f.full);
   }
   return out;
 }

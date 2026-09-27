@@ -140,7 +140,8 @@ async function landingReads(c, ck) {
   ck(s.dialogOpen === false, '#firstRunFlow ships open');
 }
 
-/* Item 2: step 1, and `parseRoster`'s own count line as the coach types. */
+/* Item 2: step 1, and `countLine`'s own list-and-count line as the coach
+   types (#146: it now names who it read, not just how many). */
 async function stepOneCounts(c, ck) {
   await realTap(c, '#welStart');
   let s = await flowState(c);
@@ -162,7 +163,8 @@ async function stepOneCounts(c, ck) {
     count: (document.getElementById('frCount')?.textContent || '').trim(),
     nextDisabled: document.getElementById('frNext')?.disabled,
   })`);
-  ck(read.count === '3 players so far. 5 needed to field a lineup.', `three typed lines read "${read.count}"`);
+  ck(read.count === '3 players so far: Maya Webb #12, Eli Tran #4 and Devon Ellis. 5 needed to field a lineup.',
+    `three typed lines read "${read.count}"`);
   ck(read.nextDisabled === true, 'Next is enabled with only 3 players typed');
 
   await typeIn(c, '#frRoster', '12 Maya Webb\n4 Eli Tran\nDevon Ellis\n3 Nia Bell\n15 Caleb Ruiz');
@@ -170,7 +172,8 @@ async function stepOneCounts(c, ck) {
     count: (document.getElementById('frCount')?.textContent || '').trim(),
     nextDisabled: document.getElementById('frNext')?.disabled,
   })`);
-  ck(read.count === '5 players so far.', `five typed lines read "${read.count}"`);
+  ck(read.count === '5 players so far: Maya Webb #12, Eli Tran #4, Devon Ellis, Nia Bell #3 and Caleb Ruiz #15.',
+    `five typed lines read "${read.count}"`);
   ck(read.nextDisabled === false, 'Next is disabled with 5 players typed');
 }
 

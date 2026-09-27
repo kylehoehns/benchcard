@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseRosterLine, parseRoster, dropIndex, callNames, duplicateNumbers, repeatIndexes,
-  focusAfterRemoval, confirmAddLabel } from '../app/roster.js';
+  focusAfterRemoval, confirmAddLabel, rosterPreview, dropRepeat, repeatNotice, distinctNames } from '../app/roster.js';
 
 const p = s => parseRosterLine(s);
 
@@ -60,6 +60,145 @@ test('a block parses line by line, skipping blanks', () => {
 
 test('carriage returns from a pasted spreadsheet are handled', () => {
   assert.equal(parseRoster('12 Marcus Webb\r\n4 Eli Tran').length, 2);
+});
+
+/* #146 item 1: a single-line paste with no line break splits on commas, but
+ * only when every piece holds a letter -- a piece that is bare digits means
+ * the comma is a number separator ("12, Maya Webb"), not a list separator,
+ * and the whole text falls back to being parsed as one line. Values are the
+ * spec's own (docs/specs/146-roster-in.md, item 1). */
+test('a comma line with no line break splits into players', () => {
+  assert.deepEqual(parseRoster('Sam, Jo, Kai'), [
+    { number: '', name: 'Sam' }, { number: '', name: 'Jo' }, { number: '', name: 'Kai' },
+  ]);
+});
+
+test('a trailing comma drops the empty piece it leaves behind', () => {
+  assert.deepEqual(parseRoster('Sam, Jo, Kai,'), [
+    { number: '', name: 'Sam' }, { number: '', name: 'Jo' }, { number: '', name: 'Kai' },
+  ]);
+});
+
+test('numbers travel with their own piece across a comma split', () => {
+  assert.deepEqual(parseRoster('12 Maya Webb, 4 Jo'), [
+    { number: '12', name: 'Maya Webb' }, { number: '4', name: 'Jo' },
+  ]);
+});
+
+test('a piece with no letter blocks the comma split entirely', () => {
+  assert.deepEqual(parseRoster('12, Maya Webb'), [{ number: '12', name: 'Maya Webb' }]);
+  assert.deepEqual(parseRoster('Maya Webb, 12'), [{ number: '12', name: 'Maya Webb' }]);
+});
+
+test('a text with a line break never splits on commas, even with commas in it', () => {
+  assert.deepEqual(parseRoster('Webb, Maya\nTran, Eli'), [
+    { number: '', name: 'Webb, Maya' }, { number: '', name: 'Tran, Eli' },
+  ]);
+});
+
+/* #146 items 2-3: what the paste step shows before anything is added -- the
+ * name list a coach reads, and which names repeat. Values are the spec's own
+ * (docs/specs/146-roster-in.md, items 2-3). */
+const rp = text => rosterPreview(parseRoster(text));
+
+test('rosterPreview lists the names it was given', () => {
+  assert.deepEqual(rp('Sam\nJo\nKai').names, ['Sam', 'Jo', 'Kai']);
+  assert.deepEqual(rp('Sam').names, ['Sam']);
+  assert.deepEqual(rp('').names, []);
+});
+
+test('rosterPreview writes a numbered player as "Name #12"', () => {
+  assert.deepEqual(rp('12 Maya Webb\n4 Jo').names, ['Maya Webb #12', 'Jo #4']);
+});
+
+test('rosterPreview reports a group of two identical names, not two singles', () => {
+  assert.deepEqual(rp('Maya Webb\n12 Maya Webb\nEli Tran').repeats,
+    [{ name: 'Maya Webb', count: 2 }]);
+});
+
+test('rosterPreview counts three of the same name as one group of three', () => {
+  assert.deepEqual(rp('Maya Webb\nMaya Webb\n12 Maya Webb').repeats,
+    [{ name: 'Maya Webb', count: 3 }]);
+});
+
+test('rosterPreview finds a repeat the same way on a comma line', () => {
+  assert.deepEqual(rp('Maya Webb, 12 Maya Webb').repeats,
+    [{ name: 'Maya Webb', count: 2 }]);
+});
+
+test('an empty or repeat-free list has no repeats', () => {
+  assert.deepEqual(rp('').repeats, []);
+  assert.deepEqual(rp('Maya Webb\nEli Tran').repeats, []);
+});
+
+/* #146 item 3: the box's text after "Drop one". */
+
+test('dropRepeat removes the entry with no number when exactly one lacks one', () => {
+  assert.equal(dropRepeat('Maya Webb\n12 Maya Webb', 'Maya Webb'), '12 Maya Webb');
+});
+
+test('dropRepeat on a comma line removes the same way', () => {
+  assert.equal(dropRepeat('Maya Webb, 12 Maya Webb', 'Maya Webb'), '12 Maya Webb');
+});
+
+test('dropRepeat removes the last of the group when it cannot pick by number alone', () => {
+  assert.equal(dropRepeat('Maya Webb\nMaya Webb\n12 Maya Webb', 'Maya Webb'),
+    'Maya Webb\nMaya Webb');
+});
+
+test('dropRepeat leaves every other line untouched, byte for byte', () => {
+  assert.equal(dropRepeat('4 Eli Tran\nMaya Webb\n12 Maya Webb\n7 Devon Ellis', 'Maya Webb'),
+    '4 Eli Tran\n12 Maya Webb\n7 Devon Ellis');
+});
+
+test('dropRepeat leaves the text alone when the name is not actually repeated', () => {
+  assert.equal(dropRepeat('Maya Webb\nEli Tran', 'Eli Tran'), 'Maya Webb\nEli Tran');
+});
+
+/* #146 item 3: the repeat line's exact copy, shared the way confirmAddLabel
+ * already keeps two sheets' button copy in one place. */
+
+test('a repeated name reads "twice", not "2 times"', () => {
+  assert.equal(repeatNotice('Maya Webb', 2), 'Maya Webb is listed twice.');
+});
+
+test('three or more repeats are counted', () => {
+  assert.equal(repeatNotice('Maya Webb', 3), 'Maya Webb is listed 3 times.');
+});
+
+/* #146 item 4: a shared name gets a suffix everywhere a full name shows --
+ * the jersey number when it is the one thing that tells the pair apart,
+ * otherwise the player's own card name. Fixture and values are the spec's own
+ * (item 4). */
+const distinct = rows => {
+  const players = rows.map(([name, number], i) => ({ id: 'p' + i, name, number: number || '' }));
+  return distinctNames(players);
+};
+
+test('the item 4 fixture gets exactly the spec\'s four suffixed names', () => {
+  assert.deepEqual(
+    distinct([['Maya Webb', '12'], ['Maya Webb', ''], ['Kai Lee', ''], ['Kai Lee', '']]),
+    { p0: 'Maya Webb #12', p1: 'Maya Webb (MAYW2)', p2: 'Kai Lee (KAIL)', p3: 'Kai Lee (KAIL2)' }
+  );
+});
+
+test('a unique name is unchanged, never given a number it does not need', () => {
+  assert.deepEqual(distinct([['Hana Kim', '9'], ['Eli Tran', '']]),
+    { p0: 'Hana Kim', p1: 'Eli Tran' });
+});
+
+test('callNames\' last rung is the suffixed full name; earlier rungs are unchanged', () => {
+  const players = [
+    { id: 'p0', name: 'Maya Webb', number: '12' },
+    { id: 'p1', name: 'Maya Webb', number: '' },
+    { id: 'p2', name: 'Jack Torres', number: '' },
+    { id: 'p3', name: 'Jack Ruiz', number: '' },
+  ];
+  const names = callNames(players);
+  assert.equal(names.p0, 'Maya Webb #12');
+  assert.equal(names.p1, 'Maya Webb (MAYW2)');
+  assert.equal(names.p2, 'Jack T.');
+  assert.equal(names.p3, 'Jack R.');
 });
 
 test('a drag that has not passed half a row keeps its index', () => {
