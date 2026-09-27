@@ -14,7 +14,7 @@
  * `callNames` here. Leaves Hawks exactly as `goRich` set it up (`finally`
  * below reloads it fresh, the way `rotation-undo.mjs` does). */
 import { evalIn } from './dom.mjs';
-import { evalJSON, tap, tapPane, settle, sheetRect, setGame, waitClosed, dragSlow, readToastExpr } from './sheet-drive.mjs';
+import { evalJSON, tap, tapPane, settle, click, sheetRect, setGame, waitClosed, readToastExpr } from './sheet-drive.mjs';
 import { goRich, RICH, partPlayed } from './fixtures.mjs';
 
 // `RICH` (`view: 'games'`, `activeGame: 0`) part-played, same as `goRich`
@@ -285,13 +285,30 @@ export async function ruleEditPass(c, origin) {
     ck(Math.abs(stillDuring.top - fullBefore.top) <= 1 && Math.abs(stillDuring.height - fullBefore.height) <= 1,
       `item 8: the full sheet's rect drifted to ${JSON.stringify(stillDuring)} while the toast was still up`);
 
-    // Half sheet: drag the handle down, then confirm a toast still fits.
+    // Half sheet: tap the handle (a release with no movement toggles
+    // full/half -- `endDrag`'s `!st.moved` branch, trap.js), then confirm a
+    // toast still fits. Not a drag: `rect.height * 0.35` downward crosses
+    // trap.js's own `DRAG_CLOSE_FRAC` (0.25 of the sheet's own height) and
+    // closes the sheet instead of settling it at half -- confirmed on this
+    // tree and on the pre-#143/#139 tree alike, so it was never a rebase
+    // regression. Once closed, `toastHost()` (toast.js) correctly falls
+    // back to the page-level `#toasts` for the next `showUndo`, but the
+    // stale toast this block's own full-sheet edit left behind (still
+    // inside the now-closed dialog's `.bsheet-toasts`, whose subtree the UA
+    // hides) never runs the CSS `toastOut` exit animation `dismissToast`
+    // waits on -- only its 600ms fallback timer clears it -- so whether the
+    // probe still saw two `.toast[data-undo]` nodes when it read the DOM
+    // came down to that timer's race, not anything this item claims. The
+    // handle's own tap toggle (already `resizeCheck`'s way back to half in
+    // this same file's shared helpers) never drags past that threshold, so
+    // the dialog stays open throughout and the two edits share one toast
+    // host that clears itself before the second toast lands.
     await back(c);
     const rectFull = await sheetRect(c, '#sheetPlan');
-    await dragSlow(c, rectFull.handle.x, rectFull.handle.y, rectFull.handle.y + rectFull.height * 0.35);
+    await click(c, rectFull.handle.x, rectFull.handle.y);
     await settle(c);
     const halfBefore = await sheetRect(c, '#sheetPlan');
-    ck(halfBefore.top > fullBefore.top + 10, `item 8: dragging the handle down did not leave a half sheet (top ${halfBefore.top} vs full ${fullBefore.top})`);
+    ck(halfBefore.top > fullBefore.top + 10, `item 8: tapping the handle did not leave a half sheet (top ${halfBefore.top} vs full ${fullBefore.top})`);
     await openRow(c, 'Eli');
     await tap(c, `document.querySelector('#planSub .pstep-btn:first-of-type').click()`);
     const halfToastHit = await evalJSON(c, `(() => {
