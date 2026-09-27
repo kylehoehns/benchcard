@@ -41,7 +41,9 @@ const ALLOW_RENDER_ALL = {
   ],
   'teams-view.js': [
     { in: 'renderTeams (the team menu)', why: 'team switch' },
-    { in: 'addTeam', why: 'add a team' },
+    // #146 item 6: addTeam no longer builds a team or calls renderAll itself
+    // -- it opens onboarding.js's flow, whose own commit (outside this
+    // file's handler set) renders through setView/editHappened instead.
     { in: 'removeTeam', why: 'remove a team (an undoable refresh callback)' },
   ],
 };

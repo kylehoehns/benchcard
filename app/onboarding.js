@@ -17,9 +17,9 @@
  */
 
 import { generatePlan } from './engine.js';
-import { parseRoster, sampleRoster, sampleRosterText, callNames, SAMPLE_TEAM_NAME } from './roster.js';
+import { parseRoster, sampleRoster, sampleRosterText, callNames, dropRepeat, repeatNotice, rosterPreview, SAMPLE_TEAM_NAME } from './roster.js';
 import { $, on, set, el, uid } from './dom.js';
-import { state, editHappened, markFirstRunPending, HUES } from './state.js';
+import { state, editHappened, markFirstRunPending, newTeam, team, HUES } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { startTour } from './tour.js';
 import { flash } from './toast.js';
@@ -44,11 +44,17 @@ export const shortOfLineup = (n) => n < LINEUP_MIN;
 
 /* Step 1's `#frCount` line. An empty box reads as an instruction rather than
  * "0 players", and the floor is `LINEUP_MIN` -- fewer than that is not a
- * lineup. */
-export function countLine(n) {
+ * lineup.
+ *
+ * #146 item 2: takes the parsed list, not a bare count, so the line names who
+ * was read -- "3 players so far: Sam, Jo and Kai." -- rather than just how
+ * many. `rosterPreview` (roster.js) supplies the joined, numbered list; this
+ * only wraps it in the sentence, the same split the old count-only line had. */
+export function countLine(entries) {
+  const n = (entries || []).length;
   if (!n) return 'Paste from wherever your roster lives. Jersey numbers are optional.';
-  if (shortOfLineup(n)) return `${n} player${n === 1 ? '' : 's'} so far. ${LINEUP_MIN} needed to field a lineup.`;
-  return `${n} players so far.`;
+  const head = `${n} player${n === 1 ? '' : 's'} so far: ${rosterPreview(entries).text}.`;
+  return shortOfLineup(n) ? `${head} ${LINEUP_MIN} needed to field a lineup.` : head;
 }
 
 /* ------------------------------------------------------------------ *
@@ -366,8 +372,15 @@ export const newDraft = () => ({
    `draft` carries the format fields now, not the DOM: #36 moved the two
    steppers and the chips into the flow's own step 2, so there is no
    `#welPeriods` / `#welMinutes` / `welGran` left on the page to read. */
+// #146 item 6: the one place a parsed roster becomes real player records --
+// `startTeam` and `commitAddTeam` both build a team from step 1's draft, and
+// the design note is explicit that Add a team uses this, not a copy of it.
+function buildPlayers(entries) {
+  return entries.map((x, i) => ({ id: uid('p'), name: x.name, number: x.number, shortName: '', tier: 3, hue: i }));
+}
+
 export function startTeam(players, teamName, draft) {
-  state.players = players.map((x, i) => ({ id: uid('p'), name: x.name, number: x.number, shortName: '', tier: 3, hue: i }));
+  state.players = buildPlayers(players);
   state.teamName = teamName;
   const g = state.day.games[0];
   // 40, not 20: `storage.js` sanitizes periodMinutes to 40, and a lower cap
@@ -474,16 +487,37 @@ function loadSample(n) {
 // This flow's own id set, handed to the shared painter both flows use.
 const FR = { step: '#frStep', prog: '#frProg', body: '#frBody', back: '#frBack', next: '#frNext' };
 
-const FR_STEPS = [
+const FR_STEPS_FIRST = [
   { q: "Who's on the team?",     build: stepTeam },
   { q: 'How long is a game?',    build: stepFormat_ },
   { q: "Here's your first card", build: stepCard },
 ];
-const FR_TOTAL = FR_STEPS.length;
 
-// The draft. Nothing outside `fr` is written until `commitFirstRun`.
+// #146 item 6: Add a team skips the format step -- it copies the current
+// team's game format (`commitAddTeam`) instead of asking again.
+const FR_STEPS_ADD = [
+  { q: "Who's on the team?",     build: stepTeam },
+  { q: "Here's your first card", build: stepCard },
+];
+
+// The draft. Nothing outside `fr` is written until `commitFirstRun` /
+// `commitAddTeam`. `frMode` picks which step list and commit `frNext` uses;
+// both openers set it before showing the dialog, and `closeFr` resets it.
 let fr = null;
 let frStep = 1;
+let frMode = 'first';
+const frStepsNow = () => (frMode === 'add' ? FR_STEPS_ADD : FR_STEPS_FIRST);
+const frTotalNow = () => frStepsNow().length;
+
+// #146 item 6: the dialog's accessible name and its own on-screen title swap
+// for Add a team, and go back to "Get started" once the flow closes.
+function setFrChrome(add) {
+  const d = $('#firstRunFlow');
+  if (!d) return;
+  d.setAttribute('aria-label', add ? 'Add a team' : 'Get started');
+  const t = d.querySelector('.flow-t');
+  if (t) t.textContent = add ? 'Add a team' : 'Get started';
+}
 
 /* `#welStart` opens at step 1 empty; `#welTry` opens at step 1 with the
    sample already in the draft -- both go through this one function so there
@@ -491,11 +525,29 @@ let frStep = 1;
 function openFirstRun(trigger, withSample) {
   const d = $('#firstRunFlow');
   if (!d) return;
+  frMode = 'first';
   fr = newDraft();
   frStep = 1;
   if (withSample) fillSample();          // writes fr.teamName / fr.roster / fr.filled
   rememberTrigger(d, trigger);
   showFrAsk(false);
+  setFrChrome(false);
+  d.showModal();
+  paintFr();
+}
+
+/* #146 item 6: "Add a team" from the team menu (`teams-view.js`) opens this
+   same flow, in add-team mode -- `stepTeam` then `stepCard`, no sample
+   button, nothing saved until Next on step 1 (`commitAddTeam`). */
+export function openAddTeam(trigger) {
+  const d = $('#firstRunFlow');
+  if (!d) return;
+  frMode = 'add';
+  fr = newDraft();
+  frStep = 1;
+  rememberTrigger(d, trigger);
+  showFrAsk(false);
+  setFrChrome(true);
   d.showModal();
   paintFr();
 }
@@ -503,11 +555,12 @@ function openFirstRun(trigger, withSample) {
 function paintFr() {
   if (!fr) return;
   showFrAsk(false);
-  const last = frStep === FR_TOTAL;
-  paintFlowShell(FR, frStep, FR_TOTAL, flowStepBody(FR_STEPS, frStep), {
+  const total = frTotalNow();
+  const last = frStep === total;
+  paintFlowShell(FR, frStep, total, flowStepBody(frStepsNow(), frStep), {
     nextText: last ? 'Go to the game' : 'Next',
     nextDisabled: frStep === 1 && shortOfLineup(rosterCount()),
-    backHidden: frStep === 1 || last,      // decision 6: step 3 has no Back
+    backHidden: frStep === 1 || last,      // decision 6: the last step has no Back
   });
   /* AFTER the shell attaches the body, never before. `stepCard` builds
      `#frStage` and hands it to `cardPreviewInto`, which ends in `fitPreview()`
@@ -525,14 +578,48 @@ function paintFr() {
 /* Step 1. The two fields write straight into `fr` on input, and repaint only
    the count line and the Next button -- never the whole body, which would
    steal the caret. Parsing is `parseRoster` and nothing else (Reuse). */
-const rosterCount = () => parseRoster(fr.roster).length;
+const rosterEntries = () => parseRoster(fr.roster);
+const rosterCount = () => rosterEntries().length;
 
 function onRosterInput(v) {
   fr.roster = v;
-  const n = rosterCount();
-  set('#frCount', 'textContent', countLine(n));
-  set('#frFill', 'hidden', n > 0);
+  const entries = rosterEntries();
+  const n = entries.length;
+  set('#frCount', 'textContent', countLine(entries));
+  set('#frFill', 'hidden', frMode === 'add' || n > 0);
   set('#frNext', 'disabled', shortOfLineup(n));
+  paintFrRepeats($('#frRepeats'), entries);
+}
+
+/* #146 item 3, "in both places": the same repeat line and "Drop one" button
+   the paste sheet shows (`paintPasteConfirm`, roster-view.js), built here
+   from the same pure `rosterPreview`/`dropRepeat`/`repeatNotice` (roster.js)
+   rather than imported from that view module -- onboarding.js and
+   roster-view.js otherwise import nothing from each other, and this is the
+   only piece they would need to share. Takes `box` directly, not by id,
+   since step 1's markup is built fresh each render and is not yet attached
+   to the document the first time this paints. */
+function paintFrRepeats(box, entries) {
+  if (!box) return;
+  box.textContent = '';
+  const { repeats } = rosterPreview(entries);
+  for (const { name, count } of repeats) {
+    const row = el('div', 'paste-repeat');
+    row.append(el('span', '', repeatNotice(name, count)));
+    const drop = el('button', 'btn ghost sm press', 'Drop one');
+    drop.type = 'button';
+    drop.setAttribute('aria-label', `Drop one ${name}`);
+    drop.onclick = () => {
+      const next = dropRepeat(fr.roster, name);
+      const box2 = $('#frRoster');
+      if (box2) box2.value = next;
+      onRosterInput(next);
+      box2?.focus({ preventScroll: true });
+    };
+    row.append(drop);
+    box.append(row);
+  }
+  box.hidden = !repeats.length;
 }
 
 function stepTeam(wrap) {
@@ -547,16 +634,21 @@ function stepTeam(wrap) {
   rosterInput.spellcheck = false;
   rosterInput.setAttribute('aria-describedby', 'frCount');
 
-  const count = el('p', 'note', countLine(rosterCount()));
+  const count = el('p', 'note', countLine(rosterEntries()));
   count.id = 'frCount';
   count.setAttribute('aria-live', 'polite');
 
+  const repeats = el('div', 'paste-repeats');
+  repeats.id = 'frRepeats';
+  paintFrRepeats(repeats, rosterEntries());
+
   // Offered while the box is empty, same rule `#welFill` used to follow --
   // a coach who arrived through "Try a sample team" never sees it at all.
+  // #146 item 6: never offered in add-team mode -- there is no sample team.
   const fill = el('button', 'btn ghost sm press', 'Fill with a sample team');
   fill.type = 'button';
   fill.id = 'frFill';
-  fill.hidden = rosterCount() > 0;
+  fill.hidden = frMode === 'add' || rosterCount() > 0;
   /* IN PLACE, not `paintFr()`. Filling writes two strings into the draft, and
      rebuilding the whole step to show them is the thing the comment above
      `onRosterInput` rules out -- that function is already the in-place update
@@ -573,7 +665,7 @@ function stepTeam(wrap) {
     rosterInput.focus({ preventScroll: true });
   };
 
-  wrap.append(teamField, rosterField, count, fill);
+  wrap.append(teamField, rosterField, count, repeats, fill);
 }
 
 /* Step 2: two `stepperRow`s and `paintGranRows`, both against `fr` instead of
@@ -608,6 +700,19 @@ function commitFirstRun() {
     editHappened();
   }
   setView('games');                          // renders the card into #sheet
+}
+
+/* #146 item 6: committed on Next from Add a team's step 1 (there is no
+   format step to wait on -- the new team copies `team().settings`, the
+   settings of the team "Add a team" was opened from). Nothing is written
+   before this: no team exists in `state.teams` until this call pushes one. */
+function commitAddTeam() {
+  const players = buildPlayers(parseRoster(fr.roster));
+  state.teams.push(newTeam(fr.teamName, players, team()?.settings));
+  state.activeTeam = state.teams.length - 1;
+  track('team_added', { teams: state.teams.length });
+  editHappened();
+  setView('games');                          // renders the new team's plan into #sheet
 }
 
 /* Step 3: a clone of #sheet's own cards, through the one card builder
@@ -648,27 +753,33 @@ function parkShareRow() {
   dialog.after(row);
 }
 
+/* The commit fires leaving the step before the last one -- step 2 of 3 in
+   first-run (there is a format step still to show), step 1 of 2 in
+   add-team mode (there is not). Either way the card step that follows shows
+   a team that already exists. */
 function frNext() {
-  if (frStep < FR_TOTAL) {
-    if (frStep === 2) commitFirstRun();
+  const total = frTotalNow();
+  if (frStep < total) {
+    if (frStep === total - 1) { if (frMode === 'add') commitAddTeam(); else commitFirstRun(); }
     frStep++;
     paintFr();
   } else finishFr();
 }
 
 /* I3: the footer's "‹ Back" and Android's back gesture are the same action.
-   Step 3 has no Back button (decision 6, `paintFr`'s `backHidden`), but the
-   gesture still reaches this function directly -- so a `cancel` event on
-   step 3 finishes the flow rather than doing nothing. */
+   The last step has no Back button (decision 6, `paintFr`'s `backHidden`),
+   but the gesture still reaches this function directly -- so a `cancel`
+   event there finishes the flow rather than doing nothing. */
 function frBack() {
-  if (frStep === FR_TOTAL) return finishFr();
+  if (frStep === frTotalNow()) return finishFr();
   if (frStep > 1) { frStep--; paintFr(); } else requestCloseFr();
 }
 
 /* C4: a commit surface asks before losing typed text. Nothing is left to
-   lose once the team is committed (step 3), so there is nothing to ask. */
+   lose once the team is committed (the last step), so there is nothing to
+   ask. */
 function askBeforeDiscardTeam() {
-  if (!fr || frStep === FR_TOTAL) return false;
+  if (!fr || frStep === frTotalNow()) return false;
   if (!fr.teamName.trim() && !fr.roster.trim()) return false;
   showFrAsk(true);
   return true;
@@ -684,19 +795,22 @@ function closeFr() {
 }
 
 function finishFr() {
-  const first = !state.tourSeen;
+  // #146 item 6: Add a team gets no tour -- it is a returning coach's second
+  // (or twelfth) team, not their first look at the app.
+  const first = !state.tourSeen && frMode !== 'add';
   closeFr();
   // after the entrance settles, not during it: the tour measures rects, and
   // the squad pills and timeline blocks are still flying into place here
   if (first) setTimeout(startTour, 520);
 }
 
-/* Decision 6: ✕ on step 3 ends the flow the same way "Go to the game" does
-   -- the team already exists, so closing and finishing are the same act --
-   while ✕ on steps 1-2 asks first through `closeSheet`'s guard, exactly as
-   `wireAddGameFlow`'s `requestCloseFlow` does for `#addGameFlow`. */
+/* Decision 6: ✕ on the last step ends the flow the same way "Go to the
+   game" does -- the team already exists, so closing and finishing are the
+   same act -- while ✕ on the steps before it asks first through
+   `closeSheet`'s guard, exactly as `wireAddGameFlow`'s `requestCloseFlow`
+   does for `#addGameFlow`. */
 function requestCloseFr() {
-  if (frStep === FR_TOTAL) { finishFr(); return; }
+  if (frStep === frTotalNow()) { finishFr(); return; }
   closeSheet($('#firstRunFlow'));
 }
 
@@ -721,6 +835,10 @@ export function initOnboarding(setViewFn) {
   on('#firstRunFlow', 'onclose', () => {
     if (fr && !fr.teamName.trim() && !fr.roster.trim()) fr = null;
     showFrAsk(false);
+    // #146 item 6: every close puts the chrome back, whichever path closed it
+    // (Discard, a bare ✕/Escape with nothing typed, or `finishFr`).
+    setFrChrome(false);
+    frMode = 'first';
   });
   guardClose($('#firstRunFlow'), askBeforeDiscardTeam);
 

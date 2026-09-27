@@ -45,7 +45,7 @@ import { state, team, byId, colorOf, teamName } from './state.js';
 import { fmtMinutes } from './engine.js';
 import { seasonShare, localDate } from './storage.js';
 import { downloadText, seasonFilename } from './backup.js';
-import { callNames } from './roster.js';
+import { callNames, distinctNames } from './roster.js';
 
 let renderAll = () => {};
 
@@ -109,6 +109,14 @@ export const offNote = off => {
 
 const nameOf = id => (byId(id)?.name || '').trim();
 
+/* #146 item 4: the filed-game row's own fallback (comment above `playerRow`:
+ * name in full, never a call name, so a filed row can still be matched to a
+ * roster entry) reads the suffixed full name -- `distinctNames` (roster.js),
+ * the one place that suffix is computed -- instead of the bare `nameOf`. The
+ * ledger's `callName` argument already carries it, since `callNames`' last
+ * rung is `distinctNames` now; this only covers the rows filed without one. */
+const distinctNameOf = id => distinctNames(state.players)[id] || nameOf(id);
+
 /* Filed games grouped by day, newest day first; within a day the games keep
    the order they were filed in, so a tournament reads 9:00 then 11:30. The
    record's own `date` (`YYYY-MM-DD`) sorts correctly as plain text, so this
@@ -148,7 +156,7 @@ function playerRow(id, min, extra, maxMin, callName) {
   const p = byId(id);
   const row = el('div', 'sn-row barrow');
   const name = el('div', 'sn-name');
-  const display = !p ? 'Left the team' : (callName || nameOf(id) || 'Unnamed');
+  const display = !p ? 'Left the team' : (callName || distinctNameOf(id) || 'Unnamed');
   const nm = el('span', 'sn-nm', display);
   if (!p) nm.classList.add('gone');
   name.append(nm);

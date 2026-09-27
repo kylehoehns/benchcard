@@ -94,6 +94,7 @@ import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
 import { teamScreenPass } from './team-screen.mjs';
 import { addGameFlowPass } from './add-game-flow.mjs';
 import { firstRunPass } from './first-run-flow.mjs';
+import { rosterInPass } from './roster-in.mjs';
 import { flowInsetPass } from './flow-inset.mjs';
 import { focusClearPass } from './focus-clear.mjs';
 import { floatingControlsPass } from './floating-controls.mjs';
@@ -348,6 +349,14 @@ export const ROWS = Object.freeze([
   // itself before `focusclear` needs it.
   { id: 'firstrun', name: 'first run: welcome, three steps, every way out', selectable: true, setup: 'rich',
     run: ctx => firstRunPass(ctx.c, ctx.origin) },
+  // #146's own guard (docs/specs/146-roster-in.md's Proof section): the paste
+  // sheet and Add a team's step 1 list/repeat text, the item 4 suffix fixture
+  // read back from Who's here, Timeline, Season and Team, the blocked panel's
+  // "Add players" branch, and Add a team opening/abandoning/completing
+  // without ever showing Settings -- see roster-in.mjs. Restores RICH itself
+  // before returning, the same way `teamscreen` and `firstrun` do.
+  { id: 'rosterin', name: 'roster in', selectable: true, setup: 'rich',
+    run: ctx => rosterInPass(ctx.c, ctx.origin) },
   // #145 item 1's own guard (docs/specs/145-flow-spacing.md's Proof section):
   // one shared 16px inset for every direct child of a flow step's wrapper,
   // at 390px and 320px, on every step of both flows -- including add a

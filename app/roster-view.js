@@ -9,7 +9,7 @@
    the module graph into a cycle. `undoable` used to arrive the same way and
    is now imported straight from toast.js, which is a leaf. */
 import { deriveShortNames } from './engine.js';
-import { confirmAddLabel, dropIndex, duplicateNumbers, focusAfterRemoval, parseRoster, repeatIndexes } from './roster.js';
+import { confirmAddLabel, distinctNames, dropIndex, dropRepeat, duplicateNumbers, focusAfterRemoval, parseRoster, repeatIndexes, repeatNotice, rosterPreview } from './roster.js';
 import { riseIn, tick, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
 import { $, set, el, uid } from './dom.js';
@@ -388,8 +388,10 @@ export function toggleEditMode(btn) {
 }
 
 /* What a coach reads down the list. A player with no name still needs a row
-   they can open, so the row says so rather than showing a blank line. */
-const rowName = p => p.name || 'Unnamed';
+   they can open, so the row says so rather than showing a blank line.
+   #146 item 4: `distinctNames` (roster.js) is the one place a shared name's
+   suffix is computed; every row here reads it rather than the bare name. */
+const rowName = p => distinctNames(state.players)[p.id] || p.name || 'Unnamed';
 
 /* What both kinds of row are before their contents: the player's id, which is
    how the drag and `repaintRow` find a row again, and the player's own color,
@@ -690,8 +692,39 @@ export function openPasteSheet(trigger) {
 
 function showPasteAsk(on) { showAskRow('#pasteAsk', '#pasteFoot', '#pasteKeep', on); }
 
+// #146 item 2: the hint `#pasteNote` shows while the box is empty -- the
+// sheet's original copy, unchanged. Kept as a constant so the two places
+// that need it (the empty branch here, and index.html's initial markup)
+// read the identical sentence.
+const PASTE_HINT = 'One per line. Numbers are read from either end: “12 Maya Webb” or “Maya Webb #12”.';
+
+/* #146 items 2/3: repaints the confirm button, the live list note and the
+   repeat line together, since a keystroke or a "Drop one" tap changes all
+   three at once. `rosterPreview` and `repeatNotice` (roster.js) are the only
+   place the list text and repeat wording are computed -- this only lays them
+   out. */
 function paintPasteConfirm() {
-  set('#pasteGo', 'textContent', confirmAddLabel(parseRoster($('#pasteText').value).length));
+  const ta = $('#pasteText');
+  const entries = parseRoster(ta.value);
+  const n = entries.length;
+  set('#pasteGo', 'textContent', confirmAddLabel(n));
+  const preview = rosterPreview(entries);
+  set('#pasteNote', 'textContent', n ? `${n} player${n === 1 ? '' : 's'}: ${preview.text}.` : PASTE_HINT);
+
+  const box = $('#pasteRepeats');
+  if (!box) return;
+  box.textContent = '';
+  for (const { name, count } of preview.repeats) {
+    const row = el('div', 'paste-repeat');
+    row.append(el('span', '', repeatNotice(name, count)));
+    const drop = el('button', 'btn ghost sm press', 'Drop one');
+    drop.type = 'button';
+    drop.setAttribute('aria-label', `Drop one ${name}`);
+    drop.onclick = () => { ta.value = dropRepeat(ta.value, name); paintPasteConfirm(); ta.focus(); };
+    row.append(drop);
+    box.append(row);
+  }
+  box.hidden = !preview.repeats.length;
 }
 
 /* Paste appends, and it must keep doing so -- twins with the same first name

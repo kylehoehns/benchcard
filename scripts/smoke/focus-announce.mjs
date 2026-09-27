@@ -265,13 +265,22 @@ export async function focusAnnouncePass(c, origin) {
     } else notes.push("item 2: the Timeline's add-a-player path lands focus inside #sheetAddPlayer, not #teamTitle");
     await evalIn(c, step(`document.getElementById('sheetAddPlayer')?.close?.()`));
 
-    // (b) Settings' team-name field, via "Add a team" in the team menu.
+    // (b) "Add a team", via the team menu. #146 moved this door from Settings
+    // onto the shared `#firstRunFlow` -- `paintFlowShell` (trap.js) focuses
+    // the step's own heading (`h2.flow-q`) on every open, first run's welcome
+    // door included, so Add a team landing there too is the same contract,
+    // not a caller placing its own focus. Read off the DOM rather than a
+    // hard-coded id, since that heading carries none.
     await goRich(c, origin);
     await tap(c, `document.getElementById('teamBtn').click()`);
     await tap(c, `[...document.querySelectorAll('#teamMenu .teammenu-item')].find(b => b.textContent === 'Add a team')?.click()`);
-    const teamNameFocused = await evalJSON(c, `JSON.stringify(document.activeElement?.id === 'teamName')`);
-    if (teamNameFocused !== true) problems.push(`item 2: "Add a team" left focus at ${JSON.stringify(await focusInfo(c))}, want #teamName`);
-    else notes.push('item 2: "Add a team" lands focus on #teamName, not the Settings heading my own code would otherwise focus');
+    const addTeamFocus = await evalJSON(c, `(() => {
+      const dialog = document.getElementById('firstRunFlow');
+      const heading = dialog?.querySelector('h2.flow-q') ?? null;
+      return JSON.stringify({ open: !!dialog?.open, onHeading: !!heading && document.activeElement === heading });
+    })()`);
+    if (!addTeamFocus.open || !addTeamFocus.onHeading) problems.push(`item 2: "Add a team" left focus at ${JSON.stringify(await focusInfo(c))}, want #firstRunFlow's own step heading (h2.flow-q), same as first run's own open`);
+    else notes.push('item 2: "Add a team" opens #firstRunFlow and lands focus on its own step heading (h2.flow-q), the same target first run\'s own open uses -- not Settings\' #teamName, which #146 removed');
 
     // (c) the add-game flow's own commit ("Use it") lands on the game.
     await goRich(c, origin);

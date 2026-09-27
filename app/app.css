@@ -1279,6 +1279,19 @@ td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .empty > .btn { margin-top: .9rem; }
 .note { color: var(--muted); font-size: var(--fs-footnote); margin-top: .75rem; }
 
+/* #146 item 3: the paste sheet's (and first-run step 1's) repeat line -- one
+   per repeated name, the wording beside a "Drop one" button. `flex-wrap`
+   keeps the button clear of the text at 320px/32px instead of forcing an
+   overflow; the button's own `min-height` is spelled out here because
+   `.btn.sm` alone (used well beyond this) is not 48px tall. */
+.paste-repeats { display: flex; flex-direction: column; gap: .5rem; margin-top: .5rem; }
+.paste-repeat {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap;
+  padding: .5rem .7rem; border-radius: var(--r-sm); background: var(--warn-soft); color: var(--warn);
+  font-size: var(--fs-secondary);
+}
+.paste-repeat .btn { min-height: 48px; }
+
 /* #144: the one visually-hidden rule the app has -- read by a screen reader,
    painted nowhere. `aria-label` on a plain `div` is not read by every screen
    reader (VoiceOver skips a `div` with no role), so a real text node, clipped

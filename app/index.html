@@ -1186,8 +1186,9 @@
         </div>
       </div>
       <div class="bsheet-body">
-        <textarea id="pasteText" spellcheck="false" aria-label="Your roster, one player per line" placeholder="12 Maya Webb&#10;4 Eli Tran&#10;Devon Ellis"></textarea>
-        <p class="note">One per line. Numbers are read from either end: &ldquo;12 Maya Webb&rdquo; or &ldquo;Maya Webb #12&rdquo;.</p>
+        <textarea id="pasteText" spellcheck="false" aria-label="Your roster, one player per line" aria-describedby="pasteNote" placeholder="12 Maya Webb&#10;4 Eli Tran&#10;Devon Ellis"></textarea>
+        <p class="note" id="pasteNote" aria-live="polite">One per line. Numbers are read from either end: &ldquo;12 Maya Webb&rdquo; or &ldquo;Maya Webb #12&rdquo;.</p>
+        <div class="paste-repeats" id="pasteRepeats" hidden></div>
         <div class="bsheet-cta" id="pasteFoot">
           <button class="btn primary press" id="pasteGo" type="button"></button>
         </div>

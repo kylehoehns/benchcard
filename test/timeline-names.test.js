@@ -17,8 +17,13 @@ const src = readFileSync(new URL('../app/timeline.js', import.meta.url), 'utf8')
 const card = readFileSync(new URL('../app/card.js', import.meta.url), 'utf8');
 
 test('one function answers "what is this player called" on the timeline', () => {
-  assert.match(src, /function tlName\(p, id\)\s*\{\s*return byId\(id\)\?\.name \|\| p\.shortNames\[id\] \|\| id;/,
-    'tlName must prefer the full name, with the short name only as a fallback');
+  // #146 item 4: the full-name rung is now `distinctNames(state.players)[id]`
+  // (roster.js) rather than the bare `byId(id)?.name` -- a shared name reads
+  // its suffix here too -- but the fallback still goes to the short name only
+  // when the roster has nothing for this id at all, the same polarity this
+  // guard has always pinned.
+  assert.match(src, /function tlName\(p, id\)\s*\{\s*return distinctNames\(state\.players\)\[id\] \|\| p\.shortNames\[id\] \|\| id;/,
+    'tlName must prefer the full (now suffix-aware) name, with the short name only as a fallback');
   /* Five call sites used to spell the fallback chain out by hand, two of them
      in the opposite order. Only tlName may read shortNames now, so there is
      nowhere for the two orders to drift apart again. */

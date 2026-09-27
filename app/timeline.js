@@ -18,6 +18,7 @@ import { riseIn, popIn, countTo, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
+import { distinctNames } from './roster.js';
 import { fitPreview } from './card.js';
 import { resumeAt } from './live.js';
 import { openPlanSheet, openWhoSheet } from './game-setup.js';
@@ -158,15 +159,27 @@ function rosterCta() {
 export function blockedPanel(p) {
   const box = el('div', 'empty');
   box.append(el('div', 'se-t', BLOCKED_TITLE));
-  const fix = blockedFix(p?.issues);
+  const fix = blockedFix(p?.issues, state.players.length);
   box.append(el('div', 'se-s', fix ? fix.message : 'Set up the game to see the rotation.'));
   if (fix) {
     const b = el('button', 'btn sm press', fix.label);
     b.type = 'button';
     // 'who' opens Who's here the way `#phrasePlayers` does (game-setup.js's
     // own opener, reused rather than re-derived); 'strategy'/'rules' open the
-    // Plan sheet's matching group through its one opener, `openPlanSheet`.
-    b.onclick = () => fix.opener === 'who' ? openWhoSheet(b) : openPlanSheet(fix.opener, b);
+    // Plan sheet's matching group through its one opener, `openPlanSheet`;
+    // #146 item 5's 'add' crosses to Team and opens the roster's own paste
+    // sheet, `rosterCta`'s jump pattern above, reused rather than a second
+    // paste sheet, plus the box focus the spec asks for.
+    b.onclick = () => {
+      if (fix.opener === 'who') { openWhoSheet(b); return; }
+      if (fix.opener === 'add') {
+        setView('team');
+        $('#pasteRow')?.click();
+        $('#pasteText')?.focus({ preventScroll: true });
+        return;
+      }
+      openPlanSheet(fix.opener, b);
+    };
     box.append(b);
   }
   return box;
@@ -193,8 +206,12 @@ function timelineEmpty(g, p) {
    A name too long for the column ellipsizes (`.tl-lab .nm`, app.css); a
    first-name / last-initial ladder is the eventual shape there and is
    deliberately not built yet. */
+/* #146 item 4: `distinctNames` (roster.js) is the one place a shared name's
+   suffix is computed -- ` #12` or ` (MAYW2)` -- so the timeline reads it
+   instead of the bare `byId(id)?.name`. Built from `state.players`, the same
+   array `byId` searches, so the two agree on which id has a name at all. */
 function tlName(p, id) {
-  return byId(id)?.name || p.shortNames[id] || id;
+  return distinctNames(state.players)[id] || p.shortNames[id] || id;
 }
 
 export function renderTimeline() {

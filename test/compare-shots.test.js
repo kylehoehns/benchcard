@@ -67,6 +67,23 @@ function assertLightDarkPair(shots, label) {
 // by the modifiers that happen to be set on them.
 const namedPair = name => SHOTS.filter(s => s.name === `${name}-light` || s.name === `${name}-dark`);
 
+/* The one 320px/32px-root cell every large-text look-check state adds beside
+ * its light/dark pair: exactly one shot named `${name}-320`, light only
+ * (large text is about layout, not theme), no dark twin, at the large-text
+ * width and root size -- the five assertions every one of the #146 solo320
+ * cells below wrote out by hand. Returns the shot so a caller can assert
+ * whatever else makes that state genuinely different from the plain 390
+ * pair it sits beside (e.g. `firstRunRepeat`). */
+function assertSolo320(name) {
+  const solo320 = SHOTS.filter(s => s.name === `${name}-320`);
+  assert.equal(solo320.length, 1, `want exactly one ${name}-320 shot, found ${solo320.length}`);
+  assert.equal(solo320[0].theme, 'light', 'the large-text cell is about layout and runs light only');
+  assert.ok(!solo320[0].twin, `${name}-320 never runs dark, so it should declare no twin`);
+  assert.equal(solo320[0].width, LARGE_TEXT_WIDTH);
+  assert.equal(solo320[0].rootPx, LARGE_TEXT_PX);
+  return solo320[0];
+}
+
 test('SHOTS covers every VIEWS name in both light and dark', () => {
   for (const v of VIEWS) {
     assert.equal(plainShotsFor(v.name, 'light').length, 1,
@@ -118,7 +135,12 @@ test('SHOTS includes exactly one 320px/32px-root shot, light only, no twin', () 
 // way `resume-bar-320` below is kept out of the plain cell's count above,
 // rather than widening that count to mean two different things.
 test('SHOTS includes exactly one first-run 320px/32px shot, light only, no twin', () => {
-  const shots = SHOTS.filter(s => s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX && s.firstRunStep);
+  // #146 adds `first-run-repeat-1-320`, its own 320px/32px cell for the
+  // "12 names + a repeat" state -- `!s.firstRunRepeat` keeps it out of this
+  // count, the same narrowing every earlier addition to this table uses to
+  // keep an existing "exactly one" claim about the cell it already covers.
+  const shots = SHOTS.filter(s => s.width === LARGE_TEXT_WIDTH && s.rootPx === LARGE_TEXT_PX
+    && s.firstRunStep && !s.firstRunRepeat);
   assert.equal(shots.length, 1, `want exactly one first-run 320px/32px shot, found ${shots.length}`);
   assert.equal(shots[0].theme, 'light', 'the large-text cell is about layout and runs light only');
   assert.ok(!shots[0].twin, 'the first-run 320px/32px cell never runs dark, so it should declare no twin');
@@ -396,6 +418,106 @@ test('SHOTS includes the card sheet scrolled to its own end at 320px/32px', () =
   assert.equal(solo320[0].bottom, true, 'sheet-card-bottom-320 does not set bottom: true, so capture() never scrolls the sheet');
   assert.equal(solo320[0].width, LARGE_TEXT_WIDTH);
   assert.equal(solo320[0].rootPx, LARGE_TEXT_PX);
+});
+
+/* #146 Look proof: "paste sheet with a repeat ... plus the paste sheet
+ * scrolled to its bottom" -- a pair at 390, that same pair scrolled to the
+ * sheet's own end (RICH's paste sheet has nothing to scroll past three
+ * lines, so this reuses the 12-name PLAYER_LIST_12 list app-large-text.mjs's
+ * own "paste sheet, 12 names + a repeat" state types, never a second list),
+ * and the 320px/32px-root repro cell, light only like every other large-text
+ * cell in this table. */
+test('SHOTS includes the paste sheet with a repeat, at 390, scrolled to its bottom, and at 320px/32px', () => {
+  const pair390 = namedPair('paste-repeat');
+  assertLightDarkPair(pair390, 'paste-repeat');
+  for (const s of pair390) {
+    assert.equal(s.view, 'team', `${s.name} opens on ${s.view}, but the paste sheet is reached from the Team screen`);
+    assert.ok(s.sheet && s.sheet.selector.includes('sheetPaste'),
+      `${s.name} names no #sheetPaste selector, so nothing proves the dialog ever opened`);
+    assert.ok(s.sheet && s.sheet.open.includes('pasteRow'),
+      `${s.name} does not click #pasteRow, so the shot would be of the Team screen behind it`);
+  }
+
+  const bottomPair = namedPair('paste-repeat-bottom');
+  assertLightDarkPair(bottomPair, 'paste-repeat-bottom');
+  for (const s of bottomPair) assert.equal(s.bottom, true, `${s.name} does not set bottom: true, so capture() never scrolls the sheet`);
+
+  assertSolo320('paste-repeat');
+});
+
+/* #146 Look proof: "first-run step 1 with 12 names" -- the same 12-line,
+ * one-repeat list `paste-repeat` (above) types, typed into the flow's own
+ * step 1 instead, at 390 and at 320px/32px. Kept out of the plain
+ * `first-run-1`/`first-run-320` cells above by its own `firstRunRepeat`
+ * flag, the same way `firstRunLongNames` already keeps `first-run-long-names`
+ * out of them. */
+test('SHOTS includes first-run step 1 with 12 names and a repeat, at 390 and at 320px/32px', () => {
+  const pair390 = namedPair('first-run-repeat-1');
+  assertLightDarkPair(pair390, 'first-run-repeat-1');
+  for (const s of pair390) {
+    assert.equal(s.firstRunStep, 1, `${s.name} does not land on step 1`);
+    assert.equal(s.firstRunRepeat, true, `${s.name} does not set firstRunRepeat, so goFirstRun would leave step 1 empty`);
+  }
+
+  const solo320 = assertSolo320('first-run-repeat-1');
+  assert.equal(solo320.firstRunRepeat, true);
+});
+
+/* #146 Look proof: "Add a team step 1" -- the team menu's own entry, opened
+ * onto `#firstRunFlow` in add-team mode, at 390 and at 320px/32px. A `sheet`
+ * cell (not `firstRunStep`): the dialog it opens is the same `#firstRunFlow`
+ * real first run uses, but reached the other way in, through the team menu
+ * on Today, the way `scripts/smoke/roster-in.mjs`'s own `addTeamFlowOk`
+ * reaches it. */
+test('SHOTS includes Add a team step 1, at 390 and at 320px/32px', () => {
+  const pair390 = namedPair('add-team-step1');
+  assertLightDarkPair(pair390, 'add-team-step1');
+  for (const s of pair390) {
+    assert.equal(s.view, 'today', `${s.name} opens on ${s.view}, but the team menu is reached from Today`);
+    assert.ok(s.sheet && s.sheet.selector.includes('firstRunFlow'),
+      `${s.name} names no #firstRunFlow selector, so nothing proves the dialog ever opened`);
+    assert.ok(s.sheet && s.sheet.open.includes('teammenu-add'),
+      `${s.name} does not click .teammenu-add, so the shot would be of Today behind it`);
+  }
+
+  assertSolo320('add-team-step1');
+});
+
+/* #146 Look proof: "Who's here with the item 4 fixture" -- the same four
+ * players `scripts/smoke/roster-in.mjs`'s own `FIXTURE4_MUTATE` renames
+ * (Maya Webb #12, Maya Webb with no number, two Kai Lees with no number),
+ * reused rather than a second hand-typed mutation, at 390 and at
+ * 320px/32px. */
+test('SHOTS includes Who\'s here with the item 4 fixture, at 390 and at 320px/32px', () => {
+  const pair390 = namedPair('who-suffix');
+  assertLightDarkPair(pair390, 'who-suffix');
+  for (const s of pair390) {
+    assert.equal(s.view, 'games', `${s.name} opens on ${s.view}, but Who's here is reached from the game screen`);
+    assert.ok(s.sheet && s.sheet.selector.includes('sheetWho'),
+      `${s.name} names no #sheetWho selector, so nothing proves the dialog ever opened`);
+    assert.ok(s.sheet && s.sheet.open.includes('phrasePlayers'),
+      `${s.name} does not click #phrasePlayers, so the shot would be of the game screen behind it`);
+    assert.ok(s.sheet && s.sheet.open.includes("byId('p0')"),
+      `${s.name} does not apply the item 4 fixture, so the rows would show RICH's plain names`);
+  }
+
+  assertSolo320('who-suffix');
+});
+
+/* #146 Look proof: "the 3-player blocked panel" -- item 5's "Add players"
+ * branch, reached by trimming RICH's own roster to 3 players the way
+ * `scripts/smoke/app-large-text.mjs`'s own "3-player blocked panel" state
+ * does, at 390 and at 320px/32px. */
+test('SHOTS includes the 3-player blocked panel, at 390 and at 320px/32px', () => {
+  const pair390 = namedPair('blocked-3');
+  assertLightDarkPair(pair390, 'blocked-3');
+  for (const s of pair390) {
+    assert.equal(s.view, 'today', `${s.name} opens on ${s.view}, but the blocked panel is reached from Today's own game row`);
+    assert.ok(s.sheet && s.sheet.open.includes('slice(0, 3)'),
+      `${s.name} does not trim the roster to 3 players, so the panel would not be blocked at all`);
+  }
+
+  assertSolo320('blocked-3');
 });
 
 /* ---------- shotProblems: items 2 and 3 ---------- */
