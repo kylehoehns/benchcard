@@ -22,7 +22,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseVersion } from './check-sw-version.mjs';
-import { setConstants, parseShell } from './sw-shell.mjs';
+import { setConstants, parseShell, isValidVersion } from './sw-shell.mjs';
 
 const PLACEHOLDER = { version: '0', shell: 'placeholder' };
 
@@ -32,8 +32,18 @@ function main() {
   const aSrc = readFileSync(aPath, 'utf8');
   const bSrc = readFileSync(bPath, 'utf8');
 
-  const aVersion = Number(parseVersion(aSrc));
-  const bVersion = Number(parseVersion(bSrc));
+  const aVersionStr = parseVersion(aSrc);
+  const bVersionStr = parseVersion(bSrc);
+  const bad = [];
+  if (!isValidVersion(aVersionStr)) bad.push(`upstream: '${aVersionStr}'`);
+  if (!isValidVersion(bVersionStr)) bad.push(`yours: '${bVersionStr}'`);
+  if (bad.length) {
+    console.error(`sw-merge: VERSION is not a non-negative integer (${bad.join(', ')}); leaving %A unwritten`);
+    return 1;
+  }
+
+  const aVersion = Number(aVersionStr);
+  const bVersion = Number(bVersionStr);
   const aShell = parseShell(aSrc);
 
   const tmp = mkdtempSync(join(tmpdir(), 'sw-merge-'));
@@ -46,7 +56,11 @@ function main() {
 
   let clean = true;
   try {
-    execFileSync('git', ['merge-file', tmpA, tmpO, tmpB], { stdio: 'ignore' });
+    execFileSync(
+      'git',
+      ['merge-file', '-L', 'upstream', '-L', 'base', '-L', 'yours', tmpA, tmpO, tmpB],
+      { stdio: 'ignore' },
+    );
   } catch {
     clean = false;
   }

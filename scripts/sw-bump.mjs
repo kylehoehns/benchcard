@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { parseVersion } from './check-sw-version.mjs';
-import { shellDigest, setConstants, parseShell } from './sw-shell.mjs';
+import { shellDigest, setConstants, parseShell, isValidVersion } from './sw-shell.mjs';
 
 const APP_SW = 'app/sw.js';
 
@@ -44,6 +44,10 @@ function main() {
   const baseVersion = parseVersion(baseSw);
   if (baseVersion === null) {
     console.error(`sw-bump: ${APP_SW} at ${ref} has no VERSION constant`);
+    return 1;
+  }
+  if (!isValidVersion(baseVersion)) {
+    console.error(`sw-bump: ${APP_SW} at ${ref} has a non-numeric VERSION: '${baseVersion}'`);
     return 1;
   }
 

@@ -26,6 +26,13 @@ export function parseShell(swSource) {
   return swSource.match(/const SHELL = '([^']*)'/)?.[1] ?? null;
 }
 
+/* A VERSION worth writing: a non-negative integer, as a string. Guards
+   sw-bump.mjs and sw-merge.mjs against `Number(parseVersion(...))` turning a
+   missing or non-numeric VERSION on either side into 'NaN' on disk (#176). */
+export function isValidVersion(v) {
+  return typeof v === 'string' && /^\d+$/.test(v);
+}
+
 export function shellDigest(appDirUrl, swSource) {
   const files = parsePrecache(swSource).filter((p) => p !== './').sort();
   const h = createHash('sha256');

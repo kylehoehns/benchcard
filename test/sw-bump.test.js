@@ -25,6 +25,11 @@ function initRepo(prefix) {
   git(['init', '-q', '-b', 'main'], dir);
   git(['config', 'user.name', 'Test'], dir);
   git(['config', 'user.email', 'test@example.com'], dir);
+  // This clone's global config may sign commits; every commit and rebase
+  // below would otherwise round-trip through gpg-agent for no reason a
+  // throwaway repo cares about -- measured at over 2s of a 3.5s wall-clock
+  // run before this line existed.
+  git(['config', 'commit.gpgsign', 'false'], dir);
   mkdirSync(join(dir, 'app'), { recursive: true });
   return dir;
 }
@@ -104,13 +109,19 @@ test('setConstants throws when SHELL is missing', () => {
   assert.throws(() => setConstants(noShell, { version: '389', shell: 'x' }));
 });
 
-test('sw-bump sets VERSION to the base ref plus one and SHELL to the digest of the files on disk', () => {
+test('sw-bump sets VERSION to the base ref plus one and SHELL to the digest of the files on disk, '
+  + 'changing only those two lines', () => {
   const dir = makeRepo('388');
   try {
+    const before = readSw(dir);
     runBump(dir, 'main');
-    const sw = readSw(dir);
-    assert.match(sw, /const VERSION = '389';/);
-    assert.match(sw, new RegExp(`const SHELL = '${FIXTURE_DIGEST}';`));
+    const after = readSw(dir);
+    assert.match(after, /const VERSION = '389';/);
+    assert.match(after, new RegExp(`const SHELL = '${FIXTURE_DIGEST}';`));
+    const restored = after
+      .replace("const VERSION = '389';", "const VERSION = '388';")
+      .replace(`const SHELL = '${FIXTURE_DIGEST}';`, "const SHELL = 'placeholder';");
+    assert.equal(restored, before);
   } finally {
     rmRepo(dir);
   }
@@ -124,21 +135,6 @@ test('running sw-bump twice is idempotent', () => {
     runBump(dir, 'main');
     const second = readSw(dir);
     assert.equal(second, first);
-  } finally {
-    rmRepo(dir);
-  }
-});
-
-test('sw-bump changes only the VERSION and SHELL lines', () => {
-  const dir = makeRepo('388');
-  try {
-    const before = readSw(dir);
-    runBump(dir, 'main');
-    const after = readSw(dir);
-    const restored = after
-      .replace("const VERSION = '389';", "const VERSION = '388';")
-      .replace(`const SHELL = '${FIXTURE_DIGEST}';`, "const SHELL = 'placeholder';");
-    assert.equal(restored, before);
   } finally {
     rmRepo(dir);
   }
@@ -170,6 +166,24 @@ test('sw-bump exits non-zero naming the ref when it cannot be read', () => {
         return true;
       },
     );
+  } finally {
+    rmRepo(dir);
+  }
+});
+
+test('sw-bump exits non-zero naming the ref when its VERSION is not a non-negative integer, and leaves sw.js untouched', () => {
+  const dir = makeRepo('abc');
+  try {
+    const before = readSw(dir);
+    assert.throws(
+      () => execFileSync('node', [SW_BUMP, 'main'], { cwd: dir, encoding: 'utf8', stdio: 'pipe' }),
+      (err) => {
+        assert.notEqual(err.status, 0);
+        assert.match(err.stderr.toString(), /main/);
+        return true;
+      },
+    );
+    assert.equal(readSw(dir), before, 'sw.js must be left untouched, never written with a NaN VERSION');
   } finally {
     rmRepo(dir);
   }
@@ -261,8 +275,33 @@ test('the same PRECACHE entry changed differently on both sides is still a real 
     assert.match(sw, /<{7}/, 'the conflicting line must carry conflict markers');
     assert.match(sw, /widget\.js/);
     assert.match(sw, /gadget\.js/);
+    assert.match(sw, /^<{7} upstream$/m,
+      'the conflict marker must carry a readable label, not a temp-dir path');
+    assert.match(sw, /^>{7} yours$/m,
+      'the conflict marker must carry a readable label, not a temp-dir path');
   } finally {
     spawnSync('git', ['rebase', '--abort'], { cwd: dir });
+    rmRepo(dir);
+  }
+});
+
+test('a non-numeric VERSION on either side fails the merge driver instead of writing NaN into %A', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'sw-merge-invalid-'));
+  try {
+    const oPath = join(dir, 'O');
+    const aPath = join(dir, 'A');
+    const bPath = join(dir, 'B');
+    writeFileSync(oPath, swFixture('388', 'base'));
+    writeFileSync(aPath, swFixture('abc', 'shell-a'));
+    writeFileSync(bPath, swFixture('389', 'shell-b'));
+    const before = readFileSync(aPath, 'utf8');
+
+    const result = spawnSync('node', [SW_MERGE, oPath, aPath, bPath], { encoding: 'utf8' });
+    assert.notEqual(result.status, 0, 'a non-numeric VERSION must not exit 0');
+    assert.match(result.stderr, /abc/, 'the error names the bad VERSION value');
+    assert.equal(readFileSync(aPath, 'utf8'), before,
+      '%A must be left untouched, never written with a NaN VERSION');
+  } finally {
     rmRepo(dir);
   }
 });

@@ -9,6 +9,10 @@ Running it, testing it, shipping it, and what it measures once it is out there.
 Serve `app/`, not the repo root: the service worker's scope, the manifest's
 `start_url` and every absolute path in it assume `app/` is `/`. ES modules are
 blocked over `file://`, so it has to be served either way.
+
+If you will open PRs, run `npm run setup` once per clone. It registers the git
+merge driver for `app/sw.js`; `AGENTS.md` § Traps says what it does.
+
 ## Testing
 
 `node --test` — no install step, because there are no dependencies.
