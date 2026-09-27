@@ -53,7 +53,7 @@ test('How it works has a Settings section holding each moved explanation', () =>
      section ("A tournament day, and the season") -- a check against the
      whole dialog would pass without this section ever being added. */
   const html = indexHtml();
-  const start = html.indexOf('<h4 class="help-h">Settings</h4>');
+  const start = html.indexOf('<h3 class="help-h">Settings</h3>');
   assert.ok(start > -1, '#help is missing its "Settings" section');
   const end = html.indexOf('id="helpTour"', start);
   assert.ok(end > start, 'could not find the end of the Settings help section (expected before #helpTour)');

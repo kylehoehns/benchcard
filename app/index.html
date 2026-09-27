@@ -665,6 +665,7 @@
             <div class="stage print-path" id="sheet" hidden></div>
             <!-- #69 decision 7: the timeline is not boxed. `.surface` (a
                  bordered card) used to wrap it; both ids stay, unwrapped. -->
+            <h2 class="sr-only">Timeline</h2>
             <div id="timeline" class="tl noprint"></div>
             <!-- #72: moved below the timeline, so all 9 rows fit above the
                  fold on a phone -- the errors this reports are now read
@@ -712,7 +713,7 @@
                is a game (#126): the game screen can't be reached without
                one, so there is no count left to guard it on. -->
           <div class="side-box noprint s-thisgame" style="margin-bottom:.9rem">
-            <div class="side-hd">This game</div>
+            <h2 class="side-hd">This game</h2>
             <div class="row">
               <!-- #101: moves the game to another day (`app.js` wires
                    `onchange` to `moveGame`). `min` is today -- no dates
@@ -1607,6 +1608,7 @@
          render, so there is exactly one live node here regardless of how
          many times bench mode repaints. -->
     <div class="sr-only" id="gmLive" role="status"></div>
+    <h2 class="sr-only">Bench mode</h2>
     <div class="gm-bar">
       <button class="gm-x press" id="gmClose" aria-label="Leave bench mode"><span class="i" data-icon="x"></span></button>
       <div class="gm-title"><span id="gmGame"></span><span class="gm-clock" id="gmClock"></span></div>
@@ -1623,7 +1625,9 @@
       <div class="gm-sec">
         <!-- No visible "On the floor" heading (the prototype has none); the
              meaning -- and the played/projected pair beside every name -- is
-             kept for screen readers on the list itself. -->
+             kept for screen readers on the list itself. #151 item 4: the
+             heading outline still needs an h3 here, so it is .sr-only. -->
+        <h3 class="sr-only">On the floor</h3>
         <div class="gm-floor" id="gmFloor" aria-label="On the floor, minutes played of projected"></div>
         <!-- Five available means no bench at all. The sentence belongs under
              the floor it describes; a "BENCH" heading over an empty list plus
@@ -1632,7 +1636,7 @@
       </div>
       <div class="gm-next" id="gmNext"></div>
       <div class="gm-sec" id="gmBenchSec">
-        <div class="gm-lab" id="gmBenchLab">Bench</div>
+        <h3 class="gm-lab" id="gmBenchLab">Bench</h3>
         <div class="gm-bench" id="gmBench"></div>
       </div>
     </div>
@@ -1703,7 +1707,7 @@
        second undo window is thin protection for that. -->
   <div class="keyswrap noprint" id="confirm" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
     <div class="keysbox confirmbox">
-      <div class="keys-hd"><div class="keys-t" id="confirmTitle"></div></div>
+      <div class="keys-hd"><h2 class="keys-t" id="confirmTitle"></h2></div>
       <p class="note" id="confirmBody"></p>
       <div class="confirm-acts">
         <button class="btn ghost press" id="confirmNo" type="button">Cancel</button>
@@ -1722,7 +1726,7 @@
   <div class="keyswrap noprint" id="help" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
     <div class="keysbox helpbox">
       <div class="keys-hd">
-        <div class="keys-t" id="helpTitle">How it works</div>
+        <h2 class="keys-t" id="helpTitle">How it works</h2>
         <button class="btn icon ghost press" id="helpClose" aria-label="Close"><span class="i" data-icon="x"></span></button>
       </div>
       <!-- The second sentence is the narrow claim, word for word as the other
@@ -1733,7 +1737,7 @@
         game, then prints it on a card that fits in your pocket. There is no account, and
         your roster never leaves your device.</p>
 
-      <h4 class="help-h">Choosing a plan</h4>
+      <h3 class="help-h">Choosing a plan</h3>
       <dl class="help-dl">
         <dt>Even</dt>
         <dd>Everybody plays as close to the same number of minutes as the clock allows.
@@ -1753,7 +1757,7 @@
           if the groups themselves are even.</dd>
       </dl>
 
-      <h4 class="help-h">Lineup balance</h4>
+      <h3 class="help-h">Lineup balance</h3>
       <p class="help-p">Even minutes decides how long everyone plays, not who plays
         together, so five players picked purely for fairness can be your five
         youngest at once. Give each player a level on the <b>Team</b> page, by
@@ -1774,7 +1778,7 @@
         <dd>Strong to open and close, softer through the middle. The one to pick to get developing players real minutes in a game you expect to be decided late.</dd>
       </dl>
 
-      <h4 class="help-h">Rules</h4>
+      <h3 class="help-h">Rules</h3>
       <p class="help-p">Rules are things you need to be true; the plan works around them.
         Open a game and tap the rules words in the sentence under its title. That
         is where you add one, and opening a rule you have added shows a
@@ -1805,7 +1809,7 @@
         every available player in every game. A Plays at least you set on one player still
         wins when it is higher, and a Plays at most you set still wins when it is lower.</p>
 
-      <h4 class="help-h">A tournament day, and the season</h4>
+      <h3 class="help-h">A tournament day, and the season</h3>
       <p class="help-p"><b>Add a game</b> on Today asks three questions -- who you're playing, who's
         here, and how minutes should split -- then carries over the format, who is at the
         gym and your rules from the last game, so only the opponent and tip-off are new.
@@ -1823,7 +1827,7 @@
         is off to begin with; <b>Settings</b> can have each new game open with it
         already on.</p>
 
-      <h4 class="help-h">Reading the card</h4>
+      <h3 class="help-h">Reading the card</h3>
       <!-- Bold here means "printed on the paper", not "stressed in this
            sentence" -- about.html's card section already made that call. -->
       <p class="help-p">Each box is one stint. On the left is the clock:
@@ -1838,7 +1842,7 @@
         on a clipboard, and it lays the stints out in two columns, so a long game stays
         on one card.</p>
 
-      <h4 class="help-h">Changing the plan mid-game</h4>
+      <h3 class="help-h">Changing the plan mid-game</h3>
       <p class="help-p"><b>Bench mode</b> opens the game one stint at a time.
         Tap whoever is coming off and pick how long the change lasts.</p>
       <dl class="help-dl">
@@ -1865,7 +1869,7 @@
            note, the persisted-storage line and the restore note) fold into
            one dd: the row itself only keeps one footnote at a time, and this
            is where the other two live in full. -->
-      <h4 class="help-h">Settings</h4>
+      <h3 class="help-h">Settings</h3>
       <dl class="help-dl">
         <dt>Team name</dt>
         <dd>Heads the card when a game has no opponent, and names the day above your games.</dd>
@@ -1914,7 +1918,7 @@
   <div class="keyswrap noprint" id="keys" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="keysTitle">
     <div class="keysbox">
       <div class="keys-hd">
-        <div class="keys-t" id="keysTitle">Keyboard shortcuts</div>
+        <h2 class="keys-t" id="keysTitle">Keyboard shortcuts</h2>
         <button class="btn icon ghost press" id="keysClose" aria-label="Close shortcuts"><span class="i" data-icon="x"></span></button>
       </div>
       <dl class="keys-list">

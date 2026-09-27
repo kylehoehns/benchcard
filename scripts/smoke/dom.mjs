@@ -264,6 +264,19 @@ export const OVERFLOW_PROBE = `(() => {
   return JSON.stringify({ vw, pans, worst });
 })()`;
 
+/* #151's own `.sr-only` headings (app.css:1300) are pulled onto a 1x1 box by
+   an explicit `width: 1px; height: 1px` -- not by `visibility`/`opacity`/
+   `display`, which `checkVisibility` already covers -- so a check auditing
+   what a coach actually SEES has to tell that box apart from a painted one.
+   Measured off the element's own rendered rect, not its class name: a
+   painted heading is never 1x1, and a bug that widened `.sr-only` back out
+   would show up here as "painted" again rather than being grandfathered by a
+   name match. A page-side predicate (like `CSS_VAR_COLOR_PROBE` above),
+   interpolated into a caller's own injected IIFE with `${IS_SR_ONLY_RECT}` --
+   `bench-look.mjs`'s "no visible heading" check and `type-scale.mjs`'s scale
+   scan both need this, so it lives once. */
+export const IS_SR_ONLY_RECT = `(r => r.width <= 1 && r.height <= 1)`;
+
 /* #144's own squeeze check reuses this, #138's own first: the floor a name or
    a title is held to at a large root, once something beside it is fighting
    it for space, is `min(its longest single word, the row's own content-box

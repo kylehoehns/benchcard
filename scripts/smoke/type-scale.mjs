@@ -1,4 +1,4 @@
-import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, IS_SR_ONLY_RECT } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding } from './app-large-text.mjs';
 
@@ -17,12 +17,17 @@ const TYPESCALE_WEIGHTS = new Set([400, 500, 600, 700]);
    scope (#24's item 5 covers it separately). */
 const TYPESCALE_PROBE = `(() => {
   const seen = [];
+  const isSrOnly = ${IS_SR_ONLY_RECT};
   const hasOwnText = el => [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
   const isFormEl = el => el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA';
   for (const el of document.body.querySelectorAll('*')) {
     if (el.closest('.card')) continue;
     const r = el.getBoundingClientRect();
     if (!r.width && !r.height) continue;
+    // A .sr-only heading (#151 item 4) paints no text -- checkVisibility
+    // only catches display/visibility/opacity, not the 1x1-box clip trick,
+    // so its own computed font-size is not part of the visible scale.
+    if (isSrOnly(r)) continue;
     if (!el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
     if (!hasOwnText(el) && !isFormEl(el)) continue;
     const cs = getComputedStyle(el);

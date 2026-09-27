@@ -19,7 +19,7 @@
  * argument), not an emulated `prefers-color-scheme` -- the same mechanism
  * `finish-game.mjs`'s item 5 already uses for the same reason: RICH boots
  * onto the record it was given, `prefers-color-scheme` never enters into it. */
-import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, navigateAndWaitForCard, OVERFLOW_PROBE, WORD_FLOOR_FN } from './dom.mjs';
+import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, navigateAndWaitForCard, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_SR_ONLY_RECT } from './dom.mjs';
 import { goRich, RICH, seeded } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
@@ -210,10 +210,18 @@ async function runTheme(c, origin, theme, problems, notes) {
   await evalIn(c, step(`document.querySelector('#gmFloor .gm-p.picked').click()`)); // deselect
   notes.push(tag('item 4: floor rows are surface-filled and borderless; the picked row gets a 2px --tint inset outline'));
 
-  /* ---- item 5: no visible "On the floor" heading; #gmFloor names the numbers ---- */
+  /* ---- item 5: no visible "On the floor" heading; #gmFloor names the numbers ----
+   * #151 item 4 gave bench mode's heading outline an `h3.sr-only` reading
+   * "On the floor" (the outline needs one; the prototype has no visible
+   * one) -- a leaf whose text matches is no longer proof of a regression on
+   * its own, so this only counts one that also PAINTS: `isSrOnly` reads the
+   * same 1x1-box signature `.sr-only` (app.css:1300) renders as, off the
+   * element's own rect, never its class name (`IS_SR_ONLY_RECT`, dom.mjs). */
   const floorA11y = JSON.parse(await evalIn(c, `(() => {
+    const isSrOnly = ${IS_SR_ONLY_RECT};
     const headings = [...document.querySelectorAll('#gamemode *')].filter(el =>
-      el.children.length === 0 && el.textContent.trim() === 'On the floor');
+      el.children.length === 0 && el.textContent.trim() === 'On the floor'
+      && !isSrOnly(el.getBoundingClientRect()));
     return JSON.stringify({
       headings: headings.length,
       floorLabel: document.getElementById('gmFloor').getAttribute('aria-label'),

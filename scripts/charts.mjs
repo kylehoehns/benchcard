@@ -396,7 +396,7 @@ body {
   font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
   text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
   background: var(--surface);
-  transition: transform 110ms cubic-bezier(.22,.61,.36,1);
+  transition: transform 110ms var(--ease);
 }
 .btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .btn:active { transform: scale(.97); }

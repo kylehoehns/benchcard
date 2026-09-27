@@ -35,6 +35,8 @@ import { COLORS } from '../app/storage.js';
 
 const read = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 
+const appCss = read('app/app.css');
+
 const resolved = parseTokensCss(read('app/tokens.css'));
 const { light, dark, lightMore, darkMore, nested } = resolved;
 
@@ -58,6 +60,20 @@ test('parseColor fails closed on a value it does not recognize', () => {
   assert.equal(parseColor('banana'), null);
   assert.throws(() => colorOf({ '--x': 'banana' }, '--x'), /could not be parsed/);
   assert.throws(() => colorOf({}, '--missing'), /is not declared/);
+});
+
+/* #151 finding: dark `--on-err` restates dark `--bg-2`'s literal on purpose
+ * (app/tokens.css) and is being changed to `var(--bg-2)` so the two stop
+ * drifting independently. `colorOf` never resolved a `var()` reference
+ * before this token needed it -- these three cases are the seam that change
+ * relies on: a one-level reference resolves to its target's color, a
+ * reference to a name absent from the theme still fails closed (never
+ * silently skipped), and a reference cycle fails closed too rather than
+ * looping forever. */
+test('colorOf resolves a var() reference to another token in the same theme, and still fails closed', () => {
+  assert.deepEqual(colorOf({ '--a': 'var(--b)', '--b': '#131314' }, '--a'), { r: 19, g: 19, b: 20, a: 1 });
+  assert.throws(() => colorOf({ '--a': 'var(--missing)' }, '--a'), /--missing.*not declared/);
+  assert.throws(() => colorOf({ '--a': 'var(--b)', '--b': 'var(--a)' }, '--a'), /cycles/);
 });
 
 const THEMES = [
@@ -293,6 +309,99 @@ test('every color\'s label on its own fill, and its fill as text on every ground
         }
       }
     }
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #151 item 1: `test/contrast.test.js:98-115` (the pre-existing "on its own
+ * soft tint" test above) only ever blends a status tint over `--surface` --
+ * `.alert.info` sits directly on the page's `--bg` (`#cardnote`,
+ * index.html:804), and `--info` on `--info-soft` over `--bg` measured 4.23:1
+ * in light mode there, under the 4.5:1 floor every other text token here is
+ * held to. This case adds `--bg` as a second ground beside `--surface`, for
+ * every status color, in every theme -- so a future soft tint that only
+ * clears its floor on one of the two grounds a `.alert` can actually sit on
+ * (a sheet's `--surface`, or the page's own `--bg`) is caught here instead of
+ * shipping quietly like `.alert.info` did. */
+test('every soft status tint, blended over --bg as well as --surface, clears 4.5:1 in every theme', () => {
+  const bad = [];
+  for (const t of THEMES) {
+    for (const g of ['--bg', '--surface']) {
+      const ground = colorOf(t.tokens, g);
+      for (const s of STATUS) {
+        const soft = effective(colorOf(t.tokens, `--${s}-soft`), ground);
+        const fg = effective(colorOf(t.tokens, `--${s}`), soft);
+        const r = contrast(fg, soft);
+        if (r < 4.5 - 1e-9) bad.push(`${t.name}: --${s} on --${s}-soft (over ${g}) is ${r.toFixed(2)}:1, needs >= 4.5:1`);
+      }
+    }
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #151 item 1's own words, not the flat 4.5:1 the sweep above holds every
+ * theme to: "Light mode with more contrast stays at or above its current
+ * 6.60:1." A flat 4.5:1 floor would still pass if this tint regressed all
+ * the way down to 4.6:1, so this pins the one cell the spec actually names
+ * to its own number instead. Compared rounded to 2dp, the way a contrast
+ * ratio is normally reported (and the way the spec states "6.60") -- the raw
+ * ratio here is 6.596335980947871, a hair under a literal 6.60 threshold. */
+test('light + more contrast keeps info-over-bg at or above its current 6.60:1 (#151 item 1)', () => {
+  const ground = colorOf(lightMore, '--bg');
+  const soft = effective(colorOf(lightMore, '--info-soft'), ground);
+  const fg = effective(colorOf(lightMore, '--info'), soft);
+  const r = Number(contrast(fg, soft).toFixed(2));
+  assert.ok(r >= 6.6, `light + more contrast: --info on --info-soft (over --bg) is ${r}:1, needs >= 6.60:1`);
+});
+
+/* #151 item 2: `--phrase-line` (the sentence-style underline, app.css:2714)
+ * is Graphite's own value here -- every non-Graphite team color sets it
+ * `transparent` (tokens.css's own comment above the tint blocks says why),
+ * and that non-text case is smoke-tested elsewhere
+ * (scripts/smoke/team-color.mjs's own `--phrase-line: transparent`
+ * assertion, which #151 leaves unchanged). Graphite's underline measured
+ * 2.00:1 against `--bg` in light mode, under WCAG's 3:1 floor for a
+ * non-text/decorative graphic like an underline; dark mode already cleared
+ * it at 3.55:1. */
+test('the phrase underline clears 3:1 against --bg in light and dark, base and more-contrast', () => {
+  const bad = [];
+  for (const t of THEMES) {
+    const bg = colorOf(t.tokens, '--bg');
+    const line = effective(colorOf(t.tokens, '--phrase-line'), bg);
+    const r = contrast(line, bg);
+    if (r < 3 - 1e-9) bad.push(`${t.name}: --phrase-line on --bg is ${r.toFixed(2)}:1, needs >= 3:1`);
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #151 item 3: `.btn.danger` (app.css:285) painted the literal `#fff` on
+ * `--err`, which measured 2.93:1 in dark mode and 1.91:1 in dark + more
+ * contrast -- `--err` itself is a text color elsewhere and is not changed
+ * (item 3's own words), so the fix is a new token, `--on-err`, with its own
+ * value per theme. The hover fill (`.btn.danger:hover`, app.css:286) is
+ * `color-mix(in srgb, var(--err) 86%, #000)` -- a straight linear mix toward
+ * black in sRGB space, reproduced here by the same arithmetic the CSS spec
+ * defines for `color-mix(in srgb, …)`. The 86% itself is READ from app.css's
+ * own rule text, not retyped as a second copy: a future edit to that
+ * percentage is what this test should react to, not a stale literal here
+ * that quietly stops matching what the button actually paints. */
+const DANGER_HOVER_MIX = /\.btn\.danger:hover\s*\{\s*background:\s*color-mix\(in srgb,\s*var\(--err\)\s*(\d+(?:\.\d+)?)%,\s*#000\)/;
+const dangerHoverMatch = appCss.match(DANGER_HOVER_MIX);
+if (!dangerHoverMatch) throw new Error('could not find .btn.danger:hover\'s color-mix(in srgb, var(--err) N%, #000) rule in app/app.css');
+const DANGER_HOVER_PCT = parseFloat(dangerHoverMatch[1]) / 100;
+
+const mixToBlack = (c, pct) => ({ r: c.r * pct, g: c.g * pct, b: c.b * pct, a: 1 });
+
+test('--on-err on --err, and on its hover fill, clears 4.5:1 in every theme', () => {
+  const bad = [];
+  for (const t of THEMES) {
+    const err = colorOf(t.tokens, '--err');
+    const onErr = colorOf(t.tokens, '--on-err');
+    const r1 = contrast(onErr, err);
+    if (r1 < 4.5 - 1e-9) bad.push(`${t.name}: --on-err on --err is ${r1.toFixed(2)}:1, needs >= 4.5:1`);
+    const hoverErr = mixToBlack(err, DANGER_HOVER_PCT);
+    const r2 = contrast(onErr, hoverErr);
+    if (r2 < 4.5 - 1e-9) bad.push(`${t.name}: --on-err on --err's hover fill is ${r2.toFixed(2)}:1, needs >= 4.5:1`);
   }
   assert.deepEqual(bad, [], bad.join('\n  '));
 });

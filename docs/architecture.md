@@ -25,7 +25,7 @@ Everything below is relative to `app/`.
 - `engine.js` — planning core. Pure, dependency-free, deterministic for a given seed.
 - `roster.js` — roster text parsing (jersey numbers from either end of a line). Pure.
 - `icons.js` — Lucide path data, extracted at vendor time.
-- `fx.js` — animation vocabulary over the vendored Motion library.
+- `fx.js` — animation vocabulary over the vendored Motion library; exports one easing curve so Motion, timeline blocks, and game-mode slides all animate on the same curve.
 - `budget.js` — minute-budget allocation in stint slots. Pure.
 - `live.js` — where a game stands (not started, part-played, or finished), which stint to show, where to resume, and what status word to display. Pure. Exports `stage`, `stintIndex`, `resumeAt`, `passStatus`, `openAt`, `stepAt`, and `resumeBarAt` (#123).
 - `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100), `teams[].days` (a list, each day's games sorted by tip-off time, #102), `teams[].activeDay` to track the open day, and migration from v6's single `day` to v7's `days` list. Pure apart from `localStorage`.
@@ -686,10 +686,11 @@ uses and renders identically on Android and Windows instead of falling back to
 Roboto or Segoe (#21). Icons are **Lucide**, with only the path data extracted into `icons.js` rather
 than shipping a runtime — one entry per name in `vendor/fetch.sh`'s list, held
 to it in both directions by `test/dead-icon.test.js`, so an icon nothing draws
-stops being downloaded in the same commit. Motion drives spring transitions,
-staggered entrances and FLIP reordering; continuous interactions like dragging a
-minute slider deliberately stay on CSS transitions, where spawning a spring per
-input event would cost more than it buys.
+stops being downloaded in the same commit. Motion drives eased transitions,
+staggered entrances and FLIP reordering, all on the one easing curve (no
+bounce); continuous interactions like dragging a minute slider deliberately stay
+on CSS transitions. Actions a coach repeats many times a minute (a switch, a
+checkbox, a player chip's avatar) change state with no transition at all (#151).
 
 The UI's own type follows the phone's text-size setting rather than a fixed
 scale (#24): `body` and every text size in `app.css` is one of the seven
@@ -706,9 +707,9 @@ One consequence worth knowing: the printed card is auto-fitted from canvas
 stack matching `.card`'s exactly, and the re-fit on font load — is a trap
 `AGENTS.md` owns and this file does not restate.
 
-Motion, color and touch behavior run off tokens in one place: easing curves
-(nothing linear), four durations, a neutral gray palette with ink as the
-primary tint, a `prefers-contrast: more` variant, and full light/dark (the
+Motion, color and touch behavior run off tokens in one place: one easing curve
+(`--ease` in CSS, `EASE` from `fx.js` in JS), four durations, a neutral gray
+palette with ink as the primary tint, a `prefers-contrast: more` variant, and full light/dark (the
 Graphite look, #21). A team's color (Graphite through Purple) overrides that
 neutral tint on the primary buttons, selected states and tappable phrases (#25);
 each color declares its own `--tint*` tokens for the current theme, and
