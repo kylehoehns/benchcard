@@ -178,8 +178,10 @@ current handoff and the findings verbatim; that is the whole brief.
     PR=$(gh pr view --json number -q .number)
     ```
 
-    The body is written for a newcomer: what changed first, then why, then what
-    you ran and what it printed. It ends with `Closes #N` so merging closes the
+    Write the body with the `pr` skill's template (Summary, Evidence, Merge
+    Danger; source: `mattpocock/skills`, `skills/in-progress/pr`), in plain
+    words a newcomer can follow. Evidence is what you ran and what it printed,
+    before and after. The body ends with `Closes #N` so merging closes the
     issue, and nothing after it (`AGENTS.md` § Rules; `guard-bash.sh` denies a
     generated-by line or session link).
 
