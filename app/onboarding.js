@@ -18,8 +18,8 @@
 
 import { generatePlan } from './engine.js';
 import { parseRoster, sampleRoster, sampleRosterText, callNames, dropRepeat, repeatNotice, rosterPreview, SAMPLE_TEAM_NAME } from './roster.js';
-import { $, on, set, el, uid } from './dom.js';
-import { state, editHappened, markFirstRunPending, newTeam, team, HUES } from './state.js';
+import { $, on, set, el, uid, repeatRow } from './dom.js';
+import { state, editHappened, markFirstRunPending, newTeam, team, HUES, joinNames } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { startTour } from './tour.js';
 import { flash } from './toast.js';
@@ -48,12 +48,17 @@ export const shortOfLineup = (n) => n < LINEUP_MIN;
  *
  * #146 item 2: takes the parsed list, not a bare count, so the line names who
  * was read -- "3 players so far: Sam, Jo and Kai." -- rather than just how
- * many. `rosterPreview` (roster.js) supplies the joined, numbered list; this
- * only wraps it in the sentence, the same split the old count-only line had. */
-export function countLine(entries) {
+ * many. `rosterPreview` (roster.js) supplies the numbered names; this joins
+ * them with `joinNames` (state.js) and wraps the result in the sentence, the
+ * same split the old count-only line had. `preview` is an optional second
+ * argument: `onRosterInput` below already computes `rosterPreview(entries)`
+ * once for `paintFrRepeats`, so it hands that same result in here rather than
+ * this function recomputing it on every keystroke; every other caller still
+ * calls with one argument and gets it computed as before. */
+export function countLine(entries, preview = rosterPreview(entries)) {
   const n = (entries || []).length;
   if (!n) return 'Paste from wherever your roster lives. Jersey numbers are optional.';
-  const head = `${n} player${n === 1 ? '' : 's'} so far: ${rosterPreview(entries).text}.`;
+  const head = `${n} player${n === 1 ? '' : 's'} so far: ${joinNames(preview.names)}.`;
   return shortOfLineup(n) ? `${head} ${LINEUP_MIN} needed to field a lineup.` : head;
 }
 
@@ -585,39 +590,34 @@ function onRosterInput(v) {
   fr.roster = v;
   const entries = rosterEntries();
   const n = entries.length;
-  set('#frCount', 'textContent', countLine(entries));
+  // #146 efficiency: rosterPreview(entries) is computed once here and handed
+  // to both countLine and paintFrRepeats, rather than each recomputing it.
+  const preview = rosterPreview(entries);
+  set('#frCount', 'textContent', countLine(entries, preview));
   set('#frFill', 'hidden', frMode === 'add' || n > 0);
   set('#frNext', 'disabled', shortOfLineup(n));
-  paintFrRepeats($('#frRepeats'), entries);
+  paintFrRepeats($('#frRepeats'), entries, preview);
 }
 
 /* #146 item 3, "in both places": the same repeat line and "Drop one" button
-   the paste sheet shows (`paintPasteConfirm`, roster-view.js), built here
-   from the same pure `rosterPreview`/`dropRepeat`/`repeatNotice` (roster.js)
-   rather than imported from that view module -- onboarding.js and
-   roster-view.js otherwise import nothing from each other, and this is the
-   only piece they would need to share. Takes `box` directly, not by id,
-   since step 1's markup is built fresh each render and is not yet attached
-   to the document the first time this paints. */
-function paintFrRepeats(box, entries) {
+   the paste sheet shows (`paintPasteConfirm`, roster-view.js) -- `repeatRow`
+   (dom.js) is the one place that markup is built, since onboarding.js and
+   roster-view.js otherwise import nothing from each other and neither should
+   own a piece the other needs. Takes `box` directly, not by id, since step
+   1's markup is built fresh each render and is not yet attached to the
+   document the first time this paints. */
+function paintFrRepeats(box, entries, preview = rosterPreview(entries)) {
   if (!box) return;
   box.textContent = '';
-  const { repeats } = rosterPreview(entries);
+  const { repeats } = preview;
   for (const { name, count } of repeats) {
-    const row = el('div', 'paste-repeat');
-    row.append(el('span', '', repeatNotice(name, count)));
-    const drop = el('button', 'btn ghost sm press', 'Drop one');
-    drop.type = 'button';
-    drop.setAttribute('aria-label', `Drop one ${name}`);
-    drop.onclick = () => {
+    box.append(repeatRow(repeatNotice(name, count), name, () => {
       const next = dropRepeat(fr.roster, name);
       const box2 = $('#frRoster');
       if (box2) box2.value = next;
       onRosterInput(next);
       box2?.focus({ preventScroll: true });
-    };
-    row.append(drop);
-    box.append(row);
+    }));
   }
   box.hidden = !repeats.length;
 }

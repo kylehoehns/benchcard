@@ -114,8 +114,11 @@ const nameOf = id => (byId(id)?.name || '').trim();
  * roster entry) reads the suffixed full name -- `distinctNames` (roster.js),
  * the one place that suffix is computed -- instead of the bare `nameOf`. The
  * ledger's `callName` argument already carries it, since `callNames`' last
- * rung is `distinctNames` now; this only covers the rows filed without one. */
-const distinctNameOf = id => distinctNames(state.players)[id] || nameOf(id);
+ * rung is `distinctNames` now; this only covers the rows filed without one.
+ * `distinct` is that map, computed once by `renderSeason` below (one call
+ * covering both the ledger loop and every filed game's rows) rather than
+ * once per row. */
+const distinctNameOf = (id, distinct) => distinct[id] || nameOf(id);
 
 /* Filed games grouped by day, newest day first; within a day the games keep
    the order they were filed in, so a tournament reads 9:00 then 11:30. The
@@ -152,11 +155,11 @@ export function gameRowTitle(g, n) {
    (app.css's one hidden-text rule) rather than off the page, so a screen
    reader still gets `offNote`'s own words, unchanged, while the row stays
    one line visually. */
-function playerRow(id, min, extra, maxMin, callName) {
+function playerRow(id, min, extra, maxMin, callName, distinct) {
   const p = byId(id);
   const row = el('div', 'sn-row barrow');
   const name = el('div', 'sn-name');
-  const display = !p ? 'Left the team' : (callName || distinctNameOf(id) || 'Unnamed');
+  const display = !p ? 'Left the team' : (callName || distinctNameOf(id, distinct) || 'Unnamed');
   const nm = el('span', 'sn-nm', display);
   if (!p) nm.classList.add('gone');
   name.append(nm);
@@ -353,8 +356,12 @@ export function renderSeason() {
   const rows = totals(games);
   const maxMin = rows.reduce((m, r) => Math.max(m, r.min), 0);
   const names = callNames(state.players);
+  // #146 item 4 efficiency: one `distinctNames` call for this whole render,
+  // covering the ledger loop just below and every filed game's rows
+  // (`gameBlock`), rather than one call per row.
+  const distinct = distinctNames(state.players);
   for (const r of rows) {
-    list.append(playerRow(r.id, r.min, `${r.games} game${r.games === 1 ? '' : 's'}${offNote(r.off)}`, maxMin, names[r.id]));
+    list.append(playerRow(r.id, r.min, `${r.games} game${r.games === 1 ? '' : 's'}${offNote(r.off)}`, maxMin, names[r.id], distinct));
   }
   box.append(list);
 
@@ -375,7 +382,7 @@ export function renderSeason() {
   for (const day of seasonDays(games)) {
     grp.append(el('div', 'sn-day',
       `${dateLabel(day.date)} · ${day.games.length} game${day.games.length === 1 ? '' : 's'}`));
-    day.games.forEach((g, i) => grp.append(gameBlock(g, i + 1)));
+    day.games.forEach((g, i) => grp.append(gameBlock(g, i + 1, distinct)));
   }
   filed.append(grp);
 }
@@ -384,7 +391,7 @@ export function renderSeason() {
    loop) -- the fallback title `gameRowTitle` uses when the game has neither
    an opponent nor a day name. The row title is never `gameTitle`: that one
    always carries the date, and the day heading above this row already does. */
-function gameBlock(g, n) {
+function gameBlock(g, n, distinct) {
   const d = el('details', 'sn-game');
   const sum = el('summary', 'prow');
   sum.append(el('span', 'prow-t sn-gt', gameRowTitle(g, n)));
@@ -400,7 +407,7 @@ function gameBlock(g, n) {
   const body = el('div', 'sn-body');
   const rows = Object.entries(g.minutes || {}).sort((a, b) => b[1] - a[1]);
   if (!rows.length) body.append(el('p', 'note', 'No minutes were recorded for this game.'));
-  for (const [id, m] of rows) body.append(playerRow(id, m));
+  for (const [id, m] of rows) body.append(playerRow(id, m, undefined, undefined, undefined, distinct));
 
   /* The only correction path there is. Filing finishes whatever is in the
      day once it has passed, so a day nobody played still files a game -- the

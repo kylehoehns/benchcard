@@ -63,29 +63,25 @@ export function parseRoster(text) {
     .filter(Boolean);
 }
 
-/* Trim, lowercase, collapse inner spaces -- `repeatIndexes`' own key,
-   reused here rather than re-derived, so "which entries share a name" is
-   answered the same way whether the question is a repeat against the
-   existing roster or a repeat inside the text being typed. */
+/* Trim, lowercase, collapse inner spaces. One key function, shared by every
+   caller that has to answer "which entries share a name" --
+   `rosterPreview`/`dropRepeat`/`distinctNames` below, and `repeatIndexes`
+   further down -- so a repeat against the existing roster, a repeat inside
+   the text being typed, and a shared name on the roster itself are all
+   answered the same way, not three slightly different ones. */
 const nameKey = n => String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
-
-/* "Reese, Jonah, Eli and Kira" -- the same shape as engine.js's own private
-   `andList`. `joinNames` (state.js) is the one place this shape is meant to
-   live, but state.js already imports `callNames` from this module, so the
-   reverse import would cycle; a pure module duplicating a two-line join is
-   the same trade engine.js already made, for the same reason. */
-function andJoin(names) {
-  if (names.length < 2) return names.join(' and ');
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
 
 /**
  * #146 items 2-3: what the paste step shows before anything is added. Pure
  * and generic -- `countLine` (onboarding.js) and the paste sheet's note
- * (roster-view.js) each wrap `text` in their own sentence, so this owns only
- * the two facts every caller needs: the joined name list, numbered players
- * read as "Maya Webb #12"; and the repeat groups, so callers can build
- * "<name> is listed twice."/"Drop one <name>" without re-deriving the key.
+ * (roster-view.js) each wrap `names` in their own sentence, joining with
+ * `joinNames` (state.js) themselves. This module stays pure and does not
+ * import state.js (that would cycle: state.js already imports `callNames`
+ * from here), so it hands back the unjoined list rather than a second join
+ * of its own -- one join function, in one place, used by every caller. The
+ * two facts every caller needs: the name list, numbered players read as
+ * "Maya Webb #12"; and the repeat groups, so callers can build "<name> is
+ * listed twice."/"Drop one <name>" without re-deriving the key.
  */
 export function rosterPreview(entries) {
   const list = entries || [];
@@ -100,7 +96,7 @@ export function rosterPreview(entries) {
   const repeats = [...groups.values()]
     .filter(g => g.length > 1)
     .map(g => ({ name: g[0].name, count: g.length }));
-  return { text: andJoin(names), repeats };
+  return { names, repeats };
 }
 
 /**
@@ -267,10 +263,9 @@ export function duplicateNumbers(players) {
  * comes back byte-identical. Returns indexes into `incoming`.
  */
 export function repeatIndexes(existing, incoming) {
-  const key = n => String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  const had = new Set((existing || []).map(p => key(p?.name)).filter(Boolean));
+  const had = new Set((existing || []).map(p => nameKey(p?.name)).filter(Boolean));
   const out = [];
-  (incoming || []).forEach((x, i) => { if (key(x?.name) && had.has(key(x?.name))) out.push(i); });
+  (incoming || []).forEach((x, i) => { if (nameKey(x?.name) && had.has(nameKey(x?.name))) out.push(i); });
   return out;
 }
 

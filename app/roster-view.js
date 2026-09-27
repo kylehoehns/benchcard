@@ -12,7 +12,7 @@ import { deriveShortNames } from './engine.js';
 import { confirmAddLabel, distinctNames, dropIndex, dropRepeat, duplicateNumbers, focusAfterRemoval, parseRoster, repeatIndexes, repeatNotice, rosterPreview } from './roster.js';
 import { riseIn, tick, enabled as fxOn } from './fx.js';
 import { icon } from './icons.js';
-import { $, set, el, uid } from './dom.js';
+import { $, set, el, uid, repeatRow } from './dom.js';
 import { withFocus, openSheet, closeSheet, guardClose, showAskRow } from './trap.js';
 import { undoable, offer } from './toast.js';
 import { state, colorOf, initials, removePlayer, byId, joinNames, teamName, nextHue, hueSlots } from './state.js';
@@ -366,8 +366,9 @@ export function renderRoster() {
     return;
   }
 
+  const names = distinctNames(state.players);
   state.players.forEach((p, idx) => {
-    box.append(editing ? editRow(p, idx) : playerRow(p));
+    box.append(editing ? editRow(p, idx, names) : playerRow(p, names));
   });
   paintDupes();
   riseIn(box.querySelectorAll('.rrow'), { delay: 0.018, from: 6 });
@@ -390,8 +391,11 @@ export function toggleEditMode(btn) {
 /* What a coach reads down the list. A player with no name still needs a row
    they can open, so the row says so rather than showing a blank line.
    #146 item 4: `distinctNames` (roster.js) is the one place a shared name's
-   suffix is computed; every row here reads it rather than the bare name. */
-const rowName = p => distinctNames(state.players)[p.id] || p.name || 'Unnamed';
+   suffix is computed; every row here reads it rather than the bare name.
+   `names` is that map, computed once by the caller (`renderRoster` below,
+   the way `game-setup.js`'s `paintWhoBody` already hoists it for `whoRow`)
+   rather than once per row in the list. */
+const rowName = (p, names) => names[p.id] || p.name || 'Unnamed';
 
 /* What both kinds of row are before their contents: the player's id, which is
    how the drag and `repaintRow` find a row again, and the player's own color,
@@ -408,11 +412,11 @@ function rowShell(tag, cls, p) {
    that says the row opens. The whole row is one button (C6), so there is
    nothing in the list a mis-tap can edit -- everything about a player is
    edited in their own sheet. */
-function playerRow(p) {
+function playerRow(p, names) {
   const row = rowShell('button', 'prow rrow', p);
   row.type = 'button';
   row.append(el('span', 'av', initials(p)));
-  row.append(el('span', 'prow-t', rowName(p)));
+  row.append(el('span', 'prow-t', rowName(p, names)));
   row.append(el('span', 'prow-v', levelName(p)));
   row.append(icon('chevron_right', { size: '.8rem', cls: 'prow-chev' }));
   row.onclick = () => openPlayerSheet(p, row);
@@ -434,7 +438,7 @@ function repaintRow(p) {
   const row = document.querySelector(`#rosterlist .rrow[data-id="${CSS.escape(p.id)}"]`);
   if (!row) return;
   const av = row.querySelector('.av'); if (av) av.textContent = initials(p);
-  const nm = row.querySelector('.prow-t'); if (nm) nm.textContent = rowName(p);
+  const nm = row.querySelector('.prow-t'); if (nm) nm.textContent = rowName(p, distinctNames(state.players));
   const lv = row.querySelector('.prow-v'); if (lv) lv.textContent = levelName(p);
 }
 
@@ -449,7 +453,7 @@ function repaintIdent(p) {
   const dialog = $('#sheetPlayer');
   if (!dialog || dialog.dataset.pid !== p.id) return;
   set('#playerIdentAv', 'textContent', initials(p));
-  set('#playerIdentName', 'textContent', rowName(p));
+  set('#playerIdentName', 'textContent', rowName(p, distinctNames(state.players)));
   set('#playerIdentLevel', 'textContent', levelName(p));
 }
 
@@ -458,7 +462,7 @@ function repaintIdent(p) {
    for, and I3 wants a visible button for every drag. Nothing here is a text
    field and there is no remove: C6 puts removal in the row's own detail,
    which is the player sheet. */
-function editRow(p, idx) {
+function editRow(p, idx, names) {
   const row = rowShell('div', 'prow rrow rrow-edit', p);
 
   const ord = el('div', 'rord');
@@ -507,7 +511,7 @@ function editRow(p, idx) {
   ord.append(grip, up, dn);
   row.append(ord);
   row.append(el('span', 'av', initials(p)));
-  row.append(el('span', 'prow-t', rowName(p)));
+  row.append(el('span', 'prow-t', rowName(p, names)));
   return row;
 }
 
@@ -692,37 +696,35 @@ export function openPasteSheet(trigger) {
 
 function showPasteAsk(on) { showAskRow('#pasteAsk', '#pasteFoot', '#pasteKeep', on); }
 
-// #146 item 2: the hint `#pasteNote` shows while the box is empty -- the
-// sheet's original copy, unchanged. Kept as a constant so the two places
-// that need it (the empty branch here, and index.html's initial markup)
-// read the identical sentence.
-const PASTE_HINT = 'One per line. Numbers are read from either end: “12 Maya Webb” or “Maya Webb #12”.';
+// #146 item 2: the hint `#pasteNote` shows while the box is empty --
+// index.html's own initial copy, read off the element once rather than
+// re-typed as a second literal that could drift from it. Lazy, not a
+// module-load-time read: nothing calls `paintPasteConfirm` before the sheet
+// exists, so the first call always sees the sentence exactly as JS-off
+// coach would.
+let pasteHint;
+const pasteHintText = () => pasteHint ??= $('#pasteNote')?.textContent ?? '';
 
 /* #146 items 2/3: repaints the confirm button, the live list note and the
    repeat line together, since a keystroke or a "Drop one" tap changes all
    three at once. `rosterPreview` and `repeatNotice` (roster.js) are the only
    place the list text and repeat wording are computed -- this only lays them
-   out. */
+   out, joining the name list with `joinNames` (state.js) the same way
+   `countLine` (onboarding.js) does. */
 function paintPasteConfirm() {
   const ta = $('#pasteText');
   const entries = parseRoster(ta.value);
   const n = entries.length;
   set('#pasteGo', 'textContent', confirmAddLabel(n));
   const preview = rosterPreview(entries);
-  set('#pasteNote', 'textContent', n ? `${n} player${n === 1 ? '' : 's'}: ${preview.text}.` : PASTE_HINT);
+  set('#pasteNote', 'textContent', n ? `${n} player${n === 1 ? '' : 's'}: ${joinNames(preview.names)}.` : pasteHintText());
 
   const box = $('#pasteRepeats');
   if (!box) return;
   box.textContent = '';
   for (const { name, count } of preview.repeats) {
-    const row = el('div', 'paste-repeat');
-    row.append(el('span', '', repeatNotice(name, count)));
-    const drop = el('button', 'btn ghost sm press', 'Drop one');
-    drop.type = 'button';
-    drop.setAttribute('aria-label', `Drop one ${name}`);
-    drop.onclick = () => { ta.value = dropRepeat(ta.value, name); paintPasteConfirm(); ta.focus(); };
-    row.append(drop);
-    box.append(row);
+    box.append(repeatRow(repeatNotice(name, count), name,
+      () => { ta.value = dropRepeat(ta.value, name); paintPasteConfirm(); ta.focus(); }));
   }
   box.hidden = !preview.repeats.length;
 }

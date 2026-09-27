@@ -2,8 +2,9 @@
    is the Node side of the check, not the browser page, so it needs the same
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
-import { evalIn, TODAY_HOME, toGameOne } from './dom.mjs';
-import { goRich, PLAYERS } from './fixtures.mjs';
+import { evalIn, OVERFLOW_PROBE, TODAY_HOME, WIDTH, HEIGHT, toGameOne } from './dom.mjs';
+import { goRich, LONG_NAME, PLAYERS } from './fixtures.mjs';
+import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, setGame, settle, tap, waitClosed } from './sheet-drive.mjs';
 
 /* #146's own guard (docs/specs/146-roster-in.md's Proof section): the paste
@@ -13,7 +14,10 @@ import { evalJSON, setGame, settle, tap, waitClosed } from './sheet-drive.mjs';
    (item 6). Large text (item 7) is `app-large-text.mjs`'s own states, not
    repeated here; `first-run-flow.mjs`, `who-rows.mjs` and `team-screen.mjs`
    keep whatever of items 2, 4 and 6 their own existing checks already touch
-   (the Proof table's "Existing checks follow any markup move" row).
+   (the Proof table's "Existing checks follow any markup move" row). Item 4's
+   own last bullet -- a suffixed LONG_NAME not clipped in Who's here or Team
+   at 390 or at 320/32 -- is `longNameSuffixOk` below, the one line of item 4
+   the fixture above (Maya Webb/Kai Lee, both short) cannot exercise.
 
    Every expected string below is the spec's own ("What would settle it"),
    never a second computation of what `rosterPreview`/`countLine`/`distinctNames`
@@ -208,6 +212,149 @@ async function suffixFixtureOk(c, ck) {
   await settle(c);
 }
 
+/* Item 4's last bullet, un-checked until now: "At 390 and large text, a
+   suffixed long name (LONG_NAME twice, one with #12) wraps or ellipsizes the
+   way that screen already does. The suffix is never cut off in Who's here or
+   Team, and nothing overflows." `p4`/`p5` (Ana Reyes, Jordan Bell) stand in
+   for the fixture -- orthogonal to `p0`-`p3` above, so this can run whenever
+   relative to `suffixFixtureOk` without either fixture stepping on the
+   other's ids. */
+const LONG_MUTATE = `${BY_ID}
+  byId('p4').name = ${JSON.stringify(LONG_NAME)}; byId('p4').number = '12';
+  byId('p5').name = ${JSON.stringify(LONG_NAME)}; byId('p5').number = '';`;
+
+// The shape of the un-numbered rung -- `deriveShortNames`' own card code,
+// " (MAYW2)" -- is not re-derived here (that is roster.js's job, already
+// covered by test/roster.test.js); only the shape the spec itself gives is
+// asserted: parentheses around capitals and digits.
+const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const LONG_NUMBERED = `${LONG_NAME} #12`;
+const LONG_SHORT_RE = new RegExp(`^${escapeRe(LONG_NAME)} \\([A-Z0-9]+\\)$`);
+
+/* A `Range` over the suffix substring -- the same technique `WORD_RECTS_FN`
+   (row-stack.mjs) uses per word -- because a clipped `.prow-t` still reports
+   its own, unclipped `getBoundingClientRect()` (CSS overflow never shrinks an
+   element's own box); only a `Range`'s rect shows what the browser actually
+   painted. `wraps` (the whole name's own `getClientRects().length`) and
+   `scrollWidth`/`clientWidth` are the other half of "not cut off": either the
+   text wrapped onto more than one line, or it did not need to. */
+function suffixRowProbe(rowSel) {
+  return `(() => {
+    const base = ${JSON.stringify(LONG_NAME)};
+    const rows = [...document.querySelectorAll(${JSON.stringify(rowSel)})];
+    const measure = (row) => {
+      const nameEl = row.querySelector('.prow-t');
+      if (!nameEl) return null;
+      const text = nameEl.textContent || '';
+      const walker = document.createTreeWalker(nameEl, NodeFilter.SHOW_TEXT);
+      const node = walker.nextNode();
+      if (!node || node.data.length <= base.length) return null;
+      const r = document.createRange();
+      r.setStart(node, base.length);
+      r.setEnd(node, node.data.length);
+      const rects = [...r.getClientRects()];
+      const rect = rects.reduce((a, b) => a ? {
+        left: Math.min(a.left, b.left), top: Math.min(a.top, b.top),
+        right: Math.max(a.right, b.right), bottom: Math.max(a.bottom, b.bottom),
+      } : { left: b.left, top: b.top, right: b.right, bottom: b.bottom }, null);
+      const full = document.createRange();
+      full.selectNodeContents(nameEl);
+      const wraps = full.getClientRects().length > 1;
+      const rowRect = row.getBoundingClientRect();
+      return {
+        text, label: row.getAttribute('aria-label'),
+        scrollWidth: nameEl.scrollWidth, clientWidth: nameEl.clientWidth, wraps,
+        rect,
+        rowRect: { left: rowRect.left, top: rowRect.top, right: rowRect.right, bottom: rowRect.bottom },
+      };
+    };
+    const byText = t => rows.find(row => (row.querySelector('.prow-t')?.textContent || '') === t);
+    const numbered = byText(${JSON.stringify(LONG_NUMBERED)});
+    const shorted = rows.find(row => {
+      const t = row.querySelector('.prow-t')?.textContent || '';
+      return t !== ${JSON.stringify(LONG_NUMBERED)} && t.startsWith(base + ' (');
+    });
+    return JSON.stringify({ numbered: numbered ? measure(numbered) : null, shorted: shorted ? measure(shorted) : null });
+  })()`;
+}
+
+function assertSuffixEntry(ck, where, kind, entry, expectLabel) {
+  // rule 2a of /new-guard: a row that was never found measured nothing.
+  if (!ck(!!entry, `${where}: no ${kind} row found for the LONG_NAME fixture -- nothing was measured`)) return;
+  if (kind === 'numbered') {
+    ck(entry.text === LONG_NUMBERED, `${where}: the numbered row reads "${entry.text}", want "${LONG_NUMBERED}"`);
+  } else {
+    ck(LONG_SHORT_RE.test(entry.text), `${where}: the unnumbered row reads "${entry.text}", want it suffixed "${LONG_NAME} (…)"`);
+  }
+  // #146 item 4: Who's here's row carries an aria-label naming the player
+  // (game-setup.js's `whoRow`); Team's row does not (its accessible name
+  // comes from its own visible text, `roster-view.js`'s `playerRow`), so only
+  // the sheet the spec lists with "aria-label" is checked for one.
+  if (expectLabel) ck(entry.label === entry.text, `${where}: the ${kind} row's aria-label is "${entry.label}", want "${entry.text}"`);
+  if (!ck(!!entry.rect, `${where}: the ${kind} row's suffix could not be located in the DOM`)) return;
+  const notClipped = entry.scrollWidth <= entry.clientWidth + 1 || entry.wraps;
+  ck(notClipped, `${where}: the ${kind} row's name is ${entry.scrollWidth}px in a ${entry.clientWidth}px box and does not wrap`);
+  const inside = entry.rect.left >= entry.rowRect.left - 1 && entry.rect.right <= entry.rowRect.right + 1
+    && entry.rect.top >= entry.rowRect.top - 1 && entry.rect.bottom <= entry.rowRect.bottom + 1;
+  ck(inside, `${where}: the ${kind} row's suffix ${JSON.stringify(entry.rect)} is not inside the row's own box ${JSON.stringify(entry.rowRect)}`);
+}
+
+async function longNameSuffixState(c, ck, where) {
+  await toGameOne(c);
+  await tap(c, `document.getElementById('phrasePlayers').click()`);
+  let s = await evalJSON(c, suffixRowProbe('#sheetWhoBody .who-row'));
+  assertSuffixEntry(ck, `${where}, Who's here`, 'numbered', s.numbered, true);
+  assertSuffixEntry(ck, `${where}, Who's here`, 'shorted', s.shorted, true);
+  await tap(c, `document.getElementById('sheetWhoClose')?.click() ?? document.getElementById('sheetWho').close()`);
+  let o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+  ck(!o.pans && !o.worst, `${where}, Who's here: page overflows horizontally (${JSON.stringify(o.worst)})`);
+
+  await tap(c, TODAY_HOME);
+  await tap(c, `document.getElementById('todayTeam').click()`);
+  s = await evalJSON(c, suffixRowProbe('#rosterlist .rrow'));
+  assertSuffixEntry(ck, `${where}, Team`, 'numbered', s.numbered, false);
+  assertSuffixEntry(ck, `${where}, Team`, 'shorted', s.shorted, false);
+  o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+  ck(!o.pans && !o.worst, `${where}, Team: page overflows horizontally (${JSON.stringify(o.worst)})`);
+  await tap(c, TODAY_HOME);
+}
+
+async function longNameSuffixOk(c, ck, origin) {
+  await tap(c, TODAY_HOME);
+  await evalIn(c, setGame(LONG_MUTATE));
+  await settle(c);
+  await longNameSuffixState(c, ck, '390x844');
+
+  // 320/32: `Page.setFontSizes` on a laid-out document reports an unreflowed
+  // width (`app-large-text.mjs`'s own comment), so this reloads once through
+  // `goRich` to let the new size and width take effect together, then
+  // reapplies `LONG_MUTATE` -- a reload wipes it the same way it wipes
+  // `suffixFixtureOk`'s own mutation, which is why that check restores by
+  // hand and this one simply re-mutates after the reload it needs anyway. */
+  try {
+    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
+    await c.send('Emulation.setDeviceMetricsOverride',
+      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    await goRich(c, origin);
+    await evalIn(c, setGame(LONG_MUTATE));
+    await settle(c);
+    await longNameSuffixState(c, ck, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+  } finally {
+    // Never leave the emulated font size or width on for whatever runs next
+    // in this pass or the ones after it (`appLargeTextPass`'s own rule).
+    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
+    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    // `goRich` reloads onto the fixture's own game screen, not Today (the
+    // same reason `pasteSheetOk`'s first line below always clicks
+    // `TODAY_HOME`) -- landing on Today here keeps this check leaving the
+    // browser the way `suffixFixtureOk` above already does, since
+    // `addTeamFlowOk` right after this one reads `.today-game` counts
+    // assuming it starts there.
+    await goRich(c, origin);
+    await tap(c, TODAY_HOME);
+  }
+}
+
 /* Item 6: Add a team as a flow. Opened from the team menu's own entry
    (`teams-view.js`'s `addTeam`, which now only calls `openAddTeam`), not a
    copy of it. The same step 1 body first run uses gets items 1-3's sequence
@@ -302,6 +449,7 @@ export async function rosterInPass(c, origin) {
     await pasteSheetOk(c, ck);
     await blockedAddPlayersOk(c, ck);
     await suffixFixtureOk(c, ck);
+    await longNameSuffixOk(c, ck, origin);
     await addTeamFlowOk(c, ck);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);

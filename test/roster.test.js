@@ -101,14 +101,14 @@ test('a text with a line break never splits on commas, even with commas in it', 
  * (docs/specs/146-roster-in.md, items 2-3). */
 const rp = text => rosterPreview(parseRoster(text));
 
-test('rosterPreview joins the names it was given', () => {
-  assert.equal(rp('Sam\nJo\nKai').text, 'Sam, Jo and Kai');
-  assert.equal(rp('Sam').text, 'Sam');
-  assert.equal(rp('').text, '');
+test('rosterPreview lists the names it was given', () => {
+  assert.deepEqual(rp('Sam\nJo\nKai').names, ['Sam', 'Jo', 'Kai']);
+  assert.deepEqual(rp('Sam').names, ['Sam']);
+  assert.deepEqual(rp('').names, []);
 });
 
 test('rosterPreview writes a numbered player as "Name #12"', () => {
-  assert.equal(rp('12 Maya Webb\n4 Jo').text, 'Maya Webb #12 and Jo #4');
+  assert.deepEqual(rp('12 Maya Webb\n4 Jo').names, ['Maya Webb #12', 'Jo #4']);
 });
 
 test('rosterPreview reports a group of two identical names, not two singles', () => {
