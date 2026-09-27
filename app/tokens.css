@@ -63,8 +63,10 @@
 
   --r-2xs: 4px; --r-xs: 8px; --r-sm: 12px; --r: 16px; --r-lg: 20px; --r-sheet: 28px; --r-full: 999px;
 
+  /* #151 item 5: --spring (the curve .34, 1.42, .64, 1, damping ratio ~0.88)
+     is gone -- M1 forbids a bounce, and every former use now plays --ease
+     instead, or has no transition at all (the M4 targets below). */
   --ease: cubic-bezier(.32,.72,0,1);
-  --spring: cubic-bezier(.34, 1.42, .64, 1);
   --t-tap: 110ms; --t-fast: 180ms; --t: 260ms; --t-slow: 420ms;
 
   /* surfaces: neutral gray, layered, low-contrast borders (Graphite, #21) */
@@ -166,15 +168,40 @@
   --tint-soft: rgba(28, 28, 30, .10);
   --tint-line: rgba(28, 28, 30, .32);
   --phrase: #1C1C1E;
-  --phrase-line: rgba(28, 28, 30, .32);
+  /* #151 item 2: at .32 alpha this measured 2.00:1 against --bg in light
+     mode, under the 3:1 floor a decorative underline needs. .5 clears it
+     (3.22:1) without changing the underline's color, only its opacity; dark
+     mode (.4 alpha, 3.55:1) already cleared 3:1 and is unchanged. */
+  --phrase-line: rgba(28, 28, 30, .5);
 
-  --ok: #1C7548; --ok-soft: rgba(28, 117, 72, .11);
+  /* #151 item 1: light --ok on --ok-soft blended over --bg (the ground
+     `.gm-p .mn .tag.in` actually sits on in bench mode) measured 4.47:1,
+     under the 4.5:1 floor test/contrast.test.js holds every soft tint to once
+     --bg joins --surface as a checked ground. Lightening the tint (.11 -> .08)
+     clears it (4.66:1) without darkening --ok itself, which is also used as
+     plain text elsewhere. */
+  /* #151 item 3: `.btn.danger`'s text token. `--err` itself is not changed --
+     it is used as plain text elsewhere -- so the button's own text color is
+     a token of its own. #fff clears 4.5:1 against both light --err values
+     (6.06:1 base, 8.66:1 more-contrast) and their hover fills; the dark
+     theme's own value is declared in the dark block below, where light
+     --err's near-white text would fail against the lighter, more saturated
+     dark --err. */
+  --on-err: #fff;
+  --ok: #1C7548; --ok-soft: rgba(28, 117, 72, .08);
   --warn: #885900; --warn-soft: rgba(136, 89, 0, .10);
   --err: #BE2519; --err-soft: rgba(190, 37, 25, .10);
   /* Neutral, not blue: the word beside the number already says which end of
      the squad it is (see the comment above .tl-tot .ex in app.css), so info
-     takes the secondary-text color rather than a hue of its own (#21). */
-  --info: #6C6C72; --info-soft: rgba(28, 28, 30, .06);
+     takes the secondary-text color rather than a hue of its own (#21).
+     #151 item 1: --info on --info-soft blended over --bg (`#cardnote`,
+     index.html) measured 4.23:1 in light mode, under the 4.5:1 floor.
+     Keeping --info equal to --muted (the design's preferred fix) does not
+     hold up -- they were already the same value and both fall short -- so
+     --info gets its own, slightly darker value here; --muted is unchanged.
+     5.55:1 over --bg, 6.09:1 over --surface. The @media (prefers-contrast:
+     more) block below keeps its own #4F4F54 (6.60:1 over --bg), unchanged. */
+  --info: #5A5A60; --info-soft: rgba(28, 28, 30, .06);
 
   /* player identity — perceptually even hues, one knob per theme */
   --pc-l: 63%; --pc-c: .145;
@@ -250,6 +277,13 @@
   --phrase: #F4F4F6;
   --phrase-line: rgba(244, 244, 246, .4);
 
+  /* #151 item 3: dark #fff on dark --err measured 2.93:1, and 1.91:1 in dark
+     + more contrast -- both under 4.5:1. A near-black ink (#131314, the same
+     literal as dark --bg-2) clears 4.5:1 against --err (6.34:1), its more-
+     contrast value (9.73:1), and both of their hover fills (4.79:1, 7.21:1)
+     -- #1C1C1E was tried first and cleared --err itself but fell to 4.39:1
+     on the hover fill, just under the floor. */
+  --on-err: #131314;
   --ok: #2FAB6D; --ok-soft: rgba(47, 171, 109, .13);
   --warn: #C68C1D; --warn-soft: rgba(198, 140, 29, .13);
   --err: #FF6536; --err-soft: rgba(255, 101, 54, .13);

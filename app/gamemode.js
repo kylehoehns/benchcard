@@ -710,7 +710,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
     const going = floor.filter(x => !next.includes(x));
     const coming = next.filter(x => !floor.includes(x));
 
-    nx.append(el('div', 'gm-next-hd', going.length || coming.length ? `Next change at ${at}` : `Next break at ${at}`));
+    nx.append(el('h3', 'gm-next-hd', going.length || coming.length ? `Next change at ${at}` : `Next break at ${at}`));
     if (!going.length && !coming.length) {
       nx.append(el('div', 'gm-next-none', 'Same five stay on.'));
     } else {
@@ -719,7 +719,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
       fitCallRows(rows);
     }
   } else {
-    nx.append(el('div', 'gm-next-hd', 'Last stint'));
+    nx.append(el('h3', 'gm-next-hd', 'Last stint'));
     nx.append(el('div', 'gm-next-none', 'Game ends at 0:00.'));
   }
 
@@ -835,7 +835,7 @@ function gmSlide(el, dir, btn) {
   const done = () => { el.style.transition = ''; el.style.transform = ''; el.style.opacity = ''; el.scrollTop = 0; };
   if (!fxOn) { btn.click(); done(); return; }
   const d = Math.round(el.clientWidth * 0.3);
-  el.style.transition = 'transform 120ms ease-out, opacity 120ms ease-out';
+  el.style.transition = 'transform 120ms var(--ease), opacity 120ms var(--ease)';
   el.style.transform = `translateX(${dir * d}px)`;
   el.style.opacity = '0';
   setTimeout(() => {

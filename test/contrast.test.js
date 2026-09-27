@@ -296,3 +296,73 @@ test('every color\'s label on its own fill, and its fill as text on every ground
   }
   assert.deepEqual(bad, [], bad.join('\n  '));
 });
+
+/* #151 item 1: `test/contrast.test.js:98-115` (the pre-existing "on its own
+ * soft tint" test above) only ever blends a status tint over `--surface` --
+ * `.alert.info` sits directly on the page's `--bg` (`#cardnote`,
+ * index.html:804), and `--info` on `--info-soft` over `--bg` measured 4.23:1
+ * in light mode there, under the 4.5:1 floor every other text token here is
+ * held to. This case adds `--bg` as a second ground beside `--surface`, for
+ * every status color, in every theme -- so a future soft tint that only
+ * clears its floor on one of the two grounds a `.alert` can actually sit on
+ * (a sheet's `--surface`, or the page's own `--bg`) is caught here instead of
+ * shipping quietly like `.alert.info` did. */
+test('every soft status tint, blended over --bg as well as --surface, clears 4.5:1 in every theme', () => {
+  const bad = [];
+  for (const t of THEMES) {
+    for (const g of ['--bg', '--surface']) {
+      const ground = colorOf(t.tokens, g);
+      for (const s of STATUS) {
+        const soft = effective(colorOf(t.tokens, `--${s}-soft`), ground);
+        const fg = effective(colorOf(t.tokens, `--${s}`), soft);
+        const r = contrast(fg, soft);
+        if (r < 4.5 - 1e-9) bad.push(`${t.name}: --${s} on --${s}-soft (over ${g}) is ${r.toFixed(2)}:1, needs >= 4.5:1`);
+      }
+    }
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #151 item 2: `--phrase-line` (the sentence-style underline, app.css:2714)
+ * is Graphite's own value here -- every non-Graphite team color sets it
+ * `transparent` (tokens.css's own comment above the tint blocks says why),
+ * and that non-text case is smoke-tested elsewhere
+ * (scripts/smoke/team-color.mjs's own `--phrase-line: transparent`
+ * assertion, which #151 leaves unchanged). Graphite's underline measured
+ * 2.00:1 against `--bg` in light mode, under WCAG's 3:1 floor for a
+ * non-text/decorative graphic like an underline; dark mode already cleared
+ * it at 3.55:1. */
+test('the phrase underline clears 3:1 against --bg in light and dark, base and more-contrast', () => {
+  const bad = [];
+  for (const t of THEMES) {
+    const bg = colorOf(t.tokens, '--bg');
+    const line = effective(colorOf(t.tokens, '--phrase-line'), bg);
+    const r = contrast(line, bg);
+    if (r < 3 - 1e-9) bad.push(`${t.name}: --phrase-line on --bg is ${r.toFixed(2)}:1, needs >= 3:1`);
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #151 item 3: `.btn.danger` (app.css:285) painted the literal `#fff` on
+ * `--err`, which measured 2.93:1 in dark mode and 1.91:1 in dark + more
+ * contrast -- `--err` itself is a text color elsewhere and is not changed
+ * (item 3's own words), so the fix is a new token, `--on-err`, with its own
+ * value per theme. The hover fill (`.btn.danger:hover`, app.css:286) is
+ * `color-mix(in srgb, var(--err) 86%, #000)` -- a straight linear mix toward
+ * black in sRGB space, reproduced here by the same arithmetic the CSS spec
+ * defines for `color-mix(in srgb, …)`, not by re-reading app.css's rule. */
+const mixToBlack = (c, pct) => ({ r: c.r * pct, g: c.g * pct, b: c.b * pct, a: 1 });
+
+test('--on-err on --err, and on its hover fill, clears 4.5:1 in every theme', () => {
+  const bad = [];
+  for (const t of THEMES) {
+    const err = colorOf(t.tokens, '--err');
+    const onErr = colorOf(t.tokens, '--on-err');
+    const r1 = contrast(onErr, err);
+    if (r1 < 4.5 - 1e-9) bad.push(`${t.name}: --on-err on --err is ${r1.toFixed(2)}:1, needs >= 4.5:1`);
+    const hoverErr = mixToBlack(err, 0.86);
+    const r2 = contrast(onErr, hoverErr);
+    if (r2 < 4.5 - 1e-9) bad.push(`${t.name}: --on-err on --err's hover fill is ${r2.toFixed(2)}:1, needs >= 4.5:1`);
+  }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});

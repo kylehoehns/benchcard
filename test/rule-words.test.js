@@ -175,7 +175,7 @@ test('the "force pairs" switch names the Together rule by its KINDS label', () =
    back in it. */
 const helpRules = (() => {
   const html = read('app/index.html').replace(/<!--[\s\S]*?-->/g, '');
-  const start = html.indexOf('<h4 class="help-h">Rules</h4>');
+  const start = html.indexOf('<h3 class="help-h">Rules</h3>');
   assert.ok(start > 0, 'the help sheet lost its Rules heading');
   const end = html.indexOf('class="help-h"', start + 30);
   return html.slice(start, end);

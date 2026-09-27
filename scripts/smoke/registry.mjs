@@ -93,6 +93,10 @@ import { sheetFamilyPass } from './sheet-family.mjs';
 import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
 import { teamScreenPass } from './team-screen.mjs';
 import { addGameFlowPass } from './add-game-flow.mjs';
+import { m4InstantPass } from './m4-instant.mjs';
+import { headingOutlinePass } from './heading-outline.mjs';
+import { forcedColorsPass } from './forced-colors.mjs';
+import { landscapeA11yPass } from './landscape-a11y.mjs';
 import { firstRunPass } from './first-run-flow.mjs';
 import { rosterInPass } from './roster-in.mjs';
 import { flowInsetPass } from './flow-inset.mjs';
@@ -340,6 +344,27 @@ export const ROWS = Object.freeze([
   // above does after emptying the roster.
   { id: 'addgameflow', name: 'add a game: three steps', selectable: true, setup: 'rich',
     run: ctx => addGameFlowPass(ctx.c, ctx.origin) },
+  // #151 item 6 (M4): the switch knob and a player chip avatar change state
+  // with no transition -- see m4-instant.mjs.
+  { id: 'm4instant', name: 'M4: the switch knob and a player chip avatar change state instantly', selectable: true, setup: 'rich',
+    run: ctx => m4InstantPass(ctx.c, ctx.origin) },
+  // #151 item 4: every screen's accessible heading outline starts at one h1
+  // and never skips a level, and each open dialog's own outline starts at
+  // h2 -- see heading-outline.mjs.
+  { id: 'headingoutline', name: 'heading outline: one h1 per screen, no skipped levels, dialogs start at h2', selectable: true, setup: 'rich',
+    run: ctx => headingOutlinePass(ctx.c, ctx.origin) },
+  // #151 item 7: under forced colors, the selected/on control on Today, the
+  // game screen and bench mode has a border/outline that differs from the
+  // unselected one, and timeline blocks keep a border -- see
+  // forced-colors.mjs.
+  { id: 'forcedcolors', name: 'forced colors: selected/on differs from unselected, timeline blocks keep a border', selectable: true, setup: 'rich',
+    run: ctx => forcedColorsPass(ctx.c, ctx.origin) },
+  // #151 item 8: at 844x390, both landscape blocks are live (a rule from
+  // each computes differently than at 390x844), no sideways scroll, and
+  // bench mode's step buttons stay inside the viewport -- see
+  // landscape-a11y.mjs.
+  { id: 'landscapea11y', name: 'landscape (844x390): both landscape blocks are live, no sideways scroll, gm-nav stays inside', selectable: true, setup: 'rich',
+    run: ctx => landscapeA11yPass(ctx.c, ctx.origin) },
   // #36's own guard (see docs/specs/36-first-run.md's Proof section): the
   // welcome screen, all three first-run steps, every way out (Back, the
   // cancel gesture, discard, the sample) and finishing onto the tour and the

@@ -15,7 +15,10 @@ import {
  *      in every block, and --accent-soft/--accent-line unmoved;
  *   3. ok/warn/err distinct from each other and from ink, not gray, and each
  *      still reads as its own hue (green/amber/red);
- *   4. --info === --muted and --info-soft neutral, in every block;
+ *   4. --info-soft neutral, in every block (#151 item 1 gives light --info
+ *      its own contrast-safe value rather than reusing --muted -- --info's
+ *      own neutrality is still checked above, with every other non-status,
+ *      non-player token);
  *   5. the player-hue tokens, --av-ring and the formula untouched, and not
  *      quietly re-set by a more-contrast override;
  *   7. --font exact and not overridden by more-contrast; InterVar scoped to
@@ -196,13 +199,9 @@ test('--ok, --warn and --err stay distinct from each other, from --ink, are not 
 
 /* --------------------------------- item 4: info is neutral --------------------------------- */
 
-test('--info equals --muted, and --info-soft is neutral, in every block', () => {
+test('--info-soft is neutral, in every block', () => {
   const bad = [];
   for (const [name, decls] of THEMES) {
-    const info = colorOf(decls, '--info'), muted = colorOf(decls, '--muted');
-    if (info.r !== muted.r || info.g !== muted.g || info.b !== muted.b) {
-      bad.push(`${name}: --info is ${decls['--info']}, --muted is ${decls['--muted']}`);
-    }
     const soft = colorOf(decls, '--info-soft');
     if (spread(soft) > NEUTRAL_TOLERANCE) bad.push(`${name}: --info-soft (${decls['--info-soft']}) is not neutral, spread ${spread(soft)}`);
   }

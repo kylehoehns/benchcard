@@ -14,7 +14,7 @@
    app.js hands that in through `initTimeline` for the same reason
    `initGameMode` takes `render`. */
 import { fmtClock, fmtMinutes } from './engine.js';
-import { riseIn, popIn, countTo, enabled as fxOn } from './fx.js';
+import { riseIn, popIn, countTo, enabled as fxOn, EASE } from './fx.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
@@ -94,7 +94,7 @@ function runsFor(stints, id, starts) {
  *
  * translateX is a percentage of the block's own (new) width, so the inverse
  * needs no pixel measurement and no forced reflow. */
-const BLK_MS = 420, BLK_EASE = 'cubic-bezier(.22,.61,.36,1)';
+const BLK_MS = 420;
 
 function flipFrom(l0, w0, l1, w1) {
   if (!fxOn || !Number.isFinite(l0) || !Number.isFinite(w0) || w0 <= 0 || w1 <= 0) return null;
@@ -104,13 +104,13 @@ function flipFrom(l0, w0, l1, w1) {
 
 function blockMove(b, from) {
   b.getAnimations().forEach(a => a.cancel());
-  b.animate([{ transform: from }, { transform: 'none' }], { duration: BLK_MS, easing: BLK_EASE });
+  b.animate([{ transform: from }, { transform: 'none' }], { duration: BLK_MS, easing: EASE });
 }
 
 function blockIn(b) {
   if (!fxOn) return;
   const a = b.animate([{ transform: 'scaleX(0)', opacity: 0 }, { transform: 'none', opacity: 0.92 }],
-    { duration: BLK_MS, easing: BLK_EASE, fill: 'forwards' });
+    { duration: BLK_MS, easing: EASE, fill: 'forwards' });
   a.finished.then(() => { b.style.transform = ''; b.style.opacity = ''; a.cancel(); }, () => {});
 }
 
@@ -121,7 +121,7 @@ function blockOut(b) {
   b.classList.add('gone');
   b.getAnimations().forEach(a => a.cancel());
   const a = b.animate([{ transform: 'none', opacity: 0.92 }, { transform: 'scaleX(0)', opacity: 0 }],
-    { duration: BLK_MS, easing: BLK_EASE, fill: 'forwards' });
+    { duration: BLK_MS, easing: EASE, fill: 'forwards' });
   a.finished.then(() => b.remove(), () => {});
   setTimeout(() => b.remove(), BLK_MS + 200);
 }
@@ -474,5 +474,5 @@ function renderPinned(names, p, stints, mins, starts) {
   }
 
   row.after(host);
-  popIn(host, { stiffness: 380, damping: 32 });
+  popIn(host);
 }
