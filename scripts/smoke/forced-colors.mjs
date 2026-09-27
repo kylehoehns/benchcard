@@ -1,5 +1,5 @@
-import { evalIn, TODAY_HOME } from './dom.mjs';
-import { tap, evalJSON } from './sheet-drive.mjs';
+import { evalIn, TODAY_HOME, computedStyle } from './dom.mjs';
+import { tap } from './sheet-drive.mjs';
 import { goRich } from './fixtures.mjs';
 
 /* #151 item 7: forced colors mode strips most author colors down to a small
@@ -24,21 +24,19 @@ import { goRich } from './fixtures.mjs';
  *     reached the same way `overlay.mjs`'s "game mode, swap picker" state
  *     already does.
  */
-const PAIR_JS = (onSel, offSel) => `JSON.stringify((() => {
-  const on = document.querySelector(${JSON.stringify(onSel)});
-  const off = document.querySelector(${JSON.stringify(offSel)});
-  if (!on || !off) return null;
-  const read = el => {
-    const cs = getComputedStyle(el);
-    return { outlineStyle: cs.outlineStyle, outlineWidth: cs.outlineWidth, borderWidth: cs.borderWidth, borderStyle: cs.borderStyle };
-  };
-  return { on: read(on), off: read(off) };
-})())`;
+// #145 item 8's `computedStyle(c, sel, props)` (dom.mjs) already probes one
+// selector's computed style and returns null when nothing matches -- reused
+// here for both the on/off pair and the timeline block's border, rather than
+// re-rolling a second `getComputedStyle` probe (m4-instant.mjs's own use is
+// the precedent this follows).
+const PAIR_PROPS = ['outlineStyle', 'outlineWidth', 'borderWidth', 'borderStyle'];
 
-const TL_BLK_BORDER_JS = `JSON.stringify((() => {
-  const b = document.querySelector('.tl-blk');
-  return b ? getComputedStyle(b).borderWidth : null;
-})())`;
+async function readPair(c, onSel, offSel) {
+  const on = await computedStyle(c, onSel, PAIR_PROPS);
+  const off = await computedStyle(c, offSel, PAIR_PROPS);
+  if (!on || !off) return null;
+  return { on, off };
+}
 
 function differs(pair) {
   const { on, off } = pair;
@@ -64,13 +62,13 @@ export async function forcedColorsPass(c, origin) {
     for (const s of STEPS) {
       try {
         await tap(c, s.open);
-        const pair = await evalJSON(c, PAIR_JS(s.onSel, s.offSel));
+        const pair = await readPair(c, s.onSel, s.offSel);
         if (!pair) problems.push(`${s.name}: could not find both a selected/on control and an unselected one`);
         else if (!differs(pair)) problems.push(`${s.name}: the selected/on control's outline/border does not differ from the unselected one`);
         if (s.checkTlBlk) {
-          const bw = await evalJSON(c, TL_BLK_BORDER_JS);
-          if (bw == null) problems.push('the game screen: no .tl-blk found to check its border');
-          else if (parseFloat(bw) <= 0) problems.push(`the game screen: .tl-blk border-width is ${bw}, want a non-zero border`);
+          const blk = await computedStyle(c, '.tl-blk', ['borderWidth']);
+          if (!blk) problems.push('the game screen: no .tl-blk found to check its border');
+          else if (parseFloat(blk.borderWidth) <= 0) problems.push(`the game screen: .tl-blk border-width is ${blk.borderWidth}, want a non-zero border`);
         }
         await tap(c, s.close);
       } catch (e) { throw new Error(`${s.name}: ${e.message.split('\n')[0]}`); }

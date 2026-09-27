@@ -1,4 +1,4 @@
-import { evalIn, TODAY_HOME, setWidth, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, TODAY_HOME, setWidth, WIDTH, HEIGHT, computedStyle } from './dom.mjs';
 import { tap, evalJSON } from './sheet-drive.mjs';
 import { goRich } from './fixtures.mjs';
 
@@ -11,12 +11,15 @@ import { goRich } from './fixtures.mjs';
  * rule is live, not just present in the stylesheet (a check that only read
  * the landscape value once could not tell a live rule from a coincidence).
  */
-const READ_JS = `JSON.stringify((() => {
-  const px = sel => { const el = document.querySelector(sel); return el ? getComputedStyle(el).paddingTop : null; };
-  const pb = sel => { const el = document.querySelector(sel); return el ? getComputedStyle(el).paddingBottom : null; };
-  const h = sel => { const el = document.querySelector(sel); return el ? getComputedStyle(el).height : null; };
-  return { barPt: px('.bar'), wrapPb: pb('.wrap'), gmNavH: h('.gm-nav') };
-})())`;
+// #145 item 8's `computedStyle(c, sel, props)` (dom.mjs) already probes one
+// selector's computed style and returns null when nothing matches -- reused
+// here instead of re-rolling the same three `getComputedStyle` probes.
+async function readLandscape(c) {
+  const bar = await computedStyle(c, '.bar', ['paddingTop']);
+  const wrap = await computedStyle(c, '.wrap', ['paddingBottom']);
+  const nav = await computedStyle(c, '.gm-nav', ['height']);
+  return { barPt: bar ? bar.paddingTop : null, wrapPb: wrap ? wrap.paddingBottom : null, gmNavH: nav ? nav.height : null };
+}
 
 const NAV_RECTS_JS = `JSON.stringify([...document.querySelectorAll('.gm-nav')]
   .filter(el => !el.hidden && getComputedStyle(el).display !== 'none')
@@ -31,19 +34,19 @@ export async function landscapeA11yPass(c, origin) {
 
     // ---- portrait baseline, the game screen (`.bar`/`.wrap`, app.css:4362's block) ----
     await tap(c, `$('.today-game').click()`);
-    const portraitGame = await evalJSON(c, READ_JS);
+    const portraitGame = await readLandscape(c);
     await tap(c, `$('#backBtn').click()`);
 
     // ---- portrait baseline, bench mode (`.gm-body`/`.gm-foot`/`.gm-nav`, app.css:1784's block) ----
     await tap(c, `$('#gmOpen').click()`);
-    const portraitBench = await evalJSON(c, READ_JS);
+    const portraitBench = await readLandscape(c);
     await tap(c, `$('#gmClose').click()`);
 
     await setWidth(c, 844, 390);
 
     // ---- landscape, the game screen ----
     await tap(c, `$('.today-game').click()`);
-    const landscapeGame = await evalJSON(c, READ_JS);
+    const landscapeGame = await readLandscape(c);
     const gameScrollWidth = await evalIn(c, 'document.documentElement.scrollWidth');
     if (gameScrollWidth > 844) problems.push(`the game screen: scrollWidth is ${gameScrollWidth}, want <= 844`);
     if (landscapeGame.barPt === portraitGame.barPt) problems.push(`app.css:4362's block: .bar's padding-top is still ${landscapeGame.barPt} in landscape, want it to differ from portrait's ${portraitGame.barPt}`);
@@ -52,7 +55,7 @@ export async function landscapeA11yPass(c, origin) {
 
     // ---- landscape, bench mode ----
     await tap(c, `$('#gmOpen').click()`);
-    const landscapeBench = await evalJSON(c, READ_JS);
+    const landscapeBench = await readLandscape(c);
     const benchScrollWidth = await evalIn(c, 'document.documentElement.scrollWidth');
     if (benchScrollWidth > 844) problems.push(`bench mode: scrollWidth is ${benchScrollWidth}, want <= 844`);
     if (landscapeBench.gmNavH === portraitBench.gmNavH) problems.push(`app.css:1784's block: .gm-nav's height is still ${landscapeBench.gmNavH} in landscape, want it to differ from portrait's ${portraitBench.gmNavH}`);

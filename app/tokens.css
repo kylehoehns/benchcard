@@ -278,12 +278,13 @@
   --phrase-line: rgba(244, 244, 246, .4);
 
   /* #151 item 3: dark #fff on dark --err measured 2.93:1, and 1.91:1 in dark
-     + more contrast -- both under 4.5:1. A near-black ink (#131314, the same
-     literal as dark --bg-2) clears 4.5:1 against --err (6.34:1), its more-
-     contrast value (9.73:1), and both of their hover fills (4.79:1, 7.21:1)
-     -- #1C1C1E was tried first and cleared --err itself but fell to 4.39:1
-     on the hover fill, just under the floor. */
-  --on-err: #131314;
+     + more contrast -- both under 4.5:1. A near-black ink (the same value as
+     dark --bg-2) clears 4.5:1 against --err (6.34:1), its more-contrast
+     value (9.73:1), and both of their hover fills (4.79:1, 7.21:1) -- #1C1C1E
+     was tried first and cleared --err itself but fell to 4.39:1 on the hover
+     fill, just under the floor. Written as var(--bg-2) rather than a second
+     copy of #131314, so the two cannot drift apart. */
+  --on-err: var(--bg-2);
   --ok: #2FAB6D; --ok-soft: rgba(47, 171, 109, .13);
   --warn: #C68C1D; --warn-soft: rgba(198, 140, 29, .13);
   --err: #FF6536; --err-soft: rgba(255, 101, 54, .13);

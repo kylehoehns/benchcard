@@ -196,7 +196,7 @@ body {
   font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
   text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
   background: var(--surface); cursor: pointer;
-  transition: transform 110ms cubic-bezier(.22,.61,.36,1);
+  transition: transform 110ms var(--ease);
 }
 .btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .btn:active { transform: scale(.97); }
@@ -460,7 +460,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
   content: ''; flex: none; margin-left: auto; width: .46rem; height: .46rem;
   border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
   transform: translateY(-.13rem) rotate(45deg);
-  transition: transform 150ms cubic-bezier(.22,.61,.36,1);
+  transition: transform 150ms var(--ease);
 }
 .qa[open] summary::after { transform: translateY(.08rem) rotate(-135deg); }
 .qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }

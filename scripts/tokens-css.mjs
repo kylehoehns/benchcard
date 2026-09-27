@@ -197,9 +197,25 @@ export function extractColors(text) {
   return out;
 }
 
+/* A token whose whole value is `var(--other)` -- nothing else in tokens.css
+ * does this today, so this only follows a single, bare reference (never a
+ * `var(--x, fallback)` or a reference nested inside a longer value); either
+ * of those still falls through to parseColor's own "could not be parsed"
+ * failure below, which is correct until a real use needs more. */
+const VAR_REF = /^var\((--[A-Za-z0-9_-]+)\)$/;
+
 export function colorOf(theme, name) {
-  const raw = theme[name];
+  let raw = theme[name];
   if (raw === undefined) throw new Error(`${name} is not declared in this theme`);
+  const seen = new Set([name]);
+  let m;
+  while ((m = VAR_REF.exec(raw.trim()))) {
+    const ref = m[1];
+    if (seen.has(ref)) throw new Error(`${name}: var() reference cycles back to ${ref}`);
+    seen.add(ref);
+    if (theme[ref] === undefined) throw new Error(`${name}: var(${ref}) -- ${ref} is not declared in this theme`);
+    raw = theme[ref];
+  }
   const c = parseColor(raw);
   if (!c) throw new Error(`${name}: "${raw}" could not be parsed as a color`);
   return c;
