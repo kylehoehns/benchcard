@@ -8,7 +8,7 @@ import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
    stays true no matter what day the harness actually runs on). #133 item 9:
    of the day's two games (`GAMES` below), only Hawks is started, so only
    Hawks files. Everything else about the day is RICH's own fixture,
-   unmodified. The toast's exact wording ("Sat, Jan 6: 1 game saved to the
+   unmodified. The toast's exact wording ("Sat, Jan 6: 1 game filed to the
    season. Ravens was never started, so it was left out.") is hand-computed
    from that same fixed date, the way `en-US` renders `{ weekday: 'short',
    month: 'short', day: 'numeric' }` -- not read back from the app's own
@@ -82,7 +82,7 @@ export async function datedDayPass(c, origin) {
     if (t0 && !/^\d{4}-\d{2}-\d{2}$/.test(t0.days[0].date || '')) problems.push(`the fresh day's date reads "${t0 && t0.days[0].date}", want a real YYYY-MM-DD`);
     if (after.gamesOnToday !== 1) problems.push(`Today shows ${after.gamesOnToday} game(s) after filing, want 1 (the fresh day)`);
 
-    const wantToast = 'Sat, Jan 6: 1 game saved to the season. Ravens was never started, so it was left out.';
+    const wantToast = 'Sat, Jan 6: 1 game filed to the season. Ravens was never started, so it was left out.';
     if (!after.toastText) {
       problems.push('no Undo toast was shown after a past day filed');
     } else if (after.toastText !== wantToast) {
