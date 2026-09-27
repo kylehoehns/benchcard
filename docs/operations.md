@@ -209,7 +209,7 @@ Two things address that, and they are different problems:
   arriving from a dark app does not flash white. and links back
   to the app three times. Each section leads with the artefact it is about, and
   most of those artefacts are **drawn in HTML/CSS against the app's own class
-  names** (`.tl-*`, `.bal-*`, `.rchip`, `.sn-*`) rather than screenshotted:
+  names** (`.tl-*`, `.bal-*`, `.sn-*`) rather than screenshotted:
   correct in both themes for free, sharper than a PNG, and no extra request.
   Only two images remain, both pre-existing. Every `<h2>` carries an id and a
   nine-row **section index** sits under the hero card: the page is ~14,600px at

@@ -153,7 +153,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   rather than *TomÃ¡s*. **The header row is whitelisted by
   `test/leak.test.js`**: this is the one file that gets forwarded, so a column
   added "for completeness" fails the build rather than shipping a child's
-  rotation level to their parents.
+  level to their parents.
 - **And it can plan the next game.** *Even out the season so far*, a switch in
   the Plan sheet's Across the season group (#28), opens each player's minute
   target adjusted by how far off their share of the season they are. It is an
