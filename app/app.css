@@ -2818,14 +2818,26 @@ dialog.bsheet.full { height: 92vh; height: 92dvh; }
    then clips whatever does not fit, the Undo button included. Scoped to
    `:has()` so only a sheet actually holding a toast grows, up to the same
    92vh a `.full` sheet already reaches; one with nothing to show keeps its
-   ordinary height untouched. */
-dialog.bsheet:has(.bsheet-toasts .toast) {
+   ordinary height untouched.
+
+   #148 item 5/8: `.full` is excluded. It already sits at 92vh, the same
+   ceiling this rule was growing a half sheet towards, so a full sheet
+   holding a toast has room for it inside its own body already -- and
+   without `:not(.full)` this same selector's specificity (two classes, from
+   `.bsheet-toasts .toast`) beats `dialog.bsheet.full`'s (one), so `height:
+   auto` shrank a full sheet to ~50vh for as long as the toast lived, the
+   sheet springing back when it left. A live edit on the rule page shows a
+   toast on every tap, so that jump would have fired constantly. */
+dialog.bsheet:not(.full):has(.bsheet-toasts .toast) {
   height: auto; min-height: 50vh; min-height: 50dvh;
   max-height: 92vh; max-height: 92dvh;
 }
 /* Only header, toast and status may grow the sheet: a long body (Who's
    here's list) would otherwise drag it to 92vh at ordinary text. A literal
-   0 basis stays definite under `height: auto`; flex's `0%` does not. */
+   0 basis stays definite under `height: auto`; flex's `0%` does not. Applies
+   to `.full` too (unlike the height rule above): the body still has to
+   shrink to make room and scroll under a toast even though the dialog's own
+   height does not move. */
 dialog.bsheet:has(.bsheet-toasts .toast) .bsheet-body { flex-basis: 0; min-height: 0; }
 /* `showModal()` paints this behind the sheet over the whole viewport, dimming
    the now-inert rotation and card above it. A flat black mix rather than

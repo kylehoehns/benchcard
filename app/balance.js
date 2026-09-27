@@ -62,9 +62,14 @@ export const levelName = p => LEVELS.find(l => l.v === tierOf(p)).label;
    `app/edit.js`) and importing it back from here would close the graph into
    a cycle. */
 let edit = () => {};
+// #148 decision 7/W4: injected the same way `timeline.js`'s `rosterCta`
+// takes `setView` through `initTimeline` -- this module never imports
+// render.js back.
+let setView = () => {};
 
-export function initBalance(editFn) {
+export function initBalance(editFn, setViewFn) {
   edit = editFn;
+  setView = setViewFn;
 }
 
 /* ------------------------------------------------------------------ *
@@ -92,6 +97,12 @@ function noLevelsLine() {
   p.append('Every player is on the same level, so this has nothing to work with yet. Open a player on the ');
   p.append(el('b', '', 'Team'));
   p.append(' page to set their level.');
+  // #148 decision 7/W4: the hint had no way there. #149: "Team" is the
+  // page's own name, the same word the sentence above already uses.
+  const b = el('button', 'btn press', 'Open Team');
+  b.type = 'button';
+  b.onclick = () => setView('team');
+  p.append(b);
   return p;
 }
 

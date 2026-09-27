@@ -96,6 +96,40 @@ export const STATES = [
               (await import('/render.js')).renderAll();
             })();
             $('#sheetPlan').close(); $('#backBtn').click()` },
+  /* #148 item 13: the edit page's own two control shapes -- a stepper (cap)
+     and a two-player picker (together) -- neither of which `plan sheet, a
+     rule` above exercises (it seeds a minimum, same shape as cap). Seeded
+     and cleared the same way. */
+  { name: 'plan sheet, a cap rule',
+    open: `$('.today-game').click(); $('#phraseRules').click();
+           await (async () => {
+             const st = await import('/state.js');
+             st.game().constraints.maxMinutes = { p3: 20 };
+             (await import('/render.js')).renderAll();
+           })();
+           $('#constraints .prow:not(.add-rule)').click();`,
+    shows: '#planSub .pstep-row',
+    close: `await (async () => {
+              const st = await import('/state.js');
+              st.game().constraints.maxMinutes = {};
+              (await import('/render.js')).renderAll();
+            })();
+            $('#sheetPlan').close(); $('#backBtn').click()` },
+  { name: 'plan sheet, a pair rule',
+    open: `$('.today-game').click(); $('#phraseRules').click();
+           await (async () => {
+             const st = await import('/state.js');
+             st.game().constraints.pairs = [['p1', 'p2']];
+             (await import('/render.js')).renderAll();
+           })();
+           $('#constraints .prow:not(.add-rule)').click();`,
+    shows: '#planSub .pick',
+    close: `await (async () => {
+              const st = await import('/state.js');
+              st.game().constraints.pairs = [];
+              (await import('/render.js')).renderAll();
+            })();
+            $('#sheetPlan').close(); $('#backBtn').click()` },
   { name: 'plan sheet, add a rule',
     open: `$('.today-game').click(); $('#phraseRules').click(); $('#constraints .add-rule').click()`,
     shows: '#planAddRuleBtn:not([hidden])',

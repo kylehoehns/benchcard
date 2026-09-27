@@ -15,14 +15,16 @@
  * back into app.js and making the graph circular.
  */
 import { icon } from './icons.js';
-import { el, $ } from './dom.js';
+import { el, $, clone } from './dom.js';
 import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds,
-         ruleItems, removeRule, ruleComplete, keepOnList, EVEN_OUT_DAY_LABEL } from './state.js';
+         ruleItems, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
+         changedRuleToast, removedRuleToast, suppressRotationOffer,
+         EVEN_OUT_DAY_LABEL } from './state.js';
 import { pickFive } from './pills.js';
 import { pushPlanPane, stepperRow } from './game-setup.js';
 import { popPane } from './trap.js';
-import { undoable } from './toast.js';
+import { undoable, showUndo } from './toast.js';
 
 let edit = () => {};
 
@@ -221,26 +223,142 @@ export function renderSeasonAdjust() {
 
 /* ---------------- level 2: a rule's detail ------------------------------ */
 
+/* #148: `ruleItems(g)` names a rule by kind plus whatever tells it apart (an
+ * id, a pair, or nothing for the three single-instance kinds) -- the same
+ * shape `replaceRule` returns as its new item's identity. Finding the fresh
+ * entry this way, rather than building a sentence here, is what keeps the
+ * sentence coming from `ruleItems` alone (Constraints: do not build a second
+ * one). */
+function itemFor(g, ident) {
+  const items = ruleItems(g);
+  if (ident.id != null) return items.find(i => i.kind === ident.kind && i.id === ident.id);
+  if (ident.pair) {
+    return items.find(i => i.kind === ident.kind && i.pair
+      && i.pair[0] === ident.pair[0] && i.pair[1] === ident.pair[1]);
+  }
+  return items.find(i => i.kind === ident.kind);
+}
+
+// The draft Add a rule's own shape needs, seeded from the rule as it is
+// stored right now -- the edit page's starting point.
+function draftFrom(item) {
+  const c = game().constraints;
+  switch (item.kind) {
+    case 'minimum': case 'cap':
+      return { kind: item.kind, id: item.id, minutes: minutesBucket(c, item.kind)[item.id] };
+    case 'together': case 'apart': case 'keepon':
+      return { kind: item.kind, a: item.pair[0], b: item.pair[1] };
+    case 'starts': return { kind: 'starts', ids: [...c.openingFive] };
+    case 'lastq': return { kind: 'lastq', ids: [...c.lastPeriodFive] };
+    case 'rest': return { kind: 'rest', n: c.maxConsecutive };
+    default: return { kind: item.kind };
+  }
+}
+
+// Decision 4: for a minimum or cap, every player who already has that kind
+// of rule is disabled in the picker -- except the one the page is already
+// editing, who keeps their own tile selected.
+function takenFor(item) {
+  if (item.kind !== 'minimum' && item.kind !== 'cap') return new Set();
+  const bucket = minutesBucket(game().constraints, item.kind);
+  return new Set(Object.keys(bucket).filter(id => id !== item.id));
+}
+
 function openRuleDetail(item, idx, trigger) {
   const sub = $('#planSub');
   sub.textContent = '';
-  sub.append(el('p', 'plan-rule-sentence', item.text));
-  if (item.removable) {
-    const grp = el('div', 'pgrp');
-    const rm = el('button', 'prow prow-center prow-danger', 'Remove rule');
-    rm.type = 'button';
-    rm.onclick = () => removeRuleFlow(item, idx);
-    grp.append(rm);
-    sub.append(grp);
-  } else {
+  const sentence = el('p', 'plan-rule-sentence', item.text);
+  sub.append(sentence);
+
+  if (!item.removable) {
     sub.append(el('p', 'pgrp-f', 'Your league minimum. Change it in Settings.'));
+    pushPlanPane(trigger, { title: 'Rule' });
+    return;
   }
+
+  // decisions 2, 3, 5: live edits, a fresh draft each visit, one Undo
+  // snapshot per visit (taken on the first applied change, cleared just by
+  // this page's own closures going away when the coach leaves).
+  let current = item;
+  let eDraft = draftFrom(item);
+  let snap = null;
+
+  const controlsHost = el('div');
+  sub.append(controlsHost);
+  // decision 4: shown only when a pair the coach just picked already
+  // matches another rule of the same kind.
+  const dupMsg = el('p', 'pgrp-f', 'You already have this rule.');
+  dupMsg.hidden = true;
+  sub.append(dupMsg);
+
+  const grp = el('div', 'pgrp');
+  const rm = el('button', 'prow prow-center prow-danger', 'Remove rule');
+  rm.type = 'button';
+  rm.onclick = () => removeRuleFlow(current, idx);
+  grp.append(rm);
+  sub.append(grp);
+
+  function paintControls() {
+    controlsHost.textContent = '';
+    controlsHost.append(kindControls(current.kind, eDraft, {
+      onPick: () => { apply(); paintControls(); },
+      afterStep: apply,
+      taken: takenFor(current),
+    }));
+  }
+
+  // Decision 2/3: every applied change writes straight to the game.
+  // `ruleComplete` (reused, not re-checked a second way) gates it, and a
+  // duplicate pair (Decision 4) is the only other reason `replaceRule`
+  // declines.
+  function apply() {
+    const g = game(), c = g.constraints;
+    dupMsg.hidden = true;
+    if (!ruleComplete(current.kind, eDraft)) return;
+    if (snap === null) snap = clone(state);
+    let result;
+    // #134's own guard: a live rotation change must not compete with the
+    // Undo toast this change is about to show.
+    suppressRotationOffer(() => { result = replaceRule(c, current, eDraft); });
+    if (!result) { dupMsg.hidden = false; return; }
+    const fresh = itemFor(g, result) || result;
+    current = fresh;
+    sentence.textContent = fresh.text;
+    renderConstraints();
+    // `edit('rule')` first: it retires any live toast, so calling it after
+    // `showUndo` would kill the very toast this change just raised.
+    edit('rule');
+    showUndo(changedRuleToast(fresh), snap, refresh);
+  }
+
+  // Undo's own refresh (Design: "repaints the rule rows and edit('rule')s.
+  // If the page is still open, it repaints the page from the restored rule;
+  // if the rule no longer exists, it pops back."). `item` -- the page's
+  // opening identity, not `current` -- is right here: Undo always restores
+  // exactly the state the page opened with.
+  function refresh() {
+    renderConstraints();
+    edit('rule');
+    const g = game();
+    const fresh = itemFor(g, item);
+    if (fresh) {
+      current = fresh;
+      eDraft = draftFrom(fresh);
+      sentence.textContent = fresh.text;
+      dupMsg.hidden = true;
+      paintControls();
+    } else {
+      popPane($('#sheetPlan'));
+    }
+  }
+
+  paintControls();
   pushPlanPane(trigger, { title: 'Rule' });
 }
 
 function removeRuleFlow(item, idx) {
   const g = game(), c = g.constraints;
-  undoable('Rule removed.', () => removeRule(c, item), isUndo => {
+  undoable(removedRuleToast(item), () => removeRule(c, item), isUndo => {
     renderConstraints();
     edit('rule');
     // Only on the way OUT: an undo repaints level 1 in place and the sheet
@@ -312,38 +430,57 @@ function paintKindChips(box) {
   }
 }
 
+/* #148 Constraints (reuse, do not re-derive): Add a rule's own
+ * pickFive/stepperRow calls, for one kind -- same labels, ranges and nouns
+ * -- pulled into the one place both Add a rule (`renderKindBody` below) and
+ * the edit page (`openRuleDetail` above) build a kind's controls from,
+ * rather than two copies of the ranges. `hooks.onPick` runs after a picker
+ * tap; what that means (a full rebuild, as Add a rule's own recursive
+ * `renderKindBody` call does, or something lighter) is the caller's choice.
+ * `hooks.afterStep` is `stepperRow`'s own `afterChange`, called after
+ * `sync()` already updated the digit in place -- rebuilding the picker on
+ * every stepper tap is not needed and not what Add a rule did before this.
+ * `hooks.taken` (decision 4, minimum and cap only) disables players who
+ * already have that kind of rule; every other kind ignores it, the same as
+ * `pickFive` does when `opts.taken` is left empty. */
+function kindControls(kind, draft, hooks = {}) {
+  const { onPick = () => {}, afterStep, taken = new Set() } = hooks;
+  const body = el('div');
+  if (kind === 'minimum' || kind === 'cap') {
+    body.append(pickFive(draft.id ? [draft.id] : [], (id, on) => {
+      draft.id = on ? id : null;
+      onPick();
+    }, { max: 1, replace: true, title: 'Pick a player', taken }));
+    const grp = el('div', 'pgrp');
+    const lo = kind === 'cap' ? 0 : 1;
+    grp.append(stepperRow('Minutes', () => draft.minutes, v => { draft.minutes = v; }, lo, 40, 'minutes', afterStep));
+    body.append(grp);
+  } else if (kind === 'together' || kind === 'apart' || kind === 'keepon') {
+    body.append(pickFive([draft.a, draft.b].filter(Boolean), (id, on) => {
+      if (on) { if (!draft.a) draft.a = id; else if (!draft.b) draft.b = id; }
+      else if (draft.a === id) { draft.a = draft.b; draft.b = null; }
+      else if (draft.b === id) draft.b = null;
+      onPick();
+    }, { max: 2, title: 'Pick two players' }));
+  } else if (kind === 'starts' || kind === 'lastq') {
+    body.append(pickFive(draft.ids || [], (id, on) => {
+      draft.ids = on ? [...(draft.ids || []), id] : (draft.ids || []).filter(x => x !== id);
+      onPick();
+    }, { max: 5, title: 'Pick up to five' }));
+  } else if (kind === 'rest') {
+    const grp = el('div', 'pgrp');
+    grp.append(stepperRow('Stints in a row', () => draft.n, v => { draft.n = v; }, 1, 4, 'stints', afterStep));
+    body.append(grp);
+  }
+  return body;
+}
+
 function renderKindBody() {
   const g = game(), c = g.constraints;
   const body = $('#planKindBody');
   if (!body) return;
   body.textContent = '';
-
-  if (draft.kind === 'minimum' || draft.kind === 'cap') {
-    body.append(pickFive(draft.id ? [draft.id] : [], (id, on) => {
-      draft.id = on ? id : null;
-      renderKindBody();
-    }, { max: 1, replace: true, title: 'Pick a player' }));
-    const grp = el('div', 'pgrp');
-    const lo = draft.kind === 'cap' ? 0 : 1;
-    grp.append(stepperRow('Minutes', () => draft.minutes, v => { draft.minutes = v; }, lo, 40, 'minutes', syncAddRuleBtn));
-    body.append(grp);
-  } else if (draft.kind === 'together' || draft.kind === 'apart' || draft.kind === 'keepon') {
-    body.append(pickFive([draft.a, draft.b].filter(Boolean), (id, on) => {
-      if (on) { if (!draft.a) draft.a = id; else if (!draft.b) draft.b = id; }
-      else if (draft.a === id) { draft.a = draft.b; draft.b = null; }
-      else if (draft.b === id) draft.b = null;
-      renderKindBody();
-    }, { max: 2, title: 'Pick two players' }));
-  } else if (draft.kind === 'starts' || draft.kind === 'lastq') {
-    body.append(pickFive(draft.ids || [], (id, on) => {
-      draft.ids = on ? [...(draft.ids || []), id] : (draft.ids || []).filter(x => x !== id);
-      renderKindBody();
-    }, { max: 5, title: 'Pick up to five' }));
-  } else if (draft.kind === 'rest') {
-    const grp = el('div', 'pgrp');
-    grp.append(stepperRow('Stints in a row', () => draft.n, v => { draft.n = v; }, 1, 4, 'stints', syncAddRuleBtn));
-    body.append(grp);
-  }
+  body.append(kindControls(draft.kind, draft, { onPick: renderKindBody, afterStep: syncAddRuleBtn }));
 
   const replaces = (draft.kind === 'starts' && c.openingFive.length)
     || (draft.kind === 'lastq' && c.lastPeriodFive.length)
@@ -363,7 +500,7 @@ function syncAddRuleBtn() {
 // Adds [a, b] to a pair list unless some pair already names both -- the same
 // "no duplicate rule" check for `together`, `apart` and `keepon` below.
 const addPairOnce = (list, a, b) => {
-  if (!list.some(pr => pr.includes(a) && pr.includes(b))) list.push([a, b]);
+  if (!pairInList(list, a, b)) list.push([a, b]);
 };
 
 function commitAddRule() {

@@ -415,7 +415,7 @@ function fileOverdueDay(today = new Date()) {
 initToast(renderAll, setView);
 initTeams(renderAll, setView, edit);
 initSeason(renderAll);
-initBalance(edit);
+initBalance(edit, setView);
 initRoster(edit);
 initGameMode(render, (reachedEnd) => { tipAfterGame(reachedEnd); fileOverdueDay(); }, { undoable, flash });
 initTimeline(setView);

@@ -345,6 +345,19 @@ export function ruleItems(g) {
    -- has to think about the absent key. */
 export const keepOnList = c => (c.keepOnFloor || (c.keepOnFloor = []));
 
+/* #148: the two kind-to-storage mappings `removeRule` and `replaceRule` both
+ * need, so the two functions read one answer each rather than two copies
+ * that could drift. `minutesBucket` also gives rules.js's picker (which
+ * disables players who already have a minimum or cap) the same mapping
+ * `replaceRule` uses. */
+export const minutesBucket = (c, kind) => kind === 'minimum' ? c.minMinutes : c.maxMinutes;
+const pairListFor = (c, kind) => kind === 'together' ? c.pairs : kind === 'apart' ? c.avoids : keepOnList(c);
+
+// Whether `pr` names the same two ids as `pair`, in either order -- the
+// duplicate check `removeRule` and `replaceRule` each make against a pair
+// they already have the identity of.
+const samePairAs = pair => pr => pr[0] === pair[0] && pr[1] === pair[1] || pr[0] === pair[1] && pr[1] === pair[0];
+
 /* #28 decision 6/9: deletes exactly the rule an `item` from `ruleItems`
  * names, the same mutation the chip ✕ in rules.js already makes -- moved
  * here so Remove rule (which needs an undoable snapshot taken first) and the
@@ -353,21 +366,69 @@ export const keepOnList = c => (c.keepOnFloor || (c.keepOnFloor = []));
  * deliberate no-op rather than a throw, since a detail page never shows a
  * Remove button for it. */
 export function removeRule(c, item) {
-  const samePair = pr => pr[0] === item.pair[0] && pr[1] === item.pair[1]
-    || pr[0] === item.pair[1] && pr[1] === item.pair[0];
   switch (item.kind) {
-    case 'minimum': delete c.minMinutes[item.id]; break;
-    case 'cap': delete c.maxMinutes[item.id]; break;
-    case 'together': { const i = c.pairs.findIndex(samePair); if (i >= 0) c.pairs.splice(i, 1); break; }
-    case 'apart': { const i = c.avoids.findIndex(samePair); if (i >= 0) c.avoids.splice(i, 1); break; }
-    case 'keepon': { const list = keepOnList(c);
-      const i = list.findIndex(samePair); if (i >= 0) list.splice(i, 1); break; }
+    case 'minimum': case 'cap': delete minutesBucket(c, item.kind)[item.id]; break;
+    case 'together': case 'apart': case 'keepon': {
+      const list = pairListFor(c, item.kind);
+      const i = list.findIndex(samePairAs(item.pair));
+      if (i >= 0) list.splice(i, 1);
+      break;
+    }
     case 'starts': c.openingFive = []; break;
     case 'lastq': c.lastPeriodFive = []; break;
     case 'rest': c.maxConsecutive = 0; break;
     default: break; // 'leagueMinimum', or anything unrecognized: not removable from here
   }
 }
+
+/* #148: whether `list` (`c.pairs`, `c.avoids` or `keepOnList(c)`) already
+ * holds a pair of `a` and `b` in either order -- the exact duplicate check
+ * `addPairOnce` (rules.js) already made for Add a rule, pulled out here so
+ * `replaceRule` below can reuse it rather than a second copy, and
+ * `addPairOnce` itself now calls this instead of holding its own predicate. */
+export const pairInList = (list, a, b) => list.some(pr => pr.includes(a) && pr.includes(b));
+
+/* #148 decisions 1-5: applies a draft in Add a rule's own shape
+ * (`{ kind, id, minutes, a, b, ids, n }`) to an existing rule in place, for
+ * the live edit page. Takes the `item` `ruleItems` produced for the rule
+ * being edited. Reuses `ruleComplete` for completeness (decision 3: a
+ * half-done draft is a no-op) rather than checking a second way; a pair
+ * that already matches another entry in the same list is also a no-op
+ * (decision 4). Returns the new item's identity (kind plus whatever
+ * `ruleItems` needs to find it again -- an id, a pair, or nothing for the
+ * three single-instance kinds) so the caller re-reads the sentence from a
+ * fresh `ruleItems(g)` call instead of building one here; returns false when
+ * nothing changed. */
+export function replaceRule(c, item, draft) {
+  if (!ruleComplete(item.kind, draft)) return false;
+  switch (item.kind) {
+    case 'minimum': case 'cap': {
+      const bucket = minutesBucket(c, item.kind);
+      delete bucket[item.id];
+      bucket[draft.id] = draft.minutes;
+      return { kind: item.kind, id: draft.id };
+    }
+    case 'together': case 'apart': case 'keepon': {
+      const list = pairListFor(c, item.kind);
+      const i = list.findIndex(samePairAs(item.pair));
+      if (i < 0) return false;
+      if (pairInList(list.filter((_, idx) => idx !== i), draft.a, draft.b)) return false;
+      list[i] = [draft.a, draft.b];
+      return { kind: item.kind, pair: list[i] };
+    }
+    case 'starts': c.openingFive = [...draft.ids]; return { kind: 'starts' };
+    case 'lastq': c.lastPeriodFive = [...draft.ids]; return { kind: 'lastq' };
+    case 'rest': c.maxConsecutive = draft.n; return { kind: 'rest' };
+    default: return false;
+  }
+}
+
+/* #148 decision 6: the edit and remove toast copy, both built from the same
+ * `item.text` `ruleItems` already worded -- never a second sentence. `item`
+ * here is whichever `ruleItems(g)` entry names the rule that changed or was
+ * removed. */
+export const changedRuleToast = item => `Changed: ${item.text}`;
+export const removedRuleToast = item => `Removed: ${item.text}`;
 
 /* #28 decision 7: whether a draft is complete enough to enable `Add rule`,
  * for each of the eight kinds. `draft` is the one shape the Add-a-rule page

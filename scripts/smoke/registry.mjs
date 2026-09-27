@@ -87,6 +87,7 @@ import { planControlsPass } from './plan-controls.mjs';
 import { todayGameRowsPass } from './today-game-rows.mjs';
 import { sentenceSheetsPass } from './sentence-sheets.mjs';
 import { planSheetPass } from './plan-sheet.mjs';
+import { ruleEditPass } from './rule-edit.mjs';
 import { sheetSpacingPass } from './sheet-spacing.mjs';
 import { sheetFamilyPass } from './sheet-family.mjs';
 import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
@@ -244,6 +245,12 @@ export const ROWS = Object.freeze([
   // switches, driven with real buttons, keys and pointer events.
   { id: 'plansheet', name: 'plan sheet', selectable: true, setup: 'rich',
     run: ctx => planSheetPass(ctx.c, ctx.origin) },
+  // #148's own guard (see docs/specs/148-edit-rule.md's Proof section):
+  // editing a rule in place, one toast per change, Undo, the sheet holding
+  // still while a toast shows, scroll restore, and the level hint's own
+  // "Open Team" button -- see rule-edit.mjs.
+  { id: 'ruleedit', name: 'edit a rule in place', selectable: true, setup: 'rich',
+    run: ctx => ruleEditPass(ctx.c, ctx.origin) },
   // #73's own guard (see docs/specs/73-sheet-polish.md's Proof section):
   // stepper column equality at 390px and 320px/32px, equal row padding
   // whether a row wraps, the balance value clearing its label, and every
