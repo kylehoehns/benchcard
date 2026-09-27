@@ -34,7 +34,13 @@ export function initRules(editFn) {
 
 /* ---------------- level 1: the rules list and the switch groups -------- */
 
-export function renderConstraints() {
+// `itemsIn`, when given, is a `ruleItems(g)` list the caller already
+// computed -- #148's `apply()`/`refresh()` (below) call this on every
+// stepper tap while a rule's own detail page (level 2) sits on top of it,
+// so recomputing `ruleItems(g)` a second time here just to repaint a level-1
+// list the coach cannot see yet would cost a full rules scan per tap for
+// nothing. Every other caller still passes nothing and gets its own list.
+export function renderConstraints(itemsIn) {
   const g = game(), c = g.constraints;
   const avail = availIds(g);
 
@@ -47,7 +53,7 @@ export function renderConstraints() {
   wrap.append(el('div', 'pgrp-h', 'Rules'));
 
   const box = el('div', 'pgrp');
-  const items = ruleItems(g);
+  const items = itemsIn || ruleItems(g);
   items.forEach((item, idx) => box.append(ruleRow(item, idx)));
 
   const addRow = el('button', 'prow add-rule');
@@ -228,9 +234,10 @@ export function renderSeasonAdjust() {
  * shape `replaceRule` returns as its new item's identity. Finding the fresh
  * entry this way, rather than building a sentence here, is what keeps the
  * sentence coming from `ruleItems` alone (Constraints: do not build a second
- * one). */
-function itemFor(g, ident) {
-  const items = ruleItems(g);
+ * one). Takes the `items` list itself, not `g`: both callers below already
+ * have one on hand (about to hand the same list to `renderConstraints`), and
+ * a second `ruleItems(g)` scan per stepper tap would be pure waste. */
+function itemFor(items, ident) {
   if (ident.id != null) return items.find(i => i.kind === ident.kind && i.id === ident.id);
   if (ident.pair) {
     return items.find(i => i.kind === ident.kind && i.pair
@@ -317,14 +324,21 @@ function openRuleDetail(item, idx, trigger) {
     if (!ruleComplete(current.kind, eDraft)) return;
     if (snap === null) snap = clone(state);
     let result;
-    // #134's own guard: a live rotation change must not compete with the
-    // Undo toast this change is about to show.
+    // This only covers the synchronous `replaceRule` call: `edit('rule')`
+    // below debounces its repaint 140ms out, well after `suppressed` (#134)
+    // has reset to false, so it does nothing to keep a rotation offer from
+    // competing with the toast this change is about to show. `undoable`'s
+    // own wrap (toast.js) has the exact same gap around its debounced
+    // `refresh()` call, so this matches that path rather than fixing
+    // something it does not either -- item 14 (the smoke guard) confirms
+    // the toast survives a part-played game's debounced repaint regardless.
     suppressRotationOffer(() => { result = replaceRule(c, current, eDraft); });
     if (!result) { dupMsg.hidden = false; return; }
-    const fresh = itemFor(g, result) || result;
+    const items = ruleItems(g);
+    const fresh = itemFor(items, result) || result;
     current = fresh;
     sentence.textContent = fresh.text;
-    renderConstraints();
+    renderConstraints(items);
     // `edit('rule')` first: it retires any live toast, so calling it after
     // `showUndo` would kill the very toast this change just raised.
     edit('rule');
@@ -337,10 +351,10 @@ function openRuleDetail(item, idx, trigger) {
   // opening identity, not `current` -- is right here: Undo always restores
   // exactly the state the page opened with.
   function refresh() {
-    renderConstraints();
+    const items = ruleItems(game());
+    renderConstraints(items);
     edit('rule');
-    const g = game();
-    const fresh = itemFor(g, item);
+    const fresh = itemFor(items, item);
     if (fresh) {
       current = fresh;
       eDraft = draftFrom(fresh);

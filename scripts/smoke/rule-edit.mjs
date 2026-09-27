@@ -13,24 +13,15 @@
  * Hana/Ana/Jordan/Sam, from `RICH`'s `PLAYERS`), never rebuilt from
  * `callNames` here. Leaves Hawks exactly as `goRich` set it up (`finally`
  * below reloads it fresh, the way `rotation-undo.mjs` does). */
-import { evalIn, navigateAndWaitForCard } from './dom.mjs';
-import { evalJSON, tap, tapPane, settle, sheetRect, setGame, waitClosed, dragSlow } from './sheet-drive.mjs';
-import { goRich, RICH, partPlayed, seeded } from './fixtures.mjs';
+import { evalIn } from './dom.mjs';
+import { evalJSON, tap, tapPane, settle, sheetRect, setGame, waitClosed, dragSlow, readToastExpr } from './sheet-drive.mjs';
+import { goRich, RICH, partPlayed } from './fixtures.mjs';
 
 // `RICH` (`view: 'games'`, `activeGame: 0`) part-played, same as `goRich`
-// itself lands directly on the Hawks game -- `reloadWithRecord` is the wrong
-// helper here since it waits for `.today-game`, a row this record's own
-// `view` never shows.
-async function goPartPlayed(c, origin) {
-  const record = partPlayed(RICH);
-  await seeded(c, `(() => {
-    localStorage.removeItem('benchcard.v3');
-    localStorage.removeItem('benchcard.v7.bak');
-    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(record))});
-  })()`, async () => {
-    await navigateAndWaitForCard(c, origin + '/index.html');
-  });
-}
+// itself lands directly on the Hawks game -- `goRich`'s own `base` override
+// (#148) is exactly this swap, so item 14's reload reuses it instead of a
+// second near-copy of its seed-and-navigate body.
+const goPartPlayed = (c, origin) => goRich(c, origin, undefined, partPlayed(RICH));
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -44,12 +35,7 @@ const tile = label => `[...document.querySelectorAll('#planSub .plr')].find(b =>
 const openRow = (c, text) => tapPane(c, `document.activeElement.blur(); (${findRow(text)}).click()`);
 const back = c => tapPane(c, `document.getElementById('planBack').click()`);
 
-const readToast = `(() => {
-  const t = document.querySelector('.toast[data-undo]');
-  if (!t) return JSON.stringify({ shown: false });
-  return JSON.stringify({ shown: true, text: t.querySelector('.tmsg')?.textContent ?? null,
-    hasUndo: !!t.querySelector('.tundo'), insideSheet: !!t.closest('#sheetPlan') });
-})()`;
+const readToast = readToastExpr('#sheetPlan');
 
 export async function ruleEditPass(c, origin) {
   const problems = [];

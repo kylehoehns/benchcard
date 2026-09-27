@@ -17,9 +17,10 @@ import { S } from './state-fixture.js';
 test('replaceRule: cap moves minutes to a new player and drops the old key', () => {
   const c = { ...S.emptyConstraints(), maxMinutes: { p3: 20 } };
   const item = { kind: 'cap', id: 'p3' };
-  const result = S.replaceRule(c, item, { id: 'p3', minutes: 24 });
-  assert.deepEqual(c.maxMinutes, { p3: 24 });
-  assert.deepEqual(result, { kind: 'cap', id: 'p3' });
+  const result = S.replaceRule(c, item, { id: 'p4', minutes: 20 });
+  assert.equal('p3' in c.maxMinutes, false);
+  assert.deepEqual(c.maxMinutes, { p4: 20 });
+  assert.deepEqual(result, { kind: 'cap', id: 'p4' });
 });
 
 /* ---------------- half-done: decision 3, a no-op ---------------- */

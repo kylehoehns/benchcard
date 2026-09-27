@@ -384,8 +384,11 @@ export function removeRule(c, item) {
 /* #148: whether `list` (`c.pairs`, `c.avoids` or `keepOnList(c)`) already
  * holds a pair of `a` and `b` in either order -- the exact duplicate check
  * `addPairOnce` (rules.js) already made for Add a rule, pulled out here so
- * `replaceRule` below can reuse it rather than a second copy, and
- * `addPairOnce` itself now calls this instead of holding its own predicate. */
+ * `addPairOnce` itself now calls this instead of holding its own predicate.
+ * `replaceRule` below makes the same check index-aware instead (it has to
+ * exclude the very entry it is about to overwrite), reusing `samePairAs`
+ * rather than this one -- allocating a filtered copy of `list` on every
+ * stepper tap just to hand it to this. */
 export const pairInList = (list, a, b) => list.some(pr => pr.includes(a) && pr.includes(b));
 
 /* #148 decisions 1-5: applies a draft in Add a rule's own shape
@@ -412,7 +415,7 @@ export function replaceRule(c, item, draft) {
       const list = pairListFor(c, item.kind);
       const i = list.findIndex(samePairAs(item.pair));
       if (i < 0) return false;
-      if (pairInList(list.filter((_, idx) => idx !== i), draft.a, draft.b)) return false;
+      if (list.some((pr, idx) => idx !== i && samePairAs([draft.a, draft.b])(pr))) return false;
       list[i] = [draft.a, draft.b];
       return { kind: item.kind, pair: list[i] };
     }
