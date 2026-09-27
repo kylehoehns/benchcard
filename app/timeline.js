@@ -147,14 +147,15 @@ function rosterCta() {
   return e;
 }
 
-/* #29 decision 7: the non-roster branch (a roster exists but the plan is
-   blocked) reads the engine's own first error through `blockedFix`
-   (state.js) rather than re-deriving which sheet fixes what -- Platoon's
-   missing unit and a rules conflict both come out of the same one mapping
-   now, so there is exactly one place that can drift from the engine's codes.
-   The no-roster case (`rosterCta`) is untouched. */
-function timelineEmpty(g, p) {
-  if (noRoster()) return rosterCta();
+/* #29 decision 7 (#149 item 3/W4): the blocked panel's body, reading the
+   engine's own first error through `blockedFix` (state.js) rather than
+   re-deriving which sheet fixes what -- Platoon's missing unit and a rules
+   conflict both come out of the same one mapping now, so there is exactly
+   one place that can drift from the engine's codes. Exported so
+   plan-view.js's Stint by stint can show the same title, message and fix
+   button when the roster exists but the plan is blocked, instead of a second
+   builder or its own plain-text line. */
+export function blockedPanel(p) {
   const box = el('div', 'empty');
   box.append(el('div', 'se-t', BLOCKED_TITLE));
   const fix = blockedFix(p?.issues);
@@ -169,6 +170,13 @@ function timelineEmpty(g, p) {
     box.append(b);
   }
   return box;
+}
+
+/* The no-roster case (`rosterCta`) is untouched -- `blockedPanel` above only
+   ever runs once a roster exists. */
+function timelineEmpty(g, p) {
+  if (noRoster()) return rosterCta();
+  return blockedPanel(p);
 }
 
 /* The name on a timeline row. Full name first, short name only as a fallback

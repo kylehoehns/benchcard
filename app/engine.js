@@ -1378,7 +1378,7 @@ function finish(lineups, ctx, issues, meta) {
     if (over) {
       issues.push({
         severity: 'warn', code: 'SUBS_EXCEEDED', playerIds: [],
-        message: `${over === 1 ? 'One substitution puts' : `${over} substitutions put`} ${worst} players on at once, more than the ${ctx.maxSubs} you asked for — holding to your number would have cost somebody minutes.`,
+        message: `${over === 1 ? 'One break puts' : `${over} breaks put`} ${worst} players on at once, more than the ${ctx.maxSubs} you asked for — holding to your number would have cost somebody minutes.`,
       });
     }
   }

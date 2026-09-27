@@ -53,16 +53,32 @@ test('a real button.tl-name is built with the row, and carries aria-expanded', (
 // #29 fix pass finding 7: the heading itself stopped being a literal here --
 // card.js's own blocked preview needed the identical wording, so it now
 // lives once, as `BLOCKED_TITLE` (state.js), and both read it.
+//
+// #149: the panel itself (title, reason and fix button) moved into its own
+// exported `blockedPanel(p)`, so plan-view.js's roster-exists-but-blocked
+// case can call the same builder instead of carrying a second copy
+// (Surfaces: "app/timeline.js: the blocked panel's body shared with
+// plan-view (export a builder from timelineEmpty, not a copy)"). The wording
+// claims this test makes now belong to `blockedPanel`; `timelineEmpty` is
+// checked separately for still reaching it on the blocked path.
 test('the blocked heading reads BLOCKED_TITLE and reads the reason from blockedFix', () => {
-  const empty = functionBody(src, 'timelineEmpty');
-  assert.match(empty, /\bBLOCKED_TITLE\b/,
+  const panel = functionBody(src, 'blockedPanel');
+  assert.match(panel, /\bBLOCKED_TITLE\b/,
     'the blocked heading must read BLOCKED_TITLE (state.js), not a wording fixed here');
-  assert.ok(lacks(empty, /This plan can't be built/),
-    'the literal must not still be typed out in timelineEmpty');
-  assert.match(empty, /\bblockedFix\(/,
+  assert.ok(lacks(panel, /This plan can't be built/),
+    'the literal must not still be typed out in blockedPanel');
+  assert.match(panel, /\bblockedFix\(/,
     'the reason must come from blockedFix, not a wording fixed here');
-  assert.ok(lacks(empty, /No rotation yet\. Resolve the errors (above|below)\./),
+  assert.ok(lacks(panel, /No rotation yet\. Resolve the errors (above|below)\./),
     'the old fixed wording must not still be present');
+});
+
+test('timelineEmpty reaches blockedPanel on the blocked path, not a copy of its body', () => {
+  const empty = functionBody(src, 'timelineEmpty');
+  assert.match(empty, /\bblockedPanel\(/,
+    'timelineEmpty must call the shared blockedPanel(p) builder rather than inline its body');
+  assert.ok(lacks(empty, /BLOCKED_TITLE/),
+    'the wording must live once, in blockedPanel -- not duplicated in timelineEmpty too');
 });
 
 test('BLOCKED_TITLE is imported from state.js', () => {

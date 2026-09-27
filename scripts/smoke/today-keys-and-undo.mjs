@@ -47,7 +47,7 @@ export async function todayKeysAndUndoPass(c, origin) {
 
   /* Add a game opens the new game's own screen -- through the three-step
      flow (#32), which is what the button does now: the tap opens the dialog
-     and the third step's "Plan it" is what commits the game and opens it.
+     and the third step's "Add game" is what commits the game and opens it.
      The claim this check makes is unchanged; only the path to it is. One
      `step()` per tap, because `step` settles after each and the commit runs
      the dialog's close animation. */
@@ -56,7 +56,7 @@ export async function todayKeysAndUndoPass(c, origin) {
   if (!flowOpenOnAdd) problems.push('Add a game did not open the three-step flow');
   for (let i = 0; i < 3; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
   const onGamesAfterAdd = await onGames();
-  if (!onGamesAfterAdd) problems.push('"Plan it" did not open the new game\'s screen');
+  if (!onGamesAfterAdd) problems.push('"Add game" did not open the new game\'s screen');
   const titleAfterAdd = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
   if (!/Game \d/.test(titleAfterAdd) && !/Hawks|Ravens/.test(titleAfterAdd)) {
     problems.push(`the new game's title reads "${titleAfterAdd}"`);

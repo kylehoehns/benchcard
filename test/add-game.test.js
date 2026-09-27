@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 /* #32 "Add a game in three steps" (docs/specs/32-add-a-game.md), the model
  * half: `sameAsLast()` in state.js -- the "Same as …?" card's two lines --
  * and the draft `newGame(len, lastGame(), settings)` builds, which BOTH
- * "Use it" and "Plan it" commit.
+ * both ways out -- the "Same as …?" card and the last step -- read "Add
+ * game" (#149 item 5).
  *
  * Same shape as `test/sentence.test.js` and `test/plan-sheet.test.js`: the
  * shared document stub and the one-team `withTeam` harness from
@@ -72,7 +73,7 @@ test('with no tip-off the Same as card reads "Same as the last game?", opponent 
 /* ---------------------------- the draft (items 4 and 8) ------------------- */
 
 /* `newGame(len, lastGame(), settings)` is the one call the flow makes, and
-   both "Use it" and "Plan it" commit what it returns (decision 4) -- so what
+   both ways out commit what it returns (decision 4) -- so what
    it copies IS acceptance criterion 4, and this pins it before two buttons
    start depending on it. `newGame`'s own semantics are out of scope for #32
    (Out of scope, last bullet); this is a characterization, and the mutation

@@ -241,7 +241,7 @@ const COPY = {
     `arithmetic allows, worked out before tip-off. Paste your own roster into ` +
     `Benchcard and it prints yours.`,
   caption: (n, f) =>
-    `Each block is one substitution: the clock is time left in the period, and ` +
+    `Each box is one stint: the clock is time left in the period, and ` +
     `the underlined names just came on. ${f.stints} stints, five on the floor, ` +
     `and it cuts out to fit a pocket.`,
   /* The trust line, and the one thing these pages were missing. A coach who

@@ -3,12 +3,13 @@ import { evalJSON, checkTitleFocused, click, closedWithFocus, drag, dragCloseFad
 
 // item 6's second assertion, on top of `statusOk`'s own `planSay`-equality
 // check: all three sheets' status line also has to read either the
-// minutes-each wording or "Plan blocked: ", which #28's Plan sheet does not
-// additionally claim -- see `statusOk`'s own comment (sheet-drive.mjs) for
-// why that check does not bake this in.
+// min-each wording (#149 item 1: "{lo}[–{hi}] min each · {n} change(s)") or
+// start with `BLOCKED_TITLE`, which #28's Plan sheet does not additionally
+// claim -- see `statusOk`'s own comment (sheet-drive.mjs) for why that check
+// does not bake this in.
 const minutesOrBlocked = (r, ck, sel) => ck(
-  /^\d+(\.\d+)? (to \d+(\.\d+)? )?minutes each, \d+ changes?$/.test(r.got) || r.got.startsWith('Plan blocked: '),
-  `${sel} reads "${r.got}", which matches neither the minutes-each wording nor "Plan blocked: "`);
+  /^\d+(\.\d+)?(–\d+(\.\d+)?)? min each · \d+ changes?$/.test(r.got) || r.got.startsWith(r.blockedTitle),
+  `${sel} reads "${r.got}", which matches neither the min-each wording nor "${r.blockedTitle}"`);
 
 /* #27's own guard (docs/specs/27-sentence-and-sheets.md's Proof section): the
  * sentence, and the three sheets its phrases open, driven with the real
@@ -358,9 +359,15 @@ export async function sentenceSheetsPass(c, origin) {
       const ids = s.state.players.slice(4).map(p => p.id);
       for (const id of ids) s.setAvailable(g, id, false);`));
     await settle(c);
-    const blocked = await evalJSON(c, `JSON.stringify(document.getElementById('sheetWhoStatus').textContent)`);
-    ck(typeof blocked === 'string' && blocked.startsWith('Plan blocked: '),
-      `the status line reads "${blocked}" with only 4 players in, want it to start "Plan blocked: "`);
+    const blocked = await evalJSON(c, `(async () => {
+      const s = await import('/state.js');
+      return JSON.stringify({
+        text: document.getElementById('sheetWhoStatus').textContent,
+        blockedTitle: s.BLOCKED_TITLE,
+      });
+    })()`);
+    ck(typeof blocked.text === 'string' && blocked.text.startsWith(blocked.blockedTitle),
+      `the status line reads "${blocked.text}" with only 4 players in, want it to start "${blocked.blockedTitle}"`);
     // restore the roster.
     await evalIn(c, setGame(`const g = s.game();
       for (const p of s.state.players) s.setAvailable(g, p.id, true);`));

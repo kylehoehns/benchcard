@@ -3074,7 +3074,11 @@ dialog.flow .f { text-transform: none; letter-spacing: normal; }
   text-align: left; font: inherit; color: inherit; cursor: pointer;
   margin-top: 1.2rem; padding: .85rem .9rem; border-radius: var(--r);
   background: var(--surface); border: 1px solid var(--line); }
-.flow-card-text { min-width: 0; }
+/* #149: a 12rem basis, not the summary's own width, decides whether the
+   right-hand action wraps under the text. At 390px that keeps "Add game"
+   beside the title even with CI's wider fonts; at large text 12rem is wider
+   than the room left, so it still drops to its own line. */
+.flow-card-text { flex: 1 1 12rem; min-width: 0; }
 .flow-card-t { font-size: var(--fs-body); font-weight: 600; margin: 0; }
 .flow-card-s { font-size: var(--fs-secondary); color: var(--muted); margin: .18rem 0 0; }
 /* "Use it", right-aligned accent text -- the prototype's look. Color only:
@@ -3564,6 +3568,13 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    width and the row wraps, dropping the control to its own full-width line. */
 #view-settings .pgrp .prow { flex-wrap: wrap; }
 #view-settings .pgrp .prow-t { flex-basis: auto; }
+/* #149: "Fair on its own" / "Evening out the season" are longer than the
+   other `.seg.wide` rows' own labels. Equal halves left "Evening out the
+   season" 3px to spare at 390px on macOS, and CI's wider Linux fonts wrapped
+   it. Sizing each button to its label (`flex: 1 1 auto`, spare room shared
+   evenly) gives the long one about 26px to spare instead, without shortening
+   the label the maintainer chose. */
+#seasonDefSeg button { flex: 1 1 auto; }
 /* two kids wearing one number: mark the number, quietly. The row is not the
    error -- the pair is -- so this tints rather than shouts, and the banner
    above the roster is what names them. Since #31 the only jersey-number field

@@ -81,6 +81,6 @@ test('the player sheet keeps the card-name note beside the card-name field', () 
   const after = body.slice(field);
   const nextGroup = after.indexOf('pgrp-h');
   assert.match(after.slice(0, nextGroup < 0 ? after.length : nextGroup),
-    /<p class="note">The card prints a short name/,
+    /<p class="note">What the card prints/,
     'the short-name note left the card-name row it describes');
 });

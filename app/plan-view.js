@@ -20,6 +20,7 @@ import { icon } from './icons.js';
 import { state, plans, dayTotals, game, availIds, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, summaryLine } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
+import { blockedPanel } from './timeline.js';
 
 /* #29 decision 6: replaces the stat tiles. One sentence, read off the
    rotation the coach is actually looking at -- `effectiveMinutes` /
@@ -132,7 +133,10 @@ export function renderPlanTable() {
   const box = $('#plan'); box.textContent = '';
   const p = plans[state.activeGame];
   if (!p || !p.ok) {
-    box.append(el('div', 'empty', noRoster() ? 'No plan yet. Add your roster first.' : 'No plan yet. Resolve the errors first.'));
+    // #149 item 3/W4: the roster-exists-but-blocked case shows the same
+    // panel the timeline shows -- title, first error and fix button, from
+    // `blockedPanel` (timeline.js) -- rather than a second, plain-text line.
+    box.append(noRoster() ? el('div', 'empty', 'No plan yet. Add your roster first.') : blockedPanel(p));
     return;
   }
   const sh = p.shortNames;
@@ -143,7 +147,7 @@ export function renderPlanTable() {
 
   const t = el('table', 'grid');
   const hr = el('tr');
-  for (const h of ['', 'Clock', 'On the floor', 'In', 'Out', 'Sitting']) hr.append(el('th', null, h));
+  for (const h of ['', 'Clock', 'On the floor', 'Comes on', 'Comes off', 'On the bench']) hr.append(el('th', null, h));
   t.append(hr);
   for (const r of stints) {
     const tr = el('tr', r.index && stints[r.index - 1].period !== r.period ? 'period-break' : '');
@@ -186,7 +190,7 @@ export function renderPlanTable() {
          produced. Once a hand swap has moved the minutes they describe a
          rotation that is no longer on screen, and the sentence stops being
          true — drop them rather than restate them wrongly. */
-      (spreadMin === p.spread && p.spreadUnconstrained !== p.spread ? ` (${fmtMinutes(p.spreadUnconstrained)} among unpinned players)` : '') +
+      (spreadMin === p.spread && p.spreadUnconstrained !== p.spread ? ` (${fmtMinutes(p.spreadUnconstrained)} among players without a minimum or cap)` : '') +
       (carrying ? ' · uneven on purpose to balance the day'
         : spreadMin === p.spread && p.minPossibleSpread.exact ? ` · best possible is ${fmtMinutes(p.minPossibleSpread.minutes)}` : '')));
 

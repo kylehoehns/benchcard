@@ -7,12 +7,12 @@ import { checkedTileHasNoRing, exactlyOneTintFill, stepThreeVisuals } from './ad
 /* #32's own guard (docs/specs/32-add-a-game.md, Proof seam 4): "add a game:
    three steps", RICH fixture, 390x844. It settles the acceptance items that
    are claims about the real screen -- 1 (full screen, step count, ✕), 2
-   (Android back), 3 (step 1), 4 ("Use it" copies), 5 (step 2), 6 (step 3), 7
+   (Android back), 3 (step 1), 4 ("Add game" copies), 5 (step 2), 6 (step 3), 7
    (the discard ask) and 9 (the game lands on Today) -- by driving the app
    with real buttons and real keys, the shape `team-screen.mjs` already uses.
 
-   Every expected string here is the spec's own ("New game", "1 of 3", "Who
-   are you playing?", "11 players, 4 × 8, even minutes", "Absent", "Plan it"),
+   Every expected string here is the spec's own ("Add a game", "1 of 3", "Who
+   are you playing?", "11 players, 4 × 8, even minutes", "Absent", "Add game"),
    never a second computation of what the app does. The numbers that are the
    fixture's rather than the spec's -- eleven players, two games already in
    the day -- are read from `fixtures.mjs` or measured before the action, so
@@ -95,7 +95,7 @@ const sameAsText = c => evalJSON(c, `(async () => {
   return JSON.stringify(last.tipoff ? \`Same as \${tipoffLabel(last.tipoff)}?\` : 'Same as the last game?');
 })()`);
 
-/* Item 1: full screen over the chrome, "New game", "1 of 3", a ✕ named
+/* Item 1: full screen over the chrome, "Add a game", "1 of 3", a ✕ named
    "Close" as the first control, and a three-segment progress bar with one
    segment on. */
 async function opensFullScreen(c, ck) {
@@ -108,7 +108,7 @@ async function opensFullScreen(c, ck) {
     `the flow's box is ${Math.round(s.box.width)}×${Math.round(s.box.height)} at `
     + `(${Math.round(s.box.left)}, ${Math.round(s.box.top)}), want the whole ${WIDTH}×${HEIGHT} viewport (C10)`);
   ck(s.overBar === true, 'the app chrome (.bar) is still taking taps with the flow open -- it is not covering it (C10)');
-  ck(s.title === 'New game', `the flow's header reads "${s.title}", want "New game"`);
+  ck(s.title === 'Add a game', `the flow's header reads "${s.title}", want "Add a game"`);
   ck(s.step === '1 of 3', `the step count reads "${s.step}", want "1 of 3"`);
   ck(s.firstControl === 'Close',
     `the first control in the flow is named "${s.firstControl}", want "Close" (N8/C10: ✕ top left)`);
@@ -249,7 +249,7 @@ async function backStepsThrough(c, ck) {
   await realTap(c, '#agNext');
   let s = await flowState(c);
   if (!ck(s.step === '3 of 3', `two taps of Next left the flow on "${s.step}", want "3 of 3"`)) return;
-  ck(s.next === 'Plan it', `step 3's primary button reads "${s.next}", want "Plan it"`);
+  ck(s.next === 'Add game', `step 3's primary button reads "${s.next}", want "Add game"`);
   ck(s.backShown === true, 'step 3 shows no "Back" button -- the gesture has no visible twin (I3)');
 
   await backFromStep(c);
@@ -332,10 +332,10 @@ async function stepOneReads(c, ck) {
   ck(b.text.includes('11 players, 4 × 8, even minutes'),
     `the card's summary line is missing "11 players, 4 × 8, even minutes" (body reads "${b.text.slice(0, 160)}")`);
   // #145 item 4: the card IS the button now, so its accessible name is its
-  // whole text (title, summary and "Use it" together) rather than "Use it"
+  // whole text (title, summary and "Add game" together) rather than "Add game"
   // alone -- a substring match, not the exact-string one this used to be.
-  ck(b.buttons.some(t => t.includes('Use it')),
-    `step 1 offers no button naming "Use it"; its buttons are ${JSON.stringify(b.buttons)}`);
+  ck(b.buttons.some(t => t.includes('Add game')),
+    `step 1 offers no button naming "Add game"; its buttons are ${JSON.stringify(b.buttons)}`);
 }
 
 /* The step 2 grid: one entry per tile, with the accessible name the way a
@@ -428,7 +428,7 @@ async function stepThreeReads(c, ck) {
   if (!ck(s.step === '3 of 3', `Next from step 2 left the flow on "${s.step}"`)) return;
   ck(s.heading === 'How should minutes split?',
     `step 3 asks "${s.heading}", want "How should minutes split?"`);
-  ck(s.next === 'Plan it', `step 3's primary button reads "${s.next}", want "Plan it"`);
+  ck(s.next === 'Add game', `step 3's primary button reads "${s.next}", want "Add game"`);
   // #145 item 7: every segment fills by the last step.
   ck(s.segmentsOn === 3, `at step 3 of 3, ${s.segmentsOn} progress segment(s) are on, want 3`);
 
@@ -456,21 +456,21 @@ const viewState = c => evalJSON(c, `(async () => {
   return JSON.stringify({ view: s.state.view, activeGame: s.state.activeGame });
 })()`);
 
-/* Item 4: "Use it". The copy itself is `newGame`'s, characterized in
+/* Item 4: "Add game" (the "Same as …?" card). The copy itself is `newGame`'s, characterized in
    test/add-game.test.js; what is settled here is that the button really does
    commit that draft and open it. */
-async function useItCopies(c, ck) {
+async function sameAsCardCommits(c, ck) {
   const before = await dayGames(c);
   const prev = before.at(-1);
   await openFlow(c);
   // #145 item 4: the card itself is the button now -- tapping anywhere on
-  // it, not a nested `.btn`, is what "Use it" has to still do.
+  // it, not a nested `.btn`, is what "Add game" has to still do.
   await realTap(c, '#agBody .flow-card');
-  if (!ck(await waitClosed(c, '#addGameFlow'), '"Use it" did not close the flow')) return;
+  if (!ck(await waitClosed(c, '#addGameFlow'), '"Add game" did not close the flow')) return;
 
   const after = await dayGames(c);
   if (!ck(after.length === before.length + 1,
-    `"Use it" left ${after.length} game(s) in the day, want ${before.length + 1}`)) return;
+    `"Add game" left ${after.length} game(s) in the day, want ${before.length + 1}`)) return;
   const made = after.at(-1);
   for (const k of ['periods', 'periodMinutes', 'granMode', 'granValue', 'strategy']) {
     ck(made[k] === prev[k], `the new game's ${k} is ${JSON.stringify(made[k])}, want the last game's ${JSON.stringify(prev[k])}`);
@@ -484,12 +484,12 @@ async function useItCopies(c, ck) {
 
   const v = await viewState(c);
   ck(v.view === 'games' && v.activeGame === after.length - 1,
-    `after "Use it" the app is on "${v.view}" with game ${v.activeGame} open, want the new game on "games"`);
+    `after "Add game" the app is on "${v.view}" with game ${v.activeGame} open, want the new game on "games"`);
 }
 
-/* Items 5 (the tapped tile's id lands in the game) and 6 ("Plan it" commits
+/* Items 5 (the tapped tile's id lands in the game) and 6 ("Add game" commits
    the chosen strategy and the switch's own state). */
-async function planItCommits(c, ck) {
+async function stepThreeCommits(c, ck) {
   const before = (await dayGames(c)).length;
   const players = await roster(c);
   await openFlow(c);
@@ -501,11 +501,11 @@ async function planItCommits(c, ck) {
   await realTap(c, '#agBody [role=radiogroup] [role=radio]:nth-child(3)');
   await realTap(c, '#agBody input[switch]');  // evening out, off
   await realTap(c, '#agNext');
-  if (!ck(await waitClosed(c, '#addGameFlow'), '"Plan it" did not close the flow')) return;
+  if (!ck(await waitClosed(c, '#addGameFlow'), '"Add game" did not close the flow')) return;
 
   const after = await dayGames(c);
   if (!ck(after.length === before + 1,
-    `"Plan it" left ${after.length} game(s) in the day, want ${before + 1}`)) return;
+    `"Add game" left ${after.length} game(s) in the day, want ${before + 1}`)) return;
   const made = after.at(-1);
   ck(made.strategy === want.strat,
     `the new game's strategy is "${made.strategy}", want the "${want.strat}" option that was tapped`);
@@ -514,7 +514,7 @@ async function planItCommits(c, ck) {
     `${players[0].name} was tapped absent on step 2 but is not in the new game's out list`);
   const v = await viewState(c);
   ck(v.view === 'games' && v.activeGame === after.length - 1,
-    `after "Plan it" the app is on "${v.view}" with game ${v.activeGame} open, want the new game on "games"`);
+    `after "Add game" the app is on "${v.view}" with game ${v.activeGame} open, want the new game on "games"`);
 }
 
 /* Item 7: nothing typed is thrown away without being asked about. */
@@ -591,13 +591,13 @@ async function tipoffSetsAndReadsAsLocaleTime(c, ck) {
   await realTap(c, '#agNext');
   await realTap(c, '#agNext');
   await realTap(c, '#agNext');
-  if (!ck(await waitClosed(c, '#addGameFlow'), '"Plan it" did not close the flow after setting a tip-off')) return;
+  if (!ck(await waitClosed(c, '#addGameFlow'), '"Add game" did not close the flow after setting a tip-off')) return;
 
   const after = await dayGames(c);
   if (!ck(after.length === before + 1,
     `setting a tip-off left ${after.length} game(s) in the day, want ${before + 1}`)) return;
   // Not `.at(-1)`: by this point the day also holds two untimed games from
-  // `useItCopies`/`planItCommits` above, and a *timed* new game (#102's own
+  // `sameAsCardCommits`/`stepThreeCommits` above, and a *timed* new game (#102's own
   // sort) lands ahead of them, not after -- so the new game is found by its
   // own label instead of assumed to be last.
   const made = after.find(g => g.label === 'Comets');
@@ -656,8 +656,8 @@ export async function addGameFlowPass(c, origin) {
       await headingDrawsNoRing(c, ck);
       await focusReturnsToTrigger(c, ck);
       await closeChipAndBackChevron(c, ck);
-      await useItCopies(c, ck);
-      await planItCommits(c, ck);
+      await sameAsCardCommits(c, ck);
+      await stepThreeCommits(c, ck);
       await tipoffSetsAndReadsAsLocaleTime(c, ck);
       await discardAsks(c, ck);
       await askDoesNotStrandOverRepaint(c, ck);

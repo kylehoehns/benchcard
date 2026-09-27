@@ -270,7 +270,7 @@ test('fileIfPast: a past day files its solved games under its own date, and open
   assert.equal(t.days[0].date, '2026-09-28', 'the fresh day is stamped with today');
   assert.equal(t.days[0].name, '', 'the fresh day has no name');
   assert.deepEqual(t.days[0].games[0].out, [], 'nobody starts the new day sitting out');
-  assert.match(msg, /2 games saved to the season/);
+  assert.match(msg, /2 games filed to the season/);
 });
 
 test('fileIfPast: a day dated today does not file', () => {
@@ -324,7 +324,7 @@ test('fileIfPast: nothing solved still gets a toast, so a vanished day is never 
 
   const msg = S.fileIfPast(TODAY);
   assert.equal(t.season.games.length, 0);
-  assert.match(msg, /is over\. Started a new day\./);
+  assert.match(msg, /is over\. A new game is ready for today\./);
 });
 
 test('fileIfPast: the toast names the day\'s own weekday, month and day', () => {
@@ -333,14 +333,14 @@ test('fileIfPast: the toast names the day\'s own weekday, month and day', () => 
   // read off the actual calendar, not hand-picked to match the prose.
   const t = setup({ games: 2, date: '2026-09-26', started: true });
   const msg = S.fileIfPast(TODAY);
-  assert.equal(msg, 'Sat, Sep 26: 2 games saved to the season.');
+  assert.equal(msg, 'Sat, Sep 26: 2 games filed to the season.');
   assert.equal(t.season.games.length, 2);
 });
 
 test('fileIfPast: one game files with singular copy', () => {
   setup({ games: 1, date: '2026-09-26', started: true });
   const msg = S.fileIfPast(TODAY);
-  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season.');
+  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season.');
 });
 
 /* ---- #133: a game that was never started is left out of the season ---- */
@@ -357,7 +357,7 @@ test('fileIfPast: a never-started game is skipped and named in the toast', () =>
 
   assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
   assert.deepEqual(t.season.games[0].minutes, eff);
-  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season. Kingsway was never started, so it was left out.');
+  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season. Kingsway was never started, so it was left out.');
 });
 
 test('fileIfPast: an unnamed skipped game reads "Game N"', () => {
@@ -368,7 +368,7 @@ test('fileIfPast: an unnamed skipped game reads "Game N"', () => {
   S.computeAll();
 
   const msg = S.fileIfPast(TODAY);
-  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season. Game 2 was never started, so it was left out.');
+  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season. Game 2 was never started, so it was left out.');
 });
 
 test('fileIfPast: two or more skipped games are counted, not named', () => {
@@ -381,7 +381,7 @@ test('fileIfPast: two or more skipped games are counted, not named', () => {
 
   const msg = S.fileIfPast(TODAY);
   assert.deepEqual(t.season.games.map(g => g.id), ['g0']);
-  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season. 2 games were never started, so they were left out.');
+  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season. 2 games were never started, so they were left out.');
 });
 
 test('fileIfPast: everything skipped still starts a new day, with an empty season', () => {
@@ -390,7 +390,7 @@ test('fileIfPast: everything skipped still starts a new day, with an empty seaso
   const msg = S.fileIfPast(TODAY);
   assert.equal(t.season.games.length, 0);
   assert.equal(t.days[0].date, '2026-09-28', 'the fresh day is dated today');
-  assert.equal(msg, 'Sat, Sep 26 is over. Northgate was never started, so it was left out. Started a new day.');
+  assert.equal(msg, 'Sat, Sep 26 is over. Northgate was never started, so it was left out. A new game is ready for today.');
 });
 
 test('fileIfPast: an unsolved game is not counted as skipped', () => {
@@ -405,7 +405,7 @@ test('fileIfPast: an unsolved game is not counted as skipped', () => {
   assert.equal(S.plans[1].ok, false, 'fixture check: Kingsway does not solve');
 
   const msg = S.fileIfPast(TODAY);
-  assert.equal(msg, 'Sat, Sep 26: 1 game saved to the season.');
+  assert.equal(msg, 'Sat, Sep 26: 1 game filed to the season.');
 });
 
 test('fileIfPast: bench mode opened but still on stint 0 is left out, not counted as played', () => {
@@ -422,7 +422,7 @@ test('fileIfPast: bench mode opened but still on stint 0 is left out, not counte
 
   const msg = S.fileIfPast(TODAY);
   assert.equal(t.season.games.length, 0);
-  assert.equal(msg, 'Sat, Sep 26 is over. Northgate was never started, so it was left out. Started a new day.');
+  assert.equal(msg, 'Sat, Sep 26 is over. Northgate was never started, so it was left out. A new game is ready for today.');
 });
 
 test('fileIfPast: the season used for carryover math counts only the filed game, not the skipped one', () => {

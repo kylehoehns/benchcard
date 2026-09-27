@@ -593,7 +593,7 @@ export async function focusAnnouncePass(c, origin) {
        items 13, 14: plan changes.
        ================================================================ */
     // item 13: a plain Shuffle (not underway, no hand swaps) writes
-    // "New rotation. " + the summary #summary already reads -- never
+    // "Rotation changed. " + the summary #summary already reads -- never
     // recomputed, read live off the DOM right after. RICH's own saved
     // `view: 'games'` with `activeGame: 0` already lands goRich on g0.
     await tap(c, `document.getElementById('regen').click()`);
@@ -602,9 +602,9 @@ export async function focusAnnouncePass(c, origin) {
       live: document.getElementById('regenLive')?.textContent ?? null,
       summary: document.getElementById('summary')?.textContent ?? null,
     })`);
-    if (regen1.live !== `New rotation. ${regen1.summary}`) {
-      problems.push(`item 13: after a plain Shuffle, #regenLive reads ${JSON.stringify(regen1.live)}, want "New rotation. " + the summary (${JSON.stringify(regen1.summary)})`);
-    } else notes.push('item 13: a plain Shuffle writes "New rotation. " plus the current #summary text into #regenLive');
+    if (regen1.live !== `Rotation changed. ${regen1.summary}`) {
+      problems.push(`item 13: after a plain Shuffle, #regenLive reads ${JSON.stringify(regen1.live)}, want "Rotation changed. " + the summary (${JSON.stringify(regen1.summary)})`);
+    } else notes.push('item 13: a plain Shuffle writes "Rotation changed. " plus the current #summary text into #regenLive');
     // a repeat Shuffle re-announces even if the text comes out the same
     // (clear-then-next-frame): poll briefly since it is set one rAF later.
     let sawEmpty = null;
@@ -616,7 +616,7 @@ export async function focusAnnouncePass(c, origin) {
     if (sawEmpty === null) notes.push('item 13: #regenLive was not observed empty between Shuffles -- the clear-then-set race is timing-sensitive; not a hard failure since a second read below still confirms it repopulates');
     await wait(300);
     const regen2 = await evalJSON(c, `JSON.stringify(document.getElementById('regenLive')?.textContent ?? null)`);
-    if (!regen2 || !regen2.startsWith('New rotation.')) problems.push(`item 13: after a second Shuffle, #regenLive reads ${JSON.stringify(regen2)}, want it to still read "New rotation. ..."`);
+    if (!regen2 || !regen2.startsWith('Rotation changed.')) problems.push(`item 13: after a second Shuffle, #regenLive reads ${JSON.stringify(regen2)}, want it to still read "Rotation changed. ..."`);
 
     // item 13: Shuffle clearing hand swaps -> only the existing flash, no
     // second line in #regenLive.

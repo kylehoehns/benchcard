@@ -210,7 +210,7 @@ export function renderSeasonAdjust() {
     const d = a.deficit[id] || 0;
     const li = el('li');
     li.append(el('b', null, `${nm(id)} opens at ${fmtMinutes(t)} min`));
-    li.append(el('span', null, ` · ${fmtMinutes(Math.abs(d))} ${d > 0 ? 'down' : 'up'} on the season`));
+    li.append(el('span', null, ` · ${fmtMinutes(Math.abs(d))} min ${d > 0 ? 'behind' : 'ahead'} on the season`));
     /* A target is an ask, and minutes come in whole stints: 10 minutes of
        4-minute stints is 8 or 12, never 10. Saying so on the row is the same
        promise the budget editor makes -- the coach's number and the plan's

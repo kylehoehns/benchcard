@@ -167,7 +167,7 @@ function renderDemo() {
   const seen = [...new Set(demo.mins)].sort((a, b) => a - b);
   set('#welCap', 'textContent',
     `${NUM_WORD[DEMO_N] || DEMO_N} players, ${seen.join(' or ')} minutes each, `
-    + `${demo.subs} substitutions.`);
+    + `${demo.subs} changes.`);
 }
 
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
@@ -308,7 +308,7 @@ function demoFigure(pane, src, alt, srcset) {
 const CAPS = {
   plan: null,   // written by renderDemo, which is the only thing that knows
   paper: 'The printed card, actual size. Cut it out and put it in your pocket.',
-  screen: 'Bench mode. Minutes played against projected, and the next substitution.',
+  screen: 'Bench mode. Minutes played against projected, and the next change.',
 };
 function showStage(which) {
   for (const [tab, pane, key] of [['#welTabPlan', '#welPanePlan', 'plan'],

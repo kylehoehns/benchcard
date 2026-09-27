@@ -334,7 +334,7 @@ export async function statusMatches(c, statusSel) {
     const p = s.plans[s.state.activeGame];
     const want = s.planSay(g, p);
     const got = document.querySelector(${JSON.stringify(statusSel)})?.textContent || '';
-    return JSON.stringify({ want, got, match: want === got });
+    return JSON.stringify({ want, got, match: want === got, blockedTitle: s.BLOCKED_TITLE });
   })()`);
 }
 
