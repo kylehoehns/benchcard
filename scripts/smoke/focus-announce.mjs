@@ -422,25 +422,29 @@ export async function focusAnnouncePass(c, origin) {
       else notes.push('item 6: tapping a scope button lands focus on that same button');
     }
 
-    // item 9's "no number" clause: mutate one roster player's number away,
-    // find wherever their row lands (floor or bench), confirm the label no
-    // longer leads with a digit.
-    await evalIn(c, `(async () => {
+    // item 9's "no number" clause: take whichever player bench mode shows
+    // first (the fixture's lineup depends on the day it runs, so no fixed
+    // id), clear their number, and confirm the label no longer leads with a
+    // digit.
+    const noNum = await evalJSON(c, `(async () => {
       const s = await import('/state.js');
-      const pl = s.state.players.find(p => p.id === 'p10');
+      const pid = document.querySelector('#gamemode [data-pid]')?.dataset.pid;
+      const pl = pid && s.state.players.find(p => p.id === pid);
+      if (!pl) return JSON.stringify(null);
       pl.number = '';
+      return JSON.stringify({ pid, name: pl.name || 'Unnamed' });
     })()`);
     // gamemode.js exposes no direct re-render hook here; closing and
     // reopening bench mode repaints it off the mutated roster.
     await tap(c, `document.getElementById('gmClose').click()`);
     await tap(c, `document.getElementById('abBench').click()`);
-    const p10Row = await evalJSON(c, `(() => {
-      const row = document.querySelector('[data-pid="p10"]');
+    const noNumRow = noNum && await evalJSON(c, `(() => {
+      const row = document.querySelector('#gamemode [data-pid="${noNum?.pid}"]');
       return JSON.stringify({ found: !!row, label: row ? row.querySelector('.sr-only')?.textContent ?? null : null });
     })()`);
-    if (!p10Row.found) problems.push('item 9: could not find Nia Brooks (p10) on the floor or bench to check the no-number case');
-    else if (!(p10Row.label || '').startsWith('Nia Brooks, ')) {
-      problems.push(`item 9: with no jersey number, the row's label reads ${JSON.stringify(p10Row.label)}, want it to start with "Nia Brooks, " (no leading number)`);
+    if (!noNum || !noNumRow.found) problems.push(`item 9: could not find a player row in bench mode to check the no-number case (${JSON.stringify(noNum)})`);
+    else if (!(noNumRow.label || '').startsWith(`${noNum.name}, `)) {
+      problems.push(`item 9: with no jersey number, the row's label reads ${JSON.stringify(noNumRow.label)}, want it to start with "${noNum.name}, " (no leading number)`);
     } else notes.push('item 9: a player with no jersey number gets a label with no leading number token');
     await tap(c, `document.getElementById('gmClose').click()`);
     await goRich(c, origin);
