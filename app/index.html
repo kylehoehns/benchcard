@@ -259,12 +259,12 @@
     box.id = 'recover';
     box.className = 'wrap';
     box.style.cssText = 'max-width:32rem;padding:2.5rem 1.15rem';
-    box.innerHTML = '<div class="alert error" style="margin-bottom:1.1rem">'
+    box.innerHTML = '<div class="alert error recover-alert">'
       + 'Benchcard could not start.</div>'
       + '<p>Your roster and your season are still saved on this device — the app '
       + 'just failed to draw them. Download a backup first, then reload. If it '
       + 'still will not start, that file restores everything in any browser.</p>'
-      + '<div class="gm-cta" style="margin-top:1.4rem">'
+      + '<div class="gm-cta recover-cta">'
       + '<button class="btn primary press" id="recoverSave" type="button">Download my backup</button>'
       + '<button class="btn press" id="recoverReload" type="button">Reload</button></div>'
       + '<p class="note" id="recoverNote" role="status"></p>';
@@ -387,12 +387,12 @@
      get a dead gray page: tell them why, and send them somewhere that reads
      fine without scripts. -->
 <noscript>
-  <div style="max-width:34rem;margin:3rem auto;padding:1.25rem 1.35rem;border:1px solid var(--line);border-radius:16px;background:var(--surface);font:var(--fs-headline)/1.55 var(--font);color:var(--ink-2)">
+  <div style="max-width:34rem;margin:3rem auto;padding:1.25rem 1.35rem;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);font:var(--fs-headline)/1.55 var(--font);color:var(--ink-2)">
     <h1 class="noscript-h1">Benchcard needs JavaScript</h1>
-    <p style="margin:0 0 .9rem">Benchcard plans youth basketball substitutions and prints them on a
+    <p class="noscript-lede">Benchcard plans youth basketball substitutions and prints them on a
       pocket card. It runs entirely in your browser, with no server doing the work, so it
       needs JavaScript switched on for this site.</p>
-    <p style="margin:0"><a href="./about" style="color:var(--accent)">Read what it does first</a>. That page works without.</p>
+    <p class="noscript-note"><a href="./about" style="color:var(--accent)">Read what it does first</a>. That page works without.</p>
   </div>
 </noscript>
 <div class="app">
@@ -712,7 +712,7 @@
                `#removeGame` keeps its `undoable()`. It shows whenever there
                is a game (#126): the game screen can't be reached without
                one, so there is no count left to guard it on. -->
-          <div class="side-box noprint s-thisgame" style="margin-bottom:.9rem">
+          <div class="side-box noprint s-thisgame">
             <h2 class="side-hd">This game</h2>
             <div class="row">
               <!-- #101: moves the game to another day (`app.js` wires

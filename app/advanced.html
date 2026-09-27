@@ -148,7 +148,7 @@ figure.art { margin: 0 0 1.5rem; }
 figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6rem; }
 .plate-hd {
   font-size: .68rem; font-weight: 680; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--faint); margin: 0 0 .7rem;
+  color: var(--muted); margin: 0 0 .7rem;
 }
 
 /* one miniature track per player, so each split reads as a SHAPE */
@@ -162,7 +162,7 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
   background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .strip .mn { font-size: .7rem; font-weight: 640; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .strip-key { display: flex; justify-content: space-between; font-size: .62rem; font-weight: 660;
-  letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin-bottom: .35rem;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem;
   padding-right: 2.65rem; }
 
 /* the shape control, from the games screen */
@@ -184,8 +184,8 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .rrule + .rrule::before { content: ''; position: absolute; top: 0; left: 0; right: 0;
   height: 1px; background: var(--line); }
 .rrule-t { flex: 1; min-width: 0; }
-.rrule-chev { flex: none; width: .4rem; height: .4rem; border-right: 2px solid var(--faint);
-  border-bottom: 2px solid var(--faint); transform: rotate(-45deg); }
+.rrule-chev { flex: none; width: .4rem; height: .4rem; border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
 
 /* the swap scope row from bench mode. Two of these are modes and the third is
    an action that fires on the tap -- which is why the third is drawn as a
@@ -205,10 +205,10 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .sn-dot { flex: 0 0 auto; width: .62rem; height: .62rem; border-radius: 50%; background: var(--c); }
 .sn-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: .9rem; color: var(--ink); }
-.sn-x { flex: 0 0 auto; font-size: .74rem; color: var(--faint); }
+.sn-x { flex: 0 0 auto; font-size: .74rem; color: var(--muted); }
 .sn-min { flex: 0 0 3.4rem; text-align: right; font-weight: 640; font-size: .9rem;
   font-variant-numeric: tabular-nums; color: var(--ink); }
-.sn-more { padding: .45rem .1rem 0; font-size: .78rem; color: var(--faint); }
+.sn-more { padding: .45rem .1rem 0; font-size: .78rem; color: var(--muted); }
 .switch { display: flex; align-items: center; gap: .62rem; font-size: .88rem; color: var(--ink);
   margin-top: 1.1rem; }
 .switch i { flex: 0 0 auto; width: 2.4rem; height: 1.4rem; border-radius: var(--r-full);

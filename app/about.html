@@ -266,7 +266,7 @@ figure.art.after { margin-top: 1.5rem; }
 figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6rem; }
 .plate-hd {
   font-size: .68rem; font-weight: 680; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--faint); margin: 0 0 .7rem;
+  color: var(--muted); margin: 0 0 .7rem;
 }
 
 /* the rotation-level chooser, as the Team page draws it (A56). The real
@@ -291,7 +291,7 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .lv-key {
   display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .5rem; margin: 0 0 .55rem;
   font-size: .66rem; font-weight: 680; letter-spacing: .09em; text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
 }
 .lv-arrow { flex: 1 1 2rem; height: 1px; background: var(--line-2); min-width: 0; }
 .lv-row {
@@ -344,7 +344,7 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .tl-periods { position: relative; height: 1rem; grid-column: 2; }
 .tl-periods span {
   position: absolute; top: 0; font-size: .62rem; font-weight: 660; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--faint); transform: translateX(.3rem);
+  text-transform: uppercase; color: var(--muted); transform: translateX(.3rem);
 }
 .tl-row { display: grid; grid-template-columns: var(--lab) 1fr var(--tot); gap: .55rem; align-items: center; padding: .11rem 0; }
 .tl-lab { display: flex; align-items: center; gap: .38rem; min-width: 0; }
@@ -378,7 +378,7 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
   background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .strip .mn { font-size: .7rem; font-weight: 640; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .strip-key { display: flex; justify-content: space-between; font-size: .62rem; font-weight: 660;
-  letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin-bottom: .35rem;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem;
   padding-right: 2.65rem; }
 
 /* #150: rule rows, styled like the Rules page's own list -- a hairline
@@ -393,8 +393,8 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .rrule + .rrule::before { content: ''; position: absolute; top: 0; left: 0; right: 0;
   height: 1px; background: var(--line); }
 .rrule-t { flex: 1; min-width: 0; }
-.rrule-chev { flex: none; width: .4rem; height: .4rem; border-right: 2px solid var(--faint);
-  border-bottom: 2px solid var(--faint); transform: rotate(-45deg); }
+.rrule-chev { flex: none; width: .4rem; height: .4rem; border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
 
 /* The card image never grows past its native 331px -- upscaling a photo of
    print is the one thing that makes it look worse than it is. The 2x file in
@@ -458,7 +458,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 .qa summary::-webkit-details-marker { display: none; }
 .qa summary::after {
   content: ''; flex: none; margin-left: auto; width: .46rem; height: .46rem;
-  border-right: 2px solid var(--faint); border-bottom: 2px solid var(--faint);
+  border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
   transform: translateY(-.13rem) rotate(45deg);
   transition: transform 150ms var(--ease);
 }

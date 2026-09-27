@@ -517,10 +517,10 @@ export function closeSheetNow(dialog) {
  *
  * A commit sheet must ask before it throws away text a coach typed (C4), and
  * it cannot ask in a second overlay: `confirmAction` (toast.js) is a
- * `div#confirm` at `z-index: 320`, and a sheet opened with `showModal()` sits
- * in the browser's top layer with everything outside it inert -- so the ask
- * would paint behind the sheet and take no taps. C5 caps the app at one
- * overlay besides.
+ * `div#confirm` at `var(--z-modal)` (320), and a sheet opened with
+ * `showModal()` sits in the browser's top layer with everything outside it
+ * inert -- so the ask would paint behind the sheet and take no taps. C5 caps
+ * the app at one overlay besides.
  *
  * So a dialog opts in to being asked first. The guard returns true for "I
  * have handled this, stay open" (the paste sheet swaps its footer for the ask

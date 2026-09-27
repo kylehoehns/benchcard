@@ -60,6 +60,15 @@ const HOOKS = new Set([
                  // (a `<div>` vs `<button>`, not a CSS switch), and
                  // bench-look.mjs's item 3 still selects unpicked rows
                  // through it.
+  'hint',        // #152: `.block-hd .hint` (the only rule that ever matched
+                 // this class) is gone -- it never matched `#dayhint` anyway
+                 // (outside `.block-hd`, styled by its own id selector).
+                 // index.html still carries the class on that span; it does
+                 // nothing, and removing it is not part of #152.
+  'num',         // #152: `td.num` (the only rule that ever matched this
+                 // class) is gone. timeline.js still builds it, as a
+                 // `tot.querySelector('.num')` hook inside `.tl-tot`, not a
+                 // style.
 ]);
 
 const stripJsComments = (s) =>
@@ -420,4 +429,133 @@ test('the standalone sweep is reading real sheets, not an empty set', () => {
   for (const c of ['paper', 'stint', 'bal-row', 'sn-row', 'seasonadj', 'legend']) {
     assert.ok(!about.defined.has(c), `about.html defines .${c} again -- it moved to advanced.html`);
   }
+});
+
+/* ------------------------------------------------------------------ *
+ * #152: four rule groups neither sweep above can see, because each is
+ * dead by SELECTOR SHAPE rather than by class token -- every class name
+ * involved is genuinely used somewhere else in the shell, just never in
+ * this exact combination. `shellSweep()` reads class tokens, not
+ * compound selectors, and is deliberately generous besides (see the
+ * comment above it), so it calls all four "used" and never will. This
+ * block checks the selector text each rule actually needs, with the most
+ * precise signal available for that shape, and only then checks that the
+ * rule itself is gone.
+ * ------------------------------------------------------------------ */
+
+const stripCssComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
+const appCss = memo(() => stripCssComments(read('app.css')));
+
+test('.switch is never on a real element, so its rule must be gone', () => {
+  /* emitted() reads every precise way a class reaches an element: a literal
+     class="...", el(tag, class), className=, classList.*,
+     setAttribute('class', ...), and the space-fragment concatenation idiom.
+     rules.js calls `input.setAttribute('switch', '')` -- an HTML attribute,
+     not a class -- which none of those patterns match, unlike shellUses()'s
+     deliberately generous whole-string scan a few tests up. */
+  assert.ok(!emitted().has('switch'),
+    '.switch must not be a real class emission, or the assertion below is wrong to make');
+  assert.ok(!/class="[^"]*\bswitch\b/.test(read('index.html')),
+    'no element may carry class="...switch..." or the rule below is reachable');
+  assert.ok(!/\.switch\s*\{|\.switch\s+input\b/.test(appCss()),
+    '.switch and .switch input (unreachable, proven above) must be deleted from app.css');
+});
+
+/* Every (tag, class) pair a real element in the shell can carry together,
+   from static markup and from every `el('tag', 'class string')` call. */
+function tagClassPairs() {
+  const pairs = new Set();
+  for (const m of read('index.html').matchAll(/<([a-zA-Z][\w-]*)\b[^>]*\bclass\s*=\s*["']([^"']*)["']/g)) {
+    const tag = m[1].toLowerCase();
+    for (const c of m[2].split(/\s+/).filter(Boolean)) pairs.add(`${tag}.${c}`);
+  }
+  for (const f of shellScripts()) {
+    const src = stripJsComments(read(f));
+    for (const m of src.matchAll(/\bel\(\s*["']([a-zA-Z][\w-]*)["']\s*,\s*["'`]([^"'`]*)["'`]/g)) {
+      const tag = m[1].toLowerCase();
+      for (const c of m[2].replace(/\$\{[^}]*\}/g, ' ').split(/\s+/).filter(Boolean)) pairs.add(`${tag}.${c}`);
+    }
+  }
+  return pairs;
+}
+
+test('td.num never lands on a real td, so its rule must be gone', () => {
+  const pairs = tagClassPairs();
+  assert.ok(pairs.has('td.per'), 'the pair sweep must see a real tag.class pair, or it proves nothing');
+  assert.ok(!pairs.has('td.num'),
+    'no <td> may carry class="...num..." or the rule below is reachable');
+  assert.ok(!/\btd\.num\b/.test(appCss()),
+    'td.num (unreachable, proven above) must be deleted from app.css');
+});
+
+const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'param', 'source', 'track', 'wbr']);
+
+/* Every place `descendant` (a tag name or a class) sits anywhere inside an
+   element carrying `ancestorClass`, in index.html's own static markup --
+   script tags, style tags and comments cut first, the same as `styled()`
+   above does for the noscript sheet. */
+function nestedUnder(ancestorClass, descendant) {
+  const html = read('index.html')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<script[\s\S]*?<\/script>/g, ' ')
+    .replace(/<style[\s\S]*?<\/style>/g, ' ');
+  const stack = [];
+  const hits = [];
+  for (const m of html.matchAll(/<\/?([a-zA-Z][\w-]*)\b([^>]*)>/g)) {
+    const tag = m[1].toLowerCase();
+    if (m[0].startsWith('</')) {
+      for (let i = stack.length - 1; i >= 0; i--) {
+        if (stack[i].tag === tag) { stack.length = i; break; }
+      }
+      continue;
+    }
+    const classAttr = (m[2].match(/\bclass\s*=\s*["']([^"']*)["']/) || [, ''])[1];
+    const classes = classAttr.split(/\s+/).filter(Boolean);
+    const hasAncestor = stack.some((s) => s.classes.includes(ancestorClass));
+    if (hasAncestor) {
+      if (descendant.tag && tag === descendant.tag) hits.push(`${tag} inside .${ancestorClass}`);
+      if (descendant.cls && classes.includes(descendant.cls)) hits.push(`.${descendant.cls} inside .${ancestorClass}`);
+    }
+    if (!VOID_TAGS.has(tag) && !m[0].endsWith('/>')) stack.push({ tag, classes });
+  }
+  return hits;
+}
+
+/* This walker only reads static markup, so if a script ever starts building
+   'block-hd' or 'hint' dynamically, the nesting checks below would go stale
+   silently. This is the same class-emission idiom emitted() reads, run over
+   the shell scripts only (index.html's own static markup is what the walker
+   above already covers). */
+function jsBuilds(name) {
+  return shellScripts().some((f) => {
+    const src = stripJsComments(read(f));
+    return [
+      new RegExp(`\\bel\\(\\s*["'][^"']*["']\\s*,\\s*["'\`][^"'\`]*\\b${name}\\b[^"'\`]*["'\`]`),
+      new RegExp(`className\\s*=\\s*["'\`][^"'\`]*\\b${name}\\b[^"'\`]*["'\`]`),
+      new RegExp(`classList\\.(?:add|remove|contains|replace|toggle)\\([^)]*["']${name}["']`),
+      new RegExp(`setAttribute\\(\\s*["']class["']\\s*,\\s*["'\`][^"'\`]*\\b${name}\\b`),
+    ].some((re) => re.test(src));
+  });
+}
+
+test('.block-hd\'s h3 and .hint children are unreachable, so their rules must be gone', () => {
+  // Positive controls: the walker can see real nesting, or it proves nothing.
+  assert.ok(nestedUnder('block', { tag: 'h2' }).length > 0,
+    'the tree walker must see a real ancestor/tag pair, or it proves nothing');
+  assert.ok(nestedUnder('block', { cls: 'hint' }).length > 0,
+    'the tree walker must see #dayhint nested in .block, or it proves nothing');
+
+  assert.deepEqual(nestedUnder('block-hd', { tag: 'h3' }), [], 'no real h3 sits inside .block-hd');
+  assert.deepEqual(nestedUnder('block-hd', { cls: 'hint' }), [], 'no real .hint sits inside .block-hd');
+
+  assert.ok(!jsBuilds('block-hd'),
+    'block-hd is now built by a script -- the static-only nesting check above no longer proves anything');
+  assert.ok(!jsBuilds('hint'),
+    'hint is now built by a script -- the static-only nesting check above no longer proves anything');
+
+  assert.ok(!/\.block-hd\s+h3\b/.test(appCss()),
+    '.block-hd h3 (unreachable, proven above) must be deleted from app.css');
+  assert.ok(!/\.block-hd\s+\.hint\b/.test(appCss()),
+    '.block-hd .hint (unreachable, proven above) must be deleted from app.css');
 });

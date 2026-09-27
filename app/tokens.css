@@ -62,6 +62,15 @@
   --fs-footnote: .8125rem;
 
   --r-2xs: 4px; --r-xs: 8px; --r-sm: 12px; --r: 16px; --r-lg: 20px; --r-sheet: 28px; --r-full: 999px;
+  /* #152: 9px matches no step on the scale above; named because `.seg` and
+     `.pstep` share it as the segmented-control track shape. */
+  --r-seg: 9px;
+
+  /* #152: spacing (L6's 4/8/12/16/24/32 scale) and stacking layers, named for
+     what sits at each one. Each layer keeps the z-index it has today so
+     nothing restacks. */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-6: 24px; --sp-8: 32px;
+  --z-bar: 50; --z-actionbar: 60; --z-gm: 200; --z-toasts: 250; --z-tour: 310; --z-modal: 320;
 
   /* #151 item 5: --spring (the curve .34, 1.42, .64, 1, damping ratio ~0.88)
      is gone -- M1 forbids a bounce, and every former use now plays --ease
@@ -74,10 +83,10 @@
   --bg-2: #F0F0F2;
   --surface: #FFFFFF;
   /* #69 decision 11 tried moving this to the prototype's own #E8E8ED/#2C2C2F:
-     --muted, --faint and --info on that light value all clear 4.5:1 by less
-     than the 4.5:1 test/contrast.test.js requires (measured 4.27:1, 4.33:1,
-     4.27:1), and the `more contrast` media step misses 7:1 too. Left here,
-     unweakened, per the decision's own fallback. */
+     --muted and --info on that light value both clear 4.5:1 by less than the
+     4.5:1 test/contrast.test.js requires (measured 4.27:1, 4.27:1), and the
+     `more contrast` media step misses 7:1 too. Left here, unweakened, per the
+     decision's own fallback. */
   --surface-2: #F6F6F8;
   --surface-3: #F1F1F3;
   /* #69 (restyle Today and the game screen): the mini rotation rows' and the
@@ -89,9 +98,9 @@
      `--surface-2`: that is #F6F6F8 here, which is LIGHTER than `--bg`, so the
      pill vanished into the page in light mode and only the raised "on" chip
      read as anything at all. Decision 11 of #69 tried moving `--surface-2`
-     itself to this value and could not -- `--muted`, `--faint` and `--info`
-     all land on `--surface-2` elsewhere and none of them clears 4.5:1 on
-     #E8E8ED. A token of its own, carrying only the two colors a segmented
+     itself to this value and could not -- `--muted` and `--info` both land on
+     `--surface-2` elsewhere and neither clears 4.5:1 on #E8E8ED. A token of
+     its own, carrying only the two colors a segmented
      control actually paints, has no such problem: see `.seg` in app.css,
      whose labels are `--ink` (13.93:1 here) like the prototype's. */
   --seg-track: #E8E8ED;
@@ -128,7 +137,6 @@
   --ink: #1C1C1E;
   --ink-2: #48484A;
   --muted: #6C6C72;
-  --faint: #6B6B73;
   --line: rgba(28, 28, 30, .08);
   --line-2: rgba(28, 28, 30, .15);
 
@@ -259,7 +267,6 @@
   --ink: #F4F4F6;
   --ink-2: #C7C7CC;
   --muted: #98989F;
-  --faint: #96969C;
   --line: rgba(244, 244, 246, .09);
   --line-2: rgba(244, 244, 246, .16);
 
@@ -488,7 +495,6 @@
 @media (prefers-contrast: more) {
   :root:not([data-theme="dark"]) {
     --muted: #4F4F54;
-    --faint: #4F4F55;
     --ok: #155836; --ok-soft: rgba(28, 117, 72, .11);
     --warn: #694400; --warn-soft: rgba(136, 89, 0, .10);
     --err: #931D13; --err-soft: rgba(190, 37, 25, .10);
@@ -498,7 +504,6 @@
   }
   :root[data-theme="dark"] {
     --muted: #BCBCC0;
-    --faint: #BCBCC0;
     --ok: #5BD196; --ok-soft: rgba(47, 171, 109, .13);
     --warn: #E6B454; --warn-soft: rgba(198, 140, 29, .13);
     --err: #FFA58B; --err-soft: rgba(255, 101, 54, .13);

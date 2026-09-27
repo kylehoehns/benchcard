@@ -84,7 +84,7 @@ const THEMES = [
 ];
 
 const GROUNDS = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3', '--sheet'];
-const TEXT_TOKENS = ['--ink', '--ink-2', '--muted', '--faint', '--ok', '--warn', '--err', '--info'];
+const TEXT_TOKENS = ['--ink', '--ink-2', '--muted', '--ok', '--warn', '--err', '--info'];
 const CONTROL_TOKENS = ['--accent', '--ok', '--warn', '--err', '--info'];
 const STATUS = ['ok', 'warn', 'err', 'info'];
 
@@ -144,7 +144,7 @@ test('every control token clears its floor against every ground, in all four the
 
 /* A segmented control paints on its own ground, `--seg-track`, which is not in
  * GROUNDS: only two colors ever land on it, and putting it there would demand
- * that `--faint`, `--info` and the rest clear a floor on a surface they never
+ * that `--muted`, `--info` and the rest clear a floor on a surface they never
  * touch. The two that do touch it are checked here instead.
  *
  * `--seg-track` had to go darker than `--surface-2` for the pill to read at
