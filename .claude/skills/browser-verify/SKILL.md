@@ -93,6 +93,5 @@ readout is not a parsing bug, it is most of the palette.**
 
 ## 7. Before you commit
 
-If a precached file changed, bump `VERSION` and set `SHELL` to the digest
-`npm test` names, in the same edit — the rule and the reason are in `AGENTS.md`
+If a precached file changed, run `npm run sw:bump` — the rule and the reason are in `AGENTS.md`
 § Traps, which owns it because it applies whether or not you opened a browser.

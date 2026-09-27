@@ -118,8 +118,7 @@ current handoff and the findings verbatim; that is the whole brief.
 
 5. **`developer`** builds it test-first, with `/tdd`, over the seams in the
    spec's **Proof**. Its prompt carries the spec path, those constraints, and
-   one instruction: if a precached file changes, bump `VERSION` and set
-   `SHELL` to the digest `npm test` names. Wait until it reports each slice's
+   one instruction: if a precached file changes, run `npm run sw:bump`. Wait until it reports each slice's
    test and the failure it saw before the code existed, and a green `npm
    test`. A slice whose reported failure is an import error or a typo rather
    than the behavior's assertion never saw red: send it back.
@@ -239,9 +238,9 @@ parallel, and each is still one issue, one spec and one PR. What stays serial:
   Workers Builds) are green and step 12's preview check passed:
   `gh pr merge <PR> --squash --subject "<title> (#<PR>)" --body ""`. Never
   approve; that stays a human's.
-- **After each merge, the next lane rebases onto `main`.** `app/sw.js` will
-  conflict: take `main`'s file, set `VERSION` to `main`'s plus one, set `SHELL`
-  to the digest `npm test` names, and run the proof pair again before pushing.
+- **After each merge, the next lane rebases onto `main`,** then runs `npm run
+  sw:bump`. `AGENTS.md` § Traps says what the merge driver clears and when
+  `npm test` alone is enough to prove the rebase.
 - **Remove the worktree** once its PR is merged.
 
 Step 13's "do not merge" is the default; only the human's word for this batch

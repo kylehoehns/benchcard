@@ -22,7 +22,7 @@ case "$path" in
     if [ -f "$root/app/sw.js" ] && grep -qF "'./$base'" "$root/app/sw.js"; then
       v=$(grep -oE "const VERSION = '[^']*'" "$root/app/sw.js" | head -1)
       s=$(grep -oE "const SHELL = '[^']*'" "$root/app/sw.js" | head -1)
-      notes="app/$base is in sw.js PRECACHE, so this edit changes the shell. Before committing: bump VERSION and set SHELL to the digest \`npm test\` names, in the same edit. Currently ${v:-?} / ${s:-?}."
+      notes="app/$base is in sw.js PRECACHE, so this edit changes the shell. Before committing: run \`npm run sw:bump\` to bump VERSION and set SHELL. Currently ${v:-?} / ${s:-?}."
     fi
     ;;
 esac

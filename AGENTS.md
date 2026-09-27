@@ -254,7 +254,8 @@ allowlist shape; do not reintroduce a denylist.
 ## Traps
 
 **Bump `app/sw.js` VERSION whenever a precached file changes**, and set `SHELL`
-to the digest `npm test` names in the same edit. The cache is
+to the digest in the same edit: `npm run sw:bump` does both (`VERSION` becomes
+`origin/main`'s plus one). The cache is
 `benchcard-v${VERSION}-${SHELL}`: `SHELL` is what actually busts it, so a
 forgotten bump now leaves a stale release LABEL rather than a stale app on a
 coach's phone. `VERSION` is that label and nothing more — keep it honest.
@@ -262,6 +263,14 @@ coach's phone. `VERSION` is that label and nothing more — keep it honest.
 ref, so the proof pair skips them; `npm run check:history` runs both against
 `origin/main` — run it before every push. The `SHELL` guard in
 `test/sw.test.js` runs everywhere.
+
+**Two open PRs that both bump conflict on `app/sw.js`.** Run `npm run setup`
+once per clone: it registers the merge driver `.gitattributes` names, which
+clears a conflict that touches only `VERSION` and `SHELL` (any other conflict
+in the file is still reported). After the rebase, run `npm run sw:bump`. If
+the rebase changed nothing on your branch but those two constants, `npm test`
+is the whole proof — its `SHELL` guard proves the digest — and the smoke suite
+need not run again.
 
 **The printed card is auto-fitted from canvas `measureText`.** Its measurement
 font stack must match `.card`'s exactly. The UI itself does not use the card's

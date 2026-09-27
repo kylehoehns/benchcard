@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
+import { shellDigest } from '../scripts/sw-shell.mjs';
 
 /* Everything the service worker serves lives in one directory; these tests
    resolve against it rather than against their own location. */
@@ -155,22 +155,10 @@ test('the cache name carries the SHELL digest, not just the label', () => {
  * above is belt-and-braces, and a self-referential digest could not settle.
  * ------------------------------------------------------------------ */
 
-const shellDigest = () => {
-  const files = precache.filter((p) => p !== './').sort();
-  const h = createHash('sha256');
-  for (const p of files) {
-    h.update(p);
-    h.update('\0');
-    h.update(readFileSync(new URL(p, ROOT)));
-    h.update('\0');
-  }
-  return { digest: h.digest('hex').slice(0, 12), count: files.length };
-};
-
 test('SHELL matches the bytes of everything precached', () => {
   const pinned = sw.match(/const SHELL = '([^']*)'/)?.[1];
   assert.ok(pinned, 'sw.js has no SHELL constant — the single-commit bump guard is gone');
-  const { digest, count } = shellDigest();
+  const { digest, count } = shellDigest(ROOT, sw);
   assert.ok(count > 10, `only ${count} precached files were hashed; the parse is wrong`);
   assert.equal(pinned, digest,
     `a precached file changed. In app/sw.js: bump VERSION (now '${
