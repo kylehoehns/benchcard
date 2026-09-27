@@ -471,6 +471,19 @@ be forgotten. The heights of the bar and action bar are measured
 into `--bar-h` and `--ab-h` to feed `html`'s `scroll-padding-top` and
 `-bottom`, so focus never lands under floating chrome (#33 decision 14).
 
+**Tab title and focus after navigation (#139).** `document.title` is set to
+`"<heading> · Benchcard"` on pushed screens (Game, Team, Season, Settings) and
+the static `"Benchcard — basketball substitution rotation generator"` on Today,
+read from the same `data-large-title` or `data-bar-title` source `#barTitle`
+uses. When navigating forward, keyboard focus lands on the new screen's `h1`
+(`tabindex="-1"`), with `preventScroll: true` so the focus does not trigger a
+scroll. When going back, focus returns to the control that opened the screen —
+a game pass, the Team or Season entry, or the Settings button — matched by game
+id if the node was rebuilt. If the door is gone or hidden, focus lands on Today's
+heading instead. Callers like the add-game flow that focus a specific field
+after navigation override the default. The focus works through `applyView`
+and `syncBarTitle` in `render.js`.
+
 Five header controls became translucent chips (#33 decision 9): `#backBtn`,
 `#shareBtn`, `#settingsBtn` and `#teamAdd` are 48px hit areas around a 2.25rem
 circle, and `#teamBtn` is the same treatment as a pill, because its content is
@@ -890,6 +903,32 @@ transition on the spot rather than waiting it out (`armInterrupt`), and a tap
 that lands on the page still receding behind the rising sheet is swallowed
 rather than acted on.
 
+**Focus never leaves the dialog (#139).** Keyboard focus always stays inside
+`#gamemode`. After each action (stepping stints, swapping, sitting someone,
+pressing This stint or Rest of game, or undoing), focus moves to a named target:
+the incoming player's floor row after a swap, the first floor row after reset or
+undo, the button that was just pressed after This stint or Rest of game, and the
+appropriate step button (`#gmNext2` or `#gmPrev`) if that button was hidden or
+disabled by the action. Focus uses `preventScroll: true` and does not touch
+nothing that would scroll the dialog. A `gmFocus` helper in `gamemode.js` runs
+after each action and picks the target by rule, falling back to `#gmClose` if
+none applies.
+
+**Stint changes are announced (#139).** A static `#gmLive` element with
+`role="status"` inside `#gamemode` reads `"<title>, <subtitle>"` from
+`benchHeaderText` when the stint index changes (not on open, not on a swap, not
+on a repaint with the same stint). Example: `"Q1 · 4:00 to 0:00, 2 of 8"`. The
+text is cleared on close so reopening does not re-announce the same change.
+
+**Player rows carry full accessible names (#139).** Each floor and bench row's
+accessible name is `"<number>, <name>, <played> of <projected> minutes"`, and
+adds `", just on"` if that tag shows. Example: `"3, Ana Reyes, 0 of 16 minutes"`.
+The number is omitted if the player has no jersey number. Floor rows carry
+`aria-pressed="true"` when picked, `"false"` otherwise. Bench rows are `div`s
+until one is picked (non-interactive), then become `button`s. Scope buttons
+(This stint, Rest of game, and the scope toggle) carry `aria-pressed` matching
+the `on` class.
+
 **It holds a screen wake lock the whole time it is open.** `openGameMode`
 requests one and `closeGameMode` releases it, so a coach can prop the phone on
 the bench for a whole timeout without it locking mid-horn; a
@@ -899,6 +938,17 @@ the moment a tab is hidden. `navigator.wakeLock` is feature-detected, never
 sniffed by platform (interface guideline D2, D5): where it is absent, or the
 request is rejected, this is a silent no-op — bench mode opens, steps and
 closes exactly as it did before, nothing shown and nothing logged.
+
+**Toasts are reachable inside bench mode (#139).** The `#toasts` element itself
+is moved into `#gamemode` when the dialog opens and moved back to the page when
+it closes. The element keeps its id and identity, so `liftToasts` (which keys on
+`box.id === 'toasts'`) and the trap's Tab reach still work. Sheet toasts have
+a `.bsheet-toasts` element with `role="status"` created before any toast is
+inserted, so they are live regions a screen reader honors.
+
+**#gmReset is labeled (#139).** The reset button has `aria-label="Back to the
+printed plan"` and the `title` attribute is removed to avoid confusion with
+the visible label.
 
 **Filing waits while bench mode is open (#100).** A game running past midnight
 must not be filed out from under the coach mid-stint. `fileIfPast` checks that
@@ -1072,6 +1122,22 @@ roster: marking a player absent in Who's here (#27) drops any override naming
 them, the same way removing them does. An override is a five the coach picked by
 hand, so with one of them not in the gym it is not a lineup, and it would
 otherwise ride into bench mode and onto the printed card.
+## Plan changes and announcements
+
+**Shuffle announces what changed (#139).** When Shuffle produces no hand-swap
+flash and no rotation-changed toast (A3), a visually-hidden polite live region
+in `#view-games` reads `"New rotation."` followed by the summary, e.g.
+`"New rotation. 12–16 min each · 21 changes"`. The text is written even if it
+matches the previous one (by clearing then setting in the next frame, or
+alternating so a repeat is still announced). Shuffle that clears hand swaps uses
+the existing flash. Shuffle on an underway game uses the existing rotation-changed
+toast.
+
+**Issues rebuild only when the text changes (#139).** `renderIssues` compares
+the new issues text with the previous one; if equal, the child nodes are left
+untouched (same node identity). If the text changes, nodes are rebuilt. This
+avoids re-announcing the same constraints to a screen reader on renders that
+did not change the plan's legality.
 ## Card
 
 3.45 x 5.0 in by default, tiled on letter with dashed cut lines, sized to tuck

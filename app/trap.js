@@ -497,7 +497,16 @@ function resetDragTransform(dialog) {
 // `popstate`) and the close `openSheet` above does when another sheet is
 // already open. `closeSheet` (below) is everything a coach actually does --
 // ✕, Escape, backdrop, drag/flick -- and that one slides (item 10).
-function closeSheetNow(dialog) {
+/* #139 item 2: exported for `commitFlow` (teams-view.js) -- the one caller
+ * that closes this dialog AND leaves the screen in the same breath. The
+ * animated `closeSheet` below leaves `dialog.open` true (and everything
+ * outside it inert, per the modal `<dialog>` spec) for the whole ~260ms
+ * slide, which is longer than `setView`'s own synchronous focus landing on
+ * the pushed screen's heading takes to run -- so that `.focus()` call is a
+ * silent no-op while the sheet is still mid-close. Closing instantly first
+ * matches `closeSheets`' own "any screen change" rule (decision 11); this
+ * dialog just cannot go through that path since it is not a `.bsheet`. */
+export function closeSheetNow(dialog) {
   resetDragTransform(dialog);
   dialog.style.removeProperty('--scrim');
   dialog.close();

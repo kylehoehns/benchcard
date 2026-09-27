@@ -96,6 +96,67 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
 let gmPick = null;      // player selected for a swap
 let gmScope = 'stint';  // 'stint' | 'rest'
 
+/* #139 item 6: the one focus rule for bench mode -- a target that is not
+ * there, hidden or disabled falls back to `#gmClose`, which is always
+ * present and focusable while `#gamemode` is open. `target` may be an
+ * element, a selector string, or null/undefined (nothing found upstream). */
+function gmFocus(target) {
+  const t = typeof target === 'string' ? $(target) : target;
+  if (t && !t.hidden && !t.disabled && typeof t.focus === 'function') { t.focus(); return; }
+  $('#gmClose')?.focus();
+}
+
+// #139 item 6: the selector for one player's own floor row, by id -- shared
+// by every `gmFocus` call below that lands on a specific player rather than
+// a fixed control.
+const floorRowSel = id => `#gmFloor [data-pid="${CSS.escape(id)}"]`;
+
+/* #139 item 6: "the first floor row" -- shared by `#gmReset`'s own action
+ * (app.js) and by Undo on any bench-mode toast (below), both of which land
+ * here per the spec. `gmFocus`'s own fallback covers "or `#gmClose` if the
+ * floor has no buttons" -- there is nothing to find when nobody can swap. */
+export function gmFocusFirstFloor() {
+  gmFocus(document.querySelector('#gmFloor button.gm-p'));
+}
+
+/* #139 item 7: the last stint index `#gmLive` was written for -- so a
+ * repaint that lands on the same stint (a pick, a swap, an ordinary
+ * repaint) never rewrites it, only `gmStep` actually moving the stint does.
+ * Primed to the opening stint by `openGameMode` (see there) so the open
+ * itself does not count as a change; cleared on close per the spec so a
+ * later reopen does not read stale text. */
+let lastLiveStint = null;
+
+/* #139 items 11/12: `#toasts` moves inside `#gamemode` while bench mode is
+ * open (item 11) and back to where it lived on the page when it closes, so
+ * a toast's live region is always a descendant of the open dialog. Kept as
+ * the one node with the one id -- `liftToasts` (toast.js) still finds it by
+ * `box.id === 'toasts'` and the trap's own Tab reach still includes it --
+ * rather than a second host. Remembered as (parent, next sibling) rather
+ * than assumed, so restoring it does not care what else moved on the page
+ * meanwhile. */
+let toastsHome = null;
+
+function liftToastsIntoBench(gm) {
+  const box = $('#toasts');
+  if (!box) return;
+  toastsHome = { parent: box.parentNode, next: box.nextSibling };
+  gm.appendChild(box);
+}
+
+function restoreToastsHome() {
+  if (!toastsHome) return;
+  const box = $('#toasts');
+  if (box) {
+    if (toastsHome.next && toastsHome.next.parentNode === toastsHome.parent) {
+      toastsHome.parent.insertBefore(box, toastsHome.next);
+    } else {
+      toastsHome.parent.appendChild(box);
+    }
+  }
+  toastsHome = null;
+}
+
 const liveOf = g => (g.live ||= { at: 0, overrides: {} });
 const effLineup = (p, g, i) => effectiveLineup(g, p, i);
 
@@ -135,9 +196,13 @@ export function openGameMode() {
   // waiting for closeGameMode
   save();
   gmPick = null;
+  // #139 item 7: primed to the opening stint -- the first `renderGameMode`
+  // call below sees no change and writes nothing, matching "not on open".
+  lastLiveStint = stintIndex(p, live);
   const gm = $('#gamemode');
   gm.hidden = false;
   setBenchOpen(true);
+  liftToastsIntoBench(gm);   // #139 item 11
   keepAwake();
   const ab0 = $('#actionbar'); if (ab0) ab0.hidden = true;
   // #34 decision 10: bench mode can also open straight off Today now, via
@@ -262,6 +327,15 @@ function armInterrupt(gm) {
    passes `true`. */
 function closeGameMode(isFinish = false) {
   const gmEl = $('#gamemode');
+  // #139 item 11: back to where it lived on the page before `gmEl.hidden`
+  // below takes effect -- a toast still up when Done is tapped stays visible
+  // above the page, which a move made a moment later, after `hidden` hides
+  // its then-parent too, would not.
+  restoreToastsHome();
+  // #139 item 7: cleared so a later reopen does not read stale text, and the
+  // next open's own priming (see `openGameMode`) starts clean.
+  set('#gmLive', 'textContent', '');
+  lastLiveStint = null;
   /* The open transition parks the sections at opacity 0 and clears it when the
      animation finishes. Close before it finishes -- which is one impatient tap
      -- and that promise never resolves, so the inline zero survives and the
@@ -330,6 +404,31 @@ export function benchHeaderText(row, i, total) {
     title: `${row.periodName || 'Q' + row.period} · ${fmtClock(row.startSec)} to ${fmtClock(row.endSec)}`,
     subtitle: `${i + 1} of ${total}`,
   };
+}
+
+/* #139 item 7: the stint-change live line -- `benchHeaderText`'s own
+ * title/subtitle, joined the same way the header itself displays them
+ * ("<title>, <subtitle>"), so `#gmLive` never rebuilds the "Q1 · …" wording
+ * a second time. */
+export function benchLiveText(row, i, total) {
+  const { title, subtitle } = benchHeaderText(row, i, total);
+  return `${title}, ${subtitle}`;
+}
+
+/* #139 item 9: a floor/bench row's accessible name. `player` carries
+ * `.number` (falsy when the player has no jersey number -- `initials`'s two
+ * letters are not read) and `.name` (already resolved through the existing
+ * `pl.name || shorts[id]` fallback at the call site, not re-derived here).
+ * `played`/`projected` go through the same `fmtMinutes` the visible digits
+ * use, and `justOn` appends the same "just on" wording the `.tag` shows. */
+export function rowLabel(player, played, projected, justOn) {
+  const parts = [];
+  if (player.number) parts.push(String(player.number));
+  parts.push(player.name);
+  parts.push(`${fmtMinutes(played)} of ${fmtMinutes(projected)} minutes`);
+  let label = parts.join(', ');
+  if (justOn) label += ', just on';
+  return label;
 }
 
 /* #138 item 7: the bench label's idle sentence, shared by bench mode itself
@@ -443,6 +542,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
   // `.gm-p .mn .tag` comment in app.css for why.
   const mtag = (id, bench = false, justOn = false) => {
     const d = el('span', 'mn');
+    d.setAttribute('aria-hidden', 'true');   // #139 item 9: read once, by `rowLabel`, below
     d.append(bench
       ? document.createTextNode(fmtMinutes(played[id] || 0))
       : el('b', null, fmtMinutes(played[id] || 0)));
@@ -450,11 +550,24 @@ export function renderGameMode({ keepFloor = false } = {}) {
     if (justOn) d.append(el('span', 'tag in', 'just on'));
     return d;
   };
+  // #139 item 9: a row's avatar initials, hidden from the accessibility tree
+  // -- shared by the floor and bench rows below, both of which pair it with
+  // the one `.sr-only` label that is actually read.
+  const avatarOf = pl => { const av = el('span', 'av', initials(pl)); av.setAttribute('aria-hidden', 'true'); return av; };
+  // #139 item 9: the one `.sr-only` label a floor or bench row carries.
+  const srLabel = (pl, id, justOn) => el('span', 'sr-only', rowLabel(pl, played[id] || 0, projected[id] || 0, justOn));
 
   const header = benchHeaderText(row, i, p.stints.length);
   set('#gmGame', 'textContent', header.title);
   set('#gmClock', 'textContent', header.subtitle);
   set('#gmReset', 'hidden', !Object.keys(live.overrides).length);
+  // #139 item 7: written only when the stint actually changed since the last
+  // write -- `benchLiveText` reuses `benchHeaderText`, never rebuilding the
+  // "Q1 · …" wording a second time.
+  if (i !== lastLiveStint) {
+    lastLiveStint = i;
+    set('#gmLive', 'textContent', benchLiveText(row, i, p.stints.length));
+  }
   /* Counted against the plan, not off the key list: an override can be written
      with the same five the card already had (a re-solve often leaves a stint
      alone), and "1 stint no longer matches" would then be a lie. `#gmReset`
@@ -486,19 +599,28 @@ export function renderGameMode({ keepFloor = false } = {}) {
      (`canSwap` follows the bench, which a pick does not touch), so the rows
      are still the right rows and only `.picked` moves. */
   if (keepFloor) {
-    for (const b of fl.children) b.classList.toggle('picked', b.dataset.pid === gmPick);
+    for (const b of fl.children) {
+      const picked = b.dataset.pid === gmPick;
+      b.classList.toggle('picked', picked);
+      // #139 item 8: only on buttons -- `canSwap` is what made these buttons
+      // rather than plain divs in the first place, and still is: a pick
+      // cannot change the bench, which `canSwap` follows.
+      if (canSwap) b.setAttribute('aria-pressed', String(picked));
+    }
   } else {
     fl.textContent = '';
     for (const id of floor) {
       const pl = byId(id) || { name: shorts[id] };
+      const justOn = !!(prevFloor && !prevFloor.includes(id));
       const b = el(canSwap ? 'button' : 'div', 'gm-p' + (canSwap ? ' press' : '') +
         (gmPick === id ? ' picked' : '') +
-        (prevFloor && !prevFloor.includes(id) ? ' fresh' : ''));
+        (justOn ? ' fresh' : ''));
       b.style.setProperty('--c', colorOf(id));
       b.dataset.pid = id;      // how the `keepFloor` path finds this row again
-      const justOn = !!(prevFloor && !prevFloor.includes(id));
+      if (canSwap) b.setAttribute('aria-pressed', String(gmPick === id));   // #139 item 8
       const nameWrap = el('span', 'nm', pl.name || shorts[id]);
-      b.append(el('span', 'av', initials(pl)), nameWrap, mtag(id, false, justOn));
+      nameWrap.setAttribute('aria-hidden', 'true');
+      b.append(avatarOf(pl), nameWrap, mtag(id, false, justOn), srLabel(pl, id, justOn));
       if (canSwap) {
         b.type = 'button';
         b.onclick = () => {
@@ -524,9 +646,16 @@ export function renderGameMode({ keepFloor = false } = {}) {
     // marked with `.on` the same way every other `.seg` here does.
     const sc = el('div', 'seg');
     for (const [k, t] of [['stint', 'This stint'], ['rest', 'Rest of game']]) {
-      const b = el('button', 'press' + (gmScope === k ? ' on' : ''), t);
+      const on = gmScope === k;
+      const b = el('button', 'press' + (on ? ' on' : ''), t);
       b.type = 'button';
-      b.onclick = () => { gmScope = k; renderGameMode(); };
+      b.setAttribute('aria-pressed', String(on));   // #139 item 8
+      b.dataset.scope = k;   // #139 item 6: how the focus call below finds it again after the rebuild
+      b.onclick = () => {
+        gmScope = k;
+        renderGameMode();
+        gmFocus(document.querySelector(`#gmBenchLab button[data-scope="${k}"]`));
+      };
       sc.append(b);
     }
     lab.append(sc);
@@ -559,7 +688,9 @@ export function renderGameMode({ keepFloor = false } = {}) {
     // render a plain list until swapping in is actually possible.
     const b = el(gmPick ? 'button' : 'div', 'gm-b' + (gmPick ? ' press' : ' inert'));
     b.style.setProperty('--c', colorOf(id));
-    b.append(el('span', 'av', initials(pl)), el('span', 'nm', pl.name || shorts[id]), mtag(id, true));
+    const nm = el('span', 'nm', pl.name || shorts[id]);
+    nm.setAttribute('aria-hidden', 'true');
+    b.append(avatarOf(pl), nm, mtag(id, true), srLabel(pl, id, false));
     if (gmPick) {
       b.type = 'button';
       b.onclick = () => { applySwap(p, g, i, gmPick, id,
@@ -763,7 +894,14 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
       }
       gmPick = null;
     },
-    () => { save(); renderGameMode(); });
+    (undoing) => {
+      save();
+      renderGameMode();
+      // #139 item 6: the redo lands on the incoming player's own floor row;
+      // Undo on this toast lands on the first floor row, the same as `#gmReset`.
+      if (undoing) gmFocusFirstFloor();
+      else gmFocus(floorRowSel(inId));
+    });
 }
 
 /* The rule a failed re-solve broke, in the coach's words rather than the
@@ -819,18 +957,34 @@ function sitRest(p, g, i, outId, name) {
   if (!r.ok) {
     gmPick = null;
     renderGameMode();
+    // #139 item 6: refused -- back on the row that was picked, `outId`'s own.
+    gmFocus(floorRowSel(outId));
     const rule = SIT_RULES[(r.issues || []).find(x => x.severity === 'error')?.code];
     flash(SIT_REFUSALS[r.reason] || (rule
       ? `Sitting ${name} leaves no plan for the rest: ${rule}.`
       : `Sitting ${name} for the rest would break one of your rules.`));
     return;
   }
+  // #139 item 6: read before the override below is written, so the floor a
+  // moment from now can be compared against the floor as it stood the
+  // instant the coach tapped -- the difference is the one seat that changed.
+  const oldFloor = effLineup(p, g, i);
   tick();
   undoable(`${name} sits for the rest. The others share those minutes.`, () => {
     const live = liveOf(g);
     for (const [k, five] of Object.entries(r.overrides)) live.overrides[k] = five;
     gmPick = null;
-  }, () => { save(); renderGameMode(); });
+  }, (undoing) => {
+    save();
+    renderGameMode();
+    // #139 item 6: Undo on this toast lands on the first floor row, the same
+    // as `#gmReset`; the redo lands on whoever now fills the seat `outId`
+    // left -- the one id in the new floor that was not in the old one.
+    if (undoing) { gmFocusFirstFloor(); return; }
+    const newFloor = effLineup(p, g, i);
+    const filled = newFloor.find(x => !oldFloor.includes(x));
+    gmFocus(filled ? floorRowSel(filled) : null);
+  });
 }
 
 /* The stint nav, shared by the prev/next buttons, the swipe and the keyboard.
@@ -840,6 +994,9 @@ function gmStep(d) {
   if (!p) return;
   const l = liveOf(game());
   const was = l.at;
+  // #139 item 6: the control that made this move -- read before the repaint
+  // below can hide or disable it.
+  const srcBtn = $(d > 0 ? '#gmNext2' : '#gmPrev');
   l.at = stepAt(p, l, d);
   // only when the stint actually moved -- a tick at the last stint would say
   // "done" when nothing happened
@@ -847,6 +1004,13 @@ function gmStep(d) {
   gmPick = null;
   save();
   renderGameMode();
+  /* #139 item 6: `#gmPrev`/`#gmNext2`/`#gmFinish` are static nodes `set()`
+     only ever toggles, so the browser keeps focus on `srcBtn` for free
+     everywhere it stays visible and enabled -- only the two edges where it
+     comes out of the repaint hidden or disabled need a hand-off to the one
+     other control still usable there. */
+  if (srcBtn && srcBtn.hidden) gmFocus('#gmFinish');
+  else if (srcBtn && srcBtn.disabled) gmFocus(d > 0 ? '#gmPrev' : '#gmNext2');
 }
 
 /* Back to the printed plan. The caller wraps this in `undoable`, so it only

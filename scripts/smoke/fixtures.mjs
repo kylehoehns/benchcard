@@ -211,8 +211,10 @@ export async function goSeed(c, origin) {
    loaded does not. The plain URL right behind it restores the real address,
    so `location.href` comparisons against it stay honest. Waits for
    `.today-game` rather than `.card` (`goRich` above) because every #23 check
-   reloads onto Today, never straight onto a game. */
-export async function reloadWithRecord(c, origin, record) {
+   reloads onto Today, never straight onto a game. `ready` overrides that
+   condition for a caller that reloads onto a screen which never paints a
+   `.today-game` -- the welcome screen or an empty-roster fixture (#139). */
+export async function reloadWithRecord(c, origin, record, ready = `document.querySelector('.today-game')`) {
   await seeded(c, `(() => {
     localStorage.removeItem('benchcard.v3');
     localStorage.removeItem('benchcard.v7.bak');
@@ -224,7 +226,7 @@ export async function reloadWithRecord(c, origin, record) {
       await loaded;
     }
     await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('.today-game'); i++) await new Promise(r => setTimeout(r, 50));
+      for (let i = 0; i < 60 && !(${ready}); i++) await new Promise(r => setTimeout(r, 50));
       await ${SETTLE}; })()`);
   });
 }

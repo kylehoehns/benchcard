@@ -17,7 +17,7 @@ import { refreshCardSheetPreview, CARD_FONT } from './card.js';
 import { shareCards } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
 import { initTimeline } from './timeline.js';
-import { initGameMode, openGameMode, renderGameMode, clearOverrides } from './gamemode.js';
+import { initGameMode, openGameMode, renderGameMode, clearOverrides, gmFocusFirstFloor } from './gamemode.js';
 import { initBalance } from './balance.js';
 import { initRules } from './rules.js';
 import { initStrategy } from './strategy.js';
@@ -30,7 +30,7 @@ import { initSeason, exportSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
 import { initToast, undoable, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
-import { render, renderAll, setView, applyTheme, applyTint } from './render.js';
+import { render, renderAll, setView, applyTheme, applyTint, rotationAnnounced } from './render.js';
 import { edit } from './edit.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
@@ -132,7 +132,24 @@ on('#cardSize', 'onchange', e => {
 });
 on('#printScope', 'onchange', e => { state.ui.printScope = e.target.value; edit('cardOptions'); });
 on('#showMinutes', 'onchange', e => { state.ui.showMinutes = e.target.checked; edit('cardOptions'); });
-on('#regen', 'onclick', () => { if (reseed(game())) flash('New rotation. The swaps you made by hand were cleared.'); edit('regen'); });
+on('#regen', 'onclick', () => { const hadOverrides = reseed(game());
+  if (hadOverrides) flash('New rotation. The swaps you made by hand were cleared.');
+  edit('regen');
+  /* #139 item 13: a plain Shuffle -- neither the hand-swap flash above nor
+     #134's underway "Rotation changed." toast (checked via `rotationAnnounced`,
+     never re-derived) -- gets its own line, since otherwise nothing announces
+     it at all. `#summary` was just repainted by the `edit('regen')` call
+     above, so reading it here is the same text `renderSummary` just wrote,
+     never recomputed. Cleared and set a frame apart so a repeat announces
+     too: an unchanged text node is not read a second time. */
+  if (!hadOverrides && !rotationAnnounced()) {
+    const live = $('#regenLive'), summary = $('#summary');
+    if (live) {
+      live.textContent = '';
+      requestAnimationFrame(() => { live.textContent = `New rotation. ${summary ? summary.textContent : ''}`; });
+    }
+  }
+});
 function printCard() {
   // #126: no games, nothing to print -- the game screen is unreachable, so
   // this does nothing rather than opening the print dialog over Today.
@@ -332,7 +349,10 @@ for (const wrap of document.querySelectorAll('.pastein')) {
 
 // the rest of game mode's wiring lives in initGameMode(), below
 on('#gmReset', 'onclick', () => {
-  undoable('Back to the printed plan.', clearOverrides, () => { save(); renderGameMode(); });
+  // #139 item 6: the same target either way -- pressing Reset and pressing
+  // Undo on its own toast both land on the first floor row (`gmFocus`'s own
+  // fallback covers "or `#gmClose` if the floor has no buttons").
+  undoable('Back to the printed plan.', clearOverrides, () => { save(); renderGameMode(); gmFocusFirstFloor(); });
 });
 on('#gmOpen', 'onclick', openGameMode);
 on('#abBench', 'onclick', openGameMode);
