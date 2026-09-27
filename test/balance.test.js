@@ -133,3 +133,47 @@ test('minute floors still win over balance', () => {
   assert.ok(p.minutes[weakest] >= 12,
     `floor broken: ${weakest} got ${p.minutes[weakest]}`);
 });
+
+/* #150 item 2: the level control's own accessible name. `balance.js` reaches
+   for `document` at import time (dom.js keeps a canvas, state.js and fx.js
+   bind listeners) -- the same reason test/level-keys.test.js's stub exists --
+   so this builds a minimal fake element (just enough of the DOM surface
+   `levelMeter` calls: style.setProperty, dataset, setAttribute/getAttribute,
+   append, addEventListener) and reads the radiogroup's aria-label back off
+   it, rather than grepping balance.js's source for the string. */
+function fakeElement() {
+  const attrs = {};
+  return {
+    style: { setProperty() {} },
+    dataset: {},
+    children: [],
+    setAttribute(k, v) { attrs[k] = String(v); },
+    getAttribute(k) { return k in attrs ? attrs[k] : null; },
+    append(...kids) { this.children.push(...kids); },
+    addEventListener() {},
+    getBoundingClientRect: () => ({ left: 0, width: 0 }),
+    getContext: () => ({ measureText: () => ({ width: 0 }) }),
+  };
+}
+globalThis.document = {
+  createElement: fakeElement,
+  querySelector: () => null,
+  querySelectorAll: () => [],
+  addEventListener: () => {},
+};
+globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
+const { levelMeter } = await import('../app/balance.js');
+
+const radiogroupLabel = name => {
+  const wrap = levelMeter({ id: 'p9', name, tier: 3 });
+  const steps = wrap.children.find(c => c.getAttribute('role') === 'radiogroup');
+  return steps.getAttribute('aria-label');
+};
+
+test('the level control names the player it belongs to', () => {
+  assert.equal(radiogroupLabel('Marcus'), 'Level for Marcus');
+});
+
+test('the level control still names an unnamed player', () => {
+  assert.equal(radiogroupLabel(''), 'Level for this player');
+});

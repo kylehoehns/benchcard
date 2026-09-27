@@ -172,14 +172,20 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
   font-size: .8rem; font-weight: 570; color: var(--muted); white-space: nowrap; }
 .seg span.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); font-weight: 620; }
 
-/* rule chips, exactly as the rules builder reads them back */
-.rulechips { display: flex; flex-wrap: wrap; gap: .4rem; }
-.rchip { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .55rem .3rem .75rem;
-  border-radius: var(--r-full); border: 1px solid var(--line-2); background: var(--surface);
-  font-size: .82rem; font-weight: 550; color: var(--ink-2); }
-.rchip.ok { border-color: color-mix(in srgb, var(--ok) 38%, transparent); color: var(--ok); }
-.rchip.err { border-color: color-mix(in srgb, var(--err) 38%, transparent); color: var(--err); }
-.rchip .x { color: var(--faint); font-size: .9rem; line-height: 1; }
+/* #150: rule rows, styled like the Rules page's own list -- a hairline
+   between rows, the sentence on the left, a chevron on the right
+   (app.css's `.prow` / `.prow-chev`, redrawn here since this page does not
+   load app.css) -- replacing the red/green chip mock the rules builder no
+   longer draws. */
+.rulerows { display: flex; flex-direction: column; }
+.rrule { display: flex; align-items: center; gap: .75rem; padding: .65rem 0;
+  font-size: .86rem; font-weight: 550; color: var(--ink-2); }
+.rrule + .rrule { position: relative; }
+.rrule + .rrule::before { content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 1px; background: var(--line); }
+.rrule-t { flex: 1; min-width: 0; }
+.rrule-chev { flex: none; width: .4rem; height: .4rem; border-right: 2px solid var(--faint);
+  border-bottom: 2px solid var(--faint); transform: rotate(-45deg); }
 
 /* the swap scope row from bench mode. Two of these are modes and the third is
    an action that fires on the tap -- which is why the third is drawn as a
@@ -454,20 +460,20 @@ footer a { display: flex; align-items: center; min-height: 48px; }
       <div class="plate">
         <p class="plate-hd">This game · the shape</p>
         <div class="seg" aria-hidden="true">
-          <span class="on">Even</span><span>Start strong</span><span>Finish strong</span><span>Both ends</span>
+          <span class="on">Steady</span><span>Start strong</span><span>Finish strong</span><span>Both ends</span>
         </div>
       </div>
       <figcaption>The shape sits with the game, not with the roster, because it
         is a call about tonight&rsquo;s opponent.</figcaption>
     </figure>
 
-    <p>Give each player a rotation level on the Team page, once a season rather
+    <p>Give each player a level on the Team page, once a season rather
       than once a game, and Benchcard keeps the fives from tipping. The share of
       the minutes is still worked out without the levels: they change who shares the
       floor, not how long anyone is on it. Then, beside each game, pick where
       the strong lineups land:</p>
     <ul>
-      <li><b>Even</b> — every stint about as strong as every other. Nobody is
+      <li><b>Steady</b> — every stint about as strong as every other. Nobody is
         stranded with a five that cannot compete.</li>
       <li><b>Start strong</b> — your best five open the game. Under even minutes
         that means lighter stints at the end; those minutes have to go
@@ -491,18 +497,19 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     <figure class="art">
       <div class="plate">
         <p class="plate-hd">This game · rules</p>
-        <div class="rulechips" aria-hidden="true">
-          <span class="rchip">Simone plays at least 10 min<span class="x">✕</span></span>
-          <span class="rchip">Cole capped at 12 min<span class="x">✕</span></span>
-          <span class="rchip ok">Bria + Ty together<span class="x">✕</span></span>
-          <span class="rchip err">Noah / Mia apart<span class="x">✕</span></span>
-          <span class="rchip">Starts: Bria Cole Noah Rafael Ty<span class="x">✕</span></span>
-          <span class="rchip">Max 2 stints in a row<span class="x">✕</span></span>
-          <span class="rchip">Rafael or Devon always on<span class="x">✕</span></span>
+        <div class="rulerows" aria-hidden="true">
+          <div class="rrule"><span class="rrule-t">Simone plays at least 10 min</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Cole plays at most 12 min</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Bria and Ty together</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Noah and Mia apart</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Bria, Cole, Noah, Rafael and Ty start the game</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Nobody plays more than 2 stints in a row</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Rafael or Devon is always on the floor</span><i class="rrule-chev"></i></div>
         </div>
       </div>
       <figcaption>Every rule reads back as a sentence, nothing shows until a
-        rule exists, and any of them comes off again in one tap.</figcaption>
+        rule exists, and opening one shows a Remove rule button to take it off
+        again.</figcaption>
     </figure>
 
     <ul>
@@ -526,9 +533,9 @@ footer a { display: flex; align-items: center; min-height: 48px; }
       <li><b>Rest limit</b> — the most stints anyone may play back to back, so
         nobody is left out there for a whole half.</li>
     </ul>
-    <p>When two rules cannot both hold, the plan says so on the chip rather than
-      quietly dropping one. The red chip in the mock above is a pair the solver
-      could not honor alongside everything else that was asked of it.</p>
+    <p>When two rules cannot both hold, the plan says so in a note under the
+      plan rather than quietly dropping one, naming the rule it could not
+      honor alongside everything else that was asked of it.</p>
   </section>
 
   <section>

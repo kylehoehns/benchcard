@@ -274,17 +274,17 @@ test('the plan says which reason is actually deciding it', () => {
 
   const flat = uneven();
   assert.match(say(), /ahead|rotates/, 'the default stance talks about the season or the day');
-  assert.ok(lacks(say(), /rotation levels/));
+  assert.ok(lacks(say(), /the lower levels/));
 
   flat.settings.tieBreak = 'levels';
   S.computeAll();
-  assert.ok(lacks(say(), /rotation levels/),
+  assert.ok(lacks(say(), /the lower levels/),
     'levels that are all the same decided nothing, so they get no credit');
 
   const tiered = uneven([5, 5, 5, 5, 5, 1, 1, 1, 1, 1, 1]);
   tiered.settings.tieBreak = 'levels';
   S.computeAll();
-  assert.match(say(), /the lower rotation levels/,
+  assert.match(say(), /the lower levels, which is how this team settles a tie/,
     'and where they did separate them, the line says so');
 });
 

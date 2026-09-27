@@ -1197,16 +1197,6 @@ input[type=range]:disabled { opacity: .5; }
 .pick .plr.off { opacity: .62; }
 .pick .plr.off .nm { text-decoration: none; }
 
-/* rules builder */
-.rulechips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.1rem; }
-.rchip { display: inline-flex; align-items: center; gap: .2rem; padding: .3rem .3rem .3rem .75rem;
-  border-radius: var(--r-full); border: 1px solid var(--line-2); background: var(--surface);
-  font-size: var(--fs-footnote); font-weight: 500; animation: pop var(--t-fast) var(--spring) both; }
-.rchip.ok { border-color: color-mix(in srgb, var(--ok) 38%, transparent); color: var(--ok); }
-.rchip.err { border-color: color-mix(in srgb, var(--err) 38%, transparent); color: var(--err); }
-.rchip .x { padding: 0 .3rem; color: var(--faint); font-size: var(--fs-body); line-height: 1; border-radius: var(--r-full); }
-@media (hover: hover) { .rchip .x:hover { color: var(--err); } }
-
 /* What the season carryover did, under the switch that turned it on. Indented
    to the switch's label so it reads as that control's consequence rather than
    as a new section, and the numbers are the ones the solver was handed. */

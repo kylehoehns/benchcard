@@ -259,7 +259,7 @@ export function levelMeter(p) {
   const cur = tierOf(p);
   const steps = el('div', 'bal-steps');
   steps.setAttribute('role', 'radiogroup');
-  steps.setAttribute('aria-label', `Rotation level for ${p.name || 'this player'}`);
+  steps.setAttribute('aria-label', `Level for ${p.name || 'this player'}`);
   const label = el('div', 'bal-lv', LEVELS.find(l => l.v === cur).label);
 
   /* Paint in place rather than through `soon`. A level change re-solves the
