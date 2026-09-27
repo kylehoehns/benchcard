@@ -3186,7 +3186,7 @@ dialog.bsheet.grouped .chip { border-color: transparent; min-height: 48px; displ
 .pstep-btn:disabled { opacity: .35; }
 .pstep-btn + .pstep-btn { border-left: 1px solid var(--line); }
 
-/* Switches, distinct from the .switch label+input pair used elsewhere --
+/* Switches, distinct from advanced.html's own .switch label+input pair --
    here the checkbox carries the boolean switch attribute and the whole
    .prow is its label.
 
