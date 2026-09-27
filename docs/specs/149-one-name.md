@@ -329,6 +329,7 @@ says otherwise; "large text" is 320px wide with a 32px root.
 | Filing messages: one day, several days, fallback | `node --test test/season.test.js test/day-list.test.js` | 4 |
 | The guard (named source-reading seam, `/new-guard`) | `node --test test/one-name.test.js` | 2, 3, 5, 6, 7, 8, 10, 12, 14, 15 |
 | `rule-names.test.js` on the shared helper, still green | `node --test test/rule-names.test.js` | 15 |
+| `timelineEmpty` calls the shared `blockedPanel(p)` rather than a copy of its body (named source-reading seam, beside the #29 test it extends) | `node --test test/timeline-name-button.test.js` | 3 |
 | Add a game title "Add a game", step 3 button "Add game", "Same as" card text "Add game" | `node scripts/smoke.mjs --only "add game flow"` (update `add-game-flow.mjs`) | 5 |
 | Shuffle announcement "Rotation changed. {summary}" | `focus-announce.mjs` (update) | 10 |
 | Swap-clearing Shuffle toast | `rotation-undo.mjs` (existing `CLEARED` string already matches) | 10 |

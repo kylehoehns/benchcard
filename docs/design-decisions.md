@@ -287,7 +287,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   matters (a refresh cannot change a card you already printed) without a cache
   to invalidate. Shuffle just rolls a new seed.
 - **A new game inherits the tournament-level setup** from the previous one:
-  format, substitution interval, who is at the gym, and all constraints. Only
+  format, Sub interval, who is at the gym, and all constraints. Only
   the opponent, the tip time and the seed are per-game. The inherited
   constraints are deep-copied -- sharing the object would let an edit on game 2
   silently rewrite game 1's plan and therefore the whole day's carryover.

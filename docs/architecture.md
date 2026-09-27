@@ -119,7 +119,7 @@ README carries the test count; it is not repeated here). Generation runs
 - **Platoon** -- fixed fives alternating wholesale, no optimization.
 
 Plus rules that compose with any of them: min/cap minutes, Together and
-Apart pairs, pinned opening five and last-period five, and a
+Apart pairs, pinned starting five and last-period five, and a
 most-stints-in-a-row limit.
 
 There is a third pair relation, `keepOnFloor` -- "One of two on".
@@ -792,8 +792,8 @@ removing a game, starting a new day, clearing in-game changes, editing a game
 while it is underway, editing or removing a rule, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
 at the wrong moment — before the coach can see what it did, and a game removal
 is only judgeable once the rest of the day has rebalanced. When a game is
-part-played and an edit changes its period count, period minutes, substitution
-interval, roster presence or planning strategy, the rotation rebuilds (#134): the
+part-played and an edit changes its period count, period minutes, Sub interval,
+roster presence or planning strategy, the rotation rebuilds (#134): the
 coach's hand swaps are dropped (if any), and the played minutes are rewritten.
 The snackbar offers Undo to restore the periods, the swaps, the current stint and
 the minutes as they were. The snapshot is the whole of `state`: a day is a few
@@ -871,7 +871,7 @@ Mobile specifics that came out of real use:
   roster gets the roster CTA. Both buttons go through `jumpToEditor()`, which
   opens the sheet before scrolling. Errors fixed elsewhere (not enough players,
   closers, unit sizes) get no button, because their control is already on screen.
-- **The substitution interval is a list of rows, not a `<select>`.** Eight long
+- **The Sub interval is a list of rows, not a `<select>`.** Eight long
   options in a native picker fills a phone screen for a one-tap decision. One
   builder draws that list (`paintGranRows` in `game-setup.js`), for the game
   screen's own sheet and for step 2 of the first run — the two used to be the
@@ -1143,7 +1143,7 @@ did not change the plan's legality.
 ## Card
 
 3.45 x 5.0 in by default, tiled on letter with dashed cut lines, sized to tuck
-in a pocket Moleskine (there is a wider half-sheet variant too, below). Type is auto-fitted: the widest lineup row is measured and the card
+in a pocket Moleskine (there is a wider Half sheet variant too, below). Type is auto-fitted: the widest lineup row is measured and the card
 scales to fill its width, so short first names print bigger for free. Everything
 is sized in inches, so screen CSS pixels (96/in) map 1:1 to print.
 
@@ -1171,18 +1171,18 @@ is sized in inches, so screen CSS pixels (96/in) map 1:1 to print.
   carry a clipboard instead of a notebook. Both are cut from one letter page
   inside the .25in `@page` margin. `CARD_SIZES` in `card.js` holds the width,
   height, padding, header/footer allowance and the name-size floor and ceiling
-  for each; the auto-fit and `paginate()` read them, so the half-sheet gets
+  for each; the auto-fit and `paginate()` read them, so the Half sheet gets
   bigger type (up to 44px) rather than the same type with more air. The
   preview is laid out at true print size and shrunk to the column with
   `zoom` (reset to 1 in print), so an 8in card still fits a phone.
 
-- **The half-sheet takes a second column of stints once one will not hold
+- **The Half sheet takes a second column of stints once one will not hold
   them.** It was height-bound and width-unbound — its width-fit ceiling
   (44.96px) sat *above* its own 44px `maxName`, so the extra width bought
   nothing at all and the bigger sheet held **9 stints against the pocket
   card's 12**, telling the coach to sub less often. `columnsFor` in `card.js`
   splits the rows into two `.stintcols` columns past that point, which takes
-  the half-sheet to **18 stints on one piece of paper** at ~21px names —
+  the Half sheet to **18 stints on one piece of paper** at ~21px names —
   still a third larger than the pocket card's ~16.6px. Deliberately *not*
   unconditional: below one column's worth the sheet is byte-identical to what
   it always was, because two columns on a card that already fits would shrink
