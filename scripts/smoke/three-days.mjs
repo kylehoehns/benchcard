@@ -153,7 +153,7 @@ export async function threeDaysPass(c, origin) {
         problems.push(`the new day reads ${JSON.stringify(after[0])}, want {"heading":"Tomorrow","passes":1} leading the list`);
       }
     } else {
-      problems.push('"Plan it" did not close the add-a-game flow for the new date');
+      problems.push('"Add game" did not close the add-a-game flow for the new date');
     }
 
     // Item 11: no horizontal overflow at 390×844...

@@ -59,7 +59,7 @@ function minutesEditor(g) {
   const locked = new Set(c.lockedTargets);
 
   const budget = el('div', 'budget');
-  budget.append(el('span', 'b-k', 'Budget'));
+  budget.append(el('span', 'b-k', 'Set so far'));
   const bv = el('span', 'b-v');
   bv.id = 'budgetVal';
   budget.append(bv);

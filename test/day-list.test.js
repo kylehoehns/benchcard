@@ -398,7 +398,7 @@ test('fileIfPast files every past day under its own date, in one toast, and keep
     startEveryGame();
     const msg = S.fileIfPast(TODAY);
 
-    assert.equal(msg, '2 past days: 3 games saved to the season.');
+    assert.equal(msg, '2 past days: 3 games filed to the season.');
     assert.equal(S.team().season.games.length, 3, 'both past days\' games filed');
     assert.deepEqual(S.team().season.games.map(g => g.date), ['2026-09-26', '2026-09-26', '2026-09-27']);
     assert.equal(S.team().days.length, 1, 'the 29th is the only day left');
@@ -421,7 +421,7 @@ test('fileIfPast: several past days report their never-started games in one coun
 
     const msg = S.fileIfPast(TODAY);
 
-    assert.equal(msg, '2 past days: 1 game saved to the season. 2 games were never started, so they were left out.');
+    assert.equal(msg, '2 past days: 1 game filed to the season. 2 games were never started, so they were left out.');
     assert.equal(S.team().days.length, 1, 'only the 29th is left in days');
     assert.equal(S.team().days[0].date, '2026-09-29');
   });

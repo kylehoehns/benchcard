@@ -13,6 +13,9 @@
    ("Minutes (as a strategy name)"). Returns { term -> [phrase, ...] }, the
    parenthetical stripped. */
 import { readFileSync } from 'node:fs';
+import { jsStrings } from './js-strings.js';
+import { stripHtmlComments } from './html-comments.js';
+import { trackedFiles } from '../scripts/spelling.mjs';
 
 export function parseGlossaryAvoid(md) {
   const out = {};
@@ -59,4 +62,34 @@ export function avoidRegexes(terms, drops = new Set(), overrides = {}) {
   return terms.flatMap((term) => (avoidByTerm[term] || [])
     .filter((phrase) => !drops.has(phrase.toLowerCase()))
     .map((phrase) => [phrase, overrides[phrase] || wordRegex(phrase)]));
+}
+
+/* The body-text extraction both `appCopy()` below (for index.html) and
+   one-name.test.js (for about.html, advanced.html and the six chart pages)
+   need: everything from `<body` on -- a page's own `<head>` and `<noscript>`
+   are read by search engines and no-JS readers respectively, and #149's one
+   named carve-out is index.html's -- with `<noscript>…</noscript>` removed
+   and both HTML comments and block comments stripped, so a caller scans
+   exactly the text a reader or screen reader sees. `path` is repo-relative. */
+export function htmlBodyCopy(path) {
+  let html = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+  const bodyAt = html.indexOf('<body');
+  if (bodyAt > -1) html = html.slice(bodyAt);
+  html = html.replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ');
+  return stripHtmlComments(html).replace(/\/\*[\s\S]*?\*\//g, ' ');
+}
+
+/* The scan loop rule-names.test.js used to keep to itself (#98), now shared
+   with one-name.test.js (#149 Constraints: "the loop that reads every
+   app/*.js literal and index.html already lives in test/rule-names.test.js;
+   move it into one helper ... that both tests call"). Returns `[file, text]`
+   for every tracked `app/[name].js` (its string/template literals, joined --
+   comments already dropped by `jsStrings`) and one more pair for
+   `app/index.html`, via `htmlBodyCopy`. */
+export function appCopy() {
+  const files = trackedFiles().filter((f) => /^app\/[^/]+\.js$/.test(f));
+  const out = files.map((f) =>
+    [f, jsStrings(readFileSync(new URL(`../${f}`, import.meta.url), 'utf8')).join(' \n ')]);
+  out.push(['app/index.html', htmlBodyCopy('app/index.html')]);
+  return out;
 }

@@ -846,7 +846,7 @@
             <span class="prow-t">Names</span>
             <span class="prow-ctl">
               <select id="cardId" class="prow-select">
-                <option value="short">Short names</option>
+                <option value="short">Card names</option>
                 <option value="number">Jersey numbers</option>
               </select>
               <span class="i prow-chev" data-icon="chevron-right" aria-hidden="true"></span>
@@ -861,7 +861,7 @@
             <input type="checkbox" id="showMinutes" switch>
           </label>
         </div>
-        <p class="pgrp-f">Cut on the dashed line. Underlined = just came in.</p>
+        <p class="pgrp-f">Cut on the dashed line. Underlined = just came on.</p>
       </div>
     </dialog>
   </main>
@@ -1126,7 +1126,7 @@
         <!-- Beside the field it is about, not loose on the page: this sentence
              is about the card name above it, and it should disappear the day
              that row does. -->
-        <p class="note">The card prints a short name. Override it when two kids collide.</p>
+        <p class="note">What the card prints. Change it if two players look the same.</p>
         <div class="pgrp-h">Level</div>
         <div class="pgrp">
           <div class="prow prow-level" id="playerLevel"></div>
@@ -1313,8 +1313,8 @@
       <div class="prow">
         <span class="prow-t">A new game starts</span>
         <div class="seg wide" id="seasonDefSeg" role="group" aria-label="How a new game starts">
-          <button class="press" type="button" data-sdef="0">On its own</button>
-          <button class="press" type="button" data-sdef="1">With the season</button>
+          <button class="press" type="button" data-sdef="0">Fair on its own</button>
+          <button class="press" type="button" data-sdef="1">Evening out the season</button>
         </div>
       </div>
     </div>
@@ -1338,7 +1338,7 @@
       </div>
       <div class="prow">
         <span class="prow-t">The odd minutes</span>
-        <div class="seg wide" id="tieBreakSeg" role="group" aria-label="Who plays the odd stint">
+        <div class="seg wide" id="tieBreakSeg" role="group" aria-label="Who gets the odd minutes">
           <button class="press" type="button" data-tie="behind">Furthest behind</button>
           <button class="press" type="button" data-tie="levels">Best players</button>
         </div>
@@ -1519,11 +1519,11 @@
        the draft it is editing. The ask row mirrors `#pasteAsk`/`#addAsk`
        above (C4, rationale at app/trap.js:485-501): a `showModal()` dialog
        inerts everything outside it, so the question has to live inside. -->
-  <dialog class="flow noprint" id="addGameFlow" aria-label="New game">
+  <dialog class="flow noprint" id="addGameFlow" aria-label="Add a game">
     <div class="flow-bar">
       <div class="flow-bar-row">
         <button type="button" class="bsheet-close" id="agClose" aria-label="Close"><span class="i" data-icon="x"></span></button>
-        <span class="flow-t">New game</span>
+        <span class="flow-t">Add a game</span>
         <span class="flow-step" id="agStep"></span>
       </div>
       <!-- Decoration: `#agStep` beside it already says "1 of 3" in words, so
@@ -1808,12 +1808,12 @@
         here, and how minutes should split -- then carries over the format, who is at the
         gym and your rules from the last game, so only the opponent and tip-off are new.
         If nothing about the game has changed, the first question offers a
-        <b>Same as …?</b> card with a one-tap <b>Use it</b> that skips straight past the
+        <b>Same as …?</b> card with a one-tap <b>Add game</b> that skips straight past the
         other two. From the second game on there is a switch called <b>Even out earlier
         games</b>. Leave it on and the day evens out across every game, so a kid who sat
         more in game 1 gets it back in game 2. Turn it off and each game is fair on its
         own. The <b>Season</b> screen shows the running totals for the day.</p>
-      <p class="help-p">Once a day is over, every game you finished on it files itself into the
+      <p class="help-p">Once a day is over, every game you played on it is filed into the
         <b>Season</b> screen, which keeps what each player actually played and exports as a
         spreadsheet. Once a season has games in it, every game gets a second switch called
         <b>Even out the season so far</b>. It starts the players who are behind for
@@ -1824,15 +1824,15 @@
       <h4 class="help-h">Reading the card</h4>
       <!-- Bold here means "printed on the paper", not "stressed in this
            sentence" -- about.html's card section already made that call. -->
-      <p class="help-p">Each block is one substitution. On the left is the clock:
+      <p class="help-p">Each box is one stint. On the left is the clock:
         <b>Q2 8:00</b> means with 8:00 left in the second period. To its right,
         <b>▼</b> lists who is coming off. Underneath are the five who are on the floor
         for that stretch, and the <b>underlined</b> names are the
-        ones who just came on. <b>START</b> is your opening five and <b>NO SUBS</b>
+        ones who just came on. <b>START</b> is your starting five and <b>NO SUBS</b>
         means nobody changes at that break. Cut along the dashed line.</p>
       <p class="help-p">Two sizes, under <b>Size</b>. <b>Pocket size</b> is 3.45 × 5 in,
         two to a sheet across, and is the one that lives in a notebook.
-        <b>Half-sheet</b> is 8 × 5.1 in, two down the page: the same card in bigger type
+        <b>Half sheet</b> is 8 × 5.1 in, two down the page: the same card in bigger type
         on a clipboard, and it lays the stints out in two columns, so a long game stays
         on one card.</p>
 
@@ -1877,10 +1877,10 @@
         <dt>A new game starts</dt>
         <dd>Every game you add can open with “Even out the season so far” already on,
           so you do not tick it each week. You can still change it per game in the
-          game's Plan, under Across the season. Until a finished day has filed there
+          game's Plan, under Across the season. Until a day has been filed there
           is no season to even out, and both settle a new game the same way.</dd>
         <dt>Players changing at once</dt>
-        <dd>How many go on together at a substitution. Fewer keeps the floor settled;
+        <dd>How many go on together at a break. Fewer keeps the floor settled;
           more breaks up long stretches on the bench. Totals come out the same either
           way.</dd>
         <dt>The odd minutes</dt>

@@ -1023,25 +1023,22 @@ export function sameAsLast() {
   };
 }
 
-/* The status line inside an open sheet (decision 10, item 6): the minute
-   range and the change count, read off `effectiveMinutes`/`effectiveStints`
-   -- never `p.minutes`/`p.stints` -- so a hand swap the coach made before
-   opening the sheet is what the line describes. A blocked plan names its
-   first error, same wording as `renderIssues` (plan-view.js) already uses. */
+/* The status line inside an open sheet (decision 10, item 6; #149 item 1):
+   the minute range and the change count, read off `effectiveMinutes`/
+   `effectiveStints` -- never `p.minutes`/`p.stints` -- so a hand swap the
+   coach made before opening the sheet is what the line describes. Built from
+   `summaryLine` rather than re-deriving its wording. A blocked plan names its
+   first error under `BLOCKED_TITLE`, same wording as `renderIssues`
+   (plan-view.js) and the shared `blockedPanel` already use. */
 export function planSay(g, p) {
   if (!p || !p.ok) {
     const err = (p?.issues || []).find(x => x.severity === 'error');
-    return `Plan blocked: ${err ? err.message : ''}`;
+    return `${BLOCKED_TITLE}.${err ? ' ' + err.message : ''}`;
   }
   const stints = effectiveStints(g, p);
   const mins = effectiveMinutes(g, p);
-  const vals = Object.values(mins);
-  const lo = Math.min(...vals), hi = Math.max(...vals);
   const subs = stints.slice(1).reduce((a, r) => a + r.in.length, 0);
-  const minutesPart = lo === hi
-    ? `${fmtMinutes(hi)} minutes each`
-    : `${fmtMinutes(lo)} to ${fmtMinutes(hi)} minutes each`;
-  return `${minutesPart}, ${subs} change${subs === 1 ? '' : 's'}`;
+  return summaryLine(mins, subs);
 }
 
 /* The Format sheet's stepper (decision 5): one step, clamped into range. A
@@ -1871,10 +1868,10 @@ export function fileIfPast(today = new Date()) {
   const n = idxs.length;
   const msg = n === 1
     ? (kept
-      ? `${weekdayLabel(filedDate)}: ${kept} game${kept === 1 ? '' : 's'} saved to the season.`
+      ? `${weekdayLabel(filedDate)}: ${kept} game${kept === 1 ? '' : 's'} filed to the season.`
       : `${weekdayLabel(filedDate)} is over.`)
     : (kept
-      ? `${n} past days: ${kept} game${kept === 1 ? '' : 's'} saved to the season.`
+      ? `${n} past days: ${kept} game${kept === 1 ? '' : 's'} filed to the season.`
       : `${n} past days are over.`);
 
   // #133: a game that was never started is left out of the count above and
@@ -1885,5 +1882,5 @@ export function fileIfPast(today = new Date()) {
     : skipped.length > 1 ? ` ${skipped.length} games were never started, so they were left out.`
     : '';
   const full = msg + skipMsg;
-  return fellBack && kept === 0 ? `${full} Started a new day.` : full;
+  return fellBack && kept === 0 ? `${full} A new game is ready for today.` : full;
 }

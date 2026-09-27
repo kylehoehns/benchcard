@@ -154,7 +154,7 @@ export const FEATURES = [
   { key: 'league:minimum', src: 'state.js leagueMinutes', text: ['everyone plays at least'] },
 
   { key: 'card:pocket', src: 'index.html #cardSize', text: ['pocket size', 'pocket 3.45'] },
-  { key: 'card:half', src: 'index.html #cardSize', text: ['half-sheet'] },
+  { key: 'card:half', src: 'index.html #cardSize', text: ['half sheet'] },
 ];
 
 /* Deliberate omissions: `'<surface> <key>'` with the reason on the line.

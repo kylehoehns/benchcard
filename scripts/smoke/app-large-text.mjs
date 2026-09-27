@@ -172,6 +172,17 @@ export const APP_LARGE_TEXT_STATES = [
            document.querySelector('#view-season details.sn-game').open = true`,
     close: `document.querySelectorAll('#view-season details.sn-game').forEach(d => d.open = false);
             document.querySelector('#backBtn').click()` },
+  /* #149 item 16: the Stint by stint table (`#tabledetails`), open, with a
+     RICH game -- new headers ('', 'Clock', 'On the floor', 'Comes on',
+     'Comes off', 'On the bench') and the reworded spread note both go
+     through this fold, and no state above this one ever opens it (it stays
+     closed, and a closed `<details>` hides its `.dz-bd` with `display: none`
+     -- zero-size, so `OVERFLOW_PROBE` skips it -- until `open` is set). */
+  { name: 'stint by stint, open',
+    open: `${TODAY_HOME}; document.querySelector('.today-game').click();
+           document.querySelector('#tabledetails').open = true`,
+    close: `document.querySelector('#tabledetails').open = false;
+            document.querySelector('#backBtn').click()` },
   /* #32 item 10: the three steps of the Add-a-game flow, at the cell the
      acceptance criterion names. A full-screen dialog with its own bar,
      scrolling body and fixed footer -- no state above this one has ever put

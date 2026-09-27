@@ -89,13 +89,13 @@ test('planSay: a range of minutes, plural changes', () => {
   const g = bareGame({});
   const p = { ok: true, minutes: { a: 10, b: 14 },
     stints: [{ in: [] }, { in: ['a'] }, { in: ['b'] }, { in: ['a'] }, { in: ['b'] }] };
-  assert.equal(S.planSay(g, p), '10 to 14 minutes each, 4 changes');
+  assert.equal(S.planSay(g, p), '10–14 min each · 4 changes');
 });
 
-test('planSay: an even plan reads "{m} minutes each", one change is singular', () => {
+test('planSay: an even plan reads "{m} min each", one change is singular', () => {
   const g = bareGame({});
   const p = { ok: true, minutes: { a: 12, b: 12 }, stints: [{ in: [] }, { in: ['a'] }] };
-  assert.equal(S.planSay(g, p), '12 minutes each, 1 change');
+  assert.equal(S.planSay(g, p), '12 min each · 1 change');
 });
 
 test('planSay: a blocked plan names the first error', () => {
@@ -104,7 +104,13 @@ test('planSay: a blocked plan names the first error', () => {
     { severity: 'warn', message: 'A warning nobody needs to act on.' },
     { severity: 'error', message: 'Not enough players for five on the floor.' },
   ] };
-  assert.equal(S.planSay(g, p), 'Plan blocked: Not enough players for five on the floor.');
+  assert.equal(S.planSay(g, p), "This plan can't be built. Not enough players for five on the floor.");
+});
+
+test('planSay: a blocked plan with no error names none', () => {
+  const g = bareGame({});
+  const p = { ok: false, issues: [] };
+  assert.equal(S.planSay(g, p), "This plan can't be built.");
 });
 
 test('stepFormat: clamps toward range, and a step from a stray high value lands on the max', () => {

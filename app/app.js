@@ -30,7 +30,7 @@ import { initSeason, exportSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
 import { initToast, undoable, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
-import { render, renderAll, setView, applyTheme, applyTint, rotationAnnounced } from './render.js';
+import { render, renderAll, setView, applyTheme, applyTint, rotationAnnounced, ROTATION_CHANGED, SWAPS_CLEARED } from './render.js';
 import { edit } from './edit.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
@@ -133,7 +133,7 @@ on('#cardSize', 'onchange', e => {
 on('#printScope', 'onchange', e => { state.ui.printScope = e.target.value; edit('cardOptions'); });
 on('#showMinutes', 'onchange', e => { state.ui.showMinutes = e.target.checked; edit('cardOptions'); });
 on('#regen', 'onclick', () => { const hadOverrides = reseed(game());
-  if (hadOverrides) flash('New rotation. The swaps you made by hand were cleared.');
+  if (hadOverrides) flash(ROTATION_CHANGED + SWAPS_CLEARED);
   edit('regen');
   /* #139 item 13: a plain Shuffle -- neither the hand-swap flash above nor
      #134's underway "Rotation changed." toast (checked via `rotationAnnounced`,
@@ -146,7 +146,7 @@ on('#regen', 'onclick', () => { const hadOverrides = reseed(game());
     const live = $('#regenLive'), summary = $('#summary');
     if (live) {
       live.textContent = '';
-      requestAnimationFrame(() => { live.textContent = `New rotation. ${summary ? summary.textContent : ''}`; });
+      requestAnimationFrame(() => { live.textContent = `${ROTATION_CHANGED} ${summary ? summary.textContent : ''}`; });
     }
   }
 });

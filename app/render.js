@@ -126,8 +126,11 @@ const GAME_SECTIONS = new Set(['setup', 'sentence', 'strategy', 'budget', 'balan
 let settled = null;
 
 // Shared by both branches below, so the sentence can only ever read one way.
-const ROTATION_CHANGED = 'Rotation changed.';
-const SWAPS_CLEARED = ' The swaps you made by hand were cleared.';
+// Exported (#149 item 10) so app.js's own Shuffle toast and #regenLive build
+// the identical sentence from these two constants rather than typing it
+// again -- "New rotation" was a second name for the same event.
+export const ROTATION_CHANGED = 'Rotation changed.';
+export const SWAPS_CLEARED = ' The swaps you made by hand were cleared.';
 
 /* #139 item 13: did the branch below just show one of the two messages
  * above? A caller (`#regen`'s handler) needs to know this to decide whether

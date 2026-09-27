@@ -30,7 +30,7 @@ _Avoid_: shirt number
 
 **Card name**:
 The up-to-five capital letters a player is printed as on the card.
-_Avoid_: short name, nickname
+_Avoid_: short name, nickname, short names
 _In code_: `shortName`
 
 **Level**:
@@ -82,9 +82,16 @@ _Avoid_: shift, block, stretch, rotation (for one stint)
 The moment between two stints when players change.
 _Avoid_: whistle, substitution (for the moment itself)
 
+**Change**:
+One player coming on at a break, and the count of them a plan shows ("16–20
+min each · 12 changes"). Bench mode shows "Next change at" when someone comes
+on or off, and "Next break at" when no one does.
+_Avoid_: substitution
+
 **Sub interval**:
 How often breaks come: every N minutes, N times a period, or only at the end of
-each period.
+each period. The verb "sub" belongs only here ("How often do you sub?",
+"subbing every 4 min").
 _Avoid_: granularity, sub frequency
 _In code_: `granMode` / `granValue`, `granularity`
 
@@ -142,8 +149,10 @@ _Avoid_: randomize, regenerate
 
 **Blocked plan**:
 A plan the solver cannot produce because the rules, the roster or the format
-contradict each other, shown with what to fix.
-_Avoid_: infeasible, error state, needs a fix (except as a game's status)
+contradict each other, shown with what to fix. Its title is "This plan can't
+be built".
+_Avoid_: infeasible, error state, needs a fix (except as a game's status),
+Plan blocked, Resolve the errors
 _In code_: `plan.ok === false`, `issues` with severity `error`
 
 ## Strategies
@@ -166,7 +175,7 @@ _In code_: `minutes`, `targetSlots`, `targetMinutes`
 **Lock**:
 A mark on a By hand player's minutes that holds the number when the rest are
 evened out.
-_Avoid_: pin
+_Avoid_: pin, unpinned
 
 **Closers**:
 The strategy that shares minutes evenly and then puts a chosen group on the floor
@@ -278,7 +287,8 @@ _In code_: `useCarryover`, `carryover`
 **Filed game**:
 A game kept in the season once its day is filed, with the minutes it actually
 produced.
-_Avoid_: archived, saved, finished (that is a **Finished game**), history
+_Avoid_: archived, saved, finished (that is a **Finished game**), history,
+saved to the season
 _In code_: `season.games`, `seasonGame`
 
 **Season**:
@@ -302,6 +312,10 @@ _In code_: `useSeasonTargets`, `seasonDefault`
 The printed plan for a game, sized for a pocket notebook or a half sheet, and
 the product the rest of the app exists to make.
 _Avoid_: printout, sheet, chart
+
+**Half sheet**:
+The larger card size, 8 × 5.1 in, two to a page.
+_Avoid_: half-sheet
 
 **Change line**:
 The line above each stint on the card giving the clock and who comes off.
@@ -392,6 +406,11 @@ _Avoid_: help sheet, How this works, FAQ
 A file holding everything the app stores on a device, which a coach can save and
 restore from.
 _Avoid_: export (the season spreadsheet is an export, not a backup)
+
+**Remove**:
+The one verb for taking a player, rule, game or team away; every remove offers
+Undo for nine seconds.
+_Avoid_: delete
 
 ## Flagged ambiguities
 

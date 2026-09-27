@@ -426,8 +426,8 @@ function removeTeam() {
   confirmAction({
     title: `Remove ${label}?`,
     body: what + (last
-      ? ' Benchcard goes back to the start. You can undo this for a few seconds afterwards.'
-      : ' You can undo this for a few seconds afterwards.'),
+      ? ' Benchcard goes back to the start. You can undo this for nine seconds afterwards.'
+      : ' You can undo this for nine seconds afterwards.'),
     verb: 'Remove team',
     run: () => undoable(`Removed ${label}.`, () => {
       state.teams.splice(state.activeTeam, 1);
@@ -734,7 +734,7 @@ function paintFlow() {
   // asking about the step it just left.
   showFlowAsk(false);
   paintFlowShell(AG, flowStep, STEPS, flowStepBody(FLOW_STEPS, flowStep),
-    { nextText: flowStep === STEPS ? 'Plan it' : 'Next' });
+    { nextText: flowStep === STEPS ? 'Add game' : 'Next' });
 }
 
 /* Step 1. The two fields write straight into the draft, so what is typed
@@ -769,7 +769,7 @@ function stepWho(wrap) {
   // Two flex children, so "Use it" sits beside the text (app.css).
   const text = el('div', 'flow-card-text');
   text.append(el('p', 'flow-card-t', same.title), el('p', 'flow-card-s', same.summary));
-  card.append(text, el('span', 'flow-card-use', 'Use it'));
+  card.append(text, el('span', 'flow-card-use', 'Add game'));
   wrap.append(card);
 }
 

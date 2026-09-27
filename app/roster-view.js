@@ -601,7 +601,7 @@ function levelsNote() {
      about the sentence is true either way. */
   const byLevel = (state.settings?.tieBreak ?? 'behind') === 'levels';
   return `Levels stay with your team from game to game. ${byLevel
-    ? 'They shape who is on the floor together, and the tie-break setting asks them to settle the odd stint when the clock will not divide evenly.'
+    ? 'They shape who is on the floor together, and they decide who gets the odd minutes, as your Settings ask.'
     : 'They shape who is on the floor together; everyone’s share of the minutes is worked out without them.'} They are never printed and never shown in bench mode.`;
 }
 

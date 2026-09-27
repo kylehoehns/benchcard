@@ -1,10 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { jsStrings } from './js-strings.js';
-import { avoidRegexes } from './glossary.js';
-import { stripHtmlComments } from './html-comments.js';
-import { trackedFiles } from '../scripts/spelling.mjs';
+import { avoidRegexes, appCopy } from './glossary.js';
 
 /* #98: the Plan sheet's rule picker, bench mode's blocked-plan messages, the
    rules list and the help sheet each named the three pair rules differently.
@@ -12,7 +8,12 @@ import { trackedFiles } from '../scripts/spelling.mjs';
    two on -- and this guard bans the retired names it lists, read through the
    same `_Avoid_:` parser and phrase-to-regex builder test/static-pages.test.js
    already uses (#98 Constraints: "reuse, do not re-derive"; docs/specs/98-
-   pair-rule-names.md Design: "Do not type them in again"). */
+   pair-rule-names.md Design: "Do not type them in again").
+
+   #149 gave the scan loop itself -- every tracked app/*.js string/template
+   literal plus index.html's `<body>` text -- one shared home, `appCopy()` in
+   test/glossary.js, so this guard and test/one-name.test.js read the same
+   files the same way rather than each walking the tree on its own. */
 const TERMS = ['Together', 'Apart', 'One of two on'];
 
 /* Two phrases are dropped from the three terms' `_Avoid_` lists, each for a
@@ -38,16 +39,13 @@ const WORD_RES = avoidRegexes(TERMS, PHRASE_DROP);
 
 assert.ok(WORD_RES.length >= 4, `only ${WORD_RES.length} avoided phrases parsed from CONTEXT.md; the parser broke`);
 
-const APP_JS_FILES = trackedFiles().filter((f) => /^app\/[^/]+\.js$/.test(f));
-assert.ok(APP_JS_FILES.length > 20, `only ${APP_JS_FILES.length} app/*.js files found; the file list is wrong`);
+const FILES = appCopy();
+assert.ok(FILES.length > 20, `only ${FILES.length} file(s) read; the file walk is wrong`);
 
 test('no banned pair-rule name survives in app/*.js literals or app/index.html text', () => {
   const hits = [];
-  for (const file of APP_JS_FILES) {
-    const text = jsStrings(readFileSync(file, 'utf8')).join(' \n ');
+  for (const [file, text] of FILES) {
     for (const [phrase, re] of WORD_RES) if (re.test(text)) hits.push(`${file}: "${phrase}"`);
   }
-  const html = stripHtmlComments(readFileSync(new URL('../app/index.html', import.meta.url), 'utf8'));
-  for (const [phrase, re] of WORD_RES) if (re.test(html)) hits.push(`app/index.html: "${phrase}"`);
   assert.deepEqual(hits, [], `banned pair-rule name(s) found:\n${hits.join('\n')}`);
 });
