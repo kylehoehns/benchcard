@@ -72,6 +72,16 @@ const KEEP_UNREAD = new Map([
     + 'hover) onto --tint-2; kept declared because '
     + 'test/graphite-tokens.test.js\'s NEUTRAL_DIRECT list (#21) still checks '
     + 'it is present and neutral in every block'],
+  ['--sp-1', '#152 names the L6 4/8/12/16/24/32 spacing scale so a future '
+    + 'edit has one place to reach for; today\'s app.css has only one margin, '
+    + 'padding or gap that already sits on a step without moving it '
+    + '(.bal-step\'s padding-bottom, now --sp-3), and moving the rest onto '
+    + 'the scale is explicitly out of scope for #152, so the other five are '
+    + 'not read yet'],
+  ['--sp-2', 'see --sp-1'],
+  ['--sp-4', 'see --sp-1'],
+  ['--sp-6', 'see --sp-1'],
+  ['--sp-8', 'see --sp-1'],
 ]);
 /* Tokens read without a declaration on purpose — a genuine "set this from
  * outside" hook, not a typo. Same rule: a reason on the line. */

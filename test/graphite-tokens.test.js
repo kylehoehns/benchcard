@@ -60,18 +60,18 @@ test('the four ticket tokens hold the ticket values, exactly, in both theme bloc
 /* Every token that is meant to be a single, pure color and is NOT a status
  * color (checked for its own hue below) or a player token (untouched by
  * #21, checked separately). The shadows are named in the spec too
- * ("--bg-2, --surface-2, --surface-3, --ink-2, --faint, --line, --line-2,
+ * ("--bg-2, --surface-2, --surface-3, --ink-2, --muted, --line, --line-2,
  * --pc-track, the shadows"), but a shadow's VALUE is a multi-part box-shadow
  * list, not a single color -- extractColors pulls the literal color(s) out
  * of it instead of trying to parse the whole declaration as one. */
 const NEUTRAL_DIRECT = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3', '--sheet',
-  '--ink', '--ink-2', '--muted', '--faint', '--line', '--line-2',
+  '--ink', '--ink-2', '--muted', '--line', '--line-2',
   '--accent', '--accent-2', '--accent-soft', '--accent-line', '--accent-ink',
   '--info', '--info-soft', '--pc-track'];
 const SHADOW_TOKENS = ['--shadow-sm', '--shadow', '--shadow-lg', '--shadow-paper'];
-/* The real palette's widest legitimate spread today is 8 (light --faint,
- * #6B6B73); ten points of slack above that catches a warm off-white like
- * #F2EEE8 (spread 10) without flagging anything genuinely gray. */
+/* The real palette's widest legitimate spread today is 7 (dark --muted,
+ * #98989F); slack above that catches a warm off-white like #F2EEE8 (spread
+ * 10) without flagging anything genuinely gray. */
 const NEUTRAL_TOLERANCE = 8;
 
 test('every non-status, non-player color token is neutral gray, in all four themes', () => {
