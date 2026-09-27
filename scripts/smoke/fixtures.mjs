@@ -171,9 +171,16 @@ export const RICH = {
    returning coach's saved choice would, not a live mutation after boot that
    `renderCards` never re-runs against (state.js's `cardSize` is read where
    `#sheet`'s cards are built, not observed). Every other caller passes
-   nothing and gets exactly the old RICH. */
-export async function goRich(c, origin, ui) {
-  const record = ui ? { ...RICH, ui: { ...RICH.ui, ...ui } } : RICH;
+   nothing and gets exactly the old RICH.
+
+   `base` (#148) swaps out RICH itself -- rule-edit.mjs's own part-played
+   pass needs `partPlayed(RICH)`'s record instead, and waiting for `.card`
+   (below) is still right for it, since `partPlayed`'s own `view`/
+   `activeGame` land straight on the Hawks game the same way RICH does.
+   One reload helper, not a second near-copy differing only in which record
+   it seeds. */
+export async function goRich(c, origin, ui, base = RICH) {
+  const record = ui ? { ...base, ui: { ...base.ui, ...ui } } : base;
   await seeded(c, `(() => {
     localStorage.removeItem('benchcard.v3');
     localStorage.removeItem('benchcard.v7.bak');

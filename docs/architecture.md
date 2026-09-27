@@ -193,7 +193,9 @@ one player's own sheet rather than in a strip under every name, because a level
 lives on the player and is a season-long judgement — and `renderBalance` sits
 with the **plan** (the shape is per game, stored as `game.balance`). The balance shape
 is chosen on a level-2 page inside the Plan sheet (#28); `renderBalance` paints
-that page and no longer checks a fold.
+that page and no longer checks a fold. When every player is on the same level,
+the page's hint text ends with a button, "Open Team", which closes the sheet and
+goes to the Team page (#148, W4) — the same pattern as `rosterCta`.
 
 The meter drags. Pointer handlers on `.bal-steps` read the level from the row's
 own geometry, so a finger can wander off the strip and still be understood, and
@@ -786,8 +788,8 @@ The controls #69 restyled on Today and the game screen hold 48px at every
 width, and the smoke check `today and game controls ≥ 48px` sweeps them.
 
 **Destructive actions are undoable, not confirmed.** Removing a player,
-removing a game, starting a new day, clearing in-game changes and editing a game
-while it is underway all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
+removing a game, starting a new day, clearing in-game changes, editing a game
+while it is underway, editing or removing a rule, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
 at the wrong moment — before the coach can see what it did, and a game removal
 is only judgeable once the rest of the day has rebalanced. When a game is
 part-played and an edit changes its period count, period minutes, substitution
@@ -1196,6 +1198,18 @@ two players a game. Nothing shows until a rule exists, each rule reads back as
 a plain sentence chip ("Kade capped at 12 min", "Jack / Jackson apart"), and
 adding one starts from a row of rule types rather than a form. The starting
 five and last-period pickers reuse the same tap-a-player control as closers.
+
+**Rules are also editable in place (#148).** Tapping a rule's chip opens its own
+page with the same controls Add a rule shows (without the kind choices, because
+a rule's kind does not change), and each change applies immediately. Half-done
+picks — one player in a pair, no players in a five — are not applied until the
+pick is complete, and the stored rule keeps its last whole value. A pair that
+matches another rule of the same kind reads "You already have this rule." on the
+page and is not applied. Removing a rule or changing one raises an undo toast
+naming what happened — "Changed: Eli plays at most 24 min" or "Removed: Eli
+plays at most 20 min" — for nine seconds; the snapshot is taken once per visit,
+on the first applied change, so tapping the stepper four times to change 20 → 24
+shows one toast and one undo. Leaving the page clears the snapshot.
 
 The collapsed row says which of the two it is. With rules set, `#conscount` is
 a count in an accent pill; with none, it names what the section holds

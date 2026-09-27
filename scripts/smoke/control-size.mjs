@@ -1,4 +1,4 @@
-import { evalJSON, tap } from './sheet-drive.mjs';
+import { evalJSON, tap, setGame } from './sheet-drive.mjs';
 import { goRich } from './fixtures.mjs';
 import { TODAY_HOME, CSS_VAR_COLOR_PROBE, evalIn } from './dom.mjs';
 
@@ -295,6 +295,17 @@ export async function controlSizePass(c, origin) {
       await tap(c, `document.querySelector('#constraints .add-rule').click()`);
       checkStepperRows(problems, theme, 'Add a rule', await stepperMetrics(c, '#planKindBody'));
       await tap(c, `document.getElementById('sheetPlanClose').click()`);
+
+      // #148 item 12: the edit page's own stepper (a cap rule) -- `#planSub`,
+      // a container the `#planKindBody` check above does not reach, holding
+      // the same shared `stepperRow` markup (rules.js's `kindControls`), so
+      // the same 88x32 pill / 48x48 buttons rule applies.
+      await evalIn(c, setGame(`s.game().constraints.maxMinutes = { p3: 20 };`));
+      await tap(c, `document.getElementById('phraseRules').click()`);
+      await tap(c, `document.querySelector('#constraints .prow:not(.add-rule)').click()`);
+      checkStepperRows(problems, theme, 'Edit a rule (cap)', await stepperMetrics(c, '#planSub'));
+      await tap(c, `document.getElementById('sheetPlanClose').click()`);
+      await evalIn(c, setGame(`s.game().constraints.maxMinutes = {};`));
 
       // Item 6, part 2: #showMinutes, inside #sheetCard.
       await tap(c, `document.getElementById('shareBtn').click()`);

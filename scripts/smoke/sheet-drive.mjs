@@ -260,6 +260,23 @@ export async function ringGivenBack(c, ck, dialogSel, triggerSel, open) {
   ck(!r.noring, `data-noring is set on ${triggerSel} after an Escape close, which would hide the ring a keyboard user needs`);
 }
 
+// The one live Undo toast, if any, with its message text and whether it
+// carries an Undo button -- rule-edit.mjs and rotation-undo.mjs each carried
+// their own copy of this expression string, word for word but for
+// rule-edit.mjs's extra `insideSheet` field (#148's toast has to stay inside
+// the still-open Plan sheet, C4). `insideSel`, when given, adds that field
+// against the selector named; left out, the returned shape is exactly what
+// rotation-undo.mjs already checked.
+export function readToastExpr(insideSel) {
+  const extra = insideSel ? `, insideSheet: !!t.closest(${JSON.stringify(insideSel)})` : '';
+  return `(() => {
+    const t = document.querySelector('.toast[data-undo]');
+    if (!t) return JSON.stringify({ shown: false });
+    return JSON.stringify({ shown: true, text: t.querySelector('.tmsg')?.textContent ?? null,
+      hasUndo: !!t.querySelector('.tundo')${extra} });
+  })()`;
+}
+
 // The dialog's own box, and the handle's, for the geometry and drag checks.
 export async function sheetRect(c, sel) {
   return evalJSON(c, `(() => {

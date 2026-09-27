@@ -32,7 +32,7 @@
  */
 import { evalIn, step } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
-import { setGame } from './sheet-drive.mjs';
+import { setGame, readToastExpr } from './sheet-drive.mjs';
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -60,15 +60,7 @@ const readMinutes = `(() => {
   })));
 })()`;
 
-const readToast = `(() => {
-  const t = document.querySelector('.toast[data-undo]');
-  if (!t) return JSON.stringify({ shown: false });
-  return JSON.stringify({
-    shown: true,
-    text: t.querySelector('.tmsg')?.textContent ?? null,
-    hasUndo: !!t.querySelector('.tundo'),
-  });
-})()`;
+const readToast = readToastExpr();
 
 // Item 6 follow-up: a half sheet (`dialog.bsheet.bsheet-half`) has to stay at
 // its ordinary 422px-tall resting height at 390x844/16px root once the Undo

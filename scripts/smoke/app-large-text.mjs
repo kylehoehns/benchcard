@@ -141,9 +141,11 @@ export const APP_LARGE_TEXT_STATES = [
      this fixture does not carry, so it is left to `plan sheet` (smoke.mjs)
      the same way `sentence-sheets.mjs` covers what this pass cannot). #143
      adds the other two sentence sheets Who's here sits beside: Format and
-     Sub interval, now the same `.pgrp`/`.prow` family. */
+     Sub interval, now the same `.pgrp`/`.prow` family. #148 adds a rule's
+     own edit page, one cap and one pair. */
   ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet",
-      'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'card sheet open']
+      'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'plan sheet, a cap rule', 'plan sheet, a pair rule',
+      'card sheet open']
     .map(n => STATES.find(s => s.name === n)),
   // #143: no name above forces a mid-word break; this one does (row-stack.mjs).
   ROW_STACK_LONG_NAME_STATE,
