@@ -1283,7 +1283,7 @@ function sayWhyTheyAreShort(p, prio, tiers) {
     && Math.max(...short.map(id => tiers[id])) <= Math.min(...rest.map(id => tiers[id]));
   // the engine's own full stop comes off; the reason takes its place
   i.message = i.message.replace(/\.$/, '') + (byLevel
-    ? `: the lower rotation levels, which is how this team settles a tie.`
+    ? `: the lower levels, which is how this team settles a tie.`
     : explained
       ? `: furthest ahead on ${(team().season?.games || []).length ? 'the season' : 'the day'} so far.`
       : `: nobody is ahead or behind yet, so it rotates. Shuffle, or set their minutes by hand.`);

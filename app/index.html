@@ -359,10 +359,10 @@
   "browserRequirements": "Requires JavaScript. Works offline once loaded.",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "description": "Benchcard plans youth basketball substitutions. Paste a roster, pick how the minutes should be split — even for everybody, totals you set yourself, a group that closes, or fixed platoons — and it works out who is on the floor for every stint of the game, then prints it on a pocket card. Rules for starters, minute floors and ceilings, pairs to keep together or apart and rest limits are respected, a tournament day balances across games, and everything stays in the browser: no account, and your roster never leaves your device.",
+  "description": "Benchcard plans youth basketball substitutions. Paste a roster, pick how the minutes should be split — even for everybody, totals you set yourself, a group that closes, or fixed platoons — and it works out who is on the floor for every stint of the game, then prints it on a pocket card. Rules for starters, minimums and maximums per player, pairs to keep together or apart and rest limits are respected, a tournament day balances across games, and everything stays in the browser: no account, and your roster never leaves your device.",
   "featureList": [
     "Equal playing time across the whole roster",
-    "Per-player minute targets, floors and ceilings",
+    "Per-player minimums and maximums",
     "Closing lineups and fixed platoons",
     "Starting five and last-period rules",
     "Keep two players together or apart",
@@ -1756,9 +1756,10 @@
       <h4 class="help-h">Lineup balance</h4>
       <p class="help-p">Even minutes decides how long everyone plays, not who plays
         together, so five players picked purely for fairness can be your five
-        youngest at once. Give each player a level on the <b>Team</b> page, on the
-        row of steps under their name. You do that once a season, not once a game, and
-        the plan keeps the fives from tipping. Minutes do not move. Then pick the shape under
+        youngest at once. Give each player a level on the <b>Team</b> page, by
+        tapping a player and choosing their level in the sheet that opens. You do that
+        once a season, not once a game, and the plan keeps the fives from tipping.
+        Minutes do not move. Then pick the shape under
         <b>Lineup balance</b> beside the plan, which is a call about tonight&rsquo;s
         opponent. Levels stay on the Team page: never printed, never shown in
         bench mode.</p>
@@ -1776,11 +1777,11 @@
       <h4 class="help-h">Rules</h4>
       <p class="help-p">Rules are things you need to be true; the plan works around them.
         Open a game and tap the rules words in the sentence under its title. That
-        is where you add one, and each rule you have added carries its own ✕ to
-        take it away.</p>
+        is where you add one, and opening a rule you have added shows a
+        <b>Remove rule</b> button to take it away.</p>
       <dl class="help-dl">
         <dt>Plays at least / Plays at most</dt>
-        <dd>A minimum, a maximum, or both, for one player. “At least 10” guarantees
+        <dd>The fewest minutes one player gets, the most, or both. “At least 10” guarantees
           playing time; “at most 12” holds somebody back.</dd>
         <dt>Starting five / Last-period five</dt>
         <dd>Names who is on the floor at tip-off, or who is out there for the final
@@ -1850,8 +1851,8 @@
         <dd>For foul trouble, when you have no opinion about who covers. It sits that
           player for the rest of the game and spreads the minutes across everyone
           still available, counting what each has already played. Nothing already
-          played moves, and <b>Undo in-game changes</b> in the top bar puts the
-          printed plan back.</dd>
+          played moves, and the round-arrow <b>Back to the printed plan</b> button
+          at the top of bench mode puts the printed plan back.</dd>
       </dl>
 
       <!-- #142: the explanations Settings' own rows lost when they moved to

@@ -101,16 +101,16 @@ export const read = (name) => SURFACES[name].slice(app(SURFACES[name].file));
 export const FEATURES = [
   /* #19 renamed the strategy in-app to Even / By hand and the balance shape
    * `even` to Steady, but only in-app: about.html and advanced.html stayed
-   * out of #19's scope and kept saying Balanced / Minutes / Even. #75 (item 6,
-   * against CONTEXT.md) brought both pages onto the strategy's glossary name
-   * too, so all three surfaces now call it Even -- which is exactly the
-   * collision the old comment here warned about: `even` would then name TWO
-   * keys on the SAME surface, the strategy AND the balance shape. `term` for
-   * `shape:even` is narrowed to the surface that still uses the bare word
-   * (`#help`'s "Steady" is a different word, so it never collided); about.html
+   * out of #19's scope and kept saying Balanced / Minutes / Even for BOTH the
+   * strategy and the shape. #75 (item 6, against CONTEXT.md) brought both
+   * pages onto the strategy's glossary name, Even. #150 finished the job on
+   * the shape: about.html and advanced.html now say Steady for it too, the
+   * same word `#help` already used. That leaves "Even" a bare word on all
+   * three surfaces for the strategy alone, so `term` for `shape:even` stays
+   * narrowed to `#help` rather than trusting "Steady" everywhere: about.html
    * and advanced.html instead prove the shape by the one sentence that names
-   * it ("every stint about as strong as every other"), via `text`, so the two
-   * keys never claim the same chunk. */
+   * it ("every stint about as strong as every other"), via `text`, which
+   * cannot be confused with the strategy's own name. */
   { key: 'strategy:balanced', src: 'state.js STRATEGIES', term: ['even'] },
   { key: 'strategy:minutes', src: 'state.js STRATEGIES', term: ['by hand'] },
   { key: 'strategy:closers', src: 'state.js STRATEGIES', term: ['closers'] },

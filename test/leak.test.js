@@ -21,7 +21,7 @@ const LEAKS = [
   /\.tier\b/,
   /\btierOf\b/,
   /\bDEFAULT_TIER\b/,
-  /['"`](?:Developing|Learning|Rotation level|Reliable|Go-to)['"`]/,
+  /['"`](?:Developing|Learning|Level for|Reliable|Go-to)['"`]/,
 ];
 
 /* season-view.js joins the list with v5's ledger: it is the one screen that
@@ -130,7 +130,7 @@ test('the CSV carries no level, and no column that could become one', () => {
     'the CSV header is not exactly Player, one column per game, Total — a column was added, '
     + 'and a column is where a rotation level gets to a parent');
 
-  for (const re of [...LEAKS, /\btier\b/i, /Developing|Rotation level|Go-to/i]) {
+  for (const re of [...LEAKS, /\btier\b/i, /Developing|Level for|Go-to/i]) {
     assert.ok(!re.test(csv), `the season CSV matched ${re}`);
   }
   // every row is exactly as wide as the header: no smuggled trailing field

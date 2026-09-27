@@ -319,12 +319,16 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 
    4.6rem, measured rather than guessed. The five level names are a closed set
    and the widest of them renders at 70px here -- Developing 70, Learning 55,
-   Rotation 51, Reliable 49, Go-to 36 -- so 4.6rem (74px) holds every one of
-   them with room to spare, including the two this figure does not currently
-   show. It was 5.8rem for one draft and that was too much: the extra came
-   straight out of the name beside it and clipped three of the five to
-   "Cole Whit...". The word goes ragged-right in exchange, which is the correct
-   trade -- the staircase is the picture here and the word is its caption.
+   Reliable 49, Regular 48, Go-to 36 -- so 4.6rem (74px) holds every one of
+   them with room to spare, including the one this figure does not currently
+   show (Developing). #150 replaced this row's old (wrong) "Rotation" label
+   with the real middle label, "Regular" -- shorter than "Reliable", so still
+   inside the same budget; the static-page smoke pass is what actually checks
+   it at 390 and at 320/32, not this comment's arithmetic. It was 5.8rem for
+   one draft and that was too much: the extra came straight out of the name
+   beside it and clipped three of the five to "Cole Whit...". The word goes
+   ragged-right in exchange, which is the correct trade -- the staircase is
+   the picture here and the word is its caption.
 
    AND IT STAYS A FLEX ROW, where its sibling `.tl-row` below is a grid with
    named column widths. That looks like an inconsistency and is not: at 320px
@@ -377,14 +381,20 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
   letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin-bottom: .35rem;
   padding-right: 2.65rem; }
 
-/* rule chips, exactly as the rules builder reads them back */
-.rulechips { display: flex; flex-wrap: wrap; gap: .4rem; }
-.rchip { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .55rem .3rem .75rem;
-  border-radius: var(--r-full); border: 1px solid var(--line-2); background: var(--surface);
-  font-size: .82rem; font-weight: 550; color: var(--ink-2); }
-.rchip.ok { border-color: color-mix(in srgb, var(--ok) 38%, transparent); color: var(--ok); }
-.rchip.err { border-color: color-mix(in srgb, var(--err) 38%, transparent); color: var(--err); }
-.rchip .x { color: var(--faint); font-size: .9rem; line-height: 1; }
+/* #150: rule rows, styled like the Rules page's own list -- a hairline
+   between rows, the sentence on the left, a chevron on the right
+   (app.css's `.prow` / `.prow-chev`, redrawn here since this page does not
+   load app.css) -- replacing the red/green chip mock the rules builder no
+   longer draws. */
+.rulerows { display: flex; flex-direction: column; }
+.rrule { display: flex; align-items: center; gap: .75rem; padding: .65rem 0;
+  font-size: .86rem; font-weight: 550; color: var(--ink-2); }
+.rrule + .rrule { position: relative; }
+.rrule + .rrule::before { content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 1px; background: var(--line); }
+.rrule-t { flex: 1; min-width: 0; }
+.rrule-chev { flex: none; width: .4rem; height: .4rem; border-right: 2px solid var(--faint);
+  border-bottom: 2px solid var(--faint); transform: rotate(-45deg); }
 
 /* The card image never grows past its native 331px -- upscaling a photo of
    print is the one thing that makes it look worse than it is. The 2x file in
@@ -785,7 +795,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
          the thing a coach came to see. -->
     <figure class="shot phone art after">
       <div class="bezel">
-        <img src="./bench-sample.png" width="264" height="571" loading="lazy" decoding="async" alt="Bench mode on a phone, at the third stint of eight and the start of the second quarter. Five players are listed on the floor with their jersey colors, minutes played and projected, and the three who just came on are tagged. Below them a panel reads NEXT SUB, Q2 4:00, with three names coming off and three going on, then the bench, then large buttons to step through the game.">
+        <img src="./bench-sample.png" width="264" height="571" loading="lazy" decoding="async" alt="Bench mode on a phone, at the third stint of eight and the start of the second quarter. Five players are listed on the floor with their jersey colors, minutes played and projected, and the three who just came on are tagged. Below them a shaded panel reads Next change at 4:00, with three names coming off and three going on, then the bench with an instruction to tap a player on the floor to swap, then large buttons to step through the game.">
       </div>
       <figcaption>Bench mode, mid-game. Who is on, what each has played against
         what they are on track for, and the next change spelled out. One
@@ -889,7 +899,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
       about <em>who plays together</em>, and five players picked purely for
       fairness can be your five youngest all at once. That is the moment most
       coaches give up on even minutes altogether.</p>
-    <p>So you can give each player a rotation level on the Team page, once a
+    <p>So you can give each player a level on the Team page, once a
       season rather than once a game, and Benchcard keeps the lineups from
       tipping. Everyone&rsquo;s share of the minutes is still worked out without
       the levels: they change who shares the floor, not how long anyone is on
@@ -897,7 +907,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 
     <figure class="art">
       <div class="plate">
-        <p class="plate-hd">Team &middot; rotation levels</p>
+        <p class="plate-hd">Team &middot; levels</p>
         <p class="lv-key" aria-hidden="true"><span>Developing</span><i class="lv-arrow"></i><span>Go-to</span></p>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 26)">
           <span class="lv-lab"><i class="dot"></i><span class="nm">Bria Hale</span></span>
@@ -912,12 +922,12 @@ footer a { display: flex; align-items: center; min-height: 48px; }
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 92)">
           <span class="lv-lab"><i class="dot"></i><span class="nm">Noah Castellan</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i></i><i></i></span>
-          <span class="lv-word">Rotation</span>
+          <span class="lv-word">Regular</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 128)">
           <span class="lv-lab"><i class="dot"></i><span class="nm">Elena Moreau</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i></i><i></i></span>
-          <span class="lv-word">Rotation</span>
+          <span class="lv-word">Regular</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 158)">
           <span class="lv-lab"><i class="dot"></i><span class="nm">Mia Vega</span></span>
@@ -925,15 +935,15 @@ footer a { display: flex; align-items: center; min-height: 48px; }
           <span class="lv-word">Learning</span>
         </div>
       </div>
-      <figcaption>Five steps, set once on the Team page and dragged with a
-        thumb. Everyone starts on the middle step, which is what makes the
-        feature off until you use it.</figcaption>
+      <figcaption>Tap a player on the Team page and choose their level in the
+        sheet that opens. Everyone starts on the middle step, which is what
+        makes the feature off until you use it.</figcaption>
     </figure>
     <p>Then, beside the plan for each game, you choose the shape. Which end of
       the game your stronger lineups fall on is a call about tonight&rsquo;s
       opponent, not about your team:</p>
     <ul>
-      <li><b>Even</b> — every stint about as strong as every other.</li>
+      <li><b>Steady</b> — every stint about as strong as every other.</li>
       <li><b>Start strong</b> — your best five open the game.</li>
       <li><b>Finish strong</b> — the reverse, saving them to close it out.</li>
       <li><b>Both ends</b> — strong to open and strong to finish, softer in the
@@ -956,18 +966,18 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     <figure class="art">
       <div class="plate">
         <p class="plate-hd">This game · rules</p>
-        <div class="rulechips" aria-hidden="true">
-          <span class="rchip">Simone plays at least 10 min<span class="x">✕</span></span>
-          <span class="rchip">Cole capped at 12 min<span class="x">✕</span></span>
-          <span class="rchip ok">Bria + Ty together<span class="x">✕</span></span>
-          <span class="rchip err">Noah / Mia apart<span class="x">✕</span></span>
-          <span class="rchip">Starts: Bria Cole Noah Rafael Ty<span class="x">✕</span></span>
-          <span class="rchip">Max 2 stints in a row<span class="x">✕</span></span>
-          <span class="rchip">Rafael or Devon always on<span class="x">✕</span></span>
+        <div class="rulerows" aria-hidden="true">
+          <div class="rrule"><span class="rrule-t">Simone plays at least 10 min</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Cole plays at most 12 min</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Bria and Ty together</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Noah and Mia apart</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Bria, Cole, Noah, Rafael and Ty start the game</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Nobody plays more than 2 stints in a row</span><i class="rrule-chev"></i></div>
+          <div class="rrule"><span class="rrule-t">Rafael or Devon is always on the floor</span><i class="rrule-chev"></i></div>
         </div>
       </div>
       <figcaption>Seven rules on one game. Nothing shows until a rule exists, and
-        every rule can be taken off again in one tap.</figcaption>
+        opening one shows a Remove rule button to take it off again.</figcaption>
     </figure>
 
     <p>Rules are things that have to be true; everything else bends around them.</p>
@@ -1185,7 +1195,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
          no date at all, so the guard is the reason the line is allowed to
          exist. The machine and human forms must agree; the guard checks that
          too. -->
-    <span>Last updated <time datetime="2026-09-26">26 September 2026</time></span>
+    <span>Last updated <time datetime="2026-09-27">27 September 2026</time></span>
   </footer>
 </div>
 
