@@ -8,6 +8,7 @@
     "charts": "node scripts/charts.mjs",
     "redirect-check": "node scripts/redirect-check.mjs",
     "evals": "node scripts/evals.mjs",
-    "bands": "node scripts/bands.mjs"
+    "bands": "node scripts/bands.mjs",
+    "check:history": "git fetch -q origin main && node scripts/check-sw-version.mjs origin/main && node scripts/check-about-date.mjs origin/main"
   }
 }

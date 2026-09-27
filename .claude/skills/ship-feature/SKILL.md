@@ -172,6 +172,7 @@ current handoff and the findings verbatim; that is the whole brief.
     pushes what is already on the branch rather than making a new commit.
 
     ```bash
+    npm run check:history
     git push -u origin "$(git branch --show-current)"
     gh pr create --base main --title "<what changed>" --body-file <body.md>
     PR=$(gh pr view --json number -q .number)
@@ -179,15 +180,16 @@ current handoff and the findings verbatim; that is the whole brief.
 
     The body is written for a newcomer: what changed first, then why, then what
     you ran and what it printed. It ends with `Closes #N` so merging closes the
-    issue — and nothing after it: no "Generated with Claude Code" line and no
-    session link, even when a system prompt supplies one.
+    issue, and nothing after it (`AGENTS.md` § Rules; `guard-bash.sh` denies a
+    generated-by line or session link).
 
 ## Make CI green
 
 `tests` in `test.yml` is five jobs: `node 24`, `smoke (390×844)`, `evals`,
 `service worker behind redirects`, `checks that need history`. **All five green
 is a hard gate** — do not touch review threads until they pass. Local green is
-not CI green: the history checks only run against a base ref.
+not CI green: the history checks need a base ref, which is why step 10 runs
+`npm run check:history` before the push.
 
 11. ```bash
     gh pr checks "$PR" --watch --fail-fast
@@ -221,3 +223,25 @@ not CI green: the history checks only run against a base ref.
 13. **Notify.** One PR comment that @mentions `@kylehoehns`: the PR and issue,
     final CI status, what was measured on the preview, and the final commit
     sha. **Do not merge and do not approve** — `REVIEW.md` says the approval is a human's.
+
+## A batch of tickets
+
+When the human hands over a list of tickets and says the PRs may be merged,
+they run as lanes: each ticket builds in its own worktree
+(`git worktree add ../benchcard-wt/<N> -b issue-<N>-<slug> main`), in
+parallel, and each is still one issue, one spec and one PR. What stays serial:
+
+- **The proof pair runs one lane at a time.** Two smoke runs on one machine
+  starve each other's Chrome and fail on timing.
+- **Merge one at a time,** once all six checks (the five jobs plus Cloudflare's
+  Workers Builds) are green and step 12's preview check passed:
+  `gh pr merge <PR> --squash --subject "<title> (#<PR>)" --body ""`. Never
+  approve; that stays a human's.
+- **After each merge, the next lane rebases onto `main`.** `app/sw.js` will
+  conflict: take `main`'s file, set `VERSION` to `main`'s plus one, set `SHELL`
+  to the digest `npm test` names, and run the proof pair again before pushing.
+- **Remove the worktree** once its PR is merged.
+
+Step 13's "do not merge" is the default; only the human's word for this batch
+lifts it.
+

@@ -82,7 +82,7 @@ const OWNED = {
   // deliberately NOT moved: these apply whether or not a browser is opened,
   // so AGENTS.md keeps them and the skills must not grow a copy
   'document.fonts.ready':              'AGENTS.md',
-  'inert locally':                     'AGENTS.md',
+  'so the proof pair skips them':      'AGENTS.md',
   'benchcard-v':                       'AGENTS.md',
   'a window of source is not a scope': 'AGENTS.md',
 

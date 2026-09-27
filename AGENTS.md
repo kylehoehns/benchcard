@@ -61,7 +61,7 @@ means the same thing twice running.
 
 ## What is enforced, and what is only written down
 
-Most of this file is judgement and cannot be mechanized. Eight rules can be, and
+Most of this file is judgement and cannot be mechanized. Nine rules can be, and
 are, in `.claude/hooks/` — they are stated in their own sections above and are
 not restated here, only listed, so there is still one answer per rule:
 
@@ -69,7 +69,8 @@ not restated here, only listed, so there is still one answer per rule:
 | --- | --- |
 | No blanket `--update-budgets` | denied, `guard-bash.sh` |
 | No `git add -A` / `git add .` | denied, `guard-bash.sh` |
-| No `Co-Authored-By` trailer | denied, `guard-bash.sh` |
+| No `Co-Authored-By` or `Claude-Session` trailer | denied, `guard-bash.sh` |
+| No generated-by footer or session link in a PR or issue body | denied, `guard-bash.sh` |
 | No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` — file tools only, not a shell write |
 | A text file over 60 KB is read in parts (`grep -n`, then offset and limit) | denied, `guard-read.sh` |
 | A precached file changed → bump `VERSION`, set `SHELL` | reminded, `after-edit.sh` — file tools only, not a shell write |
@@ -210,6 +211,15 @@ and the committer ran it again on the same bytes — about twelve pairs for one
 ticket, half of them repeats. A tree a commit already recorded as green is not
 re-run to say so again.
 
+**CI draws text wider than a Mac does.** The smoke job runs Chrome on Ubuntu,
+whose fonts are wider: "Bartholomew-Christopherson" measured 227px there in a
+209px row, and two button labels that fit on one line locally wrapped in CI.
+Seven of the ten red CI runs in #131–#150 were this. A check that measures
+text leaves at least 15% spare width, as `scripts/smoke/row-stack.mjs` does; a
+layout that fits locally only with less than that is the defect, not the
+check. When CI fails a text row that passes locally, read the measured values
+in the CI log before changing anything.
+
 The payload budget is a **recorded** baseline. `requests` comes from
 `scripts/budgets.json`; `bytes` and `nodes` are hand-pinned as
 `BYTES_BASELINE` and `NODES_BASELINE` in `scripts/budgets.mjs`, because
@@ -248,8 +258,10 @@ to the digest `npm test` names in the same edit. The cache is
 `benchcard-v${VERSION}-${SHELL}`: `SHELL` is what actually busts it, so a
 forgotten bump now leaves a stale release LABEL rather than a stale app on a
 coach's phone. `VERSION` is that label and nothing more — keep it honest.
-`scripts/check-sw-version.mjs` needs a base ref, so it is inert locally and
-only fires in CI; the `SHELL` guard in `test/sw.test.js` runs everywhere.
+`scripts/check-sw-version.mjs` and `scripts/check-about-date.mjs` need a base
+ref, so the proof pair skips them; `npm run check:history` runs both against
+`origin/main` — run it before every push. The `SHELL` guard in
+`test/sw.test.js` runs everywhere.
 
 **The printed card is auto-fitted from canvas `measureText`.** Its measurement
 font stack must match `.card`'s exactly. The UI itself does not use the card's
@@ -327,7 +339,8 @@ reason before the code exists is its proof that it can.
 - **This repo uses American spelling everywhere.** The word list lives in
   `scripts/spelling.mjs`, not here; `test/spelling.test.js` scans every tracked
   file outside `app/vendor/` and fails on a spelling from the other list.
-- **No `Co-Authored-By` trailer in commits.**
+- **No `Co-Authored-By` or `Claude-Session` trailer in commits.** A PR or
+  issue body ends at `Closes #N`: no generated-by line, no session link.
 - **Stage explicit paths, never `git add -A` / `git add .`.** This tree carries
   screenshots, `.playwright-mcp` scratch and worktrees that are ignored today
   only because someone remembered to ignore them; the next scratch file will
