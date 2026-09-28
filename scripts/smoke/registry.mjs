@@ -89,6 +89,7 @@ import { todayGameRowsPass } from './today-game-rows.mjs';
 import { sentenceSheetsPass } from './sentence-sheets.mjs';
 import { planSheetPass } from './plan-sheet.mjs';
 import { ruleEditPass } from './rule-edit.mjs';
+import { platoonUndoPass } from './platoon-undo.mjs';
 import { sheetSpacingPass } from './sheet-spacing.mjs';
 import { sheetFamilyPass } from './sheet-family.mjs';
 import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
@@ -275,6 +276,11 @@ export const ROWS = Object.freeze([
   // "Open Team" button -- see rule-edit.mjs.
   { id: 'ruleedit', name: 'edit a rule in place', selectable: true, setup: 'rich',
     run: ctx => ruleEditPass(ctx.c, ctx.origin) },
+  // #159's own guard (see docs/specs/159-platoon-undo.md's Proof section):
+  // "Remove unit N" in the Platoon editor acts at once and offers Undo, the
+  // same shape "Remove rule" gets -- see platoon-undo.mjs.
+  { id: 'platoonundo', name: 'remove a platoon unit, then Undo', selectable: true, setup: 'rich',
+    run: ctx => platoonUndoPass(ctx.c, ctx.origin) },
   // #73's own guard (see docs/specs/73-sheet-polish.md's Proof section):
   // stepper column equality at 390px and 320px/32px, equal row padding
   // whether a row wraps, the balance value clearing its label, and every
