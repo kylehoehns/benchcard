@@ -110,22 +110,6 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
     match: p => p.kind === 'clip' && p.el === 'p.plan-rule-sentence' && p.where === 'plan sheet, a pair rule',
   },
   {
-    issue: 188,
-    reason: 'the small centered keysbox dialogs (help, team color, shortcuts, confirm) are too narrow for 32px text',
-    match: p => p.kind === 'clip' && (
-      (p.where === 'help sheet' && (p.el === 'h3.help-h' || p.el === 'button#helpTour.btn.press')) ||
-      (p.where === 'team color picker' && p.el.startsWith('button.color-opt')) ||
-      // The keyboard shortcuts dialog's own `dd`s: its `.keysbox` content
-      // scrolls sideways, so a description that runs past the dialog's own
-      // width is cut off the same way (#179 fix 1) as any other scroll
-      // container — same root cause, different content.
-      (p.where === 'shortcuts sheet' && p.el === 'dd') ||
-      // The confirm dialog's "Remove team" button: `.confirm-acts .btn` has
-      // `flex: 1` but no `min-width: 0`, so its label doesn't fit.
-      (p.where === 'confirm dialog' && p.el === 'button#confirmYes.btn.danger')
-    ),
-  },
-  {
     issue: 191,
     reason: 'a very long one-word name is cut off, or drawn over other text, on the roster, the plan\'s info alert, day totals and a cap rule\'s player picker',
     match: p => (
