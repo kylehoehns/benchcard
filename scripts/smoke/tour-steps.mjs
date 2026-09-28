@@ -14,10 +14,21 @@
  * `TOUCH_MIN` (sizes.mjs); and the six `tour, step k of 6` open/close
  * scripts `overlay.mjs`'s `STATES` already builds once, by name, rather than
  * a second copy of the click sequence that opens the tour through Settings ->
- * How it works -> Show me around again. */
+ * How it works -> Show me around again.
+ *
+ * `overlay.mjs` imports this file's `STEP_COUNT` back (rather than a third
+ * `6` literal of its own), which makes the two modules mutually import each
+ * other. That is safe ONLY because neither touches the other's binding at its
+ * own module top level: `TOUR_STATES` below (the one place this file reads
+ * `STATES`) is built inside `tourStepsPass`, not here, so by the time it runs
+ * both modules have already finished loading. Do not hoist it back to a
+ * top-level `const` -- `overlay.mjs` is the first of the two `registry.mjs`
+ * imports, so this file's own top level would then run while overlay.mjs's
+ * `STATES` is still mid-initialization, and throw. */
 import { evalIn, step, setWidth, WIDTH, HEIGHT } from './dom.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, LAPTOP, TOUCH_MIN } from './sizes.mjs';
 import { STATES } from './overlay.mjs';
+import { land, reset } from './page-state.mjs';
 
 export const TOUR_STEPS_CHECK =
   `tour: six steps at ${WIDTH}px, ${LAPTOP}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
@@ -37,9 +48,10 @@ const EXPECTED = [
 ];
 
 // The count comes from EXPECTED's own length, not a second literal `6` --
-// see "Reuse, do not re-derive" in docs/specs/201-tour-refresh.md.
-const STEP_COUNT = EXPECTED.length;
-const TOUR_STATES = EXPECTED.map((_, i) => STATES.find(s => s.name === `tour, step ${i + 1} of ${STEP_COUNT}`));
+// see "Reuse, do not re-derive" in docs/specs/201-tour-refresh.md. Exported
+// so `overlay.mjs` can build its six `tour, step k of 6` states from the same
+// number instead of its own literal.
+export const STEP_COUNT = EXPECTED.length;
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -78,27 +90,42 @@ const overlaps = (a, b) =>
   a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
 
 /* Item 4: `#tourHole`'s rect contains the anchor's -- except `#timeline`,
- * where `placeTour`'s own `CAP` (app/tour.js) deliberately traces only the
- * top `52%` of the viewport rather than the whole row list.
+ * where `placeTour`'s own `CAP` (app/tour.js's `RING_CAP_RATIO`) deliberately
+ * traces only the top `52%` of the viewport rather than the whole row list.
+ * `RING_CAP_RATIO` is copied here as a literal, not imported and not exported
+ * from `app/tour.js`: `app/tour.js` pulls in `app/dom.js`, whose `ctx2d` calls
+ * `document.createElement` at module load time, so importing it under
+ * `node --test`/plain Node throws `document is not defined` before any of
+ * `placeTour`'s own code runs -- and an export with no reader `test/dead-
+ * export.test.js` can see (it scans only `scripts/*.js`, not `scripts/smoke/`)
+ * would fail that guard anyway. If the ratio changes in `app/tour.js`, change
+ * it here too.
  *
  * `EDGE_TOL`: `placeTour` clamps every edge of the hole to at least `edge`
  * (10px) from the screen edge, but only pads the anchor out by `pad` (8px)
- * first (app/tour.js). An anchor sitting closer than `edge` to the physical
- * screen edge -- `#phrasePlayers` et al, whose tap target runs to ~8.5px --
- * is clamped inward by the up-to-2px difference between the two constants.
- * That gap is `placeTour`'s own unchanged math, not #201's, so the tolerance
- * matches it rather than the usual 1px sub-pixel rounding allowance. */
+ * first (app/tour.js, both local to `placeTour` and not exported -- same
+ * import boundary as `RING_CAP_RATIO` above, and neither is worth a module
+ * this file can't load anyway). An anchor sitting closer than `edge` to the
+ * physical screen edge -- `#phrasePlayers` et al, whose tap target runs to
+ * ~8.5px -- is clamped inward by the up-to-2px difference between the two
+ * constants. That gap is `placeTour`'s own unchanged math, not #201's, so the
+ * tolerance matches it rather than the usual 1px sub-pixel rounding
+ * allowance. */
 const EDGE_TOL = 3;
+const RING_CAP_RATIO = 0.52; // app/tour.js's own RING_CAP_RATIO, copied -- see above
 const ringCovers = (hole, anchor, vh, capped) => {
   const horiz = hole.left <= anchor.left + EDGE_TOL && hole.right >= anchor.right - EDGE_TOL;
   if (!capped) return horiz && hole.top <= anchor.top + EDGE_TOL && hole.bottom >= anchor.bottom - EDGE_TOL;
-  const CAP = Math.round(vh * 0.52);
+  const CAP = Math.round(vh * RING_CAP_RATIO);
   return horiz && hole.top <= anchor.top + EDGE_TOL && hole.height <= CAP + 1;
 };
 
 export async function tourStepsPass(c, origin) {
   const problems = [];
   const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
+  // Built here, not at module top level -- see the import-order note above
+  // `STEP_COUNT`'s export.
+  const TOUR_STATES = EXPECTED.map((_, i) => STATES.find(s => s.name === `tour, step ${i + 1} of ${STEP_COUNT}`));
 
   try {
     for (const s of TOUR_STATES) {
@@ -137,11 +164,15 @@ export async function tourStepsPass(c, origin) {
          * fallback (picking the side with more room, then clamping into the
          * viewport) can leave the box crossing the ring's bottom edge here.
          * That is `placeTour`'s existing box-placement math, unchanged by
-         * #201 -- the same title, body and anchor sat at step 3 of today's
-         * four-step tour and would overlap identically there. Fixing it
-         * would mean changing `placeTour`, which this spec was handed as
-         * "must not change"; every other step's box still has to clear the
-         * ring. */
+         * #201, and pre-existing on main: measured on a scratch checkout of
+         * 197dd20 (the commit this spec's Survey was taken against) with the
+         * same title, body and #timeline anchor at step 3 of today's
+         * four-step tour -- box {top:619, bottom:833.8} against hole
+         * {top:207, bottom:636.6} at 390x844, RICH fixture, the same ~18px
+         * overlap #201 inherits at its own step 4. Fixing it would mean
+         * changing `placeTour`, which this spec was handed as "must not
+         * change" (see the spec's Out of scope); every other step's box
+         * still has to clear the ring. */
         if (!capped) ck(!overlaps(d.box, d.hole), `${where}: #tourBox ${JSON.stringify(d.box)} overlaps #tourHole ${JSON.stringify(d.hole)}`);
       }
       const vp = { left: 0, top: 0, right: d.vw, bottom: d.vh };
@@ -188,9 +219,8 @@ export async function tourStepsPass(c, origin) {
     await evalIn(c, step(TOUR_STATES[lastStep].close));
 
     // ---------- 320px/32px text: item 6, every step ----------
-    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
     try {
-      await setWidth(c, LARGE_TEXT_WIDTH, HEIGHT);
+      await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
       for (let i = 0; i < EXPECTED.length; i++) {
         const s = TOUR_STATES[i];
         await evalIn(c, step(s.open));
@@ -209,10 +239,9 @@ export async function tourStepsPass(c, origin) {
         await evalIn(c, step(s.close));
       }
     } finally {
-      // never leave the emulated font size or width on, same rule
-      // app-large-text.mjs's own pass follows.
-      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-      await setWidth(c, WIDTH, HEIGHT);
+      // never leave the emulated font size or width on: back to the baseline
+      // page state (16px text, WIDTH x HEIGHT, RICH), the way the other rows do.
+      await reset(c, origin);
     }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);

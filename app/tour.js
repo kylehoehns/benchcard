@@ -97,6 +97,16 @@ const TOUR = [
   },
 ];
 
+// #201: one name for the ratio `placeTour` and `tourGo` both use, rather than
+// a bare `0.52` in two places. Not exported: `scripts/smoke/tour-steps.mjs`
+// needs the same number (its `ringCovers`) but cannot import this module --
+// `dom.js`'s `ctx2d` calls `document.createElement` at load time, which
+// throws under plain Node before any of this file's own code runs -- and
+// `test/dead-export.test.js` scans only `scripts/*.js` (not `scripts/smoke/`),
+// so an export here would have no reader it could see either. tour-steps.mjs
+// keeps its own literal with a pointer to this line instead.
+const RING_CAP_RATIO = 0.52;
+
 let tourAt = -1;
 
 const tourEl = () => $('#tour');
@@ -166,7 +176,7 @@ function placeTour() {
      the screen kept free for the card. Scrolling the anchor to `start` rather
      than `center` (see tourGo) is what makes that top slice the part the coach
      is already looking at. */
-  const CAP = Math.round(vh * 0.52);
+  const CAP = Math.round(vh * RING_CAP_RATIO);
   if (r && bottom - top > CAP) bottom = top + CAP;
 
   // an anchor that clamps away to nothing is off screen, not spotlightable
@@ -236,7 +246,7 @@ function tourGo(i) {
     // tall anchor's top near the top instead -- clear of the sticky bar, and
     // leaving the bottom third free for the copy. Everything else centers,
     // which is what `block: 'center'` used to buy.
-    const y = r.height > vh * 0.52 ? r.top - vh * 0.15 : r.top - (vh - r.height) / 2;
+    const y = r.height > vh * RING_CAP_RATIO ? r.top - vh * 0.15 : r.top - (vh - r.height) / 2;
     scrollTo({ top: Math.max(0, scrollY + y), behavior: 'auto' });
   }
   placeTour();

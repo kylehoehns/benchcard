@@ -132,8 +132,10 @@ font. "Large text" means 320×844 with a 32px root.
    not hidden, and its rect contains the anchor's rect (for `#timeline`, the
    ring covers the timeline's top edge and is capped at 52% of the viewport
    height, the existing `CAP`). The box is fully inside the viewport and does
-   not overlap the ring. On step 6 the ring is around `#shareBtn` at the top
-   right and the box sits below it.
+   not overlap the ring, **except `#timeline`** (see Out of scope: `placeTour`
+   clamps the box over the bottom of the capped ring there, pre-existing on
+   main). On step 6 the ring is around `#shareBtn` at the top right and the
+   box sits below it.
 5. **Desktop.** At 1280×800 step 6 rings `#shareBtn` and the box is inside
    the viewport. (There is no fallback anchor any more; `#shareBtn` shows at
    every width.)
@@ -330,7 +332,7 @@ step 2's `#tourNext` below the viewport. `/new-guard` owns how.
 | --- | --- | --- |
 | `test/tour-anchors.test.js`: six steps, titles and `sel` in order, every anchor an id in `index.html`, none inside a fold | `node --test test/tour-anchors.test.js` (a source-read guard, so `/new-guard`) | 1 |
 | `test/rule-words.test.js`: step 1 body exact | `npm test`, untouched | 1 |
-| new `tour-steps.mjs` row | `node scripts/smoke.mjs --no-tests --only "<its row name>"`; red on main first | 2, 3, 4, 5, 6 |
+| new `tour-steps.mjs` row | `node scripts/smoke.mjs --no-tests --only "<its row name>"`; red on main first | 2, 3, 4 (except the `#timeline` box/ring overlap, see Out of scope), 5, 6 |
 | the six tour states in the 320px/32px list | `--only "no cut-off text at 320px/32px text"` and `--only "app shell at 320px/32px text"` | 6, 7 |
 | the six tour states in `overlay.mjs` | `--only "a11y in overlays and dialogs"` (names, ids, the last control reachable) | 3, 6 (a11y half) |
 | first run starts the tour at "Step 1 of 6" | `--only "first run: welcome, three steps, every way out"` | 9 |
@@ -350,6 +352,16 @@ step 2's `#tourNext` below the viewport. `/new-guard` owns how.
 - Ringing two controls in one step. Step 6 rings the share button only;
   "Start game" is named in the copy and stays visible at the bottom, under
   the scrim.
+- **The `#timeline` step's box overlapping its ring at 390×844, RICH
+  fixture.** `placeTour`'s own clamp (picking the side with more room, then
+  clamping into the viewport, both unchanged by #201 and "must not change"
+  per Constraints) leaves the box crossing the capped ring's bottom edge by
+  about 18px with an 11-row roster. Confirmed pre-existing on main: a scratch
+  checkout of 197dd20 (this spec's own Survey commit), same title/body/anchor
+  at step 3 of the old four-step tour, measured box `{top:619, bottom:833.8}`
+  against hole `{top:207, bottom:636.6}` at 390×844 — the same overlap #201
+  inherits unchanged at its own step 4. `tour-steps.mjs` does not check the
+  box/ring overlap on this one step; fixing it is `placeTour`'s own issue.
 - Announcing each new step to a screen reader. There is no live region
   today and the tour is a `role="dialog"` whose label is read when focus
   lands in it; changing that is its own issue if wanted.

@@ -1,4 +1,11 @@
 import { evalIn, step, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
+// From tour-steps.mjs rather than a third `6` literal (test/tour-anchors.test.js
+// and tour-steps.mjs's own EXPECTED are the other two, both sanctioned by
+// docs/specs/201-tour-refresh.md's "Reuse, do not re-derive"). tour-steps.mjs
+// imports STATES (below) from this module, so the two mutually import each
+// other -- safe here only because tour-steps.mjs never touches STATES at its
+// own module top level (see the note beside its STEP_COUNT export).
+import { STEP_COUNT as TOUR_STEP_COUNT } from './tour-steps.mjs';
 
 /* ---------- the states the first pass never sees ----------
 
@@ -19,7 +26,6 @@ import { evalIn, step, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mj
    exists; `forced` marks the states that have no reachable trigger (the
    welcome screen needs a fresh install) and are shown by hand, which covers
    their static markup. */
-const TOUR_STEP_COUNT = 6;
 
 export const STATES = [
   /* Today is home (#23): every state below opens from it and every `close`
