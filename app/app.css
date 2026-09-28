@@ -3570,10 +3570,22 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      off a real team name ("Pant...") and ran the status word past the
      card's own padding. `.pass-when` keeps its own `nowrap` so "9:00 AM"
      breaks onto a new row with the status rather than splitting into
-     "9:00 / AM". */
+     "9:00 / AM".
+
+     #66's `overflow-wrap: anywhere` fixed that cut-off but traded it for a
+     worse one (#187): at `--fs-large` (68px at this root) no fixture name
+     fits the 184px box (`.today-game`'s `1.125rem` side padding), so every
+     one of them split mid-word ("Hawk" / "s") instead. The title steps down
+     to `--fs-headline`, and the card's own side padding drops to `.75rem`,
+     widening the box to 208px -- together the longest fixture name
+     ("Panthers") keeps 15% spare. A single word still longer than the whole
+     line ends in "…" through the base rule's own `overflow: hidden;
+     text-overflow: ellipsis`; names made of shorter words keep wrapping
+     between them. */
+  .today-game { padding-left: .75rem; padding-right: .75rem; }
   .pass-top { flex-wrap: wrap; }
   .pass-when { white-space: nowrap; }
-  .pass-title { white-space: normal; overflow-wrap: anywhere; }
+  .pass-title { white-space: normal; font-size: var(--fs-headline); }
 
   /* `#frFill` is a nowrap `.btn` wider than the inset column at a 32px
      root, so it wraps like `.wel-go` and `#removeGame` above. The

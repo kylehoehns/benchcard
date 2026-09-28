@@ -100,11 +100,6 @@ export const CLIP_SWEEP_ALLOW = [
  * run is stale and fails below, same as the allow list. */
 export const CLIP_SWEEP_KNOWN_ISSUES = [
   {
-    issue: 187,
-    reason: 'the Today card\'s pass-title badge breaks a team name mid-word',
-    match: p => p.kind === 'split' && p.el === 'span.pass-title',
-  },
-  {
     issue: 190,
     reason: 'a pair rule\'s sentence overflows its own box past the plan sheet edge',
     match: p => p.kind === 'clip' && p.el === 'p.plan-rule-sentence' && p.where === 'plan sheet, a pair rule',
