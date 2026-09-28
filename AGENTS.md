@@ -162,7 +162,9 @@ the one check you are changing rather than the whole suite. No file there may
 pass the limit in `test/smoke-size.test.js` (`LIMIT`). Two fixtures on purpose
 (A26): a lean `SEED` for the cold-load measurement, and a `RICH` record — 11
 players, two games today, three filed, levels set — for the overlay, touch,
-narrow and sweep passes. Do not merge them back into one.
+narrow and sweep passes. Do not merge them back into one. A check that needs a
+page asks `land()` in `scripts/smoke/page-state.mjs` for it (record, width,
+text size, media), rather than navigating and waiting for boot by hand.
 
 It drives `index.html` for all of that, plus one pass over every screen at
 320px with the browser's default font size emulated at 32px (a reader on 200%
