@@ -2,6 +2,7 @@ import { evalIn, SETTLE } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 import { seeded, PLAYERS, UI, SEED } from './fixtures.mjs';
 import { seasonDate } from '../../app/storage.js';
+import { smokeToday } from './clock.mjs';
 
 /* #24 item 5: the card does not scale. Extends the `cardsize` row rather than
    adding a new one — same seam, same name, so `--only "card is 3.45 × 5in"`
@@ -102,15 +103,17 @@ export async function cardAt32Pass(c, origin, report) {
    longest of the spec's worked examples. `.when` is `flex: none` and the
    title's own available width already subtracts the corner's measured width
    (`buildCard`), so this MEASURES that stays true rather than re-implementing
-   the fit math here. FIT_DATE is the next Wednesday on or after the day this
-   runs, never a fixed literal: a day dated in the past files itself on boot
-   (`dated-day.mjs`), which would take the card this measures with it. */
+   the fit math here. FIT_DATE is the next Wednesday on or after the PINNED
+   smoke day (#178), never a fixed literal and never the day this actually
+   runs: a day dated in the past files itself on boot (`dated-day.mjs`),
+   which would take the card this measures with it. */
 const nextWednesday = () => {
-  const d = new Date();
+  const d = smokeToday();
   d.setDate(d.getDate() + ((3 - d.getDay() + 7) % 7));
   return seasonDate(d);
 };
-const FIT_DATE = nextWednesday();
+// Exported for test/smoke-clock.test.js (Proof row 2).
+export const FIT_DATE = nextWednesday();
 const FIT_OPPONENT = 'Riverside Wolverines'; // 20 characters
 const FIT_TIPOFF = '12:30';
 
