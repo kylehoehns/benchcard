@@ -22,6 +22,7 @@ import { evalIn, WIDTH, HEIGHT } from './dom.mjs';
 import { FOUR, RICH, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { GAME_SUMMARIES } from './game-passes.mjs';
+import { WORD_RECTS_FN } from './row-stack.mjs';
 
 // Ravens' full summary, imported from `game-passes.mjs`'s own `GAME_SUMMARIES`
 // table (the one place that string is written down) -- never recomputed from
@@ -69,6 +70,19 @@ const MEASURE = `(() => {
 // classes; only `passTitle` (camelCase, matching `MEASURE`'s own key) and
 // `top` need a rewrite to reach `pass-title`/`pass-top`.
 const SELECTOR_OF = { summary: 'pass-summary', passTitle: 'pass-title', status: 'pass-status', top: 'pass-top' };
+
+/* #187 item 3: each `.pass-title`'s own longest word, against its own
+ * `clientWidth` -- reusing `WORD_RECTS_FN` (`row-stack.mjs`) rather than a
+ * second per-word measure, the way `AGENTS.md`'s reuse rule asks. */
+const TITLE_WORD_WIDTHS = `(() => {
+  ${WORD_RECTS_FN}
+  const titles = [...document.querySelectorAll('.today-game .pass-title')];
+  return JSON.stringify(titles.map(el => {
+    const words = wordRects(el);
+    const widest = words.length ? Math.max(...words.map(w => w.rect.width)) : 0;
+    return { title: el.textContent, clientWidth: el.clientWidth, widest };
+  }));
+})()`;
 
 // Sets the emulated root font size and viewport width together, since
 // `Page.setFontSizes` on an already-laid-out document leaves it unreflowed --
@@ -126,6 +140,29 @@ export async function passLargeTextPass(c, origin) {
       }
     }
     checkRavensSummary(cards320, '320px/32px text', problems);
+
+    // #187 item 3: at 320px/32px every `.pass-title` is one line (its own
+    // height is at most its own line-height + 1px) and its longest word
+    // keeps at least 15% of its own `clientWidth` spare (AGENTS.md, "Smoke
+    // forces CI's font on a Mac too"). Ellipsis is checked already, above,
+    // in the shared `scrollWidth > clientWidth` loop.
+    for (const card of cards320) {
+      const label = card.title ?? '(untitled card)';
+      const title = card.passTitle;
+      if (title && title.height > title.lineHeight + 1) {
+        problems.push(`${label}'s .pass-title is ${title.height.toFixed(1)}px tall at 320px/32px, `
+          + `want at most one line-height (${title.lineHeight.toFixed(1)}px) + 1px`);
+      }
+    }
+    const titleWords = JSON.parse(await evalIn(c, TITLE_WORD_WIDTHS));
+    for (const { title, clientWidth, widest } of titleWords) {
+      const ceiling = clientWidth * 0.85;
+      if (widest > ceiling) {
+        problems.push(`${title}'s .pass-title longest word is ${widest.toFixed(1)}px, `
+          + `more than 85% of its ${clientWidth.toFixed(1)}px box (${(100 * widest / clientWidth).toFixed(1)}%, `
+          + `less than 15% spare)`);
+      }
+    }
 
     // Item 2: back to the default 390px/16px root -- same reload discipline,
     // the font size cannot be re-applied without one.
