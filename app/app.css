@@ -3398,14 +3398,29 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      name carry what it repeats -- so it hides rather than raising the large
      text allowance (`APP_LARGE_TEXT_ALLOW` stays empty). */
   .wel-qs { display: none; }
-  /* #198: "Harper" (101px, the widest sample name, drawn in DejaVu Sans)
-     is cut to "Har…" in the 96px name column at this size. Widen the one
-     shared --nmw and take the room from the row's gaps, which shrink to
-     4.8px from 11.2px and cover most of it; the stint track (already
-     under a pixel per cell here, invisible before this change too) gives
-     up the rest. */
-  #welPanePlan { --nmw: min(4.2rem, 37vw); }
-  .wel-row { column-gap: .15rem; }
+  /* #199: side by side, the stint track got what was left after the name and
+     the minutes -- 23.6px at 320px/32px text, holding 23px of fixed gaps, so
+     each cell was under a pixel. Stacked, the track runs the full row width
+     (cells 21-24px at 320px) and the name gets the whole top line, so a
+     long name like "Harper" (#198) fits without widening `--nmw`, which
+     nothing in this block reads any more. */
+  .wel-row { grid-template-columns: 8px minmax(0, 1fr) auto;
+    grid-template-areas: "dot nm min" "track track track";
+    column-gap: .35rem; row-gap: 3px; line-height: 1.2; }
+  .wel-dot { grid-area: dot; }
+  .wel-nm { grid-area: nm; }
+  .wel-min { grid-area: min; }
+  .wel-track { grid-area: track; }
+  /* A little space between players, so each bar reads with the name above it
+     and not the one below. */
+  .wel-rows { row-gap: .2rem; }
+  /* The box has to hold ten stacked rows (the grid is repeat(10), one spare),
+     because .wel-show clips. Derived from the row, never guessed: each row is
+     a 1.2 line of footnote text + the 3px row gap + the 11px track; then nine
+     .2rem gaps between rows, the pane's .55rem + .5rem padding, and the 1px
+     border top and bottom. */
+  .wel-show { min-height: calc(10 * (var(--fs-footnote) * 1.2 + 3px + 11px)
+    + 9 * .2rem + 1.05rem + 2px); }
   .seg.wide { flex-wrap: wrap; }
   .seg.wide button { flex: 1 0 40%; }
 
