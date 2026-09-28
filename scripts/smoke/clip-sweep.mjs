@@ -100,11 +100,6 @@ export const CLIP_SWEEP_ALLOW = [
  * run is stale and fails below, same as the allow list. */
 export const CLIP_SWEEP_KNOWN_ISSUES = [
   {
-    issue: 187,
-    reason: 'the Today card\'s pass-title badge breaks a team name mid-word',
-    match: p => p.kind === 'split' && p.el === 'span.pass-title',
-  },
-  {
     issue: 188,
     reason: 'the small centered keysbox dialogs (help, team color, shortcuts, confirm) are too narrow for 32px text',
     match: p => p.kind === 'clip' && (
