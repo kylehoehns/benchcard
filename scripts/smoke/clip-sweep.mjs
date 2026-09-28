@@ -105,11 +105,6 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
     match: p => p.kind === 'split' && p.el === 'span.pass-title',
   },
   {
-    issue: 190,
-    reason: 'a pair rule\'s sentence overflows its own box past the plan sheet edge',
-    match: p => p.kind === 'clip' && p.el === 'p.plan-rule-sentence' && p.where === 'plan sheet, a pair rule',
-  },
-  {
     issue: 188,
     reason: 'the small centered keysbox dialogs (help, team color, shortcuts, confirm) are too narrow for 32px text',
     match: p => p.kind === 'clip' && (
@@ -267,7 +262,16 @@ const CLIP_PROBE = `(() => {
   // WORD_FLOOR_FN's own callers already key off ('.gm-p, .gm-b', '.sn-row'),
   // plus '.prow' (app.css's shared row grammar, what '.prow-t' names sit
   // inside). No such ancestor means no exemption — the split is flagged.
-  const ROW_LIKE = '.prow, .gm-p, .gm-b, .sn-row';
+  // '.plan-rule-sentence' (#190) is added narrowly, not as a general "word
+  // wider than its clipping box" excuse -- that excused #187's Today card
+  // team names too and is rejected. It qualifies because it is a block
+  // alone on its own line in #planSub: nothing beside it can take its room,
+  // so its own box (the sheet's width less its fixed side margins) is the
+  // widest it can ever be, making it its own row the same way '.prow' is.
+  // Known weakness: a later change that narrowed the heading itself (a
+  // max-width) would excuse a split inside it too. The clip check above
+  // still catches anything actually cut off.
+  const ROW_LIKE = '.prow, .gm-p, .gm-b, .sn-row, .plan-rule-sentence';
   const SPLIT_MARK = '__cs179split__';
 
   let scanned = 0;
