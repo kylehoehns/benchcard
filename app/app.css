@@ -3572,15 +3572,39 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      no row earns a word. */
   .tl-tot .ex { display: block; width: auto; margin-left: 0; text-align: right; }
 
-  /* The three sheets sharing `.keyswrap` center in a track narrowed by the
-     wrap's own `clamp(.7rem, 3vw, 1.5rem)` padding, but each box's own width
-     is a bare `vw` -- a share of the whole viewport, not of that padded
-     track. At a 32px root `.helpbox`'s `94vw` outgrew the track by more than
-     the padding had to give and the sheet's own edge passed the viewport's.
-     `3rem` is twice the wrap's own padding ceiling, so the box can never ask
-     for more room than the padding could ever leave it. */
-  .keysbox { width: min(24rem, calc(100vw - 3rem)); }
-  .helpbox { width: min(24rem, calc(100vw - 3rem)); }
+  /* #188: at a 32px root the four `.keyswrap` dialogs (team color, keyboard
+     shortcuts, confirm, help) were left only 145px of content -- the wrap's
+     own `clamp(.7rem, 3vw, 1.5rem)` padding plus `.keysbox`'s `0 1.2rem
+     1.1rem` both double in `rem`, and `.colorbox`/`.confirmbox`'s `min(22rem,
+     92vw)` was wider than that track anyway, so a color name, a shortcut's
+     `dd`, "Remove team" and the help heading/tour button all ran out of
+     room. The box's own side padding is cut to `.5rem` (the way
+     `.bar`/`.actionbar` already do in this block) and the box widened to fill
+     the wrap: `.keys-hd`'s own side margin/padding is rewritten to match, so
+     its background still reaches the box edge with `.keysbox`'s
+     `padding-top: 0` and no negative `margin-top` (`test/dialog-viewport.
+     test.js`) both untouched. The tour button wraps and centers instead of
+     clipping (`.wel-go`/`#frFill`/`.gm-cta .btn`'s own precedent), and the
+     confirm dialog's two buttons stack full width, Cancel first in DOM order
+     (`.fr-cta .btn`'s precedent), rather than each keeping half a row neither
+     label fits in. No `overflow-wrap`/`word-break` here: that broke
+     "Graphite" one letter per line the last time it was tried.
+
+     The wrap's OWN side padding (the dialog's outer margin from the screen
+     edge, guideline L6) is cut from `.5rem` to `.2rem` too: at `.5rem` the
+     box only had 254px of content and "TOURNAMENT" (the longest word in
+     `h3.help-h`, uppercase) measured 229px of it -- under 15% spare
+     (AGENTS.md's own floor for a check that measures text). At `.2rem` the
+     box gets 273px, 16% spare, without touching the heading's own size. */
+  .keyswrap { padding-left: .2rem; padding-right: .2rem; }
+  .keysbox, .helpbox, .colorbox, .confirmbox { width: 100%;
+    padding-left: .5rem; padding-right: .5rem; }
+  .keys-hd { margin-left: -.5rem; margin-right: -.5rem;
+    padding-left: .5rem; padding-right: .5rem; }
+  .help-tour { white-space: normal; text-align: center; }
+  .confirm-acts { flex-wrap: wrap; }
+  .confirm-acts .btn { flex: 1 0 100%; }
+  .keys-row { flex-wrap: wrap; row-gap: .2rem; }
 
   /* "Skip", the step dots and "Next"/"Got it" cannot all fit one line once
      the footnote floor and `#tourNext`'s own `min-width: 5.6rem` both grow
