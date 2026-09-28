@@ -817,7 +817,7 @@ width, and the smoke check `today and game controls ≥ 48px` sweeps them.
 
 **Destructive actions are undoable, not confirmed.** Removing a player,
 removing a game, starting a new day, clearing in-game changes, editing a game
-while it is underway, editing or removing a rule, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
+while it is underway, editing or removing a rule, removing a unit from the Platoon editor, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
 at the wrong moment — before the coach can see what it did, and a game removal
 is only judgeable once the rest of the day has rebalanced. When a game is
 part-played and an edit changes its period count, period minutes, Sub interval,
