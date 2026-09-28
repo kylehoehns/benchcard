@@ -443,11 +443,19 @@ async function goRichWithLongName(c, origin) {
 /* Measures the longest SINGLE WORD of a name against the box it is actually
  * painted in -- the falsifier for "no line break inside a word" -- by
  * rendering each word off-screen in a throwaway span that copies the real
- * element's `font` shorthand and `letter-spacing`, so the measurement uses
- * the same face/size/weight the row itself paints, not a guessed one. Reads
- * only the DIRECT text nodes of `.nm` (excluding a `.tag` child, "just on"),
- * the same technique item 7 above already uses for the bench label's own
- * sentence.
+ * element's own computed font longhands (`WORD_FONT_PROPS`, `dom.mjs`) and
+ * `letter-spacing`, so the measurement uses the same face/size/weight the row
+ * itself paints, not a fallback. Reads only the DIRECT text nodes of `.nm`
+ * (excluding a `.tag` child, "just on"), the same technique item 7 above
+ * already uses for the bench label's own sentence.
+ *
+ * #200: also finds the "Casey Lindqvist" row (`p8`, always on the floor or
+ * bench in RICH -- `goRichWithLongName` only renames `p7`) and builds a
+ * `Range` over its `longestWord` inside that SAME direct text node, so
+ * `runLargeText` can check the word floor's own measurement against what the
+ * browser actually painted -- a calibration this file's own item 4 falsifier
+ * cannot give it, since that one only proves the floor stays a floor, not
+ * that its number is the true one.
  *
  * CI finding (run 36251254331): a word can be wider than the row itself has
  * room for -- `Christopherson` at 227.4px against a 209px row on CI's fonts
@@ -469,7 +477,31 @@ async function goRichWithLongName(c, origin) {
  * leaving a second hand-typed probe beside it. */
 const NAME_WORD_PROBE = `(() => {
   ${WORD_FLOOR_FN}
-  const rows = wordFloorRows('#gmFloor .gm-p .nm, #gmBench .gm-b .nm', '.gm-p, .gm-b');
+  const NAME_SEL = '#gmFloor .gm-p .nm, #gmBench .gm-b .nm';
+  const rows = wordFloorRows(NAME_SEL, '.gm-p, .gm-b');
+  // The Lindqvist calibration (#200, item 2/3): \`directText\`, spliced in
+  // above as part of \`WORD_FLOOR_FN\` (\`dom.mjs\`), is the SAME direct-text-node
+  // extraction \`wordFloorRows\` uses (a \`.tag\` child is not part of the
+  // name), so this finds the identical node the floor measured -- not a
+  // second word-measuring helper, just a \`Range\` read of it.
+  const lindqvistRow = rows.find(r => r.text === 'Casey Lindqvist');
+  let calibration = null;
+  if (lindqvistRow) {
+    const nm = [...document.querySelectorAll(NAME_SEL)].find(el => directText(el) === 'Casey Lindqvist');
+    const textNode = nm && [...nm.childNodes].find(n => n.nodeType === 3 && n.textContent.includes(lindqvistRow.longestWord));
+    if (textNode) {
+      const idx = textNode.textContent.indexOf(lindqvistRow.longestWord);
+      const range = document.createRange();
+      range.setStart(textNode, idx);
+      range.setEnd(textNode, idx + lindqvistRow.longestWord.length);
+      calibration = {
+        longestWord: lindqvistRow.longestWord,
+        longest: lindqvistRow.longest,
+        drawn: Math.round(range.getBoundingClientRect().width * 10) / 10,
+        lines: range.getClientRects().length,
+      };
+    }
+  }
   // The visible FILL ('.i', the translucent circle a coach actually sees),
   // not #gmClose's own 48px hit box: the hit box is a fixed 48px regardless
   // of root text size, but the fill is sized in rem (2.25rem) and at a 32px
@@ -481,7 +513,7 @@ const NAME_WORD_PROBE = `(() => {
   const overlap = !(close.right <= title.left || close.left >= title.right ||
                      close.bottom <= title.top || close.top >= title.bottom);
   return JSON.stringify({
-    rows, overlap,
+    rows, overlap, calibration,
     close: { l: Math.round(close.left), r: Math.round(close.right), t: Math.round(close.top), b: Math.round(close.bottom) },
     title: { l: Math.round(title.left), r: Math.round(title.right), t: Math.round(title.top), b: Math.round(title.bottom) },
   });
@@ -497,6 +529,26 @@ async function runLargeText(c, origin, problems, notes) {
 
     const r = JSON.parse(await evalIn(c, NAME_WORD_PROBE));
     const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+
+    // #200 items 2/3: the word floor's OWN measurement, calibrated against
+    // what the browser actually painted -- rule 2a of /new-guard, a check
+    // that measured nothing (no Lindqvist row, or its word split onto more
+    // than one line) fails rather than passing quietly.
+    if (!r.calibration) {
+      problems.push(`${where}: no "Casey Lindqvist" row was measured to calibrate the word floor against`);
+    } else if (r.calibration.longestWord !== 'Lindqvist') {
+      problems.push(`${where}: "Casey Lindqvist"'s longest word measured as `
+        + `${JSON.stringify(r.calibration.longestWord)}, want "Lindqvist"`);
+    } else if (r.calibration.lines !== 1) {
+      problems.push(`${where}: "${r.calibration.longestWord}" drew across ${r.calibration.lines} lines, `
+        + `want one -- the calibration needs a single-line word`);
+    } else if (Math.abs(r.calibration.longest - r.calibration.drawn) > 1) {
+      problems.push(`${where}: "${r.calibration.longestWord}" measured ${r.calibration.longest}px but draws `
+        + `${r.calibration.drawn}px -- the word floor is not using the row's own font (WORD_FONT_PROPS in dom.mjs)`);
+    } else {
+      notes.push(`${where}: "${r.calibration.longestWord}" measured ${r.calibration.longest}px, `
+        + `within 1px of its own drawn ${r.calibration.drawn}px`);
+    }
 
     if (!r.rows.length) {
       // rule 2a of /new-guard: a check that measured nothing fails.
