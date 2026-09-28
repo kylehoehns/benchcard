@@ -26,7 +26,15 @@ async function findChrome() {
 
 const fetchJSON = async url => JSON.parse(await (await fetch(url)).text());
 
-export async function launch(port, headful) {
+/* #178 review: `onSpawn`, called the instant Chrome is spawned — before the
+   DevTools poll below, which can itself take up to 45s. Without it, a caller
+   that only learns `proc`/`dir` from this function's return value has nothing
+   to close if a time limit or a signal lands during that poll: `smoke.mjs`'s
+   watchdog used to find `liveChrome` still null in exactly that window and
+   leave the just-spawned Chrome running (`test/smoke-timeout.test.js`'s
+   "still booting" case). `onSpawn` hands the caller `{ proc, dir }` early
+   enough to close it no matter when the limit fires. */
+export async function launch(port, headful, onSpawn) {
   const bin = await findChrome();
   const dir = await mkdtemp(join(tmpdir(), 'benchcard-smoke-'));
   const proc = spawn(bin, [
@@ -37,7 +45,8 @@ export async function launch(port, headful) {
     '--no-sandbox', '--disable-dev-shm-usage',
     '--hide-scrollbars', '--mute-audio',
     'about:blank',
-  ], { stdio: 'ignore' });
+  ], { stdio: 'ignore', detached: true }); // detached: closeChrome can kill the whole process group
+  onSpawn?.(proc, dir);
 
   // Poll the DevTools endpoint rather than parsing stderr; it is the only
   // signal that the browser is actually ready to be attached to.
@@ -66,20 +75,30 @@ export async function launch(port, headful) {
    still leaves nothing behind (the two orphaned Chromes the survey found,
    left over from the old perl wrapper, are what this replaces).
 
-   SIGTERM to just the main process, no process group or `detached: true`
-   spawn, is enough: confirmed live on macOS, including while Chrome was stuck
-   on an in-flight `Runtime.evaluate` that never returns (the exact hang this
-   guards against) — killing the main process brought down every helper,
-   renderer, GPU, network and crashpad process within about 2s. SIGKILL is
-   the fallback if SIGTERM has not finished the job in 5s. */
+   Killing just the main process, with no process group, was confirmed live on
+   macOS, including while Chrome was stuck on an in-flight `Runtime.evaluate`
+   that never returns (the exact hang this guards against) — it brought down
+   every helper, renderer, GPU, network and crashpad process within about 2s.
+   Nothing here confirms the same for Linux (CI's `ubuntu-latest`), and the
+   spec's fallback for that case doesn't need a platform check to be safe on
+   the one already confirmed: `launch` spawns Chrome `detached`, so it leads
+   its own process group, and `process.kill(-proc.pid, sig)` (the negative pid
+   is the POSIX idiom for "the whole group") reaches every helper the same way
+   on both. `proc.kill(sig)` is kept as the fallback for the one case
+   `process.kill` on a group can miss — Chrome exiting between the `exitCode`
+   check above and the kill call, which throws ESRCH. SIGKILL is still the
+   escalation if SIGTERM has not finished the job in 5s. */
 export async function closeChrome(proc, dir) {
   if (proc.exitCode === null && proc.signalCode === null) {
-    proc.kill('SIGTERM');
+    const kill = sig => {
+      try { process.kill(-proc.pid, sig); } catch { try { proc.kill(sig); } catch { /* already gone */ } }
+    };
+    kill('SIGTERM');
     const exited = await new Promise(ok => {
       const t = setTimeout(() => ok(false), 5000);
       proc.once('exit', () => { clearTimeout(t); ok(true); });
     });
-    if (!exited) proc.kill('SIGKILL');
+    if (!exited) kill('SIGKILL');
   }
   await rm(dir, { recursive: true, force: true }).catch(() => {});
 }

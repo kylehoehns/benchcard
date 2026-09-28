@@ -15,6 +15,11 @@
        node scripts/smoke.mjs --update-budgets # re-record scripts/budgets.json
        node scripts/smoke.mjs --only "<check>" # one check, while iterating —
                                                 # not proof; see the registry below
+       node scripts/smoke.mjs --timeout <min>  # end the run and exit 1 if it hangs (default 60)
+
+   #178: BENCHCARD_SMOKE_HANG=<check name> makes that one row hang for real
+   (a CDP call that never resolves) instead of running its own check — for
+   test/smoke-timeout.test.js only, to prove --timeout actually ends a hang.
 
    `--only` runs just the setup one named check needs and that check alone; it
    implies `--no-tests` and skips the budgets. It is for the loop between full
@@ -43,7 +48,7 @@
    `--only` alike (`runCheck` below). */
 
 import { execFile } from 'node:child_process';
-import { readFile, writeFile, rm } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compare, pinned, summarize } from './budgets.mjs';
@@ -113,7 +118,12 @@ async function runCheck(row, ctx) {
 async function browserChecks(origin, only) {
   current = 'launching Chrome';
   const debugPort = 9222 + Math.floor(Math.random() * 500);
-  const { proc, dir, ws } = await launch(debugPort, has('--headful'));
+  // #178 review: liveChrome is set as soon as Chrome is spawned, not only once
+  // launch() resolves — its own DevTools poll can take up to 45s, and a
+  // timeout firing inside that window used to find liveChrome still null and
+  // leak the Chrome it had already spawned.
+  const { proc, dir, ws } = await launch(debugPort, has('--headful'),
+    (proc, dir) => { liveChrome = { proc, dir, c: null }; });
   const c = cdp(ws);
   liveChrome = { proc, dir, c };
   const consoleErrors = [];
@@ -269,9 +279,12 @@ async function browserChecks(origin, only) {
     });
     return { report, consoleErrors };
   } finally {
+    // #178 review: the normal-completion path used to hand-roll its own
+    // close/kill/rm instead of reusing closeChrome — the same cleanup written
+    // twice. closeChrome's SIGTERM-then-SIGKILL is a superset of the plain
+    // kill() this replaces.
     c.close();
-    proc.kill();
-    await rm(dir, { recursive: true, force: true }).catch(() => {});
+    await closeChrome(proc, dir);
     liveChrome = null;
   }
 }

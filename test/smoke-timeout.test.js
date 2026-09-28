@@ -11,47 +11,10 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { FAST_MS, run, assertNeverLaunchedChrome } from './helpers/smoke-cli.mjs';
 
-const ROOT = new URL('../', import.meta.url);
-const SMOKE = new URL('scripts/smoke.mjs', ROOT).pathname;
-const CWD = new URL('.', ROOT).pathname;
-
-// Mirrors smoke-only.test.js's FAST_MS/run/assertNeverLaunchedChrome exactly:
-// the bad-value cases must be refused before serve()/Chrome, so a few
-// seconds of slack still catches a regression that falls through to a real
-// run without waiting out a 45s Chrome-launch timeout to see it.
-const FAST_MS = 5000;
-
-function run(args, env = {}) {
-  const sandbox = mkdtempSync(join(tmpdir(), 'ci-guard-'));
-  const start = Date.now();
-  let status = 0, stdout = '', stderr = '';
-  try {
-    stdout = execFileSync(process.execPath, [SMOKE, ...args], {
-      cwd: CWD,
-      encoding: 'utf8',
-      env: { ...process.env, ...env, TMPDIR: sandbox, TMP: sandbox, TEMP: sandbox },
-    });
-  } catch (e) {
-    status = e.status;
-    stdout = e.stdout ?? '';
-    stderr = e.stderr ?? '';
-  }
-  const ms = Date.now() - start;
-  const chromeProfileDirs = readdirSync(sandbox);
-  rmSync(sandbox, { recursive: true, force: true });
-  return { status, stdout, stderr, ms, chromeProfileDirs };
-}
-
-function assertNeverLaunchedChrome(r, label) {
-  assert.deepEqual(r.chromeProfileDirs, [],
-    `${label}: TMPDIR sandbox is not empty (${JSON.stringify(r.chromeProfileDirs)}) — ` +
-    `Chrome's --user-data-dir was created here, so validation ran after launch(), not before it`);
-}
+// FAST_MS/run/assertNeverLaunchedChrome come from the same shared module
+// smoke-only.test.js imports (#178 review: they used to be two copies).
 
 const BAD_TIMEOUTS = ['0', '-1', 'abc', ''];
 
@@ -80,4 +43,22 @@ test('a hung check ends the run: exit 1, names the check, and leaves no Chrome b
   assert.equal(r.status, 1, `expected exit 1, got ${r.status} — stdout: ${r.stdout} stderr: ${r.stderr}`);
   assert.match(r.stderr, /smoke: timed out after 0\.5 min while running "rich fixture is live"/);
   assertNeverLaunchedChrome(r, 'hung check (post-cleanup)');
+});
+
+/* Review finding (quality-reviewer): `liveChrome` in smoke.mjs used to be set
+ * only after `launch()` resolved — but `launch()` spawns Chrome immediately
+ * and then polls its DevTools port for up to 45s before resolving. A timeout
+ * that fires inside that boot window found `liveChrome` still null, skipped
+ * `closeChrome`, and left the just-spawned Chrome (and its profile dir)
+ * running — the exact orphan the survey found from the old perl wrapper. An
+ * absurdly small `--timeout` (0.06s) reliably lands inside that window: real
+ * Chrome never exposes a DevTools page that fast. `assertNeverLaunchedChrome`
+ * is reused here for what it actually checks post-run — the sandboxed
+ * profile dir is empty — which after a real launch only holds if cleanup
+ * removed it. */
+test('a timeout that fires while Chrome is still booting still closes it — no Chrome left behind', { timeout: 15_000 }, () => {
+  const r = run(['--only', 'rich fixture is live', '--timeout', '0.001']);
+  assert.equal(r.status, 1, `expected exit 1, got ${r.status} — stdout: ${r.stdout} stderr: ${r.stderr}`);
+  assert.match(r.stderr, /smoke: timed out after 0\.001 min while running/);
+  assertNeverLaunchedChrome(r, 'timeout during Chrome boot (post-cleanup)');
 });
