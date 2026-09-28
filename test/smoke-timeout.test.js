@@ -11,7 +11,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FAST_MS, run, assertNeverLaunchedChrome } from './helpers/smoke-cli.mjs';
+import { FAST_MS, run, assertNeverLaunchedChrome, assertNoSmokeProfileLeft } from './helpers/smoke-cli.mjs';
 
 // FAST_MS/run/assertNeverLaunchedChrome come from the same shared module
 // smoke-only.test.js imports (#178 review: they used to be two copies).
@@ -42,7 +42,7 @@ test('a hung check ends the run: exit 1, names the check, and leaves no Chrome b
   );
   assert.equal(r.status, 1, `expected exit 1, got ${r.status} — stdout: ${r.stdout} stderr: ${r.stderr}`);
   assert.match(r.stderr, /smoke: timed out after 0\.5 min while running "rich fixture is live"/);
-  assertNeverLaunchedChrome(r, 'hung check (post-cleanup)');
+  assertNoSmokeProfileLeft(r, 'hung check (post-cleanup)');
 });
 
 /* Review finding (quality-reviewer): `liveChrome` in smoke.mjs used to be set
@@ -52,13 +52,12 @@ test('a hung check ends the run: exit 1, names the check, and leaves no Chrome b
  * `closeChrome`, and left the just-spawned Chrome (and its profile dir)
  * running — the exact orphan the survey found from the old perl wrapper. An
  * absurdly small `--timeout` (0.06s) reliably lands inside that window: real
- * Chrome never exposes a DevTools page that fast. `assertNeverLaunchedChrome`
- * is reused here for what it actually checks post-run — the sandboxed
- * profile dir is empty — which after a real launch only holds if cleanup
- * removed it. */
+ * Chrome never exposes a DevTools page that fast. `assertNoSmokeProfileLeft`
+ * checks the `benchcard-smoke-*` profile dir is gone, which after a real
+ * launch only holds if cleanup removed it. */
 test('a timeout that fires while Chrome is still booting still closes it — no Chrome left behind', { timeout: 15_000 }, () => {
   const r = run(['--only', 'rich fixture is live', '--timeout', '0.001']);
   assert.equal(r.status, 1, `expected exit 1, got ${r.status} — stdout: ${r.stdout} stderr: ${r.stderr}`);
   assert.match(r.stderr, /smoke: timed out after 0\.001 min while running/);
-  assertNeverLaunchedChrome(r, 'timeout during Chrome boot (post-cleanup)');
+  assertNoSmokeProfileLeft(r, 'timeout during Chrome boot (post-cleanup)');
 });

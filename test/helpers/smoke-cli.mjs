@@ -51,3 +51,17 @@ export function assertNeverLaunchedChrome(r, label) {
     `${label}: TMPDIR sandbox is not empty (${JSON.stringify(r.chromeProfileDirs)}) — ` +
     `Chrome's --user-data-dir was created here, so validation ran after launch(), not before it`);
 }
+
+/* For the cases that DO launch Chrome and must clean up after it. The strict
+ * check above cannot be used here: on Linux, Chrome itself makes a
+ * `com.google.Chrome.<random>` directory directly in TMPDIR (CI run
+ * 36453636698 left exactly one, with no `benchcard-smoke-*` beside it). That
+ * directory is Chrome's, not `--user-data-dir`, and Chrome does not remove it
+ * on SIGTERM, so it is not ours to clean up. What is ours is the
+ * `benchcard-smoke-*` profile dir `launch()` makes, and that must be gone. */
+export function assertNoSmokeProfileLeft(r, label) {
+  const ours = r.chromeProfileDirs.filter(n => n.startsWith('benchcard-smoke-'));
+  assert.deepEqual(ours, [],
+    `${label}: Chrome's --user-data-dir was left behind in TMPDIR (${JSON.stringify(ours)}) — ` +
+    `closeChrome did not remove it`);
+}
