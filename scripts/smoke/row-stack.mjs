@@ -37,7 +37,10 @@ import { evalIn } from './dom.mjs';
 // it alone cannot see a break the deployed preview's screenshot showed with
 // its own eyes ("Marcus / William / s"). Both are read off the same `Range`
 // so there is only one pass over the name's text per row.
-const WORD_RECTS_FN = `function wordRects(nameEl) {
+// Exported (#179) so clip-sweep.mjs's own generic "did a word split across
+// two lines" check reuses this exact technique rather than a second copy of
+// it -- see that file's own comment for what it does with it.
+export const WORD_RECTS_FN = `function wordRects(nameEl) {
     const out = [];
     const walker = document.createTreeWalker(nameEl, NodeFilter.SHOW_TEXT);
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {

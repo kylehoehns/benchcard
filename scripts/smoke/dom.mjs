@@ -336,7 +336,21 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
     const longest = Math.max(...words.map(w => measureWord(nm, w)));
     const row = nm.closest(rowSel);
     const rcs = getComputedStyle(row);
-    const rowContent = row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight);
+    let rowContent = row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight);
+    // #179 fix 5: a non-shrinking neighbour (\`flex-shrink: 0\`/\`flex: none\`,
+    // e.g. an avatar) in a horizontal flex row leaves the name less room than
+    // the row's full content width. A grid row (bench mode, the season
+    // ledger) sizes its columns another way and is untouched.
+    if (rcs.display === 'flex' && (rcs.flexDirection === 'row' || rcs.flexDirection === 'row-reverse')) {
+      const gap = parseFloat(rcs.columnGap) || 0;
+      let fixedWidth = 0;
+      for (const kid of row.children) {
+        if (kid === nm || kid.contains(nm)) continue;
+        if (parseFloat(getComputedStyle(kid).flexShrink) === 0) fixedWidth += kid.getBoundingClientRect().width;
+      }
+      const gaps = Math.max(row.children.length - 1, 0) * gap;
+      rowContent -= fixedWidth + gaps;
+    }
     const floor = Math.min(longest, rowContent);
     const nameRect = nm.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();

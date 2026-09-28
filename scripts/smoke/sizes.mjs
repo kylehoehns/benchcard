@@ -98,3 +98,9 @@ export const TOUCH_CHECK = `touch targets ≥ ${TOUCH_FLOOR}px`;
 // rationale for this one cell lives with `staticPass` in `static.mjs`.
 export const LARGE_TEXT_PX = 32;       // a 200% reader, via CDP `Page.setFontSizes`
 export const LARGE_TEXT_WIDTH = 320;   // the narrowest phone anyone carries
+
+// #179's own row name, built from the same two constants above rather than a
+// second hand-typed "320px/32px" — `registry.mjs` and `clip-sweep.mjs` both
+// read this one string, so a rename of either number can't leave them saying
+// two different things.
+export const CLIP_SWEEP_CHECK = `no cut-off text at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
