@@ -63,6 +63,7 @@ import {
 
 import { cardFontPass } from './card-font.mjs';
 import { fixturePass } from './rich-fixture.mjs';
+import { fontDrawsPass } from './font-draws.mjs';
 import { seasonPass } from './season.mjs';
 import { seasonLookPass } from './season-look.mjs';
 import { gameRowsFitPass } from './game-rows-fit.mjs';
@@ -122,6 +123,12 @@ import { benchLookPass } from './bench-look.mjs';
 import { benchDetailsPass } from './bench-details.mjs';
 import { focusAnnouncePass } from './focus-announce.mjs';
 
+// #177: `smoke.mjs`'s own five-import allow-list (test/smoke-registry.test.js)
+// has no room for a sixth `./smoke/smoke-font.mjs` import, so the font script
+// it registers on every new document travels through registry.mjs's own
+// re-export instead of a direct import.
+export { FONT_INJECTION_SCRIPT } from './smoke-font.mjs';
+
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
 // used to (see the sizes.mjs comment on TOUCH_FLOOR).
@@ -141,6 +148,12 @@ export const ROWS = Object.freeze([
     run: ctx => cardFontPass(ctx.c, ctx.origin) },
   { id: 'fixture', name: 'rich fixture is live', selectable: true, setup: 'rich',
     run: ctx => fixturePass(ctx.c) },
+  // #177's own guard (see docs/specs/177-smoke-font.md's Proof section, item
+  // 1): a heading, a button label, body text, a weight-600 name and a
+  // sheet's text at 320px/32px all draw only in DejaVu Sans, the font CI's
+  // Ubuntu runner resolves `system-ui` to -- see font-draws.mjs.
+  { id: 'fontdraws', name: 'text draws in DejaVu Sans', selectable: true, setup: 'rich',
+    run: ctx => fontDrawsPass(ctx.c, ctx.origin) },
   // #30's own guard (see docs/specs/30-season-screen.md's Proof section):
   // Season's minutes-so-far order, a filed game's rows and Delete, the day
   // chart's move off the game screen, touch sizes and Export's placement --

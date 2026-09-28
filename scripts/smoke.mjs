@@ -52,7 +52,7 @@ import { serve } from './serve.mjs';
 import { launch, cdp } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, evalIn, SETTLE } from './smoke/dom.mjs';
 import { SEED, goRich } from './smoke/fixtures.mjs';
-import { ROWS, nameOf } from './smoke/registry.mjs';
+import { ROWS, nameOf, FONT_INJECTION_SCRIPT } from './smoke/registry.mjs';
 import { cardAt32Pass } from './smoke/card-at-32.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -145,6 +145,10 @@ async function browserChecks(origin, only) {
       source: `window.__SMOKE_VIEWPORT = [${WIDTH}, ${HEIGHT}];\n`
         + `try { localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))}); } catch {}`,
     });
+    // #177: CI's own resolved font (`AGENTS.md`'s "Smoke forces CI's font on
+    // a Mac too"), forced on every page this harness opens, on a Mac and in CI
+    // alike -- see smoke-font.mjs.
+    await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FONT_INJECTION_SCRIPT });
 
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });

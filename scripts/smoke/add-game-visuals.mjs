@@ -106,7 +106,16 @@ export async function checkedTileHasNoRing(c, ck, label) {
  * not a fourth control: it is a `::before` pseudo-element, which never
  * reaches the accessibility tree, rather than a real node needing its own
  * aria-hidden. `aria-checked` itself is already read by `stepThreeReads`, so
- * this only measures the circle's own geometry and the on/off difference. */
+ * this only measures the circle's own geometry and the on/off difference.
+ *
+ * #177 fix: the one-line claim used to read the title's own painted
+ * `getClientRects()`, which was honest until #177 started forcing DejaVu Sans
+ * onto every page this harness opens (a Mac included) -- after that, this row
+ * judged a phone-font claim against a face no phone draws it in, and started
+ * failing on real titles that fit fine on an actual phone. The claim itself
+ * is unchanged; only the measurement moved, to canvas `measureText` in the
+ * detected phone stack (see `phoneFont` below), against the title's own
+ * content-box width. */
 export async function stepThreeVisuals(c, ck, label) {
   const r = await evalJSON(c, `(() => {
     const h2 = document.querySelector('#agBody .flow-q');
@@ -114,16 +123,23 @@ export async function stepThreeVisuals(c, ck, label) {
     const on = opts.find(o => o.getAttribute('aria-checked') === 'true');
     const off = opts.find(o => o.getAttribute('aria-checked') === 'false');
     if (!h2 || !on || !off) return JSON.stringify({ found: false });
-    const range = document.createRange();
-    range.selectNodeContents(h2);
-    const lines = range.getClientRects().length;
     // One line is a claim about a phone's own font. A runner with no phone
     // system font (CI's Ubuntu) falls back to a wider desktop font no coach
     // sees, so the line count is only judged when SF, Segoe or Roboto is here.
+    const PHONE_FONTS = ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto'];
     const ctx = document.createElement('canvas').getContext('2d');
     const w = f => { ctx.font = '700 30px ' + f; return ctx.measureText('How should minutes split?').width; };
-    const phoneFont = ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto']
+    const phoneFont = PHONE_FONTS
       .some(f => w(f + ', monospace') !== w('monospace') || w(f + ', serif') !== w('serif'));
+    // #177 fix (see the doc comment above): measured in that same phone
+    // stack, at the title's own weight/size/letter-spacing, rather than the
+    // title's own painted width, which is DejaVu Sans's now.
+    const cs = getComputedStyle(h2);
+    ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + PHONE_FONTS.join(', ');
+    try { ctx.letterSpacing = cs.letterSpacing; } catch {}
+    const titleWidth = ctx.measureText(h2.textContent.trim()).width;
+    const contentWidth = h2.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const lines = titleWidth > contentWidth + 0.5 ? Math.max(2, Math.ceil(titleWidth / contentWidth)) : 1;
     const onCs = getComputedStyle(on, '::before');
     const offCs = getComputedStyle(off, '::before');
     const sw = document.querySelector('#agBody input[switch]');
@@ -132,7 +148,7 @@ export async function stepThreeVisuals(c, ck, label) {
       found: true,
       lines,
       phoneFont,
-      titleSize: getComputedStyle(h2).fontSize,
+      titleSize: cs.fontSize,
       onWidth: onCs.width, onHeight: onCs.height,
       offWidth: offCs.width, offHeight: offCs.height,
       onBg: onCs.backgroundColor, offBg: offCs.backgroundColor,
