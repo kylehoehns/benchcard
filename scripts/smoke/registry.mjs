@@ -76,7 +76,7 @@ import { passUnderwayPass } from './pass-underway.mjs';
 import { passLargeTextPass } from './pass-large-text.mjs';
 import { threeDaysPass } from './three-days.mjs';
 import { gameTitlePass } from './game-title.mjs';
-import { teamColorPass } from './team-color.mjs';
+import { teamColorPass, teamDefaultPass } from './team-color.mjs';
 import { wakeLockPass } from './wake-lock.mjs';
 import { overlayPass } from './overlay.mjs';
 import { touchPass } from './touch.mjs';
@@ -228,6 +228,12 @@ export const ROWS = Object.freeze([
     run: ctx => gameTitlePass(ctx.c, ctx.origin) },
   { id: 'teamcolor', name: 'team color tints K1 only, and switches with the team', selectable: true, setup: 'rich',
     run: ctx => teamColorPass(ctx.c, ctx.origin), resetAfter: true },
+  // #205's own guard (docs/specs/205-hardwood-default.md's Proof section): a
+  // fresh device, a team with no color set and the picker itself all read
+  // Hardwood, and a saved or newly-picked Graphite survives a plain reload
+  // -- see teamDefaultPass in team-color.mjs.
+  { id: 'teamdefault', name: 'new teams start in Hardwood, a saved Graphite stays', selectable: true, setup: 'rich',
+    run: ctx => teamDefaultPass(ctx.c, ctx.origin), resetAfter: true },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich',
     run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors), resetAfter: true },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich',
