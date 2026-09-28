@@ -156,6 +156,10 @@ test('addGame sorts the day by tip-off and opens the new game at its sorted inde
 
 /* ---------------------------- item 3: moveGame ---------------------------- */
 
+/* Every moveGame call here passes `today` (2026-09-26). The default is the
+   real clock, and moveGame ignores a past date, so a fixed target date in
+   these tests went stale the day it passed. */
+
 test('moveGame moves the open game to another date, dropping its now-empty source day', () => {
   const g0 = S.newGame(0, null, FORMAT);
   withDays(SIX, [
@@ -164,7 +168,7 @@ test('moveGame moves the open game to another date, dropping its now-empty sourc
   ], FORMAT, () => {
     S.state.activeDay = 0;
     S.state.activeGame = 0;
-    S.moveGame('2026-09-28');
+    S.moveGame('2026-09-28', new Date(2026, 8, 26));
     assert.deepEqual(S.team().days.map(d => d.date), ['2026-09-27', '2026-09-28'],
       'the empty 26th is gone; a new day for the 28th holds the moved game');
     assert.equal(S.team().days[1].games[0], g0);
@@ -181,7 +185,7 @@ test('moveGame leaves the source day alone when it still has other games', () =>
   ], FORMAT, () => {
     S.state.activeDay = 0;
     S.state.activeGame = 0;
-    S.moveGame('2026-09-27');
+    S.moveGame('2026-09-27', new Date(2026, 8, 26));
     assert.deepEqual(S.team().days.map(d => d.date), ['2026-09-26', '2026-09-27']);
     assert.deepEqual(S.team().days[0].games, [g1], 'the day keeps the game that did not move');
   });
@@ -198,7 +202,7 @@ test('moveGame sorts the day it lands in', () => {
   ], FORMAT, () => {
     S.state.activeDay = 0;
     S.state.activeGame = 0;
-    S.moveGame('2026-09-27');
+    S.moveGame('2026-09-27', new Date(2026, 8, 26));
     assert.deepEqual(S.team().days.map(d => d.date), ['2026-09-27']);
     assert.deepEqual(S.team().days[0].games, [moving, dest0], '9:00 sorts ahead of 10:00');
     assert.equal(S.state.activeDay, 0);
