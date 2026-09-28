@@ -117,6 +117,8 @@ Change:
   update it too.
 - `scripts/smoke/pass-large-text.mjs`: item 3's one-line and 15%-spare
   assertions at 320px/32px.
+- `test/clip-sweep-known-issues.test.js`: drop #187 from the list of entries
+  it requires, since the entry is gone.
 - This spec.
 
 Must not change: `renderPass`, `gameLabel`, the `.pass-title` base rule, any
