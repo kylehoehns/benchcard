@@ -145,11 +145,6 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
     ),
   },
   {
-    issue: 195,
-    reason: 'the game screen\'s Timeline | Card switch draws "Timeline" over "Card"',
-    match: p => p.kind === 'overlap' && p.text === 'Timeline' && (p.el === 'button.press' || p.el === 'button.press.on'),
-  },
-  {
     issue: 197,
     reason: 'bench mode breaks short one-word names mid-word',
     match: p => p.kind === 'split' && p.el === 'span.nm' && p.where.startsWith('bench mode'),
