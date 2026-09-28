@@ -172,6 +172,12 @@ export const newTeam = (name, players, settings, today = new Date()) => {
      a new team's opening game is the one place with nothing to clone, so the
      team's format default is the only thing that can answer it. */
   const s = sanitizeSettings(settings);
+  /* #205: a new team copies the league settings from the team it was made
+     from, but not its color -- the color is how two teams are told apart,
+     so copying it works against its own job. Covers "Add a team", the
+     placeholder made when the last team is removed, and freshState. Reads
+     DEFAULT_SETTINGS.color rather than typing 'hardwood' here. */
+  s.color = DEFAULT_SETTINGS.color;
   return {
     id: uid('t'),
     name: name || '',
@@ -184,7 +190,8 @@ export const newTeam = (name, players, settings, today = new Date()) => {
     /* Copy on create, not a cascade (v6): two squads are usually in one league,
        and an inheritance link would be a second thing to explain and to get
        wrong when a team is removed. Independent from then on. `sanitizeSettings`
-       fills in the rest, so `undefined` is simply the defaults. */
+       fills in the rest, so `undefined` is simply the defaults. Color is the
+       one exception -- see the #205 comment above. */
     settings: s,
     activeGame: 0,
   };
