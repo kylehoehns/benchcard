@@ -772,6 +772,12 @@ a { color: inherit; }
 }
 @keyframes alertIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 .alert .ico { font-weight: 700; flex: none; }
+/* The message span is a flex item beside .ico, so its default automatic
+   minimum width is its longest word -- what pushed "Best possible spread
+   with 11 players and..." past the alert's own edge (#191). min-width: 0
+   lets it shrink to the row, and overflow-wrap: break-word only then breaks
+   a word wider than that row ever gives it. */
+.alert > span { min-width: 0; overflow-wrap: break-word; }
 .alert.error { background: var(--err-soft); color: var(--err); }
 .alert.warn  { background: var(--warn-soft); color: var(--warn); }
 .alert.info  { background: var(--info-soft); color: var(--info); }
@@ -1064,9 +1070,18 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
    painted straight over "Regular". min-content is the longest word, and
    flex-wrap gives the level word and the chevron a second line when even
    that will not fit, the same move #sheetCard .pgrp .prow makes for the
-   card options. At 390px nothing wraps and nothing moves. */
+   card options. At 390px nothing wraps and nothing moves.
+   min-width: min-content held that floor to the longest word with no
+   ceiling, so a single unbroken word longer than the row itself
+   ("Featherstonehaugh") pushed .prow-t past the row's own edge instead of
+   wrapping (#191). min-width: auto is the same floor (the longest word), but
+   max-width: 100% caps it at the row's own width, and overflow-wrap:
+   break-word only then breaks a word wider than the row could ever give it
+   -- the level word still wraps under the name exactly as before. One engine
+   measured (Chrome): this rests on a flex item's automatic minimum width
+   being its longest word. */
 .rrow { --c: var(--muted); animation: rowIn var(--t-fast) var(--ease) both; flex-wrap: wrap; }
-.rrow .prow-t { min-width: min-content; }
+.rrow .prow-t { min-width: auto; max-width: 100%; overflow-wrap: break-word; }
 @keyframes rowIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
 /* .who-row widens this selector rather than reusing .rrow itself -- Who's
    here's own row needs the roster's badge look, not .rrow's flex-wrap: wrap
@@ -1256,7 +1271,10 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
 /* flex:none plus min-width:0 on the name: a name too long to fit wraps rather
    than shoving played/projected off the right edge. */
 .gm-b .mn { flex: none; font-size: var(--fs-body); color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 400; }
-.gm-b .nm { flex: 1; min-width: 0; font-weight: 400; }
+/* overflow-wrap: anywhere -- the same value .gm-p .nm beside it already uses
+   (#191): a word wider than the whole row breaks rather than running past
+   .gm-body's own edge uncut. */
+.gm-b .nm { flex: 1; min-width: 0; font-weight: 400; overflow-wrap: anywhere; }
 /* No pick yet, so no bench row does anything. Read as a list, not as a row of
    buttons: full-width rows, hairline rules, no pill, full ink -- dimming it
    would only make a dim gym worse. Bench rows keep the same look picked or
@@ -3253,7 +3271,8 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    sitting underneath, ready to clip the on-court name the moment it is
    longer than 15 characters. This name wraps instead. */
 .plr .nm { min-width: 0; max-width: 100%; overflow: visible; text-overflow: clip;
-  white-space: normal; font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
+  white-space: normal; font-size: var(--fs-body); font-weight: 600; color: var(--ink);
+  overflow-wrap: break-word; }
 .plr.on { border-color: var(--tint); box-shadow: inset 0 0 0 2.5px var(--tint); background: var(--surface); }
 .plr.on .av { background: none; color: var(--c); }
 .plr-check { position: absolute; top: .5rem; right: .5rem; color: var(--tint);
@@ -3458,10 +3477,15 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      The three tracks are `rem`, a text measure: at a 32px root the name
      column alone is 153.6px and the minutes column 83.2px, so 275px of a
      288px content box was spent before the bar had any width and `.v`
-     landed at 332px. Cap each fixed track at the share of the viewport it
-     can have, and let the bar's track floor at 0 rather than at its own
-     min-content. */
-  .dayrow { grid-template-columns: min(4.8rem, 34vw) minmax(0, 1fr) min(2.6rem, 20vw); }
+     landed at 332px. Capping each fixed track at a share of the viewport
+     (tried first, as injected CSS) still let "Jordan", "Casey" and
+     "Maximilian" run past the name column into the bar, which has no text of
+     its own to flag it (#191). Stacking is the fix `.sn-list .sn-row` below
+     already uses at this size: the name spans the full row on its own line,
+     and the bar and minutes share the line below it. */
+  .dayrow { grid-template-columns: minmax(0, 1fr) min(2.6rem, 20vw); row-gap: .2rem; }
+  .dayrow .nm { grid-column: 1 / -1; min-width: 0; }
+  .dayrow .nm span:last-child { min-width: 0; overflow-wrap: break-word; }
 
   /* The season ledger: `.sn-row` is a three-column grid -- name, track,
      minutes -- and only the middle track can give up space, since
@@ -3588,14 +3612,35 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      almost no room, and `overflow-wrap: anywhere` breaks it one letter per
      line instead of between words -- measured: "Ana Reyes" at `.nm`
      scrollWidth 29 > clientWidth 13. Dropping only the minutes under the
-     name still isn't enough room for a genuinely long single word
-     ("Christopherson" measures ~196px at this size, and the avatar plus its
-     gap eats too much of the row's ~211px), so the avatar moves to its own
-     line too, above the name, at this size only. */
+     name still isn't enough room for a genuinely long single word: this
+     comment used to say "Christopherson" (~196px) fits once the avatar
+     moves, measured before smoke forced CI's own font (#177). In DejaVu Sans
+     the room this alone buys is 209px and "Lindqvist" -- the bench floor's
+     own shortest failing name -- paints 218px on its own (#191/#197). So the
+     avatar moves to its own line too, above the name, at this size only,
+     and the gutters below buy back the rest of the room. */
   .gm-p, .gm-b {
     display: grid; grid-template-columns: 1fr; row-gap: .15rem;
   }
   .gm-p .av, .gm-b .av { justify-self: start; }
+  /* `.bar` in this same block already drops to `.5rem` of side padding; the
+     floor and bench rows follow it here for the same reason -- `.gm-p .nm`
+     grows from 209px to about 254px, `.gm-b .nm` from 243px to about 269px,
+     which is what actually clears "Lindqvist" and "Featherstonehaugh
+     Bartholomew" rather than the avatar move alone (#191/#197). `.gm-bar`
+     and `.gm-foot` take the same padding here too, so bench mode's left and
+     right edges stay aligned at this size the way they do at 16px text. */
+  .gm-body, .gm-p, .gm-bar, .gm-foot { padding-left: .5rem; padding-right: .5rem; }
+  /* The Next change box's two columns, side by side at every other size,
+     have only 91px each at 320px/32px, and "HANA"/"MAXI"/"THEO"/"CASE" (the
+     card's own short names, `fitCallRows`) measure 92-98px in DejaVu Sans --
+     wider than the column, so `overflow-wrap: anywhere` breaks them mid-word
+     (#197) rather than fixing a wrap setting on a box that was never wide
+     enough. Off stacks above On instead, each column about 227px wide;
+     `fitCallRows` then measures the wider column on its own and may show
+     full names where it showed short ones -- that is its job, not a change
+     to it. */
+  .gm-next-cols { grid-template-columns: 1fr; }
 
   /* `#gmClose`'s visible fill (`.i`, `#agClose .i, #frClose .i, .gm-x .i`
      above) is sized in rem (2.25rem) while the button's own hit box stays a

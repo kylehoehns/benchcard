@@ -126,33 +126,9 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
     ),
   },
   {
-    issue: 191,
-    reason: 'a very long one-word name is cut off, or drawn over other text, on the roster, the plan\'s info alert, day totals and a cap rule\'s player picker',
-    match: p => (
-      (p.kind === 'clip' && p.el === 'span.prow-t' && p.text === 'Featherstonehaugh Bartholomew') ||
-      (p.kind === 'clip' && p.el === 'span' && p.text.startsWith('Best possible spread')) ||
-      // Season → day totals (`#daytotals` rows, a bare `span` from
-      // `renderDayTotals()`): the name runs over its own minutes.
-      (p.kind === 'clip' && p.el === 'span' && p.text === 'Featherstonehaugh' &&
-        (p.where === 'season' || p.where === 'season, filed game open')) ||
-      // Plan sheet → a cap rule's player picker (`span.nm`): the name spills
-      // past its own box onto the sheet's status line below it.
-      (p.kind === 'overlap' && p.el === 'span.nm' && p.where === 'plan sheet, a cap rule') ||
-      // Found once smoke drew in CI's font (#177): the plan sheet's rule
-      // pickers and bench mode's rows cut the long name off too.
-      (p.kind === 'clip' && p.el === 'span.nm' && p.text === 'Featherstonehaugh' && p.where.startsWith('plan sheet, ')) ||
-      (p.kind === 'clip' && p.el === 'span.nm' && p.text === 'Featherstonehaugh Bartholomew' && p.where.startsWith('bench mode'))
-    ),
-  },
-  {
     issue: 195,
     reason: 'the game screen\'s Timeline | Card switch draws "Timeline" over "Card"',
     match: p => p.kind === 'overlap' && p.text === 'Timeline' && (p.el === 'button.press' || p.el === 'button.press.on'),
-  },
-  {
-    issue: 197,
-    reason: 'bench mode breaks short one-word names mid-word',
-    match: p => p.kind === 'split' && p.el === 'span.nm' && p.where.startsWith('bench mode'),
   },
   {
     issue: 198,
@@ -282,7 +258,13 @@ const CLIP_PROBE = `(() => {
   // WORD_FLOOR_FN's own callers already key off ('.gm-p, .gm-b', '.sn-row'),
   // plus '.prow' (app.css's shared row grammar, what '.prow-t' names sit
   // inside). No such ancestor means no exemption — the split is flagged.
-  const ROW_LIKE = '.prow, .gm-p, .gm-b, .sn-row';
+  // #191/#197: .alert, .dayrow and .plr join the list for the same reason --
+  // each now wraps a word rather than clipping or overlapping it, so the
+  // floor below (fr.longest > fr.rowContent) is what still tells "the word
+  // was wider than its whole row" apart from "the row had room and something
+  // else squeezed it". This only loosens the check for a word wider than its
+  // own row -- it does not widen the floor itself.
+  const ROW_LIKE = '.prow, .gm-p, .gm-b, .sn-row, .alert, .dayrow, .plr';
   const SPLIT_MARK = '__cs179split__';
 
   let scanned = 0;
