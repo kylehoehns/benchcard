@@ -17,6 +17,7 @@ import { fmtMinutes, deriveShortNames } from './engine.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { pickFive } from './pills.js';
+import { undoable } from './toast.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape,
          normalizeTargets, rebalanceSlots, plans, STRATEGIES } from './state.js';
 
@@ -302,7 +303,9 @@ function platoonEditor(g) {
       // say which one it deletes (test/button-names.test.js's original case).
       const rm = el('button', 'prow prow-center prow-danger', `Remove unit ${i + 1}`);
       rm.type = 'button';
-      rm.onclick = () => { c.units.splice(i, 1); renderStrategy(); edit('unitCount'); };
+      // #159: acts at once and offers Undo, the same shape as "Remove rule"
+      // (rules.js's `removeRuleFlow`).
+      rm.onclick = () => removeUnitFlow(i);
       grp.append(rm);
     }
     wrap.append(hdr, grp);
@@ -314,4 +317,16 @@ function platoonEditor(g) {
   add.onclick = () => { c.units.push([]); renderStrategy(); edit('unitCount'); };
   wrap.append(add);
   return wrap;
+}
+
+// `game()` is read at tap time, not the `c` `platoonEditor` closed over, so a
+// stale unit list is never spliced -- matches `removeRuleFlow`'s own `game()`
+// read. The refresh repaints and calls `edit('unitCount')` on both the
+// forward tap and the Undo; do not call `edit()` again after `undoable`
+// returns, or it retires the toast this call just raised (same warning above
+// `showUndo` in rules.js).
+function removeUnitFlow(i) {
+  undoable(`Removed unit ${i + 1}.`,
+    () => { game().constraints.units.splice(i, 1); },
+    () => { renderStrategy(); edit('unitCount'); });
 }
