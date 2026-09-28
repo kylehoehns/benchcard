@@ -863,9 +863,9 @@ Mobile specifics that came out of real use:
   transparent.
   The stack replaced a strip of tabs (#23) that had to cap a label at 20
   characters. A pass has no such cap: `.pass-title` wraps at large text sizes
-  (320px with 32px text, #66) to keep every team name whole, and truncates
-  with a tail ellipsis only at normal sizes when one name is wider than its
-  own row, keeping the full label in the pass's accessible name. `.pass-summary`
+  (320px with 32px text, #66/#187) to keep every team name whole, and truncates
+  with a tail ellipsis when a single word is wider than the available space
+  (#187), keeping the full label in the pass's accessible name. `.pass-summary`
   wraps at every size instead of ending in an ellipsis (#66).
 - **Squad pills elide the same way, and for the same reason.** `.plr .nm` is
   capped at 15ch, and a tail ellipsis cut the surname off — two kids with the
