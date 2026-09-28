@@ -67,20 +67,46 @@ function steps(src) {
 const ancestors = detailsAncestors(HTML);
 const TOUR = steps(TOUR_SRC);
 
-test('the tour reads as four steps with anchors that exist in the markup', () => {
-  assert.equal(TOUR.length, 4, 'four coach-marks');
-  for (const s of TOUR) {
-    const sel = [...s.matchAll(/'#([\w-]+)'/g)].map(m => m[1]);
-    assert.ok(sel.length, 'a step with no anchor at all: ' + s.slice(0, 60));
-    for (const id of sel) {
+/* A step's `sel: [...]` array, as `#id` strings, read from its source text --
+   shared by both tests below so the same regex is not kept in step twice. */
+function stepSel(s) {
+  const m = s.match(/sel:\s*\[[^\]]*\]/);
+  return m ? [...m[0].matchAll(/'#([\w-]+)'/g)].map(x => '#' + x[1]) : null;
+}
+
+/* #201 item 1: six steps, in this order, with these titles and these exact
+   `sel` lists — the spec's own table (docs/specs/201-tour-refresh.md), not a
+   re-read of tour.js, so a step reordered, retitled or repointed at the
+   wrong anchor fails here even when nothing else about the markup moved. */
+const EXPECTED = [
+  { title: 'Who is here tonight', sel: ['#phrasePlayers'] },
+  { title: 'How the minutes get shared', sel: ['#phraseStrategy'] },
+  { title: 'Rules and lineups', sel: ['#phraseRules'] },
+  { title: 'This is the rotation', sel: ['#timeline'] },
+  { title: 'Timeline or card', sel: ['#viewSeg'] },
+  { title: 'What you use in the gym', sel: ['#shareBtn'] },
+];
+
+test('the tour reads as six steps, titles and sel exactly as the spec says, in order, with anchors that exist in the markup', () => {
+  assert.equal(TOUR.length, EXPECTED.length, `six steps (#201 item 1), found ${TOUR.length}`);
+  TOUR.forEach((s, i) => {
+    const want = EXPECTED[i];
+    const titleM = s.match(/title:\s*'((?:\\.|[^'])*)'/);
+    assert.ok(titleM, `step ${i + 1} has no \`title:\` literal: ${s.slice(0, 60)}`);
+    assert.equal(titleM[1], want.title, `step ${i + 1} title`);
+    const sel = stepSel(s);
+    assert.ok(sel, `step ${i + 1} has no \`sel:\` array: ${s.slice(0, 60)}`);
+    assert.deepEqual(sel, want.sel, `step ${i + 1} sel`);
+    assert.doesNotMatch(s, /before:/, `step ${i + 1} carries a \`before\` — #201 says no step has one`);
+    for (const id of sel.map(x => x.slice(1))) {
       assert.ok(ancestors.has(id), `tour anchor #${id} is not an id in index.html`);
     }
-  }
+  });
 });
 
 test('a tour anchor inside a fold is opened by its own step', () => {
   for (const s of TOUR) {
-    const sel = [...(s.match(/sel:\s*\[[^\]]*\]/) || [''])[0].matchAll(/'#([\w-]+)'/g)].map(m => m[1]);
+    const sel = (stepSel(s) || []).map(x => x.slice(1));
     for (const id of sel) {
       for (const fold of ancestors.get(id) || []) {
         assert.match(s, new RegExp(`#${fold}`),

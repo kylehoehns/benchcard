@@ -266,13 +266,13 @@ immediately: it carries one integer and nothing about anybody, and it is not a
 URL share — there is still no way to put a coach's roster in a link, and there
 must not be.
 
-When the first-run flow finishes, a four-step **tour** runs once per device
+When the first-run flow finishes, a six-step **tour** runs once per device
 (`state.tourSeen`, persisted, so it never repeats): the players phrase (#27),
-the strategy picker, the timeline and the bench button. It is a spotlight
-rather than a modal — a cutout over the coach's own screen, explained in
-place — because the alternative is a slideshow of a rotation they have never
-seen. Each step names a fallback anchor: the action bar is phone-only, so on
-desktop the last step lands on the identical button beside the card. Whether a
+the strategy picker, the rules and lineups phrase, the timeline, the
+Timeline | Card switch, and the share button. It is a spotlight rather than a
+modal — a cutout over the coach's own screen, explained in place — because
+the alternative is a slideshow of a rotation they have never seen. There is
+no fallback anchor any more; all six anchors show at every width. Whether a
 step scrolls to its anchor is read off the anchor's computed position rather
 than declared per step; a `position: fixed` one is already where it is going to
 be, and scrolling to it walks the page to the top for nothing.
@@ -284,7 +284,7 @@ what the app does with a roster. It is static markup in `index.html`, not
 built in JS: it is prose, it never depends on state, and generating it would
 only make it harder to edit. It ends with **Show me around again**, which closes
 the sheet and re-runs the tour — switching back to the Games view first, since
-three of the four anchors live there. One control opens it now — `#helpBtn`, the
+all six anchors live there. One control opens it now — `#helpBtn`, the
 **Open** button on the *How it works* row in Settings. The **?** buttons that used
 to sit beside individual controls are gone, along with the `data-help` attribute
 that told each one which section to scroll to (#33, W3). The scroll is a single `scrollTop` write on
