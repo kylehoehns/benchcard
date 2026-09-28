@@ -1,5 +1,5 @@
 import { evalIn, step, SETTLE, onScreen, HEIGHT } from './dom.mjs';
-import { RICH, ONE_GAME, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
+import { RICH, ONE_GAME, withSecondTeam, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 import { LAPTOP } from './sizes.mjs';
 
 /* #126's own guard (see docs/specs/126-remove-last-game.md's Proof section):
@@ -17,7 +17,9 @@ export async function noGamesPass(c, origin) {
   const onGames = () => onScreen(c, 'view-games');
   try {
 
-  await reloadWithRecord(c, origin, ONE_GAME);
+  // `ONE_GAME` keeps RICH's own `view: 'games'` -- see `GAMES_VIEW_READY`'s
+  // own comment (fixtures.mjs) for why this names it.
+  await reloadWithRecord(c, origin, ONE_GAME, GAMES_VIEW_READY);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
   if (!(await onToday())) problems.push('could not reach Today to start the check');
 
@@ -169,8 +171,9 @@ export async function noGamesPass(c, origin) {
   if (colorName !== 'Royal') problems.push(`changing the team color with no games left it reading "${colorName}", want "Royal"`);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
-  // Switching teams still works with no games on the active one.
-  await reloadWithRecord(c, origin, withSecondTeam(ONE_GAME));
+  // Switching teams still works with no games on the active one. Same
+  // `view: 'games'` gutter as the first reload above.
+  await reloadWithRecord(c, origin, withSecondTeam(ONE_GAME), GAMES_VIEW_READY);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
   await evalIn(c, step(`document.querySelector('.today-game')?.click()`));
   await evalIn(c, step(`document.getElementById('removeGame')?.click()`));
@@ -182,7 +185,8 @@ export async function noGamesPass(c, origin) {
   if (switchedGames !== 1) problems.push(`switching teams shows ${switchedGames} game(s) on the second team, want its own 1`);
 
   // Leave the fixture the way every other 'rich' row expects to find it.
-  await reloadWithRecord(c, origin, RICH);
+  // RICH itself ships `view: 'games'`, the same gutter as above.
+  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
 
   } catch (e) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);

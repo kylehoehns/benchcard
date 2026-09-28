@@ -131,6 +131,11 @@ import { focusAnnouncePass } from './focus-announce.mjs';
 // re-export instead of a direct import.
 export { FONT_INJECTION_SCRIPT } from './smoke-font.mjs';
 
+// #178: the pinned clock script, reaching smoke.mjs through this same
+// re-export rather than a sixth `./smoke/` import -- see clock.mjs's own
+// header and docs/specs/178-smoke-deterministic.md's Constraints section.
+export { CLOCK_SCRIPT } from './clock.mjs';
+
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
 // used to (see the sizes.mjs comment on TOUCH_FLOOR).
