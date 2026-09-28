@@ -110,6 +110,13 @@ test('a team created from another copies its settings and is then its own', () =
     'a copy, not an inheritance -- changing one team must never reach the other');
 });
 
+test('#205: a new team always starts in the default color, even when copying a colored team\'s settings', () => {
+  const t = S.newTeam('Ravens', null, { color: 'graphite', maxSubs: 5 });
+  assert.equal(t.settings.color, 'hardwood', 'the color is how two teams are told apart, so it does not copy');
+  assert.equal(t.settings.maxSubs, 5, 'everything else about the settings still copies');
+  assert.equal(S.newTeam('Fresh').settings.color, 'hardwood');
+});
+
 test('creating a team from nothing is the defaults, not a crash', () => {
   for (const junk of [undefined, null, {}, 'nope', 42]) {
     assert.equal(S.newTeam('T', null, junk).settings.maxSubs, 3, String(junk));

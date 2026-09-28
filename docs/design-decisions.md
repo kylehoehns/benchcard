@@ -43,10 +43,12 @@ its alternative is an assertion, so the rejected options are kept here too.
   updated still finds the record their code expects. The block holds exactly the
   keys something honours — a key nothing reads is a claim the app does not keep
   in a file a coach can open. A second team **copies** the first's settings on
-  create rather than inheriting them: one league is the common case, and a link
-  would be a second thing to explain and to get wrong when a team is removed.
-  The `color` key has a fallback to the pre-#61 variant for records saved before
-  #61 — a valid `color` wins, else a valid value from the old key, else graphite.
+  create rather than inheriting them, except for the color: one league is the
+  common case, and a link would be a second thing to explain and to get wrong
+  when a team is removed. The color is how two teams are told apart, so it
+  starts at the default instead of copying. The `color` key has a fallback to
+  the pre-#61 variant for records saved before #61 — a valid `color` wins, else
+  a valid value from the old key, else hardwood.
 - **The game format default loses to the clone, on purpose.** `settings.periods`
   and `settings.periodMinutes` (4 and 8 = the literals `newGame` always carried)
   are read by `newGame` **only when there is no game to clone from**. The format
