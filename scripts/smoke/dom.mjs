@@ -427,17 +427,21 @@ const wordFloorRows = (nameSel, rowSel) => {
    around them is shared. */
 export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
 
-/* The navigate -> wait-for-load -> wait-for-fonts -> poll-for-`.card` ->
+/* The navigate -> wait-for-load -> wait-for-fonts -> poll-for-ready ->
    SETTLE sequence a full-page reload needs before anything on the page can be
    measured. `goRich` (`fixtures.mjs`), `appLargeTextPass` (`app-large-text.mjs`)
    and `measureLargeText` (`phone-gutter.mjs`, under a font-size override) each
-   carried an identical copy of this until it moved here. */
-export async function navigateAndWaitForCard(c, url) {
+   carried an identical copy of this until it moved here. `ready` is a
+   selector polled with `querySelector`, defaulting to `.card` for those
+   callers; `teamDefaultPass`'s `plainReload` (`team-color.mjs`) passes
+   `#print` instead, since it reloads a games-view record with no card to
+   wait for. */
+export async function navigateAndWaitForCard(c, url, ready = '.card') {
   const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
   await c.send('Page.navigate', { url });
   await loaded;
   await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
+    for (let i = 0; i < 60 && !document.querySelector(${JSON.stringify(ready)}); i++) await new Promise(r => setTimeout(r, 50));
     await ${SETTLE}; })()`);
 }
 

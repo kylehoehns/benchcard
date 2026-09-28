@@ -1,4 +1,4 @@
-import { evalIn, step, SETTLE, LOCALSTORAGE_WIPE } from './dom.mjs';
+import { evalIn, step, SETTLE, LOCALSTORAGE_WIPE, navigateAndWaitForCard } from './dom.mjs';
 import { RICH, withSecondTeam, reloadWithRecord, seeded } from './fixtures.mjs';
 
 /* #25 item 4 and item 7, together: with Royal active, the K1 controls read
@@ -417,14 +417,13 @@ const READ_WELCOME_COLOR = `(() => {
  * the "no re-seeding" reload item 6 asks for, proving the color a coach
  * picked (or already had saved) survives the app's own write, not this
  * file's. `#print` is real markup on the games view (never built on demand),
- * so waiting for it is waiting for the boot to finish. */
+ * so waiting for it is waiting for the boot to finish. `dom.mjs`'s
+ * `navigateAndWaitForCard` already carries the navigate -> load -> fonts ->
+ * poll -> SETTLE sequence this needs; it only differs from its default
+ * `.card` wait by polling for `#print` instead, since this reload lands on
+ * the games view, not a screen with a card. */
 async function plainReload(c, origin) {
-  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url: origin + '/index.html' });
-  await loaded;
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.getElementById('print'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
+  await navigateAndWaitForCard(c, origin + '/index.html', '#print');
 }
 
 export async function teamDefaultPass(c, origin) {

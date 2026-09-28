@@ -1450,8 +1450,7 @@ test('the picker lists Hardwood first and Graphite second, then the other seven'
    Once the record IS onboarded, a saved color is a real choice and must
    survive, same as decision 1. */
 test('a not-onboarded record\'s team color loads as the default, an onboarded one keeps its saved color', () => {
-  const emptyTeam = { id: 't9', name: '', players: [], days: [{ name: '', games: [] }],
-    activeDay: 0, season: { games: [] }, settings: { color: 'graphite' }, activeGame: 0 };
+  const emptyTeam = { ...emptiedByDelete().teams[0], settings: { color: 'graphite' } };
   const notOnboarded = { version: 7, onboarded: false, teams: [emptyTeam] };
   const s1 = sanitize(notOnboarded, H);
   assert.equal(s1.teams[0].settings.color, 'hardwood');
