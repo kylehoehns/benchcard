@@ -700,7 +700,11 @@ title, inside the narrow-screen block) capped against the viewport —
 the root itself to follow the reader's setting. The printed card is exempt:
 its sizes (in `card.css`, and the ones `card.js` derives from canvas
 `measureText`) do not move with the reader's setting, only the screens around
-it do.
+it do. The smoke suite verifies this in two passes: `applargetext` checks that
+everything fits on screen at 320px wide with 32px text, and `clipsweep` verifies
+that no text is cut off by its own box, squeezed narrower than its longest word,
+split mid-word, or hidden under another element — things that stick out past the
+screen edge alone might not catch. Read `docs/specs/179-clip-sweep.md` for the details.
 
 One consequence worth knowing: the printed card is auto-fitted from canvas
 `measureText`, and the constraint that follows from it — the measurement font

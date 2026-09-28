@@ -62,13 +62,17 @@ const SCREENS = [
 // through the real trigger the coach would use, same as `overlay.mjs`'s
 // `STATES` (`#confirm`'s only live door is Remove team; cancelled with
 // `#confirmNo` rather than actually removing the team).
+// Exported so #179's clip-sweep check can open the same dialog through the
+// same trigger, rather than a second copy of these two scripts.
+export const CONFIRM_DIALOG = { name: '#confirm', root: '#confirm',
+  open: `$('#settingsBtn').click(); $('#removeTeam').click()`,
+  close: `$('#confirmNo').click(); $('#backBtn').click()` };
+
 const DIALOGS = [
   { name: '#help', root: '#help',
     open: `$('#settingsBtn').click(); $('#helpBtn').click()`,
     close: `$('#helpClose').click(); $('#backBtn').click()` },
-  { name: '#confirm', root: '#confirm',
-    open: `$('#settingsBtn').click(); $('#removeTeam').click()`,
-    close: `$('#confirmNo').click(); $('#backBtn').click()` },
+  CONFIRM_DIALOG,
   { name: 'bench mode', root: '#gamemode',
     open: `$('#gmOpen').click()`,
     close: `$('#gmClose').click()` },

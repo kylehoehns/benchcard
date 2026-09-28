@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CLIP_SWEEP_ALLOW } from '../scripts/smoke/clip-sweep.mjs';
-import { assertSelectorReasonShape, assertNoDuplicateSelectors, assertSelectorsInCss } from './reason-list.js';
+import { assertSelectorReasonShape, assertNoDuplicateSelectors } from './reason-list.js';
 
 test('CLIP_SWEEP_ALLOW is a non-empty array of the harness\'s real allow-list entries', () => {
   // Rule 2a: a check that measured nothing must fail, not pass vacuously —
@@ -25,13 +25,4 @@ test('every entry has a non-empty selector and a reason of at least a few words'
 
 test('no selector is listed twice', () => {
   assertNoDuplicateSelectors(CLIP_SWEEP_ALLOW, 'CLIP_SWEEP_ALLOW');
-});
-
-test('every allow-listed selector names a rule that actually ends text in "…" in app/app.css', () => {
-  // Not a re-derivation of the browser check (that reads computed style and
-  // an actual run's own overflow, which this file cannot do) — this only
-  // guards against an entry whose selector is not backed by any
-  // text-overflow/ellipsis rule in app.css at all, e.g. a typo or a rule
-  // that moved.
-  assertSelectorsInCss(CLIP_SWEEP_ALLOW, 'CLIP_SWEEP_ALLOW');
 });

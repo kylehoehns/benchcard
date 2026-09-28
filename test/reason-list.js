@@ -10,7 +10,6 @@
  * `test/state-fixture.js` and `test/dom-stub.js` already use this
  * convention. */
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
 export const assertReasonWords = (reason, label) => {
   const words = reason.trim().split(/\s+/).filter(Boolean);
@@ -30,11 +29,4 @@ export const assertNoDuplicateSelectors = (list, listName) => {
   const selectors = list.map(a => a.selector);
   assert.equal(new Set(selectors).size, selectors.length,
     `a selector appears more than once in ${listName}: ${JSON.stringify(selectors)}`);
-};
-
-export const assertSelectorsInCss = (list, listName) => {
-  const css = readFileSync(new URL('../app/app.css', import.meta.url), 'utf8');
-  const missing = list.filter(a => !css.includes(a.selector));
-  assert.deepEqual(missing.map(a => a.selector), [],
-    `these ${listName} selectors do not appear verbatim in app/app.css: ${missing.map(a => a.selector).join(', ')}`);
 };

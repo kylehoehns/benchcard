@@ -483,7 +483,7 @@ const STRANDED_ABOVE = `(() => {
    debounced edit kind (140ms), and `countTo` can still be animating a
    changed number up to 250ms after that -- `rotation-undo.mjs`'s own
    `SETTLE_MS`, matched here for the same reason. */
-async function openRotationToastState(c) {
+export async function openRotationToastState(c) {
   // Land on the Hawks game (`.today-game`, the first row -- the same game
   // `rotation-undo.mjs` seeds as `s.state.day.games[0]`) before anything
   // else: the states above this one leave the app on Today, and
@@ -578,7 +578,7 @@ export async function firstRun(c, origin) {
    `input` event -- `flowField` (trap.js) wires `i.oninput = () => onInput(i.value)`
    as a property, so a plain `Event('input')` reaches it the same as a real
    keystroke would. */
-async function openFirstRunTypedRosterState(c, origin) {
+export async function openFirstRunTypedRosterState(c, origin) {
   await landWiped(c, origin + '/index.html', "document.querySelector('#view-welcome')?.hidden === false");
   await evalIn(c, step(`document.querySelector('#welStart').click()`));
   await evalIn(c, step(`const ta = document.getElementById('frRoster');

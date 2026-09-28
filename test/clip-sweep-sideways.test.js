@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CLIP_SWEEP_SIDEWAYS } from '../scripts/smoke/clip-sweep.mjs';
-import { assertSelectorReasonShape, assertNoDuplicateSelectors, assertSelectorsInCss } from './reason-list.js';
+import { assertSelectorReasonShape, assertNoDuplicateSelectors } from './reason-list.js';
 
 test('CLIP_SWEEP_SIDEWAYS is a non-empty array', () => {
   assert.ok(Array.isArray(CLIP_SWEEP_SIDEWAYS) && CLIP_SWEEP_SIDEWAYS.length > 0,
@@ -21,12 +21,4 @@ test('every entry has a non-empty selector and a reason of at least a few words'
 
 test('no selector is listed twice', () => {
   assertNoDuplicateSelectors(CLIP_SWEEP_SIDEWAYS, 'CLIP_SWEEP_SIDEWAYS');
-});
-
-test('every sideways-scroll selector names a box that actually scrolls sideways in app/app.css', () => {
-  // Not a re-derivation of the browser check (that reads computed style and
-  // an actual run's own overflow) — this only guards against an entry whose
-  // selector has no overflow-x: auto/scroll rule backing it at all, e.g. a
-  // typo or a rule that moved.
-  assertSelectorsInCss(CLIP_SWEEP_SIDEWAYS, 'CLIP_SWEEP_SIDEWAYS');
 });

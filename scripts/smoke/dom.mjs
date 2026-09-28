@@ -310,20 +310,8 @@ export const IS_SR_ONLY_RECT = `(r => r.width <= 1 && r.height <= 1)`;
    exported as a full expression on its own, since every caller wraps its
    result in a JSON payload carrying its own extra fields alongside `rows`. */
 export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
-  const measureWord = (el, word) => {
-    const cs = getComputedStyle(el);
-    const span = document.createElement('span');
-    span.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap;';
-    span.style.font = cs.font;
-    span.style.letterSpacing = cs.letterSpacing;
-    span.textContent = word;
-    document.body.appendChild(span);
-    const w = span.getBoundingClientRect().width;
-    span.remove();
-    return w;
-  };
   const vw = document.documentElement.clientWidth;
-  const rows = [];
+  const entries = [];
   for (const nm of document.querySelectorAll(nameSel)) {
     if (!nm.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
     const text = [...nm.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
@@ -333,7 +321,33 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
     // is "between words", not "inside" one -- the browser's own line breaker
     // already treats it that way with no extra CSS asked for.
     const words = text.split(/(?<=-)|\\s+/).filter(Boolean);
-    const longest = Math.max(...words.map(w => measureWord(nm, w)));
+    entries.push({ nm, text, words });
+  }
+  // #179 fix 5a: a word's span used to be appended, measured and removed
+  // one word at a time, forcing a layout on every single word across every
+  // row. Batched instead -- every span for every word of every row appended
+  // first, every width read second, every span removed last -- so the
+  // browser only has to lay the page out once for the whole call.
+  const allSpans = [];
+  for (const entry of entries) {
+    const cs = getComputedStyle(entry.nm);
+    entry.spans = entry.words.map(word => {
+      const span = document.createElement('span');
+      span.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap;';
+      span.style.font = cs.font;
+      span.style.letterSpacing = cs.letterSpacing;
+      span.textContent = word;
+      document.body.appendChild(span);
+      allSpans.push(span);
+      return span;
+    });
+  }
+  for (const entry of entries) entry.widths = entry.spans.map(s => s.getBoundingClientRect().width);
+  allSpans.forEach(s => s.remove());
+
+  const rows = [];
+  for (const { nm, text, widths } of entries) {
+    const longest = Math.max(...widths);
     const row = nm.closest(rowSel);
     const rcs = getComputedStyle(row);
     let rowContent = row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight);

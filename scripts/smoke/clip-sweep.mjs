@@ -20,15 +20,19 @@
  * `appLargeTextPass`/`typeScalePass` use, so ordinary states see it without
  * reloading anything themselves.
  *
- * Three states reload their own fixture instead (`firstRun`, `tryLink`,
- * `four`), which would otherwise leave `LONG_AND_SQUEEZE` gone for every
- * state that follows — none of the three is the last state in this pass's
- * list, so it reloads `LONG_AND_SQUEEZE` again right after each of them. */
+ * Four states reload their own fixture instead (`firstRun`, `tryLink`,
+ * `four`, `firstRunTypedRoster`), which would otherwise leave
+ * `LONG_AND_SQUEEZE` gone for every state that follows — none of the four is
+ * the last state in this pass's list, so it reloads `LONG_AND_SQUEEZE` again
+ * right after each of them. `rotationToast` opens through its own
+ * `openRotationToastState` too, but that one only mutates the loaded record's
+ * game in place (`setGame`), so it needs no restore. */
 import { evalIn, step, setWidth, WIDTH, HEIGHT, IS_SR_ONLY_RECT, WORD_FLOOR_FN } from './dom.mjs';
 import { LONG_NAME, RICH, goRich, reloadWithRecord, FOUR } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
-import { APP_LARGE_TEXT_STATES, firstRun, tryLanding } from './app-large-text.mjs';
+import { APP_LARGE_TEXT_STATES, firstRun, tryLanding, openRotationToastState, openFirstRunTypedRosterState } from './app-large-text.mjs';
 import { WORD_RECTS_FN } from './row-stack.mjs';
+import { CONFIRM_DIALOG } from './heading-outline.mjs';
 
 /* Two long, unbroken words (no hyphen) — `LONG_NAME` already covers the
  * hyphenated case (`Featherstone-Whitmore`), so this second name exercises
@@ -45,13 +49,12 @@ const LONG_AND_SQUEEZE = (() => {
 })();
 
 /* The one dialog `APP_LARGE_TEXT_STATES` lacks, opened exactly the way
- * `heading-outline.mjs`'s own `#confirm` entry does — reused by copying its
- * two scripts verbatim (that file is not one of #179's Surfaces, so it
- * cannot be imported from), not by re-deriving a new way to reach it. */
+ * `heading-outline.mjs`'s own `#confirm` entry does — its `open`/`close`
+ * imported from there rather than a second copy. */
 const CONFIRM_STATE = {
   name: 'confirm dialog',
-  open: `$('#settingsBtn').click(); $('#removeTeam').click()`,
-  close: `$('#confirmNo').click(); $('#backBtn').click()`,
+  open: CONFIRM_DIALOG.open,
+  close: CONFIRM_DIALOG.close,
 };
 
 /* Scroll the page, and every one of its own scrolling descendants (an open
@@ -61,8 +64,12 @@ const CONFIRM_STATE = {
 const SCROLL_TO_BOTTOM = `(() => {
   window.scrollTo(0, document.documentElement.scrollHeight);
   for (const el of document.querySelectorAll('*')) {
+    // #179 fix 5b: cheap layout-only check first, so \`getComputedStyle\` (a
+    // style recalc) only runs for an element that could possibly be a
+    // scroller in the first place.
+    if (el.scrollHeight <= el.clientHeight + 1) continue;
     const cs = getComputedStyle(el);
-    if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 1) {
+    if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') {
       el.scrollTop = el.scrollHeight;
     }
   }
@@ -100,7 +107,7 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
   {
     issue: 190,
     reason: 'a pair rule\'s sentence overflows its own box past the plan sheet edge',
-    match: p => p.kind === 'clip' && p.el === 'p.plan-rule-sentence',
+    match: p => p.kind === 'clip' && p.el === 'p.plan-rule-sentence' && p.where === 'plan sheet, a pair rule',
   },
   {
     issue: 188,
@@ -230,16 +237,26 @@ const CLIP_PROBE = `(() => {
   const CLIPPING_OVERFLOW = new Set(['hidden', 'clip', 'auto', 'scroll']);
   const SIDEWAYS_SELECTORS = ${JSON.stringify(SIDEWAYS_SELECTORS)};
   const usedSideways = [];
+  // #179 fix 5c: many scanned elements share the same nearest clipping
+  // ancestor (every row in a sheet walks up to the same sheet), so this
+  // memoizes the walk per element for the life of this one probe run --
+  // safe because nothing in this probe scrolls or reflows the page between
+  // one element's walk and the next.
+  const clipBoxCache = new Map();
   const clipBox = el => {
-    for (let a = el; a; a = a.parentElement) {
-      const ox = getComputedStyle(a).overflowX;
-      if (CLIPPING_OVERFLOW.has(ox)) {
-        const sw = SIDEWAYS_SELECTORS.find(sel => a.matches(sel));
-        if (sw) { usedSideways.push(sw); return null; }
-        return a.getBoundingClientRect();
-      }
+    if (!el) return { left: 0, top: 0, right: vw, bottom: vh };
+    if (clipBoxCache.has(el)) return clipBoxCache.get(el);
+    let result;
+    const ox = getComputedStyle(el).overflowX;
+    if (CLIPPING_OVERFLOW.has(ox)) {
+      const sw = SIDEWAYS_SELECTORS.find(sel => el.matches(sel));
+      if (sw) { usedSideways.push(sw); result = null; }
+      else result = el.getBoundingClientRect();
+    } else {
+      result = clipBox(el.parentElement);
     }
-    return { left: 0, top: 0, right: vw, bottom: vh };
+    clipBoxCache.set(el, result);
+    return result;
   };
 
   // The row-container classes a word-split is measured against: the ones
@@ -417,11 +434,22 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
         if (v.firstRun) await firstRun(c, origin);
         else if (v.tryLink) await tryLanding(c, origin, v.tryLink);
         else if (v.four) await reloadWithRecord(c, origin, FOUR);
-        // `v.rotationToast`/`v.firstRunTypedRoster` fall through here, same
-        // as `type-scale.mjs`'s own dispatch: neither carries its own `open`
-        // script, so `step(v.open)` is a no-op that leaves the previous
-        // state's screen up.
+        else if (v.rotationToast) await openRotationToastState(c);
+        else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin);
         else await evalIn(c, step(v.open));
+
+        // rule 2a of /new-guard: a state that never actually opened its own
+        // screen would otherwise scan whatever the previous state left up and
+        // report clean under this state's name.
+        if (v.rotationToast) {
+          const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo] .tmsg')`));
+          if (!raised) throw new Error('no Undo toast was raised in the Format sheet -- nothing was measured');
+        }
+        if (v.firstRunTypedRoster) {
+          const lines = JSON.parse(await evalIn(c,
+            `(document.getElementById('frRoster')?.value || '').split('\\n').filter(Boolean).length`));
+          if (lines !== 12) throw new Error(`the roster box holds ${lines} names, not the 12 the state types`);
+        }
 
         for (const pos of ['top', 'bottom']) {
           if (pos === 'bottom') await evalIn(c, SCROLL_TO_BOTTOM);
@@ -443,7 +471,10 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
       }
       // Restore the roster these states swap out (see header comment), and
       // injectCss's <style>, which the same reload wipes too.
-      if (v.firstRun || v.tryLink || v.four) {
+      // `firstRunTypedRoster` reloads too (`openFirstRunTypedRosterState`'s
+      // own `landWiped`); `rotationToast` does not -- it only mutates the
+      // loaded record's game in place via `setGame`, no navigation.
+      if (v.firstRun || v.tryLink || v.four || v.firstRunTypedRoster) {
         await goRich(c, origin, undefined, LONG_AND_SQUEEZE);
         await applyInjectCss();
       }
