@@ -159,10 +159,12 @@ card's own font loading before it is fitted, the three budgets, and the suite.
 order and the table. Each check lives in its own module under
 `scripts/smoke/`, with the helpers several checks share beside them, so read
 the one check you are changing rather than the whole suite. No file there may
-pass 40,000 bytes (`test/smoke-size.test.js`). Two fixtures on purpose (A26): a lean `SEED` for
-the cold-load measurement, and a `RICH` record — 11 players, two games today,
-three filed, levels set — for the overlay, touch, narrow and sweep passes. Do
-not merge them back into one.
+pass the limit in `test/smoke-size.test.js` (`LIMIT`). Two fixtures on purpose
+(A26): a lean `SEED` for the cold-load measurement, and a `RICH` record — 11
+players, two games today, three filed, levels set — for the overlay, touch,
+narrow and sweep passes. Do not merge them back into one. A check that needs a
+page asks `land()` in `scripts/smoke/page-state.mjs` for it (record, width,
+text size, media), rather than navigating and waiting for boot by hand.
 
 It drives `index.html` for all of that, plus one pass over every screen at
 320px with the browser's default font size emulated at 32px (a reader on 200%
