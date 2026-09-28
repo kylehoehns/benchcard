@@ -3094,9 +3094,11 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 .pident-name { font-size: var(--fs-sentence); font-weight: 700; overflow-wrap: break-word; }
 .pident-level { font-size: var(--fs-secondary); color: var(--muted); }
 
-/* A rule's own sentence, above the Remove-rule group. */
+/* A rule's own sentence, above the Remove-rule group. A long one-word name
+   is wider than the sheet at a 32px root (478px against a 224-284px box),
+   so it breaks rather than being cut off -- same fix as .pident-name. */
 .plan-rule-sentence { margin: 1.125rem 1.5rem 0; font-size: var(--fs-title);
-  font-weight: 600; letter-spacing: -.01em; }
+  font-weight: 600; letter-spacing: -.01em; overflow-wrap: break-word; }
 
 /* The Lineup-balance rows -- a label, a blurb second line, and a checkmark
    on the chosen one. Live: the check moves without leaving the page. */
