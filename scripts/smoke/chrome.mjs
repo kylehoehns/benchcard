@@ -2,7 +2,7 @@
    unchanged; only `launch`'s own `--headful` read moves with it as a
    parameter (`headful`), since arg parsing itself stays in `smoke.mjs`. */
 import { spawn } from 'node:child_process';
-import { mkdtemp, access } from 'node:fs/promises';
+import { mkdtemp, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -59,6 +59,29 @@ export async function launch(port, headful) {
     if (Date.now() > deadline) { proc.kill(); throw new Error('Chrome did not expose a DevTools page in 45s'); }
     await new Promise(r => setTimeout(r, 100));
   }
+}
+
+/* #178: closes the Chrome this run itself launched — used by the watchdog
+   timeout and by the SIGINT/SIGTERM handlers, so a hung or interrupted run
+   still leaves nothing behind (the two orphaned Chromes the survey found,
+   left over from the old perl wrapper, are what this replaces).
+
+   SIGTERM to just the main process, no process group or `detached: true`
+   spawn, is enough: confirmed live on macOS, including while Chrome was stuck
+   on an in-flight `Runtime.evaluate` that never returns (the exact hang this
+   guards against) — killing the main process brought down every helper,
+   renderer, GPU, network and crashpad process within about 2s. SIGKILL is
+   the fallback if SIGTERM has not finished the job in 5s. */
+export async function closeChrome(proc, dir) {
+  if (proc.exitCode === null && proc.signalCode === null) {
+    proc.kill('SIGTERM');
+    const exited = await new Promise(ok => {
+      const t = setTimeout(() => ok(false), 5000);
+      proc.once('exit', () => { clearTimeout(t); ok(true); });
+    });
+    if (!exited) proc.kill('SIGKILL');
+  }
+  await rm(dir, { recursive: true, force: true }).catch(() => {});
 }
 
 /* A minimal CDP client: send(method, params) → result, plus event handlers. */

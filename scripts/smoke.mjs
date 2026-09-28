@@ -49,10 +49,10 @@ import { fileURLToPath } from 'node:url';
 import { compare, pinned, summarize } from './budgets.mjs';
 import { serve } from './serve.mjs';
 
-import { launch, cdp } from './smoke/chrome.mjs';
+import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, evalIn, SETTLE } from './smoke/dom.mjs';
 import { SEED, goRich } from './smoke/fixtures.mjs';
-import { ROWS, nameOf, FONT_INJECTION_SCRIPT } from './smoke/registry.mjs';
+import { ROWS, nameOf, FONT_INJECTION_SCRIPT, CLOCK_SCRIPT } from './smoke/registry.mjs';
 import { cardAt32Pass } from './smoke/card-at-32.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -60,6 +60,15 @@ const APP = join(ROOT, 'app');
 const args = process.argv.slice(2);
 const has = f => args.includes(f);
 const JSON_OUT = has('--json');
+
+/* #178: what the watchdog and the signal handlers below need to end a run
+   that hangs or is interrupted. `current` names whatever this run is doing
+   right now, so a timeout's stderr line says which check it was on rather
+   than just "smoke timed out". `liveChrome` is null until `browserChecks`
+   below has actually launched Chrome; the watchdog only tries to close it if
+   it is not. */
+let current = 'launching Chrome';
+let liveChrome = null; // { proc, dir, c } once Chrome is up
 
 /* ---------- a static server for app/ ---------- */
 
@@ -86,8 +95,15 @@ const JSON_OUT = has('--json');
  * `/new-guard` names as a false green by omission, worn here the other way
  * round as a false SILENCE. */
 async function runCheck(row, ctx) {
+  current = row.name;
   try {
-    const result = await row.run(ctx);
+    /* #178: the hang hook. BENCHCARD_SMOKE_HANG names a row; when it matches
+       the one about to run, this runs a real hang instead of that row's own
+       `run` -- Chrome is alive, the CDP call below never resolves, and only
+       the watchdog ends it. It is for test/smoke-timeout.test.js only. */
+    const result = process.env.BENCHCARD_SMOKE_HANG === row.name
+      ? await ctx.c.send('Runtime.evaluate', { expression: 'new Promise(() => {})', awaitPromise: true })
+      : await row.run(ctx);
     return { name: row.name, ...result };
   } catch (e) {
     return { name: row.name, pass: false, detail: `threw before finishing: ${e.message.split('\n')[0]}` };
@@ -95,9 +111,11 @@ async function runCheck(row, ctx) {
 }
 
 async function browserChecks(origin, only) {
+  current = 'launching Chrome';
   const debugPort = 9222 + Math.floor(Math.random() * 500);
   const { proc, dir, ws } = await launch(debugPort, has('--headful'));
   const c = cdp(ws);
+  liveChrome = { proc, dir, c };
   const consoleErrors = [];
   const thirdParty = [];
   /* The Cloudflare beacon fires from localhost too and its CORS preflight
@@ -149,7 +167,12 @@ async function browserChecks(origin, only) {
     // a Mac too"), forced on every page this harness opens, on a Mac and in CI
     // alike -- see smoke-font.mjs.
     await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FONT_INJECTION_SCRIPT });
+    // #178: the pinned, ticking smoke clock -- every reload, goRich and
+    // static page this session opens reads 2026-09-12 12:00 local onward, no
+    // matter what the host's real clock reads -- see clock.mjs.
+    await c.send('Page.addScriptToEvaluateOnNewDocument', { source: CLOCK_SCRIPT });
 
+    current = 'cold load';
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
     await loaded;
@@ -171,11 +194,13 @@ async function browserChecks(origin, only) {
        still runs below. */
     if (only && only.setup === 'rich') {
       const report = { viewport: [WIDTH, HEIGHT], checks: [] };
+      current = 'rich fixture';
       await goRich(c, origin);
       report.checks = [await runCheck(only, { c, origin, source, consoleErrors })];
       return { report, consoleErrors };
     }
 
+    current = 'cold checks';
     const { result, exceptionDetails } = await c.send('Runtime.evaluate', { expression: source, returnByValue: true });
     if (exceptionDetails) throw new Error('checks threw: ' + (exceptionDetails.exception?.description || exceptionDetails.text));
 
@@ -191,6 +216,7 @@ async function browserChecks(origin, only) {
        is covered whether this is a full run or `--only "card is 3.45 × 5in"`
        (the `cold` partial path below just keeps whichever checks match by
        name, this one now carrying the 32px comparison too). */
+    current = 'card at 32px';
     await cardAt32Pass(c, origin, report);
 
     /* THE PARTIAL PATH, `cold` branch. It reuses the setup above rather than
@@ -207,6 +233,7 @@ async function browserChecks(origin, only) {
        everything below is measured on the rich one. Moving `goRich` earlier
        folds a season, a second game and two levelled players into a number
        that is supposed to describe a first visit. */
+    current = 'rich fixture';
     await goRich(c, origin);
     /* Before anything else touches the page: fixturePass below clicks through
        Team/Season and back, which is harmless to the fixture checks but would
@@ -245,6 +272,7 @@ async function browserChecks(origin, only) {
     c.close();
     proc.kill();
     await rm(dir, { recursive: true, force: true }).catch(() => {});
+    liveChrome = null;
   }
 }
 
@@ -268,27 +296,33 @@ const BUDGETS = join(ROOT, 'scripts', 'budgets.json');
 const printRow = (pad, chk) =>
   console.log(`  ${chk.pass ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m'}  ${chk.name.padEnd(pad)}  ${chk.detail}`);
 
-/* ---------- --only ----------
+/* ---------- --only and --timeout: a shared flag reader ----------
  *
- * Validated BEFORE `serve()` and before Chrome ever launches: `--only "nope"`
- * has to exit fast enough that a node test can spawn this file and read the
- * code back, not wait out a browser boot to be told the name was wrong.
+ * Both take `--flag <value>` or `--flag=value`, and both must be validated
+ * BEFORE `serve()` and before Chrome ever launches: a bad value has to exit
+ * fast enough that a node test can spawn this file and read the result back,
+ * not wait out a browser boot to be told it was wrong.
  *
- * Two spellings are accepted: `--only <name>` and `--only=<name>`, checked
- * for separately since `args.indexOf('--only')` never matches the `=` form.
- * `HAS_ONLY` ("the flag was given at all") is kept apart from `ONLY_NAME`
- * (the name that follows it, or `''` when there isn't one) so a bare `--only`
- * — the last argument, or followed by another `--flag` rather than a name —
- * is refused exactly like an unknown name instead of silently becoming a
- * full run, which is what `args[i + 1]` reading a flag as the name used to
- * do. */
-const ONLY_EQ = args.find(a => a.startsWith('--only='));
-const ONLY_IDX = args.indexOf('--only');
-const HAS_ONLY = ONLY_EQ !== undefined || ONLY_IDX !== -1;
-const ONLY_NAME = ONLY_EQ !== undefined ? ONLY_EQ.slice('--only='.length)
-  : ONLY_IDX === -1 ? null
-  : (args[ONLY_IDX + 1] === undefined || args[ONLY_IDX + 1].startsWith('--')) ? ''
-  : args[ONLY_IDX + 1];
+ * `readFlag` tells "the flag was given at all" (`has`) apart from "the value
+ * that followed it" (`raw`, `null` when the flag was never given, `''` when
+ * it was the last argument or was followed by another `--flag` rather than a
+ * value) — so a bare `--only` or `--timeout` is refused exactly like an
+ * invalid value instead of silently becoming a full run, which is what
+ * `args[i + 1]` reading a flag as the value used to do. `=` is checked
+ * separately since `args.indexOf(flag)` never matches that spelling. */
+function readFlag(flag) {
+  const eq = args.find(a => a.startsWith(`${flag}=`));
+  const idx = args.indexOf(flag);
+  const has = eq !== undefined || idx !== -1;
+  const raw = eq !== undefined ? eq.slice(flag.length + 1)
+    : idx === -1 ? null
+    : (args[idx + 1] === undefined || args[idx + 1].startsWith('--')) ? ''
+    : args[idx + 1];
+  return { has, raw };
+}
+
+/* ---------- --only ---------- */
+const { has: HAS_ONLY, raw: ONLY_NAME } = readFlag('--only');
 
 if (HAS_ONLY && has('--update-budgets')) {
   console.error('--only and --update-budgets cannot be combined: --only proves one check on the '
@@ -311,12 +345,55 @@ if (HAS_ONLY) {
   }
 }
 
-const server = await serve();
+/* ---------- --timeout ----------
+ *
+ * Decimals are allowed (the timeout test itself uses 0.5), so this is a
+ * finite, positive number check, not an integer one. */
+const { has: HAS_TIMEOUT, raw: TIMEOUT_RAW } = readFlag('--timeout');
+
+// #178 decision 3: 60 minutes, not the issue's 30 — see the spec's Decisions.
+let TIMEOUT_MIN = 60;
+if (HAS_TIMEOUT) {
+  const n = Number(TIMEOUT_RAW);
+  if (TIMEOUT_RAW === '' || !Number.isFinite(n) || n <= 0) {
+    console.error(`--timeout requires a positive number of minutes, got ${JSON.stringify(TIMEOUT_RAW)}.`);
+    process.exit(1);
+  }
+  TIMEOUT_MIN = n;
+}
+
+/* ---------- the watchdog and the signal handlers ----------
+ *
+ * #178. One `shutdown`, used by all three ways a run can end early (the time
+ * limit, Ctrl-C, `kill`), so "close Chrome, close the server, exit" is
+ * written once. Started before `serve()`, per the spec's Design section, so
+ * even a `serve()` that hangs is still caught by the limit. */
+let server = null;
+let watchdogTimer = null;
+
+async function shutdown(code) {
+  clearTimeout(watchdogTimer);
+  try { liveChrome?.c?.close(); } catch { /* already closed */ }
+  if (liveChrome) await closeChrome(liveChrome.proc, liveChrome.dir);
+  try { server?.close(); } catch { /* already closed */ }
+  process.exit(code);
+}
+
+process.on('SIGINT', () => { shutdown(130); });
+process.on('SIGTERM', () => { shutdown(143); });
+
+watchdogTimer = setTimeout(() => {
+  console.error(`smoke: timed out after ${TIMEOUT_MIN} min while running "${current}"`);
+  shutdown(1);
+}, TIMEOUT_MIN * 60_000);
+
+server = await serve();
 const origin = `http://127.0.0.1:${server.address().port}`;
 let result;
 try {
   result = await browserChecks(origin, ONLY);
 } finally {
+  clearTimeout(watchdogTimer);
   server.close();
 }
 const { report, consoleErrors } = result;

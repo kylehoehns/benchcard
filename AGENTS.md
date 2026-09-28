@@ -164,6 +164,14 @@ the cold-load measurement, and a `RICH` record — 11 players, two games today,
 three filed, levels set — for the overlay, touch, narrow and sweep passes. Do
 not merge them back into one.
 
+Every page it opens has its clock pinned to 2026-09-12 12:00 local
+(`scripts/smoke/clock.mjs`), ticking forward from there — not frozen, since
+`SETTLE` and the wait loops need it to move — so a run gives the same answer
+at any hour instead of failing when CI happens to cross midnight (#178). A run
+also ends on its own if it hangs: `--timeout <minutes>` (default 60) closes
+Chrome and exits 1, naming the check it was on; `Ctrl-C`/`kill` do the same.
+No `perl -e 'alarm …'` wrapper is needed.
+
 It drives `index.html` for all of that, plus one pass over every screen at
 320px with the browser's default font size emulated at 32px (a reader on 200%
 text) — the app shell was held to a lower standard than the marketing pages
