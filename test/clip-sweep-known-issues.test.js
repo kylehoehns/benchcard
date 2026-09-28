@@ -11,17 +11,17 @@ import assert from 'node:assert/strict';
 import { CLIP_SWEEP_KNOWN_ISSUES } from '../scripts/smoke/clip-sweep.mjs';
 import { assertReasonWords } from './reason-list.js';
 
-test('CLIP_SWEEP_KNOWN_ISSUES is a non-empty array covering #187, #189, #190, #191', () => {
-  assert.ok(Array.isArray(CLIP_SWEEP_KNOWN_ISSUES) && CLIP_SWEEP_KNOWN_ISSUES.length > 0,
-    `expected a non-empty array, found ${Array.isArray(CLIP_SWEEP_KNOWN_ISSUES) ? CLIP_SWEEP_KNOWN_ISSUES.length : typeof CLIP_SWEEP_KNOWN_ISSUES}`);
+test('CLIP_SWEEP_KNOWN_ISSUES is an array with none of the fixed issues left in it', () => {
+  assert.ok(Array.isArray(CLIP_SWEEP_KNOWN_ISSUES),
+    `expected an array, found ${typeof CLIP_SWEEP_KNOWN_ISSUES}`);
   const issues = CLIP_SWEEP_KNOWN_ISSUES.map(e => e.issue);
-  // #188 is fixed (docs/specs/188-small-dialogs.md) and its entry removed,
-  // not listed here: a stale entry fails `clipSweepPass` itself, which is
-  // what proves the fix rather than this shape check.
-  for (const n of [187, 189, 190, 191]) {
-    assert.ok(issues.includes(n), `expected #${n} among ${JSON.stringify(issues)}`);
+  // Every issue this list was made for is fixed and its entry removed, so
+  // the list may be empty. A stale entry fails `clipSweepPass` itself,
+  // which is what proves each fix; this only keeps a fixed one from coming
+  // back under the same number.
+  for (const n of [187, 188, 189, 190, 191, 197, 198]) {
+    assert.ok(!issues.includes(n), `#${n} is fixed; its entry should be removed, not present: ${JSON.stringify(issues)}`);
   }
-  assert.ok(!issues.includes(188), `#188 is fixed; its entry should be removed, not present: ${JSON.stringify(issues)}`);
 });
 
 test('every entry has an issue number, a match function and a reason of at least a few words', () => {

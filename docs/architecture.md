@@ -817,7 +817,7 @@ width, and the smoke check `today and game controls ≥ 48px` sweeps them.
 
 **Destructive actions are undoable, not confirmed.** Removing a player,
 removing a game, starting a new day, clearing in-game changes, editing a game
-while it is underway, editing or removing a rule, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
+while it is underway, editing or removing a rule, removing a unit from the Platoon editor, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
 at the wrong moment — before the coach can see what it did, and a game removal
 is only judgeable once the rest of the day has rebalanced. When a game is
 part-played and an edit changes its period count, period minutes, Sub interval,
@@ -862,9 +862,9 @@ Mobile specifics that came out of real use:
   transparent.
   The stack replaced a strip of tabs (#23) that had to cap a label at 20
   characters. A pass has no such cap: `.pass-title` wraps at large text sizes
-  (320px with 32px text, #66) to keep every team name whole, and truncates
-  with a tail ellipsis only at normal sizes when one name is wider than its
-  own row, keeping the full label in the pass's accessible name. `.pass-summary`
+  (320px with 32px text, #66/#187) to keep every team name whole, and truncates
+  with a tail ellipsis when a single word is wider than the available space
+  (#187), keeping the full label in the pass's accessible name. `.pass-summary`
   wraps at every size instead of ending in an ellipsis (#66).
 - **Squad pills elide the same way, and for the same reason.** `.plr .nm` is
   capped at 15ch, and a tail ellipsis cut the surname off — two kids with the
