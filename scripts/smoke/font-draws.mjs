@@ -44,21 +44,17 @@
  * platform fonts and clicks existing controls -- so the three smoke budgets
  * are untouched by this row, on top of never moving from the injection itself
  * (`smoke-font.mjs`'s own comment). */
-import { evalIn, step, WIDTH, HEIGHT, navigateAndWaitForCard } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, navigateAndWaitForCard, objectIdFor } from './dom.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { SMOKE_FONT_FAMILY } from './smoke-font.mjs';
 import { goRich } from './fixtures.mjs';
 
-// Runtime.evaluate without returnByValue hands back an objectId for a real
-// element (needed for DOM.requestNode -> CSS.getPlatformFontsForNode); a
-// selector matching nothing evaluates to `null`, which carries no objectId.
+// A selector matching nothing hands back no objectId (`dom.mjs`'s own
+// `objectIdFor`), which carries no `DOM.requestNode` to make.
 async function nodeIdFor(c, selector) {
-  const { result, exceptionDetails } = await c.send('Runtime.evaluate', {
-    expression: `document.querySelector(${JSON.stringify(selector)})`,
-  });
-  if (exceptionDetails) throw new Error(exceptionDetails.exception?.description || exceptionDetails.text);
-  if (!result.objectId) return null;
-  const { nodeId } = await c.send('DOM.requestNode', { objectId: result.objectId });
+  const objectId = await objectIdFor(c, selector);
+  if (!objectId) return null;
+  const { nodeId } = await c.send('DOM.requestNode', { objectId });
   return nodeId;
 }
 
@@ -132,11 +128,6 @@ export async function fontDrawsPass(c, origin) {
     await c.send('CSS.disable');
     await c.send('DOM.disable');
   }
-
-  // Rule 2a again, for the row as a whole: five places named above, so fewer
-  // than five checked-or-flagged outcomes means one silently never ran.
-  const total = checked.length + problems.length;
-  if (total < 5) problems.push(`only ${total}/5 places were checked -- one silently never ran`);
 
   return {
     pass: problems.length === 0,

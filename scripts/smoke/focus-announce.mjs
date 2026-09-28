@@ -29,7 +29,7 @@
  * A real screen reader is not run in CI (spec's own "Out of scope" note);
  * the AX tree is the browser's own answer to the same question a screen
  * reader would ask, which is what the spec's Proof table names as the seam. */
-import { evalIn, step, onScreen } from './dom.mjs';
+import { evalIn, step, onScreen, objectIdFor } from './dom.mjs';
 import { RICH, goRich, reloadWithRecord } from './fixtures.mjs';
 import { realTap, tap, key, setGame, evalJSON, waitClosed } from './sheet-drive.mjs';
 
@@ -76,11 +76,16 @@ async function enterOn(c, sel) {
 
 // Chrome's own accessible name for one element, off a live `objectId` --
 // never the DOM text read a second way, which is the whole point of asking
-// the AX tree at all (items 8/9's seam, per the Proof table).
+// the AX tree at all (items 8/9's seam, per the Proof table). `objectIdFor`
+// (`dom.mjs`) throws on the page's own exception; this kept its own contract
+// from before that helper existed -- undefined for anything that does not
+// resolve, a missing element and a thrown exception alike -- since its one
+// caller (item 9) already reads `undefined` the same as "nothing to report".
 async function axName(c, sel) {
-  const r = await c.send('Runtime.evaluate', { expression: `document.querySelector(${JSON.stringify(sel)})` });
-  if (!r.result || !r.result.objectId) return undefined;
-  const { nodes } = await c.send('Accessibility.getPartialAXTree', { objectId: r.result.objectId, fetchRelatives: false });
+  let objectId;
+  try { objectId = await objectIdFor(c, sel); } catch { return undefined; }
+  if (!objectId) return undefined;
+  const { nodes } = await c.send('Accessibility.getPartialAXTree', { objectId, fetchRelatives: false });
   const node = (nodes || []).find(n => !n.ignored);
   return node && node.name ? node.name.value : null;
 }
