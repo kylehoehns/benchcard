@@ -136,8 +136,11 @@ dialog shell, `test/dialog-viewport.test.js`, the other known-issues entries,
   `.keysbox` keeps `padding-top: 0`, and `.keys-hd` gets no negative
   `margin-top`. Its side margins must match the box's new side padding so
   its background still reaches the box edge.
-- **16px side margin** (guidelines L6): the dialog sits 16px (`.5rem` at
-  32px) in from each screen edge.
+- **Side margin** (guidelines L6): the dialog aims to sit 16px (`.5rem` at
+  32px) in from each screen edge. If the longest heading word would then keep
+  less than 15% spare width (AGENTS.md's floor for a check that measures
+  text), the wrap's side padding is what gives, not the heading's size. See
+  Design: it does give, to `.2rem` (6.4px), inside the `19em` block only.
 - **Do not raise an allowance** or add an allow-list entry to clear any of
   these; the known-issues entry is removed, not edited.
 - **Touch targets:** every button in these dialogs stays ≥48px (I1);
@@ -153,7 +156,7 @@ Inside `@media (max-width: 19em)` in `app/app.css`, replacing the current
 `.keysbox`/`.helpbox` width lines:
 
 ```css
-.keyswrap { padding-left: .5rem; padding-right: .5rem; }
+.keyswrap { padding-left: .2rem; padding-right: .2rem; }
 .keysbox, .helpbox, .colorbox, .confirmbox { width: 100%;
   padding-left: .5rem; padding-right: .5rem; }
 .keys-hd { margin-left: -.5rem; margin-right: -.5rem;
@@ -164,16 +167,19 @@ Inside `@media (max-width: 19em)` in `app/app.css`, replacing the current
 .keys-row { flex-wrap: wrap; row-gap: .2rem; }
 ```
 
-At 320/32 that gives each dialog a 288px box and 254px of content (was
+At 320/32 that gives each dialog a 307px box and 273px of content (was
 145px). The shortcut keys sit on their own line above their description,
 the confirm's Cancel sits above its Remove button (DOM order kept, so
 Cancel is still first for focus and reading), and "Show me around again"
 wraps inside its button. At 16px text none of this applies.
 
 The longest single word in these dialogs is "TOURNAMENT" in an uppercase
-`h3.help-h`, 229px of the new 254px (about 10% spare). It fits in the forced
-DejaVu Sans; the developer reports the measured width, and if it needs more
-room the wrap's side padding is the one to give (not the heading's size).
+`h3.help-h`, 229px in the forced DejaVu Sans. With the wrap at `.5rem` the
+content box was 254px, about 10% spare, under the 15% floor. So the wrap's
+side padding gave instead of the heading's size: at `.2rem` (6.4px from
+each screen edge, below L6's 16px, at a 32px root only) the content box is
+273px and "TOURNAMENT" keeps 16% spare. The base `.keyswrap` rule is
+unchanged, so at 16px text the dialogs keep their full margin.
 
 ## Proof
 
