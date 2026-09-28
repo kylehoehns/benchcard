@@ -1,5 +1,6 @@
-import { evalIn, step, SETTLE, LOCALSTORAGE_WIPE, navigateAndWaitForCard } from './dom.mjs';
-import { RICH, withSecondTeam, reloadWithRecord, seeded } from './fixtures.mjs';
+import { evalIn, step, navigateAndWaitForCard } from './dom.mjs';
+import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
+import { land, reset } from './page-state.mjs';
 
 /* #25 item 4 and item 7, together: with Royal active, the K1 controls read
  * the tint and nothing else on screen does; switching team changes them in
@@ -435,15 +436,10 @@ export async function teamDefaultPass(c, origin) {
     // the host's own `prefers-color-scheme`; forced light here so the read
     // matches the spec's light-mode literals, same fix `game-rows-fit.mjs`
     // and `first-run-flow.mjs` already apply for the same reason.
-    await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
-    await seeded(c, LOCALSTORAGE_WIPE, async () => {
-      const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-      await c.send('Page.navigate', { url: origin + '/index.html' });
-      await loaded;
-      await evalIn(c, `(async () => { await document.fonts.ready;
-        for (let i = 0; i < 60 && document.getElementById('view-welcome').hidden; i++)
-          await new Promise(r => setTimeout(r, 50));
-        await ${SETTLE}; })()`);
+    await land(c, origin, {
+      record: 'wiped',
+      media: [{ name: 'prefers-color-scheme', value: 'light' }],
+      ready: `!document.getElementById('view-welcome').hidden`,
     });
     const w = JSON.parse(await evalIn(c, READ_WELCOME_COLOR));
     if (w.tint !== 'hardwood') problems.push(`a fresh device stamps data-tint="${w.tint}" on <html>, want "hardwood"`);
@@ -489,7 +485,7 @@ export async function teamDefaultPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
-    await c.send('Emulation.setEmulatedMedia', { features: [] }).catch(() => {});
+    await reset(c, origin).catch(() => {});
   }
   return {
     pass: problems.length === 0,
