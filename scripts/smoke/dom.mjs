@@ -9,10 +9,59 @@ export const WIDTH = 390, HEIGHT = 844;
    given width (keeping this suite's own HEIGHT and mobile emulation unless a
    caller needs a different height too, #147's own short-phone heights among
    them), then wait two rAFs for the resulting reflow to settle before
-   anything measures it. One copy here, imported by everyone who needs it. */
+   anything measures it. One copy here, imported by everyone who needs it.
+   #125: a one-line wrapper over `resize` (`page-state.mjs`), which does the
+   exact same two things and nothing else -- a dynamic import, not a static
+   one, because `page-state.mjs` itself imports from this file (`WIDTH`,
+   `evalIn`) and a static import back would be a load-order-dependent cycle:
+   whichever of the two modules some other file happens to import first would
+   decide whether `page-state.mjs`'s own top-level `BASELINE` sees `RICH`
+   already initialized or not. A dynamic import resolves at call time, after
+   the whole module graph has settled, so it is safe either way. */
 export async function setWidth(c, width, height = HEIGHT) {
-  await c.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  const { resize } = await import('./page-state.mjs');
+  return resize(c, width, height);
+}
+
+/* #125: the ambient page state a check has already set by hand -- via a raw
+   CDP call right beside the wrapped call below -- before asking for a
+   navigate, wipe or reseed. `land` (`page-state.mjs`) always asserts every
+   field of the state it lands on, baseline width/text/media included when a
+   caller leaves them out, so a wrapper that only passed through the one field
+   it used to touch would silently reset whatever the CALLER had already
+   emulated a moment earlier: a check narrowed to 320px, or pinned to
+   `prefers-color-scheme: light`, immediately before the reload it expects to
+   land at that same width and scheme (`first-run-flow.mjs`'s `firstRunPass`
+   is the real case this was caught against -- it pins light, then reloads
+   through what is now `landWiped`, then reads a theme-dependent color).
+   Read here, off the page itself, and passed straight back into `want` by
+   the wrapper that calls this, so the reload re-asserts the same state
+   instead of resetting it. `matchMedia` cannot tell "the host really is
+   light" from "CDP forced light"; it does not need to -- reasserting
+   whichever value it currently reports reproduces the same visible page
+   state either way. */
+export async function ambient(c) {
+  const json = await evalIn(c, `JSON.stringify({
+    width: document.documentElement.clientWidth,
+    textPx: parseFloat(getComputedStyle(document.documentElement).fontSize),
+    dark: matchMedia('(prefers-color-scheme: dark)').matches,
+    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    forcedColors: matchMedia('(forced-colors: active)').matches,
+    moreContrast: matchMedia('(prefers-contrast: more)').matches,
+    reducedTransparency: matchMedia('(prefers-reduced-transparency: reduce)').matches,
+  })`);
+  const a = JSON.parse(json);
+  return {
+    width: a.width,
+    textPx: a.textPx,
+    media: [
+      { name: 'prefers-color-scheme', value: a.dark ? 'dark' : 'light' },
+      { name: 'prefers-reduced-motion', value: a.reducedMotion ? 'reduce' : 'no-preference' },
+      { name: 'forced-colors', value: a.forcedColors ? 'active' : 'none' },
+      { name: 'prefers-contrast', value: a.moreContrast ? 'more' : 'no-preference' },
+      { name: 'prefers-reduced-transparency', value: a.reducedTransparency ? 'reduce' : 'no-preference' },
+    ],
+  };
 }
 
 /* Evaluate in the page and throw the page's own error, rather than letting a
@@ -404,29 +453,31 @@ export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
    SETTLE sequence a full-page reload needs before anything on the page can be
    measured. `goRich` (`fixtures.mjs`), `appLargeTextPass` (`app-large-text.mjs`)
    and `measureLargeText` (`phone-gutter.mjs`, under a font-size override) each
-   carried an identical copy of this until it moved here. */
+   carried an identical copy of this until it moved here.
+   #125: a one-line wrapper over `land` (`page-state.mjs`) -- `record: 'kept'`
+   because this function never seeded anything itself, `.card` because that
+   is `land`'s own default `ready`, and `ambient`'s width/text/media because a
+   caller that just set those by hand (large-text checks, ahead of their own
+   migration onto `land` in a later slice) expects the reload to keep them,
+   not reset to baseline. */
 export async function navigateAndWaitForCard(c, url) {
-  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url });
-  await loaded;
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
+  const { land } = await import('./page-state.mjs');
+  const u = new URL(url);
+  const a = await ambient(c);
+  await land(c, u.origin, {
+    page: u.pathname, query: u.search, record: 'kept',
+    width: a.width, textPx: a.textPx, media: a.media,
+  });
 }
 
 export async function landWiped(c, url, readyJs) {
-  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: LOCALSTORAGE_WIPE });
-  try {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !(${readyJs}); i++)
-        await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
-  } finally {
-    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  }
+  const { land } = await import('./page-state.mjs');
+  const u = new URL(url);
+  const a = await ambient(c);
+  await land(c, u.origin, {
+    page: u.pathname, query: u.search, record: 'wiped', ready: readyJs,
+    width: a.width, textPx: a.textPx, media: a.media,
+  });
 }
 
 /* #28's own overflow probe, for a `dialog[open]`: every visible descendant

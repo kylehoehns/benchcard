@@ -1,5 +1,5 @@
 import { evalIn, SETTLE, step, WIDTH, HEIGHT, onScreen } from './dom.mjs';
-import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
+import { RICH, withSecondTeam, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 export async function todayAndBackPass(c, origin) {
@@ -393,7 +393,12 @@ export async function todayAndBackPass(c, origin) {
     }
   }
 
-  await reloadWith(RICH);
+  // Leave the fixture the way every other 'rich' row expects to find it.
+  // RICH itself ships `view: 'games'`, which paints no `.today-game`
+  // (`reloadWith`'s own default ready) -- names `GAMES_VIEW_READY`
+  // (fixtures.mjs) instead, the same gutter `noGamesPass`,
+  // `todayKeysAndUndoPass`, `phoneGutterPass` and `fourTodayTouch` name.
+  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   } catch (e) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
   }
