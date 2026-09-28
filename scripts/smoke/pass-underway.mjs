@@ -13,7 +13,7 @@
  * fix because its plan is blocked, exactly as `game-passes.mjs`'s own `WANT`
  * table already pins. */
 import { evalIn, step, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
-import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
+import { FOUR, RICH, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 import { setGame } from './sheet-drive.mjs';
 
 const WANT = [
@@ -95,8 +95,11 @@ export async function passUnderwayPass(c, origin) {
   } finally {
     // Same courtesy `gamePassesPass` pays (fixtures.mjs's own FOUR/RICH
     // split): leave the fixture as `goRich` left it for whatever check runs
-    // next.
-    await reloadWithRecord(c, origin, RICH).catch(() => {});
+    // next -- see `GAMES_VIEW_READY`'s own comment (fixtures.mjs) for why
+    // this names it.
+    // Fix pass, quality-1: no `.catch` -- see `gamePassesPass`'s own comment
+    // on the same change for why.
+    await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   }
   return {
     pass: problems.length === 0,

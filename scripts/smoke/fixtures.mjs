@@ -1,7 +1,7 @@
 /* The fixtures the browser passes drive: a lean SEED for the cold-load
    measurement and a RICH record for everything else. Moved out of
    `smoke.mjs` unchanged. */
-import { ambient } from './dom.mjs';
+import { landKeepingAmbient, screenReadyExpr } from './dom.mjs';
 /* The app's own sample cast, for `SAMPLE_TEAM` below -- `app/roster.js` is
    where it lives and the only place it is written down. */
 import { sampleRoster, SAMPLE_TEAM_NAME } from '../../app/roster.js';
@@ -167,8 +167,13 @@ export const RICH = {
    width (`todayPaneShowing`, teams-view.js), which is `reloadWithRecord`'s
    own default `ready` below. `#view-games` is what a `'games'` landing
    actually shows, so every caller that reloads one of them names this
-   instead -- one expression, not a copy hand-typed at each call site. */
-export const GAMES_VIEW_READY = `!document.getElementById('view-games').hidden`;
+   instead -- one expression, not a copy hand-typed at each call site.
+   Fix pass, reuse-1: built from `screenReadyExpr` (`dom.mjs`), the same
+   builder `onScreen` calls, rather than a second hand-typed copy that had
+   dropped its null guard -- see `screenReadyExpr`'s own comment for why the
+   guard matters. Every call site below just says "this needs the games
+   view, see `GAMES_VIEW_READY`" rather than re-explaining any of this. */
+export const GAMES_VIEW_READY = screenReadyExpr('view-games');
 
 /* Swap the lean fixture for the rich one and reload. Called exactly once, from
    `browserChecks`, immediately after the payload snapshot. The reload is
@@ -192,13 +197,14 @@ export const GAMES_VIEW_READY = `!document.getElementById('view-games').hidden`;
    (`dom.mjs`) carries forward whatever width/text/media the caller already
    set by hand, so a reload through this function keeps behaving like a plain
    reload rather than resetting to baseline ahead of that caller's own
-   migration onto `land` in a later slice. Dynamic import for the same
-   load-order reason `setWidth`'s own comment (`dom.mjs`) gives. */
+   migration onto `land` in a later slice. Fix pass: routed through
+   `landKeepingAmbient` (`dom.mjs`), the shared ambient-read-plus-`land` half
+   of this that `goRich`, `goSeed`, `reloadWithRecord` and two `dom.mjs`
+   wrappers all now call instead of each carrying its own copy; see its own
+   comment for the dynamic import and the decision to keep the read. */
 export async function goRich(c, origin, ui, base = RICH) {
   const record = ui ? { ...base, ui: { ...base.ui, ...ui } } : base;
-  const { land } = await import('./page-state.mjs');
-  const a = await ambient(c);
-  await land(c, origin, { record, width: a.width, textPx: a.textPx, media: a.media });
+  await landKeepingAmbient(c, origin, { record });
 }
 
 /* Reload straight onto `SEED` (`benchcard.v3`), the way `game passes` (#26)
@@ -208,9 +214,7 @@ export async function goRich(c, origin, ui, base = RICH) {
    `browserChecks`). Waits for `.card` rather than `.today-game` (`reloadWithRecord`
    below) because `SEED` boots straight onto the games view, not Today. */
 export async function goSeed(c, origin) {
-  const { land } = await import('./page-state.mjs');
-  const a = await ambient(c);
-  await land(c, origin, { record: SEED, width: a.width, textPx: a.textPx, media: a.media });
+  await landKeepingAmbient(c, origin, { record: SEED });
 }
 
 /* Swap in `record` and reload, the way the #23 checks below need to: a
@@ -224,12 +228,7 @@ export async function goSeed(c, origin) {
    condition for a caller that reloads onto a screen which never paints a
    `.today-game` -- the welcome screen or an empty-roster fixture (#139). */
 export async function reloadWithRecord(c, origin, record, ready = `document.querySelector('.today-game')`) {
-  const { land } = await import('./page-state.mjs');
-  const a = await ambient(c);
-  await land(c, origin, {
-    record, ready, freshHistory: true,
-    width: a.width, textPx: a.textPx, media: a.media,
-  });
+  await landKeepingAmbient(c, origin, { record, ready, freshHistory: true });
 }
 
 /* ---------- FOUR (#26) ----------

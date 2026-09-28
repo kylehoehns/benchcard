@@ -17,7 +17,8 @@ export async function noGamesPass(c, origin) {
   const onGames = () => onScreen(c, 'view-games');
   try {
 
-  // `ONE_GAME` keeps RICH's own `view: 'games'` (`GAMES_VIEW_READY`, fixtures.mjs).
+  // `ONE_GAME` keeps RICH's own `view: 'games'` -- see `GAMES_VIEW_READY`'s
+  // own comment (fixtures.mjs) for why this names it.
   await reloadWithRecord(c, origin, ONE_GAME, GAMES_VIEW_READY);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
   if (!(await onToday())) problems.push('could not reach Today to start the check');

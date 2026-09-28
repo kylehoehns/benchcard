@@ -4,6 +4,17 @@
 
 export const WIDTH = 390, HEIGHT = 844;
 
+/* Fix pass, efficiency-2: `page-state.mjs` is imported dynamically everywhere
+   in this file for the load-order reason `setWidth`'s own comment below
+   gives -- but every one of those call sites was re-awaiting its own
+   `import()`, which after the first call is just a promise the module loader
+   already has cached; nothing needs a second round trip through it. One
+   module-level promise, created on first use and reused by every later call
+   in this process, same as the loader would do anyway, minus the repeated
+   await. */
+let pageStateModule;
+const pageState = () => (pageStateModule ??= import('./page-state.mjs'));
+
 /* Fix pass finding 3: `bar-rows.mjs` and `gm-open.mjs` each carried a
    byte-for-byte identical `setWidth` -- override the device metrics at the
    given width (keeping this suite's own HEIGHT and mobile emulation unless a
@@ -19,7 +30,7 @@ export const WIDTH = 390, HEIGHT = 844;
    already initialized or not. A dynamic import resolves at call time, after
    the whole module graph has settled, so it is safe either way. */
 export async function setWidth(c, width, height = HEIGHT) {
-  const { resize } = await import('./page-state.mjs');
+  const { resize } = await pageState();
   return resize(c, width, height);
 }
 
@@ -62,6 +73,33 @@ export async function ambient(c) {
       { name: 'prefers-reduced-transparency', value: a.reducedTransparency ? 'reduce' : 'no-preference' },
     ],
   };
+}
+
+/* Fix pass, efficiency-1 + reuse-2 (handed back together: the fix for one is
+   the fix for the other): the "dynamic import, read `ambient`, call `land`
+   carrying its width/textPx/media forward" idiom five wrappers hand-copied --
+   this file's own `navigateAndWaitForCard` and `landWiped` below, plus
+   `fixtures.mjs`'s `goRich`, `goSeed` and `reloadWithRecord`. One helper,
+   here, next to `ambient` itself.
+
+   On skipping the read: `ambient`'s own comment above names the one real case
+   it exists for -- a caller that has already set width/text/media by hand,
+   right before asking for a reload (`first-run-flow.mjs`'s `firstRunPass`).
+   The other four wrappers are called about 130 times combined across
+   `scripts/smoke/`, and proving which of those call sites can and cannot have
+   deviated from `BASELINE` first would mean auditing every one by hand and
+   keeping that audit right as the migration in slices 3 and 4 moves more
+   checks onto `land` directly -- exactly the kind of one-off proof that goes
+   stale the next time a check changes what it does before reloading. Given
+   that cost, this keeps the read: one `Runtime.evaluate` round trip per
+   reload not the two dynamic-import-call sites finding 2 was about, and
+   still one copy of the idiom, not five. A later slice that DOES thread
+   "did this caller touch CDP state" through from the call site can drop the
+   read for the callers that answer no; nothing here forecloses that. */
+export async function landKeepingAmbient(c, origin, want) {
+  const { land } = await pageState();
+  const a = await ambient(c);
+  return land(c, origin, { width: a.width, textPx: a.textPx, media: a.media, ...want });
 }
 
 /* Evaluate in the page and throw the page's own error, rather than letting a
@@ -184,11 +222,21 @@ export const SOLID_FALLBACK_MEDIA = [
   ['prefers-contrast', 'more'],
 ];
 
+// #125 fix pass, reuse-1: is `#id` the screen currently on show, as a plain
+// JS-expression string rather than a value read through CDP -- so a caller
+// that needs the EXPRESSION (`GAMES_VIEW_READY`, fixtures.mjs, evaluated
+// later inside `land`'s own boot-wait poll) and a caller that wants the
+// ANSWER right now (`onScreen` below, both #23 checks) share one builder
+// instead of `fixtures.mjs` re-typing the check by hand and dropping the null
+// guard: an id that has not painted yet must read false and let the poll
+// retry, not throw a `TypeError` on `.hidden` of `null`.
+export const screenReadyExpr = id => `!!(document.getElementById('${id}') && !document.getElementById('${id}').hidden)`;
+
 // Is `#id` the screen currently on show? Both #23 checks below ask this of
 // more than one screen (Today, and on the keys/undo side, Games too), so it
 // is one helper rather than a `!!(document.getElementById(...) && ...)` at
 // every call site.
-export const onScreen = (c, id) => evalIn(c, `!!(document.getElementById('${id}') && !document.getElementById('${id}').hidden)`);
+export const onScreen = (c, id) => evalIn(c, screenReadyExpr(id));
 
 // #145 item 8: a named set of one element's own computed-style properties,
 // or null if the selector matches nothing -- the way `add-game-flow.mjs` and
@@ -459,25 +507,18 @@ export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
    is `land`'s own default `ready`, and `ambient`'s width/text/media because a
    caller that just set those by hand (large-text checks, ahead of their own
    migration onto `land` in a later slice) expects the reload to keep them,
-   not reset to baseline. */
+   not reset to baseline. Fix pass: routed through `landKeepingAmbient` above,
+   which is the ambient-read-plus-`land` half of this; see its own comment. */
 export async function navigateAndWaitForCard(c, url) {
-  const { land } = await import('./page-state.mjs');
   const u = new URL(url);
-  const a = await ambient(c);
-  await land(c, u.origin, {
-    page: u.pathname, query: u.search, record: 'kept',
-    width: a.width, textPx: a.textPx, media: a.media,
-  });
+  await landKeepingAmbient(c, u.origin, { page: u.pathname, query: u.search, record: 'kept' });
 }
 
+// Fix pass: routed through `landKeepingAmbient` above, same as
+// `navigateAndWaitForCard`.
 export async function landWiped(c, url, readyJs) {
-  const { land } = await import('./page-state.mjs');
   const u = new URL(url);
-  const a = await ambient(c);
-  await land(c, u.origin, {
-    page: u.pathname, query: u.search, record: 'wiped', ready: readyJs,
-    width: a.width, textPx: a.textPx, media: a.media,
-  });
+  await landKeepingAmbient(c, u.origin, { page: u.pathname, query: u.search, record: 'wiped', ready: readyJs });
 }
 
 /* #28's own overflow probe, for a `dialog[open]`: every visible descendant

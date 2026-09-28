@@ -393,11 +393,8 @@ export async function todayAndBackPass(c, origin) {
     }
   }
 
-  // Leave the fixture the way every other 'rich' row expects to find it.
-  // RICH itself ships `view: 'games'`, which paints no `.today-game`
-  // (`reloadWith`'s own default ready) -- names `GAMES_VIEW_READY`
-  // (fixtures.mjs) instead, the same gutter `noGamesPass`,
-  // `todayKeysAndUndoPass`, `phoneGutterPass` and `fourTodayTouch` name.
+  // Leave the fixture the way every other 'rich' row expects to find it --
+  // see `GAMES_VIEW_READY`'s own comment (fixtures.mjs) for why this names it.
   await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   } catch (e) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
