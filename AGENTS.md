@@ -211,14 +211,21 @@ and the committer ran it again on the same bytes — about twelve pairs for one
 ticket, half of them repeats. A tree a commit already recorded as green is not
 re-run to say so again.
 
-**CI draws text wider than a Mac does.** The smoke job runs Chrome on Ubuntu,
-whose fonts are wider: "Bartholomew-Christopherson" measured 227px there in a
-209px row, and two button labels that fit on one line locally wrapped in CI.
-Seven of the ten red CI runs in #131–#150 were this. A check that measures
-text leaves at least 15% spare width, as `scripts/smoke/row-stack.mjs` does; a
-layout that fits locally only with less than that is the defect, not the
-check. When CI fails a text row that passes locally, read the measured values
-in the CI log before changing anything.
+**Smoke forces CI's font on a Mac too.** The smoke job runs Chrome on Ubuntu,
+whose fonts used to be wider than a Mac's: "Bartholomew-Christopherson"
+measured 227px there in a 209px row, and two button labels that fit on one
+line locally wrapped in CI. Seven of the ten red CI runs in #131–#150 were
+this. Rather than trust the two machines to agree, the harness carries CI's
+own resolved font, DejaVu Sans (`scripts/fonts/`), and forces it onto every
+page it opens, on a Mac and in CI alike (#177) — so `npm run smoke` on a Mac
+now measures text the width CI measures it, and a text row that fails in CI
+fails there first. Only `--font` is forced: the printed card's own InterVar
+and the paste box's monospace textarea keep their real fonts. A check that
+measures text still leaves at least 15% spare width, as
+`scripts/smoke/row-stack.mjs` does — belt and braces now, not the only
+defense; a layout that fits locally only with less than that is still the
+defect, not the check. When CI fails a text row that passes locally, read the
+measured values in the CI log before changing anything.
 
 The payload budget is a **recorded** baseline. `requests` comes from
 `scripts/budgets.json`; `bytes` and `nodes` are hand-pinned as

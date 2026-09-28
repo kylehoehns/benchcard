@@ -26,6 +26,23 @@ export async function evalIn(c, expression) {
   return result.value;
 }
 
+/* A selector's own LIVE objectId -- the one thing `evalIn` above can never
+   hand back, since it always asks for `returnByValue: true` (a JSON copy, not
+   the object itself). A CDP domain call that needs the live node
+   (`DOM.requestNode` for `CSS.getPlatformFontsForNode`, `Accessibility.
+   getPartialAXTree`) needs this instead. `font-draws.mjs`'s own `nodeIdFor`
+   and `focus-announce.mjs`'s own `axName` each carried an identical first
+   step -- `Runtime.evaluate` the selector without `returnByValue`, throw the
+   page's own exception, and treat "matched nothing" (no `objectId`) as a
+   plain `null` -- until it moved here. */
+export async function objectIdFor(c, selector) {
+  const { result, exceptionDetails } = await c.send('Runtime.evaluate', {
+    expression: `document.querySelector(${JSON.stringify(selector)})`,
+  });
+  if (exceptionDetails) throw new Error(exceptionDetails.exception?.description || exceptionDetails.text);
+  return result.objectId || null;
+}
+
 /* #102: the "Evens out ..." sentence's second line, read through the same
    `tipoffLabel` the sentence itself calls rather than a hard-coded "9:00 AM"
    this ICU version's own AM/PM spacing (an ASCII space or U+202F) could
