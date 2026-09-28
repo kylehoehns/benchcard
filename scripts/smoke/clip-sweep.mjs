@@ -149,11 +149,6 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
     reason: 'bench mode breaks short one-word names mid-word',
     match: p => p.kind === 'split' && p.el === 'span.nm' && p.where.startsWith('bench mode'),
   },
-  {
-    issue: 198,
-    reason: 'the welcome screen cuts a sample name off and breaks it mid-word',
-    match: p => p.el === 'span.wel-nm',
-  },
 ];
 
 /* #179 fix 1: a scroll container is treated as a clip boundary below
