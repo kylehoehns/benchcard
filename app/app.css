@@ -150,9 +150,10 @@ a { color: inherit; }
    paint size (iOS's own segmented control is 32pt); ::after still restores
    the 48px tap target. z-index because that ::after reaches 8px below the
    control, over .tl-periods (position: relative), which would otherwise win
-   the hit test there. Side padding is px, not the shared rule's .9rem: at
-   320px with 32px text a rem here is 28.8px a side, which put the track past
-   the right edge. */
+   the hit test there. At big text (the 19em block below, #195) the two
+   halves stack instead of sitting side by side, since "Timeline" no longer
+   fits beside "Card" at that size; this base rule (inline, two equal
+   columns) is unchanged and still governs everything above that size. */
 #viewSeg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   max-width: 100%; margin-top: 1rem; margin-bottom: .625rem; }
 #viewSeg button { min-width: 0; }
@@ -3407,6 +3408,12 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      above; centring stops a short second line hugging one end of the pill. */
   .seg { flex-wrap: wrap; justify-content: center; }
 
+  /* #195: at this size "Timeline" (125.3px) no longer fits beside "Card" in
+     an equal half (125px). `display: grid` makes the switch block level, so
+     both buttons stay 252px wide whichever is selected; `grid-auto-flow: row`
+     stacks "Card" under "Timeline" instead of shrinking either label. */
+  #viewSeg { display: grid; grid-auto-flow: row; }
+
   /* The last two rows no `px` stage reaches. Past 24px of root text -- past
      Chrome's own font-size menu but not the OS setting -- these were a 12px
      sideways pan: the section heading's row (title plus Shuffle, which
@@ -3619,6 +3626,20 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      cap for this fixture's longest word ("Lindqvist", 126px). */
   .who-row { gap: .15rem; padding-left: .1rem; padding-right: .1rem; }
   .who-row .av { width: 1.4rem; height: 1.4rem; }
+
+  /* #189: the Plan sheet's Lineup balance row (`#planLineups .prow`) draws
+     its value on top of its own label at this size -- in DejaVu Sans,
+     `.prow-t` ("Lineup balance") is 7px wide with "Steady" and 0px with
+     "Start strong"/"Finish strong", against 126px needed for "balance"
+     alone. Wrapping the row and giving the label its full 192px width puts
+     "Lineup balance" alone on line one (wrapping between its own two
+     words), with the value and chevron sharing line two -- the same
+     wrap-and-stack answer `#sheetCard`/`#sheetPlayer`/`#sheetAddPlayer .pgrp
+     .prow` and `#view-settings .pgrp .prow` already use, scoped to this
+     row's own container so no other sheet's rows are affected. */
+  #planLineups .prow { flex-wrap: wrap; }
+  #planLineups .prow-t { flex-basis: 100%; }
+  #planLineups .prow-v { flex: 1 1 0; }
 }
 
 /* The planning views on a phone held sideways: not where a coach plans, but
