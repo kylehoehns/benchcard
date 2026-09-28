@@ -391,6 +391,30 @@ export const OVERFLOW_PROBE = `(() => {
    scan both need this, so it lives once. */
 export const IS_SR_ONLY_RECT = `(r => r.width <= 1 && r.height <= 1)`;
 
+/* #200: the named list of computed-style longhands `WORD_FLOOR_FN`'s
+   measuring span copies from the real element, in place of the `font`
+   shorthand. Chrome's `getComputedStyle(...).font` comes back `""` -- not a
+   fallback value, the empty string -- whenever a longhand it cannot express
+   in the shorthand is off its initial value, and `body` sets two such
+   longhands (`font-feature-settings`, `font-variant-numeric`) that every
+   element in the app inherits. A span given `style.font = ''` keeps
+   WHATEVER font it already had -- here, `body`'s own at weight 400 -- so a
+   600-weight row's longest word measured far too small and a name squeezed
+   narrower than that word could pass a floor check that should have caught
+   it. One named constant, so `dom.mjs`, `bench-look.mjs`'s failure messages
+   and a reader all point at the same list. */
+export const WORD_FONT_PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
+  'fontStretch', 'fontVariant', 'fontFeatureSettings', 'fontVariationSettings',
+  'fontKerning', 'letterSpacing', 'textTransform'];
+
+/* An element's own text, ignoring a child element (`.tag` beside `.nm`, "just
+   on") -- only its DIRECT text nodes, concatenated and trimmed. `WORD_FLOOR_FN`
+   uses this to decide what a name or title actually says; `bench-look.mjs`'s
+   #200 calibration reuses the exact same function (spliced in alongside
+   `WORD_FLOOR_FN`) to re-find the identical node the floor measured, rather
+   than a second hand-typed copy of the same walk. */
+export const DIRECT_TEXT = `(el => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim())`;
+
 /* #144's own squeeze check reuses this, #138's own first: the floor a name or
    a title is held to at a large root, once something beside it is fighting
    it for space, is `min(its longest single word, the row's own content-box
@@ -406,12 +430,14 @@ export const IS_SR_ONLY_RECT = `(r => r.width <= 1 && r.height <= 1)`;
    same pattern `season-look.mjs`'s `TEXT_LEFT_FN` already uses) rather than
    exported as a full expression on its own, since every caller wraps its
    result in a JSON payload carrying its own extra fields alongside `rows`. */
-export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
+export const WORD_FLOOR_FN = `const WORD_FONT_PROPS = ${JSON.stringify(WORD_FONT_PROPS)};
+const directText = ${DIRECT_TEXT};
+const wordFloorRows = (nameSel, rowSel) => {
   const vw = document.documentElement.clientWidth;
   const entries = [];
   for (const nm of document.querySelectorAll(nameSel)) {
     if (!nm.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
-    const text = [...nm.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+    const text = directText(nm);
     if (!text) continue;
     // Split after a hyphen too, not only on whitespace: a hyphen is a normal
     // soft-wrap point (UAX #14) the same as a space, so a name breaking there
@@ -431,8 +457,7 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
     entry.spans = entry.words.map(word => {
       const span = document.createElement('span');
       span.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap;';
-      span.style.font = cs.font;
-      span.style.letterSpacing = cs.letterSpacing;
+      for (const prop of WORD_FONT_PROPS) span.style[prop] = cs[prop];
       span.textContent = word;
       document.body.appendChild(span);
       allSpans.push(span);
@@ -443,8 +468,9 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
   allSpans.forEach(s => s.remove());
 
   const rows = [];
-  for (const { nm, text, widths } of entries) {
+  for (const { nm, text, words, widths } of entries) {
     const longest = Math.max(...widths);
+    const longestWord = words[widths.indexOf(longest)];
     const row = nm.closest(rowSel);
     const rcs = getComputedStyle(row);
     let rowContent = row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight);
@@ -470,6 +496,7 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
     rows.push({
       text, width: nm.clientWidth,
       longest: Math.round(longest * 10) / 10,
+      longestWord,
       rowContent: Math.round(rowContent * 10) / 10,
       floor: Math.round(floor * 10) / 10,
       contained,

@@ -145,24 +145,9 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
     ),
   },
   {
-    issue: 195,
-    reason: 'the game screen\'s Timeline | Card switch draws "Timeline" over "Card"',
-    match: p => p.kind === 'overlap' && p.text === 'Timeline' && (p.el === 'button.press' || p.el === 'button.press.on'),
-  },
-  {
     issue: 197,
     reason: 'bench mode breaks short one-word names mid-word',
     match: p => p.kind === 'split' && p.el === 'span.nm' && p.where.startsWith('bench mode'),
-  },
-  {
-    issue: 198,
-    reason: 'the welcome screen cuts a sample name off and breaks it mid-word',
-    match: p => p.el === 'span.wel-nm',
-  },
-  {
-    issue: 189,
-    reason: 'the plan sheet\'s "Lineup balance" value is drawn on top of its own label',
-    match: p => p.kind === 'overlap' && p.where === 'plan sheet' && p.el === 'span.prow-t' && p.text === 'Lineup balance',
   },
 ];
 
