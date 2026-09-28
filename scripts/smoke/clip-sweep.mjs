@@ -159,11 +159,6 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
     reason: 'the welcome screen cuts a sample name off and breaks it mid-word',
     match: p => p.el === 'span.wel-nm',
   },
-  {
-    issue: 189,
-    reason: 'the plan sheet\'s "Lineup balance" value is drawn on top of its own label',
-    match: p => p.kind === 'overlap' && p.where === 'plan sheet' && p.el === 'span.prow-t' && p.text === 'Lineup balance',
-  },
 ];
 
 /* #179 fix 1: a scroll container is treated as a clip boundary below
