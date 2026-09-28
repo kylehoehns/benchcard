@@ -36,7 +36,14 @@ second list of states.
   How it works dialogs too narrow), #189 (Plan sheet's Lineup balance value
   over its label), #190 (pair rule heading off screen with a long name). The second run added
   #191 (a very long one-word name cut off on the roster and in the plan's
-  info box).
+  info box). CI's first run of the check drew in DejaVu Sans, CI's font,
+  and found 88 more problems; #177 then made smoke draw in DejaVu Sans on a
+  Mac too, and the same 88 showed locally. They are four new bugs, #195
+  (the game screen's Timeline | Card switch draws "Timeline" over "Card"),
+  #196 (team menu breaks a team name mid-word), #197 (bench mode breaks
+  short names mid-word), #198 (welcome screen breaks a sample name
+  mid-word), plus more places for #191 (the plan sheet's rule pickers and
+  bench mode's rows).
   The maintainer chose to ship the check with a **known issues** list: one
   entry per problem, each naming its issue and a reason. The check fails on
   any problem not on the list, and on a list entry that no longer happens
@@ -84,7 +91,7 @@ second list of states.
 3. Two named exports, each entry with a reason of at least a few words and
    stale entries failing the check: the **allow list** (meant to end in
    "…") and the **known issues list** (each entry also names an open issue
-   number, one of #187–#191). The allow list is a named export, one entry per selector, each with a
+   number, one of #187–#191 or #195–#198). The allow list is a named export, one entry per selector, each with a
    reason of at least a few words. It holds only elements that are meant to
    end in "…". The survey found about 15 such rules in `app/app.css`; each
    one that needs an entry gets one, and no entry exists that the run does

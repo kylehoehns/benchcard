@@ -137,8 +137,32 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
         (p.where === 'season' || p.where === 'season, filed game open')) ||
       // Plan sheet → a cap rule's player picker (`span.nm`): the name spills
       // past its own box onto the sheet's status line below it.
-      (p.kind === 'overlap' && p.el === 'span.nm' && p.where === 'plan sheet, a cap rule')
+      (p.kind === 'overlap' && p.el === 'span.nm' && p.where === 'plan sheet, a cap rule') ||
+      // Found once smoke drew in CI's font (#177): the plan sheet's rule
+      // pickers and bench mode's rows cut the long name off too.
+      (p.kind === 'clip' && p.el === 'span.nm' && p.text === 'Featherstonehaugh' && p.where.startsWith('plan sheet, ')) ||
+      (p.kind === 'clip' && p.el === 'span.nm' && p.text === 'Featherstonehaugh Bartholomew' && p.where.startsWith('bench mode'))
     ),
+  },
+  {
+    issue: 195,
+    reason: 'the game screen\'s Timeline | Card switch draws "Timeline" over "Card"',
+    match: p => p.kind === 'overlap' && p.text === 'Timeline' && (p.el === 'button.press' || p.el === 'button.press.on'),
+  },
+  {
+    issue: 196,
+    reason: 'the team menu cuts a team name off and breaks it mid-word',
+    match: p => p.el === 'span.teammenu-nm' && p.where === 'team menu open',
+  },
+  {
+    issue: 197,
+    reason: 'bench mode breaks short one-word names mid-word',
+    match: p => p.kind === 'split' && p.el === 'span.nm' && p.where.startsWith('bench mode'),
+  },
+  {
+    issue: 198,
+    reason: 'the welcome screen cuts a sample name off and breaks it mid-word',
+    match: p => p.el === 'span.wel-nm',
   },
   {
     issue: 189,
