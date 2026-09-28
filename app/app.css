@@ -3001,7 +3001,18 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    line; at 390px/16px nothing wraps, so the row is unchanged. Scoped to
    #sheetCard, not .prow generally -- other sheets' rows were not checked
    against this fix. */
-/* row-gap (not the shared gap, so a one-line row's label-to-control spacing
+#sheetCard .pgrp .prow { flex-wrap: wrap; row-gap: 1rem; }
+#sheetCard .pgrp .prow-t { flex-basis: auto; }
+#sheetCard .pgrp .prow-ctl { display: flex; align-items: center; gap: .75rem; min-width: 0; margin-left: auto; }
+/* #221: every switch row, not just #sheetCard's own "Minutes strip" row --
+   `switchRow` (rules.js) builds this same row for the Plan sheet's three
+   rule groups and for Add a game step 3, neither of which is inside
+   #sheetCard, so the fix above never reached them: at 320px/32px their label
+   squeezed to fit beside the switch on one line and its wrapped text painted
+   under it. One class fixes every caller instead of a second scoped copy per
+   sheet -- #sheetCard's own row now carries it too, in place of the
+   `#sheetCard .pgrp .prow > input[switch]` line this replaces.
+   row-gap (not the shared gap, so a one-line row's label-to-control spacing
    is untouched): input[switch] has a margin-block: -.8125rem so its 48px
    box adds only 22px to a one-line row. Wrapped -- the only way this row's
    own label and its switch ever land on separate lines -- that same
@@ -3010,10 +3021,9 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    lines closed, and the box's top edge reached up into the label's line
    above it. 1rem clears that spill (which never exceeds .8125rem, at any
    root size, since both scale together) with margin to spare. */
-#sheetCard .pgrp .prow { flex-wrap: wrap; row-gap: 1rem; }
-#sheetCard .pgrp .prow-t { flex-basis: auto; }
-#sheetCard .pgrp .prow-ctl { display: flex; align-items: center; gap: .75rem; min-width: 0; margin-left: auto; }
-#sheetCard .pgrp .prow > input[switch] { margin-left: auto; }
+.prow-switch { flex-wrap: wrap; row-gap: 1rem; }
+.prow-switch > .prow-t { flex-basis: auto; }
+.prow-switch > input[switch] { margin-left: auto; }
 /* Wrapping stopped the label and the value colliding, but the value was
    still cut mid-word -- a <select> reports scrollWidth === clientWidth
    whatever its text does, so nothing measured it until the selected option

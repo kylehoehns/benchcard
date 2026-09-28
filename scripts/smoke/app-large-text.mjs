@@ -6,6 +6,7 @@ import { FOUR, reloadWithRecord } from './fixtures.mjs';
 import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
 import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
+import { SWITCH_ROW_STATES, switchRowProblem } from './switch-row.mjs';
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -732,6 +733,11 @@ export async function appLargeTextPass(c, origin) {
         if (gbMsg) problems.push(`${where}: ${gbMsg}`);
         const rsMsg = ROW_STACK_STATES.has(v.name) && await rowStackProblem(c, v.name);
         if (rsMsg) problems.push(`${where}: ${rsMsg}`);
+        // #221: every state gets the cheap structural query (most find no
+        // switch row and cost one empty pass); the two named states also get
+        // rule 2a, below.
+        const swMsg = await switchRowProblem(c, SWITCH_ROW_STATES.has(v.name));
+        if (swMsg) problems.push(`${where}: ${swMsg}`);
       } catch (e) {
         problems.push(`${where}: ${e.message.split('\n')[0]}`);
       } finally {

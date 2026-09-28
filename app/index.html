@@ -854,10 +854,10 @@
             </span>
           </label>
           <!-- Decision 12: the same switch primitive the Plan sheet's own
-               rows use (`input[switch]`, card.css untouched, app.css
-               unchanged) -- not `.switch`, the label+input pair used outside
-               a grouped sheet. -->
-          <label class="prow" for="showMinutes">
+               rows use (`input[switch]`) -- not `.switch`, the label+input
+               pair used outside a grouped sheet. #221: `prow-switch` (app.css)
+               is that same fix's shared class, not a second scoped copy. -->
+          <label class="prow prow-switch" for="showMinutes">
             <span class="prow-t">Minutes strip</span>
             <input type="checkbox" id="showMinutes" switch>
           </label>
