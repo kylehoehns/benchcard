@@ -7,6 +7,7 @@ import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
 import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
 import { SWITCH_ROW_STATES, switchRowProblem } from './switch-row.mjs';
+import { welcomeBarsProblem } from './welcome-bars.mjs';
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -738,6 +739,10 @@ export async function appLargeTextPass(c, origin) {
         // rule 2a, below.
         const swMsg = await switchRowProblem(c, SWITCH_ROW_STATES.has(v.name));
         if (swMsg) problems.push(`${where}: ${swMsg}`);
+        // #199: the demo plan's stint bars, checked only on the one state
+        // that renders them (see welcome-bars.mjs).
+        const wbMsg = v.name === 'welcome screen, first run' && await welcomeBarsProblem(c);
+        if (wbMsg) problems.push(`${where}: ${wbMsg}`);
       } catch (e) {
         problems.push(`${where}: ${e.message.split('\n')[0]}`);
       } finally {
