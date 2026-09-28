@@ -1,7 +1,7 @@
 import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
 import { TOUCH_CHECK, TOUCH_FLOOR, TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
-import { FOUR, RICH, reloadWithRecord } from './fixtures.mjs';
+import { FOUR, RICH, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 
 /* Touch targets, swept — because measuring one width on one screen missed two
  * controls that were under the rule the whole time.
@@ -153,7 +153,7 @@ async function fourTodayTouch(c, origin, source) {
       if (!chk.pass) bad.push(`${where}: ${chk.detail}`);
     }
   } finally {
-    await reloadWithRecord(c, origin, RICH);
+    await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   }
   return { bad, audited, seen };
 }

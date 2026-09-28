@@ -1,5 +1,5 @@
 import { evalIn, SETTLE, step, onScreen } from './dom.mjs';
-import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
+import { RICH, withSecondTeam, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 
 /* #23: Today's keyboard shortcuts and its undo-backed actions. Items 9 and
    11. Runs against the standard RICH record (`view: 'games'`, one team --
@@ -107,7 +107,10 @@ export async function todayKeysAndUndoPass(c, origin) {
   // Remove team + Undo -> Settings. A SECOND team first: RICH ships with
   // one, and removing the LAST team is a different, welcome-bound case
   // (item 11's own parenthetical) that this check is not about.
-  await reloadWithRecord(c, origin, withSecondTeam(RICH));
+  //
+  // RICH (and this two-team copy of it) ships `view: 'games'`
+  // (`GAMES_VIEW_READY`, fixtures.mjs). Every reload below names it.
+  await reloadWithRecord(c, origin, withSecondTeam(RICH), GAMES_VIEW_READY);
 
   await evalIn(c, step(`document.getElementById('settingsBtn')?.click()`));
   await evalIn(c, step(`document.getElementById('removeTeam')?.click()`));
@@ -128,7 +131,7 @@ export async function todayKeysAndUndoPass(c, origin) {
      it. Before the fix, `popstate` applied whatever `e.state` named with no
      onboarding check, painting a stale Settings (or Today) over an app that
      no longer has a team. */
-  await reloadWithRecord(c, origin, RICH);
+  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   await evalIn(c, step(`document.getElementById('settingsBtn')?.click()`));
   await evalIn(c, step(`document.getElementById('removeTeam')?.click()`));
   await evalIn(c, step(`document.getElementById('confirmYes')?.click()`));
@@ -167,7 +170,7 @@ export async function todayKeysAndUndoPass(c, origin) {
      reload of RICH (two games, Hawks and Ravens) rather than trusting
      whatever the checks above left behind, since both need a KNOWN
      activeGame to start from. */
-  await reloadWithRecord(c, origin, RICH);
+  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
   // Add a game opens the new game's own, still-empty opponent input -- not
@@ -187,7 +190,7 @@ export async function todayKeysAndUndoPass(c, origin) {
   // the Add-a-game step above left the Games screen painted with -- the
   // point is that the CARD reads Ravens, and starting from Hawks (the
   // fixture's own boot screen) says that unambiguously.
-  await reloadWithRecord(c, origin, RICH);
+  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
   await evalIn(c, step(`document.querySelectorAll('.today-game')[1]?.click()`));
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
@@ -201,7 +204,7 @@ export async function todayKeysAndUndoPass(c, origin) {
 
   // Same courtesy `todayAndBackPass` pays: leave RICH (one team, `view:
   // 'games'`) the way every other 'rich' check expects to find it.
-  await reloadWithRecord(c, origin, RICH);
+  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
 
   } catch (e) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
