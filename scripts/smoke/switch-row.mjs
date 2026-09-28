@@ -8,7 +8,7 @@ import { evalIn } from './dom.mjs';
  *
  * Selected STRUCTURALLY (`label.prow` containing an `input[switch]`), not by
  * the class the fix adds -- this probe finds every switch row on today's
- * tree, before `.prow-switch` exists, and keeps finding the same rows once it
+ * tree, before `.prow-toggle` exists, and keeps finding the same rows once it
  * does. Not scoped to one sheet's markup (`.bsheet[open]` vs `.flow[open]`
  * differ), for the same reason: `switchRow` (rules.js) is one builder shared
  * by the Plan sheet and the Add-a-game flow, and `#sheetCard` has its own

@@ -85,9 +85,9 @@ function ruleRow(item, idx) {
 /* Exported for #32 step 3, which shows the same "Even out earlier games"
    switch inside the Add-a-game flow. One switch builder, two callers. */
 export function switchRow(label, checked, disabled, onChange, fk) {
-  // #221: prow-switch (app.css) wraps this row's label onto its own line at
+  // #221: prow-toggle (app.css) wraps this row's label onto its own line at
   // 320px/32px text instead of letting it squeeze and paint under the switch.
-  const row = el('label', 'prow prow-switch');
+  const row = el('label', 'prow prow-toggle');
   const input = el('input');
   input.type = 'checkbox';
   input.setAttribute('switch', '');

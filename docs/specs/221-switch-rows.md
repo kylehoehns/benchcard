@@ -57,12 +57,12 @@ and pass after the fix.
 
 ## Design
 
-`switchRow` gives its `label.prow` a class (e.g. `prow-switch`). CSS:
+`switchRow` gives its `label.prow` a class (e.g. `prow-toggle`). CSS:
 
 ```css
-.prow-switch { flex-wrap: wrap; row-gap: 1rem; }
-.prow-switch > .prow-t { flex-basis: auto; }
-.prow-switch > input[switch] { margin-left: auto; }
+.prow-toggle { flex-wrap: wrap; row-gap: 1rem; }
+.prow-toggle > .prow-t { flex-basis: auto; }
+.prow-toggle > input[switch] { margin-left: auto; }
 ```
 
 with the existing comment moved or pointed to. At 16px nothing wraps.
