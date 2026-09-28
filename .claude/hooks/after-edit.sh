@@ -2,11 +2,12 @@
 # PostToolUse(Edit|Write). Advisory only -- it never blocks and never fails a
 # tool call. Two reminders, each fired only when the edit actually earns it.
 #
-# WHY ADVISORY AND NOT A BLOCK. The right SHELL digest is not knowable until
-# `npm test` has hashed the precached bytes, so there is no correct value to
-# demand at edit time; blocking here would only be able to demand something
-# wrong. test/sw.test.js is the check that can actually decide, and it runs
-# everywhere. This is the nudge that gets you there before you commit --
+# WHY ADVISORY AND NOT A BLOCK. The right SHELL digest is not knowable mid-edit:
+# the other precached files may not be final yet, so there is no correct value
+# to demand at edit time; blocking here would only be able to demand something
+# wrong. Once the edits are done, `npm run sw:bump` computes it in seconds, and
+# test/sw.test.js is the check that decides, everywhere. This is the nudge that
+# gets you there before you commit --
 # scripts/check-sw-version.mjs needs a base ref and so is inert locally.
 set -uo pipefail
 
@@ -22,7 +23,7 @@ case "$path" in
     if [ -f "$root/app/sw.js" ] && grep -qF "'./$base'" "$root/app/sw.js"; then
       v=$(grep -oE "const VERSION = '[^']*'" "$root/app/sw.js" | head -1)
       s=$(grep -oE "const SHELL = '[^']*'" "$root/app/sw.js" | head -1)
-      notes="app/$base is in sw.js PRECACHE, so this edit changes the shell. Before committing: bump VERSION and set SHELL to the digest \`npm test\` names, in the same edit. Currently ${v:-?} / ${s:-?}."
+      notes="app/$base is in sw.js PRECACHE, so this edit changes the shell. Before committing: run \`npm run sw:bump\` to bump VERSION and set SHELL. Currently ${v:-?} / ${s:-?}."
     fi
     ;;
 esac

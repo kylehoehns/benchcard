@@ -15,16 +15,20 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { parsePrecache as parsePrecacheShell } from './sw-shell.mjs';
 
 /* Everything the service worker serves lives under app/, so PRECACHE entries
    are relative to that directory while `git diff --name-only` reports repo
    paths. This is the one place the two namespaces meet. */
 const APP = 'app/';
 
+/* A thin wrapper: the parse itself lives in scripts/sw-shell.mjs (which
+   keeps the './' prefix, since sw-bump.mjs needs it to resolve real files).
+   This module's own callers diff against `git diff --name-only`, which never
+   has a leading './', so that prefix is stripped here at the call site --
+   dropping the empty entry that './' itself becomes. */
 export const parsePrecache = (src) =>
-  [...(src.match(/const PRECACHE = \[[\s\S]*?\];/) || [''])[0].matchAll(/'(\.\/[^']*)'/g)]
-    .map((m) => m[1].replace(/^\.\//, ''))
-    .filter(Boolean);
+  parsePrecacheShell(src).map((p) => p.replace(/^\.\//, '')).filter(Boolean);
 
 export const parseVersion = (src) => (src.match(/const VERSION = '([^']*)'/) || [])[1] ?? null;
 
