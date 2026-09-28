@@ -445,9 +445,10 @@ async function goRichWithLongName(c, origin) {
  * rendering each word off-screen in a throwaway span that copies the real
  * element's own computed font longhands and letter spacing
  * (`WORD_FONT_PROPS`, `dom.mjs`, the one list), so the measurement uses the
- * same face/size/weight the row itself paints, not a fallback. Reads only the DIRECT text nodes of `.nm`
- * (excluding a `.tag` child, "just on"), the same technique item 7 above
- * already uses for the bench label's own sentence.
+ * same face/size/weight the row itself paints, not a fallback. Reads only
+ * the DIRECT text nodes of `.nm` (excluding a `.tag` child, "just on"), the
+ * same technique item 7 above already uses for the bench label's own
+ * sentence.
  *
  * #200: also finds the "Casey Lindqvist" row (`p8`, always on the floor or
  * bench in RICH -- `goRichWithLongName` only renames `p7`) and builds a
