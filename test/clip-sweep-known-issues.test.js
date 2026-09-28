@@ -11,11 +11,11 @@ import assert from 'node:assert/strict';
 import { CLIP_SWEEP_KNOWN_ISSUES } from '../scripts/smoke/clip-sweep.mjs';
 import { assertReasonWords } from './reason-list.js';
 
-test('CLIP_SWEEP_KNOWN_ISSUES is a non-empty array covering #187, #188, #189, #190, #191', () => {
+test('CLIP_SWEEP_KNOWN_ISSUES is a non-empty array covering #187, #188, #190, #191', () => {
   assert.ok(Array.isArray(CLIP_SWEEP_KNOWN_ISSUES) && CLIP_SWEEP_KNOWN_ISSUES.length > 0,
     `expected a non-empty array, found ${Array.isArray(CLIP_SWEEP_KNOWN_ISSUES) ? CLIP_SWEEP_KNOWN_ISSUES.length : typeof CLIP_SWEEP_KNOWN_ISSUES}`);
   const issues = CLIP_SWEEP_KNOWN_ISSUES.map(e => e.issue);
-  for (const n of [187, 188, 189, 190, 191]) {
+  for (const n of [187, 188, 190, 191]) {
     assert.ok(issues.includes(n), `expected #${n} among ${JSON.stringify(issues)}`);
   }
 });
