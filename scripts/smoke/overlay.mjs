@@ -19,6 +19,8 @@ import { evalIn, step, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mj
    exists; `forced` marks the states that have no reachable trigger (the
    welcome screen needs a fresh install) and are shown by hand, which covers
    their static markup. */
+const TOUR_STEP_COUNT = 6;
+
 export const STATES = [
   /* Today is home (#23): every state below opens from it and every `close`
      returns to it (`#backBtn`), which is the same "one baseline" contract the
@@ -185,13 +187,25 @@ export const STATES = [
      (`startTour`), so it lands there regardless of where it was opened from;
      `#backBtn` is what returns to Today afterwards now that Today, not games,
      is the baseline every other state assumes. */
-  { name: 'tour, first step',
-    open: `$('#settingsBtn').click(); $('#helpBtn').click(); $('#helpTour').click()`,
-    shows: '#tour', close: `$('#tourSkip').click(); $('#backBtn').click()` },
-  { name: 'tour, last step',
-    open: `$('#settingsBtn').click(); $('#helpBtn').click(); $('#helpTour').click();
-           while (!$('#tourSkip').hidden) $('#tourNext').click()`,
-    shows: '#tour', close: `$('#tourNext').click(); $('#backBtn').click()` },
+  /* #201: six steps now, not a first/last pair -- one loop builds all six so
+     the open script for step k ("open the tour, then tap Next k-1 times")
+     cannot drift between states the way two hand-typed entries could. Step
+     6's close is `#tourNext` (Got it, the only step that hides Skip); every
+     other step closes with `#tourSkip`, same as before. `tour-steps.mjs`
+     reuses these same open scripts (by name) rather than a second copy. */
+  ...Array.from({ length: TOUR_STEP_COUNT }, (_, i) => {
+    const k = i + 1;
+    const advance = Array(i).fill(`$('#tourNext').click()`).join('; ');
+    return {
+      name: `tour, step ${k} of ${TOUR_STEP_COUNT}`,
+      open: `$('#settingsBtn').click(); $('#helpBtn').click(); $('#helpTour').click();`
+        + (advance ? ` ${advance};` : ''),
+      shows: '#tour',
+      close: k === TOUR_STEP_COUNT
+        ? `$('#tourNext').click(); $('#backBtn').click()`
+        : `$('#tourSkip').click(); $('#backBtn').click()`,
+    };
+  }),
   /* `#gmOpen` lives inside the games view, but clicking a control inside a
      hidden view still fires its handler (same rule `#print`'s own note
      relies on), so this opens bench mode straight from Today without first
