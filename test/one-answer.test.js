@@ -44,9 +44,18 @@ const skills = readdirSync(new URL(SKILL_DIR, ROOT), { withFileTypes: true })
  * .claude/agents/ joined it when a subagent is briefed with the rules it must
  * follow, because a brief is a copy. The first review of the /ship-feature team
  * found efficiency-reviewer contradicting REVIEW.md, and bringing the directory
- * in found guard-falsifier restating two of /new-guard's lessons. */
+ * in found guard-falsifier restating two of /new-guard's lessons.
+ *
+ * docs/architecture/ and scripts/smoke/README.md joined it with #181's split:
+ * the moved architecture text stays under the same owned-marker and link
+ * checks it was under as one file, and the smoke index is a doc like any
+ * other. */
+const ARCHITECTURE_DIR = 'docs/architecture';
+const architectureFiles = readdirSync(new URL(ARCHITECTURE_DIR, ROOT)).filter(f => f.endsWith('.md'));
 const DOCS = ['AGENTS.md', 'CLAUDE.md', 'REVIEW.md', 'README.md',
   ...readdirSync(new URL('docs', ROOT)).filter(f => f.endsWith('.md')).map(f => `docs/${f}`),
+  ...architectureFiles.map(f => `${ARCHITECTURE_DIR}/${f}`),
+  'scripts/smoke/README.md',
   ...skills.map(s => `${SKILL_DIR}/${s}/SKILL.md`),
   ...readdirSync(new URL('.claude/agents', ROOT)).filter(f => f.endsWith('.md')).map(f => `.claude/agents/${f}`)];
 
@@ -186,6 +195,18 @@ test('every relative link in the docs resolves', () => {
       if (!clean) continue;
       assert.ok(existsSync(new URL(clean, new URL(f, ROOT))), `${f} links to ${t}, which does not exist`);
     }
+  }
+});
+
+/* #181: an index whose pointers are dead reads as coverage while being none.
+ * The reverse direction — every link resolving — is the test above; this one
+ * is the other half, that nothing under docs/architecture/ was moved and then
+ * never linked back from the index. */
+test('every file in docs/architecture/ is linked from docs/architecture.md', () => {
+  const index = raw['docs/architecture.md'];
+  for (const f of architectureFiles) {
+    assert.ok(index.includes(`architecture/${f}`),
+      `docs/architecture.md never links ${ARCHITECTURE_DIR}/${f} — a moved section with no way back in`);
   }
 });
 
