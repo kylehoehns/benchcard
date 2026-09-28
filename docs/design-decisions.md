@@ -294,7 +294,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   A fresh day's own first game (`fileIfPast`, #100) keeps the format (you play
   the same league every week) but clears absences. The copy itself did not
   change when #32 put a three-step flow in
-  front of it (`architecture.md`, Interface); what changed is that the coach is
+  front of it ([`architecture/interface.md`](architecture/interface.md)); what changed is that the coach is
   shown what is being inherited and can take it in one tap, instead of finding
   out on the game screen.
 - **The team name is the fallback identity, not a decoration.** Asked for once
