@@ -150,11 +150,6 @@ export const CLIP_SWEEP_KNOWN_ISSUES = [
     match: p => p.kind === 'overlap' && p.text === 'Timeline' && (p.el === 'button.press' || p.el === 'button.press.on'),
   },
   {
-    issue: 196,
-    reason: 'the team menu cuts a team name off and breaks it mid-word',
-    match: p => p.el === 'span.teammenu-nm' && p.where === 'team menu open',
-  },
-  {
     issue: 197,
     reason: 'bench mode breaks short one-word names mid-word',
     match: p => p.kind === 'split' && p.el === 'span.nm' && p.where.startsWith('bench mode'),
