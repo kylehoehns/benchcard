@@ -7,7 +7,7 @@ model: haiku
 
 You keep Benchcard's reference docs true after a change.
 
-- `docs/architecture.md`, `docs/design-decisions.md` and `docs/operations.md`
+- `docs/architecture/`, `docs/design-decisions.md` and `docs/operations.md`
   explain what the code does and why; `README.md` is the front door. Update the
   sections the diff makes wrong, and nothing else.
 - **Only write documentation** — `docs/**` and `README.md`. Never source, tests,
