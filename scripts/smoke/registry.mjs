@@ -102,6 +102,7 @@ import { landscapeA11yPass } from './landscape-a11y.mjs';
 import { firstRunPass } from './first-run-flow.mjs';
 import { rosterInPass } from './roster-in.mjs';
 import { flowInsetPass } from './flow-inset.mjs';
+import { welcomeTagPass } from './welcome-tag.mjs';
 import { focusClearPass } from './focus-clear.mjs';
 import { floatingControlsPass } from './floating-controls.mjs';
 import { resumeBarPass } from './resume-bar.mjs';
@@ -409,6 +410,10 @@ export const ROWS = Object.freeze([
   // step 3 -- see flow-inset.mjs. Restores RICH itself before the next row.
   { id: 'flowinset', name: 'flow inset: 16px on every side, 390px and 320px, both flows', selectable: true, setup: 'rich',
     run: ctx => flowInsetPass(ctx.c, ctx.origin) },
+  // #223: the welcome On screen demo's "just on" tag is painted as a tag,
+  // inside .mn -- see welcome-tag.mjs. Restores RICH itself.
+  { id: 'welcometag', name: 'welcome On screen: "just on" tag is styled', selectable: true, setup: 'rich',
+    run: ctx => welcomeTagPass(ctx.c, ctx.origin) },
   // #33 decision 15 (item 7): tabbing the game screen never leaves focus
   // under the floating bar or action bar -- see focus-clear.mjs.
   { id: 'focusclear', name: 'tab order stays clear of the floating bar and action bar', selectable: true, setup: 'rich',
