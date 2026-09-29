@@ -272,7 +272,7 @@ _In code_: `maxSubs`
 **Team color** (decided 2026-09-14):
 A team setting for the one color that marks the primary action, the sentence's
 tappable phrases and selected states, so two teams look different at a glance.
-Graphite, the default, is the ink itself.
+Hardwood is the default; Graphite is the neutral choice and the ink itself.
 _Avoid_: theme, accent, brand color
 _In code_: `color`, `--tint`
 

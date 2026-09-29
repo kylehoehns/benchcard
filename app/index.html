@@ -199,16 +199,23 @@
     document.documentElement.setAttribute('data-view', view);
 
     /* The team color, stamped from the same `activeTeamObj` resolved above.
-       An unrecognized or missing `color` is graphite, same as
-       `COLORS.includes(...)`. Graphite needs no attribute, same as the base
-       tokens.css blocks need no `[data-tint]` selector.
+       An unrecognized or missing `color` is the default, Hardwood, same as
+       `COLORS.includes(...)`. Graphite still needs no attribute, because it
+       is the base in tokens.css -- #205 changed which color is the default,
+       not which one is the no-attribute base.
 
        #61 renamed this key: a valid `color` wins, else a valid value under
-       the pre-#61 key, same precedence sanitizeSettings uses (storage.js). */
-    var color = 'graphite';
-    if (activeTeamObj) {
+       the pre-#61 key, same precedence sanitizeSettings uses (storage.js).
+
+       #205 decision B: a record that is not onboarded always gets the
+       default -- the same rule `sanitize` applies (storage.js) -- because it
+       can only hold a placeholder team nobody could have picked a color for.
+       So the team's own saved color is read only when the record IS
+       onboarded (`!welcome`). */
+    var color = 'hardwood';
+    if (activeTeamObj && !welcome) {
       var teamSettings = isObj(activeTeamObj.settings) ? activeTeamObj.settings : {};
-      var COLORS = ['graphite', 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
+      var COLORS = ['hardwood', 'graphite', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
       var rawColor = COLORS.indexOf(teamSettings.color) >= 0 ? teamSettings.color
         : COLORS.indexOf(teamSettings.colour) >= 0 ? teamSettings.colour : null; // legacy-spelling
       if (typeof rawColor === 'string') color = rawColor;
@@ -1287,7 +1294,7 @@
         <span class="prow-t">Team color</span>
         <span class="prow-v">
           <span class="color-swatch" id="teamColorSwatch" aria-hidden="true"></span>
-          <span id="teamColorName">Graphite</span>
+          <span id="teamColorName">Hardwood</span>
         </span>
         <span class="prow-chev" aria-hidden="true">›</span>
       </button>
@@ -1385,8 +1392,8 @@
              reads `--ink` instead -- see the CSS rule in app.css -- rather
              than inheriting whatever team is currently active. -->
         <div class="color-opts" id="colorOpts" role="group" aria-label="Team color">
-          <button class="color-opt" type="button" data-color="graphite"><span class="color-swatch" aria-hidden="true"></span>Graphite</button>
           <button class="color-opt" type="button" data-color="hardwood"><span class="color-swatch" data-tint="hardwood" aria-hidden="true"></span>Hardwood</button>
+          <button class="color-opt" type="button" data-color="graphite"><span class="color-swatch" aria-hidden="true"></span>Graphite</button>
           <button class="color-opt" type="button" data-color="royal"><span class="color-swatch" data-tint="royal" aria-hidden="true"></span>Royal</button>
           <button class="color-opt" type="button" data-color="navy"><span class="color-swatch" data-tint="navy" aria-hidden="true"></span>Navy</button>
           <button class="color-opt" type="button" data-color="maroon"><span class="color-swatch" data-tint="maroon" aria-hidden="true"></span>Maroon</button>
