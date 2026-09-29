@@ -164,6 +164,17 @@ export const SETTLE = `(async () => {
   }
 })()`;
 
+/* A real CDP key press: rawKeyDown, an optional char (for keys that type) and
+   keyUp. `text` is the character a printable key types ('\r' for Enter). */
+export const key = async (c, k, code, vk, text) => {
+  await c.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: k, code, windowsVirtualKeyCode: vk });
+  if (text) await c.send('Input.dispatchKeyEvent', { type: 'char', key: k, code, windowsVirtualKeyCode: vk, text, unmodifiedText: text });
+  await c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: k, code, windowsVirtualKeyCode: vk });
+};
+export const enter = c => key(c, 'Enter', 'Enter', 13, '\r');
+export const escape = c => key(c, 'Escape', 'Escape', 27);
+export const tab = c => key(c, 'Tab', 'Tab', 9);
+
 export const step = js => `(async () => { const $ = s => document.querySelector(s); ${js};
   await ${SETTLE}; })()`;
 

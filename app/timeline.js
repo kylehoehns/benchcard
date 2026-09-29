@@ -426,7 +426,8 @@ export function renderTimeline() {
 
 /* The name button of one player's row: where focus lives while their card is
    pinned, and where it returns when the card closes (#232). */
-const pinnedName = id => document.querySelector(`#timeline .tl-row[data-id="${CSS.escape(id)}"] .tl-name`);
+const pinnedRow = id => document.querySelector(`#timeline .tl-row[data-id="${CSS.escape(id)}"]`);
+const pinnedName = id => pinnedRow(id)?.querySelector('.tl-name');
 
 /* Close the pinned card and hand focus back to that player's name (#232):
    the focused close button is removed with the card, which would drop focus on
@@ -451,7 +452,7 @@ function renderPinned(names, p, stints, mins, starts) {
   if (!tlPinned) return;
 
   const id = tlPinned;
-  const row = document.querySelector(`#timeline .tl-row[data-id="${CSS.escape(id)}"]`);
+  const row = pinnedRow(id);
   if (!row) return;
   const host = el('div', 'tld');
   host.id = 'tlDetail';

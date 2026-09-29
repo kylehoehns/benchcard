@@ -225,7 +225,11 @@ again closes the panel. The row pitch in the one-row layout is 2.25rem (36px at
 the default text size), tall enough for nine players to fit above the action bar
 on a 390×844 phone. In the stacked layout the button is 48px tall, meeting the
 minimum size guidance. Both Enter and Space open the breakdown, since it is a
-native button rather than a hand-rolled control.
+native button rather than a hand-rolled control. When a coach closes the card
+with the × button or with Escape, keyboard focus returns to the player's name
+button (#232) so the coach does not lose their place in the list — a keyboard
+or screen-reader user reads the card, closes it, and Tab carries on from where
+they were instead of jumping to the top of the page.
 
 Theme follows the phone. `auto` is the default, and it is resolved to a real
 `data-theme` value — by a small inline script before first paint, and by

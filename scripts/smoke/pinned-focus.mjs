@@ -8,27 +8,25 @@
  *   2 the same, but the close button is clicked with the mouse
  *   3 Escape from the close button
  *   4 Escape from the name, right after opening with Enter
- *   5 Escape with no card open does nothing
+ *   5 Escape with no card open does nothing (a reasoning check, NOT a guard:
+ *     no listener change turns it red, since with no card there is nothing
+ *     to close and no id to focus)
  *   6 a modal's Escape (the shortcuts sheet, opened with `?`) does not also
- *     close the card behind it
+ *     close the card behind it. Covers the openTrap path only; the
+ *     <dialog>-based sheets (openSheet) are not exercised. Goes red only if
+ *     BOTH the #timeline scoping and the target check are gone: a listener on
+ *     document that keeps the target check is still correct, since the
+ *     sheet's focus is neither the name nor inside #tlDetail.
  * Rule 2a of /new-guard: every scenario first asserts that the card really
  * opened and the focus really sat where it says, so a run whose keys went
  * nowhere fails on that instead of passing on nothing. */
-import { evalIn, SETTLE } from './dom.mjs';
+import { evalIn, SETTLE, key, enter, escape, tab } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { RICH } from './fixtures.mjs';
 
 const ROW = 1; // the second player's row
 const NAME = `document.querySelectorAll('#timeline .tl-row[data-id] .tl-name')[${ROW}]`;
 
-const key = async (c, k, code, vk, text) => {
-  await c.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: k, code, windowsVirtualKeyCode: vk });
-  if (text) await c.send('Input.dispatchKeyEvent', { type: 'char', key: k, code, windowsVirtualKeyCode: vk, text, unmodifiedText: text });
-  await c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: k, code, windowsVirtualKeyCode: vk });
-};
-const enter = c => key(c, 'Enter', 'Enter', 13, '\r');
-const escape = c => key(c, 'Escape', 'Escape', 27);
-const tab = c => key(c, 'Tab', 'Tab', 9);
 const settle = c => evalIn(c, `(async () => { await ${SETTLE}; await new Promise(r => setTimeout(r, 100)); })()`);
 
 /* what the page looks like now, by name so a failure line reads */
@@ -121,7 +119,7 @@ export async function pinnedFocusPass(c, origin) {
     }
     scenarios++;
 
-    // 5: no card open, Escape does nothing
+    // 5: no card open, Escape does nothing (reasoning check, cannot go red)
     await fresh(c, origin);
     if (!await tabTo(c, onNameJs)) bad.push('5 (no card): Tab never reached the second row\'s .tl-name');
     else {
@@ -154,7 +152,7 @@ export async function pinnedFocusPass(c, origin) {
   return {
     pass: bad.length === 0 && scenarios === 6,
     detail: bad.length
-      ? `${bad.length} problem(s): ${bad.slice(0, 3).join(' | ')}`
+      ? `${bad.length} problem(s): ${bad.join(' | ')}`
       : `closing a pinned card by keyboard, mouse or Escape lands on the name; Escape is inert with no card and inside a modal (${scenarios} scenarios)`,
   };
 }
