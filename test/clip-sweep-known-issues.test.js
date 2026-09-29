@@ -19,7 +19,7 @@ test('CLIP_SWEEP_KNOWN_ISSUES is an array with none of the fixed issues left in 
   // the list may be empty. A stale entry fails `clipSweepPass` itself,
   // which is what proves each fix; this only keeps a fixed one from coming
   // back under the same number.
-  for (const n of [187, 188, 189, 190, 191, 197, 198]) {
+  for (const n of [187, 188, 189, 190, 191, 197, 198, 221]) {
     assert.ok(!issues.includes(n), `#${n} is fixed; its entry should be removed, not present: ${JSON.stringify(issues)}`);
   }
 });

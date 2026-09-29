@@ -104,6 +104,7 @@ import { landscapeA11yPass } from './landscape-a11y.mjs';
 import { firstRunPass } from './first-run-flow.mjs';
 import { rosterInPass } from './roster-in.mjs';
 import { flowInsetPass } from './flow-inset.mjs';
+import { welcomeTagPass } from './welcome-tag.mjs';
 import { focusClearPass } from './focus-clear.mjs';
 import { floatingControlsPass } from './floating-controls.mjs';
 import { resumeBarPass } from './resume-bar.mjs';
@@ -126,6 +127,7 @@ import { gmOpenPass } from './gm-open.mjs';
 import { benchLookPass } from './bench-look.mjs';
 import { benchDetailsPass } from './bench-details.mjs';
 import { focusAnnouncePass } from './focus-announce.mjs';
+import { welcomeAfterRemovePass } from './welcome-after-remove.mjs';
 
 // #177: `smoke.mjs`'s own five-import allow-list (test/smoke-registry.test.js)
 // has no room for a sixth `./smoke/smoke-font.mjs` import, so the font script
@@ -416,6 +418,11 @@ export const ROWS = Object.freeze([
   // itself before `focusclear` needs it.
   { id: 'firstrun', name: 'first run: welcome, three steps, every way out', selectable: true, setup: 'rich',
     run: ctx => firstRunPass(ctx.c, ctx.origin) },
+  // #224: remove the only team in Settings, land on welcome, and the demo is
+  // built under all three tabs -- see welcome-after-remove.mjs. Restores RICH
+  // itself before the next row.
+  { id: 'welcomeafterremove', name: 'welcome demo is built after removing the last team', selectable: true, setup: 'rich',
+    run: ctx => welcomeAfterRemovePass(ctx.c, ctx.origin) },
   // #146's own guard (docs/specs/146-roster-in.md's Proof section): the paste
   // sheet and Add a team's step 1 list/repeat text, the item 4 suffix fixture
   // read back from Who's here, Timeline, Season and Team, the blocked panel's
@@ -431,6 +438,10 @@ export const ROWS = Object.freeze([
   // step 3 -- see flow-inset.mjs. Restores RICH itself before the next row.
   { id: 'flowinset', name: 'flow inset: 16px on every side, 390px and 320px, both flows', selectable: true, setup: 'rich',
     run: ctx => flowInsetPass(ctx.c, ctx.origin) },
+  // #223: the welcome On screen demo's "just on" tag is painted as a tag,
+  // inside .mn -- see welcome-tag.mjs. Restores RICH itself.
+  { id: 'welcometag', name: 'welcome On screen: "just on" tag is styled', selectable: true, setup: 'rich',
+    run: ctx => welcomeTagPass(ctx.c, ctx.origin) },
   // #33 decision 15 (item 7): tabbing the game screen never leaves focus
   // under the floating bar or action bar -- see focus-clear.mjs.
   { id: 'focusclear', name: 'tab order stays clear of the floating bar and action bar', selectable: true, setup: 'rich',
