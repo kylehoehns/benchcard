@@ -210,8 +210,12 @@ Two things address that, and they are different problems:
   `./tokens.css` rather than carrying a copy (the copy drifted on `--shadow`
   and `--accent-line`, which is why; `tokens.css` is precached, so arriving
   from the app costs no request) and it repeats the pre-paint theme script, so
-  arriving from a dark app does not flash white. and links back
-  to the app three times. Each section leads with the artefact it is about, and
+  arriving from a dark app does not flash white. The page always uses Hardwood
+  orange (#231) — it is a public page a visitor may reach from a search with no
+  saved team color, and the warmth makes it read as Benchcard rather than a
+  template. It carries the Hardwood band behind the headline and one orange
+  phrase ("Even minutes"), mapping `--accent*` to the Hardwood `--tint*` values.
+  It also links back to the app three times. Each section leads with the artefact it is about, and
   most of those artefacts are **drawn in HTML/CSS against the app's own class
   names** (`.tl-*`, `.bal-*`, `.sn-*`) rather than screenshotted:
   correct in both themes for free, sharper than a PNG, and no extra request.
@@ -223,7 +227,8 @@ Two things address that, and they are different problems:
   that long in a wrapping chip row would hang off 320px at a 32px root. It is
   below the card rather than under the CTA pair so it does not compete with
   "Build a card". `test/about-nav.test.js` pins that a tenth section cannot be
-  added without an entry. The scroll reveals are
+  added without an entry. `advanced.html` follows the same Hardwood styling.
+  The scroll reveals are
   `IntersectionObserver` plus opacity and transform, and every hidden state is
   behind a `.js` class that the head script adds **only when
   `IntersectionObserver` exists** — so a crawler that does not run scripts, the

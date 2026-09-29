@@ -1,5 +1,5 @@
-import { inflateSync } from 'node:zlib';
-import { evalIn } from './dom.mjs';
+import { evalIn, samplePixels } from './dom.mjs';
+import { contrast } from '../tokens-css.mjs';
 import { RICH } from './fixtures.mjs';
 import { land, reset } from './page-state.mjs';
 
@@ -21,11 +21,9 @@ import { land, reset } from './page-state.mjs';
  * or a var() chain does not serialize the way a literal does. A missing band,
  * `.hl` or button FAILS (rule 2a); it is never skipped.
  *
- * Contrast (spec item 4) is computed here from the resolved colors with the
- * WCAG formula, written out below rather than imported from the app's own
- * `tokens-css.mjs`, so a bug the app and its check shared could not hide. The
- * backdrop is the PAINTED pixel just up and left of the text, read from a real
- * screenshot: a band is a gradient, so its color under a line of text is not
+ * Contrast (spec item 4) uses `contrast` from `scripts/tokens-css.mjs`. The
+ * backdrop is the PAINTED pixel 2px up and left of the text's box, read from a
+ * real screenshot (`samplePixels`, dom.mjs): a band is a gradient, so its color under a line of text is not
  * the token's value, and --muted clears 4.5:1 on the page ground by only
  * 0.25, which a full-strength tint would take away. */
 const CASES = [
@@ -75,34 +73,16 @@ const READ = p => `(() => {
     bodyColor: fg(${JSON.stringify(p.body)}),
     bandImage: band ? getComputedStyle(band).backgroundImage : null,
     bandBehindH1: !!(band && h1 && band.contains(h1) && rb.top <= rh.top && rb.bottom >= rh.bottom),
-    hlBox: hl ? [r(hl).left, r(hl).top] : null,
-    bodyBox: body ? [r(body).left, r(body).top] : null,
+    hlBox: hl ? { x: r(hl).left - 2, y: r(hl).top - 2 } : null,
+    bodyBox: body ? { x: r(body).left - 2, y: r(body).top - 2 } : null,
+    scroll: [window.scrollX, window.scrollY],
   });
 })()`;
 
-/* The painted color of one CSS pixel, from a real screenshot: only the first
-   pixel of the first row is wanted, and every PNG filter (sub, up, average,
-   Paeth) predicts 0 there, so its raw bytes are its color. */
-async function pixelAt(c, x, y) {
-  const shot = await c.send('Page.captureScreenshot', {
-    format: 'png', clip: { x: Math.max(0, x), y: Math.max(0, y), width: 1, height: 1, scale: 1 },
-  });
-  const png = Buffer.from(shot.data, 'base64');
-  let off = 8, w = 0, bpp = 0; const idat = [];
-  while (off < png.length) {
-    const len = png.readUInt32BE(off), type = png.toString('latin1', off + 4, off + 8);
-    if (type === 'IHDR') { w = png.readUInt32BE(off + 8); bpp = png[off + 17] === 6 ? 4 : 3; }
-    if (type === 'IDAT') idat.push(png.subarray(off + 8, off + 8 + len));
-    off += 12 + len;
-  }
-  const raw = inflateSync(Buffer.concat(idat));
-  return [raw[1], raw[2], raw[3]];
-}
-
-/* WCAG 2.x relative luminance and ratio, written out. */
-const lin = v => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
-const lum = c => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
-const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+/* WCAG contrast from the app's own `contrast` (tokens-css.mjs), which takes
+   {r,g,b}; the colors resolved here are [r,g,b] arrays. */
+const rgb = c => ({ r: c[0], g: c[1], b: c[2] });
+const ratio = (a, b) => contrast(rgb(a), rgb(b));
 const css = c => c ? `rgb(${c[0]}, ${c[1]}, ${c[2]})` : String(c);
 
 async function readPage(c, origin, p, cse) {
@@ -140,13 +120,16 @@ export async function hardwoodPagesPass(c, origin) {
           if (s.bandImage === 'none') note(where, `${p.band} has no background-image`);
           if (!s.bandBehindH1) note(where, `${p.band} does not sit behind the h1`);
         }
-        // Item 4: contrast, on the band's strongest color.
+        // Item 4: contrast, against the painted pixel up and left of each text
+        // box (viewport points; the scroll offset is read back with them).
         if (s.hlColor && s.hlBox) {
-          const phrase = ratio(s.hlColor, await pixelAt(c, s.hlBox[0] - 2, s.hlBox[1] - 2));
+          const [back] = await samplePixels(c, [s.hlBox], s.scroll[0], s.scroll[1]);
+          const phrase = ratio(s.hlColor, back);
           if (phrase < 3) note(where, `the phrase on its band is ${phrase.toFixed(2)}:1, want at least 3:1`);
         }
         if (s.bodyColor && s.bodyBox) {
-          const body = ratio(s.bodyColor, await pixelAt(c, s.bodyBox[0] - 2, s.bodyBox[1] - 2));
+          const [back] = await samplePixels(c, [s.bodyBox], s.scroll[0], s.scroll[1]);
+          const body = ratio(s.bodyColor, back);
           if (body < 4.5) note(where, `${p.body} on the band is ${body.toFixed(2)}:1, want at least 4.5:1`);
         }
         if (s.btnBg && s.btnFg) {

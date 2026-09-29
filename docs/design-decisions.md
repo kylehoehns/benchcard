@@ -284,6 +284,13 @@ its alternative is an assertion, so the rejected options are kept here too.
   one (the full name if even that collides). It drops back to the short names only
   when a call row would wrap, and then both rows drop together so the block never
   mixes the two.
+- **Public pages always carry Hardwood orange, not the saved team color.** `about.html` and
+  `advanced.html` are reachable from search results and may be visited by someone with no
+  team saved locally. They use Hardwood styling (the band, the orange phrases) so a
+  visitor sees Benchcard's own warmth rather than a gray template. They map `--accent*`
+  to `--tint*` at the page level, so in-app elements that read the accent stay Hardwood
+  while the app itself honors a saved Graphite or other color in-game. The welcome screen
+  uses `--tint*` directly, so a saved non-Hardwood color stays honest there too.
 - **Plans are recomputed, not stored.** The engine is deterministic, so inputs
   plus a stored `seed` reproduce a card exactly. That gives the stability that
   matters (a refresh cannot change a card you already printed) without a cache
