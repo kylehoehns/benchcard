@@ -12,56 +12,8 @@
  * count either: the registry is the one place that number lives. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { ROWS } from '../scripts/smoke/registry.mjs';
-
-const ROOT = new URL('../', import.meta.url);
-const SMOKE = new URL('scripts/smoke.mjs', ROOT).pathname;
-const CWD = new URL('.', ROOT).pathname;
-
-/* All three cases below exit before `serve()` runs, so none of this should
- * ever approach a Chrome launch (45s timeout) or even a static server. A few
- * seconds of slack covers a slow CI runner without hiding a regression that
- * makes `--only` fall through to the real run. */
-const FAST_MS = 5000;
-
-/* The 5s timer above only catches a launch slow enough to blow the deadline —
- * a launch-then-kill, or a launch that happens to come up fast on this
- * machine, still finishes inside 5s and would pass it. `launch()` in
- * `scripts/smoke/chrome.mjs` calls `mkdtemp(join(tmpdir(), 'benchcard-smoke-'))`
- * to make Chrome's `--user-data-dir` before it ever spawns the binary, so a
- * fresh, otherwise-empty directory pointed to by TMPDIR/TMP/TEMP is a tripwire
- * no timer can be fooled by: if Chrome launches at all, this directory stops
- * being empty, no matter how fast. */
-function run(args) {
-  const sandbox = mkdtempSync(join(tmpdir(), 'ci-guard-'));
-  const start = Date.now();
-  let status = 0, stdout = '', stderr = '';
-  try {
-    stdout = execFileSync(process.execPath, [SMOKE, ...args], {
-      cwd: CWD,
-      encoding: 'utf8',
-      env: { ...process.env, TMPDIR: sandbox, TMP: sandbox, TEMP: sandbox },
-    });
-  } catch (e) {
-    status = e.status;
-    stdout = e.stdout ?? '';
-    stderr = e.stderr ?? '';
-  }
-  const ms = Date.now() - start;
-  const chromeProfileDirs = readdirSync(sandbox);
-  rmSync(sandbox, { recursive: true, force: true });
-  return { status, stdout, stderr, ms, chromeProfileDirs };
-}
-
-function assertNeverLaunchedChrome(r, label) {
-  assert.deepEqual(r.chromeProfileDirs, [],
-    `${label}: TMPDIR sandbox is not empty (${JSON.stringify(r.chromeProfileDirs)}) — ` +
-    `Chrome's --user-data-dir was created here, so validation ran after launch(), not before it`);
-}
+import { FAST_MS, run, assertNeverLaunchedChrome } from './helpers/smoke-cli.mjs';
 
 // The refusal's valid-name list is everything after its first stderr line,
 // one name per line -- read the same way wherever a case below needs it, so

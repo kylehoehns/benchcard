@@ -162,7 +162,13 @@ export const APP_LARGE_TEXT_STATES = [
      adds the other two sentence sheets Who's here sits beside: Format and
      Sub interval, now the same `.pgrp`/`.prow` family. #148 adds a rule's
      own edit page, one cap and one pair. */
-  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet",
+  /* #201: all six tour steps, not only the first -- the box's own fit at
+     this cell is exactly what the tour refresh had to add (survey item 1),
+     and a check that only ever opened step 1 would never have seen it. */
+  ...['help sheet', 'shortcuts sheet',
+      'tour, step 1 of 6', 'tour, step 2 of 6', 'tour, step 3 of 6',
+      'tour, step 4 of 6', 'tour, step 5 of 6', 'tour, step 6 of 6',
+      'team color picker', "who's here sheet",
       'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'plan sheet, a cap rule', 'plan sheet, a pair rule',
       'card sheet open']
     .map(n => STATES.find(s => s.name === n)),

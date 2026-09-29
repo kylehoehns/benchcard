@@ -3,6 +3,7 @@ import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
 import { openAddGameFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { seasonDate } from '../../app/storage.js';
+import { smokeToday } from './clock.mjs';
 
 /* #101 (docs/specs/101-plan-another-date.md), Proof row 5: a three-day
    fixture, items 2, 4, 5, 6, 11. RICH's team/roster/season, unmodified --
@@ -20,8 +21,12 @@ import { seasonDate } from '../../app/storage.js';
 // fixture did.
 const TEAM_NAME = 'Riverside Regional Junior Club';
 
-const addDays = n => {
-  const d = new Date();
+// #178: the pinned smoke day, not the day this actually runs on -- so this
+// never disagrees with the page's own pinned clock (clock.mjs) even if the
+// host's real clock crosses midnight mid-run. Exported for
+// `test/smoke-clock.test.js` (Proof row 2).
+export const addDays = n => {
+  const d = smokeToday();
   d.setDate(d.getDate() + n);
   return seasonDate(d);
 };
@@ -30,7 +35,7 @@ const addDays = n => {
 // `dayHeading`/`weekdayLabel` (state.js), which `node --test` already pins
 // against a clock it controls (Proof row 3).
 const weekday = n => {
-  const d = new Date();
+  const d = smokeToday();
   d.setDate(d.getDate() + n);
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 };

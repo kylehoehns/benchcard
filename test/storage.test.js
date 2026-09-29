@@ -1426,17 +1426,43 @@ test('a junk or unknown tie-break stance falls back to the default, not to nothi
   assert.equal(at(undefined), 'behind', 'no settings block at all is the default stance');
 });
 
-test('a team\'s color round-trips, an unknown or malformed one falls back to graphite, and a record with none loads graphite', () => {
+test('a team\'s color round-trips, an unknown or malformed one falls back to hardwood, and a record with none loads hardwood', () => {
   const at = raw => sanitize({ version: 6, onboarded: true,
     teams: [{ ...good(), settings: raw }] }, H).teams[0].settings.color;
   for (const c of COLORS) {
     assert.equal(at({ color: c }), c);
   }
   for (const junk of ['teal', 'Royal', null, 42, {}, [], undefined, '']) {
-    assert.equal(at({ color: junk }), 'graphite', `an unreadable color must not reach the paint: ${String(junk)}`);
+    assert.equal(at({ color: junk }), 'hardwood', `an unreadable color must not reach the paint: ${String(junk)}`);
   }
-  assert.equal(at(undefined), 'graphite', 'no settings block at all is the default color');
-  assert.equal(DEFAULT_SETTINGS.color, 'graphite');
+  assert.equal(at(undefined), 'hardwood', 'no settings block at all is the default color');
+  assert.equal(DEFAULT_SETTINGS.color, 'hardwood');
+});
+
+test('the picker lists Hardwood first and Graphite second, then the other seven', () => {
+  assert.deepEqual(COLORS,
+    ['hardwood', 'graphite', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple']);
+});
+
+/* #205 decision B: a device that saved a welcome record before this change
+   has a placeholder team with color: 'graphite' saved on it -- nobody chose
+   that color, because Settings cannot be reached while onboarded is false.
+   Once the record IS onboarded, a saved color is a real choice and must
+   survive, same as decision 1. */
+test('a not-onboarded record\'s team color loads as the default, an onboarded one keeps its saved color', () => {
+  const emptyTeam = { ...emptiedByDelete().teams[0], settings: { color: 'graphite' } };
+  const notOnboarded = { version: 7, onboarded: false, teams: [emptyTeam] };
+  const s1 = sanitize(notOnboarded, H);
+  assert.equal(s1.teams[0].settings.color, 'hardwood');
+
+  const onboarded = { version: 7, onboarded: true, teams: [emptyTeam] };
+  const s2 = sanitize(onboarded, H);
+  assert.equal(s2.teams[0].settings.color, 'graphite');
+
+  // sanitize is idempotent: running it again on its own output must not
+  // change the answer either way.
+  assert.equal(sanitize(s1, H).teams[0].settings.color, 'hardwood');
+  assert.equal(sanitize(s2, H).teams[0].settings.color, 'graphite');
 });
 
 test('two teams\' colors are their own — there is no cascade', () => {
@@ -1462,13 +1488,13 @@ test('a valid color wins over a valid pre-#61 value', () => {
   assert.equal(sanitizeSettings({ color: 'royal', colour: 'navy' }).color, 'royal'); // legacy-spelling
 });
 
-test('an invalid color falls back to a valid pre-#61 value before graphite', () => {
+test('an invalid color falls back to a valid pre-#61 value before hardwood', () => {
   assert.equal(sanitizeSettings({ color: 'bogus', colour: 'navy' }).color, 'navy'); // legacy-spelling
 });
 
-test('an invalid pre-#61 value falls back to graphite', () => {
-  assert.equal(sanitizeSettings({ colour: 'bogus' }).color, 'graphite'); // legacy-spelling
-  assert.equal(sanitizeSettings({}).color, 'graphite');
+test('an invalid pre-#61 value falls back to hardwood', () => {
+  assert.equal(sanitizeSettings({ colour: 'bogus' }).color, 'hardwood'); // legacy-spelling
+  assert.equal(sanitizeSettings({}).color, 'hardwood');
 });
 
 test('loadState reads a v6 record whose active team has only the pre-#61 key, and saveState writes it back under color', () => {
