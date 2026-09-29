@@ -139,18 +139,32 @@ current handoff and the findings verbatim; that is the whole brief.
    `npm test` printed, and the smoke table as printed. Every agent launched
    from here on gets that handoff verbatim.
 
-7. **Review and docs, in parallel.** Capture `git diff main...HEAD` — step 6
-   committed the change, so `git diff HEAD` is empty here. In **one** message, launch
-   `reuse-reviewer`, `quality-reviewer`, `efficiency-reviewer` and `doc-writer`,
-   passing the diff, the spec path and **the handoff from step 6** to each.
-   `quality-reviewer` also judges the tests against `/tdd`'s anti-patterns:
-   implementation-coupled, tautological, and a source-reading test the spec
-   did not name as a seam.
+7. **Review and docs, in parallel.** Build one diff per changed file, not one
+   combined diff — step 6 committed the change, so `git diff HEAD` is empty
+   here:
 
-8. **Fix, once.** Actionable findings go to a new `developer`, which fixes them
-   the same way it built: a failing test first where the finding is a behavior. At most
-   one pass. A `REVIEW.md` **Blocker** that survives it stops the run: report
-   it in the wrap-up rather than shipping.
+   ```bash
+   rm -rf .review && mkdir .review
+   git diff --stat main...HEAD > .review/stat.txt
+   git diff --name-only main...HEAD | while read -r f; do
+     git diff main...HEAD -- "$f" > ".review/$(printf %s "$f" | tr / _).diff"
+   done
+   ```
+
+   In **one** message, launch `reuse-reviewer`, `quality-reviewer`,
+   `efficiency-reviewer` and `doc-writer`, passing the absolute path of
+   `.review/`, the spec path and **the handoff from step 6** to each — told to
+   read `stat.txt` first and then only the diff files it needs. A single
+   file's diff can still pass 60 KB; the reviewer reads that one in parts, as
+   `guard-read.sh` already says. `quality-reviewer` also judges the tests
+   against `/tdd`'s anti-patterns: implementation-coupled, tautological, and a
+   source-reading test the spec did not name as a seam.
+
+8. **Fix, once.** Actionable findings go to a new `developer`, handed the same
+   `.review/` directory step 7 built, which fixes them the same way it built:
+   a failing test first where the finding is a behavior. At most one pass. A
+   `REVIEW.md` **Blocker** that survives it stops the run: report it in the
+   wrap-up rather than shipping.
 
    **Prove and commit again**, the same way as step 6 — the proof pair (one
    proof, not two), explicit paths including every file `doc-writer` changed,
