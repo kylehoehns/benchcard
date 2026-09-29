@@ -68,6 +68,7 @@ that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 | `forced colors: selected/on differs from unselected, timeline blocks keep a border` | `scripts/smoke/forced-colors.mjs` | RICH |
 | `landscape (844x390): both landscape blocks are live, no sideways scroll, gm-nav stays inside` | `scripts/smoke/landscape-a11y.mjs` | RICH |
 | `first run: welcome, three steps, every way out` | `scripts/smoke/first-run-flow.mjs` | RICH |
+| `welcome demo is built after removing the last team` | `scripts/smoke/welcome-after-remove.mjs` | RICH |
 | `roster in` | `scripts/smoke/roster-in.mjs` | RICH |
 | `flow inset: 16px on every side, 390px and 320px, both flows` | `scripts/smoke/flow-inset.mjs` | RICH |
 | `tab order stays clear of the floating bar and action bar` | `scripts/smoke/focus-clear.mjs` | RICH |
