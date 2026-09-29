@@ -250,9 +250,13 @@ function benchFigure(pane) {
   const wrap = el('div', 'wel-bench');
   wrap.append(el('p', 'wel-bench-hd', 'Stint 3 of 8 \u00b7 Q2 8:00\u20134:00'));
 
-  const mins = (i) => {
+  const mins = (i, justOn = false) => {
     const mn = el('span', 'mn', String(played(i)));
     mn.append(el('span', 'proj', ` / ${demo.mins[i] ?? ''}`));
+    // "just on" is a fact about the plan now: they were not out there last stint.
+    // It sits in .mn, after .proj, because that is the only place `.gm-p .mn .tag`
+    // (app.css) styles it, the same as bench mode's `mtag`.
+    if (justOn) mn.append(el('span', 'tag in', 'just on'));
     return mn;
   };
 
@@ -262,9 +266,7 @@ function benchFigure(pane) {
     row.style.setProperty('--c', `oklch(var(--pc-l) var(--pc-c) ${HUES[i % HUES.length]})`);
     row.append(el('span', 'av', players[i].number));
     const nm = el('span', 'nm', call[`b${i}`]);
-    // "just on" is a fact about the plan now: they were not out there last stint
-    if (!onAt(i, S - 1)) nm.append(' ', el('span', 'tag in', 'just on'));
-    row.append(nm, mins(i));
+    row.append(nm, mins(i, !onAt(i, S - 1)));
     floor.append(row);
   });
 
