@@ -756,8 +756,11 @@ a { color: inherit; }
   background: var(--surface-2); border-left-color: var(--c); border-right-color: var(--line-2);
   border-radius: var(--r-sm) var(--r-sm) 0 0; box-shadow: inset 0 1px 0 var(--line-2);
 }
-.tl.pinned .tl-row:not(.pin) { opacity: .38; }
-@media (hover: hover) { .tl.pinned:hover .tl-row:not(:hover):not(.pin) { opacity: .38; } }
+/* !important because riseIn (fx.js) leaves an inline `opacity: 1` on every row
+   once the entrance animation ends, which would otherwise beat this rule and
+   leave the other rows undimmed. */
+.tl.pinned .tl-row:not(.pin) { opacity: .38 !important; }
+@media (hover: hover) { .tl.pinned:hover .tl-row:not(:hover):not(.pin) { opacity: .38 !important; } }
 
 .tld {
   margin: 0 0 .55rem; padding: .85rem .95rem; display: flow-root;
