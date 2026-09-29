@@ -91,6 +91,17 @@ export const CLIP_SWEEP_ALLOW = [
   { selector: '.sn-list .sn-nm', reason: "a season ledger row's own player name" },
 ];
 
+/* #204 "What would settle it" item 6: the new "text paints past its own box"
+ * floor check's own allow list, scoped to that one finding kind rather than
+ * excluding the element from every check the way CLIP_SWEEP_ALLOW above does
+ * — the `h2.flow-q` step headings in Add a game ("Who are you playing?",
+ * "How should minutes split?") run 7–14px into the 32px side margin but stay
+ * whole and readable (#204's Decisions: accepted). Same "stale entry fails"
+ * treatment as the allow list above. */
+export const CLIP_SWEEP_FLOOR_ALLOW = [
+  { selector: 'h2.flow-q', reason: 'the step heading runs into the side margin but stays whole and readable' },
+];
+
 /* #179 Task 2: real, filed bugs the LONG_AND_SQUEEZE fixture also trips —
  * not false alarms, and not this ticket's to fix, so each is excused by
  * issue number the same way CLIP_SWEEP_ALLOW excuses a deliberate "…" rule.
@@ -99,6 +110,12 @@ export const CLIP_SWEEP_ALLOW = [
  * `text`/`word`/`hitBy` that kind carries). An entry no finding matches this
  * run is stale and fails below, same as the allow list. */
 export const CLIP_SWEEP_KNOWN_ISSUES = [
+  {
+    issue: 221,
+    reason: 'the "Even out ..." switch-row label paints under its own switch input on the Plan sheet and Add a game step 3; fixed in a separate, not-yet-merged PR',
+    match: p => (p.kind === 'overlap' || p.kind === 'floor') && p.el === 'span.prow-t'
+      && (p.text === 'Even out earlier games' || p.text === 'Even out the season so far'),
+  },
 ];
 
 /* #179 fix 1: a scroll container is treated as a clip boundary below
@@ -113,14 +130,20 @@ const SIDEWAYS_SELECTORS = CLIP_SWEEP_SIDEWAYS.map(s => s.selector);
 const notAllowed = CLIP_SWEEP_ALLOW.map(a => `:not(${a.selector})`).join('');
 const CANDIDATE_SEL = `body *${notAllowed}`;
 const ALLOW_SELECTORS = CLIP_SWEEP_ALLOW.map(a => a.selector);
+const FLOOR_ALLOW_SELECTORS = CLIP_SWEEP_FLOOR_ALLOW.map(a => a.selector);
 
-/* One probe, both scroll positions, every state: scanned/clip/split/hidden
- * off one walk of `CANDIDATE_SEL` (every allow-listed element excluded, the
- * way `TYPESCALE_PROBE` in `type-scale.mjs` walks `document.body
- * .querySelectorAll('*')`), plus one `wordFloorRows` call (`WORD_FLOOR_FN`,
- * `dom.mjs`) over the same set — `rowSel: 'body'` turns that shared
- * row-vs-name floor into a generic "is this element narrower than its own
- * longest word" for any leaf of text.
+/* One probe, both scroll positions, every state: scanned/clip/split/hidden/
+ * floor/overlap off one walk of `CANDIDATE_SEL` (every allow-listed element
+ * excluded, the way `TYPESCALE_PROBE` in `type-scale.mjs` walks
+ * `document.body.querySelectorAll('*')`). `wordFloorRows` (`WORD_FLOOR_FN`,
+ * `dom.mjs`) is still reused, but only for the split check's own row-vs-word
+ * floor (`ROW_LIKE`, below) — #204 replaced the page-width `rowSel: 'body'`
+ * floor that used to run over every scanned element with a per-element check:
+ * an element's own text-node client rects (`textLineRects`, `hasOwnText`,
+ * `isSrOnly`, `checkVisibility` — none of them re-derived) measured against
+ * its OWN border box rather than `body`'s width, which ignores a row's own
+ * padding, avatars, icons, chevrons and switches (#204's survey: 9 false
+ * alarms from the old floor, none from this one).
  *
  * `wordRects` (`WORD_RECTS_FN`) tokenizes on `\S+`, so a hyphenated compound
  * (`Featherstone-Whitmore`) is one token whose two rects are what a
@@ -133,6 +156,11 @@ const CLIP_PROBE = `(() => {
   ${WORD_FLOOR_FN}
   const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
   const hasOwnText = el => [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+  // #204 "What would settle it" item 3: a spill can land on a form control
+  // that carries no text of its own (a switch's <input>, the #221 case) --
+  // counted as an overlap hit the same as a sibling that DOES have text.
+  const FORM_CONTROL_TAGS = new Set(['input', 'select', 'button', 'textarea']);
+  const isFormControl = el => FORM_CONTROL_TAGS.has(el.tagName.toLowerCase());
   const isFixedOrSticky = el => {
     for (let a = el; a; a = a.parentElement) {
       const p = getComputedStyle(a).position;
@@ -191,6 +219,12 @@ const CLIP_PROBE = `(() => {
   const CLIPPING_OVERFLOW = new Set(['hidden', 'clip', 'auto', 'scroll']);
   const SIDEWAYS_SELECTORS = ${JSON.stringify(SIDEWAYS_SELECTORS)};
   const usedSideways = [];
+  // #204: the new floor check's own allow list (h2.flow-q), scoped to that
+  // one finding kind -- unlike CLIP_SWEEP_ALLOW, matching this selector does
+  // NOT exclude the element from CANDIDATE_SEL, so it still runs through
+  // clip/split/hidden/overlap above.
+  const FLOOR_ALLOW_SELECTORS = ${JSON.stringify(FLOOR_ALLOW_SELECTORS)};
+  const usedFloorAllow = [];
   // #179 fix 5c: many scanned elements share the same nearest clipping
   // ancestor (every row in a sheet walks up to the same sheet), so this
   // memoizes the walk per element for the life of this one probe run --
@@ -236,14 +270,7 @@ const CLIP_PROBE = `(() => {
   const SPLIT_MARK = '__cs179split__';
 
   let scanned = 0;
-  const clip = [], split = [], hidden = [], overlap = [];
-  // Elements the floor check below can trust: display: inline is excluded
-  // (its clientWidth is 0 by spec, not the rendered text's width), and so is
-  // an empty computed font shorthand — wordFloorRows's measureWord copies
-  // cs.font onto an off-screen span, and when Chrome can't serialize the
-  // shorthand (seen on some font-size: var(...) declarations) that copy is a
-  // silent no-op that over-states a small label's width.
-  const floorEls = [];
+  const clip = [], split = [], hidden = [], overlap = [], floor = [];
 
   for (const el of document.querySelectorAll(${JSON.stringify(CANDIDATE_SEL)})) {
     if (!hasOwnText(el)) continue;
@@ -254,7 +281,6 @@ const CLIP_PROBE = `(() => {
     scanned++;
 
     const cs = getComputedStyle(el);
-    if (cs.display !== 'inline' && cs.font !== '') floorEls.push(el);
 
     // Measured off the actual text nodes, not scrollWidth or a whole-element
     // Range: both also count a descendant's negative margin or enlarged tap
@@ -273,12 +299,34 @@ const CLIP_PROBE = `(() => {
       clip.push({ el: path(el), scrollWidth: Math.round(worstLine.width), clientWidth: Math.round(box.width), text: el.textContent.trim().slice(0, 40) });
     }
 
+    // #204: the floor check -- does el's OWN text paint past its OWN border
+    // box, on either edge -- reusing the same textLineRects measurement the
+    // clip check above just took, but against \`box\` (this element's own
+    // rect) rather than \`bound\` (the nearest CLIPPING ancestor). Independent
+    // of the clip check: a heading can paint past its own box into open
+    // margin space with no clipping ancestor and no clip finding at all (the
+    // h2.flow-q case), and unlike overlap below it does not require anything
+    // to actually sit where the spill lands.
+    const floorAllowSel = FLOOR_ALLOW_SELECTORS.find(sel => el.matches(sel));
+    let floorOver = null;
+    for (const lr of textLineRects(el)) {
+      const over = Math.max(lr.right - box.right, box.left - lr.left);
+      if (over > 1 && (!floorOver || over > floorOver.over)) floorOver = { over, width: lr.width };
+    }
+    if (floorOver) {
+      if (floorAllowSel) usedFloorAllow.push(floorAllowSel);
+      else floor.push({ el: path(el), text: el.textContent.trim().slice(0, 40), over: Math.round(floorOver.over), box: Math.round(box.width) });
+    }
+
     // #179 fix 2: nothing clips this element, but its own text can still
     // spill past its own box into a sibling's space and get drawn under that
     // sibling's text (Plan's "Lineup balance" row: "Steady" paints over the
     // label). Only checked when there's no clip finding already, and only
-    // counts as overlap when something with its own text actually sits where
-    // the spill lands — a switch's empty space next to it doesn't.
+    // counts as overlap when something actually sits where the spill lands —
+    // empty space beside it doesn't. #204 "What would settle it" item 3: that
+    // something can be a sibling with its own text OR a form control with
+    // none of its own (isFormControl, above) -- the #221 case, "Even out
+    // earlier games" painting under the switch <input> it labels.
     if (!worstLine) {
       let ownWorst = null;
       for (const lr of textLineRects(el)) {
@@ -301,7 +349,7 @@ const CLIP_PROBE = `(() => {
             if (x < 0 || y < 0 || y > vh) continue;
             const hit = document.elementFromPoint(x, y);
             if (hit && hit !== el && !el.contains(hit) && !hit.contains(el)
-              && !isForeignFixed(hit, el) && hasOwnText(hit)) { hitFound = hit; break; }
+              && !isForeignFixed(hit, el) && (hasOwnText(hit) || isFormControl(hit))) { hitFound = hit; break; }
           }
           if (hitFound) overlap.push({ el: path(el), hitBy: path(hitFound), text: el.textContent.trim().slice(0, 40) });
         } else {
@@ -312,7 +360,7 @@ const CLIP_PROBE = `(() => {
           // only checks this element's own siblings — the shape every spill
           // found so far sits in (a flex row's label vs. its own value).
           const hitSib = [...el.parentElement.children].find(sib => {
-            if (sib === el || !hasOwnText(sib)) return false;
+            if (sib === el || !(hasOwnText(sib) || isFormControl(sib))) return false;
             const sr = sib.getBoundingClientRect();
             return sr.left < ownWorst.right && sr.right > box.right && sr.top < box.bottom && sr.bottom > box.top;
           });
@@ -366,14 +414,7 @@ const CLIP_PROBE = `(() => {
     }
   }
 
-  const FLOOR_MARK = '__cs179floor__';
-  floorEls.forEach(el => el.classList.add(FLOOR_MARK));
-  const floorFails = wordFloorRows('.' + FLOOR_MARK, 'body')
-    .filter(row => row.width < row.floor - 1)
-    .map(row => ({ text: row.text.slice(0, 40), width: row.width, floor: row.floor }));
-  floorEls.forEach(el => el.classList.remove(FLOOR_MARK));
-
-  return JSON.stringify({ scanned, clip, split, hidden, overlap, usedAllow, usedSideways, floorFails });
+  return JSON.stringify({ scanned, clip, split, hidden, overlap, floor, usedAllow, usedSideways, usedFloorAllow });
 })()`;
 
 export async function clipSweepPass(c, origin, { injectCss } = {}) {
@@ -382,6 +423,7 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   let scanned = 0;
   const usedAllow = new Set();
   const usedSideways = new Set();
+  const usedFloorAllow = new Set();
   const states = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE];
 
   await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
@@ -426,11 +468,12 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
           scanned += res.scanned;
           res.usedAllow.forEach(sel => usedAllow.add(sel));
           res.usedSideways.forEach(sel => usedSideways.add(sel));
+          res.usedFloorAllow.forEach(sel => usedFloorAllow.add(sel));
           for (const cl of res.clip) found.push({ kind: 'clip', where, pos, ...cl });
           for (const sp of res.split) found.push({ kind: 'split', where, pos, ...sp });
           for (const hd of res.hidden) found.push({ kind: 'hidden', where, pos, ...hd });
           for (const ov of res.overlap) found.push({ kind: 'overlap', where, pos, ...ov });
-          for (const ff of res.floorFails) found.push({ kind: 'floor', where, pos, ...ff });
+          for (const fl of res.floor) found.push({ kind: 'floor', where, pos, ...fl });
         }
       } catch (e) {
         problems.push(`${where}: ${e.message.split('\n')[0]}`);
@@ -449,14 +492,15 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
       }
     }
 
-    // An allow-list, sideways-scroll or known-issue entry this run never
-    // needed is stale and fails here, same reasoning for all three.
+    // An allow-list, sideways-scroll, floor-allow or known-issue entry this
+    // run never needed is stale and fails here, same reasoning for all four.
     const reportStale = (label, verb, items, sep, fmt = String) => {
       if (!items.length) return;
       problems.push(`${items.length} stale ${label} entr${items.length === 1 ? 'y' : 'ies'} (never ${verb} this run): ${items.map(fmt).join(sep)}`);
     };
     reportStale('allow-list', 'needed', ALLOW_SELECTORS.filter(sel => !usedAllow.has(sel)), ' | ');
     reportStale('sideways-scroll', 'needed', SIDEWAYS_SELECTORS.filter(sel => !usedSideways.has(sel)), ' | ');
+    reportStale('floor allow-list', 'needed', FLOOR_ALLOW_SELECTORS.filter(sel => !usedFloorAllow.has(sel)), ' | ');
 
     // A raw finding matched by CLIP_SWEEP_KNOWN_ISSUES is a real, filed bug,
     // not this ticket's to fix, so it's excused rather than pushed as a
@@ -469,7 +513,7 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
       else if (p.kind === 'split') problems.push(`${p.where}@${p.pos}: "${p.word}" splits across lines mid-word (${p.el})`);
       else if (p.kind === 'hidden') problems.push(`${p.where}@${p.pos}: ${p.el} is hidden under ${p.hitBy}`);
       else if (p.kind === 'overlap') problems.push(`${p.where}@${p.pos}: "${p.text}" (${p.el}) spills past its own box onto ${p.hitBy}'s text`);
-      else if (p.kind === 'floor') problems.push(`${p.where}@${p.pos}: "${p.text}" is ${p.width}px, narrower than its own longest word's ${p.floor}px floor`);
+      else if (p.kind === 'floor') problems.push(`${p.where}@${p.pos}: "${p.text}" paints ${p.over}px past its own ${p.box}px box (${p.el})`);
     }
     reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
   } finally {

@@ -158,7 +158,10 @@ card's own font loading before it is fitted, the three budgets, and the suite.
 `scripts/smoke.mjs` is the entry point: flags, the check registry, the run
 order and the table. Each check lives in its own module under
 `scripts/smoke/`, with the helpers several checks share beside them, so read
-the one check you are changing rather than the whole suite. No file there may
+the one check you are changing rather than the whole suite. `scripts/smoke/README.md`
+is the index of every row — Check, File and Fixture, held to the registry by
+`test/smoke-index.test.js` — read it, not this file, for which module covers
+a given check. No file there may
 pass the limit in `test/smoke-size.test.js` (`LIMIT`). Two fixtures on purpose
 (A26): a lean `SEED` for the cold-load measurement, and a `RICH` record — 11
 players, two games today, three filed, levels set — for the overlay, touch,
