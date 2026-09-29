@@ -109,14 +109,7 @@ export const CLIP_SWEEP_FLOOR_ALLOW = [
  * clip/split/hidden/floor/overlap (`kind`, `where`, `el`, and whichever of
  * `text`/`word`/`hitBy` that kind carries). An entry no finding matches this
  * run is stale and fails below, same as the allow list. */
-export const CLIP_SWEEP_KNOWN_ISSUES = [
-  {
-    issue: 221,
-    reason: 'the "Even out ..." switch-row label paints under its own switch input on the Plan sheet and Add a game step 3; fixed in a separate, not-yet-merged PR',
-    match: p => (p.kind === 'overlap' || p.kind === 'floor') && p.el === 'span.prow-t'
-      && (p.text === 'Even out earlier games' || p.text === 'Even out the season so far'),
-  },
-];
+export const CLIP_SWEEP_KNOWN_ISSUES = [];
 
 /* #179 fix 1: a scroll container is treated as a clip boundary below
  * (`CLIPPING_OVERFLOW`, in `CLIP_PROBE`) — this is the one exception, a box
