@@ -24,6 +24,11 @@ async function findChrome() {
   throw new Error('No Chrome found. Set CHROME_PATH to a Chrome or Chromium binary.');
 }
 
+/* #235: `npm test` is also Cloudflare's build command, and that build machine
+   has no Chrome. The `node --test` files that launch real Chrome ask this
+   first and skip there instead of failing the production deploy. */
+export const hasChrome = () => findChrome().then(() => true, () => false);
+
 const fetchJSON = async url => JSON.parse(await (await fetch(url)).text());
 
 /* #178 review: `onSpawn`, called the instant Chrome is spawned — before the
