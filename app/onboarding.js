@@ -783,6 +783,8 @@ function frBack() {
 function askBeforeDiscardTeam() {
   if (!fr || frStep === frTotalNow()) return false;
   if (!fr.teamName.trim() && !fr.roster.trim()) return false;
+  // #237: a sample the coach has not touched is nothing to lose either.
+  if (fr.filled && fr.teamName === SAMPLE_TEAM_NAME && fr.roster === fr.filled) return false;
   showFrAsk(true);
   return true;
 }

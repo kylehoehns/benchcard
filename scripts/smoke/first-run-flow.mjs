@@ -272,6 +272,34 @@ async function discardSavesNothing(c, ck) {
   ck(stored === 0, `the stored record holds ${stored} player(s) after discarding, want 0`);
 }
 
+/* #237: a close request over an untouched sample leaves at once, storing
+ * nothing; over anything the coach changed it asks first, and Discard leaves. */
+async function closesWithNoAsk(c, ck, what) {
+  const closed = await waitClosed(c, '#firstRunFlow');
+  const s = await flowState(c);
+  ck(closed && !s.askShown, `${what} ${s.askShown ? 'showed the discard ask' : 'left the flow open'}, want it closed with no ask`);
+  const st = await evalJSON(c, `(async () => {
+    const s = await import('/state.js');
+    return JSON.stringify({ onboarded: s.state.onboarded, players: s.state.players.length,
+      welcome: !document.getElementById('view-welcome').hidden });
+  })()`);
+  ck(st.onboarded === false && st.players === 0, `${what} left onboarded ${st.onboarded} and ${st.players} player(s), want false and 0`);
+  ck(st.welcome, `${what} did not land back on the welcome screen`);
+  const stored = await storedPlayers(c);
+  ck(stored === 0, `${what} left ${stored} player(s) in the stored record, want 0`);
+}
+
+async function asksBeforeDiscarding(c, ck, what) {
+  const s = await flowState(c);
+  ck(s.open === true && s.askShown === true, `${what} ${s.open ? 'showed no discard ask' : 'closed the flow'}, want the ask with the flow open`);
+  ck(s.askTitle === 'Discard this team?', `${what}: the ask reads "${s.askTitle}", want "Discard this team?"`);
+  ck(s.askButtons.join(' | ') === 'Keep editing | Discard', `${what}: the ask offers ${JSON.stringify(s.askButtons)}, want ["Keep editing", "Discard"]`);
+  if (s.askShown) {
+    await realTap(c, '#frDiscard');
+    await waitClosed(c, '#firstRunFlow');
+  }
+}
+
 /* Item 5: both doors that fill the draft from the sample -- `#welTry`
  * (fresh, from the welcome screen the discard above left showing) and
  * `#frFill` inside step 1 -- neither creating or saving a team. The fill's
@@ -301,12 +329,27 @@ async function sampleFillsAndSavesNothing(c, ck) {
   let stored = await storedPlayers(c);
   ck(stored === 0, `the stored record holds ${stored} player(s) right after the fill, want 0`);
 
+  // #237 item 1: nothing of the coach's is in the box yet, so ✕ just closes.
   await realTap(c, '#frClose');
-  s = await flowState(c);
-  if (ck(s.askShown, '✕ over the filled sample did not show the discard ask')) {
-    await realTap(c, '#frDiscard');
-    await waitClosed(c, '#firstRunFlow');
-  }
+  await closesWithNoAsk(c, ck, '✕ over the untouched sample');
+
+  // #237 item 2: Escape (Android back fires the same `cancel`) does the same.
+  await realTap(c, '#welTry');
+  await key(c, 'Escape', 27);
+  await closesWithNoAsk(c, ck, 'Escape over the untouched sample');
+
+  // #237 item 4: one character added to one roster line is the coach's work.
+  await realTap(c, '#welTry');
+  const line = await evalJSON(c, `JSON.stringify(document.getElementById('frRoster').value)`);
+  await typeIn(c, '#frRoster', line + 'x');
+  await realTap(c, '#frClose');
+  await asksBeforeDiscarding(c, ck, '✕ over an edited sample roster');
+
+  // #237 item 5: so is a changed team name.
+  await realTap(c, '#welTry');
+  await typeIn(c, '#frTeam', 'My own team');
+  await realTap(c, '#frClose');
+  await asksBeforeDiscarding(c, ck, '✕ over a renamed sample');
 
   await realTap(c, '#welStart');
   s = await flowState(c);
@@ -327,12 +370,9 @@ async function sampleFillsAndSavesNothing(c, ck) {
   ck(filled.roster === filled.want, '#frFill does not fill the same unedited sample prefix "Try a sample team" does');
   ck(filled.fillHidden === true, '#frFill stays offered once it has filled the box itself');
 
+  // #237 item 3: the same untouched sample, filled from inside the flow.
   await realTap(c, '#frClose');
-  s = await flowState(c);
-  if (ck(s.askShown, '✕ over the fill did not show the discard ask')) {
-    await realTap(c, '#frDiscard');
-    await waitClosed(c, '#firstRunFlow');
-  }
+  await closesWithNoAsk(c, ck, '✕ over the fill');
 }
 
 /* Item 4: step 3, reached by really committing a 5-player team (decision 4:
