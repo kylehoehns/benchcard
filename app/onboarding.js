@@ -806,6 +806,26 @@ function finishFr() {
   if (first) setTimeout(startTour, 520);
 }
 
+/* Builds the welcome demo under its three tabs and opens the Plan tab, the
+   way a fresh start does. Safe to call again: `renderDemo` and `benchFigure`
+   rebuild what they own and `demoFigure` leaves a figure that is already
+   there. Two callers -- `initOnboarding`, when the app starts with no team,
+   and `removeTeam` (teams-view.js), because removing the last team shows this
+   screen with nothing built under it (#224). */
+export function showWelcomeDemo() {
+  /* `wel-card.png`, NOT the About page's `card-sample.png`. Same picture of the
+     same kind of object, different team: the About card is eleven players
+     because that page argues the eleven-player arithmetic in prose, and this
+     one is `sampleRoster(DEMO_N)` because the two tabs either side of it are
+     drawn from exactly that. `scripts/og.mjs --welcard` takes it through the
+     app's own `?try=N` path, so the cast cannot drift from this file's. */
+  demoFigure('#welPanePaper', './wel-card.png',
+    'A printed Benchcard rotation card for the sample team: the clock down the left, who is coming off after a triangle, and the five players on the floor underneath in bold capitals.',
+    './wel-card.png 1x, ./wel-card@2x.png 2x');
+  benchFigure('#welPaneScreen');
+  showStage('plan');   // draws the plan rows and caption (renderDemo)
+}
+
 /* Decision 6: ✕ on the last step ends the flow the same way "Go to the
    game" does -- the team already exists, so closing and finishing are the
    same act -- while ✕ on the steps before it asks first through
@@ -868,17 +888,7 @@ export function initOnboarding(setViewFn) {
      since it shipped, so nobody can say whether this screen works. */
   if (!state.onboarded) {
     track('welcome_seen');
-    renderDemo();
-    /* `wel-card.png`, NOT the About page's `card-sample.png`. Same picture of the
-       same kind of object, different team: the About card is eleven players
-       because that page argues the eleven-player arithmetic in prose, and this
-       one is `sampleRoster(DEMO_N)` because the two tabs either side of it are
-       drawn from exactly that. `scripts/og.mjs --welcard` takes it through the
-       app's own `?try=N` path, so the cast cannot drift from this file's. */
-    demoFigure('#welPanePaper', './wel-card.png',
-      'A printed Benchcard rotation card for the sample team: the clock down the left, who is coming off after a triangle, and the five players on the floor underneath in bold capitals.',
-      './wel-card.png 1x, ./wel-card@2x.png 2x');
-    benchFigure('#welPaneScreen');
+    showWelcomeDemo();
   }
 
   /* `?try=N` -- the roster-size landing pages link in with their own size, so a

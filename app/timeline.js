@@ -401,8 +401,14 @@ export function renderTimeline() {
       (extreme ? `, the ${extreme} on the team` : '') +
       `, on the floor for ${onCount} of ${stints.length} stints`);
     nameBtn.setAttribute('aria-expanded', String(id === tlPinned));
-    if (id === tlPinned) nameBtn.setAttribute('aria-controls', 'tlDetail');
-    else nameBtn.removeAttribute('aria-controls');
+    const nmEl = nameBtn.querySelector('.nm');
+    if (id === tlPinned) {
+      nameBtn.setAttribute('aria-controls', 'tlDetail');
+      nmEl.id = 'tlPinNm'; // the details' accessible name (renderPinned)
+    } else {
+      nameBtn.removeAttribute('aria-controls');
+      nmEl.removeAttribute('id');
+    }
   }
 
   renderPinned(names, p, stints, mins, starts);
@@ -425,7 +431,9 @@ function renderPinned(names, p, stints, mins, starts) {
   const host = el('div', 'tld');
   host.id = 'tlDetail';
   host.setAttribute('role', 'region');
-  host.setAttribute('aria-label', `${tlName(names, p, id)}, breakdown`);
+  /* No header of its own: the row above carries the name once, and this
+     panel is named from it. */
+  host.setAttribute('aria-labelledby', 'tlPinNm');
   host.style.setProperty('--c', colorOf(id));
   const on = stints.map(s2 => s2.onFloor.includes(id));
   const runs = [], sits = [];
@@ -442,16 +450,12 @@ function renderPinned(names, p, stints, mins, starts) {
   const longestSit = sits.length ? Math.max(...sits) : 0;
   const firstOn = on.indexOf(true);
 
-  const head = el('div', 'tld-hd');
-  const dot = el('span', 'dot'); dot.style.background = colorOf(id);
-  head.append(dot, el('span', 'tld-nm', tlName(names, p, id)));
   const close = el('button', 'tld-x press');
   close.append(icon('x', { size: '.9em', stroke: 2.4 }));
   close.type = 'button';
   close.setAttribute('aria-label', 'Close');
   close.onclick = () => { tlPinned = null; renderTimeline(); };
-  head.append(el('span', 'spacer'), close);
-  host.append(head);
+  host.append(close);
 
   const facts = el('div', 'tld-facts');
   const f = (k, v) => { const d = el('div', 'tld-f'); d.append(el('div', 'k', k), el('div', 'v', v)); facts.append(d); };

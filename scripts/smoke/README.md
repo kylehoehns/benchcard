@@ -24,6 +24,7 @@ that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 | `season: minutes so far, filed games, the day chart` | `scripts/smoke/season.mjs` | RICH |
 | `season: one list style, prototype row sizes` | `scripts/smoke/season-look.mjs` | RICH |
 | `game rows fit, 390×844` | `scripts/smoke/game-rows-fit.mjs` | RICH |
+| `pinned row and details are one card` | `scripts/smoke/pinned-card.mjs` | RICH |
 | `today and back` | `scripts/smoke/today-and-back.mjs` | RICH |
 | `today keys and undo` | `scripts/smoke/today-keys-and-undo.mjs` | RICH |
 | `no games: Today's empty state, blocked entry, undo` | `scripts/smoke/no-games.mjs` | RICH |
@@ -69,6 +70,7 @@ that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 | `forced colors: selected/on differs from unselected, timeline blocks keep a border` | `scripts/smoke/forced-colors.mjs` | RICH |
 | `landscape (844x390): both landscape blocks are live, no sideways scroll, gm-nav stays inside` | `scripts/smoke/landscape-a11y.mjs` | RICH |
 | `first run: welcome, three steps, every way out` | `scripts/smoke/first-run-flow.mjs` | RICH |
+| `welcome demo is built after removing the last team` | `scripts/smoke/welcome-after-remove.mjs` | RICH |
 | `roster in` | `scripts/smoke/roster-in.mjs` | RICH |
 | `flow inset: 16px on every side, 390px and 320px, both flows` | `scripts/smoke/flow-inset.mjs` | RICH |
 | `welcome On screen: "just on" tag is styled` | `scripts/smoke/welcome-tag.mjs` | RICH |

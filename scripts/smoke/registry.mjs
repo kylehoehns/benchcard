@@ -67,6 +67,7 @@ import { fontDrawsPass } from './font-draws.mjs';
 import { seasonPass } from './season.mjs';
 import { seasonLookPass } from './season-look.mjs';
 import { gameRowsFitPass } from './game-rows-fit.mjs';
+import { pinnedCardPass } from './pinned-card.mjs';
 import { todayAndBackPass } from './today-and-back.mjs';
 import { todayKeysAndUndoPass } from './today-keys-and-undo.mjs';
 import { noGamesPass } from './no-games.mjs';
@@ -127,6 +128,7 @@ import { gmOpenPass } from './gm-open.mjs';
 import { benchLookPass } from './bench-look.mjs';
 import { benchDetailsPass } from './bench-details.mjs';
 import { focusAnnouncePass } from './focus-announce.mjs';
+import { welcomeAfterRemovePass } from './welcome-after-remove.mjs';
 
 // #177: `smoke.mjs`'s own five-import allow-list (test/smoke-registry.test.js)
 // has no room for a sixth `./smoke/smoke-font.mjs` import, so the font script
@@ -185,6 +187,11 @@ export const ROWS = Object.freeze([
   // RICH itself before `todayback` needs it.
   { id: 'gamerowsfit', name: 'game rows fit, 390×844', selectable: true, setup: 'rich',
     run: ctx => gameRowsFitPass(ctx.c, ctx.origin) },
+  // #225: a pinned row and its details are one card -- one fill, one stripe,
+  // the name once, the dot clear of the stripe, nothing moves on pinning --
+  // at 390, 1280 and 320px/32px, light and dark; see pinned-card.mjs.
+  { id: 'pinnedcard', name: 'pinned row and details are one card', selectable: true, setup: 'rich',
+    run: ctx => pinnedCardPass(ctx.c, ctx.origin) },
   { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich',
     run: ctx => todayAndBackPass(ctx.c, ctx.origin) },
   { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich',
@@ -417,6 +424,11 @@ export const ROWS = Object.freeze([
   // itself before `focusclear` needs it.
   { id: 'firstrun', name: 'first run: welcome, three steps, every way out', selectable: true, setup: 'rich',
     run: ctx => firstRunPass(ctx.c, ctx.origin) },
+  // #224: remove the only team in Settings, land on welcome, and the demo is
+  // built under all three tabs -- see welcome-after-remove.mjs. Restores RICH
+  // itself before the next row.
+  { id: 'welcomeafterremove', name: 'welcome demo is built after removing the last team', selectable: true, setup: 'rich',
+    run: ctx => welcomeAfterRemovePass(ctx.c, ctx.origin) },
   // #146's own guard (docs/specs/146-roster-in.md's Proof section): the paste
   // sheet and Add a team's step 1 list/repeat text, the item 4 suffix fixture
   // read back from Who's here, Timeline, Season and Team, the blocked panel's
