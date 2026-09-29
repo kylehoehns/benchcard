@@ -1865,18 +1865,28 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .tour-hole { position: absolute; border-radius: var(--r);
   box-shadow: 0 0 0 max(120vw, 120vh) color-mix(in srgb, #080808 66%, transparent), /* near-black scrim outside the hole; must not flip with theme like --ink would */
               0 0 0 2px var(--accent); pointer-events: none; }
+/* #201: six steps' worth of copy (item 6, `docs/specs/201-tour-refresh.md`)
+   does not all fit in `.tour-box` at 320px/32px text -- `placeTour` (tour.js)
+   already keeps every EDGE of the box `edge` (10px) inside the viewport, but
+   nothing capped the box's own height, so its content pushed straight past
+   the bottom of the screen. `max-height` matches that same 10px edge on top
+   and bottom; the box becomes a column so only `.tour-bd`, the body copy,
+   scrolls when it is the part that does not fit -- title, step count and the
+   Skip/Next row stay put. */
 .tour-box { position: absolute; width: min(21rem, calc(100vw - 1.5rem));
+  max-height: calc(100% - 20px); display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg); padding: 1rem 1.05rem .95rem; }
 .tour-step { font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .09em;
-  text-transform: uppercase; color: var(--accent); }
-.tour-t { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.024em; margin: .2rem 0 .35rem; }
-.tour-bd { font-size: var(--fs-secondary); line-height: 1.5; color: var(--ink-2); }
+  text-transform: uppercase; color: var(--accent); flex: none; }
+.tour-t { font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.024em; margin: .2rem 0 .35rem; flex: none; }
+.tour-bd { font-size: var(--fs-secondary); line-height: 1.5; color: var(--ink-2);
+  min-height: 0; overflow-y: auto; }
 .tour-bd p { margin: 0; }
 .tour-bd .tour-l { display: block; margin-top: .3rem; }
 .tour-bd .tour-l:first-child { margin-top: 0; }
 .tour-bd b { color: var(--ink); font-weight: 600; }
-.tour-acts { display: flex; align-items: center; gap: .5rem; margin-top: 1.05rem; }
+.tour-acts { display: flex; align-items: center; gap: .5rem; margin-top: 1.05rem; flex: none; }
 .tour-acts .btn { min-height: 48px; }
 .tour-acts #tourNext { min-width: 5.6rem; justify-content: center; }
 .tour-dots { display: flex; gap: .32rem; margin: 0 auto; }

@@ -1,5 +1,6 @@
-import { evalIn, step, SETTLE } from './dom.mjs';
+import { evalIn, step, navigateAndWaitForCard } from './dom.mjs';
 import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
+import { land, reset } from './page-state.mjs';
 
 /* #25 item 4 and item 7, together: with Royal active, the K1 controls read
  * the tint and nothing else on screen does; switching team changes them in
@@ -372,5 +373,124 @@ export async function teamColorPass(c, origin) {
     detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
       : 'Royal tints all twelve of item 4’s controls, all sixteen of the unchanged list stay graphite ink, '
         + 'and switching to a graphite team repaints .btn.primary with no reload',
+  };
+}
+
+/* #205's own guard (docs/specs/205-hardwood-default.md's Proof section): a
+ * new team starts in Hardwood, and a saved Graphite stays Graphite. Hardwood
+ * light's fill and label are the spec's own literals (item "What would
+ * settle it" preamble); Graphite's is `GRAPHITE_INK`, already typed above
+ * for `teamColorPass`, never re-derived. */
+const HARDWOOD_FILL = 'rgb(210, 80, 10)';
+const HARDWOOD_LABEL = 'rgb(0, 0, 0)';
+
+/* Everything one round trip reads about the team color, off static markup --
+ * `getComputedStyle` resolves the cascade regardless of `[hidden]`, same fact
+ * `READ_COLORS` above already relies on, so none of this needs Settings on
+ * screen to read `#print`, and only needs it open to read `#teamColorName`
+ * and the picker's own mark (both painted by `renderSettings` at every
+ * boot, not just while Settings is showing). */
+const READ_TEAM_DEFAULT = `(() => {
+  const $ = s => document.querySelector(s);
+  const opts = [...document.querySelectorAll('#colorOpts .color-opt')];
+  const on = opts.find(b => b.classList.contains('on'));
+  const primary = $('#print.btn.primary');
+  return JSON.stringify({
+    tint: document.documentElement.getAttribute('data-tint'),
+    primaryBg: primary ? getComputedStyle(primary).backgroundColor : null,
+    teamColorName: ($('#teamColorName') || {}).textContent || null,
+    colorOptOn: on ? on.dataset.color : null,
+    firstColor: opts[0] ? opts[0].dataset.color : null,
+    secondColor: opts[1] ? opts[1].dataset.color : null,
+  });
+})()`;
+
+const READ_WELCOME_COLOR = `(() => {
+  const e = document.getElementById('welStart');
+  return JSON.stringify({
+    tint: document.documentElement.getAttribute('data-tint'),
+    bg: e ? getComputedStyle(e).backgroundColor : null,
+    fg: e ? getComputedStyle(e).color : null,
+  });
+})()`;
+
+/* A plain `Page.navigate` to the exact URL already loaded, seeding nothing --
+ * the "no re-seeding" reload item 6 asks for, proving the color a coach
+ * picked (or already had saved) survives the app's own write, not this
+ * file's. `#print` is real markup on the games view (never built on demand),
+ * so waiting for it is waiting for the boot to finish. `dom.mjs`'s
+ * `navigateAndWaitForCard` already carries the navigate -> load -> fonts ->
+ * poll -> SETTLE sequence this needs; it only differs from its default
+ * `.card` wait by polling for `#print` instead, since this reload lands on
+ * the games view, not a screen with a card. */
+async function plainReload(c, origin) {
+  await navigateAndWaitForCard(c, origin + '/index.html', '#print');
+}
+
+export async function teamDefaultPass(c, origin) {
+  const problems = [];
+  try {
+    // Step 1 / item 3: storage cleared, no record at all -- the pre-paint
+    // script and the boot both land on Hardwood before app.js has run. A
+    // wiped device has no saved theme, so `ui.theme` resolves 'auto' against
+    // the host's own `prefers-color-scheme`; forced light here so the read
+    // matches the spec's light-mode literals, same fix `game-rows-fit.mjs`
+    // and `first-run-flow.mjs` already apply for the same reason.
+    await land(c, origin, {
+      record: 'wiped',
+      media: [{ name: 'prefers-color-scheme', value: 'light' }],
+      ready: `!document.getElementById('view-welcome').hidden`,
+    });
+    const w = JSON.parse(await evalIn(c, READ_WELCOME_COLOR));
+    if (w.tint !== 'hardwood') problems.push(`a fresh device stamps data-tint="${w.tint}" on <html>, want "hardwood"`);
+    if (w.bg !== HARDWOOD_FILL) problems.push(`#welStart background is ${w.bg} on a fresh device, want ${HARDWOOD_FILL}`);
+    if (w.fg !== HARDWOOD_LABEL) problems.push(`#welStart text is ${w.fg} on a fresh device, want ${HARDWOOD_LABEL}`);
+
+    // Step 2 / items 5 and 2: RICH has no settings block at all, so a coach
+    // who has never chosen a color sees Hardwood, and the picker lists it
+    // first.
+    await reloadWithRecord(c, origin, RICH, `document.getElementById('print')`);
+    const r = JSON.parse(await evalIn(c, READ_TEAM_DEFAULT));
+    if (r.tint !== 'hardwood') problems.push(`RICH (no color set) stamps data-tint="${r.tint}", want "hardwood"`);
+    if (r.primaryBg !== HARDWOOD_FILL) problems.push(`#print.btn.primary is ${r.primaryBg} for RICH, want ${HARDWOOD_FILL}`);
+    if (r.teamColorName !== 'Hardwood') problems.push(`#teamColorName reads "${r.teamColorName}" for RICH, want "Hardwood"`);
+    if (r.colorOptOn !== 'hardwood') problems.push(`#colorOpts .color-opt.on is "${r.colorOptOn}" for RICH, want "hardwood"`);
+    if (r.firstColor !== 'hardwood' || r.secondColor !== 'graphite') {
+      problems.push(`the picker's first two options are "${r.firstColor}", "${r.secondColor}", want "hardwood", "graphite"`);
+    }
+
+    // Step 3 / item 6: a saved Graphite stays Graphite, and survives a plain
+    // reload with nothing re-seeded.
+    const graphiteTeam = { ...RICH.teams[0], settings: { color: 'graphite' } };
+    await reloadWithRecord(c, origin, { ...RICH, teams: [graphiteTeam] }, `document.getElementById('print')`);
+    for (const label of ['seeded', 'reloaded']) {
+      if (label === 'reloaded') await plainReload(c, origin);
+      const g = JSON.parse(await evalIn(c, READ_TEAM_DEFAULT));
+      if (g.tint !== null) problems.push(`a saved Graphite team stamps data-tint="${g.tint}" (${label}), want no attribute`);
+      if (g.primaryBg !== GRAPHITE_INK) problems.push(`#print.btn.primary is ${g.primaryBg} for a saved Graphite team (${label}), want ${GRAPHITE_INK}`);
+      if (g.teamColorName !== 'Graphite') problems.push(`#teamColorName reads "${g.teamColorName}" for a saved Graphite team (${label}), want "Graphite"`);
+    }
+
+    // Step 4 / item 6's last sentence: picking Graphite in the picker on a
+    // Hardwood team, then reloading, gives the same three results.
+    await reloadWithRecord(c, origin, RICH, `document.getElementById('print')`);
+    await evalIn(c, step(`document.getElementById('settingsBtn').click()`));
+    await evalIn(c, step(`document.getElementById('teamColorBtn').click()`));
+    await evalIn(c, step(`document.querySelector('#colorOpts .color-opt[data-color="graphite"]').click()`));
+    await plainReload(c, origin);
+    const picked = JSON.parse(await evalIn(c, READ_TEAM_DEFAULT));
+    if (picked.tint !== null) problems.push(`picking Graphite then reloading stamps data-tint="${picked.tint}", want no attribute`);
+    if (picked.primaryBg !== GRAPHITE_INK) problems.push(`#print.btn.primary is ${picked.primaryBg} after picking Graphite and reloading, want ${GRAPHITE_INK}`);
+    if (picked.teamColorName !== 'Graphite') problems.push(`#teamColorName reads "${picked.teamColorName}" after picking Graphite and reloading, want "Graphite"`);
+  } catch (e) {
+    problems.push(e.message.split('\n')[0]);
+  } finally {
+    await reset(c, origin).catch(() => {});
+  }
+  return {
+    pass: problems.length === 0,
+    detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
+      : 'a fresh device, a colorless team and the picker all read Hardwood, and a saved or picked '
+        + 'Graphite survives a plain reload',
   };
 }

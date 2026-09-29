@@ -266,13 +266,13 @@ immediately: it carries one integer and nothing about anybody, and it is not a
 URL share — there is still no way to put a coach's roster in a link, and there
 must not be.
 
-When the first-run flow finishes, a four-step **tour** runs once per device
+When the first-run flow finishes, a six-step **tour** runs once per device
 (`state.tourSeen`, persisted, so it never repeats): the players phrase (#27),
-the strategy picker, the timeline and the bench button. It is a spotlight
-rather than a modal — a cutout over the coach's own screen, explained in
-place — because the alternative is a slideshow of a rotation they have never
-seen. Each step names a fallback anchor: the action bar is phone-only, so on
-desktop the last step lands on the identical button beside the card. Whether a
+the strategy picker, the rules and lineups phrase, the timeline, the
+Timeline | Card switch, and the share button. It is a spotlight rather than a
+modal — a cutout over the coach's own screen, explained in place — because
+the alternative is a slideshow of a rotation they have never seen. There is
+no fallback anchor any more; all six anchors show at every width. Whether a
 step scrolls to its anchor is read off the anchor's computed position rather
 than declared per step; a `position: fixed` one is already where it is going to
 be, and scrolling to it walks the page to the top for nothing.
@@ -284,7 +284,7 @@ what the app does with a roster. It is static markup in `index.html`, not
 built in JS: it is prose, it never depends on state, and generating it would
 only make it harder to edit. It ends with **Show me around again**, which closes
 the sheet and re-runs the tour — switching back to the Games view first, since
-three of the four anchors live there. One control opens it now — `#helpBtn`, the
+all six anchors live there. One control opens it now — `#helpBtn`, the
 **Open** button on the *How it works* row in Settings. The **?** buttons that used
 to sit beside individual controls are gone, along with the `data-help` attribute
 that told each one which section to scroll to (#33, W3). The scroll is a single `scrollTop` write on
@@ -561,15 +561,15 @@ policy is undiscoverable.
 
 The team zone opens on a group of the team's own name (`#teamName`) and
 **Team color**: one of nine choices
-(Graphite, Hardwood, Royal, Navy, Maroon, Red, Forest, Gold, Purple), each with
-a swatch. Graphite is the default and the neutral choice; the other eight tint
-the primary buttons, tappable phrases and selected states so two teams read
-visibly different at a glance. A picker dialog opens on tap, and the picker marks
-the current color and applies a new one instantly. The color is stored per team,
-so two squads with two colors stay visibly different when you switch between
-them. The tint follows the theme — each color has a light and a dark value —
-and the `--tint*` tokens live in `tokens.css` alongside the `--accent` neutrals
-(#21).
+(Hardwood, Graphite, Royal, Navy, Maroon, Red, Forest, Gold, Purple), each with
+a swatch. Hardwood is the default; Graphite is the neutral choice and the ink
+itself; the other seven tint the primary buttons, tappable phrases and selected
+states so two teams read visibly different at a glance. A picker dialog opens on
+tap, and the picker marks the current color and applies a new one instantly. The
+color is stored per team, so two squads with two colors stay visibly different
+when you switch between them. The tint follows the theme — each color has a light
+and a dark value — and the `--tint*` tokens live in `tokens.css` alongside the
+`--accent` neutrals (#21).
 
 The second group holds the game format (**A game is**: periods and minutes
 per period) and **A new game starts**: whether each new game opens with the
@@ -666,10 +666,11 @@ Season or Settings watched the same flash one view along — Games lost the
 "ships visible" seat to Today and gained a stamp of its own. **Today is stamped
 as nothing at all**, deliberately — it is the markup default, so a throw in the
 script degrades to that default screen instead of a blank frame. Graphite tint
-is also stamped as nothing (no `data-tint` attribute), matching the app's defaults
-— so a coach whose active team is not Graphite does not see a Graphite frame
-first. Shipping `#view-welcome` visible instead would only move the flash onto
-the returning coach, who loads the app far more often. The script walks `loadState`'s
+is also stamped as nothing (no `data-tint` attribute), as the base look in
+`tokens.css` — Hardwood is the default when no color is saved, so a coach
+setting up for the first time or starting a new team sees Hardwood from the
+first frame. Shipping `#view-welcome` visible instead would only move the flash
+onto the returning coach, who loads the app far more often. The script walks `loadState`'s
 whole key chain — the v6 backup, v5/v4/v3 and both legacy keys — and repeats its
 three acceptance clauses, because a cheaper check that disagreed would flash the
 welcome screen at a coach whose primary record is gone but whose backup is fine.
@@ -714,11 +715,11 @@ stack matching `.card`'s exactly, and the re-fit on font load — is a trap
 Motion, color and touch behavior run off tokens in one place: one easing curve
 (`--ease` in CSS, `EASE` from `fx.js` in JS), four durations, a neutral gray
 palette with ink as the primary tint, a `prefers-contrast: more` variant, and full light/dark (the
-Graphite look, #21). A team's color (Graphite through Purple) overrides that
-neutral tint on the primary buttons, selected states and tappable phrases (#25);
-each color declares its own `--tint*` tokens for the current theme, and
-`applyTint()` stamps `data-tint` on `<html>` so the CSS blocks apply — the same
-pattern as `data-theme`. `prefers-reduced-motion` disables all of it, and
+base look with no attribute, #21). A team's color (Hardwood, the default, through
+Purple) overrides that neutral tint on the primary buttons, selected states and
+tappable phrases (#25); each color declares its own `--tint*` tokens for the
+current theme, and `applyTint()` stamps `data-tint` on `<html>` so the CSS
+blocks apply — the same pattern as `data-theme`. `prefers-reduced-motion` disables all of it, and
 **the preference is watched, not sampled** — a phone can flip it from Control
 Center mid-game, so `fx.js` exports `enabled` as a live binding and re-reads
 the query on `change`. That gating is not decoration: the CSS

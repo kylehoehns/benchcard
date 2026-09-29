@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { loadState, KEY, BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
-         V3_KEY, COLORS } from '../app/storage.js';
+         V3_KEY, COLORS, DEFAULT_SETTINGS, colorName } from '../app/storage.js';
 
 /* THE FIRST FRAME AND THE LOADER MUST ANSWER THE SAME QUESTION.
  *
@@ -141,9 +141,9 @@ const firstPaint = (store) => {
 };
 
 /* Same script, the color half: what `data-tint` the first frame carries.
-   Graphite is today's app and needs no attribute (see tokens.css's own base
-   blocks), so its absence reads as 'graphite', the same default `sanitize`
-   gives `settings.color`. */
+   Graphite is the base look and needs no attribute (see tokens.css's own
+   base blocks), so its absence still reads as 'graphite' -- #205 changed
+   which color is the DEFAULT, not which one is the no-attribute base. */
 const firstPaintTint = (store) => runPrePaint(store)['data-tint'] || 'graphite';
 
 /* #35 decision 3, the third attribute the same script stamps: `data-view` is
@@ -199,7 +199,10 @@ const afterBoot = (store) => {
 /* #25 item 8, the color half of the same question: what `sanitize` makes of
    `teams[activeTeam].settings.color` for the real boot, read through
    `loadState` exactly as `afterBoot` reads the view above it -- never
-   recomputed by hand. */
+   recomputed by hand. The "no record at all" fallback is
+   `DEFAULT_SETTINGS.color`, not a hand-typed literal: the real boot builds
+   `freshState()`, whose team comes from `newTeam`, which reads that same
+   constant (#205). */
 const afterBootColor = (store) => {
   const prev = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   Object.defineProperty(globalThis, 'localStorage', {
@@ -209,7 +212,7 @@ const afterBootColor = (store) => {
   try {
     const loaded = loadState(H);
     const s = loaded && loaded.state;
-    return (s && s.teams[s.activeTeam]?.settings.color) || 'graphite';
+    return (s && s.teams[s.activeTeam]?.settings.color) || DEFAULT_SETTINGS.color;
   } finally {
     if (prev) Object.defineProperty(globalThis, 'localStorage', prev);
     else delete globalThis.localStorage;
@@ -366,26 +369,29 @@ test('the first-paint table reaches every view data-view can be stamped with', (
 /* #25 item 8: the team color, same shape as the view table above -- each row
    is asserted against `want` on its own before the two sides are compared. */
 const COLOR_CASES = [
-  ['a returning coach with no color set', { [KEY]: j(rec()) }, 'graphite'],
-  ['a returning coach whose team is Royal', { [KEY]: j({ ...rec(), teams: [teamColored('royal')] }) }, 'royal'],
-  ['a returning coach whose team is Hardwood', { [KEY]: j({ ...rec(), teams: [teamColored('hardwood')] }) }, 'hardwood'],
+  ['a returning coach with no color set', { [KEY]: j(rec()) }, 'hardwood'],
+  // #205: one row per COLORS entry, built from the real list rather than a
+  // hand-picked sample (the survey found the old table reached only six of
+  // the nine and would have passed a copy missing red or purple).
+  ...COLORS.map(c => [`a returning coach whose team is ${colorName(c)}`,
+    { [KEY]: j({ ...rec(), teams: [teamColored(c)] }) }, c]),
   /* THE ACTIVE-TEAM CASE. Two teams, two different colors -- a script that
      reads `teams[0]` regardless of `activeTeam` passes every row above this
      one and fails only here, which is the exact failure named in the spec's
      Proof section ("red when the script ignores activeTeam"). */
   ['a second team is active and it is Forest, the first is Royal',
     { [KEY]: j({ ...rec(), activeTeam: 1, teams: [teamColored('royal'), teamColored('forest')] }) }, 'forest'],
-  ['an unrecognized color falls back to graphite',
-    { [KEY]: j({ ...rec(), teams: [teamColored('teal')] }) }, 'graphite'],
-  ['a color that is not a string falls back to graphite',
-    { [KEY]: j({ ...rec(), teams: [teamColored(42)] }) }, 'graphite'],
+  ['an unrecognized color falls back to hardwood',
+    { [KEY]: j({ ...rec(), teams: [teamColored('teal')] }) }, 'hardwood'],
+  ['a color that is not a string falls back to hardwood',
+    { [KEY]: j({ ...rec(), teams: [teamColored(42)] }) }, 'hardwood'],
   ['an out-of-range activeTeam clamps to the last team, which is Maroon',
     { [KEY]: j({ ...rec(), activeTeam: 99, teams: [teamColored('royal'), teamColored('maroon')] }) }, 'maroon'],
   ['a good backup, no primary, team is Gold',
     { [BACKUP_KEY]: j({ ...rec(), teams: [teamColored('gold')] }) }, 'gold'],
   ['a v3 record (no settings at all) has no color to read',
-    { [V3_KEY]: j({ version: 3, players: roster(), day: { name: '', games: [newGame()] } }) }, 'graphite'],
-  ['a first-run device has no team to read a color from', {}, 'graphite'],
+    { [V3_KEY]: j({ version: 3, players: roster(), day: { name: '', games: [newGame()] } }) }, 'hardwood'],
+  ['a first-run device has no team to read a color from', {}, 'hardwood'],
   /* #61: a record saved before the settings-key rename holds only the
      pre-#61 key, and the first frame must still find it, with the same
      precedence sanitizeSettings uses (storage.test.js). */
@@ -393,6 +399,13 @@ const COLOR_CASES = [
     { [KEY]: j({ ...rec(), teams: [teamLegacyColored('navy')] }) }, 'navy'],
   ['color wins over a pre-#61 value when both are on the record',
     { [KEY]: j({ ...rec(), teams: [{ ...team(roster()), settings: { color: 'royal', colour: 'navy' } }] }) }, 'royal'], // legacy-spelling
+  /* #205 decision B, item 4: a device that saved a welcome record before this
+     change has a placeholder team with color: 'graphite' on it -- nobody
+     chose that color, because Settings cannot be reached while onboarded is
+     false. Both the pre-paint script and sanitize must load it as the
+     default instead. */
+  ['a welcome record saved before this change is Hardwood too',
+    { [KEY]: j({ ...rec([], false), teams: [{ ...team([]), settings: { color: 'graphite' } }] }) }, 'hardwood'],
 ];
 
 for (const [name, store, want] of COLOR_CASES) {
