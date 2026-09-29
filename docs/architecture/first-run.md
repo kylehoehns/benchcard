@@ -14,7 +14,8 @@ and Next stays disabled until five of them parse.
 It is the add-a-game flow's shell, down to the one painter both flows call: a
 close chip on every step (the same 36px round control as elsewhere), a chevron
 back button in the footer from step 2 on, and "Discard this team?" before typed
-text is lost, through the same `guardClose` seam. The two dialogs stay separate
+text is lost, through the same `guardClose` seam. An untouched sample is not
+typed text, so ✕ over it closes with no ask (#237). The two dialogs stay separate
 markup — what drifts between two flows is the painting, not twenty lines of tags.
 
 **Nothing is written until Next is pressed on step 2.** Step 3 shows a real
@@ -34,10 +35,10 @@ a plausible club name — for the coach with nothing to paste, and a *Fill with 
 sample team* button inside step 1 does the same for a coach who came through the
 other door and found the box empty. Nine is the roster the welcome screen's own
 rotation solves, so the team in the box is the team the coach just watched. It
-creates no team, saves nothing and goes nowhere: the coach edits the box or
-walks the steps exactly as if they had typed it, so there is nothing to undo and
-no removal sentence to get wrong. The cast lives in `roster.js` as lines of text
-that go back through `parseRoster`, so the sample is parsed by the same code a
+creates no team, saves nothing and goes nowhere: the coach can close an untouched
+sample with no ask, or edit the box and walk the steps exactly as if they had
+typed it, and from the first edit the discard ask protects it. The cast lives in
+`roster.js` as lines of text that go back through `parseRoster`, so the sample is parsed by the same code a
 paste is, and it
 opens with `#frRoster`'s own placeholder names so there is one fictional cast
 in the app rather than two. The six roster-size landing pages link in with

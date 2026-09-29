@@ -262,14 +262,22 @@ async function backAndCancel(c, ck) {
 async function discardSavesNothing(c, ck) {
   await realTap(c, '#frDiscard');
   if (!ck(await waitClosed(c, '#firstRunFlow'), '"Discard" did not close the flow')) return;
+  await assertNothingStored(c, ck, 'discarding');
+}
+
+/* Nothing was saved: in-memory state and the stored record are both untouched.
+ * `what` names the case, so a failure says which one. Returns the state read. */
+async function assertNothingStored(c, ck, what) {
   const after = await evalJSON(c, `(async () => {
     const s = await import('/state.js');
-    return JSON.stringify({ onboarded: s.state.onboarded, players: s.state.players.length });
+    return JSON.stringify({ onboarded: s.state.onboarded, players: s.state.players.length,
+      welcome: !document.getElementById('view-welcome').hidden });
   })()`);
-  ck(after.onboarded === false, `state.onboarded is ${after.onboarded} after discarding, want false`);
-  ck(after.players === 0, `state.players holds ${after.players} after discarding, want 0`);
+  ck(after.onboarded === false, `state.onboarded is ${after.onboarded} after ${what}, want false`);
+  ck(after.players === 0, `state.players holds ${after.players} after ${what}, want 0`);
   const stored = await storedPlayers(c);
-  ck(stored === 0, `the stored record holds ${stored} player(s) after discarding, want 0`);
+  ck(stored === 0, `the stored record holds ${stored} player(s) after ${what}, want 0`);
+  return after;
 }
 
 /* #237: a close request over an untouched sample leaves at once, storing
@@ -278,15 +286,8 @@ async function closesWithNoAsk(c, ck, what) {
   const closed = await waitClosed(c, '#firstRunFlow');
   const s = await flowState(c);
   ck(closed && !s.askShown, `${what} ${s.askShown ? 'showed the discard ask' : 'left the flow open'}, want it closed with no ask`);
-  const st = await evalJSON(c, `(async () => {
-    const s = await import('/state.js');
-    return JSON.stringify({ onboarded: s.state.onboarded, players: s.state.players.length,
-      welcome: !document.getElementById('view-welcome').hidden });
-  })()`);
-  ck(st.onboarded === false && st.players === 0, `${what} left onboarded ${st.onboarded} and ${st.players} player(s), want false and 0`);
+  const st = await assertNothingStored(c, ck, what);
   ck(st.welcome, `${what} did not land back on the welcome screen`);
-  const stored = await storedPlayers(c);
-  ck(stored === 0, `${what} left ${stored} player(s) in the stored record, want 0`);
 }
 
 async function asksBeforeDiscarding(c, ck, what) {

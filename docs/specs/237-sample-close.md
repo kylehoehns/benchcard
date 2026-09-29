@@ -32,8 +32,10 @@ At 390×844, on the welcome screen with no teams:
    asks. Unchanged.
 
 "Untouched" means `fr.teamName === SAMPLE_TEAM_NAME` **and**
-`fr.roster === fr.filled`. The same comparison `commitFirstRun` already uses
-for A35 decision 1 decides whether a sample counts as the coach's.
+`fr.roster === fr.filled`. The roster half is the comparison `commitFirstRun`
+already uses for A35 decision 1. That check leaves the name out on purpose,
+because it only decides whether the roster size counts in analytics. This one
+adds the name, because a renamed sample is the coach's to lose.
 
 ## Surfaces
 
