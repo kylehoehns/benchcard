@@ -12,6 +12,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FAST_MS, run, assertNeverLaunchedChrome, assertNoSmokeProfileLeft } from './helpers/smoke-cli.mjs';
+import { hasChrome } from '../scripts/smoke/chrome.mjs';
+
+/* #235. `npm test` is Cloudflare's build command too (AGENTS.md § Deploy), and
+ * its build machine has no Chrome: the two real-Chrome cases below failed
+ * every production deploy from #218 on. They skip where Chrome is missing,
+ * except on GitHub Actions, where a missing Chrome is a broken runner and
+ * must fail rather than quietly drop this coverage. */
+const NEEDS_CHROME = (await hasChrome()) || process.env.GITHUB_ACTIONS
+  ? {}
+  : { skip: 'no Chrome on this machine (Cloudflare\'s build) — smoke CI runs these' };
 
 // FAST_MS/run/assertNeverLaunchedChrome come from the same shared module
 // smoke-only.test.js imports (#178 review: they used to be two copies).
@@ -35,7 +45,7 @@ for (const value of BAD_TIMEOUTS) {
  * instead of calling its own `run` — Chrome stays alive, the call never
  * returns, and only the watchdog ends it. 45s covers Chrome's own boot (up to
  * 45s, chrome.mjs) plus the 0.5-minute (30s) timeout and its cleanup. */
-test('a hung check ends the run: exit 1, names the check, and leaves no Chrome behind', { timeout: 45_000 }, () => {
+test('a hung check ends the run: exit 1, names the check, and leaves no Chrome behind', { timeout: 45_000, ...NEEDS_CHROME }, () => {
   const r = run(
     ['--only', 'rich fixture is live', '--timeout', '0.5'],
     { BENCHCARD_SMOKE_HANG: 'rich fixture is live' },
@@ -55,7 +65,7 @@ test('a hung check ends the run: exit 1, names the check, and leaves no Chrome b
  * Chrome never exposes a DevTools page that fast. `assertNoSmokeProfileLeft`
  * checks the `benchcard-smoke-*` profile dir is gone, which after a real
  * launch only holds if cleanup removed it. */
-test('a timeout that fires while Chrome is still booting still closes it — no Chrome left behind', { timeout: 15_000 }, () => {
+test('a timeout that fires while Chrome is still booting still closes it — no Chrome left behind', { timeout: 15_000, ...NEEDS_CHROME }, () => {
   const r = run(['--only', 'rich fixture is live', '--timeout', '0.001']);
   assert.equal(r.status, 1, `expected exit 1, got ${r.status} — stdout: ${r.stdout} stderr: ${r.stderr}`);
   assert.match(r.stderr, /smoke: timed out after 0\.001 min while running/);
