@@ -42,7 +42,7 @@ import { todayPaneShowing, gamePaneShowing } from './render.js';
 import { openGameMode } from './gamemode.js';
 // #146 item 6: "Add a team" opens first run's own flow (no cycle --
 // onboarding.js does not import teams-view.js; see the note above `addTeam`).
-import { openAddTeam } from './onboarding.js';
+import { openAddTeam, showWelcomeDemo } from './onboarding.js';
 // One switch builder for the whole app (#32): the Plan sheet's "Even out
 // earlier games" row and step 3's are the same control.
 import { switchRow } from './rules.js';
@@ -432,6 +432,10 @@ function removeTeam() {
       // Removing a team from Settings returns to Today; undo returns to
       // Settings, where the coach was standing when they removed it.
       setView(undoing ? 'settings' : 'today');
+      /* Removing the last team shows the welcome screen with nothing built
+         under its tabs -- boot builds them only for a coach who starts with
+         no team (#224). */
+      if (!state.onboarded) showWelcomeDemo();
       renderAll();
     }),
   });
