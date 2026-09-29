@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-tint="hardwood">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -593,6 +593,20 @@ footer a { display: flex; align-items: center; min-height: 48px; }
   /* One unbreakable 305px token in a 288px column. */
   footer a { overflow-wrap: anywhere; }
 }
+/* #231: this page is always Hardwood, whatever team color the coach saved.
+   tokens.css sets --tint* for data-tint="hardwood" (light, dark and more
+   contrast alike) and leaves --accent* at Graphite, so this page points its
+   accent at the tint. `html:root[...]` outranks tokens.css's
+   `:root[data-theme="dark"]` and its more-contrast blocks whatever order they
+   load in. */
+html:root[data-tint="hardwood"] {
+  --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
+  --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
+}
+/* The soft orange band behind the headline and the main button. Full bleed;
+   the .wrap inside it keeps the text column's own gutter. */
+.hero-band { background: linear-gradient(to bottom, var(--tint-soft), transparent); }
+.hl { color: var(--tint); }
 </style>
 </head>
 <body>
@@ -616,9 +630,10 @@ footer a { display: flex; align-items: center; min-height: 48px; }
   </div>
 </header>
 
+<div class="hero-band">
 <div class="wrap">
 
-  <h1>Even minutes, worked out before the game.</h1>
+  <h1><span class="hl">Even minutes</span>, worked out before the game.</h1>
   <p class="lede">Benchcard is a free rotation planner for youth and rec
     basketball. Give it your roster and say how the minutes should be split, and
     it works out who is on the floor for every stint, then prints it on a card
@@ -628,6 +643,10 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     <a class="btn primary" href="./">Build a card</a>
     <a class="btn" href="#how">How it works</a>
   </div>
+</div>
+</div>
+
+<div class="wrap">
 
   <!-- The card at its true 331px render width. Deliberately not the og.png
        composition: scaled into a phone column that reads as a thumbnail of a
@@ -1195,7 +1214,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
          no date at all, so the guard is the reason the line is allowed to
          exist. The machine and human forms must agree; the guard checks that
          too. -->
-    <span>Last updated <time datetime="2026-09-27">27 September 2026</time></span>
+    <span>Last updated <time datetime="2026-09-29">29 September 2026</time></span>
   </footer>
 </div>
 
