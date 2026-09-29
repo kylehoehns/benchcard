@@ -68,6 +68,7 @@ import { seasonPass } from './season.mjs';
 import { seasonLookPass } from './season-look.mjs';
 import { gameRowsFitPass } from './game-rows-fit.mjs';
 import { pinnedCardPass } from './pinned-card.mjs';
+import { pinnedFocusPass } from './pinned-focus.mjs';
 import { todayAndBackPass } from './today-and-back.mjs';
 import { todayKeysAndUndoPass } from './today-keys-and-undo.mjs';
 import { noGamesPass } from './no-games.mjs';
@@ -192,6 +193,10 @@ export const ROWS = Object.freeze([
   // at 390, 1280 and 320px/32px, light and dark; see pinned-card.mjs.
   { id: 'pinnedcard', name: 'pinned row and details are one card', selectable: true, setup: 'rich',
     run: ctx => pinnedCardPass(ctx.c, ctx.origin) },
+  // #232: closing a pinned card (x by key or mouse, or Escape) returns focus
+  // to the player's name; see pinned-focus.mjs.
+  { id: 'pinnedfocus', name: 'closing a pinned card returns focus to the name', selectable: true, setup: 'rich',
+    run: ctx => pinnedFocusPass(ctx.c, ctx.origin) },
   { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich',
     run: ctx => todayAndBackPass(ctx.c, ctx.origin) },
   { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich',

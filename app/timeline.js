@@ -29,6 +29,16 @@ let setView = () => {};
 /* Called once at startup from app.js's wiring block. */
 export function initTimeline(setViewFn) {
   setView = setViewFn;
+  /* #232: Escape closes the pinned card from inside it or from its name. On
+     #timeline, not document, so an open modal (whose focus is elsewhere)
+     never reaches it. */
+  $('#timeline')?.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !tlPinned) return;
+    const from = e.target;
+    if (!(from === pinnedName(tlPinned) || from.closest?.('#tlDetail'))) return;
+    e.preventDefault();
+    closePinned();
+  });
 }
 
 /* #29 decisions 5 and 7: which of `#timeline` / `#sheet` shows.
@@ -414,6 +424,21 @@ export function renderTimeline() {
   renderPinned(names, p, stints, mins, starts);
 }
 
+/* The name button of one player's row: where focus lives while their card is
+   pinned, and where it returns when the card closes (#232). */
+const pinnedName = id => document.querySelector(`#timeline .tl-row[data-id="${CSS.escape(id)}"] .tl-name`);
+
+/* Close the pinned card and hand focus back to that player's name (#232):
+   the focused close button is removed with the card, which would drop focus on
+   <body>. The rows are not rebuilt by unpinning, so the name is the same
+   element before and after. Shared by the x and Escape. */
+function closePinned() {
+  const id = tlPinned;
+  tlPinned = null;
+  renderTimeline();
+  if (id) pinnedName(id)?.focus({ preventScroll: true });
+}
+
 /* A tapped row opens a plain-language read of that player's game: what they
    actually get, and the two things a coach worries about — long runs on the
    floor and long spells sitting.
@@ -454,7 +479,7 @@ function renderPinned(names, p, stints, mins, starts) {
   close.append(icon('x', { size: '.9em', stroke: 2.4 }));
   close.type = 'button';
   close.setAttribute('aria-label', 'Close');
-  close.onclick = () => { tlPinned = null; renderTimeline(); };
+  close.onclick = closePinned;
   host.append(close);
 
   const facts = el('div', 'tld-facts');
