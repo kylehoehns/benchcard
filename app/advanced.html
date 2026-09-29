@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-tint="hardwood">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -99,7 +99,9 @@ body {
 .btn:active { transform: scale(.97); }
 
 h1 {
-  font-size: clamp(1.8rem, 7vw, 2.5rem); line-height: 1.08; letter-spacing: -.04em;
+  /* The 13vw cap: at a 32px root the 1.8rem floor is 57.6px and "reference"
+     (about 5.7em) paints 329px wide in a 246px column. 13vw only binds there. */
+  font-size: min(clamp(1.8rem, 7vw, 2.5rem), 13vw); line-height: 1.08; letter-spacing: -.04em;
   font-weight: 700; margin: 1.6rem 0 0;
 }
 .lede { font-size: 1.16rem; line-height: 1.5; color: var(--ink-2); margin: 1rem 0 0; }
@@ -340,6 +342,20 @@ footer a { display: flex; align-items: center; min-height: 48px; }
   /* One unbreakable token in a 288px column. */
   footer a { overflow-wrap: anywhere; }
 }
+/* #231: this page is always Hardwood, whatever team color the coach saved.
+   tokens.css sets --tint* for data-tint="hardwood" (light, dark and more
+   contrast alike) and leaves --accent* at Graphite, so this page points its
+   accent at the tint. `html:root[...]` outranks tokens.css's
+   `:root[data-theme="dark"]` and its more-contrast blocks whatever order they
+   load in. */
+html:root[data-tint="hardwood"] {
+  --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
+  --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
+}
+/* The soft orange band behind the headline and the main button. Full bleed;
+   the .wrap inside it keeps the text column's own gutter. */
+.hero-band { background: linear-gradient(to bottom, var(--tint-soft), transparent); }
+.hl { color: var(--tint); }
 </style>
 </head>
 <body>
@@ -363,9 +379,10 @@ footer a { display: flex; align-items: center; min-height: 48px; }
   </div>
 </header>
 
+<div class="hero-band">
 <div class="wrap">
 
-  <h1>The reference</h1>
+  <h1>The <span class="hl">reference</span></h1>
   <p class="lede">Everything Benchcard can be told to do, in one place: the four
     ways to split a game, the four lineup shapes, all seven rules, what to do
     when the plan meets a real bench, the season and the two card sizes.
@@ -376,6 +393,10 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     <a class="btn primary" href="./">Open the app</a>
     <a class="btn" href="./about">What Benchcard is</a>
   </div>
+</div>
+</div>
+
+<div class="wrap">
 
   <nav class="jumpto" aria-labelledby="onthispage">
     <p id="onthispage" class="jumpto-hd">On this page</p>

@@ -36,6 +36,7 @@ that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 | `game title: one h1, opponent + status sub-line` | `scripts/smoke/game-title.mjs` | RICH |
 | `team color tints K1 only, and switches with the team` | `scripts/smoke/team-color.mjs` | RICH |
 | `new teams start in Hardwood, a saved Graphite stays` | `scripts/smoke/team-color.mjs` | RICH |
+| `welcome, about and advanced carry the Hardwood orange` | `scripts/smoke/hardwood-pages.mjs` | RICH |
 | `bench mode wake lock` | `scripts/smoke/wake-lock.mjs` | RICH |
 | `a11y in overlays and dialogs` | `scripts/smoke/overlay.mjs` | RICH |
 | `tour: six steps at 390px, 1280px and 320px/32px text` | `scripts/smoke/tour-steps.mjs` | RICH |

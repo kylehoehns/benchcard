@@ -50,6 +50,12 @@ immediately: it carries one integer and nothing about anybody, and it is not a
 URL share — there is still no way to put a coach's roster in a link, and there
 must not be.
 
+The welcome screen carries Hardwood orange styling: a soft gradient band behind
+the headline and buttons (#205, #231), and the phrase "The whole game" highlighted
+in the app's tint color. The band uses `--tint-soft` so a saved non-Hardwood
+color keeps its warmth on the welcome page — new visitors have no saved color,
+and the style is Hardwood by default.
+
 When the first-run flow finishes, a six-step **tour** runs once per device
 (`state.tourSeen`, persisted, so it never repeats): the players phrase (#27),
 the strategy picker, the rules and lineups phrase, the timeline, the

@@ -631,3 +631,42 @@ export async function gmBodyProblem(c) {
   if (gb.scrollWidth > gb.clientWidth + 1) return `.gm-body scrollWidth ${gb.scrollWidth} exceeds its clientWidth ${gb.clientWidth}`;
   return gb.worst ? `${gb.worst.el} reaches ${gb.worst.out}px past .gm-body's own box` : null;
 }
+
+/* Item 6, the pixel half. A CDP screenshot of the current viewport, decoded
+ * in the page onto a canvas -- never a regex over `oklch()` or over the
+ * gradient string (browser-verify SKILL.md item 5). `sx`/`sy` are read back
+ * from the decoded image rather than assumed: `deviceScaleFactor` and
+ * `clip.scale` compound (measured directly against #24's card shots,
+ * `scripts/og.mjs`), so trusting a fixed ratio here would silently sample
+ * the wrong pixel the day either changes. */
+/* `clip` is in page (document) coordinates, not the scrolled viewport's --
+ * measured directly against the `FOUR` fixture's third pass, which needs a
+ * scroll to reach and came back sampling the row two above the scrolled-to
+ * one until `scrollX`/`scrollY` (read back off `window` at the same moment
+ * as the points) were added here. `points` are `getBoundingClientRect`-style
+ * viewport coordinates, same as every other point this file builds. */
+export async function samplePixels(c, points, scrollX, scrollY) {
+  const clipWidth = WIDTH, clipHeight = HEIGHT + scrollY;
+  const { data } = await c.send('Page.captureScreenshot', {
+    format: 'png', clip: { x: 0, y: 0, width: clipWidth, height: clipHeight, scale: 1 },
+  });
+  const json = await evalIn(c, `(async () => {
+    const img = new Image();
+    const ready = new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+    img.src = 'data:image/png;base64,${data}';
+    await ready;
+    const sx = img.naturalWidth / ${clipWidth}, sy = img.naturalHeight / ${clipHeight};
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    const pts = ${JSON.stringify(points)};
+    const out = pts.map(p => {
+      const x = Math.min(canvas.width - 1, Math.max(0, Math.round((p.x + ${scrollX}) * sx)));
+      const y = Math.min(canvas.height - 1, Math.max(0, Math.round((p.y + ${scrollY}) * sy)));
+      return [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
+    });
+    return JSON.stringify(out);
+  })()`);
+  return JSON.parse(json);
+}

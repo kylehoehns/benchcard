@@ -78,6 +78,7 @@ import { passLargeTextPass } from './pass-large-text.mjs';
 import { threeDaysPass } from './three-days.mjs';
 import { gameTitlePass } from './game-title.mjs';
 import { teamColorPass, teamDefaultPass } from './team-color.mjs';
+import { hardwoodPagesPass } from './hardwood-pages.mjs';
 import { wakeLockPass } from './wake-lock.mjs';
 import { overlayPass } from './overlay.mjs';
 import { tourStepsPass, TOUR_STEPS_CHECK } from './tour-steps.mjs';
@@ -243,6 +244,11 @@ export const ROWS = Object.freeze([
   // -- see teamDefaultPass in team-color.mjs.
   { id: 'teamdefault', name: 'new teams start in Hardwood, a saved Graphite stays', selectable: true, setup: 'rich',
     run: ctx => teamDefaultPass(ctx.c, ctx.origin), resetAfter: true },
+  // #231's own guard (docs/specs/231-hardwood-pages.md's Proof section): the
+  // welcome screen, about.html and advanced.html carry the Hardwood orange --
+  // see hardwood-pages.mjs.
+  { id: 'hardwoodpages', name: 'welcome, about and advanced carry the Hardwood orange', selectable: true, setup: 'rich',
+    run: ctx => hardwoodPagesPass(ctx.c, ctx.origin), resetAfter: true },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich',
     run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors), resetAfter: true },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich',

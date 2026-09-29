@@ -14,7 +14,7 @@
  * `--only` can prove alone, so it measures `cold`/`coldToday` itself, the
  * same way `goRich` measures the rich fixture, just against `SEED`/`v3`
  * instead. */
-import { evalIn, step, WIDTH, HEIGHT, SETTLE, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, SETTLE, samplePixels, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
 import { FOUR, RICH, goSeed, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 import { ceiling } from '../budgets.mjs';
 import { readFileSync } from 'node:fs';
@@ -63,44 +63,6 @@ const parseRgb = s => {
 const closeEnough = (a, b, tol = 3) =>
   !!a && !!b && Math.abs(a[0] - b[0]) <= tol && Math.abs(a[1] - b[1]) <= tol && Math.abs(a[2] - b[2]) <= tol;
 
-/* Item 6, the pixel half. A CDP screenshot of the current viewport, decoded
- * in the page onto a canvas -- never a regex over `oklch()` or over the
- * gradient string (browser-verify SKILL.md item 5). `sx`/`sy` are read back
- * from the decoded image rather than assumed: `deviceScaleFactor` and
- * `clip.scale` compound (measured directly against #24's card shots,
- * `scripts/og.mjs`), so trusting a fixed ratio here would silently sample
- * the wrong pixel the day either changes. */
-/* `clip` is in page (document) coordinates, not the scrolled viewport's --
- * measured directly against the `FOUR` fixture's third pass, which needs a
- * scroll to reach and came back sampling the row two above the scrolled-to
- * one until `scrollX`/`scrollY` (read back off `window` at the same moment
- * as the points) were added here. `points` are `getBoundingClientRect`-style
- * viewport coordinates, same as every other point this file builds. */
-async function samplePixels(c, points, scrollX, scrollY) {
-  const clipWidth = WIDTH, clipHeight = HEIGHT + scrollY;
-  const { data } = await c.send('Page.captureScreenshot', {
-    format: 'png', clip: { x: 0, y: 0, width: clipWidth, height: clipHeight, scale: 1 },
-  });
-  const json = await evalIn(c, `(async () => {
-    const img = new Image();
-    const ready = new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-    img.src = 'data:image/png;base64,${data}';
-    await ready;
-    const sx = img.naturalWidth / ${clipWidth}, sy = img.naturalHeight / ${clipHeight};
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(img, 0, 0);
-    const pts = ${JSON.stringify(points)};
-    const out = pts.map(p => {
-      const x = Math.min(canvas.width - 1, Math.max(0, Math.round((p.x + ${scrollX}) * sx)));
-      const y = Math.min(canvas.height - 1, Math.max(0, Math.round((p.y + ${scrollY}) * sy)));
-      return [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
-    });
-    return JSON.stringify(out);
-  })()`);
-  return JSON.parse(json);
-}
 
 /* One pass's rotation, checked against real pixels: item 6, for pass `i`
  * (0-2; pass 3 has no rotation to check). Reads `plans`, `effectiveStints`
