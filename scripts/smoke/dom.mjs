@@ -524,7 +524,7 @@ const wordFloorRows = (nameSel, rowSel) => {
    around them is shared. */
 export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
 
-/* The navigate -> wait-for-load -> wait-for-fonts -> poll-for-`.card` ->
+/* The navigate -> wait-for-load -> wait-for-fonts -> poll-for-ready ->
    SETTLE sequence a full-page reload needs before anything on the page can be
    measured. `goRich` (`fixtures.mjs`), `appLargeTextPass` (`app-large-text.mjs`)
    and `measureLargeText` (`phone-gutter.mjs`, under a font-size override) each
@@ -535,10 +535,14 @@ export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
    caller that just set those by hand (large-text checks, ahead of their own
    migration onto `land` in a later slice) expects the reload to keep them,
    not reset to baseline. Fix pass: routed through `landKeepingAmbient` above,
-   which is the ambient-read-plus-`land` half of this; see its own comment. */
-export async function navigateAndWaitForCard(c, url) {
+   which is the ambient-read-plus-`land` half of this; see its own comment.
+   `ready` is a selector, `.card` by default; `teamDefaultPass`'s
+   `plainReload` (`team-color.mjs`) passes `#print`, since it reloads a
+   games-view record with no card to wait for. */
+export async function navigateAndWaitForCard(c, url, ready = '.card') {
   const u = new URL(url);
-  await landKeepingAmbient(c, u.origin, { page: u.pathname, query: u.search, record: 'kept' });
+  await landKeepingAmbient(c, u.origin, { page: u.pathname, query: u.search, record: 'kept',
+    ready: `document.querySelector(${JSON.stringify(ready)})` });
 }
 
 // Fix pass: routed through `landKeepingAmbient` above, same as

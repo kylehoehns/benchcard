@@ -60,7 +60,7 @@ app. *Apple: Dark Mode. Web: text-scale.*
 
 **P6. Undo, don't ask.** Act immediately and offer Undo. A confirmation is only
 for something that can't be undone. *Research: NN/g, confirmation dialogs.
-Benchcard: `architecture.md`, destructive actions.*
+Benchcard: [`architecture/interface.md`](architecture/interface.md), destructive actions.*
 
 **P7. Built from the web, not imitations of apps.** Use the browser's own
 `<dialog>`, `popover`, History and View Transitions, so the back gesture, focus
@@ -146,7 +146,7 @@ section is headed *Benchcard* and holds appearance, How it works (with the
 tour), and About, contact and the tip jar. The third is headed *Backup and
 restore* and holds file and paste backup controls. The heading is the scope, so
 a coach never has to guess which team a setting landed on. *Benchcard: decided
-2026-09-14; the two-zone split already described in `architecture.md`. #142
+2026-09-14; the structure described in [`architecture/interface.md`](architecture/interface.md). #142
 gave backup and restore its own heading, last, and moved Settings onto
 Team's grouped rows.*
 
@@ -252,8 +252,8 @@ choice has a checkmark. Icons on every item in a group, or none. *Apple: Menus.
 Web: anchor positioning (Baseline 2026).*
 
 **C9. Undo appears in a snackbar at the bottom, above the primary action.** One
-line of what happened ("Removed Harper") and Undo, for the window
-`architecture.md` describes. A new one replaces the old; they never stack.
+line of what happened ("Removed Harper") and Undo, for the behavior
+[`architecture/interface.md`](architecture/interface.md) describes. A new one replaces the old; they never stack.
 *Material 2: Snackbars. Research: NN/g, confirmation dialogs.*
 
 **C10. Bench mode and multi-step flows are full screen.** Close ✕ top left, and
@@ -264,7 +264,7 @@ including any floating bar. *Apple: Modality. Material: Dialogs (full screen).*
 
 ## Color
 
-Graphite by default. The players are the color. A team color, if chosen, marks
+Hardwood by default. The players are the color. A team color, if chosen, marks
 what you can press.
 
 | Token | Light | Dark |
@@ -274,7 +274,7 @@ what you can press.
 | Ink (the Graphite tint) | `#1C1C1E` | `#F4F4F6` |
 | Secondary text | `#6C6C72` | `#98989F` |
 
-Team colors: Graphite (default), Hardwood, Royal, Navy, Maroon, Red, Forest,
+Team colors: Hardwood (default), Graphite, Royal, Navy, Maroon, Red, Forest,
 Gold, Purple. Each has a light and a dark value; Gold needs dark text on its fill.
 
 **K1. The tint goes on three things only.** The primary action's fill, the
@@ -453,7 +453,7 @@ a group, when a choice truly needs it. The full explanation lives in How it work
 *Apple: Design principles ("Be concise").*
 
 **W4. Problems say what to do, with the button that goes there.** *Benchcard:
-`architecture.md`, blocked states say why.*
+[`architecture/blocked-states.md`](architecture/blocked-states.md), blocked states say why.*
 
 ---
 
