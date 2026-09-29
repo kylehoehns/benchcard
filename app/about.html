@@ -605,7 +605,13 @@ html:root[data-tint="hardwood"] {
 }
 /* The soft orange band behind the headline and the main button. Full bleed;
    the .wrap inside it keeps the text column's own gutter. */
-.hero-band { background: linear-gradient(to bottom, var(--tint-soft), transparent); }
+/* #238: the band owns the space above the h1 as padding. As the h1's own
+   margin it collapsed out through the band, leaving bare page under the top
+   bar and the band's hard top edge on the headline. The fade is the welcome
+   screen's (.wel-hero): strongest under the bar, gone by the sides. */
+.hero-band { padding-top: 1.6rem;
+  background: radial-gradient(120% 100% at 50% 0%, var(--tint-soft), transparent 70%); }
+.hero-band h1 { margin-top: 0; }
 .hl { color: var(--tint); }
 </style>
 </head>

@@ -73,6 +73,10 @@ const READ = p => `(() => {
     bodyColor: fg(${JSON.stringify(p.body)}),
     bandImage: band ? getComputedStyle(band).backgroundImage : null,
     bandBehindH1: !!(band && h1 && band.contains(h1) && rb.top <= rh.top && rb.bottom >= rh.bottom),
+    // #238: the h1's margin used to collapse out through the band, leaving a
+    // strip of bare page under the top bar and the band's edge on the h1.
+    bandGap: band && $('.topbar') ? Math.round(rb.top - r($('.topbar')).bottom) : null,
+    h1Inset: band && h1 ? Math.round(rh.top - rb.top) : null,
     hlBox: hl ? { x: r(hl).left - 2, y: r(hl).top - 2 } : null,
     bodyBox: body ? { x: r(body).left - 2, y: r(body).top - 2 } : null,
     scroll: [window.scrollX, window.scrollY],
@@ -119,6 +123,8 @@ export async function hardwoodPagesPass(c, origin) {
         else {
           if (s.bandImage === 'none') note(where, `${p.band} has no background-image`);
           if (!s.bandBehindH1) note(where, `${p.band} does not sit behind the h1`);
+          if (s.bandGap !== null && s.bandGap !== 0) note(where, `${p.band} starts ${s.bandGap}px below the top bar, want 0`);
+          if (s.h1Inset !== null && s.h1Inset < 16) note(where, `the h1 sits ${s.h1Inset}px inside ${p.band}'s top edge, want at least 16`);
         }
         // Item 4: contrast, against the painted pixel up and left of each text
         // box (viewport points; the scroll offset is read back with them).
