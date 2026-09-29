@@ -108,11 +108,13 @@ test('every row in the README table is exactly one ROWS entry, in ROWS order', (
 
 /* Build `function name -> file` straight from registry.mjs's own import
  * lines, per the spec's "reuse, do not re-derive": every named import from a
- * './x.mjs' path is a check module's own exported ...Pass function. */
+ * './x.mjs' path is a check module's own export. One line can name several
+ * (team-color.mjs has two ...Pass functions; tour-steps.mjs also exports the
+ * row's name), and a name that is never called as `name(` is never counted. */
 const registrySrc = readFileSync(REGISTRY_PATH, 'utf8');
 const funcToFile = new Map();
-for (const m of registrySrc.matchAll(/import\s*\{\s*(\w+)\s*\}\s*from\s*'\.\/([^']+)'/g)) {
-  funcToFile.set(m[1], m[2]);
+for (const m of registrySrc.matchAll(/import\s*\{([^}]*)\}\s*from\s*'\.\/([^']+)'/g)) {
+  for (const name of m[1].split(',').map(s => s.trim()).filter(Boolean)) funcToFile.set(name, m[2]);
 }
 assert.ok(funcToFile.size > 30, `found only ${funcToFile.size} named imports in registry.mjs — the regex or the file moved`);
 

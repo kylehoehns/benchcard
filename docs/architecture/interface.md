@@ -144,15 +144,15 @@ policy is undiscoverable.
 
 The team zone opens on a group of the team's own name (`#teamName`) and
 **Team color**: one of nine choices
-(Graphite, Hardwood, Royal, Navy, Maroon, Red, Forest, Gold, Purple), each with
-a swatch. Graphite is the default and the neutral choice; the other eight tint
-the primary buttons, tappable phrases and selected states so two teams read
-visibly different at a glance. A picker dialog opens on tap, and the picker marks
-the current color and applies a new one instantly. The color is stored per team,
-so two squads with two colors stay visibly different when you switch between
-them. The tint follows the theme — each color has a light and a dark value —
-and the `--tint*` tokens live in `tokens.css` alongside the `--accent` neutrals
-(#21).
+(Hardwood, Graphite, Royal, Navy, Maroon, Red, Forest, Gold, Purple), each with
+a swatch. Hardwood is the default; Graphite is the neutral choice and the ink
+itself; the other seven tint the primary buttons, tappable phrases and selected
+states so two teams read visibly different at a glance. A picker dialog opens on
+tap, and the picker marks the current color and applies a new one instantly. The
+color is stored per team, so two squads with two colors stay visibly different
+when you switch between them. The tint follows the theme — each color has a light
+and a dark value — and the `--tint*` tokens live in `tokens.css` alongside the
+`--accent` neutrals (#21).
 
 The second group holds the game format (**A game is**: periods and minutes
 per period) and **A new game starts**: whether each new game opens with the
@@ -249,10 +249,11 @@ Season or Settings watched the same flash one view along — Games lost the
 "ships visible" seat to Today and gained a stamp of its own. **Today is stamped
 as nothing at all**, deliberately — it is the markup default, so a throw in the
 script degrades to that default screen instead of a blank frame. Graphite tint
-is also stamped as nothing (no `data-tint` attribute), matching the app's defaults
-— so a coach whose active team is not Graphite does not see a Graphite frame
-first. Shipping `#view-welcome` visible instead would only move the flash onto
-the returning coach, who loads the app far more often. The script walks `loadState`'s
+is also stamped as nothing (no `data-tint` attribute), as the base look in
+`tokens.css` — Hardwood is the default when no color is saved, so a coach
+setting up for the first time or starting a new team sees Hardwood from the
+first frame. Shipping `#view-welcome` visible instead would only move the flash
+onto the returning coach, who loads the app far more often. The script walks `loadState`'s
 whole key chain — the v6 backup, v5/v4/v3 and both legacy keys — and repeats its
 three acceptance clauses, because a cheaper check that disagreed would flash the
 welcome screen at a coach whose primary record is gone but whose backup is fine.
@@ -297,11 +298,11 @@ stack matching `.card`'s exactly, and the re-fit on font load — is a trap
 Motion, color and touch behavior run off tokens in one place: one easing curve
 (`--ease` in CSS, `EASE` from `fx.js` in JS), four durations, a neutral gray
 palette with ink as the primary tint, a `prefers-contrast: more` variant, and full light/dark (the
-Graphite look, #21). A team's color (Graphite through Purple) overrides that
-neutral tint on the primary buttons, selected states and tappable phrases (#25);
-each color declares its own `--tint*` tokens for the current theme, and
-`applyTint()` stamps `data-tint` on `<html>` so the CSS blocks apply — the same
-pattern as `data-theme`. `prefers-reduced-motion` disables all of it, and
+base look with no attribute, #21). A team's color (Hardwood, the default, through
+Purple) overrides that neutral tint on the primary buttons, selected states and
+tappable phrases (#25); each color declares its own `--tint*` tokens for the
+current theme, and `applyTint()` stamps `data-tint` on `<html>` so the CSS
+blocks apply — the same pattern as `data-theme`. `prefers-reduced-motion` disables all of it, and
 **the preference is watched, not sampled** — a phone can flip it from Control
 Center mid-game, so `fx.js` exports `enabled` as a live binding and re-reads
 the query on `change`. That gating is not decoration: the CSS
@@ -400,7 +401,7 @@ width, and the smoke check `today and game controls ≥ 48px` sweeps them.
 
 **Destructive actions are undoable, not confirmed.** Removing a player,
 removing a game, starting a new day, clearing in-game changes, editing a game
-while it is underway, editing or removing a rule, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
+while it is underway, editing or removing a rule, removing a unit from the Platoon editor, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
 at the wrong moment — before the coach can see what it did, and a game removal
 is only judgeable once the rest of the day has rebalanced. When a game is
 part-played and an edit changes its period count, period minutes, Sub interval,
@@ -445,9 +446,9 @@ Mobile specifics that came out of real use:
   transparent.
   The stack replaced a strip of tabs (#23) that had to cap a label at 20
   characters. A pass has no such cap: `.pass-title` wraps at large text sizes
-  (320px with 32px text, #66) to keep every team name whole, and truncates
-  with a tail ellipsis only at normal sizes when one name is wider than its
-  own row, keeping the full label in the pass's accessible name. `.pass-summary`
+  (320px with 32px text, #66/#187) to keep every team name whole, and truncates
+  with a tail ellipsis when a single word is wider than the available space
+  (#187), keeping the full label in the pass's accessible name. `.pass-summary`
   wraps at every size instead of ending in an ellipsis (#66).
 - **Squad pills elide the same way, and for the same reason.** `.plr .nm` is
   capped at 15ch, and a tail ellipsis cut the surname off — two kids with the

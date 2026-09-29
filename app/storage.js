@@ -180,11 +180,13 @@ export const DEFAULT_SETTINGS = Object.freeze({
   periods: 4,
   periodMinutes: 8,
   /* The team's color, in Settings and in the tint it hands the K1 controls
-     (see app/render.js's applyTint). 'graphite' is neutral ink, and it is
-     what every record written before this key existed means. The values
-     themselves live only in tokens.css -- this file names the nine slots,
-     never a hex. */
-  color: 'graphite',
+     (see app/render.js's applyTint). 'hardwood' is the default (#205): a
+     coach who has not chosen one yet sees the app's own color from the
+     first frame, on the welcome screen, through first run and on a new
+     team. 'graphite' is still the neutral, no-attribute choice a coach can
+     pick, but it no longer means "nobody chose". The values themselves live
+     only in tokens.css -- this file names the nine slots, never a hex. */
+  color: 'hardwood',
 });
 
 const TIE_BREAKS = Object.freeze(['behind', 'levels']);
@@ -195,7 +197,7 @@ const TIE_BREAKS = Object.freeze(['behind', 'levels']);
    name is its value capitalized -- 'graphite' -> 'Graphite' -- so a display
    name is derived, not a second array. */
 export const COLORS = Object.freeze([
-  'graphite', 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple',
+  'hardwood', 'graphite', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple',
 ]);
 export const colorName = c => c.charAt(0).toUpperCase() + c.slice(1);
 
@@ -232,9 +234,9 @@ export const sanitizeSettings = raw => {
     periodMinutes: Math.round(num(
       strictNum(s.periodMinutes), DEFAULT_SETTINGS.periodMinutes, 1, 40)),
     // an unknown string, a wrong case, or anything that is not one of the
-    // nine names is a record we cannot paint -- fall back to the neutral one.
+    // nine names is a record we cannot paint -- fall back to the default.
     // #61 renamed this key: a valid `color` wins, else a valid value under
-    // the pre-#61 key, else graphite.
+    // the pre-#61 key, else the default.
     color: COLORS.includes(s.color) ? s.color
       : COLORS.includes(s.colour) ? s.colour : DEFAULT_SETTINGS.color, // legacy-spelling
   };
@@ -635,10 +637,17 @@ export function sanitize(raw, helpers) {
   // past any real coach and still bounded.
   const teams = rawTeams.slice(0, 12).map(t => sanitizeTeam(t, helpers));
   const anyPlayers = teams.some(t => t.players.length);
+  const onboarded = !!raw.onboarded || anyPlayers;
+  /* #205 decision B: while a record is not onboarded, it can only hold a
+     placeholder team nobody could have picked a color for -- Settings is
+     unreachable until onboarded is true (setView forces welcome). So a
+     `color` saved on it is not a choice, and it loads as the default
+     instead of whatever was last written there. */
+  if (!onboarded) for (const t of teams) t.settings.color = DEFAULT_SETTINGS.color;
 
   return {
     version: 7,
-    onboarded: !!raw.onboarded || anyPlayers,
+    onboarded,
     // the first-run tour is once per device, so this has to survive a reload;
     // an unrecognized value means "not seen yet", which is the safe way round
     tourSeen: !!raw.tourSeen,

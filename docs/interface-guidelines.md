@@ -264,7 +264,7 @@ including any floating bar. *Apple: Modality. Material: Dialogs (full screen).*
 
 ## Color
 
-Graphite by default. The players are the color. A team color, if chosen, marks
+Hardwood by default. The players are the color. A team color, if chosen, marks
 what you can press.
 
 | Token | Light | Dark |
@@ -274,7 +274,7 @@ what you can press.
 | Ink (the Graphite tint) | `#1C1C1E` | `#F4F4F6` |
 | Secondary text | `#6C6C72` | `#98989F` |
 
-Team colors: Graphite (default), Hardwood, Royal, Navy, Maroon, Red, Forest,
+Team colors: Hardwood (default), Graphite, Royal, Navy, Maroon, Red, Forest,
 Gold, Purple. Each has a light and a dark value; Gold needs dark text on its fill.
 
 **K1. The tint goes on three things only.** The primary action's fill, the

@@ -76,9 +76,10 @@ import { passUnderwayPass } from './pass-underway.mjs';
 import { passLargeTextPass } from './pass-large-text.mjs';
 import { threeDaysPass } from './three-days.mjs';
 import { gameTitlePass } from './game-title.mjs';
-import { teamColorPass } from './team-color.mjs';
+import { teamColorPass, teamDefaultPass } from './team-color.mjs';
 import { wakeLockPass } from './wake-lock.mjs';
 import { overlayPass } from './overlay.mjs';
+import { tourStepsPass, TOUR_STEPS_CHECK } from './tour-steps.mjs';
 import { touchPass } from './touch.mjs';
 import { settingsRowPass } from './settings-rows.mjs';
 import { settingsLookPass } from './settings-look.mjs';
@@ -89,6 +90,7 @@ import { todayGameRowsPass } from './today-game-rows.mjs';
 import { sentenceSheetsPass } from './sentence-sheets.mjs';
 import { planSheetPass } from './plan-sheet.mjs';
 import { ruleEditPass } from './rule-edit.mjs';
+import { platoonUndoPass } from './platoon-undo.mjs';
 import { sheetSpacingPass } from './sheet-spacing.mjs';
 import { sheetFamilyPass } from './sheet-family.mjs';
 import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
@@ -129,6 +131,11 @@ import { focusAnnouncePass } from './focus-announce.mjs';
 // it registers on every new document travels through registry.mjs's own
 // re-export instead of a direct import.
 export { FONT_INJECTION_SCRIPT } from './smoke-font.mjs';
+
+// #178: the pinned clock script, reaching smoke.mjs through this same
+// re-export rather than a sixth `./smoke/` import -- see clock.mjs's own
+// header and docs/specs/178-smoke-deterministic.md's Constraints section.
+export { CLOCK_SCRIPT } from './clock.mjs';
 
 // The same "swept at these widths" suffix five rows below share verbatim —
 // named once so it cannot drift between them the way TOUCH_CHECK's own name
@@ -222,10 +229,20 @@ export const ROWS = Object.freeze([
     run: ctx => gameTitlePass(ctx.c, ctx.origin) },
   { id: 'teamcolor', name: 'team color tints K1 only, and switches with the team', selectable: true, setup: 'rich',
     run: ctx => teamColorPass(ctx.c, ctx.origin), resetAfter: true },
+  // #205's own guard (docs/specs/205-hardwood-default.md's Proof section): a
+  // fresh device, a team with no color set and the picker itself all read
+  // Hardwood, and a saved or newly-picked Graphite survives a plain reload
+  // -- see teamDefaultPass in team-color.mjs.
+  { id: 'teamdefault', name: 'new teams start in Hardwood, a saved Graphite stays', selectable: true, setup: 'rich',
+    run: ctx => teamDefaultPass(ctx.c, ctx.origin), resetAfter: true },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich',
     run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors), resetAfter: true },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich',
     run: ctx => overlayPass(ctx.c, ctx.source) },
+  // #201's own guard (docs/specs/201-tour-refresh.md's Proof table): the six
+  // tour steps' copy, counting, ring and fit -- see tour-steps.mjs.
+  { id: 'tourSteps', name: TOUR_STEPS_CHECK, selectable: true, setup: 'rich',
+    run: ctx => tourStepsPass(ctx.c, ctx.origin) },
   { id: 'touch', name: `${TOUCH_CHECK}, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
     run: ctx => touchPass(ctx.c, ctx.origin, ctx.source), replaces: TOUCH_CHECK },
   { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
@@ -270,6 +287,11 @@ export const ROWS = Object.freeze([
   // "Open Team" button -- see rule-edit.mjs.
   { id: 'ruleedit', name: 'edit a rule in place', selectable: true, setup: 'rich',
     run: ctx => ruleEditPass(ctx.c, ctx.origin) },
+  // #159's own guard (see docs/specs/159-platoon-undo.md's Proof section):
+  // "Remove unit N" in the Platoon editor acts at once and offers Undo, the
+  // same shape "Remove rule" gets -- see platoon-undo.mjs.
+  { id: 'platoonundo', name: 'remove a platoon unit, then Undo', selectable: true, setup: 'rich',
+    run: ctx => platoonUndoPass(ctx.c, ctx.origin) },
   // #73's own guard (see docs/specs/73-sheet-polish.md's Proof section):
   // stepper column equality at 390px and 320px/32px, equal row padding
   // whether a row wraps, the balance value clearing its label, and every

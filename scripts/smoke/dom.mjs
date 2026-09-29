@@ -4,15 +4,102 @@
 
 export const WIDTH = 390, HEIGHT = 844;
 
+/* Fix pass, efficiency-2: `page-state.mjs` is imported dynamically everywhere
+   in this file for the load-order reason `setWidth`'s own comment below
+   gives -- but every one of those call sites was re-awaiting its own
+   `import()`, which after the first call is just a promise the module loader
+   already has cached; nothing needs a second round trip through it. One
+   module-level promise, created on first use and reused by every later call
+   in this process, same as the loader would do anyway, minus the repeated
+   await. */
+let pageStateModule;
+const pageState = () => (pageStateModule ??= import('./page-state.mjs'));
+
 /* Fix pass finding 3: `bar-rows.mjs` and `gm-open.mjs` each carried a
    byte-for-byte identical `setWidth` -- override the device metrics at the
    given width (keeping this suite's own HEIGHT and mobile emulation unless a
    caller needs a different height too, #147's own short-phone heights among
    them), then wait two rAFs for the resulting reflow to settle before
-   anything measures it. One copy here, imported by everyone who needs it. */
+   anything measures it. One copy here, imported by everyone who needs it.
+   #125: a one-line wrapper over `resize` (`page-state.mjs`), which does the
+   exact same two things and nothing else -- a dynamic import, not a static
+   one, because `page-state.mjs` itself imports from this file (`WIDTH`,
+   `evalIn`) and a static import back would be a load-order-dependent cycle:
+   whichever of the two modules some other file happens to import first would
+   decide whether `page-state.mjs`'s own top-level `BASELINE` sees `RICH`
+   already initialized or not. A dynamic import resolves at call time, after
+   the whole module graph has settled, so it is safe either way. */
 export async function setWidth(c, width, height = HEIGHT) {
-  await c.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  const { resize } = await pageState();
+  return resize(c, width, height);
+}
+
+/* #125: the ambient page state a check has already set by hand -- via a raw
+   CDP call right beside the wrapped call below -- before asking for a
+   navigate, wipe or reseed. `land` (`page-state.mjs`) always asserts every
+   field of the state it lands on, baseline width/text/media included when a
+   caller leaves them out, so a wrapper that only passed through the one field
+   it used to touch would silently reset whatever the CALLER had already
+   emulated a moment earlier: a check narrowed to 320px, or pinned to
+   `prefers-color-scheme: light`, immediately before the reload it expects to
+   land at that same width and scheme (`first-run-flow.mjs`'s `firstRunPass`
+   is the real case this was caught against -- it pins light, then reloads
+   through what is now `landWiped`, then reads a theme-dependent color).
+   Read here, off the page itself, and passed straight back into `want` by
+   the wrapper that calls this, so the reload re-asserts the same state
+   instead of resetting it. `matchMedia` cannot tell "the host really is
+   light" from "CDP forced light"; it does not need to -- reasserting
+   whichever value it currently reports reproduces the same visible page
+   state either way. */
+export async function ambient(c) {
+  const json = await evalIn(c, `JSON.stringify({
+    width: document.documentElement.clientWidth,
+    textPx: parseFloat(getComputedStyle(document.documentElement).fontSize),
+    dark: matchMedia('(prefers-color-scheme: dark)').matches,
+    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+    forcedColors: matchMedia('(forced-colors: active)').matches,
+    moreContrast: matchMedia('(prefers-contrast: more)').matches,
+    reducedTransparency: matchMedia('(prefers-reduced-transparency: reduce)').matches,
+  })`);
+  const a = JSON.parse(json);
+  return {
+    width: a.width,
+    textPx: a.textPx,
+    media: [
+      { name: 'prefers-color-scheme', value: a.dark ? 'dark' : 'light' },
+      { name: 'prefers-reduced-motion', value: a.reducedMotion ? 'reduce' : 'no-preference' },
+      { name: 'forced-colors', value: a.forcedColors ? 'active' : 'none' },
+      { name: 'prefers-contrast', value: a.moreContrast ? 'more' : 'no-preference' },
+      { name: 'prefers-reduced-transparency', value: a.reducedTransparency ? 'reduce' : 'no-preference' },
+    ],
+  };
+}
+
+/* Fix pass, efficiency-1 + reuse-2 (handed back together: the fix for one is
+   the fix for the other): the "dynamic import, read `ambient`, call `land`
+   carrying its width/textPx/media forward" idiom five wrappers hand-copied --
+   this file's own `navigateAndWaitForCard` and `landWiped` below, plus
+   `fixtures.mjs`'s `goRich`, `goSeed` and `reloadWithRecord`. One helper,
+   here, next to `ambient` itself.
+
+   On skipping the read: `ambient`'s own comment above names the one real case
+   it exists for -- a caller that has already set width/text/media by hand,
+   right before asking for a reload (`first-run-flow.mjs`'s `firstRunPass`).
+   The other four wrappers are called about 130 times combined across
+   `scripts/smoke/`, and proving which of those call sites can and cannot have
+   deviated from `BASELINE` first would mean auditing every one by hand and
+   keeping that audit right as the migration in slices 3 and 4 moves more
+   checks onto `land` directly -- exactly the kind of one-off proof that goes
+   stale the next time a check changes what it does before reloading. Given
+   that cost, this keeps the read: one `Runtime.evaluate` round trip per
+   reload not the two dynamic-import-call sites finding 2 was about, and
+   still one copy of the idiom, not five. A later slice that DOES thread
+   "did this caller touch CDP state" through from the call site can drop the
+   read for the callers that answer no; nothing here forecloses that. */
+export async function landKeepingAmbient(c, origin, want) {
+  const { land } = await pageState();
+  const a = await ambient(c);
+  return land(c, origin, { width: a.width, textPx: a.textPx, media: a.media, ...want });
 }
 
 /* Evaluate in the page and throw the page's own error, rather than letting a
@@ -135,11 +222,21 @@ export const SOLID_FALLBACK_MEDIA = [
   ['prefers-contrast', 'more'],
 ];
 
+// #125 fix pass, reuse-1: is `#id` the screen currently on show, as a plain
+// JS-expression string rather than a value read through CDP -- so a caller
+// that needs the EXPRESSION (`GAMES_VIEW_READY`, fixtures.mjs, evaluated
+// later inside `land`'s own boot-wait poll) and a caller that wants the
+// ANSWER right now (`onScreen` below, both #23 checks) share one builder
+// instead of `fixtures.mjs` re-typing the check by hand and dropping the null
+// guard: an id that has not painted yet must read false and let the poll
+// retry, not throw a `TypeError` on `.hidden` of `null`.
+export const screenReadyExpr = id => `!!(document.getElementById('${id}') && !document.getElementById('${id}').hidden)`;
+
 // Is `#id` the screen currently on show? Both #23 checks below ask this of
 // more than one screen (Today, and on the keys/undo side, Games too), so it
 // is one helper rather than a `!!(document.getElementById(...) && ...)` at
 // every call site.
-export const onScreen = (c, id) => evalIn(c, `!!(document.getElementById('${id}') && !document.getElementById('${id}').hidden)`);
+export const onScreen = (c, id) => evalIn(c, screenReadyExpr(id));
 
 // #145 item 8: a named set of one element's own computed-style properties,
 // or null if the selector matches nothing -- the way `add-game-flow.mjs` and
@@ -294,6 +391,30 @@ export const OVERFLOW_PROBE = `(() => {
    scan both need this, so it lives once. */
 export const IS_SR_ONLY_RECT = `(r => r.width <= 1 && r.height <= 1)`;
 
+/* #200: the named list of computed-style longhands `WORD_FLOOR_FN`'s
+   measuring span copies from the real element, in place of the `font`
+   shorthand. Chrome's `getComputedStyle(...).font` comes back `""` -- not a
+   fallback value, the empty string -- whenever a longhand it cannot express
+   in the shorthand is off its initial value, and `body` sets two such
+   longhands (`font-feature-settings`, `font-variant-numeric`) that every
+   element in the app inherits. A span given `style.font = ''` keeps
+   WHATEVER font it already had -- here, `body`'s own at weight 400 -- so a
+   600-weight row's longest word measured far too small and a name squeezed
+   narrower than that word could pass a floor check that should have caught
+   it. One named constant, so `dom.mjs`, `bench-look.mjs`'s failure messages
+   and a reader all point at the same list. */
+export const WORD_FONT_PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
+  'fontStretch', 'fontVariant', 'fontFeatureSettings', 'fontVariationSettings',
+  'fontKerning', 'letterSpacing', 'textTransform'];
+
+/* An element's own text, ignoring a child element (`.tag` beside `.nm`, "just
+   on") -- only its DIRECT text nodes, concatenated and trimmed. `WORD_FLOOR_FN`
+   uses this to decide what a name or title actually says; `bench-look.mjs`'s
+   #200 calibration reuses the exact same function (spliced in alongside
+   `WORD_FLOOR_FN`) to re-find the identical node the floor measured, rather
+   than a second hand-typed copy of the same walk. */
+export const DIRECT_TEXT = `(el => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim())`;
+
 /* #144's own squeeze check reuses this, #138's own first: the floor a name or
    a title is held to at a large root, once something beside it is fighting
    it for space, is `min(its longest single word, the row's own content-box
@@ -309,12 +430,14 @@ export const IS_SR_ONLY_RECT = `(r => r.width <= 1 && r.height <= 1)`;
    same pattern `season-look.mjs`'s `TEXT_LEFT_FN` already uses) rather than
    exported as a full expression on its own, since every caller wraps its
    result in a JSON payload carrying its own extra fields alongside `rows`. */
-export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
+export const WORD_FLOOR_FN = `const WORD_FONT_PROPS = ${JSON.stringify(WORD_FONT_PROPS)};
+const directText = ${DIRECT_TEXT};
+const wordFloorRows = (nameSel, rowSel) => {
   const vw = document.documentElement.clientWidth;
   const entries = [];
   for (const nm of document.querySelectorAll(nameSel)) {
     if (!nm.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
-    const text = [...nm.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim();
+    const text = directText(nm);
     if (!text) continue;
     // Split after a hyphen too, not only on whitespace: a hyphen is a normal
     // soft-wrap point (UAX #14) the same as a space, so a name breaking there
@@ -334,8 +457,7 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
     entry.spans = entry.words.map(word => {
       const span = document.createElement('span');
       span.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap;';
-      span.style.font = cs.font;
-      span.style.letterSpacing = cs.letterSpacing;
+      for (const prop of WORD_FONT_PROPS) span.style[prop] = cs[prop];
       span.textContent = word;
       document.body.appendChild(span);
       allSpans.push(span);
@@ -346,8 +468,9 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
   allSpans.forEach(s => s.remove());
 
   const rows = [];
-  for (const { nm, text, widths } of entries) {
+  for (const { nm, text, words, widths } of entries) {
     const longest = Math.max(...widths);
+    const longestWord = words[widths.indexOf(longest)];
     const row = nm.closest(rowSel);
     const rcs = getComputedStyle(row);
     let rowContent = row.clientWidth - parseFloat(rcs.paddingLeft) - parseFloat(rcs.paddingRight);
@@ -373,6 +496,7 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
     rows.push({
       text, width: nm.clientWidth,
       longest: Math.round(longest * 10) / 10,
+      longestWord,
       rowContent: Math.round(rowContent * 10) / 10,
       floor: Math.round(floor * 10) / 10,
       contained,
@@ -400,33 +524,32 @@ export const WORD_FLOOR_FN = `const wordFloorRows = (nameSel, rowSel) => {
    around them is shared. */
 export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
 
-/* The navigate -> wait-for-load -> wait-for-fonts -> poll-for-`.card` ->
+/* The navigate -> wait-for-load -> wait-for-fonts -> poll-for-ready ->
    SETTLE sequence a full-page reload needs before anything on the page can be
    measured. `goRich` (`fixtures.mjs`), `appLargeTextPass` (`app-large-text.mjs`)
    and `measureLargeText` (`phone-gutter.mjs`, under a font-size override) each
-   carried an identical copy of this until it moved here. */
-export async function navigateAndWaitForCard(c, url) {
-  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url });
-  await loaded;
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
+   carried an identical copy of this until it moved here.
+   #125: a one-line wrapper over `land` (`page-state.mjs`) -- `record: 'kept'`
+   because this function never seeded anything itself, `.card` because that
+   is `land`'s own default `ready`, and `ambient`'s width/text/media because a
+   caller that just set those by hand (large-text checks, ahead of their own
+   migration onto `land` in a later slice) expects the reload to keep them,
+   not reset to baseline. Fix pass: routed through `landKeepingAmbient` above,
+   which is the ambient-read-plus-`land` half of this; see its own comment.
+   `ready` is a selector, `.card` by default; `teamDefaultPass`'s
+   `plainReload` (`team-color.mjs`) passes `#print`, since it reloads a
+   games-view record with no card to wait for. */
+export async function navigateAndWaitForCard(c, url, ready = '.card') {
+  const u = new URL(url);
+  await landKeepingAmbient(c, u.origin, { page: u.pathname, query: u.search, record: 'kept',
+    ready: `document.querySelector(${JSON.stringify(ready)})` });
 }
 
+// Fix pass: routed through `landKeepingAmbient` above, same as
+// `navigateAndWaitForCard`.
 export async function landWiped(c, url, readyJs) {
-  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: LOCALSTORAGE_WIPE });
-  try {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !(${readyJs}); i++)
-        await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
-  } finally {
-    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  }
+  const u = new URL(url);
+  await landKeepingAmbient(c, u.origin, { page: u.pathname, query: u.search, record: 'wiped', ready: readyJs });
 }
 
 /* #28's own overflow probe, for a `dialog[open]`: every visible descendant

@@ -6,6 +6,7 @@ import { FOUR, reloadWithRecord } from './fixtures.mjs';
 import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
 import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
+import { welcomeBarsProblem } from './welcome-bars.mjs';
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
@@ -161,7 +162,13 @@ export const APP_LARGE_TEXT_STATES = [
      adds the other two sentence sheets Who's here sits beside: Format and
      Sub interval, now the same `.pgrp`/`.prow` family. #148 adds a rule's
      own edit page, one cap and one pair. */
-  ...['help sheet', 'shortcuts sheet', 'tour, first step', 'team color picker', "who's here sheet",
+  /* #201: all six tour steps, not only the first -- the box's own fit at
+     this cell is exactly what the tour refresh had to add (survey item 1),
+     and a check that only ever opened step 1 would never have seen it. */
+  ...['help sheet', 'shortcuts sheet',
+      'tour, step 1 of 6', 'tour, step 2 of 6', 'tour, step 3 of 6',
+      'tour, step 4 of 6', 'tour, step 5 of 6', 'tour, step 6 of 6',
+      'team color picker', "who's here sheet",
       'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'plan sheet, a cap rule', 'plan sheet, a pair rule',
       'card sheet open']
     .map(n => STATES.find(s => s.name === n)),
@@ -732,6 +739,10 @@ export async function appLargeTextPass(c, origin) {
         if (gbMsg) problems.push(`${where}: ${gbMsg}`);
         const rsMsg = ROW_STACK_STATES.has(v.name) && await rowStackProblem(c, v.name);
         if (rsMsg) problems.push(`${where}: ${rsMsg}`);
+        // #199: the demo plan's stint bars, checked only on the one state
+        // that renders them (see welcome-bars.mjs).
+        const wbMsg = v.name === 'welcome screen, first run' && await welcomeBarsProblem(c);
+        if (wbMsg) problems.push(`${where}: ${wbMsg}`);
       } catch (e) {
         problems.push(`${where}: ${e.message.split('\n')[0]}`);
       } finally {

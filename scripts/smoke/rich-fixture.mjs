@@ -1,4 +1,11 @@
 import { evalIn, SETTLE } from './dom.mjs';
+import { smokeToday } from './clock.mjs';
+import { seasonDate } from '../../app/storage.js';
+
+// #178 item 1: the pinned smoke day, in the same YYYY-MM-DD shape the page
+// itself reads and saves it in -- reusing `seasonDate` and `smokeToday`
+// rather than typing the literal "2026-09-12" a second time.
+const PINNED_DAY = seasonDate(smokeToday());
 
 /* A fixture is not a guard until something fails when it does not arrive.
  *
@@ -16,6 +23,16 @@ export async function fixturePass(c) {
   const probe = await evalIn(c, `(async () => {
     const $ = s => document.querySelector(s);
     const out = { host: location.host };
+    /* #178 item 1: the page's own clock reads the pinned smoke day, and the
+       record it saved carries that same day -- proof that the clock script
+       (clock.mjs's CLOCK_SCRIPT) is registered and running before the app's
+       own scripts, not the host's real date. seasonDate(new Date()) is read
+       from storage.js the same way the app itself stamps a day, never
+       re-derived by hand here. */
+    const { seasonDate } = await import('/storage.js');
+    out.pageToday = seasonDate(new Date());
+    const raw = localStorage.getItem('benchcard.v7');
+    out.savedDate = raw ? (JSON.parse(raw).teams?.[0]?.days?.[0]?.date ?? null) : null;
     $('#todayTeam').click();
     await ${SETTLE};
     /* #31 decision 6: the one levels control still on this screen sits in
@@ -54,6 +71,8 @@ export async function fixturePass(c) {
   })()`);
   const r = JSON.parse(probe);
   const missing = [
+    r.pageToday === PINNED_DAY ? null : `the page's own clock reads ${r.pageToday}, want the pinned day ${PINNED_DAY}`,
+    r.savedDate === PINNED_DAY ? null : `the saved record's day date is ${r.savedDate}, want the pinned day ${PINNED_DAY}`,
     r.resetLevels >= 1 ? null : 'no "back to the same level" button — no player is off the default level',
     r.dayGames >= 2 ? null : `day legend names ${r.dayGames} game(s), want ≥ 2`,
     r.dayRows >= 11 ? null : `day totals has ${r.dayRows} row(s), want 11`,

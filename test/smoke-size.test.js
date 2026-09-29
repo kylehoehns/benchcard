@@ -3,7 +3,7 @@
  * just that check without paging through the whole file. This asserts the
  * ceiling the split promised — every file in `scripts/smoke.mjs` and under
  * `scripts/smoke/` (recursively, in case a future split nests a directory)
- * is under 40,000 bytes — rather than trusting that a later edit never grows
+ * is under `LIMIT` bytes — rather than trusting that a later edit never grows
  * one of them back past it.
  *
  * Byte size, not line count: a `.mjs` file with long template strings (the
@@ -40,7 +40,7 @@ function smokeFiles() {
   return [join(ROOT, 'scripts', 'smoke.mjs'), ...walk(join(ROOT, 'scripts', 'smoke'))];
 }
 
-test('every file that makes up the smoke harness is under 40,000 bytes', () => {
+test(`every file that makes up the smoke harness is under ${LIMIT.toLocaleString('en-US')} bytes`, () => {
   const files = smokeFiles();
 
   // 2a: a check that measured nothing FAILS, not passes vacuously. If the

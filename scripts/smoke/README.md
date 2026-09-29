@@ -34,8 +34,10 @@ that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 | `three days: headings, title, back label, add for tomorrow, no overflow` | `scripts/smoke/three-days.mjs` | RICH |
 | `game title: one h1, opponent + status sub-line` | `scripts/smoke/game-title.mjs` | RICH |
 | `team color tints K1 only, and switches with the team` | `scripts/smoke/team-color.mjs` | RICH |
+| `new teams start in Hardwood, a saved Graphite stays` | `scripts/smoke/team-color.mjs` | RICH |
 | `bench mode wake lock` | `scripts/smoke/wake-lock.mjs` | RICH |
 | `a11y in overlays and dialogs` | `scripts/smoke/overlay.mjs` | RICH |
+| `tour: six steps at 390px, 1280px and 320px/32px text` | `scripts/smoke/tour-steps.mjs` | RICH |
 | `touch targets ≥ 48px, 320–390px` | `scripts/smoke/touch.mjs` | RICH |
 | `settings rows ≥ 48px, 320–390px` | `scripts/smoke/settings-rows.mjs` | RICH |
 | `settings look: no border, 32px insets, sentence case, one footnote per group` | `scripts/smoke/settings-look.mjs` | RICH |
@@ -46,6 +48,7 @@ that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 | `sentence and sheets` | `scripts/smoke/sentence-sheets.mjs` | RICH |
 | `plan sheet` | `scripts/smoke/plan-sheet.mjs` | RICH |
 | `edit a rule in place` | `scripts/smoke/rule-edit.mjs` | RICH |
+| `remove a platoon unit, then Undo` | `scripts/smoke/platoon-undo.mjs` | RICH |
 | `sheet spacing` | `scripts/smoke/sheet-spacing.mjs` | RICH |
 | `the list sheets share one background, one row, one check` | `scripts/smoke/sheet-family.mjs` | RICH |
 | `game screen: Timeline \| Card and the card sheet` | `scripts/smoke/timeline-card-sheet.mjs` | RICH |

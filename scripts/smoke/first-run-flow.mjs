@@ -459,7 +459,7 @@ async function finishStartsTheTour(c, ck) {
     return JSON.stringify({ shown: !!(t && !t.hidden), step: (document.getElementById('tourStep')?.textContent || '').trim() });
   })()`);
   ck(seen.shown === true, '#tour did not appear within 1000ms of finishing step 3');
-  ck(seen.step === 'Step 1 of 4', `#tourStep reads "${seen.step}", want "Step 1 of 4"`);
+  ck(seen.step === 'Step 1 of 6', `#tourStep reads "${seen.step}", want "Step 1 of 6"`);
 }
 
 // renderCards also draws .card-copy clones for the multi-copy print path
