@@ -43,7 +43,7 @@ const PAGES = [
     h1: 'The reference', phrase: 'reference',
     band: '.hero-band', h1Sel: 'h1', hl: 'h1 .hl', button: '.cta .btn.primary', link: 'p a', body: '.lede' },
   { name: 'welcome', page: '/index.html', record: 'wiped', ready: `!document.getElementById('view-welcome').hidden`,
-    h1: 'The whole game, worked out before you leave the house.', phrase: 'the house',
+    h1: 'The whole game, worked out before you leave the house.', phrase: 'The whole game',
     band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '.wel-sub' },
 ];
 

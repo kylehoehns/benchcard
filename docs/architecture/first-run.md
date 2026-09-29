@@ -51,7 +51,7 @@ URL share — there is still no way to put a coach's roster in a link, and there
 must not be.
 
 The welcome screen carries Hardwood orange styling: a soft gradient band behind
-the headline and buttons (#205, #231), and the phrase "the house" highlighted
+the headline and buttons (#205, #231), and the phrase "The whole game" highlighted
 in the app's tint color. The band uses `--tint-soft` so a saved non-Hardwood
 color keeps its warmth on the welcome page — new visitors have no saved color,
 and the style is Hardwood by default.

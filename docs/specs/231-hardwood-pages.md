@@ -26,7 +26,9 @@ and a bold solid-orange hero.
 3. **Each page's top section gets a soft orange band** behind the headline and
    main button. It is built from the Hardwood tokens.
 4. **One headline phrase is set in orange:**
-   - welcome: "the house" in "The whole game, worked out before you leave the house."
+   - welcome: "The whole game" in "The whole game, worked out before you leave the house."
+     This was "the house" until the owner saw the preview; it moved so the
+     orange lands on the promise at the start of the line, as on About.
    - about: "Even minutes" in "Even minutes, worked out before the game."
    - advanced: "reference" in "The reference".
 5. **The rest of each page keeps its current background.** This adds warmth; it
