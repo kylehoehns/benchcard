@@ -24,6 +24,7 @@ that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 | `season: minutes so far, filed games, the day chart` | `scripts/smoke/season.mjs` | RICH |
 | `season: one list style, prototype row sizes` | `scripts/smoke/season-look.mjs` | RICH |
 | `game rows fit, 390×844` | `scripts/smoke/game-rows-fit.mjs` | RICH |
+| `pinned row and details are one card` | `scripts/smoke/pinned-card.mjs` | RICH |
 | `today and back` | `scripts/smoke/today-and-back.mjs` | RICH |
 | `today keys and undo` | `scripts/smoke/today-keys-and-undo.mjs` | RICH |
 | `no games: Today's empty state, blocked entry, undo` | `scripts/smoke/no-games.mjs` | RICH |

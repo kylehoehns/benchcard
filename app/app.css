@@ -593,15 +593,18 @@ a { color: inherit; }
    desktop-wide (34em), since .tl sits in the fluid main column, never the
    fixed one a phone could reach. --tot starts at the width the number alone
    needs; :not(.even) widens it for the MOST/FEWEST word column. */
-.tl { --lab: 9.5rem; --tot: 2rem; container-type: inline-size; }
+.tl { --lab: 9.5rem; --tot: 2rem; --edge-l: .5rem; --edge-r: .4rem; container-type: inline-size; }
 .tl:not(.even) { --tot: 5.2rem; }
 /* No gap under the Q1-Q4 labels: align-items: end already leaves the
    label's descender space before the first row, so a gap here would eat
    into the budget that fits nine rows plus the Start game bar inside
    844px. */
-.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: 0; }
+.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: 0;
+  /* The same side insets as .tl-row (its 3px/1px transparent edges plus its
+     padding), so the Q1-Q4 axis and every track share one left and right. */
+  padding: 0 calc(1px + var(--edge-r)) 0 calc(3px + var(--edge-l)); }
 .tl-head > div:first-child, .tl-head > div:last-child { display: none; }
-.tl-periods { position: relative; height: 1.1rem; padding: 0 .3rem; }
+.tl-periods { position: relative; height: 1.1rem; }
 /* A quiet footnote above the track, the same ink as any other muted label. */
 .tl-periods span {
   position: absolute; top: 0; font-size: var(--fs-footnote); font-weight: 500;
@@ -613,7 +616,10 @@ a { color: inherit; }
 .tl-row {
   display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lab tot" "trk trk";
   gap: .6rem; row-gap: .22rem; align-items: center;
-  padding: .3rem .3rem .4rem; border-radius: var(--r-xs);
+  padding: .3rem var(--edge-r) .4rem var(--edge-l); border-radius: var(--r-xs);
+  /* Every row carries the pinned card's side edges, transparent until pinned,
+     so pinning paints a stripe without moving anything (#225). */
+  border: solid transparent; border-width: 0 1px 0 3px;
   transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 .tl-lab { grid-area: lab; display: flex; align-items: center; gap: .4rem; min-width: 0; }
@@ -649,7 +655,6 @@ a { color: inherit; }
   .tl-head, .tl-row { --lab: 6.5rem; }
   .tl-head { grid-template-columns: var(--lab) 1fr var(--tot); }
   .tl-head > div:first-child, .tl-head > div:last-child { display: block; }
-  .tl-periods { padding: 0; }
   /* One row, not grid-template-areas: none -- .tl-lab/.tl-track/.tl-tot keep
      the same grid-area names as the stacked layout, so this only renames the
      arrangement rather than clearing names and hoping auto-placement sorts
@@ -662,7 +667,7 @@ a { color: inherit; }
      for the same container-query reason --lab is set on .tl-head/.tl-row. */
   .tl-row {
     grid-template-columns: var(--lab) 1fr var(--tot); grid-template-areas: "lab trk tot";
-    row-gap: 0; padding: 0; --row-pitch: 2.25rem; min-height: var(--row-pitch);
+    row-gap: 0; padding: 0 var(--edge-r) 0 var(--edge-l); --row-pitch: 2.25rem; min-height: var(--row-pitch);
   }
   /* Stretches the label cell (and the button inside it) to the row's own
      height; .tl-name's min-height: var(--row-pitch) below is what sets the
@@ -741,21 +746,34 @@ a { color: inherit; }
 @media (hover: hover) { .tl:hover .tl-row:not(:hover) { opacity: .45; } }
 @media (hover: hover) { .tl-row:hover { background: var(--surface-2); } }
 
-.tl-row.pin { background: var(--surface-2); box-shadow: inset 2px 0 0 var(--c); }
-.tl.pinned .tl-row:not(.pin) { opacity: .38; }
-@media (hover: hover) { .tl.pinned:hover .tl-row:not(:hover):not(.pin) { opacity: .38; } }
+/* One card, in two boxes: the pinned row is its top and .tld (a sibling right
+   under it) its bottom. Same fill, same 3px stripe in the player's color
+   (every row already holds that 3px edge, transparent), same 1px outline; the
+   row rounds only its top corners and .tld only its bottom ones, and the top
+   line is an inset shadow because a real border would grow the row and move
+   its contents (#225). */
+.tl-row.pin {
+  background: var(--surface-2); border-left-color: var(--c); border-right-color: var(--line-2);
+  border-radius: var(--r-sm) var(--r-sm) 0 0; box-shadow: inset 0 1px 0 var(--line-2);
+}
+/* !important because riseIn (fx.js) leaves an inline `opacity: 1` on every row
+   once the entrance animation ends, which would otherwise beat this rule and
+   leave the other rows undimmed. */
+.tl.pinned .tl-row:not(.pin) { opacity: .38 !important; }
+@media (hover: hover) { .tl.pinned:hover .tl-row:not(:hover):not(.pin) { opacity: .38 !important; } }
 
 .tld {
-  margin: .3rem 0 .55rem; padding: .85rem .95rem;
-  border: 1px solid var(--line-2); border-left: 3px solid var(--c, var(--accent));
-  border-radius: var(--r-sm); background: var(--surface-2);
+  margin: 0 0 .55rem; padding: .85rem .95rem; display: flow-root;
+  border: solid var(--line-2); border-width: 0 1px 1px 3px; border-left-color: var(--c, var(--accent));
+  border-radius: 0 0 var(--r-sm) var(--r-sm); background: var(--surface-2);
 }
 /* the panel is a sibling of the rows, so keep the dimming off it */
 .tl.pinned .tld { opacity: 1; }
-.tld-hd { display: flex; align-items: center; gap: .55rem; margin-bottom: .8rem; }
-.tld-hd .dot { width: .62rem; height: .62rem; border-radius: 50%; flex: none; }
-.tld-nm { font-weight: 700; letter-spacing: -.022em; font-size: var(--fs-body); }
-.tld-x { width: 1.7rem; height: 1.7rem; border-radius: var(--r-full); color: var(--muted); font-size: var(--fs-body); }
+/* The close button rides the top-right corner of the details, out into the
+   padding so it is a full 48px target without pushing the facts down; the
+   facts wrap around it. */
+.tld-x { float: right; width: 48px; height: 48px; margin: -.55rem -.65rem 0 .3rem; border-radius: var(--r-full);
+  color: var(--muted); font-size: var(--fs-body); display: grid; place-items: center; }
 @media (hover: hover) { .tld-x:hover { background: var(--surface-3); color: var(--ink); } }
 .tld-facts { display: flex; flex-wrap: wrap; gap: 1.3rem; }
 .tld-f .k { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
