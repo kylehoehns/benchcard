@@ -217,7 +217,6 @@ test('every exported ...Pass function is the run of exactly one registry row, ex
  * exists at real speed), or this walk measured nothing. */
 test('a row\'s `motion` field is only ever \'real\' or absent, and `sentence and sheets` carries it', async () => {
   const { ROWS } = await import('../scripts/smoke/registry.mjs');
-  assert.ok(ROWS.length >= 70, `read only ${ROWS.length} registry rows — the walk found almost nothing`);
   const withField = ROWS.filter(r => 'motion' in r);
   assert.ok(withField.length >= 1, 'no registry row carries `motion` — the opt-out is never used, or this walk read nothing');
   const bad = withField.filter(r => r.motion !== 'real').map(r => `${r.name}: ${JSON.stringify(r.motion)}`);

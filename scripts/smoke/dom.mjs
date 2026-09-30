@@ -152,11 +152,14 @@ export async function evensOutWant(c, hhmm) {
    which is a different code path from the one coaches run. */
 export const FAST_PLAYBACK_RATE = 100;
 
-/* #241: the one node-side fixed sleep. Rows used to each carry their own
-   `const wait = ms => new Promise(r => setTimeout(r, ms))`; routing them all
+/* #241: the node-side fixed sleep. Rows used to each carry their own
+   `const wait = ms => new Promise(r => setTimeout(r, ms))`; routing them
    through here is what lets `--timing` say how much of a run was spent
-   sleeping. Use it only for a sleep that waits out an APP timer, sized from
-   that timer; a wait for a condition belongs in `waitFor` below. */
+   sleeping. Use it only for real elapsed time (a toast that must still be up
+   2s later, a drag's hold) or a poll; a wait on an animation or an app timer
+   of at most TRACKED_TIMER_MS belongs in `quiet` below. A sleep inside a
+   page-side template string cannot come through here, and is not counted:
+   `--timing`'s "executed sleep" is the node-side total only. */
 export const sleepTally = { ms: 0, calls: 0 };
 /* What `--timing` reports for `settle` (sheet-drive.mjs): waits, how many hit
    SETTLE_CAP_MS, and their total ms. */
@@ -173,6 +176,18 @@ const RUNNING_ANIMATIONS = `const running = () => document.getAnimations().filte
     const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
     return a.playState === 'running' && t && t.iterations !== Infinity;
   }).length;`;
+/* Two rAF frames, or the time left to the cap, whichever comes first. A page
+   whose requestAnimationFrame stalls (a hidden tab, a hung renderer) would
+   otherwise hang `evalIn` forever, since a cap checked only between frames is
+   never reached. The timer is the ORIGINAL setTimeout (`__untrackedTimeout`,
+   TIMER_TRACKER), so the tracker does not count its own timer as pending. */
+const FRAMES = `const frames = cap => new Promise(r => {
+    (window.__untrackedTimeout || setTimeout)(r, Math.max(0, cap - Date.now()));
+    requestAnimationFrame(() => requestAnimationFrame(r));
+  });`;
+/* The cap on every page-side settle: SETTLE and TIMERS_QUIET share it, so a
+   stuck page costs the same either way and the two cannot drift. */
+export const SETTLE_CAP_MS = 3000;
 /* Wait until nothing is animating. `fx.js` fades controls in from opacity 0
    and `smoke-checks.js` skips anything at opacity 0, so a page measured
    mid-entrance is audited for whichever controls happened to have arrived:
@@ -182,12 +197,13 @@ const RUNNING_ANIMATIONS = `const running = () => document.getAnimations().filte
    measures early. */
 export const SETTLE = `(async () => {
   ${RUNNING_ANIMATIONS}
-  const cap = Date.now() + 3000;
+  ${FRAMES}
+  const cap = Date.now() + ${SETTLE_CAP_MS};
   // two consecutive quiet samples: one is not enough, since fx.js starts the
   // next element's animation on the frame after the last one finished
   for (let quiet = 0; quiet < 2 && Date.now() < cap; ) {
     quiet = running() ? 0 : quiet + 1;
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await frames(cap);
   }
 })()`;
 
@@ -200,14 +216,14 @@ export const SETTLE = `(async () => {
    the like, which a settle is not meant to outwait). TIMERS_QUIET then waits
    for two frame pairs with none pending AND no finite animation running
    (SETTLE's own test, in one loop so a settle costs two frame pairs, not
-   four), capped at SETTLE_CAP_MS. No app number is copied: whatever short
+   four), capped at SETTLE_CAP_MS, even if the page's rAF stalls (FRAMES). No app number is copied: whatever short
    timer the app arms is waited out. A page the tracker is not on
    (`window.__pendingShort` absent) gets the frames only. */
 export const TRACKED_TIMER_MS = 500;
-export const SETTLE_CAP_MS = 1500;
 export const TIMER_TRACKER = `(() => {
   const pending = new Set(), st = window.setTimeout, ct = window.clearTimeout;
   window.__pendingShort = pending;
+  window.__untrackedTimeout = st.bind(window);
   window.setTimeout = function (fn, ms, ...rest) {
     if (typeof fn !== 'function' || !(Number(ms) > ${TRACKED_TIMER_MS})) {
       let id;
@@ -222,15 +238,32 @@ export const TIMER_TRACKER = `(() => {
 })();`;
 export const TIMERS_QUIET = `(async () => {
   ${RUNNING_ANIMATIONS}
+  ${FRAMES}
   const cap = Date.now() + ${SETTLE_CAP_MS};
   let quiet = 0;
   while (quiet < 2) {
-    if (Date.now() > cap) return 'capped';
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (Date.now() >= cap) return 'capped';
+    await frames(cap);
     quiet = (!running() && (window.__pendingShort ? window.__pendingShort.size === 0 : true)) ? quiet + 1 : 0;
   }
   return 'quiet';
 })()`;
+/* One wait on TIMERS_QUIET, counted in `settleTally` (what `--timing` prints,
+   and what runCheck warns about when a row's wait hit its cap). `js`
+   (optional) runs first, in the same page evaluation, with `$` as
+   querySelector -- the shape `step` gives, minus its SETTLE: TIMERS_QUIET
+   already waits out animations, so a click-then-wait is one wait, not two.
+   Every condition wait in the rows goes through here, so none is uncounted. */
+export async function quiet(c, js = '') {
+  settleTally.calls++;
+  const t0 = Date.now();
+  const result = await evalIn(c, js
+    ? `(async () => { const $ = s => document.querySelector(s); ${js};\n return ${TIMERS_QUIET}; })()`
+    : TIMERS_QUIET);
+  if (result === 'capped') settleTally.capped++;
+  settleTally.ms += Date.now() - t0;
+}
+
 /* A real CDP key press: rawKeyDown, an optional char (for keys that type) and
    keyUp. `text` is the character a printable key types ('\r' for Enter). */
 export const key = async (c, k, code, vk, text) => {

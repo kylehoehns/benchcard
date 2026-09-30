@@ -1,4 +1,4 @@
-import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS, wait } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
@@ -104,13 +104,13 @@ export const APP_LARGE_TEXT_STATES = [
      one an unmodified plan — and the undo path is exercised for free. */
   { name: 'bench mode, undo toast',
     open: `document.querySelector('#gmOpen').click();
-           await new Promise(r => setTimeout(r, 400));
+           await ${TIMERS_QUIET};
            document.querySelector('#gmFloor .gm-p').click();
-           await new Promise(r => setTimeout(r, 400));
+           await ${TIMERS_QUIET};
            [...document.querySelectorAll('#gamemode button')]
              .find(b => b.textContent.trim() === 'Sit for the rest').click()`,
     close: `document.querySelector('.toast .tundo')?.click();
-            await new Promise(r => setTimeout(r, 400));
+            await ${TIMERS_QUIET};
             document.querySelector('#gmClose').click()` },
   { name: 'bench mode, swap picker',
     open: `document.querySelector('#gmOpen').click();
@@ -119,12 +119,12 @@ export const APP_LARGE_TEXT_STATES = [
   /* #147 item 7: the swap toast's minutes clause; close takes the Undo. */
   { name: 'bench mode, swap toast',
     open: `document.querySelector('#gmOpen').click();
-           await new Promise(r => setTimeout(r, 400));
+           await ${TIMERS_QUIET};
            document.querySelector('#gmFloor .gm-p').click();
-           await new Promise(r => setTimeout(r, 400));
+           await ${TIMERS_QUIET};
            document.querySelector('#gmBench .gm-b').click()`,
     close: `document.querySelector('.toast .tundo')?.click();
-            await new Promise(r => setTimeout(r, 400));
+            await ${TIMERS_QUIET};
             document.querySelector('#gmClose').click()` },
   /* #135 item 12: the last stint's own footer row -- #gmFinish beside #gmDone,
      #gmPrev and the dots, none of which any state above puts on screen
@@ -301,7 +301,7 @@ export const APP_LARGE_TEXT_STATES = [
            window.__hiddenPlayers = s.state.players.slice(3);
            s.state.players = s.state.players.slice(0, 3);
            rr.renderAll();
-           await new Promise(r => setTimeout(r, 250));
+           await ${TIMERS_QUIET};
            document.querySelector('.today-game').click();`,
     close: `const s = await import('/state.js');
             const rr = await import('/render.js');

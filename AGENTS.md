@@ -177,10 +177,7 @@ also ends on its own if it hangs: `--timeout <minutes>` (default 60) closes
 Chrome and exits 1, naming the check it was on; `Ctrl-C`/`kill` do the same.
 No `perl -e 'alarm …'` wrapper is needed.
 
-Animations play at `FAST_PLAYBACK_RATE` (`scripts/smoke/dom.mjs`, #241); a row
-that asserts on an animation itself says `motion: 'real'` in the registry.
-`--timing` prints where a full run's time went. `scripts/smoke/README.md` has
-the detail.
+How a run spends its time (fast animations, `--timing`, when to sleep): `scripts/smoke/README.md`.
 
 It drives `index.html` for all of that, plus one pass over every screen at
 320px with the browser's default font size emulated at 32px (a reader on 200%

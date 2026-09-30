@@ -9,11 +9,15 @@ that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 
 How a run spends its time (#241): every page plays animations at
 `FAST_PLAYBACK_RATE` (`dom.mjs`); a row that asserts on an animation itself
-carries `motion: 'real'` in `registry.mjs` and runs at 1x. `settle()` waits on
-the app's short timers (`TIMER_TRACKER`/`TIMERS_QUIET`), not a fixed sleep.
-`--timing` prints each rich row's seconds, the executed sleep and how often a
-settle hit its cap. A new node-side sleep goes through `wait` in `dom.mjs`, and
-only for real elapsed time or an app timer.
+carries `motion: 'real'` in `registry.mjs` and runs at 1x. A wait on an
+animation or an app timer of at most `TRACKED_TIMER_MS` is a condition, not a
+sleep: `settle`/`tap` (`sheet-drive.mjs`), `resize(..., { debounce: true })`
+(`page-state.mjs`) or `quiet` (`dom.mjs`), all on `TIMERS_QUIET`, which sees
+those timers through `TIMER_TRACKER`. Only real elapsed time (a toast still up
+2s later, a drag's hold) or a poll uses `wait` in `dom.mjs`. A sleep written
+inside a page-side template string is not counted anywhere. `--timing` prints
+each timed row's seconds, the node-side sleep through `wait`, and how many
+settles hit their cap; a capped settle is also named on stderr in every run.
 
 | Check | File | Fixture |
 | --- | --- | --- |

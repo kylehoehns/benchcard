@@ -58,9 +58,14 @@ const readMinutes = `(() => {
   })));
 })()`;
 
-// liveOnly (#241): after Undo's click the dismissed toast (`.out`) lingers up to
-// 600ms when its sheet closes first. That is a toast leaving, not a second
-// offer; a real second one is not `.out` and still fails.
+// liveOnly (#241): what a fast run captured at the Sub interval check
+// (rotation-undo's own diagnostic, run at FAST_PLAYBACK_RATE): the sheet is
+// open with its toast when Undo is clicked, and 450ms later `#sheetInterval` is
+// already closed while its toast is still in the DOM as `toast out`, in the
+// closed dialog. `dismissToast` (toast.js) removes a dismissed toast on
+// `animationend`, or after a 600ms fallback, and a closed dialog runs no
+// animation, so that toast waits out the fallback. It is a toast leaving, not a
+// second offer; a real second one is not `.out` and still fails.
 const readToast = readToastExpr(undefined, true);
 
 // Item 6 follow-up: a half sheet (`dialog.bsheet.bsheet-half`) has to stay at

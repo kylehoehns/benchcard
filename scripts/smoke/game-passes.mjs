@@ -90,7 +90,7 @@ async function checkRotation(c, origin, i, problems) {
     const avail = mod.availIds(g);
     const passEl = document.querySelectorAll('#todayGames .today-game')[${i}];
     passEl.scrollIntoView({ block: 'center' });
-    await new Promise(r => setTimeout(r, 60));
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); // the scroll's layout
     const rowEls = [...passEl.querySelectorAll('.pass-rot .pass-row')];
     const rows = rowEls.map((el, idx) => ({ id: avail[idx], rect: el.getBoundingClientRect().toJSON() }));
     const bg = getComputedStyle(passEl).backgroundColor;

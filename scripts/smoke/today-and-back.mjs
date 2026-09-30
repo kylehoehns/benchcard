@@ -1,6 +1,15 @@
-import { evalIn, SETTLE, step, WIDTH, HEIGHT, onScreen } from './dom.mjs';
+import { evalIn, quiet, SETTLE, step, WIDTH, HEIGHT, onScreen, wait } from './dom.mjs';
 import { RICH, withSecondTeam, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+
+/* `history.back()`, then wait for the popstate it raises and for the screen it
+   restores to go quiet (its pane slide, `PANE_MS`, and any short timer). The
+   listener is armed first, so a popstate that lands before the first frame
+   cannot be missed. */
+async function historyBack(c) {
+  await evalIn(c, `new Promise(ok => { addEventListener('popstate', ok, { once: true }); history.back(); })`);
+  await quiet(c);
+}
 
 export async function todayAndBackPass(c, origin) {
   const problems = [];
@@ -286,9 +295,7 @@ export async function todayAndBackPass(c, origin) {
     if (opened.href !== href0) problems.push(`${name}: location.href changed to ${opened.href}`);
 
     // history.back() lands on Today.
-    await evalIn(c, `history.back()`);
-    await new Promise(r => setTimeout(r, 200));
-    await evalIn(c, SETTLE);
+    await historyBack(c);
     if (!(await onToday())) problems.push(`${name}: history.back() did not land on Today`);
 
     // reopen, then use the back BUTTON, which must land on Today too.
@@ -370,9 +377,7 @@ export async function todayAndBackPass(c, origin) {
     // one `history.back()` from the twice-reloaded pushed screen lands on
     // Today -- still the same document, a same-page pushState/replaceState
     // entry, not a navigation.
-    await evalIn(c, `history.back()`);
-    await new Promise(r => setTimeout(r, 200));
-    await evalIn(c, SETTLE);
+    await historyBack(c);
     if (!(await onToday())) {
       problems.push(`${name}: two reloads then one history.back() did not land on Today `
         + `(history.length was ${lenAfterReload1} -> ${lenAfterReload2})`);
@@ -384,7 +389,7 @@ export async function todayAndBackPass(c, origin) {
     await evalIn(c, `history.back()`);
     let hrefAfterSecondBack = hrefAfterReloads;
     for (let i = 0; i < 40 && hrefAfterSecondBack === hrefAfterReloads; i++) {
-      await new Promise(r => setTimeout(r, 50));
+      await wait(50); // a poll for a real navigation
       hrefAfterSecondBack = await evalIn(c, 'location.href').catch(() => hrefAfterSecondBack);
     }
     if (hrefAfterSecondBack === hrefAfterReloads) {

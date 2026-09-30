@@ -16,7 +16,7 @@
  * quietly undoing AC4 in landscape only). So item 4's declaration check
  * below walks the live CSSOM and audits EVERY rule that sets the property,
  * not the one the base block happens to contain. */
-import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
+import { evalIn, step, SETTLE, TIMERS_QUIET, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
 import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 /* The five screens and the click that reaches each one, from the one list
    that already holds them -- `sweep.mjs`'s `VIEWS`, which `app-large-text.mjs`
@@ -134,7 +134,7 @@ export async function floatingControlsPass(c, origin) {
        TRANSITION: read two frames in and the computed value is whatever the
        fade has reached so far, which is still nearly 0. Wait it out rather
        than reading a number mid-flight. */
-    await new Promise(r => setTimeout(r, 400));
+    await ${TIMERS_QUIET};
     out.opacityScrolled = getComputedStyle(document.getElementById('barTitle')).opacity;
     /* The hand-off itself: at the moment the large title's BOTTOM passes the
        bar's bottom edge, one of the two titles has to be on screen. A

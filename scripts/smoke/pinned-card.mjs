@@ -13,7 +13,7 @@
  * Rule 2a of /new-guard: every landing must find its rows, the panel, the
  * dot, the track and the time axis, or it fails on that instead of passing on
  * nothing. */
-import { evalIn, SETTLE } from './dom.mjs';
+import { evalIn, quiet } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { RICH } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
@@ -152,7 +152,7 @@ export async function pinnedCardPass(c, origin) {
       const before = JSON.parse(await evalIn(c, MEASURE));
       await evalIn(c, `(() => { document.querySelectorAll('#timeline .tl-row[data-id] .tl-name')[${ROW}].click(); })()`);
       // the dimming is an opacity transition (--t-fast), so let it finish
-      await evalIn(c, `(async () => { await ${SETTLE}; await new Promise(r => setTimeout(r, 400)); })()`);
+      await quiet(c);
       const after = JSON.parse(await evalIn(c, MEASURE));
       landings++;
       problems.push(...pinnedCardProblems(label, before, after, scheme));

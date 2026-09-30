@@ -150,8 +150,7 @@ export async function focusAnnouncePass(c, origin) {
     f = await focusInfo(c);
     if (f.id !== 'gameTitle') problems.push(`item 1: pushing Ravens landed focus on ${JSON.stringify(f.id)}, want #gameTitle`);
     if (f.title !== 'Ravens · Benchcard') problems.push(`item 5: the tab title reads ${JSON.stringify(f.title)}, want "Ravens · Benchcard"`);
-    await evalIn(c, step(`history.back()`));
-    await settle(c);
+    await tap(c, `history.back()`);
     const backOk2 = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-game[data-fk="today-game:g1"]'))`);
     if (backOk2 !== true) problems.push('item 3: history.back() from the Ravens screen did not return focus to its own pass');
     else notes.push('item 3: history.back() also returns focus to the door it left, matched by data-fk for a second game');
@@ -210,8 +209,7 @@ export async function focusAnnouncePass(c, origin) {
     // Undo the removal so the rest of this check (and the row after it) keeps
     // both of RICH's games; goRich in `finally` would also cover this, but
     // there is no reason to rely on that for the rows still ahead in this run.
-    await evalIn(c, step(`document.querySelector('.toast[data-undo] .tundo')?.click()`));
-    await settle(c);
+    await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
 
     // item 3's fallback: with the day's ONLY game removed, there is no door
     // left at all (#126: the day itself is dropped) -- Back falls to `.today-h1`.
@@ -224,8 +222,7 @@ export async function focusAnnouncePass(c, origin) {
     const fallbackOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-h1'))`);
     if (fallbackOk !== true) problems.push(`item 3: removing the day's only game left focus at ${JSON.stringify(await focusInfo(c))}, want .today-h1 (no door left)`);
     else notes.push('item 3: with no door left at all (the day’s only game removed), Back falls back to .today-h1');
-    await evalIn(c, step(`document.querySelector('.toast[data-undo] .tundo')?.click()`));
-    await settle(c);
+    await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
 
     // item 4: no forced focus move at boot, on an ordinary screen or on the
     // welcome screen. `reloadWithRecord` always waits for `.today-game`, which
@@ -521,8 +518,7 @@ export async function focusAnnouncePass(c, origin) {
       const count2 = await axLiveCount(c, swapText);
       if (count2 !== 1) problems.push(`item 11: after Done, ${count2} node(s) hold the swap text, want still exactly 1 (not announced a second time)`);
       else notes.push('item 11: the swap toast survives Done above the page, with Undo still live and its text not re-announced');
-      await evalIn(c, step(`document.querySelector('.toast[data-undo] .tundo')?.click()`));
-      await settle(c);
+      await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
     }
 
     /* item 6 (reset/undo -> first floor row) and item 12 (a toast INSIDE an
@@ -533,15 +529,14 @@ export async function focusAnnouncePass(c, origin) {
     await evalIn(c, setGame(handSwapSeed()));
     await tap(c, `document.getElementById('phrasePlayers').click()`);
     const beforeToast = await evalJSON(c, `JSON.stringify(!!document.querySelector('#sheetWho .bsheet-toasts'))`);
-    await evalIn(c, step(`(async () => {
+    await tap(c, `(async () => {
       const s = await import('/state.js');
       const five = s.state.day.games[0].live.overrides['1'];
       const target = s.state.players.find(p => !five.includes(p.id));
       const rows = [...document.querySelectorAll('#sheetWhoBody .who-row')];
       const row = rows.find(r => r.getAttribute('aria-label') === (target.name || 'Unnamed'));
       row.click();
-    })()`));
-    await settle(c);
+    })()`);
     const hostInfo = await evalJSON(c, `(() => {
       const host = document.querySelector('#sheetWho .bsheet-toasts');
       return JSON.stringify({
@@ -553,8 +548,7 @@ export async function focusAnnouncePass(c, origin) {
     if (!hostInfo.found || hostInfo.role !== 'status') problems.push(`item 12: .bsheet-toasts inside #sheetWho reads ${JSON.stringify(hostInfo)}, want role="status"`);
     else if (!hostInfo.hasText) problems.push('item 12: .bsheet-toasts has role="status" but holds no toast text to announce');
     else notes.push('item 12: a toast raised inside an open sheet mounts in a .bsheet-toasts host with role="status", already in the DOM before the text lands');
-    await evalIn(c, step(`document.querySelector('.toast[data-undo] .tundo')?.click()`));
-    await settle(c);
+    await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
     await evalIn(c, step(`document.getElementById('sheetWhoClose')?.click()`));
 
     // item 6, reset/undo -> first floor row.
@@ -566,8 +560,7 @@ export async function focusAnnouncePass(c, origin) {
     if (firstFloorOk !== true) problems.push(`item 6: #gmReset left focus at ${JSON.stringify(bf)}, want the first floor row`);
     else notes.push('item 6: #gmReset lands focus on the first floor row');
     // its own toast's Undo lands there too.
-    await evalIn(c, step(`document.querySelector('.toast[data-undo] .tundo')?.click()`));
-    await settle(c);
+    await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
     bf = await focusInfo(c);
     const undoFirstFloorOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('#gmFloor button.gm-p'))`);
     if (undoFirstFloorOk !== true) problems.push(`item 6: Undo on #gmReset's own toast left focus at ${JSON.stringify(bf)}, want the first floor row again`);
@@ -609,7 +602,6 @@ export async function focusAnnouncePass(c, origin) {
     // recomputed, read live off the DOM right after. RICH's own saved
     // `view: 'games'` with `activeGame: 0` already lands goRich on g0.
     await tap(c, `document.getElementById('regen').click()`);
-    await settle(c);
     const regen1 = await evalJSON(c, `JSON.stringify({
       live: document.getElementById('regenLive')?.textContent ?? null,
       summary: document.getElementById('summary')?.textContent ?? null,
@@ -635,7 +627,6 @@ export async function focusAnnouncePass(c, origin) {
     await evalIn(c, setGame(handSwapSeed(0)));
     await evalIn(c, step(`document.getElementById('regenLive').textContent = ''`));
     await tap(c, `document.getElementById('regen').click()`);
-    await settle(c);
     const regenCleared = await evalJSON(c, `JSON.stringify({
       live: document.getElementById('regenLive')?.textContent ?? null,
       flashShown: !!document.querySelector('.toast:not([data-undo]) .tmsg'),
@@ -647,15 +638,13 @@ export async function focusAnnouncePass(c, origin) {
     await evalIn(c, setGame(`s.state.day.games[0].live = { at: 2, overrides: {} };`));
     await evalIn(c, step(`document.getElementById('regenLive').textContent = ''`));
     await tap(c, `document.getElementById('regen').click()`);
-    await settle(c);
     const regenUnderway = await evalJSON(c, `JSON.stringify({
       live: document.getElementById('regenLive')?.textContent ?? null,
       toastShown: !!document.querySelector('.toast[data-undo] .tmsg'),
     })`);
     if (regenUnderway.live !== '') problems.push(`item 13: Shuffle on an underway game still wrote #regenLive (${JSON.stringify(regenUnderway.live)}), want it left empty -- only #134's own toast announces`);
     else notes.push("item 13: Shuffle on an underway game leaves #regenLive untouched; #134's own toast is the only announcement");
-    await evalIn(c, step(`document.querySelector('.toast[data-undo] .tundo')?.click()`));
-    await settle(c);
+    await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
 
     // item 14: #issues keeps its own child node identity across a same-text
     // render, and replaces them once the text actually changes. RICH's own

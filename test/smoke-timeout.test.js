@@ -11,17 +11,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FAST_MS, run, assertNeverLaunchedChrome, assertNoSmokeProfileLeft } from './helpers/smoke-cli.mjs';
-import { hasChrome } from '../scripts/smoke/chrome.mjs';
-
-/* #235. `npm test` is Cloudflare's build command too (AGENTS.md § Deploy), and
- * its build machine has no Chrome: the two real-Chrome cases below failed
- * every production deploy from #218 on. They skip where Chrome is missing,
- * except on GitHub Actions, where a missing Chrome is a broken runner and
- * must fail rather than quietly drop this coverage. */
-const NEEDS_CHROME = (await hasChrome()) || process.env.GITHUB_ACTIONS
-  ? {}
-  : { skip: 'no Chrome on this machine (Cloudflare\'s build) — smoke CI runs these' };
+import { FAST_MS, NEEDS_CHROME, run, assertNeverLaunchedChrome, assertNoSmokeProfileLeft } from './helpers/smoke-cli.mjs';
 
 // FAST_MS/run/assertNeverLaunchedChrome come from the same shared module
 // smoke-only.test.js imports (#178 review: they used to be two copies).

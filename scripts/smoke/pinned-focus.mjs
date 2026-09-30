@@ -20,14 +20,14 @@
  * Rule 2a of /new-guard: every scenario first asserts that the card really
  * opened and the focus really sat where it says, so a run whose keys went
  * nowhere fails on that instead of passing on nothing. */
-import { evalIn, SETTLE, key, enter, escape, tab } from './dom.mjs';
+import { evalIn, quiet, key, enter, escape, tab } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { RICH } from './fixtures.mjs';
 
 const ROW = 1; // the second player's row
 const NAME = `document.querySelectorAll('#timeline .tl-row[data-id] .tl-name')[${ROW}]`;
 
-const settle = c => evalIn(c, `(async () => { await ${SETTLE}; await new Promise(r => setTimeout(r, 100)); })()`);
+const settle = quiet;
 
 /* what the page looks like now, by name so a failure line reads */
 const STATE = `(() => {

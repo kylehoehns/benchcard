@@ -1,4 +1,4 @@
-import { evalIn, step, HEIGHT, TODAY_HOME, TIMERS_QUIET, settleTally, wait } from './dom.mjs';
+import { evalIn, step, HEIGHT, TODAY_HOME, quiet, wait } from './dom.mjs';
 
 /* Shared by the two "own guard" behavioral passes -- #27's `sentence-sheets.mjs`
  * and #28's `plan-sheet.mjs` -- both of which drive a real dialog with real
@@ -59,25 +59,11 @@ export async function dragSlow(c, x, y0, y1, steps = 8) {
   await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
 }
 
+// TIMERS_QUIET (dom.mjs) waits out animations (a sheet still sliding at
+// motion: 'real') and the app's own short timers -- `soon(...)`'s 140ms
+// repaint debounce among them, for which there is no animation to wait on --
+// rather than sleeping a number sized from them.
 export async function settle(c) { await quiet(c); }
-
-// `js` (optional) runs first, in the same page evaluation as the wait, with
-// `$` as querySelector -- the shape `step` gives, minus its SETTLE: TIMERS_QUIET
-// already waits out animations, so `tap` needs one wait, not two.
-async function quiet(c, js = '') {
-  // Every edit these passes drive goes through `soon(...)` (render.js), which
-  // debounces before it repaints, and there is no animation to wait on for a
-  // plain textContent swap. TIMERS_QUIET (dom.mjs) waits out animations (a
-  // sheet still sliding at motion: 'real') and the app's own short timers,
-  // rather than sleeping a number sized from them.
-  settleTally.calls++;
-  const t0 = Date.now();
-  const result = await evalIn(c, js
-    ? `(async () => { const $ = s => document.querySelector(s); ${js};\n return ${TIMERS_QUIET}; })()`
-    : TIMERS_QUIET);
-  if (result === 'capped') settleTally.capped++;
-  settleTally.ms += Date.now() - t0;
-}
 
 // #28 only: a level-2 push/pop hides the popped pane from a `PANE_MS` timer
 // (trap.js); that is a short app timer, so `settle` already waits it out.
@@ -149,7 +135,7 @@ export async function waitClosed(c, sel, timeoutMs = 700) {
   while (Date.now() < deadline) {
     const open = await evalJSON(c, `JSON.stringify(document.querySelector(${JSON.stringify(sel)})?.open ?? null)`);
     if (open === false) return true;
-    await new Promise(r => setTimeout(r, 30));
+    await wait(30); // a poll, routed through `wait` so --timing counts it
   }
   return false;
 }
@@ -273,10 +259,9 @@ export async function ringGivenBack(c, ck, dialogSel, triggerSel, open) {
 //
 // `liveOnly` (#241) skips a toast that has been dismissed (`.out`) but not yet
 // removed. `dismissToast` (toast.js) removes it on `animationend`, or after a
-// 600ms fallback when the animation never runs -- which is the case when the
-// sheet holding it closes first. A read that means "is an Undo offer up NOW?"
-// must not count that leaving toast, or it reports a second offer that no
-// coach could tap.
+// 600ms fallback; a fast run of rotation-undo.mjs saw the fallback case: the
+// sheet holding the toast already closed, the toast still there as
+// `toast out`. A read that means "is an Undo offer up NOW?" must not count it.
 export function readToastExpr(insideSel, liveOnly = false) {
   const extra = insideSel ? `, insideSheet: !!t.closest(${JSON.stringify(insideSel)})` : '';
   return `(() => {

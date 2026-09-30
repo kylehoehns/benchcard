@@ -1,4 +1,5 @@
-import { evalIn, TODAY_HOME } from './dom.mjs';
+import { evalIn, quiet, TODAY_HOME } from './dom.mjs';
+import { resize } from './page-state.mjs';
 import { SWEEP_FLOOR, SWEEP_HI, SWEEP_EXTRA } from './sizes.mjs';
 
 /* Every screen the chrome can be in, and the click that gets there (#23):
@@ -99,7 +100,7 @@ export async function sweepPass(c) {
   let leanest = null;                                   // fewest boxes any one walk measured
   for (const v of VIEWS) {
     await evalIn(c, v.open);
-    await new Promise(r => setTimeout(r, 500));         // the view transition
+    await quiet(c);                                     // the view transition
     for (const w of WIDTHS) {
       await c.send('Emulation.setDeviceMetricsOverride',
         { width: w, height: h0, deviceScaleFactor: 2, mobile: true });
@@ -116,9 +117,7 @@ export async function sweepPass(c) {
   }
 
   await evalIn(c, TODAY_HOME);
-  await c.send('Emulation.setDeviceMetricsOverride',
-    { width: w0, height: h0, deviceScaleFactor: 2, mobile: true });
-  await new Promise(r => setTimeout(r, 400));
+  await resize(c, w0, h0, { debounce: true });
 
   /* Rule 2a: a walk that measured nothing is a failure, not a pass. The skip
      above is the reason this is here -- `checkVisibility` returning false for

@@ -1,5 +1,5 @@
 import { NARROW } from './sizes.mjs';
-import { evalIn, TIMERS_QUIET } from './dom.mjs';
+import { resize } from './page-state.mjs';
 
 /* The chrome has to survive the narrowest phone anyone still carries.
  *
@@ -22,9 +22,7 @@ export async function narrowPass(c) {
     expression: 'JSON.stringify(window.__SMOKE_VIEWPORT || [390, 844])', returnByValue: true,
   });
   const [w0, h0] = JSON.parse(before.result.value);
-  await c.send('Emulation.setDeviceMetricsOverride',
-    { width: NARROW, height: h0, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, TIMERS_QUIET); // the resize debounce, an app timer
+  await resize(c, NARROW, h0, { debounce: true });
 
   const probe = await c.send('Runtime.evaluate', {
     returnByValue: true,
@@ -59,9 +57,7 @@ export async function narrowPass(c) {
   });
   const r = JSON.parse(probe.result.value);
 
-  await c.send('Emulation.setDeviceMetricsOverride',
-    { width: w0, height: h0, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, TIMERS_QUIET);
+  await resize(c, w0, h0, { debounce: true });
 
   const pass = !r.pans && r.barFits && r.stranded.length === 0;
   return {
