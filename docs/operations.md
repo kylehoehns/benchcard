@@ -213,8 +213,8 @@ Two things address that, and they are different problems:
   arriving from a dark app does not flash white. The page always uses Hardwood
   orange (#231) — it is a public page a visitor may reach from a search with no
   saved team color, and the warmth makes it read as Benchcard rather than a
-  template. It carries the Hardwood band behind the headline and one orange
-  phrase ("Even minutes"), mapping `--accent*` to the Hardwood `--tint*` values.
+  template. It carries one orange phrase in the headline ("Even minutes"), with
+  no gradient behind it (#242), mapping `--accent*` to the Hardwood `--tint*` values.
   It also links back to the app three times. Each section leads with the artefact it is about, and
   most of those artefacts are **drawn in HTML/CSS against the app's own class
   names** (`.tl-*`, `.bal-*`, `.sn-*`) rather than screenshotted:

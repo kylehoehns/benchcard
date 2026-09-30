@@ -2056,11 +2056,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 /* Everything that has to be on the first screen. Below it the page may run on
    -- the form when it is opened, the restore links -- and that is a scroll a
    coach has asked for rather than one they arrive in. */
-.wel-hero { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
-  /* #231: a soft band of the app's own tint behind the headline. --tint-soft,
-     never a Hardwood literal, so a saved non-Hardwood color stays honest. */
-  background: radial-gradient(120% 70% at 50% 0%, var(--tint-soft), transparent 70%);
-  border-radius: var(--r-lg); }
+.wel-hero { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 /* The one orange phrase in the headline: inline, so it wraps with its line. */
 .wel-h .hl { color: var(--tint); }
 .wel-landing { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
