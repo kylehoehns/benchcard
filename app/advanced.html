@@ -352,14 +352,10 @@ html:root[data-tint="hardwood"] {
   --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
   --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
 }
-/* The soft orange band behind the headline and the main button. Full bleed;
-   the .wrap inside it keeps the text column's own gutter. */
-/* #238: the band owns the space above the h1 as padding. As the h1's own
-   margin it collapsed out through the band, leaving bare page under the top
-   bar and the band's hard top edge on the headline. The fade is the welcome
-   screen's (.wel-hero): strongest under the bar, gone by the sides. */
-.hero-band { padding-top: 1.6rem;
-  background: radial-gradient(120% 100% at 50% 0%, var(--tint-soft), transparent 70%); }
+/* The headline block. It paints nothing (#242 took the orange gradient
+   away); it keeps the space above the h1 as its own padding, so the h1 sits
+   where it did and its margin cannot collapse out through the block (#238). */
+.hero-band { padding-top: 1.6rem; }
 .hero-band h1 { margin-top: 0; }
 .hl { color: var(--tint); }
 </style>

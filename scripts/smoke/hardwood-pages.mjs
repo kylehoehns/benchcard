@@ -5,8 +5,9 @@ import { land, reset } from './page-state.mjs';
 
 /* #231's own guard (docs/specs/231-hardwood-pages.md, Proof section): the
  * welcome screen, about.html and advanced.html carry the Hardwood orange --
- * an orange main button and links, a soft orange band behind the headline,
- * and one orange phrase in the h1.
+ * an orange main button and links, and one orange phrase in the h1. #242
+ * took away the soft orange band #231 put behind the headline, so the block
+ * that held it must now paint no gradient.
  *
  * Expected colors are the spec's own literals, typed once here as rgb()
  * strings, never read back from tokens.css or resolved the way the pages
@@ -18,13 +19,13 @@ import { land, reset } from './page-state.mjs';
  *
  * Every color is resolved through a 1x1 canvas (/browser-verify section 5),
  * never a `getComputedStyle` string compared as text, because a `color-mix()`
- * or a var() chain does not serialize the way a literal does. A missing band,
+ * or a var() chain does not serialize the way a literal does. A missing headline block,
  * `.hl` or button FAILS (rule 2a); it is never skipped.
  *
  * Contrast (spec item 4) uses `contrast` from `scripts/tokens-css.mjs`. The
  * backdrop is the PAINTED pixel 2px up and left of the text's box, read from a
- * real screenshot (`samplePixels`, dom.mjs): a band is a gradient, so its color under a line of text is not
- * the token's value, and --muted clears 4.5:1 on the page ground by only
+ * real screenshot (`samplePixels`, dom.mjs), so whatever actually paints
+ * under a line of text is what gets measured, and --muted clears 4.5:1 on the page ground by only
  * 0.25, which a full-strength tint would take away. */
 const CASES = [
   { name: 'light', media: [{ name: 'prefers-color-scheme', value: 'light' }], want: 'rgb(210, 80, 10)' },
@@ -72,10 +73,8 @@ const READ = p => `(() => {
     linkColor: ${p.link ? `fg(${JSON.stringify(p.link)})` : 'null'},
     bodyColor: fg(${JSON.stringify(p.body)}),
     bandImage: band ? getComputedStyle(band).backgroundImage : null,
-    bandBehindH1: !!(band && h1 && band.contains(h1) && rb.top <= rh.top && rb.bottom >= rh.bottom),
-    // #238: the h1's margin used to collapse out through the band, leaving a
-    // strip of bare page under the top bar and the band's edge on the h1.
-    bandGap: band && $('.topbar') ? Math.round(rb.top - r($('.topbar')).bottom) : null,
+    // #238: the h1's margin used to collapse out through the block; its
+    // space above the h1 is the block's own padding now.
     h1Inset: band && h1 ? Math.round(rh.top - rb.top) : null,
     hlBox: hl ? { x: r(hl).left - 2, y: r(hl).top - 2 } : null,
     bodyBox: body ? { x: r(body).left - 2, y: r(body).top - 2 } : null,
@@ -118,12 +117,10 @@ export async function hardwoodPagesPass(c, origin) {
           if (!s.linkColor) note(where, `no ${p.link}`);
           else if (css(s.linkColor) !== cse.want) note(where, `links are ${css(s.linkColor)}, want ${cse.want}`);
         }
-        // Item 2: a painted band, behind the h1.
-        if (s.bandImage === null) note(where, `no ${p.band} band`);
+        // #242: no gradient behind the h1, and the h1 keeps its room.
+        if (s.bandImage === null) note(where, `no ${p.band} block`);
         else {
-          if (s.bandImage === 'none') note(where, `${p.band} has no background-image`);
-          if (!s.bandBehindH1) note(where, `${p.band} does not sit behind the h1`);
-          if (s.bandGap !== null && s.bandGap !== 0) note(where, `${p.band} starts ${s.bandGap}px below the top bar, want 0`);
+          if (s.bandImage !== 'none') note(where, `${p.band} paints ${s.bandImage.slice(0, 40)}, want no background-image`);
           if (s.h1Inset !== null && s.h1Inset < 16) note(where, `the h1 sits ${s.h1Inset}px inside ${p.band}'s top edge, want at least 16`);
         }
         // Item 4: contrast, against the painted pixel up and left of each text
@@ -131,12 +128,12 @@ export async function hardwoodPagesPass(c, origin) {
         if (s.hlColor && s.hlBox) {
           const [back] = await samplePixels(c, [s.hlBox], s.scroll[0], s.scroll[1]);
           const phrase = ratio(s.hlColor, back);
-          if (phrase < 3) note(where, `the phrase on its band is ${phrase.toFixed(2)}:1, want at least 3:1`);
+          if (phrase < 3) note(where, `the phrase on its backdrop is ${phrase.toFixed(2)}:1, want at least 3:1`);
         }
         if (s.bodyColor && s.bodyBox) {
           const [back] = await samplePixels(c, [s.bodyBox], s.scroll[0], s.scroll[1]);
           const body = ratio(s.bodyColor, back);
-          if (body < 4.5) note(where, `${p.body} on the band is ${body.toFixed(2)}:1, want at least 4.5:1`);
+          if (body < 4.5) note(where, `${p.body} on its backdrop is ${body.toFixed(2)}:1, want at least 4.5:1`);
         }
         if (s.btnBg && s.btnFg) {
           const label = ratio(s.btnFg, s.btnBg);
@@ -169,7 +166,7 @@ export async function hardwoodPagesPass(c, origin) {
   return {
     pass: problems.length === 0,
     detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'welcome, about and advanced: Hardwood button, links, band and phrase in light, dark and more contrast; '
+      : 'welcome, about and advanced: Hardwood button, links and phrase, no gradient behind the headline, in light, dark and more contrast; '
         + 'a Graphite team leaves about.html orange',
   };
 }
