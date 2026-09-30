@@ -282,6 +282,9 @@ export async function teamColorPass(c, origin) {
       ['.gm-p.picked box-shadow color', gm.pickedShadowColor, ROYAL_FILL],
       ['#gamemode .seg button.on text', gm.scopeOnFg, ROYAL_FILL],
       ['.phrase text', r.phraseFg, ROYAL_FILL],
+      // #244 moved the welcome logo here from #25's unchanged list: it reads
+      // --tint now, like the welcome's orange phrase.
+      ['the logo (.wel-mark circle) fill', r.logoFill, ROYAL_FILL],
     ];
     for (const [label, got, want] of tinted) {
       if (got !== want) problems.push(`${label} is ${got} with Royal active, want ${want}`);
@@ -310,7 +313,6 @@ export async function teamColorPass(c, origin) {
       ['.help-h', r.helpHFg], ['.teammenu-check', r.teamCheckFg],
       ['.mrow .track i (minute bar) background', r.mrowBg],
       ['.gm-dot.now background', gm.dotNowBg],
-      ['the logo (.wel-mark circle) fill', r.logoFill],
       ['::selection background', r.selectionBg, GRAPHITE_ACCENT_SOFT],
       ['a focused input’s border', r.inputFocusBorder],
     ];
@@ -371,7 +373,7 @@ export async function teamColorPass(c, origin) {
   return {
     pass: problems.length === 0,
     detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'Royal tints all twelve of item 4’s controls, all sixteen of the unchanged list stay graphite ink, '
+      : 'Royal tints all twelve of item 4’s controls and the welcome logo (#244), the rest of the unchanged list stays graphite ink, '
         + 'and switching to a graphite team repaints .btn.primary with no reload',
   };
 }

@@ -45,7 +45,8 @@ const PAGES = [
     band: '.hero-band', h1Sel: 'h1', hl: 'h1 .hl', button: '.cta .btn.primary', link: 'p a', body: '.lede' },
   { name: 'welcome', page: '/index.html', record: 'wiped', ready: `!document.getElementById('view-welcome').hidden`,
     h1: 'The whole game, worked out before you leave the house.', phrase: 'The whole game',
-    band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '.wel-sub' },
+    band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '.wel-sub',
+    mark: '.wel-mark circle' },
 ];
 
 /* One in-page read. Everything a color is resolved through the canvas. */
@@ -72,6 +73,7 @@ const READ = p => `(() => {
     btnBg: bg(${JSON.stringify(p.button)}), btnFg: fg(${JSON.stringify(p.button)}),
     linkColor: ${p.link ? `fg(${JSON.stringify(p.link)})` : 'null'},
     bodyColor: fg(${JSON.stringify(p.body)}),
+    markFill: ${p.mark ? `(e => e ? rgba(getComputedStyle(e).fill) : null)($(${JSON.stringify(p.mark)}))` : 'null'},
     bandImage: band ? getComputedStyle(band).backgroundImage : null,
     // #238: the h1's margin used to collapse out through the block; its
     // space above the h1 is the block's own padding now.
@@ -113,6 +115,11 @@ export async function hardwoodPagesPass(c, origin) {
         // Item 1: the main button and the links.
         if (!s.btnBg) note(where, `no ${p.button}`);
         else if (css(s.btnBg) !== cse.want) note(where, `${p.button} background is ${css(s.btnBg)}, want ${cse.want}`);
+        // #244: the welcome logo's circle is the phrase's orange, not --accent.
+        if (p.mark) {
+          if (!s.markFill) note(where, `no ${p.mark}`);
+          else if (css(s.markFill) !== cse.want) note(where, `the logo is ${css(s.markFill)}, want ${cse.want}`);
+        }
         if (p.link) {
           if (!s.linkColor) note(where, `no ${p.link}`);
           else if (css(s.linkColor) !== cse.want) note(where, `links are ${css(s.linkColor)}, want ${cse.want}`);
@@ -166,7 +173,7 @@ export async function hardwoodPagesPass(c, origin) {
   return {
     pass: problems.length === 0,
     detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'welcome, about and advanced: Hardwood button, links and phrase, no gradient behind the headline, in light, dark and more contrast; '
+      : 'welcome, about and advanced: Hardwood button, links, phrase and welcome logo, no gradient behind the headline, in light, dark and more contrast; '
         + 'a Graphite team leaves about.html orange',
   };
 }
