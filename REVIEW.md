@@ -39,7 +39,8 @@ Two consequences worth stating, because both have teeth:
 7. **The spec.** A change built from an issue carries
    `docs/specs/<issue>-<slug>.md`. Something the spec's **What would settle
    it** asks for that the diff does not do, or something the diff does that no
-   spec asked for, is Important.
+   spec asked for, is Important. A change in `/ship-feature`'s small-fix lane
+   carries no spec; judge it the same way against its issue.
 
 ## Severity
 

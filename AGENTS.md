@@ -35,8 +35,9 @@ settle it** clause is the acceptance test, with concrete values — written
 before the code, and an issue without one is not ready to build. The spec ships
 in the same pull request as the change it describes, and stays: it is the
 record of what was asked for at that commit, not a description of the code
-today. Terms go to `CONTEXT.md`; a hard-to-reverse trade-off goes to
-`docs/adr/`.
+today. A small fix carries no spec; its issue is the record instead.
+`/ship-feature` § The small-fix lane says what counts as small. Terms go to
+`CONTEXT.md`; a hard-to-reverse trade-off goes to `docs/adr/`.
 
 **Proof** is `npm test` and `npm run smoke`, and neither is optional. "It
 works" means a harness said so, in a browser, on this tree. `/browser-verify`

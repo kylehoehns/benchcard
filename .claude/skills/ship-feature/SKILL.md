@@ -47,6 +47,39 @@ developer was reused for seven rounds, grew to 964k tokens, and cost 28% of
 all the tokens this project had used. The new one gets the spec path, the
 current handoff and the findings verbatim; that is the whole brief.
 
+## The small-fix lane
+
+Most issues are a few lines. Running them through the whole pipeline costs
+what a feature costs: #245 changed 4 lines of `app/` and carried a 35-line
+spec, a refactorer, three reviewers and a doc-writer. So there are two lanes,
+and step 1 picks one. **This section is the only place the lane's conditions
+are written;** `AGENTS.md` and `REVIEW.md` point here.
+
+A change is **small** when all three hold:
+
+- it changes **at most 20 lines outside `test/` and `docs/`** (`app/`,
+  `scripts/`, `.claude/`, config). The `sw.js` version bump from `npm run
+  sw:bump` does not count;
+- it changes no logic in `engine.js`, `state.js`, `storage.js` or `live.js`;
+- the issue already says what "done" looks like, with a concrete value.
+
+In the small lane:
+
+| Skipped | Kept |
+| --- | --- |
+| the spec file: the issue and the PR body are the record | step 1's survey, and grilling whatever the survey leaves open |
+| `refactorer` | a new `developer`, test-first with `/tdd` |
+| `reuse-reviewer`, `efficiency-reviewer` | `quality-reviewer`, judging the diff against the issue |
+| `doc-writer`, unless a file under `docs/` or `README.md` names what changed | the proof pair, once per commit, by you |
+| the preview check, when no coach can see the change | the preview check, when a coach can |
+
+The developer's brief is the issue, its acceptance values and your survey
+notes, in place of a spec path. Everything else runs as written below.
+
+**If it grows past the limit mid-build, switch to the full lane there:** write
+the spec, then run all three reviewers. The PR body names the lane, and says
+so if it switched.
+
 ## Understand
 
 1. **Read the issue** — body *and* comments:
@@ -64,6 +97,8 @@ current handoff and the findings verbatim; that is the whole brief.
    spec `/to-tickets` cut it from) and every closed blocker's pull request: the
    decisions live there, and a blocker may have changed the tree the ticket
    describes.
+
+   Then **pick the lane** (§ The small-fix lane). A small change skips step 3.
 
 2. **Grill only what is still open.** A `ready-for-agent` ticket was decided
    with the human before it was published. If the survey holds up every claim
