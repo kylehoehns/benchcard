@@ -52,7 +52,8 @@ URL share — there is still no way to put a coach's roster in a link, and there
 must not be.
 
 The welcome screen carries Hardwood orange styling: the phrase "The whole game"
-highlighted in the app's tint color (#231). New visitors have no saved color, so
+highlighted in the app's tint color (#231), and the logo's circle in that same
+tint (#244), so it matches the logo on About and Advanced. New visitors have no saved color, so
 it is Hardwood by default. The soft gradient band that used to sit behind the
 headline was removed in #242; nothing paints behind it now.
 
