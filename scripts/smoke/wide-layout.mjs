@@ -1,4 +1,5 @@
 import { evalIn, step, landWiped, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
+import { resize } from './page-state.mjs';
 import { VIEWS } from './sweep.mjs';
 import { RAIL, WIDE_MIN, SHEET_MIN, LAPTOP } from './sizes.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
@@ -91,10 +92,7 @@ const PROBE = `(() => {
    both panes through `soon()`'s 140ms debounce. Measuring on the frame after
    the resize reads the layout the app is leaving. */
 async function atWidth(c, w) {
-  await c.send('Emulation.setDeviceMetricsOverride',
-    { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-  await new Promise(r => setTimeout(r, 400));
+  await resize(c, w, HEIGHT, { debounce: true });
 }
 
 export async function wideLayoutPass(c, origin) {

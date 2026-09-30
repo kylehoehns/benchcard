@@ -6,7 +6,7 @@
    `BASELINE` and returns the state plus the localStorage-seeding script
    source, with no CDP call in it, so it is unit-tested directly
    (`test/smoke-page-state.test.js`). `land` only executes that plan. */
-import { evalIn, SETTLE, WIDTH, HEIGHT, LOCALSTORAGE_WIPE } from './dom.mjs';
+import { evalIn, SETTLE, quiet, WIDTH, HEIGHT, LOCALSTORAGE_WIPE } from './dom.mjs';
 import { RICH, seeded } from './fixtures.mjs';
 
 export const BASELINE = Object.freeze({
@@ -119,8 +119,10 @@ export async function land(c, origin, want = {}) {
    change the text size -- it is not a restore, the next row's `reset` is. */
 export async function resize(c, width, height = HEIGHT, { debounce = false } = {}) {
   await c.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-  if (debounce) await new Promise(r => setTimeout(r, 400));
+  // The resize debounce is an app timer TIMER_TRACKER sees, and TIMERS_QUIET
+  // starts with two frames, so under `debounce` it is the whole wait.
+  if (debounce) await quiet(c);
+  else await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
 }
 
 /* `land(c, origin, {})` plus the start fingerprint -- the fingerprint (item 5

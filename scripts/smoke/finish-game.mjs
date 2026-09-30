@@ -13,7 +13,7 @@
  * (stage/finished/at) -- so a clamping or stage bug here still fails this
  * check rather than being hidden by a value computed the same wrong way.
  */
-import { evalIn, step, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE, wait } from './dom.mjs';
 import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
 
 // The last stint's own "<periodName> <clock>" label, straight off the page's
@@ -226,7 +226,7 @@ export async function finishGamePass(c, origin) {
     }
 
     // Decision 3: still there 2 seconds later, whatever the tip counter says.
-    await new Promise(r => setTimeout(r, 2000));
+    await wait(2000); // real elapsed time: the toast must still be up 2s later
     const stillThere = await evalIn(c, `document.querySelector('#toasts .toast[data-undo] .tmsg')?.textContent ?? null`);
     if (stillThere !== 'Marked Hawks finished.') {
       problems.push(`item 7 (decision 3): 2s after Finish game the toast reads ${JSON.stringify(stillThere)}, `

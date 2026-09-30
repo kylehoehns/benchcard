@@ -32,6 +32,13 @@
  * pass itself, called with the session a partial run has open — `ctx.c`,
  * `ctx.origin`, `ctx.source` and, for `wakelock`, `ctx.consoleErrors`.
  *
+ * `motion: 'real'` (#241) on a rich row: the smoke session plays every
+ * animation at `FAST_PLAYBACK_RATE` (dom.mjs), and `runCheck` puts the rate
+ * back to 1 for a row that carries this, then restores the fast rate. Only for
+ * a row that asserts on the animation itself (`sentence and sheets` checks a
+ * sheet is still sliding shut 120ms after a release). `'real'` or absent;
+ * `test/smoke-registry.test.js` holds the spelling.
+ *
  * `resetAfter: true` on a rich row means `smoke.mjs` calls `goRich` again
  * right after it, in the full run: `teamcolor` switches team and `wakelock`
  * stubs `navigator.wakeLock`, and both leave the fixture in a state the next
@@ -293,7 +300,7 @@ export const ROWS = Object.freeze([
   // #27's own guard (see docs/specs/27-sentence-and-sheets.md's Proof
   // section): the sentence, and the Who's here / Format / Sub interval
   // sheets it opens, driven with real buttons, keys and pointer events.
-  { id: 'sentencesheets', name: 'sentence and sheets', selectable: true, setup: 'rich',
+  { id: 'sentencesheets', name: 'sentence and sheets', selectable: true, setup: 'rich', motion: 'real',
     run: ctx => sentenceSheetsPass(ctx.c, ctx.origin) },
   // #28's own guard (see docs/specs/28-plan-sheet.md's Proof section): the
   // Plan sheet, its Rules and Lineups groups and the "across the day/season"

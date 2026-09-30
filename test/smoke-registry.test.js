@@ -206,3 +206,20 @@ test('every exported ...Pass function is the run of exactly one registry row, ex
         : 'it is wired into more than one place, so a rename would leave one silently orphaned'));
   }
 });
+
+/* ---------- #241: the per-row motion opt-out ---------- */
+
+/* `motion` is the one registry field that changes how the runner plays the
+ * page: every row runs at FAST_PLAYBACK_RATE unless it says `motion: 'real'`.
+ * A typo ('reel', true, 'slow') would be silently read as "fast", so the field
+ * is held to exactly one spelling. Rule 2a: at least one row must carry it
+ * (`sentence and sheets` asserts a sheet is still sliding shut, which only
+ * exists at real speed), or this walk measured nothing. */
+test('a row\'s `motion` field is only ever \'real\' or absent, and `sentence and sheets` carries it', async () => {
+  const { ROWS } = await import('../scripts/smoke/registry.mjs');
+  const withField = ROWS.filter(r => 'motion' in r);
+  assert.ok(withField.length >= 1, 'no registry row carries `motion` — the opt-out is never used, or this walk read nothing');
+  const bad = withField.filter(r => r.motion !== 'real').map(r => `${r.name}: ${JSON.stringify(r.motion)}`);
+  assert.deepEqual(bad, [], `\`motion\` must be 'real' or absent, found: ${bad.join('; ')}`);
+  assert.equal(ROWS.find(r => r.name === 'sentence and sheets')?.motion, 'real');
+});

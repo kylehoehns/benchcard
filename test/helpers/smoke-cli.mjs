@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { hasChrome } from '../../scripts/smoke/chrome.mjs';
 
 const ROOT = new URL('../../', import.meta.url);
 export const SMOKE = new URL('scripts/smoke.mjs', ROOT).pathname;
@@ -65,3 +66,12 @@ export function assertNoSmokeProfileLeft(r, label) {
     `${label}: Chrome's --user-data-dir was left behind in TMPDIR (${JSON.stringify(ours)}) — ` +
     `closeChrome did not remove it`);
 }
+
+/* #235. `npm test` is also Cloudflare's build command (AGENTS.md § Deploy), and
+ * its build machine has no Chrome: a `node --test` case that launches one
+ * skips there, except on GitHub Actions, where a missing Chrome is a broken
+ * runner and must fail rather than quietly drop the coverage. Spread it into a
+ * test's options. One copy (#241 review: two files each carried their own). */
+export const NEEDS_CHROME = (await hasChrome()) || process.env.GITHUB_ACTIONS
+  ? {}
+  : { skip: 'no Chrome on this machine (Cloudflare\'s build) — smoke CI runs these' };

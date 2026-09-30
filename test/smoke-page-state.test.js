@@ -110,7 +110,6 @@ const ALLOW = {
   'scripts/smoke/forced-colors.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 2, fontsready: 0 },
   'scripts/smoke/game-rows-fit.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 3, fontsready: 0 },
   'scripts/smoke/game-title.mjs': { navigate: 1, metrics: 2, fontsizes: 2, media: 0, fontsready: 1 },
-  'scripts/smoke/narrow.mjs': { navigate: 0, metrics: 2, fontsizes: 0, media: 0, fontsready: 0 },
   'scripts/smoke/no-games.mjs': { navigate: 1, metrics: 2, fontsizes: 0, media: 0, fontsready: 1 },
   'scripts/smoke/pass-large-text.mjs': { navigate: 0, metrics: 1, fontsizes: 1, media: 0, fontsready: 0 },
   'scripts/smoke/phone-gutter.mjs': { navigate: 0, metrics: 5, fontsizes: 2, media: 0, fontsready: 0 },
@@ -120,15 +119,14 @@ const ALLOW = {
   'scripts/smoke/season.mjs': { navigate: 0, metrics: 2, fontsizes: 0, media: 0, fontsready: 0 },
   'scripts/smoke/sheet-spacing.mjs': { navigate: 0, metrics: 2, fontsizes: 2, media: 0, fontsready: 0 },
   'scripts/smoke/static.mjs': { navigate: 2, metrics: 2, fontsizes: 2, media: 0, fontsready: 2 },
-  'scripts/smoke/sweep.mjs': { navigate: 0, metrics: 2, fontsizes: 0, media: 0, fontsready: 0 },
+  'scripts/smoke/sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
   'scripts/smoke/team-screen.mjs': { navigate: 0, metrics: 5, fontsizes: 4, media: 0, fontsready: 0 },
   'scripts/smoke/three-days.mjs': { navigate: 1, metrics: 2, fontsizes: 2, media: 0, fontsready: 1 },
   'scripts/smoke/timeline-card-sheet.mjs': { navigate: 0, metrics: 4, fontsizes: 4, media: 0, fontsready: 1 },
   'scripts/smoke/today-and-back.mjs': { navigate: 0, metrics: 2, fontsizes: 2, media: 0, fontsready: 1 },
   'scripts/smoke/touch.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
   'scripts/smoke/type-scale.mjs': { navigate: 0, metrics: 1, fontsizes: 1, media: 0, fontsready: 0 },
-  'scripts/smoke/wide-layout.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
-  'scripts/smoke/width-sweep.mjs': { navigate: 0, metrics: 2, fontsizes: 0, media: 0, fontsready: 0 },
+  'scripts/smoke/width-sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
 };
 
 const ZERO = { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 0 };

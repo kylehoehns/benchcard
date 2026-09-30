@@ -1,4 +1,4 @@
-import { evalIn, step, HEIGHT, TODAY_HOME } from './dom.mjs';
+import { evalIn, step, HEIGHT, TODAY_HOME, quiet, wait } from './dom.mjs';
 
 /* Shared by the two "own guard" behavioral passes -- #27's `sentence-sheets.mjs`
  * and #28's `plan-sheet.mjs` -- both of which drive a real dialog with real
@@ -53,42 +53,31 @@ export async function dragSlow(c, x, y0, y1, steps = 8) {
   for (let i = 1; i <= steps; i++) {
     const y = y0 + (y1 - y0) * (i / steps);
     await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left' });
-    await new Promise(r => setTimeout(r, 40));
+    await wait(40);
   }
-  await new Promise(r => setTimeout(r, 150)); // a hold: the trailing 100ms reads no movement
+  await wait(150); // a hold: the trailing 100ms reads no movement
   await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
 }
 
-export async function settle(c) {
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-  // Every edit these two passes drive goes through `soon(...)` (render.js),
-  // which debounces 140ms before it actually repaints -- there is no
-  // animation to wait on for a plain textContent swap, so two quiet rAF
-  // pairs alone races it. 220ms clears the debounce with margin.
-  await new Promise(r => setTimeout(r, 220));
-}
+// TIMERS_QUIET (dom.mjs) waits out animations (a sheet still sliding at
+// motion: 'real') and the app's own short timers -- `soon(...)`'s 140ms
+// repaint debounce among them, for which there is no animation to wait on --
+// rather than sleeping a number sized from them.
+export async function settle(c) { await quiet(c); }
 
-// #28 only: a level-2 push/pop plays a 260ms slide (`PANE_MS`, trap.js) that
-// `settle` alone does not clear (the harness never emulates
-// `prefers-reduced-motion`, so the full transition always plays) -- used
-// after every back/push/pop so the popped pane's `hidden` has actually
-// landed before the next read.
-export async function settlePane(c) {
-  await settle(c);
-  await new Promise(r => setTimeout(r, 200));
-}
+// #28 only: a level-2 push/pop hides the popped pane from a `PANE_MS` timer
+// (trap.js); that is a short app timer, so `settle` already waits it out.
+// Kept as its own name for the call sites that mean "after a push/pop".
+export const settlePane = settle;
 
 // The single most common shape in both passes: a JS statement run through
-// `step`, then a settle. `tap`/`tapPane` fold that pair into one call.
+// `step`, then a settle. `tap` (and `tapPane`, its alias for a push/pop) folds
+// that pair into one page evaluation.
 export async function tap(c, js) {
-  await evalIn(c, step(js));
-  await settle(c);
+  await quiet(c, js);
 }
 
-export async function tapPane(c, js) {
-  await evalIn(c, step(js));
-  await settlePane(c);
-}
+export const tapPane = tap;
 
 /* I6: `add-game-flow.mjs` and `team-screen.mjs` each carried their own copy
    of `realTap`/a key dispatcher/`typeIn`, comment and all -- one place now,
@@ -146,7 +135,7 @@ export async function waitClosed(c, sel, timeoutMs = 700) {
   while (Date.now() < deadline) {
     const open = await evalJSON(c, `JSON.stringify(document.querySelector(${JSON.stringify(sel)})?.open ?? null)`);
     if (open === false) return true;
-    await new Promise(r => setTimeout(r, 30));
+    await wait(30); // a poll, routed through `wait` so --timing counts it
   }
   return false;
 }
@@ -187,7 +176,7 @@ export async function dragCloseFade(c, sel, x, y0, y1, steps = 8) {
   }
   const beforeRelease = await backdropOpacity(c, sel);
   await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
-  await new Promise(r => setTimeout(r, 120));
+  await wait(120);
   const mid = await evalJSON(c, `JSON.stringify({
     open: document.querySelector(${JSON.stringify(sel)})?.open ?? null,
     opacity: getComputedStyle(document.querySelector(${JSON.stringify(sel)}), '::backdrop').opacity,
@@ -267,10 +256,16 @@ export async function ringGivenBack(c, ck, dialogSel, triggerSel, open) {
 // the still-open Plan sheet, C4). `insideSel`, when given, adds that field
 // against the selector named; left out, the returned shape is exactly what
 // rotation-undo.mjs already checked.
-export function readToastExpr(insideSel) {
+//
+// `liveOnly` (#241) skips a toast that has been dismissed (`.out`) but not yet
+// removed. `dismissToast` (toast.js) removes it on `animationend`, or after a
+// 600ms fallback; a fast run of rotation-undo.mjs saw the fallback case: the
+// sheet holding the toast already closed, the toast still there as
+// `toast out`. A read that means "is an Undo offer up NOW?" must not count it.
+export function readToastExpr(insideSel, liveOnly = false) {
   const extra = insideSel ? `, insideSheet: !!t.closest(${JSON.stringify(insideSel)})` : '';
   return `(() => {
-    const t = document.querySelector('.toast[data-undo]');
+    const t = document.querySelector('.toast[data-undo]${liveOnly ? ':not(.out)' : ''}');
     if (!t) return JSON.stringify({ shown: false });
     return JSON.stringify({ shown: true, text: t.querySelector('.tmsg')?.textContent ?? null,
       hasUndo: !!t.querySelector('.tundo')${extra} });

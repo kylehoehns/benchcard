@@ -13,7 +13,7 @@
  * Hana/Ana/Jordan/Sam, from `RICH`'s `PLAYERS`), never rebuilt from
  * `callNames` here. Leaves Hawks exactly as `goRich` set it up (`finally`
  * below reloads it fresh, the way `rotation-undo.mjs` does). */
-import { evalIn } from './dom.mjs';
+import { evalIn, wait } from './dom.mjs';
 import { evalJSON, tap, tapPane, settle, click, sheetRect, setGame, waitClosed, readToastExpr } from './sheet-drive.mjs';
 import { goRich, RICH, partPlayed } from './fixtures.mjs';
 
@@ -22,8 +22,6 @@ import { goRich, RICH, partPlayed } from './fixtures.mjs';
 // (#148) is exactly this swap, so item 14's reload reuses it instead of a
 // second near-copy of its seed-and-navigate body.
 const goPartPlayed = (c, origin) => goRich(c, origin, undefined, partPlayed(RICH));
-
-const wait = ms => new Promise(r => setTimeout(r, ms));
 
 const rows = () => `[...document.querySelectorAll('#constraints .prow')].filter(b => !b.classList.contains('add-rule'))`;
 const findRow = text => `${rows()}.find(r => r.textContent.includes(${JSON.stringify(text)}))`;

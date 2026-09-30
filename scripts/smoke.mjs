@@ -15,6 +15,7 @@
        node scripts/smoke.mjs --update-budgets # re-record scripts/budgets.json
        node scripts/smoke.mjs --only "<check>" # one check, while iterating —
                                                 # not proof; see the registry below
+       node scripts/smoke.mjs --timing         # after the table: each rich row's seconds, slowest first, and the executed sleep
        node scripts/smoke.mjs --timeout <min>  # end the run and exit 1 if it hangs (default 60)
 
    #178: BENCHCARD_SMOKE_HANG=<check name> makes that one row hang for real
@@ -55,7 +56,7 @@ import { compare, pinned, summarize } from './budgets.mjs';
 import { serve } from './serve.mjs';
 
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
-import { WIDTH, HEIGHT, evalIn, SETTLE } from './smoke/dom.mjs';
+import { WIDTH, HEIGHT, evalIn, SETTLE, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER } from './smoke/dom.mjs';
 import { SEED, goRich } from './smoke/fixtures.mjs';
 import { ROWS, nameOf, FONT_INJECTION_SCRIPT, CLOCK_SCRIPT } from './smoke/registry.mjs';
 import { cardAt32Pass } from './smoke/card-at-32.mjs';
@@ -74,6 +75,11 @@ const JSON_OUT = has('--json');
    it is not. */
 let current = 'launching Chrome';
 let liveChrome = null; // { proc, dir, c } once Chrome is up
+
+/* #241: `--timing`. runCheck records each rich row's wall-clock here; the
+   sleep total comes from `sleepTally` in dom.mjs. Printed after the table,
+   only when the flag is given. */
+const rowSeconds = [];
 
 /* ---------- a static server for app/ ---------- */
 
@@ -101,7 +107,15 @@ let liveChrome = null; // { proc, dir, c } once Chrome is up
  * round as a false SILENCE. */
 async function runCheck(row, ctx) {
   current = row.name;
+  /* #241: the one place the registry's `motion: 'real'` opt-out is read. The
+     session runs at FAST_PLAYBACK_RATE; a row that asserts on an animation
+     itself gets rate 1 for its own run and the fast rate back after, so the
+     full run and `--only` behave the same. */
+  const real = row.motion === 'real';
+  const started = Date.now();
+  const cappedBefore = settleTally.capped;
   try {
+    if (real) await ctx.c.send('Animation.setPlaybackRate', { playbackRate: 1 });
     /* #178: the hang hook. BENCHCARD_SMOKE_HANG names a row; when it matches
        the one about to run, this runs a real hang instead of that row's own
        `run` -- Chrome is alive, the CDP call below never resolves, and only
@@ -112,6 +126,14 @@ async function runCheck(row, ctx) {
     return { name: row.name, ...result };
   } catch (e) {
     return { name: row.name, pass: false, detail: `threw before finishing: ${e.message.split('\n')[0]}` };
+  } finally {
+    rowSeconds.push({ name: row.name, seconds: (Date.now() - started) / 1000 });
+    /* A settle that hit its cap returned early, so what the row read next may
+       have been read mid-change. Not a failure (a row's own assertions judge
+       that), but never silent: named here, in every run, not only --timing. */
+    const capped = settleTally.capped - cappedBefore;
+    if (capped) console.error(`smoke: "${row.name}": ${capped} settle wait(s) hit their cap and returned early; the row read the page before it went quiet`);
+    if (real) await ctx.c.send('Animation.setPlaybackRate', { playbackRate: FAST_PLAYBACK_RATE }).catch(() => {});
   }
 }
 
@@ -165,6 +187,9 @@ async function browserChecks(origin, only) {
     await c.send('Log.enable');
     await c.send('Network.enable');
     await c.send('Page.enable');
+    // #241: fast animations for every page this session opens (see
+    // FAST_PLAYBACK_RATE); it holds across reloads in the one tab.
+    await c.send('Animation.setPlaybackRate', { playbackRate: FAST_PLAYBACK_RATE });
     await c.send('Emulation.setDeviceMetricsOverride', {
       width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true,
     });
@@ -181,6 +206,8 @@ async function browserChecks(origin, only) {
     // static page this session opens reads 2026-09-12 12:00 local onward, no
     // matter what the host's real clock reads -- see clock.mjs.
     await c.send('Page.addScriptToEvaluateOnNewDocument', { source: CLOCK_SCRIPT });
+    // #241: lets `settle` wait on the app's own short timers -- see TIMER_TRACKER.
+    await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
 
     current = 'cold load';
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
@@ -334,6 +361,29 @@ function readFlag(flag) {
   return { has, raw };
 }
 
+/* ---------- --timing ---------- */
+const TIMING = has('--timing');
+
+/* Slowest row first, then the two totals. It is a block of its own, opened by
+   a line that starts with `timing`, so a reader (and test/smoke-timing.test.js)
+   can tell it from the table. `--json` carries it as a `timing` key instead,
+   so stdout stays valid JSON. */
+function timingBlock() {
+  const rows = [...rowSeconds].sort((a, b) => b.seconds - a.seconds);
+  const total = rows.reduce((t, r) => t + r.seconds, 0);
+  const sleep = sleepTally.ms / 1000;
+  return {
+    rows, total, sleep, sleeps: sleepTally.calls,
+    text: [
+      `timing (--timing), ${rows.length} timed rows (each one runCheck ran), slowest first`,
+      ...rows.map(r => `  ${r.seconds.toFixed(1).padStart(6)}s  ${r.name}`),
+      `  timed rows       ${total.toFixed(1)}s`,
+      `  executed sleep   ${sleep.toFixed(1)}s in ${sleepTally.calls} waits`,
+      `  settle waits     ${settleTally.calls}, ${settleTally.capped} hit the cap, ${(settleTally.ms / 1000).toFixed(1)}s`,
+    ].join('\n'),
+  };
+}
+
 /* ---------- --only ---------- */
 const { has: HAS_ONLY, raw: ONLY_NAME } = readFlag('--only');
 
@@ -431,12 +481,13 @@ if (ONLY) {
      property of the whole session `--only` still opened, not of the one pass
      it ran. */
   if (JSON_OUT) {
-    console.log(JSON.stringify({ ...report, consoleErrors }, null, 2));
+    console.log(JSON.stringify({ ...report, consoleErrors, ...(TIMING && { timing: timingBlock() }) }, null, 2));
   } else {
     const pad = Math.max(...report.checks.map(c => c.name.length));
     console.log(`\nbenchcard smoke — ${report.viewport[0]}×${report.viewport[1]}, 1 of ${ROWS.length} checks (--only)\n`);
     for (const c of report.checks) printRow(pad, c);
     console.log('');
+    if (TIMING) console.log(timingBlock().text + '\n');
     console.log('skipped: node --test (--only implies --no-tests), 3 budget checks (--only)');
     if (consoleErrors.length) {
       console.log(`console errors during this run: ${consoleErrors.length} — ${consoleErrors.slice(0, 4).join(' | ')}`);
@@ -472,12 +523,13 @@ if (has('--update-budgets')) {
 if (!has('--no-tests')) report.checks.push(await runTests());
 
 if (JSON_OUT) {
-  console.log(JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(TIMING ? { ...report, timing: timingBlock() } : report, null, 2));
 } else {
   const pad = Math.max(...report.checks.map(c => c.name.length));
   console.log(`\nbenchcard smoke — ${report.viewport[0]}×${report.viewport[1]}, ${report.checks.length} checks\n`);
   for (const c of report.checks) printRow(pad, c);
   console.log('');
+  if (TIMING) console.log(timingBlock().text + '\n');
 }
 
 /* THE DRIFT CHECK. A full run's printed names have to be exactly the

@@ -1,4 +1,5 @@
 import { evalIn, step } from './dom.mjs';
+import { resize } from './page-state.mjs';
 import { TOUCH_WIDTHS } from './sizes.mjs';
 
 /* The sweep both `touchPass` and `settingsRowPass` are built from: read the
@@ -39,9 +40,7 @@ export async function widthSweep(c, source, { states, checkName, countRe, label,
   }
 
   await evalIn(c, step(close));
-  await c.send('Emulation.setDeviceMetricsOverride',
-    { width: w0, height: h0, deviceScaleFactor: 2, mobile: true });
-  await new Promise(r => setTimeout(r, 300));
+  await resize(c, w0, h0, { debounce: true });
 
   return { bad, audited, seen };
 }
