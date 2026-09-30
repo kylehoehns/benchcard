@@ -491,18 +491,27 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         balance: ['even', 'start', 'finish', 'both'].includes(g.balance) ? g.balance : 'even',
         live: (() => {
           const l = isObj(g.live) ? g.live : {};
+          const at = num(l.at, 0, 0, 200);
           const ov = {};
           for (const [k, v] of Object.entries(isObj(l.overrides) ? l.overrides : {})) {
-            const kept = keep(v).filter(id => !sittingOut.has(id));
+            // #247: a five already played stays as it was, whoever is out now;
+            // only a five still to come must be made of kids at the game
+            const kept = Number(k) < at ? keep(v) : keep(v).filter(id => !sittingOut.has(id));
             // a stale override that no longer names five real players who are
             // at the game is worse than none at all -- it puts an absent
             // player on the floor in bench mode and on the printed card
             if (Number.isFinite(Number(k)) && kept.length === 5) ov[Number(k)] = kept;
           }
+          // #247: where a late kid walked in, `{id: stint index}` of real ids
+          const arrived = {};
+          for (const [id, k] of Object.entries(isObj(l.arrived) ? l.arrived : {})) {
+            if (validId.has(id) && Number.isInteger(k) && k >= 0 && k <= 200) arrived[id] = k;
+          }
           // #135: `finished` is a saved fact, kept only when it is exactly
           // `true` -- absent means "not finished", the same "absent is off"
           // pattern useSeasonTargets uses. Nothing else in this block moves.
-          return { at: num(l.at, 0, 0, 200), overrides: ov, ...(l.finished === true ? { finished: true } : {}) };
+          return { at, overrides: ov, ...(Object.keys(arrived).length ? { arrived } : {}),
+                   ...(l.finished === true ? { finished: true } : {}) };
         })(),
         seed: num(g.seed, 1, 0, 2 ** 32) >>> 0,
         constraints: {

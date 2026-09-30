@@ -239,3 +239,24 @@ test('handing generatePlan the stints it would have built changes nothing', () =
     }
   }
 });
+
+/* #247 decision 4: a kid who walked in at stint 2 is owed an even share of
+   what is LEFT, and nobody else gives up minutes to cover the time she
+   missed. 9 players, 4 x 8 sub every 4 = 8 stints of 4 min; from stint 2 that
+   is 24 min x 5 on the floor / 9 = 13.3 each for her. */
+test('a late arrival aims at an even share of what is left, not at the whole game', () => {
+  const { g, p } = setup(9, { seed: 1234, granValue: 4, out: ['p5'] });
+  g.live.at = 2;
+  S.setAvailable(g, 'p5', true);
+  const arrival = S.resolveRest(g, p, 2);
+  assert.equal(arrival.ok, true, arrival.reason);
+  assert.ok(g.live.arrived.p5 === 2, 'setAvailable recorded the arrival');
+  assert.ok(Math.abs(arrival.minutes.p5 - 120 / 9) <= 4,
+    `she is planned ${arrival.minutes.p5} min, within a stint of 13.3`);
+
+  // the same re-solve without the arrival is the catch-up it replaces
+  delete g.live.arrived;
+  const catchUp = S.resolveRest(g, p, 2);
+  assert.ok(catchUp.minutes.p5 > 16,
+    `without it she is planned ${catchUp.minutes.p5}: the past owed to her`);
+});

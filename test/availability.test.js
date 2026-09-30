@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { sanitize } from '../app/storage.js';
+import { playedStints } from '../app/live.js';
 
 /* Sitting a player out is the other half of `removePlayer`. A live override is
    a five the coach picked by hand; once one of those five is not at the game
@@ -17,7 +18,7 @@ const src = readFileSync(new URL('../app/state.js', import.meta.url), 'utf8');
 const body = src.slice(src.indexOf('export function setAvailable'));
 const fn = body.slice(0, body.indexOf('\n}\n') + 2).replace('export function', 'function');
 // eslint-disable-next-line no-new-func
-const setAvailable = new Function(`${fn}\nreturn setAvailable;`)();
+const setAvailable = new Function('playedStints', `${fn}\nreturn setAvailable;`)(playedStints);
 
 const gameWith = () => ({
   out: [],
@@ -83,4 +84,29 @@ test('sanitize drops an override naming a player who is sitting out', () => {
   };
   const s = sanitize(raw, { emptyConstraints, newGame });
   assert.deepEqual(Object.keys(s.teams[0].days[0].games[0].live.overrides), ['3']);
+});
+
+/* #247: what already happened stays on the card. */
+test('marking a kid out in a game underway keeps the fives already played', () => {
+  const g = gameWith();
+  g.live.at = 2;
+  g.live.overrides = { 0: ['a', 'b', 'c', 'd', 'e'], 1: ['a', 'c', 'd', 'e', 'f'], 3: ['a', 'b', 'c', 'd', 'e'] };
+  setAvailable(g, 'a', false);
+  assert.deepEqual(Object.keys(g.live.overrides), ['0', '1'],
+    'stints 0 and 1 were played with her; only the one still to come goes');
+});
+
+test('marking a kid in during a game underway records the stint they arrived at', () => {
+  const g = gameWith();
+  g.out = ['f'];
+  g.live.at = 2;
+  setAvailable(g, 'f', true);
+  assert.deepEqual(g.live.arrived, { f: 2 });
+});
+
+test('marking a kid in before tip-off records no arrival', () => {
+  const g = gameWith();
+  g.out = ['f'];
+  setAvailable(g, 'f', true);
+  assert.equal(g.live.arrived, undefined);
 });

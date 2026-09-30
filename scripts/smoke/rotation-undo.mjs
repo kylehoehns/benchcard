@@ -1,10 +1,12 @@
-/* #134, "What would settle it" items 1, 2, 3 and 5: on RICH's Hawks game
+/* #134, "What would settle it" items 1, 2, 3 and 5 (#247 retired Who's here
+ * from the toast: see its block below): on RICH's Hawks game
  * (`g0`) underway at `live.at` 2 with one hand swap already in `live.overrides`
  * -- seeded with `setGame`, the way `pass-underway.mjs` seeds a part-played
  * game, rather than driving Start/swap/step-forward by hand each time this
- * check runs -- four different edits that rebuild the rotation (Format's
- * minutes-per-period stepper, Sub interval, Who's here, and the Plan sheet's
- * strategy seg) each get the same "Rotation changed." toast with an Undo
+ * check runs -- three different edits that rebuild the rotation (Format's
+ * minutes-per-period stepper, Sub interval, and the Plan sheet's strategy
+ * seg set to By hand, which `resolveRest` refuses) each get the same
+ * "Rotation changed." toast with an Undo
  * button, and Undo puts the game's periods/period minutes, `live.overrides`,
  * `live.at` and the plan table's own played-minutes column back exactly as
  * they read before the edit (item 2's own list). Item 6 (the toast fitting at
@@ -49,6 +51,17 @@ const readGame = `(async () => {
   });
 })()`;
 
+// #247: what has been played -- `live.at`, and the fives shown for stints
+// 0..at-1 (an override where the coach swapped, else the plan's own stint),
+// read through state.js's own `effectiveStints`, the function every readout
+// uses. Compared before and after an edit, never against a value recomputed here.
+const readPlayed = `(async () => {
+  const s = await import('/state.js');
+  const g = s.state.day.games[0];
+  const eff = s.effectiveStints(g, s.plans[0]);
+  return JSON.stringify({ at: g.live.at, fives: eff.slice(0, g.live.at).map(x => x.onFloor) });
+})()`;
+
 const readMinutes = `(() => {
   const d = document.getElementById('tabledetails');
   if (d) d.open = true;
@@ -72,7 +85,7 @@ const readToast = readToastExpr(undefined, true);
 // its ordinary 422px-tall resting height at 390x844/16px root once the Undo
 // toast mounts inside it -- the `:has()` rule that grows the sheet for a
 // toast that does not fit (app.css) must not also let a long `.bsheet-body`
-// (Who's here's player list) pull the whole dialog taller than the toast
+// (the Sub interval list) pull the whole dialog taller than the toast
 // itself needs. Reads the dialog's own rect, not anything computed from the
 // body/header/status boxes the way the CSS derives it.
 const readSheetRect = sel => `(() => {
@@ -84,7 +97,7 @@ const readSheetRect = sel => `(() => {
 
 const CLEARED = 'Rotation changed. The swaps you made by hand were cleared.';
 
-// Repeated after every one of the four edits below: click the toast's own
+// Repeated after every one of the edits below: click the toast's own
 // Undo, let the debounce and countTo settle, then confirm the restore did
 // not itself raise a second, competing toast (item 5's "no second toast from
 // Undo's own restore" bullet).
@@ -171,6 +184,7 @@ export async function rotationUndoPass(c, origin) {
 
     /* ---- item 3: Sub interval (same toast, same Undo) ---- */
     await evalIn(c, step(`document.getElementById('phraseInterval').click()`));
+    const beforeToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetInterval')));
     // index 7 of GRAN_CHOICES (state.js) is "breaksOnly" -- the one choice
     // furthest from RICH's own "every 4 min", so this always picks a
     // different row rather than depending on which one starts selected.
@@ -184,6 +198,18 @@ export async function rotationUndoPass(c, origin) {
     const toast2 = JSON.parse(await evalIn(c, readToast));
     if (!toast2.shown || toast2.text !== CLEARED || !toast2.hasUndo) {
       problems.push(`item 3 (sub interval): toast reads ${JSON.stringify(toast2)}, want ${JSON.stringify(CLEARED)} with Undo`);
+    }
+    // Item 6 follow-up (moved here from Who's here, #247: that sheet no longer
+    // raises the toast): at 390x844/16px root the Undo toast mounting inside
+    // the sheet must not change its height by more than 1px -- the body
+    // should scroll, not grow the sheet.
+    const afterToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetInterval')));
+    if (!beforeToastRect || !afterToastRect) {
+      problems.push(`item 6: could not measure #sheetInterval's rect (before ${JSON.stringify(beforeToastRect)}, `
+        + `after ${JSON.stringify(afterToastRect)})`);
+    } else if (Math.abs(afterToastRect.height - beforeToastRect.height) > 1) {
+      problems.push(`item 6: #sheetInterval's height went from ${beforeToastRect.height} to ${afterToastRect.height} `
+        + 'when the Undo toast appeared at 390x844/16px root, want within 1px -- the body should scroll, not grow the sheet');
     }
     await clickUndo(c);
     const afterUndo2 = JSON.parse(await evalIn(c, readGame));
@@ -199,9 +225,21 @@ export async function rotationUndoPass(c, origin) {
     notes.push('item 3: Sub interval offers the same toast and Undo restores it');
     await evalIn(c, step(`document.getElementById('sheetIntervalClose')?.click()`));
 
-    /* ---- item 3: Who's here (marking a player absent) ---- */
+    /* ---- #247 decision 1: Who's here (marking a player absent) on an
+       underway game with the same grid freezes the played stints and
+       re-plans the rest. Nothing played moved, so there is NO "Rotation
+       changed." toast and nothing to Undo (#134's offer is for a change that
+       rewrites what was played -- Format and Sub interval above, By hand
+       below). The proof is the game's own record: live.at, the hand swap at
+       stint 1, and stint 0 as the plan printed it, all exactly as before. ---- */
+    await evalIn(c, setGame(UNDERWAY_SEED));
+    await wait(SETTLE_MS);
+    const outBefore = JSON.parse(await evalIn(c, `(async () => {
+      const s = await import('/state.js');
+      return JSON.stringify(s.state.day.games[0].out);
+    })()`));
+    const playedBefore = JSON.parse(await evalIn(c, readPlayed));
     await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
-    const beforeToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetWho')));
     await evalIn(c, step(`(async () => {
       const s = await import('/state.js');
       const five = s.state.day.games[0].live.overrides['1'];
@@ -212,30 +250,34 @@ export async function rotationUndoPass(c, origin) {
     })()`));
     await wait(SETTLE_MS);
     const toast3 = JSON.parse(await evalIn(c, readToast));
-    if (!toast3.shown || !(toast3.text || '').startsWith('Rotation changed.') || !toast3.hasUndo) {
-      problems.push(`item 3 (who's here): toast reads ${JSON.stringify(toast3)}, want "Rotation changed." with Undo`);
+    if (toast3.shown) {
+      problems.push(`item 3 (who's here): a toast reads ${JSON.stringify(toast3)}, want none -- nothing played moved`);
     }
-    // Item 6 follow-up: at 390x844/16px root, #sheetWho is a half sheet with
-    // room for the header, toast and status line without growing past 422px
-    // -- the toast showing must not change its height by more than 1px.
-    const afterToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetWho')));
-    if (!beforeToastRect || !afterToastRect) {
-      problems.push(`item 6: could not measure #sheetWho's rect (before ${JSON.stringify(beforeToastRect)}, `
-        + `after ${JSON.stringify(afterToastRect)})`);
-    } else if (Math.abs(afterToastRect.height - beforeToastRect.height) > 1) {
-      problems.push(`item 6: #sheetWho's height went from ${beforeToastRect.height} to ${afterToastRect.height} `
-        + 'when the Undo toast appeared at 390x844/16px root, want within 1px -- the body should scroll, not grow the sheet');
-    }
-    await clickUndo(c);
-    const afterUndo3 = JSON.parse(await evalIn(c, readGame));
-    if (afterUndo3.at !== baseline.at || JSON.stringify(afterUndo3.overrides) !== JSON.stringify(baseline.overrides)) {
-      problems.push(`item 3 (who's here): Undo did not restore live.at/live.overrides (${afterUndo3.at}/${JSON.stringify(afterUndo3.overrides)})`);
+    const outNow = JSON.parse(await evalIn(c, `(async () => {
+      const s = await import('/state.js');
+      return JSON.stringify(s.state.day.games[0].out);
+    })()`));
+    if (outNow.length !== outBefore.length + 1) problems.push(`item 3 (who's here): g.out is ${JSON.stringify(outNow)}, want ${JSON.stringify(outBefore)} plus the one player just marked absent`);
+    const playedAfter = JSON.parse(await evalIn(c, readPlayed));
+    if (JSON.stringify(playedAfter) !== JSON.stringify(playedBefore)) {
+      problems.push(`item 3 (who's here): the played stints (live.at, stint 0 and stint 1's fives) read ${JSON.stringify(playedAfter)} `
+        + `after marking a player absent, want them as before, ${JSON.stringify(playedBefore)}`);
     }
     await checkNoStaleToast(c, problems, "who's here");
-    notes.push('item 3: Who\'s here (marking a player absent) offers Undo and it restores live');
+    notes.push("item 3 (#247): Who's here on an underway game raises no toast and leaves the played stints exactly as they were");
     await evalIn(c, step(`document.getElementById('sheetWhoClose')?.click()`));
 
-    /* ---- item 3: the Plan sheet's strategy seg ---- */
+    // Fresh underway seed for the rest of this check: the absent player would
+    // otherwise still be out, and the baseline below no longer applies.
+    await evalIn(c, setGame(`s.state.day.games[0].out = ${JSON.stringify(outBefore)};
+    s.state.day.games[0].live = null;
+    const rr0 = await import('/render.js'); rr0.renderAll();
+` + UNDERWAY_SEED));
+    await wait(SETTLE_MS);
+
+    /* ---- item 3: the Plan sheet's strategy seg. "By hand" (`minutes`) is a
+       strategy `resolveRest` refuses, so #247 decision 1 falls back to #134:
+       the rotation is rewritten and the toast offers Undo (spec case E). ---- */
     await evalIn(c, step(`document.getElementById('phraseStrategy').click()`));
     await evalIn(c, step(`[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'By hand').click()`));
     await wait(SETTLE_MS);

@@ -523,33 +523,26 @@ export async function focusAnnouncePass(c, origin) {
 
     /* item 6 (reset/undo -> first floor row) and item 12 (a toast INSIDE an
        open dialog): reuse rotation-undo.mjs's own underway-with-a-hand-swap
-       seed and its Who's here scenario, which raises the toast inside
-       #sheetWho -- see that file's own UNDERWAY_SEED for why this exact
-       fixture (not a fresh one) makes the toast actually fire. */
+       seed and raise #134's toast inside #sheetInterval by picking another
+       Sub interval -- a grid change, so it keeps the toast. (Who's here used
+       to do this; since #247 it raises none.) */
     await evalIn(c, setGame(handSwapSeed()));
-    await tap(c, `document.getElementById('phrasePlayers').click()`);
-    const beforeToast = await evalJSON(c, `JSON.stringify(!!document.querySelector('#sheetWho .bsheet-toasts'))`);
-    await tap(c, `(async () => {
-      const s = await import('/state.js');
-      const five = s.state.day.games[0].live.overrides['1'];
-      const target = s.state.players.find(p => !five.includes(p.id));
-      const rows = [...document.querySelectorAll('#sheetWhoBody .who-row')];
-      const row = rows.find(r => r.getAttribute('aria-label') === (target.name || 'Unnamed'));
-      row.click();
-    })()`);
+    await tap(c, `document.getElementById('phraseInterval').click()`);
+    // index 7 of GRAN_CHOICES is "breaksOnly", never the fixture's own row.
+    await tap(c, `document.querySelectorAll('#sheetIntervalBody .prow')[7].click()`);
     const hostInfo = await evalJSON(c, `(() => {
-      const host = document.querySelector('#sheetWho .bsheet-toasts');
+      const host = document.querySelector('#sheetInterval .bsheet-toasts');
       return JSON.stringify({
         found: !!host,
         role: host ? host.getAttribute('role') : null,
         hasText: !!host?.querySelector('.tmsg'),
       });
     })()`);
-    if (!hostInfo.found || hostInfo.role !== 'status') problems.push(`item 12: .bsheet-toasts inside #sheetWho reads ${JSON.stringify(hostInfo)}, want role="status"`);
+    if (!hostInfo.found || hostInfo.role !== 'status') problems.push(`item 12: .bsheet-toasts inside #sheetInterval reads ${JSON.stringify(hostInfo)}, want role="status"`);
     else if (!hostInfo.hasText) problems.push('item 12: .bsheet-toasts has role="status" but holds no toast text to announce');
     else notes.push('item 12: a toast raised inside an open sheet mounts in a .bsheet-toasts host with role="status", already in the DOM before the text lands');
     await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
-    await evalIn(c, step(`document.getElementById('sheetWhoClose')?.click()`));
+    await evalIn(c, step(`document.getElementById('sheetIntervalClose')?.click()`));
 
     // item 6, reset/undo -> first floor row.
     await evalIn(c, setGame(handSwapSeed()));
@@ -634,16 +627,25 @@ export async function focusAnnouncePass(c, origin) {
     if (regenCleared.live !== '') problems.push(`item 13: Shuffle clearing hand swaps still wrote #regenLive (${JSON.stringify(regenCleared.live)}), want it left empty -- only the existing flash announces`);
     else notes.push('item 13: Shuffle clearing hand swaps leaves #regenLive untouched; the existing flash toast is the only announcement');
 
-    // item 13: Shuffle on an underway game -> only #134's own toast.
+    // item 13: Shuffle on an underway game. Since #247 a Shuffle (a seed
+    // change, same grid) freezes the played stints and re-plans the rest with
+    // no #134 toast, so #regenLive must announce it: exactly ONE of the two
+    // announces, never both and never neither. A #134 toast, when one is
+    // raised, suppresses #regenLive (app.js reads `rotationAnnounced()`).
     await evalIn(c, setGame(`s.state.day.games[0].live = { at: 2, overrides: {} };`));
     await evalIn(c, step(`document.getElementById('regenLive').textContent = ''`));
     await tap(c, `document.getElementById('regen').click()`);
+    await settle(c);
     const regenUnderway = await evalJSON(c, `JSON.stringify({
       live: document.getElementById('regenLive')?.textContent ?? null,
-      toastShown: !!document.querySelector('.toast[data-undo] .tmsg'),
+      summary: document.getElementById('summary')?.textContent ?? null,
+      toastShown: !!document.querySelector('.toast[data-undo]:not(.out) .tmsg'),
     })`);
-    if (regenUnderway.live !== '') problems.push(`item 13: Shuffle on an underway game still wrote #regenLive (${JSON.stringify(regenUnderway.live)}), want it left empty -- only #134's own toast announces`);
-    else notes.push("item 13: Shuffle on an underway game leaves #regenLive untouched; #134's own toast is the only announcement");
+    const announcers = (regenUnderway.live ? 1 : 0) + (regenUnderway.toastShown ? 1 : 0);
+    if (announcers !== 1) problems.push(`item 13: Shuffle on an underway game announced through ${announcers} channel(s) (#regenLive ${JSON.stringify(regenUnderway.live)}, #134 toast shown: ${regenUnderway.toastShown}), want exactly one`);
+    else if (regenUnderway.live && regenUnderway.live !== `Rotation changed. ${regenUnderway.summary}`) {
+      problems.push(`item 13: Shuffle on an underway game wrote #regenLive ${JSON.stringify(regenUnderway.live)}, want "Rotation changed. " + the summary (${JSON.stringify(regenUnderway.summary)})`);
+    } else notes.push(`item 13: Shuffle on an underway game announces exactly once, through ${regenUnderway.live ? '#regenLive (no #134 toast: nothing played moved)' : "#134's own toast (#regenLive left empty)"}`);
     await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
 
     // item 14: #issues keeps its own child node identity across a same-text

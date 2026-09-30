@@ -1815,3 +1815,24 @@ test('storage.js is the only place a view key is translated', () => {
   assert.match(storage, /VIEW_WAS = new Map\(\[\['roster', 'team'\]\]\)/,
     'the one translation is gone -- an old backup file now restores onto the wrong page');
 });
+
+/* #247: a reload keeps what was played. */
+test('a played override survives a reload even when it names a kid who is out, and arrivals are kept', () => {
+  const raw = good();
+  raw.players.push(
+    { id: 'c', name: 'Devon Ellis' }, { id: 'd', name: 'Kade Brenner' },
+    { id: 'e', name: 'Aaron Volk' }, { id: 'f', name: 'Jack Morrison' });
+  raw.day.games[0].out = ['b'];
+  raw.day.games[0].live = { at: 3, arrived: { f: 2, ghost: 1, c: 'x' }, overrides: {
+    1: ['a', 'b', 'c', 'd', 'e'],       // played, names 'b' who is out now: kept
+    4: ['a', 'b', 'c', 'd', 'e'],       // still to come, names 'b': dropped
+  } };
+  const live = sanitize(raw, H).teams[0].days[0].games[0].live;
+  assert.deepEqual(live.overrides, { 1: ['a', 'b', 'c', 'd', 'e'] });
+  assert.deepEqual(live.arrived, { f: 2 }, 'only real player ids with a stint index');
+});
+
+test('a game with no arrivals gets no arrived block', () => {
+  const live = sanitize(good(), H).teams[0].days[0].games[0].live;
+  assert.equal('arrived' in live, false);
+});

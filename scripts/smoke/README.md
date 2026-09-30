@@ -92,6 +92,7 @@ settles hit their cap; a capped settle is also named on stderr in every run.
 | `resume bar on Today` | `scripts/smoke/resume-bar.mjs` | RICH |
 | `a coach finishes a game with Finish game` | `scripts/smoke/finish-game.mjs` | RICH |
 | `mid-game rotation change offers Undo` | `scripts/smoke/rotation-undo.mjs` | RICH |
+| `a This stint swap re-plans the rest of the game` | `scripts/smoke/swap-replans-rest.mjs` | RICH |
 | `focus lands on the pushed heading, screens and Shuffle announce` | `scripts/smoke/focus-announce.mjs` | RICH |
 | `wide layout: 360px rail at 840px+, centered sheet at 600px` | `scripts/smoke/wide-layout.mjs` | RICH |
 | `no sideways pan at 360px` | `scripts/smoke/narrow.mjs` | RICH |

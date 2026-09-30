@@ -119,6 +119,7 @@ import { floatingControlsPass } from './floating-controls.mjs';
 import { resumeBarPass } from './resume-bar.mjs';
 import { finishGamePass } from './finish-game.mjs';
 import { rotationUndoPass } from './rotation-undo.mjs';
+import { swapReplansRestPass } from './swap-replans-rest.mjs';
 import { wideLayoutPass } from './wide-layout.mjs';
 import { narrowPass } from './narrow.mjs';
 import { sweepPass } from './sweep.mjs';
@@ -494,6 +495,12 @@ export const ROWS = Object.freeze([
   // replaced -- see rotation-undo.mjs.
   { id: 'rotationundo', name: 'mid-game rotation change offers Undo', selectable: true, setup: 'rich',
     run: ctx => rotationUndoPass(ctx.c, ctx.origin) },
+  // #247's own guard (see docs/specs/247-played-stints-stay-played.md's Proof
+  // section): a This stint swap in bench mode re-plans the rest of the game,
+  // one Undo takes both back, and closing bench mode leaves the stint table
+  // and minute bars current -- see swap-replans-rest.mjs.
+  { id: 'swapreplans', name: 'a This stint swap re-plans the rest of the game', selectable: true, setup: 'rich',
+    run: ctx => swapReplansRestPass(ctx.c, ctx.origin) },
   // #139's own guard (see docs/specs/139-focus-announce.md's Proof section):
   // a pushed screen lands focus on its own heading and titles the tab, Back
   // returns it to the door it came from (or falls back if that door is

@@ -22,7 +22,7 @@ import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          validTipoff, tipoffLabel, sortDay } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
-import { stage } from './live.js';
+import { stage, playedStints } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
    Lightness and chroma are themed once in CSS; only the hue varies here. */
@@ -781,10 +781,20 @@ export function openGame(d, i) {
    catch it either, because the ids all still resolve to real players.
    Same answer as removing: drop the five and fall back to the plan. */
 export function setAvailable(g, id, available) {
+  const wasOut = g.out.includes(id);
   g.out = available ? g.out.filter(x => x !== id) : [...g.out, id];
-  if (available) return;
-  const ov = g.live?.overrides;
-  if (ov) for (const k of Object.keys(ov)) if (ov[k].includes(id)) delete ov[k];
+  const live = g.live;
+  const at = playedStints(live);
+  if (available) {
+    /* #247: a kid who walks in to a game underway owes, and is owed, nothing
+       for the stints before `at`; `resolveRest` reads this to know that. */
+    if (live && wasOut && at > 0) live.arrived = { ...live.arrived, [id]: at };
+    return;
+  }
+  // #247: what already happened stays. Only a five still to come is a lineup
+  // with an absent kid in it.
+  const ov = live?.overrides;
+  if (ov) for (const k of Object.keys(ov)) if (Number(k) >= at && ov[k].includes(id)) delete ov[k];
 }
 
 /* The third sweep, and the one nothing else could catch: rerolling the seed.
@@ -1393,7 +1403,37 @@ export function suppressRotationOffer(fn) {
 }
 export const rotationOfferSuppressed = () => suppressed;
 
-function syncOverrides(g, p, underway = false) {
+/* #247: "the same grid" is the same number of stints with the same period
+   name and clock window each. A change to the format or the sub interval
+   moves the grid, and keeps #134's rewrite-and-toast path. */
+const sameGrid = (a, b) => a.stints.length === b.stints.length
+  && a.stints.every((s, i) => s.periodName === b.stints[i].periodName
+    && s.startSec === b.stints[i].startSec && s.endSec === b.stints[i].endSec);
+
+/* #247: an underway game whose rotation moved for a reason other than its
+   grid (attendance, a rule, the strategy) freezes the stints already played
+   and re-plans only the rest. The freeze is `live.overrides` -- the one place
+   a lineup other than the plan's is recorded -- built from the OLD plan's
+   effective lineups, because those are what the coach saw; the new plan's
+   stints 0..at-1 are not what was played. `resolveRest` writes the rest.
+   Returns false, having touched nothing, when it cannot (the strategy is
+   `minutes` or `platoon`, or `resolveRest` refuses), and the caller falls
+   back to #134. */
+function freezePlayedAndReplan(g, p, prev) {
+  const live = g.live;
+  const at = Math.min(playedStints(live), p.stints.length);
+  const before = live.overrides || {};
+  const frozen = {};
+  for (let k = 0; k < at; k++) frozen[k] = before[k] || prev.stints[k].onFloor;
+  live.overrides = frozen;
+  const r = resolveRest(g, p, at);
+  if (!r.ok) { live.overrides = before; return false; }
+  Object.assign(live.overrides, r.overrides);
+  live.stamp = rotationStamp(p);
+  return true;
+}
+
+function syncOverrides(g, p, underway = false, prev = null) {
   const live = g.live;
   if (!p || !p.ok || !live) return p;
   const hasOverrides = Object.keys(live.overrides || {}).length > 0;
@@ -1403,6 +1443,8 @@ function syncOverrides(g, p, underway = false) {
   const stamp = rotationStamp(p);
   if (!live.stamp) { live.stamp = stamp; return p; }   // first sight: adopt it
   if (live.stamp === stamp) return p;
+
+  if (underway && prev && prev.ok && sameGrid(prev, p) && freezePlayedAndReplan(g, p, prev)) return p;
 
   // the rotation moved: swaps (if any) no longer match it and go, exactly
   // as `reseed` drops them; an underway game says so either way (#134),
@@ -1574,7 +1616,7 @@ export function computeAll() {
         for (const [id, m] of Object.entries(p.minutes)) cum[id] += m;
         noteToday(p.minutes);
       }
-      return syncOverrides(g, p, isUnderway(p, g.live));
+      return syncOverrides(g, p, isUnderway(p, g.live), hit?.plan);
     });
   };
 
@@ -1688,8 +1730,19 @@ export function resolveRest(g, p, from, sitIds = []) {
      player's even share of what has been played so far minus what they really
      played, so a target lands on (everyone's total + the rest) / n minus what
      they have -- which is "whole-game even among whoever is still playing". */
-  const avg = avail.reduce((a, id) => a + (played[id] || 0), 0) / avail.length;
-  const deficit = Object.fromEntries(avail.map(id => [id, avg - (played[id] || 0)]));
+  /* #247: a kid who arrived late (`live.arrived[id]`, a stint index) is owed
+     a share of only the stints since they walked in. Each past stint's minutes
+     are split among whoever was there for it; with nobody late that is the
+     plain average of what was played. */
+  const arrived = g.live?.arrived || {};
+  const fair = Object.fromEntries(avail.map(id => [id, 0]));
+  effectiveStints(g, p).slice(0, k).forEach((s, j) => {
+    const here = avail.filter(id => (arrived[id] || 0) <= j);
+    if (!here.length) return;
+    const pool = s.minutes * s.onFloor.filter(id => avail.includes(id)).length;
+    for (const id of here) fair[id] += pool / here.length;
+  });
+  const deficit = Object.fromEntries(avail.map(id => [id, fair[id] - (played[id] || 0)]));
   const targets = carryoverTargets({
     ids: avail, deficit,
     budget: total * ON_FLOOR,

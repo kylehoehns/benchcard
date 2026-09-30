@@ -25,6 +25,15 @@ export function stage(p, live) {
   return 'part-played';
 }
 
+/* #247: how many stints of a game underway have been played -- `live.at`,
+   since the stint the coach is on has not been. Zero before tip-off and once
+   finished, the two states where no re-plan freezes anything. No plan needed,
+   for callers (`setAvailable`) that have only the game. */
+export function playedStints(live) {
+  if (live?.finished === true) return 0;
+  return Math.max(0, live?.at || 0);
+}
+
 // `stintIndex` and `stepAt` both land on "the requested stint, clamped to
 // the plan's range" -- named once here rather than each repeating the clamp.
 const clampToPlan = (p, at) => Math.max(0, Math.min(p.stints.length - 1, at));
