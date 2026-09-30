@@ -28,9 +28,13 @@ coach relies on is checked less.
 
 1. **Small** means all three: at most **20 changed lines outside `test/` and
    `docs/`** (`app/`, `scripts/`, `.claude/`, config); no change to the logic
-   of `engine.js`, `state.js`, `storage.js` or `live.js` (a `sw.js` version
-   bump from `npm run sw:bump` does not count against the lane); and the issue
-   already states what "done" looks like with a concrete value.
+   of the four pure modules `AGENTS.md` § Rules names (`engine.js`,
+   `budget.js`, `storage.js`, `roster.js`), nor of `state.js` or `live.js` (a
+   `sw.js` version bump from `npm run sw:bump` does not count against the
+   lane); and the issue already states what "done" looks like with a concrete
+   value. Review widened the human's list (`engine`, `state`, `storage`,
+   `live`) to include the two pure modules it left out, and to point at
+   `AGENTS.md` rather than keep a second list.
 2. **Builder:** a `developer` agent, test-first as now. **No refactorer.**
 3. **Reviewers:** `quality-reviewer` only. `doc-writer` runs only when a file
    under `docs/` or `README.md` names the thing that changed.

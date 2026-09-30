@@ -111,9 +111,10 @@ and most of it is machinery rather than prose:
 
 - **`AGENTS.md`** — the harness. The traps that have actually cost time here,
   written with the evidence that settled them.
-- **GitHub issues** — the open work. `/ship-feature` grills an issue into a
-  spec in `docs/specs/`, then a team of subagents in `.claude/agents/` builds,
-  tests, reviews and opens the pull request.
+- **GitHub issues** — the open work. `/ship-feature` has two lanes: the full lane
+  grills an issue into a spec in `docs/specs/`, while small fixes skip the spec
+  (see `/ship-feature` § The small-fix lane). A team of subagents in
+  `.claude/agents/` builds, tests, reviews and opens the pull request.
 - **`.claude/hooks/`** — rules that are deterministic are *enforced*, not
   documented. Blanket budget re-records, `git add -A`, and hand edits to
   generated files are denied outright.

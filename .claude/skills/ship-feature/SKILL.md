@@ -3,9 +3,9 @@ name: ship-feature
 description: >
   Use when building a change end-to-end from a GitHub issue — asks like "ship
   issue #14", "build the ticket #14", or "work the next issue". Reads the issue
-  as the source of truth, grills it into a spec with grill-with-docs, then
-  orchestrates the subagent team through build → test → refactor → review → PR →
-  CI → verify on the preview → notify.
+  as the source of truth, grills it into a spec with grill-with-docs (or, for a
+  small fix, a short brief), then orchestrates the subagent team through build →
+  test → refactor → review → PR → CI → verify on the preview → notify.
 ---
 
 # Ship a change from a GitHub issue
@@ -20,7 +20,8 @@ by the first survey. So the pipeline has two halves:
   its own. You orchestrate the subagents in `.claude/agents/`; you do not write
   the production code yourself.
 
-Run it top to bottom. **Do not start Build until the human confirms the spec** —
+Run it top to bottom. **Do not start Build until the human confirms the spec**
+(in the small lane, the brief) —
 except for a `ready-for-agent` ticket with nothing left to ask (step 2), where
 the ticket is the confirmation. One issue at a time — `AGENTS.md` § The loop
 says why.
@@ -49,19 +50,24 @@ current handoff and the findings verbatim; that is the whole brief.
 
 ## The small-fix lane
 
-Most issues are a few lines. Running them through the whole pipeline costs
-what a feature costs: #245 changed 4 lines of `app/` and carried a 35-line
-spec, a refactorer, three reviewers and a doc-writer. So there are two lanes,
+Most issues are a few lines, and running them through the whole pipeline
+costs what a feature costs (#245: 4 lines of `app/`). So there are two lanes,
 and step 1 picks one. **This section is the only place the lane's conditions
-are written;** `AGENTS.md` and `REVIEW.md` point here.
+are written;** `AGENTS.md` and `REVIEW.md` point here. The small lane is a
+deliberate trade against `REVIEW.md`'s "the same passes every time": the
+quality pass still runs; the reuse and efficiency passes do not.
 
 A change is **small** when all three hold:
 
 - it changes **at most 20 lines outside `test/` and `docs/`** (`app/`,
   `scripts/`, `.claude/`, config). The `sw.js` version bump from `npm run
   sw:bump` does not count;
-- it changes no logic in `engine.js`, `state.js`, `storage.js` or `live.js`;
-- the issue already says what "done" looks like, with a concrete value.
+- it changes no logic in the four pure modules `AGENTS.md` § Rules names, nor
+  in `state.js` or `live.js`;
+- after step 2's grilling, the issue says what "done" looks like, with a
+  concrete value.
+
+Step 1's line count is an estimate; the diff decides.
 
 In the small lane:
 
@@ -73,12 +79,25 @@ In the small lane:
 | `doc-writer`, unless a file under `docs/` or `README.md` names what changed | the proof pair, once per commit, by you |
 | the preview check, when no coach can see the change | the preview check, when a coach can |
 
-The developer's brief is the issue, its acceptance values and your survey
-notes, in place of a spec path. Everything else runs as written below.
+**Wherever the steps below or an agent file say "spec", the small lane
+substitutes:**
+
+- **the spec** (steps 4, 5, 7, 12, and `developer.md`/`quality-reviewer.md`):
+  the issue with its comments, plus a short brief you write that lists each
+  acceptance value and **the seam that tests it** — what a spec's Proof would
+  have named. Pass the brief to every agent in place of a spec path, and tell
+  them the issue's acceptance values stand in for **What would settle it**;
+- **step 3:** not run. Show the human the brief and get the go-ahead, unless
+  the issue is `ready-for-agent` with nothing left to ask;
+- **step 6:** no `refactorer`; commit with no spec file to stage;
+- **step 7:** launch `quality-reviewer`, plus `doc-writer` only when a doc
+  names what changed;
+- **step 10:** the PR body names the lane;
+- **step 12:** skipped when no coach can see the change.
 
 **If it grows past the limit mid-build, switch to the full lane there:** write
-the spec, then run all three reviewers. The PR body names the lane, and says
-so if it switched.
+the spec, run the `refactorer`, then all three reviewers and the `doc-writer`.
+The PR body says it switched.
 
 ## Understand
 
@@ -103,7 +122,7 @@ so if it switched.
 2. **Grill only what is still open.** A `ready-for-agent` ticket was decided
    with the human before it was published. If the survey holds up every claim
    and each acceptance criterion has a concrete value, there is nothing to ask:
-   skip to step 3 and do not wait for a go-ahead. Otherwise, grill just the
+   skip to step 3 (small lane: step 4) and do not wait for a go-ahead. Otherwise, grill just the
    falsified claims and the missing values. Any other issue is grilled in full.
 
    **Grill it** with `/grill-with-docs`. One question at a time, each with your
@@ -279,7 +298,7 @@ not CI green: the history checks need a base ref, which is why step 10 runs
 When the human hands over a list of tickets and says the PRs may be merged,
 they run as lanes: each ticket builds in its own worktree
 (`git worktree add ../benchcard-wt/<N> -b issue-<N>-<slug> main`), in
-parallel, and each is still one issue, one spec and one PR. What stays serial:
+parallel, and each is still one issue, one spec (or small-lane brief) and one PR. What stays serial:
 
 - **The proof pair runs one lane at a time.** Two smoke runs on one machine
   starve each other's Chrome and fail on timing.
