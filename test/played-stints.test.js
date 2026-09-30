@@ -19,6 +19,7 @@ globalThis.document = {
 };
 
 const S = await import('../app/state.js');
+const L = await import('../app/live.js');
 
 const LILY = 'p5';
 const emptyConstraints = () => ({
@@ -55,23 +56,24 @@ const minutes = g => S.effectiveMinutes(g, S.plans[0]);
 test('A: a late arrival leaves the played stints and minutes alone, and re-plans the rest with her in', () => {
   const g = setup();
   startAt(g, 2);
-  const pastBefore = fives(g, 2);
-  const playedBefore = S.minutesFrom(S.effectiveStints(g, S.plans[0]).slice(0, 2), S.availIds(g));
+  const pastBefore = fives(g, 3);
+  const playedBefore = S.minutesFrom(S.effectiveStints(g, S.plans[0]).slice(0, 3), S.availIds(g));
   S.rotationMoved();
 
   S.setAvailable(g, LILY, true);
   S.computeAll();
 
-  assert.deepEqual(fives(g, 2), pastBefore, 'stints 0 and 1 are the same fives as before');
+  assert.deepEqual(fives(g, 3), pastBefore, 'stints 0-2, the one on the floor included, are the same fives as before');
   const eff = S.effectiveStints(g, S.plans[0]);
-  const playedAfter = S.minutesFrom(eff.slice(0, 2), S.availIds(g));
+  const playedAfter = S.minutesFrom(eff.slice(0, 3), S.availIds(g));
   for (const id of S.availIds(g)) assert.equal(playedAfter[id] || 0, playedBefore[id] || 0, `${id} played minutes`);
   assert.equal(playedAfter[LILY] || 0, 0, 'Lily has played nothing');
-  /* "Stints 2-7 include Lily" cannot mean all six: her even share is 13.3
-     minutes, about three stints. She is in the rest, and only the rest. */
-  assert.ok(eff.slice(2).some(r => r.onFloor.includes(LILY)), 'Lily plays in the re-planned stints');
+  /* Amendments 7 and 13: the stint on the floor stays, so the re-plan is
+     stints 3-7 and her even share is 20 x 5 / 9 = 11.1 minutes, about three
+     stints. She plays in at least one of them, and only those. */
+  assert.ok(eff.slice(3).some(r => r.onFloor.includes(LILY)), 'Lily plays in the re-planned stints');
   const m = minutes(g);
-  assert.ok(Math.abs(m[LILY] - 120 / 9) <= 4, `Lily ends at ${m[LILY]}, within a stint of 13.3`);
+  assert.ok(Math.abs(m[LILY] - 100 / 9) <= 4, `Lily ends at ${m[LILY]}, within a stint of 11.1`);
   const others = Object.keys(m).filter(id => id !== LILY).map(id => m[id]);
   assert.ok(Math.max(...others) - Math.min(...others) <= 4, `on-time kids within a stint: ${others}`);
   assert.deepEqual(S.rotationMoved(), [], 'no "Rotation changed" toast: nothing played moved');
@@ -96,15 +98,15 @@ test('B: a late arrival after a This stint swap keeps the swapped five and clear
   assert.deepEqual(S.rotationMoved(), [], 'no rotation-changed toast');
 });
 
-test('C: a rule added at stint 3 leaves stints 0-2 alone and caps the rest', () => {
+test('C: a rule added at stint 3 leaves stints 0-3 alone and caps the rest', () => {
   const g = setup();
   startAt(g, 3);
-  const past = fives(g, 3);
-  const played = S.minutesFrom(S.effectiveStints(g, S.plans[0]).slice(0, 3), S.availIds(g));
+  const past = fives(g, 4);
+  const played = S.minutesFrom(S.effectiveStints(g, S.plans[0]).slice(0, 4), S.availIds(g));
   g.constraints.maxMinutes.p0 = 12;
   S.computeAll();
 
-  assert.deepEqual(fives(g, 3), past, 'stints 0-2 are unchanged');
+  assert.deepEqual(fives(g, 4), past, 'stints 0-3, the one on the floor included, are unchanged');
   const ends = minutes(g).p0;
   assert.ok(ends <= Math.max(12, played.p0), `p0 ends at ${ends}, at most 12 or what was played (${played.p0})`);
 });
@@ -168,4 +170,133 @@ test('G: a kid marked out after playing keeps her played stints, on screen and i
   S.archiveDay();
   const filed = S.team().season.games.find(x => x.id === g.id);
   assert.equal(filed.minutes[ava], playedAva, 'the season record files her played minutes');
+});
+
+/* ---- fix pass for #247: amendments 7-12 ---- */
+
+const swappedFive = (g, k) => {
+  const p0 = S.plans[0];
+  const inId = S.availIds(g).find(id => !p0.stints[k].onFloor.includes(id));
+  return p0.stints[k].onFloor.map((x, i) => (i === 0 ? inId : x));
+};
+
+test('7: the stint on the floor keeps its five when the rest is re-planned', () => {
+  const g = setup();
+  startAt(g, 2);
+  const before = fives(g, 3);
+  S.setAvailable(g, LILY, true);
+  S.computeAll();
+  assert.deepEqual(fives(g, 3), before, 'stints 0-2 are as the coach saw them');
+  assert.ok(!S.effectiveLineup(g, S.plans[0], 2).includes(LILY), 'she is not put on the floor mid-stint');
+});
+
+test('7: a five on the floor that names a kid now out is the one stint that changes', () => {
+  const g = setup();
+  startAt(g, 2);
+  const before = fives(g, 3);
+  const gone = S.plans[0].stints[2].onFloor[0];
+  S.setAvailable(g, gone, false);
+  S.computeAll();
+  assert.deepEqual(fives(g, 2), before.slice(0, 2), 'stints 0-1 are unchanged');
+  assert.ok(!S.effectiveLineup(g, S.plans[0], 2).includes(gone), 'the absent kid is off the floor');
+  assert.equal(S.effectiveLineup(g, S.plans[0], 2).length, 5);
+});
+
+test('8: Shuffle twice in a row leaves the stints played as the coach saw them', () => {
+  const g = setup();
+  startAt(g, 3);
+  const seen = fives(g, 4);
+  S.reseed(g); S.computeAll();
+  assert.deepEqual(fives(g, 4), seen, 'after the first Shuffle');
+  S.reseed(g); S.computeAll();
+  assert.deepEqual(fives(g, 4), seen, 'after the second Shuffle');
+  assert.deepEqual(S.rotationMoved(), [], 'nothing played moved, so no #134 offer');
+});
+
+test('8: Shuffle after a hand swap in a played stint keeps the swap, then and after a second Shuffle', () => {
+  const g = setup();
+  g.live.overrides[1] = swappedFive(g, 1);
+  startAt(g, 3);
+  const seen = fives(g, 4);
+  assert.equal(seen[1], g.live.overrides[1].join(','), 'the fixture shows the swap');
+  S.reseed(g); S.computeAll();
+  assert.deepEqual(fives(g, 4), seen, 'after the first Shuffle');
+  S.reseed(g); S.computeAll();
+  assert.deepEqual(fives(g, 4), seen, 'after the second Shuffle');
+});
+
+test('9: removing a rostered kid who played mid-game falls back to #134 and leaves no ghost in a five', () => {
+  const g = setup();
+  startAt(g, 3);
+  S.rotationMoved();
+  const ghost = S.plans[0].stints[0].onFloor[0];
+  S.removePlayer(ghost);
+  S.computeAll();
+  assert.deepEqual(S.rotationMoved(), [g.id], 'the rotation is rewritten and reported');
+  for (const [k, s] of S.effectiveStints(g, S.plans[0]).entries()) {
+    assert.ok(!s.onFloor.includes(ghost), `stint ${k} does not name the removed kid`);
+  }
+});
+
+test('10: a re-plan that overwrites a hand swap still to come says the swap was cleared', () => {
+  const g = setup();
+  startAt(g, 2);
+  g.live.overrides[5] = swappedFive(g, 5);
+  g.live.hand = [5];
+  S.overridesDropped();
+  S.setAvailable(g, LILY, true);
+  S.computeAll();
+  assert.equal(S.overridesDropped(), 1, 'the coach is told');
+  assert.deepEqual(L.handStints(g.live), [], 'and it is gone');
+});
+
+test('10: a re-plan with no hand swaps says nothing was cleared, and neither does a later Format change', () => {
+  const g = setup();
+  startAt(g, 2);
+  S.overridesDropped();
+  S.setAvailable(g, LILY, true);
+  S.computeAll();
+  assert.equal(S.overridesDropped(), 0, 'the freeze is not a hand swap');
+  g.granValue = 8;
+  S.computeAll();
+  assert.deepEqual(S.rotationMoved(), [g.id], 'the format change is still reported');
+  assert.equal(S.overridesDropped(), 0, 'but no swaps by hand were cleared');
+});
+
+test('10: a hand swap in a played stint survives a re-plan and is still a hand swap', () => {
+  const g = setup();
+  g.live.overrides[0] = swappedFive(g, 0);
+  g.live.hand = [0];
+  startAt(g, 2);
+  S.overridesDropped();
+  S.setAvailable(g, LILY, true);
+  S.computeAll();
+  assert.deepEqual(L.handStints(g.live), [0]);
+  assert.equal(S.overridesDropped(), 0);
+});
+
+test('11: a kid who played, went out and came back is not treated as a late arrival', () => {
+  const g = setup();
+  startAt(g, 3);
+  const ava = S.plans[0].stints[0].onFloor[0];
+  S.setAvailable(g, ava, false);
+  S.computeAll();
+  startAt(g, 5);
+  S.setAvailable(g, ava, true);
+  S.computeAll();
+  assert.equal(g.live.arrived?.[ava], undefined, 'not recorded as late');
+  const m = minutes(g);
+  const others = S.availIds(g).filter(id => id !== ava).map(id => m[id]);
+  assert.ok(m[ava] >= Math.min(...others) - 4, `she ends at ${m[ava]}, not shrunk far below the others ${others}`);
+});
+
+test('12: marking a kid out on a finished game deletes none of the played fives naming her', () => {
+  const g = setup();
+  const ava = S.plans[0].stints[0].onFloor[0];
+  const five = k => S.plans[0].stints[k].onFloor.slice();
+  startAt(g, 7);
+  g.live.finished = true;
+  g.live.overrides = { 0: [ava, ...five(0).filter(x => x !== ava).slice(0, 4)], 7: [ava, ...five(7).filter(x => x !== ava).slice(0, 4)] };
+  S.setAvailable(g, ava, false);
+  assert.deepEqual(Object.keys(g.live.overrides), ['0', '7'], 'every played five that names her is still there');
 });

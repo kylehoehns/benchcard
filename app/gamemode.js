@@ -19,7 +19,7 @@ import { openTrap, closeTrap } from './trap.js';
 import { track } from './analytics.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
          resolveRest, benchOpen, setBenchOpen } from './state.js';
-import { stage, stintIndex, openAt, stepAt } from './live.js';
+import { stage, stintIndex, openAt, stepAt, handStints, writeOverrides, clearRest, resetFrom } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
 let render = () => {};
@@ -560,7 +560,10 @@ export function renderGameMode({ keepFloor = false } = {}) {
   const header = benchHeaderText(row, i, p.stints.length);
   set('#gmGame', 'textContent', header.title);
   set('#gmClock', 'textContent', header.subtitle);
-  set('#gmReset', 'hidden', !Object.keys(live.overrides).length);
+  // #247: only a swap the coach made counts, and in a game underway only one
+  // `clearRest` would actually clear -- what was played never goes back.
+  const handed = handStints(live);
+  set('#gmReset', 'hidden', !handed.some(k => k >= resetFrom(live)));
   // #139 item 7: written only when the stint actually changed since the last
   // write -- `benchLiveText` reuses `benchHeaderText`, never rebuilding the
   // "Q1 · …" wording a second time.
@@ -575,7 +578,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
      for a no-op edit costs nothing. */
   const moved = Object.entries(live.overrides).filter(([k, five]) => {
     const s = p.stints[k];
-    return s && [...five].sort().join() !== [...s.onFloor].sort().join();
+    return handed.includes(Number(k)) && s && [...five].sort().join() !== [...s.onFloor].sort().join();
   }).length;
   set('#gmMoved', 'hidden', !moved);
   set('#gmMoved', 'textContent', !moved ? ''
@@ -887,11 +890,13 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
     },
     () => {
       const live = liveOf(g);
+      const swaps = {};
       for (let k = i; k <= last; k++) {
         const cur = effLineup(p, g, k);
         if (!cur.includes(outId) || cur.includes(inId)) continue;
-        live.overrides[k] = cur.map(x => (x === outId ? inId : x));
+        swaps[k] = cur.map(x => (x === outId ? inId : x));
       }
+      writeOverrides(live, swaps, true);
       /* #247: a one-stint swap moves minutes from one kid to another for good
          unless the rest of the game is re-planned around it. `resolveRest`
          settles up against what the floor actually showed, swap included, and
@@ -900,7 +905,7 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
          alone, as before. */
       if (scope === 'stint') {
         const r = resolveRest(g, p, i + 1);
-        if (r.ok) for (const [k, five] of Object.entries(r.overrides)) live.overrides[k] = five;
+        if (r.ok) writeOverrides(live, r.overrides, false);
       }
       gmPick = null;
     },
@@ -982,7 +987,7 @@ function sitRest(p, g, i, outId, name) {
   tick();
   undoable(`${name} sits for the rest. The others share those minutes.`, () => {
     const live = liveOf(g);
-    for (const [k, five] of Object.entries(r.overrides)) live.overrides[k] = five;
+    writeOverrides(live, r.overrides, true);
     gmPick = null;
   }, (undoing) => {
     save();
@@ -1026,7 +1031,7 @@ function gmStep(d) {
 /* Back to the printed plan. The caller wraps this in `undoable`, so it only
    mutates -- the repaint is the caller's second argument. */
 export function clearOverrides() {
-  liveOf(game()).overrides = {};
+  clearRest(liveOf(game()));
   gmPick = null;
 }
 

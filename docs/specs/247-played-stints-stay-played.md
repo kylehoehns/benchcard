@@ -177,6 +177,45 @@ means stints `0 .. live.at - 1`.
    behavior.
 6. **Repaint.** Add `'plan'` and `'issues'` to both repaint lists.
 
+### Amendments after review
+
+Review of the first build found places where the past could still move. These
+settle them.
+
+7. **The stint on the floor stays too.** The stint at `live.at` is being
+   played right now, so the freeze keeps it and the re-plan starts at
+   `live.at + 1`. The exception is when that five names a kid who is now out:
+   then the re-plan starts at `live.at`, and the current five changes.
+   "Played stints" in **What would settle it** therefore means `0 .. live.at`,
+   and A's even share is of the time after the current stint. With
+   `live.at = 2` that is 20 × 5 / 9 ≈ 11.1.
+8. **Shuffle** is a same-grid change like decision 1. `reseed` keeps
+   overrides at the frozen stints and clears only the later ones. Two Shuffles
+   in a row leave the frozen stints exactly as the coach saw them.
+9. **Removed player.** If a five the freeze would write names an id that is
+   not in `state.players`, the freeze does not run and #134's rewrite + Undo
+   runs instead.
+10. **Hand swaps vs. the freeze.** `live.hand` lists the stint indices the
+    coach set by hand (a swap, a Rest of game swap, Sit for the rest).
+    Overrides written by the freeze or a re-plan are not in it. Only `hand`
+    counts where the app talks about swaps:
+    - the "swaps you made by hand were cleared" toast, including on the later
+      format-change path;
+    - whether `#gmReset` shows;
+    - the `#gmMoved` count.
+
+    `#gmReset` in an underway game clears only overrides after the current
+    stint. Played stints never go back. A hand swap after the current stint
+    that a re-plan overwrites is counted as cleared, and the toast says so.
+    `storage.js` keeps `hand` as a list of valid stint indices.
+11. **Arrivals.** `live.arrived[id]` is set only for a kid with no minutes in
+    the frozen stints. A kid who played, left and came back keeps a
+    whole-game share and is not treated as late.
+12. **Finished games.** Marking a kid out on a finished game deletes no
+    override at all: every stint of a finished game was played.
+13. **Spec A wording.** "Stints 3–7 include Lily" means she plays in at least
+    one of them, with her total inside one stint of the even share.
+
 ## Proof
 
 Seams for `/tdd`:

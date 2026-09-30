@@ -102,7 +102,9 @@ test('every mid-game edit offers an undo, and takes the previous offer down', ()
   for (const name of ['applySwap', 'sitRest']) {
     const body = src.slice(src.indexOf(`function ${name}`)).split('\n}')[0];
     assert.match(body, /undoable\(/, `${name} must offer an undo`);
-    assert.ok(body.indexOf('undoable(') < body.indexOf('live.overrides['),
+    // #247: every write goes through live.js's `writeOverrides`, the one way a
+    // batch of fives lands in `live.overrides`
+    assert.ok(body.indexOf('undoable(') < body.indexOf('writeOverrides('),
       `${name} must write inside undoable's mutation, after the snapshot is taken`);
     assert.doesNotMatch(body, /retireUndo\(/,
       `${name} offers its own undo; retiring one as well is a second mechanism`);

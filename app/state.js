@@ -22,7 +22,7 @@ import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          validTipoff, tipoffLabel, sortDay } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
-import { stage, playedStints } from './live.js';
+import { stage, playedStints, handStints, writeOverrides, resetFrom, finishedGame } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
    Lightness and chroma are themed once in CSS; only the hue varies here. */
@@ -656,7 +656,10 @@ export function removePlayer(id) {
        gap -- so drop it and fall back to the planned stint, which is what the
        rest of the game is already using. */
     const ov = g.live?.overrides;
-    if (ov) for (const k of Object.keys(ov)) if (ov[k].includes(id)) delete ov[k];
+    if (ov) {
+      for (const k of Object.keys(ov)) if (ov[k].includes(id)) delete ov[k];
+      if (Array.isArray(g.live.hand)) g.live.hand = g.live.hand.filter(k => ov[k]);
+    }
   }
 }
 
@@ -788,13 +791,17 @@ export function setAvailable(g, id, available) {
   if (available) {
     /* #247: a kid who walks in to a game underway owes, and is owed, nothing
        for the stints before `at`; `resolveRest` reads this to know that. */
-    if (live && wasOut && at > 0) live.arrived = { ...live.arrived, [id]: at };
+    if (live && wasOut && at > 0 && !finishedGame(live)) live.arrived = { ...live.arrived, [id]: at };
     return;
   }
   // #247: what already happened stays. Only a five still to come is a lineup
-  // with an absent kid in it.
+  // with an absent kid in it. The raw `at` (a finished game has played them
+  // all, so it drops nothing).
   const ov = live?.overrides;
-  if (ov) for (const k of Object.keys(ov)) if (Number(k) >= at && ov[k].includes(id)) delete ov[k];
+  if (ov && !finishedGame(live)) {
+    for (const k of Object.keys(ov)) if (Number(k) >= at && ov[k].includes(id)) delete ov[k];
+    if (Array.isArray(live.hand)) live.hand = live.hand.filter(k => ov[k]);
+  }
 }
 
 /* The third sweep, and the one nothing else could catch: rerolling the seed.
@@ -814,9 +821,16 @@ export function setAvailable(g, id, available) {
    whether anything was dropped, so the caller can say so. */
 export function reseed(g) {
   g.seed = (Math.random() * 2 ** 31) >>> 0;
-  const ov = g.live?.overrides;
-  const had = !!(ov && Object.keys(ov).length);
-  if (ov) g.live.overrides = {};
+  const live = g.live;
+  if (!live?.overrides) return false;
+  /* #247 amendment 8: in a game underway a Shuffle is a same-grid change, so
+     the stints up to and including the one on the floor keep their fives --
+     the coach's own swaps among them, which the freeze could not rebuild from
+     the old plan -- and only the ones after go. Before tip-off, as ever, all. */
+  const keep = resetFrom(live);
+  const had = handStints(live).some(k => k >= keep);
+  live.overrides = Object.fromEntries(Object.entries(live.overrides).filter(([k]) => Number(k) < keep));
+  if (Array.isArray(live.hand)) live.hand = live.hand.filter(k => k < keep);
   return had;
 }
 
@@ -1416,19 +1430,42 @@ const sameGrid = (a, b) => a.stints.length === b.stints.length
    a lineup other than the plan's is recorded -- built from the OLD plan's
    effective lineups, because those are what the coach saw; the new plan's
    stints 0..at-1 are not what was played. `resolveRest` writes the rest.
+
+   The stint on the floor stays too (amendment 7): it is being played now, so
+   the re-plan starts after it -- unless its five names a kid who is out, which
+   is the one five that cannot stand, and then it starts there. A freeze that
+   would write a removed player's id (amendment 9) does not run.
+
    Returns false, having touched nothing, when it cannot (the strategy is
-   `minutes` or `platoon`, or `resolveRest` refuses), and the caller falls
-   back to #134. */
+   `minutes` or `platoon`, `resolveRest` refuses, or a removed player is in
+   the way), and the caller falls back to #134. */
 function freezePlayedAndReplan(g, p, prev) {
   const live = g.live;
-  const at = Math.min(playedStints(live), p.stints.length);
+  const n = p.stints.length;
+  const at = Math.min(playedStints(live), n - 1);
   const before = live.overrides || {};
+  const five = k => before[k] || prev.stints[k].onFloor;
+  const out = new Set(g.out);
+  const through = five(at).some(id => out.has(id)) ? at : at + 1;   // stints frozen
   const frozen = {};
-  for (let k = 0; k < at; k++) frozen[k] = before[k] || prev.stints[k].onFloor;
+  for (let k = 0; k < through; k++) frozen[k] = five(k);
+  const known = new Set(state.players.map(pl => pl.id));
+  if (Object.values(frozen).some(f => f.some(id => !known.has(id)))) return false;
+
+  const overwritten = handStints(live).filter(k => k >= through);
+  const hand = handStints(live).filter(k => k < through);
+  const arrived = live.arrived;
   live.overrides = frozen;
-  const r = resolveRest(g, p, at);
-  if (!r.ok) { live.overrides = before; return false; }
-  Object.assign(live.overrides, r.overrides);
+  let r = { ok: true, overrides: {} };
+  if (through < n) {
+    r = resolveRest(g, p, through);
+    if (!r.ok) { live.overrides = before; return false; }
+  }
+  live.hand = hand;
+  writeOverrides(live, r.overrides, false);
+  if (arrived) live.arrived = lateArrivals(g, p, through);
+  if (!live.arrived || !Object.keys(live.arrived).length) delete live.arrived;
+  if (overwritten.length) dropped++;
   live.stamp = rotationStamp(p);
   return true;
 }
@@ -1451,7 +1488,12 @@ function syncOverrides(g, p, underway = false, prev = null) {
   // since the played minutes were rewritten whether or not there were
   // swaps to protect
   live.stamp = hasOverrides ? '' : stamp;
-  if (hasOverrides) { live.overrides = {}; dropped++; }
+  if (hasOverrides) {
+    // only a swap the coach made by hand is one they are told was cleared
+    if (handStints(live).length) dropped++;
+    live.overrides = {};
+    live.hand = [];
+  }
   if (underway) moved.add(g.id);
   return p;
 }
@@ -1644,6 +1686,19 @@ export function computeAll() {
   dayTotals = eff;
 }
 
+/* #247 amendment 11: `live.arrived` is for a kid who was not there at the
+   start. One who played in the stints up to and including the stint they
+   "arrived" at -- played, went out, came back -- was not late, so the record
+   of it is dropped and they keep a whole-game share. Judged on the first `k`
+   stints, the ones the caller treats as played. */
+function lateArrivals(g, p, k) {
+  const arrived = g.live?.arrived;
+  if (!arrived) return {};
+  const eff = effectiveStints(g, p).slice(0, k);
+  return Object.fromEntries(Object.entries(arrived).filter(([id, at]) =>
+    !eff.slice(0, at + 1).some(s => s.onFloor.includes(id))));
+}
+
 /* ================================================================== *
  * mid-game re-solve (A10, slice 1)
  *
@@ -1730,14 +1785,14 @@ export function resolveRest(g, p, from, sitIds = []) {
      player's even share of what has been played so far minus what they really
      played, so a target lands on (everyone's total + the rest) / n minus what
      they have -- which is "whole-game even among whoever is still playing". */
-  /* #247: a kid who arrived late (`live.arrived[id]`, a stint index) is owed
-     a share of only the stints since they walked in. Each past stint's minutes
-     are split among whoever was there for it; with nobody late that is the
-     plain average of what was played. */
-  const arrived = g.live?.arrived || {};
+  /* #247: a kid who walked in late (`live.arrived[id]`, the stint they walked
+     in during) is owed a share of only the stints after it. Each past stint's
+     minutes are split among whoever was there for it; with nobody late that is
+     the plain average of what was played. */
+  const arrived = lateArrivals(g, p, k);
   const fair = Object.fromEntries(avail.map(id => [id, 0]));
   effectiveStints(g, p).slice(0, k).forEach((s, j) => {
-    const here = avail.filter(id => (arrived[id] || 0) <= j);
+    const here = avail.filter(id => !(id in arrived) || arrived[id] < j);
     if (!here.length) return;
     const pool = s.minutes * s.onFloor.filter(id => avail.includes(id)).length;
     for (const id of here) fair[id] += pool / here.length;

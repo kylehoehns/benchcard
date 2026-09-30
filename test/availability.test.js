@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { sanitize } from '../app/storage.js';
-import { playedStints } from '../app/live.js';
+import { playedStints, finishedGame } from '../app/live.js';
 
 /* Sitting a player out is the other half of `removePlayer`. A live override is
    a five the coach picked by hand; once one of those five is not at the game
@@ -18,7 +18,7 @@ const src = readFileSync(new URL('../app/state.js', import.meta.url), 'utf8');
 const body = src.slice(src.indexOf('export function setAvailable'));
 const fn = body.slice(0, body.indexOf('\n}\n') + 2).replace('export function', 'function');
 // eslint-disable-next-line no-new-func
-const setAvailable = new Function('playedStints', `${fn}\nreturn setAvailable;`)(playedStints);
+const setAvailable = new Function('playedStints', 'finishedGame', `${fn}\nreturn setAvailable;`)(playedStints, finishedGame);
 
 const gameWith = () => ({
   out: [],

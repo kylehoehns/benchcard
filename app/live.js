@@ -25,13 +25,55 @@ export function stage(p, live) {
   return 'part-played';
 }
 
-/* #247: how many stints of a game underway have been played -- `live.at`,
-   since the stint the coach is on has not been. Zero before tip-off and once
-   finished, the two states where no re-plan freezes anything. No plan needed,
-   for callers (`setAvailable`) that have only the game. */
+/* #247: how many stints of a game underway come before the one on the floor
+   -- `live.at`, clamped at zero. No plan needed, for callers (`setAvailable`)
+   that have only the game. A finished game keeps its raw `at`; the callers
+   that must treat it differently check `live.finished` themselves. */
 export function playedStints(live) {
-  if (live?.finished === true) return 0;
   return Math.max(0, live?.at || 0);
+}
+
+/* #247 amendment 12: a finished game has played every stint, so nothing in it
+   is left to change. Asked through here because `live.finished` is read in
+   this file only (test/live-guard.test.js). */
+export const finishedGame = live => live?.finished === true;
+
+/* #247 amendment 10: `live.hand` lists the stint indices the coach set by hand
+   (a swap, a Rest of game swap, Sit for the rest); overrides a freeze or a
+   re-plan wrote are not in it, and only hand swaps are what the app calls
+   "swaps you made". A record from before the list existed has none, and there
+   every override was by hand. The one place that reads it. */
+export function handStints(live) {
+  const ov = live?.overrides || {};
+  const keys = Array.isArray(live?.hand) ? live.hand : Object.keys(ov);
+  return [...new Set(keys.map(Number))].filter(k => ov[k]).sort((a, b) => a - b);
+}
+
+/* The one way a batch of fives -- a swap, or a `resolveRest` answer -- lands
+   in `live.overrides`. `byHand` says whether the coach chose them; a write
+   that is not by hand takes its stints out of the hand list, since the
+   re-plan just replaced whatever the coach had there. */
+export function writeOverrides(live, overrides, byHand) {
+  const written = Object.keys(overrides).map(Number);
+  const hand = handStints(live).filter(k => !written.includes(k));
+  Object.assign(live.overrides ||= {}, overrides);
+  live.hand = (byHand ? [...hand, ...written] : hand).sort((a, b) => a - b);
+}
+
+/* Where "back to the printed plan" starts: everything before tip-off, and
+   only the stints after the one on the floor once underway -- what was played
+   never goes back. A finished game is reset whole, as it always was. */
+export function resetFrom(live) {
+  const at = playedStints(live);
+  return at > 0 && !finishedGame(live) ? at + 1 : 0;
+}
+
+export function clearRest(live) {
+  const from = resetFrom(live);
+  const kept = Object.fromEntries(Object.entries(live.overrides || {}).filter(([k]) => Number(k) < from));
+  const hand = handStints(live).filter(k => k < from);
+  live.overrides = kept;
+  live.hand = hand;
 }
 
 // `stintIndex` and `stepAt` both land on "the requested stint, clamped to

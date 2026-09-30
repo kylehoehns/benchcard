@@ -1836,3 +1836,19 @@ test('a game with no arrivals gets no arrived block', () => {
   const live = sanitize(good(), H).teams[0].days[0].games[0].live;
   assert.equal('arrived' in live, false);
 });
+
+/* #247 amendment 10: `hand` is a list of the stint indices the coach swapped. */
+test('a reload keeps the hand list as valid stint indices, and a record without one stays without', () => {
+  const raw = good();
+  raw.day.games[0].live = { at: 3, overrides: {}, hand: [4, 1, 1, -2, 1.5, 201, 'x', 0] };
+  assert.deepEqual(sanitize(raw, H).teams[0].days[0].games[0].live.hand, [0, 1, 4]);
+  const plain = good();
+  plain.day.games[0].live = { at: 3, overrides: {} };
+  assert.equal('hand' in sanitize(plain, H).teams[0].days[0].games[0].live, false);
+});
+
+test('an arrival past the last stint a game can have is dropped', () => {
+  const raw = good();
+  raw.day.games[0].live = { at: 3, overrides: {}, arrived: { a: 200, b: 201 } };
+  assert.deepEqual(sanitize(raw, H).teams[0].days[0].games[0].live.arrived, { a: 200 });
+});
