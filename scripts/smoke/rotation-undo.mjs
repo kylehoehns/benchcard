@@ -30,11 +30,9 @@
  * so by hand, on top of the 140ms `edit()` debounce a non-`now` edit kind
  * (Format, Sub interval, Who's here) schedules its repaint behind.
  */
-import { evalIn, step } from './dom.mjs';
+import { evalIn, step, wait } from './dom.mjs';
 import { goRich } from './fixtures.mjs';
 import { setGame, readToastExpr } from './sheet-drive.mjs';
-
-const wait = ms => new Promise(r => setTimeout(r, ms));
 
 // Debounced kinds (`format`, `availability`) repaint 140ms after the edit;
 // `countTo` can still be counting up to 250ms after that. `now: true` kinds
@@ -60,7 +58,10 @@ const readMinutes = `(() => {
   })));
 })()`;
 
-const readToast = readToastExpr();
+// liveOnly (#241): after Undo's click the dismissed toast (`.out`) lingers up to
+// 600ms when its sheet closes first. That is a toast leaving, not a second
+// offer; a real second one is not `.out` and still fails.
+const readToast = readToastExpr(undefined, true);
 
 // Item 6 follow-up: a half sheet (`dialog.bsheet.bsheet-half`) has to stay at
 // its ordinary 422px-tall resting height at 390x844/16px root once the Undo

@@ -143,6 +143,36 @@ export async function evensOutWant(c, hhmm) {
   return JSON.parse(json);
 }
 
+/* #241: the playback rate every page in a smoke session runs its WAAPI/CSS
+   animations at (CDP `Animation.setPlaybackRate`, set once at session start).
+   The app's own animations are real and staggered (`riseIn`/`swapIn` in
+   fx.js), and waiting them out at 1x was over half of a full run. A row that
+   asserts on the animation itself opts out with `motion: 'real'` in the
+   registry. Not `prefers-reduced-motion`: fx.js turns animation off under it,
+   which is a different code path from the one coaches run. */
+export const FAST_PLAYBACK_RATE = 100;
+
+/* #241: the one node-side fixed sleep. Rows used to each carry their own
+   `const wait = ms => new Promise(r => setTimeout(r, ms))`; routing them all
+   through here is what lets `--timing` say how much of a run was spent
+   sleeping. Use it only for a sleep that waits out an APP timer, sized from
+   that timer; a wait for a condition belongs in `waitFor` below. */
+export const sleepTally = { ms: 0, calls: 0 };
+/* What `--timing` reports for `settle` (sheet-drive.mjs): waits, how many hit
+   SETTLE_CAP_MS, and their total ms. */
+export const settleTally = { calls: 0, capped: 0, ms: 0 };
+export const wait = async ms => {
+  sleepTally.ms += ms;
+  sleepTally.calls++;
+  await new Promise(r => setTimeout(r, ms));
+};
+
+/* The running-animations count SETTLE and TIMERS_QUIET both wait on (#241 moved
+   it here so the two cannot drift). */
+const RUNNING_ANIMATIONS = `const running = () => document.getAnimations().filter(a => {
+    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
+    return a.playState === 'running' && t && t.iterations !== Infinity;
+  }).length;`;
 /* Wait until nothing is animating. `fx.js` fades controls in from opacity 0
    and `smoke-checks.js` skips anything at opacity 0, so a page measured
    mid-entrance is audited for whichever controls happened to have arrived:
@@ -151,10 +181,7 @@ export async function evensOutWant(c, hhmm) {
    whole wait is capped, because a harness that hangs is worse than one that
    measures early. */
 export const SETTLE = `(async () => {
-  const running = () => document.getAnimations().filter(a => {
-    const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
-    return a.playState === 'running' && t && t.iterations !== Infinity;
-  }).length;
+  ${RUNNING_ANIMATIONS}
   const cap = Date.now() + 3000;
   // two consecutive quiet samples: one is not enough, since fx.js starts the
   // next element's animation on the frame after the last one finished
@@ -164,6 +191,46 @@ export const SETTLE = `(async () => {
   }
 })()`;
 
+/* #241: what `sheet-drive.mjs`'s `settle` waits on instead of a fixed 220ms.
+   SETTLE covers animations only; what it cannot see is an app TIMER that
+   repaints later -- the 140ms `edit()` debounce, the 400ms resize debounce,
+   `PANE_MS`'s pane fallback. Registered once per session on every new page,
+   TIMER_TRACKER wraps `setTimeout`/`clearTimeout` and keeps the ids of timers
+   of at most TRACKED_TIMER_MS pending (longer ones are toast lifetimes and
+   the like, which a settle is not meant to outwait). TIMERS_QUIET then waits
+   for two frame pairs with none pending AND no finite animation running
+   (SETTLE's own test, in one loop so a settle costs two frame pairs, not
+   four), capped at SETTLE_CAP_MS. No app number is copied: whatever short
+   timer the app arms is waited out. A page the tracker is not on
+   (`window.__pendingShort` absent) gets the frames only. */
+export const TRACKED_TIMER_MS = 500;
+export const SETTLE_CAP_MS = 1500;
+export const TIMER_TRACKER = `(() => {
+  const pending = new Set(), st = window.setTimeout, ct = window.clearTimeout;
+  window.__pendingShort = pending;
+  window.setTimeout = function (fn, ms, ...rest) {
+    if (typeof fn !== 'function' || !(Number(ms) > ${TRACKED_TIMER_MS})) {
+      let id;
+      const run = (...a) => { pending.delete(id); return fn(...a); };
+      id = st.call(this, typeof fn === 'function' ? run : fn, ms, ...rest);
+      if (typeof fn === 'function') pending.add(id);
+      return id;
+    }
+    return st.call(this, fn, ms, ...rest);
+  };
+  window.clearTimeout = function (id) { pending.delete(id); return ct.call(this, id); };
+})();`;
+export const TIMERS_QUIET = `(async () => {
+  ${RUNNING_ANIMATIONS}
+  const cap = Date.now() + ${SETTLE_CAP_MS};
+  let quiet = 0;
+  while (quiet < 2) {
+    if (Date.now() > cap) return 'capped';
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    quiet = (!running() && (window.__pendingShort ? window.__pendingShort.size === 0 : true)) ? quiet + 1 : 0;
+  }
+  return 'quiet';
+})()`;
 /* A real CDP key press: rawKeyDown, an optional char (for keys that type) and
    keyUp. `text` is the character a printable key types ('\r' for Enter). */
 export const key = async (c, k, code, vk, text) => {

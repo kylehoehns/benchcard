@@ -1,4 +1,4 @@
-import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS, wait } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
@@ -8,8 +8,6 @@ import { UNDERWAY_SEED } from './rotation-undo.mjs';
 import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
 import { SWITCH_ROW_STATES, switchRowProblem } from './switch-row.mjs';
 import { welcomeBarsProblem } from './welcome-bars.mjs';
-
-const wait = ms => new Promise(r => setTimeout(r, ms));
 
 /* ---- the same large-text cell, on the app shell ----
  *

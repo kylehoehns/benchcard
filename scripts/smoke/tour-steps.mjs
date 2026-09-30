@@ -25,7 +25,7 @@
  * top-level `const` -- `overlay.mjs` is the first of the two `registry.mjs`
  * imports, so this file's own top level would then run while overlay.mjs's
  * `STATES` is still mid-initialization, and throw. */
-import { evalIn, step, setWidth, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, step, setWidth, WIDTH, HEIGHT, TIMERS_QUIET } from './dom.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, LAPTOP, TOUCH_MIN } from './sizes.mjs';
 import { STATES } from './overlay.mjs';
 import { land, reset } from './page-state.mjs';
@@ -53,7 +53,9 @@ const EXPECTED = [
 // number instead of its own literal.
 export const STEP_COUNT = EXPECTED.length;
 
-const wait = ms => new Promise(r => setTimeout(r, ms));
+// past placeTour's own +320ms re-run (app/tour.js): a short app timer, which
+// TIMERS_QUIET waits out.
+const quiet = c => evalIn(c, TIMERS_QUIET);
 
 /* One rect-and-text read of whatever step is currently up, for a given
  * anchor selector -- `placeTour`'s own re-run at +320ms (app/tour.js) means
@@ -138,7 +140,7 @@ export async function tourStepsPass(c, origin) {
       const s = TOUR_STATES[i];
       const last = i === EXPECTED.length - 1;
       await evalIn(c, step(s.open));
-      await wait(400); // past placeTour's own +320ms re-run (app/tour.js)
+      await quiet(c);
       const d = await read(c, EXPECTED[i].anchor);
       const where = `step ${i + 1} at ${WIDTH}px`;
       if (!ck(d.open, `${where}: #tour never opened`)) { await evalIn(c, step(s.close)); continue; }
@@ -203,7 +205,7 @@ export async function tourStepsPass(c, origin) {
     const lastStep = STEP_COUNT - 1, lastAnchor = EXPECTED[lastStep].anchor;
     await setWidth(c, LAPTOP, 800);
     await evalIn(c, step(TOUR_STATES[lastStep].open));
-    await wait(400);
+    await quiet(c);
     {
       const d = await read(c, lastAnchor);
       const where = `step ${STEP_COUNT} at ${LAPTOP}px`;
@@ -224,7 +226,7 @@ export async function tourStepsPass(c, origin) {
       for (let i = 0; i < EXPECTED.length; i++) {
         const s = TOUR_STATES[i];
         await evalIn(c, step(s.open));
-        await wait(400);
+        await quiet(c);
         const d = await read(c, EXPECTED[i].anchor);
         const where = `step ${i + 1} at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
         if (ck(d.open, `${where}: #tour never opened`)) {

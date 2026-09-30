@@ -7,6 +7,14 @@ checks of its own. Read the module a row's File cell names for what it
 actually measures (widths, text sizes, theme); this index does not restate
 that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 
+How a run spends its time (#241): every page plays animations at
+`FAST_PLAYBACK_RATE` (`dom.mjs`); a row that asserts on an animation itself
+carries `motion: 'real'` in `registry.mjs` and runs at 1x. `settle()` waits on
+the app's short timers (`TIMER_TRACKER`/`TIMERS_QUIET`), not a fixed sleep.
+`--timing` prints each rich row's seconds, the executed sleep and how often a
+settle hit its cap. A new node-side sleep goes through `wait` in `dom.mjs`, and
+only for real elapsed time or an app timer.
+
 | Check | File | Fixture |
 | --- | --- | --- |
 | `no console errors` | `scripts/smoke.mjs` | whole run |
