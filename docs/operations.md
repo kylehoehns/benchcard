@@ -22,7 +22,7 @@ other's result. The repo is private, so the badge above only renders for
 someone signed in with access.
 
 There are **six** CI jobs in total: the `node --test` matrix above, then
-`smoke` (`node scripts/smoke.mjs --no-tests`), `redirect` (`redirect-check.mjs`,
+`smoke` (`node scripts/smoke.mjs`, which runs the unit suite inside it and judges the line-coverage floor), `redirect` (`redirect-check.mjs`,
 the service worker behind Cloudflare's trailing-slash 307s), `about dateline`
 (`check-about-date.mjs`), `service worker version` (below) and `vendor drift`
 (below). The three named in this sentence went unmentioned here for months

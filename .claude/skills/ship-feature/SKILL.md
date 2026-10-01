@@ -183,14 +183,16 @@ The PR body says it switched.
    > structure without changing behavior". `refactorer.md` owns its hand-back
    > condition. Run it here, never in the fix loop.
 
-   **Prove and commit.** Run the proof pair — `AGENTS.md` § Layout names it and
-   says it runs once per commit, here, by you. No agent before this point ran
+   **Prove and commit.** Run the proof pair — `AGENTS.md` § Layout names it:
+   one full `npm run smoke`, which runs the unit suite inside itself and judges
+   the coverage floor, so the suite runs once. It runs once per commit, here,
+   by you. No agent before this point ran
    it. Both green: stage **explicit paths**,
    including `docs/specs/<N>-<slug>.md`, and commit with no trailers — the hook
    denies `git add -A` and a trailer on this commit and on the one in step 8.
    Record the **handoff**: `git rev-parse HEAD` and that `git status
-   --porcelain` printed nothing, the `ℹ tests` / `ℹ pass` / `ℹ fail` lines
-   `npm test` printed, and the smoke table as printed. Every agent launched
+   --porcelain` printed nothing, and the smoke table as printed (its `node
+   --test` row carries the suite's pass count). Every agent launched
    from here on gets that handoff verbatim.
 
 7. **Review and docs, in parallel.** Build one diff per changed file, not one
@@ -254,7 +256,7 @@ The PR body says it switched.
 
 ## Make CI green
 
-`tests` in `test.yml` is five jobs: `node 24`, `smoke (390×844)`, `evals`,
+`tests` in `test.yml` is five jobs: `node 24`, `smoke`, `evals`,
 `service worker behind redirects`, `checks that need history`. **All five green
 is a hard gate** — do not touch review threads until they pass. Local green is
 not CI green: the history checks need a base ref, which is why step 10 runs

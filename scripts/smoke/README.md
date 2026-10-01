@@ -19,6 +19,22 @@ inside a page-side template string is not counted anywhere. `--timing` prints
 each timed row's seconds, the node-side sleep through `wait`, and how many
 settles hit their cap; a capped settle is also named on stderr in every run.
 
+Coverage (#259): a full run also prints `app/ line coverage` after the suite's
+row, and a per-file table after the checks. It is not a registry row. Chrome's
+side is V8 precise coverage, started once in `browserChecks` and taken by the
+`cdp` client in `chrome.mjs` before every `Page.navigate`/`Page.reload` and
+before a `Runtime.evaluate` that navigates the page itself (a take asked for
+after a navigation begins is answered by the new document, so it is too late).
+A navigation made some other way (a click on a link) is caught instead of
+missed: the client counts main-frame navigations that had no take first, and the
+coverage row fails naming them. Route such a row through `Page.navigate` or add
+its spelling to `PAGE_NAVIGATES`. A take that gets no reply in 10 s is dropped
+and counted in the row's detail. Node's side is `NODE_V8_COVERAGE` on the suite
+inside the run. `scripts/coverage.mjs` turns both into lines, and
+`scripts/coverage.json` is the recorded floor; the rule for it (slack,
+re-recording) is in `AGENTS.md` § Layout. Inline `<script>` in an HTML page is
+not counted: only the `.js` files `app/` serves are.
+
 | Check | File | Fixture |
 | --- | --- | --- |
 | `no console errors` | `scripts/smoke.mjs` | whole run |

@@ -108,8 +108,30 @@ export async function closeChrome(proc, dir) {
   await rm(dir, { recursive: true, force: true }).catch(() => {});
 }
 
-/* A minimal CDP client: send(method, params) → result, plus event handlers. */
-export function cdp(url) {
+/* A minimal CDP client: send(method, params) → result, plus event handlers.
+
+   #259: `startCoverage(onTake)` turns on V8's precise coverage in the page. V8
+   drops a page's counts when the page goes away, so they are taken the moment
+   before that happens, in this one place: `send` takes them ahead of every
+   `Page.navigate` and `Page.reload`, and ahead of a `Runtime.evaluate` whose
+   expression navigates the page itself (`location.reload()`, `location.href =`,
+   see PAGE_NAVIGATES). A take asked for AFTER a navigation has begun is
+   answered by the new document, so an event such as
+   `Page.frameRequestedNavigation` is too late -- tried, and the old page's
+   counts were gone. Each take's script entries go to `onTake` as they arrive
+   (`{ url, functions }`, for `scripts/coverage.mjs`'s `folder`), so nothing is
+   held here. `stopCoverage()` takes the last of it and returns what went
+   wrong, for the coverage row to name:
+     - `unseen`: the main frame navigated and no take had been made ahead of it
+       (a click on a link, `location.pathname =`, an alternative the regex
+       does not know). That page's counts are gone, so the row fails.
+     - `dropped`: a take that got no reply in `takeMs` (default 10 s) and was
+       given up on, so one stuck reply cannot hold every later take, and the
+       run, behind it. */
+const NAVIGATES = new Set(['Page.navigate', 'Page.reload']);
+const PAGE_NAVIGATES = /\blocation\s*\.\s*(?:reload|assign|replace)\s*\(|\blocation(?:\s*\.\s*href)?\s*=(?!=)|\bhistory\s*\.\s*(?:back|forward|go)\s*\(/;
+
+export function cdp(url, { takeMs = 10_000 } = {}) {
   const sock = new WebSocket(url);
   const pending = new Map();
   const handlers = new Map();
@@ -124,16 +146,65 @@ export function cdp(url) {
       for (const fn of handlers.get(msg.method) || []) fn(msg.params);
     }
   });
+  const rawSend = (method, params = {}) => new Promise((ok, fail) => {
+    pending.set(++id, { ok, fail });
+    sock.send(JSON.stringify({ id, method, params }));
+  });
+  const dropped = [];
+  const unseen = [];
+  let onTake = null;
+  let taking = false;
+  let armed = 0;      // takes made ahead of a navigation that has not happened yet
+  let inFlight = Promise.resolve();
+  /* Takes queue one behind another, so `stopCoverage` and `send` wait for any
+     take already started. A take that fails (the page is already gone) loses
+     nothing that an earlier take did not already have; one that never answers
+     is given up on after `takeMs` and named in `dropped`. A late reply to a
+     dropped take is ignored. */
+  const takeOnce = () => new Promise(done => {
+    let gaveUp = false;
+    const timer = setTimeout(() => {
+      gaveUp = true;
+      dropped.push(`Profiler.takePreciseCoverage: no reply in ${takeMs} ms`);
+      done();
+    }, takeMs);
+    rawSend('Profiler.takePreciseCoverage').then(r => { if (!gaveUp) onTake?.(r.result); }, () => {})
+      .finally(() => { clearTimeout(timer); done(); });
+  });
+  const take = () => (inFlight = inFlight.then(takeOnce));
+  /* The tripwire: a main-frame navigation that no take was armed for. */
+  const navigated = url => { if (!taking) return; if (armed > 0) armed--; else unseen.push(url); };
+  sock.addEventListener('message', e => {
+    const msg = JSON.parse(e.data);
+    if (msg.method === 'Page.frameNavigated' && !msg.params.frame.parentId) navigated(msg.params.frame.url);
+  });
   return {
     ready: new Promise((ok, fail) => {
       sock.addEventListener('open', ok, { once: true });
       sock.addEventListener('error', () => fail(new Error('CDP socket failed')), { once: true });
     }),
-    send: (method, params = {}) => new Promise((ok, fail) => {
-      pending.set(++id, { ok, fail });
-      sock.send(JSON.stringify({ id, method, params }));
-    }),
+    send: async (method, params = {}) => {
+      if (taking && (NAVIGATES.has(method)
+        || (method === 'Runtime.evaluate' && PAGE_NAVIGATES.test(params.expression || '')))) {
+        armed++;
+        await take();
+      }
+      return rawSend(method, params);
+    },
     on: (method, fn) => handlers.set(method, [...(handlers.get(method) || []), fn]),
+    startCoverage: async fold => {
+      onTake = fold;
+      await rawSend('Page.enable');
+      await rawSend('Profiler.enable');
+      await rawSend('Profiler.startPreciseCoverage', { callCount: true, detailed: true });
+      taking = true;
+    },
+    stopCoverage: async () => {
+      await take();
+      taking = false;
+      await rawSend('Profiler.stopPreciseCoverage').catch(() => {});
+      return { dropped, unseen };
+    },
     close: () => sock.close(),
   };
 }
