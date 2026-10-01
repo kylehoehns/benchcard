@@ -119,7 +119,11 @@ function toastHost() {
   if (!host) {
     host = el('div', 'bsheet-toasts');
     host.setAttribute('role', 'status');   // #139 item 12: live before its first toast lands
-    dialog.insertBefore(host, dialog.querySelector('.bsheet-status'));
+    /* A direct child only: the card sheet holds a nested `.bsheet-status`
+       (the hand-off pane's), and `insertBefore` throws on a node that is not a
+       child, which took every toast raised from that sheet down with it. No
+       status line of its own means `null`, which appends. */
+    dialog.insertBefore(host, dialog.querySelector(':scope > .bsheet-status'));
   }
   return host;
 }

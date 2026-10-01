@@ -14,6 +14,8 @@
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, SETTLE } from './dom.mjs';
 import { TOUCH_WIDTHS } from './sizes.mjs';
 import { goRich } from './fixtures.mjs';
+import { capInstall, capRead, capReset, capRestore } from './capture.mjs';
+import { seasonFilename } from '../../app/backup.js';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
 
@@ -212,6 +214,35 @@ export async function seasonPass(c, origin) {
   await evalIn(c, step(OPEN_SEASON));
   const onSeason = await evalIn(c, `(() => { const b = document.querySelector('#seasonExport'); return !!b && !b.hidden; })()`);
   if (!onSeason) problems.push('#seasonExport is not visible on Season with 3 games filed, want it shown');
+
+  /* ---- #263 I: the spreadsheet Export hands over. The download is caught in
+     the page (capture.mjs) and its name, type, first bytes and first line are
+     read; the filed games' titles are RICH's own three, written out here. */
+  if (onSeason) {
+    await capInstall(c);
+    try {
+      await capReset(c);
+      await evalIn(c, step(`document.querySelector('#seasonExport').click()`));
+      const r = await capRead(c);
+      const team = await evalIn(c, `import('/state.js').then(s => s.state.teamName)`);
+      const f = r.clicks[0];
+      if (r.clicks.length !== 1) problems.push(`Export clicked ${r.clicks.length} download(s), want 1`);
+      else {
+        const want = seasonFilename(team, new Date(2026, 8, 12));
+        if (f.download !== want) problems.push(`the spreadsheet is named "${f.download}", want "${want}"`);
+        if (f.type !== 'text/csv;charset=utf-8') problems.push(`the spreadsheet's type is "${f.type}", want text/csv;charset=utf-8`);
+        if (!f.text.startsWith('\uFEFF')) problems.push('the spreadsheet does not start with a byte-order mark');
+        const head = 'Player,Jul 11 vs Comets,Jul 18 vs Falcons,Aug 1 vs Wolves,Total';
+        const first = f.text.slice(1).split('\r\n')[0];
+        if (first !== head) problems.push(`the spreadsheet's first line is ${JSON.stringify(first)}, want ${JSON.stringify(head)}`);
+        if (/[^\r]\n/.test(f.text) || !f.text.endsWith('\r\n')) problems.push('the spreadsheet does not end every line with \\r\\n');
+        if (f.text.split('\r\n').length !== 13) problems.push(`the spreadsheet has ${f.text.split('\r\n').length - 1} lines, want 12 (a header and 11 players)`);
+      }
+      if (r.toasts.join('|') !== 'Spreadsheet saved.') problems.push(`Export toasted ${JSON.stringify(r.toasts)}, want ["Spreadsheet saved."]`);
+    } finally {
+      await capRestore(c);
+    }
+  }
 
   /* ---- review #1: undoing the deletion of the season's LAST filed game must
      bring Export back. `renderSeason` is hide-only for `#seasonExport`
