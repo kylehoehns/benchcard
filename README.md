@@ -40,6 +40,12 @@ phone in your hand while play is live.
 | **Closers** | even minutes early, a group you pick finishes the game |
 | **Platoon** | fixed fives alternating wholesale |
 
+**Hand off a game to an assistant with a link or QR code.** Share the game and
+its roster through a link — the plan travels in the part of the URL after
+`#`, which browsers never send to a server. The assistant opens it on their
+phone and can run substitutions from bench mode. The two phones are not linked
+afterward.
+
 **Rules that compose with any of them** — Plays at least and Plays at
 most, Together and Apart, One of two on, a Starting five and Last-period
 five, and a Rest limit.

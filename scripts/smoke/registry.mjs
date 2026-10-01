@@ -104,6 +104,7 @@ import { platoonUndoPass } from './platoon-undo.mjs';
 import { sheetSpacingPass } from './sheet-spacing.mjs';
 import { sheetFamilyPass } from './sheet-family.mjs';
 import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
+import { handOffPass, damagedLinkPass, handOffLoadPass } from './hand-off.mjs';
 import { teamScreenPass } from './team-screen.mjs';
 import { addGameFlowPass } from './add-game-flow.mjs';
 import { m4InstantPass } from './m4-instant.mjs';
@@ -337,6 +338,16 @@ export const ROWS = Object.freeze([
   // blocked panel's three fixes -- see timeline-card-sheet.mjs.
   { id: 'timelinecardsheet', name: 'game screen: Timeline | Card and the card sheet', selectable: true, setup: 'rich',
     run: ctx => timelineCardSheetPass(ctx.c, ctx.origin) },
+  // #250's own guard (docs/specs/250-hand-off-link.md, Proof section): the
+  // code on the Hand off sheet is the link Share hands out, a fresh phone
+  // opens it onto the same game, a damaged link writes nothing, and the QR
+  // library loads on open and offline -- see hand-off.mjs.
+  { id: 'handoff', name: 'hand off: the code is the link, a fresh phone opens the same game', selectable: true, setup: 'rich',
+    run: ctx => handOffPass(ctx.c, ctx.origin) },
+  { id: 'handoffdamaged', name: 'hand off: a damaged link shows one toast and writes nothing', selectable: true, setup: 'rich',
+    run: ctx => damagedLinkPass(ctx.c, ctx.origin) },
+  { id: 'handoffload', name: 'hand off: the code loads when the sheet opens, and works offline', selectable: true, setup: 'rich',
+    run: ctx => handOffLoadPass(ctx.c, ctx.origin) },
   // #31's own guard (see docs/specs/31-roster-and-player-sheet.md's Proof
   // section): the roster list's rows, the player sheet and its remove, the
   // add-a-player and paste sheets (including the discard ask), Edit mode and

@@ -151,6 +151,35 @@ test('no payload can ever carry free text', () => {
   }
 });
 
+/* #250: a hand-off link carries a roster in the part of the URL after `#`.
+   `track` posts to a fixed same-origin path with a counter body, so a page
+   opened with `#p=` sends no URL and nothing from it. The page's address is
+   put where an implementation would find it (`location`); it must not come
+   out of any call. */
+test('a page opened with a #p= hand-off link sends no URL and none of its contents', () => {
+  const link = '#p=1SECRETROSTERPAYLOAD';
+  const sent = [];
+  const keep = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const keepLoc = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { sendBeacon: (url, body) => { sent.push([url, String(body)]); return true; } } });
+  Object.defineProperty(globalThis, 'location', { configurable: true, value: { href: 'https://benchcard.app/index.html' + link, hash: link, search: '', pathname: '/index.html' } });
+  try {
+    for (const name of Object.keys(EVENTS)) {
+      const props = {};
+      for (const f of Object.keys(EVENTS[name])) props[f] = 3;
+      track(name, props);
+    }
+  } finally {
+    if (keep) Object.defineProperty(globalThis, 'navigator', keep); else delete globalThis.navigator;
+    if (keepLoc) Object.defineProperty(globalThis, 'location', keepLoc); else delete globalThis.location;
+  }
+  assert.equal(sent.length, Object.keys(EVENTS).length, 'every event reached the beacon, so this measured something');
+  for (const [url, body] of sent) {
+    assert.equal(url, ANALYTICS.endpoint, 'events go to the one fixed endpoint');
+    assert.ok(!/SECRET|#p=|https?:/.test(url + body), `a request carried the page address or its contents: ${url} ${body}`);
+  }
+});
+
 test('roster sizes are bucketed, never exact', () => {
   assert.equal(bucketRoster(1), '1-5');
   assert.equal(bucketRoster(5), '1-5');

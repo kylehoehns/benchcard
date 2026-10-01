@@ -32,6 +32,7 @@ import { initToast, undoable, flash, tipAfterPrint, tipAfterGame } from './toast
 import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, setView, applyTheme, applyTint, rotationAnnounced, ROTATION_CHANGED, SWAPS_CLEARED } from './render.js';
 import { edit } from './edit.js';
+import { DAMAGED_LINK } from './live.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
          dueToFile, fileIfPast, moveGame, setTipoff, hasGames } from './state.js';
@@ -424,7 +425,34 @@ initRules(edit);
 initStrategy(edit);
 initOnboarding(setView);
 initGameSetup(edit);
+/* #250: Hand off is fetched when it is used, not at boot -- a cold load makes
+   the same requests it did before the feature. The first tap loads the sheet's
+   own module, which wires the rest of its controls. */
+on('#handoffBtn', 'onclick', async e => {
+  const door = e.currentTarget;
+  (await import('./handoff-view.js')).openHandoff(door);
+});
 initShortcuts(setView);
+/* #250: a link someone handed over carries a game in `#p=`. It is opened
+   before the first paint, so the coach lands on that game, and the hash comes
+   off the address bar at once so a reload does not import it twice. A link
+   that does not decode writes nothing: the app opens as it was. */
+let handoffNote = '';
+if (location.hash.startsWith('#p=')) {
+  const hash = location.hash;
+  history.replaceState(null, '', location.pathname + location.search);
+  try {
+    const { decode, receive } = await import('./handoff.js');
+    const incoming = await decode(hash);
+    if (incoming) {
+      const { teamName } = receive(incoming);
+      state.view = 'games';
+      handoffNote = `${teamName || 'Your'} game added. Open bench mode to run subs.`;
+    } else handoffNote = DAMAGED_LINK;
+  } catch {
+    handoffNote = DAMAGED_LINK;
+  }
+}
 setView(state.onboarded ? (state.view || 'today') : 'welcome');
 /* There was a `body.boot` class here, added before the first paint and removed
    700ms later to "let the entrance play once". No stylesheet ever carried a
@@ -441,6 +469,7 @@ setView(state.onboarded ? (state.view || 'today') : 'welcome');
 try {
   renderAll();
   if (window.benchcard) window.benchcard.booted = true;
+  if (handoffNote) flash(handoffNote);
   fileOverdueDay();
 } catch (e) {
   console.error(e);

@@ -45,9 +45,11 @@ app's entire engine, sitting in open space.
   anyone reads a competitor feature as a mandate. Positions are Hoops Geek
   only; "never both off the court" is EqualSubs only (and is the one genuine
   constraint gap found — the mid-game re-solve, since shipped).
-  The sole overlap is handing the plan to someone digitally, which is what
-  accounts and a server buy, and which is already a recorded
-  deliberately-not-doing below.
+  The sole overlap is handing the plan to someone digitally, which accounts
+  and a server buy. Without either, it is now possible: Hand off (#250, shipped)
+  puts one game and its roster in a link or QR code, in the part of the URL
+  after `#`, which is never sent to a server. The two phones are not linked
+  afterward.
 - A third competitor (**Striveon**) is still being researched and will be
   recorded separately.
 

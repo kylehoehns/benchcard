@@ -169,7 +169,7 @@ export const APP_LARGE_TEXT_STATES = [
       'tour, step 4 of 6', 'tour, step 5 of 6', 'tour, step 6 of 6',
       'team color picker', "who's here sheet",
       'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'plan sheet, a cap rule', 'plan sheet, a pair rule',
-      'card sheet open']
+      'card sheet open', 'hand off sheet open']
     .map(n => STATES.find(s => s.name === n)),
   // #143: no name above forces a mid-word break; this one does (row-stack.mjs).
   ROW_STACK_LONG_NAME_STATE,

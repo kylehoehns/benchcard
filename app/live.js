@@ -17,6 +17,11 @@
    `./engine.js`, for `fmtClock`. */
 import { fmtClock } from './engine.js';
 
+/* #250: the toast for a hand-off link that cannot be opened. It lives here,
+   a module boot already loads, because app.js must be able to show it when
+   fetching handoff.js itself fails; handoff.js re-exports it. */
+export const DAMAGED_LINK = 'This hand-off link is damaged. Ask for a new one.';
+
 export function stage(p, live) {
   if (!p || !p.ok) return null;
   if (live?.finished === true) return 'finished';

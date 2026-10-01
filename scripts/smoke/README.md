@@ -67,6 +67,9 @@ settles hit their cap; a capped settle is also named on stderr in every run.
 | `sheet spacing` | `scripts/smoke/sheet-spacing.mjs` | RICH |
 | `the list sheets share one background, one row, one check` | `scripts/smoke/sheet-family.mjs` | RICH |
 | `game screen: Timeline \| Card and the card sheet` | `scripts/smoke/timeline-card-sheet.mjs` | RICH |
+| `hand off: the code is the link, a fresh phone opens the same game` | `scripts/smoke/hand-off.mjs` | RICH |
+| `hand off: a damaged link shows one toast and writes nothing` | `scripts/smoke/hand-off.mjs` | RICH |
+| `hand off: the code loads when the sheet opens, and works offline` | `scripts/smoke/hand-off.mjs` | RICH |
 | `team screen: roster rows, the player sheet, add and paste` | `scripts/smoke/team-screen.mjs` | RICH |
 | `dark theme: print-sheet selects, minutes switch and roster fields stay transparent` | `scripts/smoke/dark-input-bg.mjs` | RICH |
 | `phone gutter: five screens, #abBench and #resumeBar, 320–390px + 320px/32px text` | `scripts/smoke/phone-gutter.mjs` | RICH |

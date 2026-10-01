@@ -14,5 +14,6 @@ back.
 | what | version | licence | size | loaded |
 |---|---|---|---|---|
 | `motion.umd.js` + `motion.mjs` | motion 11.18.2 | MIT | 65 KB | always |
+| `uqr.mjs` | uqr 0.1.3 | MIT | 27 KB | on demand, when the Hand off sheet opens |
 
 `motion` drives spring transitions, staggered entrances and FLIP reordering.

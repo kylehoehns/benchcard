@@ -230,6 +230,14 @@ export const STATES = [
   { name: 'card sheet open',
     open: `$('.today-game').click(); $('#shareBtn').click()`, shows: '#sheetCard[open]',
     close: `$('#sheetCard').close(); $('#backBtn').click()` },
+  /* #250: the Hand off sheet, one tap past the card sheet. It holds the QR
+     code, which is drawn by a lazily imported module, so `shows` waits on the
+     drawn code (`#handoffQr svg`), not on the dialog alone. */
+  { name: 'hand off sheet open',
+    open: `$('.today-game').click(); $('#shareBtn').click(); $('#handoffBtn').click();
+           for (let i = 0; i < 60 && !$('#handoffQr svg'); i++) await new Promise(r => setTimeout(r, 50))`,
+    shows: '#sheetHandoff[open] #handoffQr svg',
+    close: `$('#sheetHandoff').close(); $('#sheetCard').close(); $('#backBtn').click()` },
   /* #32: the Add-a-game flow, opened from Today through its real trigger.
      A full-screen `<dialog>` in the top layer, so nothing this pass has
      audited before covers its controls -- the ✕, the step count, the two

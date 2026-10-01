@@ -19,7 +19,7 @@
    whenever a precached file changes -- `npm test` names it in the SHELL
    failure and `scripts/check-sw-version.mjs` enforces it across commits --
    but a forgotten bump is now a stale LABEL, not a stale SHELL. */
-const VERSION = '411';
+const VERSION = '412';
 
 /* Fingerprint of every file PRECACHE names, and the half of the cache name
    that actually busts it. `test/sw.test.js` recomputes it from the bytes on
@@ -29,7 +29,7 @@ const VERSION = '411';
    `activate` below deletes the old one. It lives HERE rather than in the test
    so that the edit updating it lands on the line below VERSION. Deleting it
    fails the suite too. */
-const SHELL = '5084236413ac';
+const SHELL = 'ab2b641a3f4e';
 
 const CACHE = `benchcard-v${VERSION}-${SHELL}`;
 
@@ -73,11 +73,14 @@ const PRECACHE = [
   './edit.js',
   './shortcuts.js',
   './share.js',
+  './handoff.js',
+  './handoff-view.js',
   './backup.js',
   './analytics.js',
   './fx.js',
   './icons.js',
   './vendor/motion.mjs',
+  './vendor/uqr.mjs',  // the Hand off sheet imports it on open, so it must be here for offline
   './vendor/motion.umd.js', // motion.mjs imports this; without it fx.js throws and app.js never runs
 
   './vendor/fonts/inter-latin-wght-normal.woff2',
