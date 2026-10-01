@@ -55,6 +55,7 @@ function setup({ games = 2, dayName = 'Sat at Northgate', date = '2026-11-08', s
   }
   S.state.teams = [t];
   S.state.activeTeam = 0;
+  S.state.onboarded = true; // #252: a team the coach set up; a fresh import is not onboarded
   S.computeAll();
   if (started) {
     t.days[0].games.forEach((g, i) => {
@@ -251,6 +252,37 @@ test('dueToFile: combines dayIsPast with the bench-mode check, in one place', ()
 
   setup({ games: 1, date: '2026-09-28' });
   assert.equal(S.dueToFile(TODAY), false, "today's own day is not due");
+});
+
+/* #252: nobody to file for. A coach with no team (Remove last team, or a first
+   install left open past midnight) holds a not-onboarded placeholder whose
+   one day is dated the day it was made. */
+const PLACEHOLDER_DAY = '2026-09-29';
+const NEXT_DAY = new Date(2026, 8, 30); // 2026-09-30
+
+for (const [name, makeTeam] of [
+  ['a removed last team', () => S.newTeam('')],
+  ['a first install left open past midnight', () => S.newTeam('', [])], // freshState() with no players
+]) {
+  test(`${name}: nothing is due to file, no toast, and the state does not change`, () => {
+    const t = makeTeam();
+    t.days[0].date = PLACEHOLDER_DAY;
+    S.state.teams = [t];
+    S.state.activeTeam = 0;
+    S.state.onboarded = false;
+    const before = JSON.parse(JSON.stringify(S.state));
+
+    assert.equal(S.dueToFile(NEXT_DAY), false);
+    assert.equal(S.fileIfPast(NEXT_DAY), null);
+    assert.deepEqual(JSON.parse(JSON.stringify(S.state)), before);
+    S.state.onboarded = true;
+  });
+}
+
+test('an onboarded team with yesterday\'s day still files', () => {
+  setup({ games: 1, date: PLACEHOLDER_DAY });
+  assert.equal(S.dueToFile(NEXT_DAY), true);
+  assert.match(S.fileIfPast(NEXT_DAY), /is over\..*A new game is ready for today\./);
 });
 
 /* ---- fileIfPast: the entry point ---- */

@@ -1908,6 +1908,8 @@ export const dayIsPast = (day, today = new Date()) => day.date < seasonDate(toda
  */
 export const dueToFile = (today = new Date()) => {
   if (benchOpen()) return false;
+  // #252: no team yet, so nothing of the coach's to file
+  if (state.onboarded === false) return false;
   return team().days.some(d => dayIsPast(d, today));
 };
 

@@ -51,12 +51,16 @@ export const withTeam = (players, games, settings, fn) => {
  * this was pulled out. */
 export const withDays = (players, days, settings, fn, activeDay = 0) => {
   const saved = S.state.teams;
+  const savedOnboarded = S.state.onboarded;
+  // #252: a team the coach set up; `dueToFile` files nothing for a state that
+  // is not onboarded, and a fresh import of state.js is not.
+  S.state.onboarded = true;
   S.state.teams = [{
     id: 't', name: 'T', players, days, activeDay,
     season: { games: [] }, activeGame: 0, settings: settings || {},
   }];
   S.state.activeTeam = 0;
-  try { return fn(); } finally { S.state.teams = saved; }
+  try { return fn(); } finally { S.state.teams = saved; S.state.onboarded = savedOnboarded; }
 };
 
 export const player = (id, name) => ({ id, name: name || id });
