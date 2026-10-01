@@ -1,5 +1,6 @@
 import { evalIn } from './dom.mjs';
 import { evalJSON } from './sheet-drive.mjs';
+import { SCALE, PAD, GAP, FOOT } from '../../app/share.js';
 
 /* #263: what a coach hands to someone else leaves the page three ways -- an
    `<a download>` click, `navigator.share`, `navigator.clipboard.write` -- and
@@ -91,7 +92,7 @@ export const capReset = c => evalIn(c, `window.__cap.reset()`);
 export const capRestore = c => evalIn(c, `window.__cap?.restore()`);
 
 /* The PNG's size, worked out from the cards' own rects the way the spec states
-   it: SCALE 3, PAD 14, GAP 14, FOOT 30. Rects come from a throwaway host built
+   it, with share.js's own SCALE, PAD, GAP and FOOT. Rects come from a throwaway host built
    like the one `share.js` paints from, so they are print pixels, not the
    zoomed ones `#sheet` shows. */
 export async function expectedPngSize(c) {
@@ -104,7 +105,7 @@ export async function expectedPngSize(c) {
     host.remove();
     return JSON.stringify(out);
   })()`);
-  const wide = rects.reduce((a, r) => a + r[0], 0) + 14 * (rects.length - 1) + 28;
+  const wide = rects.reduce((a, r) => a + r[0], 0) + GAP * (rects.length - 1) + PAD * 2;
   const tall = Math.max(...rects.map(r => r[1]));
-  return { cards: rects.length, w: Math.round(wide * 3), h: Math.round((tall + 14 + 30) * 3) };
+  return { cards: rects.length, w: Math.round(wide * SCALE), h: Math.round((tall + PAD + FOOT) * SCALE) };
 }

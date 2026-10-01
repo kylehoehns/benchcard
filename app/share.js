@@ -20,9 +20,9 @@
    That is why this uses `toDataURL` and converts by hand rather than the
    nicer `toBlob`. */
 
-const SCALE = 3;          // 96dpi CSS px -> 288dpi image
-const PAD = 14;           // page margin around the cards, in CSS px
-const GAP = 14;           // between cards when a game needs two
+export const SCALE = 3;          // 96dpi CSS px -> 288dpi image
+export const PAD = 14;           // page margin around the cards, in CSS px
+export const GAP = 14;           // between cards when a game needs two
 const PAGE = '#eceae6';   // paper-ish ground so a white card has an edge
 const EDGE = '#d6d2cc';
 
@@ -32,7 +32,7 @@ const EDGE = '#d6d2cc';
    domain repeated in it, at a size that survives that trip. It costs the card
    nothing: the band is outside the card rect, the in-card mark is untouched,
    and it is a URL and nothing else -- no wordmark, no strapline, no claim. */
-const FOOT = 30;          // bottom margin, in place of PAD, in CSS px
+export const FOOT = 30;          // bottom margin, in place of PAD, in CSS px
 const MARK = 'benchcard.app';
 const MARK_PX = 10;
 const MARK_INK = '#777';  // matches `.card-hd .card-mark`

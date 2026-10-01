@@ -16,6 +16,7 @@ import { TOUCH_WIDTHS } from './sizes.mjs';
 import { goRich } from './fixtures.mjs';
 import { capInstall, capRead, capReset, capRestore } from './capture.mjs';
 import { seasonFilename } from '../../app/backup.js';
+import { smokeToday } from './clock.mjs';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
 
@@ -217,7 +218,9 @@ export async function seasonPass(c, origin) {
 
   /* ---- #263 I: the spreadsheet Export hands over. The download is caught in
      the page (capture.mjs) and its name, type, first bytes and first line are
-     read; the filed games' titles are RICH's own three, written out here. */
+     read; the filed games' titles are RICH's own three, written out here (the
+     header's "Jul 11" is the app's own date wording, so deriving it from
+     RICH's ISO dates would re-derive the thing under test). */
   if (onSeason) {
     await capInstall(c);
     try {
@@ -228,7 +231,7 @@ export async function seasonPass(c, origin) {
       const f = r.clicks[0];
       if (r.clicks.length !== 1) problems.push(`Export clicked ${r.clicks.length} download(s), want 1`);
       else {
-        const want = seasonFilename(team, new Date(2026, 8, 12));
+        const want = seasonFilename(team, smokeToday());
         if (f.download !== want) problems.push(`the spreadsheet is named "${f.download}", want "${want}"`);
         if (f.type !== 'text/csv;charset=utf-8') problems.push(`the spreadsheet's type is "${f.type}", want text/csv;charset=utf-8`);
         if (!f.text.startsWith('\uFEFF')) problems.push('the spreadsheet does not start with a byte-order mark');
