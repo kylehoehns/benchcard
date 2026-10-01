@@ -44,14 +44,14 @@ permissions:
 
 jobs:
   drift:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: re-vendor and diff
     # Labels only exist on pull requests; every other trigger always runs.
     if: >-
       github.event_name != 'pull_request' ||
       !contains(github.event.pull_request.labels.*.name, 'vendor-bump')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: re-run app/vendor/fetch.sh
         run: sh app/vendor/fetch.sh
