@@ -360,3 +360,26 @@ its alternative is an assertion, so the rejected options are kept here too.
 - **Pairs are soft by default** (`hardPairs: true` to force). Requiring two players together every stint fights even minutes hard; the plan maximizes shared floor time and reports it as "together 20 of a possible 20 minutes".
 - **Infeasibility is arithmetic, checked before any search**, so the message can name the offending constraint and the numbers.
 - **Subs are held to 1-3 per stint** so there is continuity on the floor.
+- **A hand-off link carries a live copy, not a link between phones.** The
+  assistant's phone receives a complete working copy of the game and its roster
+  and can edit it freely. The two phones are not synchronized afterward, so
+  edits on either one diverge from the other. Syncing would need a server or
+  accounts, and Benchcard has neither.
+- **Only call names travel, never full names.** Each kid travels as the name
+  bench mode calls them by (`callNames` in `roster.js`): first name, or first
+  name plus last initial when two kids share a first name. The 5-letter card
+  abbreviations are re-derived on the receiving phone, as they are everywhere
+  else. This keeps the shortest unique names in the URL without duplicating the
+  shortening logic.
+- **The roster the phone already has is kept.** Teams are matched by id. If the
+  receiving phone has the team, its own roster stands — full names, levels and
+  everything else stay — and players from the link that are not on the phone
+  are added by their call name. A kid on the phone keeps their full name and
+  level whatever the link carries. When the phone already has the game, its
+  own opponent label and tip-off time are kept too; the link carries neither.
+- **The link is sent as a URL fragment, never the path or query.** The plan
+  travels in the part of the URL after `#`, which browsers never send to a
+  server. This keeps the privacy claim true — a roster never reaches a server —
+  at no cost to the coach: the QR code encodes the same link Share hands out.
+  Anyone who has the link can open it, so the sheet lists the names it carries
+  and says so before the coach shares.

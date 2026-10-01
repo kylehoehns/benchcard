@@ -112,6 +112,42 @@ test('stints the phone solves differently are written as overrides that are not 
   assert.ok(got.live.overrides[10], 'stint 10 is held as an override');
 });
 
+test('a kid marked out after playing: the played stints still show them on the receiver', async () => {
+  const { team, g } = sender();
+  const kid = S.effectiveStints(g, S.plans[0])[0].onFloor[0];
+  g.out = [...g.out, kid];
+  S.computeAll();
+  const gp = S.plans[0];
+  const want = { floor: floorOf(g, gp), minutes: { ...S.effectiveMinutes(g, gp) } };
+  assert.ok(want.floor.slice(0, 5).some(f => f.includes(kid)), 'fixture: the kid is in a played stint');
+  const hash = await encode(team, g, want.floor);
+
+  freshDevice();
+  receive(await decode(hash));
+  const got = S.game();
+  const rp = S.plans[S.state.activeGame];
+  const fives = floorOf(got, rp);
+  for (let k = 0; k < 5; k++) assert.deepEqual([...fives[k]].sort(), [...want.floor[k]].sort(), `played stint ${k}`);
+  assert.deepEqual(S.effectiveMinutes(got, rp), want.minutes);
+});
+
+test('a second computeAll after receive keeps the received hand swap and overrides', async () => {
+  const { team, g, p } = sender();
+  const floor = floorOf(g, p);
+  const swapped = [...floor[10]];
+  swapped[0] = S.availIds(g).find(id => !floor[10].includes(id));
+  const hash = await encode(team, g, floor.map((f, k) => (k === 10 ? swapped : f)));
+
+  freshDevice();
+  receive(await decode(hash));
+  const once = floorOf(S.game(), S.plans[S.state.activeGame]);
+  S.computeAll();
+  const got = S.game();
+  assert.deepEqual(L.handStints(got.live), [7], 'the hand swap survives');
+  assert.ok(got.live.overrides[10], 'the reconcile override survives');
+  assert.ok(sameFives(floorOf(got, S.plans[S.state.activeGame]), once), 'the card is unchanged');
+});
+
 const b64uToBytes = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 const inflateText = async hash => {
   const s = new Blob([b64uToBytes(hash.slice(3 + 1))]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
@@ -142,7 +178,7 @@ function phoneWithTeam() {
   mine.players = mine.players.filter(x => x.id !== ids[10]);
   mine.players.push({ id: 'pExtra', name: 'Extra Kid', number: '99', shortName: '', tier: 3, hue: 40 });
   const mineGame = mine.days[0].games[0];
-  Object.assign(mineGame, { seed: 7, strategy: 'closers', label: 'Wolves', live: { at: 0, overrides: {} } });
+  Object.assign(mineGame, { seed: 7, strategy: 'closers', label: 'Wolves', tipoff: '09:30', live: { at: 0, overrides: {} } });
   mine.days.push({ name: 'Away', date: '2026-09-19', games: [bareGame({
     id: 'gLater', label: 'Eagles', constraints: S.emptyConstraints(), live: { at: 0, overrides: {} },
   })] });
@@ -168,6 +204,8 @@ test('existing team: the game is replaced, kids keep their names, nothing else i
   assert.equal(S.state.activeTeam, 1);
   assert.equal(t.days.length, 2);
   const g = t.days[0].games[0];
+  assert.equal(g.label, 'Wolves', 'the phone\'s own game label stays');
+  assert.equal(g.tipoff, '09:30', 'and its tipoff');
   assert.equal(t.days[0].games.length, 1, 'replaced, not added alongside');
   assert.equal(g.id, 'gHawks1');
   assert.equal(g.seed, 4242, 'the link\'s game is the one kept');

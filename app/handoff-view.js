@@ -8,9 +8,8 @@
 import { $, on } from './dom.js';
 import { openSheet, closeSheet } from './trap.js';
 import { state, team, game, plans, effectiveStints } from './state.js';
-import { callNames } from './roster.js';
 import { flash } from './toast.js';
-import { encode } from './handoff.js';
+import { encode, leavingNames } from './handoff.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 let link = '';
@@ -44,10 +43,9 @@ export async function openHandoff(door) {
   $('#handoffShare').disabled = true;
   $('#handoffQr').replaceChildren();
   $('#handoffStatus').textContent = '';
-  const names = callNames(team().players);
-  $('#handoffNames').replaceChildren(...team().players.map(pl => {
+  $('#handoffNames').replaceChildren(...leavingNames(team().players).map(name => {
     const li = document.createElement('li');
-    li.textContent = names[pl.id] || pl.name;
+    li.textContent = name;
     return li;
   }));
   $('#handoffShareLabel').textContent = navigator.share ? 'Share link' : 'Copy link';

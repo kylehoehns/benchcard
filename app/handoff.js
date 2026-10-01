@@ -4,7 +4,7 @@
    games; names that travel are `callNames` (roster.js), never the full ones.
    Compression is the browser's own `CompressionStream`, no library. */
 import { callNames } from './roster.js';
-import { handStints, playedStints, finishedGame, writeOverrides } from './live.js';
+import { DAMAGED_LINK, handStints, playedStints, finishedGame, writeOverrides } from './live.js';
 import { sanitizeTeam, seasonDate, sortDay } from './storage.js';
 import { state, team, computeAll, effectiveStints, availIds, plans, openGame, dayFor,
          hueSlots, emptyConstraints, newGame } from './state.js';
@@ -23,15 +23,24 @@ async function deflate(text) {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
+/* The one place a kid's name for the link is decided: the card name, never the
+   full one. The Hand off sheet lists exactly these. */
+export function leavingNames(players) {
+  const names = callNames(players);
+  return players.map(p => names[p.id] || p.name);
+}
+
+export { DAMAGED_LINK };
+
 /* `stints` is the rotation the card shows -- the caller's
    `effectiveStints(g, p).map(s => s.onFloor)` -- as lists of player ids. */
 export async function encode(team, game, stints) {
-  const names = callNames(team.players);
+  const leaving = leavingNames(team.players);
   const index = new Map(team.players.map((p, i) => [p.id, i]));
   const live = game.live;
   const payload = {
     t: [team.id, team.name, team.settings?.color ?? ''],
-    p: team.players.map(p => [p.id, names[p.id] || p.name, p.number, p.tier]),
+    p: team.players.map((p, i) => [p.id, leaving[i], p.number, p.tier]),
     g: {
       id: game.id, periods: game.periods, periodMinutes: game.periodMinutes,
       granMode: game.granMode, granValue: game.granValue, strategy: game.strategy,
@@ -146,7 +155,14 @@ export function receive({ team: incoming, stints }) {
     let at = null;
     mine.days.forEach((day, d) => {
       const i = day.games.findIndex(x => x.id === game.id);
-      if (i >= 0) { day.games[i] = game; at = [d, i]; }
+      if (i >= 0) {
+        // the phone's own label and tipoff are not in the link
+        const old = day.games[i];
+        if (old.label !== undefined) game.label = old.label;
+        if (old.tipoff !== undefined) game.tipoff = old.tipoff;
+        day.games[i] = game;
+        at = [d, i];
+      }
     });
     if (!at) {
       const d = dayFor(date);
@@ -162,8 +178,10 @@ export function receive({ team: incoming, stints }) {
     const solved = effectiveStints(game, p);
     const free = new Set(availIds(game));
     const fix = {};
+    const played = playedStints(game.live);
     stints.forEach((five, k) => {
-      if (solved[k] && !sameFive(solved[k].onFloor, five) && five.every(id => free.has(id))) fix[k] = five;
+      // a played stint is history and is always written; only a stint still to come must name kids who can play
+      if (solved[k] && !sameFive(solved[k].onFloor, five) && (k < played || five.every(id => free.has(id)))) fix[k] = five;
     });
     if (Object.keys(fix).length) { writeOverrides(game.live, fix, false); computeAll(); }
   }

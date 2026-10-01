@@ -32,6 +32,7 @@ import { initToast, undoable, flash, tipAfterPrint, tipAfterGame } from './toast
 import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, setView, applyTheme, applyTint, rotationAnnounced, ROTATION_CHANGED, SWAPS_CLEARED } from './render.js';
 import { edit } from './edit.js';
+import { DAMAGED_LINK } from './live.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
          dueToFile, fileIfPast, moveGame, setTipoff, hasGames } from './state.js';
@@ -438,14 +439,19 @@ initShortcuts(setView);
    that does not decode writes nothing: the app opens as it was. */
 let handoffNote = '';
 if (location.hash.startsWith('#p=')) {
-  const { decode, receive } = await import('./handoff.js');
-  const incoming = await decode(location.hash);
+  const hash = location.hash;
   history.replaceState(null, '', location.pathname + location.search);
-  if (incoming) {
-    const { teamName } = receive(incoming);
-    state.view = 'games';
-    handoffNote = `${teamName || 'Your'} game added. Open bench mode to run subs.`;
-  } else handoffNote = 'This hand-off link is damaged. Ask for a new one.';
+  try {
+    const { decode, receive } = await import('./handoff.js');
+    const incoming = await decode(hash);
+    if (incoming) {
+      const { teamName } = receive(incoming);
+      state.view = 'games';
+      handoffNote = `${teamName || 'Your'} game added. Open bench mode to run subs.`;
+    } else handoffNote = DAMAGED_LINK;
+  } catch {
+    handoffNote = DAMAGED_LINK;
+  }
 }
 setView(state.onboarded ? (state.view || 'today') : 'welcome');
 /* There was a `body.boot` class here, added before the first paint and removed

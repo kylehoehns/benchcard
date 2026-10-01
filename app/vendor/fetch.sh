@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 # Everything below is generated. Clear it first, so a file this script no
 # longer produces shows up as a deletion rather than sitting here forever:
 # `git status` cannot see a leftover any other way, and the drift job is only
-# as good as what git reports. Name the four targets rather than emptying the
+# as good as what git reports. Name the generated targets rather than emptying the
 # directory: app/vendor/ also holds hand-written files, and AGENTS.md's "What
 # is enforced" table owns which ones. An interrupted run leaves this directory
 # half-empty; `git restore app/vendor` puts it back.

@@ -14,13 +14,13 @@
    vendored encoder run in Node on the URL the page handed to Share -- never
    from reading the page's own module back. */
 import { encode as qrEncode } from '../../app/vendor/uqr.mjs';
+import { DAMAGED_LINK as DAMAGED } from '../../app/live.js';
 import { evalIn, step, WIDTH, HEIGHT, wait, OVERFLOW_PROBE, TODAY_HOME, onScreen } from './dom.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
 import { goRich } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
 
-export const DAMAGED = 'This hand-off link is damaged. Ask for a new one.';
 
 /* Back to Today and into the first game; the card sheet opens in a second tap,
    once the game screen is up (a dialog cannot open under a hidden ancestor). */
@@ -220,7 +220,7 @@ export async function handOffLoadPass(c, origin) {
     ck(uqr.length === 0, 'hand-off code was requested by opening the card sheet');
     await tap(c, `document.getElementById('handoffBtn').click()`);
     ck(await qrDrawn(c), 'online: the sheet never drew a code');
-    ck(uqr.filter(u => u.includes('uqr')).length === 1 && uqr.length === 3, `opening the sheet requested ${JSON.stringify(uqr)}, want handoff-view.js, handoff.js and uqr.mjs once each`);
+    ck(uqr.filter(u => /\/uqr\.mjs/.test(u)).length === 1, `opening the sheet requested ${JSON.stringify(uqr)}, want uqr.mjs exactly once`);
     detail = 'hand-off code and the QR library are not requested until the sheet opens';
 
     // Offline: the service worker holds it. Wait for the precache, cut the

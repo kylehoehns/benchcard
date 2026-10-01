@@ -65,6 +65,12 @@ Why a blocked action always names the fix, not just the block. See
 The inline error boundary and the backup download it offers when a boot
 throws. See [architecture/boot-failure.md](architecture/boot-failure.md).
 
+## Hand off
+
+Sharing a game with an assistant through a link or QR code — the game, its
+roster and its rotation plan travel in the URL hash, which is never sent to a
+server. See [architecture/interface.md](architecture/interface.md) § Hand off.
+
 ## Photo scanning: removed
 
 What the removed roster-from-a-photo feature was, and why it was pulled. See
