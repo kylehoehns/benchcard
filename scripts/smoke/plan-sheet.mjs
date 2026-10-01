@@ -382,8 +382,15 @@ export async function planSheetPass(c, origin) {
     ck(addPage.pressed[0] === 'true' && addPage.pressed.slice(1).every(p => p === 'false'),
       `chip aria-pressed is ${JSON.stringify(addPage.pressed)}, want only "Plays at least" pressed`);
 
+    // The Add-a-rule page's controls, as page JS: a player tile by name, a kind
+    // chip by label, "More minutes". `#planSub` rebuilds synchronously on each
+    // pick (rules.js `renderKindBody`), so several can run in one `tap`.
+    const tileJs = name => `[...document.querySelectorAll('#planSub .plr')].find(b => b.getAttribute('aria-label') === ${JSON.stringify(name)}).click()`;
+    const kindJs = label => `[...document.querySelectorAll('#planSub .plan-kinds .chip')].find(b => b.textContent === ${JSON.stringify(label)}).click()`;
+    const moreJs = `document.querySelector('#planSub .pstep-btn:last-of-type').click()`;
+
     // Tap Eli's tile: enables Add rule, minutes start at 12.
-    await tap(c, `[...document.querySelectorAll('#planSub .plr')].find(b => b.getAttribute('aria-label') === 'Eli Tran').click()`);
+    await tap(c, tileJs('Eli Tran'));
     const eliPicked = await evalJSON(c, `JSON.stringify({
       addDisabled: document.getElementById('planAddRuleBtn')?.disabled,
       minutes: document.querySelector('#planSub .pstep-val')?.textContent,
@@ -392,7 +399,7 @@ export async function planSheetPass(c, origin) {
     ck(eliPicked.minutes === '12', `the minutes stepper reads "${eliPicked.minutes}" after picking Eli, want "12"`);
 
     // Tap Hana's tile: the pick moves to Hana (replace: true).
-    await tap(c, `[...document.querySelectorAll('#planSub .plr')].find(b => b.getAttribute('aria-label') === 'Hana Kim').click()`);
+    await tap(c, tileJs('Hana Kim'));
     const hanaPicked = await evalJSON(c, `JSON.stringify({
       pressed: [...document.querySelectorAll('#planSub .plr')].filter(b => b.getAttribute('aria-pressed') === 'true')
         .map(b => b.getAttribute('aria-label')),
@@ -401,8 +408,8 @@ export async function planSheetPass(c, origin) {
       `${JSON.stringify(hanaPicked.pressed)} tile(s) picked after tapping Hana Kim, want only ["Hana Kim"]`);
 
     // "More minutes" twice -> 14.
-    await tap(c, `document.querySelector('#planSub .pstep-btn:last-of-type').click()`);
-    await tap(c, `document.querySelector('#planSub .pstep-btn:last-of-type').click()`);
+    await tap(c, moreJs);
+    await tap(c, moreJs);
     const at14 = await evalJSON(c, `JSON.stringify(document.querySelector('#planSub .pstep-val')?.textContent)`);
     ck(at14 === '14', `the minutes stepper reads "${at14}" after "More minutes" twice, want "14"`);
 
@@ -418,7 +425,7 @@ export async function planSheetPass(c, origin) {
 
     // Choosing "Together" clears the pick and disables Add rule.
     await tapPane(c, `document.querySelector('#constraints .add-rule').click()`);
-    await tap(c, `[...document.querySelectorAll('#planSub .plan-kinds .chip')].find(b => b.textContent === 'Together').click()`);
+    await tap(c, kindJs('Together'));
     const together0 = await evalJSON(c, `JSON.stringify({
       addDisabled: document.getElementById('planAddRuleBtn')?.disabled,
       pressed: [...document.querySelectorAll('#planSub .plr')].some(b => b.getAttribute('aria-pressed') === 'true'),
@@ -438,9 +445,61 @@ export async function planSheetPass(c, origin) {
     ck(together2.addDisabled === false, '"Add rule" is still disabled with two tiles picked for "Together"');
     ck(together2.thirdDisabled === true, 'a third tile is not disabled once two are picked for "Together"');
 
+    /* #265 H: commit Together, check Force Together (I), then one rule of
+     * each remaining kind. Names are the picked tiles' first names (the
+     * fixture's first names are all distinct); ids are the fixture's own. */
+    // The finally puts Hawks back (it started with no rules, so a fresh
+    // `emptyConstraints()`) even if a check above throws half-way through.
+    try {
+      const readC = () => evalJSON(c, `(async () => { const s = await import('/state.js');
+        return JSON.stringify({ c: s.game().constraints, ok: s.plans[s.state.activeGame]?.ok, stale: !!s.plans[s.state.activeGame]?.staleMarker,
+          title: document.getElementById('sheetPlanTitle')?.textContent,
+          rows: [...document.querySelectorAll('#constraints .prow')].filter(b => !b.classList.contains('add-rule')).map(r => r.textContent.trim()),
+          sw: [...document.querySelectorAll('#planPairs input[switch]')].map(i => [i.closest('label')?.textContent.trim(), i.checked]) }); })()`);
+      const commit = async (kind, text, has) => {
+        await tapPane(c, `document.getElementById('planAddRuleBtn').click()`);
+        const r = await readC();
+        ck(r.title === 'Plan', `the title reads "${r.title}" after adding the ${kind} rule, want "Plan"`);
+        ck(r.rows.includes(text), `#constraints reads ${JSON.stringify(r.rows)} after adding ${kind}, want a row "${text}"`);
+        ck(has(r.c), `constraints hold ${JSON.stringify(r.c)} after adding ${kind}`);
+      };
+      await commit('together', 'Marcus and Devon together', c2 => JSON.stringify(c2.pairs) === '[["p0","p1"]]');
+      const forceOff = await readC();
+      ck(JSON.stringify(forceOff.sw) === JSON.stringify([['Force Together pairs every stint', false]]),
+        `#planPairs switches read ${JSON.stringify(forceOff.sw)}, want the unchecked "Force Together pairs every stint"`);
+      // Mark the plan object the solver last made; a recompute after the click
+      // swaps in a new one, so the mark surviving means `ok` below is stale.
+      await evalJSON(c, `(async () => { const s = await import('/state.js');
+        s.plans[s.state.activeGame].staleMarker = true; return 'true'; })()`);
+      await tap(c, `document.querySelector('#planPairs input[switch]').click()`);
+      const forceOn = await readC();
+      ck(forceOn.c.hardPairs === true, `hardPairs is ${forceOn.c.hardPairs} after turning Force Together on, want true`);
+      ck(forceOn.sw[0]?.[1] === true, 'the Force Together switch does not read checked after turning it on');
+      ck(forceOn.stale === false, 'the plan was not recomputed after turning Force Together on');
+      ck(forceOn.ok === true, 'the plan does not solve with Force Together on');
+      await tap(c, `document.querySelector('#planPairs input[switch]').click()`);
+      ck((await readC()).c.hardPairs === false, 'hardPairs is not false after turning Force Together off');
+
+      const KINDS = [
+        ['Plays at most', ['Eli Tran'], 2, 'Eli plays at most 14 min', k => JSON.stringify(k.maxMinutes) === '{"p3":14}'],
+        ['Apart', ['Hana Kim', 'Eli Tran'], 0, 'Hana and Eli apart', k => JSON.stringify(k.avoids) === '[["p2","p3"]]'],
+        ['One of two on', ['Ana Reyes', 'Jordan Bell'], 0, 'Ana or Jordan is always on the floor', k => JSON.stringify(k.keepOnFloor) === '[["p4","p5"]]'],
+        ['Starting five', ['Sam Okafor', 'Riley Novak', 'Casey Lindqvist', 'Theo Alvarez', 'Nia Brooks'], 0,
+          'Sam, Riley, Casey, Theo and Nia start the game', k => JSON.stringify(k.openingFive) === '["p6","p7","p8","p9","p10"]'],
+        ['Last-period five', ['Marcus Williams', 'Devon Ellis', 'Ana Reyes', 'Jordan Bell', 'Sam Okafor'], 0,
+          'Marcus, Devon, Ana, Jordan and Sam start the last period', k => JSON.stringify(k.lastPeriodFive) === '["p0","p1","p4","p5","p6"]'],
+        ['Rest limit', [], 0, 'Nobody plays more than 2 stints in a row', k => k.maxConsecutive === 2],
+      ];
+      for (const [chip, names, more, text, has] of KINDS) {
+        await tapPane(c, `document.querySelector('#constraints .add-rule').click()`);
+        await tap(c, kindJs(chip));
+        await tap(c, [...names.map(tileJs), ...Array(more).fill(moreJs)].join(';\n'));
+        await commit(chip, text, has);
+      }
+    } finally {
+      await evalIn(c, setGame(`s.game().constraints = s.emptyConstraints();`));
+    }
     await tap(c, `document.getElementById('sheetPlanClose').click()`);
-    // restore Hawks: no rules.
-    await evalIn(c, setGame(`const g = s.game(); g.constraints.minMinutes = {}; g.constraints.pairs = [];`));
     await settle(c);
 
     /* ---- item 6: Lineup balance ---- */

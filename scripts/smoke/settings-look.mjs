@@ -1,5 +1,5 @@
-import { setWidth, TODAY_HOME } from './dom.mjs';
-import { tap, evalJSON } from './sheet-drive.mjs';
+import { setWidth, TODAY_HOME, navigateAndWaitForCard } from './dom.mjs';
+import { tap, evalJSON, typeIn } from './sheet-drive.mjs';
 import { goRich } from './fixtures.mjs';
 
 /* #142's own guard (docs/specs/142-settings-groups.md's Proof section, "Group
@@ -59,8 +59,137 @@ const READ_LOOK = `JSON.stringify((() => {
   return { headerCount: headers.length, bordered, insets, footnoteCounts };
 })())`;
 
+/* #265: the Settings policy controls, driven in the page and read back from
+ * the state they write (`team().settings`, `state.ui`, `state.teamName`) and
+ * from the field or button the coach sees. Every control is put back to what
+ * the rich fixture had before this returns -- later rows read the same state. */
+const READ_STATE = `(async () => {
+  const s = await import('/state.js');
+  const t = s.team().settings, g = s.game();
+  const on = id => [...document.querySelectorAll(id + ' button')].filter(b => b.classList.contains('on'))
+    .map(b => b.textContent + ':' + b.getAttribute('aria-pressed'));
+  return JSON.stringify({
+    maxSubs: t.maxSubs, tieBreak: t.tieBreak, minMinutes: t.minMinutes, seasonDefault: t.seasonDefault,
+    periods: t.periods, periodMinutes: t.periodMinutes, theme: s.state.ui.theme, teamName: s.state.teamName,
+    game: { periods: g.periods, periodMinutes: g.periodMinutes, useCarryover: g.useCarryover, useSeasonTargets: g.useSeasonTargets },
+    pressed: [...document.querySelectorAll('#view-settings .seg button')].filter(b => b.getAttribute('aria-pressed') === 'true')
+      .map(b => b.closest('.seg').id + '/' + b.textContent),
+    on: on('#view-settings .seg'),
+    fields: { minMins: document.querySelector('#minMins').value, periods: document.querySelector('#setPeriods').value,
+      perMins: document.querySelector('#setPerMins').value },
+    html: document.documentElement.getAttribute('data-theme'),
+  });
+})()`;
+const readState = c => evalJSON(c, READ_STATE);
+
+// The one button a seg shows as `.on`, by its label.
+async function onlyOn(c, ck, name, sel, label) {
+  const on = await evalJSON(c, `JSON.stringify([...document.querySelectorAll('${sel} button.on')].map(b => b.textContent))`);
+  ck(JSON.stringify(on) === JSON.stringify([label]), `the ${name} seg shows ${JSON.stringify(on)} on, want ["${label}"]`);
+}
+
+async function settingsControlsPass(c, ck) {
+  await tap(c, `document.querySelector('#settingsBtn').click()`);
+  const before = await readState(c);
+
+  /* A. Subs per break. */
+  for (const n of [1, 5, 5]) {
+    await tap(c, `document.querySelector('#maxSubsSeg [data-subs="${n}"]').click()`);
+    const r = await readState(c);
+    ck(r.maxSubs === n, `tapping subs ${n} left settings.maxSubs at ${r.maxSubs}`);
+    const seg = await evalJSON(c, `JSON.stringify([...document.querySelectorAll('#maxSubsSeg button')]
+      .map(b => [b.textContent, b.classList.contains('on'), b.getAttribute('aria-pressed')]))`);
+    ck(JSON.stringify(seg.filter(b => b[1] || b[2] === 'true')) === JSON.stringify([[String(n), true, 'true']]),
+      `after subs ${n} the buttons read ${JSON.stringify(seg)}, want only "${n}" on and pressed`);
+  }
+  await tap(c, `document.querySelector('#maxSubsSeg [data-subs="${before.maxSubs}"]').click()`);
+  ck((await readState(c)).maxSubs === before.maxSubs, 'subs per break was not restored');
+
+  /* B. Tie-break. */
+  for (const [v, label] of [['levels', 'Best players'], ['behind', 'Furthest behind']]) {
+    await tap(c, `document.querySelector('#tieBreakSeg [data-tie="${v}"]').click()`);
+    const r = await readState(c);
+    ck(r.tieBreak === v, `tapping "${label}" left settings.tieBreak at "${r.tieBreak}", want "${v}"`);
+    await onlyOn(c, ck, 'tie-break', '#tieBreakSeg', label);
+  }
+
+  /* C. Season default: the team's default moves, the open game's own switch does not. */
+  for (const [v, want, label] of [['1', true, 'Evening out the season'], ['0', false, 'Fair on its own']]) {
+    await tap(c, `document.querySelector('#seasonDefSeg [data-sdef="${v}"]').click()`);
+    const r = await readState(c);
+    ck(r.seasonDefault === want, `tapping "${label}" left settings.seasonDefault at ${r.seasonDefault}, want ${want}`);
+    ck(JSON.stringify(r.game) === JSON.stringify(before.game), `the open game's own settings moved to ${JSON.stringify(r.game)}, want ${JSON.stringify(before.game)}`);
+    await onlyOn(c, ck, 'season-default', '#seasonDefSeg', label);
+  }
+
+  /* D. League floor (a number field commits on `change`, so typeIn fires that): each typed value, what took, and what the field then reads. */
+  const FLOOR = [['12', 12], ['99', 60], ['-4', 0], ['12.6', 13], ['', 0]];
+  for (const [typed, want] of FLOOR) {
+    await typeIn(c, '#minMins', typed, 'change');
+    const r = await readState(c);
+    ck(r.minMinutes === want, `typing "${typed}" in the league floor left settings.minMinutes at ${r.minMinutes}, want ${want}`);
+    ck(r.fields.minMins === String(want), `typing "${typed}" in the league floor left the field reading "${r.fields.minMins}", want "${want}"`);
+    if (typed !== '12') continue;
+    // With 12 set, the floor is a fixed row in the plan's Rules.
+    await tap(c, TODAY_HOME);
+    await tap(c, `document.querySelector('.today-game').click()`);
+    await tap(c, `document.getElementById('phraseRules').click()`);
+    const rows = await evalJSON(c, `JSON.stringify([...document.querySelectorAll('#constraints .prow')].map(r => r.textContent.trim()))`);
+    ck(rows.includes('Everyone plays at least 12 min'), `the plan's Rules read ${JSON.stringify(rows)}, want a row "Everyone plays at least 12 min"`);
+    await tap(c, `document.getElementById('sheetPlanClose').click()`);
+    await tap(c, `document.getElementById('backBtn').click()`);
+    await tap(c, `document.querySelector('#settingsBtn').click()`);
+  }
+  await typeIn(c, '#minMins', String(before.minMinutes), 'change');
+
+  /* E. Game format: clamped to 1-8 periods and 1-40 minutes, blank is the
+   * default, and the game already open keeps its own format. */
+  const FORMAT = [
+    ['#setPeriods', 'periods', 'periods', [['0', 1], ['9', 8], ['', 4]]],
+    ['#setPerMins', 'perMins', 'periodMinutes', [['0', 1], ['41', 40], ['', 8]]],
+  ];
+  for (const [sel, key, setting, rows] of FORMAT) {
+    for (const [typed, want] of rows) {
+      await typeIn(c, sel, typed, 'change');
+      const r = await readState(c);
+      ck(r[setting] === want, `typing "${typed}" in ${sel} left settings.${setting} at ${r[setting]}, want ${want}`);
+      ck(r.fields[key] === String(want), `typing "${typed}" in ${sel} left the field reading "${r.fields[key]}", want "${want}"`);
+      ck(JSON.stringify(r.game) === JSON.stringify(before.game), `typing in ${sel} moved the open game to ${JSON.stringify(r.game)}, want ${JSON.stringify(before.game)}`);
+    }
+  }
+  await typeIn(c, '#setPeriods', String(before.periods), 'change');
+  await typeIn(c, '#setPerMins', String(before.periodMinutes), 'change');
+
+  /* F. Theme. */
+  for (const [t, label] of [['dark', 'Dark'], ['light', 'Light'], ['auto', 'Automatic']]) {
+    await tap(c, `document.querySelector('#themeSeg [data-theme="${t}"]').click()`);
+    const r = await readState(c);
+    const want = t !== 'auto' ? t
+      : await evalJSON(c, `JSON.stringify(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')`);
+    ck(r.theme === t, `tapping "${label}" left state.ui.theme at "${r.theme}", want "${t}"`);
+    ck(r.html === want, `tapping "${label}" left <html data-theme> at "${r.html}", want "${want}"`);
+    await onlyOn(c, ck, 'theme', '#themeSeg', label);
+  }
+  await tap(c, `document.querySelector('#themeSeg [data-theme="${before.theme}"]').click()`);
+
+  /* G. Team name: typed, kept in state, and still there after a reload. */
+  const NAME = 'Hawks United';
+  await typeIn(c, '#teamName', NAME);
+  ck((await readState(c)).teamName === NAME, `typing in #teamName left state.teamName at "${(await readState(c)).teamName}", want "${NAME}"`);
+  await navigateAndWaitForCard(c, await evalJSON(c, `JSON.stringify(location.href)`));
+  await tap(c, `document.querySelector('#settingsBtn').click()`);
+  const kept = await evalJSON(c, `(async () => JSON.stringify({ name: (await import('/state.js')).state.teamName,
+    field: document.querySelector('#teamName').value }))()`);
+  ck(kept.name === NAME && kept.field === NAME, `after a reload the team name reads ${JSON.stringify(kept)}, want "${NAME}" in both`);
+  await typeIn(c, '#teamName', before.teamName);
+  ck((await readState(c)).teamName === before.teamName, 'the team name was not restored');
+
+  await tap(c, TODAY_HOME);
+}
+
 export async function settingsLookPass(c, origin) {
   const problems = [];
+  const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
   let measured = 0;
 
   try {
@@ -94,6 +223,8 @@ export async function settingsLookPass(c, origin) {
       }
     }
 
+    await settingsControlsPass(c, ck);
+
     // Rule 2a: a run that never found #view-settings open measured nothing.
     if (measured === 0 && problems.length === 0) {
       problems.push('no header or footnote was measured in any pass -- a broken probe, not a pass');
@@ -109,6 +240,6 @@ export async function settingsLookPass(c, origin) {
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${measured} header/footnote(s) at 32px, sentence case, no .pgrp border, one footnote per group -- ${WIDTHS.join('/')}px, light and dark`,
+      : `${measured} header/footnote(s) at 32px, sentence case, no .pgrp border, one footnote per group -- ${WIDTHS.join('/')}px, light and dark; the policy controls write what they say`,
   };
 }
