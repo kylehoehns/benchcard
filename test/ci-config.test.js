@@ -13,7 +13,7 @@
  *      hangs on a job that was never going to report. Re-adding one would not
  *      break any test that existed before this file.
  *
- *   2. A RENAMED JOB. GitHub requires checks BY NAME. Rename `smoke (390×844)`
+ *   2. A RENAMED JOB. GitHub requires checks BY NAME. Rename `smoke`
  *      and branch protection keeps waiting for a check nothing will ever
  *      produce, while the renamed job runs and goes green beside it. The
  *      branch is then unprotected and every signal says it is fine.
@@ -60,7 +60,7 @@ test('the required workflow runs on pull requests into main', () => {
    the reminder that the two are a pair. */
 const REQUIRED = [
   'node 24',
-  'smoke (390×844)',
+  'smoke',
   'evals',
   'service worker behind redirects',
   'checks that need history',
@@ -92,7 +92,7 @@ test('the advisory workflow keeps its path filter, because it is not required', 
 
 /* #40: `--only` runs one smoke check and proves nothing about the other 22 --
  * AGENTS.md § Layout says so in as many words. CI running the suite with
- * `--only` would make a required check named "smoke (390×844)" report green
+ * `--only` would make a required check named "smoke" report green
  * having audited a single row, which is exactly the "required check that does
  * not test what its name claims" shape `check-sw-version.test.js`'s job-rename
  * trap already guards from the other side.

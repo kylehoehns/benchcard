@@ -108,7 +108,23 @@ export async function closeChrome(proc, dir) {
   await rm(dir, { recursive: true, force: true }).catch(() => {});
 }
 
-/* A minimal CDP client: send(method, params) → result, plus event handlers. */
+/* A minimal CDP client: send(method, params) → result, plus event handlers.
+
+   #259: `startCoverage()` turns on V8's precise coverage in the page. V8 drops
+   a page's counts when the page goes away, so they are taken the moment before
+   that happens, in this one place: `send` takes them ahead of every
+   `Page.navigate` and `Page.reload`, and ahead of a `Runtime.evaluate` whose
+   expression navigates the page itself (`location.reload()`, `location.href =`,
+   see PAGE_NAVIGATES). A take asked for AFTER a navigation has begun is
+   answered by the new document, so an event such as
+   `Page.frameRequestedNavigation` is too late -- tried, and the old page's
+   counts were gone. `stopCoverage()` takes the last of it and returns every V8
+   script entry from every take (`{ url, functions }`), for
+   `scripts/coverage.mjs`. A navigation started some other way (a click on a
+   link) is not seen here. */
+const NAVIGATES = new Set(['Page.navigate', 'Page.reload']);
+const PAGE_NAVIGATES = /\blocation\s*\.\s*(?:reload|assign|replace)\s*\(|\blocation(?:\s*\.\s*href)?\s*=(?!=)|\bhistory\s*\.\s*(?:back|forward|go)\s*\(/;
+
 export function cdp(url) {
   const sock = new WebSocket(url);
   const pending = new Map();
@@ -124,16 +140,40 @@ export function cdp(url) {
       for (const fn of handlers.get(msg.method) || []) fn(msg.params);
     }
   });
+  const rawSend = (method, params = {}) => new Promise((ok, fail) => {
+    pending.set(++id, { ok, fail });
+    sock.send(JSON.stringify({ id, method, params }));
+  });
+  const taken = [];
+  let taking = false;
+  let inFlight = Promise.resolve();
+  /* Takes queue one behind another, so `stopCoverage` and `send` wait for any
+     take a navigation event started. A take that fails (the page is already
+     gone) loses nothing that an earlier take did not already have. */
+  const take = () => (inFlight = inFlight.then(() =>
+    rawSend('Profiler.takePreciseCoverage').then(r => { taken.push(...r.result); }, () => {})));
   return {
     ready: new Promise((ok, fail) => {
       sock.addEventListener('open', ok, { once: true });
       sock.addEventListener('error', () => fail(new Error('CDP socket failed')), { once: true });
     }),
-    send: (method, params = {}) => new Promise((ok, fail) => {
-      pending.set(++id, { ok, fail });
-      sock.send(JSON.stringify({ id, method, params }));
-    }),
+    send: async (method, params = {}) => {
+      if (taking && (NAVIGATES.has(method)
+        || (method === 'Runtime.evaluate' && PAGE_NAVIGATES.test(params.expression || '')))) await take();
+      return rawSend(method, params);
+    },
     on: (method, fn) => handlers.set(method, [...(handlers.get(method) || []), fn]),
+    startCoverage: async () => {
+      await rawSend('Profiler.enable');
+      await rawSend('Profiler.startPreciseCoverage', { callCount: true, detailed: true });
+      taking = true;
+    },
+    stopCoverage: async () => {
+      await take();
+      taking = false;
+      await rawSend('Profiler.stopPreciseCoverage').catch(() => {});
+      return taken;
+    },
     close: () => sock.close(),
   };
 }

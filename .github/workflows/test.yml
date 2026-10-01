@@ -68,10 +68,13 @@ jobs:
     # `node scripts/smoke.mjs --update-budgets` re-records it as a reviewable
     # diff.
     #
-    # `--no-tests` because the job above already runs the suite; this one is
-    # only about the browser.
+    # Not `--no-tests`: the run counts which lines of app/ the browser rows
+    # and the unit suite together ran, so the suite runs inside it (#259).
+    # That is the line-coverage floor in scripts/coverage.json, judged with half
+    # a point of slack; `node scripts/smoke.mjs --update-coverage` re-records it
+    # as a reviewable diff.
     runs-on: ubuntu-24.04
-    name: smoke (390×844)
+    name: smoke
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -79,7 +82,7 @@ jobs:
           node-version: '24'
       # Still no install step: the harness serves app/ itself and drives the
       # Chrome already on the runner over the DevTools protocol.
-      - run: node scripts/smoke.mjs --no-tests
+      - run: node scripts/smoke.mjs
 
   evals:
     # Stage 4's eval suite. It is separate from `node --test` because it asks a

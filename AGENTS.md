@@ -148,14 +148,15 @@ uses. The python server 404s on all of them, and a local server that disagrees
 with production is a class of bug nothing can see. Run tests with `npm test`
 from the repo root (`node --test`, no dependencies to install).
 
-`npm run smoke` runs the browser checks (one fewer with `--no-tests`, which
-skips the one check that runs the unit suite) — printed as a pass/fail
-table: no horizontal overflow at 390×844, the card is still 3.45 × 5in, no
+`npm run smoke` runs the browser checks (with `--no-tests`, it skips the check
+that runs the unit suite, and the coverage floor with it) — printed as a
+pass/fail table: no horizontal overflow at 390×844, the card is still 3.45 × 5in, no
 console errors, every touch target ≥48px across 320–390px, every row in
 Settings ≥48px across the same three widths, the last control in an open
 dialog on screen and still 48px, every control accessibly named, ids
 unique and aria references resolving, alt text, `lang`/title/tab order, the
-card's own font loading before it is fitted, the three budgets, and the suite.
+card's own font loading before it is fitted, the three budgets, the suite, and
+the line-coverage floor.
 `scripts/smoke.mjs` is the entry point: flags, the check registry, the run
 order and the table. Each check lives in its own module under
 `scripts/smoke/`, with the helpers several checks share beside them, so read
@@ -220,9 +221,10 @@ for the file you touched and `--only "<check>"` for the check it covers, never
 the full suite. Before handing work to someone else, `npm test` once — it is
 the half that catches a markup move breaking a test three files away — and
 not smoke. **The proof pair runs once per commit, by whoever commits**, and
-nowhere else: `npm test` then `npm run smoke -- --no-tests`, so the suite runs
-once, not twice, and both halves always, because the commit's handoff has to
-cover the tree it names. On #22 every agent ran the pair before handing back
+nowhere else: one full `npm run smoke`, which runs the unit suite inside it, so
+the suite runs once, not twice. It cannot be split: the coverage floor (below)
+needs both halves in one run, and the commit's handoff has to cover the tree it
+names. On #22 every agent ran the pair before handing back
 and the committer ran it again on the same bytes — about twelve pairs for one
 ticket, half of them repeats. A tree a commit already recorded as green is not
 re-run to say so again.
@@ -242,6 +244,17 @@ measures text still leaves at least 15% spare width, as
 defense; a layout that fits locally only with less than that is still the
 defect, not the check. When CI fails a text row that passes locally, read the
 measured values in the CI log before changing anything.
+
+**Coverage is counted on every full run.** The browser rows and the unit suite
+both run `app/`, so a full smoke run merges V8's own line coverage from both
+(`scripts/coverage.mjs`; no dependency, nothing instrumented into `app/`) and
+prints one total with a per-file table. The row fails when the total is more
+than half a point under `scripts/coverage.json`; the table is informational.
+`node scripts/smoke.mjs --update-coverage` re-records it, on a full run only,
+and the diff shows in review. `--only` and `--no-tests` print no coverage row.
+The CI job is named `smoke` (the ruleset requires it by that name) and runs the
+suite inside it, so it is not run twice. A row that flakes only with coverage on
+is a finding to report, not a retry.
 
 The payload budget is a **recorded** baseline. `requests` comes from
 `scripts/budgets.json`; `bytes` and `nodes` are hand-pinned as

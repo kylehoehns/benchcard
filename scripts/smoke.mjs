@@ -13,6 +13,7 @@
        node scripts/smoke.mjs --headful        # watch it happen
        node scripts/smoke.mjs --json           # machine-readable, for CI
        node scripts/smoke.mjs --update-budgets # re-record scripts/budgets.json
+       node scripts/smoke.mjs --update-coverage # re-record scripts/coverage.json (full run only)
        node scripts/smoke.mjs --only "<check>" # one check, while iterating —
                                                 # not proof; see the registry below
        node scripts/smoke.mjs --timing         # after the table: each rich row's seconds, slowest first, and the executed sleep
@@ -23,7 +24,7 @@
    test/smoke-timeout.test.js only, to prove --timeout actually ends a hang.
 
    `--only` runs just the setup one named check needs and that check alone; it
-   implies `--no-tests` and skips the budgets. It is for the loop between full
+   implies `--no-tests` and skips the budgets and the coverage floor. It is for the loop between full
    runs, never a substitute for one — `AGENTS.md` § Layout says why.
 
    No dependencies, deliberately: this repo has none and adding Playwright to
@@ -49,11 +50,13 @@
    `--only` alike (`runCheck` below). */
 
 import { execFile } from 'node:child_process';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, readdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compare, pinned, summarize } from './budgets.mjs';
 import { serve } from './serve.mjs';
+import { merge, summarize as summarizeCoverage, judge, ROW as COVERAGE_ROW } from './coverage.mjs';
 
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, evalIn, SETTLE, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER } from './smoke/dom.mjs';
@@ -66,6 +69,7 @@ const APP = join(ROOT, 'app');
 const args = process.argv.slice(2);
 const has = f => args.includes(f);
 const JSON_OUT = has('--json');
+const COVERAGE_RECORDED = 'coverage re-recorded';
 
 /* #178: what the watchdog and the signal handlers below need to end a run
    that hangs or is interrupted. `current` names whatever this run is doing
@@ -137,7 +141,7 @@ async function runCheck(row, ctx) {
   }
 }
 
-async function browserChecks(origin, only) {
+async function browserChecks(origin, only, withCoverage) {
   current = 'launching Chrome';
   const debugPort = 9222 + Math.floor(Math.random() * 500);
   // #178 review: liveChrome is set as soon as Chrome is spawned, not only once
@@ -187,6 +191,9 @@ async function browserChecks(origin, only) {
     await c.send('Log.enable');
     await c.send('Network.enable');
     await c.send('Page.enable');
+    // #259: V8 coverage of every page this session opens -- chrome.mjs `cdp`
+    // takes it before each navigation; `stopCoverage` below collects the rest.
+    if (withCoverage) await c.startCoverage();
     // #241: fast animations for every page this session opens (see
     // FAST_PLAYBACK_RATE); it holds across reloads in the one tab.
     await c.send('Animation.setPlaybackRate', { playbackRate: FAST_PLAYBACK_RATE });
@@ -304,7 +311,7 @@ async function browserChecks(origin, only) {
         ? consoleErrors.slice(0, 4).join(' | ')
         : `clean${thirdParty.length ? ` (${thirdParty.length} third-party, ignored)` : ''}`,
     });
-    return { report, consoleErrors };
+    return { report, consoleErrors, chromeCoverage: withCoverage ? await c.stopCoverage() : [] };
   } finally {
     // #178 review: the normal-completion path used to hand-roll its own
     // close/kill/rm instead of reusing closeChrome — the same cleanup written
@@ -316,22 +323,46 @@ async function browserChecks(origin, only) {
   }
 }
 
-function runTests() {
-  return new Promise(ok => {
-    execFile(process.execPath, ['--test'], { cwd: ROOT }, (err, stdout) => {
-      // node --test prints `ℹ tests 157` (spec reporter) or `# tests 157` (tap)
-      const count = key => (stdout.match(new RegExp(`^[ℹ#] ${key} (\\d+)`, 'm')) || [])[1];
-      const pass = count('pass'), total = count('tests');
-      ok({
-        name: nameOf('nodetest'),
-        pass: !err,
-        detail: total ? `${pass}/${total} passing` : (err ? 'suite failed to run' : 'passed'),
+/* #259: the suite runs with NODE_V8_COVERAGE, node's own V8 coverage, written
+   as one JSON file per process into a temp dir that is read and removed here.
+   Its entries have the shape Chrome's `takePreciseCoverage` gives, so the one
+   converter in coverage.mjs serves both. */
+async function runTests() {
+  const covDir = await mkdtemp(join(tmpdir(), 'benchcard-cov-'));
+  try {
+    const row = await new Promise(ok => {
+      execFile(process.execPath, ['--test'], { cwd: ROOT, env: { ...process.env, NODE_V8_COVERAGE: covDir }, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+        // node --test prints `ℹ tests 157` (spec reporter) or `# tests 157` (tap)
+        const count = key => (stdout.match(new RegExp(`^[ℹ#] ${key} (\\d+)`, 'm')) || [])[1];
+        const pass = count('pass'), total = count('tests');
+        ok({
+          name: nameOf('nodetest'),
+          pass: !err,
+          detail: total ? `${pass}/${total} passing` : (err ? 'suite failed to run' : 'passed'),
+        });
       });
     });
-  });
+    const nodeCoverage = [];
+    for (const f of await readdir(covDir)) {
+      if (f.endsWith('.json')) nodeCoverage.push(...JSON.parse(await readFile(join(covDir, f), 'utf8')).result);
+    }
+    return { row, nodeCoverage };
+  } finally {
+    await rm(covDir, { recursive: true, force: true });
+  }
+}
+
+/* Every script `app/` ships, minus vendor/, as { 'engine.js': source }. */
+async function appSources() {
+  const out = {};
+  for (const rel of (await readdir(APP, { recursive: true })).map(f => f.split('\\').join('/')).sort()) {
+    if (rel.endsWith('.js') && !rel.startsWith('vendor/')) out[rel] = await readFile(join(APP, rel), 'utf8');
+  }
+  return out;
 }
 
 const BUDGETS = join(ROOT, 'scripts', 'budgets.json');
+const COVERAGE = join(ROOT, 'scripts', 'coverage.json');
 
 const printRow = (pad, chk) =>
   console.log(`  ${chk.pass ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m'}  ${chk.name.padEnd(pad)}  ${chk.detail}`);
@@ -392,6 +423,20 @@ if (HAS_ONLY && has('--update-budgets')) {
     + 'rich fixture, --update-budgets re-records the lean cold load. Run them separately.');
   process.exit(1);
 }
+
+/* `--update-coverage` records the figure of a run that counted both halves:
+   `--only` has the browser row alone and `--no-tests` has no suite, so either
+   would record half of it. */
+if (has('--update-coverage') && (HAS_ONLY || has('--no-tests'))) {
+  console.error(`--update-coverage cannot be combined with ${HAS_ONLY ? '--only' : '--no-tests'}: `
+    + 'coverage counts the browser rows and the unit suite together, and this run would have only one. '
+    + 'Run a full `node scripts/smoke.mjs --update-coverage`.');
+  process.exit(1);
+}
+
+/* #259: coverage counts both halves, so only a run that has both collects it:
+   the browser rows (no --only) and the suite (no --no-tests). */
+const WITH_COVERAGE = !HAS_ONLY && !has('--no-tests');
 
 const VALID_ONLY = ROWS.filter(r => r.selectable);
 let ONLY = null;
@@ -454,12 +499,12 @@ server = await serve();
 const origin = `http://127.0.0.1:${server.address().port}`;
 let result;
 try {
-  result = await browserChecks(origin, ONLY);
+  result = await browserChecks(origin, ONLY, WITH_COVERAGE);
 } finally {
   clearTimeout(watchdogTimer);
   server.close();
 }
-const { report, consoleErrors } = result;
+const { report, consoleErrors, chromeCoverage } = result;
 
 if (ONLY) {
   /* THE PARTIAL-RUN DRIFT CHECK. Both partial setups above filter or select
@@ -488,7 +533,7 @@ if (ONLY) {
     for (const c of report.checks) printRow(pad, c);
     console.log('');
     if (TIMING) console.log(timingBlock().text + '\n');
-    console.log('skipped: node --test (--only implies --no-tests), 3 budget checks (--only)');
+    console.log('skipped: node --test (--only implies --no-tests), 3 budget checks, coverage (--only)');
     if (consoleErrors.length) {
       console.log(`console errors during this run: ${consoleErrors.length} — ${consoleErrors.slice(0, 4).join(' | ')}`);
     }
@@ -520,15 +565,40 @@ if (has('--update-budgets')) {
   report.checks.push(...compare(pinned(baseline), report.payload));
 }
 
-if (!has('--no-tests')) report.checks.push(await runTests());
+/* #259: the coverage row sits right after the suite's. The record is one
+   number, like the budgets' baselines, and `--update-coverage` is the only
+   thing that moves it. */
+let coverage = null;
+if (!has('--no-tests')) {
+  const { row, nodeCoverage } = await runTests();
+  report.checks.push(row);
+  const sources = await appSources();
+  const merged = merge([...chromeCoverage, ...nodeCoverage], { appDir: APP, read: f => sources[f] });
+  coverage = summarizeCoverage(merged, sources);
+  if (has('--update-coverage')) {
+    await writeFile(COVERAGE, JSON.stringify({ lines: Number(coverage.total.pct.toFixed(2)) }, null, 2) + '\n');
+    report.checks.push({ name: COVERAGE_RECORDED, pass: true, detail: `${coverage.total.pct.toFixed(2)}% of app/ lines → scripts/coverage.json` });
+  } else {
+    const recorded = await readFile(COVERAGE, 'utf8').then(t => JSON.parse(t).lines, () => null);
+    report.checks.push(judge(coverage.total.pct, recorded));
+  }
+}
+
+/* The per-file table: informational, lowest first, never a failure. */
+const coverageText = () => [
+  `app/ line coverage, browser rows and unit suite together: ${coverage.total.pct.toFixed(2)}% (${coverage.total.covered}/${coverage.total.total} lines, ${coverage.files.length} files)`,
+  ...coverage.files.map(f => `  ${f.pct.toFixed(1).padStart(5)}%  ${`${f.covered}/${f.total}`.padStart(9)}  ${f.file}`),
+].join('\n');
 
 if (JSON_OUT) {
-  console.log(JSON.stringify(TIMING ? { ...report, timing: timingBlock() } : report, null, 2));
+  console.log(JSON.stringify({ ...report, ...(coverage && { coverage }), ...(TIMING && { timing: timingBlock() }) }, null, 2));
 } else {
   const pad = Math.max(...report.checks.map(c => c.name.length));
   console.log(`\nbenchcard smoke — ${report.viewport[0]}×${report.viewport[1]}, ${report.checks.length} checks\n`);
   for (const c of report.checks) printRow(pad, c);
   console.log('');
+  if (coverage) console.log(coverageText() + '\n');
+  else console.log('skipped: node --test and coverage (--no-tests)\n');
   if (TIMING) console.log(timingBlock().text + '\n');
 }
 
@@ -544,7 +614,7 @@ if (JSON_OUT) {
    JSON even when the drift check is what fails the run. */
 if (!has('--update-budgets')) {
   const expected = ROWS.filter(r => !(has('--no-tests') && r.id === 'nodetest')).map(r => r.name);
-  const printed = report.checks.map(c => c.name);
+  const printed = report.checks.map(c => c.name).filter(n => n !== COVERAGE_ROW && n !== COVERAGE_RECORDED);
   const inOrder = expected.length === printed.length && expected.every((n, i) => n === printed[i]);
   if (!inOrder) {
     const countOf = list => list.reduce((m, n) => m.set(n, (m.get(n) || 0) + 1), new Map());
