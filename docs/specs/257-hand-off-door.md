@@ -90,12 +90,16 @@ At 390×844, under the smoke clock, with the rich fixture (`goRich`):
   - about.html has a Questions entry about an assistant running subs from
     their phone, linking to `advanced.html#handoff`;
   - advanced.html has a section headed "Handing a game to an assistant"
-    (`id="handoff"`) covering what travels (one game, card names only, where
-    the game stands), that the two phones are not linked afterward, and where
-    the door is;
+    (`id="handoff"`) covering what travels, that the two phones are not
+    linked afterward, and where the door is. What travels is exactly what
+    `encode` (`handoff.js`) puts in the link: one game's settings and where
+    it stands, the team name and color, and for each player their card name,
+    jersey number and skill tier. Full names stay behind. (Amended in review:
+    the first draft said "card names only", which `encode` does not support.)
   - both privacy notes keep "Your roster never leaves your device." and add a
-    sentence that a hand-off link carries one game's card names to whoever
-    you send it to, and no Benchcard server sees it.
+    sentence that a hand-off link carries one game, with each player's card
+    name, number and skill tier, to whoever you send it to, and no Benchcard
+    server sees it.
 - **I. The usual smoke rows stay green.** These are overflow at 390×844,
   touch targets, accessible names, unique ids, large text at 320px/32px, and
   the payload budget. Widen bytesAbs if the budget needs it.

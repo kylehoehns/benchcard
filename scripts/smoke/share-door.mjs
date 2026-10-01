@@ -6,7 +6,7 @@
 import { evalIn, TODAY_HOME, wait } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { goRich } from './fixtures.mjs';
-import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
+import { evalJSON, tap, settle, setGame, pickSharePane, qrDrawn } from './sheet-drive.mjs';
 
 const PRINT_BODY = ['sheetCardPreview', 'print', 'shareCard', 'printScope', 'copies', 'cardSize', 'cardId', 'showMinutes'];
 const HANDOFF_BODY = ['handoffQr', 'handoffShare', 'handoffNote', 'handoffNames'];
@@ -27,16 +27,6 @@ const READ = `(() => {
     gone: ['handoffBtn', 'sheetHandoff', 'sheetHandoffClose'].filter(id => document.getElementById(id)),
   });
 })()`;
-
-const PICK = pane => `document.querySelector('#shareSeg [data-pane=${pane}]').click()`;
-
-async function qrDrawn(c) {
-  for (let i = 0; i < 100; i++) {
-    if (await evalIn(c, `!!document.querySelector('#handoffQr svg path')`)) return true;
-    await wait(50);
-  }
-  return false;
-}
 
 async function openShare(c) {
   await tap(c, `${TODAY_HOME}; document.querySelector('.today-game').click()`);
@@ -64,18 +54,18 @@ async function pagesProblems(c, origin, ck) {
   ck(qa, 'about.html has no Questions entry about an assistant running subs from their phone');
   ck(qa?.links.some(h => /advanced(\.html)?#handoff$/.test(h)), `the about entry links ${JSON.stringify(qa?.links)}, want advanced#handoff`);
   ck(about.text.includes(NEVER_LEAVES), 'about.html lost "Your roster never leaves your device."');
-  ck(/hand-?off link carries one game['\u2019]s card names/i.test(about.text) && /no Benchcard server sees it/i.test(about.text),
-    'about.html privacy note does not say a hand-off link carries one game\'s card names and no Benchcard server sees it');
+  ck(/hand-?off link carries one game, with each player['\u2019]s card name, number and skill tier/i.test(about.text) && /no Benchcard server sees it/i.test(about.text),
+    'about.html privacy note does not say a hand-off link carries one game, with each player\'s card name, number and skill tier, and no Benchcard server sees it');
   await land(c, origin, { page: '/advanced.html', record: 'kept', ready: 'document.body' });
   const adv = await evalJSON(c, PAGE_TEXT);
   ck(adv.h2.some(([id, t]) => id === 'handoff' && t === 'Handing a game to an assistant'), `advanced.html headings: ${JSON.stringify(adv.h2.map(h => h[1]))}, want "Handing a game to an assistant" as #handoff`);
   const sec = adv.sec;
-  ck(/one game/i.test(sec) && /card names/i.test(sec) && /where the game stands|where it stands/i.test(sec), 'the advanced section does not cover what travels: one game, card names, where the game stands');
+  ck(/one game/i.test(sec) && /card name/i.test(sec) && /skill tier/i.test(sec) && /jersey number/i.test(sec) && !/nothing else comes/i.test(sec) && /where the game stands|where it stands/i.test(sec), 'the advanced section does not cover what travels: one game, card name, jersey number, skill tier, where the game stands');
   ck(/not linked|aren.t linked|stay linked|no longer linked/i.test(sec), 'the advanced section does not say the two phones are not linked afterward');
   ck(/Share/.test(sec) && /Hand off/.test(sec), 'the advanced section does not say where the door is (Share, then Hand off)');
   ck(adv.text.includes(NEVER_LEAVES), 'advanced.html lost "Your roster never leaves your device."');
-  ck(/hand-?off link carries one game['\u2019]s card names/i.test(adv.text) && /no Benchcard server sees it/i.test(adv.text),
-    'advanced.html privacy note does not say a hand-off link carries one game\'s card names and no Benchcard server sees it');
+  ck(/hand-?off link carries one game, with each player['\u2019]s card name, number and skill tier/i.test(adv.text) && /no Benchcard server sees it/i.test(adv.text),
+    'advanced.html privacy note does not say a hand-off link carries one game, with each player\'s card name, number and skill tier, and no Benchcard server sees it');
 }
 
 export async function shareDoorPass(c, origin) {
@@ -96,8 +86,25 @@ export async function shareDoorPass(c, origin) {
     ck(a.handoff.length === 0, `on Print card the hand-off controls ${a.handoff} are visible`);
     ck(a.gone.length === 0, `${a.gone} still exist; the hand-off door is the segment now`);
 
+    // The module is fetched on the first tap; when that fetch fails the coach
+    // is told, and tapping again tries again.
+    await c.send('Network.setCacheDisabled', { cacheDisabled: true });
+    await c.send('Network.setBlockedURLs', { urls: ['*handoff-view.js*'] });
+    try {
+      await tap(c, pickSharePane('handoff'));
+      await settle(c);
+      const lost = await evalIn(c, `document.getElementById('handoffStatus').textContent`);
+      ck(/could not load/i.test(lost), `Hand off with its module unreachable says "${lost}", want a message that it could not load`);
+    } finally {
+      await c.send('Network.setBlockedURLs', { urls: [] });
+      await c.send('Network.setCacheDisabled', { cacheDisabled: false });
+    }
+    await tap(c, pickSharePane('handoff'));
+    ck(await qrDrawn(c), 'Hand off: tapping again after a failed load never drew the code');
+    await tap(c, pickSharePane('print'));
+
     // B. Hand off, inline
-    await tap(c, PICK('handoff'));
+    await tap(c, pickSharePane('handoff'));
     ck(await qrDrawn(c), 'Hand off: the code was never drawn in the sheet');
     const b = await evalJSON(c, READ);
     ck(b.dialogsOpen === 1 && b.open, `Hand off: ${b.dialogsOpen} dialogs are open, want the share sheet alone`);
@@ -111,7 +118,7 @@ export async function shareDoorPass(c, origin) {
     ck(note.names === 11, `Hand off: the sheet lists ${note.names} names, want the roster's 11`);
 
     // C. Back to Print
-    await tap(c, PICK('print'));
+    await tap(c, pickSharePane('print'));
     const cc = await evalJSON(c, READ);
     ck(cc.print.length === PRINT_BODY.length, `Print card again: these are not visible: ${PRINT_BODY.filter(i => !cc.print.includes(i))}`);
     ck(cc.handoff.length === 0, `Print card again: the hand-off controls ${cc.handoff} are still visible`);
@@ -120,12 +127,12 @@ export async function shareDoorPass(c, origin) {
     ck(fit.trim() !== '' && Number(fit) > 0 && Number(fit) <= 1, `Print card again: the preview's fit is "${fit}", want a zoom in (0, 1]`);
 
     // Leaving mid-encode must not leave a drawn code behind.
-    await evalIn(c, `${PICK('handoff')}; ${PICK('print')}`);
+    await evalIn(c, `${pickSharePane('handoff')}; ${pickSharePane('print')}`);
     await wait(1500);
     ck(!(await evalIn(c, `!!document.querySelector('#handoffQr svg')`)), 'a code was drawn after Print card was picked mid-encode');
 
     // D. Reset on open
-    await tap(c, PICK('handoff'));
+    await tap(c, pickSharePane('handoff'));
     await tap(c, `document.getElementById('sheetCardClose').click()`);
     await tap(c, `document.getElementById('shareBtn').click()`);
     const d = await evalJSON(c, READ);
@@ -144,7 +151,7 @@ export async function shareDoorPass(c, origin) {
     await tap(c, `document.getElementById('shareBtn').click()`);
     const f1 = await evalJSON(c, `JSON.stringify({ print: document.getElementById('print').disabled, image: document.getElementById('shareCard').disabled })`);
     ck(f1.print && f1.image, `no card: Print disabled is ${f1.print}, Share image disabled is ${f1.image}, want both disabled`);
-    await tap(c, PICK('handoff'));
+    await tap(c, pickSharePane('handoff'));
     await settle(c);
     const f2 = await evalJSON(c, `JSON.stringify({ status: document.getElementById('handoffStatus').textContent, share: document.getElementById('handoffShare').disabled })`);
     ck(f2.status === 'There is no card to hand off yet. Fix the plan first.', `no card: Hand off says "${f2.status}"`);

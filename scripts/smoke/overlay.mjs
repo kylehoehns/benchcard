@@ -5,6 +5,7 @@ import { evalIn, step, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mj
 // imports STATES (below) from this module, so the two mutually import each
 // other -- safe here only because tour-steps.mjs never touches STATES at its
 // own module top level (see the note beside its STEP_COUNT export).
+import { pickSharePane } from './sheet-drive.mjs';
 import { STEP_COUNT as TOUR_STEP_COUNT } from './tour-steps.mjs';
 
 /* ---------- the states the first pass never sees ----------
@@ -235,7 +236,7 @@ export const STATES = [
      waits on the drawn code (`#handoffQr svg`), not on the dialog alone. */
   { name: 'hand off sheet open',
     open: `$('.today-game').click(); $('#shareBtn').click();
-           $('#shareSeg [data-pane=handoff]').click();
+           ${pickSharePane('handoff')};
            for (let i = 0; i < 60 && !$('#handoffQr svg'); i++) await new Promise(r => setTimeout(r, 50))`,
     shows: '#sheetCard[open] #handoffQr svg',
     close: `$('#sheetCard').close(); $('#backBtn').click()` },

@@ -15,11 +15,11 @@
    from reading the page's own module back. */
 import { encode as qrEncode } from '../../app/vendor/uqr.mjs';
 import { DAMAGED_LINK as DAMAGED } from '../../app/live.js';
-import { evalIn, step, WIDTH, HEIGHT, wait, OVERFLOW_PROBE, TODAY_HOME, onScreen } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, TODAY_HOME, onScreen } from './dom.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
 import { goRich } from './fixtures.mjs';
 import { land } from './page-state.mjs';
-import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
+import { evalJSON, tap, settle, setGame, pickSharePane, sharePaneButton, qrDrawn } from './sheet-drive.mjs';
 
 
 /* Back to Today and into the first game; the card sheet opens in a second tap,
@@ -27,17 +27,8 @@ import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
 const OPEN_SHEET = `${TODAY_HOME};
   document.querySelector('.today-game').click()`;
 
-async function qrDrawn(c) {
-  for (let i = 0; i < 100; i++) {
-    if (await evalIn(c, `!!document.querySelector('#handoffQr svg path')`)) return true;
-    await wait(50);
-  }
-  return false;
-}
-
 /* Open the sheet, press Share with `navigator.share` stubbed to keep what it
    is given, and read the modules the page drew. */
-const PICK_HANDOFF = `document.querySelector('#shareSeg [data-pane=handoff]').click()`;
 
 async function sendFromHere(c) {
   await evalIn(c, `navigator.share = async d => { window.__sharedUrl = d.url; }; window.__sharedUrl = null`);
@@ -46,12 +37,12 @@ async function sendFromHere(c) {
   // The segment paints at 32px and a ::after restores the 48px tap target
   // (app.css, .seg button), so the height is read where a finger lands.
   const door = await evalJSON(c, `(() => {
-    const b = document.querySelector('#shareSeg [data-pane=handoff]'), r = b.getBoundingClientRect();
+    const b = ${sharePaneButton('handoff')}, r = b.getBoundingClientRect();
     const x = r.left + r.width / 2, mid = r.top + r.height / 2;
     const hit = dy => document.elementFromPoint(x, mid + dy)?.closest('#shareSeg button') === b;
     return JSON.stringify(hit(-23) && hit(23) ? 48 : r.height);
   })()`);
-  await tap(c, PICK_HANDOFF);
+  await tap(c, pickSharePane('handoff'));
   const drawn = await qrDrawn(c);
   if (!drawn) return { drawn, door };
   await tap(c, `document.getElementById('handoffShare').click()`);
@@ -227,7 +218,7 @@ export async function handOffLoadPass(c, origin) {
     ck(uqr.length === 0, `hand-off code was requested before Hand off was picked: ${uqr.join(', ')}`);
     await tap(c, `document.getElementById('shareBtn').click()`);
     ck(uqr.length === 0, 'hand-off code was requested by opening the share sheet on Print card');
-    await tap(c, PICK_HANDOFF);
+    await tap(c, pickSharePane('handoff'));
     ck(await qrDrawn(c), 'online: Hand off never drew a code');
     ck(uqr.filter(u => /\/uqr\.mjs/.test(u)).length === 1, `picking Hand off requested ${JSON.stringify(uqr)}, want uqr.mjs exactly once`);
     detail = 'hand-off code and the QR library are not requested until Hand off is picked';
@@ -254,7 +245,7 @@ export async function handOffLoadPass(c, origin) {
         ck(shared, 'offline: no service worker controls the page');
         // the reload keeps the games view, so the share sheet's door is already there
         await tap(c, `document.getElementById('shareBtn').click()`);
-        await tap(c, PICK_HANDOFF);
+        await tap(c, pickSharePane('handoff'));
         ck(await qrDrawn(c), 'offline: Hand off did not draw a code');
         detail += ', and Hand off draws a code offline';
       } finally {

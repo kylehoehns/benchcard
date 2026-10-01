@@ -20,7 +20,7 @@ function bodyOf(anchor) {
 test('the #shareBtn tour step names the hand-off as well as print and image', () => {
   const body = bodyOf('#shareBtn');
   assert.ok(body, 'no tour step anchored on #shareBtn');
-  assert.match(body, /hand/i, `the step reads: ${body}`);
+  assert.match(body, /hands the game to an assistant/i, `the step reads: ${body}`);
   assert.match(body, /prints the card/i, `the step reads: ${body}`);
   assert.match(body, /image/i, `the step reads: ${body}`);
 });

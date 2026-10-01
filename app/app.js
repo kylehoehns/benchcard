@@ -199,12 +199,25 @@ function showSharePane(pane) {
    makes the same requests it did before the feature. The first tap on Hand off
    loads its module, which wires the rest of its controls. Print card shows the
    preview again and refits it: the clone's fit needs a non-zero box. */
+let handoffLoaded = false, handoffTries = 0;
 on('#shareSeg', 'onclick', async e => {
   const b = e.target.closest('button[data-pane]');
-  if (!b || b.getAttribute('aria-pressed') === 'true') return;
+  if (!b) return;
+  /* Hand off pressed with nothing loaded behind it (the fetch failed) is not
+     "already there": a second tap retries. */
+  const retry = b.dataset.pane === 'handoff' && !handoffLoaded;
+  if (b.getAttribute('aria-pressed') === 'true' && !retry) return;
   showSharePane(b.dataset.pane);
   if (b.dataset.pane === 'print') { refreshCardSheetPreview(); return; }
-  (await import('./handoff-view.js')).openHandoff();
+  try {
+    /* A failed import is remembered per URL, so a retry asks for a new one
+       (the service worker matches without the query). */
+    const { openHandoff } = await import(handoffTries++ ? `./handoff-view.js?retry=${handoffTries}` : './handoff-view.js');
+    handoffLoaded = true;
+    openHandoff();
+  } catch {
+    $('#handoffStatus').textContent = 'Hand off could not load. Check your connection and try again.';
+  }
 });
 on('#sheetCardClose', 'onclick', () => closeSheet($('#sheetCard')));
 

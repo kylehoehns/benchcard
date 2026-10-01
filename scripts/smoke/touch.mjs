@@ -1,4 +1,5 @@
 import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
+import { pickSharePane } from './sheet-drive.mjs';
 import { TOUCH_CHECK, TOUCH_FLOOR, TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
 import { FOUR, RICH, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
@@ -76,7 +77,7 @@ const TOUCH_STATES = [
   { name: 'games, hand off sheet open',
     open: `document.querySelector('.today-game').click();
            document.querySelector('#shareBtn').click();
-           document.querySelector('#shareSeg [data-pane=handoff]').click()` },
+           ${pickSharePane('handoff')}` },
   /* #28: the Plan sheet, full height (its own default) through its real
      trigger -- the segment buttons, the lock icons and every group's rows
      are new controls this sweep has never measured. */
