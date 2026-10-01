@@ -93,7 +93,7 @@ const TOUR = [
   {
     sel: ['#shareBtn'],
     title: 'What you use in the gym',
-    body: 'Start game opens bench mode: who is on, who is next, one tap to move the game along. This button prints the card or shares it as an image.',
+    body: 'Start game opens bench mode: who is on, who is next, one tap to move the game along. This button prints the card, shares it as an image, or hands the game to an assistant.',
   },
 ];
 

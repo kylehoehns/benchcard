@@ -409,6 +409,7 @@ html:root[data-tint="hardwood"] {
     <a href="#midgame">Changing the plan mid-game</a>
     <a href="#season">The season</a>
     <a href="#card">The card, and its two sizes</a>
+    <a href="#handoff">Handing a game to an assistant</a>
     <a href="#privacy">Where your team is stored</a>
   </nav>
 
@@ -688,6 +689,18 @@ html:root[data-tint="hardwood"] {
   </section>
 
   <section>
+    <h2 id="handoff">Handing a game to an assistant</h2>
+    <p>An assistant can run the subs from their own phone. On the game screen,
+      tap the share icon, then <b>Hand off</b>. The sheet shows a code and a
+      <b>Share link</b> button; they scan the code or open the link and the game
+      is on their phone, ready for bench mode.</p>
+    <p>What travels is one game: the card names, who is on the floor for each
+      stint, and where the game stands, including the stints already played.
+      Nothing else comes with it. It is a copy, so the two phones are not linked
+      afterward: a change on one does not show up on the other.</p>
+  </section>
+
+  <section>
     <h2 id="privacy">Where your team is stored</h2>
     <div class="note">
       <p><b>Your roster never leaves your device.</b> Benchcard
@@ -696,7 +709,10 @@ html:root[data-tint="hardwood"] {
         holding your team, so clearing your browser data clears it too. The site
         counts anonymous usage (page views, and which features get used) so I
         can see what is worth building next; those are counters only, never a
-        name, a team or an opponent.</p>
+        name, a team or an opponent. A hand-off link carries one game&rsquo;s card
+        names to whoever you send it to; the game rides after the
+        <code>#</code>, which a browser never sends, so no Benchcard server sees
+        it.</p>
     </div>
     <p>Settings can write a backup file with your roster, your rules and your
       season in it, and read one back in the same panel. Worth doing once

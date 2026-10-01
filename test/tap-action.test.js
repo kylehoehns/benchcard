@@ -164,7 +164,8 @@ test('the guard can see the pages it claims to, and its parser is not lying', ()
   // screen's "Enter my team" disclosure, the eighth and the one A47 was
   // reported against.
   assert.equal(summaryCount('index.html'), 1, 'the app shell no longer has one summary');
-  assert.equal(summaryCount('about.html'), 8, 'about.html no longer has eight FAQ rows');
+  // Nine since #257 added "Can my assistant run the subs from their phone?".
+  assert.equal(summaryCount('about.html'), 9, 'about.html no longer has nine FAQ rows');
 
   // The parser really does read a real rule out of a real sheet...
   const rules = topLevelRules(read('app.css'));

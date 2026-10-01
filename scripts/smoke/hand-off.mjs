@@ -5,8 +5,8 @@
 
      handOffPass       the sender draws the code; a wiped profile opens the link
      damagedLinkPass   a corrupted link: one toast, nothing written
-     handOffLoadPass   the hand-off code and QR library are not fetched until the sheet opens,
-                       and the sheet still draws offline
+     handOffLoadPass   the hand-off code and QR library are not fetched until Hand off is picked,
+                       and it still draws offline
 
    What it does not re-check: the payload's contents, size, names and the
    merge into an existing team are `test/handoff.test.js`, at `node --test`.
@@ -37,12 +37,21 @@ async function qrDrawn(c) {
 
 /* Open the sheet, press Share with `navigator.share` stubbed to keep what it
    is given, and read the modules the page drew. */
+const PICK_HANDOFF = `document.querySelector('#shareSeg [data-pane=handoff]').click()`;
+
 async function sendFromHere(c) {
   await evalIn(c, `navigator.share = async d => { window.__sharedUrl = d.url; }; window.__sharedUrl = null`);
   await tap(c, OPEN_SHEET);
   await tap(c, `document.getElementById('shareBtn').click()`);
-  const door = await evalJSON(c, `JSON.stringify(document.getElementById('handoffBtn').getBoundingClientRect().height)`);
-  await tap(c, `document.getElementById('handoffBtn').click()`);
+  // The segment paints at 32px and a ::after restores the 48px tap target
+  // (app.css, .seg button), so the height is read where a finger lands.
+  const door = await evalJSON(c, `(() => {
+    const b = document.querySelector('#shareSeg [data-pane=handoff]'), r = b.getBoundingClientRect();
+    const x = r.left + r.width / 2, mid = r.top + r.height / 2;
+    const hit = dy => document.elementFromPoint(x, mid + dy)?.closest('#shareSeg button') === b;
+    return JSON.stringify(hit(-23) && hit(23) ? 48 : r.height);
+  })()`);
+  await tap(c, PICK_HANDOFF);
   const drawn = await qrDrawn(c);
   if (!drawn) return { drawn, door };
   await tap(c, `document.getElementById('handoffShare').click()`);
@@ -94,7 +103,7 @@ export async function handOffPass(c, origin) {
     await evalIn(c, setGame(`const p = s.plans[0];
       s.state.day.games[0].live = { at: 3, overrides: {} };`));
     const sent = await sendFromHere(c);
-    if (!ck(sent.drawn, 'the Hand off sheet never drew a code')) return { pass: false, detail: problems.join(' | ') };
+    if (!ck(sent.drawn, 'Hand off in the share sheet never drew a code')) return { pass: false, detail: problems.join(' | ') };
     if (!ck(typeof sent.url === 'string' && sent.url.includes('#p=1'), `Share was given ${JSON.stringify(sent.url)}, want a #p=1 link`)) {
       return { pass: false, detail: problems.join(' | ') };
     }
@@ -107,8 +116,8 @@ export async function handOffPass(c, origin) {
     want.forEach((row, y) => row.forEach((dark, x) => { if (dark !== drew.has(`${x},${y}`)) wrong++; }));
     ck(sent.grid.n === want.length, `the code is ${sent.grid.n} modules wide, the link's own is ${want.length}`);
     ck(wrong === 0, `${wrong} module(s) of the drawn code differ from the link's own code`);
-    // The door into the sheet is a settings-style row: as tall as its neighbors.
-    ck(sent.door >= TOUCH_MIN, `the Hand off row in the card sheet is ${sent.door}px tall, want at least ${TOUCH_FLOOR}px`);
+    // The door is a segment button in the share sheet: a full touch target.
+    ck(sent.door >= TOUCH_MIN, `the Hand off segment in the share sheet is ${sent.door}px tall, want at least ${TOUCH_FLOOR}px`);
     const names = await evalIn(c, `[...document.querySelectorAll('#handoffNames li')].length`);
     ck(names === 11, `the sheet lists ${names} names, want the roster's 11`);
     const before = JSON.parse(await evalIn(c, FINGERPRINT));
@@ -215,13 +224,13 @@ export async function handOffLoadPass(c, origin) {
     await goRich(c, origin);
     await evalIn(c, step(`${TODAY_HOME}; document.querySelector('.today-game').click()`));
     await settle(c);
-    ck(uqr.length === 0, `hand-off code was requested before the sheet opened: ${uqr.join(', ')}`);
+    ck(uqr.length === 0, `hand-off code was requested before Hand off was picked: ${uqr.join(', ')}`);
     await tap(c, `document.getElementById('shareBtn').click()`);
-    ck(uqr.length === 0, 'hand-off code was requested by opening the card sheet');
-    await tap(c, `document.getElementById('handoffBtn').click()`);
-    ck(await qrDrawn(c), 'online: the sheet never drew a code');
-    ck(uqr.filter(u => /\/uqr\.mjs/.test(u)).length === 1, `opening the sheet requested ${JSON.stringify(uqr)}, want uqr.mjs exactly once`);
-    detail = 'hand-off code and the QR library are not requested until the sheet opens';
+    ck(uqr.length === 0, 'hand-off code was requested by opening the share sheet on Print card');
+    await tap(c, PICK_HANDOFF);
+    ck(await qrDrawn(c), 'online: Hand off never drew a code');
+    ck(uqr.filter(u => /\/uqr\.mjs/.test(u)).length === 1, `picking Hand off requested ${JSON.stringify(uqr)}, want uqr.mjs exactly once`);
+    detail = 'hand-off code and the QR library are not requested until Hand off is picked';
 
     // Offline: the service worker holds it. Wait for the precache, cut the
     // network and the HTTP cache, and open the sheet again.
@@ -243,11 +252,11 @@ export async function handOffLoadPass(c, origin) {
         await land(c, origin, { record: 'kept', scripts: [`navigator.sendBeacon = () => true`] });
         const shared = await evalIn(c, `Boolean(navigator.serviceWorker.controller)`);
         ck(shared, 'offline: no service worker controls the page');
-        // the reload keeps the games view, so the card sheet's door is already there
+        // the reload keeps the games view, so the share sheet's door is already there
         await tap(c, `document.getElementById('shareBtn').click()`);
-        await tap(c, `document.getElementById('handoffBtn').click()`);
-        ck(await qrDrawn(c), 'offline: the sheet did not draw a code');
-        detail += ', and the sheet draws a code offline';
+        await tap(c, PICK_HANDOFF);
+        ck(await qrDrawn(c), 'offline: Hand off did not draw a code');
+        detail += ', and Hand off draws a code offline';
       } finally {
         await c.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
         await c.send('Network.setCacheDisabled', { cacheDisabled: false });

@@ -125,6 +125,14 @@
     },
     {
       "@type": "Question",
+      "name": "Can my assistant run the subs from their phone?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Tap the share icon on the game screen, then Hand off. You get a code and a Share link button. Your assistant scans the code or opens the link and gets this one game on their own phone, ready for bench mode. What travels, and what doesn’t."
+      }
+    },
+    {
+      "@type": "Question",
       "name": "Does it work for other sports?",
       "acceptedAnswer": {
         "@type": "Answer",
@@ -1084,7 +1092,10 @@ html:root[data-tint="hardwood"] {
         server holding your team, so clearing your browser data clears it too.
         The site counts anonymous usage (page views, and which features get used)
         so I can see what is worth building next; those are counters only, never
-        a name, a team or an opponent.</p>
+        a name, a team or an opponent. A hand-off link carries one game&rsquo;s
+        card names to whoever you send it to; the game rides after the
+        <code>#</code>, which a browser never sends, so no Benchcard server sees
+        it.</p>
     </div>
   </section>
 
@@ -1161,6 +1172,15 @@ html:root[data-tint="hardwood"] {
       </details>
 
       <details class="qa">
+        <summary>Can my assistant run the subs from their phone?</summary>
+        <p>Yes. Tap the share icon on the game screen, then <b>Hand off</b>. You
+          get a code and a Share link button. Your assistant scans the code or
+          opens the link and gets this one game on their own phone, ready for
+          bench mode. <a href="./advanced#handoff">What travels, and what
+          doesn&rsquo;t</a>.</p>
+      </details>
+
+      <details class="qa">
         <summary>Does it work for other sports?</summary>
         <p>The scheduling works for any sport with a fixed number on the floor and
           a running clock. The problem is the same one. What is basketball is the
@@ -1216,7 +1236,7 @@ html:root[data-tint="hardwood"] {
          no date at all, so the guard is the reason the line is allowed to
          exist. The machine and human forms must agree; the guard checks that
          too. -->
-    <span>Last updated <time datetime="2026-09-30">30 September 2026</time></span>
+    <span>Last updated <time datetime="2026-10-01">1 October 2026</time></span>
   </footer>
 </div>
 

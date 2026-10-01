@@ -76,7 +76,7 @@ const TOUCH_STATES = [
   { name: 'games, hand off sheet open',
     open: `document.querySelector('.today-game').click();
            document.querySelector('#shareBtn').click();
-           document.querySelector('#handoffBtn').click()` },
+           document.querySelector('#shareSeg [data-pane=handoff]').click()` },
   /* #28: the Plan sheet, full height (its own default) through its real
      trigger -- the segment buttons, the lock icons and every group's rows
      are new controls this sweep has never measured. */
@@ -191,7 +191,6 @@ export async function touchPass(c, origin, source) {
       if (window.__frSnap) { ${FR_RESTORE}; }
       document.querySelector('#colorPickerClose')?.click();
       document.querySelector('#sheetWho')?.close();
-      document.querySelector('#sheetHandoff')?.close();
       document.querySelector('#sheetCard')?.close();
       document.querySelector('#planBack')?.click();
       document.querySelector('#sheetPlan')?.close();
