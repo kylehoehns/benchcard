@@ -17,6 +17,11 @@ import { readFileSync, readdirSync } from 'node:fs';
  * reader, the next person cannot tell an API from a leftover, and every future
  * dead-code hunt starts by writing this scan again by hand.
  *
+ * A name in a comment is not a reader. `fx.js`'s `flip` sat unused for months
+ * because `roster-view.js` still wrote about it in a comment, and a plain-text
+ * match counted that as a use. JS readers are scanned with their comments
+ * removed (`code`).
+ *
  * A "reader" is any of: another `app/*.js` module, an HTML file in `app/`
  * (inline scripts import from these modules), a test, or a build/CI script.
  * The defining file itself never counts — internal use is exactly the case
@@ -39,15 +44,22 @@ const KEEP = new Map([
   // module-private helper wearing a stray `export` -- the one name the
   // 2026-08-24 sweep could not clear.
   ['engine.js:periodLabel', 'engine.js is frozen'],
+  // Same ban. Only named in comments elsewhere, which the scan now ignores.
+  ['engine.js:BALANCE', 'engine.js is frozen'],
 ]);
 
 const MODULES = readDir('app').filter((f) => f.endsWith('.js') && f !== 'sw.js');
 
+/* Block comments, and `//` comments that start a line or follow whitespace
+ * (so `https://` in a string survives). Over-keeping text only risks hiding a
+ * dead export, never a false alarm. */
+const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1');
+
 const READERS = [
-  ...MODULES.map((f) => ['app/' + f, read('app/' + f)]),
+  ...MODULES.map((f) => ['app/' + f, code(read('app/' + f))]),
   ...readDir('app').filter((f) => f.endsWith('.html')).map((f) => ['app/' + f, read('app/' + f)]),
-  ...readDir('test').filter((f) => f.endsWith('.js')).map((f) => ['test/' + f, read('test/' + f)]),
-  ...readDir('scripts').filter((f) => /\.(m?js|json)$/.test(f)).map((f) => ['scripts/' + f, read('scripts/' + f)]),
+  ...readDir('test').filter((f) => f.endsWith('.js')).map((f) => ['test/' + f, code(read('test/' + f))]),
+  ...readDir('scripts').filter((f) => /\.(m?js|json)$/.test(f)).map((f) => ['scripts/' + f, /\.m?js$/.test(f) ? code(read('scripts/' + f)) : read('scripts/' + f)]),
 ];
 
 /* `\b` is useless for `$` (dom.js exports it), so bound on the identifier

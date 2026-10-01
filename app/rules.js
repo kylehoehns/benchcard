@@ -347,25 +347,20 @@ function openRuleDetail(item, idx, trigger) {
     showUndo(changedRuleToast(fresh), snap, refresh);
   }
 
-  // Undo's own refresh (Design: "repaints the rule rows and edit('rule')s.
-  // If the page is still open, it repaints the page from the restored rule;
-  // if the rule no longer exists, it pops back."). `item` -- the page's
-  // opening identity, not `current` -- is right here: Undo always restores
-  // exactly the state the page opened with.
+  // Undo's own refresh: repaints the rule rows and edit('rule')s, and
+  // repaints the page from the restored rule. `item` -- the page's opening
+  // identity, not `current` -- is right here: Undo always restores exactly
+  // the state the page opened with, so that rule always exists.
   function refresh() {
     const items = ruleItems(game());
     renderConstraints(items);
     edit('rule');
     const fresh = itemFor(items, item);
-    if (fresh) {
-      current = fresh;
-      eDraft = draftFrom(fresh);
-      sentence.textContent = fresh.text;
-      dupMsg.hidden = true;
-      paintControls();
-    } else {
-      popPane($('#sheetPlan'));
-    }
+    current = fresh;
+    eDraft = draftFrom(fresh);
+    sentence.textContent = fresh.text;
+    dupMsg.hidden = true;
+    paintControls();
   }
 
   paintControls();

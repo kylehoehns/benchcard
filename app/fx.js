@@ -126,25 +126,6 @@ export function swapIn(els, { delay = 0.022 } = {}) {
     { duration: 0.26, easing: EASE_ARR, delay: stagger(delay) });
 }
 
-/**
- * FLIP: measure before a DOM change, then animate each element from where it
- * was to where it now is. Used when timeline rows reorder.
- */
-export function flip(els, mutate) {
-  const list = [...els];
-  if (!enabled || !list.length) { mutate(); return; }
-  const before = new Map(list.map(e => [e, e.getBoundingClientRect()]));
-  mutate();
-  for (const e of list) {
-    const a = before.get(e);
-    if (!a || !e.isConnected) continue;
-    const b = e.getBoundingClientRect();
-    const dx = a.left - b.left, dy = a.top - b.top;
-    if (!dx && !dy) continue;
-    animate(e, { transform: [`translate(${dx}px, ${dy}px)`, 'translate(0px, 0px)'] }, TWEEN);
-  }
-}
-
 /* ===================== entering game mode =========================
  *
  * One transition, chosen after three structurally different candidates were
