@@ -424,7 +424,29 @@ initRules(edit);
 initStrategy(edit);
 initOnboarding(setView);
 initGameSetup(edit);
+/* #250: Hand off is fetched when it is used, not at boot -- a cold load makes
+   the same requests it did before the feature. The first tap loads the sheet's
+   own module, which wires the rest of its controls. */
+on('#handoffBtn', 'onclick', async e => {
+  const door = e.currentTarget;
+  (await import('./handoff-view.js')).openHandoff(door);
+});
 initShortcuts(setView);
+/* #250: a link someone handed over carries a game in `#p=`. It is opened
+   before the first paint, so the coach lands on that game, and the hash comes
+   off the address bar at once so a reload does not import it twice. A link
+   that does not decode writes nothing: the app opens as it was. */
+let handoffNote = '';
+if (location.hash.startsWith('#p=')) {
+  const { decode, receive } = await import('./handoff.js');
+  const incoming = await decode(location.hash);
+  history.replaceState(null, '', location.pathname + location.search);
+  if (incoming) {
+    const { teamName } = receive(incoming);
+    state.view = 'games';
+    handoffNote = `${teamName || 'Your'} game added. Open bench mode to run subs.`;
+  } else handoffNote = 'This hand-off link is damaged. Ask for a new one.';
+}
 setView(state.onboarded ? (state.view || 'today') : 'welcome');
 /* There was a `body.boot` class here, added before the first paint and removed
    700ms later to "let the entrance play once". No stylesheet ever carried a
@@ -441,6 +463,7 @@ setView(state.onboarded ? (state.view || 'today') : 'welcome');
 try {
   renderAll();
   if (window.benchcard) window.benchcard.booted = true;
+  if (handoffNote) flash(handoffNote);
   fileOverdueDay();
 } catch (e) {
   console.error(e);

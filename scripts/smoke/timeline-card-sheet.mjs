@@ -55,7 +55,7 @@ const MID_TEXT_WIDTH = 360, MID_TEXT_PX = 24;
 // out, matching `sheet-spacing.mjs`'s `pstepGeometry` for the identical bug
 // class in `.pstep-row`.
 async function prowGeometry(c) {
-  return evalJSON(c, `JSON.stringify([...document.querySelectorAll('#sheetCard .pgrp .prow')].map(r => {
+  return evalJSON(c, `JSON.stringify([...document.querySelectorAll('#sheetCard .pgrp .prow:not(#handoffBtn)')].map(r => {
     const row = r.getBoundingClientRect();
     const label = r.querySelector('.prow-t');
     const lr = label.getBoundingClientRect();
@@ -306,8 +306,8 @@ export async function timelineCardSheetPass(c, origin) {
     ck(sheet1.hasPreviewCard, '#sheetCardPreview has no live .card clone');
     ck(sheet1.printLabel.includes('Print'), `#print reads "${sheet1.printLabel}", want it to include "Print"`);
     ck(sheet1.shareLabel.includes('Share image'), `#shareCard reads "${sheet1.shareLabel}", want it to include "Share image"`);
-    ck(JSON.stringify(sheet1.rowLabels) === JSON.stringify(['Print', 'Copies', 'Size', 'Names', 'Minutes strip']),
-      `the sheet's rows read ${JSON.stringify(sheet1.rowLabels)}, want ["Print","Copies","Size","Names","Minutes strip"]`);
+    ck(JSON.stringify(sheet1.rowLabels) === JSON.stringify(['Print', 'Copies', 'Size', 'Names', 'Minutes strip', 'Hand off this game']),
+      `the sheet's rows read ${JSON.stringify(sheet1.rowLabels)}, want ["Print","Copies","Size","Names","Minutes strip","Hand off this game"]`);
     ck(sheet1.hasClose, '#sheetCardClose (✕) is missing');
     // The sheet reflects state.ui -- RICH's own fixture (fixtures.mjs's UI).
     ck(sheet1.printScope === 'game', `#printScope reads "${sheet1.printScope}", want "game" (RICH's own ui.printScope)`);

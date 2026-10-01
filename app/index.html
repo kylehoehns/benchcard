@@ -870,7 +870,41 @@
           </label>
         </div>
         <p class="pgrp-f">Cut on the dashed line. Underlined = just came on.</p>
+        <!-- #250: the one door into `#sheetHandoff` below. It opens even with
+             no card yet; the sheet then says why there is nothing to hand over. -->
+        <div class="pgrp">
+          <button class="prow" id="handoffBtn" type="button" aria-haspopup="dialog">
+            <span class="prow-t">Hand off this game</span>
+            <span class="prow-chev" aria-hidden="true">›</span>
+          </button>
+        </div>
       </div>
+    </dialog>
+
+    <!-- #250: hand this game to an assistant. The code and the link are the
+         same URL, drawn and built by handoff-view.js when the sheet opens;
+         the encoder behind the code is fetched then, not at boot. -->
+    <dialog class="bsheet grouped noprint" id="sheetHandoff" aria-labelledby="sheetHandoffTitle">
+      <div class="bsheet-hd">
+        <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+        <div class="bsheet-hd-row">
+          <span class="bsheet-hd-l"></span>
+          <h2 id="sheetHandoffTitle" tabindex="-1">Hand off</h2>
+          <span class="bsheet-hd-r"><button type="button" class="bsheet-close" id="sheetHandoffClose" aria-label="Close">✕</button></span>
+        </div>
+      </div>
+      <div class="bsheet-body">
+        <div class="handoff-qr" id="handoffQr" role="img" aria-label="QR code that opens this game on another phone"></div>
+        <div class="gm-cta noprint">
+          <button class="btn primary press" id="handoffShare" type="button" disabled>
+<span class="i" data-icon="share-2"></span> <span id="handoffShareLabel">Share link</span>
+          </button>
+        </div>
+        <p class="pgrp-f" id="handoffNote">Anyone you send this to can open it.</p>
+        <p class="pgrp-f" id="handoffNamesH">Names that travel with it</p>
+        <ul class="handoff-names" id="handoffNames" aria-labelledby="handoffNamesH"></ul>
+      </div>
+      <p class="bsheet-status" role="status" id="handoffStatus"></p>
     </dialog>
   </main>
 

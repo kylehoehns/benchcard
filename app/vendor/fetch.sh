@@ -12,7 +12,7 @@ cd "$(dirname "$0")"
 # directory: app/vendor/ also holds hand-written files, and AGENTS.md's "What
 # is enforced" table owns which ones. An interrupted run leaves this directory
 # half-empty; `git restore app/vendor` puts it back.
-rm -rf icons fonts motion.umd.js motion.mjs
+rm -rf icons fonts motion.umd.js motion.mjs uqr.mjs
 
 MOTION_VERSION="11.18.2"
 
@@ -43,6 +43,13 @@ export const stagger = M.stagger || (() => 0);
 export const inView = M.inView || (() => () => {});
 export default M;
 SHIM
+
+# ---- QR encoder. One ES module with no imports, so it needs no shim: the Hand
+# off sheet (app/handoff-view.js) imports it on demand, never at boot.
+UQR_VERSION="0.1.3"
+echo "vendoring uqr@${UQR_VERSION} (MIT)"
+curl -sSL --retry 3 --retry-delay 2 --max-time 30 \
+  "https://cdn.jsdelivr.net/npm/uqr@${UQR_VERSION}/dist/index.mjs" -o uqr.mjs
 
 # ---- typeface
 echo "vendoring Inter Variable (OFL-1.1)"

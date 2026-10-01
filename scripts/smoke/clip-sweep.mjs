@@ -89,6 +89,7 @@ export const CLIP_SWEEP_ALLOW = [
   { selector: '.gm-p.fresh .nm', reason: 'a bench row just tagged "just on" keeps its name on one line' },
   { selector: 'dialog.flow .plr .plr-first, dialog.flow .plr .plr-sur', reason: "a roster tile's first/last name each ellipsize on their own line" },
   { selector: '.sn-list .sn-nm', reason: "a season ledger row's own player name" },
+  { selector: '#handoffNames li', reason: "a kid's call name on the Hand off sheet ellipsizes on its own line" },
 ];
 
 /* #204 "What would settle it" item 6: the new "text paints past its own box"
