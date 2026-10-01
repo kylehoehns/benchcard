@@ -147,11 +147,17 @@ function fakeElement() {
     style: { setProperty() {} },
     dataset: {},
     children: [],
+    classList: { toggle() {} },
+    listeners: {},
+    rect: { left: 0, width: 0 },
+    focused: false,
+    focus() { this.focused = true; },
     setAttribute(k, v) { attrs[k] = String(v); },
     getAttribute(k) { return k in attrs ? attrs[k] : null; },
     append(...kids) { this.children.push(...kids); },
-    addEventListener() {},
-    getBoundingClientRect: () => ({ left: 0, width: 0 }),
+    // recorded, so a test can fire the pointer events a browser would
+    addEventListener(type, fn) { this.listeners[type] = fn; },
+    getBoundingClientRect() { return this.rect; },
     getContext: () => ({ measureText: () => ({ width: 0 }) }),
   };
 }
@@ -162,7 +168,8 @@ globalThis.document = {
   addEventListener: () => {},
 };
 globalThis.matchMedia ??= () => ({ matches: false, addEventListener: () => {} });
-const { levelMeter } = await import('../app/balance.js');
+const { levelMeter, resetLevels, initBalance } = await import('../app/balance.js');
+const { state } = await import('../app/state.js');
 
 const radiogroupLabel = name => {
   const wrap = levelMeter({ id: 'p9', name, tier: 3 });
@@ -176,4 +183,94 @@ test('the level control names the player it belongs to', () => {
 
 test('the level control still names an unnamed player', () => {
   assert.equal(radiogroupLabel(''), 'Level for this player');
+});
+
+/* #264: what a coach does to the level meter, driven through the listeners the
+   meter registers. The strip is 500px wide, so each level is a 100px fifth:
+   x=350 is the fourth fifth, x=10 the first, x=490 the last. The label under
+   the strip is what the coach reads, so it is what is asserted, along with
+   the player's stored tier and whether the app was told. */
+const built = tier => {
+  const p = { id: 'p9', name: 'Pat', tier };
+  state.players = [p];
+  const edits = [];
+  initBalance(kind => edits.push(kind), () => {});
+  const wrap = levelMeter(p);
+  const steps = wrap.children.find(c => c.getAttribute('role') === 'radiogroup');
+  steps.rect = { left: 0, width: 500 };
+  const label = wrap.children.find(c => c !== steps);
+  const fire = (type, clientX) => {
+    let prevented = false;
+    steps.listeners[type]({ clientX, button: 0, pointerId: 1, preventDefault() { prevented = true; } });
+    return prevented;
+  };
+  return { p, steps, label, edits, fire };
+};
+const keyOn = (m, step, key) => m.steps.children[step - 1].onkeydown({ key, preventDefault() {} });
+
+test('level meter: ArrowRight on Regular commits Reliable and moves focus', () => {
+  const m = built(3);
+  keyOn(m, 3, 'ArrowRight');
+  assert.equal(m.p.tier, 4);
+  assert.equal(m.label.textContent, 'Reliable');
+  assert.equal(m.steps.children[3].focused, true);
+  assert.deepEqual(m.edits, ['level']);
+});
+
+test('level meter: ArrowLeft on the lowest level stays there and tells no one', () => {
+  const m = built(1);
+  keyOn(m, 1, 'ArrowLeft');
+  assert.equal(m.p.tier, 1);
+  assert.deepEqual(m.edits, []);
+});
+
+test('level meter: a tap on the fourth fifth commits level 4', () => {
+  const m = built(3);
+  m.fire('pointerdown', 350);
+  m.fire('pointerup', 350);
+  assert.equal(m.p.tier, 4);
+  assert.equal(m.label.textContent, 'Reliable');
+  assert.deepEqual(m.edits, ['level']);
+});
+
+test('level meter: a drag from the first fifth to the last commits level 5', () => {
+  const m = built(3);
+  m.fire('pointerdown', 10);
+  assert.equal(m.label.textContent, 'Developing', 'the label follows the finger');
+  m.fire('pointermove', 250);
+  m.fire('pointermove', 490);
+  m.fire('pointerup', 490);
+  assert.equal(m.p.tier, 5);
+  assert.equal(m.label.textContent, 'Go-to');
+  assert.deepEqual(m.edits, ['level'], 'one change for the whole drag');
+});
+
+test('level meter: a tap on the level already set clears it to Regular', () => {
+  const m = built(5);
+  m.fire('pointerdown', 490);
+  m.fire('pointerup', 490);
+  assert.equal(m.p.tier, 3);
+  assert.equal(m.label.textContent, 'Regular');
+  assert.deepEqual(m.edits, ['level']);
+});
+
+test('level meter: a browser cancel mid-drag puts the saved level back', () => {
+  const m = built(4);
+  m.fire('pointerdown', 10);
+  assert.equal(m.label.textContent, 'Developing');
+  m.steps.listeners.pointercancel({});
+  assert.equal(m.p.tier, 4);
+  assert.equal(m.label.textContent, 'Reliable');
+  m.fire('pointerup', 10);
+  assert.equal(m.p.tier, 4, 'a release after the cancel is not a gesture');
+  assert.deepEqual(m.edits, []);
+});
+
+test('resetLevels puts every player back to Regular', () => {
+  const edits = [];
+  initBalance(kind => edits.push(kind), () => {});
+  state.players = [{ id: 'a', tier: 5 }, { id: 'b', tier: 1 }, { id: 'c', tier: 3 }, { id: 'd' }];
+  resetLevels();
+  assert.deepEqual(state.players.map(p => p.tier), [3, 3, 3, 3]);
+  assert.deepEqual(edits, ['level']);
 });

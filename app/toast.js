@@ -113,7 +113,10 @@ const liveUndoToast = () => document.querySelector('.toast[data-undo]');
    each call rather than cached, since which sheet (if any) is open changes
    between one toast and the next. */
 function toastHost() {
-  const dialog = document.querySelector('dialog.bsheet[open]');
+  /* Not a sheet that is already sliding away: `closeSheet` leaves it `[open]`
+     (`.closing`) until its transition ends, and a toast hosted there goes
+     with it -- a paste's "Skip them" offer was gone before it could be read. */
+  const dialog = document.querySelector('dialog.bsheet[open]:not(.closing)');
   if (!dialog) return $('#toasts');
   let host = dialog.querySelector(':scope > .bsheet-toasts');
   if (!host) {

@@ -120,7 +120,7 @@ const ALLOW = {
   'scripts/smoke/sheet-spacing.mjs': { navigate: 0, metrics: 2, fontsizes: 2, media: 0, fontsready: 0 },
   'scripts/smoke/static.mjs': { navigate: 2, metrics: 2, fontsizes: 2, media: 0, fontsready: 2 },
   'scripts/smoke/sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
-  'scripts/smoke/team-screen.mjs': { navigate: 0, metrics: 5, fontsizes: 4, media: 0, fontsready: 0 },
+  'scripts/smoke/team-screen.mjs': { navigate: 0, metrics: 3, fontsizes: 2, media: 0, fontsready: 0 },
   'scripts/smoke/three-days.mjs': { navigate: 1, metrics: 2, fontsizes: 2, media: 0, fontsready: 1 },
   'scripts/smoke/timeline-card-sheet.mjs': { navigate: 0, metrics: 4, fontsizes: 4, media: 0, fontsready: 1 },
   'scripts/smoke/today-and-back.mjs': { navigate: 0, metrics: 2, fontsizes: 2, media: 0, fontsready: 1 },
