@@ -105,6 +105,33 @@ export async function swapReplansRestPass(c, origin) {
     }
     notes.push('H: closing bench mode repaints the stint table and the minute bars');
 
+    /* ---- G: a kid marked out after playing keeps their Timeline row ---- */
+    await evalIn(c, setGame(`const g = s.state.day.games[0]; g.live = { at: 3, overrides: {} }; g.strategy = 'fair'; s.computeAll();`));
+    await wait(SETTLE_MS);
+    const rowsBefore = await evalIn(c, `document.querySelectorAll('#timeline .tl-row').length`);
+    const avaId = JSON.parse(await evalIn(c, readGame)).planFive[0];
+    await evalIn(c, setGame(`s.setAvailable(s.state.day.games[0], ${JSON.stringify(avaId)}, false); s.computeAll();`));
+    await wait(SETTLE_MS);
+    const gScreen = JSON.parse(await evalIn(c, `(() => {
+      document.getElementById('tabledetails').open = true;
+      const row = document.querySelector('#timeline .tl-row[data-id=${JSON.stringify(avaId)}]');
+      const bars = [...document.querySelectorAll('#plan .mrow')].map(r => [r.querySelector('.nm').textContent, r.querySelector('.v').textContent]);
+      return JSON.stringify({
+        rows: document.querySelectorAll('#timeline .tl-row').length,
+        name: row?.querySelector('.nm')?.textContent ?? null,
+        tot: row?.querySelector('.tl-tot .num')?.textContent ?? null,
+        label: row?.querySelector('.tl-name')?.getAttribute('aria-label') ?? null,
+        bars,
+      });
+    })()`));
+    const gName = (await evalIn(c, `(async () => { const s = await import('/state.js'); return s.plans[0].shortNames[${JSON.stringify(avaId)}]; })()`));
+    const gBar = gScreen.bars.find(b => b[0] === gName);
+    if (!gBar || !(parseFloat(gBar[1]) > 0)) problems.push(`G: the minute bars show ${JSON.stringify(gBar)} for the kid marked out, want played minutes above 0`);
+    else if (gScreen.rows !== Number(rowsBefore) || gScreen.tot !== gBar[1]) {
+      problems.push(`G: after marking out, the Timeline has ${gScreen.rows} rows (was ${rowsBefore}) and the kid's total reads ${JSON.stringify(gScreen.tot)}, want their row kept at the bars' ${gBar[1]}`);
+    }
+    notes.push('G: a kid marked out after playing keeps a Timeline row showing their played minutes');
+
     /* ---- F: with Set minutes, the swap behaves as before #247 ---- */
     await evalIn(c, setGame(`const g = s.state.day.games[0]; g.live = { at: 0, overrides: {} }; g.strategy = 'minutes';`));
     await wait(SETTLE_MS);
