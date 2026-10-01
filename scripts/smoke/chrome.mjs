@@ -84,7 +84,7 @@ export async function launch(port, headful, onSpawn) {
    macOS, including while Chrome was stuck on an in-flight `Runtime.evaluate`
    that never returns (the exact hang this guards against) — it brought down
    every helper, renderer, GPU, network and crashpad process within about 2s.
-   Nothing here confirms the same for Linux (CI's `ubuntu-latest`), and the
+   Nothing here confirms the same for Linux (CI's `ubuntu-24.04`), and the
    spec's fallback for that case doesn't need a platform check to be safe on
    the one already confirmed: `launch` spawns Chrome `detached`, so it leads
    its own process group, and `process.kill(-proc.pid, sig)` (the negative pid

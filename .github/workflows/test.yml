@@ -34,7 +34,10 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Pinned rather than ubuntu-latest, here and in every job: that label moves
+    # to Ubuntu 26 on 2026-10-19, and smoke drives the Chrome the image ships.
+    # Moving to a new image is then a PR that has to go green, not a surprise.
+    runs-on: ubuntu-24.04
     # ONE leg, not two. This used to be a matrix of node 22 and 24, and dropping
     # 22 is a REAL reduction in coverage, not a free saving -- say so rather
     # than pretending otherwise. What makes it affordable: the repo has zero
@@ -44,8 +47,8 @@ jobs:
     # line that stopped catching it -- put the matrix back.
     name: node 24
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       # No `npm ci`: package.json is `{"type":"module"}` and nothing else, and
@@ -67,11 +70,11 @@ jobs:
     #
     # `--no-tests` because the job above already runs the suite; this one is
     # only about the browser.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: smoke (390×844)
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       # Still no install step: the harness serves app/ itself and drives the
@@ -88,14 +91,14 @@ jobs:
     #
     # `npm test` already checks that every eval is well FORMED
     # (test/sdlc.test.js). This job checks that they still PASS.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: evals
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      # jq is preinstalled on ubuntu-latest and the hooks fail closed without
+      # jq is preinstalled on ubuntu-24.04 and the hooks fail closed without
       # it, so a runner image that dropped jq would turn this job red rather
       # than quietly passing. That is the intended direction.
       - run: node scripts/evals.mjs
@@ -111,11 +114,11 @@ jobs:
     #
     # This job serves app/ with production's redirect behavior instead, so
     # that class of bug fails here rather than on someone's phone.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: service worker behind redirects
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - run: node scripts/redirect-check.mjs
@@ -145,13 +148,13 @@ jobs:
     # each step's name is the sentence you want to read in the checks list.
     # They do NOT short-circuit each other: `if: always()` on the second means
     # a stale dateline is still reported when the SHELL digest is also wrong.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: checks that need history
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
       # Resolved once, used by both steps: a pull_request compares against the
