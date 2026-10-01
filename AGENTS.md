@@ -250,8 +250,10 @@ both run `app/`, so a full smoke run merges V8's own line coverage from both
 (`scripts/coverage.mjs`; no dependency, nothing instrumented into `app/`) and
 prints one total with a per-file table. The row fails when the total is more
 than half a point under `scripts/coverage.json`; the table is informational.
-`node scripts/smoke.mjs --update-coverage` re-records it, on a full run only,
-and the diff shows in review. `--only` and `--no-tests` print no coverage row.
+`node scripts/smoke.mjs --update-coverage` re-records it, on a full run only
+and only when every check passed, and the diff shows in review. A main-frame
+navigation with no coverage taken first fails the row, naming it. `--only` and
+`--no-tests` print no coverage row.
 The CI job is named `smoke` (the ruleset requires it by that name) and runs the
 suite inside it, so it is not run twice. A row that flakes only with coverage on
 is a finding to report, not a retry.

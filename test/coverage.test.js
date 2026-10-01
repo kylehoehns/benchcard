@@ -3,6 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toLines, merge, fileOf, summarize, judge } from '../scripts/coverage.mjs';
+import * as coverage from '../scripts/coverage.mjs';
 
 /* A V8 function entry: `ranges` are [start, end, count] character offsets, the
    first one the whole function, the rest nested blocks. */
@@ -131,4 +132,38 @@ test('a script whose file app/ does not have is ignored, not an error', () => {
     script('http://127.0.0.1:5000/x.js', [0, LEN, 1]),
   ], { appDir: APP, read });
   assert.deepEqual([...merged.keys()], ['x.js']);
+});
+
+test('folder: reports added one take at a time fold the same as merge, and non-app entries are dropped', () => {
+  const f = coverage.folder({ appDir: APP, read });
+  f.add([script('http://127.0.0.1:5000/vendor/chart.js', [0, LEN, 1]), script('http://127.0.0.1:5000/x.js', [0, LEN, 0], FIRST)]);
+  f.add([script('file:///repo/app/x.js', [0, LEN, 0], SECOND)]);
+  const merged = f.result();
+  assert.deepEqual([...merged.keys()], ['x.js']);
+  assert.deepEqual([...merged.get('x.js').covered].sort(), [1, 2]);
+  assert.deepEqual([...merged.get('x.js').uncovered], []);
+});
+
+test('record: a run with a failed check is not recorded, and the row says how many failed', () => {
+  const ok = coverage.record(81.234, 0);
+  assert.equal(ok.name, coverage.RECORDED);
+  assert.equal(ok.pass, true);
+  assert.ok(ok.detail.includes('81.23%'), ok.detail);
+  const refused = coverage.record(81.234, 2);
+  assert.equal(refused.name, coverage.RECORDED);
+  assert.equal(refused.pass, false);
+  assert.match(refused.detail, /not recorded/);
+  assert.match(refused.detail, /2 check/);
+});
+
+test('annotate: an unseen navigation fails the row and names it; a dropped take is counted but does not fail it', () => {
+  const row = { name: coverage.ROW, pass: true, detail: '92.00% measured' };
+  assert.deepEqual(coverage.annotate(row, { dropped: [], unseen: [] }), row);
+  const dropped = coverage.annotate(row, { dropped: ['Profiler.takePreciseCoverage: no reply in 10s'], unseen: [] });
+  assert.equal(dropped.pass, true);
+  assert.match(dropped.detail, /1 take\(s\) dropped/);
+  const unseen = coverage.annotate(row, { dropped: [], unseen: ['http://127.0.0.1:1/about'] });
+  assert.equal(unseen.pass, false);
+  assert.ok(unseen.detail.includes('http://127.0.0.1:1/about'), unseen.detail);
+  assert.match(unseen.detail, /navigat/);
 });

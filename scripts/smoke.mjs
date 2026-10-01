@@ -56,7 +56,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compare, pinned, summarize } from './budgets.mjs';
 import { serve } from './serve.mjs';
-import { merge, summarize as summarizeCoverage, judge, ROW as COVERAGE_ROW } from './coverage.mjs';
+import { folder, summarize as summarizeCoverage, judge, record, annotate, fileOf, ROW as COVERAGE_ROW, RECORDED as COVERAGE_RECORDED } from './coverage.mjs';
 
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, evalIn, SETTLE, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER } from './smoke/dom.mjs';
@@ -69,7 +69,6 @@ const APP = join(ROOT, 'app');
 const args = process.argv.slice(2);
 const has = f => args.includes(f);
 const JSON_OUT = has('--json');
-const COVERAGE_RECORDED = 'coverage re-recorded';
 
 /* #178: what the watchdog and the signal handlers below need to end a run
    that hangs or is interrupted. `current` names whatever this run is doing
@@ -79,6 +78,7 @@ const COVERAGE_RECORDED = 'coverage re-recorded';
    it is not. */
 let current = 'launching Chrome';
 let liveChrome = null; // { proc, dir, c } once Chrome is up
+let liveTests = null;  // the `node --test` child while the suite runs
 
 /* #241: `--timing`. runCheck records each rich row's wall-clock here; the
    sleep total comes from `sleepTally` in dom.mjs. Printed after the table,
@@ -141,7 +141,7 @@ async function runCheck(row, ctx) {
   }
 }
 
-async function browserChecks(origin, only, withCoverage) {
+async function browserChecks(origin, only, folded) {
   current = 'launching Chrome';
   const debugPort = 9222 + Math.floor(Math.random() * 500);
   // #178 review: liveChrome is set as soon as Chrome is spawned, not only once
@@ -193,7 +193,7 @@ async function browserChecks(origin, only, withCoverage) {
     await c.send('Page.enable');
     // #259: V8 coverage of every page this session opens -- chrome.mjs `cdp`
     // takes it before each navigation; `stopCoverage` below collects the rest.
-    if (withCoverage) await c.startCoverage();
+    if (folded) await c.startCoverage(entries => folded.add(entries));
     // #241: fast animations for every page this session opens (see
     // FAST_PLAYBACK_RATE); it holds across reloads in the one tab.
     await c.send('Animation.setPlaybackRate', { playbackRate: FAST_PLAYBACK_RATE });
@@ -311,7 +311,7 @@ async function browserChecks(origin, only, withCoverage) {
         ? consoleErrors.slice(0, 4).join(' | ')
         : `clean${thirdParty.length ? ` (${thirdParty.length} third-party, ignored)` : ''}`,
     });
-    return { report, consoleErrors, chromeCoverage: withCoverage ? await c.stopCoverage() : [] };
+    return { report, consoleErrors, coverageNotes: folded ? await c.stopCoverage() : null };
   } finally {
     // #178 review: the normal-completion path used to hand-roll its own
     // close/kill/rm instead of reusing closeChrome — the same cleanup written
@@ -328,10 +328,11 @@ async function browserChecks(origin, only, withCoverage) {
    Its entries have the shape Chrome's `takePreciseCoverage` gives, so the one
    converter in coverage.mjs serves both. */
 async function runTests() {
+  current = 'node --test';
   const covDir = await mkdtemp(join(tmpdir(), 'benchcard-cov-'));
   try {
     const row = await new Promise(ok => {
-      execFile(process.execPath, ['--test'], { cwd: ROOT, env: { ...process.env, NODE_V8_COVERAGE: covDir }, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+      liveTests = execFile(process.execPath, ['--test'], { cwd: ROOT, env: { ...process.env, NODE_V8_COVERAGE: covDir }, maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
         // node --test prints `ℹ tests 157` (spec reporter) or `# tests 157` (tap)
         const count = key => (stdout.match(new RegExp(`^[ℹ#] ${key} (\\d+)`, 'm')) || [])[1];
         const pass = count('pass'), total = count('tests');
@@ -342,10 +343,12 @@ async function runTests() {
         });
       });
     });
-    const nodeCoverage = [];
-    for (const f of await readdir(covDir)) {
-      if (f.endsWith('.json')) nodeCoverage.push(...JSON.parse(await readFile(join(covDir, f), 'utf8')).result);
-    }
+    liveTests = null;
+    /* Only app/ scripts are kept: a node process reports every module it
+       loaded, tests and node's own included. */
+    const names = (await readdir(covDir)).filter(f => f.endsWith('.json'));
+    const files = await Promise.all(names.map(async f => JSON.parse(await readFile(join(covDir, f), 'utf8')).result));
+    const nodeCoverage = files.flat().filter(e => fileOf(e.url, APP) !== null);
     return { row, nodeCoverage };
   } finally {
     await rm(covDir, { recursive: true, force: true });
@@ -354,11 +357,10 @@ async function runTests() {
 
 /* Every script `app/` ships, minus vendor/, as { 'engine.js': source }. */
 async function appSources() {
-  const out = {};
-  for (const rel of (await readdir(APP, { recursive: true })).map(f => f.split('\\').join('/')).sort()) {
-    if (rel.endsWith('.js') && !rel.startsWith('vendor/')) out[rel] = await readFile(join(APP, rel), 'utf8');
-  }
-  return out;
+  const rels = (await readdir(APP, { recursive: true })).map(f => f.split('\\').join('/')).sort()
+    .filter(rel => rel.endsWith('.js') && !rel.startsWith('vendor/'));
+  const texts = await Promise.all(rels.map(rel => readFile(join(APP, rel), 'utf8')));
+  return Object.fromEntries(rels.map((rel, i) => [rel, texts[i]]));
 }
 
 const BUDGETS = join(ROOT, 'scripts', 'budgets.json');
@@ -424,9 +426,7 @@ if (HAS_ONLY && has('--update-budgets')) {
   process.exit(1);
 }
 
-/* `--update-coverage` records the figure of a run that counted both halves:
-   `--only` has the browser row alone and `--no-tests` has no suite, so either
-   would record half of it. */
+/* `--update-coverage` needs a full run; the message below says why. */
 if (has('--update-coverage') && (HAS_ONLY || has('--no-tests'))) {
   console.error(`--update-coverage cannot be combined with ${HAS_ONLY ? '--only' : '--no-tests'}: `
     + 'coverage counts the browser rows and the unit suite together, and this run would have only one. '
@@ -481,6 +481,7 @@ let watchdogTimer = null;
 
 async function shutdown(code) {
   clearTimeout(watchdogTimer);
+  try { liveTests?.kill('SIGKILL'); } catch { /* already gone */ }
   try { liveChrome?.c?.close(); } catch { /* already closed */ }
   if (liveChrome) await closeChrome(liveChrome.proc, liveChrome.dir);
   try { server?.close(); } catch { /* already closed */ }
@@ -499,12 +500,17 @@ server = await serve();
 const origin = `http://127.0.0.1:${server.address().port}`;
 let result;
 try {
-  result = await browserChecks(origin, ONLY, WITH_COVERAGE);
+  /* Read once, up front: Chrome's takes are folded into lines as they arrive,
+     and that needs each file's source. */
+  const sources = WITH_COVERAGE ? await appSources() : null;
+  const folded = sources && folder({ appDir: APP, read: f => sources[f] });
+  result = await browserChecks(origin, ONLY, folded);
+  result.sources = sources;
+  result.folded = folded;
 } finally {
-  clearTimeout(watchdogTimer);
   server.close();
 }
-const { report, consoleErrors, chromeCoverage } = result;
+const { report, consoleErrors, coverageNotes, sources, folded } = result;
 
 if (ONLY) {
   /* THE PARTIAL-RUN DRIFT CHECK. Both partial setups above filter or select
@@ -572,15 +578,15 @@ let coverage = null;
 if (!has('--no-tests')) {
   const { row, nodeCoverage } = await runTests();
   report.checks.push(row);
-  const sources = await appSources();
-  const merged = merge([...chromeCoverage, ...nodeCoverage], { appDir: APP, read: f => sources[f] });
-  coverage = summarizeCoverage(merged, sources);
+  folded.add(nodeCoverage);
+  coverage = summarizeCoverage(folded.result(), sources);
   if (has('--update-coverage')) {
-    await writeFile(COVERAGE, JSON.stringify({ lines: Number(coverage.total.pct.toFixed(2)) }, null, 2) + '\n');
-    report.checks.push({ name: COVERAGE_RECORDED, pass: true, detail: `${coverage.total.pct.toFixed(2)}% of app/ lines → scripts/coverage.json` });
+    const failed = report.checks.filter(c => !c.pass).length + coverageNotes.unseen.length;
+    if (!failed) await writeFile(COVERAGE, JSON.stringify({ lines: Number(coverage.total.pct.toFixed(2)) }, null, 2) + '\n');
+    report.checks.push(record(coverage.total.pct, failed));
   } else {
     const recorded = await readFile(COVERAGE, 'utf8').then(t => JSON.parse(t).lines, () => null);
-    report.checks.push(judge(coverage.total.pct, recorded));
+    report.checks.push(annotate(judge(coverage.total.pct, recorded), coverageNotes));
   }
 }
 

@@ -70,9 +70,8 @@ jobs:
     #
     # Not `--no-tests`: the run counts which lines of app/ the browser rows
     # and the unit suite together ran, so the suite runs inside it (#259).
-    # That is the line-coverage floor in scripts/coverage.json, judged with half
-    # a point of slack; `node scripts/smoke.mjs --update-coverage` re-records it
-    # as a reviewable diff.
+    # That is the line-coverage floor in scripts/coverage.json; AGENTS.md
+    # § Layout has the rule.
     runs-on: ubuntu-24.04
     name: smoke
     steps:
