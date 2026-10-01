@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { handStints, resetFrom } from '../app/live.js';
 
 /* Shuffle kept the coach's hand swaps and spliced them into a rotation they
    were never made against.
@@ -27,9 +28,11 @@ const src = readFileSync(new URL('../app/state.js', import.meta.url), 'utf8');
 const body = src.slice(src.indexOf('export function reseed'));
 const fn = body.slice(0, body.indexOf('\n}\n') + 2).replace('export ', '');
 // eslint-disable-next-line no-new-func
-const reseed = new Function(`${fn}\nreturn reseed;`)();
+const reseed = new Function('handStints', 'resetFrom', `${fn}\nreturn reseed;`)(handStints, resetFrom);
 
-const live = () => ({ at: 3, overrides: { 3: ['a', 'b', 'c', 'd', 'e'], 6: ['b', 'c', 'd', 'e', 'f'] } });
+/* #247 amendment 8: in a game underway the stint on the floor and everything
+   before it is what the coach saw, so the fives to drop are the ones after. */
+const live = () => ({ at: 3, overrides: { 4: ['a', 'b', 'c', 'd', 'e'], 6: ['b', 'c', 'd', 'e', 'f'] } });
 
 test('shuffling drops the hand-picked fives', () => {
   const g = { seed: 42, live: live() };
@@ -65,4 +68,19 @@ test('the Shuffle button goes through reseed, not a bare seed assignment', () =>
   const line = handler.slice(0, handler.indexOf('\n'));
   assert.match(line, /reseed\(/, '#regen must reroll through reseed()');
   assert.doesNotMatch(line, /seed\s*=/, '#regen must not set the seed by hand');
+});
+
+test('in a game underway a shuffle keeps the fives up to and including the stint on the floor', () => {
+  const g = { seed: 42, live: { at: 3, overrides: { 1: ['a', 'b', 'c', 'd', 'e'], 3: ['a', 'b', 'c', 'd', 'f'], 5: ['b', 'c', 'd', 'e', 'f'] }, hand: [1, 5] } };
+  assert.equal(reseed(g), true, 'the swap at 5 was cleared, so it says so');
+  assert.deepEqual(Object.keys(g.live.overrides), ['1', '3']);
+  assert.deepEqual(g.live.hand, [1]);
+  assert.equal(reseed(g), false, 'a second shuffle clears no swap');
+  assert.deepEqual(Object.keys(g.live.overrides), ['1', '3']);
+});
+
+test('before tip-off a shuffle still drops every swap', () => {
+  const g = { seed: 42, live: { at: 0, overrides: { 0: ['a', 'b', 'c', 'd', 'e'] } } };
+  assert.equal(reseed(g), true);
+  assert.deepEqual(g.live.overrides, {});
 });

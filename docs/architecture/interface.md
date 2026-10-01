@@ -408,11 +408,12 @@ removing a game, starting a new day, clearing in-game changes, editing a game
 while it is underway, editing or removing a rule, removing a unit from the Platoon editor, and changing a player's level all happen immediately and raise an undo toast for nine seconds. A `confirm()` asks
 at the wrong moment — before the coach can see what it did, and a game removal
 is only judgeable once the rest of the day has rebalanced. When a game is
-part-played and an edit changes its period count, period minutes, Sub interval,
-roster presence or planning strategy, the rotation rebuilds (#134): the
-coach's hand swaps are dropped (if any), and the played minutes are rewritten.
-The snackbar offers Undo to restore the periods, the swaps, the current stint and
-the minutes as they were. The snapshot is the whole of `state`: a day is a few
+part-played, edits split into two paths (#134, #247):
+
+- **Format and substitution changes.** An edit to period count, period minutes, or Sub interval rebuilds the rotation: the coach's hand swaps are dropped (if any), and the played minutes are rewritten. The snackbar offers Undo to restore the periods, the swaps, the current stint and the minutes as they were.
+- **Attendance, rules, strategy or Shuffle.** An edit to roster presence (Who's here), rules, planning strategy or the seed keeps the stints already played and the one on the floor, and re-plans only what comes after. No toast appears unless a hand swap in the re-planned stints was replaced. The Set minutes and Platoon strategies cannot re-plan part of a game, so they take the path above.
+
+The snapshot is the whole of `state`: a day is a few
 KB, and a per-action inverse would have to know that removing a player also
 sweeps their id out of every game's out-list, constraints and carryover. `state`
 is a `const` binding everything closes over, so a restore refills it in place

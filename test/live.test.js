@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stage, stintIndex, resumeAt, passStatus, openAt, stepAt, resumeBarAt } from '../app/live.js';
+import { stage, stintIndex, resumeAt, passStatus, openAt, stepAt, resumeBarAt,
+  handStints, writeOverrides, clearRest, resetFrom } from '../app/live.js';
 
 /* #123/#135: `live.js`'s exports, proved with hand-built plans and `live`
  * values -- no `withTeam`, no `computeAll`, no DOM. #135's rule: `stage`
@@ -223,4 +224,54 @@ test('resumeBarAt: skips a finished game and picks a game on its last stint', ()
   const r = resumeBarAt(days, dayPlans);
   assert.deepEqual(r, { d: 0, i: 1, at: 3, where: 'Q1 3:00' },
     'the finished game (index 0) is skipped; the part-played game on its last stint (index 1) is picked');
+});
+
+/* #247 amendment 10: `live.hand` lists the stint indices the coach set by
+   hand; overrides written by a freeze or a re-plan are not in it. A record
+   from before it existed has no `hand`, and there every override was by hand. */
+const F = ['a', 'b', 'c', 'd', 'e'];
+
+test('handStints: a record with no hand list treats every override as by hand', () => {
+  assert.deepEqual(handStints({ at: 2, overrides: { 3: F, 1: F } }), [1, 3]);
+});
+
+test('handStints: only listed stints that still have an override count', () => {
+  assert.deepEqual(handStints({ at: 2, overrides: { 0: F, 1: F, 4: F }, hand: [4, 7] }), [4]);
+  assert.deepEqual(handStints({ at: 2, overrides: { 0: F }, hand: [] }), []);
+  assert.deepEqual(handStints(null), []);
+});
+
+test('writeOverrides: a hand write adds the stints to the hand list, a re-plan write removes them', () => {
+  const live = { at: 1, overrides: { 0: F }, hand: [0] };
+  writeOverrides(live, { 1: F }, true);
+  assert.deepEqual(handStints(live), [0, 1]);
+  writeOverrides(live, { 1: F, 2: F }, false);
+  assert.deepEqual(Object.keys(live.overrides), ['0', '1', '2']);
+  assert.deepEqual(handStints(live), [0], 'the re-plan overwrote the hand swap at 1');
+});
+
+test('writeOverrides: on a record with no hand list the old overrides keep counting as by hand', () => {
+  const live = { at: 1, overrides: { 0: F, 5: F } };
+  writeOverrides(live, { 2: F }, false);
+  assert.deepEqual(handStints(live), [0, 5]);
+});
+
+test('resetFrom: everything before tip-off, only after the stint on the floor once underway', () => {
+  assert.equal(resetFrom({ at: 0, overrides: {} }), 0);
+  assert.equal(resetFrom({ at: 2, overrides: {} }), 3);
+  assert.equal(resetFrom({ at: 7, finished: true, overrides: {} }), 0);
+});
+
+test('clearRest: in a game underway the played and current stints keep their fives', () => {
+  const live = { at: 2, overrides: { 0: F, 2: F, 3: F, 5: F }, hand: [0, 3, 5] };
+  clearRest(live);
+  assert.deepEqual(Object.keys(live.overrides), ['0', '2']);
+  assert.deepEqual(handStints(live), [0]);
+});
+
+test('clearRest: before tip-off it clears every swap', () => {
+  const live = { at: 0, overrides: { 0: F, 4: F } };
+  clearRest(live);
+  assert.deepEqual(live.overrides, {});
+  assert.deepEqual(handStints(live), []);
 });

@@ -253,7 +253,9 @@ export function renderTimeline() {
   const stints = effectiveStints(g, p);
   const mins = effectiveMinutes(g, p);
 
-  const ids = state.players.filter(pl => !g.out.includes(pl.id)).map(pl => pl.id);
+  /* #247 item G: a kid marked out after playing keeps the row for what they
+     played; one out with no minutes stays off it. */
+  const ids = state.players.filter(pl => !g.out.includes(pl.id) || (mins[pl.id] ?? 0) > 0).map(pl => pl.id);
   const total = stints.reduce((a, s2) => a + s2.minutes, 0);
   const pct = m => (m / total) * 100;
   const starts = [];
