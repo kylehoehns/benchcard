@@ -426,7 +426,7 @@ WCAG 2.2 success criteria now."
 ring at 3:1. `scroll-padding` matches the floating header and bottom action.
 *Web: WCAG 2.4.11, 2.4.13.*
 
-**A2. Every icon-only button has a name that says what happens.** "Back to <team name>", "Close", "Settings", "Share the card". *Web: WCAG 4.1.2.*
+**A2. Every icon-only button has a name that says what happens.** "Back to <team name>", "Close", "Settings", "Share or hand off". *Web: WCAG 4.1.2.*
 
 **A3. When the plan changes, say so.** A polite live region announces the new
 summary after an edit. *Web: WCAG 4.1.3.*

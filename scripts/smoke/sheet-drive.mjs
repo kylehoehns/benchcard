@@ -348,3 +348,17 @@ export async function statusOk(c, sel, ck, extra) {
   ck(r.match, `${sel} reads "${r.got}", want planSay's own "${r.want}"`);
   if (extra) extra(r, ck, sel);
 }
+
+// The share sheet's segment: `pane` is 'print' or 'handoff'. A page-side
+// expression, for `tap` / `evalIn`.
+export const sharePaneButton = pane => `document.querySelector('#shareSeg [data-pane=${pane}]')`;
+export const pickSharePane = pane => `${sharePaneButton(pane)}.click()`;
+
+// Wait for the hand-off pane to draw its code (an svg path in #handoffQr).
+export async function qrDrawn(c) {
+  for (let i = 0; i < 100; i++) {
+    if (await evalIn(c, `!!document.querySelector('#handoffQr svg path')`)) return true;
+    await wait(50);
+  }
+  return false;
+}

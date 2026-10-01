@@ -499,10 +499,13 @@ Mobile specifics that came out of real use:
 
 ## Hand off
 
-The **Hand off** sheet lives in `#sheetCard` as one row, opened on tap. It
-builds a link from the game, its roster and its stints (`encode` in
+The **Share sheet** opens from a tap on the share button and presents two
+segments: **Print card** and **Hand off**. Print card is selected when the
+sheet opens, showing the card preview, print and share image buttons, and the
+print settings; switching to Hand off swaps the body in place to show the hand-off
+interface, which builds a link from the game, its roster and its stints (`encode` in
 `handoff.js`), and presents it three ways: a QR code drawn by a lazily loaded
-encoder (fetched when the sheet opens, not at boot, so first paint does not
+encoder (fetched on first Hand off tap, not at boot, so first paint does not
 grow), a native share sheet (or copy-to-clipboard fallback), and a list of the
 call names that will travel. The assistant scans the code or taps the link on
 their phone, where a cold load checks `location.hash` (app.js), decodes the
@@ -537,7 +540,7 @@ hand swap, so the card matches the sender's exactly.
 The app's privacy claim — "your roster and your players never leave your
 device" — stays unchanged: the roster does not travel through a server.
 
-First paint does not grow: `handoff.js`, `handoff-view.js` and the QR
-library are dynamic imports, requested only when the sheet opens or a `#p=`
+Lazy loading is preserved: `handoff.js`, `handoff-view.js` and the QR
+library are dynamic imports, requested only when Hand off is first tapped or a `#p=`
 link is opened. All three are precached, so a hand-off works offline. The
 whole link for a 12-kid game is ≤ 1,200 characters.

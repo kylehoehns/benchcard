@@ -55,7 +55,7 @@ const MID_TEXT_WIDTH = 360, MID_TEXT_PX = 24;
 // out, matching `sheet-spacing.mjs`'s `pstepGeometry` for the identical bug
 // class in `.pstep-row`.
 async function prowGeometry(c) {
-  return evalJSON(c, `JSON.stringify([...document.querySelectorAll('#sheetCard .pgrp .prow:not(#handoffBtn)')].map(r => {
+  return evalJSON(c, `JSON.stringify([...document.querySelectorAll('#sheetCard .pgrp .prow')].map(r => {
     const row = r.getBoundingClientRect();
     const label = r.querySelector('.prow-t');
     const lr = label.getBoundingClientRect();
@@ -114,7 +114,7 @@ async function cardSheetWidthOk(c, ck, where, width, short = true) {
     const cv = document.createElement('canvas').getContext('2d');
     return JSON.stringify({
       pgrp: box(document.querySelector('#sheetCard .pgrp')),
-      cta: [...document.querySelectorAll('#sheetCard .gm-cta .btn')].map(b => ({ id: b.id, ...box(b) })),
+      cta: [...document.querySelectorAll('#printPane .gm-cta .btn')].map(b => ({ id: b.id, ...box(b) })),
       selects: [...document.querySelectorAll('#sheetCard .pgrp select')].map(s => {
         const cs = getComputedStyle(s);
         cv.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
@@ -279,7 +279,7 @@ export async function timelineCardSheetPass(c, origin) {
       const r = b.getBoundingClientRect();
       return JSON.stringify({ label: b.getAttribute('aria-label'), hidden: b.hidden, w: r.width, h: r.height });
     })()`);
-    ck(shareBtn.label === 'Share the card', `#shareBtn's aria-label reads "${shareBtn.label}", want "Share the card"`);
+    ck(shareBtn.label === 'Share or hand off', `#shareBtn's aria-label reads "${shareBtn.label}", want "Share or hand off"`);
     ck(!shareBtn.hidden, '#shareBtn is hidden on the game screen');
     ck(shareBtn.w >= 48 && shareBtn.h >= 48, `#shareBtn measures ${Math.round(shareBtn.w)}×${Math.round(shareBtn.h)}, want at least 48×48`);
 
@@ -302,12 +302,12 @@ export async function timelineCardSheetPass(c, origin) {
       });
     })()`);
     ck(sheet1.open, '#sheetCard did not open on tapping #shareBtn');
-    ck(sheet1.title === 'The card', `#sheetCardTitle reads "${sheet1.title}", want "The card"`);
+    ck(sheet1.title === 'Share', `#sheetCardTitle reads "${sheet1.title}", want "Share"`);
     ck(sheet1.hasPreviewCard, '#sheetCardPreview has no live .card clone');
     ck(sheet1.printLabel.includes('Print'), `#print reads "${sheet1.printLabel}", want it to include "Print"`);
     ck(sheet1.shareLabel.includes('Share image'), `#shareCard reads "${sheet1.shareLabel}", want it to include "Share image"`);
-    ck(JSON.stringify(sheet1.rowLabels) === JSON.stringify(['Print', 'Copies', 'Size', 'Names', 'Minutes strip', 'Hand off this game']),
-      `the sheet's rows read ${JSON.stringify(sheet1.rowLabels)}, want ["Print","Copies","Size","Names","Minutes strip","Hand off this game"]`);
+    ck(JSON.stringify(sheet1.rowLabels) === JSON.stringify(['Print', 'Copies', 'Size', 'Names', 'Minutes strip']),
+      `the sheet's rows read ${JSON.stringify(sheet1.rowLabels)}, want ["Print","Copies","Size","Names","Minutes strip"]`);
     ck(sheet1.hasClose, '#sheetCardClose (✕) is missing');
     // The sheet reflects state.ui -- RICH's own fixture (fixtures.mjs's UI).
     ck(sheet1.printScope === 'game', `#printScope reads "${sheet1.printScope}", want "game" (RICH's own ui.printScope)`);
@@ -343,7 +343,7 @@ export async function timelineCardSheetPass(c, origin) {
       const hr = host.getBoundingClientRect();
       const share = document.getElementById('shareCard');
       const boxes = [hr,
-        ...[...document.querySelectorAll('#sheetCard .gm-cta .btn')].map(b => b.getBoundingClientRect()),
+        ...[...document.querySelectorAll('#printPane .gm-cta .btn')].map(b => b.getBoundingClientRect()),
         ...[...document.querySelectorAll('#sheetCard .pgrp .prow')].slice(0, 3).map(r => r.getBoundingClientRect())];
       return JSON.stringify({
         hostLeft: hr.left, hostRight: hr.right,

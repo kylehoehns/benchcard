@@ -105,6 +105,7 @@ import { sheetSpacingPass } from './sheet-spacing.mjs';
 import { sheetFamilyPass } from './sheet-family.mjs';
 import { timelineCardSheetPass } from './timeline-card-sheet.mjs';
 import { handOffPass, damagedLinkPass, handOffLoadPass } from './hand-off.mjs';
+import { shareDoorPass } from './share-door.mjs';
 import { teamScreenPass } from './team-screen.mjs';
 import { addGameFlowPass } from './add-game-flow.mjs';
 import { m4InstantPass } from './m4-instant.mjs';
@@ -347,8 +348,12 @@ export const ROWS = Object.freeze([
     run: ctx => handOffPass(ctx.c, ctx.origin) },
   { id: 'handoffdamaged', name: 'hand off: a damaged link shows one toast and writes nothing', selectable: true, setup: 'rich',
     run: ctx => damagedLinkPass(ctx.c, ctx.origin) },
-  { id: 'handoffload', name: 'hand off: the code loads when the sheet opens, and works offline', selectable: true, setup: 'rich',
+  { id: 'handoffload', name: 'hand off: the code loads when Hand off is picked, and works offline', selectable: true, setup: 'rich',
     run: ctx => handOffLoadPass(ctx.c, ctx.origin) },
+  // #257's own guard (docs/specs/257-hand-off-door.md, Proof section): the
+  // share sheet's Print card | Hand off segment -- see share-door.mjs.
+  { id: 'sharedoor', name: 'share sheet: Print card | Hand off', selectable: true, setup: 'rich',
+    run: ctx => shareDoorPass(ctx.c, ctx.origin) },
   // #31's own guard (see docs/specs/31-roster-and-player-sheet.md's Proof
   // section): the roster list's rows, the player sheet and its remove, the
   // add-a-player and paste sheets (including the discard ask), Edit mode and

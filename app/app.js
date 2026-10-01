@@ -180,8 +180,44 @@ on('#shareBtn', 'onclick', e => {
   // synchronous (trap.js), so the fit that follows reads the real box
   // rather than falling back to `--cardzoom: 1` on the very first open.
   // Matches the order `applyGameView` (timeline.js) already uses.
+  showSharePane('print');
   openSheet($('#sheetCard'), e.currentTarget, { full: true });
   refreshCardSheetPreview();
+});
+/* #257: Print card | Hand off, the `.seg` shape `#viewSeg` uses. The sheet
+   always opens on Print card; nothing is remembered. */
+function showSharePane(pane) {
+  for (const b of document.querySelectorAll('#shareSeg button[data-pane]')) {
+    const on = b.dataset.pane === pane;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
+  $('#printPane').hidden = pane !== 'print';
+  $('#handoffPane').hidden = pane !== 'handoff';
+}
+/* #250, #257: Hand off is fetched when it is used, not at boot -- a cold load
+   makes the same requests it did before the feature. The first tap on Hand off
+   loads its module, which wires the rest of its controls. Print card shows the
+   preview again and refits it: the clone's fit needs a non-zero box. */
+let handoffLoaded = false, handoffTries = 0;
+on('#shareSeg', 'onclick', async e => {
+  const b = e.target.closest('button[data-pane]');
+  if (!b) return;
+  /* Hand off pressed with nothing loaded behind it (the fetch failed) is not
+     "already there": a second tap retries. */
+  const retry = b.dataset.pane === 'handoff' && !handoffLoaded;
+  if (b.getAttribute('aria-pressed') === 'true' && !retry) return;
+  showSharePane(b.dataset.pane);
+  if (b.dataset.pane === 'print') { refreshCardSheetPreview(); return; }
+  try {
+    /* A failed import is remembered per URL, so a retry asks for a new one
+       (the service worker matches without the query). */
+    const { openHandoff } = await import(handoffTries++ ? `./handoff-view.js?retry=${handoffTries}` : './handoff-view.js');
+    handoffLoaded = true;
+    openHandoff();
+  } catch {
+    $('#handoffStatus').textContent = 'Hand off could not load. Check your connection and try again.';
+  }
 });
 on('#sheetCardClose', 'onclick', () => closeSheet($('#sheetCard')));
 
@@ -425,13 +461,7 @@ initRules(edit);
 initStrategy(edit);
 initOnboarding(setView);
 initGameSetup(edit);
-/* #250: Hand off is fetched when it is used, not at boot -- a cold load makes
-   the same requests it did before the feature. The first tap loads the sheet's
-   own module, which wires the rest of its controls. */
-on('#handoffBtn', 'onclick', async e => {
-  const door = e.currentTarget;
-  (await import('./handoff-view.js')).openHandoff(door);
-});
+
 initShortcuts(setView);
 /* #250: a link someone handed over carries a game in `#p=`. It is opened
    before the first paint, so the coach lands on that game, and the hash comes
