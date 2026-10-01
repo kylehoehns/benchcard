@@ -51,15 +51,20 @@ const KEEP = new Map([
 const MODULES = readDir('app').filter((f) => f.endsWith('.js') && f !== 'sw.js');
 
 /* Block comments, and `//` comments that start a line or follow whitespace
- * (so `https://` in a string survives). Over-keeping text only risks hiding a
- * dead export, never a false alarm. */
+ * (so `https://` in a string survives). Trade-off: a ` // ` inside a
+ * string after whitespace, or a `/*` inside a string or glob (`app/**\/*.js`),
+ * can strip real code. That can raise a false alarm (an export looks unused),
+ * and a false alarm fails loud, so it gets fixed rather than hidden. */
 const code = (src) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/.*$/gm, '$1');
+
+/* JS is stripped of comments; anything else (json) is read as is. */
+const readCode = (path) => (/\.m?js$/.test(path) ? code(read(path)) : read(path));
 
 const READERS = [
   ...MODULES.map((f) => ['app/' + f, code(read('app/' + f))]),
   ...readDir('app').filter((f) => f.endsWith('.html')).map((f) => ['app/' + f, read('app/' + f)]),
   ...readDir('test').filter((f) => f.endsWith('.js')).map((f) => ['test/' + f, code(read('test/' + f))]),
-  ...readDir('scripts').filter((f) => /\.(m?js|json)$/.test(f)).map((f) => ['scripts/' + f, /\.m?js$/.test(f) ? code(read('scripts/' + f)) : read('scripts/' + f)]),
+  ...readDir('scripts').filter((f) => /\.(m?js|json)$/.test(f)).map((f) => ['scripts/' + f, readCode('scripts/' + f)]),
 ];
 
 /* `\b` is useless for `$` (dom.js exports it), so bound on the identifier

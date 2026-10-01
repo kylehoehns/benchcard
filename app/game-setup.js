@@ -116,8 +116,8 @@ export function renderSentence() {
  * named section's group to the top of the scrolling body. The level-2 push
  * and pop themselves live in `rules.js` and `balance.js` -- the pages that
  * build a `#planSub` body -- through `pushPane`/`popPane` (`trap.js`);
- * `resetPlanChrome` is `pushPane`'s `onPop` (wired in `pushPlanPane`), so the header (title, back button, right-slot control) resets on
- * every path back to level 1, including Escape and Android's back gesture,
+ * `resetPlanChrome` is `pushPane`'s `onPop` (wired in `pushPlanPane`), so
+ * the header (title, back button, right-slot control) resets on every path back to level 1, including Escape and Android's back gesture,
  * not only a tap on the back button itself.
  * ================================================================== */
 

@@ -105,12 +105,10 @@ test('no width hides the move buttons', () => {
 });
 
 /* Fix pass finding B1: `movePlayer` reorders by rebuilding every row
- * (`renderRoster`) inside the very `flip()` call meant to animate the old
+ * (`renderRoster`) inside a wrapper meant to animate the old
  * rows into their new places -- but `renderRoster` starts with
- * `box.textContent = ''`, which detaches every row `flip` measured before
- * anything moves. `flip`'s own loop skips a detached element
- * (`!e.isConnected`), so every press quietly measures for an animation that
- * can never play. The arrows are a single adjacent swap, exactly what
+ * `box.textContent = ''`, which detaches every old row, so such an
+ * animation can never play. The arrows are a single adjacent swap, exactly what
  * `rosterDrop` already does cheaply for a drag's drop -- so they route
  * through that path instead, and `movePlayer` is left only where a full
  * rebuild is harmless: the grip's keyboard path, which has no pointer to
@@ -138,9 +136,8 @@ test('movePlayer’s own comment does not promise an animation renderRoster prev
   const mp = fnSourceRaw('movePlayer',
     'movePlayer is gone or renamed; the grip’s keyboard path moved with it');
   assert.ok(!/then animate each row from where it was/.test(mp),
-    'movePlayer still promises an animation flip() cannot deliver here -- renderRoster wipes '
-    + 'and rebuilds every row inside the very callback flip measured, so every "before" element '
-    + 'is disconnected (`!e.isConnected`) by the time flip tries to animate it, and nothing ever '
+    'movePlayer still promises an animation it cannot deliver -- renderRoster wipes '
+    + 'and rebuilds every row, so every "before" element is disconnected and nothing ever '
     + 'moves');
 });
 

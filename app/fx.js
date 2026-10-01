@@ -95,7 +95,7 @@ const ease = easeFn(EASE_ARR);
 
 /* #151 item 5: replaces the old physics SPRING (damping ratio ~0.88, which
  * overshot before settling -- M1 forbids a bounce). A fixed-duration tween on
- * the shared curve, used by both of SPRING's former call sites (popIn, flip)
+ * the shared curve, used by SPRING's former call sites (popIn and others)
  * below. 300ms sits inside M1's 250-450ms band; neither call site is a tap
  * response, so --t-tap does not apply. */
 const TWEEN_MS = 0.3;
