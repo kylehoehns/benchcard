@@ -2,9 +2,9 @@
 
 **Today is home; there is no tab bar (#23, N1).** The app opens on Today: the
 active team's name as the large title and team-switcher button, a gear for Settings, multiple days stacked in date order each with its own heading and games (each day's games shown in tip-off order, #102), then Team and Season as two entries underneath, and Add a game. When the team has no games (#126), the games section shows a note instead of any days, with Add a game still present.
-A day files itself into the season once it has passed (#100) — there is no
-"New day" button any more. Game, Team, Season and Settings are each one
-screen away from
+A day files itself into the season once it has passed (#100), but only when
+the coach has set up a team (#252) — there is no "New day" button any more.
+Game, Team, Season and Settings are each one screen away from
 Today rather than siblings on a nav — opening one pushes a browser-history
 entry, so the back button, the browser's own back and Android's back gesture
 all land back on Today, through the one path `setView` (render.js) owns. The

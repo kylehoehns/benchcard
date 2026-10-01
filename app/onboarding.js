@@ -19,6 +19,7 @@
 import { generatePlan } from './engine.js';
 import { parseRoster, sampleRoster, sampleRosterText, callNames, dropRepeat, repeatNotice, rosterPreview, SAMPLE_TEAM_NAME } from './roster.js';
 import { $, on, set, el, uid, repeatRow } from './dom.js';
+import { seasonDate } from './storage.js';
 import { state, editHappened, markFirstRunPending, newTeam, team, HUES, joinNames } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { startTour } from './tour.js';
@@ -386,9 +387,11 @@ function buildPlayers(entries) {
   return entries.map((x, i) => ({ id: uid('p'), name: x.name, number: x.number, shortName: '', tier: 3, hue: i }));
 }
 
-export function startTeam(players, teamName, draft) {
+export function startTeam(players, teamName, draft, today = new Date()) {
   state.players = buildPlayers(players);
   state.teamName = teamName;
+  // #252: the placeholder day may predate today; the game set up here is today's
+  state.day.date = seasonDate(today);
   const g = state.day.games[0];
   // 40, not 20: `storage.js` sanitizes periodMinutes to 40, and a lower cap
   // here meant a record with a 24-minute half loaded fine but could never be

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { countLine, newDraft, shortOfLineup, startTeam } from '../app/onboarding.js';
 import { parseRoster, sampleRosterText } from '../app/roster.js';
-import { S, bareGame, withTeam, player } from './state-fixture.js';
+import { S, bareGame, withTeam, withDays, player } from './state-fixture.js';
 
 const html = () => readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
 
@@ -71,6 +71,24 @@ test('a draft committed through startTeam writes exactly those onto state.day.ga
     assert.equal(g.granValue, 3);
     assert.deepEqual(g.constraints.targetSlots, {});
     assert.equal(g.constraints.targetCapacity, null);
+  });
+});
+
+test('startTeam dates the day it fills to today, so the new game is not filed on the next open (#252)', () => {
+  const g = bareGame();
+  const day = { name: '', date: '2026-09-29', games: [g] };
+  withDays([player('p0')], [day], {}, () => {
+    const draft = { ...newDraft(), teamName: 'Sample team',
+      periods: 2, periodMinutes: 6, granMode: 'perPeriod', granValue: 3 };
+    const players = [{ name: 'Ann', number: '4' }, { name: 'Bo', number: '5' }];
+    const today = new Date(2026, 8, 30);
+    startTeam(players, draft.teamName, draft, today);
+    assert.equal(S.state.teams[0].days[0].date, '2026-09-30');
+    assert.equal(S.dueToFile(today), false);
+    const kept = S.state.teams[0].days[0].games[0];
+    assert.equal(kept, g);
+    assert.equal(kept.periods, 2);
+    assert.equal(kept.periodMinutes, 6);
   });
 });
 

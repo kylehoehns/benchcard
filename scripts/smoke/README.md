@@ -87,6 +87,7 @@ settles hit their cap; a capped settle is also named on stderr in every run.
 | `landscape (844x390): both landscape blocks are live, no sideways scroll, gm-nav stays inside` | `scripts/smoke/landscape-a11y.mjs` | RICH |
 | `first run: welcome, three steps, every way out` | `scripts/smoke/first-run-flow.mjs` | RICH |
 | `welcome demo is built after removing the last team` | `scripts/smoke/welcome-after-remove.mjs` | RICH |
+| `welcome: no "day is over" toast, and the first game is dated today` | `scripts/smoke/welcome-stale-day.mjs` | RICH |
 | `roster in` | `scripts/smoke/roster-in.mjs` | RICH |
 | `flow inset: 16px on every side, 390px and 320px, both flows` | `scripts/smoke/flow-inset.mjs` | RICH |
 | `welcome On screen: "just on" tag is styled` | `scripts/smoke/welcome-tag.mjs` | RICH |

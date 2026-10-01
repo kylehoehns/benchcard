@@ -139,6 +139,7 @@ import { benchLookPass } from './bench-look.mjs';
 import { benchDetailsPass } from './bench-details.mjs';
 import { focusAnnouncePass } from './focus-announce.mjs';
 import { welcomeAfterRemovePass } from './welcome-after-remove.mjs';
+import { welcomeStaleDayPass } from './welcome-stale-day.mjs';
 
 // #177: `smoke.mjs`'s own five-import allow-list (test/smoke-registry.test.js)
 // has no room for a sixth `./smoke/smoke-font.mjs` import, so the font script
@@ -453,6 +454,10 @@ export const ROWS = Object.freeze([
   // itself before the next row.
   { id: 'welcomeafterremove', name: 'welcome demo is built after removing the last team', selectable: true, setup: 'rich',
     run: ctx => welcomeAfterRemovePass(ctx.c, ctx.origin) },
+  // #252: a stale not-onboarded record shows welcome with no "is over" toast,
+  // and the first game set up after it reads Today -- see welcome-stale-day.mjs.
+  { id: 'welcomestaleday', name: 'welcome: no "day is over" toast, and the first game is dated today', selectable: true, setup: 'rich',
+    run: ctx => welcomeStaleDayPass(ctx.c, ctx.origin) },
   // #146's own guard (docs/specs/146-roster-in.md's Proof section): the paste
   // sheet and Add a team's step 1 list/repeat text, the item 4 suffix fixture
   // read back from Who's here, Timeline, Season and Team, the blocked panel's
