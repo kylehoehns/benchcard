@@ -65,6 +65,7 @@ const READERS = [
   ...readDir('app').filter((f) => f.endsWith('.html')).map((f) => ['app/' + f, read('app/' + f)]),
   ...readDir('test').filter((f) => f.endsWith('.js')).map((f) => ['test/' + f, code(read('test/' + f))]),
   ...readDir('scripts').filter((f) => /\.(m?js|json)$/.test(f)).map((f) => ['scripts/' + f, readCode('scripts/' + f)]),
+  ...readDir('scripts/smoke').filter((f) => /\.mjs$/.test(f)).map((f) => ['scripts/smoke/' + f, readCode('scripts/smoke/' + f)]),
 ];
 
 /* `\b` is useless for `$` (dom.js exports it), so bound on the identifier

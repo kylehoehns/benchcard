@@ -3,6 +3,7 @@ import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes
 import { goRich } from './fixtures.mjs';
 import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
 import { boxesOverlap } from './sheet-spacing.mjs';
+import { shareImageBranches } from './share-image.mjs';
 
 /* #29's own guard (docs/specs/29-timeline-card-sheet.md's Proof section):
    "Smoke, a new check `game screen: Timeline | Card and the card sheet`
@@ -376,6 +377,9 @@ export async function timelineCardSheetPass(c, origin) {
     // restore pocket.
     await tap(c, `const s = document.getElementById('cardSize');
       s.value = 'pocket'; s.dispatchEvent(new Event('change', { bubbles: true }))`);
+
+    // #263 A-D: every way `#shareCard` can end, on the sheet that is open.
+    await shareImageBranches(c, ck);
 
     await tap(c, `document.getElementById('sheetCardClose').click()`);
 

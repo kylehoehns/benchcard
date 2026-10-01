@@ -465,3 +465,38 @@ test('the default Backup footnote hides in the same breath #persistNote is shown
   assert.equal(mentions, guarded,
     '#backupFootnote is hidden outside keepStored()’s answer: that is a promise, not a report');
 });
+
+/* #263 J: `downloadText` is the one download path for the backup and the
+   season CSV. Under node there is no DOM, so `document`, `Blob` and `URL`
+   are stood in for and the test reads what the browser would have been
+   handed: one Blob of the given type, one <a> clicked with the given
+   download name, and an object URL revoked once the timer runs. */
+test('downloadText hands one Blob to one clicked <a download>, then revokes the URL', async t => {
+  const { downloadText } = await import('../app/backup.js');
+  const clicks = [], revoked = [], made = [];
+  const realDocument = globalThis.document, realCreate = URL.createObjectURL,
+    realRevoke = URL.revokeObjectURL, realTimeout = globalThis.setTimeout;
+  const timers = [];
+  t.after(() => {
+    globalThis.document = realDocument;
+    URL.createObjectURL = realCreate; URL.revokeObjectURL = realRevoke;
+    globalThis.setTimeout = realTimeout;
+  });
+  globalThis.document = {
+    createElement: tag => ({ tag, click() { clicks.push({ tag: this.tag, href: this.href, download: this.download }); } }),
+  };
+  URL.createObjectURL = blob => { made.push(blob); return 'blob:test-1'; };
+  URL.revokeObjectURL = url => revoked.push(url);
+  globalThis.setTimeout = (fn, ms) => { timers.push({ fn, ms }); };
+
+  downloadText('{"a":1}', 'team.json', 'application/json');
+
+  assert.equal(made.length, 1, 'one object URL is made');
+  assert.equal(made[0].type, 'application/json');
+  assert.equal(await made[0].text(), '{"a":1}');
+  assert.deepEqual(clicks, [{ tag: 'a', href: 'blob:test-1', download: 'team.json' }]);
+  assert.deepEqual(revoked, [], 'the URL is still live until the timer runs');
+  assert.equal(timers.length, 1);
+  timers[0].fn();
+  assert.deepEqual(revoked, ['blob:test-1']);
+});

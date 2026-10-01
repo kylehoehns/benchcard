@@ -1,6 +1,7 @@
 import { TODAY_HOME } from './dom.mjs';
 import { TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
+import { backupChecks } from './backup-restore.mjs';
 
 /* #22, spec "What would settle it" item 7: every row in #view-settings --
    each setting row, each link row and the backup row -- at least 48px, at
@@ -22,10 +23,20 @@ export async function settingsRowPass(c, source) {
     close: TODAY_HOME,
   });
 
+  // #263 E-H: the backup row's own behavior, on the page already loaded.
+  const problems = [];
+  try {
+    await backupChecks(c, (ok, msg) => { if (!ok) problems.push(msg); return ok; });
+  } catch (e) { problems.push(e.message.split('\n')[0]); }
+
+  const pass = bad.length === 0 && problems.length === 0;
   return {
-    pass: bad.length === 0,
+    pass,
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px`,
+      : problems.length
+        ? `${problems.length} backup problem(s): ${problems.slice(0, 4).join(' | ')}`
+        : `${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px; `
+          + 'backup saves, restores from a file and from paste, undoes, and rejects a non-backup',
   };
 }
