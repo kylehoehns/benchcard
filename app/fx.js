@@ -95,7 +95,7 @@ const ease = easeFn(EASE_ARR);
 
 /* #151 item 5: replaces the old physics SPRING (damping ratio ~0.88, which
  * overshot before settling -- M1 forbids a bounce). A fixed-duration tween on
- * the shared curve, used by both of SPRING's former call sites (popIn, flip)
+ * the shared curve, used by SPRING's former call sites (popIn and others)
  * below. 300ms sits inside M1's 250-450ms band; neither call site is a tap
  * response, so --t-tap does not apply. */
 const TWEEN_MS = 0.3;
@@ -124,25 +124,6 @@ export function swapIn(els, { delay = 0.022 } = {}) {
   animate(list,
     { opacity: [0, 1], transform: ['translateX(10px)', 'translateX(0px)'] },
     { duration: 0.26, easing: EASE_ARR, delay: stagger(delay) });
-}
-
-/**
- * FLIP: measure before a DOM change, then animate each element from where it
- * was to where it now is. Used when timeline rows reorder.
- */
-export function flip(els, mutate) {
-  const list = [...els];
-  if (!enabled || !list.length) { mutate(); return; }
-  const before = new Map(list.map(e => [e, e.getBoundingClientRect()]));
-  mutate();
-  for (const e of list) {
-    const a = before.get(e);
-    if (!a || !e.isConnected) continue;
-    const b = e.getBoundingClientRect();
-    const dx = a.left - b.left, dy = a.top - b.top;
-    if (!dx && !dy) continue;
-    animate(e, { transform: [`translate(${dx}px, ${dy}px)`, 'translate(0px, 0px)'] }, TWEEN);
-  }
 }
 
 /* ===================== entering game mode =========================

@@ -27,8 +27,6 @@ export function initShortcuts(setViewFn) {
   setView = setViewFn;
   on('#keysHint', 'onclick', openKeys);
   on('#keysClose', 'onclick', closeKeys);
-  /* Wrapped, not passed by name: `openHelp` takes a section id now and `on`
-     hands a handler the click Event. */
   on('#helpBtn', 'onclick', () => openHelp());
   on('#helpClose', 'onclick', closeHelp);
   on('#helpTour', 'onclick', tourAgain);
@@ -67,7 +65,7 @@ function closeKeys() {
  * "Show me around again" closes the sheet before starting the tour rather
  * than stacking one overlay on the other: the tour spotlights things the
  * sheet is sitting on top of. */
-function openHelp(section) {
+function openHelp() {
   const h = $('#help');
   if (!h || !h.hidden) return;
   const trigger = document.activeElement;
@@ -78,40 +76,9 @@ function openHelp(section) {
   if (helpTour) helpTour.hidden = !hasGames();
   const box = h.querySelector('.keysbox');
   box.scrollTop = 0;
-  if (section) scrollHelpTo(box, section);
   openTrap(h, closeHelp, trigger);
 }
 
-/* Y only, by hand, and never `scrollIntoView` -- the same rule tour.js:206
-   carries and for the same reason: its `inline` defaults to 'nearest', which
-   scrolls the container sideways the moment the anchor does not fit across.
-   A dialog is not a document, so there is nothing to scroll back with, and a
-   help sheet parked 30px to the left slices the first letter off every line
-   of the copy it was opened to show. Nothing here may move X.
-
-   `.keysbox` is the scroll container (that is why the header above it is
-   sticky), so this is one `scrollTop` write and no style change at all --
-   `.keyswrap`, `.keysbox` and `.keys-hd` are untouched, which is what keeps
-   `test/dialog-viewport.test.js`'s shape out of it. The header's height comes
-   OFF the target: it is sticky at `top: 0`, so an anchor scrolled to exactly
-   its own offset lands underneath it.
-
-   `offsetTop` rather than a rect: both elements share an offset parent (the
-   fixed `.keyswrap`; `.keysbox` is static and the sticky header is a sibling,
-   not an ancestor), and the wrap animates in with a translate that a rect
-   would read mid-flight while offsets ignore it. */
-function scrollHelpTo(box, section) {
-  const t = box.querySelector(`#${section}`);
-  if (!t) return;
-  const hd = box.querySelector('.keys-hd');
-  /* The 10px is not decoration. Both offsets are taken from the same offset
-     parent, so the difference carries `.keysbox`'s 1px border, and measured
-     without it the Rules heading landed one pixel UNDER the sticky header --
-     its top row clipped, on the one section this affordance exists to reach.
-     The rest is air, so the heading reads as the top of a section rather than
-     as a second line of the sheet's own title. */
-  box.scrollTop = Math.max(0, t.offsetTop - box.offsetTop - (hd ? hd.offsetHeight : 0) - 10);
-}
 function closeHelp() {
   const h = $('#help');
   if (!h || h.hidden) return;

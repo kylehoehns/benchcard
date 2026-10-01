@@ -54,10 +54,9 @@ export function initRoster(editFn) {
 const digitsOnly = s => s.replace(/[^0-9]/g, '');
 
 /* The grip's keyboard path only (B1): `renderRoster` starts with
-   `box.textContent = ''`, which detaches every row `flip` measured below
-   before anything moves, so `flip`'s own `!e.isConnected` check always skips
-   them and no row is ever actually animated from where it was -- a rebuild,
-   not a FLIP, dressed as one. That is harmless for a key press, which has no
+   `box.textContent = ''`, which detaches every row, so no row can be
+   animated from where it was -- this path is a plain rebuild with no
+   animation. That is harmless for a key press, which has no
    pointer to keep visually anchored, so the rebuild (and `withFocus`, which
    puts the pressed control back by `data-fk`) stays; the arrows below use
    `rosterDrop`'s cheap path instead, which really does move without a
