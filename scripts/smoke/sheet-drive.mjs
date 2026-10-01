@@ -134,10 +134,12 @@ export async function key(c, k, code) {
   await settle(c);
 }
 
-export const typeIn = (c, sel, text) => tap(c, `(() => {
+// `event` is 'input' (as a keystroke fires it) unless a field commits on
+// 'change' (a number field, on blur).
+export const typeIn = (c, sel, text, event = 'input') => tap(c, `(() => {
   const t = document.querySelector(${JSON.stringify(sel)});
   t.value = ${JSON.stringify(text)};
-  t.dispatchEvent(new Event('input', { bubbles: true }));
+  t.dispatchEvent(new Event(${JSON.stringify(event)}, { bubbles: true }));
 })()`);
 
 /* Get to Today, then open #32's flow for real. It lives here rather than in
