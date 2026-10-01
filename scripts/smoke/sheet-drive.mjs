@@ -36,6 +36,32 @@ export async function drag(c, x, y0, y1, steps = 8) {
   await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
 }
 
+/* `drag`, then hold the pointer at `y1` until `done()` is true or `timeoutMs`
+   has passed (polled, not slept), then release. For a drag whose effect runs
+   on frames while the pointer is held, such as autoscroll at an edge. */
+export async function dragHold(c, x, y0, y1, done, timeoutMs = 2000) {
+  await c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y: y0, button: 'left', clickCount: 1 });
+  for (let i = 1; i <= 8; i++) {
+    await c.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y: y0 + (y1 - y0) * (i / 8), button: 'left' });
+  }
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline && !(await done())) await wait(50);
+  await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y: y1, button: 'left', clickCount: 1 });
+}
+
+/* A touch drag the browser then cancels, which is what `pointercancel` is
+   for. It is a touch, not a mouse drag, because CDP's `touchCancel` is the
+   only route to a real `pointercancel`. `whileDown` runs once the touch has
+   moved, before the cancel, so the caller can assert the drag was live. */
+export async function touchDragCancel(c, x, y0, y1, whileDown) {
+  const touch = (type, y) => c.send('Input.dispatchTouchEvent',
+    { type, touchPoints: type === 'touchCancel' ? [] : [{ x, y, id: 1 }] });
+  await touch('touchStart', y0);
+  for (let i = 1; i <= 6; i++) await touch('touchMove', y0 + (y1 - y0) * (i / 6));
+  await whileDown();
+  await touch('touchCancel', y1);
+}
+
 // Fix pass finding 1's guard hole: `drag` above dispatches every move back
 // to back, so the wall-clock gap between its first and last sample is close
 // to 0ms -- `dragSpeed` (trap.js) reads that as a flick every time, so a

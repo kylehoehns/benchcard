@@ -2,10 +2,10 @@
    is the Node side of the check, not the browser page, so it needs the same
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
-import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, wait } from './dom.mjs';
 import { TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './sizes.mjs';
 import { goRich, PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
-import { drag, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
+import { drag, dragHold, touchDragCancel, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
 
 /* #31's own guard (docs/specs/31-roster-and-player-sheet.md, Proof P8):
@@ -159,6 +159,18 @@ async function playerSheetOk(c, ck) {
   ck(renamed.identName === 'Temp Name',
     `the identity name did not follow a Name edit -- reads "${renamed.identName}"`);
   await typeInto(c, '#playerName', MARCUS.name);
+
+  /* #264 H: a jersey number is digits only. Letters typed are dropped from the
+     field, and the digits that stay show on this player's row and badge. */
+  await typeInto(c, '#playerNumber', '6x6');
+  const num = await evalJSON(c, `JSON.stringify({
+    field: document.getElementById('playerNumber').value,
+    badge: document.querySelector('#rosterlist .rrow .av')?.textContent.trim() ?? null,
+    ident: document.getElementById('playerIdentAv')?.textContent.trim() ?? null })`);
+  ck(num.field === '66', `typing "6x6" as a number leaves "${num.field}" in the field, want "66"`);
+  ck(num.badge === '66', `${MARCUS.name}'s row badge reads "${num.badge}" after a new number, want "66"`);
+  ck(num.ident === '66', `the sheet's own badge reads "${num.ident}" after a new number, want "66"`);
+  await typeInto(c, '#playerNumber', MARCUS.number);
 
   return true;
 }
@@ -359,7 +371,7 @@ async function pasteSheetOk(c, ck) {
    third of the row -- narrow enough that `overflow-wrap: break-word` cut an
    ORDINARY first name in half ("Marc / us / Willi / ams"). Nothing else could
    see it: the text still fit its box, so there was no overflow to report and
-   no sideways pan for `identLongNameOk` to catch.
+   no sideways pan for `largeTextOk` to catch.
 
    Measured on the rich fixture's ordinary "Marcus Williams", not on a
    deliberately long name, and counted in line boxes rather than in widths: a
@@ -386,17 +398,23 @@ async function identNotBrokenMidWord(c, ck) {
    wrapping here is the fix (`#sheetCard`'s own prior art), only a 0-width
    label is the bug. */
 async function fieldsAtLargeTextOk(c, ck) {
+  await tap(c, `document.querySelector('#rosterlist .rrow').click()`);
+  await prowFieldsOk(c, ck, '#sheetPlayer', '320px/32px', false);
+  await identNotBrokenMidWord(c, ck);
+  await tap(c, `document.getElementById('sheetPlayerClose').click()`);
+  await tap(c, `document.getElementById('teamAdd').click()`);
+  await prowFieldsOk(c, ck, '#sheetAddPlayer', '320px/32px', false);
+  await tap(c, `document.querySelector('#sheetAddPlayer .bsheet-close').click()`);
+}
+
+/* Both large-text checks run at one 320px/32px entry, restored once. */
+async function largeTextOk(c, ck) {
   await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });
   try {
     await c.send('Emulation.setDeviceMetricsOverride', { width: 320, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
     await settle(c);
-    await tap(c, `document.querySelector('#rosterlist .rrow').click()`);
-    await prowFieldsOk(c, ck, '#sheetPlayer', '320px/32px', false);
-    await identNotBrokenMidWord(c, ck);
-    await tap(c, `document.getElementById('sheetPlayerClose').click()`);
-    await tap(c, `document.getElementById('teamAdd').click()`);
-    await prowFieldsOk(c, ck, '#sheetAddPlayer', '320px/32px', false);
-    await tap(c, `document.querySelector('#sheetAddPlayer .bsheet-close').click()`);
+    await fieldsAtLargeTextOk(c, ck);
+    await identLongNameOk(c, ck);
   } finally {
     await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
     await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
@@ -409,11 +427,8 @@ async function fieldsAtLargeTextOk(c, ck) {
    `.pident-name`, `min-width: 0` on `.pident-t`). Mutates p5 (`Jordan Bell`,
    `fixtures.mjs`) through `setGame`, never a second player list. */
 async function identLongNameOk(c, ck) {
-  await tap(c, setGame(`s.team().players.find(p => p.id === 'p5').name = ${JSON.stringify(LONG_NAME)};`));
-  await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });
   try {
-    await c.send('Emulation.setDeviceMetricsOverride', { width: 320, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await settle(c);
+    await tap(c, setGame(`s.team().players.find(p => p.id === 'p5').name = ${JSON.stringify(LONG_NAME)};`));
     await tap(c, `document.querySelectorAll('#rosterlist .rrow')[5].click()`);
     const g = await evalJSON(c, `JSON.stringify((() => {
       const body = document.querySelector('#sheetPlayer .bsheet-body');
@@ -429,8 +444,6 @@ async function identLongNameOk(c, ck) {
     await tap(c, `document.getElementById('sheetPlayerClose').click()`);
   } finally {
     await tap(c, setGame(`s.team().players.find(p => p.id === 'p5').name = ${JSON.stringify('Jordan Bell')};`));
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
   }
 }
 
@@ -534,6 +547,171 @@ async function atWidth(c, width) {
   await settle(c);
 }
 
+/* #264: the ways a coach moves a player, driven in Edit mode on the rich
+   fixture. Every order is read twice -- the rows on screen and the saved
+   record -- because `rosterDrop` splices both and a check of one half would
+   miss the other drifting. Expected orders are the fixture's own `ROSTER`,
+   moved by hand, never a second run of the splice. */
+const NAMES = ROSTER.map(r => r[0]);
+const orderNow = c => evalJSON(c, `(() => {
+  const rec = JSON.parse(localStorage.getItem('benchcard.v7'));
+  return JSON.stringify({
+    shown: [...document.querySelectorAll('#rosterlist .rrow .prow-t')].map(n => n.textContent.trim()),
+    saved: rec.teams[rec.activeTeam].players.map(p => p.name),
+  });
+})()`);
+
+async function orderIs(c, ck, want, what) {
+  const o = await orderNow(c);
+  ck(o.shown.join(', ') === want.join(', '), `${what}: the rows read ${o.shown.join(', ')}, want ${want.join(', ')}`);
+  ck(o.saved.join(', ') === want.join(', '), `${what}: the saved roster reads ${o.saved.join(', ')}, want ${want.join(', ')}`);
+}
+
+// the ends: the first row's Up and the last row's Down are the only two off
+async function endsDisabled(c, ck, what) {
+  const rows = await editState(c);
+  rows.forEach((r, i) => {
+    const [, up, dn] = r.ord;
+    ck(up.off === (i === 0), `${what}: row ${i + 1}'s move up is ${up.off ? 'off' : 'on'}, want ${i === 0 ? 'off' : 'on'}`);
+    ck(dn.off === (i === rows.length - 1), `${what}: row ${i + 1}'s move down is ${dn.off ? 'off' : 'on'}, want ${i === rows.length - 1 ? 'off' : 'on'}`);
+  });
+}
+
+const gripOf = (i) => `document.querySelectorAll('#rosterlist .rrow')[${i}].querySelector('.rgrip')`;
+const gripAt = (c, i) => evalJSON(c, `(() => { const g = ${gripOf(i)}; g.scrollIntoView({ block: 'center' });
+  const b = g.getBoundingClientRect();
+  return JSON.stringify({ x: b.left + b.width / 2, y: b.top + b.height / 2,
+    pitch: document.querySelectorAll('#rosterlist .rrow')[1].getBoundingClientRect().top
+      - document.querySelectorAll('#rosterlist .rrow')[0].getBoundingClientRect().top }); })()`);
+
+async function reorderOk(c, ck) {
+  // A: Devon Ellis's up arrow.
+  await tap(c, `document.querySelectorAll('#rosterlist .rrow')[1].querySelector('.obtn[aria-label^="Move"]').click()`);
+  const A = [NAMES[1], NAMES[0], ...NAMES.slice(2)];
+  await orderIs(c, ck, A, 'Devon Ellis up');
+  await endsDisabled(c, ck, 'Devon Ellis up');
+
+  // B: Marcus Williams is now second. His grip, ArrowDown: he moves down one
+  // and focus is still on his grip, which now names his new place.
+  await tap(c, `${gripOf(1)}.focus()`);
+  await key(c, 'ArrowDown', 40);
+  const B = [NAMES[1], ...NAMES.slice(2, 3), NAMES[0], ...NAMES.slice(3)];
+  await orderIs(c, ck, B, 'Marcus Williams ArrowDown');
+  const f = await evalJSON(c, `JSON.stringify({ fk: document.activeElement?.dataset?.fk ?? null,
+    name: document.activeElement?.getAttribute('aria-label') ?? null })`);
+  ck(f.fk === 'r:p0:ord', `after ArrowDown focus is on ${f.fk}, want Marcus Williams's grip (r:p0:ord)`);
+  ck(f.name != null && f.name.includes(`position 3 of ${NAMES.length}`),
+    `Marcus Williams's grip is named "${f.name}", want it to say position 3 of ${NAMES.length}`);
+
+  // C: Devon Ellis is first. A real drag of his grip a little over two rows
+  // down drops him third; the two he passed each move up one.
+  const [dev, hana, marc, ...rest] = B;
+  let g = await gripAt(c, 0);
+  await drag(c, g.x, g.y, g.y + 2.2 * g.pitch);
+  await settle(c);
+  const C = [hana, marc, dev, ...rest];
+  await orderIs(c, ck, C, 'dragging Devon Ellis two rows down');
+  await endsDisabled(c, ck, 'dragging Devon Ellis two rows down');
+
+  // D: drag the first row and hold the pointer inside the bottom 60px edge.
+  // The page must scroll under it, and the row ends below where the pointer
+  // alone could have carried it (`reach`, in rows from where it started).
+  g = await gripAt(c, 0);
+  const vh = await evalJSON(c, `JSON.stringify(innerHeight)`);
+  const y1 = vh - 20;
+  const reach = Math.round((y1 - g.y) / g.pitch);
+  const scrollNow = () => evalJSON(c, `JSON.stringify(scrollY)`);
+  const start = await scrollNow();
+  // the order check needs about half a row beyond `reach`, so hold until the
+  // page has grown a whole row pitch, not merely moved
+  await dragHold(c, g.x, g.y, y1, async () => (await scrollNow()) - start >= g.pitch);
+  const scrolled = (await scrollNow()) - start;
+  await settle(c);
+  ck(scrolled > 0, `holding a drag 20px from the bottom edge scrolled the page ${scrolled}px, want it to grow`);
+  const o = await orderNow(c);
+  ck(o.shown.indexOf(C[0]) > reach,
+    `${C[0]} was dropped at row ${o.shown.indexOf(C[0]) + 1}, want below row ${reach + 1} (scrolled ${scrolled}px, row pitch ${g.pitch}, start y ${g.y}), as far as the pointer alone reaches`);
+  ck(o.shown.join() === o.saved.join(), `autoscroll drop: the rows read ${o.shown.join(', ')} but the saved roster ${o.saved.join(', ')}`);
+  await tap(c, `scrollTo(0, 0)`);
+
+  // E: a drag past the threshold that the browser then cancels changes nothing.
+  const before = (await orderNow(c)).shown;
+  g = await gripAt(c, 0);
+  await touchCancelledDrag(c, ck, g.x, g.y, g.y + 2.2 * g.pitch);
+  await orderIs(c, ck, before, 'a cancelled drag');
+}
+
+/* E: the cancelled touch must be a live drag first (`.dragging` on the list),
+   or the cancel proves nothing. */
+async function touchCancelledDrag(c, ck, x, y0, y1) {
+  const dragging = () => evalJSON(c, `JSON.stringify(document.getElementById('rosterlist').classList.contains('dragging'))`);
+  await touchDragCancel(c, x, y0, y1, async () => {
+    ck(await dragging(), 'the touch drag never began (no .dragging), so the cancel below would prove nothing');
+  });
+  await settle(c);
+  ck(!(await dragging()), 'a cancelled drag left the list mid-drag (.dragging)');
+}
+
+/* #264 F, G: the add and paste sheets, committed. They run after Edit mode
+   (and not inside `addSheetOk`/`pasteSheetOk`), because every check before
+   them counts the rich fixture's eleven rows and these two leave thirteen. */
+const lastRow = async c => { const rows = await rosterRows(c); return { rows: rows.length, ...rows.at(-1) }; };
+
+async function addPasteCommitOk(c, ck) {
+  await tap(c, `document.getElementById('teamAdd').click()`);
+  await typeInto(c, '#addNumber', '30');
+  await typeInto(c, '#addName', 'Pat Quinn');
+  await tap(c, `document.getElementById('addPlayerGo').click()`);
+  ck(await waitClosed(c, '#sheetAddPlayer'),
+    'Add player left the add sheet open (after saving the player, it asked "discard what you typed?")');
+  const f = await lastRow(c);
+  ck(f.rows === ROSTER.length + 1, `after adding Pat Quinn the roster shows ${f.rows} rows, want ${ROSTER.length + 1}`);
+  ck(f.name === 'Pat Quinn' && f.badge === '30',
+    `the new last row reads "${f.name}" with "${f.badge}", want Pat Quinn with 30`);
+
+  // "4 Eli Tran" is a second Eli Tran; "Zoe Park" is new. Two Elis read
+  // "Eli Tran #12" and "Eli Tran #4" until the copy is skipped.
+  await realTap(c, '#pasteRow');
+  await typeInto(c, '#sheetPaste textarea', '4 Eli Tran\nZoe Park');
+  await tap(c, `document.getElementById('pasteGo').click()`);
+  ck(await waitClosed(c, '#sheetPaste'), 'Add 2 players left the paste sheet open');
+  const g = await lastRow(c);
+  ck(g.rows === ROSTER.length + 3, `after pasting two lines the roster shows ${g.rows} rows, want ${ROSTER.length + 3}`);
+  const toast = await evalJSON(c, `JSON.stringify({
+    text: document.querySelector('#toasts .toast .tmsg')?.textContent ?? null,
+    button: document.querySelector('#toasts .toast .tundo')?.textContent.trim() ?? null })`);
+  ck(toast.text === '1 of these was already on the roster.',
+    `the paste offer reads ${JSON.stringify(toast.text)}, want "1 of these was already on the roster."`);
+  ck(toast.button === 'Skip them', `the paste offer's button reads ${JSON.stringify(toast.button)}, want "Skip them"`);
+
+  await tap(c, `document.querySelector('#toasts .toast .tundo')?.click()`);
+  const eli = (await rosterRows(c)).filter(r => r.name === 'Eli Tran' || r.name === 'Zoe Park');
+  // Zoe Park has no number, so her badge is the start of her name
+  ck(eli.map(r => `${r.name} ${r.badge}`).sort().join(' / ') === 'Eli Tran 12 / Zoe Park ZO',
+    `after Skip them the pasted names read ${eli.map(r => `${r.name} ${r.badge}`).join(' / ')}, want the original Eli Tran 12 and Zoe Park ZO`);
+  const h = await lastRow(c);
+  ck(h.rows === ROSTER.length + 2, `after Skip them the roster shows ${h.rows} rows, want ${ROSTER.length + 2}`);
+}
+
+/* #264 J: the reset row is on screen because two players are off the default
+   level; one tap and both read Regular, and the row is gone. */
+async function resetLevelsOk(c, ck) {
+  const levels = async () => {
+    const rows = await rosterRows(c);
+    const levelOf = name => rows.find(r => r.name === name)?.level ?? null;
+    const reset = await evalJSON(c, `JSON.stringify([...document.querySelectorAll('#teamActions button')].some(b => b.textContent.trim() === 'Put everyone back to the same level'))`);
+    return { hana: levelOf('Hana Kim'), nia: levelOf('Nia Brooks'), reset };
+  };
+  const before = await levels();
+  ck(before.hana === 'Go-to' && before.nia === 'Developing' && before.reset,
+    `before the reset Hana Kim reads ${before.hana}, Nia Brooks ${before.nia}, reset row ${before.reset ? 'shown' : 'missing'}; want Go-to, Developing and the row`);
+  await tap(c, `[...document.querySelectorAll('#teamActions button')].find(b => b.textContent.trim() === 'Put everyone back to the same level')?.click()`);
+  const after = await levels();
+  ck(after.hana === 'Regular' && after.nia === 'Regular',
+    `after the reset Hana Kim reads ${after.hana} and Nia Brooks ${after.nia}, want Regular for both`);
+  ck(!after.reset, 'the reset row is still on screen with everyone on the default level');
+}
+
 async function editModeOk(c, ck) {
   await tap(c, `document.getElementById('teamEdit').click()`);
   const on = await evalJSON(c, `JSON.stringify({
@@ -590,6 +768,7 @@ async function editModeOk(c, ck) {
     });
   }
   await atWidth(c, WIDTH);
+  await reorderOk(c, ck);
 
   await tap(c, `document.getElementById('teamEdit').click()`);
   const off = await evalJSON(c, `JSON.stringify({
@@ -608,12 +787,12 @@ async function editModeOk(c, ck) {
    instead and never shows this screen at all). A heading, one sentence, both
    ways to start, and NO empty group box standing open above them (W3). */
 async function emptyStateOk(c, ck) {
-  for (let i = 0; i < ROSTER.length; i++) {
-    await tap(c, `document.querySelector('#rosterlist .rrow')?.click()`);
-    await tap(c, `document.getElementById('playerRemove')?.click()`);
+  const n = (await rosterRows(c)).length;   // the rich eleven plus what the commits above added
+  for (let i = 0; i < n; i++) {
+    await tap(c, `document.querySelector('#rosterlist .rrow')?.click(); document.getElementById('playerRemove')?.click()`);
     /* A2: with exactly one player left there is nothing to reorder, so
        #teamEdit must not offer to. */
-    if (i === ROSTER.length - 2) {
+    if (i === n - 2) {
       const oneLeft = await evalJSON(c, `JSON.stringify({
         hidden: document.getElementById('teamEdit').hidden,
       })`);
@@ -666,9 +845,10 @@ export async function teamScreenPass(c, origin) {
     if (await playerSheetOk(c, ck)) await removeAndUndoOk(c, ck);
     await addSheetOk(c, ck);
     await pasteSheetOk(c, ck);
-    await fieldsAtLargeTextOk(c, ck);
-    await identLongNameOk(c, ck);
+    await largeTextOk(c, ck);
     await editModeOk(c, ck);
+    await addPasteCommitOk(c, ck);
+    await resetLevelsOk(c, ck);
     await emptyStateOk(c, ck);
     await sampleRosterRowsOk(c, origin, ck);
   } catch (e) {

@@ -653,6 +653,8 @@ export function openAddPlayerSheet(trigger) {
   nm.oninput = paintAddConfirm;
   $('#addPlayerGo').onclick = () => {
     state.players.push(newPlayer(nm.value.trim(), num.value, nextHue()));
+    // nothing left to lose, so the close guard lets go (as `commitPaste` does)
+    num.value = ''; nm.value = '';
     closeSheet(dialog);
     rosterChanged();
   };

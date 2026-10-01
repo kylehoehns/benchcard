@@ -163,6 +163,16 @@ test('removeRule: clears the starting five', () => {
   assert.deepEqual(c.openingFive, []);
 });
 
+test('removeRule: clears the last-period five and leaves the other rules', () => {
+  const c = { ...S.emptyConstraints(), openingFive: ['p0', 'p1'], lastPeriodFive: ['p2', 'p3'],
+    maxConsecutive: 3, pairs: [['p0', 'p1']] };
+  S.removeRule(c, { kind: 'lastq' });
+  assert.deepEqual(c.lastPeriodFive, []);
+  assert.deepEqual(c.openingFive, ['p0', 'p1']);
+  assert.equal(c.maxConsecutive, 3);
+  assert.deepEqual(c.pairs, [['p0', 'p1']]);
+});
+
 test('removeRule: clears the rest limit', () => {
   const c = { ...S.emptyConstraints(), maxConsecutive: 3 };
   S.removeRule(c, { kind: 'rest' });
