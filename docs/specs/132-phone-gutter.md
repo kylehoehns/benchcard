@@ -175,7 +175,7 @@ at 320px / 32px. Bump the precache.
 
 | Seam | Runs from | Covers |
 | --- | --- | --- |
-| Phone gutter smoke check | a new module under `scripts/smoke/` plus one registry entry (the #130 shape), on `RICH`. It reads item 1's elements on the five screens at `TOUCH_WIDTHS` (320, 360, 390) and at `LARGE_TEXT_WIDTH`/`LARGE_TEXT_PX`, and item 6's buttons. `node scripts/smoke.mjs --only "<its name>"` while iterating. | 1, 2, 6 |
+| Phone gutter smoke check | a new module under `scripts/smoke/` plus one registry entry (the #130 shape), on `RICH`. It reads item 1's elements on the five screens at `TOUCH_WIDTHS` (320, 360, 390) and at `LARGE_TEXT_WIDTH`/`LARGE_TEXT_PX`, and item 6's buttons. It also raises and measures the real toasts (#271) at 320, 360, 375 and 390px, at 16px and 32px text. `node scripts/smoke.mjs --only "<its name>"` while iterating. | 1, 2, 6 |
 | Existing smoke suite | `npm run smoke -- --no-tests`: the width sweep, the app large-text pass, touch, settings rows, `game rows fit` | 3 |
 | Wide widths and untouched layers | `/browser-verify`, computed padding, `main` against the branch, on `node scripts/serve.mjs` | 4, 5 |
 | Crowding look | `node scripts/compare-shots.mjs --issue 132` | 7 |

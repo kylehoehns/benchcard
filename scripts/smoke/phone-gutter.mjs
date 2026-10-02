@@ -15,7 +15,7 @@
  * from the stylesheet -- a floor set in CSS has to be proven by the box the
  * browser actually painted. */
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, landWiped, navigateAndWaitForCard, toGameOne } from './dom.mjs';
-import { TOUCH_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
+import { TOUCH_WIDTHS, TOAST_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
 import { land, resize } from './page-state.mjs';
 import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
 
@@ -185,9 +185,10 @@ async function measureLargeText(c, origin) {
  * right content edge, wrapped or not. Waits out the entrance animation first,
  * whose scale and offset would otherwise shift every rect. */
 const TOAST_ROW_PROBE = `(async () => {
-  const { offer, flash } = await import('/toast.js');
+  const { offer, flash, showUndo } = await import('/toast.js');
   const out = [];
   for (const [kind, raise] of [['button', () => offer('Benchcard updated.', 'Reload', () => {})],
+                               ['undo', () => showUndo('Player removed.', {}, () => {})],
                                ['no button', () => flash('Benchcard updated.')]]) {
     raise();
     const t = document.querySelector('#toasts .toast:not(.out)');
@@ -199,7 +200,9 @@ const TOAST_ROW_PROBE = `(async () => {
     const room = edge - (r.left + parseFloat(cs.paddingLeft));
     out.push({ kind, edge, x: { top: x.top, right: x.right, w: x.width },
       b: b && { top: b.top, right: b.right, w: b.width },
-      gap: parseFloat(getComputedStyle(t.querySelector('.tacts')).columnGap), room });
+      // the dismiss's own parent, whatever it is, so a toast without the
+      // fix's wrapper still measures; 'normal' (no gap set) reads as 0
+      gap: parseFloat(getComputedStyle(t.querySelector('.tx').parentElement).columnGap) || 0, room });
   }
   return JSON.stringify(out);
 })()`;
@@ -225,8 +228,6 @@ async function measureToastRow(c, label) {
 
 // A font size needs a fresh navigation, so each size lands once and `resize`
 // sweeps the widths.
-const TOAST_WIDTHS = [320, 360, 375, 390];
-
 async function measureToastRows(c, origin) {
   const bad = [];
   let audited = 0;
@@ -294,7 +295,7 @@ export async function phoneGutterPass(c, origin) {
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) off the gutter: ${bad.slice(0, 4).join(' | ')}`
       : `${audited} measurements (5 screens + #abBench/#resumeBtn + #view-welcome, ${TOUCH_WIDTHS.join('/')}px, `
-        + `plus 2 toasts at ${TOAST_WIDTHS.join('/')}px, 16px and ${LARGE_TEXT_PX}px text, `
+        + `plus 3 toasts at ${TOAST_WIDTHS.join('/')}px, 16px and ${LARGE_TEXT_PX}px text, `
         + `plus 5 screens + #abBench at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px), all left = right = the .wrap gutter`,
   };
 }

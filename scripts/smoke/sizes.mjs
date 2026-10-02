@@ -71,6 +71,9 @@ export const SWEEP_EXTRA = [SHEET_MIN, WIDE_MIN, LAPTOP];
 // the full rationale lives with `touchPass` in `touch.mjs`.
 export const TOUCH_WIDTHS = [320, 360, 390];
 
+// TOUCH_WIDTHS plus 375, the iPhone width where the #271 toast bug showed.
+export const TOAST_WIDTHS = [320, 360, 375, 390];
+
 /* The floor (I1, `docs/interface-guidelines.md`) and the NAME the in-page
  * touch check reports it under. `smoke-checks.js` builds the same name from
  * its own `TOUCH_FLOOR` -- it is read as text and evaluated in the page, so
