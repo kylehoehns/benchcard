@@ -448,14 +448,14 @@ const composition = (shot, tint) => {
 `;
 };
 
-/* ---------- the icon mark (#75 item 2, redrawn as the card in #277) ----------
+/* ---------- the icon mark (#75 item 2, the card in #277, three bars in #284) ----------
    The drawing itself is scripts/mark.mjs, the one place its geometry lives;
    the brand mark above and the page logos draw from it too. An install icon is
    full bleed (a square ground, the shadow on) and may be cropped to a circle
    by a maskable mask, so the card group is scaled about the center until the
    card and its shadow sit inside the circle of radius 0.4 x size
    (test/icon-safe-zone.test.js reads icon-512.png back and checks it). */
-const ICON_FIT = 0.78;
+const ICON_FIT = 0.75; // largest two-decimal value that passes (0.76 fails), for the #284 card
 const iconSvg = size => markSvg(size, { shadow: true, scale: ICON_FIT });
 
 /* The welcome screen's roster size, read from the module that owns it. A

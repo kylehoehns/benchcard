@@ -266,8 +266,8 @@ Two things address that, and they are different problems:
   `.app` so they get the explanation instead of a dead gray page.
 
 `og.png` (2400×1260) is generated with `node scripts/og.mjs`, not drawn: a
-composition showing the game screen on a phone, the card mark (a tilted card of
-player-colored stint rows, drawn by `scripts/mark.mjs`), and the headline. `card-sample.png` and
+composition showing the game screen on a phone, the card mark (a tilted card of three
+player-colored bars, drawn by `scripts/mark.mjs`), and the headline. `card-sample.png` and
 `card-sample@2x.png` are screenshots of the printed card. `bench-sample.png`
 shows bench mode. The four icon PNGs and favicon.ico are generated from the same
 card mark at each size with the `--icons` flag. The static pages' tab icon and
