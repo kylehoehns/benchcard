@@ -22,7 +22,6 @@
  * width, the same shape `first-run-flow.mjs` already uses for its own
  * step-3 card-fit measurement. */
 import { evalIn, landWiped, setWidth } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, openAddGameFlow, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
@@ -190,9 +189,6 @@ export async function flowInsetPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }
-
-  await setWidth(c, 390).catch(() => {});
-  await goRich(c, origin).catch(() => {});
 
   return {
     pass: problems.length === 0,

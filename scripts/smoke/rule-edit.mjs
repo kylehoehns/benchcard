@@ -410,8 +410,6 @@ export async function ruleEditPass(c, origin) {
     notes.push('item 14: editing a cap on a part-played game shows the "Changed:" toast and the rotation offer does not replace it 700ms later');
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await goRich(c, origin).catch(() => {});
   }
 
   return {

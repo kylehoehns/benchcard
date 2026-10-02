@@ -115,7 +115,7 @@ const TOUCH_STATES = [
      `commitFirstRun` (decision 4: it renders the real card, so the team has
      to exist by then), which overwrites `state.players`/`state.teamName`/
      `state.day.games[0]` -- and every pass `smoke.mjs` runs after `touch`,
-     up to `teamscreen`'s own `goRich`, shares this same page load with no
+     up to the next rich row's `reset`, shares this same page load with no
      reload in between. So this state's own `open` snapshots the fixture and
      the shared `close` puts it back whole, through the one
      `FR_SNAPSHOT`/`FR_RESTORE` pair in dom.mjs that `overlay.mjs` drives its
@@ -141,32 +141,30 @@ const TOUCH_STATES = [
  * array runs every state back to back with no navigation between them (only
  * in-page clicks), so swapping the fixture for one entry would leave every
  * state after it measuring `FOUR` too, and `close` never reloads `RICH` back.
- * Reusing `reloadWithRecord` before AND after keeps this self-contained and
- * leaves `widthSweep`'s own sweep, below, on `RICH` exactly as before. */
+ * `touchPass` reloads `RICH` after it, so `widthSweep`'s own sweep, below,
+ * runs on `RICH` exactly as before. */
 async function fourTodayTouch(c, origin, source) {
   const bad = [];
   let audited = 0, seen = 0;
   await reloadWithRecord(c, origin, FOUR);
-  try {
-    for (const w of TOUCH_WIDTHS) {
-      await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: 844, deviceScaleFactor: 2, mobile: true });
-      await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-      const chk = (await evalIn(c, source)).checks.find(k => k.name === TOUCH_CHECK);
-      const where = `today, FOUR@${w}px`;
-      if (!chk) { bad.push(`${where}: the touch check is gone from smoke-checks.js`); continue; }
-      audited++;
-      const n = Number(([/(\d+) controls/, /\/(\d+) under/].map(re => chk.detail.match(re)).find(Boolean) || [])[1] || 0);
-      seen = Math.max(seen, n);
-      if (!chk.pass) bad.push(`${where}: ${chk.detail}`);
-    }
-  } finally {
-    await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
+  for (const w of TOUCH_WIDTHS) {
+    await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: 844, deviceScaleFactor: 2, mobile: true });
+    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    const chk = (await evalIn(c, source)).checks.find(k => k.name === TOUCH_CHECK);
+    const where = `today, FOUR@${w}px`;
+    if (!chk) { bad.push(`${where}: the touch check is gone from smoke-checks.js`); continue; }
+    audited++;
+    const n = Number(([/(\d+) controls/, /\/(\d+) under/].map(re => chk.detail.match(re)).find(Boolean) || [])[1] || 0);
+    seen = Math.max(seen, n);
+    if (!chk.pass) bad.push(`${where}: ${chk.detail}`);
   }
   return { bad, audited, seen };
 }
 
 export async function touchPass(c, origin, source) {
   const four = await fourTodayTouch(c, origin, source);
+  // `widthSweep` runs on RICH, and `fourTodayTouch` left FOUR loaded.
+  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: TOUCH_STATES,
     checkName: TOUCH_CHECK,

@@ -15,7 +15,7 @@ import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, landWiped, alpha, SOLI
 import { LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs';
 import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
-import { RICH, partPlayed, reloadWithRecord, goRich } from './fixtures.mjs';
+import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
 
 // Decision 14's exact fixture and item 1's exact string -- the SECOND
 // game's label, "Northwest Valley Thunderbirds", not the first's "Hawks".
@@ -254,10 +254,6 @@ export async function resumeBarPass(c, origin) {
     await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
   }
 
-  // Restore the plain fixture: this row runs between `floatingcontrols` and
-  // `narrow` in a full run, and every row after it assumes RICH's own two
-  // games, neither part-played, on the Games view.
-  await goRich(c, origin);
 
   return {
     pass: problems.length === 0,

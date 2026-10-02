@@ -680,10 +680,6 @@ export async function addGameFlowPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   }
 
-  // The flow commits games into the day, so put the fixture back the way
-  // `goRich` left it for whatever runs next -- `team-screen.mjs`'s own rule.
-  await goRich(c, origin).catch(() => {});
-
   return {
     pass: problems.length === 0,
     detail: problems.length

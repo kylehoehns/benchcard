@@ -18,7 +18,10 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { planLanding, BASELINE } from '../scripts/smoke/page-state.mjs';
+import * as pageState from '../scripts/smoke/page-state.mjs';
+import { ROWS } from '../scripts/smoke/registry.mjs';
+
+const { planLanding, BASELINE } = pageState;
 import { RICH, SEED } from '../scripts/smoke/fixtures.mjs';
 import { LOCALSTORAGE_WIPE } from '../scripts/smoke/dom.mjs';
 
@@ -61,6 +64,65 @@ test('planLanding: a record with another version throws', () => {
   assert.throws(() => planLanding({ record: { version: 99 } }));
 });
 
+/* ---------- the start fingerprint's verdict (pure half) ---------- */
+
+const FP = {
+  url: '/index.html', screen: 'view-games', width: 390, height: 844, rootPx: '16px',
+  dark: false, forced: false, recordLength: 4120, recordHash: 'a1b2c3',
+};
+
+test('compareFingerprints: identical fingerprints differ in nothing', () => {
+  assert.equal(pageState.compareFingerprints(FP, { ...FP }), null);
+});
+
+test('compareFingerprints: names the first field that changed, was and want', () => {
+  assert.equal(
+    pageState.compareFingerprints(FP, { ...FP, screen: 'view-today' }),
+    'start state differs from baseline: screen was "view-today", want "view-games"');
+});
+
+test('compareFingerprints: a changed record hash is caught even at the same length', () => {
+  assert.match(
+    pageState.compareFingerprints(FP, { ...FP, recordHash: 'ffffff' }),
+    /^start state differs from baseline: recordHash was "ffffff", want "a1b2c3"$/);
+});
+
+test('compareFingerprints: dark or forced colors leaking in are caught', () => {
+  assert.match(pageState.compareFingerprints(FP, { ...FP, dark: true }), /dark was true, want false/);
+  assert.match(pageState.compareFingerprints(FP, { ...FP, forced: true }), /forced was true, want false/);
+});
+
+test('compareFingerprints: with two fields changed, the first in FINGERPRINT_FIELDS order is named', () => {
+  assert.equal(
+    pageState.compareFingerprints(FP, { ...FP, recordHash: 'ffffff', width: 320, url: '/about.html' }),
+    'start state differs from baseline: url was "/about.html", want "/index.html"');
+  assert.match(
+    pageState.compareFingerprints(FP, { ...FP, recordHash: 'ffffff', width: 320 }),
+    /^start state differs from baseline: width was 320, want 390$/);
+});
+
+test('compareFingerprints: a fingerprint missing any field is reported, never equal', () => {
+  assert.deepEqual(pageState.FINGERPRINT_FIELDS,
+    ['url', 'screen', 'width', 'height', 'rootPx', 'dark', 'forced', 'recordLength', 'recordHash']);
+  for (const field of pageState.FINGERPRINT_FIELDS) {
+    const { [field]: _gone, ...without } = FP;
+    const problem = pageState.compareFingerprints(FP, without);
+    assert.ok(problem && problem.includes(field),
+      `a fingerprint with no ${field} must be reported naming it, got ${JSON.stringify(problem)}`);
+    // and a baseline that lost the field is just as wrong: undefined === undefined must not pass
+    const both = pageState.compareFingerprints(without, { ...without });
+    assert.ok(both && both.includes(field),
+      `two fingerprints both missing ${field} must not compare equal, got ${JSON.stringify(both)}`);
+  }
+});
+
+/* ---------- the registry: the harness owns the reset ---------- */
+
+test('no registry row carries resetAfter: the next row\'s reset is what restores', () => {
+  assert.ok(ROWS.length >= 70, `expected the registry's rows, found ${ROWS.length}`);
+  assert.deepEqual(ROWS.filter(r => 'resetAfter' in r).map(r => r.name), []);
+});
+
 /* ---------- seam 2: the guard half ---------- */
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -95,7 +157,7 @@ function smokeFiles() {
  * migrates; none may raise a number that is still here (`AGENTS.md`'s rule
  * for allow maps) -- the last slice deletes the list entirely. */
 const ALLOW = {
-  'scripts/smoke.mjs': { navigate: 1, metrics: 1, fontsizes: 0, media: 0, fontsready: 1 },
+  'scripts/smoke.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
   'scripts/smoke/add-game-fit.mjs': { navigate: 0, metrics: 6, fontsizes: 6, media: 0, fontsready: 0 },
   'scripts/smoke/app-large-text.mjs': { navigate: 0, metrics: 2, fontsizes: 2, media: 0, fontsready: 0 },
   'scripts/smoke/bench-details.mjs': { navigate: 0, metrics: 0, fontsizes: 4, media: 0, fontsready: 0 },
@@ -103,7 +165,7 @@ const ALLOW = {
   'scripts/smoke/card-at-32.mjs': { navigate: 5, metrics: 0, fontsizes: 2, media: 0, fontsready: 1 },
   'scripts/smoke/card-font.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 2 },
   'scripts/smoke/clip-sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 2, media: 0, fontsready: 0 },
-  'scripts/smoke/first-run-flow.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 2, fontsready: 0 },
+  'scripts/smoke/first-run-flow.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 1, fontsready: 0 },
   'scripts/smoke/floating-controls.mjs': { navigate: 0, metrics: 2, fontsizes: 0, media: 3, fontsready: 0 },
   'scripts/smoke/flow-inset.mjs': { navigate: 0, metrics: 0, fontsizes: 2, media: 0, fontsready: 0 },
   'scripts/smoke/font-draws.mjs': { navigate: 0, metrics: 2, fontsizes: 2, media: 0, fontsready: 0 },
@@ -121,7 +183,7 @@ const ALLOW = {
   'scripts/smoke/static.mjs': { navigate: 2, metrics: 2, fontsizes: 2, media: 0, fontsready: 2 },
   'scripts/smoke/sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
   'scripts/smoke/team-screen.mjs': { navigate: 0, metrics: 3, fontsizes: 2, media: 0, fontsready: 0 },
-  'scripts/smoke/three-days.mjs': { navigate: 1, metrics: 2, fontsizes: 2, media: 0, fontsready: 1 },
+  'scripts/smoke/three-days.mjs': { navigate: 1, metrics: 1, fontsizes: 1, media: 0, fontsready: 1 },
   'scripts/smoke/timeline-card-sheet.mjs': { navigate: 0, metrics: 4, fontsizes: 4, media: 0, fontsready: 1 },
   'scripts/smoke/today-and-back.mjs': { navigate: 0, metrics: 2, fontsizes: 2, media: 0, fontsready: 1 },
   'scripts/smoke/touch.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
@@ -167,4 +229,40 @@ test('the guard above can fail: a planted raw call outside the allow-list is cau
   const want = ALLOW['scripts/smoke/touch.mjs']; // today: fontsizes 0
   assert.notEqual(counts.fontsizes, want.fontsizes,
     'planting a fontsizes call where the allow-list says 0 must change the measured count, or the guard above could never fail');
+});
+
+/* A check no longer puts RICH back itself: the harness's `reset` runs before
+ * the next rich row (#125 D1), so a restore on the way out -- `goRich(c,
+ * origin)` or `reloadWithRecord(c, origin, RICH...)` as the LAST statement of
+ * a pass or of a `finally`, with or without a trailing `.catch` -- is dead
+ * weight and a second owner of the reset. A `goRich` in the middle of a pass
+ * sets up that pass's own start state and is not matched: the call must be
+ * followed by nothing but comments and blank lines before the closing brace
+ * or the `return`. Rule 2a: the pattern is proved able to match each form
+ * first. */
+const RESTORE = new RegExp(
+  String.raw`(?:await\s+)?(?:goRich\(c, origin\)|reloadWithRecord\(c, origin, RICH\b[^\n]*?\))` +
+  String.raw`(?:\.catch\([^\n]*\))?;?[^\n]*\n(?:[ \t]*(?:\/\/[^\n]*)?\n)*[ \t]*(?:\}|return\b)`, 'g');
+
+test('no check module restores RICH itself', () => {
+  const forms = {
+    catch: `  await goRich(c, origin).catch(() => {});\n  return {`,
+    finallyTail: `  } finally {\n    await goRich(c, origin);\n  }\n`,
+    commentedTail: `  } finally {\n    // put it back\n    await goRich(c, origin);\n  }\n`,
+    reloadTail: `  } finally {\n    await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);\n  }\n`,
+    reloadPlain: `  reloadWithRecord(c, origin, RICH).catch(() => {});\n}\n`,
+    beforeReturn: `  await goRich(c, origin);\n\n  return {\n`,
+  };
+  for (const [name, text] of Object.entries(forms)) {
+    assert.equal(text.match(RESTORE)?.length, 1,
+      `the restore pattern must match the ${name} form, or a clean tree proves nothing`);
+  }
+  const startState = `    await goRich(c, origin);\n    await evalIn(c, step(X));\n  }\n`;
+  assert.equal(startState.match(RESTORE), null,
+    'a goRich that sets up the pass\'s own start state, with work after it, is not a restore');
+  const files = smokeFiles();
+  assert.ok(files.length >= 30, `expected at least 30 smoke files, found ${files.length}`);
+  const bad = files.filter(f => (readFileSync(f, 'utf8').match(RESTORE) || []).length > 0)
+    .map(f => relative(ROOT, f).split(sep).join('/'));
+  assert.deepEqual(bad, []);
 });

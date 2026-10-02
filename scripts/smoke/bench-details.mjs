@@ -251,7 +251,6 @@ export async function benchDetailsPass(c, origin) {
   } finally {
     await evalIn(c, step(CLOSE_BENCH)).catch(() => {});
     await setWidth(c, WIDTH);
-    await goRich(c, origin);
   }
 
   return {

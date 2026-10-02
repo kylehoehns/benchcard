@@ -72,7 +72,6 @@ export async function gmOpenPass(c, origin) {
     // The rows after this one measure at the phone width; leave it that way.
     await setWidth(c, WIDTH);
     await evalIn(c, step(TODAY_HOME));
-    await goRich(c, origin);
   }
 
   return {

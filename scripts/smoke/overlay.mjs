@@ -256,7 +256,7 @@ export const STATES = [
      `renderCards`, so the team has to exist by then), which overwrites
      `state.players`/`state.teamName`/`state.day.games[0]` -- and this pass
      shares one page load with `touch` and everything `smoke.mjs` runs after
-     it up to `teamscreen`'s own `goRich`, none of which reload in between.
+     it up to the next rich row's `reset`, none of which reload in between.
      So the fixture is snapshotted before it opens and put back whole in
      `close` -- `FR_SNAPSHOT`/`FR_RESTORE` (dom.mjs), the same pair `touch`
      uses for the same mutation -- the same rule `plan sheet, a rule` already

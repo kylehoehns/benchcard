@@ -1,6 +1,5 @@
 import { evalIn, TODAY_HOME, setWidth, WIDTH, HEIGHT, computedStyle } from './dom.mjs';
 import { tap, evalJSON } from './sheet-drive.mjs';
-import { goRich } from './fixtures.mjs';
 
 /* #151 item 8: a phone held sideways (844x390) puts a tall column behind a
  * short window -- `app.css`'s own two `@media (orientation: landscape) and
@@ -74,7 +73,6 @@ export async function landscapeA11yPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await setWidth(c, WIDTH, HEIGHT);
-    await goRich(c, origin);
   }
 
   return {

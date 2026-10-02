@@ -410,7 +410,6 @@ export async function seasonLookPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await setWidth(c, WIDTH);
-    await goRich(c, origin);
   }
 
   const five = await seasonFiveGamesPass(c, origin);
@@ -510,7 +509,6 @@ async function seasonFiveGamesPass(c, origin) {
   } finally {
     await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
     await setWidth(c, WIDTH);
-    await goRich(c, origin);
   }
   return {
     pass: problems.length === 0,
@@ -582,7 +580,6 @@ async function seasonLongNamePass(c, origin) {
   } finally {
     await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
     await setWidth(c, WIDTH);
-    await goRich(c, origin);
   }
   return {
     pass: problems.length === 0,
@@ -650,7 +647,6 @@ async function seasonFiledSqueezePass(c, origin) {
   } finally {
     await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
     await setWidth(c, WIDTH);
-    await goRich(c, origin);
   }
   return {
     pass: problems.length === 0,

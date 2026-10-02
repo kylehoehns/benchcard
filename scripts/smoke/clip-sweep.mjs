@@ -513,7 +513,6 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   } finally {
     await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
     await setWidth(c, WIDTH);
-    await goRich(c, origin);
   }
 
   return {

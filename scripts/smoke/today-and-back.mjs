@@ -1,5 +1,5 @@
 import { evalIn, quiet, SETTLE, step, WIDTH, HEIGHT, onScreen, wait } from './dom.mjs';
-import { RICH, withSecondTeam, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
+import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 /* `history.back()`, then wait for the popstate it raises and for the screen it
@@ -397,10 +397,6 @@ export async function todayAndBackPass(c, origin) {
         + `${hrefAfterSecondBack} instead of leaving for the previous document`);
     }
   }
-
-  // Leave the fixture the way every other 'rich' row expects to find it --
-  // see `GAMES_VIEW_READY`'s own comment (fixtures.mjs) for why this names it.
-  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   } catch (e) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
   }

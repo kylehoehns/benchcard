@@ -310,10 +310,6 @@ export async function finishGamePass(c, origin) {
     notes.push('item 5: the Finished dot paints --info in both light and dark');
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    // Same courtesy every other check that mutates RICH pays: leave the
-    // fixture the way the row after this one expects to find it.
-    await goRich(c, origin).catch(() => {});
   }
 
   return {

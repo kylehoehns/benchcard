@@ -4,7 +4,7 @@
 import '../../test/dom-stub.js';
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, wait } from './dom.mjs';
 import { TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './sizes.mjs';
-import { goRich, PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
+import { PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
 import { drag, dragHold, touchDragCancel, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
 
@@ -533,8 +533,7 @@ async function rosterRowsFitOk(c, ck, who, want) {
    coach who taps "Try a sample team" is looking at, `sampleRoster()`'s cast
    (fixtures.mjs `SAMPLE_TEAM`), never a second list of names here. Runs last
    and reloads its own record, because `emptyStateOk` above leaves RICH's
-   roster empty; `teamScreenPass`'s own `goRich` puts RICH back afterwards for
-   whatever runs next. */
+   roster empty; the next rich row's `reset` puts RICH back. */
 async function sampleRosterRowsOk(c, origin, ck) {
   await reloadWithRecord(c, origin, SAMPLE_TEAM);
   await toTeam(c);
@@ -854,9 +853,6 @@ export async function teamScreenPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }
-
-  // leave the fixture as `goRich` left it, for whatever runs next.
-  await goRich(c, origin).catch(() => {});
 
   return {
     pass: problems.length === 0,

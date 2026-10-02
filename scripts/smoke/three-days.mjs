@@ -1,5 +1,5 @@
-import { evalIn, SETTLE, WIDTH, HEIGHT, OVERFLOW_PROBE } from './dom.mjs';
-import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
+import { evalIn, SETTLE, HEIGHT, OVERFLOW_PROBE } from './dom.mjs';
+import { RICH, reloadWithRecord } from './fixtures.mjs';
 import { openAddGameFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { seasonDate } from '../../app/storage.js';
@@ -192,13 +192,6 @@ export async function threeDaysPass(c, origin) {
     await checkTitleAndGear(c, problems, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
   } catch (e) {
     problems.push(`threw: ${e.message.split('\n')[0]}`);
-  } finally {
-    // Never leave the emulated font size or viewport on for whatever check
-    // runs next (the same restore `app-large-text.mjs` pays).
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } }).catch(() => {});
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true }).catch(() => {});
-    await goRich(c, origin).catch(() => {}); // restore RICH for every check that runs after this one
   }
 
   return {

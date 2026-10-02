@@ -7,9 +7,9 @@
  * rather than folded into a behavior test.
  *
  * Three things are asserted, matching the three item numbers:
- *   1. `scripts/smoke.mjs` imports nothing from `./smoke/` except the five
- *      shared modules every check needs (chrome, dom, fixtures, registry,
- *      card-at-32) — no per-check module, no `RUN` map, no `safeCheck(...)`,
+ *   1. `scripts/smoke.mjs` imports nothing from `./smoke/` except the six
+ *      shared modules every check needs (chrome, dom, fixtures, page-state,
+ *      registry, card-at-32) — no per-check module, no `RUN` map, no `safeCheck(...)`,
  *      and no reshuffle filter that names a row by hand.
  *   2. No module under `scripts/smoke/` other than `registry.mjs` and
  *      `card-at-32.mjs` imports `registry.mjs`, and no check module calls
@@ -62,16 +62,16 @@ const fileSrc = new Map(SMOKE_FILES.map(f => [relative(SMOKE_DIR, f), readFileSy
 
 const smokeSrc = readFileSync(SMOKE_ENTRY, 'utf8');
 
-test('scripts/smoke.mjs imports only the five shared ./smoke/ modules, no per-check module', () => {
+test('scripts/smoke.mjs imports only the six shared ./smoke/ modules, no per-check module', () => {
   const imported = [...smokeSrc.matchAll(/from\s+'(\.\/smoke\/[^']+)'/g)].map(m => m[1]);
   assert.ok(imported.length > 0, 'found no ./smoke/ imports in scripts/smoke.mjs — the regex or the file moved');
   const allowed = new Set([
     './smoke/chrome.mjs', './smoke/dom.mjs', './smoke/fixtures.mjs',
-    './smoke/registry.mjs', './smoke/card-at-32.mjs',
+    './smoke/page-state.mjs', './smoke/registry.mjs', './smoke/card-at-32.mjs',
   ]);
   const extra = [...new Set(imported)].filter(p => !allowed.has(p));
   assert.deepEqual(extra, [],
-    `scripts/smoke.mjs imports from ./smoke/ paths outside the five allowed ones: ${extra.join(', ')} — ` +
+    `scripts/smoke.mjs imports from ./smoke/ paths outside the six allowed ones: ${extra.join(', ')} — ` +
     'a check module belongs in registry.mjs\'s own import list, not smoke.mjs\'s');
 });
 

@@ -145,8 +145,6 @@ export async function swapReplansRestPass(c, origin) {
     notes.push('F: with Set minutes the swap writes stint 0 only');
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await goRich(c, origin).catch(() => {});
   }
   return {
     pass: problems.length === 0,

@@ -1,5 +1,4 @@
 import { evalIn, step, TODAY_HOME, CSS_VAR_COLOR_PROBE, setWidth, WIDTH } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
 
 /* #141 (one control each), decision 1 and "What would settle it" item 2:
  * `#removeGame` and `#removeTeam` used to be `btn ghost danger sm`, a
@@ -153,7 +152,6 @@ export async function removeRowsPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await evalIn(c, step(TODAY_HOME));
-    await goRich(c, origin);
   }
 
   return {

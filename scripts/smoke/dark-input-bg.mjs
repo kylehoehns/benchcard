@@ -84,11 +84,6 @@ export async function darkInputBgPass(c, origin) {
     }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    // Restore RICH's own light theme and games view for the rows after this
-    // one -- the same courtesy `addgameflow` and `teamscreen` pay when their
-    // own pass leaves the fixture somewhere else.
-    await goRich(c, origin);
   }
 
   return {

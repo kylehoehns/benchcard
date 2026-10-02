@@ -11,7 +11,6 @@
  * `plan-sheet.mjs` and `rotation-undo.mjs` both restore what they seeded. */
 import { evalIn } from './dom.mjs';
 import { evalJSON, tap, setGame, readToastExpr } from './sheet-drive.mjs';
-import { goRich } from './fixtures.mjs';
 
 const SEED_UNITS = `
   const g = s.game();
@@ -94,7 +93,6 @@ export async function platoonUndoPass(c, origin) {
   } finally {
     await tap(c, `document.getElementById('sheetPlanClose')?.click()`).catch(() => {});
     await evalIn(c, setGame(CLEAR_UNITS)).catch(() => {});
-    await goRich(c, origin).catch(() => {});
   }
 
   return {

@@ -674,9 +674,6 @@ export async function focusAnnouncePass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await c.send('Accessibility.disable', {}).catch(() => {});
-    // setup:'rich' checks share one page: leave the fixture the way the row
-    // after this one expects to find it.
-    await goRich(c, origin).catch(() => {});
   }
 
   return {
