@@ -131,12 +131,17 @@ export async function resize(c, width, height = HEIGHT, { debounce = false } = {
    row fails before it starts, so no row can pass or fail on what the row
    before it left behind. Field order is the report order: the first field
    that differs is the one named. */
-const FINGERPRINT_FIELDS = ['url', 'screen', 'width', 'height', 'rootPx', 'dark', 'forced', 'recordLength', 'recordHash'];
+export const FINGERPRINT_FIELDS = ['url', 'screen', 'width', 'height', 'rootPx', 'dark', 'forced', 'recordLength', 'recordHash'];
 
 /* Pure: null when `now` matches `baseline`, else the message that fails the
    row, naming the first field that changed. */
 export function compareFingerprints(baseline, now) {
   for (const field of FINGERPRINT_FIELDS) {
+    // A field absent from both would read `undefined !== undefined` as equal:
+    // a rename in `readFingerprint` must fail, not turn a comparison off.
+    if (!(field in baseline) || !(field in now)) {
+      return `start state differs from baseline: ${field} is missing from the ${field in baseline ? 'current' : 'baseline'} fingerprint`;
+    }
     if (baseline[field] !== now[field]) {
       return `start state differs from baseline: ${field} was ${JSON.stringify(now[field])}, want ${JSON.stringify(baseline[field])}`;
     }

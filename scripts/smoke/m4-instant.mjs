@@ -1,5 +1,4 @@
 import { computedStyle } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
 import { evalJSON, openAddGameFlow, realTap, waitClosed } from './sheet-drive.mjs';
 
 /* #151 item 6 (M4): a coach marks players on/off, and flips a switch, many
@@ -64,8 +63,6 @@ export async function m4InstantPass(c, origin) {
     await waitClosed(c, '#addGameFlow');
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await goRich(c, origin);
   }
 
   return {

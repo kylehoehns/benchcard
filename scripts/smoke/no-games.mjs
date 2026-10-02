@@ -184,10 +184,6 @@ export async function noGamesPass(c, origin) {
   if (!switchedOk) problems.push('switching to the second team from an empty Today did not stay on Today');
   if (switchedGames !== 1) problems.push(`switching teams shows ${switchedGames} game(s) on the second team, want its own 1`);
 
-  // Leave the fixture the way every other 'rich' row expects to find it.
-  // RICH itself ships `view: 'games'`, the same gutter as above.
-  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
-
   } catch (e) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
   }

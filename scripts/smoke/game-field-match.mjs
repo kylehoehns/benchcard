@@ -60,7 +60,6 @@ export async function gameFieldMatchPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await evalIn(c, step(TODAY_HOME));
-    await goRich(c, origin);
   }
 
   return {

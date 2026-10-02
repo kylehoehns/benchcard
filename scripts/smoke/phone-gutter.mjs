@@ -16,7 +16,7 @@
  * browser actually painted. */
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, landWiped, navigateAndWaitForCard, toGameOne } from './dom.mjs';
 import { TOUCH_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
-import { RICH, partPlayed, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
+import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
 
 const TOL = 1;
 
@@ -216,11 +216,8 @@ export async function phoneGutterPass(c, origin) {
     const welcome = await measureWelcome(c, origin);
     bad.push(...welcome.bad); audited += welcome.audited;
   } finally {
-    // Leave the fixture exactly as `goRich` (setup) left it, for whatever
-    // runs next in a full run -- the same courtesy `darkInputBgPass` and
-    // `teamScreenPass` pay their own next row (`GAMES_VIEW_READY`, fixtures.mjs).
+    // The viewport is this pass's own; the next row's `reset` puts the page back.
     await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   }
 
   return {

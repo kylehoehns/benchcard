@@ -233,7 +233,6 @@ export async function settingsLookPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await setWidth(c, 390);
-    await goRich(c, origin);
   }
 
   return {

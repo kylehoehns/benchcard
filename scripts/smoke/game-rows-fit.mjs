@@ -1,5 +1,4 @@
 import { evalIn, SETTLE, HEIGHT, landWiped } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
 
 /* [data-id] excludes the boot skeleton's bare `.tl-row` markup, the same
    filter `tryLanding` already relies on for its own player count (see that
@@ -180,7 +179,6 @@ export async function gameRowsFitPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await c.send('Emulation.setEmulatedMedia', { features: [] });
-    await goRich(c, origin);
   }
   return {
     pass: problems.length === 0,

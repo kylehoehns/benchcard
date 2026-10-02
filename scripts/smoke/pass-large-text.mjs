@@ -19,7 +19,7 @@
  * `scrollWidth`/`clientWidth` (nothing truncated) and the status's own right
  * edge against the CARD's content edge, not the viewport's. */
 import { evalIn, WIDTH, HEIGHT } from './dom.mjs';
-import { FOUR, RICH, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
+import { FOUR, reloadWithRecord } from './fixtures.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { GAME_SUMMARIES } from './game-passes.mjs';
 import { WORD_RECTS_FN } from './row-stack.mjs';
@@ -214,15 +214,9 @@ export async function passLargeTextPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
-    // Same restore discipline `appLargeTextPass` closes with: never leave the
-    // emulated font size or viewport on. Same courtesy `gamePassesPass`/
-    // `passUnderwayPass` pay: leave the fixture as `goRich` left it (RICH)
-    // for whatever check runs next -- see `GAMES_VIEW_READY`'s own comment
-    // (fixtures.mjs) for why this names it.
-    // Fix pass, quality-1: no `.catch` -- see `gamePassesPass`'s own comment
-    // on the same change for why.
+    // Never leave the emulated font size or viewport on; the next row's
+    // `reset` puts the page itself back.
     await setRoot(c, 16, WIDTH, { safe: true });
-    await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   }
   return {
     pass: problems.length === 0,

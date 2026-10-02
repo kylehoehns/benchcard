@@ -50,8 +50,9 @@
  * `startsWith('plan rows')` filter did, with no room for a second match to
  * hide behind the prefix.
  *
- * Checks that restore RICH themselves keep doing so from inside their own
- * `run` — making the harness own that reset is #125, out of scope here.
+ * No check restores RICH on its way out: the harness calls `reset`
+ * (page-state.mjs) before every `rich` row, and it fails the row if the page
+ * it hands over differs from the first one.
  *
  * The eight `cold` rows' names (`overflow` through `fcp`) are hand-pinned
  * copies of the `add(...)` calls in `scripts/smoke-checks.js`, for the same

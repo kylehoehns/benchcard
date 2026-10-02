@@ -13,7 +13,6 @@
  * checked absent from every other screen. */
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, SETTLE } from './dom.mjs';
 import { TOUCH_WIDTHS } from './sizes.mjs';
-import { goRich } from './fixtures.mjs';
 import { capInstall, capRead, capReset, capRestore } from './capture.mjs';
 import { seasonFilename } from '../../app/backup.js';
 import { smokeToday } from './clock.mjs';
@@ -294,10 +293,6 @@ export async function seasonPass(c, origin) {
   if (undone.exportHidden) {
     problems.push('#seasonExport stayed hidden after Undo restored the last filed game — the button is only ever hidden, never shown, on a refresh that is not setView/applyView');
   }
-
-  // restore the untouched fixture for every check that runs after this one
-  await goRich(c, origin);
-  await evalIn(c, step(TODAY_HOME));
 
   return {
     pass: problems.length === 0,

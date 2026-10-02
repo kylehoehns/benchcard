@@ -162,7 +162,6 @@ export async function shareDoorPass(c, origin) {
     await pagesProblems(c, origin, ck);
   } finally {
     await evalIn(c, `document.getElementById('sheetCard')?.close()`).catch(() => {});
-    await goRich(c, origin);
   }
   return { pass: problems.length === 0, detail: problems.length ? problems.slice(0, 4).join(' | ') : 'ok' };
 }

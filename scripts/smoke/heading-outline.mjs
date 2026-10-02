@@ -1,6 +1,5 @@
 import { evalIn, TODAY_HOME } from './dom.mjs';
 import { tap, evalJSON } from './sheet-drive.mjs';
-import { goRich } from './fixtures.mjs';
 
 /* #151 item 4: the rendered heading outline -- what a screen reader's own
  * outline is built from, headings that are actually in the accessibility
@@ -102,8 +101,6 @@ export async function headingOutlinePass(c, origin) {
     await evalIn(c, TODAY_HOME);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await goRich(c, origin);
   }
 
   return {

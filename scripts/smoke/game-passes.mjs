@@ -15,7 +15,7 @@
  * same way `goRich` measures the rich fixture, just against `SEED`/`v3`
  * instead. */
 import { evalIn, step, WIDTH, HEIGHT, SETTLE, samplePixels, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
-import { FOUR, RICH, goSeed, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
+import { FOUR, goSeed, reloadWithRecord } from './fixtures.mjs';
 import { ceiling } from '../budgets.mjs';
 import { readFileSync } from 'node:fs';
 
@@ -342,15 +342,6 @@ export async function gamePassesPass(c, origin) {
     }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    // Same courtesy `todayAndBackPass`/`todayKeysAndUndoPass` pay: leave the
-    // fixture as `goRich` left it for whatever check runs next -- see
-    // `GAMES_VIEW_READY`'s own comment (fixtures.mjs) for why this names it.
-    // Fix pass, quality-1: no `.catch` -- RICH's default `ready` (`.today-game`)
-    // never painted here without it, so this always timed out and the catch
-    // just hid that; a real failure restoring the fixture should surface,
-    // not spend the full 3s boot-wait timeout and vanish.
-    await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
   }
   return {
     pass: problems.length === 0,

@@ -92,6 +92,30 @@ test('compareFingerprints: dark or forced colors leaking in are caught', () => {
   assert.match(pageState.compareFingerprints(FP, { ...FP, forced: true }), /forced was true, want false/);
 });
 
+test('compareFingerprints: with two fields changed, the first in FINGERPRINT_FIELDS order is named', () => {
+  assert.equal(
+    pageState.compareFingerprints(FP, { ...FP, recordHash: 'ffffff', width: 320, url: '/about.html' }),
+    'start state differs from baseline: url was "/about.html", want "/index.html"');
+  assert.match(
+    pageState.compareFingerprints(FP, { ...FP, recordHash: 'ffffff', width: 320 }),
+    /^start state differs from baseline: width was 320, want 390$/);
+});
+
+test('compareFingerprints: a fingerprint missing any field is reported, never equal', () => {
+  assert.deepEqual(pageState.FINGERPRINT_FIELDS,
+    ['url', 'screen', 'width', 'height', 'rootPx', 'dark', 'forced', 'recordLength', 'recordHash']);
+  for (const field of pageState.FINGERPRINT_FIELDS) {
+    const { [field]: _gone, ...without } = FP;
+    const problem = pageState.compareFingerprints(FP, without);
+    assert.ok(problem && problem.includes(field),
+      `a fingerprint with no ${field} must be reported naming it, got ${JSON.stringify(problem)}`);
+    // and a baseline that lost the field is just as wrong: undefined === undefined must not pass
+    const both = pageState.compareFingerprints(without, { ...without });
+    assert.ok(both && both.includes(field),
+      `two fingerprints both missing ${field} must not compare equal, got ${JSON.stringify(both)}`);
+  }
+});
+
 /* ---------- the registry: the harness owns the reset ---------- */
 
 test('no registry row carries resetAfter: the next row\'s reset is what restores', () => {
@@ -208,14 +232,34 @@ test('the guard above can fail: a planted raw call outside the allow-list is cau
 });
 
 /* A check no longer puts RICH back itself: the harness's `reset` runs before
- * the next rich row (#125 D1), so a trailing `goRich(...).catch(...)` or
- * `reloadWithRecord(..., RICH)` is dead weight and a second owner of the
- * reset. Rule 2a: the pattern is proved able to match first. */
-const RESTORE = /goRich\(c, origin\)\.catch|reloadWithRecord\(c, origin, RICH\)/g;
+ * the next rich row (#125 D1), so a restore on the way out -- `goRich(c,
+ * origin)` or `reloadWithRecord(c, origin, RICH...)` as the LAST statement of
+ * a pass or of a `finally`, with or without a trailing `.catch` -- is dead
+ * weight and a second owner of the reset. A `goRich` in the middle of a pass
+ * sets up that pass's own start state and is not matched: the call must be
+ * followed by nothing but comments and blank lines before the closing brace
+ * or the `return`. Rule 2a: the pattern is proved able to match each form
+ * first. */
+const RESTORE = new RegExp(
+  String.raw`(?:await\s+)?(?:goRich\(c, origin\)|reloadWithRecord\(c, origin, RICH\b[^\n]*?\))` +
+  String.raw`(?:\.catch\([^\n]*\))?;?[^\n]*\n(?:[ \t]*(?:\/\/[^\n]*)?\n)*[ \t]*(?:\}|return\b)`, 'g');
 
 test('no check module restores RICH itself', () => {
-  assert.equal(`await goRich(c, origin).catch(() => {});`.match(RESTORE)?.length, 1,
-    'the restore pattern must match what it is looking for, or a clean tree proves nothing');
+  const forms = {
+    catch: `  await goRich(c, origin).catch(() => {});\n  return {`,
+    finallyTail: `  } finally {\n    await goRich(c, origin);\n  }\n`,
+    commentedTail: `  } finally {\n    // put it back\n    await goRich(c, origin);\n  }\n`,
+    reloadTail: `  } finally {\n    await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);\n  }\n`,
+    reloadPlain: `  reloadWithRecord(c, origin, RICH).catch(() => {});\n}\n`,
+    beforeReturn: `  await goRich(c, origin);\n\n  return {\n`,
+  };
+  for (const [name, text] of Object.entries(forms)) {
+    assert.equal(text.match(RESTORE)?.length, 1,
+      `the restore pattern must match the ${name} form, or a clean tree proves nothing`);
+  }
+  const startState = `    await goRich(c, origin);\n    await evalIn(c, step(X));\n  }\n`;
+  assert.equal(startState.match(RESTORE), null,
+    'a goRich that sets up the pass\'s own start state, with work after it, is not a restore');
   const files = smokeFiles();
   assert.ok(files.length >= 30, `expected at least 30 smoke files, found ${files.length}`);
   const bad = files.filter(f => (readFileSync(f, 'utf8').match(RESTORE) || []).length > 0)

@@ -604,7 +604,6 @@ export async function benchLookPass(c, origin) {
     await setWidth(c, WIDTH);
     await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
     await evalIn(c, step(TODAY_HOME));
-    await goRich(c, origin);
   }
 
   return {

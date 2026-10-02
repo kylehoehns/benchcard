@@ -5,8 +5,8 @@ import { evalIn, step } from './dom.mjs';
    counts `request('screen')` calls and hands back sentinels whose `release()`
    flips `released` -- real `WakeLockSentinel`s do the same. Seven scenarios,
    each its own assertion so a failure names the numbers instead of "it broke
-   somewhere". Runs on the RICH fixture, after `fixturePass`, and reloads it
-   (`goRich`) on the way out so nothing downstream inherits the stub. */
+   somewhere". Runs on the RICH fixture; the stub lives on the document, so the
+   next row's `reset` reload is what keeps it from leaking downstream. */
 export async function wakeLockPass(c, origin, consoleErrors) {
   const problems = [];
   const nums = [];

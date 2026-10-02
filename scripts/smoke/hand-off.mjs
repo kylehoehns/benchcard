@@ -89,82 +89,78 @@ export async function handOffPass(c, origin) {
   const problems = [];
   const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
   let detail = '';
-  try {
-    await goRich(c, origin);
-    await evalIn(c, setGame(`const p = s.plans[0];
-      s.state.day.games[0].live = { at: 3, overrides: {} };`));
-    const sent = await sendFromHere(c);
-    if (!ck(sent.drawn, 'Hand off in the share sheet never drew a code')) return { pass: false, detail: problems.join(' | ') };
-    if (!ck(typeof sent.url === 'string' && sent.url.includes('#p=1'), `Share was given ${JSON.stringify(sent.url)}, want a #p=1 link`)) {
-      return { pass: false, detail: problems.join(' | ') };
-    }
-    ck(sent.url.length <= 1200, `the link is ${sent.url.length} characters, want at most 1,200`);
+  await goRich(c, origin);
+  await evalIn(c, setGame(`const p = s.plans[0];
+    s.state.day.games[0].live = { at: 3, overrides: {} };`));
+  const sent = await sendFromHere(c);
+  if (!ck(sent.drawn, 'Hand off in the share sheet never drew a code')) return { pass: false, detail: problems.join(' | ') };
+  if (!ck(typeof sent.url === 'string' && sent.url.includes('#p=1'), `Share was given ${JSON.stringify(sent.url)}, want a #p=1 link`)) {
+    return { pass: false, detail: problems.join(' | ') };
+  }
+  ck(sent.url.length <= 1200, `the link is ${sent.url.length} characters, want at most 1,200`);
 
-    // The code is the link: module for module, what the encoder makes of it.
-    const want = qrEncode(sent.url).data;
-    const drew = new Set(sent.grid.dark.map(([x, y]) => `${x},${y}`));
-    let wrong = 0;
-    want.forEach((row, y) => row.forEach((dark, x) => { if (dark !== drew.has(`${x},${y}`)) wrong++; }));
-    ck(sent.grid.n === want.length, `the code is ${sent.grid.n} modules wide, the link's own is ${want.length}`);
-    ck(wrong === 0, `${wrong} module(s) of the drawn code differ from the link's own code`);
-    // The door is a segment button in the share sheet: a full touch target.
-    ck(sent.door >= TOUCH_MIN, `the Hand off segment in the share sheet is ${sent.door}px tall, want at least ${TOUCH_FLOOR}px`);
-    const names = await evalIn(c, `[...document.querySelectorAll('#handoffNames li')].length`);
-    ck(names === 11, `the sheet lists ${names} names, want the roster's 11`);
-    const before = JSON.parse(await evalIn(c, FINGERPRINT));
-    detail = `${sent.grid.n}×${sent.grid.n} code, ${sent.url.length}-character link`;
+  // The code is the link: module for module, what the encoder makes of it.
+  const want = qrEncode(sent.url).data;
+  const drew = new Set(sent.grid.dark.map(([x, y]) => `${x},${y}`));
+  let wrong = 0;
+  want.forEach((row, y) => row.forEach((dark, x) => { if (dark !== drew.has(`${x},${y}`)) wrong++; }));
+  ck(sent.grid.n === want.length, `the code is ${sent.grid.n} modules wide, the link's own is ${want.length}`);
+  ck(wrong === 0, `${wrong} module(s) of the drawn code differ from the link's own code`);
+  // The door is a segment button in the share sheet: a full touch target.
+  ck(sent.door >= TOUCH_MIN, `the Hand off segment in the share sheet is ${sent.door}px tall, want at least ${TOUCH_FLOOR}px`);
+  const names = await evalIn(c, `[...document.querySelectorAll('#handoffNames li')].length`);
+  ck(names === 11, `the sheet lists ${names} names, want the roster's 11`);
+  const before = JSON.parse(await evalIn(c, FINGERPRINT));
+  detail = `${sent.grid.n}×${sent.grid.n} code, ${sent.url.length}-character link`;
 
-    // A fresh phone opens the link.
-    const hash = hashOf(sent.url);
-    // Every frame from document start is recorded: welcome must never paint (#255).
-    await landOnLink(c, origin, hash, { scripts: [`window.__welcome = false;
-      const seen = () => { const h = document.documentElement, w = document.getElementById('view-welcome');
-        if (h.dataset.boot === 'welcome' || h.dataset.view === 'welcome' || (w && !w.hidden)) window.__welcome = true;
-        requestAnimationFrame(seen); };
-      requestAnimationFrame(seen)`] });
-    ck(!(await evalIn(c, 'window.__welcome')), 'the fresh phone painted the welcome screen before the game');
-    const after = JSON.parse(await evalIn(c, FINGERPRINT));
-    ck(JSON.stringify(after) === JSON.stringify(before),
-      `the fresh phone's game differs from the sender's: ${JSON.stringify(after)} vs ${JSON.stringify(before)}`);
-    ck(await onScreen(c, 'view-games'), 'the fresh phone did not land on the game screen');
-    const url1 = await evalIn(c, 'location.href');
-    ck(!url1.includes('#p='), `the address bar still carries the link: ${url1}`);
-    const toasts = JSON.parse(await evalIn(c, toastsExpr));
-    ck(toasts.length === 1 && /game added\. Open bench mode to run subs\.$/.test(toasts[0]),
-      `toasts after opening: ${JSON.stringify(toasts)}`);
+  // A fresh phone opens the link.
+  const hash = hashOf(sent.url);
+  // Every frame from document start is recorded: welcome must never paint (#255).
+  await landOnLink(c, origin, hash, { scripts: [`window.__welcome = false;
+    const seen = () => { const h = document.documentElement, w = document.getElementById('view-welcome');
+      if (h.dataset.boot === 'welcome' || h.dataset.view === 'welcome' || (w && !w.hidden)) window.__welcome = true;
+      requestAnimationFrame(seen); };
+    requestAnimationFrame(seen)`] });
+  ck(!(await evalIn(c, 'window.__welcome')), 'the fresh phone painted the welcome screen before the game');
+  const after = JSON.parse(await evalIn(c, FINGERPRINT));
+  ck(JSON.stringify(after) === JSON.stringify(before),
+    `the fresh phone's game differs from the sender's: ${JSON.stringify(after)} vs ${JSON.stringify(before)}`);
+  ck(await onScreen(c, 'view-games'), 'the fresh phone did not land on the game screen');
+  const url1 = await evalIn(c, 'location.href');
+  ck(!url1.includes('#p='), `the address bar still carries the link: ${url1}`);
+  const toasts = JSON.parse(await evalIn(c, toastsExpr));
+  ck(toasts.length === 1 && /game added\. Open bench mode to run subs\.$/.test(toasts[0]),
+    `toasts after opening: ${JSON.stringify(toasts)}`);
 
-    // A reload does not import it again.
-    await land(c, origin, { record: 'kept' });
-    const reloaded = JSON.parse(await evalIn(c, FINGERPRINT));
-    ck(JSON.stringify(reloaded) === JSON.stringify(before), 'the reload changed the game');
-    const teams = await evalIn(c, `JSON.parse(localStorage.getItem('benchcard.v7')).teams.length`);
-    ck(teams === 1, `after a reload the phone holds ${teams} teams, want 1`);
-    const days = await evalIn(c, `JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].days.flatMap(d => d.games).length`);
-    ck(days === 1, `after a reload the phone holds ${days} games, want 1`);
+  // A reload does not import it again.
+  await land(c, origin, { record: 'kept' });
+  const reloaded = JSON.parse(await evalIn(c, FINGERPRINT));
+  ck(JSON.stringify(reloaded) === JSON.stringify(before), 'the reload changed the game');
+  const teams = await evalIn(c, `JSON.parse(localStorage.getItem('benchcard.v7')).teams.length`);
+  ck(teams === 1, `after a reload the phone holds ${teams} teams, want 1`);
+  const days = await evalIn(c, `JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].days.flatMap(d => d.games).length`);
+  ck(days === 1, `after a reload the phone holds ${days} games, want 1`);
 
-    // Landing: "Start game"/"Resume" is on screen, whole, at both sizes.
-    for (const [label, w] of [[`${WIDTH}px`, { width: WIDTH, textPx: 16 }], [`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX }]]) {
-      await landOnLink(c, origin, hash, w);
-      const r = await evalJSON(c, `(() => {
-        const b = document.getElementById('abBench'), bar = document.getElementById('actionbar');
-        const rc = b?.getBoundingClientRect();
-        const top = rc && document.elementFromPoint(rc.left + rc.width / 2, rc.top + rc.height / 2);
-        const lab = b?.querySelector('.ab-lab');
-        return JSON.stringify({ shown: !!b && !bar.hidden && rc.width > 0, onTop: !!top && b.contains(top),
-          inside: !!rc && rc.left >= 0 && rc.right <= document.documentElement.clientWidth && rc.bottom <= innerHeight + 1,
-          text: lab?.textContent ?? '', clipped: !!lab && lab.scrollWidth > lab.clientWidth + 1,
-          dialog: !!document.querySelector('dialog[open]'), view: !document.getElementById('view-games').hidden });
-      })()`);
-      const over = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-      ck(r.view && r.shown, `${label}: the game screen's bench button is not on screen`);
-      ck(r.onTop, `${label}: something covers the bench button`);
-      ck(r.inside, `${label}: the bench button is outside the screen`);
-      ck(!r.clipped, `${label}: the bench button's text is cut off`);
-      ck(!r.dialog, `${label}: a dialog is open over the game screen`);
-      ck(!over.pans && !over.worst, `${label}: the page overflows (${JSON.stringify(over.worst)})`);
-    }
-  } finally {
-    await goRich(c, origin);
+  // Landing: "Start game"/"Resume" is on screen, whole, at both sizes.
+  for (const [label, w] of [[`${WIDTH}px`, { width: WIDTH, textPx: 16 }], [`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX }]]) {
+    await landOnLink(c, origin, hash, w);
+    const r = await evalJSON(c, `(() => {
+      const b = document.getElementById('abBench'), bar = document.getElementById('actionbar');
+      const rc = b?.getBoundingClientRect();
+      const top = rc && document.elementFromPoint(rc.left + rc.width / 2, rc.top + rc.height / 2);
+      const lab = b?.querySelector('.ab-lab');
+      return JSON.stringify({ shown: !!b && !bar.hidden && rc.width > 0, onTop: !!top && b.contains(top),
+        inside: !!rc && rc.left >= 0 && rc.right <= document.documentElement.clientWidth && rc.bottom <= innerHeight + 1,
+        text: lab?.textContent ?? '', clipped: !!lab && lab.scrollWidth > lab.clientWidth + 1,
+        dialog: !!document.querySelector('dialog[open]'), view: !document.getElementById('view-games').hidden });
+    })()`);
+    const over = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+    ck(r.view && r.shown, `${label}: the game screen's bench button is not on screen`);
+    ck(r.onTop, `${label}: something covers the bench button`);
+    ck(r.inside, `${label}: the bench button is outside the screen`);
+    ck(!r.clipped, `${label}: the bench button's text is cut off`);
+    ck(!r.dialog, `${label}: a dialog is open over the game screen`);
+    ck(!over.pans && !over.worst, `${label}: the page overflows (${JSON.stringify(over.worst)})`);
   }
   return { pass: problems.length === 0, detail: problems.length ? problems.slice(0, 4).join(' | ') : detail + `, a fresh phone opens the same game, the hash clears, a reload does not import again, landing whole at ${WIDTH}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px` };
 }
@@ -172,39 +168,35 @@ export async function handOffPass(c, origin) {
 export async function damagedLinkPass(c, origin) {
   const problems = [];
   const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
-  try {
-    await goRich(c, origin);
-    const sent = await sendFromHere(c);
-    if (!ck(sent.drawn && sent.url, 'no link to damage')) return { pass: false, detail: problems.join(' | ') };
-    const hash = hashOf(sent.url);
-    // A boot with no team makes a placeholder with a random id and seed; mask
-    // the random parts so two boots of the same empty profile compare equal.
-    const snap = `JSON.stringify(Object.keys(localStorage).sort().map(k => [k,
-      localStorage.getItem(k).replace(/"(id|seed)":("[^"]*"|\\d+)/g, '"$1":0')]))`;
+  await goRich(c, origin);
+  const sent = await sendFromHere(c);
+  if (!ck(sent.drawn && sent.url, 'no link to damage')) return { pass: false, detail: problems.join(' | ') };
+  const hash = hashOf(sent.url);
+  // A boot with no team makes a placeholder with a random id and seed; mask
+  // the random parts so two boots of the same empty profile compare equal.
+  const snap = `JSON.stringify(Object.keys(localStorage).sort().map(k => [k,
+    localStorage.getItem(k).replace(/"(id|seed)":("[^"]*"|\\d+)/g, '"$1":0')]))`;
 
-    // The control: a fresh phone with no link at all.
-    await landOnLink(c, origin, '', { ready: `document.body` });
+  // The control: a fresh phone with no link at all.
+  await landOnLink(c, origin, '', { ready: `document.body` });
+  await settle(c);
+  const control = await evalIn(c, snap);
+
+  const mid = Math.floor(hash.length / 2);
+  const damages = {
+    truncated: hash.slice(0, hash.length - 40),
+    corrupted: hash.slice(0, mid) + 'AAAA' + hash.slice(mid + 4),
+    'not a link': '#p=1!!!',
+    'unknown version': '#p=9' + hash.slice(4),
+  };
+  for (const [how, bad] of Object.entries(damages)) {
+    await landOnLink(c, origin, bad, { ready: `document.body` });
     await settle(c);
-    const control = await evalIn(c, snap);
-
-    const mid = Math.floor(hash.length / 2);
-    const damages = {
-      truncated: hash.slice(0, hash.length - 40),
-      corrupted: hash.slice(0, mid) + 'AAAA' + hash.slice(mid + 4),
-      'not a link': '#p=1!!!',
-      'unknown version': '#p=9' + hash.slice(4),
-    };
-    for (const [how, bad] of Object.entries(damages)) {
-      await landOnLink(c, origin, bad, { ready: `document.body` });
-      await settle(c);
-      const toasts = JSON.parse(await evalIn(c, toastsExpr));
-      ck(toasts.length === 1 && toasts[0] === DAMAGED, `${how}: toasts are ${JSON.stringify(toasts)}`);
-      const stored = await evalIn(c, snap);
-      ck(stored === control, `${how}: storage differs from a phone opened with no link (${stored.slice(0, 120)} vs ${control.slice(0, 120)})`);
-      ck(!(await evalIn(c, 'location.href')).includes('#p='), `${how}: the link is still in the address bar`);
-    }
-  } finally {
-    await goRich(c, origin);
+    const toasts = JSON.parse(await evalIn(c, toastsExpr));
+    ck(toasts.length === 1 && toasts[0] === DAMAGED, `${how}: toasts are ${JSON.stringify(toasts)}`);
+    const stored = await evalIn(c, snap);
+    ck(stored === control, `${how}: storage differs from a phone opened with no link (${stored.slice(0, 120)} vs ${control.slice(0, 120)})`);
+    ck(!(await evalIn(c, 'location.href')).includes('#p='), `${how}: the link is still in the address bar`);
   }
   return { pass: problems.length === 0, detail: problems.length ? problems.slice(0, 4).join(' | ') : 'truncated, corrupted, nonsense and unknown-version links: one toast each, storage as if no link' };
 }
@@ -261,7 +253,6 @@ export async function handOffLoadPass(c, origin) {
     }
   } finally {
     listening = false;
-    await goRich(c, origin);
   }
   return { pass: problems.length === 0, detail: problems.length ? problems.slice(0, 4).join(' | ') : detail };
 }

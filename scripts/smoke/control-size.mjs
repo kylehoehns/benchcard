@@ -325,8 +325,6 @@ export async function controlSizePass(c, origin) {
     }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await goRich(c, origin);
   }
 
   return {

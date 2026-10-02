@@ -202,10 +202,6 @@ export async function todayKeysAndUndoPass(c, origin) {
   }
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
-  // Same courtesy `todayAndBackPass` pays: leave RICH (one team, `view:
-  // 'games'`) the way every other 'rich' check expects to find it.
-  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
-
   } catch (e) {
     problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
   }
