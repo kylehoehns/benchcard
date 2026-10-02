@@ -120,6 +120,7 @@ not counted: only the `.js` files `app/` serves are.
 | `no overflow, 300–420px plus 600/840/1280px` | `scripts/smoke/sweep.mjs` | RICH |
 | `app shell at 320px/32px text` | `scripts/smoke/app-large-text.mjs` | RICH |
 | `no cut-off text at 320px/32px text` | `scripts/smoke/clip-sweep.mjs` | RICH |
+| `no cut-off text on the about page` | `scripts/smoke/clip-sweep.mjs` | RICH |
 | `type scale: 8 sizes, 4 weights` | `scripts/smoke/type-scale.mjs` | RICH |
 | `static pages: 2 guides + 6 charts` | `scripts/smoke/static.mjs` | RICH |
 | `initial payload ≤ budget` | `scripts/budgets.mjs` | whole run |

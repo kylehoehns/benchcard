@@ -63,7 +63,7 @@
  * is the guard, not the comment. */
 import {
   NARROW, SWEEP_FLOOR, SWEEP_HI, SHEET_MIN, WIDE_MIN, RAIL, LAPTOP, SWEEP_EXTRA,
-  TOUCH_WIDTHS, TOUCH_CHECK, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, CLIP_SWEEP_CHECK,
+  TOUCH_WIDTHS, TOUCH_CHECK, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, CLIP_SWEEP_CHECK, ABOUT_CLIP_CHECK,
 } from './sizes.mjs';
 
 import { cardFontPass } from './card-font.mjs';
@@ -124,7 +124,7 @@ import { wideLayoutPass } from './wide-layout.mjs';
 import { narrowPass } from './narrow.mjs';
 import { sweepPass } from './sweep.mjs';
 import { appLargeTextPass } from './app-large-text.mjs';
-import { clipSweepPass } from './clip-sweep.mjs';
+import { clipSweepPass, aboutClipSweepPass } from './clip-sweep.mjs';
 import { typeScalePass } from './type-scale.mjs';
 import { staticPass } from './static.mjs';
 import { darkInputBgPass } from './dark-input-bg.mjs';
@@ -546,6 +546,8 @@ export const ROWS = Object.freeze([
     run: ctx => appLargeTextPass(ctx.c, ctx.origin) },
   { id: 'clipsweep', name: CLIP_SWEEP_CHECK, selectable: true, setup: 'rich',
     run: ctx => clipSweepPass(ctx.c, ctx.origin) },
+  { id: 'aboutclipsweep', name: ABOUT_CLIP_CHECK, selectable: true, setup: 'rich',
+    run: ctx => aboutClipSweepPass(ctx.c, ctx.origin) },
   { id: 'typescale', name: 'type scale: 8 sizes, 4 weights', selectable: true, setup: 'rich',
     run: ctx => typeScalePass(ctx.c, ctx.origin) },
   { id: 'static', name: 'static pages: 2 guides + 6 charts', selectable: true, setup: 'rich',

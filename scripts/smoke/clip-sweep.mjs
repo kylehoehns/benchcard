@@ -430,6 +430,18 @@ export const findingsOf = (res, where, pos) => [
   ...res.floor.map(f => ({ kind: 'floor', where, pos, ...f })),
 ];
 
+/* One problem line for a raw finding `knownIssueFor` did not excuse. */
+const describeFinding = p => {
+  switch (p.kind) {
+    case 'clip': return `${p.where}@${p.pos}: "${p.text}" is ${p.scrollWidth}px wide in a ${p.clientWidth}px box (${p.el})`;
+    case 'split': return `${p.where}@${p.pos}: "${p.word}" splits across lines mid-word (${p.el})`;
+    case 'hidden': return `${p.where}@${p.pos}: ${p.el} is hidden under ${p.hitBy}`;
+    case 'overlap': return `${p.where}@${p.pos}: "${p.text}" (${p.el}) spills past its own box onto ${p.hitBy}'s text`;
+    case 'floor': return `${p.where}@${p.pos}: "${p.text}" paints ${p.over}px past its own ${p.box}px box (${p.el})`;
+    default: return `${p.where}@${p.pos}: unknown finding ${p.kind}`;
+  }
+};
+
 /* The states the sweep walks, in order. Shared with scripts/look.mjs. */
 export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE];
 
@@ -529,11 +541,7 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   for (const p of found) {
     const issue = knownIssueFor(p);
     if (issue !== null) { matchedIssues.add(issue); continue; }
-    if (p.kind === 'clip') problems.push(`${p.where}@${p.pos}: "${p.text}" is ${p.scrollWidth}px wide in a ${p.clientWidth}px box (${p.el})`);
-    else if (p.kind === 'split') problems.push(`${p.where}@${p.pos}: "${p.word}" splits across lines mid-word (${p.el})`);
-    else if (p.kind === 'hidden') problems.push(`${p.where}@${p.pos}: ${p.el} is hidden under ${p.hitBy}`);
-    else if (p.kind === 'overlap') problems.push(`${p.where}@${p.pos}: "${p.text}" (${p.el}) spills past its own box onto ${p.hitBy}'s text`);
-    else if (p.kind === 'floor') problems.push(`${p.where}@${p.pos}: "${p.text}" paints ${p.over}px past its own ${p.box}px box (${p.el})`);
+    problems.push(describeFinding(p));
   }
   reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
 
@@ -544,5 +552,67 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
       : scanned === 0
         ? 'measured no elements across any state'
         : `${states.length} states, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`,
+  };
+}
+
+/* #283: the same four tests, on `/about.html`, which the app sweep above
+ * never loads. Two cells, each at the top and scrolled to the bottom:
+ * `LARGE_TEXT` (320px/32px) and `land`'s own baseline (390px/16px, no `want`
+ * field set). The probe, `findingsOf`, `knownIssueFor` and `SCROLL_TO_BOTTOM`
+ * are the ones the app sweep uses; the page is landed with `page:
+ * '/about.html'` the way `hand-off.mjs` and `share-door.mjs` do.
+ *
+ * About fades each `.reveal` section in on scroll, at opacity 0 until then,
+ * and the probe skips an element that is not visible: an unrevealed section
+ * would be scanned as nothing and read clean. Reduced motion is the page's own
+ * way to show every section finished (`look.mjs` lands its about shots the
+ * same way), and the pass checks it took rather than trusting it. */
+export const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
+/* `about` fades each `.reveal` in on scroll; reduced motion forces opacity 1.
+ * Shared with scripts/look.mjs. */
+export const REVEAL_STATE = `JSON.stringify({
+  n: document.querySelectorAll('.reveal').length,
+  faded: [...document.querySelectorAll('.reveal')].filter(e => getComputedStyle(e).opacity !== '1').length,
+})`;
+export const ABOUT_READY = `document.querySelector('.reveal')`;
+
+export const ABOUT_CELLS = [
+  { label: 'about 320px/32px', want: LARGE_TEXT },
+  { label: 'about 390px/16px', want: {} },
+];
+
+export async function aboutClipSweepPass(c, origin) {
+  const problems = [];
+  const found = [];
+  let scanned = 0;
+  for (const { label, want } of ABOUT_CELLS) {
+    try {
+      await land(c, origin, { page: '/about.html', record: 'kept', media: REDUCED_MOTION,
+        ready: ABOUT_READY, ...want });
+      const rev = JSON.parse(await evalIn(c, REVEAL_STATE));
+      if (!rev.n || rev.faded) throw new Error(`${rev.faded} of ${rev.n} .reveal sections are not visible, so they would be skipped`);
+      const onAbout = JSON.parse(await evalIn(c, `JSON.stringify(location.pathname)`));
+      if (!/\/about(\.html)?$/.test(onAbout)) throw new Error(`landed on ${onAbout}, not the about page`);
+      for (const pos of ['top', 'bottom']) {
+        if (pos === 'bottom') await evalIn(c, SCROLL_TO_BOTTOM);
+        const res = JSON.parse(await evalIn(c, CLIP_PROBE));
+        scanned += res.scanned;
+        found.push(...findingsOf(res, label, pos));
+      }
+    } catch (e) {
+      problems.push(`${label}: ${e.message.split('\n')[0]}`);
+    }
+  }
+  for (const p of found) {
+    if (knownIssueFor(p) !== null) continue;
+    problems.push(describeFinding(p));
+  }
+  return {
+    pass: problems.length === 0 && scanned > 0,
+    detail: problems.length
+      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
+      : scanned === 0
+        ? 'measured no elements on the about page'
+        : `${ABOUT_CELLS.length} cells, ${scanned} elements scanned (top+bottom), nothing clipped, split or hidden`,
   };
 }
