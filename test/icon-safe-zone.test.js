@@ -63,3 +63,22 @@ test('icon-512: the card and its shadow stay inside the safe circle', () => {
   assert.equal(hues.size, 3, `only ${hues.size} of the 3 player hues are drawn inside the circle`);
   assert.equal(bad, 0, `${bad} pixels outside the safe circle are not #D2500A, first at ${JSON.stringify(worst)}`);
 });
+
+/* The iPhone home-screen icon is the exception (#286): iOS crops to a rounded
+   square, never a circle, so the safe zone does not apply. It is drawn at 512
+   (iOS shrinks it, never stretches), with a bigger card and no drop shadow. */
+test('apple-touch-icon: 512px, a bigger card than the install icons, no shadow', () => {
+  const { w, h, bpp, px } = decode(readFileSync(new URL('../app/apple-touch-icon.png', import.meta.url)));
+  assert.equal(w, 512); assert.equal(h, 512);
+  const paper = hex('#F4F4F6');
+  let top = h, bottom = -1, shadow = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const p = [...px.subarray((y * w + x) * bpp, (y * w + x) * bpp + 3)];
+    if (near(p, paper, 6)) { top = Math.min(top, y); bottom = Math.max(bottom, y); }
+    if (p[0] < 190 && p[1] < 70 && p[2] < 20) shadow++;   // darkened ground
+  }
+  assert.ok(bottom > top, 'no card-paper pixels found');
+  const extent = (bottom - top + 1) / h;
+  assert.ok(extent >= 0.74, `card is ${(extent * 100).toFixed(1)}% of the height, want at least 74% (scale 0.88)`);
+  assert.equal(shadow, 0, `${shadow} pixels are a darkened ground, so the shadow is still drawn`);
+});

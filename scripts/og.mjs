@@ -95,10 +95,16 @@ const WEL_OUT_2X = WEL_OUT ? WEL_OUT.replace(/(\.png)?$/i, '') + '@2x.png' : nul
    generator's whole output, same current sizes and same on-disk paths, so
    the next color change is one command instead of a hand edit. */
 const ICONS = args.includes('--icons');
+/* The iPhone home-screen icon differs (#286): iOS crops to a rounded square,
+   never a circle, so the maskable safe zone does not apply and the card can be
+   bigger with no shadow (the shadow reads as a gray halo). iOS draws
+   home-screen icons about 224 device px wide, so a 180 px file is stretched;
+   512 is shrunk instead. */
+const APPLE_TOUCH = { shadow: false, scale: 0.88 };
 const ICON_TARGETS = [
   { size: 192, out: join(APP, 'icon-192.png') },
   { size: 512, out: join(APP, 'icon-512.png') },
-  { size: 180, out: join(APP, 'apple-touch-icon.png') },
+  { size: 512, out: join(APP, 'apple-touch-icon.png'), mark: APPLE_TOUCH },
   { size: 48, out: null },   // wrapped into favicon.ico, not written on its own
 ];
 const FAVICON_OUT = join(APP, 'favicon.ico');
@@ -456,7 +462,7 @@ const composition = (shot, tint) => {
    card and its shadow sit inside the circle of radius 0.4 x size
    (test/icon-safe-zone.test.js reads icon-512.png back and checks it). */
 const ICON_FIT = 0.75; // largest two-decimal value that passes (0.76 fails), for the #284 card
-const iconSvg = size => markSvg(size, { shadow: true, scale: ICON_FIT });
+const iconSvg = (size, opts = { shadow: true, scale: ICON_FIT }) => markSvg(size, opts);
 
 /* The welcome screen's roster size, read from the module that owns it. A
    literal here would be a second answer to a question `onboarding.js` already
@@ -676,10 +682,10 @@ try {
     await c.send('Page.navigate', { url: origin + '/about' });
     await new Promise(r => setTimeout(r, 300));
     let png48 = null;
-    for (const { size, out } of ICON_TARGETS) {
+    for (const { size, out, mark } of ICON_TARGETS) {
       await c.send('Emulation.setDeviceMetricsOverride',
         { width: size, height: size, deviceScaleFactor: 1, mobile: false });
-      await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body style="margin:0">${iconSvg(size)}</body>`)}; 1`);
+      await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body style="margin:0">${iconSvg(size, mark)}</body>`)}; 1`);
       await evalJS('document.fonts.ready.then(() => 1)');
       await new Promise(r => setTimeout(r, 200));
       const data = (await c.send('Page.captureScreenshot', { format: 'png' })).data;
@@ -690,7 +696,12 @@ try {
       if (size === 48) { png48 = buf; continue; }
       const target = out;
       let before = 0;
-      try { before = (await stat(target)).size; } catch { /* first draw */ }
+      try {
+        before = (await stat(target)).size;
+        // a file redrawn at a new size (#286) is compared per pixel, not per file
+        const old = pngSize(await readFile(target));
+        before *= (size * size) / (old.w * old.h) > 1 ? (size * size) / (old.w * old.h) : 1;
+      } catch { /* first draw */ }
       if (before && buf.length > before * 1.5)
         throw new Error(`${target} grew from ${before} to ${buf.length} bytes, more than +50%`);
       await writeFile(target, buf);
