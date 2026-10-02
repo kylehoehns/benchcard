@@ -68,7 +68,7 @@ not counted: only the `.js` files `app/` serves are.
 | `welcome, about and advanced carry the Hardwood orange` | `scripts/smoke/hardwood-pages.mjs` | RICH |
 | `bench mode wake lock` | `scripts/smoke/wake-lock.mjs` | RICH |
 | `a11y in overlays and dialogs` | `scripts/smoke/overlay.mjs` | RICH |
-| `tour: six steps at 390px, 1280px and 320px/32px text` | `scripts/smoke/tour-steps.mjs` | RICH |
+| `tour: seven steps at 390px, 1280px and 320px/32px text` | `scripts/smoke/tour-steps.mjs` | RICH |
 | `touch targets ≥ 48px, 320–390px` | `scripts/smoke/touch.mjs` | RICH |
 | `settings rows ≥ 48px, 320–390px` | `scripts/smoke/settings-rows.mjs` | RICH |
 | `settings look: no border, 32px insets, sentence case, one footnote per group` | `scripts/smoke/settings-look.mjs` | RICH |

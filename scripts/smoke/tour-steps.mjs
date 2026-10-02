@@ -1,6 +1,6 @@
-/* #201's own guard (docs/specs/201-tour-refresh.md's Proof table): the six
+/* #201's own guard (docs/specs/201-tour-refresh.md's Proof table): the seven
  * tour steps' copy, counting, ring placement and end-of-tour behavior at
- * 390x844 (item 4), then desktop, step 6 only (item 5), then the fit every
+ * 390x844 (item 4), then desktop, steps 6 and 7 (item 5; step 6's anchor swaps to #gmOpen there), then the fit every
  * step has to hold at 320px/32px text (item 6) -- the one cell nothing else
  * in the harness checks on the tour's own BOTTOM edge. `applargetext`'s
  * `OVERFLOW_PROBE` is horizontal only and its `STRANDED_ABOVE` looks only
@@ -11,7 +11,7 @@
  *
  * Reuses rather than re-derives: `evalIn`, `step`, `setWidth`, `WIDTH`,
  * `HEIGHT` (dom.mjs); `LARGE_TEXT_PX`, `LARGE_TEXT_WIDTH`, `LAPTOP`,
- * `TOUCH_MIN` (sizes.mjs); and the six `tour, step k of 6` open/close
+ * `TOUCH_MIN` (sizes.mjs); and the seven `tour, step k of 7` open/close
  * scripts `overlay.mjs`'s `STATES` already builds once, by name, rather than
  * a second copy of the click sequence that opens the tour through Settings ->
  * How it works -> Show me around again.
@@ -31,10 +31,11 @@ import { STATES } from './overlay.mjs';
 import { land, reset } from './page-state.mjs';
 
 export const TOUR_STEPS_CHECK =
-  `tour: six steps at ${WIDTH}px, ${LAPTOP}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+  `tour: seven steps at ${WIDTH}px, ${LAPTOP}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
 
-/* The spec's own table (item 1). `test/tour-anchors.test.js` pins the same
- * six against `app/tour.js`'s SOURCE; this file never reads that source, only
+/* The spec's own table (item 1; #275 split step 6 in two).
+ * `test/tour-anchors.test.js` pins the same
+ * seven against `app/tour.js`'s SOURCE; this file never reads that source, only
  * the rendered page, so a step that is right in the array but wrong on
  * screen (a typo in the markup id, a step that never receives focus) fails
  * here even though the source-read guard is clean. */
@@ -44,12 +45,15 @@ const EXPECTED = [
   { title: 'Rules and lineups', anchor: '#phraseRules' },
   { title: 'This is the rotation', anchor: '#timeline' },
   { title: 'Timeline or card', anchor: '#viewSeg' },
-  { title: 'What you use in the gym', anchor: '#shareBtn' },
+  // Start game: the phone's bottom bar button; the bar is hidden above 900px,
+  // where `desktop` (the button beside the card) is what the ring finds.
+  { title: 'What you use in the gym', anchor: '#abBench', desktop: '#gmOpen' },
+  { title: 'Print, share or hand off', anchor: '#shareBtn' },
 ];
 
-// The count comes from EXPECTED's own length, not a second literal `6` --
+// The count comes from EXPECTED's own length, not a second literal `7` --
 // see "Reuse, do not re-derive" in docs/specs/201-tour-refresh.md. Exported
-// so `overlay.mjs` can build its six `tour, step k of 6` states from the same
+// so `overlay.mjs` can build its seven `tour, step k of 7` states from the same
 // number instead of its own literal.
 export const STEP_COUNT = EXPECTED.length;
 
@@ -131,7 +135,7 @@ export async function tourStepsPass(c, origin) {
 
   try {
     for (const s of TOUR_STATES) {
-      if (!ck(!!s, 'overlay.mjs is missing one of the six "tour, step k of 6" states')) return finish();
+      if (!ck(!!s, 'overlay.mjs is missing one of the seven "tour, step k of 7" states')) return finish();
     }
 
     // ---------- 390x844: items 2, 3, 4 ----------
@@ -201,24 +205,24 @@ export async function tourStepsPass(c, origin) {
       }
     }
 
-    // ---------- 1280x800: item 5, last step only ----------
-    const lastStep = STEP_COUNT - 1, lastAnchor = EXPECTED[lastStep].anchor;
+    // ---------- 1280x800: item 5, steps 6 (the desktop Start game) and 7 ----------
     await setWidth(c, LAPTOP, 800);
-    await evalIn(c, step(TOUR_STATES[lastStep].open));
-    await quiet(c);
-    {
-      const d = await read(c, lastAnchor);
-      const where = `step ${STEP_COUNT} at ${LAPTOP}px`;
+    for (const i of [STEP_COUNT - 2, STEP_COUNT - 1]) {
+      const anchor = EXPECTED[i].desktop || EXPECTED[i].anchor;
+      await evalIn(c, step(TOUR_STATES[i].open));
+      await quiet(c);
+      const d = await read(c, anchor);
+      const where = `step ${i + 1} at ${LAPTOP}px`;
       if (ck(d.open, `${where}: #tour never opened`)) {
         ck(!d.holeHidden, `${where}: #tourHole is hidden`);
-        if (!d.holeHidden && ck(!!d.anchor, `${where}: ${lastAnchor} not found -- nothing measured`)) {
-          ck(ringCovers(d.hole, d.anchor, d.vh, false), `${where}: ring does not cover ${lastAnchor}`);
+        if (!d.holeHidden && ck(!!d.anchor, `${where}: ${anchor} not found -- nothing measured`)) {
+          ck(ringCovers(d.hole, d.anchor, d.vh, false), `${where}: ring does not cover ${anchor}`);
         }
         const vp = { left: 0, top: 0, right: d.vw, bottom: d.vh };
         ck(inside(vp, d.box), `${where}: #tourBox is not fully inside the ${d.vw}x${d.vh} viewport`);
       }
+      await evalIn(c, step(TOUR_STATES[i].close));
     }
-    await evalIn(c, step(TOUR_STATES[lastStep].close));
 
     // ---------- 320px/32px text: item 6, every step ----------
     try {
@@ -255,7 +259,7 @@ export async function tourStepsPass(c, origin) {
       pass: problems.length === 0,
       detail: problems.length
         ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-        : `six steps' copy, counting, ring and fit hold at ${WIDTH}px, ${LAPTOP}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`,
+        : `seven steps' copy, counting, ring and fit hold at ${WIDTH}px, ${LAPTOP}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`,
     };
   }
   return finish();

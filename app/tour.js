@@ -1,4 +1,4 @@
-/* The first-run tour: six coach-marks, their placement maths and the three
+/* The first-run tour: seven coach-marks, their placement maths and the three
    handlers that drive them. Split out of app.js as its own seam — the
    smallest of them, and the last one before onboarding itself. The banner
    below is the original and still says why the tour works the way it does.
@@ -30,23 +30,24 @@ export function initTour(setViewFn) {
 /* ================================================================== *
  * first-run tour
  *
- * Six coach-marks, straight after onboarding, once per device. A spotlight
+ * Seven coach-marks, straight after onboarding, once per device. A spotlight
  * over the real screen rather than a modal with pictures of it: the coach is
  * looking at their own roster in their own rotation while it is explained,
  * which is the only version of this that survives being read once.
  *
- * #201: every anchor now shows at every width, so there is no fallback pair
- * and no step carries a `before` — `#shareBtn` (step 6) is on the game screen
- * at every width the same as the other five, which is what let the old
- * `['#abBench', '#gmOpen']` fallback pair go. A step whose one anchor is
- * missing still shows its copy, centered, rather than silently dropping a
- * sixth of the explanation.
+ * #201: no step carries a `before`. #275: step 6 keeps a fallback pair,
+ * `['#abBench', '#gmOpen']`, because its copy is about Start game and that
+ * control lives in two places: `#abBench` is the phone's bottom bar button,
+ * hidden from 840px up, where `#gmOpen` beside the card is the desktop anchor.
+ * `tourAnchor` takes whichever shows. Step 7 rings `#shareBtn`, on the game
+ * screen at every width. A step whose anchors are all missing still shows its
+ * copy, centered, rather than silently dropping a seventh of the explanation.
  *
  * What that does NOT cover: an anchor inside a shut `<details>`. Chrome
  * reports client rects for those, so `tourAnchor` accepts one and the ring
  * lands on a control the coach cannot see. Any step anchored inside a fold
  * would need to open it in `before` -- pinned by `test/tour-anchors.test.js`,
- * though none of the six anchors below sit inside one today.
+ * though none of the anchors below sit inside one today.
  * ================================================================== */
 const TOUR = [
   {
@@ -91,9 +92,14 @@ const TOUR = [
     body: 'Card shows the same rotation the way it prints, sized for your pocket. Switch back to Timeline any time; the plan doesn’t change.',
   },
   {
-    sel: ['#shareBtn'],
+    sel: ['#abBench', '#gmOpen'],
     title: 'What you use in the gym',
-    body: 'Start game opens bench mode: who is on, who is next, one tap to move the game along. This button prints the card, shares it as an image, or hands the game to an assistant.',
+    body: 'Start game opens bench mode: who is on, who is next, one tap to move the game along.',
+  },
+  {
+    sel: ['#shareBtn'],
+    title: 'Print, share or hand off',
+    body: 'This button prints the card, shares it as an image, or hands the game to an assistant.',
   },
 ];
 
@@ -263,11 +269,11 @@ function tourGo(i) {
 export function startTour() {
   const wrap = tourEl();
   if (!wrap || !wrap.hidden || !state.onboarded) return;
-  // #126: all six anchors live in the games view, which is unreachable with
+  // #126: all the anchors live in the games view, which is unreachable with
   // no games -- the tour's own buttons are hidden in that state
   // (shortcuts.js), but this is the belt to that braces.
   if (!hasGames()) return;
-  // all six anchors live in the games view. Re-run from Help while the
+  // all the anchors live in the games view. Re-run from Help while the
   // roster is showing and they are all `hidden`, so every step would fall
   // back to centered copy with nothing spotlit.
   // `instant`: the tour measures anchor rects immediately, and its scrim would
