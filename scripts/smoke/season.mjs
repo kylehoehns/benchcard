@@ -12,6 +12,7 @@
  * absence there and presence (with its legend) on Season, and Export is
  * checked absent from every other screen. */
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, SETTLE } from './dom.mjs';
+import { resize } from './page-state.mjs';
 import { TOUCH_WIDTHS } from './sizes.mjs';
 import { capInstall, capRead, capReset, capRestore } from './capture.mjs';
 import { seasonFilename } from '../../app/backup.js';
@@ -62,10 +63,7 @@ async function readLedger(c) {
   })()`));
 }
 
-async function measureAt(c, width) {
-  await c.send('Emulation.setDeviceMetricsOverride', { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-  return JSON.parse(await evalIn(c, `(() => {
+const TOUCH_MEASURE = `(() => {
     const rectOf = el => { const r = el.getBoundingClientRect(); return { w: r.width, h: r.height }; };
     const out = { exportBtn: null, summaries: [], deletes: [] };
     const exp = document.querySelector('#seasonExport');
@@ -80,8 +78,7 @@ async function measureAt(c, width) {
     for (const b of document.querySelectorAll('#view-season .sn-body .prow-danger')) out.deletes.push(rectOf(b));
     for (const d of document.querySelectorAll('#view-season details.sn-game')) d.open = false;
     return JSON.stringify(out);
-  })()`));
-}
+  })()`;
 
 export async function seasonPass(c, origin) {
   const problems = [];
@@ -184,7 +181,8 @@ export async function seasonPass(c, origin) {
 
   /* ---- touch: Export, each summary and each Delete, at 320/360/390px ---- */
   for (const w of TOUCH_WIDTHS) {
-    const m = await measureAt(c, w);
+    await resize(c, w, HEIGHT);
+    const m = JSON.parse(await evalIn(c, TOUCH_MEASURE));
     if (m.exportBtn && (m.exportBtn.w < 48 || m.exportBtn.h < 48)) {
       problems.push(`#seasonExport is ${Math.round(m.exportBtn.w)}×${Math.round(m.exportBtn.h)} at ${w}px, want ≥48×48`);
     }
@@ -195,7 +193,7 @@ export async function seasonPass(c, origin) {
       if (r.w < 48 || r.h < 48) problems.push(`Delete this game (${i}) is ${Math.round(r.w)}×${Math.round(r.h)} at ${w}px, want ≥48×48`);
     });
   }
-  await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  await resize(c, WIDTH, HEIGHT);
 
   /* ---- Export exists on Season and on no other screen ---- */
   const elsewhere = [

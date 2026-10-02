@@ -16,7 +16,7 @@ import { LARGE_TEXT, LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs
 import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
 import { RICH, partPlayed, reloadWithRecord, TODAY_GAME_READY } from './fixtures.mjs';
-import { land } from './page-state.mjs';
+import { land, resize, setMedia } from './page-state.mjs';
 
 // Decision 14's exact fixture and item 1's exact string -- the SECOND
 // game's label, "Northwest Valley Thunderbirds", not the first's "Hawks".
@@ -112,8 +112,7 @@ export async function resumeBarPass(c, origin) {
      375). Spelling any of them as a literal here would be a second copy of a
      number that is already decided. */
   for (const w of [LARGE_TEXT_WIDTH, NARROW, WIDTH]) {
-    await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await evalIn(c, `${SETTLE}`);
+    await resize(c, w, HEIGHT);
     const geo = JSON.parse(await evalIn(c, `(() => {
       const bar = document.getElementById('resumeBar'), btn = document.getElementById('resumeBtn');
       const br = bar.getBoundingClientRect(), cs = getComputedStyle(bar);
@@ -125,11 +124,10 @@ export async function resumeBarPass(c, origin) {
       problems.push(`${w}px: #resumeBtn is ${Math.round(geo.btnW)}px inside a ${Math.round(geo.inner)}px content box, want full width`);
     }
   }
-  await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `${SETTLE}`);
+  await resize(c, WIDTH, HEIGHT);
 
   for (const [feature, value] of SOLID_FALLBACK_MEDIA) {
-    await c.send('Emulation.setEmulatedMedia', { features: [{ name: feature, value }] });
+    await setMedia(c, [{ name: feature, value }]);
     await evalIn(c, `${SETTLE}`);
     const solid = JSON.parse(await evalIn(c, `(() => {
       const cs = getComputedStyle(document.getElementById('resumeBar'), '::before');
@@ -139,7 +137,7 @@ export async function resumeBarPass(c, origin) {
     const a = alpha(solid.bg);
     if (a !== 1) problems.push(`${feature}: #resumeBar::before paints ${solid.bg} (alpha ${a}), want a fully opaque color`);
   }
-  await c.send('Emulation.setEmulatedMedia', { features: [] });
+  await setMedia(c, []);
   await evalIn(c, `${SETTLE}`);
   notes.push('item 5: ≥48px tall and full width at 320-390px; solid under reduced transparency and more contrast');
 

@@ -54,8 +54,6 @@ export async function welcomeAfterRemovePass(c, origin) {
     }
   } catch (e) {
     problems.push(String(e && e.message || e));
-  } finally {
-    await land(c, origin);   // back to RICH for the next row
   }
   return { pass: problems.length === 0, detail: problems.length ? problems.join('; ') : 'demo rebuilt after removing the last team' };
 }

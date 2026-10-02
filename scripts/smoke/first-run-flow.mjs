@@ -1,3 +1,4 @@
+import { setMedia } from './page-state.mjs';
 import { WIDTH, landWiped, assertChipMatchesBackBtn, assertBackIsChevron, setWidth } from './dom.mjs';
 import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
@@ -27,13 +28,11 @@ import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
  * it can still read `state.onboarded === false`. `landingReads` through
  * `sampleFillsAndSavesNothing` all need that pre-commit state and so share
  * ONE wiped landing; `stepThreeShowsACard` onward needs a SECOND, fresh one,
- * the same way `game-rows-fit.mjs` calls `landWiped` twice (light, then
- * dark) rather than trying to make one landing answer two different
- * questions. That second landing is also the NARROW one -- 320px, the width
+ * the same way `game-rows-fit.mjs` lands twice (light, then dark) rather
+ * than trying to make one landing answer two different questions. That second landing is also the NARROW one -- 320px, the width
  * at which step 3's card fit is observable at all; see `firstRunPass` for why
- * the narrowing has to come before the flow paints. The rich fixture and 390
- * are both restored at the end regardless of outcome, the same courtesy
- * `teamscreen` and `addgameflow` pay. */
+ * the narrowing has to come before the flow paints. The next row's `reset`
+ * puts the rich fixture, the width and the media back. */
 
 const READY = `!document.getElementById('view-welcome').hidden`;
 const land = (c, origin) => landWiped(c, `${origin}/index.html`, READY);
@@ -525,10 +524,9 @@ export async function firstRunPass(c, origin) {
      read `--ink` off the chosen sub-interval row below, and `--ink` itself
      is theme-dependent, so without pinning the query this pass would read
      right on a light-mode machine and wrong on a dark-mode one for a reason
-     that has nothing to do with the app. Pinned to light and cleared at the
-     end, the same `Emulation.setEmulatedMedia` calls `bench-look.mjs` already
-     uses for its own media-query passes. */
-  await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+     that has nothing to do with the app. Pinned to light with `setMedia`; the
+     next row's `reset` clears it. */
+  await setMedia(c, [{ name: 'prefers-color-scheme', value: 'light' }]);
 
   try {
     await land(c, origin);

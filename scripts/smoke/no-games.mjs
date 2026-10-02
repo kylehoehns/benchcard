@@ -1,4 +1,5 @@
-import { evalIn, step, SETTLE, onScreen, HEIGHT } from './dom.mjs';
+import { evalIn, step, onScreen, WIDTH, HEIGHT } from './dom.mjs';
+import { land, resize } from './page-state.mjs';
 import { RICH, ONE_GAME, withSecondTeam, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
 import { LAPTOP } from './sizes.mjs';
 
@@ -65,8 +66,7 @@ export async function noGamesPass(c, origin) {
   // Decision 7's resting state (`html[data-view="today"] #view-games[hidden]`)
   // is scoped `:not(.no-games)` -- with no game to rest on, the right pane at
   // a wide window stays empty rather than a frame with nothing in it.
-  await c.send('Emulation.setDeviceMetricsOverride', { width: LAPTOP, height: 800, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  await resize(c, LAPTOP, 800);
   const wide = await evalIn(c, `(() => {
     const el = document.getElementById('view-games');
     const r = el.getBoundingClientRect();
@@ -76,8 +76,7 @@ export async function noGamesPass(c, origin) {
   if (!(wideGames.hidden === true && (wideGames.display === 'none' || (wideGames.w === 0 && wideGames.h === 0)))) {
     problems.push(`at ${LAPTOP}px with no games #view-games reads ${wide}, want it left empty, not forced open`);
   }
-  await c.send('Emulation.setDeviceMetricsOverride', { width: 390, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  await resize(c, WIDTH, HEIGHT);
 
   // Undo puts the game -- and its day -- back, and reopens that game's own
   // screen (the same undo shape `todaykeys` already proves for a day that
@@ -90,12 +89,7 @@ export async function noGamesPass(c, origin) {
   // Remove it again and reload -- the empty state has to survive a real
   // navigation, not just the in-page render the checks above already saw.
   await evalIn(c, step(`document.getElementById('removeGame')?.click()`));
-  const reloaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url: `${origin}/index.html?_smoke=${Date.now()}` });
-  await reloaded;
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.getElementById('todayAddGame'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
+  await land(c, origin, { record: 'kept', ready: `!!document.getElementById('todayAddGame')` });
   const afterReload = await evalIn(c, `(() => {
     return JSON.stringify({
       onToday: !!(document.getElementById('view-today') && !document.getElementById('view-today').hidden),

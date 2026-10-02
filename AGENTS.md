@@ -169,7 +169,9 @@ pass the limit in `test/smoke-size.test.js` (`LIMIT`). Two fixtures on purpose
 players, two games today, three filed, levels set — for the overlay, touch,
 narrow and sweep passes. Do not merge them back into one. A check that needs a
 page asks `land()` in `scripts/smoke/page-state.mjs` for it (record, width,
-text size, media), rather than navigating and waiting for boot by hand.
+text size, media), rather than navigating and waiting for boot by hand. The
+harness resets to the rich fixture before each rich row, so a check never
+restores what it changed.
 
 Every page it opens has its clock pinned to 2026-09-12 12:00 local
 (`scripts/smoke/clock.mjs`), ticking forward from there — not frozen, since

@@ -193,8 +193,8 @@ export const ROWS = Object.freeze([
   // rows and #abBench on screen with no scrolling, .tl-name's own tap-target
   // geometry in the one-row layout, and the pin toggle by click and by Enter
   // -- see game-rows-fit.mjs. Runs its own `?try=9` landing rather than
-  // reading the rich fixture, so it sits right after `fixture` and restores
-  // RICH itself before `todayback` needs it.
+  // reading the rich fixture, so it sits right after `fixture`; the harness
+  // resets before `todayback`.
   { id: 'gamerowsfit', name: 'game rows fit, 390×844', selectable: true, setup: 'rich',
     run: ctx => gameRowsFitPass(ctx.c, ctx.origin) },
   // #225: a pinned row and its details are one card -- one fill, one stripe,
@@ -448,13 +448,13 @@ export const ROWS = Object.freeze([
   // cancel gesture, discard, the sample) and finishing onto the tour and the
   // game itself -- see first-run-flow.mjs. Runs its own wiped landing (twice
   // -- step 3 commits for real, a one-way door) rather than reading the rich
-  // fixture, the same way `gamerowsfit` lands on `?try=9`, and restores RICH
-  // itself before `focusclear` needs it.
+  // fixture, the same way `gamerowsfit` lands on `?try=9`, and the harness
+  // resets before `focusclear`.
   { id: 'firstrun', name: 'first run: welcome, three steps, every way out', selectable: true, setup: 'rich',
     run: ctx => firstRunPass(ctx.c, ctx.origin) },
   // #224: remove the only team in Settings, land on welcome, and the demo is
-  // built under all three tabs -- see welcome-after-remove.mjs. Restores RICH
-  // itself before the next row.
+  // built under all three tabs -- see welcome-after-remove.mjs. The harness resets
+  // before the next row.
   { id: 'welcomeafterremove', name: 'welcome demo is built after removing the last team', selectable: true, setup: 'rich',
     run: ctx => welcomeAfterRemovePass(ctx.c, ctx.origin) },
   // #252: a stale not-onboarded record shows welcome with no "is over" toast,
@@ -465,19 +465,19 @@ export const ROWS = Object.freeze([
   // sheet and Add a team's step 1 list/repeat text, the item 4 suffix fixture
   // read back from Who's here, Timeline, Season and Team, the blocked panel's
   // "Add players" branch, and Add a team opening/abandoning/completing
-  // without ever showing Settings -- see roster-in.mjs. Restores RICH itself
-  // before returning, the same way `teamscreen` and `firstrun` do.
+  // without ever showing Settings -- see roster-in.mjs. The harness resets
+  // before the next row, as it does for `teamscreen` and `firstrun`.
   { id: 'rosterin', name: 'roster in', selectable: true, setup: 'rich',
     run: ctx => rosterInPass(ctx.c, ctx.origin) },
   // #145 item 1's own guard (docs/specs/145-flow-spacing.md's Proof section):
   // one shared 16px inset for every direct child of a flow step's wrapper,
   // at 390px and 320px, on every step of both flows -- including add a
   // game's "Same as" card and empty-roster states and first run's committed
-  // step 3 -- see flow-inset.mjs. Restores RICH itself before the next row.
+  // step 3 -- see flow-inset.mjs. The harness resets before the next row.
   { id: 'flowinset', name: 'flow inset: 16px on every side, 390px and 320px, both flows', selectable: true, setup: 'rich',
     run: ctx => flowInsetPass(ctx.c, ctx.origin) },
   // #223: the welcome On screen demo's "just on" tag is painted as a tag,
-  // inside .mn -- see welcome-tag.mjs. Restores RICH itself.
+  // inside .mn -- see welcome-tag.mjs. The harness resets before the next row.
   { id: 'welcometag', name: 'welcome On screen: "just on" tag is styled', selectable: true, setup: 'rich',
     run: ctx => welcomeTagPass(ctx.c, ctx.origin) },
   // #33 decision 15 (item 7): tabbing the game screen never leaves focus
