@@ -41,7 +41,7 @@ import { land } from './page-state.mjs';
  * and #138's own bench rows actually broke. */
 const SQUEEZE_NAME = 'Featherstonehaugh Bartholomew';
 
-const LONG_AND_SQUEEZE = (() => {
+export const LONG_AND_SQUEEZE = (() => {
   const record = JSON.parse(JSON.stringify(RICH));
   const players = record.teams[0].players;
   players[0].name = LONG_NAME;
@@ -52,7 +52,7 @@ const LONG_AND_SQUEEZE = (() => {
 /* The one dialog `APP_LARGE_TEXT_STATES` lacks, opened exactly the way
  * `heading-outline.mjs`'s own `#confirm` entry does — its `open`/`close`
  * imported from there rather than a second copy. */
-const CONFIRM_STATE = {
+export const CONFIRM_STATE = {
   name: 'confirm dialog',
   open: CONFIRM_DIALOG.open,
   close: CONFIRM_DIALOG.close,
@@ -62,7 +62,7 @@ const CONFIRM_STATE = {
  * sheet's body among them), to the bottom — generic over which element that
  * is, since a coach on a long roster reaches the same rows a fixed sheet
  * body scrolls to reach. */
-const SCROLL_TO_BOTTOM = `(() => {
+export const SCROLL_TO_BOTTOM = `(() => {
   window.scrollTo(0, document.documentElement.scrollHeight);
   for (const el of document.querySelectorAll('*')) {
     // #179 fix 5b: cheap layout-only check first, so \`getComputedStyle\` (a
@@ -145,7 +145,7 @@ const FLOOR_ALLOW_SELECTORS = CLIP_SWEEP_FLOOR_ALLOW.map(a => a.selector);
  * design-intended wrap after the hyphen looks like, indistinguishable from a
  * genuine bad break inside the token. A token containing a hyphen is treated
  * as exempt rather than tokenizing more finely just for this case. */
-const CLIP_PROBE = `(() => {
+export const CLIP_PROBE = `(() => {
   const isSrOnly = ${IS_SR_ONLY_RECT};
   ${WORD_RECTS_FN}
   ${WORD_FLOOR_FN}
@@ -412,6 +412,49 @@ const CLIP_PROBE = `(() => {
   return JSON.stringify({ scanned, clip, split, hidden, overlap, floor, usedAllow, usedSideways, usedFloorAllow });
 })()`;
 
+/* The issue number of the CLIP_SWEEP_KNOWN_ISSUES entry that excuses
+ * `finding` (the `{ kind, where, pos, el, ... }` shape `findingsOf` builds),
+ * or null. Pure; `issues` is a parameter so a test can feed it a list shaped
+ * like the real one without editing it. */
+export const knownIssueFor = (finding, issues = CLIP_SWEEP_KNOWN_ISSUES) =>
+  issues.find(k => k.match(finding))?.issue ?? null;
+
+/* The raw findings one CLIP_PROBE result holds, each tagged with the state
+ * name and scroll position it was taken at -- the shape CLIP_SWEEP_KNOWN_ISSUES'
+ * `match` sees. Shared with scripts/look.mjs. */
+export const findingsOf = (res, where, pos) => [
+  ...res.clip.map(f => ({ kind: 'clip', where, pos, ...f })),
+  ...res.split.map(f => ({ kind: 'split', where, pos, ...f })),
+  ...res.hidden.map(f => ({ kind: 'hidden', where, pos, ...f })),
+  ...res.overlap.map(f => ({ kind: 'overlap', where, pos, ...f })),
+  ...res.floor.map(f => ({ kind: 'floor', where, pos, ...f })),
+];
+
+/* Open one state of `APP_LARGE_TEXT_STATES` (or CONFIRM_STATE) and prove it
+ * opened -- rule 2a of /new-guard: a state that never actually opened its own
+ * screen would otherwise scan whatever the previous state left up and report
+ * clean under this state's name. `want` is what the four states that reload
+ * their own fixture land with (width, text size, media): the 320px/32px cell
+ * by default, whatever scripts/look.mjs is shooting otherwise. */
+export async function openState(c, origin, v, want = LARGE_TEXT) {
+  if (v.firstRun) await firstRun(c, origin, want);
+  else if (v.tryLink) await tryLanding(c, origin, v.tryLink, want);
+  else if (v.four) await land(c, origin, { record: FOUR, ...want, ...TODAY_LANDING });
+  else if (v.rotationToast) await openRotationToastState(c);
+  else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin, want);
+  else await evalIn(c, step(v.open));
+
+  if (v.rotationToast) {
+    const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo] .tmsg')`));
+    if (!raised) throw new Error('no Undo toast was raised in the Format sheet -- nothing was measured');
+  }
+  if (v.firstRunTypedRoster) {
+    const lines = JSON.parse(await evalIn(c,
+      `(document.getElementById('frRoster')?.value || '').split('\\n').filter(Boolean).length`));
+    if (lines !== 12) throw new Error(`the roster box holds ${lines} names, not the 12 the state types`);
+  }
+}
+
 export async function clipSweepPass(c, origin, { injectCss } = {}) {
   const problems = [];
   const found = []; // raw problems, matched against CLIP_SWEEP_KNOWN_ISSUES below
@@ -433,25 +476,7 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   for (const v of states) {
     const where = v.name;
     try {
-      if (v.firstRun) await firstRun(c, origin, LARGE_TEXT);
-      else if (v.tryLink) await tryLanding(c, origin, v.tryLink, LARGE_TEXT);
-      else if (v.four) await land(c, origin, { record: FOUR, ...LARGE_TEXT, ...TODAY_LANDING });
-      else if (v.rotationToast) await openRotationToastState(c);
-      else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin, LARGE_TEXT);
-      else await evalIn(c, step(v.open));
-
-      // rule 2a of /new-guard: a state that never actually opened its own
-      // screen would otherwise scan whatever the previous state left up and
-      // report clean under this state's name.
-      if (v.rotationToast) {
-        const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo] .tmsg')`));
-        if (!raised) throw new Error('no Undo toast was raised in the Format sheet -- nothing was measured');
-      }
-      if (v.firstRunTypedRoster) {
-        const lines = JSON.parse(await evalIn(c,
-          `(document.getElementById('frRoster')?.value || '').split('\\n').filter(Boolean).length`));
-        if (lines !== 12) throw new Error(`the roster box holds ${lines} names, not the 12 the state types`);
-      }
+      await openState(c, origin, v);
 
       for (const pos of ['top', 'bottom']) {
         if (pos === 'bottom') await evalIn(c, SCROLL_TO_BOTTOM);
@@ -460,11 +485,7 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
         res.usedAllow.forEach(sel => usedAllow.add(sel));
         res.usedSideways.forEach(sel => usedSideways.add(sel));
         res.usedFloorAllow.forEach(sel => usedFloorAllow.add(sel));
-        for (const cl of res.clip) found.push({ kind: 'clip', where, pos, ...cl });
-        for (const sp of res.split) found.push({ kind: 'split', where, pos, ...sp });
-        for (const hd of res.hidden) found.push({ kind: 'hidden', where, pos, ...hd });
-        for (const ov of res.overlap) found.push({ kind: 'overlap', where, pos, ...ov });
-        for (const fl of res.floor) found.push({ kind: 'floor', where, pos, ...fl });
+        found.push(...findingsOf(res, where, pos));
       }
     } catch (e) {
       problems.push(`${where}: ${e.message.split('\n')[0]}`);
@@ -498,8 +519,8 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   // problem.
   const matchedIssues = new Set();
   for (const p of found) {
-    const hit = CLIP_SWEEP_KNOWN_ISSUES.find(k => k.match(p));
-    if (hit) { matchedIssues.add(hit.issue); continue; }
+    const issue = knownIssueFor(p);
+    if (issue !== null) { matchedIssues.add(issue); continue; }
     if (p.kind === 'clip') problems.push(`${p.where}@${p.pos}: "${p.text}" is ${p.scrollWidth}px wide in a ${p.clientWidth}px box (${p.el})`);
     else if (p.kind === 'split') problems.push(`${p.where}@${p.pos}: "${p.word}" splits across lines mid-word (${p.el})`);
     else if (p.kind === 'hidden') problems.push(`${p.where}@${p.pos}: ${p.el} is hidden under ${p.hitBy}`);

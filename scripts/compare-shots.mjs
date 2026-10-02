@@ -601,7 +601,7 @@ const setLongName = step(`(async () => {
  * and bug 1's whole point is that the two can disagree, so the expression has
  * to be the SAME one both times or the comparison is between two different
  * questions. Paint, never `data-theme` (item 3). */
-const READ_PAINT = `JSON.stringify({
+export const READ_PAINT = `JSON.stringify({
   fontSizePx: parseFloat(getComputedStyle(document.documentElement).fontSize),
   bg: getComputedStyle(document.body).backgroundColor,
 })`;
