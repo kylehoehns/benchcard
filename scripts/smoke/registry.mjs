@@ -114,6 +114,7 @@ import { firstRunPass } from './first-run-flow.mjs';
 import { rosterInPass } from './roster-in.mjs';
 import { flowInsetPass } from './flow-inset.mjs';
 import { welcomeTagPass } from './welcome-tag.mjs';
+import { welcomeLockupPass } from './welcome-lockup.mjs';
 import { focusClearPass } from './focus-clear.mjs';
 import { floatingControlsPass } from './floating-controls.mjs';
 import { resumeBarPass } from './resume-bar.mjs';
@@ -480,6 +481,10 @@ export const ROWS = Object.freeze([
   // inside .mn -- see welcome-tag.mjs. The harness resets before the next row.
   { id: 'welcometag', name: 'welcome On screen: "just on" tag is styled', selectable: true, setup: 'rich',
     run: ctx => welcomeTagPass(ctx.c, ctx.origin) },
+  // #287: the welcome lockup clears a 59px top inset and is 36px -- see
+  // welcome-lockup.mjs. The harness resets before the next row.
+  { id: 'welcomelockup', name: 'welcome lockup: clears the top inset, 36px logo', selectable: true, setup: 'rich',
+    run: ctx => welcomeLockupPass(ctx.c, ctx.origin) },
   // #33 decision 15 (item 7): tabbing the game screen never leaves focus
   // under the floating bar or action bar -- see focus-clear.mjs.
   { id: 'focusclear', name: 'tab order stays clear of the floating bar and action bar', selectable: true, setup: 'rich',
