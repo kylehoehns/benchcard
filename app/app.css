@@ -2064,7 +2064,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 /* The wordmark is a lockup, not the heading: the h1 carries the promise and
    the name sits above it, which is where a name goes. */
 .wel-lockup { display: flex; align-items: center; justify-content: center; gap: .55rem;
-  margin: 0 0 .62rem; font-size: var(--fs-title); font-weight: 700; letter-spacing: -.022em; }
+  margin: 0 0 .22rem; font-size: var(--fs-title); font-weight: 700; letter-spacing: -.022em; }
 .wel-mark { display: inline-grid; place-items: center;
   animation: welMark 700ms var(--ease) both; }
 /* 36px here; the header logos on the other pages stay 26px. */
@@ -2082,16 +2082,19 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    the buttons -- at a fixed height "Show me with a sample team" landed under
    Safari's address bar on a real iPhone. */
 .wel-stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;
-  margin-top: .7rem;
+  margin-top: .45rem;
   animation: rise var(--t-slow) var(--ease) both; animation-delay: 190ms; }
 /* The floor is the whole layout. .wel-show is the only flex: 1 1 auto in the
    column, so the page height is every fixed part plus this number -- and iOS
    Safari's address bar overlays the viewport rather than shrinking it, so a
    document even slightly taller than dvh puts the footer under the bar.
-   12rem is what makes the whole page fit a 745px phone (measured: 781 ->
-   739) while leaving each of the ten plan rows ~16px, a line box for a 12px
-   name. Lower it and the names clip; raise it and the footer goes back under
-   the bar.
+   12rem leaves each of the ten plan rows ~16px, a line box for a 12px name.
+   Lower it and the names clip; raise it and the footer goes further under
+   the bar. At a 390x745 Safari-tab viewport the page measures 70px taller
+   than the viewport (welcome-lockup.mjs holds it to the 71px it was before
+   the 36px lockup): the lockup's 10px of growth is paid for by trimming the
+   margins under it and above this stage, not by this floor. The old "781 ->
+   739" note is gone; the headline has grown since.
    One duration for both panes. The two figures pan by different mechanisms
    (an image by object-position, the drawn bench by a measured translate) and
    the timing is the one thing they must agree on -- two numbers here is two
