@@ -34,7 +34,13 @@ const CASES = [
   { name: 'dark, more contrast', media: [{ name: 'prefers-color-scheme', value: 'dark' }, { name: 'prefers-contrast', value: 'more' }], want: 'rgb(255, 133, 59)' },
 ];
 const GRAPHITE_INK = 'rgb(28, 28, 30)';
+/* Every team tint the welcome logo can wear (graphite is no attribute). */
+const TINTS = [null, 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
 const HARDWOOD_LIGHT = CASES[0].want;
+/* #277: the card is the mark's paper wherever paper reads on the tint (3:1),
+   and only otherwise falls back to the tint's ink. */
+const PAPER = [244, 244, 246];
+const PAPER_RGB = 'rgb(244, 244, 246)';
 
 const PAGES = [
   { name: 'about', page: '/about', record: 'kept', ready: `document.querySelector('h1')`,
@@ -46,7 +52,7 @@ const PAGES = [
   { name: 'welcome', page: '/index.html', record: 'wiped', ready: WELCOME_READY,
     h1: 'The whole game, worked out before you leave the house.', phrase: 'The whole game',
     band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '.wel-sub',
-    mark: '.wel-mark circle' },
+    mark: '.wel-mark svg > rect:first-child' },
 ];
 
 /* One in-page read. Everything a color is resolved through the canvas. */
@@ -84,6 +90,23 @@ const READ = p => `(() => {
   });
 })()`;
 
+/* The welcome logo's ground and its card, for each team tint, in the page's
+   current theme: set data-tint live (the welcome screen only shows on a wiped
+   device, which is Hardwood), then resolve both fills through the canvas. */
+const READ_LOGO_TINTS = `(() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  const rgba = css => {
+    cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1);
+    const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3]];
+  };
+  const fill = s => { const e = document.querySelector(s); return e ? rgba(getComputedStyle(e).fill) : null; };
+  return JSON.stringify(${JSON.stringify(TINTS)}.map(t => {
+    if (t) document.documentElement.dataset.tint = t; else delete document.documentElement.dataset.tint;
+    return { tint: t || 'graphite', ground: fill('.wel-mark svg > rect:first-child'), card: fill('.wel-mark svg > g > rect:first-child') };
+  }));
+})()`;
+
 /* WCAG contrast from the app's own `contrast` (tokens-css.mjs), which takes
    {r,g,b}; the colors resolved here are [r,g,b] arrays. */
 const rgb = c => ({ r: c[0], g: c[1], b: c[2] });
@@ -115,7 +138,7 @@ export async function hardwoodPagesPass(c, origin) {
         // Item 1: the main button and the links.
         if (!s.btnBg) note(where, `no ${p.button}`);
         else if (css(s.btnBg) !== cse.want) note(where, `${p.button} background is ${css(s.btnBg)}, want ${cse.want}`);
-        // #244: the welcome logo's circle is the phrase's orange, not --accent.
+        // #244: the welcome logo's ground is the phrase's orange, not --accent.
         if (p.mark) {
           if (!s.markFill) note(where, `no ${p.mark}`);
           else if (css(s.markFill) !== cse.want) note(where, `the logo is ${css(s.markFill)}, want ${cse.want}`);
@@ -145,6 +168,18 @@ export async function hardwoodPagesPass(c, origin) {
         if (s.btnBg && s.btnFg) {
           const label = ratio(s.btnFg, s.btnBg);
           if (label < 4.5) note(where, `${p.button}'s label is ${label.toFixed(2)}:1 on the orange, want at least 4.5:1`);
+        }
+        // last, because it rewrites data-tint on the live page
+        if (p.mark) {
+          // #277: the card must read on the ground (non-text, 3:1) under every tint.
+          for (const t of JSON.parse(await evalIn(c, READ_LOGO_TINTS))) {
+            if (!t.ground || !t.card) { note(where, `no logo ground or card under ${t.tint}`); continue; }
+            const r = ratio(t.card, t.ground);
+            if (r < 3) note(where, `the logo's card ${css(t.card)} on its ground ${css(t.ground)} under ${t.tint} is ${r.toFixed(2)}:1, want at least 3:1`);
+            // the card is paper wherever paper itself clears 3:1 on the ground
+            if (ratio(PAPER, t.ground) >= 3 && css(t.card) !== PAPER_RGB) note(where, `the logo's card is ${css(t.card)} under ${t.tint}, want paper ${PAPER_RGB} (paper is ${ratio(PAPER, t.ground).toFixed(2)}:1 on ${css(t.ground)})`);
+            if (cse.name === 'light' && t.tint === 'hardwood' && css(t.card) !== PAPER_RGB) note(where, `the logo's card in light Hardwood is ${css(t.card)}, want ${PAPER_RGB}`);
+          }
         }
       }
     }

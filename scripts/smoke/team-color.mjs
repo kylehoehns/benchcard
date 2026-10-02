@@ -118,7 +118,7 @@ const READ_COLORS = `(() => {
     mrowBg: bg('.mrow .track i'),
     footFg: fg('.note'), linkishFg: fg('#welRestore'),
     iconFg: (() => { const e = $('#backBtn svg'); return e ? getComputedStyle(e).color : null; })(),
-    logoFill: (() => { const e = $('.wel-mark circle'); return e ? getComputedStyle(e).fill : null; })(),
+    logoFill: (() => { const e = $('.wel-mark svg > rect:first-child'); return e ? getComputedStyle(e).fill : null; })(),
     stageBg: (() => { const e = $('.stage'); return e ? getComputedStyle(e).backgroundImage : null; })(),
     // ::selection: a per-element cascaded style CSSOM lets you read without
     // any text actually being selected -- confirmed empirically, so this
@@ -284,7 +284,7 @@ export async function teamColorPass(c, origin) {
       ['.phrase text', r.phraseFg, ROYAL_FILL],
       // #244 moved the welcome logo here from #25's unchanged list: it reads
       // --tint now, like the welcome's orange phrase.
-      ['the logo (.wel-mark circle) fill', r.logoFill, ROYAL_FILL],
+      ['the logo ground (.wel-mark svg > rect:first-child) fill', r.logoFill, ROYAL_FILL],
     ];
     for (const [label, got, want] of tinted) {
       if (got !== want) problems.push(`${label} is ${got} with Royal active, want ${want}`);

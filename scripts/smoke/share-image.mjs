@@ -41,6 +41,10 @@ export async function shareImageBranches(c, ck) {
     ck(want.cards === 1 && want.w === 1078 && want.h === 1572,
       `one pocket card should paint ${want.cards} card(s) at 1078×1572; the cards' rects give ${want.w}×${want.h}`);
     ck(png.w === want.w && png.h === want.h, `the saved PNG is ${png.w}×${png.h}, want ${want.w}×${want.h}`);
+    // #277: the band under the card carries the card mark -- its #D2500A ground
+    // is the only orange down there. A 12px mark at 3x is 36px square, ~700 device px of
+    // ground; the floor is well under that, and a band with no mark has none.
+    ck(png.bandOrange >= 500, `the band under the card holds ${png.bandOrange} #D2500A pixels, want at least 500 (the card mark's ground)`);
     ck(same(r.toasts, [SAVED]), `saving the image toasted ${JSON.stringify(r.toasts)}, want ["${SAVED}"]`);
     ck(r.hosts === 0, `${r.hosts} offscreen host(s) left in the DOM after painting, want 0`);
 

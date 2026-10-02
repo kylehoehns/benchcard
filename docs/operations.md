@@ -266,13 +266,15 @@ Two things address that, and they are different problems:
   `.app` so they get the explanation instead of a dead gray page.
 
 `og.png` (2400×1260) is generated with `node scripts/og.mjs`, not drawn: a
-composition showing the game screen on a phone, the mark in the Hardwood team color
-(read from `--tint` in `tokens.css`), and the headline. `card-sample.png` and
+composition showing the game screen on a phone, the card mark (a tilted card of
+player-colored stint rows, drawn by `scripts/mark.mjs`), and the headline. `card-sample.png` and
 `card-sample@2x.png` are screenshots of the printed card. `bench-sample.png`
-shows bench mode. The four icon PNGs and favicon.ico are generated from the mark
-SVG at each size with the `--icons` flag. Regenerate `card-sample.png` when the
+shows bench mode. The four icon PNGs and favicon.ico are generated from the same
+card mark at each size with the `--icons` flag. The static pages' tab icon and
+logo are literal copies of it: `node scripts/mark.mjs` rewrites them (and the
+copy in `app/share.js`), and `test/mark-drift.test.js` fails when one differs. Regenerate `card-sample.png` when the
 card design changes (including its corner, #103), `og.png` when the app design
-or the sample game's rule changes, and icons when the mark color changes —
+or the sample game's rule changes, and icons when the mark changes —
 `node scripts/og.mjs --bench app/bench-sample.png --card app/card-sample.png
 --icons` regenerates all of them.
 

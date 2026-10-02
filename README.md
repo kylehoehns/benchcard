@@ -2,6 +2,8 @@
 
 <img src="app/og.png" alt="Benchcard — even minutes, worked out before the game" width="720">
 
+<img src="app/icon-192.png" alt="" width="64" height="64">
+
 # Benchcard
 
 **Substitution rotations for a youth basketball team, printed on a card that fits in a pocket notebook.**
