@@ -1,5 +1,5 @@
 import { evalIn } from './dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { LONG_NAME } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { evalJSON, setGame, settle, tap } from './sheet-drive.mjs';
@@ -323,7 +323,7 @@ export async function sheetSpacingPass(c, origin) {
     await tap(c, `document.getElementById('sheetIntervalClose').click()`);
 
     /* ---- 320px, a 32px root: items 5 and 8, the two the spec ties to it ---- */
-    await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+    await land(c, origin, { ...LARGE_TEXT });
     await seed(c);
 
     await checkFormatColumns(c, ck, '320px/32px', true);

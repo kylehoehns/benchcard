@@ -1,6 +1,6 @@
 import { evalIn, OVERFLOW_PROBE } from './dom.mjs';
 import { land } from './page-state.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './sizes.mjs';
 
 /* The pages no browser check had ever loaded.
  *
@@ -135,7 +135,7 @@ export async function staticPass(c, source, origin) {
   for (const page of STATIC_PAGES) {
     const where = `${page}@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
     try {
-      await land(c, origin, { page, record: 'kept', width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX, ready: 'true' });
+      await land(c, origin, { page, record: 'kept', ...LARGE_TEXT, ready: 'true' });
 
       const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
       const slack = LARGE_TEXT_ALLOW[page] || 0;

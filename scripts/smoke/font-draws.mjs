@@ -44,7 +44,7 @@
  * are untouched by this row, on top of never moving from the injection itself
  * (`smoke-font.mjs`'s own comment). */
 import { evalIn, step, objectIdFor } from './dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { SMOKE_FONT_FAMILY } from './smoke-font.mjs';
 import { goRich } from './fixtures.mjs';
 import { land } from './page-state.mjs';
@@ -106,17 +106,15 @@ export async function fontDrawsPass(c, origin) {
     await evalIn(c, step(`$('#gmClose').click()`));
 
     // The sheet's text at 320px/32px -- same technique as appLargeTextPass.
-    {
-      await land(c, origin, { record: 'kept', width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
-      // A reload replaces the whole document, so the DOM domain's node table
-      // (populated by the DOM.getDocument above, before this reload) no
-      // longer has anything valid to hand `check` -- refetch it for the new
-      // document before asking for a node in it.
-      await c.send('DOM.getDocument');
-      await evalIn(c, step(`$('#phrasePlayers').click()`));
-      await check(`sheet text at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px`, '.who-row .prow-t');
-      await evalIn(c, step(`$('#sheetWho').close()`));
-    }
+    await land(c, origin, { record: 'kept', ...LARGE_TEXT });
+    // A reload replaces the whole document, so the DOM domain's node table
+    // (populated by the DOM.getDocument above, before this reload) no
+    // longer has anything valid to hand `check` -- refetch it for the new
+    // document before asking for a node in it.
+    await c.send('DOM.getDocument');
+    await evalIn(c, step(`$('#phrasePlayers').click()`));
+    await check(`sheet text at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px`, '.who-row .prow-t');
+    await evalIn(c, step(`$('#sheetWho').close()`));
   } finally {
     await c.send('CSS.disable');
     await c.send('DOM.disable');

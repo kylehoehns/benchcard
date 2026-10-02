@@ -1,5 +1,5 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
 import { goRich, richWith } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
@@ -466,21 +466,17 @@ export async function timelineCardSheetPass(c, origin) {
 
     /* ---- fix pass finding 1: row geometry at 360px/24px and 320px/32px,
        the other two cells the finding measured ---- */
-    {
-      await land(c, origin, { width: MID_TEXT_WIDTH, textPx: MID_TEXT_PX });
-      await tap(c, `document.getElementById('shareBtn').click()`);
-      await cardSheetRowsOk(c, ck, '360px/24px');
-      await cardSheetWidthOk(c, ck, '360px/24px', MID_TEXT_WIDTH);
-      await tap(c, `document.getElementById('sheetCardClose').click()`);
-    }
+    await land(c, origin, { width: MID_TEXT_WIDTH, textPx: MID_TEXT_PX });
+    await tap(c, `document.getElementById('shareBtn').click()`);
+    await cardSheetRowsOk(c, ck, '360px/24px');
+    await cardSheetWidthOk(c, ck, '360px/24px', MID_TEXT_WIDTH);
+    await tap(c, `document.getElementById('sheetCardClose').click()`);
 
-    {
-      await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
-      await tap(c, `document.getElementById('shareBtn').click()`);
-      await cardSheetRowsOk(c, ck, '320px/32px');
-      await cardSheetWidthOk(c, ck, '320px/32px', LARGE_TEXT_WIDTH);
-      await tap(c, `document.getElementById('sheetCardClose').click()`);
-    }
+    await land(c, origin, { ...LARGE_TEXT });
+    await tap(c, `document.getElementById('shareBtn').click()`);
+    await cardSheetRowsOk(c, ck, '320px/32px');
+    await cardSheetWidthOk(c, ck, '320px/32px', LARGE_TEXT_WIDTH);
+    await tap(c, `document.getElementById('sheetCardClose').click()`);
 
     /* C5: with no roster at all, Timeline's own empty-state CTA presses
        `#emptyAdd` -- Team's own first-run button (`rosterCta`, timeline.js)

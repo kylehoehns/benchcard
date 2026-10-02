@@ -2,8 +2,8 @@
    is the Node side of the check, not the browser page, so it needs the same
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
-import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, wait } from './dom.mjs';
-import { TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './sizes.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, wait } from './dom.mjs';
+import { LARGE_TEXT, TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './sizes.mjs';
 import { PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
 import { drag, dragHold, touchDragCancel, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
@@ -412,7 +412,7 @@ async function fieldsAtLargeTextOk(c, ck) {
    baseline once. A text size only takes effect after a reload, so each landing
    reloads the saved record and comes back to Team. */
 async function largeTextOk(c, ck, origin) {
-  await land(c, origin, { record: 'kept', width: 320, textPx: 32 });
+  await land(c, origin, { record: 'kept', ...LARGE_TEXT });
   await toTeam(c);
   await fieldsAtLargeTextOk(c, ck);
   await identLongNameOk(c, ck);
@@ -508,7 +508,7 @@ async function rosterRowsFitOk(c, ck, who, want) {
   let at = null;
   try {
     for (const w of TOUCH_WIDTHS) {
-      await resize(c, w, HEIGHT, { debounce: true });
+      await resize(c, w, undefined, { debounce: true });
       at = w;
       const rows = await rosterFit(c);
       if (!ck(rows.length === want,
@@ -524,7 +524,7 @@ async function rosterRowsFitOk(c, ck, who, want) {
       }
     }
   } finally {
-    if (at !== WIDTH) await resize(c, WIDTH, HEIGHT, { debounce: true });
+    if (at !== WIDTH) await resize(c, WIDTH, undefined, { debounce: true });
   }
 }
 
@@ -732,7 +732,7 @@ async function editModeOk(c, ck) {
   await tap(c, `document.getElementById('teamEdit').click()`);
 
   for (const width of [WIDTH, 320]) {
-    if (width !== WIDTH) await resize(c, width, HEIGHT, { debounce: true });
+    if (width !== WIDTH) await resize(c, width, undefined, { debounce: true });
     const rows = await editState(c);
     if (!ck(rows.length === ROSTER.length,
       `Edit mode shows ${rows.length} row(s) at ${width}px, want ${ROSTER.length}`)) break;
@@ -759,7 +759,7 @@ async function editModeOk(c, ck) {
       else ck(!dn.off, `${name} cannot be moved down at ${width}px`);
     });
   }
-  await resize(c, WIDTH, HEIGHT, { debounce: true });
+  await resize(c, WIDTH, undefined, { debounce: true });
   await reorderOk(c, ck);
 
   await tap(c, `document.getElementById('teamEdit').click()`);

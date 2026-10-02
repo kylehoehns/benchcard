@@ -212,7 +212,7 @@ checks it already covers only when it fails, or when you need something it does
 not check.
 
 `--only "<check>"` runs just the one named row and the setup it needs (a cold
-load, or the cold load plus `goRich`), for the loop while iterating —
+load, or the cold load plus a rich-fixture reset), for the loop while iterating —
 `node scripts/smoke.mjs --only "bench mode wake lock"` prints that one row and
 nothing else. It is not proof: a partial run says nothing about the other
 checks, and the full `npm run smoke` still stands between every change and its

@@ -24,9 +24,9 @@
  * broken tree read green the first time. */
 import { setWidth, TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN } from './dom.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
-import { goRich, RICH } from './fixtures.mjs';
+import { goRich, RICH, TODAY_GAME_READY } from './fixtures.mjs';
 import { land } from './page-state.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
 
@@ -474,12 +474,11 @@ const READ_FIVE_GAMES = `JSON.stringify((() => {
   return { hint, rows, snDayLefts, firstGameTitleLeft };
 })())`;
 
-const TODAY_GAME_READY = `document.querySelector('.today-game')`;
 
 async function seasonFiveGamesPass(c, origin) {
   const problems = [];
   try {
-    await land(c, origin, { record: FIVE_GAMES, width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX,
+    await land(c, origin, { record: FIVE_GAMES, ...LARGE_TEXT,
       ready: TODAY_GAME_READY, freshHistory: true });
     await tap(c, OPEN_SEASON);
 
@@ -612,7 +611,7 @@ async function seasonFiledSqueezePass(c, origin) {
   const problems = [];
   const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
   try {
-    await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+    await land(c, origin, { ...LARGE_TEXT });
     await tap(c, TODAY_HOME);
     await tap(c, OPEN_SEASON);
     await tap(c, OPEN_FIRST_FILED_GAME);

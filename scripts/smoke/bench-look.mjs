@@ -22,7 +22,7 @@
 import { evalIn, step, setWidth, WIDTH, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_SR_ONLY_RECT } from './dom.mjs';
 import { goRich, RICH } from './fixtures.mjs';
 import { land } from './page-state.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 // Same shape as CSS_VAR_COLOR_PROBE (dom.mjs) but for `color`, not
 // `background-color` -- item 6 asks about TEXT color inside #gmNext, and
@@ -517,7 +517,7 @@ const NAME_WORD_PROBE = `(() => {
 
 async function runLargeText(c, origin, problems, notes) {
   try {
-    await land(c, origin, { record: richWithLongName(), width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+    await land(c, origin, { record: richWithLongName(), ...LARGE_TEXT });
     await evalIn(c, step(OPEN_BENCH));
 
     const r = JSON.parse(await evalIn(c, NAME_WORD_PROBE));

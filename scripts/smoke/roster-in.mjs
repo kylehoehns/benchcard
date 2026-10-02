@@ -5,7 +5,7 @@ import '../../test/dom-stub.js';
 import { evalIn, OVERFLOW_PROBE, TODAY_HOME, toGameOne } from './dom.mjs';
 import { LONG_NAME, PLAYERS } from './fixtures.mjs';
 import { land } from './page-state.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, setGame, settle, tap, waitClosed } from './sheet-drive.mjs';
 
 /* #146's own guard (docs/specs/146-roster-in.md's Proof section): the paste
@@ -332,7 +332,7 @@ async function longNameSuffixOk(c, ck, origin) {
   // reapplies `LONG_MUTATE` -- a reload wipes it the same way it wipes
   // `suffixFixtureOk`'s own mutation, which is why that check restores by
   // hand and this one simply re-mutates after the reload it needs anyway. */
-  await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+  await land(c, origin, { ...LARGE_TEXT });
   await evalIn(c, setGame(LONG_MUTATE));
   await settle(c);
   await longNameSuffixState(c, ck, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);

@@ -175,6 +175,12 @@ export const RICH = {
    view, see `GAMES_VIEW_READY`" rather than re-explaining any of this. */
 export const GAMES_VIEW_READY = screenReadyExpr('view-games');
 
+/* The other two `ready` expressions a `land` or `reloadWithRecord` waits on,
+   named once: Today painted its game rows, and the wiped-record welcome
+   screen showing. */
+export const TODAY_GAME_READY = `document.querySelector('.today-game')`;
+export const WELCOME_READY = `!document.getElementById('view-welcome').hidden`;
+
 /* Swap the lean fixture for the rich one and reload. Called exactly once, from
    `browserChecks`, immediately after the payload snapshot. The reload is
    required rather than tidy: `loadState` runs at boot and nothing re-reads
@@ -231,7 +237,7 @@ export async function goSeed(c, origin) {
    reloads onto Today, never straight onto a game. `ready` overrides that
    condition for a caller that reloads onto a screen which never paints a
    `.today-game` -- the welcome screen or an empty-roster fixture (#139). */
-export async function reloadWithRecord(c, origin, record, ready = `document.querySelector('.today-game')`) {
+export async function reloadWithRecord(c, origin, record, ready = TODAY_GAME_READY) {
   await landKeepingAmbient(c, origin, { record, ready, freshHistory: true });
 }
 

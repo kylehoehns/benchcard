@@ -1,6 +1,7 @@
-import { TODAY_HOME } from './dom.mjs';
+import { TODAY_HOME, WIDTH } from './dom.mjs';
+import { LARGE_TEXT } from './sizes.mjs';
 import { land } from './page-state.mjs';
-import { evalJSON, openAddGameFlow as openFlow, realTap, settle, tap, waitClosed } from './sheet-drive.mjs';
+import { evalJSON, openAddGameFlow as openFlow, realTap, tap, waitClosed } from './sheet-drive.mjs';
 
 /* #32's hard-size look checks, split out of `add-game-flow.mjs` when that
    file crossed the 40,000-byte ceiling `smoke-size.test.js` holds every smoke
@@ -42,9 +43,7 @@ import { evalJSON, openAddGameFlow as openFlow, realTap, settle, tap, waitClosed
    The clamp still wraps at word boundaries first, so a name that fits
    across two words is never split mid-word the way #31's
    `overflow-wrap: anywhere` was ("Marc/us/Willi/ams"). */
-async function tileGridFitsAt(c, ck, origin, width, px) {
-  await land(c, origin, { width, textPx: px });
-  await settle(c);
+async function tileGridFitsAt(c, ck, width, px) {
   await tap(c, TODAY_HOME);
   // The fixture's own longest name is "Casey Lindqvist" (9-letter surname).
   // A coach can type longer -- one word wider than any tile column is the
@@ -101,15 +100,8 @@ async function tileGridFitsAt(c, ck, origin, width, px) {
   await waitClosed(c, '#addGameFlow');
 }
 
-async function tileGridFits(c, ck, origin) {
-  await tileGridFitsAt(c, ck, origin, 390, 16);
-  await tileGridFitsAt(c, ck, origin, 320, 32);
-}
-
-async function tileNotBrokenAt(c, ck, origin, width, px) {
+async function tileNotBrokenAt(c, ck, width, px) {
   try {
-    await land(c, origin, { width, textPx: px });
-    await settle(c);
     /* The fixture's own names are short enough to fit a column at both
        breakpoints, so on their own they cannot tell a fix that breaks words
        apart from one that does not -- that is exactly how an earlier
@@ -173,11 +165,6 @@ async function tileNotBrokenAt(c, ck, origin, width, px) {
   }
 }
 
-async function tileNotBroken(c, ck, origin) {
-  await tileNotBrokenAt(c, ck, origin, 390, 16);
-  await tileNotBrokenAt(c, ck, origin, 320, 32);
-}
-
 /* I8: at 320px/32px the bar's middle column ("New game" / "1 of 3") wrapped
    to two lines -- a grid item's default `min-width: auto` would not let
    either text give way to its own column -- which grew `.flow-bar-row`
@@ -193,9 +180,7 @@ async function tileNotBroken(c, ck, origin) {
    the bar was one row tall and became wrong the moment the title moved to a
    row of its own at this size: the ✕ then sits at the top of a two-row bar,
    exactly where N8 asks for it, and the old form called that a defect. */
-async function flowBarFitsAt32(c, ck, origin) {
-  await land(c, origin, { width: 320, textPx: 32 });
-  await settle(c);
+async function flowBarFitsAt32(c, ck) {
   await openFlow(c);
   const m = await evalJSON(c, `(() => {
     const root = parseFloat(getComputedStyle(document.documentElement).fontSize);
@@ -296,7 +281,13 @@ async function flowBarFitsAt32(c, ck, origin) {
 /* The three run together and share one problem list, so one call site in
    `add-game-flow.mjs` covers them all. */
 export async function addGameFitChecks(c, ck, origin) {
-  await tileNotBroken(c, ck, origin);
-  await tileGridFits(c, ck, origin);
-  await flowBarFitsAt32(c, ck, origin);
+  // Each size lands once and every cell at it runs on that one landing; the
+  // tile checks restore the one name they change before they return.
+  await land(c, origin, { width: WIDTH, textPx: 16 });
+  await tileNotBrokenAt(c, ck, 390, 16);
+  await tileGridFitsAt(c, ck, 390, 16);
+  await land(c, origin, { ...LARGE_TEXT });
+  await tileNotBrokenAt(c, ck, 320, 32);
+  await tileGridFitsAt(c, ck, 320, 32);
+  await flowBarFitsAt32(c, ck);
 }

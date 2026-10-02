@@ -1,6 +1,6 @@
 import { evalIn, quiet, SETTLE, step, WIDTH, onScreen, wait } from './dom.mjs';
-import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { RICH, withSecondTeam, reloadWithRecord, TODAY_GAME_READY } from './fixtures.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { land } from './page-state.mjs';
 
 /* `history.back()`, then wait for the popstate it raises and for the screen it
@@ -195,14 +195,12 @@ export async function todayAndBackPass(c, origin) {
   await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
   // A text size only takes effect after a reload, so `land` it, then land
   // back at the baseline size and width: the rest of this row measures there.
-  const TODAY_READY = `document.querySelector('.today-game')`;
-  await land(c, origin, { record: 'kept', width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX, ready: TODAY_READY });
+  await land(c, origin, { record: 'kept', ...LARGE_TEXT, ready: TODAY_GAME_READY });
   await checkLabelHierarchy(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
   await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
   await checkMenuAnchored(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
   await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
-  await land(c, origin, { record: 'kept', ready: TODAY_READY });
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  await land(c, origin, { record: 'kept', ready: TODAY_GAME_READY });
   await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
 
   // switching team closes the menu and repaints Today, not the menu mid-tap

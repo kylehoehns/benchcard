@@ -1,6 +1,7 @@
 import { evalIn } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 import { PLAYERS, UI, SEED } from './fixtures.mjs';
+import { LARGE_TEXT_PX } from './sizes.mjs';
 import { land } from './page-state.mjs';
 import { seasonDate } from '../../app/storage.js';
 import { smokeToday } from './clock.mjs';
@@ -50,7 +51,7 @@ export async function cardAt32Pass(c, origin, report) {
 
   let at32;
   try {
-    await land(c, origin, { record: 'kept', textPx: 32 });
+    await land(c, origin, { record: 'kept', textPx: LARGE_TEXT_PX });
     at32 = await measureCard(c);
   } finally {
     // Never leave the emulated font size on: land back at 16px.

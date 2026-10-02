@@ -28,7 +28,7 @@
  * not care whether ICU puts an ASCII space or U+202F before "AM". */
 import { evalIn, step, TODAY_HOME, OVERFLOW_PROBE, WIDTH } from './dom.mjs';
 import { land } from './page-state.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const WANT = { title: 'Hawks', when: '9:00', status: 'Planned' };
 
@@ -122,7 +122,7 @@ export async function gameTitlePass(c, origin) {
    * cannot be re-applied without a reload -- see app-large-text.mjs's own
    * comment -- so this reloads onto the games view RICH already leaves
    * active, rather than clicking a game a second time. */
-  await land(c, origin, { record: 'kept', width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+  await land(c, origin, { record: 'kept', ...LARGE_TEXT });
   const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
   const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
   if (o.pans) problems.push(`${where}: the games view pans sideways`);

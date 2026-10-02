@@ -15,9 +15,9 @@
  * from the stylesheet -- a floor set in CSS has to be proven by the box the
  * browser actually painted. */
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, toGameOne } from './dom.mjs';
-import { TOUCH_WIDTHS, TOAST_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
+import { LARGE_TEXT, TOUCH_WIDTHS, TOAST_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
 import { land, resize } from './page-state.mjs';
-import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
+import { RICH, partPlayed, reloadWithRecord, WELCOME_READY } from './fixtures.mjs';
 
 const TOL = 1;
 
@@ -158,7 +158,7 @@ async function measureButtons(c, origin) {
 async function measureLargeText(c, origin) {
   const bad = [];
   let audited = 0;
-  await land(c, origin, { record: 'kept', width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+  await land(c, origin, { record: 'kept', ...LARGE_TEXT });
 
   const label = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
   const cell = await measureScreens(c, LARGE_TEXT_PX, label);
@@ -240,7 +240,6 @@ async function measureToastRows(c, origin) {
 // #145 item 9: the landing before first run, wiped so it always shows --
 // same `landWiped` idiom `flow-inset.mjs` uses for the same reason, at every
 // TOUCH_WIDTHS phone (all <= 600, the spec's own ceiling for this item).
-const WELCOME_READY = `!document.getElementById('view-welcome').hidden`;
 
 async function measureWelcome(c, origin) {
   const bad = [];

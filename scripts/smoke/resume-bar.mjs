@@ -12,10 +12,10 @@
  * LATER one" are actually different claims -- a fixture with only one
  * part-played game could not tell them apart. */
 import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, landWiped, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
-import { LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs';
 import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
-import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
+import { RICH, partPlayed, reloadWithRecord, TODAY_GAME_READY } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 
 // Decision 14's exact fixture and item 1's exact string -- the SECOND
@@ -210,8 +210,8 @@ export async function resumeBarPass(c, origin) {
    * after it lands its own width and root font. */
   const recBig = partPlayed(RICH);
   recBig.view = 'today';
-  await land(c, origin, { record: recBig, width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX,
-    ready: `document.querySelector('.today-game')`, freshHistory: true });
+  await land(c, origin, { record: recBig, ...LARGE_TEXT,
+    ready: TODAY_GAME_READY, freshHistory: true });
   const under = JSON.parse(await evalIn(c, `(async () => {
     window.scrollTo(0, 1e6);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));

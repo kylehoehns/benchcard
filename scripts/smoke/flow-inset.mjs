@@ -23,7 +23,8 @@
  * step-3 card-fit measurement. */
 import { evalIn, setWidth } from './dom.mjs';
 import { land } from './page-state.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { WELCOME_READY } from './fixtures.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, openAddGameFlow, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
 const TOL = 1;
@@ -100,8 +101,7 @@ async function addGameSweep(c, ck) {
   await setWidth(c, 390);
 }
 
-const READY = `!document.getElementById('view-welcome').hidden`;
-const landWelcome = (c, origin, want = {}) => land(c, origin, { record: 'wiped', ready: READY, ...want });
+const landWelcome = (c, origin, want = {}) => land(c, origin, { record: 'wiped', ready: WELCOME_READY, ...want });
 const SAMPLE_ROSTER = '12 Maya Webb\n4 Eli Tran\nDevon Ellis\n3 Nia Bell\n15 Caleb Ruiz';
 
 // At 320px with a 32px root a button can break the inset two ways the sweep
@@ -136,7 +136,7 @@ async function measureLargeTextButtons(c, ids, label, ck) {
 // A font size needs a reload (`app-large-text.mjs`), so this lands on its
 // own; the next `land` sets the size back.
 async function firstRunLargeTextButtons(c, ck, origin) {
-  await landWelcome(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+  await landWelcome(c, origin, { ...LARGE_TEXT });
   await realTap(c, '#welStart');
   await measureLargeTextButtons(c, ['frFill'],
     `first run step 1@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, ck);

@@ -16,7 +16,7 @@
 import { encode as qrEncode } from '../../app/vendor/uqr.mjs';
 import { DAMAGED_LINK as DAMAGED } from '../../app/live.js';
 import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, TODAY_HOME, onScreen } from './dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
 import { goRich } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { evalJSON, tap, settle, setGame, pickSharePane, sharePaneButton, qrDrawn } from './sheet-drive.mjs';
@@ -142,7 +142,7 @@ export async function handOffPass(c, origin) {
   ck(days === 1, `after a reload the phone holds ${days} games, want 1`);
 
   // Landing: "Start game"/"Resume" is on screen, whole, at both sizes.
-  for (const [label, w] of [[`${WIDTH}px`, { width: WIDTH, textPx: 16 }], [`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX }]]) {
+  for (const [label, w] of [[`${WIDTH}px`, { width: WIDTH, textPx: 16 }], [`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, { ...LARGE_TEXT }]]) {
     await landOnLink(c, origin, hash, w);
     const r = await evalJSON(c, `(() => {
       const b = document.getElementById('abBench'), bar = document.getElementById('actionbar');

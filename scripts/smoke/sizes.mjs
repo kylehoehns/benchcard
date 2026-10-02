@@ -101,6 +101,8 @@ export const TOUCH_CHECK = `touch targets ≥ ${TOUCH_FLOOR}px`;
 // rationale for this one cell lives with `staticPass` in `static.mjs`.
 export const LARGE_TEXT_PX = 32;       // a 200% reader, via CDP `Page.setFontSizes`
 export const LARGE_TEXT_WIDTH = 320;   // the narrowest phone anyone carries
+// The pair as a `land` want: `land(c, origin, { ...LARGE_TEXT })`.
+export const LARGE_TEXT = { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX };
 
 // #179's own row name, built from the same two constants above rather than a
 // second hand-typed "320px/32px" — `registry.mjs` and `clip-sweep.mjs` both

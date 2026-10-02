@@ -19,9 +19,9 @@
  * `scrollWidth`/`clientWidth` (nothing truncated) and the status's own right
  * edge against the CARD's content edge, not the viewport's. */
 import { evalIn } from './dom.mjs';
-import { FOUR } from './fixtures.mjs';
+import { FOUR, TODAY_GAME_READY } from './fixtures.mjs';
 import { land } from './page-state.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { GAME_SUMMARIES } from './game-passes.mjs';
 import { WORD_RECTS_FN } from './row-stack.mjs';
 
@@ -96,14 +96,12 @@ function checkRavensSummary(cards, where, problems) {
   }
 }
 
-const TODAY_GAME_READY = `document.querySelector('.today-game')`;
-
 export async function passLargeTextPass(c, origin) {
   const problems = [];
   try {
     // Item 1: 320px wide, a 32px root -- "set the font size the way
     // app-large-text.mjs does (set, then reload)".
-    await land(c, origin, { record: FOUR, width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX,
+    await land(c, origin, { record: FOUR, ...LARGE_TEXT,
       ready: TODAY_GAME_READY, freshHistory: true });
 
     const cards320 = JSON.parse(await evalIn(c, MEASURE));

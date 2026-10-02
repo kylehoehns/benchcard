@@ -1,7 +1,7 @@
 import { evalIn, OVERFLOW_PROBE } from './dom.mjs';
-import { RICH, reloadWithRecord } from './fixtures.mjs';
+import { RICH, reloadWithRecord, TODAY_GAME_READY } from './fixtures.mjs';
 import { openAddGameFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { land } from './page-state.mjs';
 import { seasonDate } from '../../app/storage.js';
 import { smokeToday } from './clock.mjs';
@@ -174,8 +174,8 @@ export async function threeDaysPass(c, origin) {
     // ...and at 320px/32px text (T2/T4). `Page.setFontSizes` only takes
     // effect on the next navigation (`app-large-text.mjs`'s own note), so
     // this reloads the record already seeded above rather than rewriting it.
-    await land(c, origin, { record: 'kept', width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX,
-      ready: `document.querySelector('.today-game')` });
+    await land(c, origin, { record: 'kept', ...LARGE_TEXT,
+      ready: TODAY_GAME_READY });
     const o320 = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
     if (o320.pans || o320.worst) {
       problems.push(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text: `
