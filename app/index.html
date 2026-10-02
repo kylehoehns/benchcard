@@ -188,6 +188,8 @@
     };
     if (view === 'games' && !teamHasGames(activeTeamObj)) view = 'today';
 
+    // a hand-off link (#p=) lands on games whatever is stored (#255)
+    if (location.hash.indexOf('#p=') === 0) { welcome = false; view = 'games'; }
     // today is the markup default, so it is stamped as nothing at all
     if (welcome) view = 'welcome';
     if (view !== 'today') document.documentElement.setAttribute('data-boot', view);

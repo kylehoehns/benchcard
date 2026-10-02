@@ -119,12 +119,12 @@ const VIEW_STAMPS = ['welcome', 'games', 'team', 'season', 'settings'];
    `storage` replaces that Map-backed stub for the one test that needs a
    `getItem` which THROWS rather than answering; the doc stub and the run are
    the same ones every other caller gets, which is the point of asking here. */
-const runPrePaint = (store, storage) => {
+const runPrePaint = (store, storage, hash = '') => {
   const stamps = {};
   const doc = { documentElement: { setAttribute: (k, v) => { stamps[k] = v; } } };
   // eslint-disable-next-line no-new-func
-  new Function('localStorage', 'document', prePaintScript())(
-    storage || { getItem: k => (k in store ? store[k] : null) }, doc);
+  new Function('localStorage', 'document', 'location', prePaintScript())(
+    storage || { getItem: k => (k in store ? store[k] : null) }, doc, { hash });
   return stamps;
 };
 
@@ -419,6 +419,25 @@ for (const [name, store, want] of COLOR_CASES) {
       + 'a coach whose active team is not Graphite would see a Graphite frame first');
   });
 }
+
+/* #255: a hand-off link (`#p=`) imports into a game and lands on Games, so the
+   first frame is Games whatever is stored -- on a fresh phone that would
+   otherwise be a welcome flash. The no-hash table above still agrees with
+   `loadState` exactly; these rows only add the hash. */
+for (const [name, store] of [
+  ['a fresh phone', {}],
+  ['a phone left on Settings', { [KEY]: j(rec(roster(), true, 'settings')) }],
+]) {
+  test(`first paint with a hand-off link is Games: ${name}`, () => {
+    const stamps = runPrePaint(store, undefined, '#p=1abc');
+    assert.equal(stamps['data-boot'], 'games');
+    assert.equal(stamps['data-view'], 'games');
+  });
+}
+
+test('a hash that is not a hand-off link leaves a fresh phone on welcome', () => {
+  assert.equal(runPrePaint({}, undefined, '#other')['data-view'], 'welcome');
+});
 
 /* The height is the other half, and it is a NUMBER the first frame has to get
    right rather than a state. An empty strip is 9.6px of padding; the row a
