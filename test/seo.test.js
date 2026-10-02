@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { SIZES, file, slug } from '../scripts/charts.mjs';
+import { parseSitemap } from '../scripts/check-sitemap-lastmod.mjs';
 
 /* #279: each page owns its own search phrase. This reads page source on
  * purpose -- a crawler reads source, and the spec (docs/specs/279-seo-pass.md)
@@ -37,10 +39,9 @@ test('about owns the equal playing time phrase', () => {
 
 const ORIGIN = 'https://benchcard.app';
 const sitemap = read('sitemap.xml');
-const locs = [...sitemap.matchAll(/<loc>([^<]*)<\/loc>/g)].map(m => m[1]);
-const fileFor = loc => (loc === `${ORIGIN}/` ? 'index.html' : `${loc.slice(ORIGIN.length + 1)}.html`);
-const SIZES = [7, 8, 9, 10, 11, 12];
-const chartLoc = n => `${ORIGIN}/${n}-player-basketball-rotation-chart`;
+const dates = parseSitemap(sitemap);
+const locs = Object.keys(dates).map(f => (f === 'index.html' ? `${ORIGIN}/` : `${ORIGIN}/${f.replace(/\.html$/, '')}`));
+const chartLoc = n => `${ORIGIN}/${slug(n)}`;
 
 const blocks = html => [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
   .map(m => JSON.parse(m[1]));
@@ -51,12 +52,12 @@ const strings = v => (typeof v === 'string' ? [v]
 
 test('every JSON-LD block parses, and every page URL in it is one the sitemap lists', () => {
   assert.equal(locs.length, 9);
-  for (const loc of locs) {
-    const html = read(fileFor(loc));
+  for (const f of Object.keys(dates)) {
+    const html = read(f);
     for (const s of strings(blocks(html))) {
       /* An image or other asset URL (og.png) is not a page. */
       if (!s.startsWith(ORIGIN) || /\.[a-z0-9]+$/i.test(s)) continue;
-      assert.ok(locs.includes(s), `${fileFor(loc)} names ${s}, which the sitemap does not list`);
+      assert.ok(locs.includes(s), `${f} names ${s}, which the sitemap does not list`);
     }
   }
 });
@@ -75,7 +76,7 @@ function pageAndList(html, label) {
 
 test('each chart page has a WebPage in the site and a Benchcard > About > chart breadcrumb', () => {
   for (const n of SIZES) {
-    const html = read(`${n}-player-basketball-rotation-chart.html`);
+    const html = read(file(n));
     const { page, list } = pageAndList(html, n);
     assert.equal(page.url, chartLoc(n));
     assert.equal(page.name, `${n}-player basketball rotation chart`);
@@ -96,4 +97,8 @@ test('advanced has a WebPage and a Benchcard > Reference breadcrumb', () => {
     [1, 'Benchcard', `${ORIGIN}/`],
     [2, 'Reference', `${ORIGIN}/advanced`],
   ]);
+});
+
+test('the home screen name stays Benchcard, whatever the title says', () => {
+  assert.equal(meta(read('index.html'), /<meta name="apple-mobile-web-app-title" content="([^"]*)">/), 'Benchcard');
 });

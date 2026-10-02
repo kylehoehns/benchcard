@@ -23,9 +23,9 @@ someone signed in with access.
 
 There are **six** CI jobs in total: the `node --test` matrix above, then
 `smoke` (`node scripts/smoke.mjs`, which runs the unit suite inside it and judges the line-coverage floor), `redirect` (`redirect-check.mjs`,
-the service worker behind Cloudflare's trailing-slash 307s), `about dateline`
-(`check-about-date.mjs`), `service worker version` (below) and `vendor drift`
-(below). The three named in this sentence went unmentioned here for months
+the service worker behind Cloudflare's trailing-slash 307s), `checks that need history`
+(three steps: service worker version, `check-about-date.mjs` and
+`check-sitemap-lastmod.mjs`) and `vendor drift` (below). The three named in this sentence went unmentioned here for months
 while this paragraph counted to three; if you add a seventh, say so here.
 
 The service-worker version job runs `scripts/check-sw-version.mjs`, which fails when a file in `sw.js`'s
@@ -40,6 +40,18 @@ needs the bump as well. Run it locally with `node scripts/check-sw-version.mjs
 origin/main`. It exits 0 when there is no base ref to compare against — a first
 push, a shallow clone, a force-push — because a guard that fails on a ref it
 cannot read is a guard people learn to ignore.
+
+The `checks that need history` job also runs `scripts/check-sitemap-lastmod.mjs`,
+which fails when a branch changes `app/<page>.html` for a page in the sitemap
+but that page's `<lastmod>` in `sitemap.xml` does not change (a chart page
+changing through `scripts/charts.mjs` is caught the same way, because the
+generator rewrites the HTML). A `<lastmod>` equal to the day the check runs
+also passes, as with the about dateline. The sitemap's dates are set once from
+`git log -1 --format=%cs -- <file>` and then kept honest by this check: a
+page that changed must have a new `<lastmod>`, or the crawler's cached copy
+stays stale. Run it locally with `node scripts/check-sitemap-lastmod.mjs
+origin/main`. It exits 0 when there is no base ref to compare against, the same
+guard-learning principle as the service-worker check.
 
 `.github/workflows/vendor-drift.yml` re-runs `sh app/vendor/fetch.sh` and
 fails if the working tree moves. Committing the output of a script is only
@@ -199,6 +211,7 @@ question of *which card format* gets printed; both read from
 `benchcard_events` through `scripts/cf.mjs`, which owns the auth, needs a
 read-only `CLOUDFLARE_API_TOKEN` in the environment, and never lets a token
 reach an error message.
+
 ## Search, sharing and install
 
 The app is JS-rendered, so a crawler that does not execute scripts sees a shell.
@@ -227,7 +240,8 @@ Two things address that, and they are different problems:
   that long in a wrapping chip row would hang off 320px at a 32px root. It is
   below the card rather than under the CTA pair so it does not compete with
   "Build a card". `test/about-nav.test.js` pins that a tenth section cannot be
-  added without an entry. `advanced.html` follows the same Hardwood styling.
+  added without an entry. `advanced.html` follows the same Hardwood styling and
+  carries a `WebPage` with a `BreadcrumbList` (Benchcard › Reference).
   The scroll reveals are
   `IntersectionObserver` plus opacity and transform, and every hidden state is
   behind a `.js` class that the head script adds **only when
@@ -252,6 +266,9 @@ Two things address that, and they are different problems:
   The prose slots (`lede`, `caption`) are placeholders carrying `data-draft="1"`
   until the author writes them — `grep -l data-draft app/*.html`. The `<title>`
   and description are assembled from the generated plan's own numbers instead.
+  Each chart page also carries a JSON-LD `WebPage` block naming the page and
+  linking it to the site, plus a `BreadcrumbList` showing Benchcard › About › N-player chart,
+  emitted by `scripts/charts.mjs` so `--check` keeps all six in sync.
   Canonical, `sitemap.xml` and every internal `href` use the **extensionless**
   URL, which is what Cloudflare 200s. One spelling per page: they disagreed
   until September 2026, and offline the worker served the app shell in place of
@@ -328,6 +345,7 @@ glyph in Safari's toolbar. A browser offering neither is shown nothing — there
 would be no instruction to give it — and one already running standalone is
 never asked at all. `test/install.test.js` pins those rules the way
 `test/tip.test.js` pins the tip's.
+
 ## Search
 
 Baseline read from Search Console on 2026-10-02 (#279), so a later read has
@@ -343,9 +361,7 @@ something to be compared with:
 - The 8-, 11- and 12-player chart pages share 42 impressions at positions 25
   to 37, with 0 clicks. About averages position 10.5 and home 19.4.
 
-Each page owns one phrase: home owns the planner and generator phrases, each
-chart page owns its roster size, About owns equal playing time and how to plan
-substitutions, and the reference page owns none.
+Which page owns which phrase is in `docs/specs/279-seo-pass.md`.
 
 **Compare in about 8 weeks, around 2026-11-27.** Ranking is not a CI fact;
 nothing here can decide it, so someone has to read Search Console again.

@@ -236,6 +236,9 @@ test('the pages read correctly with JavaScript off', () => {
     const scripts = [...page.matchAll(/<script[^>]*>/g)]
       .filter(m => !/type="application\/ld\+json"/.test(m[0])); // data, not code (#279)
     assert.equal(scripts.length, 1, `${file(n)} has ${scripts.length} scripts; it should only have the theme one`);
+    /* ...and the data blocks skipped above are counted, so extras cannot pile up unchecked. */
+    const data = page.match(/<script type="application\/ld\+json">/g) || [];
+    assert.equal(data.length, 1, `${file(n)} has ${data.length} ld+json blocks; it should have exactly one`);
     assert.ok(!/<script[^>]+src=/.test(page), `${file(n)} loads an external script`);
     const style = page.slice(page.indexOf('<style>'), page.indexOf('</style>'));
     assert.ok(!/opacity:\s*0\s*[;}]|visibility:\s*hidden/.test(style),

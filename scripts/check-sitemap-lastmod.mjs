@@ -4,7 +4,11 @@
    A <lastmod> that is not kept honest is read by Google as noise and then
    ignored, so a hand-set date is only worth having if something turns the
    promise to move it into a CI fact. The rule is deliberately one line: the
-   page's HTML file is in the diff => its <lastmod> differs from the base's.
+   page's HTML file is in the diff => its <lastmod> differs from the base's,
+   OR is not earlier than the date the check runs (the HEAD commit's date).
+   The second half is the same-day case, settled the way `check-about-date.mjs`
+   settles it: a page edited on the day its <lastmod> already names is honest,
+   and no other legal date exists (earlier is a lie, later is in the future).
    The six chart pages are generated, so a change to `scripts/charts.mjs` that
    alters a page shows up as that page's file changing, and the same rule
    covers it with no second path.
@@ -39,15 +43,18 @@ export function parseSitemap(xml) {
 
 /* The whole decision, pure. `changed` is the repo paths in the diff; `oldDates`
    is null when the base could not be read; `newDates` is the working
-   sitemap. A page that is new to the sitemap has no old date to repeat. */
-export function problems(changed, oldDates, newDates) {
+   sitemap; `today` is the date the check runs (YYYY-MM-DD), or null when it is
+   unknown, in which case only a changed date passes. A page that is new to
+   the sitemap has no old date to repeat. */
+export function problems(changed, oldDates, newDates, today = null) {
   if (!oldDates) return [];
   const files = Object.keys(newDates);
   if (!files.length) {
     return [`${SITEMAP} has no <url> entries this check can read, so it checked nothing.`];
   }
   return files
-    .filter((f) => changed.includes(`app/${f}`) && oldDates[f] === newDates[f])
+    .filter((f) => changed.includes(`app/${f}`) && oldDates[f] === newDates[f]
+      && !(today && newDates[f] >= today))
     .map((f) => `app/${f} changed but its <lastmod> in ${SITEMAP} is still ${newDates[f]}.`);
 }
 
@@ -71,7 +78,10 @@ function main() {
   const newDates = parseSitemap(readFileSync(new URL(`../${SITEMAP}`, import.meta.url), 'utf8'));
   const changed = git(['diff', '--name-only', base, 'HEAD']).split('\n').filter(Boolean);
 
-  const found = problems(changed, oldDates, newDates);
+  let today = null;
+  try { today = git(['log', '-1', '--format=%cs', 'HEAD'], true).trim(); } catch {}
+
+  const found = problems(changed, oldDates, newDates, today);
   if (!found.length) {
     console.log(`sitemap-lastmod: ok (${Object.keys(newDates).length} pages).`);
     return 0;

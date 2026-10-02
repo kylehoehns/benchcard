@@ -55,3 +55,15 @@ test('the shipped sitemap is parseable and every lastmod is a date', () => {
 test('a sitemap that parsed to nothing fails rather than checking nothing', () => {
   assert.equal(problems([ABOUT], before, {}).length, 1);
 });
+
+/* The same-day case, as check-about-date.mjs settles it: a page edited on the
+ * day its lastmod already names is honest, and no other legal date exists. */
+test('a changed page whose lastmod equals the check date passes', () => {
+  assert.deepEqual(problems([ABOUT], before, { ...before, 'about.html': '2026-10-02' }, '2026-10-02'), []);
+  const same = { 'about.html': '2026-10-02' };
+  assert.deepEqual(problems([ABOUT], same, { ...same }, '2026-10-02'), []);
+});
+
+test('a changed page whose unmoved lastmod is before the check date still fails', () => {
+  assert.equal(problems([ABOUT], before, { ...before }, '2026-10-02').length, 1);
+});
