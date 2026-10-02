@@ -427,6 +427,8 @@ for (const [name, store, want] of COLOR_CASES) {
 for (const [name, store] of [
   ['a fresh phone', {}],
   ['a phone left on Settings', { [KEY]: j(rec(roster(), true, 'settings')) }],
+  ['an onboarded phone whose team has no games',
+    { [KEY]: j({ ...rec(roster(), true, 'games'), teams: [teamNoGames(roster())] }) }],
 ]) {
   test(`first paint with a hand-off link is Games: ${name}`, () => {
     const stamps = runPrePaint(store, undefined, '#p=1abc');
@@ -520,13 +522,14 @@ test('a storage that refuses to answer lands where the boot lands', () => {
 test('a broken pre-paint script stamps nothing, leaving the markup default', () => {
   // the outer catch is the fallback, and it must not be the inner one: a throw
   // anywhere in the resolution has to leave <html> alone
-  let stamped = null;
   const doc = { documentElement: null };  // reading .setAttribute of null throws
   assert.doesNotThrow(() => {
+    // `location` is passed so the script gets as far as the null documentElement
+    // instead of dying early on a ReferenceError for `location.hash`
     // eslint-disable-next-line no-new-func
-    new Function('localStorage', 'document', prePaintScript())({ getItem: () => null }, doc);
+    new Function('localStorage', 'document', 'location', prePaintScript())(
+      { getItem: () => null }, doc, { hash: '' });
   }, 'the pre-paint script must never throw; it runs before everything else');
-  assert.equal(stamped, null);
   assert.ok(/\}\s*catch\s*\(e\)\s*\{\s*\}\s*\}\s*\)\(\);/.test(prePaintScript()),
     'the pre-paint script has lost its outer catch');
 });
