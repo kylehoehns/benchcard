@@ -42,6 +42,7 @@ import { land } from './smoke/page-state.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
 import {
   CLIP_PROBE, LONG_AND_SQUEEZE, CLIP_STATES, SCROLL_TO_BOTTOM, findingsOf, knownIssueFor, openState, reloadsPage, REDUCED_MOTION,
+  REVEAL_STATE, ABOUT_READY,
 } from './smoke/clip-sweep.mjs';
 import { shotProblems, postCaptureProblems, READ_PAINT, applyThemeScript } from './compare-shots.mjs';
 
@@ -66,15 +67,6 @@ const SW_SETTLED = `(async () => {
   await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(r, 3000))]);
   for (let i = 0; i < 60 && !navigator.serviceWorker.controller; i++) await new Promise(r => setTimeout(r, 50));
 })()`;
-
-/* `about` fades each `.reveal` in on scroll; reduced motion forces opacity 1. */
-const REVEAL_STATE = `JSON.stringify({
-  n: document.querySelectorAll('.reveal').length,
-  faded: [...document.querySelectorAll('.reveal')].filter(e => getComputedStyle(e).opacity !== '1').length,
-})`;
-
-/* The chart pages are out of scope (decided); `about` is the one static page. */
-const ABOUT_READY = `document.querySelector('.reveal')`;
 
 export const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 

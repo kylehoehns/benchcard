@@ -438,6 +438,7 @@ const describeFinding = p => {
     case 'hidden': return `${p.where}@${p.pos}: ${p.el} is hidden under ${p.hitBy}`;
     case 'overlap': return `${p.where}@${p.pos}: "${p.text}" (${p.el}) spills past its own box onto ${p.hitBy}'s text`;
     case 'floor': return `${p.where}@${p.pos}: "${p.text}" paints ${p.over}px past its own ${p.box}px box (${p.el})`;
+    default: return `${p.where}@${p.pos}: unknown finding ${p.kind}`;
   }
 };
 
@@ -567,8 +568,13 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
  * way to show every section finished (`look.mjs` lands its about shots the
  * same way), and the pass checks it took rather than trusting it. */
 export const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
-const UNREVEALED = `(() => { const r = [...document.querySelectorAll('.reveal')];
-  return JSON.stringify({ n: r.length, faded: r.filter(e => getComputedStyle(e).opacity !== '1').length }); })()`;
+/* `about` fades each `.reveal` in on scroll; reduced motion forces opacity 1.
+ * Shared with scripts/look.mjs. */
+export const REVEAL_STATE = `JSON.stringify({
+  n: document.querySelectorAll('.reveal').length,
+  faded: [...document.querySelectorAll('.reveal')].filter(e => getComputedStyle(e).opacity !== '1').length,
+})`;
+export const ABOUT_READY = `document.querySelector('.reveal')`;
 
 export const ABOUT_CELLS = [
   { label: 'about 320px/32px', want: LARGE_TEXT },
@@ -582,8 +588,8 @@ export async function aboutClipSweepPass(c, origin) {
   for (const { label, want } of ABOUT_CELLS) {
     try {
       await land(c, origin, { page: '/about.html', record: 'kept', media: REDUCED_MOTION,
-        ready: `document.querySelector('.reveal')`, ...want });
-      const rev = JSON.parse(await evalIn(c, UNREVEALED));
+        ready: ABOUT_READY, ...want });
+      const rev = JSON.parse(await evalIn(c, REVEAL_STATE));
       if (!rev.n || rev.faded) throw new Error(`${rev.faded} of ${rev.n} .reveal sections are not visible, so they would be skipped`);
       const onAbout = JSON.parse(await evalIn(c, `JSON.stringify(location.pathname)`));
       if (!/\/about(\.html)?$/.test(onAbout)) throw new Error(`landed on ${onAbout}, not the about page`);
