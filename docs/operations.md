@@ -328,6 +328,28 @@ glyph in Safari's toolbar. A browser offering neither is shown nothing — there
 would be no instruction to give it — and one already running standalone is
 never asked at all. `test/install.test.js` pins those rules the way
 `test/tip.test.js` pins the tip's.
+## Search
+
+Baseline read from Search Console on 2026-10-02 (#279), so a later read has
+something to be compared with:
+
+- All 9 sitemap pages are indexed. The 5 "not indexed" URLs are `.html` and
+  `http://` redirects plus one alternate with a correct canonical, which is
+  expected. `sitemap.xml` reads Success, 9 pages discovered.
+- Last 90 days (data from about 2026-08-22): 67 impressions, 6 clicks, average
+  position 20.5.
+- Queries seen: "basketball rotation planner", "basketball substitution
+  planner" and "basketball substitution generator", at 1 or 2 impressions each.
+- The 8-, 11- and 12-player chart pages share 42 impressions at positions 25
+  to 37, with 0 clicks. About averages position 10.5 and home 19.4.
+
+Each page owns one phrase: home owns the planner and generator phrases, each
+chart page owns its roster size, About owns equal playing time and how to plan
+substitutions, and the reference page owns none.
+
+**Compare in about 8 weeks, around 2026-11-27.** Ranking is not a CI fact;
+nothing here can decide it, so someone has to read Search Console again.
+
 ## Money
 
 There is none. The Benchcard zone of Settings carries a **Buy me a coffee** link

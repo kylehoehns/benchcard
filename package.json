@@ -9,7 +9,7 @@
     "redirect-check": "node scripts/redirect-check.mjs",
     "evals": "node scripts/evals.mjs",
     "bands": "node scripts/bands.mjs",
-    "check:history": "git fetch -q origin main && node scripts/check-sw-version.mjs origin/main && node scripts/check-about-date.mjs origin/main",
+    "check:history": "git fetch -q origin main && node scripts/check-sw-version.mjs origin/main && node scripts/check-about-date.mjs origin/main && node scripts/check-sitemap-lastmod.mjs origin/main",
     "sw:bump": "node scripts/sw-bump.mjs",
     "setup": "node scripts/setup.mjs"
   }

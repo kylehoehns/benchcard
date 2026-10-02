@@ -119,9 +119,10 @@ export async function focusAnnouncePass(c, origin) {
     // item 5: the expected home title comes from the served index.html's own
     // `<title>`, not a second hand-typed copy of it -- `render.js`'s own
     // `HOME_TITLE` reads the same tag at module load, so this check can still
-    // fail if Today's title were ever wrong.
+    // fail if Today's title were ever wrong. The source spells `&` as `&amp;`
+    // (#279's title has one); `document.title` reads the decoded text.
     const indexHtml = await (await fetch(`${origin}/index.html`)).text();
-    const HOME_TITLE = indexHtml.match(/<title>([^<]*)<\/title>/)[1];
+    const HOME_TITLE = indexHtml.match(/<title>([^<]*)<\/title>/)[1].replaceAll('&amp;', '&');
     const t0 = await focusInfo(c);
     if (t0.title !== HOME_TITLE) problems.push(`item 5: Today's tab title reads ${JSON.stringify(t0.title)}, want ${JSON.stringify(HOME_TITLE)}`);
 

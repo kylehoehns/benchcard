@@ -233,7 +233,8 @@ test('the pages read correctly with JavaScript off', () => {
     /* Exactly one inline script — the pre-paint theme resolution — and no
        external one. There is nothing here to reveal, so there is nothing that
        can stay hidden. */
-    const scripts = [...page.matchAll(/<script[^>]*>/g)];
+    const scripts = [...page.matchAll(/<script[^>]*>/g)]
+      .filter(m => !/type="application\/ld\+json"/.test(m[0])); // data, not code (#279)
     assert.equal(scripts.length, 1, `${file(n)} has ${scripts.length} scripts; it should only have the theme one`);
     assert.ok(!/<script[^>]+src=/.test(page), `${file(n)} loads an external script`);
     const style = page.slice(page.indexOf('<style>'), page.indexOf('</style>'));
