@@ -31,7 +31,7 @@
  * Zero dependencies: the same static server and CDP client the smoke harness
  * uses. Composition is HTML rendered by Chrome, not canvas drawing calls, so
  * the type is the app's own Inter at the app's own weights. The four icon
- * PNGs and favicon.ico are drawn the same way, behind `--icons`: the mark's
+ * PNGs and favicon.ico are drawn the same way, behind `--icons`: the card mark's
  * SVG rendered by Chrome at each size, and favicon.ico is that same 48px PNG
  * wrapped in an ICO header, built in node with no dependency.
  */
@@ -42,6 +42,7 @@ import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 import { serve } from './serve.mjs';
+import { markSvg } from './mark.mjs';
 import { pngSize } from './png-size.mjs';
 import { seasonDate } from '../app/storage.js';
 
@@ -383,13 +384,6 @@ const withLive = () => {
    travels (deviceWidth / 2) * tan(angle): 4.8px here, 9px at -2.6. The gap is
    19 css px, so half of it is the budget, and -2.6 spent more than it had --
    which is why every render before this one clipped a row on one side. */
-/* The mark's seam lines, on the 24-unit grid every drawing of it shares
-   (the composition's brand mark below, the icon mark further down, and the
-   inline favicon SVG in index.html/about.html/advanced.html). One constant
-   so the two places that draw it in this file cannot quietly diverge. */
-const SEAMS = '<path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>'
-  + '<path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>';
-
 /* Layout B, as approved: flat ground, ink text, a near-black bezel -- none of
    this is the team color, so unlike `tint` it is a literal here rather than a
    `getComputedStyle` read. `GROUND`/`INK` are the same values About and
@@ -443,12 +437,7 @@ const composition = (shot, tint) => {
   .phone img { display: block; width: ${PHONE_IN}px; }
 </style>
 <div class="brand">
-  <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10.5" fill="${tint}"/>
-    <g stroke="#F4F4F6" stroke-width="1.35" fill="none" opacity=".55">
-      ${SEAMS}
-    </g>
-  </svg>
+  ${markSvg(42, { rounded: true })}
   <span>Benchcard</span>
 </div>
 <div class="say">
@@ -459,25 +448,15 @@ const composition = (shot, tint) => {
 `;
 };
 
-/* ---------- the icon mark (#75 item 2) ----------
-   Same 24-unit design grid and the same seam paths as the brand mark drawn
-   above and in the favicon data URI (index.html, about.html, advanced.html),
-   scaled to whatever pixel size Chrome is asked to render at -- an SVG
-   `viewBox` does that scaling for free, stroke width included, so one markup
-   string is every icon. The layout is the one the shipped icons already had
-   (measured off main's icon-512.png): a solid square of the team color, and
-   on it the ball drawn in outline -- circle and seams, solid light strokes
-   with round ends -- about 60% of the width, which keeps it inside a
-   maskable icon's safe zone. Only the colors change. The widened viewBox is
-   what does the padding: 37 units across puts the 21-unit ball at 57% plus
-   its stroke. */
-const markSvg = (size, fill) => `<svg width="${size}" height="${size}" viewBox="-6.5 -6.5 37 37" xmlns="http://www.w3.org/2000/svg">
-  <rect x="-6.5" y="-6.5" width="37" height="37" fill="${fill}"/>
-  <g stroke="#F4F4F6" stroke-width="1.05" stroke-linecap="round" fill="none">
-    <circle cx="12" cy="12" r="10.5"/>
-    ${SEAMS}
-  </g>
-</svg>`;
+/* ---------- the icon mark (#75 item 2, redrawn as the card in #277) ----------
+   The drawing itself is scripts/mark.mjs, the one place its geometry lives;
+   the brand mark above and the page logos draw from it too. An install icon is
+   full bleed (a square ground, the shadow on) and may be cropped to a circle
+   by a maskable mask, so the card group is scaled about the center until the
+   card and its shadow sit inside the circle of radius 0.4 x size
+   (test/icon-safe-zone.test.js reads icon-512.png back and checks it). */
+const ICON_FIT = 0.78;
+const iconSvg = size => markSvg(size, { shadow: true, scale: ICON_FIT });
 
 /* The welcome screen's roster size, read from the module that owns it. A
    literal here would be a second answer to a question `onboarding.js` already
@@ -700,7 +679,7 @@ try {
     for (const { size, out } of ICON_TARGETS) {
       await c.send('Emulation.setDeviceMetricsOverride',
         { width: size, height: size, deviceScaleFactor: 1, mobile: false });
-      await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body style="margin:0">${markSvg(size, tint)}</body>`)}; 1`);
+      await evalJS(`document.documentElement.innerHTML = ${JSON.stringify(`<head></head><body style="margin:0">${iconSvg(size)}</body>`)}; 1`);
       await evalJS('document.fonts.ready.then(() => 1)');
       await new Promise(r => setTimeout(r, 200));
       const data = (await c.send('Page.captureScreenshot', { format: 'png' })).data;

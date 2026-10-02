@@ -39,6 +39,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { faviconHref, logoSvg } from './mark.mjs';
 import { generatePlan, fmtClock, fmtMinutes } from '../app/engine.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -285,11 +286,10 @@ function fromAbout() {
   const themeStart = src.indexOf('<script>');
   const themeEnd = src.indexOf('</script>', themeStart) + '</script>'.length;
   const theme = src.slice(themeStart, themeEnd);
-  const icon = src.match(/<link rel="icon"[^>]*>/)[0];
-  if (!theme.includes('benchcard.v7') || !icon.includes('data:image/svg')) {
+  if (!theme.includes('benchcard.v7')) {
     throw new Error('about.html no longer has the shape this generator lifts from');
   }
-  return { theme, icon };
+  return { theme };
 }
 
 /* ------------------------------------------------------------------ *
@@ -317,11 +317,12 @@ export function renderPage(n, shared = fromAbout()) {
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F4F4F6">
 ${shared.theme}
-<!-- The same data-URI icon as the app and the About page, and the same
+<!-- The same card-mark data-URI icon as the app and the About page (both
+     drawn by scripts/mark.mjs), and the same
      reason: the crawlable .ico at the site root is deliberately referenced by
      nothing, so no page pays a request for it. test/favicon.test.js pins that
      for the first two documents; test/charts.test.js extends it to these. -->
-${shared.icon}
+<link rel="icon" href="${faviconHref()}">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="manifest" href="./site.webmanifest">
 
@@ -454,13 +455,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 
   <div class="top noprint">
     <a class="mark" href="./">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="10.5" fill="var(--accent)"/>
-        <g stroke="var(--accent-ink)" stroke-width="1.35" fill="none" opacity=".55">
-          <path d="M12 1.5v21M1.5 8.5h21M1.5 15.5h21"/>
-          <path d="M4.6 3.7c3.5 3.8 3.5 12.8 0 16.6M19.4 3.7c-3.5 3.8-3.5 12.8 0 16.6"/>
-        </g>
-      </svg>
+      ${logoSvg()}
       <b>Benchcard</b>
     </a>
     <span class="spacer"></span>

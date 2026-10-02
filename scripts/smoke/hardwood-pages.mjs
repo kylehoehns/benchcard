@@ -46,7 +46,7 @@ const PAGES = [
   { name: 'welcome', page: '/index.html', record: 'wiped', ready: WELCOME_READY,
     h1: 'The whole game, worked out before you leave the house.', phrase: 'The whole game',
     band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '.wel-sub',
-    mark: '.wel-mark circle' },
+    mark: '.wel-mark svg > rect:first-child' },
 ];
 
 /* One in-page read. Everything a color is resolved through the canvas. */
@@ -115,7 +115,7 @@ export async function hardwoodPagesPass(c, origin) {
         // Item 1: the main button and the links.
         if (!s.btnBg) note(where, `no ${p.button}`);
         else if (css(s.btnBg) !== cse.want) note(where, `${p.button} background is ${css(s.btnBg)}, want ${cse.want}`);
-        // #244: the welcome logo's circle is the phrase's orange, not --accent.
+        // #244: the welcome logo's ground is the phrase's orange, not --accent.
         if (p.mark) {
           if (!s.markFill) note(where, `no ${p.mark}`);
           else if (css(s.markFill) !== cse.want) note(where, `the logo is ${css(s.markFill)}, want ${cse.want}`);
