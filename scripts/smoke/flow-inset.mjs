@@ -21,11 +21,11 @@
  * runs on step 2's own Next), so it gets its own fresh wiped landing per
  * width, the same shape `first-run-flow.mjs` already uses for its own
  * step-3 card-fit measurement. */
-import { evalIn, setWidth } from './dom.mjs';
-import { land } from './page-state.mjs';
+import { evalIn } from './dom.mjs';
+import { land, resize } from './page-state.mjs';
 import { WELCOME_READY } from './fixtures.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
-import { evalJSON, openAddGameFlow, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
+import { openAddGameFlow, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
 const TOL = 1;
 const WIDTHS = [390, 320];
@@ -79,7 +79,7 @@ const restoreRoster = `(async () => {
 
 async function addGameSweep(c, ck) {
   for (const width of WIDTHS) {
-    await setWidth(c, width);
+    await resize(c, width);
 
     await openAddGameFlow(c);
     await measureInset(c, 'agBody', width, `add a game step 1 (with the "Same as" card)@${width}px`, ck);
@@ -98,7 +98,7 @@ async function addGameSweep(c, ck) {
     await waitClosed(c, '#addGameFlow');
     await evalIn(c, restoreRoster);
   }
-  await setWidth(c, 390);
+  await resize(c, 390);
 }
 
 const landWelcome = (c, origin, want = {}) => land(c, origin, { record: 'wiped', ready: WELCOME_READY, ...want });
@@ -168,7 +168,7 @@ async function firstRunSweep(c, ck, origin) {
     await realTap(c, '#frNext');
     await measureInset(c, 'frBody', width, `first run step 3@${width}px`, ck);
   }
-  await setWidth(c, 390);
+  await resize(c, 390);
 }
 
 export async function flowInsetPass(c, origin) {

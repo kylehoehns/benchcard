@@ -2,9 +2,9 @@
    is the Node side of the check, not the browser page, so it needs the same
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
-import { evalIn, step, TODAY_HOME, WIDTH, wait } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH } from './dom.mjs';
 import { LARGE_TEXT, TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './sizes.mjs';
-import { PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
+import { PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, TODAY_LANDING } from './fixtures.mjs';
 import { drag, dragHold, touchDragCancel, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
 import { land, resize } from './page-state.mjs';
@@ -534,7 +534,7 @@ async function rosterRowsFitOk(c, ck, who, want) {
    and reloads its own record, because `emptyStateOk` above leaves RICH's
    roster empty; the next rich row's `reset` puts RICH back. */
 async function sampleRosterRowsOk(c, origin, ck) {
-  await reloadWithRecord(c, origin, SAMPLE_TEAM);
+  await land(c, origin, { record: SAMPLE_TEAM, ...TODAY_LANDING });
   await toTeam(c);
   await rosterRowsFitOk(c, ck, 'the sample team', SAMPLE_PLAYERS.length);
 }

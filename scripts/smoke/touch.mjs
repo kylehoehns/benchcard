@@ -1,9 +1,9 @@
 import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE, HEIGHT } from './dom.mjs';
-import { resize } from './page-state.mjs';
+import { resize, land } from './page-state.mjs';
 import { pickSharePane } from './sheet-drive.mjs';
 import { TOUCH_CHECK, TOUCH_FLOOR, TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
-import { FOUR, RICH, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
+import { FOUR, RICH, GAMES_VIEW_READY, TODAY_LANDING } from './fixtures.mjs';
 
 /* Touch targets, swept — because measuring one width on one screen missed two
  * controls that were under the rule the whole time.
@@ -147,7 +147,7 @@ const TOUCH_STATES = [
 async function fourTodayTouch(c, origin, source) {
   const bad = [];
   let audited = 0, seen = 0;
-  await reloadWithRecord(c, origin, FOUR);
+  await land(c, origin, { record: FOUR, ...TODAY_LANDING });
   for (const w of TOUCH_WIDTHS) {
     await resize(c, w, HEIGHT);
     const chk = (await evalIn(c, source)).checks.find(k => k.name === TOUCH_CHECK);
@@ -164,7 +164,7 @@ async function fourTodayTouch(c, origin, source) {
 export async function touchPass(c, origin, source) {
   const four = await fourTodayTouch(c, origin, source);
   // `widthSweep` runs on RICH, and `fourTodayTouch` left FOUR loaded.
-  await reloadWithRecord(c, origin, RICH, GAMES_VIEW_READY);
+  await land(c, origin, { record: RICH, ready: GAMES_VIEW_READY, freshHistory: true });
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: TOUCH_STATES,
     checkName: TOUCH_CHECK,

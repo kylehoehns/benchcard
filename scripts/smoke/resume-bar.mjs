@@ -11,11 +11,11 @@
  * RICH's games mid-play, so "picks the game that's underway" and "picks the
  * LATER one" are actually different claims -- a fixture with only one
  * part-played game could not tell them apart. */
-import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, landWiped, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
+import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
 import { LARGE_TEXT, LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs';
 import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
-import { RICH, partPlayed, reloadWithRecord, TODAY_GAME_READY } from './fixtures.mjs';
+import { RICH, partPlayed, TODAY_LANDING, WELCOME_READY } from './fixtures.mjs';
 import { land, resize, setMedia } from './page-state.mjs';
 
 // Decision 14's exact fixture and item 1's exact string -- the SECOND
@@ -29,7 +29,7 @@ export async function resumeBarPass(c, origin) {
   /* ---- item 1: which game, and the exact label ---- */
   const rec1 = partPlayed(RICH);
   rec1.view = 'today';
-  await reloadWithRecord(c, origin, rec1);
+  await land(c, origin, { record: rec1, ...TODAY_LANDING });
   const ac1 = JSON.parse(await evalIn(c, `(() => {
     const bar = document.getElementById('resumeBar');
     const btn = document.getElementById('resumeBtn');
@@ -82,12 +82,11 @@ export async function resumeBarPass(c, origin) {
   await evalIn(c, step(TODAY_HOME));
 
   const plainToday = { ...RICH, view: 'today' };
-  await reloadWithRecord(c, origin, plainToday);
+  await land(c, origin, { record: plainToday, ...TODAY_LANDING });
   const plainHidden = await evalIn(c, `document.getElementById('resumeBar')?.hidden`);
   if (plainHidden !== true) problems.push('#resumeBar is showing on Today with no part-played game');
 
-  await landWiped(c, origin + '/index.html',
-    "document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden");
+  await land(c, origin, { record: 'wiped', ready: WELCOME_READY });
   const fr = JSON.parse(await evalIn(c, `(() => JSON.stringify({
     barHidden: document.getElementById('resumeBar')?.hidden,
     welcomeShown: !document.getElementById('view-welcome')?.hidden,
@@ -99,7 +98,7 @@ export async function resumeBarPass(c, origin) {
   /* ---- item 4: a reload with a part-played game does not reopen bench mode ---- */
   const rec4 = partPlayed(RICH);
   rec4.view = 'today';
-  await reloadWithRecord(c, origin, rec4);
+  await land(c, origin, { record: rec4, ...TODAY_LANDING });
   const ac4 = await evalIn(c, `document.getElementById('gamemode')?.hidden`);
   if (ac4 !== true) problems.push('a reload with a part-played game left #gamemode open -- it must only open when the coach taps');
   notes.push('item 4: no auto-open on reload');
@@ -209,7 +208,7 @@ export async function resumeBarPass(c, origin) {
   const recBig = partPlayed(RICH);
   recBig.view = 'today';
   await land(c, origin, { record: recBig, ...LARGE_TEXT,
-    ready: TODAY_GAME_READY, freshHistory: true });
+    ...TODAY_LANDING });
   const under = JSON.parse(await evalIn(c, `(async () => {
     window.scrollTo(0, 1e6);
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));

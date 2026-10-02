@@ -1,7 +1,7 @@
-import { evalIn, quiet, SETTLE, step, WIDTH, onScreen, wait } from './dom.mjs';
-import { RICH, withSecondTeam, reloadWithRecord, TODAY_GAME_READY } from './fixtures.mjs';
+import { evalIn, quiet, step, WIDTH, onScreen, wait } from './dom.mjs';
+import { RICH, withSecondTeam, TODAY_GAME_READY, TODAY_LANDING } from './fixtures.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
-import { land } from './page-state.mjs';
+import { land, bootWait } from './page-state.mjs';
 
 /* `history.back()`, then wait for the popstate it raises and for the screen it
    restores to go quiet (its pane slide, `PANE_MS`, and any short timer). The
@@ -26,12 +26,12 @@ export async function todayAndBackPass(c, origin) {
   const rich2 = withSecondTeam(RICH);
   rich2.view = 'today';
   // `Page.navigate` to the exact URL already loaded does not truncate the
-  // forward session-history entries the way `reloadWithRecord`'s genuinely
-  // new navigation does -- verified: a `today` -> `team` push straight after
+  // forward session-history entries the way `land`'s `freshHistory`
+  // navigation does -- verified: a `today` -> `team` push straight after
   // it read as +0, not +1, because a stale forward entry from the PREVIOUS
   // opener's own reload-and-back test absorbed the push instead of growing
   // the list. Every reload below needs that, so every reload below uses it.
-  const reloadWith = record => reloadWithRecord(c, origin, record);
+  const reloadWith = record => land(c, origin, { record: record, ...TODAY_LANDING });
   try {
 
   await reloadWith(rich2);
@@ -331,9 +331,7 @@ export async function todayAndBackPass(c, origin) {
       const reloaded = new Promise(ok => c.on('Page.loadEventFired', ok));
       await evalIn(c, `location.reload()`);
       await reloaded;
-      await evalIn(c, `(async () => { await document.fonts.ready;
-        for (let i = 0; i < 60 && !document.querySelector('.today-game, #barBack'); i++) await new Promise(r => setTimeout(r, 50));
-        await ${SETTLE}; })()`);
+      await bootWait(c, `document.querySelector('.today-game, #barBack')`);
       return evalIn(c, 'history.length');
     };
     const firstFrames = await recordFirstFrames(reloadOnce);

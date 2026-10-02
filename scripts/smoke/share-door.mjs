@@ -5,7 +5,6 @@
    link it carries are #250's rows (`hand-off.mjs`), re-pointed at this door. */
 import { evalIn, TODAY_HOME, wait } from './dom.mjs';
 import { land } from './page-state.mjs';
-import { goRich } from './fixtures.mjs';
 import { evalJSON, tap, settle, setGame, pickSharePane, qrDrawn } from './sheet-drive.mjs';
 
 const PRINT_BODY = ['sheetCardPreview', 'print', 'shareCard', 'printScope', 'copies', 'cardSize', 'cardId', 'showMinutes'];
@@ -72,7 +71,7 @@ export async function shareDoorPass(c, origin) {
   const problems = [];
   const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
   try {
-    await goRich(c, origin);
+    await land(c, origin);
     await openShare(c);
 
     // A. Default

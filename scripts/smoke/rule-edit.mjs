@@ -5,23 +5,24 @@
  * `test/plan-sheet.test.js`, kept, since that code path is untouched by this
  * change; item 12 (48px) is `control-size.mjs`'s own new state; item 13
  * (large text) is `app-large-text.mjs`'s two new rows. `RICH`'s own Hawks
- * game (`goRich` lands on it directly -- see `plan-sheet.mjs`'s own note),
+ * game (`land` lands on it directly -- see `plan-sheet.mjs`'s own note),
  * except item 14, which reloads onto a part-played record.
  *
  * State is read from `state.js`'s own exports and `ruleItems`' own sentence
  * text -- expected sentences are the spec's own literal strings (Eli/Devon/
  * Hana/Ana/Jordan/Sam, from `RICH`'s `PLAYERS`), never rebuilt from
- * `callNames` here. Leaves Hawks exactly as `goRich` set it up (`finally`
+ * `callNames` here. Leaves Hawks exactly as `land` set it up (`finally`
  * below reloads it fresh, the way `rotation-undo.mjs` does). */
 import { evalIn, wait } from './dom.mjs';
 import { evalJSON, tap, tapPane, settle, click, sheetRect, setGame, waitClosed, readToastExpr } from './sheet-drive.mjs';
-import { goRich, RICH, partPlayed } from './fixtures.mjs';
+import { RICH, partPlayed } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 
-// `RICH` (`view: 'games'`, `activeGame: 0`) part-played, same as `goRich`
-// itself lands directly on the Hawks game -- `goRich`'s own `base` override
+// `RICH` (`view: 'games'`, `activeGame: 0`) part-played, same as the plain
+// landing is directly on the Hawks game -- `richWith`'s own `base` argument
 // (#148) is exactly this swap, so item 14's reload reuses it instead of a
 // second near-copy of its seed-and-navigate body.
-const goPartPlayed = (c, origin) => goRich(c, origin, undefined, partPlayed(RICH));
+const goPartPlayed = (c, origin) => land(c, origin, { record: partPlayed(RICH) });
 
 const rows = () => `[...document.querySelectorAll('#constraints .prow')].filter(b => !b.classList.contains('add-rule'))`;
 const findRow = text => `${rows()}.find(r => r.textContent.includes(${JSON.stringify(text)}))`;

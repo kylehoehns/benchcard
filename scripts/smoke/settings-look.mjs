@@ -1,6 +1,7 @@
-import { setWidth, TODAY_HOME, navigateAndWaitForCard } from './dom.mjs';
+import { TODAY_HOME } from './dom.mjs';
 import { tap, evalJSON, typeIn } from './sheet-drive.mjs';
-import { goRich } from './fixtures.mjs';
+import { richWith } from './fixtures.mjs';
+import { land, resize } from './page-state.mjs';
 
 /* #142's own guard (docs/specs/142-settings-groups.md's Proof section, "Group
  * look" row): Settings adopted the app's shared `.pgrp`/`.prow` grammar, and
@@ -88,7 +89,7 @@ async function onlyOn(c, ck, name, sel, label) {
   ck(JSON.stringify(on) === JSON.stringify([label]), `the ${name} seg shows ${JSON.stringify(on)} on, want ["${label}"]`);
 }
 
-async function settingsControlsPass(c, ck) {
+async function settingsControlsPass(c, ck, origin) {
   await tap(c, `document.querySelector('#settingsBtn').click()`);
   const before = await readState(c);
 
@@ -176,7 +177,7 @@ async function settingsControlsPass(c, ck) {
   const NAME = 'Hawks United';
   await typeIn(c, '#teamName', NAME);
   ck((await readState(c)).teamName === NAME, `typing in #teamName left state.teamName at "${(await readState(c)).teamName}", want "${NAME}"`);
-  await navigateAndWaitForCard(c, await evalJSON(c, `JSON.stringify(location.href)`));
+  await land(c, origin, { record: 'kept' });
   await tap(c, `document.querySelector('#settingsBtn').click()`);
   const kept = await evalJSON(c, `(async () => JSON.stringify({ name: (await import('/state.js')).state.teamName,
     field: document.querySelector('#teamName').value }))()`);
@@ -194,9 +195,9 @@ export async function settingsLookPass(c, origin) {
 
   try {
     for (const theme of ['light', 'dark']) {
-      await goRich(c, origin, { theme });
+      await land(c, origin, { record: richWith({ theme }) });
       for (const width of WIDTHS) {
-        await setWidth(c, width);
+        await resize(c, width);
         await tap(c, `document.querySelector('#settingsBtn').click()`);
         const look = await evalJSON(c, READ_LOOK);
         if (!look) { problems.push(`${theme}/${width}px: #view-settings not open -- nothing to measure`); continue; }
@@ -223,7 +224,7 @@ export async function settingsLookPass(c, origin) {
       }
     }
 
-    await settingsControlsPass(c, ck);
+    await settingsControlsPass(c, ck, origin);
 
     // Rule 2a: a run that never found #view-settings open measured nothing.
     if (measured === 0 && problems.length === 0) {
@@ -232,7 +233,7 @@ export async function settingsLookPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
-    await setWidth(c, 390);
+    await resize(c, 390);
   }
 
   return {

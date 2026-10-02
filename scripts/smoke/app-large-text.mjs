@@ -1,9 +1,9 @@
-import { evalIn, step, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
+import { evalIn, step, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { STEP_COUNT as TOUR_STEP_COUNT } from './tour-steps.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
-import { FOUR, TODAY_GAME_READY } from './fixtures.mjs';
+import { FOUR, TODAY_LANDING, WELCOME_READY } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
@@ -316,11 +316,11 @@ export const APP_LARGE_TEXT_STATES = [
      whatever `RICH`'s two-game record renders; none of them ever put four
      passes with their titles, tip-offs, status, summaries and mini rotations
      on screen at once, which is the case this claim is actually about.
-     `reloadWithRecord` (`fixtures.mjs`) rather than an `open` script: a font
+     `land` with `freshHistory` (`page-state.mjs`) rather than an `open` script: a font
      size cannot be re-applied without a reload (see the file comment above),
      but `Page.setFontSizes`/`Emulation.setDeviceMetricsOverride` are already
      set for the whole pass, so a reload here keeps rendering at 320px/32px
-     and lands back on Today (`reloadWithRecord` waits for `.today-game`).
+     and lands back on Today (`land` waits for `.today-game` there).
      LAST OF THE NON-DESTRUCTIVE STATES, deliberately: it changes the loaded
      record, and the trio below either wipes it outright (`firstRun`,
      `tryLanding`) or is never reached again this run (`staticPass` is the
@@ -546,21 +546,20 @@ const TOAST_FIT_PROBE = `(() => {
  * on being uncovered while reading green. So it asserts the screen arrived AND
  * that the app's chrome really came off, and it names both buttons — `#welTry`
  * is the one A35 added and the reason this cell was worth closing. */
-export async function firstRun(c, origin) {
+export async function firstRun(c, origin, want = {}) {
   /* CLEARING THE RECORD IN THE CURRENT DOCUMENT IS NOT ENOUGH, and the first
      draft of this that did so failed with all three keys back: `browserChecks`
      registers an `addScriptToEvaluateOnNewDocument` that re-seeds
      `benchcard.v3` on EVERY document, so a wiped record is refilled before the
-     app's first line runs and the reload lands on the games view. (`goRich`'s
-     comment already says that write "still fires on every new document"; it
+     app's first line runs and the reload lands on the games view. (the old
+     RICH landing's comment already said that write "still fires on every new document"; it
      is inert only because v6 wins the read order — with v6 gone it is the
-     record.) `landWiped` (`dom.mjs`) is what rides a second, later
-     on-new-document script to win that race and removes it again straight
-     afterwards — see its own comment for why leaving it registered would
-     empty the record under `staticPass` too. The seed script is left alone,
-     because `smoke-checks.js` reads `window.__SMOKE_VIEWPORT` out of it and
-     `staticPass` still runs. */
-  await landWiped(c, origin + '/index.html', "document.querySelector('#view-welcome')?.hidden === false");
+     record.) `land` with `record: 'wiped'` (`page-state.mjs`) is what rides a
+     second, later on-new-document script to win that race and removes it
+     again straight afterwards, so the wipe cannot empty the record under
+     `staticPass` too. `want` carries the width and text size the caller is
+     measuring at. */
+  await land(c, origin, { record: 'wiped', ready: WELCOME_READY, ...want });
   const r = JSON.parse(await evalIn(c, `JSON.stringify({
     host: location.host,
     shown: document.querySelector('#view-welcome')?.hidden === false,
@@ -585,8 +584,8 @@ export async function firstRun(c, origin) {
    `input` event -- `flowField` (trap.js) wires `i.oninput = () => onInput(i.value)`
    as a property, so a plain `Event('input')` reaches it the same as a real
    keystroke would. */
-export async function openFirstRunTypedRosterState(c, origin) {
-  await landWiped(c, origin + '/index.html', "document.querySelector('#view-welcome')?.hidden === false");
+export async function openFirstRunTypedRosterState(c, origin, want = {}) {
+  await land(c, origin, { record: 'wiped', ready: WELCOME_READY, ...want });
   await evalIn(c, step(`document.querySelector('#welStart').click()`));
   await evalIn(c, step(`const ta = document.getElementById('frRoster');
     ta.value = ${JSON.stringify(PLAYER_LIST_12)};
@@ -604,7 +603,7 @@ const FLASH_LEAD = 'Sample team loaded.';
 
 /* The `?try=N` landing, which is the only path left that raises that flash.
  *
- * Wiped and navigated with `landWiped` (`dom.mjs`), like `firstRun` above,
+ * Wiped and landed with `land` (`page-state.mjs`), like `firstRun` above,
  * for a reason that is one step further on: `initOnboarding` reads the
  * parameter only while `state.onboarded` is false, and `browserChecks`'s
  * on-new-document script re-seeds `benchcard.v3` on every document — so
@@ -613,8 +612,8 @@ const FLASH_LEAD = 'Sample team loaded.';
  *
  * Returns the flash's measured box for the pass detail, and throws with what
  * it found if the flash is not on screen carrying its own sentence. */
-export async function tryLanding(c, origin, n) {
-  await landWiped(c, `${origin}/index.html?try=${n}`, "document.querySelector('#toasts .toast .tmsg')");
+export async function tryLanding(c, origin, n, want = {}) {
+  await land(c, origin, { record: 'wiped', query: `?try=${n}`, ready: "document.querySelector('#toasts .toast .tmsg')", ...want });
   const r = JSON.parse(await evalIn(c, `(() => {
     const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
     const msg = document.querySelector('#toasts .toast .tmsg');
@@ -690,14 +689,14 @@ export async function appLargeTextPass(c, origin) {
          view and then measures 121 widths behind it, so the sleep is 0.4% of
          its cost; here it would be half the pass. Waiting on the animations
          themselves is both cheaper and stricter. */
-      if (v.firstRun) await firstRun(c, origin);
-      else if (v.tryLink) flash = await tryLanding(c, origin, v.tryLink);
+      if (v.firstRun) await firstRun(c, origin, LARGE_TEXT);
+      else if (v.tryLink) flash = await tryLanding(c, origin, v.tryLink, LARGE_TEXT);
       else if (v.four) await land(c, origin, {
         record: FOUR, ...LARGE_TEXT,
-        ready: TODAY_GAME_READY, freshHistory: true,
+        ...TODAY_LANDING,
       });
       else if (v.rotationToast) await openRotationToastState(c);
-      else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin);
+      else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin, LARGE_TEXT);
       else await evalIn(c, step(v.open));
       const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
       const slack = APP_LARGE_TEXT_ALLOW[v.name] || 0;

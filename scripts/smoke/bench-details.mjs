@@ -8,7 +8,7 @@
  *     it, not a third segment.
  *   item 4 (closes #167) -- no sideways spill at 320px/32px text with a
  *     player picked, checked with a "just on" tagged floor row on screen
- *     (stint 0 never carries one, so a plain fresh `goRich` open would
+ *     (stint 0 never carries one, so a plain fresh `land` open would
  *     measure nothing about the tag).
  *   item 5 -- the last bench row stays reachable by scrolling `.gm-body`,
  *     with and without a pick, and its 9.5rem bottom padding is not
@@ -21,8 +21,8 @@
  * item 8 (dark/team-color pinning of the seg and the sit button) lives in
  * `team-color.mjs`, which already owns every other bench-mode color pin.
  */
-import { evalIn, step, WIDTH, OVERFLOW_PROBE, CSS_VAR_COLOR_PROBE, GM_BODY_OVERFLOW_PROBE, setWidth } from './dom.mjs';
-import { land } from './page-state.mjs';
+import { evalIn, step, WIDTH, OVERFLOW_PROBE, CSS_VAR_COLOR_PROBE, GM_BODY_OVERFLOW_PROBE } from './dom.mjs';
+import { land, resize } from './page-state.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const OPEN_BENCH = `document.querySelector('#gmOpen').click()`;
@@ -234,7 +234,7 @@ export async function benchDetailsPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await evalIn(c, step(CLOSE_BENCH)).catch(() => {});
-    await setWidth(c, WIDTH);
+    await resize(c, WIDTH);
   }
 
   return {

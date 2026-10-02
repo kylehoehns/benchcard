@@ -151,7 +151,7 @@ async function blockedAddPlayersOk(c, ck) {
    every other field untouched) rather than replacing the roster, so the
    plan already built for RICH keeps computing against the same ids -- only
    the two names change. Restored from `PLAYERS` (fixtures.mjs) itself, not a
-   hand-typed copy of it, so a restore can never drift from what `goRich`
+   hand-typed copy of it, so a restore can never drift from what `land`
    would have written anyway. */
 const BY_ID = `const byId = id => s.state.players.find(p => p.id === id);`;
 // Exported so compare-shots.mjs's own "Who's here with the item 4 fixture"

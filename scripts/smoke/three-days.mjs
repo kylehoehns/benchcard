@@ -1,5 +1,5 @@
 import { evalIn, OVERFLOW_PROBE } from './dom.mjs';
-import { RICH, reloadWithRecord, TODAY_GAME_READY } from './fixtures.mjs';
+import { RICH, TODAY_GAME_READY, TODAY_LANDING } from './fixtures.mjs';
 import { openAddGameFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { land } from './page-state.mjs';
@@ -114,7 +114,7 @@ const checkTitleAndGear = async (c, problems, label) => {
 export async function threeDaysPass(c, origin) {
   const problems = [];
   try {
-    await reloadWithRecord(c, origin, { ...THREE_DAY, view: 'today' });
+    await land(c, origin, { record: { ...THREE_DAY, view: 'today' }, ...TODAY_LANDING });
 
     // Items 4, 11: three headings in day order, each over its own passes.
     const groups = await dayGroups(c);

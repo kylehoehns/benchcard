@@ -13,8 +13,9 @@
  * fix because its plan is blocked, exactly as `game-passes.mjs`'s own `WANT`
  * table already pins. */
 import { evalIn, step, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
-import { FOUR, reloadWithRecord } from './fixtures.mjs';
+import { FOUR, TODAY_LANDING } from './fixtures.mjs';
 import { setGame } from './sheet-drive.mjs';
+import { land } from './page-state.mjs';
 
 const WANT = [
   { title: 'Panthers', status: 'Underway', cls: 'now' },
@@ -26,7 +27,7 @@ const WANT = [
 export async function passUnderwayPass(c, origin) {
   const problems = [];
   try {
-    await reloadWithRecord(c, origin, FOUR);
+    await land(c, origin, { record: FOUR, ...TODAY_LANDING });
 
     // Drive game 0 (Panthers) mid-play: not stint 0 (never started), not the
     // last stint (game over) -- `stints.length` read back from the page's

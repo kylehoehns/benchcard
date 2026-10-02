@@ -7,15 +7,15 @@
  *
  * Reused rather than re-derived: `APP_LARGE_TEXT_STATES` and its open/close
  * dispatch (mirrored here the way `type-scale.mjs` does from outside that
- * file); `WORD_FLOOR_FN`, `IS_SR_ONLY_RECT`, `evalIn`, `setWidth`, `WIDTH`,
- * `HEIGHT` (`dom.mjs`); `LARGE_TEXT_PX`/`LARGE_TEXT_WIDTH` (`sizes.mjs`);
- * `LONG_NAME`, `goRich`, `reloadWithRecord`, `FOUR` (`fixtures.mjs`); and the
+ * file); `WORD_FLOOR_FN`, `IS_SR_ONLY_RECT`, `evalIn` (`dom.mjs`);
+ * `LARGE_TEXT` (`sizes.mjs`); `LONG_NAME`, `FOUR` (`fixtures.mjs`); `land`
+ * (`page-state.mjs`); and the
  * per-word `Range` technique `WORD_RECTS_FN` (`row-stack.mjs`, exported for
  * this ticket rather than copied).
  *
  * `LONG_AND_SQUEEZE` (below) is `RICH` with one player renamed to
  * `LONG_NAME` and a second to a name whose two words are each long enough on
- * their own to force a squeeze, loaded once with `goRich` before the loop —
+ * their own to force a squeeze, loaded once with `land` before the loop —
  * the same "reload once, then click through every state" shape
  * `appLargeTextPass`/`typeScalePass` use, so ordinary states see it without
  * reloading anything themselves.
@@ -27,12 +27,13 @@
  * right after each of them. `rotationToast` opens through its own
  * `openRotationToastState` too, but that one only mutates the loaded record's
  * game in place (`setGame`), so it needs no restore. */
-import { evalIn, step, setWidth, WIDTH, HEIGHT, IS_SR_ONLY_RECT, WORD_FLOOR_FN } from './dom.mjs';
-import { LONG_NAME, RICH, goRich, reloadWithRecord, FOUR } from './fixtures.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { evalIn, step, IS_SR_ONLY_RECT, WORD_FLOOR_FN } from './dom.mjs';
+import { LONG_NAME, RICH, FOUR, TODAY_LANDING } from './fixtures.mjs';
+import { LARGE_TEXT } from './sizes.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding, openRotationToastState, openFirstRunTypedRosterState } from './app-large-text.mjs';
 import { WORD_RECTS_FN } from './row-stack.mjs';
 import { CONFIRM_DIALOG } from './heading-outline.mjs';
+import { land } from './page-state.mjs';
 
 /* Two long, unbroken words (no hyphen) — `LONG_NAME` already covers the
  * hyphenated case (`Featherstone-Whitmore`), so this second name exercises
@@ -420,100 +421,92 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   const usedFloorAllow = new Set();
   const states = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE];
 
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-  try {
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    // A reload (`goRich`) wipes any <style> this injected, so it's re-run
-    // after every goRich, not just the first one, so it holds through the
-    // three states (`firstRun`/`tryLink`/`four`) that reload mid-run.
-    const applyInjectCss = () => injectCss && evalIn(c, `(() => { const s = document.createElement('style');
-        s.textContent = ${JSON.stringify(injectCss)}; document.head.appendChild(s); })()`);
+  // A reload wipes any <style> this injected, so it's re-run
+  // after every landing, not just the first one, so it holds through the
+  // three states (`firstRun`/`tryLink`/`four`) that reload mid-run.
+  const applyInjectCss = () => injectCss && evalIn(c, `(() => { const s = document.createElement('style');
+      s.textContent = ${JSON.stringify(injectCss)}; document.head.appendChild(s); })()`);
 
-    await goRich(c, origin, undefined, LONG_AND_SQUEEZE);
-    await applyInjectCss();
+  await land(c, origin, { record: LONG_AND_SQUEEZE, ...LARGE_TEXT });
+  await applyInjectCss();
 
-    for (const v of states) {
-      const where = v.name;
-      try {
-        if (v.firstRun) await firstRun(c, origin);
-        else if (v.tryLink) await tryLanding(c, origin, v.tryLink);
-        else if (v.four) await reloadWithRecord(c, origin, FOUR);
-        else if (v.rotationToast) await openRotationToastState(c);
-        else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin);
-        else await evalIn(c, step(v.open));
+  for (const v of states) {
+    const where = v.name;
+    try {
+      if (v.firstRun) await firstRun(c, origin, LARGE_TEXT);
+      else if (v.tryLink) await tryLanding(c, origin, v.tryLink, LARGE_TEXT);
+      else if (v.four) await land(c, origin, { record: FOUR, ...LARGE_TEXT, ...TODAY_LANDING });
+      else if (v.rotationToast) await openRotationToastState(c);
+      else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin, LARGE_TEXT);
+      else await evalIn(c, step(v.open));
 
-        // rule 2a of /new-guard: a state that never actually opened its own
-        // screen would otherwise scan whatever the previous state left up and
-        // report clean under this state's name.
-        if (v.rotationToast) {
-          const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo] .tmsg')`));
-          if (!raised) throw new Error('no Undo toast was raised in the Format sheet -- nothing was measured');
-        }
-        if (v.firstRunTypedRoster) {
-          const lines = JSON.parse(await evalIn(c,
-            `(document.getElementById('frRoster')?.value || '').split('\\n').filter(Boolean).length`));
-          if (lines !== 12) throw new Error(`the roster box holds ${lines} names, not the 12 the state types`);
-        }
-
-        for (const pos of ['top', 'bottom']) {
-          if (pos === 'bottom') await evalIn(c, SCROLL_TO_BOTTOM);
-          const res = JSON.parse(await evalIn(c, CLIP_PROBE));
-          scanned += res.scanned;
-          res.usedAllow.forEach(sel => usedAllow.add(sel));
-          res.usedSideways.forEach(sel => usedSideways.add(sel));
-          res.usedFloorAllow.forEach(sel => usedFloorAllow.add(sel));
-          for (const cl of res.clip) found.push({ kind: 'clip', where, pos, ...cl });
-          for (const sp of res.split) found.push({ kind: 'split', where, pos, ...sp });
-          for (const hd of res.hidden) found.push({ kind: 'hidden', where, pos, ...hd });
-          for (const ov of res.overlap) found.push({ kind: 'overlap', where, pos, ...ov });
-          for (const fl of res.floor) found.push({ kind: 'floor', where, pos, ...fl });
-        }
-      } catch (e) {
-        problems.push(`${where}: ${e.message.split('\n')[0]}`);
-      } finally {
-        if (v.close) await evalIn(c, step(v.close))
-          .catch(e => problems.push(`${where}: did not close — ${e.message.split('\n')[0]}`));
+      // rule 2a of /new-guard: a state that never actually opened its own
+      // screen would otherwise scan whatever the previous state left up and
+      // report clean under this state's name.
+      if (v.rotationToast) {
+        const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo] .tmsg')`));
+        if (!raised) throw new Error('no Undo toast was raised in the Format sheet -- nothing was measured');
       }
-      // Restore the roster these states swap out (see header comment), and
-      // injectCss's <style>, which the same reload wipes too.
-      // `firstRunTypedRoster` reloads too (`openFirstRunTypedRosterState`'s
-      // own `landWiped`); `rotationToast` does not -- it only mutates the
-      // loaded record's game in place via `setGame`, no navigation.
-      if (v.firstRun || v.tryLink || v.four || v.firstRunTypedRoster) {
-        await goRich(c, origin, undefined, LONG_AND_SQUEEZE);
-        await applyInjectCss();
+      if (v.firstRunTypedRoster) {
+        const lines = JSON.parse(await evalIn(c,
+          `(document.getElementById('frRoster')?.value || '').split('\\n').filter(Boolean).length`));
+        if (lines !== 12) throw new Error(`the roster box holds ${lines} names, not the 12 the state types`);
       }
-    }
 
-    // An allow-list, sideways-scroll, floor-allow or known-issue entry this
-    // run never needed is stale and fails here, same reasoning for all four.
-    const reportStale = (label, verb, items, sep, fmt = String) => {
-      if (!items.length) return;
-      problems.push(`${items.length} stale ${label} entr${items.length === 1 ? 'y' : 'ies'} (never ${verb} this run): ${items.map(fmt).join(sep)}`);
-    };
-    reportStale('allow-list', 'needed', ALLOW_SELECTORS.filter(sel => !usedAllow.has(sel)), ' | ');
-    reportStale('sideways-scroll', 'needed', SIDEWAYS_SELECTORS.filter(sel => !usedSideways.has(sel)), ' | ');
-    reportStale('floor allow-list', 'needed', FLOOR_ALLOW_SELECTORS.filter(sel => !usedFloorAllow.has(sel)), ' | ');
-
-    // A raw finding matched by CLIP_SWEEP_KNOWN_ISSUES is a real, filed bug,
-    // not this ticket's to fix, so it's excused rather than pushed as a
-    // problem.
-    const matchedIssues = new Set();
-    for (const p of found) {
-      const hit = CLIP_SWEEP_KNOWN_ISSUES.find(k => k.match(p));
-      if (hit) { matchedIssues.add(hit.issue); continue; }
-      if (p.kind === 'clip') problems.push(`${p.where}@${p.pos}: "${p.text}" is ${p.scrollWidth}px wide in a ${p.clientWidth}px box (${p.el})`);
-      else if (p.kind === 'split') problems.push(`${p.where}@${p.pos}: "${p.word}" splits across lines mid-word (${p.el})`);
-      else if (p.kind === 'hidden') problems.push(`${p.where}@${p.pos}: ${p.el} is hidden under ${p.hitBy}`);
-      else if (p.kind === 'overlap') problems.push(`${p.where}@${p.pos}: "${p.text}" (${p.el}) spills past its own box onto ${p.hitBy}'s text`);
-      else if (p.kind === 'floor') problems.push(`${p.where}@${p.pos}: "${p.text}" paints ${p.over}px past its own ${p.box}px box (${p.el})`);
+      for (const pos of ['top', 'bottom']) {
+        if (pos === 'bottom') await evalIn(c, SCROLL_TO_BOTTOM);
+        const res = JSON.parse(await evalIn(c, CLIP_PROBE));
+        scanned += res.scanned;
+        res.usedAllow.forEach(sel => usedAllow.add(sel));
+        res.usedSideways.forEach(sel => usedSideways.add(sel));
+        res.usedFloorAllow.forEach(sel => usedFloorAllow.add(sel));
+        for (const cl of res.clip) found.push({ kind: 'clip', where, pos, ...cl });
+        for (const sp of res.split) found.push({ kind: 'split', where, pos, ...sp });
+        for (const hd of res.hidden) found.push({ kind: 'hidden', where, pos, ...hd });
+        for (const ov of res.overlap) found.push({ kind: 'overlap', where, pos, ...ov });
+        for (const fl of res.floor) found.push({ kind: 'floor', where, pos, ...fl });
+      }
+    } catch (e) {
+      problems.push(`${where}: ${e.message.split('\n')[0]}`);
+    } finally {
+      if (v.close) await evalIn(c, step(v.close))
+        .catch(e => problems.push(`${where}: did not close — ${e.message.split('\n')[0]}`));
     }
-    reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
-  } finally {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await setWidth(c, WIDTH);
+    // Restore the roster these states swap out (see header comment), and
+    // injectCss's <style>, which the same reload wipes too.
+    // `firstRunTypedRoster` reloads too (`openFirstRunTypedRosterState`'s
+    // own wiped landing); `rotationToast` does not -- it only mutates the
+    // loaded record's game in place via `setGame`, no navigation.
+    if (v.firstRun || v.tryLink || v.four || v.firstRunTypedRoster) {
+      await land(c, origin, { record: LONG_AND_SQUEEZE, ...LARGE_TEXT });
+      await applyInjectCss();
+    }
   }
+
+  // An allow-list, sideways-scroll, floor-allow or known-issue entry this
+  // run never needed is stale and fails here, same reasoning for all four.
+  const reportStale = (label, verb, items, sep, fmt = String) => {
+    if (!items.length) return;
+    problems.push(`${items.length} stale ${label} entr${items.length === 1 ? 'y' : 'ies'} (never ${verb} this run): ${items.map(fmt).join(sep)}`);
+  };
+  reportStale('allow-list', 'needed', ALLOW_SELECTORS.filter(sel => !usedAllow.has(sel)), ' | ');
+  reportStale('sideways-scroll', 'needed', SIDEWAYS_SELECTORS.filter(sel => !usedSideways.has(sel)), ' | ');
+  reportStale('floor allow-list', 'needed', FLOOR_ALLOW_SELECTORS.filter(sel => !usedFloorAllow.has(sel)), ' | ');
+
+  // A raw finding matched by CLIP_SWEEP_KNOWN_ISSUES is a real, filed bug,
+  // not this ticket's to fix, so it's excused rather than pushed as a
+  // problem.
+  const matchedIssues = new Set();
+  for (const p of found) {
+    const hit = CLIP_SWEEP_KNOWN_ISSUES.find(k => k.match(p));
+    if (hit) { matchedIssues.add(hit.issue); continue; }
+    if (p.kind === 'clip') problems.push(`${p.where}@${p.pos}: "${p.text}" is ${p.scrollWidth}px wide in a ${p.clientWidth}px box (${p.el})`);
+    else if (p.kind === 'split') problems.push(`${p.where}@${p.pos}: "${p.word}" splits across lines mid-word (${p.el})`);
+    else if (p.kind === 'hidden') problems.push(`${p.where}@${p.pos}: ${p.el} is hidden under ${p.hitBy}`);
+    else if (p.kind === 'overlap') problems.push(`${p.where}@${p.pos}: "${p.text}" (${p.el}) spills past its own box onto ${p.hitBy}'s text`);
+    else if (p.kind === 'floor') problems.push(`${p.where}@${p.pos}: "${p.text}" paints ${p.over}px past its own ${p.box}px box (${p.el})`);
+  }
+  reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
 
   return {
     pass: problems.length === 0 && scanned > 0,

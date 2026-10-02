@@ -17,7 +17,7 @@
  * with real clicks. A rich row's own `run` is called wherever the row before
  * it in registry.mjs order left the page -- `fixturePass` right before this
  * one navigates through Team and Season and back -- so this row calls
- * `goRich` itself first, the same reload `--only` already gets for free, so
+ * `land` itself first, the same reload `--only` already gets for free, so
  * it lands on the per-game screen (`RICH.view` is 'games') the same way
  * whether it runs on its own or after every row ahead of it. Reproduced: a
  * full run left every place here reporting "no glyphs drawn" -- an element
@@ -35,7 +35,7 @@
  *     `app-large-text.mjs` uses for its own large-text pass -- a font-size change needs a reload to apply, and the
  *     font-injection script runs again on that new document the same as
  *     every other reload's does, so this proves the font survives it rather
- *     than only ever being checked once, right after `goRich`.
+ *     than only ever being checked once, right after `land`.
  * The printed card (InterVar) and the paste box's monospace textarea are
  * excluded by name: neither is in the list above.
  *
@@ -46,7 +46,6 @@
 import { evalIn, step, objectIdFor } from './dom.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { SMOKE_FONT_FAMILY } from './smoke-font.mjs';
-import { goRich } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 
 // A selector matching nothing hands back no objectId (`dom.mjs`'s own
@@ -61,7 +60,7 @@ async function nodeIdFor(c, selector) {
 export async function fontDrawsPass(c, origin) {
   // #177 fix (see the module comment above): its own reload, not whatever
   // screen the row before it left the page on.
-  await goRich(c, origin);
+  await land(c, origin);
 
   const problems = [];
   const checked = [];

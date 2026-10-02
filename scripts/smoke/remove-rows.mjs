@@ -1,4 +1,5 @@
-import { evalIn, step, TODAY_HOME, CSS_VAR_COLOR_PROBE, setWidth, WIDTH } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, CSS_VAR_COLOR_PROBE, WIDTH } from './dom.mjs';
+import { resize } from './page-state.mjs';
 
 /* #141 (one control each), decision 1 and "What would settle it" item 2:
  * `#removeGame` and `#removeTeam` used to be `btn ghost danger sm`, a
@@ -122,7 +123,7 @@ export async function removeRowsPass(c, origin) {
   try {
     const err = await evalIn(c, `(${CSS_VAR_COLOR_PROBE})('var(--err)')`);
 
-    // `goRich` (this row's own `setup: 'rich'`) lands straight on the games
+    // `land` (this row's own `setup: 'rich'`) lands straight on the games
     // view -- it waits for `.card`, same as `control-size.mjs`'s own comment
     // on the point -- so `#removeGame` is already on screen with no click.
     const game = await measureRemoveRow(c, '#removeGame');
@@ -132,12 +133,12 @@ export async function removeRowsPass(c, origin) {
     // Restore WIDTH even on a throw: #removeTeam is measured at it next.
     try {
       for (const width of [390, 1280]) {
-        await setWidth(c, width);
+        await resize(c, width);
         const col = await measureGameColumn(c);
         checkGameColumnOrder(problems, width, col);
       }
     } finally {
-      await setWidth(c, WIDTH);
+      await resize(c, WIDTH);
     }
 
     await evalIn(c, step(TODAY_HOME));

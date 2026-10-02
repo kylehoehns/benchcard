@@ -9,7 +9,7 @@
  * six-step copy did before the fit fix (survey item 1: 824-1,189px tall
  * boxes on an 844px screen).
  *
- * Reuses rather than re-derives: `evalIn`, `step`, `setWidth`, `WIDTH`,
+ * Reuses rather than re-derives: `evalIn`, `step`, `resize`, `WIDTH`,
  * `HEIGHT` (dom.mjs); `LARGE_TEXT_PX`, `LARGE_TEXT_WIDTH`, `LAPTOP`,
  * `TOUCH_MIN` (sizes.mjs); and the seven `tour, step k of 7` open/close
  * scripts `overlay.mjs`'s `STATES` already builds once, by name, rather than
@@ -25,10 +25,10 @@
  * top-level `const` -- `overlay.mjs` is the first of the two `registry.mjs`
  * imports, so this file's own top level would then run while overlay.mjs's
  * `STATES` is still mid-initialization, and throw. */
-import { evalIn, step, setWidth, WIDTH, HEIGHT, TIMERS_QUIET } from './dom.mjs';
+import { evalIn, step, WIDTH, HEIGHT, TIMERS_QUIET } from './dom.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, LAPTOP, TOUCH_MIN } from './sizes.mjs';
 import { STATES } from './overlay.mjs';
-import { land, reset } from './page-state.mjs';
+import { land, reset, resize } from './page-state.mjs';
 
 export const TOUR_STEPS_CHECK =
   `tour: seven steps at ${WIDTH}px, ${LAPTOP}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
@@ -139,7 +139,7 @@ export async function tourStepsPass(c, origin) {
     }
 
     // ---------- 390x844: items 2, 3, 4 ----------
-    await setWidth(c, WIDTH, HEIGHT);
+    await resize(c, WIDTH, HEIGHT);
     for (let i = 0; i < EXPECTED.length; i++) {
       const s = TOUR_STATES[i];
       const last = i === EXPECTED.length - 1;
@@ -206,7 +206,7 @@ export async function tourStepsPass(c, origin) {
     }
 
     // ---------- 1280x800: item 5, steps 6 (the desktop Start game) and 7 ----------
-    await setWidth(c, LAPTOP, 800);
+    await resize(c, LAPTOP, 800);
     for (const i of [STEP_COUNT - 2, STEP_COUNT - 1]) {
       const anchor = EXPECTED[i].desktop || EXPECTED[i].anchor;
       await evalIn(c, step(TOUR_STATES[i].open));
@@ -251,7 +251,7 @@ export async function tourStepsPass(c, origin) {
     }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-    await setWidth(c, WIDTH, HEIGHT).catch(() => {});
+    await resize(c, WIDTH, HEIGHT).catch(() => {});
   }
 
   function finish() {

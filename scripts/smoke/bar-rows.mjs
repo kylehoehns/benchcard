@@ -26,8 +26,9 @@
  * already checks the radius against `var(--r-full)`. Only `.mrow` (the game
  * screen's Plan sheet, which #144 does not touch) keeps its pinned literal
  * here. */
-import { evalIn, step, TODAY_HOME, WIDTH, setWidth } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH } from './dom.mjs';
+import { richWith } from './fixtures.mjs';
+import { land, resize } from './page-state.mjs';
 
 const WIDTHS = [390, 1280];
 const TOL = 2;
@@ -86,9 +87,9 @@ export async function barRowsPass(c, origin) {
 
   try {
     for (const theme of ['light', 'dark']) {
-      await goRich(c, origin, { theme });
+      await land(c, origin, { record: richWith({ theme }) });
       for (const width of WIDTHS) {
-        await setWidth(c, width);
+        await resize(c, width);
 
         // `.mrow`: the Plan sheet's minute bars, inside the "Stint by stint"
         // `<details>` on the game screen -- closed by default, so opened here.
@@ -100,7 +101,7 @@ export async function barRowsPass(c, origin) {
         if (mrow) measured++;
       }
     }
-    await setWidth(c, WIDTH);
+    await resize(c, WIDTH);
 
     // Rule 2a: 1 row x 2 widths x 2 themes = 4 measurements expected.
     if (measured < 4) problems.push(`only ${measured}/4 bar-row measurements were taken -- a selector stopped matching`);

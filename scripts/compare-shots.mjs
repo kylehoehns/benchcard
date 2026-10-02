@@ -19,7 +19,7 @@
  *   2. The rich fixture's `ui.theme` is `'light'`, and `applyTheme` in
  *      `app/render.js` only consults `prefers-color-scheme` when that
  *      setting is `'auto'` -- so emulating a dark OS paints nothing. Dark is
- *      reached the way `goRich`'s own override is built for: writing
+ *      reached the way `richWith`'s own override is built for: writing
  *      `ui.theme: 'dark'` into the record, never OS emulation. And painted
  *      color is what is checked, never `data-theme`.
  *
@@ -38,7 +38,8 @@ import { launch, cdp } from './smoke/chrome.mjs';
 import { serve } from './serve.mjs';
 import { parseTokensCss, colorOf } from './tokens-css.mjs';
 import { evalIn, step, SETTLE, WIDTH, HEIGHT } from './smoke/dom.mjs';
-import { goRich, LONG_NAME, RICH, partPlayed as partPlayedFixture, reloadWithRecord, seeded } from './smoke/fixtures.mjs';
+import { LONG_NAME, RICH, richWith, TODAY_GAME_READY, partPlayed as partPlayedFixture } from './smoke/fixtures.mjs';
+import { land, withScripts } from './smoke/page-state.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, SHEET_MIN, WIDE_MIN, LAPTOP, TOUCH_WIDTHS } from './smoke/sizes.mjs';
@@ -507,14 +508,14 @@ export function twinProblems(records) {
  * own on-new-document script survives a reload. `onboarded` defaults false
  * on a fresh record, which is what actually produces the welcome screen; no
  * fixture override reaches that, so this is the one shot in the table that
- * cannot go through `goRich`.
+ * cannot go through a RICH record.
  *
  * The theme is set directly on `state.ui` after boot and repainted with the
  * app's own `applyTheme`, never by emulating `prefers-color-scheme` -- the
  * same rule item 3 states for every other shot, applied to the one state
- * `goRich`'s override cannot reach. */
+ * `richWith`'s override cannot reach. */
 async function goFirstRun(c, origin, theme, opts = {}) {
-  await seeded(c, `try { localStorage.clear(); } catch {}`, async () => {
+  await withScripts(c, [`try { localStorage.clear(); } catch {}`], async () => {
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
     await loaded;
@@ -622,16 +623,17 @@ async function capture(c, origin, want, outDir) {
     await goFirstRun(c, origin, want.theme,
       { step: want.firstRunStep || 0, longNames: want.firstRunLongNames, repeatRoster: want.firstRunRepeat });
   } else if (want.partPlayed) {
-    /* #34 decision 16: the part-played Resume bar, over `reloadWithRecord`
-       rather than `goRich` -- `partPlayed()` needs `view: 'today'` baked
+    /* #34 decision 16: the part-played Resume bar, over a plain `land`
+       rather than `richWith` -- `partPlayed()` needs `view: 'today'` baked
        into the record itself so the reload lands there directly, the same
        way `FOUR` (fixtures.mjs) sets it for its own Today-first checks. */
     const themed = { ...RICH, view: 'today', ui: { ...RICH.ui, theme: want.theme } };
-    await reloadWithRecord(c, origin, partPlayedFixture(themed));
+    await land(c, origin, { record: partPlayedFixture(themed), ready: TODAY_GAME_READY, freshHistory: true,
+      width: want.width, textPx: want.rootPx });
   } else {
-    await goRich(c, origin, { theme: want.theme });
+    await land(c, origin, { record: richWith({ theme: want.theme }), width: want.width, textPx: want.rootPx });
     if (want.longNames) await evalIn(c, setLongName);
-    /* `RICH.view` is `'games'`, not `'today'` -- `goRich` lands the session on
+    /* `RICH.view` is `'games'`, not `'today'` -- a RICH landing is the session on
        a game, where `.today-game` was never populated (`teams-view.js` only
        fills `#todayGames` when `state.view === 'today'`). Land on Today first
        via `VIEWS`' own 'today' entry, the same stop every view but Today
@@ -731,7 +733,7 @@ async function capture(c, origin, want, outDir) {
     }
   }
 
-  /* OUTSIDE the branches above, not inside the `goRich` one. This used to sit
+  /* OUTSIDE the branches above, not inside the RICH one. This used to sit
      in the `else`, so a `firstRun` or `partPlayed` shot asking for `bottom`
      was silently never scrolled -- #34's own part-played bottom cell came out
      BYTE-IDENTICAL to the unscrolled `resume-bar-320` (same sha256 in
@@ -857,11 +859,9 @@ export async function main() {
     await c.send('Emulation.setDeviceMetricsOverride',
       { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
 
-    // `goRich` writes to `localStorage` on whatever page is currently
-    // loaded, and a session starts on `about:blank`, where that write throws
-    // ("Access is denied for this document"). One real navigation first puts
-    // the session on the app's own origin, the way every `goRich` caller in
-    // `smoke.mjs` already has one behind it by the time it calls in.
+    // One real navigation first puts the session on the app's own origin,
+    // the way every landing in `smoke.mjs` already has one behind it by the
+    // time it calls in (a session starts on `about:blank`).
     const firstLoad = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
     await firstLoad;
@@ -869,7 +869,7 @@ export async function main() {
     // The fixture is a guard: run it once and stop the run if it fails. A
     // compare set taken against a fixture that did not arrive proves
     // nothing -- the whole subject of this ticket.
-    await goRich(c, origin);
+    await land(c, origin);
     const fp = await fixturePass(c);
     if (!fp.pass) throw new Error(`rich fixture did not arrive, stopping: ${fp.detail}`);
 

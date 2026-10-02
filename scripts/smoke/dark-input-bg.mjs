@@ -1,6 +1,7 @@
 import { TODAY_HOME } from './dom.mjs';
 import { tap, evalJSON } from './sheet-drive.mjs';
-import { goRich } from './fixtures.mjs';
+import { richWith } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 
 /* #131 fix-pass finding, item 7: a plain `:root` prefix on the three
  * descendant dark-theme rules (app.css ~989, ~1002) added one class of
@@ -36,7 +37,7 @@ export async function darkInputBgPass(c, origin) {
     // emulating `prefers-color-scheme` (#131's own rule, item 3 of its
     // Design). RICH otherwise lands on the games view with a game active,
     // which is what #shareBtn needs.
-    await goRich(c, origin, { theme: 'dark' });
+    await land(c, origin, { record: richWith({ theme: 'dark' }) });
 
     // #sheetCard: the four print options and the minutes switch.
     await tap(c, `document.getElementById('shareBtn').click()`);

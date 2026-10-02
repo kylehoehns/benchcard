@@ -32,7 +32,7 @@ export async function planSheetPass(c, origin) {
 
   try {
     /* ---- item 1: opening ---- */
-    // `goRich` already lands on the Hawks game itself (view: 'games',
+    // `land` already lands on the Hawks game itself (view: 'games',
     // activeGame: 0) -- no `.today-game` row to click first.
     await tap(c, `document.getElementById('phraseStrategy').click()`);
 

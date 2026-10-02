@@ -6,11 +6,10 @@
  * fields and unsupported versions throw -- are `node --test` assertions
  * directly against its return value, not against a running browser.
  *
- * Seam 2 (source-reading, built under `/new-guard`): during the migration,
- * only `page-state.mjs` may call the four CDP methods a check used to call by
- * hand, or read `document.fonts.ready` -- everywhere else is pinned to
- * today's count by an allow-list that shrinks every slice and never grows
- * (`AGENTS.md`'s rule for allow maps). Rule 2a: the walk counts what it found
+ * Seam 2 (source-reading, built under `/new-guard`): only `page-state.mjs`
+ * may call the four CDP methods a check used to call by hand, or read
+ * `document.fonts.ready`; every other file holds zero, with no allow-list.
+ * Comments are not counted. Rule 2a: the walk counts what it found
  * before judging it, so a walk that silently found nothing fails loudly
  * instead of reading as a clean tree. */
 import { test } from 'node:test';
@@ -23,7 +22,6 @@ import { ROWS } from '../scripts/smoke/registry.mjs';
 
 const { planLanding, BASELINE } = pageState;
 import { RICH, SEED } from '../scripts/smoke/fixtures.mjs';
-import { LOCALSTORAGE_WIPE } from '../scripts/smoke/dom.mjs';
 
 /* ---------- seam 1: planLanding, the pure half ---------- */
 
@@ -48,7 +46,7 @@ test('planLanding: a v3 record writes v3 and removes both v7 keys', () => {
 
 test("planLanding: 'wiped' clears storage", () => {
   const { script } = planLanding({ record: 'wiped' });
-  assert.equal(script, LOCALSTORAGE_WIPE);
+  assert.equal(script, 'try { localStorage.clear(); } catch {}');
 });
 
 test("planLanding: 'kept' has no seeding script", () => {
@@ -85,6 +83,14 @@ test('compareFingerprints: a changed record hash is caught even at the same leng
   assert.match(
     pageState.compareFingerprints(FP, { ...FP, recordHash: 'ffffff' }),
     /^start state differs from baseline: recordHash was "ffffff", want "a1b2c3"$/);
+});
+
+test('compareFingerprints: / and /index.html are one address, other paths still differ', () => {
+  // The tour row's start sometimes reads "/index.html" for the same page,
+  // and failed the row on the address alone.
+  assert.equal(pageState.compareFingerprints({ ...FP, url: '/' }, { ...FP, url: '/index.html' }), null);
+  assert.equal(pageState.compareFingerprints({ ...FP, url: '/?x=1' }, { ...FP, url: '/index.html?x=1' }), null);
+  assert.match(pageState.compareFingerprints({ ...FP, url: '/' }, { ...FP, url: '/about.html' }), /url was "\/about.html", want "\/"/);
 });
 
 test('compareFingerprints: dark or forced colors leaking in are caught', () => {
@@ -164,21 +170,13 @@ function smokeFiles() {
   return files;
 }
 
-/* Today's per-file allow-list, pinned by counting the tree before slice 1's
- * edit (`dom.mjs`/`fixtures.mjs` are not here: their wrapper bodies moved
- * every one of these calls into `page-state.mjs`, so their own count is 0,
- * same as any file never in this map). Each later slice removes the files it
- * migrates; none may raise a number that is still here (`AGENTS.md`'s rule
- * for allow maps) -- the last slice deletes the list entirely. */
-const ALLOW = {
-  'scripts/smoke/card-font.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 2 },
-  'scripts/smoke/clip-sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 2, media: 0, fontsready: 0 },
-  'scripts/smoke/today-and-back.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 1 },
-};
-
 const ZERO = { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 0 };
 
-test('only page-state.mjs sends these CDP methods or reads fonts.ready, outside the pinned allow-list', () => {
+/* Comments are dropped before counting: a doc comment may name the method it
+ * is explaining without being a call of it. */
+const stripComments = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+
+test('only page-state.mjs sends these CDP methods or reads fonts.ready', () => {
   const files = smokeFiles();
   assert.ok(files.length >= 30,
     `expected at least 30 files across scripts/smoke.mjs and scripts/smoke/, found ${files.length} -- ` +
@@ -188,7 +186,7 @@ test('only page-state.mjs sends these CDP methods or reads fonts.ready, outside 
   const bad = [];
   for (const file of files) {
     const rel = relative(ROOT, file).split(sep).join('/');
-    const counts = countsFor(readFileSync(file, 'utf8'));
+    const counts = countsFor(stripComments(readFileSync(file, 'utf8')));
     measured += Object.values(counts).reduce((a, b) => a + b, 0);
 
     if (rel === 'scripts/smoke/page-state.mjs') {
@@ -197,11 +195,8 @@ test('only page-state.mjs sends these CDP methods or reads fonts.ready, outside 
       }
       continue;
     }
-    const want = ALLOW[rel] || ZERO;
     for (const key of Object.keys(PATTERNS)) {
-      if (counts[key] !== want[key]) {
-        bad.push(`${rel}: ${key} is ${counts[key]}, allow-list says ${want[key]}`);
-      }
+      if (counts[key] !== ZERO[key]) bad.push(`${rel}: ${key} is ${counts[key]}, want 0`);
     }
   }
 
@@ -211,9 +206,18 @@ test('only page-state.mjs sends these CDP methods or reads fonts.ready, outside 
 
 test('the guard above can fail: a planted raw call outside the allow-list is caught', () => {
   const counts = countsFor(`await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });`);
-  const want = ZERO; // a file at zero, which is where every file ends up
-  assert.notEqual(counts.fontsizes, want.fontsizes,
-    'planting a fontsizes call where the allow-list says 0 must change the measured count, or the guard above could never fail');
+  assert.notEqual(counts.fontsizes, ZERO.fontsizes,
+    'planting a fontsizes call in a file that must hold 0 must change the measured count, or the guard above could never fail');
+  const inComment = stripComments(`/* a doc comment naming send('Page.setFontSizes' */\n// document.fonts.ready\n`);
+  assert.deepEqual(countsFor(inComment), ZERO, 'a call named only in a comment is not a call');
+});
+
+test('the old navigation helpers are gone from fixtures.mjs and dom.mjs', async () => {
+  const fixtures = await import('../scripts/smoke/fixtures.mjs');
+  const dom = await import('../scripts/smoke/dom.mjs');
+  const gone = ['goRich', 'goSeed', 'reloadWithRecord', 'seeded'].filter(n => n in fixtures)
+    .concat(['landWiped', 'navigateAndWaitForCard', 'setWidth', 'ambient', 'landKeepingAmbient'].filter(n => n in dom));
+  assert.deepEqual(gone, []);
 });
 
 /* A check no longer puts RICH back itself: the harness's `reset` runs before
