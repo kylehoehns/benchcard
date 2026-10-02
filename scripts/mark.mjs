@@ -10,7 +10,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const GROUND = '#D2500A';
+export const GROUND = '#D2500A';
 const CARD = '#F4F4F6';
 const TRACK = '#E4DED7';
 const HUES = ['#C0504D', '#C9762F', '#A8952E', '#5E8A3A', '#2E8A7A'];
@@ -35,9 +35,10 @@ const rowBars = () => STINTS.flatMap((stints, i) => {
    rounds the ground's corners instead of bleeding square; `scale` shrinks the
    card about the icon's center, so an install icon can keep the card and its
    shadow inside the maskable safe circle; `ariaHidden` marks a decorative
-   logo; `ground` is the ground's fill (the welcome logo passes var(--tint), so it
-   follows the team color; everything else keeps the brand orange). */
-export function markSvg(size, { shadow = false, rounded = false, scale = 1, ariaHidden = false, ground = GROUND } = {}) {
+   logo; `ground` is the ground's fill and `card` the card's (the welcome logo passes
+   var(--tint) and var(--tint-ink), so it follows the team color and the card
+   keeps reading on it; everything else keeps the brand orange and paper). */
+export function markSvg(size, { shadow = false, rounded = false, scale = 1, ariaHidden = false, ground = GROUND, card = CARD } = {}) {
   const rows = rowBars()
     .map(([x, y, w, h, rx, fill]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}"/>`)
     .join('');
@@ -50,7 +51,7 @@ export function markSvg(size, { shadow = false, rounded = false, scale = 1, aria
     + filter
     + `<rect width="100" height="100"${rounded ? ' rx="22"' : ''} fill="${ground}"/>`
     + `<g transform="${fit}rotate(-8 50 52)">`
-    + `<rect x="25" y="17" width="50" height="68" rx="6" fill="${CARD}"${shadow ? ' filter="url(#mark-shadow)"' : ''}/>${rows}</g></svg>`;
+    + `<rect x="25" y="17" width="50" height="68" rx="6" fill="${card}"${shadow ? ' filter="url(#mark-shadow)"' : ''}/>${rows}</g></svg>`;
 }
 
 /* The tab icon: the mark as a data URI, so a page costs no icon request
@@ -60,8 +61,11 @@ export const faviconHref = () => 'data:image/svg+xml,' + encodeURIComponent(mark
 /* The 26px logo beside "Benchcard" in a page header. Decorative, so hidden. */
 export const logoSvg = opts => markSvg(26, { rounded: true, ariaHidden: true, ...opts });
 
-/* The welcome logo: the same mark, its ground the live team tint (#244). */
-export const welcomeLogoSvg = () => logoSvg({ ground: 'var(--tint)' }).replace(' aria-hidden="true"', '');
+/* The welcome logo: the same mark, its ground the live team tint (#244). The
+   card is --tint-ink, the color tokens.css guarantees reads on the tint: in
+   dark Graphite the tint is the paper color itself, and a paper card would
+   vanish into it. */
+export const welcomeLogoSvg = () => logoSvg({ ground: 'var(--tint)', card: 'var(--tint-ink)' }).replace(' aria-hidden="true"', '');
 
 /* app/share.js paints the mark onto a canvas, synchronously (an image decode
    would cost the tap its activation, see the note there), and app/ cannot

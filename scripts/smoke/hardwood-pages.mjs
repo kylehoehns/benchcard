@@ -34,6 +34,8 @@ const CASES = [
   { name: 'dark, more contrast', media: [{ name: 'prefers-color-scheme', value: 'dark' }, { name: 'prefers-contrast', value: 'more' }], want: 'rgb(255, 133, 59)' },
 ];
 const GRAPHITE_INK = 'rgb(28, 28, 30)';
+/* Every team tint the welcome logo can wear (graphite is no attribute). */
+const TINTS = [null, 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
 const HARDWOOD_LIGHT = CASES[0].want;
 
 const PAGES = [
@@ -82,6 +84,23 @@ const READ = p => `(() => {
     bodyBox: body ? { x: r(body).left - 2, y: r(body).top - 2 } : null,
     scroll: [window.scrollX, window.scrollY],
   });
+})()`;
+
+/* The welcome logo's ground and its card, for each team tint, in the page's
+   current theme: set data-tint live (the welcome screen only shows on a wiped
+   device, which is Hardwood), then resolve both fills through the canvas. */
+const READ_LOGO_TINTS = `(() => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  const rgba = css => {
+    cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1);
+    const d = cx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3]];
+  };
+  const fill = s => { const e = document.querySelector(s); return e ? rgba(getComputedStyle(e).fill) : null; };
+  return JSON.stringify(${JSON.stringify(TINTS)}.map(t => {
+    if (t) document.documentElement.dataset.tint = t; else delete document.documentElement.dataset.tint;
+    return { tint: t || 'graphite', ground: fill('.wel-mark svg > rect:first-child'), card: fill('.wel-mark svg > g > rect:first-child') };
+  }));
 })()`;
 
 /* WCAG contrast from the app's own `contrast` (tokens-css.mjs), which takes
@@ -145,6 +164,15 @@ export async function hardwoodPagesPass(c, origin) {
         if (s.btnBg && s.btnFg) {
           const label = ratio(s.btnFg, s.btnBg);
           if (label < 4.5) note(where, `${p.button}'s label is ${label.toFixed(2)}:1 on the orange, want at least 4.5:1`);
+        }
+        // last, because it rewrites data-tint on the live page
+        if (p.mark) {
+          // #277: the card must read on the ground (non-text, 3:1) under every tint.
+          for (const t of JSON.parse(await evalIn(c, READ_LOGO_TINTS))) {
+            if (!t.ground || !t.card) { note(where, `no logo ground or card under ${t.tint}`); continue; }
+            const r = ratio(t.card, t.ground);
+            if (r < 3) note(where, `the logo's card ${css(t.card)} on its ground ${css(t.ground)} under ${t.tint} is ${r.toFixed(2)}:1, want at least 3:1`);
+          }
         }
       }
     }

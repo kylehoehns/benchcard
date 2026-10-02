@@ -1,6 +1,10 @@
 import { evalIn } from './dom.mjs';
 import { evalJSON } from './sheet-drive.mjs';
 import { SCALE, PAD, GAP, FOOT } from '../../app/share.js';
+import { GROUND } from '../mark.mjs';
+
+/* The mark's ground as [r, g, b], from scripts/mark.mjs, not retyped here. */
+const GROUND_RGB = [1, 3, 5].map(i => parseInt(GROUND.slice(i, i + 2), 16));
 
 /* #263: what a coach hands to someone else leaves the page three ways -- an
    `<a download>` click, `navigator.share`, `navigator.clipboard.write` -- and
@@ -75,8 +79,9 @@ const PAGE_SIDE = `(() => {
     g.drawImage(bmp, 0, bmp.height - band, bmp.width, band, 0, 0, bmp.width, band);
     const d = g.getImageData(0, 0, cv.width, band).data;
     let n = 0;
+    const [gr, gg, gb] = ${JSON.stringify(GROUND_RGB)};
     for (let i = 0; i < d.length; i += 4)
-      if (Math.abs(d[i] - 0xD2) <= 2 && Math.abs(d[i + 1] - 0x50) <= 2 && Math.abs(d[i + 2] - 0x0A) <= 2) n++;
+      if (Math.abs(d[i] - gr) <= 2 && Math.abs(d[i + 1] - gg) <= 2 && Math.abs(d[i + 2] - gb) <= 2) n++;
     return n;
   };
   cap.read = async () => {
