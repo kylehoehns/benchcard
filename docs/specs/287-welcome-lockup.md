@@ -39,7 +39,7 @@ A coach opening Benchcard for the first time on an iPhone sees a crisp logo belo
 
 - **Smoke row `welcome lockup: clears the top inset, 36px logo`** covers items 1 to 3:
   - It emulates a 59px top inset with CDP `Emulation.setSafeAreaInsetsOverride`, waits for the mark's entry animation to finish, and checks the logo's size, the logo's top, the wordmark size and the gap.
-  - Then, with no inset at 390×745, it checks the page is no taller than main's 71px overflow.
+  - Then, with no inset at 390×745, it checks the page is no taller than with the old lockup. The old lockup (26px mark, `--fs-headline`, old gap and margins) is restored in the same page by an injected `<style>`, so the baseline needs no hard-coded number and shares the machine's font.
   - **Red on the old CSS:** logo 26×26, top at 16px, wordmark 17px, gap 7.2px. Before the margin fix, the page was 81px over.
 - **Item 4:** `test/mark-drift.test.js` and the existing welcome, Hardwood and team-color smoke rows stay green.
 - **Preview:** the owner checks the PR preview on an iPhone before merge. Playwright's WebKit is not iOS Safari.

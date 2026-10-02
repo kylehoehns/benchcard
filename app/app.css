@@ -2090,10 +2090,10 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    document even slightly taller than dvh puts the footer under the bar.
    12rem leaves each of the ten plan rows ~16px, a line box for a 12px name.
    Lower it and the names clip; raise it and the footer goes further under
-   the bar. At a 390x745 Safari-tab viewport the page measures 70px taller
-   than the viewport (welcome-lockup.mjs holds it to the 71px it was before
-   the 36px lockup): the lockup's 10px of growth is paid for by trimming the
-   margins under it and above this stage, not by this floor.
+   the bar. On a 745px Safari-tab phone the page is no taller than before
+   the 36px lockup (welcome-lockup.mjs measures both): the lockup's growth
+   is paid for by trimming the margins under it and above this stage, not
+   by this floor.
    One duration for both panes. The two figures pan by different mechanisms
    (an image by object-position, the drawn bench by a measured translate) and
    the timing is the one thing they must agree on -- two numbers here is two
