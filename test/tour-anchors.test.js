@@ -74,8 +74,8 @@ function stepSel(s) {
   return m ? [...m[0].matchAll(/'#([\w-]+)'/g)].map(x => '#' + x[1]) : null;
 }
 
-/* #201 item 1: six steps, in this order, with these titles and these exact
-   `sel` lists — the spec's own table (docs/specs/201-tour-refresh.md), not a
+/* #201 item 1, as #275 split step 6: seven steps, in this order, with these titles and these exact
+   `sel` lists — the issue's own table (#275, which extends docs/specs/201-tour-refresh.md), not a
    re-read of tour.js, so a step reordered, retitled or repointed at the
    wrong anchor fails here even when nothing else about the markup moved. */
 const EXPECTED = [
@@ -84,11 +84,12 @@ const EXPECTED = [
   { title: 'Rules and lineups', sel: ['#phraseRules'] },
   { title: 'This is the rotation', sel: ['#timeline'] },
   { title: 'Timeline or card', sel: ['#viewSeg'] },
-  { title: 'What you use in the gym', sel: ['#shareBtn'] },
+  { title: 'What you use in the gym', sel: ['#abBench', '#gmOpen'] },
+  { title: 'Print, share or hand off', sel: ['#shareBtn'] },
 ];
 
-test('the tour reads as six steps, titles and sel exactly as the spec says, in order, with anchors that exist in the markup', () => {
-  assert.equal(TOUR.length, EXPECTED.length, `six steps (#201 item 1), found ${TOUR.length}`);
+test('the tour reads as seven steps, titles and sel exactly as the spec says, in order, with anchors that exist in the markup', () => {
+  assert.equal(TOUR.length, EXPECTED.length, `seven steps (#275), found ${TOUR.length}`);
   TOUR.forEach((s, i) => {
     const want = EXPECTED[i];
     const titleM = s.match(/title:\s*'((?:\\.|[^'])*)'/);

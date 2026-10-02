@@ -1,6 +1,7 @@
 import { evalIn, step, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
+import { STEP_COUNT as TOUR_STEP_COUNT } from './tour-steps.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { FOUR, TODAY_GAME_READY } from './fixtures.mjs';
 import { land } from './page-state.mjs';
@@ -162,12 +163,11 @@ export const APP_LARGE_TEXT_STATES = [
      adds the other two sentence sheets Who's here sits beside: Format and
      Sub interval, now the same `.pgrp`/`.prow` family. #148 adds a rule's
      own edit page, one cap and one pair. */
-  /* #201: all six tour steps, not only the first -- the box's own fit at
+  /* #201: every tour step, not only the first -- the box's own fit at
      this cell is exactly what the tour refresh had to add (survey item 1),
      and a check that only ever opened step 1 would never have seen it. */
   ...['help sheet', 'shortcuts sheet',
-      'tour, step 1 of 6', 'tour, step 2 of 6', 'tour, step 3 of 6',
-      'tour, step 4 of 6', 'tour, step 5 of 6', 'tour, step 6 of 6',
+      ...Array.from({ length: TOUR_STEP_COUNT }, (_, i) => `tour, step ${i + 1} of ${TOUR_STEP_COUNT}`),
       'team color picker', "who's here sheet",
       'format sheet', 'sub interval sheet', 'plan sheet', 'plan sheet, add a rule', 'plan sheet, a cap rule', 'plan sheet, a pair rule',
       'card sheet open', 'hand off sheet open']

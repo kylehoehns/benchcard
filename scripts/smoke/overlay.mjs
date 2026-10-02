@@ -194,10 +194,10 @@ export const STATES = [
      (`startTour`), so it lands there regardless of where it was opened from;
      `#backBtn` is what returns to Today afterwards now that Today, not games,
      is the baseline every other state assumes. */
-  /* #201: six steps now, not a first/last pair -- one loop builds all six so
+  /* #201 (seven since #275): one step per state, not a first/last pair -- one loop builds all of them so
      the open script for step k ("open the tour, then tap Next k-1 times")
      cannot drift between states the way two hand-typed entries could. Step
-     6's close is `#tourNext` (Got it, the only step that hides Skip); every
+     the last step's close is `#tourNext` (Got it, the only step that hides Skip); every
      other step closes with `#tourSkip`, same as before. `tour-steps.mjs`
      reuses these same open scripts (by name) rather than a second copy. */
   ...Array.from({ length: TOUR_STEP_COUNT }, (_, i) => {
