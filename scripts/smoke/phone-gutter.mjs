@@ -16,6 +16,7 @@
  * browser actually painted. */
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, landWiped, navigateAndWaitForCard, toGameOne } from './dom.mjs';
 import { TOUCH_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
+import { land, resize } from './page-state.mjs';
 import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
 
 const TOL = 1;
@@ -177,6 +178,71 @@ async function measureLargeText(c, origin) {
   return { bad, audited };
 }
 
+/* #271: the toast's action row (the button and the dismiss) must stay one unit.
+ * Raises the real toasts through the app's own `toast.js` (the page's module
+ * instance, same URL) -- one with a button, one without -- and MEASURES them:
+ * the dismiss on the button's row, the rightmost item, and at the toast's
+ * right content edge, wrapped or not. Waits out the entrance animation first,
+ * whose scale and offset would otherwise shift every rect. */
+const TOAST_ROW_PROBE = `(async () => {
+  const { offer, flash } = await import('/toast.js');
+  const out = [];
+  for (const [kind, raise] of [['button', () => offer('Benchcard updated.', 'Reload', () => {})],
+                               ['no button', () => flash('Benchcard updated.')]]) {
+    raise();
+    const t = document.querySelector('#toasts .toast:not(.out)');
+    await Promise.all(t.getAnimations().map(a => a.finished));
+    const cs = getComputedStyle(t), r = t.getBoundingClientRect();
+    const x = t.querySelector('.tx').getBoundingClientRect();
+    const b = t.querySelector('.tundo')?.getBoundingClientRect();
+    const edge = r.right - parseFloat(cs.paddingRight);
+    const room = edge - (r.left + parseFloat(cs.paddingLeft));
+    out.push({ kind, edge, x: { top: x.top, right: x.right, w: x.width },
+      b: b && { top: b.top, right: b.right, w: b.width },
+      gap: parseFloat(getComputedStyle(t.querySelector('.tacts')).columnGap), room });
+  }
+  return JSON.stringify(out);
+})()`;
+
+async function measureToastRow(c, label) {
+  const bad = [];
+  const rows = JSON.parse(await evalIn(c, TOAST_ROW_PROBE));
+  for (const { kind, edge, x, b, gap, room } of rows) {
+    const where = `${kind} toast@${label}`;
+    // Same row whenever the pair can fit the content box at all; at 32px text
+    // on 320px it cannot (button + dismiss are wider than the box), and
+    // wrapping the dismiss under the button, still right-aligned, beats overflow.
+    if (b) {
+      const fits = b.w + gap + x.w <= room;
+      if (fits && Math.abs(x.top - b.top) > TOL) bad.push(`${where}: the \u2715 is ${(x.top - b.top).toFixed(1)}px below the button's row`);
+      if (b.right > edge + TOL) bad.push(`${where}: the button runs ${(b.right - edge).toFixed(1)}px past the content edge`);
+      if (x.right < b.right) bad.push(`${where}: the \u2715 is not the rightmost item`);
+    }
+    if (Math.abs(x.right - edge) > TOL) bad.push(`${where}: the \u2715 right edge ${x.right.toFixed(1)}px, want ${edge.toFixed(1)}px`);
+  }
+  return { bad, audited: rows.length };
+}
+
+// A font size needs a fresh navigation, so each size lands once and `resize`
+// sweeps the widths.
+const TOAST_WIDTHS = [320, 360, 375, 390];
+
+async function measureToastRows(c, origin) {
+  const bad = [];
+  let audited = 0;
+  // Large text first, so the last landing leaves the root at the default size
+  // for whatever runs next.
+  for (const textPx of [LARGE_TEXT_PX, 16]) {
+    await land(c, origin, { textPx });
+    for (const w of TOAST_WIDTHS) {
+      await resize(c, w);
+      const r = await measureToastRow(c, `${w}px/${textPx}px text`);
+      bad.push(...r.bad); audited += r.audited;
+    }
+  }
+  return { bad, audited };
+}
+
 // #145 item 9: the landing before first run, wiped so it always shows --
 // same `landWiped` idiom `flow-inset.mjs` uses for the same reason, at every
 // TOUCH_WIDTHS phone (all <= 600, the spec's own ceiling for this item).
@@ -215,6 +281,9 @@ export async function phoneGutterPass(c, origin) {
 
     const welcome = await measureWelcome(c, origin);
     bad.push(...welcome.bad); audited += welcome.audited;
+
+    const toasts = await measureToastRows(c, origin);
+    bad.push(...toasts.bad); audited += toasts.audited;
   } finally {
     // The viewport is this pass's own; the next row's `reset` puts the page back.
     await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
@@ -225,6 +294,7 @@ export async function phoneGutterPass(c, origin) {
     detail: bad.length
       ? `${bad.length}/${audited} measurement(s) off the gutter: ${bad.slice(0, 4).join(' | ')}`
       : `${audited} measurements (5 screens + #abBench/#resumeBtn + #view-welcome, ${TOUCH_WIDTHS.join('/')}px, `
+        + `plus 2 toasts at ${TOAST_WIDTHS.join('/')}px, 16px and ${LARGE_TEXT_PX}px text, `
         + `plus 5 screens + #abBench at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px), all left = right = the .wrap gutter`,
   };
 }

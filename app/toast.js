@@ -145,11 +145,14 @@ function actionToast(message, label, act) {
   const t = el('div', 'toast');
   t.append(el('span', 'tmsg', message));
 
+  /* The button and the dismiss are one flex item, so they wrap as a unit. */
+  const acts = el('span', 'tacts');
+
   if (label) {
     const u = el('button', 'tundo press', label);
     u.type = 'button';
     u.onclick = () => { dismissToast(t); act(); };
-    t.append(u);
+    acts.append(u);
   }
 
   const x = el('button', 'tx press');
@@ -158,7 +161,8 @@ function actionToast(message, label, act) {
   x.append(icon('x', { size: '1em' }));
   x.onclick = () => dismissToast(t);
 
-  t.append(x);
+  acts.append(x);
+  t.append(acts);
   box.append(t);
 
   liftToasts(box);
