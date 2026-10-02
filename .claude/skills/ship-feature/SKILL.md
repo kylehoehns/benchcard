@@ -216,6 +216,14 @@ The PR body says it switched.
    against `/tdd`'s anti-patterns: implementation-coupled, tautological, and a
    source-reading test the spec did not name as a seam.
 
+   When the diff touches anything a coach sees (`app/**` other than
+   `sw.js`), take pictures first: with `npm run serve` running, run `node
+   scripts/look.mjs --url http://127.0.0.1:8201 --widths 320,390 --font 16,32
+   --view <the views the diff touches> --out .review/look` (add `--dark` when
+   colors change), and hand `quality-reviewer` the absolute path of
+   `.review/look` too. It reads the PNGs and `measurements.json`, whose
+   `findings` list cut-off text; `AGENTS.md` § Layout says how to read them.
+
 8. **Fix, once.** Actionable findings go to a new `developer`, handed the same
    `.review/` directory step 7 built, which fixes them the same way it built:
    a failing test first where the finding is a behavior. At most one pass. A

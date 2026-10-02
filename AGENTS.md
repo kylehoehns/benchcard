@@ -286,6 +286,15 @@ writes PNGs and `measurements.json` to
 by measurement and every dark shot by painted color rather than trusting
 either silently (#86). Do not write a second throwaway capture script.
 
+`node scripts/look.mjs --out <dir>` is the other one, for any look check:
+any URL (a preview included), the `--widths`, `--font` sizes and `--view`s you
+choose, `--dark` through the record, one PNG per cell, and a
+`measurements.json` that lists each shot's cut-off text with the #179 probe
+(`excused` names the known issue, `null` is new). Use `compare-shots.mjs` for a
+redesign ticket's fixed side-by-side set against the prototype and `look.mjs`
+for everything else; it reports findings and exits 0 unless a shot could not
+be proved (#180).
+
 Nothing outside `app/` is deployed — `wrangler.jsonc` names `assets.directory`
 as `"app"`. That is deliberate: it replaced an `.assetsignore` denylist that
 would have published the old ticket list at `benchcard.app/TICKETS.md`. Keep the
