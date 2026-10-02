@@ -1,5 +1,6 @@
 import { evalIn, step } from './dom.mjs';
-import { RICH, reloadWithRecord } from './fixtures.mjs';
+import { RICH, TODAY_LANDING } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 
 /* #100 (docs/specs/100-dated-days.md), Proof row 4: "New day" is gone --
    `#todayNewDay` no longer exists anywhere on Today -- and a day dated
@@ -46,13 +47,13 @@ const NEVER_DAY = {
 export async function datedDayPass(c, origin) {
   const problems = [];
   try {
-    await reloadWithRecord(c, origin, { ...NEVER_DAY, view: 'today' });
+    await land(c, origin, { record: { ...NEVER_DAY, view: 'today' }, ...TODAY_LANDING });
     const before = JSON.parse(await evalIn(c, `JSON.stringify({
       days: JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].days,
       seasonGames: JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].season.games,
     })`));
 
-    await reloadWithRecord(c, origin, { ...PAST_DAY, view: 'today' });
+    await land(c, origin, { record: { ...PAST_DAY, view: 'today' }, ...TODAY_LANDING });
 
     const after = JSON.parse(await evalIn(c, `JSON.stringify({
       onToday: !!(document.getElementById('view-today') && !document.getElementById('view-today').hidden),

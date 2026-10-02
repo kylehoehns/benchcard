@@ -1,44 +1,10 @@
 /* The fixtures the browser passes drive: a lean SEED for the cold-load
    measurement and a RICH record for everything else. Moved out of
    `smoke.mjs` unchanged. */
-import { landKeepingAmbient, screenReadyExpr } from './dom.mjs';
+import { screenReadyExpr } from './dom.mjs';
 /* The app's own sample cast, for `SAMPLE_TEAM` below -- `app/roster.js` is
    where it lives and the only place it is written down. */
 import { sampleRoster, SAMPLE_TEAM_NAME } from '../../app/roster.js';
-
-/* #35 fix: seed the NEXT document, never the one about to be navigated away
- * from.
- *
- * `goRich`, `goSeed` and `reloadWithRecord` all used to write the fixture by
- * evaluating `localStorage.setItem` on the page that was still loaded, and
- * only then call `Page.navigate`. That leaves a window, between the write and
- * the new document's own scripts running, in which the OUTGOING page can
- * still write to `localStorage` itself -- and #35's own wide-query `change`
- * listener does exactly that: dropping the viewport across the 840px
- * breakpoint fires `renderAll()` then `save()` on whatever page is still
- * loaded, which can land after this file's own write and silently replace
- * the fixture it just seeded. The new document then boots from whatever the
- * outgoing page last saved, not the fixture asked for.
- *
- * `Page.addScriptToEvaluateOnNewDocument` closes the window structurally: the
- * source runs in the NEW document, before that document's own scripts (so
- * before anything the app itself could write), and nothing the outgoing page
- * does can race a write that has not happened on the outgoing page at all.
- * `goFirstRun` in `scripts/compare-shots.mjs` already uses this exact idiom
- * to clear storage before a first-run navigation; this is the same idiom
- * shared by every caller that seeds a record rather than clearing one, so
- * there is one seeding pattern in this file, not four copies of the same
- * fix. Removes the script again in a `finally`, exactly as `goFirstRun` does
- * -- left registered, it would go on running on every navigation after this
- * one, including ones nothing here expects to be reseeded. */
-export async function seeded(c, source, fn) {
-  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source });
-  try {
-    return await fn();
-  } finally {
-    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
-  }
-}
 
 /* ---------- the roster the harness plans with ---------- */
 
@@ -164,8 +130,8 @@ export const RICH = {
 
 /* #125: `RICH` (and every derivative of it that keeps its `view: 'games'` --
    `ONE_GAME`, `withSecondTeam(RICH)`) paints no `.today-game` at a mobile
-   width (`todayPaneShowing`, teams-view.js), which is `reloadWithRecord`'s
-   own default `ready` below. `#view-games` is what a `'games'` landing
+   width (`todayPaneShowing`, teams-view.js), which is `TODAY_GAME_READY` below,
+   the `ready` a Today landing waits on. `#view-games` is what a `'games'` landing
    actually shows, so every caller that reloads one of them names this
    instead -- one expression, not a copy hand-typed at each call site.
    Fix pass, reuse-1: built from `screenReadyExpr` (`dom.mjs`), the same
@@ -175,71 +141,22 @@ export const RICH = {
    view, see `GAMES_VIEW_READY`" rather than re-explaining any of this. */
 export const GAMES_VIEW_READY = screenReadyExpr('view-games');
 
-/* The other two `ready` expressions a `land` or `reloadWithRecord` waits on,
+/* The other two `ready` expressions a `land` waits on,
    named once: Today painted its game rows, and the wiped-record welcome
    screen showing. */
 export const TODAY_GAME_READY = `document.querySelector('.today-game')`;
+/* What a Today landing on a fresh history asks of `land`, spread into the want. */
+export const TODAY_LANDING = { ready: TODAY_GAME_READY, freshHistory: true };
 export const WELCOME_READY = `!document.getElementById('view-welcome').hidden`;
+/* What a first-run (wiped) landing on the welcome screen asks of `land`. */
+export const WELCOME_LANDING = { record: 'wiped', ready: WELCOME_READY };
 
-/* Swap the lean fixture for the rich one and reload. Called exactly once, from
-   `browserChecks`, immediately after the payload snapshot. The reload is
-   required rather than tidy: `loadState` runs at boot and nothing re-reads
-   localStorage afterwards. */
-/* `ui` overrides one or more `RICH.ui` fields before the write -- #29's
-   "first open" check needs a record that already says 'half' the way a
-   returning coach's saved choice would, not a live mutation after boot that
-   `renderCards` never re-runs against (state.js's `cardSize` is read where
-   `#sheet`'s cards are built, not observed). Every other caller passes
-   nothing and gets exactly the old RICH.
-
-   `base` (#148) swaps out RICH itself -- rule-edit.mjs's own part-played
-   pass needs `partPlayed(RICH)`'s record instead, and waiting for `.card`
-   (below) is still right for it, since `partPlayed`'s own `view`/
-   `activeGame` land straight on the Hawks game the same way RICH does.
-   One reload helper, not a second near-copy differing only in which record
-   it seeds. */
-/* A record is RICH with some of its `ui` fields replaced: the one home for
-   what `goRich`'s two extra arguments mean, so a check can hand the result
-   straight to `land`'s `record`. */
+/* A record is RICH with some of its `ui` fields replaced, so a check can hand the
+   result straight to `land`'s `record` (#29's "first open" check needs a
+   record that already says 'half' the way a returning coach's saved choice
+   would, not a live mutation after boot). `base` swaps out RICH itself (#148:
+   `partPlayed(RICH)`). */
 export const richWith = (ui, base = RICH) => (ui ? { ...base, ui: { ...base.ui, ...ui } } : base);
-
-/* #125: a one-line wrapper over `land` (`page-state.mjs`) -- `.card` is
-   `land`'s own default `ready`, so nothing here overrides it. `ambient`
-   (`dom.mjs`) carries forward whatever width/text/media the caller already
-   set by hand, so a reload through this function keeps behaving like a plain
-   reload rather than resetting to baseline ahead of that caller's own
-   migration onto `land` in a later slice. Fix pass: routed through
-   `landKeepingAmbient` (`dom.mjs`), the shared ambient-read-plus-`land` half
-   of this that `goRich`, `goSeed`, `reloadWithRecord` and two `dom.mjs`
-   wrappers all now call instead of each carrying its own copy; see its own
-   comment for the dynamic import and the decision to keep the read. */
-export async function goRich(c, origin, ui, base = RICH) {
-  await landKeepingAmbient(c, origin, { record: richWith(ui, base) });
-}
-
-/* Reload straight onto `SEED` (`benchcard.v3`), the way `game passes` (#26)
-   needs to measure its own `cold`/`coldToday` rather than trust a number from
-   a different check's run (`--only` on a `setup: 'rich'` row never runs the
-   cold-load evaluate that would otherwise report them -- see `smoke.mjs`'s
-   `browserChecks`). Waits for `.card` rather than `.today-game` (`reloadWithRecord`
-   below) because `SEED` boots straight onto the games view, not Today. */
-export async function goSeed(c, origin) {
-  await landKeepingAmbient(c, origin, { record: SEED });
-}
-
-/* Swap in `record` and reload, the way the #23 checks below need to: a
-   cache-busted URL first forces a genuinely new navigation, which is what
-   actually truncates any forward session-history entries left dangling by a
-   previous reload-then-back — `Page.navigate` to the exact URL already
-   loaded does not. The plain URL right behind it restores the real address,
-   so `location.href` comparisons against it stay honest. Waits for
-   `.today-game` rather than `.card` (`goRich` above) because every #23 check
-   reloads onto Today, never straight onto a game. `ready` overrides that
-   condition for a caller that reloads onto a screen which never paints a
-   `.today-game` -- the welcome screen or an empty-roster fixture (#139). */
-export async function reloadWithRecord(c, origin, record, ready = TODAY_GAME_READY) {
-  await landKeepingAmbient(c, origin, { record, ready, freshHistory: true });
-}
 
 /* ---------- FOUR (#26) ----------
  *
@@ -327,7 +244,7 @@ export const SAMPLE_TEAM = (() => {
      is actually in. */
   team.season = { games: [] };
   team.days[0].games = team.days[0].games.map(g => ({ ...g, out: [] }));
-  /* Today, not Team: `reloadWithRecord` waits for `.today-game` before it
+  /* Today, not Team: a Today landing waits for `.today-game` before it
      hands back, and the check walks to Team through `#todayTeam` the way a
      coach does. */
   record.view = 'today';

@@ -1,6 +1,6 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
-import { goRich, richWith } from './fixtures.mjs';
+import { richWith } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
 import { boxesOverlap } from './sheet-spacing.mjs';
@@ -162,10 +162,10 @@ async function cardSheetWidthOk(c, ck, where, width, short = true) {
 // still closed -- checking it does not re-derive `fitStage`'s own ratio.
 // The bug only shows on the FIRST open of a fresh page load (after that,
 // `clientWidth` is no longer 0 and every later fit is already correct), so
-// each call here starts from its own `goRich` reload -- `#sheetCard` has
+// each call here starts from its own `land` reload -- `#sheetCard` has
 // never been opened in that page load -- rather than reusing a sheet this
 // pass already opened once. `size` goes into the fixture's own `ui.cardSize`
-// (a `goRich` override, not a live post-boot mutation): `#sheet`'s cards are
+// (a `land` override, not a live post-boot mutation): `#sheet`'s cards are
 // built once at boot from that saved value, and `refreshCardSheetPreview`
 // only ever clones `#sheet .card` -- it does not rebuild at whatever
 // `state.ui.cardSize` happens to hold when it runs. So a size change that
@@ -207,7 +207,7 @@ export async function timelineCardSheetPass(c, origin) {
   const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
 
   try {
-    await goRich(c, origin); // Hawks, games view, Timeline shown, #sheetCard closed
+    await land(c, origin); // Hawks, games view, Timeline shown, #sheetCard closed
 
     /* ---- item 1: the segment, both ways ---- */
     let seg = await evalJSON(c, `JSON.stringify({

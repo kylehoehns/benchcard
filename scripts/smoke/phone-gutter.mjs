@@ -17,7 +17,7 @@
 import { evalIn, step, TODAY_HOME, HEIGHT, toGameOne } from './dom.mjs';
 import { LARGE_TEXT, TOUCH_WIDTHS, TOAST_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
 import { land, resize } from './page-state.mjs';
-import { RICH, partPlayed, reloadWithRecord, WELCOME_READY } from './fixtures.mjs';
+import { RICH, partPlayed, WELCOME_LANDING, TODAY_LANDING } from './fixtures.mjs';
 
 const TOL = 1;
 
@@ -34,7 +34,7 @@ const TOL = 1;
  * `history.back()` a moment later, and firing the next view's `click()` in
  * the same tick as that pending traversal races it -- a `pushState` landing
  * before the browser's own `back()` resolves can walk it past this
- * document's own history entries into the PREVIOUS real navigation (`goRich`
+ * document's own history entries into the PREVIOUS real navigation (`land`
  * is itself a second `Page.navigate`, so there is one to walk into), which
  * is a genuine page reload, not a same-document `popstate`, and kills the
  * CDP execution context this whole pass is running in ("Inspected target
@@ -143,7 +143,7 @@ async function measureButtons(c, origin) {
 
   const rec = partPlayed(RICH);
   rec.view = 'today';
-  await reloadWithRecord(c, origin, rec);
+  await land(c, origin, { record: rec, ...TODAY_LANDING });
   const resume = await sweepButton(c, '#resumeBtn');
 
   return { bad: [...ab.bad, ...resume.bad], audited: ab.audited + resume.audited };
@@ -237,14 +237,14 @@ async function measureToastRows(c, origin) {
 }
 
 // #145 item 9: the landing before first run, wiped so it always shows --
-// same `landWiped` idiom `flow-inset.mjs` uses for the same reason, at every
+// same wiped `land` `flow-inset.mjs` uses for the same reason, at every
 // TOUCH_WIDTHS phone (all <= 600, the spec's own ceiling for this item).
 
 async function measureWelcome(c, origin) {
   const bad = [];
   let audited = 0;
   for (const w of TOUCH_WIDTHS) {
-    await land(c, origin, { record: 'wiped', width: w, ready: WELCOME_READY });
+    await land(c, origin, { ...WELCOME_LANDING, width: w });
     // `#view-welcome` itself spans the full viewport -- `.wel-in`, the child
     // `.welcome`'s own padding insets, is what actually sits at the gutter.
     const r = JSON.parse(await evalIn(c, `JSON.stringify(${edgeExpr(`document.querySelector('#view-welcome .wel-in')`)})`));

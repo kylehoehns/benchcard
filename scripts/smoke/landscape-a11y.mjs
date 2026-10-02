@@ -1,5 +1,6 @@
-import { evalIn, TODAY_HOME, setWidth, WIDTH, HEIGHT, computedStyle } from './dom.mjs';
+import { evalIn, TODAY_HOME, WIDTH, HEIGHT, computedStyle } from './dom.mjs';
 import { tap, evalJSON } from './sheet-drive.mjs';
+import { resize } from './page-state.mjs';
 
 /* #151 item 8: a phone held sideways (844x390) puts a tall column behind a
  * short window -- `app.css`'s own two `@media (orientation: landscape) and
@@ -28,7 +29,7 @@ const NAV_RECTS_JS = `JSON.stringify([...document.querySelectorAll('.gm-nav')]
 export async function landscapeA11yPass(c, origin) {
   const problems = [];
   try {
-    await setWidth(c, WIDTH, HEIGHT);
+    await resize(c, WIDTH, HEIGHT);
     await evalIn(c, TODAY_HOME);
 
     // ---- portrait baseline, the game screen (`.bar`/`.wrap`, app.css:4362's block) ----
@@ -41,7 +42,7 @@ export async function landscapeA11yPass(c, origin) {
     const portraitBench = await readLandscape(c);
     await tap(c, `$('#gmClose').click()`);
 
-    await setWidth(c, 844, 390);
+    await resize(c, 844, 390);
 
     // ---- landscape, the game screen ----
     await tap(c, `$('.today-game').click()`);
@@ -72,7 +73,7 @@ export async function landscapeA11yPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
-    await setWidth(c, WIDTH, HEIGHT);
+    await resize(c, WIDTH, HEIGHT);
   }
 
   return {

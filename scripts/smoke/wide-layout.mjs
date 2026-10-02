@@ -1,9 +1,9 @@
-import { evalIn, step, landWiped, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
-import { resize } from './page-state.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
+import { resize, land } from './page-state.mjs';
+import { WELCOME_LANDING } from './fixtures.mjs';
 import { VIEWS } from './sweep.mjs';
 import { RAIL, WIDE_MIN, SHEET_MIN, LAPTOP } from './sizes.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
-import { goRich } from './fixtures.mjs';
 
 /* #35's own guard (docs/specs/35-wide-screens.md, Proof 3): the two-pane
  * layout, driven in the real app over CDP and measured with
@@ -114,17 +114,15 @@ export async function wideLayoutPass(c, origin) {
      * WHY HERE AND NOT test/wide-layout.test.js: that file reads the
      * stylesheet as text (its own header says so) and cannot tell where the
      * banner's box actually lands -- exactly the reason this whole pass is a
-     * browser and not a test. `landWiped` (`dom.mjs`) is the existing idiom
+     * browser and not a test. `land` with `record: 'wiped'` is the idiom
      * for reaching a genuinely first-run Welcome; `save()` (`state.js`) is
      * called for real, through a `Storage.prototype.setItem` failure, so the
      * banner is populated by the same code path a coach's full storage would
-     * hit rather than a string written into `#storagewarn` by hand. `goRich`
-     * restores the fixture the rest of this pass (and `narrowPass`,
-     * `sweepPass` right after it) assumes is loaded, the same courtesy
-     * `resumebar` and `teamscreen` already extend the row after them. */
+     * hit rather than a string written into `#storagewarn` by hand. The
+     * `land` after it puts the fixture back that the rest of this pass
+     * assumes is loaded. */
     await atWidth(c, LAPTOP);
-    await landWiped(c, origin + '/index.html',
-      "document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden");
+    await land(c, origin, { ...WELCOME_LANDING, width: LAPTOP });
     await evalIn(c, step(`(async () => {
       const s = await import('/state.js');
       const real = Storage.prototype.setItem;
@@ -149,7 +147,7 @@ export async function wideLayoutPass(c, origin) {
     ck(warn.left === 0,
       `Welcome at ${LAPTOP}px: #storagewarn starts at ${warn.left}px, want 0 -- decision 4 excludes `
       + 'Welcome from the rail and the banner must too');
-    await goRich(c, origin);
+    await land(c, origin);
 
     /* ---- items 1 and 2: the two-pane layout at 1280px and 840px ---- */
     for (const w of WIDE_WIDTHS) {

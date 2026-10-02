@@ -15,12 +15,12 @@
  * change at Q2 8:00"), checks against that literal rather than a value
  * computed the same way the source computes it.
  *
- * Light and dark are the app's OWN `ui.theme` record (`goRich`'s third
+ * Light and dark are the app's OWN `ui.theme` record (`richWith`'s
  * argument), not an emulated `prefers-color-scheme` -- the same mechanism
  * `finish-game.mjs`'s item 5 already uses for the same reason: RICH boots
  * onto the record it was given, `prefers-color-scheme` never enters into it. */
 import { evalIn, step, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_SR_ONLY_RECT } from './dom.mjs';
-import { goRich, RICH } from './fixtures.mjs';
+import { RICH, richWith } from './fixtures.mjs';
 import { land, setMedia } from './page-state.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
@@ -53,7 +53,7 @@ async function runTheme(c, origin, theme, problems, notes) {
   const tag = m => `(${theme}) ${m}`;
   let measured = 0;
 
-  await goRich(c, origin, { theme });
+  await land(c, origin, { record: richWith({ theme }) });
 
   const tint = await evalIn(c, `(${CSS_VAR_COLOR_PROBE})('var(--tint)')`);
   const surface = await evalIn(c, `(${CSS_VAR_COLOR_PROBE})('var(--surface)')`);
@@ -408,14 +408,13 @@ async function runTheme(c, origin, theme, problems, notes) {
  * measured: "Ana Reyes" at `.nm` scrollWidth 29 > clientWidth 13.
  *
  * A real long name is renamed onto `p7` in a RICH clone, the same technique
- * `LONG_NAME`/`reloadWithRecord` (fixtures.mjs) use elsewhere, so the check
+ * `LONG_NAME` (fixtures.mjs) uses elsewhere, so the check
  * exercises a name that is long even at 16px, not only ones that only break
- * once the root grows. `reloadWithRecord` itself is not reused here: it waits
- * for `.today-game`, which is right for the callers that reload onto Today,
- * but RICH's own `view` is 'games' and this pass wants the game screen
- * directly, the same place `goRich` above already lands -- so this reseeds
- * with the same `seeded`/`navigateAndWaitForCard` idiom `goRich` itself uses,
- * only with one player's name changed.
+ * once the root grows. The landing keeps `land`'s default `ready` (`.card`)
+ * rather than waiting for `.today-game`: RICH's own `view` is 'games' and
+ * this pass wants the game screen directly, the same place the themed
+ * landing above already lands -- so this lands the same way, only with one
+ * player's name changed.
  *
  * The middle word is `Featherstonehaugh` (`add-game-fit.mjs` already uses the
  * same surname on `Marcus Featherstonehaugh` as its own too-long-to-fit
@@ -446,7 +445,7 @@ function richWithLongName() {
  * sentence.
  *
  * #200: also finds the "Casey Lindqvist" row (`p8`, always on the floor or
- * bench in RICH -- `goRichWithLongName` only renames `p7`) and builds a
+ * bench in RICH -- `richWithLongName` only renames `p7`) and builds a
  * `Range` over its `longestWord` inside that SAME direct text node, so
  * `runLargeText` can check the word floor's own measurement against what the
  * browser actually painted -- a calibration this file's own item 4 falsifier

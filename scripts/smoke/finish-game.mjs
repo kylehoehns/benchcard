@@ -14,7 +14,8 @@
  * check rather than being hidden by a value computed the same wrong way.
  */
 import { evalIn, step, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE, wait } from './dom.mjs';
-import { RICH, reloadWithRecord, goRich } from './fixtures.mjs';
+import { RICH, richWith, TODAY_LANDING } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 
 // The last stint's own "<periodName> <clock>" label, straight off the page's
 // plan for game 0 -- not a second copy of `resumeAt`'s formula, just the
@@ -57,7 +58,7 @@ export async function finishGamePass(c, origin) {
   const notes = [];
 
   try {
-    await reloadWithRecord(c, origin, { ...RICH, view: 'today' });
+    await land(c, origin, { record: { ...RICH, view: 'today' }, ...TODAY_LANDING });
     const where = await evalIn(c, LAST_STINT_WHERE);
 
     /* ---- open Hawks, item 3's "every earlier stint" ---- */
@@ -300,7 +301,7 @@ export async function finishGamePass(c, origin) {
     })()`));
     if (dotsLight.done !== dotsLight.info) problems.push(`item 5 (light): .pass-status.done's dot is ${dotsLight.done}, want --info (${dotsLight.info})`);
 
-    await goRich(c, origin, { theme: 'dark' });
+    await land(c, origin, { record: richWith({ theme: 'dark' }) });
     const dotsDark = JSON.parse(await evalIn(c, `(() => {
       const probe = ${PASS_STATUS_DOT_PROBE};
       const cssVar = ${CSS_VAR_COLOR_PROBE};

@@ -14,7 +14,8 @@
  * of its own (only size and text-alignment, `#view-settings input.minmins`,
  * app.css), so it stands in for `#teamName` here. */
 import { evalIn, step, TODAY_HOME } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
+import { richWith } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 
 const GAME_FIELDS = ['#gameDate', '#label', '#dayName', '#when'];
 
@@ -33,8 +34,8 @@ export async function gameFieldMatchPass(c, origin) {
 
   try {
     for (const theme of ['light', 'dark']) {
-      // `goRich` lands on the games view, where the four game fields live.
-      await goRich(c, origin, { theme });
+      // `land` lands on the games view, where the four game fields live.
+      await land(c, origin, { record: richWith({ theme }) });
       const gameColors = {};
       for (const sel of GAME_FIELDS) gameColors[sel] = await readColors(c, sel);
 

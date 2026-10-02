@@ -7,17 +7,18 @@
  *
  * Item 10's "developer picks, and says which" (`cold`/`coldToday` from the
  * cold-load evaluate, or a fresh re-measurement): this check does its OWN
- * SEED reload (`goSeed`, fixtures.mjs) rather than reading `smoke-checks.js`'s
+ * SEED landing (`land` with `record: SEED`) rather than reading `smoke-checks.js`'s
  * report, because `--only` on a `setup: 'rich'` row (this one) never runs
  * that evaluate -- see `smoke.mjs`'s `browserChecks`, the `only.setup ===
  * 'rich'` branch. A check that only works inside a full run is not one
  * `--only` can prove alone, so it measures `cold`/`coldToday` itself, the
- * same way `goRich` measures the rich fixture, just against `SEED`/`v3`
+ * same way `land` measures the rich fixture, just against `SEED`/`v3`
  * instead. */
-import { evalIn, step, WIDTH, HEIGHT, SETTLE, samplePixels, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
-import { FOUR, goSeed, reloadWithRecord } from './fixtures.mjs';
+import { evalIn, step, SETTLE, samplePixels, TODAY_HOME, PASS_STATUS_DOT_PROBE, CSS_VAR_COLOR_PROBE } from './dom.mjs';
+import { FOUR, SEED, TODAY_LANDING } from './fixtures.mjs';
 import { ceiling } from '../budgets.mjs';
 import { readFileSync } from 'node:fs';
+import { land } from './page-state.mjs';
 
 const BASELINE_NODES = JSON.parse(
   readFileSync(new URL('../budgets.json', import.meta.url), 'utf8')
@@ -178,11 +179,11 @@ export async function gamePassesPass(c, origin) {
   let cold = null, coldToday = null, fourToday = null, roomCeiling = null;
   try {
     // Item 10.
-    await goSeed(c, origin);
+    await land(c, origin, { record: SEED });
     cold = await evalIn(c, `document.getElementsByTagName('*').length`);
     coldToday = await evalIn(c, `document.querySelectorAll('#view-today *').length`);
 
-    await reloadWithRecord(c, origin, FOUR);
+    await land(c, origin, { record: FOUR, ...TODAY_LANDING });
     fourToday = await evalIn(c, `document.querySelectorAll('#view-today *').length`);
     roomCeiling = ceiling('nodes', BASELINE_NODES);
 

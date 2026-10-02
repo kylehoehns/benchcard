@@ -1,5 +1,5 @@
-import { evalIn, step, navigateAndWaitForCard } from './dom.mjs';
-import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
+import { evalIn, step } from './dom.mjs';
+import { RICH, withSecondTeam, TODAY_LANDING } from './fixtures.mjs';
 import { land, reset } from './page-state.mjs';
 
 /* #25 item 4 and item 7, together: with Royal active, the K1 controls read
@@ -183,7 +183,7 @@ const READ_COLORS = `(() => {
  * picked -- the same navigation
  * `overlay.mjs`'s "game mode, swap picker" state drives (`$('#gmOpen').click();
  * $('#gmFloor .gm-p').click()`). Read-only: closed again before the team
- * switch below, so it leaves the fixture exactly as `reloadWithRecord` set it
+ * switch below, so it leaves the fixture exactly as its last `land` set it
  * up, the same courtesy every other rich-fixture pass in this suite pays. */
 /* #27 item 11: `#gran` is gone -- the Sub interval sheet's own selected row
  * is the replacement "a real chip, present whether the fold is open" this
@@ -237,7 +237,7 @@ export async function teamColorPass(c, origin) {
     base.teams[0].settings = { color: 'royal' };
     const record = withSecondTeam(base);
     record.teams[1].settings = { color: 'graphite' };
-    await reloadWithRecord(c, origin, record);
+    await land(c, origin, { record: record, ...TODAY_LANDING });
 
     await evalIn(c, step(`$('#gmOpen').click(); $('#gmFloor .gm-p').click()`));
     const gm = JSON.parse(await evalIn(c, READ_GAME_MODE));
@@ -416,17 +416,16 @@ const READ_WELCOME_COLOR = `(() => {
   });
 })()`;
 
-/* A plain `Page.navigate` to the exact URL already loaded, seeding nothing --
+/* A plain landing on the page already loaded, seeding nothing --
  * the "no re-seeding" reload item 6 asks for, proving the color a coach
  * picked (or already had saved) survives the app's own write, not this
  * file's. `#print` is real markup on the games view (never built on demand),
- * so waiting for it is waiting for the boot to finish. `dom.mjs`'s
- * `navigateAndWaitForCard` already carries the navigate -> load -> fonts ->
- * poll -> SETTLE sequence this needs; it only differs from its default
- * `.card` wait by polling for `#print` instead, since this reload lands on
- * the games view, not a screen with a card. */
+ * so waiting for it is waiting for the boot to finish. `land`
+ * with `record: 'kept'` is that reload; it waits for `#print` rather than
+ * its default `.card`, since this reload lands on the games view, not a
+ * screen with a card. */
 async function plainReload(c, origin) {
-  await navigateAndWaitForCard(c, origin + '/index.html', '#print');
+  await land(c, origin, { record: 'kept', ready: `document.querySelector('#print')` });
 }
 
 export async function teamDefaultPass(c, origin) {
@@ -451,7 +450,7 @@ export async function teamDefaultPass(c, origin) {
     // Step 2 / items 5 and 2: RICH has no settings block at all, so a coach
     // who has never chosen a color sees Hardwood, and the picker lists it
     // first.
-    await reloadWithRecord(c, origin, RICH, `document.getElementById('print')`);
+    await land(c, origin, { record: RICH, ready: `document.getElementById('print')`, freshHistory: true });
     const r = JSON.parse(await evalIn(c, READ_TEAM_DEFAULT));
     if (r.tint !== 'hardwood') problems.push(`RICH (no color set) stamps data-tint="${r.tint}", want "hardwood"`);
     if (r.primaryBg !== HARDWOOD_FILL) problems.push(`#print.btn.primary is ${r.primaryBg} for RICH, want ${HARDWOOD_FILL}`);
@@ -464,7 +463,7 @@ export async function teamDefaultPass(c, origin) {
     // Step 3 / item 6: a saved Graphite stays Graphite, and survives a plain
     // reload with nothing re-seeded.
     const graphiteTeam = { ...RICH.teams[0], settings: { color: 'graphite' } };
-    await reloadWithRecord(c, origin, { ...RICH, teams: [graphiteTeam] }, `document.getElementById('print')`);
+    await land(c, origin, { record: { ...RICH, teams: [graphiteTeam] }, ready: `document.getElementById('print')`, freshHistory: true });
     for (const label of ['seeded', 'reloaded']) {
       if (label === 'reloaded') await plainReload(c, origin);
       const g = JSON.parse(await evalIn(c, READ_TEAM_DEFAULT));
@@ -475,7 +474,7 @@ export async function teamDefaultPass(c, origin) {
 
     // Step 4 / item 6's last sentence: picking Graphite in the picker on a
     // Hardwood team, then reloading, gives the same three results.
-    await reloadWithRecord(c, origin, RICH, `document.getElementById('print')`);
+    await land(c, origin, { record: RICH, ready: `document.getElementById('print')`, freshHistory: true });
     await evalIn(c, step(`document.getElementById('settingsBtn').click()`));
     await evalIn(c, step(`document.getElementById('teamColorBtn').click()`));
     await evalIn(c, step(`document.querySelector('#colorOpts .color-opt[data-color="graphite"]').click()`));

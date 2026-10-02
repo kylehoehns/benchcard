@@ -1,5 +1,6 @@
-import { setMedia } from './page-state.mjs';
-import { WIDTH, landWiped, assertChipMatchesBackBtn, assertBackIsChevron, setWidth } from './dom.mjs';
+import { land, resize } from './page-state.mjs';
+import { WELCOME_LANDING } from './fixtures.mjs';
+import { WIDTH, assertChipMatchesBackBtn, assertBackIsChevron } from './dom.mjs';
 import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
@@ -34,8 +35,7 @@ import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
  * the narrowing has to come before the flow paints. The next row's `reset`
  * puts the rich fixture, the width and the media back. */
 
-const READY = `!document.getElementById('view-welcome').hidden`;
-const land = (c, origin) => landWiped(c, `${origin}/index.html`, READY);
+const LIGHT = [{ name: 'prefers-color-scheme', value: 'light' }];
 
 /* Everything one round trip can answer about the open flow -- the same
  * shape `add-game-flow.mjs`'s own `flowState` reads for `#addGameFlow`. */
@@ -524,12 +524,10 @@ export async function firstRunPass(c, origin) {
      read `--ink` off the chosen sub-interval row below, and `--ink` itself
      is theme-dependent, so without pinning the query this pass would read
      right on a light-mode machine and wrong on a dark-mode one for a reason
-     that has nothing to do with the app. Pinned to light with `setMedia`; the
-     next row's `reset` clears it. */
-  await setMedia(c, [{ name: 'prefers-color-scheme', value: 'light' }]);
-
+     that has nothing to do with the app. Pinned to light by both landings
+     below; the next row's `reset` clears it. */
   try {
-    await land(c, origin);
+    await land(c, origin, { ...WELCOME_LANDING, media: LIGHT });
     await landingReads(c, ck);
     await benchDemoMatchesRealBenchMode(c, ck);
     await stepOneCounts(c, ck);
@@ -548,10 +546,9 @@ export async function firstRunPass(c, origin) {
        is already on screen would repair the very thing being measured and
        report clean. 390 goes back before the tour, which is the width the
        rest of this pass and everything after it measures at. */
-    await setWidth(c, LARGE_TEXT_WIDTH);
-    await land(c, origin);
+    await land(c, origin, { ...WELCOME_LANDING, media: LIGHT, width: LARGE_TEXT_WIDTH });
     const cardCount = await stepThreeShowsACard(c, ck);
-    await setWidth(c, WIDTH);
+    await resize(c, WIDTH);
     if (cardCount !== null) {
       await finishStartsTheTour(c, ck);
       await landsOnTheGame(c, ck, cardCount);

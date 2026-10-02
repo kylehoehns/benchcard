@@ -1,6 +1,6 @@
 import { evalIn, step, onScreen, WIDTH, HEIGHT } from './dom.mjs';
 import { land, resize } from './page-state.mjs';
-import { RICH, ONE_GAME, withSecondTeam, reloadWithRecord, GAMES_VIEW_READY } from './fixtures.mjs';
+import { RICH, ONE_GAME, withSecondTeam, GAMES_VIEW_READY } from './fixtures.mjs';
 import { LAPTOP } from './sizes.mjs';
 
 /* #126's own guard (see docs/specs/126-remove-last-game.md's Proof section):
@@ -20,7 +20,7 @@ export async function noGamesPass(c, origin) {
 
   // `ONE_GAME` keeps RICH's own `view: 'games'` -- see `GAMES_VIEW_READY`'s
   // own comment (fixtures.mjs) for why this names it.
-  await reloadWithRecord(c, origin, ONE_GAME, GAMES_VIEW_READY);
+  await land(c, origin, { record: ONE_GAME, ready: GAMES_VIEW_READY, freshHistory: true });
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
   if (!(await onToday())) problems.push('could not reach Today to start the check');
 
@@ -167,7 +167,7 @@ export async function noGamesPass(c, origin) {
 
   // Switching teams still works with no games on the active one. Same
   // `view: 'games'` gutter as the first reload above.
-  await reloadWithRecord(c, origin, withSecondTeam(ONE_GAME), GAMES_VIEW_READY);
+  await land(c, origin, { record: withSecondTeam(ONE_GAME), ready: GAMES_VIEW_READY, freshHistory: true });
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
   await evalIn(c, step(`document.querySelector('.today-game')?.click()`));
   await evalIn(c, step(`document.getElementById('removeGame')?.click()`));

@@ -22,10 +22,10 @@
  * Each of those three gets its own read below, named for the defect rather
  * than folded into the item-1/3 blocks above them, since that is what let a
  * broken tree read green the first time. */
-import { setWidth, TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN } from './dom.mjs';
+import { TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN } from './dom.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
-import { goRich, RICH, TODAY_GAME_READY } from './fixtures.mjs';
-import { land } from './page-state.mjs';
+import { RICH, TODAY_LANDING, richWith } from './fixtures.mjs';
+import { land, resize } from './page-state.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
@@ -231,7 +231,7 @@ export async function seasonLookPass(c, origin) {
   try {
    for (const theme of ['light', 'dark']) {
     const before = problems.length;
-    await goRich(c, origin, { theme });
+    await land(c, origin, { record: richWith({ theme }) });
     await tap(c, TODAY_HOME);
     await tap(c, OPEN_SEASON);
 
@@ -410,7 +410,7 @@ export async function seasonLookPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
-    await setWidth(c, WIDTH);
+    await resize(c, WIDTH);
   }
 
   const five = await seasonFiveGamesPass(c, origin);
@@ -479,7 +479,7 @@ async function seasonFiveGamesPass(c, origin) {
   const problems = [];
   try {
     await land(c, origin, { record: FIVE_GAMES, ...LARGE_TEXT,
-      ready: TODAY_GAME_READY, freshHistory: true });
+      ...TODAY_LANDING });
     await tap(c, OPEN_SEASON);
 
     const data = await evalJSON(c, READ_FIVE_GAMES);
@@ -556,7 +556,7 @@ async function seasonLongNamePass(c, origin) {
   try {
     for (const [px, label] of cases) {
       await land(c, origin, { record: LONG_NAME_RECORD, width: LARGE_TEXT_WIDTH, textPx: px,
-        ready: TODAY_GAME_READY, freshHistory: true });
+        ...TODAY_LANDING });
       await tap(c, OPEN_SEASON);
 
       const data = await evalJSON(c, READ_LONG_NAME);

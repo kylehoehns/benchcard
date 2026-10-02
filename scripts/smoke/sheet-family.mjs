@@ -1,5 +1,6 @@
-import { goRich } from './fixtures.mjs';
+import { richWith } from './fixtures.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
+import { land } from './page-state.mjs';
 
 /* #143's own guard (docs/specs/143-sheets.md's Proof section): a new check,
  * run once in light and once in dark (RICH fixture), covering:
@@ -183,8 +184,8 @@ async function whoBadgePass(c, ck, where) {
 }
 
 // Same three passes, once per theme -- `ui: undefined` for light matches the
-// bare `goRich(c, origin)` call it replaces (`fixtures.mjs`'s own `ui ? ... :
-// RICH` falls back to RICH's default when `ui` is undefined).
+// plain RICH landing it replaces (`richWith` in `fixtures.mjs` falls back to
+// RICH's default when `ui` is undefined).
 const THEMES = [
   { where: 'light', ui: undefined, sheet: SHEET_LIGHT, surface: SURFACE_LIGHT, ink: INK_LIGHT },
   { where: 'dark', ui: { theme: 'dark' }, sheet: SHEET_DARK, surface: SURFACE_DARK, ink: INK_DARK },
@@ -196,7 +197,7 @@ export async function sheetFamilyPass(c, origin) {
 
   try {
     for (const { where, ui, sheet, surface, ink } of THEMES) {
-      await goRich(c, origin, ui);
+      await land(c, origin, { record: richWith(ui) });
       await backgroundAndGroupPass(c, ck, where, sheet, surface);
       await chosenRowPass(c, ck, where, ink);
       await whoBadgePass(c, ck, where);

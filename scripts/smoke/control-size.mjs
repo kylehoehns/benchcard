@@ -1,6 +1,7 @@
 import { evalJSON, tap, setGame } from './sheet-drive.mjs';
-import { goRich } from './fixtures.mjs';
+import { richWith } from './fixtures.mjs';
 import { TODAY_HOME, CSS_VAR_COLOR_PROBE, evalIn } from './dom.mjs';
+import { land } from './page-state.mjs';
 
 /* #140 (prototype control size), "What would settle it" items 1, 3-6 -- the
  * "Drawn sizes" row of the spec's Proof table. Nothing before this pinned how
@@ -23,8 +24,8 @@ import { TODAY_HOME, CSS_VAR_COLOR_PROBE, evalIn } from './dom.mjs';
  * every other computed color in, so the comparison is never a hex string
  * against an rgb() string.
  *
- * `goRich` lands straight on the games view (it waits for `.card`, same as
- * `goSeed` -- see that function's own comment), so every phrase this reads
+ * `land` lands straight on the games view (it waits for `.card`, which a
+ * `SEED` landing waits for too), so every phrase this reads
  * (`#phraseStrategy`, `#phraseFormat`, `#phraseRules`) is already on screen
  * with no `.today-game` click first. */
 const TOL = 2;
@@ -247,7 +248,7 @@ export async function controlSizePass(c, origin) {
 
   try {
     for (const theme of ['light', 'dark']) {
-      await goRich(c, origin, { theme });
+      await land(c, origin, { record: richWith({ theme }) });
 
       // Item 1.
       const sm = await sentenceMetrics(c);

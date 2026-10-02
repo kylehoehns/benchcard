@@ -29,9 +29,10 @@
  * A real screen reader is not run in CI (spec's own "Out of scope" note);
  * the AX tree is the browser's own answer to the same question a screen
  * reader would ask, which is what the spec's Proof table names as the seam. */
-import { evalIn, step, onScreen, objectIdFor, wait } from './dom.mjs';
-import { RICH, goRich, reloadWithRecord } from './fixtures.mjs';
+import { evalIn, step, objectIdFor, wait } from './dom.mjs';
+import { RICH, TODAY_LANDING } from './fixtures.mjs';
 import { realTap, tap, key, settle, setGame, evalJSON, waitClosed } from './sheet-drive.mjs';
+import { land } from './page-state.mjs';
 
 /* ---- small helpers, shared by every section below ---- */
 
@@ -113,7 +114,7 @@ export async function focusAnnouncePass(c, origin) {
        no move at boot/welcome, the tab title.
        ================================================================ */
     const today1 = { ...JSON.parse(JSON.stringify(RICH)), view: 'today' };
-    await reloadWithRecord(c, origin, today1);
+    await land(c, origin, { record: today1, ...TODAY_LANDING });
 
     // item 5: the expected home title comes from the served index.html's own
     // `<title>`, not a second hand-typed copy of it -- `render.js`'s own
@@ -207,7 +208,7 @@ export async function focusAnnouncePass(c, origin) {
     if (keptDoorOk !== true) problems.push(`item 3: removing the OPEN Ravens game (Hawks still in the day) left focus at ${JSON.stringify(await focusInfo(c))}, want the Hawks pass -- its door still exists`);
     else notes.push('item 3: removing the open game lands focus back on the remaining game’s own door, surviving the Undo toast’s own full render right behind it');
     // Undo the removal so the rest of this check (and the row after it) keeps
-    // both of RICH's games; goRich in `finally` would also cover this, but
+    // both of RICH's games; the next row's reset would also cover this, but
     // there is no reason to rely on that for the rows still ahead in this run.
     await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
 
@@ -216,7 +217,7 @@ export async function focusAnnouncePass(c, origin) {
     const oneGame = JSON.parse(JSON.stringify(RICH));
     oneGame.teams[0].days[0].games = [oneGame.teams[0].days[0].games[0]];
     oneGame.view = 'today';
-    await reloadWithRecord(c, origin, oneGame);
+    await land(c, origin, { record: oneGame, ...TODAY_LANDING });
     await enterOn(c, '.today-game[data-fk="today-game:g0"]');
     await tap(c, `document.getElementById('removeGame').click()`);
     const fallbackOk = await evalJSON(c, `JSON.stringify(document.activeElement === document.querySelector('.today-h1'))`);
@@ -225,17 +226,17 @@ export async function focusAnnouncePass(c, origin) {
     await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
 
     // item 4: no forced focus move at boot, on an ordinary screen or on the
-    // welcome screen. `reloadWithRecord` always waits for `.today-game`, which
+    // welcome screen. `land` always waits for `.today-game`, which
     // only ever happens after the browser's own default post-load focus
     // (BODY, or nothing) has already settled -- so a fresh reload's own
     // activeElement is read honestly, not moved by this app.
-    await reloadWithRecord(c, origin, today1);
+    await land(c, origin, { record: today1, ...TODAY_LANDING });
     const boot = await evalJSON(c, `JSON.stringify(document.activeElement === document.body || document.activeElement === null)`);
     if (boot !== true) problems.push(`item 4: activeElement after a cold Today load is ${JSON.stringify(await focusInfo(c))}, want BODY (no forced move)`);
     else notes.push('item 4: a cold load onto Today does not force focus anywhere');
 
     const welcome = { version: 3, onboarded: false, players: [], day: { name: '', games: [] }, activeGame: 0, ui: {} };
-    await reloadWithRecord(c, origin, welcome, `!document.getElementById('view-welcome').hidden`);
+    await land(c, origin, { record: welcome, ready: `!document.getElementById('view-welcome').hidden`, freshHistory: true });
     const bootWelcome = await evalJSON(c, `JSON.stringify(document.activeElement === document.body || document.activeElement === null)`);
     if (bootWelcome !== true) problems.push(`item 4: activeElement on the welcome screen is ${JSON.stringify(await focusInfo(c))}, want BODY`);
     else notes.push('item 4: the welcome screen gets no forced focus move either');
@@ -243,7 +244,7 @@ export async function focusAnnouncePass(c, origin) {
     /* ================================================================
        item 2: the three callers that place their own focus win.
        ================================================================ */
-    await goRich(c, origin);
+    await land(c, origin);
 
     // (a) Team's add-player path from the Timeline, off an EMPTY roster --
     // `rosterCta()` (timeline.js) only renders while `noRoster()` is true, so
@@ -271,7 +272,7 @@ export async function focusAnnouncePass(c, origin) {
     // door included, so Add a team landing there too is the same contract,
     // not a caller placing its own focus. Read off the DOM rather than a
     // hard-coded id, since that heading carries none.
-    await goRich(c, origin);
+    await land(c, origin);
     await tap(c, `document.getElementById('teamBtn').click()`);
     await tap(c, `[...document.querySelectorAll('#teamMenu .teammenu-item')].find(b => b.textContent === 'Add a team')?.click()`);
     const addTeamFocus = await evalJSON(c, `(() => {
@@ -283,7 +284,7 @@ export async function focusAnnouncePass(c, origin) {
     else notes.push('item 2: "Add a team" opens #firstRunFlow and lands focus on its own step heading (h2.flow-q), the same target first run\'s own open uses -- not Settings\' #teamName, which #146 removed');
 
     // (c) the add-game flow's own commit ("Use it") lands on the game.
-    await goRich(c, origin);
+    await land(c, origin);
     await tap(c, `document.querySelector('#barBack').hidden || document.querySelector('#backBtn').click()`);
     await realTap(c, '#todayAddGame');
     await realTap(c, '#agBody .flow-card');
@@ -292,7 +293,7 @@ export async function focusAnnouncePass(c, origin) {
     const commitFocus = await focusInfo(c);
     if (commitFocus.id !== 'gameTitle') problems.push(`item 2: committing the add-game flow left focus at ${JSON.stringify(commitFocus)}, want #gameTitle`);
     else notes.push('item 2: "Use it" in the add-game flow lands focus on #gameTitle, same as any other push');
-    await goRich(c, origin);
+    await land(c, origin);
 
     /* ================================================================
        items 6-12: bench mode.
@@ -456,7 +457,7 @@ export async function focusAnnouncePass(c, origin) {
       problems.push(`item 9: with no jersey number, the row's label reads ${JSON.stringify(noNumRow.label)}, want it to start with "${noNum.name}, " (no leading number)`);
     } else notes.push('item 9: a player with no jersey number gets a label with no leading number token');
     await tap(c, `document.getElementById('gmClose').click()`);
-    await goRich(c, origin);
+    await land(c, origin);
 
     // item 10: #gmReset's own accessible name.
     const resetAttrs = await evalJSON(c, `JSON.stringify({
@@ -585,7 +586,7 @@ export async function focusAnnouncePass(c, origin) {
     if (refuseFocusOk !== true) problems.push(`item 6: a refused "Sit for the rest" left focus off the picked row (${JSON.stringify(await focusInfo(c))})`);
     else notes.push('item 6: a refused "Sit for the rest" leaves focus on the row that was picked');
     await tap(c, `document.getElementById('gmClose').click()`);
-    await goRich(c, origin);
+    await land(c, origin);
 
     /* ================================================================
        items 13, 14: plan changes.
@@ -593,7 +594,7 @@ export async function focusAnnouncePass(c, origin) {
     // item 13: a plain Shuffle (not underway, no hand swaps) writes
     // "Rotation changed. " + the summary #summary already reads -- never
     // recomputed, read live off the DOM right after. RICH's own saved
-    // `view: 'games'` with `activeGame: 0` already lands goRich on g0.
+    // `view: 'games'` with `activeGame: 0` already lands the rich fixture on g0.
     await tap(c, `document.getElementById('regen').click()`);
     const regen1 = await evalJSON(c, `JSON.stringify({
       live: document.getElementById('regenLive')?.textContent ?? null,
@@ -650,8 +651,8 @@ export async function focusAnnouncePass(c, origin) {
 
     // item 14: #issues keeps its own child node identity across a same-text
     // render, and replaces them once the text actually changes. RICH's own
-    // saved `view: 'games'` with `activeGame: 0` already lands goRich on g0.
-    await goRich(c, origin);
+    // saved `view: 'games'` with `activeGame: 0` already lands the rich fixture on g0.
+    await land(c, origin);
     const tagged = await evalJSON(c, `(() => {
       const box = document.getElementById('issues');
       if (!box) return JSON.stringify({ found: false });

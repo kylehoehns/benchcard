@@ -11,8 +11,8 @@
  * of its own, but `.gm-start` always does, and `.cols`'s `align-items:
  * stretch` (narrow) / block layout (wide) both give it the panel's full
  * width either way -- the same width `#gmOpen` is being asked to match. */
-import { evalIn, step, TODAY_HOME, WIDTH, CSS_VAR_COLOR_PROBE, setWidth } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, CSS_VAR_COLOR_PROBE } from './dom.mjs';
+import { land, resize } from './page-state.mjs';
 
 const TOL = 1;
 
@@ -38,11 +38,11 @@ export async function gmOpenPass(c, origin) {
   let measured = 0;
 
   try {
-    await goRich(c, origin);
+    await land(c, origin);
     const tint = await evalIn(c, `(${CSS_VAR_COLOR_PROBE})('var(--tint)')`);
 
     for (const width of [840, 1280]) {
-      await setWidth(c, width);
+      await resize(c, width);
       const m = await measure(c);
       if (!m.gmOpenVisible) { problems.push(`${width}px: #gmOpen is not visible -- nothing measured`); continue; }
       measured++;
@@ -59,7 +59,7 @@ export async function gmOpenPass(c, origin) {
     }
 
     // Below 840, #gmOpen is still hidden -- #actionbar covers Start game there.
-    await setWidth(c, 800);
+    await resize(c, 800);
     const below = await measure(c);
     if (below.gmOpenVisible) problems.push('800px: #gmOpen is visible, want it hidden below 840');
     else measured++;
@@ -70,7 +70,7 @@ export async function gmOpenPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     // The rows after this one measure at the phone width; leave it that way.
-    await setWidth(c, WIDTH);
+    await resize(c, WIDTH);
     await evalIn(c, step(TODAY_HOME));
   }
 

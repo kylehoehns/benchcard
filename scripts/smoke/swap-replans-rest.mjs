@@ -11,8 +11,8 @@
  * number the page computes the same way the table does.
  */
 import { evalIn, step, wait } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
 import { setGame, readToastExpr } from './sheet-drive.mjs';
+import { land } from './page-state.mjs';
 
 const SETTLE_MS = 450;
 
@@ -45,7 +45,7 @@ export async function swapReplansRestPass(c, origin) {
   const problems = [];
   const notes = [];
   try {
-    await goRich(c, origin);
+    await land(c, origin);
     await evalIn(c, setGame(`s.state.day.games[0].live = { at: 0, overrides: {} };`));
     await wait(SETTLE_MS);
 

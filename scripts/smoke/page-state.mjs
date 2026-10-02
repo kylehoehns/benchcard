@@ -6,24 +6,29 @@
    `BASELINE` and returns the state plus the localStorage-seeding script
    source, with no CDP call in it, so it is unit-tested directly
    (`test/smoke-page-state.test.js`). `land` only executes that plan. */
-import { evalIn, SETTLE, quiet, WIDTH, HEIGHT, LOCALSTORAGE_WIPE } from './dom.mjs';
-import { RICH, seeded } from './fixtures.mjs';
+import { evalIn, SETTLE, quiet, WIDTH, HEIGHT } from './dom.mjs';
+import { RICH } from './fixtures.mjs';
 
 export const BASELINE = Object.freeze({
   page: '/index.html',   // path under origin; '/about.html' etc. for static pages
   query: '',             // e.g. '?try=9'
   record: RICH,          // a record object, 'wiped', or 'kept'
   width: WIDTH, height: HEIGHT,
+  mobile: true,          // Emulation.setDeviceMetricsOverride's `mobile`; false for a laptop-width shot
   textPx: 16,            // root text size, via Page.setFontSizes (standard and fixed)
   media: [],             // Emulation.setEmulatedMedia features
   ready: `document.querySelector('.card')`, // JS expression, polled until truthy
-  freshHistory: false,   // navigate to a cache-busted URL first (reloadWithRecord's trick)
+  freshHistory: false,   // navigate to a cache-busted URL first, which truncates forward history
   scripts: [],           // extra on-new-document sources, removed after the boot
 });
 
+/* What a `'wiped'` landing runs on the next document: the one place the wipe
+   is written. */
+export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
+
 const FIELDS = new Set(Object.keys(BASELINE));
 
-/* The #35 fix (`seeded`, fixtures.mjs), moved here as the one seeding path: a
+/* The #35 fix, the one seeding path: a
    record's `version` picks the localStorage key, written by a script added
    with `Page.addScriptToEvaluateOnNewDocument` so it runs on the NEXT
    document, never the one about to be navigated away from. Anything else --
@@ -65,19 +70,40 @@ export function planLanding(want = {}) {
 
 /* Add every source in order (the seeding script, then any of the state's own
    `scripts`) as its own on-new-document script, run `fn`, and remove them
-   again -- innermost first -- regardless of outcome. Nests `seeded`
-   (fixtures.mjs) rather than re-deriving the add/try/finally/remove idiom a
-   second time for "more than one script". */
-async function withScripts(c, sources, fn) {
+   again -- innermost first -- regardless of outcome. Removing in a `finally`
+   is the #35 fix's other half: left registered, a script would go on running
+   on every navigation after this one, including ones nothing expects it on.
+   Exported for `scripts/compare-shots.mjs`'s own first-run landing. */
+export async function withScripts(c, sources, fn) {
   if (sources.length === 0) return fn();
   const [first, ...rest] = sources;
-  return seeded(c, first, () => withScripts(c, rest, fn));
+  const { identifier } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: first });
+  try {
+    return await withScripts(c, rest, fn);
+  } finally {
+    await c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  }
+}
+
+/* The one boot wait: `document.fonts.ready`, then poll `ready` every 50ms up
+   to 3s, then `SETTLE`. Exported for the one caller that reloads in place
+   (`location.reload()`, to keep its history entry) and so cannot go through
+   `land`, which navigates. A `ready` still false after 3s throws (D3). */
+export async function bootWait(c, ready, where = 'the page') {
+  const timeoutMessage = `boot wait timed out: ${ready} on ${where}`;
+  await evalIn(c, `(async () => {
+    await document.fonts.ready;
+    let ok = (${ready});
+    for (let i = 0; i < 60 && !ok; i++) { await new Promise(r => setTimeout(r, 50)); ok = (${ready}); }
+    if (!ok) throw new Error(${JSON.stringify(timeoutMessage)});
+    await ${SETTLE};
+  })()`);
 }
 
 /* Get the page into `want`'s state, defaulting every field left out to
    `BASELINE`. Order: device metrics, font sizes, emulated media, the seeding
-   script(s), navigate (twice first if `freshHistory`, `reloadWithRecord`'s
-   cache-busting trick), wait for the load event once, then the one boot
+   script(s), navigate (twice first if `freshHistory`, the cache-busting trick
+   that truncates forward session history), wait for the load event once, then the one boot
    wait -- `document.fonts.ready`, poll `ready` every 50ms up to 3s, `SETTLE`
    (reused, not re-derived). A `ready` still false after 3s throws (D3):
    `runCheck` turns that into a FAIL row that names what it was waiting for,
@@ -86,7 +112,7 @@ export async function land(c, origin, want = {}) {
   const { state, script } = planLanding(want);
 
   await c.send('Emulation.setDeviceMetricsOverride',
-    { width: state.width, height: state.height, deviceScaleFactor: 2, mobile: true });
+    { width: state.width, height: state.height, deviceScaleFactor: 2, mobile: state.mobile });
   await c.send('Page.setFontSizes', { fontSizes: { standard: state.textPx, fixed: state.textPx } });
   await c.send('Emulation.setEmulatedMedia', { features: state.media });
 
@@ -101,14 +127,7 @@ export async function land(c, origin, want = {}) {
       await c.send('Page.navigate', { url });
       await loaded;
     }
-    const timeoutMessage = `boot wait timed out: ${state.ready} on ${state.page}${state.query}`;
-    await evalIn(c, `(async () => {
-      await document.fonts.ready;
-      let ok = (${state.ready});
-      for (let i = 0; i < 60 && !ok; i++) { await new Promise(r => setTimeout(r, 50)); ok = (${state.ready}); }
-      if (!ok) throw new Error(${JSON.stringify(timeoutMessage)});
-      await ${SETTLE};
-    })()`);
+    await bootWait(c, state.ready, `${state.page}${state.query}`);
   });
 }
 
@@ -143,6 +162,16 @@ export async function setMedia(c, features = []) {
    that differs is the one named. */
 export const FINGERPRINT_FIELDS = ['url', 'screen', 'width', 'height', 'rootPx', 'dark', 'forced', 'recordLength', 'recordHash'];
 
+/* `/` and `/index.html` are one address here. `land` navigates to
+   `/index.html`; the dev server 307s that to `/` (`scripts/serve.mjs`, as
+   Cloudflare does), so the address bar reads `/`. Once the service worker
+   controls the page, though, it answers a navigation to `./index.html` from
+   its precache (`app/sw.js` -- the cache key is the file, and no redirect
+   happens), so the bar keeps `/index.html`. Which one a row sees depends on
+   whether the worker has taken over yet, which is the tour row's case. */
+const comparable = (field, value) =>
+  field === 'url' && typeof value === 'string' ? value.replace(/^\/index\.html(?=$|\?)/, '/') : value;
+
 /* Pure: null when `now` matches `baseline`, else the message that fails the
    row, naming the first field that changed. */
 export function compareFingerprints(baseline, now) {
@@ -152,7 +181,7 @@ export function compareFingerprints(baseline, now) {
     if (!(field in baseline) || !(field in now)) {
       return `start state differs from baseline: ${field} is missing from the ${field in baseline ? 'current' : 'baseline'} fingerprint`;
     }
-    if (baseline[field] !== now[field]) {
+    if (comparable(field, baseline[field]) !== comparable(field, now[field])) {
       return `start state differs from baseline: ${field} was ${JSON.stringify(now[field])}, want ${JSON.stringify(baseline[field])}`;
     }
   }

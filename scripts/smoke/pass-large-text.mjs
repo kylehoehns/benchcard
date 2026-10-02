@@ -19,7 +19,7 @@
  * `scrollWidth`/`clientWidth` (nothing truncated) and the status's own right
  * edge against the CARD's content edge, not the viewport's. */
 import { evalIn } from './dom.mjs';
-import { FOUR, TODAY_GAME_READY } from './fixtures.mjs';
+import { FOUR, TODAY_LANDING } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { GAME_SUMMARIES } from './game-passes.mjs';
@@ -102,7 +102,7 @@ export async function passLargeTextPass(c, origin) {
     // Item 1: 320px wide, a 32px root -- "set the font size the way
     // app-large-text.mjs does (set, then reload)".
     await land(c, origin, { record: FOUR, ...LARGE_TEXT,
-      ready: TODAY_GAME_READY, freshHistory: true });
+      ...TODAY_LANDING });
 
     const cards320 = JSON.parse(await evalIn(c, MEASURE));
     for (const card of cards320) {
@@ -154,7 +154,7 @@ export async function passLargeTextPass(c, origin) {
 
     // Item 2: back to the default 390px/16px root -- same reload discipline,
     // the font size cannot be re-applied without one.
-    await land(c, origin, { record: FOUR, ready: TODAY_GAME_READY, freshHistory: true });
+    await land(c, origin, { record: FOUR, ...TODAY_LANDING });
 
     // Item 2, as the spec now reads: the summary wraps at every size, so
     // Ravens (the one FOUR summary too long for 332px at 16px root) is

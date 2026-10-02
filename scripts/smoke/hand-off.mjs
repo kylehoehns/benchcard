@@ -15,9 +15,8 @@
    from reading the page's own module back. */
 import { encode as qrEncode } from '../../app/vendor/uqr.mjs';
 import { DAMAGED_LINK as DAMAGED } from '../../app/live.js';
-import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, TODAY_HOME, onScreen } from './dom.mjs';
+import { evalIn, step, WIDTH, OVERFLOW_PROBE, TODAY_HOME, onScreen } from './dom.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
-import { goRich } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { evalJSON, tap, settle, setGame, pickSharePane, sharePaneButton, qrDrawn } from './sheet-drive.mjs';
 
@@ -89,7 +88,7 @@ export async function handOffPass(c, origin) {
   const problems = [];
   const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
   let detail = '';
-  await goRich(c, origin);
+  await land(c, origin);
   await evalIn(c, setGame(`const p = s.plans[0];
     s.state.day.games[0].live = { at: 3, overrides: {} };`));
   const sent = await sendFromHere(c);
@@ -168,7 +167,7 @@ export async function handOffPass(c, origin) {
 export async function damagedLinkPass(c, origin) {
   const problems = [];
   const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
-  await goRich(c, origin);
+  await land(c, origin);
   const sent = await sendFromHere(c);
   if (!ck(sent.drawn && sent.url, 'no link to damage')) return { pass: false, detail: problems.join(' | ') };
   const hash = hashOf(sent.url);
@@ -210,7 +209,7 @@ export async function handOffLoadPass(c, origin) {
   c.on('Network.requestWillBeSent', onReq);
   let detail = '';
   try {
-    await goRich(c, origin);
+    await land(c, origin);
     await evalIn(c, step(`${TODAY_HOME}; document.querySelector('.today-game').click()`));
     await settle(c);
     ck(uqr.length === 0, `hand-off code was requested before Hand off was picked: ${uqr.join(', ')}`);

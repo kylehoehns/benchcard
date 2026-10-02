@@ -4,104 +4,6 @@
 
 export const WIDTH = 390, HEIGHT = 844;
 
-/* Fix pass, efficiency-2: `page-state.mjs` is imported dynamically everywhere
-   in this file for the load-order reason `setWidth`'s own comment below
-   gives -- but every one of those call sites was re-awaiting its own
-   `import()`, which after the first call is just a promise the module loader
-   already has cached; nothing needs a second round trip through it. One
-   module-level promise, created on first use and reused by every later call
-   in this process, same as the loader would do anyway, minus the repeated
-   await. */
-let pageStateModule;
-const pageState = () => (pageStateModule ??= import('./page-state.mjs'));
-
-/* Fix pass finding 3: `bar-rows.mjs` and `gm-open.mjs` each carried a
-   byte-for-byte identical `setWidth` -- override the device metrics at the
-   given width (keeping this suite's own HEIGHT and mobile emulation unless a
-   caller needs a different height too, #147's own short-phone heights among
-   them), then wait two rAFs for the resulting reflow to settle before
-   anything measures it. One copy here, imported by everyone who needs it.
-   #125: a one-line wrapper over `resize` (`page-state.mjs`), which does the
-   exact same two things and nothing else -- a dynamic import, not a static
-   one, because `page-state.mjs` itself imports from this file (`WIDTH`,
-   `evalIn`) and a static import back would be a load-order-dependent cycle:
-   whichever of the two modules some other file happens to import first would
-   decide whether `page-state.mjs`'s own top-level `BASELINE` sees `RICH`
-   already initialized or not. A dynamic import resolves at call time, after
-   the whole module graph has settled, so it is safe either way. */
-export async function setWidth(c, width, height = HEIGHT) {
-  const { resize } = await pageState();
-  return resize(c, width, height);
-}
-
-/* #125: the ambient page state a check has already set by hand -- via a raw
-   CDP call right beside the wrapped call below -- before asking for a
-   navigate, wipe or reseed. `land` (`page-state.mjs`) always asserts every
-   field of the state it lands on, baseline width/text/media included when a
-   caller leaves them out, so a wrapper that only passed through the one field
-   it used to touch would silently reset whatever the CALLER had already
-   emulated a moment earlier: a check narrowed to 320px, or pinned to
-   `prefers-color-scheme: light`, immediately before the reload it expects to
-   land at that same width and scheme (`first-run-flow.mjs`'s `firstRunPass`
-   is the real case this was caught against -- it pins light, then reloads
-   through what is now `landWiped`, then reads a theme-dependent color).
-   Read here, off the page itself, and passed straight back into `want` by
-   the wrapper that calls this, so the reload re-asserts the same state
-   instead of resetting it. `matchMedia` cannot tell "the host really is
-   light" from "CDP forced light"; it does not need to -- reasserting
-   whichever value it currently reports reproduces the same visible page
-   state either way. */
-export async function ambient(c) {
-  const json = await evalIn(c, `JSON.stringify({
-    width: document.documentElement.clientWidth,
-    textPx: parseFloat(getComputedStyle(document.documentElement).fontSize),
-    dark: matchMedia('(prefers-color-scheme: dark)').matches,
-    reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-    forcedColors: matchMedia('(forced-colors: active)').matches,
-    moreContrast: matchMedia('(prefers-contrast: more)').matches,
-    reducedTransparency: matchMedia('(prefers-reduced-transparency: reduce)').matches,
-  })`);
-  const a = JSON.parse(json);
-  return {
-    width: a.width,
-    textPx: a.textPx,
-    media: [
-      { name: 'prefers-color-scheme', value: a.dark ? 'dark' : 'light' },
-      { name: 'prefers-reduced-motion', value: a.reducedMotion ? 'reduce' : 'no-preference' },
-      { name: 'forced-colors', value: a.forcedColors ? 'active' : 'none' },
-      { name: 'prefers-contrast', value: a.moreContrast ? 'more' : 'no-preference' },
-      { name: 'prefers-reduced-transparency', value: a.reducedTransparency ? 'reduce' : 'no-preference' },
-    ],
-  };
-}
-
-/* Fix pass, efficiency-1 + reuse-2 (handed back together: the fix for one is
-   the fix for the other): the "dynamic import, read `ambient`, call `land`
-   carrying its width/textPx/media forward" idiom five wrappers hand-copied --
-   this file's own `navigateAndWaitForCard` and `landWiped` below, plus
-   `fixtures.mjs`'s `goRich`, `goSeed` and `reloadWithRecord`. One helper,
-   here, next to `ambient` itself.
-
-   On skipping the read: `ambient`'s own comment above names the one real case
-   it exists for -- a caller that has already set width/text/media by hand,
-   right before asking for a reload (`first-run-flow.mjs`'s `firstRunPass`).
-   The other four wrappers are called about 130 times combined across
-   `scripts/smoke/`, and proving which of those call sites can and cannot have
-   deviated from `BASELINE` first would mean auditing every one by hand and
-   keeping that audit right as the migration in slices 3 and 4 moves more
-   checks onto `land` directly -- exactly the kind of one-off proof that goes
-   stale the next time a check changes what it does before reloading. Given
-   that cost, this keeps the read: one `Runtime.evaluate` round trip per
-   reload not the two dynamic-import-call sites finding 2 was about, and
-   still one copy of the idiom, not five. A later slice that DOES thread
-   "did this caller touch CDP state" through from the call site can drop the
-   read for the callers that answer no; nothing here forecloses that. */
-export async function landKeepingAmbient(c, origin, want) {
-  const { land } = await pageState();
-  const a = await ambient(c);
-  return land(c, origin, { width: a.width, textPx: a.textPx, media: a.media, ...want });
-}
-
 /* Evaluate in the page and throw the page's own error, rather than letting a
    typo in a selector come back as a silent `undefined`. */
 export async function evalIn(c, expression) {
@@ -424,7 +326,7 @@ export const FIRST_RUN_STEPS = [
 /* Step 3 commits a real team (`commitFirstRun`, decision 4), overwriting
    `state.players`/`state.teamName`/`state.day.games[0]` on a page load that
    `overlay` and `touch` share with every pass after them up to `teamscreen`'s
-   own `goRich`. Both take the same snapshot before opening step 3 and put it
+   own landing. Both take the same snapshot before opening step 3 and put it
    back whole afterwards, so the pair lives here rather than being typed twice:
    a restore that drifted from its snapshot would corrupt a later pass's
    fixture, and the failure would land in some other check's name. */
@@ -615,53 +517,6 @@ const wordFloorRows = (nameSel, rowSel) => {
   }
   return rows;
 };`;
-
-/* The wipe -> navigate -> wait -> cleanup shape the passes share
-   (`firstRun` and `tryLanding` in `app-large-text.mjs`, among others):
-   each needs a page that boots with no seeded record --
-   `browserChecks`'s own on-new-document script re-seeds `benchcard.v3` on
-   every navigation otherwise, and clearing the record in the CURRENT
-   document is not enough to stop that re-seed from winning the reload (see
-   the trap `firstRun` hit first, still described where it calls this). So
-   the wipe rides in its own on-new-document script, added here and removed
-   again in `finally` regardless of outcome -- left registered it would
-   empty the record under whatever this pass runs next.
-   `LOCALSTORAGE_WIPE` is the literal source they used to carry on
-   their own; this is the one place it is written now. `readyJs` is a JS
-   expression evaluated in the page, polled every 50ms up to 3s until it is
-   truthy -- `firstRun` waits for the welcome screen, `tryLanding` for the
-   sample-flash toast -- so each caller keeps
-   its own wait condition and its own assertions; only this boilerplate
-   around them is shared. */
-export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
-
-/* The navigate -> wait-for-load -> wait-for-fonts -> poll-for-ready ->
-   SETTLE sequence a full-page reload needs before anything on the page can be
-   measured. `goRich` (`fixtures.mjs`), `appLargeTextPass` (`app-large-text.mjs`)
-   and `measureLargeText` (`phone-gutter.mjs`, under a font-size override) each
-   carried an identical copy of this until it moved here.
-   #125: a one-line wrapper over `land` (`page-state.mjs`) -- `record: 'kept'`
-   because this function never seeded anything itself, `.card` because that
-   is `land`'s own default `ready`, and `ambient`'s width/text/media because a
-   caller that just set those by hand (large-text checks, ahead of their own
-   migration onto `land` in a later slice) expects the reload to keep them,
-   not reset to baseline. Fix pass: routed through `landKeepingAmbient` above,
-   which is the ambient-read-plus-`land` half of this; see its own comment.
-   `ready` is a selector, `.card` by default; `teamDefaultPass`'s
-   `plainReload` (`team-color.mjs`) passes `#print`, since it reloads a
-   games-view record with no card to wait for. */
-export async function navigateAndWaitForCard(c, url, ready = '.card') {
-  const u = new URL(url);
-  await landKeepingAmbient(c, u.origin, { page: u.pathname, query: u.search, record: 'kept',
-    ready: `document.querySelector(${JSON.stringify(ready)})` });
-}
-
-// Fix pass: routed through `landKeepingAmbient` above, same as
-// `navigateAndWaitForCard`.
-export async function landWiped(c, url, readyJs) {
-  const u = new URL(url);
-  await landKeepingAmbient(c, u.origin, { page: u.pathname, query: u.search, record: 'wiped', ready: readyJs });
-}
 
 /* #28's own overflow probe, for a `dialog[open]`: every visible descendant
    checked against the DIALOG's own `getBoundingClientRect`, not the
