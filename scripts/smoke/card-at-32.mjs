@@ -1,6 +1,7 @@
-import { evalIn, SETTLE } from './dom.mjs';
+import { evalIn } from './dom.mjs';
 import { nameOf } from './registry.mjs';
-import { seeded, PLAYERS, UI, SEED } from './fixtures.mjs';
+import { PLAYERS, UI, SEED } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { seasonDate } from '../../app/storage.js';
 import { smokeToday } from './clock.mjs';
 
@@ -35,25 +36,6 @@ async function measureCard(c) {
   })()`));
 }
 
-// Shared by the two reloads `cardAt32Pass` below does (into the 32px
-// measurement, then back out of it): `Page.navigate` alone does not await
-// paint, so every caller in this file pairs it with the load event.
-async function reloadIndex(c, origin) {
-  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url: origin + '/index.html' });
-  await loaded;
-}
-
-// The font, then the card, then any entrance animation: `cardAt32Pass` (after
-// its own `reloadIndex`) and `loadFitRecord` below (after its own seeded
-// navigation) both need the same wait before a `.card` in the page is one
-// worth measuring, so it is one copy rather than two.
-async function waitForCard(c) {
-  await evalIn(c, `(async () => { await document.fonts.ready;
-    for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-    await ${SETTLE}; })()`);
-}
-
 export async function cardAt32Pass(c, origin, report) {
   const check = report.checks.find(k => k.name === nameOf('cardsize'));
   if (!check) return; // the base check is gone -- nothing here to extend
@@ -66,17 +48,13 @@ export async function cardAt32Pass(c, origin, report) {
     return;
   }
 
-  await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });
   let at32;
   try {
-    await reloadIndex(c, origin);
-    await waitForCard(c);
+    await land(c, origin, { record: 'kept', textPx: 32 });
     at32 = await measureCard(c);
   } finally {
-    // Never leave the emulated font size on, and leave the app reloaded at
-    // 16px so whatever runs next (goRich, in the full run) starts clean.
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await reloadIndex(c, origin);
+    // Never leave the emulated font size on: land back at 16px.
+    await land(c, origin, { record: 'kept' });
   }
 
   if (!at32) {
@@ -134,16 +112,7 @@ function fitRecord(cardSize) {
 }
 
 async function loadFitRecord(c, origin, cardSize) {
-  await seeded(c, `(() => {
-    localStorage.removeItem('benchcard.v3');
-    localStorage.removeItem('benchcard.v7.bak');
-    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(fitRecord(cardSize)))});
-  })()`, async () => {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    await waitForCard(c);
-  });
+  await land(c, origin, { record: fitRecord(cardSize) });
 }
 
 // The title and corner boxes, read straight off the layout rather than a
@@ -202,16 +171,7 @@ function multiGameRecord() {
 }
 
 async function loadMultiGameRecord(c, origin) {
-  await seeded(c, `(() => {
-    localStorage.removeItem('benchcard.v3');
-    localStorage.removeItem('benchcard.v7.bak');
-    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(multiGameRecord()))});
-  })()`, async () => {
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    await waitForCard(c);
-  });
+  await land(c, origin, { record: multiGameRecord() });
 }
 
 // Excludes `.card-copy` (UI.copies is 2) and reads the page mark along with
@@ -246,15 +206,7 @@ async function multiGameProbe(c, origin, check) {
   } finally {
     // Restore the cold SEED state everything after this expects, same as
     // cardFitProbe's own finally below.
-    await seeded(c, `(() => {
-      localStorage.removeItem('benchcard.v7');
-      localStorage.removeItem('benchcard.v7.bak');
-      localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))});
-    })()`, async () => {
-      const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-      await c.send('Page.navigate', { url: origin + '/index.html' });
-      await loaded;
-    });
+    await land(c, origin, { record: SEED });
   }
 
   check.pass = check.pass && problems.length === 0;
@@ -279,15 +231,7 @@ async function cardFitProbe(c, origin, check) {
   } finally {
     // Restore the cold SEED state everything after this expects (cardAt32Pass
     // above already left the page at a 16px root; this only owns the record).
-    await seeded(c, `(() => {
-      localStorage.removeItem('benchcard.v7');
-      localStorage.removeItem('benchcard.v7.bak');
-      localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))});
-    })()`, async () => {
-      const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-      await c.send('Page.navigate', { url: origin + '/index.html' });
-      await loaded;
-    });
+    await land(c, origin, { record: SEED });
   }
 
   check.pass = check.pass && problems.length === 0;

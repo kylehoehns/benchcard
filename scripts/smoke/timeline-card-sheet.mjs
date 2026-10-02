@@ -1,6 +1,7 @@
 import { evalIn, step, WIDTH, HEIGHT } from './dom.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
-import { goRich } from './fixtures.mjs';
+import { goRich, richWith } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { evalJSON, tap, settle, setGame } from './sheet-drive.mjs';
 import { boxesOverlap } from './sheet-spacing.mjs';
 import { shareImageBranches } from './share-image.mjs';
@@ -172,7 +173,7 @@ async function cardSheetWidthOk(c, ck, where, width, short = true) {
 // reaches the sheet, which matches how a real reload -- Size set last time,
 // picked up fresh -- actually arrives.
 async function firstOpenFits(c, ck, origin, size, where) {
-  await goRich(c, origin, { cardSize: size });
+  await land(c, origin, { record: richWith({ cardSize: size }) });
   await tap(c, `document.getElementById('shareBtn').click()`);
   const r = await evalJSON(c, `(() => {
     const host = document.getElementById('sheetCardPreview');
@@ -248,12 +249,7 @@ export async function timelineCardSheetPass(c, origin) {
       `#sheet's own computed max-width reads "${sheetOwnCard.maxWidth}", want "none" -- #143's #sheetCardPreview-only rule must not reach it`);
 
     /* ---- item 1: a reload keeps Card chosen ---- */
-    const reloaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await evalIn(c, `location.reload()`);
-    await reloaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); })()`);
+    await land(c, origin, { record: 'kept' });
     const afterReload = await evalJSON(c, `JSON.stringify({
       onGames: document.getElementById('view-games')?.hidden === false,
       sheetHidden: document.getElementById('sheet')?.hidden,
@@ -470,36 +466,26 @@ export async function timelineCardSheetPass(c, origin) {
 
     /* ---- fix pass finding 1: row geometry at 360px/24px and 320px/32px,
        the other two cells the finding measured ---- */
-    await c.send('Page.setFontSizes', { fontSizes: { standard: MID_TEXT_PX, fixed: MID_TEXT_PX } });
-    try {
-      await c.send('Emulation.setDeviceMetricsOverride', { width: MID_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-      await goRich(c, origin);
+    {
+      await land(c, origin, { width: MID_TEXT_WIDTH, textPx: MID_TEXT_PX });
       await tap(c, `document.getElementById('shareBtn').click()`);
       await cardSheetRowsOk(c, ck, '360px/24px');
       await cardSheetWidthOk(c, ck, '360px/24px', MID_TEXT_WIDTH);
       await tap(c, `document.getElementById('sheetCardClose').click()`);
-    } finally {
-      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-      await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
     }
 
-    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-    try {
-      await c.send('Emulation.setDeviceMetricsOverride', { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-      await goRich(c, origin);
+    {
+      await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
       await tap(c, `document.getElementById('shareBtn').click()`);
       await cardSheetRowsOk(c, ck, '320px/32px');
       await cardSheetWidthOk(c, ck, '320px/32px', LARGE_TEXT_WIDTH);
       await tap(c, `document.getElementById('sheetCardClose').click()`);
-    } finally {
-      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-      await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
     }
 
     /* C5: with no roster at all, Timeline's own empty-state CTA presses
        `#emptyAdd` -- Team's own first-run button (`rosterCta`, timeline.js)
        -- so the two must read the same words rather than drift apart. */
-    await goRich(c, origin);
+    await land(c, origin);
     await tap(c, setGame(`s.team().players.length = 0;`));
     const want = await evalJSON(c, `JSON.stringify(document.getElementById('emptyAdd')?.textContent.trim())`);
     const got = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .roster-empty button')?.textContent.trim() ?? null)`);

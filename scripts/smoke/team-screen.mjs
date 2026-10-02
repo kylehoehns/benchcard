@@ -7,6 +7,7 @@ import { TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './sizes.mjs';
 import { PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, reloadWithRecord } from './fixtures.mjs';
 import { drag, dragHold, touchDragCancel, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
 import { levelName } from '../../app/balance.js';
+import { land, resize } from './page-state.mjs';
 
 /* #31's own guard (docs/specs/31-roster-and-player-sheet.md, Proof P8):
    "team screen: roster rows, the player sheet, add and paste", RICH fixture.
@@ -407,18 +408,16 @@ async function fieldsAtLargeTextOk(c, ck) {
   await tap(c, `document.querySelector('#sheetAddPlayer .bsheet-close').click()`);
 }
 
-/* Both large-text checks run at one 320px/32px entry, restored once. */
-async function largeTextOk(c, ck) {
-  await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });
-  try {
-    await c.send('Emulation.setDeviceMetricsOverride', { width: 320, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await settle(c);
-    await fieldsAtLargeTextOk(c, ck);
-    await identLongNameOk(c, ck);
-  } finally {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  }
+/* Both large-text checks run at one 320px/32px entry, landed back at the
+   baseline once. A text size only takes effect after a reload, so each landing
+   reloads the saved record and comes back to Team. */
+async function largeTextOk(c, ck, origin) {
+  await land(c, origin, { record: 'kept', width: 320, textPx: 32 });
+  await toTeam(c);
+  await fieldsAtLargeTextOk(c, ck);
+  await identLongNameOk(c, ck);
+  await land(c, origin, { record: 'kept' });
+  await toTeam(c);
 }
 
 /* A5: the identity block must not clip or pan a long name at 320px/32px --
@@ -504,12 +503,12 @@ async function rosterRowsFitOk(c, ck, who, want) {
      to happen when the sweep leaves off anywhere else (a throw part-way, or
      `TOUCH_WIDTHS` growing a wider last entry), so the width that actually
      took is tracked rather than the restore being dropped. Recorded only
-     AFTER `atWidth` resolves: a throw inside it leaves `at` on the previous
+     AFTER `resize` resolves: a throw inside it leaves `at` on the previous
      width, which restores. */
   let at = null;
   try {
     for (const w of TOUCH_WIDTHS) {
-      await atWidth(c, w);
+      await resize(c, w, HEIGHT, { debounce: true });
       at = w;
       const rows = await rosterFit(c);
       if (!ck(rows.length === want,
@@ -525,7 +524,7 @@ async function rosterRowsFitOk(c, ck, who, want) {
       }
     }
   } finally {
-    if (at !== WIDTH) await atWidth(c, WIDTH);
+    if (at !== WIDTH) await resize(c, WIDTH, HEIGHT, { debounce: true });
   }
 }
 
@@ -538,12 +537,6 @@ async function sampleRosterRowsOk(c, origin, ck) {
   await reloadWithRecord(c, origin, SAMPLE_TEAM);
   await toTeam(c);
   await rosterRowsFitOk(c, ck, 'the sample team', SAMPLE_PLAYERS.length);
-}
-
-async function atWidth(c, width) {
-  await c.send('Emulation.setDeviceMetricsOverride',
-    { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  await settle(c);
 }
 
 /* #264: the ways a coach moves a player, driven in Edit mode on the rich
@@ -739,7 +732,7 @@ async function editModeOk(c, ck) {
   await tap(c, `document.getElementById('teamEdit').click()`);
 
   for (const width of [WIDTH, 320]) {
-    if (width !== WIDTH) await atWidth(c, width);
+    if (width !== WIDTH) await resize(c, width, HEIGHT, { debounce: true });
     const rows = await editState(c);
     if (!ck(rows.length === ROSTER.length,
       `Edit mode shows ${rows.length} row(s) at ${width}px, want ${ROSTER.length}`)) break;
@@ -766,7 +759,7 @@ async function editModeOk(c, ck) {
       else ck(!dn.off, `${name} cannot be moved down at ${width}px`);
     });
   }
-  await atWidth(c, WIDTH);
+  await resize(c, WIDTH, HEIGHT, { debounce: true });
   await reorderOk(c, ck);
 
   await tap(c, `document.getElementById('teamEdit').click()`);
@@ -844,7 +837,7 @@ export async function teamScreenPass(c, origin) {
     if (await playerSheetOk(c, ck)) await removeAndUndoOk(c, ck);
     await addSheetOk(c, ck);
     await pasteSheetOk(c, ck);
-    await largeTextOk(c, ck);
+    await largeTextOk(c, ck, origin);
     await editModeOk(c, ck);
     await addPasteCommitOk(c, ck);
     await resetLevelsOk(c, ck);

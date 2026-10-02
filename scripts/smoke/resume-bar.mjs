@@ -16,6 +16,7 @@ import { LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs';
 import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
 import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 
 // Decision 14's exact fixture and item 1's exact string -- the SECOND
 // game's label, "Northwest Valley Thunderbirds", not the first's "Hawks".
@@ -205,53 +206,45 @@ export async function resumeBarPass(c, origin) {
    *
    * A font size cannot be re-applied without a reload (see
    * app-large-text.mjs's own note), so this reloads the part-played record
-   * at the narrow width rather than resizing the document in place. Both are
-   * put back in `finally`: this row runs mid-sequence and every row after it
-   * assumes 390px and a 16px root. */
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-  try {
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    const recBig = partPlayed(RICH);
-    recBig.view = 'today';
-    await reloadWithRecord(c, origin, recBig);
-    const under = JSON.parse(await evalIn(c, `(async () => {
-      window.scrollTo(0, 1e6);
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const barEl = document.getElementById('resumeBar');
-      const view = document.getElementById('view-today');
-      if (!barEl || barEl.hidden || !view || view.hidden) {
-        return JSON.stringify({ ready: false, bar: !!barEl && !barEl.hidden, today: !!view && !view.hidden });
-      }
-      const bar = barEl.getBoundingClientRect();
-      const vis = el => el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true });
-      let last = null, counted = 0;
-      for (const el of view.querySelectorAll('*')) {
-        const r = el.getBoundingClientRect();
-        if ((!r.width && !r.height) || !vis(el)) continue;
-        counted++;
-        if (!last || r.bottom > last.bottom) last = { bottom: r.bottom, el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') };
-      }
-      return JSON.stringify({ ready: true, counted, last, scrollY: Math.round(window.scrollY),
-        barTop: bar.top, barH: bar.height, pad: getComputedStyle(view).paddingBottom });
-    })()`));
-    const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-    if (!under.ready) {
-      problems.push(`${where}: #resumeBar up ${under.bar}, Today showing ${under.today} -- this clearance check measured nothing`);
-    } else if (!under.counted) {
-      problems.push(`${where}: no visible element inside #view-today -- this clearance check measured nothing`);
-    } else if (!under.scrollY) {
-      problems.push(`${where}: the page never scrolled (scrollY 0), so nothing here exercised the bottom of Today`);
-    } else if (under.last.bottom > under.barTop + 1) {
-      problems.push(`${where}: at the very bottom of the scroll ${under.last.el} still reaches `
-        + `${Math.round(under.last.bottom)}px, ${Math.round(under.last.bottom - under.barTop)}px under #resumeBar's top edge `
-        + `(a ${Math.round(under.barH)}px bar over ${under.pad} of .wrap clearance) -- that content cannot be scrolled out`);
-    } else {
-      notes.push(`item 6: the last of Today (${under.last.el}) clears a ${Math.round(under.barH)}px bar at ${where}`);
+   * at the narrow width rather than resizing the document in place. Every row
+   * after it lands its own width and root font. */
+  const recBig = partPlayed(RICH);
+  recBig.view = 'today';
+  await land(c, origin, { record: recBig, width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX,
+    ready: `document.querySelector('.today-game')`, freshHistory: true });
+  const under = JSON.parse(await evalIn(c, `(async () => {
+    window.scrollTo(0, 1e6);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const barEl = document.getElementById('resumeBar');
+    const view = document.getElementById('view-today');
+    if (!barEl || barEl.hidden || !view || view.hidden) {
+      return JSON.stringify({ ready: false, bar: !!barEl && !barEl.hidden, today: !!view && !view.hidden });
     }
-  } finally {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    const bar = barEl.getBoundingClientRect();
+    const vis = el => el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true });
+    let last = null, counted = 0;
+    for (const el of view.querySelectorAll('*')) {
+      const r = el.getBoundingClientRect();
+      if ((!r.width && !r.height) || !vis(el)) continue;
+      counted++;
+      if (!last || r.bottom > last.bottom) last = { bottom: r.bottom, el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') };
+    }
+    return JSON.stringify({ ready: true, counted, last, scrollY: Math.round(window.scrollY),
+      barTop: bar.top, barH: bar.height, pad: getComputedStyle(view).paddingBottom });
+  })()`));
+  const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+  if (!under.ready) {
+    problems.push(`${where}: #resumeBar up ${under.bar}, Today showing ${under.today} -- this clearance check measured nothing`);
+  } else if (!under.counted) {
+    problems.push(`${where}: no visible element inside #view-today -- this clearance check measured nothing`);
+  } else if (!under.scrollY) {
+    problems.push(`${where}: the page never scrolled (scrollY 0), so nothing here exercised the bottom of Today`);
+  } else if (under.last.bottom > under.barTop + 1) {
+    problems.push(`${where}: at the very bottom of the scroll ${under.last.el} still reaches `
+      + `${Math.round(under.last.bottom)}px, ${Math.round(under.last.bottom - under.barTop)}px under #resumeBar's top edge `
+      + `(a ${Math.round(under.barH)}px bar over ${under.pad} of .wrap clearance) -- that content cannot be scrolled out`);
+  } else {
+    notes.push(`item 6: the last of Today (${under.last.el}) clears a ${Math.round(under.barH)}px bar at ${where}`);
   }
 
 

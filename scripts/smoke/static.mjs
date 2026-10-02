@@ -1,4 +1,5 @@
-import { evalIn, HEIGHT, OVERFLOW_PROBE } from './dom.mjs';
+import { evalIn, OVERFLOW_PROBE } from './dom.mjs';
+import { land } from './page-state.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './sizes.mjs';
 
 /* The pages no browser check had ever loaded.
@@ -103,14 +104,8 @@ export async function staticPass(c, source, origin) {
     for (const w of STATIC_WIDTHS) {
       const where = `${page}@${w}px`;
       try {
-        await c.send('Emulation.setDeviceMetricsOverride',
-          { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-        const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-        await c.send('Page.navigate', { url: origin + page });
-        await loaded;
-        // These pages have no app to boot; fonts are what moves the layout.
-        await evalIn(c, `document.fonts.ready`);
-        await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+        // These pages have no app to boot (`ready: 'true'`); fonts are what moves the layout.
+        await land(c, origin, { page, record: 'kept', width: w, ready: 'true' });
 
         const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
         if (o.pans) problems.push(`${where}: page pans sideways`);
@@ -137,34 +132,21 @@ export async function staticPass(c, source, origin) {
      a font-size change without a reload leaves the layout unreflowed and
      reports a width that was never rendered. */
   let allowed = 0;
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-  try {
-    for (const page of STATIC_PAGES) {
-      const where = `${page}@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-      try {
-        await c.send('Emulation.setDeviceMetricsOverride',
-          { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-        const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-        await c.send('Page.navigate', { url: origin + page });
-        await loaded;
-        await evalIn(c, `document.fonts.ready`);
-        await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  for (const page of STATIC_PAGES) {
+    const where = `${page}@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+    try {
+      await land(c, origin, { page, record: 'kept', width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX, ready: 'true' });
 
-        const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-        const slack = LARGE_TEXT_ALLOW[page] || 0;
-        if (o.pans) problems.push(`${where}: page pans sideways`);
-        if (o.worst && o.worst.out > slack) {
-          problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
-            + (slack ? ` (${slack}px allowed)` : ''));
-        } else if (o.worst) allowed++;
-      } catch (e) {
-        problems.push(`${where}: ${e.message.split('\n')[0]}`);
-      }
+      const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+      const slack = LARGE_TEXT_ALLOW[page] || 0;
+      if (o.pans) problems.push(`${where}: page pans sideways`);
+      if (o.worst && o.worst.out > slack) {
+        problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
+          + (slack ? ` (${slack}px allowed)` : ''));
+      } else if (o.worst) allowed++;
+    } catch (e) {
+      problems.push(`${where}: ${e.message.split('\n')[0]}`);
     }
-  } finally {
-    // Never leave the emulated font size on: every check after this one runs
-    // in the same CDP session and would silently measure a 200% reader.
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
   }
 
   return {

@@ -22,7 +22,7 @@
  * `team-color.mjs`, which already owns every other bench-mode color pin.
  */
 import { evalIn, step, WIDTH, OVERFLOW_PROBE, CSS_VAR_COLOR_PROBE, GM_BODY_OVERFLOW_PROBE, setWidth } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const OPEN_BENCH = `document.querySelector('#gmOpen').click()`;
@@ -55,8 +55,7 @@ export async function benchDetailsPass(c, origin) {
   try {
     /* ---- item 1: Next change clears the controls, stint by stint ---- */
     for (const { w, h } of STINT_VIEWPORTS) {
-      await goRich(c, origin);
-      await setWidth(c, w, h);
+      await land(c, origin, { width: w, height: h });
       await evalIn(c, step(OPEN_BENCH));
       for (let i = 0; i < 8; i++) {
         const where = `stint ${i + 1} of 8 @ ${w}x${h}`;
@@ -93,10 +92,8 @@ export async function benchDetailsPass(c, origin) {
     }
 
     /* ---- item 1, continued: reachable by scrolling at 320px/32px text ---- */
-    await goRich(c, origin);
-    await setWidth(c, LARGE_TEXT_WIDTH);
-    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-    try {
+    await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+    {
       await evalIn(c, step(OPEN_BENCH));
       await evalIn(c, `(() => { const b = document.querySelector('.gm-body'); b.scrollTop = b.scrollHeight; })()`);
       const r = JSON.parse(await evalIn(c, NEXT_VS_FOOT_PROBE));
@@ -105,14 +102,11 @@ export async function benchDetailsPass(c, origin) {
           + `is below .gm-foot top ${r.footTop}`);
       }
       await evalIn(c, step(CLOSE_BENCH));
-    } finally {
-      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
     }
 
     /* ---- item 3: the scope control is `.seg`, Sit for the rest is a
        plain `.btn` sibling after it ---- */
-    await goRich(c, origin);
-    await setWidth(c, WIDTH);
+    await land(c, origin);
     await evalIn(c, step(OPEN_BENCH));
     await evalIn(c, step(PICK));
     const surface = await evalIn(c, `(${CSS_VAR_COLOR_PROBE})('var(--surface)')`);
@@ -163,10 +157,8 @@ export async function benchDetailsPass(c, origin) {
        lands on stint 2, which this fixture already tags at 320/16 (the
        item 1 loop above), so the row is on screen before either probe
        runs. */
-    await goRich(c, origin);
-    await setWidth(c, LARGE_TEXT_WIDTH);
-    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-    try {
+    await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+    {
       await evalIn(c, step(OPEN_BENCH));
       await evalIn(c, step(`document.getElementById('gmNext2').click()`));
       const tagged = await evalIn(c, `document.querySelectorAll('#gmFloor .gm-p.fresh').length`);
@@ -207,16 +199,13 @@ export async function benchDetailsPass(c, origin) {
       const ov = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
       if (ov.pans || ov.worst) problems.push(`item 4 (#167): the page itself overflows at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text: ${JSON.stringify(ov)}`);
       await evalIn(c, step(CLOSE_BENCH));
-    } finally {
-      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
     }
 
     /* ---- item 5: bench rows reachable by scrolling, 390x844 and 320x640,
        with and without a pick -- and the 9.5rem bottom padding stays ---- */
     for (const { w, h } of [{ w: 390, h: 844 }, { w: 320, h: 640 }]) {
       for (const picked of [false, true]) {
-        await goRich(c, origin);
-        await setWidth(c, w, h);
+        await land(c, origin, { width: w, height: h });
         await evalIn(c, step(OPEN_BENCH));
         if (picked) await evalIn(c, step(PICK));
         await evalIn(c, `(() => { const b = document.querySelector('.gm-body'); b.scrollTop = b.scrollHeight; })()`);
@@ -236,8 +225,7 @@ export async function benchDetailsPass(c, origin) {
         await evalIn(c, step(CLOSE_BENCH));
       }
     }
-    await goRich(c, origin);
-    await setWidth(c, WIDTH);
+    await land(c, origin);
     const padBottom = parseFloat(await evalIn(c, `getComputedStyle(document.querySelector('.gm-body')).paddingBottom`));
     if (padBottom < 152 - 0.5) {
       problems.push(`item 5: .gm-body's bottom padding computes to ${padBottom}px, want at least 9.5rem (152px)`);

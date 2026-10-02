@@ -1,5 +1,6 @@
 import { TODAY_HOME, WIDTH, HEIGHT, assertChipMatchesBackBtn, assertBackIsChevron } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
+import { richWith } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { closedWithFocus, evalJSON, key, openAddGameFlow as openFlow, realTap, tap, typeIn, waitClosed } from './sheet-drive.mjs';
 import { addGameFitChecks } from './add-game-fit.mjs';
 import { checkedTileHasNoRing, exactlyOneTintFill, stepThreeVisuals } from './add-game-visuals.mjs';
@@ -663,11 +664,11 @@ export async function addGameFlowPass(c, origin) {
       await askDoesNotStrandOverRepaint(c, ck);
       await forceCloseKeepsDraft(c, ck);
       await landsOnToday(c, ck);
-      await addGameFitChecks(c, ck);
+      await addGameFitChecks(c, ck, origin);
 
       // #145 item 5's "light and dark" -- a dark reload, the same idiom
       // `darkInputBgPass` uses, rather than emulating `prefers-color-scheme`.
-      await goRich(c, origin, { theme: 'dark' });
+      await land(c, origin, { record: richWith({ theme: 'dark' }) });
       await openFlow(c);
       await realTap(c, '#agNext');
       await checkedTileHasNoRing(c, ck, 'dark');

@@ -24,7 +24,8 @@
  * broken tree read green the first time. */
 import { setWidth, TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN } from './dom.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
-import { goRich, reloadWithRecord, RICH } from './fixtures.mjs';
+import { goRich, RICH } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
@@ -473,12 +474,13 @@ const READ_FIVE_GAMES = `JSON.stringify((() => {
   return { hint, rows, snDayLefts, firstGameTitleLeft };
 })())`;
 
+const TODAY_GAME_READY = `document.querySelector('.today-game')`;
+
 async function seasonFiveGamesPass(c, origin) {
   const problems = [];
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
   try {
-    await setWidth(c, LARGE_TEXT_WIDTH);
-    await reloadWithRecord(c, origin, FIVE_GAMES);
+    await land(c, origin, { record: FIVE_GAMES, width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX,
+      ready: TODAY_GAME_READY, freshHistory: true });
     await tap(c, OPEN_SEASON);
 
     const data = await evalJSON(c, READ_FIVE_GAMES);
@@ -506,9 +508,6 @@ async function seasonFiveGamesPass(c, origin) {
     if (o.worst) problems.push(`at 320px/32px with 5 games: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await setWidth(c, WIDTH);
   }
   return {
     pass: problems.length === 0,
@@ -557,9 +556,8 @@ async function seasonLongNamePass(c, origin) {
   const cases = [[16, '320px/16px text'], [LARGE_TEXT_PX, '320px/32px text']];
   try {
     for (const [px, label] of cases) {
-      await c.send('Page.setFontSizes', { fontSizes: { standard: px, fixed: px } });
-      await setWidth(c, LARGE_TEXT_WIDTH);
-      await reloadWithRecord(c, origin, LONG_NAME_RECORD);
+      await land(c, origin, { record: LONG_NAME_RECORD, width: LARGE_TEXT_WIDTH, textPx: px,
+        ready: TODAY_GAME_READY, freshHistory: true });
       await tap(c, OPEN_SEASON);
 
       const data = await evalJSON(c, READ_LONG_NAME);
@@ -577,9 +575,6 @@ async function seasonLongNamePass(c, origin) {
     }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await setWidth(c, WIDTH);
   }
   return {
     pass: problems.length === 0,
@@ -616,10 +611,8 @@ const READ_FILED_SQUEEZE = `JSON.stringify((() => {
 async function seasonFiledSqueezePass(c, origin) {
   const problems = [];
   const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
   try {
-    await setWidth(c, LARGE_TEXT_WIDTH);
-    await goRich(c, origin);
+    await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
     await tap(c, TODAY_HOME);
     await tap(c, OPEN_SEASON);
     await tap(c, OPEN_FIRST_FILED_GAME);
@@ -644,9 +637,6 @@ async function seasonFiledSqueezePass(c, origin) {
     if (o.worst) problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await setWidth(c, WIDTH);
   }
   return {
     pass: problems.length === 0,

@@ -1,5 +1,5 @@
-import { evalIn, step, WIDTH, HEIGHT, IS_SR_ONLY_RECT } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
+import { evalIn, step, IS_SR_ONLY_RECT } from './dom.mjs';
+import { land } from './page-state.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding } from './app-large-text.mjs';
 
 /* #24 item 3: the scale's runtime proof. Item 3's "What would settle it" is
@@ -41,9 +41,7 @@ const TYPESCALE_PROBE = `(() => {
 export async function typeScalePass(c, origin) {
   const problems = [];
   let elements = 0;
-  await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-  await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  await goRich(c, origin);
+  await land(c, origin);
 
   const meta = await evalIn(c, `document.querySelector('meta[name="text-scale"]')?.getAttribute('content') ?? null`);
   if (meta !== 'scale') problems.push(`meta[name="text-scale"] is ${JSON.stringify(meta)}, not "scale"`);

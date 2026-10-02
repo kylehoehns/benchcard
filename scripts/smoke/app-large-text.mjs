@@ -1,8 +1,9 @@
-import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
+import { evalIn, step, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
-import { FOUR, reloadWithRecord } from './fixtures.mjs';
+import { FOUR } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
 import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
@@ -680,11 +681,8 @@ export async function appLargeTextPass(c, origin) {
   const problems = [];
   let allowed = 0;
   let flash = '';
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
   try {
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await navigateAndWaitForCard(c, origin + '/index.html');
+    await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
 
     for (const v of APP_LARGE_TEXT_STATES) {
       const where = `${v.name}@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
@@ -695,7 +693,10 @@ export async function appLargeTextPass(c, origin) {
            themselves is both cheaper and stricter. */
         if (v.firstRun) await firstRun(c, origin);
         else if (v.tryLink) flash = await tryLanding(c, origin, v.tryLink);
-        else if (v.four) await reloadWithRecord(c, origin, FOUR);
+        else if (v.four) await land(c, origin, {
+          record: FOUR, width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX,
+          ready: `document.querySelector('.today-game')`, freshHistory: true,
+        });
         else if (v.rotationToast) await openRotationToastState(c);
         else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin);
         else await evalIn(c, step(v.open));
@@ -755,10 +756,8 @@ export async function appLargeTextPass(c, origin) {
       }
     }
   } finally {
-    // Same rule as the pass above: never leave the emulated font size on.
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    // Back to the baseline width and text size for whatever runs next.
+    await land(c, origin);
   }
   return {
     pass: problems.length === 0,

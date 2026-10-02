@@ -192,6 +192,11 @@ export const GAMES_VIEW_READY = screenReadyExpr('view-games');
    `activeGame` land straight on the Hawks game the same way RICH does.
    One reload helper, not a second near-copy differing only in which record
    it seeds. */
+/* A record is RICH with some of its `ui` fields replaced: the one home for
+   what `goRich`'s two extra arguments mean, so a check can hand the result
+   straight to `land`'s `record`. */
+export const richWith = (ui, base = RICH) => (ui ? { ...base, ui: { ...base.ui, ...ui } } : base);
+
 /* #125: a one-line wrapper over `land` (`page-state.mjs`) -- `.card` is
    `land`'s own default `ready`, so nothing here overrides it. `ambient`
    (`dom.mjs`) carries forward whatever width/text/media the caller already
@@ -203,8 +208,7 @@ export const GAMES_VIEW_READY = screenReadyExpr('view-games');
    wrappers all now call instead of each carrying its own copy; see its own
    comment for the dynamic import and the decision to keep the read. */
 export async function goRich(c, origin, ui, base = RICH) {
-  const record = ui ? { ...base, ui: { ...base.ui, ...ui } } : base;
-  await landKeepingAmbient(c, origin, { record });
+  await landKeepingAmbient(c, origin, { record: richWith(ui, base) });
 }
 
 /* Reload straight onto `SEED` (`benchcard.v3`), the way `game passes` (#26)

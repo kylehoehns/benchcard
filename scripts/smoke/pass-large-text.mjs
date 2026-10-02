@@ -18,8 +18,9 @@
  * viewport. So this measures the two things that probe cannot:
  * `scrollWidth`/`clientWidth` (nothing truncated) and the status's own right
  * edge against the CARD's content edge, not the viewport's. */
-import { evalIn, WIDTH, HEIGHT } from './dom.mjs';
-import { FOUR, reloadWithRecord } from './fixtures.mjs';
+import { evalIn } from './dom.mjs';
+import { FOUR } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { GAME_SUMMARIES } from './game-passes.mjs';
 import { WORD_RECTS_FN } from './row-stack.mjs';
@@ -84,19 +85,6 @@ const TITLE_WORD_WIDTHS = `(() => {
   }));
 })()`;
 
-// Sets the emulated root font size and viewport width together, since
-// `Page.setFontSizes` on an already-laid-out document leaves it unreflowed --
-// every call site pairs it with a reload. `safe: true` gives each of the two
-// sends its own independent catch, the restore discipline the `finally`
-// below relies on: if the font-size reset fails, the viewport reset is still
-// attempted rather than abandoned.
-async function setRoot(c, px, width, { safe = false } = {}) {
-  const guard = p => safe ? p.catch(() => {}) : p;
-  await guard(c.send('Page.setFontSizes', { fontSizes: { standard: px, fixed: px } }));
-  await guard(c.send('Emulation.setDeviceMetricsOverride',
-    { width, height: HEIGHT, deviceScaleFactor: 2, mobile: true }));
-}
-
 // Ravens' summary is asserted whole at both sizes item 1 and item 2 name --
 // `where` names which pass a failure came from, since both share one wording.
 function checkRavensSummary(cards, where, problems) {
@@ -108,13 +96,15 @@ function checkRavensSummary(cards, where, problems) {
   }
 }
 
+const TODAY_GAME_READY = `document.querySelector('.today-game')`;
+
 export async function passLargeTextPass(c, origin) {
   const problems = [];
   try {
     // Item 1: 320px wide, a 32px root -- "set the font size the way
     // app-large-text.mjs does (set, then reload)".
-    await setRoot(c, LARGE_TEXT_PX, LARGE_TEXT_WIDTH);
-    await reloadWithRecord(c, origin, FOUR);
+    await land(c, origin, { record: FOUR, width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX,
+      ready: TODAY_GAME_READY, freshHistory: true });
 
     const cards320 = JSON.parse(await evalIn(c, MEASURE));
     for (const card of cards320) {
@@ -166,8 +156,7 @@ export async function passLargeTextPass(c, origin) {
 
     // Item 2: back to the default 390px/16px root -- same reload discipline,
     // the font size cannot be re-applied without one.
-    await setRoot(c, 16, WIDTH);
-    await reloadWithRecord(c, origin, FOUR);
+    await land(c, origin, { record: FOUR, ready: TODAY_GAME_READY, freshHistory: true });
 
     // Item 2, as the spec now reads: the summary wraps at every size, so
     // Ravens (the one FOUR summary too long for 332px at 16px root) is
@@ -213,10 +202,6 @@ export async function passLargeTextPass(c, origin) {
     checkRavensSummary(cards390, '390px/16px', problems);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    // Never leave the emulated font size or viewport on; the next row's
-    // `reset` puts the page itself back.
-    await setRoot(c, 16, WIDTH, { safe: true });
   }
   return {
     pass: problems.length === 0,
