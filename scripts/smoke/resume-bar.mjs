@@ -113,7 +113,6 @@ export async function resumeBarPass(c, origin) {
      number that is already decided. */
   for (const w of [LARGE_TEXT_WIDTH, NARROW, WIDTH]) {
     await resize(c, w, HEIGHT);
-    await evalIn(c, `${SETTLE}`);
     const geo = JSON.parse(await evalIn(c, `(() => {
       const bar = document.getElementById('resumeBar'), btn = document.getElementById('resumeBtn');
       const br = bar.getBoundingClientRect(), cs = getComputedStyle(bar);
@@ -126,7 +125,6 @@ export async function resumeBarPass(c, origin) {
     }
   }
   await resize(c, WIDTH, HEIGHT);
-  await evalIn(c, `${SETTLE}`);
 
   for (const [feature, value] of SOLID_FALLBACK_MEDIA) {
     await setMedia(c, [{ name: feature, value }]);

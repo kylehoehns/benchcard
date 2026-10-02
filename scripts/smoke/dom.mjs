@@ -617,7 +617,8 @@ const wordFloorRows = (nameSel, rowSel) => {
 };`;
 
 /* The wipe -> navigate -> wait -> cleanup shape the passes share
-   (`firstRun` and `tryLanding` in `app-large-text.mjs`, among others): each needs a page that boots with no seeded record --
+   (`firstRun` and `tryLanding` in `app-large-text.mjs`, among others):
+   each needs a page that boots with no seeded record --
    `browserChecks`'s own on-new-document script re-seeds `benchcard.v3` on
    every navigation otherwise, and clearing the record in the CURRENT
    document is not enough to stop that re-seed from winning the reload (see

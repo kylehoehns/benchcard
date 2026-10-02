@@ -28,8 +28,8 @@ import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
  * it can still read `state.onboarded === false`. `landingReads` through
  * `sampleFillsAndSavesNothing` all need that pre-commit state and so share
  * ONE wiped landing; `stepThreeShowsACard` onward needs a SECOND, fresh one,
- * the same way `game-rows-fit.mjs` lands twice (light, then dark) rather than trying to make one landing answer two different
- * questions. That second landing is also the NARROW one -- 320px, the width
+ * the same way `game-rows-fit.mjs` lands twice (light, then dark) rather
+ * than trying to make one landing answer two different questions. That second landing is also the NARROW one -- 320px, the width
  * at which step 3's card fit is observable at all; see `firstRunPass` for why
  * the narrowing has to come before the flow paints. The next row's `reset`
  * puts the rich fixture, the width and the media back. */

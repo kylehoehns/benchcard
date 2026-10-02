@@ -221,6 +221,7 @@ export const BASELINE = Object.freeze({
 ```js
 export async function land(c, origin, want = {})   // get the page into this state
 export async function resize(c, width, height = HEIGHT, { debounce = false } = {})
+export async function setMedia(c, features = [])    // flip emulated media in place
 export async function reset(c, origin)              // land(c, origin, {}) plus the fingerprint
 ```
 
@@ -237,6 +238,10 @@ metrics and waits two frames; `debounce: true` adds the 400ms wait
 `wide-layout`'s `atWidth` needs for `render.js`'s debounced repaint. It does
 not reload and does not change the text size. It is not a restore: the next
 row's `reset` is.
+
+`setMedia` flips emulated media inside one page load, with no reload (the
+dark-mode and reduced-motion sweeps, `SOLID_FALLBACK_MEDIA`). It is not a
+restore: the next row's `reset` clears it.
 
 Static pages (`static.mjs`) use `land` with `page` set; their `ready` is
 `true`, so the boot wait is fonts plus `SETTLE`.

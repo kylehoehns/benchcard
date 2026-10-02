@@ -118,7 +118,7 @@ test('compareFingerprints: a fingerprint missing any field is reported, never eq
 
 /* ---------- setMedia: live emulation inside one page load ---------- */
 
-test('setMedia sends exactly the features it is given, and [] clears them', async () => {
+test('setMedia pins the CDP call shape: one Emulation.setEmulatedMedia per call, features passed through unchanged', async () => {
   const sent = [];
   const c = { send: async (method, params) => { sent.push([method, params]); return {}; } };
   const dark = [{ name: 'prefers-color-scheme', value: 'dark' }];

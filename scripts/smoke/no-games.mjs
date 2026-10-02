@@ -89,7 +89,7 @@ export async function noGamesPass(c, origin) {
   // Remove it again and reload -- the empty state has to survive a real
   // navigation, not just the in-page render the checks above already saw.
   await evalIn(c, step(`document.getElementById('removeGame')?.click()`));
-  await land(c, origin, { record: 'kept', freshHistory: true, ready: `!!document.getElementById('todayAddGame')` });
+  await land(c, origin, { record: 'kept', ready: `!!document.getElementById('todayAddGame')` });
   const afterReload = await evalIn(c, `(() => {
     return JSON.stringify({
       onToday: !!(document.getElementById('view-today') && !document.getElementById('view-today').hidden),

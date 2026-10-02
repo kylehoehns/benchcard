@@ -5,7 +5,7 @@
  * before the smoke clock (2026-09-12, so 2026-09-11) -- loads it, then runs
  * the real first-run flow and reloads. The dates and the words are the
  * spec's own: no toast on the welcome screen, then "Today" on the game's day
- * heading and no "is over" toast after the reload. Restores RICH itself. */
+ * heading and no "is over" toast after the reload. The harness resets before the next row. */
 import { land } from './page-state.mjs';
 import { evalJSON, realTap, settle, typeIn } from './sheet-drive.mjs';
 import { RICH } from './fixtures.mjs';
