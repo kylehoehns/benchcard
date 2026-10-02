@@ -430,6 +430,14 @@ export const findingsOf = (res, where, pos) => [
   ...res.floor.map(f => ({ kind: 'floor', where, pos, ...f })),
 ];
 
+/* The states the sweep walks, in order. Shared with scripts/look.mjs. */
+export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE];
+
+/* The states that navigate to their own page and so wipe whatever the run
+ * set up on the one before (the roster, injected CSS). Shared with
+ * scripts/look.mjs; `openState`'s dispatch is the other half of this list. */
+export const reloadsPage = v => !!(v.firstRun || v.tryLink || v.four || v.firstRunTypedRoster);
+
 /* Open one state of `APP_LARGE_TEXT_STATES` (or CONFIRM_STATE) and prove it
  * opened -- rule 2a of /new-guard: a state that never actually opened its own
  * screen would otherwise scan whatever the previous state left up and report
@@ -462,7 +470,7 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   const usedAllow = new Set();
   const usedSideways = new Set();
   const usedFloorAllow = new Set();
-  const states = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE];
+  const states = CLIP_STATES;
 
   // A reload wipes any <style> this injected, so it's re-run
   // after every landing, not just the first one, so it holds through the
@@ -498,7 +506,7 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
     // `firstRunTypedRoster` reloads too (`openFirstRunTypedRosterState`'s
     // own wiped landing); `rotationToast` does not -- it only mutates the
     // loaded record's game in place via `setGame`, no navigation.
-    if (v.firstRun || v.tryLink || v.four || v.firstRunTypedRoster) {
+    if (reloadsPage(v)) {
       await land(c, origin, { record: LONG_AND_SQUEEZE, ...LARGE_TEXT });
       await applyInjectCss();
     }

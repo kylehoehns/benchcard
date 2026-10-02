@@ -9,6 +9,8 @@
  *
  * Each shot is `<view-slug>-<width>-<font>-<theme>.png`, plus `-bottom.png`
  * when that state scrolls. `measurements.json` holds one record per PNG.
+ * Every page also gets smoke's frozen clock (`CLOCK_SCRIPT`), so a preview
+ * shows smoke's fixed date, and the findings agree with the smoke sweep's.
  * Findings are reported, never a failure: the exit code is non-zero only when
  * a shot could not be proved (font size, painted theme, service worker,
  * about's fade-in) or a state did not open. For a redesign ticket's fixed
@@ -16,13 +18,14 @@
  *
  * Everything that sets the page up is reused: `land` (width, text size,
  * emulated media and the record, in the order that makes the font size take),
- * `openState` (the states clip-sweep.mjs walks), `CLIP_PROBE` and
+ * `openState` and `CLIP_STATES` (the states clip-sweep.mjs walks, and which of
+ * them reload the page), `CLIP_PROBE` and
  * `knownIssueFor` (the #179 measurement), `shotProblems`/`postCaptureProblems`
  * (compare-shots.mjs' per-shot proof). This file sends no
  * `Emulation.setDeviceMetricsOverride`, `Page.setFontSizes` or
  * `Emulation.setEmulatedMedia` itself. It never passes `captureBeyondViewport`.
  *
- * The pure parts (`parseArgs`, `cells`, `slug`, `classify`) are exported so
+ * The pure parts (`parseArgs`, `cells`, `slug`, `classify`, the two measured-nothing rules) are exported so
  * `test/look.test.js` runs them with no browser; `main()` runs only on direct
  * invocation, so importing this launches nothing. */
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -37,15 +40,13 @@ import { evalIn, SETTLE, TIMER_TRACKER } from './smoke/dom.mjs';
 import { richWith, FOUR, TODAY_LANDING } from './smoke/fixtures.mjs';
 import { land } from './smoke/page-state.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
-import { APP_LARGE_TEXT_STATES } from './smoke/app-large-text.mjs';
 import {
-  CLIP_PROBE, LONG_AND_SQUEEZE, CONFIRM_STATE, SCROLL_TO_BOTTOM, findingsOf, knownIssueFor, openState,
+  CLIP_PROBE, LONG_AND_SQUEEZE, CLIP_STATES, SCROLL_TO_BOTTOM, findingsOf, knownIssueFor, openState, reloadsPage,
 } from './smoke/clip-sweep.mjs';
-import { shotProblems, postCaptureProblems, READ_PAINT } from './compare-shots.mjs';
+import { shotProblems, postCaptureProblems, READ_PAINT, applyThemeScript } from './compare-shots.mjs';
 
-const APP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE];
 const ABOUT = 'about';
-const VIEW_NAMES = [...APP_STATES.map(s => s.name), ABOUT];
+const VIEW_NAMES = [...CLIP_STATES.map(s => s.name), ABOUT];
 
 /* The page's own scrolling state: the window plus every scroller's offset, so
  * "did the bottom shot move anything" covers an open sheet's own scroller. */
@@ -77,16 +78,6 @@ const ABOUT_READY = `document.querySelector('.reveal')`;
 
 const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
-/* A wiped-record state has no `ui.theme` to seed (it follows the OS, which
- * may be dark), so the theme is set through the app's own state and
- * `applyTheme`, as compare-shots.mjs' first-run shot does; the paint check
- * below still decides whether it took. */
-const applyTheme = theme => `(async () => {
-  const s = await import('/state.js');
-  s.state.ui.theme = ${JSON.stringify(theme)};
-  (await import('/render.js')).applyTheme();
-})()`;
-
 export const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 const USAGE = 'usage: node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390] [--font 16,32] [--dark] [--view a,b] [--headful]';
@@ -117,7 +108,13 @@ function viewNames(text) {
 }
 
 export function parseArgs(argv) {
-  const flag = name => { const i = argv.indexOf(name); return i === -1 ? null : (argv[i + 1] ?? ''); };
+  const flag = name => {
+    const i = argv.indexOf(name);
+    if (i === -1) return null;
+    const value = argv[i + 1] ?? '';
+    if (value.startsWith('--')) throw new Error(`${name} needs a value, not "${value}"\n${USAGE}`);
+    return value;
+  };
   const out = flag('--out');
   if (!out) throw new Error(`--out <dir> is required\n${USAGE}`);
   const url = flag('--url');
@@ -140,6 +137,11 @@ export function cells({ views, widths, fonts, dark }) {
 }
 
 /* One shot's findings, each with the issue that excuses it (or null). */
+/* A run, or a shot, that measured nothing proved nothing (/new-guard 2a). */
+export const emptyRunProblem = shots => shots ? null : 'no shot was taken, so there is nothing to write';
+export const unscannedProblem = (file, scanned, host) =>
+  scanned ? null : `${file}: the clip probe scanned no elements on ${host}`;
+
 export const classify = findings => findings.map(f => ({ ...f, excused: knownIssueFor(f) }));
 
 /* One cell: land, open the state, settle, then the top shot, and the bottom
@@ -155,12 +157,20 @@ async function shoot(c, origin, cell, outDir) {
   if (cell.view === ABOUT) {
     await land(c, origin, { record, ...want, page: '/about', ready: ABOUT_READY });
   } else {
-    const state = APP_STATES.find(s => s.name === cell.view);
-    /* The states are written to be walked in order, from Today; each cell
-     * starts from Today on its own, with the same long names loaded. */
+    const state = CLIP_STATES.find(s => s.name === cell.view);
+    /* The sweep starts on `games` but its first state, `today`, takes it to
+     * Today before any other opener runs, and those openers click Today's own
+     * controls (`.today-game`, `#todayTeam`, ...), so each cell lands on Today
+     * directly with the same long names loaded. Starting from `games` makes
+     * the `games` state's opener find no `.today-game` and throw. */
     await land(c, origin, { record: { ...record, view: 'today' }, ...want, ...TODAY_LANDING });
     await openState(c, origin, state, state.four ? { ...want, record: richWith({ theme: cell.theme }, FOUR) } : want);
-    if (state.firstRun || state.tryLink || state.firstRunTypedRoster) await evalIn(c, applyTheme(cell.theme));
+    /* A wiped-record state has no `ui.theme` to seed (it follows the OS, which
+     * may be dark), so the theme is set through the app's own state, as
+     * compare-shots.mjs' first-run shot does; the paint check below still
+     * decides whether it took. `four` reloads with its own record, which
+     * carries the theme already. */
+    if (reloadsPage(state) && !state.four) await evalIn(c, applyThemeScript(cell.theme));
   }
   await evalIn(c, SETTLE);
 
@@ -180,7 +190,8 @@ async function shoot(c, origin, cell, outDir) {
     if (problems.length) throw new Error(problems.join('; '));
 
     const res = JSON.parse(await evalIn(c, CLIP_PROBE));
-    if (!res.scanned) throw new Error(`${file}: the clip probe scanned no elements on ${where.host}`);
+    const unscanned = unscannedProblem(file, res.scanned, where.host);
+    if (unscanned) throw new Error(unscanned);
 
     const { data } = await c.send('Page.captureScreenshot', { format: 'png' });
     const post = postCaptureProblems(proof, measured, JSON.parse(await evalIn(c, READ_PAINT)));
@@ -221,6 +232,9 @@ export async function main(argv = process.argv.slice(2)) {
     // A fresh profile has no worker; this keeps one from ever answering.
     await c.send('Network.setBypassServiceWorker', { bypass: true });
     await c.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+    /* The font smoke forces, the clock smoke freezes (a preview shows smoke's
+     * fixed date, so findings agree with the sweep), and the timer tracker
+     * SETTLE waits on. */
     for (const source of [FONT_INJECTION_SCRIPT, CLOCK_SCRIPT, TIMER_TRACKER]) {
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source });
     }
@@ -231,7 +245,8 @@ export async function main(argv = process.argv.slice(2)) {
     await evalIn(c, SW_SETTLED);
 
     for (const cell of cells(args)) records.push(...await shoot(c, origin, cell, outDir));
-    if (!records.length) throw new Error('no shot was taken, so there is nothing to write');
+    const empty = emptyRunProblem(records.length);
+    if (empty) throw new Error(empty);
 
     await writeFile(resolve(outDir, 'measurements.json'), JSON.stringify(records, null, 2) + '\n');
     for (const r of records) {

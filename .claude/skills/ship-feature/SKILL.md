@@ -222,8 +222,7 @@ The PR body says it switched.
    --view <the views the diff touches> --out .review/look` (add `--dark` when
    colors change), and hand `quality-reviewer` the absolute path of
    `.review/look` too. It reads the PNGs and `measurements.json`, whose
-   `findings` list cut-off text (`excused` is a known issue's number, `null`
-   is new). Findings are reported, not a failure.
+   `findings` list cut-off text; `AGENTS.md` § Layout says how to read them.
 
 8. **Fix, once.** Actionable findings go to a new `developer`, handed the same
    `.review/` directory step 7 built, which fixes them the same way it built:

@@ -66,9 +66,10 @@ step 7 hands that output to `quality-reviewer`.
 - **Dark mode.** `RICH.ui.theme` is `'light'`, so emulating a dark OS paints
   nothing (#86). Static pages read the same `ui.theme` from `benchcard.v7`
   in their head script, so seeding the record themes both.
-- **`/index.html` 307s to `/`** on both `npm run serve` and Cloudflare, so the
-  existing fixtures' `origin + '/index.html'` navigation works against a
-  preview URL unchanged.
+- **`/index.html` 307s to `/`** on both `npm run serve` and Cloudflare, and
+  the 307 drops a `?try=` query. With the service worker bypassed nothing
+  else answers it, so app views land on `/` directly; only the one first
+  navigation (which needs no query) uses `/index.html`.
 - **The quality reviewer can see images:** `.claude/agents/quality-reviewer.md`
   has `Read`, which renders PNGs.
 
@@ -201,8 +202,8 @@ behavior; `fixtures.mjs`' records.
 
 1. **Parse** (`parseArgs(argv)`, pure): `--url`, `--widths`, `--font`,
    `--dark`, `--view`, `--out`, `--headful`. Validates per item 2. View names
-   resolve against `[...APP_LARGE_TEXT_STATES, CONFIRM_STATE]` (which already
-   starts with `VIEWS`) plus `about`. The chart pages are out of scope
+   resolve against `CLIP_STATES` (`clip-sweep.mjs`: `APP_LARGE_TEXT_STATES`
+   plus `CONFIRM_STATE`, which already starts with `VIEWS`) plus `about`. The chart pages are out of scope
    (decided). A slug per name: lowercase, non-alphanumerics to
    `-`.
 2. **Plan** (`cells({ views, widths, fonts, dark })`, pure): the ordered cell
@@ -211,7 +212,9 @@ behavior; `fixtures.mjs`' records.
 3. **Launch** a fresh Chrome (`launch`), `Page.enable`, `Runtime.enable`,
    `Network.enable` + `Network.setBypassServiceWorker`, touch emulation,
    `Emulation.setEmulatedMedia` reduced motion, `FONT_INJECTION_SCRIPT` on new
-   documents. First navigation to the origin so storage writes are allowed.
+   documents, plus smoke's `CLOCK_SCRIPT` (so findings agree with the sweep,
+   which freezes the clock; a preview shows smoke's fixed date) and
+   `TIMER_TRACKER` (which `SETTLE` waits on). First navigation to the origin so storage writes are allowed.
 4. **Per cell:** `Page.setFontSizes` → `setDeviceMetricsOverride`
    (`deviceMetrics`) → load the page with `LONG_AND_SQUEEZE` seeded and
    `ui.theme` set (the reload is what makes the font size take) → open the

@@ -524,12 +524,7 @@ async function goFirstRun(c, origin, theme, opts = {}) {
         await new Promise(r => setTimeout(r, 50));
       await ${SETTLE}; })()`);
   });
-  await evalIn(c, step(`(async () => {
-    const s = await import('/state.js');
-    s.state.ui.theme = ${JSON.stringify(theme)};
-    const rr = await import('/render.js');
-    rr.applyTheme();
-  })()`));
+  await evalIn(c, step(applyThemeScript(theme)));
 
   const atStep = opts.step || 0;
   if (atStep === 0) return; // the plain landing -- unchanged from before #36
@@ -595,6 +590,14 @@ const setLongName = step(`(async () => {
   const rr = await import('/render.js');
   rr.renderAll();
 })()`);
+
+/* Set the theme through the app's own state and repaint it with the app's own
+ * `applyTheme`. Shared with scripts/look.mjs. */
+export const applyThemeScript = theme => `(async () => {
+  const s = await import('/state.js');
+  s.state.ui.theme = ${JSON.stringify(theme)};
+  (await import('/render.js')).applyTheme();
+})()`;
 
 /* The two readings every shot is judged on, written once. `capture` evaluates
  * this twice -- before `Page.captureScreenshot` and again after it returns --

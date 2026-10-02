@@ -1,11 +1,14 @@
 /* #180: `scripts/look.mjs`'s pure parts, at the seams the spec's Proof names:
- * `knownIssueFor` (the #179 known-issue matcher, now importable), and later
- * `parseArgs` and `cells`. No Chrome here. Expected values are typed from the
- * spec, not recomputed the way the code computes them. */
+ * `knownIssueFor` and `reloadsPage` (clip-sweep.mjs, shared with look.mjs),
+ * `parseArgs`, `cells`, `slug`, the two "measured nothing" rules, and that
+ * importing the module launches nothing. No Chrome here. Expected values are
+ * typed from the spec, not recomputed the way the code computes them. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 
-import { knownIssueFor } from '../scripts/smoke/clip-sweep.mjs';
+import { knownIssueFor, reloadsPage, CLIP_STATES } from '../scripts/smoke/clip-sweep.mjs';
+import { parseArgs, cells, slug, emptyRunProblem, unscannedProblem } from '../scripts/look.mjs';
 
 /* A list shaped like the entry #187 used to have (`CLIP_SWEEP_KNOWN_ISSUES` is
  * empty now that every filed issue is fixed, so the matcher is fed its own
@@ -25,8 +28,6 @@ test('knownIssueFor returns null for a finding no entry matches', () => {
   const finding = { kind: 'clip', where: 'today', pos: 'top', el: 'p.sub', text: 'x', scrollWidth: 400, clientWidth: 300 };
   assert.equal(knownIssueFor(finding, LIST_LIKE_187), null);
 });
-
-import { parseArgs, cells, slug, main } from '../scripts/look.mjs';
 
 /* ---------- parseArgs: item 2, refused before Chrome launches ---------- */
 
@@ -103,9 +104,46 @@ test('slug lowercases and turns every run of non-alphanumerics into one dash', (
   assert.equal(slug("who's here sheet"), 'who-s-here-sheet');
 });
 
+/* ---------- reloadsPage: which states wipe the page they were opened on ---------- */
+
+test('reloadsPage is true for the four states that reload their own fixture and false for the rest', () => {
+  const byName = name => CLIP_STATES.find(s => s.name === name);
+  assert.equal(reloadsPage({ name: 'x', firstRun: true }), true);
+  assert.equal(reloadsPage({ name: 'x', tryLink: 'sample' }), true);
+  assert.equal(reloadsPage({ name: 'x', four: true }), true);
+  assert.equal(reloadsPage({ name: 'x', firstRunTypedRoster: true }), true);
+  assert.equal(reloadsPage({ name: 'x', open: 'noop' }), false);
+  assert.equal(reloadsPage({ name: 'x', rotationToast: true }), false);
+  assert.equal(reloadsPage(byName('today')), false);
+});
+
+/* ---------- a run that measured nothing fails ---------- */
+
+test('a run with zero shots is a failure with a message, one shot is not', () => {
+  assert.match(emptyRunProblem(0), /no shot was taken/);
+  assert.equal(emptyRunProblem(1), null);
+});
+
+test('a shot whose probe scanned zero elements is a failure naming the file, a scan is not', () => {
+  assert.match(unscannedProblem('today-320-32-light.png', 0, '127.0.0.1:8201'), /today-320-32-light\.png.*scanned no elements/);
+  assert.equal(unscannedProblem('today-320-32-light.png', 412, '127.0.0.1:8201'), null);
+});
+
+/* ---------- a flag's value is not another flag ---------- */
+
+test('--out followed by another flag is refused rather than writing into a directory named --dark', () => {
+  refused(['--out', '--dark'], /--out/);
+  refused(['--out', 'o', '--url', '--headful'], /--url/);
+});
+
 /* ---------- importing the module launches nothing ----------
- * Load bearing for every test above: if `main()` ran on import, this file
- * would launch Chrome just by loading the module. */
-test('importing scripts/look.mjs does not launch Chrome or serve app/', () => {
-  assert.equal(typeof main, 'function');
+ * In a child process: if `main()` ran on import it would start a server and
+ * Chrome and either print or hang past the timeout. */
+test('importing scripts/look.mjs exits 0 quickly and prints nothing', () => {
+  const r = spawnSync(process.execPath, ['-e',
+    "import('./scripts/look.mjs').then(m => { if (typeof m.main !== 'function') process.exit(3); })"],
+  { cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 8000 });
+  assert.equal(r.error, undefined, String(r.error));
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout + r.stderr, '');
 });
