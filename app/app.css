@@ -2093,8 +2093,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    the bar. At a 390x745 Safari-tab viewport the page measures 70px taller
    than the viewport (welcome-lockup.mjs holds it to the 71px it was before
    the 36px lockup): the lockup's 10px of growth is paid for by trimming the
-   margins under it and above this stage, not by this floor. The old "781 ->
-   739" note is gone; the headline has grown since.
+   margins under it and above this stage, not by this floor.
    One duration for both panes. The two figures pan by different mechanisms
    (an image by object-position, the drawn bench by a measured translate) and
    the timing is the one thing they must agree on -- two numbers here is two

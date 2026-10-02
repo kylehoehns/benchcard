@@ -5,10 +5,10 @@
  * of the viewport; the wordmark is 1.35rem, which the type scale (type-scale.test.js allows
  * only --fs-* tokens) spells --fs-title, 1.375rem: within 0.5px. The numbers
  * are the issue's own.
- * The mark animates in from scale(.6), so it is measured after its animations
- * finish. A missing logo or a refused inset override FAILS, never skips. */
-import { evalIn } from './dom.mjs';
-import { land, reset, resize } from './page-state.mjs';
+ * The mark animates in from scale(.6); `land` waits out finite animations
+ * before the probe reads it. A missing logo or a refused inset override FAILS, never skips. */
+import { evalIn, WIDTH } from './dom.mjs';
+import { land, resize } from './page-state.mjs';
 import { WELCOME_LANDING } from './fixtures.mjs';
 
 const INSET = 59;
@@ -21,13 +21,11 @@ const MAIN_OVER = 71;
 const OVERFLOW = `document.documentElement.scrollHeight - innerHeight`;
 const OLD_PADDING = 16; // clamp(1rem, 4vw, 3rem) at the 390px smoke width
 
-const PROBE = `(async () => {
-  const mark = document.querySelector('.wel-mark');
+const PROBE = `(() => {
   const svg = document.querySelector('.wel-mark svg');
   const word = document.querySelector('.wel-lockup b');
   const lockup = document.querySelector('.wel-lockup');
-  if (!mark || !svg || !word) return JSON.stringify({ found: false });
-  await Promise.all(mark.getAnimations().map(a => a.finished));
+  if (!svg || !word) return JSON.stringify({ found: false });
   const r = svg.getBoundingClientRect();
   return JSON.stringify({ found: true, w: r.width, h: r.height, top: r.top,
     wordPx: parseFloat(getComputedStyle(word).fontSize),
@@ -54,19 +52,18 @@ export async function welcomeLockupPass(c, origin) {
       // footer lands under the address bar. (Standalone has the inset inside a
       // taller viewport, so the inset at 745 is not a real condition.)
       await c.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0 } });
-      await resize(c, 390, FIT_HEIGHT);
+      await resize(c, WIDTH, FIT_HEIGHT);
       fit = Number(await evalIn(c, OVERFLOW));
-      if (fit > MAIN_OVER) problems.push(`the welcome page is ${fit}px taller than a 390x${FIT_HEIGHT} viewport; main was ${MAIN_OVER}px, and every px more pushes the footer further under the address bar`);
+      if (fit > MAIN_OVER) problems.push(`the welcome page is ${fit}px taller than a ${WIDTH}x${FIT_HEIGHT} viewport; main was ${MAIN_OVER}px, and every px more pushes the footer further under the address bar`);
     }
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
     await c.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0 } }).catch(() => {});
-    await reset(c, origin).catch(() => {});
   }
   return {
     pass: problems.length === 0,
     detail: problems.length ? problems.join(' | ')
-      : `welcome logo ${m.w}x${m.h}, top at ${Math.round(m.top)}px under a ${INSET}px inset; wordmark ${m.wordPx}px; ${fit}px over a 390x${FIT_HEIGHT} viewport (main: ${MAIN_OVER}px)`,
+      : `welcome logo ${m.w}x${m.h}, top at ${Math.round(m.top)}px under a ${INSET}px inset; wordmark ${m.wordPx}px; ${fit}px over a ${WIDTH}x${FIT_HEIGHT} viewport (main: ${MAIN_OVER}px)`,
   };
 }

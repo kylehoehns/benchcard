@@ -29,7 +29,7 @@ const VERSION = '425';
    `activate` below deletes the old one. It lives HERE rather than in the test
    so that the edit updating it lands on the line below VERSION. Deleting it
    fails the suite too. */
-const SHELL = '5d96d619c5eb';
+const SHELL = 'f085a15f29be';
 
 const CACHE = `benchcard-v${VERSION}-${SHELL}`;
 
