@@ -600,6 +600,14 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 
   /* One unbreakable 305px token in a 288px column. */
   footer a { overflow-wrap: anywhere; }
+
+  /* The two headings that were wider than the column at 320px/32px: `minutes,`
+     in the h1 and `tournament` in an h2 each ran past it. The viewport sets
+     the size here, not the root, which is what made them too big. A 390px
+     phone at the default size is wider than this query, so its h1 and h2 are
+     unchanged. */
+  h1 { font-size: 10vw; }
+  h2 { font-size: min(1.32rem, 9vw); }
 }
 /* #231: this page is always Hardwood, whatever team color the coach saved.
    tokens.css sets --tint* for data-tint="hardwood" (light, dark and more
@@ -933,27 +941,27 @@ html:root[data-tint="hardwood"] {
         <p class="plate-hd">Team &middot; levels</p>
         <p class="lv-key" aria-hidden="true"><span>Developing</span><i class="lv-arrow"></i><span>Go-to</span></p>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 26)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Bria Hale</span></span>
+          <span class="lv-lab"><i class="dot"></i><span class="nm">Bria</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i class="fill"></i><i class="fill"></i></span>
           <span class="lv-word">Go-to</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 52)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Cole Whitaker</span></span>
+          <span class="lv-lab"><i class="dot"></i><span class="nm">Cole</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i class="fill"></i><i></i></span>
           <span class="lv-word">Reliable</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 92)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Noah Castellan</span></span>
+          <span class="lv-lab"><i class="dot"></i><span class="nm">Noah</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i></i><i></i></span>
           <span class="lv-word">Regular</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 128)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Elena Moreau</span></span>
+          <span class="lv-lab"><i class="dot"></i><span class="nm">Elena</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i></i><i></i></span>
           <span class="lv-word">Regular</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 158)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Mia Vega</span></span>
+          <span class="lv-lab"><i class="dot"></i><span class="nm">Mia</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i></i><i></i><i></i></span>
           <span class="lv-word">Learning</span>
         </div>
@@ -1224,7 +1232,7 @@ html:root[data-tint="hardwood"] {
          high-level introduction is slice 3, and a page nothing links to is a
          page nobody finds. -->
     <a href="./advanced">The full reference</a>
-    <a href="mailto:hello@benchcard.app">hello@benchcard.app</a>
+    <a href="mailto:hello@benchcard.app">hello@<wbr>benchcard.app</a>
     <!-- Hand-typed, and therefore guarded: `scripts/check-about-date.mjs` fails
          CI when this file changes and this line does not. A stale date on the
          page a coach uses to decide whether to trust a free tool is worse than

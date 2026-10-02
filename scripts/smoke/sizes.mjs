@@ -109,3 +109,9 @@ export const LARGE_TEXT = { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX };
 // read this one string, so a rename of either number can't leave them saying
 // two different things.
 export const CLIP_SWEEP_CHECK = `no cut-off text at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+
+// #283: the same sweep on the about page, at 320px/32px and the 390px/16px
+// baseline `land` starts from. Named without the numbers on purpose: the two
+// cells are `LARGE_TEXT` and the baseline, and a name with one cell's numbers
+// in it would say less than the row does.
+export const ABOUT_CLIP_CHECK = 'no cut-off text on the about page';

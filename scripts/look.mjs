@@ -41,7 +41,7 @@ import { richWith, FOUR, TODAY_LANDING } from './smoke/fixtures.mjs';
 import { land } from './smoke/page-state.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
 import {
-  CLIP_PROBE, LONG_AND_SQUEEZE, CLIP_STATES, SCROLL_TO_BOTTOM, findingsOf, knownIssueFor, openState, reloadsPage,
+  CLIP_PROBE, LONG_AND_SQUEEZE, CLIP_STATES, SCROLL_TO_BOTTOM, findingsOf, knownIssueFor, openState, reloadsPage, REDUCED_MOTION,
 } from './smoke/clip-sweep.mjs';
 import { shotProblems, postCaptureProblems, READ_PAINT, applyThemeScript } from './compare-shots.mjs';
 
@@ -75,8 +75,6 @@ const REVEAL_STATE = `JSON.stringify({
 
 /* The chart pages are out of scope (decided); `about` is the one static page. */
 const ABOUT_READY = `document.querySelector('.reveal')`;
-
-const REDUCED_MOTION = [{ name: 'prefers-reduced-motion', value: 'reduce' }];
 
 export const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
