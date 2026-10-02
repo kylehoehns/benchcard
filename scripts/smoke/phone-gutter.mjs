@@ -14,10 +14,10 @@
  * Both come from a live `getBoundingClientRect()` read in the page, never
  * from the stylesheet -- a floor set in CSS has to be proven by the box the
  * browser actually painted. */
-import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, landWiped, navigateAndWaitForCard, toGameOne } from './dom.mjs';
-import { TOUCH_WIDTHS, TOAST_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, toGameOne } from './dom.mjs';
+import { LARGE_TEXT, TOUCH_WIDTHS, TOAST_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
 import { land, resize } from './page-state.mjs';
-import { RICH, partPlayed, reloadWithRecord } from './fixtures.mjs';
+import { RICH, partPlayed, reloadWithRecord, WELCOME_READY } from './fixtures.mjs';
 
 const TOL = 1;
 
@@ -158,23 +158,16 @@ async function measureButtons(c, origin) {
 async function measureLargeText(c, origin) {
   const bad = [];
   let audited = 0;
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-  try {
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await navigateAndWaitForCard(c, origin + '/index.html');
+  await land(c, origin, { record: 'kept', ...LARGE_TEXT });
 
-    const label = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-    const cell = await measureScreens(c, LARGE_TEXT_PX, label);
-    bad.push(...cell.bad); audited += cell.audited;
+  const label = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+  const cell = await measureScreens(c, LARGE_TEXT_PX, label);
+  bad.push(...cell.bad); audited += cell.audited;
 
-    await toGameOne(c);
-    const r = JSON.parse(await evalIn(c, buttonRect('#abBench')));
-    bad.push(...checkEdges(r, 16, `#abBench@${label}`));
-    if (r) audited += 2;
-  } finally {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-  }
+  await toGameOne(c);
+  const r = JSON.parse(await evalIn(c, buttonRect('#abBench')));
+  bad.push(...checkEdges(r, 16, `#abBench@${label}`));
+  if (r) audited += 2;
   return { bad, audited };
 }
 
@@ -247,14 +240,12 @@ async function measureToastRows(c, origin) {
 // #145 item 9: the landing before first run, wiped so it always shows --
 // same `landWiped` idiom `flow-inset.mjs` uses for the same reason, at every
 // TOUCH_WIDTHS phone (all <= 600, the spec's own ceiling for this item).
-const WELCOME_READY = `!document.getElementById('view-welcome').hidden`;
 
 async function measureWelcome(c, origin) {
   const bad = [];
   let audited = 0;
   for (const w of TOUCH_WIDTHS) {
-    await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await landWiped(c, `${origin}/index.html`, WELCOME_READY);
+    await land(c, origin, { record: 'wiped', width: w, ready: WELCOME_READY });
     // `#view-welcome` itself spans the full viewport -- `.wel-in`, the child
     // `.welcome`'s own padding insets, is what actually sits at the gutter.
     const r = JSON.parse(await evalIn(c, `JSON.stringify(${edgeExpr(`document.querySelector('#view-welcome .wel-in')`)})`));

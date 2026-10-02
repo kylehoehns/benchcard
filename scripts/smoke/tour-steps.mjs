@@ -26,7 +26,7 @@
  * imports, so this file's own top level would then run while overlay.mjs's
  * `STATES` is still mid-initialization, and throw. */
 import { evalIn, step, setWidth, WIDTH, HEIGHT, TIMERS_QUIET } from './dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, LAPTOP, TOUCH_MIN } from './sizes.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, LAPTOP, TOUCH_MIN } from './sizes.mjs';
 import { STATES } from './overlay.mjs';
 import { land, reset } from './page-state.mjs';
 
@@ -222,7 +222,7 @@ export async function tourStepsPass(c, origin) {
 
     // ---------- 320px/32px text: item 6, every step ----------
     try {
-      await land(c, origin, { width: LARGE_TEXT_WIDTH, textPx: LARGE_TEXT_PX });
+      await land(c, origin, { ...LARGE_TEXT });
       for (let i = 0; i < EXPECTED.length; i++) {
         const s = TOUR_STATES[i];
         await evalIn(c, step(s.open));

@@ -1,8 +1,9 @@
-import { evalIn, step, WIDTH, HEIGHT, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, navigateAndWaitForCard, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
+import { evalIn, step, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, landWiped, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
-import { FOUR, reloadWithRecord } from './fixtures.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { FOUR, TODAY_GAME_READY } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
 import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
@@ -680,85 +681,78 @@ export async function appLargeTextPass(c, origin) {
   const problems = [];
   let allowed = 0;
   let flash = '';
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-  try {
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await navigateAndWaitForCard(c, origin + '/index.html');
+  await land(c, origin, { ...LARGE_TEXT });
 
-    for (const v of APP_LARGE_TEXT_STATES) {
-      const where = `${v.name}@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-      try {
-        /* `SETTLE`, not `sweepPass`'s flat 500ms: the sweep pays that once per
-           view and then measures 121 widths behind it, so the sleep is 0.4% of
-           its cost; here it would be half the pass. Waiting on the animations
-           themselves is both cheaper and stricter. */
-        if (v.firstRun) await firstRun(c, origin);
-        else if (v.tryLink) flash = await tryLanding(c, origin, v.tryLink);
-        else if (v.four) await reloadWithRecord(c, origin, FOUR);
-        else if (v.rotationToast) await openRotationToastState(c);
-        else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin);
-        else await evalIn(c, step(v.open));
-        const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-        const slack = APP_LARGE_TEXT_ALLOW[v.name] || 0;
-        if (o.pans) problems.push(`${where}: page pans sideways`);
-        if (o.worst && o.worst.out > slack) {
-          problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
-            + (slack ? ` (${slack}px allowed)` : ''));
-        } else if (o.worst) allowed++;
-        const up = JSON.parse(await evalIn(c, STRANDED_ABOVE));
-        if (up.worst) problems.push(`${where}: ${up.worst.el} starts at y ${up.worst.top}, above the top of a fixed overlay`);
-        const tf = JSON.parse(await evalIn(c, TOAST_FIT_PROBE));
-        if (tf.worst) {
-          problems.push(`${where}: the toast's ${tf.worst.label} is ${tf.worst.out}px outside `
-            + `[0, ${tf.vw}]x[0, ${tf.vh}] (box ${JSON.stringify(tf.worst.box)})`);
-        }
-        if (v.rotationToast) {
-          // rule 2a of /new-guard: without this, a Format edit that stopped
-          // raising a toast at all would leave `TOAST_FIT_PROBE` with nothing
-          // to measure and this state would pass having checked nothing.
-          const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo]')`));
-          if (!raised) problems.push(`${where}: no Undo toast was raised -- nothing was measured`);
-        }
-        if (v.name === 'bench mode, swap toast') {
-          // rule 2a: a failed swap would raise no toast to measure.
-          const msg = await evalIn(c, `document.querySelector('.toast .tmsg')?.textContent ?? null`);
-          if (!msg || !msg.includes(' on for ')) {
-            problems.push(`${where}: no swap toast text found (got ${JSON.stringify(msg)}) -- nothing was measured`);
-          }
-        }
-        if (DIALOG_CHECKED_STATES.has(v.name)) {
-          const dd = JSON.parse(await evalIn(c, DIALOG_OVERFLOW_PROBE));
-          // rule 2a of /new-guard: a check that measured nothing fails, rather
-          // than passing silently because the dialog it expected never opened.
-          if (!dd.dialog) problems.push(`${where}: no open dialog to check for a dialog-relative overflow`);
-          else if (dd.worst) problems.push(`${where}: ${dd.worst.el} reaches ${dd.worst.out}px past the dialog's own ${dd.dw}px-wide box`);
-        }
-        const gbMsg = GM_BODY_CHECKED_STATES.has(v.name) && await gmBodyProblem(c);
-        if (gbMsg) problems.push(`${where}: ${gbMsg}`);
-        const rsMsg = ROW_STACK_STATES.has(v.name) && await rowStackProblem(c, v.name);
-        if (rsMsg) problems.push(`${where}: ${rsMsg}`);
-        // #221: every state gets the cheap structural query (most find no
-        // switch row and cost one empty pass); the two named states also get
-        // rule 2a, below.
-        const swMsg = await switchRowProblem(c, SWITCH_ROW_STATES.has(v.name));
-        if (swMsg) problems.push(`${where}: ${swMsg}`);
-        // #199: the demo plan's stint bars, checked only on the one state
-        // that renders them (see welcome-bars.mjs).
-        const wbMsg = v.name === 'welcome screen, first run' && await welcomeBarsProblem(c);
-        if (wbMsg) problems.push(`${where}: ${wbMsg}`);
-      } catch (e) {
-        problems.push(`${where}: ${e.message.split('\n')[0]}`);
-      } finally {
-        if (v.close) await evalIn(c, step(v.close))
-          .catch(e => problems.push(`${where}: did not close — ${e.message.split('\n')[0]}`));
+  for (const v of APP_LARGE_TEXT_STATES) {
+    const where = `${v.name}@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+    try {
+      /* `SETTLE`, not `sweepPass`'s flat 500ms: the sweep pays that once per
+         view and then measures 121 widths behind it, so the sleep is 0.4% of
+         its cost; here it would be half the pass. Waiting on the animations
+         themselves is both cheaper and stricter. */
+      if (v.firstRun) await firstRun(c, origin);
+      else if (v.tryLink) flash = await tryLanding(c, origin, v.tryLink);
+      else if (v.four) await land(c, origin, {
+        record: FOUR, ...LARGE_TEXT,
+        ready: TODAY_GAME_READY, freshHistory: true,
+      });
+      else if (v.rotationToast) await openRotationToastState(c);
+      else if (v.firstRunTypedRoster) await openFirstRunTypedRosterState(c, origin);
+      else await evalIn(c, step(v.open));
+      const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+      const slack = APP_LARGE_TEXT_ALLOW[v.name] || 0;
+      if (o.pans) problems.push(`${where}: page pans sideways`);
+      if (o.worst && o.worst.out > slack) {
+        problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
+          + (slack ? ` (${slack}px allowed)` : ''));
+      } else if (o.worst) allowed++;
+      const up = JSON.parse(await evalIn(c, STRANDED_ABOVE));
+      if (up.worst) problems.push(`${where}: ${up.worst.el} starts at y ${up.worst.top}, above the top of a fixed overlay`);
+      const tf = JSON.parse(await evalIn(c, TOAST_FIT_PROBE));
+      if (tf.worst) {
+        problems.push(`${where}: the toast's ${tf.worst.label} is ${tf.worst.out}px outside `
+          + `[0, ${tf.vw}]x[0, ${tf.vh}] (box ${JSON.stringify(tf.worst.box)})`);
       }
+      if (v.rotationToast) {
+        // rule 2a of /new-guard: without this, a Format edit that stopped
+        // raising a toast at all would leave `TOAST_FIT_PROBE` with nothing
+        // to measure and this state would pass having checked nothing.
+        const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo]')`));
+        if (!raised) problems.push(`${where}: no Undo toast was raised -- nothing was measured`);
+      }
+      if (v.name === 'bench mode, swap toast') {
+        // rule 2a: a failed swap would raise no toast to measure.
+        const msg = await evalIn(c, `document.querySelector('.toast .tmsg')?.textContent ?? null`);
+        if (!msg || !msg.includes(' on for ')) {
+          problems.push(`${where}: no swap toast text found (got ${JSON.stringify(msg)}) -- nothing was measured`);
+        }
+      }
+      if (DIALOG_CHECKED_STATES.has(v.name)) {
+        const dd = JSON.parse(await evalIn(c, DIALOG_OVERFLOW_PROBE));
+        // rule 2a of /new-guard: a check that measured nothing fails, rather
+        // than passing silently because the dialog it expected never opened.
+        if (!dd.dialog) problems.push(`${where}: no open dialog to check for a dialog-relative overflow`);
+        else if (dd.worst) problems.push(`${where}: ${dd.worst.el} reaches ${dd.worst.out}px past the dialog's own ${dd.dw}px-wide box`);
+      }
+      const gbMsg = GM_BODY_CHECKED_STATES.has(v.name) && await gmBodyProblem(c);
+      if (gbMsg) problems.push(`${where}: ${gbMsg}`);
+      const rsMsg = ROW_STACK_STATES.has(v.name) && await rowStackProblem(c, v.name);
+      if (rsMsg) problems.push(`${where}: ${rsMsg}`);
+      // #221: every state gets the cheap structural query (most find no
+      // switch row and cost one empty pass); the two named states also get
+      // rule 2a, below.
+      const swMsg = await switchRowProblem(c, SWITCH_ROW_STATES.has(v.name));
+      if (swMsg) problems.push(`${where}: ${swMsg}`);
+      // #199: the demo plan's stint bars, checked only on the one state
+      // that renders them (see welcome-bars.mjs).
+      const wbMsg = v.name === 'welcome screen, first run' && await welcomeBarsProblem(c);
+      if (wbMsg) problems.push(`${where}: ${wbMsg}`);
+    } catch (e) {
+      problems.push(`${where}: ${e.message.split('\n')[0]}`);
+    } finally {
+      if (v.close) await evalIn(c, step(v.close))
+        .catch(e => problems.push(`${where}: did not close — ${e.message.split('\n')[0]}`));
     }
-  } finally {
-    // Same rule as the pass above: never leave the emulated font size on.
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
   }
   return {
     pass: problems.length === 0,

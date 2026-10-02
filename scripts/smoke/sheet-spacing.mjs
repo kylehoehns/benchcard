@@ -1,6 +1,7 @@
-import { evalIn, HEIGHT, WIDTH } from './dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
-import { goRich, LONG_NAME } from './fixtures.mjs';
+import { evalIn } from './dom.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { LONG_NAME } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 import { evalJSON, setGame, settle, tap } from './sheet-drive.mjs';
 
 /* #73 item 21's "sheet spacing" row (docs/specs/73-sheet-polish.md's Proof
@@ -322,22 +323,13 @@ export async function sheetSpacingPass(c, origin) {
     await tap(c, `document.getElementById('sheetIntervalClose').click()`);
 
     /* ---- 320px, a 32px root: items 5 and 8, the two the spec ties to it ---- */
-    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-    try {
-      await c.send('Emulation.setDeviceMetricsOverride',
-        { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-      await goRich(c, origin);
-      await seed(c);
+    await land(c, origin, { ...LARGE_TEXT });
+    await seed(c);
 
-      await checkFormatColumns(c, ck, '320px/32px', true);
-      await checkAddRuleColumns(c, ck, '320px/32px', true);
-      await checkAddRuleHeader(c, ck, '320px/32px', false);
-      await checkLineupGap(c, ck, '320px/32px');
-    } finally {
-      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-      await c.send('Emulation.setDeviceMetricsOverride',
-        { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    }
+    await checkFormatColumns(c, ck, '320px/32px', true);
+    await checkAddRuleColumns(c, ck, '320px/32px', true);
+    await checkAddRuleHeader(c, ck, '320px/32px', false);
+    await checkLineupGap(c, ck, '320px/32px');
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }

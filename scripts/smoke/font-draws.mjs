@@ -31,9 +31,8 @@
  *     through #abBench, the phone-width entry point (`#gmOpen` is hidden
  *     below 840px, `gm-open.mjs`'s own comment)
  *   - a sheet's text at 320px/32px: .who-row .prow-t again, after the same
- *     `Page.setFontSizes` + `Emulation.setDeviceMetricsOverride` +
- *     `navigateAndWaitForCard` reload `app-large-text.mjs` uses for its own
- *     large-text pass -- a font-size change needs a reload to apply, and the
+ *     `land` reload (`textPx` and `width`) that
+ *     `app-large-text.mjs` uses for its own large-text pass -- a font-size change needs a reload to apply, and the
  *     font-injection script runs again on that new document the same as
  *     every other reload's does, so this proves the font survives it rather
  *     than only ever being checked once, right after `goRich`.
@@ -44,10 +43,11 @@
  * platform fonts and clicks existing controls -- so the three smoke budgets
  * are untouched by this row, on top of never moving from the injection itself
  * (`smoke-font.mjs`'s own comment). */
-import { evalIn, step, WIDTH, HEIGHT, navigateAndWaitForCard, objectIdFor } from './dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { evalIn, step, objectIdFor } from './dom.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { SMOKE_FONT_FAMILY } from './smoke-font.mjs';
 import { goRich } from './fixtures.mjs';
+import { land } from './page-state.mjs';
 
 // A selector matching nothing hands back no objectId (`dom.mjs`'s own
 // `objectIdFor`), which carries no `DOM.requestNode` to make.
@@ -106,24 +106,15 @@ export async function fontDrawsPass(c, origin) {
     await evalIn(c, step(`$('#gmClose').click()`));
 
     // The sheet's text at 320px/32px -- same technique as appLargeTextPass.
-    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-    try {
-      await c.send('Emulation.setDeviceMetricsOverride',
-        { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-      await navigateAndWaitForCard(c, origin + '/index.html');
-      // A reload replaces the whole document, so the DOM domain's node table
-      // (populated by the DOM.getDocument above, before this reload) no
-      // longer has anything valid to hand `check` -- refetch it for the new
-      // document before asking for a node in it.
-      await c.send('DOM.getDocument');
-      await evalIn(c, step(`$('#phrasePlayers').click()`));
-      await check(`sheet text at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px`, '.who-row .prow-t');
-      await evalIn(c, step(`$('#sheetWho').close()`));
-    } finally {
-      await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-      await c.send('Emulation.setDeviceMetricsOverride',
-        { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    }
+    await land(c, origin, { record: 'kept', ...LARGE_TEXT });
+    // A reload replaces the whole document, so the DOM domain's node table
+    // (populated by the DOM.getDocument above, before this reload) no
+    // longer has anything valid to hand `check` -- refetch it for the new
+    // document before asking for a node in it.
+    await c.send('DOM.getDocument');
+    await evalIn(c, step(`$('#phrasePlayers').click()`));
+    await check(`sheet text at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px`, '.who-row .prow-t');
+    await evalIn(c, step(`$('#sheetWho').close()`));
   } finally {
     await c.send('CSS.disable');
     await c.send('DOM.disable');

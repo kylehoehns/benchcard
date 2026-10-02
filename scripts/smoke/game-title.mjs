@@ -26,8 +26,9 @@
  * different fixture. `WANT.when` stays the digits `tipoffLabel` prints for
  * 09:00 in en-US (`9:00`, no leading zero) -- a substring check, so it does
  * not care whether ICU puts an ASCII space or U+202F before "AM". */
-import { evalIn, step, TODAY_HOME, OVERFLOW_PROBE, WIDTH, HEIGHT, SETTLE } from './dom.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { evalIn, step, TODAY_HOME, OVERFLOW_PROBE, WIDTH } from './dom.mjs';
+import { land } from './page-state.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const WANT = { title: 'Hawks', when: '9:00', status: 'Planned' };
 
@@ -121,25 +122,11 @@ export async function gameTitlePass(c, origin) {
    * cannot be re-applied without a reload -- see app-large-text.mjs's own
    * comment -- so this reloads onto the games view RICH already leaves
    * active, rather than clicking a game a second time. */
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-  try {
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
-    const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-    const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-    if (o.pans) problems.push(`${where}: the games view pans sideways`);
-    if (o.worst) problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
-  } finally {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  }
+  await land(c, origin, { record: 'kept', ...LARGE_TEXT });
+  const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+  const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+  if (o.pans) problems.push(`${where}: the games view pans sideways`);
+  if (o.worst) problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
   await evalIn(c, step(TODAY_HOME));
 
   return {

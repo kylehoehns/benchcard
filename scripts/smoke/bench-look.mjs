@@ -19,9 +19,10 @@
  * argument), not an emulated `prefers-color-scheme` -- the same mechanism
  * `finish-game.mjs`'s item 5 already uses for the same reason: RICH boots
  * onto the record it was given, `prefers-color-scheme` never enters into it. */
-import { evalIn, step, setWidth, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, navigateAndWaitForCard, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_SR_ONLY_RECT } from './dom.mjs';
-import { goRich, RICH, seeded } from './fixtures.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { evalIn, step, setWidth, WIDTH, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_SR_ONLY_RECT } from './dom.mjs';
+import { goRich, RICH } from './fixtures.mjs';
+import { land } from './page-state.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 // Same shape as CSS_VAR_COLOR_PROBE (dom.mjs) but for `color`, not
 // `background-color` -- item 6 asks about TEXT color inside #gmNext, and
@@ -427,17 +428,11 @@ async function runTheme(c, origin, theme, problems, notes) {
  * on this machine's own fonts too, so both runs take the same branch. */
 const LONG_FLOOR_NAME = 'Bartholomew-Featherstonehaugh Novak';
 
-async function goRichWithLongName(c, origin) {
+function richWithLongName() {
   const record = JSON.parse(JSON.stringify(RICH));
   const p7 = record.teams[0].players.find(pl => pl.id === 'p7');
   p7.name = LONG_FLOOR_NAME;
-  await seeded(c, `(() => {
-    localStorage.removeItem('benchcard.v3');
-    localStorage.removeItem('benchcard.v7.bak');
-    localStorage.setItem('benchcard.v7', ${JSON.stringify(JSON.stringify(record))});
-  })()`, async () => {
-    await navigateAndWaitForCard(c, origin + '/index.html');
-  });
+  return record;
 }
 
 /* Measures the longest SINGLE WORD of a name against the box it is actually
@@ -521,11 +516,8 @@ const NAME_WORD_PROBE = `(() => {
 })()`;
 
 async function runLargeText(c, origin, problems, notes) {
-  await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
   try {
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await goRichWithLongName(c, origin);
+    await land(c, origin, { record: richWithLongName(), ...LARGE_TEXT });
     await evalIn(c, step(OPEN_BENCH));
 
     const r = JSON.parse(await evalIn(c, NAME_WORD_PROBE));
@@ -581,9 +573,6 @@ async function runLargeText(c, origin, problems, notes) {
       + `longest word (whichever is smaller), stays on screen, #gmClose does not overlap the title, `
       + `and the page does not pan sideways`);
   } finally {
-    // Same rule the other large-text passes follow: never leave the emulated
-    // font size on for whatever runs after this one.
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
     await evalIn(c, step(`document.getElementById('gmClose')?.click()`)).catch(() => {});
   }
 }

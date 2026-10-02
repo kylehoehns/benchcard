@@ -2,9 +2,10 @@
    is the Node side of the check, not the browser page, so it needs the same
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
-import { evalIn, OVERFLOW_PROBE, TODAY_HOME, WIDTH, HEIGHT, toGameOne } from './dom.mjs';
-import { goRich, LONG_NAME, PLAYERS } from './fixtures.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { evalIn, OVERFLOW_PROBE, TODAY_HOME, toGameOne } from './dom.mjs';
+import { LONG_NAME, PLAYERS } from './fixtures.mjs';
+import { land } from './page-state.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, setGame, settle, tap, waitClosed } from './sheet-drive.mjs';
 
 /* #146's own guard (docs/specs/146-roster-in.md's Proof section): the paste
@@ -327,32 +328,23 @@ async function longNameSuffixOk(c, ck, origin) {
 
   // 320/32: `Page.setFontSizes` on a laid-out document reports an unreflowed
   // width (`app-large-text.mjs`'s own comment), so this reloads once through
-  // `goRich` to let the new size and width take effect together, then
+  // `land` to let the new size and width take effect together, then
   // reapplies `LONG_MUTATE` -- a reload wipes it the same way it wipes
   // `suffixFixtureOk`'s own mutation, which is why that check restores by
   // hand and this one simply re-mutates after the reload it needs anyway. */
-  try {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await goRich(c, origin);
-    await evalIn(c, setGame(LONG_MUTATE));
-    await settle(c);
-    await longNameSuffixState(c, ck, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
-  } finally {
-    // Never leave the emulated font size or width on for whatever runs next
-    // in this pass or the ones after it (`appLargeTextPass`'s own rule).
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    // `goRich` reloads onto the fixture's own game screen, not Today (the
-    // same reason `pasteSheetOk`'s first line below always clicks
-    // `TODAY_HOME`) -- landing on Today here keeps this check leaving the
-    // browser the way `suffixFixtureOk` above already does, since
-    // `addTeamFlowOk` right after this one reads `.today-game` counts
-    // assuming it starts there.
-    await goRich(c, origin);
-    await tap(c, TODAY_HOME);
-  }
+  await land(c, origin, { ...LARGE_TEXT });
+  await evalIn(c, setGame(LONG_MUTATE));
+  await settle(c);
+  await longNameSuffixState(c, ck, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+  // Back to the baseline size and width for the rest of this pass: the checks
+  // after this one measure there. `land` reloads onto the fixture's own game
+  // screen, not Today (the same reason `pasteSheetOk`'s first line below
+  // always clicks `TODAY_HOME`) -- landing on Today here keeps this check
+  // leaving the browser the way `suffixFixtureOk` above already does, since
+  // `addTeamFlowOk` right after this one reads `.today-game` counts assuming
+  // it starts there.
+  await land(c, origin);
+  await tap(c, TODAY_HOME);
 }
 
 /* Item 6: Add a team as a flow. Opened from the team menu's own entry

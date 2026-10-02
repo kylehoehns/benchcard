@@ -175,6 +175,12 @@ export const RICH = {
    view, see `GAMES_VIEW_READY`" rather than re-explaining any of this. */
 export const GAMES_VIEW_READY = screenReadyExpr('view-games');
 
+/* The other two `ready` expressions a `land` or `reloadWithRecord` waits on,
+   named once: Today painted its game rows, and the wiped-record welcome
+   screen showing. */
+export const TODAY_GAME_READY = `document.querySelector('.today-game')`;
+export const WELCOME_READY = `!document.getElementById('view-welcome').hidden`;
+
 /* Swap the lean fixture for the rich one and reload. Called exactly once, from
    `browserChecks`, immediately after the payload snapshot. The reload is
    required rather than tidy: `loadState` runs at boot and nothing re-reads
@@ -192,6 +198,11 @@ export const GAMES_VIEW_READY = screenReadyExpr('view-games');
    `activeGame` land straight on the Hawks game the same way RICH does.
    One reload helper, not a second near-copy differing only in which record
    it seeds. */
+/* A record is RICH with some of its `ui` fields replaced: the one home for
+   what `goRich`'s two extra arguments mean, so a check can hand the result
+   straight to `land`'s `record`. */
+export const richWith = (ui, base = RICH) => (ui ? { ...base, ui: { ...base.ui, ...ui } } : base);
+
 /* #125: a one-line wrapper over `land` (`page-state.mjs`) -- `.card` is
    `land`'s own default `ready`, so nothing here overrides it. `ambient`
    (`dom.mjs`) carries forward whatever width/text/media the caller already
@@ -203,8 +214,7 @@ export const GAMES_VIEW_READY = screenReadyExpr('view-games');
    wrappers all now call instead of each carrying its own copy; see its own
    comment for the dynamic import and the decision to keep the read. */
 export async function goRich(c, origin, ui, base = RICH) {
-  const record = ui ? { ...base, ui: { ...base.ui, ...ui } } : base;
-  await landKeepingAmbient(c, origin, { record });
+  await landKeepingAmbient(c, origin, { record: richWith(ui, base) });
 }
 
 /* Reload straight onto `SEED` (`benchcard.v3`), the way `game passes` (#26)
@@ -227,7 +237,7 @@ export async function goSeed(c, origin) {
    reloads onto Today, never straight onto a game. `ready` overrides that
    condition for a caller that reloads onto a screen which never paints a
    `.today-game` -- the welcome screen or an empty-roster fixture (#139). */
-export async function reloadWithRecord(c, origin, record, ready = `document.querySelector('.today-game')`) {
+export async function reloadWithRecord(c, origin, record, ready = TODAY_GAME_READY) {
   await landKeepingAmbient(c, origin, { record, ready, freshHistory: true });
 }
 

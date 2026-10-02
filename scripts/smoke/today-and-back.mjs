@@ -1,6 +1,7 @@
-import { evalIn, quiet, SETTLE, step, WIDTH, HEIGHT, onScreen, wait } from './dom.mjs';
-import { RICH, withSecondTeam, reloadWithRecord } from './fixtures.mjs';
-import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { evalIn, quiet, SETTLE, step, WIDTH, onScreen, wait } from './dom.mjs';
+import { RICH, withSecondTeam, reloadWithRecord, TODAY_GAME_READY } from './fixtures.mjs';
+import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { land } from './page-state.mjs';
 
 /* `history.back()`, then wait for the popstate it raises and for the screen it
    restores to go quiet (its pane slide, `PANE_MS`, and any short timer). The
@@ -192,26 +193,18 @@ export async function todayAndBackPass(c, origin) {
   await checkLabelHierarchy(`${WIDTH}px`);
 
   await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
-  try {
-    await c.send('Page.setFontSizes', { fontSizes: { standard: LARGE_TEXT_PX, fixed: LARGE_TEXT_PX } });
-    await c.send('Emulation.setDeviceMetricsOverride',
-      { width: LARGE_TEXT_WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
-    await checkLabelHierarchy(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
-    await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
-    await checkMenuAnchored(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
-    await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
-  } finally {
-    // Never leave the emulated viewport/font behind for whatever check runs
-    // next, even if a measurement above threw.
-    await c.send('Page.setFontSizes', { fontSizes: { standard: 16, fixed: 16 } });
-    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-  }
-  await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+  // A text size only takes effect after a reload, so `land` it, then land
+  // back at the baseline size and width: the rest of this row measures there.
+  await land(c, origin, { record: 'kept', ...LARGE_TEXT, ready: TODAY_GAME_READY });
+  await checkLabelHierarchy(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+  await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
+  await checkMenuAnchored(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+  await evalIn(c, step(`document.getElementById('teamMenu')?.hidePopover?.()`));
+  await land(c, origin, { record: 'kept', ready: TODAY_GAME_READY });
   await evalIn(c, step(`document.getElementById('teamBtn')?.click()`));
 
   // switching team closes the menu and repaints Today, not the menu mid-tap
-  await evalIn(c, step(`window.__menuItems()[1]?.click()`));
+  await evalIn(c, step(`[...document.querySelectorAll('.teammenu-item')][1]?.click()`));
   const afterSwitch = await evalIn(c, `document.getElementById('teamBtnLabel')?.textContent.trim() ?? null`);
   if (afterSwitch !== 'JV Ravens') problems.push(`choosing the other team left the header reading "${afterSwitch}"`);
   const menuStillOpen = await evalIn(c, `document.getElementById('teamMenu')?.matches(':popover-open') ?? false`);
