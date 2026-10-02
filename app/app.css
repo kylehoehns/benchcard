@@ -2043,7 +2043,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    The bottom padding clears the home indicator. */
 .welcome { min-height: calc(100vh - 4rem); min-height: 100dvh;
   display: flex; flex-direction: column; align-items: center;
-  padding: clamp(1rem, 4vw, 3rem) clamp(.85rem, 3vw, 1.5rem)
+  padding: calc(clamp(1rem, 4vw, 3rem) + env(safe-area-inset-top)) clamp(.85rem, 3vw, 1.5rem)
            calc(1.25rem + env(safe-area-inset-bottom)); }
 /* At 320-390px the clamp above landed on its own floor, 13.6px -- narrower
    than the 16px gutter every other screen keeps (phone-gutter.mjs). Side
@@ -2063,10 +2063,12 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-landing { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 /* The wordmark is a lockup, not the heading: the h1 carries the promise and
    the name sits above it, which is where a name goes. */
-.wel-lockup { display: flex; align-items: center; justify-content: center; gap: .45rem;
-  margin: 0 0 .62rem; font-size: var(--fs-headline); font-weight: 700; letter-spacing: -.022em; }
+.wel-lockup { display: flex; align-items: center; justify-content: center; gap: .55rem;
+  margin: 0 0 .62rem; font-size: var(--fs-title); font-weight: 700; letter-spacing: -.022em; }
 .wel-mark { display: inline-grid; place-items: center;
   animation: welMark 700ms var(--ease) both; }
+/* 36px here; the header logos on the other pages stay 26px. */
+.wel-mark svg { width: 36px; height: 36px; }
 @keyframes welMark { from { opacity: 0; transform: scale(.6) rotate(-25deg); } to { opacity: 1; transform: none; } }
 .wel-h { font-size: var(--fs-large); letter-spacing: -.04em; font-weight: 700;
   line-height: 1.1; text-wrap: balance; margin: 0;

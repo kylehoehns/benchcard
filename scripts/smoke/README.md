@@ -108,6 +108,7 @@ not counted: only the `.js` files `app/` serves are.
 | `roster in` | `scripts/smoke/roster-in.mjs` | RICH |
 | `flow inset: 16px on every side, 390px and 320px, both flows` | `scripts/smoke/flow-inset.mjs` | RICH |
 | `welcome On screen: "just on" tag is styled` | `scripts/smoke/welcome-tag.mjs` | RICH |
+| `welcome lockup: clears the top inset, 36px logo` | `scripts/smoke/welcome-lockup.mjs` | RICH |
 | `tab order stays clear of the floating bar and action bar` | `scripts/smoke/focus-clear.mjs` | RICH |
 | `the floating bar and action bar` | `scripts/smoke/floating-controls.mjs` | RICH |
 | `resume bar on Today` | `scripts/smoke/resume-bar.mjs` | RICH |
