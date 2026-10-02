@@ -1672,11 +1672,12 @@ h2.side-hd { margin-top: 0; }
    is 192px, the row still fits. min-width: 0 stays: once the message is
    alone on its line it may shrink under the basis for a long word. */
 .toast .tmsg { flex: 1 1 12rem; min-width: 0; font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.005em; }
-/* Right-align the action row when it has wrapped. Harmless unwrapped: `.tmsg`
-   grows into the free space first, so there is none left for an auto margin.
-   The `+` case is the toast with no button, where the dismiss is the only
-   thing on the second row and would otherwise sit under the first word. */
-.toast .tundo, .toast .tmsg + .tx { margin-left: auto; }
+/* The button and the dismiss are one flex item, so they wrap together and
+   right-align. Harmless unwrapped: `.tmsg` grows into the free space first,
+   so there is none left for an auto margin. A toast with no button holds
+   just the dismiss, which lands at the same edge. */
+.toast .tacts { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center;
+  gap: .6rem; max-width: 100%; flex: none; margin-left: auto; }
 .toast .tundo {
   flex: none; min-height: 48px; padding: 0 .95rem; border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--bg) 24%, transparent); color: var(--bg);

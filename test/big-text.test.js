@@ -231,17 +231,11 @@ test('the toast wraps at every text size, not only inside the big-text block', (
     'the toast wrap moved into the 19em block, where a desktop reader at 200% text never sees it');
 });
 
-test('the wrapped action row lands at the right edge, not under the first word', () => {
-  /* Both selectors matter and each covers a different toast. `.tundo` is the
-     undoable ones; `.tmsg + .tx` is `flash()`, which has no button, so the
-     dismiss is alone on the second row. Unwrapped this costs nothing --
-     `.tmsg` grows into the free space first, so an auto margin gets none --
-     and the 390px measurements are identical either way. */
-  assert.match(bare, /\.toast\s+\.tundo[^{]*{[^}]*margin-left:\s*auto/,
-    'the undo button no longer right-aligns, so a wrapped action row starts under the message');
-  assert.match(bare, /\.toast\s+\.tmsg\s*\+\s*\.tx[^{]*{[^}]*margin-left:\s*auto/,
-    'a toast with no action button strands its dismiss under the first word when the row wraps');
-});
+/* The wrapped action row's right-edge alignment is proven by measuring it, not
+   by reading the stylesheet: `phone-gutter.mjs`'s toast rows (#271) raise both
+   toasts at 320-390px, at 16px and 32px text, and fail if the dismiss leaves the
+   button's row or the toast's right edge. A CSS-source assertion here passed
+   while the dismiss was stranded alone on the second row, so it is gone. */
 
 test('the timeline gives its names back at big text, without losing the word', () => {
   /* NOT a pan -- the page stays 320px wide the whole time -- so every probe in
