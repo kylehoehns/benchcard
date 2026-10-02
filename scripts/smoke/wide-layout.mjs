@@ -1,6 +1,6 @@
 import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT } from './dom.mjs';
 import { resize, land } from './page-state.mjs';
-import { WELCOME_READY } from './fixtures.mjs';
+import { WELCOME_LANDING } from './fixtures.mjs';
 import { VIEWS } from './sweep.mjs';
 import { RAIL, WIDE_MIN, SHEET_MIN, LAPTOP } from './sizes.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
@@ -122,7 +122,7 @@ export async function wideLayoutPass(c, origin) {
      * `land` after it puts the fixture back that the rest of this pass
      * assumes is loaded. */
     await atWidth(c, LAPTOP);
-    await land(c, origin, { record: 'wiped', ready: WELCOME_READY, width: LAPTOP });
+    await land(c, origin, { ...WELCOME_LANDING, width: LAPTOP });
     await evalIn(c, step(`(async () => {
       const s = await import('/state.js');
       const real = Storage.prototype.setItem;

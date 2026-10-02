@@ -39,7 +39,7 @@ import { serve } from './serve.mjs';
 import { parseTokensCss, colorOf } from './tokens-css.mjs';
 import { evalIn, step, SETTLE, WIDTH, HEIGHT } from './smoke/dom.mjs';
 import { LONG_NAME, RICH, richWith, TODAY_GAME_READY, partPlayed as partPlayedFixture } from './smoke/fixtures.mjs';
-import { land, withScripts } from './smoke/page-state.mjs';
+import { land, withScripts, LOCALSTORAGE_WIPE } from './smoke/page-state.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, SHEET_MIN, WIDE_MIN, LAPTOP, TOUCH_WIDTHS } from './smoke/sizes.mjs';
@@ -515,7 +515,7 @@ export function twinProblems(records) {
  * same rule item 3 states for every other shot, applied to the one state
  * `richWith`'s override cannot reach. */
 async function goFirstRun(c, origin, theme, opts = {}) {
-  await withScripts(c, [`try { localStorage.clear(); } catch {}`], async () => {
+  await withScripts(c, [LOCALSTORAGE_WIPE], async () => {
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
     await loaded;
@@ -629,9 +629,9 @@ async function capture(c, origin, want, outDir) {
        way `FOUR` (fixtures.mjs) sets it for its own Today-first checks. */
     const themed = { ...RICH, view: 'today', ui: { ...RICH.ui, theme: want.theme } };
     await land(c, origin, { record: partPlayedFixture(themed), ready: TODAY_GAME_READY, freshHistory: true,
-      width: want.width, textPx: want.rootPx });
+      width: want.width, mobile: want.mobile !== false, textPx: want.rootPx });
   } else {
-    await land(c, origin, { record: richWith({ theme: want.theme }), width: want.width, textPx: want.rootPx });
+    await land(c, origin, { record: richWith({ theme: want.theme }), width: want.width, mobile: want.mobile !== false, textPx: want.rootPx });
     if (want.longNames) await evalIn(c, setLongName);
     /* `RICH.view` is `'games'`, not `'today'` -- a RICH landing is the session on
        a game, where `.today-game` was never populated (`teams-view.js` only

@@ -3,7 +3,7 @@ import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { STEP_COUNT as TOUR_STEP_COUNT } from './tour-steps.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
-import { FOUR, TODAY_LANDING, WELCOME_READY } from './fixtures.mjs';
+import { FOUR, TODAY_LANDING, WELCOME_LANDING } from './fixtures.mjs';
 import { land } from './page-state.mjs';
 import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
@@ -559,7 +559,7 @@ export async function firstRun(c, origin, want = {}) {
      again straight afterwards, so the wipe cannot empty the record under
      `staticPass` too. `want` carries the width and text size the caller is
      measuring at. */
-  await land(c, origin, { record: 'wiped', ready: WELCOME_READY, ...want });
+  await land(c, origin, { ...WELCOME_LANDING, ...want });
   const r = JSON.parse(await evalIn(c, `JSON.stringify({
     host: location.host,
     shown: document.querySelector('#view-welcome')?.hidden === false,
@@ -585,7 +585,7 @@ export async function firstRun(c, origin, want = {}) {
    as a property, so a plain `Event('input')` reaches it the same as a real
    keystroke would. */
 export async function openFirstRunTypedRosterState(c, origin, want = {}) {
-  await land(c, origin, { record: 'wiped', ready: WELCOME_READY, ...want });
+  await land(c, origin, { ...WELCOME_LANDING, ...want });
   await evalIn(c, step(`document.querySelector('#welStart').click()`));
   await evalIn(c, step(`const ta = document.getElementById('frRoster');
     ta.value = ${JSON.stringify(PLAYER_LIST_12)};

@@ -14,6 +14,7 @@ export const BASELINE = Object.freeze({
   query: '',             // e.g. '?try=9'
   record: RICH,          // a record object, 'wiped', or 'kept'
   width: WIDTH, height: HEIGHT,
+  mobile: true,          // Emulation.setDeviceMetricsOverride's `mobile`; false for a laptop-width shot
   textPx: 16,            // root text size, via Page.setFontSizes (standard and fixed)
   media: [],             // Emulation.setEmulatedMedia features
   ready: `document.querySelector('.card')`, // JS expression, polled until truthy
@@ -23,7 +24,7 @@ export const BASELINE = Object.freeze({
 
 /* What a `'wiped'` landing runs on the next document: the one place the wipe
    is written. */
-const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
+export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
 
 const FIELDS = new Set(Object.keys(BASELINE));
 
@@ -111,7 +112,7 @@ export async function land(c, origin, want = {}) {
   const { state, script } = planLanding(want);
 
   await c.send('Emulation.setDeviceMetricsOverride',
-    { width: state.width, height: state.height, deviceScaleFactor: 2, mobile: true });
+    { width: state.width, height: state.height, deviceScaleFactor: 2, mobile: state.mobile });
   await c.send('Page.setFontSizes', { fontSizes: { standard: state.textPx, fixed: state.textPx } });
   await c.send('Emulation.setEmulatedMedia', { features: state.media });
 
@@ -161,9 +162,13 @@ export async function setMedia(c, features = []) {
    that differs is the one named. */
 export const FINGERPRINT_FIELDS = ['url', 'screen', 'width', 'height', 'rootPx', 'dark', 'forced', 'recordLength', 'recordHash'];
 
-/* The server answers `/` and `/index.html` with the same page, and which one
-   the address bar reads after a land is not stable, so the two are one
-   address here. */
+/* `/` and `/index.html` are one address here. `land` navigates to
+   `/index.html`; the dev server 307s that to `/` (`scripts/serve.mjs`, as
+   Cloudflare does), so the address bar reads `/`. Once the service worker
+   controls the page, though, it answers a navigation to `./index.html` from
+   its precache (`app/sw.js` -- the cache key is the file, and no redirect
+   happens), so the bar keeps `/index.html`. Which one a row sees depends on
+   whether the worker has taken over yet, which is the tour row's case. */
 const comparable = (field, value) =>
   field === 'url' && typeof value === 'string' ? value.replace(/^\/index\.html(?=$|\?)/, '/') : value;
 

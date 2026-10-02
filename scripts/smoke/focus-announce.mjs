@@ -208,7 +208,7 @@ export async function focusAnnouncePass(c, origin) {
     if (keptDoorOk !== true) problems.push(`item 3: removing the OPEN Ravens game (Hawks still in the day) left focus at ${JSON.stringify(await focusInfo(c))}, want the Hawks pass -- its door still exists`);
     else notes.push('item 3: removing the open game lands focus back on the remaining game’s own door, surviving the Undo toast’s own full render right behind it');
     // Undo the removal so the rest of this check (and the row after it) keeps
-    // both of RICH's games; the `land` in `finally` would also cover this, but
+    // both of RICH's games; the next row's reset would also cover this, but
     // there is no reason to rely on that for the rows still ahead in this run.
     await tap(c, `document.querySelector('.toast[data-undo] .tundo')?.click()`);
 

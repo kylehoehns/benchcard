@@ -1,5 +1,5 @@
 import { land, resize } from './page-state.mjs';
-import { WELCOME_READY } from './fixtures.mjs';
+import { WELCOME_LANDING } from './fixtures.mjs';
 import { WIDTH, assertChipMatchesBackBtn, assertBackIsChevron } from './dom.mjs';
 import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
@@ -527,7 +527,7 @@ export async function firstRunPass(c, origin) {
      that has nothing to do with the app. Pinned to light by both landings
      below; the next row's `reset` clears it. */
   try {
-    await land(c, origin, { record: 'wiped', ready: WELCOME_READY, media: LIGHT });
+    await land(c, origin, { ...WELCOME_LANDING, media: LIGHT });
     await landingReads(c, ck);
     await benchDemoMatchesRealBenchMode(c, ck);
     await stepOneCounts(c, ck);
@@ -546,7 +546,7 @@ export async function firstRunPass(c, origin) {
        is already on screen would repair the very thing being measured and
        report clean. 390 goes back before the tour, which is the width the
        rest of this pass and everything after it measures at. */
-    await land(c, origin, { record: 'wiped', ready: WELCOME_READY, media: LIGHT, width: LARGE_TEXT_WIDTH });
+    await land(c, origin, { ...WELCOME_LANDING, media: LIGHT, width: LARGE_TEXT_WIDTH });
     const cardCount = await stepThreeShowsACard(c, ck);
     await resize(c, WIDTH);
     if (cardCount !== null) {

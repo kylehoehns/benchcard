@@ -15,7 +15,7 @@ import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_
 import { LARGE_TEXT, LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs';
 import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
-import { RICH, partPlayed, TODAY_LANDING, WELCOME_READY } from './fixtures.mjs';
+import { RICH, partPlayed, TODAY_LANDING, WELCOME_LANDING } from './fixtures.mjs';
 import { land, resize, setMedia } from './page-state.mjs';
 
 // Decision 14's exact fixture and item 1's exact string -- the SECOND
@@ -86,7 +86,7 @@ export async function resumeBarPass(c, origin) {
   const plainHidden = await evalIn(c, `document.getElementById('resumeBar')?.hidden`);
   if (plainHidden !== true) problems.push('#resumeBar is showing on Today with no part-played game');
 
-  await land(c, origin, { record: 'wiped', ready: WELCOME_READY });
+  await land(c, origin, { ...WELCOME_LANDING });
   const fr = JSON.parse(await evalIn(c, `(() => JSON.stringify({
     barHidden: document.getElementById('resumeBar')?.hidden,
     welcomeShown: !document.getElementById('view-welcome')?.hidden,

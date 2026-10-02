@@ -46,7 +46,12 @@ test('planLanding: a v3 record writes v3 and removes both v7 keys', () => {
 
 test("planLanding: 'wiped' clears storage", () => {
   const { script } = planLanding({ record: 'wiped' });
-  assert.equal(script, 'try { localStorage.clear(); } catch {}');
+  assert.equal(script, pageState.LOCALSTORAGE_WIPE);
+  // behavior: run on a store holding a record, the script empties it
+  const store = { benchcard_v7: 'x' };
+  const localStorage = { clear: () => { for (const k of Object.keys(store)) delete store[k]; } };
+  new Function('localStorage', script)(localStorage);
+  assert.deepEqual(store, {});
 });
 
 test("planLanding: 'kept' has no seeding script", () => {
@@ -60,6 +65,26 @@ test('planLanding: an unknown field throws', () => {
 
 test('planLanding: a record with another version throws', () => {
   assert.throws(() => planLanding({ record: { version: 99 } }));
+});
+
+/* ---------- land: the emulated device kind ---------- */
+
+async function metricsLandedFor(want) {
+  const sent = [];
+  const c = {
+    on: (_ev, cb) => setTimeout(cb, 0),
+    send: async (method, params) => {
+      sent.push([method, params]);
+      return method === 'Runtime.evaluate' ? { result: { value: true } } : {};
+    },
+  };
+  await pageState.land(c, 'http://x', want);
+  return sent.filter(([m]) => m === 'Emulation.setDeviceMetricsOverride').map(([, p]) => p);
+}
+
+test('land: mobile emulation is the default, and mobile: false reaches the metrics override', async () => {
+  assert.deepEqual((await metricsLandedFor({ width: 390 })).map(p => p.mobile), [true]);
+  assert.deepEqual((await metricsLandedFor({ width: 1280, mobile: false })).map(p => p.mobile), [false]);
 });
 
 /* ---------- the start fingerprint's verdict (pure half) ---------- */
@@ -173,20 +198,23 @@ function smokeFiles() {
 const ZERO = { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 0 };
 
 /* Comments are dropped before counting: a doc comment may name the method it
- * is explaining without being a call of it. */
-const stripComments = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+ * is explaining without being a call of it. Only what starts a line is
+ * dropped -- a `//` line, or a `/*` at the start of a line through its first
+ * closing `*` + `/`. A `/*` met mid-line (inside a string, a regex, a template)
+ * is never taken for a comment opener, so it cannot swallow the code after it:
+ * a trailing comment that names a call is counted, and the guard fails
+ * loudly instead of going quiet. */
+const stripComments = src => src.replace(/^[ \t]*\/\*[\s\S]*?\*\//gm, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-test('only page-state.mjs sends these CDP methods or reads fonts.ready', () => {
+/* The walk itself: `read(file)` supplies each file's text, so a test can hand
+ * it a tree with a call planted in a real file. */
+function walk(read) {
   const files = smokeFiles();
-  assert.ok(files.length >= 30,
-    `expected at least 30 files across scripts/smoke.mjs and scripts/smoke/, found ${files.length} -- ` +
-    'a guard that measured nothing must fail, not pass');
-
   let measured = 0;
   const bad = [];
   for (const file of files) {
     const rel = relative(ROOT, file).split(sep).join('/');
-    const counts = countsFor(stripComments(readFileSync(file, 'utf8')));
+    const counts = countsFor(stripComments(read(file)));
     measured += Object.values(counts).reduce((a, b) => a + b, 0);
 
     if (rel === 'scripts/smoke/page-state.mjs') {
@@ -199,17 +227,30 @@ test('only page-state.mjs sends these CDP methods or reads fonts.ready', () => {
       if (counts[key] !== ZERO[key]) bad.push(`${rel}: ${key} is ${counts[key]}, want 0`);
     }
   }
+  return { files, measured, bad };
+}
 
+test('only page-state.mjs sends these CDP methods or reads fonts.ready', () => {
+  const { files, measured, bad } = walk(f => readFileSync(f, 'utf8'));
+  assert.ok(files.length >= 30,
+    `expected at least 30 files across scripts/smoke.mjs and scripts/smoke/, found ${files.length} -- ` +
+    'a guard that measured nothing must fail, not pass');
   assert.ok(measured > 0, 'the guard scanned every file and matched nothing it tracks -- a check that measured nothing must fail, not pass');
   assert.deepEqual(bad, []);
 });
 
-test('the guard above can fail: a planted raw call outside the allow-list is caught', () => {
-  const counts = countsFor(`await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });`);
-  assert.notEqual(counts.fontsizes, ZERO.fontsizes,
-    'planting a fontsizes call in a file that must hold 0 must change the measured count, or the guard above could never fail');
-  const inComment = stripComments(`/* a doc comment naming send('Page.setFontSizes' */\n// document.fonts.ready\n`);
-  assert.deepEqual(countsFor(inComment), ZERO, 'a call named only in a comment is not a call');
+test('the guard above can fail: a call planted in a real check file is caught by the walk', () => {
+  const planted = join(SMOKE_DIR, 'gm-open.mjs');
+  const { bad } = walk(f => readFileSync(f, 'utf8') + (f === planted ? `\nawait c.send('Page.setFontSizes', {});\n` : ''));
+  assert.deepEqual(bad, ['scripts/smoke/gm-open.mjs: fontsizes is 1, want 0']);
+});
+
+test('stripComments drops comment mentions but never swallows code after a /* inside a string', () => {
+  const mention = stripComments(`/* a doc comment naming send('Page.setFontSizes' */\n// document.fonts.ready\n`);
+  assert.deepEqual(countsFor(mention), ZERO, 'a call named only in a comment is not a call');
+  const afterString = `const g = '/*';\nawait c.send('Page.setFontSizes', {});\nconst h = '*/';\n`;
+  assert.equal(countsFor(stripComments(afterString)).fontsizes, 1,
+    'a /* inside a string must not hide the call between it and the next */');
 });
 
 test('the old navigation helpers are gone from fixtures.mjs and dom.mjs', async () => {

@@ -17,7 +17,7 @@
 import { evalIn, step, TODAY_HOME, HEIGHT, toGameOne } from './dom.mjs';
 import { LARGE_TEXT, TOUCH_WIDTHS, TOAST_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
 import { land, resize } from './page-state.mjs';
-import { RICH, partPlayed, WELCOME_READY, TODAY_LANDING } from './fixtures.mjs';
+import { RICH, partPlayed, WELCOME_LANDING, TODAY_LANDING } from './fixtures.mjs';
 
 const TOL = 1;
 
@@ -244,7 +244,7 @@ async function measureWelcome(c, origin) {
   const bad = [];
   let audited = 0;
   for (const w of TOUCH_WIDTHS) {
-    await land(c, origin, { record: 'wiped', width: w, ready: WELCOME_READY });
+    await land(c, origin, { ...WELCOME_LANDING, width: w });
     // `#view-welcome` itself spans the full viewport -- `.wel-in`, the child
     // `.welcome`'s own padding insets, is what actually sits at the gutter.
     const r = JSON.parse(await evalIn(c, `JSON.stringify(${edgeExpr(`document.querySelector('#view-welcome .wel-in')`)})`));

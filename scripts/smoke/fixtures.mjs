@@ -148,6 +148,8 @@ export const TODAY_GAME_READY = `document.querySelector('.today-game')`;
 /* What a Today landing on a fresh history asks of `land`, spread into the want. */
 export const TODAY_LANDING = { ready: TODAY_GAME_READY, freshHistory: true };
 export const WELCOME_READY = `!document.getElementById('view-welcome').hidden`;
+/* What a first-run (wiped) landing on the welcome screen asks of `land`. */
+export const WELCOME_LANDING = { record: 'wiped', ready: WELCOME_READY };
 
 /* A record is RICH with some of its `ui` fields replaced, so a check can hand the
    result straight to `land`'s `record` (#29's "first open" check needs a
