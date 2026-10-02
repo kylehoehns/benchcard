@@ -119,12 +119,12 @@ const VIEW_STAMPS = ['welcome', 'games', 'team', 'season', 'settings'];
    `storage` replaces that Map-backed stub for the one test that needs a
    `getItem` which THROWS rather than answering; the doc stub and the run are
    the same ones every other caller gets, which is the point of asking here. */
-const runPrePaint = (store, storage) => {
+const runPrePaint = (store, storage, hash = '') => {
   const stamps = {};
   const doc = { documentElement: { setAttribute: (k, v) => { stamps[k] = v; } } };
   // eslint-disable-next-line no-new-func
-  new Function('localStorage', 'document', prePaintScript())(
-    storage || { getItem: k => (k in store ? store[k] : null) }, doc);
+  new Function('localStorage', 'document', 'location', prePaintScript())(
+    storage || { getItem: k => (k in store ? store[k] : null) }, doc, { hash });
   return stamps;
 };
 
@@ -420,6 +420,27 @@ for (const [name, store, want] of COLOR_CASES) {
   });
 }
 
+/* #255: a hand-off link (`#p=`) imports into a game and lands on Games, so the
+   first frame is Games whatever is stored -- on a fresh phone that would
+   otherwise be a welcome flash. The no-hash table above still agrees with
+   `loadState` exactly; these rows only add the hash. */
+for (const [name, store] of [
+  ['a fresh phone', {}],
+  ['a phone left on Settings', { [KEY]: j(rec(roster(), true, 'settings')) }],
+  ['an onboarded phone whose team has no games',
+    { [KEY]: j({ ...rec(roster(), true, 'games'), teams: [teamNoGames(roster())] }) }],
+]) {
+  test(`first paint with a hand-off link is Games: ${name}`, () => {
+    const stamps = runPrePaint(store, undefined, '#p=1abc');
+    assert.equal(stamps['data-boot'], 'games');
+    assert.equal(stamps['data-view'], 'games');
+  });
+}
+
+test('a hash that is not a hand-off link leaves a fresh phone on welcome', () => {
+  assert.equal(runPrePaint({}, undefined, '#other')['data-view'], 'welcome');
+});
+
 /* The height is the other half, and it is a NUMBER the first frame has to get
    right rather than a state. An empty strip is 9.6px of padding; the row a
    coach actually gets is that plus a chip. Both numbers are read out of the
@@ -501,13 +522,14 @@ test('a storage that refuses to answer lands where the boot lands', () => {
 test('a broken pre-paint script stamps nothing, leaving the markup default', () => {
   // the outer catch is the fallback, and it must not be the inner one: a throw
   // anywhere in the resolution has to leave <html> alone
-  let stamped = null;
   const doc = { documentElement: null };  // reading .setAttribute of null throws
   assert.doesNotThrow(() => {
+    // `location` is passed so the script gets as far as the null documentElement
+    // instead of dying early on a ReferenceError for `location.hash`
     // eslint-disable-next-line no-new-func
-    new Function('localStorage', 'document', prePaintScript())({ getItem: () => null }, doc);
+    new Function('localStorage', 'document', 'location', prePaintScript())(
+      { getItem: () => null }, doc, { hash: '' });
   }, 'the pre-paint script must never throw; it runs before everything else');
-  assert.equal(stamped, null);
   assert.ok(/\}\s*catch\s*\(e\)\s*\{\s*\}\s*\}\s*\)\(\);/.test(prePaintScript()),
     'the pre-paint script has lost its outer catch');
 });

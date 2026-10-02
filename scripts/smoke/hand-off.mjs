@@ -116,7 +116,13 @@ export async function handOffPass(c, origin) {
 
     // A fresh phone opens the link.
     const hash = hashOf(sent.url);
-    await landOnLink(c, origin, hash);
+    // Every frame from document start is recorded: welcome must never paint (#255).
+    await landOnLink(c, origin, hash, { scripts: [`window.__welcome = false;
+      const seen = () => { const h = document.documentElement, w = document.getElementById('view-welcome');
+        if (h.dataset.boot === 'welcome' || h.dataset.view === 'welcome' || (w && !w.hidden)) window.__welcome = true;
+        requestAnimationFrame(seen); };
+      requestAnimationFrame(seen)`] });
+    ck(!(await evalIn(c, 'window.__welcome')), 'the fresh phone painted the welcome screen before the game');
     const after = JSON.parse(await evalIn(c, FINGERPRINT));
     ck(JSON.stringify(after) === JSON.stringify(before),
       `the fresh phone's game differs from the sender's: ${JSON.stringify(after)} vs ${JSON.stringify(before)}`);
