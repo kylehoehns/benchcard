@@ -18,6 +18,7 @@
  * not the one the base block happens to contain. */
 import { evalIn, step, SETTLE, TIMERS_QUIET, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
 import { LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { resize, setMedia } from './page-state.mjs';
 /* The five screens and the click that reaches each one, from the one list
    that already holds them -- `sweep.mjs`'s `VIEWS`, which `app-large-text.mjs`
    imports for the same reason. A second hand-typed copy of "how do I get to
@@ -170,7 +171,7 @@ export async function floatingControlsPass(c, origin) {
      phone anyone carries" -- the width every other size sweep in the harness
      already bottoms out at. */
   for (const w of [WIDTH, LARGE_TEXT_WIDTH]) {
-    await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+    await resize(c, w, HEIGHT);
     for (const view of ['today', 'games', 'team']) {
       await evalIn(c, step(TODAY_HOME));
       if (view !== 'today') await evalIn(c, step(GO[view]));
@@ -205,7 +206,7 @@ export async function floatingControlsPass(c, origin) {
       }
     }
   }
-  await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  await resize(c, WIDTH, HEIGHT);
   notes.push(`${CHIPS.length} round chips at ${WIDTH}px and 320px`);
 
   /* ---- items 4 and 6: the action bar ---- */
@@ -284,7 +285,7 @@ export async function floatingControlsPass(c, origin) {
   /* ---- item 5: the solid fallbacks ---- */
   const SCRIMS = ['.bar::before', '.actionbar::before'];
   for (const [feature, value] of SOLID_FALLBACK_MEDIA) {
-    await c.send('Emulation.setEmulatedMedia', { features: [{ name: feature, value }] });
+    await setMedia(c, [{ name: feature, value }]);
     await evalIn(c, `${SETTLE}`);
     const solid = JSON.parse(await evalIn(c, `(() => {
       const read = (sel) => {
@@ -310,7 +311,7 @@ export async function floatingControlsPass(c, origin) {
   notes.push('solid under reduced transparency and more contrast');
 
   /* ---- item 10: reduced motion ---- */
-  await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await setMedia(c, [{ name: 'prefers-reduced-motion', value: 'reduce' }]);
   await evalIn(c, `${SETTLE}`);
   const rm = JSON.parse(await evalIn(c, `(async () => {
     const bar = document.querySelector('.bar'), bt = document.getElementById('barTitle');
@@ -336,7 +337,6 @@ export async function floatingControlsPass(c, origin) {
   }
   notes.push('nothing travels under reduced motion');
 
-  await c.send('Emulation.setEmulatedMedia', { features: [] });
   await evalIn(c, step(TODAY_HOME));
 
   return {

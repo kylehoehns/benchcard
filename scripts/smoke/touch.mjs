@@ -1,4 +1,5 @@
-import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mjs';
+import { evalIn, TODAY_HOME, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE, HEIGHT } from './dom.mjs';
+import { resize } from './page-state.mjs';
 import { pickSharePane } from './sheet-drive.mjs';
 import { TOUCH_CHECK, TOUCH_FLOOR, TOUCH_WIDTHS } from './sizes.mjs';
 import { widthSweep } from './width-sweep.mjs';
@@ -148,8 +149,7 @@ async function fourTodayTouch(c, origin, source) {
   let audited = 0, seen = 0;
   await reloadWithRecord(c, origin, FOUR);
   for (const w of TOUCH_WIDTHS) {
-    await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: 844, deviceScaleFactor: 2, mobile: true });
-    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    await resize(c, w, HEIGHT);
     const chk = (await evalIn(c, source)).checks.find(k => k.name === TOUCH_CHECK);
     const where = `today, FOUR@${w}px`;
     if (!chk) { bad.push(`${where}: the touch check is gone from smoke-checks.js`); continue; }

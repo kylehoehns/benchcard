@@ -14,7 +14,7 @@
  * Both come from a live `getBoundingClientRect()` read in the page, never
  * from the stylesheet -- a floor set in CSS has to be proven by the box the
  * browser actually painted. */
-import { evalIn, step, TODAY_HOME, WIDTH, HEIGHT, toGameOne } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, HEIGHT, toGameOne } from './dom.mjs';
 import { LARGE_TEXT, TOUCH_WIDTHS, TOAST_WIDTHS, LARGE_TEXT_WIDTH, LARGE_TEXT_PX } from './sizes.mjs';
 import { land, resize } from './page-state.mjs';
 import { RICH, partPlayed, reloadWithRecord, WELCOME_READY } from './fixtures.mjs';
@@ -125,8 +125,7 @@ async function sweepButton(c, sel) {
   const bad = [];
   let audited = 0;
   for (const w of TOUCH_WIDTHS) {
-    await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-    await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+    await resize(c, w, HEIGHT);
     const r = JSON.parse(await evalIn(c, buttonRect(sel)));
     bad.push(...checkEdges(r, 16, `${sel}@${w}px`));
     if (r) audited += 2;
@@ -258,28 +257,23 @@ async function measureWelcome(c, origin) {
 export async function phoneGutterPass(c, origin) {
   const bad = [];
   let audited = 0;
-  try {
-    for (const w of TOUCH_WIDTHS) {
-      await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
-      const r = await measureScreens(c, 16, `${w}px`);
-      bad.push(...r.bad); audited += r.audited;
-    }
-
-    const btns = await measureButtons(c, origin);
-    bad.push(...btns.bad); audited += btns.audited;
-
-    const large = await measureLargeText(c, origin);
-    bad.push(...large.bad); audited += large.audited;
-
-    const welcome = await measureWelcome(c, origin);
-    bad.push(...welcome.bad); audited += welcome.audited;
-
-    const toasts = await measureToastRows(c, origin);
-    bad.push(...toasts.bad); audited += toasts.audited;
-  } finally {
-    // The viewport is this pass's own; the next row's `reset` puts the page back.
-    await c.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true });
+  for (const w of TOUCH_WIDTHS) {
+    await resize(c, w, HEIGHT);
+    const r = await measureScreens(c, 16, `${w}px`);
+    bad.push(...r.bad); audited += r.audited;
   }
+
+  const btns = await measureButtons(c, origin);
+  bad.push(...btns.bad); audited += btns.audited;
+
+  const large = await measureLargeText(c, origin);
+  bad.push(...large.bad); audited += large.audited;
+
+  const welcome = await measureWelcome(c, origin);
+  bad.push(...welcome.bad); audited += welcome.audited;
+
+  const toasts = await measureToastRows(c, origin);
+  bad.push(...toasts.bad); audited += toasts.audited;
 
   return {
     pass: bad.length === 0,

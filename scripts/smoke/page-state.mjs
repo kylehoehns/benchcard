@@ -125,6 +125,16 @@ export async function resize(c, width, height = HEIGHT, { debounce = false } = {
   else await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
 }
 
+/* For a check that flips emulated media inside one page load -- dark and
+   light on the same page, a solid-fallback preference toggled while the
+   floating bar stays put -- where a `land` would reload and lose the page the
+   check built. `features` is `Emulation.setEmulatedMedia`'s own list
+   (`[{ name, value }]`); `[]` clears. Like `resize`, not a restore: the next
+   row's `reset` clears whatever is left. */
+export async function setMedia(c, features = []) {
+  await c.send('Emulation.setEmulatedMedia', { features });
+}
+
 /* The start fingerprint (item 5 of the spec's "What would settle it"): what a
    page looks like the moment `reset` hands it to a row. The first `reset` of
    a run records it as the baseline; every later one must reproduce it, or the

@@ -1,5 +1,6 @@
 import { evalIn, TODAY_HOME, computedStyle } from './dom.mjs';
 import { tap } from './sheet-drive.mjs';
+import { setMedia } from './page-state.mjs';
 
 /* #151 item 7: forced colors mode strips most author colors down to a small
  * system palette, and can flatten a `background-color`/`box-shadow`-only
@@ -56,7 +57,7 @@ export async function forcedColorsPass(c, origin) {
   const problems = [];
   try {
     await evalIn(c, TODAY_HOME);
-    await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'forced-colors', value: 'active' }] });
+    await setMedia(c, [{ name: 'forced-colors', value: 'active' }]);
 
     for (const s of STEPS) {
       try {
@@ -75,8 +76,6 @@ export async function forcedColorsPass(c, origin) {
     await evalIn(c, TODAY_HOME);
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await c.send('Emulation.setEmulatedMedia', { features: [] }).catch(() => {});
   }
 
   return {

@@ -26,9 +26,7 @@ export async function widthSweep(c, source, { states, checkName, countRe, label,
   for (const st of states) {
     await evalIn(c, step(st.open));
     for (const w of TOUCH_WIDTHS) {
-      await c.send('Emulation.setDeviceMetricsOverride',
-        { width: w, height: h0, deviceScaleFactor: 2, mobile: true });
-      await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
+      await resize(c, w, h0);
       const chk = (await evalIn(c, source)).checks.find(k => k.name === checkName);
       const where = label(st, w);
       if (!chk) { bad.push(`${where}: ${missing}`); continue; }

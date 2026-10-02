@@ -102,8 +102,7 @@ export async function sweepPass(c) {
     await evalIn(c, v.open);
     await quiet(c);                                     // the view transition
     for (const w of WIDTHS) {
-      await c.send('Emulation.setDeviceMetricsOverride',
-        { width: w, height: h0, deviceScaleFactor: 2, mobile: true });
+      await resize(c, w, h0);
       const m = await measure();
       if (leanest === null || m.seen < leanest.seen) leanest = { view: v.name, w, seen: m.seen };
       if (m.worst) {

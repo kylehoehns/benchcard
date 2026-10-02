@@ -203,9 +203,8 @@ async function browserChecks(origin, only, folded) {
     // #241: fast animations for every page this session opens (see
     // FAST_PLAYBACK_RATE); it holds across reloads in the one tab.
     await c.send('Animation.setPlaybackRate', { playbackRate: FAST_PLAYBACK_RATE });
-    await c.send('Emulation.setDeviceMetricsOverride', {
-      width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true,
-    });
+    // The viewport itself is `land`'s: the cold load below sets BASELINE's
+    // width and height before it navigates, as every later `land` does.
     await c.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
     await c.send('Page.addScriptToEvaluateOnNewDocument', {
       source: `window.__SMOKE_VIEWPORT = [${WIDTH}, ${HEIGHT}];`,

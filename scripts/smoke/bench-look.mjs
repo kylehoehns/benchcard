@@ -19,9 +19,9 @@
  * argument), not an emulated `prefers-color-scheme` -- the same mechanism
  * `finish-game.mjs`'s item 5 already uses for the same reason: RICH boots
  * onto the record it was given, `prefers-color-scheme` never enters into it. */
-import { evalIn, step, setWidth, WIDTH, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_SR_ONLY_RECT } from './dom.mjs';
+import { evalIn, step, alpha, SOLID_FALLBACK_MEDIA, CSS_VAR_COLOR_PROBE, TODAY_HOME, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_SR_ONLY_RECT } from './dom.mjs';
 import { goRich, RICH } from './fixtures.mjs';
-import { land } from './page-state.mjs';
+import { land, setMedia } from './page-state.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 // Same shape as CSS_VAR_COLOR_PROBE (dom.mjs) but for `color`, not
@@ -159,7 +159,7 @@ async function runTheme(c, origin, theme, problems, notes) {
 
   // solid fallback: same two media features floating-controls.mjs checks
   for (const [feature, value] of SOLID_FALLBACK_MEDIA) {
-    await c.send('Emulation.setEmulatedMedia', { features: [{ name: feature, value }] });
+    await setMedia(c, [{ name: feature, value }]);
     const solid = JSON.parse(await evalIn(c, `(() => {
       const before = getComputedStyle(document.querySelector('.gm-foot'), '::before');
       return JSON.stringify({ bf: before.backdropFilter || before.webkitBackdropFilter, bg: before.backgroundColor });
@@ -167,7 +167,7 @@ async function runTheme(c, origin, theme, problems, notes) {
     if (solid.bf && solid.bf !== 'none') problems.push(tag(`item 3 (${feature}): .gm-foot::before still has backdrop-filter ${solid.bf}, want none`));
     if (alpha(solid.bg) !== 1) problems.push(tag(`item 3 (${feature}): .gm-foot::before paints ${solid.bg}, want fully opaque`));
   }
-  await c.send('Emulation.setEmulatedMedia', { features: [] });
+  await setMedia(c, []);
   notes.push(tag('item 3: .gm-foot::before turns solid under reduced transparency / more contrast'));
 
   /* ---- item 4: floor rows, unselected and selected ---- */
@@ -589,8 +589,6 @@ export async function benchLookPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   } finally {
-    await c.send('Emulation.setEmulatedMedia', { features: [] });
-    await setWidth(c, WIDTH);
     await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
     await evalIn(c, step(TODAY_HOME));
   }

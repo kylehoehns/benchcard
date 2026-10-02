@@ -616,9 +616,8 @@ const wordFloorRows = (nameSel, rowSel) => {
   return rows;
 };`;
 
-/* The wipe -> navigate -> wait -> cleanup shape three passes share:
-   `firstRun` and `tryLanding` (both `app-large-text.mjs`) and `landOnNine`
-   (`game-rows-fit.mjs`) each need a page that boots with no seeded record --
+/* The wipe -> navigate -> wait -> cleanup shape the passes share
+   (`firstRun` and `tryLanding` in `app-large-text.mjs`, among others): each needs a page that boots with no seeded record --
    `browserChecks`'s own on-new-document script re-seeds `benchcard.v3` on
    every navigation otherwise, and clearing the record in the CURRENT
    document is not enough to stop that re-seed from winning the reload (see
@@ -626,11 +625,11 @@ const wordFloorRows = (nameSel, rowSel) => {
    the wipe rides in its own on-new-document script, added here and removed
    again in `finally` regardless of outcome -- left registered it would
    empty the record under whatever this pass runs next.
-   `LOCALSTORAGE_WIPE` is the literal source all three used to carry on
+   `LOCALSTORAGE_WIPE` is the literal source they used to carry on
    their own; this is the one place it is written now. `readyJs` is a JS
    expression evaluated in the page, polled every 50ms up to 3s until it is
    truthy -- `firstRun` waits for the welcome screen, `tryLanding` for the
-   sample-flash toast, `landOnNine` for the ninth row -- so each caller keeps
+   sample-flash toast -- so each caller keeps
    its own wait condition and its own assertions; only this boilerplate
    around them is shared. */
 export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;

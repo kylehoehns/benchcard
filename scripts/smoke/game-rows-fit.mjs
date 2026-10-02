@@ -1,4 +1,5 @@
-import { evalIn, SETTLE, HEIGHT, landWiped } from './dom.mjs';
+import { evalIn, SETTLE, HEIGHT } from './dom.mjs';
+import { land } from './page-state.mjs';
 
 /* [data-id] excludes the boot skeleton's bare `.tl-row` markup, the same
    filter `tryLanding` already relies on for its own player count (see that
@@ -11,35 +12,23 @@ const NAME_SEL = `${ROW_SEL} .tl-name`;
    bullet: covers items 1 (all 9 rows, and Start game, on screen with no
    scrolling) and 3 (the name button's own tap-target geometry).
 
-   THE LANDING shares its wipe -> navigate -> wait -> cleanup shape with
-   `tryLanding` (`app-large-text.mjs`) through `landWiped` (`dom.mjs`), which
-   owns that shape now; this function only supplies the URL and the wait
-   condition. It does not call `tryLanding` itself: that function's own
-   assertions are about the sample-flash toast, not the rows underneath it,
-   and a `?try=9` link is the one path this app ships that lands nine
-   players straight onto the games view with no rich fixture to build first
-   (`onboarding.js`'s `initOnboarding` reads `try` only while
-   `state.onboarded` is false, so the wipe has to come first, and
-   `browserChecks`'s own on-new-document script would otherwise re-seed
-   `benchcard.v3` ahead of it — see `landWiped`'s own comment for both
-   facts). The wait condition differs on purpose: `tryLanding` waits for the
-   toast; this waits for the ninth row, which is the thing this check reads.
+   THE LANDING is `land` (`page-state.mjs`) with a wiped record and
+   `?try=9`: a link this app ships that lands nine players straight onto the
+   games view with no rich fixture to build first (`onboarding.js`'s
+   `initOnboarding` reads `try` only while `state.onboarded` is false, so the
+   wipe has to come first). The wait condition is the ninth row, which is the
+   thing this check reads.
 
    LIGHT AND DARK, because item 1 and item 3 are both geometry, and a
    dark-only rule (there is none today, but nothing here would catch one
    appearing) could otherwise pass this check while failing a coach whose
-   phone is in dark mode. `Emulation.setEmulatedMedia` drives
-   `prefers-color-scheme` before the wiped landing — the app has no seeded
-   theme at that point, so `theme: 'auto'` (its default) reads the media
-   query with nothing else to override it.
-
-   THE FIXTURE IS RESTORED at the end regardless of outcome, the same
-   courtesy every rich-fixture pass in this suite pays: this check runs
-   between `fixture` and `todayback` in `browserChecks`'s sequence, and
-   everything after it expects `RICH`, not a freshly wiped nine-player
-   sample. */
-async function landOnNine(c, origin) {
-  await landWiped(c, `${origin}/index.html?try=9`, `document.querySelectorAll('${ROW_SEL}').length >= 9`);
+   phone is in dark mode. `land`'s `media` drives `prefers-color-scheme`
+   before the wiped landing -- the app has no seeded theme at that point, so
+   `theme: 'auto'` (its default) reads the media query with nothing else to
+   override it. The next row's `reset` puts the page back. */
+async function landOnNine(c, origin, scheme) {
+  await land(c, origin, { record: 'wiped', query: '?try=9', media: [{ name: 'prefers-color-scheme', value: scheme }],
+    ready: `document.querySelectorAll('${ROW_SEL}').length >= 9` });
 }
 
 const MEASURE = `(() => {
@@ -162,8 +151,7 @@ export async function gameRowsFitPass(c, origin) {
   const problems = [];
   let lightSummary = '';
   try {
-    await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
-    await landOnNine(c, origin);
+    await landOnNine(c, origin, 'light');
     const light = JSON.parse(await evalIn(c, MEASURE));
     problems.push(...problemsFor('light', light));
     problems.push(...await toggleProblems(c));
@@ -171,14 +159,11 @@ export async function gameRowsFitPass(c, origin) {
       lightSummary = `rows at ${light.rows.map(r => Math.round(r.t)).join(', ')}, #actionbar top ${Math.round(light.ab.t)}`;
     }
 
-    await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
-    await landOnNine(c, origin);
+    await landOnNine(c, origin, 'dark');
     const dark = JSON.parse(await evalIn(c, MEASURE));
     problems.push(...problemsFor('dark', dark));
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    await c.send('Emulation.setEmulatedMedia', { features: [] });
   }
   return {
     pass: problems.length === 0,

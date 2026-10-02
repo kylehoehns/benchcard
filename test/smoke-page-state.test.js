@@ -116,6 +116,20 @@ test('compareFingerprints: a fingerprint missing any field is reported, never eq
   }
 });
 
+/* ---------- setMedia: live emulation inside one page load ---------- */
+
+test('setMedia sends exactly the features it is given, and [] clears them', async () => {
+  const sent = [];
+  const c = { send: async (method, params) => { sent.push([method, params]); return {}; } };
+  const dark = [{ name: 'prefers-color-scheme', value: 'dark' }];
+  await pageState.setMedia(c, dark);
+  await pageState.setMedia(c, []);
+  assert.deepEqual(sent, [
+    ['Emulation.setEmulatedMedia', { features: dark }],
+    ['Emulation.setEmulatedMedia', { features: [] }],
+  ]);
+});
+
 /* ---------- the registry: the harness owns the reset ---------- */
 
 test('no registry row carries resetAfter: the next row\'s reset is what restores', () => {
@@ -157,22 +171,9 @@ function smokeFiles() {
  * migrates; none may raise a number that is still here (`AGENTS.md`'s rule
  * for allow maps) -- the last slice deletes the list entirely. */
 const ALLOW = {
-  'scripts/smoke.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
-  'scripts/smoke/bench-look.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 3, fontsready: 0 },
   'scripts/smoke/card-font.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 2 },
   'scripts/smoke/clip-sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 2, media: 0, fontsready: 0 },
-  'scripts/smoke/first-run-flow.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 1, fontsready: 0 },
-  'scripts/smoke/floating-controls.mjs': { navigate: 0, metrics: 2, fontsizes: 0, media: 3, fontsready: 0 },
-  'scripts/smoke/forced-colors.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 2, fontsready: 0 },
-  'scripts/smoke/game-rows-fit.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 3, fontsready: 0 },
-  'scripts/smoke/no-games.mjs': { navigate: 1, metrics: 2, fontsizes: 0, media: 0, fontsready: 1 },
-  'scripts/smoke/phone-gutter.mjs': { navigate: 0, metrics: 3, fontsizes: 0, media: 0, fontsready: 0 },
-  'scripts/smoke/resume-bar.mjs': { navigate: 0, metrics: 2, fontsizes: 0, media: 2, fontsready: 0 },
-  'scripts/smoke/season.mjs': { navigate: 0, metrics: 2, fontsizes: 0, media: 0, fontsready: 0 },
-  'scripts/smoke/sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
   'scripts/smoke/today-and-back.mjs': { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 1 },
-  'scripts/smoke/touch.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
-  'scripts/smoke/width-sweep.mjs': { navigate: 0, metrics: 1, fontsizes: 0, media: 0, fontsready: 0 },
 };
 
 const ZERO = { navigate: 0, metrics: 0, fontsizes: 0, media: 0, fontsready: 0 };
@@ -210,7 +211,7 @@ test('only page-state.mjs sends these CDP methods or reads fonts.ready, outside 
 
 test('the guard above can fail: a planted raw call outside the allow-list is caught', () => {
   const counts = countsFor(`await c.send('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 32 } });`);
-  const want = ALLOW['scripts/smoke/touch.mjs']; // today: fontsizes 0
+  const want = ZERO; // a file at zero, which is where every file ends up
   assert.notEqual(counts.fontsizes, want.fontsizes,
     'planting a fontsizes call where the allow-list says 0 must change the measured count, or the guard above could never fail');
 });
