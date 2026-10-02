@@ -55,11 +55,11 @@ test('icon-512: the card and its shadow stay inside the safe circle', () => {
       if (!near(p, ground, 2)) { bad++; worst ??= { x, y, p }; }
     } else {
       inside++;
-      for (const c of ['#C0504D', '#C9762F', '#A8952E', '#5E8A3A', '#2E8A7A']) if (near(p, hex(c), 2)) hues.add(c);
+      for (const c of ['#C0504D', '#C9762F', '#2E8A7A']) if (near(p, hex(c), 2)) hues.add(c);
     }
   }
   // the check measured something: there was ground to look at, and the mark is drawn
   assert.ok(outside > 50000, `only ${outside} pixels outside the circle`);
-  assert.equal(hues.size, 5, `only ${hues.size} of the 5 player hues are drawn inside the circle`);
+  assert.equal(hues.size, 3, `only ${hues.size} of the 3 player hues are drawn inside the circle`);
   assert.equal(bad, 0, `${bad} pixels outside the safe circle are not #D2500A, first at ${JSON.stringify(worst)}`);
 });

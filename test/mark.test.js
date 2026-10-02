@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { markSvg } from '../scripts/mark.mjs';
 
-/* The card mark (#277): one drawing, defined in scripts/mark.mjs, that every
+/* The card mark (#284, was #277): one drawing, defined in scripts/mark.mjs, that every
    other surface gets. The expected values below are the spec's geometry
-   (docs/specs/277-card-mark.md), typed out, not recomputed from the code. */
+   (docs/specs/284-three-bar-mark.md), typed out, not recomputed from the code. */
 
-const HUES = ['#C0504D', '#C9762F', '#A8952E', '#5E8A3A', '#2E8A7A'];
+const HUES = ['#C0504D', '#C9762F', '#2E8A7A'];
 const attr = (tag, name) => Number(tag.match(new RegExp(`\\b${name}="([^"]+)"`))?.[1]);
 const rects = svg => [...svg.matchAll(/<rect\b[^>]*>/g)].map(m => m[0]);
 const fillOf = tag => tag.match(/fill="([^"]+)"/)?.[1];
@@ -21,31 +21,28 @@ test('the mark is a 100-unit square on the orange ground', () => {
   assert.equal(attr(ground, 'height'), 100);
 });
 
-test('the card is light, 50 by 68, and tilted -8 degrees about (50, 52)', () => {
+test('the card is light, 66 by 80, and tilted -8 degrees about (50, 50)', () => {
   const svg = markSvg(64);
   const card = rects(svg).find(r => fillOf(r) === '#F4F4F6');
   assert.ok(card, 'no #F4F4F6 card rect');
   assert.deepEqual([attr(card, 'x'), attr(card, 'y'), attr(card, 'width'), attr(card, 'height'), attr(card, 'rx')],
-    [25, 17, 50, 68, 6]);
-  assert.match(svg, /rotate\(-8 50 52\)/);
+    [17, 10, 66, 80, 9]);
+  assert.match(svg, /rotate\(-8 50 50\)/);
 });
 
-test('five rows, one hue each in order, with the stints the sketch drew', () => {
+test('three bars, one hue each in order, four stints, and no row tracks (#284)', () => {
   const all = rects(markSvg(64));
-  const tracks = all.filter(r => fillOf(r) === '#E4DED7');
-  assert.equal(tracks.length, 5);
-  tracks.forEach((t, i) => {
-    assert.deepEqual([attr(t, 'x'), attr(t, 'y'), attr(t, 'width'), attr(t, 'height'), attr(t, 'rx')],
-      [31, 27 + 11 * i, 38, 6, 3], `track ${i}`);
-  });
+  assert.ok(!all.some(r => fillOf(r).toUpperCase() === '#E4DED7'), 'a #E4DED7 track is still drawn');
   const stints = all.filter(r => HUES.includes(fillOf(r).toUpperCase()));
-  assert.deepEqual(stints.map(fillOf), HUES.flatMap(h => [h, h]));
-  const want = [[31, 11.4], [51.9, 10.26], [37.84, 11.4], [57.6, 11.4], [31, 6.84],
-    [45.44, 10.64], [42.4, 10.64], [62.16, 6.84], [31, 8.36], [49.24, 10.64]];
+  assert.deepEqual(stints.map(fillOf), [HUES[0], HUES[1], HUES[2], HUES[2]]);
+  assert.equal(all.length, 2 + 4, 'ground, card and four stints, nothing else');
+  const want = [[26, 33.6, 24], [40.4, 33.6, 44], [26, 21.6, 64], [59.6, 14.4, 64]];
   stints.forEach((s, i) => {
     assert.ok(Math.abs(attr(s, 'x') - want[i][0]) < 1e-6, `stint ${i} x ${attr(s, 'x')}, want ${want[i][0]}`);
     assert.ok(Math.abs(attr(s, 'width') - want[i][1]) < 1e-6, `stint ${i} width ${attr(s, 'width')}, want ${want[i][1]}`);
-    assert.equal(attr(s, 'y'), 27 + 11 * Math.floor(i / 2), `stint ${i} y`);
+    assert.equal(attr(s, 'y'), want[i][2], `stint ${i} y`);
+    assert.equal(attr(s, 'height'), 11, `stint ${i} height`);
+    assert.equal(attr(s, 'rx'), 5.5, `stint ${i} rx`);
   });
 });
 

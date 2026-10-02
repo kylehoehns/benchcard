@@ -1,6 +1,6 @@
-/* The Benchcard mark (#277): a tilted card of player-colored stint rows on the
-   brand orange. This is the one place its geometry lives. The icon PNGs and
-   the share image (scripts/og.mjs), the chart pages (scripts/charts.mjs) and
+/* The Benchcard mark (#284, after #277): a tilted card of three player-colored
+   bars on the brand orange. This is the one place its geometry lives. The icon PNGs
+   and the share image (scripts/og.mjs), the chart pages (scripts/charts.mjs) and
    the static copies in index.html, about.html and advanced.html all take
    their markup from `markSvg`; test/mark-drift.test.js holds the static copies
    equal to it. The hues are fixed on purpose: they were picked for the mark,
@@ -12,23 +12,19 @@ import { fileURLToPath } from 'node:url';
 
 export const GROUND = '#D2500A';
 const CARD = '#F4F4F6';
-const TRACK = '#E4DED7';
-const HUES = ['#C0504D', '#C9762F', '#A8952E', '#5E8A3A', '#2E8A7A'];
+const HUES = ['#C0504D', '#C9762F', '#2E8A7A'];
 /* start%-end% of the row width, per row */
-const STINTS = [[[0, 30], [55, 82]], [[18, 48], [70, 100]], [[0, 18], [38, 66]],
-  [[30, 58], [82, 100]], [[0, 22], [48, 76]]];
-const ROW_X = 31, ROW_Y = 27, ROW_W = 38, ROW_H = 6, ROW_STEP = 11; // 6 tall + a 5 gap
+const STINTS = [[[0, 70]], [[30, 100]], [[0, 45], [70, 100]]];
+const ROW_X = 26, ROW_Y = 24, ROW_W = 48, ROW_H = 11, ROW_STEP = 20; // 11 tall + a 9 gap
+const CARD_RECT = [17, 10, 66, 80, 9]; // x, y, width, height, rx
+const PIVOT = [50, 50];
 
 const n = v => +v.toFixed(4);
 
-/* The rows, in paint order: each row's track, then its stints, as
+/* The bars, in paint order (each row's stints), as
    [x, y, width, height, rx, fill] in the 100-unit square, before the tilt. */
-const rowBars = () => STINTS.flatMap((stints, i) => {
-  const y = ROW_Y + ROW_STEP * i;
-  const bar = (x, w, fill) => [n(x), y, n(w), ROW_H, 3, fill];
-  return [bar(ROW_X, ROW_W, TRACK),
-    ...stints.map(([a, b]) => bar(ROW_X + ROW_W * a / 100, ROW_W * (b - a) / 100, HUES[i]))];
-});
+const rowBars = () => STINTS.flatMap((stints, i) => stints.map(([a, b]) =>
+  [n(ROW_X + ROW_W * a / 100), ROW_Y + ROW_STEP * i, n(ROW_W * (b - a) / 100), ROW_H, ROW_H / 2, HUES[i]]));
 
 /* Options: `shadow` adds the card's drop shadow (the tab icon and the header
    logo go without it, where it only muddies 16 and 26 pixels); `rounded`
@@ -39,6 +35,7 @@ const rowBars = () => STINTS.flatMap((stints, i) => {
    var(--tint) and var(--tint-ink), so it follows the team color and the card
    keeps reading on it; everything else keeps the brand orange and paper). */
 export function markSvg(size, { shadow = false, rounded = false, scale = 1, ariaHidden = false, ground = GROUND, card = CARD } = {}) {
+  const [cx, cy, cw, ch, crx] = CARD_RECT;
   const rows = rowBars()
     .map(([x, y, w, h, rx, fill]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}"/>`)
     .join('');
@@ -50,8 +47,8 @@ export function markSvg(size, { shadow = false, rounded = false, scale = 1, aria
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"${ariaHidden ? ' aria-hidden="true"' : ''}>`
     + filter
     + `<rect width="100" height="100"${rounded ? ' rx="22"' : ''} fill="${ground}"/>`
-    + `<g transform="${fit}rotate(-8 50 52)">`
-    + `<rect x="25" y="17" width="50" height="68" rx="6" fill="${card}"${shadow ? ' filter="url(#mark-shadow)"' : ''}/>${rows}</g></svg>`;
+    + `<g transform="${fit}rotate(-8 ${PIVOT.join(' ')})">`
+    + `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="${crx}" fill="${card}"${shadow ? ' filter="url(#mark-shadow)"' : ''}/>${rows}</g></svg>`;
 }
 
 /* The tab icon: the mark as a data URI, so a page costs no icon request
@@ -76,9 +73,9 @@ export const SHARE_END = '/* mark:end */';
 export const shareShapesSource = () => [
   SHARE_BEGIN,
   `const MARK_GROUND = '${GROUND}';`,
-  'const MARK_TILT = [-8, 50, 52];   // degrees, then the pivot',
-  `const MARK_SHAPES = [   // the card, then each row: x, y, width, height, rx, fill`,
-  ...[[25, 17, 50, 68, 6, CARD], ...rowBars()].map(r => `  ${JSON.stringify(r)},`),
+  `const MARK_TILT = [-8, ${PIVOT.join(', ')}];   // degrees, then the pivot`,
+  `const MARK_SHAPES = [   // the card, then each bar: x, y, width, height, rx, fill`,
+  ...[[...CARD_RECT, CARD], ...rowBars()].map(r => `  ${JSON.stringify(r)},`),
   '];',
   SHARE_END,
 ].join('\n');
