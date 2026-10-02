@@ -7,7 +7,6 @@
  * selector that stops matching fails instead of passing on nothing. */
 import { evalIn } from './dom.mjs';
 import { land } from './page-state.mjs';
-import { goRich } from './fixtures.mjs';
 
 const PROBE = `(() => {
   const tags = [...document.querySelectorAll('.wel-bench .tag.in')];
@@ -33,7 +32,6 @@ export async function welcomeTagPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }
-  await goRich(c, origin).catch(() => {});
   return {
     pass: problems.length === 0,
     detail: problems.length

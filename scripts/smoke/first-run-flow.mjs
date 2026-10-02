@@ -1,5 +1,4 @@
 import { WIDTH, landWiped, assertChipMatchesBackBtn, assertBackIsChevron, setWidth } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
 import { LARGE_TEXT_WIDTH } from './sizes.mjs';
 import { evalJSON, key, realTap, typeIn, waitClosed } from './sheet-drive.mjs';
 
@@ -562,10 +561,6 @@ export async function firstRunPass(c, origin) {
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
   }
-
-  await setWidth(c, WIDTH).catch(() => {});
-  await goRich(c, origin).catch(() => {});
-  await c.send('Emulation.setEmulatedMedia', { features: [] }).catch(() => {});
 
   return {
     pass: problems.length === 0,

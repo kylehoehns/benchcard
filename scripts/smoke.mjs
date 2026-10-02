@@ -59,8 +59,9 @@ import { serve } from './serve.mjs';
 import { folder, summarize as summarizeCoverage, judge, record, annotate, fileOf, ROW as COVERAGE_ROW, RECORDED as COVERAGE_RECORDED } from './coverage.mjs';
 
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
-import { WIDTH, HEIGHT, evalIn, SETTLE, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER } from './smoke/dom.mjs';
-import { SEED, goRich } from './smoke/fixtures.mjs';
+import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER } from './smoke/dom.mjs';
+import { SEED } from './smoke/fixtures.mjs';
+import { land, reset } from './smoke/page-state.mjs';
 import { ROWS, nameOf, FONT_INJECTION_SCRIPT, CLOCK_SCRIPT } from './smoke/registry.mjs';
 import { cardAt32Pass } from './smoke/card-at-32.mjs';
 
@@ -120,6 +121,11 @@ async function runCheck(row, ctx) {
   const cappedBefore = settleTally.capped;
   try {
     if (real) await ctx.c.send('Animation.setPlaybackRate', { playbackRate: 1 });
+    /* #125 D1: the harness resets to baseline BEFORE every rich row, not
+       after, so `--only` and the full run start a row on the same page and a
+       row that threw halfway cannot hand a broken one to the next. This one
+       line serves both paths. */
+    if (row.setup === 'rich') await reset(ctx.c, ctx.origin);
     /* #178: the hang hook. BENCHCARD_SMOKE_HANG names a row; when it matches
        the one about to run, this runs a real hang instead of that row's own
        `run` -- Chrome is alive, the CDP call below never resolves, and only
@@ -202,14 +208,13 @@ async function browserChecks(origin, only, folded) {
     });
     await c.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
     await c.send('Page.addScriptToEvaluateOnNewDocument', {
-      source: `window.__SMOKE_VIEWPORT = [${WIDTH}, ${HEIGHT}];\n`
-        + `try { localStorage.setItem('benchcard.v3', ${JSON.stringify(JSON.stringify(SEED))}); } catch {}`,
+      source: `window.__SMOKE_VIEWPORT = [${WIDTH}, ${HEIGHT}];`,
     });
     // #177: CI's own resolved font (`AGENTS.md`'s "Smoke forces CI's font on
     // a Mac too"), forced on every page this harness opens, on a Mac and in CI
     // alike -- see smoke-font.mjs.
     await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FONT_INJECTION_SCRIPT });
-    // #178: the pinned, ticking smoke clock -- every reload, goRich and
+    // #178: the pinned, ticking smoke clock -- every reload, `land` and
     // static page this session opens reads 2026-09-12 12:00 local onward, no
     // matter what the host's real clock reads -- see clock.mjs.
     await c.send('Page.addScriptToEvaluateOnNewDocument', { source: CLOCK_SCRIPT });
@@ -217,15 +222,12 @@ async function browserChecks(origin, only, folded) {
     await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
 
     current = 'cold load';
-    const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-    await c.send('Page.navigate', { url: origin + '/index.html' });
-    await loaded;
-    // Fonts settle before the card auto-fits, and the fit is what the size
-    // check is measuring. Wait for the app rather than a fixed sleep, then for
-    // the entrance animations — see SETTLE.
-    await evalIn(c, `(async () => { await document.fonts.ready;
-      for (let i = 0; i < 60 && !document.querySelector('.card'); i++) await new Promise(r => setTimeout(r, 50));
-      await ${SETTLE}; })()`);
+    /* One navigation, of SEED, written by `land`'s own seeding script rather
+       than a global one: nothing else in the session re-seeds, so a 'wiped' or
+       'kept' landing later means what it says. `land` waits for fonts, then
+       the card, then the entrance animations (SETTLE) -- the fit is what the
+       size check is measuring. */
+    await land(c, origin, { record: SEED });
 
     const source = await readFile(join(ROOT, 'scripts', 'smoke-checks.js'), 'utf8');
 
@@ -238,8 +240,6 @@ async function browserChecks(origin, only, folded) {
        still runs below. */
     if (only && only.setup === 'rich') {
       const report = { viewport: [WIDTH, HEIGHT], checks: [] };
-      current = 'rich fixture';
-      await goRich(c, origin);
       report.checks = [await runCheck(only, { c, origin, source, consoleErrors })];
       return { report, consoleErrors };
     }
@@ -272,33 +272,24 @@ async function browserChecks(origin, only, folded) {
       return { report, consoleErrors };
     }
 
-    /* THE FIXTURE SPLIT HAPPENS HERE, and the order of these three lines is
-       the whole design: the budget above is measured on the lean cold load,
-       everything below is measured on the rich one. Moving `goRich` earlier
-       folds a season, a second game and two levelled players into a number
-       that is supposed to describe a first visit. */
-    current = 'rich fixture';
-    await goRich(c, origin);
-    /* Before anything else touches the page: fixturePass below clicks through
-       Team/Season and back, which is harmless to the fixture checks but would
-       no longer be the untouched cold state item 8 asks for.
+    /* THE FIXTURE SPLIT HAPPENS HERE: the budget above is measured on the
+       lean cold load, everything below on the rich one, and `runCheck` is what
+       reloads it -- `reset`, before every rich row. Moving that earlier folds
+       a season, a second game and two levelled players into a number that is
+       supposed to describe a first visit.
 
        Every rich row runs from here in registry order, one loop: `runCheck`
        is what turns a throw into a FAIL row instead of taking the whole run
        down with it. A row whose `replaces` names a cold verdict (the six
        "swept" rows -- a sheet or view the cold load never actually opened, so
        its cold verdict never measured anything) drops that name out of
-       `report.checks` first, so the two never both print; a row with
-       `resetAfter` (`teamcolor`, `wakelock`) reloads the rich fixture right
-       after, because both leave the page in a state the next row should not
-       inherit. */
+       `report.checks` first, so the two never both print. */
     for (const row of ROWS.filter(r => r.setup === 'rich')) {
       if (row.replaces) {
         const replaced = Array.isArray(row.replaces) ? row.replaces : [row.replaces];
         report.checks = report.checks.filter(k => !replaced.includes(k.name));
       }
       report.checks.push(await runCheck(row, { c, origin, source, consoleErrors }));
-      if (row.resetAfter) await goRich(c, origin);
     }
 
     /* Last, so it covers the overlay pass too: an exception thrown by opening

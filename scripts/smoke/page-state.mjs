@@ -125,9 +125,59 @@ export async function resize(c, width, height = HEIGHT, { debounce = false } = {
   else await evalIn(c, `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)))`);
 }
 
-/* `land(c, origin, {})` plus the start fingerprint -- the fingerprint (item 5
-   of the spec's "What would settle it") is slice 2's own job, once the
-   harness calls this before every rich row; nothing calls `reset` yet. */
+/* The start fingerprint (item 5 of the spec's "What would settle it"): what a
+   page looks like the moment `reset` hands it to a row. The first `reset` of
+   a run records it as the baseline; every later one must reproduce it, or the
+   row fails before it starts, so no row can pass or fail on what the row
+   before it left behind. Field order is the report order: the first field
+   that differs is the one named. */
+const FINGERPRINT_FIELDS = ['url', 'screen', 'width', 'height', 'rootPx', 'dark', 'forced', 'recordLength', 'recordHash'];
+
+/* Pure: null when `now` matches `baseline`, else the message that fails the
+   row, naming the first field that changed. */
+export function compareFingerprints(baseline, now) {
+  for (const field of FINGERPRINT_FIELDS) {
+    if (baseline[field] !== now[field]) {
+      return `start state differs from baseline: ${field} was ${JSON.stringify(now[field])}, want ${JSON.stringify(baseline[field])}`;
+    }
+  }
+  return null;
+}
+
+/* Read from the page: the address, which top-level screen is showing, the
+   layout viewport, the root's computed font size, the two media features a
+   check can leave emulated, and the saved record's length plus a cheap hash
+   (FNV-1a), so a record a row rewrote is caught even at the same length. */
+function readFingerprint(c) {
+  return evalIn(c, `(() => {
+    const rec = localStorage.getItem('benchcard.v7') || '';
+    let h = 2166136261;
+    for (let i = 0; i < rec.length; i++) { h ^= rec.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    const shown = [...document.querySelectorAll('main.view')].filter(m => !m.hidden).map(m => m.id);
+    return {
+      url: location.pathname + location.search,
+      screen: shown.join(','),
+      width: document.documentElement.clientWidth,
+      height: document.documentElement.clientHeight,
+      rootPx: getComputedStyle(document.documentElement).fontSize,
+      dark: matchMedia('(prefers-color-scheme: dark)').matches,
+      forced: matchMedia('(forced-colors: active)').matches,
+      recordLength: rec.length,
+      recordHash: h.toString(16),
+    };
+  })()`);
+}
+
+let baselineFingerprint = null;
+
+/* `land(c, origin, {})` plus the start fingerprint: the harness calls this
+   before every rich row. The first call of a run records the baseline; each
+   later call throws the comparison's message if the page it landed on is not
+   that one. */
 export async function reset(c, origin) {
   await land(c, origin, {});
+  const now = await readFingerprint(c);
+  if (!baselineFingerprint) { baselineFingerprint = now; return; }
+  const problem = compareFingerprints(baselineFingerprint, now);
+  if (problem) throw new Error(problem);
 }

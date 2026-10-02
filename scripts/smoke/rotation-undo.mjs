@@ -33,7 +33,6 @@
  * (Format, Sub interval, Who's here) schedules its repaint behind.
  */
 import { evalIn, step, wait } from './dom.mjs';
-import { goRich } from './fixtures.mjs';
 import { setGame, readToastExpr } from './sheet-drive.mjs';
 
 // Debounced kinds (`format`, `availability`) repaint 140ms after the edit;
@@ -367,10 +366,6 @@ export async function rotationUndoPass(c, origin) {
        rather than faked here. */
   } catch (e) {
     problems.push(e.message.split('\n')[0]);
-  } finally {
-    // setup:'rich' checks share one page: leave the fixture the way the row
-    // after this one expects to find it.
-    await goRich(c, origin).catch(() => {});
   }
 
   return {

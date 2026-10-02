@@ -26,11 +26,11 @@
  * `setup` is what a partial run has to do before the row's own pass can run:
  * `cold` is the SEED load and the `smoke-checks.js` evaluate, everything a
  * full run has on screen before the fixture split; `rich` is that plus one
- * `goRich` — every row after the split, because `goRich` is a fresh reload of
+ * `reset` — every row after the split, because `reset` is a fresh reload of
  * the same fixture and so reproduces the arrival state whether it is the first
- * call or, as some rows below get it in a full run, a later one. `run` is the
- * pass itself, called with the session a partial run has open — `ctx.c`,
- * `ctx.origin`, `ctx.source` and, for `wakelock`, `ctx.consoleErrors`.
+ * call or a later one. `run` is the pass itself, called with the session a
+ * partial run has open — `ctx.c`, `ctx.origin`, `ctx.source` and, for
+ * `wakelock`, `ctx.consoleErrors`.
  *
  * `motion: 'real'` (#241) on a rich row: the smoke session plays every
  * animation at `FAST_PLAYBACK_RATE` (dom.mjs), and `runCheck` puts the rate
@@ -39,14 +39,11 @@
  * sheet is still sliding shut 120ms after a release). `'real'` or absent;
  * `test/smoke-registry.test.js` holds the spelling.
  *
- * `resetAfter: true` on a rich row means `smoke.mjs` calls `goRich` again
- * right after it, in the full run: `teamcolor` switches team and `wakelock`
- * stubs `navigator.wakeLock`, and both leave the fixture in a state the next
- * row should not inherit. `replaces: <name>` holds the cold row (evaluated
- * before the fixture split, so it only ever saw the closed/default state)
- * that this row's own swept verdict takes the place of — `smoke.mjs` drops
- * that name out of `report.checks` before pushing this row's own result, so
- * the two never both print. `planrows` replaces exactly one cold name,
+ * `replaces: <name>` holds the cold row (evaluated before the fixture split,
+ * so it only ever saw the closed/default state) that this row's own swept
+ * verdict takes the place of — `smoke.mjs` drops that name out of
+ * `report.checks` before pushing this row's own result, so the two never both
+ * print. `planrows` replaces exactly one cold name,
  * `'plan rows ≥ 48px'`: `scripts/smoke-checks.js` builds only that one row
  * whose name starts with "plan rows" (the cold `minSizeCheck` calls it once,
  * for the Plan sheet), so an exact string does the same job the old
@@ -253,20 +250,20 @@ export const ROWS = Object.freeze([
   { id: 'gametitle', name: 'game title: one h1, opponent + status sub-line', selectable: true, setup: 'rich',
     run: ctx => gameTitlePass(ctx.c, ctx.origin) },
   { id: 'teamcolor', name: 'team color tints K1 only, and switches with the team', selectable: true, setup: 'rich',
-    run: ctx => teamColorPass(ctx.c, ctx.origin), resetAfter: true },
+    run: ctx => teamColorPass(ctx.c, ctx.origin) },
   // #205's own guard (docs/specs/205-hardwood-default.md's Proof section): a
   // fresh device, a team with no color set and the picker itself all read
   // Hardwood, and a saved or newly-picked Graphite survives a plain reload
   // -- see teamDefaultPass in team-color.mjs.
   { id: 'teamdefault', name: 'new teams start in Hardwood, a saved Graphite stays', selectable: true, setup: 'rich',
-    run: ctx => teamDefaultPass(ctx.c, ctx.origin), resetAfter: true },
+    run: ctx => teamDefaultPass(ctx.c, ctx.origin) },
   // #231's own guard (docs/specs/231-hardwood-pages.md's Proof section): the
   // welcome screen, about.html and advanced.html carry the Hardwood orange --
   // see hardwood-pages.mjs.
   { id: 'hardwoodpages', name: 'welcome, about and advanced carry the Hardwood orange', selectable: true, setup: 'rich',
-    run: ctx => hardwoodPagesPass(ctx.c, ctx.origin), resetAfter: true },
+    run: ctx => hardwoodPagesPass(ctx.c, ctx.origin) },
   { id: 'wakelock', name: 'bench mode wake lock', selectable: true, setup: 'rich',
-    run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors), resetAfter: true },
+    run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors) },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich',
     run: ctx => overlayPass(ctx.c, ctx.source) },
   // #201's own guard (docs/specs/201-tour-refresh.md's Proof table): the six

@@ -855,9 +855,6 @@ export async function teamScreenPass(c, origin) {
     problems.push(e.message.split('\n')[0]);
   }
 
-  // leave the fixture as `goRich` left it, for whatever runs next.
-  await goRich(c, origin).catch(() => {});
-
   return {
     pass: problems.length === 0,
     detail: problems.length
