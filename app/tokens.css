@@ -173,6 +173,11 @@
   --tint: #1C1C1E;
   --tint-2: #35353A;
   --tint-ink: #FFFFFF;
+  /* #277: the mark's card. Paper (#F4F4F6) wherever paper reads on --tint at
+     3:1 -- every light block -- and --tint-ink where it does not, which is
+     every dark block (paper on those tints is 1.00 to 2.53:1). It is named
+     in each dark block because var() resolves where it is declared. */
+  --mark-card: #F4F4F6;
   --tint-soft: rgba(28, 28, 30, .10);
   --tint-line: rgba(28, 28, 30, .32);
   --phrase: #1C1C1E;
@@ -279,6 +284,7 @@
   --tint: #F4F4F6;
   --tint-2: #D9D9DE;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(244, 244, 246, .14);
   --tint-line: rgba(244, 244, 246, .4);
   --phrase: #F4F4F6;
@@ -336,6 +342,7 @@
   --tint: #FF7A2A;
   --tint-2: #E36D25;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(255, 122, 42, .14);
   --tint-line: rgba(255, 122, 42, .4);
   --phrase: #FF7A2A;
@@ -356,6 +363,7 @@
   --tint: #7C9BFF;
   --tint-2: #6E8AE3;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(124, 155, 255, .14);
   --tint-line: rgba(124, 155, 255, .4);
   --phrase: #7C9BFF;
@@ -376,6 +384,7 @@
   --tint: #8FB0EA;
   --tint-2: #7F9DD0;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(143, 176, 234, .14);
   --tint-line: rgba(143, 176, 234, .4);
   --phrase: #8FB0EA;
@@ -396,6 +405,7 @@
   --tint: #EE7896;
   --tint-2: #D46B86;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(238, 120, 150, .14);
   --tint-line: rgba(238, 120, 150, .4);
   --phrase: #EE7896;
@@ -416,6 +426,7 @@
   --tint: #FF6B6B;
   --tint-2: #E35F5F;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(255, 107, 107, .14);
   --tint-line: rgba(255, 107, 107, .4);
   --phrase: #FF6B6B;
@@ -436,6 +447,7 @@
   --tint: #4CC98A;
   --tint-2: #44B37B;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(76, 201, 138, .14);
   --tint-line: rgba(76, 201, 138, .4);
   --phrase: #4CC98A;
@@ -456,6 +468,7 @@
   --tint: #FFC53D;
   --tint-2: #E3AF36;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(255, 197, 61, .14);
   --tint-line: rgba(255, 197, 61, .4);
   --phrase: #FFC53D;
@@ -476,6 +489,7 @@
   --tint: #AE92FF;
   --tint-2: #9B82E3;
   --tint-ink: #1C1C1E;
+  --mark-card: var(--tint-ink);
   --tint-soft: rgba(174, 146, 255, .14);
   --tint-line: rgba(174, 146, 255, .4);
   --phrase: #AE92FF;
@@ -527,6 +541,7 @@
       --tint: #FF853B;
       --tint-2: #E37635;
       --tint-ink: #1C1C1E;
+      --mark-card: var(--tint-ink);
       --tint-soft: rgba(255, 133, 59, .14);
       --tint-line: rgba(255, 133, 59, .4);
     }
@@ -543,6 +558,7 @@
       --tint: #86A3FF;
       --tint-2: #7791E3;
       --tint-ink: #1C1C1E;
+      --mark-card: var(--tint-ink);
       --tint-soft: rgba(134, 163, 255, .14);
       --tint-line: rgba(134, 163, 255, .4);
     }
@@ -559,6 +575,7 @@
       --tint: #8FB0EA;
       --tint-2: #7F9DD0;
       --tint-ink: #1C1C1E;
+      --mark-card: var(--tint-ink);
       --tint-soft: rgba(143, 176, 234, .14);
       --tint-line: rgba(143, 176, 234, .4);
     }
@@ -575,6 +592,7 @@
       --tint: #F087A2;
       --tint-2: #D67890;
       --tint-ink: #1C1C1E;
+      --mark-card: var(--tint-ink);
       --tint-soft: rgba(240, 135, 162, .14);
       --tint-line: rgba(240, 135, 162, .4);
     }
@@ -591,6 +609,7 @@
       --tint: #FF8181;
       --tint-2: #E37373;
       --tint-ink: #1C1C1E;
+      --mark-card: var(--tint-ink);
       --tint-soft: rgba(255, 129, 129, .14);
       --tint-line: rgba(255, 129, 129, .4);
     }
@@ -607,6 +626,7 @@
       --tint: #4CC98A;
       --tint-2: #44B37B;
       --tint-ink: #1C1C1E;
+      --mark-card: var(--tint-ink);
       --tint-soft: rgba(76, 201, 138, .14);
       --tint-line: rgba(76, 201, 138, .4);
     }
@@ -623,6 +643,7 @@
       --tint: #FFC53D;
       --tint-2: #E3AF36;
       --tint-ink: #1C1C1E;
+      --mark-card: var(--tint-ink);
       --tint-soft: rgba(255, 197, 61, .14);
       --tint-line: rgba(255, 197, 61, .4);
     }
@@ -639,6 +660,7 @@
       --tint: #B196FF;
       --tint-2: #9E86E3;
       --tint-ink: #1C1C1E;
+      --mark-card: var(--tint-ink);
       --tint-soft: rgba(177, 150, 255, .14);
       --tint-line: rgba(177, 150, 255, .4);
     }

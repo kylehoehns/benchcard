@@ -62,10 +62,10 @@ export const faviconHref = () => 'data:image/svg+xml,' + encodeURIComponent(mark
 export const logoSvg = opts => markSvg(26, { rounded: true, ariaHidden: true, ...opts });
 
 /* The welcome logo: the same mark, its ground the live team tint (#244). The
-   card is --tint-ink, the color tokens.css guarantees reads on the tint: in
-   dark Graphite the tint is the paper color itself, and a paper card would
-   vanish into it. */
-export const welcomeLogoSvg = () => logoSvg({ ground: 'var(--tint)', card: 'var(--tint-ink)' }).replace(' aria-hidden="true"', '');
+   card is --mark-card: paper where paper reads on the tint (3:1), else the
+   tint's ink (tokens.css) -- in dark Graphite the tint is the paper color
+   itself, and a paper card would vanish into it. */
+export const welcomeLogoSvg = () => logoSvg({ ground: 'var(--tint)', card: 'var(--mark-card)' }).replace(' aria-hidden="true"', '');
 
 /* app/share.js paints the mark onto a canvas, synchronously (an image decode
    would cost the tap its activation, see the note there), and app/ cannot

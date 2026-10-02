@@ -37,6 +37,10 @@ const GRAPHITE_INK = 'rgb(28, 28, 30)';
 /* Every team tint the welcome logo can wear (graphite is no attribute). */
 const TINTS = [null, 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
 const HARDWOOD_LIGHT = CASES[0].want;
+/* #277: the card is the mark's paper wherever paper reads on the tint (3:1),
+   and only otherwise falls back to the tint's ink. */
+const PAPER = [244, 244, 246];
+const PAPER_RGB = 'rgb(244, 244, 246)';
 
 const PAGES = [
   { name: 'about', page: '/about', record: 'kept', ready: `document.querySelector('h1')`,
@@ -172,6 +176,9 @@ export async function hardwoodPagesPass(c, origin) {
             if (!t.ground || !t.card) { note(where, `no logo ground or card under ${t.tint}`); continue; }
             const r = ratio(t.card, t.ground);
             if (r < 3) note(where, `the logo's card ${css(t.card)} on its ground ${css(t.ground)} under ${t.tint} is ${r.toFixed(2)}:1, want at least 3:1`);
+            // the card is paper wherever paper itself clears 3:1 on the ground
+            if (ratio(PAPER, t.ground) >= 3 && css(t.card) !== PAPER_RGB) note(where, `the logo's card is ${css(t.card)} under ${t.tint}, want paper ${PAPER_RGB} (paper is ${ratio(PAPER, t.ground).toFixed(2)}:1 on ${css(t.ground)})`);
+            if (cse.name === 'light' && t.tint === 'hardwood' && css(t.card) !== PAPER_RGB) note(where, `the logo's card in light Hardwood is ${css(t.card)}, want ${PAPER_RGB}`);
           }
         }
       }
