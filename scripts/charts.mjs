@@ -307,6 +307,26 @@ export function renderPage(n, shared = fromAbout()) {
   const title = COPY.title(n);
   const desc = COPY.description(n, f);
 
+  /* One WebPage in the site and the Benchcard > About > chart trail, built
+     from the same n, title and url as the head above so they cannot drift. */
+  const jsonld = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage', name: COPY.h1(n), url,
+        isPartOf: { '@type': 'WebSite', name: 'Benchcard', url: `${ORIGIN}/` },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Benchcard', item: `${ORIGIN}/` },
+          { '@type': 'ListItem', position: 2, name: 'About', item: `${ORIGIN}/about` },
+          { '@type': 'ListItem', position: 3, name: `${n}-player chart`, item: url },
+        ],
+      },
+    ],
+  }, null, 2).replace(/</g, '\\u003c');
+
   const siblings = SIZES.filter(o => o !== n)
     .map(o => `<a href="./${slug(o)}">${o} players</a>`).join('\n      ');
 
@@ -354,6 +374,10 @@ ${shared.theme}
 <meta name="twitter:description" content="${esc(desc)}">
 <meta name="twitter:image" content="${ORIGIN}/og.png">
 <meta name="twitter:image:alt" content="${OG_ALT}">
+
+<script type="application/ld+json">
+${jsonld}
+</script>
 
 <!-- tokens.css is the app's palette and type stack, card.css is the card
      itself -- both already precached for anyone who has opened the app, and

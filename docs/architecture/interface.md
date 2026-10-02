@@ -81,7 +81,7 @@ into `--bar-h` and `--ab-h` to feed `html`'s `scroll-padding-top` and
 
 **Tab title and focus after navigation (#139).** `document.title` is set to
 `"<heading> · Benchcard"` on pushed screens (Game, Team, Season, Settings) and
-the static `"Benchcard — basketball substitution rotation generator"` on Today,
+to the home page's title `"Basketball rotation & substitution planner | Benchcard"` on Today,
 read from the same `data-large-title` or `data-bar-title` source `#barTitle`
 uses. When navigating forward, keyboard focus lands on the new screen's `h1`
 (`tabindex="-1"`), with `preventScroll: true` so the focus does not trigger a

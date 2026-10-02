@@ -145,6 +145,9 @@ jobs:
     #     updated" date and going stale is only visible across two commits.
     #     test/about-date.test.js unit-tests the pure decision with no git.
     #
+    #   * sitemap lastmod -- a page's <lastmod> must move whenever its HTML
+    #     does. test/sitemap-lastmod.test.js unit-tests the pure decision.
+    #
     # THE STEPS STAY SEPARATELY NAMED AND SEPARATELY RUN. A merged job whose
     # failure says only "history checks failed" would be worse than two jobs;
     # each step's name is the sentence you want to read in the checks list.
@@ -173,3 +176,7 @@ jobs:
       - name: about.html changed without its dateline changing
         if: always()
         run: node scripts/check-about-date.mjs "$BASE"
+
+      - name: a sitemap page changed without its lastmod changing
+        if: always()
+        run: node scripts/check-sitemap-lastmod.mjs "$BASE"

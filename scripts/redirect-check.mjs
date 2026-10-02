@@ -226,7 +226,7 @@ try {
         and that is what made this invisible. It is "the page that loaded is
         the one named", checked by title and by the ABSENCE of the app shell.
         Both, because either alone passes on the wrong document. */
-  for (const [path, want] of [['/about', /How Benchcard plans/], ['/advanced', /reference/i]]) {
+  for (const [path, want] of [['/about', /Equal playing time/], ['/advanced', /reference/i]]) {
     const r = await navigate(origin + path);
     const ok = !r.failed && r.hasApp === false && want.test(r.title || '');
     add(`offline, ${path} is the page it names`, ok,
