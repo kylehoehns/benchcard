@@ -38,7 +38,7 @@ export function initTour(setViewFn) {
  * #201: no step carries a `before`. #275: step 6 keeps a fallback pair,
  * `['#abBench', '#gmOpen']`, because its copy is about Start game and that
  * control lives in two places: `#abBench` is the phone's bottom bar button,
- * hidden above 900px, where `#gmOpen` beside the card is the desktop anchor.
+ * hidden from 840px up, where `#gmOpen` beside the card is the desktop anchor.
  * `tourAnchor` takes whichever shows. Step 7 rings `#shareBtn`, on the game
  * screen at every width. A step whose anchors are all missing still shows its
  * copy, centered, rather than silently dropping a seventh of the explanation.

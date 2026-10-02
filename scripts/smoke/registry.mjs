@@ -267,8 +267,8 @@ export const ROWS = Object.freeze([
     run: ctx => wakeLockPass(ctx.c, ctx.origin, ctx.consoleErrors) },
   { id: 'overlay', name: 'a11y in overlays and dialogs', selectable: true, setup: 'rich',
     run: ctx => overlayPass(ctx.c, ctx.source) },
-  // #201's own guard (docs/specs/201-tour-refresh.md's Proof table): the six
-  // tour steps' copy, counting, ring and fit -- see tour-steps.mjs.
+  // #201's own guard (docs/specs/201-tour-refresh.md's Proof table): every
+  // tour step's copy, counting, ring and fit -- see tour-steps.mjs.
   { id: 'tourSteps', name: TOUR_STEPS_CHECK, selectable: true, setup: 'rich',
     run: ctx => tourStepsPass(ctx.c, ctx.origin) },
   { id: 'touch', name: `${TOUCH_CHECK}, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
