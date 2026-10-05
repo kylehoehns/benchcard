@@ -443,17 +443,19 @@ if (state.onboarded) track('plan_generated', { strategy: game()?.strategy });
    the Season row are. The mutation sets `state.view`, and `undoable`'s
    default refresh navigates there; its snapshot holds the old view, so Undo
    puts the coach back on the screen they left. A Day that is not the active
-   one files without navigating. */
+   one files without navigating, and so does a coach already on Today:
+   navigating closes open sheets, which would drop a half-typed edit for
+   nothing. */
 function fileOverdueDay(today = new Date()) {
   if (!dueToFile(today)) return;
   let message = null;
   const t = team();
-  const leftBehind = dayIsPast(t.days[t.activeDay], today);
+  const navigate = dayIsPast(t.days[t.activeDay], today) && state.view !== 'today';
   const mutate = () => {
     message = fileIfPast(today);
-    if (leftBehind) state.view = 'today';
+    if (navigate) state.view = 'today';
   };
-  undoable(() => message, mutate, leftBehind ? undefined : () => renderAll());
+  undoable(() => message, mutate, navigate ? undefined : () => renderAll());
 }
 
 /* Wire the modules together. Everything a module cannot import for itself

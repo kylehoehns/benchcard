@@ -132,7 +132,7 @@ describe('a coach runs a game', { skip }, () => {
     assert.equal(await coach.toast(), '', 'nothing was filed, so no toast');
   });
 
-  test('Undo on that Filing toast puts the coach back on the Game screen (#306)', async () => {
+  test('Undo on the Filing toast after a next-day reopen puts the coach back on the Game screen (#306)', async () => {
     await startHawks();
     for (let i = 0; i < 7; i++) await coach.tap('Next stint');
     await coach.tap('Finish game');
