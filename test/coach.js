@@ -27,7 +27,7 @@ import { launch, cdp, closeChrome, hasChrome } from '../scripts/smoke/chrome.mjs
 import { evalIn, quiet, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } from '../scripts/smoke/dom.mjs';
 import { land } from '../scripts/smoke/page-state.mjs';
 import { buildClockScript, SMOKE_CLOCK } from '../scripts/smoke/clock.mjs';
-import { RICH, TODAY_GAME_READY, GAMES_VIEW_READY } from '../scripts/smoke/fixtures.mjs';
+import { RICH, TODAY_GAME_READY, GAMES_VIEW_READY, WELCOME_LANDING } from '../scripts/smoke/fixtures.mjs';
 import { SAMPLE_PLAYERS, withSecondTeam } from '../scripts/smoke/fixtures.mjs';
 
 export { hasChrome };
@@ -141,6 +141,13 @@ export class Coach {
     this.errors.length = 0;
     await this.#setClock(SMOKE_CLOCK);
     await land(this.c, this.origin, { record: midSeason(), ready: TODAY_GAME_READY });
+  }
+
+  /** Open the app for the first time on a device with nothing saved: the welcome screen. */
+  async onFreshDevice() {
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    await land(this.c, this.origin, WELCOME_LANDING);
   }
 
   /** Close the app and open it again `days` days later, keeping what was saved. */
@@ -398,6 +405,18 @@ export class Coach {
       if (!t) return '';
       return [...t.children].filter(c => c.tagName !== 'BUTTON').map(c => c.textContent.trim()).join(' ');
     })()`);
+  }
+
+  /** Whether the Tour is up, waiting up to `ms` for it: it opens a beat after
+      the setup flow closes. Answers as soon as it shows; a coach who has seen
+      the Tour waits the whole time. */
+  async tourShows(ms = 1500) {
+    const up = `(() => { const t = document.getElementById('tour'); return !!t && !t.hidden && t.getClientRects().length > 0; })()`;
+    for (const end = Date.now() + ms; Date.now() < end;) {
+      if (await evalIn(this.c, up)) return true;
+      await new Promise(ok => setTimeout(ok, 50));
+    }
+    return false;
   }
 
   /** The names of every control on screen, top to bottom. */
