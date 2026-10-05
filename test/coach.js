@@ -573,7 +573,7 @@ export class Coach {
   }
 
   /** Pick `option` in the dropdown a coach would call `name`: tap it and type the
-      option's text, as a keyboard picks from a closed select, then fail by name
+      option's text, as a keyboard picks from the open list, then fail by name
       unless that option is the one showing. */
   async choose(name, option) {
     await this.tap(name);

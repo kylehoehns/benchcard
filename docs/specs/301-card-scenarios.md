@@ -108,8 +108,9 @@ Mac has `navigator.share` and on CI's Ubuntu does not, so the button is
 link back to a test. `Coach.open` adds one on-new-document script that
 gives every page a `navigator.share` that keeps what it was given and
 resolves, the way a phone's share sheet takes the link. The button is then
-always `Share link`, as on a phone. `canShare` is left alone, so Share
-image still falls back to the clipboard path it takes today.
+always `Share link`, as on a phone. `canShare` is left alone. No scenario
+here taps Share image, which checks `canShare` first; on a machine where
+that says yes, the stand-in would take the image too, and keep no link.
 
 New Coach verbs, appended to `test/coach.js`:
 
