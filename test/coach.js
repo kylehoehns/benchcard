@@ -213,6 +213,37 @@ export class Coach {
     await this.tap(hit[0]);
   }
 
+  /** Tap a "More <noun>" / "Fewer <noun>" stepper until the number beside it reads `n`.
+      The first press is a full tap (hit test and settle); the rest are the same
+      mouse presses back to back, since the button does not move, and the
+      number is read once at the end -- eight settles to get from 12 to 20
+      is most of a scenario's budget. */
+  async stepTo(noun, n) {
+    const rowOf = `[...document.querySelectorAll('.pstep-btn')].find(x => x.getAttribute('aria-label') === ${JSON.stringify(`More ${noun}`)} && x.getClientRects().length)`;
+    const read = () => evalIn(this.c, `(() => { const b = ${rowOf}; return b ? Number(b.closest('.pstep-row').querySelector('.pstep-val').textContent) : null; })()`);
+    const at = await read();
+    if (at === null) throw new Error(`stepTo ${JSON.stringify(noun)}: no such stepper on screen. On screen: ${JSON.stringify(await this.controls())}`);
+    if (at === n) return;
+    const button = `${at < n ? 'More' : 'Fewer'} ${noun}`;
+    await this.tap(button);
+    const rest = Math.abs(n - at) - 1;
+    if (rest > 0) {
+      const { x, y } = await evalIn(this.c, `(() => {
+        const b = [...document.querySelectorAll('.pstep-btn')].find(x => x.getAttribute('aria-label') === ${JSON.stringify(button)} && x.getClientRects().length);
+        const r = b.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      })()`);
+      for (let i = 0; i < rest; i++) {
+        for (const type of ['mousePressed', 'mouseReleased']) {
+          await this.c.send('Input.dispatchMouseEvent', { type, x, y, button: 'left', clickCount: 1 });
+        }
+      }
+      await quiet(this.c);
+    }
+    const now = await read();
+    if (now !== n) throw new Error(`stepTo ${JSON.stringify(noun)}: ended at ${now}, wanted ${n}`);
+  }
+
   /** Type into whatever has focus, the way a keyboard (or a paste) would. */
   async type(text) {
     await this.c.send('Input.insertText', { text });
@@ -320,6 +351,26 @@ export class Coach {
     return evalIn(this.c, `[...document.querySelectorAll('.srow')]
       .filter(r => r.querySelector('.lockbtn')?.getAttribute('aria-pressed') === 'true')
       .map(r => r.querySelector('input').getAttribute('aria-label').replace(/^Target minutes for /, ''))`);
+  }
+
+  /** Bench mode: who is on the floor in each stint from this one to the last (walks 'Next stint'). */
+  async floorEachStint() {
+    const floors = [];
+    for (;;) {
+      floors.push(await this.onFloor());
+      const [at, of] = (await this.stint()).split(' of ').map(Number);
+      if (at >= of) return floors;
+      await this.tap('Next stint');
+    }
+  }
+
+  /** The Blocked plan panel's words, without its button; '' when the plan is not blocked. */
+  blockedPlan() {
+    return evalIn(this.c, `(() => {
+      const t = document.querySelector('#timeline .empty');
+      if (!t) return '';
+      return [...t.children].filter(c => c.tagName !== 'BUTTON').map(c => c.textContent.trim()).join(' ');
+    })()`);
   }
 
   /** The names of every control on screen, top to bottom. */
