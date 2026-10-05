@@ -19,6 +19,9 @@
  * why `node --test`'s glob makes a subdirectory unsafe for an export-only
  * module. */
 
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { serve } from '../scripts/serve.mjs';
 import { launch, cdp, closeChrome, hasChrome } from '../scripts/smoke/chrome.mjs';
 import { evalIn, quiet, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } from '../scripts/smoke/dom.mjs';
@@ -64,6 +67,15 @@ export function gameDay() {
   const { y, m, d } = SMOKE_CLOCK;
   const date = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   return { ...RICH, view: 'today', teams: [{ ...team, days: [{ ...team.days[0], date }], season: { games: [] } }] };
+}
+
+/* RICH's team with its first game day set to the pinned clock's date, as
+ * `gameDay()` has it, but keeping RICH's own three filed games: a season
+ * already under way when the coach plans today's game. */
+export function midSeason() {
+  const [team] = RICH.teams;
+  const [day] = gameDay().teams[0].days;
+  return { ...RICH, view: 'today', teams: [{ ...team, days: [day] }] };
 }
 
 export class Coach {
@@ -114,6 +126,13 @@ export class Coach {
     this.errors.length = 0;
     await this.#setClock(SMOKE_CLOCK);
     await land(this.c, this.origin, { record: gameDay(), ready: TODAY_GAME_READY });
+  }
+
+  /** Open the app on Today, game day, with a season of three games already filed. */
+  async onGameDayMidSeason() {
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    await land(this.c, this.origin, { record: midSeason(), ready: TODAY_GAME_READY });
   }
 
   /** Close the app and open it again `days` days later, keeping what was saved. */
@@ -416,5 +435,36 @@ export class Coach {
   async gameMinutes() {
     const rows = await this.#controls(`[document.querySelector('#timeline')].filter(Boolean)`);
     return Object.fromEntries(rows.map(x => /^(.*), (\d+) minutes/.exec(x.name)).filter(Boolean).map(m => [m[1], Number(m[2])]));
+  }
+
+  /** The Season screen's rows, as `{ callName: 'N games · M behind' }`: the
+      second line a screen reader reads under each name. */
+  seasonStanding() {
+    return evalIn(this.c, `Object.fromEntries([...document.querySelectorAll('#seasonbox .sn-row')]
+      .map(r => [r.querySelector('.sn-nm').textContent, r.querySelector('.sr-only')?.textContent.trim() ?? '']))`);
+  }
+
+  /** Tap the control a coach would call `name` and return the file the browser
+      saved, as `{ filename, text }`. */
+  async download(name) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'benchcard-download-'));
+    try {
+      await this.c.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: dir, eventsEnabled: true });
+      const done = new Promise((ok, fail) => {
+        const timer = setTimeout(() => fail(new Error(`download ${JSON.stringify(name)}: no file saved within 5s`)), 5000);
+        this.c.on('Browser.downloadProgress', p => {
+          if (p.state === 'completed') { clearTimeout(timer); ok(); }
+          if (p.state === 'canceled') { clearTimeout(timer); fail(new Error(`download ${JSON.stringify(name)}: the browser canceled it`)); }
+        });
+      });
+      done.catch(() => {});
+      await this.tap(name);
+      await done;
+      const files = fs.readdirSync(dir);
+      if (files.length !== 1) throw new Error(`download ${JSON.stringify(name)}: saved ${files.length} files: ${JSON.stringify(files)}`);
+      return { filename: files[0], text: fs.readFileSync(path.join(dir, files[0]), 'utf8') };
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   }
 }
