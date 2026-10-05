@@ -175,7 +175,8 @@ function liveMinutes(p, g, upTo = null) {
 
 /* The page behind bench mode is `inert` while it is open, so Chrome's
    accessibility tree (which ignores aria-modal) holds only bench mode and what
-   opens over it: toasts, the shortcuts sheet, a confirm. */
+   opens over it: toasts, the shortcuts sheet, a confirm. (#storagewarn is inert
+   too, on purpose: the tree holds only bench mode and the toast area.) */
 function inertBehind(on) {
   for (const c of document.querySelectorAll('.app > :not(#gamemode, #toasts, dialog, [aria-modal="true"])')) c.inert = on;
 }

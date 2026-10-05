@@ -68,6 +68,15 @@ it closes. The element keeps its id and identity, so `liftToasts` (which keys on
 a `.bsheet-toasts` element with `role="status"` created before any toast is
 inserted, so they are live regions a screen reader honors.
 
+**The page behind bench mode is inert (#305).** While bench mode is open,
+every child of `.app` except `#gamemode`, `#toasts`, `dialog` elements and
+`[aria-modal="true"]` overlays gets `inert = true`. When bench mode closes,
+inert is cleared. This makes Chrome's full accessibility tree (which does not
+honor `aria-modal` the way screen readers do) hold only bench mode and the
+toasts — the same reach a keyboard gets through the focus trap. A native
+`<dialog>` opened with `showModal` was not used, because the top layer would
+need stacking work-arounds with the Tour and the toasts.
+
 **#gmReset is labeled (#139).** The reset button has `aria-label="Back to the
 printed plan"` and the `title` attribute is removed to avoid confusion with
 the visible label.

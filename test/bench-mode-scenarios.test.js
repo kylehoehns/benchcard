@@ -44,6 +44,15 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
     assert.deepEqual(await coach.onFloor(), ['Ana Reyes', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Sam Okafor']);
   });
 
+  test('the shortcuts sheet over bench mode stays reachable and closes back to bench mode', async () => {
+    await startHawks();
+    await coach.press('?');
+
+    assert.ok((await coach.everyControl()).includes('Close shortcuts'), 'the shortcuts sheet is out of reach');
+    await coach.tap('Close shortcuts');
+    assert.ok((await coach.everyControl()).includes('Leave'), 'bench mode lost its controls');
+  });
+
   test('leaving bench mode gives the Game screen back', async () => {
     await startHawks();
     await coach.tap('Leave');
@@ -55,7 +64,10 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
 
   test('finishing the game gives the page back, with its Undo toast reachable', async () => {
     await startHawks();
-    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    for (let i = 0; !(await coach.sees('Finish game')); i++) {
+      assert.ok(i < 20, 'Finish game never appeared');
+      await coach.tap('Next stint');
+    }
     await coach.tap('Finish game');
     const reach = await coach.everyControl();
 

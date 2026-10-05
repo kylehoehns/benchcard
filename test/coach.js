@@ -322,6 +322,13 @@ export class Coach {
     await quiet(this.c);
   }
 
+  /** Press one key on the keyboard, as a coach with a keyboard would. */
+  async press(key) {
+    await this.c.send('Input.dispatchKeyEvent', { type: 'keyDown', key, text: key });
+    await this.c.send('Input.dispatchKeyEvent', { type: 'keyUp', key });
+    await quiet(this.c);
+  }
+
   /* ---- seeing ---- */
 
   /** The names down the roster, top to bottom, as the rows read. */
