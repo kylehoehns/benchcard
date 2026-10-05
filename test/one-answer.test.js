@@ -95,6 +95,11 @@ const OWNED = {
   'benchcard-v':                       'AGENTS.md',
   'a window of source is not a scope': 'AGENTS.md',
 
+  // AGENTS.md § Test seams: which seam a test goes at. /ship-feature and the
+  // developer agent point at it and must not restate it
+  'taps or reads':                     'AGENTS.md',
+  'many input cases':                  'AGENTS.md',
+
   // the review policy. A reviewer agent that restates where a budget finding
   // lands will drift from REVIEW.md -- the first one contradicted it on arrival
   'inside their ceilings':             'REVIEW.md',
@@ -112,6 +117,15 @@ test('and exists nowhere else in the harness docs', () => {
     const strays = DOCS.filter(f => f !== owner && text[f].includes(marker));
     assert.deepEqual(strays, [],
       `"${marker}" is owned by ${owner} but also appears in ${strays.join(', ')} — that is two answers to one question`);
+  }
+});
+
+/* The seam rule is written once, in AGENTS.md. The two docs that brief the
+ * build must send the reader there, or a developer guesses where a test goes. */
+test('the build skill and the developer agent point at the seam rule', () => {
+  const pointer = '`AGENTS.md` § Test seams';
+  for (const f of [`${SKILL_DIR}/ship-feature/SKILL.md`, '.claude/agents/developer.md']) {
+    assert.ok(text[f].includes(pointer), `${f} does not point at "${pointer}"`);
   }
 });
 
