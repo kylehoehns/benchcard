@@ -377,11 +377,14 @@ export class Coach {
       .map(r => [r.querySelector('.sn-nm').textContent, Number(r.querySelector('.sn-min').textContent)]))`);
   }
 
-  /** The Plan's minutes per player, as `{ name: minutes }`, from the timeline's rows. */
-  planMinutes() {
-    return evalIn(this.c, `Object.fromEntries([...document.querySelectorAll('.tl-name')]
-      .map(b => b.getAttribute('aria-label').match(/^(.+?), ([\\d.]+) minutes/))
-      .map(m => [m[1], Number(m[2])]))`);
+  /** The Plan's minutes per player, as `{ 'Full Name': minutes }`: the
+      timeline's rows as a screen reader hears them ("Ana Reyes, 13.5
+      minutes, ..."). Throws when no row is heard, as on the Card view. */
+  async planMinutes() {
+    const rows = await this.#controls(`[document.querySelector('#timeline')].filter(Boolean)`);
+    const heard = rows.map(x => /^(.+?), ([\d.]+) minutes/.exec(x.name)).filter(Boolean);
+    if (!heard.length) throw new Error('planMinutes: no timeline row is heard on this screen');
+    return Object.fromEntries(heard.map(m => [m[1], Number(m[2])]));
   }
 
   /** How many stints the timeline says the plan has: the N in "of N stints". */
@@ -473,12 +476,6 @@ export class Coach {
   /** Today's games, top to bottom, as the passes read ("Hawks, 9:00 AM, planned"). */
   async todayGames() {
     return (await this.#controls(`[document.querySelector('#todayGames')].filter(Boolean)`)).map(x => x.name);
-  }
-
-  /** The open game's minutes per player, as `{ 'Full Name': minutes }`. */
-  async gameMinutes() {
-    const rows = await this.#controls(`[document.querySelector('#timeline')].filter(Boolean)`);
-    return Object.fromEntries(rows.map(x => /^(.*), (\d+) minutes/.exec(x.name)).filter(Boolean).map(m => [m[1], Number(m[2])]));
   }
 
   /** The Season screen's rows, as `{ callName: 'N games · M behind' }`: the

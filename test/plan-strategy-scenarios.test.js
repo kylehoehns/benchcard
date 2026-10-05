@@ -56,6 +56,7 @@ describe('a coach shapes the plan by strategy, shuffle and lock', { skip }, () =
     }
 
     assert.notDeepEqual(latest, first, 'three shuffles left the same starting five');
+    await coach.tap('Timeline');
     assert.equal(total(await coach.planMinutes()), 160);
   });
 

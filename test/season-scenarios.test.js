@@ -56,7 +56,7 @@ describe('a coach reads the season', { skip }, () => {
 
     await coach.tap('Hawks, 9:00 AM, planned');
     const minutes = async () => {
-      const full = await coach.gameMinutes();
+      const full = await coach.planMinutes();
       return Object.fromEntries(Object.entries(full).map(([name, m]) => [name.split(' ')[0], m]));
     };
     const least = (m, names) => Math.min(...names.map(n => m[n]));

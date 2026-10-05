@@ -46,7 +46,7 @@ describe('a coach opens Benchcard for the first time', { skip }, () => {
     }
     /* 160 player-minutes over 9 players: four play 20 and five play 16, and
        which four changes from one opening to the next. */
-    const minutes = await coach.gameMinutes();
+    const minutes = await coach.planMinutes();
     assert.deepEqual(Object.keys(minutes).sort(), ['Caleb Ruiz', 'Devon Ellis', 'Eli Tran', 'Harper Pratt', 'Jonah Reed',
       'Maya Webb', 'Nia Bell', 'Ruby Marsh', 'Silas Hart']);
     assert.deepEqual(Object.values(minutes).sort(), [16, 16, 16, 16, 16, 20, 20, 20, 20]);
