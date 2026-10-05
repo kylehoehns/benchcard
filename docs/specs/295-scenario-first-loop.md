@@ -114,8 +114,10 @@ developer agent point at `AGENTS.md` § Test seams.
 
 ## Out of scope
 
-- Pruning unit tests that scenarios cover (#296-#304, each journey's own
-  ticket).
+- Pruning unit tests. #296's survey found none safely prunable, so the
+  owner settled on adding scenarios and keeping unit tests. § Test seams
+  says so in one sentence: an existing unit test is removed only when a
+  scenario covers everything it checks.
 - New driver verbs or scenarios.
 - Changing `/tdd` or `/to-spec` (upstream copies).
 - The reviewer agents' briefs: the ticket names only `/ship-feature` and the

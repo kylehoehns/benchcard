@@ -124,6 +124,8 @@ test('and exists nowhere else in the harness docs', () => {
  * build must send the reader there, or a developer guesses where a test goes. */
 test('the build skill and the developer agent point at the seam rule', () => {
   const pointer = '`AGENTS.md` § Test seams';
+  assert.ok(text['AGENTS.md'].includes('## Test seams'),
+    'AGENTS.md has no "## Test seams" heading — the pointers to it would dangle');
   for (const f of [`${SKILL_DIR}/ship-feature/SKILL.md`, '.claude/agents/developer.md']) {
     assert.ok(text[f].includes(pointer), `${f} does not point at "${pointer}"`);
   }

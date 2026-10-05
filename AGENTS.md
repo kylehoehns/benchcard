@@ -67,7 +67,8 @@ the app through `test/coach.js` the way a coach would, and asserts only what
 is on screen or saved after a reopen. This is the seam for anything a coach
 taps or reads. A screen with no verb in the driver yet gets one added there.
 Do not add a unit test of a handler or of rendering beside a scenario that
-covers it.
+covers it. An existing unit test stays: it is removed only when a scenario
+covers everything it checks, which is rare.
 
 `node --test` on a pure function is the other seam, and only when it has
 many input cases: the engine, roster-line parsing, Filing, the wording
