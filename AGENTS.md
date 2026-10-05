@@ -60,6 +60,21 @@ that touches only `notes/`. Branch, commit, push, open the PR, and let the
 checks report before merging. The same passes every time, and severity that
 means the same thing twice running.
 
+## Test seams
+
+A coach-facing slice starts from a red Coach scenario: a test that drives
+the app through `test/coach.js` the way a coach would, and asserts only what
+is on screen or saved after a reopen. This is the seam for anything a coach
+taps or reads. A screen with no verb in the driver yet gets one added there.
+Do not add a unit test of a handler or of rendering beside a scenario that
+covers it. An existing unit test stays: it is removed only when a scenario
+covers everything it checks, which is rare.
+
+`node --test` on a pure function is the other seam, and only when it has
+many input cases: the engine, roster-line parsing, Filing, the wording
+builders. Smoke keeps layout and visuals: overflow, clipping, dark mode,
+text size. A check that judges the tree goes to `/new-guard`.
+
 ## What is enforced, and what is only written down
 
 Most of this file is judgement and cannot be mechanized. Nine rules can be, and

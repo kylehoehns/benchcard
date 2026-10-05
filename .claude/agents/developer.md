@@ -19,7 +19,9 @@ against.
   confirmation: it names each seam — a module's exports under `node --test`,
   a smoke check, a browser step — and the behaviors tested at it. Do not ask
   again, and do not test at a seam the spec does not name. If a behavior has
-  no workable seam, stop and say so; that is a gap in the spec.
+  no workable seam, stop and say so; that is a gap in the spec. For
+  coach-facing work the spec's Proof names the Coach seam, and that slice
+  starts from a red scenario (`AGENTS.md` § Test seams).
 - **One slice at a time.** Take the next behavior from **What would settle
   it**. Write one test at its seam. Run it and watch it fail **for the right
   reason**: the assertion about the behavior, not an import error, a typo or a

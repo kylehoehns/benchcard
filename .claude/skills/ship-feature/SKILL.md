@@ -85,7 +85,8 @@ substitutes:**
 - **the spec** (steps 4, 5, 7, 12, and `developer.md`/`quality-reviewer.md`):
   the issue with its comments, plus a short brief you write that lists each
   acceptance value and **the seam that tests it** — what a spec's Proof would
-  have named. Pass the brief to every agent in place of a spec path, and tell
+  have named; coach-facing work defaults to the Coach seam (`AGENTS.md` §
+  Test seams). Pass the brief to every agent in place of a spec path, and tell
   them the issue's acceptance values stand in for **What would settle it**;
 - **step 3:** not run. Show the human the brief and get the go-ahead, unless
   the issue is `ready-for-agent` with nothing left to ask;
@@ -146,9 +147,10 @@ The PR body says it switched.
    - **Proof** — the **seams** `/tdd` builds at, agreed here so the build can
      run unattended: for each, where the test runs from (a module's exports
      under `node --test`, a named smoke check, a `/browser-verify` step) and
-     which **What would settle it** items it covers. A test that reads source
-     instead of running it is a seam only if it is named here, and is then a
-     guard under `/new-guard`.
+     which **What would settle it** items it covers. Coach-facing work
+     defaults to the Coach seam (`AGENTS.md` § Test seams). A test that reads
+     source instead of running it is a seam only if it is named here, and is
+     then a guard under `/new-guard`.
    - **Out of scope** — what the grilling decided not to do.
 
    For a ticket, **What would settle it** is its acceptance criteria. If the
@@ -172,10 +174,12 @@ The PR body says it switched.
 
 5. **`developer`** builds it test-first, with `/tdd`, over the seams in the
    spec's **Proof**. Its prompt carries the spec path, those constraints, and
-   one instruction: if a precached file changes, run `npm run sw:bump`. Wait until it reports each slice's
-   test and the failure it saw before the code existed, and a green `npm
-   test`. A slice whose reported failure is an import error or a typo rather
-   than the behavior's assertion never saw red: send it back.
+   one instruction: if a precached file changes, run `npm run sw:bump`. Each
+   coach-facing slice starts from a red scenario (`AGENTS.md` § Test seams).
+   Wait until it reports each slice's test and the failure it saw before the
+   code existed, and a green `npm test`. A slice whose reported failure is an
+   import error or a typo rather than the behavior's assertion never saw red:
+   send it back.
 
 6. > **Refactor on green, once.** Hand the change to **`refactorer`**:
    > production first (the suite is the oracle), then tests (production frozen,
