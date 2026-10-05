@@ -626,4 +626,14 @@ export class Coach {
     await this.c.send('Page.navigate', { url: 'about:blank' });
     await land(this.c, this.origin, { record: 'wiped', page: u.pathname, query: u.hash, ready: GAMES_VIEW_READY });
   }
+
+  /** Whether the button a coach would call `name` is disabled. */
+  async isDisabled(name) {
+    const hit = (await this.#controls()).find(x => x.name === name);
+    if (!hit) throw new Error(`isDisabled ${JSON.stringify(name)}: not on screen. On screen: ${JSON.stringify(await this.controls())}`);
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: hit.node });
+    const { result } = await this.c.send('Runtime.callFunctionOn',
+      { objectId: object.objectId, functionDeclaration: 'function () { return this.disabled; }', returnByValue: true });
+    return result.value === true;
+  }
 }
