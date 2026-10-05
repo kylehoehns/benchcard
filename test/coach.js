@@ -505,6 +505,14 @@ export class Coach {
     }
   }
 
+  /** Every control in Chrome's full accessibility tree, aria-modal ignored:
+      what a screen reader that does not honor it can reach. */
+  async everyControl() {
+    const { nodes } = await this.c.send('Accessibility.getFullAXTree');
+    return nodes.filter(n => !n.ignored && ROLES.has(n.role?.value))
+      .map(n => (n.name?.value || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
   /* ---- Settings ---- */
 
   /** Open the app on Today, game day, with a second Team (JV Ravens) beside

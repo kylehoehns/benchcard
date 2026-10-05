@@ -173,6 +173,13 @@ function liveMinutes(p, g, upTo = null) {
   return m;
 }
 
+/* The page behind bench mode is `inert` while it is open, so Chrome's
+   accessibility tree (which ignores aria-modal) holds only bench mode and what
+   opens over it: toasts, the shortcuts sheet, a confirm. */
+function inertBehind(on) {
+  for (const c of document.querySelectorAll('.app > :not(#gamemode, #toasts, dialog, [aria-modal="true"])')) c.inert = on;
+}
+
 export function openGameMode() {
   track('game_mode_opened');
   const p = plans[state.activeGame];
@@ -202,6 +209,7 @@ export function openGameMode() {
   const gm = $('#gamemode');
   gm.hidden = false;
   setBenchOpen(true);
+  inertBehind(true);
   liftToastsIntoBench(gm);   // #139 item 11
   keepAwake();
   const ab0 = $('#actionbar'); if (ab0) ab0.hidden = true;
@@ -332,6 +340,7 @@ function closeGameMode(isFinish = false) {
   // above the page, which a move made a moment later, after `hidden` hides
   // its then-parent too, would not.
   restoreToastsHome();
+  inertBehind(false);
   // #139 item 7: cleared so a later reopen does not read stale text, and the
   // next open's own priming (see `openGameMode`) starts clean.
   set('#gmLive', 'textContent', '');
