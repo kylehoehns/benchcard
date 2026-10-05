@@ -572,15 +572,23 @@ export class Coach {
       .map(s => [...s.querySelectorAll('.five .nm')].map(e => e.textContent))`);
   }
 
-  /** Pick `option` in the dropdown a coach would call `name`: tap it and type the
-      option's text, as a keyboard picks from the open list, then fail by name
-      unless that option is the one showing. */
+  /** Pick `option` in the dropdown a coach would call `name`: tap it, then pick
+      the option as its open list does -- select it and fire input and change.
+      Typed keys reach the list in headless Chrome on a Mac but not on Linux,
+      so the list itself is the one step played by script. Fails by name if no
+      option reads `option`, or if the dropdown does not keep it. */
   async choose(name, option) {
     await this.tap(name);
-    for (const ch of option) {
-      await this.c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ch, text: ch });
-      await this.c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ch });
-    }
+    const found = await evalIn(this.c, `(() => {
+      const sel = document.activeElement;
+      const o = [...(sel?.options ?? [])].find(o => o.text === ${JSON.stringify(option)});
+      if (!o) return false;
+      sel.value = o.value;
+      sel.dispatchEvent(new Event('input', { bubbles: true }));
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    if (!found) throw new Error(`choose ${JSON.stringify(name)}: no option reads ${JSON.stringify(option)}`);
     await quiet(this.c);
     const shown = await evalIn(this.c, 'document.activeElement.selectedOptions?.[0]?.text ?? null');
     if (shown !== option) throw new Error(`choose ${JSON.stringify(name)}: wanted ${JSON.stringify(option)}, it shows ${JSON.stringify(shown)}`);
