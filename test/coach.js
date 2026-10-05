@@ -152,6 +152,16 @@ export class Coach {
     await this.#tapObject(result.objectId, `${name}'s row`);
   }
 
+  /** Tap the Lock on a player's By hand row. Every row's Lock has the same
+      name, so the row is found by the player's slider. */
+  async lockMinutes(name) {
+    const { result } = await this.c.send('Runtime.evaluate', { expression: `[...document.querySelectorAll('.srow')]
+      .find(r => r.querySelector('input')?.getAttribute('aria-label') === ${JSON.stringify(`Target minutes for ${name}`)})
+      ?.querySelector('.lockbtn') ?? null` });
+    if (!result.objectId) throw new Error(`lockMinutes ${JSON.stringify(name)}: no such row on screen`);
+    await this.#tapObject(result.objectId, `${name}'s Lock`);
+  }
+
   /* Every control a coach can reach, in document order. A native modal
      <dialog> already takes the page behind it out of Chrome's tree; bench
      mode is an `aria-modal` div, which a screen reader honors and the full
@@ -283,6 +293,33 @@ export class Coach {
   seasonMinutes() {
     return evalIn(this.c, `Object.fromEntries([...document.querySelectorAll('#seasonbox .sn-row')]
       .map(r => [r.querySelector('.sn-nm').textContent, Number(r.querySelector('.sn-min').textContent)]))`);
+  }
+
+  /** The Plan's minutes per player, as `{ name: minutes }`, from the timeline's rows. */
+  planMinutes() {
+    return evalIn(this.c, `Object.fromEntries([...document.querySelectorAll('.tl-name')]
+      .map(b => b.getAttribute('aria-label').match(/^(.+?), ([\\d.]+) minutes/))
+      .map(m => [m[1], Number(m[2])]))`);
+  }
+
+  /** How many stints the timeline says the plan has: the N in "of N stints". */
+  async planStints() {
+    const counts = await evalIn(this.c, `[...new Set([...document.querySelectorAll('.tl-name')]
+      .map(b => b.getAttribute('aria-label').match(/of (\\d+) stints$/)?.[1]))]`);
+    if (counts.length !== 1) throw new Error(`planStints: the timeline shows ${JSON.stringify(counts)}`);
+    return Number(counts[0]);
+  }
+
+  /** The starting five the card prints, in card order, as it shows them. Needs Card view. */
+  starters() {
+    return evalIn(this.c, `[...(document.querySelector('#sheet .card .stint .five')?.querySelectorAll('.nm') ?? [])].map(e => e.textContent)`);
+  }
+
+  /** The players whose Lock is on, in By hand order. */
+  lockedMinutes() {
+    return evalIn(this.c, `[...document.querySelectorAll('.srow')]
+      .filter(r => r.querySelector('.lockbtn')?.getAttribute('aria-pressed') === 'true')
+      .map(r => r.querySelector('input').getAttribute('aria-label').replace(/^Target minutes for /, ''))`);
   }
 
   /** The names of every control on screen, top to bottom. */
