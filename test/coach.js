@@ -27,7 +27,7 @@ import { launch, cdp, closeChrome, hasChrome } from '../scripts/smoke/chrome.mjs
 import { evalIn, quiet, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } from '../scripts/smoke/dom.mjs';
 import { land } from '../scripts/smoke/page-state.mjs';
 import { buildClockScript, SMOKE_CLOCK } from '../scripts/smoke/clock.mjs';
-import { RICH, TODAY_GAME_READY } from '../scripts/smoke/fixtures.mjs';
+import { RICH, TODAY_GAME_READY, GAMES_VIEW_READY } from '../scripts/smoke/fixtures.mjs';
 import { SAMPLE_PLAYERS, withSecondTeam } from '../scripts/smoke/fixtures.mjs';
 
 export { hasChrome };
@@ -79,6 +79,12 @@ export function midSeason() {
   return { ...RICH, view: 'today', teams: [{ ...team, days: [day] }] };
 }
 
+/* A phone's share sheet: keeps the link it is given and resolves. Headless
+ * Chrome has no `navigator.share` on every OS, so without this Hand off's
+ * button would read `Share link` on one machine and `Copy link` on another. */
+const SHARE_SHEET = `Object.defineProperty(navigator, 'share', { configurable: true,
+  value: data => { window.__sharedLink = data.url; return Promise.resolve(); } })`;
+
 export class Coach {
   static async open() {
     const server = await serve();
@@ -99,6 +105,7 @@ export class Coach {
     await c.send('Animation.setPlaybackRate', { playbackRate: FAST_PLAYBACK_RATE });
     const { identifier: clock } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: buildClockScript(SMOKE_CLOCK) });
     await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
+    await c.send('Page.addScriptToEvaluateOnNewDocument', { source: SHARE_SHEET });
     return new Coach({ c, origin, server, proc, dir, errors, clock });
   }
 
@@ -543,5 +550,61 @@ export class Coach {
     await this.tap(name);
     await this.#until(`pickFile ${JSON.stringify(name)}`, async () => (await this.toast()) !== was);
     await quiet(this.c);
+  }
+
+  /** The Card's Change lines, top to bottom, as they read ("Q2 8:00 ▼ANA SAM THEO"). The first copy of the card only. */
+  changeLines() {
+    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .stint .chg')]
+      .map(e => e.innerText.replace(/\\s+/g, ' ').trim())`);
+  }
+
+  /** The card's size in inches, as a ruler would read the print: '3.45 × 5' or '8 × 5.1'. */
+  cardSize() {
+    return evalIn(this.c, `(() => {
+      const s = getComputedStyle(document.querySelector('#sheet .card:not(.card-copy)'));
+      return [s.width, s.height].map(v => +(parseFloat(v) / 96).toFixed(2)).join(' × ');
+    })()`);
+  }
+
+  /** Each Stint's five on the Card, top to bottom, as the card shows them (['ANA', 'CASE', ...]). */
+  cardFives() {
+    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .stint')]
+      .map(s => [...s.querySelectorAll('.five .nm')].map(e => e.textContent))`);
+  }
+
+  /** Pick `option` in the dropdown a coach would call `name`: tap it, then pick
+      the option as its open list does -- select it and fire input and change.
+      Typed keys reach the list in headless Chrome on a Mac but not on Linux,
+      so the list itself is the one step played by script. Fails by name if no
+      option reads `option`, or if the dropdown does not keep it. */
+  async choose(name, option) {
+    await this.tap(name);
+    const found = await evalIn(this.c, `(() => {
+      const sel = document.activeElement;
+      const o = [...(sel?.options ?? [])].find(o => o.text === ${JSON.stringify(option)});
+      if (!o) return false;
+      sel.value = o.value;
+      sel.dispatchEvent(new Event('input', { bubbles: true }));
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`);
+    if (!found) throw new Error(`choose ${JSON.stringify(name)}: no option reads ${JSON.stringify(option)}`);
+    await quiet(this.c);
+    const shown = await evalIn(this.c, 'document.activeElement.selectedOptions?.[0]?.text ?? null');
+    if (shown !== option) throw new Error(`choose ${JSON.stringify(name)}: wanted ${JSON.stringify(option)}, it shows ${JSON.stringify(shown)}`);
+  }
+
+  /** The last link the share sheet was given; fails if nothing was shared. */
+  async sharedLink() {
+    const url = await evalIn(this.c, 'window.__sharedLink ?? null');
+    if (!url) throw new Error('sharedLink: nothing was shared');
+    return url;
+  }
+
+  /** Open `url` in a fresh page with no saved record (another phone) and wait for the game screen. */
+  async openLink(url) {
+    const u = new URL(url, this.origin);
+    await this.c.send('Page.navigate', { url: 'about:blank' });
+    await land(this.c, this.origin, { record: 'wiped', page: u.pathname, query: u.hash, ready: GAMES_VIEW_READY });
   }
 }
