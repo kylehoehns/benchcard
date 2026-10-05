@@ -57,8 +57,11 @@ And, from the ticket:
 - Mutation proof: at least 4 realistic breaks of this journey's handlers in
   `app/`, each turning a named scenario red, then restored. Recorded in the
   PR.
-- `test/plan-scenarios.test.js` passes 20 runs in a row locally (through
-  the smoke lock), each run under 10s, and `npm test` is green.
+- Each scenario file passes 20 runs in a row locally (through the smoke
+  lock), each run under 10s, and `npm test` is green.
+  All six scenarios in one file ran 9.4-11.1s on this machine, so they are
+  split in two: items 1-3 in `test/plan-scenarios.test.js`, items 4-6 in
+  `test/plan-strategy-scenarios.test.js`.
 - No existing unit test is removed (the #293 comment after #296: scenarios
   are additive).
 
@@ -66,7 +69,8 @@ And, from the ticket:
 
 Changes:
 
-- `test/plan-scenarios.test.js` (new): the scenarios.
+- `test/plan-scenarios.test.js` (new): items 1-3.
+- `test/plan-strategy-scenarios.test.js` (new): items 4-6.
 - `test/coach.js`: new verbs only, appended. No existing verb is reordered,
   reformatted or changed.
 - `docs/specs/297-plan-scenarios.md`: this file.
@@ -114,15 +118,15 @@ per item 1-6 above.
 
 ## Proof
 
-- **The Coach seam** (`node --test test/plan-scenarios.test.js`) covers
-  items 1-6. Each scenario is written first and seen red against a missing
+- **The Coach seam** (`node --test test/plan-scenarios.test.js
+  test/plan-strategy-scenarios.test.js`) covers items 1-6. Each scenario is written first and seen red against a missing
   verb or a wrong expected value that names the behavior, never an import
   error.
 - **Mutation proof**, by hand: at least 4 breaks in `app/`, for example the
   Who's here row's tap, the Format stepper, the Sub interval pick, the
   Shuffle handler, and the Lock's tap or its save. Each break is shown
   turning a named scenario red, then restored.
-- **Stability**: 20 runs in a row of the file through `with-smoke-lock.sh`,
+- **Stability**: 20 runs in a row of each file through `with-smoke-lock.sh`,
   with the time of each run.
 - The proof pair (`npm run smoke`, which runs `npm test` inside it) on the
   commit.

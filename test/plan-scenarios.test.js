@@ -1,9 +1,13 @@
-/* Plan scenarios (the BDD pilot, third journey): a coach shapes a game's plan
- * on the game screen -- who is here, the format, the sub interval, the
- * strategy, a shuffle, a lock -- driven in real Chrome through
+/* Plan scenarios (the BDD pilot, third journey), part 1: a coach shapes a
+ * game's plan on the game screen -- who is here, the format, the sub
+ * interval -- driven in real Chrome through
  * `test/coach.js`. The day is RICH's: 11 players, 4 × 8 quarters subbed every
  * 4 minutes (8 stints, 160 player-minutes). Each test opens the Hawks game
  * and asserts only what a coach sees, or what is still there after a reopen.
+ *
+ * The strategy, shuffle and lock scenarios are in
+ * plan-strategy-scenarios.test.js: one file of all six ran too close to the
+ * 10s a scenario file may take.
  *
  * Skipped where there is no Chrome, as roster-scenarios.test.js is. */
 
@@ -64,69 +68,5 @@ describe('a coach shapes the plan', { skip }, () => {
     assert.ok(await coach.sees('Sub interval, every 2 min'));
     assert.equal(await coach.planStints(), 16);
     assert.equal(total(await coach.planMinutes()), 160);
-  });
-
-  test('choosing By hand gives every player a minutes slider', async () => {
-    await openHawks();
-    const names = Object.keys(await coach.planMinutes());
-    assert.equal(names.length, 11);
-    await coach.tap('Plan, even minutes');
-    assert.equal(await coach.sees('Target minutes for Ana Reyes'), false, 'Even has no sliders');
-    await coach.tap('By hand');
-
-    for (const name of names) assert.ok(await coach.sees(`Target minutes for ${name}`), `a slider for ${name}`);
-    await coach.tap('Close');
-    assert.ok(await coach.sees('Plan, minutes set by hand'));
-  });
-
-  test('shuffling changes the starting five and keeps the minutes at 160', async () => {
-    await openHawks();
-    await coach.tap('Card');
-    const first = await coach.starters();
-    assert.equal(first.length, 5);
-
-    /* A shuffle draws a new seed and the same five can come back by chance
-       (about 1 in 462), so give it up to 3 taps to change the five. */
-    let latest = first;
-    for (let i = 0; i < 3 && latest.join() === first.join(); i++) {
-      await coach.tap('Shuffle');
-      latest = await coach.starters();
-    }
-
-    assert.notDeepEqual(latest, first, 'three shuffles left the same starting five');
-    assert.equal(total(await coach.planMinutes()), 160);
-  });
-
-  test('a locked player keeps her 16 minutes through an absence, a shuffle and a reopen', async () => {
-    await openHawks();
-    await coach.tap('Plan, even minutes');
-    await coach.tap('By hand');
-    assert.deepEqual(await coach.lockedMinutes(), []);
-    await coach.lockMinutes('Ana Reyes');
-    assert.deepEqual(await coach.lockedMinutes(), ['Ana Reyes']);
-    await coach.tap('Close');
-
-    /* Marcus's 16 minutes are shared out among the players who are not
-       locked. With the fixture's seed, Ana would take some of them (20)
-       without the lock. */
-    await coach.tap("Who's here, 11 players");
-    await coach.tap('Marcus Williams');
-    await coach.tap('Close');
-    let minutes = await coach.planMinutes();
-    assert.equal(total(minutes), 160);
-    assert.equal(minutes['Ana Reyes'], 16);
-
-    await coach.tap('Shuffle');
-    assert.equal((await coach.planMinutes())['Ana Reyes'], 16);
-    await coach.tap('Plan, minutes set by hand');
-    assert.deepEqual(await coach.lockedMinutes(), ['Ana Reyes'], 'the lock survived the shuffle');
-    await coach.tap('Close');
-
-    await coach.comeBackDaysLater(0);
-    minutes = await coach.planMinutes();
-    assert.equal(minutes['Ana Reyes'], 16);
-    assert.equal(total(minutes), 160);
-    await coach.tap('Plan, minutes set by hand');
-    assert.deepEqual(await coach.lockedMinutes(), ['Ana Reyes'], 'the lock was saved');
   });
 });
