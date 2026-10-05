@@ -661,4 +661,11 @@ export class Coach {
       { objectId: object.objectId, functionDeclaration: 'function () { return this.disabled; }', returnByValue: true });
     return result.value === true;
   }
+
+  /** Whether the Today screen or the Game screen is the one showing (`'today'` or `'game'`). */
+  async showing(screen) {
+    const id = { today: 'view-today', game: 'view-games' }[screen];
+    if (!id) throw new Error(`showing ${JSON.stringify(screen)}: say 'today' or 'game'`);
+    return evalIn(this.c, screenReadyExpr(id));
+  }
 }
