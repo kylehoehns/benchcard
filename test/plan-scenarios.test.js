@@ -107,7 +107,8 @@ describe('a coach shapes the plan', { skip }, () => {
     await coach.tap('Close');
 
     /* Marcus's 16 minutes are shared out among the players who are not
-       locked. Without the lock Ana takes some of them (20) on most seeds. */
+       locked. With the fixture's seed, Ana would take some of them (20)
+       without the lock. */
     await coach.tap("Who's here, 11 players");
     await coach.tap('Marcus Williams');
     await coach.tap('Close');
@@ -117,6 +118,9 @@ describe('a coach shapes the plan', { skip }, () => {
 
     await coach.tap('Shuffle');
     assert.equal((await coach.planMinutes())['Ana Reyes'], 16);
+    await coach.tap('Plan, minutes set by hand');
+    assert.deepEqual(await coach.lockedMinutes(), ['Ana Reyes'], 'the lock survived the shuffle');
+    await coach.tap('Close');
 
     await coach.comeBackDaysLater(0);
     minutes = await coach.planMinutes();
