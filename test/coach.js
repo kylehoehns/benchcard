@@ -89,24 +89,34 @@ export class Coach {
   static async open() {
     const server = await serve();
     const origin = `http://127.0.0.1:${server.address().port}`;
-    const port = 9222 + 500 + Math.floor(Math.random() * 2000);
-    const { proc, dir, ws } = await launch(port, !!process.env.HEADFUL);
-    const c = cdp(ws);
-    await c.ready;
+    /* #316: port 0 lets Chrome pick a free port; `launch` reads it back from
+       DevToolsActivePort. A failed launch used to leave the server open and
+       the process hanging. */
+    let launched, c, clock;
     const errors = [];
-    c.on('Runtime.exceptionThrown', p => errors.push(p.exceptionDetails.exception?.description || p.exceptionDetails.text));
-    c.on('Runtime.consoleAPICalled', p => {
-      if (p.type === 'error') errors.push(p.args.map(a => a.value ?? a.description).join(' '));
-    });
-    await c.send('Runtime.enable');
-    await c.send('DOM.enable');
-    await c.send('Accessibility.enable');
-    await c.send('Page.enable');
-    await c.send('Animation.setPlaybackRate', { playbackRate: FAST_PLAYBACK_RATE });
-    const { identifier: clock } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: buildClockScript(SMOKE_CLOCK) });
-    await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
-    await c.send('Page.addScriptToEvaluateOnNewDocument', { source: SHARE_SHEET });
-    return new Coach({ c, origin, server, proc, dir, errors, clock });
+    try {
+      launched = await launch(0, !!process.env.HEADFUL);
+      c = cdp(launched.ws);
+      await c.ready;
+      c.on('Runtime.exceptionThrown', p => errors.push(p.exceptionDetails.exception?.description || p.exceptionDetails.text));
+      c.on('Runtime.consoleAPICalled', p => {
+        if (p.type === 'error') errors.push(p.args.map(a => a.value ?? a.description).join(' '));
+      });
+      await c.send('Runtime.enable');
+      await c.send('DOM.enable');
+      await c.send('Accessibility.enable');
+      await c.send('Page.enable');
+      await c.send('Animation.setPlaybackRate', { playbackRate: FAST_PLAYBACK_RATE });
+      ({ identifier: clock } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: buildClockScript(SMOKE_CLOCK) }));
+      await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
+      await c.send('Page.addScriptToEvaluateOnNewDocument', { source: SHARE_SHEET });
+    } catch (err) {
+      c?.close();
+      if (launched) await closeChrome(launched.proc, launched.dir);
+      server.close();
+      throw err;
+    }
+    return new Coach({ c, origin, server, proc: launched.proc, dir: launched.dir, errors, clock });
   }
 
   constructor(s) { Object.assign(this, s); }
