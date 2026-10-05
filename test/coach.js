@@ -216,6 +216,27 @@ export class Coach {
     await this.type(text);
   }
 
+  /** Set the time field a coach would call `name` ("Tip-off") to a readable
+      time such as "10:15 AM", typed a key at a time from the hour on: a tap
+      would land on the minutes. */
+  async setTime(name, time) {
+    const m = /^(\d{1,2}):(\d{2}) ([AP])M$/.exec(time);
+    if (!m) throw new Error(`setTime ${JSON.stringify(time)}: write it like "10:15 AM"`);
+    const keys = m[1].padStart(2, '0') + m[2] + m[3];
+    const { result } = await this.c.send('Runtime.evaluate', { expression: 'document.documentElement' });
+    const { nodes } = await this.c.send('Accessibility.queryAXTree',
+      { objectId: result.objectId, accessibleName: name, role: 'InputTime' });
+    if (nodes.length !== 1) throw new Error(`setTime ${JSON.stringify(name)}: ${nodes.length} time fields match`);
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: nodes[0].backendDOMNodeId });
+    await this.c.send('Runtime.callFunctionOn', { objectId: object.objectId,
+      functionDeclaration: 'function () { this.scrollIntoView({ block: "center" }); this.focus(); }' });
+    for (const ch of keys) {
+      await this.c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ch, text: ch });
+      await this.c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ch });
+    }
+    await quiet(this.c);
+  }
+
   /* ---- seeing ---- */
 
   /** The names down the roster, top to bottom, as the rows read. */
@@ -296,5 +317,16 @@ export class Coach {
   /** The text in `sel` as it renders (innerText, so separate boxes keep a gap). */
   text(sel) {
     return evalIn(this.c, `(document.querySelector(${JSON.stringify(sel)})?.innerText || '').replace(/\\s+/g, ' ').trim()`);
+  }
+
+  /** Today's games, top to bottom, as the passes read ("Hawks, 9:00 AM, planned"). */
+  async todayGames() {
+    return (await this.#controls(`[document.querySelector('#todayGames')].filter(Boolean)`)).map(x => x.name);
+  }
+
+  /** The open game's minutes per player, as `{ 'Full Name': minutes }`. */
+  async gameMinutes() {
+    const rows = await this.#controls(`[document.querySelector('#timeline')].filter(Boolean)`);
+    return Object.fromEntries(rows.map(x => /^(.*), (\d+) minutes/.exec(x.name)).filter(Boolean).map(m => [m[1], Number(m[2])]));
   }
 }
