@@ -28,6 +28,7 @@ import { evalIn, quiet, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } fro
 import { land } from '../scripts/smoke/page-state.mjs';
 import { buildClockScript, SMOKE_CLOCK } from '../scripts/smoke/clock.mjs';
 import { RICH, TODAY_GAME_READY } from '../scripts/smoke/fixtures.mjs';
+import { SAMPLE_PLAYERS, withSecondTeam } from '../scripts/smoke/fixtures.mjs';
 
 export { hasChrome };
 
@@ -466,5 +467,81 @@ export class Coach {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  }
+
+  /* ---- Settings ---- */
+
+  /** Open the app on Today, game day, with a second Team (JV Ravens) beside
+      Smoke Test: 10 other players, an empty season. Smoke Test is the one showing. */
+  async onGameDayWithTwoTeams() {
+    const two = withSecondTeam(gameDay());
+    two.teams[1].players = SAMPLE_PLAYERS.map(p => ({ ...p }));
+    two.teams[1].season = { games: [] };
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    await land(this.c, this.origin, { record: two, ready: TODAY_GAME_READY });
+  }
+
+  /** Close the app and open it again where the coach left it: `screen` is
+      'today', 'team', 'season' or 'settings'. Whatever survives was saved. */
+  async comeBackLaterOn(screen) {
+    await land(this.c, this.origin, { record: 'kept', ready: screenReadyExpr(`view-${screen}`) });
+  }
+
+  /** Whether the button a coach would call `name` is pressed in. */
+  async isPressed(name) {
+    const hit = (await this.#controls()).find(x => x.name === name);
+    if (!hit) throw new Error(`isPressed ${JSON.stringify(name)}: not on screen. On screen: ${JSON.stringify(await this.controls())}`);
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: hit.node });
+    const { result } = await this.c.send('Runtime.callFunctionOn',
+      { objectId: object.objectId, functionDeclaration: 'function () { return this.getAttribute("aria-pressed"); }', returnByValue: true });
+    return result.value === 'true';
+  }
+
+  /** The color the page paints behind everything, as the browser reports it. */
+  pageBackground() {
+    return evalIn(this.c, 'getComputedStyle(document.body).backgroundColor');
+  }
+
+  /** The question the app is asking in its own dialog -- `{ title, body, modal }`
+      -- or null when none is open. */
+  dialog() {
+    return evalIn(this.c, `(() => {
+      const d = document.getElementById('confirm');
+      if (!d || d.hidden) return null;
+      const t = id => document.getElementById(id).innerText.replace(/\\s+/g, ' ').trim();
+      return { title: t('confirmTitle'), body: t('confirmBody'), modal: d.getAttribute('aria-modal') === 'true' };
+    })()`);
+  }
+
+  /* Poll `ready` until it holds, for at most 5 seconds. */
+  async #until(what, ready) {
+    for (let i = 0; i < 100; i++) {
+      if (await ready()) return;
+      await new Promise(r => setTimeout(r, 50));
+    }
+    throw new Error(`${what}: nothing happened in 5 seconds`);
+  }
+
+  /** Tap the control a coach would call `name` ("Restore from a file") and
+      answer the file picker it opens with `file`, a `{ filename, text }` as
+      `download` returns it. Waits for the app to answer with a toast that
+      differs from the one showing before the tap. The file is written under
+      this Chrome's own profile dir, which closeChrome removes. */
+  async pickFile(name, { filename, text }) {
+    if (!this.picking) {
+      /* Registered once: `c.on` has no off. */
+      this.picking = {};
+      this.c.on('Page.fileChooserOpened', p => {
+        if (this.picking.file) this.c.send('DOM.setFileInputFiles', { files: [this.picking.file], backendNodeId: p.backendNodeId });
+      });
+      await this.c.send('Page.setInterceptFileChooserDialog', { enabled: true });
+    }
+    this.picking.file = path.join(this.dir, filename);
+    fs.writeFileSync(this.picking.file, text);
+    const was = await this.toast();
+    await this.tap(name);
+    await this.#until(`pickFile ${JSON.stringify(name)}`, async () => (await this.toast()) !== was);
+    await quiet(this.c);
   }
 }
