@@ -2,7 +2,7 @@
    unchanged; only `launch`'s own `--headful` read moves with it as a
    parameter (`headful`), since arg parsing itself stays in `smoke.mjs`. */
 import { spawn } from 'node:child_process';
-import { mkdtemp, access, rm } from 'node:fs/promises';
+import { mkdtemp, access, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -54,7 +54,9 @@ export async function launch(port, headful, onSpawn) {
   onSpawn?.(proc, dir);
 
   // Poll the DevTools endpoint rather than parsing stderr; it is the only
-  // signal that the browser is actually ready to be attached to.
+  // signal that the browser is actually ready to be attached to. With port 0
+  // Chrome picks a free one and writes it to `DevToolsActivePort` in its
+  // profile dir (first line); a fixed port is used as given (#316).
   /* 45s, not 20. A cold GitHub runner has taken longer than 20s to hand back a
      DevTools page, and the redirect check went red on it with nothing wrong --
      which is the worst kind of failure, because a suite that cries wolf stops
@@ -65,12 +67,13 @@ export async function launch(port, headful, onSpawn) {
   proc.on('exit', (code, sig) => { died = `Chrome exited early (code ${code}, signal ${sig})`; });
   for (;;) {
     try {
-      const list = await fetchJSON(`http://127.0.0.1:${port}/json/list`);
+      const bound = port || Number((await readFile(join(dir, 'DevToolsActivePort'), 'utf8')).split('\n')[0]);
+      const list = await fetchJSON(`http://127.0.0.1:${bound}/json/list`);
       const page = list.find(t => t.type === 'page' && t.webSocketDebuggerUrl);
       if (page) return { proc, dir, ws: page.webSocketDebuggerUrl };
     } catch { /* not up yet */ }
-    if (died) { throw new Error(died); }
-    if (Date.now() > deadline) { proc.kill(); throw new Error('Chrome did not expose a DevTools page in 45s'); }
+    if (died) { await closeChrome(proc, dir); throw new Error(died); }
+    if (Date.now() > deadline) { await closeChrome(proc, dir); throw new Error('Chrome did not expose a DevTools page in 45s'); }
     await new Promise(r => setTimeout(r, 100));
   }
 }
