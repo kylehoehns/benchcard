@@ -322,6 +322,13 @@ export class Coach {
     await quiet(this.c);
   }
 
+  /** Press one key on the keyboard, as a coach with a keyboard would. */
+  async press(key) {
+    await this.c.send('Input.dispatchKeyEvent', { type: 'keyDown', key, text: key });
+    await this.c.send('Input.dispatchKeyEvent', { type: 'keyUp', key });
+    await quiet(this.c);
+  }
+
   /* ---- seeing ---- */
 
   /** The names down the roster, top to bottom, as the rows read. */
@@ -503,6 +510,14 @@ export class Coach {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  }
+
+  /** Every control in Chrome's full accessibility tree, aria-modal ignored:
+      what a screen reader that does not honor it can reach. */
+  async everyControl() {
+    const { nodes } = await this.c.send('Accessibility.getFullAXTree');
+    return nodes.filter(n => !n.ignored && ROLES.has(n.role?.value))
+      .map(n => (n.name?.value || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
   }
 
   /* ---- Settings ---- */
