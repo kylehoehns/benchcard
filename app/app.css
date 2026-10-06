@@ -2074,10 +2074,10 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-mark svg { width: 36px; height: 36px; }
 @keyframes welMark { from { opacity: var(--fade-from, 0); transform: scale(.6) rotate(-25deg); } to { opacity: 1; transform: none; } }
 .wel-h { font-size: var(--fs-large); letter-spacing: -.04em; font-weight: 700;
-  line-height: 1.1; text-wrap: balance; margin: 0;
+  line-height: 1.1; text-wrap: balance;
+  /* The headline carries the gap the removed subheading (#331) used to. */
+  margin: 0 0 .55rem;
   animation: rise var(--t-slow) var(--ease) both; animation-delay: 80ms; }
-.wel-sub { color: var(--muted); font-size: var(--fs-body); line-height: 1.5; margin: .44rem auto .55rem; max-width: 26rem;
-  animation: rise var(--t-slow) var(--ease) both; animation-delay: 140ms; }
 
 /* ---- one stage, three views of the same game ---- */
 /* The stage is the only elastic part of the screen. Everything above and
@@ -2276,8 +2276,8 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
      Without this the welcome screen is 725px tall in a 667px window
      (iPhone SE) and its bottom row falls below the fold; at the sentence
      step it is 668px. */
-  .wel-h { font-size: var(--fs-sentence); }
-  .wel-sub { font-size: var(--fs-secondary); margin-bottom: .5rem; }
+  /* .wel-h carries the gap the removed subheading (#331) used to. */
+  .wel-h { font-size: var(--fs-sentence); margin-bottom: .5rem; }
   .wel-stage { margin-top: .6rem; }
   .wel-show { min-height: 10rem; }
   .wel-doors { margin-top: .6rem; }
@@ -3411,7 +3411,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    changed property is re-read but never restarts an animation: a move in the
    first 260ms on a wide screen would dip the Today rail; nobody taps that fast. */
 @property --fade-from { syntax: '<number>'; inherits: false; initial-value: 0; }
-.first-screen[data-view="welcome"] :is(#view-welcome, .wel-mark, .wel-h, .wel-sub, .wel-stage),
+.first-screen[data-view="welcome"] :is(#view-welcome, .wel-mark, .wel-h, .wel-stage),
 .first-screen[data-view="today"] #view-today { --fade-from: 1; }
 
 /* The top bar's hard minimum was 378px (brand 25 + nav 141 + help 44 +
