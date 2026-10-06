@@ -51,6 +51,67 @@ import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './size
 const STATIC_PAGES = ['/about', '/advanced', ...[7, 8, 9, 10, 11, 12].map(n => `/${n}-player-basketball-rotation-chart`)];
 const STATIC_WIDTHS = [390, 320];
 
+/* #338. The page's own scroll width against its client width, which is the
+   number the issue reported (391 in a 390px viewport). `OVERFLOW_PROBE` above
+   tolerates 1px per element and so let a 0.67px overshoot through; this one
+   tolerates nothing. */
+const SCROLL_PROBE = `JSON.stringify({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth })`;
+
+/* #338. The two guides draw their mocks inside `.plate` cards. This reports
+   how many plates the page has and the visible descendant that sticks out
+   furthest past its own plate's box (1px of slack for rounding). A page with no
+   plate reports `plates: 0`, which the caller fails: a check that measured
+   nothing is not a clean result. */
+const PLATE_PROBE = `(() => {
+  const plates = [...document.querySelectorAll('.plate')];
+  let worst = null;
+  for (const plate of plates) {
+    const p = plate.getBoundingClientRect();
+    for (const el of plate.querySelectorAll('*')) {
+      /* No opacityProperty: a .reveal block is opacity 0 until scrolled to,
+         and a box that is laid out past its plate is the defect either way. */
+      if (!el.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true })) continue;
+      const r = el.getBoundingClientRect();
+      if (!r.width && !r.height) continue;
+      const out = r.right - p.right;
+      if (out > 1 && (!worst || out > worst.out)) {
+        worst = { el: el.tagName.toLowerCase() + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')),
+          text: (el.textContent || '').trim().slice(0, 20), right: Math.round(r.right * 10) / 10, plate: Math.round(p.right * 10) / 10, out: Math.round(out * 10) / 10 };
+      }
+    }
+  }
+  /* A name cut to "B..." fits its box, so the overflow test above passes it.
+     scrollWidth over clientWidth is what an ellipsis leaves behind. Zero
+     tolerance on purpose: both are integers, and a 1px cut is a cut name. */
+  const names = [...document.querySelectorAll('.plate .nm')];
+  const cut = names.filter(n => n.scrollWidth > n.clientWidth).map(n => (n.textContent || '').trim());
+  return JSON.stringify({ plates: plates.length, worst, names: names.length, cut });
+})()`;
+const PLATE_PAGES = new Set(['/about', '/advanced']);
+
+/* The checks every cell gets, at any width and text size. `scrollCheck` is
+   off for exactly one set of cells: the six chart pages at 320px/32px text.
+   They measure `scrollWidth` 367 in a 320px viewport there (the `.noprint` h1
+   inside `.wrap` runs 329px in a 246px box, and no element's own box passes
+   the viewport, which is why the page probe never saw it). That is a defect in
+   the generated pages, outside #338's scope (`scripts/charts.mjs` owns them),
+   so it is filed as #340, which removes this skip, rather than hidden behind
+   a tolerance: nothing else here is excused, and the two guides are held to
+   it in every cell. */
+async function cellChecks(c, page, where, problems, scrollCheck = true) {
+  const sc = JSON.parse(await evalIn(c, SCROLL_PROBE));
+  if (scrollCheck && sc.sw > sc.cw) problems.push(`${where}: scrollWidth ${sc.sw}px exceeds clientWidth ${sc.cw}px`);
+  if (!PLATE_PAGES.has(page)) return;
+  const pl = JSON.parse(await evalIn(c, PLATE_PROBE));
+  if (!pl.plates) problems.push(`${where}: no .plate on the page, so nothing was measured`);
+  else if (pl.worst) {
+    const w = pl.worst;
+    problems.push(`${where}: ${w.el} "${w.text}" reaches ${w.right}px, past its plate's edge at ${w.plate}px`);
+  }
+  if (page === '/about' && !pl.names) problems.push(`${where}: no .plate .nm on the page, so no name was measured`);
+  if (pl.cut.length) problems.push(`${where}: names cut off in the plate: ${pl.cut.join(', ')}`);
+}
+
 /* ---- the large-text pass ----
  *
  * WHY IT EXISTS. The six chart pages overflowed 22px at 320px with the
@@ -63,26 +124,21 @@ const STATIC_WIDTHS = [390, 320];
  * is the second defect on these pages found that way. A check that only ever
  * asks at 16px is not measuring the case that broke.
  *
- * ONE CELL, NOT A MATRIX. 320px at a 32px root, and nothing else. Measured
- * across all seven pages × 390/320 × 16/32px, every failure in the whole grid
- * sits in that one cell: 390 is clean at both font sizes and 320 is clean at
- * 16px, because `19em` is 304px at a 16px root and 608px at a 32px one — the
+ * TWO CELLS, NOT A MATRIX. 320px and 390px, each at a 32px root, and nothing
+ * else. `19em` is 304px at a 16px root and 608px at a 32px one, so the
  * narrow-and-large corner is the only place the large-text rules are live and
- * the column is still short. So the pass costs seven navigations, not
- * twenty-eight, and it is the cell with all the information in it.
+ * the column is still short. 320px held every failure the first time this was
+ * measured, and the header here used to say 390 was clean at both font sizes;
+ * that was assumed, not measured, and #338 found it false on `about.html`
+ * (its plan card's track was about 12px wide and the Q labels overlapped, with
+ * nothing reaching past the viewport for the page probe to see). So both
+ * widths run on all eight pages: sixteen navigations rather than the
+ * thirty-two of the whole grid, and the cells with the information in them.
  *
- * THE ALLOWANCE, and it is the part to read before changing it. `about.html`
- * has a RECORDED, ACCEPTED 7px overflow in exactly this cell: a `span.nm` in a
- * drawn mock reaching 327px. It predates this check, it is accepted residue
- * rather than something to chase, and a pass added without an
- * allowance would go red on day one and be switched off by the next person —
- * which is how a check stops being read. So the residue is named at PAGE
- * granularity with the smallest number that covers it, rather than as a
- * blanket tolerance: every other page is pinned at zero, so the 22px defect
- * this pass was built for fails on any of the six, and would fail on
- * `about.html` too. Do NOT raise a number here to make a new failure go away —
- * a new overflow is a bug on a crawlable landing page. Fix the page, or accept
- * the residue deliberately and write the reason here, next to the number.
+ * THE ALLOWANCE: `LARGE_TEXT_ALLOW` below is empty, and every page is pinned
+ * at zero. Do NOT add a number to make a new failure go away -- a new overflow
+ * is a bug on a crawlable landing page. Fix the page, or accept the residue
+ * deliberately and write the reason next to the number.
  *
  * The existing 390/320 pass at the default font size is untouched: this is an
  * addition, not a relaxation. */
@@ -95,6 +151,9 @@ const STATIC_WIDTHS = [390, 320];
    assumed. A number here is an accepted defect on a crawlable page; add one
    only with the finding and the reason for accepting it written here. */
 const LARGE_TEXT_ALLOW = {};
+/* 320 is where the large-text media queries are narrowest; 390 is where they
+   are still live (`19em` is 608px at this root) and the column is wider. */
+const LARGE_TEXT_WIDTHS = [LARGE_TEXT_WIDTH, STATIC_WIDTHS[0]];
 
 export async function staticPass(c, source, origin) {
   const problems = [];
@@ -110,6 +169,7 @@ export async function staticPass(c, source, origin) {
         const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
         if (o.pans) problems.push(`${where}: page pans sideways`);
         if (o.worst) problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
+        await cellChecks(c, page, where, problems);
 
         // The static verdicts do not change with width; ask them once, wide.
         if (w !== STATIC_WIDTHS[0]) continue;
@@ -127,15 +187,15 @@ export async function staticPass(c, source, origin) {
     }
   }
 
-  /* The large-text cell. See LARGE_TEXT_* above for why it is one cell and why
-     `about.html` has an allowance. Reloaded at each page like the pass above:
+  /* The large-text cell. See LARGE_TEXT_* above for why it is two cells and why
+     the allowance map is empty. Reloaded at each page like the pass above:
      a font-size change without a reload leaves the layout unreflowed and
      reports a width that was never rendered. */
   let allowed = 0;
-  for (const page of STATIC_PAGES) {
-    const where = `${page}@${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
+  for (const [page, width] of STATIC_PAGES.flatMap(p => LARGE_TEXT_WIDTHS.map(w => [p, w]))) {
+    const where = `${page}@${width}px/${LARGE_TEXT_PX}px text`;
     try {
-      await land(c, origin, { page, record: 'kept', ...LARGE_TEXT, ready: 'true' });
+      await land(c, origin, { page, record: 'kept', ...LARGE_TEXT, width, ready: 'true' });
 
       const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
       const slack = LARGE_TEXT_ALLOW[page] || 0;
@@ -144,6 +204,7 @@ export async function staticPass(c, source, origin) {
         problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
           + (slack ? ` (${slack}px allowed)` : ''));
       } else if (o.worst) allowed++;
+      await cellChecks(c, page, where, problems, PLATE_PAGES.has(page) || width !== LARGE_TEXT_WIDTH);
     } catch (e) {
       problems.push(`${where}: ${e.message.split('\n')[0]}`);
     }
@@ -153,7 +214,7 @@ export async function staticPass(c, source, origin) {
     pass: problems.length === 0,
     detail: problems.length
       ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${visited.length} pages × ${STATIC_WIDTHS.join('/')}px + ${LARGE_TEXT_WIDTH}px@${LARGE_TEXT_PX}px text, `
+      : `${visited.length} pages × ${STATIC_WIDTHS.join('/')}px + ${LARGE_TEXT_WIDTHS.join('/')}px@${LARGE_TEXT_PX}px text, `
         + `${images} image(s) with alt, no overflow`
         + (allowed ? ` (${allowed} recorded residue)` : '')
         + `, ids and lang clean, ${TOUCH_CHECK}`,
