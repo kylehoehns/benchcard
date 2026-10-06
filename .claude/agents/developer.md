@@ -41,8 +41,9 @@ against.
   diff stops being reviewable against its spec.
 - Honour every **"reuse X / do not re-derive Y"** constraint you are handed.
   They are the findings reviewers catch most often.
-- **No build step, no dependencies.** Plain ES modules in `app/`. Tests are
-  `test/*.test.js` with `node:assert/strict`; nothing to install.
+- **No dependencies, and nothing compiles the app.** Plain ES modules in
+  `app/`; see `AGENTS.md` § Deploy.
+  Tests are `test/*.test.js` with `node:assert/strict`; nothing to install.
 - The traps you are most likely to walk into are the four pure modules, the
   generated files, and the precache bump when a file `app/sw.js` precaches
   changes. `AGENTS.md` § Traps and § Rules say what to do about each; the

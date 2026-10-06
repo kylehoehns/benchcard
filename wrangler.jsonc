@@ -1,13 +1,15 @@
 {
-  // Static-asset Worker. There is no build step: `app/` *is* the site. Every
-  // file under it is meant to be public, and nothing outside it is reachable —
-  // an allowlist directory fails closed, so a new internal file cannot publish
-  // itself at benchcard.app/<name> because someone forgot a denylist entry.
+  // Static-asset Worker. It deploys `dist/`, which `scripts/build.mjs` makes
+  // (AGENTS.md § Deploy). Every file under it is meant to be public, and
+  // nothing outside it is reachable — an allowlist directory fails closed,
+  // so a new internal file cannot publish itself at benchcard.app/<name>
+  // because someone forgot a denylist entry.
   //
   // The four dashboard fields, confirmed against the Cloudflare dashboard on
-  // 2026-08-24. There is no build step, so the build command runs the suite
-  // instead -- that field is the only thing gating a deploy on a green test
-  // run, which is why it is not empty:
+  // 2026-08-24. The dashboard build command runs the suite -- that field is the
+  // only thing gating a deploy on a green test run, which is why it is not
+  // empty. The `build` block below is separate: wrangler runs it before it
+  // reads the assets directory, on `deploy` and on `versions upload` alike:
   //
   //   Build command:    npm test
   //   Deploy command:   npx wrangler deploy
@@ -25,8 +27,9 @@
      asset layer without this script running -- it exists for `/e`, the product
      event endpoint. See src/index.js. */
   "main": "src/index.js",
+  "build": { "command": "node scripts/build.mjs" },
   "assets": {
-    "directory": "app",
+    "directory": "dist",
     // lets the Worker hand anything that is not /e back to the asset layer
     "binding": "ASSETS",
     // Serve /about.html for /about, and return the real 404 rather than

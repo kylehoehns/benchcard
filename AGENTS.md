@@ -1,7 +1,8 @@
 # Working on Benchcard
 
 Static, client-side app that plans youth basketball substitution rotations and
-prints them on a pocket-notebook card. No backend, no accounts, no build step.
+prints them on a pocket-notebook card. No backend, no accounts, and one build
+step that only strips CSS comments (§ Deploy).
 
 `README.md` is the front door; `docs/` explains what the code does and why.
 Open work is GitHub issues. This file is the harness:
@@ -153,8 +154,8 @@ notes/     ROADMAP.md (the why), DECISIONS.md (what was built, to 2026-09)
 .claude/   settings.json, hooks/, skills/, agents/
 ```
 
-`app/` is the only directory that is deployed. Everything above it is process,
-and none of it reaches a coach.
+`app/` is the only directory that is deployed, by way of its copy in `dist/`
+(§ Deploy). Everything above it is process, and none of it reaches a coach.
 
 Serve with `npm run serve` (port 8201), never `python3 -m http.server`. It
 redirects the way Cloudflare does: `about.html` 307s to the extensionless
@@ -311,7 +312,8 @@ for everything else; it reports findings and exits 0 unless a shot could not
 be proved (#180).
 
 Nothing outside `app/` is deployed — `wrangler.jsonc` names `assets.directory`
-as `"app"`. That is deliberate: it replaced an `.assetsignore` denylist that
+as `"dist"`, which the build fills with a copy of `app/` and nothing else. That
+is deliberate: it replaced an `.assetsignore` denylist that
 would have published the old ticket list at `benchcard.app/TICKETS.md`. Keep the
 allowlist shape; do not reintroduce a denylist.
 
@@ -425,11 +427,21 @@ reason before the code exists is its proof that it can.
 ## Deploy
 
 Cloudflare Workers static assets, connected to `main`. Build command
-`npm test` (there is nothing to build, so the field gates the deploy on the
-suite), deploy command `npx wrangler deploy`, version command
-`npx wrangler versions upload` (branch builds — uploads a preview version
-instead of publishing), root directory `/`. All four are mirrored in
-`wrangler.jsonc`'s header comment and were confirmed from the dashboard
-2026-08-24; keep the three copies in step.
+`npm test` (the field gates the deploy on the suite), deploy command
+`npx wrangler deploy`, version command `npx wrangler versions upload` (branch
+builds — uploads a preview version instead of publishing), root directory `/`.
+All four are mirrored in `wrangler.jsonc`'s header comment and were confirmed
+from the dashboard 2026-08-24; keep the three copies in step.
+
+**There is one build step: CSS comments are stripped on deploy (#339).** This
+is the one place that says so; every other mention points here. Both wrangler
+commands run `wrangler.jsonc`'s `build.command`, `node scripts/build.mjs`, which
+copies `app/` to the git-ignored `dist/` and strips the comments from each
+`.css` file there. Every other byte ships as it is in git — no minifying, no
+bundling, no hashed names — and `app/` itself is never rewritten. Comments
+were 77% of `app.css`'s gzipped bytes, which is all this buys. `npm run serve`,
+and so smoke and the Coach driver, strip with the same function on the fly, so
+local runs measure what ships. `SHELL` stays a digest of the source files,
+which is enough because the stripping is deterministic.
 `app/_headers` sets `no-cache` on the HTML and `sw.js` — read the reasoning in
 that file before changing it.

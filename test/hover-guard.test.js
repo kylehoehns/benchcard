@@ -15,7 +15,8 @@ import { readFileSync, readdirSync } from 'node:fs';
  * that wrote it -- `card.css`'s stage lift and the `.jumpto a:hover` in
  * `about.html` and `advanced.html`. A file list would have gone stale the same
  * way, so scope is derived: every `.html` in `app/` (which is everything
- * deployed -- `wrangler.jsonc` names `app` as the assets directory), and for
+ * deployed -- `dist/`, which `wrangler.jsonc` names as the assets directory,
+ * is a copy of `app/`), and for
  * each page every local stylesheet it links plus its own inline `<style>`
  * blocks. A new page, a new sheet, or a new inline block is covered the moment
  * it is linked; nobody has to remember this file. The same shape as

@@ -5,8 +5,9 @@
     scripts/   CI tooling
     notes/     internal working notes, never deployed
 
-`app/` is an allowlist, and that is the point: `wrangler.jsonc` points
-`assets.directory` at it, so a file is public only by being put there. The
+`app/` is an allowlist, and that is the point: the build copies it to `dist/`,
+and `wrangler.jsonc` points `assets.directory` at `dist/`, so a file is public
+only by being put in the source. The
 previous arrangement served the repo root minus an `.assetsignore` denylist,
 where forgetting one line published an internal file at `benchcard.app/<name>`.
 A directory that has to be opted into fails closed.

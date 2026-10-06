@@ -5,7 +5,9 @@ import { readFileSync, readdirSync } from 'node:fs';
 /* Every `export` in `app/*.js`, against every file that could read it.
  *
  * The sibling of `test/dead-class.test.js`, and it exists for the same reason:
- * this app has no build step and no bundler, so nothing ever tells you that a
+ * nothing compiles or bundles this app's markup and scripts (see AGENTS.md
+ * § Deploy), so nothing ever tells
+ * you that a
  * name is offered and never taken. The 2026-08-24 sweep found 37 export names
  * with no reader outside their own file — four of them (`onceInView`, `SOFT`,
  * `hasIcon`, `iconNames`) with no reader at all, dead code that had been

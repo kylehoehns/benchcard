@@ -2,6 +2,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
+    "build": "node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
     "smoke": "node scripts/smoke.mjs",
     "og": "node scripts/og.mjs",
