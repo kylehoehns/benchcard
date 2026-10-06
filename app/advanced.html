@@ -328,11 +328,14 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 }
 @media (max-width: 24rem) {
   .plate { padding: .95rem .75rem; }
-  /* Four `nowrap` labels across is wider than a 320px column even at normal
-     text -- `rem` here means this catches a big-text 390px phone too. Two by
-     two with the labels free to break, which is what `.seg.wide` does in the
-     app, and the pill radius goes with it: a 999px corner on a box two rows
-     tall draws a circle rather than a control. */
+}
+/* Four `nowrap` labels across need about 345px, and the pill they sit in is
+   357px wide only from a 430px phone up at a 16px root, so 30rem (480px) keeps
+   the 15% spare. `rem` here means large text keeps it too: 960px at a 32px
+   root. Two by two with the labels free to break, which is what `.seg.wide`
+   does in the app, and the pill radius goes with it: a 999px corner on a box
+   two rows tall draws a circle rather than a control. */
+@media (max-width: 30rem) {
   .seg, .seg span { border-radius: var(--r-lg); }
   .seg { flex-wrap: wrap; }
   .seg span { flex: 1 0 40%; white-space: normal; }
@@ -760,7 +763,7 @@ html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B0430
          the 48px floor the rest of the site holds itself to, and smoke's
          static-page pass caught it. -->
     <a href="./about">What Benchcard is</a>
-    <a href="mailto:hello@benchcard.app">hello@benchcard.app</a>
+    <a href="mailto:hello@benchcard.app">hello@<wbr>benchcard.app</a>
   </footer>
 </div>
 

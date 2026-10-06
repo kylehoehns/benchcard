@@ -587,7 +587,8 @@ footer a { display: flex; align-items: center; min-height: 48px; }
   .bezel { max-width: 320px; }
 }
 @media (max-width: 24rem) {
-  .tl { --lab: 3.6rem; --tot: 3.2rem; }
+  /* 4.2rem: the 3.6rem it had cut `Rafael` and `Simone` to an ellipsis. */
+  .tl { --lab: 4.2rem; --tot: 3.2rem; }
   .plate { padding: .95rem .75rem; }
 }
 
@@ -600,6 +601,23 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 
   /* One unbreakable 305px token in a 288px column. */
   footer a { overflow-wrap: anywhere; }
+
+  /* The plan card's timeline, drawn the way the app's own `.tl-row` draws it
+     when it is narrow, and for the reason `.lv` below stays a flex row: at this
+     size a grid column is too small for the name AND the total, and a
+     name that loses the squeeze is cut to one letter. So the row wraps. The
+     name grows and never shrinks below its own text; the total sits at the
+     right of the name line when it fits and drops under it when it does not;
+     the track always takes a full line of its own, and `order` puts it last
+     because the markup lists it before the total. The Q1-Q4 head is one column
+     so it spans that same track. Three grid columns left the track 0px wide
+     at 320px and the total past the plate. */
+  .tl-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: .55rem; row-gap: .15rem; }
+  .tl-row .tl-lab { flex: 1 0 auto; }
+  .tl-row .tl-tot { margin-left: auto; }
+  .tl-row .tl-track { flex: 0 0 100%; order: 1; }
+  .tl-head { grid-template-columns: 1fr; }
+  .tl-periods { grid-column: 1; }
 
   /* The two headings that were wider than the column at 320px/32px: `minutes,`
      in the h1 and `tournament` in an h2 each ran past it. The viewport sets
