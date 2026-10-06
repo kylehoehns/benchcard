@@ -56,7 +56,8 @@ branch preview:
 1. On `about.html` and `advanced.html`, `.btn.primary`'s computed background
    resolves (through a 1×1 canvas, per `/browser-verify` §5) to Hardwood:
    `#D2500A` in light mode and `#FF7A2A` in dark mode. Link color resolves to
-   the same value.
+   `#B04308` in light mode and `#FF7A2A` in dark mode (the `--accent-text` value
+   from #332).
 2. On each of the three pages, the top band has a computed `background-image`
    that is not `none`, and it sits behind the `h1`. It is a real painted
    background, not a CSS string.

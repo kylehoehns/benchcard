@@ -137,7 +137,7 @@ p { margin: .8rem 0; color: var(--ink-2); }
 p.tight { margin-top: .25rem; }
 p.lead { font-size: 1.06rem; color: var(--ink-2); margin: 0 0 1.1rem; max-width: 34rem; }
 b, strong { color: var(--ink); font-weight: 620; }
-a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: .07em; }
+a { color: var(--accent-text); text-underline-offset: .18em; text-decoration-thickness: .07em; }
 
 ul { margin: 1rem 0; padding-left: 1.2rem; color: var(--ink-2); }
 ul li { margin: 0 0 .7rem; padding-left: .25rem; }
@@ -217,12 +217,12 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .scp { display: inline-flex; align-items: center; min-height: 32px; padding: 0 .7rem;
   border-radius: var(--r-full); border: 1px solid var(--line-2); background: var(--surface);
   font-size: .8rem; font-weight: 570; color: var(--ink-2); }
-.scp.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 640; }
+.scp.on { background: var(--accent-soft); border-color: transparent; color: var(--ink); font-weight: 640; }
 .scp.act { border-style: dashed; color: var(--muted); }
 
 /* the season, and the switch that feeds it back into a plan */
 .sn-h { margin: 0 0 .35rem; font-size: .68rem; font-weight: 680; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--accent); }
+  text-transform: uppercase; color: var(--accent-text); }
 .sn-list { border-top: 1px solid var(--line); }
 .sn-row { display: flex; align-items: center; gap: .55rem; padding: .42rem .1rem; border-bottom: 1px solid var(--line); }
 .sn-dot { flex: 0 0 auto; width: .62rem; height: .62rem; border-radius: 50%; background: var(--c); }
@@ -282,8 +282,8 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
   text-decoration: none; font-size: .97rem;
 }
 .jumpto a:first-of-type { border-top: 1px solid var(--line); }
-.jumpto a:focus-visible { color: var(--accent); }
-@media (hover: hover) { .jumpto a:hover { color: var(--accent); } }
+.jumpto a:focus-visible { color: var(--accent-text); }
+@media (hover: hover) { .jumpto a:hover { color: var(--accent-text); } }
 
 footer {
   border-top: 1px solid var(--line); margin: 3.2rem 0 0; padding: 1.4rem 0 2.6rem;
@@ -372,6 +372,17 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 html:root[data-tint="hardwood"] {
   --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
   --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
+  --accent-text: var(--tint);
+}
+/* #332: small orange text needs 4.5:1, which Hardwood misses on light grounds
+   (3.9:1). Light takes a darker orange; dark keeps Hardwood; more contrast
+   takes the ink. Every arm names its theme (the selector trap), and the
+   more-contrast block names both so it outranks the light arm by source
+   order and the dark default above by specificity. */
+html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B04308; }
+@media (prefers-contrast: more) {
+  html:root:not([data-theme="dark"])[data-tint="hardwood"],
+  html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
 }
 /* The headline block. It paints nothing (#242 took the orange gradient
    away); it keeps the space above the h1 as its own padding, so the h1 sits

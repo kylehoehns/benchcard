@@ -228,7 +228,7 @@ p { margin: .8rem 0; color: var(--ink-2); }
 p.tight { margin-top: .25rem; }
 p.lead { font-size: 1.06rem; color: var(--ink-2); margin: 0 0 1.1rem; max-width: 34rem; }
 b, strong { color: var(--ink); font-weight: 620; }
-a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: .07em; }
+a { color: var(--accent-text); text-underline-offset: .18em; text-decoration-thickness: .07em; }
 
 ol.steps { margin: 1rem 0; padding: 0; list-style: none; counter-reset: s; }
 ol.steps li {
@@ -238,7 +238,7 @@ ol.steps li {
 ol.steps li::before {
   content: counter(s); position: absolute; left: 0; top: -.1rem;
   width: 1.9rem; height: 1.9rem; border-radius: 999px;
-  background: var(--accent-soft); color: var(--accent);
+  background: var(--accent-soft); color: var(--accent-text);
   font-size: .9rem; font-weight: 660;
   display: flex; align-items: center; justify-content: center;
 }
@@ -373,7 +373,7 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .tl-div.onblk { background: rgba(20, 20, 20, .34); }
 :where(:root)[data-theme="dark"] .tl-div.onblk { background: rgba(8, 8, 8, .46); }
 .tl-tot { text-align: right; font-size: .78rem; font-weight: 660; font-variant-numeric: tabular-nums; color: var(--ink-2); }
-.tl-tot.hi { color: var(--accent); } .tl-tot.lo { color: var(--info); }
+.tl-tot.hi { color: var(--accent-text); } .tl-tot.lo { color: var(--info); }
 
 /* the same track, miniature, one per split so the four read as four shapes */
 .strip { display: grid; gap: .26rem; margin: .1rem 0 .9rem; }
@@ -501,8 +501,8 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
   text-decoration: none; font-size: .97rem;
 }
 .jumpto a:first-of-type { border-top: 1px solid var(--line); }
-.jumpto a:focus-visible { color: var(--accent); }
-@media (hover: hover) { .jumpto a:hover { color: var(--accent); } }
+.jumpto a:focus-visible { color: var(--accent-text); }
+@media (hover: hover) { .jumpto a:hover { color: var(--accent-text); } }
 
 footer {
   border-top: 1px solid var(--line); margin: 3.2rem 0 0; padding: 1.4rem 0 2.6rem;
@@ -618,6 +618,17 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 html:root[data-tint="hardwood"] {
   --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
   --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
+  --accent-text: var(--tint);
+}
+/* #332: small orange text needs 4.5:1, which Hardwood misses on light grounds
+   (3.9:1). Light takes a darker orange; dark keeps Hardwood; more contrast
+   takes the ink. Every arm names its theme (the selector trap), and the
+   more-contrast block names both so it outranks the light arm by source
+   order and the dark default above by specificity. */
+html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B04308; }
+@media (prefers-contrast: more) {
+  html:root:not([data-theme="dark"])[data-tint="hardwood"],
+  html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
 }
 /* The headline block. It paints nothing (#242 took the orange gradient
    away); it keeps the space above the h1 as its own padding, so the h1 sits
@@ -1239,7 +1250,7 @@ html:root[data-tint="hardwood"] {
          no date at all, so the guard is the reason the line is allowed to
          exist. The machine and human forms must agree; the guard checks that
          too. -->
-    <span>Last updated <time datetime="2026-10-02">2 October 2026</time></span>
+    <span>Last updated <time datetime="2026-10-06">6 October 2026</time></span>
   </footer>
 </div>
 

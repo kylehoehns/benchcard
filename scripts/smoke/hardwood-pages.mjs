@@ -28,11 +28,16 @@ import { land, reset } from './page-state.mjs';
  * under a line of text is what gets measured, and --muted clears 4.5:1 on the page ground by only
  * 0.25, which a full-strength tint would take away. */
 const CASES = [
-  { name: 'light', media: [{ name: 'prefers-color-scheme', value: 'light' }], want: 'rgb(210, 80, 10)' },
-  { name: 'dark', media: [{ name: 'prefers-color-scheme', value: 'dark' }], want: 'rgb(255, 122, 42)' },
-  { name: 'light, more contrast', media: [{ name: 'prefers-color-scheme', value: 'light' }, { name: 'prefers-contrast', value: 'more' }], want: 'rgb(153, 58, 7)' },
-  { name: 'dark, more contrast', media: [{ name: 'prefers-color-scheme', value: 'dark' }, { name: 'prefers-contrast', value: 'more' }], want: 'rgb(255, 133, 59)' },
+  { name: 'light', media: [{ name: 'prefers-color-scheme', value: 'light' }], want: 'rgb(210, 80, 10)', text: 'rgb(176, 67, 8)', ink: 'rgb(28, 28, 30)', floor: 4.5 },
+  { name: 'dark', media: [{ name: 'prefers-color-scheme', value: 'dark' }], want: 'rgb(255, 122, 42)', text: 'rgb(255, 122, 42)', ink: 'rgb(244, 244, 246)', floor: 4.5 },
+  { name: 'light, more contrast', media: [{ name: 'prefers-color-scheme', value: 'light' }, { name: 'prefers-contrast', value: 'more' }], want: 'rgb(153, 58, 7)', text: 'rgb(28, 28, 30)', ink: 'rgb(28, 28, 30)', floor: 7 },
+  { name: 'dark, more contrast', media: [{ name: 'prefers-color-scheme', value: 'dark' }, { name: 'prefers-contrast', value: 'more' }], want: 'rgb(255, 133, 59)', text: 'rgb(244, 244, 246)', ink: 'rgb(244, 244, 246)', floor: 7 },
 ];
+/* #332: the small orange text is --accent-text, not Hardwood: per case, `text`
+ * is its value (light #B04308; dark Hardwood unchanged; --ink under more
+ * contrast), `ink` is the selected chip's --ink, `floor` the ratio each must
+ * clear on its painted backdrop (4.5, or 7 under more contrast). Typed from
+ * the spec (docs/specs/332-marketing-text-contrast.md items 1-5). */
 const GRAPHITE_INK = 'rgb(28, 28, 30)';
 /* Every team tint the welcome logo can wear (graphite is no attribute). */
 const TINTS = [null, 'hardwood', 'royal', 'navy', 'maroon', 'red', 'forest', 'gold', 'purple'];
@@ -45,10 +50,14 @@ const PAPER_RGB = 'rgb(244, 244, 246)';
 const PAGES = [
   { name: 'about', page: '/about', record: 'kept', ready: `document.querySelector('h1')`,
     h1: 'Even minutes, worked out before the game.', phrase: 'Even minutes',
-    band: '.hero-band', h1Sel: 'h1', hl: 'h1 .hl', button: '.cta .btn.primary', link: 'p a', body: '.lede' },
+    band: '.hero-band', h1Sel: 'h1', hl: 'h1 .hl', button: '.cta .btn.primary', link: 'p a', body: '.lede',
+    smalls: [{ sel: 'footer a', probe: 'text' }, { sel: '.tl-tot.hi', probe: 'text' },
+      { sel: 'ol.steps li', pseudo: '::before', probe: 'circle' }] },
   { name: 'advanced', page: '/advanced', record: 'kept', ready: `document.querySelector('h1')`,
     h1: 'The reference', phrase: 'reference',
-    band: '.hero-band', h1Sel: 'h1', hl: 'h1 .hl', button: '.cta .btn.primary', link: 'p a', body: '.lede' },
+    band: '.hero-band', h1Sel: 'h1', hl: 'h1 .hl', button: '.cta .btn.primary', link: 'p a', body: '.lede',
+    smalls: [{ sel: 'footer a', probe: 'text' }, { sel: '.sn-h', probe: 'text' },
+      { sel: '.scp.on', probe: 'chip', ink: true }] },
   { name: 'welcome', page: '/index.html', record: 'wiped', ready: WELCOME_READY,
     h1: 'The whole game, worked out before you leave the house.', phrase: 'The whole game',
     band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '.wel-sub',
@@ -88,6 +97,28 @@ const READ = p => `(() => {
     bodyBox: body ? { x: r(body).left - 2, y: r(body).top - 2 } : null,
     scroll: [window.scrollX, window.scrollY],
   });
+})()`;
+
+/* #332: one small text, scrolled to the middle of the screen so the
+   screenshot reaches it. `text` samples 2px up and left of the box;
+   `circle` is the li's ::before disc (absolute, left 0, top -.1rem, 1.9rem
+   square), sampled 3px in from the li's left edge at the disc's middle,
+   away from the digit; `chip` is 4px in from the chip's left edge at its
+   vertical middle, away from the label. */
+const READ_SMALL = (sel, pseudo, probe) => `(() => {
+  const e = document.querySelector(${JSON.stringify(sel)});
+  if (!e) return JSON.stringify(null);
+  e.scrollIntoView({ block: 'center' });
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.fillStyle = '#000'; cx.fillStyle = getComputedStyle(e, ${JSON.stringify(pseudo || null)}).color; cx.fillRect(0, 0, 1, 1);
+  const d = cx.getImageData(0, 0, 1, 1).data;
+  const r = e.getBoundingClientRect();
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+  const at = ${JSON.stringify(probe)} === 'circle' ? { x: r.left + 3, y: r.top + 0.85 * rem }
+    : ${JSON.stringify(probe)} === 'chip' ? { x: r.left + 4, y: r.top + r.height / 2 }
+    : { x: r.left - 2, y: r.top - 2 };
+  return JSON.stringify({ color: [d[0], d[1], d[2], d[3]], at, scroll: [window.scrollX, window.scrollY] });
 })()`;
 
 /* The welcome logo's ground and its card, for each team tint, in the page's
@@ -145,7 +176,18 @@ export async function hardwoodPagesPass(c, origin) {
         }
         if (p.link) {
           if (!s.linkColor) note(where, `no ${p.link}`);
-          else if (css(s.linkColor) !== cse.want) note(where, `links are ${css(s.linkColor)}, want ${cse.want}`);
+          else if (css(s.linkColor) !== cse.text) note(where, `links are ${css(s.linkColor)}, want ${cse.text}`);
+        }
+        // #332: every small orange text, by its own color and its painted ratio.
+        for (const m of p.smalls || []) {
+          const what = m.pseudo ? `${m.sel}${m.pseudo}` : m.sel;
+          const t = JSON.parse(await evalIn(c, READ_SMALL(m.sel, m.pseudo, m.probe)));
+          if (!t) { note(where, `no ${m.sel}`); continue; }
+          const want = m.ink ? cse.ink : cse.text;
+          if (css(t.color) !== want) note(where, `${what} is ${css(t.color)}, want ${want}`);
+          const [back] = await samplePixels(c, [t.at], t.scroll[0], t.scroll[1]);
+          const r = ratio(t.color, back);
+          if (r < cse.floor) note(where, `${what} on its backdrop is ${r.toFixed(2)}:1, want at least ${cse.floor}:1`);
         }
         // #242: no gradient behind the h1, and the h1 keeps its room.
         if (s.bandImage === null) note(where, `no ${p.band} block`);
