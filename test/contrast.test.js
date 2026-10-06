@@ -151,17 +151,65 @@ test('every control token clears its floor against every ground, in all four the
  * all in light mode, and that is exactly the move that costs contrast -- so
  * the pair is pinned rather than left to a hand measurement that was true on
  * the day someone took it. `--seg-on` is the raised chip the selected label
- * sits on, which is a different ground from the track around it. */
-test('a segmented control\'s own two labels clear the text floor on the grounds they land on', () => {
+ * sits on, which is a different ground from the track around it. The
+ * selected label's own pair is checked in the next test, across every team
+ * color (#324): this one covers only the unselected label and only the four
+ * base themes. */
+test('a segmented control\'s unselected label clears the text floor on --seg-track', () => {
   const bad = [];
   for (const t of THEMES) {
-    for (const [fg, bgTok] of [['--ink', '--seg-track'], ['--tint', '--seg-on']]) {
+    for (const [fg, bgTok] of [['--ink', '--seg-track']]) {
       const ground = colorOf(t.tokens, bgTok);
       const r = contrast(effective(colorOf(t.tokens, fg), ground), ground);
       if (r < t.textFloor - 1e-9) bad.push(`${t.name}: ${fg} on ${bgTok} is ${r.toFixed(2)}:1, needs >= ${t.textFloor}:1`);
     }
   }
   assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #324: the selected label's color is READ from app.css's own rule, the way
+ * DANGER_HOVER_MIX is below, so a change of token is what this reacts to.
+ * It was `--tint`, checked only on the four base themes (Graphite's tint),
+ * and a first run is Hardwood: dark #FF7A2A on dark --seg-on was 3.39:1
+ * here (Lighthouse rounded it to 3.38).
+ * The owner's decision is `--ink`. This walks every color in COLORS in all
+ * four states, because that is the sweep the base-theme check never made.
+ * Fix a failure by choosing a token that clears the floor, not by dropping a
+ * color from COLORS. */
+const SELECTED_SEG_RULE = /\.seg button\.on,\s*\.seg button\[aria-selected="true"\]\s*\{[^}]*?[\s;{]color:\s*var\((--[a-z0-9-]+)\)/;
+const selectedSegToken = (css) => {
+  const m = css.match(SELECTED_SEG_RULE);
+  if (!m) throw new Error('could not find `.seg button.on, .seg button[aria-selected="true"] { ... color: var(--token) ... }` in app/app.css');
+  return m[1];
+};
+
+test('the selected-segment rule is found by its selector, and fails closed when it is not', () => {
+  assert.match(selectedSegToken(appCss), /^--[a-z0-9-]+$/);
+  assert.throws(() => selectedSegToken(appCss.replace('.seg button.on, .seg button[aria-selected="true"]', '.seg button.chosen')), /could not find/);
+  assert.throws(() => selectedSegToken('.seg button.on, .seg button[aria-selected="true"] { background: red; }'), /could not find/);
+});
+
+test('a segmented control\'s selected label clears the text floor on --seg-on, for every team color in all four states', () => {
+  const token = selectedSegToken(appCss);
+  const bad = [];
+  let cells = 0;
+  for (const c of COLORS) {
+    const t = resolved.tint(c);
+    for (const s of [
+      { name: `${c} light`, tokens: t.light, floor: 4.5 },
+      { name: `${c} dark`, tokens: t.dark, floor: 4.5 },
+      { name: `${c} light + more contrast`, tokens: t.lightMore, floor: 7 },
+      { name: `${c} dark + more contrast`, tokens: t.darkMore, floor: 7 },
+    ]) {
+      const ground = colorOf(s.tokens, '--seg-on');
+      const r = contrast(effective(colorOf(s.tokens, token), ground), ground);
+      cells++;
+      if (r < s.floor - 1e-9) bad.push(`${s.name}: ${token} on --seg-on is ${r.toFixed(2)}:1, needs >= ${s.floor}:1`);
+    }
+  }
+  assert.equal(cells, COLORS.length * 4, 'every color x state cell must be measured');
+  assert.ok(COLORS.length > 0, 'COLORS is empty, so nothing was measured');
+  assert.deepEqual(bad, [], `${bad.length} of ${cells} cells fail:\n  ` + bad.join('\n  '));
 });
 
 /* #140 (prototype control size), item 7 and Q3: the switch's off track is a
