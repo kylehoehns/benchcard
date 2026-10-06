@@ -216,11 +216,11 @@ applies to it as to `LARGE_TEXT_ALLOW` below.
 
 Then it loads the other seven pages — `about.html` and the six generated
 roster-size chart pages — at 390 and 320 for overflow, alt text, ids, lang,
-touch targets and console errors, plus the same 320px/32px-root pass. That one
-cell is where the large-text media queries are live and the column is still
-narrow, which is why it is one cell and not a matrix. `about.html` has a
-recorded 8px allowance there for residue that predates the check; every other
-page is pinned at zero. **Do not raise a number in either allow map to clear a
+touch targets and console errors, plus the same 32px-root pass at 320 and 390.
+Those two cells are where the large-text media queries are live (narrowest and
+widest), which is why it is two cells and not a matrix. On the two guides it
+also checks that nothing sticks out of a `.plate` and no `.nm` name is cut.
+`LARGE_TEXT_ALLOW` is empty: every page is pinned at zero. **Do not raise a number in either allow map to clear a
 new failure**, and never replace one with a blanket tolerance — a blanket is
 what let the 228px pan above ship. Then it prints a pass/fail table. It serves
 `app/` on its own ephemeral port and drives headless Chrome over the DevTools

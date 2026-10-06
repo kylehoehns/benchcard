@@ -81,7 +81,8 @@ const PLATE_PROBE = `(() => {
     }
   }
   /* A name cut to "B..." fits its box, so the overflow test above passes it.
-     scrollWidth over clientWidth is what an ellipsis leaves behind. */
+     scrollWidth over clientWidth is what an ellipsis leaves behind. Zero
+     tolerance on purpose: both are integers, and a 1px cut is a cut name. */
   const names = [...document.querySelectorAll('.plate .nm')];
   const cut = names.filter(n => n.scrollWidth > n.clientWidth).map(n => (n.textContent || '').trim());
   return JSON.stringify({ plates: plates.length, worst, names: names.length, cut });
@@ -134,18 +135,10 @@ async function cellChecks(c, page, where, problems, scrollCheck = true) {
  * widths run on all eight pages: sixteen navigations rather than the
  * thirty-two of the whole grid, and the cells with the information in them.
  *
- * THE ALLOWANCE, and it is the part to read before changing it. `about.html`
- * has a RECORDED, ACCEPTED 7px overflow in exactly this cell: a `span.nm` in a
- * drawn mock reaching 327px. It predates this check, it is accepted residue
- * rather than something to chase, and a pass added without an
- * allowance would go red on day one and be switched off by the next person —
- * which is how a check stops being read. So the residue is named at PAGE
- * granularity with the smallest number that covers it, rather than as a
- * blanket tolerance: every other page is pinned at zero, so the 22px defect
- * this pass was built for fails on any of the six, and would fail on
- * `about.html` too. Do NOT raise a number here to make a new failure go away —
- * a new overflow is a bug on a crawlable landing page. Fix the page, or accept
- * the residue deliberately and write the reason here, next to the number.
+ * THE ALLOWANCE: `LARGE_TEXT_ALLOW` below is empty, and every page is pinned
+ * at zero. Do NOT add a number to make a new failure go away -- a new overflow
+ * is a bug on a crawlable landing page. Fix the page, or accept the residue
+ * deliberately and write the reason next to the number.
  *
  * The existing 390/320 pass at the default font size is untouched: this is an
  * addition, not a relaxation. */
