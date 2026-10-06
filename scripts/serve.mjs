@@ -26,11 +26,16 @@
  *   - `/index.html` -> 307 `/`
  *   - `/<name>.html` -> 307 `/<name>`
  *   - `/<name>`      -> serves `<name>.html`
- * Everything else is served as asked. */
+ * Everything else is served as asked.
+ *
+ * One difference from the files on disk, on purpose: `.css` is served with its
+ * comments stripped by `scripts/build.mjs`'s `stripCssComments`, the same
+ * function the deploy build uses (#339), so smoke runs against what ships. */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stripCssComments } from './build.mjs';
 
 const APP = join(resolve(dirname(fileURLToPath(import.meta.url)), '..'), 'app');
 
@@ -72,7 +77,7 @@ export function serve(port = 0) {
     try {
       const body = await readFile(abs);
       res.writeHead(200, { 'content-type': TYPES[extname(abs)] || 'application/octet-stream' });
-      res.end(body);
+      res.end(extname(abs) === '.css' ? stripCssComments(body.toString('utf8')) : body);
     } catch { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); }
   });
   /* Keep-alive sockets outlive `server.close()`, and a half-open connection is

@@ -12,7 +12,8 @@ import { readFileSync, readdirSync } from 'node:fs';
  * hid inside a closed `<details>`, where no screenshot ever caught it and no
  * test ever looked.
  *
- * That is a class of bug, not one bug: this app has no build step, so a class
+ * That is a class of bug, not one bug: nothing compiles or bundles this app's markup and scripts (the one
+ * build step, AGENTS.md § Deploy, only strips CSS comments), so a class
  * name is a string in one file hoping for a rule in another, and nothing
  * checks the hope. The 2026-08-24 sweep found four more (`.boot`, `.missed`,
  * `.resuming`, `.bal-empty`) and one real layout bug (`.mini`, which made the

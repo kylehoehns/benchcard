@@ -18,7 +18,8 @@ import { readFileSync, readdirSync } from 'node:fs';
  *
  * Why it is worth a guard rather than a one-off delete: an inert `id` reads
  * as a hook that something depends on, so it survives every refactor that
- * walks past it, and there is no build step here to notice.
+ * walks past it, and nothing here compiles the markup or scripts to notice
+ * (the one build step, AGENTS.md § Deploy, only strips CSS comments).
  *
  * A "reader" is a mention anywhere in `app/*.js`, `app/*.css` or the markup
  * file itself — the last one on purpose, so an id whose only use is an
