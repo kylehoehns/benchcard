@@ -86,7 +86,7 @@ that claim is on the [About page](https://benchcard.app/about).
 
 ## Running it
 
-No dependencies, no build step, no install.
+No dependencies, no install, and nothing to compile (the one build step is in [AGENTS.md § Deploy](AGENTS.md#deploy)).
 
 ```sh
 git clone https://github.com/kylehoehns/benchcard

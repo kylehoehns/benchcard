@@ -1,7 +1,6 @@
-# Cloudflare Pages headers. The one build step (AGENTS.md § Deploy) only strips
-# CSS comments and renames nothing, so nothing here is
-# content-hashed — every URL keeps its name across deploys. That single fact
-# decides every rule below.
+# Cloudflare Pages headers. Nothing compiles or renames files (AGENTS.md
+# § Deploy), so nothing here is content-hashed — every URL keeps its name
+# across deploys. That single fact decides every rule below.
 #
 # The failure this file exists to prevent: a coach opens the app on Saturday
 # and gets a version from three weeks ago because an intermediary is still

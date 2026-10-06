@@ -42,7 +42,7 @@ against.
 - Honour every **"reuse X / do not re-derive Y"** constraint you are handed.
   They are the findings reviewers catch most often.
 - **No dependencies, and nothing compiles the app.** Plain ES modules in
-  `app/`; the one build step only strips CSS comments (`AGENTS.md` § Deploy).
+  `app/`; see `AGENTS.md` § Deploy.
   Tests are `test/*.test.js` with `node:assert/strict`; nothing to install.
 - The traps you are most likely to walk into are the four pure modules, the
   generated files, and the precache bump when a file `app/sw.js` precaches

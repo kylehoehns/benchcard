@@ -96,7 +96,7 @@ gives 3.33-minute stints, and minutes were printing as
 `23.333333333333332` — on the pocket card.
 ## Deployment
 
-ES modules are blocked over `file://`, and this runs on a phone at the gym, so it needs to be served — Cloudflare Pages in production, `npm run serve` locally. No build step either way.
+ES modules are blocked over `file://`, and this runs on a phone at the gym, so it needs to be served — Cloudflare Pages in production, `npm run serve` locally. Both serve the CSS with its comments stripped; how is in AGENTS.md § Deploy.
 
 **Cloudflare settings.** Framework preset **None**, build command **`npm test`**,
 deploy command **`npx wrangler deploy`**, version command
@@ -109,20 +109,21 @@ hands back a preview URL instead of publishing to `benchcard.app`, so the same
 green-suite gate applies to a branch build without it going live. Note there is
 no "output directory" field in the Workers static-assets flow — that belongs to
 the older Pages UI. The served directory comes from `assets.directory` in
-`wrangler.jsonc`, which names `app`; the root directory is `/` because that is
+`wrangler.jsonc`, which names `dist/`, the build's copy of `app/` (AGENTS.md § Deploy); the root directory is `/` because that is
 where `wrangler.jsonc` itself lives. Nothing to install, so no Node version to
 pin.
 
-There is genuinely nothing to build, so the build command runs the suite
-instead: `node --test` exits non-zero on a failure, which aborts the deploy. A
+The dashboard's build command runs the suite: `node --test` exits non-zero on a
+failure, which aborts the deploy. (The CSS step is separate: `wrangler.jsonc`'s
+own `build.command` runs inside the deploy and version commands; AGENTS.md
+§ Deploy.) A
 red suite should never reach benchcard.app, and this is the cheapest place to
 enforce that. `.app` is an HSTS-preloaded TLD, which is a non-issue here rather than a
 task: Pages serves HTTPS and redirects HTTP with no configuration.
 
 `app/_headers` is the part worth reading before changing. It sits at the root
 of the asset directory, which is where Cloudflare looks for it; it is consumed
-rather than served. Nothing is content-hashed
-— there is no build step, so every URL keeps its name across deploys — and that
+rather than served. Nothing is content-hashed — the build keeps every file name — and that
 one fact decides every rule in it, in both directions:
 
 - **`sw.js` and the HTML get `no-cache`.** A stale `index.html` is a coach on

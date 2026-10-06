@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Re-vendor third-party code. Pinned, committed, and served directly — these
-# run as ES modules in the browser, so there is no bundler and no build step.
+# run as ES modules in the browser, so there is no bundler and nothing compiles the vendored file.
 # The "build" is this script; its output is checked in.
 set -e
 cd "$(dirname "$0")"

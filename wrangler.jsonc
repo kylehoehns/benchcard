@@ -1,10 +1,9 @@
 {
-  // Static-asset Worker. `app/` is the source and `dist/` (git-ignored) is the
-  // site: the one build step copies `app/` to `dist/` with the CSS comments
-  // stripped. AGENTS.md § Deploy is the one place that states the rule. Every
-  // file under it is meant to be public, and nothing outside it is reachable —
-  // an allowlist directory fails closed, so a new internal file cannot publish
-  // itself at benchcard.app/<name> because someone forgot a denylist entry.
+  // Static-asset Worker. It deploys `dist/`, which `scripts/build.mjs` makes
+  // (AGENTS.md § Deploy). Every file under it is meant to be public, and
+  // nothing outside it is reachable — an allowlist directory fails closed,
+  // so a new internal file cannot publish itself at benchcard.app/<name>
+  // because someone forgot a denylist entry.
   //
   // The four dashboard fields, confirmed against the Cloudflare dashboard on
   // 2026-08-24. The dashboard build command runs the suite -- that field is the

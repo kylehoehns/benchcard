@@ -11,8 +11,8 @@ import { readFileSync } from 'node:fs';
  * all, and three of the rest paraphrases rather than the page's own answer.
  *
  * That is the same class of bug as the dead-class and dead-export sweeps: this
- * project's markup is not compiled (the one build step, AGENTS.md § Deploy,
- * only strips CSS comments), so the JSON-LD is a hand-typed copy of prose that
+ * project's markup is not compiled (nothing compiles it; see
+ * AGENTS.md § Deploy), so the JSON-LD is a hand-typed copy of prose that
  * lives forty lines away, and nothing checked the copy. The copy sweep could
  * not have caught it either -- it checked the page's claims against the module
  * that emits them, not the structured data against the DOM.
