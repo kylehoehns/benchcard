@@ -1,4 +1,4 @@
-import { evalIn, step, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, gmBodyProblem, TODAY_HOME, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
+import { evalIn, step, OVERFLOW_PROBE, DIALOG_OVERFLOW_PROBE, DESCRIBE_EL, gmBodyProblem, TODAY_HOME, FIRST_RUN_STEPS, TIMERS_QUIET, wait } from './dom.mjs';
 import { VIEWS } from './sweep.mjs';
 import { STATES } from './overlay.mjs';
 import { STEP_COUNT as TOUR_STEP_COUNT } from './tour-steps.mjs';
@@ -457,6 +457,7 @@ export const APP_LARGE_TEXT_STATES = [
  * Scrollable ancestors are skipped for the same reason `OVERFLOW_PROBE` skips
  * them: a scroller's content above its own top is one flick away. */
 const STRANDED_ABOVE = `(() => {
+  const describe = ${DESCRIBE_EL};
   const roots = [...document.body.querySelectorAll('*')]
     .filter(el => getComputedStyle(el).position === 'fixed');
   let worst = null;
@@ -473,8 +474,7 @@ const STRANDED_ABOVE = `(() => {
       }
       if (scrolls) continue;
       if (!worst || r.top < worst.top) worst = {
-        el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-          + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')),
+        el: describe(el),
         top: Math.round(r.top),
       };
     }

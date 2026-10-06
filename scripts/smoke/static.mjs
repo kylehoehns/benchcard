@@ -1,4 +1,4 @@
-import { evalIn, OVERFLOW_PROBE } from './dom.mjs';
+import { evalIn, OVERFLOW_PROBE, WORST_OUTSIDE, IS_CUT } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './sizes.mjs';
 
@@ -59,32 +59,29 @@ const SCROLL_PROBE = `JSON.stringify({ sw: document.documentElement.scrollWidth,
 
 /* #338. The two guides draw their mocks inside `.plate` cards. This reports
    how many plates the page has and the visible descendant that sticks out
-   furthest past its own plate's box (1px of slack for rounding). A page with no
-   plate reports `plates: 0`, which the caller fails: a check that measured
-   nothing is not a clean result. */
+   furthest past its own plate's box, on either edge (`WORST_OUTSIDE`, dom.mjs:
+   1px of slack for rounding). `right` and `plate` are the overhanging edge's
+   coordinate and the plate's matching edge, so a left-edge failure reads like
+   a right-edge one. A page with no plate reports `plates: 0`, which the caller
+   fails: a check that measured nothing is not a clean result. */
 const PLATE_PROBE = `(() => {
+  const isCut = ${IS_CUT};
   const plates = [...document.querySelectorAll('.plate')];
   let worst = null;
   for (const plate of plates) {
-    const p = plate.getBoundingClientRect();
-    for (const el of plate.querySelectorAll('*')) {
-      /* No opacityProperty: a .reveal block is opacity 0 until scrolled to,
-         and a box that is laid out past its plate is the defect either way. */
-      if (!el.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true })) continue;
-      const r = el.getBoundingClientRect();
-      if (!r.width && !r.height) continue;
-      const out = r.right - p.right;
-      if (out > 1 && (!worst || out > worst.out)) {
-        worst = { el: el.tagName.toLowerCase() + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')),
-          text: (el.textContent || '').trim().slice(0, 20), right: Math.round(r.right * 10) / 10, plate: Math.round(p.right * 10) / 10, out: Math.round(out * 10) / 10 };
-      }
+    /* No opacity flag: a .reveal block is opacity 0 until scrolled to, and a
+       box that is laid out past its plate is the defect either way. */
+    const w = ${WORST_OUTSIDE}(plate, false);
+    if (w && (!worst || w.out > worst.out)) {
+      worst = { el: w.el, text: (w.node.textContent || '').trim().slice(0, 20),
+        right: Math.round(w.at * 10) / 10, plate: Math.round(w.edgeOf * 10) / 10, out: Math.round(w.out * 10) / 10 };
     }
   }
   /* A name cut to "B..." fits its box, so the overflow test above passes it.
      scrollWidth over clientWidth is what an ellipsis leaves behind. Zero
      tolerance on purpose: both are integers, and a 1px cut is a cut name. */
   const names = [...document.querySelectorAll('.plate .nm')];
-  const cut = names.filter(n => n.scrollWidth > n.clientWidth).map(n => (n.textContent || '').trim());
+  const cut = names.filter(n => isCut(n, 0)).map(n => (n.textContent || '').trim());
   return JSON.stringify({ plates: plates.length, worst, names: names.length, cut });
 })()`;
 const PLATE_PAGES = new Set(['/about', '/advanced']);

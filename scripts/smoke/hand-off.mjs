@@ -15,7 +15,7 @@
    from reading the page's own module back. */
 import { encode as qrEncode } from '../../app/vendor/uqr.mjs';
 import { DAMAGED_LINK as DAMAGED } from '../../app/live.js';
-import { evalIn, step, WIDTH, OVERFLOW_PROBE, TODAY_HOME, onScreen } from './dom.mjs';
+import { evalIn, step, WIDTH, OVERFLOW_PROBE, TODAY_HOME, onScreen, IS_CUT } from './dom.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_FLOOR, TOUCH_MIN } from './sizes.mjs';
 import { land } from './page-state.mjs';
 import { evalJSON, tap, settle, setGame, pickSharePane, sharePaneButton, qrDrawn } from './sheet-drive.mjs';
@@ -150,7 +150,7 @@ export async function handOffPass(c, origin) {
       const lab = b?.querySelector('.ab-lab');
       return JSON.stringify({ shown: !!b && !bar.hidden && rc.width > 0, onTop: !!top && b.contains(top),
         inside: !!rc && rc.left >= 0 && rc.right <= document.documentElement.clientWidth && rc.bottom <= innerHeight + 1,
-        text: lab?.textContent ?? '', clipped: !!lab && lab.scrollWidth > lab.clientWidth + 1,
+        text: lab?.textContent ?? '', clipped: !!lab && ${IS_CUT}(lab, 1),
         dialog: !!document.querySelector('dialog[open]'), view: !document.getElementById('view-games').hidden });
     })()`);
     const over = JSON.parse(await evalIn(c, OVERFLOW_PROBE));

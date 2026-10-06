@@ -22,7 +22,7 @@
  * Each of those three gets its own read below, named for the defect rather
  * than folded into the item-1/3 blocks above them, since that is what let a
  * broken tree read green the first time. */
-import { TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN } from './dom.mjs';
+import { TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_CUT } from './dom.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
 import { RICH, TODAY_LANDING, richWith } from './fixtures.mjs';
 import { land, resize } from './page-state.mjs';
@@ -537,6 +537,7 @@ const LONG_NAME_RECORD = (() => {
 })();
 
 const READ_LONG_NAME = `JSON.stringify((() => {
+  const isCut = ${IS_CUT};
   const rows = [...document.querySelectorAll('#seasonbox .sn-row')];
   const row = rows.find(r => (r.querySelector('.sn-nm')?.textContent || '') === ${JSON.stringify(LONG_FIRST_NAME)});
   const nm = row && row.querySelector('.sn-nm');
@@ -544,7 +545,7 @@ const READ_LONG_NAME = `JSON.stringify((() => {
   const grp = document.querySelector('#seasonbox .pgrp');
   return {
     found: !!row,
-    ellipsized: nm ? nm.scrollWidth > nm.clientWidth + 0.5 : null,
+    ellipsized: nm ? isCut(nm, 0.5) : null,
     minRight: min ? min.getBoundingClientRect().right : null,
     grpRight: grp ? grp.getBoundingClientRect().right : null,
   };

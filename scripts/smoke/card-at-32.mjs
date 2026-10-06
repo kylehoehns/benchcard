@@ -1,4 +1,4 @@
-import { evalIn } from './dom.mjs';
+import { evalIn, IS_CUT } from './dom.mjs';
 import { nameOf } from './registry.mjs';
 import { PLAYERS, UI, SEED } from './fixtures.mjs';
 import { LARGE_TEXT_PX } from './sizes.mjs';
@@ -129,7 +129,7 @@ async function measureFit(c) {
     const h = hd.getBoundingClientRect(), o = opp.getBoundingClientRect(), w = when.getBoundingClientRect();
     return JSON.stringify({
       overlap: o.right > w.left + 0.5,
-      clipped: when.scrollWidth > when.clientWidth + 1,
+      clipped: ${IS_CUT}(when, 1),
       outside: o.left < h.left - 0.5 || w.right > h.right + 0.5
         || o.top < h.top - 0.5 || w.bottom > h.bottom + 0.5,
       whenText: when.textContent,

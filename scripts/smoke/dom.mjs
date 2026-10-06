@@ -354,6 +354,54 @@ export async function toGameOne(c) {
   await evalIn(c, step(`document.querySelector('.today-game').click()`));
 }
 
+/* Three page-side helpers, strings interpolated into a caller's own injected
+   code with `${...}` (like `IS_SR_ONLY_RECT` below), so the next probe that
+   names an element, tests for a cut box or walks a container reuses them
+   instead of copying them (#341). They sit above `OVERFLOW_PROBE` because a
+   template literal reads them when this module loads. A regex inside one is
+   written `\\s`: the template literal turns that into `\s` for the browser, and
+   a single `\s` would arrive as a bare `s`.
+
+   `DESCRIBE_EL`: how a failure message names an element -- tag, `#id`, and
+   its first two classes. */
+export const DESCRIBE_EL = `(el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
+  + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')))`;
+
+/* `IS_CUT`: an element whose content is wider than its box. `tol` is the
+   slack in pixels and each caller passes the one it has always used (0, 0.5
+   or 1): the helper shares the test, not the tolerance. */
+export const IS_CUT = `((el, tol) => el.scrollWidth > el.clientWidth + tol)`;
+
+/* `WORST_OUTSIDE`: the visible, non-zero-size descendant of `box` that sticks
+   out furthest past EITHER edge of `box`'s own rect, by more than 1px, or
+   null. `opacity` is a flag: on, an `opacity: 0` element is skipped like any
+   other invisible one; off, it is measured (a `.reveal` block is opacity 0
+   until scrolled to, and a box laid out past its container is the defect
+   either way). Returns raw numbers -- `el` (named by `DESCRIBE_EL`), `node`
+   (the element itself, for a caller that wants its text), `out` (how far past
+   the edge), `edge` ('right' or 'left'), `at` (the element's edge) and `edgeOf`
+   (the container's matching edge) -- and each caller rounds them as its own
+   message always has. The right edge wins when both are out. */
+export const WORST_OUTSIDE = `((box, opacity) => {
+  const describe = ${DESCRIBE_EL};
+  const b = box.getBoundingClientRect();
+  const flags = { contentVisibilityAuto: true, opacityProperty: !!opacity, visibilityProperty: true };
+  let worst = null;
+  for (const el of box.querySelectorAll('*')) {
+    if (!el.checkVisibility(flags)) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) continue;
+    const edge = r.right > b.right + 1 ? 'right' : r.left < b.left - 1 ? 'left' : null;
+    if (edge === null) continue;
+    const out = edge === 'right' ? r.right - b.right : b.left - r.left;
+    if (!worst || out > worst.out) {
+      worst = { el: describe(el), node: el, out, edge,
+        at: edge === 'right' ? r.right : r.left, edgeOf: edge === 'right' ? b.right : b.left };
+    }
+  }
+  return worst;
+})`;
+
 /* The same assertion `sweepPass` makes, and for the same reason: `scrollWidth`
    is clamped by `overflow-x: clip` on a shrink-to-fit container, so the thing
    clip cannot hide is an element's own edge. `pans` is the other half —
@@ -367,6 +415,8 @@ export async function toGameOne(c) {
    `scrollWidth`; the Games tab hangs off it and no pass could see it.
    Shared by `staticPass` and `appLargeTextPass`. */
 export const OVERFLOW_PROBE = `(() => {
+  const describe = ${DESCRIBE_EL};
+  const isCut = ${IS_CUT};
   const vw = document.documentElement.clientWidth;
   const x0 = window.scrollX;
   window.scrollTo(80, window.scrollY);
@@ -381,12 +431,12 @@ export const OVERFLOW_PROBE = `(() => {
     let n = el.parentElement, scrolls = false;
     while (n && n !== document.body) {
       const ov = getComputedStyle(n).overflowX;
-      if ((ov === 'auto' || ov === 'scroll') && n.scrollWidth > n.clientWidth + 1) { scrolls = true; break; }
+      if ((ov === 'auto' || ov === 'scroll') && isCut(n, 1)) { scrolls = true; break; }
       n = n.parentElement;
     }
     if (scrolls) continue;
     const out = over < 0 ? -over : over - vw;
-    if (!worst || out > worst.out) worst = { el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + ((el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')), right: over, out };
+    if (!worst || out > worst.out) worst = { el: describe(el), right: over, out };
   }
   return JSON.stringify({ vw, pans, worst });
 })()`;
@@ -536,26 +586,17 @@ const wordFloorRows = (nameSel, rowSel) => {
    descendant's own `getBoundingClientRect` -- CSS overflow never does -- so
    this does not need the ancestor-scroll skip `OVERFLOW_PROBE` carries for a
    `overflow: auto` scroller; nothing here can be legitimately reachable by
-   scrolling sideways, because nothing in this sheet scrolls on the X axis. */
+   scrolling sideways, because nothing in this sheet scrolls on the X axis.
+   The walk itself is `WORST_OUTSIDE` above, shared with
+   `GM_BODY_OVERFLOW_PROBE` and `static.mjs`'s `PLATE_PROBE`. */
 export const DIALOG_OVERFLOW_PROBE = `(() => {
   const dialog = document.querySelector('dialog[open]');
   if (!dialog) return JSON.stringify({ dialog: false });
-  const d = dialog.getBoundingClientRect();
-  const vis = el => el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true });
-  let worst = null;
-  for (const el of dialog.querySelectorAll('*')) {
-    const r = el.getBoundingClientRect();
-    if ((!r.width && !r.height) || !vis(el)) continue;
-    const over = r.right > d.right + 1 ? Math.round(r.right - d.right)
-      : r.left < d.left - 1 ? Math.round(d.left - r.left) : null;
-    if (over === null) continue;
-    if (!worst || over > worst.out) worst = {
-      el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-        + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')),
-      out: over,
-    };
-  }
-  return JSON.stringify({ dialog: true, dw: Math.round(d.width), worst });
+  const w = ${WORST_OUTSIDE}(dialog, true);
+  return JSON.stringify({
+    dialog: true, dw: Math.round(dialog.getBoundingClientRect().width),
+    worst: w && { el: w.el, out: Math.round(w.out) },
+  });
 })()`;
 
 /* #147 item 4/#167: the same container-relative shape as `DIALOG_OVERFLOW_PROBE`
@@ -565,27 +606,15 @@ export const DIALOG_OVERFLOW_PROBE = `(() => {
    design -- but `.gm-body`'s `touch-action: pan-y` blocks a sideways pan to
    reach it, so this checks its own `scrollWidth` against its `clientWidth` too.
    Proof: failed on today's code before #147's `.gm-scope` -> `.seg`+`.btn`
-   change (29 to 340 against a 320px `.gm-body`). */
+   change (29 to 340 against a 320px `.gm-body`).
+   The walk is `WORST_OUTSIDE`. */
 export const GM_BODY_OVERFLOW_PROBE = `(() => {
   const body = document.querySelector('.gm-body');
   if (!body) return JSON.stringify({ body: false });
-  const b = body.getBoundingClientRect();
-  const vis = el => el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true });
-  let worst = null;
-  for (const el of body.querySelectorAll('*')) {
-    const r = el.getBoundingClientRect();
-    if ((!r.width && !r.height) || !vis(el)) continue;
-    const over = r.right > b.right + 1 ? Math.round(r.right - b.right)
-      : r.left < b.left - 1 ? Math.round(b.left - r.left) : null;
-    if (over === null) continue;
-    if (!worst || over > worst.out) worst = {
-      el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-        + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')),
-      out: over,
-    };
-  }
+  const w = ${WORST_OUTSIDE}(body, true);
   return JSON.stringify({
-    body: true, scrollWidth: Math.round(body.scrollWidth), clientWidth: Math.round(body.clientWidth), worst,
+    body: true, scrollWidth: Math.round(body.scrollWidth), clientWidth: Math.round(body.clientWidth),
+    worst: w && { el: w.el, out: Math.round(w.out) },
   });
 })()`;
 
