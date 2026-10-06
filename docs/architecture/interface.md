@@ -4,6 +4,9 @@
 active team's name as the large title and team-switcher button, a gear for Settings, multiple days stacked in date order each with its own heading and games (each day's games shown in tip-off order, #102), then Team and Season as two entries underneath, and Add a game. When the team has no games (#126), the games section shows a note instead of any days, with Add a game still present.
 A day files itself into the season once it has passed (#100), but only when
 the coach has set up a team (#252) — there is no "New day" button any more.
+When the app reopens on a later day and the Day the coach was on files, it
+lands on Today with the Filing toast rather than the last screen (#306); Undo
+goes back to that screen. A same-day reopen still restores the last screen.
 Game, Team, Season and Settings are each one screen away from
 Today rather than siblings on a nav — opening one pushes a browser-history
 entry, so the back button, the browser's own back and Android's back gesture

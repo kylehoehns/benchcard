@@ -35,7 +35,7 @@ import { edit } from './edit.js';
 import { DAMAGED_LINK } from './live.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         dueToFile, fileIfPast, moveGame, setTipoff, hasGames } from './state.js';
+         dueToFile, dayIsPast, fileIfPast, moveGame, setTipoff, hasGames } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -436,11 +436,26 @@ if (state.onboarded) track('plan_generated', { strategy: game()?.strategy });
    `undoable` and puts up an empty toast: `undoable` shows one
    unconditionally once its `mutate` runs. Called after boot's first
    render, on `visibilitychange` to visible, and when bench mode closes,
-   below. */
+   below.
+
+   #306: when the Day the coach was on is the one that files, the screen
+   they left is a day old, so they land on Today, where the Filing toast and
+   the Season row are. The mutation sets `state.view`, and `undoable`'s
+   default refresh navigates there; its snapshot holds the old view, so Undo
+   puts the coach back on the screen they left. A Day that is not the active
+   one files without navigating, and so does a coach already on Today:
+   navigating closes open sheets, which would drop a half-typed edit for
+   nothing. */
 function fileOverdueDay(today = new Date()) {
   if (!dueToFile(today)) return;
   let message = null;
-  undoable(() => message, () => { message = fileIfPast(today); }, () => renderAll());
+  const t = team();
+  const navigate = dayIsPast(t.days[t.activeDay], today) && state.view !== 'today';
+  const mutate = () => {
+    message = fileIfPast(today);
+    if (navigate) state.view = 'today';
+  };
+  undoable(() => message, mutate, navigate ? undefined : () => renderAll());
 }
 
 /* Wire the modules together. Everything a module cannot import for itself
