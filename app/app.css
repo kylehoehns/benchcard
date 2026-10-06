@@ -2674,9 +2674,11 @@ dialog.flow .f { text-transform: none; letter-spacing: normal; }
 .flow-card-text { flex: 1 1 12rem; min-width: 0; }
 .flow-card-t { font-size: var(--fs-body); font-weight: 600; margin: 0; }
 .flow-card-s { font-size: var(--fs-secondary); color: var(--muted); margin: .18rem 0 0; }
-/* "Use it", right-aligned accent text -- the prototype's look. Color only,
-   not background: #agNext is the only --tint background on this step. */
-.flow-card-use { color: var(--tint); font-weight: 600; }
+/* "Use it", right-aligned. Plain ink, not the team color: small text in
+   --tint missed 4.5:1 for Hardwood and Gold (#329), as on the segmented
+   control (#328). Color only, not background: #agNext is the only --tint
+   background on this step. */
+.flow-card-use { color: var(--ink); font-weight: 600; }
 
 /* Step 2's tiles are the Plan sheet's own picker (`.pick` / `.plr` /
    `.plr-check`, above). Two things this screen adds: the surname reads under
@@ -3326,7 +3328,9 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   overflow-wrap: break-word; }
 .plr.on { border-color: var(--tint); box-shadow: inset 0 0 0 2.5px var(--tint); background: var(--surface); }
 .plr.on .av { background: none; color: var(--c); }
-.plr-check { position: absolute; top: .5rem; right: .5rem; color: var(--tint);
+/* The check is text, so it is ink (#329); the tint ring on .plr.on marks the pick on the
+   Plan sheet; the add-game flow marks it with the fill and this check. */
+.plr-check { position: absolute; top: .5rem; right: .5rem; color: var(--ink);
   font-weight: 700; font-size: var(--fs-secondary); }
 .pick .plr:disabled { opacity: .4; }
 /* .plr.off (pills.js) means "not currently selected", not "unavailable" --

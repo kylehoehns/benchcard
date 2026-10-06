@@ -176,41 +176,56 @@ test('a segmented control\'s unselected label clears the text floor on --seg-tra
  * four states, because that is the sweep the base-theme check never made.
  * Fix a failure by choosing a token that clears the floor, not by dropping a
  * color from COLORS. */
-const SELECTED_SEG_RULE = /\.seg button\.on,\s*\.seg button\[aria-selected="true"\]\s*\{[^}]*?[\s;{]color:\s*var\((--[a-z0-9-]+)\)/;
-const selectedSegToken = (css) => {
-  const m = css.match(SELECTED_SEG_RULE);
-  if (!m) throw new Error('could not find `.seg button.on, .seg button[aria-selected="true"] { ... color: var(--token) ... }` in app/app.css');
+/* #329 widens the same walk to the other small text painted in the team
+ * color. The owner's decision for each is `--ink`, as in #324/#328; the
+ * welcome heading's `.hl` stays `--tint` (large text, held by the "tint as
+ * text" check above). One table, one walk: a new use is a new row. */
+const TEAM_TEXT_USES = [
+  { name: 'the selected segment label', ground: '--seg-on',
+    selector: '.seg button.on, .seg button[aria-selected="true"]', rule: /\.seg button\.on,\s*\.seg button\[aria-selected="true"\]\s*\{[^}]*?[\s;{]color:\s*var\((--[a-z0-9-]+)\)/ },
+  { name: '.flow-card-use', ground: '--surface',
+    selector: '.flow-card-use', rule: /\.flow-card-use\s*\{[^}]*?[\s;{]color:\s*var\((--[a-z0-9-]+)\)/ },
+  { name: '.plr-check', ground: '--surface',
+    selector: '.plr-check', rule: /\.plr-check\s*\{[^}]*?[\s;{]color:\s*var\((--[a-z0-9-]+)\)/ },
+];
+const textTokenOf = (use, css) => {
+  const m = css.match(use.rule);
+  if (!m) throw new Error(`could not find \`${use.selector} { ... color: var(--token) ... }\` in app/app.css`);
   return m[1];
 };
 
-test('the selected-segment rule is found by its selector, and fails closed when it is not', () => {
-  assert.match(selectedSegToken(appCss), /^--[a-z0-9-]+$/);
-  assert.throws(() => selectedSegToken(appCss.replace('.seg button.on, .seg button[aria-selected="true"]', '.seg button.chosen')), /could not find/);
-  assert.throws(() => selectedSegToken('.seg button.on, .seg button[aria-selected="true"] { background: red; }'), /could not find/);
+test('each team-color text rule is found by its selector, and fails closed when it is not', () => {
+  for (const use of TEAM_TEXT_USES) {
+    assert.match(textTokenOf(use, appCss), /^--[a-z0-9-]+$/, use.name);
+    assert.throws(() => textTokenOf(use, appCss.replace(use.selector + ' {', use.selector + '-renamed {')), /could not find/, `${use.name}: a renamed selector must throw`);
+    assert.throws(() => textTokenOf(use, `${use.selector} { background: red; }`), /could not find/, `${use.name}: a rule with no color must throw`);
+  }
 });
 
-test('a segmented control\'s selected label clears the text floor on --seg-on, for every team color in all four states', () => {
-  const token = selectedSegToken(appCss);
-  const bad = [];
-  let cells = 0;
-  for (const c of COLORS) {
-    const t = resolved.tint(c);
-    for (const s of [
-      { name: `${c} light`, tokens: t.light, floor: 4.5 },
-      { name: `${c} dark`, tokens: t.dark, floor: 4.5 },
-      { name: `${c} light + more contrast`, tokens: t.lightMore, floor: 7 },
-      { name: `${c} dark + more contrast`, tokens: t.darkMore, floor: 7 },
-    ]) {
-      const ground = colorOf(s.tokens, '--seg-on');
-      const r = contrast(effective(colorOf(s.tokens, token), ground), ground);
-      cells++;
-      if (r < s.floor - 1e-9) bad.push(`${s.name}: ${token} on --seg-on is ${r.toFixed(2)}:1, needs >= ${s.floor}:1`);
+for (const use of TEAM_TEXT_USES) {
+  test(`${use.name} clears the text floor on ${use.ground}, for every team color in all four states`, () => {
+    const token = textTokenOf(use, appCss);
+    const bad = [];
+    let cells = 0;
+    for (const c of COLORS) {
+      const t = resolved.tint(c);
+      for (const s of [
+        { name: `${c} light`, tokens: t.light, floor: 4.5 },
+        { name: `${c} dark`, tokens: t.dark, floor: 4.5 },
+        { name: `${c} light + more contrast`, tokens: t.lightMore, floor: 7 },
+        { name: `${c} dark + more contrast`, tokens: t.darkMore, floor: 7 },
+      ]) {
+        const ground = colorOf(s.tokens, use.ground);
+        const r = contrast(effective(colorOf(s.tokens, token), ground), ground);
+        cells++;
+        if (r < s.floor - 1e-9) bad.push(`${s.name}: ${token} on ${use.ground} is ${r.toFixed(2)}:1, needs >= ${s.floor}:1`);
+      }
     }
-  }
-  assert.equal(cells, COLORS.length * 4, 'every color x state cell must be measured');
-  assert.ok(COLORS.length > 0, 'COLORS is empty, so nothing was measured');
-  assert.deepEqual(bad, [], `${bad.length} of ${cells} cells fail:\n  ` + bad.join('\n  '));
-});
+    assert.equal(cells, COLORS.length * 4, 'every color x state cell must be measured');
+    assert.ok(COLORS.length > 0, 'COLORS is empty, so nothing was measured');
+    assert.deepEqual(bad, [], `${bad.length} of ${cells} cells fail:\n  ` + bad.join('\n  '));
+  });
+}
 
 /* #140 (prototype control size), item 7 and Q3: the switch's off track is a
  * new token, `--switch-track-off`, checked against `--surface` (the only
