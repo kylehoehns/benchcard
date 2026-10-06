@@ -33,6 +33,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
+import { scoresFrom } from '../scripts/lighthouse-scores.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = f => readFileSync(new URL(f, ROOT), 'utf8');
@@ -299,4 +300,148 @@ test('fetch.sh clears everything it generates, before it generates it', () => {
     'the `rm -rf` in app/vendor/fetch.sh runs after the script has already written '
     + 'something, so it deletes what it just fetched. It belongs at the top, before '
     + 'the first download.');
+});
+
+/* #327: `lighthouse.yml` is the one workflow that holds write access, to keep
+ * the README's score badges fresh on the `badges` branch. What must stay true
+ * of it, and what each rule protects:
+ *
+ *   - TRIGGERS: schedule and manual dispatch only. A `push` or `pull_request`
+ *     trigger would make a slow, network-dependent job look like a check.
+ *   - PERMISSIONS: read at the top; `contents: write` only on the job.
+ *   - PUSH TARGET: every `git push` names `badges` and none names `main`. The
+ *     job can write, so the destination is spelled out and pinned.
+ *   - NO INSTALL: Lighthouse runs through `npx -y lighthouse@`, so
+ *     package.json stays at zero dependencies.
+ *
+ * Each rule is a function of the file's text, so the second test below can
+ * hand it a broken copy in memory and watch it object. A rule that found
+ * nothing to judge returns a problem too: a guard that measured nothing is
+ * not a clean result. */
+const topLevelBlock = (yaml, key) => {
+  const lines = yaml.split('\n');
+  const at = lines.findIndex(l => l.startsWith(`${key}:`));
+  if (at < 0) return null;
+  const body = [];
+  for (const l of lines.slice(at + 1)) {
+    if (l.trim() !== '' && !/^\s/.test(l)) break;
+    if (l.trim() !== '' && !l.trim().startsWith('#')) body.push(l.trim());
+  }
+  return body;
+};
+
+function lighthouseWorkflowProblems(yaml) {
+  const problems = [];
+
+  const triggers = topLevelBlock(yaml, 'on');
+  if (!triggers || triggers.length === 0) problems.push('no `on:` block found, so the trigger rule measured nothing');
+  else {
+    const keys = triggers.filter(l => /^[a-z_]+:/.test(l)).map(l => l.split(':')[0]);
+    for (const need of ['schedule', 'workflow_dispatch']) {
+      if (!keys.includes(need)) problems.push(`on: has no ${need}`);
+    }
+    for (const bad of ['push', 'pull_request', 'pull_request_target']) {
+      if (keys.includes(bad)) problems.push(`on: has ${bad}; this workflow must never look like a check`);
+    }
+  }
+
+  const top = topLevelBlock(yaml, 'permissions');
+  if (!top || top.length === 0) problems.push('no top-level `permissions:` block');
+  else if (top.length !== 1 || top[0] !== 'contents: read') {
+    problems.push(`top-level permissions must be exactly "contents: read", found: ${top.join(' | ')}`);
+  }
+  const writes = yaml.split('\n').filter(l => /:\s*write\b/.test(l) && !l.trim().startsWith('#'));
+  if (writes.length === 0) problems.push('no write permission anywhere, so the job cannot push to badges');
+  for (const l of writes) {
+    if (l.trim() !== 'contents: write' || l.length - l.trimStart().length < 4) {
+      problems.push(`only the job may hold "contents: write", found: ${l.trim()} at indent ${l.length - l.trimStart().length}`);
+    }
+  }
+
+  const commands = extractRunCommands(yaml);
+  const pushes = commands.flatMap(c => [...c.matchAll(/git push[^;&|]*/g)].map(m => m[0].trim()));
+  if (pushes.length === 0) problems.push('no `git push` in any run step, so the push-target rule measured nothing');
+  for (const p of pushes) {
+    if (!/HEAD:badges\b/.test(p)) problems.push(`push must use an explicit HEAD:badges refspec: "${p}"`);
+    if (/\bmain\b/.test(p)) problems.push(`push names main: "${p}"`);
+  }
+
+  if (!commands.some(c => /\bnpx -y lighthouse@\d/.test(c))) {
+    problems.push('Lighthouse must run as `npx -y lighthouse@<version>`');
+  }
+  if (commands.some(c => /\bnpm (install|i|ci)\b/.test(c))) {
+    problems.push('an npm install step adds dependencies; use npx -y');
+  }
+  return problems;
+}
+
+const BADGE_SOURCE = encodeURIComponent('https://raw.githubusercontent.com/kylehoehns/benchcard/badges/lighthouse.json');
+
+/* The README badge for each score key `scoresFrom` emits. The keys come from
+   running it on a fixture, so a fifth score added there has to get a badge. */
+function lighthouseBadgeProblems(readme) {
+  const problems = [];
+  const fixture = { finalDisplayedUrl: 'u', fetchTime: 't', lighthouseVersion: 'v', configSettings: { formFactor: 'mobile' },
+    categories: Object.fromEntries(['performance', 'accessibility', 'best-practices', 'seo'].map(id => [id, { score: 0.5 }])) };
+  const scores = scoresFrom(fixture);
+  const scoreKeys = Object.keys(scores).filter(k => typeof scores[k] === 'number');
+  if (scoreKeys.length === 0) return ['scoresFrom emitted no score keys, so the badge rule measured nothing'];
+  const runs = '(https://github.com/kylehoehns/benchcard/actions/workflows/lighthouse.yml)';
+  const badges = readme.split('\n').filter(l => l.includes(BADGE_SOURCE));
+  for (const key of scoreKeys) {
+    const hit = badges.filter(l => l.includes(`query=%24.${key}&`) || l.includes(`query=%24.${key})`));
+    if (hit.length !== 1) problems.push(`expected one README badge reading the badges branch for $.${key}, found ${hit.length}`);
+    else if (!hit[0].endsWith(runs)) problems.push(`the $.${key} badge must link to ${runs}`);
+  }
+  if (badges.length !== scoreKeys.length) {
+    problems.push(`${badges.length} badges read the badges branch but scoresFrom emits ${scoreKeys.length} scores`);
+  }
+  return problems;
+}
+
+test('lighthouse.yml is scheduled, read-only at the top, pushes only to badges, and adds no dependency', () => {
+  assert.deepEqual(lighthouseWorkflowProblems(read('.github/workflows/lighthouse.yml')), []);
+});
+
+test('the README shows one badge per score scoresFrom emits, from the badges branch', () => {
+  assert.deepEqual(lighthouseBadgeProblems(read('README.md')), []);
+});
+
+test('the lighthouse guards object to a broken copy, and to one with nothing to judge', () => {
+  const good = read('.github/workflows/lighthouse.yml');
+  const breaks = {
+    'a push trigger': y => y.replace('  workflow_dispatch:', '  workflow_dispatch:\n  push:\n    branches: [main]'),
+    'a pull_request trigger': y => y.replace('  workflow_dispatch:', '  workflow_dispatch:\n  pull_request:'),
+    'no schedule': y => y.replace('  schedule:', '  # schedule:').replace(/^\s+- cron:.*$/m, ''),
+    'write at the top level': y => y.replace('permissions:\n  contents: read', 'permissions:\n  contents: write'),
+    'an extra top-level permission': y => y.replace('permissions:\n  contents: read', 'permissions:\n  contents: read\n  actions: write'),
+    'a push to main': y => y.replace(/git push[^\n]*/, 'git push origin HEAD:main'),
+    'a bare push': y => y.replace(/git push[^\n]*/, 'git push'),
+    'a second push naming main': y => y.replace(/git push[^\n]*/, m => `${m} && git push origin main`),
+    'no push at all': y => y.replace(/git push[^\n]*/, 'true'),
+    'an install step': y => y.replace('npx -y lighthouse@', 'npm install lighthouse && npx -y lighthouse@'),
+    'no npx': y => y.replace('npx -y lighthouse@', 'lighthouse@'),
+  };
+  for (const [what, mutate] of Object.entries(breaks)) {
+    const broken = mutate(good);
+    assert.notEqual(broken, good, `the "${what}" mutation did not change the workflow, so it proves nothing`);
+    assert.notDeepEqual(lighthouseWorkflowProblems(broken), [], `a workflow with ${what} passed the guard`);
+  }
+  assert.notDeepEqual(lighthouseWorkflowProblems(''), [], 'an empty file passed the guard');
+
+  const readme = read('README.md');
+  const line = readme.split('\n').find(l => l.includes(BADGE_SOURCE) && l.includes('query=%24.seo'));
+  assert.ok(line, 'no seo badge line to mutate');
+  const readmeBreaks = {
+    'a missing badge': r => r.replace(`${line}\n`, ''),
+    'an added badge': r => r.replace(line, `${line}\n${line.replace('seo', 'extra')}`),
+    'the wrong branch': r => r.replace(line, line.replace('badges%2Flighthouse', 'main%2Flighthouse')),
+    'the wrong link': r => r.replace(line, line.replace(/\]\(https[^)]*\)$/, '](README.md)')),
+  };
+  for (const [what, mutate] of Object.entries(readmeBreaks)) {
+    const broken = mutate(readme);
+    assert.notEqual(broken, readme, `the "${what}" README mutation changed nothing`);
+    assert.notDeepEqual(lighthouseBadgeProblems(broken), [], `a README with ${what} passed the guard`);
+  }
+  assert.notDeepEqual(lighthouseBadgeProblems(''), [], 'an empty README passed the guard');
 });

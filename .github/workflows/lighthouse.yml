@@ -1,0 +1,75 @@
+name: lighthouse
+
+# Keeps the four Lighthouse score badges in the README current. Once a week it
+# runs Lighthouse (mobile) against the live site, turns the report into
+# lighthouse.json with scripts/lighthouse-scores.mjs, and pushes that one file
+# to the `badges` branch, where shields.io reads it. Nobody refreshes the
+# numbers by hand.
+#
+# NOT A CHECK. It has no push or pull_request trigger on purpose: a slow job
+# that depends on the live site must never gate a merge or look like it does.
+# test/ci-config.test.js pins that, and the permissions and the push target
+# below, because this is the one workflow that can write to the repo.
+#
+# The first checkout is read-only and keeps no credentials. The job's token is
+# only on the `badges` checkout, and the push names HEAD:badges explicitly, so
+# nothing here can reach `main`.
+#
+# Lighthouse is fetched by `npx -y` at run time, so package.json stays free of
+# dependencies. The window size is needed: without it a headless mobile run
+# fails with NO_FCP.
+
+on:
+  schedule:
+    # Mondays, 07:50 UTC. Off the hour: GitHub queues everything submitted on
+    # the hour and runs it late, the same reason bands sits at :40.
+    - cron: '50 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lighthouse
+  cancel-in-progress: false
+
+jobs:
+  scores:
+    runs-on: ubuntu-24.04
+    name: lighthouse scores
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: run Lighthouse
+        run: |
+          npx -y lighthouse@12 https://benchcard.app \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --output=json --output-path=report.json \
+            --chrome-flags="--headless=new --window-size=412,915"
+
+      - name: turn the report into lighthouse.json
+        run: node scripts/lighthouse-scores.mjs report.json > lighthouse.json
+
+      - uses: actions/checkout@v7
+        with:
+          ref: badges
+          path: badges
+          token: ${{ github.token }}
+
+      - name: publish to the badges branch
+        run: |
+          cp lighthouse.json badges/lighthouse.json
+          cd badges
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lighthouse.json
+          git diff --cached --quiet || git commit -m 'Update Lighthouse scores'
+          git push origin HEAD:badges
