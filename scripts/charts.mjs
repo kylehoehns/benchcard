@@ -425,8 +425,11 @@ body {
 }
 .btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .btn:active { transform: scale(.97); }
+/* The 13vw cap only binds at large text: at a 32px root the 1.9rem floor is
+   60.8px, and "basketball" alone paints 329px, wider than the 246px column at
+   320px, so the word spilled 47px past the viewport (#340). Capped, it wraps. */
 h1 {
-  font-size: clamp(1.9rem, 7.5vw, 2.7rem); line-height: 1.06; letter-spacing: -.045em;
+  font-size: min(clamp(1.9rem, 7.5vw, 2.7rem), 13vw); line-height: 1.06; letter-spacing: -.045em;
   font-weight: 700; margin: 1.6rem 0 0;
 }
 .lede { font-size: 1.16rem; line-height: 1.5; color: var(--ink-2); margin: 1rem 0 0; }

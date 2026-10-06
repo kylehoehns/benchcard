@@ -89,18 +89,10 @@ const PLATE_PROBE = `(() => {
 })()`;
 const PLATE_PAGES = new Set(['/about', '/advanced']);
 
-/* The checks every cell gets, at any width and text size. `scrollCheck` is
-   off for exactly one set of cells: the six chart pages at 320px/32px text.
-   They measure `scrollWidth` 367 in a 320px viewport there (the `.noprint` h1
-   inside `.wrap` runs 329px in a 246px box, and no element's own box passes
-   the viewport, which is why the page probe never saw it). That is a defect in
-   the generated pages, outside #338's scope (`scripts/charts.mjs` owns them),
-   so it is filed as #340, which removes this skip, rather than hidden behind
-   a tolerance: nothing else here is excused, and the two guides are held to
-   it in every cell. */
-async function cellChecks(c, page, where, problems, scrollCheck = true) {
+/* The checks every cell gets, at any width and text size, on every page. */
+async function cellChecks(c, page, where, problems) {
   const sc = JSON.parse(await evalIn(c, SCROLL_PROBE));
-  if (scrollCheck && sc.sw > sc.cw) problems.push(`${where}: scrollWidth ${sc.sw}px exceeds clientWidth ${sc.cw}px`);
+  if (sc.sw > sc.cw) problems.push(`${where}: scrollWidth ${sc.sw}px exceeds clientWidth ${sc.cw}px`);
   if (!PLATE_PAGES.has(page)) return;
   const pl = JSON.parse(await evalIn(c, PLATE_PROBE));
   if (!pl.plates) problems.push(`${where}: no .plate on the page, so nothing was measured`);
@@ -204,7 +196,7 @@ export async function staticPass(c, source, origin) {
         problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
           + (slack ? ` (${slack}px allowed)` : ''));
       } else if (o.worst) allowed++;
-      await cellChecks(c, page, where, problems, PLATE_PAGES.has(page) || width !== LARGE_TEXT_WIDTH);
+      await cellChecks(c, page, where, problems);
     } catch (e) {
       problems.push(`${where}: ${e.message.split('\n')[0]}`);
     }
