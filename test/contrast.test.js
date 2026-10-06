@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parseTokensCss, parseColor, colorOf, over, contrast, luminance } from '../scripts/tokens-css.mjs';
+import { parseTokensCss, parseColor, colorOf, over, contrast, luminance, splitBlocks, declsOf, stripAllComments } from '../scripts/tokens-css.mjs';
 import { COLORS } from '../app/storage.js';
 
 /* #21 (Graphite look), item 6: every color token in app/tokens.css against
@@ -467,4 +467,122 @@ test('--on-err on --err, and on its hover fill, clears 4.5:1 in every theme', ()
     if (r2 < 4.5 - 1e-9) bad.push(`${t.name}: --on-err on --err's hover fill is ${r2.toFixed(2)}:1, needs >= 4.5:1`);
   }
   assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* =========================================================================
+ * #332: the small orange text on about.html and advanced.html. A GUARD under
+ * /new-guard: it reads the pages' own <style>, so it is shown red by
+ * mutation (docs/specs/332-marketing-text-contrast.md, Proof). Everything
+ * below belongs to this ticket; the tests above are not touched.
+ *
+ * Two questions. (1) Does `--accent-text` clear the floor on every ground
+ * the small orange text lands on, in the four Hardwood states? The cascade
+ * is resolved with the same rule a browser applies: specificity first (an
+ * arm that names its theme outranks the bare `html:root[data-tint]`
+ * default), then source order -- so a more-contrast block that forgot to
+ * name both themes loses to the light arm and fails here, the selector trap.
+ * (2) Does every rule that paints text an orange token use `--accent-text`?
+ * Only `.hl`, the large headline, may paint `--tint`/`--accent`. The list
+ * bullets (`ul li::marker`, non-text, spec item 4) are named below. */
+const PAGES_332 = {
+  'about.html': { rules: ['a', '.jumpto a:focus-visible', '.jumpto a:hover', '.tl-tot.hi', 'ol.steps li::before'] },
+  'advanced.html': { rules: ['a', '.jumpto a:focus-visible', '.jumpto a:hover', '.sn-h'] },
+};
+const ORANGE_TEXT_OK = new Set(['.hl', 'ul li::marker']);
+const ORANGE_TOKEN = /var\(\s*--(?:accent|accent-2|tint|tint-2|phrase)\s*[,)]/;
+
+/* Every style rule on a page, in source order, @media/@supports flattened;
+ * `more` marks a rule that sits inside (prefers-contrast: more). */
+function pageRules(file) {
+  const html = stripAllComments(read('app/' + file));
+  const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+  const out = [];
+  const walk = (src, more) => {
+    for (const b of splitBlocks(src)) {
+      if (b.selector.startsWith('@')) walk(b.body, more || /prefers-contrast:\s*more\b/.test(b.selector));
+      else out.push({ selector: b.selector, body: b.body, more });
+    }
+  };
+  for (const st of styles) walk(st, false);
+  return out;
+}
+
+/* The page's custom properties in one Hardwood state, over tokens.css's own. */
+function stateTheme(rules, base, { dark, more }) {
+  const hits = [];
+  rules.forEach((r, order) => {
+    const d = declsOf(r.body);
+    if (!Object.keys(d).length) return;
+    if (r.more && !more) return;
+    for (const piece of r.selector.split(',').map((x) => x.trim())) {
+      if (!piece.startsWith('html:root') || !piece.includes('[data-tint="hardwood"]')) continue;
+      const lightOnly = piece.includes(':not([data-theme="dark"])');
+      const darkOnly = !lightOnly && piece.includes('[data-theme="dark"]');
+      if ((lightOnly && dark) || (darkOnly && !dark)) continue;
+      hits.push({ rank: lightOnly || darkOnly ? 1 : 0, order, d });
+      break;
+    }
+  });
+  hits.sort((a, b) => a.rank - b.rank || a.order - b.order);
+  return hits.reduce((acc, h) => ({ ...acc, ...h.d }), { ...base });
+}
+
+const hardwood = resolved.tint('hardwood');
+const STATES_332 = [
+  { name: 'light', base: hardwood.light, dark: false, more: false, floor: 4.5 },
+  { name: 'dark', base: hardwood.dark, dark: true, more: false, floor: 4.5 },
+  { name: 'light + more contrast', base: hardwood.lightMore, dark: false, more: true, floor: 7 },
+  { name: 'dark + more contrast', base: hardwood.darkMore, dark: true, more: true, floor: 7 },
+];
+
+for (const file of Object.keys(PAGES_332)) {
+  test(`${file}: --accent-text clears its floor on every ground, in the four Hardwood states (#332)`, () => {
+    const rules = pageRules(file);
+    const bad = [];
+    let measured = 0;
+    for (const st of STATES_332) {
+      const th = stateTheme(rules, st.base, st);
+      const bg = colorOf(th, '--bg');
+      const bg2 = colorOf(th, '--bg-2');
+      const accent = colorOf(th, '--accent');
+      const grounds = {
+        '--bg': bg,
+        '--surface': over(colorOf(th, '--surface'), bg),
+        '--surface-2': over(colorOf(th, '--surface-2'), bg),
+        // the plate's gradient: 7% of the accent over --bg-2, its worst point
+        'the plate (--bg-2 under 7% accent)': over({ ...accent, a: 0.07 }, bg2),
+        'step numbers (--accent-soft over --bg)': over(colorOf(th, '--accent-soft'), bg),
+      };
+      for (const [name, ground] of Object.entries(grounds)) {
+        const fg = over(colorOf(th, '--accent-text'), ground);
+        const r = contrast(fg, ground);
+        measured++;
+        if (r < st.floor - 1e-9) bad.push(`${file}, ${st.name}: --accent-text on ${name} is ${r.toFixed(2)}:1, needs >= ${st.floor}:1`);
+      }
+    }
+    assert.equal(measured, 20, 'measured nothing: 4 states x 5 grounds');
+    assert.deepEqual(bad, [], bad.join('\n  '));
+  });
+
+  test(`${file}: only .hl paints an orange token as text; the small orange text uses --accent-text (#332)`, () => {
+    const rules = pageRules(file);
+    const colorDecl = /(?<![-\w])color\s*:\s*([^;}]+)/g;
+    const painted = []; // { selector, value } for every `color:` declaration
+    for (const r of rules) for (const m of r.body.matchAll(colorDecl)) painted.push({ selector: r.selector, value: m[1].trim() });
+    assert.ok(painted.length > 10, `read ${painted.length} color declarations; expected a page's worth`);
+    const stray = painted.filter((p) => ORANGE_TOKEN.test(p.value) && !ORANGE_TEXT_OK.has(p.selector))
+      .map((p) => `${file}: "${p.selector}" paints ${p.value} as text; small orange text takes var(--accent-text) (only .hl may paint --tint/--accent)`);
+    assert.deepEqual(stray, [], stray.join('\n  '));
+    const hl = painted.find((p) => p.selector === '.hl');
+    assert.ok(hl && /var\(--tint\)/.test(hl.value), `${file}: .hl no longer paints var(--tint), the headline keeps Hardwood`);
+    const missing = PAGES_332[file].rules.filter((sel) => !painted.some((p) => p.selector === sel && /^var\(--accent-text\)$/.test(p.value)))
+      .map((sel) => `${file}: "${sel}" does not paint var(--accent-text)`);
+    assert.deepEqual(missing, [], missing.join('\n  '));
+  });
+}
+
+test('advanced.html: the selected "This stint" chip paints --ink in every state (#332)', () => {
+  const chip = pageRules('advanced.html').filter((r) => r.selector === '.scp.on');
+  assert.ok(chip.length > 0, 'no .scp.on rule on advanced.html');
+  assert.ok(chip.some((r) => /(?<![-\w])color\s*:\s*var\(--ink\)/.test(r.body)), '.scp.on must paint color: var(--ink)');
 });
