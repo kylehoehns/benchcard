@@ -751,7 +751,7 @@ function stepWho(wrap) {
   if (!same) return;
   /* #145 item 4: the card IS the button now, not a card with a second
      filled button inside it -- the footer's `#agNext` is the one `--tint`
-     element on this step. "Use it" is right-aligned accent text, the
+     element on this step. "Add game" is right-aligned ink text, the
      prototype's own look, not a second control: the whole card still does
      what the button used to. */
   const card = el('button', 'flow-card press');

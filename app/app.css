@@ -3328,7 +3328,8 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   overflow-wrap: break-word; }
 .plr.on { border-color: var(--tint); box-shadow: inset 0 0 0 2.5px var(--tint); background: var(--surface); }
 .plr.on .av { background: none; color: var(--c); }
-/* The check is text, so it is ink (#329); the tint ring on .plr.on marks the pick. */
+/* The check is text, so it is ink (#329); the tint ring on .plr.on marks the pick on the
+   Plan sheet; the add-game flow marks it with the fill and this check. */
 .plr-check { position: absolute; top: .5rem; right: .5rem; color: var(--ink);
   font-weight: 700; font-size: var(--fs-secondary); }
 .pick .plr:disabled { opacity: .4; }
