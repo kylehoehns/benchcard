@@ -275,12 +275,9 @@ export async function teamColorPass(c, origin) {
       ['#print.btn.primary label', r.primaryFg, ROYAL_LABEL],
       ['.ab-main (#abBench) background', r.abMainBg, ROYAL_FILL],
       ['.gm-nav.next (#gmNext2) background', r.gmNavNextBg, ROYAL_FILL],
-      ['.seg button.on (#maxSubsSeg) text', r.segOnFg, ROYAL_FILL],
       ['input[switch]:checked::before (#showMinutes) background', r.switchBg, ROYAL_FILL],
-      ['.seg button[aria-selected=true] (#welTabPlan) text', r.welSegFg, ROYAL_FILL],
       ['input[type=checkbox].box:checked background', r.checkboxBoxBg, ROYAL_FILL],
       ['.gm-p.picked box-shadow color', gm.pickedShadowColor, ROYAL_FILL],
-      ['#gamemode .seg button.on text', gm.scopeOnFg, ROYAL_FILL],
       ['.phrase text', r.phraseFg, ROYAL_FILL],
       // #244 moved the welcome logo here from #25's unchanged list: it reads
       // --tint now, like the welcome's orange phrase.
@@ -314,6 +311,11 @@ export async function teamColorPass(c, origin) {
       ['.mrow .track i (minute bar) background', r.mrowBg],
       ['.gm-dot.now background', gm.dotNowBg],
       ['::selection background', r.selectionBg, GRAPHITE_ACCENT_SOFT],
+      // #324: the selected label of every segmented control is --ink, not the
+      // team tint (the tint failed 4.5:1 on --seg-on); this reverses #25.
+      ['.seg button.on (#maxSubsSeg) text', r.segOnFg],
+      ['.seg button[aria-selected=true] (#welTabPlan) text', r.welSegFg],
+      ['#gamemode .seg button.on text', gm.scopeOnFg],
       ['a focused input’s border', r.inputFocusBorder],
     ];
     for (const [label, got, want = GRAPHITE_INK] of accentInk) {
@@ -373,7 +375,7 @@ export async function teamColorPass(c, origin) {
   return {
     pass: problems.length === 0,
     detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'Royal tints all twelve of item 4’s controls and the welcome logo (#244), the rest of the unchanged list stays graphite ink, '
+      : 'Royal tints every control on the tinted list, the welcome logo included (#244; #324 moved the segmented labels to ink), the rest of the unchanged list stays graphite ink, '
         + 'and switching to a graphite team repaints .btn.primary with no reload',
   };
 }

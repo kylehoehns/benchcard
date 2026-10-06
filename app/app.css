@@ -135,9 +135,12 @@ a { color: inherit; }
 /* Not every .seg marks its selected button the same way: settings/plan segs
    toggle .on (classList.toggle, render.js), while the welcome tabs are
    role="tab" buttons that mark selection with aria-selected="true" instead.
-   Both selectors share one declaration rather than repeating it. */
+   Both selectors share one declaration rather than repeating it.
+   The selected label is --ink, not the team tint (#324): the tint on
+   --seg-on failed 4.5:1 for most colors in dark (Hardwood 3.39:1), so the
+   raised --seg-on chip alone marks the selection. This reverses #25. */
 .seg button.on, .seg button[aria-selected="true"] {
-  background: var(--seg-on); color: var(--tint); box-shadow: var(--shadow-sm); font-weight: 600;
+  background: var(--seg-on); color: var(--ink); box-shadow: var(--shadow-sm); font-weight: 600;
 }
 .seg.wide { display: flex; width: 100%; padding: 2px; }
 .seg.wide button { flex: 1; padding: .36rem .3rem; font-size: var(--fs-secondary); }
