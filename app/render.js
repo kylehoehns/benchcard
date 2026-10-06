@@ -747,6 +747,8 @@ function applyView(v, from) {
      finish onboarding. Removed here rather than in the boot call because this
      is the one place view visibility is decided (index.html, app.css). */
   document.documentElement.removeAttribute('data-boot');
+  // #326: past the first screen, every screen fades in again (app.css).
+  if (from && from !== v) document.documentElement.classList.remove('first-screen');
   /* #35 decision 3: `data-view` is how CSS learns the current screen -- the
      wide layout's rules key off it, and `data-boot` cannot be that attribute
      (it is stamped for only four of the six views and is removed the line
