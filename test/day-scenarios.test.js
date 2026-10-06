@@ -75,7 +75,7 @@ describe('a coach shapes the day', { skip }, () => {
   test('evening out the day gives the players who sat more in the first game the most in the second', async () => {
     await coach.onGameDay();
     await coach.tap('Hawks, 9:00 AM, planned');
-    const hawks = await coach.gameMinutes();
+    const hawks = await coach.planMinutes();
     const fewest = Math.min(...Object.values(hawks)), most = Math.max(...Object.values(hawks));
     const owed = Object.keys(hawks).filter(n => hawks[n] === fewest);
     const full = Object.keys(hawks).filter(n => hawks[n] === most);
@@ -89,7 +89,7 @@ describe('a coach shapes the day', { skip }, () => {
     await coach.tap('Close');
 
     assert.ok(await coach.sees('Evening out the day, Evens out the 9:00 AM game.'));
-    const ravens = await coach.gameMinutes();
+    const ravens = await coach.planMinutes();
     const least = Math.min(...owed.map(n => ravens[n]));
     const topFull = Math.max(...full.map(n => ravens[n]));
     assert.ok(least > topFull, `everyone who had ${fewest} in the Hawks game now has more than anyone who had ${most}: ${JSON.stringify(ravens)}`);

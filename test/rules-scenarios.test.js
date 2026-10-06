@@ -54,7 +54,7 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
     test('a minimum of 20 and a cap of 8 hold, and the rules are kept', async () => {
       const { coach } = own;
       await openHawks(coach);
-      const before = await coach.gameMinutes();
+      const before = await coach.planMinutes();
       assert.equal(before['Marcus Williams'], 12);
       assert.equal(before['Devon Ellis'], 16);
 
@@ -63,13 +63,13 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       await addRule(coach, 'Plays at most', ['Devon Ellis'], 8);
       await coach.tap('Close');
 
-      const planned = await coach.gameMinutes();
+      const planned = await coach.planMinutes();
       assert.ok(planned['Marcus Williams'] >= 20, `Marcus plays ${planned['Marcus Williams']}`);
       assert.ok(planned['Devon Ellis'] <= 8, `Devon plays ${planned['Devon Ellis']}`);
 
       await coach.comeBackDaysLater(0);
       assert.ok(await coach.sees('Rules, 2 rules'), 'the rules were kept');
-      const kept = await coach.gameMinutes();
+      const kept = await coach.planMinutes();
       assert.ok(kept['Marcus Williams'] >= 20 && kept['Devon Ellis'] <= 8);
     });
 
@@ -90,7 +90,7 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       await coach.tap('Close');
 
       assert.equal(await coach.blockedPlan(), '');
-      assert.ok((await coach.gameMinutes())['Marcus Williams'] > 0);
+      assert.ok((await coach.planMinutes())['Marcus Williams'] > 0);
     });
   });
 
