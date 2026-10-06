@@ -163,7 +163,14 @@ export function track(name, props) {
 
 /* The Cloudflare beacon. Injected rather than hard-coded into index.html so
    that the single ANALYTICS constant really is the whole switch, and so the
-   markup carries no third-party script when it is off. */
+   markup carries no third-party script when it is off.
+
+   The beacon is told to send its report to this zone's own /cdn-cgi/rum. By
+   default it posts to cloudflareinsights.com/cdn-cgi/rum, and that collector
+   returns 404 (no CORS header) for this zone's token, which Chrome logs as two
+   console errors on every visit. Seen 2026-10-06 in headed and headless Chrome
+   alike, so it is not bot filtering. The zone's own /cdn-cgi/rum accepts the
+   same report with a 204. The beacon reads send.to from data-cf-beacon. */
 export function startAnalytics() {
   const token = ANALYTICS && ANALYTICS.token;
   if (!token || typeof document === 'undefined') return false;
@@ -172,7 +179,7 @@ export function startAnalytics() {
   // and setting both would be contradictory.
   s.type = 'module';
   s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
-  s.dataset.cfBeacon = JSON.stringify({ token });
+  s.dataset.cfBeacon = JSON.stringify({ token, send: { to: '/cdn-cgi/rum' } });
   document.head.append(s);
   return true;
 }

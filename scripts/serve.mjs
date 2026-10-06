@@ -54,6 +54,11 @@ export function serve(port = 0) {
        going red about the absence of a server it was never running. */
     if (path === '/e') { res.writeHead(204).end(); return; }
 
+    /* The Cloudflare beacon's report, which analytics.js points at this
+       origin. Cloudflare answers it at the edge (204); locally a 404 here
+       would be a console error about a server nobody was running. */
+    if (path === '/cdn-cgi/rum') { res.writeHead(204).end(); return; }
+
     if (path === '/index.html') { res.writeHead(307, { location: '/' }).end(); return; }
     if (path.endsWith('.html')) {
       res.writeHead(307, { location: path.slice(0, -'.html'.length) }).end();

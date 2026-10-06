@@ -35,6 +35,27 @@ test('the beacon does not load without a document', () => {
   assert.equal(typeof document === 'undefined' ? startAnalytics() : false, false);
 });
 
+test('the beacon is told to send its report to our own origin', () => {
+  const appended = [];
+  globalThis.document = {
+    createElement: () => ({ dataset: {} }),
+    head: { append: (el) => appended.push(el) },
+  };
+  try {
+    assert.equal(startAnalytics(), true);
+  } finally {
+    delete globalThis.document;
+  }
+  assert.equal(appended.length, 1);
+  const [s] = appended;
+  assert.equal(s.src, 'https://static.cloudflareinsights.com/beacon.min.js');
+  assert.equal(s.type, 'module');
+  assert.deepEqual(JSON.parse(s.dataset.cfBeacon), {
+    token: ANALYTICS.token,
+    send: { to: '/cdn-cgi/rum' },
+  });
+});
+
 /* Deliberately a list and not a count. Adding an event should require editing
    this line, so that "what does Benchcard send" is answerable by reading one
    assertion rather than auditing every call site. */

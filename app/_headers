@@ -63,8 +63,8 @@
 # `sw.test.js`'s precache-vs-import-graph check.
 #
 # What it DOES close is the realistic supply-chain risk. There is exactly one
-# third-party script on the entire site — the Cloudflare beacon, injected at
-# `analytics.js:163` — and there is no `eval` and no `new Function` anywhere,
+# third-party script on the entire site — the Cloudflare beacon, injected by
+# `startAnalytics()` — and there is no `eval` and no `new Function` anywhere,
 # `vendor/motion.umd.js` included. `script-src` names that one origin and locks
 # out every other. `object-src` and `base-uri` close the two classic ways an
 # inline injection escalates; `frame-ancestors` is the clickjacking half and
