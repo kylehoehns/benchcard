@@ -13,6 +13,9 @@
 [![tests](https://github.com/kylehoehns/benchcard/actions/workflows/test.yml/badge.svg)](https://github.com/kylehoehns/benchcard/actions/workflows/test.yml)
 [![coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fkylehoehns%2Fbenchcard%2Fmain%2Fscripts%2Fcoverage.json&query=%24.lines&suffix=%25&label=coverage&color=black)](scripts/coverage.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
+[![dependencies: 0](https://img.shields.io/badge/dependencies-0-black)](package.json)
+[![website](https://img.shields.io/website?url=https%3A%2F%2Fbenchcard.app&label=benchcard.app&up_message=up&down_message=down&up_color=black)](https://benchcard.app)
+[![last commit](https://img.shields.io/github/last-commit/kylehoehns/benchcard?color=black)](https://github.com/kylehoehns/benchcard/commits/main)
 
 </div>
 
