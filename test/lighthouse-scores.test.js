@@ -162,3 +162,7 @@ test('the CLI exits 1 when given no report path', () => {
   assert.equal(r.status, 1);
   assert.equal(r.stdout, '');
 });
+
+test('scoresFrom refuses an empty list of reports', () => {
+  assert.throws(() => scoresFrom([]), /no reports/i);
+});

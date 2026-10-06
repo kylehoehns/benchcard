@@ -377,6 +377,10 @@ function lighthouseWorkflowProblems(yaml) {
   for (const l of listed) {
     if (l !== wanted) problems.push(`--only-categories must list exactly ${wanted}, found: ${l}`);
   }
+  const loops = commands.filter(c => /\bnpx -y lighthouse@\d/.test(c)).flatMap(c => [...c.matchAll(/for \w+ in ([^;]*);/g)].map(m => m[1].trim()));
+  if (loops.length !== 1 || loops[0] !== '1 2 3') {
+    problems.push(`the Lighthouse step must loop over exactly "1 2 3", found: ${loops.join(' | ') || 'no loop'}`);
+  }
   const calls = commands.flatMap(c => [...c.matchAll(/lighthouse-scores\.mjs([^;&|>]*)/g)].map(m => m[1].trim().split(/\s+/).filter(Boolean)));
   if (calls.length === 0) problems.push('no lighthouse-scores.mjs call, so the report-count rule measured nothing');
   for (const args of calls) {
@@ -440,6 +444,8 @@ test('the lighthouse guards object to a broken copy, and to one with nothing to 
     'an extra category': y => y.replace('best-practices,seo', 'best-practices,seo,pwa'),
     'no npx': y => y.replace('npx -y lighthouse@', 'lighthouse@'),
     'only one report passed to the script': y => y.replace('report-1.json report-2.json report-3.json', 'report-1.json'),
+    'a loop of two runs': y => y.replace('for i in 1 2 3;', 'for i in 1 2;'),
+    'a single run with no loop': y => y.replace('for i in 1 2 3; do', '').replace('          done\n', ''),
     'a fourth report passed to the script': y => y.replace('report-3.json', 'report-3.json report-4.json'),
   };
   for (const [what, mutate] of Object.entries(breaks)) {

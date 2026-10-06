@@ -50,7 +50,9 @@ function median(values) {
 /* One report or an array. Every report is validated; the metadata is the last
    one's, so fetchTime is too. */
 export function scoresFrom(reports) {
-  const all = [reports].flat().map(scoreOne);
+  const list = [reports].flat();
+  if (list.length === 0) throw new Error('no reports to score');
+  const all = list.map(scoreOne);
   const out = { ...all.at(-1) };
   for (const key of Object.values(CATEGORIES)) out[key] = median(all.map(s => s[key]));
   return out;
