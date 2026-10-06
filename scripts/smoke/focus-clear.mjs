@@ -21,7 +21,7 @@
  * focus-visible heuristic, confirmed empirically against this app there,
  * and the same CDP dispatch is reused here rather than a second way to
  * press Tab. */
-import { evalIn, step, TODAY_HOME } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, DESCRIBE_EL } from './dom.mjs';
 
 /* The rect-overlap test itself, as a string rather than a function: it is
  * needed INSIDE a browser-evaluated expression, not as a Node-side value, so
@@ -93,8 +93,7 @@ export async function tabWalk(c, { name, probeParent, skip = [], bars = [], maxT
       el.setAttribute(${JSON.stringify(marker)}, '1');
       const r = el.getBoundingClientRect();
       const overlaps = ${OVERLAPS};
-      const label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-        + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join(''));
+      const label = ${DESCRIBE_EL}(el);
       return JSON.stringify({ label, scrollY: Math.round(window.scrollY),
         under: ${JSON.stringify(bars)}.filter(s => overlaps(r, document.querySelector(s)?.getBoundingClientRect())) });
     })()`));

@@ -1,4 +1,4 @@
-import { evalIn, step, IS_SR_ONLY_RECT } from './dom.mjs';
+import { evalIn, step, IS_SR_ONLY_RECT, DESCRIBE_EL } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding } from './app-large-text.mjs';
 
@@ -18,6 +18,7 @@ const TYPESCALE_WEIGHTS = new Set([400, 500, 600, 700]);
 const TYPESCALE_PROBE = `(() => {
   const seen = [];
   const isSrOnly = ${IS_SR_ONLY_RECT};
+  const describe = ${DESCRIBE_EL};
   const hasOwnText = el => [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
   const isFormEl = el => el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA';
   for (const el of document.body.querySelectorAll('*')) {
@@ -31,8 +32,7 @@ const TYPESCALE_PROBE = `(() => {
     if (!el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
     if (!hasOwnText(el) && !isFormEl(el)) continue;
     const cs = getComputedStyle(el);
-    const label = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-      + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join(''));
+    const label = describe(el);
     seen.push({ sel: label, size: Math.round(parseFloat(cs.fontSize)), weight: Number(cs.fontWeight) });
   }
   return JSON.stringify(seen);

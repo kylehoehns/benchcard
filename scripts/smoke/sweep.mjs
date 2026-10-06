@@ -1,4 +1,4 @@
-import { evalIn, quiet, TODAY_HOME } from './dom.mjs';
+import { evalIn, quiet, TODAY_HOME, DESCRIBE_EL, IS_CUT } from './dom.mjs';
 import { resize } from './page-state.mjs';
 import { SWEEP_FLOOR, SWEEP_HI, SWEEP_EXTRA } from './sizes.mjs';
 
@@ -48,6 +48,7 @@ export async function sweepPass(c) {
     const { result } = await c.send('Runtime.evaluate', {
       awaitPromise: true, returnByValue: true,
       expression: `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const describe = ${DESCRIBE_EL}, isCut = ${IS_CUT};
         const vw = document.documentElement.clientWidth; let worst = null, seen = 0;
         for (const el of document.body.querySelectorAll('*')) {
           /* Only elements the browser is actually rendering. The bare call --
@@ -82,12 +83,12 @@ export async function sweepPass(c) {
           let n = el.parentElement, scrolls = false;
           while (n && n !== document.body) {
             const ov = getComputedStyle(n).overflowX;
-            if ((ov === 'auto' || ov === 'scroll') && n.scrollWidth > n.clientWidth + 1) { scrolls = true; break; }
+            if ((ov === 'auto' || ov === 'scroll') && isCut(n, 1)) { scrolls = true; break; }
             n = n.parentElement;
           }
           if (scrolls) continue;
           const out = over < 0 ? -over : over - vw;   // how far out of reach
-          if (!worst || out > worst.out) worst = { el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + ((el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join('')), right: over, out };
+          if (!worst || out > worst.out) worst = { el: describe(el), right: over, out };
         }
         ok(JSON.stringify({ vw, worst, seen }));
       })))`,

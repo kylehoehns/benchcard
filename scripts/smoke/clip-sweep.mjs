@@ -27,7 +27,7 @@
  * right after each of them. `rotationToast` opens through its own
  * `openRotationToastState` too, but that one only mutates the loaded record's
  * game in place (`setGame`), so it needs no restore. */
-import { evalIn, step, IS_SR_ONLY_RECT, WORD_FLOOR_FN } from './dom.mjs';
+import { evalIn, step, IS_SR_ONLY_RECT, WORD_FLOOR_FN, DESCRIBE_EL, IS_CUT } from './dom.mjs';
 import { LONG_NAME, RICH, FOUR, TODAY_LANDING } from './fixtures.mjs';
 import { LARGE_TEXT } from './sizes.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding, openRotationToastState, openFirstRunTypedRosterState } from './app-large-text.mjs';
@@ -176,8 +176,8 @@ export const CLIP_PROBE = `(() => {
     }
     return false;
   };
-  const path = el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-    + ((el.getAttribute('class') || '').trim().split(/\\s+/).filter(Boolean).slice(0, 2).map(c => '.' + c).join(''));
+  const path = ${DESCRIBE_EL};
+  const isCut = ${IS_CUT};
 
   // Every non-empty text-node line inside el, as client rects -- shared by
   // the clip and overlap checks below, which each turn these into their own
@@ -405,7 +405,7 @@ export const CLIP_PROBE = `(() => {
   for (const sel of ${JSON.stringify(ALLOW_SELECTORS)}) {
     for (const el of document.querySelectorAll(sel)) {
       if (!el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
-      if (el.scrollWidth > el.clientWidth + 1) { usedAllow.push(sel); break; }
+      if (isCut(el, 1)) { usedAllow.push(sel); break; }
     }
   }
 
