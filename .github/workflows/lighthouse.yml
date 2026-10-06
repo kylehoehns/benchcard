@@ -1,10 +1,10 @@
 name: lighthouse
 
 # Keeps the four Lighthouse score badges in the README current. Once a week it
-# runs Lighthouse (mobile) against the live site, turns the report into
-# lighthouse.json with scripts/lighthouse-scores.mjs, and pushes that one file
-# to the `badges` branch, where shields.io reads it. Nobody refreshes the
-# numbers by hand.
+# runs Lighthouse (mobile) three times against the live site, turns the three
+# reports (median per category) into lighthouse.json with
+# scripts/lighthouse-scores.mjs, and pushes that one file to the `badges` branch,
+# where shields.io reads it. Nobody refreshes the numbers by hand.
 #
 # NOT A CHECK. It has no push or pull_request trigger on purpose: a slow job
 # that depends on the live site must never gate a merge or look like it does.
@@ -48,15 +48,17 @@ jobs:
         with:
           node-version: '24'
 
-      - name: run Lighthouse
+      - name: run Lighthouse three times
         run: |
-          npx -y lighthouse@12 https://benchcard.app \
-            --only-categories=performance,accessibility,best-practices,seo \
-            --output=json --output-path=report.json \
-            --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage --window-size=412,915"
+          for i in 1 2 3; do
+            npx -y lighthouse@12 https://benchcard.app \
+              --only-categories=performance,accessibility,best-practices,seo \
+              --output=json --output-path=report-$i.json \
+              --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage --window-size=412,915"
+          done
 
-      - name: turn the report into lighthouse.json
-        run: node scripts/lighthouse-scores.mjs report.json > lighthouse.json
+      - name: turn the reports into lighthouse.json
+        run: node scripts/lighthouse-scores.mjs report-1.json report-2.json report-3.json > lighthouse.json
 
       - uses: actions/checkout@v7
         with:

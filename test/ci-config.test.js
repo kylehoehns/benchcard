@@ -311,6 +311,8 @@ test('fetch.sh clears everything it generates, before it generates it', () => {
  *   - PERMISSIONS: read at the top; `contents: write` only on the job.
  *   - PUSH TARGET: every `git push` names `badges` and none names `main`. The
  *     job can write, so the destination is spelled out and pinned.
+ *   - THREE RUNS (#344): the script is handed exactly three report files, so
+ *     the badge is a median and not one noisy run.
  *   - NO INSTALL: Lighthouse runs through `npx -y lighthouse@`, so
  *     package.json stays at zero dependencies.
  *
@@ -375,6 +377,13 @@ function lighthouseWorkflowProblems(yaml) {
   for (const l of listed) {
     if (l !== wanted) problems.push(`--only-categories must list exactly ${wanted}, found: ${l}`);
   }
+  const calls = commands.flatMap(c => [...c.matchAll(/lighthouse-scores\.mjs([^;&|>]*)/g)].map(m => m[1].trim().split(/\s+/).filter(Boolean)));
+  if (calls.length === 0) problems.push('no lighthouse-scores.mjs call, so the report-count rule measured nothing');
+  for (const args of calls) {
+    if (args.length !== 3 || !args.every(a => /^report-\d\.json$/.test(a))) {
+      problems.push(`lighthouse-scores.mjs must get exactly three report-N.json files, found: ${args.join(' ')}`);
+    }
+  }
   if (commands.some(c => /\bnpm (install|i|ci)\b/.test(c))) {
     problems.push('an npm install step adds dependencies; use npx -y');
   }
@@ -430,6 +439,8 @@ test('the lighthouse guards object to a broken copy, and to one with nothing to 
     'a dropped category': y => y.replace('--only-categories=performance,accessibility,best-practices,seo', '--only-categories=performance,accessibility,best-practices'),
     'an extra category': y => y.replace('best-practices,seo', 'best-practices,seo,pwa'),
     'no npx': y => y.replace('npx -y lighthouse@', 'lighthouse@'),
+    'only one report passed to the script': y => y.replace('report-1.json report-2.json report-3.json', 'report-1.json'),
+    'a fourth report passed to the script': y => y.replace('report-3.json', 'report-3.json report-4.json'),
   };
   for (const [what, mutate] of Object.entries(breaks)) {
     const broken = mutate(good);
