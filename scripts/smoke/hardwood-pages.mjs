@@ -60,7 +60,7 @@ const PAGES = [
       { sel: '.scp.on', probe: 'chip', ink: true }] },
   { name: 'welcome', page: '/index.html', record: 'wiped', ready: WELCOME_READY,
     h1: 'The whole game, worked out before you leave the house.', phrase: 'The whole game',
-    band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '.wel-sub',
+    band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '#welCap',
     mark: '.wel-mark svg > rect:first-child' },
 ];
 

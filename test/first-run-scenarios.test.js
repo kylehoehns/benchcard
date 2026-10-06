@@ -8,6 +8,7 @@
 import { describe, test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Coach, hasChrome } from './coach.js';
+import { lacks } from './prose.js';
 
 const skip = !(await hasChrome()) && 'no Chrome on this machine';
 
@@ -31,6 +32,14 @@ describe('a coach opens Benchcard for the first time', { skip }, () => {
     const controls = await coach.controls();
     assert.ok(controls.includes('Set up my team'), JSON.stringify(controls));
     assert.ok(controls.includes('Try a sample team'), JSON.stringify(controls));
+  });
+
+  test('the welcome headline is followed by the demo, with no line between', async () => {
+    await coach.onFreshDevice();
+
+    const hero = await coach.text('.wel-hero');
+    assert.ok(hero.includes('The whole game, worked out before you leave the house.'), hero);
+    assert.ok(lacks(hero, 'however else you want them split'), hero);
   });
 
   test('trying the sample team lands on its plan with the tour on top', async () => {

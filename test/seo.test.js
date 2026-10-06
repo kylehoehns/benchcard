@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SIZES, file, slug } from '../scripts/charts.mjs';
+import { lacks } from './prose.js';
 import { parseSitemap } from '../scripts/check-sitemap-lastmod.mjs';
 
 /* #279: each page owns its own search phrase. This reads page source on
@@ -33,6 +34,7 @@ test('about owns the equal playing time phrase', () => {
   assertTitles(html, 'Equal playing time in youth basketball | Benchcard');
   assert.ok(descOf(html).startsWith('Equal playing time'));
   assert.ok(descOf(html).includes('how to plan a youth basketball substitution rotation'));
+  assert.ok(lacks(descOf(html), 'however else you want them split'));
 });
 
 /* ---- structured data ---- */
