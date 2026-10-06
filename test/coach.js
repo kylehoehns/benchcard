@@ -85,6 +85,20 @@ export function midSeason() {
 const SHARE_SHEET = `Object.defineProperty(navigator, 'share', { configurable: true,
   value: data => { window.__sharedLink = data.url; return Promise.resolve(); } })`;
 
+/* #326: which screens fade in from transparent. Read at `animationstart`,
+ * from the element's own computed opacity, so it is what is painted rather
+ * than what a keyframe says. Chrome does not count text that fades in as a
+ * paint, which is how a fading first screen hid itself from FCP and LCP.
+ * Only the entrance keyframes count: a loading pulse inside a screen is not
+ * the screen fading in. */
+const FADE_WATCH = `window.__fades = [];
+  document.addEventListener('animationstart', e => {
+    if (!['viewIn', 'welMark', 'rise'].includes(e.animationName)) return;
+    if (Number(getComputedStyle(e.target).opacity) >= 1) return;
+    const view = e.target.closest('.view');
+    if (view && !window.__fades.includes(view.id)) window.__fades.push(view.id);
+  }, true);`;
+
 export class Coach {
   static async open() {
     const server = await serve();
@@ -110,6 +124,7 @@ export class Coach {
       ({ identifier: clock } = await c.send('Page.addScriptToEvaluateOnNewDocument', { source: buildClockScript(SMOKE_CLOCK) }));
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: SHARE_SHEET });
+      await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FADE_WATCH });
     } catch (err) {
       c?.close();
       if (launched) await closeChrome(launched.proc, launched.dir);
@@ -664,5 +679,18 @@ export class Coach {
     const id = { today: 'view-today', game: 'view-games' }[screen];
     if (!id) throw new Error(`showing ${JSON.stringify(screen)}: say 'today' or 'game'`);
     return evalIn(this.c, screenReadyExpr(id));
+  }
+
+  /** The screens (`view-…` ids) that faded in from transparent since the page loaded, in order. */
+  fadedIn() { return evalIn(this.c, 'window.__fades'); }
+
+  /** Play animations at their real speed from here on, for a scenario about the motion itself. */
+  async realMotion() { await this.c.send('Animation.setPlaybackRate', { playbackRate: 1 }); }
+
+  /** `onGameDay` on a laptop-sized window, where Today and the game sit side by side. */
+  async onGameDayWide() {
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    await land(this.c, this.origin, { record: gameDay(), ready: TODAY_GAME_READY, width: 1280, height: 800, mobile: false });
   }
 }

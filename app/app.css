@@ -981,7 +981,7 @@ details.dz > summary::after { content: '›'; margin-left: auto; font-size: var(
   color: var(--muted); transition: transform var(--t) var(--ease); }
 details.dz[open] > summary::after { transform: rotate(90deg); }
 details.dz .dz-bd { padding-bottom: 1.1rem; animation: rise var(--t) var(--ease) both; }
-@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rise { from { opacity: var(--fade-from, 0); transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* ============================ tables ============================ */
 /* The stint grid is a real table and is legitimately wider than a small phone
@@ -2072,7 +2072,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   animation: welMark 700ms var(--ease) both; }
 /* 36px here; the header logos on the other pages stay 26px. */
 .wel-mark svg { width: 36px; height: 36px; }
-@keyframes welMark { from { opacity: 0; transform: scale(.6) rotate(-25deg); } to { opacity: 1; transform: none; } }
+@keyframes welMark { from { opacity: var(--fade-from, 0); transform: scale(.6) rotate(-25deg); } to { opacity: 1; transform: none; } }
 .wel-h { font-size: var(--fs-large); letter-spacing: -.04em; font-weight: 700;
   line-height: 1.1; text-wrap: balance; margin: 0;
   animation: rise var(--t-slow) var(--ease) both; animation-delay: 80ms; }
@@ -3400,7 +3400,19 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    the tour ship `hidden` -- so an engine that fails to restart the animation
    leaves the element stuck invisible with no way back. `test/anim-fill.test.js`
    holds this at zero. */
-@keyframes viewIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+@keyframes viewIn { from { opacity: var(--fade-from, 0); transform: translateY(7px); } to { opacity: 1; transform: none; } }
+/* #326: the screen the app opens on slides in without the fade. Chrome does
+   not count text fading in from opacity 0 as painted, so a fading first screen
+   held FCP and LCP back for seconds on a throttled phone (numbers on #326).
+   applyView (render.js) drops `first-screen` on the first move to another
+   screen, so later transitions still fade. Welcome and Today only: on a wide
+   screen the game pane beside Today keeps its fade, which hides its first-render
+   shift. Not inherited (with @property), so a fold or sheet keeps its fade. A
+   changed property is re-read but never restarts an animation: a move in the
+   first 260ms on a wide screen would dip the Today rail; nobody taps that fast. */
+@property --fade-from { syntax: '<number>'; inherits: false; initial-value: 0; }
+.first-screen[data-view="welcome"] :is(#view-welcome, .wel-mark, .wel-h, .wel-sub, .wel-stage),
+.first-screen[data-view="today"] #view-today { --fade-from: 1; }
 
 /* The top bar's hard minimum was 378px (brand 25 + nav 141 + help 44 +
    theme 44 + Print 81, plus gaps/padding) -- wider than a 375px iPhone

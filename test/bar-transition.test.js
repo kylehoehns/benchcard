@@ -65,7 +65,8 @@ test('the incoming view is still the whole transition', () => {
      the swap a hard cut. */
   assert.match(css, /\.view\s*\{\s*animation:\s*viewIn\b/,
     'the incoming view no longer animates -- the swap is a hard cut');
-  assert.match(css, /@keyframes viewIn\s*\{\s*from\s*\{\s*opacity:\s*0;\s*transform:\s*translateY/,
+  // #326: the first screen skips the fade through --fade-from; 0 is still the default.
+  assert.match(css, /@keyframes viewIn\s*\{\s*from\s*\{\s*opacity:\s*var\(--fade-from,\s*0\);\s*transform:\s*translateY/,
     'viewIn no longer fades and rises');
 });
 
