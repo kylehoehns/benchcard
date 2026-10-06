@@ -11,6 +11,7 @@
 [**benchcard.app**](https://benchcard.app) · [What it does](#what-it-does) · [How it works](#how-it-works) · [Docs](#documentation)
 
 [![tests](https://github.com/kylehoehns/benchcard/actions/workflows/test.yml/badge.svg)](https://github.com/kylehoehns/benchcard/actions/workflows/test.yml)
+[![coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fkylehoehns%2Fbenchcard%2Fmain%2Fscripts%2Fcoverage.json&query=%24.lines&suffix=%25&label=coverage&color=black)](scripts/coverage.json)
 [![license: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
 
 </div>
