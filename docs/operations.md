@@ -21,12 +21,12 @@ Node 22 and 24, with `fail-fast: false` so one red leg does not hide the
 other's result. The repo is private, so the badge above only renders for
 someone signed in with access.
 
-There are **six** CI jobs in total: the `node --test` matrix above, then
+There are **seven** CI jobs in total: the `node --test` matrix above, then
 `smoke` (`node scripts/smoke.mjs`, which runs the unit suite inside it and judges the line-coverage floor), `redirect` (`redirect-check.mjs`,
 the service worker behind Cloudflare's trailing-slash 307s), `checks that need history`
 (three steps: service worker version, `check-about-date.mjs` and
-`check-sitemap-lastmod.mjs`) and `vendor drift` (below). The three named in this sentence went unmentioned here for months
-while this paragraph counted to three; if you add a seventh, say so here.
+`check-sitemap-lastmod.mjs`) and `vendor drift` (below), plus the weekly `lighthouse scores` (below that). Three of these went unmentioned here for months
+while this paragraph counted to three; if you add an eighth, say so here.
 
 The service-worker version job runs `scripts/check-sw-version.mjs`, which fails when a file in `sw.js`'s
 `PRECACHE` changed in the diff but `VERSION` did not. That mistake cannot be
@@ -70,6 +70,13 @@ A deliberate version bump trips it on purpose — label the PR `vendor-bump` to
 skip it once the new output is committed. Untracked files count too: an icon
 `fetch.sh` downloads but that was never committed is as broken as a modified
 one, and that is exactly the state `app/vendor/icons/grip-vertical.svg` was in.
+
+`.github/workflows/lighthouse.yml` runs Lighthouse against
+`https://benchcard.app` once a week and pushes its four category scores to the
+`badges` branch as `lighthouse.json`, which the README badges read. It is not a
+required check: it has no `push` or `pull_request` trigger, because a job that
+depends on the live site must not gate a merge. It runs on `workflow_dispatch`,
+and `test/ci-config.test.js` guards that it never pushes to `main`.
 
 Beyond the example-based tests, `fuzz.test.js` generates 400 random scenarios
 (roster size, availability, format, granularity, and a random mix of every
