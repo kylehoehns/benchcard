@@ -17,12 +17,12 @@ name: lighthouse
 #
 # Lighthouse is fetched by `npx -y` at run time, so package.json stays free of
 # dependencies. The window size is needed: without it a headless mobile run
-# fails with NO_FCP.
+# fails with NO_FCP. The other two flags match every other headless Chrome on
+# this runner.
 
 on:
   schedule:
-    # Mondays, 07:50 UTC. Off the hour: GitHub queues everything submitted on
-    # the hour and runs it late, the same reason bands sits at :40.
+    # Mondays, 07:50 UTC. Off the hour for the reason bands.yml gives.
     - cron: '50 7 * * 1'
   workflow_dispatch:
 
@@ -53,7 +53,7 @@ jobs:
           npx -y lighthouse@12 https://benchcard.app \
             --only-categories=performance,accessibility,best-practices,seo \
             --output=json --output-path=report.json \
-            --chrome-flags="--headless=new --window-size=412,915"
+            --chrome-flags="--headless=new --no-sandbox --disable-dev-shm-usage --window-size=412,915"
 
       - name: turn the report into lighthouse.json
         run: node scripts/lighthouse-scores.mjs report.json > lighthouse.json

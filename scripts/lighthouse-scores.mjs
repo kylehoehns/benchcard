@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 /* The one place the output key names are written: Lighthouse category id ->
    key in lighthouse.json. The README's badge queries are checked against it. */
-const CATEGORIES = {
+export const CATEGORIES = {
   performance: 'performance',
   accessibility: 'accessibility',
   'best-practices': 'bestPractices',

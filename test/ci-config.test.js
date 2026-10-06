@@ -33,7 +33,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
-import { scoresFrom } from '../scripts/lighthouse-scores.mjs';
+import { scoresFrom, CATEGORIES } from '../scripts/lighthouse-scores.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const read = f => readFileSync(new URL(f, ROOT), 'utf8');
@@ -369,24 +369,31 @@ function lighthouseWorkflowProblems(yaml) {
   if (!commands.some(c => /\bnpx -y lighthouse@\d/.test(c))) {
     problems.push('Lighthouse must run as `npx -y lighthouse@<version>`');
   }
+  const listed = commands.flatMap(c => [...c.matchAll(/--only-categories=(\S+)/g)].map(m => m[1].split(',').sort().join(',')));
+  const wanted = Object.keys(CATEGORIES).sort().join(',');
+  if (listed.length === 0) problems.push('no --only-categories= flag, so the category rule measured nothing');
+  for (const l of listed) {
+    if (l !== wanted) problems.push(`--only-categories must list exactly ${wanted}, found: ${l}`);
+  }
   if (commands.some(c => /\bnpm (install|i|ci)\b/.test(c))) {
     problems.push('an npm install step adds dependencies; use npx -y');
   }
   return problems;
 }
 
-const BADGE_SOURCE = encodeURIComponent('https://raw.githubusercontent.com/kylehoehns/benchcard/badges/lighthouse.json');
+const REPO = 'kylehoehns/benchcard';
+const BADGE_SOURCE = encodeURIComponent(`https://raw.githubusercontent.com/${REPO}/badges/lighthouse.json`);
 
 /* The README badge for each score key `scoresFrom` emits. The keys come from
    running it on a fixture, so a fifth score added there has to get a badge. */
 function lighthouseBadgeProblems(readme) {
   const problems = [];
   const fixture = { finalDisplayedUrl: 'u', fetchTime: 't', lighthouseVersion: 'v', configSettings: { formFactor: 'mobile' },
-    categories: Object.fromEntries(['performance', 'accessibility', 'best-practices', 'seo'].map(id => [id, { score: 0.5 }])) };
+    categories: Object.fromEntries(Object.keys(CATEGORIES).map(id => [id, { score: 0.5 }])) };
   const scores = scoresFrom(fixture);
   const scoreKeys = Object.keys(scores).filter(k => typeof scores[k] === 'number');
   if (scoreKeys.length === 0) return ['scoresFrom emitted no score keys, so the badge rule measured nothing'];
-  const runs = '(https://github.com/kylehoehns/benchcard/actions/workflows/lighthouse.yml)';
+  const runs = `(https://github.com/${REPO}/actions/workflows/lighthouse.yml)`;
   const badges = readme.split('\n').filter(l => l.includes(BADGE_SOURCE));
   for (const key of scoreKeys) {
     const hit = badges.filter(l => l.includes(`query=%24.${key}&`) || l.includes(`query=%24.${key})`));
@@ -420,6 +427,8 @@ test('the lighthouse guards object to a broken copy, and to one with nothing to 
     'a second push naming main': y => y.replace(/git push[^\n]*/, m => `${m} && git push origin main`),
     'no push at all': y => y.replace(/git push[^\n]*/, 'true'),
     'an install step': y => y.replace('npx -y lighthouse@', 'npm install lighthouse && npx -y lighthouse@'),
+    'a dropped category': y => y.replace('--only-categories=performance,accessibility,best-practices,seo', '--only-categories=performance,accessibility,best-practices'),
+    'an extra category': y => y.replace('best-practices,seo', 'best-practices,seo,pwa'),
     'no npx': y => y.replace('npx -y lighthouse@', 'lighthouse@'),
   };
   for (const [what, mutate] of Object.entries(breaks)) {

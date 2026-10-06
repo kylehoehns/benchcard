@@ -68,7 +68,19 @@ const run = content => {
 test('the CLI prints the scores as 2-space JSON with a trailing newline and exits 0', () => {
   const r = run(JSON.stringify(mobile()));
   assert.equal(r.status, 0, r.stderr);
-  assert.equal(r.stdout, JSON.stringify(scoresFrom(mobile()), null, 2) + '\n');
+  assert.equal(r.stdout, [
+    '{',
+    '  "url": "https://benchcard.app/",',
+    '  "formFactor": "mobile",',
+    '  "fetchTime": "2026-10-06T12:00:00.000Z",',
+    '  "lighthouseVersion": "12.8.2",',
+    '  "performance": 75,',
+    '  "accessibility": 96,',
+    '  "bestPractices": 79,',
+    '  "seo": 100',
+    '}',
+    '',
+  ].join('\n'));
   assert.equal(JSON.parse(r.stdout).performance, 75);
 });
 
