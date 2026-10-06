@@ -71,12 +71,13 @@ skip it once the new output is committed. Untracked files count too: an icon
 `fetch.sh` downloads but that was never committed is as broken as a modified
 one, and that is exactly the state `app/vendor/icons/grip-vertical.svg` was in.
 
-`.github/workflows/lighthouse.yml` runs Lighthouse against
-`https://benchcard.app` once a week and pushes its four category scores to the
-`badges` branch as `lighthouse.json`, which the README badges read. It is not a
-required check: it has no `push` or `pull_request` trigger, because a job that
-depends on the live site must not gate a merge. It runs on `workflow_dispatch`,
-and `test/ci-config.test.js` guards that it never pushes to `main`.
+`.github/workflows/lighthouse.yml` runs Lighthouse three times against
+`https://benchcard.app` once a week, computes the median score for each category,
+and pushes the result to the `badges` branch as `lighthouse.json`, which the
+README badges read. It is not a required check: it has no `push` or `pull_request`
+trigger, because a job that depends on the live site must not gate a merge. It
+runs on `workflow_dispatch`, and `test/ci-config.test.js` guards that it never
+pushes to `main`.
 
 Beyond the example-based tests, `fuzz.test.js` generates 400 random scenarios
 (roster size, availability, format, granularity, and a random mix of every
