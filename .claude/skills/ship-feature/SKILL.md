@@ -221,7 +221,7 @@ The PR body says it switched.
    against `/tdd`'s anti-patterns: implementation-coupled, tautological, and a
    source-reading test the spec did not name as a seam.
 
-   While they work, run **`/code-review high <branch>`** and
+   While they work, run **`/code-review <branch>`** and
    **`/security-review`** yourself. They are skills, not team agents, so they
    run in this session, and both judge the committed branch against `main`.
    Neither reads `REVIEW.md`, so grade each finding with its severity, then
