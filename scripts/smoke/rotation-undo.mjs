@@ -33,7 +33,7 @@
  * (Format, Sub interval, Who's here) schedules its repaint behind.
  */
 import { evalIn, step, wait } from './dom.mjs';
-import { setGame, readToastExpr } from './sheet-drive.mjs';
+import { setGame, readToastExpr, clickBreaksOnlyRow } from './sheet-drive.mjs';
 
 // Debounced kinds (`format`, `availability`) repaint 140ms after the edit;
 // `countTo` can still be counting up to 250ms after that. `now: true` kinds
@@ -187,8 +187,7 @@ export async function rotationUndoPass(c, origin) {
     // "Only at breaks" (GRAN_CHOICES' breaksOnly) is the one choice
     // furthest from RICH's own "every 4 min", so this always picks a
     // different row rather than depending on which one starts selected.
-    await evalIn(c, step(`[...document.querySelectorAll('#sheetIntervalBody .prow')]
-      .find(b => b.getAttribute('aria-label') === 'Only at breaks').click()`));
+    await evalIn(c, step(`await ${clickBreaksOnlyRow()}`));
     await wait(SETTLE_MS);
     const afterInterval = JSON.parse(await evalIn(c, readGame));
     if (afterInterval.granMode !== 'breaksOnly') {

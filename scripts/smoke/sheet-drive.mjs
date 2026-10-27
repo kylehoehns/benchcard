@@ -1,4 +1,19 @@
 import { evalIn, step, HEIGHT, TODAY_HOME, quiet, wait } from './dom.mjs';
+/* Page expression: click the "Only at breaks" row of the open Sub interval
+   sheet. The label comes from GRAN_CHOICES' breaksOnly phrase, read in the
+   page and capitalized as paintGranRows does; a missing row throws by name,
+   not a bare TypeError. */
+export function clickBreaksOnlyRow() {
+  return `(async () => {
+    const { GRAN_CHOICES } = await import('/state.js');
+    const { phrase } = GRAN_CHOICES.find(c => c.mode === 'breaksOnly');
+    const label = phrase[0].toUpperCase() + phrase.slice(1);
+    const row = [...document.querySelectorAll('#sheetIntervalBody .prow')]
+      .find(b => b.getAttribute('aria-label') === label);
+    if (!row) throw new Error('Sub interval sheet has no ' + label + ' row');
+    row.click();
+  })()`;
+}
 
 /* Shared by the two "own guard" behavioral passes -- #27's `sentence-sheets.mjs`
  * and #28's `plan-sheet.mjs` -- both of which drive a real dialog with real

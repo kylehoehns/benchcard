@@ -492,11 +492,12 @@ Mobile specifics that came out of real use:
   roster gets the roster CTA. Both buttons go through `jumpToEditor()`, which
   opens the sheet before scrolling. Errors fixed elsewhere (not enough players,
   closers, unit sizes) get no button, because their control is already on screen.
-- **The Sub interval is a list of rows, not a `<select>`.** Eight long
+- **The Sub interval is a list of rows, not a `<select>`.** A long list of
   options in a native picker fills a phone screen for a one-tap decision. One
   builder draws that list (`paintGranRows` in `game-setup.js`), for the game
   screen's own sheet and for step 2 of the first run — the two used to be the
-  same eight choices drawn twice, once as rows and once as chips (#36).
+  same choices drawn twice, once as rows and once as chips (#36). The choices
+  themselves are `GRAN_CHOICES` in `app/state.js`.
 - **Destructive actions leave the day's own list.** "Remove game" sits in the
   game screen's own header behind Undo, not among the day's games on Today.
 

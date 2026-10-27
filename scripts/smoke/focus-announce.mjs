@@ -31,7 +31,7 @@
  * reader would ask, which is what the spec's Proof table names as the seam. */
 import { evalIn, step, objectIdFor, wait } from './dom.mjs';
 import { RICH, TODAY_LANDING } from './fixtures.mjs';
-import { realTap, tap, key, settle, setGame, evalJSON, waitClosed } from './sheet-drive.mjs';
+import { realTap, tap, key, settle, clickBreaksOnlyRow, setGame, evalJSON, waitClosed } from './sheet-drive.mjs';
 import { land } from './page-state.mjs';
 
 /* ---- small helpers, shared by every section below ---- */
@@ -531,8 +531,7 @@ export async function focusAnnouncePass(c, origin) {
     await evalIn(c, setGame(handSwapSeed()));
     await tap(c, `document.getElementById('phraseInterval').click()`);
     // "Only at breaks" is never the fixture's own row.
-    await tap(c, `[...document.querySelectorAll('#sheetIntervalBody .prow')]
-      .find(b => b.getAttribute('aria-label') === 'Only at breaks').click()`);
+    await tap(c, clickBreaksOnlyRow());
     const hostInfo = await evalJSON(c, `(() => {
       const host = document.querySelector('#sheetInterval .bsheet-toasts');
       return JSON.stringify({

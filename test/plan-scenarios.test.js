@@ -73,8 +73,8 @@ describe('a coach shapes the plan', { skip }, () => {
   test('subbing 4× a period in 2 × 18 gives 8 stints and 180 player-minutes', async () => {
     await openHawks();
     await coach.tap('Format, 4 × 8');
-    for (let i = 0; i < 2; i++) await coach.tap('Fewer periods');
-    for (let i = 0; i < 10; i++) await coach.tap('More minutes');
+    await coach.stepTo('periods', 2);
+    await coach.stepTo('minutes', 18);
     await coach.tap('Close');
     await coach.tap('Sub interval, every 4 min');
     await coach.tap('4× a period');

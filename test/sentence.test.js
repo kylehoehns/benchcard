@@ -33,14 +33,6 @@ test('sentenceParts: 1 player, By hand, perPeriod interval, 1 rule', () => {
     '1 player, 2 × 20, subbing 3× a period for minutes set by hand, with 1 rule.');
 });
 
-test('sentenceParts: perPeriod 4 reads "4× a period" in the plan sentence', () => {
-  const g = bareGame({ periods: 2, periodMinutes: 18, granMode: 'perPeriod', granValue: 4 });
-  const parts = withTeam([player('a')], [g], {}, () => S.sentenceParts(g, 0));
-  assert.equal(parts.interval, '4× a period');
-  assert.match(
-    `subbing ${parts.interval} for ${parts.strategy}`, /^subbing 4× a period for /);
-});
-
 test('sentenceParts: breaksOnly interval, Closers reads "a closing group", 3 rules', () => {
   const g = bareGame({ granMode: 'breaksOnly', granValue: 1, strategy: 'closers',
     constraints: { ...S.emptyConstraints(), avoids: [[1, 2], [3, 4], [5, 6]] } });
