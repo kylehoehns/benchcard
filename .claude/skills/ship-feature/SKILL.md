@@ -78,6 +78,7 @@ In the small lane:
 | `reuse-reviewer`, `efficiency-reviewer` | `quality-reviewer`, judging the diff against the issue |
 | `doc-writer`, unless a file under `docs/` or `README.md` names what changed | the proof pair, once per commit, by you |
 | the preview check, when no coach can see the change | the preview check, when a coach can |
+| | `/code-review` and `/security-review`, by you (step 7) |
 
 **Wherever the steps below or an agent file say "spec", the small lane
 substitutes:**
@@ -92,7 +93,7 @@ substitutes:**
   the issue is `ready-for-agent` with nothing left to ask;
 - **step 6:** no `refactorer`; commit with no spec file to stage;
 - **step 7:** launch `quality-reviewer`, plus `doc-writer` only when a doc
-  names what changed;
+  names what changed; run both review skills as usual;
 - **step 10:** the PR body names the lane;
 - **step 12:** skipped when no coach can see the change.
 
@@ -220,6 +221,14 @@ The PR body says it switched.
    against `/tdd`'s anti-patterns: implementation-coupled, tautological, and a
    source-reading test the spec did not name as a seam.
 
+   While they work, run **`/code-review high <branch>`** and
+   **`/security-review`** yourself. They are skills, not team agents, so they
+   run in this session, and both judge the committed branch against `main`.
+   Neither reads `REVIEW.md`, so grade each finding with its severity, then
+   write the ones that survive verification to `.review/skills.md`, next to the
+   diffs step 8 hands on. A skill that finds nothing still gets a line there,
+   saying it ran clean.
+
    When the diff touches anything a coach sees (`app/**` other than
    `sw.js`), take pictures first: with `npm run serve` running, run `node
    scripts/look.mjs --url http://127.0.0.1:8201 --widths 320,390 --font 16,32
@@ -228,7 +237,8 @@ The PR body says it switched.
    `.review/look` too. It reads the PNGs and `measurements.json`, whose
    `findings` list cut-off text; `AGENTS.md` § Layout says how to read them.
 
-8. **Fix, once.** Actionable findings go to a new `developer`, handed the same
+8. **Fix, once.** Actionable findings, from the reviewers and from
+   `.review/skills.md` alike, go to a new `developer`, handed the same
    `.review/` directory step 7 built, which fixes them the same way it built:
    a failing test first where the finding is a behavior. At most one pass. A
    `REVIEW.md` **Blocker** that survives it stops the run: report it in the
