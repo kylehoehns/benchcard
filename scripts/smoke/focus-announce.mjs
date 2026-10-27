@@ -530,8 +530,9 @@ export async function focusAnnouncePass(c, origin) {
        to do this; since #247 it raises none.) */
     await evalIn(c, setGame(handSwapSeed()));
     await tap(c, `document.getElementById('phraseInterval').click()`);
-    // index 7 of GRAN_CHOICES is "breaksOnly", never the fixture's own row.
-    await tap(c, `document.querySelectorAll('#sheetIntervalBody .prow')[7].click()`);
+    // "Only at breaks" is never the fixture's own row.
+    await tap(c, `[...document.querySelectorAll('#sheetIntervalBody .prow')]
+      .find(b => b.getAttribute('aria-label') === 'Only at breaks').click()`);
     const hostInfo = await evalJSON(c, `(() => {
       const host = document.querySelector('#sheetInterval .bsheet-toasts');
       return JSON.stringify({

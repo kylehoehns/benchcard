@@ -184,10 +184,11 @@ export async function rotationUndoPass(c, origin) {
     /* ---- item 3: Sub interval (same toast, same Undo) ---- */
     await evalIn(c, step(`document.getElementById('phraseInterval').click()`));
     const beforeToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetInterval')));
-    // index 7 of GRAN_CHOICES (state.js) is "breaksOnly" -- the one choice
+    // "Only at breaks" (GRAN_CHOICES' breaksOnly) is the one choice
     // furthest from RICH's own "every 4 min", so this always picks a
     // different row rather than depending on which one starts selected.
-    await evalIn(c, step(`document.querySelectorAll('#sheetIntervalBody .prow')[7].click()`));
+    await evalIn(c, step(`[...document.querySelectorAll('#sheetIntervalBody .prow')]
+      .find(b => b.getAttribute('aria-label') === 'Only at breaks').click()`));
     await wait(SETTLE_MS);
     const afterInterval = JSON.parse(await evalIn(c, readGame));
     if (afterInterval.granMode !== 'breaksOnly') {

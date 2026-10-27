@@ -323,7 +323,7 @@ export async function sentenceSheetsPass(c, origin) {
       });
     })()`);
     const WANT_ROWS = ['Every 2 min', 'Every 3 min', 'Every 4 min', 'Every 5 min', 'Every 6 min',
-      '2× a period', '3× a period', 'Only at breaks'];
+      '2× a period', '3× a period', '4× a period', 'Only at breaks'];
     ck(JSON.stringify(interval.labels) === JSON.stringify(WANT_ROWS),
       `#sheetIntervalBody reads ${JSON.stringify(interval.labels)}, want ${JSON.stringify(WANT_ROWS)}`);
     const pressedAt = interval.pressed.map((p, i) => p === 'true' ? i : -1).filter(i => i >= 0);

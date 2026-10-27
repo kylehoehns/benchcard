@@ -112,6 +112,7 @@ export const GRAN_CHOICES = [
   { mode: 'everyN', value: 6, label: '6 min', phrase: 'every 6 min' },
   { mode: 'perPeriod', value: 2, label: '2× / period', phrase: '2× a period' },
   { mode: 'perPeriod', value: 3, label: '3× / period', phrase: '3× a period' },
+  { mode: 'perPeriod', value: 4, label: '4× / period', phrase: '4× a period' },
   { mode: 'breaksOnly', value: 1, label: 'Breaks only', phrase: 'only at breaks' },
 ];
 
