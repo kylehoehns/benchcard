@@ -124,7 +124,7 @@ test('GRAN_CHOICES: each entry carries the sentence phrase, label kept for first
   const byPhrase = S.GRAN_CHOICES.map(c => c.phrase);
   assert.deepEqual(byPhrase, [
     'every 2 min', 'every 3 min', 'every 4 min', 'every 5 min', 'every 6 min',
-    '2× a period', '3× a period', 'only at breaks',
+    '2× a period', '3× a period', '4× a period', 'only at breaks',
   ]);
   assert.ok(S.GRAN_CHOICES.every(c => typeof c.label === 'string' && c.label.length),
     'label must stay -- first run (onboarding.js) still draws its chips from it');

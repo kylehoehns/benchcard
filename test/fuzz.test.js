@@ -35,7 +35,7 @@ function scenario(n) {
   const format = { periods: int(1, 4), periodMinutes: int(4, 12) };
   const granularity = pick([
     { mode: 'everyN', value: int(2, 6) },
-    { mode: 'perPeriod', value: int(1, 3) },
+    { mode: 'perPeriod', value: int(1, 4) },
     { mode: 'breaksOnly' },
   ]);
   const stints = buildStints(format, granularity);

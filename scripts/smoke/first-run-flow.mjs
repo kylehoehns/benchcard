@@ -1,3 +1,4 @@
+import { GRAN_CHOICES } from '../../app/state.js';
 import { land, resize } from './page-state.mjs';
 import { WELCOME_LANDING } from './fixtures.mjs';
 import { WIDTH, assertChipMatchesBackBtn, assertBackIsChevron } from './dom.mjs';
@@ -176,7 +177,7 @@ async function stepOneCounts(c, ck) {
 }
 
 /* Item 3: step 2's two steppers (against `PERIODS_LO/HI`, `MINUTES_LO/HI`)
- * and the eight `GRAN_CHOICES` rows. Read at the default the draft opens
+ * and every `GRAN_CHOICES` row. Read at the default the draft opens
  * with, which already sits at `PERIODS_HI` -- so the "+ disabled above 4"
  * half of the rule is observable without also walking `- ` down to 1 and
  * disturbing the roster the next two checks still need. */
@@ -216,7 +217,8 @@ async function stepTwoDefaults(c, ck) {
     `the periods row reads ${JSON.stringify(periods)}, want Periods: 4, + disabled, - enabled`);
   ck(minutes?.label === 'Minutes each' && minutes.value === '8' && minutes.minusDisabled === false && minutes.plusDisabled === false,
     `the minutes row reads ${JSON.stringify(minutes)}, want Minutes each: 8, both enabled`);
-  ck(body.granCount === 8, `${body.granCount} sub-interval choice(s) drawn, want the 8 in GRAN_CHOICES`);
+  ck(body.granCount === GRAN_CHOICES.length,
+    `${body.granCount} sub-interval choice(s) drawn, want the ${GRAN_CHOICES.length} in GRAN_CHOICES`);
   ck(body.onLabel === 'Every 4 min' && body.onMark === '✓',
     `the pressed sub-interval choice reads "${body.onLabel}" "${body.onMark}", want "Every 4 min" "✓"`);
   // #143 items 2/3: the chosen row is a check, not a fill -- transparent
