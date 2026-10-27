@@ -138,9 +138,11 @@ test('the build skill and the developer agent point at the seam rule', () => {
 const BUNDLED = new Set(['code-review', 'security-review']);
 
 test('every skill referenced in the docs actually exists', () => {
-  const ref = /(?:^|[\s(`])\/([a-z][a-z0-9-]{2,})(?=[\s.,`)]|$)/gm;
+  // `/name` in prose, or `Skill tool with "name"` -- how tdd reaches codebase-design.
+  const ref = /(?:(?:^|[\s(`])\/([a-z][a-z0-9-]{2,})(?=[\s.,`)]|$)|Skill tool with "([a-z][a-z0-9-]+)")/gm;
   for (const f of DOCS) {
-    for (const [, name] of text[f].matchAll(ref)) {
+    for (const [, slash, called] of text[f].matchAll(ref)) {
+      const name = slash ?? called;
       if (BUNDLED.has(name)) continue;
       assert.ok(existsSync(new URL(`${SKILL_DIR}/${name}/SKILL.md`, ROOT)),
         `${f} points at /${name}, which does not exist`);
