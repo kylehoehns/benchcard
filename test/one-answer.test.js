@@ -132,9 +132,10 @@ test('the build skill and the developer agent point at the seam rule', () => {
 });
 
 /* An index whose pointers are dead is worse than no index: it reads as
- * coverage. `code-review` is bundled with Claude Code rather than living in
- * this tree, and is the only reference allowed not to resolve here. */
-const BUNDLED = new Set(['code-review']);
+ * coverage. `code-review` and `security-review` are bundled with Claude Code
+ * rather than living in this tree, and are the only references allowed not to
+ * resolve here. */
+const BUNDLED = new Set(['code-review', 'security-review']);
 
 test('every skill referenced in the docs actually exists', () => {
   const ref = /(?:^|[\s(`])\/([a-z][a-z0-9-]{2,})(?=[\s.,`)]|$)/gm;
