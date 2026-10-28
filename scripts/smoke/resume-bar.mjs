@@ -176,7 +176,7 @@ export async function resumeBarPass(c, origin, rec) {
   const MIN_CONTROLS = 5;
   rec.check(visited >= MIN_CONTROLS, `only ${visited} distinct control(s) reached tabbing Today (${labels.join(', ') || 'none'}), `
       + `want at least ${MIN_CONTROLS} -- a run that measured nothing is not a pass`);
-  for (const o of overlaps.slice(0, 3)) rec.fail(o);
+  for (const o of overlaps) rec.fail(o);
   notes.push(`item 6: scroll-padding covers the bar; ${visited} control(s) tabbed clear of it: ${labels.join(', ')}`);
 
   /* ---- item 6's other half: the END of Today has to be reachable ----

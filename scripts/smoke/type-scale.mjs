@@ -58,6 +58,8 @@ export async function typeScalePass(c, origin, rec) {
         rec.check(TYPESCALE_SIZES_PX.has(el.size), `${v.name} — ${el.sel}: ${el.size}px is off the scale`);
         rec.check(TYPESCALE_WEIGHTS.has(el.weight), `${v.name} — ${el.sel}: weight ${el.weight} is off the scale`);
       }
+    } catch (e) {
+      rec.fail(`${v.name}: ${firstLine(e)}`);
     } finally {
       if (v.close) await evalIn(c, step(v.close))
         .catch(e => rec.fail(`${v.name}: did not close — ${firstLine(e)}`));

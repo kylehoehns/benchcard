@@ -334,9 +334,15 @@ export async function seasonLookPass(c, origin, rec) {
     await resize(c, WIDTH);
   }
 
-  const five = await seasonFiveGamesPass(c, origin, rec);
-  const long = await seasonLongNamePass(c, origin, rec);
-  const squeeze = await seasonFiledSqueezePass(c, origin, rec);
+  /* Each sub-pass runs whatever the one before it did; a throw is recorded
+     under its label and the string it would have returned goes unused. */
+  const sub = async (label, pass) => {
+    try { return await pass(c, origin, rec); }
+    catch (e) { rec.fail(`${label}: ${firstLine(e)}`); return ''; }
+  };
+  const five = await sub('five games', seasonFiveGamesPass);
+  const long = await sub('long name', seasonLongNamePass);
+  const squeeze = await sub('filed squeeze', seasonFiledSqueezePass);
 
   rec.ok(`Minutes so far row: 30px tall, 14px/400-500 ellipsis call name, 8px --r-full/--track bar, 13px muted tabular minutes, `
         + `no divider; one shared left edge; Filed games is one card; Across the day matches Minutes so far's numbers; `

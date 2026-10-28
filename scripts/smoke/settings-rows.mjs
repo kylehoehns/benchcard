@@ -24,7 +24,8 @@ export async function settingsRowPass(c, source, rec) {
   });
 
   // #263 E-H: the backup row's own behavior, on the page already loaded.
-  rec.check(bad.length === 0, `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`);
+  for (const b of bad) rec.fail(`measurement under 48px: ${b}`);
+  rec.check(audited > 0, 'no settings row was measured');
   await backupChecks(c, rec.check);
   rec.ok(`${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px; `
     + 'backup saves, restores from a file and from paste, undoes, and rejects a non-backup');

@@ -155,7 +155,8 @@ export async function pinnedCardPass(c, origin, rec) {
       const after = JSON.parse(await evalIn(c, MEASURE));
       landings++;
       const found = pinnedCardProblems(label, before, after, scheme);
-      rec.check(found.length === 0, found.join(' | '));
+      for (const f of found) rec.fail(f);
+      if (!found.length) rec.check(true, '');
     }
     rec.check(landings === CELLS.length * SCHEMES.length, `${landings}/${CELLS.length * SCHEMES.length} landings measured`);
   } finally {

@@ -1,5 +1,6 @@
 import { evalIn, OVERFLOW_PROBE, WORST_OUTSIDE, IS_CUT } from './dom.mjs';
 import { land } from './page-state.mjs';
+import { firstLine } from './verdict.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './sizes.mjs';
 
 /* The pages no browser check had ever loaded.
@@ -170,7 +171,7 @@ export async function staticPass(c, source, origin, rec) {
           rec.check(chk.pass, `${page} — ${chk.name}: ${chk.detail}`);
         }
       } catch (e) {
-        throw new Error(`${where}: ${e.message.split('\n')[0]}`);
+        rec.fail(`${where}: ${firstLine(e)}`);
       }
     }
   }
@@ -194,7 +195,7 @@ export async function staticPass(c, source, origin, rec) {
       } else if (o.worst) allowed++;
       await cellChecks(c, page, where, rec);
     } catch (e) {
-      throw new Error(`${where}: ${e.message.split('\n')[0]}`);
+      rec.fail(`${where}: ${firstLine(e)}`);
     }
   }
 

@@ -136,8 +136,7 @@ export async function focusClearPass(c, rec) {
      the browser only consults `scroll-padding` when it has to scroll. */
   rec.check(maxScrollY !== 0, 'the tab walk never scrolled the page (scrollY stayed 0), so nothing here '
     + 'exercised scroll-padding -- that is a broken probe, not a clear tab order');
-  for (const o of overlaps.slice(0, 3)) rec.fail(o);
-  if (overlaps.length > 3) rec.fail(`(+${overlaps.length - 3} more)`);
+  for (const o of overlaps) rec.fail(o);
 
   rec.ok(`${visited} content control(s) tabbed through down to scrollY ${maxScrollY}, clear of .bar and #actionbar`);
 }

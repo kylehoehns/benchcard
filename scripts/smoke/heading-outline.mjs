@@ -1,5 +1,6 @@
 import { evalIn, TODAY_HOME } from './dom.mjs';
 import { tap, evalJSON } from './sheet-drive.mjs';
+import { firstLine } from './verdict.mjs';
 
 /* #151 item 4: the rendered heading outline -- what a screen reader's own
  * outline is built from, headings that are actually in the accessibility
@@ -87,9 +88,10 @@ async function checkGroup(c, rec, items, startLevel, rootFor) {
       if (item.open) await tap(c, item.open);
       const levels = await evalJSON(c, OUTLINE_JS(rootFor(item)));
       const found = outlineProblems(item.name, levels, startLevel);
-      rec.check(found.length === 0, found.join(' | '));
+      for (const f of found) rec.fail(f);
+      if (!found.length) rec.check(true, '');
       if (item.close) await tap(c, item.close);
-    } catch (e) { throw new Error(`${item.name}: ${e.message.split('\n')[0]}`); }
+    } catch (e) { throw new Error(`${item.name}: ${firstLine(e)}`); }
   }
 }
 

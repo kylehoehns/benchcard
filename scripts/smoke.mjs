@@ -103,8 +103,9 @@ const rowSeconds = [];
  *
  * One runner for a rich row, used both by the full run's loop below and by
  * `--only`'s rich branch: it calls the row's own `run`, adds the row's name
- * to whatever comes back (a check returns `{ pass, detail }`; the row is what
- * knows its own name), and turns a throw into a FAIL row rather than taking
+ * to its verdict (a probe records into `ctx.rec` and `rowResult` builds the
+ * `{ pass, detail }`; the row is what knows its own name), and turns a throw
+ * into a FAIL row whose detail ends `threw: ...`, rather than taking
  * the rest of the run down with it -- a broken pass (a selector that no
  * longer exists, a page that navigated away mid-evaluate) failing its own
  * named row instead of printing no table at all is the one shape

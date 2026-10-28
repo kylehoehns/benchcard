@@ -1,6 +1,7 @@
 import { evalIn, TODAY_HOME, computedStyle } from './dom.mjs';
 import { tap } from './sheet-drive.mjs';
 import { setMedia } from './page-state.mjs';
+import { firstLine } from './verdict.mjs';
 
 /* #151 item 7: forced colors mode strips most author colors down to a small
  * system palette, and can flatten a `background-color`/`box-shadow`-only
@@ -67,7 +68,7 @@ export async function forcedColorsPass(c, origin, rec) {
         if (rec.check(blk, 'the game screen: no .tl-blk found to check its border')) rec.check(parseFloat(blk.borderWidth) > 0, `the game screen: .tl-blk border-width is ${blk.borderWidth}, want a non-zero border`);
       }
       await tap(c, s.close);
-    } catch (e) { throw new Error(`${s.name}: ${e.message.split('\n')[0]}`); }
+    } catch (e) { throw new Error(`${s.name}: ${firstLine(e)}`); }
   }
   await evalIn(c, TODAY_HOME);
 
