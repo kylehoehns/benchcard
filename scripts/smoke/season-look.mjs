@@ -22,7 +22,7 @@
  * Each of those three gets its own read below, named for the defect rather
  * than folded into the item-1/3 blocks above them, since that is what let a
  * broken tree read green the first time. */
-import { TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_CUT } from './dom.mjs';
+import { TODAY_HOME, WIDTH, OVERFLOW_PROBE, WORD_FLOOR_FN, IS_CUT, DESCRIBE_EL } from './dom.mjs';
 import { evalJSON, tap } from './sheet-drive.mjs';
 import { RICH, TODAY_LANDING, richWith } from './fixtures.mjs';
 import { land, resize } from './page-state.mjs';
@@ -152,11 +152,11 @@ const READ_SEASON_LOOK = `JSON.stringify((() => {
   for (const el of document.querySelectorAll('#view-season *')) {
     const s = getComputedStyle(el);
     if (!badCase && s.textTransform === 'uppercase') {
-      badCase = el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).trim().split(/\\s+/)[0] : '');
+      badCase = (${DESCRIBE_EL})(el);
     }
     const ls = parseFloat(s.letterSpacing);
     if (!badTrack && !Number.isNaN(ls) && ls > 0) {
-      badTrack = el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).trim().split(/\\s+/)[0] : '');
+      badTrack = (${DESCRIBE_EL})(el);
     }
   }
 

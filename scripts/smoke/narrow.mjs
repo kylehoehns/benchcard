@@ -1,5 +1,6 @@
 import { NARROW } from './sizes.mjs';
-import { resize } from './page-state.mjs';
+import { resize, smokeViewport } from './page-state.mjs';
+import { OVERFLOW_WALK } from './dom.mjs';
 
 /* The chrome has to survive the narrowest phone anyone still carries.
  *
@@ -18,40 +19,17 @@ import { resize } from './page-state.mjs';
  * edge would be a different bug wearing the same green tick.
  */
 export async function narrowPass(c) {
-  const before = await c.send('Runtime.evaluate', {
-    expression: 'JSON.stringify(window.__SMOKE_VIEWPORT || [390, 844])', returnByValue: true,
-  });
-  const [w0, h0] = JSON.parse(before.result.value);
+  const [w0, h0] = await smokeViewport(c);
   await resize(c, NARROW, h0, { debounce: true });
 
   const probe = await c.send('Runtime.evaluate', {
     returnByValue: true,
     expression: `(() => {
-      const vw = document.documentElement.clientWidth;
-      const x0 = window.scrollX;
-      window.scrollTo(80, window.scrollY);
-      const pans = window.scrollX !== x0;
-      window.scrollTo(x0, window.scrollY);
       const bar = document.querySelector('.bar');
-      const spill = [];
-      for (const el of document.body.querySelectorAll('*')) {
-        const r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) continue;
-        /* BOTH edges. scrollWidth and a right-edge test are blind to content
-           hanging off the LEFT of the viewport -- measured, the Games tab does
-           exactly that -- and a coach cannot reach it in either direction. */
-        const over = r.right > vw + 1 ? Math.round(r.right) : r.left < -1 ? Math.round(r.left) : null;
-        if (over !== null && !spill.some(s => s.el.contains(el))) spill.push({ el, right: over });
-      }
       return JSON.stringify({
-        vw, pans,
-        barFits: bar ? bar.scrollWidth <= vw + 1 : true,
+        ...(${OVERFLOW_WALK})({ visible: true }),
+        barFits: bar ? bar.scrollWidth <= document.documentElement.clientWidth + 1 : true,
         barW: bar ? bar.scrollWidth : 0,
-        // anything wider than the screen must scroll inside its own box
-        stranded: spill
-          .filter(s => { let n = s.el; while (n && n !== document.body) { if (n.scrollWidth > n.clientWidth + 1) return false; n = n.parentElement; } return true; })
-          .map(s => (s.el.tagName.toLowerCase() + (s.el.id ? '#' + s.el.id : '')) + ' → ' + s.right + 'px')
-          .slice(0, 4),
       });
     })()`,
   });
@@ -59,7 +37,9 @@ export async function narrowPass(c) {
 
   await resize(c, w0, h0, { debounce: true });
 
-  const pass = !r.pans && r.barFits && r.stranded.length === 0;
+  /* The walker excuses overflow only inside an ancestor that scrolls it, and
+     it names the worst element, not up to four. */
+  const pass = !r.pans && r.barFits && !r.worst;
   return {
     pass,
     detail: pass
@@ -67,7 +47,7 @@ export async function narrowPass(c) {
       : [
           r.pans ? 'page pans sideways' : null,
           r.barFits ? null : `top bar needs ${r.barW}px`,
-          r.stranded.length ? `stranded off-screen: ${r.stranded.join(', ')}` : null,
+          r.worst ? `stranded off-screen: ${r.worst.el} → ${r.worst.right}px` : null,
         ].filter(Boolean).join('; '),
   };
 }

@@ -131,6 +131,17 @@ export async function land(c, origin, want = {}) {
   });
 }
 
+/* The viewport a check starts from, as `[width, height]`: what `smoke.mjs`
+   injected as `window.__SMOKE_VIEWPORT`, or the 390x844 default. A check that
+   resizes reads this first and puts it back last. The one read of the global
+   outside smoke-checks.js. */
+export async function smokeViewport(c) {
+  const { result } = await c.send('Runtime.evaluate', {
+    expression: `JSON.stringify(window.__SMOKE_VIEWPORT || [${WIDTH}, ${HEIGHT}])`, returnByValue: true,
+  });
+  return JSON.parse(result.value);
+}
+
 /* For a check that sweeps widths inside one page load (`sweep`, `narrow`,
    `width-sweep`, the touch sweeps, `wide-layout`). Sets the metrics and waits
    two frames; `debounce: true` adds the 400ms wait `wide-layout`'s `atWidth`

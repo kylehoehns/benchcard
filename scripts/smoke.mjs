@@ -59,7 +59,7 @@ import { serve } from './serve.mjs';
 import { folder, summarize as summarizeCoverage, judge, record, annotate, fileOf, ROW as COVERAGE_ROW, RECORDED as COVERAGE_RECORDED } from './coverage.mjs';
 
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
-import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER } from './smoke/dom.mjs';
+import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER, DESCRIBE_EL } from './smoke/dom.mjs';
 import { SEED } from './smoke/fixtures.mjs';
 import { land, reset } from './smoke/page-state.mjs';
 import { ROWS, nameOf, FONT_INJECTION_SCRIPT, CLOCK_SCRIPT } from './smoke/registry.mjs';
@@ -207,7 +207,7 @@ async function browserChecks(origin, only, folded) {
     // width and height before it navigates, as every later `land` does.
     await c.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
     await c.send('Page.addScriptToEvaluateOnNewDocument', {
-      source: `window.__SMOKE_VIEWPORT = [${WIDTH}, ${HEIGHT}];`,
+      source: `window.__SMOKE_VIEWPORT = [${WIDTH}, ${HEIGHT}]; window.__SMOKE_DESCRIBE = ${DESCRIBE_EL};`,
     });
     // #177: CI's own resolved font (`AGENTS.md`'s "Smoke forces CI's font on
     // a Mac too"), forced on every page this harness opens, on a Mac and in CI

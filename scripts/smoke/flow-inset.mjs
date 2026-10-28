@@ -21,7 +21,7 @@
  * runs on step 2's own Next), so it gets its own fresh wiped landing per
  * width, the same shape `first-run-flow.mjs` already uses for its own
  * step-3 card-fit measurement. */
-import { evalIn } from './dom.mjs';
+import { evalIn, DESCRIBE_EL } from './dom.mjs';
 import { land, resize } from './page-state.mjs';
 import { WELCOME_LANDING } from './fixtures.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
@@ -46,9 +46,7 @@ const insetProbe = (bodyId, width) => `(() => {
     if (!el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
     audited++;
     const left = Math.round(r.left), right = Math.round(r.right);
-    const name = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
-      + ((el.className && typeof el.className === 'string')
-        ? '.' + el.className.trim().split(/\\s+/).filter(Boolean).slice(0, 2).join('.') : '');
+    const name = (${DESCRIBE_EL})(el);
     if (left < 16 - ${TOL}) bad.push({ el: name, left, right, side: 'left' });
     else if (right > ${width} - 16 + ${TOL}) bad.push({ el: name, left, right, side: 'right' });
   }

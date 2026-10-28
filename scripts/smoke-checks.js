@@ -6,6 +6,10 @@
    smoke.mjs) means it is also paste-able straight into a devtools console or a
    Playwright `browser_evaluate` when someone wants to check one thing by hand.
 
+   It reads `window.__SMOKE_DESCRIBE` (dom.mjs's `DESCRIBE_EL`), which
+   `smoke.mjs` injects beside `__SMOKE_VIEWPORT`: a hand paste needs it
+   defined first.
+
    Every check returns a `detail` string whether it passed or not — a harness
    that only explains its failures makes you re-run it to learn anything. */
 (() => {
@@ -38,10 +42,9 @@
   const TOUCH_FLOOR = 48, TOUCH_TOL = 0.5;
   const TOUCH_MIN = TOUCH_FLOOR - TOUCH_TOL;
   const round = n => Math.round(n * 100) / 100;
-  const label = el => {
-    const cls = (el.getAttribute('class') || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).join('.');
-    return el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (cls ? '.' + cls : '');
-  };
+  /* How a failure names an element. `DESCRIBE_EL` lives in dom.mjs and
+     `smoke.mjs` puts it on the page; there is no second namer here. */
+  const label = window.__SMOKE_DESCRIBE;
   const visible = el => {
     const r = el.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return false;

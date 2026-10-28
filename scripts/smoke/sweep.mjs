@@ -1,5 +1,5 @@
-import { evalIn, quiet, TODAY_HOME, DESCRIBE_EL, IS_CUT } from './dom.mjs';
-import { resize } from './page-state.mjs';
+import { evalIn, quiet, TODAY_HOME, OVERFLOW_WALK } from './dom.mjs';
+import { resize, smokeViewport } from './page-state.mjs';
 import { SWEEP_FLOOR, SWEEP_HI, SWEEP_EXTRA } from './sizes.mjs';
 
 /* Every screen the chrome can be in, and the click that gets there (#23):
@@ -36,61 +36,24 @@ const WIDTHS = Object.freeze([
 const SEEN_FLOOR = 40;
 
 export async function sweepPass(c) {
-  const before = await c.send('Runtime.evaluate', {
-    expression: 'JSON.stringify(window.__SMOKE_VIEWPORT || [390, 844])', returnByValue: true,
-  });
-  const [w0, h0] = JSON.parse(before.result.value);
+  const [w0, h0] = await smokeViewport(c);
 
   /* Two frames at each width: one for the media queries to apply, one for the
      layout they cause. Cheaper than a fixed sleep and stricter than one. The
-     whole walk happens in the page, so a sweep is one round trip per width. */
+     whole walk happens in the page, so a sweep is one round trip per width.
+     `visible: true` is the walker's bare `checkVisibility()` skip: a subtree
+     the browser has display-locked (content-visibility) is where
+     getBoundingClientRect stops telling the truth. Measured at 840px on the
+     game screen: #plan lives inside the CLOSED <details id="tabledetails">,
+     and the first read into it after a width change came back at right 959px
+     while later reads found nothing. Nothing was overflowing; the box was not
+     being laid out. visibility:hidden and opacity:0 stay measured -- they
+     still take up space a coach can be stranded past. */
   const measure = async () => {
     const { result } = await c.send('Runtime.evaluate', {
       awaitPromise: true, returnByValue: true,
       expression: `new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(() => {
-        const describe = ${DESCRIBE_EL}, isCut = ${IS_CUT};
-        const vw = document.documentElement.clientWidth; let worst = null, seen = 0;
-        for (const el of document.body.querySelectorAll('*')) {
-          /* Only elements the browser is actually rendering. The bare call --
-             no options -- is deliberate: it adds exactly one thing to the
-             zero-box test below, a subtree the browser has display-locked
-             (content-visibility), and a locked subtree is where
-             getBoundingClientRect stops telling the truth. Measured here at
-             840px on the game screen: #plan lives inside the CLOSED <details
-             id="tabledetails">, and the first read into it after a width
-             change came back at right 959px -- the x from the 840px layout
-             plus the width from the 600px one -- while the second and third
-             reads in the same frame found nothing at all. Nothing was
-             overflowing; the rect was stale because the box it describes is
-             not being laid out. Skipping visibility:hidden or opacity:0 is
-             NOT wanted: those still take up space a coach can be stranded
-             past, so the options that would exclude them stay off. */
-          if (!el.checkVisibility()) continue;
-          const r = el.getBoundingClientRect();
-          if (!r.width && !r.height) continue;
-          seen++;
-          /* Both edges: see the note in narrowPass. A right-edge-only test
-             cannot see the Games tab hanging off the left, and neither can
-             scrollWidth, which is why that one went unmeasured in every
-             state. "over" is the edge that is out of reach, signed. */
-          const over = r.right > vw + 1 ? Math.round(r.right) : r.left < -1 ? Math.round(r.left) : null;
-          if (over === null) continue;
-          /* An ancestor only excuses the overflow if it actually scrolls --
-             overflow-x auto or scroll, i.e. the game tabs. Testing scrollWidth
-             alone excuses it whenever the *parent* overflows too, which is
-             exactly the case here: the bar is over-wide, so every child of an
-             over-wide bar looks innocent and the check reads green. */
-          let n = el.parentElement, scrolls = false;
-          while (n && n !== document.body) {
-            const ov = getComputedStyle(n).overflowX;
-            if ((ov === 'auto' || ov === 'scroll') && isCut(n, 1)) { scrolls = true; break; }
-            n = n.parentElement;
-          }
-          if (scrolls) continue;
-          const out = over < 0 ? -over : over - vw;   // how far out of reach
-          if (!worst || out > worst.out) worst = { el: describe(el), right: over, out };
-        }
-        ok(JSON.stringify({ vw, worst, seen }));
+        ok(JSON.stringify((${OVERFLOW_WALK})({ visible: true })));
       })))`,
     });
     return JSON.parse(result.value);
