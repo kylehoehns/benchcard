@@ -1,5 +1,5 @@
 import { evalIn, step } from './dom.mjs';
-import { resize } from './page-state.mjs';
+import { resize, smokeViewport } from './page-state.mjs';
 import { TOUCH_WIDTHS } from './sizes.mjs';
 
 /* The sweep both `touchPass` and `settingsRowPass` are built from: read the
@@ -16,10 +16,7 @@ import { TOUCH_WIDTHS } from './sizes.mjs';
    `touchPass`'s wording and `settingsRowPass`'s wording differ, and neither
    is this function's to decide. */
 export async function widthSweep(c, source, { states, checkName, countRe, label, missing, close }) {
-  const before = await c.send('Runtime.evaluate', {
-    expression: 'JSON.stringify(window.__SMOKE_VIEWPORT || [390, 844])', returnByValue: true,
-  });
-  const [w0, h0] = JSON.parse(before.result.value);
+  const [w0, h0] = await smokeViewport(c);
 
   const bad = [];
   let audited = 0, seen = 0;

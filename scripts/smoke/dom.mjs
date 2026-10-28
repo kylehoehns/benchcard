@@ -414,7 +414,7 @@ export const WORST_OUTSIDE = `((box, opacity) => {
    BOTH EDGES. A right-edge test is blind to content off the LEFT, and so is
    `scrollWidth`; the Games tab hangs off it and no pass could see it.
    Shared by `staticPass` and `appLargeTextPass`. */
-export const OVERFLOW_PROBE = `(() => {
+export const OVERFLOW_WALK = `(({ visible = false } = {}) => {
   const describe = ${DESCRIBE_EL};
   const isCut = ${IS_CUT};
   const vw = document.documentElement.clientWidth;
@@ -422,10 +422,18 @@ export const OVERFLOW_PROBE = `(() => {
   window.scrollTo(80, window.scrollY);
   const pans = window.scrollX !== x0;
   window.scrollTo(x0, window.scrollY);
-  let worst = null;
+  let worst = null, seen = 0;
   for (const el of document.body.querySelectorAll('*')) {
+    /* \`visible\`: the bare \`checkVisibility()\` call, no options. It adds one
+       thing to the zero-box test below, a subtree the browser has
+       display-locked (content-visibility), where getBoundingClientRect stops
+       telling the truth. visibility:hidden and opacity:0 still take up space
+       a coach can be stranded past, so they stay measured. Off by default:
+       turning it on for every caller would change their rows. */
+    if (visible && !el.checkVisibility()) continue;
     const r = el.getBoundingClientRect();
     if (!r.width && !r.height) continue;
+    seen++;
     const over = r.right > vw + 1 ? Math.round(r.right) : r.left < -1 ? Math.round(r.left) : null;
     if (over === null) continue;
     let n = el.parentElement, scrolls = false;
@@ -438,8 +446,12 @@ export const OVERFLOW_PROBE = `(() => {
     const out = over < 0 ? -over : over - vw;
     if (!worst || out > worst.out) worst = { el: describe(el), right: over, out };
   }
-  return JSON.stringify({ vw, pans, worst });
-})()`;
+  return { vw, pans, worst, seen };
+})`;
+
+/* The page-side walk as it has always run, for `staticPass`, `appLargeTextPass`
+   and the rows that interpolate it: today's options, same fields, plus `seen`. */
+export const OVERFLOW_PROBE = `JSON.stringify((${OVERFLOW_WALK})())`;
 
 /* #151's own `.sr-only` headings (app.css:1300) are pulled onto a 1x1 box by
    an explicit `width: 1px; height: 1px` -- not by `visibility`/`opacity`/

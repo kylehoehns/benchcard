@@ -2,7 +2,7 @@
    is the Node side of the check, not the browser page, so it needs the same
    stub test/*.js gives that module. */
 import '../../test/dom-stub.js';
-import { evalIn, step, TODAY_HOME, WIDTH } from './dom.mjs';
+import { evalIn, step, TODAY_HOME, WIDTH, DESCRIBE_EL } from './dom.mjs';
 import { LARGE_TEXT, TOUCH_FLOOR, TOUCH_MIN, TOUCH_WIDTHS } from './sizes.mjs';
 import { PLAYERS, tierOf, LONG_NAME, SAMPLE_PLAYERS, SAMPLE_TEAM, TODAY_LANDING } from './fixtures.mjs';
 import { drag, dragHold, touchDragCancel, evalJSON, key, realTap, setGame, tap, settle, typeIn, waitClosed } from './sheet-drive.mjs';
@@ -65,7 +65,7 @@ async function nothingEditableOnTeam(c, ck) {
   const found = await evalJSON(c, `JSON.stringify([...document.querySelectorAll(
     '#view-team input, #view-team textarea, #view-team select, #view-team .bal-meter, #view-team .xbtn, #view-team #cardnames'
   )].filter(n => !n.closest('dialog'))
-    .map(n => n.tagName.toLowerCase() + (n.id ? '#' + n.id : '') + (n.className ? '.' + String(n.className).trim().split(/\\s+/).join('.') : '')))`);
+    .map(${DESCRIBE_EL}))`);
   ck(found.length === 0,
     `the Team screen still carries ${found.length} editing control(s) outside a sheet: ${found.slice(0, 5).join(', ')}`);
 }

@@ -20,7 +20,7 @@
  * Rule 2a of /new-guard: every scenario first asserts that the card really
  * opened and the focus really sat where it says, so a run whose keys went
  * nowhere fails on that instead of passing on nothing. */
-import { evalIn, quiet, key, enter, escape, tab } from './dom.mjs';
+import { evalIn, quiet, key, enter, escape, tab, DESCRIBE_EL } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { RICH } from './fixtures.mjs';
 
@@ -34,7 +34,7 @@ const STATE = `(() => {
   const name = ${NAME};
   const a = document.activeElement;
   const who = !a ? 'nothing' : a === document.body ? '<body>' : a === name ? 'the second row\\'s .tl-name'
-    : a.tagName.toLowerCase() + (a.className ? '.' + String(a.className).trim().split(/\\s+/)[0] : '');
+    : (${DESCRIBE_EL})(a);
   return JSON.stringify({ who, onName: a === name, onClose: !!a && a.classList.contains('tld-x'),
     open: !!document.getElementById('tlDetail'), expanded: name && name.getAttribute('aria-expanded'),
     scrollY: Math.round(window.scrollY) });

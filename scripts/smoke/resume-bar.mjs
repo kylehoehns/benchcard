@@ -11,7 +11,7 @@
  * RICH's games mid-play, so "picks the game that's underway" and "picks the
  * LATER one" are actually different claims -- a fixture with only one
  * part-played game could not tell them apart. */
-import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA } from './dom.mjs';
+import { evalIn, step, SETTLE, TODAY_HOME, WIDTH, HEIGHT, alpha, SOLID_FALLBACK_MEDIA, DESCRIBE_EL } from './dom.mjs';
 import { LARGE_TEXT, LARGE_TEXT_WIDTH, LARGE_TEXT_PX, NARROW } from './sizes.mjs';
 import { tabWalk } from './focus-clear.mjs';
 import { VIEWS as SCREENS } from './sweep.mjs';
@@ -224,7 +224,7 @@ export async function resumeBarPass(c, origin) {
       const r = el.getBoundingClientRect();
       if ((!r.width && !r.height) || !vis(el)) continue;
       counted++;
-      if (!last || r.bottom > last.bottom) last = { bottom: r.bottom, el: el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') };
+      if (!last || r.bottom > last.bottom) last = { bottom: r.bottom, el: (${DESCRIBE_EL})(el) };
     }
     return JSON.stringify({ ready: true, counted, last, scrollY: Math.round(window.scrollY),
       barTop: bar.top, barH: bar.height, pad: getComputedStyle(view).paddingBottom });
