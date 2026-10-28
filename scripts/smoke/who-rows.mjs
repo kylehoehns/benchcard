@@ -15,7 +15,7 @@ import { widthSweep } from './width-sweep.mjs';
 const WHO_STATES = [
   { name: "who's here", open: `document.getElementById('phrasePlayers').click()` },
 ];
-export async function whoRowsPass(c, source) {
+export async function whoRowsPass(c, source, rec) {
   await toGameOne(c);
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: WHO_STATES,
@@ -26,10 +26,7 @@ export async function whoRowsPass(c, source) {
     close: `$('#sheetWho').close(); ${TODAY_HOME}`,
   });
 
-  return {
-    pass: bad.length === 0,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px`,
-  };
+  for (const b of bad) rec.fail(`measurement under 48px: ${b}`);
+  rec.check(audited > 0, 'no who\'s-here row was measured');
+  rec.ok(`${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px`);
 }

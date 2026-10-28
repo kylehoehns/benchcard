@@ -254,7 +254,7 @@ async function measureWelcome(c, origin) {
   return { bad, audited };
 }
 
-export async function phoneGutterPass(c, origin) {
+export async function phoneGutterPass(c, origin, rec) {
   const bad = [];
   let audited = 0;
   for (const w of TOUCH_WIDTHS) {
@@ -275,12 +275,9 @@ export async function phoneGutterPass(c, origin) {
   const toasts = await measureToastRows(c, origin);
   bad.push(...toasts.bad); audited += toasts.audited;
 
-  return {
-    pass: bad.length === 0,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) off the gutter: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (5 screens + #abBench/#resumeBtn + #view-welcome, ${TOUCH_WIDTHS.join('/')}px, `
-        + `plus 3 toasts at ${TOAST_WIDTHS.join('/')}px, 16px and ${LARGE_TEXT_PX}px text, `
-        + `plus 5 screens + #abBench at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px), all left = right = the .wrap gutter`,
-  };
+  for (const b of bad) rec.fail(`measurement off the gutter: ${b}`);
+  rec.check(audited > 0, 'no gutter was measured');
+  rec.ok(`${audited} measurements (5 screens + #abBench/#resumeBtn + #view-welcome, ${TOUCH_WIDTHS.join('/')}px, `
+    + `plus 3 toasts at ${TOAST_WIDTHS.join('/')}px, 16px and ${LARGE_TEXT_PX}px text, `
+    + `plus 5 screens + #abBench at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px), all left = right = the .wrap gutter`);
 }

@@ -30,7 +30,7 @@ const PLAN_STATES = [
            document.querySelector('#constraints .add-rule').click()` },
 ];
 
-export async function planRowsPass(c, source) {
+export async function planRowsPass(c, source, rec) {
   await toGameOne(c);
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: PLAN_STATES,
@@ -41,11 +41,8 @@ export async function planRowsPass(c, source) {
     close: `$('#planBack')?.click(); $('#sheetPlan').close(); ${TODAY_HOME}`,
   });
 
-  return {
-    pass: bad.length === 0,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (${PLAN_STATES.map(s => s.name).join(' + ')} × ${TOUCH_WIDTHS.join('/')}px), `
-        + `up to ${seen} rows/tiles, all ≥ 48px`,
-  };
+  for (const b of bad) rec.fail(`measurement under 48px: ${b}`);
+  rec.check(audited > 0, 'no plan row was measured');
+  rec.ok(`${audited} measurements (${PLAN_STATES.map(s => s.name).join(' + ')} × ${TOUCH_WIDTHS.join('/')}px), `
+    + `up to ${seen} rows/tiles, all ≥ 48px`);
 }

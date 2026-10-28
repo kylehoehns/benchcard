@@ -161,7 +161,7 @@ async function fourTodayTouch(c, origin, source) {
   return { bad, audited, seen };
 }
 
-export async function touchPass(c, origin, source) {
+export async function touchPass(c, origin, source, rec) {
   const four = await fourTodayTouch(c, origin, source);
   // `widthSweep` runs on RICH, and `fourTodayTouch` left FOUR loaded.
   await land(c, origin, { record: RICH, ready: GAMES_VIEW_READY, freshHistory: true });
@@ -200,11 +200,8 @@ export async function touchPass(c, origin, source) {
   const allBad = [...four.bad, ...bad];
   const totalAudited = four.audited + audited;
   const totalSeen = Math.max(four.seen, seen);
-  return {
-    pass: allBad.length === 0,
-    detail: allBad.length
-      ? `${allBad.length}/${totalAudited} measurement(s) under ${TOUCH_FLOOR}px: ${allBad.slice(0, 4).join(' | ')}`
-      : `${totalAudited} measurements (today, FOUR + ${TOUCH_STATES.map(s => s.name).join(' + ')} × `
-        + `${TOUCH_WIDTHS.join('/')}px), up to ${totalSeen} controls, all ≥ ${TOUCH_FLOOR}px`,
-  };
+  for (const b of allBad) rec.fail(`measurement under ${TOUCH_FLOOR}px: ${b}`);
+  rec.check(totalAudited > 0, 'no touch control was measured');
+  rec.ok(`${totalAudited} measurements (today, FOUR + ${TOUCH_STATES.map(s => s.name).join(' + ')} × `
+    + `${TOUCH_WIDTHS.join('/')}px), up to ${totalSeen} controls, all ≥ ${TOUCH_FLOOR}px`);
 }

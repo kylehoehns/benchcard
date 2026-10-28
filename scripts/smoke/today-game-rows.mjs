@@ -24,7 +24,7 @@ const ITEM4_STATES = [
            for (const d of document.querySelectorAll('details')) d.open = true` },
 ];
 
-export async function todayGameRowsPass(c, source) {
+export async function todayGameRowsPass(c, source, rec) {
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: ITEM4_STATES,
     checkName: 'today and game controls ≥ 48px',
@@ -34,11 +34,8 @@ export async function todayGameRowsPass(c, source) {
     close: `${TODAY_HOME}; for (const d of document.querySelectorAll('details')) d.open = false`,
   });
 
-  return {
-    pass: bad.length === 0,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (${ITEM4_STATES.map(s => s.name).join(' + ')} × ${TOUCH_WIDTHS.join('/')}px), `
-        + `up to ${seen} controls, all ≥ 48px`,
-  };
+  for (const b of bad) rec.fail(`measurement under 48px: ${b}`);
+  rec.check(audited > 0, 'no today or game control was measured');
+  rec.ok(`${audited} measurements (${ITEM4_STATES.map(s => s.name).join(' + ')} × ${TOUCH_WIDTHS.join('/')}px), `
+    + `up to ${seen} controls, all ≥ 48px`);
 }
