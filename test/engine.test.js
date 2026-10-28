@@ -1125,3 +1125,27 @@ test('overtime of 1 to 10 minutes fills the clock for every granularity', () => 
     ot.forEach((x, i) => assert.equal(x.index, plain.length + i, where));
   }
 });
+
+/* #367: halftime is a fact about regulation. Overtime stints follow it and
+   never move it. */
+test('overtime does not move halftime: the same four stints, the same warning', () => {
+  const run = overtime => generatePlan({
+    players: roster(11), availableIds: ids(11),
+    format: { ...HALVES, overtime }, granularity: EVERY_4, seed: 7, maxSubs: 1,
+  });
+  const plain = run(undefined).issues.find(i => i.code === 'HALF_LATE');
+  const withOt = run([8]).issues.find(i => i.code === 'HALF_LATE');
+  assert.ok(plain && plain.message.includes('4 stints'), 'the regulation game warns at four stints');
+  assert.ok(withOt, 'overtime made the halftime warning vanish');
+  assert.ok(withOt.message.includes('4 stints'), `halftime slid into the second half: ${withOt.message}`);
+});
+
+test('a plan of overtime stints alone has no halftime to be late for', () => {
+  const stints = buildStints({ ...HALVES, overtime: [8] }, EVERY_4).slice(8);
+  const p = generatePlan({
+    players: roster(11), availableIds: ids(11), stints,
+    format: HALVES, granularity: EVERY_4, seed: 7, maxSubs: 1,
+  });
+  assert.ok(p.ok);
+  assert.equal(p.issues.find(i => i.code === 'HALF_LATE'), undefined);
+});

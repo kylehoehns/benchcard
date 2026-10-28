@@ -667,7 +667,8 @@ export function generatePlan(input) {
                 targetOf: id => (c.targetMinutes[id] != null ? c.targetMinutes[id] : null),
                 maxConsecutive: c.maxConsecutive,
                 hasCarryover: !!carryover && avail.some(id => Math.abs(credit[id]) > 1e-9) };
-  ctx.firstHalf = stintsBeforeHalftime(stints);
+  // halftime is a regulation fact (#367): overtime follows it and never moves it
+  ctx.firstHalf = stintsBeforeHalftime(stints.filter(s => s.period <= format.periods));
   ctx.halfReach = ctx.firstHalf ? ON_FLOOR + Math.max(0, maxSubs) * (ctx.firstHalf - 1) : 0;
   ctx.targets = computeTargets(ctx);
   applyTieBreak(ctx, priority, seed);

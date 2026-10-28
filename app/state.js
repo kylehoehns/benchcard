@@ -1427,6 +1427,10 @@ const sameGrid = (a, b, at = 0) => {
   // stints one grid has and the other lacks must be unplayed: the one on the
   // floor (`at`) and everything before it stay
   if (a.stints.length !== b.stints.length && n <= at) return false;
+  // and what grew or shrank is overtime: more regulation periods is a format
+  // change, whichever grid is the longer
+  const longer = a.stints.length > b.stints.length ? a : b;
+  if (!longer.stints.slice(n).every(s => /^OT\d*$/.test(s.periodName))) return false;
   for (let i = 0; i < n; i++) {
     const x = a.stints[i], y = b.stints[i];
     if (x.periodName !== y.periodName || x.startSec !== y.startSec || x.endSec !== y.endSec) return false;

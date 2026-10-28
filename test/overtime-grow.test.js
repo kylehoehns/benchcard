@@ -140,3 +140,19 @@ test('an empty overtime list plans exactly as a game without the field', () => {
   assert.ok(without.stamp, 'the baseline has a stamp to compare');
   assert.deepEqual(planOf({ overtime: [] }), without);
 });
+
+test('a regulation-period change that keeps matching labels is a format change', () => {
+  // 3 -> 5 and 5 -> 3 periods: P1..P3 is a prefix of P1..P5, but the extra
+  // stints are regulation periods, not overtime, so #134 keeps the report
+  const three = { periods: 3, periodMinutes: 8 };
+  for (const [from, to] of [[3, 5], [5, 3]]) {
+    run({ ...three, periods: from }, g => {
+      g.live.at = 1;   // early, so the stints one grid lacks are unplayed
+      S.computeAll();
+      S.rotationMoved(); S.overridesDropped();
+      g.periods = to;
+      S.computeAll();
+      assert.deepEqual(S.rotationMoved(), [g.id], `${from} -> ${to} periods`);
+    });
+  }
+});
