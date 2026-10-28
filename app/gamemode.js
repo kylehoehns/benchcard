@@ -19,7 +19,7 @@ import { openTrap, closeTrap } from './trap.js';
 import { track } from './analytics.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
          resolveRest, benchOpen, setBenchOpen } from './state.js';
-import { stage, stintIndex, openAt, stepAt, handStints, writeOverrides, clearRest, resetFrom } from './live.js';
+import { stage, stintIndex, openAt, stepAt, handStints, writeOverrides, clearRest, resetFrom, moveTo, finish } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
 let render = () => {};
@@ -199,7 +199,7 @@ export function openGameMode() {
    * was. `openAt` (live.js) decides both that and the clamp a shorter plan
    * can need (`at` left past its end), in the one place every `live.at` rule
    * lives. */
-  live.at = openAt(p, live);
+  moveTo(live, openAt(p, live));
   // the write above reaches persisted state too, so it saves rather than
   // waiting for closeGameMode
   save();
@@ -401,7 +401,7 @@ function gmFinish() {
   const live = liveOf(game());
   closeGameMode(true);
   undoable(`Marked ${label} finished.`, () => {
-    live.finished = true;
+    finish(live);
   }, () => render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs', 'plan', 'issues'));
 }
 
@@ -1022,7 +1022,7 @@ function gmStep(d) {
   // #139 item 6: the control that made this move -- read before the repaint
   // below can hide or disable it.
   const srcBtn = $(d > 0 ? '#gmNext2' : '#gmPrev');
-  l.at = stepAt(p, l, d);
+  moveTo(l, stepAt(p, l, d));
   // only when the stint actually moved -- a tick at the last stint would say
   // "done" when nothing happened
   if (l.at !== was) tick();

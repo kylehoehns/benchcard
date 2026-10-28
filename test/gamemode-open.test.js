@@ -56,7 +56,7 @@ test('a finished game starts over; an unfinished one resumes', () => {
      which is how it was reported. */
   const open = src.slice(src.indexOf('export function openGameMode'));
   const body = open.slice(0, open.indexOf('\n}'));
-  assert.match(body, /live\.at = openAt\(p, live\)/,
+  assert.match(body, /moveTo\(live, openAt\(p, live\)\)/,
     'openGameMode must resolve its starting stint through live.js\'s openAt -- '
     + 'the finished/part-played decision lives there once, not re-checked here');
 });

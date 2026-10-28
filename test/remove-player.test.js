@@ -23,7 +23,7 @@ const MUST_SWEEP = [
   ['lastPeriodFive', /c\.lastPeriodFive\s*=/],
   ['closing.players', /c\.closing\.players\s*=/],
   ['units', /c\.units\s*=/],
-  ['live.overrides', /overrides/],
+  ['live.overrides', /dropPlayer\(g\.live, id\)/],
 ];
 
 for (const [name, re] of MUST_SWEEP) {

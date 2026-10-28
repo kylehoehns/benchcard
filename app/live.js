@@ -73,12 +73,46 @@ export function resetFrom(live) {
   return at > 0 && !finishedGame(live) ? at + 1 : 0;
 }
 
-export function clearRest(live) {
-  const from = resetFrom(live);
-  const kept = Object.fromEntries(Object.entries(live.overrides || {}).filter(([k]) => Number(k) < from));
-  const hand = handStints(live).filter(k => k < from);
-  live.overrides = kept;
+/* #356: the operations below are the only writes to the four fields
+   (`at`, `hand`, `overrides`, `finished`) in the app -- storage.js's sanitizer
+   builds a whole record and is the one named exception. */
+
+/* "Back to the printed plan" for the stints from `keep` on: overrides and hand
+   entries below `keep` stay. The one trim -- `clearRest` and Shuffle both
+   land here. */
+export function keepThrough(live, keep) {
+  const hand = handStints(live).filter(k => k < keep);
+  live.overrides = Object.fromEntries(Object.entries(live.overrides || {}).filter(([k]) => Number(k) < keep));
   live.hand = hand;
+}
+
+export function clearRest(live) {
+  keepThrough(live, resetFrom(live));
+}
+
+/* A five with `id` in it is no longer a lineup: delete it from stint `from`
+   on, and take its stint out of the hand list. A record with no hand list
+   stays without one -- there every override is by hand anyway. */
+export function dropPlayer(live, id, from = 0) {
+  const ov = live?.overrides;
+  if (!ov) return;
+  for (const k of Object.keys(ov)) if (Number(k) >= from && ov[k].includes(id)) delete ov[k];
+  if (Array.isArray(live.hand)) live.hand = live.hand.filter(k => ov[k]);
+}
+
+/* Put exactly these fives on the record. `hand` is the new hand list; left
+   out, the hand list is not touched. */
+export function replaceOverrides(live, overrides, hand) {
+  live.overrides = overrides;
+  if (hand) live.hand = hand;
+}
+
+export function moveTo(live, at) {
+  live.at = at;
+}
+
+export function finish(live) {
+  live.finished = true;
 }
 
 // `stintIndex` and `stepAt` both land on "the requested stint, clamped to

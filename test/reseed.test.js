@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { handStints, resetFrom } from '../app/live.js';
+import { handStints, resetFrom, keepThrough } from '../app/live.js';
 
 /* Shuffle kept the coach's hand swaps and spliced them into a rotation they
    were never made against.
@@ -28,7 +28,7 @@ const src = readFileSync(new URL('../app/state.js', import.meta.url), 'utf8');
 const body = src.slice(src.indexOf('export function reseed'));
 const fn = body.slice(0, body.indexOf('\n}\n') + 2).replace('export ', '');
 // eslint-disable-next-line no-new-func
-const reseed = new Function('handStints', 'resetFrom', `${fn}\nreturn reseed;`)(handStints, resetFrom);
+const reseed = new Function('handStints', 'resetFrom', 'keepThrough', `${fn}\nreturn reseed;`)(handStints, resetFrom, keepThrough);
 
 /* #247 amendment 8: in a game underway the stint on the floor and everything
    before it is what the coach saw, so the fives to drop are the ones after. */

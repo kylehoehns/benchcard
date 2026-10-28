@@ -19,28 +19,95 @@ const APP = new URL('../app/', import.meta.url);
 const APP_FILES = readdirSync(APP).filter(f => f.endsWith('.js'));
 const read = f => stripComments(readFileSync(new URL(f, APP), 'utf8'));
 
-test('every app/ file other than live.js and storage.js leaves live.at alone', () => {
+/* #356: `live.js` is the only module that assigns `at`, `hand`, `overrides`
+ * or `finished` on a game's live record (storage.js's sanitizer builds whole
+ * records and is the one named exception). Every write the app makes is an
+ * operation there -- moveTo, finish, dropPlayer, keepThrough, replaceOverrides,
+ * writeOverrides -- so the rule that `hand` lists only stints that still have
+ * an override sits in one file. The shapes below are the ways a write has
+ * been, or could be, spelled; `writeShapes` is exercised on its own so a
+ * regex that stopped matching fails here and not silently. */
+const FIELDS = 'at|hand|overrides|finished';
+// `x.at = …`, `x.hand ||= …`, `x?.overrides += …` -- not `==`, `>=`, `!=`, and
+// not a DOM `el.dataset.at = …`.
+const ASSIGN = new RegExp(`(?<!\\bdataset)\\.(?:${FIELDS})\\s*(?:[-+*/%|&?]{1,2})?=(?!=)`, 'g');
+// `.hand.push(…)`, `.overrides.splice(…)` and friends: in-place mutation.
+const MUTATE = new RegExp(`\\.(?:hand|overrides)\\s*\\.\\s*(?:push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin)\\s*\\(`, 'g');
+// `delete x.overrides[k]`, `delete x.hand[k]`, `Object.assign(x.overrides, …)`.
+const DELETE_DIRECT = /\bdelete\s+[\w.?]*\.(?:overrides|hand)\s*\??\.?\s*\[/g;
+const ASSIGN_INTO = /\bObject\.assign\(\s*[\w.?]*\.(?:overrides|hand)\b/g;
+// `const ov = g.live?.overrides` / `= live.overrides || {}` / `= x.hand`: an
+// alias whose own writes (`ov[k] = …`, `delete ov[k]`, `ov.push`) land on the record.
+const ALIAS = /\b(?:const|let|var)\s+(\w+)\s*=\s*[\w.?]*\.(?:overrides|hand)\b(?!\s*[(\w])/g;
+
+export function writeShapes(src) {
+  const found = [];
+  for (const re of [ASSIGN, MUTATE, DELETE_DIRECT, ASSIGN_INTO]) {
+    for (const m of src.matchAll(re)) found.push(m[0].trim());
+  }
+  for (const m of src.matchAll(ALIAS)) {
+    const name = m[1];
+    const through = new RegExp(`\\bdelete\\s+${name}\\s*\\[|\\b${name}\\s*\\[[^\\]]*\\]\\s*(?:[-+*/%|&?]{1,2})?=(?!=)`
+      + `|\\b${name}\\s*\\.\\s*(?:push|pop|shift|unshift|splice|sort|reverse|fill)\\s*\\(|Object\\.assign\\(\\s*${name}\\b`, 'g');
+    for (const u of src.matchAll(through)) found.push(`${name} (alias): ${u[0].trim()}`);
+  }
+  return found;
+}
+
+test('writeShapes: every forbidden shape is found, and a plain read is not', () => {
+  const bad = [
+    'x.at = 3;', 'g.live.hand = [];', 'live.overrides = {};', 'live.finished = true;',
+    'l.at ||= 0;', 'live.at += 1;',
+    'delete g.live.overrides[k];', 'live.hand.push(2);', 'Object.assign(live.overrides, r);',
+    'const ov = g.live?.overrides;\nfor (const k of ks) delete ov[k];',
+    'const ov = live.overrides || {};\nov[2] = five;',
+    'const h = live.hand;\nh.splice(0, 1);',
+  ];
+  for (const src of bad) assert.notDeepEqual(writeShapes(src), [], `a write went unseen: ${src}`);
+  const fine = [
+    'if (live.at === was) tick();', 'line.dataset.at = starts[i];', 'const a = l.at >= 2;', 'if (x.finished != true) go();',
+    'const ov = g.live?.overrides || {};\nreturn ov[k] ? 1 : 0;',
+    'const before = live.overrides || {};\nconst five = k => before[k] || p;',
+    'const overrides = {};\noverrides[k + i] = s.onFloor;',
+    'const hand = handStints(live).filter(k => k < 3);',
+  ];
+  for (const src of fine) assert.deepEqual(writeShapes(src), [], `a read was flagged: ${src}`);
+});
+
+test('no app/ file but live.js and storage.js writes live.at, hand, overrides or finished', () => {
   // 2a: a scan of an empty or wrong directory listing measures nothing.
   assert.ok(APP_FILES.length > 10,
     `app/ file listing came back with only ${APP_FILES.length} entries; this guard is reading the wrong directory`);
   const offenders = [];
   for (const f of APP_FILES) {
     if (f === 'live.js' || f === 'storage.js') continue;
+    for (const w of writeShapes(read(f))) offenders.push(`${f}: ${w}`);
+  }
+  assert.deepEqual(offenders, [],
+    'a game\'s live.at / hand / overrides / finished is written in live.js only (storage.js\'s sanitizer builds '
+    + 'whole records and is the other named exception); call moveTo, finish, dropPlayer, keepThrough, '
+    + 'replaceOverrides or writeOverrides instead');
+});
+
+// The read side of #113: live.at may not be compared, clamped or done
+// arithmetic on outside live.js/storage.js; nothing there reads it at all now
+// that the writes are operations, so the whole name is off limits.
+test('no app/ file but live.js and storage.js touches live.at or live.finished by name', () => {
+  assert.ok(APP_FILES.length > 10,
+    `app/ file listing came back with only ${APP_FILES.length} entries; this guard is reading the wrong directory`);
+  const offenders = [];
+  for (const f of APP_FILES) {
+    if (f === 'live.js' || f === 'storage.js') continue;
     const src = read(f);
-    for (const m of src.matchAll(/live\.at\b/g)) {
+    for (const m of src.matchAll(/\blive\??\.(?:at|finished)\b/g)) {
       const lineStart = src.lastIndexOf('\n', m.index) + 1;
       const nl = src.indexOf('\n', m.index);
-      const line = src.slice(lineStart, nl === -1 ? src.length : nl).trim();
-      // The one allowed shape: a plain assignment, `live.at = <expr>;`, of
-      // the kind openGameMode makes with live.js's own openAt(). Any
-      // comparison, clamp or arithmetic on the read side is the bug class
-      // #113 came from and belongs inside live.js instead.
-      if (!/^live\.at\s*=\s*[^=].*;$/.test(line)) offenders.push(`${f}: ${line}`);
+      offenders.push(`${f}: ${src.slice(lineStart, nl === -1 ? src.length : nl).trim()}`);
     }
   }
   assert.deepEqual(offenders, [],
-    'live.at may only be compared, clamped or done arithmetic on inside live.js (storage.js\'s sanitizer is the '
-    + 'other named exception); every other file must ask stage/stintIndex/resumeAt/openAt/stepAt instead');
+    'live.at may only be compared, clamped or done arithmetic on inside live.js, and live.finished read there '
+    + 'only; every other file asks stage/stintIndex/resumeAt/openAt/stepAt/playedStints/finishedGame instead');
 });
 
 // A `#gamemode` selector stashed in a variable before its `.hidden` is read --
@@ -85,29 +152,6 @@ test('card.js exports none of resumeAt, passStatus or resumeBarAt', () => {
     assert.ok(lacks(src, `export function ${name}`),
       `card.js still exports ${name}; #123 moved it to live.js`);
   }
-});
-
-// #135 item 13: the flag `stage` reads first must not grow a second reader.
-// The one allowed shape is gamemode.js's own write inside the Finish game
-// undoable, `live.finished = true;` -- nothing else, in any file.
-test('no file outside live.js and storage.js reads live.finished; gamemode.js may only write it true', () => {
-  assert.ok(APP_FILES.length > 10,
-    `app/ file listing came back with only ${APP_FILES.length} entries; this guard is reading the wrong directory`);
-  const offenders = [];
-  for (const f of APP_FILES) {
-    if (f === 'live.js' || f === 'storage.js') continue;
-    const src = read(f);
-    for (const m of src.matchAll(/live\.finished\b/g)) {
-      const lineStart = src.lastIndexOf('\n', m.index) + 1;
-      const nl = src.indexOf('\n', m.index);
-      const line = src.slice(lineStart, nl === -1 ? src.length : nl).trim();
-      const isAllowedWrite = f === 'gamemode.js' && /^live\.finished\s*=\s*true;$/.test(line);
-      if (!isAllowedWrite) offenders.push(`${f}: ${line}`);
-    }
-  }
-  assert.deepEqual(offenders, [],
-    'live.finished may only be written as `live.finished = true;` inside gamemode.js -- every other file, '
-    + 'and every other shape, must ask stage() instead');
 });
 
 test('live.js imports only ./engine.js', () => {
