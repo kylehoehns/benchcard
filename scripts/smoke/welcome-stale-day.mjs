@@ -30,14 +30,13 @@ const WELCOME = `document.getElementById('view-welcome') && !document.getElement
 const toasts = c => evalJSON(c, `JSON.stringify(
   [...document.querySelectorAll('#toasts .toast')].map(t => t.textContent.trim()))`);
 
-export async function welcomeStaleDayPass(c, origin) {
-  const problems = [];
+export async function welcomeStaleDayPass(c, origin, rec) {
   try {
     await land(c, origin, { record: STALE_WELCOME, ready: WELCOME });
     const onWelcome = await evalJSON(c, `JSON.stringify(${WELCOME})`);
-    if (!onWelcome) problems.push('a not-onboarded record did not land on the welcome screen');
+    rec.check(onWelcome, 'a not-onboarded record did not land on the welcome screen');
     const before = await toasts(c);
-    if (before.length) problems.push(`the welcome screen shows a toast: ${JSON.stringify(before)}`);
+    rec.check(!before.length, `the welcome screen shows a toast: ${JSON.stringify(before)}`);
 
     await realTap(c, '#welStart');
     await typeIn(c, '#frRoster', '12 Maya Webb\n4 Eli Tran\nDevon Ellis\n3 Nia Bell\n15 Caleb Ruiz');
@@ -51,16 +50,10 @@ export async function welcomeStaleDayPass(c, origin) {
       sub: (document.getElementById('gameSub')?.textContent || '').trim(),
       toasts: [...document.querySelectorAll('#toasts .toast')].map(t => t.textContent.trim()),
     })`);
-    if (!after.sub.startsWith('Today')) problems.push(`the game's day heading reads "${after.sub}", want it to start with "Today"`);
-    if (after.toasts.some(t => /is over/.test(t))) problems.push(`an "is over" toast showed after the reload: ${JSON.stringify(after.toasts)}`);
-  } catch (e) {
-    problems.push(String(e && e.message || e));
+    rec.check(after.sub.startsWith('Today'), `the game's day heading reads "${after.sub}", want it to start with "Today"`);
+    rec.check(!after.toasts.some(t => /is over/.test(t)), `an "is over" toast showed after the reload: ${JSON.stringify(after.toasts)}`);
   } finally {
     await land(c, origin); // back to RICH for the next row
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? problems.join('; ')
-      : 'a stale not-onboarded record shows the welcome screen with no toast; after the first-run flow and a reload the day reads Today with no "is over" toast',
-  };
+  rec.ok('a stale not-onboarded record shows the welcome screen with no toast; after the first-run flow and a reload the day reads Today with no "is over" toast');
 }

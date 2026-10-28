@@ -433,26 +433,14 @@ async function addTeamFlowOk(c, ck) {
   ck(!done.settingsShown, 'Settings was shown while completing Add a team');
 }
 
-export async function rosterInPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
+export async function rosterInPass(c, origin, rec) {
+  await pasteSheetOk(c, rec.check);
+  await blockedAddPlayersOk(c, rec.check);
+  await suffixFixtureOk(c, rec.check);
+  await longNameSuffixOk(c, rec.check, origin);
+  await addTeamFlowOk(c, rec.check);
 
-  try {
-    await pasteSheetOk(c, ck);
-    await blockedAddPlayersOk(c, ck);
-    await suffixFixtureOk(c, ck);
-    await longNameSuffixOk(c, ck, origin);
-    await addTeamFlowOk(c, ck);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
-  }
-
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : 'paste sheet and Add a team step 1 read back their list/repeat text, "Add players" opens Team with '
-        + 'the paste sheet focused, the item 4 fixture is suffixed everywhere it is read, and Add a team '
-        + 'opens, abandons cleanly and completes without ever showing Settings',
-  };
+  rec.ok('paste sheet and Add a team step 1 read back their list/repeat text, "Add players" opens Team with '
+    + 'the paste sheet focused, the item 4 fixture is suffixed everywhere it is read, and Add a team '
+    + 'opens, abandons cleanly and completes without ever showing Settings');
 }

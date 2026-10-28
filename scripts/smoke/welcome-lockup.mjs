@@ -41,8 +41,7 @@ const PROBE = `(() => {
     gapPx: parseFloat(getComputedStyle(lockup).columnGap) });
 })()`;
 
-export async function welcomeLockupPass(c, origin) {
-  const problems = [];
+export async function welcomeLockupPass(c, origin, rec) {
   let m = null;
   let fit = null;
   let old = null;
@@ -50,31 +49,23 @@ export async function welcomeLockupPass(c, origin) {
     await c.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: INSET } });
     await land(c, origin, WELCOME_LANDING);
     m = JSON.parse(await evalIn(c, PROBE));
-    if (!m.found) problems.push('no .wel-mark svg or .wel-lockup b on the welcome screen');
-    else {
-      if (Math.round(m.w) !== 36 || Math.round(m.h) !== 36) problems.push(`the logo is ${m.w}x${m.h}, want 36x36`);
-      if (m.top < INSET + OLD_PADDING) problems.push(`the logo's top is ${m.top}px with a ${INSET}px inset, want at least ${INSET + OLD_PADDING}`);
-      if (Math.abs(m.wordPx - m.titlePx) > 0.5) problems.push(`the wordmark is ${m.wordPx}px, want --fs-title (${m.titlePx}px)`);
-      if (Math.abs(m.gapPx - GAP_REM * m.rootPx) > 1) problems.push(`the lockup gap is ${m.gapPx}px, want about ${GAP_REM}rem (${GAP_REM * m.rootPx}px)`);
-      // Safari tab mode: the status bar is outside the layout viewport, so the
-      // inset is 0 and the page may not run past the 745px viewport -- or the
-      // footer lands under the address bar. (Standalone has the inset inside a
-      // taller viewport, so the inset at 745 is not a real condition.)
-      await c.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0 } });
-      await resize(c, WIDTH, FIT_HEIGHT);
-      fit = Number(await evalIn(c, OVERFLOW));
-      await evalIn(c, ADD_OLD);
-      old = Number(await evalIn(c, OVERFLOW));
-      if (fit > old) problems.push(`the welcome page is ${fit}px taller than a ${WIDTH}x${FIT_HEIGHT} viewport; the old lockup in this page was ${old}px, and every px more pushes the footer further under the address bar`);
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    if (!rec.check(m.found, 'no .wel-mark svg or .wel-lockup b on the welcome screen')) return;
+    rec.check(Math.round(m.w) === 36 && Math.round(m.h) === 36, `the logo is ${m.w}x${m.h}, want 36x36`);
+    rec.check(m.top >= INSET + OLD_PADDING, `the logo's top is ${m.top}px with a ${INSET}px inset, want at least ${INSET + OLD_PADDING}`);
+    rec.check(Math.abs(m.wordPx - m.titlePx) <= 0.5, `the wordmark is ${m.wordPx}px, want --fs-title (${m.titlePx}px)`);
+    rec.check(Math.abs(m.gapPx - GAP_REM * m.rootPx) <= 1, `the lockup gap is ${m.gapPx}px, want about ${GAP_REM}rem (${GAP_REM * m.rootPx}px)`);
+    // Safari tab mode: the status bar is outside the layout viewport, so the
+    // inset is 0 and the page may not run past the 745px viewport -- or the
+    // footer lands under the address bar. (Standalone has the inset inside a
+    // taller viewport, so the inset at 745 is not a real condition.)
+    await c.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0 } });
+    await resize(c, WIDTH, FIT_HEIGHT);
+    fit = Number(await evalIn(c, OVERFLOW));
+    await evalIn(c, ADD_OLD);
+    old = Number(await evalIn(c, OVERFLOW));
+    rec.check(fit <= old, `the welcome page is ${fit}px taller than a ${WIDTH}x${FIT_HEIGHT} viewport; the old lockup in this page was ${old}px, and every px more pushes the footer further under the address bar`);
+    rec.ok(`welcome logo ${m.w}x${m.h}, top at ${Math.round(m.top)}px under a ${INSET}px inset; wordmark ${m.wordPx}px; ${fit}px over a ${WIDTH}x${FIT_HEIGHT} viewport (old lockup, same page: ${old}px)`);
   } finally {
     await c.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0 } }).catch(() => {});
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? problems.join(' | ')
-      : `welcome logo ${m.w}x${m.h}, top at ${Math.round(m.top)}px under a ${INSET}px inset; wordmark ${m.wordPx}px; ${fit}px over a ${WIDTH}x${FIT_HEIGHT} viewport (old lockup, same page: ${old}px)`,
-  };
 }

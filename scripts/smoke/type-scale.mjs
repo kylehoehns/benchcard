@@ -1,6 +1,7 @@
 import { evalIn, step, IS_SR_ONLY_RECT, DESCRIBE_EL } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding } from './app-large-text.mjs';
+import { firstLine } from './verdict.mjs';
 
 /* #24 item 3: the scale's runtime proof. Item 3's "What would settle it" is
    computed rem values, so this reads the SAME size/weight set the spec's own
@@ -38,13 +39,12 @@ const TYPESCALE_PROBE = `(() => {
   return JSON.stringify(seen);
 })()`;
 
-export async function typeScalePass(c, origin) {
-  const problems = [];
+export async function typeScalePass(c, origin, rec) {
   let elements = 0;
   await land(c, origin);
 
   const meta = await evalIn(c, `document.querySelector('meta[name="text-scale"]')?.getAttribute('content') ?? null`);
-  if (meta !== 'scale') problems.push(`meta[name="text-scale"] is ${JSON.stringify(meta)}, not "scale"`);
+  rec.check(meta === 'scale', `meta[name="text-scale"] is ${JSON.stringify(meta)}, not "scale"`);
 
   for (const v of APP_LARGE_TEXT_STATES) {
     try {
@@ -53,25 +53,19 @@ export async function typeScalePass(c, origin) {
       else await evalIn(c, step(v.open));
       const seen = JSON.parse(await evalIn(c, TYPESCALE_PROBE));
       elements += seen.length;
-      if (seen.length === 0) problems.push(`${v.name}: measured no elements at all`);
+      rec.check(seen.length > 0, `${v.name}: measured no elements at all`);
       for (const el of seen) {
-        if (!TYPESCALE_SIZES_PX.has(el.size)) problems.push(`${v.name} — ${el.sel}: ${el.size}px is off the scale`);
-        if (!TYPESCALE_WEIGHTS.has(el.weight)) problems.push(`${v.name} — ${el.sel}: weight ${el.weight} is off the scale`);
+        rec.check(TYPESCALE_SIZES_PX.has(el.size), `${v.name} — ${el.sel}: ${el.size}px is off the scale`);
+        rec.check(TYPESCALE_WEIGHTS.has(el.weight), `${v.name} — ${el.sel}: weight ${el.weight} is off the scale`);
       }
     } catch (e) {
-      problems.push(`${v.name}: ${e.message.split('\n')[0]}`);
+      rec.fail(`${v.name}: ${firstLine(e)}`);
     } finally {
       if (v.close) await evalIn(c, step(v.close))
-        .catch(e => problems.push(`${v.name}: did not close — ${e.message.split('\n')[0]}`));
+        .catch(e => rec.fail(`${v.name}: did not close — ${firstLine(e)}`));
     }
   }
-  return {
-    pass: problems.length === 0 && elements > 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : elements === 0
-        ? 'measured no elements across any state'
-        : `${APP_LARGE_TEXT_STATES.length} states, ${elements} elements, every font-size in `
-          + `{${[...TYPESCALE_SIZES_PX].join(',')}}px and every weight in {${[...TYPESCALE_WEIGHTS].join(',')}}`,
-  };
+  rec.check(elements > 0, 'measured no elements across any state');
+  rec.ok(`${APP_LARGE_TEXT_STATES.length} states, ${elements} elements, every font-size in `
+    + `{${[...TYPESCALE_SIZES_PX].join(',')}}px and every weight in {${[...TYPESCALE_WEIGHTS].join(',')}}`);
 }

@@ -62,7 +62,7 @@ import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER, DESCRIBE_EL } from './smoke/dom.mjs';
 import { SEED } from './smoke/fixtures.mjs';
 import { land, reset } from './smoke/page-state.mjs';
-import { ROWS, nameOf, FONT_INJECTION_SCRIPT, CLOCK_SCRIPT } from './smoke/registry.mjs';
+import { ROWS, nameOf, FONT_INJECTION_SCRIPT, CLOCK_SCRIPT, recorder, verdict, rowResult } from './smoke/registry.mjs';
 import { cardAt32Pass } from './smoke/card-at-32.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -103,8 +103,9 @@ const rowSeconds = [];
  *
  * One runner for a rich row, used both by the full run's loop below and by
  * `--only`'s rich branch: it calls the row's own `run`, adds the row's name
- * to whatever comes back (a check returns `{ pass, detail }`; the row is what
- * knows its own name), and turns a throw into a FAIL row rather than taking
+ * to its verdict (a probe records into `ctx.rec` and `rowResult` builds the
+ * `{ pass, detail }`; the row is what knows its own name), and turns a throw
+ * into a FAIL row whose detail ends `threw: ...`, rather than taking
  * the rest of the run down with it -- a broken pass (a selector that no
  * longer exists, a page that navigated away mid-evaluate) failing its own
  * named row instead of printing no table at all is the one shape
@@ -119,6 +120,9 @@ async function runCheck(row, ctx) {
   const real = row.motion === 'real';
   const started = Date.now();
   const cappedBefore = settleTally.capped;
+  /* #358: the row's recorder. A probe records into `ctx.rec`; `rowResult` and
+     `verdict` (scripts/smoke/verdict.mjs) build the row's result from it. */
+  ctx.rec = recorder();
   try {
     if (real) await ctx.c.send('Animation.setPlaybackRate', { playbackRate: 1 });
     /* #125 D1: the harness resets to baseline BEFORE every rich row, not
@@ -133,9 +137,9 @@ async function runCheck(row, ctx) {
     const result = process.env.BENCHCARD_SMOKE_HANG === row.name
       ? await ctx.c.send('Runtime.evaluate', { expression: 'new Promise(() => {})', awaitPromise: true })
       : await row.run(ctx);
-    return { name: row.name, ...result };
+    return { name: row.name, ...rowResult(result, ctx.rec) };
   } catch (e) {
-    return { name: row.name, pass: false, detail: `threw before finishing: ${e.message.split('\n')[0]}` };
+    return { name: row.name, ...verdict(ctx.rec, e) };
   } finally {
     rowSeconds.push({ name: row.name, seconds: (Date.now() - started) / 1000 });
     /* A settle that hit its cap returned early, so what the row read next may

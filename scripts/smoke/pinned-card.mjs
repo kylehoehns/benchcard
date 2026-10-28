@@ -136,8 +136,7 @@ export function pinnedCardProblems(label, before, after, scheme) {
 }
 const round2 = n => Math.round(n * 100) / 100;
 
-export async function pinnedCardPass(c, origin) {
-  const problems = [];
+export async function pinnedCardPass(c, origin, rec) {
   let landings = 0;
   try {
     for (const scheme of SCHEMES) for (const cell of CELLS) {
@@ -155,17 +154,13 @@ export async function pinnedCardPass(c, origin) {
       await quiet(c);
       const after = JSON.parse(await evalIn(c, MEASURE));
       landings++;
-      problems.push(...pinnedCardProblems(label, before, after, scheme));
+      const found = pinnedCardProblems(label, before, after, scheme);
+      for (const f of found) rec.fail(f);
+      if (!found.length) rec.check(true, '');
     }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(landings === CELLS.length * SCHEMES.length, `${landings}/${CELLS.length * SCHEMES.length} landings measured`);
   } finally {
     await land(c, origin);
   }
-  return {
-    pass: problems.length === 0 && landings === CELLS.length * SCHEMES.length,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 3).join(' | ')}`
-      : `pinned row and details are one card (one fill, one stripe, no name twice, dot clear, nothing moves) at 390, 1280 and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px, light and dark (${landings} landings)`,
-  };
+  rec.ok(`pinned row and details are one card (one fill, one stripe, no name twice, dot clear, nothing moves) at 390, 1280 and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px, light and dark (${landings} landings)`);
 }

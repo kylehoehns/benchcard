@@ -100,100 +100,80 @@ const TITLE_GEAR_PROBE = `(() => {
   });
 })()`;
 
-const checkTitleAndGear = async (c, problems, label) => {
+const checkTitleAndGear = async (c, rec, label) => {
   const r = JSON.parse(await evalIn(c, TITLE_GEAR_PROBE));
-  if (!r.titleWithinViewport) {
-    problems.push(`${label}: #teamBtn reaches ${r.titleRight}px in a ${r.vw}px viewport`);
-  }
-  if (!r.gearOnScreen || !r.gearVisible || !r.gearTappable) {
-    problems.push(`${label}: #settingsBtn is not on screen and tappable `
+  rec.check(r.titleWithinViewport, `${label}: #teamBtn reaches ${r.titleRight}px in a ${r.vw}px viewport`);
+  rec.check(r.gearOnScreen && r.gearVisible && r.gearTappable, `${label}: #settingsBtn is not on screen and tappable `
       + `(onScreen=${r.gearOnScreen}, visible=${r.gearVisible}, tappable=${r.gearTappable})`);
-  }
 };
 
-export async function threeDaysPass(c, origin) {
-  const problems = [];
-  try {
-    await land(c, origin, { record: { ...THREE_DAY, view: 'today' }, ...TODAY_LANDING });
+export async function threeDaysPass(c, origin, rec) {
+  await land(c, origin, { record: { ...THREE_DAY, view: 'today' }, ...TODAY_LANDING });
 
-    // Items 4, 11: three headings in day order, each over its own passes.
-    const groups = await dayGroups(c);
-    const want = [
-      { heading: weekday(2), passes: 2 },
-      { heading: weekday(4), passes: 1 },
-      { heading: `${weekday(7)} · ${DAY_NAME}`, passes: 3 },
-    ];
-    if (JSON.stringify(groups) !== JSON.stringify(want)) {
-      problems.push(`Today's day groups are ${JSON.stringify(groups)}, want ${JSON.stringify(want)}`);
+  // Items 4, 11: three headings in day order, each over its own passes.
+  const groups = await dayGroups(c);
+  const want = [
+    { heading: weekday(2), passes: 2 },
+    { heading: weekday(4), passes: 1 },
+    { heading: `${weekday(7)} · ${DAY_NAME}`, passes: 3 },
+  ];
+  rec.check(JSON.stringify(groups) === JSON.stringify(want), `Today's day groups are ${JSON.stringify(groups)}, want ${JSON.stringify(want)}`);
+
+  // Item 5: the large title is the team's own name and opens the team menu.
+  const title = await evalIn(c, `document.getElementById('teamBtnLabel')?.textContent.trim() ?? null`);
+  rec.check(title === TEAM_NAME, `the large title reads "${title}", want the team name "${TEAM_NAME}"`);
+  await tap(c, `document.getElementById('teamBtn')?.click()`);
+  const menuOpen = await evalIn(c, `document.getElementById('teamMenu')?.matches(':popover-open') ?? false`);
+  rec.check(menuOpen, 'tapping the title did not open #teamMenu');
+  await tap(c, `document.getElementById('teamMenu')?.hidePopover?.()`);
+
+  // Item 6: opening a game on a day that is not the first still names the
+  // back button after the team, not the day.
+  await tap(c, `[...document.querySelectorAll('.day-group')].at(-1).querySelector('.today-game').click()`);
+  const backName = await evalIn(c, `document.getElementById('backBtn')?.getAttribute('aria-label') ?? null`);
+  rec.check(backName === `Back to ${TEAM_NAME}`, `#backBtn reads "${backName}", want "Back to ${TEAM_NAME}"`);
+
+  // Item 2: add a game for tomorrow through the real flow. `dayFor`
+  // inserts a new day in date order and `dayHeading` special-cases
+  // "Tomorrow" -- both proven at the node seam with a pinned clock; this is
+  // the UI path a coach actually uses to reach them.
+  await openAddGameFlow(c);
+  await typeIn(c, '#agBody input[type=date]', addDays(1));
+  await realTap(c, '#agNext');
+  await realTap(c, '#agNext');
+  await realTap(c, '#agNext');
+  if (await waitClosed(c, '#addGameFlow')) {
+    await tap(c, `document.querySelector('#barBack').hidden || document.querySelector('#backBtn').click()`);
+    const after = await dayGroups(c);
+    if (after.length !== 4) {
+      rec.fail(`adding a game for tomorrow left ${after.length} day group(s) on Today, want 4`);
+    } else if (after[0].heading !== 'Tomorrow' || after[0].passes !== 1) {
+      rec.fail(`the new day reads ${JSON.stringify(after[0])}, want {"heading":"Tomorrow","passes":1} leading the list`);
     }
-
-    // Item 5: the large title is the team's own name and opens the team menu.
-    const title = await evalIn(c, `document.getElementById('teamBtnLabel')?.textContent.trim() ?? null`);
-    if (title !== TEAM_NAME) problems.push(`the large title reads "${title}", want the team name "${TEAM_NAME}"`);
-    await tap(c, `document.getElementById('teamBtn')?.click()`);
-    const menuOpen = await evalIn(c, `document.getElementById('teamMenu')?.matches(':popover-open') ?? false`);
-    if (!menuOpen) problems.push('tapping the title did not open #teamMenu');
-    await tap(c, `document.getElementById('teamMenu')?.hidePopover?.()`);
-
-    // Item 6: opening a game on a day that is not the first still names the
-    // back button after the team, not the day.
-    await tap(c, `[...document.querySelectorAll('.day-group')].at(-1).querySelector('.today-game').click()`);
-    const backName = await evalIn(c, `document.getElementById('backBtn')?.getAttribute('aria-label') ?? null`);
-    if (backName !== `Back to ${TEAM_NAME}`) problems.push(`#backBtn reads "${backName}", want "Back to ${TEAM_NAME}"`);
-
-    // Item 2: add a game for tomorrow through the real flow. `dayFor`
-    // inserts a new day in date order and `dayHeading` special-cases
-    // "Tomorrow" -- both proven at the node seam with a pinned clock; this is
-    // the UI path a coach actually uses to reach them.
-    await openAddGameFlow(c);
-    await typeIn(c, '#agBody input[type=date]', addDays(1));
-    await realTap(c, '#agNext');
-    await realTap(c, '#agNext');
-    await realTap(c, '#agNext');
-    if (await waitClosed(c, '#addGameFlow')) {
-      await tap(c, `document.querySelector('#barBack').hidden || document.querySelector('#backBtn').click()`);
-      const after = await dayGroups(c);
-      if (after.length !== 4) {
-        problems.push(`adding a game for tomorrow left ${after.length} day group(s) on Today, want 4`);
-      } else if (after[0].heading !== 'Tomorrow' || after[0].passes !== 1) {
-        problems.push(`the new day reads ${JSON.stringify(after[0])}, want {"heading":"Tomorrow","passes":1} leading the list`);
-      }
-    } else {
-      problems.push('"Add game" did not close the add-a-game flow for the new date');
-    }
-
-    // Item 11: no horizontal overflow at 390×844...
-    const o390 = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-    if (o390.pans || o390.worst) {
-      problems.push(`390×844: ${o390.worst ? `${o390.worst.el} reaches ${o390.worst.right}px` : 'page pans sideways'}`);
-    }
-    // Item 5, at 390×844: the title stays in the viewport and the gear is
-    // still on screen and tappable beside it.
-    await checkTitleAndGear(c, problems, '390×844');
-
-    // ...and at 320px/32px text (T2/T4). `Page.setFontSizes` only takes
-    // effect on the next navigation (`app-large-text.mjs`'s own note), so
-    // this reloads the record already seeded above rather than rewriting it.
-    await land(c, origin, { record: 'kept', ...LARGE_TEXT,
-      ready: TODAY_GAME_READY });
-    const o320 = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-    if (o320.pans || o320.worst) {
-      problems.push(`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text: `
-        + `${o320.worst ? `${o320.worst.el} reaches ${o320.worst.right}px in a ${o320.vw}px viewport` : 'page pans sideways'}`);
-    }
-    // Item 5, at 320px/32px text: the 30-character name wraps or truncates
-    // rather than pushing the title (or the gear) off screen.
-    await checkTitleAndGear(c, problems, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
-  } catch (e) {
-    problems.push(`threw: ${e.message.split('\n')[0]}`);
+  } else {
+    rec.fail('"Add game" did not close the add-a-game flow for the new date');
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
-      : `3 days (2/1/3 games, a 40-char day name) stack in order, the large title is the team name and `
-        + `opens the team menu, #backBtn names the team, adding a game for tomorrow lands as a new `
-        + `leading day, no horizontal overflow at 390×844 or ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`,
-  };
+  // Item 11: no horizontal overflow at 390×844...
+  const o390 = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+  rec.check(!o390.pans && !o390.worst, `390×844: ${o390.worst ? `${o390.worst.el} reaches ${o390.worst.right}px` : 'page pans sideways'}`);
+  // Item 5, at 390×844: the title stays in the viewport and the gear is
+  // still on screen and tappable beside it.
+  await checkTitleAndGear(c, rec, '390×844');
+
+  // ...and at 320px/32px text (T2/T4). `Page.setFontSizes` only takes
+  // effect on the next navigation (`app-large-text.mjs`'s own note), so
+  // this reloads the record already seeded above rather than rewriting it.
+  await land(c, origin, { record: 'kept', ...LARGE_TEXT,
+    ready: TODAY_GAME_READY });
+  const o320 = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
+  rec.check(!o320.pans && !o320.worst, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text: `
+      + `${o320.worst ? `${o320.worst.el} reaches ${o320.worst.right}px in a ${o320.vw}px viewport` : 'page pans sideways'}`);
+  // Item 5, at 320px/32px text: the 30-character name wraps or truncates
+  // rather than pushing the title (or the gear) off screen.
+  await checkTitleAndGear(c, rec, `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
+
+  rec.ok(`3 days (2/1/3 games, a 40-char day name) stack in order, the large title is the team name and `
+    + `opens the team menu, #backBtn names the team, adding a game for tomorrow lands as a new `
+    + `leading day, no horizontal overflow at 390×844 or ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
 }

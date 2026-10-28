@@ -57,8 +57,7 @@ const VIEWS = SCREENS.map(({ name }) => ({
 }));
 const GO = Object.fromEntries(SCREENS.map(({ name, open }) => [name, open]));
 
-export async function floatingControlsPass(c, origin) {
-  const problems = [];
+export async function floatingControlsPass(c, origin, rec) {
   const notes = [];
 
   /* ---- items 1 and 2: the bar title on all five screens ---- */
@@ -96,26 +95,21 @@ export async function floatingControlsPass(c, origin) {
     })()`));
 
     if (hasLarge) {
-      if (!t.large) problems.push(`${view}: no [data-large-title] element on #${main}`);
-      else if (t.barTitle !== t.large) {
-        problems.push(`${view}: #barTitle reads ${JSON.stringify(t.barTitle)} but the large title reads `
+      if (rec.check(t.large, `${view}: no [data-large-title] element on #${main}`)) {
+        rec.check(t.barTitle === t.large, `${view}: #barTitle reads ${JSON.stringify(t.barTitle)} but the large title reads `
           + `${JSON.stringify(t.large)} -- the bar title is a screen behind`);
       }
-      if (t.ariaHidden !== 'true') {
-        problems.push(`${view}: #barTitle aria-hidden is ${JSON.stringify(t.ariaHidden)}, want "true" -- `
-          + 'the screen already has its own h1 and both would be announced');
-      }
-      if (t.titleIn) problems.push(`${view}: .bar has .title-in at the top of the screen, want the large title showing alone`);
+      rec.check(t.ariaHidden === 'true', `${view}: #barTitle aria-hidden is ${JSON.stringify(t.ariaHidden)}, want "true" -- `
+        + 'the screen already has its own h1 and both would be announced');
+      rec.check(!t.titleIn, `${view}: .bar has .title-in at the top of the screen, want the large title showing alone`);
     } else {
-      if (t.large) problems.push(`${view}: has a [data-large-title], want none (light-settings.png shows a bar title only)`);
-      if (t.barTitle !== 'Settings') problems.push(`${view}: #barTitle reads ${JSON.stringify(t.barTitle)}, want "Settings"`);
-      if (t.ariaHidden !== 'false') problems.push(`${view}: #barTitle aria-hidden is ${JSON.stringify(t.ariaHidden)}, want "false" -- it is this screen's only title`);
-      if (!t.titleIn) problems.push(`${view}: .bar is missing .title-in, so the only title Settings has is faded out`);
+      rec.check(!t.large, `${view}: has a [data-large-title], want none (light-settings.png shows a bar title only)`);
+      rec.check(t.barTitle === 'Settings', `${view}: #barTitle reads ${JSON.stringify(t.barTitle)}, want "Settings"`);
+      rec.check(t.ariaHidden === 'false', `${view}: #barTitle aria-hidden is ${JSON.stringify(t.ariaHidden)}, want "false" -- it is this screen's only title`);
+      rec.check(t.titleIn, `${view}: .bar is missing .title-in, so the only title Settings has is faded out`);
     }
-    if (t.overlap.length) {
-      problems.push(`${view}: the centered #barTitle overlaps ${t.overlap.join(', ')} `
-        + `(--bar-side is ${t.barSide || 'unset'})`);
-    }
+    rec.check(!t.overlap.length, `${view}: the centered #barTitle overlaps ${t.overlap.join(', ')} `
+      + `(--bar-side is ${t.barSide || 'unset'})`);
   }
 
   /* ---- item 1's other half: scrolling hands the title over ---- */
@@ -155,15 +149,13 @@ export async function floatingControlsPass(c, origin) {
     out.backAtTop = bar.classList.contains('title-in');
     return JSON.stringify(out);
   })()`));
-  if (handoff.atTop) problems.push('games: .title-in is already on before any scrolling');
-  if (!handoff.scrolled) problems.push('games: scrolling 400px did not fade the bar title in (.title-in never set)');
-  if (handoff.opacityScrolled !== '1') problems.push(`games: #barTitle opacity is ${handoff.opacityScrolled} while scrolled, want 1`);
-  if (!handoff.atHandoff) {
-    problems.push('games: the large title has slid under the bar '
-      + `(its bottom is at ${Math.round(handoff.largeBottomAtHandoff)}px, the bar ends at ${Math.round(handoff.barBottom)}px) `
-      + 'and the bar title has not faded in yet -- the screen has no title at all for that stretch');
-  }
-  if (handoff.backAtTop) problems.push('games: scrolling back to the top left .title-in on');
+  rec.check(!handoff.atTop, 'games: .title-in is already on before any scrolling');
+  rec.check(handoff.scrolled, 'games: scrolling 400px did not fade the bar title in (.title-in never set)');
+  rec.check(handoff.opacityScrolled === '1', `games: #barTitle opacity is ${handoff.opacityScrolled} while scrolled, want 1`);
+  rec.check(handoff.atHandoff, 'games: the large title has slid under the bar '
+    + `(its bottom is at ${Math.round(handoff.largeBottomAtHandoff)}px, the bar ends at ${Math.round(handoff.barBottom)}px) `
+    + 'and the bar title has not faded in yet -- the screen has no title at all for that stretch');
+  rec.check(!handoff.backAtTop, 'games: scrolling back to the top left .title-in on');
   notes.push('title hand-off both ways');
 
   /* ---- item 3: the five round chips, at 390px and at 320px ---- */
@@ -185,7 +177,7 @@ export async function floatingControlsPass(c, origin) {
           radius: cs.borderTopLeftRadius, bf: cs.backdropFilter || cs.webkitBackdropFilter };
       })))()`));
       for (const g of got) {
-        if (g.missing) { problems.push(`${view}: ${g.sel} is not on screen at ${w}px`); continue; }
+        if (!rec.check(!g.missing, `${view}: ${g.sel} is not on screen at ${w}px`)) continue;
         /* `#backBtn`, `#settingsBtn` and `#teamBtn` are already swept for
            48px by today-game-rows.mjs and `#shareBtn` by
            timeline-card-sheet.mjs; only `#teamAdd`'s floor is new. Re-read
@@ -194,15 +186,13 @@ export async function floatingControlsPass(c, origin) {
            the thing at risk in THIS change is the round shape, which is
            exactly where a chip could keep its 48px hit area while its
            painted fill shrank out from under it. */
-        if (g.w < 48 || g.h < 48) problems.push(`${w}px ${view}: ${g.sel} is ${Math.round(g.w)}×${Math.round(g.h)}, want at least 48×48`);
+        rec.check(!(g.w < 48 || g.h < 48), `${w}px ${view}: ${g.sel} is ${Math.round(g.w)}×${Math.round(g.h)}, want at least 48×48`);
         // `border-radius` resolving to at least half the fill's height IS round;
         // a percentage resolves to a px pair in computed style, so one number
         // covers both the `--r-full` pill and a 50% circle.
         const rad = parseFloat(g.radius);
-        if (!(rad >= g.fh / 2 - 0.5)) {
-          problems.push(`${w}px ${view}: ${g.sel}'s fill has border-radius ${g.radius} on a ${Math.round(g.fh)}px-tall chip, want at least half its height`);
-        }
-        if (!g.bf || g.bf === 'none') problems.push(`${w}px ${view}: ${g.sel}'s fill has backdrop-filter ${g.bf}, want a blur`);
+        rec.check(rad >= g.fh / 2 - 0.5, `${w}px ${view}: ${g.sel}'s fill has border-radius ${g.radius} on a ${Math.round(g.fh)}px-tall chip, want at least half its height`);
+        rec.check(g.bf && g.bf !== 'none', `${w}px ${view}: ${g.sel}'s fill has backdrop-filter ${g.bf}, want a blur`);
       }
     }
   }
@@ -260,26 +250,23 @@ export async function floatingControlsPass(c, origin) {
       hasFoot: !!document.querySelector('.foot, .foot-link, .foot-why, #tipLink'),
     });
   })()`));
-  if (ab.benchWidth === null) problems.push('games: #abBench is not in the document');
-  else if (Math.abs(ab.benchWidth - ab.innerWidth) > 1) {
-    problems.push(`#abBench is ${Math.round(ab.benchWidth)}px inside a ${Math.round(ab.innerWidth)}px action-bar content box, `
+  if (rec.check(ab.benchWidth !== null, 'games: #abBench is not in the document')) {
+    rec.check(!(Math.abs(ab.benchWidth - ab.innerWidth) > 1), `#abBench is ${Math.round(ab.benchWidth)}px inside a ${Math.round(ab.innerWidth)}px action-bar content box, `
       + 'want it full width (C2: one full-width floating primary action)');
   }
-  if (!ab.decls.length) problems.push('no rule sets padding-bottom on .actionbar at all');
+  rec.check(ab.decls.length, 'no rule sets padding-bottom on .actionbar at all');
   for (const d of ab.decls) {
-    if (!/safe-area-max-inset-bottom/.test(d.value)) {
-      problems.push(`${d.where}: "${d.selector} { padding-bottom: ${d.value} }" does not go through `
-        + 'safe-area-max-inset-bottom, so the action bar moves with the URL bar (AC4/L5)');
-    }
+    rec.check(/safe-area-max-inset-bottom/.test(d.value), `${d.where}: "${d.selector} { padding-bottom: ${d.value} }" does not go through `
+      + 'safe-area-max-inset-bottom, so the action bar moves with the URL bar (AC4/L5)');
   }
   for (const [label, box] of [['.bar', ab.bar], ['#actionbar', ab.abox]]) {
     const bw = box.borders.filter(n => n > 0);
-    if (bw.length) problems.push(`${label} has a ${bw.join('/')}px border -- L3 asks for a fade, not a line`);
-    if (box.shadow !== 'none') problems.push(`${label} has box-shadow ${box.shadow}, which is a hairline by another name`);
+    rec.check(!bw.length, `${label} has a ${bw.join('/')}px border -- L3 asks for a fade, not a line`);
+    rec.check(box.shadow === 'none', `${label} has box-shadow ${box.shadow}, which is a hairline by another name`);
     const a = alpha(box.bg);
-    if (a !== null && a > 0) problems.push(`${label} itself paints ${box.bg} -- the scrim belongs on its ::before so the mask can fade it`);
+    rec.check(!(a !== null && a > 0), `${label} itself paints ${box.bg} -- the scrim belongs on its ::before so the mask can fade it`);
   }
-  if (ab.hasFoot) problems.push('the footer (.foot / .foot-link / .foot-why / #tipLink) is still in the document');
+  rec.check(!ab.hasFoot, 'the footer (.foot / .foot-link / .foot-why / #tipLink) is still in the document');
   notes.push('action bar full width, no hairline');
 
   /* ---- item 5: the solid fallbacks ---- */
@@ -298,14 +285,12 @@ export async function floatingControlsPass(c, origin) {
       return JSON.stringify([${SCRIMS.map(s => JSON.stringify(s)).join(',')}, '#backBtn .i', '#shareBtn .i'].map(read));
     })()`));
     for (const s of solid) {
-      if (s.missing) { problems.push(`${feature}: ${s.sel} is not on screen`); continue; }
-      if (s.bf && s.bf !== 'none') problems.push(`${feature}: ${s.sel} still has backdrop-filter ${s.bf}, want none`);
+      if (!rec.check(!s.missing, `${feature}: ${s.sel} is not on screen`)) continue;
+      rec.check(!(s.bf && s.bf !== 'none'), `${feature}: ${s.sel} still has backdrop-filter ${s.bf}, want none`);
       const a = alpha(s.bg);
-      if (a !== 1) problems.push(`${feature}: ${s.sel} paints ${s.bg} (alpha ${a}), want a fully opaque color`);
-      if (s.img && s.img !== 'none') problems.push(`${feature}: ${s.sel} still paints ${s.img}, want a flat color`);
-      if (SCRIMS.includes(s.sel) && s.mask && s.mask !== 'none') {
-        problems.push(`${feature}: ${s.sel} still has mask-image ${s.mask} -- an opaque scrim faded by a mask is a translucent scrim again`);
-      }
+      rec.check(a === 1, `${feature}: ${s.sel} paints ${s.bg} (alpha ${a}), want a fully opaque color`);
+      rec.check(!(s.img && s.img !== 'none'), `${feature}: ${s.sel} still paints ${s.img}, want a flat color`);
+      rec.check(!(SCRIMS.includes(s.sel) && s.mask && s.mask !== 'none'), `${feature}: ${s.sel} still has mask-image ${s.mask} -- an opaque scrim faded by a mask is a translucent scrim again`);
     }
   }
   notes.push('solid under reduced transparency and more contrast');
@@ -327,22 +312,13 @@ export async function floatingControlsPass(c, origin) {
     return JSON.stringify(out);
   })()`));
   for (const [k, v] of [['collapsed', rm.transformIn], ['expanded', rm.transformOut]]) {
-    if (v !== 'none') problems.push(`reduced motion: #barTitle's transform is ${v} when ${k}, want none -- nothing in the bar may travel`);
+    rec.check(v === 'none', `reduced motion: #barTitle's transform is ${v} when ${k}, want none -- nothing in the bar may travel`);
   }
-  if (rm.transition.split(',').map(s => s.trim()).some(p => p !== 'opacity')) {
-    problems.push(`reduced motion: #barTitle transitions ${rm.transition}, want opacity only`);
-  }
-  if (parseFloat(rm.abAnim) > 0.001) {
-    problems.push(`reduced motion: #actionbar's entry animation still runs for ${rm.abAnim}, want it removed`);
-  }
+  rec.check(!(rm.transition.split(',').map(s => s.trim()).some(p => p !== 'opacity')), `reduced motion: #barTitle transitions ${rm.transition}, want opacity only`);
+  rec.check(!(parseFloat(rm.abAnim) > 0.001), `reduced motion: #actionbar's entry animation still runs for ${rm.abAnim}, want it removed`);
   notes.push('nothing travels under reduced motion');
 
   await evalIn(c, step(TODAY_HOME));
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}${problems.length > 4 ? ` (+${problems.length - 4} more)` : ''}`
-      : notes.join('; '),
-  };
+  rec.ok(notes.join('; '));
 }

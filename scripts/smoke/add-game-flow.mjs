@@ -637,54 +637,43 @@ async function landsOnToday(c, ck) {
 }
 
 
-export async function addGameFlowPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
+export async function addGameFlowPass(c, origin, rec) {
 
-  try {
-    if (await opensFullScreen(c, ck)) {
-      await backStepsThrough(c, ck);
-      await stepOneReads(c, ck);
-      await exactlyOneTintFill(c, ck);
-      await stepTwoReads(c, ck);
-      await checkedTileHasNoRing(c, ck, 'light');
-      await stepThreeReads(c, ck);
-      await stepThreeVisuals(c, ck, 'light');
-      // Nothing was typed on that walk through, so ✕ closes at once -- the
-      // last three checks each want a flow of their own.
-      await realTap(c, '#agClose');
-      await waitClosed(c, '#addGameFlow');
-      await headingDrawsNoRing(c, ck);
-      await focusReturnsToTrigger(c, ck);
-      await closeChipAndBackChevron(c, ck);
-      await sameAsCardCommits(c, ck);
-      await stepThreeCommits(c, ck);
-      await tipoffSetsAndReadsAsLocaleTime(c, ck);
-      await discardAsks(c, ck);
-      await askDoesNotStrandOverRepaint(c, ck);
-      await forceCloseKeepsDraft(c, ck);
-      await landsOnToday(c, ck);
-      await addGameFitChecks(c, ck, origin);
+  if (await opensFullScreen(c, rec.check)) {
+    await backStepsThrough(c, rec.check);
+    await stepOneReads(c, rec.check);
+    await exactlyOneTintFill(c, rec.check);
+    await stepTwoReads(c, rec.check);
+    await checkedTileHasNoRing(c, rec.check, 'light');
+    await stepThreeReads(c, rec.check);
+    await stepThreeVisuals(c, rec.check, 'light');
+    // Nothing was typed on that walk through, so ✕ closes at once -- the
+    // last three checks each want a flow of their own.
+    await realTap(c, '#agClose');
+    await waitClosed(c, '#addGameFlow');
+    await headingDrawsNoRing(c, rec.check);
+    await focusReturnsToTrigger(c, rec.check);
+    await closeChipAndBackChevron(c, rec.check);
+    await sameAsCardCommits(c, rec.check);
+    await stepThreeCommits(c, rec.check);
+    await tipoffSetsAndReadsAsLocaleTime(c, rec.check);
+    await discardAsks(c, rec.check);
+    await askDoesNotStrandOverRepaint(c, rec.check);
+    await forceCloseKeepsDraft(c, rec.check);
+    await landsOnToday(c, rec.check);
+    await addGameFitChecks(c, rec.check, origin);
 
-      // #145 item 5's "light and dark" -- a dark reload, the same idiom
-      // `darkInputBgPass` uses, rather than emulating `prefers-color-scheme`.
-      await land(c, origin, { record: richWith({ theme: 'dark' }) });
-      await openFlow(c);
-      await realTap(c, '#agNext');
-      await checkedTileHasNoRing(c, ck, 'dark');
-      await realTap(c, '#agNext');
-      await stepThreeVisuals(c, ck, 'dark');
-      await realTap(c, '#agClose');
-      await waitClosed(c, '#addGameFlow');
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    // #145 item 5's "light and dark" -- a dark reload, the same idiom
+    // `darkInputBgPass` uses, rather than emulating `prefers-color-scheme`.
+    await land(c, origin, { record: richWith({ theme: 'dark' }) });
+    await openFlow(c);
+    await realTap(c, '#agNext');
+    await checkedTileHasNoRing(c, rec.check, 'dark');
+    await realTap(c, '#agNext');
+    await stepThreeVisuals(c, rec.check, 'dark');
+    await realTap(c, '#agClose');
+    await waitClosed(c, '#addGameFlow');
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : 'three steps, the back gesture and the discard ask all hold',
-  };
+  rec.ok('three steps, the back gesture and the discard ask all hold');
 }

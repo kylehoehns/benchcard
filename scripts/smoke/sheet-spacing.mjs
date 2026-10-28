@@ -288,58 +288,47 @@ async function checkStatusGap(c, ck, where, bodySel, statusSel) {
   ck(r.bg !== 'rgba(0, 0, 0, 0)' && r.bg !== 'transparent', `${where}: ${statusSel}'s background is "${r.bg}", want an opaque background`);
 }
 
-export async function sheetSpacingPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
+export async function sheetSpacingPass(c, origin, rec) {
 
-  try {
-    await seed(c);
+  await seed(c);
 
-    /* ---- 390px, the default 16px root ---- */
-    await checkFormatColumns(c, ck, '390px');
-    await tap(c, `document.getElementById('phraseFormat').click()`);
-    await checkStatusGap(c, ck, "390px, Format", '#sheetFormatBody', '#sheetFormatStatus');
-    await tap(c, `document.getElementById('sheetFormatClose').click()`);
+  /* ---- 390px, the default 16px root ---- */
+  await checkFormatColumns(c, rec.check, '390px');
+  await tap(c, `document.getElementById('phraseFormat').click()`);
+  await checkStatusGap(c, rec.check, "390px, Format", '#sheetFormatBody', '#sheetFormatStatus');
+  await tap(c, `document.getElementById('sheetFormatClose').click()`);
 
-    await checkAddRuleColumns(c, ck, '390px');
-    await checkAddRuleHeader(c, ck, '390px', true);
-    await tap(c, `document.getElementById('phraseRules').click()`);
-    await tap(c, `document.querySelector('#constraints .add-rule').click()`);
-    await checkStatusGap(c, ck, "390px, Add a rule", '#sheetPlanBody', '#sheetPlanStatus');
-    await tap(c, `document.getElementById('sheetPlanClose').click()`);
+  await checkAddRuleColumns(c, rec.check, '390px');
+  await checkAddRuleHeader(c, rec.check, '390px', true);
+  await tap(c, `document.getElementById('phraseRules').click()`);
+  await tap(c, `document.querySelector('#constraints .add-rule').click()`);
+  await checkStatusGap(c, rec.check, "390px, Add a rule", '#sheetPlanBody', '#sheetPlanStatus');
+  await tap(c, `document.getElementById('sheetPlanClose').click()`);
 
-    await checkRowPadding(c, ck, '390px');
-    await tap(c, `document.getElementById('phraseStrategy').click()`);
-    await checkStatusGap(c, ck, "390px, Plan level 1", '#sheetPlanBody', '#sheetPlanStatus');
-    await tap(c, `document.getElementById('sheetPlanClose').click()`);
+  await checkRowPadding(c, rec.check, '390px');
+  await tap(c, `document.getElementById('phraseStrategy').click()`);
+  await checkStatusGap(c, rec.check, "390px, Plan level 1", '#sheetPlanBody', '#sheetPlanStatus');
+  await tap(c, `document.getElementById('sheetPlanClose').click()`);
 
-    await checkWhoWrap(c, ck, '390px');
-    await tap(c, `document.getElementById('phrasePlayers').click()`);
-    await checkStatusGap(c, ck, "390px, Who's here", '#sheetWhoBody', '#sheetWhoStatus');
-    await tap(c, `document.getElementById('sheetWhoClose').click()`);
+  await checkWhoWrap(c, rec.check, '390px');
+  await tap(c, `document.getElementById('phrasePlayers').click()`);
+  await checkStatusGap(c, rec.check, "390px, Who's here", '#sheetWhoBody', '#sheetWhoStatus');
+  await tap(c, `document.getElementById('sheetWhoClose').click()`);
 
-    await tap(c, `document.getElementById('phraseInterval').click()`);
-    await checkStatusGap(c, ck, "390px, Sub interval", '#sheetIntervalBody', '#sheetIntervalStatus');
-    await tap(c, `document.getElementById('sheetIntervalClose').click()`);
+  await tap(c, `document.getElementById('phraseInterval').click()`);
+  await checkStatusGap(c, rec.check, "390px, Sub interval", '#sheetIntervalBody', '#sheetIntervalStatus');
+  await tap(c, `document.getElementById('sheetIntervalClose').click()`);
 
-    /* ---- 320px, a 32px root: items 5 and 8, the two the spec ties to it ---- */
-    await land(c, origin, { ...LARGE_TEXT });
-    await seed(c);
+  /* ---- 320px, a 32px root: items 5 and 8, the two the spec ties to it ---- */
+  await land(c, origin, { ...LARGE_TEXT });
+  await seed(c);
 
-    await checkFormatColumns(c, ck, '320px/32px', true);
-    await checkAddRuleColumns(c, ck, '320px/32px', true);
-    await checkAddRuleHeader(c, ck, '320px/32px', false);
-    await checkLineupGap(c, ck, '320px/32px');
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
-  }
+  await checkFormatColumns(c, rec.check, '320px/32px', true);
+  await checkAddRuleColumns(c, rec.check, '320px/32px', true);
+  await checkAddRuleHeader(c, rec.check, '320px/32px', false);
+  await checkLineupGap(c, rec.check, '320px/32px');
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : 'stepper columns line up at 390px and 320px/32px, rows keep their padding whether '
-        + 'they wrap, the balance value clears its label, and every status line sits clear '
-        + 'of the last row with its own divider and background',
-  };
+  rec.ok('stepper columns line up at 390px and 320px/32px, rows keep their padding whether '
+    + 'they wrap, the balance value clears its label, and every status line sits clear '
+    + 'of the last row with its own divider and background');
 }

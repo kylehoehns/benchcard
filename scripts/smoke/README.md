@@ -7,6 +7,14 @@ checks of its own. Read the module a row's File cell names for what it
 actually measures (widths, text sizes, theme); this index does not restate
 that. Run one row with `node scripts/smoke.mjs --only "<Check>"`.
 
+How a probe records (#358): a row's `run` gets a recorder as `ctx.rec`. It
+calls `rec.check(cond, msg)` or `rec.fail(msg)` once per problem and
+`rec.ok(detail)` for the passing text; it does not join, truncate or catch for
+itself. `runCheck` builds the verdict, so a throw becomes a `threw:` detail and
+a probe that recorded nothing fails. A row may still return its own
+`{ pass, detail }`, but a failure it recorded vetoes that. The limit, separator
+and rules are in the header of `verdict.mjs`.
+
 How a run spends its time (#241): every page plays animations at
 `FAST_PLAYBACK_RATE` (`dom.mjs`); a row that asserts on an animation itself
 carries `motion: 'real'` in `registry.mjs` and runs at 1x. A wait on an

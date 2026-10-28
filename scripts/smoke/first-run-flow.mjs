@@ -516,10 +516,7 @@ async function landsOnTheGame(c, ck, cardCount) {
   ck(s.sheetCards === cardCount, `#sheet holds ${s.sheetCards} card(s), want the ${cardCount} step 3 showed`);
 }
 
-export async function firstRunPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
-
+export async function firstRunPass(c, origin, rec) {
   /* A wiped landing has no stored `ui.theme`, so it boots at the real
      default, "auto" (render.js's `applyTheme`) -- resolved against the
      HOST's own `prefers-color-scheme`, not a fixed value. #143 items 2/3
@@ -528,41 +525,32 @@ export async function firstRunPass(c, origin) {
      right on a light-mode machine and wrong on a dark-mode one for a reason
      that has nothing to do with the app. Pinned to light by both landings
      below; the next row's `reset` clears it. */
-  try {
-    await land(c, origin, { ...WELCOME_LANDING, media: LIGHT });
-    await landingReads(c, ck);
-    await benchDemoMatchesRealBenchMode(c, ck);
-    await stepOneCounts(c, ck);
-    await stepTwoDefaults(c, ck);
-    await closeChipAndBackChevron(c, ck);
-    await backAndCancel(c, ck);
-    await discardSavesNothing(c, ck);
-    await sampleFillsAndSavesNothing(c, ck);
+  await land(c, origin, { ...WELCOME_LANDING, media: LIGHT });
+  await landingReads(c, rec.check);
+  await benchDemoMatchesRealBenchMode(c, rec.check);
+  await stepOneCounts(c, rec.check);
+  await stepTwoDefaults(c, rec.check);
+  await closeChipAndBackChevron(c, rec.check);
+  await backAndCancel(c, rec.check);
+  await discardSavesNothing(c, rec.check);
+  await sampleFillsAndSavesNothing(c, rec.check);
 
-    /* Fresh: step 3 commits for real, a one-way door. AND NARROW, for the
-       card fit `stepThreeShowsACard` reads at the end -- 320px is where the
-       correct `--cardzoom` is not 1, so it is the only width at which a
-       mis-fitted card is distinguishable from a fitted one.
-       THE NARROWING HAS TO HAPPEN BEFORE THE FLOW PAINTS, not after:
-       `card.js` fits every `.stage` on `resize`, so resizing a step 3 that
-       is already on screen would repair the very thing being measured and
-       report clean. 390 goes back before the tour, which is the width the
-       rest of this pass and everything after it measures at. */
-    await land(c, origin, { ...WELCOME_LANDING, media: LIGHT, width: LARGE_TEXT_WIDTH });
-    const cardCount = await stepThreeShowsACard(c, ck);
-    await resize(c, WIDTH);
-    if (cardCount !== null) {
-      await finishStartsTheTour(c, ck);
-      await landsOnTheGame(c, ck, cardCount);
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+  /* Fresh: step 3 commits for real, a one-way door. AND NARROW, for the
+     card fit `stepThreeShowsACard` reads at the end -- 320px is where the
+     correct `--cardzoom` is not 1, so it is the only width at which a
+     mis-fitted card is distinguishable from a fitted one.
+     THE NARROWING HAS TO HAPPEN BEFORE THE FLOW PAINTS, not after:
+     `card.js` fits every `.stage` on `resize`, so resizing a step 3 that
+     is already on screen would repair the very thing being measured and
+     report clean. 390 goes back before the tour, which is the width the
+     rest of this pass and everything after it measures at. */
+  await land(c, origin, { ...WELCOME_LANDING, media: LIGHT, width: LARGE_TEXT_WIDTH });
+  const cardCount = await stepThreeShowsACard(c, rec.check);
+  await resize(c, WIDTH);
+  if (cardCount !== null) {
+    await finishStartsTheTour(c, rec.check);
+    await landsOnTheGame(c, rec.check, cardCount);
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : 'the landing, all three steps, every way out, the sample, the tour and landing on the game all hold',
-  };
+  rec.ok('the landing, all three steps, every way out, the sample, the tour and landing on the game all hold');
 }

@@ -149,9 +149,7 @@ async function readPage(c, origin, p, cse) {
   return JSON.parse(await evalIn(c, READ(p)));
 }
 
-export async function hardwoodPagesPass(c, origin) {
-  const problems = [];
-  const note = (where, msg) => problems.push(`${where}: ${msg}`);
+export async function hardwoodPagesPass(c, origin, rec) {
   try {
     for (const cse of CASES) {
       for (const p of PAGES) {
@@ -160,67 +158,62 @@ export async function hardwoodPagesPass(c, origin) {
         // Item 3 and the crawlable-text constraint: the phrase exists, is the
         // spec's own words, the h1 reads the same as before and the phrase
         // wraps with its line.
-        if (s.hlText === null) note(where, `no ${p.hl} element`);
-        else if (s.hlText !== p.phrase) note(where, `the orange phrase reads "${s.hlText}", want "${p.phrase}"`);
-        if (s.h1Text !== p.h1) note(where, `the h1 reads "${s.h1Text}", want "${p.h1}"`);
-        if (s.hlNowrap === 'nowrap') note(where, 'the orange phrase is nowrap; it must wrap with its line');
-        if (s.hlColor && css(s.hlColor) !== cse.want) note(where, `the phrase is ${css(s.hlColor)}, want ${cse.want}`);
-        if (s.hlColor && s.h1Color && css(s.hlColor) === css(s.h1Color)) note(where, 'the rest of the h1 is the same color as the phrase');
+        if (rec.check(s.hlText !== null, `${where}: no ${p.hl} element`)) rec.check(s.hlText === p.phrase, `${where}: the orange phrase reads "${s.hlText}", want "${p.phrase}"`);
+        rec.check(s.h1Text === p.h1, `${where}: the h1 reads "${s.h1Text}", want "${p.h1}"`);
+        rec.check(s.hlNowrap !== 'nowrap', `${where}: the orange phrase is nowrap; it must wrap with its line`);
+        rec.check(!(s.hlColor && css(s.hlColor) !== cse.want), `${where}: the phrase is ${css(s.hlColor)}, want ${cse.want}`);
+        rec.check(!(s.hlColor && s.h1Color && css(s.hlColor) === css(s.h1Color)), `${where}: the rest of the h1 is the same color as the phrase`);
         // Item 1: the main button and the links.
-        if (!s.btnBg) note(where, `no ${p.button}`);
-        else if (css(s.btnBg) !== cse.want) note(where, `${p.button} background is ${css(s.btnBg)}, want ${cse.want}`);
+        if (rec.check(s.btnBg, `${where}: no ${p.button}`)) rec.check(css(s.btnBg) === cse.want, `${where}: ${p.button} background is ${css(s.btnBg)}, want ${cse.want}`);
         // #244: the welcome logo's ground is the phrase's orange, not --accent.
         if (p.mark) {
-          if (!s.markFill) note(where, `no ${p.mark}`);
-          else if (css(s.markFill) !== cse.want) note(where, `the logo is ${css(s.markFill)}, want ${cse.want}`);
+          if (rec.check(s.markFill, `${where}: no ${p.mark}`)) rec.check(css(s.markFill) === cse.want, `${where}: the logo is ${css(s.markFill)}, want ${cse.want}`);
         }
         if (p.link) {
-          if (!s.linkColor) note(where, `no ${p.link}`);
-          else if (css(s.linkColor) !== cse.text) note(where, `links are ${css(s.linkColor)}, want ${cse.text}`);
+          if (rec.check(s.linkColor, `${where}: no ${p.link}`)) rec.check(css(s.linkColor) === cse.text, `${where}: links are ${css(s.linkColor)}, want ${cse.text}`);
         }
         // #332: every small orange text, by its own color and its painted ratio.
         for (const m of p.smalls || []) {
           const what = m.pseudo ? `${m.sel}${m.pseudo}` : m.sel;
           const t = JSON.parse(await evalIn(c, READ_SMALL(m.sel, m.pseudo, m.probe)));
-          if (!t) { note(where, `no ${m.sel}`); continue; }
+          if (!rec.check(t, `${where}: no ${m.sel}`)) continue;
           const want = m.ink ? cse.ink : cse.text;
-          if (css(t.color) !== want) note(where, `${what} is ${css(t.color)}, want ${want}`);
+          rec.check(css(t.color) === want, `${where}: ${what} is ${css(t.color)}, want ${want}`);
           const [back] = await samplePixels(c, [t.at], t.scroll[0], t.scroll[1]);
           const r = ratio(t.color, back);
-          if (r < cse.floor) note(where, `${what} on its backdrop is ${r.toFixed(2)}:1, want at least ${cse.floor}:1`);
+          rec.check(!(r < cse.floor), `${where}: ${what} on its backdrop is ${r.toFixed(2)}:1, want at least ${cse.floor}:1`);
         }
         // #242: no gradient behind the h1, and the h1 keeps its room.
-        if (s.bandImage === null) note(where, `no ${p.band} block`);
-        else {
-          if (s.bandImage !== 'none') note(where, `${p.band} paints ${s.bandImage.slice(0, 40)}, want no background-image`);
-          if (s.h1Inset !== null && s.h1Inset < 16) note(where, `the h1 sits ${s.h1Inset}px inside ${p.band}'s top edge, want at least 16`);
+        if (rec.check(s.bandImage !== null, `${where}: no ${p.band} block`)) {
+          rec.check(s.bandImage === 'none', `${where}: ${p.band} paints ${s.bandImage.slice(0, 40)}, want no background-image`);
+          rec.check(!(s.h1Inset !== null && s.h1Inset < 16), `${where}: the h1 sits ${s.h1Inset}px inside ${p.band}'s top edge, want at least 16`);
         }
         // Item 4: contrast, against the painted pixel up and left of each text
         // box (viewport points; the scroll offset is read back with them).
         if (s.hlColor && s.hlBox) {
           const [back] = await samplePixels(c, [s.hlBox], s.scroll[0], s.scroll[1]);
           const phrase = ratio(s.hlColor, back);
-          if (phrase < 3) note(where, `the phrase on its backdrop is ${phrase.toFixed(2)}:1, want at least 3:1`);
+          rec.check(!(phrase < 3), `${where}: the phrase on its backdrop is ${phrase.toFixed(2)}:1, want at least 3:1`);
         }
         if (s.bodyColor && s.bodyBox) {
           const [back] = await samplePixels(c, [s.bodyBox], s.scroll[0], s.scroll[1]);
           const body = ratio(s.bodyColor, back);
-          if (body < 4.5) note(where, `${p.body} on its backdrop is ${body.toFixed(2)}:1, want at least 4.5:1`);
+          rec.check(!(body < 4.5), `${where}: ${p.body} on its backdrop is ${body.toFixed(2)}:1, want at least 4.5:1`);
         }
         if (s.btnBg && s.btnFg) {
           const label = ratio(s.btnFg, s.btnBg);
-          if (label < 4.5) note(where, `${p.button}'s label is ${label.toFixed(2)}:1 on the orange, want at least 4.5:1`);
+          rec.check(!(label < 4.5), `${where}: ${p.button}'s label is ${label.toFixed(2)}:1 on the orange, want at least 4.5:1`);
         }
         // last, because it rewrites data-tint on the live page
         if (p.mark) {
           // #277: the card must read on the ground (non-text, 3:1) under every tint.
           for (const t of JSON.parse(await evalIn(c, READ_LOGO_TINTS))) {
-            if (!t.ground || !t.card) { note(where, `no logo ground or card under ${t.tint}`); continue; }
+            if (!rec.check(t.ground && t.card, `${where}: no logo ground or card under ${t.tint}`)) continue;
             const r = ratio(t.card, t.ground);
-            if (r < 3) note(where, `the logo's card ${css(t.card)} on its ground ${css(t.ground)} under ${t.tint} is ${r.toFixed(2)}:1, want at least 3:1`);
+            rec.check(!(r < 3), `${where}: the logo's card ${css(t.card)} on its ground ${css(t.ground)} under ${t.tint} is ${r.toFixed(2)}:1, want at least 3:1`);
             // the card is paper wherever paper itself clears 3:1 on the ground
-            if (ratio(PAPER, t.ground) >= 3 && css(t.card) !== PAPER_RGB) note(where, `the logo's card is ${css(t.card)} under ${t.tint}, want paper ${PAPER_RGB} (paper is ${ratio(PAPER, t.ground).toFixed(2)}:1 on ${css(t.ground)})`);
-            if (cse.name === 'light' && t.tint === 'hardwood' && css(t.card) !== PAPER_RGB) note(where, `the logo's card in light Hardwood is ${css(t.card)}, want ${PAPER_RGB}`);
+            rec.check(!(ratio(PAPER, t.ground) >= 3 && css(t.card) !== PAPER_RGB), `${where}: the logo's card is ${css(t.card)} under ${t.tint}, want paper ${PAPER_RGB} (paper is ${ratio(PAPER, t.ground).toFixed(2)}:1 on ${css(t.ground)})`);
+            rec.check(!(cse.name === 'light' && t.tint === 'hardwood' && css(t.card) !== PAPER_RGB), `${where}: the logo's card in light Hardwood is ${css(t.card)}, want ${PAPER_RGB}`);
           }
         }
       }
@@ -237,20 +230,12 @@ export async function hardwoodPagesPass(c, origin) {
     const app = JSON.parse(await evalIn(c, `(() => {
       const e = document.getElementById('print'); return JSON.stringify(getComputedStyle(e).backgroundColor);
     })()`));
-    if (app !== GRAPHITE_INK) note('graphite team', `the app's #print is ${app}, want ${GRAPHITE_INK}`);
+    rec.check(app === GRAPHITE_INK, `graphite team: the app's #print is ${app}, want ${GRAPHITE_INK}`);
     const about = await readPage(c, origin, PAGES[0], CASES[0]);
-    if (!about.btnBg || css(about.btnBg) !== HARDWOOD_LIGHT) {
-      note('graphite team', `about.html's main button is ${css(about.btnBg)}, want ${HARDWOOD_LIGHT}`);
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(about.btnBg && css(about.btnBg) === HARDWOOD_LIGHT, `graphite team: about.html's main button is ${css(about.btnBg)}, want ${HARDWOOD_LIGHT}`);
   } finally {
     await reset(c, origin).catch(() => {});
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'welcome, about and advanced: Hardwood button, links, phrase and welcome logo, no gradient behind the headline, in light, dark and more contrast; '
-        + 'a Graphite team leaves about.html orange',
-  };
+  rec.ok('welcome, about and advanced: Hardwood button, links, phrase and welcome logo, no gradient behind the headline, in light, dark and more contrast; '
+    + 'a Graphite team leaves about.html orange');
 }

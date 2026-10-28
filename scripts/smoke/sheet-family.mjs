@@ -191,24 +191,13 @@ const THEMES = [
   { where: 'dark', ui: { theme: 'dark' }, sheet: SHEET_DARK, surface: SURFACE_DARK, ink: INK_DARK },
 ];
 
-export async function sheetFamilyPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
-
-  try {
-    for (const { where, ui, sheet, surface, ink } of THEMES) {
-      await land(c, origin, { record: richWith(ui) });
-      await backgroundAndGroupPass(c, ck, where, sheet, surface);
-      await chosenRowPass(c, ck, where, ink);
-      await whoBadgePass(c, ck, where);
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+export async function sheetFamilyPass(c, origin, rec) {
+  for (const { where, ui, sheet, surface, ink } of THEMES) {
+    await land(c, origin, { record: richWith(ui) });
+    await backgroundAndGroupPass(c, rec.check, where, sheet, surface);
+    await chosenRowPass(c, rec.check, where, ink);
+    await whoBadgePass(c, rec.check, where);
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'all five sheets share --sheet/.pgrp, Sub interval’s chosen row is a check with no fill, '
-        + 'and Who’s here’s badge matches the roster’s own -- in light and dark',
-  };
+  rec.ok('all five sheets share --sheet/.pgrp, Sub interval’s chosen row is a check with no fill, '
+    + 'and Who’s here’s badge matches the roster’s own -- in light and dark');
 }

@@ -80,23 +80,20 @@ const TOUCH_MEASURE = `(() => {
     return JSON.stringify(out);
   })()`;
 
-export async function seasonPass(c, origin) {
-  const problems = [];
+export async function seasonPass(c, origin, rec) {
 
   await evalIn(c, step(TODAY_HOME));
   await evalIn(c, step(OPEN_SEASON));
 
   /* ---- minutes so far: count, name/footnote/fill/number, and the order ---- */
   const { want, domRows, wantGameRows } = await readLedger(c);
-  if (domRows.length !== want.length) {
-    problems.push(`${domRows.length} minutes rows on screen, want ${want.length} (one per roster player)`);
-  }
+  rec.check(domRows.length === want.length, `${domRows.length} minutes rows on screen, want ${want.length} (one per roster player)`);
   for (let i = 0; i < Math.min(domRows.length, want.length); i++) {
     const d = domRows[i], w = want[i];
-    if (d.name !== w.name) problems.push(`row ${i}: name ${JSON.stringify(d.name)}, want ${JSON.stringify(w.name)} (order or wiring off)`);
-    if (d.footnote !== w.footnote) problems.push(`row ${i} (${w.name}): footnote ${JSON.stringify(d.footnote)}, want ${JSON.stringify(w.footnote)}`);
-    if (d.minText !== w.minText) problems.push(`row ${i} (${w.name}): minutes ${JSON.stringify(d.minText)}, want ${JSON.stringify(w.minText)}`);
-    if (Math.abs(d.fillPct - w.pct) > 0.5) problems.push(`row ${i} (${w.name}): fill ${d.fillPct}%, want ${w.pct.toFixed(1)}%`);
+    rec.check(d.name === w.name, `row ${i}: name ${JSON.stringify(d.name)}, want ${JSON.stringify(w.name)} (order or wiring off)`);
+    rec.check(d.footnote === w.footnote, `row ${i} (${w.name}): footnote ${JSON.stringify(d.footnote)}, want ${JSON.stringify(w.footnote)}`);
+    rec.check(d.minText === w.minText, `row ${i} (${w.name}): minutes ${JSON.stringify(d.minText)}, want ${JSON.stringify(w.minText)}`);
+    rec.check(!(Math.abs(d.fillPct - w.pct) > 0.5), `row ${i} (${w.name}): fill ${d.fillPct}%, want ${w.pct.toFixed(1)}%`);
   }
 
   /* ---- review #4, superseded by #144 item 2: the minutes bar must still be
@@ -119,9 +116,7 @@ export async function seasonPass(c, origin) {
     }));
   })()`));
   const track0 = rowShapes[0]?.trackW ?? 0;
-  if (track0 < 100) {
-    problems.push(`.sn-track is ${Math.round(track0)}px wide at ${WIDTH}px, want it meaningfully past the original ~88px (≥100px)`);
-  }
+  rec.check(!(track0 < 100), `.sn-track is ${Math.round(track0)}px wide at ${WIDTH}px, want it meaningfully past the original ~88px (≥100px)`);
 
   /* ---- a filed game, opened: its rows and its Delete button ---- */
   const firstGame = await evalIn(c, `(() => {
@@ -137,22 +132,14 @@ export async function seasonPass(c, origin) {
     return JSON.stringify({ rows, delText: del ? del.textContent : null });
   })()`);
   const g0 = JSON.parse(firstGame);
-  if (!g0) {
-    problems.push('no filed game found to open (#view-season details.sn-game)');
-  } else {
-    if (g0.rows.length !== wantGameRows.length) {
-      problems.push(`opened filed game has ${g0.rows.length} row(s), want ${wantGameRows.length}`);
-    }
+  if (rec.check(g0, 'no filed game found to open (#view-season details.sn-game)')) {
+    rec.check(g0.rows.length === wantGameRows.length, `opened filed game has ${g0.rows.length} row(s), want ${wantGameRows.length}`);
     for (let i = 0; i < Math.min(g0.rows.length, wantGameRows.length); i++) {
       const d = g0.rows[i], w = wantGameRows[i];
-      if (d.name !== w.name || d.minText !== w.minText) {
-        problems.push(`filed game row ${i}: ${JSON.stringify(d)}, want ${JSON.stringify(w)}`);
-      }
+      rec.check(!(d.name !== w.name || d.minText !== w.minText), `filed game row ${i}: ${JSON.stringify(d)}, want ${JSON.stringify(w)}`);
     }
     // #141 item 2 (W2): "Remove", not "Delete".
-    if (g0.delText !== 'Remove this game') {
-      problems.push(`filed game's remove control reads ${JSON.stringify(g0.delText)}, want "Remove this game"`);
-    }
+    rec.check(g0.delText === 'Remove this game', `filed game's remove control reads ${JSON.stringify(g0.delText)}, want "Remove this game"`);
   }
 
   /* ---- the day chart moved: gone from Games, present (with its legend) on Season ---- */
@@ -165,8 +152,8 @@ export async function seasonPass(c, origin) {
       dayTotalsInGames: !!document.querySelector('#view-games #daytotals'),
     });
   })()`));
-  if (gameScreen.dayFold) problems.push('#view-games still holds #dayFold — the day chart did not move');
-  if (gameScreen.dayTotalsInGames) problems.push('#view-games still holds #daytotals — the day chart did not move');
+  rec.check(!gameScreen.dayFold, '#view-games still holds #dayFold — the day chart did not move');
+  rec.check(!gameScreen.dayTotalsInGames, '#view-games still holds #daytotals — the day chart did not move');
   await evalIn(c, step(TODAY_HOME));
   await evalIn(c, step(OPEN_SEASON));
 
@@ -175,22 +162,20 @@ export async function seasonPass(c, origin) {
     dayRows: document.querySelectorAll('#view-season #daytotals .dayrow').length,
     legendSpans: document.querySelectorAll('#view-season #daytotals .legend span').length,
   }))()`));
-  if (chart.sectionHidden) problems.push('#daySection is hidden on Season with two games today, want it shown');
-  if (chart.dayRows < 11) problems.push(`#view-season's day chart has ${chart.dayRows} row(s), want 11`);
-  if (chart.legendSpans < 2) problems.push(`#view-season's day chart legend names ${chart.legendSpans} game(s), want 2`);
+  rec.check(!chart.sectionHidden, '#daySection is hidden on Season with two games today, want it shown');
+  rec.check(!(chart.dayRows < 11), `#view-season's day chart has ${chart.dayRows} row(s), want 11`);
+  rec.check(!(chart.legendSpans < 2), `#view-season's day chart legend names ${chart.legendSpans} game(s), want 2`);
 
   /* ---- touch: Export, each summary and each Delete, at 320/360/390px ---- */
   for (const w of TOUCH_WIDTHS) {
     await resize(c, w, HEIGHT);
     const m = JSON.parse(await evalIn(c, TOUCH_MEASURE));
-    if (m.exportBtn && (m.exportBtn.w < 48 || m.exportBtn.h < 48)) {
-      problems.push(`#seasonExport is ${Math.round(m.exportBtn.w)}×${Math.round(m.exportBtn.h)} at ${w}px, want ≥48×48`);
-    }
+    rec.check(!(m.exportBtn && (m.exportBtn.w < 48 || m.exportBtn.h < 48)), `#seasonExport is ${Math.round(m.exportBtn?.w)}×${Math.round(m.exportBtn?.h)} at ${w}px, want ≥48×48`);
     m.summaries.forEach((r, i) => {
-      if (r.w < 48 || r.h < 48) problems.push(`filed-game summary ${i} is ${Math.round(r.w)}×${Math.round(r.h)} at ${w}px, want ≥48×48`);
+      rec.check(!(r.w < 48 || r.h < 48), `filed-game summary ${i} is ${Math.round(r.w)}×${Math.round(r.h)} at ${w}px, want ≥48×48`);
     });
     m.deletes.forEach((r, i) => {
-      if (r.w < 48 || r.h < 48) problems.push(`Delete this game (${i}) is ${Math.round(r.w)}×${Math.round(r.h)} at ${w}px, want ≥48×48`);
+      rec.check(!(r.w < 48 || r.h < 48), `Delete this game (${i}) is ${Math.round(r.w)}×${Math.round(r.h)} at ${w}px, want ≥48×48`);
     });
   }
   await resize(c, WIDTH, HEIGHT);
@@ -206,12 +191,12 @@ export async function seasonPass(c, origin) {
     await evalIn(c, step(TODAY_HOME));
     await evalIn(c, step(s.open));
     const hidden = await evalIn(c, `(() => { const b = document.querySelector('#seasonExport'); return !b || b.hidden; })()`);
-    if (!hidden) problems.push(`#seasonExport is visible on ${s.name}, want it only on Season`);
+    rec.check(hidden, `#seasonExport is visible on ${s.name}, want it only on Season`);
   }
   await evalIn(c, step(TODAY_HOME));
   await evalIn(c, step(OPEN_SEASON));
   const onSeason = await evalIn(c, `(() => { const b = document.querySelector('#seasonExport'); return !!b && !b.hidden; })()`);
-  if (!onSeason) problems.push('#seasonExport is not visible on Season with 3 games filed, want it shown');
+  rec.check(onSeason, '#seasonExport is not visible on Season with 3 games filed, want it shown');
 
   /* ---- #263 I: the spreadsheet Export hands over. The download is caught in
      the page (capture.mjs) and its name, type, first bytes and first line are
@@ -226,19 +211,18 @@ export async function seasonPass(c, origin) {
       const r = await capRead(c);
       const team = await evalIn(c, `import('/state.js').then(s => s.state.teamName)`);
       const f = r.clicks[0];
-      if (r.clicks.length !== 1) problems.push(`Export clicked ${r.clicks.length} download(s), want 1`);
-      else {
+      if (rec.check(r.clicks.length === 1, `Export clicked ${r.clicks.length} download(s), want 1`)) {
         const want = seasonFilename(team, smokeToday());
-        if (f.download !== want) problems.push(`the spreadsheet is named "${f.download}", want "${want}"`);
-        if (f.type !== 'text/csv;charset=utf-8') problems.push(`the spreadsheet's type is "${f.type}", want text/csv;charset=utf-8`);
-        if (!f.text.startsWith('\uFEFF')) problems.push('the spreadsheet does not start with a byte-order mark');
+        rec.check(f.download === want, `the spreadsheet is named "${f.download}", want "${want}"`);
+        rec.check(f.type === 'text/csv;charset=utf-8', `the spreadsheet's type is "${f.type}", want text/csv;charset=utf-8`);
+        rec.check(f.text.startsWith('\uFEFF'), 'the spreadsheet does not start with a byte-order mark');
         const head = 'Player,Jul 11 vs Comets,Jul 18 vs Falcons,Aug 1 vs Wolves,Total';
         const first = f.text.slice(1).split('\r\n')[0];
-        if (first !== head) problems.push(`the spreadsheet's first line is ${JSON.stringify(first)}, want ${JSON.stringify(head)}`);
-        if (/[^\r]\n/.test(f.text) || !f.text.endsWith('\r\n')) problems.push('the spreadsheet does not end every line with \\r\\n');
-        if (f.text.split('\r\n').length !== 13) problems.push(`the spreadsheet has ${f.text.split('\r\n').length - 1} lines, want 12 (a header and 11 players)`);
+        rec.check(first === head, `the spreadsheet's first line is ${JSON.stringify(first)}, want ${JSON.stringify(head)}`);
+        rec.check(!(/[^\r]\n/.test(f.text) || !f.text.endsWith('\r\n')), 'the spreadsheet does not end every line with \\r\\n');
+        rec.check(f.text.split('\r\n').length === 13, `the spreadsheet has ${f.text.split('\r\n').length - 1} lines, want 12 (a header and 11 players)`);
       }
-      if (r.toasts.join('|') !== 'Spreadsheet saved.') problems.push(`Export toasted ${JSON.stringify(r.toasts)}, want ["Spreadsheet saved."]`);
+      rec.check(r.toasts.join('|') === 'Spreadsheet saved.', `Export toasted ${JSON.stringify(r.toasts)}, want ["Spreadsheet saved."]`);
     } finally {
       await capRestore(c);
     }
@@ -257,9 +241,7 @@ export async function seasonPass(c, origin) {
     // other two would only repeat the same fact.
     if (i === 0) {
       const toastText = await evalIn(c, `document.querySelector('.toast .tmsg')?.textContent || ''`);
-      if (!/^Removed .* from the season\.$/.test(toastText)) {
-        problems.push(`removing a filed game toasts ${JSON.stringify(toastText)}, want "Removed <title> from the season."`);
-      }
+      rec.check(/^Removed .* from the season\.$/.test(toastText), `removing a filed game toasts ${JSON.stringify(toastText)}, want "Removed <title> from the season."`);
     }
   }
   /* The count line under the title used to read "Nothing filed yet" with
@@ -276,27 +258,18 @@ export async function seasonPass(c, origin) {
     exportHidden: document.querySelector('#seasonExport')?.hidden ?? true,
     saysEmpty: (document.querySelector('#view-season')?.innerText.match(/Games file here/g) || []).length,
   }))()`));
-  if (emptied.gamesLeft !== 0) problems.push(`${emptied.gamesLeft} filed game(s) remain after deleting all three, want 0`);
-  if (!emptied.exportHidden) problems.push('#seasonExport is visible with nothing filed, want it hidden');
-  if (emptied.saysEmpty !== 1) {
-    problems.push(`the empty Season says "Games file here" ${emptied.saysEmpty} time(s), want exactly 1`);
-  }
+  rec.check(emptied.gamesLeft === 0, `${emptied.gamesLeft} filed game(s) remain after deleting all three, want 0`);
+  rec.check(emptied.exportHidden, '#seasonExport is visible with nothing filed, want it hidden');
+  rec.check(emptied.saysEmpty === 1, `the empty Season says "Games file here" ${emptied.saysEmpty} time(s), want exactly 1`);
 
   await evalIn(c, `(async () => { document.querySelector('.toast .tundo')?.click(); await ${SETTLE}; })()`);
   const undone = JSON.parse(await evalIn(c, `(() => JSON.stringify({
     gamesLeft: document.querySelectorAll('#view-season details.sn-game').length,
     exportHidden: document.querySelector('#seasonExport')?.hidden ?? true,
   }))()`));
-  if (undone.gamesLeft !== 1) problems.push(`undoing the last delete left ${undone.gamesLeft} filed game(s) on screen, want 1`);
-  if (undone.exportHidden) {
-    problems.push('#seasonExport stayed hidden after Undo restored the last filed game — the button is only ever hidden, never shown, on a refresh that is not setView/applyView');
-  }
+  rec.check(undone.gamesLeft === 1, `undoing the last delete left ${undone.gamesLeft} filed game(s) on screen, want 1`);
+  rec.check(!undone.exportHidden, '#seasonExport stayed hidden after Undo restored the last filed game — the button is only ever hidden, never shown, on a refresh that is not setView/applyView');
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${domRows.length} minutes rows in order, a filed game's ${wantGameRows.length} rows and Remove read back, `
-        + `the day chart on Season only, Export 48×48 at ${TOUCH_WIDTHS.join('/')}px and nowhere else`,
-  };
+  rec.ok(`${domRows.length} minutes rows in order, a filed game's ${wantGameRows.length} rows and Remove read back, `
+    + `the day chart on Season only, Export 48×48 at ${TOUCH_WIDTHS.join('/')}px and nowhere else`);
 }

@@ -95,10 +95,9 @@ async function atWidth(c, w) {
   await resize(c, w, HEIGHT, { debounce: true });
 }
 
-export async function wideLayoutPass(c, origin) {
-  const problems = [];
-  let audited = 0;
-  const ck = (cond, msg) => { audited++; if (!cond) problems.push(msg); return cond; };
+export async function wideLayoutPass(c, origin, rec) {
+  let skipped = 0;   // measurements a missing box could not take; still counted
+  const audited = () => rec.checks + skipped;
   const read = () => evalJSON(c, PROBE);
 
   try {
@@ -141,10 +140,10 @@ export async function wideLayoutPass(c, origin) {
         left: Math.round(r.left),
       });
     })()`);
-    ck(warn.view === 'welcome',
+    rec.check(warn.view === 'welcome',
       `expected the wiped landing to still be Welcome, got data-view="${warn.view}"`);
-    ck(!!warn.text, 'save() through a forced setItem failure did not populate #storagewarn -- nothing to measure');
-    ck(warn.left === 0,
+    rec.check(!!warn.text, 'save() through a forced setItem failure did not populate #storagewarn -- nothing to measure');
+    rec.check(warn.left === 0,
       `Welcome at ${LAPTOP}px: #storagewarn starts at ${warn.left}px, want 0 -- decision 4 excludes `
       + 'Welcome from the rail and the banner must too');
     await land(c, origin);
@@ -163,42 +162,42 @@ export async function wideLayoutPass(c, origin) {
       // measurements (`audited`): it has already pushed a message naming the
       // real failure, and a short count would hand the blame to the audit
       // floor instead.
-      if (ck(home.rail && home.rail.on, `${where}: #view-today is not on screen -- the left rail is missing`)) {
-        ck(home.rail.left === 0, `${where}: the rail starts at ${home.rail.left}px, want 0`);
-        ck(home.rail.width === RAIL, `${where}: the rail is ${home.rail.width}px wide, want ${RAIL}`);
-      } else { audited += 2; }
+      if (rec.check(home.rail && home.rail.on, `${where}: #view-today is not on screen -- the left rail is missing`)) {
+        rec.check(home.rail.left === 0, `${where}: the rail starts at ${home.rail.left}px, want 0`);
+        rec.check(home.rail.width === RAIL, `${where}: the rail is ${home.rail.width}px wide, want ${RAIL}`);
+      } else { skipped += 2; }
       /* Decision 7: on Today the right pane's resting state is the open game,
          so BOTH panes are on screen and the game starts where the rail ends.
          Item 2's own number falls straight out of it: 1280 - 360 = 920. */
-      if (ck(home.games && home.games.on,
+      if (rec.check(home.games && home.games.on,
         `${where}: the game is not on screen beside Today -- the right pane is empty`)) {
-        ck(home.games.left === RAIL,
+        rec.check(home.games.left === RAIL,
           `${where}: the open screen starts at ${home.games.left}px, want ${RAIL} (the rail's own width)`);
-        ck(home.games.width === home.vw - RAIL,
+        rec.check(home.games.width === home.vw - RAIL,
           `${where}: the right pane is ${home.games.width}px wide, want ${home.vw - RAIL}`);
-      } else { audited += 2; }
+      } else { skipped += 2; }
       /* Decision 7's second consequence: the floating Start-game bar is a
          narrow-screen affordance, so only one bottom bar is ever on screen
          here and `measureChromeHeights`'s one-bar assumption still holds. */
-      ck(!(home.actionbar && home.actionbar.on),
+      rec.check(!(home.actionbar && home.actionbar.on),
         `${where}: #actionbar is still drawn -- above ${WIDE_MIN}px the inline .gm-start row carries Start game`);
       // Today's own floating action, pinned to the rail because it belongs to
       // the rail. Only when the fixture has a part-played game to resume.
       if (home.resume && home.resume.on) {
-        ck(home.resume.left === 0, `${where}: #resumeBar starts at ${home.resume.left}px, want 0`);
-        ck(home.resume.width <= RAIL,
+        rec.check(home.resume.left === 0, `${where}: #resumeBar starts at ${home.resume.left}px, want 0`);
+        rec.check(home.resume.width <= RAIL,
           `${where}: #resumeBar is ${home.resume.width}px wide -- it belongs to the ${RAIL}px rail, not the window`);
       }
 
       /* "Choosing Team on the left replaces the right pane." */
       await tap(c, openOf('team'));
       const team = await read();
-      ck(team.rail && team.rail.on && team.rail.left === 0 && team.rail.width === RAIL,
+      rec.check(team.rail && team.rail.on && team.rail.left === 0 && team.rail.width === RAIL,
         `${where}: the rail did not survive opening Team (${JSON.stringify(team.rail)})`);
-      ck(team.team && team.team.on, `${where}: Team did not open in the right pane`);
-      ck(team.team && team.team.left === RAIL,
+      rec.check(team.team && team.team.on, `${where}: Team did not open in the right pane`);
+      rec.check(team.team && team.team.left === RAIL,
         `${where}: Team starts at ${team.team && team.team.left}px, want ${RAIL}`);
-      ck(!(team.games && team.games.on),
+      rec.check(!(team.games && team.games.on),
         `${where}: the game is still drawn under Team -- Team covers it, it does not sit beside it`);
 
       /* "Pressing back puts the game back." Back from Team is Today, and at
@@ -206,9 +205,9 @@ export async function wideLayoutPass(c, origin) {
          acceptance criterion means by the previous choice coming back. */
       await tap(c, `document.querySelector('#backBtn').click()`);
       const back = await read();
-      ck(back.games && back.games.on,
+      rec.check(back.games && back.games.on,
         `${where}: back from Team left the right pane empty -- the open game did not come back`);
-      ck(back.games && back.games.left === RAIL,
+      rec.check(back.games && back.games.left === RAIL,
         `${where}: after back the game starts at ${back.games && back.games.left}px, want ${RAIL}`);
     }
 
@@ -230,13 +229,13 @@ export async function wideLayoutPass(c, origin) {
     await atWidth(c, WIDE_BELOW);
     await tap(c, TODAY_HOME);
     await tap(c, openOf('games'));
-    ck((await read()).actionbar?.on,
+    rec.check((await read()).actionbar?.on,
       `${WIDE_BELOW}px: #actionbar is not drawn on the game screen, so the crossing below `
       + 'starts from the wrong place and proves nothing');
 
     await atWidth(c, WIDE_MIN);
     const wider = await read();
-    ck(wider.actionbar?.hidden === true,
+    rec.check(wider.actionbar?.hidden === true,
       `${WIDE_BELOW} -> ${WIDE_MIN}px without navigating: #actionbar has no hidden attribute, so `
       + `measureChromeHeights takes --ab-h from a bar that is not drawn and the rail's last game `
       + 'entry sits under the Resume bar');
@@ -250,7 +249,7 @@ export async function wideLayoutPass(c, origin) {
     await tap(c, TODAY_HOME);
     await tap(c, openOf('games'));
     await atWidth(c, WIDE_BELOW);
-    ck((await read()).actionbar?.on,
+    rec.check((await read()).actionbar?.on,
       `${WIDE_MIN} -> ${WIDE_BELOW}px without navigating: #actionbar is still hidden from the wide `
       + 'layout, and .gm-start is hidden at this width too -- the coach has no way to start a game');
 
@@ -264,7 +263,7 @@ export async function wideLayoutPass(c, origin) {
       const one = await read();
       // Item 3's first half: below WIDE_MIN there is no rail, so Today is off
       // screen while the game is the current screen, exactly as on a phone.
-      ck(!(one.rail && one.rail.on),
+      rec.check(!(one.rail && one.rail.on),
         `${where}: #view-today is on screen under the game -- the two-pane layout starts at ${WIDE_MIN}px, not here`);
 
       // The card sheet is the one `dialog.bsheet` reachable from the game
@@ -272,21 +271,21 @@ export async function wideLayoutPass(c, origin) {
       // these two widths are measured on.
       await tap(c, `document.getElementById('shareBtn').click()`);
       const s = (await read()).sheet;
-      if (ck(s && s.on, `${where}: #shareBtn did not open a dialog.bsheet, so nothing was measured`)) {
+      if (rec.check(s && s.on, `${where}: #shareBtn did not open a dialog.bsheet, so nothing was measured`)) {
         if (w >= SHEET_MIN) {
           // Item 3: centered, capped, clear of all four edges.
-          ck(s.width <= SHEET_CAP, `${where}: the sheet is ${s.width}px wide, want at most ${SHEET_CAP}`);
-          ck(s.left > 0, `${where}: the sheet's left edge is at ${s.left}px -- a centered dialog is clear of the edge`);
-          ck(s.right < one.vw, `${where}: the sheet reaches ${s.right}px of ${one.vw}px -- it is still full width`);
-          ck(s.top > 0, `${where}: the sheet's top edge is at ${s.top}px -- it is still a full-height sheet`);
+          rec.check(s.width <= SHEET_CAP, `${where}: the sheet is ${s.width}px wide, want at most ${SHEET_CAP}`);
+          rec.check(s.left > 0, `${where}: the sheet's left edge is at ${s.left}px -- a centered dialog is clear of the edge`);
+          rec.check(s.right < one.vw, `${where}: the sheet reaches ${s.right}px of ${one.vw}px -- it is still full width`);
+          rec.check(s.top > 0, `${where}: the sheet's top edge is at ${s.top}px -- it is still a full-height sheet`);
         } else {
           // Item 4: one pixel below the breakpoint nothing has changed.
-          ck(s.width >= one.vw - 1,
+          rec.check(s.width >= one.vw - 1,
             `${where}: the sheet is ${s.width}px wide in a ${one.vw}px window -- below ${SHEET_MIN}px it is still full width`);
-          ck(s.bottom >= one.vh - 1,
+          rec.check(s.bottom >= one.vh - 1,
             `${where}: the sheet's bottom edge is at ${s.bottom}px of ${one.vh}px -- below ${SHEET_MIN}px it is flush to the bottom`);
         }
-      } else if (w >= SHEET_MIN) { audited += 4; } else { audited += 2; }
+      } else if (w >= SHEET_MIN) { skipped += 4; } else { skipped += 2; }
       await tap(c, `document.getElementById('sheetCardClose')?.click()`);
     }
   } finally {
@@ -301,18 +300,12 @@ export async function wideLayoutPass(c, origin) {
   }
 
   // Rule 2a: nothing measured is a failure, not a pass.
-  if (!problems.length && audited < AUDIT_FLOOR) {
-    problems.push(`only ${audited} measurement(s) were made, want at least ${AUDIT_FLOOR}`
+  if (!rec.failures.length && audited() < AUDIT_FLOOR) {
+    rec.fail(`only ${audited()} measurement(s) were made, want at least ${AUDIT_FLOOR}`
       + ' -- the probes came back empty, so this row proves nothing');
   }
 
-  const pass = problems.length === 0;
-  return {
-    pass,
-    detail: pass
-      ? `${audited} measurements: ${RAIL}px rail at left 0 and the open screen at ${RAIL}px, `
-        + `${WIDE_WIDTHS.join('px and ')}px; Team replaces the right pane and back restores the game; `
-        + `the sheet is centered at ${SHEET_MIN}px and flush to the bottom at ${SHEET_BELOW}px`
-      : `${problems.length} of ${audited}: ${problems.slice(0, 6).join('; ')}${problems.length > 6 ? ' …' : ''}`,
-  };
+  rec.ok(`${audited()} measurements: ${RAIL}px rail at left 0 and the open screen at ${RAIL}px, `
+    + `${WIDE_WIDTHS.join('px and ')}px; Team replaces the right pane and back restores the game; `
+    + `the sheet is centered at ${SHEET_MIN}px and flush to the bottom at ${SHEET_BELOW}px`);
 }

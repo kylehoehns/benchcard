@@ -824,35 +824,23 @@ async function emptyStateOk(c, ck) {
   ck(s.teamEditHidden, 'with nobody on the roster, #teamEdit is still shown -- there is nothing to reorder');
 }
 
-export async function teamScreenPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
+export async function teamScreenPass(c, origin, rec) {
+  await toTeam(c);
+  await rosterListOk(c, rec.check);
+  await rosterRowsFitOk(c, rec.check, 'RICH', ROSTER.length);
+  await nothingEditableOnTeam(c, rec.check);
+  await noDragOnTappingRow(c, rec.check);
+  if (await playerSheetOk(c, rec.check)) await removeAndUndoOk(c, rec.check);
+  await addSheetOk(c, rec.check);
+  await pasteSheetOk(c, rec.check);
+  await largeTextOk(c, rec.check, origin);
+  await editModeOk(c, rec.check);
+  await addPasteCommitOk(c, rec.check);
+  await resetLevelsOk(c, rec.check);
+  await emptyStateOk(c, rec.check);
+  await sampleRosterRowsOk(c, origin, rec.check);
 
-  try {
-    await toTeam(c);
-    await rosterListOk(c, ck);
-    await rosterRowsFitOk(c, ck, 'RICH', ROSTER.length);
-    await nothingEditableOnTeam(c, ck);
-    await noDragOnTappingRow(c, ck);
-    if (await playerSheetOk(c, ck)) await removeAndUndoOk(c, ck);
-    await addSheetOk(c, ck);
-    await pasteSheetOk(c, ck);
-    await largeTextOk(c, ck, origin);
-    await editModeOk(c, ck);
-    await addPasteCommitOk(c, ck);
-    await resetLevelsOk(c, ck);
-    await emptyStateOk(c, ck);
-    await sampleRosterRowsOk(c, origin, ck);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
-  }
-
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : `the roster list holds at ${TOUCH_WIDTHS.join('/')}px on both rosters `
-        + `(${ROSTER.length} rich rows, ${SAMPLE_PLAYERS.length} sample rows, none clipped), `
-        + 'and nothing on Team is editable outside a sheet',
-  };
+  rec.ok(`the roster list holds at ${TOUCH_WIDTHS.join('/')}px on both rosters `
+    + `(${ROSTER.length} rich rows, ${SAMPLE_PLAYERS.length} sample rows, none clipped), `
+    + 'and nothing on Team is editable outside a sheet');
 }

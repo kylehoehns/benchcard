@@ -202,306 +202,295 @@ async function firstOpenFits(c, ck, origin, size, where) {
   await tap(c, `document.getElementById('sheetCardClose').click()`);
 }
 
-export async function timelineCardSheetPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
+export async function timelineCardSheetPass(c, origin, rec) {
 
-  try {
-    await land(c, origin); // Hawks, games view, Timeline shown, #sheetCard closed
+  await land(c, origin); // Hawks, games view, Timeline shown, #sheetCard closed
 
-    /* ---- item 1: the segment, both ways ---- */
-    let seg = await evalJSON(c, `JSON.stringify({
-      tlHidden: document.getElementById('timeline').hidden,
-      sheetHidden: document.getElementById('sheet').hidden,
-      pressed: [...document.querySelectorAll('#viewSeg button[data-view]')].map(b => b.getAttribute('aria-pressed')),
-    })`);
-    ck(!seg.tlHidden && seg.sheetHidden, `on arrival #timeline.hidden=${seg.tlHidden}, #sheet.hidden=${seg.sheetHidden}, want Timeline shown`);
-    ck(JSON.stringify(seg.pressed) === JSON.stringify(['true', 'false']),
-      `#viewSeg aria-pressed reads ${JSON.stringify(seg.pressed)} on arrival, want only Timeline pressed`);
+  /* ---- item 1: the segment, both ways ---- */
+  let seg = await evalJSON(c, `JSON.stringify({
+    tlHidden: document.getElementById('timeline').hidden,
+    sheetHidden: document.getElementById('sheet').hidden,
+    pressed: [...document.querySelectorAll('#viewSeg button[data-view]')].map(b => b.getAttribute('aria-pressed')),
+  })`);
+  rec.check(!seg.tlHidden && seg.sheetHidden, `on arrival #timeline.hidden=${seg.tlHidden}, #sheet.hidden=${seg.sheetHidden}, want Timeline shown`);
+  rec.check(JSON.stringify(seg.pressed) === JSON.stringify(['true', 'false']),
+    `#viewSeg aria-pressed reads ${JSON.stringify(seg.pressed)} on arrival, want only Timeline pressed`);
 
-    await tap(c, `document.querySelector('#viewSeg button[data-view="card"]').click()`);
-    seg = await evalJSON(c, `JSON.stringify({
-      tlHidden: document.getElementById('timeline').hidden,
-      sheetHidden: document.getElementById('sheet').hidden,
-      pressed: [...document.querySelectorAll('#viewSeg button[data-view]')].map(b => b.getAttribute('aria-pressed')),
-      right: document.getElementById('sheet').getBoundingClientRect().right,
-    })`);
-    ck(seg.tlHidden && !seg.sheetHidden, `after tapping Card, #timeline.hidden=${seg.tlHidden}, #sheet.hidden=${seg.sheetHidden}, want the card shown and the timeline hidden`);
-    ck(JSON.stringify(seg.pressed) === JSON.stringify(['false', 'true']),
-      `#viewSeg aria-pressed reads ${JSON.stringify(seg.pressed)} on Card, want only Card pressed`);
-    ck(seg.right <= WIDTH + 1, `#sheet's right edge sits at ${Math.round(seg.right)}px in a ${WIDTH}px viewport -- it pans sideways`);
+  await tap(c, `document.querySelector('#viewSeg button[data-view="card"]').click()`);
+  seg = await evalJSON(c, `JSON.stringify({
+    tlHidden: document.getElementById('timeline').hidden,
+    sheetHidden: document.getElementById('sheet').hidden,
+    pressed: [...document.querySelectorAll('#viewSeg button[data-view]')].map(b => b.getAttribute('aria-pressed')),
+    right: document.getElementById('sheet').getBoundingClientRect().right,
+  })`);
+  rec.check(seg.tlHidden && !seg.sheetHidden, `after tapping Card, #timeline.hidden=${seg.tlHidden}, #sheet.hidden=${seg.sheetHidden}, want the card shown and the timeline hidden`);
+  rec.check(JSON.stringify(seg.pressed) === JSON.stringify(['false', 'true']),
+    `#viewSeg aria-pressed reads ${JSON.stringify(seg.pressed)} on Card, want only Card pressed`);
+  rec.check(seg.right <= WIDTH + 1, `#sheet's right edge sits at ${Math.round(seg.right)}px in a ${WIDTH}px viewport -- it pans sideways`);
 
-    /* ---- item 8: #sheet (the game's own Card view) is untouched by #143's
-       `#sheetCardPreview:has(.card:not(.half))` rule (card.css) -- that rule
-       names an id #sheet does not carry. Its pocket card still renders at
-       zoom 1, 331.2px wide -- the spec's own survey number for this exact
-       stage (docs/specs/143-sheets.md item 7), not re-derived from
-       `fitStage`'s formula. */
-    const sheetOwnCard = await evalJSON(c, `(() => {
-      const stage = document.getElementById('sheet');
-      const card = stage.querySelector('.card:not(.half)');
-      const cr = card.getBoundingClientRect();
-      return JSON.stringify({ w: cr.width, maxWidth: getComputedStyle(stage).maxWidth });
-    })()`);
-    ck(Math.abs(sheetOwnCard.w - 331.2) <= 1,
-      `#sheet's own pocket card measures ${sheetOwnCard.w.toFixed(1)}px wide, want 331.2px (unchanged by #143)`);
-    ck(sheetOwnCard.maxWidth === 'none',
-      `#sheet's own computed max-width reads "${sheetOwnCard.maxWidth}", want "none" -- #143's #sheetCardPreview-only rule must not reach it`);
+  /* ---- item 8: #sheet (the game's own Card view) is untouched by #143's
+     `#sheetCardPreview:has(.card:not(.half))` rule (card.css) -- that rule
+     names an id #sheet does not carry. Its pocket card still renders at
+     zoom 1, 331.2px wide -- the spec's own survey number for this exact
+     stage (docs/specs/143-sheets.md item 7), not re-derived from
+     `fitStage`'s formula. */
+  const sheetOwnCard = await evalJSON(c, `(() => {
+    const stage = document.getElementById('sheet');
+    const card = stage.querySelector('.card:not(.half)');
+    const cr = card.getBoundingClientRect();
+    return JSON.stringify({ w: cr.width, maxWidth: getComputedStyle(stage).maxWidth });
+  })()`);
+  rec.check(Math.abs(sheetOwnCard.w - 331.2) <= 1,
+    `#sheet's own pocket card measures ${sheetOwnCard.w.toFixed(1)}px wide, want 331.2px (unchanged by #143)`);
+  rec.check(sheetOwnCard.maxWidth === 'none',
+    `#sheet's own computed max-width reads "${sheetOwnCard.maxWidth}", want "none" -- #143's #sheetCardPreview-only rule must not reach it`);
 
-    /* ---- item 1: a reload keeps Card chosen ---- */
-    await land(c, origin, { record: 'kept' });
-    const afterReload = await evalJSON(c, `JSON.stringify({
-      onGames: document.getElementById('view-games')?.hidden === false,
-      sheetHidden: document.getElementById('sheet')?.hidden,
-      tlHidden: document.getElementById('timeline')?.hidden,
-      pressed: [...document.querySelectorAll('#viewSeg button[data-view]')].map(b => b.getAttribute('aria-pressed')),
-    })`);
-    ck(afterReload.onGames, 'the games view is not on screen after a reload -- the record did not round-trip');
-    ck(!afterReload.sheetHidden && afterReload.tlHidden,
-      `after a reload, #sheet.hidden=${afterReload.sheetHidden}, #timeline.hidden=${afterReload.tlHidden}, want Card still chosen`);
-    ck(JSON.stringify(afterReload.pressed) === JSON.stringify(['false', 'true']),
-      `#viewSeg aria-pressed reads ${JSON.stringify(afterReload.pressed)} after a reload, want Card still pressed`);
+  /* ---- item 1: a reload keeps Card chosen ---- */
+  await land(c, origin, { record: 'kept' });
+  const afterReload = await evalJSON(c, `JSON.stringify({
+    onGames: document.getElementById('view-games')?.hidden === false,
+    sheetHidden: document.getElementById('sheet')?.hidden,
+    tlHidden: document.getElementById('timeline')?.hidden,
+    pressed: [...document.querySelectorAll('#viewSeg button[data-view]')].map(b => b.getAttribute('aria-pressed')),
+  })`);
+  rec.check(afterReload.onGames, 'the games view is not on screen after a reload -- the record did not round-trip');
+  rec.check(!afterReload.sheetHidden && afterReload.tlHidden,
+    `after a reload, #sheet.hidden=${afterReload.sheetHidden}, #timeline.hidden=${afterReload.tlHidden}, want Card still chosen`);
+  rec.check(JSON.stringify(afterReload.pressed) === JSON.stringify(['false', 'true']),
+    `#viewSeg aria-pressed reads ${JSON.stringify(afterReload.pressed)} after a reload, want Card still pressed`);
 
-    // back to Timeline, for what follows.
-    await tap(c, `document.querySelector('#viewSeg button[data-view="timeline"]').click()`);
-    const backToTl = await evalJSON(c, `JSON.stringify({
-      tlHidden: document.getElementById('timeline').hidden,
-      sheetHidden: document.getElementById('sheet').hidden,
-    })`);
-    ck(!backToTl.tlHidden && backToTl.sheetHidden, 'tapping Timeline after a reload does not switch back');
+  // back to Timeline, for what follows.
+  await tap(c, `document.querySelector('#viewSeg button[data-view="timeline"]').click()`);
+  const backToTl = await evalJSON(c, `JSON.stringify({
+    tlHidden: document.getElementById('timeline').hidden,
+    sheetHidden: document.getElementById('sheet').hidden,
+  })`);
+  rec.check(!backToTl.tlHidden && backToTl.sheetHidden, 'tapping Timeline after a reload does not switch back');
 
-    /* ---- item 3: #shareBtn opens "The card" ---- */
-    const shareBtn = await evalJSON(c, `(() => {
-      const b = document.getElementById('shareBtn');
-      const r = b.getBoundingClientRect();
-      return JSON.stringify({ label: b.getAttribute('aria-label'), hidden: b.hidden, w: r.width, h: r.height });
-    })()`);
-    ck(shareBtn.label === 'Share or hand off', `#shareBtn's aria-label reads "${shareBtn.label}", want "Share or hand off"`);
-    ck(!shareBtn.hidden, '#shareBtn is hidden on the game screen');
-    ck(shareBtn.w >= 48 && shareBtn.h >= 48, `#shareBtn measures ${Math.round(shareBtn.w)}×${Math.round(shareBtn.h)}, want at least 48×48`);
+  /* ---- item 3: #shareBtn opens "The card" ---- */
+  const shareBtn = await evalJSON(c, `(() => {
+    const b = document.getElementById('shareBtn');
+    const r = b.getBoundingClientRect();
+    return JSON.stringify({ label: b.getAttribute('aria-label'), hidden: b.hidden, w: r.width, h: r.height });
+  })()`);
+  rec.check(shareBtn.label === 'Share or hand off', `#shareBtn's aria-label reads "${shareBtn.label}", want "Share or hand off"`);
+  rec.check(!shareBtn.hidden, '#shareBtn is hidden on the game screen');
+  rec.check(shareBtn.w >= 48 && shareBtn.h >= 48, `#shareBtn measures ${Math.round(shareBtn.w)}×${Math.round(shareBtn.h)}, want at least 48×48`);
 
-    await tap(c, `document.getElementById('shareBtn').click()`);
-    const sheet1 = await evalJSON(c, `(() => {
-      const rowLabels = [...document.querySelectorAll('#sheetCard .prow .prow-t')].map(t => t.textContent);
-      return JSON.stringify({
-        open: document.getElementById('sheetCard').open,
-        title: document.getElementById('sheetCardTitle')?.textContent,
-        hasPreviewCard: !!document.querySelector('#sheetCardPreview .card'),
-        printLabel: document.getElementById('print')?.textContent.trim(),
-        shareLabel: document.getElementById('shareCard')?.textContent.trim(),
-        rowLabels,
-        printScope: document.getElementById('printScope')?.value,
-        copies: document.getElementById('copies')?.value,
-        cardSize: document.getElementById('cardSize')?.value,
-        cardId: document.getElementById('cardId')?.value,
-        showMinutes: document.getElementById('showMinutes')?.checked,
-        hasClose: !!document.getElementById('sheetCardClose'),
-      });
-    })()`);
-    ck(sheet1.open, '#sheetCard did not open on tapping #shareBtn');
-    ck(sheet1.title === 'Share', `#sheetCardTitle reads "${sheet1.title}", want "Share"`);
-    ck(sheet1.hasPreviewCard, '#sheetCardPreview has no live .card clone');
-    ck(sheet1.printLabel.includes('Print'), `#print reads "${sheet1.printLabel}", want it to include "Print"`);
-    ck(sheet1.shareLabel.includes('Share image'), `#shareCard reads "${sheet1.shareLabel}", want it to include "Share image"`);
-    ck(JSON.stringify(sheet1.rowLabels) === JSON.stringify(['Print', 'Copies', 'Size', 'Names', 'Minutes strip']),
-      `the sheet's rows read ${JSON.stringify(sheet1.rowLabels)}, want ["Print","Copies","Size","Names","Minutes strip"]`);
-    ck(sheet1.hasClose, '#sheetCardClose (✕) is missing');
-    // The sheet reflects state.ui -- RICH's own fixture (fixtures.mjs's UI).
-    ck(sheet1.printScope === 'game', `#printScope reads "${sheet1.printScope}", want "game" (RICH's own ui.printScope)`);
-    ck(sheet1.copies === '2', `#copies reads "${sheet1.copies}", want "2" (RICH's own ui.copies)`);
-    ck(sheet1.cardSize === 'pocket', `#cardSize reads "${sheet1.cardSize}", want "pocket" (RICH's own ui.cardSize)`);
-    ck(sheet1.cardId === 'short', `#cardId reads "${sheet1.cardId}", want "short" (RICH's own ui.cardId)`);
-    ck(sheet1.showMinutes === true, `#showMinutes.checked is ${sheet1.showMinutes}, want true (RICH's own ui.showMinutes)`);
+  await tap(c, `document.getElementById('shareBtn').click()`);
+  const sheet1 = await evalJSON(c, `(() => {
+    const rowLabels = [...document.querySelectorAll('#sheetCard .prow .prow-t')].map(t => t.textContent);
+    return JSON.stringify({
+      open: document.getElementById('sheetCard').open,
+      title: document.getElementById('sheetCardTitle')?.textContent,
+      hasPreviewCard: !!document.querySelector('#sheetCardPreview .card'),
+      printLabel: document.getElementById('print')?.textContent.trim(),
+      shareLabel: document.getElementById('shareCard')?.textContent.trim(),
+      rowLabels,
+      printScope: document.getElementById('printScope')?.value,
+      copies: document.getElementById('copies')?.value,
+      cardSize: document.getElementById('cardSize')?.value,
+      cardId: document.getElementById('cardId')?.value,
+      showMinutes: document.getElementById('showMinutes')?.checked,
+      hasClose: !!document.getElementById('sheetCardClose'),
+    });
+  })()`);
+  rec.check(sheet1.open, '#sheetCard did not open on tapping #shareBtn');
+  rec.check(sheet1.title === 'Share', `#sheetCardTitle reads "${sheet1.title}", want "Share"`);
+  rec.check(sheet1.hasPreviewCard, '#sheetCardPreview has no live .card clone');
+  rec.check(sheet1.printLabel.includes('Print'), `#print reads "${sheet1.printLabel}", want it to include "Print"`);
+  rec.check(sheet1.shareLabel.includes('Share image'), `#shareCard reads "${sheet1.shareLabel}", want it to include "Share image"`);
+  rec.check(JSON.stringify(sheet1.rowLabels) === JSON.stringify(['Print', 'Copies', 'Size', 'Names', 'Minutes strip']),
+    `the sheet's rows read ${JSON.stringify(sheet1.rowLabels)}, want ["Print","Copies","Size","Names","Minutes strip"]`);
+  rec.check(sheet1.hasClose, '#sheetCardClose (✕) is missing');
+  // The sheet reflects state.ui -- RICH's own fixture (fixtures.mjs's UI).
+  rec.check(sheet1.printScope === 'game', `#printScope reads "${sheet1.printScope}", want "game" (RICH's own ui.printScope)`);
+  rec.check(sheet1.copies === '2', `#copies reads "${sheet1.copies}", want "2" (RICH's own ui.copies)`);
+  rec.check(sheet1.cardSize === 'pocket', `#cardSize reads "${sheet1.cardSize}", want "pocket" (RICH's own ui.cardSize)`);
+  rec.check(sheet1.cardId === 'short', `#cardId reads "${sheet1.cardId}", want "short" (RICH's own ui.cardId)`);
+  rec.check(sheet1.showMinutes === true, `#showMinutes.checked is ${sheet1.showMinutes}, want true (RICH's own ui.showMinutes)`);
 
-    /* ---- fix pass finding 1: row geometry at 390px/16px (the sheet is
-       already open from the check just above) ---- */
-    await cardSheetRowsOk(c, ck, '390px/16px');
-    await cardSheetWidthOk(c, ck, '390px/16px', WIDTH, false);
+  /* ---- fix pass finding 1: row geometry at 390px/16px (the sheet is
+     already open from the check just above) ---- */
+  await cardSheetRowsOk(c, rec.check, '390px/16px');
+  await cardSheetWidthOk(c, rec.check, '390px/16px', WIDTH, false);
 
-    /* ---- item 3: changing Size changes the preview ---- */
-    const beforeSize = await evalJSON(c, `(() => {
-      const el = document.querySelector('#sheetCardPreview .card');
-      const r = el.getBoundingClientRect();
-      return JSON.stringify({ half: el.classList.contains('half'), w: r.width });
-    })()`);
-    /* ---- item 5: the pocket preview shrinks to ~.72 zoom (238px +/-4,
-       centered) so the sheet's five boxes -- the preview, Print, Share
-       image, and the first three option rows -- fit a 390px phone without
-       a scroll, the band it sits on stays inside the group's own inset,
-       and Share image loses its border (a "quiet" button). Reuses
-       `beforeSize` (pocket, captured just above, still the live size) --
-       must run before the tap below switches to "half", which the
-       `:has(.card:not(.half))` rule (card.css) deliberately does not
-       shrink. */
-    ck(beforeSize.w >= 234 && beforeSize.w <= 242,
-      `the pocket preview card measures ${beforeSize.w.toFixed(1)}px wide, want 238px +/-4 (about .72 zoom)`);
-    const band = await evalJSON(c, `(() => {
-      const host = document.getElementById('sheetCardPreview');
-      const hr = host.getBoundingClientRect();
-      const share = document.getElementById('shareCard');
-      const boxes = [hr,
-        ...[...document.querySelectorAll('#printPane .gm-cta .btn')].map(b => b.getBoundingClientRect()),
-        ...[...document.querySelectorAll('#sheetCard .pgrp .prow')].slice(0, 3).map(r => r.getBoundingClientRect())];
-      return JSON.stringify({
-        hostLeft: hr.left, hostRight: hr.right,
-        shareBorder: getComputedStyle(share).borderTopColor,
-        bottoms: boxes.map(b => b.bottom),
-      });
-    })()`);
-    ck(band.hostLeft >= 15.5,
-      `#sheetCardPreview's left edge sits at ${band.hostLeft.toFixed(1)}px, want >= 16px (inside the group's own inset)`);
-    ck(band.hostRight <= 374.5,
-      `#sheetCardPreview's right edge sits at ${band.hostRight.toFixed(1)}px, want <= 374px (inside the group's own inset)`);
-    ck(band.shareBorder === 'rgba(0, 0, 0, 0)',
-      `#shareCard's border color reads "${band.shareBorder}", want transparent -- a quiet button, no border`);
-    for (const b of band.bottoms) {
-      ck(b <= HEIGHT + 1,
-        `something in the card sheet reaches y=${b.toFixed(1)} in a ${HEIGHT}px viewport -- the preview, Print, Share image and the first three rows need to fit without a scroll`);
-    }
-
-    await tap(c, `const s = document.getElementById('cardSize');
-      s.value = 'half'; s.dispatchEvent(new Event('change', { bubbles: true }))`);
-    const afterSize = await evalJSON(c, `(async () => {
-      const el = document.querySelector('#sheetCardPreview .card');
-      const r = el.getBoundingClientRect();
-      const s = await import('/state.js');
-      return JSON.stringify({ half: el.classList.contains('half'), w: r.width, uiCardSize: s.state.ui.cardSize });
-    })()`);
-    ck(afterSize.uiCardSize === 'half', `state.ui.cardSize reads "${afterSize.uiCardSize}" after choosing "Half sheet", want "half"`);
-    ck(afterSize.half && !beforeSize.half, 'the preview card did not pick up the "half" size class after choosing "Half sheet"');
-    ck(afterSize.w !== beforeSize.w, `the preview measures ${Math.round(afterSize.w)}px both before and after changing Size -- it did not change`);
-    // restore pocket.
-    await tap(c, `const s = document.getElementById('cardSize');
-      s.value = 'pocket'; s.dispatchEvent(new Event('change', { bubbles: true }))`);
-
-    // #263 A-D: every way `#shareCard` can end, on the sheet that is open.
-    await shareImageBranches(c, ck);
-
-    await tap(c, `document.getElementById('sheetCardClose').click()`);
-
-    /* ---- item 5: P calls window.print() once, on the game screen ---- */
-    await evalIn(c, `window.__printed = 0; window.print = () => { window.__printed++; }`);
-    await evalIn(c, step(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }))`));
-    const printed = await evalJSON(c, `JSON.stringify(window.__printed)`);
-    ck(printed === 1, `P called window.print() ${printed} time(s) from the game screen, want 1`);
-
-    /* ---- item 7: Stint by stint is a grouped row >= 48px ---- */
-    const stint = await evalJSON(c, `(() => {
-      const s = document.querySelector('#tabledetails > summary');
-      const r = s.getBoundingClientRect();
-      return JSON.stringify({ text: s.textContent.trim(), h: r.height });
-    })()`);
-    ck(stint.text === 'Stint by stint', `#tabledetails' summary reads "${stint.text}", want "Stint by stint"`);
-    ck(stint.h >= 48, `#tabledetails' summary row measures ${Math.round(stint.h)}px tall, want at least 48px`);
-
-    /* ---- item 6: the blocked panel -- the three fixes, and the disabled gate ---- */
-    await evalIn(c, setGame(BREAK_WHO));
-    await settle(c);
-    const whoBlocked = await evalJSON(c, `(() => {
-      const box = document.getElementById('timeline').querySelector('.empty');
-      const btn = box?.querySelector('button');
-      return JSON.stringify({
-        heading: box?.querySelector('.se-t')?.textContent,
-        label: btn?.textContent,
-        gmOpenDisabled: document.getElementById('gmOpen')?.disabled,
-        abBenchDisabled: document.getElementById('abBench')?.disabled,
-        printDisabled: document.getElementById('print')?.disabled,
-        shareDisabled: document.getElementById('shareCard')?.disabled,
-      });
-    })()`);
-    ck(whoBlocked.heading === "This plan can't be built", `the blocked panel reads "${whoBlocked.heading}", want "This plan can't be built"`);
-    ck(whoBlocked.label === "Change who's here", `the fix button reads "${whoBlocked.label}" with only 4 players in, want "Change who's here"`);
-    ck(whoBlocked.gmOpenDisabled === true, '#gmOpen (Start game) is not disabled while blocked');
-    ck(whoBlocked.abBenchDisabled === true, '#abBench (Start game, phone) is not disabled while blocked');
-    ck(whoBlocked.printDisabled === true, '#print is not disabled while blocked');
-    ck(whoBlocked.shareDisabled === true, '#shareCard is not disabled while blocked');
-
-    await tap(c, `document.querySelector('#timeline .empty button').click()`);
-    const whoOpen = await evalJSON(c, `JSON.stringify(document.getElementById('sheetWho')?.open)`);
-    ck(whoOpen === true, `"Change who's here" did not open #sheetWho`);
-    await tap(c, `document.getElementById('sheetWhoClose').click()`);
-
-    // the card sheet still opens while blocked, shows why, and grows no fix
-    // button there (decision 7: the fix is a different sheet).
-    await tap(c, `document.getElementById('shareBtn').click()`);
-    const blockedSheet = await evalJSON(c, `(() => {
-      const empty = document.querySelector('#sheetCardPreview .stage-empty');
-      return JSON.stringify({
-        open: document.getElementById('sheetCard')?.open,
-        heading: empty?.querySelector('.se-t')?.textContent,
-        hasFixButton: !!empty?.querySelector('button'),
-      });
-    })()`);
-    ck(blockedSheet.open, '#sheetCard did not open while the plan is blocked');
-    ck(blockedSheet.heading === "This plan can't be built", `the card sheet's preview reads "${blockedSheet.heading}" while blocked, want "This plan can't be built"`);
-    ck(!blockedSheet.hasFixButton, "the card sheet's blocked preview grew a fix button -- decision 7 keeps the fix one sheet away");
-    await tap(c, `document.getElementById('sheetCardClose').click()`);
-
-    await evalIn(c, setGame(FIX_WHO));
-    await settle(c);
-
-    // 'strategy': Platoon with no unit filled -> "Fill a unit".
-    await evalIn(c, setGame(BREAK_STRATEGY));
-    await settle(c);
-    const unitsBlocked = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .empty button')?.textContent)`);
-    ck(unitsBlocked === 'Fill a unit', `the fix button reads "${unitsBlocked}" with Platoon and no unit filled, want "Fill a unit"`);
-    await tap(c, `document.querySelector('#timeline .empty button').click()`);
-    const stratOpen = await evalJSON(c, `JSON.stringify(document.getElementById('sheetPlan')?.open)`);
-    ck(stratOpen === true, '"Fill a unit" did not open #sheetPlan');
-    await tap(c, `document.getElementById('sheetPlanClose').click()`);
-    await evalIn(c, setGame(FIX_STRATEGY));
-    await settle(c);
-
-    // 'rules': a minutes rule the game cannot satisfy -> "Change the rules".
-    await evalIn(c, setGame(BREAK_RULES));
-    await settle(c);
-    const rulesBlocked = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .empty button')?.textContent)`);
-    ck(rulesBlocked === 'Change the rules', `the fix button reads "${rulesBlocked}" with an unsatisfiable minutes rule, want "Change the rules"`);
-    await tap(c, `document.querySelector('#timeline .empty button').click()`);
-    const rulesOpen = await evalJSON(c, `JSON.stringify(document.getElementById('sheetPlan')?.open)`);
-    ck(rulesOpen === true, '"Change the rules" did not open #sheetPlan');
-    await tap(c, `document.getElementById('sheetPlanClose').click()`);
-    await evalIn(c, setGame(FIX_RULES));
-    await settle(c);
-
-    /* ---- fix pass finding 1: row geometry at 360px/24px and 320px/32px,
-       the other two cells the finding measured ---- */
-    await land(c, origin, { width: MID_TEXT_WIDTH, textPx: MID_TEXT_PX });
-    await tap(c, `document.getElementById('shareBtn').click()`);
-    await cardSheetRowsOk(c, ck, '360px/24px');
-    await cardSheetWidthOk(c, ck, '360px/24px', MID_TEXT_WIDTH);
-    await tap(c, `document.getElementById('sheetCardClose').click()`);
-
-    await land(c, origin, { ...LARGE_TEXT });
-    await tap(c, `document.getElementById('shareBtn').click()`);
-    await cardSheetRowsOk(c, ck, '320px/32px');
-    await cardSheetWidthOk(c, ck, '320px/32px', LARGE_TEXT_WIDTH);
-    await tap(c, `document.getElementById('sheetCardClose').click()`);
-
-    /* C5: with no roster at all, Timeline's own empty-state CTA presses
-       `#emptyAdd` -- Team's own first-run button (`rosterCta`, timeline.js)
-       -- so the two must read the same words rather than drift apart. */
-    await land(c, origin);
-    await tap(c, setGame(`s.team().players.length = 0;`));
-    const want = await evalJSON(c, `JSON.stringify(document.getElementById('emptyAdd')?.textContent.trim())`);
-    const got = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .roster-empty button')?.textContent.trim() ?? null)`);
-    ck(got === want, `the Timeline empty-roster button reads "${got}", want "${want}" (#emptyAdd's own label)`);
-
-    /* ---- fix pass finding 4: the preview fits on the sheet's FIRST open,
-       at both Size values -- each call starts from its own reload, since
-       the bug this guards only shows before `#sheetCard` has ever opened in
-       a page load. */
-    await firstOpenFits(c, ck, origin, 'pocket', 'first open, pocket');
-    await firstOpenFits(c, ck, origin, 'half', 'first open, half');
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+  /* ---- item 3: changing Size changes the preview ---- */
+  const beforeSize = await evalJSON(c, `(() => {
+    const el = document.querySelector('#sheetCardPreview .card');
+    const r = el.getBoundingClientRect();
+    return JSON.stringify({ half: el.classList.contains('half'), w: r.width });
+  })()`);
+  /* ---- item 5: the pocket preview shrinks to ~.72 zoom (238px +/-4,
+     centered) so the sheet's five boxes -- the preview, Print, Share
+     image, and the first three option rows -- fit a 390px phone without
+     a scroll, the band it sits on stays inside the group's own inset,
+     and Share image loses its border (a "quiet" button). Reuses
+     `beforeSize` (pocket, captured just above, still the live size) --
+     must run before the tap below switches to "half", which the
+     `:has(.card:not(.half))` rule (card.css) deliberately does not
+     shrink. */
+  rec.check(beforeSize.w >= 234 && beforeSize.w <= 242,
+    `the pocket preview card measures ${beforeSize.w.toFixed(1)}px wide, want 238px +/-4 (about .72 zoom)`);
+  const band = await evalJSON(c, `(() => {
+    const host = document.getElementById('sheetCardPreview');
+    const hr = host.getBoundingClientRect();
+    const share = document.getElementById('shareCard');
+    const boxes = [hr,
+      ...[...document.querySelectorAll('#printPane .gm-cta .btn')].map(b => b.getBoundingClientRect()),
+      ...[...document.querySelectorAll('#sheetCard .pgrp .prow')].slice(0, 3).map(r => r.getBoundingClientRect())];
+    return JSON.stringify({
+      hostLeft: hr.left, hostRight: hr.right,
+      shareBorder: getComputedStyle(share).borderTopColor,
+      bottoms: boxes.map(b => b.bottom),
+    });
+  })()`);
+  rec.check(band.hostLeft >= 15.5,
+    `#sheetCardPreview's left edge sits at ${band.hostLeft.toFixed(1)}px, want >= 16px (inside the group's own inset)`);
+  rec.check(band.hostRight <= 374.5,
+    `#sheetCardPreview's right edge sits at ${band.hostRight.toFixed(1)}px, want <= 374px (inside the group's own inset)`);
+  rec.check(band.shareBorder === 'rgba(0, 0, 0, 0)',
+    `#shareCard's border color reads "${band.shareBorder}", want transparent -- a quiet button, no border`);
+  for (const b of band.bottoms) {
+    rec.check(b <= HEIGHT + 1,
+      `something in the card sheet reaches y=${b.toFixed(1)} in a ${HEIGHT}px viewport -- the preview, Print, Share image and the first three rows need to fit without a scroll`);
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : "the segment (both ways, and across a reload), #shareBtn, the card sheet's rows, "
-        + 'changing Size, P, Stint by stint and all three blocked-panel fixes hold',
-  };
+  await tap(c, `const s = document.getElementById('cardSize');
+    s.value = 'half'; s.dispatchEvent(new Event('change', { bubbles: true }))`);
+  const afterSize = await evalJSON(c, `(async () => {
+    const el = document.querySelector('#sheetCardPreview .card');
+    const r = el.getBoundingClientRect();
+    const s = await import('/state.js');
+    return JSON.stringify({ half: el.classList.contains('half'), w: r.width, uiCardSize: s.state.ui.cardSize });
+  })()`);
+  rec.check(afterSize.uiCardSize === 'half', `state.ui.cardSize reads "${afterSize.uiCardSize}" after choosing "Half sheet", want "half"`);
+  rec.check(afterSize.half && !beforeSize.half, 'the preview card did not pick up the "half" size class after choosing "Half sheet"');
+  rec.check(afterSize.w !== beforeSize.w, `the preview measures ${Math.round(afterSize.w)}px both before and after changing Size -- it did not change`);
+  // restore pocket.
+  await tap(c, `const s = document.getElementById('cardSize');
+    s.value = 'pocket'; s.dispatchEvent(new Event('change', { bubbles: true }))`);
+
+  // #263 A-D: every way `#shareCard` can end, on the sheet that is open.
+  await shareImageBranches(c, rec.check);
+
+  await tap(c, `document.getElementById('sheetCardClose').click()`);
+
+  /* ---- item 5: P calls window.print() once, on the game screen ---- */
+  await evalIn(c, `window.__printed = 0; window.print = () => { window.__printed++; }`);
+  await evalIn(c, step(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p' }))`));
+  const printed = await evalJSON(c, `JSON.stringify(window.__printed)`);
+  rec.check(printed === 1, `P called window.print() ${printed} time(s) from the game screen, want 1`);
+
+  /* ---- item 7: Stint by stint is a grouped row >= 48px ---- */
+  const stint = await evalJSON(c, `(() => {
+    const s = document.querySelector('#tabledetails > summary');
+    const r = s.getBoundingClientRect();
+    return JSON.stringify({ text: s.textContent.trim(), h: r.height });
+  })()`);
+  rec.check(stint.text === 'Stint by stint', `#tabledetails' summary reads "${stint.text}", want "Stint by stint"`);
+  rec.check(stint.h >= 48, `#tabledetails' summary row measures ${Math.round(stint.h)}px tall, want at least 48px`);
+
+  /* ---- item 6: the blocked panel -- the three fixes, and the disabled gate ---- */
+  await evalIn(c, setGame(BREAK_WHO));
+  await settle(c);
+  const whoBlocked = await evalJSON(c, `(() => {
+    const box = document.getElementById('timeline').querySelector('.empty');
+    const btn = box?.querySelector('button');
+    return JSON.stringify({
+      heading: box?.querySelector('.se-t')?.textContent,
+      label: btn?.textContent,
+      gmOpenDisabled: document.getElementById('gmOpen')?.disabled,
+      abBenchDisabled: document.getElementById('abBench')?.disabled,
+      printDisabled: document.getElementById('print')?.disabled,
+      shareDisabled: document.getElementById('shareCard')?.disabled,
+    });
+  })()`);
+  rec.check(whoBlocked.heading === "This plan can't be built", `the blocked panel reads "${whoBlocked.heading}", want "This plan can't be built"`);
+  rec.check(whoBlocked.label === "Change who's here", `the fix button reads "${whoBlocked.label}" with only 4 players in, want "Change who's here"`);
+  rec.check(whoBlocked.gmOpenDisabled === true, '#gmOpen (Start game) is not disabled while blocked');
+  rec.check(whoBlocked.abBenchDisabled === true, '#abBench (Start game, phone) is not disabled while blocked');
+  rec.check(whoBlocked.printDisabled === true, '#print is not disabled while blocked');
+  rec.check(whoBlocked.shareDisabled === true, '#shareCard is not disabled while blocked');
+
+  await tap(c, `document.querySelector('#timeline .empty button').click()`);
+  const whoOpen = await evalJSON(c, `JSON.stringify(document.getElementById('sheetWho')?.open)`);
+  rec.check(whoOpen === true, `"Change who's here" did not open #sheetWho`);
+  await tap(c, `document.getElementById('sheetWhoClose').click()`);
+
+  // the card sheet still opens while blocked, shows why, and grows no fix
+  // button there (decision 7: the fix is a different sheet).
+  await tap(c, `document.getElementById('shareBtn').click()`);
+  const blockedSheet = await evalJSON(c, `(() => {
+    const empty = document.querySelector('#sheetCardPreview .stage-empty');
+    return JSON.stringify({
+      open: document.getElementById('sheetCard')?.open,
+      heading: empty?.querySelector('.se-t')?.textContent,
+      hasFixButton: !!empty?.querySelector('button'),
+    });
+  })()`);
+  rec.check(blockedSheet.open, '#sheetCard did not open while the plan is blocked');
+  rec.check(blockedSheet.heading === "This plan can't be built", `the card sheet's preview reads "${blockedSheet.heading}" while blocked, want "This plan can't be built"`);
+  rec.check(!blockedSheet.hasFixButton, "the card sheet's blocked preview grew a fix button -- decision 7 keeps the fix one sheet away");
+  await tap(c, `document.getElementById('sheetCardClose').click()`);
+
+  await evalIn(c, setGame(FIX_WHO));
+  await settle(c);
+
+  // 'strategy': Platoon with no unit filled -> "Fill a unit".
+  await evalIn(c, setGame(BREAK_STRATEGY));
+  await settle(c);
+  const unitsBlocked = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .empty button')?.textContent)`);
+  rec.check(unitsBlocked === 'Fill a unit', `the fix button reads "${unitsBlocked}" with Platoon and no unit filled, want "Fill a unit"`);
+  await tap(c, `document.querySelector('#timeline .empty button').click()`);
+  const stratOpen = await evalJSON(c, `JSON.stringify(document.getElementById('sheetPlan')?.open)`);
+  rec.check(stratOpen === true, '"Fill a unit" did not open #sheetPlan');
+  await tap(c, `document.getElementById('sheetPlanClose').click()`);
+  await evalIn(c, setGame(FIX_STRATEGY));
+  await settle(c);
+
+  // 'rules': a minutes rule the game cannot satisfy -> "Change the rules".
+  await evalIn(c, setGame(BREAK_RULES));
+  await settle(c);
+  const rulesBlocked = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .empty button')?.textContent)`);
+  rec.check(rulesBlocked === 'Change the rules', `the fix button reads "${rulesBlocked}" with an unsatisfiable minutes rule, want "Change the rules"`);
+  await tap(c, `document.querySelector('#timeline .empty button').click()`);
+  const rulesOpen = await evalJSON(c, `JSON.stringify(document.getElementById('sheetPlan')?.open)`);
+  rec.check(rulesOpen === true, '"Change the rules" did not open #sheetPlan');
+  await tap(c, `document.getElementById('sheetPlanClose').click()`);
+  await evalIn(c, setGame(FIX_RULES));
+  await settle(c);
+
+  /* ---- fix pass finding 1: row geometry at 360px/24px and 320px/32px,
+     the other two cells the finding measured ---- */
+  await land(c, origin, { width: MID_TEXT_WIDTH, textPx: MID_TEXT_PX });
+  await tap(c, `document.getElementById('shareBtn').click()`);
+  await cardSheetRowsOk(c, rec.check, '360px/24px');
+  await cardSheetWidthOk(c, rec.check, '360px/24px', MID_TEXT_WIDTH);
+  await tap(c, `document.getElementById('sheetCardClose').click()`);
+
+  await land(c, origin, { ...LARGE_TEXT });
+  await tap(c, `document.getElementById('shareBtn').click()`);
+  await cardSheetRowsOk(c, rec.check, '320px/32px');
+  await cardSheetWidthOk(c, rec.check, '320px/32px', LARGE_TEXT_WIDTH);
+  await tap(c, `document.getElementById('sheetCardClose').click()`);
+
+  /* C5: with no roster at all, Timeline's own empty-state CTA presses
+     `#emptyAdd` -- Team's own first-run button (`rosterCta`, timeline.js)
+     -- so the two must read the same words rather than drift apart. */
+  await land(c, origin);
+  await tap(c, setGame(`s.team().players.length = 0;`));
+  const want = await evalJSON(c, `JSON.stringify(document.getElementById('emptyAdd')?.textContent.trim())`);
+  const got = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .roster-empty button')?.textContent.trim() ?? null)`);
+  rec.check(got === want, `the Timeline empty-roster button reads "${got}", want "${want}" (#emptyAdd's own label)`);
+
+  /* ---- fix pass finding 4: the preview fits on the sheet's FIRST open,
+     at both Size values -- each call starts from its own reload, since
+     the bug this guards only shows before `#sheetCard` has ever opened in
+     a page load. */
+  await firstOpenFits(c, rec.check, origin, 'pocket', 'first open, pocket');
+  await firstOpenFits(c, rec.check, origin, 'half', 'first open, half');
+
+  rec.ok("the segment (both ways, and across a reload), #shareBtn, the card sheet's rows, "
+    + 'changing Size, P, Stint by stint and all three blocked-panel fixes hold');
 }

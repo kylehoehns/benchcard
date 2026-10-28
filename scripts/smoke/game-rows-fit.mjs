@@ -68,40 +68,37 @@ const MEASURE = `(() => {
    previous row's for the last one -- so the two never drift apart. It is
    only applied to the `.tl-name` height (`m.names`), since item 3 is about
    the button's own tap-target size, not the row's. */
-function problemsFor(scheme, m) {
-  const problems = [];
-  if (m.count !== 9) { problems.push(`${scheme}: ${m.count} rows carry a data-id, not 9`); return problems; }
-  if (m.scrollY !== 0) problems.push(`${scheme}: the page is scrolled ${m.scrollY}px to see the rows -- item 1 asks for all 9 with no scrolling`);
+function checkRows(rec, scheme, m) {
+  if (m.count !== 9) { rec.fail(`${scheme}: ${m.count} rows carry a data-id, not 9`); return; }
+  rec.check(m.scrollY === 0, `${scheme}: the page is scrolled ${m.scrollY}px to see the rows -- item 1 asks for all 9 with no scrolling`);
   const abTop = m.ab && m.ab.t;
   m.rows.forEach((r, i) => {
-    if (r.t < -0.5) problems.push(`${scheme}: row ${i + 1} starts at y ${r.t}, above the top of the screen`);
-    if (abTop != null && r.b > abTop + 0.5) problems.push(`${scheme}: row ${i + 1} ends at y ${r.b}, past #actionbar's top (${abTop})`);
+    rec.check(r.t >= -0.5, `${scheme}: row ${i + 1} starts at y ${r.t}, above the top of the screen`);
+    rec.check(abTop == null || r.b <= abTop + 0.5, `${scheme}: row ${i + 1} ends at y ${r.b}, past #actionbar's top (${abTop})`);
   });
-  if (!m.bench) problems.push(`${scheme}: #abBench not found`);
-  else if (m.bench.t < -0.5 || m.bench.b > m.vh + 0.5) {
-    problems.push(`${scheme}: #abBench is not fully on screen (top ${m.bench.t}, bottom ${m.bench.b} in a ${m.vh}px-tall viewport)`);
+  if (!m.bench) rec.fail(`${scheme}: #abBench not found`);
+  else {
+    rec.check(m.bench.t >= -0.5 && m.bench.b <= m.vh + 0.5, `${scheme}: #abBench is not fully on screen (top ${m.bench.t}, bottom ${m.bench.b} in a ${m.vh}px-tall viewport)`);
   }
 
   m.names.forEach((r, i) => {
-    if (r.w < 48) problems.push(`${scheme}: .tl-name row ${i + 1} is ${r.w}px wide, under 48px`);
+    rec.check(r.w >= 48, `${scheme}: .tl-name row ${i + 1} is ${r.w}px wide, under 48px`);
     const row = m.rows[i], nextRow = m.rows[i + 1], prevRow = m.rows[i - 1];
     const pitch = nextRow ? nextRow.t - row.t : prevRow ? row.t - prevRow.t : null;
     const next = m.names[i + 1];
     if (pitch != null) {
       const floor = Math.min(48, pitch) - 0.5;
-      if (r.h < floor) problems.push(`${scheme}: .tl-name row ${i + 1} is ${r.h}px tall, under ${floor} (min(48, pitch ${pitch}) - 0.5)`);
+      rec.check(r.h >= floor, `${scheme}: .tl-name row ${i + 1} is ${r.h}px tall, under ${floor} (min(48, pitch ${pitch}) - 0.5)`);
     }
-    if (next && r.b > next.t + 0.5) problems.push(`${scheme}: .tl-name row ${i + 1} (bottom ${r.b}) overlaps row ${i + 2} (top ${next.t})`);
+    rec.check(!next || r.b <= next.t + 0.5, `${scheme}: .tl-name row ${i + 1} (bottom ${r.b}) overlaps row ${i + 2} (top ${next?.t})`);
   });
-  return problems;
 }
 
 /* The toggle (item 4): a real `<button class="tl-name">` gets Enter/Space
    for free from native button semantics, so this is read-only proof that it
    actually happened, not a second implementation of the handler. Run once,
    against the light-mode landing, since none of this is theme-dependent. */
-async function toggleProblems(c) {
-  const problems = [];
+async function checkToggle(c, rec) {
   const readThird = `(() => {
     const btn = document.querySelectorAll('${NAME_SEL}')[2];
     const row = btn.closest('.tl-row');
@@ -117,14 +114,14 @@ async function toggleProblems(c) {
   await evalIn(c, clickThird);
   await evalIn(c, `(async () => { await ${SETTLE}; })()`);
   let r = JSON.parse(await evalIn(c, readThird));
-  if (r.expanded !== 'true') problems.push(`clicking the third .tl-name left aria-expanded="${r.expanded}", not "true"`);
-  if (!r.detailIsNext) problems.push('#tlDetail is not the clicked row\'s next sibling after opening');
+  rec.check(r.expanded === 'true', `clicking the third .tl-name left aria-expanded="${r.expanded}", not "true"`);
+  rec.check(r.detailIsNext, '#tlDetail is not the clicked row\'s next sibling after opening');
 
   await evalIn(c, clickThird);
   await evalIn(c, `(async () => { await ${SETTLE}; })()`);
   r = JSON.parse(await evalIn(c, readThird));
-  if (r.expanded !== 'false') problems.push(`clicking the third .tl-name again left aria-expanded="${r.expanded}", not "false"`);
-  if (r.detailInDoc) problems.push('#tlDetail is still in the document after closing');
+  rec.check(r.expanded === 'false', `clicking the third .tl-name again left aria-expanded="${r.expanded}", not "false"`);
+  rec.check(!r.detailInDoc, '#tlDetail is still in the document after closing');
 
   await evalIn(c, `(() => { document.querySelectorAll('${NAME_SEL}')[2].focus(); })()`);
   /* A native `<button>`'s Enter-key activation is Chromium's own default
@@ -142,34 +139,23 @@ async function toggleProblems(c) {
   await c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
   await evalIn(c, `(async () => { await ${SETTLE}; })()`);
   r = JSON.parse(await evalIn(c, readThird));
-  if (r.expanded !== 'true' || !r.detailIsNext) problems.push('pressing Enter on a focused .tl-name did not open its detail');
+  rec.check(r.expanded === 'true' && r.detailIsNext, 'pressing Enter on a focused .tl-name did not open its detail');
 
-  return problems;
 }
 
-export async function gameRowsFitPass(c, origin) {
-  const problems = [];
+export async function gameRowsFitPass(c, origin, rec) {
   let lightSummary = '';
-  try {
-    await landOnNine(c, origin, 'light');
-    const light = JSON.parse(await evalIn(c, MEASURE));
-    problems.push(...problemsFor('light', light));
-    problems.push(...await toggleProblems(c));
-    if (light.rows.length === 9 && light.ab) {
-      lightSummary = `rows at ${light.rows.map(r => Math.round(r.t)).join(', ')}, #actionbar top ${Math.round(light.ab.t)}`;
-    }
-
-    await landOnNine(c, origin, 'dark');
-    const dark = JSON.parse(await evalIn(c, MEASURE));
-    problems.push(...problemsFor('dark', dark));
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+  await landOnNine(c, origin, 'light');
+  const light = JSON.parse(await evalIn(c, MEASURE));
+  checkRows(rec, 'light', light);
+  await checkToggle(c, rec);
+  if (light.rows.length === 9 && light.ab) {
+    lightSummary = `rows at ${light.rows.map(r => Math.round(r.t)).join(', ')}, #actionbar top ${Math.round(light.ab.t)}`;
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `9 rows and #abBench fully on screen with no scroll, .tl-name ≥ 48px wide and ≥ min(48, pitch) − 0.5 tall `
-        + `with no overlap, in light and dark, the toggle opens/closes by click and by Enter (${lightSummary}, ${HEIGHT}px tall viewport)`,
-  };
+
+  await landOnNine(c, origin, 'dark');
+  const dark = JSON.parse(await evalIn(c, MEASURE));
+  checkRows(rec, 'dark', dark);
+  rec.ok(`9 rows and #abBench fully on screen with no scroll, .tl-name ≥ 48px wide and ≥ min(48, pitch) − 0.5 tall `
+    + `with no overlap, in light and dark, the toggle opens/closes by click and by Enter (${lightSummary}, ${HEIGHT}px tall viewport)`);
 }

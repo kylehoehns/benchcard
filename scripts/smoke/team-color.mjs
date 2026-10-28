@@ -229,155 +229,133 @@ const READ_GAME_MODE = `(() => {
   });
 })()`;
 
-export async function teamColorPass(c, origin) {
-  const problems = [];
-  try {
-    const base = JSON.parse(JSON.stringify(RICH));
-    base.view = 'today';
-    base.teams[0].settings = { color: 'royal' };
-    const record = withSecondTeam(base);
-    record.teams[1].settings = { color: 'graphite' };
-    await land(c, origin, { record: record, ...TODAY_LANDING });
+export async function teamColorPass(c, origin, rec) {
+  const base = JSON.parse(JSON.stringify(RICH));
+  base.view = 'today';
+  base.teams[0].settings = { color: 'royal' };
+  const record = withSecondTeam(base);
+  record.teams[1].settings = { color: 'graphite' };
+  await land(c, origin, { record: record, ...TODAY_LANDING });
 
-    await evalIn(c, step(`$('#gmOpen').click(); $('#gmFloor .gm-p').click()`));
-    const gm = JSON.parse(await evalIn(c, READ_GAME_MODE));
-    await evalIn(c, step(`$('#gmClose').click()`));
+  await evalIn(c, step(`$('#gmOpen').click(); $('#gmFloor .gm-p').click()`));
+  const gm = JSON.parse(await evalIn(c, READ_GAME_MODE));
+  await evalIn(c, step(`$('#gmClose').click()`));
 
-    await evalIn(c, step(`document.querySelector('#phraseInterval').click()`));
-    const sheet = JSON.parse(await evalIn(c, READ_SHEET));
-    await evalIn(c, step(`document.querySelector('#sheetInterval').close()`));
+  await evalIn(c, step(`document.querySelector('#phraseInterval').click()`));
+  const sheet = JSON.parse(await evalIn(c, READ_SHEET));
+  await evalIn(c, step(`document.querySelector('#sheetInterval').close()`));
 
-    /* The focus ring (`:focus-visible`, app.css) is a global rule, not tied
-     * to any one control, so this proves it against whatever control a real
-     * Tab keypress lands the focus on -- see the file comment for why a
-     * script `.focus()` will not do. A probe input, prepended so Tab moves
-     * INTO the page rather than out of it toward the (nonexistent, headless)
-     * chrome, gives the keypress somewhere known to start from. */
-    await evalIn(c, `(() => { const p = document.createElement('input'); p.id = '__focusProbe';
-      document.body.prepend(p); p.focus(); })()`);
-    await c.send('Input.dispatchKeyEvent', { type: 'keyDown', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
-    await c.send('Input.dispatchKeyEvent', { type: 'keyUp', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
-    const focusRing = JSON.parse(await evalIn(c, `(() => {
-      const el = document.activeElement;
-      const v = { visible: el.matches(':focus-visible'), outline: getComputedStyle(el).outlineColor };
-      document.getElementById('__focusProbe')?.remove();
-      return JSON.stringify(v);
-    })()`));
-    if (!focusRing.visible) problems.push('the Tab-key probe did not land in a :focus-visible state — the focus-ring check proved nothing');
-    else if (focusRing.outline !== GRAPHITE_INK) {
-      problems.push(`the focus ring is ${focusRing.outline} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
-    }
-
-    const r = JSON.parse(await evalIn(c, READ_COLORS));
-
-    const tinted = [
-      ['#print.btn.primary background', r.primaryBg, ROYAL_FILL],
-      ['#print.btn.primary label', r.primaryFg, ROYAL_LABEL],
-      ['.ab-main (#abBench) background', r.abMainBg, ROYAL_FILL],
-      ['.gm-nav.next (#gmNext2) background', r.gmNavNextBg, ROYAL_FILL],
-      ['input[switch]:checked::before (#showMinutes) background', r.switchBg, ROYAL_FILL],
-      ['input[type=checkbox].box:checked background', r.checkboxBoxBg, ROYAL_FILL],
-      ['.gm-p.picked box-shadow color', gm.pickedShadowColor, ROYAL_FILL],
-      ['.phrase text', r.phraseFg, ROYAL_FILL],
-      // #244 moved the welcome logo here from #25's unchanged list: it reads
-      // --tint now, like the welcome's orange phrase.
-      ['the logo ground (.wel-mark svg > rect:first-child) fill', r.logoFill, ROYAL_FILL],
-    ];
-    for (const [label, got, want] of tinted) {
-      if (got !== want) problems.push(`${label} is ${got} with Royal active, want ${want}`);
-    }
-    // #147 item 3/8: "Sit for the rest" is a plain `.btn` now (a surface
-    // fill), not `.btn.primary` and not filled with the tint or `--accent`
-    // (C2: the one filled button on this screen is ›/Finish game) -- pinned
-    // as NOT tint-filled, rather than to a literal background color, since
-    // `.btn`'s own fill token is not this spec's to re-derive here. A `null`
-    // (the button not found at all) must fail too, not pass by accident
-    // (`null !== ROYAL_FILL` would otherwise read as "not tint-filled").
-    if (gm.sitBg == null) {
-      problems.push('"Sit for the rest" was not found in #gmBenchLab while reading its background');
-    } else if (gm.sitBg === ROYAL_FILL) {
-      problems.push(`"Sit for the rest" background is ${gm.sitBg}, the same as the Royal tint -- it must not read tint-filled`);
-    }
-    // item 5: Graphite's phrase carries an underline, every other color's
-    // does not (`--phrase-line` goes transparent) -- Royal is "every other
-    // color", so this is the one item-4 "tinted" entry proved by a state a
-    // literal cannot name (no-underline) rather than a value.
-    if (r.phraseDecoration !== TRANSPARENT) {
-      problems.push(`.phrase has a visible underline (${r.phraseDecoration}) with Royal active, want none`);
-    }
-
-    const accentInk = [
-      ['.help-h', r.helpHFg], ['.teammenu-check', r.teamCheckFg],
-      ['.mrow .track i (minute bar) background', r.mrowBg],
-      ['.gm-dot.now background', gm.dotNowBg],
-      ['::selection background', r.selectionBg, GRAPHITE_ACCENT_SOFT],
-      // #324: the selected label of every segmented control is --ink, not the
-      // team tint (the tint failed 4.5:1 on --seg-on); this reverses #25.
-      ['.seg button.on (#maxSubsSeg) text', r.segOnFg],
-      ['.seg button[aria-selected=true] (#welTabPlan) text', r.welSegFg],
-      ['#gamemode .seg button.on text', gm.scopeOnFg],
-      ['a focused input’s border', r.inputFocusBorder],
-    ];
-    for (const [label, got, want = GRAPHITE_INK] of accentInk) {
-      if (got !== want) problems.push(`${label} is ${got} with Royal active, want ${want} (unchanged)`);
-    }
-    // the tour's dots and a timeline total over budget both read `--accent`
-    // too, but only exist once the tour has started / a game runs over --
-    // proved on probes built with the real selector chain, same rule as
-    // `.phrase` and the checkbox above.
-    if (r.tourDotOnBg !== GRAPHITE_INK) problems.push(`.tour-dots i.on is ${r.tourDotOnBg} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
-    if (r.tlTotHiFg !== GRAPHITE_INK) problems.push(`.tl-tot.hi is ${r.tlTotHiFg} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
-    // #143: the Sub interval sheet's chosen row is a check, not a fill --
-    // its background stays transparent and its mark stays ink on every team
-    // color, so both belong on the unchanged side now.
-    if (sheet.chipBg !== TRANSPARENT) {
-      problems.push(`the chosen row's background (#sheetInterval) is ${sheet.chipBg} with Royal active, want ${TRANSPARENT} (a check, not a fill)`);
-    }
-    if (sheet.markFg !== GRAPHITE_INK) {
-      problems.push(`the chosen row's check (#sheetInterval) is ${sheet.markFg} with Royal active, want ${GRAPHITE_INK} (ink, not the team tint)`);
-    }
-
-    // item 7: switching team (team menu's second entry, the Graphite one)
-    // changes `.btn.primary` in the same task, with no reload. Re-read
-    // everything, both to check the switch and to prove the tokens the spec
-    // gives no literal for (`#setTeamHd`, the back button, its icon,
-    // `.note`, `.linkish`, `.stage`'s glow) are the same color on the
-    // Graphite team as they were on Royal, and that the picker's mark and
-    // the phrase style, which DO read the tint, changed.
-    await evalIn(c, step(`document.querySelectorAll('#teamMenu .teammenu-item')[1]?.click()`));
-    const a = JSON.parse(await evalIn(c, READ_COLORS));
-    if (a.primaryBg !== GRAPHITE_INK) {
-      problems.push(`#print.btn.primary background is ${a.primaryBg} after switching to the Graphite team, `
-        + `want ${GRAPHITE_INK} — no reload happened in between`);
-    }
-    const invariant = [
-      ['#setTeamHd', r.setTeamHdFg, a.setTeamHdFg], ['back button (#backBtn)', r.backBtnFg, a.backBtnFg],
-      ['#backBtn’s icon', r.iconFg, a.iconFg], ['.note', r.footFg, a.footFg],
-      ['.linkish (#welRestore)', r.linkishFg, a.linkishFg], ['.stage (card.css) glow', r.stageBg, a.stageBg],
-    ];
-    for (const [label, before, afterVal] of invariant) {
-      if (before !== afterVal) {
-        problems.push(`${label} is ${before} with Royal active and ${afterVal} with Graphite active — `
-          + 'it should not read the team color at all');
-      }
-    }
-    // the inverse of the invariant list: these two DO read the tint, so they
-    // must NOT be the same color on both teams.
-    if (r.colorOptOnBg === a.colorOptOnBg) {
-      problems.push(`the picker's current mark is ${r.colorOptOnBg} on both Royal and Graphite — it should read the active team's tint`);
-    }
-    if (r.phraseFg === a.phraseFg) {
-      problems.push(`.phrase is ${r.phraseFg} on both Royal and Graphite — it should read the active team's tint`);
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+  /* The focus ring (`:focus-visible`, app.css) is a global rule, not tied
+   * to any one control, so this proves it against whatever control a real
+   * Tab keypress lands the focus on -- see the file comment for why a
+   * script `.focus()` will not do. A probe input, prepended so Tab moves
+   * INTO the page rather than out of it toward the (nonexistent, headless)
+   * chrome, gives the keypress somewhere known to start from. */
+  await evalIn(c, `(() => { const p = document.createElement('input'); p.id = '__focusProbe';
+    document.body.prepend(p); p.focus(); })()`);
+  await c.send('Input.dispatchKeyEvent', { type: 'keyDown', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
+  await c.send('Input.dispatchKeyEvent', { type: 'keyUp', windowsVirtualKeyCode: 9, key: 'Tab', code: 'Tab' });
+  const focusRing = JSON.parse(await evalIn(c, `(() => {
+    const el = document.activeElement;
+    const v = { visible: el.matches(':focus-visible'), outline: getComputedStyle(el).outlineColor };
+    document.getElementById('__focusProbe')?.remove();
+    return JSON.stringify(v);
+  })()`));
+  if (!rec.check(focusRing.visible, 'the Tab-key probe did not land in a :focus-visible state — the focus-ring check proved nothing')) {
+    /* nothing to read: the ring is not up */
+  } else {
+    rec.check(focusRing.outline === GRAPHITE_INK, `the focus ring is ${focusRing.outline} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'Royal tints every control on the tinted list, the welcome logo included (#244; #324 moved the segmented labels to ink), the rest of the unchanged list stays graphite ink, '
-        + 'and switching to a graphite team repaints .btn.primary with no reload',
-  };
+
+  const r = JSON.parse(await evalIn(c, READ_COLORS));
+
+  const tinted = [
+    ['#print.btn.primary background', r.primaryBg, ROYAL_FILL],
+    ['#print.btn.primary label', r.primaryFg, ROYAL_LABEL],
+    ['.ab-main (#abBench) background', r.abMainBg, ROYAL_FILL],
+    ['.gm-nav.next (#gmNext2) background', r.gmNavNextBg, ROYAL_FILL],
+    ['input[switch]:checked::before (#showMinutes) background', r.switchBg, ROYAL_FILL],
+    ['input[type=checkbox].box:checked background', r.checkboxBoxBg, ROYAL_FILL],
+    ['.gm-p.picked box-shadow color', gm.pickedShadowColor, ROYAL_FILL],
+    ['.phrase text', r.phraseFg, ROYAL_FILL],
+    // #244 moved the welcome logo here from #25's unchanged list: it reads
+    // --tint now, like the welcome's orange phrase.
+    ['the logo ground (.wel-mark svg > rect:first-child) fill', r.logoFill, ROYAL_FILL],
+  ];
+  for (const [label, got, want] of tinted) {
+    rec.check(got === want, `${label} is ${got} with Royal active, want ${want}`);
+  }
+  // #147 item 3/8: "Sit for the rest" is a plain `.btn` now (a surface
+  // fill), not `.btn.primary` and not filled with the tint or `--accent`
+  // (C2: the one filled button on this screen is ›/Finish game) -- pinned
+  // as NOT tint-filled, rather than to a literal background color, since
+  // `.btn`'s own fill token is not this spec's to re-derive here. A `null`
+  // (the button not found at all) must fail too, not pass by accident
+  // (`null !== ROYAL_FILL` would otherwise read as "not tint-filled").
+  if (!rec.check(gm.sitBg != null, '"Sit for the rest" was not found in #gmBenchLab while reading its background')) {
+    /* not found: nothing to compare */
+  } else {
+    rec.check(gm.sitBg !== ROYAL_FILL, `"Sit for the rest" background is ${gm.sitBg}, the same as the Royal tint -- it must not read tint-filled`);
+  }
+  // item 5: Graphite's phrase carries an underline, every other color's
+  // does not (`--phrase-line` goes transparent) -- Royal is "every other
+  // color", so this is the one item-4 "tinted" entry proved by a state a
+  // literal cannot name (no-underline) rather than a value.
+  rec.check(r.phraseDecoration === TRANSPARENT, `.phrase has a visible underline (${r.phraseDecoration}) with Royal active, want none`);
+
+  const accentInk = [
+    ['.help-h', r.helpHFg], ['.teammenu-check', r.teamCheckFg],
+    ['.mrow .track i (minute bar) background', r.mrowBg],
+    ['.gm-dot.now background', gm.dotNowBg],
+    ['::selection background', r.selectionBg, GRAPHITE_ACCENT_SOFT],
+    // #324: the selected label of every segmented control is --ink, not the
+    // team tint (the tint failed 4.5:1 on --seg-on); this reverses #25.
+    ['.seg button.on (#maxSubsSeg) text', r.segOnFg],
+    ['.seg button[aria-selected=true] (#welTabPlan) text', r.welSegFg],
+    ['#gamemode .seg button.on text', gm.scopeOnFg],
+    ['a focused input’s border', r.inputFocusBorder],
+  ];
+  for (const [label, got, want = GRAPHITE_INK] of accentInk) {
+    rec.check(got === want, `${label} is ${got} with Royal active, want ${want} (unchanged)`);
+  }
+  // the tour's dots and a timeline total over budget both read `--accent`
+  // too, but only exist once the tour has started / a game runs over --
+  // proved on probes built with the real selector chain, same rule as
+  // `.phrase` and the checkbox above.
+  rec.check(r.tourDotOnBg === GRAPHITE_INK, `.tour-dots i.on is ${r.tourDotOnBg} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
+  rec.check(r.tlTotHiFg === GRAPHITE_INK, `.tl-tot.hi is ${r.tlTotHiFg} with Royal active, want ${GRAPHITE_INK} (unchanged)`);
+  // #143: the Sub interval sheet's chosen row is a check, not a fill --
+  // its background stays transparent and its mark stays ink on every team
+  // color, so both belong on the unchanged side now.
+  rec.check(sheet.chipBg === TRANSPARENT, `the chosen row's background (#sheetInterval) is ${sheet.chipBg} with Royal active, want ${TRANSPARENT} (a check, not a fill)`);
+  rec.check(sheet.markFg === GRAPHITE_INK, `the chosen row's check (#sheetInterval) is ${sheet.markFg} with Royal active, want ${GRAPHITE_INK} (ink, not the team tint)`);
+
+  // item 7: switching team (team menu's second entry, the Graphite one)
+  // changes `.btn.primary` in the same task, with no reload. Re-read
+  // everything, both to check the switch and to prove the tokens the spec
+  // gives no literal for (`#setTeamHd`, the back button, its icon,
+  // `.note`, `.linkish`, `.stage`'s glow) are the same color on the
+  // Graphite team as they were on Royal, and that the picker's mark and
+  // the phrase style, which DO read the tint, changed.
+  await evalIn(c, step(`document.querySelectorAll('#teamMenu .teammenu-item')[1]?.click()`));
+  const a = JSON.parse(await evalIn(c, READ_COLORS));
+  rec.check(a.primaryBg === GRAPHITE_INK, `#print.btn.primary background is ${a.primaryBg} after switching to the Graphite team, `
+      + `want ${GRAPHITE_INK} — no reload happened in between`);
+  const invariant = [
+    ['#setTeamHd', r.setTeamHdFg, a.setTeamHdFg], ['back button (#backBtn)', r.backBtnFg, a.backBtnFg],
+    ['#backBtn’s icon', r.iconFg, a.iconFg], ['.note', r.footFg, a.footFg],
+    ['.linkish (#welRestore)', r.linkishFg, a.linkishFg], ['.stage (card.css) glow', r.stageBg, a.stageBg],
+  ];
+  for (const [label, before, afterVal] of invariant) {
+    rec.check(before === afterVal, `${label} is ${before} with Royal active and ${afterVal} with Graphite active — `
+        + 'it should not read the team color at all');
+  }
+  // the inverse of the invariant list: these two DO read the tint, so they
+  // must NOT be the same color on both teams.
+  rec.check(r.colorOptOnBg !== a.colorOptOnBg, `the picker's current mark is ${r.colorOptOnBg} on both Royal and Graphite — it should read the active team's tint`);
+  rec.check(r.phraseFg !== a.phraseFg, `.phrase is ${r.phraseFg} on both Royal and Graphite — it should read the active team's tint`);
+  rec.ok('Royal tints every control on the tinted list, the welcome logo included (#244; #324 moved the segmented labels to ink), the rest of the unchanged list stays graphite ink, '
+    + 'and switching to a graphite team repaints .btn.primary with no reload');
 }
 
 /* #205's own guard (docs/specs/205-hardwood-default.md's Proof section): a
@@ -430,8 +408,7 @@ async function plainReload(c, origin) {
   await land(c, origin, { record: 'kept', ready: `document.querySelector('#print')` });
 }
 
-export async function teamDefaultPass(c, origin) {
-  const problems = [];
+export async function teamDefaultPass(c, origin, rec) {
   try {
     // Step 1 / item 3: storage cleared, no record at all -- the pre-paint
     // script and the boot both land on Hardwood before app.js has run. A
@@ -445,22 +422,20 @@ export async function teamDefaultPass(c, origin) {
       ready: `!document.getElementById('view-welcome').hidden`,
     });
     const w = JSON.parse(await evalIn(c, READ_WELCOME_COLOR));
-    if (w.tint !== 'hardwood') problems.push(`a fresh device stamps data-tint="${w.tint}" on <html>, want "hardwood"`);
-    if (w.bg !== HARDWOOD_FILL) problems.push(`#welStart background is ${w.bg} on a fresh device, want ${HARDWOOD_FILL}`);
-    if (w.fg !== HARDWOOD_LABEL) problems.push(`#welStart text is ${w.fg} on a fresh device, want ${HARDWOOD_LABEL}`);
+    rec.check(w.tint === 'hardwood', `a fresh device stamps data-tint="${w.tint}" on <html>, want "hardwood"`);
+    rec.check(w.bg === HARDWOOD_FILL, `#welStart background is ${w.bg} on a fresh device, want ${HARDWOOD_FILL}`);
+    rec.check(w.fg === HARDWOOD_LABEL, `#welStart text is ${w.fg} on a fresh device, want ${HARDWOOD_LABEL}`);
 
     // Step 2 / items 5 and 2: RICH has no settings block at all, so a coach
     // who has never chosen a color sees Hardwood, and the picker lists it
     // first.
     await land(c, origin, { record: RICH, ready: `document.getElementById('print')`, freshHistory: true });
     const r = JSON.parse(await evalIn(c, READ_TEAM_DEFAULT));
-    if (r.tint !== 'hardwood') problems.push(`RICH (no color set) stamps data-tint="${r.tint}", want "hardwood"`);
-    if (r.primaryBg !== HARDWOOD_FILL) problems.push(`#print.btn.primary is ${r.primaryBg} for RICH, want ${HARDWOOD_FILL}`);
-    if (r.teamColorName !== 'Hardwood') problems.push(`#teamColorName reads "${r.teamColorName}" for RICH, want "Hardwood"`);
-    if (r.colorOptOn !== 'hardwood') problems.push(`#colorOpts .color-opt.on is "${r.colorOptOn}" for RICH, want "hardwood"`);
-    if (r.firstColor !== 'hardwood' || r.secondColor !== 'graphite') {
-      problems.push(`the picker's first two options are "${r.firstColor}", "${r.secondColor}", want "hardwood", "graphite"`);
-    }
+    rec.check(r.tint === 'hardwood', `RICH (no color set) stamps data-tint="${r.tint}", want "hardwood"`);
+    rec.check(r.primaryBg === HARDWOOD_FILL, `#print.btn.primary is ${r.primaryBg} for RICH, want ${HARDWOOD_FILL}`);
+    rec.check(r.teamColorName === 'Hardwood', `#teamColorName reads "${r.teamColorName}" for RICH, want "Hardwood"`);
+    rec.check(r.colorOptOn === 'hardwood', `#colorOpts .color-opt.on is "${r.colorOptOn}" for RICH, want "hardwood"`);
+    rec.check(r.firstColor === 'hardwood' && r.secondColor === 'graphite', `the picker's first two options are "${r.firstColor}", "${r.secondColor}", want "hardwood", "graphite"`);
 
     // Step 3 / item 6: a saved Graphite stays Graphite, and survives a plain
     // reload with nothing re-seeded.
@@ -469,9 +444,9 @@ export async function teamDefaultPass(c, origin) {
     for (const label of ['seeded', 'reloaded']) {
       if (label === 'reloaded') await plainReload(c, origin);
       const g = JSON.parse(await evalIn(c, READ_TEAM_DEFAULT));
-      if (g.tint !== null) problems.push(`a saved Graphite team stamps data-tint="${g.tint}" (${label}), want no attribute`);
-      if (g.primaryBg !== GRAPHITE_INK) problems.push(`#print.btn.primary is ${g.primaryBg} for a saved Graphite team (${label}), want ${GRAPHITE_INK}`);
-      if (g.teamColorName !== 'Graphite') problems.push(`#teamColorName reads "${g.teamColorName}" for a saved Graphite team (${label}), want "Graphite"`);
+      rec.check(g.tint === null, `a saved Graphite team stamps data-tint="${g.tint}" (${label}), want no attribute`);
+      rec.check(g.primaryBg === GRAPHITE_INK, `#print.btn.primary is ${g.primaryBg} for a saved Graphite team (${label}), want ${GRAPHITE_INK}`);
+      rec.check(g.teamColorName === 'Graphite', `#teamColorName reads "${g.teamColorName}" for a saved Graphite team (${label}), want "Graphite"`);
     }
 
     // Step 4 / item 6's last sentence: picking Graphite in the picker on a
@@ -482,18 +457,12 @@ export async function teamDefaultPass(c, origin) {
     await evalIn(c, step(`document.querySelector('#colorOpts .color-opt[data-color="graphite"]').click()`));
     await plainReload(c, origin);
     const picked = JSON.parse(await evalIn(c, READ_TEAM_DEFAULT));
-    if (picked.tint !== null) problems.push(`picking Graphite then reloading stamps data-tint="${picked.tint}", want no attribute`);
-    if (picked.primaryBg !== GRAPHITE_INK) problems.push(`#print.btn.primary is ${picked.primaryBg} after picking Graphite and reloading, want ${GRAPHITE_INK}`);
-    if (picked.teamColorName !== 'Graphite') problems.push(`#teamColorName reads "${picked.teamColorName}" after picking Graphite and reloading, want "Graphite"`);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(picked.tint === null, `picking Graphite then reloading stamps data-tint="${picked.tint}", want no attribute`);
+    rec.check(picked.primaryBg === GRAPHITE_INK, `#print.btn.primary is ${picked.primaryBg} after picking Graphite and reloading, want ${GRAPHITE_INK}`);
+    rec.check(picked.teamColorName === 'Graphite', `#teamColorName reads "${picked.teamColorName}" after picking Graphite and reloading, want "Graphite"`);
   } finally {
     await reset(c, origin).catch(() => {});
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'a fresh device, a colorless team and the picker all read Hardwood, and a saved or picked '
-        + 'Graphite survives a plain reload',
-  };
+  rec.ok('a fresh device, a colorless team and the picker all read Hardwood, and a saved or picked '
+    + 'Graphite survives a plain reload');
 }

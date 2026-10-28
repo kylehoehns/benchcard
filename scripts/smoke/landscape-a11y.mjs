@@ -26,8 +26,7 @@ const NAV_RECTS_JS = `JSON.stringify([...document.querySelectorAll('.gm-nav')]
   .map(el => el.getBoundingClientRect())
   .map(r => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom })))`;
 
-export async function landscapeA11yPass(c, origin) {
-  const problems = [];
+export async function landscapeA11yPass(c, origin, rec) {
   try {
     await resize(c, WIDTH, HEIGHT);
     await evalIn(c, TODAY_HOME);
@@ -48,37 +47,31 @@ export async function landscapeA11yPass(c, origin) {
     await tap(c, `$('.today-game').click()`);
     const landscapeGame = await readLandscape(c);
     const gameScrollWidth = await evalIn(c, 'document.documentElement.scrollWidth');
-    if (gameScrollWidth > 844) problems.push(`the game screen: scrollWidth is ${gameScrollWidth}, want <= 844`);
-    if (landscapeGame.barPt === portraitGame.barPt) problems.push(`app.css:4362's block: .bar's padding-top is still ${landscapeGame.barPt} in landscape, want it to differ from portrait's ${portraitGame.barPt}`);
-    if (landscapeGame.wrapPb === portraitGame.wrapPb) problems.push(`app.css:4362's block: .wrap's padding-bottom is still ${landscapeGame.wrapPb} in landscape, want it to differ from portrait's ${portraitGame.wrapPb}`);
+    rec.check(gameScrollWidth <= 844, `the game screen: scrollWidth is ${gameScrollWidth}, want <= 844`);
+    rec.check(landscapeGame.barPt !== portraitGame.barPt, `app.css:4362's block: .bar's padding-top is still ${landscapeGame.barPt} in landscape, want it to differ from portrait's ${portraitGame.barPt}`);
+    rec.check(landscapeGame.wrapPb !== portraitGame.wrapPb, `app.css:4362's block: .wrap's padding-bottom is still ${landscapeGame.wrapPb} in landscape, want it to differ from portrait's ${portraitGame.wrapPb}`);
     await tap(c, `$('#backBtn').click()`);
 
     // ---- landscape, bench mode ----
     await tap(c, `$('#gmOpen').click()`);
     const landscapeBench = await readLandscape(c);
     const benchScrollWidth = await evalIn(c, 'document.documentElement.scrollWidth');
-    if (benchScrollWidth > 844) problems.push(`bench mode: scrollWidth is ${benchScrollWidth}, want <= 844`);
-    if (landscapeBench.gmNavH === portraitBench.gmNavH) problems.push(`app.css:1784's block: .gm-nav's height is still ${landscapeBench.gmNavH} in landscape, want it to differ from portrait's ${portraitBench.gmNavH}`);
+    rec.check(benchScrollWidth <= 844, `bench mode: scrollWidth is ${benchScrollWidth}, want <= 844`);
+    rec.check(landscapeBench.gmNavH !== portraitBench.gmNavH, `app.css:1784's block: .gm-nav's height is still ${landscapeBench.gmNavH} in landscape, want it to differ from portrait's ${portraitBench.gmNavH}`);
     const rects = await evalJSON(c, NAV_RECTS_JS);
-    if (!rects.length) problems.push('bench mode: no .gm-nav step buttons found to check');
+    rec.check(rects.length, 'bench mode: no .gm-nav step buttons found to check');
     for (const r of rects) {
       if (r.left < 0 || r.top < 0 || r.right > 844 || r.bottom > 390) {
-        problems.push(`bench mode: a .gm-nav button sits at ${JSON.stringify(r)}, outside the 844x390 viewport`);
+        rec.fail(`bench mode: a .gm-nav button sits at ${JSON.stringify(r)}, outside the 844x390 viewport`);
         break;
       }
     }
     await tap(c, `$('#gmClose').click()`);
 
     await evalIn(c, TODAY_HOME);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
   } finally {
     await resize(c, WIDTH, HEIGHT);
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : 'at 844x390 both landscape blocks are live, no sideways scroll, and bench mode’s step buttons stay inside the viewport',
-  };
+  rec.ok('at 844x390 both landscape blocks are live, no sideways scroll, and bench mode’s step buttons stay inside the viewport');
 }

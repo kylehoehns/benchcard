@@ -57,12 +57,11 @@ async function nodeIdFor(c, selector) {
   return nodeId;
 }
 
-export async function fontDrawsPass(c, origin) {
+export async function fontDrawsPass(c, origin, rec) {
   // #177 fix (see the module comment above): its own reload, not whatever
   // screen the row before it left the page on.
   await land(c, origin);
 
-  const problems = [];
   const checked = [];
 
   // Rule 2a: a place that never got measured is a failure, not a skip, so
@@ -70,18 +69,16 @@ export async function fontDrawsPass(c, origin) {
   async function check(label, selector) {
     const nodeId = await nodeIdFor(c, selector);
     if (nodeId == null) {
-      problems.push(`${label}: no element matched ${selector} -- nothing was measured`);
+      rec.fail(`${label}: no element matched ${selector} -- nothing was measured`);
       return;
     }
     const { fonts } = await c.send('CSS.getPlatformFontsForNode', { nodeId });
     if (!fonts.length) {
-      problems.push(`${label} (${selector}): CSS.getPlatformFontsForNode reported no glyphs drawn -- nothing was measured`);
+      rec.fail(`${label} (${selector}): CSS.getPlatformFontsForNode reported no glyphs drawn -- nothing was measured`);
       return;
     }
     const other = [...new Set(fonts.filter(f => f.familyName !== SMOKE_FONT_FAMILY).map(f => f.familyName))];
-    if (other.length) {
-      problems.push(`${label} (${selector}) drew in ${other.join(', ')}, not ${SMOKE_FONT_FAMILY}`);
-    } else {
+    if (rec.check(!other.length, `${label} (${selector}) drew in ${other.join(', ')}, not ${SMOKE_FONT_FAMILY}`)) {
       checked.push(label);
     }
   }
@@ -119,10 +116,5 @@ export async function fontDrawsPass(c, origin) {
     await c.send('DOM.disable');
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.join(' | ')}`
-      : `${checked.length} place(s) drew only in ${SMOKE_FONT_FAMILY}: ${checked.join(', ')}`,
-  };
+  rec.ok(`${checked.length} place(s) drew only in ${SMOKE_FONT_FAMILY}: ${checked.join(', ')}`);
 }

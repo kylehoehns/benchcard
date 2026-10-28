@@ -41,7 +41,7 @@ import { evalIn } from './dom.mjs';
    this may be a real, narrower race in Safari/WebKit that this check cannot
    see. Reported rather than hidden behind a check that would only ever be
    green. */
-export async function cardFontPass(c, origin) {
+export async function cardFontPass(c, origin, rec) {
   const probe = await evalIn(c, `(async () => {
     const five = document.querySelector('.card .five');
     if (!five) return JSON.stringify({ error: 'no .card .five in the DOM' });
@@ -54,18 +54,14 @@ export async function cardFontPass(c, origin) {
     return JSON.stringify({ loaded, before, after });
   })()`);
   const r = JSON.parse(probe);
-  const problems = [];
-  if (r.error) problems.push(r.error);
+  if (r.error) rec.fail(r.error);
   else {
-    if (!r.loaded) problems.push('document.fonts.check(\'800 16px InterVar\') is false after settle');
-    if (r.after === null) problems.push('no .card .five left in the DOM after re-rendering');
+    rec.check(r.loaded, 'document.fonts.check(\'800 16px InterVar\') is false after settle');
+    if (r.after === null) rec.fail('no .card .five left in the DOM after re-rendering');
     else if (r.before !== r.after) {
-      problems.push(`.five was fitted at ${r.before} but the loaded font fits it at ${r.after} — `
+      rec.fail(`.five was fitted at ${r.before} but the loaded font fits it at ${r.after} — `
         + 'the card was sized before InterVar arrived and never re-fit');
     }
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? problems.join('; ') : `InterVar loaded, .five stays at ${r.before} once it has`,
-  };
+  rec.ok(`InterVar loaded, .five stays at ${r.before} once it has`);
 }

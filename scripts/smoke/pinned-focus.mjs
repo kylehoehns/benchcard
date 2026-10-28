@@ -23,6 +23,7 @@
 import { evalIn, quiet, key, enter, escape, tab, DESCRIBE_EL } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { RICH } from './fixtures.mjs';
+import { firstLine } from './verdict.mjs';
 
 const ROW = 1; // the second player's row
 const NAME = `document.querySelectorAll('#timeline .tl-row[data-id] .tl-name')[${ROW}]`;
@@ -145,7 +146,7 @@ export async function pinnedFocusPass(c, origin) {
     }
     scenarios++;
   } catch (e) {
-    bad.push(e.message.split('\n')[0]);
+    bad.push(firstLine(e));
   } finally {
     await land(c, origin);
   }

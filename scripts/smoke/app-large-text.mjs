@@ -10,6 +10,7 @@ import { UNDERWAY_SEED } from './rotation-undo.mjs';
 import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
 import { SWITCH_ROW_STATES, switchRowProblem } from './switch-row.mjs';
 import { welcomeBarsProblem } from './welcome-bars.mjs';
+import { firstLine } from './verdict.mjs';
 
 /* ---- the same large-text cell, on the app shell ----
  *
@@ -676,8 +677,7 @@ const DIALOG_CHECKED_STATES = new Set(['plan sheet', 'plan sheet, add a rule',
 // #147 item 4/#167: the one state with a player pick on screen.
 const GM_BODY_CHECKED_STATES = new Set(['bench mode, swap picker']);
 
-export async function appLargeTextPass(c, origin) {
-  const problems = [];
+export async function appLargeTextPass(c, origin, rec) {
   let allowed = 0;
   let flash = '';
   await land(c, origin, { ...LARGE_TEXT });
@@ -700,65 +700,57 @@ export async function appLargeTextPass(c, origin) {
       else await evalIn(c, step(v.open));
       const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
       const slack = APP_LARGE_TEXT_ALLOW[v.name] || 0;
-      if (o.pans) problems.push(`${where}: page pans sideways`);
+      rec.check(!o.pans, `${where}: page pans sideways`);
       if (o.worst && o.worst.out > slack) {
-        problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
+        rec.fail(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
           + (slack ? ` (${slack}px allowed)` : ''));
       } else if (o.worst) allowed++;
       const up = JSON.parse(await evalIn(c, STRANDED_ABOVE));
-      if (up.worst) problems.push(`${where}: ${up.worst.el} starts at y ${up.worst.top}, above the top of a fixed overlay`);
+      rec.check(!up.worst, `${where}: ${up.worst?.el} starts at y ${up.worst?.top}, above the top of a fixed overlay`);
       const tf = JSON.parse(await evalIn(c, TOAST_FIT_PROBE));
-      if (tf.worst) {
-        problems.push(`${where}: the toast's ${tf.worst.label} is ${tf.worst.out}px outside `
-          + `[0, ${tf.vw}]x[0, ${tf.vh}] (box ${JSON.stringify(tf.worst.box)})`);
-      }
+      rec.check(!tf.worst, `${where}: the toast's ${tf.worst?.label} is ${tf.worst?.out}px outside `
+        + `[0, ${tf.vw}]x[0, ${tf.vh}] (box ${JSON.stringify(tf.worst?.box)})`);
       if (v.rotationToast) {
         // rule 2a of /new-guard: without this, a Format edit that stopped
         // raising a toast at all would leave `TOAST_FIT_PROBE` with nothing
         // to measure and this state would pass having checked nothing.
         const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo]')`));
-        if (!raised) problems.push(`${where}: no Undo toast was raised -- nothing was measured`);
+        rec.check(raised, `${where}: no Undo toast was raised -- nothing was measured`);
       }
       if (v.name === 'bench mode, swap toast') {
         // rule 2a: a failed swap would raise no toast to measure.
         const msg = await evalIn(c, `document.querySelector('.toast .tmsg')?.textContent ?? null`);
-        if (!msg || !msg.includes(' on for ')) {
-          problems.push(`${where}: no swap toast text found (got ${JSON.stringify(msg)}) -- nothing was measured`);
-        }
+        rec.check(msg && msg.includes(' on for '), `${where}: no swap toast text found (got ${JSON.stringify(msg)}) -- nothing was measured`);
       }
       if (DIALOG_CHECKED_STATES.has(v.name)) {
         const dd = JSON.parse(await evalIn(c, DIALOG_OVERFLOW_PROBE));
         // rule 2a of /new-guard: a check that measured nothing fails, rather
         // than passing silently because the dialog it expected never opened.
-        if (!dd.dialog) problems.push(`${where}: no open dialog to check for a dialog-relative overflow`);
-        else if (dd.worst) problems.push(`${where}: ${dd.worst.el} reaches ${dd.worst.out}px past the dialog's own ${dd.dw}px-wide box`);
+        if (rec.check(dd.dialog, `${where}: no open dialog to check for a dialog-relative overflow`)) {
+          rec.check(!dd.worst, `${where}: ${dd.worst?.el} reaches ${dd.worst?.out}px past the dialog's own ${dd.dw}px-wide box`);
+        }
       }
       const gbMsg = GM_BODY_CHECKED_STATES.has(v.name) && await gmBodyProblem(c);
-      if (gbMsg) problems.push(`${where}: ${gbMsg}`);
+      rec.check(!gbMsg, `${where}: ${gbMsg}`);
       const rsMsg = ROW_STACK_STATES.has(v.name) && await rowStackProblem(c, v.name);
-      if (rsMsg) problems.push(`${where}: ${rsMsg}`);
+      rec.check(!rsMsg, `${where}: ${rsMsg}`);
       // #221: every state gets the cheap structural query (most find no
       // switch row and cost one empty pass); the two named states also get
       // rule 2a, below.
       const swMsg = await switchRowProblem(c, SWITCH_ROW_STATES.has(v.name));
-      if (swMsg) problems.push(`${where}: ${swMsg}`);
+      rec.check(!swMsg, `${where}: ${swMsg}`);
       // #199: the demo plan's stint bars, checked only on the one state
       // that renders them (see welcome-bars.mjs).
       const wbMsg = v.name === 'welcome screen, first run' && await welcomeBarsProblem(c);
-      if (wbMsg) problems.push(`${where}: ${wbMsg}`);
+      rec.check(!wbMsg, `${where}: ${wbMsg}`);
     } catch (e) {
-      problems.push(`${where}: ${e.message.split('\n')[0]}`);
+      rec.fail(`${where}: ${firstLine(e)}`);
     } finally {
       if (v.close) await evalIn(c, step(v.close))
-        .catch(e => problems.push(`${where}: did not close — ${e.message.split('\n')[0]}`));
+        .catch(e => rec.fail(`${where}: did not close — ${firstLine(e)}`));
     }
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${APP_LARGE_TEXT_STATES.length} states (${APP_LARGE_TEXT_STATES.map(v => v.name).join(' + ')}), nothing stranded past either side edge or above a fixed overlay`
-        + (flash ? `, sample flash ${flash}` : '')
-        + (allowed ? ` (${allowed} recorded residue)` : ''),
-  };
+  rec.ok(`${APP_LARGE_TEXT_STATES.length} states (${APP_LARGE_TEXT_STATES.map(v => v.name).join(' + ')}), nothing stranded past either side edge or above a fixed overlay`
+    + (flash ? `, sample flash ${flash}` : '')
+    + (allowed ? ` (${allowed} recorded residue)` : ''));
 }

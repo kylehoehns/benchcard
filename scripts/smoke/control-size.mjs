@@ -165,174 +165,150 @@ async function switchMetrics(c, sel) {
 // #141 item 1: a `.seg` button is weight 500, and 600 if it is the selected
 // one -- shared by `checkSegMetrics` and `checkWelcomeTabs` below so the
 // 500/600 rule is written once rather than copied per caller.
-function checkSegWeight(problems, theme, label, b) {
+function checkSegWeight(rec, theme, label, b) {
   const want = b.selected ? 600 : 500;
-  if (b.weight !== want) problems.push(`${theme}: ${label} (selected=${b.selected}) is weight ${b.weight}, want ${want}`);
+  rec.check(b.weight === want, `${theme}: ${label} (selected=${b.selected}) is weight ${b.weight}, want ${want}`);
 }
 
 // Item 3: one assertion loop for every seg `segMetrics` returns, so
 // `#stratseg` (the Plan sheet's own seg) and the four Settings segs are held
 // to the same 36/32/14 rule rather than the Plan seg's own rows only ever
 // contributing to `segCount`.
-function checkSegMetrics(problems, theme, segs) {
+function checkSegMetrics(rec, theme, segs) {
   for (const s of segs) {
-    if (!near(s.trackH, 36)) problems.push(`${theme}: ${s.sel} track is ${s.trackH}px tall, want 36 +/-${TOL}`);
-    if (!near(s.btnH, 32)) problems.push(`${theme}: ${s.sel} button is ${s.btnH}px tall, want 32 +/-${TOL}`);
-    if (!near(s.fontPx, 14, 0.5)) problems.push(`${theme}: ${s.sel} button text is ${s.fontPx}px, want 14`);
-    for (const b of s.btns) checkSegWeight(problems, theme, `${s.sel} a button`, b);
+    rec.check(near(s.trackH, 36), `${theme}: ${s.sel} track is ${s.trackH}px tall, want 36 +/-${TOL}`);
+    rec.check(near(s.btnH, 32), `${theme}: ${s.sel} button is ${s.btnH}px tall, want 32 +/-${TOL}`);
+    rec.check(near(s.fontPx, 14, 0.5), `${theme}: ${s.sel} button text is ${s.fontPx}px, want 14`);
+    for (const b of s.btns) checkSegWeight(rec, theme, `${s.sel} a button`, b);
   }
 }
 
 // #141 item 1: 36 track, 32 buttons, 48px hit area, 500/600 weight -- the
 // same four rules `checkSegMetrics` holds every other seg to, plus the hit
 // area the touch sweep never measures here.
-function checkWelcomeTabs(problems, theme, m) {
-  if (!m) { problems.push(`${theme}: the welcome tablist was not found -- nothing measured`); return; }
-  if (!near(m.trackH, 36)) problems.push(`${theme}: welcome tablist track is ${m.trackH}px tall, want 36 +/-${TOL}`);
+function checkWelcomeTabs(rec, theme, m) {
+  if (!m) { rec.fail(`${theme}: the welcome tablist was not found -- nothing measured`); return; }
+  rec.check(near(m.trackH, 36), `${theme}: welcome tablist track is ${m.trackH}px tall, want 36 +/-${TOL}`);
   if (m.btns.length !== 3) {
-    problems.push(`${theme}: the welcome tablist has ${m.btns.length} tab(s), want 3 -- a selector stopped matching, nothing else checked`);
+    rec.fail(`${theme}: the welcome tablist has ${m.btns.length} tab(s), want 3 -- a selector stopped matching, nothing else checked`);
     return;
   }
   for (const b of m.btns) {
-    if (!near(b.h, 32)) problems.push(`${theme}: a welcome tab is ${b.h}px tall, want 32 +/-${TOL}`);
-    if (!near(b.afterH, 48)) problems.push(`${theme}: a welcome tab's hit area is ${b.afterH}px, want 48 +/-${TOL}`);
-    checkSegWeight(problems, theme, 'a welcome tab', b);
+    rec.check(near(b.h, 32), `${theme}: a welcome tab is ${b.h}px tall, want 32 +/-${TOL}`);
+    rec.check(near(b.afterH, 48), `${theme}: a welcome tab's hit area is ${b.afterH}px, want 48 +/-${TOL}`);
+    checkSegWeight(rec, theme, 'a welcome tab', b);
   }
   // Fix pass finding 1: hovering the selected tab must not repaint it.
   if (m.selBg == null || m.selHoverBg == null) {
-    problems.push(`${theme}: the selected welcome tab's background was not read before/after hover -- nothing checked`);
+    rec.fail(`${theme}: the selected welcome tab's background was not read before/after hover -- nothing checked`);
   } else if (m.selHoverBg !== m.selBg) {
-    problems.push(`${theme}: hovering the selected welcome tab repaints it (${m.selHoverBg} instead of ${m.selBg})`);
+    rec.fail(`${theme}: hovering the selected welcome tab repaints it (${m.selHoverBg} instead of ${m.selBg})`);
   }
 }
 
-function checkStepperRows(problems, theme, where, rows) {
-  if (rows.length === 0) { problems.push(`${theme}, ${where}: no .pstep-row found -- nothing measured`); return; }
+function checkStepperRows(rec, theme, where, rows) {
+  if (rows.length === 0) { rec.fail(`${theme}, ${where}: no .pstep-row found -- nothing measured`); return; }
   for (const r of rows) {
-    if (!near(r.pillW, 88)) problems.push(`${theme}, ${where}: pill is ${r.pillW}px wide, want 88 +/-${TOL}`);
-    if (!near(r.pillH, 32)) problems.push(`${theme}, ${where}: pill is ${r.pillH}px tall, want 32 +/-${TOL}`);
-    if (r.pillBg !== r.segTrack) problems.push(`${theme}, ${where}: pill background is ${r.pillBg}, --seg-track resolves to ${r.segTrack}`);
-    if (!r.btn0 || !r.btn1) problems.push(`${theme}, ${where}: expected 2 .pstep-btn, found ${[r.btn0, r.btn1].filter(Boolean).length}`);
+    rec.check(near(r.pillW, 88), `${theme}, ${where}: pill is ${r.pillW}px wide, want 88 +/-${TOL}`);
+    rec.check(near(r.pillH, 32), `${theme}, ${where}: pill is ${r.pillH}px tall, want 32 +/-${TOL}`);
+    rec.check(r.pillBg === r.segTrack, `${theme}, ${where}: pill background is ${r.pillBg}, --seg-track resolves to ${r.segTrack}`);
+    if (!r.btn0 || !r.btn1) rec.fail(`${theme}, ${where}: expected 2 .pstep-btn, found ${[r.btn0, r.btn1].filter(Boolean).length}`);
     else {
-      if (r.btn0.w < 48 - 0.5 || r.btn0.h < 48 - 0.5 || r.btn1.w < 48 - 0.5 || r.btn1.h < 48 - 0.5) {
-        problems.push(`${theme}, ${where}: a .pstep-btn box is under 48x48: ${JSON.stringify([r.btn0, r.btn1])}`);
-      }
-      if (r.btn0.r > r.btn1.l + 0.5) problems.push(`${theme}, ${where}: the two .pstep-btn boxes overlap: ${JSON.stringify([r.btn0, r.btn1])}`);
-      if (!near(r.btn0.r, r.mid, 1) || !near(r.btn1.l, r.mid, 1)) {
-        problems.push(`${theme}, ${where}: the two halves do not meet at the pill's own middle (${r.mid}): ${JSON.stringify([r.btn0, r.btn1])}`);
-      }
-      if (r.btn0.t < r.rowRect.t - 0.5 || r.btn0.b > r.rowRect.b + 0.5 || r.btn1.t < r.rowRect.t - 0.5 || r.btn1.b > r.rowRect.b + 0.5) {
-        problems.push(`${theme}, ${where}: a .pstep-btn is not inside its row: ${JSON.stringify([r.btn0, r.btn1, r.rowRect])}`);
-      }
+      rec.check(r.btn0.w >= 48 - 0.5 && r.btn0.h >= 48 - 0.5 && r.btn1.w >= 48 - 0.5 && r.btn1.h >= 48 - 0.5, `${theme}, ${where}: a .pstep-btn box is under 48x48: ${JSON.stringify([r.btn0, r.btn1])}`);
+      rec.check(r.btn0.r <= r.btn1.l + 0.5, `${theme}, ${where}: the two .pstep-btn boxes overlap: ${JSON.stringify([r.btn0, r.btn1])}`);
+      rec.check(near(r.btn0.r, r.mid, 1) && near(r.btn1.l, r.mid, 1), `${theme}, ${where}: the two halves do not meet at the pill's own middle (${r.mid}): ${JSON.stringify([r.btn0, r.btn1])}`);
+      rec.check(r.btn0.t >= r.rowRect.t - 0.5 && r.btn0.b <= r.rowRect.b + 0.5 && r.btn1.t >= r.rowRect.t - 0.5 && r.btn1.b <= r.rowRect.b + 0.5, `${theme}, ${where}: a .pstep-btn is not inside its row: ${JSON.stringify([r.btn0, r.btn1, r.rowRect])}`);
     }
-    if (!near(r.rowRect.h, 48)) problems.push(`${theme}, ${where}: .pstep-row is ${r.rowRect.h}px tall, want 48 +/-${TOL}`);
+    rec.check(near(r.rowRect.h, 48), `${theme}, ${where}: .pstep-row is ${r.rowRect.h}px tall, want 48 +/-${TOL}`);
   }
 }
 
-function checkSwitchRow(problems, theme, where, m) {
-  if (!m) { problems.push(`${theme}, ${where}: switch input not found -- nothing measured`); return; }
-  if (!m.rowRect) { problems.push(`${theme}, ${where}: switch input has no .prow ancestor`); return; }
-  if (!near(m.rowRect.h, 48)) problems.push(`${theme}, ${where}: row is ${m.rowRect.h}px tall, want 48 +/-${TOL}`);
-  if (!near(m.inputRect.w, 51) || !near(m.inputRect.h, 48)) {
-    problems.push(`${theme}, ${where}: input box is ${m.inputRect.w}x${m.inputRect.h}, want 51x48 +/-${TOL}`);
-  }
-  if (m.inputRect.t < m.rowRect.t - 0.5 || m.inputRect.b > m.rowRect.b + 0.5) {
-    problems.push(`${theme}, ${where}: input box is not inside its row (input ${JSON.stringify(m.inputRect)}, row ${JSON.stringify(m.rowRect)})`);
-  }
+function checkSwitchRow(rec, theme, where, m) {
+  if (!m) { rec.fail(`${theme}, ${where}: switch input not found -- nothing measured`); return; }
+  if (!m.rowRect) { rec.fail(`${theme}, ${where}: switch input has no .prow ancestor`); return; }
+  rec.check(near(m.rowRect.h, 48), `${theme}, ${where}: row is ${m.rowRect.h}px tall, want 48 +/-${TOL}`);
+  rec.check(near(m.inputRect.w, 51) && near(m.inputRect.h, 48), `${theme}, ${where}: input box is ${m.inputRect.w}x${m.inputRect.h}, want 51x48 +/-${TOL}`);
+  rec.check(m.inputRect.t >= m.rowRect.t - 0.5 && m.inputRect.b <= m.rowRect.b + 0.5, `${theme}, ${where}: input box is not inside its row (input ${JSON.stringify(m.inputRect)}, row ${JSON.stringify(m.rowRect)})`);
 }
 
-export async function controlSizePass(c, origin) {
-  const problems = [];
+export async function controlSizePass(c, origin, rec) {
   let segCount = 0;
   let welcomeCount = 0;
 
-  try {
-    for (const theme of ['light', 'dark']) {
-      await land(c, origin, { record: richWith({ theme }) });
+  for (const theme of ['light', 'dark']) {
+    await land(c, origin, { record: richWith({ theme }) });
 
-      // Item 1.
-      const sm = await sentenceMetrics(c);
-      if (!sm) problems.push(`${theme}: #sentence or #phrasePlayers not found`);
-      else {
-        if (sm.pitch < 34 || sm.pitch > 36) problems.push(`${theme}: sentence line pitch is ${sm.pitch}px, want 34-36 (34.5 expected)`);
-        if (sm.phraseH < 34 || sm.phraseH > 36) problems.push(`${theme}: #phrasePlayers hit area is ${sm.phraseH}px tall, want 34-36 (never under 34)`);
-      }
-
-      // #141 item 1: the three welcome tabs, forced open (see
-      // `welcomeTabMetrics`'s own comment).
-      const wt = await welcomeTabMetrics(c);
-      welcomeCount += wt ? wt.btns.length : 0;
-      checkWelcomeTabs(problems, theme, wt);
-
-      // Item 3, part 1 (#stratseg) and item 6, part 1 (the "Even out earlier
-      // games" switch), both inside the Plan sheet's level-1 pane.
-      await tap(c, `document.getElementById('phraseStrategy').click()`);
-      const planSegs = await segMetrics(c);
-      segCount += planSegs.length;
-      checkSegMetrics(problems, theme, planSegs);
-      const dayMetrics = await switchMetrics(c, '#planDay input[switch]');
-      checkSwitchRow(problems, theme, 'Plan sheet, Even out earlier games', dayMetrics);
-      await tap(c, `document.getElementById('sheetPlanClose').click()`);
-
-      // Item 3, part 2: the four Settings segs.
-      await tap(c, `document.getElementById('settingsBtn').click()`);
-      const settingsSegs = await segMetrics(c);
-      segCount += settingsSegs.length;
-      checkSegMetrics(problems, theme, settingsSegs);
-      // `#backBtn` (TODAY_HOME) always lands on Today (app.js wires it that
-      // way regardless of which view it left), never back on the game
-      // itself -- `.today-game` is the same second step `TOUCH_STATES` takes
-      // after it whenever a state needs the game screen again.
-      await tap(c, TODAY_HOME);
-      await tap(c, `document.querySelector('.today-game').click()`);
-
-      // Items 4 and 5: Format sheet.
-      await tap(c, `document.getElementById('phraseFormat').click()`);
-      checkStepperRows(problems, theme, 'Format sheet', await stepperMetrics(c, '#sheetFormatBody'));
-      await tap(c, `document.getElementById('sheetFormatClose').click()`);
-
-      // Items 4 and 5: Add a rule.
-      await tap(c, `document.getElementById('phraseRules').click()`);
-      await tap(c, `document.querySelector('#constraints .add-rule').click()`);
-      checkStepperRows(problems, theme, 'Add a rule', await stepperMetrics(c, '#planKindBody'));
-      await tap(c, `document.getElementById('sheetPlanClose').click()`);
-
-      // #148 item 12: the edit page's own stepper (a cap rule) -- `#planSub`,
-      // a container the `#planKindBody` check above does not reach, holding
-      // the same shared `stepperRow` markup (rules.js's `kindControls`), so
-      // the same 88x32 pill / 48x48 buttons rule applies.
-      await evalIn(c, setGame(`s.game().constraints.maxMinutes = { p3: 20 };`));
-      await tap(c, `document.getElementById('phraseRules').click()`);
-      await tap(c, `document.querySelector('#constraints .prow:not(.add-rule)').click()`);
-      checkStepperRows(problems, theme, 'Edit a rule (cap)', await stepperMetrics(c, '#planSub'));
-      await tap(c, `document.getElementById('sheetPlanClose').click()`);
-      await evalIn(c, setGame(`s.game().constraints.maxMinutes = {};`));
-
-      // Item 6, part 2: #showMinutes, inside #sheetCard.
-      await tap(c, `document.getElementById('shareBtn').click()`);
-      checkSwitchRow(problems, theme, '#sheetCard, #showMinutes', await switchMetrics(c, '#showMinutes'));
-      await tap(c, `document.getElementById('sheetCardClose').click()`);
+    // Item 1.
+    const sm = await sentenceMetrics(c);
+    if (!sm) rec.fail(`${theme}: #sentence or #phrasePlayers not found`);
+    else {
+      rec.check(sm.pitch >= 34 && sm.pitch <= 36, `${theme}: sentence line pitch is ${sm.pitch}px, want 34-36 (34.5 expected)`);
+      rec.check(sm.phraseH >= 34 && sm.phraseH <= 36, `${theme}: #phrasePlayers hit area is ${sm.phraseH}px tall, want 34-36 (never under 34)`);
     }
 
-    // Rule 2a: 5 segs x 2 themes = 10 measured rows expected. Fewer than that
-    // means a selector stopped matching (a renamed id, a sheet that failed to
-    // open) rather than every seg genuinely passing with nothing read.
-    if (segCount < SEG_SELECTORS.length * 2) {
-      problems.push(`only ${segCount}/${SEG_SELECTORS.length * 2} seg measurements were taken -- a seg's sheet did not open, or its selector no longer matches`);
-    }
-    // Rule 2a: 3 welcome tabs x 2 themes = 6 measured buttons expected.
-    if (welcomeCount < 3 * 2) {
-      problems.push(`only ${welcomeCount}/6 welcome tab measurements were taken -- the tablist or a tab's selector no longer matches`);
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    // #141 item 1: the three welcome tabs, forced open (see
+    // `welcomeTabMetrics`'s own comment).
+    const wt = await welcomeTabMetrics(c);
+    welcomeCount += wt ? wt.btns.length : 0;
+    checkWelcomeTabs(rec, theme, wt);
+
+    // Item 3, part 1 (#stratseg) and item 6, part 1 (the "Even out earlier
+    // games" switch), both inside the Plan sheet's level-1 pane.
+    await tap(c, `document.getElementById('phraseStrategy').click()`);
+    const planSegs = await segMetrics(c);
+    segCount += planSegs.length;
+    checkSegMetrics(rec, theme, planSegs);
+    const dayMetrics = await switchMetrics(c, '#planDay input[switch]');
+    checkSwitchRow(rec, theme, 'Plan sheet, Even out earlier games', dayMetrics);
+    await tap(c, `document.getElementById('sheetPlanClose').click()`);
+
+    // Item 3, part 2: the four Settings segs.
+    await tap(c, `document.getElementById('settingsBtn').click()`);
+    const settingsSegs = await segMetrics(c);
+    segCount += settingsSegs.length;
+    checkSegMetrics(rec, theme, settingsSegs);
+    // `#backBtn` (TODAY_HOME) always lands on Today (app.js wires it that
+    // way regardless of which view it left), never back on the game
+    // itself -- `.today-game` is the same second step `TOUCH_STATES` takes
+    // after it whenever a state needs the game screen again.
+    await tap(c, TODAY_HOME);
+    await tap(c, `document.querySelector('.today-game').click()`);
+
+    // Items 4 and 5: Format sheet.
+    await tap(c, `document.getElementById('phraseFormat').click()`);
+    checkStepperRows(rec, theme, 'Format sheet', await stepperMetrics(c, '#sheetFormatBody'));
+    await tap(c, `document.getElementById('sheetFormatClose').click()`);
+
+    // Items 4 and 5: Add a rule.
+    await tap(c, `document.getElementById('phraseRules').click()`);
+    await tap(c, `document.querySelector('#constraints .add-rule').click()`);
+    checkStepperRows(rec, theme, 'Add a rule', await stepperMetrics(c, '#planKindBody'));
+    await tap(c, `document.getElementById('sheetPlanClose').click()`);
+
+    // #148 item 12: the edit page's own stepper (a cap rule) -- `#planSub`,
+    // a container the `#planKindBody` check above does not reach, holding
+    // the same shared `stepperRow` markup (rules.js's `kindControls`), so
+    // the same 88x32 pill / 48x48 buttons rule applies.
+    await evalIn(c, setGame(`s.game().constraints.maxMinutes = { p3: 20 };`));
+    await tap(c, `document.getElementById('phraseRules').click()`);
+    await tap(c, `document.querySelector('#constraints .prow:not(.add-rule)').click()`);
+    checkStepperRows(rec, theme, 'Edit a rule (cap)', await stepperMetrics(c, '#planSub'));
+    await tap(c, `document.getElementById('sheetPlanClose').click()`);
+    await evalIn(c, setGame(`s.game().constraints.maxMinutes = {};`));
+
+    // Item 6, part 2: #showMinutes, inside #sheetCard.
+    await tap(c, `document.getElementById('shareBtn').click()`);
+    checkSwitchRow(rec, theme, '#sheetCard, #showMinutes', await switchMetrics(c, '#showMinutes'));
+    await tap(c, `document.getElementById('sheetCardClose').click()`);
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `sentence pitch, phrase hit area, ${SEG_SELECTORS.length} seg tracks/buttons/weights, the 3 welcome tabs, `
-        + `Format and Add-a-rule steppers, and 2 switch rows all drawn to spec, light and dark`,
-  };
+  // Rule 2a: 5 segs x 2 themes = 10 measured rows expected. Fewer than that
+  // means a selector stopped matching (a renamed id, a sheet that failed to
+  // open) rather than every seg genuinely passing with nothing read.
+  rec.check(segCount >= SEG_SELECTORS.length * 2, `only ${segCount}/${SEG_SELECTORS.length * 2} seg measurements were taken -- a seg's sheet did not open, or its selector no longer matches`);
+  // Rule 2a: 3 welcome tabs x 2 themes = 6 measured buttons expected.
+  rec.check(welcomeCount >= 3 * 2, `only ${welcomeCount}/6 welcome tab measurements were taken -- the tablist or a tab's selector no longer matches`);
+
+  rec.ok(`sentence pitch, phrase hit area, ${SEG_SELECTORS.length} seg tracks/buttons/weights, the 3 welcome tabs, `
+    + `Format and Add-a-rule steppers, and 2 switch rows all drawn to spec, light and dark`);
 }

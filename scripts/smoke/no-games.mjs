@@ -11,35 +11,32 @@ import { LAPTOP } from './sizes.mjs';
    exists staying shut. Starts from `ONE_GAME` (RICH with Ravens dropped, so
    Hawks is the one game this check removes) rather than building that state
    from RICH's two games itself. */
-export async function noGamesPass(c, origin) {
-  const problems = [];
+export async function noGamesPass(c, origin, rec) {
   const key = k => step(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '${k}' }))`);
   const onToday = () => onScreen(c, 'view-today');
   const onGames = () => onScreen(c, 'view-games');
-  try {
-
   // `ONE_GAME` keeps RICH's own `view: 'games'` -- see `GAMES_VIEW_READY`'s
   // own comment (fixtures.mjs) for why this names it.
   await land(c, origin, { record: ONE_GAME, ready: GAMES_VIEW_READY, freshHistory: true });
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
-  if (!(await onToday())) problems.push('could not reach Today to start the check');
+  rec.check(await onToday(), 'could not reach Today to start the check');
 
   const before = await evalIn(c, `document.querySelectorAll('.today-game').length`);
   const noteHiddenBefore = await evalIn(c, `document.getElementById('todayNoGames')?.hidden`);
-  if (before !== 1) problems.push(`the fixture shows ${before} game(s) on Today before Remove, want 1`);
-  if (noteHiddenBefore !== true) problems.push('the empty-state note shows while the team still has a game');
+  rec.check(before === 1, `the fixture shows ${before} game(s) on Today before Remove, want 1`);
+  rec.check(noteHiddenBefore === true, 'the empty-state note shows while the team still has a game');
 
   // Open the one game and remove it -- the game screen is the only place
   // #removeGame lives (teams-view.js).
   await evalIn(c, step(`document.querySelector('.today-game').click()`));
-  if (!(await onGames())) problems.push('opening the only game did not reach the Games screen');
+  rec.check(await onGames(), 'opening the only game did not reach the Games screen');
   await evalIn(c, step(`document.getElementById('removeGame')?.click()`));
 
-  if (!(await onToday())) problems.push('removing the last game did not return to Today');
+  rec.check(await onToday(), 'removing the last game did not return to Today');
   const toast = await evalIn(c, `document.querySelector('#toasts .toast[data-undo] .tmsg')?.textContent.trim() ?? null`);
   // Exact copy (spec Constraints): the toast drops "The day rebalanced." --
   // there is no day left to rebalance.
-  if (toast !== 'Removed Hawks.') problems.push(`the toast reads "${toast}", want "Removed Hawks."`);
+  rec.check(toast === 'Removed Hawks.', `the toast reads "${toast}", want "Removed Hawks."`);
 
   const empty = await evalIn(c, `(() => {
     const note = document.getElementById('todayNoGames');
@@ -53,15 +50,13 @@ export async function noGamesPass(c, origin) {
     });
   })()`);
   const emptyState = JSON.parse(empty);
-  if (emptyState.noteHidden !== false) problems.push('the empty-state note stayed hidden after the last game was removed');
+  rec.check(emptyState.noteHidden === false, 'the empty-state note stayed hidden after the last game was removed');
   // Exact copy (spec Constraints).
-  if (emptyState.noteText !== 'No games yet. Add one to see it here.') {
-    problems.push(`the empty-state note reads "${emptyState.noteText}", want "No games yet. Add one to see it here."`);
-  }
-  if (emptyState.addHidden !== false) problems.push('Add a game is hidden with no games on the team');
-  if (emptyState.teamHidden !== false) problems.push('Team is hidden on an empty Today');
-  if (emptyState.seasonHidden !== false) problems.push('Season is hidden on an empty Today');
-  if (emptyState.games !== 0) problems.push(`${emptyState.games} game pass(es) still show after the last game was removed`);
+  rec.check(emptyState.noteText === 'No games yet. Add one to see it here.', `the empty-state note reads "${emptyState.noteText}", want "No games yet. Add one to see it here."`);
+  rec.check(emptyState.addHidden === false, 'Add a game is hidden with no games on the team');
+  rec.check(emptyState.teamHidden === false, 'Team is hidden on an empty Today');
+  rec.check(emptyState.seasonHidden === false, 'Season is hidden on an empty Today');
+  rec.check(emptyState.games === 0, `${emptyState.games} game pass(es) still show after the last game was removed`);
 
   // Decision 7's resting state (`html[data-view="today"] #view-games[hidden]`)
   // is scoped `:not(.no-games)` -- with no game to rest on, the right pane at
@@ -73,18 +68,16 @@ export async function noGamesPass(c, origin) {
     return JSON.stringify({ display: getComputedStyle(el).display, hidden: el.hidden, w: r.width, h: r.height });
   })()`);
   const wideGames = JSON.parse(wide);
-  if (!(wideGames.hidden === true && (wideGames.display === 'none' || (wideGames.w === 0 && wideGames.h === 0)))) {
-    problems.push(`at ${LAPTOP}px with no games #view-games reads ${wide}, want it left empty, not forced open`);
-  }
+  rec.check(wideGames.hidden === true && (wideGames.display === 'none' || (wideGames.w === 0 && wideGames.h === 0)), `at ${LAPTOP}px with no games #view-games reads ${wide}, want it left empty, not forced open`);
   await resize(c, WIDTH, HEIGHT);
 
   // Undo puts the game -- and its day -- back, and reopens that game's own
   // screen (the same undo shape `todaykeys` already proves for a day that
   // still has another game left).
   await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
-  if (!(await onGames())) problems.push('undoing Remove this game did not reopen that game\'s screen');
+  rec.check(await onGames(), 'undoing Remove this game did not reopen that game\'s screen');
   const titleAfterUndo = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
-  if (!/Hawks/.test(titleAfterUndo || '')) problems.push(`undoing Remove this game reopened "${titleAfterUndo}", not Hawks`);
+  rec.check(/Hawks/.test(titleAfterUndo || ''), `undoing Remove this game reopened "${titleAfterUndo}", not Hawks`);
 
   // Remove it again and reload -- the empty state has to survive a real
   // navigation, not just the in-page render the checks above already saw.
@@ -98,9 +91,9 @@ export async function noGamesPass(c, origin) {
     });
   })()`);
   const reloadState = JSON.parse(afterReload);
-  if (!reloadState.onToday) problems.push('a reload with no games left did not land on Today');
-  if (reloadState.noteHidden !== false) problems.push('a reload with no games left did not show the empty-state note');
-  if (reloadState.games !== 0) problems.push(`a reload with no games left still shows ${reloadState.games} game pass(es)`);
+  rec.check(reloadState.onToday, 'a reload with no games left did not land on Today');
+  rec.check(reloadState.noteHidden === false, 'a reload with no games left did not show the empty-state note');
+  rec.check(reloadState.games === 0, `a reload with no games left still shows ${reloadState.games} game pass(es)`);
 
   // Every door into a game screen that no longer exists stays shut, and
   // throws nothing.
@@ -111,38 +104,38 @@ export async function noGamesPass(c, origin) {
     const afterSetView = document.documentElement.dataset.view;
     return JSON.stringify({ afterSetView });
   })()`));
-  if (blocked.afterSetView !== 'today') problems.push(`setView('games') with no games landed on "${blocked.afterSetView}", want "today"`);
+  rec.check(blocked.afterSetView === 'today', `setView('games') with no games landed on "${blocked.afterSetView}", want "today"`);
 
   await evalIn(c, key('p'));
   const printedNoGames = await evalIn(c, `window.__printed`);
-  if (printedNoGames !== 0) problems.push(`P with no games called window.print() ${printedNoGames} time(s), want 0`);
-  if (!(await onToday())) problems.push('P with no games moved the screen off Today');
+  rec.check(printedNoGames === 0, `P with no games called window.print() ${printedNoGames} time(s), want 0`);
+  rec.check(await onToday(), 'P with no games moved the screen off Today');
 
   await evalIn(c, `(async () => { const tour = await import('${origin}/tour.js'); tour.startTour(); })()`);
   const tourOpen = await evalIn(c, `!document.getElementById('tour')?.hidden`);
-  if (tourOpen) problems.push('startTour() opened the tour with no games to walk');
+  rec.check(!tourOpen, 'startTour() opened the tour with no games to walk');
 
   await evalIn(c, step(`(() => {
     history.pushState({ view: 'games' }, '', location.href);
     dispatchEvent(new PopStateEvent('popstate', { state: { view: 'games' } }));
   })()`));
-  if (!(await onToday())) problems.push('a stale "games" history entry did not fold to Today with no games');
+  rec.check(await onToday(), 'a stale "games" history entry did not fold to Today with no games');
 
   // V still opens Team and comes back.
   await evalIn(c, key('v'));
   const onTeam = await evalIn(c, `!!(document.getElementById('view-team') && !document.getElementById('view-team').hidden)`);
-  if (!onTeam) problems.push('V did not open Team with no games on the team');
+  rec.check(onTeam, 'V did not open Team with no games on the team');
   await evalIn(c, key('v'));
-  if (!(await onToday())) problems.push('V did not return to Today from Team');
+  rec.check(await onToday(), 'V did not return to Today from Team');
 
   // Tour buttons hidden: Settings' "Show me around again", and the same
   // control inside the help sheet.
   await evalIn(c, step(`document.getElementById('settingsBtn')?.click()`));
   const tourBtnHidden = await evalIn(c, `document.getElementById('helpTourSettings')?.hidden`);
-  if (tourBtnHidden !== true) problems.push('"Show me around again" shows in Settings with no games');
+  rec.check(tourBtnHidden === true, '"Show me around again" shows in Settings with no games');
   await evalIn(c, step(`document.getElementById('helpBtn')?.click()`));
   const helpTourHidden = await evalIn(c, `document.getElementById('helpTour')?.hidden`);
-  if (helpTourHidden !== true) problems.push('"Show me around again" shows in the help sheet with no games');
+  rec.check(helpTourHidden === true, '"Show me around again" shows in the help sheet with no games');
   await evalIn(c, step(`document.getElementById('helpClose')?.click()`));
 
   // Removing a player on Team still works with no games on the team.
@@ -151,9 +144,7 @@ export async function noGamesPass(c, origin) {
   await evalIn(c, step(`document.querySelector('#rosterlist .rrow')?.click()`));
   await evalIn(c, step(`[...document.querySelectorAll('#sheetPlayer button')].find(b => b.textContent.trim() === 'Remove from team')?.click()`));
   const rowsAfter = await evalIn(c, `document.querySelectorAll('#rosterlist .rrow').length`);
-  if (rowsAfter !== rowsBefore - 1) {
-    problems.push(`removing a player with no games left ${rowsAfter} row(s), want ${rowsBefore - 1}`);
-  }
+  rec.check(rowsAfter === rowsBefore - 1, `removing a player with no games left ${rowsAfter} row(s), want ${rowsBefore - 1}`);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
   // Changing a team setting still works with no games on the team.
@@ -162,7 +153,7 @@ export async function noGamesPass(c, origin) {
   await evalIn(c, step(`document.querySelector('.color-opt[data-color="royal"]')?.click()`));
   await evalIn(c, step(`document.getElementById('colorPickerClose')?.click()`));
   const colorName = await evalIn(c, `document.getElementById('teamColorName')?.textContent.trim()`);
-  if (colorName !== 'Royal') problems.push(`changing the team color with no games left it reading "${colorName}", want "Royal"`);
+  rec.check(colorName === 'Royal', `changing the team color with no games left it reading "${colorName}", want "Royal"`);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
   // Switching teams still works with no games on the active one. Same
@@ -175,18 +166,9 @@ export async function noGamesPass(c, origin) {
   await evalIn(c, step(`[...document.querySelectorAll('.teammenu-item')][1]?.click()`));
   const switchedOk = await onToday();
   const switchedGames = await evalIn(c, `document.querySelectorAll('.today-game').length`);
-  if (!switchedOk) problems.push('switching to the second team from an empty Today did not stay on Today');
-  if (switchedGames !== 1) problems.push(`switching teams shows ${switchedGames} game(s) on the second team, want its own 1`);
-
-  } catch (e) {
-    problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
-  }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
-      : 'Remove this game -> Today\'s empty state (note, Add a game, no forced frame at '
-        + `${LAPTOP}px) -> Undo -> that game, reload, setView/P/startTour/a stale "games" `
-        + 'history entry all blocked, V, remove a player, a team setting, switch teams',
-  };
+  rec.check(switchedOk, 'switching to the second team from an empty Today did not stay on Today');
+  rec.check(switchedGames === 1, `switching teams shows ${switchedGames} game(s) on the second team, want its own 1`);
+  rec.ok('Remove this game -> Today\'s empty state (note, Add a game, no forced frame at '
+    + `${LAPTOP}px) -> Undo -> that game, reload, setView/P/startTour/a stale "games" `
+    + 'history entry all blocked, V, remove a player, a team setting, switch teams');
 }

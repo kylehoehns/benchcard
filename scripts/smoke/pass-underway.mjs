@@ -24,81 +24,63 @@ const WANT = [
   { title: 'Owls', status: 'Needs a fix', cls: 'warn' },
 ];
 
-export async function passUnderwayPass(c, origin) {
-  const problems = [];
-  try {
-    await land(c, origin, { record: FOUR, ...TODAY_LANDING });
+export async function passUnderwayPass(c, origin, rec) {
+  await land(c, origin, { record: FOUR, ...TODAY_LANDING });
 
-    // Drive game 0 (Panthers) mid-play: not stint 0 (never started), not the
-    // last stint (game over) -- `stints.length` read back from the page's
-    // own plan rather than assumed, so this holds even if the plan's own
-    // shape ever changes.
-    await evalIn(c, setGame(`
-      const p = s.plans[0];
-      const at = Math.max(1, Math.min(p.stints.length - 2, Math.floor(p.stints.length / 2)));
-      s.state.day.games[0].live = { at, overrides: {} };
-    `));
+  // Drive game 0 (Panthers) mid-play: not stint 0 (never started), not the
+  // last stint (game over) -- `stints.length` read back from the page's
+  // own plan rather than assumed, so this holds even if the plan's own
+  // shape ever changes.
+  await evalIn(c, setGame(`
+    const p = s.plans[0];
+    const at = Math.max(1, Math.min(p.stints.length - 2, Math.floor(p.stints.length / 2)));
+    s.state.day.games[0].live = { at, overrides: {} };
+  `));
 
-    const passes = JSON.parse(await evalIn(c, `(() => {
-      const btns = [...document.querySelectorAll('#todayGames .today-game')];
-      return JSON.stringify(btns.map(b => {
-        const statusEl = b.querySelector('.pass-status');
-        return {
-          title: b.querySelector('.pass-title')?.textContent ?? null,
-          statusText: statusEl ? statusEl.textContent : null,
-          cls: statusEl ? [...statusEl.classList].find(c => c !== 'pass-status') ?? null : null,
-          ariaLabel: b.getAttribute('aria-label'),
-        };
-      }));
-    })()`));
+  const passes = JSON.parse(await evalIn(c, `(() => {
+    const btns = [...document.querySelectorAll('#todayGames .today-game')];
+    return JSON.stringify(btns.map(b => {
+      const statusEl = b.querySelector('.pass-status');
+      return {
+        title: b.querySelector('.pass-title')?.textContent ?? null,
+        statusText: statusEl ? statusEl.textContent : null,
+        cls: statusEl ? [...statusEl.classList].find(c => c !== 'pass-status') ?? null : null,
+        ariaLabel: b.getAttribute('aria-label'),
+      };
+    }));
+  })()`));
 
-    passes.forEach((p, i) => {
-      const want = WANT[i];
-      if (p.title !== want.title) problems.push(`pass ${i} title is ${JSON.stringify(p.title)}, want ${JSON.stringify(want.title)}`);
-      if (p.statusText !== want.status) problems.push(`pass ${i} status text is ${JSON.stringify(p.statusText)}, want ${JSON.stringify(want.status)}`);
-      if (p.cls !== want.cls) problems.push(`pass ${i}'s status class is ${JSON.stringify(p.cls)}, want ${JSON.stringify(want.cls)}`);
-    });
+  passes.forEach((p, i) => {
+    const want = WANT[i];
+    rec.check(p.title === want.title, `pass ${i} title is ${JSON.stringify(p.title)}, want ${JSON.stringify(want.title)}`);
+    rec.check(p.statusText === want.status, `pass ${i} status text is ${JSON.stringify(p.statusText)}, want ${JSON.stringify(want.status)}`);
+    rec.check(p.cls === want.cls, `pass ${i}'s status class is ${JSON.stringify(p.cls)}, want ${JSON.stringify(want.cls)}`);
+  });
 
-    const underwayAria = passes[0]?.ariaLabel || '';
-    if (!underwayAria.endsWith(', underway')) {
-      problems.push(`pass 0's aria-label is ${JSON.stringify(underwayAria)}, want it to end ", underway"`);
-    }
+  const underwayAria = passes[0]?.ariaLabel || '';
+  rec.check(underwayAria.endsWith(', underway'), `pass 0's aria-label is ${JSON.stringify(underwayAria)}, want it to end ", underway"`);
 
-    // The dot's color is a real class rule, read off a probe built with the
-    // same class the pass carries -- never a copied hex (AGENTS.md's own
-    // rule) -- compared against `--accent` read the same way, matching
-    // `game-passes.mjs`'s own `dotColors` probe for `.ok`/`.warn` (both share
-    // `PASS_STATUS_DOT_PROBE`/`CSS_VAR_COLOR_PROBE`, dom.mjs).
-    const dotColors = JSON.parse(await evalIn(c, `(() => {
-      const probe = ${PASS_STATUS_DOT_PROBE};
-      const cssVar = ${CSS_VAR_COLOR_PROBE};
-      const accent = cssVar('var(--accent)');
-      const btns = [...document.querySelectorAll('#todayGames .today-game')];
-      const dot0 = getComputedStyle(btns[0].querySelector('.pass-status'), '::before').backgroundColor;
-      return JSON.stringify({ now: probe('now'), accent, dot0 });
-    })()`));
-    if (dotColors.now !== dotColors.accent) {
-      problems.push(`.pass-status.now's dot is ${dotColors.now}, want --accent (${dotColors.accent})`);
-    }
-    if (dotColors.dot0 !== dotColors.accent) {
-      problems.push(`the underway pass's own dot paints ${dotColors.dot0}, want --accent (${dotColors.accent})`);
-    }
+  // The dot's color is a real class rule, read off a probe built with the
+  // same class the pass carries -- never a copied hex (AGENTS.md's own
+  // rule) -- compared against `--accent` read the same way, matching
+  // `game-passes.mjs`'s own `dotColors` probe for `.ok`/`.warn` (both share
+  // `PASS_STATUS_DOT_PROBE`/`CSS_VAR_COLOR_PROBE`, dom.mjs).
+  const dotColors = JSON.parse(await evalIn(c, `(() => {
+    const probe = ${PASS_STATUS_DOT_PROBE};
+    const cssVar = ${CSS_VAR_COLOR_PROBE};
+    const accent = cssVar('var(--accent)');
+    const btns = [...document.querySelectorAll('#todayGames .today-game')];
+    const dot0 = getComputedStyle(btns[0].querySelector('.pass-status'), '::before').backgroundColor;
+    return JSON.stringify({ now: probe('now'), accent, dot0 });
+  })()`));
+  rec.check(dotColors.now === dotColors.accent, `.pass-status.now's dot is ${dotColors.now}, want --accent (${dotColors.accent})`);
+  rec.check(dotColors.dot0 === dotColors.accent, `the underway pass's own dot paints ${dotColors.dot0}, want --accent (${dotColors.accent})`);
 
-    // Item 3: the game screen's sub line, with the underway game open.
-    await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[0].click()`));
-    const sub = await evalIn(c, `document.getElementById('gameSub')?.textContent ?? null`);
-    if (!sub || !sub.includes('Underway')) {
-      problems.push(`#gameSub is ${JSON.stringify(sub)}, want it to include "Underway"`);
-    }
-    await evalIn(c, step(TODAY_HOME));
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
-  }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `pass 0 (Panthers) reads Underway/now with an --accent dot and an aria-label ending ", underway", `
-        + `the game screen's sub line reads Underway, and passes 1-3 keep Planned/Needs a fix`,
-  };
+  // Item 3: the game screen's sub line, with the underway game open.
+  await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[0].click()`));
+  const sub = await evalIn(c, `document.getElementById('gameSub')?.textContent ?? null`);
+  rec.check(sub && sub.includes('Underway'), `#gameSub is ${JSON.stringify(sub)}, want it to include "Underway"`);
+  await evalIn(c, step(TODAY_HOME));
+  rec.ok(`pass 0 (Panthers) reads Underway/now with an --accent dot and an aria-label ending ", underway", `
+    + `the game screen's sub line reads Underway, and passes 1-3 keep Planned/Needs a fix`);
 }

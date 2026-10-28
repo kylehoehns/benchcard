@@ -1,5 +1,6 @@
 import { evalIn, OVERFLOW_PROBE, WORST_OUTSIDE, IS_CUT } from './dom.mjs';
 import { land } from './page-state.mjs';
+import { firstLine } from './verdict.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './sizes.mjs';
 
 /* The pages no browser check had ever loaded.
@@ -87,18 +88,18 @@ const PLATE_PROBE = `(() => {
 const PLATE_PAGES = new Set(['/about', '/advanced']);
 
 /* The checks every cell gets, at any width and text size, on every page. */
-async function cellChecks(c, page, where, problems) {
+async function cellChecks(c, page, where, rec) {
   const sc = JSON.parse(await evalIn(c, SCROLL_PROBE));
-  if (sc.sw > sc.cw) problems.push(`${where}: scrollWidth ${sc.sw}px exceeds clientWidth ${sc.cw}px`);
+  rec.check(sc.sw <= sc.cw, `${where}: scrollWidth ${sc.sw}px exceeds clientWidth ${sc.cw}px`);
   if (!PLATE_PAGES.has(page)) return;
   const pl = JSON.parse(await evalIn(c, PLATE_PROBE));
-  if (!pl.plates) problems.push(`${where}: no .plate on the page, so nothing was measured`);
-  else if (pl.worst) {
+  if (!pl.plates) rec.fail(`${where}: no .plate on the page, so nothing was measured`);
+  else {
     const w = pl.worst;
-    problems.push(`${where}: ${w.el} "${w.text}" reaches ${w.right}px, past its plate's edge at ${w.plate}px`);
+    rec.check(!w, w && `${where}: ${w.el} "${w.text}" reaches ${w.right}px, past its plate's edge at ${w.plate}px`);
   }
-  if (page === '/about' && !pl.names) problems.push(`${where}: no .plate .nm on the page, so no name was measured`);
-  if (pl.cut.length) problems.push(`${where}: names cut off in the plate: ${pl.cut.join(', ')}`);
+  rec.check(page !== '/about' || pl.names, `${where}: no .plate .nm on the page, so no name was measured`);
+  rec.check(!pl.cut.length, `${where}: names cut off in the plate: ${pl.cut.join(', ')}`);
 }
 
 /* ---- the large-text pass ----
@@ -144,8 +145,7 @@ const LARGE_TEXT_ALLOW = {};
    are still live (`19em` is 608px at this root) and the column is wider. */
 const LARGE_TEXT_WIDTHS = [LARGE_TEXT_WIDTH, STATIC_WIDTHS[0]];
 
-export async function staticPass(c, source, origin) {
-  const problems = [];
+export async function staticPass(c, source, origin, rec) {
   const visited = [];
   let images = 0;
   for (const page of STATIC_PAGES) {
@@ -156,9 +156,9 @@ export async function staticPass(c, source, origin) {
         await land(c, origin, { page, record: 'kept', width: w, ready: 'true' });
 
         const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-        if (o.pans) problems.push(`${where}: page pans sideways`);
-        if (o.worst) problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
-        await cellChecks(c, page, where, problems);
+        rec.check(!o.pans, `${where}: page pans sideways`);
+        rec.check(!o.worst, o.worst && `${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
+        await cellChecks(c, page, where, rec);
 
         // The static verdicts do not change with width; ask them once, wide.
         if (w !== STATIC_WIDTHS[0]) continue;
@@ -167,11 +167,11 @@ export async function staticPass(c, source, origin) {
         const alt = report.checks.find(k => k.name === 'images declare alt text');
         if (alt?.pass) images += Number((alt.detail.match(/(\d+) image/) || [])[1] || 0);
         for (const chk of report.checks) {
-          if (!STATIC_A11Y.has(chk.name) || chk.pass) continue;
-          problems.push(`${page} — ${chk.name}: ${chk.detail}`);
+          if (!STATIC_A11Y.has(chk.name)) continue;
+          rec.check(chk.pass, `${page} — ${chk.name}: ${chk.detail}`);
         }
       } catch (e) {
-        problems.push(`${where}: ${e.message.split('\n')[0]}`);
+        rec.fail(`${where}: ${firstLine(e)}`);
       }
     }
   }
@@ -188,26 +188,21 @@ export async function staticPass(c, source, origin) {
 
       const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
       const slack = LARGE_TEXT_ALLOW[page] || 0;
-      if (o.pans) problems.push(`${where}: page pans sideways`);
+      rec.check(!o.pans, `${where}: page pans sideways`);
       if (o.worst && o.worst.out > slack) {
-        problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
+        rec.fail(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`
           + (slack ? ` (${slack}px allowed)` : ''));
       } else if (o.worst) allowed++;
-      await cellChecks(c, page, where, problems);
+      await cellChecks(c, page, where, rec);
     } catch (e) {
-      problems.push(`${where}: ${e.message.split('\n')[0]}`);
+      rec.fail(`${where}: ${firstLine(e)}`);
     }
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${visited.length} pages × ${STATIC_WIDTHS.join('/')}px + ${LARGE_TEXT_WIDTHS.join('/')}px@${LARGE_TEXT_PX}px text, `
-        + `${images} image(s) with alt, no overflow`
-        + (allowed ? ` (${allowed} recorded residue)` : '')
-        + `, ids and lang clean, ${TOUCH_CHECK}`,
-  };
+  rec.ok(`${visited.length} pages × ${STATIC_WIDTHS.join('/')}px + ${LARGE_TEXT_WIDTHS.join('/')}px@${LARGE_TEXT_PX}px text, `
+    + `${images} image(s) with alt, no overflow`
+    + (allowed ? ` (${allowed} recorded residue)` : '')
+    + `, ids and lang clean, ${TOUCH_CHECK}`);
 }
 
 /* Not `A11Y`: that set carries the dialog check, which has no dialogs to find

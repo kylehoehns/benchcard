@@ -22,8 +22,7 @@ import { land, resize, setMedia } from './page-state.mjs';
 // game's label, "Northwest Valley Thunderbirds", not the first's "Hawks".
 const EXPECT_LABEL = 'Northwest Valley Thunderbirds · Q2 4:00 · Resume';
 
-export async function resumeBarPass(c, origin) {
-  const problems = [];
+export async function resumeBarPass(c, origin, rec) {
   const notes = [];
 
   /* ---- item 1: which game, and the exact label ---- */
@@ -39,10 +38,10 @@ export async function resumeBarPass(c, origin) {
     });
   })()`));
   if (ac1.hidden !== false) {
-    problems.push(`#resumeBar is ${ac1.hidden === null ? 'missing from the document' : 'hidden'} `
+    rec.fail(`#resumeBar is ${ac1.hidden === null ? 'missing from the document' : 'hidden'} `
       + 'on Today with two part-played games, want visible');
-  } else if (ac1.label !== EXPECT_LABEL) {
-    problems.push(`#resumeBtn reads ${JSON.stringify(ac1.label)}, want ${JSON.stringify(EXPECT_LABEL)} `
+  } else {
+    rec.check(ac1.label === EXPECT_LABEL, `#resumeBtn reads ${JSON.stringify(ac1.label)}, want ${JSON.stringify(EXPECT_LABEL)} `
       + '-- the SECOND game, not the first');
   }
   notes.push('item 1: names the later part-played game');
@@ -55,11 +54,9 @@ export async function resumeBarPass(c, origin) {
     gmClock: document.getElementById('gmClock')?.textContent || '',
     barHidden: document.getElementById('resumeBar')?.hidden,
   }))()`));
-  if (opened.gmHidden !== false) problems.push('tapping #resumeBtn did not open bench mode (#gamemode is still hidden)');
-  if (!/^4 of 8$/.test(opened.gmClock)) {
-    problems.push(`#gmClock reads ${JSON.stringify(opened.gmClock)}, want it to say "4 of 8" -- live.at is 3, zero-based`);
-  }
-  if (opened.barHidden !== true) problems.push('#resumeBar is still showing once bench mode is open');
+  rec.check(opened.gmHidden === false, 'tapping #resumeBtn did not open bench mode (#gamemode is still hidden)');
+  rec.check(/^4 of 8$/.test(opened.gmClock), `#gmClock reads ${JSON.stringify(opened.gmClock)}, want it to say "4 of 8" -- live.at is 3, zero-based`);
+  rec.check(opened.barHidden === true, '#resumeBar is still showing once bench mode is open');
 
   await evalIn(c, step(`document.getElementById('gmClose').click()`));
   const closed = JSON.parse(await evalIn(c, `(() => JSON.stringify({
@@ -67,9 +64,9 @@ export async function resumeBarPass(c, origin) {
     barHidden: document.getElementById('resumeBar')?.hidden,
     onToday: !document.getElementById('view-today')?.hidden,
   }))()`));
-  if (closed.gmHidden !== true) problems.push('closing bench mode left #gamemode open');
-  if (closed.barHidden !== false) problems.push('#resumeBar did not come back once bench mode closed');
-  if (!closed.onToday) problems.push('closing bench mode did not land back on Today (#view-today is hidden)');
+  rec.check(closed.gmHidden === true, 'closing bench mode left #gamemode open');
+  rec.check(closed.barHidden === false, '#resumeBar did not come back once bench mode closed');
+  rec.check(closed.onToday, 'closing bench mode did not land back on Today (#view-today is hidden)');
   notes.push('item 2: resumes on stint 4 of 8, hides while open, returns on close');
 
   /* ---- item 3: hidden everywhere else ---- */
@@ -77,22 +74,22 @@ export async function resumeBarPass(c, origin) {
     await evalIn(c, step(TODAY_HOME));
     await evalIn(c, step(open));
     const h = await evalIn(c, `document.getElementById('resumeBar')?.hidden`);
-    if (h !== true) problems.push(`#resumeBar is not hidden on ${screen}`);
+    rec.check(h === true, `#resumeBar is not hidden on ${screen}`);
   }
   await evalIn(c, step(TODAY_HOME));
 
   const plainToday = { ...RICH, view: 'today' };
   await land(c, origin, { record: plainToday, ...TODAY_LANDING });
   const plainHidden = await evalIn(c, `document.getElementById('resumeBar')?.hidden`);
-  if (plainHidden !== true) problems.push('#resumeBar is showing on Today with no part-played game');
+  rec.check(plainHidden === true, '#resumeBar is showing on Today with no part-played game');
 
   await land(c, origin, { ...WELCOME_LANDING });
   const fr = JSON.parse(await evalIn(c, `(() => JSON.stringify({
     barHidden: document.getElementById('resumeBar')?.hidden,
     welcomeShown: !document.getElementById('view-welcome')?.hidden,
   }))()`));
-  if (!fr.welcomeShown) problems.push('first run did not land on #view-welcome -- this check measured the wrong screen');
-  else if (fr.barHidden !== true) problems.push('#resumeBar is showing on first run');
+  if (!fr.welcomeShown) rec.fail('first run did not land on #view-welcome -- this check measured the wrong screen');
+  else rec.check(fr.barHidden === true, '#resumeBar is showing on first run');
   notes.push('item 3: hidden on every other screen, a plain Today, and first run');
 
   /* ---- item 4: a reload with a part-played game does not reopen bench mode ---- */
@@ -100,7 +97,7 @@ export async function resumeBarPass(c, origin) {
   rec4.view = 'today';
   await land(c, origin, { record: rec4, ...TODAY_LANDING });
   const ac4 = await evalIn(c, `document.getElementById('gamemode')?.hidden`);
-  if (ac4 !== true) problems.push('a reload with a part-played game left #gamemode open -- it must only open when the coach taps');
+  rec.check(ac4 === true, 'a reload with a part-played game left #gamemode open -- it must only open when the coach taps');
   notes.push('item 4: no auto-open on reload');
 
   /* ---- item 5: geometry at 320/360/390px, and the solid fallbacks ---- */
@@ -118,10 +115,8 @@ export async function resumeBarPass(c, origin) {
       const inner = br.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       return JSON.stringify({ h: br.height, btnW: btn.getBoundingClientRect().width, inner });
     })()`));
-    if (geo.h < 48) problems.push(`${w}px: #resumeBar is ${Math.round(geo.h)}px tall, want at least 48px`);
-    if (Math.abs(geo.btnW - geo.inner) > 1) {
-      problems.push(`${w}px: #resumeBtn is ${Math.round(geo.btnW)}px inside a ${Math.round(geo.inner)}px content box, want full width`);
-    }
+    rec.check(geo.h >= 48, `${w}px: #resumeBar is ${Math.round(geo.h)}px tall, want at least 48px`);
+    rec.check(Math.abs(geo.btnW - geo.inner) <= 1, `${w}px: #resumeBtn is ${Math.round(geo.btnW)}px inside a ${Math.round(geo.inner)}px content box, want full width`);
   }
   await resize(c, WIDTH, HEIGHT);
 
@@ -132,9 +127,9 @@ export async function resumeBarPass(c, origin) {
       const cs = getComputedStyle(document.getElementById('resumeBar'), '::before');
       return JSON.stringify({ bf: cs.backdropFilter || cs.webkitBackdropFilter, bg: cs.backgroundColor });
     })()`));
-    if (solid.bf && solid.bf !== 'none') problems.push(`${feature}: #resumeBar::before still has backdrop-filter ${solid.bf}, want none`);
+    rec.check(!solid.bf || solid.bf === 'none', `${feature}: #resumeBar::before still has backdrop-filter ${solid.bf}, want none`);
     const a = alpha(solid.bg);
-    if (a !== 1) problems.push(`${feature}: #resumeBar::before paints ${solid.bg} (alpha ${a}), want a fully opaque color`);
+    rec.check(a === 1, `${feature}: #resumeBar::before paints ${solid.bg} (alpha ${a}), want a fully opaque color`);
   }
   await setMedia(c, []);
   await evalIn(c, `${SETTLE}`);
@@ -146,9 +141,7 @@ export async function resumeBarPass(c, origin) {
     pad: parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom),
     barH: document.getElementById('resumeBar').getBoundingClientRect().height,
   }))()`));
-  if (scrollPad.pad + 0.5 < scrollPad.barH) {
-    problems.push(`html's scroll-padding-bottom is ${Math.round(scrollPad.pad)}px, want at least #resumeBar's ${Math.round(scrollPad.barH)}px`);
-  }
+  rec.check(!(scrollPad.pad + 0.5 < scrollPad.barH), `html's scroll-padding-bottom is ${Math.round(scrollPad.pad)}px, want at least #resumeBar's ${Math.round(scrollPad.barH)}px`);
 
   /* One walk, shared with focus-clear.mjs (`tabWalk`), which tabs the game
      screen against `.bar` and `#actionbar` the same way -- see its own
@@ -181,11 +174,9 @@ export async function resumeBarPass(c, origin) {
      front, wrapped a lap around the whole document and mis-counted the
      chrome and its own probe as Today's controls. */
   const MIN_CONTROLS = 5;
-  if (visited < MIN_CONTROLS) {
-    problems.push(`only ${visited} distinct control(s) reached tabbing Today (${labels.join(', ') || 'none'}), `
+  rec.check(visited >= MIN_CONTROLS, `only ${visited} distinct control(s) reached tabbing Today (${labels.join(', ') || 'none'}), `
       + `want at least ${MIN_CONTROLS} -- a run that measured nothing is not a pass`);
-  }
-  problems.push(...overlaps.slice(0, 3));
+  for (const o of overlaps) rec.fail(o);
   notes.push(`item 6: scroll-padding covers the bar; ${visited} control(s) tabbed clear of it: ${labels.join(', ')}`);
 
   /* ---- item 6's other half: the END of Today has to be reachable ----
@@ -231,24 +222,18 @@ export async function resumeBarPass(c, origin) {
   })()`));
   const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
   if (!under.ready) {
-    problems.push(`${where}: #resumeBar up ${under.bar}, Today showing ${under.today} -- this clearance check measured nothing`);
+    rec.fail(`${where}: #resumeBar up ${under.bar}, Today showing ${under.today} -- this clearance check measured nothing`);
   } else if (!under.counted) {
-    problems.push(`${where}: no visible element inside #view-today -- this clearance check measured nothing`);
+    rec.fail(`${where}: no visible element inside #view-today -- this clearance check measured nothing`);
   } else if (!under.scrollY) {
-    problems.push(`${where}: the page never scrolled (scrollY 0), so nothing here exercised the bottom of Today`);
+    rec.fail(`${where}: the page never scrolled (scrollY 0), so nothing here exercised the bottom of Today`);
   } else if (under.last.bottom > under.barTop + 1) {
-    problems.push(`${where}: at the very bottom of the scroll ${under.last.el} still reaches `
+    rec.fail(`${where}: at the very bottom of the scroll ${under.last.el} still reaches `
       + `${Math.round(under.last.bottom)}px, ${Math.round(under.last.bottom - under.barTop)}px under #resumeBar's top edge `
       + `(a ${Math.round(under.barH)}px bar over ${under.pad} of .wrap clearance) -- that content cannot be scrolled out`);
   } else {
     notes.push(`item 6: the last of Today (${under.last.el}) clears a ${Math.round(under.barH)}px bar at ${where}`);
   }
 
-
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}${problems.length > 4 ? ` (+${problems.length - 4} more)` : ''}`
-      : notes.join('; '),
-  };
+  rec.ok(notes.join('; '));
 }

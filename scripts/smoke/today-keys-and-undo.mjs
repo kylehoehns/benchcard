@@ -6,32 +6,29 @@ import { land } from './page-state.mjs';
    11. Runs against the standard RICH record (`view: 'games'`, one team --
    whatever the previous check left the fixture as), so it starts by
    returning to Today itself rather than assuming it is already there. */
-export async function todayKeysAndUndoPass(c, origin) {
-  const problems = [];
+export async function todayKeysAndUndoPass(c, origin, rec) {
   // Guarded the same way `todayAndBackPass` is: a missing control is a named
   // problem below, never a thrown exception.
   const key = k => step(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '${k}' }))`);
   const onToday = () => onScreen(c, 'view-today');
   const onGames = () => onScreen(c, 'view-games');
-  try {
-
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
-  if (!(await onToday())) problems.push('could not reach Today to start the check');
+  rec.check(await onToday(), 'could not reach Today to start the check');
 
   // V on Today opens Team; V on Team returns to Today.
   await evalIn(c, key('v'));
   const onTeam = await evalIn(c, `!!(document.getElementById('view-team') && !document.getElementById('view-team').hidden)`);
-  if (!onTeam) problems.push('V on Today did not open Team');
+  rec.check(onTeam, 'V on Today did not open Team');
   await evalIn(c, key('v'));
-  if (!(await onToday())) problems.push('V on Team did not return to Today');
+  rec.check(await onToday(), 'V on Team did not return to Today');
 
   // P from Today opens the game and "prints" it (stubbed).
   await evalIn(c, `window.__printed = 0; window.print = () => { window.__printed++; }`);
   await evalIn(c, key('p'));
   const printedFromToday = await evalIn(c, 'window.__printed');
   const onGamesAfterP = await onGames();
-  if (!onGamesAfterP) problems.push('P from Today did not open the game');
-  if (printedFromToday !== 1) problems.push(`P from Today called window.print() ${printedFromToday} time(s), want 1`);
+  rec.check(onGamesAfterP, 'P from Today did not open the game');
+  rec.check(printedFromToday === 1, `P from Today called window.print() ${printedFromToday} time(s), want 1`);
 
   // S and B are inert off the Game screen; back to Today to prove it there.
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
@@ -39,8 +36,8 @@ export async function todayKeysAndUndoPass(c, origin) {
   const gmOpenAfterS = await evalIn(c, `!!(document.getElementById('gamemode') && !document.getElementById('gamemode').hidden)`);
   await evalIn(c, key('b'));
   const gmOpenAfterB = await evalIn(c, `!!(document.getElementById('gamemode') && !document.getElementById('gamemode').hidden)`);
-  if (gmOpenAfterS || gmOpenAfterB) problems.push('S or B did something off the Game screen, where neither is wired');
-  if (!(await onToday())) problems.push('S/B moved the screen off Today');
+  rec.check(!gmOpenAfterS && !gmOpenAfterB, 'S or B did something off the Game screen, where neither is wired');
+  rec.check(await onToday(), 'S/B moved the screen off Today');
 
   // #100 removed "New day" -- filing now runs on its own, with its own
   // fixture-driven Undo coverage in `dated-day.mjs`. Nothing to click here
@@ -54,14 +51,12 @@ export async function todayKeysAndUndoPass(c, origin) {
      the dialog's close animation. */
   await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
   const flowOpenOnAdd = await evalIn(c, `!!document.getElementById('addGameFlow')?.open`);
-  if (!flowOpenOnAdd) problems.push('Add a game did not open the three-step flow');
+  rec.check(flowOpenOnAdd, 'Add a game did not open the three-step flow');
   for (let i = 0; i < 3; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
   const onGamesAfterAdd = await onGames();
-  if (!onGamesAfterAdd) problems.push('"Add game" did not open the new game\'s screen');
+  rec.check(onGamesAfterAdd, '"Add game" did not open the new game\'s screen');
   const titleAfterAdd = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
-  if (!/Game \d/.test(titleAfterAdd) && !/Hawks|Ravens/.test(titleAfterAdd)) {
-    problems.push(`the new game's title reads "${titleAfterAdd}"`);
-  }
+  rec.check(/Game \d/.test(titleAfterAdd) || /Hawks|Ravens/.test(titleAfterAdd), `the new game's title reads "${titleAfterAdd}"`);
 
   // Remove this game -> Today -> Undo -> that game's screen again.
   /* #23 review, item A: the click and the FIRST read happen in one
@@ -82,27 +77,19 @@ export async function todayKeysAndUndoPass(c, origin) {
     try { savedView = JSON.parse(localStorage.getItem('benchcard.v7')).view; } catch {}
     return JSON.stringify({ hiddenNow, viewNow, savedView });
   })()`));
-  if (immediate.hiddenNow !== true) {
-    problems.push(`Remove this game: #view-games.hidden is ${immediate.hiddenNow} immediately after the click, want true`);
-  }
-  if (immediate.viewNow !== 'today') {
-    problems.push(`Remove this game: state.view is "${immediate.viewNow}" immediately after the click, want "today"`);
-  }
-  if (immediate.savedView !== 'today') {
-    problems.push(`Remove this game: the saved record's view is "${immediate.savedView}" immediately after the click, want "today"`);
-  }
+  rec.check(immediate.hiddenNow === true, `Remove this game: #view-games.hidden is ${immediate.hiddenNow} immediately after the click, want true`);
+  rec.check(immediate.viewNow === 'today', `Remove this game: state.view is "${immediate.viewNow}" immediately after the click, want "today"`);
+  rec.check(immediate.savedView === 'today', `Remove this game: the saved record's view is "${immediate.savedView}" immediately after the click, want "today"`);
   await evalIn(c, SETTLE);
   const onTodayAfterRemove = await onToday();
   const undoShown2 = await evalIn(c, `!!document.querySelector('#toasts .toast[data-undo]')`);
-  if (!onTodayAfterRemove) problems.push('Remove this game did not return to Today');
-  if (!undoShown2) problems.push('Remove this game did not show an Undo toast');
+  rec.check(onTodayAfterRemove, 'Remove this game did not return to Today');
+  rec.check(undoShown2, 'Remove this game did not show an Undo toast');
   await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
   const onGamesAfterUndoRemove = await onGames();
   const titleAfterUndoRemove = await evalIn(c, `document.getElementById('barTitle')?.textContent.trim()`);
-  if (!onGamesAfterUndoRemove) problems.push('undoing Remove this game did not reopen that game\'s screen');
-  if (titleAfterUndoRemove !== titleAfterAdd) {
-    problems.push(`undoing Remove this game reopened "${titleAfterUndoRemove}", not "${titleAfterAdd}"`);
-  }
+  rec.check(onGamesAfterUndoRemove, 'undoing Remove this game did not reopen that game\'s screen');
+  rec.check(titleAfterUndoRemove === titleAfterAdd, `undoing Remove this game reopened "${titleAfterUndoRemove}", not "${titleAfterAdd}"`);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
   // Remove team + Undo -> Settings. A SECOND team first: RICH ships with
@@ -117,10 +104,10 @@ export async function todayKeysAndUndoPass(c, origin) {
   await evalIn(c, step(`document.getElementById('removeTeam')?.click()`));
   await evalIn(c, step(`document.getElementById('confirmYes')?.click()`));
   const onTodayAfterRemoveTeam = await onToday();
-  if (!onTodayAfterRemoveTeam) problems.push('removing the team did not return to Today');
+  rec.check(onTodayAfterRemoveTeam, 'removing the team did not return to Today');
   await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
   const onSettingsAfterUndo = await evalIn(c, `!!(document.getElementById('view-settings') && !document.getElementById('view-settings').hidden)`);
-  if (!onSettingsAfterUndo) problems.push('undoing the team removal did not return to Settings');
+  rec.check(onSettingsAfterUndo, 'undoing the team removal did not return to Settings');
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
   /* #23 review, item B: removing the LAST team on a single-team record
@@ -138,17 +125,15 @@ export async function todayKeysAndUndoPass(c, origin) {
   await evalIn(c, step(`document.getElementById('confirmYes')?.click()`));
   const onWelcomeAfterLastRemove = await evalIn(c,
     `!!(document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden)`);
-  if (!onWelcomeAfterLastRemove) problems.push('removing the last team did not show the welcome screen');
+  rec.check(onWelcomeAfterLastRemove, 'removing the last team did not show the welcome screen');
 
   await evalIn(c, `history.back()`);
   await evalIn(c, SETTLE);
   const stillWelcomeAfterBack = await evalIn(c,
     `!!(document.getElementById('view-welcome') && !document.getElementById('view-welcome').hidden)`);
   const todayHiddenAfterBack = await evalIn(c, `document.getElementById('view-today')?.hidden`);
-  if (!stillWelcomeAfterBack) problems.push('history.back() after removing the last team left welcome for a stale screen');
-  if (todayHiddenAfterBack !== true) {
-    problems.push(`#view-today.hidden is ${todayHiddenAfterBack} after history.back() with no team left, want true`);
-  }
+  rec.check(stillWelcomeAfterBack, 'history.back() after removing the last team left welcome for a stale screen');
+  rec.check(todayHiddenAfterBack === true, `#view-today.hidden is ${todayHiddenAfterBack} after history.back() with no team left, want true`);
 
   // Undo from welcome restores Settings, on the SAME [Today, Settings] pair
   // -- not a third entry stacked on top of the one the coach was already
@@ -158,11 +143,9 @@ export async function todayKeysAndUndoPass(c, origin) {
   const onSettingsAfterLastUndo = await evalIn(c,
     `!!(document.getElementById('view-settings') && !document.getElementById('view-settings').hidden)`);
   const afterUndoLen = await evalIn(c, `history.length`);
-  if (!onSettingsAfterLastUndo) problems.push('undoing the removal of the last team did not restore Settings');
-  if (afterUndoLen !== beforeUndoLen) {
-    problems.push(`undoing the removal of the last team changed history.length ${beforeUndoLen} -> `
+  rec.check(onSettingsAfterLastUndo, 'undoing the removal of the last team did not restore Settings');
+  rec.check(afterUndoLen === beforeUndoLen, `undoing the removal of the last team changed history.length ${beforeUndoLen} -> `
       + `${afterUndoLen}, want no change (the same [Today, Settings] pair, not a third entry)`);
-  }
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
   /* #23 review, third round: two more paths that change `state.activeGame`
@@ -182,7 +165,7 @@ export async function todayKeysAndUndoPass(c, origin) {
   await evalIn(c, step(`document.getElementById('todayAddGame')?.click()`));
   for (let i = 0; i < 3; i++) await evalIn(c, step(`document.getElementById('agNext')?.click()`));
   const addedOpp = await evalIn(c, `document.getElementById('label')?.value ?? null`);
-  if (addedOpp !== '') problems.push(`Add a game: the opponent input reads "${addedOpp}", want it empty (the new game's own)`);
+  rec.check(addedOpp === '', `Add a game: the opponent input reads "${addedOpp}", want it empty (the new game's own)`);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
 
   // P from Today, with activeGame already moved to the second game (Ravens)
@@ -198,19 +181,8 @@ export async function todayKeysAndUndoPass(c, origin) {
   await evalIn(c, `window.__printed = 0; window.print = () => { window.__printed++; }`);
   await evalIn(c, key('p'));
   const printedCard = await evalIn(c, `document.querySelector('.card .opp')?.textContent ?? null`);
-  if (!/Ravens/i.test(printedCard || '')) {
-    problems.push(`P from Today with the second game active printed a card reading "${printedCard}", want it to name Ravens`);
-  }
+  rec.check(/Ravens/i.test(printedCard || ''), `P from Today with the second game active printed a card reading "${printedCard}", want it to name Ravens`);
   await evalIn(c, step(`document.getElementById('backBtn')?.click()`));
-
-  } catch (e) {
-    problems.push(`threw before finishing: ${e.message.split('\n')[0]}`);
-  }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
-      : 'V both ways, P from Today (window.print stubbed), S/B inert off Games, '
-        + 'Add a game, Remove this game -> Today -> Undo -> that game, remove team + Undo -> Settings',
-  };
+  rec.ok('V both ways, P from Today (window.print stubbed), S/B inert off Games, '
+    + 'Add a game, Remove this game -> Today -> Undo -> that game, remove team + Undo -> Settings');
 }

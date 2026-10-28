@@ -32,8 +32,7 @@ import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
 
 const WANT = { title: 'Hawks', when: '9:00', status: 'Planned' };
 
-export async function gameTitlePass(c, origin) {
-  const problems = [];
+export async function gameTitlePass(c, origin, rec) {
   await evalIn(c, step(TODAY_HOME));
   await evalIn(c, step(`document.querySelector('.today-game').click()`));
 
@@ -76,26 +75,14 @@ export async function gameTitlePass(c, origin) {
 
   await evalIn(c, step(TODAY_HOME));
 
-  if (info.visibleCount !== 1) {
-    problems.push(`${info.visibleCount} visible h1(s) on the game screen: ${JSON.stringify(info.visibleTexts)}`);
-  }
-  if (info.titleText !== WANT.title) {
-    problems.push(`#gameTitle reads ${JSON.stringify(info.titleText)}, want ${JSON.stringify(WANT.title)}`);
-  }
-  if (!info.subText || !info.subText.includes(WANT.when)) {
-    problems.push(`#gameSub is ${JSON.stringify(info.subText)}, want it to include ${JSON.stringify(WANT.when)}`);
-  }
-  if (!info.subText || !info.subText.includes(WANT.status)) {
-    problems.push(`#gameSub is ${JSON.stringify(info.subText)}, want it to include ${JSON.stringify(WANT.status)}`);
-  }
-  if (info.barTitleAriaHidden !== 'true') {
-    problems.push(`#barTitle's aria-hidden is ${JSON.stringify(info.barTitleAriaHidden)} on the games view, want "true" `
+  rec.check(info.visibleCount === 1, `${info.visibleCount} visible h1(s) on the game screen: ${JSON.stringify(info.visibleTexts)}`);
+  rec.check(info.titleText === WANT.title, `#gameTitle reads ${JSON.stringify(info.titleText)}, want ${JSON.stringify(WANT.title)}`);
+  rec.check(info.subText && info.subText.includes(WANT.when), `#gameSub is ${JSON.stringify(info.subText)}, want it to include ${JSON.stringify(WANT.when)}`);
+  rec.check(info.subText && info.subText.includes(WANT.status), `#gameSub is ${JSON.stringify(info.subText)}, want it to include ${JSON.stringify(WANT.status)}`);
+  rec.check(info.barTitleAriaHidden === 'true', `#barTitle's aria-hidden is ${JSON.stringify(info.barTitleAriaHidden)} on the games view, want "true" `
       + `-- a screen reader hears ${JSON.stringify(info.barTitleText)} from it a second time`);
-  }
-  if (parseFloat(info.barTitleOpacity) !== 0) {
-    problems.push(`#barTitle is painted at opacity ${info.barTitleOpacity} at the top of the game screen, want 0 `
+  rec.check(parseFloat(info.barTitleOpacity) === 0, `#barTitle is painted at opacity ${info.barTitleOpacity} at the top of the game screen, want 0 `
       + '-- the large title has not gone anywhere yet, so the header copy must not be showing');
-  }
 
   /* #69 decision 7: the one-row timeline used to spend most of a 368px
    * row on its label and total gutters, leaving the track -- the thing a
@@ -110,10 +97,8 @@ export async function gameTitlePass(c, origin) {
     const t = timeline.getBoundingClientRect(), r = track.getBoundingClientRect();
     return JSON.stringify({ timelineWidth: t.width, trackWidth: r.width });
   })()`));
-  if (tl.timelineWidth > 0 && tl.trackWidth / tl.timelineWidth < 0.5) {
-    problems.push(`the timeline track is ${Math.round(tl.trackWidth)}px of a ${Math.round(tl.timelineWidth)}px timeline `
+  rec.check(tl.timelineWidth <= 0 || tl.trackWidth / tl.timelineWidth >= 0.5, `the timeline track is ${Math.round(tl.trackWidth)}px of a ${Math.round(tl.timelineWidth)}px timeline `
       + `(${Math.round(100 * tl.trackWidth / tl.timelineWidth)}%) at ${WIDTH}px, want the track at least half the row`);
-  }
   await evalIn(c, step(TODAY_HOME));
 
   /* And the same screen at a 200% reader's root, the narrowest phone anyone
@@ -125,14 +110,9 @@ export async function gameTitlePass(c, origin) {
   await land(c, origin, { record: 'kept', ...LARGE_TEXT });
   const o = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
   const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-  if (o.pans) problems.push(`${where}: the games view pans sideways`);
-  if (o.worst) problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
+  rec.check(!o.pans, `${where}: the games view pans sideways`);
+  rec.check(!o.worst, `${where}: ${o.worst?.el} reaches ${o.worst?.right}px in a ${o.vw}px viewport`);
   await evalIn(c, step(TODAY_HOME));
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.join(' | ')}`
-      : `one visible h1 (${JSON.stringify(info.titleText)}), sub line ${JSON.stringify(info.subText)}`,
-  };
+  rec.ok(`one visible h1 (${JSON.stringify(info.titleText)}), sub line ${JSON.stringify(info.subText)}`);
 }
