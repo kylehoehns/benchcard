@@ -117,6 +117,11 @@ export const GRAN_CHOICES = [
   { mode: 'breaksOnly', value: 1, label: 'Breaks only', phrase: 'only at breaks' },
 ];
 
+/* #367: a game's format, built once -- regulation and its overtime periods.
+   Every caller that asks the engine for stints or a plan goes through here,
+   so none can forget the overtime. */
+const gameFormat = g => ({ periods: g.periods, periodMinutes: g.periodMinutes, overtime: g.overtime });
+
 export function newGame(n, from, settings) {
   const g = {
     id: uid('g'), label: '', tipoff: '',
@@ -131,6 +136,7 @@ export function newGame(n, from, settings) {
        not a setting; see the note in DEFAULT_SETTINGS. */
     periods: settings?.periods ?? 4,
     periodMinutes: settings?.periodMinutes ?? 8,
+    overtime: [],
     granMode: 'everyN', granValue: 4,
     out: [], useCarryover: n > 0,
     /* Season carryover (B3). Off, and -- unlike format, availability and
@@ -837,7 +843,7 @@ export function reseed(g) {
  * ================================================================== */
 export function stintShape(g) {
   const stints = buildStints(
-    { periods: g.periods, periodMinutes: g.periodMinutes },
+    gameFormat(g),
     { mode: g.granMode, value: g.granValue });
   const total = stints.reduce((a, x) => a + x.minutes, 0);
   // `max` is the longest stint: the season carryover clamps a single game's
@@ -1410,12 +1416,27 @@ export function suppressRotationOffer(fn) {
 }
 export const rotationOfferSuppressed = () => suppressed;
 
-/* #247: "the same grid" is the same number of stints with the same period
-   name and clock window each. A change to the format or the sub interval
-   moves the grid, and keeps #134's rewrite-and-toast path. */
-const sameGrid = (a, b) => a.stints.length === b.stints.length
-  && a.stints.every((s, i) => s.periodName === b.stints[i].periodName
-    && s.startSec === b.stints[i].startSec && s.endSec === b.stints[i].endSec);
+/* #247: "the same grid" is the same stints, each with the same period name
+   and clock window. #367 widens that to a grid that only grew or shrank at
+   the end: one is a prefix of the other, and the stints the shorter lacks are
+   unplayed (overtime added, or taken off before it was reached). A change to
+   the format or the sub interval moves the grid, and keeps #134's
+   rewrite-and-toast path. */
+const sameGrid = (a, b, at = 0) => {
+  const n = Math.min(a.stints.length, b.stints.length);
+  // stints one grid has and the other lacks must be unplayed: the one on the
+  // floor (`at`) and everything before it stay
+  if (a.stints.length !== b.stints.length && n <= at) return false;
+  // and what grew or shrank is overtime: more regulation periods is a format
+  // change, whichever grid is the longer
+  const longer = a.stints.length > b.stints.length ? a : b;
+  if (!longer.stints.slice(n).every(s => /^OT\d*$/.test(s.periodName))) return false;
+  for (let i = 0; i < n; i++) {
+    const x = a.stints[i], y = b.stints[i];
+    if (x.periodName !== y.periodName || x.startSec !== y.startSec || x.endSec !== y.endSec) return false;
+  }
+  return true;
+};
 
 /* #247: an underway game whose rotation moved for a reason other than its
    grid (attendance, a rule, the strategy) freezes the stints already played
@@ -1474,7 +1495,7 @@ function syncOverrides(g, p, underway = false, prev = null) {
   if (!live.stamp) { live.stamp = stamp; return p; }   // first sight: adopt it
   if (live.stamp === stamp) return p;
 
-  if (underway && prev && prev.ok && sameGrid(prev, p) && freezePlayedAndReplan(g, p, prev)) return p;
+  if (underway && prev && prev.ok && sameGrid(prev, p, playedStints(live)) && freezePlayedAndReplan(g, p, prev)) return p;
 
   // the rotation moved: swaps (if any) no longer match it and go, exactly
   // as `reseed` drops them; an underway game says so either way (#134),
@@ -1590,7 +1611,7 @@ export function computeAll() {
       const sig = JSON.stringify([
         // p.tier and g.balance belong here: both change the plan, and leaving
         // either out means a coach re-tiers a player and the card does not move
-        ps.map(p => [p.id, p.name, p.shortName, p.tier]), g.out, g.periods, g.periodMinutes,
+        ps.map(p => [p.id, p.name, p.shortName, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
         g.granMode, g.granValue, g.constraints, g.strategy, g.balance, g.seed, carry, seasonT, prio,
         // team settings reach the solver too, so they belong in the signature
         // for the same reason: change the number and the card must move
@@ -1634,7 +1655,7 @@ export function computeAll() {
       if (g.strategy !== 'platoon') c.units = [];
       const p = generatePlan({
         players: ps, availableIds: ids.filter(id => !out.has(id)),
-        format: { periods: g.periods, periodMinutes: g.periodMinutes },
+        format: gameFormat(g),
         granularity: { mode: g.granMode, value: g.granValue },
         constraints: c, strategy: g.strategy, balance: g.balance,
         carryover: carry,
@@ -1807,7 +1828,7 @@ export function resolveRest(g, p, from, sitIds = []) {
     players: state.players,
     availableIds: avail,
     stints: suffix,
-    format: { periods: g.periods, periodMinutes: g.periodMinutes },
+    format: gameFormat(g),
     granularity: { mode: g.granMode, value: g.granValue },
     constraints: c, strategy: g.strategy, balance: g.balance,
     seed: g.seed,
