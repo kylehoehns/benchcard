@@ -1,5 +1,6 @@
 import { evalIn, SETTLE } from './dom.mjs';
 import { smokeToday } from './clock.mjs';
+import { scoped } from './verdict.mjs';
 import { seasonDate } from '../../app/storage.js';
 
 // #178 item 1: the pinned smoke day, in the same YYYY-MM-DD shape the page
@@ -70,7 +71,7 @@ export async function fixturePass(c, rec) {
     return JSON.stringify(out);
   })()`);
   const r = JSON.parse(probe);
-  const need = (cond, msg) => rec.check(cond, `precondition missing on ${r.host}: ${msg}`);
+  const need = scoped(rec, `precondition missing on ${r.host}`).check;
   need(r.pageToday === PINNED_DAY, `the page's own clock reads ${r.pageToday}, want the pinned day ${PINNED_DAY}`);
   need(r.savedDate === PINNED_DAY, `the saved record's day date is ${r.savedDate}, want the pinned day ${PINNED_DAY}`);
   need(r.resetLevels >= 1, 'no "back to the same level" button — no player is off the default level');

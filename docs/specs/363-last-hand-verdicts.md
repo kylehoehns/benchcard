@@ -9,8 +9,8 @@ since #358.
 ## Goal
 
 "How is a failing row's detail cut short" has one answer:
-`scripts/smoke/verdict.mjs` (limit 5, `' | '`, `' | …'`). No probe keeps a
-second copy.
+`scripts/smoke/verdict.mjs`, which holds the limit and the separators. No
+probe keeps a second copy.
 
 ## What would settle it
 
