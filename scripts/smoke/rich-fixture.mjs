@@ -1,5 +1,6 @@
 import { evalIn, SETTLE } from './dom.mjs';
 import { smokeToday } from './clock.mjs';
+import { scoped } from './verdict.mjs';
 import { seasonDate } from '../../app/storage.js';
 
 // #178 item 1: the pinned smoke day, in the same YYYY-MM-DD shape the page
@@ -19,7 +20,7 @@ const PINNED_DAY = seasonDate(smokeToday());
  * by the same route a coach would see them. It does not assert on
  * localStorage: that would prove the write, which was never the doubtful
  * part. */
-export async function fixturePass(c) {
+export async function fixturePass(c, rec) {
   const probe = await evalIn(c, `(async () => {
     const $ = s => document.querySelector(s);
     const out = { host: location.host };
@@ -70,19 +71,13 @@ export async function fixturePass(c) {
     return JSON.stringify(out);
   })()`);
   const r = JSON.parse(probe);
-  const missing = [
-    r.pageToday === PINNED_DAY ? null : `the page's own clock reads ${r.pageToday}, want the pinned day ${PINNED_DAY}`,
-    r.savedDate === PINNED_DAY ? null : `the saved record's day date is ${r.savedDate}, want the pinned day ${PINNED_DAY}`,
-    r.resetLevels >= 1 ? null : 'no "back to the same level" button — no player is off the default level',
-    r.dayGames >= 2 ? null : `day legend names ${r.dayGames} game(s), want ≥ 2`,
-    r.dayRows >= 11 ? null : `day totals has ${r.dayRows} row(s), want 11`,
-    r.filedGames >= 3 ? null : `${r.filedGames} filed game(s) in the ledger, want 3`,
-  ].filter(Boolean);
-  return {
-    pass: missing.length === 0,
-    detail: missing.length
-      ? `${missing.length} precondition(s) missing on ${r.host}: ${missing.join('; ')}`
-      : `${r.dayRows} players × ${r.dayGames} games today, ${r.filedGames} filed, `
-        + `levels set (${r.host})`,
-  };
+  const need = scoped(rec, `precondition missing on ${r.host}`).check;
+  need(r.pageToday === PINNED_DAY, `the page's own clock reads ${r.pageToday}, want the pinned day ${PINNED_DAY}`);
+  need(r.savedDate === PINNED_DAY, `the saved record's day date is ${r.savedDate}, want the pinned day ${PINNED_DAY}`);
+  need(r.resetLevels >= 1, 'no "back to the same level" button — no player is off the default level');
+  need(r.dayGames >= 2, `day legend names ${r.dayGames} game(s), want ≥ 2`);
+  need(r.dayRows >= 11, `day totals has ${r.dayRows} row(s), want 11`);
+  need(r.filedGames >= 3, `${r.filedGames} filed game(s) in the ledger, want 3`);
+  rec.ok(`${r.dayRows} players × ${r.dayGames} games today, ${r.filedGames} filed, `
+    + `levels set (${r.host})`);
 }

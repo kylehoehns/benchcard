@@ -173,7 +173,7 @@ export const ROWS = Object.freeze([
   { id: 'cardfont', name: 'card font loads before the card is fitted', selectable: true, setup: 'rich',
     run: ctx => cardFontPass(ctx.c, ctx.origin, ctx.rec) },
   { id: 'fixture', name: 'rich fixture is live', selectable: true, setup: 'rich',
-    run: ctx => fixturePass(ctx.c) },
+    run: ctx => fixturePass(ctx.c, ctx.rec) },
   // #177's own guard (see docs/specs/177-smoke-font.md's Proof section, item
   // 1): a heading, a button label, body text, a weight-600 name and a
   // sheet's text at 320px/32px all draw only in DejaVu Sans, the font CI's
@@ -209,7 +209,7 @@ export const ROWS = Object.freeze([
   // #232: closing a pinned card (x by key or mouse, or Escape) returns focus
   // to the player's name; see pinned-focus.mjs.
   { id: 'pinnedfocus', name: 'closing a pinned card returns focus to the name', selectable: true, setup: 'rich',
-    run: ctx => pinnedFocusPass(ctx.c, ctx.origin) },
+    run: ctx => pinnedFocusPass(ctx.c, ctx.origin, ctx.rec) },
   { id: 'todayback', name: 'today and back', selectable: true, setup: 'rich',
     run: ctx => todayAndBackPass(ctx.c, ctx.origin, ctx.rec) },
   { id: 'todaykeys', name: 'today keys and undo', selectable: true, setup: 'rich',
@@ -276,7 +276,7 @@ export const ROWS = Object.freeze([
   { id: 'tourSteps', name: TOUR_STEPS_CHECK, selectable: true, setup: 'rich',
     run: ctx => tourStepsPass(ctx.c, ctx.origin, ctx.rec) },
   { id: 'touch', name: `${TOUCH_CHECK}, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
-    run: ctx => touchPass(ctx.c, ctx.origin, ctx.source), replaces: TOUCH_CHECK },
+    run: ctx => touchPass(ctx.c, ctx.origin, ctx.source, ctx.rec), replaces: TOUCH_CHECK },
   { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
     run: ctx => settingsRowPass(ctx.c, ctx.source, ctx.rec), replaces: 'settings rows ≥ 48px' },
   // #142's own guard (see docs/specs/142-settings-groups.md's Proof section,
@@ -288,11 +288,11 @@ export const ROWS = Object.freeze([
   // #27 item 10: the Who's here sheet swept the same way settingsrows sweeps
   // Settings — see who-rows.mjs.
   { id: 'whorows', name: `who's here rows ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
-    run: ctx => whoRowsPass(ctx.c, ctx.source), replaces: "who's here rows ≥ 48px" },
+    run: ctx => whoRowsPass(ctx.c, ctx.source, ctx.rec), replaces: "who's here rows ≥ 48px" },
   // #28 item 11: the Plan sheet swept the same way `whorows` sweeps Who's
   // here -- see plan-rows.mjs.
   { id: 'planrows', name: `plan rows ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
-    run: ctx => planRowsPass(ctx.c, ctx.source), replaces: 'plan rows ≥ 48px' },
+    run: ctx => planRowsPass(ctx.c, ctx.source, ctx.rec), replaces: 'plan rows ≥ 48px' },
   // #28 review finding: the sheet's other controls (segments, chips, tiles,
   // stepper buttons, the back button, ✕, "Add rule"), at level 1 and the add
   // page -- see plan-controls.mjs.
@@ -302,7 +302,7 @@ export const ROWS = Object.freeze([
   // screen, swept the same way settingsrows sweeps Settings -- see
   // today-game-rows.mjs.
   { id: 'todaygamerows', name: `today and game controls ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
-    run: ctx => todayGameRowsPass(ctx.c, ctx.source), replaces: 'today and game controls ≥ 48px' },
+    run: ctx => todayGameRowsPass(ctx.c, ctx.source, ctx.rec), replaces: 'today and game controls ≥ 48px' },
   // #27's own guard (see docs/specs/27-sentence-and-sheets.md's Proof
   // section): the sentence, and the Who's here / Format / Sub interval
   // sheets it opens, driven with real buttons, keys and pointer events.
@@ -373,7 +373,7 @@ export const ROWS = Object.freeze([
   // edge -- not 11.2px -- at TOUCH_WIDTHS and at the large-text cell, and
   // #abBench/#resumeBtn hold the same 16px -- see phone-gutter.mjs.
   { id: 'phonegutter', name: `phone gutter: five screens, #abBench and #resumeBar, ${TOUCH_RANGE} + ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, selectable: true, setup: 'rich',
-    run: ctx => phoneGutterPass(ctx.c, ctx.origin) },
+    run: ctx => phoneGutterPass(ctx.c, ctx.origin, ctx.rec) },
   // #140 (prototype control size), "Drawn sizes" (Proof section): sentence
   // pitch, seg button/track height, stepper pill/halves, row heights and
   // switch-row containment, all measured as painted, not as a hit area --

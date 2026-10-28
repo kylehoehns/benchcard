@@ -23,7 +23,6 @@
 import { evalIn, quiet, key, enter, escape, tab, DESCRIBE_EL } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { RICH } from './fixtures.mjs';
-import { firstLine } from './verdict.mjs';
 
 const ROW = 1; // the second player's row
 const NAME = `document.querySelectorAll('#timeline .tl-row[data-id] .tl-name')[${ROW}]`;
@@ -61,99 +60,92 @@ const onNameJs = `() => document.activeElement === ${NAME}`;
 const onCloseJs = `() => document.activeElement?.classList.contains('tld-x')`;
 
 /* Tab to the row's name and press Enter; the card must be open, focus on the name */
-async function openWithKeys(c, label, bad) {
-  if (!await tabTo(c, onNameJs)) { bad.push(`${label}: Tab never reached the second row's .tl-name`); return false; }
+async function openWithKeys(c, label, rec) {
+  if (!await tabTo(c, onNameJs)) { rec.fail(`${label}: Tab never reached the second row's .tl-name`); return false; }
   await enter(c); await settle(c);
   const s = await state(c);
-  if (!s.open || !s.onName) { bad.push(`${label}: Enter on the name left open=${s.open}, focus on ${s.who}, want the card open with focus on the name`); return false; }
+  if (!s.open || !s.onName) { rec.fail(`${label}: Enter on the name left open=${s.open}, focus on ${s.who}, want the card open with focus on the name`); return false; }
   return true;
 }
-const closedOnName = (label, s, bad, extra = '') => {
-  if (s.open) bad.push(`${label}: #tlDetail is still in the page${extra}`);
-  if (s.expanded !== 'false') bad.push(`${label}: the name's aria-expanded is ${JSON.stringify(s.expanded)}, want "false"`);
-  if (!s.onName) bad.push(`${label}: focus is on ${s.who}, want the second row's .tl-name`);
+const closedOnName = (label, s, rec, extra = '') => {
+  if (s.open) rec.fail(`${label}: #tlDetail is still in the page${extra}`);
+  if (s.expanded !== 'false') rec.fail(`${label}: the name's aria-expanded is ${JSON.stringify(s.expanded)}, want "false"`);
+  if (!s.onName) rec.fail(`${label}: focus is on ${s.who}, want the second row's .tl-name`);
 };
 
-export async function pinnedFocusPass(c, origin) {
-  const bad = [];
+export async function pinnedFocusPass(c, origin, rec) {
   let scenarios = 0;
   try {
     // 1: keyboard × -> name
     await fresh(c, origin);
-    if (await openWithKeys(c, '1 (× by keyboard)', bad)) {
-      if (!await tabTo(c, onCloseJs)) bad.push('1 (× by keyboard): Tab never reached the close button');
-      else { await enter(c); await settle(c); closedOnName('1 (× by keyboard)', await state(c), bad); }
+    if (await openWithKeys(c, '1 (× by keyboard)', rec)) {
+      if (!await tabTo(c, onCloseJs)) rec.fail('1 (× by keyboard): Tab never reached the close button');
+      else { await enter(c); await settle(c); closedOnName('1 (× by keyboard)', await state(c), rec); }
     }
     scenarios++;
 
     // 2: mouse × -> name
     await fresh(c, origin);
-    if (await openWithKeys(c, '2 (× by mouse)', bad)) {
+    if (await openWithKeys(c, '2 (× by mouse)', rec)) {
       const at = JSON.parse(await evalIn(c, `(() => { const r = document.querySelector('#tlDetail .tld-x').getBoundingClientRect();
         return JSON.stringify({ x: r.left + r.width / 2, y: r.top + r.height / 2, inView: r.top >= 0 && r.bottom <= innerHeight }); })()`));
-      if (!at.inView) bad.push('2 (× by mouse): the close button is off screen, nothing to click');
+      if (!at.inView) rec.fail('2 (× by mouse): the close button is off screen, nothing to click');
       else {
         await c.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: at.x, y: at.y, button: 'left', clickCount: 1 });
         await c.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: at.x, y: at.y, button: 'left', clickCount: 1 });
         await settle(c);
-        closedOnName('2 (× by mouse)', await state(c), bad);
+        closedOnName('2 (× by mouse)', await state(c), rec);
       }
     }
     scenarios++;
 
     // 3: Escape from the ×
     await fresh(c, origin);
-    if (await openWithKeys(c, '3 (Escape from ×)', bad)) {
-      if (!await tabTo(c, onCloseJs)) bad.push('3 (Escape from ×): Tab never reached the close button');
-      else { await escape(c); await settle(c); closedOnName('3 (Escape from ×)', await state(c), bad); }
+    if (await openWithKeys(c, '3 (Escape from ×)', rec)) {
+      if (!await tabTo(c, onCloseJs)) rec.fail('3 (Escape from ×): Tab never reached the close button');
+      else { await escape(c); await settle(c); closedOnName('3 (Escape from ×)', await state(c), rec); }
     }
     scenarios++;
 
     // 4: Escape from the name; the page must not scroll either
     await fresh(c, origin);
-    if (await openWithKeys(c, '4 (Escape from name)', bad)) {
+    if (await openWithKeys(c, '4 (Escape from name)', rec)) {
       const before = (await state(c)).scrollY;
       await escape(c); await settle(c);
       const s = await state(c);
-      closedOnName('4 (Escape from name)', s, bad);
-      if (s.scrollY !== before) bad.push(`4 (Escape from name): the page scrolled from ${before} to ${s.scrollY}`);
+      closedOnName('4 (Escape from name)', s, rec);
+      if (s.scrollY !== before) rec.fail(`4 (Escape from name): the page scrolled from ${before} to ${s.scrollY}`);
     }
     scenarios++;
 
     // 5: no card open, Escape does nothing (reasoning check, cannot go red)
     await fresh(c, origin);
-    if (!await tabTo(c, onNameJs)) bad.push('5 (no card): Tab never reached the second row\'s .tl-name');
+    if (!await tabTo(c, onNameJs)) rec.fail('5 (no card): Tab never reached the second row\'s .tl-name');
     else {
       const before = await state(c);
       await escape(c); await settle(c);
       const s = await state(c);
-      if (s.open || !s.onName || s.scrollY !== before.scrollY) bad.push(`5 (no card): Escape changed something: open=${s.open}, focus on ${s.who}, scrollY ${before.scrollY} -> ${s.scrollY}`);
+      if (s.open || !s.onName || s.scrollY !== before.scrollY) rec.fail(`5 (no card): Escape changed something: open=${s.open}, focus on ${s.who}, scrollY ${before.scrollY} -> ${s.scrollY}`);
     }
     scenarios++;
 
     // 6: a modal's Escape closes the modal only
     await fresh(c, origin);
-    if (await openWithKeys(c, '6 (modal)', bad)) {
+    if (await openWithKeys(c, '6 (modal)', rec)) {
       await key(c, '?', 'Slash', 191, '?'); await settle(c);
       const sheet = () => evalIn(c, `!document.getElementById('keys').hidden`);
-      if (!await sheet()) bad.push('6 (modal): "?" did not open the shortcuts sheet, so nothing was tested');
+      if (!await sheet()) rec.fail('6 (modal): "?" did not open the shortcuts sheet, so nothing was tested');
       else {
         await escape(c); await settle(c);
         const s = await state(c);
-        if (await sheet()) bad.push('6 (modal): Escape did not close the shortcuts sheet');
-        if (!s.open) bad.push('6 (modal): Escape in the shortcuts sheet also closed the pinned card behind it');
+        if (await sheet()) rec.fail('6 (modal): Escape did not close the shortcuts sheet');
+        if (!s.open) rec.fail('6 (modal): Escape in the shortcuts sheet also closed the pinned card behind it');
       }
     }
     scenarios++;
-  } catch (e) {
-    bad.push(firstLine(e));
   } finally {
     await land(c, origin);
   }
-  return {
-    pass: bad.length === 0 && scenarios === 6,
-    detail: bad.length
-      ? `${bad.length} problem(s): ${bad.join(' | ')}`
-      : `closing a pinned card by keyboard, mouse or Escape lands on the name; Escape is inert with no card and inside a modal (${scenarios} scenarios)`,
-  };
+  rec.check(scenarios === 6, `only ${scenarios} of 6 scenarios ran`);
+  rec.ok(`closing a pinned card by keyboard, mouse or Escape lands on the name; Escape is inert with no card and inside a modal (${scenarios} scenarios)`);
 }

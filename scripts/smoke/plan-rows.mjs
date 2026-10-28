@@ -1,6 +1,6 @@
 import { toGameOne, TODAY_HOME } from './dom.mjs';
-import { TOUCH_WIDTHS } from './sizes.mjs';
-import { widthSweep } from './width-sweep.mjs';
+import { TOUCH_FLOOR, TOUCH_WIDTHS } from './sizes.mjs';
+import { widthSweep, recordSweep } from './width-sweep.mjs';
 
 /* #28 item 11: every row AND tile in the Plan sheet, at least 48px, at the
    same three widths `touchPass`, `settingsRowPass` and `whoRowsPass` sweep
@@ -30,9 +30,9 @@ const PLAN_STATES = [
            document.querySelector('#constraints .add-rule').click()` },
 ];
 
-export async function planRowsPass(c, source) {
+export async function planRowsPass(c, source, rec) {
   await toGameOne(c);
-  const { bad, audited, seen } = await widthSweep(c, source, {
+  const { bad, gone, audited, seen } = await widthSweep(c, source, {
     states: PLAN_STATES,
     checkName: 'plan rows ≥ 48px',
     countRe: [/(\d+) rows/],
@@ -41,11 +41,7 @@ export async function planRowsPass(c, source) {
     close: `$('#planBack')?.click(); $('#sheetPlan').close(); ${TODAY_HOME}`,
   });
 
-  return {
-    pass: bad.length === 0,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (${PLAN_STATES.map(s => s.name).join(' + ')} × ${TOUCH_WIDTHS.join('/')}px), `
-        + `up to ${seen} rows/tiles, all ≥ 48px`,
-  };
+  recordSweep(rec, { bad, gone, audited }, { what: 'plan row', floor: TOUCH_FLOOR });
+  rec.ok(`${audited} measurements (${PLAN_STATES.map(s => s.name).join(' + ')} × ${TOUCH_WIDTHS.join('/')}px), `
+    + `up to ${seen} rows/tiles, all ≥ 48px`);
 }

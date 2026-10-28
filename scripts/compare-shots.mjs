@@ -41,6 +41,7 @@ import { evalIn, step, SETTLE, WIDTH, HEIGHT } from './smoke/dom.mjs';
 import { LONG_NAME, RICH, richWith, TODAY_GAME_READY, partPlayed as partPlayedFixture } from './smoke/fixtures.mjs';
 import { land, withScripts, LOCALSTORAGE_WIPE } from './smoke/page-state.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
+import { recorder, verdict } from './smoke/verdict.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
 import { LARGE_TEXT_PX, LARGE_TEXT_WIDTH, SHEET_MIN, WIDE_MIN, LAPTOP, TOUCH_WIDTHS } from './smoke/sizes.mjs';
 // #146: the same 12-line, one-repeat roster app-large-text.mjs's own paste
@@ -873,7 +874,9 @@ export async function main() {
     // compare set taken against a fixture that did not arrive proves
     // nothing -- the whole subject of this ticket.
     await land(c, origin);
-    const fp = await fixturePass(c);
+    const rec = recorder();
+    await fixturePass(c, rec);
+    const fp = verdict(rec);
     if (!fp.pass) throw new Error(`rich fixture did not arrive, stopping: ${fp.detail}`);
 
     const records = [];

@@ -1,6 +1,6 @@
 import { TODAY_HOME } from './dom.mjs';
-import { TOUCH_WIDTHS } from './sizes.mjs';
-import { widthSweep } from './width-sweep.mjs';
+import { TOUCH_FLOOR, TOUCH_WIDTHS } from './sizes.mjs';
+import { widthSweep, recordSweep } from './width-sweep.mjs';
 
 /* #69 (restyle Today and the game screen), "What would settle it" item 4:
    the fixed control list the restyle names -- #teamBtn,
@@ -24,8 +24,8 @@ const ITEM4_STATES = [
            for (const d of document.querySelectorAll('details')) d.open = true` },
 ];
 
-export async function todayGameRowsPass(c, source) {
-  const { bad, audited, seen } = await widthSweep(c, source, {
+export async function todayGameRowsPass(c, source, rec) {
+  const { bad, gone, audited, seen } = await widthSweep(c, source, {
     states: ITEM4_STATES,
     checkName: 'today and game controls ≥ 48px',
     countRe: [/(\d+) controls/],
@@ -34,11 +34,7 @@ export async function todayGameRowsPass(c, source) {
     close: `${TODAY_HOME}; for (const d of document.querySelectorAll('details')) d.open = false`,
   });
 
-  return {
-    pass: bad.length === 0,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (${ITEM4_STATES.map(s => s.name).join(' + ')} × ${TOUCH_WIDTHS.join('/')}px), `
-        + `up to ${seen} controls, all ≥ 48px`,
-  };
+  recordSweep(rec, { bad, gone, audited }, { what: 'today or game control', floor: TOUCH_FLOOR });
+  rec.ok(`${audited} measurements (${ITEM4_STATES.map(s => s.name).join(' + ')} × ${TOUCH_WIDTHS.join('/')}px), `
+    + `up to ${seen} controls, all ≥ 48px`);
 }

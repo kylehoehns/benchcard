@@ -1,6 +1,6 @@
 import { toGameOne, TODAY_HOME } from './dom.mjs';
-import { TOUCH_WIDTHS } from './sizes.mjs';
-import { widthSweep } from './width-sweep.mjs';
+import { TOUCH_FLOOR, TOUCH_WIDTHS } from './sizes.mjs';
+import { widthSweep, recordSweep } from './width-sweep.mjs';
 
 /* #27 item 10: every row in the Who's here sheet, at least 48px, at the same
    three widths `touchPass` and `settingsRowPass` sweep (`TOUCH_WIDTHS` --
@@ -15,9 +15,9 @@ import { widthSweep } from './width-sweep.mjs';
 const WHO_STATES = [
   { name: "who's here", open: `document.getElementById('phrasePlayers').click()` },
 ];
-export async function whoRowsPass(c, source) {
+export async function whoRowsPass(c, source, rec) {
   await toGameOne(c);
-  const { bad, audited, seen } = await widthSweep(c, source, {
+  const { bad, gone, audited, seen } = await widthSweep(c, source, {
     states: WHO_STATES,
     checkName: "who's here rows ≥ 48px",
     countRe: [/(\d+) rows/],
@@ -26,10 +26,6 @@ export async function whoRowsPass(c, source) {
     close: `$('#sheetWho').close(); ${TODAY_HOME}`,
   });
 
-  return {
-    pass: bad.length === 0,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
-      : `${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px`,
-  };
+  recordSweep(rec, { bad, gone, audited }, { what: "who's-here row", floor: TOUCH_FLOOR });
+  rec.ok(`${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px`);
 }

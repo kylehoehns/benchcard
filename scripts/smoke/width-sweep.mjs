@@ -12,13 +12,13 @@ import { TOUCH_WIDTHS } from './sizes.mjs';
    #22 was about to add a third copy of it. `close` is run once, after the
    sweep, before the viewport is put back -- `touchPass` also closes the folds
    it opened; `settingsRowPass` has nothing else to undo. Returns the raw
-   `{ bad, audited, seen }` a caller assembles its own `detail` string from --
+   `{ bad, gone, audited, seen }` a caller assembles its own `detail` string from --
    `touchPass`'s wording and `settingsRowPass`'s wording differ, and neither
    is this function's to decide. */
 export async function widthSweep(c, source, { states, checkName, countRe, label, missing, close }) {
   const [w0, h0] = await smokeViewport(c);
 
-  const bad = [];
+  const bad = [], gone = [];
   let audited = 0, seen = 0;
   for (const st of states) {
     await evalIn(c, step(st.open));
@@ -26,7 +26,7 @@ export async function widthSweep(c, source, { states, checkName, countRe, label,
       await resize(c, w, h0);
       const chk = (await evalIn(c, source)).checks.find(k => k.name === checkName);
       const where = label(st, w);
-      if (!chk) { bad.push(`${where}: ${missing}`); continue; }
+      if (!chk) { gone.push(`${where}: ${missing}`); continue; }
       audited++;
       const n = Number((countRe.map(re => chk.detail.match(re)).find(Boolean) || [])[1] || 0);
       seen = Math.max(seen, n);
@@ -37,5 +37,15 @@ export async function widthSweep(c, source, { states, checkName, countRe, label,
   await evalIn(c, step(close));
   await resize(c, w0, h0, { debounce: true });
 
-  return { bad, audited, seen };
+  return { bad, gone, audited, seen };
+}
+
+/* The tail every `widthSweep` caller shares: one failure per undersized
+   measurement (prefixed as one), one per entry for a check that went missing
+   (as it is -- it is not a measurement), and a failure when nothing at all was
+   measured. `what` names the thing measured, `floor` is the px floor. */
+export function recordSweep(rec, { bad, gone = [], audited }, { what, floor }) {
+  for (const b of bad) rec.fail(`measurement under ${floor}px: ${b}`);
+  for (const g of gone) rec.fail(g);
+  rec.check(audited > 0, `no ${what} was measured`);
 }
