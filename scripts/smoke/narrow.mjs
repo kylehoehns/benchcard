@@ -27,7 +27,7 @@ export async function narrowPass(c) {
     expression: `(() => {
       const bar = document.querySelector('.bar');
       return JSON.stringify({
-        ...(${OVERFLOW_WALK})(),
+        ...(${OVERFLOW_WALK})({ visible: true }),
         barFits: bar ? bar.scrollWidth <= document.documentElement.clientWidth + 1 : true,
         barW: bar ? bar.scrollWidth : 0,
       });

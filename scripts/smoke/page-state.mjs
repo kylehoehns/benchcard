@@ -137,7 +137,7 @@ export async function land(c, origin, want = {}) {
    outside smoke-checks.js. */
 export async function smokeViewport(c) {
   const { result } = await c.send('Runtime.evaluate', {
-    expression: 'JSON.stringify(window.__SMOKE_VIEWPORT || [390, 844])', returnByValue: true,
+    expression: `JSON.stringify(window.__SMOKE_VIEWPORT || [${WIDTH}, ${HEIGHT}])`, returnByValue: true,
   });
   return JSON.parse(result.value);
 }

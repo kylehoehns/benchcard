@@ -9,6 +9,9 @@
  *      scripts/smoke/ or in smoke-checks.js, other than `DESCRIBE_EL`;
  *   3. a read of `window.__SMOKE_VIEWPORT` in narrow.mjs, sweep.mjs or
  *      width-sweep.mjs -- page-state.mjs reads it once.
+ * The namer scan (2) matches only `tagName.toLowerCase() +`; other lookups
+ * of a tag name (floating-controls, game-passes, clip-sweep) are not namers
+ * and are out of scope.
  * Comments are dropped first, so a note that names the old way is not a hit.
  * Rule 2a: each scan asserts it read files, and the one place each thing is
  * allowed to live must contain it, or the scan has measured nothing. */
@@ -45,7 +48,8 @@ test('narrow.mjs and sweep.mjs carry no walk of their own', () => {
     const src = code(read(new URL(f, SMOKE)));
     assert.ok(src.length > 500, `${f} read as nearly empty`);
     assert.doesNotMatch(src, /querySelectorAll\(\s*['"]\*['"]\s*\)/, `${f} loops over every element`);
-    assert.doesNotMatch(src, /overflowX/, `${f} walks ancestors for overflow-x`);
+    assert.doesNotMatch(src, /getElementsByTagName\(\s*['"]\*['"]\s*\)/, `${f} loops over every element`);
+    assert.doesNotMatch(src, /overflowX|\[\s*['"]overflow-x['"]\s*\]/, `${f} walks ancestors for overflow-x`);
     assert.match(src, /OVERFLOW_WALK/, `${f} does not call the shared walker`);
   }
 });

@@ -413,7 +413,12 @@ export const WORST_OUTSIDE = `((box, opacity) => {
    overflow that caused it clean.
    BOTH EDGES. A right-edge test is blind to content off the LEFT, and so is
    `scrollWidth`; the Games tab hangs off it and no pass could see it.
-   Shared by `staticPass` and `appLargeTextPass`. */
+   Shared by `staticPass`, `appLargeTextPass`, `narrowPass` and `sweepPass`.
+   Takes `{ visible }`: true skips a display-locked subtree (bare
+   `checkVisibility()`), where rects go stale right after a width change;
+   `narrowPass` and `sweepPass` pass it, the others keep the default.
+   Returns `{ vw, pans, worst, seen }`; `seen` counts the boxes it measured,
+   so a caller can tell a walk that measured nothing from a clean one. */
 export const OVERFLOW_WALK = `(({ visible = false } = {}) => {
   const describe = ${DESCRIBE_EL};
   const isCut = ${IS_CUT};
