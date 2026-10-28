@@ -73,12 +73,78 @@ export function resetFrom(live) {
   return at > 0 && !finishedGame(live) ? at + 1 : 0;
 }
 
+/* #356: the operations below are the only writes to the four fields
+   (`at`, `hand`, `overrides`, `finished`) in the app -- storage.js's sanitizer
+   builds a whole record and is the one named exception. */
+
+/* The one rule for "hand only lists stints that still have an override": a
+   record with a hand list is pruned to it; a record from before the list
+   existed has none, stays without one, and there every override is by hand. */
+function pruneHand(live) {
+  const ov = live.overrides || {};
+  if (Array.isArray(live.hand)) live.hand = live.hand.filter(k => ov[k]);
+}
+
+/* "Back to the printed plan" for the stints from `keep` on: overrides and hand
+   entries below `keep` stay. The one trim -- `clearRest` and Shuffle both
+   land here. */
+export function keepThrough(live, keep) {
+  live.overrides = Object.fromEntries(Object.entries(live.overrides || {}).filter(([k]) => Number(k) < keep));
+  pruneHand(live);
+}
+
 export function clearRest(live) {
-  const from = resetFrom(live);
-  const kept = Object.fromEntries(Object.entries(live.overrides || {}).filter(([k]) => Number(k) < from));
-  const hand = handStints(live).filter(k => k < from);
-  live.overrides = kept;
-  live.hand = hand;
+  keepThrough(live, resetFrom(live));
+}
+
+/* A five with `id` in it is no longer a lineup: delete it from stint `from`
+   on, and take its stint out of the hand list. */
+export function dropPlayer(live, id, from = 0) {
+  const ov = live?.overrides;
+  if (!ov) return;
+  for (const k of Object.keys(ov)) if (Number(k) >= from && ov[k].includes(id)) delete ov[k];
+  pruneHand(live);
+}
+
+/* Put exactly these fives on the record. `hand` is the new hand list; left
+   out, the hand list stays as it was (a record with none stays without).
+   Either way it ends listing only stints that have an override. */
+export function replaceOverrides(live, overrides, hand) {
+  live.overrides = overrides;
+  if (hand) live.hand = hand;
+  pruneHand(live);
+}
+
+/* A record's fives and hand list as they stand, and putting them back exactly
+   -- a field that was absent is absent again. The writes above replace the
+   objects rather than edit them, so the snapshot holds the originals. */
+export function snapshotFives(live) {
+  return { overrides: live.overrides, hand: live.hand };
+}
+
+export function restoreFives(live, snap) {
+  for (const f of ['overrides', 'hand']) {
+    if (snap[f] === undefined) delete live[f];
+    else live[f] = snap[f];
+  }
+}
+
+/* The game stands on the stint `openAt` names: a finished game starts over,
+   an unfinished one resumes, clamped to a plan that got shorter. */
+export function openGame(p, live) {
+  live.at = openAt(p, live);
+}
+
+/* Move `d` stints, clamped to the plan. True when the stint on the floor
+   changed -- a step at either end moves nothing. */
+export function step(p, live, d) {
+  const was = stintIndex(p, live);
+  live.at = stepAt(p, live, d);
+  return live.at !== was;
+}
+
+export function finish(live) {
+  live.finished = true;
 }
 
 // `stintIndex` and `stepAt` both land on "the requested stint, clamped to

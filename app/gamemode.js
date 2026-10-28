@@ -19,7 +19,7 @@ import { openTrap, closeTrap } from './trap.js';
 import { track } from './analytics.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
          resolveRest, benchOpen, setBenchOpen } from './state.js';
-import { stage, stintIndex, openAt, stepAt, handStints, writeOverrides, clearRest, resetFrom } from './live.js';
+import { stage, stintIndex, handStints, writeOverrides, clearRest, resetFrom, openGame, step, finish } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
 let render = () => {};
@@ -196,10 +196,10 @@ export function openGameMode() {
    * something at Q3 4:00 and you must not come back at Q1. #135: "finished"
    * is the coach tapping Finish game, not reaching the last stint -- a game
    * closed there without that tap is still part-played and reopens where it
-   * was. `openAt` (live.js) decides both that and the clamp a shorter plan
+   * was. `openGame` (live.js) decides both that and the clamp a shorter plan
    * can need (`at` left past its end), in the one place every `live.at` rule
    * lives. */
-  live.at = openAt(p, live);
+  openGame(p, live);
   // the write above reaches persisted state too, so it saves rather than
   // waiting for closeGameMode
   save();
@@ -377,7 +377,7 @@ function closeGameMode(isFinish = false) {
   // passStatus word until the coach left Games and came back.
   //
   // Skipped on a finish (`isFinish`): `gmFinish` still has one write left to
-  // make (`live.finished = true`), and its `undoable` repaints this exact
+  // make (`finish(live)`), and its `undoable` repaints this exact
   // set right after. Painting it here first would only paint the pre-finish
   // state a moment before that repaint replaces it -- a real computeAll, a
   // real save and six real section renders that nothing on screen ever
@@ -391,7 +391,7 @@ function closeGameMode(isFinish = false) {
    Next, on a game the coach has not already finished. Closes the way ✕ and
    Done do (`closeGameMode`, passing `true` so `onClose` hears this was a
    finish, and so it holds back its own repaint -- see the comment there),
-   then makes the one write as an `undoable`: `live.finished = true` and
+   then makes the one write as an `undoable`: `finish(live)` and
    nothing else -- `live.at` stays put on the last stint. The redo repaints
    the same set `closeGameMode` would have (#34 decision 10, #123's Goal):
    this write can change where the game stands too. `render` alone -- it
@@ -401,7 +401,7 @@ function gmFinish() {
   const live = liveOf(game());
   closeGameMode(true);
   undoable(`Marked ${label} finished.`, () => {
-    live.finished = true;
+    finish(live);
   }, () => render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs', 'plan', 'issues'));
 }
 
@@ -1018,14 +1018,12 @@ function gmStep(d) {
   const p = plans[state.activeGame];
   if (!p) return;
   const l = liveOf(game());
-  const was = l.at;
   // #139 item 6: the control that made this move -- read before the repaint
   // below can hide or disable it.
   const srcBtn = $(d > 0 ? '#gmNext2' : '#gmPrev');
-  l.at = stepAt(p, l, d);
   // only when the stint actually moved -- a tick at the last stint would say
   // "done" when nothing happened
-  if (l.at !== was) tick();
+  if (step(p, l, d)) tick();
   gmPick = null;
   save();
   renderGameMode();

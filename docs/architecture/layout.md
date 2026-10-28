@@ -19,7 +19,7 @@ Everything below is relative to `app/`.
 - `icons.js` — Lucide path data, extracted at vendor time.
 - `fx.js` — animation vocabulary over the vendored Motion library; exports one easing curve so Motion, timeline blocks, and game-mode slides all animate on the same curve.
 - `budget.js` — minute-budget allocation in stint slots. Pure.
-- `live.js` — where a game stands (not started, part-played, or finished), which stint to show, where to resume, and what status word to display. Pure. Exports `stage`, `stintIndex`, `resumeAt`, `passStatus`, `openAt`, `stepAt`, and `resumeBarAt` (#123).
+- `live.js` — where a game stands (not started, part-played, or finished), which stint to show, where to resume, and what status word to display. Pure. Exports `stage`, `stintIndex`, `resumeAt`, `passStatus`, `openAt`, `stepAt`, and `resumeBarAt` (#123). It is also the only module that writes a game's live record: `at`, `hand`, `overrides` and `finished` change only through its operations (`openGame`, `step`, `finish`, `dropPlayer`, `keepThrough`, `clearRest`, `replaceOverrides`, `restoreFives`, `writeOverrides`). `test/live-guard.test.js` fails on any other write in `app/`. The one exception is `storage.js`'s sanitizer, which builds a whole record from a saved file (#356).
 - `storage.js` — load/save with validation and a one-behind backup, plus the shape of a finished game (which now carries a date, #100), `teams[].days` (a list, each day's games sorted by tip-off time, #102), `teams[].activeDay` to track the open day, and migration from v6's single `day` to v7's `days` list. Pure apart from `localStorage`.
 - `dom.js` — forgiving DOM one-liners shared by the UI modules, plus the
   shared `ctx2d` canvas everything that sizes type by measurement uses.

@@ -22,7 +22,8 @@ import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          validTipoff, tipoffLabel, sortDay } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
-import { stage, playedStints, handStints, writeOverrides, resetFrom, finishedGame } from './live.js';
+import { stage, playedStints, handStints, writeOverrides, resetFrom, finishedGame,
+  dropPlayer, keepThrough, replaceOverrides, snapshotFives, restoreFives } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
    Lightness and chroma are themed once in CSS; only the hue varies here. */
@@ -656,11 +657,7 @@ export function removePlayer(id) {
        gone it is no longer a lineup, and there is nothing honest to put in the
        gap -- so drop it and fall back to the planned stint, which is what the
        rest of the game is already using. */
-    const ov = g.live?.overrides;
-    if (ov) {
-      for (const k of Object.keys(ov)) if (ov[k].includes(id)) delete ov[k];
-      if (Array.isArray(g.live.hand)) g.live.hand = g.live.hand.filter(k => ov[k]);
-    }
+    dropPlayer(g.live, id);
   }
 }
 
@@ -798,11 +795,7 @@ export function setAvailable(g, id, available) {
   // #247: what already happened stays. Only a five still to come is a lineup
   // with an absent kid in it. The raw `at` (a finished game has played them
   // all, so it drops nothing).
-  const ov = live?.overrides;
-  if (ov && !finishedGame(live)) {
-    for (const k of Object.keys(ov)) if (Number(k) >= at && ov[k].includes(id)) delete ov[k];
-    if (Array.isArray(live.hand)) live.hand = live.hand.filter(k => ov[k]);
-  }
+  if (!finishedGame(live)) dropPlayer(live, id, at);
 }
 
 /* The third sweep, and the one nothing else could catch: rerolling the seed.
@@ -830,8 +823,7 @@ export function reseed(g) {
      the old plan -- and only the ones after go. Before tip-off, as ever, all. */
   const keep = resetFrom(live);
   const had = handStints(live).some(k => k >= keep);
-  live.overrides = Object.fromEntries(Object.entries(live.overrides).filter(([k]) => Number(k) < keep));
-  if (Array.isArray(live.hand)) live.hand = live.hand.filter(k => k < keep);
+  keepThrough(live, keep);
   return had;
 }
 
@@ -1456,13 +1448,13 @@ function freezePlayedAndReplan(g, p, prev) {
   const overwritten = handStints(live).filter(k => k >= through);
   const hand = handStints(live).filter(k => k < through);
   const arrived = live.arrived;
-  live.overrides = frozen;
+  const untouched = snapshotFives(live);
+  replaceOverrides(live, frozen, hand);
   let r = { ok: true, overrides: {} };
   if (through < n) {
     r = resolveRest(g, p, through);
-    if (!r.ok) { live.overrides = before; return false; }
+    if (!r.ok) { restoreFives(live, untouched); return false; }
   }
-  live.hand = hand;
   writeOverrides(live, r.overrides, false);
   if (arrived) live.arrived = lateArrivals(g, p, through);
   if (!live.arrived || !Object.keys(live.arrived).length) delete live.arrived;
@@ -1492,8 +1484,7 @@ function syncOverrides(g, p, underway = false, prev = null) {
   if (hasOverrides) {
     // only a swap the coach made by hand is one they are told was cleared
     if (handStints(live).length) dropped++;
-    live.overrides = {};
-    live.hand = [];
+    replaceOverrides(live, {}, []);
   }
   if (underway) moved.add(g.id);
   return p;
