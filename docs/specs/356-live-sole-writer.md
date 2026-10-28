@@ -37,7 +37,10 @@ leave a stale swap showing mid-game.
 6. `npm test` and `npm run smoke` pass with no change to the expectations of
    existing bench-mode tests (`test/live.test.js`, the Coach scenarios,
    `test/*gamemode*`, `test/*state*`). New tests are added; old ones may only
-   change their import lines.
+   change their import lines — except a test that reads source rather than
+   running it (`gamemode-open.test.js`'s `live.at = openAt` regex,
+   `remove-player.test.js`'s sweep regex), which is pointed at the `live.js`
+   call that replaced the write it matched.
 
 ## Surfaces
 

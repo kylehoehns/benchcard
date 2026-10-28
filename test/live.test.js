@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { stage, stintIndex, resumeAt, passStatus, openAt, stepAt, resumeBarAt,
   handStints, writeOverrides, clearRest, resetFrom,
-  dropPlayer, keepThrough, replaceOverrides, moveTo, finish } from '../app/live.js';
+  dropPlayer, keepThrough, replaceOverrides, openGame, step, snapshotFives, restoreFives, finish } from '../app/live.js';
 
 /* #123/#135: `live.js`'s exports, proved with hand-built plans and `live`
  * values -- no `withTeam`, no `computeAll`, no DOM. #135's rule: `stage`
@@ -351,11 +351,76 @@ test('replaceOverrides: an empty set with an empty hand clears every swap', () =
   assert.deepEqual(handStints(live), []);
 });
 
-test('moveTo: sets the stint the game stands on', () => {
+test('openGame: puts the game on the stint openAt names, clamped to the plan', () => {
   const live = { at: 1 };
-  moveTo(live, 3);
-  assert.equal(live.at, 3);
+  openGame(plan(4), live);
+  assert.equal(live.at, 1);
   assert.equal(stage(plan(4), live), 'part-played');
+  const past = { at: 9 };
+  openGame(plan(4), past);
+  assert.equal(past.at, 3);
+  const done = { at: 3, finished: true };
+  openGame(plan(4), done);
+  assert.equal(done.at, 0);
+});
+
+test('step: moves one stint, clamped, and says whether the stint changed', () => {
+  const live = { at: 1 };
+  assert.equal(step(plan(4), live, 1), true);
+  assert.equal(live.at, 2);
+  assert.equal(step(plan(4), live, 5), true);
+  assert.equal(live.at, 3);
+  assert.equal(step(plan(4), live, 1), false);
+  assert.equal(live.at, 3);
+  const start = { at: 0 };
+  assert.equal(step(plan(4), start, -1), false);
+  assert.equal(start.at, 0);
+});
+
+test('replaceOverrides: hand never lists a stint with no override, whether or not hand is passed', () => {
+  const live = { at: 1, overrides: { 0: F, 4: F }, hand: [0, 4] };
+  replaceOverrides(live, { 0: G });
+  assert.deepEqual(live.hand, [0]);
+  replaceOverrides(live, { 0: G }, [0, 2, 7]);
+  assert.deepEqual(live.hand, [0]);
+});
+
+test('replaceOverrides: a record with no hand list stays without one when none is passed', () => {
+  const live = { at: 1, overrides: { 0: F, 4: F } };
+  replaceOverrides(live, { 0: G });
+  assert.equal(Array.isArray(live.hand), false);
+  assert.deepEqual(handStints(live), [0]);
+});
+
+test('restoreFives: puts back exactly what snapshotFives took, hand list included', () => {
+  const live = { at: 2, overrides: { 0: F, 1: G }, hand: [1] };
+  const snap = snapshotFives(live);
+  replaceOverrides(live, { 0: G, 1: G, 2: G }, [0, 2]);
+  restoreFives(live, snap);
+  assert.deepEqual(live, { at: 2, overrides: { 0: F, 1: G }, hand: [1] });
+});
+
+test('restoreFives: a record from before the hand list ends without one, and one with no overrides without those', () => {
+  const old = { at: 2, overrides: { 0: F } };
+  const snap = snapshotFives(old);
+  replaceOverrides(old, { 0: G, 1: G }, [0, 1]);
+  restoreFives(old, snap);
+  assert.deepEqual(old, { at: 2, overrides: { 0: F } });
+  assert.equal('hand' in old, false);
+  const bare = { at: 0 };
+  const s2 = snapshotFives(bare);
+  replaceOverrides(bare, { 0: G }, [0]);
+  restoreFives(bare, s2);
+  assert.deepEqual(bare, { at: 0 });
+});
+
+test('keepThrough and dropPlayer read a record with no hand list the same way: every override is by hand', () => {
+  const a = { at: 2, overrides: { 0: F, 1: G, 4: F } };
+  const b = { at: 2, overrides: { 0: F, 1: G, 4: F } };
+  keepThrough(a, 3);
+  dropPlayer(b, 'x');
+  assert.deepEqual(handStints(a), [0, 1]);
+  assert.deepEqual(handStints(b), [0, 4]);
 });
 
 test('finish: marks the game finished and leaves at where it was', () => {

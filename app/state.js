@@ -23,7 +23,7 @@ import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 import { stage, playedStints, handStints, writeOverrides, resetFrom, finishedGame,
-  dropPlayer, keepThrough, replaceOverrides } from './live.js';
+  dropPlayer, keepThrough, replaceOverrides, snapshotFives, restoreFives } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
    Lightness and chroma are themed once in CSS; only the hue varies here. */
@@ -1448,13 +1448,13 @@ function freezePlayedAndReplan(g, p, prev) {
   const overwritten = handStints(live).filter(k => k >= through);
   const hand = handStints(live).filter(k => k < through);
   const arrived = live.arrived;
-  replaceOverrides(live, frozen);
+  const untouched = snapshotFives(live);
+  replaceOverrides(live, frozen, hand);
   let r = { ok: true, overrides: {} };
   if (through < n) {
     r = resolveRest(g, p, through);
-    if (!r.ok) { replaceOverrides(live, before); return false; }
+    if (!r.ok) { restoreFives(live, untouched); return false; }
   }
-  replaceOverrides(live, frozen, hand);
   writeOverrides(live, r.overrides, false);
   if (arrived) live.arrived = lateArrivals(g, p, through);
   if (!live.arrived || !Object.keys(live.arrived).length) delete live.arrived;
