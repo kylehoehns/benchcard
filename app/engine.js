@@ -77,19 +77,33 @@ export function stintsBeforeHalftime(stints) {
   return n < stints.length ? n : 0;
 }
 
+/* #367: overtime periods follow regulation, numbered `periods + 1`, `+ 2`, ...
+   so the last-period five (`period === format.periods`) never reaches one.
+   Their names are made here, next to `periodLabel`, and nowhere else. */
+const overtimeLabel = n => (n === 1 ? 'OT' : `OT${n}`);
+
 export function buildStints(format, granularity) {
   const { periods, periodMinutes } = format;
-  const lengths = periodLengths(periodMinutes, granularity);
+  const overtime = Array.isArray(format.overtime) ? format.overtime : [];
   const stints = [];
-  for (let p = 1; p <= periods; p++) {
-    let left = periodMinutes;
+  const all = [
+    ...Array.from({ length: periods }, (_, i) => ({
+      period: i + 1, minutes: periodMinutes, name: periodLabel(i + 1, periods),
+    })),
+    ...overtime.map((minutes, i) => ({
+      period: periods + i + 1, minutes, name: overtimeLabel(i + 1),
+    })),
+  ];
+  for (const { period: p, minutes: pm, name } of all) {
+    const lengths = periodLengths(pm, granularity);
+    let left = pm;
     for (const len of lengths) {
       stints.push({
         index: stints.length,
         period: p,
         // carried on the row so no renderer has to know the period count, and
         // none of them can disagree with another about what to call it
-        periodName: periodLabel(p, periods),
+        periodName: name,
         startSec: Math.round(left * 60),
         endSec: Math.round((left - len) * 60),
         minutes: len,

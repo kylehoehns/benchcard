@@ -84,6 +84,19 @@ const idMap = v => {
  * are banned from here for the same reason.
  * ================================================================== */
 
+/* #367: a game's overtime periods, one whole number of minutes (1-10) each,
+   four at most. Anything else is junk and goes; absent is none. */
+const OVERTIME_MAX = 4;
+const cleanOvertime = v => (Array.isArray(v)
+  ? v.filter(m => Number.isInteger(m) && m >= 1 && m <= 10).slice(0, OVERTIME_MAX)
+  : []);
+// the season-record form: only when there was overtime, so a game without any
+// files exactly as it always has
+const overtimeField = v => {
+  const overtime = cleanOvertime(v);
+  return overtime.length ? { overtime } : {};
+};
+
 // a long season with tournaments is ~60 games; 200 is far past any real one
 // and still bounded, and the newest are the ones carryover cares about
 const SEASON_MAX = 200;
@@ -115,6 +128,7 @@ const sanitizeSeason = raw => {
         opponent: typeof g.opponent === 'string' ? g.opponent : '',
         periods: num(g.periods, 4, 1, 8),
         periodMinutes: num(g.periodMinutes, 8, 1, 40),
+        ...overtimeField(g.overtime),
         minutes,
       };
     })
@@ -341,6 +355,7 @@ export const seasonGame = (g, minutes, { dayName = '', date } = {}) => ({
   opponent: String(g.label || '').trim(),
   periods: g.periods,
   periodMinutes: g.periodMinutes,
+  ...overtimeField(g.overtime),
   minutes: { ...minutes },
 });
 
@@ -481,6 +496,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         tipoff: validTipoff(g.tipoff),
         periods: num(g.periods, 4, 1, 8),
         periodMinutes: num(g.periodMinutes, 8, 1, 40),
+        overtime: cleanOvertime(g.overtime),
         granMode: ['everyN', 'perPeriod', 'breaksOnly'].includes(g.granMode) ? g.granMode : 'everyN',
         granValue: num(g.granValue, 4, 1, 40),
         out,

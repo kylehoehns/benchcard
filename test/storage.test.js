@@ -1852,3 +1852,33 @@ test('an arrival past the last stint a game can have is dropped', () => {
   raw.day.games[0].live = { at: 3, overrides: {}, arrived: { a: 200, b: 201 } };
   assert.deepEqual(sanitize(raw, H).teams[0].days[0].games[0].live.arrived, { a: 200 });
 });
+
+/* #367: a game's overtime periods, a list of whole minutes. */
+const otOf = v => {
+  const raw = good();
+  if (v !== undefined) raw.day.games[0].overtime = v;
+  return sanitize(raw, H).teams[0].days[0].games[0].overtime;
+};
+
+test('a game saved with overtime reloads with it', () => {
+  assert.deepEqual(otOf([2, 8]), [2, 8]);
+});
+
+test('a game record with no overtime key loads with []', () => {
+  assert.deepEqual(otOf(undefined), []);
+});
+
+test('junk overtime is cleaned: non-arrays go, non-whole or out-of-range entries go, four at most', () => {
+  for (const junk of ['2', 5, { 0: 2 }, null, true]) assert.deepEqual(otOf(junk), [], String(junk));
+  assert.deepEqual(otOf([0, 11, 2.5, -3, '4', null, NaN, 3, 1, 10]), [3, 1, 10]);
+  assert.deepEqual(otOf([1, 2, 3, 4, 5, 6]), [1, 2, 3, 4]);
+});
+
+test('a filed season game keeps its overtime, cleaned the same way', () => {
+  const raw = seasonRecord();
+  raw.teams[0].season.games[0].overtime = [2, 99, 8];
+  const games = sanitize(raw, H).teams[0].season.games;
+  assert.deepEqual(games[0].overtime, [2, 8]);
+  assert.deepEqual(seasonGame({ id: 'x', label: '', periods: 2, periodMinutes: 16, overtime: [2, 8] },
+    { a: 1 }, { date: '2026-11-08' }).overtime, [2, 8]);
+});

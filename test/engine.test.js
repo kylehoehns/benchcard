@@ -1059,3 +1059,69 @@ test('platoon is exempt: the coach chose the units and their order', () => {
   assert.equal(p.issues.find(i => i.code === 'HALF_LATE'), undefined,
     'telling a platoon coach their own unit order is a problem is noise');
 });
+
+/* #367: a game's overtime periods. `format.overtime` is a list of whole
+   minutes, one entry per OT period, appended after regulation. */
+const HALVES = { periods: 2, periodMinutes: 16 };
+const pick = ({ period, periodName, startSec, endSec, minutes }) =>
+  ({ period, periodName, startSec, endSec, minutes });
+
+test('overtime of 2 minutes adds one OT stint after the 8 regulation stints', () => {
+  const plain = buildStints(HALVES, EVERY_4);
+  const s = buildStints({ ...HALVES, overtime: [2] }, EVERY_4);
+  assert.equal(s.length, 9);
+  assert.deepEqual(s.slice(0, 8), plain);
+  assert.deepEqual(pick(s[8]), { period: 3, periodName: 'OT', startSec: 120, endSec: 0, minutes: 2 });
+  assert.equal(s[8].index, 8);
+});
+
+test('overtime of 8 minutes at every 4 splits into two stints, 480 to 240 to 0', () => {
+  const s = buildStints({ ...HALVES, overtime: [8] }, EVERY_4).slice(8);
+  assert.deepEqual(s.map(pick), [
+    { period: 3, periodName: 'OT', startSec: 480, endSec: 240, minutes: 4 },
+    { period: 3, periodName: 'OT', startSec: 240, endSec: 0, minutes: 4 },
+  ]);
+});
+
+test('two overtime periods are named OT then OT2 and numbered 3 then 4', () => {
+  const s = buildStints({ ...HALVES, overtime: [2, 2] }, EVERY_4).slice(8);
+  assert.deepEqual(s.map(x => [x.period, x.periodName]), [[3, 'OT'], [4, 'OT2']]);
+});
+
+test('four overtime periods are named OT, OT2, OT3, OT4', () => {
+  const s = buildStints({ ...HALVES, overtime: [1, 1, 1, 1] }, EVERY_4).slice(8);
+  assert.deepEqual(s.map(x => x.periodName), ['OT', 'OT2', 'OT3', 'OT4']);
+});
+
+test('overtime is split by the same granularity rule as a period', () => {
+  const ot = { ...HALVES, overtime: [8] };
+  assert.deepEqual(
+    buildStints(ot, { mode: 'perPeriod', value: 2 }).slice(4).map(x => x.minutes), [4, 4]);
+  assert.deepEqual(
+    buildStints(ot, { mode: 'breaksOnly' }).slice(2).map(x => x.minutes), [8]);
+});
+
+test('overtime absent or empty gives exactly the regulation stints', () => {
+  for (const g of [EVERY_4, { mode: 'perPeriod', value: 2 }, { mode: 'breaksOnly' }]) {
+    const plain = buildStints(QUARTERS, g);
+    assert.deepEqual(buildStints({ ...QUARTERS, overtime: [] }, g), plain);
+    assert.deepEqual(buildStints({ ...QUARTERS, overtime: undefined }, g), plain);
+  }
+});
+
+test('overtime of 1 to 10 minutes fills the clock for every granularity', () => {
+  const modes = [EVERY_4, { mode: 'perPeriod', value: 2 }, { mode: 'breaksOnly' }];
+  for (let len = 1; len <= 10; len++) for (const g of modes) {
+    const plain = buildStints(HALVES, g);
+    const s = buildStints({ ...HALVES, overtime: [len] }, g);
+    const ot = s.slice(plain.length);
+    const where = `${len} min, ${g.mode}`;
+    assert.ok(ot.length >= 1, where);
+    assert.deepEqual(s.slice(0, plain.length), plain, where);
+    assert.equal(ot[0].startSec, len * 60, where);
+    assert.equal(ot[ot.length - 1].endSec, 0, where);
+    assert.ok(ot.every(x => x.period === 3 && x.periodName === 'OT'), where);
+    assert.ok(Math.abs(ot.reduce((a, x) => a + x.minutes, 0) - len) < 1e-9, where);
+    ot.forEach((x, i) => assert.equal(x.index, plain.length + i, where));
+  }
+});
