@@ -73,16 +73,15 @@ const WANT = {
   },
 };
 
-function check(problems, theme, width, where, got, want) {
-  if (!got) { problems.push(`${theme} ${width}px: ${where} not found -- nothing measured`); return; }
-  if (got.cols !== want.cols) problems.push(`${theme} ${width}px: ${where} columns are "${got.cols}", want "${want.cols}"`);
-  if (Math.abs(got.trackH - want.trackH) > TOL) problems.push(`${theme} ${width}px: ${where} track is ${got.trackH}px tall, want ${want.trackH} +/-${TOL}`);
-  if (got.trackColor !== want.trackColor) problems.push(`${theme} ${width}px: ${where} track color is ${got.trackColor}, want ${want.trackColor}`);
-  if (got.valueAlign !== want.valueAlign) problems.push(`${theme} ${width}px: ${where} value align is ${got.valueAlign}, want ${want.valueAlign}`);
+function check(rec, theme, width, where, got, want) {
+  if (!got) { rec.fail(`${theme} ${width}px: ${where} not found -- nothing measured`); return; }
+  rec.check(got.cols === want.cols, `${theme} ${width}px: ${where} columns are "${got.cols}", want "${want.cols}"`);
+  rec.check(Math.abs(got.trackH - want.trackH) <= TOL, `${theme} ${width}px: ${where} track is ${got.trackH}px tall, want ${want.trackH} +/-${TOL}`);
+  rec.check(got.trackColor === want.trackColor, `${theme} ${width}px: ${where} track color is ${got.trackColor}, want ${want.trackColor}`);
+  rec.check(got.valueAlign === want.valueAlign, `${theme} ${width}px: ${where} value align is ${got.valueAlign}, want ${want.valueAlign}`);
 }
 
-export async function barRowsPass(c, origin) {
-  const problems = [];
+export async function barRowsPass(c, origin, rec) {
   let measured = 0;
 
   try {
@@ -97,24 +96,17 @@ export async function barRowsPass(c, origin) {
         // to pin here (see the file comment above for `.dayrow`/`.sn-row`).
         await evalIn(c, `document.getElementById('tabledetails').open = true`);
         const mrow = await measureRow(c, '.mrow', '.track', '.v');
-        check(problems, theme, width, '.mrow', mrow, WANT[theme][width].mrow);
+        check(rec, theme, width, '.mrow', mrow, WANT[theme][width].mrow);
         if (mrow) measured++;
       }
     }
     await resize(c, WIDTH);
 
     // Rule 2a: 1 row x 2 widths x 2 themes = 4 measurements expected.
-    if (measured < 4) problems.push(`only ${measured}/4 bar-row measurements were taken -- a selector stopped matching`);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(measured >= 4, `only ${measured}/4 bar-row measurements were taken -- a selector stopped matching`);
   } finally {
     await evalIn(c, step(TODAY_HOME));
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `.mrow matches its pinned columns, track height/color and value alignment, 390/1280px light and dark`,
-  };
+  rec.ok(`.mrow matches its pinned columns, track height/color and value alignment, 390/1280px light and dark`);
 }

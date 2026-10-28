@@ -23,37 +23,32 @@ const look = c => evalJSON(c, `JSON.stringify({
   planShown: document.getElementById('welPanePlan')?.hidden === false,
 })`);
 
-export async function welcomeAfterRemovePass(c, origin) {
-  const problems = [];
-  try {
-    await land(c, origin, { record: RICH });
-    await tap(c, `document.querySelector('#settingsBtn').click()`);
-    await tap(c, `document.querySelector('#removeTeam').click()`);
-    await tap(c, `document.querySelector('#confirmYes').click()`);
-    await evalIn(c, `(async () => {
-      for (let i = 0; i < 60 && document.getElementById('view-welcome')?.hidden !== false; i++) await new Promise(r => setTimeout(r, 50));
-    })()`);
-    await settle(c);
+export async function welcomeAfterRemovePass(c, origin, rec) {
+  await land(c, origin, { record: RICH });
+  await tap(c, `document.querySelector('#settingsBtn').click()`);
+  await tap(c, `document.querySelector('#removeTeam').click()`);
+  await tap(c, `document.querySelector('#confirmYes').click()`);
+  await evalIn(c, `(async () => {
+    for (let i = 0; i < 60 && document.getElementById('view-welcome')?.hidden !== false; i++) await new Promise(r => setTimeout(r, 50));
+  })()`);
+  await settle(c);
 
-    const s = await look(c);
-    if (!s.welcomeShown) problems.push('removing the only team did not land on #view-welcome');
-    if (s.rows === 0) problems.push('#welRows has no rows after removing the last team, want one per demo player');
-    if (s.rows > 0 && s.cellsInFirstRow === 0) problems.push('#welRows rows have no .wel-c cells');
-    if (!s.cap) problems.push('#welCap is empty after removing the last team');
-    if (!s.shot) problems.push('#welPanePaper has no img.wel-shot after removing the last team');
-    if (!s.bench) problems.push('#welPaneScreen has no .wel-bench after removing the last team');
-    if (!s.planShown) problems.push('the Plan tab is not the one showing after removing the last team');
+  const s = await look(c);
+  rec.check(s.welcomeShown, 'removing the only team did not land on #view-welcome');
+  rec.check(s.rows !== 0, '#welRows has no rows after removing the last team, want one per demo player');
+  rec.check(!(s.rows > 0 && s.cellsInFirstRow === 0), '#welRows rows have no .wel-c cells');
+  rec.check(s.cap, '#welCap is empty after removing the last team');
+  rec.check(s.shot, '#welPanePaper has no img.wel-shot after removing the last team');
+  rec.check(s.bench, '#welPaneScreen has no .wel-bench after removing the last team');
+  rec.check(s.planShown, 'the Plan tab is not the one showing after removing the last team');
 
-    for (const [tab, pane] of PANES) {
-      await tap(c, `document.querySelector('${tab}').click()`);
-      const shown = await evalJSON(c, `JSON.stringify(${JSON.stringify(PANES.map(p => p[1]))}.map(p => document.querySelector(p)?.hidden === false))`);
-      const want = PANES.map(p => p[1] === pane);
-      if (JSON.stringify(shown) !== JSON.stringify(want)) {
-        problems.push(`clicking ${tab} shows panes ${JSON.stringify(shown)} (plan, paper, screen), want ${JSON.stringify(want)}`);
-      }
+  for (const [tab, pane] of PANES) {
+    await tap(c, `document.querySelector('${tab}').click()`);
+    const shown = await evalJSON(c, `JSON.stringify(${JSON.stringify(PANES.map(p => p[1]))}.map(p => document.querySelector(p)?.hidden === false))`);
+    const want = PANES.map(p => p[1] === pane);
+    if (JSON.stringify(shown) !== JSON.stringify(want)) {
+      rec.fail(`clicking ${tab} shows panes ${JSON.stringify(shown)} (plan, paper, screen), want ${JSON.stringify(want)}`);
     }
-  } catch (e) {
-    problems.push(String(e && e.message || e));
   }
-  return { pass: problems.length === 0, detail: problems.length ? problems.join('; ') : 'demo rebuilt after removing the last team' };
+  rec.ok('demo rebuilt after removing the last team');
 }

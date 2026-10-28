@@ -34,6 +34,7 @@ import { APP_LARGE_TEXT_STATES, firstRun, tryLanding, openRotationToastState, op
 import { WORD_RECTS_FN } from './row-stack.mjs';
 import { CONFIRM_DIALOG } from './heading-outline.mjs';
 import { land } from './page-state.mjs';
+import { firstLine } from './verdict.mjs';
 
 /* Two long, unbroken words (no hyphen) — `LONG_NAME` already covers the
  * hyphenated case (`Featherstone-Whitmore`), so this second name exercises
@@ -475,8 +476,7 @@ export async function openState(c, origin, v, want = LARGE_TEXT) {
   }
 }
 
-export async function clipSweepPass(c, origin, { injectCss } = {}) {
-  const problems = [];
+export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   const found = []; // raw problems, matched against CLIP_SWEEP_KNOWN_ISSUES below
   let scanned = 0;
   const usedAllow = new Set();
@@ -508,10 +508,10 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
         found.push(...findingsOf(res, where, pos));
       }
     } catch (e) {
-      problems.push(`${where}: ${e.message.split('\n')[0]}`);
+      rec.fail(`${where}: ${firstLine(e)}`);
     } finally {
       if (v.close) await evalIn(c, step(v.close))
-        .catch(e => problems.push(`${where}: did not close — ${e.message.split('\n')[0]}`));
+        .catch(e => rec.fail(`${where}: did not close — ${firstLine(e)}`));
     }
     // Restore the roster these states swap out (see header comment), and
     // injectCss's <style>, which the same reload wipes too.
@@ -528,7 +528,7 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   // run never needed is stale and fails here, same reasoning for all four.
   const reportStale = (label, verb, items, sep, fmt = String) => {
     if (!items.length) return;
-    problems.push(`${items.length} stale ${label} entr${items.length === 1 ? 'y' : 'ies'} (never ${verb} this run): ${items.map(fmt).join(sep)}`);
+    rec.fail(`${items.length} stale ${label} entr${items.length === 1 ? 'y' : 'ies'} (never ${verb} this run): ${items.map(fmt).join(sep)}`);
   };
   reportStale('allow-list', 'needed', ALLOW_SELECTORS.filter(sel => !usedAllow.has(sel)), ' | ');
   reportStale('sideways-scroll', 'needed', SIDEWAYS_SELECTORS.filter(sel => !usedSideways.has(sel)), ' | ');
@@ -541,18 +541,12 @@ export async function clipSweepPass(c, origin, { injectCss } = {}) {
   for (const p of found) {
     const issue = knownIssueFor(p);
     if (issue !== null) { matchedIssues.add(issue); continue; }
-    problems.push(describeFinding(p));
+    rec.fail(describeFinding(p));
   }
   reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
 
-  return {
-    pass: problems.length === 0 && scanned > 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : scanned === 0
-        ? 'measured no elements across any state'
-        : `${states.length} states, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`,
-  };
+  rec.check(scanned > 0, 'measured no elements across any state');
+  rec.ok(`${states.length} states, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
 }
 
 /* #283: the same four tests, on `/about.html`, which the app sweep above
@@ -581,8 +575,7 @@ export const ABOUT_CELLS = [
   { label: 'about 390px/16px', want: {} },
 ];
 
-export async function aboutClipSweepPass(c, origin) {
-  const problems = [];
+export async function aboutClipSweepPass(c, origin, rec) {
   const found = [];
   let scanned = 0;
   for (const { label, want } of ABOUT_CELLS) {
@@ -600,19 +593,13 @@ export async function aboutClipSweepPass(c, origin) {
         found.push(...findingsOf(res, label, pos));
       }
     } catch (e) {
-      problems.push(`${label}: ${e.message.split('\n')[0]}`);
+      rec.fail(`${label}: ${firstLine(e)}`);
     }
   }
   for (const p of found) {
     if (knownIssueFor(p) !== null) continue;
-    problems.push(describeFinding(p));
+    rec.fail(describeFinding(p));
   }
-  return {
-    pass: problems.length === 0 && scanned > 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : scanned === 0
-        ? 'measured no elements on the about page'
-        : `${ABOUT_CELLS.length} cells, ${scanned} elements scanned (top+bottom), nothing clipped, split or hidden`,
-  };
+  rec.check(scanned > 0, 'measured no elements on the about page');
+  rec.ok(`${ABOUT_CELLS.length} cells, ${scanned} elements scanned (top+bottom), nothing clipped, split or hidden`);
 }

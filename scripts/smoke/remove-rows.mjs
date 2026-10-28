@@ -59,9 +59,9 @@ async function measureGameColumn(c) {
 // it is stacked underneath them.
 const overlapsCol = (a, b) => !!a && !!b && a.l < b.r2 && b.l < a.r2;
 
-function checkGameColumnOrder(problems, width, m) {
+function checkGameColumnOrder(rec, width, m) {
   const { pgrp, sthis, tabledetails, gmstart } = m;
-  if (!pgrp) { problems.push(`w=${width}: #removeGame's .pgrp not found or not visible`); return; }
+  if (!pgrp) { rec.fail(`w=${width}: #removeGame's .pgrp not found or not visible`); return; }
 
   const gapPx = GAME_COLUMN_GAP_PX[width];
   const cards = [['This game', sthis], ['Stint by stint', tabledetails], ['Start game', gmstart]];
@@ -74,20 +74,16 @@ function checkGameColumnOrder(problems, width, m) {
     if (r.b <= pgrp.t + TOL && (!above || r.b > above.r.b)) above = { label, r };
   }
   if (!above) {
-    problems.push(`w=${width}: no card found above #removeGame's .pgrp (top ${pgrp.t})`);
+    rec.fail(`w=${width}: no card found above #removeGame's .pgrp (top ${pgrp.t})`);
   } else {
     const gap = pgrp.t - above.r.b;
-    if (gap < gapPx - TOL) {
-      problems.push(`w=${width}: .pgrp starts ${gap.toFixed(2)}px below "${above.label}" (bottom ${above.r.b}), want >= ${gapPx}px -- the column's own This game -> next-card gap`);
-    }
+    rec.check(gap >= gapPx - TOL, `w=${width}: .pgrp starts ${gap.toFixed(2)}px below "${above.label}" (bottom ${above.r.b}), want >= ${gapPx}px -- the column's own This game -> next-card gap`);
   }
 
   // (b) nothing but Start game may sit below it.
   for (const [label, r] of cards) {
     if (label === 'Start game' || !r || !overlapsCol(r, pgrp)) continue;
-    if (r.t >= pgrp.b - TOL) {
-      problems.push(`w=${width}: "${label}" (top ${r.t}) sits below #removeGame's .pgrp (bottom ${pgrp.b}) -- only Start game may follow it`);
-    }
+    rec.check(r.t < pgrp.b - TOL, `w=${width}: "${label}" (top ${r.t}) sits below #removeGame's .pgrp (bottom ${pgrp.b}) -- only Start game may follow it`);
   }
 }
 
@@ -108,16 +104,15 @@ async function measureRemoveRow(c, sel) {
   })()`));
 }
 
-function checkRemoveRow(problems, where, m, err) {
-  if (!m) { problems.push(`${where}: not found or not visible -- nothing measured`); return; }
-  if (Math.abs(m.h - 48) > TOL) problems.push(`${where}: ${m.h}px tall, want 48 +/-${TOL}`);
-  if (m.color !== err) problems.push(`${where}: text color is ${m.color}, --err resolves to ${err}`);
-  if (!m.inPgrp) problems.push(`${where}: is not inside a .pgrp`);
-  else if (Math.abs(m.w - m.pgrpW) > TOL) problems.push(`${where}: ${m.w}px wide, want the .pgrp's own ${m.pgrpW}px (a .prow row is full width, a .btn is not)`);
+function checkRemoveRow(rec, where, m, err) {
+  if (!m) { rec.fail(`${where}: not found or not visible -- nothing measured`); return; }
+  rec.check(Math.abs(m.h - 48) <= TOL, `${where}: ${m.h}px tall, want 48 +/-${TOL}`);
+  rec.check(m.color === err, `${where}: text color is ${m.color}, --err resolves to ${err}`);
+  if (!m.inPgrp) rec.fail(`${where}: is not inside a .pgrp`);
+  else rec.check(Math.abs(m.w - m.pgrpW) <= TOL, `${where}: ${m.w}px wide, want the .pgrp's own ${m.pgrpW}px (a .prow row is full width, a .btn is not)`);
 }
 
-export async function removeRowsPass(c, origin) {
-  const problems = [];
+export async function removeRowsPass(c, origin, rec) {
   let measured = 0;
 
   try {
@@ -127,7 +122,7 @@ export async function removeRowsPass(c, origin) {
     // view -- it waits for `.card`, same as `control-size.mjs`'s own comment
     // on the point -- so `#removeGame` is already on screen with no click.
     const game = await measureRemoveRow(c, '#removeGame');
-    checkRemoveRow(problems, '#removeGame', game, err);
+    checkRemoveRow(rec, '#removeGame', game, err);
     if (game) measured++;
 
     // Restore WIDTH even on a throw: #removeTeam is measured at it next.
@@ -135,7 +130,7 @@ export async function removeRowsPass(c, origin) {
       for (const width of [390, 1280]) {
         await resize(c, width);
         const col = await measureGameColumn(c);
-        checkGameColumnOrder(problems, width, col);
+        checkGameColumnOrder(rec, width, col);
       }
     } finally {
       await resize(c, WIDTH);
@@ -144,21 +139,14 @@ export async function removeRowsPass(c, origin) {
     await evalIn(c, step(TODAY_HOME));
     await evalIn(c, step(`document.querySelector('#settingsBtn').click()`));
     const team = await measureRemoveRow(c, '#removeTeam');
-    checkRemoveRow(problems, '#removeTeam', team, err);
+    checkRemoveRow(rec, '#removeTeam', team, err);
     if (team) measured++;
 
     // Rule 2a: 2 rows measured, or a selector stopped matching.
-    if (measured < 2) problems.push(`only ${measured}/2 remove rows were measured`);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(measured >= 2, `only ${measured}/2 remove rows were measured`);
   } finally {
     await evalIn(c, step(TODAY_HOME));
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `#removeGame and #removeTeam are both 48px, full-width .pgrp rows, in --err`,
-  };
+  rec.ok(`#removeGame and #removeTeam are both 48px, full-width .pgrp rows, in --err`);
 }

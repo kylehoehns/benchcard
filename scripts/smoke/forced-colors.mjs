@@ -53,34 +53,23 @@ const STEPS = [
     onSel: '.gm-p.picked', offSel: '.gm-p:not(.picked)' },
 ];
 
-export async function forcedColorsPass(c, origin) {
-  const problems = [];
-  try {
-    await evalIn(c, TODAY_HOME);
-    await setMedia(c, [{ name: 'forced-colors', value: 'active' }]);
+export async function forcedColorsPass(c, origin, rec) {
+  await evalIn(c, TODAY_HOME);
+  await setMedia(c, [{ name: 'forced-colors', value: 'active' }]);
 
-    for (const s of STEPS) {
-      try {
-        await tap(c, s.open);
-        const pair = await readPair(c, s.onSel, s.offSel);
-        if (!pair) problems.push(`${s.name}: could not find both a selected/on control and an unselected one`);
-        else if (!differs(pair)) problems.push(`${s.name}: the selected/on control's outline/border does not differ from the unselected one`);
-        if (s.checkTlBlk) {
-          const blk = await computedStyle(c, '.tl-blk', ['borderWidth']);
-          if (!blk) problems.push('the game screen: no .tl-blk found to check its border');
-          else if (parseFloat(blk.borderWidth) <= 0) problems.push(`the game screen: .tl-blk border-width is ${blk.borderWidth}, want a non-zero border`);
-        }
-        await tap(c, s.close);
-      } catch (e) { throw new Error(`${s.name}: ${e.message.split('\n')[0]}`); }
-    }
-    await evalIn(c, TODAY_HOME);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+  for (const s of STEPS) {
+    try {
+      await tap(c, s.open);
+      const pair = await readPair(c, s.onSel, s.offSel);
+      if (rec.check(pair, `${s.name}: could not find both a selected/on control and an unselected one`)) rec.check(differs(pair), `${s.name}: the selected/on control's outline/border does not differ from the unselected one`);
+      if (s.checkTlBlk) {
+        const blk = await computedStyle(c, '.tl-blk', ['borderWidth']);
+        if (rec.check(blk, 'the game screen: no .tl-blk found to check its border')) rec.check(parseFloat(blk.borderWidth) > 0, `the game screen: .tl-blk border-width is ${blk.borderWidth}, want a non-zero border`);
+      }
+      await tap(c, s.close);
+    } catch (e) { throw new Error(`${s.name}: ${e.message.split('\n')[0]}`); }
   }
+  await evalIn(c, TODAY_HOME);
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${STEPS.length} screens: the selected/on control differs from the unselected one under forced colors, and .tl-blk has a border`,
-  };
+  rec.ok(`${STEPS.length} screens: the selected/on control differs from the unselected one under forced colors, and .tl-blk has a border`);
 }

@@ -7,6 +7,7 @@ import { evalIn, step, FIRST_RUN_STEPS, FR_SNAPSHOT, FR_RESTORE } from './dom.mj
 // own module top level (see the note beside its STEP_COUNT export).
 import { pickSharePane } from './sheet-drive.mjs';
 import { STEP_COUNT as TOUR_STEP_COUNT } from './tour-steps.mjs';
+import { firstLine } from './verdict.mjs';
 
 /* ---------- the states the first pass never sees ----------
 
@@ -300,8 +301,7 @@ export const A11Y = new Set([
   'last control in an open dialog is reachable',
 ]);
 
-export async function overlayPass(c, source) {
-  const problems = [];
+export async function overlayPass(c, source, rec) {
   const visited = [];
   let widest = 0;
   for (const s of STATES) {
@@ -309,27 +309,22 @@ export async function overlayPass(c, source) {
       await evalIn(c, step(s.open));
       const up = await evalIn(c, `(() => { const el = document.querySelector(${JSON.stringify(s.shows)});
         return !!el && !el.hidden && el.getClientRects().length > 0; })()`);
-      if (!up) { problems.push(`${s.name}: never opened (${s.shows})`); continue; }
+      if (!rec.check(up, `${s.name}: never opened (${s.shows})`)) continue;
       visited.push(s.name);
       for (const chk of (await evalIn(c, source)).checks) {
         if (!A11Y.has(chk.name)) continue;
-        if (!chk.pass) problems.push(`${s.name} — ${chk.name}: ${chk.detail}`);
+        rec.check(chk.pass, `${s.name} — ${chk.name}: ${chk.detail}`);
         const n = chk.name === 'controls have accessible names'
           && (chk.detail.match(/(\d+) controls/) || chk.detail.match(/\/(\d+) unnamed/));
         if (n) widest = Math.max(widest, Number(n[1]));
       }
     } catch (e) {
-      problems.push(`${s.name}: ${e.message.split('\n')[0]}`);
+      rec.fail(`${s.name}: ${firstLine(e)}`);
     } finally {
-      await evalIn(c, step(s.close)).catch(e => problems.push(`${s.name}: did not close — ${e.message.split('\n')[0]}`));
+      await evalIn(c, step(s.close)).catch(e => rec.fail(`${s.name}: did not close — ${firstLine(e)}`));
     }
   }
   const forced = STATES.filter(s => s.forced).length;
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${visited.length}/${STATES.length} states (${forced} shown by hand), `
-        + `${widest} controls at the widest, all named and resolving`,
-  };
+  rec.ok(`${visited.length}/${STATES.length} states (${forced} shown by hand), `
+    + `${widest} controls at the widest, all named and resolving`);
 }

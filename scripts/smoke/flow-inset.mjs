@@ -168,22 +168,10 @@ async function firstRunSweep(c, ck, origin) {
   await resize(c, 390);
 }
 
-export async function flowInsetPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
+export async function flowInsetPass(c, origin, rec) {
+  await addGameSweep(c, rec.check);
+  await firstRunSweep(c, rec.check, origin);
+  await firstRunLargeTextButtons(c, rec.check, origin);
 
-  try {
-    await addGameSweep(c, ck);
-    await firstRunSweep(c, ck, origin);
-    await firstRunLargeTextButtons(c, ck, origin);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
-  }
-
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-      : 'every step of both flows, at 390px and 320px, keeps a 16px inset on every side',
-  };
+  rec.ok('every step of both flows, at 390px and 320px, keeps a 16px inset on every side');
 }

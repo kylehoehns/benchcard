@@ -7,10 +7,8 @@ import { evalIn, step } from './dom.mjs';
    each its own assertion so a failure names the numbers instead of "it broke
    somewhere". Runs on the RICH fixture; the stub lives on the document, so the
    next row's `reset` reload is what keeps it from leaking downstream. */
-export async function wakeLockPass(c, origin, consoleErrors) {
-  const problems = [];
+export async function wakeLockPass(c, origin, consoleErrors, rec) {
   const nums = [];
-  const need = (cond, msg) => { if (!cond) problems.push(msg); };
 
   /* `mode`: 'immediate' resolves the request on the spot, 'deferred' parks it
      in `window.__wl.pending` until `resolveOne()` is called, 'reject' turns
@@ -88,12 +86,12 @@ export async function wakeLockPass(c, origin, consoleErrors) {
   await install('immediate');
   await openGM();
   let s = await wl();
-  need(s.requests === 1, `open: expected 1 request, got ${s.requests}`);
-  need(s.unreleased === 1, `open: expected the sentinel held, ${s.unreleased} unreleased of ${s.granted}`);
+  rec.check(s.requests === 1, `open: expected 1 request, got ${s.requests}`);
+  rec.check(s.unreleased === 1, `open: expected the sentinel held, ${s.unreleased} unreleased of ${s.granted}`);
   const openLine = `open → ${s.requests} request, ${s.unreleased} unreleased`;
   await closeGM();
   s = await wl();
-  need(s.unreleased === 0, `close: expected the sentinel released, ${s.unreleased} unreleased of ${s.granted}`);
+  rec.check(s.unreleased === 0, `close: expected the sentinel released, ${s.unreleased} unreleased of ${s.granted}`);
   nums.push(`${openLine}; close → ${s.unreleased} unreleased of ${s.granted}`);
 
   // 2. Escape closes too, and also releases.
@@ -102,8 +100,8 @@ export async function wakeLockPass(c, origin, consoleErrors) {
     `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))`));
   const gmHiddenAfterEsc = await gmHidden();
   s = await wl();
-  need(gmHiddenAfterEsc === true, `Escape: expected #gamemode hidden, hidden=${gmHiddenAfterEsc}`);
-  need(s.unreleased === 0, `Escape: expected released, ${s.unreleased} unreleased of ${s.granted}`);
+  rec.check(gmHiddenAfterEsc === true, `Escape: expected #gamemode hidden, hidden=${gmHiddenAfterEsc}`);
+  rec.check(s.unreleased === 0, `Escape: expected released, ${s.unreleased} unreleased of ${s.granted}`);
   nums.push(`Escape → hidden=${gmHiddenAfterEsc}, ${s.unreleased} unreleased of ${s.granted}`);
 
   // 3. background then foreground: the browser drops the lock on hide (marked
@@ -117,18 +115,18 @@ export async function wakeLockPass(c, origin, consoleErrors) {
     s.released = true;
     return true;
   })()`);
-  need(dropped, 'hide→visible: no sentinel granted to drop');
+  rec.check(dropped, 'hide→visible: no sentinel granted to drop');
   await setVisibility('hidden');
   s = await wl();
-  need(s.requests === 1, `visibilitychange hidden: expected still 1 request, got ${s.requests}`);
+  rec.check(s.requests === 1, `visibilitychange hidden: expected still 1 request, got ${s.requests}`);
   await setVisibility('visible');
   s = await wl();
-  need(s.requests === 2, `visibilitychange visible: expected 2 requests total, got ${s.requests}`);
-  need(s.unreleased === 1, `visibilitychange visible: expected a held sentinel, ${s.unreleased} unreleased of ${s.granted}`);
+  rec.check(s.requests === 2, `visibilitychange visible: expected 2 requests total, got ${s.requests}`);
+  rec.check(s.unreleased === 1, `visibilitychange visible: expected a held sentinel, ${s.unreleased} unreleased of ${s.granted}`);
   await closeGM();
   await setVisibility('visible');
   s = await wl();
-  need(s.requests === 2, `visible after close: expected still 2 requests, got ${s.requests}`);
+  rec.check(s.requests === 2, `visible after close: expected still 2 requests, got ${s.requests}`);
   nums.push(`hide→visible → ${s.requests} requests total, still ${s.requests} after a post-close visible`);
 
   // 4. a late grant is not kept: request resolves after close -> released.
@@ -137,7 +135,7 @@ export async function wakeLockPass(c, origin, consoleErrors) {
   await closeGM();
   await resolveOne();
   s = await wl();
-  need(s.granted === 1 && s.unreleased === 0,
+  rec.check(s.granted === 1 && s.unreleased === 0,
     `late grant: expected the late sentinel released, ${s.unreleased} unreleased of ${s.granted}`);
   nums.push(`late grant → ${s.unreleased} unreleased of ${s.granted} after resolving post-close`);
 
@@ -155,10 +153,10 @@ export async function wakeLockPass(c, origin, consoleErrors) {
   await resolveOne();
   s = await wl();
   const whileOpenUnreleased = s.unreleased;
-  need(s.unreleased <= 1, `reopen race, while open: ${s.unreleased} unreleased of ${s.granted}, want ≤ 1`);
+  rec.check(s.unreleased <= 1, `reopen race, while open: ${s.unreleased} unreleased of ${s.granted}, want ≤ 1`);
   await closeGM();
   s = await wl();
-  need(s.unreleased === 0, `reopen race, after final close: ${s.unreleased} unreleased of ${s.granted}, want 0`);
+  rec.check(s.unreleased === 0, `reopen race, after final close: ${s.unreleased} unreleased of ${s.granted}, want 0`);
   nums.push(`reopen race → ${s.granted} granted, ${whileOpenUnreleased} unreleased while open, `
     + `${s.unreleased} unreleased after final close`);
 
@@ -177,8 +175,8 @@ export async function wakeLockPass(c, origin, consoleErrors) {
   await nextGM();
   await closeGM();
   const hidden6a = await gmHidden();
-  need(hidden6a === true, `undefined wakeLock: expected #gamemode hidden after close, hidden=${hidden6a}`);
-  need(consoleErrors.length === errBefore6a,
+  rec.check(hidden6a === true, `undefined wakeLock: expected #gamemode hidden after close, hidden=${hidden6a}`);
+  rec.check(consoleErrors.length === errBefore6a,
     `undefined wakeLock: ${consoleErrors.length - errBefore6a} console error(s)/exception(s)`);
 
   await install('reject');
@@ -188,8 +186,8 @@ export async function wakeLockPass(c, origin, consoleErrors) {
   await closeGM();
   const hidden6b = await gmHidden();
   s = await wl();
-  need(hidden6b === true, `rejecting stub: expected #gamemode hidden after close, hidden=${hidden6b}`);
-  need(consoleErrors.length === errBefore6b,
+  rec.check(hidden6b === true, `rejecting stub: expected #gamemode hidden after close, hidden=${hidden6b}`);
+  rec.check(consoleErrors.length === errBefore6b,
     `rejecting stub: ${consoleErrors.length - errBefore6b} console error(s)/exception(s)`);
   nums.push(`unsupported (deleted) then rejecting (${s.requests} request attempted) → `
     + `open/Next/close fine, 0 new console errors either way`);
@@ -202,22 +200,17 @@ export async function wakeLockPass(c, origin, consoleErrors) {
   await openGM();
   await closeGM();
   const hidden7 = await gmHidden();
-  need(hidden7 === true, `rejecting release: expected #gamemode hidden after close, hidden=${hidden7}`);
-  need(consoleErrors.length === errBefore7,
+  rec.check(hidden7 === true, `rejecting release: expected #gamemode hidden after close, hidden=${hidden7}`);
+  rec.check(consoleErrors.length === errBefore7,
     `rejecting release: ${consoleErrors.length - errBefore7} console error(s)/exception(s)`);
   nums.push(`rejecting release → open/close fine, 0 new console errors`);
 
   // Every request across every scenario above asked for the 'screen' lock,
   // never anything else -- request(type) is recorded, not ignored.
   const types = await evalIn(c, `JSON.stringify(window.__wlAllTypes || [])`).then(JSON.parse);
-  need(types.length > 0 && types.every(t => t === 'screen'),
+  rec.check(types.length > 0 && types.every(t => t === 'screen'),
     `request type: expected every request to ask for 'screen', got ${JSON.stringify(types)}`);
   nums.push(`${types.length} request(s) across all scenarios, all type 'screen'`);
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.join(' | ')}`
-      : nums.join(' | '),
-  };
+  rec.ok(nums.join(' | '));
 }

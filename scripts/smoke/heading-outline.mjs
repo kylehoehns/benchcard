@@ -81,31 +81,22 @@ const DIALOGS = [
 // trigger), read the outline against the right root, record any problems,
 // close -- differing only in which root each item's outline is read
 // against and the level its own outline must start at.
-async function checkGroup(c, problems, items, startLevel, rootFor) {
+async function checkGroup(c, rec, items, startLevel, rootFor) {
   for (const item of items) {
     try {
       if (item.open) await tap(c, item.open);
       const levels = await evalJSON(c, OUTLINE_JS(rootFor(item)));
-      problems.push(...outlineProblems(item.name, levels, startLevel));
+      const found = outlineProblems(item.name, levels, startLevel);
+      rec.check(found.length === 0, found.join(' | '));
       if (item.close) await tap(c, item.close);
     } catch (e) { throw new Error(`${item.name}: ${e.message.split('\n')[0]}`); }
   }
 }
 
-export async function headingOutlinePass(c, origin) {
-  const problems = [];
-  try {
-    await evalIn(c, TODAY_HOME);
-    await checkGroup(c, problems, SCREENS, 1, () => 'body');
-    await checkGroup(c, problems, DIALOGS, 2, d => d.root);
-    await evalIn(c, TODAY_HOME);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
-  }
-
-  return {
-    pass: problems.length === 0,
-    detail: problems.length ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${SCREENS.length} screens and ${DIALOGS.length} dialogs, each heading outline starts at the right level with no skip`,
-  };
+export async function headingOutlinePass(c, origin, rec) {
+  await evalIn(c, TODAY_HOME);
+  await checkGroup(c, rec, SCREENS, 1, () => 'body');
+  await checkGroup(c, rec, DIALOGS, 2, d => d.root);
+  await evalIn(c, TODAY_HOME);
+  rec.ok(`${SCREENS.length} screens and ${DIALOGS.length} dialogs, each heading outline starts at the right level with no skip`);
 }

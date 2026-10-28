@@ -82,7 +82,7 @@ const closeEnough = (a, b, tol = 3) =>
 // tokens.css, the same reason `probeRects` below reads a player's color off
 // one: a computed style is what the row actually painted, not a second copy
 // of the token table that could drift from it.
-async function checkRotation(c, origin, i, problems) {
+async function checkRotation(c, origin, i, rec) {
   const prep = JSON.parse(await evalIn(c, `(async () => {
     const mod = await import('${origin}/state.js');
     const g = mod.state.day.games[${i}];
@@ -113,9 +113,7 @@ async function checkRotation(c, origin, i, problems) {
   const { periods, periodMinutes, stints, rows, bg, track, probeRects, scrollX, scrollY } = prep;
   const bgRgb = parseRgb(bg);
   const trackRgb = parseRgb(track);
-  if (rows.some(r => r.rect.height < 3 || r.rect.height > 6)) {
-    problems.push(`pass ${i}: a mini-rotation row is ${rows.map(r => r.rect.height).join(',')}px tall, want 3-6px`);
-  }
+  rec.check(!rows.some(r => r.rect.height < 3 || r.rect.height > 6), `pass ${i}: a mini-rotation row is ${rows.map(r => r.rect.height).join(',')}px tall, want 3-6px`);
 
   const stintPoints = [];
   for (const row of rows) {
@@ -162,194 +160,172 @@ async function checkRotation(c, origin, i, problems) {
   for (let n = 0; n < stintPoints.length; n++) {
     const pt = stintPoints[n], px = stintPx[n];
     const want = pt.onFloor ? probePx[pt.rowId] : trackRgb;
-    if (!closeEnough(px, want)) {
-      problems.push(`pass ${i}, ${pt.rowId}, period ${pt.period} ${pt.from}-${pt.to}min: pixel ${JSON.stringify(px)}, `
+    rec.check(closeEnough(px, want), `pass ${i}, ${pt.rowId}, period ${pt.period} ${pt.from}-${pt.to}min: pixel ${JSON.stringify(px)}, `
         + `want ${pt.onFloor ? 'its color ' : 'the track color '}${JSON.stringify(want)} (onFloor=${pt.onFloor})`);
-    }
   }
   const badGaps = new Set();
   for (let n = 0; n < gapPoints.length; n++) {
     if (!closeEnough(gapPx[n], bgRgb)) badGaps.add(`pass ${i} period gap ${gapPoints[n].pi}, row ${gapPoints[n].rowId}`);
   }
-  for (const g of badGaps) problems.push(`${g}: the period boundary is not the background there`);
+  for (const g of badGaps) rec.fail(`${g}: the period boundary is not the background there`);
 }
 
-export async function gamePassesPass(c, origin) {
-  const problems = [];
+export async function gamePassesPass(c, origin, rec) {
   let cold = null, coldToday = null, fourToday = null, roomCeiling = null;
-  try {
-    // Item 10.
-    await land(c, origin, { record: SEED });
-    cold = await evalIn(c, `document.getElementsByTagName('*').length`);
-    coldToday = await evalIn(c, `document.querySelectorAll('#view-today *').length`);
+  // Item 10.
+  await land(c, origin, { record: SEED });
+  cold = await evalIn(c, `document.getElementsByTagName('*').length`);
+  coldToday = await evalIn(c, `document.querySelectorAll('#view-today *').length`);
 
-    await land(c, origin, { record: FOUR, ...TODAY_LANDING });
-    fourToday = await evalIn(c, `document.querySelectorAll('#view-today *').length`);
-    roomCeiling = ceiling('nodes', BASELINE_NODES);
+  await land(c, origin, { record: FOUR, ...TODAY_LANDING });
+  fourToday = await evalIn(c, `document.querySelectorAll('#view-today *').length`);
+  roomCeiling = ceiling('nodes', BASELINE_NODES);
 
-    // #102: FOUR's own three tip-offs (fixtures.mjs), read through the same
-    // `tipoffLabel` the pass prints -- see `buildWant`'s own comment.
-    const tipoffs = JSON.parse(await evalIn(c, `(async () => {
-      const { tipoffLabel } = await import('${origin}/storage.js');
-      return JSON.stringify(['09:00', '11:30', '14:00'].map(t => tipoffLabel(t)));
-    })()`));
-    const WANT = buildWant(tipoffs);
-    const total = cold + (fourToday - coldToday);
-    if (total > roomCeiling) {
-      problems.push(`cold ${cold} + (fourToday ${fourToday} - coldToday ${coldToday}) = ${total}, `
-        + `over the ${roomCeiling} ceiling (baseline ${BASELINE_NODES} + slack)`);
-    }
+  // #102: FOUR's own three tip-offs (fixtures.mjs), read through the same
+  // `tipoffLabel` the pass prints -- see `buildWant`'s own comment.
+  const tipoffs = JSON.parse(await evalIn(c, `(async () => {
+    const { tipoffLabel } = await import('${origin}/storage.js');
+    return JSON.stringify(['09:00', '11:30', '14:00'].map(t => tipoffLabel(t)));
+  })()`));
+  const WANT = buildWant(tipoffs);
+  const total = cold + (fourToday - coldToday);
+  rec.check(total <= roomCeiling, `cold ${cold} + (fourToday ${fourToday} - coldToday ${coldToday}) = ${total}, `
+      + `over the ${roomCeiling} ceiling (baseline ${BASELINE_NODES} + slack)`);
 
-    // Item 1.
-    const order = JSON.parse(await evalIn(c, `(() => {
-      const view = document.getElementById('view-today');
-      const kids = [...view.children].map(el => el.id ? '#' + el.id
-        : el.classList.contains('today-acts') ? 'today-acts' : el.tagName.toLowerCase());
-      const passCount = document.querySelectorAll('#todayGames .today-game').length;
-      // #100 removed "New day" (#todayNewDay) from #barToday entirely.
-      const newDayGone = !document.getElementById('todayNewDay');
-      return JSON.stringify({ kids, passCount, newDayGone });
-    })()`));
-    if (order.passCount !== 4) problems.push(`#todayGames has ${order.passCount} .today-game buttons, want 4`);
-    // #101 item 2 put the team switcher's popover (`#teamMenu`) right after
-    // the large title it hangs off of, ahead of `#todayGames`.
-    const wantKids = ['h1', '#teamMenu', '#todayGames', 'today-acts', '#todayTeam', '#todaySeason'];
-    if (JSON.stringify(order.kids) !== JSON.stringify(wantKids)) {
-      problems.push(`#view-today's children are ${JSON.stringify(order.kids)}, want ${JSON.stringify(wantKids)}`);
-    }
-    if (!order.newDayGone) problems.push('#todayNewDay is still in the markup; "New day" was supposed to be removed');
+  // Item 1.
+  const order = JSON.parse(await evalIn(c, `(() => {
+    const view = document.getElementById('view-today');
+    const kids = [...view.children].map(el => el.id ? '#' + el.id
+      : el.classList.contains('today-acts') ? 'today-acts' : el.tagName.toLowerCase());
+    const passCount = document.querySelectorAll('#todayGames .today-game').length;
+    // #100 removed "New day" (#todayNewDay) from #barToday entirely.
+    const newDayGone = !document.getElementById('todayNewDay');
+    return JSON.stringify({ kids, passCount, newDayGone });
+  })()`));
+  rec.check(order.passCount === 4, `#todayGames has ${order.passCount} .today-game buttons, want 4`);
+  // #101 item 2 put the team switcher's popover (`#teamMenu`) right after
+  // the large title it hangs off of, ahead of `#todayGames`.
+  const wantKids = ['h1', '#teamMenu', '#todayGames', 'today-acts', '#todayTeam', '#todaySeason'];
+  rec.check(JSON.stringify(order.kids) === JSON.stringify(wantKids), `#view-today's children are ${JSON.stringify(order.kids)}, want ${JSON.stringify(wantKids)}`);
+  rec.check(order.newDayGone, '#todayNewDay is still in the markup; "New day" was supposed to be removed');
 
-    // Items 2, 3, 5, 6 (rotation presence), 8.
-    const passes = JSON.parse(await evalIn(c, `(() => {
-      const btns = [...document.querySelectorAll('#todayGames .today-game')];
-      return JSON.stringify(btns.map(b => {
-        const statusEl = b.querySelector('.pass-status');
-        const rot = b.querySelector('.pass-rot');
-        const focusable = b.querySelectorAll('button, a[href], input, select, textarea, [tabindex]').length;
-        return {
-          tag: b.tagName.toLowerCase(),
-          title: b.querySelector('.pass-title')?.textContent ?? null,
-          when: b.querySelector('.pass-when')?.textContent ?? null,
-          statusText: statusEl ? statusEl.textContent : null,
-          statusOk: statusEl ? statusEl.classList.contains('ok') : false,
-          statusWarn: statusEl ? statusEl.classList.contains('warn') : false,
-          summary: b.querySelector('.pass-summary')?.textContent ?? null,
-          hasRot: !!rot,
-          rotHidden: rot ? rot.getAttribute('aria-hidden') : null,
-          rowCount: rot ? rot.querySelectorAll('.pass-row').length : 0,
-          ariaLabel: b.getAttribute('aria-label'),
-          focusable,
-        };
-      }));
-    })()`));
-    passes.forEach((p, i) => {
-      if (p.tag !== 'button') problems.push(`pass ${i} is a <${p.tag}>, want <button>`);
-      if (p.focusable !== 0) problems.push(`pass ${i} has ${p.focusable} focusable element(s) inside it`);
-      const want = WANT[i];
-      if (p.title !== want.title) problems.push(`pass ${i} title is ${JSON.stringify(p.title)}, want ${JSON.stringify(want.title)}`);
-      if (p.when !== want.when) problems.push(`pass ${i} tip-off is ${JSON.stringify(p.when)}, want ${JSON.stringify(want.when)}`);
-      if (p.statusText !== want.status) problems.push(`pass ${i} status text is ${JSON.stringify(p.statusText)}, want ${JSON.stringify(want.status)}`);
-      if (p.summary !== want.summary) problems.push(`pass ${i} summary is ${JSON.stringify(p.summary)}, want ${JSON.stringify(want.summary)}`);
-      if (p.ariaLabel !== want.aria) problems.push(`pass ${i} aria-label is ${JSON.stringify(p.ariaLabel)}, want ${JSON.stringify(want.aria)}`);
-      if (p.hasRot !== want.rot) problems.push(`pass ${i} has a mini rotation: ${p.hasRot}, want ${want.rot}`);
-      if (p.hasRot) {
-        if (p.rotHidden !== 'true') problems.push(`pass ${i}'s mini rotation aria-hidden is ${JSON.stringify(p.rotHidden)}, want "true"`);
-        if (p.rowCount !== want.rows) problems.push(`pass ${i}'s mini rotation has ${p.rowCount} rows, want ${want.rows}`);
-      }
-    });
-
-    // Item 4: the status dot's color is a real class rule, read off a probe
-    // built with the same class the pass carries -- never a copied hex.
-    const dotColors = JSON.parse(await evalIn(c, `(() => {
-      const probe = ${PASS_STATUS_DOT_PROBE};
-      const cssVar = ${CSS_VAR_COLOR_PROBE};
-      const btns = [...document.querySelectorAll('#todayGames .today-game')];
-      const dots = btns.map(b => {
-        const el = b.querySelector('.pass-status');
-        return el ? getComputedStyle(el, '::before').backgroundColor : null;
-      });
-      const err = cssVar('var(--err)');
-      return JSON.stringify({ ok: probe('ok'), warn: probe('warn'), err, dots });
-    })()`));
-    dotColors.dots.forEach((d, i) => {
-      const want = WANT[i].status === 'Planned' ? dotColors.ok : dotColors.warn;
-      if (d !== want) problems.push(`pass ${i}'s status dot is ${d}, want ${want === dotColors.ok ? '--ok' : '--warn'} (${want})`);
-      if (d === dotColors.err) problems.push(`pass ${i}'s status dot still reads --err (${d})`);
-    });
-
-    // Item 6, the pixel half: passes 0-2 (pass 3 has no rotation).
-    for (let i = 0; i < 3; i++) await checkRotation(c, origin, i, problems);
-
-    // Item 7: tapping a pass opens its game, header title included. Checked
-    // on pass 0 and pass 3 -- the labelled and the "Game N" case.
-    for (const i of [0, 3]) {
-      await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[${i}].click()`));
-      const g = JSON.parse(await evalIn(c, `(async () => {
-        const mod = await import('${origin}/state.js');
-        return JSON.stringify({
-          activeGame: mod.state.activeGame,
-          title: document.getElementById('barTitle')?.textContent ?? null,
-          gamesShown: !document.getElementById('view-games')?.hidden,
-        });
-      })()`));
-      if (g.activeGame !== i) problems.push(`tapping pass ${i} set activeGame to ${g.activeGame}, want ${i}`);
-      if (!g.gamesShown) problems.push(`tapping pass ${i} did not show the Game screen`);
-      if (g.title !== WANT[i].title) problems.push(`tapping pass ${i} shows header title ${JSON.stringify(g.title)}, want ${JSON.stringify(WANT[i].title)}`);
-      await evalIn(c, step(TODAY_HOME));
-    }
-
-    // Item 11: editing on the Game screen must not touch #todayGames' own
-    // nodes while Today is hidden (decision 6); going back to Today then
-    // shows the edited plan.
-    await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[0].click()`));
-    const marksBefore = JSON.parse(await evalIn(c, `(() => {
-      const box = document.getElementById('todayGames');
-      [...box.children].forEach((el, i) => { el.dataset.smokeMark = 'm' + i + '_' + Math.random().toString(36).slice(2); });
-      return JSON.stringify([...box.children].map(el => el.dataset.smokeMark));
-    })()`));
-    // Sit Devon Ellis (p1) out of game 0 through Who's here (#27) -- an
-    // availability edit, which schedules `soon('strategy', ...PLAN_ONLY)`
-    // (game-setup.js), the same repaint item 11 is about.
-    await evalIn(c, `(async () => {
-      document.querySelector('#phrasePlayers')?.click();
-      await ${SETTLE};
-      [...document.querySelectorAll('#sheetWho button.prow')]
-        .find(b => b.textContent.includes('Devon Ellis'))?.click();
-      await ${SETTLE};
-    })()`);
-    const marksAfter = JSON.parse(await evalIn(c, `(() => {
-      const box = document.getElementById('todayGames');
-      return JSON.stringify([...box.children].map(el => el.dataset.smokeMark));
-    })()`));
-    if (JSON.stringify(marksBefore) !== JSON.stringify(marksAfter)) {
-      problems.push(`editing game 0 on the Game screen replaced #todayGames' own nodes while Today was hidden `
-        + `(${JSON.stringify(marksBefore)} -> ${JSON.stringify(marksAfter)})`);
-    }
-    await evalIn(c, step(TODAY_HOME));
-    const repainted = JSON.parse(await evalIn(c, `(() => {
-      const b = document.querySelectorAll('#todayGames .today-game')[0];
-      return JSON.stringify({
+  // Items 2, 3, 5, 6 (rotation presence), 8.
+  const passes = JSON.parse(await evalIn(c, `(() => {
+    const btns = [...document.querySelectorAll('#todayGames .today-game')];
+    return JSON.stringify(btns.map(b => {
+      const statusEl = b.querySelector('.pass-status');
+      const rot = b.querySelector('.pass-rot');
+      const focusable = b.querySelectorAll('button, a[href], input, select, textarea, [tabindex]').length;
+      return {
+        tag: b.tagName.toLowerCase(),
+        title: b.querySelector('.pass-title')?.textContent ?? null,
+        when: b.querySelector('.pass-when')?.textContent ?? null,
+        statusText: statusEl ? statusEl.textContent : null,
+        statusOk: statusEl ? statusEl.classList.contains('ok') : false,
+        statusWarn: statusEl ? statusEl.classList.contains('warn') : false,
         summary: b.querySelector('.pass-summary')?.textContent ?? null,
-        rowCount: b.querySelectorAll('.pass-rot .pass-row').length,
+        hasRot: !!rot,
+        rotHidden: rot ? rot.getAttribute('aria-hidden') : null,
+        rowCount: rot ? rot.querySelectorAll('.pass-row').length : 0,
+        ariaLabel: b.getAttribute('aria-label'),
+        focusable,
+      };
+    }));
+  })()`));
+  passes.forEach((p, i) => {
+    rec.check(p.tag === 'button', `pass ${i} is a <${p.tag}>, want <button>`);
+    rec.check(p.focusable === 0, `pass ${i} has ${p.focusable} focusable element(s) inside it`);
+    const want = WANT[i];
+    rec.check(p.title === want.title, `pass ${i} title is ${JSON.stringify(p.title)}, want ${JSON.stringify(want.title)}`);
+    rec.check(p.when === want.when, `pass ${i} tip-off is ${JSON.stringify(p.when)}, want ${JSON.stringify(want.when)}`);
+    rec.check(p.statusText === want.status, `pass ${i} status text is ${JSON.stringify(p.statusText)}, want ${JSON.stringify(want.status)}`);
+    rec.check(p.summary === want.summary, `pass ${i} summary is ${JSON.stringify(p.summary)}, want ${JSON.stringify(want.summary)}`);
+    rec.check(p.ariaLabel === want.aria, `pass ${i} aria-label is ${JSON.stringify(p.ariaLabel)}, want ${JSON.stringify(want.aria)}`);
+    rec.check(p.hasRot === want.rot, `pass ${i} has a mini rotation: ${p.hasRot}, want ${want.rot}`);
+    if (p.hasRot) {
+      rec.check(p.rotHidden === 'true', `pass ${i}'s mini rotation aria-hidden is ${JSON.stringify(p.rotHidden)}, want "true"`);
+      rec.check(p.rowCount === want.rows, `pass ${i}'s mini rotation has ${p.rowCount} rows, want ${want.rows}`);
+    }
+  });
+
+  // Item 4: the status dot's color is a real class rule, read off a probe
+  // built with the same class the pass carries -- never a copied hex.
+  const dotColors = JSON.parse(await evalIn(c, `(() => {
+    const probe = ${PASS_STATUS_DOT_PROBE};
+    const cssVar = ${CSS_VAR_COLOR_PROBE};
+    const btns = [...document.querySelectorAll('#todayGames .today-game')];
+    const dots = btns.map(b => {
+      const el = b.querySelector('.pass-status');
+      return el ? getComputedStyle(el, '::before').backgroundColor : null;
+    });
+    const err = cssVar('var(--err)');
+    return JSON.stringify({ ok: probe('ok'), warn: probe('warn'), err, dots });
+  })()`));
+  dotColors.dots.forEach((d, i) => {
+    const want = WANT[i].status === 'Planned' ? dotColors.ok : dotColors.warn;
+    rec.check(d === want, `pass ${i}'s status dot is ${d}, want ${want === dotColors.ok ? '--ok' : '--warn'} (${want})`);
+    rec.check(d !== dotColors.err, `pass ${i}'s status dot still reads --err (${d})`);
+  });
+
+  // Item 6, the pixel half: passes 0-2 (pass 3 has no rotation).
+  for (let i = 0; i < 3; i++) await checkRotation(c, origin, i, rec);
+
+  // Item 7: tapping a pass opens its game, header title included. Checked
+  // on pass 0 and pass 3 -- the labelled and the "Game N" case.
+  for (const i of [0, 3]) {
+    await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[${i}].click()`));
+    const g = JSON.parse(await evalIn(c, `(async () => {
+      const mod = await import('${origin}/state.js');
+      return JSON.stringify({
+        activeGame: mod.state.activeGame,
+        title: document.getElementById('barTitle')?.textContent ?? null,
+        gamesShown: !document.getElementById('view-games')?.hidden,
       });
     })()`));
-    if (repainted.summary !== '11 players · even minutes') {
-      problems.push(`after sitting a player out and returning to Today, pass 0's summary is `
-        + `${JSON.stringify(repainted.summary)}, want "11 players · even minutes"`);
-    }
-    if (repainted.rowCount !== 11) {
-      problems.push(`after sitting a player out and returning to Today, pass 0's mini rotation has `
-        + `${repainted.rowCount} rows, want 11`);
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(g.activeGame === i, `tapping pass ${i} set activeGame to ${g.activeGame}, want ${i}`);
+    rec.check(g.gamesShown, `tapping pass ${i} did not show the Game screen`);
+    rec.check(g.title === WANT[i].title, `tapping pass ${i} shows header title ${JSON.stringify(g.title)}, want ${JSON.stringify(WANT[i].title)}`);
+    await evalIn(c, step(TODAY_HOME));
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `4 passes in day order, titles/tip-offs/status/summaries/aria-labels match, mini rotations paint real `
-        + `pixels, tapping opens the game, editing does not touch hidden #todayGames — cold ${cold}, `
-        + `coldToday ${coldToday}, fourToday ${fourToday}, ceiling ${roomCeiling}`,
-  };
+
+  // Item 11: editing on the Game screen must not touch #todayGames' own
+  // nodes while Today is hidden (decision 6); going back to Today then
+  // shows the edited plan.
+  await evalIn(c, step(`document.querySelectorAll('#todayGames .today-game')[0].click()`));
+  const marksBefore = JSON.parse(await evalIn(c, `(() => {
+    const box = document.getElementById('todayGames');
+    [...box.children].forEach((el, i) => { el.dataset.smokeMark = 'm' + i + '_' + Math.random().toString(36).slice(2); });
+    return JSON.stringify([...box.children].map(el => el.dataset.smokeMark));
+  })()`));
+  // Sit Devon Ellis (p1) out of game 0 through Who's here (#27) -- an
+  // availability edit, which schedules `soon('strategy', ...PLAN_ONLY)`
+  // (game-setup.js), the same repaint item 11 is about.
+  await evalIn(c, `(async () => {
+    document.querySelector('#phrasePlayers')?.click();
+    await ${SETTLE};
+    [...document.querySelectorAll('#sheetWho button.prow')]
+      .find(b => b.textContent.includes('Devon Ellis'))?.click();
+    await ${SETTLE};
+  })()`);
+  const marksAfter = JSON.parse(await evalIn(c, `(() => {
+    const box = document.getElementById('todayGames');
+    return JSON.stringify([...box.children].map(el => el.dataset.smokeMark));
+  })()`));
+  rec.check(JSON.stringify(marksBefore) === JSON.stringify(marksAfter), `editing game 0 on the Game screen replaced #todayGames' own nodes while Today was hidden `
+      + `(${JSON.stringify(marksBefore)} -> ${JSON.stringify(marksAfter)})`);
+  await evalIn(c, step(TODAY_HOME));
+  const repainted = JSON.parse(await evalIn(c, `(() => {
+    const b = document.querySelectorAll('#todayGames .today-game')[0];
+    return JSON.stringify({
+      summary: b.querySelector('.pass-summary')?.textContent ?? null,
+      rowCount: b.querySelectorAll('.pass-rot .pass-row').length,
+    });
+  })()`));
+  rec.check(repainted.summary === '11 players · even minutes', `after sitting a player out and returning to Today, pass 0's summary is `
+      + `${JSON.stringify(repainted.summary)}, want "11 players · even minutes"`);
+  rec.check(repainted.rowCount === 11, `after sitting a player out and returning to Today, pass 0's mini rotation has `
+      + `${repainted.rowCount} rows, want 11`);
+  rec.ok(`4 passes in day order, titles/tip-offs/status/summaries/aria-labels match, mini rotations paint real `
+    + `pixels, tapping opens the game, editing does not touch hidden #todayGames — cold ${cold}, `
+    + `coldToday ${coldToday}, fourToday ${fourToday}, ceiling ${roomCeiling}`);
 }

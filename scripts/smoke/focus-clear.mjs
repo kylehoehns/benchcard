@@ -115,8 +115,7 @@ export async function tabWalk(c, { name, probeParent, skip = [], bars = [], maxT
   return { visited, labels, overlaps, maxScrollY };
 }
 
-export async function focusClearPass(c) {
-  const problems = [];
+export async function focusClearPass(c, rec) {
   // Guarantee the game screen regardless of what state this pass inherits --
   // RICH already lands there, but `--only focusclear` should not have to
   // assume that stays true.
@@ -129,24 +128,16 @@ export async function focusClearPass(c) {
   });
   await evalIn(c, step(TODAY_HOME));
 
-  if (visited < MIN_CONTROLS) {
-    problems.push(`only ${visited} distinct content control(s) reached by Tab, want at least ${MIN_CONTROLS} -- `
-      + 'a run that measured nothing is not a pass');
-  }
+  rec.check(visited >= MIN_CONTROLS, `only ${visited} distinct content control(s) reached by Tab, want at least ${MIN_CONTROLS} -- `
+    + 'a run that measured nothing is not a pass');
   /* The second half of rule 2a, and the one that caught this check being
      green against a tree with no `scroll-padding` at all: a walk that never
      left the top of the page proves nothing about a floating control, since
      the browser only consults `scroll-padding` when it has to scroll. */
-  if (maxScrollY === 0) {
-    problems.push('the tab walk never scrolled the page (scrollY stayed 0), so nothing here '
-      + 'exercised scroll-padding -- that is a broken probe, not a clear tab order');
-  }
-  problems.push(...overlaps.slice(0, 3));
+  rec.check(maxScrollY !== 0, 'the tab walk never scrolled the page (scrollY stayed 0), so nothing here '
+    + 'exercised scroll-padding -- that is a broken probe, not a clear tab order');
+  for (const o of overlaps.slice(0, 3)) rec.fail(o);
+  if (overlaps.length > 3) rec.fail(`(+${overlaps.length - 3} more)`);
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? problems.join(' | ') + (overlaps.length > 3 ? ` (+${overlaps.length - 3} more)` : '')
-      : `${visited} content control(s) tabbed through down to scrollY ${maxScrollY}, clear of .bar and #actionbar`,
-  };
+  rec.ok(`${visited} content control(s) tabbed through down to scrollY ${maxScrollY}, clear of .bar and #actionbar`);
 }

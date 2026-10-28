@@ -44,92 +44,66 @@ const NEVER_DAY = {
   teams: [{ ...RICH.teams[0], days: [{ ...RICH.teams[0].days[0], date: '2099-12-31', games: GAMES }] }],
 };
 
-export async function datedDayPass(c, origin) {
-  const problems = [];
-  try {
-    await land(c, origin, { record: { ...NEVER_DAY, view: 'today' }, ...TODAY_LANDING });
-    const before = JSON.parse(await evalIn(c, `JSON.stringify({
-      days: JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].days,
-      seasonGames: JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].season.games,
-    })`));
+export async function datedDayPass(c, origin, rec) {
+  await land(c, origin, { record: { ...NEVER_DAY, view: 'today' }, ...TODAY_LANDING });
+  const before = JSON.parse(await evalIn(c, `JSON.stringify({
+    days: JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].days,
+    seasonGames: JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].season.games,
+  })`));
 
-    await land(c, origin, { record: { ...PAST_DAY, view: 'today' }, ...TODAY_LANDING });
+  await land(c, origin, { record: { ...PAST_DAY, view: 'today' }, ...TODAY_LANDING });
 
-    const after = JSON.parse(await evalIn(c, `JSON.stringify({
-      onToday: !!(document.getElementById('view-today') && !document.getElementById('view-today').hidden),
-      hasNewDayBtn: !!document.getElementById('todayNewDay'),
-      gamesOnToday: document.querySelectorAll('.today-game').length,
-      toastText: document.querySelector('#toasts .toast[data-undo] .tmsg')?.textContent.trim() ?? null,
-      record: JSON.parse(localStorage.getItem('benchcard.v7')),
-    })`));
+  const after = JSON.parse(await evalIn(c, `JSON.stringify({
+    onToday: !!(document.getElementById('view-today') && !document.getElementById('view-today').hidden),
+    hasNewDayBtn: !!document.getElementById('todayNewDay'),
+    gamesOnToday: document.querySelectorAll('.today-game').length,
+    toastText: document.querySelector('#toasts .toast[data-undo] .tmsg')?.textContent.trim() ?? null,
+    record: JSON.parse(localStorage.getItem('benchcard.v7')),
+  })`));
 
-    if (after.hasNewDayBtn) problems.push('#todayNewDay is still on Today; "New day" was supposed to be removed');
-    if (!after.onToday) problems.push('did not land on Today after boot');
+  rec.check(!after.hasNewDayBtn, '#todayNewDay is still on Today; "New day" was supposed to be removed');
+  rec.check(after.onToday, 'did not land on Today after boot');
 
-    const t0 = after.record?.teams?.[0];
-    const seasonCount = t0?.season?.games?.length ?? -1;
-    // RICH ships with 3 filed games already; the past day's Hawks (finished)
-    // joins them, but never-started Ravens is left out (#133).
-    if (seasonCount !== 4) {
-      problems.push(`the record's season has ${seasonCount} filed game(s) after boot, want 4 (RICH's 3 plus the 1 the past day filed)`);
-    }
-    if (t0 && !t0.season.games.some(g => g.date === '2024-01-06' && g.opponent === 'Hawks')) {
-      problems.push('the filed Hawks game is not dated 2024-01-06 (the day it was played on)');
-    }
-    if (t0 && t0.season.games.some(g => g.opponent === 'Ravens')) {
-      problems.push('Ravens was never started and should not be in the season at all');
-    }
-    if (t0 && t0.days[0].date === '2024-01-06') problems.push('the day on screen is still dated 2024-01-06 -- filing did not replace it');
-    if (t0 && !/^\d{4}-\d{2}-\d{2}$/.test(t0.days[0].date || '')) problems.push(`the fresh day's date reads "${t0 && t0.days[0].date}", want a real YYYY-MM-DD`);
-    if (after.gamesOnToday !== 1) problems.push(`Today shows ${after.gamesOnToday} game(s) after filing, want 1 (the fresh day)`);
+  const t0 = after.record?.teams?.[0];
+  const seasonCount = t0?.season?.games?.length ?? -1;
+  // RICH ships with 3 filed games already; the past day's Hawks (finished)
+  // joins them, but never-started Ravens is left out (#133).
+  rec.check(seasonCount === 4, `the record's season has ${seasonCount} filed game(s) after boot, want 4 (RICH's 3 plus the 1 the past day filed)`);
+  rec.check(!t0 || t0.season.games.some(g => g.date === '2024-01-06' && g.opponent === 'Hawks'), 'the filed Hawks game is not dated 2024-01-06 (the day it was played on)');
+  rec.check(!t0 || !t0.season.games.some(g => g.opponent === 'Ravens'), 'Ravens was never started and should not be in the season at all');
+  rec.check(!t0 || t0.days[0].date !== '2024-01-06', 'the day on screen is still dated 2024-01-06 -- filing did not replace it');
+  rec.check(!t0 || /^\d{4}-\d{2}-\d{2}$/.test(t0.days[0].date || ''), `the fresh day's date reads "${t0 && t0.days[0].date}", want a real YYYY-MM-DD`);
+  rec.check(after.gamesOnToday === 1, `Today shows ${after.gamesOnToday} game(s) after filing, want 1 (the fresh day)`);
 
-    const wantToast = 'Sat, Jan 6: 1 game filed to the season. Ravens was never started, so it was left out.';
-    if (!after.toastText) {
-      problems.push('no Undo toast was shown after a past day filed');
-    } else if (after.toastText !== wantToast) {
-      problems.push(`the filing toast reads "${after.toastText}", want "${wantToast}"`);
-    }
-
-    /* #100 review, finding 2: Undo has to put the day AND the season back
-       exactly as they were before filing -- not just show a plausible
-       screen. Tap the toast's own Undo control (the same selector
-       `today-keys-and-undo.mjs` uses), then read the saved record and
-       Today itself, and compare against `before`, captured above from the
-       identical day and season content before anything filed. */
-    await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
-
-    const undone = JSON.parse(await evalIn(c, `JSON.stringify({
-      gamesOnToday: document.querySelectorAll('.today-game').length,
-      gameLabels: [...document.querySelectorAll('.today-game')].map(n => n.textContent),
-      record: JSON.parse(localStorage.getItem('benchcard.v7')),
-    })`));
-    const u0 = undone.record?.teams?.[0];
-
-    if (undone.gamesOnToday !== 2) {
-      problems.push(`Undo: Today shows ${undone.gamesOnToday} game(s), want 2 (Hawks and Ravens, restored)`);
-    }
-    if (!u0 || u0.days[0].date !== '2024-01-06') {
-      problems.push(`Undo: the day's date reads "${u0 && u0.days[0].date}", want "2024-01-06" (the filed day, restored)`);
-    }
-    if (!u0 || u0.days[0].name !== before.days[0].name) {
-      problems.push(`Undo: the day's name reads "${u0 && u0.days[0].name}", want "${before.days[0].name}" (the day before it filed)`);
-    }
-    if (!u0 || JSON.stringify(u0.days[0].games) !== JSON.stringify(before.days[0].games)) {
-      problems.push('Undo: the day\'s games do not match what was there before filing (Hawks and Ravens, unfiled)');
-    }
-    if (!u0 || JSON.stringify(u0.season.games) !== JSON.stringify(before.seasonGames)) {
-      problems.push('Undo: the season\'s games do not match what was there before filing (RICH\'s 3, not the 2 Hawks/Ravens filed)');
-    }
-  } catch (e) {
-    problems.push(`threw: ${e.message}`);
+  const wantToast = 'Sat, Jan 6: 1 game filed to the season. Ravens was never started, so it was left out.';
+  if (!after.toastText) {
+    rec.fail('no Undo toast was shown after a past day filed');
+  } else {
+    rec.check(after.toastText === wantToast, `the filing toast reads "${after.toastText}", want "${wantToast}"`);
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}`
-      : 'no #todayNewDay on Today; a past-dated day files itself on boot, shows the Undo toast '
-        + 'with the right date and count, Today opens on a fresh day, and tapping Undo restores '
-        + 'the day and the season exactly as they were before filing',
-  };
+  /* #100 review, finding 2: Undo has to put the day AND the season back
+     exactly as they were before filing -- not just show a plausible
+     screen. Tap the toast's own Undo control (the same selector
+     `today-keys-and-undo.mjs` uses), then read the saved record and
+     Today itself, and compare against `before`, captured above from the
+     identical day and season content before anything filed. */
+  await evalIn(c, step(`document.querySelector('#toasts .toast[data-undo] .tundo')?.click()`));
+
+  const undone = JSON.parse(await evalIn(c, `JSON.stringify({
+    gamesOnToday: document.querySelectorAll('.today-game').length,
+    gameLabels: [...document.querySelectorAll('.today-game')].map(n => n.textContent),
+    record: JSON.parse(localStorage.getItem('benchcard.v7')),
+  })`));
+  const u0 = undone.record?.teams?.[0];
+
+  rec.check(undone.gamesOnToday === 2, `Undo: Today shows ${undone.gamesOnToday} game(s), want 2 (Hawks and Ravens, restored)`);
+  rec.check(u0 && u0.days[0].date === '2024-01-06', `Undo: the day's date reads "${u0 && u0.days[0].date}", want "2024-01-06" (the filed day, restored)`);
+  rec.check(u0 && u0.days[0].name === before.days[0].name, `Undo: the day's name reads "${u0 && u0.days[0].name}", want "${before.days[0].name}" (the day before it filed)`);
+  rec.check(u0 && JSON.stringify(u0.days[0].games) === JSON.stringify(before.days[0].games), 'Undo: the day\'s games do not match what was there before filing (Hawks and Ravens, unfiled)');
+  rec.check(u0 && JSON.stringify(u0.season.games) === JSON.stringify(before.seasonGames), 'Undo: the season\'s games do not match what was there before filing (RICH\'s 3, not the 2 Hawks/Ravens filed)');
+
+  rec.ok('no #todayNewDay on Today; a past-dated day files itself on boot, shows the Undo toast '
+    + 'with the right date and count, Today opens on a fresh day, and tapping Undo restores '
+    + 'the day and the season exactly as they were before filing');
 }

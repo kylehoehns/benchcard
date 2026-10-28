@@ -27,6 +27,7 @@ import { evalJSON, tap } from './sheet-drive.mjs';
 import { RICH, TODAY_LANDING, richWith } from './fixtures.mjs';
 import { land, resize } from './page-state.mjs';
 import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH } from './sizes.mjs';
+import { scoped } from './verdict.mjs';
 
 const OPEN_SEASON = `document.querySelector('#todaySeason').click()`;
 
@@ -224,62 +225,37 @@ const READ_SEASON_LOOK = `JSON.stringify((() => {
   };
 })())`;
 
-export async function seasonLookPass(c, origin) {
-  const problems = [];
+export async function seasonLookPass(c, origin, rec) {
   let measured = 0;
 
   try {
    for (const theme of ['light', 'dark']) {
-    const before = problems.length;
+    const sub = scoped(rec, theme);
     await land(c, origin, { record: richWith({ theme }) });
     await tap(c, TODAY_HOME);
     await tap(c, OPEN_SEASON);
 
     const row = await evalJSON(c, READ_SEASON_LOOK);
-    if (row.rowHeight == null) {
-      problems.push('no ".sn-row" found under #seasonbox -- nothing to measure');
-    } else {
+    if (sub.check(row.rowHeight != null, 'no ".sn-row" found under #seasonbox -- nothing to measure')) {
       measured++;
       // item 2
-      if (Math.abs(row.rowHeight - 30) > 2) {
-        problems.push(`Minutes so far row is ${row.rowHeight.toFixed(1)}px tall, want 30px ±2px`);
-      }
-      if (row.nameFontSize !== '14px') {
-        problems.push(`row name font-size is ${row.nameFontSize}, want 14px (--fs-secondary)`);
-      }
+      sub.check(!(Math.abs(row.rowHeight - 30) > 2), `Minutes so far row is ${row.rowHeight.toFixed(1)}px tall, want 30px ±2px`);
+      sub.check(row.nameFontSize === '14px', `row name font-size is ${row.nameFontSize}, want 14px (--fs-secondary)`);
       const nameWeight = parseInt(row.nameFontWeight, 10);
-      if (!(nameWeight >= 400 && nameWeight <= 500)) {
-        problems.push(`row name font-weight is ${row.nameFontWeight}, want 400-500`);
-      }
-      if (row.nameWhiteSpace !== 'nowrap' || row.nameOverflow !== 'ellipsis') {
-        problems.push(`row name is not a one-line ellipsis (white-space ${row.nameWhiteSpace}, text-overflow ${row.nameOverflow})`);
-      }
-      if (Math.abs(row.trackHeight - 8) > 1) {
-        problems.push(`bar track is ${row.trackHeight}px tall, want 8px`);
-      }
+      sub.check(!(!(nameWeight >= 400 && nameWeight <= 500)), `row name font-weight is ${row.nameFontWeight}, want 400-500`);
+      sub.check(!(row.nameWhiteSpace !== 'nowrap' || row.nameOverflow !== 'ellipsis'), `row name is not a one-line ellipsis (white-space ${row.nameWhiteSpace}, text-overflow ${row.nameOverflow})`);
+      sub.check(!(Math.abs(row.trackHeight - 8) > 1), `bar track is ${row.trackHeight}px tall, want 8px`);
       if (row.trackRadius !== '999px' && !/^\d+px$/.test(row.trackRadius || '')) {
-        problems.push(`bar track radius is ${row.trackRadius}, want var(--r-full) (999px)`);
-      } else if (parseFloat(row.trackRadius) < 100) {
-        problems.push(`bar track radius is ${row.trackRadius}, want var(--r-full) (999px), not a small radius`);
+        sub.fail(`bar track radius is ${row.trackRadius}, want var(--r-full) (999px)`);
+      } else {
+        sub.check(!(parseFloat(row.trackRadius) < 100), `bar track radius is ${row.trackRadius}, want var(--r-full) (999px), not a small radius`);
       }
-      if (row.trackColor !== row.trackTokenColor) {
-        problems.push(`bar track color is ${row.trackColor}, want var(--track) (${row.trackTokenColor})`);
-      }
-      if (row.minFontSize !== '13px') {
-        problems.push(`minutes text font-size is ${row.minFontSize}, want 13px (--fs-footnote)`);
-      }
-      if (parseInt(row.minFontWeight, 10) !== 400) {
-        problems.push(`minutes text font-weight is ${row.minFontWeight}, want 400`);
-      }
-      if (row.minTextAlign !== 'right') {
-        problems.push(`minutes text is not right-aligned (text-align: ${row.minTextAlign})`);
-      }
-      if (!/tabular/.test(row.minVariant || '')) {
-        problems.push(`minutes text is not tabular numerals (font-variant-numeric: ${row.minVariant})`);
-      }
-      if (parseFloat(row.rowBorderBottom) > 0 || (row.rowBoxShadow && row.rowBoxShadow !== 'none')) {
-        problems.push(`Minutes so far row carries a divider (border-bottom ${row.rowBorderBottom}, box-shadow ${row.rowBoxShadow})`);
-      }
+      sub.check(row.trackColor === row.trackTokenColor, `bar track color is ${row.trackColor}, want var(--track) (${row.trackTokenColor})`);
+      sub.check(row.minFontSize === '13px', `minutes text font-size is ${row.minFontSize}, want 13px (--fs-footnote)`);
+      sub.check(parseInt(row.minFontWeight, 10) === 400, `minutes text font-weight is ${row.minFontWeight}, want 400`);
+      sub.check(row.minTextAlign === 'right', `minutes text is not right-aligned (text-align: ${row.minTextAlign})`);
+      sub.check(!(!/tabular/.test(row.minVariant || '')), `minutes text is not tabular numerals (font-variant-numeric: ${row.minVariant})`);
+      sub.check(!(parseFloat(row.rowBorderBottom) > 0 || (row.rowBoxShadow && row.rowBoxShadow !== 'none')), `Minutes so far row carries a divider (border-bottom ${row.rowBorderBottom}, box-shadow ${row.rowBoxShadow})`);
 
       // item 1 (fix pass): section headers and #dayhint share the title's
       // own left edge, ±1px.
@@ -287,9 +263,7 @@ export async function seasonLookPass(c, origin) {
         ...Object.fromEntries(row.snHLefts.map((v, i) => [`sn-h[${i}]`, v])) };
       if (row.titleLeft != null) {
         for (const [name, left] of Object.entries(titleEdges)) {
-          if (left != null && Math.abs(left - row.titleLeft) > 1) {
-            problems.push(`${name}'s left edge is ${left}px, the title's is ${row.titleLeft}px -- not the one shared edge`);
-          }
+          sub.check(!(left != null && Math.abs(left - row.titleLeft) > 1), `${name}'s left edge is ${left}px, the title's is ${row.titleLeft}px -- not the one shared edge`);
         }
       }
       // look-defect fix pass: a day subheader inside Filed games lines up
@@ -300,137 +274,74 @@ export async function seasonLookPass(c, origin) {
       // against the card's own left edge with no padding.
       if (row.firstGameTitleLeft != null) {
         row.snDayLefts.forEach((left, i) => {
-          if (Math.abs(left - row.firstGameTitleLeft) > 1) {
-            problems.push(`sn-day[${i}]'s left edge is ${left}px, the first filed game's text is at `
-              + `${row.firstGameTitleLeft}px -- not level with its own group's rows`);
-          }
+          sub.check(!(Math.abs(left - row.firstGameTitleLeft) > 1), `sn-day[${i}]'s left edge is ${left}px, the first filed game's text is at `
+            + `${row.firstGameTitleLeft}px -- not level with its own group's rows`);
         });
       }
       // item 1 (fix pass): the gap from a group's bottom to the NEXT section
       // header is the same for both groups that have one, ±2px.
       if (row.gapBeforeAcrossDay != null && row.gapBeforeFiledGames != null) {
         const gapSpread = Math.abs(row.gapBeforeAcrossDay - row.gapBeforeFiledGames);
-        if (gapSpread > 2) {
-          problems.push(`the gap before "Across the day" (${row.gapBeforeAcrossDay.toFixed(1)}px) and before `
-            + `"Filed games" (${row.gapBeforeFiledGames.toFixed(1)}px) do not match`);
-        }
+        sub.check(!(gapSpread > 2), `the gap before "Across the day" (${row.gapBeforeAcrossDay.toFixed(1)}px) and before `
+          + `"Filed games" (${row.gapBeforeFiledGames.toFixed(1)}px) do not match`);
       }
 
       // item 2 (fix pass): Filed games is one card, not one per game/day.
-      if (row.topFiledPgrpCount !== 1) {
-        problems.push(`#seasonFiled holds ${row.topFiledPgrpCount} top-level .pgrp groups, want exactly 1`);
-      }
-      if (!row.allGamesInsideTopPgrp) {
-        problems.push('not every filed game row sits inside the one shared .pgrp');
-      }
+      sub.check(row.topFiledPgrpCount === 1, `#seasonFiled holds ${row.topFiledPgrpCount} top-level .pgrp groups, want exactly 1`);
+      sub.check(row.allGamesInsideTopPgrp, 'not every filed game row sits inside the one shared .pgrp');
 
       // item 3 (fix pass): Across the day's numbers/names match Minutes so
       // far's -- one list style.
-      if (row.dayVFontSize !== '13px') {
-        problems.push(`"Across the day" minutes are ${row.dayVFontSize}, want 13px (--fs-footnote), same as Minutes so far's`);
-      }
-      if (parseInt(row.dayVFontWeight, 10) !== 400) {
-        problems.push(`"Across the day" minutes are weight ${row.dayVFontWeight}, want 400, same as Minutes so far's`);
-      }
-      if (row.minColor != null && row.dayVColor !== row.minColor) {
-        problems.push(`"Across the day" minutes are ${row.dayVColor}, Minutes so far's are ${row.minColor} -- two list styles`);
-      }
-      if (!/tabular/.test(row.dayVVariant || '')) {
-        problems.push(`"Across the day" minutes are not tabular numerals (font-variant-numeric: ${row.dayVVariant})`);
-      }
-      if (row.dayNmStyleFontSize !== row.nameFontSize) {
-        problems.push(`"Across the day" names are ${row.dayNmStyleFontSize}, Minutes so far's are ${row.nameFontSize}`);
-      }
-      if (row.dayNmStyleFontWeight !== row.nameFontWeight) {
-        problems.push(`"Across the day" names are weight ${row.dayNmStyleFontWeight}, Minutes so far's are weight ${row.nameFontWeight}`);
-      }
+      sub.check(row.dayVFontSize === '13px', `"Across the day" minutes are ${row.dayVFontSize}, want 13px (--fs-footnote), same as Minutes so far's`);
+      sub.check(parseInt(row.dayVFontWeight, 10) === 400, `"Across the day" minutes are weight ${row.dayVFontWeight}, want 400, same as Minutes so far's`);
+      sub.check(!(row.minColor != null && row.dayVColor !== row.minColor), `"Across the day" minutes are ${row.dayVColor}, Minutes so far's are ${row.minColor} -- two list styles`);
+      sub.check(!(!/tabular/.test(row.dayVVariant || '')), `"Across the day" minutes are not tabular numerals (font-variant-numeric: ${row.dayVVariant})`);
+      sub.check(row.dayNmStyleFontSize === row.nameFontSize, `"Across the day" names are ${row.dayNmStyleFontSize}, Minutes so far's are ${row.nameFontSize}`);
+      sub.check(row.dayNmStyleFontWeight === row.nameFontWeight, `"Across the day" names are weight ${row.dayNmStyleFontWeight}, Minutes so far's are weight ${row.nameFontWeight}`);
 
       // item 3: the "N games (behind/ahead)" line is hidden, not gone.
-      if (!row.hiddenText || !/game/.test(row.hiddenText)) {
-        problems.push(`the ledger row's hidden text is "${row.hiddenText}", want the "N games ..." line offNote/totals build`);
-      }
-      if (row.hiddenPosition !== 'absolute' || row.hiddenWidth !== '1px') {
-        problems.push(`the ledger row's hidden text is not visually hidden (position ${row.hiddenPosition}, width ${row.hiddenWidth})`);
-      }
-      if (row.visibleXPresent) {
-        problems.push('the ledger still shows a visible ".sn-x" subline -- item 3 wants it hidden, not repainted');
-      }
-      if (row.minBeforeHidden === false) {
-        problems.push('the ledger row\'s hidden "N games" text sits before .sn-min in DOM order -- a screen reader '
-          + 'reads name, N games, behind, minutes, not name, minutes, N games, behind (spec item 3)');
-      }
+      sub.check(!(!row.hiddenText || !/game/.test(row.hiddenText)), `the ledger row's hidden text is "${row.hiddenText}", want the "N games ..." line offNote/totals build`);
+      sub.check(!(row.hiddenPosition !== 'absolute' || row.hiddenWidth !== '1px'), `the ledger row's hidden text is not visually hidden (position ${row.hiddenPosition}, width ${row.hiddenWidth})`);
+      sub.check(!row.visibleXPresent, 'the ledger still shows a visible ".sn-x" subline -- item 3 wants it hidden, not repainted');
+      sub.check(row.minBeforeHidden !== false, 'the ledger row\'s hidden "N games" text sits before .sn-min in DOM order -- a screen reader '
+        + 'reads name, N games, behind, minutes, not name, minutes, N games, behind (spec item 3)');
 
       // item 4 (basic wiring; the 5-game/320px case is checked separately).
-      if (!row.dayName) {
-        problems.push('no "Across the day" row name found -- nothing to check for a call name');
-      } else {
-        if (row.dayName === row.dayName.toUpperCase() && /[a-z]/i.test(row.dayName)) {
-          problems.push(`"Across the day" row name is "${row.dayName}", reads as an uppercase card name, not a call name`);
-        }
-        if (row.dayNameTransform === 'uppercase') {
-          problems.push(`"Across the day" row name computes text-transform: uppercase`);
-        }
+      if (sub.check(row.dayName, 'no "Across the day" row name found -- nothing to check for a call name')) {
+        sub.check(!(row.dayName === row.dayName.toUpperCase() && /[a-z]/i.test(row.dayName)), `"Across the day" row name is "${row.dayName}", reads as an uppercase card name, not a call name`);
+        sub.check(row.dayNameTransform !== 'uppercase', `"Across the day" row name computes text-transform: uppercase`);
       }
-      if (!row.dayHiddenText || !row.dayHiddenText.includes(':')) {
-        problems.push(`"Across the day" row has no per-game hidden text (got "${row.dayHiddenText}")`);
-      }
-      if (row.dayVBeforeHidden === false) {
-        problems.push('"Across the day" row\'s hidden per-game text sits before its .v total in DOM order -- '
-          + 'a screen reader reads the per-game breakdown before the total minutes');
-      }
-      if (parseFloat(row.legendRadius) * 2 < parseFloat(row.legendWidth) - 0.5) {
-        problems.push(`legend swatch border-radius (${row.legendRadius}) is less than half its width (${row.legendWidth}) -- not round`);
-      }
-      if (row.hintFontSize !== row.dayHeadFontSize || row.hintColor !== row.dayHeadColor) {
-        problems.push(`#dayhint (${row.hintFontSize}/${row.hintColor}) does not match the muted footnote voice `
-          + `.sn-day already uses (${row.dayHeadFontSize}/${row.dayHeadColor})`);
-      }
+      sub.check(!(!row.dayHiddenText || !row.dayHiddenText.includes(':')), `"Across the day" row has no per-game hidden text (got "${row.dayHiddenText}")`);
+      sub.check(row.dayVBeforeHidden !== false, '"Across the day" row\'s hidden per-game text sits before its .v total in DOM order -- '
+        + 'a screen reader reads the per-game breakdown before the total minutes');
+      sub.check(!(parseFloat(row.legendRadius) * 2 < parseFloat(row.legendWidth) - 0.5), `legend swatch border-radius (${row.legendRadius}) is less than half its width (${row.legendWidth}) -- not round`);
+      sub.check(!(row.hintFontSize !== row.dayHeadFontSize || row.hintColor !== row.dayHeadColor), `#dayhint (${row.hintFontSize}/${row.hintColor}) does not match the muted footnote voice `
+        + `.sn-day already uses (${row.dayHeadFontSize}/${row.dayHeadColor})`);
 
       // item 5: the shared chevron, no hand-drawn arrow, no card of its own.
-      if (!row.chevPresent) {
-        problems.push('a filed game row has no ".prow-chev" -- the shared chevron is missing');
-      }
-      if (row.gameAfterContent && row.gameAfterContent !== 'none' && row.gameAfterContent !== '""') {
-        problems.push(`a filed game row still paints its own ::after arrow (content: ${row.gameAfterContent})`);
-      }
-      if (row.gameBg && !/rgba\(0, ?0, ?0, ?0\)|transparent/.test(row.gameBg)) {
-        problems.push(`a filed game row paints its own background (${row.gameBg}) -- item 1 wants no card of its own`);
-      }
+      sub.check(row.chevPresent, 'a filed game row has no ".prow-chev" -- the shared chevron is missing');
+      sub.check(!(row.gameAfterContent && row.gameAfterContent !== 'none' && row.gameAfterContent !== '""'), `a filed game row still paints its own ::after arrow (content: ${row.gameAfterContent})`);
+      sub.check(!(row.gameBg && !/rgba\(0, ?0, ?0, ?0\)|transparent/.test(row.gameBg)), `a filed game row paints its own background (${row.gameBg}) -- item 1 wants no card of its own`);
 
       // item 6: no uppercase, no positive tracking, anywhere in #view-season.
-      if (row.badCase) problems.push(`${row.badCase} computes text-transform: uppercase in #view-season`);
-      if (row.badTrack) problems.push(`${row.badTrack} computes a positive letter-spacing in #view-season`);
+      sub.check(!row.badCase, `${row.badCase} computes text-transform: uppercase in #view-season`);
+      sub.check(!row.badTrack, `${row.badTrack} computes a positive letter-spacing in #view-season`);
     }
-    for (let i = before; i < problems.length; i++) problems[i] = `${theme}: ${problems[i]}`;
    }
 
-    if (measured === 0 && problems.length === 0) {
-      problems.push('no row was measured in any pass -- a broken probe, not a pass');
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(measured > 0, 'no row was measured in any pass -- a broken probe, not a pass');
   } finally {
     await resize(c, WIDTH);
   }
 
-  const five = await seasonFiveGamesPass(c, origin);
-  if (!five.pass) problems.push(...five.problems);
+  const five = await seasonFiveGamesPass(c, origin, rec);
+  const long = await seasonLongNamePass(c, origin, rec);
+  const squeeze = await seasonFiledSqueezePass(c, origin, rec);
 
-  const long = await seasonLongNamePass(c, origin);
-  if (!long.pass) problems.push(...long.problems);
-
-  const squeeze = await seasonFiledSqueezePass(c, origin);
-  if (!squeeze.pass) problems.push(...squeeze.problems);
-
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `Minutes so far row: 30px tall, 14px/400-500 ellipsis call name, 8px --r-full/--track bar, 13px muted tabular minutes, `
+  rec.ok(`Minutes so far row: 30px tall, 14px/400-500 ellipsis call name, 8px --r-full/--track bar, 13px muted tabular minutes, `
         + `no divider; one shared left edge; Filed games is one card; Across the day matches Minutes so far's numbers; `
         + `the "N games" line is hidden not gone; Across the day uses call names and round dots; filed games use the `
-        + `shared chevron; no uppercase or tracked-out text; ${five.detail}; ${long.detail}; ${squeeze.detail}`,
-  };
+        + `shared chevron; no uppercase or tracked-out text; ${five}; ${long}; ${squeeze}`);
 }
 
 /* Item 4's own five-game case, plus item 8's clip check at the same state:
@@ -475,44 +386,29 @@ const READ_FIVE_GAMES = `JSON.stringify((() => {
 })())`;
 
 
-async function seasonFiveGamesPass(c, origin) {
-  const problems = [];
-  try {
-    await land(c, origin, { record: FIVE_GAMES, ...LARGE_TEXT,
-      ...TODAY_LANDING });
-    await tap(c, OPEN_SEASON);
+async function seasonFiveGamesPass(c, origin, rec) {
+  await land(c, origin, { record: FIVE_GAMES, ...LARGE_TEXT,
+    ...TODAY_LANDING });
+  await tap(c, OPEN_SEASON);
 
-    const data = await evalJSON(c, READ_FIVE_GAMES);
-    if (!data.rows.length) {
-      problems.push('no ".dayrow" rows under #daytotals with 5 games seeded -- nothing to measure');
-    } else {
-      if (data.hint !== '5 games') problems.push(`#dayhint reads "${data.hint}", want "5 games"`);
-      for (const r of data.rows) {
-        const names = (r.hidden ? r.hidden.match(/:/g) || [] : []).length;
-        if (names !== 5) {
-          problems.push(`${r.name || '(unnamed row)'}'s hidden per-game text names ${names} game(s) at 320px, want 5 (got "${r.hidden}")`);
-        }
-      }
-      if (data.firstGameTitleLeft != null) {
-        data.snDayLefts.forEach((left, i) => {
-          if (Math.abs(left - data.firstGameTitleLeft) > 1) {
-            problems.push(`at 320px/32px: sn-day[${i}]'s left edge is ${left}px, the first filed game's text is at `
-              + `${data.firstGameTitleLeft}px -- not level with its own group's rows`);
-          }
-        });
-      }
+  const data = await evalJSON(c, READ_FIVE_GAMES);
+  if (rec.check(data.rows.length, 'no ".dayrow" rows under #daytotals with 5 games seeded -- nothing to measure')) {
+    rec.check(data.hint === '5 games', `#dayhint reads "${data.hint}", want "5 games"`);
+    for (const r of data.rows) {
+      const names = (r.hidden ? r.hidden.match(/:/g) || [] : []).length;
+      rec.check(names === 5, `${r.name || '(unnamed row)'}'s hidden per-game text names ${names} game(s) at 320px, want 5 (got "${r.hidden}")`);
     }
-    const o = await evalJSON(c, OVERFLOW_PROBE);
-    if (o.pans) problems.push('Season pans sideways with 5 games in the day at 320px/32px text');
-    if (o.worst) problems.push(`at 320px/32px with 5 games: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    if (data.firstGameTitleLeft != null) {
+      data.snDayLefts.forEach((left, i) => {
+        rec.check(!(Math.abs(left - data.firstGameTitleLeft) > 1), `at 320px/32px: sn-day[${i}]'s left edge is ${left}px, the first filed game's text is at `
+          + `${data.firstGameTitleLeft}px -- not level with its own group's rows`);
+      });
+    }
   }
-  return {
-    pass: problems.length === 0,
-    problems,
-    detail: problems.length ? '' : '5 games at 320px/32px: every row names all 5, no page pan, nothing off-viewport',
-  };
+  const o = await evalJSON(c, OVERFLOW_PROBE);
+  rec.check(!o.pans, 'Season pans sideways with 5 games in the day at 320px/32px text');
+  rec.check(!o.worst, `at 320px/32px with 5 games: ${o.worst?.el} reaches ${o.worst?.right}px in a ${o.vw}px viewport`);
+  return '5 games at 320px/32px: every row names all 5, no page pan, nothing off-viewport';
 }
 
 /* Item 5 (fix pass): a genuinely long call name -- not the fixture's
@@ -551,36 +447,20 @@ const READ_LONG_NAME = `JSON.stringify((() => {
   };
 })())`;
 
-async function seasonLongNamePass(c, origin) {
-  const problems = [];
+async function seasonLongNamePass(c, origin, rec) {
   const cases = [[16, '320px/16px text'], [LARGE_TEXT_PX, '320px/32px text']];
-  try {
-    for (const [px, label] of cases) {
-      await land(c, origin, { record: LONG_NAME_RECORD, width: LARGE_TEXT_WIDTH, textPx: px,
-        ...TODAY_LANDING });
-      await tap(c, OPEN_SEASON);
+  for (const [px, label] of cases) {
+    await land(c, origin, { record: LONG_NAME_RECORD, width: LARGE_TEXT_WIDTH, textPx: px,
+      ...TODAY_LANDING });
+    await tap(c, OPEN_SEASON);
 
-      const data = await evalJSON(c, READ_LONG_NAME);
-      if (!data.found) {
-        problems.push(`${label}: no Minutes so far row found for "${LONG_CALL_NAME}"`);
-        continue;
-      }
-      if (!data.ellipsized) {
-        problems.push(`${label}: "${LONG_CALL_NAME}"'s call name did not overflow its column -- nothing to ellipsize`);
-      }
-      if (data.minRight != null && data.grpRight != null && data.minRight > data.grpRight + 0.5) {
-        problems.push(`${label}: the minutes column reaches ${data.minRight.toFixed(1)}px, past the group's own `
-          + `right edge at ${data.grpRight.toFixed(1)}px`);
-      }
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    const data = await evalJSON(c, READ_LONG_NAME);
+    if (!rec.check(data.found, `${label}: no Minutes so far row found for "${LONG_CALL_NAME}"`)) continue;
+    rec.check(data.ellipsized, `${label}: "${LONG_CALL_NAME}"'s call name did not overflow its column -- nothing to ellipsize`);
+    rec.check(!(data.minRight != null && data.grpRight != null && data.minRight > data.grpRight + 0.5), `${label}: the minutes column reaches ${data.minRight?.toFixed(1)}px, past the group's own `
+      + `right edge at ${data.grpRight?.toFixed(1)}px`);
   }
-  return {
-    pass: problems.length === 0,
-    problems,
-    detail: problems.length ? '' : `"${LONG_CALL_NAME}" ellipsizes and its minutes stay inside the group at 320px/16px and 320px/32px`,
-  };
+  return `"${LONG_CALL_NAME}" ellipsizes and its minutes stay inside the group at 320px/16px and 320px/32px`;
 }
 
 /* Defect found on the branch preview (main has it too, restyled here so it is
@@ -608,40 +488,25 @@ const READ_FILED_SQUEEZE = `JSON.stringify((() => {
   };
 })())`;
 
-async function seasonFiledSqueezePass(c, origin) {
-  const problems = [];
+async function seasonFiledSqueezePass(c, origin, rec) {
   const where = `${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-  try {
-    await land(c, origin, { ...LARGE_TEXT });
-    await tap(c, TODAY_HOME);
-    await tap(c, OPEN_SEASON);
-    await tap(c, OPEN_FIRST_FILED_GAME);
+  await land(c, origin, { ...LARGE_TEXT });
+  await tap(c, TODAY_HOME);
+  await tap(c, OPEN_SEASON);
+  await tap(c, OPEN_FIRST_FILED_GAME);
 
-    const data = await evalJSON(c, READ_FILED_SQUEEZE);
-    if (!data.titles.length) {
-      // rule 2a of /new-guard: a check that measured nothing fails.
-      problems.push(`${where}: no filed-game title was on screen to measure`);
-    }
-    if (!data.names.length) {
-      problems.push(`${where}: no opened-game player name was on screen to measure`);
-    }
-    for (const row of [...data.titles, ...data.names]) {
-      if (row.width + 1 < row.floor) {
-        problems.push(`${where}: "${row.text}" is ${Math.round(row.width)}px wide, narrower than `
-          + `min(its longest word ${row.longest}px, its row's own content width ${row.rowContent}px) `
-          + `= ${Math.round(row.floor)}px`);
-      }
-    }
-    const o = await evalJSON(c, OVERFLOW_PROBE);
-    if (o.pans) problems.push(`${where}: Season pans sideways with a filed game open`);
-    if (o.worst) problems.push(`${where}: ${o.worst.el} reaches ${o.worst.right}px in a ${o.vw}px viewport`);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+  const data = await evalJSON(c, READ_FILED_SQUEEZE);
+  // rule 2a of /new-guard: a check that measured nothing fails.
+  rec.check(data.titles.length, `${where}: no filed-game title was on screen to measure`);
+  rec.check(data.names.length, `${where}: no opened-game player name was on screen to measure`);
+  for (const row of [...data.titles, ...data.names]) {
+    rec.check(!(row.width + 1 < row.floor), `${where}: "${row.text}" is ${Math.round(row.width)}px wide, narrower than `
+      + `min(its longest word ${row.longest}px, its row's own content width ${row.rowContent}px) `
+      + `= ${Math.round(row.floor)}px`);
   }
-  return {
-    pass: problems.length === 0,
-    problems,
-    detail: problems.length ? '' : `${where}: every filed-game title and opened-game name gets at least its row's `
-      + `content width or its longest word, whichever is smaller, and the page does not pan`,
-  };
+  const o = await evalJSON(c, OVERFLOW_PROBE);
+  rec.check(!o.pans, `${where}: Season pans sideways with a filed game open`);
+  rec.check(!o.worst, `${where}: ${o.worst?.el} reaches ${o.worst?.right}px in a ${o.vw}px viewport`);
+  return `${where}: every filed-game title and opened-game name gets at least its row's `
+    + `content width or its longest word, whichever is smaller, and the page does not pan`;
 }

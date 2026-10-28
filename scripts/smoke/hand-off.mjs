@@ -84,31 +84,27 @@ async function landOnLink(c, origin, hash, want = {}) {
   await land(c, origin, { record: 'wiped', query: hash, ...want });
 }
 
-export async function handOffPass(c, origin) {
-  const problems = [];
-  const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
+export async function handOffPass(c, origin, rec) {
   let detail = '';
   await land(c, origin);
   await evalIn(c, setGame(`const p = s.plans[0];
     s.state.day.games[0].live = { at: 3, overrides: {} };`));
   const sent = await sendFromHere(c);
-  if (!ck(sent.drawn, 'Hand off in the share sheet never drew a code')) return { pass: false, detail: problems.join(' | ') };
-  if (!ck(typeof sent.url === 'string' && sent.url.includes('#p=1'), `Share was given ${JSON.stringify(sent.url)}, want a #p=1 link`)) {
-    return { pass: false, detail: problems.join(' | ') };
-  }
-  ck(sent.url.length <= 1200, `the link is ${sent.url.length} characters, want at most 1,200`);
+  if (!rec.check(sent.drawn, 'Hand off in the share sheet never drew a code')) return;
+  if (!rec.check(typeof sent.url === 'string' && sent.url.includes('#p=1'), `Share was given ${JSON.stringify(sent.url)}, want a #p=1 link`)) return;
+  rec.check(sent.url.length <= 1200, `the link is ${sent.url.length} characters, want at most 1,200`);
 
   // The code is the link: module for module, what the encoder makes of it.
   const want = qrEncode(sent.url).data;
   const drew = new Set(sent.grid.dark.map(([x, y]) => `${x},${y}`));
   let wrong = 0;
   want.forEach((row, y) => row.forEach((dark, x) => { if (dark !== drew.has(`${x},${y}`)) wrong++; }));
-  ck(sent.grid.n === want.length, `the code is ${sent.grid.n} modules wide, the link's own is ${want.length}`);
-  ck(wrong === 0, `${wrong} module(s) of the drawn code differ from the link's own code`);
+  rec.check(sent.grid.n === want.length, `the code is ${sent.grid.n} modules wide, the link's own is ${want.length}`);
+  rec.check(wrong === 0, `${wrong} module(s) of the drawn code differ from the link's own code`);
   // The door is a segment button in the share sheet: a full touch target.
-  ck(sent.door >= TOUCH_MIN, `the Hand off segment in the share sheet is ${sent.door}px tall, want at least ${TOUCH_FLOOR}px`);
+  rec.check(sent.door >= TOUCH_MIN, `the Hand off segment in the share sheet is ${sent.door}px tall, want at least ${TOUCH_FLOOR}px`);
   const names = await evalIn(c, `[...document.querySelectorAll('#handoffNames li')].length`);
-  ck(names === 11, `the sheet lists ${names} names, want the roster's 11`);
+  rec.check(names === 11, `the sheet lists ${names} names, want the roster's 11`);
   const before = JSON.parse(await evalIn(c, FINGERPRINT));
   detail = `${sent.grid.n}×${sent.grid.n} code, ${sent.url.length}-character link`;
 
@@ -120,25 +116,25 @@ export async function handOffPass(c, origin) {
       if (h.dataset.boot === 'welcome' || h.dataset.view === 'welcome' || (w && !w.hidden)) window.__welcome = true;
       requestAnimationFrame(seen); };
     requestAnimationFrame(seen)`] });
-  ck(!(await evalIn(c, 'window.__welcome')), 'the fresh phone painted the welcome screen before the game');
+  rec.check(!(await evalIn(c, 'window.__welcome')), 'the fresh phone painted the welcome screen before the game');
   const after = JSON.parse(await evalIn(c, FINGERPRINT));
-  ck(JSON.stringify(after) === JSON.stringify(before),
+  rec.check(JSON.stringify(after) === JSON.stringify(before),
     `the fresh phone's game differs from the sender's: ${JSON.stringify(after)} vs ${JSON.stringify(before)}`);
-  ck(await onScreen(c, 'view-games'), 'the fresh phone did not land on the game screen');
+  rec.check(await onScreen(c, 'view-games'), 'the fresh phone did not land on the game screen');
   const url1 = await evalIn(c, 'location.href');
-  ck(!url1.includes('#p='), `the address bar still carries the link: ${url1}`);
+  rec.check(!url1.includes('#p='), `the address bar still carries the link: ${url1}`);
   const toasts = JSON.parse(await evalIn(c, toastsExpr));
-  ck(toasts.length === 1 && /game added\. Open bench mode to run subs\.$/.test(toasts[0]),
+  rec.check(toasts.length === 1 && /game added\. Open bench mode to run subs\.$/.test(toasts[0]),
     `toasts after opening: ${JSON.stringify(toasts)}`);
 
   // A reload does not import it again.
   await land(c, origin, { record: 'kept' });
   const reloaded = JSON.parse(await evalIn(c, FINGERPRINT));
-  ck(JSON.stringify(reloaded) === JSON.stringify(before), 'the reload changed the game');
+  rec.check(JSON.stringify(reloaded) === JSON.stringify(before), 'the reload changed the game');
   const teams = await evalIn(c, `JSON.parse(localStorage.getItem('benchcard.v7')).teams.length`);
-  ck(teams === 1, `after a reload the phone holds ${teams} teams, want 1`);
+  rec.check(teams === 1, `after a reload the phone holds ${teams} teams, want 1`);
   const days = await evalIn(c, `JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].days.flatMap(d => d.games).length`);
-  ck(days === 1, `after a reload the phone holds ${days} games, want 1`);
+  rec.check(days === 1, `after a reload the phone holds ${days} games, want 1`);
 
   // Landing: "Start game"/"Resume" is on screen, whole, at both sizes.
   for (const [label, w] of [[`${WIDTH}px`, { width: WIDTH, textPx: 16 }], [`${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`, { ...LARGE_TEXT }]]) {
@@ -154,22 +150,20 @@ export async function handOffPass(c, origin) {
         dialog: !!document.querySelector('dialog[open]'), view: !document.getElementById('view-games').hidden });
     })()`);
     const over = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-    ck(r.view && r.shown, `${label}: the game screen's bench button is not on screen`);
-    ck(r.onTop, `${label}: something covers the bench button`);
-    ck(r.inside, `${label}: the bench button is outside the screen`);
-    ck(!r.clipped, `${label}: the bench button's text is cut off`);
-    ck(!r.dialog, `${label}: a dialog is open over the game screen`);
-    ck(!over.pans && !over.worst, `${label}: the page overflows (${JSON.stringify(over.worst)})`);
+    rec.check(r.view && r.shown, `${label}: the game screen's bench button is not on screen`);
+    rec.check(r.onTop, `${label}: something covers the bench button`);
+    rec.check(r.inside, `${label}: the bench button is outside the screen`);
+    rec.check(!r.clipped, `${label}: the bench button's text is cut off`);
+    rec.check(!r.dialog, `${label}: a dialog is open over the game screen`);
+    rec.check(!over.pans && !over.worst, `${label}: the page overflows (${JSON.stringify(over.worst)})`);
   }
-  return { pass: problems.length === 0, detail: problems.length ? problems.slice(0, 4).join(' | ') : detail + `, a fresh phone opens the same game, the hash clears, a reload does not import again, landing whole at ${WIDTH}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px` };
+  rec.ok(detail + `, a fresh phone opens the same game, the hash clears, a reload does not import again, landing whole at ${WIDTH}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px`);
 }
 
-export async function damagedLinkPass(c, origin) {
-  const problems = [];
-  const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
+export async function damagedLinkPass(c, origin, rec) {
   await land(c, origin);
   const sent = await sendFromHere(c);
-  if (!ck(sent.drawn && sent.url, 'no link to damage')) return { pass: false, detail: problems.join(' | ') };
+  if (!rec.check(sent.drawn && sent.url, 'no link to damage')) return;
   const hash = hashOf(sent.url);
   // A boot with no team makes a placeholder with a random id and seed; mask
   // the random parts so two boots of the same empty profile compare equal.
@@ -192,17 +186,15 @@ export async function damagedLinkPass(c, origin) {
     await landOnLink(c, origin, bad, { ready: `document.body` });
     await settle(c);
     const toasts = JSON.parse(await evalIn(c, toastsExpr));
-    ck(toasts.length === 1 && toasts[0] === DAMAGED, `${how}: toasts are ${JSON.stringify(toasts)}`);
+    rec.check(toasts.length === 1 && toasts[0] === DAMAGED, `${how}: toasts are ${JSON.stringify(toasts)}`);
     const stored = await evalIn(c, snap);
-    ck(stored === control, `${how}: storage differs from a phone opened with no link (${stored.slice(0, 120)} vs ${control.slice(0, 120)})`);
-    ck(!(await evalIn(c, 'location.href')).includes('#p='), `${how}: the link is still in the address bar`);
+    rec.check(stored === control, `${how}: storage differs from a phone opened with no link (${stored.slice(0, 120)} vs ${control.slice(0, 120)})`);
+    rec.check(!(await evalIn(c, 'location.href')).includes('#p='), `${how}: the link is still in the address bar`);
   }
-  return { pass: problems.length === 0, detail: problems.length ? problems.slice(0, 4).join(' | ') : 'truncated, corrupted, nonsense and unknown-version links: one toast each, storage as if no link' };
+  rec.ok('truncated, corrupted, nonsense and unknown-version links: one toast each, storage as if no link');
 }
 
-export async function handOffLoadPass(c, origin) {
-  const problems = [];
-  const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
+export async function handOffLoadPass(c, origin, rec) {
   const uqr = [];   // the hand-off modules and the QR library, whichever is asked for
   let listening = true;   // the CDP client has no `off`
   const onReq = p => { if (listening && /uqr|handoff/.test(p.request.url)) uqr.push(p.request.url); };
@@ -212,12 +204,12 @@ export async function handOffLoadPass(c, origin) {
     await land(c, origin);
     await evalIn(c, step(`${TODAY_HOME}; document.querySelector('.today-game').click()`));
     await settle(c);
-    ck(uqr.length === 0, `hand-off code was requested before Hand off was picked: ${uqr.join(', ')}`);
+    rec.check(uqr.length === 0, `hand-off code was requested before Hand off was picked: ${uqr.join(', ')}`);
     await tap(c, `document.getElementById('shareBtn').click()`);
-    ck(uqr.length === 0, 'hand-off code was requested by opening the share sheet on Print card');
+    rec.check(uqr.length === 0, 'hand-off code was requested by opening the share sheet on Print card');
     await tap(c, pickSharePane('handoff'));
-    ck(await qrDrawn(c), 'online: Hand off never drew a code');
-    ck(uqr.filter(u => /\/uqr\.mjs/.test(u)).length === 1, `picking Hand off requested ${JSON.stringify(uqr)}, want uqr.mjs exactly once`);
+    rec.check(await qrDrawn(c), 'online: Hand off never drew a code');
+    rec.check(uqr.filter(u => /\/uqr\.mjs/.test(u)).length === 1, `picking Hand off requested ${JSON.stringify(uqr)}, want uqr.mjs exactly once`);
     detail = 'hand-off code and the QR library are not requested until Hand off is picked';
 
     // Offline: the service worker holds it. Wait for the precache, cut the
@@ -231,7 +223,7 @@ export async function handOffLoadPass(c, origin) {
       }
       return false;
     })()`);
-    if (ck(cached, 'the service worker never cached vendor/uqr.mjs')) {
+    if (rec.check(cached, 'the service worker never cached vendor/uqr.mjs')) {
       await c.send('Network.setCacheDisabled', { cacheDisabled: true });
       await c.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
       try {
@@ -239,11 +231,11 @@ export async function handOffLoadPass(c, origin) {
         // The page's own analytics beacon would log a failed request offline.
         await land(c, origin, { record: 'kept', scripts: [`navigator.sendBeacon = () => true`] });
         const shared = await evalIn(c, `Boolean(navigator.serviceWorker.controller)`);
-        ck(shared, 'offline: no service worker controls the page');
+        rec.check(shared, 'offline: no service worker controls the page');
         // the reload keeps the games view, so the share sheet's door is already there
         await tap(c, `document.getElementById('shareBtn').click()`);
         await tap(c, pickSharePane('handoff'));
-        ck(await qrDrawn(c), 'offline: Hand off did not draw a code');
+        rec.check(await qrDrawn(c), 'offline: Hand off did not draw a code');
         detail += ', and Hand off draws a code offline';
       } finally {
         await c.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
@@ -253,5 +245,5 @@ export async function handOffLoadPass(c, origin) {
   } finally {
     listening = false;
   }
-  return { pass: problems.length === 0, detail: problems.length ? problems.slice(0, 4).join(' | ') : detail };
+  rec.ok(detail);
 }

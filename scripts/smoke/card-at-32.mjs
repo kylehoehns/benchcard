@@ -5,6 +5,7 @@ import { LARGE_TEXT_PX } from './sizes.mjs';
 import { land } from './page-state.mjs';
 import { seasonDate } from '../../app/storage.js';
 import { smokeToday } from './clock.mjs';
+import { recorder, verdict } from './verdict.mjs';
 
 /* #24 item 5: the card does not scale. Extends the `cardsize` row rather than
    adding a new one — same seam, same name, so `--only "card is 3.45 × 5in"`
@@ -37,41 +38,50 @@ async function measureCard(c) {
   })()`));
 }
 
+/* Runs one probe against its own recorder and folds the verdict onto the
+ * cold row's `check`: ` | <failPrefix>: <failures>` when it failed, else
+ * ` | <the probe's ok text>`. A probe that throws is judged with what it
+ * recorded before the throw, so one probe cannot end the others. */
+async function foldProbe(check, failPrefix, probe) {
+  const rec = recorder();
+  let thrown;
+  try { await probe(rec); } catch (e) { thrown = e; }
+  const v = verdict(rec, thrown);
+  check.pass = check.pass && v.pass;
+  check.detail += v.pass ? ` | ${v.detail}` : ` | ${failPrefix}: ${v.detail}`;
+}
+
 export async function cardAt32Pass(c, origin, report) {
   const check = report.checks.find(k => k.name === nameOf('cardsize'));
   if (!check) return; // the base check is gone -- nothing here to extend
 
   const at16 = await measureCard(c);
-  const problems = [];
   if (!at16) {
     check.pass = false;
     check.detail += ' | no .card at a 16px root to compare against';
     return;
   }
 
-  let at32;
-  try {
-    await land(c, origin, { record: 'kept', textPx: LARGE_TEXT_PX });
-    at32 = await measureCard(c);
-  } finally {
-    // Never leave the emulated font size on: land back at 16px.
-    await land(c, origin, { record: 'kept' });
-  }
-
-  if (!at32) {
-    problems.push('no .card at a 32px root');
-  } else {
-    if (Math.abs(at32.w - at16.w) > 1 || Math.abs(at32.h - at16.h) > 1) {
-      problems.push(`card measures ${at32.w}×${at32.h}px at a 32px root, ${at16.w}×${at16.h}px at 16px`);
+  await foldProbe(check, '32px root', async rec => {
+    let at32;
+    try {
+      await land(c, origin, { record: 'kept', textPx: LARGE_TEXT_PX });
+      at32 = await measureCard(c);
+    } finally {
+      // Never leave the emulated font size on: land back at 16px.
+      await land(c, origin, { record: 'kept' });
     }
-    if (at16.five !== at32.five) problems.push(`.five is ${at32.five} at a 32px root, ${at16.five} at 16px`);
-    if (at16.chg !== at32.chg) problems.push(`.chg is ${at32.chg} at a 32px root, ${at16.chg} at 16px`);
-  }
 
-  check.pass = check.pass && problems.length === 0;
-  check.detail += problems.length
-    ? ` | 32px root: ${problems.join('; ')}`
-    : ` | 32px root: unchanged (${at32.w}×${at32.h}px, .five ${at32.five}, .chg ${at32.chg})`;
+    if (!at32) {
+      rec.fail('no .card at a 32px root');
+    } else {
+      rec.check(Math.abs(at32.w - at16.w) <= 1 && Math.abs(at32.h - at16.h) <= 1,
+        `card measures ${at32.w}×${at32.h}px at a 32px root, ${at16.w}×${at16.h}px at 16px`);
+      rec.check(at16.five === at32.five, `.five is ${at32.five} at a 32px root, ${at16.five} at 16px`);
+      rec.check(at16.chg === at32.chg, `.chg is ${at32.chg} at a 32px root, ${at16.chg} at 16px`);
+      rec.ok(`32px root: unchanged (${at32.w}×${at32.h}px, .five ${at32.five}, .chg ${at32.chg})`);
+    }
+  });
 
   await cardFitProbe(c, origin, check);
   await multiGameProbe(c, origin, check);
@@ -186,57 +196,45 @@ async function measureMultiGame(c) {
 }
 
 async function multiGameProbe(c, origin, check) {
-  const problems = [];
-  try {
-    await loadMultiGameRecord(c, origin);
-    const whens = await measureMultiGame(c);
-    const want = [
-      new RegExp(`^${MULTI_WD} 9:00\\sAM$`),
-      new RegExp(`^${MULTI_WD} 11:00\\sAM$`),
-      new RegExp(`^${MULTI_WD}$`),
-    ];
-    if (whens.length !== want.length) {
-      problems.push(`expected 3 cards, found ${whens.length} (${JSON.stringify(whens)})`);
-    } else {
-      whens.forEach((w, i) => {
-        if (!want[i].test(w)) problems.push(`card ${i}: "${w}" does not match ${want[i]}`);
-      });
+  await foldProbe(check, `multi-game probe (${MULTI_WD}, 3 games)`, async rec => {
+    try {
+      await loadMultiGameRecord(c, origin);
+      const whens = await measureMultiGame(c);
+      const want = [
+        new RegExp(`^${MULTI_WD} 9:00\\sAM$`),
+        new RegExp(`^${MULTI_WD} 11:00\\sAM$`),
+        new RegExp(`^${MULTI_WD}$`),
+      ];
+      if (whens.length !== want.length) {
+        rec.fail(`expected 3 cards, found ${whens.length} (${JSON.stringify(whens)})`);
+      } else {
+        whens.forEach((w, i) => rec.check(want[i].test(w), `card ${i}: "${w}" does not match ${want[i]}`));
+      }
+    } finally {
+      // Restore the cold SEED state everything after this expects, same as
+      // cardFitProbe's own finally below.
+      await land(c, origin, { record: SEED });
     }
-  } catch (e) {
-    problems.push(`threw: ${e.message}`);
-  } finally {
-    // Restore the cold SEED state everything after this expects, same as
-    // cardFitProbe's own finally below.
-    await land(c, origin, { record: SEED });
-  }
-
-  check.pass = check.pass && problems.length === 0;
-  check.detail += problems.length
-    ? ` | multi-game probe (${MULTI_WD}, 3 games): ${problems.join('; ')}`
-    : ` | multi-game probe: 3-game day corners read "${MULTI_WD} 9:00 AM", "${MULTI_WD} 11:00 AM", "${MULTI_WD}"`;
+    rec.ok(`multi-game probe: 3-game day corners read "${MULTI_WD} 9:00 AM", "${MULTI_WD} 11:00 AM", "${MULTI_WD}"`);
+  });
 }
 
 async function cardFitProbe(c, origin, check) {
-  const problems = [];
-  try {
-    for (const cardSize of ['pocket', 'half']) {
-      await loadFitRecord(c, origin, cardSize);
-      const m = await measureFit(c);
-      if (!m) { problems.push(`${cardSize}: no .card-hd rendered`); continue; }
-      if (m.overlap) problems.push(`${cardSize}: title overlaps the corner ("${m.whenText}")`);
-      if (m.clipped) problems.push(`${cardSize}: corner text clipped ("${m.whenText}")`);
-      if (m.outside) problems.push(`${cardSize}: title or corner sits outside the card header`);
+  await foldProbe(check, `fit probe (${FIT_OPPONENT} / Wed 12:30 PM)`, async rec => {
+    try {
+      for (const cardSize of ['pocket', 'half']) {
+        await loadFitRecord(c, origin, cardSize);
+        const m = await measureFit(c);
+        if (!m) { rec.fail(`${cardSize}: no .card-hd rendered`); continue; }
+        rec.check(!m.overlap, `${cardSize}: title overlaps the corner ("${m.whenText}")`);
+        rec.check(!m.clipped, `${cardSize}: corner text clipped ("${m.whenText}")`);
+        rec.check(!m.outside, `${cardSize}: title or corner sits outside the card header`);
+      }
+    } finally {
+      // Restore the cold SEED state everything after this expects (cardAt32Pass
+      // above already left the page at a 16px root; this only owns the record).
+      await land(c, origin, { record: SEED });
     }
-  } catch (e) {
-    problems.push(`threw: ${e.message}`);
-  } finally {
-    // Restore the cold SEED state everything after this expects (cardAt32Pass
-    // above already left the page at a 16px root; this only owns the record).
-    await land(c, origin, { record: SEED });
-  }
-
-  check.pass = check.pass && problems.length === 0;
-  check.detail += problems.length
-    ? ` | fit probe (${FIT_OPPONENT} / Wed 12:30 PM): ${problems.join('; ')}`
-    : ` | fit probe: "${FIT_OPPONENT}" + Wed 12:30 PM does not overlap or clip, pocket or half`;
+    rec.ok(`fit probe: "${FIT_OPPONENT}" + Wed 12:30 PM does not overlap or clip, pocket or half`);
+  });
 }

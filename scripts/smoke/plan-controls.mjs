@@ -18,26 +18,20 @@ const PLAN_CONTROL_STATES = [
            document.querySelector('#constraints .add-rule').click()` },
 ];
 
-export async function planControlsPass(c, source) {
+export async function planControlsPass(c, source, rec) {
   await toGameOne(c);
-  const problems = [];
   let widest = 0;
   for (const st of PLAN_CONTROL_STATES) {
     await evalIn(c, step(st.open));
     const chk = (await evalIn(c, source)).checks.find(k => k.name === 'plan sheet controls ≥ 48px');
-    if (!chk) { problems.push(`${st.name}: the plan-sheet-controls check is gone from smoke-checks.js`); continue; }
-    if (!chk.pass) problems.push(`${st.name}: ${chk.detail}`);
+    if (!chk) { rec.fail(`${st.name}: the plan-sheet-controls check is gone from smoke-checks.js`); continue; }
+    rec.check(chk.pass, `${st.name}: ${chk.detail}`);
     const n = chk.detail.match(/(\d+) controls/);
     if (n) widest = Math.max(widest, Number(n[1]));
     await evalIn(c, step(`document.getElementById('sheetPlan').close();`));
   }
   await evalIn(c, step(TODAY_HOME));
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${PLAN_CONTROL_STATES.length} states (${PLAN_CONTROL_STATES.map(s => s.name).join(' + ')}), `
-        + `up to ${widest} controls, all ≥ 48px`,
-  };
+  rec.ok(`${PLAN_CONTROL_STATES.length} states (${PLAN_CONTROL_STATES.map(s => s.name).join(' + ')}), `
+    + `up to ${widest} controls, all ≥ 48px`);
 }

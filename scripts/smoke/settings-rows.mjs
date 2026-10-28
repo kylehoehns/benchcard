@@ -13,7 +13,7 @@ import { backupChecks } from './backup-restore.mjs';
 const SETTINGS_STATES = [
   { name: 'settings', open: `document.querySelector('#settingsBtn').click()` },
 ];
-export async function settingsRowPass(c, source) {
+export async function settingsRowPass(c, source, rec) {
   const { bad, audited, seen } = await widthSweep(c, source, {
     states: SETTINGS_STATES,
     checkName: 'settings rows ≥ 48px',
@@ -24,19 +24,8 @@ export async function settingsRowPass(c, source) {
   });
 
   // #263 E-H: the backup row's own behavior, on the page already loaded.
-  const problems = [];
-  try {
-    await backupChecks(c, (ok, msg) => { if (!ok) problems.push(msg); return ok; });
-  } catch (e) { problems.push(e.message.split('\n')[0]); }
-
-  const pass = bad.length === 0 && problems.length === 0;
-  return {
-    pass,
-    detail: bad.length
-      ? `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`
-      : problems.length
-        ? `${problems.length} backup problem(s): ${problems.slice(0, 4).join(' | ')}`
-        : `${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px; `
-          + 'backup saves, restores from a file and from paste, undoes, and rejects a non-backup',
-  };
+  rec.check(bad.length === 0, `${bad.length}/${audited} measurement(s) under 48px: ${bad.slice(0, 4).join(' | ')}`);
+  await backupChecks(c, rec.check);
+  rec.ok(`${audited} measurements (${TOUCH_WIDTHS.join('/')}px), up to ${seen} rows, all ≥ 48px; `
+    + 'backup saves, restores from a file and from paste, undoes, and rejects a non-backup');
 }

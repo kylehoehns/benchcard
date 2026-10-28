@@ -33,8 +33,7 @@ async function measure(c) {
   })()`));
 }
 
-export async function gmOpenPass(c, origin) {
-  const problems = [];
+export async function gmOpenPass(c, origin, rec) {
   let measured = 0;
 
   try {
@@ -44,40 +43,30 @@ export async function gmOpenPass(c, origin) {
     for (const width of [840, 1280]) {
       await resize(c, width);
       const m = await measure(c);
-      if (!m.gmOpenVisible) { problems.push(`${width}px: #gmOpen is not visible -- nothing measured`); continue; }
+      if (!m.gmOpenVisible) { rec.fail(`${width}px: #gmOpen is not visible -- nothing measured`); continue; }
       measured++;
 
-      if (!m.isPrimary) problems.push(`${width}px: #gmOpen is not classed .primary`);
-      if (m.bg !== tint) problems.push(`${width}px: #gmOpen background is ${m.bg}, want ${tint} (--tint)`);
-      if (m.gmStartW == null) problems.push(`${width}px: .gm-start is not visible -- nothing to compare #gmOpen's width to`);
-      else if (Math.abs(m.gmOpenW - m.gmStartW) > TOL) {
-        problems.push(`${width}px: #gmOpen is ${m.gmOpenW}px wide, its panel (.gm-start) is ${m.gmStartW}px`);
+      rec.check(m.isPrimary, `${width}px: #gmOpen is not classed .primary`);
+      rec.check(m.bg === tint, `${width}px: #gmOpen background is ${m.bg}, want ${tint} (--tint)`);
+      if (m.gmStartW == null) rec.fail(`${width}px: .gm-start is not visible -- nothing to compare #gmOpen's width to`);
+      else {
+        rec.check(Math.abs(m.gmOpenW - m.gmStartW) <= TOL, `${width}px: #gmOpen is ${m.gmOpenW}px wide, its panel (.gm-start) is ${m.gmStartW}px`);
       }
-      if (m.filledCount !== 1) {
-        problems.push(`${width}px: ${m.filledCount} filled .btn.primary element(s) on screen (${m.filledIds.join(', ')}), want exactly 1`);
-      }
+      rec.check(m.filledCount === 1, `${width}px: ${m.filledCount} filled .btn.primary element(s) on screen (${m.filledIds.join(', ')}), want exactly 1`);
     }
 
     // Below 840, #gmOpen is still hidden -- #actionbar covers Start game there.
     await resize(c, 800);
     const below = await measure(c);
-    if (below.gmOpenVisible) problems.push('800px: #gmOpen is visible, want it hidden below 840');
-    else measured++;
+    if (rec.check(!below.gmOpenVisible, '800px: #gmOpen is visible, want it hidden below 840')) measured++;
 
     // Rule 2a: 2 widths' worth of #gmOpen measurements, plus the below-840 check.
-    if (measured < 3) problems.push(`only ${measured}/3 measurements were taken -- a selector stopped matching`);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(measured >= 3, `only ${measured}/3 measurements were taken -- a selector stopped matching`);
   } finally {
     // The rows after this one measure at the phone width; leave it that way.
     await resize(c, WIDTH);
     await evalIn(c, step(TODAY_HOME));
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `#gmOpen is filled and matches .gm-start's full width at 840/1280px, the only filled button on screen, still hidden below 840`,
-  };
+  rec.ok(`#gmOpen is filled and matches .gm-start's full width at 840/1280px, the only filled button on screen, still hidden below 840`);
 }

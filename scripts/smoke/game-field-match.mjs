@@ -28,8 +28,7 @@ async function readColors(c, sel) {
   })()`));
 }
 
-export async function gameFieldMatchPass(c, origin) {
-  const problems = [];
+export async function gameFieldMatchPass(c, origin, rec) {
   let measured = 0;
 
   try {
@@ -44,29 +43,22 @@ export async function gameFieldMatchPass(c, origin) {
       await evalIn(c, step(TODAY_HOME));
       await evalIn(c, step(`document.querySelector('#settingsBtn').click()`));
       const want = await readColors(c, '#minMins');
-      if (!want) { problems.push(`${theme}: #minMins not found in Settings -- nothing to compare against`); continue; }
+      if (!rec.check(want, `${theme}: #minMins not found in Settings -- nothing to compare against`)) continue;
 
       for (const sel of GAME_FIELDS) {
         const got = gameColors[sel];
-        if (!got) { problems.push(`${theme}: ${sel} not found`); continue; }
+        if (!rec.check(got, `${theme}: ${sel} not found`)) continue;
         measured++;
-        if (got.bg !== want.bg) problems.push(`${theme}: ${sel} background is ${got.bg}, #minMins's is ${want.bg}`);
-        if (got.border !== want.border) problems.push(`${theme}: ${sel} border color is ${got.border}, #minMins's is ${want.border}`);
+        rec.check(got.bg === want.bg, `${theme}: ${sel} background is ${got.bg}, #minMins's is ${want.bg}`);
+        rec.check(got.border === want.border, `${theme}: ${sel} border color is ${got.border}, #minMins's is ${want.border}`);
       }
     }
 
     // Rule 2a: 4 fields x 2 themes = 8 measurements expected.
-    if (measured < 8) problems.push(`only ${measured}/8 game fields were measured -- a selector stopped matching`);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(measured >= 8, `only ${measured}/8 game fields were measured -- a selector stopped matching`);
   } finally {
     await evalIn(c, step(TODAY_HOME));
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `#gameDate, #label, #dayName and #when all match #minMins's background and border color, light and dark`,
-  };
+  rec.ok(`#gameDate, #label, #dayName and #when all match #minMins's background and border color, light and dark`);
 }

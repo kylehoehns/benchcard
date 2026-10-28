@@ -126,16 +126,14 @@ const ringCovers = (hole, anchor, vh, capped) => {
   return horiz && hole.top <= anchor.top + EDGE_TOL && hole.height <= CAP + 1;
 };
 
-export async function tourStepsPass(c, origin) {
-  const problems = [];
-  const ck = (cond, msg) => { if (!cond) problems.push(msg); return cond; };
+export async function tourStepsPass(c, origin, rec) {
   // Built here, not at module top level -- see the import-order note above
   // `STEP_COUNT`'s export.
   const TOUR_STATES = EXPECTED.map((_, i) => STATES.find(s => s.name === `tour, step ${i + 1} of ${STEP_COUNT}`));
 
   try {
     for (const s of TOUR_STATES) {
-      if (!ck(!!s, 'overlay.mjs is missing one of the seven "tour, step k of 7" states')) return finish();
+      if (!rec.check(!!s, 'overlay.mjs is missing one of the seven "tour, step k of 7" states')) return;
     }
 
     // ---------- 390x844: items 2, 3, 4 ----------
@@ -147,21 +145,21 @@ export async function tourStepsPass(c, origin) {
       await quiet(c);
       const d = await read(c, EXPECTED[i].anchor);
       const where = `step ${i + 1} at ${WIDTH}px`;
-      if (!ck(d.open, `${where}: #tour never opened`)) { await evalIn(c, step(s.close)); continue; }
+      if (!rec.check(d.open, `${where}: #tour never opened`)) { await evalIn(c, step(s.close)); continue; }
 
-      ck(d.stepText === `Step ${i + 1} of ${STEP_COUNT}`, `${where}: #tourStep reads "${d.stepText}", want "Step ${i + 1} of ${STEP_COUNT}"`);
-      ck(d.title === EXPECTED[i].title, `${where}: #tourTitle reads "${d.title}", want "${EXPECTED[i].title}"`);
-      ck(d.dotCount === STEP_COUNT, `${where}: #tourDots holds ${d.dotCount} <i>, want ${STEP_COUNT}`);
+      rec.check(d.stepText === `Step ${i + 1} of ${STEP_COUNT}`, `${where}: #tourStep reads "${d.stepText}", want "Step ${i + 1} of ${STEP_COUNT}"`);
+      rec.check(d.title === EXPECTED[i].title, `${where}: #tourTitle reads "${d.title}", want "${EXPECTED[i].title}"`);
+      rec.check(d.dotCount === STEP_COUNT, `${where}: #tourDots holds ${d.dotCount} <i>, want ${STEP_COUNT}`);
       const on = d.dotsOn.map((v, k) => v ? k : null).filter(v => v !== null);
-      ck(on.length === 1 && on[0] === i, `${where}: dots on = [${on}], want only [${i}]`);
-      ck(d.skipHidden === last, `${where}: #tourSkip hidden=${d.skipHidden}, want ${last}`);
-      ck(d.nextText === (last ? 'Got it' : 'Next'), `${where}: #tourNext reads "${d.nextText}", want "${last ? 'Got it' : 'Next'}"`);
+      rec.check(on.length === 1 && on[0] === i, `${where}: dots on = [${on}], want only [${i}]`);
+      rec.check(d.skipHidden === last, `${where}: #tourSkip hidden=${d.skipHidden}, want ${last}`);
+      rec.check(d.nextText === (last ? 'Got it' : 'Next'), `${where}: #tourNext reads "${d.nextText}", want "${last ? 'Got it' : 'Next'}"`);
 
       const capped = EXPECTED[i].anchor === '#timeline';
-      ck(!d.holeHidden, `${where}: #tourHole is hidden`);
+      rec.check(!d.holeHidden, `${where}: #tourHole is hidden`);
       if (!d.holeHidden) {
-        if (ck(!!d.anchor, `${where}: anchor ${EXPECTED[i].anchor} not found -- nothing measured`)) {
-          ck(ringCovers(d.hole, d.anchor, d.vh, capped),
+        if (rec.check(!!d.anchor, `${where}: anchor ${EXPECTED[i].anchor} not found -- nothing measured`)) {
+          rec.check(ringCovers(d.hole, d.anchor, d.vh, capped),
             `${where}: #tourHole ${JSON.stringify(d.hole)} does not cover ${EXPECTED[i].anchor} ${JSON.stringify(d.anchor)}`);
         }
         /* `#timeline`'s ring is capped at 52% of the viewport height (`CAP`,
@@ -179,10 +177,10 @@ export async function tourStepsPass(c, origin) {
          * changing `placeTour`, which this spec was handed as "must not
          * change" (see the spec's Out of scope); every other step's box
          * still has to clear the ring. */
-        if (!capped) ck(!overlaps(d.box, d.hole), `${where}: #tourBox ${JSON.stringify(d.box)} overlaps #tourHole ${JSON.stringify(d.hole)}`);
+        if (!capped) rec.check(!overlaps(d.box, d.hole), `${where}: #tourBox ${JSON.stringify(d.box)} overlaps #tourHole ${JSON.stringify(d.hole)}`);
       }
       const vp = { left: 0, top: 0, right: d.vw, bottom: d.vh };
-      ck(inside(vp, d.box), `${where}: #tourBox ${JSON.stringify(d.box)} is not fully inside the ${d.vw}x${d.vh} viewport`);
+      rec.check(inside(vp, d.box), `${where}: #tourBox ${JSON.stringify(d.box)} is not fully inside the ${d.vw}x${d.vh} viewport`);
 
       if (last) {
         // item 3: tapping Got it closes the tour and state.tourSeen becomes
@@ -197,8 +195,8 @@ export async function tourStepsPass(c, origin) {
             hidden: !!document.getElementById('tour')?.hidden,
           });
         })()`).then(JSON.parse);
-        ck(after.hidden === true, `${where}: #tour is still open after tapping Got it`);
-        ck(after.tourSeen === true, `${where}: state.tourSeen is ${after.tourSeen} after Got it, want true`);
+        rec.check(after.hidden === true, `${where}: #tour is still open after tapping Got it`);
+        rec.check(after.tourSeen === true, `${where}: state.tourSeen is ${after.tourSeen} after Got it, want true`);
         await evalIn(c, step(`$('#backBtn').click()`));
       } else {
         await evalIn(c, step(s.close));
@@ -213,13 +211,13 @@ export async function tourStepsPass(c, origin) {
       await quiet(c);
       const d = await read(c, anchor);
       const where = `step ${i + 1} at ${LAPTOP}px`;
-      if (ck(d.open, `${where}: #tour never opened`)) {
-        ck(!d.holeHidden, `${where}: #tourHole is hidden`);
-        if (!d.holeHidden && ck(!!d.anchor, `${where}: ${anchor} not found -- nothing measured`)) {
-          ck(ringCovers(d.hole, d.anchor, d.vh, false), `${where}: ring does not cover ${anchor}`);
+      if (rec.check(d.open, `${where}: #tour never opened`)) {
+        rec.check(!d.holeHidden, `${where}: #tourHole is hidden`);
+        if (!d.holeHidden && rec.check(!!d.anchor, `${where}: ${anchor} not found -- nothing measured`)) {
+          rec.check(ringCovers(d.hole, d.anchor, d.vh, false), `${where}: ring does not cover ${anchor}`);
         }
         const vp = { left: 0, top: 0, right: d.vw, bottom: d.vh };
-        ck(inside(vp, d.box), `${where}: #tourBox is not fully inside the ${d.vw}x${d.vh} viewport`);
+        rec.check(inside(vp, d.box), `${where}: #tourBox is not fully inside the ${d.vw}x${d.vh} viewport`);
       }
       await evalIn(c, step(TOUR_STATES[i].close));
     }
@@ -233,14 +231,14 @@ export async function tourStepsPass(c, origin) {
         await quiet(c);
         const d = await read(c, EXPECTED[i].anchor);
         const where = `step ${i + 1} at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`;
-        if (ck(d.open, `${where}: #tour never opened`)) {
+        if (rec.check(d.open, `${where}: #tour never opened`)) {
           const vp = { left: 0, top: 0, right: d.vw, bottom: d.vh };
-          ck(inside(vp, d.box), `${where}: #tourBox ${JSON.stringify(d.box)} runs off the ${d.vw}x${d.vh} viewport`);
-          ck(inside(vp, d.next), `${where}: #tourNext ${JSON.stringify(d.next)} runs off the viewport`);
-          ck(Math.min(d.next.width, d.next.height) >= TOUCH_MIN,
+          rec.check(inside(vp, d.box), `${where}: #tourBox ${JSON.stringify(d.box)} runs off the ${d.vw}x${d.vh} viewport`);
+          rec.check(inside(vp, d.next), `${where}: #tourNext ${JSON.stringify(d.next)} runs off the viewport`);
+          rec.check(Math.min(d.next.width, d.next.height) >= TOUCH_MIN,
             `${where}: #tourNext is ${Math.round(d.next.width)}x${Math.round(d.next.height)}, want >= ${TOUCH_MIN}px`);
-          ck(d.stepText === `Step ${i + 1} of ${STEP_COUNT}`, `${where}: #tourStep reads "${d.stepText}"`);
-          ck(d.title === EXPECTED[i].title, `${where}: #tourTitle reads "${d.title}"`);
+          rec.check(d.stepText === `Step ${i + 1} of ${STEP_COUNT}`, `${where}: #tourStep reads "${d.stepText}"`);
+          rec.check(d.title === EXPECTED[i].title, `${where}: #tourTitle reads "${d.title}"`);
         }
         await evalIn(c, step(s.close));
       }
@@ -250,17 +248,9 @@ export async function tourStepsPass(c, origin) {
       await reset(c, origin);
     }
   } catch (e) {
-    problems.push(e.message.split('\n')[0]);
     await resize(c, WIDTH, HEIGHT).catch(() => {});
+    throw e;
   }
 
-  function finish() {
-    return {
-      pass: problems.length === 0,
-      detail: problems.length
-        ? `${problems.length} problem(s): ${problems.slice(0, 6).join(' | ')}`
-        : `seven steps' copy, counting, ring and fit hold at ${WIDTH}px, ${LAPTOP}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`,
-    };
-  }
-  return finish();
+  rec.ok(`seven steps' copy, counting, ring and fit hold at ${WIDTH}px, ${LAPTOP}px and ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px text`);
 }

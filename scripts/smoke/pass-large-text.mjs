@@ -87,127 +87,106 @@ const TITLE_WORD_WIDTHS = `(() => {
 
 // Ravens' summary is asserted whole at both sizes item 1 and item 2 name --
 // `where` names which pass a failure came from, since both share one wording.
-function checkRavensSummary(cards, where, problems) {
+function checkRavensSummary(cards, where, rec) {
   const ravens = cards.find(card => card.title === 'Ravens');
-  if (!ravens) problems.push(`no card titled Ravens at ${where}`);
-  else if (ravens.summary?.text !== RAVENS_SUMMARY) {
-    problems.push(`Ravens' .pass-summary reads ${JSON.stringify(ravens.summary?.text)} at ${where}, `
+  if (rec.check(ravens, `no card titled Ravens at ${where}`)) {
+    rec.check(ravens.summary?.text === RAVENS_SUMMARY, `Ravens' .pass-summary reads ${JSON.stringify(ravens.summary?.text)} at ${where}, `
       + `want ${JSON.stringify(RAVENS_SUMMARY)}`);
   }
 }
 
-export async function passLargeTextPass(c, origin) {
-  const problems = [];
-  try {
-    // Item 1: 320px wide, a 32px root -- "set the font size the way
-    // app-large-text.mjs does (set, then reload)".
-    await land(c, origin, { record: FOUR, ...LARGE_TEXT,
-      ...TODAY_LANDING });
+export async function passLargeTextPass(c, origin, rec) {
+  // Item 1: 320px wide, a 32px root -- "set the font size the way
+  // app-large-text.mjs does (set, then reload)".
+  await land(c, origin, { record: FOUR, ...LARGE_TEXT,
+    ...TODAY_LANDING });
 
-    const cards320 = JSON.parse(await evalIn(c, MEASURE));
-    for (const card of cards320) {
-      const label = card.title ?? '(untitled card)';
-      // Owls has no tip-off in FOUR (fixtures.mjs), so `renderPass` never
-      // appends a `.pass-when` for it (teams-view.js: `if (when)
-      // top.append(...)`) -- a missing `.pass-when` there is the app working
-      // as designed, not a defect this check should flag.
-      for (const cls of ['summary', 'passTitle', 'status', 'top']) {
-        const p = card[cls];
-        const selector = SELECTOR_OF[cls];
-        if (!p) { problems.push(`${label}: no .${selector} found`); continue; }
-        if (p.scrollWidth > p.clientWidth) {
-          problems.push(`${label}'s .${selector} scrollWidth is ${p.scrollWidth}px, clientWidth is ${p.clientWidth}px (ellipsized/clipped)`);
-        }
-      }
-      if (card.when && card.when.scrollWidth > card.when.clientWidth) {
-        problems.push(`${label}'s .pass-when scrollWidth is ${card.when.scrollWidth}px, clientWidth is ${card.when.clientWidth}px (ellipsized/clipped)`);
-      }
-      if (card.status && card.status.right > card.contentRight + 0.5) {
-        problems.push(`${label}'s .pass-status right edge is ${card.status.right.toFixed(1)}px, `
-          + `past the card's content edge at ${card.contentRight.toFixed(1)}px`);
-      }
+  const cards320 = JSON.parse(await evalIn(c, MEASURE));
+  for (const card of cards320) {
+    const label = card.title ?? '(untitled card)';
+    // Owls has no tip-off in FOUR (fixtures.mjs), so `renderPass` never
+    // appends a `.pass-when` for it (teams-view.js: `if (when)
+    // top.append(...)`) -- a missing `.pass-when` there is the app working
+    // as designed, not a defect this check should flag.
+    for (const cls of ['summary', 'passTitle', 'status', 'top']) {
+      const p = card[cls];
+      const selector = SELECTOR_OF[cls];
+      if (!rec.check(p, `${label}: no .${selector} found`)) continue;
+      rec.check(!(p.scrollWidth > p.clientWidth), `${label}'s .${selector} scrollWidth is ${p.scrollWidth}px, clientWidth is ${p.clientWidth}px (ellipsized/clipped)`);
     }
-    checkRavensSummary(cards320, '320px/32px text', problems);
+    rec.check(!(card.when && card.when.scrollWidth > card.when.clientWidth), `${label}'s .pass-when scrollWidth is ${card.when?.scrollWidth}px, clientWidth is ${card.when?.clientWidth}px (ellipsized/clipped)`);
+    rec.check(!(card.status && card.status.right > card.contentRight + 0.5), `${label}'s .pass-status right edge is ${card.status?.right.toFixed(1)}px, `
+      + `past the card's content edge at ${card.contentRight.toFixed(1)}px`);
+  }
+  checkRavensSummary(cards320, '320px/32px text', rec);
 
-    // #187 item 3: at 320px/32px every `.pass-title` is one line (its own
-    // height is at most its own line-height + 1px) and its longest word
-    // keeps at least 15% of its own `clientWidth` spare (AGENTS.md, "Smoke
-    // forces CI's font on a Mac too"). Ellipsis is checked already, above,
-    // in the shared `scrollWidth > clientWidth` loop.
-    for (const card of cards320) {
-      const label = card.title ?? '(untitled card)';
-      const title = card.passTitle;
-      if (title && title.height > title.lineHeight + 1) {
-        problems.push(`${label}'s .pass-title is ${title.height.toFixed(1)}px tall at 320px/32px, `
-          + `want at most one line-height (${title.lineHeight.toFixed(1)}px) + 1px`);
-      }
-    }
-    const titleWords = JSON.parse(await evalIn(c, TITLE_WORD_WIDTHS));
-    for (const { title, clientWidth, widest } of titleWords) {
-      const ceiling = clientWidth * 0.85;
-      if (widest > ceiling) {
-        problems.push(`${title}'s .pass-title longest word is ${widest.toFixed(1)}px, `
-          + `more than 85% of its ${clientWidth.toFixed(1)}px box (${(100 * widest / clientWidth).toFixed(1)}%, `
-          + `less than 15% spare)`);
-      }
-    }
+  // #187 item 3: at 320px/32px every `.pass-title` is one line (its own
+  // height is at most its own line-height + 1px) and its longest word
+  // keeps at least 15% of its own `clientWidth` spare (AGENTS.md, "Smoke
+  // forces CI's font on a Mac too"). Ellipsis is checked already, above,
+  // in the shared `scrollWidth > clientWidth` loop.
+  for (const card of cards320) {
+    const label = card.title ?? '(untitled card)';
+    const title = card.passTitle;
+    rec.check(!(title && title.height > title.lineHeight + 1), `${label}'s .pass-title is ${title?.height.toFixed(1)}px tall at 320px/32px, `
+      + `want at most one line-height (${title?.lineHeight.toFixed(1)}px) + 1px`);
+  }
+  const titleWords = JSON.parse(await evalIn(c, TITLE_WORD_WIDTHS));
+  for (const { title, clientWidth, widest } of titleWords) {
+    const ceiling = clientWidth * 0.85;
+    rec.check(!(widest > ceiling), `${title}'s .pass-title longest word is ${widest.toFixed(1)}px, `
+      + `more than 85% of its ${clientWidth.toFixed(1)}px box (${(100 * widest / clientWidth).toFixed(1)}%, `
+      + `less than 15% spare)`);
+  }
 
-    // Item 2: back to the default 390px/16px root -- same reload discipline,
-    // the font size cannot be re-applied without one.
-    await land(c, origin, { record: FOUR, ...TODAY_LANDING });
+  // Item 2: back to the default 390px/16px root -- same reload discipline,
+  // the font size cannot be re-applied without one.
+  await land(c, origin, { record: FOUR, ...TODAY_LANDING });
 
-    // Item 2, as the spec now reads: the summary wraps at every size, so
-    // Ravens (the one FOUR summary too long for 332px at 16px root) is
-    // allowed to spill onto a second line -- it must not be ellipsized and
-    // must read the full string. The other three summaries fit one line
-    // already and are held to that. The title keeps its own base rule
-    // (one line, not ellipsized) for every card.
-    const ONE_LINE_SUMMARY_TITLES = ['Panthers', 'Game 3', 'Owls'];
-    const cards390 = JSON.parse(await evalIn(c, MEASURE));
-    for (const card of cards390) {
-      const label = card.title ?? '(untitled card)';
-      const summary = card.summary;
-      if (!summary) { problems.push(`${label}: no .pass-summary found at 390px/16px`); }
-      else if (summary.scrollWidth > summary.clientWidth) {
-        problems.push(`${label}'s .pass-summary is ellipsized at 390px/16px `
+  // Item 2, as the spec now reads: the summary wraps at every size, so
+  // Ravens (the one FOUR summary too long for 332px at 16px root) is
+  // allowed to spill onto a second line -- it must not be ellipsized and
+  // must read the full string. The other three summaries fit one line
+  // already and are held to that. The title keeps its own base rule
+  // (one line, not ellipsized) for every card.
+  const ONE_LINE_SUMMARY_TITLES = ['Panthers', 'Game 3', 'Owls'];
+  const cards390 = JSON.parse(await evalIn(c, MEASURE));
+  for (const card of cards390) {
+    const label = card.title ?? '(untitled card)';
+    const summary = card.summary;
+    if (rec.check(summary, `${label}: no .pass-summary found at 390px/16px`)) {
+      if (summary.scrollWidth > summary.clientWidth) {
+        rec.fail(`${label}'s .pass-summary is ellipsized at 390px/16px `
           + `(scrollWidth ${summary.scrollWidth}px > clientWidth ${summary.clientWidth}px)`);
       } else if (ONE_LINE_SUMMARY_TITLES.includes(label) && summary.height > summary.lineHeight + 1) {
-        problems.push(`${label}'s .pass-summary is ${summary.height.toFixed(1)}px tall at 390px/16px, `
+        rec.fail(`${label}'s .pass-summary is ${summary.height.toFixed(1)}px tall at 390px/16px, `
           + `want at most one line-height (${summary.lineHeight.toFixed(1)}px) + 1px`);
       }
+    }
 
-      const title = card.passTitle;
-      if (!title) { problems.push(`${label}: no .pass-title found at 390px/16px`); }
-      else {
-        if (title.height > title.lineHeight + 1) {
-          problems.push(`${label}'s .pass-title is ${title.height.toFixed(1)}px tall at 390px/16px, `
-            + `want at most one line-height (${title.lineHeight.toFixed(1)}px) + 1px`);
-        }
-        if (title.scrollWidth > title.clientWidth) {
-          problems.push(`${label}'s .pass-title is ellipsized at 390px/16px `
-            + `(scrollWidth ${title.scrollWidth}px > clientWidth ${title.clientWidth}px)`);
-        }
+    const title = card.passTitle;
+    if (rec.check(title, `${label}: no .pass-title found at 390px/16px`)) {
+      if (title.height > title.lineHeight + 1) {
+        rec.fail(`${label}'s .pass-title is ${title.height.toFixed(1)}px tall at 390px/16px, `
+          + `want at most one line-height (${title.lineHeight.toFixed(1)}px) + 1px`);
       }
-
-      if (card.when && card.status) {
-        const delta = Math.abs(card.when.top - card.status.top);
-        if (delta > 2) {
-          problems.push(`${label}'s .pass-top is not one row at 390px/16px: `
-            + `.pass-when top ${card.when.top.toFixed(1)}px vs .pass-status top ${card.status.top.toFixed(1)}px (${delta.toFixed(1)}px apart)`);
-        }
+      if (title.scrollWidth > title.clientWidth) {
+        rec.fail(`${label}'s .pass-title is ellipsized at 390px/16px `
+          + `(scrollWidth ${title.scrollWidth}px > clientWidth ${title.clientWidth}px)`);
       }
     }
-    checkRavensSummary(cards390, '390px/16px', problems);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+
+    if (card.when && card.status) {
+      const delta = Math.abs(card.when.top - card.status.top);
+      if (delta > 2) {
+        rec.fail(`${label}'s .pass-top is not one row at 390px/16px: `
+          + `.pass-when top ${card.when.top.toFixed(1)}px vs .pass-status top ${card.status.top.toFixed(1)}px (${delta.toFixed(1)}px apart)`);
+      }
+    }
   }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `every .today-game card's .pass-summary/.pass-title/.pass-when/.pass-status/.pass-top fit their own `
-        + `box at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px, .pass-status clears the card's content edge, `
-        + `Ravens' summary reads whole at both sizes, no .pass-summary is ellipsized at 390px/16px, and `
-        + `.pass-title stays one line at 390px/16px`,
-  };
+  checkRavensSummary(cards390, '390px/16px', rec);
+  rec.ok(`every .today-game card's .pass-summary/.pass-title/.pass-when/.pass-status/.pass-top fit their own `
+    + `box at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px, .pass-status clears the card's content edge, `
+    + `Ravens' summary reads whole at both sizes, no .pass-summary is ellipsized at 390px/16px, and `
+    + `.pass-title stays one line at 390px/16px`);
 }

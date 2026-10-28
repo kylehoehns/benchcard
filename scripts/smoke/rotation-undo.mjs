@@ -105,12 +105,10 @@ const clickUndo = async (c) => {
   await wait(SETTLE_MS);
 };
 
-const checkNoStaleToast = async (c, problems, label) => {
+const checkNoStaleToast = async (c, rec, label) => {
   const stale = JSON.parse(await evalIn(c, readToast));
-  if (stale.shown) {
-    problems.push(`item 5: a second Undo toast (${JSON.stringify(stale.text)}) appeared from Undo's own restore`
-      + (label ? ` (${label})` : ''));
-  }
+  rec.check(!stale.shown, `item 5: a second Undo toast (${JSON.stringify(stale.text)}) appeared from Undo's own restore`
+    + (label ? ` (${label})` : ''));
 };
 
 // Hawks underway at live.at 2, one hand swap at stint 1 -- the exact seed
@@ -126,252 +124,209 @@ export const UNDERWAY_SEED = `
   s.state.day.games[0].live = { at: 2, overrides: { 1: five } };
 `;
 
-export async function rotationUndoPass(c, origin) {
-  const problems = [];
+export async function rotationUndoPass(c, origin, rec) {
   const notes = [];
 
-  try {
-    /* ---- seed: Hawks underway at live.at 2, one hand swap at stint 1 ---- */
-    await evalIn(c, setGame(UNDERWAY_SEED));
-    await wait(SETTLE_MS);
+  /* ---- seed: Hawks underway at live.at 2, one hand swap at stint 1 ---- */
+  await evalIn(c, setGame(UNDERWAY_SEED));
+  await wait(SETTLE_MS);
 
-    const baseline = JSON.parse(await evalIn(c, readGame));
-    if (Object.keys(baseline.overrides).length !== 1) {
-      problems.push(`seed: live.overrides is ${JSON.stringify(baseline.overrides)}, want exactly one swap`);
-    }
-    const beforeMinutes = JSON.parse(await evalIn(c, readMinutes));
-    if (!beforeMinutes.length) problems.push('seed: #plan has no .mrow rows -- check is reading the wrong screen');
+  const baseline = JSON.parse(await evalIn(c, readGame));
+  rec.check(Object.keys(baseline.overrides).length === 1, `seed: live.overrides is ${JSON.stringify(baseline.overrides)}, want exactly one swap`);
+  const beforeMinutes = JSON.parse(await evalIn(c, readMinutes));
+  rec.check(beforeMinutes.length, 'seed: #plan has no .mrow rows -- check is reading the wrong screen');
 
-    /* ---- items 1, 2: Format's − stepper on minutes per period ---- */
-    await evalIn(c, step(`document.getElementById('phraseFormat').click()`));
-    await evalIn(c, step(
-      `document.querySelector('#sheetFormatBody .pstep-row:last-child .pstep-btn:first-of-type').click()`));
-    await wait(SETTLE_MS);
+  /* ---- items 1, 2: Format's − stepper on minutes per period ---- */
+  await evalIn(c, step(`document.getElementById('phraseFormat').click()`));
+  await evalIn(c, step(
+    `document.querySelector('#sheetFormatBody .pstep-row:last-child .pstep-btn:first-of-type').click()`));
+  await wait(SETTLE_MS);
 
-    const afterFormat = JSON.parse(await evalIn(c, readGame));
-    if (afterFormat.periodMinutes !== baseline.periodMinutes - 1) {
-      problems.push(`item 1: periodMinutes is ${afterFormat.periodMinutes} after the − stepper, `
-        + `want ${baseline.periodMinutes - 1}`);
-    }
-    const toast1 = JSON.parse(await evalIn(c, readToast));
-    if (!toast1.shown) problems.push('item 1: no Undo toast after the Format change');
-    else {
-      if (toast1.text !== CLEARED) problems.push(`item 1: the toast reads ${JSON.stringify(toast1.text)}, want ${JSON.stringify(CLEARED)}`);
-      if (!toast1.hasUndo) problems.push('item 1: the toast has no Undo button');
-    }
-    notes.push('item 1: Format\'s − stepper on an underway game with a hand swap offers the cleared-swaps toast with Undo');
-
-    await clickUndo(c);
-    const afterUndo1 = JSON.parse(await evalIn(c, readGame));
-    if (afterUndo1.periods !== baseline.periods || afterUndo1.periodMinutes !== baseline.periodMinutes) {
-      problems.push(`item 2: Undo left periods/periodMinutes at ${afterUndo1.periods}/${afterUndo1.periodMinutes}, `
-        + `want ${baseline.periods}/${baseline.periodMinutes}`);
-    }
-    if (JSON.stringify(afterUndo1.overrides) !== JSON.stringify(baseline.overrides)) {
-      problems.push(`item 2: Undo left live.overrides as ${JSON.stringify(afterUndo1.overrides)}, `
-        + `want ${JSON.stringify(baseline.overrides)}`);
-    }
-    if (afterUndo1.at !== baseline.at) problems.push(`item 2: Undo left live.at at ${afterUndo1.at}, want ${baseline.at}`);
-    const afterUndoMinutes = JSON.parse(await evalIn(c, readMinutes));
-    if (JSON.stringify(afterUndoMinutes) !== JSON.stringify(beforeMinutes)) {
-      problems.push('item 2: the plan table\'s played minutes after Undo do not match those from before the change '
-        + `(before ${JSON.stringify(beforeMinutes)}, after ${JSON.stringify(afterUndoMinutes)})`);
-    }
-    await checkNoStaleToast(c, problems);
-    notes.push('item 2: Undo restores periods, periodMinutes, live.overrides, live.at and the plan table\'s played minutes; no second toast from the restore');
-    await evalIn(c, step(`document.getElementById('sheetFormatClose')?.click()`));
-
-    /* ---- item 3: Sub interval (same toast, same Undo) ---- */
-    await evalIn(c, step(`document.getElementById('phraseInterval').click()`));
-    const beforeToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetInterval')));
-    // "Only at breaks" (GRAN_CHOICES' breaksOnly) is the one choice
-    // furthest from RICH's own "every 4 min", so this always picks a
-    // different row rather than depending on which one starts selected.
-    await evalIn(c, step(`await ${clickBreaksOnlyRow()}`));
-    await wait(SETTLE_MS);
-    const afterInterval = JSON.parse(await evalIn(c, readGame));
-    if (afterInterval.granMode !== 'breaksOnly') {
-      problems.push(`item 3 (sub interval): granMode is ${JSON.stringify(afterInterval.granMode)} `
-        + 'after picking "Breaks only", want "breaksOnly"');
-    }
-    const toast2 = JSON.parse(await evalIn(c, readToast));
-    if (!toast2.shown || toast2.text !== CLEARED || !toast2.hasUndo) {
-      problems.push(`item 3 (sub interval): toast reads ${JSON.stringify(toast2)}, want ${JSON.stringify(CLEARED)} with Undo`);
-    }
-    // Item 6 follow-up (moved here from Who's here, #247: that sheet no longer
-    // raises the toast): at 390x844/16px root the Undo toast mounting inside
-    // the sheet must not change its height by more than 1px -- the body
-    // should scroll, not grow the sheet.
-    const afterToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetInterval')));
-    if (!beforeToastRect || !afterToastRect) {
-      problems.push(`item 6: could not measure #sheetInterval's rect (before ${JSON.stringify(beforeToastRect)}, `
-        + `after ${JSON.stringify(afterToastRect)})`);
-    } else if (Math.abs(afterToastRect.height - beforeToastRect.height) > 1) {
-      problems.push(`item 6: #sheetInterval's height went from ${beforeToastRect.height} to ${afterToastRect.height} `
-        + 'when the Undo toast appeared at 390x844/16px root, want within 1px -- the body should scroll, not grow the sheet');
-    }
-    await clickUndo(c);
-    const afterUndo2 = JSON.parse(await evalIn(c, readGame));
-    if (afterUndo2.granMode !== baseline.granMode || afterUndo2.granValue !== baseline.granValue) {
-      problems.push(`item 3 (sub interval): Undo left granMode/granValue at ${afterUndo2.granMode}/${afterUndo2.granValue}, `
-        + `want ${baseline.granMode}/${baseline.granValue}`);
-    }
-    if (JSON.stringify(afterUndo2.overrides) !== JSON.stringify(baseline.overrides) || afterUndo2.at !== baseline.at) {
-      problems.push('item 3 (sub interval): Undo did not restore live.overrides/live.at '
-        + `(${JSON.stringify(afterUndo2.overrides)}/${afterUndo2.at}, want ${JSON.stringify(baseline.overrides)}/${baseline.at})`);
-    }
-    await checkNoStaleToast(c, problems, 'sub interval');
-    notes.push('item 3: Sub interval offers the same toast and Undo restores it');
-    await evalIn(c, step(`document.getElementById('sheetIntervalClose')?.click()`));
-
-    /* ---- #247 decision 1: Who's here (marking a player absent) on an
-       underway game with the same grid freezes the played stints and
-       re-plans the rest. Nothing played moved, so there is NO "Rotation
-       changed." toast and nothing to Undo (#134's offer is for a change that
-       rewrites what was played -- Format and Sub interval above, By hand
-       below). The proof is the game's own record: live.at, the hand swap at
-       stint 1, and stint 0 as the plan printed it, all exactly as before. ---- */
-    await evalIn(c, setGame(UNDERWAY_SEED));
-    await wait(SETTLE_MS);
-    const outBefore = JSON.parse(await evalIn(c, `(async () => {
-      const s = await import('/state.js');
-      return JSON.stringify(s.state.day.games[0].out);
-    })()`));
-    const playedBefore = JSON.parse(await evalIn(c, readPlayed));
-    await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
-    await evalIn(c, step(`(async () => {
-      const s = await import('/state.js');
-      const five = s.state.day.games[0].live.overrides['1'];
-      const target = s.state.players.find(p => !five.includes(p.id));
-      const rows = [...document.querySelectorAll('#sheetWhoBody .prow')];
-      const row = rows.find(r => r.getAttribute('aria-label') === (target.name || 'Unnamed'));
-      row.click();
-    })()`));
-    await wait(SETTLE_MS);
-    const toast3 = JSON.parse(await evalIn(c, readToast));
-    if (toast3.shown) {
-      problems.push(`item 3 (who's here): a toast reads ${JSON.stringify(toast3)}, want none -- nothing played moved`);
-    }
-    const outNow = JSON.parse(await evalIn(c, `(async () => {
-      const s = await import('/state.js');
-      return JSON.stringify(s.state.day.games[0].out);
-    })()`));
-    if (outNow.length !== outBefore.length + 1) problems.push(`item 3 (who's here): g.out is ${JSON.stringify(outNow)}, want ${JSON.stringify(outBefore)} plus the one player just marked absent`);
-    const playedAfter = JSON.parse(await evalIn(c, readPlayed));
-    if (JSON.stringify(playedAfter) !== JSON.stringify(playedBefore)) {
-      problems.push(`item 3 (who's here): the played stints (live.at, stint 0 and stint 1's fives) read ${JSON.stringify(playedAfter)} `
-        + `after marking a player absent, want them as before, ${JSON.stringify(playedBefore)}`);
-    }
-    await checkNoStaleToast(c, problems, "who's here");
-    notes.push("item 3 (#247): Who's here on an underway game raises no toast and leaves the played stints exactly as they were");
-    await evalIn(c, step(`document.getElementById('sheetWhoClose')?.click()`));
-
-    // Fresh underway seed for the rest of this check: the absent player would
-    // otherwise still be out, and the baseline below no longer applies.
-    await evalIn(c, setGame(`s.state.day.games[0].out = ${JSON.stringify(outBefore)};
-    s.state.day.games[0].live = null;
-    const rr0 = await import('/render.js'); rr0.renderAll();
-` + UNDERWAY_SEED));
-    await wait(SETTLE_MS);
-
-    /* ---- item 3: the Plan sheet's strategy seg. "By hand" (`minutes`) is a
-       strategy `resolveRest` refuses, so #247 decision 1 falls back to #134:
-       the rotation is rewritten and the toast offers Undo (spec case E). ---- */
-    await evalIn(c, step(`document.getElementById('phraseStrategy').click()`));
-    await evalIn(c, step(`[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'By hand').click()`));
-    await wait(SETTLE_MS);
-    const toast4 = JSON.parse(await evalIn(c, readToast));
-    if (!toast4.shown || !(toast4.text || '').startsWith('Rotation changed.') || !toast4.hasUndo) {
-      problems.push(`item 3 (strategy): toast reads ${JSON.stringify(toast4)}, want "Rotation changed." with Undo`);
-    }
-    await clickUndo(c);
-    const afterUndo4 = JSON.parse(await evalIn(c, readGame));
-    if (afterUndo4.strategy !== baseline.strategy) {
-      problems.push(`item 3 (strategy): Undo left strategy at ${JSON.stringify(afterUndo4.strategy)}, want ${JSON.stringify(baseline.strategy)}`);
-    }
-    if (afterUndo4.at !== baseline.at || JSON.stringify(afterUndo4.overrides) !== JSON.stringify(baseline.overrides)) {
-      problems.push('item 3 (strategy): Undo did not restore live.at/live.overrides');
-    }
-    await checkNoStaleToast(c, problems, 'strategy');
-    notes.push('item 3: the Plan sheet\'s strategy seg offers the same Undo, which restores strategy along with the rest');
-    await evalIn(c, step(`document.getElementById('sheetPlanClose')?.click()`));
-
-    /* ---- item 5: "Sit for the rest" (an existing `undoable`) keeps its
-       own toast; it must not be replaced by a second one. `sitRest`
-       (gamemode.js) only ever writes `live.overrides` for stints still
-       ahead of `live.at` -- the base plan's own rotation never moves, so
-       this also guards against a future change routing it through a real
-       `render()` and showing a second, competing toast.
-
-       #136 items 2-4: the button reads "Sit for the rest" and the sit toast
-       reads "<name> sits for the rest. The others share those minutes.",
-       still with Undo. ---- */
-    await evalIn(c, step(`document.getElementById('abBench').click()`));
-    await evalIn(c, step(`document.querySelector('#gmFloor .gm-p')?.click()`));
-    const sitLabel = await evalIn(c, `JSON.stringify([...document.querySelectorAll('#gmBenchLab button')]
-      .find(b => b.textContent === 'Sit for the rest')?.textContent ?? null)`);
-    if (JSON.parse(sitLabel) !== 'Sit for the rest') {
-      problems.push(`item 2: the bench-mode button reads ${sitLabel}, want "Sit for the rest"`);
-    }
-    await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
-    await wait(SETTLE_MS);
-    const toasts5 = JSON.parse(await evalIn(c, `JSON.stringify([...document.querySelectorAll('.toast[data-undo]')]
-      .map(t => ({ text: t.querySelector('.tmsg')?.textContent ?? null, hasUndo: !!t.querySelector('.tundo') })))`));
-    if (toasts5.length !== 1 || !(toasts5[0].text || '').endsWith('sits for the rest. The others share those minutes.') || !toasts5[0].hasUndo) {
-      problems.push(`item 3: after "Sit for the rest" the live undo toast(s) read ${JSON.stringify(toasts5)}, `
-        + 'want exactly one, ending "sits for the rest. The others share those minutes." with Undo -- not replaced');
-    }
-    await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
-    notes.push('item 5: "Sit for the rest" keeps its own Undo toast, not replaced by a second one');
-    notes.push('items 2, 3: the button reads "Sit for the rest" and its toast reads "<name> sits for the rest. The others share those minutes." with Undo');
-
-    /* ---- item 4, the "strategy" refusal: `resolveRest` (state.js) refuses
-       before it ever looks at who is on the floor when `g.strategy` is
-       'minutes' or 'platoon'. Re-seed the underway Hawks game fresh, open
-       bench mode and pick a floor player under its ordinary strategy first
-       -- `platoon` needs `units` this fixture never set up, and driving the
-       Plan sheet's own strategy seg would just show its "Rotation changed."
-       Undo toast instead of resolving anything -- then flip `g.strategy`
-       in place, on the same object `game()` still returns, without asking
-       for a re-solve: `sitRest`'s own re-solve is the one this item is
-       about, so the click is the only thing that should trigger one. */
-    await evalIn(c, setGame(UNDERWAY_SEED));
-    await wait(SETTLE_MS);
-    await evalIn(c, step(`document.getElementById('abBench').click()`));
-    await evalIn(c, step(`document.querySelector('#gmFloor .gm-p')?.click()`));
-    await evalIn(c, `(async () => {
-      const s = await import('/state.js');
-      s.state.day.games[0].strategy = 'platoon';
-    })()`);
-    await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
-    await wait(SETTLE_MS);
-    const flash4 = JSON.parse(await evalIn(c, `(() => {
-      const t = document.querySelector('.toast:not([data-undo])');
-      return JSON.stringify(t ? (t.querySelector('.tmsg')?.textContent ?? null) : null);
-    })()`));
-    const wantStrategy = 'Sit for the rest does not apply to this strategy. Its minutes are set by hand.';
-    if (flash4 !== wantStrategy) {
-      problems.push(`item 4 (strategy): the refusal toast reads ${JSON.stringify(flash4)}, want ${JSON.stringify(wantStrategy)}`);
-    }
-    await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
-    notes.push('item 4: sitting a player while the game is set to a strategy Sit for the rest cannot re-solve refuses with the #136 wording');
-
-    /* item 4's other refusal ("nothing") fires when `resolveRest` is asked
-       to solve from one past the plan's last stint (`p.stints.length`) --
-       `stintIndex` (live.js) clamps the bench screen's own `i` to
-       `p.stints.length - 1` on every render, so no click through this UI can
-       ever reach it; `test/resolve-rest.test.js` already drives
-       `resolveRest` itself to that boundary. Its `flash()` sentence in
-       gamemode.js is covered as a guard, in `test/rule-words.test.js`,
-       rather than faked here. */
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+  const afterFormat = JSON.parse(await evalIn(c, readGame));
+  rec.check(afterFormat.periodMinutes === baseline.periodMinutes - 1, `item 1: periodMinutes is ${afterFormat.periodMinutes} after the − stepper, `
+      + `want ${baseline.periodMinutes - 1}`);
+  const toast1 = JSON.parse(await evalIn(c, readToast));
+  if (!toast1.shown) rec.fail('item 1: no Undo toast after the Format change');
+  else {
+    rec.check(toast1.text === CLEARED, `item 1: the toast reads ${JSON.stringify(toast1.text)}, want ${JSON.stringify(CLEARED)}`);
+    rec.check(toast1.hasUndo, 'item 1: the toast has no Undo button');
   }
+  notes.push('item 1: Format\'s − stepper on an underway game with a hand swap offers the cleared-swaps toast with Undo');
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 5).join(' | ')}${problems.length > 5 ? ` (+${problems.length - 5} more)` : ''}`
-      : notes.join('; '),
-  };
+  await clickUndo(c);
+  const afterUndo1 = JSON.parse(await evalIn(c, readGame));
+  rec.check(afterUndo1.periods === baseline.periods && afterUndo1.periodMinutes === baseline.periodMinutes, `item 2: Undo left periods/periodMinutes at ${afterUndo1.periods}/${afterUndo1.periodMinutes}, `
+      + `want ${baseline.periods}/${baseline.periodMinutes}`);
+  rec.check(JSON.stringify(afterUndo1.overrides) === JSON.stringify(baseline.overrides), `item 2: Undo left live.overrides as ${JSON.stringify(afterUndo1.overrides)}, `
+      + `want ${JSON.stringify(baseline.overrides)}`);
+  rec.check(afterUndo1.at === baseline.at, `item 2: Undo left live.at at ${afterUndo1.at}, want ${baseline.at}`);
+  const afterUndoMinutes = JSON.parse(await evalIn(c, readMinutes));
+  rec.check(JSON.stringify(afterUndoMinutes) === JSON.stringify(beforeMinutes), 'item 2: the plan table\'s played minutes after Undo do not match those from before the change '
+      + `(before ${JSON.stringify(beforeMinutes)}, after ${JSON.stringify(afterUndoMinutes)})`);
+  await checkNoStaleToast(c, rec);
+  notes.push('item 2: Undo restores periods, periodMinutes, live.overrides, live.at and the plan table\'s played minutes; no second toast from the restore');
+  await evalIn(c, step(`document.getElementById('sheetFormatClose')?.click()`));
+
+  /* ---- item 3: Sub interval (same toast, same Undo) ---- */
+  await evalIn(c, step(`document.getElementById('phraseInterval').click()`));
+  const beforeToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetInterval')));
+  // "Only at breaks" (GRAN_CHOICES' breaksOnly) is the one choice
+  // furthest from RICH's own "every 4 min", so this always picks a
+  // different row rather than depending on which one starts selected.
+  await evalIn(c, step(`await ${clickBreaksOnlyRow()}`));
+  await wait(SETTLE_MS);
+  const afterInterval = JSON.parse(await evalIn(c, readGame));
+  rec.check(afterInterval.granMode === 'breaksOnly', `item 3 (sub interval): granMode is ${JSON.stringify(afterInterval.granMode)} `
+      + 'after picking "Breaks only", want "breaksOnly"');
+  const toast2 = JSON.parse(await evalIn(c, readToast));
+  rec.check(toast2.shown && toast2.text === CLEARED && toast2.hasUndo, `item 3 (sub interval): toast reads ${JSON.stringify(toast2)}, want ${JSON.stringify(CLEARED)} with Undo`);
+  // Item 6 follow-up (moved here from Who's here, #247: that sheet no longer
+  // raises the toast): at 390x844/16px root the Undo toast mounting inside
+  // the sheet must not change its height by more than 1px -- the body
+  // should scroll, not grow the sheet.
+  const afterToastRect = JSON.parse(await evalIn(c, readSheetRect('#sheetInterval')));
+  if (!beforeToastRect || !afterToastRect) {
+    rec.fail(`item 6: could not measure #sheetInterval's rect (before ${JSON.stringify(beforeToastRect)}, `
+      + `after ${JSON.stringify(afterToastRect)})`);
+  } else {
+    rec.check(Math.abs(afterToastRect.height - beforeToastRect.height) <= 1,
+      `item 6: #sheetInterval's height went from ${beforeToastRect.height} to ${afterToastRect.height} `
+      + 'when the Undo toast appeared at 390x844/16px root, want within 1px -- the body should scroll, not grow the sheet');
+  }
+  await clickUndo(c);
+  const afterUndo2 = JSON.parse(await evalIn(c, readGame));
+  rec.check(afterUndo2.granMode === baseline.granMode && afterUndo2.granValue === baseline.granValue, `item 3 (sub interval): Undo left granMode/granValue at ${afterUndo2.granMode}/${afterUndo2.granValue}, `
+      + `want ${baseline.granMode}/${baseline.granValue}`);
+  rec.check(JSON.stringify(afterUndo2.overrides) === JSON.stringify(baseline.overrides) && afterUndo2.at === baseline.at, 'item 3 (sub interval): Undo did not restore live.overrides/live.at '
+      + `(${JSON.stringify(afterUndo2.overrides)}/${afterUndo2.at}, want ${JSON.stringify(baseline.overrides)}/${baseline.at})`);
+  await checkNoStaleToast(c, rec, 'sub interval');
+  notes.push('item 3: Sub interval offers the same toast and Undo restores it');
+  await evalIn(c, step(`document.getElementById('sheetIntervalClose')?.click()`));
+
+  /* ---- #247 decision 1: Who's here (marking a player absent) on an
+     underway game with the same grid freezes the played stints and
+     re-plans the rest. Nothing played moved, so there is NO "Rotation
+     changed." toast and nothing to Undo (#134's offer is for a change that
+     rewrites what was played -- Format and Sub interval above, By hand
+     below). The proof is the game's own record: live.at, the hand swap at
+     stint 1, and stint 0 as the plan printed it, all exactly as before. ---- */
+  await evalIn(c, setGame(UNDERWAY_SEED));
+  await wait(SETTLE_MS);
+  const outBefore = JSON.parse(await evalIn(c, `(async () => {
+    const s = await import('/state.js');
+    return JSON.stringify(s.state.day.games[0].out);
+  })()`));
+  const playedBefore = JSON.parse(await evalIn(c, readPlayed));
+  await evalIn(c, step(`document.getElementById('phrasePlayers').click()`));
+  await evalIn(c, step(`(async () => {
+    const s = await import('/state.js');
+    const five = s.state.day.games[0].live.overrides['1'];
+    const target = s.state.players.find(p => !five.includes(p.id));
+    const rows = [...document.querySelectorAll('#sheetWhoBody .prow')];
+    const row = rows.find(r => r.getAttribute('aria-label') === (target.name || 'Unnamed'));
+    row.click();
+  })()`));
+  await wait(SETTLE_MS);
+  const toast3 = JSON.parse(await evalIn(c, readToast));
+  rec.check(!toast3.shown, `item 3 (who's here): a toast reads ${JSON.stringify(toast3)}, want none -- nothing played moved`);
+  const outNow = JSON.parse(await evalIn(c, `(async () => {
+    const s = await import('/state.js');
+    return JSON.stringify(s.state.day.games[0].out);
+  })()`));
+  rec.check(outNow.length === outBefore.length + 1, `item 3 (who's here): g.out is ${JSON.stringify(outNow)}, want ${JSON.stringify(outBefore)} plus the one player just marked absent`);
+  const playedAfter = JSON.parse(await evalIn(c, readPlayed));
+  rec.check(JSON.stringify(playedAfter) === JSON.stringify(playedBefore), `item 3 (who's here): the played stints (live.at, stint 0 and stint 1's fives) read ${JSON.stringify(playedAfter)} `
+      + `after marking a player absent, want them as before, ${JSON.stringify(playedBefore)}`);
+  await checkNoStaleToast(c, rec, "who's here");
+  notes.push("item 3 (#247): Who's here on an underway game raises no toast and leaves the played stints exactly as they were");
+  await evalIn(c, step(`document.getElementById('sheetWhoClose')?.click()`));
+
+  // Fresh underway seed for the rest of this check: the absent player would
+  // otherwise still be out, and the baseline below no longer applies.
+  await evalIn(c, setGame(`s.state.day.games[0].out = ${JSON.stringify(outBefore)};
+  s.state.day.games[0].live = null;
+  const rr0 = await import('/render.js'); rr0.renderAll();
+` + UNDERWAY_SEED));
+  await wait(SETTLE_MS);
+
+  /* ---- item 3: the Plan sheet's strategy seg. "By hand" (`minutes`) is a
+     strategy `resolveRest` refuses, so #247 decision 1 falls back to #134:
+     the rotation is rewritten and the toast offers Undo (spec case E). ---- */
+  await evalIn(c, step(`document.getElementById('phraseStrategy').click()`));
+  await evalIn(c, step(`[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'By hand').click()`));
+  await wait(SETTLE_MS);
+  const toast4 = JSON.parse(await evalIn(c, readToast));
+  rec.check(toast4.shown && (toast4.text || '').startsWith('Rotation changed.') && toast4.hasUndo, `item 3 (strategy): toast reads ${JSON.stringify(toast4)}, want "Rotation changed." with Undo`);
+  await clickUndo(c);
+  const afterUndo4 = JSON.parse(await evalIn(c, readGame));
+  rec.check(afterUndo4.strategy === baseline.strategy, `item 3 (strategy): Undo left strategy at ${JSON.stringify(afterUndo4.strategy)}, want ${JSON.stringify(baseline.strategy)}`);
+  rec.check(afterUndo4.at === baseline.at && JSON.stringify(afterUndo4.overrides) === JSON.stringify(baseline.overrides), 'item 3 (strategy): Undo did not restore live.at/live.overrides');
+  await checkNoStaleToast(c, rec, 'strategy');
+  notes.push('item 3: the Plan sheet\'s strategy seg offers the same Undo, which restores strategy along with the rest');
+  await evalIn(c, step(`document.getElementById('sheetPlanClose')?.click()`));
+
+  /* ---- item 5: "Sit for the rest" (an existing `undoable`) keeps its
+     own toast; it must not be replaced by a second one. `sitRest`
+     (gamemode.js) only ever writes `live.overrides` for stints still
+     ahead of `live.at` -- the base plan's own rotation never moves, so
+     this also guards against a future change routing it through a real
+     `render()` and showing a second, competing toast.
+
+     #136 items 2-4: the button reads "Sit for the rest" and the sit toast
+     reads "<name> sits for the rest. The others share those minutes.",
+     still with Undo. ---- */
+  await evalIn(c, step(`document.getElementById('abBench').click()`));
+  await evalIn(c, step(`document.querySelector('#gmFloor .gm-p')?.click()`));
+  const sitLabel = await evalIn(c, `JSON.stringify([...document.querySelectorAll('#gmBenchLab button')]
+    .find(b => b.textContent === 'Sit for the rest')?.textContent ?? null)`);
+  rec.check(JSON.parse(sitLabel) === 'Sit for the rest', `item 2: the bench-mode button reads ${sitLabel}, want "Sit for the rest"`);
+  await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
+  await wait(SETTLE_MS);
+  const toasts5 = JSON.parse(await evalIn(c, `JSON.stringify([...document.querySelectorAll('.toast[data-undo]')]
+    .map(t => ({ text: t.querySelector('.tmsg')?.textContent ?? null, hasUndo: !!t.querySelector('.tundo') })))`));
+  rec.check(toasts5.length === 1 && (toasts5[0].text || '').endsWith('sits for the rest. The others share those minutes.') && toasts5[0].hasUndo, `item 3: after "Sit for the rest" the live undo toast(s) read ${JSON.stringify(toasts5)}, `
+      + 'want exactly one, ending "sits for the rest. The others share those minutes." with Undo -- not replaced');
+  await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
+  notes.push('item 5: "Sit for the rest" keeps its own Undo toast, not replaced by a second one');
+  notes.push('items 2, 3: the button reads "Sit for the rest" and its toast reads "<name> sits for the rest. The others share those minutes." with Undo');
+
+  /* ---- item 4, the "strategy" refusal: `resolveRest` (state.js) refuses
+     before it ever looks at who is on the floor when `g.strategy` is
+     'minutes' or 'platoon'. Re-seed the underway Hawks game fresh, open
+     bench mode and pick a floor player under its ordinary strategy first
+     -- `platoon` needs `units` this fixture never set up, and driving the
+     Plan sheet's own strategy seg would just show its "Rotation changed."
+     Undo toast instead of resolving anything -- then flip `g.strategy`
+     in place, on the same object `game()` still returns, without asking
+     for a re-solve: `sitRest`'s own re-solve is the one this item is
+     about, so the click is the only thing that should trigger one. */
+  await evalIn(c, setGame(UNDERWAY_SEED));
+  await wait(SETTLE_MS);
+  await evalIn(c, step(`document.getElementById('abBench').click()`));
+  await evalIn(c, step(`document.querySelector('#gmFloor .gm-p')?.click()`));
+  await evalIn(c, `(async () => {
+    const s = await import('/state.js');
+    s.state.day.games[0].strategy = 'platoon';
+  })()`);
+  await evalIn(c, step(`[...document.querySelectorAll('#gmBenchLab button')].find(b => b.textContent === 'Sit for the rest')?.click()`));
+  await wait(SETTLE_MS);
+  const flash4 = JSON.parse(await evalIn(c, `(() => {
+    const t = document.querySelector('.toast:not([data-undo])');
+    return JSON.stringify(t ? (t.querySelector('.tmsg')?.textContent ?? null) : null);
+  })()`));
+  const wantStrategy = 'Sit for the rest does not apply to this strategy. Its minutes are set by hand.';
+  rec.check(flash4 === wantStrategy, `item 4 (strategy): the refusal toast reads ${JSON.stringify(flash4)}, want ${JSON.stringify(wantStrategy)}`);
+  await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
+  notes.push('item 4: sitting a player while the game is set to a strategy Sit for the rest cannot re-solve refuses with the #136 wording');
+
+  /* item 4's other refusal ("nothing") fires when `resolveRest` is asked
+     to solve from one past the plan's last stint (`p.stints.length`) --
+     `stintIndex` (live.js) clamps the bench screen's own `i` to
+     `p.stints.length - 1` on every render, so no click through this UI can
+     ever reach it; `test/resolve-rest.test.js` already drives
+     `resolveRest` itself to that boundary. Its `flash()` sentence in
+     gamemode.js is covered as a guard, in `test/rule-words.test.js`,
+     rather than faked here. */
+
+  rec.ok(notes.join('; '));
 }

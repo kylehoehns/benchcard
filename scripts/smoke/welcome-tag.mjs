@@ -16,26 +16,15 @@ const PROBE = `(() => {
   }));
 })()`;
 
-export async function welcomeTagPass(c, origin) {
-  const problems = [];
-  try {
-    await land(c, origin, { record: 'wiped', ready: `document.querySelector('#view-welcome')?.hidden === false` });
-    await evalIn(c, `document.querySelector('#welTabScreen').click()`);
-    const tags = JSON.parse(await evalIn(c, PROBE));
-    if (!tags.length) problems.push('no .wel-bench .tag.in on the On screen tab');
-    tags.forEach((t, i) => {
-      if (!t.inMn) problems.push(`tag ${i} ("${t.text}") is not inside .mn`);
-      if (t.display !== 'inline-block') problems.push(`tag ${i} has display ${t.display}, want inline-block`);
-      if (t.bg === 'transparent' || t.bg === 'rgba(0, 0, 0, 0)') problems.push(`tag ${i} has no background (${t.bg})`);
-    });
-    var count = tags.length;
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
-  }
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? problems.slice(0, 4).join(' | ')
-      : `${count} "just on" tag(s) on the welcome On screen tab, each inside .mn, inline-block, with a background`,
-  };
+export async function welcomeTagPass(c, origin, rec) {
+  await land(c, origin, { record: 'wiped', ready: `document.querySelector('#view-welcome')?.hidden === false` });
+  await evalIn(c, `document.querySelector('#welTabScreen').click()`);
+  const tags = JSON.parse(await evalIn(c, PROBE));
+  rec.check(tags.length, 'no .wel-bench .tag.in on the On screen tab');
+  tags.forEach((t, i) => {
+    rec.check(t.inMn, `tag ${i} ("${t.text}") is not inside .mn`);
+    rec.check(t.display === 'inline-block', `tag ${i} has display ${t.display}, want inline-block`);
+    rec.check(t.bg !== 'transparent' && t.bg !== 'rgba(0, 0, 0, 0)', `tag ${i} has no background (${t.bg})`);
+  });
+  rec.ok(`${tags.length} "just on" tag(s) on the welcome On screen tab, each inside .mn, inline-block, with a background`);
 }

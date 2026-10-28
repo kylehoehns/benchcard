@@ -49,7 +49,7 @@ const FONT_VAR_PROBE = `(v => {
 
 const OPEN_BENCH = `document.querySelector('#gmOpen').click()`;
 
-async function runTheme(c, origin, theme, problems, notes) {
+async function runTheme(c, origin, theme, rec, notes) {
   const tag = m => `(${theme}) ${m}`;
   let measured = 0;
 
@@ -81,14 +81,14 @@ async function runTheme(c, origin, theme, problems, notes) {
       fillVisible: cs.backgroundColor,
     });
   })()`));
-  if (hdr.gmGame !== 'Q1 · 8:00 to 4:00') problems.push(tag(`item 1: #gmGame reads ${JSON.stringify(hdr.gmGame)}, want "Q1 · 8:00 to 4:00"`));
-  if (hdr.gmClock !== '1 of 8') problems.push(tag(`item 1: #gmClock reads ${JSON.stringify(hdr.gmClock)}, want "1 of 8"`));
-  if (/vs Hawks|stint/i.test(hdr.headerText)) problems.push(tag(`item 1: .gm-bar still reads ${JSON.stringify(hdr.headerText)}, "vs Hawks"/"stint" should be gone`));
-  if (hdr.ariaLabel !== 'Leave bench mode') problems.push(tag(`item 1: #gmClose aria-label is ${JSON.stringify(hdr.ariaLabel)}, want "Leave bench mode"`));
-  if (hdr.xHit.w < 48 || hdr.xHit.h < 48) problems.push(tag(`item 1: #gmClose hit area is ${Math.round(hdr.xHit.w)}x${Math.round(hdr.xHit.h)}, want >=48x48`));
-  if (Math.abs(hdr.xHit.w - hdr.xHit.h) > 0.5) problems.push(tag(`item 1: #gmClose is ${hdr.xHit.w}x${hdr.xHit.h}, want width == height`));
-  if (!(parseFloat(hdr.fillRadius) >= hdr.fillH / 2 - 0.5)) problems.push(tag(`item 1: #gmClose's fill has border-radius ${hdr.fillRadius} on a ${Math.round(hdr.fillH)}px chip, want at least half its height`));
-  if (alpha(hdr.fillVisible) === 0) problems.push(tag(`item 1: #gmClose's fill paints ${hdr.fillVisible}, want a visible fill`));
+  rec.check(hdr.gmGame === 'Q1 · 8:00 to 4:00', tag(`item 1: #gmGame reads ${JSON.stringify(hdr.gmGame)}, want "Q1 · 8:00 to 4:00"`));
+  rec.check(hdr.gmClock === '1 of 8', tag(`item 1: #gmClock reads ${JSON.stringify(hdr.gmClock)}, want "1 of 8"`));
+  rec.check(!(/vs Hawks|stint/i.test(hdr.headerText)), tag(`item 1: .gm-bar still reads ${JSON.stringify(hdr.headerText)}, "vs Hawks"/"stint" should be gone`));
+  rec.check(hdr.ariaLabel === 'Leave bench mode', tag(`item 1: #gmClose aria-label is ${JSON.stringify(hdr.ariaLabel)}, want "Leave bench mode"`));
+  rec.check(hdr.xHit.w >= 48 && hdr.xHit.h >= 48, tag(`item 1: #gmClose hit area is ${Math.round(hdr.xHit.w)}x${Math.round(hdr.xHit.h)}, want >=48x48`));
+  rec.check(Math.abs(hdr.xHit.w - hdr.xHit.h) <= 0.5, tag(`item 1: #gmClose is ${hdr.xHit.w}x${hdr.xHit.h}, want width == height`));
+  rec.check(parseFloat(hdr.fillRadius) >= hdr.fillH / 2 - 0.5, tag(`item 1: #gmClose's fill has border-radius ${hdr.fillRadius} on a ${Math.round(hdr.fillH)}px chip, want at least half its height`));
+  if (alpha(hdr.fillVisible) === 0) rec.fail(tag(`item 1: #gmClose's fill paints ${hdr.fillVisible}, want a visible fill`));
   else measured++;
 
   // #gmReset is round the same way, once an override makes it show. Swap a
@@ -104,12 +104,12 @@ async function runTheme(c, origin, theme, problems, notes) {
     const cs = getComputedStyle(fill);
     return JSON.stringify({ hidden: false, w: rr.width, h: rr.height, radius: cs.borderTopLeftRadius, fillH: fr.height });
   })()`));
-  if (reset.hidden) problems.push(tag('item 1: #gmReset never showed after a swap, so its round shape could not be measured'));
+  if (reset.hidden) rec.fail(tag('item 1: #gmReset never showed after a swap, so its round shape could not be measured'));
   else {
     measured++;
-    if (reset.w < 48 || reset.h < 48) problems.push(tag(`item 1: #gmReset hit area is ${Math.round(reset.w)}x${Math.round(reset.h)}, want >=48x48`));
-    if (Math.abs(reset.w - reset.h) > 0.5) problems.push(tag(`item 1: #gmReset is ${reset.w}x${reset.h}, want width == height`));
-    if (!(parseFloat(reset.radius) >= reset.fillH / 2 - 0.5)) problems.push(tag(`item 1: #gmReset's fill has border-radius ${reset.radius} on a ${Math.round(reset.fillH)}px chip, want at least half its height`));
+    rec.check(reset.w >= 48 && reset.h >= 48, tag(`item 1: #gmReset hit area is ${Math.round(reset.w)}x${Math.round(reset.h)}, want >=48x48`));
+    rec.check(Math.abs(reset.w - reset.h) <= 0.5, tag(`item 1: #gmReset is ${reset.w}x${reset.h}, want width == height`));
+    rec.check(parseFloat(reset.radius) >= reset.fillH / 2 - 0.5, tag(`item 1: #gmReset's fill has border-radius ${reset.radius} on a ${Math.round(reset.fillH)}px chip, want at least half its height`));
   }
   // undo the swap so the rest of this pass sees a clean stint 1
   await evalIn(c, step(`document.getElementById('gmReset').click()`));
@@ -126,7 +126,7 @@ async function runTheme(c, origin, theme, problems, notes) {
     }
     return JSON.stringify(bad);
   })()`));
-  if (caseOffenders.length) problems.push(tag(`item 2: ${caseOffenders.length} element(s) still uppercase/letter-spaced: ${caseOffenders.slice(0, 4).join(', ')}`));
+  if (caseOffenders.length) rec.fail(tag(`item 2: ${caseOffenders.length} element(s) still uppercase/letter-spaced: ${caseOffenders.slice(0, 4).join(', ')}`));
   else measured++;
   notes.push(tag('item 2: no uppercase or positive letter-spacing inside #gamemode'));
 
@@ -146,14 +146,14 @@ async function runTheme(c, origin, theme, problems, notes) {
       rowSeparators: inertRows.slice(0, -1).map(r => getComputedStyle(r).boxShadow),
     });
   })()`));
-  if (chrome.barBottom !== 0) problems.push(tag(`item 3: .gm-bar has a ${chrome.barBottom}px bottom border, want 0`));
-  if (chrome.footTop !== 0) problems.push(tag(`item 3: .gm-foot has a ${chrome.footTop}px top border, want 0`));
-  if (alpha(chrome.barBg) !== 0 && alpha(chrome.barBg) !== null) problems.push(tag(`item 3: .gm-bar itself paints ${chrome.barBg}, want the fade on ::before only`));
-  if (alpha(chrome.footBg) !== 0 && alpha(chrome.footBg) !== null) problems.push(tag(`item 3: .gm-foot itself paints ${chrome.footBg}, want the fade on ::before only`));
-  if (!chrome.beforeBf || chrome.beforeBf === 'none') problems.push(tag(`item 3: .gm-foot::before backdrop-filter is ${chrome.beforeBf}, want a blur`));
-  if (!chrome.beforeMask || chrome.beforeMask === 'none') problems.push(tag('item 3: .gm-foot::before has no mask-image, want a fade toward the content'));
-  if (!chrome.rowSeparators.length) problems.push(tag('item 3: no bench-row separators found to check'));
-  else if (chrome.rowSeparators.some(s => s === 'none')) problems.push(tag('item 3: a bench row separator is gone (box-shadow: none)'));
+  rec.check(chrome.barBottom === 0, tag(`item 3: .gm-bar has a ${chrome.barBottom}px bottom border, want 0`));
+  rec.check(chrome.footTop === 0, tag(`item 3: .gm-foot has a ${chrome.footTop}px top border, want 0`));
+  rec.check(alpha(chrome.barBg) === 0 || alpha(chrome.barBg) === null, tag(`item 3: .gm-bar itself paints ${chrome.barBg}, want the fade on ::before only`));
+  rec.check(alpha(chrome.footBg) === 0 || alpha(chrome.footBg) === null, tag(`item 3: .gm-foot itself paints ${chrome.footBg}, want the fade on ::before only`));
+  rec.check(chrome.beforeBf && chrome.beforeBf !== 'none', tag(`item 3: .gm-foot::before backdrop-filter is ${chrome.beforeBf}, want a blur`));
+  rec.check(chrome.beforeMask && chrome.beforeMask !== 'none', tag('item 3: .gm-foot::before has no mask-image, want a fade toward the content'));
+  if (!chrome.rowSeparators.length) rec.fail(tag('item 3: no bench-row separators found to check'));
+  else if (chrome.rowSeparators.some(s => s === 'none')) rec.fail(tag('item 3: a bench row separator is gone (box-shadow: none)'));
   else measured++;
   notes.push(tag('item 3: no bar/foot borders, the foot floats on a blurred, masked ::before, bench separators stay'));
 
@@ -164,8 +164,8 @@ async function runTheme(c, origin, theme, problems, notes) {
       const before = getComputedStyle(document.querySelector('.gm-foot'), '::before');
       return JSON.stringify({ bf: before.backdropFilter || before.webkitBackdropFilter, bg: before.backgroundColor });
     })()`));
-    if (solid.bf && solid.bf !== 'none') problems.push(tag(`item 3 (${feature}): .gm-foot::before still has backdrop-filter ${solid.bf}, want none`));
-    if (alpha(solid.bg) !== 1) problems.push(tag(`item 3 (${feature}): .gm-foot::before paints ${solid.bg}, want fully opaque`));
+    rec.check(!solid.bf || solid.bf === 'none', tag(`item 3 (${feature}): .gm-foot::before still has backdrop-filter ${solid.bf}, want none`));
+    rec.check(alpha(solid.bg) === 1, tag(`item 3 (${feature}): .gm-foot::before paints ${solid.bg}, want fully opaque`));
   }
   await setMedia(c, []);
   notes.push(tag('item 3: .gm-foot::before turns solid under reduced transparency / more contrast'));
@@ -185,14 +185,14 @@ async function runTheme(c, origin, theme, problems, notes) {
       nameWeight: nameCs.fontWeight,
     });
   })()`));
-  if (!floor.count) problems.push(tag('item 4: #gmFloor has no rows to check'));
+  if (!floor.count) rec.fail(tag('item 4: #gmFloor has no rows to check'));
   else {
     measured++;
-    if (floor.bg !== surface) problems.push(tag(`item 4: an unselected .gm-p paints ${floor.bg}, want ${surface} (--surface)`));
+    rec.check(floor.bg === surface, tag(`item 4: an unselected .gm-p paints ${floor.bg}, want ${surface} (--surface)`));
     const hasVisibleBorder = floor.borderWidths.some(w => w > 0) && alpha(floor.borderColor) > 0;
-    if (hasVisibleBorder) problems.push(tag(`item 4: an unselected .gm-p has a visible border (${floor.borderWidths.join('/')}px, ${floor.borderColor})`));
-    if (floor.nameFont !== titleFont) problems.push(tag(`item 4: .gm-p .nm font-size is ${floor.nameFont}, want ${titleFont} (--fs-title, the 22px step)`));
-    if (floor.nameWeight !== '600') problems.push(tag(`item 4: .gm-p .nm font-weight is ${floor.nameWeight}, want 600 (prototype: .fr .nm)`));
+    rec.check(!hasVisibleBorder, tag(`item 4: an unselected .gm-p has a visible border (${floor.borderWidths.join('/')}px, ${floor.borderColor})`));
+    rec.check(floor.nameFont === titleFont, tag(`item 4: .gm-p .nm font-size is ${floor.nameFont}, want ${titleFont} (--fs-title, the 22px step)`));
+    rec.check(floor.nameWeight === '600', tag(`item 4: .gm-p .nm font-weight is ${floor.nameWeight}, want 600 (prototype: .fr .nm)`));
   }
   // select one -- the picked outline
   await evalIn(c, step(`document.querySelector('#gmFloor .gm-p').click()`));
@@ -200,13 +200,13 @@ async function runTheme(c, origin, theme, problems, notes) {
     const p = document.querySelector('#gmFloor .gm-p.picked');
     return p ? JSON.stringify(getComputedStyle(p).boxShadow) : JSON.stringify(null);
   })()`));
-  if (picked === null) problems.push(tag('item 4: clicking a floor row never produced .gm-p.picked'));
+  if (picked === null) rec.fail(tag('item 4: clicking a floor row never produced .gm-p.picked'));
   else {
     measured++;
-    if (!picked.includes('inset')) problems.push(tag(`item 4: the picked row's box-shadow is ${picked}, want an inset outline`));
-    if (!picked.includes('2px')) problems.push(tag(`item 4: the picked row's box-shadow is ${picked}, want a 2px outline`));
+    rec.check(picked.includes('inset'), tag(`item 4: the picked row's box-shadow is ${picked}, want an inset outline`));
+    rec.check(picked.includes('2px'), tag(`item 4: the picked row's box-shadow is ${picked}, want a 2px outline`));
     const tintRgb = tint.match(/[\d.]+/g).slice(0, 3).join(', ');
-    if (!picked.includes(tintRgb)) problems.push(tag(`item 4: the picked row's outline color is ${picked}, want ${tint} (--tint / K1)`));
+    rec.check(picked.includes(tintRgb), tag(`item 4: the picked row's outline color is ${picked}, want ${tint} (--tint / K1)`));
   }
   await evalIn(c, step(`document.querySelector('#gmFloor .gm-p.picked').click()`)); // deselect
   notes.push(tag('item 4: floor rows are surface-filled and borderless; the picked row gets a 2px --tint inset outline'));
@@ -228,9 +228,9 @@ async function runTheme(c, origin, theme, problems, notes) {
       floorLabel: document.getElementById('gmFloor').getAttribute('aria-label'),
     });
   })()`));
-  if (floorA11y.headings) problems.push(tag(`item 5: a visible "On the floor" heading is still in #gamemode (${floorA11y.headings} match(es))`));
+  rec.check(!floorA11y.headings, tag(`item 5: a visible "On the floor" heading is still in #gamemode (${floorA11y.headings} match(es))`));
   if (!/played/i.test(floorA11y.floorLabel || '') || !/projected/i.test(floorA11y.floorLabel || '')) {
-    problems.push(tag(`item 5: #gmFloor aria-label is ${JSON.stringify(floorA11y.floorLabel)}, want it to say the numbers are minutes played of projected`));
+    rec.fail(tag(`item 5: #gmFloor aria-label is ${JSON.stringify(floorA11y.floorLabel)}, want it to say the numbers are minutes played of projected`));
   } else measured++;
   notes.push(tag('item 5: no visible "On the floor" heading; #gmFloor carries the meaning for screen readers'));
 
@@ -252,31 +252,31 @@ async function runTheme(c, origin, theme, problems, notes) {
       cols, colors,
     });
   })()`));
-  if (next1.border !== 0) problems.push(tag(`item 6: #gmNext has a ${next1.border}px border, want 0`));
-  if (next1.bg !== sheet) problems.push(tag(`item 6: #gmNext paints ${next1.bg}, want ${sheet} (--sheet)`));
-  if (next1.icons) problems.push(tag(`item 6: #gmNext still has ${next1.icons} icon(s), want none`));
-  if (next1.hd !== 'Next change at 4:00') problems.push(tag(`item 6: #gmNext's header reads ${JSON.stringify(next1.hd)}, want "Next change at 4:00"`));
-  if (Number(next1.hdWeight) < 600) problems.push(tag(`item 6: #gmNext's header font-weight is ${next1.hdWeight}, want 600`));
+  rec.check(next1.border === 0, tag(`item 6: #gmNext has a ${next1.border}px border, want 0`));
+  rec.check(next1.bg === sheet, tag(`item 6: #gmNext paints ${next1.bg}, want ${sheet} (--sheet)`));
+  rec.check(!next1.icons, tag(`item 6: #gmNext still has ${next1.icons} icon(s), want none`));
+  rec.check(next1.hd === 'Next change at 4:00', tag(`item 6: #gmNext's header reads ${JSON.stringify(next1.hd)}, want "Next change at 4:00"`));
+  rec.check(Number(next1.hdWeight) >= 600, tag(`item 6: #gmNext's header font-weight is ${next1.hdWeight}, want 600`));
   const off1 = next1.cols.find(cl => cl.cls.includes('off')), on1 = next1.cols.find(cl => cl.cls.includes('on'));
-  if (!off1 || off1.label !== 'Off') problems.push(tag(`item 6: no "Off" column found (got ${JSON.stringify(off1)})`));
-  if (!on1 || on1.label !== 'On') problems.push(tag(`item 6: no "On" column found (got ${JSON.stringify(on1)})`));
-  if (!off1?.names.length || !on1?.names.length) problems.push(tag('item 6: the Off/On columns are empty on stint 1, want at least one name each'));
+  rec.check(off1 && off1.label === 'Off', tag(`item 6: no "Off" column found (got ${JSON.stringify(off1)})`));
+  rec.check(on1 && on1.label === 'On', tag(`item 6: no "On" column found (got ${JSON.stringify(on1)})`));
+  rec.check(off1?.names.length && on1?.names.length, tag('item 6: the Off/On columns are empty on stint 1, want at least one name each'));
   const stray = next1.colors.filter(cl => cl !== inkText && cl !== mutedText);
-  if (stray.length) problems.push(tag(`item 6: #gmNext has text painted ${[...new Set(stray)].join(', ')}, want only --ink/--muted`));
+  if (stray.length) rec.fail(tag(`item 6: #gmNext has text painted ${[...new Set(stray)].join(', ')}, want only --ink/--muted`));
   else measured++;
   notes.push(tag('item 6: #gmNext is a borderless --sheet box, no icons, "Next change at 4:00", Off/On columns, ink/muted text only'));
 
   /* ---- item 6: cross-period case -- Q1's second stint changes into Q2 ---- */
   await evalIn(c, step(`document.getElementById('gmNext2').click()`));
   const next2hd = await evalIn(c, `document.querySelector('.gm-next-hd').textContent`);
-  if (next2hd !== 'Next change at Q2 8:00') problems.push(tag(`item 6: stepping into Q1's last stint reads ${JSON.stringify(next2hd)}, want "Next change at Q2 8:00" (the period carries across a period boundary)`));
+  if (next2hd !== 'Next change at Q2 8:00') rec.fail(tag(`item 6: stepping into Q1's last stint reads ${JSON.stringify(next2hd)}, want "Next change at Q2 8:00" (the period carries across a period boundary)`));
   else measured++;
   await evalIn(c, step(`document.getElementById('gmPrev').click()`)); // back to stint 1
   notes.push(tag('item 6: the period name reappears when the next change crosses into a new period'));
 
   /* ---- item 7: the bench label, unpicked and picked ---- */
   const unpicked = await evalIn(c, `document.getElementById('gmBenchLab').textContent.trim()`);
-  if (unpicked !== 'Bench · tap a player on the floor to swap') problems.push(tag(`item 7: #gmBenchLab reads ${JSON.stringify(unpicked)} with nothing picked`));
+  if (unpicked !== 'Bench · tap a player on the floor to swap') rec.fail(tag(`item 7: #gmBenchLab reads ${JSON.stringify(unpicked)} with nothing picked`));
   else measured++;
   const pickInfo = JSON.parse(await evalIn(c, `(async () => {
     const row = document.querySelector('#gmFloor .gm-p');
@@ -296,7 +296,7 @@ async function runTheme(c, origin, theme, problems, notes) {
   // callNames' own collision logic.
   const firstName = pickInfo.fullName.split(' ')[0];
   if (!pickInfo.text.startsWith(`Bench · tap who goes on for ${firstName}`)) {
-    problems.push(tag(`item 7: with ${JSON.stringify(pickInfo.fullName)} picked, #gmBenchLab reads ${JSON.stringify(pickInfo.text)}, want it to start with "Bench · tap who goes on for ${firstName}"`));
+    rec.fail(tag(`item 7: with ${JSON.stringify(pickInfo.fullName)} picked, #gmBenchLab reads ${JSON.stringify(pickInfo.text)}, want it to start with "Bench · tap who goes on for ${firstName}"`));
   } else measured++;
   notes.push(tag('item 7: the bench label reads the unpicked/picked sentences, with the real call name'));
 
@@ -329,24 +329,24 @@ async function runTheme(c, origin, theme, problems, notes) {
     });
   })()`));
   const probeColor = await evalIn(c, `(${CSS_VAR_COLOR_PROBE})(${JSON.stringify(bench8.c || 'transparent')})`);
-  if (!bench8.c) problems.push(tag('item 8: a bench row has no --c custom property to check its badge color against'));
-  else if (bench8.bg !== probeColor) problems.push(tag(`item 8: a bench badge paints ${bench8.bg}, want ${probeColor} (its own --c, the player's color)`));
+  if (!bench8.c) rec.fail(tag('item 8: a bench row has no --c custom property to check its badge color against'));
+  else if (bench8.bg !== probeColor) rec.fail(tag(`item 8: a bench badge paints ${bench8.bg}, want ${probeColor} (its own --c, the player's color)`));
   else measured++;
-  if (bench8.boxShadow !== 'none') problems.push(tag(`item 8: a bench badge has box-shadow ${bench8.boxShadow}, want none (no outlined ring)`));
-  if (bench8.outlineStyle !== 'none' && parseFloat(bench8.outline) > 0) problems.push(tag('item 8: a bench badge has an outline, want none'));
-  if (bench8.mnColor !== mutedText) problems.push(tag(`item 8: .gm-b .mn paints ${bench8.mnColor}, want ${mutedText} (--muted, prototype: .bench-l button .m)`));
-  if (bench8.mnNodeWeights.some(w => w !== '400')) problems.push(tag(`item 8: .gm-b .mn has a text node at font-weight ${bench8.mnNodeWeights.join('/')}, want 400 throughout (the played digits must not be bold, prototype: .bench-l button .m)`));
+  rec.check(bench8.boxShadow === 'none', tag(`item 8: a bench badge has box-shadow ${bench8.boxShadow}, want none (no outlined ring)`));
+  rec.check(bench8.outlineStyle === 'none' || parseFloat(bench8.outline) <= 0, tag('item 8: a bench badge has an outline, want none'));
+  rec.check(bench8.mnColor === mutedText, tag(`item 8: .gm-b .mn paints ${bench8.mnColor}, want ${mutedText} (--muted, prototype: .bench-l button .m)`));
+  if (bench8.mnNodeWeights.some(w => w !== '400')) rec.fail(tag(`item 8: .gm-b .mn has a text node at font-weight ${bench8.mnNodeWeights.join('/')}, want 400 throughout (the played digits must not be bold, prototype: .bench-l button .m)`));
   else measured++;
-  if (bench8.mnFontSize !== bodyFont) problems.push(tag(`item 8: .gm-b .mn font-size is ${bench8.mnFontSize}, want ${bodyFont} (--fs-body, prototype: 17px)`));
+  if (bench8.mnFontSize !== bodyFont) rec.fail(tag(`item 8: .gm-b .mn font-size is ${bench8.mnFontSize}, want ${bodyFont} (--fs-body, prototype: 17px)`));
   else measured++;
-  if (bench8.nmWeight !== '400') problems.push(tag(`item 8: .gm-b .nm font-weight is ${bench8.nmWeight}, want 400 (prototype: .bench-l button, unbolded)`));
+  if (bench8.nmWeight !== '400') rec.fail(tag(`item 8: .gm-b .nm font-weight is ${bench8.nmWeight}, want 400 (prototype: .bench-l button, unbolded)`));
   else measured++;
   // the row itself, in the picked state (a floor player is picked at this
   // point, left live by item 7) -- it must look the same picked or not: no
   // border on any side, no outline, the same list separators as unpicked.
   const rowHasBorder = bench8.rowBorderWidths.some((w, i) => w > 0 && bench8.rowBorderStyles[i] !== 'none');
-  if (rowHasBorder) problems.push(tag(`item 8: a picked-state bench row has a border (widths ${bench8.rowBorderWidths.join('/')}px, styles ${bench8.rowBorderStyles.join('/')}), want none -- picked and unpicked rows must look the same`));
-  if (bench8.rowOutlineStyle !== 'none' && parseFloat(bench8.rowOutlineWidth) > 0) problems.push(tag(`item 8: a picked-state bench row has an outline (${bench8.rowOutlineWidth} ${bench8.rowOutlineStyle}), want none`));
+  rec.check(!rowHasBorder, tag(`item 8: a picked-state bench row has a border (widths ${bench8.rowBorderWidths.join('/')}px, styles ${bench8.rowBorderStyles.join('/')}), want none -- picked and unpicked rows must look the same`));
+  rec.check(bench8.rowOutlineStyle === 'none' || parseFloat(bench8.rowOutlineWidth) <= 0, tag(`item 8: a picked-state bench row has an outline (${bench8.rowOutlineWidth} ${bench8.rowOutlineStyle}), want none`));
   if (!rowHasBorder && (bench8.rowOutlineStyle === 'none' || parseFloat(bench8.rowOutlineWidth) === 0)) measured++;
   notes.push(tag("item 8: bench badges are filled with the player's own color, no ring; picked-state rows carry no border/outline either"));
 
@@ -360,17 +360,17 @@ async function runTheme(c, origin, theme, problems, notes) {
       return { ...rect(el), radius: parseFloat(cs.borderTopLeftRadius), bg: cs.backgroundColor }; };
     return JSON.stringify({ done: shape('gmDone'), prev: shape('gmPrev'), next2: shape('gmNext2'), dots: !!document.getElementById('gmDots') });
   })()`));
-  if (!(foot.done.h >= 48)) problems.push(tag(`item 9: #gmDone is ${Math.round(foot.done.h)}px tall, want >=48`));
-  if (!(foot.done.radius >= foot.done.h / 2 - 0.5)) problems.push(tag(`item 9: #gmDone border-radius ${foot.done.radius} on a ${Math.round(foot.done.h)}px pill, want at least half its height`));
-  if (foot.done.bg === tint) problems.push(tag(`item 9: #gmDone paints the primary tint ${tint}, want the raised surface`));
+  rec.check(foot.done.h >= 48, tag(`item 9: #gmDone is ${Math.round(foot.done.h)}px tall, want >=48`));
+  rec.check(foot.done.radius >= foot.done.h / 2 - 0.5, tag(`item 9: #gmDone border-radius ${foot.done.radius} on a ${Math.round(foot.done.h)}px pill, want at least half its height`));
+  rec.check(foot.done.bg !== tint, tag(`item 9: #gmDone paints the primary tint ${tint}, want the raised surface`));
   for (const [name, box] of [['prev', foot.prev], ['next2', foot.next2]]) {
-    if (box.w < 48 || box.h < 48) problems.push(tag(`item 9: #gm${name} is ${Math.round(box.w)}x${Math.round(box.h)}, want >=48x48`));
-    if (Math.abs(box.w - box.h) > 0.5) problems.push(tag(`item 9: #gm${name} is ${box.w}x${box.h}, want width == height (round)`));
-    if (!(box.radius >= box.h / 2 - 0.5)) problems.push(tag(`item 9: #gm${name} border-radius ${box.radius} on a ${Math.round(box.h)}px control, want at least half its height`));
+    rec.check(box.w >= 48 && box.h >= 48, tag(`item 9: #gm${name} is ${Math.round(box.w)}x${Math.round(box.h)}, want >=48x48`));
+    rec.check(Math.abs(box.w - box.h) <= 0.5, tag(`item 9: #gm${name} is ${box.w}x${box.h}, want width == height (round)`));
+    rec.check(box.radius >= box.h / 2 - 0.5, tag(`item 9: #gm${name} border-radius ${box.radius} on a ${Math.round(box.h)}px control, want at least half its height`));
   }
-  if (foot.next2.bg !== tint) problems.push(tag(`item 9: #gmNext2 paints ${foot.next2.bg}, want ${tint} (--tint, K1's primary fill)`));
-  if (foot.prev.bg === tint) problems.push(tag(`item 9: #gmPrev paints the primary tint ${tint}, want the raised surface`));
-  if (!foot.dots) problems.push(tag('item 9: #gmDots is gone, want the dot strip to stay'));
+  rec.check(foot.next2.bg === tint, tag(`item 9: #gmNext2 paints ${foot.next2.bg}, want ${tint} (--tint, K1's primary fill)`));
+  rec.check(foot.prev.bg !== tint, tag(`item 9: #gmPrev paints the primary tint ${tint}, want the raised surface`));
+  if (!foot.dots) rec.fail(tag('item 9: #gmDots is gone, want the dot strip to stay'));
   else measured++;
   notes.push(tag('item 9: Done/Finish game are pills, ‹/› are round, › carries --tint, the dots stay'));
 
@@ -382,17 +382,17 @@ async function runTheme(c, origin, theme, problems, notes) {
     const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
     return JSON.stringify({ hidden: false, h: r.height, radius: parseFloat(cs.borderTopLeftRadius), bg: cs.backgroundColor });
   })()`));
-  if (finish.hidden) problems.push(tag('item 9: #gmFinish never showed on the last stint'));
+  if (finish.hidden) rec.fail(tag('item 9: #gmFinish never showed on the last stint'));
   else {
     measured++;
-    if (!(finish.h >= 48)) problems.push(tag(`item 9: #gmFinish is ${Math.round(finish.h)}px tall, want >=48`));
-    if (!(finish.radius >= finish.h / 2 - 0.5)) problems.push(tag(`item 9: #gmFinish border-radius ${finish.radius} on a ${Math.round(finish.h)}px pill, want at least half its height`));
-    if (finish.bg === tint) problems.push(tag(`item 9: #gmFinish paints the primary tint ${tint}, want a pill like Done (the raised surface)`));
+    rec.check(finish.h >= 48, tag(`item 9: #gmFinish is ${Math.round(finish.h)}px tall, want >=48`));
+    rec.check(finish.radius >= finish.h / 2 - 0.5, tag(`item 9: #gmFinish border-radius ${finish.radius} on a ${Math.round(finish.h)}px pill, want at least half its height`));
+    rec.check(finish.bg !== tint, tag(`item 9: #gmFinish paints the primary tint ${tint}, want a pill like Done (the raised surface)`));
   }
   await evalIn(c, step(`while (!document.getElementById('gmPrev').disabled) { document.getElementById('gmPrev').click(); }`));
   notes.push(tag('item 9: #gmFinish is a pill like Done, not the primary fill'));
 
-  if (measured < 12) problems.push(tag(`only ${measured}/12+ measurements were taken -- a selector stopped matching`));
+  rec.check(measured >= 12, tag(`only ${measured}/12+ measurements were taken -- a selector stopped matching`));
 
   await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
 }
@@ -514,7 +514,7 @@ const NAME_WORD_PROBE = `(() => {
   });
 })()`;
 
-async function runLargeText(c, origin, problems, notes) {
+async function runLargeText(c, origin, rec, notes) {
   try {
     await land(c, origin, { record: richWithLongName(), ...LARGE_TEXT });
     await evalIn(c, step(OPEN_BENCH));
@@ -527,15 +527,15 @@ async function runLargeText(c, origin, problems, notes) {
     // that measured nothing (no Lindqvist row, or its word split onto more
     // than one line) fails rather than passing quietly.
     if (!r.calibration) {
-      problems.push(`${where}: no "Casey Lindqvist" row was measured to calibrate the word floor against`);
+      rec.fail(`${where}: no "Casey Lindqvist" row was measured to calibrate the word floor against`);
     } else if (r.calibration.longestWord !== 'Lindqvist') {
-      problems.push(`${where}: "Casey Lindqvist"'s longest word measured as `
+      rec.fail(`${where}: "Casey Lindqvist"'s longest word measured as `
         + `${JSON.stringify(r.calibration.longestWord)}, want "Lindqvist"`);
     } else if (r.calibration.lines !== 1) {
-      problems.push(`${where}: "${r.calibration.longestWord}" drew across ${r.calibration.lines} lines, `
+      rec.fail(`${where}: "${r.calibration.longestWord}" drew across ${r.calibration.lines} lines, `
         + `want one -- the calibration needs a single-line word`);
     } else if (Math.abs(r.calibration.longest - r.calibration.drawn) > 1) {
-      problems.push(`${where}: "${r.calibration.longestWord}" measured ${r.calibration.longest}px but draws `
+      rec.fail(`${where}: "${r.calibration.longestWord}" measured ${r.calibration.longest}px but draws `
         + `${r.calibration.drawn}px -- the word floor is not using the row's own font (WORD_FONT_PROPS in dom.mjs)`);
     } else {
       notes.push(`${where}: "${r.calibration.longestWord}" measured ${r.calibration.longest}px, `
@@ -544,30 +544,20 @@ async function runLargeText(c, origin, problems, notes) {
 
     if (!r.rows.length) {
       // rule 2a of /new-guard: a check that measured nothing fails.
-      problems.push(`${where}: no floor or bench name was on screen to measure`);
+      rec.fail(`${where}: no floor or bench name was on screen to measure`);
     } else {
       for (const row of r.rows) {
-        if (row.width + 1 < row.floor) {
-          problems.push(`${where}: "${row.text}" is ${Math.round(row.width)}px wide, `
+        rec.check(row.width + 1 >= row.floor, `${where}: "${row.text}" is ${Math.round(row.width)}px wide, `
             + `narrower than min(its longest word ${row.longest}px, its row's own content width `
             + `${row.rowContent}px) = ${Math.round(row.floor)}px -- something beside the name is `
             + `taking its space`);
-        }
-        if (!row.contained) {
-          problems.push(`${where}: "${row.text}" paints outside its own row or the viewport`);
-        }
+        rec.check(row.contained, `${where}: "${row.text}" paints outside its own row or the viewport`);
       }
-      if (!r.rows.some(row => row.text === LONG_FLOOR_NAME)) {
-        problems.push(`${where}: "${LONG_FLOOR_NAME}" never appeared among the measured floor/bench names`);
-      }
+      rec.check(r.rows.some(row => row.text === LONG_FLOOR_NAME), `${where}: "${LONG_FLOOR_NAME}" never appeared among the measured floor/bench names`);
     }
-    if (r.overlap) {
-      problems.push(`${where}: #gmClose ${JSON.stringify(r.close)} overlaps .gm-title ${JSON.stringify(r.title)}`);
-    }
+    rec.check(!r.overlap, `${where}: #gmClose ${JSON.stringify(r.close)} overlaps .gm-title ${JSON.stringify(r.title)}`);
     const ov = JSON.parse(await evalIn(c, OVERFLOW_PROBE));
-    if (ov.pans || ov.worst) {
-      problems.push(`${where}: the page itself scrolls or overflows horizontally: ${JSON.stringify(ov)}`);
-    }
+    rec.check(!ov.pans && !ov.worst, `${where}: the page itself scrolls or overflows horizontally: ${JSON.stringify(ov)}`);
     notes.push(`${where}: every floor/bench name gets at least its row's own content width or its `
       + `longest word (whichever is smaller), stays on screen, #gmClose does not overlap the title, `
       + `and the page does not pan sideways`);
@@ -576,26 +566,18 @@ async function runLargeText(c, origin, problems, notes) {
   }
 }
 
-export async function benchLookPass(c, origin) {
-  const problems = [];
+export async function benchLookPass(c, origin, rec) {
   const notes = [];
 
   try {
     for (const theme of ['light', 'dark']) {
-      await runTheme(c, origin, theme, problems, notes);
+      await runTheme(c, origin, theme, rec, notes);
     }
-    await runLargeText(c, origin, problems, notes);
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    await runLargeText(c, origin, rec, notes);
   } finally {
     await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
     await evalIn(c, step(TODAY_HOME));
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}${problems.length > 4 ? ` (+${problems.length - 4} more)` : ''}`
-      : notes.filter(n => n.startsWith('(light)')).join('; '),
-  };
+  rec.ok(notes.filter(n => n.startsWith('(light)')).join('; '));
 }

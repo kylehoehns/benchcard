@@ -188,9 +188,7 @@ async function settingsControlsPass(c, ck, origin) {
   await tap(c, TODAY_HOME);
 }
 
-export async function settingsLookPass(c, origin) {
-  const problems = [];
-  const ck = (ok, msg) => { if (!ok) problems.push(msg); return ok; };
+export async function settingsLookPass(c, origin, rec) {
   let measured = 0;
 
   try {
@@ -200,46 +198,29 @@ export async function settingsLookPass(c, origin) {
         await resize(c, width);
         await tap(c, `document.querySelector('#settingsBtn').click()`);
         const look = await evalJSON(c, READ_LOOK);
-        if (!look) { problems.push(`${theme}/${width}px: #view-settings not open -- nothing to measure`); continue; }
+        if (!rec.check(look, `${theme}/${width}px: #view-settings not open -- nothing to measure`)) continue;
 
-        if (look.bordered.length) {
-          problems.push(`${theme}/${width}px: ${look.bordered.length} .pgrp group(s) carry a border`);
-        }
+        rec.check(!look.bordered.length, `${theme}/${width}px: ${look.bordered.length} .pgrp group(s) carry a border`);
         for (const ins of look.insets) {
           measured++;
-          if (Math.abs(ins.left - 32) > TOL) {
-            problems.push(`${theme}/${width}px: "${ins.text}" text starts at ${ins.left.toFixed(1)}px, want 32px`);
-          }
-          if (ins.textTransform !== 'none') {
-            problems.push(`${theme}/${width}px: "${ins.text}" text-transform is ${ins.textTransform}, want none`);
-          }
-          if (ins.letterSpacing !== 'normal' && parseFloat(ins.letterSpacing) > 0) {
-            problems.push(`${theme}/${width}px: "${ins.text}" letter-spacing is ${ins.letterSpacing}, want normal or tighter, not tracked out`);
-          }
+          rec.check(!(Math.abs(ins.left - 32) > TOL), `${theme}/${width}px: "${ins.text}" text starts at ${ins.left.toFixed(1)}px, want 32px`);
+          rec.check(ins.textTransform === 'none', `${theme}/${width}px: "${ins.text}" text-transform is ${ins.textTransform}, want none`);
+          rec.check(!(ins.letterSpacing !== 'normal' && parseFloat(ins.letterSpacing) > 0), `${theme}/${width}px: "${ins.text}" letter-spacing is ${ins.letterSpacing}, want normal or tighter, not tracked out`);
         }
         const overCount = look.footnoteCounts.filter(n => n > 1).length;
-        if (overCount) problems.push(`${theme}/${width}px: ${overCount} group(s) show more than one footnote`);
+        rec.check(!overCount, `${theme}/${width}px: ${overCount} group(s) show more than one footnote`);
 
         await tap(c, TODAY_HOME);
       }
     }
 
-    await settingsControlsPass(c, ck, origin);
+    await settingsControlsPass(c, rec.check, origin);
 
     // Rule 2a: a run that never found #view-settings open measured nothing.
-    if (measured === 0 && problems.length === 0) {
-      problems.push('no header or footnote was measured in any pass -- a broken probe, not a pass');
-    }
-  } catch (e) {
-    problems.push(e.message.split('\n')[0]);
+    rec.check(measured > 0, 'no header or footnote was measured in any pass -- a broken probe, not a pass');
   } finally {
     await resize(c, 390);
   }
 
-  return {
-    pass: problems.length === 0,
-    detail: problems.length
-      ? `${problems.length} problem(s): ${problems.slice(0, 4).join(' | ')}`
-      : `${measured} header/footnote(s) at 32px, sentence case, no .pgrp border, one footnote per group -- ${WIDTHS.join('/')}px, light and dark; the policy controls write what they say`,
-  };
+  rec.ok(`${measured} header/footnote(s) at 32px, sentence case, no .pgrp border, one footnote per group -- ${WIDTHS.join('/')}px, light and dark; the policy controls write what they say`);
 }
