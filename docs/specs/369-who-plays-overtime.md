@@ -125,6 +125,24 @@ Out players, refilled per item 9. Hand swaps go on top as today.
 Decided while surveying (the ticket's claims that did not hold):
 - `notes/DECISIONS.md` is closed ("no longer appended"); the decision goes in
   `docs/adr/` per `AGENTS.md`.
+- Settled in the fix pass after review:
+  - Even out is decided over the stints that are not pinned, so an Even-out
+    period next to a Keep or Strongest period is still planned as Even. A mix
+    of Even out with anything else in one re-plan (regulation stints left in the
+    suffix, or an Even-out period beside a Next rotation one) stays on the
+    game's strategy: there is one solve per re-plan and no second planner.
+    Reset plans each Even-out period on its own, so it is exact there.
+  - Only the stints that are not pinned are solved. The pinned fives count as
+    minutes already played for caps, minimums and fairness, and the budget is
+    the open stints.
+  - The #134 fallback in `syncOverrides` keeps pins: it writes the pinned fives
+    back after it drops the swaps. The regulation it rewrites is the coach's
+    played game; the overtime they chose is not the plan's to move.
+  - Reset (`resetRest` in state.js) puts pinned periods back on their stored
+    five and plans Even-out periods again as Even through `resolveRest`; none
+    of it counts as a hand swap.
+  - A pinning choice with no five to settle on (the plan did not solve) is not
+    added: "Overtime could not be added."
 - No "sat for the rest" list is stored, so Strongest five leaves out only
   `g.out` players; the coach swaps a sat player off by hand.
 

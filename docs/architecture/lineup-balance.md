@@ -26,7 +26,8 @@ now holds the property directly: hold every input still, change only the
 levels, and every total comes back identical. The one way a level can reach a
 total is the coach asking for it out loud -- `settings.tieBreak: 'levels'`,
 which is composed outside the engine and is described with the tie-break
-below.
+below. The other is one overtime the coach set to Strongest five, whose five
+is picked by Level ([ADR 0001](../adr/0001-level-picks-the-overtime-five.md)).
 
 Four shapes, set per game as `game.balance`: `even`, `start`, `finish`, `both`.
 

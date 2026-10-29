@@ -151,14 +151,16 @@ bare glyph, and that tag always matches the previous stint's On column.
 offers **Tied? Add overtime** under the "Game ends at 0:00." line, and it is gone once
 the game is finished. The sheet asks for whole minutes from 1 to 10. It is
 prefilled with the length the team added last time, which is the team setting
-`overtimeMinutes` (2 until a team has added any). "Add overtime" is one
-`undoable` step, "Overtime added, N min.": the minutes join the game's
-overtime, the plan is solved again with the stints already played frozen so
-they do not move, and the game steps onto the first overtime stint. Undo takes
-all of it back, the remembered length included, because it restores the whole
-snapshot. The button comes back on the last overtime stint, and a second
-overtime is named OT2. Who is on the floor in overtime follows the game's
-strategy; the per-strategy rules are in
+`overtimeMinutes` (2 until a team has added any). The sheet also asks **Who
+plays** (#369), with four choices: Next rotation, Even out, Keep this five and
+Strongest five. Next rotation is selected each time the sheet opens. "Add
+overtime" is one `undoable` step, "Overtime added, N min.": the minutes and
+the choice join the game's overtime, the plan is solved again with the stints
+already played frozen so they do not move, and the game steps onto the first
+overtime stint. Undo takes all of it back, the remembered length included,
+because it restores the whole snapshot. The button comes back on the last
+overtime stint, and a second overtime is named OT2. Who is on the floor in
+each overtime follows the choice made for it; the rules are in
 [planning-strategies.md](planning-strategies.md).
 
 Each player shows **played / projected** — minutes from the stints already
@@ -195,7 +197,10 @@ still reads as a column down the list.
 
 Reality diverges from the plan, so a swap here **overrides** the plan for the
 current stint or the rest of the game rather than re-solving underneath the
-coach mid-game. Overrides persist per game and can be reset back to the plan.
+coach mid-game. Overrides persist per game and can be reset back to the plan,
+except that a pinned overtime stint goes back to its stored five and an Even
+out overtime is planned again as Even out
+([planning-strategies.md](planning-strategies.md)).
 
 There is a third scope, **"Sit for the rest"**, and it is the one case where the
 app does re-solve: the picked player is out for the rest of the game and
@@ -224,7 +229,8 @@ remainder the solver cannot cover: the toast names the rule that stopped it
 (`SIT_RULES` in `gamemode.js`, keyed by the solver's own error codes) rather
 than saying "one of your rules". The engine's own message is not reused there,
 because every one of those sentences is written about a whole game and inside a
-suffix solve its numbers are the remainder's.
+suffix solve its numbers are the remainder's. An overtime the coach set to Even
+out is planned as Even under any strategy (#369).
 
 Any change in bench mode makes the card in the coach's pocket stale, so the
 line under the bar says how many stints no longer match it — counted against

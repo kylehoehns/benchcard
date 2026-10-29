@@ -19,8 +19,8 @@ import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './tra
 import { track } from './analytics.js';
 import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
-         resolveRest, benchOpen, setBenchOpen, addOvertime, pinnedFives } from './state.js';
-import { stage, stintIndex, handStints, writeOverrides, clearRest, resetFrom, openGame, step, finish } from './live.js';
+         resolveRest, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+import { stage, stintIndex, handStints, writeOverrides, resetFrom, openGame, step, finish } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
 let render = () => {};
@@ -1109,9 +1109,8 @@ function gmStep(d) {
 /* Back to the printed plan. The caller wraps this in `undoable`, so it only
    mutates -- the repaint is the caller's second argument. */
 export function clearOverrides() {
-  const live = liveOf(game());
-  // an overtime the coach chose the five for goes back to that five, not the plan's
-  clearRest(live, pinnedFives(game(), plans[state.activeGame], resetFrom(live)));
+  // an overtime the coach chose the five for goes back to that choice, not the plan's
+  resetRest(game());
   gmPick = null;
 }
 

@@ -26,7 +26,37 @@ never both on plus never both off is exactly one of them, always.
 
 **Overtime is planned after regulation (#368).** A game that is tied and goes
 to overtime keeps its regulation stints as they were played, and only the
-overtime stints are planned, with the game's own strategy:
+overtime stints are planned.
+
+Each overtime has its own **Who plays** choice, picked in the Overtime sheet
+and stored with that overtime (#369). Each overtime period keeps its own
+choice, so a first overtime and a second can differ:
+
+- **Next rotation** -- the game's own strategy, as set out below. This is the
+  default each time the sheet opens.
+- **Even out** -- planned as Even whatever the game's strategy. The closing
+  group and the units do not apply in that overtime.
+- **Keep this five** -- the five on the floor on the last regulation stint,
+  hand swaps included.
+- **Strongest five** -- the five highest-Level available players, ties going
+  to whoever has played fewer minutes. Level is never shown; this choice is
+  the one place it picks minutes. See
+  [ADR 0001](../adr/0001-level-picks-the-overtime-five.md).
+
+Keep and Strongest work out their five once, when the overtime is added, and
+store it. A re-plan does not move that five: not a hand swap that re-plans
+later stints, not Reset (`#gmReset` puts a pinned overtime stint back on its
+stored five, not on the plan, and plans an Even out overtime again as Even
+out), not the #134 "rotation changed" fallback, which writes the pinned fives
+back after it drops the swaps, and not a Plays at most or Apart rule. Only the
+stints that are not pinned are solved; the pinned fives count as minutes
+already played. Caps and
+Apart rules do not apply to a pinned five. A hand swap on a pinned stint still
+works. When a pinned player goes Out, or is sat for the rest, their place is
+filled from the available players: for Strongest five by highest Level, then
+fewest minutes; for Keep this five by fewest minutes. The other four stay.
+
+The game's own strategy, for Next rotation:
 
 - **Even** -- the player with the fewest minutes after regulation is on the
   floor first.
@@ -40,5 +70,5 @@ overtime stints are planned, with the game's own strategy:
 - **Plays at most** -- a player at their cap after regulation is not on the
   floor in overtime.
 
-No strategy drops a hand swap that was already made. The Overtime sheet and
+No choice drops a hand swap that was already made. The Overtime sheet and
 its Undo are in [bench-mode.md](bench-mode.md).

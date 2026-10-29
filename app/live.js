@@ -93,12 +93,8 @@ export function keepThrough(live, keep) {
   pruneHand(live);
 }
 
-/* `pins` is a set of fives (stint index -> ids) that go back on the record
-   after the trim and are not by hand: the overtime stints whose five the coach
-   chose (#369), which "back to the printed plan" restores rather than clears. */
-export function clearRest(live, pins = {}) {
+export function clearRest(live) {
   keepThrough(live, resetFrom(live));
-  if (Object.keys(pins).length) Object.assign(live.overrides ||= {}, pins);
 }
 
 /* A five with `id` in it is no longer a lineup: delete it from stint `from`

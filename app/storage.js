@@ -1,6 +1,8 @@
 // Persistence for a local-only app. There is no server to recover from, so a
 // corrupt or half-written record must not cost the coach their roster.
 
+import { ON_FLOOR } from './budget.js';
+
 export const KEY = 'benchcard.v7';
 export const BACKUP_KEY = 'benchcard.v7.bak';
 /* Older schemas are read, never written. A new key rather than a new shape
@@ -96,8 +98,7 @@ export const validOvertime = m => Number.isInteger(m) && m >= 1 && m <= 10;
    for the two that pin one. A bare number is the shape before #369 and loads
    as a Next rotation period. */
 const OVERTIME_WHO = ['next', 'even', 'keep', 'strongest'];
-const PINS = ['keep', 'strongest'];
-const FIVE = 5;
+export const PINS = ['keep', 'strongest'];
 /* The one mapping from a period to its length: every reader that wants minutes
    (the engine's format, the season record) goes through here, and a legacy
    bare number is read the same as its upgraded entry. */
@@ -110,7 +111,7 @@ const cleanOvertime = (v, known) => (Array.isArray(v)
     .map(o => {
       const who = OVERTIME_WHO.includes(o.who) ? o.who : 'next';
       const five = PINS.includes(who) && Array.isArray(o.five) && known
-        ? [...new Set(o.five.filter(id => known.has(id)))].slice(0, FIVE) : [];
+        ? [...new Set(o.five.filter(id => known.has(id)))].slice(0, ON_FLOOR) : [];
       return { minutes: o.minutes, who, ...(five.length ? { five } : {}) };
     })
   : []);

@@ -433,11 +433,125 @@ test('pinned fives are not moved when a later re-plan runs from the first overti
   run({}, g => {
     S.addOvertime(g, 8, 'keep');
     const five = sorted(fives(g)[REG]);
-    S.computeAll();
+    const printed = () => JSON.stringify(S.plans[0].stints.map(s => s.onFloor));
+    const was = printed();
     g.seed = g.seed + 1;
     S.computeAll();
+    assert.notEqual(printed(), was, 'the premise: the printed plan moved');
+    const r = S.resolveRest(g, S.plans[0], REG);
+    assert.equal(r.ok, true);
+    assert.deepEqual(sorted(r.overrides[REG]), five);
+    assert.deepEqual(sorted(r.overrides[REG + 1]), five);
     assert.deepEqual(sorted(fives(g)[REG]), five);
     assert.deepEqual(sorted(fives(g)[REG + 1]), five);
+  });
+});
+
+/* The review pass on #369. */
+const CLOSING = ['p0', 'p1', 'p2', 'p3', 'p4'];
+const closersGame = () => ({ strategy: 'closers', constraints: { ...S.emptyConstraints(), closing: { stints: 2, players: CLOSING } } });
+
+test('even out beside a pinned period is still planned as Even, not as the game\'s Closers', () => {
+  run(closersGame(), g => {
+    S.addOvertime(g, 4, 'even');
+    g.live.at = REG;                       // on the one stint of OT
+    S.addOvertime(g, 4, 'keep');
+    const played = minutesThrough(g, REG);
+    const fewest = Math.min(...Object.values(played));
+    const lightest = ALL.filter(id => played[id] === fewest);
+    const r = S.resolveRest(g, S.plans[0], REG);
+    assert.equal(r.ok, true);
+    assert.ok(lightest.every(id => r.overrides[REG].includes(id)), `${lightest} played ${fewest} and should be on`);
+    assert.notDeepEqual(sorted(r.overrides[REG]), CLOSING, 'the closing group does not apply to Even out');
+  });
+});
+
+test('a pinned period counts as minutes played: players capped to play only it are not put on again', () => {
+  run({}, g => {
+    S.addOvertime(g, 4, 'keep');           // OT: one pinned stint of 4 minutes
+    g.overtime.push({ minutes: 8, who: 'next' });
+    S.computeAll();
+    const pinned = g.overtime[0].five;
+    const played = minutesThrough(g, REG);
+    // two on the pinned five may play that stint and nothing more
+    const capped = pinned.slice(0, 2);
+    g.constraints.maxMinutes = Object.fromEntries(capped.map(id => [id, played[id] + 4]));
+    const r = S.resolveRest(g, S.plans[0], REG);
+    assert.equal(r.ok, true);
+    assert.deepEqual(sorted(r.overrides[REG]), sorted(pinned));
+    for (const k of [REG + 1, REG + 2]) {
+      assert.equal(r.overrides[k].length, 5);
+      assert.deepEqual(r.overrides[k].filter(id => capped.includes(id)), [], `stint ${k} puts a capped player on again`);
+    }
+  });
+});
+
+test('a rotation change that falls back to #134 keeps the pinned overtime fives', () => {
+  run({}, g => {
+    S.addOvertime(g, 8, 'keep');
+    const five = sorted(fives(g)[REG]);
+    g.periodMinutes = 12;                  // the grid moved: the freeze cannot hold
+    S.computeAll();
+    assert.deepEqual(S.rotationMoved(), ['g0'], 'the premise: this is the #134 path');
+    const ot = S.plans[0].stints.map((s, i) => (s.period > g.periods ? i : -1)).filter(i => i >= 0);
+    assert.equal(ot.length, 2);
+    for (const i of ot) assert.deepEqual(sorted(fives(g)[i]), five);
+  });
+});
+
+test('a suffix that is all pinned is not refused by Platoon\'s no-sitting rule', () => {
+  const fifteen = Array.from({ length: 15 }, (_, i) => player(`p${i}`));
+  const ids = fifteen.map(p => p.id);
+  const units = [ids.slice(0, 5), ids.slice(5, 10), ids.slice(10)];
+  run({ strategy: 'platoon', constraints: { ...S.emptyConstraints(), units } }, g => {
+    S.addOvertime(g, 8, 'keep');
+    const sitter = S.plans[0].stints[REG].onFloor[0];
+    const r = S.resolveRest(g, S.plans[0], REG, [sitter]);
+    assert.equal(r.ok, true);
+    assert.ok(!r.overrides[REG].includes(sitter));
+    assert.equal(r.overrides[REG].length, 5);
+  }, fifteen);
+});
+
+test('Reset on a record with no hand list leaves the pinned fives as not by hand', () => {
+  run({}, g => {
+    S.addOvertime(g, 8, 'keep');
+    delete g.live.hand;                    // a record from before the list existed
+    S.resetRest(g);
+    assert.ok(![REG, REG + 1].some(k => handStints(g.live).includes(k)), 'the pinned stints are not hand swaps');
+  });
+});
+
+test('Reset re-plans an Even-out overtime as Even, not as the printed plan\'s Closers', () => {
+  run(closersGame(), g => {
+    S.addOvertime(g, 4, 'even');
+    S.resetRest(g);
+    const played = minutesThrough(g, REG);
+    const fewest = Math.min(...Object.values(played));
+    const lightest = ALL.filter(id => played[id] === fewest);
+    const five = fives(g)[REG];
+    assert.ok(lightest.every(id => five.includes(id)), `${lightest} played ${fewest} and should be on`);
+    assert.notDeepEqual(sorted(five), CLOSING);
+  });
+});
+
+test('Reset gives a pinned period no four-player five when too few are available', () => {
+  run({}, g => {
+    S.addOvertime(g, 8, 'keep');
+    g.out = ALL.slice(0, 4);               // four left; the plan on hand is the stale one
+    S.resetRest(g);
+    for (const k of [REG, REG + 1]) assert.ok(!g.live.overrides[k] || g.live.overrides[k].length === 5);
+  });
+});
+
+test('addOvertime does not store a pinning choice without its five', () => {
+  run({}, g => {
+    // regulation cannot be planned on its own (everyone must play 21 of 32), overtime makes room
+    g.constraints.minMinutes = Object.fromEntries(ALL.map(id => [id, 21]));
+    S.computeAll();
+    assert.equal(S.plans[0].ok, false, 'the premise: the plan as it stands does not solve');
+    const r = S.addOvertime(g, 8, 'keep');
+    assert.ok(r === false || g.overtime[0].five?.length === 5, `stored ${JSON.stringify(g.overtime)} and said ${r}`);
   });
 });
 
@@ -511,8 +625,9 @@ test('Reset leaves pinned overtime stints on their stored five, a hand swap in o
     g.live.overrides[REG] = [bench, ...fives(g)[REG].slice(1)];
     g.live.hand = [...(g.live.hand || []), REG];
     S.computeAll();
-    const pins = S.pinnedFives(g, S.plans[0], REG);
-    assert.deepEqual(Object.keys(pins).map(Number), [REG, REG + 1]);
-    assert.deepEqual(sorted(pins[REG]), five);
+    S.resetRest(g);
+    assert.deepEqual(sorted(fives(g)[REG]), five);
+    assert.deepEqual(sorted(fives(g)[REG + 1]), five);
+    assert.deepEqual(handStints(g.live), [2], 'the pins are not swaps the coach made');
   });
 });
