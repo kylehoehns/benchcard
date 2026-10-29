@@ -1322,6 +1322,10 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
    white floor rows) nor --bg (the page ground) -- no border, no team tint
    (K2/K3: this box is ink and muted only). */
 .gm-next { border: 0; border-radius: var(--r); padding: .8rem .95rem; background: var(--sheet); }
+/* #368: "Tied? Add overtime" in the last stint's Next box. A text button on
+   the box's own surface, a 48px target (I1) that wraps rather than clips. */
+.gm-ot { display: block; width: 100%; min-height: 48px; margin-top: .6rem; font-weight: 600;
+  white-space: normal; overflow-wrap: anywhere; }
 .gm-next-hd { font-size: var(--fs-footnote); font-weight: 600; color: var(--ink); margin-bottom: .5rem; }
 /* .gm-next-hd is an h3 (it keeps its look from before) -- its own
    font-weight already stands, so only the UA default heading margin-top
@@ -1472,6 +1476,10 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-lab { margin-bottom: .35rem; }
   .gm-floor { gap: .3rem; }
   .gm-p { padding: .45rem .8rem; }
+  /* #368: the last stint's Next box also holds the 48px overtime button. */
+  .gm-next { padding-top: .6rem; padding-bottom: .4rem; }
+  .gm-next-hd { margin-bottom: .3rem; }
+  .gm-ot { margin-top: .3rem; }
 }
 
 /* Phone held sideways. Game mode is one tall column, which on a 390px-high
@@ -2882,13 +2890,18 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    level 1, have no such element and are untouched even under 16em. Below
    the threshold the title drops onto a full-width second row under the
    back/action row, still centered; above it the row keeps its one-line
-   1fr auto 1fr shape unchanged. */
+   1fr auto 1fr shape unchanged. The Overtime sheet is the second header
+   the rule covers: its one-word, unbreakable "Overtime" is wider than the
+   middle column at 32px (no overflow-wrap, or it splits mid-word), so it
+   takes the same second row. */
 @container (max-width: 16em) {
-  .bsheet-hd-row:has(.planAddRule:not([hidden])) {
+  .bsheet-hd-row:has(.planAddRule:not([hidden])),
+  #sheetOvertime .bsheet-hd-row {
     grid-template-columns: auto 1fr auto;
     row-gap: .3rem;
   }
-  .bsheet-hd-row:has(.planAddRule:not([hidden])) h2 {
+  .bsheet-hd-row:has(.planAddRule:not([hidden])) h2,
+  #sheetOvertime .bsheet-hd-row h2 {
     grid-column: 1 / -1;
     grid-row: 2;
   }
@@ -3108,8 +3121,8 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    label and the field no longer both fit. Scoped to #sheetPlayer,
    #sheetAddPlayer, not .prow generally -- other sheets' rows were not
    checked against this fix. */
-#sheetPlayer .pgrp .prow, #sheetAddPlayer .pgrp .prow { flex-wrap: wrap; }
-#sheetPlayer .pgrp .prow-t, #sheetAddPlayer .pgrp .prow-t { flex-basis: auto; }
+#sheetPlayer .pgrp .prow, #sheetAddPlayer .pgrp .prow, #sheetOvertime .pgrp .prow { flex-wrap: wrap; }
+#sheetPlayer .pgrp .prow-t, #sheetAddPlayer .pgrp .prow-t, #sheetOvertime .pgrp .prow-t { flex-basis: auto; }
 /* Settings' .seg.wide rows (five subs buttons, two tie-break stances, the
    periods x minutes pair) hit the same squeeze the two sheets above found
    -- reuse the fix rather than a new row type. */

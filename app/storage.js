@@ -87,8 +87,11 @@ const idMap = v => {
 /* #367: a game's overtime periods, one whole number of minutes (1-10) each,
    four at most. Anything else is junk and goes; absent is none. */
 const OVERTIME_MAX = 4;
+/* #368: the one rule for a length of overtime -- a game's periods above and the
+   remembered length in the team settings below both ask it. */
+export const validOvertime = m => Number.isInteger(m) && m >= 1 && m <= 10;
 const cleanOvertime = v => (Array.isArray(v)
-  ? v.filter(m => Number.isInteger(m) && m >= 1 && m <= 10).slice(0, OVERTIME_MAX)
+  ? v.filter(validOvertime).slice(0, OVERTIME_MAX)
   : []);
 // the season-record form: only when there was overtime, so a game without any
 // files exactly as it always has
@@ -153,7 +156,8 @@ const sanitizeSeason = raw => {
  * what makes it idempotent and an old backup import for free.
  *
  * The block holds exactly the keys something reads: today `maxSubs`,
- * `tieBreak`, `minMinutes` and `seasonDefault`. The record is a file a coach
+ * `tieBreak`, `minMinutes`, `seasonDefault`, `periods`, `periodMinutes`,
+ * `color` and `overtimeMinutes`. The record is a file a coach
  * can open, and a key nothing
  * honours is a claim the app does not keep. Each later slice adds its
  * own, and every record written before it keeps loading.
@@ -185,6 +189,11 @@ export const DEFAULT_SETTINGS = Object.freeze({
      changes a game that already exists. The per-game switch stays the
      override, which is why this is a default and not a mode. */
   seasonDefault: false,
+  /* #368: the length of the last overtime this team added, offered again on the
+     next one. 2 is what a team that has never added any is offered. Whole
+     minutes, 1-10: `validOvertime`'s rule, the same one a game's overtime
+     periods keep. */
+  overtimeMinutes: 2,
   /* The shape of one of this team's games. 4 and 8 are the literals `newGame`
      has always hardcoded, so every record written before these keys existed
      means exactly what it did. Read by `newGame` ONLY when there is no game to
@@ -256,6 +265,7 @@ export const sanitizeSettings = raw => {
     // the pre-#61 key, else the default.
     color: COLORS.includes(s.color) ? s.color
       : COLORS.includes(s.colour) ? s.colour : DEFAULT_SETTINGS.color, // legacy-spelling
+    overtimeMinutes: validOvertime(s.overtimeMinutes) ? s.overtimeMinutes : DEFAULT_SETTINGS.overtimeMinutes,
   };
 };
 

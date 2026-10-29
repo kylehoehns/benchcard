@@ -778,6 +778,21 @@ export function openGame(d, i) {
   state.activeGame = i;
 }
 
+/* #368: a tied game goes on. The overtime joins the game's format and the
+   length is remembered on the team for the next one; the plan is solved here
+   so the caller can step onto the new stint. computeAll's #367 freeze plans
+   only the new stints, around what was played. */
+export function addOvertime(g, minutes) {
+  /* Bench mode steps through a game without re-solving, so a game played from
+     tip-off on may never have had its rotation stamped: the first solve to see
+     it underway only adopts the stamp, and the freeze would find nothing to
+     compare. Solve once as the game stands, so the one below can freeze. */
+  computeAll();
+  g.overtime = [...(g.overtime || []), minutes];
+  state.settings.overtimeMinutes = minutes;
+  computeAll();
+}
+
 /* Sitting a player out is the other half of the sweep above, and it was
    missed. A no-show or a foul-out does not remove anyone from the roster, so
    `removePlayer` never runs -- but an override naming them is just as wrong:
@@ -852,13 +867,19 @@ export function stintShape(g) {
            max: stints.reduce((a, x) => Math.max(a, x.minutes), 0) };
 }
 
-const slotsToMinutes = (g, slots) => +(slots * stintShape(g).avg).toFixed(2);
+/* #368: By hand's slots are measured against regulation. A game that went to
+   overtime plans those stints as Even around what was played, so they are not
+   slots the coach had to give out, and counting them would rescale the
+   targets the coach saved. */
+export const regulationShape = g => stintShape({ ...g, overtime: [] });
+
+const slotsToMinutes = (g, slots) => +(slots * regulationShape(g).avg).toFixed(2);
 
 // Keep the allocation valid whenever the roster, availability or format moves.
 export function normalizeTargets(g) {
   const c = g.constraints;
   const ids = availIds(g);
-  const { count } = stintShape(g);
+  const { count } = regulationShape(g);
   const capacity = capacityOf(count);
   c.lockedTargets = (c.lockedTargets || []).filter(id => ids.includes(id));
   c.targetSlots = normalizeSlots({
@@ -874,7 +895,7 @@ export function normalizeTargets(g) {
 export function rebalanceSlots(g, pinned) {
   const c = g.constraints;
   const ids = availIds(g);
-  const { count } = stintShape(g);
+  const { count } = regulationShape(g);
   c.targetSlots = rebalance({
     slots: c.targetSlots, ids, capacity: capacityOf(count),
     maxPerPlayer: count, locked: c.lockedTargets || [], pinned,
@@ -1422,6 +1443,7 @@ export const rotationOfferSuppressed = () => suppressed;
    unplayed (overtime added, or taken off before it was reached). A change to
    the format or the sub interval moves the grid, and keeps #134's
    rewrite-and-toast path. */
+const isOvertimeStint = s => /^OT\d*$/.test(s.periodName);
 const sameGrid = (a, b, at = 0) => {
   const n = Math.min(a.stints.length, b.stints.length);
   // stints one grid has and the other lacks must be unplayed: the one on the
@@ -1430,7 +1452,7 @@ const sameGrid = (a, b, at = 0) => {
   // and what grew or shrank is overtime: more regulation periods is a format
   // change, whichever grid is the longer
   const longer = a.stints.length > b.stints.length ? a : b;
-  if (!longer.stints.slice(n).every(s => /^OT\d*$/.test(s.periodName))) return false;
+  if (!longer.stints.slice(n).every(isOvertimeStint)) return false;
   for (let i = 0; i < n; i++) {
     const x = a.stints[i], y = b.stints[i];
     if (x.periodName !== y.periodName || x.startSec !== y.startSec || x.endSec !== y.endSec) return false;
@@ -1572,6 +1594,18 @@ export function computeAll() {
     };
     const deficitOf = id =>
       (base.deficit[id] || 0) + (soFarShare[id] || 0) - (soFarPlayed[id] || 0);
+    /* What a solved game hands the games after it in the day: its planned
+       minutes. #368: a game that went to overtime hands over what was played
+       -- its regulation was frozen and its overtime planned around that, so
+       the fresh solve's own totals are not the minutes anyone got. Read after
+       `syncOverrides`, which is what writes those fives. */
+    const addUp = (g, p) => {
+      any = true;
+      const mins = g.overtime?.length ? effectiveMinutes(g, p) : p.minutes;
+      for (const [id, m] of Object.entries(mins)) cum[id] += m;
+      noteToday(mins);
+    };
+    const tally = (g, p) => (p.ok && addUp(g, p), p);
     /* Composition, not replacement: `engine.js` reads the priority map for its
        ORDER alone (`tieBreakOrder` sorts on it and nothing else), so a level
        multiplied out past any credible deficit puts the levels first and leaves
@@ -1619,12 +1653,7 @@ export function computeAll() {
       ]);
       const hit = planCache.get(g.id);
       if (hit && hit.sig === sig) {
-        if (hit.plan.ok) {
-          any = true;
-          for (const [id, m] of Object.entries(hit.plan.minutes)) cum[id] += m;
-          noteToday(hit.plan.minutes);
-        }
-        return syncOverrides(g, hit.plan, isUnderway(hit.plan, g.live));
+        return tally(g, syncOverrides(g, hit.plan, isUnderway(hit.plan, g.live)));
       }
       const c = clone(g.constraints);
       /* The league floor, composed into the per-player map the engine has always
@@ -1666,12 +1695,7 @@ export function computeAll() {
       if (seasonT) sayTheSeasonSetThem(p);
       sayWhyTheyAreShort(p, prio, tiers);
       planCache.set(g.id, { sig, plan: p });
-      if (p.ok) {
-        any = true;
-        for (const [id, m] of Object.entries(p.minutes)) cum[id] += m;
-        noteToday(p.minutes);
-      }
-      return syncOverrides(g, p, isUnderway(p, g.live), hit?.plan);
+      return tally(g, syncOverrides(g, p, isUnderway(p, g.live), hit?.plan));
     });
   };
 
@@ -1753,13 +1777,17 @@ function lateArrivals(g, p, k) {
  * ================================================================== */
 export function resolveRest(g, p, from, sitIds = []) {
   if (!p || !p.ok) return { ok: false, reason: 'noplan' };
-  /* The same two `seasonTargetsFor` refuses, for the same reasons: platoon's
-     units are exact fives with nothing to optimize, and `minutes` is the
-     hand-set-targets surface and its numbers are whole-game. */
-  if (g.strategy === 'minutes' || g.strategy === 'platoon') return { ok: false, reason: 'strategy' };
-
   const k = Math.max(0, Math.min(Math.trunc(from) || 0, p.stints.length));
   const suffix = p.stints.slice(k);
+  /* The same two `seasonTargetsFor` refuses, for the same reasons: platoon's
+     units are exact fives with nothing to optimize, and `minutes` is the
+     hand-set-targets surface and its numbers are whole-game. #368: a suffix
+     that is all overtime is the exception. Its stints were never part of what
+     the coach set -- By hand plans them as Even around the minutes played and
+     leaves the saved targets alone, Platoon carries on with the next unit. */
+  const handSet = g.strategy === 'minutes' || g.strategy === 'platoon';
+  const overtimeOnly = suffix.length > 0 && suffix.every(isOvertimeStint);
+  if (handSet && !overtimeOnly) return { ok: false, reason: 'strategy' };
   if (!suffix.length) return { ok: false, reason: 'nothing' };
 
   const sit = new Set(sitIds || []);
@@ -1779,8 +1807,9 @@ export function resolveRest(g, p, from, sitIds = []) {
 
   const c = clone(g.constraints);
   c.openingFive = [];
-  c.units = [];
+  if (g.strategy !== 'platoon') c.units = [];
   if (g.strategy !== 'closers') c.closing = null;
+  c.lockedTargets = [];   // a By hand lock holds a regulation number, not overtime's
   c.minMinutes = {};
   c.maxMinutes = {};
   for (const id of avail) {

@@ -203,6 +203,14 @@ export class Coach {
     await this.#tapObject(object.objectId, JSON.stringify(name));
   }
 
+  /** Bench mode, on the last stint: tap "Tied? Add overtime", set the sheet to
+      `minutes` and add it. */
+  async addOvertime(minutes) {
+    await this.tap('Tied? Add overtime');
+    await this.fill('Minutes', String(minutes));
+    await this.tap('Add overtime');
+  }
+
   /** Tap a player's row on the roster, found by the name it shows. */
   async openPlayer(name) {
     const { result } = await this.c.send('Runtime.evaluate', { expression: `[...document.querySelectorAll('#rosterlist .rrow')]

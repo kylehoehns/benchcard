@@ -737,7 +737,9 @@ function buildForced(stints, c, format) {
 
 // Units alternate wholesale. No search: the coach has already decided.
 function platoonLineups(ctx, units) {
-  return ctx.stints.map((s, i) => units[i % units.length].slice(0, ON_FLOOR));
+  // by the stint's number in the whole game, which is its own position unless
+  // the solver was handed a suffix (a mid-game re-plan) -- then it is `index`
+  return ctx.stints.map((s, i) => units[(s.index ?? i) % units.length].slice(0, ON_FLOOR));
 }
 
 function legalWith(id, chosen, ctx, minutes, stintLen, onStreak) {

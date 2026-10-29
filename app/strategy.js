@@ -18,7 +18,7 @@ import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
-import { state, game, byId, colorOf, minutesText, availIds, stintShape,
+import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
          normalizeTargets, rebalanceSlots, plans, STRATEGIES } from './state.js';
 
 let edit = () => {};
@@ -54,7 +54,7 @@ function minutesEditor(g) {
   normalizeTargets(g);
   const wrap = el('div');
   const ids = availIds(g);
-  const shape = stintShape(g);
+  const shape = regulationShape(g);
   const shorts = deriveShortNames(state.players);
   const c = g.constraints;
   const locked = new Set(c.lockedTargets);
@@ -153,7 +153,7 @@ function minutesEditor(g) {
 function updateBudgetUI(g) {
   const c = g.constraints;
   const ids = availIds(g);
-  const shape = stintShape(g);
+  const shape = regulationShape(g);
   const capacity = shape.count * 5;
   const used = ids.reduce((a, id) => a + (c.targetSlots[id] || 0), 0);
   const deltaMin = (used - capacity) * shape.avg;
@@ -225,7 +225,7 @@ export function refreshBudgetActuals() {
   const g = game();
   if (!g || g.strategy !== 'minutes') return;
   const p = plans[state.activeGame];
-  const shape = stintShape(g);
+  const shape = regulationShape(g);
   for (const id of availIds(g)) {
     const row = document.querySelector(`.srow[data-id="${CSS.escape(id)}"]`);
     const act = row?.querySelector('.act');

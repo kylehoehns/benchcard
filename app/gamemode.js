@@ -15,10 +15,11 @@ import { fmtClock, fmtMinutes, SIT_REFUSALS } from './engine.js';
 import { callNames } from './roster.js';
 import { swapIn, sheetUp, tick, enabled as fxOn } from './fx.js';
 import { $, on, set, el, ctx2d } from './dom.js';
-import { openTrap, closeTrap } from './trap.js';
+import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './trap.js';
 import { track } from './analytics.js';
+import { validOvertime, DEFAULT_SETTINGS } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
-         resolveRest, benchOpen, setBenchOpen } from './state.js';
+         resolveRest, benchOpen, setBenchOpen, addOvertime } from './state.js';
 import { stage, stintIndex, handStints, writeOverrides, clearRest, resetFrom, openGame, step, finish } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
@@ -84,6 +85,9 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
   on('#gmPrev', 'onclick', () => gmStep(-1));
   on('#gmNext2', 'onclick', () => gmStep(1));
   on('#gmFinish', 'onclick', gmFinish);
+  on('#sheetOvertimeClose', 'onclick', () => closeSheet($('#sheetOvertime')));
+  $('#overtimeMinutes').oninput = paintOvertimeConfirm;
+  on('#overtimeGo', 'onclick', commitOvertime);
   /* The browser drops the lock as soon as the tab is hidden -- there is no
      "keep this held in the background" option -- so returning to a visible
      tab with bench mode still on screen has to ask again. One listener for
@@ -403,6 +407,42 @@ function gmFinish() {
   undoable(`Marked ${label} finished.`, () => {
     finish(live);
   }, () => render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs', 'plan', 'issues'));
+}
+
+/* #368: the overtime sheet. Prefilled with the length this team added last
+   time; "Add overtime" stays off for anything but a whole 1-10. */
+const overtimeAsked = () => {
+  const text = $('#overtimeMinutes').value.trim();
+  return /^\d+$/.test(text) ? Number(text) : NaN;
+};
+
+function paintOvertimeConfirm() {
+  $('#overtimeGo').disabled = !validOvertime(overtimeAsked());
+}
+
+function openOvertimeSheet(trigger) {
+  $('#overtimeMinutes').value = String(state.settings?.overtimeMinutes ?? DEFAULT_SETTINGS.overtimeMinutes);
+  paintOvertimeConfirm();
+  openSheet($('#sheetOvertime'), trigger);
+}
+
+/* "Add overtime": one `undoable`, so one Undo takes all of it back -- the
+   overtime, the remembered length and the step onto its first stint. The sheet
+   goes first and instantly: a toast raised while a sheet is open mounts inside
+   it. */
+function commitOvertime() {
+  const minutes = overtimeAsked();
+  if (!validOvertime(minutes)) return;
+  const g = game();
+  const live = liveOf(g);
+  closeSheetNow($('#sheetOvertime'));
+  undoable(`Overtime added, ${minutes} min.`, () => {
+    addOvertime(g, minutes);
+    step(plans[state.activeGame], live, 1);
+  }, () => {
+    render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs', 'plan', 'issues');
+    renderGameMode();
+  });
 }
 
 /* #138 item 1: the header's title (the stint's own stretch of clock) and
@@ -734,6 +774,14 @@ export function renderGameMode({ keepFloor = false } = {}) {
   } else {
     nx.append(el('h3', 'gm-next-hd', 'Last stint'));
     nx.append(el('div', 'gm-next-none', 'Game ends at 0:00.'));
+    // #368: a tied game goes on. Only a game still being played can; a finished
+    // one has been marked, and getting it back is Undo's.
+    if (stage(p, live) !== 'finished') {
+      const ot = el('button', 'btn press gm-ot', 'Tied? Add overtime');
+      ot.type = 'button';
+      ot.onclick = () => openOvertimeSheet(ot);
+      nx.append(ot);
+    }
   }
 
   // progress
