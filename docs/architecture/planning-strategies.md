@@ -23,3 +23,22 @@ not something a coach can act on. The cases it cannot reach are refused before
 the search (`KEEPON_UNSATISFIABLE`, `FORCED_GROUP_KEEPON`) rather than priced.
 Paired with `avoids` on the same two players it is satisfiable, not a conflict:
 never both on plus never both off is exactly one of them, always.
+
+**Overtime is planned after regulation (#368).** A game that is tied and goes
+to overtime keeps its regulation stints as they were played, and only the
+overtime stints are planned, with the game's own strategy:
+
+- **Even** -- the player with the fewest minutes after regulation is on the
+  floor first.
+- **Closers** -- the closing group is on the floor for the last overtime stint.
+- **Platoon** -- the unit order carries on. The first overtime stint sends out
+  the next unit, counted by the stint's place in the whole game.
+- **By hand** -- overtime is planned as Even around the minutes played. The
+  per-player targets the coach saved are for regulation, so they are left as
+  they were, and so are the regulation stints. Locks do not carry into
+  overtime.
+- **Plays at most** -- a player at their cap after regulation is not on the
+  floor in overtime.
+
+No strategy drops a hand swap that was already made. The Overtime sheet and
+its Undo are in [bench-mode.md](bench-mode.md).

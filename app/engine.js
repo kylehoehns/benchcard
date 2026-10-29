@@ -81,6 +81,8 @@ export function stintsBeforeHalftime(stints) {
    so the last-period five (`period === format.periods`) never reaches one.
    Their names are made here, next to `periodLabel`, and nowhere else. */
 const overtimeLabel = n => (n === 1 ? 'OT' : `OT${n}`);
+// whether a stint belongs to an overtime period, by the name overtimeLabel gave it
+export const isOvertimeStint = s => /^OT\d*$/.test(s.periodName);
 
 export function buildStints(format, granularity) {
   const { periods, periodMinutes } = format;
@@ -406,11 +408,17 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     // A mismatch is guidance, not a blocker. The solver gets as close as it
     // can and the shortfall is reported, so the coach can set the players
     // they care about and reconcile afterwards.
-    if (free === 0 && Math.abs(sum - floorMinutes) > 1e-9) {
-      warn(sum > floorMinutes ? 'TARGETS_OVER_BUDGET' : 'TARGETS_UNDER_BUDGET',
-        sum > floorMinutes
-          ? `Minute targets add up to ${sum}, which is ${sum - floorMinutes} more than the game has. Somebody will fall short of their number.`
-          : `Minute targets add up to ${sum} of ${floorMinutes} floor-minutes. The spare ${floorMinutes - sum} minutes get shared out.`,
+    /* #368: By hand's targets are regulation numbers, so a game that went to
+       overtime is measured without it. A suffix that is all overtime (the
+       re-plan after it was added) has no regulation to measure against and
+       keeps the whole of what it was handed. */
+    const regulation = stints.filter(s => !isOvertimeStint(s));
+    const targetFloor = (regulation.length ? regulation : stints).reduce((a, s) => a + s.minutes, 0) * ON_FLOOR;
+    if (free === 0 && Math.abs(sum - targetFloor) > 1e-9) {
+      warn(sum > targetFloor ? 'TARGETS_OVER_BUDGET' : 'TARGETS_UNDER_BUDGET',
+        sum > targetFloor
+          ? `Minute targets add up to ${sum}, which is ${sum - targetFloor} more than the game has. Somebody will fall short of their number.`
+          : `Minute targets add up to ${sum} of ${targetFloor} floor-minutes. The spare ${targetFloor - sum} minutes get shared out.`,
         pinned);
     }
     for (const [id, t] of Object.entries(c.targetMinutes)) {

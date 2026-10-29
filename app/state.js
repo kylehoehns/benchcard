@@ -15,11 +15,11 @@
 // #146 item 5: aliased -- this file already has its own unrelated local
 // `ON_FLOOR` (the season-carryover section below), so the import is renamed
 // rather than colliding with or touching that existing constant.
-import { generatePlan, fmtMinutes, buildStints, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fmtMinutes, buildStints, isOvertimeStint, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
-         validTipoff, tipoffLabel, sortDay } from './storage.js';
+         validTipoff, tipoffLabel, sortDay, OVERTIME_MAX } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 import { stage, playedStints, handStints, writeOverrides, resetFrom, finishedGame,
@@ -781,16 +781,33 @@ export function openGame(d, i) {
 /* #368: a tied game goes on. The overtime joins the game's format and the
    length is remembered on the team for the next one; the plan is solved here
    so the caller can step onto the new stint. computeAll's #367 freeze plans
-   only the new stints, around what was played. */
+   only the new stints, around what was played. Returns false when nothing was
+   added (four already, or a plan that will not solve), 'rewritten' when the
+   freeze could not hold and #134 moved stints already played -- the caller says
+   so -- and true otherwise. */
 export function addOvertime(g, minutes) {
+  // storage keeps four, so a fifth would be lost on reload
+  if ((g.overtime?.length || 0) >= OVERTIME_MAX) return false;
   /* Bench mode steps through a game without re-solving, so a game played from
      tip-off on may never have had its rotation stamped: the first solve to see
      it underway only adopts the stamp, and the freeze would find nothing to
      compare. Solve once as the game stands, so the one below can freeze. */
   computeAll();
+  const was = plans[state.activeGame]?.ok ? effectiveStints(g, plans[state.activeGame]).map(x => x.onFloor.join()) : [];
+  const before = { overtime: g.overtime, remembered: state.settings.overtimeMinutes };
   g.overtime = [...(g.overtime || []), minutes];
   state.settings.overtimeMinutes = minutes;
   computeAll();
+  if (plans[state.activeGame]?.ok) {
+    const now = effectiveStints(g, plans[state.activeGame]).map(x => x.onFloor.join());
+    return was.every((five, k) => five === now[k]) ? true : 'rewritten';
+  }
+  /* Nobody can play it (everyone is at a cap, say): a plan that does not solve
+     has no stint to step onto, so the game stays as it was. */
+  g.overtime = before.overtime;
+  state.settings.overtimeMinutes = before.remembered;
+  computeAll();
+  return false;
 }
 
 /* Sitting a player out is the other half of the sweep above, and it was
@@ -1443,7 +1460,6 @@ export const rotationOfferSuppressed = () => suppressed;
    unplayed (overtime added, or taken off before it was reached). A change to
    the format or the sub interval moves the grid, and keeps #134's
    rewrite-and-toast path. */
-const isOvertimeStint = s => /^OT\d*$/.test(s.periodName);
 const sameGrid = (a, b, at = 0) => {
   const n = Math.min(a.stints.length, b.stints.length);
   // stints one grid has and the other lacks must be unplayed: the one on the
@@ -1472,9 +1488,10 @@ const sameGrid = (a, b, at = 0) => {
    is the one five that cannot stand, and then it starts there. A freeze that
    would write a removed player's id (amendment 9) does not run.
 
-   Returns false, having touched nothing, when it cannot (the strategy is
-   `minutes` or `platoon`, `resolveRest` refuses, or a removed player is in
-   the way), and the caller falls back to #134. */
+   Returns false, having touched nothing, when it cannot (`resolveRest`
+   refuses -- By hand and Platoon outside an all-overtime suffix, Platoon
+   sitting anyone, nobody left to plan with, a plan that will not solve -- or
+   a removed player is in the way), and the caller falls back to #134. */
 function freezePlayedAndReplan(g, p, prev) {
   const live = g.live;
   const n = p.stints.length;
@@ -1787,7 +1804,9 @@ export function resolveRest(g, p, from, sitIds = []) {
      leaves the saved targets alone, Platoon carries on with the next unit. */
   const handSet = g.strategy === 'minutes' || g.strategy === 'platoon';
   const overtimeOnly = suffix.length > 0 && suffix.every(isOvertimeStint);
-  if (handSet && !overtimeOnly) return { ok: false, reason: 'strategy' };
+  /* Platoon's units are exact fives that ignore who is available, so it still
+     cannot sit anyone for the rest -- only carry on with the next unit. */
+  if (handSet && (!overtimeOnly || (g.strategy === 'platoon' && sitIds?.length))) return { ok: false, reason: 'strategy' };
   if (!suffix.length) return { ok: false, reason: 'nothing' };
 
   const sit = new Set(sitIds || []);
@@ -1809,7 +1828,13 @@ export function resolveRest(g, p, from, sitIds = []) {
   c.openingFive = [];
   if (g.strategy !== 'platoon') c.units = [];
   if (g.strategy !== 'closers') c.closing = null;
-  c.lockedTargets = [];   // a By hand lock holds a regulation number, not overtime's
+  /* A By hand lock holds a regulation number, not overtime's, so it is dropped
+     here. That is safe for the other strategies: only By hand lets a coach set
+     locks, and the engine reads them only to hold a locked row out of its
+     proportional top-up -- there is nothing to hold when the targets are the
+     fairness ones made below. `c` is a clone made for this one solve, so the
+     saved locks are untouched. */
+  c.lockedTargets = [];
   c.minMinutes = {};
   c.maxMinutes = {};
   for (const id of avail) {

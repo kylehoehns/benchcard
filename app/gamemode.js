@@ -17,7 +17,7 @@ import { swapIn, sheetUp, tick, enabled as fxOn } from './fx.js';
 import { $, on, set, el, ctx2d } from './dom.js';
 import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './trap.js';
 import { track } from './analytics.js';
-import { validOvertime, DEFAULT_SETTINGS } from './storage.js';
+import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
          resolveRest, benchOpen, setBenchOpen, addOvertime } from './state.js';
 import { stage, stintIndex, handStints, writeOverrides, clearRest, resetFrom, openGame, step, finish } from './live.js';
@@ -436,12 +436,20 @@ function commitOvertime() {
   const g = game();
   const live = liveOf(g);
   closeSheetNow($('#sheetOvertime'));
-  undoable(`Overtime added, ${minutes} min.`, () => {
-    addOvertime(g, minutes);
-    step(plans[state.activeGame], live, 1);
+  let added = false;
+  /* The message is read after the change, so it can say what happened: a plan
+     that would not solve adds nothing, and a freeze that could not hold moved
+     stints already played -- #134's notice is suppressed inside an `undoable`,
+     so it is said here. */
+  undoable(() => (added === 'rewritten' ? `Overtime added, ${minutes} min. Rotation changed.`
+    : added ? `Overtime added, ${minutes} min.` : 'Overtime could not be added.'), () => {
+    added = addOvertime(g, minutes);
+    if (added) step(plans[state.activeGame], live, 1);
   }, () => {
     render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs', 'plan', 'issues');
     renderGameMode();
+    /* the button that opened the sheet is gone with the stint it was on */
+    gmFocusFirstFloor();
   });
 }
 
@@ -776,7 +784,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
     nx.append(el('div', 'gm-next-none', 'Game ends at 0:00.'));
     // #368: a tied game goes on. Only a game still being played can; a finished
     // one has been marked, and getting it back is Undo's.
-    if (stage(p, live) !== 'finished') {
+    if (stage(p, live) !== 'finished' && (game().overtime?.length || 0) < OVERTIME_MAX) {
       const ot = el('button', 'btn press gm-ot', 'Tied? Add overtime');
       ot.type = 'button';
       ot.onclick = () => openOvertimeSheet(ot);

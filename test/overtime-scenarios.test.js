@@ -136,6 +136,52 @@ describe('adding overtime from bench mode', { skip }, () => {
     assert.equal(await coach.stint(), '11 of 11');
   });
 
+  test('after four overtimes the last stint no longer offers another', async () => {
+    await startHawks();
+    await toLastStint();
+    for (let n = 1; n <= 3; n++) {
+      await coach.addOvertime(4);
+      assert.ok(await coach.sees('Tied? Add overtime'), `missing after overtime ${n}`);
+    }
+    await coach.addOvertime(4);
+
+    assert.equal(await coach.text('#gmGame'), 'OT4 · 4:00 to 0:00');
+    assert.equal(await coach.sees('Tied? Add overtime'), false, 'a fifth overtime would be lost on reload');
+  });
+
+  test('Escape closes the overtime sheet and leaves bench mode open', async () => {
+    await startHawks();
+    await toLastStint();
+    await coach.tap('Tied? Add overtime');
+    assert.ok(await coach.sees('Add overtime'), 'the sheet should be open');
+
+    await coach.press('Escape');
+
+    assert.equal(await coach.sees('Add overtime'), false, 'the sheet should have closed');
+    assert.equal(await coach.stint(), '8 of 8', 'bench mode should still be open');
+    assert.ok(await coach.sees('Tied? Add overtime'));
+  });
+
+  test('after adding overtime, focus lands on a player on the new stint, not on the page behind', async () => {
+    await startHawks();
+    await toLastStint();
+    await coach.addOvertime(8);
+
+    const focused = await coach.focused();
+    const floor = await coach.onFloor();
+    assert.ok(floor.some(name => focused.includes(name)), `focus is on "${focused}", not a player on the floor`);
+  });
+
+  test('Undo after adding overtime also puts the remembered length back', async () => {
+    await startHawks();
+    await toLastStint();
+    await coach.addOvertime(7);
+    await coach.tap('Undo');
+    await coach.tap('Tied? Add overtime');
+
+    assert.equal(await coach.valueOf('Minutes'), '2');
+  });
+
   /* Bench mode's floor as it reads: `{ name: minutes played }` from rows such
      as "3, Ana Reyes, 12 of 16 minutes". */
   async function playedOnFloor() {
@@ -265,5 +311,22 @@ describe('adding overtime from bench mode', { skip }, () => {
     await coach.tap('Leave');
     await coach.tap('Plan, minutes set by hand');
     assert.deepEqual(await targets(), saved);
+  });
+
+  test('By hand: after overtime no row claims it plays something other than its target', async () => {
+    await coach.onGameDay();
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Plan, even minutes');
+    await coach.tap('By hand');
+    await coach.tap('Close');
+    await coach.tap('Start game');
+    await coach.floorEachStint();
+    await coach.addOvertime(8);
+    await coach.tap('Leave');
+    await coach.tap('Back to Smoke Test');
+    await coach.comeBackDaysLater(0);
+    await coach.tap('Hawks, 9:00 AM, underway');
+    await coach.tap('Plan, minutes set by hand');
+    assert.equal(await coach.text('.srow .act:not([hidden])'), '', 'a row says it plays other than it was set to');
   });
 });

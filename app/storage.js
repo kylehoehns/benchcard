@@ -86,7 +86,7 @@ const idMap = v => {
 
 /* #367: a game's overtime periods, one whole number of minutes (1-10) each,
    four at most. Anything else is junk and goes; absent is none. */
-const OVERTIME_MAX = 4;
+export const OVERTIME_MAX = 4;
 /* #368: the one rule for a length of overtime -- a game's periods above and the
    remembered length in the team settings below both ask it. */
 export const validOvertime = m => Number.isInteger(m) && m >= 1 && m <= 10;

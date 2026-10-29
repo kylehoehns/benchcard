@@ -13,13 +13,13 @@
  * wiring stays in app.js too -- picking a strategy is `edit('strategy')`,
  * not a repaint of this section.
  */
-import { fmtMinutes, deriveShortNames } from './engine.js';
+import { fmtMinutes, deriveShortNames, isOvertimeStint } from './engine.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints } from './state.js';
 
 let edit = () => {};
 
@@ -231,7 +231,11 @@ export function refreshBudgetActuals() {
     const act = row?.querySelector('.act');
     if (!act) continue;
     const want = (g.constraints.targetSlots[id] || 0) * shape.avg;
-    const got = p?.ok ? (p.minutes[id] || 0) : null;
+    // regulation only, as played: the targets are regulation numbers (#368),
+    // and overtime is planned as Even around them, so its minutes are not a miss
+    const got = p?.ok ? (g.overtime?.length
+      ? minutesFrom(effectiveStints(g, p).filter(s => !isOvertimeStint(s)), [id])[id]
+      : (p.minutes[id] || 0)) : null;
     // half a minute of slack: uneven stint lengths make an exactly-met target
     // land a rounding hair away from the slider's own arithmetic
     const off = got != null && Math.abs(got - want) >= 0.5;

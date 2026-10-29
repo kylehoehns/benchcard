@@ -99,6 +99,8 @@ const FADE_WATCH = `window.__fades = [];
     if (view && !window.__fades.includes(view.id)) window.__fades.push(view.id);
   }, true);`;
 
+const KEY_CODES = { Escape: 27, Tab: 9, Enter: 13 };
+
 export class Coach {
   static async open() {
     const server = await serve();
@@ -347,7 +349,9 @@ export class Coach {
 
   /** Press one key on the keyboard, as a coach with a keyboard would. */
   async press(key) {
-    await this.c.send('Input.dispatchKeyEvent', { type: 'keyDown', key, text: key });
+    // a named key (Escape) carries no text, and Chrome wants its key code to act on it
+    const named = key.length > 1 ? { windowsVirtualKeyCode: KEY_CODES[key] } : { text: key };
+    await this.c.send('Input.dispatchKeyEvent', { type: 'keyDown', key, ...named });
     await this.c.send('Input.dispatchKeyEvent', { type: 'keyUp', key });
     await quiet(this.c);
   }

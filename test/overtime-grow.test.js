@@ -156,6 +156,34 @@ test('platoon: overtime continues the units by stint number, as if the game had 
   }, fifteen);
 });
 
+test('platoon: sit-for-the-rest is still refused in an all-overtime suffix, the freeze is not', () => {
+  const fifteen = Array.from({ length: 15 }, (_, i) => player(`p${i}`));
+  const ids = fifteen.map(p => p.id);
+  const units = [ids.slice(0, 5), ids.slice(5, 10), ids.slice(10)];
+  const constraints = { ...S.emptyConstraints(), units };
+  run({ strategy: 'platoon', constraints }, g => {
+    g.overtime = [8];
+    S.computeAll();
+    const sitter = S.plans[0].stints[REG].onFloor[0];
+    const sat = S.resolveRest(g, S.plans[0], REG, [sitter]);
+    assert.deepEqual([sat.ok, sat.reason], [false, 'strategy'],
+      'the units ignore who is available, so the sitter would stay on the floor');
+    assert.equal(S.resolveRest(g, S.plans[0], REG).ok, true, 'the freeze (no one sitting) still plans overtime');
+  }, fifteen);
+});
+
+test('by hand: a normal overtime raises no warning about the targets not adding up', () => {
+  const ten = Array.from({ length: 10 }, (_, i) => player(`p${i}`));
+  const constraints = { ...S.emptyConstraints(),
+    targetSlots: Object.fromEntries(ten.map(p => [p.id, 4])), targetCapacity: 40 };
+  run({ strategy: 'minutes', constraints }, g => {
+    const sums = () => S.plans[0].issues.map(i => i.code).filter(c => /^TARGETS_(UNDER|OVER)_BUDGET$/.test(c));
+    assert.deepEqual(sums(), [], 'the premise: regulation adds up');
+    S.addOvertime(g, 8);
+    assert.deepEqual(sums(), []);
+  }, ten);
+});
+
 test('plays at most: a player at the cap after regulation is off the floor in overtime', () => {
   run({}, g => {
     const played = minutesThrough(g, REG);
@@ -241,4 +269,46 @@ test('a regulation-period change that keeps matching labels is a format change',
       assert.deepEqual(S.rotationMoved(), [g.id], `${from} -> ${to} periods`);
     });
   }
+});
+
+/* #368: addOvertime, the state change behind the sheet's "Add overtime". */
+test('addOvertime adds the period, remembers the length and says it held', () => {
+  run({}, g => {
+    assert.equal(S.addOvertime(g, 8), true);
+    assert.deepEqual(g.overtime, [8]);
+    assert.equal(S.state.settings.overtimeMinutes, 8);
+    assert.equal(S.plans[0].stints.length, REG + 2);
+  });
+});
+
+test('addOvertime adds nothing past the fourth overtime', () => {
+  run({ overtime: [2, 2, 2, 2] }, g => {
+    assert.equal(S.addOvertime(g, 5), false);
+    assert.deepEqual(g.overtime, [2, 2, 2, 2]);
+    assert.notEqual(S.state.settings.overtimeMinutes, 5);
+  });
+});
+
+test('addOvertime takes itself back when nobody can play it, rather than leave a plan that does not solve', () => {
+  run({}, g => {
+    g.constraints.maxMinutes = minutesThrough(g, REG);   // everyone is at their cap
+    const before = S.state.settings.overtimeMinutes;
+    assert.equal(S.addOvertime(g, 8), false);
+    assert.deepEqual(g.overtime || [], []);
+    assert.equal(S.state.settings.overtimeMinutes, before);
+    assert.equal(S.plans[0].ok, true);
+    assert.equal(S.plans[0].stints.length, REG);
+  });
+});
+
+test('addOvertime says so when the freeze cannot hold and played stints were rewritten', () => {
+  run({}, g => {
+    // four players already at their cap: the suffix cannot be planned around the past
+    const played = minutesThrough(g, REG);
+    g.constraints.maxMinutes = Object.fromEntries(['p0', 'p1', 'p2', 'p3'].map(id => [id, played[id]]));
+    const was = fives(g).slice(0, REG);
+    const r = S.addOvertime(g, 8);
+    assert.notDeepEqual(fives(g).slice(0, REG), was, 'the premise: this case does rewrite the past');
+    assert.equal(r, 'rewritten');
+  });
 });

@@ -82,8 +82,9 @@ Change:
   (`inertBehind` inerts everything else under bench mode; prior art
   `#addGameFlow`). Copy the commit-sheet shape of `#sheetAddPlayer`: ✕ top
   left, `.pgrp > label.prow` with a numeric input, `.bsheet-cta` primary.
-- `app/live.js` — one new operation that moves the game onto the first new
-  stint after overtime is added (`live.at`), and nothing else writes `live`.
+- `app/live.js` — no new operation. The existing `step` moves the game onto
+  the first new stint after overtime is added (`live.at`), so live.js stays
+  the only writer of the live record.
 - `app/state.js` — the add-overtime state change (push minutes into
   `g.overtime`, remember the length), By hand and Platoon in `resolveRest`,
   By hand slot math measured against regulation.
@@ -137,7 +138,7 @@ choices (#369), anything a game without overtime renders.
 Bench mode's last-stint box gains the button. It opens `#sheetOvertime`,
 prefilled from the team setting. "Add overtime" runs one `undoable`: append
 the minutes to `g.overtime`, store the length on the team, recompute (the
-#367 freeze plans the new stints), then the new `live.js` operation steps the
+#367 freeze plans the new stints), then the existing `live.js` `step` moves the
 game onto the first OT stint; the snackbar reads "Overtime added, N min.".
 `resolveRest` stops refusing By hand and Platoon for a suffix that is only
 overtime: By hand plans it with Even targets around minutes played, Platoon
