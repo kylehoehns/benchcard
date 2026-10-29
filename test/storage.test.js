@@ -1391,13 +1391,25 @@ test('a settings block holds only what the app reads, so the file makes no claim
   const s = sanitize({ version: 6, onboarded: true,
     teams: [{ ...good(), settings: { maxSubs: 4, tieBreak: 'levels', leagueMin: 12 } }] }, H);
   assert.deepEqual(Object.keys(s.teams[0].settings),
-    ['maxSubs', 'tieBreak', 'minMinutes', 'seasonDefault', 'periods', 'periodMinutes', 'color'],
+    ['maxSubs', 'tieBreak', 'minMinutes', 'seasonDefault', 'periods', 'periodMinutes', 'color', 'overtimeMinutes'],
     'a key nothing honours must not survive into the record a coach can open');
   assert.equal(s.teams[0].settings.maxSubs, 4);
   assert.equal(s.teams[0].settings.tieBreak, 'levels');
   // `leagueMin` above is the junk key now: the honoured one is `minMinutes`,
   // and a record that never mentioned it means off
   assert.equal(s.teams[0].settings.minMinutes, 0);
+});
+
+test('#368: the remembered overtime length is a whole number of minutes from 1 to 10, else 2', () => {
+  const at = raw => sanitize({ version: 6, onboarded: true,
+    teams: [{ ...good(), settings: raw }] }, H).teams[0].settings.overtimeMinutes;
+  assert.equal(at({ overtimeMinutes: 3 }), 3);
+  assert.equal(at({ overtimeMinutes: 1 }), 1);
+  assert.equal(at({ overtimeMinutes: 10 }), 10);
+  for (const junk of [0, 11, -3, 2.5, '3', '', null, undefined, 'ten', {}, [], NaN]) {
+    assert.equal(at({ overtimeMinutes: junk }), 2, String(junk));
+  }
+  assert.equal(at(undefined), 2, 'a record from before the key existed means 2');
 });
 
 test('a junk or out-of-range league minimum is off, not a rule the coach never gave', () => {

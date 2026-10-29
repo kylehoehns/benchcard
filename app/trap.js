@@ -54,6 +54,12 @@ export function closeTrap(root) {
 document.addEventListener('keydown', e => {
   const t = traps[traps.length - 1];
   if (!t) return;
+  /* A modal <dialog> opened over an overlay (a sheet over bench mode) is the
+     top of the page now: showModal() already inerts everything behind it and
+     contains Tab, and fires `cancel` on Escape. The overlay under it must not
+     take those keys -- it would close itself and leave the sheet up. */
+  const sheet = document.querySelector('dialog[open]');
+  if (sheet && !t.root.contains(sheet)) return;
   if (e.key === 'Escape') { e.preventDefault(); t.onEscape?.(); return; }
   if (e.key !== 'Tab') return;
   const nodes = trapNodes(t.root);

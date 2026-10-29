@@ -13,13 +13,13 @@
  * wiring stays in app.js too -- picking a strategy is `edit('strategy')`,
  * not a repaint of this section.
  */
-import { fmtMinutes, deriveShortNames } from './engine.js';
+import { fmtMinutes, deriveShortNames, isOvertimeStint } from './engine.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
 import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
-import { state, game, byId, colorOf, minutesText, availIds, stintShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES } from './state.js';
+import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints } from './state.js';
 
 let edit = () => {};
 
@@ -54,7 +54,7 @@ function minutesEditor(g) {
   normalizeTargets(g);
   const wrap = el('div');
   const ids = availIds(g);
-  const shape = stintShape(g);
+  const shape = regulationShape(g);
   const shorts = deriveShortNames(state.players);
   const c = g.constraints;
   const locked = new Set(c.lockedTargets);
@@ -153,7 +153,7 @@ function minutesEditor(g) {
 function updateBudgetUI(g) {
   const c = g.constraints;
   const ids = availIds(g);
-  const shape = stintShape(g);
+  const shape = regulationShape(g);
   const capacity = shape.count * 5;
   const used = ids.reduce((a, id) => a + (c.targetSlots[id] || 0), 0);
   const deltaMin = (used - capacity) * shape.avg;
@@ -225,13 +225,17 @@ export function refreshBudgetActuals() {
   const g = game();
   if (!g || g.strategy !== 'minutes') return;
   const p = plans[state.activeGame];
-  const shape = stintShape(g);
+  const shape = regulationShape(g);
   for (const id of availIds(g)) {
     const row = document.querySelector(`.srow[data-id="${CSS.escape(id)}"]`);
     const act = row?.querySelector('.act');
     if (!act) continue;
     const want = (g.constraints.targetSlots[id] || 0) * shape.avg;
-    const got = p?.ok ? (p.minutes[id] || 0) : null;
+    // regulation only, as played: the targets are regulation numbers (#368),
+    // and overtime is planned as Even around them, so its minutes are not a miss
+    const got = p?.ok ? (g.overtime?.length
+      ? minutesFrom(effectiveStints(g, p).filter(s => !isOvertimeStint(s)), [id])[id]
+      : (p.minutes[id] || 0)) : null;
     // half a minute of slack: uneven stint lengths make an exactly-met target
     // land a rounding hair away from the slider's own arithmetic
     const off = got != null && Math.abs(got - want) >= 0.5;

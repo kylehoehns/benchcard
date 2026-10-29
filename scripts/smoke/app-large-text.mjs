@@ -148,6 +148,18 @@ export const APP_LARGE_TEXT_STATES = [
            while (!document.querySelector('#gmNext2').disabled) { document.querySelector('#gmNext2').click(); }`,
     close: `while (!document.querySelector('#gmPrev').disabled) { document.querySelector('#gmPrev').click(); }
             document.querySelector('#gmClose').click()` },
+  /* #368 item 15: the Overtime sheet over the last stint (whose Next box now
+     also carries "Tied? Add overtime", so 'bench mode, last stint' above
+     measures that button). Closed with its own X, nothing added, then walked
+     back to stint 0 the way that state does, so the fixture is left as found. */
+  { name: 'overtime sheet',
+    open: `document.querySelector('#gmOpen').click();
+           while (!document.querySelector('#gmNext2').disabled) { document.querySelector('#gmNext2').click(); }
+           document.querySelector('#gmNext .gm-ot').click()`,
+    close: `document.querySelector('#sheetOvertimeClose').click();
+            await ${TIMERS_QUIET};
+            while (!document.querySelector('#gmPrev').disabled) { document.querySelector('#gmPrev').click(); }
+            document.querySelector('#gmClose').click()` },
   /* #24 item 4: the help sheet, the keyboard shortcuts dialog and the first
      tour step, none of which any state above this one opens. #27 item 10
      adds the Who's here sheet to the same reused list: a `dialog.bsheet` is

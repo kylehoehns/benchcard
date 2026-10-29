@@ -1682,6 +1682,33 @@
     </div>
   </div>
 
+  <!-- #368: the overtime sheet, a commit sheet in the shape of #sheetAddPlayer.
+       A direct child of .app on purpose: bench mode inerts everything under
+       .app but its own dialogs (gamemode.js inertBehind), and this opens over
+       it. aria-modal because bench mode is one too -- of two, the later one
+       in the document is the one the coach is in. -->
+  <dialog class="bsheet grouped noprint" id="sheetOvertime" aria-modal="true" aria-labelledby="sheetOvertimeTitle">
+    <div class="bsheet-hd">
+      <button type="button" class="bsheet-handle" aria-label="Full height"></button>
+      <div class="bsheet-hd-row">
+        <span class="bsheet-hd-l"><button type="button" class="bsheet-close" id="sheetOvertimeClose" aria-label="Close">✕</button></span>
+        <h2 id="sheetOvertimeTitle" tabindex="-1">Overtime</h2>
+        <span class="bsheet-hd-r"></span>
+      </div>
+    </div>
+    <div class="bsheet-body">
+      <div class="pgrp">
+        <label class="prow" for="overtimeMinutes">
+          <span class="prow-t">Minutes</span>
+          <input class="prow-in prow-in-num" id="overtimeMinutes" type="text" inputmode="numeric" maxlength="2" autocomplete="off">
+        </label>
+      </div>
+      <div class="bsheet-cta">
+        <button class="btn primary press" id="overtimeGo" type="button">Add overtime</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Phone action bar: game mode is ~2 screens down, and a coach standing
        courtside should not have to scroll to reach it.
        This bar only exists below 900px, and below 900px it is the ONLY bench

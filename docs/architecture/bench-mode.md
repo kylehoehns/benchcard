@@ -147,6 +147,20 @@ next break is often mid-period rather than the boundary a coach assumes.
 Players who arrived at the current break carry a "just on" tag rather than a
 bare glyph, and that tag always matches the previous stint's On column.
 
+**A tied game can go to overtime (#368).** On the last stint the Next box
+offers **Tied? Add overtime** under the "Game ends at 0:00." line, and it is gone once
+the game is finished. The sheet asks for whole minutes from 1 to 10. It is
+prefilled with the length the team added last time, which is the team setting
+`overtimeMinutes` (2 until a team has added any). "Add overtime" is one
+`undoable` step, "Overtime added, N min.": the minutes join the game's
+overtime, the plan is solved again with the stints already played frozen so
+they do not move, and the game steps onto the first overtime stint. Undo takes
+all of it back, the remembered length included, because it restores the whole
+snapshot. The button comes back on the last overtime stint, and a second
+overtime is named OT2. Who is on the floor in overtime follows the game's
+strategy; the per-strategy rules are in
+[planning-strategies.md](planning-strategies.md).
+
 Each player shows **played / projected** — minutes from the stints already
 completed, then where they finish if the plan holds. Mid-game the live question
 is "how much has this kid actually played", and a projected total reads the same
@@ -203,7 +217,9 @@ is `carryoverTargets` from `budget.js`, the same helper the season carryover
 uses, with the deficit read off this game so far; `generatePlan`'s own
 `carryover` argument is deliberately *not* used, because its two-stint clamp is
 right between games and wrong inside one. The `minutes` and `platoon`
-strategies are refused out loud — their numbers are set by hand. So is a
+strategies are refused out loud — their numbers are set by hand — unless the
+stints left are all overtime (#368), which is planned around what was played.
+So is a
 remainder the solver cannot cover: the toast names the rule that stopped it
 (`SIT_RULES` in `gamemode.js`, keyed by the solver's own error codes) rather
 than saying "one of your rules". The engine's own message is not reused there,

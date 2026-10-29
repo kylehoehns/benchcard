@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   buildStints, fmtClock, deriveShortNames, analyzeFeasibility,
-  generatePlan, minPossibleSpread, ON_FLOOR, stintsBeforeHalftime,
+  generatePlan, minPossibleSpread, ON_FLOOR, stintsBeforeHalftime, isOvertimeStint,
 } from '../app/engine.js';
 
 const QUARTERS = { periods: 4, periodMinutes: 8 };
@@ -1091,6 +1091,11 @@ test('two overtime periods are named OT then OT2 and numbered 3 then 4', () => {
 test('four overtime periods are named OT, OT2, OT3, OT4', () => {
   const s = buildStints({ ...HALVES, overtime: [1, 1, 1, 1] }, EVERY_4).slice(8);
   assert.deepEqual(s.map(x => x.periodName), ['OT', 'OT2', 'OT3', 'OT4']);
+});
+
+test('isOvertimeStint is true for the stints buildStints names OT..OT4 and for no regulation period', () => {
+  const s = buildStints({ ...HALVES, overtime: [1, 1, 1, 1] }, EVERY_4);
+  assert.deepEqual(s.map(isOvertimeStint), [...Array(8).fill(false), true, true, true, true]);
 });
 
 test('overtime is split by the same granularity rule as a period', () => {
