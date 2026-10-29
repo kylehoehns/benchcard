@@ -19,10 +19,10 @@ import { generatePlan, fmtMinutes, buildStints, isOvertimeStint, DEFAULT_TIER, O
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
-         validTipoff, tipoffLabel, sortDay, OVERTIME_MAX } from './storage.js';
+         validTipoff, tipoffLabel, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
-import { stage, playedStints, handStints, writeOverrides, resetFrom, finishedGame,
+import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, finishedGame,
   dropPlayer, keepThrough, replaceOverrides, snapshotFives, restoreFives } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
@@ -119,8 +119,9 @@ export const GRAN_CHOICES = [
 
 /* #367: a game's format, built once -- regulation and its overtime periods.
    Every caller that asks the engine for stints or a plan goes through here,
-   so none can forget the overtime. */
-const gameFormat = g => ({ periods: g.periods, periodMinutes: g.periodMinutes, overtime: g.overtime });
+   so none can forget the overtime. The engine reads minutes only (#369): who
+   plays an overtime is state.js's business, not the grid's. */
+const gameFormat = g => ({ periods: g.periods, periodMinutes: g.periodMinutes, overtime: overtimeMinutes(g.overtime) });
 
 export function newGame(n, from, settings) {
   const g = {
@@ -778,6 +779,67 @@ export function openGame(d, i) {
   state.activeGame = i;
 }
 
+/* #369: the five a pinning choice settles on, from the game as it stands. Keep
+   is the five on the floor now (hand swaps included); Strongest is the
+   available players by Level, then fewest minutes so far, then roster order.
+   Players who are out are never picked. Other choices pin nothing. */
+const PINNING = ['keep', 'strongest'];
+function pinnedFive(g, who) {
+  const p = plans[state.activeGame];
+  if (!PINNING.includes(who) || !p?.ok) return null;
+  const avail = availIds(g);
+  if (who === 'keep') {
+    return effectiveLineup(g, p, stintIndex(p, g.live)).filter(id => avail.includes(id));
+  }
+  return fillFive([], avail, 'strongest', minutesFrom(effectiveStints(g, p), avail));
+}
+
+/* Fill a five up to ON_FLOOR from `avail`: for Strongest the highest Level
+   first, then the fewest minutes; for Keep the fewest minutes. Roster order
+   settles the rest. `minutes` is what each has played. */
+function fillFive(five, avail, who, minutes) {
+  const roster = state.players.map(pl => pl.id);
+  const level = id => (who === 'strongest' ? tierOfPlayer(state.players.find(pl => pl.id === id)) : 0);
+  const rest = avail.filter(id => !five.includes(id)).sort((a, b) =>
+    level(b) - level(a) || (minutes[a] || 0) - (minutes[b] || 0) || roster.indexOf(a) - roster.indexOf(b));
+  return [...five, ...rest].slice(0, LINEUP_FLOOR);
+}
+
+/* The overtime entry a stint belongs to, or undefined for regulation. */
+const overtimeOf = (g, s) => (isOvertimeStint(s) ? overtimeEntry(g.overtime?.[s.period - g.periods - 1]) : undefined);
+const isPinned = (g, s) => {
+  const o = overtimeOf(g, s);
+  return PINNING.includes(o?.who) && !!o.five?.length;
+};
+
+/* The pinned fives for stints `k` on, by stint index: each pinned period's
+   stored five without whoever is not available now, the empty seats refilled
+   by the rule above. Minutes run on from what was played before `k`, period by
+   period, so a refill sees the earlier overtime. `solved` is the fives the
+   solve gave the other stints (none when nothing was solved). */
+function pinFives(g, p, k, avail, solved) {
+  const fives = {};
+  const minutes = minutesFrom(effectiveStints(g, p).slice(0, k), avail);
+  let period = null, five = null;
+  p.stints.slice(k).forEach((s, i) => {
+    let onFloor = solved?.[i] || p.stints[k + i].onFloor;
+    if (isPinned(g, s)) {
+      if (s.period !== period) {
+        const entry = overtimeOf(g, s);
+        period = s.period;
+        five = fillFive(entry.five.filter(id => avail.includes(id)), avail, entry.who, minutes);
+      }
+      onFloor = fives[k + i] = five.slice();
+    }
+    for (const id of onFloor) if (id in minutes) minutes[id] += s.minutes;
+  });
+  return fives;
+}
+
+/* Where Reset sends the pinned overtime stints: back to the stored five, not
+   to the plan. `from` is the first stint Reset would clear. */
+export const pinnedFives = (g, p, from) => (p?.ok ? pinFives(g, p, from, availIds(g)) : {});
+
 /* #368: a tied game goes on. The overtime joins the game's format and the
    length is remembered on the team for the next one; the plan is solved here
    so the caller can step onto the new stint. computeAll's #367 freeze plans
@@ -785,7 +847,7 @@ export function openGame(d, i) {
    added (four already, or a plan that will not solve), 'rewritten' when the
    freeze could not hold and #134 moved stints already played -- the caller says
    so -- and true otherwise. */
-export function addOvertime(g, minutes) {
+export function addOvertime(g, minutes, who = 'next') {
   // storage keeps four, so a fifth would be lost on reload
   if ((g.overtime?.length || 0) >= OVERTIME_MAX) return false;
   /* Bench mode steps through a game without re-solving, so a game played from
@@ -795,7 +857,11 @@ export function addOvertime(g, minutes) {
   computeAll();
   const was = plans[state.activeGame]?.ok ? effectiveStints(g, plans[state.activeGame]).map(x => x.onFloor.join()) : [];
   const before = { overtime: g.overtime, remembered: state.settings.overtimeMinutes };
-  g.overtime = [...(g.overtime || []), minutes];
+  /* #369: Keep and Strongest settle their five here, once, from the game as it
+     stands -- a later Level edit, or the overtime's own minutes, must not move
+     it. */
+  const five = pinnedFive(g, who);
+  g.overtime = [...(g.overtime || []), { minutes, who, ...(five ? { five } : {}) }];
   state.settings.overtimeMinutes = minutes;
   computeAll();
   if (plans[state.activeGame]?.ok) {
@@ -1802,11 +1868,15 @@ export function resolveRest(g, p, from, sitIds = []) {
      that is all overtime is the exception. Its stints were never part of what
      the coach set -- By hand plans them as Even around the minutes played and
      leaves the saved targets alone, Platoon carries on with the next unit. */
-  const handSet = g.strategy === 'minutes' || g.strategy === 'platoon';
+  /* #369: a suffix of Even-out overtime is planned as Even whatever the game's
+     strategy, so neither refusal below applies to it. */
+  const evenOut = suffix.length > 0 && suffix.every(s => overtimeOf(g, s)?.who === 'even');
+  const strategy = evenOut ? 'balanced' : g.strategy;
+  const handSet = strategy === 'minutes' || strategy === 'platoon';
   const overtimeOnly = suffix.length > 0 && suffix.every(isOvertimeStint);
   /* Platoon's units are exact fives that ignore who is available, so it still
      cannot sit anyone for the rest -- only carry on with the next unit. */
-  if (handSet && (!overtimeOnly || (g.strategy === 'platoon' && sitIds?.length))) return { ok: false, reason: 'strategy' };
+  if (handSet && (!overtimeOnly || (strategy === 'platoon' && sitIds?.length))) return { ok: false, reason: 'strategy' };
   if (!suffix.length) return { ok: false, reason: 'nothing' };
 
   const sit = new Set(sitIds || []);
@@ -1826,8 +1896,8 @@ export function resolveRest(g, p, from, sitIds = []) {
 
   const c = clone(g.constraints);
   c.openingFive = [];
-  if (g.strategy !== 'platoon') c.units = [];
-  if (g.strategy !== 'closers') c.closing = null;
+  if (strategy !== 'platoon') c.units = [];
+  if (strategy !== 'closers') c.closing = null;
   /* A By hand lock holds a regulation number, not overtime's, so it is dropped
      here. That is safe for the other strategies: only By hand lets a coach set
      locks, and the engine reads them only to hold a locked row out of its
@@ -1878,21 +1948,33 @@ export function resolveRest(g, p, from, sitIds = []) {
      every remaining stint on one kid. Slice 2 says so on screen. */
   if (targets) c.targetMinutes = targets;
 
-  const r = generatePlan({
-    players: state.players,
-    availableIds: avail,
-    stints: suffix,
-    format: gameFormat(g),
-    granularity: { mode: g.granMode, value: g.granValue },
-    constraints: c, strategy: g.strategy, balance: g.balance,
-    seed: g.seed,
-    maxSubs,
-  });
-  if (!r.ok) return { ok: false, reason: 'infeasible', issues: r.issues };
+  /* #369: a suffix that is all pinned has nothing to solve, and a rule must
+     not get to refuse the five. */
+  const allPinned = suffix.every(s => isPinned(g, s));
+  let r = { issues: [], stints: null, minutes: null };
+  if (!allPinned) {
+    r = generatePlan({
+      players: state.players,
+      availableIds: avail,
+      stints: suffix,
+      format: gameFormat(g),
+      granularity: { mode: g.granMode, value: g.granValue },
+      constraints: c, strategy, balance: g.balance,
+      seed: g.seed,
+      maxSubs,
+    });
+    if (!r.ok) return { ok: false, reason: 'infeasible', issues: r.issues };
+  }
 
+  /* The pins go on after the solve (not into `buildForced`, whose players still
+     pass caps and Apart rules): so every path that re-plans keeps them. */
   const overrides = {};
-  r.stints.forEach((s, i) => { overrides[k + i] = s.onFloor.slice(); });
-  return { ok: true, from: k, overrides, issues: r.issues, minutes: r.minutes };
+  r.stints?.forEach((s, i) => { overrides[k + i] = s.onFloor.slice(); });
+  Object.assign(overrides, pinFives(g, p, k, avail, r.stints?.map(s => s.onFloor)));
+  const minutes = allPinned
+    ? minutesFrom(suffix.map((s, i) => ({ onFloor: overrides[k + i], minutes: s.minutes })), avail)
+    : r.minutes;
+  return { ok: true, from: k, overrides, issues: r.issues, minutes };
 }
 
 /* ================================================================== *

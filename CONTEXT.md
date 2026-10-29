@@ -35,8 +35,9 @@ _In code_: `shortName`
 
 **Level**:
 A coach's rating of a player from 1 to 5 — Developing, Learning, Regular,
-Reliable, Go-to — used only to shape who plays together, never how many minutes
-anyone gets, and never shown on the card, in bench mode or in an export.
+Reliable, Go-to — used to shape who plays together, not how many minutes
+anyone gets, except in an overtime the coach plays as Strongest five
+(`docs/adr/0001`); never shown on the card, in bench mode or in an export.
 _Avoid_: tier, rating, skill
 _In code_: `tier`
 

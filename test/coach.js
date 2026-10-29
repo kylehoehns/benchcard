@@ -206,10 +206,12 @@ export class Coach {
   }
 
   /** Bench mode, on the last stint: tap "Tied? Add overtime", set the sheet to
-      `minutes` and add it. */
-  async addOvertime(minutes) {
+      `minutes`, pick who plays it (the option's name, e.g. 'Keep this five';
+      left alone, the sheet's own pick) and add it. */
+  async addOvertime(minutes, who) {
     await this.tap('Tied? Add overtime');
     await this.fill('Minutes', String(minutes));
+    if (who) await this.tap(who);
     await this.tap('Add overtime');
   }
 

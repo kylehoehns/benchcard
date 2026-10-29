@@ -90,13 +90,34 @@ export const OVERTIME_MAX = 4;
 /* #368: the one rule for a length of overtime -- a game's periods above and the
    remembered length in the team settings below both ask it. */
 export const validOvertime = m => Number.isInteger(m) && m >= 1 && m <= 10;
-const cleanOvertime = v => (Array.isArray(v)
-  ? v.filter(validOvertime).slice(0, OVERTIME_MAX)
+/* #369: an overtime period is { minutes, who, five? }. `who` is how its five
+   is picked (next rotation, even out, keep the last five, the strongest five);
+   `five` is the ids that choice settled on when the overtime was added, kept
+   for the two that pin one. A bare number is the shape before #369 and loads
+   as a Next rotation period. */
+const OVERTIME_WHO = ['next', 'even', 'keep', 'strongest'];
+const PINS = ['keep', 'strongest'];
+const FIVE = 5;
+/* The one mapping from a period to its length: every reader that wants minutes
+   (the engine's format, the season record) goes through here, and a legacy
+   bare number is read the same as its upgraded entry. */
+export const overtimeEntry = o => (typeof o === 'number' ? { minutes: o, who: 'next' } : o);
+export const overtimeMinutes = list => (Array.isArray(list) ? list : []).map(o => overtimeEntry(o)?.minutes);
+const cleanOvertime = (v, known) => (Array.isArray(v)
+  ? v.map(o => (isObj(o) ? o : { minutes: o }))
+    .filter(o => validOvertime(o.minutes))
+    .slice(0, OVERTIME_MAX)
+    .map(o => {
+      const who = OVERTIME_WHO.includes(o.who) ? o.who : 'next';
+      const five = PINS.includes(who) && Array.isArray(o.five) && known
+        ? [...new Set(o.five.filter(id => known.has(id)))].slice(0, FIVE) : [];
+      return { minutes: o.minutes, who, ...(five.length ? { five } : {}) };
+    })
   : []);
-// the season-record form: only when there was overtime, so a game without any
-// files exactly as it always has
+// the season-record form: only the minutes, and only when there was overtime,
+// so a game without any files exactly as it always has
 const overtimeField = v => {
-  const overtime = cleanOvertime(v);
+  const overtime = overtimeMinutes(cleanOvertime(v));
   return overtime.length ? { overtime } : {};
 };
 
@@ -506,7 +527,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         tipoff: validTipoff(g.tipoff),
         periods: num(g.periods, 4, 1, 8),
         periodMinutes: num(g.periodMinutes, 8, 1, 40),
-        overtime: cleanOvertime(g.overtime),
+        overtime: cleanOvertime(g.overtime, validId),
         granMode: ['everyN', 'perPeriod', 'breaksOnly'].includes(g.granMode) ? g.granMode : 'everyN',
         granValue: num(g.granValue, 4, 1, 40),
         out,
