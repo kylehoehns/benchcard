@@ -1248,10 +1248,10 @@ const ROW_GAP_PCT = 1;
    color exactly where a block says they are on the floor, `trackColor`
    everywhere else inside a period, and `transparent` across the gap between
    periods. The row is one equal-per-minute track per period --
-   `g.periodMinutes` is every period's length, so a block's `from`/`to`
-   divide by it for a fraction of that period's track, and each overtime
-   period (#370) gets a track of its own, as wide as its minutes. Pure: reads nothing
-   off `state`. */
+   each period's track is as wide as its minutes (regulation periods are
+   `g.periodMinutes` each, every overtime period (#370) its own), and a
+   block's `from`/`to` divide by that period's length for a fraction of that
+   track. Pure: reads nothing off `state`. */
 export function rowGradient(blocks, g, color, trackColor) {
   const lengths = [...Array(g.periods).fill(g.periodMinutes), ...overtimeMinutes(g.overtime)];
   const total = lengths.reduce((a, m) => a + m, 0);

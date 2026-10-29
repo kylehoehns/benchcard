@@ -317,16 +317,37 @@ test('overtime: Keep this five and Strongest five arrive with who and five', asy
   ]);
 });
 
-test('overtime: a receiver that drops the field opens regulation only', async () => {
-  const { team, g, p } = otTeam([{ minutes: 2, who: 'next' }]);
-  const hash = await encode(team, g, floorOf(g, p));
+test('overtime: a receiver that drops the field opens regulation only, played past the grid', async () => {
+  const { team, g } = otTeam([]);
+  assert.ok(S.addOvertime(g, 2), 'the sender adds a 2-minute overtime');
+  S.computeAll();
+  g.live.at = 8;   // on the OT stint
+  const eff = S.effectiveStints(g, S.plans[0]);
+  const swapped = k => { const f = [...eff[k].onFloor]; f[0] = eff[k].sitting[0]; return f; };
+  L.writeOverrides(g.live, { 8: swapped(8) }, true);   // a hand swap in the OT stint
+  L.writeOverrides(g.live, { 3: swapped(3) }, true);   // and one in regulation
+  S.computeAll();
+  const p = S.plans[0];
+  assert.deepEqual(L.handStints(g.live), [3, 8], 'fixture: two hand swaps');
+  const sent = floorOf(g, p);
+  const hash = await encode(team, g, sent);
+
   // an older app: its sanitizer does not know `overtime`
   const incoming = await decode(hash);
   delete incoming.team.days[0].games[0].overtime;
-
   freshDevice();
   receive(incoming);
-  const gp = S.plans[S.state.activeGame];
+
+  const got = S.game(), gp = S.plans[S.state.activeGame];
   assert.equal(gp.stints.length, 8);
   assert.ok(!gp.stints.some(s => /^OT/.test(s.periodName ?? '')), 'no OT stint');
+  assert.ok(sameFives(floorOf(got, gp), sent.slice(0, 8)), 'regulation fives, hand swap included');
+  assert.ok(L.handStints(got.live).includes(3), 'the regulation hand swap shows');
+  // `at` stays 8, past the 8-stint grid: bench mode reads it clamped to the last stint
+  assert.equal(got.live.at, 8);
+  assert.equal(L.stintIndex(gp, got.live), 7);
+  assert.equal(L.stepAt(gp, got.live, 0), 7);
+  assert.equal(L.finishedGame(got.live), false);
+  const row = gp.stints[L.stintIndex(gp, got.live)];
+  assert.equal(benchHeaderText(row, 7, 8).title, 'H2 · 4:00 to 0:00');
 });

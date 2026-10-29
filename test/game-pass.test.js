@@ -239,8 +239,9 @@ test('rowGradient gives a second overtime its own track after the first', () => 
   assert.deepEqual(stops.filter(s => s.color === 'oklch(1 2 3)').map(s => s.pos), ['94.6111%', '100%']);
 });
 
-test('rowGradient with no overtime is unchanged whether the field is absent or empty', () => {
+test('rowGradient with an empty overtime list is the string a game without one always drew', () => {
   const blocks = [{ period: 1, from: 0, to: 10 }, { period: 2, from: 0, to: 5 }];
-  const plain = S.rowGradient(blocks, { periods: 2, periodMinutes: 10 }, 'oklch(1 2 3)', 'oklch(0 0 0)');
-  assert.equal(S.rowGradient(blocks, { periods: 2, periodMinutes: 10, overtime: [] }, 'oklch(1 2 3)', 'oklch(0 0 0)'), plain);
+  assert.equal(S.rowGradient(blocks, { periods: 2, periodMinutes: 10, overtime: [] }, 'oklch(1 2 3)', 'oklch(0 0 0)'),
+    'linear-gradient(to right, oklch(1 2 3) 0%, oklch(1 2 3) 49.5%, transparent 49.5%, transparent 50.5%, '
+    + 'oklch(1 2 3) 50.5%, oklch(1 2 3) 75.25%, oklch(0 0 0) 75.25%, oklch(0 0 0) 100%)');
 });

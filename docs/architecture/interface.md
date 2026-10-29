@@ -450,7 +450,8 @@ Mobile specifics that came out of real use:
   color. Tip-off time, opponent name, and summary are sized from the type scale:
   secondary, large, and secondary respectively. The mini rotation rows (who plays
   when) use the track color for off-floor stretches; the gaps between periods stay
-  transparent.
+  transparent. Each overtime period is a track of its own after the last regulation
+  period, as wide as its minutes (#370), so the whole row is equal per minute.
   The stack replaced a strip of tabs (#23) that had to cap a label at 20
   characters. A pass has no such cap: `.pass-title` wraps at large text sizes
   (320px with 32px text, #66/#187) to keep every team name whole, and truncates
@@ -521,6 +522,9 @@ The link carries:
   rotation rules
 - whether the game is underway, and if so, how far it has progressed and which
   stints the head coach has swapped by hand
+- the game's overtime, if it has any: each overtime's minutes, its Who plays
+  choice, and the five it was given where the choice names one (#370). A phone
+  from before #370 drops that field and opens the regulation game only.
 - the roster: player ids, call names (first name, or first name plus last
   initial when two share a first name), numbers and skill levels
 - the team's id, name and color

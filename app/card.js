@@ -162,7 +162,9 @@ function buildCard(plan, rows, page, pageCount, title, when, minutes = plan.minu
 
   const per = [...new Set(rows.map(r => r.period))];
   /* A period is named as its stint names it: regulation "Q<n>", overtime by
-     the engine's own `periodName` ("OT", "OT2"), so there is one answer. */
+     the engine's own `periodName` ("OT", "OT2"), so there is one answer.
+     Regulation keeps `Q<n>` on purpose: the title's name for it is unchanged
+     for games without overtime (spec 370 item 4). */
   const nameOf = period => {
     const row = rows.find(r => r.period === period);
     return isOvertimeStint(row) ? row.periodName : `Q${period}`;
