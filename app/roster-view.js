@@ -607,7 +607,7 @@ function levelsNote() {
   const byLevel = (state.settings?.tieBreak ?? 'behind') === 'levels';
   return `Levels stay with your team from game to game. ${byLevel
     ? 'They shape who is on the floor together, and they decide who gets the odd minutes, as your Settings ask.'
-    : 'They shape who is on the floor together; everyone’s share of the minutes is worked out without them.'} They are never printed and never shown in bench mode.`;
+    : 'They shape who is on the floor together; everyone’s share of the minutes is worked out without them.'} In overtime they can pick the Strongest five. They are never printed and never shown in bench mode.`;
 }
 
 /* ---- the two ways to add (#31 items 5 and 6) -----------------------------

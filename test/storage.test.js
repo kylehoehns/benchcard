@@ -1869,7 +1869,7 @@ test('an arrival past the last stint a game can have is dropped', () => {
 const otOf = v => {
   const raw = good();
   if (v !== undefined) raw.day.games[0].overtime = v;
-  return sanitize(raw, H).teams[0].days[0].games[0].overtime;
+  return sanitize(raw, H).teams[0].days[0].games[0].overtime.map(o => o.minutes);
 };
 
 test('a game saved with overtime reloads with it', () => {
@@ -1884,6 +1884,49 @@ test('junk overtime is cleaned: non-arrays go, non-whole or out-of-range entries
   for (const junk of ['2', 5, { 0: 2 }, null, true]) assert.deepEqual(otOf(junk), [], String(junk));
   assert.deepEqual(otOf([0, 11, 2.5, -3, '4', null, NaN, 3, 1, 10]), [3, 1, 10]);
   assert.deepEqual(otOf([1, 2, 3, 4, 5, 6]), [1, 2, 3, 4]);
+});
+
+/* #369: an overtime entry is { minutes, who, five? }; the old shape was a bare
+   number of minutes. */
+const entriesOf = v => {
+  const raw = good();
+  raw.day.games[0].overtime = v;
+  return sanitize(raw, H).teams[0].days[0].games[0].overtime;
+};
+
+test('a game saved with the old overtime shape loads as Next rotation periods', () => {
+  assert.deepEqual(entriesOf([2, 8]), [{ minutes: 2, who: 'next' }, { minutes: 8, who: 'next' }]);
+});
+
+test('an overtime entry keeps its choice, and an unknown choice becomes Next rotation', () => {
+  assert.deepEqual(entriesOf([
+    { minutes: 4, who: 'even' },
+    { minutes: 3, who: 'bogus' },
+    { minutes: 5 },
+    { minutes: 99, who: 'even' },
+  ]), [{ minutes: 4, who: 'even' }, { minutes: 3, who: 'next' }, { minutes: 5, who: 'next' }]);
+});
+
+test('a stored five keeps only players on the team, at most five', () => {
+  const [e] = entriesOf([{ minutes: 4, who: 'keep', five: ['a', 'zz', 'b', 'a'] }]);
+  assert.deepEqual(e, { minutes: 4, who: 'keep', five: ['a', 'b'] });
+  const raw = good();
+  raw.players = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(id => ({ id, name: id.toUpperCase(), number: '', shortName: '' }));
+  raw.day.games[0].overtime = [{ minutes: 4, who: 'strongest', five: ['a', 'b', 'c', 'd', 'e', 'f', 'g'] }];
+  assert.deepEqual(sanitize(raw, H).teams[0].days[0].games[0].overtime[0].five, ['a', 'b', 'c', 'd', 'e']);
+});
+
+test('a five on a choice that does not use one is dropped', () => {
+  assert.deepEqual(entriesOf([{ minutes: 4, who: 'next', five: ['a'] }]), [{ minutes: 4, who: 'next' }]);
+});
+
+test('a filed season game keeps only the minutes of its overtime', () => {
+  assert.deepEqual(seasonGame({ id: 'x', label: '', periods: 2, periodMinutes: 16,
+    overtime: [{ minutes: 2, who: 'keep', five: ['a'] }, { minutes: 8, who: 'even' }] },
+  { a: 1 }, { date: '2026-11-08' }).overtime, [2, 8]);
+  const raw = seasonRecord();
+  raw.teams[0].season.games[0].overtime = [{ minutes: 2, who: 'even' }, 99, 8];
+  assert.deepEqual(sanitize(raw, H).teams[0].season.games[0].overtime, [2, 8]);
 });
 
 test('a filed season game keeps its overtime, cleaned the same way', () => {

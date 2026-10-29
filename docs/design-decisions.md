@@ -252,8 +252,9 @@ its alternative is an assertion, so the rejected options are kept here too.
   lands short every week by roster position. The `SPREAD_FLOOR` line names who
   pays and `state.js` appends why, so the coach can answer it per player with a
   lock or a hand-set target instead of a global preference.
-- **The stance on that tie is the coach's, and it is the one place a level may
-  move a minute.** `settings.tieBreak` is `'behind'` (the default, and exactly
+- **The stance on that tie is the coach's, and it is the one place in a game's
+  regulation where a level may move a minute.** The only other is an overtime
+  the coach set to Strongest five ([ADR 0001](adr/0001-level-picks-the-overtime-five.md)). `settings.tieBreak` is `'behind'` (the default, and exactly
   what the app did before it existed) or `'levels'`. Because the engine reads
   `priority` for its ORDER alone and is deliberately never told what the number
   means, the stance is composed in `state.js` -- `tier * 1000 + deficit` -- and

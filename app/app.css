@@ -2968,7 +2968,11 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    auto (an id beats .seg.wide's own width: 100%) lets the side margins
    actually show instead of overflowing the sheet. Scoped by id so Settings'
    other .seg.wide rows (#maxSubsSeg etc.) are untouched. */
-#stratseg, #shareSeg { width: auto; margin: .5rem 1rem 0; }  /* #257: the share sheet's Print card | Hand off */
+#stratseg, #shareSeg, #overtimeWho { width: auto; margin: .5rem 1rem 0; }  /* #257: the share sheet's Print card | Hand off */
+/* #369: the Overtime sheet's four options go two by two at every size, equal
+   widths, because "Strongest five" does not fit a quarter of a phone's row. */
+#overtimeWho { flex-wrap: wrap; }
+#overtimeWho button { flex: 1 0 40%; }
 /* The header and footer sit on the sheet background, outside the white
    card: the prototype's header/footer are never inside .pgrp, and a footer
    that ellipsized was losing whole sentences rather than wrapping them.

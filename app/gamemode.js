@@ -19,8 +19,8 @@ import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './tra
 import { track } from './analytics.js';
 import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
-         resolveRest, benchOpen, setBenchOpen, addOvertime } from './state.js';
-import { stage, stintIndex, handStints, writeOverrides, clearRest, resetFrom, openGame, step, finish } from './live.js';
+         resolveRest, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+import { stage, stintIndex, handStints, writeOverrides, resetFrom, openGame, step, finish } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
 let render = () => {};
@@ -87,6 +87,7 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
   on('#gmFinish', 'onclick', gmFinish);
   on('#sheetOvertimeClose', 'onclick', () => closeSheet($('#sheetOvertime')));
   $('#overtimeMinutes').oninput = paintOvertimeConfirm;
+  for (const b of document.querySelectorAll('#overtimeWho button')) b.onclick = () => paintOvertimeWho(b.dataset.who);
   on('#overtimeGo', 'onclick', commitOvertime);
   /* The browser drops the lock as soon as the tab is hidden -- there is no
      "keep this held in the background" option -- so returning to a visible
@@ -420,8 +421,20 @@ function paintOvertimeConfirm() {
   $('#overtimeGo').disabled = !validOvertime(overtimeAsked());
 }
 
+/* #369: who plays it. One option at a time, `.on` and `aria-pressed` as
+   #stratseg does; the sheet opens on Next rotation every time. */
+const overtimeWho = () => document.querySelector('#overtimeWho button.on')?.dataset.who || 'next';
+function paintOvertimeWho(who) {
+  for (const b of document.querySelectorAll('#overtimeWho button')) {
+    const on = b.dataset.who === who;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
+}
+
 function openOvertimeSheet(trigger) {
   $('#overtimeMinutes').value = String(state.settings?.overtimeMinutes ?? DEFAULT_SETTINGS.overtimeMinutes);
+  paintOvertimeWho('next');
   paintOvertimeConfirm();
   openSheet($('#sheetOvertime'), trigger);
 }
@@ -433,6 +446,7 @@ function openOvertimeSheet(trigger) {
 function commitOvertime() {
   const minutes = overtimeAsked();
   if (!validOvertime(minutes)) return;
+  const who = overtimeWho();
   const g = game();
   const live = liveOf(g);
   closeSheetNow($('#sheetOvertime'));
@@ -443,7 +457,7 @@ function commitOvertime() {
      so it is said here. */
   undoable(() => (added === 'rewritten' ? `Overtime added, ${minutes} min. Rotation changed.`
     : added ? `Overtime added, ${minutes} min.` : 'Overtime could not be added.'), () => {
-    added = addOvertime(g, minutes);
+    added = addOvertime(g, minutes, who);
     if (added) step(plans[state.activeGame], live, 1);
   }, () => {
     render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs', 'plan', 'issues');
@@ -1095,7 +1109,8 @@ function gmStep(d) {
 /* Back to the printed plan. The caller wraps this in `undoable`, so it only
    mutates -- the repaint is the caller's second argument. */
 export function clearOverrides() {
-  clearRest(liveOf(game()));
+  // an overtime the coach chose the five for goes back to that choice, not the plan's
+  resetRest(game());
   gmPick = null;
 }
 

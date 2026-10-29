@@ -151,7 +151,9 @@ export const APP_LARGE_TEXT_STATES = [
   /* #368 item 15: the Overtime sheet over the last stint (whose Next box now
      also carries "Tied? Add overtime", so 'bench mode, last stint' above
      measures that button). Closed with its own X, nothing added, then walked
-     back to stint 0 the way that state does, so the fixture is left as found. */
+     back to stint 0 the way that state does, so the fixture is left as found.
+     #369 item 14: the sheet now carries the four-option "Who plays" control,
+     so this state is where it is measured at 320px and 32px text. */
   { name: 'overtime sheet',
     open: `document.querySelector('#gmOpen').click();
            while (!document.querySelector('#gmNext2').disabled) { document.querySelector('#gmNext2').click(); }
