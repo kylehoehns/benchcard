@@ -500,3 +500,17 @@ test('downloadText hands one Blob to one clicked <a download>, then revokes the 
   timers[0].fn();
   assert.deepEqual(revoked, ['blob:test-1']);
 });
+
+/* #370: a game's overtime and the place the coach was in it survive a backup.
+   Two overtimes: one that follows the rotation and one that pins a five. */
+test('a game with overtime restores with its entries, five and place', () => {
+  const raw = populated();
+  const game = raw.teams[0].day.games[0];
+  const five = ['p0', 'p1', 'p2', 'p3', 'p4'];
+  game.overtime = [{ minutes: 2, who: 'next' }, { minutes: 3, who: 'keep', five }];
+  game.live = { at: 8, overrides: {} };
+  const { back } = roundTrip(raw);
+  const g = back.teams[0].days[0].games[0];
+  assert.deepEqual(g.overtime, [{ minutes: 2, who: 'next' }, { minutes: 3, who: 'keep', five }]);
+  assert.equal(g.live.at, 8);
+});

@@ -1249,18 +1249,22 @@ const ROW_GAP_PCT = 1;
    everywhere else inside a period, and `transparent` across the gap between
    periods. The row is one equal-per-minute track per period --
    `g.periodMinutes` is every period's length, so a block's `from`/`to`
-   divide by it for a fraction of that period's track. Pure: reads nothing
+   divide by it for a fraction of that period's track, and each overtime
+   period (#370) gets a track of its own, as wide as its minutes. Pure: reads nothing
    off `state`. */
 export function rowGradient(blocks, g, color, trackColor) {
-  const periods = g.periods, periodMinutes = g.periodMinutes;
-  const track = (100 - (periods - 1) * ROW_GAP_PCT) / periods;
+  const lengths = [...Array(g.periods).fill(g.periodMinutes), ...overtimeMinutes(g.overtime)];
+  const total = lengths.reduce((a, m) => a + m, 0);
+  const room = 100 - (lengths.length - 1) * ROW_GAP_PCT;   // the row less its gaps
   const pct = n => `${Math.round(n * 10000) / 10000}%`;
   const stops = [];
   const push = (from, to, c) => stops.push(`${c} ${pct(from)}`, `${c} ${pct(to)}`);
-  for (let pi = 0; pi < periods; pi++) {
-    const start = pi * track + pi * ROW_GAP_PCT;
-    const frac = m => start + (m / periodMinutes) * track;   // m minutes into this period, as a % of the row
-    if (pi > 0) push(start - ROW_GAP_PCT, start, 'transparent');
+  let start = 0;
+  lengths.forEach((len, pi) => {
+    const track = room * len / total;
+    const at = start;
+    const frac = m => at + (m / len) * track;   // m minutes into this period, as a % of the row
+    if (pi > 0) push(at - ROW_GAP_PCT, at, 'transparent');
     const periodBlocks = blocks.filter(b => b.period === pi + 1).sort((a, b) => a.from - b.from);
     let cursor = 0;
     for (const b of periodBlocks) {
@@ -1268,8 +1272,9 @@ export function rowGradient(blocks, g, color, trackColor) {
       push(frac(b.from), frac(b.to), color);
       cursor = b.to;
     }
-    if (cursor < periodMinutes) push(frac(cursor), frac(periodMinutes), trackColor);
-  }
+    if (cursor < len) push(frac(cursor), frac(len), trackColor);
+    start = at + track + ROW_GAP_PCT;
+  });
   return `linear-gradient(to right, ${stops.join(', ')})`;
 }
 

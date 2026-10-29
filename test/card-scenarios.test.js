@@ -76,4 +76,36 @@ describe('a coach prints or hands off a game', { skip }, () => {
     assert.deepEqual(await coach.changeLines(), CHANGE_LINES);
     assert.deepEqual(await coach.cardFives(), fives);
   });
+
+  /* #370: overtime on a reprinted card. */
+  async function cardOf(edits) {
+    await coach.onGameDayWith(edits);
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Card');
+  }
+
+  test('an overtime stint prints as OT, and a second one as OT2, never Q5', async () => {
+    await cardOf({ overtime: [2, 2] });
+
+    const lines = await coach.changeLines();
+    assert.equal(lines.length, 10);
+    assert.match(lines[8], /^OT 2:00 /);
+    assert.match(lines[9], /^OT2 2:00 /);
+    assert.ok(!lines.some(l => /^Q5/.test(l)), 'a regulation name leaked onto an overtime row');
+  });
+
+  test('a card split into pages names overtime in its title: Q4-OT, and a page of only OT reads OT', async () => {
+    await cardOf({ granValue: 2, overtime: [2] });
+    assert.deepEqual(await coach.cardTitles(), ['HAWKS Q1-Q3', 'HAWKS Q4-OT']);
+
+    await cardOf({ periodMinutes: 12, granValue: 2, overtime: [6] });
+    const titles = await coach.cardTitles();
+    assert.deepEqual(titles, ['HAWKS Q1-Q2', 'HAWKS Q3-Q4', 'HAWKS OT']);
+    assert.ok(titles.every(t => !/Q5/.test(t)), `a title says Q5: ${titles}`);
+  });
+
+  test('a regulation game split into two pages still reads Q1-Q2 and Q3-Q4', async () => {
+    await cardOf({ granValue: 2 });
+    assert.deepEqual(await coach.cardTitles(), ['HAWKS Q1-Q2', 'HAWKS Q3-Q4']);
+  });
 });

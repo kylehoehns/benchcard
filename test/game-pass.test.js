@@ -219,3 +219,28 @@ test('rowGradient never widens the gap or the track for a wider period count', (
   const tracked = stops.filter(s => s.color === 'oklch(0 0 0)').map(s => s.pos);
   assert.deepEqual(tracked, ['0%', '24.25%', '25.25%', '49.5%', '75.75%', '100%']);
 });
+
+/* #370: the mini rotation draws overtime. One track per period, each as wide
+   as its minutes, so the whole row is equal per minute. */
+test('rowGradient draws a track per overtime period, each as wide as its minutes', () => {
+  // 2 x 16 plus a 2-minute OT: 34 minutes, 2 gaps of 1%, so 98% of the row is tracks.
+  const g = { periods: 2, periodMinutes: 16, overtime: [{ minutes: 2, who: 'next' }] };
+  const stops = parseStops(S.rowGradient([{ period: 3, from: 0, to: 2 }], g, 'oklch(1 2 3)', 'oklch(0 0 0)'));
+  // Q1 0-46.1176%, gap, Q2 47.1176-93.2353%, gap, OT 94.2353-100%
+  assert.deepEqual(stops.filter(s => s.color === 'oklch(1 2 3)').map(s => s.pos), ['94.2353%', '100%']);
+  assert.deepEqual(stops.filter(s => s.color === 'transparent').map(s => s.pos),
+    ['46.1176%', '47.1176%', '93.2353%', '94.2353%']);
+});
+
+test('rowGradient gives a second overtime its own track after the first', () => {
+  const g = { periods: 2, periodMinutes: 16, overtime: [2, { minutes: 2, who: 'keep' }] };
+  // 36 minutes, 3 gaps: 97% of the row is tracks, 2 minutes is 5.3889%
+  const stops = parseStops(S.rowGradient([{ period: 4, from: 0, to: 2 }], g, 'oklch(1 2 3)', 'oklch(0 0 0)'));
+  assert.deepEqual(stops.filter(s => s.color === 'oklch(1 2 3)').map(s => s.pos), ['94.6111%', '100%']);
+});
+
+test('rowGradient with no overtime is unchanged whether the field is absent or empty', () => {
+  const blocks = [{ period: 1, from: 0, to: 10 }, { period: 2, from: 0, to: 5 }];
+  const plain = S.rowGradient(blocks, { periods: 2, periodMinutes: 10 }, 'oklch(1 2 3)', 'oklch(0 0 0)');
+  assert.equal(S.rowGradient(blocks, { periods: 2, periodMinutes: 10, overtime: [] }, 'oklch(1 2 3)', 'oklch(0 0 0)'), plain);
+});
