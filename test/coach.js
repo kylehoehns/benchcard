@@ -628,6 +628,12 @@ export class Coach {
       .map(e => e.innerText.replace(/\\s+/g, ' ').trim())`);
   }
 
+  /** Each card's title as printed, scope included ("HAWKS Q1-Q2"), one per page of the first copy. */
+  cardTitles() {
+    return evalIn(this.c, `[...document.querySelectorAll('#sheet .card:not(.card-copy) .card-hd .opp')]
+      .map(e => e.innerText.replace(/\\s+/g, ' ').trim())`);
+  }
+
   /** The card's size in inches, as a ruler would read the print: '3.45 × 5' or '8 × 5.1'. */
   cardSize() {
     return evalIn(this.c, `(() => {
@@ -700,6 +706,16 @@ export class Coach {
 
   /** Play animations at their real speed from here on, for a scenario about the motion itself. */
   async realMotion() { await this.c.send('Animation.setPlaybackRate', { playbackRate: 1 }); }
+
+  /** `onGameDay` with the Hawks game changed by `edits` (e.g. `{ granValue: 2, overtime: [2] }`). */
+  async onGameDayWith(edits) {
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    const record = gameDay();
+    const [day] = record.teams[0].days;
+    day.games = day.games.map((g, i) => (i === 0 ? { ...g, ...edits } : g));
+    await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
+  }
 
   /** `onGameDay` on a laptop-sized window, where Today and the game sit side by side. */
   async onGameDayWide() {

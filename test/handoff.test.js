@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { S, bareGame } from './state-fixture.js';
 import * as L from '../app/live.js';
+import { benchHeaderText } from '../app/gamemode.js';
 import { encode, decode, receive } from '../app/handoff.js';
 
 /* #250: hand a game to an assistant in a link. Seam: handoff.js's exports
@@ -269,4 +270,84 @@ test('bad links: truncated, corrupted and hand-edited payloads decode to null an
   }
   assert.equal(JSON.stringify(S.state.teams), snapshot, 'decoding wrote nothing');
   assert.ok(await decode(await repack(doc)), 'the repack helper itself makes a good link');
+});
+
+/* #370: overtime travels in the link. The fixture is the spec's: 10 kids,
+   2 x 16, sub every 4 (8 stints), seed fixed, Even; one 2-minute overtime. */
+const OT_IDS = Array.from({ length: 10 }, (_, i) => `o${i}`);
+const otTeam = (overtime) => {
+  const g = bareGame({
+    id: 'gOT', periods: 2, periodMinutes: 16, granValue: 4, seed: 99, balance: 'even',
+    live: { at: 0, overrides: {} }, overtime,
+  });
+  const team = {
+    id: 'tOT', name: 'Owls', players: OT_IDS.map((id, i) => ({ id, name: `Kid${i}`, number: String(i), tier: 3, hue: i })),
+    days: [{ name: '', date: '2026-09-12', games: [g] }], activeDay: 0, activeGame: 0,
+    season: { games: [] }, settings: {},
+  };
+  S.state.teams = [team]; S.state.activeTeam = 0;
+  S.computeAll();
+  return { team, g, p: S.plans[0] };
+};
+
+test('overtime: a link carries the OT stint, the same fives and a header reading OT', async () => {
+  const { team, g, p } = otTeam([{ minutes: 2, who: 'next' }]);
+  const want = floorOf(g, p);
+  assert.equal(want.length, 9, 'fixture: 8 regulation stints and one OT');
+  const hash = await encode(team, g, want);
+
+  freshDevice();
+  receive(await decode(hash));
+  const got = S.game(), gp = S.plans[S.state.activeGame];
+  assert.equal(gp.stints.length, 9);
+  assert.ok(sameFives(floorOf(got, gp), want), 'same fives, OT included');
+  const ot = gp.stints[8];
+  assert.equal(benchHeaderText(ot, 8, 9).title, 'OT · 2:00 to 0:00');
+});
+
+test('overtime: Keep this five and Strongest five arrive with who and five', async () => {
+  const five = OT_IDS.slice(0, 5);
+  const { team, g, p } = otTeam([{ minutes: 2, who: 'keep', five }, { minutes: 1, who: 'strongest', five: OT_IDS.slice(5) }]);
+  const hash = await encode(team, g, floorOf(g, p));
+  freshDevice();
+  const incoming = await decode(hash);
+  assert.deepEqual(incoming.team.days[0].games[0].overtime, [
+    { minutes: 2, who: 'keep', five },
+    { minutes: 1, who: 'strongest', five: OT_IDS.slice(5) },
+  ]);
+});
+
+test('overtime: a receiver that drops the field opens regulation only, played past the grid', async () => {
+  const { team, g } = otTeam([]);
+  assert.ok(S.addOvertime(g, 2), 'the sender adds a 2-minute overtime');
+  S.computeAll();
+  g.live.at = 8;   // on the OT stint
+  const eff = S.effectiveStints(g, S.plans[0]);
+  const swapped = k => { const f = [...eff[k].onFloor]; f[0] = eff[k].sitting[0]; return f; };
+  L.writeOverrides(g.live, { 8: swapped(8) }, true);   // a hand swap in the OT stint
+  L.writeOverrides(g.live, { 3: swapped(3) }, true);   // and one in regulation
+  S.computeAll();
+  const p = S.plans[0];
+  assert.deepEqual(L.handStints(g.live), [3, 8], 'fixture: two hand swaps');
+  const sent = floorOf(g, p);
+  const hash = await encode(team, g, sent);
+
+  // an older app: its sanitizer does not know `overtime`
+  const incoming = await decode(hash);
+  delete incoming.team.days[0].games[0].overtime;
+  freshDevice();
+  receive(incoming);
+
+  const got = S.game(), gp = S.plans[S.state.activeGame];
+  assert.equal(gp.stints.length, 8);
+  assert.ok(!gp.stints.some(s => /^OT/.test(s.periodName ?? '')), 'no OT stint');
+  assert.ok(sameFives(floorOf(got, gp), sent.slice(0, 8)), 'regulation fives, hand swap included');
+  assert.ok(L.handStints(got.live).includes(3), 'the regulation hand swap shows');
+  // `at` stays 8, past the 8-stint grid: bench mode reads it clamped to the last stint
+  assert.equal(got.live.at, 8);
+  assert.equal(L.stintIndex(gp, got.live), 7);
+  assert.equal(L.stepAt(gp, got.live, 0), 7);
+  assert.equal(L.finishedGame(got.live), false);
+  const row = gp.stints[L.stintIndex(gp, got.live)];
+  assert.equal(benchHeaderText(row, 7, 8).title, 'H2 · 4:00 to 0:00');
 });

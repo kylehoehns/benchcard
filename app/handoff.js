@@ -45,6 +45,7 @@ export async function encode(team, game, stints) {
       id: game.id, periods: game.periods, periodMinutes: game.periodMinutes,
       granMode: game.granMode, granValue: game.granValue, strategy: game.strategy,
       balance: game.balance, seed: game.seed, out: game.out, constraints: game.constraints,
+      overtime: game.overtime,
     },
     s: stints.map(five => five.map(id => index.get(id))),
     l: { at: playedStints(live), hand: handStints(live), finished: finishedGame(live), arrived: live?.arrived ?? {} },

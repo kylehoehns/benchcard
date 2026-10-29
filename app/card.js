@@ -8,7 +8,7 @@
    Split out of app.js as its own seam; it reads state and the plan cache, and
    owns the auto-fit, the pagination and the preview zoom. Nothing else in the
    app measures type this way, so the canvas metrics stay here. */
-import { fmtClock, fmtMinutes } from './engine.js';
+import { fmtClock, fmtMinutes, isOvertimeStint } from './engine.js';
 import { $, el, set, ctx2d } from './dom.js';
 import { icon } from './icons.js';
 import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
@@ -161,7 +161,15 @@ function buildCard(plan, rows, page, pageCount, title, when, minutes = plan.minu
   const card = el('div', 'card' + (state.ui.cardSize === 'half' ? ' half' : ''));
 
   const per = [...new Set(rows.map(r => r.period))];
-  const scope = pageCount > 1 ? ` Q${per[0]}${per.length > 1 ? '-Q' + per[per.length - 1] : ''}` : '';
+  /* A period is named as its stint names it: regulation "Q<n>", overtime by
+     the engine's own `periodName` ("OT", "OT2"), so there is one answer.
+     Regulation keeps `Q<n>` on purpose: the title's name for it is unchanged
+     for games without overtime (spec 370 item 4). */
+  const nameOf = period => {
+    const row = rows.find(r => r.period === period);
+    return isOvertimeStint(row) ? row.periodName : `Q${period}`;
+  };
+  const scope = pageCount > 1 ? ` ${nameOf(per[0])}${per.length > 1 ? '-' + nameOf(per[per.length - 1]) : ''}` : '';
   const hd = el('div', 'card-hd');
   const whenTxt = (when || '') + (pageCount > 1 ? `  ${page + 1}/${pageCount}` : '');
   // The scope ("Q1-Q2") and the date are never elided: they are short and they
