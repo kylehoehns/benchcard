@@ -67,7 +67,7 @@ fair share, and evening out the season carries that into the next game's
 targets.
 
 **When the game breaks the plan** — foul trouble, an injury, a kid who has to
-leave — bench mode re-plans the remaining stints around minutes actually
+leave or one who walks in late — bench mode re-plans the remaining stints around minutes actually
 played. The plan is not a static artefact.
 
 **On paper, on purpose.** The output is a 3.45 × 5in card, legible at arm's

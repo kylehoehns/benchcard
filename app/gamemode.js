@@ -12,15 +12,16 @@
    app.js hands it in through `initGameMode` rather than gamemode.js importing
    back into app.js and making the graph circular. */
 import { fmtClock, fmtMinutes, SIT_REFUSALS } from './engine.js';
-import { callNames } from './roster.js';
+import { callNames, distinctNames } from './roster.js';
 import { swapIn, sheetUp, tick, enabled as fxOn } from './fx.js';
 import { $, on, set, el, ctx2d } from './dom.js';
 import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './trap.js';
 import { track } from './analytics.js';
 import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
-import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
-         resolveRest, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
-import { stage, stintIndex, handStints, writeOverrides, resetFrom, openGame, step, finish } from './live.js';
+import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup, effectiveStints,
+         resolveRest, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+import { EDITS } from './edit.js';
+import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, openGame, step, finish } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
 let render = () => {};
@@ -774,6 +775,30 @@ export function renderGameMode({ keepFloor = false } = {}) {
     bx.append(b);
   }
 
+  // #383: who is marked out, each with a Here now for a late arrival. A name on
+  // the list that is no longer on the roster is not shown.
+  const out = g.out.filter(id => byId(id));
+  set('#gmOutSec', 'hidden', !out.length);
+  const ox = $('#gmOut'); ox.textContent = '';
+  const full = out.length ? distinctNames(state.players) : {};
+  for (const id of out) {
+    const pl = byId(id);
+    const b = el('div', 'gm-b');
+    b.style.setProperty('--c', colorOf(id));
+    const shown = full[id] || shorts[id] || 'Unnamed';
+    const nm = el('span', 'nm', shown);
+    // not `el(.., 'Here now')`: feature-keys.mjs reads that shape as a bench scope
+    const go = el('button', 'press btn');
+    go.textContent = 'Here now';
+    go.type = 'button';
+    go.dataset.pid = id;   // how focus finds this row's button again
+    go.setAttribute('aria-label', `Here now, ${shown}`);
+    // the arriving player is in the set the call names are made from
+    go.onclick = () => hereNow(g, id, shown);
+    b.append(avatarOf(pl), nm, go);
+    ox.append(b);
+  }
+
   // What changes, and exactly when. "Coming off / Going in" with no time on it
   // reads as ambiguous -- the next break is often mid-period, not the period
   // boundary the coach assumes.
@@ -1079,6 +1104,44 @@ function sitRest(p, g, i, outId, name) {
     const newFloor = effLineup(p, g, i);
     const filled = newFloor.find(x => !oldFloor.includes(x));
     gmFocus(filled ? floorRowSel(filled) : null);
+  });
+}
+
+/* #383: a late arrival, from bench mode. `setAvailable` records the arrival
+   and `render` re-plans from the next stint, the way Who's here does -- the
+   stint on the floor does not change. One `undoable`, so one toast and one
+   Undo. Focus goes to the next Here now, else the first floor row; Undo lands
+   on the restored player's own button. */
+function hereNow(g, id, shown) {
+  tick();
+  let rewritten = false;
+  let name = shown;
+  /* The message is read after the change: #134's "Rotation changed" notice is
+     suppressed inside an `undoable`, so a freeze that could not hold (By hand,
+     Platoon, an infeasible rule) says so here, as Add overtime does. */
+  undoable(() => `${name} is here.${rewritten ? ' Rotation changed.' : ''}`, () => {
+    /* Stepping through stints in bench mode never re-plans, so the plan the
+       coach is looking at has not been "seen" by `syncOverrides` yet, and the
+       re-plan below would then adopt the new rotation outright instead of
+       freezing the stints already played. Settling it first is what leaving
+       bench mode (a full `render`) does before Who's here can be opened. */
+    computeAll();
+    const at = playedStints(g.live);
+    const played = () => (plans[state.activeGame]?.ok ? effectiveStints(g, plans[state.activeGame]).slice(0, at + 1).map(x => x.onFloor.join()) : []);
+    const was = played();
+    setAvailable(g, id, true);
+    computeAll();
+    const now = played();
+    rewritten = was.some((five, k) => five !== now[k]);
+    // the call name is made from the set that now includes the arrival
+    name = callNames(availIds(g).map(byId).filter(Boolean))[id] || shown;
+    gmPick = null;
+  }, (undoing) => {
+    render(...EDITS.availability.keys);
+    renderGameMode();
+    if (undoing) gmFocus(`#gmOut button[data-pid="${CSS.escape(id)}"]`);
+    else if (document.querySelector('#gmOut button')) gmFocus('#gmOut button');
+    else gmFocusFirstFloor();
   });
 }
 

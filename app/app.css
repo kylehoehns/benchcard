@@ -1218,7 +1218,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-sec { margin-bottom: 1.15rem; }
 /* Lives here, not inline, so the landscape block below can override it
    without !important. */
-#gmBenchSec { margin-top: 1.15rem; }
+#gmBenchSec, #gmOutSec { margin-top: 1.15rem; }
 /* Sentence case, muted footnote -- the bench label; the floor's own heading
    is gone (the accessible name moved to #gmFloor's aria-label in
    index.html). */
@@ -1297,6 +1297,15 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
    (#191): a word wider than the whole row breaks rather than running past
    .gm-body's own edge uncut. */
 .gm-b .nm { flex: 1; min-width: 0; font-weight: 400; overflow-wrap: anywhere; }
+/* #383: a Not here row's Here now button. It never shrinks below the touch
+   floor or leaves the row; at a 32px root the row is a grid (below) and the
+   button stacks under the name. */
+.gm-b .btn { flex: none; min-width: 48px; min-height: 48px; }
+/* Only a Not here row has a button. Its name asks for 11rem, so when a whole
+   word cannot fit beside the button the button drops below the name instead of
+   the name splitting mid-word. Bench rows (no button) keep the one-line row. */
+.gm-b:has(> .btn) { flex-wrap: wrap; }
+.gm-b:has(> .btn) .nm { flex: 1 1 11rem; }
 /* No pick yet, so no bench row does anything. Read as a list, not as a row of
    buttons: full-width rows, hairline rules, no pill, full ink -- dimming it
    would only make a dim gym worse. Bench rows keep the same look picked or
@@ -1498,12 +1507,13 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-body {
     display: grid; align-content: start;
     grid-template-columns: 1fr 1fr; column-gap: 1.1rem;
-    grid-template-areas: "floor next" "floor bench";
+    grid-template-areas: "floor next" "floor bench" "floor out";
     padding: .7rem .9rem .8rem;
   }
   .gm-body > .gm-sec:first-child { grid-area: floor; }
   .gm-body > .gm-next { grid-area: next; }
   #gmBenchSec { grid-area: bench; margin-top: .9rem; }
+  #gmOutSec { grid-area: out; margin-top: .9rem; }
   .gm-sec { margin-bottom: 0; }
   .gm-lab { margin-bottom: .35rem; }
   .gm-floor { gap: .35rem; }
@@ -3772,6 +3782,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
     display: grid; grid-template-columns: 1fr; row-gap: .15rem;
   }
   .gm-p .av, .gm-b .av { justify-self: start; }
+  .gm-b .btn { justify-self: start; }
   /* `.bar` in this same block already drops to `.5rem` of side padding; the
      floor and bench rows follow it here for the same reason -- `.gm-p .nm`
      grows from 209px to about 254px, `.gm-b .nm` from 243px to about 269px,

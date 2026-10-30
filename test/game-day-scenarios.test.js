@@ -79,6 +79,102 @@ describe('a coach runs a game', { skip }, () => {
     assert.equal(after.filter(n => before.includes(n)).length, 4, `stint 3 keeps four of ${before}, got ${after}`);
   });
 
+  /* #383: ten players, Theo (p9) marked out, Hawks, bench mode at stint 3. */
+  async function startHawksOfTenAtStint3(edits = {}) {
+    await coach.onGameDayWith({ out: ['p9'], ...edits }, 10);
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Start game');
+    await coach.tap('Next stint');
+    await coach.tap('Next stint');
+    assert.equal(await coach.stint(), '3 of 8');
+  }
+
+  async function floorsFromHere() {
+    const floors = await coach.floorEachStint();
+    while ((await coach.stint()) !== '3 of 8') await coach.tap('Previous stint');
+    return floors;
+  }
+
+  test('a late arrival is marked Here now from bench mode and plays from the next stint', async () => {
+    await startHawksOfTenAtStint3();
+    assert.deepEqual(await coach.notHere(), ['Theo Alvarez']);
+    const size = await coach.sizeOf('Here now, Theo Alvarez');
+    assert.ok(size.height >= 48 && size.width >= 48, `Here now is ${size.width} x ${size.height}`);
+    const stint3 = await coach.onFloor();
+
+    await coach.tap('Here now, Theo Alvarez');
+
+    assert.equal(await coach.toast(), 'Theo is here.');
+    assert.equal(await coach.stint(), '3 of 8');
+    assert.deepEqual(await coach.onFloor(), stint3, "stint 3's floor did not change");
+    assert.deepEqual(await coach.notHere(), []);
+    const later = (await floorsFromHere()).slice(1);
+    assert.ok(later.some(f => f.includes('Theo Alvarez')), `Theo plays from stint 4 on: ${JSON.stringify(later)}`);
+  });
+
+  test('Undo on the Here now toast puts the player back under Not here and the rotation as it was', async () => {
+    await startHawksOfTenAtStint3();
+    const before = await floorsFromHere();
+
+    await coach.tap('Here now, Theo Alvarez');
+    await coach.tap('Undo');
+
+    assert.deepEqual(await coach.notHere(), ['Theo Alvarez']);
+    assert.equal(await coach.stint(), '3 of 8');
+    assert.deepEqual(await floorsFromHere(), before);
+  });
+
+  test('Here now in bench mode plans the same rotation as marking the player here on Who\'s here', async () => {
+    await startHawksOfTenAtStint3();
+    await coach.tap('Here now, Theo Alvarez');
+    const viaBench = await floorsFromHere();
+
+    await startHawksOfTenAtStint3();
+    await coach.tap('Leave');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, underway');
+    await coach.tap("Who's here, 9 players");
+    await coach.tap('Theo Alvarez');
+    await coach.tap('Close');
+    await coach.tap((await coach.controls()).find(n => n.startsWith('Resume')));
+    assert.equal(await coach.stint(), '3 of 8');
+
+    assert.deepEqual(await floorsFromHere(), viaBench);
+  });
+
+  test('Here now says the rotation changed when the freeze could not hold the stints already played', async () => {
+    await startHawksOfTenAtStint3({ strategy: 'minutes' });
+    const before = await floorsFromHere();
+
+    await coach.tap('Here now, Theo Alvarez');
+
+    const after = await floorsFromHere();
+    const moved = before.slice(0, 3).some((f, k) => f.join() !== after[k].join());
+    assert.ok(moved, `a By hand game re-solves stints already played: ${JSON.stringify(before.slice(0, 3))}`);
+    assert.equal(await coach.toast(), 'Theo is here. Rotation changed.');
+  });
+
+  test('Here now leaves focus on the first floor row after the last one, and Undo on that player\'s button', async () => {
+    await startHawksOfTenAtStint3();
+    const first = (await coach.onFloor())[0];
+
+    await coach.tap('Here now, Theo Alvarez');
+    const focused = await coach.focused();
+    assert.ok(focused.includes(first), `focus is on ${first}, got ${focused}`);
+
+    await coach.tap('Undo');
+    assert.equal(await coach.focused(), 'Here now, Theo Alvarez');
+  });
+
+  test('with nobody out, bench mode has no Not here group', async () => {
+    await coach.onGameDayWith({ out: [] }, 10);
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Start game');
+
+    assert.deepEqual(await coach.notHere(), []);
+    assert.ok(!(await coach.controls()).some(n => n.startsWith('Here now')), 'no Here now button is reachable');
+  });
+
   test('leaving bench mode mid-game keeps the game, even after closing the app', async () => {
     await startHawks();
     await coach.tap('Next stint');

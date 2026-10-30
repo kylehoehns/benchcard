@@ -195,6 +195,21 @@ and a name-width chip made the second tap smaller than the first, smallest of
 all for the shortest names. Minutes stay right-aligned so played/projected
 still reads as a column down the list.
 
+**A late arrival is marked here from bench mode (#383).** Anyone marked out on
+Who's here is listed under a **Not here** group below the bench, each row with a
+**Here now** button. The group is hidden when nobody is out, and it shows on every
+stint, the last included. Tapping **Here now** calls `setAvailable(g, id, true)`,
+the same edit Who's here makes, so the plan from the next stint on picks the kid
+up. The stint on the floor does not change, and the pick in progress is cleared.
+The handler runs `computeAll()` first. Stepping through stints in bench mode never
+does a full render, so the plan has not been adopted yet, and without that step
+the re-plan would also rewrite the stint on the floor. The change is one
+`undoable`: the toast reads "{call name} is here." with an Undo, and the Undo
+takes back the arrival and its re-plan together. Focus moves to the next **Here
+now** button, or to the first floor row when none is left. After an Undo, focus
+goes to the restored player's own button. Each button's accessible name is
+"Here now, {full name}".
+
 Reality diverges from the plan, so a swap here **overrides** the plan for the
 current stint or the rest of the game rather than re-solving underneath the
 coach mid-game. Overrides persist per game and can be reset back to the plan,
