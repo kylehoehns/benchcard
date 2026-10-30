@@ -1208,6 +1208,52 @@ test('378: 4x10 perPeriod 3 prints stint lengths as 3.3, never 3.333', () => {
   assert.ok(hit.message.includes('rounds up to 10 (stints are 3.3 minutes)'), hit.message);
 });
 
+/* Every message that formats a stint length, with a game whose minutes are a
+   genuine float: two 3.33-minute stints (6.67 minutes, 33.3 floor-minutes). Each
+   case asserts the code fires and the exact text, so removing a fmtMinutes wrap
+   prints 3.3333333333333335 and fails here. */
+const stints2 = () => buildStints({ periods: 1, periodMinutes: 10 }, { mode: 'perPeriod', value: 3 }).slice(0, 2);
+const feasFloat = constraints => analyzeFeasibility({
+  players: roster(8), availableIds: ids(8), constraints, stints: stints2(),
+});
+const allIds = v => Object.fromEntries(ids(8).map(id => [id, v]));
+const fires = (constraints, code, text) => {
+  const [hit] = codes(feasFloat(constraints), code);
+  assert.ok(hit, `${code} did not fire`);
+  assert.ok(hit.message.includes(text), hit.message);
+};
+
+test('378: MIN_EXCEEDS_GAME formats a fractional game length', () => {
+  fires({ minMinutes: { p0: 7 } }, 'MIN_EXCEEDS_GAME', 'but the game is only 6.7 minutes long.');
+});
+test('378: MINS_UNSATISFIABLE formats the floor and the game length', () => {
+  fires({ minMinutes: allIds(5) }, 'MINS_UNSATISFIABLE', 'only totals 33.3 minutes (6.7 min × 5 players)');
+});
+test('378: CAPS_UNSATISFIABLE formats the floor minutes', () => {
+  fires({ maxMinutes: allIds(4) }, 'CAPS_UNSATISFIABLE', 'at most 32 total minutes but the game needs 33.3 minutes');
+});
+test('378: KEEPON_UNSATISFIABLE formats the game length', () => {
+  fires({ keepOnFloor: [['p0', 'p1']], maxMinutes: { p0: 3, p1: 3 } }, 'KEEPON_UNSATISFIABLE',
+    "only cover 6 of the game's 6.7 minutes");
+});
+test('378: CLOSER_OVER_CAP formats the closing window', () => {
+  fires({ closing: { stints: 1, players: ['p2'] }, maxMinutes: { p2: 2 } }, 'CLOSER_OVER_CAP',
+    'set to close (3.3 min) but is capped at 2.');
+});
+test('378: TARGETS_OVER_BUDGET formats the excess', () => {
+  fires({ targetMinutes: allIds(5) }, 'TARGETS_OVER_BUDGET', 'is 6.7 more than the game has');
+});
+test('378: TARGETS_UNDER_BUDGET formats the floor and the spare', () => {
+  fires({ targetMinutes: allIds(4) }, 'TARGETS_UNDER_BUDGET', '32 of 33.3 floor-minutes. The spare 1.3 minutes');
+});
+
+test('378: an empty stint list never raises CAP_BELOW_STINT', () => {
+  const issues = analyzeFeasibility({
+    players: roster(8), availableIds: ids(8), constraints: { maxMinutes: { p0: 3 } }, stints: [],
+  });
+  assert.deepEqual(codes(issues, 'CAP_BELOW_STINT'), []);
+});
+
 test('378: 4x10 perPeriod 3 with a 10-minute minimum is not off a stint boundary', () => {
   const issues = feas({ periods: 4, periodMinutes: 10 }, { mode: 'perPeriod', value: 3 },
     { minMinutes: { p0: 10 } });

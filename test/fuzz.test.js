@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generatePlan, buildStints, analyzeFeasibility } from '../app/engine.js';
+import { generatePlan, buildStints, analyzeFeasibility, isOvertimeStint } from '../app/engine.js';
 
 /* A seeded generator, so any failure is reproducible from its scenario number. */
 function rng(seed) {
@@ -419,7 +419,8 @@ test('fuzz #378: the generator makes overtime and uneven-stint games, and no war
   for (let n = 1; n <= 400; n++) {
     const sc = scenario(n);
     if (sc.format.overtime?.length) overtime++;
-    if (sc.stints.some(s => Math.abs(s.minutes - sc.stints[0].minutes) > 1e-9)) uneven++;
+    const reg = sc.stints.filter(s => !isOvertimeStint(s));
+    if (reg.some(s => Math.abs(s.minutes - reg[0].minutes) > 1e-9)) uneven++;
     for (const i of generatePlan(sc).issues) {
       assert.doesNotMatch(i.message, /\d\.\d{3,}/, `scenario ${n} ${i.code}: ${i.message}`);
     }
@@ -441,7 +442,9 @@ test('property #378: a starting five whose caps cover the opening stint is never
     if (five.some(id => sc.constraints.maxMinutes[id] != null)) exercised++;
     const issues = analyzeFeasibility({ players: sc.players, availableIds: sc.availableIds,
       constraints: sc.constraints, stints: sc.stints, strategy: sc.strategy, periods: sc.format.periods });
-    assert.deepEqual(issues.filter(i => i.code === 'FORCED_OVER_CAP' && /opening stint/.test(i.message)), [],
+    // players also pinned to the last period may fail that stint's check instead
+    const onlyOpening = five.filter(id => !sc.constraints.lastPeriodFive.includes(id));
+    assert.deepEqual(issues.filter(i => i.code === 'FORCED_OVER_CAP' && i.playerIds.some(id => onlyOpening.includes(id))), [],
       `scenario ${n}`);
   }
   assert.ok(exercised > 0, 'no scenario had a capped starting five that covers the stint');

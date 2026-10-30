@@ -265,6 +265,7 @@ function combinations(arr, k) {
    suffix that is all overtime). `periods` absent: the highest regulation period
    among the stints, which is the same index for a full game and for a suffix. */
 function lastPeriodStintIndex(stints, periods) {
+  // the fallback equals format.periods only for a suffix that reaches the last regulation period (direct callers that omit periods)
   const last = periods ?? Math.max(0, ...stints.filter(s => !isOvertimeStint(s)).map(s => s.period));
   return stints.findIndex(s => s.period === last);
 }
@@ -283,7 +284,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
   const floorMinutes = gameMinutes * ON_FLOOR;
   const stintLens = stints.map(s => s.minutes);
   const maxStint = Math.max(...stintLens, 0);
-  const minStint = Math.min(...stintLens);
+  const minStint = stintLens.length ? Math.min(...stintLens) : 0;
   const lastPeriodIdx = lastPeriodStintIndex(stints, periods);
   // a ratio within float error of a whole number is whole (10 / 3.333.. is 3)
   const wholeStints = mn => Math.abs(mn / maxStint - Math.round(mn / maxStint)) < 1e-9;
