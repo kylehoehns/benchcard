@@ -213,7 +213,7 @@ export async function main(argv = process.argv.slice(2)) {
   await mkdir(outDir, { recursive: true });
   const server = args.url ? null : await serve();
   const origin = args.url ?? `http://127.0.0.1:${server.address().port}`;
-  const { proc, dir, ws } = await launch(9333 + Math.floor(Math.random() * 500), args.headful);
+  const { proc, dir, ws } = await launch(0, args.headful);
   const c = cdp(ws);
   const records = [];
   try {

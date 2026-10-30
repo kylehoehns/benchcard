@@ -63,7 +63,7 @@ async function withFixture({ takeMs }, fn) {
   const origin = `http://127.0.0.1:${server.address().port}`;
   let chrome;
   try {
-    chrome = await launch(9222 + Math.floor(Math.random() * 500), false);
+    chrome = await launch(0, false);
     const c = cdp(chrome.ws, takeMs === undefined ? {} : { takeMs });
     await c.ready;
     await c.send('Page.enable');
