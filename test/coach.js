@@ -539,26 +539,42 @@ export class Coach {
       .map(r => [r.querySelector('.sn-nm').textContent, r.querySelector('.sr-only')?.textContent.trim() ?? '']))`);
   }
 
-  /** Tap the control a coach would call `name` and return the file the browser
-      saved, as `{ filename, text }`. */
+  /** Tap the control a coach would call `name` and return the file the app
+      saved, as `{ filename, text }`. Any other download Chrome makes into the
+      folder is ignored; a control that saves more than one file fails. */
   async download(name) {
+    const label = JSON.stringify(name);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'benchcard-download-'));
+    const own = url => url.replace(/^blob:/, '').startsWith(`${this.origin}/`);
+    const began = new Map(); // guid -> suggestedFilename, the app's downloads only
+    const finished = new Map(); // guid -> completed event
+    let settle;
+    const onBegin = p => { if (own(p.url)) { began.set(p.guid, p.suggestedFilename); settle?.(); } };
+    const onProgress = p => {
+      if (!began.has(p.guid)) return;
+      if (p.state === 'canceled') settle?.(new Error(`download ${label}: the browser canceled it`));
+      if (p.state === 'completed') { finished.set(p.guid, p); settle?.(); }
+    };
+    let timer;
     try {
       await this.c.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: dir, eventsEnabled: true });
+      this.c.on('Browser.downloadWillBegin', onBegin);
+      this.c.on('Browser.downloadProgress', onProgress);
       const done = new Promise((ok, fail) => {
-        const timer = setTimeout(() => fail(new Error(`download ${JSON.stringify(name)}: no file saved within 5s`)), 5000);
-        this.c.on('Browser.downloadProgress', p => {
-          if (p.state === 'completed') { clearTimeout(timer); ok(); }
-          if (p.state === 'canceled') { clearTimeout(timer); fail(new Error(`download ${JSON.stringify(name)}: the browser canceled it`)); }
-        });
+        timer = setTimeout(() => fail(new Error(`download ${label}: no file saved within 5s`)), 5000);
+        settle = err => { if (err) fail(err); else if (finished.size) ok(); };
       });
       done.catch(() => {});
       await this.tap(name);
       await done;
-      const files = fs.readdirSync(dir);
-      if (files.length !== 1) throw new Error(`download ${JSON.stringify(name)}: saved ${files.length} files: ${JSON.stringify(files)}`);
-      return { filename: files[0], text: fs.readFileSync(path.join(dir, files[0]), 'utf8') };
+      if (began.size !== 1) throw new Error(`download ${label}: saved ${began.size} files: ${JSON.stringify([...began.values()])}`);
+      const [[guid, filename]] = began;
+      const file = finished.get(guid).filePath ?? path.join(dir, filename);
+      return { filename: path.basename(file), text: fs.readFileSync(file, 'utf8') };
     } finally {
+      clearTimeout(timer);
+      this.c.off('Browser.downloadWillBegin', onBegin);
+      this.c.off('Browser.downloadProgress', onProgress);
       fs.rmSync(dir, { recursive: true, force: true });
     }
   }

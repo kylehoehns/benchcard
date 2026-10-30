@@ -195,6 +195,7 @@ export function cdp(url, { takeMs = 10_000 } = {}) {
       return rawSend(method, params);
     },
     on: (method, fn) => handlers.set(method, [...(handlers.get(method) || []), fn]),
+    off: (method, fn) => handlers.set(method, (handlers.get(method) || []).filter(h => h !== fn)),
     startCoverage: async fold => {
       onTake = fold;
       await rawSend('Page.enable');
