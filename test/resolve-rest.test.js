@@ -280,3 +280,22 @@ test('#376 sitting a player on the floor changes one seat on stint k, and the si
     }
   }
 });
+
+test('#376 when the four who stay cannot all stay (a hand swap put two Apart players together), the sit still re-solves', () => {
+  const c = freshConstraints();
+  c.avoids = [['p0', 'p1']];
+  const { g, p } = setup(9, { seed: 3, constraints: c });
+  const k = Math.floor(p.stints.length / 2);
+  const planned = S.effectiveLineup(g, p, k);
+  assert.ok(!(planned.includes('p0') && planned.includes('p1')), 'the plan keeps the Apart pair off together');
+  // hand swap: both Apart players on the floor at k, plus three others
+  const rest = S.availIds(g).filter(id => id !== 'p0' && id !== 'p1').slice(0, 3);
+  g.live.overrides[k] = ['p0', 'p1', ...rest];
+  const before = S.effectiveStints(g, p).slice(0, k).map(s => s.onFloor.join(','));
+  const r = S.resolveRest(g, p, k, [rest[0]]);
+  assert.equal(r.ok, true, `fell back to a free solve: ${r.reason}`);
+  for (const [j, f] of Object.entries(r.overrides)) assert.ok(!f.includes(rest[0]), `${rest[0]} on stint ${j}`);
+  assert.deepEqual(Object.keys(r.overrides).map(Number).filter(j => j < k), [], 'the past was written');
+  Object.assign(g.live.overrides, r.overrides);
+  assert.deepEqual(S.effectiveStints(g, p).slice(0, k).map(s => s.onFloor.join(',')), before);
+});
