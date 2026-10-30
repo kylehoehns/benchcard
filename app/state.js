@@ -2064,7 +2064,8 @@ export function resolveRest(g, p, from, sitIds = [], to = null) {
  * (`p.ok` false) was never playable either way and stays out silently, as
  * it always has. Deleting a game before then is the coach saying it did
  * not happen, and deleting already takes it out of the day, so it never
- * reaches here.
+ * reaches here. (`carryUnplayedDay` reads the plan-free equivalent --
+ * `finishedGame`/`playedStints` -- because it runs before plans are solved.)
  *
  * The minutes are `effectiveMinutes`, never `plan.minutes`: a coach who
  * swapped Ben on for Devon in the third stint changed who played, and
@@ -2154,6 +2155,27 @@ export function dayHeading(day, today = new Date()) {
     : day.date === seasonDate(tomorrow) ? 'Tomorrow'
     : weekdayLabel(day.date);
   return day.name ? `${base} · ${day.name}` : base;
+}
+
+/**
+ * #379: a game set up the night before is still the coach's game the next
+ * morning. When filing is due (`dueToFile`), today has no day, and the latest
+ * past day has no started game (none part-played or finished -- `live.js`'s
+ * own readers), that day is dated today instead of filed. Nothing else about
+ * it changes, so there is nothing to announce or undo. Older past days stay
+ * for `fileIfPast`. Returns whether a day moved. "Today" is injectable.
+ */
+export function carryUnplayedDay(today = new Date()) {
+  if (!dueToFile(today)) return false;
+  const iso = seasonDate(today);
+  const days = team().days;
+  if (days.some(d => d.date === iso)) return false;
+  const past = days.filter(d => dayIsPast(d, today));
+  // `past` is non-empty: dueToFile held, and reduce has no initial value
+  const latest = past.reduce((a, b) => (b.date > a.date ? b : a));
+  if (latest.games.some(g => finishedGame(g.live) || playedStints(g.live) > 0)) return false;
+  latest.date = iso;
+  return true;
 }
 
 /**

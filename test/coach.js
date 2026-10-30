@@ -185,19 +185,30 @@ export class Coach {
   }
 
   /** Open the app for the first time on a device with nothing saved: the welcome screen. */
-  async onFreshDevice() {
-    this.errors.length = 0;
-    await this.#setClock(SMOKE_CLOCK);
-    await land(this.c, this.origin, WELCOME_LANDING);
-  }
+  onFreshDevice() { return this.onFreshDeviceAt(SMOKE_CLOCK); }
 
   /** Close the app and open it again `days` days later, keeping what was saved. */
   async comeBackDaysLater(days, ready = `document.querySelector('.card')`) {
     const { y, m, d, h } = SMOKE_CLOCK;
     const later = new Date(y, m - 1, d + days);
-    await this.#setClock({ y: later.getFullYear(), m: later.getMonth() + 1, d: later.getDate(), h });
+    await this.comeBackAt({ y: later.getFullYear(), m: later.getMonth() + 1, d: later.getDate(), h }, ready);
+  }
+
+  /** Open the app for the first time on a device with nothing saved, with the clock at `pin` ({ y, m, d, h }). */
+  async onFreshDeviceAt(pin) {
+    this.errors.length = 0;
+    await this.#setClock(pin);
+    await land(this.c, this.origin, WELCOME_LANDING);
+  }
+
+  /** Close the app and open it again with the clock at `pin`, keeping what was saved. */
+  async comeBackAt(pin, ready = `document.querySelector('.today-game, #view-games:not([hidden])')`) {
+    await this.#setClock(pin);
     await land(this.c, this.origin, { record: 'kept', ready });
   }
+
+  /** Set the phone's clock to `pin` ({ y, m, d, h }) from the next page load on. */
+  pinClock(pin) { return this.#setClock(pin); }
 
   /* Swap the pinned clock for one at `pin`, from the next page load on. */
   async #setClock(pin) {
