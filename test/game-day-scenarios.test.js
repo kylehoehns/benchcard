@@ -80,8 +80,8 @@ describe('a coach runs a game', { skip }, () => {
   });
 
   /* #383: ten players, Theo (p9) marked out, Hawks, bench mode at stint 3. */
-  async function startHawksOfTenAtStint3() {
-    await coach.onGameDayOfTen({ out: ['p9'] });
+  async function startHawksOfTenAtStint3(edits = {}) {
+    await coach.onGameDayWith({ out: ['p9'], ...edits }, 10);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
     await coach.tap('Next stint');
@@ -142,8 +142,32 @@ describe('a coach runs a game', { skip }, () => {
     assert.deepEqual(await floorsFromHere(), viaBench);
   });
 
+  test('Here now says the rotation changed when the freeze could not hold the stints already played', async () => {
+    await startHawksOfTenAtStint3({ strategy: 'minutes' });
+    const before = await floorsFromHere();
+
+    await coach.tap('Here now, Theo Alvarez');
+
+    const after = await floorsFromHere();
+    const moved = before.slice(0, 3).some((f, k) => f.join() !== after[k].join());
+    assert.ok(moved, `a By hand game re-solves stints already played: ${JSON.stringify(before.slice(0, 3))}`);
+    assert.equal(await coach.toast(), 'Theo is here. Rotation changed.');
+  });
+
+  test('Here now leaves focus on the first floor row after the last one, and Undo on that player\'s button', async () => {
+    await startHawksOfTenAtStint3();
+    const first = (await coach.onFloor())[0];
+
+    await coach.tap('Here now, Theo Alvarez');
+    const focused = await coach.focused();
+    assert.ok(focused.includes(first), `focus is on ${first}, got ${focused}`);
+
+    await coach.tap('Undo');
+    assert.equal(await coach.focused(), 'Here now, Theo Alvarez');
+  });
+
   test('with nobody out, bench mode has no Not here group', async () => {
-    await coach.onGameDayOfTen({ out: [] });
+    await coach.onGameDayWith({ out: [] }, 10);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
 

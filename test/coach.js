@@ -728,25 +728,15 @@ export class Coach {
   /** Play animations at their real speed from here on, for a scenario about the motion itself. */
   async realMotion() { await this.c.send('Animation.setPlaybackRate', { playbackRate: 1 }); }
 
-  /** `onGameDay` with the Hawks game changed by `edits` (e.g. `{ granValue: 2, overtime: [2] }`). */
-  async onGameDayWith(edits) {
-    this.errors.length = 0;
-    await this.#setClock(SMOKE_CLOCK);
-    const record = gameDay();
-    const [day] = record.teams[0].days;
-    day.games = day.games.map((g, i) => (i === 0 ? { ...g, ...edits } : g));
-    await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
-  }
-
-  /** `onGameDay` with the roster cut to its first ten (`p0`..`p9`) and
-      `edits` on the Hawks game, so `{ out: ['p9'] }` is nine here and a
-      tenth marked out. */
-  async onGameDayOfTen(edits) {
+  /** `onGameDay` with the Hawks game changed by `edits` (e.g. `{ granValue: 2, overtime: [2] }`).
+      `rosterSize` cuts the roster to its first that-many players (`p0`...), so
+      `onGameDayWith({ out: ['p9'] }, 10)` is nine here and a tenth marked out. */
+  async onGameDayWith(edits, rosterSize) {
     this.errors.length = 0;
     await this.#setClock(SMOKE_CLOCK);
     const record = gameDay();
     const [team] = record.teams;
-    team.players = team.players.slice(0, 10);
+    if (rosterSize) team.players = team.players.slice(0, rosterSize);
     const [day] = team.days;
     day.games = day.games.map((g, i) => (i === 0 ? { ...g, ...edits } : g));
     await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });

@@ -39,7 +39,21 @@ The ticket is `ready-for-agent`. The survey held up its claims:
 Questions the ticket leaves open, decided here as closest to its intent:
 
 - **Toast punctuation.** `{Name} is here.`, with the period every other
-  bench-mode toast carries.
+  bench-mode toast carries. When the freeze cannot hold (By hand or Platoon
+  strategy, or an infeasible rule) and stints `0..at` are rewritten, the toast
+  is `{Name} is here. Rotation changed.`: `undoable` suppresses #134's own
+  offer, so Here now says it itself, the way Add overtime does (it compares the
+  floors of stints `0..at` before and after).
+- **Same-name players.** The visible name, the button's accessible name and
+  the toast's fallback all come from one chain: `distinctNames(state.players)`
+  (computed once per render), then the short name, then `Unnamed`. Two out
+  players called the same get different labels.
+- **Stint 1.** Tapping Here now at stint 1 re-plans the floor too, the same as
+  Who's here: stint 1 counts as not started, so nothing is frozen.
+- **Layout.** A Not here row wraps (`.gm-b:has(> .btn)`): the name asks for
+  11rem, so when a whole word cannot fit beside the 48px button the button
+  drops below the name instead of the name splitting mid-word. Bench rows are
+  untouched; the 32px stacked and landscape grids are unchanged.
 - **Which name the toast uses.** The other bench-mode toasts use the call name
   (`callNames`, first name where it is unique). Here now does the same, with
   the arriving player included in the set the call names are made from. With

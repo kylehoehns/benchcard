@@ -1301,6 +1301,11 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
    floor or leaves the row; at a 32px root the row is a grid (below) and the
    button stacks under the name. */
 .gm-b .btn { flex: none; min-width: 48px; min-height: 48px; }
+/* Only a Not here row has a button. Its name asks for 11rem, so when a whole
+   word cannot fit beside the button the button drops below the name instead of
+   the name splitting mid-word. Bench rows (no button) keep the one-line row. */
+.gm-b:has(> .btn) { flex-wrap: wrap; }
+.gm-b:has(> .btn) .nm { flex: 1 1 11rem; }
 /* No pick yet, so no bench row does anything. Read as a list, not as a row of
    buttons: full-width rows, hairline rules, no pill, full ink -- dimming it
    would only make a dim gym worse. Bench rows keep the same look picked or
