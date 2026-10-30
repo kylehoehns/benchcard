@@ -59,6 +59,26 @@ describe('a coach runs a game', { skip }, () => {
     }
   });
 
+  test('sitting one player for the rest changes one seat on the floor, not five', async () => {
+    // nine players: RICH's eleven with the last two out
+    await coach.onGameDayWith({ out: ['p9', 'p10'] });
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Start game');
+    await coach.tap('Next stint');
+    await coach.tap('Next stint');
+    assert.equal(await coach.stint(), '3 of 8');
+    const before = await coach.onFloor();
+    const sat = before[1];
+
+    await coach.tapPlayer(sat);
+    await coach.tap('Sit for the rest');
+
+    assert.equal(await coach.stint(), '3 of 8');
+    const after = await coach.onFloor();
+    assert.ok(!after.includes(sat), `${sat} is off the floor`);
+    assert.equal(after.filter(n => before.includes(n)).length, 4, `stint 3 keeps four of ${before}, got ${after}`);
+  });
+
   test('leaving bench mode mid-game keeps the game, even after closing the app', async () => {
     await startHawks();
     await coach.tap('Next stint');

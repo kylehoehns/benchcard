@@ -260,3 +260,23 @@ test('a late arrival aims at an even share of what is left, not at the whole gam
   assert.ok(catchUp.minutes.p5 > 16,
     `without it she is planned ${catchUp.minutes.p5}: the past owed to her`);
 });
+
+test('#376 sitting a player on the floor changes one seat on stint k, and the sitter plays no more', () => {
+  for (const n of [8, 10, 11]) {
+    for (let seed = 1; seed <= 15; seed++) {
+      const { g, p } = setup(n, { seed });
+      const k = Math.floor(p.stints.length / 2);
+      const floor = S.effectiveLineup(g, p, k);
+      const outId = floor[seed % floor.length];
+      const before = S.effectiveStints(g, p).slice(0, k).map(s => s.onFloor.join(','));
+      const r = S.resolveRest(g, p, k, [outId]);
+      assert.equal(r.ok, true, `${n}/${seed}: ${r.reason}`);
+      const five = r.overrides[k];
+      assert.equal(five.filter(id => floor.includes(id)).length, 4, `${n}/${seed}: stint ${k} keeps four of ${floor}, got ${five}`);
+      for (const [j, f] of Object.entries(r.overrides)) assert.ok(!f.includes(outId), `${n}/${seed}: ${outId} on stint ${j}`);
+      assert.deepEqual(Object.keys(r.overrides).map(Number).filter(j => j < k), [], 'the past was written');
+      Object.assign(g.live.overrides, r.overrides);
+      assert.deepEqual(S.effectiveStints(g, p).slice(0, k).map(s => s.onFloor.join(',')), before);
+    }
+  }
+});

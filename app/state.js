@@ -2007,7 +2007,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null) {
      nothing to solve, and a rule must not get to refuse the five. */
   let r = { issues: [], stints: [], minutes: null };
   if (open.length) {
-    r = generatePlan({
+    const solve = () => generatePlan({
       players: state.players,
       availableIds: avail,
       stints: openStints,
@@ -2017,6 +2017,18 @@ export function resolveRest(g, p, from, sitIds = [], to = null) {
       seed: g.seed,
       maxSubs,
     });
+    if (sit.size && open[0] === k) {
+      c.openingFive = effectiveStints(g, p)[k].onFloor.filter(id => !sit.has(id) && avail.includes(id));
+    }
+    r = solve();
+    /* #376: a sit changes one seat. The four who stay are handed to the
+       solver as the opening five of the suffix (stint `from`), the engine's
+       own forced group. If that cannot be met -- a hand swap put two Apart
+       players together, say -- the free solve below is today's behavior. */
+    if (!r.ok && c.openingFive.length) {
+      c.openingFive = [];
+      r = solve();
+    }
     if (!r.ok) return { ok: false, reason: 'infeasible', issues: r.issues };
   }
 
