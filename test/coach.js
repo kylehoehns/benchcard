@@ -199,6 +199,22 @@ export class Coach {
     await land(this.c, this.origin, { record: 'kept', ready });
   }
 
+  /** Open the app for the first time on a device with nothing saved, with the clock at `pin` ({ y, m, d, h }). */
+  async onFreshDeviceAt(pin) {
+    this.errors.length = 0;
+    await this.#setClock(pin);
+    await land(this.c, this.origin, WELCOME_LANDING);
+  }
+
+  /** Close the app and open it again with the clock at `pin`, keeping what was saved. */
+  async comeBackAt(pin, ready = `document.querySelector('.today-game, #view-games:not([hidden])')`) {
+    await this.#setClock(pin);
+    await land(this.c, this.origin, { record: 'kept', ready });
+  }
+
+  /** Set the phone's clock to `pin` ({ y, m, d, h }) from the next page load on. */
+  pinClock(pin) { return this.#setClock(pin); }
+
   /* Swap the pinned clock for one at `pin`, from the next page load on. */
   async #setClock(pin) {
     await this.c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: this.clock });

@@ -477,3 +477,66 @@ test('removeGame drops the team\'s only day when it removes the team\'s only gam
     assert.equal(S.hasGames(), false);
   });
 });
+
+/* ---------------------------- #379: an unplayed day carries forward ---------------------------- */
+
+const NIGHT_TODAY = new Date(2026, 9, 31, 9); // the morning of the 31st
+const dayOn = (date, g = S.newGame(0, null, FORMAT)) => ({ name: '', date, games: [g] });
+
+test('carryUnplayedDay: the latest past day with nothing started is dated today, game untouched', () => {
+  const g = S.newGame(0, null, FORMAT);
+  g.seed = 777; g.label = 'vs Hawks'; g.tipoff = '09:30';
+  withDays(SIX, [dayOn('2026-10-30', g)], FORMAT, () => {
+    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), true);
+    assert.equal(S.team().days.length, 1);
+    assert.equal(S.team().days[0].date, '2026-10-31');
+    assert.equal(S.team().days[0].games[0], g, 'the same game, not a copy');
+    assert.equal(S.team().season.games.length, 0, 'nothing filed');
+  });
+});
+
+test('carryUnplayedDay: no past day, or a day already dated today, carries nothing', () => {
+  withDays(SIX, [dayOn('2026-10-31')], FORMAT, () => {
+    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
+    assert.equal(S.team().days[0].date, '2026-10-31');
+  });
+  withDays(SIX, [dayOn('2026-10-30'), dayOn('2026-10-31')], FORMAT, () => {
+    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false, 'today already has a day');
+    assert.deepEqual(S.team().days.map(d => d.date), ['2026-10-30', '2026-10-31']);
+  });
+});
+
+test('carryUnplayedDay: a past day with a game part-played or finished is not carried', () => {
+  const partPlayed = S.newGame(0, null, FORMAT);
+  partPlayed.live = { at: 2, overrides: {} };
+  withDays(SIX, [dayOn('2026-10-30', partPlayed)], FORMAT, () => {
+    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
+    assert.equal(S.team().days[0].date, '2026-10-30');
+  });
+  const done = S.newGame(0, null, FORMAT);
+  done.live = { at: 0, overrides: {}, finished: true };
+  withDays(SIX, [dayOn('2026-10-30', done)], FORMAT, () => {
+    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
+    assert.equal(S.team().days[0].date, '2026-10-30');
+  });
+});
+
+test('carryUnplayedDay: only the latest past day moves; older days stay for filing, and a future day stays', () => {
+  withDays(SIX, [dayOn('2026-10-25'), dayOn('2026-10-30'), dayOn('2026-11-02')], FORMAT, () => {
+    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), true);
+    assert.deepEqual(S.team().days.map(d => d.date), ['2026-10-25', '2026-10-31', '2026-11-02']);
+  });
+});
+
+test('carryUnplayedDay: not while bench mode is open, and not before onboarding', () => {
+  withDays(SIX, [dayOn('2026-10-30')], FORMAT, () => {
+    S.setBenchOpen(true);
+    try {
+      assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
+    } finally { S.setBenchOpen(false); }
+    assert.equal(S.team().days[0].date, '2026-10-30');
+    S.state.onboarded = false;
+    assert.equal(S.carryUnplayedDay(NIGHT_TODAY), false);
+    assert.equal(S.team().days[0].date, '2026-10-30');
+  });
+});

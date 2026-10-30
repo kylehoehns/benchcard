@@ -2157,6 +2157,26 @@ export function dayHeading(day, today = new Date()) {
 }
 
 /**
+ * #379: a game set up the night before is still the coach's game the next
+ * morning. When filing is due (`dueToFile`), today has no day, and the latest
+ * past day has no started game (none part-played or finished -- `live.js`'s
+ * own readers), that day is dated today instead of filed. Nothing else about
+ * it changes, so there is nothing to announce or undo. Older past days stay
+ * for `fileIfPast`. Returns whether a day moved. "Today" is injectable.
+ */
+export function carryUnplayedDay(today = new Date()) {
+  if (!dueToFile(today)) return false;
+  const iso = seasonDate(today);
+  const days = team().days;
+  if (days.some(d => d.date === iso)) return false;
+  const past = days.filter(d => dayIsPast(d, today));
+  const latest = past.reduce((a, b) => (b.date > a.date ? b : a));
+  if (latest.games.some(g => finishedGame(g.live) || playedStints(g.live) > 0)) return false;
+  latest.date = iso;
+  return true;
+}
+
+/**
  * #100: the filing entry point. When `state.day` is due (`dueToFile`), files
  * its solved games into the season under its own date and replaces it with
  * one fresh game dated `today` -- exactly what "New day" used to build

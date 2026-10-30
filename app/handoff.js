@@ -45,8 +45,9 @@ export async function encode(team, game, stints) {
       id: game.id, periods: game.periods, periodMinutes: game.periodMinutes,
       granMode: game.granMode, granValue: game.granValue, strategy: game.strategy,
       balance: game.balance, seed: game.seed, out: game.out, constraints: game.constraints,
-      overtime: game.overtime,
+      overtime: game.overtime, label: game.label, tipoff: game.tipoff,
     },
+    d: team.days.find(day => day.games.includes(game))?.date,
     s: stints.map(five => five.map(id => index.get(id))),
     l: { at: playedStints(live), hand: handStints(live), finished: finishedGame(live), arrived: live?.arrived ?? {} },
   };
@@ -96,6 +97,14 @@ function shapeOk(d) {
   return isObj(l) && Array.isArray(l.hand) && l.hand.every(k => Number.isInteger(k) && k >= 0 && k < s.length);
 }
 
+/* #379: the sender's day if it is still ahead of this phone's own day, else
+   today. A value that is not a date can win this string comparison; it is
+   then dropped to today by `sanitizeTeam`, which owns what a day date is. */
+const dayDate = sent => {
+  const today = seasonDate(new Date());
+  return isStr(sent) && sent > today ? sent : today;
+};
+
 /* `hash` is `location.hash`. Returns `{ team, stints }` -- the team cleaned
    through `sanitizeTeam`, holding one day with the one game, and the card's
    stints as lists of ids -- or `null` for anything that is not a link this
@@ -114,7 +123,7 @@ export async function decode(hash) {
     const raw = {
       id: t[0], name: t[1], settings: { color: t[2] },
       players: p.map(([id, name, number, tier], hue) => ({ id, name, number, tier, hue })),
-      days: [{ name: '', date: seasonDate(new Date()), games: [{
+      days: [{ name: '', date: dayDate(d.d), games: [{
         ...g, useCarryover: false,
         live: { at: l.at, overrides, hand: l.hand, finished: l.finished === true, arrived: l.arrived },
       }] }],

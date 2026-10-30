@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { S, bareGame } from './state-fixture.js';
 import * as L from '../app/live.js';
+import { seasonDate } from '../app/storage.js';
 import { benchHeaderText } from '../app/gamemode.js';
 import { encode, decode, receive } from '../app/handoff.js';
 
@@ -403,4 +404,59 @@ test('retap: the link is finished, the phone is not -> the link comes in', async
   const { res, got } = await retap({ at: 6, swaps: [8] }, { at: 4, finished: true });
   assert.equal(res.outcome, 'replaced');
   assert.equal(L.finishedGame(got.live), true);
+});
+
+/* #379: the link carries the sender's day, label and tipoff. Dates are made
+   relative to the real today, which `decode` reads; 2000 and 2999 are
+   always before and after it. */
+const todayIso = () => seasonDate(new Date());
+async function linkWith(edit) {
+  const { team, g, p } = sender();
+  const doc = JSON.parse(await inflateText(await encode(team, g, floorOf(g, p))));
+  edit(doc);
+  return decode(await repack(doc));
+}
+
+test('the day: a link with no d imports today', async () => {
+  const got = await linkWith(d => { delete d.d; });
+  assert.equal(got.team.days[0].date, todayIso());
+});
+
+test('the day: a d before today imports today; a d after today keeps d', async () => {
+  assert.equal((await linkWith(d => { d.d = '2000-01-01'; })).team.days[0].date, todayIso());
+  assert.equal((await linkWith(d => { d.d = '2999-11-01'; })).team.days[0].date, '2999-11-01');
+});
+
+test('the day: a junk d imports today, however it compares as a string', async () => {
+  for (const junk of ['zzzz', '9999-99-99', '2999-02-31', 20991101, null, ['2999-11-01'], {}]) {
+    const got = await linkWith(d => { d.d = junk; });
+    assert.ok(got, `the link still decodes with d = ${JSON.stringify(junk)}`);
+    assert.equal(got.team.days[0].date, todayIso(), `d = ${JSON.stringify(junk)}`);
+    assert.equal(got.team.days.length, 1);
+  }
+});
+
+test('encode puts the sender\'s day date in d, and the label and tipoff in the game', async () => {
+  const { team, g, p } = sender();
+  g.label = 'vs Hawks'; g.tipoff = '09:30';
+  const doc = JSON.parse(await inflateText(await encode(team, g, floorOf(g, p))));
+  assert.equal(doc.d, '2026-09-12');
+  assert.equal(doc.g.label, 'vs Hawks');
+  assert.equal(doc.g.tipoff, '09:30');
+});
+
+test('label and tipoff round-trip through encode and decode', async () => {
+  const { team, g, p } = sender();
+  g.label = 'vs Hawks'; g.tipoff = '09:30';
+  const got = await decode(await encode(team, g, floorOf(g, p)));
+  assert.equal(got.team.days[0].games[0].label, 'vs Hawks');
+  assert.equal(got.team.days[0].games[0].tipoff, '09:30');
+});
+
+test('the day: a sender whose game is on a later day dates it that day on the receiver', async () => {
+  const { team, g, p } = sender();
+  team.days = [{ name: '', date: '2026-09-12', games: [bareGame({ id: 'other' })] },
+    { name: '', date: '2999-11-01', games: [g] }];
+  const got = await decode(await encode(team, g, floorOf(g, p)));
+  assert.equal(got.team.days[0].date, '2999-11-01');
 });
