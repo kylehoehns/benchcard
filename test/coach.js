@@ -698,6 +698,13 @@ export class Coach {
     await land(this.c, this.origin, { record: 'wiped', page: u.pathname, query: u.hash, ready: GAMES_VIEW_READY });
   }
 
+  /** Open `url` on this same phone, its saved record kept, and wait for the game screen. */
+  async openLinkAgain(url) {
+    const u = new URL(url, this.origin);
+    await this.c.send('Page.navigate', { url: 'about:blank' });
+    await land(this.c, this.origin, { record: 'kept', page: u.pathname, query: u.hash, ready: GAMES_VIEW_READY });
+  }
+
   /** Whether the button a coach would call `name` is disabled. */
   async isDisabled(name) {
     const hit = (await this.#controls()).find(x => x.name === name);

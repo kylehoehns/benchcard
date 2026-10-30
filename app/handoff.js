@@ -128,7 +128,47 @@ export async function decode(hash) {
   }
 }
 
+/* The phone's copy of a game is further along than the link's: more stints
+   played, more hand swaps, or finished where the link is not. */
+const furtherAlong = (mine, link) => playedStints(mine) > playedStints(link)
+  || handStints(mine).length > handStints(link).length
+  || (finishedGame(mine) && !finishedGame(link));
+
 const sameFive = (a, b) => a.length === b.length && a.every(id => b.includes(id));
+
+/* Where the team keeps a game, as [day, index], or null. */
+function findGame(t, id) {
+  for (let d = 0; d < t.days.length; d++) {
+    const i = t.days[d].games.findIndex(x => x.id === id);
+    if (i >= 0) return [d, i];
+  }
+  return null;
+}
+
+/* A kid the phone lacks is added by card name, with a hue of its own. */
+function addMissingPlayers(t, players) {
+  const known = new Set(t.players.map(p => p.id));
+  const added = players.filter(p => !known.has(p.id));
+  const hues = hueSlots(added.length, t.players);
+  added.forEach((p, i) => t.players.push({ ...p, hue: hues[i] }));
+}
+
+/* The link's game takes the place of the phone's; the phone's own label and
+   tipoff are not in the link, so they stay. */
+function replaceGame(t, [d, i], game) {
+  const old = t.days[d].games[i];
+  if (old.label !== undefined) game.label = old.label;
+  if (old.tipoff !== undefined) game.tipoff = old.tipoff;
+  t.days[d].games[i] = game;
+  return [d, i];
+}
+
+function addGame(t, date, game) {
+  const d = dayFor(date);
+  t.days[d].games.push(game);
+  sortDay(t.days[d].games);
+  return [d, t.days[d].games.indexOf(game)];
+}
 
 /* Puts a decoded link into the app's record and opens its game. A team the
    phone already has (same id) keeps its own roster and everything else; a
@@ -138,8 +178,8 @@ const sameFive = (a, b) => a.length === b.length && a.every(id => b.includes(id)
    override that is not a hand swap, so the card matches the sender's. */
 export function receive({ team: incoming, stints }) {
   const game = incoming.days[0].games[0];
-  const date = incoming.days[0].date;
   const have = state.teams.findIndex(t => t.id === incoming.id);
+  let outcome = 'added';
   if (have < 0) {
     const placeholder = !state.onboarded && !state.teams.some(t => t.players.length);
     if (placeholder) state.teams = [incoming]; else state.teams.push(incoming);
@@ -149,29 +189,15 @@ export function receive({ team: incoming, stints }) {
   } else {
     state.activeTeam = have;
     const mine = team();
-    const known = new Set(mine.players.map(p => p.id));
-    const added = incoming.players.filter(p => !known.has(p.id));
-    const hues = hueSlots(added.length, mine.players);
-    added.forEach((p, i) => mine.players.push({ ...p, hue: hues[i] }));
-    let at = null;
-    mine.days.forEach((day, d) => {
-      const i = day.games.findIndex(x => x.id === game.id);
-      if (i >= 0) {
-        // the phone's own label and tipoff are not in the link
-        const old = day.games[i];
-        if (old.label !== undefined) game.label = old.label;
-        if (old.tipoff !== undefined) game.tipoff = old.tipoff;
-        day.games[i] = game;
-        at = [d, i];
-      }
-    });
-    if (!at) {
-      const d = dayFor(date);
-      mine.days[d].games.push(game);
-      sortDay(mine.days[d].games);
-      at = [d, mine.days[d].games.indexOf(game)];
+    const own = findGame(mine, game.id);
+    if (own && furtherAlong(mine.days[own[0]].games[own[1]].live, game.live)) {
+      openGame(...own);
+      computeAll();
+      return { teamName: mine.name, outcome: 'kept' };
     }
-    openGame(...at);
+    if (own) outcome = 'replaced';
+    addMissingPlayers(mine, incoming.players);
+    openGame(...(own ? replaceGame(mine, own, game) : addGame(mine, incoming.days[0].date, game)));
   }
   computeAll();
   const p = plans[state.activeGame];
@@ -186,5 +212,5 @@ export function receive({ team: incoming, stints }) {
     });
     if (Object.keys(fix).length) { writeOverrides(game.live, fix, false); computeAll(); }
   }
-  return { teamName: team().name };
+  return { teamName: team().name, outcome };
 }
