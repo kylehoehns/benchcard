@@ -104,3 +104,23 @@ test('advanced has a WebPage and a Benchcard > Reference breadcrumb', () => {
 test('the home screen name stays Benchcard, whatever the title says', () => {
   assert.equal(meta(read('index.html'), /<meta name="apple-mobile-web-app-title" content="([^"]*)">/), 'Benchcard');
 });
+
+/* #386: what sets Benchcard apart is in the metadata a search engine reads. */
+const appNode = () => nodes(read('index.html')).find(x => x['@type'] === 'SoftwareApplication');
+
+test('home featureList names the season, hand-off, mid-game re-plan and overtime', () => {
+  const list = appNode().featureList;
+  for (const re of [/season/i, /hand/i, /mid-game/i, /overtime/i]) {
+    assert.ok(list.some(f => re.test(f)), `featureList has no entry matching ${re}`);
+  }
+});
+
+test('home meta description mentions the season and fits in 160 characters', () => {
+  const d = descOf(read('index.html'));
+  assert.match(d, /season/i);
+  assert.ok(d.length <= 160, `meta description is ${d.length} characters`);
+});
+
+test('home JSON-LD description says across the season', () => {
+  assert.match(appNode().description, /across the season/);
+});
