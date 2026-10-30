@@ -206,7 +206,10 @@ There is a third scope, **"Sit for the rest"**, and it is the one case where the
 app does re-solve: the picked player is out for the rest of the game and
 `resolveRest` (`state.js`) asks the solver to cover the remaining stints
 honouring what everyone has already played. It needs no replacement pick —
-*who* is the question it answers, not a precondition of asking it. "Rest of
+*who* is the question it answers, not a precondition of asking it. On the
+current stint only that one seat changes: the four who stay are handed to the
+solver as the suffix's opening five, so one bench kid comes on and nobody else
+moves (#376). If that cannot be met it falls back to a free solve. "Rest of
 game" beside it still hands every remaining stint to one named kid, and that is
 deliberate: there the coach named them, which is an instruction rather than an
 unfairness. Measured across 162 cases the re-solve is fairer in 115 and the
