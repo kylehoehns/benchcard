@@ -1,0 +1,6 @@
+node 24	UNKNOWN STEP	2026-10-29T01:57:15.8802571Z ✔ the shipped about.html carries a readable dateline (1.686285ms)
+node 24	UNKNOWN STEP	2026-10-29T01:57:15.8815178Z ✔ humanize writes the form the footer uses (0.117636ms)
+node 24	UNKNOWN STEP	2026-10-29T01:57:15.8816129Z ✔ a footer with no time element is unreadable, not silently fine (0.123424ms)
+smoke	UNKNOWN STEP	2026-10-29T13:15:42.0206921Z   [32mPASS[0m  no console errors                                                                             clean (248 third-party, ignored)
+smoke	UNKNOWN STEP	2026-10-29T13:15:42.0207437Z   [32mPASS[0m  no horizontal overflow                                                                        scrollWidth 390 ≤ viewport 390
+smoke	UNKNOWN STEP	2026-10-29T13:15:42.0209155Z   [32mPASS[0m  card is 3.45 × 5in                                                                            1 card(s), all 331.19×480px | 32px root: unchanged (331.19×479.98px, .five 19.9346px, .chg 13.9542px) | fit probe: "Riverside Wolverines" + Wed 12:30 PM does not overlap or clip, pocket or half | multi-game probe: 3-game day corners read "Wed 9:00 AM", "Wed 11:00 AM", "Wed"

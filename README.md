@@ -99,6 +99,7 @@ From the repo root:
 npm test                        # the suite — node --test, zero deps
 npm run smoke                   # browser checks, unit suite, and coverage (count in AGENTS.md)
 npm run evals                   # the agent-harness eval suite
+npm run flakes                  # failing test names across recent CI runs (needs gh)
 ```
 
 ## How it works

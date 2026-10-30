@@ -79,6 +79,13 @@ trigger, because a job that depends on the live site must not gate a merge. It
 runs on `workflow_dispatch`, and `test/ci-config.test.js` guards that it never
 pushes to `main`.
 
+`npm run flakes` reads CI history. It lists the last 30 runs of the `tests`
+workflow (`-- --limit N` changes that), then counts each failing test name,
+once per run, on `main` and on PR branches. It prints the counts beside the
+newest run that failed on each name. It needs `gh` logged in and only reads: it
+never reruns a job. `/ship-feature` uses it to tell a known flake from a new
+break after a merge.
+
 Beyond the example-based tests, `fuzz.test.js` generates 400 random scenarios
 (roster size, availability, format, granularity, and a random mix of every
 constraint type; some games get overtime periods, and some get stint lengths

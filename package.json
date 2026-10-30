@@ -5,6 +5,7 @@
     "build": "node scripts/build.mjs",
     "serve": "node scripts/serve.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "flakes": "node scripts/flakes.mjs",
     "og": "node scripts/og.mjs",
     "charts": "node scripts/charts.mjs",
     "redirect-check": "node scripts/redirect-check.mjs",

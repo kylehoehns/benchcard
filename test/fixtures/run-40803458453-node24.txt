@@ -1,0 +1,35 @@
+node 24	UNKNOWN STEP	2026-10-29T01:58:58.8383523Z ✔ scripts/smoke.mjs imports only the six shared ./smoke/ modules, no per-check module (1.005972ms)
+node 24	UNKNOWN STEP	2026-10-29T01:58:58.8384109Z ✔ scripts/smoke.mjs carries no RUN map, no safeCheck, no hand-named reshuffle filter (0.275278ms)
+node 24	UNKNOWN STEP	2026-10-29T01:58:58.8384575Z ✔ no module under scripts/smoke/ except registry.mjs and card-at-32.mjs imports registry.mjs (0.770553ms)
+node 24	UNKNOWN STEP	2026-10-29T01:58:58.8384939Z ✔ no check module under scripts/smoke/ calls nameOf (0.705317ms)
+node 24	UNKNOWN STEP	2026-10-29T01:58:58.8385384Z ✔ every exported ...Pass function is the run of exactly one registry row, except card-at-32.mjs's own exception (80.055221ms)
+node 24	UNKNOWN STEP	2026-10-29T01:58:58.8385877Z ✔ a row's `motion` field is only ever 'real' or absent, and `sentence and sheets` carries it (0.428445ms)
+node 24	UNKNOWN STEP	2026-10-29T01:59:23.7984142Z ✖ TIMERS_QUIET outlasts a 140ms timer (30075.854843ms)
+node 24	UNKNOWN STEP	2026-10-29T01:59:53.8019750Z ✖ TIMERS_QUIET does not wait for a timer that was cleared (30003.803809ms)
+node 24	UNKNOWN STEP	2026-10-29T02:00:23.8030153Z ✖ TIMERS_QUIET ignores a timer longer than TRACKED_TIMER_MS (30000.974372ms)
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.8185116Z ✖ TIMERS_QUIET and SETTLE return within their cap when requestAnimationFrame never fires (30006.995321ms)
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9078985Z ℹ suites 17
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9079101Z ℹ pass 2014
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9085427Z ℹ fail 0
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9085619Z ℹ cancelled 4
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9085749Z ℹ skipped 0
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9085865Z ℹ todo 0
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9086004Z ℹ duration_ms 218118.086539
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9086100Z 
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9086164Z ✖ failing tests:
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9086235Z 
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9086333Z test at test/smoke-settle.test.js:44:1
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9086583Z ✖ TIMERS_QUIET outlasts a 140ms timer (30075.854843ms)
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9086953Z   'test timed out after 30000ms'
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9087047Z 
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9087136Z test at test/smoke-settle.test.js:52:1
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9087438Z ✖ TIMERS_QUIET does not wait for a timer that was cleared (30003.803809ms)
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9087652Z   'test timed out after 30000ms'
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9087751Z 
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9087835Z test at test/smoke-settle.test.js:61:1
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9088114Z ✖ TIMERS_QUIET ignores a timer longer than TRACKED_TIMER_MS (30000.974372ms)
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9088333Z   'test timed out after 30000ms'
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9088423Z 
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9088504Z test at test/smoke-settle.test.js:70:1
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9088857Z ✖ TIMERS_QUIET and SETTLE return within their cap when requestAnimationFrame never fires (30006.995321ms)
+node 24	UNKNOWN STEP	2026-10-29T02:00:53.9089127Z   'test timed out after 30000ms'
