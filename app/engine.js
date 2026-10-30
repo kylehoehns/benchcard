@@ -259,7 +259,17 @@ function combinations(arr, k) {
 /* ------------------------------------------------------------------ *
  * feasibility -- pure arithmetic, runs before any search
  * ------------------------------------------------------------------ */
-export function analyzeFeasibility({ players, availableIds, constraints, stints, strategy }) {
+/* Where the last period's first stint sits: the one place buildForced pins the
+   last-period five and the one place analyzeFeasibility checks it, so the
+   warning and the solver cannot disagree. -1 when no such stint remains (a
+   suffix that is all overtime). `periods` absent: the highest regulation period
+   among the stints, which is the same index for a full game and for a suffix. */
+function lastPeriodStintIndex(stints, periods) {
+  const last = periods ?? Math.max(0, ...stints.filter(s => !isOvertimeStint(s)).map(s => s.period));
+  return stints.findIndex(s => s.period === last);
+}
+
+export function analyzeFeasibility({ players, availableIds, constraints, stints, strategy, periods }) {
   const issues = [];
   const byId = new Map(players.map(p => [p.id, p]));
   const short = deriveShortNames(players);
@@ -273,6 +283,10 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
   const floorMinutes = gameMinutes * ON_FLOOR;
   const stintLens = stints.map(s => s.minutes);
   const maxStint = Math.max(...stintLens, 0);
+  const minStint = Math.min(...stintLens);
+  const lastPeriodIdx = lastPeriodStintIndex(stints, periods);
+  // a ratio within float error of a whole number is whole (10 / 3.333.. is 3)
+  const wholeStints = mn => Math.abs(mn / maxStint - Math.round(mn / maxStint)) < 1e-9;
 
   const err = (code, message, playerIds = []) => issues.push({ severity: 'error', code, message, playerIds });
   const warn = (code, message, playerIds = []) => issues.push({ severity: 'warn', code, message, playerIds });
@@ -289,18 +303,18 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     const mx = c.maxMinutes[id];
     if (mn != null && mn > gameMinutes) {
       err('MIN_EXCEEDS_GAME',
-        `${label(id)} has a ${mn}-minute minimum but the game is only ${gameMinutes} minutes long.`, [id]);
+        `${label(id)} has a ${mn}-minute minimum but the game is only ${fmtMinutes(gameMinutes)} minutes long.`, [id]);
     }
     if (mn != null && mx != null && mn > mx) {
       err('MIN_ABOVE_CAP', `${label(id)} has a ${mn}-minute minimum and a ${mx}-minute cap. Pick one.`, [id]);
     }
-    if (mx != null && mx < maxStint) {
+    if (mx != null && mx < minStint) {
       warn('CAP_BELOW_STINT',
-        `${label(id)}'s ${mx}-minute cap is shorter than a ${maxStint}-minute stint, so they will play 0 minutes.`, [id]);
+        `${label(id)}'s ${mx}-minute cap is shorter than a ${fmtMinutes(minStint)}-minute stint, so they will play 0 minutes.`, [id]);
     }
-    if (mn != null && mn % maxStint !== 0 && stintLens.every(l => l === maxStint)) {
+    if (mn != null && !wholeStints(mn) && stintLens.every(l => l === maxStint)) {
       warn('MIN_OFF_STINT_BOUNDARY',
-        `${label(id)}'s ${mn}-minute minimum rounds up to ${Math.ceil(mn / maxStint) * maxStint} (stints are ${maxStint} minutes).`, [id]);
+        `${label(id)}'s ${mn}-minute minimum rounds up to ${fmtMinutes(Math.ceil(mn / maxStint - 1e-9) * maxStint)} (stints are ${fmtMinutes(maxStint)} minutes).`, [id]);
     }
   }
 
@@ -313,14 +327,14 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       .map(id => `${label(id)} (${c.minMinutes[id]})`)
       .join(', ');
     err('MINS_UNSATISFIABLE',
-      `Required minimums total ${minSum} minutes but the game only totals ${floorMinutes} minutes (${gameMinutes} min × ${ON_FLOOR} players). Largest: ${top}.`,
+      `Required minimums total ${minSum} minutes but the game only totals ${fmtMinutes(floorMinutes)} minutes (${fmtMinutes(gameMinutes)} min × ${ON_FLOOR} players). Largest: ${top}.`,
       avail.filter(id => c.minMinutes[id]));
   }
 
   const capSum = avail.reduce((a, id) => a + (c.maxMinutes[id] != null ? c.maxMinutes[id] : gameMinutes), 0);
   if (capSum < floorMinutes) {
     err('CAPS_UNSATISFIABLE',
-      `Maximums allow at most ${capSum} total minutes but the game needs ${floorMinutes} minutes to keep ${ON_FLOOR} on the floor. Raise a maximum or add a player.`,
+      `Maximums allow at most ${fmtMinutes(capSum)} total minutes but the game needs ${fmtMinutes(floorMinutes)} minutes to keep ${ON_FLOOR} on the floor. Raise a maximum or add a player.`,
       avail.filter(id => c.maxMinutes[id] != null));
   }
 
@@ -336,7 +350,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
                 + (c.maxMinutes[b] != null ? c.maxMinutes[b] : gameMinutes);
     if (cover < gameMinutes) {
       err('KEEPON_UNSATISFIABLE',
-        `${label(a)} or ${label(b)} has to be on the floor at all times, but their caps only cover ${cover} of the game's ${gameMinutes} minutes. Raise a cap or drop the rule.`,
+        `${label(a)} or ${label(b)} has to be on the floor at all times, but their caps only cover ${fmtMinutes(cover)} of the game's ${fmtMinutes(gameMinutes)} minutes. Raise a cap or drop the rule.`,
         [a, b]);
     }
   }
@@ -349,7 +363,10 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
   for (const id of c.droppedOpening) warn('OPENING_DROPPED', `${label(id)} is set to start but is not available.`, [id]);
   for (const id of c.droppedLastPeriod) warn('LAST_PERIOD_DROPPED', `${label(id)} is set to start the last period but is not available.`, [id]);
 
-  for (const [name, group] of [['opening stint', c.openingFive], ['last period', c.lastPeriodFive]]) {
+  for (const [name, group, pinned] of [
+    ['opening stint', c.openingFive, stints[0]],
+    ['last period', c.lastPeriodFive, stints[lastPeriodIdx]],
+  ]) {
     if (group.length > ON_FLOOR) {
       err('FORCED_GROUP_TOO_BIG', `${group.length} players are pinned to the ${name} but only ${ON_FLOOR} fit.`, group);
     }
@@ -360,8 +377,8 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
     for (const id of group) {
       const mx = c.maxMinutes[id];
-      if (mx != null && mx < maxStint) {
-        err('FORCED_OVER_CAP', `${label(id)} is pinned to the ${name} but their ${mx}-minute cap will not cover a ${maxStint}-minute stint.`, [id]);
+      if (mx != null && pinned && mx < pinned.minutes) {
+        err('FORCED_OVER_CAP', `${label(id)} is pinned to the ${name} but their ${mx}-minute cap will not cover a ${fmtMinutes(pinned.minutes)}-minute stint.`, [id]);
       }
     }
   }
@@ -382,7 +399,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     for (const id of c.closing.players) {
       const mx = c.maxMinutes[id];
       if (mx != null && mx < closeMinutes) {
-        warn('CLOSER_OVER_CAP', `${label(id)} is set to close (${closeMinutes} min) but is capped at ${mx}.`, [id]);
+        warn('CLOSER_OVER_CAP', `${label(id)} is set to close (${fmtMinutes(closeMinutes)} min) but is capped at ${mx}.`, [id]);
       }
     }
   }
@@ -417,8 +434,8 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     if (free === 0 && Math.abs(sum - targetFloor) > 1e-9) {
       warn(sum > targetFloor ? 'TARGETS_OVER_BUDGET' : 'TARGETS_UNDER_BUDGET',
         sum > targetFloor
-          ? `Minute targets add up to ${sum}, which is ${sum - targetFloor} more than the game has. Somebody will fall short of their number.`
-          : `Minute targets add up to ${sum} of ${targetFloor} floor-minutes. The spare ${targetFloor - sum} minutes get shared out.`,
+          ? `Minute targets add up to ${sum}, which is ${fmtMinutes(sum - targetFloor)} more than the game has. Somebody will fall short of their number.`
+          : `Minute targets add up to ${sum} of ${fmtMinutes(targetFloor)} floor-minutes. The spare ${fmtMinutes(targetFloor - sum)} minutes get shared out.`,
         pinned);
     }
     for (const [id, t] of Object.entries(c.targetMinutes)) {
@@ -633,7 +650,7 @@ export function generatePlan(input) {
   const stints = input.stints || buildStints(format, granularity);
   const byId = new Map(players.map(p => [p.id, p]));
   const avail = availableIds.filter(id => byId.has(id));
-  const issues = analyzeFeasibility({ players, availableIds: avail, constraints, stints, strategy: input.strategy });
+  const issues = analyzeFeasibility({ players, availableIds: avail, constraints, stints, strategy: input.strategy, periods: format.periods });
 
   if (issues.some(i => i.severity === 'error')) {
     return { ok: false, stints: [], minutes: {}, spread: null, issues, seed };
@@ -732,7 +749,7 @@ function buildForced(stints, c, format) {
   const forced = stints.map(() => new Set());
   if (c.openingFive.length) for (const id of c.openingFive) forced[0].add(id);
   if (c.lastPeriodFive.length) {
-    const i = stints.findIndex(s => s.period === format.periods);
+    const i = lastPeriodStintIndex(stints, format.periods);
     if (i >= 0) for (const id of c.lastPeriodFive) forced[i].add(id);
   }
   // closers: the same group holds the floor for the last N stints

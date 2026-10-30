@@ -1154,3 +1154,62 @@ test('a plan of overtime stints alone has no halftime to be late for', () => {
   assert.ok(p.ok);
   assert.equal(p.issues.find(i => i.code === 'HALF_LATE'), undefined);
 });
+
+/* ---------------- #378: warnings check the stint they mean ---------------- */
+
+const HALVES_20 = { periods: 2, periodMinutes: 20 };
+const EVERY_6 = { mode: 'everyN', value: 6 };
+const feas = (format, granularity, constraints, extra = {}) => analyzeFeasibility({
+  players: roster(8), availableIds: ids(8), constraints,
+  stints: buildStints(format, granularity), ...extra,
+});
+const codes = (issues, code) => issues.filter(i => i.code === code);
+
+test('378: a 7-minute cap on a starter covers a 6-minute opening stint', () => {
+  const issues = feas(HALVES_20, EVERY_6, { openingFive: ['p0'], maxMinutes: { p0: 7 } });
+  assert.deepEqual(codes(issues, 'FORCED_OVER_CAP'), []);
+  assert.deepEqual(codes(issues, 'CAP_BELOW_STINT'), []);
+});
+
+test('378: a 5-minute cap on a starter fires FORCED_OVER_CAP naming the 6-minute stint', () => {
+  const [hit] = codes(feas(HALVES_20, EVERY_6, { openingFive: ['p0'], maxMinutes: { p0: 5 } }), 'FORCED_OVER_CAP');
+  assert.ok(hit, 'FORCED_OVER_CAP did not fire');
+  assert.match(hit.message, /6-minute stint/);
+});
+
+test('378: the last-period five is checked against that period\'s first stint (periods passed or inferred)', () => {
+  const stints = buildStints(HALVES_20, EVERY_6);
+  const run = (cap, extra) => analyzeFeasibility({
+    players: roster(8), availableIds: ids(8), stints, ...extra,
+    constraints: { lastPeriodFive: ['p1'], maxMinutes: { p1: cap } },
+  });
+  for (const extra of [{}, { periods: 2 }]) {
+    assert.deepEqual(codes(run(7, extra), 'FORCED_OVER_CAP'), [], JSON.stringify(extra));
+    const [hit] = codes(run(5, extra), 'FORCED_OVER_CAP');
+    assert.ok(hit, `no FORCED_OVER_CAP ${JSON.stringify(extra)}`);
+    assert.match(hit.message, /6-minute stint/);
+  }
+  const p = generatePlan({
+    players: roster(8), availableIds: ids(8), format: HALVES_20, granularity: EVERY_6, seed: 3,
+    constraints: { lastPeriodFive: ['p1'], maxMinutes: { p1: 7 } },
+  });
+  assert.deepEqual(codes(p.issues, 'FORCED_OVER_CAP'), []);
+});
+
+test('378: 4x10 perPeriod 3 prints stint lengths as 3.3, never 3.333', () => {
+  const P3 = { mode: 'perPeriod', value: 3 };
+  const issues = feas({ periods: 4, periodMinutes: 10 }, P3, {
+    minMinutes: { p0: 7 }, maxMinutes: { p1: 2, p2: 38 }, openingFive: ['p1'],
+    closing: { stints: 1, players: ['p2'] },
+  });
+  assert.ok(issues.length >= 3);
+  for (const i of issues) assert.doesNotMatch(i.message, /3\.333/, i.message);
+  const [hit] = codes(issues, 'MIN_OFF_STINT_BOUNDARY');
+  assert.ok(hit.message.includes('rounds up to 10 (stints are 3.3 minutes)'), hit.message);
+});
+
+test('378: 4x10 perPeriod 3 with a 10-minute minimum is not off a stint boundary', () => {
+  const issues = feas({ periods: 4, periodMinutes: 10 }, { mode: 'perPeriod', value: 3 },
+    { minMinutes: { p0: 10 } });
+  assert.deepEqual(codes(issues, 'MIN_OFF_STINT_BOUNDARY'), []);
+});
