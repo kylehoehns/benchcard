@@ -153,3 +153,14 @@ test('the structured FAQ and the visible FAQ are the same FAQ, in the same order
     'app/about.html: the FAQPage JSON-LD and <dl class="faq"> have drifted apart — ' +
     'they must hold the same questions and answers, in the same order');
 });
+
+test('"Could I lose my roster?" tells a coach to back up, and that the home-screen app starts fresh', () => {
+  const find = list => list.find(e => e.q === 'Could I lose my roster?');
+  for (const [where, list] of [['the visible FAQ', visible()], ['the FAQPage block', structured()]]) {
+    const entry = find(list);
+    assert.ok(entry, `${where} has no "Could I lose my roster?" entry`);
+    assert.match(entry.a, /backup/, `${where}: the answer does not mention a backup`);
+    assert.match(entry.a, /starts fresh, though, so save a backup first and restore it there/,
+      `${where}: the answer does not tell a coach to save a backup first, then restore it in the home-screen app`);
+  }
+});
