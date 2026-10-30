@@ -366,3 +366,35 @@ test('nothing to add yet still reads as the singular, never "Add 0 players"', ()
   assert.equal(confirmAddLabel(0), 'Add player');
   assert.equal(confirmAddLabel(undefined), 'Add player');
 });
+
+// #380: list bullets and a spreadsheet header row on a pasted roster
+test('a bulleted list reads as bare names', () => {
+  assert.deepEqual(parseRoster('• Maya Webb\n• Eli Tran\n• Devon Ellis'), [
+    { number: '', name: 'Maya Webb' }, { number: '', name: 'Eli Tran' }, { number: '', name: 'Devon Ellis' },
+  ]);
+});
+
+test('a dashed list with jersey numbers keeps the numbers', () => {
+  assert.deepEqual(parseRoster('- 12 Maya Webb\n- 4 Eli Tran'), [
+    { number: '12', name: 'Maya Webb' }, { number: '4', name: 'Eli Tran' },
+  ]);
+});
+
+test('every list bullet is stripped, with or without a space after it', () => {
+  for (const b of ['•', '◦', '▪', '·', '*', '-', '–', '—']) {
+    assert.deepEqual(parseRoster(`${b} Maya Webb`), [{ number: '', name: 'Maya Webb' }], `${b} spaced`);
+    assert.deepEqual(parseRoster(`${b}Maya Webb`), [{ number: '', name: 'Maya Webb' }], `${b} tight`);
+  }
+});
+
+test('a spreadsheet header row is not a player', () => {
+  assert.deepEqual(parseRoster('Jersey\tFirst\tLast\n12\tMaya\tWebb\n4\tEli\tTran'), [
+    { number: '12', name: 'Maya Webb' }, { number: '4', name: 'Eli Tran' },
+  ]);
+  assert.deepEqual(parseRoster('Name\nMaya Webb\nEli Tran').map(x => x.name), ['Maya Webb', 'Eli Tran']);
+});
+
+test('only the first line is checked for a header, and a lone one is kept', () => {
+  assert.deepEqual(parseRoster('Maya Webb\nJersey Number Name').map(x => x.name), ['Maya Webb', 'Jersey Number Name']);
+  assert.deepEqual(parseRoster('Jersey'), [{ number: '', name: 'Jersey' }]);
+});

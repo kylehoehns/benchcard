@@ -14,6 +14,11 @@ export function parseRosterLine(line) {
   let s = String(line || '').trim();
   if (!s) return null;
 
+  // #380: one leading list bullet, and the space after it, before any number
+  // is read -- "- 12 Maya Webb" is then "12 Maya Webb".
+  s = s.replace(/^[•◦▪·*\-–—]\s*/, '');
+  if (!s) return null;
+
   let number = '';
 
   // trailing "#12" / "- 12" / ", 12"
@@ -27,7 +32,7 @@ export function parseRosterLine(line) {
   }
 
   // tidy separators left behind, and collapse runs of spaces
-  s = s.replace(/[\s,;|]+$/g, '').replace(/^[\s,;|]+/g, '').replace(/\s{2,}/g, ' ').trim();
+  s = s.replace(/[\s,;|]+$/g, '').replace(/^[\s,;|]+/g, '').replace(/\s+/g, ' ').trim();
   if (!s) return null;
 
   return { number: number.replace(/^0+(?=\d)/, ''), name: s };
@@ -54,13 +59,19 @@ const commaPieces = s => s.split(',').map(p => p.trim()).filter(Boolean);
 const isCommaList = s => !/[\r\n]/.test(s) && s.includes(',') &&
   commaPieces(s).length > 0 && commaPieces(s).every(p => /\p{L}/u.test(p));
 
+const HEADER_WORDS = new Set(['name', 'names', 'first', 'last', 'player', 'players',
+  'jersey', 'number', 'no', 'no.', '#']);
+const isHeaderRow = line => !/\d/.test(line) &&
+  line.trim().split(/\s+/).every(w => HEADER_WORDS.has(w.toLowerCase()));
+
 export function parseRoster(text) {
   const s = String(text || '');
   if (isCommaList(s)) return commaPieces(s).map(parseRosterLine).filter(Boolean);
-  return s
-    .split(/[\r\n]+/)
-    .map(parseRosterLine)
-    .filter(Boolean);
+  const lines = s.split(/[\r\n]+/).filter(l => l.trim());
+  // #380: a spreadsheet header row ("Jersey<TAB>First<TAB>Last") is not a
+  // player. Only the first non-blank line, and never when it is the only one.
+  if (lines.length > 1 && isHeaderRow(lines[0])) lines.shift();
+  return lines.map(parseRosterLine).filter(Boolean);
 }
 
 /* Trim, lowercase, collapse inner spaces. One key function, shared by every

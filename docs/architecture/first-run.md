@@ -8,7 +8,8 @@ roster box), *How long is a game?* (periods, minutes each, how often to sub),
 and then the coach's own first card, with Print and Share image on it. Players
 are typed or pasted in any of the usual shapes (`12 Marcus Webb`,
 `Marcus Webb #12`, `Devon Ellis`), or as a comma-separated list with no line
-breaks (`Sam, Jo, Kai`); they are counted by `parseRoster` as they are typed,
+breaks (`Sam, Jo, Kai`). A leading list bullet is stripped, and a spreadsheet
+header row (`Jersey<TAB>First<TAB>Last`) is dropped. They are counted by `parseRoster` as they are typed,
 and Next stays disabled until five of them parse.
 
 It is the add-a-game flow's shell, down to the one painter both flows call: a
