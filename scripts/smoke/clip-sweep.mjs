@@ -493,10 +493,9 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   await land(c, origin, { record: LONG_AND_SQUEEZE, ...LARGE_TEXT });
   await applyInjectCss();
 
-  for (const v of states) {
-    const where = v.name;
+  const sweep = async (v, want, where) => {
     try {
-      await openState(c, origin, v);
+      await openState(c, origin, v, want);
 
       for (const pos of ['top', 'bottom']) {
         if (pos === 'bottom') await evalIn(c, SCROLL_TO_BOTTOM);
@@ -522,7 +521,14 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
       await land(c, origin, { record: LONG_AND_SQUEEZE, ...LARGE_TEXT });
       await applyInjectCss();
     }
-  }
+  };
+  for (const v of states) await sweep(v, LARGE_TEXT, v.name);
+
+  // #388: the Next change box splits a long name mid-word at a phone's
+  // ordinary 390px/16px, which the 320px/32px walk above never sees.
+  await land(c, origin, { record: LONG_AND_SQUEEZE });
+  await applyInjectCss();
+  await sweep(states.find(v => v.name === 'bench mode, undo toast'), {}, 'bench mode, undo toast 390px/16px');
 
   // An allow-list, sideways-scroll, floor-allow or known-issue entry this
   // run never needed is stale and fails here, same reasoning for all four.
@@ -546,7 +552,7 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
 
   rec.check(scanned > 0, 'measured no elements across any state');
-  rec.ok(`${states.length} states, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
+  rec.ok(`${states.length} states + 1 at 390px/16px, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
 }
 
 /* #283: the same four tests, on `/about.html`, which the app sweep above

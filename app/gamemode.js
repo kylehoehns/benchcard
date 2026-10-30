@@ -563,19 +563,21 @@ export function buildNextCols(going, coming, nameOf) {
    names in ~250px usually fit; when they do not, a wrapped call line is worse
    than a code, so the whole block drops back to the short names together
    rather than mixing the two. Measured on the shared canvas, like the pills
-   and the card header. */
+   and the card header. Each name is measured in its own span's font: the Off
+   and On columns differ in weight, so one row's style would misjudge the other. */
 function fitCallRows(rows) {
   if (!rows.length || !rows[0][0].isConnected) return;
-  const cs = getComputedStyle(rows[0][0]);
-  ctx2d.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-  const ls = parseFloat(cs.letterSpacing) || 0;
-  const w = t => ctx2d.measureText(t).width + t.length * ls + 1;
+  const w = (el, t) => {
+    const cs = getComputedStyle(el);
+    ctx2d.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    return ctx2d.measureText(t).width + t.length * (parseFloat(cs.letterSpacing) || 0) + 1;
+  };
   let fits = true;
   for (const [ns, call] of rows) {
     // last flex item on the row, so its left edge does not move with content
     const avail = ns.parentElement.getBoundingClientRect().right - ns.getBoundingClientRect().left;
     if (!(avail > 0)) return;                // not laid out yet: leave it alone
-    if (w(call) > avail) fits = false;
+    if (w(ns, call) > avail) fits = false;
   }
   for (const [ns, call, short] of rows) ns.textContent = fits ? call : short;
   // A first paint before Inter arrives measures the fallback face; redo it once.
