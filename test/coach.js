@@ -85,16 +85,30 @@ export function midSeason() {
 const SHARE_SHEET = `Object.defineProperty(navigator, 'share', { configurable: true,
   value: data => { window.__sharedLink = data.url; return Promise.resolve(); } })`;
 
-/* #326: which screens fade in from transparent. Read at `animationstart`,
- * from the element's own computed opacity, so it is what is painted rather
- * than what a keyframe says. Chrome does not count text that fades in as a
- * paint, which is how a fading first screen hid itself from FCP and LCP.
- * Only the entrance keyframes count: a loading pulse inside a screen is not
- * the screen fading in. */
+/* #326: which screens fade in from transparent. Decided at `animationstart`
+ * from the entrance keyframe's starting opacity, resolved for this element
+ * (`--fade-from` is 1 on the first screen), because Chrome does not count text
+ * that fades in as a paint, which is how a fading first screen hid itself from
+ * FCP and LCP. Not from the live opacity: on a slow runner the sped-up
+ * animation can be finished by the time the handler runs (#375). Only the
+ * entrance keyframes count: a loading pulse inside a screen is not the screen
+ * fading in. */
 const FADE_WATCH = `window.__fades = [];
+  const fadeFrom = (name, el) => {
+    for (const sheet of document.styleSheets) {
+      let rules; try { rules = sheet.cssRules; } catch { continue; }
+      for (const r of rules) {
+        if (r.type !== CSSRule.KEYFRAMES_RULE || r.name !== name) continue;
+        const v = r.findRule('0%')?.style.opacity;
+        const m = v && v.match(/^var\\((--[\\w-]+)\\s*(?:,\\s*([^)]*))?\\)$/);
+        return m ? (getComputedStyle(el).getPropertyValue(m[1]) || m[2]) : v;
+      }
+    }
+  };
   document.addEventListener('animationstart', e => {
     if (!['viewIn', 'welMark', 'rise'].includes(e.animationName)) return;
-    if (Number(getComputedStyle(e.target).opacity) >= 1) return;
+    const from = fadeFrom(e.animationName, e.target);
+    if (!(from != null && from !== '' && Number(from) < 1)) return;
     const view = e.target.closest('.view');
     if (view && !window.__fades.includes(view.id)) window.__fades.push(view.id);
   }, true);`;

@@ -153,12 +153,11 @@ async function runCheck(row, ctx) {
 
 async function browserChecks(origin, only, folded) {
   current = 'launching Chrome';
-  const debugPort = 9222 + Math.floor(Math.random() * 500);
   // #178 review: liveChrome is set as soon as Chrome is spawned, not only once
   // launch() resolves — its own DevTools poll can take up to 45s, and a
   // timeout firing inside that window used to find liveChrome still null and
   // leak the Chrome it had already spawned.
-  const { proc, dir, ws } = await launch(debugPort, has('--headful'),
+  const { proc, dir, ws } = await launch(0, has('--headful'),
     (proc, dir) => { liveChrome = { proc, dir, c: null }; });
   const c = cdp(ws);
   liveChrome = { proc, dir, c };

@@ -15,7 +15,7 @@ let chrome, c;
 
 before(async () => {
   if (NEEDS_CHROME.skip) return;
-  chrome = await launch(9800 + Math.floor(Math.random() * 150), false);
+  chrome = await launch(0, false);
   c = cdp(chrome.ws);
   await c.ready;
   await c.send('Page.enable');

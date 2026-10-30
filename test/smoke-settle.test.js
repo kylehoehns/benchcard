@@ -14,7 +14,7 @@ let chrome, c, pageNo = 0;
 
 before(async () => {
   if (NEEDS_CHROME.skip) return;
-  chrome = await launch(9800 + Math.floor(Math.random() * 150), false);
+  chrome = await launch(0, false);
   c = cdp(chrome.ws);
   await c.ready;
   await c.send('Page.enable');
@@ -27,9 +27,14 @@ after(async () => {
 
 // A fresh window each time, so an override in one test cannot leak into the next.
 async function freshPage() {
+  const url = `data:text/html,<p>settle test ${++pageNo}</p>`;
   const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  await c.send('Page.navigate', { url: `data:text/html,<p>settle test ${++pageNo}</p>` });
-  await loaded;
+  // #375: a page that never fires load fails here, by name, not at the test timeout.
+  const LOAD_LIMIT = 10_000;
+  const never = new Promise((_, no) => setTimeout(() => no(new Error(
+    `freshPage: Page.loadEventFired did not arrive within ${LOAD_LIMIT}ms for ${url}`)), LOAD_LIMIT).unref());
+  await c.send('Page.navigate', { url });
+  await Promise.race([loaded, never]);
 }
 
 // Node-side elapsed time and result of one page-side wait. Rejects rather than

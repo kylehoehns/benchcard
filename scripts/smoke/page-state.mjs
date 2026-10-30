@@ -95,7 +95,8 @@ export async function bootWait(c, ready, where = 'the page') {
     await document.fonts.ready;
     let ok = (${ready});
     for (let i = 0; i < 60 && !ok; i++) { await new Promise(r => setTimeout(r, 50)); ok = (${ready}); }
-    if (!ok) throw new Error(${JSON.stringify(timeoutMessage)});
+    if (!ok) throw new Error(${JSON.stringify(timeoutMessage)} + ' (page showed ' + location.pathname + location.search +
+      ', ' + document.readyState + ', visible views: ' + [...document.querySelectorAll('.view:not([hidden])')].map(v => v.id) + ')');
     await ${SETTLE};
   })()`);
 }
