@@ -2064,7 +2064,8 @@ export function resolveRest(g, p, from, sitIds = [], to = null) {
  * (`p.ok` false) was never playable either way and stays out silently, as
  * it always has. Deleting a game before then is the coach saying it did
  * not happen, and deleting already takes it out of the day, so it never
- * reaches here.
+ * reaches here. (`carryUnplayedDay` reads the plan-free equivalent --
+ * `finishedGame`/`playedStints` -- because it runs before plans are solved.)
  *
  * The minutes are `effectiveMinutes`, never `plan.minutes`: a coach who
  * swapped Ben on for Devon in the third stint changed who played, and
@@ -2170,6 +2171,7 @@ export function carryUnplayedDay(today = new Date()) {
   const days = team().days;
   if (days.some(d => d.date === iso)) return false;
   const past = days.filter(d => dayIsPast(d, today));
+  // `past` is non-empty: dueToFile held, and reduce has no initial value
   const latest = past.reduce((a, b) => (b.date > a.date ? b : a));
   if (latest.games.some(g => finishedGame(g.live) || playedStints(g.live) > 0)) return false;
   latest.date = iso;

@@ -7,7 +7,7 @@ import { callNames } from './roster.js';
 import { DAMAGED_LINK, handStints, playedStints, finishedGame, writeOverrides } from './live.js';
 import { sanitizeTeam, seasonDate, sortDay } from './storage.js';
 import { state, team, computeAll, effectiveStints, availIds, plans, openGame, dayFor,
-         hueSlots, emptyConstraints, newGame } from './state.js';
+         hueSlots, emptyConstraints, newGame, carryUnplayedDay } from './state.js';
 
 const VERSION = '1';
 const PREFIX = '#p=' + VERSION;
@@ -45,9 +45,9 @@ export async function encode(team, game, stints) {
       id: game.id, periods: game.periods, periodMinutes: game.periodMinutes,
       granMode: game.granMode, granValue: game.granValue, strategy: game.strategy,
       balance: game.balance, seed: game.seed, out: game.out, constraints: game.constraints,
-      overtime: game.overtime, label: game.label, tipoff: game.tipoff,
+      overtime: game.overtime, label: game.label?.slice(0, 40), tipoff: game.tipoff,
     },
-    d: team.days.find(day => day.games.includes(game))?.date,
+    d: team.days[findGame(team, game.id)?.[0]]?.date,
     s: stints.map(five => five.map(id => index.get(id))),
     l: { at: playedStints(live), hand: handStints(live), finished: finishedGame(live), arrived: live?.arrived ?? {} },
   };
@@ -100,8 +100,8 @@ function shapeOk(d) {
 /* #379: the sender's day if it is still ahead of this phone's own day, else
    today. A value that is not a date can win this string comparison; it is
    then dropped to today by `sanitizeTeam`, which owns what a day date is. */
-const dayDate = sent => {
-  const today = seasonDate(new Date());
+const dayDate = (sent, now) => {
+  const today = seasonDate(now);
   return isStr(sent) && sent > today ? sent : today;
 };
 
@@ -109,7 +109,7 @@ const dayDate = sent => {
    through `sanitizeTeam`, holding one day with the one game, and the card's
    stints as lists of ids -- or `null` for anything that is not a link this
    app made. */
-export async function decode(hash) {
+export async function decode(hash, today = new Date()) {
   try {
     if (!isStr(hash) || !hash.startsWith(PREFIX)) return null;
     const body = hash.slice(PREFIX.length);
@@ -123,7 +123,7 @@ export async function decode(hash) {
     const raw = {
       id: t[0], name: t[1], settings: { color: t[2] },
       players: p.map(([id, name, number, tier], hue) => ({ id, name, number, tier, hue })),
-      days: [{ name: '', date: dayDate(d.d), games: [{
+      days: [{ name: '', date: dayDate(d.d, today), games: [{
         ...g, useCarryover: false,
         live: { at: l.at, overrides, hand: l.hand, finished: l.finished === true, arrived: l.arrived },
       }] }],
@@ -166,7 +166,7 @@ function addMissingPlayers(t, players) {
 }
 
 /* The link's game takes the place of the phone's; the phone's own label and
-   tipoff are not in the link, so they stay. */
+   tipoff win on a replace (#377). The link's apply only when a game is added. */
 function replaceGame(t, [d, i], game) {
   const old = t.days[d].games[i];
   if (old.label !== undefined) game.label = old.label;
@@ -201,6 +201,7 @@ export function receive({ team: incoming, stints }) {
     openGame(0, 0);
   } else {
     state.activeTeam = have;
+    carryUnplayedDay();   // #379: this team's night-before day becomes today before the link's game joins it
     const mine = team();
     const own = findGame(mine, game.id);
     if (own && furtherAlong(mine.days[own[0]].games[own[1]].live, game.live)) {

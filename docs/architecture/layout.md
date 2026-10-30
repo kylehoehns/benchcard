@@ -79,8 +79,8 @@ Everything below is relative to `app/`.
   the two reference sheets) and `toast.js` (undo, the tip jar, flash).
 - `app.js` / `index.html` — the entry point and the markup. `app.js` is now the
   wiring only: the controls no single module owns, and the boot block that
-  hands each module its callbacks. The boot also runs `fileIfPast` (#100) after
-  the first render, and a `visibilitychange` listener runs it again when the app
+  hands each module its callbacks. The boot also runs `carryUnplayedDay` (#379)
+  before a hand-off link is read, and `fileIfPast` (#100) after the first render, and a `visibilitychange` listener runs it again when the app
   returns to the foreground — unless bench mode is open, in which case it waits
   until bench mode closes.
 - `tokens.css` / `app.css` / `card.css` — the styles, in that load order and

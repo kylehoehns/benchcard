@@ -108,7 +108,13 @@ its alternative is an assertion, so the rejected options are kept here too.
   produced a rotation was never played — and deleting a game beforehand already
   takes it out of the day. Games that were never started, when nothing from the
   plan was ever played, are left out entirely rather than filing their planned
-  minutes (#133). The minutes come from `effectiveMinutes`, never
+  minutes (#133). A day set up the night before and never started is not
+  left out in the morning: while it is the latest past day and today has no day
+  yet, it moves to today (`carryUnplayedDay`, #379), so the coach who set up and
+  printed on Friday night gets the same game on Saturday. It carries with no
+  toast and no Undo, because the plan does not change, and the only thing that
+  moves is the date. Once any game in it is started, it files as above. The
+  minutes come from `effectiveMinutes`, never
   `plan.minutes`, so a hand swap in bench mode is counted as what happened.
   Archiving runs inside `undoable`'s mutation, after the snapshot, so Undo
   un-archives with no second code path, and it is idempotent by game id so
@@ -378,8 +384,10 @@ its alternative is an assertion, so the rejected options are kept here too.
   receiving phone has the team, its own roster stands — full names, levels and
   everything else stay — and players from the link that are not on the phone
   are added by their call name. A kid on the phone keeps their full name and
-  level whatever the link carries. When the phone already has the game, its
-  own opponent label and tip-off time are kept too; the link carries neither.
+  level whatever the link carries. The link carries the game's label and
+  tip-off time (#379), so a game the phone did not have takes them. When the
+  phone already has the game, its own label and tip-off time are kept
+  (#377).
 - **Re-opening a link does not wipe a game that is further along.** The link is
   a snapshot from when it was sent, so an old one would undo the coach's swaps
   and stints without warning. If the phone's copy is further along, the phone
@@ -389,6 +397,12 @@ its alternative is an assertion, so the rejected options are kept here too.
   more hand swaps on the phone keeps it; anything else imports the link's game.
   An import over a game the phone had gets an Undo toast. A game the phone did
   not have imports with no Undo, as before.
+- **New link fields do not bump the link's version.** The day date, label and
+  tip-off are added without changing the version, which stays `1`. A link from
+  before #379 has no date and imports as today. A link from #379 opened on a
+  phone from before it ignores the unknown date, because a bump would make every
+  phone that has not updated call a new link damaged. The prefix still names
+  the version, so a breaking change later can bump it.
 - **The link is sent as a URL fragment, never the path or query.** The plan
   travels in the part of the URL after `#`, which browsers never send to a
   server. This keeps the privacy claim true — a roster never reaches a server —

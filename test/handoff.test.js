@@ -181,7 +181,7 @@ function phoneWithTeam() {
   mine.players.push({ id: 'pExtra', name: 'Extra Kid', number: '99', shortName: '', tier: 3, hue: 40 });
   const mineGame = mine.days[0].games[0];
   Object.assign(mineGame, { seed: 7, strategy: 'closers', label: 'Wolves', tipoff: '09:30', live: { at: 0, overrides: {} } });
-  mine.days.push({ name: 'Away', date: '2026-09-19', games: [bareGame({
+  mine.days.push({ name: 'Away', date: '2999-09-19', games: [bareGame({
     id: 'gLater', label: 'Eagles', constraints: S.emptyConstraints(), live: { at: 0, overrides: {} },
   })] });
   mine.settings = { ...mine.settings, maxSubs: 3 };
@@ -235,7 +235,7 @@ test('existing team: a game it does not have is added to today', async () => {
   const today = t.days.find(d => d.games.some(x => x.id === 'gHawks1'));
   assert.ok(today, 'the handed-off game is in a day');
   assert.notEqual(today.date, '2026-09-12', 'it is not put into the sender\'s old day');
-  assert.equal(today.games.length, 1);
+  assert.equal(today.games.length, 2, 'joins the phone\'s own unplayed game, carried to today (#379)');
   assert.ok(t.days.some(d => d.games.some(x => x.id === 'gSomethingElse')), 'the phone\'s own game stays');
   assert.equal(S.game().id, 'gHawks1', 'and it is the open game');
 });
@@ -459,4 +459,40 @@ test('the day: a sender whose game is on a later day dates it that day on the re
     { name: '', date: '2999-11-01', games: [g] }];
   const got = await decode(await encode(team, g, floorOf(g, p)));
   assert.equal(got.team.days[0].date, '2999-11-01');
+});
+
+test('the night before: a link for a team that was not active carries that team\'s unplayed day first, then joins it', async () => {
+  const { team, g, p } = sender();
+  const hash = await encode(team, g, floorOf(g, p));
+  const mine = structuredClone(team);
+  mine.days = [{ name: '', date: '2000-01-01', games: [bareGame({ id: 'gNight', live: { at: 0, overrides: {} } })] }];
+  S.state.teams = [S.newTeam('Other'), mine]; S.state.activeTeam = 0; S.state.onboarded = true;
+  S.computeAll();
+
+  receive(await decode(hash));
+
+  assert.equal(S.state.activeTeam, 1);
+  assert.ok(!mine.season.games.some(x => x.id === 'gNight'), 'the night-before game was not filed');
+  assert.equal(mine.days.length, 1, 'one day, not a left-out day beside today');
+  assert.equal(mine.days[0].date, todayIso());
+  assert.deepEqual(mine.days[0].games.map(x => x.id).sort(), ['gHawks1', 'gNight']);
+});
+
+test('encode caps the label at 40 characters', async () => {
+  const { team, g, p } = sender();
+  g.label = 'x'.repeat(300);
+  const doc = JSON.parse(await inflateText(await encode(team, g, floorOf(g, p))));
+  assert.equal(doc.g.label.length, 40);
+});
+
+test('decode takes today as a second argument: d == today and d == tomorrow', async () => {
+  const { team, g, p } = sender();
+  const doc = JSON.parse(await inflateText(await encode(team, g, floorOf(g, p))));
+  const today = new Date(2026, 9, 31, 9);
+  doc.d = '2026-10-31';
+  assert.equal((await decode(await repack(doc), today)).team.days[0].date, '2026-10-31', 'd == today is today');
+  doc.d = '2026-11-01';
+  assert.equal((await decode(await repack(doc), today)).team.days[0].date, '2026-11-01', 'd == tomorrow is kept');
+  doc.d = '2026-10-30';
+  assert.equal((await decode(await repack(doc), today)).team.days[0].date, '2026-10-31', 'd == yesterday is today');
 });
