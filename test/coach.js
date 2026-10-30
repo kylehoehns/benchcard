@@ -738,6 +738,39 @@ export class Coach {
     await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
   }
 
+  /** `onGameDay` with the roster cut to its first ten (`p0`..`p9`) and
+      `edits` on the Hawks game, so `{ out: ['p9'] }` is nine here and a
+      tenth marked out. */
+  async onGameDayOfTen(edits) {
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    const record = gameDay();
+    const [team] = record.teams;
+    team.players = team.players.slice(0, 10);
+    const [day] = team.days;
+    day.games = day.games.map((g, i) => (i === 0 ? { ...g, ...edits } : g));
+    await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
+  }
+
+  /** Who bench mode lists under Not here, top to bottom, by name; [] when the group is hidden. */
+  notHere() {
+    return evalIn(this.c, `(() => {
+      const sec = document.querySelector('#gmOutSec');
+      if (!sec || sec.hidden) return [];
+      return [...sec.querySelectorAll('.nm')].map(n => n.textContent);
+    })()`);
+  }
+
+  /** The width and height, in px, of the control a coach would call `name`. */
+  async sizeOf(name) {
+    const hit = (await this.#controls()).find(x => x.name === name);
+    if (!hit) throw new Error(`sizeOf ${JSON.stringify(name)}: not on screen. On screen: ${JSON.stringify(await this.controls())}`);
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: hit.node });
+    const { result } = await this.c.send('Runtime.callFunctionOn', { objectId: object.objectId, returnByValue: true,
+      functionDeclaration: 'function () { const r = this.getBoundingClientRect(); return { width: r.width, height: r.height }; }' });
+    return result.value;
+  }
+
   /** `onGameDay` on a laptop-sized window, where Today and the game sit side by side. */
   async onGameDayWide() {
     this.errors.length = 0;

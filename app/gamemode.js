@@ -19,7 +19,8 @@ import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './tra
 import { track } from './analytics.js';
 import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup,
-         resolveRest, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+         resolveRest, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+import { PLAN_ONLY } from './edit.js';
 import { stage, stintIndex, handStints, writeOverrides, resetFrom, openGame, step, finish } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
@@ -774,6 +775,29 @@ export function renderGameMode({ keepFloor = false } = {}) {
     bx.append(b);
   }
 
+  // #383: who is marked out, each with a Here now for a late arrival. A name on
+  // the list that is no longer on the roster is not shown.
+  const out = g.out.filter(id => byId(id));
+  set('#gmOutSec', 'hidden', !out.length);
+  const ox = $('#gmOut'); ox.textContent = '';
+  for (const id of out) {
+    const pl = byId(id);
+    const b = el('div', 'gm-b');
+    b.style.setProperty('--c', colorOf(id));
+    const nm = el('span', 'nm', pl.name || shorts[id] || 'Unnamed');
+    // not `el(.., 'Here now')`: feature-keys.mjs reads that shape as a bench scope
+    const go = el('button', 'press btn');
+    go.textContent = 'Here now';
+    go.type = 'button';
+    go.dataset.pid = id;   // how focus finds this row's button again
+    go.setAttribute('aria-label', `Here now, ${pl.name || 'Unnamed'}`);
+    // the arriving player is in the set the call names are made from
+    const callName = callNames([...availIds(g), id].map(byId).filter(Boolean))[id] || pl.name;
+    go.onclick = () => hereNow(g, id, callName);
+    b.append(avatarOf(pl), nm, go);
+    ox.append(b);
+  }
+
   // What changes, and exactly when. "Coming off / Going in" with no time on it
   // reads as ambiguous -- the next break is often mid-period, not the period
   // boundary the coach assumes.
@@ -1079,6 +1103,31 @@ function sitRest(p, g, i, outId, name) {
     const newFloor = effLineup(p, g, i);
     const filled = newFloor.find(x => !oldFloor.includes(x));
     gmFocus(filled ? floorRowSel(filled) : null);
+  });
+}
+
+/* #383: a late arrival, from bench mode. `setAvailable` records the arrival
+   and `render` re-plans from the next stint, the way Who's here does -- the
+   stint on the floor does not change. One `undoable`, so one toast and one
+   Undo. Focus goes to the next Here now, else the first floor row; Undo lands
+   on the restored player's own button. */
+function hereNow(g, id, name) {
+  tick();
+  undoable(`${name} is here.`, () => {
+    /* Stepping through stints in bench mode never re-plans, so the plan the
+       coach is looking at has not been "seen" by `syncOverrides` yet, and the
+       re-plan below would then adopt the new rotation outright instead of
+       freezing the stints already played. Settling it first is what leaving
+       bench mode (a full `render`) does before Who's here can be opened. */
+    computeAll();
+    setAvailable(g, id, true);
+    gmPick = null;
+  }, (undoing) => {
+    render('strategy', ...PLAN_ONLY);
+    renderGameMode();
+    if (undoing) gmFocus(`#gmOut button[data-pid="${CSS.escape(id)}"]`);
+    else if (document.querySelector('#gmOut button')) gmFocus('#gmOut button');
+    else gmFocusFirstFloor();
   });
 }
 

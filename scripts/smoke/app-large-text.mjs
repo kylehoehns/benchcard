@@ -88,6 +88,25 @@ export const APP_LARGE_TEXT_STATES = [
     close: `document.querySelector('#teamMenu')?.hidePopover?.()` },
   { name: 'bench mode', open: `document.querySelector('#gmOpen').click()`,
     close: `document.querySelector('#gmClose').click()` },
+  /* #383: bench mode with a long-named player marked out, so the "Not here"
+     group and its "Here now" button are on screen at a 32px root -- no state
+     above has anyone out. The second player is renamed to a long two-word
+     name (as `LONG_AND_SQUEEZE` already has it) and marked out before bench
+     mode opens; close leaves the record as it found it: the name and the
+     out list put back, bench mode closed. */
+  { name: 'bench mode, not here',
+    open: `const st = await import('/state.js');
+           const who = st.team().players[1];
+           window.__notHere383 = { name: who.name, out: [...st.game().out] };
+           who.name = 'Featherstonehaugh Bartholomew';
+           st.game().out = [...st.game().out, who.id];
+           (await import('/render.js')).renderAll();
+           document.querySelector('#gmOpen').click()`,
+    close: `document.querySelector('#gmClose').click();
+            const st = await import('/state.js');
+            st.team().players[1].name = window.__notHere383.name;
+            st.game().out = window.__notHere383.out;
+            (await import('/render.js')).renderAll();` },
   /* AND A TOAST, which this pass could not see either, for a different reason:
      the other states are static and a toast expires. It joins anyway because
      it is drivable — "Sit, rebalance" is two clicks from `#gmOpen`, its copy
@@ -730,6 +749,11 @@ export async function appLargeTextPass(c, origin, rec) {
         // to measure and this state would pass having checked nothing.
         const raised = JSON.parse(await evalIn(c, `!!document.querySelector('.toast[data-undo]')`));
         rec.check(raised, `${where}: no Undo toast was raised -- nothing was measured`);
+      }
+      if (v.name === 'bench mode, not here') {
+        // rule 2a: with nobody out the group is hidden and nothing is measured.
+        const btn = await evalIn(c, `(() => { const b = document.querySelector('#gmOutSec:not([hidden]) #gmOut button'); return b ? b.getBoundingClientRect().height : null; })()`);
+        rec.check(btn >= 48, `${where}: Here now is ${btn === null ? 'not on screen' : btn + 'px tall'} -- nothing was measured`);
       }
       if (v.name === 'bench mode, swap toast') {
         // rule 2a: a failed swap would raise no toast to measure.
