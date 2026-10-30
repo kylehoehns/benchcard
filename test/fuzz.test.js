@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generatePlan, buildStints } from '../app/engine.js';
+import { generatePlan, buildStints, analyzeFeasibility, isOvertimeStint } from '../app/engine.js';
 
 /* A seeded generator, so any failure is reproducible from its scenario number. */
 function rng(seed) {
@@ -33,13 +33,13 @@ function scenario(n) {
   const available = all.filter(() => r() > 0.12);
 
   const format = { periods: int(1, 4), periodMinutes: int(4, 12) };
-  const granularity = pick([
+  let granularity = pick([
     { mode: 'everyN', value: int(2, 6) },
     { mode: 'perPeriod', value: int(1, 4) },
     { mode: 'breaksOnly' },
   ]);
-  const stints = buildStints(format, granularity);
-  const gameMinutes = stints.reduce((a, s) => a + s.minutes, 0);
+  let stints = buildStints(format, granularity);
+  let gameMinutes = stints.reduce((a, s) => a + s.minutes, 0);
 
   const c = { minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [], openingFive: [], lastPeriodFive: [] };
   const some = () => available.length ? pick(available) : null;
@@ -79,6 +79,25 @@ function scenario(n) {
   if (strategy !== 'platoon') c.units = [];
 
   const balance = pick(['even', 'even', 'start', 'finish', 'both']);
+
+  /* #378: overtime periods, and stint lengths that do not divide the period
+     (a short last stint). Drawn last so the draws above stay what they were.
+     The stints are rebuilt, so the earlier constraint numbers keep their
+     meaning as plain minutes and only the clock under them changes. */
+  if (r() < 0.25) {
+    format.overtime = Array.from({ length: int(1, 2) }, () => int(3, 5));
+  }
+  if (r() < 0.25) {
+    const n = int(3, 7);
+    if (format.periodMinutes % n !== 0) granularity = { mode: 'everyN', value: n };
+  }
+  /* a starting five whose caps cover the opening stint, for the property that
+     says such a five is never blocked */
+  stints = buildStints(format, granularity);
+  gameMinutes = stints.reduce((a, s) => a + s.minutes, 0);
+  if (c.openingFive.length && r() < 0.4) {
+    for (const id of c.openingFive) c.maxMinutes[id] = Math.ceil(stints[0].minutes) + int(0, 3); // a coach types whole minutes
+  }
 
   return { players, availableIds: available, format, granularity, constraints: c,
            strategy, balance,
@@ -393,4 +412,40 @@ test('property: the tie-break never outranks a floor, a cap or a lock', () => {
       `scenario ${n}: the tie-break talked the solver under a floor (${p.minutes[bottom]})`);
   }
   assert.ok(checked > 10, `only ${checked} scenarios exercised the clash`);
+});
+
+test('fuzz #378: the generator makes overtime and uneven-stint games, and no warning prints a raw float', () => {
+  let overtime = 0, uneven = 0;
+  for (let n = 1; n <= 400; n++) {
+    const sc = scenario(n);
+    if (sc.format.overtime?.length) overtime++;
+    const reg = sc.stints.filter(s => !isOvertimeStint(s));
+    if (reg.some(s => Math.abs(s.minutes - reg[0].minutes) > 1e-9)) uneven++;
+    for (const i of generatePlan(sc).issues) {
+      assert.doesNotMatch(i.message, /\d\.\d{3,}/, `scenario ${n} ${i.code}: ${i.message}`);
+    }
+  }
+  assert.ok(overtime > 0, 'no scenario had overtime');
+  assert.ok(uneven > 0, 'no scenario had uneven stints');
+});
+
+test('property #378: a starting five whose caps cover the opening stint is never blocked by FORCED_OVER_CAP', () => {
+  let exercised = 0;
+  for (let n = 1; n <= 400; n++) {
+    const sc = scenario(n);
+    const five = sc.constraints.openingFive.filter(id => sc.availableIds.includes(id));
+    const covered = five.length && five.every(id => {
+      const cap = sc.constraints.maxMinutes[id];
+      return cap == null || cap >= sc.stints[0].minutes;
+    });
+    if (!covered) continue;
+    if (five.some(id => sc.constraints.maxMinutes[id] != null)) exercised++;
+    const issues = analyzeFeasibility({ players: sc.players, availableIds: sc.availableIds,
+      constraints: sc.constraints, stints: sc.stints, strategy: sc.strategy, periods: sc.format.periods });
+    // players also pinned to the last period may fail that stint's check instead
+    const onlyOpening = five.filter(id => !sc.constraints.lastPeriodFive.includes(id));
+    assert.deepEqual(issues.filter(i => i.code === 'FORCED_OVER_CAP' && i.playerIds.some(id => onlyOpening.includes(id))), [],
+      `scenario ${n}`);
+  }
+  assert.ok(exercised > 0, 'no scenario had a capped starting five that covers the stint');
 });

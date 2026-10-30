@@ -81,7 +81,8 @@ pushes to `main`.
 
 Beyond the example-based tests, `fuzz.test.js` generates 400 random scenarios
 (roster size, availability, format, granularity, and a random mix of every
-constraint type) and asserts invariants that must always hold:
+constraint type; some games get overtime periods, and some get stint lengths
+that do not divide the period) and asserts invariants that must always hold:
 
 - no input throws, and a refusal always carries a usable error message
 - every stint fields exactly five distinct, available players
@@ -91,6 +92,8 @@ constraint type) and asserts invariants that must always hold:
   tested directly rather than assumed
 - identical input yields an identical plan
 - short names are always unique and printable
+- no issue message prints a raw float such as `3.3333333333333335`
+- a starting five whose caps all cover the opening stint is never blocked by `FORCED_OVER_CAP`
 
 The fuzzer immediately found a real one: a 10-minute period split three ways
 gives 3.33-minute stints, and minutes were printing as
