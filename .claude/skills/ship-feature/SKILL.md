@@ -316,6 +316,8 @@ not CI green: the history checks need a base ref, which is why step 10 runs
 13. **Notify.** One PR comment that @mentions `@kylehoehns`: the PR and issue,
     final CI status, what was measured on the preview, and the final commit
     sha. **Do not merge and do not approve** — `REVIEW.md` says the approval is a human's.
+    Where the human has allowed the merge, watch `main` after it (§ A batch of
+    tickets, **Watch `main` after each merge**).
 
 ## A batch of tickets
 
@@ -330,6 +332,15 @@ parallel, and each is still one issue, one spec (or small-lane brief) and one PR
   Workers Builds) are green and step 12's preview check passed:
   `gh pr merge <PR> --squash --subject "<title> (#<PR>)" --body ""`. Never
   approve; that stays a human's.
+- **Watch `main` after each merge.** No person is watching it, so a red
+  `main` run goes unnoticed otherwise. Find the run for the merge commit
+  (`gh run list --workflow tests --commit <sha> --json databaseId`) and `gh
+  run watch <id> --exit-status`. If it fails, run `npm run flakes`. When a
+  failing name shows two or more failures there (this run and at least one
+  before it), rerun the failed jobs once (`gh run rerun <id> --failed`) and
+  watch again. Otherwise, or if the rerun fails too, treat it as a real
+  break: file an issue naming the run and the failing test, and merge nothing
+  more until it is understood.
 - **After each merge, the next lane rebases onto `main`,** then runs `npm run
   sw:bump`. `AGENTS.md` § Traps says what the merge driver clears and when
   `npm test` alone is enough to prove the rebase.
