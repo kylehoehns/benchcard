@@ -644,7 +644,8 @@ export const noRoster = () => !state.players.length;
    rows reading "undefined" with "?" avatars on the bench-mode screen, mid-game,
    which is the worst possible place for it. `sanitize` drops overrides whose
    ids no longer resolve, so a reload cleaned it up and it looked intermittent.
-   Slots, locks, the closing group and platoon units were unswept too. */
+   Slots, locks, the closing group and platoon units were unswept too, and so
+   was the five an overtime period is pinned to (#382). */
 export function removePlayer(id) {
   state.players = state.players.filter(p => p.id !== id);
   for (const g of team().days.flatMap(d => d.games)) {
@@ -659,6 +660,7 @@ export function removePlayer(id) {
     c.lastPeriodFive = c.lastPeriodFive.filter(x => x !== id);
     if (c.closing) c.closing.players = (c.closing.players || []).filter(x => x !== id);
     c.units = (c.units || []).map(u => u.filter(x => x !== id));
+    if (g.overtime) g.overtime = g.overtime.map(o => Array.isArray(o.five) ? { ...o, five: o.five.filter(x => x !== id) } : o);
 
     /* An override is a whole five the coach chose by hand. With one player
        gone it is no longer a lineup, and there is nothing honest to put in the

@@ -23,6 +23,7 @@ const MUST_SWEEP = [
   ['lastPeriodFive', /c\.lastPeriodFive\s*=/],
   ['closing.players', /c\.closing\.players\s*=/],
   ['units', /c\.units\s*=/],
+  ['overtime.five', /g\.overtime\s*=\s*g\.overtime\.map/],
   ['live.overrides', /dropPlayer\(g\.live, id\)/],
 ];
 
