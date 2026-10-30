@@ -69,9 +69,11 @@ export function parseRoster(text) {
   if (isCommaList(s)) return commaPieces(s).map(parseRosterLine).filter(Boolean);
   const lines = s.split(/[\r\n]+/).filter(l => l.trim());
   // #380: a spreadsheet header row ("Jersey<TAB>First<TAB>Last") is not a
-  // player. Only the first non-blank line, and never when it is the only one.
-  if (lines.length > 1 && isHeaderRow(lines[0])) lines.shift();
-  return lines.map(parseRosterLine).filter(Boolean);
+  // player. Only the first non-blank line, and only when another line parses
+  // to a player -- otherwise it is all the coach pasted, so it stays.
+  const players = lines.map(parseRosterLine);
+  if (isHeaderRow(lines[0] || '') && players.slice(1).some(Boolean)) players.shift();
+  return players.filter(Boolean);
 }
 
 /* Trim, lowercase, collapse inner spaces. One key function, shared by every

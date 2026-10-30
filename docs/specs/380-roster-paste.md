@@ -71,8 +71,8 @@ dropped, as a blank line is.
 **Header row.** In `parseRoster`'s line path, after splitting: find the first
 non-blank line. Drop it when all of these hold:
 
-- at least one other non-blank line follows it (so a one-line roster is never
-  emptied — criterion 6);
+- at least one other line parses to a player (so a roster is never emptied
+  by it — criterion 6, and `Name\n-` stays `[Name]`);
 - it has no digit;
 - every whitespace-separated word, lowercased, is in
   `name names first last player players jersey number no no. #`.

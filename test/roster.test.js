@@ -398,3 +398,12 @@ test('only the first line is checked for a header, and a lone one is kept', () =
   assert.deepEqual(parseRoster('Maya Webb\nJersey Number Name').map(x => x.name), ['Maya Webb', 'Jersey Number Name']);
   assert.deepEqual(parseRoster('Jersey'), [{ number: '', name: 'Jersey' }]);
 });
+
+test('a line that is only a bullet is dropped, and a header after a blank line is still a header', () => {
+  assert.deepEqual(parseRoster('•\nMaya Webb'), [{ number: '', name: 'Maya Webb' }]);
+  assert.deepEqual(parseRoster('\nName\nMaya Webb'), [{ number: '', name: 'Maya Webb' }]);
+});
+
+test('a header-looking first line is kept when no other line is a player', () => {
+  assert.deepEqual(parseRoster('Name\n-'), [{ number: '', name: 'Name' }]);
+});
