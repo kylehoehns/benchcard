@@ -12,7 +12,7 @@
  * function instead, which is what keeps the import graph a tree.
  * ================================================================== */
 import { icon } from './icons.js';
-import { $, on, set } from './dom.js';
+import { $, on, set, clone } from './dom.js';
 import { refreshCardSheetPreview, CARD_FONT } from './card.js';
 import { shareCards } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
@@ -28,7 +28,7 @@ import { initGameSetup } from './game-setup.js';
 import { initTeams, renderSettings } from './teams-view.js';
 import { initSeason, exportSeason } from './season-view.js';
 import { initShortcuts } from './shortcuts.js';
-import { initToast, undoable, flash, tipAfterPrint, tipAfterGame } from './toast.js';
+import { initToast, undoable, showUndo, flash, tipAfterPrint, tipAfterGame } from './toast.js';
 import { track, startAnalytics } from './analytics.js';
 import { render, renderAll, setView, applyTheme, applyTint, rotationAnnounced, ROTATION_CHANGED, SWAPS_CLEARED } from './render.js';
 import { edit } from './edit.js';
@@ -482,7 +482,7 @@ initShortcuts(setView);
    before the first paint, so the coach lands on that game, and the hash comes
    off the address bar at once so a reload does not import it twice. A link
    that does not decode writes nothing: the app opens as it was. */
-let handoffNote = '';
+let handoffNote = '', handoffUndo = null;
 if (location.hash.startsWith('#p=')) {
   const hash = location.hash;
   history.replaceState(null, '', location.pathname + location.search);
@@ -490,9 +490,12 @@ if (location.hash.startsWith('#p=')) {
     const { decode, receive } = await import('./handoff.js');
     const incoming = await decode(hash);
     if (incoming) {
-      const { teamName } = receive(incoming);
+      const snap = clone(state);
+      const { teamName, outcome } = receive(incoming);
       state.view = 'games';
-      handoffNote = `${teamName || 'Your'} game added. Open bench mode to run subs.`;
+      handoffNote = outcome === 'kept' ? 'You already have this game, further along.'
+        : `${teamName || 'Your'} game added. Open bench mode to run subs.`;
+      if (outcome === 'replaced') handoffUndo = snap;
     } else handoffNote = DAMAGED_LINK;
   } catch {
     handoffNote = DAMAGED_LINK;
@@ -514,7 +517,8 @@ setView(state.onboarded ? (state.view || 'today') : 'welcome');
 try {
   renderAll();
   if (window.benchcard) window.benchcard.booted = true;
-  if (handoffNote) flash(handoffNote);
+  if (handoffUndo) showUndo(handoffNote, handoffUndo);
+  else if (handoffNote) flash(handoffNote);
   fileOverdueDay();
 } catch (e) {
   console.error(e);
