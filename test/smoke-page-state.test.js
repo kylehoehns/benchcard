@@ -73,6 +73,7 @@ async function metricsLandedFor(want) {
   const sent = [];
   const c = {
     on: (_ev, cb) => setTimeout(cb, 0),
+    off: () => {},
     send: async (method, params) => {
       sent.push([method, params]);
       return method === 'Runtime.evaluate' ? { result: { value: true } } : {};
@@ -85,6 +86,41 @@ async function metricsLandedFor(want) {
 test('land: mobile emulation is the default, and mobile: false reaches the metrics override', async () => {
   assert.deepEqual((await metricsLandedFor({ width: 390 })).map(p => p.mobile), [true]);
   assert.deepEqual((await metricsLandedFor({ width: 1280, mobile: false })).map(p => p.mobile), [false]);
+});
+
+/* ---------- describeBootTimeout: what a failed boot wait says (#400) ---------- */
+
+const FACTS = {
+  path: '/index.html', readyState: 'complete', views: ['view-today'],
+  booted: true, controlled: true, cardNote: '', days: 1, view: 'games',
+};
+const OLD_PREFIX = 'boot wait timed out: document.querySelector(\'.card\') on /index.html ' +
+  '(page showed /index.html?x=1, complete, visible views: view-today';
+
+test('describeBootTimeout: keeps the old message prefix byte for byte and adds the facts', () => {
+  const msg = pageState.describeBootTimeout("document.querySelector('.card')", '/index.html',
+    { ...FACTS, path: '/index.html?x=1', views: ['view-today'] });
+  assert.ok(msg.startsWith(OLD_PREFIX), msg);
+  for (const part of ['booted: yes', 'sw: controlled', 'card note: none', 'record: 1 day(s), view games']) {
+    assert.ok(msg.includes(part), `${part} missing from: ${msg}`);
+  }
+  const two = pageState.describeBootTimeout('r', 'w', { ...FACTS, views: ['view-today', 'view-games'] });
+  assert.ok(two.includes('visible views: view-today,view-games'), two);
+});
+
+test('describeBootTimeout: not booted, not controlled, no record', () => {
+  const msg = pageState.describeBootTimeout('r', 'w',
+    { ...FACTS, booted: false, controlled: false, days: null, view: null, record: 'none' });
+  for (const part of ['booted: no', 'sw: not', 'record: none']) {
+    assert.ok(msg.includes(part), `${part} missing from: ${msg}`);
+  }
+});
+
+test('describeBootTimeout: an unreadable record, and a card note, are named', () => {
+  const msg = pageState.describeBootTimeout('r', 'w',
+    { ...FACTS, record: 'unreadable', cardNote: 'Plan blocked' });
+  assert.ok(msg.includes('record: unreadable'), msg);
+  assert.ok(msg.includes('card note: "Plan blocked"'), msg);
 });
 
 /* ---------- the start fingerprint's verdict (pure half) ---------- */

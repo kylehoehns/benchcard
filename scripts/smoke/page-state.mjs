@@ -85,20 +85,47 @@ export async function withScripts(c, sources, fn) {
   }
 }
 
+/* The message a failed boot wait throws (#400). The prefix is what
+   `npm run flakes` and log greps match; the facts after it say which kind of
+   page was polled. `facts.record` is 'none' or 'unreadable', else `days`
+   and `view` were parsed from the saved record. Pure, so unit-tested. */
+export function describeBootTimeout(ready, where, f) {
+  const record = f.record === 'none' || f.record === 'unreadable'
+    ? f.record : `${f.days} day(s), view ${f.view}`;
+  return `boot wait timed out: ${ready} on ${where} (page showed ${f.path}, ${f.readyState}, ` +
+    `visible views: ${f.views.join(',')}, booted: ${f.booted ? 'yes' : 'no'}, ` +
+    `sw: ${f.controlled ? 'controlled' : 'not'}, card note: ${f.cardNote ? `"${f.cardNote}"` : 'none'}, ` +
+    `record: ${record})`;
+}
+
 /* The one boot wait: `document.fonts.ready`, then poll `ready` every 50ms up
    to 3s, then `SETTLE`. Exported for the one caller that reloads in place
    (`location.reload()`, to keep its history entry) and so cannot go through
-   `land`, which navigates. A `ready` still false after 3s throws (D3). */
+   `land`, which navigates. A `ready` still false after 3s throws (D3), with
+   the page's own facts in the message (`describeBootTimeout`). */
 export async function bootWait(c, ready, where = 'the page') {
-  const timeoutMessage = `boot wait timed out: ${ready} on ${where}`;
-  await evalIn(c, `(async () => {
+  const facts = await evalIn(c, `(async () => {
     await document.fonts.ready;
     let ok = (${ready});
     for (let i = 0; i < 60 && !ok; i++) { await new Promise(r => setTimeout(r, 50)); ok = (${ready}); }
-    if (!ok) throw new Error(${JSON.stringify(timeoutMessage)} + ' (page showed ' + location.pathname + location.search +
-      ', ' + document.readyState + ', visible views: ' + [...document.querySelectorAll('.view:not([hidden])')].map(v => v.id) + ')');
+    if (!ok) {
+      let record = 'none', days = null, view = null;
+      try {
+        const raw = localStorage.getItem('benchcard.v7');
+        if (raw) {
+          const r = JSON.parse(raw);
+          const team = (r.teams || [])[r.activeTeam || 0];
+          record = 'ok'; days = team?.days?.length ?? 0; view = r.view;
+        }
+      } catch { record = 'unreadable'; }
+      return { timedOut: true, path: location.pathname + location.search, readyState: document.readyState,
+        views: [...document.querySelectorAll('.view:not([hidden])')].map(v => v.id),
+        booted: window.benchcard?.booted === true, controlled: !!navigator.serviceWorker?.controller,
+        cardNote: (document.getElementById('cardnote')?.textContent || '').trim(), record, days, view };
+    }
     await ${SETTLE};
   })()`);
+  if (facts?.timedOut) throw new Error(describeBootTimeout(ready, where, facts));
 }
 
 /* Get the page into `want`'s state, defaulting every field left out to
@@ -108,7 +135,9 @@ export async function bootWait(c, ready, where = 'the page') {
    wait -- `document.fonts.ready`, poll `ready` every 50ms up to 3s, `SETTLE`
    (reused, not re-derived). A `ready` still false after 3s throws (D3):
    `runCheck` turns that into a FAIL row that names what it was waiting for,
-   rather than measuring a page that never booted. */
+   rather than measuring a page that never booted. A refused navigation throws
+   at once, and a boot timeout says whether the page polled was the document
+   navigated to (#400). */
 export async function land(c, origin, want = {}) {
   const { state, script } = planLanding(want);
 
@@ -123,13 +152,38 @@ export async function land(c, origin, want = {}) {
     const urls = state.freshHistory
       ? [`${plain}${state.query ? '&' : '?'}_smoke=${Date.now()}`, plain]
       : [plain];
+    let nav;
     for (const url of urls) {
-      const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-      await c.send('Page.navigate', { url });
-      await loaded;
+      let fired;
+      const loaded = new Promise(ok => { fired = ok; });
+      c.on('Page.loadEventFired', fired);
+      try {
+        nav = await c.send('Page.navigate', { url });
+        if (nav?.errorText) throw new Error(`land: navigating to ${url} failed: ${nav.errorText}`);
+        await loaded;
+      } finally {
+        c.off('Page.loadEventFired', fired);
+      }
     }
-    await bootWait(c, state.ready, `${state.page}${state.query}`);
+    try {
+      await bootWait(c, state.ready, `${state.page}${state.query}`);
+    } catch (e) {
+      e.message += `, document: ${await describeDocument(c, nav)}`;
+      throw e;
+    }
   });
+}
+
+/* Whether the page now showing is the document `Page.navigate` returned (#400),
+   judged by loaderId. 'unknown' when the frame tree cannot be read. */
+async function describeDocument(c, nav) {
+  try {
+    const { frameTree } = await c.send('Page.getFrameTree');
+    const now = frameTree.frame.loaderId;
+    return now === nav?.loaderId
+      ? 'the one navigated to'
+      : `NOT the one navigated to (loader ${nav?.loaderId} vs ${now})`;
+  } catch { return 'unknown'; }
 }
 
 /* The viewport a check starts from, as `[width, height]`: what `smoke.mjs`
