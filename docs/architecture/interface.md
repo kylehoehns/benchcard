@@ -545,6 +545,14 @@ new team or replaces the placeholder on a fresh phone. The game is re-solved
 and any stint that differs from the link's becomes an override that is not a
 hand swap, so the card matches the sender's exactly.
 
+If the phone already has the game and its copy is further along than the link's
+(the order is in [design decisions](../design-decisions.md)), `receive` (handoff.js) writes nothing,
+opens the phone's copy, and returns `outcome: 'kept'`; the boot block in app.js
+flashes "You already have this game, further along." If the phone had the game
+and the link wins, the link's game replaces it and the toast offers Undo, which
+restores the snapshot taken before `receive` (`outcome: 'replaced'`). A game the
+phone did not have is added with no Undo (`outcome: 'added'`).
+
 The app's privacy claim — "your roster and your players never leave your
 device" — stays unchanged: the roster does not travel through a server.
 

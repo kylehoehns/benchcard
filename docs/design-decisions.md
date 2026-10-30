@@ -380,6 +380,15 @@ its alternative is an assertion, so the rejected options are kept here too.
   are added by their call name. A kid on the phone keeps their full name and
   level whatever the link carries. When the phone already has the game, its
   own opponent label and tip-off time are kept too; the link carries neither.
+- **Re-opening a link does not wipe a game that is further along.** The link is
+  a snapshot from when it was sent, so an old one would undo the coach's swaps
+  and stints without warning. If the phone's copy is further along, the phone
+  keeps it and opens it. "Further along" is checked in order: the phone finished
+  and the link did not, keep the phone's; the link finished and the phone did
+  not, import the link's; otherwise more played stints wins; with equal stints,
+  more hand swaps on the phone keeps it; anything else imports the link's game.
+  An import over a game the phone had gets an Undo toast. A game the phone did
+  not have imports with no Undo, as before.
 - **The link is sent as a URL fragment, never the path or query.** The plan
   travels in the part of the URL after `#`, which browsers never send to a
   server. This keeps the privacy claim true — a roster never reaches a server —

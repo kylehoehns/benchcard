@@ -45,8 +45,7 @@ From the issue's acceptance criteria:
 ## Design
 
 - `receive()` finds the phone's own copy of the game before it writes
-  anything. If that copy is further along than the link's (more stints played,
-  more hand swaps, or finished where the link is not), it writes nothing,
+  anything. If that copy is further along than the link's, it writes nothing,
   opens the phone's copy, and returns `outcome: 'kept'`. Otherwise it imports
   as before and returns `'replaced'` when the phone had the game, `'added'`
   when it did not.
@@ -55,6 +54,14 @@ From the issue's acceptance criteria:
   first `renderAll`; added → `flash` as today.
 
 Choices the issue did not decide:
+
+- "Further along" uses the issue's three measures in order, not as an OR:
+  finished first (the phone finished and the link not: kept; the link
+  finished and the phone not: imported), then more played stints, then, only
+  when stints are equal, more hand swaps on the phone keeps it. An OR would
+  keep a phone at stint 2 with two swaps over a link at stint 4 with none, and
+  since every retap would be kept again, the newer link could never come in.
+  An import can be undone; a keep cannot be overridden.
 
 - On the kept path the phone opens its own copy of the game, on the game
   screen (the coach tapped the link to get back into it).
@@ -68,6 +75,7 @@ Choices the issue did not decide:
 | --- | --- |
 | Coach scenario, `test/handoff-scenarios.test.js`, "a link behind the phone changes nothing, and says so" | 1 |
 | Coach scenario, same file, "a link ahead of the phone imports, and Undo puts the phone back" | 2, and 3's toast |
+| `node --test` through `receive`, `test/handoff.test.js`: equal stints and one more swap on the phone is kept; a link ahead in stints imports over a phone with more swaps; a finished phone is kept over an unfinished link | the order of the three measures (the scenarios are decided by stints alone) |
 | Coach scenario, `test/card-scenarios.test.js`, "a game handed off opens on another phone with the same plan" (unchanged) | 3 |
 
 ## Out of scope

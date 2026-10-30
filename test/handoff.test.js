@@ -351,3 +351,56 @@ test('overtime: a receiver that drops the field opens regulation only, played pa
   const row = gp.stints[L.stintIndex(gp, got.live)];
   assert.equal(benchHeaderText(row, 7, 8).title, 'H2 · 4:00 to 0:00');
 });
+
+/* Which copy of a game wins a retap: the link at `link` ({ at, swaps, finished })
+   against the phone's own at `mineLive`. Returns what `receive` reports. */
+async function retap(mineLive, link) {
+  const { team, g } = sender();
+  g.live = { at: link.at, overrides: {}, finished: link.finished === true };
+  S.computeAll();
+  const sent = S.effectiveStints(g, S.plans[0]);
+  for (const k of link.swaps || []) {
+    const five = [...sent[k].onFloor];
+    five[0] = sent[k].sitting.find(id => id !== ids[11]);
+    L.writeOverrides(g.live, { [k]: five }, true);
+  }
+  S.computeAll();
+  const hash = await encode(team, g, floorOf(g, S.plans[0]));
+
+  const { mine } = phoneWithTeam();
+  const mg = mine.days[0].games[0];
+  mg.live = { at: mineLive.at, overrides: {}, finished: mineLive.finished === true };
+  S.state.activeTeam = 1; S.computeAll();
+  const eff = S.effectiveStints(mg, S.plans[S.state.activeGame] || S.plans[0]);
+  for (const k of mineLive.swaps || []) {
+    const five = [...eff[k].onFloor];
+    five[0] = eff[k].sitting.find(id => !mine.players.every(x => x.id !== id) && id !== ids[11]);
+    L.writeOverrides(mg.live, { [k]: five }, true);
+  }
+  S.state.activeTeam = 0;
+  const before = { at: L.playedStints(mg.live), hand: L.handStints(mg.live) };
+  const res = receive(await decode(hash));
+  return { res, before, got: S.game() };
+}
+
+test('retap: equal stints, the phone has one more hand swap -> the phone is kept', async () => {
+  const { res } = await retap({ at: 4, swaps: [6, 8] }, { at: 4, swaps: [6] });
+  assert.equal(res.outcome, 'kept');
+});
+
+test('retap: the link is ahead in stints, the phone has more hand swaps -> the link comes in', async () => {
+  const { res, got } = await retap({ at: 2, swaps: [6, 8] }, { at: 4 });
+  assert.equal(res.outcome, 'replaced');
+  assert.equal(L.playedStints(got.live), 4);
+});
+
+test('retap: the phone is finished, the link is not -> the phone is kept', async () => {
+  const { res } = await retap({ at: 2, finished: true }, { at: 4 });
+  assert.equal(res.outcome, 'kept');
+});
+
+test('retap: the link is finished, the phone is not -> the link comes in', async () => {
+  const { res, got } = await retap({ at: 6, swaps: [8] }, { at: 4, finished: true });
+  assert.equal(res.outcome, 'replaced');
+  assert.equal(L.finishedGame(got.live), true);
+});

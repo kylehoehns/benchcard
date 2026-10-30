@@ -128,11 +128,14 @@ export async function decode(hash) {
   }
 }
 
-/* The phone's copy of a game is further along than the link's: more stints
-   played, more hand swaps, or finished where the link is not. */
-const furtherAlong = (mine, link) => playedStints(mine) > playedStints(link)
-  || handStints(mine).length > handStints(link).length
-  || (finishedGame(mine) && !finishedGame(link));
+/* Whether the phone's copy of a game is further along than the link's,
+   judged in order: finished beats not finished, then more stints played, and
+   only a tie on both goes to the more hand swaps. */
+function furtherAlong(mine, link) {
+  if (finishedGame(mine) !== finishedGame(link)) return finishedGame(mine);
+  if (playedStints(mine) !== playedStints(link)) return playedStints(mine) > playedStints(link);
+  return handStints(mine).length > handStints(link).length;
+}
 
 const sameFive = (a, b) => a.length === b.length && a.every(id => b.includes(id));
 
@@ -180,6 +183,7 @@ export function receive({ team: incoming, stints }) {
   const game = incoming.days[0].games[0];
   const have = state.teams.findIndex(t => t.id === incoming.id);
   let outcome = 'added';
+  let kept = false;
   if (have < 0) {
     const placeholder = !state.onboarded && !state.teams.some(t => t.players.length);
     if (placeholder) state.teams = [incoming]; else state.teams.push(incoming);
@@ -191,17 +195,17 @@ export function receive({ team: incoming, stints }) {
     const mine = team();
     const own = findGame(mine, game.id);
     if (own && furtherAlong(mine.days[own[0]].games[own[1]].live, game.live)) {
+      kept = true;
       openGame(...own);
-      computeAll();
-      return { teamName: mine.name, outcome: 'kept' };
+    } else {
+      if (own) outcome = 'replaced';
+      addMissingPlayers(mine, incoming.players);
+      openGame(...(own ? replaceGame(mine, own, game) : addGame(mine, incoming.days[0].date, game)));
     }
-    if (own) outcome = 'replaced';
-    addMissingPlayers(mine, incoming.players);
-    openGame(...(own ? replaceGame(mine, own, game) : addGame(mine, incoming.days[0].date, game)));
   }
   computeAll();
   const p = plans[state.activeGame];
-  if (p?.ok) {
+  if (!kept && p?.ok) {
     const solved = effectiveStints(game, p);
     const free = new Set(availIds(game));
     const fix = {};
@@ -212,5 +216,5 @@ export function receive({ team: incoming, stints }) {
     });
     if (Object.keys(fix).length) { writeOverrides(game.live, fix, false); computeAll(); }
   }
-  return { teamName: team().name, outcome };
+  return { teamName: team().name, outcome: kept ? 'kept' : outcome };
 }
