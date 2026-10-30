@@ -334,8 +334,9 @@ parallel, and each is still one issue, one spec (or small-lane brief) and one PR
   approve; that stays a human's.
 - **Watch `main` after each merge.** No person is watching it, so a red
   `main` run goes unnoticed otherwise. Find the run for the merge commit
-  (`gh run list --workflow tests --commit <sha> --json databaseId`) and `gh
-  run watch <id> --exit-status`. If it fails, run `npm run flakes`. When a
+  (`gh run list --workflow tests --commit <sha> --json databaseId`; it can
+  take a few seconds to appear, so list again if it is empty) and `gh run
+  watch <id> --exit-status`. If it fails, run `npm run flakes`. When a
   failing name shows two or more failures there (this run and at least one
   before it), rerun the failed jobs once (`gh run rerun <id> --failed`) and
   watch again. Otherwise, or if the rerun fails too, treat it as a real
