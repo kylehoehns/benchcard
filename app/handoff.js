@@ -4,7 +4,7 @@
    games; names that travel are `callNames` (roster.js), never the full ones.
    Compression is the browser's own `CompressionStream`, no library. */
 import { callNames } from './roster.js';
-import { DAMAGED_LINK, handStints, playedStints, finishedGame, writeOverrides } from './live.js';
+import { DAMAGED_LINK, handStints, playedStints, finishedGame, gameStarted, writeOverrides } from './live.js';
 import { sanitizeTeam, seasonDate, sortDay, validDayDate } from './storage.js';
 import { state, team, computeAll, effectiveStints, availIds, plans, openGame, dayFor,
          hueSlots, emptyConstraints, newGame, carryUnplayedDay } from './state.js';
@@ -105,9 +105,10 @@ const dayDate = (sent, now) => {
   return isStr(sent) && sent > today ? sent : today;
 };
 
-/* `hash` is `location.hash`. Returns `{ team, stints }` -- the team cleaned
-   through `sanitizeTeam`, holding one day with the one game, and the card's
-   stints as lists of ids -- or `null` for anything that is not a link this
+/* `hash` is `location.hash`. Returns `{ team, stints, played }` -- the team
+   cleaned through `sanitizeTeam`, holding one day with the one game, the
+   card's stints as lists of ids, and `played`, the link's date (only for a
+   started game with a real date, else null) -- or `null` for anything that is not a link this
    app made. */
 export async function decode(hash, today = new Date()) {
   try {
@@ -132,8 +133,7 @@ export async function decode(hash, today = new Date()) {
     // a roster the cleaning shortened no longer lines up with the stints
     if (cleaned.players.length !== p.length || cleaned.days[0]?.games.length !== 1) return null;
     const lg = cleaned.days[0].games[0].live;
-    const started = finishedGame(lg) || playedStints(lg) > 0;
-    return { team: cleaned, stints, played: started && validDayDate(d.d) ? d.d : null };
+    return { team: cleaned, stints, played: gameStarted(lg) && validDayDate(d.d) ? d.d : null };
   } catch {
     return null;
   }
@@ -211,6 +211,7 @@ export function receive({ team: incoming, stints, played: playedOn }) {
     openGame(0, 0);
   } else {
     const known = state.teams[have];
+    // a filed game changes nothing, so it returns before carryUnplayedDay can move a day
     if (known.season.games.some(g => g.id === game.id)) return { teamName: known.name, outcome: 'filed' };
     state.activeTeam = have;
     carryUnplayedDay();   // #379: this team's night-before day becomes today before the link's game joins it

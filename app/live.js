@@ -43,6 +43,9 @@ export function playedStints(live) {
    this file only (test/live-guard.test.js). */
 export const finishedGame = live => live?.finished === true;
 
+/* #419: a game has started once a stint is played or it is finished. */
+export const gameStarted = live => finishedGame(live) || playedStints(live) > 0;
+
 /* #247 amendment 10: `live.hand` lists the stint indices the coach set by hand
    (a swap, a Rest of game swap, Sit for the rest); overrides a freeze or a
    re-plan wrote are not in it, and only hand swaps are what the app calls

@@ -518,7 +518,8 @@ encoder (fetched on first Hand off tap, not at boot, so first paint does not
 grow), a native share sheet (or copy-to-clipboard fallback), and a list of the
 call names that will travel. The assistant scans the code or taps the link on
 their phone, where a cold load checks `location.hash` (app.js), decodes the
-game and opens its game screen, with a toast pointing to bench mode. The two phones are not
+game and opens its game screen, with a toast (the wording for each outcome is
+below). The two phones are not
 linked afterward — edits on either one are independent.
 
 The link carries:
@@ -555,15 +556,22 @@ The game is filed under the later of the sender's day date and the phone's own
 today, so a link made for tomorrow shows under tomorrow's heading. A link with
 no date (made before #379) lands on today. The `#p=1` prefix is unchanged.
 
-If the phone already has the game and its copy is further along than the link's
-(the order is in [design decisions](../design-decisions.md)), `receive` (handoff.js) writes nothing,
-opens the phone's copy, and returns `outcome: 'kept'`; the boot block in app.js
+If the season already has the game, `receive` (handoff.js) changes nothing and
+returns `outcome: 'filed'`; the boot block in app.js flashes "You already filed
+this game." and does not set the view, so the app stays where it was.
+
+If the phone has the game unfiled and its copy is further along than the link's
+(the order is in [design decisions](../design-decisions.md)), `receive` writes
+nothing, opens the phone's copy, and returns `outcome: 'kept'`; the boot block
 flashes "You already have this game, further along." If the phone had the game
-and the link wins, the link's game replaces it and the toast offers Undo, which
-restores the snapshot taken before `receive` (`outcome: 'replaced'`). A replace
-keeps the phone's own label and tip-off, as #377 left it. A game the phone did
-not have is added with no Undo (`outcome: 'added'`), and it takes the link's
-label and tip-off (#379).
+and the link wins, the link's game replaces it and the toast reads
+`<team> game updated.` with Undo, which restores the snapshot taken before
+`receive` (`outcome: 'replaced'`). A replace keeps the phone's own label and
+tip-off, as #377 left it. If the game has started, a replace also takes the
+link's date (the day it was played) and moves there, so a passed day files
+under that date (#419). An unstarted game keeps the phone's day. A game the
+phone did not have is added with no Undo (`outcome: 'added'`), and it takes the
+link's label and tip-off (#379).
 
 The app's privacy claim — "your roster and your players never leave your
 device" — stays unchanged: the roster does not travel through a server.
