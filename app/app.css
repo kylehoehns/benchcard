@@ -2290,7 +2290,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    same way dvh does, so a coach who scrolls once gets the roomier layout
    back. */
 @media (max-height: 700px) {
-  .welcome { padding-top: .6rem; }
+  .welcome { padding-top: .4rem; }
   .wel-lockup { margin-bottom: .45rem; }
   /* docs/specs/24-text-size.md: a short-viewport-height block is not the
      19em big-text query, so it may move a large title down another step on
@@ -2304,7 +2304,14 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   .wel-show { min-height: 10rem; }
   .wel-doors { margin-top: .6rem; }
   .wel-go { margin-top: .5rem; }
-  .wel-foot { margin-top: .5rem; }
+  .wel-foot { margin-top: .3rem; }
+  /* #423: the chart row is a second tail row, 67px more; this is where it
+     is paid for, not by dropping the line. */
+  .wel-tail { margin-top: .3rem; padding-top: .3rem; }
+  .wel-cap { margin-top: .2rem; }
+  .wel-doors { margin-top: .4rem; }
+  .wel-go { padding-top: .7rem; padding-bottom: .7rem; }
+  .wel-charts-lbl { line-height: 1.1; }
 }
 /* Padded to 48px rather than boxed, the same trade .foot-link and .linkish
    both make. The color and underline come from the .wel-tail-row rule in the
@@ -2316,7 +2323,10 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-chart { display: inline-flex; align-items: center; justify-content: center;
   min-height: 48px; min-width: 48px; }
 .wel-charts-lbl { color: var(--muted); font-size: var(--fs-footnote); font-weight: 500; }
-.wel-tail-row + .wel-tail-row { gap: 0 .2rem; }
+/* The label takes its own line so the six digits sit together on one row under
+   it (6 x 48px fits 320px at 16px) rather than wrapping 3 + 3 after it. */
+.wel-tail-row.wel-charts { gap: 0; }
+.wel-charts .wel-charts-lbl { flex-basis: 100%; }
 /* The two doors under the figures: one column of choices, not a row a thumb
    has to aim inside. */
 .wel-go { width: 100%; margin-top: .62rem; padding: .82rem 1rem; font-size: var(--fs-body); }

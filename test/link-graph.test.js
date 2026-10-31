@@ -18,9 +18,10 @@
  * in the files, so both of those fail here.
  *
  * WHY THE WELCOME SCREEN'S LINK IS WHAT MATTERS. A cold visitor -- and a
- * rendering crawler -- lands on the welcome view, and the only live path off
- * it is the "What is this?" link (`.wel-about`); the whole six-page long
- * tail hangs off that one anchor. #33 removed the footer that used to also
+ * rendering crawler -- lands on the welcome view, and the way into the
+ * site is the "How it works" link (`.wel-about`); home and Advanced now
+ * also link the six chart pages directly (#423), so the long tail no longer
+ * hangs off that one anchor. #33 removed the footer that used to also
  * carry an `href="./about"` in the source (and had to be cut out of this
  * walk by hand so that a deleted `.wel-about` still went red here, not green
  * behind the footer's hidden copy) -- there is nothing left to cut.

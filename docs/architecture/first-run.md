@@ -61,6 +61,14 @@ tint (#244), so it matches the logo on About and Advanced. New visitors have no 
 it is Hardwood by default. The soft gradient band that used to sit behind the
 headline was removed in #242; nothing paints behind it now.
 
+Under the headline, one muted line says what the app is in the words people
+search for (`.wel-sub` in `index.html`, #423). `test/seo.test.js` pins that it
+sits directly under the `h1`, and the coach-seam scenario in
+`test/first-run-scenarios.test.js` checks it on a fresh device. The welcome
+tail (`.wel-tail`) also carries a row of six digit links, 7 to 12, to the
+chart pages, in a `nav` labelled "Rotation charts by team size".
+`test/link-graph.test.js` checks their hrefs against `SIZES` in `charts.mjs`.
+
 When the first-run flow finishes, a six-step **tour** runs once per device
 (`state.tourSeen`, persisted, so it never repeats): the players phrase (#27),
 the strategy picker, the rules and lineups phrase, the timeline, the

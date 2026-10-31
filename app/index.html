@@ -1045,26 +1045,30 @@
              six-page chart tail off `<a class="wel-about" href="./about"`,
              so a second class in there reads to that guard as the link being
              gone. All three share one treatment through the `.wel-tail-row`
-             selector list in app.css instead. -->
+             selector list in app.css instead.
+
+             The chart links are a second row, after the paste box, on
+             purpose: a different kind of link (six pages by team size, #423),
+             and opening Paste must drop its box beside the link that opened it. -->
         <nav class="wel-tail-row" aria-label="More about Benchcard">
           <a class="wel-about" href="./about">How it works</a>
           <button type="button" class="linkish press" id="welRestore">Restore a backup</button>
           <button type="button" class="linkish press paste-open">Paste one</button>
-        </nav>
-        <nav class="wel-tail-row" aria-label="Rotation charts by team size">
-          <span class="wel-charts-lbl">Charts by team size</span>
-          <a class="wel-chart" href="./7-player-basketball-rotation-chart">7</a>
-          <a class="wel-chart" href="./8-player-basketball-rotation-chart">8</a>
-          <a class="wel-chart" href="./9-player-basketball-rotation-chart">9</a>
-          <a class="wel-chart" href="./10-player-basketball-rotation-chart">10</a>
-          <a class="wel-chart" href="./11-player-basketball-rotation-chart">11</a>
-          <a class="wel-chart" href="./12-player-basketball-rotation-chart">12</a>
         </nav>
         <div class="pastebox" hidden>
           <textarea class="paste-text" spellcheck="false" autocapitalize="off" autocorrect="off"
                     aria-label="Paste your backup" placeholder="Paste the contents of your backup file"></textarea>
           <button type="button" class="btn press paste-go">Restore</button>
         </div>
+        <nav class="wel-tail-row wel-charts" aria-label="Rotation charts by team size">
+          <span class="wel-charts-lbl">Charts by team size</span>
+          <a class="wel-chart" href="./7-player-basketball-rotation-chart" aria-label="7-player rotation chart">7</a>
+          <a class="wel-chart" href="./8-player-basketball-rotation-chart" aria-label="8-player rotation chart">8</a>
+          <a class="wel-chart" href="./9-player-basketball-rotation-chart" aria-label="9-player rotation chart">9</a>
+          <a class="wel-chart" href="./10-player-basketball-rotation-chart" aria-label="10-player rotation chart">10</a>
+          <a class="wel-chart" href="./11-player-basketball-rotation-chart" aria-label="11-player rotation chart">11</a>
+          <a class="wel-chart" href="./12-player-basketball-rotation-chart" aria-label="12-player rotation chart">12</a>
+        </nav>
       </div>
       </div><!-- /.wel-landing -->
     </div>

@@ -205,9 +205,9 @@ export function distinctNames(players) {
  * THE CAST IS MIXED, and the default ten is where that has to hold: rec
  * basketball is co-ed as often as not, and a sample roster of ten boys tells a
  * coach with a girls' team that this app was not built for her. It was twelve
- * boys until 2026-08-26. `scripts/charts.mjs` and `scripts/og.mjs` carry the
- * other two casts and were balanced in the same change. (`scripts/charts.mjs` keeps its own first-names-only cast; that one
- * exists to fit a printed card and its widths are pinned by a test.)
+ * boys until 2026-08-26. `scripts/charts.mjs` draws its sample players from
+ * this cast (`sampleRoster(n)`); `scripts/og.mjs` still carries its own,
+ * balanced in the same change.
  *
  * Text rather than objects on purpose: the sample is then parsed by exactly
  * the code a pasted roster is, and cannot drift into a shape `parseRoster`

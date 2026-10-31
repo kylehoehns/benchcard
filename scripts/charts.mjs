@@ -120,8 +120,8 @@ const stintPx = px => px * 1.12 + px * CHG_RATIO * 1.3;
  *
  * So the widths are measured once, in Chrome, against the vendored InterVar
  * at weight 800 -- card.js's own `widthAt`, at 100px, on exactly the twelve
- * short names these pages print (the app's sample cast: MAYA, ELI, DEVO, NIA,
- * CALE, HARP, SILA, JONA, RUBY, ISAA, AISH, RYAN). Re-measured for #423 by
+ * short names these pages print (the app's sample cast, see `sampleRoster`
+ * in app/roster.js, through `deriveShortNames`). Re-measured for #423 by
  * loading InterVar from app/vendor/fonts in headless Chrome and calling
  * `measureText` at `800 100px` with card.js's CARD_FONT stack; HARP and JONA
  * came out identical to the old table, which is the cross-check.

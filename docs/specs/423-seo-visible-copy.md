@@ -93,6 +93,15 @@ page sees the same kids the chart printed.
   app is in searched words), so one comes back. The first-run scenario that
   pinned "no line between" is renamed to say what it checks.
 
+- **The chart row may scroll into view on short phones.** At 390x844 (16px)
+  everything fits: the doors end at 595 and the chart row at 825. At 375x667
+  the h1, the new line, the start button and the first tail row fit, and the
+  chart row ends 45px below the fold. At 320x568 the first tail row was
+  already below the fold before #423. The only remaining room is the sample
+  figure, and shrinking it made the player names overlap. Footer links are
+  the last thing on the screen and are allowed to need a scroll; the doors
+  are not, and they stay above the fold. Chosen in the review fix pass.
+
 ## Surfaces
 
 - `app/index.html` — welcome line, chart nav in `.wel-tail`, WebSite JSON-LD.

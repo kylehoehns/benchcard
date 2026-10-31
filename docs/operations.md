@@ -274,9 +274,11 @@ Two things address that, and they are different problems:
   pins that; do not add a reveal rule outside the `.js` guard. #33 deleted the
   footer, which used to carry the link a crawler follows into this page. Two
   links in `index.html`'s own markup carry it now: the welcome screen's **How it
-  works** (`<a class="wel-about" href="./about">`, which is the one
-  `test/link-graph.test.js` hangs the whole six-page chart tail off, so treat it
-  as load-bearing) and the **About** row in Settings.
+  works** (`<a class="wel-about" href="./about">`, which
+  `test/link-graph.test.js` pins by its exact attribute) and the **About** row
+  in Settings. Since #423 the six chart pages also have direct links from the
+  welcome screen and from Advanced (see the roster-size pages below), so that
+  anchor is no longer the only way in to them.
 - **The roster-size pages** — `7-player-basketball-rotation-chart.html` through
   `12-…` — are the long tail. Google's autocomplete suggests every one of those
   variants across unrelated seeds, no competitor has a page for any of them, and
@@ -288,20 +290,29 @@ Two things address that, and they are different problems:
   `test/charts.test.js` re-renders all six and compares, so an engine change
   that moves the plans fails the suite until `npm run charts` is re-run.
   The prose slots (`lede`, `caption`) are placeholders carrying `data-draft="1"`
-  until the author writes them — `grep -l data-draft app/*.html`. The `<title>`
+  until the author writes them — `grep -l 'data-draft="1"' app/*.html`. The `<title>`
   and description are assembled from the generated plan's own numbers instead.
   Each chart page also carries a JSON-LD `WebPage` block naming the page and
   linking it to the site, plus a `BreadcrumbList` showing Benchcard › About › N-player chart,
   emitted by `scripts/charts.mjs` so `--check` keeps all six in sync.
+  The players on each card are `sampleRoster(n)` from `app/roster.js`, the first
+  n of the cast that **Try it with n sample players** loads (`./?try=n`), so a
+  visitor who taps it meets the kids the chart printed. The cast is not copied
+  into `charts.mjs`. The printed names are `deriveShortNames`' output for those
+  players, and `WIDTH_AT_100` in `charts.mjs` holds a measured width for each
+  one, so a change to the cast means re-measuring; `test/charts.test.js` fails
+  when a printed name has no entry.
   Canonical, `sitemap.xml` and every internal `href` use the **extensionless**
   URL, which is what Cloudflare 200s. One spelling per page: they disagreed
   until September 2026, and offline the worker served the app shell in place of
   About and the reference page because the cache key and the link did not
   match. They are deliberately **not precached**:
   offline value is near zero for a page reached from a search result, and the
-  precache list is the payload budget's problem. The one internal link into them
-  is on `about.html` rather than `index.html`, so the app's own cold-load budget
-  is untouched.
+  precache list is the payload budget's problem. Until #423 the one internal
+  link into them was on `about.html`, which kept them out of the app's own
+  cold-load markup. #423 added the six-link nav to `index.html`, so that markup
+  carries them now, and `advanced.html` links all six from a section before its
+  footer.
 - **`<noscript>`** is *not* an SEO device; Googlebot runs the JS. It is for the
   human whose browser does not, and a `<noscript><style>` in the head hides
   `.app` so they get the explanation instead of a dead gray page.
@@ -388,7 +399,8 @@ something to be compared with:
 - The 8-, 11- and 12-player chart pages share 42 impressions at positions 25
   to 37, with 0 clicks. About averages position 10.5 and home 19.4.
 
-Which page owns which phrase is in `docs/specs/279-seo-pass.md`.
+Which page owns which phrase is in `docs/specs/279-seo-pass.md`. The visible
+copy and links that #423 added on top of it are in `docs/specs/423-seo-visible-copy.md`.
 
 **Compare in about 8 weeks, around 2026-11-27.** Ranking is not a CI fact;
 nothing here can decide it, so someone has to read Search Console again.

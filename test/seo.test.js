@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SIZES, file, slug } from '../scripts/charts.mjs';
 import { lacks } from './prose.js';
+import { stripHtmlComments } from './html-comments.js';
 import { parseSitemap } from '../scripts/check-sitemap-lastmod.mjs';
 
 /* #279: each page owns its own search phrase. This reads page source on
@@ -129,11 +130,11 @@ test('home JSON-LD description says across the season', () => {
 
 /* What a reader sees, as source: the head, scripts, styles and comments cut,
    tags dropped, whitespace flattened (prose here wraps at ~78 columns). */
-const visible = html => html
+const visible = html => stripHtmlComments(html)
   .replace(/<head[\s\S]*?<\/head>/i, ' ')
   .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+  .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
   .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-  .replace(/<!--[\s\S]*?-->/g, ' ')
   .replace(/<[^>]+>/g, ' ')
   .replace(/\s+/g, ' ')
   .toLowerCase();
