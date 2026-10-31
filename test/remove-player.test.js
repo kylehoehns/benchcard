@@ -53,9 +53,16 @@ test('every constraint field is classified here as holding ids or not', () => {
      holds player ids. */
   const holdsIds = ['minMinutes', 'maxMinutes', 'pairs', 'avoids', 'openingFive',
     'lastPeriodFive', 'targetSlots', 'lockedTargets', 'closing', 'units'];
+  /* A field listed in holdsIds must really hold p1 in the fixture, or the
+     sweep test passes vacuously for it. */
+  const fixed = team().days[0].games[0].constraints;
+  for (const f of holdsIds) {
+    assert.ok(JSON.stringify(fixed[f]).includes('"p1"'), `fixture field ${f} does not name p1`);
+  }
   /* `keepOnFloor` holds ids but `removePlayer` has never swept it (the old
      source-reading test missed it too). Moving the body verbatim keeps that
-     as it was; it is listed apart so the gap is written down, not hidden. */
+     as it was; it is listed apart so the gap is written down, not hidden.
+     When #409 lands, keepOnFloor moves to holdsIds (and into the fixture). */
   const holdsIdsUnswept = ['keepOnFloor'];
   const noIds = ['hardPairs', 'maxConsecutive'];
   const known = new Set([...holdsIds, ...holdsIdsUnswept, ...noIds]);

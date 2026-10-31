@@ -362,7 +362,10 @@ export const NODES_BASELINE = 1_367;
    record-changing operations (`removePlayer`, `setAvailable`, team removal)
    moved out of state.js into a module a plain test can import. A real module
    on purpose: that is the whole ticket. The cold load at 390x844 measures 44
-   with it, so the pin moves 41 -> 43: one under the measured 44. */
+   with it, so the pin moves 41 -> 43: one under the measured 44.
+   Why +2 for one module: main already measured 43 against the pin of 41, one
+   request above the one-under rule and unexplained before this change. This
+   re-pin follows the rule against today's measured 44. */
 export const REQUESTS_BASELINE = 43;
 
 export const SLACK = { bytesPct: 0.02, bytesAbs: 24_576, requests: 2, nodes: 250 };

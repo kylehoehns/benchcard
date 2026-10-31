@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 /* ---- what the coach is told about it ------------------------------------
  *
- * The sweep above is thorough and, until this shipped, silent: "Removed
+ * The sweep in `removePlayer` (app/team-ops.js) is thorough and, until this shipped, silent: "Removed
  * Casey." and nine seconds to change your mind. Two things go with a player
  * and neither is on screen at the moment it happens -- every rule naming them
  * in every game on the day, and the season ledger's ability to NAME them
@@ -54,7 +54,7 @@ test('both costs are told in one toast, in the order they happen', () => {
 });
 
 test('the rules question is asked structurally, so a new kind of rule is covered the day it lands', () => {
-  /* The failure this file already guards is a new id-keyed constraint that
+  /* The failure test/remove-player.test.js guards is a new id-keyed constraint that
      nobody remembers to sweep. A hand-written list of field names HERE would
      be a second copy of that same list, one release behind the first. */
   assert.match(costsFn, /JSON\.stringify/, 'the rules check enumerates fields again; it has to ask the whole constraints object');

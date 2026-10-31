@@ -39,3 +39,11 @@ test('blank is not called when other teams remain', () => {
   removeTeam(record(['A', 'B'], 0), 0, () => { calls++; return t('x'); });
   assert.equal(calls, 0);
 });
+
+test('removing a team before the active one keeps the same team active', () => {
+  const r = record(['A', 'B', 'C', 'D'], 2);
+  removeTeam(r, 0, () => assert.fail('blank must not be called'));
+  assert.deepEqual(r.teams.map(x => x.name), ['B', 'C', 'D']);
+  assert.equal(r.teams[r.activeTeam].name, 'C');
+  assert.equal(r.activeTeam, 1);
+});

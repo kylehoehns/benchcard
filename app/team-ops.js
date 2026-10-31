@@ -7,6 +7,9 @@
  */
 import { playedStints, finishedGame, dropPlayer } from './live.js';
 
+/* Players carry generated ids. Every constraint, every availability flag and
+   all carryover keys off that id, so renaming, reordering or deleting a player
+   can never silently reattach Kade's cap to Aaron. */
 export const emptyConstraints = () => ({
   // `keepOnFloor` is the third pair relation: never BOTH off. Absent is empty,
   // which is what every record written before it says -- so no version bump.
@@ -82,6 +85,9 @@ export function setAvailable(g, id, available) {
    new empty team (`newTeam('')` in state.js -- the one way a team is built). */
 export function removeTeam(record, index, blank) {
   record.teams.splice(index, 1);
+  // Removing a team before the active one shifts the active one down a slot;
+  // decrement so the same team stays active.
+  if (index < record.activeTeam) record.activeTeam -= 1;
   if (!record.teams.length) {
     record.teams.push(blank());
     record.onboarded = false;

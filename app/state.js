@@ -63,9 +63,8 @@ export const minutesText = m => `${fmtMinutes(m)} minute${fmtMinutes(m) === '1' 
 /* ================================================================== *
  * state
  *
- * Players carry generated ids. Every constraint, every availability
- * flag and all carryover keys off that id, so renaming, reordering or
- * deleting a player can never silently reattach Kade's cap to Aaron.
+ * (Players are keyed by generated id; see `emptyConstraints` in
+ * `team-ops.js`.)
  * ================================================================== */
 
 /* #28 defect 4: each line is one short sentence, in the prototype's voice --
@@ -1398,7 +1397,8 @@ function sayWhyTheyAreShort(p, prio, tiers) {
 
    `live.overrides` is a five the coach picked by hand against a *specific*
    rotation, filed under a stint index. Three sweeps grew one at a time --
-   `removePlayer`, `setAvailable`, `reseed` -- and each one closed exactly one
+   `removePlayer` and `setAvailable` (both now in `team-ops.js`) and
+   `reseed` -- and each one closed exactly one
    door: the periods and min/period spinners, the sub-frequency chips and the
    strategy segment all still left zombie fives behind, spliced into stints at
    clock windows they were never chosen for. Those were never four more bugs.

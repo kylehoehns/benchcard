@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sanitize } from '../app/storage.js';
-import { setAvailable } from '../app/team-ops.js';
+import { setAvailable, emptyConstraints } from '../app/team-ops.js';
 
 /* Sitting a player out is the other half of `removePlayer`. A live override is
    a five the coach picked by hand; once one of those five is not at the game
@@ -51,11 +51,6 @@ test('a game with no live block survives being sat out', () => {
 
 /* And the same rule on the way in, so a record already corrupted by the bug
    heals on the next load rather than printing a wrong card forever. */
-const emptyConstraints = () => ({
-  minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [],
-  openingFive: [], lastPeriodFive: [], hardPairs: false, maxConsecutive: 0,
-  targetSlots: {}, lockedTargets: [], closing: { stints: 2, players: [] }, units: [],
-});
 const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8,
   granMode: 'everyN', granValue: 4, out: [], useCarryover: false, strategy: 'balanced',
   seed: 1, constraints: emptyConstraints() });
