@@ -4,7 +4,7 @@
    games; names that travel are `callNames` (roster.js), never the full ones.
    Compression is the browser's own `CompressionStream`, no library. */
 import { callNames } from './roster.js';
-import { DAMAGED_LINK, handStints, playedStints, finishedGame, writeOverrides } from './live.js';
+import { DAMAGED_LINK, handStints, playedStints, finishedGame, writeOverrides, satIds } from './live.js';
 import { sanitizeTeam, seasonDate, sortDay } from './storage.js';
 import { state, team, computeAll, effectiveStints, availIds, plans, openGame, dayFor,
          hueSlots, emptyConstraints, newGame, carryUnplayedDay } from './state.js';
@@ -49,7 +49,7 @@ export async function encode(team, game, stints) {
     },
     d: team.days[findGame(team, game.id)?.[0]]?.date,
     s: stints.map(five => five.map(id => index.get(id))),
-    l: { at: playedStints(live), hand: handStints(live), finished: finishedGame(live), arrived: live?.arrived ?? {} },
+    l: { at: playedStints(live), hand: handStints(live), finished: finishedGame(live), arrived: live?.arrived ?? {}, sat: satIds(live) },
   };
   return PREFIX + toBase64Url(await deflate(JSON.stringify(payload)));
 }
@@ -125,7 +125,7 @@ export async function decode(hash, today = new Date()) {
       players: p.map(([id, name, number, tier], hue) => ({ id, name, number, tier, hue })),
       days: [{ name: '', date: dayDate(d.d, today), games: [{
         ...g, useCarryover: false,
-        live: { at: l.at, overrides, hand: l.hand, finished: l.finished === true, arrived: l.arrived },
+        live: { at: l.at, overrides, hand: l.hand, finished: l.finished === true, arrived: l.arrived, sat: l.sat },
       }] }],
     };
     const cleaned = sanitizeTeam(raw, { emptyConstraints, newGame });

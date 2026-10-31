@@ -73,8 +73,12 @@ export function resetFrom(live) {
   return at > 0 && !finishedGame(live) ? at + 1 : 0;
 }
 
-/* #356: the operations below are the only writes to the four fields
-   (`at`, `hand`, `overrides`, `finished`) in the app -- storage.js's sanitizer
+/* #412: who the coach sat for the rest of the game, as ids. A standing fact
+   every re-plan reads (`resolveRest`, state.js); written only below. */
+export const satIds = live => (Array.isArray(live?.sat) ? live.sat : []);
+
+/* #356: the operations below are the only writes to the five fields
+   (`at`, `hand`, `overrides`, `finished`, `sat`) in the app -- storage.js's sanitizer
    builds a whole record and is the one named exception. */
 
 /* The one rule for "hand only lists stints that still have an override": a
@@ -141,6 +145,16 @@ export function step(p, live, d) {
   const was = stintIndex(p, live);
   live.at = stepAt(p, live, d);
   return live.at !== was;
+}
+
+/* Sit `id` for the rest of the game. */
+export function sitOut(live, id) {
+  if (!satIds(live).includes(id)) live.sat = [...satIds(live), id];
+}
+
+/* Back to the printed plan means everyone: nobody is sat. */
+export function clearSat(live) {
+  delete live.sat;
 }
 
 export function finish(live) {

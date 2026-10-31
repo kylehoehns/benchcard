@@ -563,10 +563,13 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
           for (const [id, k] of Object.entries(isObj(l.arrived) ? l.arrived : {})) {
             if (validId.has(id) && Number.isInteger(k) && k >= 0 && k <= MAX_STINT) arrived[id] = k;
           }
+          // #412: who is sat for the rest, `[id, ...]` of real ids; absent when none
+          const sat = [...new Set(keep(l.sat))];
           // #135: `finished` is a saved fact, kept only when it is exactly
           // `true` -- absent means "not finished", the same "absent is off"
           // pattern useSeasonTargets uses. Nothing else in this block moves.
           return { at, overrides: ov, ...(hand ? { hand } : {}), ...(Object.keys(arrived).length ? { arrived } : {}),
+                   ...(sat.length ? { sat } : {}),
                    ...(l.finished === true ? { finished: true } : {}) };
         })(),
         seed: num(g.seed, 1, 0, 2 ** 32) >>> 0,
