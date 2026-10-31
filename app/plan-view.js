@@ -17,7 +17,7 @@ import { fmtMinutes } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayTotals, game, availIds, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, summaryLine } from './state.js';
+import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, summaryLine, minutesNote, movedMinutes } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
 import { blockedPanel } from './timeline.js';
@@ -105,6 +105,25 @@ function issuesList(p) {
     boundary[0] = { ...boundary[0],
       message: `${boundary[0].message} Same for ${rest} other player${rest === 1 ? '' : 's'}.` };
     list[list.findIndex(x => x.code === 'MIN_OFF_STINT_BOUNDARY')] = boundary[0];
+  }
+  /* #414: the engine's minutes notes describe the solver's first plan. Once the
+     coach has moved the minutes -- a swap, a player who left, overtime -- or
+     the game is over, the timeline above shows something else, so the notes
+     are rebuilt from `effectiveMinutes`, the same numbers the timeline reads.
+     Nothing moved: the engine's notes stay verbatim. */
+  const moved = p.ok && game() ? movedMinutes(game(), p) : null;
+  if (moved) {
+    const { eff, changed } = moved;
+    const nameOf = id => byId(id)?.name || id;
+    const at = list.findIndex(x => x.code === 'SPREAD_EVEN' || x.code === 'SPREAD_FLOOR');
+    if (at >= 0) list[at] = minutesNote(eff, nameOf);
+    const constrained = list.findIndex(x => x.code === 'SPREAD_CONSTRAINED');
+    if (constrained >= 0) list.splice(constrained, 1);
+    for (let i = list.length - 1; i >= 0; i--) {
+      const x = list[i];
+      if ((x.code === 'MIN_MISSED' || x.code === 'CAP_EXCEEDED')
+        && (x.playerIds || []).some(id => changed.includes(id))) list.splice(i, 1);
+    }
   }
   /* With exactly five available the five who turned up play the whole game.
      The engine reports that as "minutes divide evenly: every player gets 32",

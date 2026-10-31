@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fmtMinutes, buildStints, isOvertimeStint, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fmtMinutes, andList, buildStints, isOvertimeStint, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
@@ -1241,6 +1241,44 @@ export const spreadOf = mins => {
   const v = Object.values(mins);
   return v.length ? Math.round((Math.max(...v) - Math.min(...v)) * 100) / 100 : 0;
 };
+
+/* #414: the minutes the timeline shows, when they are no longer the solver's:
+   the game is finished, or a hand swap, a player leaving or overtime has made
+   `effectiveMinutes` differ from the plan's (another set of players, or any
+   one's minutes). Null while nothing has moved, so the engine's own notes
+   stand; otherwise `{ eff, changed }`, `changed` being the ids whose minutes
+   are not the plan's (a note that quotes their number is stale). */
+export function movedMinutes(g, p) {
+  const eff = effectiveMinutes(g, p);
+  const ids = Object.keys(eff);
+  const changed = ids.filter(id => eff[id] !== p.minutes[id]);
+  const sameSet = ids.length === Object.keys(p.minutes).length;
+  return finishedGame(g.live) || !sameSet || changed.length ? { eff, changed } : null;
+}
+
+/* #414: the note under the timeline when the minutes it shows are no longer
+   the solver's. Takes the effective minutes (in roster order) and an
+   id-to-name lookup; names the low end, six at most (past that, a count), the
+   same cap and wording as the engine's SPREAD_FLOOR note. No reason and no
+   action: both are about the solver's choice, which is not what is on screen. */
+export function minutesNote(mins, nameOf) {
+  const ids = Object.keys(mins);
+  const vals = ids.map(id => mins[id]);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const lows = ids.filter(id => mins[id] === lo);
+  const highs = ids.filter(id => mins[id] === hi);
+  const note = message => ({ severity: 'info', code: 'SPREAD_SHOWN', message, playerIds: lows });
+  if (spreadOf(mins) === 0) return note(`Minutes divide evenly: every player gets ${fmtMinutes(hi)}.`);
+  const who = lows.length <= 6
+    ? `${andList(lows.map(nameOf))} ${lows.length === 1 ? 'plays' : 'play'} ${fmtMinutes(lo)}`
+    : `${lows.length} players play ${fmtMinutes(lo)}`;
+  if (lows.length + highs.length === ids.length) {
+    return note(lows.length <= 6
+      ? `${who}, everyone else ${fmtMinutes(hi)}.`
+      : `${who}, the other ${highs.length} play ${fmtMinutes(hi)}.`);
+  }
+  return note(`${who}, the fewest. The most is ${fmtMinutes(hi)}.`);
+}
 
 /* The summary line under the rotation (#29 decision 6): the minute range and
    the change count, read off `effectiveMinutes` / `effectiveStints` by the
