@@ -2,9 +2,8 @@
 
    The premise of the app is a gym with no signal, so the shell has to boot
    without the network — not just the data. Everything below is precached on
-   install and served cache-first; the cache name carries BOTH constants below,
-   and it is SHELL — the digest of the precached bytes — that does the
-   cache-busting.
+   install and served cache-first; the cache name carries SHELL, the digest of
+   the precached bytes, which is what busts it.
 
    Near-omission: no runtime caching of anything not in PRECACHE, with exactly
    one named exception (LAZY, below). A cache that grows on its own is a cache
@@ -13,25 +12,14 @@
 
    sw.test.js checks the list against what index.html actually loads. */
 
-/* The human-readable label, and ONLY that. It names a release in commit
-   messages, in an agent brief and in the cache name a person reads out of
-   devtools; it no longer carries the cache-bust on its own. Still bump it
-   whenever a precached file changes -- `npm test` names it in the SHELL
-   failure and `scripts/check-sw-version.mjs` enforces it across commits --
-   but a forgotten bump is now a stale LABEL, not a stale SHELL. */
-const VERSION = '453';
+/* The slot the build fills (AGENTS.md § Deploy): `dist/sw.js` ships with the
+   digest of the PRECACHE files as they sit in `dist/`, so a precached byte
+   changing makes a NEW cache name and `activate` below deletes the old one.
+   The build fails if this exact line is missing, so the placeholder can never
+   ship. Nothing here is edited by hand. */
+const SHELL = 'unbuilt';
 
-/* Fingerprint of every file PRECACHE names, and the half of the cache name
-   that actually busts it. `test/sw.test.js` recomputes it from the bytes on
-   disk, so a wrong value fails `npm test`; `npm test` is what Cloudflare runs
-   before publishing, so a shipped SHELL is always right; a right SHELL in the
-   cache name means any precached byte changing produces a NEW cache, and
-   `activate` below deletes the old one. It lives HERE rather than in the test
-   so that the edit updating it lands on the line below VERSION. Deleting it
-   fails the suite too. */
-const SHELL = '5345fbd2e854';
-
-const CACHE = `benchcard-v${VERSION}-${SHELL}`;
+const CACHE = `benchcard-${SHELL}`;
 
 const PRECACHE = [
   './',
@@ -107,7 +95,7 @@ const PRECACHE = [
  * Not caching it at all would be worse than the bytes, though: the premise of
  * this app is a gym with no signal, and network-only would mean a roster that
  * does need these glyphs never gets them offline. So it is fetched on demand
- * and kept. After a VERSION bump the copy goes with the old cache and is
+ * and kept. After a deploy the copy goes with the old cache and is
  * re-fetched next time online; until then those characters fall back to the
  * system font, per glyph, which `font-display: swap` is already doing anyway. */
 const LAZY = './vendor/fonts/inter-latin-ext-wght-normal.woff2';
@@ -195,10 +183,9 @@ self.addEventListener('fetch', (e) => {
      * the canonical tag, `og:url` and `sitemap.xml` all name -- one address
      * per page, and it is the one Cloudflare 200s. PRECACHE, by contrast, is
      * a list of FILES: `./about.html`. It has to be, because
-     * `test/sw.test.js` fingerprints those entries by reading them off disk,
-     * and two CI guards (`scripts/check-sw-version.mjs` and
-     * `.claude/hooks/after-edit.sh`) match them against filenames -- both of
-     * those fail SILENTLY if an entry stops naming a file.
+     * `scripts/build.mjs` (and `scripts/serve.mjs`) fingerprint those entries
+     * by reading them as files -- that fails SILENTLY if an entry stops
+     * naming a file.
      *
      * `ignoreSearch` drops the query string, not the extension, so `/about`
      * does not match `./about.html` and falls through to the network. Online

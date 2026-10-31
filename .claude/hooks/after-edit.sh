@@ -1,32 +1,12 @@
 #!/bin/bash
 # PostToolUse(Edit|Write). Advisory only -- it never blocks and never fails a
-# tool call. Two reminders, each fired only when the edit actually earns it.
-#
-# WHY ADVISORY AND NOT A BLOCK. The right SHELL digest is not knowable mid-edit:
-# the other precached files may not be final yet, so there is no correct value
-# to demand at edit time; blocking here would only be able to demand something
-# wrong. Once the edits are done, `npm run sw:bump` computes it in seconds, and
-# test/sw.test.js is the check that decides, everywhere. This is the nudge that
-# gets you there before you commit --
-# scripts/check-sw-version.mjs needs a base ref and so is inert locally.
+# tool call. Two reminders, each fired only when the edit actually earns it:
+# a guard edited (run it red), and a British spelling.
 set -uo pipefail
 
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
 path=$(jq -r '.tool_input.file_path // ""')
-base=$(basename "$path")
 notes=""
-
-# Is this file one of the ones sw.js precaches? Ask sw.js, not a copied list --
-# a second copy of PRECACHE here would drift and this repo says so at length.
-case "$path" in
-  */app/*)
-    if [ -f "$root/app/sw.js" ] && grep -qF "'./$base'" "$root/app/sw.js"; then
-      v=$(grep -oE "const VERSION = '[^']*'" "$root/app/sw.js" | head -1)
-      s=$(grep -oE "const SHELL = '[^']*'" "$root/app/sw.js" | head -1)
-      notes="app/$base is in sw.js PRECACHE, so this edit changes the shell. Before committing: run \`npm run sw:bump\` to bump VERSION and set SHELL. Currently ${v:-?} / ${s:-?}."
-    fi
-    ;;
-esac
 
 case "$path" in
   */test/*.test.js)

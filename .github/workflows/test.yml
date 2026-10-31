@@ -134,13 +134,6 @@ jobs:
     # whole minute however fast it runs, so two jobs cost two minutes to do
     # about four seconds of work. Merged, the coverage is identical.
     #
-    #   * service worker version -- the SECOND net, deliberately kept. The
-    #     first is `test/sw.test.js`'s SHELL digest, which asks the same
-    #     question of a single commit and so runs inside `node --test`: the
-    #     only thing Cloudflare runs before publishing, and the `tests` job
-    #     above, which checks out at depth 1. This step catches what one commit
-    #     cannot see -- a digest updated while VERSION was left alone.
-    #
     #   * about dateline -- the About footer carries a hand-typed "last
     #     updated" date and going stale is only visible across two commits.
     #     test/about-date.test.js unit-tests the pure decision with no git.
@@ -170,11 +163,7 @@ jobs:
                           && github.event.pull_request.base.sha
                           || github.event.before }}" >> "$GITHUB_ENV"
 
-      - name: precached files changed without a VERSION bump
-        run: node scripts/check-sw-version.mjs "$BASE"
-
       - name: about.html changed without its dateline changing
-        if: always()
         run: node scripts/check-about-date.mjs "$BASE"
 
       - name: a sitemap page changed without its lastmod changing

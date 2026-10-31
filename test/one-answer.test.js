@@ -92,7 +92,7 @@ const OWNED = {
   // so AGENTS.md keeps them and the skills must not grow a copy
   'document.fonts.ready':              'AGENTS.md',
   'so the proof pair skips them':      'AGENTS.md',
-  'benchcard-v':                       'AGENTS.md',
+  'benchcard-${SHELL}':                'AGENTS.md',
   'a window of source is not a scope': 'AGENTS.md',
 
   // AGENTS.md § Test seams: which seam a test goes at. /ship-feature and the

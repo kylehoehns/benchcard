@@ -253,22 +253,13 @@ test('settings.json wires guard-read.sh to Read', () => {
 
 /* ---------- after-edit: advisory, never blocking ---------- */
 
-test('editing a precached file reminds about VERSION and SHELL, and never denies', () => {
+test('editing a precached file says nothing about the shell, and never denies', () => {
   const r = run('after-edit.sh', { tool_input: { file_path: '/repo/app/app.js' } });
-  assert.equal(r.decision, null, 'this hook must never block -- the right SHELL is not knowable at edit time');
-  assert.match(r.context, /VERSION/);
-  assert.match(r.context, /SHELL/);
+  assert.equal(r.decision, null, 'this hook must never block');
+  assert.equal(r.context, '', 'the build writes SHELL now; there is nothing to remind about');
 });
 
-test('the reminder quotes the live constants rather than a copy of them', () => {
-  const sw = readFileSync(new URL('app/sw.js', ROOT), 'utf8');
-  const version = sw.match(/const VERSION = '([^']*)'/)[1];
-  const r = run('after-edit.sh', { tool_input: { file_path: '/repo/app/app.js' } });
-  assert.match(r.context, new RegExp(`'${version}'`),
-    'a hard-coded VERSION here would drift from sw.js, which is the defect this repo names most often');
-});
-
-test('a file outside PRECACHE gets no shell reminder', () => {
+test('a file outside PRECACHE gets no reminder either', () => {
   assert.equal(run('after-edit.sh', { tool_input: { file_path: '/repo/notes/TICKETS.md' } }).context, '');
   assert.equal(run('after-edit.sh', { tool_input: { file_path: '/repo/scripts/charts.mjs' } }).context, '');
 });

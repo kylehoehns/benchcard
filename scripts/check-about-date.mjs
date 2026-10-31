@@ -8,11 +8,11 @@
    exist because this turns the promise to maintain it into a CI fact.
 
    WHY THIS IS A SCRIPT AND NOT A `node --test` TEST. The same reason
-   `check-sw-version.mjs` is: the mistake only exists in the diff between two
+   `check-sitemap-lastmod.mjs` is: the mistake only exists in the diff between two
    commits, and the `tests` job checks out at the default depth of 1, so
    `node --test` sees exactly one commit and cannot ask what a file used to
    say. The `about-date` job in `.github/workflows/test.yml` fetches full
-   history for this, the way `sw-version` already does. The pure decision below
+   history for this, the way the sitemap check does. The pure decision below
    is unit-tested in `test/about-date.test.js` with no git and no network.
 
    Run it as `node scripts/check-about-date.mjs <base-ref>` (CI passes the

@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-/* Strips CSS comments into `dist/` (AGENTS.md § Deploy). `wrangler.jsonc` runs
- * this as `build.command` (#339).
+/* Builds `dist/` from `app/` (AGENTS.md § Deploy says what the build does).
+ * `wrangler.jsonc` runs this as `build.command` (#339).
  *
- * `scripts/serve.mjs` imports `stripCssComments` from here, so the local
- * server, smoke and the deploy all see the same bytes. No dependencies. */
+ * `scripts/serve.mjs` imports `stripCssComments`, `shellDigest` and
+ * `stampShell` from here, so the local server, smoke and the deploy all see
+ * the same bytes. No dependencies. */
+import { createHash } from 'node:crypto';
 import { cpSync, readdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -87,8 +89,45 @@ export function stripCssComments(src) {
   return parts.join('');
 }
 
-/* Copy `appDir` to `outDir` (replacing whatever was there), stripping the
-   comments from every .css file. `appDir` is only read. */
+/* The paths in sw.js's PRECACHE array literal, './'-prefixed. Scoped to the
+   array because sw.js also names a runtime-cached path (LAZY) outside it. */
+export function parsePrecache(swSource) {
+  return [...swSource.slice(swSource.indexOf('const PRECACHE = ['), swSource.indexOf('\n];'))
+    .matchAll(/'(\.\/[^']*)'/g)]
+    .map(m => m[1])
+    .filter(p => p !== './sw.js');
+}
+
+/* The 12-hex fingerprint of every file PRECACHE names: paths sorted, each
+   contributing `path \0 bytes \0`; `./` (the same bytes as index.html) and
+   `./sw.js` (self-reference) are skipped. `read(path)` returns the bytes for a
+   './'-prefixed path, so the build reads `dist/` and the server reads what it
+   would serve. */
+export function shellDigest(read, swSource) {
+  const h = createHash('sha256');
+  for (const p of parsePrecache(swSource).filter(p => p !== './').sort()) {
+    h.update(p);
+    h.update('\0');
+    h.update(read(p));
+    h.update('\0');
+  }
+  return h.digest('hex').slice(0, 12);
+}
+
+const SLOT = "const SHELL = 'unbuilt'";
+
+/* Fill sw.js's SHELL slot. Throws if the slot line is absent (missing, or
+   already filled), so the placeholder can never ship silently. */
+export function stampShell(swSource, digest) {
+  if (!swSource.includes(SLOT + ';')) {
+    throw new Error(`stampShell: sw.js has no \`${SLOT};\` line for SHELL`);
+  }
+  return swSource.replace(SLOT, `const SHELL = '${digest}'`);
+}
+
+/* Copy `appDir` to `outDir` (replacing whatever was there), strip the comments
+   from every .css file, then write SHELL into `outDir/sw.js` from the files as
+   they now sit in `outDir`. `appDir` is only read. */
 export function build(appDir, outDir) {
   rmSync(outDir, { recursive: true, force: true });
   cpSync(appDir, outDir, { recursive: true });
@@ -97,11 +136,14 @@ export function build(appDir, outDir) {
     const file = join(e.parentPath ?? e.path, e.name);
     writeFileSync(file, stripCssComments(readFileSync(file, 'utf8')));
   }
+  const sw = join(outDir, 'sw.js');
+  const source = readFileSync(sw, 'utf8');
+  writeFileSync(sw, stampShell(source, shellDigest(p => readFileSync(join(outDir, p)), source)));
 }
 
 /* Run directly: build `app/` into `dist/` at the repo root. Imported: nothing. */
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
   build(join(root, 'app'), join(root, 'dist'));
-  console.log('benchcard: built dist/ from app/ with CSS comments stripped');
+  console.log('benchcard: built dist/ from app/');
 }

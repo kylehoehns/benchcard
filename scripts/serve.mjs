@@ -30,12 +30,14 @@
  *
  * One difference from the files on disk, on purpose: `.css` is served with its
  * comments stripped by `scripts/build.mjs`'s `stripCssComments`, the same
- * function the deploy build uses (#339), so smoke runs against what ships. */
+ * function the deploy build uses (#339), so smoke runs against what ships.
+ * `/sw.js` is the other: its SHELL is stamped the way the build stamps it
+ * (AGENTS.md § Deploy), so a local run matches a deploy. */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stripCssComments } from './build.mjs';
+import { stripCssComments, parsePrecache, shellDigest, stampShell } from './build.mjs';
 
 const APP = join(resolve(dirname(fileURLToPath(import.meta.url)), '..'), 'app');
 
@@ -46,6 +48,24 @@ export const TYPES = {
   '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2',
   '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml',
 };
+
+/* The bytes the server sends for `file` ('/x' form): CSS stripped, the rest as
+   on disk. */
+async function served(file) {
+  const body = await readFile(join(APP, file));
+  return extname(file) === '.css' ? stripCssComments(body.toString('utf8')) : body;
+}
+
+/* sw.js as a deploy would ship it: SHELL stamped from the files this server
+   would send, computed per request so an edit shows on the next fetch. */
+async function stampedSw() {
+  const source = await readFile(join(APP, 'sw.js'), 'utf8');
+  const files = new Map();
+  for (const p of parsePrecache(source)) {
+    if (p !== './') files.set(p, await served(p.slice(1)));
+  }
+  return stampShell(source, shellDigest(p => files.get(p), source));
+}
 
 /* `port` defaults to 0 -- an ephemeral port, which is what the three harnesses
    want so parallel runs cannot collide. Pass one for a human. */
@@ -75,9 +95,10 @@ export function serve(port = 0) {
     const abs = join(APP, file);
     if (!abs.startsWith(APP)) { res.writeHead(403).end(); return; }
     try {
-      const body = await readFile(abs);
+      if (file === '/sw.js') { res.writeHead(200, { 'content-type': TYPES['.js'] }).end(await stampedSw()); return; }
+      const body = await served(file);
       res.writeHead(200, { 'content-type': TYPES[extname(abs)] || 'application/octet-stream' });
-      res.end(extname(abs) === '.css' ? stripCssComments(body.toString('utf8')) : body);
+      res.end(body);
     } catch { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); }
   });
   /* Keep-alive sockets outlive `server.close()`, and a half-open connection is

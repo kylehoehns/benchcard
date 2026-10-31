@@ -2,7 +2,7 @@
 
 Static, client-side app that plans youth basketball substitution rotations and
 prints them on a pocket-notebook card. No backend, no accounts, and one build
-step that only strips CSS comments (§ Deploy).
+step (§ Deploy).
 
 `README.md` is the front door; `docs/` explains what the code does and why.
 Open work is GitHub issues. This file is the harness:
@@ -78,7 +78,7 @@ text size. A check that judges the tree goes to `/new-guard`.
 
 ## What is enforced, and what is only written down
 
-Most of this file is judgement and cannot be mechanized. Nine rules can be, and
+Most of this file is judgement and cannot be mechanized. Eight rules can be, and
 are, in `.claude/hooks/` — they are stated in their own sections above and are
 not restated here, only listed, so there is still one answer per rule:
 
@@ -90,7 +90,6 @@ not restated here, only listed, so there is still one answer per rule:
 | No generated-by footer or session link in a PR or issue body | denied, `guard-bash.sh` |
 | No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` — file tools only, not a shell write |
 | A text file over 60 KB is read in parts (`grep -n`, then offset and limit) | denied, `guard-read.sh` |
-| A precached file changed → bump `VERSION`, set `SHELL` | reminded, `after-edit.sh` — file tools only, not a shell write |
 | A British spelling in an edited file | reminded, `after-edit.sh` — file tools only, not a shell write |
 | A dirty tree means another writer is here | reported at session start |
 
@@ -100,8 +99,6 @@ catches it instead:
 
 - `app/vendor/**`: the `vendor drift` workflow.
 - the six chart pages: `test/charts.test.js`.
-- a precache bump missed: `test/sw.test.js`'s `SHELL` digest, and
-  `scripts/check-sw-version.mjs` in CI.
 - a British spelling: `test/spelling.test.js`.
 - `scripts/budgets.json`: nothing. Review is the only check.
 
@@ -320,24 +317,9 @@ allowlist shape; do not reintroduce a denylist.
 
 ## Traps
 
-**Bump `app/sw.js` VERSION whenever a precached file changes**, and set `SHELL`
-to the digest in the same edit: `npm run sw:bump` does both (`VERSION` becomes
-`origin/main`'s plus one). The cache is
-`benchcard-v${VERSION}-${SHELL}`: `SHELL` is what actually busts it, so a
-forgotten bump now leaves a stale release LABEL rather than a stale app on a
-coach's phone. `VERSION` is that label and nothing more — keep it honest.
-`scripts/check-sw-version.mjs` and `scripts/check-about-date.mjs` need a base
-ref, so the proof pair skips them; `npm run check:history` runs both against
-`origin/main` — run it before every push. The `SHELL` guard in
-`test/sw.test.js` runs everywhere.
-
-**Two open PRs that both bump conflict on `app/sw.js`.** Run `npm run setup`
-once per clone: it registers the merge driver `.gitattributes` names, which
-clears a conflict that touches only `VERSION` and `SHELL` (any other conflict
-in the file is still reported). After the rebase, run `npm run sw:bump`. If
-the rebase changed nothing on your branch but those two constants, `npm test`
-is the whole proof — its `SHELL` guard proves the digest — and the smoke suite
-need not run again.
+**`scripts/check-about-date.mjs` and `scripts/check-sitemap-lastmod.mjs` need a
+base ref,** so the proof pair skips them; `npm run check:history` runs both
+against `origin/main` — run it before every push.
 
 **The printed card is auto-fitted from canvas `measureText`.** Its measurement
 font stack must match `.card`'s exactly. The UI itself does not use the card's
@@ -434,15 +416,21 @@ builds — uploads a preview version instead of publishing), root directory `/`.
 All four are mirrored in `wrangler.jsonc`'s header comment and were confirmed
 from the dashboard 2026-08-24; keep the three copies in step.
 
-**There is one build step: CSS comments are stripped on deploy (#339).** This
-is the one place that says so; every other mention points here. Both wrangler
-commands run `wrangler.jsonc`'s `build.command`, `node scripts/build.mjs`, which
-copies `app/` to the git-ignored `dist/` and strips the comments from each
-`.css` file there. Every other byte ships as it is in git — no minifying, no
-bundling, no hashed names — and `app/` itself is never rewritten. Comments
-were 77% of `app.css`'s gzipped bytes, which is all this buys. `npm run serve`,
-and so smoke and the Coach driver, strip with the same function on the fly, so
-local runs measure what ships. `SHELL` stays a digest of the source files,
-which is enough because the stripping is deterministic.
+**The build does two things: it strips CSS comments (#339) and writes `SHELL`
+into `dist/sw.js`.** This is the one place that says so; every other mention
+points here. Both wrangler commands run `wrangler.jsonc`'s `build.command`,
+`node scripts/build.mjs`, which copies `app/` to the git-ignored `dist/`,
+strips the comments from each `.css` file there, then replaces the
+`const SHELL = 'unbuilt';` line in `dist/sw.js` with the first 12 hex of a
+sha256 over the files `PRECACHE` names, as they sit in `dist/`. The service
+worker's cache is `benchcard-${SHELL}`, so a precached byte that ships changing
+makes a new cache and `activate` deletes the old one. Nothing edits `SHELL` or
+`app/sw.js` by hand, and a CSS edit that only touches a comment changes
+nothing that ships, so it keeps the cache name. The build fails if the
+`unbuilt` line is missing. Every other byte ships as it is in git — no
+minifying, no bundling, no hashed names — and `app/` itself is never
+rewritten. Comments were 77% of `app.css`'s gzipped bytes, which is all the
+stripping buys. `npm run serve`, and so smoke and the Coach driver, strip and
+stamp with the same functions on the fly, so local runs measure what ships.
 `app/_headers` sets `no-cache` on the HTML and `sw.js` — read the reasoning in
 that file before changing it.

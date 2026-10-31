@@ -2,8 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { shellDigest, parsePrecache, parseShell } from '../scripts/sw-shell.mjs';
-import { parseVersion } from '../scripts/check-sw-version.mjs';
+import { parsePrecache } from '../scripts/build.mjs';
 
 /* Everything the service worker serves lives in one directory; these tests
    resolve against it rather than against their own location. */
@@ -25,7 +24,7 @@ const css = sheets.map((f) => readFileSync(new URL(f, ROOT), 'utf8')).join('\n')
    Scoped to the PRECACHE array literal rather than the whole file: sw.js also
    names a runtime-cached path (LAZY), and a whole-file scan counted that as
    precached, which is the exact opposite of what it is. Parsed by
-   scripts/sw-shell.mjs, which sw-bump.mjs also imports -- one parse, not two. */
+   scripts/build.mjs, which serve.mjs also imports -- one parse, not two. */
 const precache = parsePrecache(sw);
 
 test('every precached path exists on disk', () => {
@@ -111,58 +110,20 @@ test('nothing under vendor/ is precached that is not actually loaded', () => {
   }
 });
 
-test('the cache name carries a version constant', () => {
-  assert.match(sw, /const VERSION = '[^']+'/);
-  assert.match(sw, /benchcard-v\$\{VERSION\}/);
+/* The build writes SHELL (AGENTS.md § Deploy), so the source only holds the
+   slot, and the cache name is built from it. A literal digest or a VERSION
+   constant here would put a hand-kept value back. */
+test('the source holds the SHELL slot and no VERSION constant', () => {
+  assert.ok(!/const VERSION\b/.test(sw), 'sw.js has a VERSION constant');
+  assert.ok(!/const SHELL = '[0-9a-f]{12}'/.test(sw), 'sw.js has a literal digest');
+  assert.ok(sw.includes("const SHELL = 'unbuilt';"), "the slot line `const SHELL = 'unbuilt';` is gone");
 });
 
-/* The cache name is what busts the cache, and VERSION is a hand-typed label
-   that CI can only ask about across two commits. SHELL is recomputed from the
-   precached bytes by the test below, on one commit, with no history — so the
-   name has to carry SHELL for a forgotten VERSION bump to stop mattering.
-   Dropping SHELL from the name would put the whole cache-bust back on the
-   label, silently, and every other test here would still pass. */
-test('the cache name carries the SHELL digest, not just the label', () => {
-  assert.match(sw, /const CACHE = `benchcard-v\$\{VERSION\}-\$\{SHELL\}`/,
-    'the cache name must interpolate SHELL, or a forgotten VERSION bump serves a stale shell again');
+test('the cache name is benchcard-${SHELL}, declared after SHELL', () => {
+  assert.ok(sw.includes('const CACHE = `benchcard-${SHELL}`;'),
+    'the cache name must interpolate SHELL and nothing else');
   assert.ok(sw.indexOf('const SHELL') < sw.indexOf('const CACHE'),
     'SHELL is in the temporal dead zone unless it is declared above CACHE');
-});
-
-/* ------------------------------------------------------------------ *
- * The forgotten VERSION bump, catchable in one commit
- *
- * A precached file changing without a VERSION bump is the worst failure this
- * project has: every returning coach keeps the old shell, offline, with no
- * way to notice. `scripts/check-sw-version.mjs` catches it by diffing two
- * commits — but it needs git history, and the mistake needs to fail BEFORE a
- * deploy, not beside one. `npm test` is the only thing Cloudflare runs before
- * publishing; the sw-version job runs in Actions, in parallel, afterwards, and
- * the `tests` job there checks out at depth 1 so anything wanting history is
- * worthless in it.
- *
- * So the cross-commit question is asked as a single-commit one. `SHELL` in
- * `sw.js` fingerprints the bytes of every file PRECACHE names; change one and
- * this test goes red, on a fresh clone, with no history at all. It does not
- * *force* the bump — someone could paste the new digest and leave VERSION
- * alone — which is why the Actions job stays as the second net. What it does
- * is put the mistake in front of the person while they are looking at the
- * VERSION line, hours earlier than the old net could.
- *
- * `./` is skipped: it is the directory index, the same bytes as `index.html`,
- * which is listed separately. `./sw.js` is not in PRECACHE at all; the filter
- * above is belt-and-braces, and a self-referential digest could not settle.
- * ------------------------------------------------------------------ */
-
-test('SHELL matches the bytes of everything precached', () => {
-  const pinned = parseShell(sw);
-  assert.ok(pinned, 'sw.js has no SHELL constant — the single-commit bump guard is gone');
-  const { digest, count } = shellDigest(ROOT, sw);
-  assert.ok(count > 10, `only ${count} precached files were hashed; the parse is wrong`);
-  assert.equal(pinned, digest,
-    `a precached file changed. In app/sw.js: bump VERSION (now '${
-      parseVersion(sw)}') and set SHELL to '${digest}'. `
-    + 'Both, in the same edit — the digest alone busts nothing.');
 });
 
 test('index.html registers the service worker', () => {
