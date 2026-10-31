@@ -85,6 +85,32 @@ describe('a coach with more than one Team', { skip }, () => {
     assert.deepEqual(await coach.seasonMinutes(), {});
   });
 
+  test('switching to a Team whose day has passed files that day once, with the Filing toast', async () => {
+    await coach.onGameDayWithTwoTeams();
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Start game');
+    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    await coach.tap('Finish game');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Smoke Test');
+    await coach.tap('JV Ravens, 10 players');
+    await coach.comeBackDaysLater(2);
+    await coach.tap('JV Ravens');
+    await coach.tap('Smoke Test, 11 players');
+
+    assert.match(await coach.toast(), /^Sat, Sep 12: 1 game filed/);
+    assert.ok(await coach.sees('Season 1 game filed ›'));
+    assert.equal((await coach.todayGames()).includes('Hawks, 9:00 AM, finished'), false, 'Saturday is no longer today');
+
+    await coach.tap('Dismiss');
+    await coach.tap('Smoke Test');
+    await coach.tap('JV Ravens, 10 players');
+    await coach.tap('JV Ravens');
+    await coach.tap('Smoke Test, 11 players');
+    assert.equal(await coach.toast(), '', 'the second switch files nothing');
+    assert.ok(await coach.sees('Season 1 game filed ›'));
+  });
+
   test('the Team a coach was on is the Team they come back to', async () => {
     await coach.onGameDayWithTwoTeams();
     await coach.tap('Smoke Test');
