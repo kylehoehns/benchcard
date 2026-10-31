@@ -23,15 +23,29 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "benchcard",
   "compatibility_date": "2026-08-01",
-  /* The only server code on the site. Assets are still served by Cloudflare's
-     asset layer without this script running -- it exists for `/e`, the product
-     event endpoint. See src/index.js. */
+  /* The only server code on the site: `/e`, the product event endpoint, and
+     the redirect from www to the apex. Assets are still served by Cloudflare's
+     asset layer, but the Worker now sees every request first
+     (`run_worker_first` below). See src/index.js. */
   "main": "src/index.js",
+  /* Both custom domains, and the apex has to be listed. Wrangler REPLACES the
+     Worker's custom domains with this list on every deploy, so leaving
+     benchcard.app out would detach it. www is here so the Worker answers it
+     (a 301 to the apex) and so a deploy creates its DNS record. */
+  "routes": [
+    { "pattern": "benchcard.app", "custom_domain": true },
+    { "pattern": "www.benchcard.app", "custom_domain": true }
+  ],
   "build": { "command": "node scripts/build.mjs" },
   "assets": {
     "directory": "dist",
     // lets the Worker hand anything that is not /e back to the asset layer
     "binding": "ASSETS",
+    // true, not a path list: patterns match paths, not hosts, so only `true`
+    // lets the Worker see a www request. Left false, the asset layer would
+    // answer www/about itself and www would be a second copy of the site
+    // (with its own localStorage, so an empty app for a coach who has a team).
+    "run_worker_first": true,
     // Serve /about.html for /about, and return the real 404 rather than
     // rewriting every unknown path to the app shell — the service worker
     // already handles offline navigation.

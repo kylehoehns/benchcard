@@ -1,10 +1,10 @@
 /* The Benchcard Worker.
  *
  * The site is static — `app/` is the whole thing, served by Cloudflare's asset
- * layer without this script running at all. The only reason server code exists
- * is to receive the eleven product events, because until now they had nowhere
- * to go: Web Analytics told us people arrive, and nothing told us whether
- * anybody prints a card or opens bench mode.
+ * layer, which this script fronts only to redirect www to the apex. The main
+ * reason server code exists is to receive the eleven product events, because
+ * until now they had nowhere to go: Web Analytics told us people arrive, and
+ * nothing told us whether anybody prints a card or opens bench mode.
  *
  * Three decisions worth stating.
  *
@@ -92,6 +92,15 @@ export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
 
+    /* www is the same site at a second address, and a second origin with its
+       own localStorage, so a coach there would see an empty app. Sent to the
+       apex first, path and query kept (a www `?try=7` link still works), and
+       before anything else: no beacon recorded, no asset served. Only the
+       custom domain matches; the *.workers.dev preview is left alone. */
+    if (url.hostname === 'www.benchcard.app') {
+      return Response.redirect('https://benchcard.app' + url.pathname + url.search, 301);
+    }
+
     if (url.pathname === '/e') {
       // The beacon only ever POSTs. Anything else is somebody looking around.
       if (req.method !== 'POST') return new Response(null, { status: 405 });
@@ -120,10 +129,10 @@ export default {
       return NO_CONTENT();
     }
 
-    /* Everything else is the site. Cloudflare serves assets before this script
-       runs, so in practice this is the 404 path — but routing it explicitly
-       means the Worker behaves the same however the asset layer is configured,
-       rather than depending on it. */
+    /* Everything else is the site. `assets.run_worker_first` is true in
+       wrangler.jsonc, so every request reaches this script first (the www
+       redirect above depends on it: the asset layer would otherwise answer a
+       www page itself) and hands the rest to the asset layer here. */
     return env.ASSETS.fetch(req);
   },
 };

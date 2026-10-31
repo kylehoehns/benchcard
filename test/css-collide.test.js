@@ -65,7 +65,7 @@ const ALLOWED = new Map([
 function sheetsOf(page) {
   const html = read(page);
   const out = [];
-  for (const m of html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.\/([\w.-]+\.css)"/g)) {
+  for (const m of html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="(?:\.\/|\/)([\w.-]+\.css)"/g)) {
     out.push({ name: m[1], css: read(m[1]) });
   }
   const inline = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
@@ -151,7 +151,11 @@ test('the sweep can actually see a stylesheet, and the graph is what we think', 
     assert.deepEqual(graph[p], ['tokens.css', 'card.css', `inline:${p}`],
       `${p} loads an unexpected set of stylesheets`);
   }
-  assert.ok(PAGES.length === 9, `expected 9 static pages, found ${PAGES.length}`);
+  /* `404.html` links its sheet root-relative (`/tokens.css`), since it is
+     served at any depth, so `sheetsOf` reads both spellings (#424). It must
+     see tokens.css there, or this page's sweep would measure nothing. */
+  assert.deepEqual(graph['404.html'], ['tokens.css', 'inline:404.html']);
+  assert.ok(PAGES.length === 10, `expected 10 static pages, found ${PAGES.length}`);
   // and the parser really does read rules out of a real sheet
   assert.ok(classesOf(read('card.css')).has('card'), 'card.css should define .card');
 });

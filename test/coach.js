@@ -165,6 +165,22 @@ export class Coach {
     await land(this.c, this.origin, { record: teamWith(players), ready: screenReadyExpr('view-team') });
   }
 
+  /** Open `url` ('/?try=7') on this same phone, its saved record kept, on the Team screen. */
+  openAt(url) { return this.#navigate(url, { record: 'kept', ready: screenReadyExpr('view-team') }); }
+
+  /** Open `url` on a device with nothing saved, and wait for the plan the sample team lands on. */
+  openFreshAt(url) { return this.#navigate(url, { record: 'wiped' }); }
+
+  async #navigate(url, opts) {
+    const u = new URL(url, this.origin);
+    this.errors.length = 0;
+    await this.c.send('Page.navigate', { url: 'about:blank' });
+    await land(this.c, this.origin, { ...opts, page: u.pathname, query: u.search });
+  }
+
+  /** The address bar's path, query and hash, as the coach would read it. */
+  address() { return evalIn(this.c, 'location.pathname + location.search + location.hash'); }
+
   /** Close the tab and come back: whatever survives is what was saved. */
   async comeBackLater() {
     await land(this.c, this.origin, { record: 'kept', ready: screenReadyExpr('view-team') });

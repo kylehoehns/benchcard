@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import worker from '../src/index.js';
 
 /* `/e` is a public endpoint on the same origin as the app. Anyone can POST
@@ -190,4 +192,69 @@ test('everything that is not /e is handed back to the asset layer', async () => 
     const res = await worker.fetch(new Request('https://benchcard.app' + path), env, {});
     assert.equal(await res.text(), 'asset', `${path} did not reach the assets binding`);
   }
+});
+
+/* --- #424: www.benchcard.app redirects to the apex ------------------------ */
+
+const countingEnv = () => {
+  const calls = [];
+  return { calls, env: { ASSETS: { fetch: (r) => { calls.push(r.url); return new Response('asset'); } } } };
+};
+
+test('www.benchcard.app answers 301 to the same path and query on the apex, never touching assets', async () => {
+  const { env, calls } = countingEnv();
+  for (const [from, to] of [
+    ['https://www.benchcard.app/', 'https://benchcard.app/'],
+    ['https://www.benchcard.app/about', 'https://benchcard.app/about'],
+    ['https://www.benchcard.app/?try=7', 'https://benchcard.app/?try=7'],
+    ['https://www.benchcard.app/7-player-basketball-rotation-chart?x=1&y=2', 'https://benchcard.app/7-player-basketball-rotation-chart?x=1&y=2'],
+  ]) {
+    const res = await worker.fetch(new Request(from), env, {});
+    assert.equal(res.status, 301, from);
+    assert.equal(res.headers.get('location'), to, from);
+  }
+  assert.deepEqual(calls, [], 'the redirect reached the asset layer');
+});
+
+test('www redirects before the beacon too: a POST to www /e is not recorded', async () => {
+  const { env, written } = mkEnv();
+  const res = await worker.fetch(new Request('https://www.benchcard.app/e', {
+    method: 'POST', body: JSON.stringify({ e: 'card_printed', size: 'pocket' }),
+  }), env, {});
+  assert.equal(res.status, 301);
+  assert.equal(res.headers.get('location'), 'https://benchcard.app/e');
+  assert.equal(written.length, 0);
+});
+
+test('the apex and a workers.dev preview are not redirected', async () => {
+  const { env, calls } = countingEnv();
+  for (const host of ['benchcard.app', 'benchcard.example.workers.dev']) {
+    const res = await worker.fetch(new Request(`https://${host}/about?x=1`), env, {});
+    assert.equal(res.status, 200, host);
+    assert.equal(await res.text(), 'asset', host);
+  }
+  assert.equal(calls.length, 2);
+});
+
+/* --- #424: wrangler.jsonc must send every request through the Worker ------ */
+
+/* A GUARD (/new-guard), reading the tree. Two facts nothing else would notice
+   until a deploy: without `run_worker_first` the asset layer answers www pages
+   itself, so the redirect above never runs for them and www serves a second
+   copy of the site; and wrangler REPLACES the Worker's custom domains with
+   `routes`, so dropping the apex from the list detaches benchcard.app. */
+const wranglerConfig = () => JSON.parse(readFileSync(
+  fileURLToPath(new URL('../wrangler.jsonc', import.meta.url)), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\s\/\/ .*$/gm, ''));
+
+test('wrangler.jsonc runs the Worker first and lists both custom domains, and only those', () => {
+  const cfg = wranglerConfig();
+  assert.ok(cfg.assets && typeof cfg.assets === 'object', 'wrangler.jsonc parsed to no assets block');
+  assert.equal(cfg.assets.run_worker_first, true,
+    'assets.run_worker_first must be true: patterns are paths, not hosts, so true is the only way www is redirected');
+  assert.ok(Array.isArray(cfg.routes), 'no top-level routes');
+  assert.deepEqual(cfg.routes, [
+    { pattern: 'benchcard.app', custom_domain: true },
+    { pattern: 'www.benchcard.app', custom_domain: true },
+  ], 'routes replaces the Worker\'s domains on deploy: list the apex as well as www, and nothing else');
 });

@@ -170,6 +170,47 @@ test('serve() returns .css stripped as text/css and everything else unchanged', 
   } finally { server.stopHard(); }
 });
 
+/* --- 5b. the 404 page (#424) -------------------------------------------- */
+
+test('the build ships 404.html byte for byte, and the service worker does not precache it', () => {
+  assert.ok(existsSync(join(APP, '404.html')), 'app/404.html does not exist');
+  const out = join(tmp(), 'dist');
+  build(APP, out);
+  assert.ok(readFileSync(join(out, '404.html')).equals(readFileSync(join(APP, '404.html'))));
+  const precache = parsePrecache(readFileSync(join(APP, 'sw.js'), 'utf8'));
+  assert.ok(precache.length > 0, 'parsePrecache found nothing, so it proved nothing');
+  assert.ok(!precache.includes('./404.html'), 'an offline coach would be handed the 404 page');
+});
+
+test('serve() answers an unknown path with 404 and the bytes of app/404.html', async () => {
+  assert.ok(existsSync(join(APP, '404.html')), 'app/404.html does not exist');
+  const page = readFileSync(join(APP, '404.html'));
+  const server = await serve(0);
+  try {
+    const base = `http://127.0.0.1:${server.address().port}`;
+    for (const path of ['/nope', '/ABOUT', '/13-player-basketball-rotation-chart', '/a/b/c']) {
+      const r = await fetch(base + path);
+      assert.equal(r.status, 404, path);
+      assert.equal(r.headers.get('content-type'), 'text/html; charset=utf-8', path);
+      assert.ok(Buffer.from(await r.arrayBuffer()).equals(page), path);
+    }
+    for (const path of ['/', '/about', '/7-player-basketball-rotation-chart']) {
+      assert.equal((await fetch(base + path)).status, 200, path);
+    }
+  } finally { server.stopHard(); }
+});
+
+test('serve() falls back to plain text when the app copy has no 404.html', async () => {
+  const src = appCopy();
+  rmSync(join(src, '404.html'), { force: true });
+  const server = await serve(0, src);
+  try {
+    const r = await fetch(`http://127.0.0.1:${server.address().port}/nope`);
+    assert.equal(r.status, 404);
+    assert.equal(await r.text(), 'not found');
+  } finally { server.stopHard(); }
+});
+
 /* --- 6. the build writes SHELL ------------------------------------------ */
 
 /* The oracle: the algorithm spelled out here, from the spec, over the bytes in

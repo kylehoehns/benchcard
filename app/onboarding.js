@@ -907,8 +907,9 @@ export function initOnboarding(setViewFn) {
      and this carries one integer the site already publishes on six public
      pages, about nobody. A35, DECISION 2. */
   const want = new URLSearchParams(location.search).get('try');
-  if (want !== null && !state.onboarded) {
+  if (want !== null) {
     history.replaceState(null, '', location.pathname + location.hash);
-    loadSample(want);
+    if (!state.onboarded) loadSample(want);
+    else flash("You already have a team, so the sample team wasn't loaded.");
   }
 }

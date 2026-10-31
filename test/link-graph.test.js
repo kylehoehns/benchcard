@@ -39,6 +39,12 @@ const read = p => readFileSync(new URL(p, APP), 'utf8');
 /* Derived, never listed: whatever HTML is in app/ is what the site ships. */
 const shipped = readdirSync(APP).filter(f => f.endsWith('.html')).sort();
 
+/* The one page nothing links to, on purpose (#424): `404.html` is what a miss
+   answers with, not somewhere a link goes, and a link to it would be a link
+   to a page that says "this page isn't here". It is the only name here; a
+   second one needs its own reason. */
+const UNLINKED = ['404.html'];
+
 /* THREE THINGS HOLD AN href A READER CANNOT FOLLOW, and all three are cut out
    before the walk. This is the "a grep hit is not proof" rule applied to a
    link: the mutation arm that neutered `.wel-about` passed the first cut of
@@ -94,7 +100,7 @@ function reachable() {
 
 test('every page the site ships is reachable by following links from "/"', () => {
   const seen = reachable();
-  const orphans = shipped.filter(p => !seen.has(p));
+  const orphans = shipped.filter(p => !seen.has(p) && !UNLINKED.includes(p));
   assert.deepEqual(orphans, [],
     `orphaned — nothing on this site links to: ${orphans.join(', ')}`);
   /* A walk that reached one page would also report zero orphans if `shipped`
