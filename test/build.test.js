@@ -188,13 +188,13 @@ test('serve() answers an unknown path with 404 and the bytes of app/404.html', a
   const server = await serve(0);
   try {
     const base = `http://127.0.0.1:${server.address().port}`;
-    for (const path of ['/nope', '/ABOUT', '/13-player-basketball-rotation-chart', '/a/b/c']) {
+    for (const path of ['/nope', '/ABOUT', '/VENDOR/motion.mjs', '/vendor/FONTS/inter-latin-wght-normal.woff2', '/13-player-basketball-rotation-chart', '/a/b/c']) {
       const r = await fetch(base + path);
       assert.equal(r.status, 404, path);
       assert.equal(r.headers.get('content-type'), 'text/html; charset=utf-8', path);
       assert.ok(Buffer.from(await r.arrayBuffer()).equals(page), path);
     }
-    for (const path of ['/', '/about', '/7-player-basketball-rotation-chart']) {
+    for (const path of ['/', '/about', '/7-player-basketball-rotation-chart', '/vendor/motion.mjs', '/vendor/fonts/inter-latin-wght-normal.woff2']) {
       assert.equal((await fetch(base + path)).status, 200, path);
     }
   } finally { server.stopHard(); }

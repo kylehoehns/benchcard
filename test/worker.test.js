@@ -206,6 +206,7 @@ test('www.benchcard.app answers 301 to the same path and query on the apex, neve
   for (const [from, to] of [
     ['https://www.benchcard.app/', 'https://benchcard.app/'],
     ['https://www.benchcard.app/about', 'https://benchcard.app/about'],
+    ['https://www.benchcard.app./about?x=1', 'https://benchcard.app/about?x=1'], // a fully qualified name with the trailing dot
     ['https://www.benchcard.app/?try=7', 'https://benchcard.app/?try=7'],
     ['https://www.benchcard.app/7-player-basketball-rotation-chart?x=1&y=2', 'https://benchcard.app/7-player-basketball-rotation-chart?x=1&y=2'],
   ]) {
@@ -257,4 +258,13 @@ test('wrangler.jsonc runs the Worker first and lists both custom domains, and on
     { pattern: 'benchcard.app', custom_domain: true },
     { pattern: 'www.benchcard.app', custom_domain: true },
   ], 'routes replaces the Worker\'s domains on deploy: list the apex as well as www, and nothing else');
+});
+
+/* wrangler 4.151 defaults `workers_dev` to `routes.length === 0` and falls
+   `preview_urls` back to it, so adding `routes` alone turns both off on the
+   next deploy. */
+test('wrangler.jsonc keeps *.workers.dev and per-branch preview URLs on', () => {
+  const cfg = wranglerConfig();
+  assert.equal(cfg.workers_dev, true, 'workers_dev must be explicit: routes makes wrangler default it to false');
+  assert.equal(cfg.preview_urls, true, 'preview_urls must be explicit: it follows workers_dev, which routes turns off');
 });

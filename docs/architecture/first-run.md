@@ -48,8 +48,10 @@ in the app rather than two. The six roster-size landing pages link in with
 card — somebody who clicked "see this as a card" asked for the card, not for a
 filled-in box and three steps, so it also still flashes how to remove what it
 made. It is read
-only when there is no team and stripped from the URL
-immediately: it carries one integer and nothing about anybody, and it is not a
+on every load and stripped from the URL at once. A coach with no team gets the
+sample. A coach who already has one keeps their team, and a toast says *You
+already have a team, so the sample team wasn't loaded.* so the link does not
+look broken. It carries one integer and nothing about anybody, and it is not a
 URL share — there is still no way to put a coach's roster in a link, and there
 must not be.
 

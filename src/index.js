@@ -97,7 +97,7 @@ export default {
        apex first, path and query kept (a www `?try=7` link still works), and
        before anything else: no beacon recorded, no asset served. Only the
        custom domain matches; the *.workers.dev preview is left alone. */
-    if (url.hostname === 'www.benchcard.app') {
+    if (url.hostname.replace(/\.$/, '') === 'www.benchcard.app') { // `www.benchcard.app.` is the same host
       return Response.redirect('https://benchcard.app' + url.pathname + url.search, 301);
     }
 

@@ -36,6 +36,12 @@
     { "pattern": "benchcard.app", "custom_domain": true },
     { "pattern": "www.benchcard.app", "custom_domain": true }
   ],
+  /* Explicit because `routes` changes the defaults: wrangler turns
+     `workers_dev` on only when there are no routes, and `preview_urls` follows
+     it, so with the routes above and neither line here the next deploy would
+     switch off *.workers.dev and the per-branch preview URLs. */
+  "workers_dev": true,
+  "preview_urls": true,
   "build": { "command": "node scripts/build.mjs" },
   "assets": {
     "directory": "dist",
@@ -55,9 +61,9 @@
   // Workers Logs. Declared here rather than left to the dashboard toggle
   // because every deploy reconciles the Worker against this file -- a setting
   // that only exists in the dashboard gets reset the next time Cloudflare
-  // builds from the repo. Sample everything: this is a static site with no
-  // Worker code, so the invocation volume is the traffic volume, and at that
-  // scale a partial sample buys nothing and hides the 404s worth seeing.
+  // builds from the repo. Sample everything: with `run_worker_first` every
+  // asset request is a Worker invocation, so volume is traffic volume, and at
+  // this scale a partial sample buys nothing and hides the 404s worth seeing.
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1

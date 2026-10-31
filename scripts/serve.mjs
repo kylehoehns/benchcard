@@ -36,7 +36,7 @@
  * (AGENTS.md § Deploy), so a local run matches a deploy. */
 import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
-import { join, extname, resolve, dirname, basename } from 'node:path';
+import { join, extname, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripCssComments, precachedFiles, shellDigest, stampShell } from './build.mjs';
 
@@ -106,9 +106,15 @@ export function serve(port = 0, appDir = APP) {
         res.writeHead(200, { 'content-type': TYPES['.js'] }).end(sw);
         return;
       }
-      /* Cloudflare's file names are case-sensitive; a Mac's disk is not, and
-         `/ABOUT` would find about.html here and 200 where production 404s. */
-      if (!(await readdir(dirname(abs))).includes(basename(abs))) throw new Error('no such file');
+      /* Cloudflare's paths are case-sensitive; a Mac's disk is not, and
+         `/ABOUT` or `/VENDOR/x.js` would be found here and 200 where
+         production 404s. So every segment under appDir is checked, not just
+         the last. */
+      let dir = appDir;
+      for (const seg of abs.slice(appDir.length).split(sep).filter(Boolean)) {
+        if (!(await readdir(dir)).includes(seg)) throw new Error('no such file');
+        dir = join(dir, seg);
+      }
       const body = await served(file, appDir);
       res.writeHead(200, { 'content-type': TYPES[extname(abs)] || 'application/octet-stream' });
       res.end(body);

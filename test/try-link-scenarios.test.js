@@ -26,6 +26,12 @@ describe('a coach follows a ?try= link from a chart page', { skip }, () => {
     assert.deepEqual(await coach.rosterNames(), ['Maya Webb', 'Jo Park']);
   });
 
+  test('only try is removed from the address; other query parameters stay', async () => {
+    await coach.onTeamScreen(['Maya Webb', 'Jo Park']);
+    await coach.openAt('/?try=7&x=1');
+    assert.equal(await coach.address(), '/?x=1');
+  });
+
   test('a coach with nothing saved still gets the sample team', async () => {
     await coach.openFreshAt('/?try=7');
 

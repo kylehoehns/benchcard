@@ -57,6 +57,19 @@ body {
   text-decoration: none; border: 1px solid transparent;
   background: var(--accent); color: var(--accent-ink);
 }
+/* Hardwood, as about.html does it (#231, #332): tokens.css leaves --accent at
+   Graphite, so the accent points at the tint. `html:root[...]` outranks the
+   dark and more-contrast blocks whatever order they load in. */
+html:root[data-tint="hardwood"] {
+  --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
+  --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
+  --accent-text: var(--tint);
+}
+html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B04308; }
+@media (prefers-contrast: more) {
+  html:root:not([data-theme="dark"])[data-tint="hardwood"],
+  html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
+}
 h1 {
   font-size: min(clamp(1.8rem, 7vw, 2.5rem), 13vw); line-height: 1.08; letter-spacing: -.04em;
   font-weight: 700; margin: 1.6rem 0 1.2rem; overflow-wrap: anywhere;
