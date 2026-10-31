@@ -303,10 +303,28 @@ test('property: a starting five the coach named is the five that starts', () => 
     checked++;
     const on = p.stints[0].onFloor;
     const missing = five.filter(id => !on.includes(id));
-    assert.ok(!missing.length || p.issues.length,
-      `scenario ${n}: ${missing.join(', ')} named to start but did not, silently`);
+    assert.deepEqual(missing, [], `scenario ${n}: ${missing.join(', ')} named to start but did not`);
   }
   assert.ok(checked > 20, `only ${checked} scenarios named a starting five`);
+});
+
+test('property: a Last-period five the coach named is on the floor for the last period\'s first stint', () => {
+  let checked = 0;
+  for (let n = 1; n <= 400; n++) {
+    const sc = scenario(n);
+    const five = (sc.constraints.lastPeriodFive || []).filter(id => sc.availableIds.includes(id));
+    if (!five.length || sc.strategy === 'platoon') continue;
+    const p = generatePlan(sc);
+    if (!p.ok || !p.stints.length) continue;
+    // the first stint of the last regulation period, whatever overtime follows it
+    const last = sc.format.periods;
+    const row = p.stints.find(r => r.period === last);
+    if (!row) continue;
+    checked++;
+    const missing = five.filter(id => !row.onFloor.includes(id));
+    assert.deepEqual(missing, [], `scenario ${n}: ${missing.join(', ')} named for the last period but not on its first stint`);
+  }
+  assert.ok(checked > 20, `only ${checked} scenarios named a Last-period five`);
 });
 
 test('property: with nothing else asked for, bench time is shared evenly', () => {

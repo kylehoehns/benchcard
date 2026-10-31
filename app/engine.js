@@ -406,14 +406,40 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
         err('CLOSERS_AVOID', `${label(a)} and ${label(b)} are both set to close but are set Apart.`, [a, b]);
       }
     }
-    const closeMinutes = stints.slice(-c.closing.stints).reduce((a, x) => a + x.minutes, 0);
-    for (const id of c.closing.players) {
-      const mx = c.maxMinutes[id];
-      if (mx != null && mx < closeMinutes) {
-        warn('CLOSER_OVER_CAP', `${label(id)} is set to close (${fmtMinutes(closeMinutes)} min) but is capped at ${mx}.`, [id]);
-      }
-    }
   }
+
+  /* What is pinned to each stint comes from buildForced alone, so this and the
+     solver cannot disagree (#436). A pin the cap cannot cover is refused here;
+     the search never gets to drop it quietly. */
+  const forced = buildForced(stints, c, { periods });
+  for (const id of avail) {
+    const mx = c.maxMinutes[id];
+    if (mx == null) continue;
+    const pinnedMin = stints.reduce((a, s, i) => (forced[i].has(id) ? a + s.minutes : a), 0);
+    if (mx >= pinnedMin || issues.some(i => i.code === 'FORCED_OVER_CAP' && i.playerIds.includes(id))) continue;
+    const why = [c.openingFive.includes(id) && 'set to start',
+                 c.lastPeriodFive.includes(id) && 'set to start the last period',
+                 c.closing?.players.includes(id) && 'set to close'].filter(Boolean);
+    err('PINS_OVER_CAP', `${label(id)} is ${andList(why)} (${fmtMinutes(pinnedMin)} min) but is capped at ${mx}.`, [id]);
+  }
+
+  /* One stint can be pinned by two groups at once, which no single group's size
+     shows. Only reported when no one group is already too big or Apart. */
+  const groups = [c.openingFive, c.lastPeriodFive, c.closing ? c.closing.players : []];
+  const seenApart = new Set();
+  let reportedBig = false;
+  forced.forEach(set => {
+    if (set.size > ON_FLOOR && groups.every(g => g.length <= ON_FLOOR) && !reportedBig) {
+      reportedBig = true;
+      err('FORCED_GROUP_TOO_BIG', `${set.size} players are pinned to the same stint but only ${ON_FLOOR} fit. Check who is set to start, to start the last period or to close.`, [...set]);
+    }
+    for (const [a, b] of combinations([...set], 2)) {
+      if (!avoidSet.has(pairKey(a, b)) || seenApart.has(pairKey(a, b))) continue;
+      seenApart.add(pairKey(a, b));
+      if (groups.some(g => g.includes(a) && g.includes(b))) continue;
+      err('FORCED_GROUP_AVOID', `${label(a)} and ${label(b)} are both pinned to the same stint but are set Apart.`, [a, b]);
+    }
+  });
 
   /* A pinned five naming neither of them has no seat left to give, and no
      amount of searching invents one -- arithmetic, so an error, not a cost. */
@@ -711,6 +737,7 @@ export function generatePlan(input) {
   ctx.balanceTargets = balanceTargets(ctx, input.balance);
 
   const forcedByStint = buildForced(stints, c, format);
+  ctx.forced = forcedByStint;
   let lineups;
   if (input.strategy === 'platoon' && c.units.length) {
     // the coach has already decided the fives; there is nothing to optimize
@@ -752,7 +779,7 @@ export function generatePlan(input) {
   }
 
   // platoon alternates whole fives by definition; see the churn report in `finish`
-  return finish(lineups, ctx, issues, { players, short, seed, stints, c,
+  return finish(lineups, ctx, issues, { players, short, seed, stints, c, periods: format.periods,
     platoon: input.strategy === 'platoon' && c.units.length > 0 });
 }
 
@@ -778,8 +805,10 @@ function platoonLineups(ctx, units) {
   return ctx.stints.map((s, i) => units[(s.index ?? i) % units.length].slice(0, ON_FLOOR));
 }
 
-function legalWith(id, chosen, ctx, minutes, stintLen, onStreak) {
-  if (minutes[id] + stintLen > ctx.capOf(id) + 1e-9) return false;
+/* `held`: minutes this player is pinned to in later stints. Seating them in an
+   unpinned stint is legal only if those still fit under the cap (#436). */
+function legalWith(id, chosen, ctx, minutes, stintLen, onStreak, held = 0) {
+  if (minutes[id] + stintLen + held > ctx.capOf(id) + 1e-9) return false;
   // a player who has already held the floor for the maximum run has to sit
   if (ctx.maxConsecutive && onStreak && onStreak[id] >= ctx.maxConsecutive) return false;
   for (const other of chosen) {
@@ -809,6 +838,10 @@ function greedy(ctx, forcedByStint, rng) {
     const len = stints[s].minutes;
     const remainingAfter = stints.slice(s + 1).reduce((a, x) => a + x.minutes, 0);
 
+    // pinned minutes still ahead are held back from an unpinned seat's cap
+    const held = id => (forcedByStint[s].has(id) ? 0
+      : stints.reduce((a, x, j) => (j > s && forcedByStint[j].has(id) ? a + x.minutes : a), 0));
+
     const chosen = [];
     for (const id of forcedByStint[s]) {
       if (chosen.length < ON_FLOOR && legalWith(id, chosen, ctx, minutes, len, null)) chosen.push(id);
@@ -819,7 +852,7 @@ function greedy(ctx, forcedByStint, rng) {
     for (const id of avail) {
       if (chosen.length >= ON_FLOOR || chosen.includes(id)) continue;
       const need = ctx.minOf(id) - minutes[id];
-      if (need > 0 && need > remainingAfter && legalWith(id, chosen, ctx, minutes, len, onStreak)) chosen.push(id);
+      if (need > 0 && need > remainingAfter && legalWith(id, chosen, ctx, minutes, len, onStreak, held(id))) chosen.push(id);
     }
 
     const scores = {};
@@ -845,7 +878,7 @@ function greedy(ctx, forcedByStint, rng) {
         if ((a === id && chosen.includes(b)) || (b === id && chosen.includes(a))) bonus += 6;
       }
       if (bonus) scores[id] += bonus;
-      if (legalWith(id, chosen, ctx, minutes, len, onStreak)) chosen.push(id);
+      if (legalWith(id, chosen, ctx, minutes, len, onStreak, held(id))) chosen.push(id);
     }
 
     // If caps or avoids starved the lineup, fall back to anyone legal on avoids
@@ -859,7 +892,7 @@ function greedy(ctx, forcedByStint, rng) {
       }
     }
 
-    const repaired = repairChurn(prev, chosen, scores, forcedByStint[s], ctx, minutes, len, onStreak);
+    const repaired = repairChurn(prev, chosen, scores, forcedByStint[s], ctx, minutes, len, onStreak, held);
 
     for (const id of avail) {
       if (repaired.includes(id)) { minutes[id] += len; sitStreak[id] = 0; onStreak[id] += 1; }
@@ -876,7 +909,7 @@ function greedy(ctx, forcedByStint, rng) {
 
 // Keep continuity on the floor: swap newcomers back out for holdovers until the
 // number of changes lands inside [minSubs, maxSubs].
-function repairChurn(prev, chosen, scores, forced, ctx, minutes, len, onStreak) {
+function repairChurn(prev, chosen, scores, forced, ctx, minutes, len, onStreak, held) {
   if (!prev) return chosen;
   const sel = chosen.slice();
   const maxSubs = ctx.maxSubs;
@@ -894,7 +927,7 @@ function repairChurn(prev, chosen, scores, forced, ctx, minutes, len, onStreak) 
     for (const out of newcomers) {
       for (const back of holdovers) {
         const trial = sel.filter(id => id !== out);
-        if (legalWith(back, trial, ctx, minutes, len, onStreak)) {
+        if (legalWith(back, trial, ctx, minutes, len, onStreak, held(back))) {
           sel.splice(sel.indexOf(out), 1, back);
           done = true;
           break;
@@ -915,7 +948,7 @@ function repairChurn(prev, chosen, scores, forced, ctx, minutes, len, onStreak) 
     for (const out of droppable) {
       for (const inc of bench) {
         const trial = sel.filter(id => id !== out);
-        if (legalWith(inc, trial, ctx, minutes, len, onStreak)) {
+        if (legalWith(inc, trial, ctx, minutes, len, onStreak, held(inc))) {
           sel.splice(sel.indexOf(out), 1, inc);
           done = true;
           break;
@@ -1129,6 +1162,15 @@ function cost(lineups, ctx) {
     if (short > 0) c += short * 1000;
     const over = m[id] - ctx.capOf(id);
     if (over > 0) c += over * 1000;
+  }
+
+  /* A pin is the coach's word: a pinned kid off the floor in a stint they are
+     pinned to costs what a busted cap does, so the search repairs the miss
+     (#436). Platoon never reaches here, and applies no pins. */
+  if (ctx.forced) {
+    lineups.forEach((lu, i) => {
+      for (const id of ctx.forced[i]) if (!lu.includes(id)) c += ctx.stints[i].minutes * 1000;
+    });
   }
 
   // consecutive sits, and churn outside the sub window
@@ -1399,7 +1441,7 @@ function localSearch(lineups, ctx, forcedByStint, rng, iterations) {
  * result assembly
  * ------------------------------------------------------------------ */
 function finish(lineups, ctx, issues, meta) {
-  const { players, short, seed, stints, c, platoon } = meta;
+  const { players, short, seed, stints, c, platoon, periods } = meta;
   const byId = new Map(players.map(p => [p.id, p]));
   const label = id => byId.get(id)?.name || id;
   const minutes = minutesOf(lineups, ctx);
@@ -1451,6 +1493,28 @@ function finish(lineups, ctx, issues, meta) {
       issues.push({
         severity: 'warn', code: 'CAP_EXCEEDED', playerIds: [id],
         message: `${label(id)} is at ${fmtMinutes(minutes[id])} minutes against a ${cap}-minute cap — there was no legal lineup that kept them under it.`,
+      });
+    }
+  }
+
+  /* A pin the search still missed, which feasibility could not see. One issue
+     per group, naming everyone left out. Each group is run through buildForced
+     alone, so which stints it pins is still decided in one place. Platoon is
+     exempt: it applies no pins, the units are the coach's. */
+  if (!platoon) {
+    const none = { openingFive: [], lastPeriodFive: [], closing: null };
+    for (const [code, say, only] of [
+      ['OPENING_MISSED', 'is set to start', { openingFive: c.openingFive }],
+      ['LAST_PERIOD_MISSED', 'is set to start the last period', { lastPeriodFive: c.lastPeriodFive }],
+      ['CLOSER_MISSED', 'is set to close', { closing: c.closing }],
+    ]) {
+      const pinned = buildForced(stints, { ...none, ...only }, { periods });
+      const missed = ctx.avail.filter(id => pinned.some((set, i) => set.has(id) && !lineups[i].includes(id)));
+      if (!missed.length) continue;
+      const one = missed.length === 1;
+      issues.push({
+        severity: 'warn', code, playerIds: missed,
+        message: `${andList(missed.map(label))} ${one ? say : say.replace('is', 'are')} but ${one ? 'is' : 'are'} not on the floor for it — no legal lineup kept them there.`,
       });
     }
   }
