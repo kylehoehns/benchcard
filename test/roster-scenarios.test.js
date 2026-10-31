@@ -92,6 +92,25 @@ describe('a coach builds their roster', { skip }, () => {
     assert.equal(await coach.warning(), '');
   });
 
+  test('a #0 and a #00 can share a team, and the card printed by number tells them apart', async () => {
+    await coach.onGameDay();
+    await coach.tap('Team Smoke Test · 11 players ›');
+    await coach.tap('Paste a list');
+    await coach.fill('Your roster, one player per line', '0 Zoe Kim\n00 Mateo Garcia');
+    assert.equal(await coach.pasteNote(), '2 players: Zoe Kim #0 and Mateo Garcia #00.');
+    await coach.tap('Add 2 players');
+    assert.equal(await coach.warning(), '');
+
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Card');
+    await coach.tap('Share or hand off');
+    await coach.choose('Names', 'Jersey numbers');
+    await coach.tap('Close');
+    const printed = (await coach.cardFives()).flat();
+    assert.ok(printed.includes('00'), `Mateo Garcia's #00 is on the card: ${printed}`);
+  });
+
   test('removing a player can be undone, and focus moves to the next row', async () => {
     await coach.onTeamScreen(['Maya Webb', 'Eli Tran', 'Devon Ellis']);
     await coach.openPlayer('Eli Tran');

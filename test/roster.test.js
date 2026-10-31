@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseRosterLine, parseRoster, dropIndex, callNames, duplicateNumbers, repeatIndexes,
-  focusAfterRemoval, confirmAddLabel, rosterPreview, dropRepeat, repeatNotice, distinctNames } from '../app/roster.js';
+  focusAfterRemoval, confirmAddLabel, rosterPreview, dropRepeat, repeatNotice, distinctNames, jerseyKey } from '../app/roster.js';
 
 const p = s => parseRosterLine(s);
 
@@ -406,4 +406,30 @@ test('a line that is only a bullet is dropped, and a header after a blank line i
 
 test('a header-looking first line is kept when no other line is a player', () => {
   assert.deepEqual(parseRoster('Name\n-'), [{ number: '', name: 'Name' }]);
+});
+
+/* #418: "00" is a real jersey, distinct from "0". Zeros are stripped only
+ * before a non-zero digit; an all-zero number keeps its length, 3+ collapse to "00". */
+test('the parser keeps 00 as 00, 0 as 0, and still reads 07 as 7', () => {
+  assert.deepEqual(p('00 Mateo Garcia'), { number: '00', name: 'Mateo Garcia' });
+  assert.deepEqual(p('0 Zoe Kim'), { number: '0', name: 'Zoe Kim' });
+  assert.deepEqual(p('07 Zed'), { number: '7', name: 'Zed' });
+  assert.deepEqual(p('Mateo Garcia #00'), { number: '00', name: 'Mateo Garcia' });
+});
+
+test('#0 and #00 are not duplicates, two #00s are, and 007 is 7', () => {
+  assert.deepEqual(dn([['0', 'A'], ['00', 'B']]), []);
+  assert.deepEqual(dn([['00', 'A'], ['00', 'B']]), [{ number: '00', ids: ['p0', 'p1'] }]);
+  assert.deepEqual(dn([['000', 'A'], ['00', 'B']]), [{ number: '00', ids: ['p0', 'p1'] }]);
+  assert.deepEqual(dn([['007', 'A'], ['7', 'B']]), [{ number: '7', ids: ['p0', 'p1'] }]);
+});
+
+test('two players of one name wearing 0 and 00 are told apart as #0 and #00', () => {
+  const players = [{ id: 'a', name: 'Sam Lee', number: '0' }, { id: 'b', name: 'Sam Lee', number: '00' }];
+  assert.deepEqual(distinctNames(players), { a: 'Sam Lee #0', b: 'Sam Lee #00' });
+});
+
+test('jerseyKey strips zeros only before a non-zero digit and collapses 3+ zeros to 00', () => {
+  const got = ['0', '00', '000', '07', '007', '7', ' 10 ', '', null].map(jerseyKey);
+  assert.deepEqual(got, ['0', '00', '00', '7', '7', '7', '10', '', '']);
 });
