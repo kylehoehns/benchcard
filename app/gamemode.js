@@ -655,7 +655,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
      freeze pinned BEFORE any swap does not, as #247 decision 10 had it. `#gmReset`
      stays on the key list on purpose -- it is the escape hatch, and offering it
      for a no-op edit costs nothing. */
-  const firstHand = Math.min(...handed);
+  const firstHand = handed.length ? Math.min(...handed) : Infinity;
   const moved = Object.entries(live.overrides).filter(([k, five]) => {
     const s = p.stints[k];
     return Number(k) >= firstHand && s && [...five].sort().join() !== [...s.onFloor].sort().join();

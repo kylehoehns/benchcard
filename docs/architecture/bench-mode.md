@@ -215,14 +215,16 @@ goes to the restored player's own button. Each button's accessible name is
 "Here now, {full name}".
 
 Reality diverges from the plan, so a swap here **overrides** the plan for the
-current stint or the rest of the game rather than re-solving underneath the
-coach mid-game. Overrides persist per game and can be reset back to the plan,
+current stint or the rest of the game. A **This stint** swap then re-plans the
+stints after it with `resolveRest` so minutes stay even (#247), and its toast
+says the rest of the game was re-planned (#415); one Undo takes back both.
+Overrides persist per game and can be reset back to the plan,
 except that a pinned overtime stint goes back to its stored five and an Even
 out overtime is planned again as Even out
 ([planning-strategies.md](planning-strategies.md)).
 
-There is a third scope, **"Sit for the rest"**, and it is the one case where the
-app does re-solve: the picked player is out for the rest of the game and
+There is a third scope, **"Sit for the rest"**, and there the re-solve is the
+whole point: the picked player is out for the rest of the game and
 `resolveRest` (`state.js`) asks the solver to cover the remaining stints
 honouring what everyone has already played. It needs no replacement pick —
 *who* is the question it answers, not a precondition of asking it. On the
@@ -257,7 +259,9 @@ out is planned as Even under any strategy (#369).
 Any change in bench mode makes the card in the coach's pocket stale, so the
 line under the bar says how many stints no longer match it — counted against
 the printed plan rather than off the override keys, since a re-solve often
-rewrites a stint with the five it already had.
+rewrites a stint with the five it already had. The count starts at the first
+hand-swapped stint (#415): a played stint the attendance freeze pinned before
+any swap still matches the card, so it is not counted.
 
 This is the one caller of `generatePlan`'s `stints` input, which exists because
 a mid-game remainder frequently is not describable as any `{periods,
