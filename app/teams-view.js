@@ -648,9 +648,9 @@ export function renderTabs() {
  * the answer is "same as last time" (N8: always skippable).
  *
  * `newGame(len, lastGame(), settings)` builds the draft at OPEN, and both
- * "Use it" (step 1's card) and "Plan it" (step 3) commit that same object.
- * There is no second copy path, which is what makes "Use it" and walking all
- * three steps without changing anything land on identical games.
+ * "Plan it" (step 3) commits that object; "Use it" (step 1's card) commits
+ * a fresh one from the same `freshDraft()` (#428), so it adds what the card
+ * names. Walking all three steps unchanged lands on the same game.
  *
  * The steps themselves are one list below -- the question each one asks
  * beside the builder that fills its body -- so a heading and its content
@@ -667,6 +667,23 @@ const STEPS = FLOW_STEPS.length;
 let draft = null;
 let draftTeam = null; // the team `draft` was started on
 let flowStep = 1;
+
+/* The draft a brand-new Add a game starts from, and the one the "Same as"
+   card commits (#428). #101 item 2: defaults to the team's LAST day (not
+   necessarily the open one), same day `sameAsLast()` and `lastGame()` read.
+   #126: no days at all -- `newGame(0, null, ...)`, dated today (`seasonDate`). */
+function freshDraft() {
+  const days = team().days;
+  const last = days[days.length - 1];
+  const d = last
+    ? newGame(last.games.length, last.games[last.games.length - 1], state.settings)
+    : newGame(0, null, state.settings);
+  d.date = last ? last.date : seasonDate();
+  return d;
+}
+
+// Carryover is on only when the date already has a day (step 1's Date field).
+const carriesOver = date => team().days.some(d => d.date === date);
 
 /* I1: resume rather than restart when `draft` survived the last close. It
    survives by default -- it is module state, and the close Chrome will not
@@ -691,23 +708,7 @@ function openAddGame(trigger) {
   if (draft && draftTeam !== team().id) draft = null;
   if (!draft) {
     draftTeam = team().id;
-    // #101 item 2: defaults to the team's LAST day (not necessarily the
-    // open one -- a coach can be viewing an earlier day's game when she
-    // taps Add a game), same day `sameAsLast()` and `lastGame()` already
-    // read for the shortcut card below.
-    const days = team().days;
-    const last = days[days.length - 1];
-    // #126: no days at all -- the first game a coach who removed the last
-    // one adds back. Same draft a brand-new team gets (`newGame(0, null,
-    // ...)`, `newTeam`), dated today (`seasonDate`, never a second
-    // formatter).
-    if (last) {
-      draft = newGame(last.games.length, last.games[last.games.length - 1], state.settings);
-      draft.date = last.date;
-    } else {
-      draft = newGame(0, null, state.settings);
-      draft.date = seasonDate();
-    }
+    draft = freshDraft();
     flowStep = 1;
   }
   rememberTrigger(d, trigger);
@@ -734,8 +735,8 @@ function paintFlow() {
 /* Step 1. The two fields write straight into the draft, so what is typed
    survives stepping forward and back, and is what the discard ask is about.
    The card underneath is the one-tap path (N8): `sameAsLast()` has already
-   decided whether there is anything worth copying, and "Use it" commits the
-   very draft `openAddGame` built -- no second copy. */
+   decided whether there is anything worth copying, and "Use it" commits a
+   fresh `freshDraft()` -- the one `openAddGame` builds -- plus these fields. */
 function stepWho(wrap) {
   // #101 item 2: the Date field, above Opponent and Tip-off -- `min` is
   // today (`seasonDate`, never a second formatter), and changing it
@@ -743,7 +744,7 @@ function stepWho(wrap) {
   // does: on, only when the target date already has a day (so already has
   // a game), off for a date that would start a new day.
   const [dateField, dateInput] = flowField('input', 'Date', draft.date, null,
-    v => { draft.date = v; draft.useCarryover = team().days.some(d => d.date === v); }, 'date');
+    v => { draft.date = v; draft.useCarryover = carriesOver(v); }, 'date');
   dateInput.min = seasonDate();
   const [opponent] = flowField('input', 'Opponent', draft.label, 'Panthers',
     v => { draft.label = v; });
@@ -759,7 +760,13 @@ function stepWho(wrap) {
      what the button used to. */
   const card = el('button', 'flow-card press');
   card.type = 'button';
-  card.onclick = commitFlow;
+  // #428: the card adds the game it names, so steps 2 and 3's edits are
+  // dropped; what step 1 shows beside it (date, opponent, tip-off) is kept.
+  card.onclick = () => {
+    const { date, label, tipoff } = draft;
+    draft = Object.assign(freshDraft(), { date, label, tipoff, useCarryover: carriesOver(date) });
+    commitFlow();
+  };
   // Two flex children, so "Use it" sits beside the text (app.css).
   const text = el('div', 'flow-card-text');
   text.append(el('p', 'flow-card-t', same.title), el('p', 'flow-card-s', same.summary));

@@ -36,6 +36,36 @@ describe('a coach shapes the day', { skip }, () => {
     assert.deepEqual(await coach.todayGames(), day);
   });
 
+  /* #428: the card names the last game ("Same as 11:30 AM? 11 players, 4 × 8,
+     even minutes"). Steps 2 and 3 edit the draft; tapping the card after
+     going Back must still add the game it names, not the edited draft. */
+  const sameAsCard = async () => (await coach.controls()).find(n => n.startsWith('Same as'));
+
+  test('the Same as card adds the game it names, not the draft edited on later steps', async () => {
+    await coach.onGameDay();
+    await coach.tap('Add a game');
+    assert.match(await sameAsCard(), /11 players, 4 × 8, even minutes/);
+    await coach.tap('Next');
+    await coach.tap('Marcus Williams');
+    await coach.tap('Next');
+    await coach.tap('Closers Even minutes early, then your closing group finishes the game.');
+    await coach.tap('Back');
+    await coach.tap('Back');
+    await coach.tap(await sameAsCard());
+    assert.ok(await coach.sees('Who\'s here, 11 players'), 'the added game has the card\'s 11 players');
+    assert.ok(await coach.sees('Format, 4 × 8'));
+    assert.ok(await coach.sees('Plan, even minutes'), 'the added game has the card\'s strategy');
+  });
+
+  test('an opponent typed before tapping the Same as card is on the game it adds', async () => {
+    await coach.onGameDay();
+    await coach.tap('Add a game');
+    await coach.fill('Opponent', 'Owls');
+    await coach.tap(await sameAsCard());
+    assert.equal(await coach.text('#gameTitle'), 'Owls');
+    assert.ok(await coach.sees('Who\'s here, 11 players'));
+  });
+
   test('changing a game\'s opponent and tip-off reorders Today, and stays after reopening', async () => {
     await coach.onGameDay();
     await coach.tap('Ravens, 11:30 AM, planned');
