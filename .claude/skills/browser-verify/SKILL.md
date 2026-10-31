@@ -90,8 +90,3 @@ readout is not a parsing bug, it is most of the palette.**
   model. A clean desktop-WebKit run clears nothing about an iPhone bug; there
   is no simulator on this machine. Do not claim a device test you cannot run.
 - Naming one engine as sufficient is a confession, not a justification.
-
-## 7. Before you commit
-
-If a precached file changed, run `npm run sw:bump` — the rule and the reason are in `AGENTS.md`
-§ Traps, which owns it because it applies whether or not you opened a browser.

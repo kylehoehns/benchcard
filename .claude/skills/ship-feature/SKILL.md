@@ -60,8 +60,7 @@ quality pass still runs; the reuse and efficiency passes do not.
 A change is **small** when all three hold:
 
 - it changes **at most 20 lines outside `test/` and `docs/`** (`app/`,
-  `scripts/`, `.claude/`, config). The `sw.js` version bump from `npm run
-  sw:bump` does not count;
+  `scripts/`, `.claude/`, config);
 - it changes no logic in the four pure modules `AGENTS.md` § Rules names, nor
   in `state.js` or `live.js`;
 - after step 2's grilling, the issue says what "done" looks like, with a
@@ -143,7 +142,7 @@ The PR body says it switched.
    - **Surfaces** — the files that change, and the ones that must not.
    - **Constraints** — the `AGENTS.md` rules this touches, applied rather than
      restated (the card, mobile first, the privacy claim, the four pure
-     modules, the precache bump), and every **"reuse X / do not re-derive Y"**.
+     modules), and every **"reuse X / do not re-derive Y"**.
    - **Design** — what gets built.
    - **Proof** — the **seams** `/tdd` builds at, agreed here so the build can
      run unattended: for each, where the test runs from (a module's exports
@@ -174,8 +173,7 @@ The PR body says it switched.
    into — they go to the developer **verbatim, up front**, not buried in prose.
 
 5. **`developer`** builds it test-first, with `/tdd`, over the seams in the
-   spec's **Proof**. Its prompt carries the spec path, those constraints, and
-   one instruction: if a precached file changes, run `npm run sw:bump`. Each
+   spec's **Proof**. Its prompt carries the spec path and those constraints. Each
    coach-facing slice starts from a red scenario (`AGENTS.md` § Test seams).
    Wait until it reports each slice's test and the failure it saw before the
    code existed, and a green `npm test`. A slice whose reported failure is an
@@ -342,9 +340,7 @@ parallel, and each is still one issue, one spec (or small-lane brief) and one PR
   watch again. Otherwise, or if the rerun fails too, treat it as a real
   break: file an issue naming the run and the failing test, and merge nothing
   more until it is understood.
-- **After each merge, the next lane rebases onto `main`,** then runs `npm run
-  sw:bump`. `AGENTS.md` § Traps says what the merge driver clears and when
-  `npm test` alone is enough to prove the rebase.
+- **After each merge, the next lane rebases onto `main`,** then proves again.
 - **Remove the worktree** once its PR is merged.
 
 Step 13's "do not merge" is the default; only the human's word for this batch

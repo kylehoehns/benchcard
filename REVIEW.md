@@ -57,8 +57,6 @@ Two consequences worth stating, because both have teeth:
 - A generated file edited by hand: `app/vendor/**`, or any of the six
   `app/*-player-basketball-rotation-chart.html`.
 - A guard added or changed that has not been shown to go red.
-- A precached file changed without `VERSION` and `SHELL` moving in the same
-  edit.
 
 **Important — fix before merge:**
 

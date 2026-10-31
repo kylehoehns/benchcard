@@ -44,9 +44,8 @@ against.
 - **No dependencies, and nothing compiles the app.** Plain ES modules in
   `app/`; see `AGENTS.md` § Deploy.
   Tests are `test/*.test.js` with `node:assert/strict`; nothing to install.
-- The traps you are most likely to walk into are the four pure modules, the
-  generated files, and the precache bump when a file `app/sw.js` precaches
-  changes. `AGENTS.md` § Traps and § Rules say what to do about each; the
+- The traps you are most likely to walk into are the four pure modules and
+  the generated files. `AGENTS.md` § Traps and § Rules say what to do about each; the
   orchestrator will also hand you the ones this spec touches.
 - Keep every existing assertion, allow map and budget as it is. If green
   seems to need one loosened, report that instead; `AGENTS.md` § Layout says

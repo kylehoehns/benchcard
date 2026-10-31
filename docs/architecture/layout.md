@@ -94,8 +94,8 @@ Everything below is relative to `app/`.
 - `sw.js`, `_headers`, `site.webmanifest`, `robots.txt`, `sitemap.xml`, the
   icons and `vendor/` — the rest of what is served.
 
-Outside it: `test/*.test.js` (`node --test`) and
-`scripts/check-sw-version.mjs`, the CI guard on the service-worker version.
+Outside it: `test/*.test.js` (`node --test`) and the `scripts/` tooling, which
+includes the build (`scripts/build.mjs`) that writes `dist/`.
 
 The suite includes 400-scenario property-based fuzzing of the engine (the
 README carries the test count; it is not repeated here). Generation runs

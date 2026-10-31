@@ -10,38 +10,24 @@ Serve `app/`, not the repo root: the service worker's scope, the manifest's
 `start_url` and every absolute path in it assume `app/` is `/`. ES modules are
 blocked over `file://`, so it has to be served either way.
 
-If you will open PRs, run `npm run setup` once per clone. It registers the git
-merge driver for `app/sw.js`; `AGENTS.md` § Traps says what it does.
-
 ## Testing
 
 `node --test` — no install step, because there are no dependencies.
 `.github/workflows/test.yml` runs it on every push and PR against `main`, on
-Node 22 and 24, with `fail-fast: false` so one red leg does not hide the
-other's result. The repo is private, so the badge above only renders for
+Node 24, one leg. The repo is private, so the badge above only renders for
 someone signed in with access.
 
-There are **seven** CI jobs in total: the `node --test` matrix above, then
-`smoke` (`node scripts/smoke.mjs`, which runs the unit suite inside it and judges the line-coverage floor), `redirect` (`redirect-check.mjs`,
-the service worker behind Cloudflare's trailing-slash 307s), `checks that need history`
-(three steps: service worker version, `check-about-date.mjs` and
-`check-sitemap-lastmod.mjs`) and `vendor drift` (below), plus the weekly `lighthouse scores` (below that). Three of these went unmentioned here for months
-while this paragraph counted to three; if you add an eighth, say so here.
+There are **seven** CI jobs in total: the `node --test` job above, then
+`smoke` (`node scripts/smoke.mjs`, which runs the unit suite inside it and
+judges the line-coverage floor), `evals` (`node scripts/evals.mjs`, which
+checks the harness's evals still pass), `redirect` (`redirect-check.mjs`,
+the service worker behind Cloudflare's trailing-slash 307s), `checks that need
+history` (two steps: `check-about-date.mjs` and `check-sitemap-lastmod.mjs`),
+and `vendor drift` (below), plus the weekly `lighthouse scores` (below that).
+Three of these went unmentioned here for months while this paragraph counted
+to three; if you add an eighth, say so here.
 
-The service-worker version job runs `scripts/check-sw-version.mjs`, which fails when a file in `sw.js`'s
-`PRECACHE` changed in the diff but `VERSION` did not. That mistake cannot be
-caught by a unit test — the tests see one commit and the bug only exists
-between two. It used to cost the worst failure this project has: a returning
-coach served the old shell forever, offline, with nothing to notice. What the
-cache is named and which half of it actually busts are in `AGENTS.md`, which
-owns that rule; this job is what keeps the human-readable half honest across
-commits. Both sides' precache lists count, so removing a file from `PRECACHE`
-needs the bump as well. Run it locally with `node scripts/check-sw-version.mjs
-origin/main`. It exits 0 when there is no base ref to compare against — a first
-push, a shallow clone, a force-push — because a guard that fails on a ref it
-cannot read is a guard people learn to ignore.
-
-The `checks that need history` job also runs `scripts/check-sitemap-lastmod.mjs`,
+The `checks that need history` job runs `scripts/check-sitemap-lastmod.mjs`,
 which fails when a branch changes `app/<page>.html` for a page in the sitemap
 but that page's `<lastmod>` in `sitemap.xml` does not change (a chart page
 changing through `scripts/charts.mjs` is caught the same way, because the
@@ -50,8 +36,9 @@ also passes, as with the about dateline. The sitemap's dates are set once from
 `git log -1 --format=%cs -- <file>` and then kept honest by this check: a
 page that changed must have a new `<lastmod>`, or the crawler's cached copy
 stays stale. Run it locally with `node scripts/check-sitemap-lastmod.mjs
-origin/main`. It exits 0 when there is no base ref to compare against, the same
-guard-learning principle as the service-worker check.
+origin/main`. It exits 0 when there is no base ref to compare against, for the
+same reason as the about dateline check: a guard that fails on a ref it cannot
+read is a guard people learn to ignore.
 
 `.github/workflows/vendor-drift.yml` re-runs `sh app/vendor/fetch.sh` and
 fails if the working tree moves. Committing the output of a script is only
@@ -125,7 +112,7 @@ where `wrangler.jsonc` itself lives. Nothing to install, so no Node version to
 pin.
 
 The dashboard's build command runs the suite: `node --test` exits non-zero on a
-failure, which aborts the deploy. (The CSS step is separate: `wrangler.jsonc`'s
+failure, which aborts the deploy. (The build step is separate: `wrangler.jsonc`'s
 own `build.command` runs inside the deploy and version commands; AGENTS.md
 § Deploy.) A
 red suite should never reach benchcard.app, and this is the cheapest place to
@@ -326,11 +313,11 @@ re-plans from `localStorage`.
 
 Two things about it worth knowing before you change it:
 
-- **The `VERSION` and `SHELL` bump is a rule `AGENTS.md` owns**, along with
-  which of the two actually busts the cache and which guard catches a forgotten
-  bump. It is not restated here. The one detail that belongs to this file
-  rather than that one: `activate` deletes every other `benchcard-*` cache, so
-  a new shell leaves nothing of the old one behind.
+- **The cache name is set by the build.** `AGENTS.md` § Deploy owns how it is
+  computed and what changes it, so it is not restated here. The one detail
+  that belongs to this file rather than that one: `activate` deletes every
+  other `benchcard-*` cache, so a new shell leaves nothing of the old one
+  behind.
 - **`vendor/motion.mjs` imports `vendor/motion.umd.js`.** Missing that
   side-effect import is not a degraded animation — `fx.js` throws, `app.js`
   never runs, and the offline app is a skeleton. `sw.test.js` walks the import

@@ -3,12 +3,13 @@
    serves, so smoke runs against what ships) loses them. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync, cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { stripCssComments as strip, build } from '../scripts/build.mjs';
+import { stripCssComments as strip, build, parsePrecache, precachedFiles, stampShell } from '../scripts/build.mjs';
 import { serve } from '../scripts/serve.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -100,7 +101,7 @@ const files = dir => readdirSync(dir, { recursive: true, withFileTypes: true })
   .filter(e => e.isFile()).map(e => join(e.parentPath ?? e.path, e.name).slice(dir.length + 1)).sort();
 const snapshot = dir => files(dir).map(f => [f, readFileSync(join(dir, f)).toString('base64')]);
 
-test('build copies app/ with only .css files changed, and leaves app/ alone', () => {
+test('build copies app/ with only .css files and sw.js changed, and leaves app/ alone', () => {
   const out = join(tmp(), 'dist');
   const before = snapshot(APP);
   build(APP, out);
@@ -109,7 +110,7 @@ test('build copies app/ with only .css files changed, and leaves app/ alone', ()
     const src = readFileSync(join(APP, f));
     const got = readFileSync(join(out, f));
     if (f.endsWith('.css')) assert.equal(got.toString('utf8'), strip(src.toString('utf8')), f);
-    else assert.ok(got.equals(src), `${f} differs`);
+    else if (f !== 'sw.js') assert.ok(got.equals(src), `${f} differs`);
   }
   assert.ok(files(APP).some(f => f.endsWith('.css')));
   assert.deepEqual(snapshot(APP), before);
@@ -167,4 +168,100 @@ test('serve() returns .css stripped as text/css and everything else unchanged', 
       assert.ok(Buffer.from(await r.arrayBuffer()).equals(readFileSync(join(APP, f))), f);
     }
   } finally { server.stopHard(); }
+});
+
+/* --- 6. the build writes SHELL ------------------------------------------ */
+
+/* The oracle: the algorithm spelled out here, from the spec, over the bytes in
+   `dir`. It must not import the digest it checks. */
+const oracle = (dir, sw) => {
+  const h = createHash('sha256');
+  for (const p of parsePrecache(sw).filter(p => p !== './' && p !== './sw.js').sort()) {
+    h.update(p + '\0');
+    h.update(readFileSync(join(dir, p)));
+    h.update('\0');
+  }
+  return h.digest('hex').slice(0, 12);
+};
+const shellOf = dir => readFileSync(join(dir, 'sw.js'), 'utf8').match(/const SHELL = '([0-9a-f]{12})'/)?.[1];
+const appCopy = () => { const d = join(tmp(), 'app'); cpSync(APP, d, { recursive: true }); return d; };
+const built = src => { const out = join(tmp(), 'dist'); build(src, out); return out; };
+
+test('dist/sw.js holds the digest of the precached files as they sit in dist/', () => {
+  const out = built(APP);
+  const sw = readFileSync(join(out, 'sw.js'), 'utf8');
+  const shell = shellOf(out);
+  assert.ok(shell, 'dist/sw.js has no 12-hex SHELL');
+  assert.equal(shell, oracle(out, sw));
+  assert.ok(sw.includes('const CACHE = `benchcard-${SHELL}`'));
+  const src = readFileSync(join(APP, 'sw.js'), 'utf8');
+  assert.equal(sw, src.replace("const SHELL = 'unbuilt'", `const SHELL = '${shell}'`));
+});
+
+test('SHELL moves when a shipped precached byte moves, and only then', () => {
+  const base = shellOf(built(APP));
+  assert.equal(shellOf(built(APP)), base, 'same tree, different SHELL');
+
+  const js = appCopy();
+  writeFileSync(join(js, 'app.js'), readFileSync(join(js, 'app.js'), 'utf8') + '\n// x\n');
+  assert.notEqual(shellOf(built(js)), base, 'a precached .js edit left SHELL alone');
+
+  const css = appCopy();
+  writeFileSync(join(css, 'app.css'), '/* only a comment changed */\n' + readFileSync(join(css, 'app.css'), 'utf8'));
+  assert.equal(shellOf(built(css)), base, 'a CSS comment moved SHELL');
+
+  const txt = appCopy();
+  writeFileSync(join(txt, 'robots.txt'), readFileSync(join(txt, 'robots.txt'), 'utf8') + '# x\n');
+  assert.equal(shellOf(built(txt)), base, 'an unprecached file moved SHELL');
+});
+
+test('build refuses a sw.js with no SHELL slot', () => {
+  const src = appCopy();
+  const sw = join(src, 'sw.js');
+  writeFileSync(sw, readFileSync(sw, 'utf8').replace("const SHELL = 'unbuilt'", "const SHELL = 'abcdef012345'"));
+  assert.throws(() => build(src, join(tmp(), 'dist')), /SHELL/);
+});
+
+test("serve()'s /sw.js is byte-identical to the built dist/sw.js", async () => {
+  const out = built(APP);
+  const server = await serve(0);
+  try {
+    const r = await fetch(`http://127.0.0.1:${server.address().port}/sw.js`);
+    assert.ok(Buffer.from(await r.arrayBuffer()).equals(readFileSync(join(out, 'sw.js'))));
+  } finally { server.stopHard(); }
+});
+
+test('parsePrecache reads the PRECACHE array even when a `];` closes something above it', () => {
+  const src = "const A = [\n  './x.js',\n];\nconst PRECACHE = [\n  './',\n  './a.js',\n  './sw.js',\n];\nconst LAZY = './lazy.js';\n";
+  assert.deepEqual(parsePrecache(src), ['./', './a.js']);
+});
+
+test('parsePrecache throws on an empty or missing PRECACHE list', () => {
+  assert.throws(() => parsePrecache("const PRECACHE = [\n];\n"), /PRECACHE/);
+  assert.throws(() => parsePrecache("const OTHER = ['./a.js'];\n"), /PRECACHE/);
+});
+
+test('precachedFiles is the hashed set: no ./ and no ./sw.js', () => {
+  const src = "const PRECACHE = [\n  './',\n  './a.js',\n  './sw.js',\n];\n";
+  assert.deepEqual(precachedFiles(src), ['./a.js']);
+});
+
+test('stampShell replaces the slot line, not a comment that quotes it', () => {
+  const src = "// the slot is const SHELL = 'unbuilt' (no semicolon here)\nconst SHELL = 'unbuilt';\n";
+  assert.equal(stampShell(src, 'abc123abc123'),
+    "// the slot is const SHELL = 'unbuilt' (no semicolon here)\nconst SHELL = 'abc123abc123';\n");
+});
+
+test("serve() answers /sw.js with a 500 naming the cause when the SHELL slot is missing", async () => {
+  const src = appCopy();
+  const sw = join(src, 'sw.js');
+  writeFileSync(sw, readFileSync(sw, 'utf8').replace("const SHELL = 'unbuilt'", "const SHELL = 'abcdef012345'"));
+  const server = await serve(0, src);
+  const log = console.error;
+  console.error = () => {};
+  try {
+    const r = await fetch(`http://127.0.0.1:${server.address().port}/sw.js`);
+    assert.equal(r.status, 500);
+    assert.match(await r.text(), /SHELL/);
+  } finally { console.error = log; server.stopHard(); }
 });

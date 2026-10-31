@@ -42,8 +42,6 @@ immediately after you hand back, and that is Phase 2's proof.
 - Do not touch the four pure modules unless the change under refactor is in
   them.
 - Never edit a guard's threshold, an allow map or a budget.
-- If a precached file changes, the precache bump in `AGENTS.md` § Traps
-  applies to you too.
 - Phase 1 only continues into Phase 2 on a green `npm test`; Phase 2 only
   hands back to `/ship-feature` on green targeted runs.
 

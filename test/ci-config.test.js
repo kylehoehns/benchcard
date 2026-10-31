@@ -95,8 +95,8 @@ test('the advisory workflow keeps its path filter, because it is not required', 
  * AGENTS.md § Layout says so in as many words. CI running the suite with
  * `--only` would make a required check named "smoke" report green
  * having audited a single row, which is exactly the "required check that does
- * not test what its name claims" shape `check-sw-version.test.js`'s job-rename
- * trap already guards from the other side.
+ * not test what its name claims" shape the job-name guard above catches from
+ * the other side.
  *
  * Scoped to an invocation of the smoke suite itself (`smoke.mjs`, `npm run
  * smoke` or `npm run-script smoke`) followed by `--only` in the SAME `run:`
