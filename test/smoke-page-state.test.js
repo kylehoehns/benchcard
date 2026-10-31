@@ -18,6 +18,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as pageState from '../scripts/smoke/page-state.mjs';
+import { lacks } from './prose.js';
 import { ROWS } from '../scripts/smoke/registry.mjs';
 
 const { planLanding, BASELINE } = pageState;
@@ -92,7 +93,7 @@ test('land: mobile emulation is the default, and mobile: false reaches the metri
 
 const FACTS = {
   path: '/index.html', readyState: 'complete', views: ['view-today'],
-  booted: true, controlled: true, cardNote: '', days: 1, view: 'games',
+  booted: true, controlled: true, cardNote: '', key: 'benchcard.v7', days: 1, view: 'games',
 };
 const OLD_PREFIX = 'boot wait timed out: document.querySelector(\'.card\') on /index.html ' +
   '(page showed /index.html?x=1, complete, visible views: view-today';
@@ -101,7 +102,7 @@ test('describeBootTimeout: keeps the old message prefix byte for byte and adds t
   const msg = pageState.describeBootTimeout("document.querySelector('.card')", '/index.html',
     { ...FACTS, path: '/index.html?x=1', views: ['view-today'] });
   assert.ok(msg.startsWith(OLD_PREFIX), msg);
-  for (const part of ['booted: yes', 'sw: controlled', 'card note: none', 'record: 1 day(s), view games']) {
+  for (const part of ['booted: yes', 'sw: controlled', 'card note: none', 'record: benchcard.v7, 1 day(s), view games']) {
     assert.ok(msg.includes(part), `${part} missing from: ${msg}`);
   }
   const two = pageState.describeBootTimeout('r', 'w', { ...FACTS, views: ['view-today', 'view-games'] });
@@ -121,6 +122,109 @@ test('describeBootTimeout: an unreadable record, and a card note, are named', ()
     { ...FACTS, record: 'unreadable', cardNote: 'Plan blocked' });
   assert.ok(msg.includes('record: unreadable'), msg);
   assert.ok(msg.includes('card note: "Plan blocked"'), msg);
+});
+
+/* ---------- bootWait, land and describeDocument on a failed boot (#400) ---------- */
+
+const TIMED_OUT = { timedOut: true, ...FACTS, key: 'benchcard.v7', days: 2, view: 'games' };
+const PREFIX = "boot wait timed out: document.querySelector('.card') on /index.html (page showed /index.html, complete, visible views: view-today";
+
+/* A fake CDP client. `evaluate` is what Runtime.evaluate's value is; `nav` is
+   what Page.navigate returns; `frame` is the getFrameTree handler. */
+function fakeClient({ evaluate, nav = { loaderId: 'L1' }, frame, calls = [] }) {
+  return {
+    calls,
+    on: (ev, cb) => { calls.push(['on', ev]); setTimeout(cb, 0); },
+    off: (ev) => calls.push(['off', ev]),
+    send: async (method) => {
+      calls.push([method]);
+      if (method === 'Runtime.evaluate') return { result: { value: evaluate } };
+      if (method === 'Page.navigate') return nav;
+      if (method === 'Page.getFrameTree') return frame ? frame() : { frameTree: { frame: { loaderId: 'L1' } } };
+      return {};
+    },
+  };
+}
+const LAND_READY = "document.querySelector('.card')";
+
+test('bootWait: a timed-out evaluate throws the old prefix plus the page facts', async () => {
+  const c = fakeClient({ evaluate: TIMED_OUT });
+  await assert.rejects(pageState.bootWait(c, LAND_READY, '/index.html'), e => {
+    assert.ok(e.message.startsWith(PREFIX), e.message);
+    assert.ok(e.message.includes('record: benchcard.v7, 2 day(s), view games'), e.message);
+    return true;
+  });
+});
+
+test('bootWait: resolves when the evaluate returns nothing', async () => {
+  await pageState.bootWait(fakeClient({ evaluate: undefined }), LAND_READY);
+});
+
+test('land: a navigate errorText does not throw; a timeout then names it and the document', async () => {
+  const c = fakeClient({ evaluate: TIMED_OUT, nav: { loaderId: 'L1', errorText: 'net::ERR_ABORTED' },
+    frame: () => ({ frameTree: { frame: { loaderId: 'L2' } } }) });
+  await assert.rejects(pageState.land(c, 'http://x', {}), e => {
+    assert.ok(e.message.startsWith(PREFIX), e.message);
+    assert.ok(e.message.endsWith(', navigate error: net::ERR_ABORTED, document: NOT the one navigated to (loader L1 vs L2)'), e.message);
+    return true;
+  });
+  // and with no timeout the same errorText is ignored, as before
+  await pageState.land(fakeClient({ evaluate: undefined, nav: { errorText: 'net::ERR_ABORTED' } }), 'http://x', {});
+});
+
+test('land: a timeout with no navigate error says only the document verdict', async () => {
+  await assert.rejects(pageState.land(fakeClient({ evaluate: TIMED_OUT }), 'http://x', {}), e => {
+    assert.ok(e.message.endsWith(', document: the one navigated to'), e.message);
+    assert.ok(lacks(e.message, 'navigate error'), e.message);
+    return true;
+  });
+});
+
+test('land: an error that is not a boot-wait timeout is rethrown untouched', async () => {
+  const c = fakeClient({ evaluate: undefined });
+  const boom = new Error('socket closed');
+  const send = c.send;
+  c.send = async (m, p) => { if (m === 'Runtime.evaluate') throw boom; return send(m, p); };
+  await assert.rejects(pageState.land(c, 'http://x', {}), e => e === boom && e.message === 'socket closed');
+});
+
+test('land: removes its loadEventFired listener once per navigate', async () => {
+  const calls = [];
+  await pageState.land(fakeClient({ evaluate: undefined, calls }), 'http://x', {});
+  assert.equal(calls.filter(([m, ev]) => m === 'off' && ev === 'Page.loadEventFired').length, 1);
+  const fresh = [];
+  await pageState.land(fakeClient({ evaluate: undefined, calls: fresh }), 'http://x', { freshHistory: true });
+  assert.equal(fresh.filter(([m]) => m === 'off').length, 2);
+});
+
+test('describeDocument: same, different, missing loaderId, rejecting and hanging frame tree', async () => {
+  const d = (nav, frame) => pageState.describeDocument(fakeClient({ evaluate: 0, frame }), nav);
+  assert.equal(await d({ loaderId: 'L1' }), 'the one navigated to');
+  assert.equal(await d({ loaderId: 'L0' }), 'NOT the one navigated to (loader L0 vs L1)');
+  assert.equal(await d({}), 'unknown');
+  assert.equal(await d({ loaderId: 'L1' }, () => { throw new Error('closed'); }), 'unknown');
+  assert.equal(await d({ loaderId: 'L1' }, () => new Promise(() => {})), 'unknown');
+});
+
+test('readRecordFacts: resolves the saved record the way the app does', () => {
+  const store = o => ({ length: Object.keys(o).length, key: i => Object.keys(o)[i], getItem: k => o[k] ?? null });
+  const rf = o => pageState.readRecordFacts(store(o));
+  assert.deepEqual(rf({}), { record: 'none' });
+  assert.deepEqual(rf({ 'benchcard.v7': '{bad' }), { record: 'unreadable', key: 'benchcard.v7' });
+  assert.deepEqual(rf({ 'benchcard.v3': JSON.stringify({ day: {} }), other: 'x' }),
+    { record: 'ok', key: 'benchcard.v3', days: 1, view: undefined });
+  const two = { view: 'games', activeTeam: 1, teams: [{ days: [{}] }, { days: [{}, {}, {}] }] };
+  assert.deepEqual(rf({ 'benchcard.v7': JSON.stringify(two) }),
+    { record: 'ok', key: 'benchcard.v7', days: 3, view: 'games' });
+  assert.equal(rf({ 'benchcard.v7': JSON.stringify({ ...two, activeTeam: 9 }) }).days, 3, 'clamped into range');
+  assert.equal(rf({ 'benchcard.v7': JSON.stringify({ days: [{}, {}] }) }).days, 2, 'no teams: the record is the team');
+  assert.equal(rf({ 'benchcard.v3': '{"days":[]}', 'benchcard.v7': '{"days":[{}]}', 'benchcard.v7.bak': '{}' }).key, 'benchcard.v7', 'highest version, not a .bak');
+});
+
+test('describeBootTimeout: the record key is named, and a card note stays on one line', () => {
+  const msg = pageState.describeBootTimeout('r', 'w', { ...FACTS, key: 'benchcard.v3', cardNote: 'a\n  b\t c ' });
+  assert.ok(msg.includes('record: benchcard.v3, 1 day(s), view games'), msg);
+  assert.ok(msg.includes('card note: "a b c"') && !msg.includes('\n'), msg);
 });
 
 /* ---------- the start fingerprint's verdict (pure half) ---------- */

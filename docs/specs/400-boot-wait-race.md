@@ -39,24 +39,32 @@ All through the smoke lock, on the rebased tree's ancestor (d6665c8):
 1. `describeBootTimeout(ready, where, facts)` (pure, in
    `scripts/smoke/page-state.mjs`) returns the old prefix
    `boot wait timed out: <ready> on <where> (page showed <path>, <readyState>, visible views: <ids joined by ,>`
-   followed by `booted: yes|no`, `sw: controlled|not`, `card note: "<text>"|none`,
-   and `record: <n> day(s), view <v>` / `record: none` / `record: unreadable`.
-2. `bootWait` gathers those facts in the page on timeout and throws that message from Node.
-3. `land` throws `land: navigating to <url> failed: <errorText>` when
-   `Page.navigate` returns `errorText`, removes its `Page.loadEventFired`
-   listener with `c.off`, and on a boot-wait failure appends
-   `, document: the one navigated to` / `NOT the one navigated to (loader a vs b)` / `unknown`.
+   followed by `booted: yes|no`, `sw: controlled|not`, `card note: "<text>"|none`
+   (whitespace collapsed to one line), and `record: <key>, <n> day(s), view <v>` /
+   `record: none` / `record: unreadable`.
+2. `readRecordFacts(storage)` picks the highest `benchcard.v<N>` key and counts
+   days the way `storage.js` resolves a record (`teams` array, else the record
+   is the team; `activeTeam` clamped). `bootWait` runs it in the page on timeout
+   and throws the message from Node; other results resolve.
+3. `land` removes its `Page.loadEventFired` listener with `c.off` and never
+   throws on `Page.navigate`'s `errorText`. Only when the error is a boot-wait
+   timeout it appends `, navigate error: <errorText>` (if any) and
+   `, document: the one navigated to` / `NOT the one navigated to (loader a vs b)` / `unknown`
+   (no loaderId, frame tree error, or no answer in 1s). Other errors are rethrown untouched.
 4. `npm test` and a full `npm run smoke` stay green.
 
 ## Surfaces
 
 - `scripts/smoke/page-state.mjs` — `describeBootTimeout`, `bootWait`, `land`.
-- `test/smoke-page-state.test.js` — cases for item 1; the fake client gains `off`.
+- `test/smoke-page-state.test.js` — cases for items 1 to 3; the fake client gains `off`.
 
 ## Proof
 
-Unit seam: `test/smoke-page-state.test.js` for item 1. Items 2 and 3 need a
-live CDP session and are proved by the full smoke run.
+Unit seam: `test/smoke-page-state.test.js`, with a fake CDP client, for items 1
+to 3. A green smoke run never times out, so the in-page fact gathering was
+proved by a scratch script that forces three timeouts (ready `false`, a 404
+page, a refused port). The refused port showed that an error page denies
+`localStorage`, so the page reads it inside a try and says `record: unreadable`.
 
 ## Out of scope
 

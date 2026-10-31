@@ -87,15 +87,36 @@ export async function withScripts(c, sources, fn) {
 
 /* The message a failed boot wait throws (#400). The prefix is what
    `npm run flakes` and log greps match; the facts after it say which kind of
-   page was polled. `facts.record` is 'none' or 'unreadable', else `days`
-   and `view` were parsed from the saved record. Pure, so unit-tested. */
+   page was polled. `f.record` is 'none' or 'unreadable', else `f.key`,
+   `f.days` and `f.view` describe the saved record. Pure, so unit-tested. */
 export function describeBootTimeout(ready, where, f) {
   const record = f.record === 'none' || f.record === 'unreadable'
-    ? f.record : `${f.days} day(s), view ${f.view}`;
+    ? f.record : `${f.key}, ${f.days} day(s), view ${f.view}`;
+  const note = String(f.cardNote || '').replace(/\s+/g, ' ').trim();
   return `boot wait timed out: ${ready} on ${where} (page showed ${f.path}, ${f.readyState}, ` +
     `visible views: ${f.views.join(',')}, booted: ${f.booted ? 'yes' : 'no'}, ` +
-    `sw: ${f.controlled ? 'controlled' : 'not'}, card note: ${f.cardNote ? `"${f.cardNote}"` : 'none'}, ` +
+    `sw: ${f.controlled ? 'controlled' : 'not'}, card note: ${note ? `"${note}"` : 'none'}, ` +
     `record: ${record})`;
+}
+
+/* The saved record's facts, read the way `storage.js` resolves it: the highest
+   `benchcard.v<N>` key, the `teams` array if there is one (else the record is
+   the team), `activeTeam` clamped into range. Self-contained, because
+   `bootWait` serializes it into the page. */
+export function readRecordFacts(storage) {
+  let key = null, top = -1;
+  for (let i = 0; i < storage.length; i++) {
+    const m = /^benchcard\.v(\d+)$/.exec(storage.key(i));
+    if (m && Number(m[1]) > top) { top = Number(m[1]); key = m[0]; }
+  }
+  if (!key) return { record: 'none' };
+  try {
+    const raw = JSON.parse(storage.getItem(key));
+    const teams = Array.isArray(raw.teams) && raw.teams.length ? raw.teams : [raw];
+    const i = Math.min(Math.max(Number.isInteger(raw.activeTeam) ? raw.activeTeam : 0, 0), teams.length - 1);
+    const t = teams[i];
+    return { record: 'ok', key, days: Array.isArray(t.days) ? t.days.length : (t.day ? 1 : 0), view: raw.view };
+  } catch { return { record: 'unreadable', key }; }
 }
 
 /* The one boot wait: `document.fonts.ready`, then poll `ready` every 50ms up
@@ -109,19 +130,12 @@ export async function bootWait(c, ready, where = 'the page') {
     let ok = (${ready});
     for (let i = 0; i < 60 && !ok; i++) { await new Promise(r => setTimeout(r, 50)); ok = (${ready}); }
     if (!ok) {
-      let record = 'none', days = null, view = null;
-      try {
-        const raw = localStorage.getItem('benchcard.v7');
-        if (raw) {
-          const r = JSON.parse(raw);
-          const team = (r.teams || [])[r.activeTeam || 0];
-          record = 'ok'; days = team?.days?.length ?? 0; view = r.view;
-        }
-      } catch { record = 'unreadable'; }
       return { timedOut: true, path: location.pathname + location.search, readyState: document.readyState,
         views: [...document.querySelectorAll('.view:not([hidden])')].map(v => v.id),
         booted: window.benchcard?.booted === true, controlled: !!navigator.serviceWorker?.controller,
-        cardNote: (document.getElementById('cardnote')?.textContent || '').trim(), record, days, view };
+        cardNote: (document.getElementById('cardnote')?.textContent || ''),
+        // An error page denies localStorage; that must not replace the timeout message.
+        ...(() => { try { return (${readRecordFacts})(localStorage); } catch { return { record: 'unreadable' }; } })() };
     }
     await ${SETTLE};
   })()`);
@@ -135,9 +149,9 @@ export async function bootWait(c, ready, where = 'the page') {
    wait -- `document.fonts.ready`, poll `ready` every 50ms up to 3s, `SETTLE`
    (reused, not re-derived). A `ready` still false after 3s throws (D3):
    `runCheck` turns that into a FAIL row that names what it was waiting for,
-   rather than measuring a page that never booted. A refused navigation throws
-   at once, and a boot timeout says whether the page polled was the document
-   navigated to (#400). */
+   rather than measuring a page that never booted. A boot timeout also says
+   whether the page polled was the document navigated to, and the last
+   navigation's errorText if it had one (#400); neither changes pass or fail. */
 export async function land(c, origin, want = {}) {
   const { state, script } = planLanding(want);
 
@@ -152,14 +166,14 @@ export async function land(c, origin, want = {}) {
     const urls = state.freshHistory
       ? [`${plain}${state.query ? '&' : '?'}_smoke=${Date.now()}`, plain]
       : [plain];
-    let nav;
+    let nav, navError = '';
     for (const url of urls) {
       let fired;
       const loaded = new Promise(ok => { fired = ok; });
       c.on('Page.loadEventFired', fired);
       try {
         nav = await c.send('Page.navigate', { url });
-        if (nav?.errorText) throw new Error(`land: navigating to ${url} failed: ${nav.errorText}`);
+        navError = nav?.errorText || '';
         await loaded;
       } finally {
         c.off('Page.loadEventFired', fired);
@@ -168,22 +182,30 @@ export async function land(c, origin, want = {}) {
     try {
       await bootWait(c, state.ready, `${state.page}${state.query}`);
     } catch (e) {
-      e.message += `, document: ${await describeDocument(c, nav)}`;
+      if (e?.message?.startsWith('boot wait timed out:')) {
+        e.message += `${navError ? `, navigate error: ${navError}` : ''}, document: ${await describeDocument(c, nav)}`;
+      }
       throw e;
     }
   });
 }
 
 /* Whether the page now showing is the document `Page.navigate` returned (#400),
-   judged by loaderId. 'unknown' when the frame tree cannot be read. */
-async function describeDocument(c, nav) {
+   judged by loaderId. 'unknown' when there is no loaderId to compare, or the
+   frame tree cannot be read within a second (a dead socket must not hang the row). */
+export async function describeDocument(c, nav) {
+  if (!nav?.loaderId) return 'unknown';
+  let timer;
   try {
-    const { frameTree } = await c.send('Page.getFrameTree');
+    const { frameTree } = await Promise.race([
+      c.send('Page.getFrameTree'),
+      new Promise((_, no) => { timer = setTimeout(() => no(new Error('timeout')), 1000); }),
+    ]);
     const now = frameTree.frame.loaderId;
-    return now === nav?.loaderId
+    return now === nav.loaderId
       ? 'the one navigated to'
-      : `NOT the one navigated to (loader ${nav?.loaderId} vs ${now})`;
-  } catch { return 'unknown'; }
+      : `NOT the one navigated to (loader ${nav.loaderId} vs ${now})`;
+  } catch { return 'unknown'; } finally { clearTimeout(timer); }
 }
 
 /* The viewport a check starts from, as `[width, height]`: what `smoke.mjs`
