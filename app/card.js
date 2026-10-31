@@ -13,7 +13,7 @@ import { $, el, set, ctx2d } from './dom.js';
 import { icon } from './icons.js';
 import { state, plans, game, gameLabel, teamName, elideMiddle, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
 import { cornerLabel } from './storage.js';
-import { resumeAt } from './live.js';
+import { resumeAt, finishedGame } from './live.js';
 
 /* The one thing that says a game is already underway. A reload drops the coach
    back here with bench mode shut -- on iOS, switching to the clock app and back
@@ -320,11 +320,12 @@ export function renderCards() {
      Shuffle over "No players yet" promises a fix it can never deliver. Like
      `#print`, the `s` shortcut clicks this button, so disabling here disables
      the key too. */
-  set('#regen', 'disabled', blocked);
+  const done = finishedGame(game()?.live); // a finished game's minutes are played; a new seed would rewrite them
+  set('#regen', 'disabled', blocked || done);
   set('#regen', 'title', blocked
     ? (noRoster() ? 'Add your roster first. Nothing to shuffle yet'
       : 'Shuffling only changes the seed. Fix the errors above first')
-    : '');
+    : done ? 'This game is finished. Its minutes are already played' : '');
   /* Print used to stay live while the plan was blocked, and there is no `.sheet`
      to print in that state -- the coach got a page of furniture and no card,
      which costs paper and, worse, is only discovered at the printer. Share is
