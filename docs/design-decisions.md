@@ -375,6 +375,7 @@ its alternative is an assertion, so the rejected options are kept here too.
 - **Pairs are soft by default** (`hardPairs: true` to force). Requiring two players together every stint fights even minutes hard; the plan maximizes shared floor time and reports it as "together 20 of a possible 20 minutes".
 - **Infeasibility is arithmetic, checked before any search**, so the message can name the offending constraint and the numbers.
 - **Subs are held to 1-3 per stint** so there is continuity on the floor.
+- **A sit for the rest is a fact about the game, not only about its stints.** Sitting a kid writes their later stints as overrides, but every later re-plan (an arrival, a Who's here change, a Shuffle, overtime, a hand-off) plans afresh, so the sit used to vanish on the next one. The sit is now also recorded as `live.sat`, and every re-plan leaves those kids out. No "Back in" control was added: Undo and Back to the printed plan are the way back, and that button stays on screen while a sit stands. A re-plan cannot refuse, because the arrival or change has already happened. So when leaving the sat kid out would leave fewer than five, that one solve puts them back for the fifth seat, the sit stays recorded, and the coach is told once. The mechanics are in [bench-mode.md](architecture/bench-mode.md).
 - **A hand-off link carries a live copy, not a link between phones.** The
   assistant's phone receives a complete working copy of the game and its roster
   and can edit it freely. The two phones are not synchronized afterward, so

@@ -158,18 +158,20 @@ export function render(...keys) {
   const moved = rotationMoved();
   const cleared = overridesDropped();
   rotationJustAnnounced = false;
+  /* #412: a re-plan that could not keep a sit says so, once, for the game on
+     screen. Said inside the toast this render raises when there is one (a
+     second toast would replace its Undo), on its own otherwise. */
+  const kept = satShortBench(state.day.games[state.activeGame]?.id);
+  const notKept = kept.length ? ` Not enough players to keep ${joinNames(kept)} sitting.` : '';
   if (moved.length && priorSettled && !rotationOfferSuppressed()) {
     // Parsed here, not held parsed: this is the one repaint in many that
     // actually needs an independent object tree to restore into.
-    showUndo(ROTATION_CHANGED + (cleared ? SWAPS_CLEARED : ''), JSON.parse(priorSettled));
+    showUndo(ROTATION_CHANGED + (cleared ? SWAPS_CLEARED : '') + notKept, JSON.parse(priorSettled));
     rotationJustAnnounced = true;
   } else if (cleared) {
-    flash(ROTATION_CHANGED + SWAPS_CLEARED);
+    flash(ROTATION_CHANGED + SWAPS_CLEARED + notKept);
     rotationJustAnnounced = true;
-  }
-  /* #412: a re-plan that could not keep a sit says so, once. */
-  const kept = satShortBench();
-  if (kept.length) flash(`Not enough players to keep ${joinNames(kept)} sitting.`);
+  } else if (notKept) flash(notKept.trim());
   save();
   /* Same shape as `overridesDropped()` one line above, for the same kind of
      event: a state change the coach has to be told about once. `save()` has
