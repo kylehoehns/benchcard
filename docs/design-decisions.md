@@ -415,3 +415,16 @@ its alternative is an assertion, so the rejected options are kept here too.
   at no cost to the coach: the QR code encodes the same link Share hands out.
   Anyone who has the link can open it, so the sheet lists the names it carries
   and says so before the coach shares.
+- **A dead URL gets a real 404, not the app shell.** Rewriting every unknown
+  path to `index.html` would make a mistyped link look like a working page with
+  nothing to say it went wrong. The 404 page says so, returns status 404, and
+  links home and to the six rotation charts. Offline the shell still answers,
+  because the app runs from `localStorage` and a coach with no signal is better
+  served by it than by an error.
+- **www is redirected by the Worker, configured in the repo.** The alternative
+  was a redirect set by hand in the Cloudflare dashboard. A dashboard setting is
+  invisible to this repo and can be lost on a deploy, the same reason the
+  `/e` rate limit lives in `wrangler.jsonc`. The Worker runs for every request
+  (`run_worker_first`) so the redirect sees www before the asset layer does. The
+  price is a Worker invocation per request; `docs/operations.md` § Deployment
+  has the rest.

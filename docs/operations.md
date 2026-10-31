@@ -104,7 +104,7 @@ dashboard on 2026-08-24, because "confirm the build command is not empty" is
 not a question the repo can answer about itself. The version command is what
 Cloudflare runs for a **non-production branch** — it uploads the version and
 hands back a preview URL instead of publishing to `benchcard.app`, so the same
-green-suite gate applies to a branch build without it going live. Note there is
+green-suite gate applies to a branch build without it going live. `wrangler.jsonc` sets `workers_dev` and `preview_urls` to `true` explicitly: once `routes` is present wrangler defaults both to off, which would remove the `*.workers.dev` address and these preview URLs. Note there is
 no "output directory" field in the Workers static-assets flow — that belongs to
 the older Pages UI. The served directory comes from `assets.directory` in
 `wrangler.jsonc`, which names `dist/`, the build's copy of `app/` (AGENTS.md § Deploy); the root directory is `/` because that is
@@ -147,6 +147,24 @@ the `og:`/`twitter:` URLs and the JSON-LD of every HTML file, plus `robots.txt`
 and `sitemap.xml`. Absolute URLs are required for Open Graph — Slack, iMessage
 and Twitter will not resolve a relative `og:image`. Grep for the string if the
 host ever moves.
+
+**Two hostnames, one site.** `www.benchcard.app` is a second custom domain on
+the same Worker. The Worker answers it with a `301` to the same path and query
+on `https://benchcard.app`, so a www link with `?try=7` still works. Both
+domains are listed under `routes` in `wrangler.jsonc`, and the apex has to be
+in that list too: wrangler replaces a Worker's custom domains with `routes` on
+every deploy, so leaving the apex out would detach it. `assets.run_worker_first`
+is `true` so the Worker sees every request before the asset layer does. Without
+that, the asset layer would serve www pages itself, as a second origin with its
+own localStorage. The cost is more Worker invocations and more Workers Logs
+lines, since every request now runs the Worker.
+
+**An unknown path gets a real 404.** A path with no file answers `404` with the
+bytes of `app/404.html`: a one-line "This page isn't here." with a link home and
+links to the six rotation charts. The page is `noindex` and not in the sitemap.
+Cloudflare does this through `not_found_handling: "404-page"` in
+`wrangler.jsonc`. `scripts/serve.mjs` does the same locally, so `npm run serve`
+shows what a coach would see.
 ## Analytics
 
 **On.** `analytics.js` exports a single `ANALYTICS` constant, and it now holds a
@@ -309,7 +327,10 @@ under a megabyte. The latin-ext subset is the one deliberate exception,
 glyph it covers, rather than pushing 74 KB to every install. The stylesheets are render-blocking, so all three have to be in there
 or an offline boot paints unstyled. A gym
 with no signal now costs nothing: kill the server, reload, and the app boots and
-re-plans from `localStorage`.
+re-plans from `localStorage`. The same goes for an unknown path: offline, a
+navigation the cache cannot answer gets the app shell, not the 404 page, because
+`404.html` is not precached and `sw.js` falls back to the shell. Online, the same
+path gets the 404.
 
 Two things about it worth knowing before you change it:
 

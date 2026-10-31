@@ -26,7 +26,8 @@
  *   - `/index.html` -> 307 `/`
  *   - `/<name>.html` -> 307 `/<name>`
  *   - `/<name>`      -> serves `<name>.html`
- * Everything else is served as asked.
+ * Everything else is served as asked, and a path with no file answers 404 with
+ * `404.html`, as `not_found_handling: "404-page"` does.
  *
  * One difference from the files on disk, on purpose: `.css` is served with its
  * comments stripped by `scripts/build.mjs`'s `stripCssComments`, the same
@@ -34,8 +35,8 @@
  * `/sw.js` is the other: its SHELL is stamped the way the build stamps it
  * (AGENTS.md § Deploy), so a local run matches a deploy. */
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
-import { join, extname, resolve, dirname } from 'node:path';
+import { readFile, readdir } from 'node:fs/promises';
+import { join, extname, resolve, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stripCssComments, precachedFiles, shellDigest, stampShell } from './build.mjs';
 
@@ -105,10 +106,27 @@ export function serve(port = 0, appDir = APP) {
         res.writeHead(200, { 'content-type': TYPES['.js'] }).end(sw);
         return;
       }
+      /* Cloudflare's paths are case-sensitive; a Mac's disk is not, and
+         `/ABOUT` or `/VENDOR/x.js` would be found here and 200 where
+         production 404s. So every segment under appDir is checked, not just
+         the last. */
+      let dir = appDir;
+      for (const seg of abs.slice(appDir.length).split(sep).filter(Boolean)) {
+        if (!(await readdir(dir)).includes(seg)) throw new Error('no such file');
+        dir = join(dir, seg);
+      }
       const body = await served(file, appDir);
       res.writeHead(200, { 'content-type': TYPES[extname(abs)] || 'application/octet-stream' });
       res.end(body);
-    } catch { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); }
+    } catch {
+      /* A miss is Cloudflare's `not_found_handling: "404-page"`: the nearest
+         404.html, with status 404. Plain text only when this copy of app/ has
+         none (a doctored test copy). */
+      try {
+        const page = await served('/404.html', appDir);
+        res.writeHead(404, { 'content-type': TYPES['.html'] }).end(page);
+      } catch { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); }
+    }
   });
   /* Keep-alive sockets outlive `server.close()`, and a half-open connection is
      not the same as no network -- redirect-check's offline arms need the real

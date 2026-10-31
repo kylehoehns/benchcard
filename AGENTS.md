@@ -213,8 +213,8 @@ checks **both axes**:
 `APP_LARGE_TEXT_ALLOW` is empty and every view is pinned at zero; the same rule
 applies to it as to `LARGE_TEXT_ALLOW` below.
 
-Then it loads the other seven pages — `about.html` and the six generated
-roster-size chart pages — at 390 and 320 for overflow, alt text, ids, lang,
+Then it loads the other eight pages — `about.html`, `advanced.html`, the six
+generated roster-size chart pages and `404.html` — at 390 and 320 for overflow, alt text, ids, lang,
 touch targets and console errors, plus the same 32px-root pass at 320 and 390.
 Those two cells are where the large-text media queries are live (narrowest and
 widest), which is why it is two cells and not a matrix. On the two guides it

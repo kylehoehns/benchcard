@@ -32,12 +32,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { SIZES } from '../scripts/charts.mjs';
 
 const APP = new URL('../app/', import.meta.url);
 const read = p => readFileSync(new URL(p, APP), 'utf8');
 
 /* Derived, never listed: whatever HTML is in app/ is what the site ships. */
 const shipped = readdirSync(APP).filter(f => f.endsWith('.html')).sort();
+
+/* The one page nothing links to, on purpose (#424): `404.html` is what a miss
+   answers with, not somewhere a link goes, and a link to it would be a link
+   to a page that says "this page isn't here". It is the only name here; a
+   second one needs its own reason. */
+const UNLINKED = ['404.html'];
 
 /* THREE THINGS HOLD AN href A READER CANNOT FOLLOW, and all three are cut out
    before the walk. This is the "a grep hit is not proof" rule applied to a
@@ -94,7 +101,7 @@ function reachable() {
 
 test('every page the site ships is reachable by following links from "/"', () => {
   const seen = reachable();
-  const orphans = shipped.filter(p => !seen.has(p));
+  const orphans = shipped.filter(p => !seen.has(p) && !UNLINKED.includes(p));
   assert.deepEqual(orphans, [],
     `orphaned — nothing on this site links to: ${orphans.join(', ')}`);
   /* A walk that reached one page would also report zero orphans if `shipped`
@@ -155,4 +162,24 @@ test('no internal href points at a URL that redirects', () => {
     + 'The canonical tag, og:url and sitemap.xml all name the extensionless URL, and sw.js '
     + 'caches by file — so a .html href is both a wasted hop for a crawler and, offline, a '
     + 'cache miss that hands back the app shell instead of the page:\n  ' + offenders.join('\n  '));
+});
+
+/* ------------------------------------------------------------------ *
+ * 404.html's own links (#424).
+ *
+ * target() above skips root-relative hrefs, and 404.html uses nothing else
+ * (it is served at any depth, so `./` would resolve wrong), so the walk never
+ * looked at them. Checked here: the chart links are the six sizes the site
+ * ships, and every root-relative href names a page that exists.
+ * ------------------------------------------------------------------ */
+test("404.html links the six chart pages, and every root-relative link names a shipped page", () => {
+  const hrefs = [...strip(read('404.html')).matchAll(/href="(\/[^"]*)"/g)].map(m => m[1]);
+  const charts = hrefs.filter(h => /^\/\d+-player-basketball-rotation-chart$/.test(h));
+  assert.deepEqual(charts, SIZES.map(n => `/${n}-player-basketball-rotation-chart`));
+  const pages = hrefs.filter(h => !/\.[a-z0-9]+$/i.test(h));   // not site.webmanifest, tokens.css
+  assert.ok(pages.length >= 7, `only ${pages.length} page links found in 404.html`);
+  for (const h of pages) {
+    const file = h === '/' ? 'index.html' : `${h.slice(1)}.html`;
+    assert.ok(shipped.includes(file), `404.html links ${h}, and app/${file} is not a shipped page`);
+  }
 });

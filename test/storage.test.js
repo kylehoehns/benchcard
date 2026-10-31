@@ -11,7 +11,7 @@ import { SIZES, file as chartFile } from '../scripts/charts.mjs';
    generated from about.html's copy (scripts/charts.mjs), which is why they can
    join this list without adding a maintenance burden — but they are still
    checked, because the generator is a thing someone could take away. */
-const THEMED = ['index.html', 'about.html', ...SIZES.map(chartFile)];
+const THEMED = ['index.html', 'about.html', '404.html', ...SIZES.map(chartFile)];
 
 const emptyConstraints = () => ({
   minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [],

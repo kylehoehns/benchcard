@@ -6,8 +6,8 @@ import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './size
 /* The pages no browser check had ever loaded.
  *
  * Everything above this drives `index.html` and only `index.html`. The site is
- * nine pages: the app, `about.html`, `advanced.html`, and the six roster-size chart pages that
- * `scripts/charts.mjs` generates. The other seven were audited by nothing —
+ * ten pages: the app, `about.html`, `advanced.html`, the six roster-size chart pages that
+ * `scripts/charts.mjs` generates, and `404.html`. The other eight were audited by nothing —
  * which is why `images declare alt text` reported "0 image(s)" on every
  * evaluation of a run while the app's only two <img> sat on `about.html`, and
  * why five real defects on these pages were found with a tape measure rather
@@ -49,7 +49,11 @@ import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './size
    eight addresses nothing on the site links to -- and would have kept passing
    while the real ones broke. `scripts/serve.mjs` 307s `.html` to these, the
    same as Cloudflare. */
-const STATIC_PAGES = ['/about', '/advanced', ...[7, 8, 9, 10, 11, 12].map(n => `/${n}-player-basketball-rotation-chart`)];
+const STATIC_PAGES = ['/about', '/advanced', ...[7, 8, 9, 10, 11, 12].map(n => `/${n}-player-basketball-rotation-chart`),
+  /* #424: what an unknown URL answers with. `serve.mjs` has no route for
+     `/404`, so it resolves to `404.html` and answers 200 here; the 404 status
+     is tested in test/build.test.js, and this pass is for its layout. */
+  '/404'];
 const STATIC_WIDTHS = [390, 320];
 
 /* #338. The page's own scroll width against its client width, which is the

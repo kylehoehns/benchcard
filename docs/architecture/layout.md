@@ -94,6 +94,8 @@ Everything below is relative to `app/`.
   print` overrides both have to come last.
 - `sw.js`, `_headers`, `site.webmanifest`, `robots.txt`, `sitemap.xml`, the
   icons and `vendor/` — the rest of what is served.
+- `404.html` — the page a path with no file gets, with status 404. How it is
+  served is in `docs/operations.md` § Deployment.
 
 Outside it: `test/*.test.js` (`node --test`) and the `scripts/` tooling, which
 includes the build (`scripts/build.mjs`) that writes `dist/`.
