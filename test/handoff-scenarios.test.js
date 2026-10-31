@@ -20,8 +20,7 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
     await coach.tap('Card');
     await coach.tap('Share or hand off');
     await coach.tap('Hand off');
-    await coach.tap('Share link');
-    const link = await coach.sharedLink();
+    const link = await coach.shareLink();
     await coach.tap('Close');
     return link;
   }
@@ -73,7 +72,7 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
 
     await coach.openLinkAgain(later);
 
-    assert.equal(await coach.toast(), 'Smoke Test game added. Open bench mode to run subs.');
+    assert.equal(await coach.toast(), 'Smoke Test game updated.');
     assert.ok(await coach.sees('Undo'), 'no Undo offered');
     await resume();
     assert.equal(await coach.stint(), '4 of 8');
@@ -81,5 +80,42 @@ describe('a hand-off link opened on a phone that has the game', { skip }, () => 
     await coach.tap('Undo');
     await resume();
     assert.equal(await coach.stint(), '2 of 8');
+  });
+
+  async function playHawksAndShare() {
+    await coach.onGameDay();
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Start game');
+    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    await coach.tap('Finish game');
+    return shareFromCard();
+  }
+
+  const toastShown = `document.querySelector('.toast:not(.out)')`;
+
+  test('a game already filed to the season does not come back from its link', async () => {
+    const link = await playHawksAndShare();
+    await coach.comeBackDaysLater(1);
+
+    await coach.openLinkAgain(link, toastShown);
+
+    assert.equal(await coach.toast(), 'You already filed this game.');
+    assert.ok(await coach.sees('Season 1 game filed ›'), 'Today should still say one game filed');
+    assert.ok(!(await coach.todayGames()).some(n => n.startsWith('Hawks')), 'Hawks is back on Today');
+    await coach.tap('Season 1 game filed ›');
+    assert.deepEqual(await coach.seasonFiled(), ['Sep 12 · 1 game', 'vs Hawks']);
+  });
+
+  test('a back link opened the next day files the game under the day it was played', async () => {
+    const link = await playHawksAndShare();
+    await coach.onGameDay();
+    await coach.pinClock({ y: 2026, m: 9, d: 13, h: 9 });
+
+    await coach.openLinkAgain(link, toastShown);
+
+    assert.equal(await coach.toast(), 'Sat, Sep 12: 1 game filed to the season.');
+    assert.deepEqual(await coach.todayGames(), ['Ravens, 11:30 AM, planned']);
+    await coach.tap('Season 1 game filed ›');
+    assert.deepEqual(await coach.seasonFiled(), ['Sep 12 · 1 game', 'vs Hawks']);
   });
 });

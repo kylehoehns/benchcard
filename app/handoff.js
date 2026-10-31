@@ -5,7 +5,7 @@
    Compression is the browser's own `CompressionStream`, no library. */
 import { callNames } from './roster.js';
 import { DAMAGED_LINK, handStints, playedStints, finishedGame, writeOverrides } from './live.js';
-import { sanitizeTeam, seasonDate, sortDay } from './storage.js';
+import { sanitizeTeam, seasonDate, sortDay, validDayDate } from './storage.js';
 import { state, team, computeAll, effectiveStints, availIds, plans, openGame, dayFor,
          hueSlots, emptyConstraints, newGame, carryUnplayedDay } from './state.js';
 
@@ -131,7 +131,9 @@ export async function decode(hash, today = new Date()) {
     const cleaned = sanitizeTeam(raw, { emptyConstraints, newGame });
     // a roster the cleaning shortened no longer lines up with the stints
     if (cleaned.players.length !== p.length || cleaned.days[0]?.games.length !== 1) return null;
-    return { team: cleaned, stints };
+    const lg = cleaned.days[0].games[0].live;
+    const started = finishedGame(lg) || playedStints(lg) > 0;
+    return { team: cleaned, stints, played: started && validDayDate(d.d) ? d.d : null };
   } catch {
     return null;
   }
@@ -167,12 +169,20 @@ function addMissingPlayers(t, players) {
 
 /* The link's game takes the place of the phone's; the phone's own label and
    tipoff win on a replace (#377). The link's apply only when a game is added. */
-function replaceGame(t, [d, i], game) {
-  const old = t.days[d].games[i];
+function replaceGame(t, [d, i], game, playedOn) {
+  const day = t.days[d];
+  const old = day.games[i];
   if (old.label !== undefined) game.label = old.label;
   if (old.tipoff !== undefined) game.tipoff = old.tipoff;
-  t.days[d].games[i] = game;
-  return [d, i];
+  if (!playedOn || day.date === playedOn) {
+    day.games[i] = game;
+    return [d, i];
+  }
+  day.games.splice(i, 1);   // #419: the game goes to the day it was played
+  const [filedDay, at] = addGame(t, playedOn, game);
+  const to = t.days[filedDay];
+  if (!day.games.length) t.days.splice(t.days.indexOf(day), 1);
+  return [t.days.indexOf(to), at];
 }
 
 function addGame(t, date, game) {
@@ -188,7 +198,7 @@ function addGame(t, date, game) {
    phone starts with is replaced, or a team is added. Then the game is
    re-solved here, and any stint that differs from the link's is written as an
    override that is not a hand swap, so the card matches the sender's. */
-export function receive({ team: incoming, stints }) {
+export function receive({ team: incoming, stints, played: playedOn }) {
   const game = incoming.days[0].games[0];
   const have = state.teams.findIndex(t => t.id === incoming.id);
   let outcome = 'added';
@@ -200,6 +210,8 @@ export function receive({ team: incoming, stints }) {
     state.activeTeam = state.teams.indexOf(incoming);
     openGame(0, 0);
   } else {
+    const known = state.teams[have];
+    if (known.season.games.some(g => g.id === game.id)) return { teamName: known.name, outcome: 'filed' };
     state.activeTeam = have;
     carryUnplayedDay();   // #379: this team's night-before day becomes today before the link's game joins it
     const mine = team();
@@ -210,7 +222,7 @@ export function receive({ team: incoming, stints }) {
     } else {
       if (own) outcome = 'replaced';
       addMissingPlayers(mine, incoming.players);
-      openGame(...(own ? replaceGame(mine, own, game) : addGame(mine, incoming.days[0].date, game)));
+      openGame(...(own ? replaceGame(mine, own, game, playedOn) : addGame(mine, incoming.days[0].date, game)));
     }
   }
   computeAll();

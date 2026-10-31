@@ -500,8 +500,10 @@ if (location.hash.startsWith('#p=')) {
     if (incoming) {
       const snap = clone(state);
       const { teamName, outcome } = receive(incoming);
-      state.view = 'games';
-      handoffNote = outcome === 'kept' ? 'You already have this game, further along.'
+      if (outcome !== 'filed') state.view = 'games';
+      handoffNote = outcome === 'filed' ? 'You already filed this game.'
+        : outcome === 'kept' ? 'You already have this game, further along.'
+        : outcome === 'replaced' ? `${teamName || 'Your'} game updated.`
         : `${teamName || 'Your'} game added. Open bench mode to run subs.`;
       if (outcome === 'replaced') handoffUndo = snap;
     } else handoffNote = DAMAGED_LINK;
