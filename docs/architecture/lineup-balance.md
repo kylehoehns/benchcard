@@ -15,8 +15,9 @@ total, so balance is usually free.
 **A level cannot move anyone's total, and that is now structural rather than
 hoped for.** The search runs in two passes. The first has the balance term
 switched off and settles every player's minutes; the second switches it on but
-restricts the search to exchanges between *equal-length* stints, the one move
-that cannot shift a total, on half the iteration budget. Until that split,
+restricts the search to exchanges (and, under a hard pair, paired trades)
+between *equal-length* stints, the moves that cannot shift a total, on half
+the iteration budget. Until that split,
 balance was a tie-break on the minutes by accident: eleven players over eight
 4-minute stints means seven play 16 and four play 12, the minutes term is
 exactly flat across every choice of which seven, and the tiers were left
