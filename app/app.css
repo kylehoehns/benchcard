@@ -2325,8 +2325,11 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .wel-charts-lbl { color: var(--muted); font-size: var(--fs-footnote); font-weight: 500; }
 /* The label takes its own line so the six digits sit together on one row under
    it (6 x 48px fits 320px at 16px) rather than wrapping 3 + 3 after it. */
-.wel-tail-row.wel-charts { gap: 0; }
+.wel-tail-row.wel-charts { gap: 0; container-type: inline-size; }
 .wel-charts .wel-charts-lbl { flex-basis: 100%; }
+/* Too narrow for six (large text at 320 leaves ~256px): split 3 + 3 rather
+   than five and an orphaned 12. px, because the chips are 48px, not em. */
+@container (max-width: 287px) { .wel-chart { flex-basis: 33.333%; } }
 /* The two doors under the figures: one column of choices, not a row a thumb
    has to aim inside. */
 .wel-go { width: 100%; margin-top: .62rem; padding: .82rem 1rem; font-size: var(--fs-body); }
