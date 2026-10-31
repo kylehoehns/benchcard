@@ -135,7 +135,7 @@ export function fmtMinutes(m) {
 }
 
 // "Reese, Jonah, Eli and Kira" -- a list a coach reads, not one a machine wrote.
-function andList(names) {
+export function andList(names) {
   if (names.length <= 1) return names[0] || '';
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
