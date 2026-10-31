@@ -235,11 +235,29 @@ unfairness. Measured across 162 cases the re-solve is fairer in 115 and the
 same in 47, never worse, mean spread 2.7 against 6.5 minutes.
 
 Mechanically it is the same edit a hand swap makes — fives written into
-`live.overrides[k…n-1]` and nothing before `k` — so the past cannot move,
-`effectiveMinutes` never forks, `#gmReset` already undoes it and the rotation
-stamp already drops it if the plan moves underneath. It offers an **Undo**
-rather than asking a confirm, because a coach cannot tell whether sitting
-someone was right until the rest of the game has rebalanced. The fairness input
+`live.overrides[k…n-1]` and nothing before `k` — so the past cannot move and
+`effectiveMinutes` never forks. The sit is also recorded as `live.sat` (#412),
+and that record is what keeps it through a re-plan. Every re-plan goes through
+`resolveRest`, which leaves the sat kids out of the players it may use, so an
+arrival, a Who's here change, a Shuffle, an overtime or a hand-off plans them
+off again. If the plan moves underneath and the rotation stamp drops the
+overrides, the sit is planned again from the next stint on. The sit lasts until
+the coach undoes it: **Undo** on its toast does that, and so does **Back to the
+printed plan** (`#gmReset`). That button stays on screen while a sit stands in a
+game that is not finished, because a re-plan rewrites the sit's stints as not by
+hand, and the hand-swap rule alone would hide the only way back. Reset clears
+the sit and plans everyone again.
+
+A re-plan cannot refuse, so a short bench is handled inside it. If leaving the
+sat kid out would leave fewer than five players, that solve puts them back on
+for the fifth seat, the sit stays recorded, and the coach is told once:
+"Not enough players to keep {name} sitting." Names are joined with `joinNames`
+when there is more than one. The sit applies again on the first re-plan that
+has five without them. Marking a sat kid out and then Here now keeps the sit.
+
+It offers an **Undo** rather than asking a confirm, because a coach cannot tell
+whether sitting someone was right until the rest of the game has rebalanced. The
+fairness input
 is `carryoverTargets` from `budget.js`, the same helper the season carryover
 uses, with the deficit read off this game so far; `generatePlan`'s own
 `carryover` argument is deliberately *not* used, because its two-stint clamp is

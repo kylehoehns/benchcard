@@ -21,7 +21,7 @@ import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup, effectiveStints,
          resolveRest, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
 import { EDITS } from './edit.js';
-import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, openGame, step, finish } from './live.js';
+import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, openGame, step, finish, satIds, sitOut, finishedGame } from './live.js';
 
 /* Set by initGameMode; see the note above on why this is injected. */
 let render = () => {};
@@ -638,7 +638,10 @@ export function renderGameMode({ keepFloor = false } = {}) {
   // #247: only a swap the coach made counts, and in a game underway only one
   // `clearRest` would actually clear -- what was played never goes back.
   const handed = handStints(live);
-  set('#gmReset', 'hidden', !handed.some(k => k >= resetFrom(live)));
+  /* #412: a sit stands as a fact, and a re-plan rewrites its stints as not by
+     hand, so it keeps this the way back while the game is unfinished. */
+  const sitStands = satIds(live).length > 0 && !finishedGame(live);
+  set('#gmReset', 'hidden', !sitStands && !handed.some(k => k >= resetFrom(live)));
   // #139 item 7: written only when the stint actually changed since the last
   // write -- `benchLiveText` reuses `benchHeaderText`, never rebuilding the
   // "Q1 · …" wording a second time.
@@ -1096,6 +1099,7 @@ function sitRest(p, g, i, outId, name) {
   undoable(`${name} sits for the rest. The others share those minutes.`, () => {
     const live = liveOf(g);
     writeOverrides(live, r.overrides, true);
+    sitOut(live, outId);
     gmPick = null;
   }, (undoing) => {
     save();

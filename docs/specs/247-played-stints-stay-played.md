@@ -215,6 +215,11 @@ settle them.
     override at all: every stint of a finished game was played.
 13. **Spec A wording.** "Stints 3–7 include Lily" means she plays in at least
     one of them, with her total inside one stint of the even share.
+14. **Amendment (#412): a sit for the rest survives a re-plan.** The sit is
+    recorded as `live.sat`, and every re-plan leaves those kids out. Decision 10
+    still lists what counts as a hand swap, but a re-plan now rewrites a sit's
+    stints as not by hand, so `#gmReset` also shows while a sit stands in a game
+    not yet finished. See [412](412-sit-survives-replan.md).
 
 ## Proof
 

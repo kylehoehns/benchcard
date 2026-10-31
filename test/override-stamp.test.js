@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { handStints, replaceOverrides } from '../app/live.js';
+import { handStints, replaceOverrides, satIds } from '../app/live.js';
 
 /* One chokepoint for "these hand swaps no longer describe this rotation".
 
@@ -33,8 +33,8 @@ const lift = (start, end) => {
 const stampSrc = lift('const rotationStamp', '\nlet dropped');
 const syncSrc = lift('function syncOverrides', '\n\nexport function computeAll');
 // eslint-disable-next-line no-new-func
-const [rotationStamp, syncOverrides] = new Function('handStints', 'replaceOverrides',
-  `${stampSrc}\nlet dropped = 0;\n${syncSrc}\nreturn [rotationStamp, syncOverrides];`)(handStints, replaceOverrides);
+const [rotationStamp, syncOverrides] = new Function('handStints', 'replaceOverrides', 'satIds',
+  `${stampSrc}\nlet dropped = 0;\n${syncSrc}\nreturn [rotationStamp, syncOverrides];`)(handStints, replaceOverrides, satIds);
 
 const stint = (i, on) => ({
   index: i, period: 1 + Math.floor(i / 2), periodName: 'Q' + (1 + Math.floor(i / 2)),

@@ -341,9 +341,11 @@ _In code_: `live.overrides`
 
 **Sit for the rest**:
 Removing a player from the rest of a game in bench mode and re-planning the
-remaining stints around the minutes already played.
+remaining stints around the minutes already played. The sit stands through
+every later re-plan until the coach undoes it (Undo, or Back to the printed
+plan).
 _Avoid_: sit and rebalance, re-solve, bench (as a verb)
-_In code_: `resolveRest`
+_In code_: `resolveRest`, `live.sat`
 
 **Part-played game**:
 A game that bench mode has moved past its first stint and that the coach has
