@@ -34,8 +34,14 @@ export async function darkInputBgPass(c, origin, rec) {
   // reaches dark paint -- through the fixture's own `ui.theme`, never by
   // emulating `prefers-color-scheme` (#131's own rule, item 3 of its
   // Design). RICH otherwise lands on the games view with a game active,
-  // which is what #shareBtn needs.
-  await land(c, origin, { record: richWith({ theme: 'dark' }) });
+  // which is what #shareBtn needs. A fresh history (#459): this row's own
+  // TODAY_HOME below is a real `history.back()`, and landing on the same URL
+  // the previous row left keeps that entry's `{ view: 'games' }`, so boot
+  // relabels it in place with no Today entry beneath -- and the back walks
+  // off into the previous document ("Inspected target navigated or closed").
+  // It only showed once CI split smoke into shards and hand-off's offline
+  // reload came straight before this row.
+  await land(c, origin, { record: richWith({ theme: 'dark' }), freshHistory: true });
 
   // #sheetCard: the four print options and the minutes switch.
   await tap(c, `document.getElementById('shareBtn').click()`);

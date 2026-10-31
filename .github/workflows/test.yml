@@ -69,9 +69,24 @@ jobs:
     # diff.
     #
     # Not `--no-tests`: the run counts which lines of app/ the browser rows
-    # and the unit suite together ran, so the suite runs inside it (#259).
+    # and the unit suite together ran, so the suite is one of its parts (#259).
     # That is the line-coverage floor in scripts/coverage.json; AGENTS.md
     # § Layout has the rule.
+    #
+    # #459: ONE RUN IN FIVE JOBS. Measured on CI: 3m56s from the first part
+    # starting to this job ending, against 11m34s as one job. `smoke-parts`
+    # runs the parts at once: the unit suite (`--shard suite`) and the
+    # browser rows dealt across three Chromes (`--shard k/3`). Each uploads
+    # a partial. This job merges them and judges the whole run -- every row,
+    # the budgets, the coverage floor, the drift check -- exactly as one
+    # `node scripts/smoke.mjs` would.
+    #
+    # `if: always()` IS LOAD-BEARING. A required check whose job is skipped
+    # (because a job it needs failed) counts as passing. This job runs anyway,
+    # and a part that failed or never uploaded fails it: the merge refuses a
+    # missing partial, and a failed part's rows print FAIL here.
+    needs: smoke-parts
+    if: always()
     runs-on: ubuntu-24.04
     name: smoke
     steps:
@@ -79,9 +94,41 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: smoke-part-*
+          path: smoke-parts
+          merge-multiple: true
+      - run: node scripts/smoke.mjs --merge smoke-parts
+      # Belt and braces: a part that was cancelled may still have uploaded.
+      - if: needs.smoke-parts.result != 'success'
+        run: echo "a smoke part did not succeed (${{ needs.smoke-parts.result }})" && exit 1
+
+  smoke-parts:
+    # Not a required check: `smoke` above is, and it judges these.
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [suite, 1/3, 2/3, 3/3]
+    runs-on: ubuntu-24.04
+    name: smoke part ${{ matrix.part }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
       # Still no install step: the harness serves app/ itself and drives the
       # Chrome already on the runner over the DevTools protocol.
-      - run: node scripts/smoke.mjs
+      - id: name
+        run: echo "file=$(echo '${{ matrix.part }}' | tr / -)" >> "$GITHUB_OUTPUT"
+      - run: node scripts/smoke.mjs --shard ${{ matrix.part }} --out smoke-parts/${{ steps.name.outputs.file }}.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-part-${{ steps.name.outputs.file }}
+          path: smoke-parts/
+          if-no-files-found: ignore
+          retention-days: 3
 
   evals:
     # Stage 4's eval suite. It is separate from `node --test` because it asks a

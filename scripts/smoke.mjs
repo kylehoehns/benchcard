@@ -8,7 +8,7 @@
    table. It now also carries the accessibility checks and the performance
    budget (see `budgets.mjs`).
 
-       node scripts/smoke.mjs                  # serve app/, drive Chrome, run tests
+       node scripts/smoke.mjs                  # serve app/, drive Chrome, run tests beside it
        node scripts/smoke.mjs --no-tests       # browser checks only (fast)
        node scripts/smoke.mjs --headful        # watch it happen
        node scripts/smoke.mjs --json           # machine-readable, for CI
@@ -18,6 +18,12 @@
                                                 # not proof; see the registry below
        node scripts/smoke.mjs --timing         # after the table: each rich row's seconds, slowest first, and the executed sleep
        node scripts/smoke.mjs --timeout <min>  # end the run and exit 1 if it hangs (default 60)
+       node scripts/smoke.mjs --shard 2/3 --out p/2.json   # CI: one part of the run
+       node scripts/smoke.mjs --shard suite --out p/s.json # CI: the unit suite alone
+       node scripts/smoke.mjs --merge p        # CI: judge every part in p/ as one run
+
+   #459: CI runs the parts as separate jobs and the `smoke` job merges them;
+   `scripts/smoke/shard.mjs` says how. No flag still runs everything here.
 
    #178: BENCHCARD_SMOKE_HANG=<check name> makes that one row hang for real
    (a CDP call that never resolves) instead of running its own check — for
@@ -50,13 +56,14 @@
    `--only` alike (`runCheck` below). */
 
 import { execFile } from 'node:child_process';
-import { readFile, writeFile, readdir, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, writeFile, readdir, mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compare, pinned, summarize } from './budgets.mjs';
 import { serve } from './serve.mjs';
-import { folder, summarize as summarizeCoverage, judge, record, annotate, fileOf, ROW as COVERAGE_ROW, RECORDED as COVERAGE_RECORDED } from './coverage.mjs';
+import { folder, linesOf, summarize as summarizeCoverage, judge, record, annotate, fileOf, ROW as COVERAGE_ROW, RECORDED as COVERAGE_RECORDED } from './coverage.mjs';
+import { parseShard, inShard, consoleRow, mergePartials, shardPartial } from './smoke/shard.mjs';
 
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER, DESCRIBE_EL } from './smoke/dom.mjs';
@@ -151,7 +158,31 @@ async function runCheck(row, ctx) {
   }
 }
 
-async function browserChecks(origin, only, folded) {
+/* The cold rows: the `smoke-checks.js` evaluate on the lean cold load, the
+   payload snapshot and the 32px card comparison. */
+async function coldChecks(c, origin, source, requests) {
+  current = 'cold checks';
+  const { result, exceptionDetails } = await c.send('Runtime.evaluate', { expression: source, returnByValue: true });
+  if (exceptionDetails) throw new Error('checks threw: ' + (exceptionDetails.exception?.description || exceptionDetails.text));
+
+  const report = result.value;
+
+  // Snapshotted here, before `cardAt32Pass` below reloads the page for its
+  // own 32px measurement: the budget is a SINGLE cold load, and one more
+  // navigation in `requests` — even a same-URL one — would inflate the
+  // request-count pin (AGENTS.md § Layout) that a coach never actually pays.
+  report.payload = { ...summarize([...requests.values()], origin), nodes: report.nodes };
+
+  /* #24 item 5: extends the cardsize row's own check object in place, so it
+     is covered whether this is a full run or `--only "card is 3.45 × 5in"`
+     (the `cold` partial path just keeps whichever checks match by name, this
+     one now carrying the 32px comparison too). */
+  current = 'card at 32px';
+  await cardAt32Pass(c, origin, report);
+  return report;
+}
+
+async function browserChecks(origin, only, folded, shard) {
   current = 'launching Chrome';
   // #178 review: liveChrome is set as soon as Chrome is spawned, not only once
   // launch() resolves — its own DevTools poll can take up to 45s, and a
@@ -246,30 +277,14 @@ async function browserChecks(origin, only, folded) {
       return { report, consoleErrors };
     }
 
-    current = 'cold checks';
-    const { result, exceptionDetails } = await c.send('Runtime.evaluate', { expression: source, returnByValue: true });
-    if (exceptionDetails) throw new Error('checks threw: ' + (exceptionDetails.exception?.description || exceptionDetails.text));
-
-    const report = result.value;
-
-    // Snapshotted here, before `cardAt32Pass` below reloads the page for its
-    // own 32px measurement: the budget is a SINGLE cold load, and one more
-    // navigation in `requests` — even a same-URL one — would inflate the
-    // request-count pin (AGENTS.md § Layout) that a coach never actually pays.
-    report.payload = { ...summarize([...requests.values()], origin), nodes: report.nodes };
-
-    /* #24 item 5: extends the cardsize row's own check object in place, so it
-       is covered whether this is a full run or `--only "card is 3.45 × 5in"`
-       (the `cold` partial path below just keeps whichever checks match by
-       name, this one now carrying the 32px comparison too). */
-    current = 'card at 32px';
-    await cardAt32Pass(c, origin, report);
-
-    /* THE PARTIAL PATH, `cold` branch. It reuses the setup above rather than
-       reimplementing it: the cold load and this same evaluate already ran, so
-       a `cold` row just keeps its one entry out of what came back. No
-       budgets, no `node --test`. */
+    /* #459: shard 1 owns the cold rows and the payload; the other shards
+       only need the session the cold load opened. */
+    const report = shard?.k > 1 ? { viewport: [WIDTH, HEIGHT], checks: [] } : await coldChecks(c, origin, source, requests);
     if (only) {
+      /* THE PARTIAL PATH, `cold` branch. It reuses the setup above rather than
+         reimplementing it: the cold load and this same evaluate already ran, so
+         a `cold` row just keeps its one entry out of what came back. No
+         budgets, no `node --test`. */
       report.checks = report.checks.filter(k => k.name === only.name);
       return { report, consoleErrors };
     }
@@ -286,25 +301,22 @@ async function browserChecks(origin, only, folded) {
        "swept" rows -- a sheet or view the cold load never actually opened, so
        its cold verdict never measured anything) drops that name out of
        `report.checks` first, so the two never both print. */
-    for (const row of ROWS.filter(r => r.setup === 'rich')) {
-      if (row.replaces) {
-        const replaced = Array.isArray(row.replaces) ? row.replaces : [row.replaces];
-        report.checks = report.checks.filter(k => !replaced.includes(k.name));
-      }
+    const rich = ROWS.filter(r => r.setup === 'rich');
+    // Every replaced name, not just this shard's: the cold rows are shard 1's.
+    const replaced = rich.flatMap(r => r.replaces ?? []);
+    report.checks = report.checks.filter(k => !replaced.includes(k.name));
+    const cold = [...report.checks];
+    for (const row of shard ? inShard(rich, shard) : rich) {
       report.checks.push(await runCheck(row, { c, origin, source, consoleErrors }));
     }
+    const coverageNotes = folded ? await c.stopCoverage() : null;
+    if (shard) return { report, cold, consoleErrors, thirdParty, coverageNotes };
 
     /* Last, so it covers the overlay pass too: an exception thrown by opening
        game mode is exactly the kind of thing the opening screen cannot show
        you. */
-    report.checks.unshift({
-      name: nameOf('console'),
-      pass: consoleErrors.length === 0,
-      detail: consoleErrors.length
-        ? consoleErrors.slice(0, 4).join(' | ')
-        : `clean${thirdParty.length ? ` (${thirdParty.length} third-party, ignored)` : ''}`,
-    });
-    return { report, consoleErrors, coverageNotes: folded ? await c.stopCoverage() : null };
+    report.checks.unshift(consoleRow(nameOf('console'), consoleErrors, thirdParty));
+    return { report, consoleErrors, coverageNotes };
   } finally {
     // #178 review: the normal-completion path used to hand-roll its own
     // close/kill/rm instead of reusing closeChrome — the same cleanup written
@@ -321,7 +333,6 @@ async function browserChecks(origin, only, folded) {
    Its entries have the shape Chrome's `takePreciseCoverage` gives, so the one
    converter in coverage.mjs serves both. */
 async function runTests() {
-  current = 'node --test';
   const covDir = await mkdtemp(join(tmpdir(), 'benchcard-cov-'));
   try {
     const row = await new Promise(ok => {
@@ -446,6 +457,30 @@ if (HAS_ONLY) {
   }
 }
 
+/* ---------- --shard, --out, --merge (#459) ----------
+ *
+ * The parts CI runs as separate jobs. They take the whole run apart and put it
+ * back, so nothing that judges only a part of it may ride along. */
+const { has: HAS_SHARD, raw: SHARD_RAW } = readFlag('--shard');
+const { raw: OUT } = readFlag('--out');
+const { has: HAS_MERGE, raw: MERGE } = readFlag('--merge');
+let SHARD = null;
+if (HAS_SHARD || HAS_MERGE) {
+  const clash = ['--only', '--no-tests', '--update-budgets', '--update-coverage'].filter(f => f === '--only' ? HAS_ONLY : has(f));
+  const problem = HAS_SHARD && HAS_MERGE ? '--shard and --merge are separate steps'
+    : clash.length ? `${HAS_SHARD ? '--shard' : '--merge'} cannot be combined with ${clash.join(', ')}`
+    : HAS_SHARD && !OUT ? '--shard needs --out <file> for its partial'
+    : HAS_MERGE && !MERGE ? '--merge needs the directory of partials'
+    : null;
+  try { if (HAS_SHARD) SHARD = parseShard(SHARD_RAW); } catch (e) { console.error(e.message); process.exit(1); }
+  if (problem) { console.error(problem); process.exit(1); }
+}
+
+async function writePartial(partial) {
+  await mkdir(dirname(resolve(OUT)), { recursive: true });
+  await writeFile(OUT, JSON.stringify(partial));
+}
+
 /* ---------- --timeout ----------
  *
  * Decimals are allowed (the timeout test itself uses 0.5), so this is a
@@ -489,19 +524,80 @@ watchdogTimer = setTimeout(() => {
   shutdown(1);
 }, TIMEOUT_MIN * 60_000);
 
-server = await serve();
-const origin = `http://127.0.0.1:${server.address().port}`;
+/* #459: `--shard suite` is the suite and its coverage, nothing else. */
+if (SHARD?.suite) {
+  const sources = await appSources();
+  const f = folder({ appDir: APP, read: file => sources[file] });
+  current = 'node --test';
+  const { row, nodeCoverage } = await runTests();
+  f.add(nodeCoverage);
+  await writePartial({ shard: SHARD, nodeRow: row, lines: linesOf(f.result()) });
+  printRow(row.name.length, row);
+  await shutdown(row.pass ? 0 : 1);
+}
+
+let tests = null;
 let result;
-try {
-  /* Read once, up front: Chrome's takes are folded into lines as they arrive,
-     and that needs each file's source. */
-  const sources = WITH_COVERAGE ? await appSources() : null;
-  const folded = sources && folder({ appDir: APP, read: f => sources[f] });
-  result = await browserChecks(origin, ONLY, folded);
-  result.sources = sources;
-  result.folded = folded;
-} finally {
-  server.close();
+if (HAS_MERGE) {
+  /* #459: every part's partial, put back into the run one process would have
+     had. The suite already ran, so `tests` is its recorded row. */
+  current = 'merging partials';
+  const dir = resolve(MERGE);
+  const names = (await readdir(dir).catch(() => [])).filter(f => f.endsWith('.json')).sort();
+  const parts = await Promise.all(names.map(async f => JSON.parse(await readFile(join(dir, f), 'utf8'))));
+  let m;
+  try { m = mergePartials(parts, ROWS); } catch (e) { console.error(`${e.message} (read ${names.join(', ') || 'nothing'} in ${dir})`); await shutdown(1); }
+  const sources = await appSources();
+  const folded = folder({ appDir: APP, read: f => sources[f] });
+  for (const lines of m.lines) folded.addLines(lines);
+  rowSeconds.push(...m.rowSeconds);
+  Object.assign(sleepTally, m.tallies.sleep);
+  Object.assign(settleTally, m.tallies.settle);
+  tests = Promise.resolve({ row: m.nodeRow, nodeCoverage: [] });
+  result = { report: { viewport: m.viewport, checks: m.checks, payload: m.payload }, consoleErrors: [], coverageNotes: m.coverageNotes, sources, folded };
+} else {
+  server = await serve();
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  /* #459: the suite starts now, beside the browser rows, not after them. The
+     two do not depend on each other, and in series they were about 8 + 3.7
+     minutes of CI's smoke job. Awaited where its row is pushed, below. The
+     no-op catch only keeps a suite that dies while Chrome is still walking
+     from becoming an unhandled rejection; the real await still sees it. */
+  tests = has('--no-tests') || HAS_ONLY || SHARD ? null : runTests();
+  tests?.catch(() => {});
+  try {
+    /* Read once, up front: Chrome's takes are folded into lines as they arrive,
+       and that needs each file's source. */
+    const sources = WITH_COVERAGE ? await appSources() : null;
+    const folded = sources && folder({ appDir: APP, read: f => sources[f] });
+    result = await browserChecks(origin, ONLY, folded, SHARD);
+    result.sources = sources;
+    result.folded = folded;
+  } catch (e) {
+    // A browser half that threw ends the run; do not leave the suite behind.
+    try { liveTests?.kill('SIGKILL'); } catch { /* already gone */ }
+    throw e;
+  } finally {
+    server.close();
+  }
+}
+
+/* #459: a rows shard writes what it ran and stops; the merge judges it. Its
+   own exit code still says whether its rows passed, so a red shard job names
+   where to look. */
+if (SHARD) {
+  const { report, cold, consoleErrors, thirdParty, coverageNotes, folded } = result;
+  await writePartial(shardPartial({
+    shard: SHARD, viewport: report.viewport, cold, rich: report.checks.slice(cold.length), payload: report.payload,
+    consoleErrors, thirdParty, coverageNotes, lines: linesOf(folded.result()), rowSeconds,
+    tallies: { sleep: { ...sleepTally }, settle: { ...settleTally } },
+  }));
+  const pad = Math.max(0, ...report.checks.map(c => c.name.length));
+  console.log(`\nbenchcard smoke — shard ${SHARD.k}/${SHARD.n}, ${report.checks.length} checks (partial: ${OUT})\n`);
+  for (const c of report.checks) printRow(pad, c);
+  if (consoleErrors.length) console.log(`console errors in this shard: ${consoleErrors.slice(0, 4).join(' | ')}`);
+  console.log('');
+  await shutdown(report.checks.every(c => c.pass) && !consoleErrors.length ? 0 : 1);
 }
 const { report, consoleErrors, coverageNotes, sources, folded } = result;
 
@@ -568,8 +664,9 @@ if (has('--update-budgets')) {
    number, like the budgets' baselines, and `--update-coverage` is the only
    thing that moves it. */
 let coverage = null;
-if (!has('--no-tests')) {
-  const { row, nodeCoverage } = await runTests();
+if (tests) {
+  current = 'node --test';
+  const { row, nodeCoverage } = await tests;
   report.checks.push(row);
   folded.add(nodeCoverage);
   coverage = summarizeCoverage(folded.result(), sources);

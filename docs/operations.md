@@ -17,15 +17,19 @@ blocked over `file://`, so it has to be served either way.
 Node 24, one leg. The repo is private, so the badge above only renders for
 someone signed in with access.
 
-There are **seven** CI jobs in total: the `node --test` job above, then
-`smoke` (`node scripts/smoke.mjs`, which runs the unit suite inside it and
-judges the line-coverage floor), `evals` (`node scripts/evals.mjs`, which
+There are **eight** CI jobs in total: the `node --test` job above, then
+`smoke part` (a matrix of four: the unit suite under coverage with `--shard
+suite`, and the browser rows dealt across three Chromes with `--shard 1/3` to
+`3/3`), `smoke` (the required check: `node scripts/smoke.mjs --merge` over the
+four parts' partials, judging every row, the budgets and the line-coverage
+floor on the whole run, and failing if any part failed or is missing; #459),
+`evals` (`node scripts/evals.mjs`, which
 checks the harness's evals still pass), `redirect` (`redirect-check.mjs`,
 the service worker behind Cloudflare's trailing-slash 307s), `checks that need
 history` (two steps: `check-about-date.mjs` and `check-sitemap-lastmod.mjs`),
 and `vendor drift` (below), plus the weekly `lighthouse scores` (below that).
 Three of these went unmentioned here for months while this paragraph counted
-to three; if you add an eighth, say so here.
+to three; if you add a ninth, say so here.
 
 The `checks that need history` job runs `scripts/check-sitemap-lastmod.mjs`,
 which fails when a branch changes `app/<page>.html` for a page in the sitemap
