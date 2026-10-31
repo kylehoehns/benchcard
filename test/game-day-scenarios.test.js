@@ -200,6 +200,24 @@ describe('a coach runs a game', { skip }, () => {
     assert.ok(await coach.sees('Ravens, 11:30 AM, planned'));
   });
 
+  test('a finished game cannot be shuffled, an underway one can', async () => {
+    await startHawks();
+    await coach.tap('Next stint');
+    await coach.tap('Leave');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, underway');
+    await coach.tap('Card');
+    assert.equal(await coach.isDisabled('Shuffle'), false, 'Shuffle works while the game is underway');
+    await coach.tap('Resume · Q1 4:00');
+    for (let i = 0; i < 6; i++) await coach.tap('Next stint');
+    await coach.tap('Finish game');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, finished');
+    await coach.tap('Card');
+
+    assert.equal(await coach.isDisabled('Shuffle'), true, 'the minutes are played, so there is nothing to shuffle');
+  });
+
   test('the next day, the finished game is filed to the season and the unstarted one left out', async () => {
     await startHawks();
     for (let i = 0; i < 7; i++) await coach.tap('Next stint');
