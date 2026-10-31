@@ -498,7 +498,7 @@ function renderPass(g, i, d) {
     b.append(rot);
   }
 
-  b.append(el('span', 'pass-summary', passSummary(g, i)));
+  b.append(el('span', 'pass-summary', passSummary(g, i, p)));
 
   const statusWord = status.word.toLowerCase();
   b.setAttribute('aria-label', when ? `${full}, ${when}, ${statusWord}` : `${full}, ${statusWord}`);

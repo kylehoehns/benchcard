@@ -148,6 +148,9 @@ function minutesEditor(g) {
   return wrap;
 }
 
+const AS_THEY_ARE = 'Adds up exactly, so the plan uses these numbers as they are.';
+const RULES_CHANGED_ROWS = 'Adds up exactly, but the rules changed some rows. Each one says what it plays.';
+
 // In-place refresh of the budget rows. Never rebuilds a node, so a drag keeps
 // its pointer capture and the numbers track the thumb without a reflow.
 function updateBudgetUI(g) {
@@ -184,7 +187,7 @@ function updateBudgetUI(g) {
      * `.act` below still shows what a row will really play when the two
      * disagree, which is the case a thin bench can still produce. */
     msg.textContent = state2 === 'exact'
-      ? 'Adds up exactly, so the plan uses these numbers as they are.'
+      ? AS_THEY_ARE
       : state2 === 'under'
         ? `${fmtMinutes(-deltaMin)} min still to give out, shared out in proportion, so every number drifts up a little. Lock a row to hold it exactly.`
         : `${fmtMinutes(deltaMin)} min more than the game has. Somebody falls short of their number.`;
@@ -226,6 +229,7 @@ export function refreshBudgetActuals() {
   if (!g || g.strategy !== 'minutes') return;
   const p = plans[state.activeGame];
   const shape = regulationShape(g);
+  let anyOff = false;
   for (const id of availIds(g)) {
     const row = document.querySelector(`.srow[data-id="${CSS.escape(id)}"]`);
     const act = row?.querySelector('.act');
@@ -243,6 +247,7 @@ export function refreshBudgetActuals() {
        carried a rule for it. The correction is already said out loud by `.act`
        below, in `--warn`, on the row it belongs to; a second tint would be the
        same sentence twice. Removed 2026-08-24 by the dead-class sweep. */
+    anyOff ||= off;
     act.hidden = !off;
     act.textContent = off ? `plays ${fmtMinutes(got)}` : '';
     const r = row.querySelector('input[type=range]');
@@ -250,6 +255,10 @@ export function refreshBudgetActuals() {
     if (r) r.setAttribute('aria-valuetext',
       minutesText(want) + (off ? `, plan gives ${minutesText(got)}` : ''));
   }
+  /* #420: the targets add up exactly (`updateBudgetUI` says so), and only now,
+     after a solve, is it known whether the plan used them as they are. */
+  const msg = $('#budgetMsg');
+  if (msg?.classList.contains('exact')) msg.textContent = anyOff ? RULES_CHANGED_ROWS : AS_THEY_ARE;
 }
 
 function closersEditor(g) {

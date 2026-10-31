@@ -344,14 +344,25 @@ function removalCosts(id) {
   return out;
 }
 
+/* The Team page's large title, on its own so a rename can repaint it while
+   the coach is still typing in `#teamName` without rebuilding the roster
+   (#420). `renderRoster` writes it too, from here. */
+export function renderTeamTitle() {
+  set('#teamTitle', 'textContent', teamName() || 'Team');
+}
+
 export function renderRoster() {
   const n = state.players.length;
   const box = $('#rosterlist'); box.textContent = '';
-  set('#teamName', 'value', state.teamName || '');
+  /* A rename repaints this section while the coach is still typing in the
+     field (#420): rewriting a value the field already holds would move the
+     caret, so only a value that differs is written. */
+  const field = $('#teamName');
+  if (field && field.value !== (state.teamName || '')) field.value = state.teamName || '';
   renderTeamControls();
   renderTeamActions();
   if (!box.dataset.dnd) { box.dataset.dnd = '1'; box.addEventListener('pointerdown', rosterDown); }
-  set('#teamTitle', 'textContent', teamName() || 'Team');
+  renderTeamTitle();
   set('#rosterCount', 'textContent', n ? `${n} player${n === 1 ? '' : 's'}` : '');
 
   /* Decision 8: with nobody on the roster the group box itself goes, rather

@@ -23,7 +23,7 @@ import { track, bucketRoster } from './analytics.js';
 /* Moved from render.js, which no longer names them: the whole repaint
  * vocabulary an edit is allowed to touch. One definition each, kept beside
  * the table that is now the only thing that reads them. */
-export const AFTER_EDIT = ['teams', 'tabs', 'sentence', 'strategy', 'budget', 'seasonadj', 'balance', 'summary', 'issues', 'plan', 'timeline', 'totals', 'cards', 'gameview'];
+export const AFTER_EDIT = ['teams', 'tabs', 'teamTitle', 'sentence', 'strategy', 'budget', 'seasonadj', 'balance', 'summary', 'issues', 'plan', 'timeline', 'totals', 'cards', 'gameview'];
 export const PLAN_ONLY = ['tabs', 'sentence', 'budget', 'seasonadj', 'summary', 'issues', 'plan', 'timeline', 'totals', 'cards', 'gameview'];
 
 /* kind -> { pref?: true, keys: [...] | 'all', now?: true }
@@ -39,7 +39,7 @@ export const EDITS = {
   gameDate: { keys: 'all', now: true },
   opponent: { keys: ['tabs', 'totals', 'cards'] },
   tipoff: { keys: ['tabs', 'cards'] },
-  teamName: { keys: ['cards'] },
+  teamName: { keys: ['teams', 'tabs', 'teamTitle', 'cards'] },
   dayName: { keys: ['tabs'] },
   teamSetting: { keys: 'all', now: true },
   teamColor: { keys: [], now: true },

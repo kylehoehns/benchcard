@@ -17,7 +17,7 @@ import { fmtClock, fmtMinutes } from './engine.js';
 import { riseIn, popIn, countTo, enabled as fxOn, EASE } from './fx.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
-import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, blockedFix, BLOCKED_TITLE } from './state.js';
+import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, countedIds, blockedFix, BLOCKED_TITLE } from './state.js';
 import { distinctNames } from './roster.js';
 import { fitPreview } from './card.js';
 import { resumeAt } from './live.js';
@@ -255,7 +255,7 @@ export function renderTimeline() {
 
   /* #247 item G: a kid marked out after playing keeps the row for what they
      played; one out with no minutes stays off it. */
-  const ids = state.players.filter(pl => !g.out.includes(pl.id) || (mins[pl.id] ?? 0) > 0).map(pl => pl.id);
+  const ids = countedIds(g, p);
   const total = stints.reduce((a, s2) => a + s2.minutes, 0);
   const pct = m => (m / total) * 100;
   const starts = [];

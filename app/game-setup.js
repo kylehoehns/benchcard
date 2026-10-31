@@ -79,14 +79,17 @@ function setPhrase(sel, text, name) {
    re-plan has run, the line reads the new summary. Hooked into this section,
    which runs after every re-plan (AFTER_EDIT and PLAN_ONLY), rather than a
    section of its own. `planSay` is the one place this text is built.
+   Runs with the `summary` section (#420), the one that paints the summary
+   line, so it repaints whenever that line does -- including `closeGameMode`'s
+   repaint after a bench swap, which never touches `sentence`.
 
    Written to all three by id rather than to whichever dialog happens to be
    open: `showModal()` makes a closed dialog's contents inert, not absent, so
    there is nothing wrong with a status line holding stale-but-inert text
    underneath a sheet nobody can see, and each id then has a real reader here
    instead of only ever being found through `.bsheet-status` on the open one. */
-function refreshSheetStatus(g) {
-  const text = planSay(g, plans[state.activeGame]);
+export function refreshSheetStatus() {
+  const text = planSay(game(), plans[state.activeGame]);
   set('#sheetWhoStatus', 'textContent', text);
   set('#sheetFormatStatus', 'textContent', text);
   set('#sheetIntervalStatus', 'textContent', text);
@@ -104,7 +107,6 @@ export function renderSentence() {
   const line2 = $('#sentenceEvens');
   if (line2) line2.hidden = !parts.evens;
   if (parts.evens) setPhrase('#phraseEvens', parts.evens, 'Evening out the day');
-  refreshSheetStatus(g);
 }
 
 /* ================================================================== *

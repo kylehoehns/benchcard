@@ -24,6 +24,7 @@ import { state, game, byId, plans, seasonAdjust, availIds,
 import { pickFive } from './pills.js';
 import { pushPlanPane, stepperRow } from './game-setup.js';
 import { popPane } from './trap.js';
+import { seasonDate } from './storage.js';
 import { undoable, showUndo } from './toast.js';
 
 let edit = () => {};
@@ -127,9 +128,11 @@ function renderDayGroup(g) {
     g.useCarryover = v; renderConstraints(); edit('dayCarryover');
   }));
   wrap.append(box);
+  // #420: "today" only when the open day is the phone's today, as `moveGame` and filing read it
+  const when = state.day.date === seasonDate(new Date()) ? 'today' : 'that day';
   wrap.append(el('p', 'pgrp-f', first
-    ? "This is the first game today, so there's nothing to even out."
-    : 'Players who got fewer minutes earlier today get more here.'));
+    ? `This is the first game ${when}, so there's nothing to even out.`
+    : `Players who got fewer minutes earlier ${when} get more here.`));
 }
 
 function renderSeasonGroup(g) {

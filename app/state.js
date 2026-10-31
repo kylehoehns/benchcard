@@ -624,6 +624,18 @@ export const availIds = g => state.players.map(p => p.id).filter(id => !g.out.in
 const playingIds = (g, also = [], standing = satIds(g.live)) =>
   availIds(g).filter(id => !standing.includes(id) && !also.includes(id));
 
+/* Who a game counts (#247 item G, #420): a player who is here, or who is
+   marked out but has minutes in the rotation actually showing (`effectiveMinutes`,
+   never `p.minutes`). The timeline's rows, the game screen's "N players" and
+   Today's pass summary all read this one rule, so they agree after a player
+   is marked out mid-game. With no ok plan, nobody has minutes yet, so it is
+   `availIds`. `p` is the game's own plan -- `plans[i]` only for the open day. */
+export function countedIds(g, p) {
+  if (!p || !p.ok) return availIds(g);
+  const mins = effectiveMinutes(g, p);
+  return state.players.filter(pl => !g.out.includes(pl.id) || (mins[pl.id] ?? 0) > 0).map(pl => pl.id);
+}
+
 /* An empty roster is not a mistake, it is the first thing that happens. On a
  * fresh device the games view used to greet the coach with a red "Only 0
  * players available; you need at least 5 to field a lineup" over "No rotation
@@ -1031,10 +1043,10 @@ export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
 /* The pass's one-line summary (#26 item 5, decision 2): "<N> player(s) ·
    <strategy words>", then "evens out the day" for a later game with carryover
    on, then "<N> rule(s)" when `ruleCount(g)` is above 0. Built only from
-   `availIds`, `g.strategy`/`g.useCarryover` and `ruleCount` -- nothing here is
+   `countedIds`, `g.strategy`/`g.useCarryover` and `ruleCount` -- nothing here is
    re-derived. */
-export function passSummary(g, i) {
-  const n = availIds(g).length;
+export function passSummary(g, i, p) {
+  const n = countedIds(g, p).length;
   const parts = [`${n} player${n === 1 ? '' : 's'} · ${STRATEGY_WORDS[g.strategy] || g.strategy}`];
   if (i > 0 && g.useCarryover) parts.push('evens out the day');
   const rules = ruleCount(g);
@@ -1046,10 +1058,10 @@ export function passSummary(g, i) {
    phrases, each of which opens its own sheet or fold. `intervalWords` is
    split out because the Sub interval sheet's rows read it too, and
    `evensOutLine` because it is the whole of the (conditional) second line.
-   Nothing here is re-derived: `availIds`, `ruleCount`, `STRATEGY_WORDS` and
+   Nothing here is re-derived: `countedIds`, `ruleCount`, `STRATEGY_WORDS` and
    `GRAN_CHOICES` are the same single sources `passSummary` above reads. */
-export function sentenceParts(g, i) {
-  const n = availIds(g).length;
+export function sentenceParts(g, i, p = plans[i]) {
+  const n = countedIds(g, p).length;
   const rules = ruleCount(g);
   return {
     players: `${n} player${n === 1 ? '' : 's'}`,
@@ -1125,7 +1137,7 @@ export function sameAsLast() {
   const i = games.length - 1;
   const g = games[i];
   if (!g || !availIds(g).length) return null;
-  const { players, format, strategy } = sentenceParts(g, i);
+  const { players, format, strategy } = sentenceParts(g, i, dayPlans[days.length - 1]?.[i]);
   return {
     title: g.tipoff ? `Same as ${tipoffLabel(g.tipoff)}?` : 'Same as the last game?',
     summary: `${players}, ${format}, ${strategy}`,
