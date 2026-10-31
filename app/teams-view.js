@@ -661,6 +661,7 @@ const FLOW_STEPS = [
 const STEPS = FLOW_STEPS.length;
 
 let draft = null;
+let draftTeam = null; // the team `draft` was started on
 let flowStep = 1;
 
 /* I1: resume rather than restart when `draft` survived the last close. It
@@ -669,6 +670,9 @@ let flowStep = 1;
    close paths that DO run code clear it first: Discard and a commit null it
    outright, and a plain close with nothing typed is nulled by that listener.
    So a draft still here is one with something in it worth coming back to.
+   It belongs to the team it was started on (`draftTeam`): Add a game on
+   another team drops it and starts fresh, so its "Same as" card and the
+   game it adds come from the same team.
 
    I9: the spec's own pseudocode names this `openAddGame(trigger)` -- opened
    by hand (`showModal()`, not `openSheet`) because `openSheet` also runs the
@@ -680,7 +684,9 @@ let flowStep = 1;
 function openAddGame(trigger) {
   const d = $('#addGameFlow');
   if (!d) return;
+  if (draft && draftTeam !== team().id) draft = null;
   if (!draft) {
+    draftTeam = team().id;
     // #101 item 2: defaults to the team's LAST day (not necessarily the
     // open one -- a coach can be viewing an earlier day's game when she
     // taps Add a game), same day `sameAsLast()` and `lastGame()` already
