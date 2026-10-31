@@ -1260,22 +1260,20 @@ function* exchangeSwaps(cur, ctx, forcedByStint) {
 function replaceLegal(lu, outs, ins, forced, ctx) {
   if (!outs.every(id => lu.includes(id) && !forced.has(id))) return false;
   if (ins.some(id => lu.includes(id))) return false;
-  const next = lu.filter(id => !outs.includes(id)).concat(ins);
-  for (let x = 0; x < next.length; x++) for (let y = x + 1; y < next.length; y++) {
-    if (ctx.avoidSet.has(pairKey(next[x], next[y]))) return false;
-  }
-  return true;
-}
-
-function* twoOf(ids) {
-  for (let x = 0; x < ids.length; x++) for (let y = x + 1; y < ids.length; y++) yield [ids[x], ids[y]];
+  const stay = lu.filter(id => !outs.includes(id));
+  // only pairs with an incoming player are new; the rest were already legal
+  for (const inId of ins) for (const other of stay) if (ctx.avoidSet.has(pairKey(inId, other))) return false;
+  const [x, y] = ins;
+  return !ctx.avoidSet.has(pairKey(x, y));
 }
 
 /* A hard pair can only move together, but every other move changes one player
    at a time, and unseating one of the two costs the pair penalty before the
    partner can follow -- so the search never finds the even plan that exists.
-   These moves seat, bench or trade the pair as one. Listed first because the
-   move budget is spent in list order. Yields nothing without a hard pair. */
+   These moves seat, bench or trade the pair as one. Listed after singleSwaps and
+   before exchangeSwaps (measured): first, it starves the budget on long formats
+   because descend restarts at the head after every gain; last, it is never
+   reached on 16-stint formats. Yields nothing without a hard pair. */
 function* pairSwaps(cur, ctx, forcedByStint) {
   if (!ctx.hardPairs) return;
   for (const [a, b] of ctx.pairs) {
@@ -1285,7 +1283,7 @@ function* pairSwaps(cur, ctx, forcedByStint) {
       if (!on && !off) continue;
       if (!ctx.neutralOnly) {
         const others = on ? ctx.avail.filter(id => !cur[i].includes(id)) : cur[i];
-        for (const two of twoOf(others)) {
+        for (const two of combinations(others, 2)) {
           const outs = on ? [a, b] : two;
           const ins = on ? two : [a, b];
           if (replaceLegal(cur[i], outs, ins, forcedByStint[i], ctx)) yield { kind: 'pair', i, outs, ins };
@@ -1296,7 +1294,7 @@ function* pairSwaps(cur, ctx, forcedByStint) {
         if (j === i || cur[j].includes(a) || cur[j].includes(b)) continue;
         if (ctx.neutralOnly && Math.abs(ctx.stints[i].minutes - ctx.stints[j].minutes) > 1e-9) continue;
         const us = cur[j].filter(id => !cur[i].includes(id));
-        for (const vs of twoOf(us)) {
+        for (const vs of combinations(us, 2)) {
           if (!replaceLegal(cur[i], [a, b], vs, forcedByStint[i], ctx)) continue;
           if (!replaceLegal(cur[j], vs, [a, b], forcedByStint[j], ctx)) continue;
           yield { kind: 'pair', i, j, outs: [a, b], ins: vs };
@@ -1379,7 +1377,7 @@ function perturb(cur, ctx, forcedByStint, rng) {
 }
 
 function localSearch(lineups, ctx, forcedByStint, rng, iterations) {
-  const gens = ctx.neutralOnly ? [pairSwaps, exchangeSwaps] : [pairSwaps, singleSwaps, exchangeSwaps];
+  const gens = ctx.neutralOnly ? [exchangeSwaps, pairSwaps] : [singleSwaps, pairSwaps, exchangeSwaps];
   const budgetRef = { left: iterations };
   let cur = lineups.map(l => l.slice());
   let curCost = descend(cur, ctx, forcedByStint, budgetRef, gens);

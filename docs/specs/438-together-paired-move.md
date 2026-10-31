@@ -87,13 +87,21 @@ generator yields nothing unless `ctx.hardPairs` and a pair exist).
 
 ## Design
 
-A third generator, `pairSwaps`, put **first** in the move list in both passes.
-It yields nothing unless `ctx.hardPairs`, so for every other plan the order
-is unchanged in effect. First, not last, is measured: the search spends its
-move budget in list order, and with 16 two-minute stints the single and
-exchange neighborhoods use up the 4000 moves before a last-place generator
-is reached. In the prototype, last place still lost the fuzz property (item
-4) on 6 of 100 inputs, all 4x8 every 2; first place lost 0 of 412. For each
+A third generator, `pairSwaps`, in the move list of both passes. It yields
+nothing unless `ctx.hardPairs`, so every other plan is unchanged. Its place in
+the list is measured, because the search spends its move budget in list order
+and returns to the head of the list after every gain:
+
+- last, it lost the fuzz property (item 4) on 6 of 100 inputs, all 4x8 every
+  2: with 16 two-minute stints the single and exchange neighborhoods use up
+  the 4000 moves before it is reached;
+- first, it lost 0 of 412, but every gain then re-walks the whole pair
+  neighborhood before the cheap single swaps (efficiency review);
+- **after the single swaps and before the exchanges** (what is built), it lost
+  0 of 125 and met items 1 and 2 on all 20 seeds. In the minute-neutral pass it
+  goes after the exchanges, where it only trades the pair.
+
+For each
 pair `[a, b]` and stint `i`:
 
 - **In / out together** (ordinary pass only, since it moves minutes): if both

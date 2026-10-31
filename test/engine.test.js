@@ -1322,5 +1322,32 @@ test('438: Force Together on 2x20 every 5 keeps the pair within one stint of the
     for (const id of ['p0', 'p1']) {
       assert.ok(Math.abs(r.minutes[id] - 20) <= 5, `seed ${seed} ${id} got ${r.minutes[id]}`);
     }
+    r.stints.forEach((s, i) => assert.equal(s.onFloor.includes('p0'), s.onFloor.includes('p1'),
+      `seed ${seed} stint ${i}`));
+  }
+});
+
+test('438: Force Together on 4x10 every 2 (20 stints) never splits the pair', () => {
+  const splits = [];
+  for (const n of [12, 15]) for (let seed = 1; seed <= 10; seed++) {
+    const r = generatePlan({ players: roster(n), availableIds: ids(n), format: { periods: 4, periodMinutes: 10 },
+      granularity: { mode: 'everyN', value: 2 }, seed,
+      constraints: { pairs: [['p0', 'p1']], hardPairs: true } });
+    if (r.stints.some(s => s.onFloor.includes('p0') !== s.onFloor.includes('p1'))) splits.push(`${n} players seed ${seed}`);
+  }
+  assert.deepEqual(splits, []);
+});
+
+test('438: a hard pair with an Apart pair on the bench and a pinned player keeps all three', () => {
+  for (let seed = 1; seed <= 10; seed++) {
+    const r = generatePlan({ players: roster(10), availableIds: ids(10), format: QUARTERS, granularity: EVERY_4, seed,
+      constraints: { pairs: [['p0', 'p1']], hardPairs: true, avoids: [['p5', 'p6'], ['p2', 'p7']],
+        openingFive: ['p3', 'p0', 'p1'] } });
+    r.stints.forEach((s, i) => {
+      assert.equal(s.onFloor.includes('p0'), s.onFloor.includes('p1'), `seed ${seed} stint ${i} split`);
+      assert.ok(!(s.onFloor.includes('p5') && s.onFloor.includes('p6')), `seed ${seed} stint ${i} p5+p6`);
+      assert.ok(!(s.onFloor.includes('p2') && s.onFloor.includes('p7')), `seed ${seed} stint ${i} p2+p7`);
+    });
+    for (const id of ['p3', 'p0', 'p1']) assert.ok(r.stints[0].onFloor.includes(id), `seed ${seed} pin ${id}`);
   }
 });

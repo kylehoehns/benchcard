@@ -451,9 +451,9 @@ test('property #378: a starting five whose caps cover the opening stint is never
 });
 
 test('property #438: a hard pair is never less even than a soft plan that already keeps the pair together', () => {
-  const fmts = [[4, 8, 4], [2, 20, 5], [4, 6, 3], [4, 8, 2], [2, 16, 4], [4, 10, 5], [2, 12, 3]];
+  const fmts = [[4, 8, 4], [2, 20, 5], [4, 6, 3], [4, 8, 2], [2, 16, 4], [4, 10, 5], [2, 12, 3], [4, 10, 2]];
   let checked = 0;
-  for (let k = 0; k < 42; k++) {
+  for (let k = 0; k < 48; k++) {
     const [periods, periodMinutes, every] = fmts[k % fmts.length];
     const n = 6 + (k % 9);
     const players = Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `P${i}` }));
