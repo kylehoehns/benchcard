@@ -162,22 +162,8 @@ export async function tourStepsPass(c, origin, rec) {
           rec.check(ringCovers(d.hole, d.anchor, d.vh, capped),
             `${where}: #tourHole ${JSON.stringify(d.hole)} does not cover ${EXPECTED[i].anchor} ${JSON.stringify(d.anchor)}`);
         }
-        /* `#timeline`'s ring is capped at 52% of the viewport height (`CAP`,
-         * app/tour.js) -- with the fixture's 11-row roster that leaves less
-         * room below the ring than the box needs, and `placeTour`'s own
-         * fallback (picking the side with more room, then clamping into the
-         * viewport) can leave the box crossing the ring's bottom edge here.
-         * That is `placeTour`'s existing box-placement math, unchanged by
-         * #201, and pre-existing on main: measured on a scratch checkout of
-         * 197dd20 (the commit this spec's Survey was taken against) with the
-         * same title, body and #timeline anchor at step 3 of today's
-         * four-step tour -- box {top:619, bottom:833.8} against hole
-         * {top:207, bottom:636.6} at 390x844, RICH fixture, the same ~18px
-         * overlap #201 inherits at its own step 4. Fixing it would mean
-         * changing `placeTour`, which this spec was handed as "must not
-         * change" (see the spec's Out of scope); every other step's box
-         * still has to clear the ring. */
-        if (!capped) rec.check(!overlaps(d.box, d.hole), `${where}: #tourBox ${JSON.stringify(d.box)} overlaps #tourHole ${JSON.stringify(d.hole)}`);
+        // #421: the box never covers its control, `#timeline` (step 4) included.
+        rec.check(!overlaps(d.box, d.hole), `${where}: #tourBox ${JSON.stringify(d.box)} overlaps #tourHole ${JSON.stringify(d.hole)}`);
       }
       const vp = { left: 0, top: 0, right: d.vw, bottom: d.vh };
       rec.check(inside(vp, d.box), `${where}: #tourBox ${JSON.stringify(d.box)} is not fully inside the ${d.vw}x${d.vh} viewport`);
