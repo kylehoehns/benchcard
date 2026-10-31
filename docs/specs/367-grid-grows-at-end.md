@@ -23,8 +23,9 @@ All on a game underway, Even strategy, 8 players, 2 × 16, `everyN` 4
    gives the 8 regulation stints unchanged, then one stint: `period` 3,
    `periodName` `'OT'`, `startSec` 120, `endSec` 0, `minutes` 2.
    `overtime: [8]` with `everyN 4` gives two OT stints (480→240, 240→0).
-   `overtime: [2, 2]` gives `'OT'` then `'OT2'`. `perPeriod 2` splits an 8-minute
-   OT into two 4s; `breaksOnly` gives one. `overtime` absent or `[]` gives
+   `overtime: [2, 2]` gives `'OT'` then `'OT2'`. Under `perPeriod` (#404) OT is cut
+   by the regulation stint length, so `perPeriod 2` on 2 × 16 gives an 8-minute
+   OT as one 8; `breaksOnly` gives one. `overtime` absent or `[]` gives
    exactly today's stints (same objects' fields, same count).
 2. **Freeze on growth.** With a hand swap in stint 3 and the game on stint 8
    (index 7), setting `g.overtime = [2]` and recomputing: every player's

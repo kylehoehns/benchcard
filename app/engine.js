@@ -96,8 +96,13 @@ export function buildStints(format, granularity) {
       period: periods + i + 1, minutes, name: overtimeLabel(i + 1),
     })),
   ];
+  // #404: under perPeriod an overtime period is cut by the everyN rule at the
+  // regulation stint length, so a short one is one stint, not n slivers
+  const otGranularity = granularity.mode === 'perPeriod'
+    ? { mode: 'everyN', value: periodMinutes / Math.max(1, Math.floor(granularity.value)) }
+    : granularity;
   for (const { period: p, minutes: pm, name } of all) {
-    const lengths = periodLengths(pm, granularity);
+    const lengths = periodLengths(pm, p > periods ? otGranularity : granularity);
     let left = pm;
     for (const len of lengths) {
       stints.push({
