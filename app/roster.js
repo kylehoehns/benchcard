@@ -5,6 +5,14 @@
 import { deriveShortNames } from './engine.js';
 
 /**
+ * The one rule for comparing jersey numbers. Leading zeros are stripped only
+ * before a non-zero digit ("07" -> "7", "007" -> "7"); an all-zero number keeps
+ * its length, with three or more collapsing to "00" ("0" -> "0", "00" -> "00",
+ * "000" -> "00"). So a real #0 and a real #00 stay two numbers.
+ */
+export const jerseyKey = n => String(n ?? '').trim().replace(/^0+(?=[1-9])/, '').replace(/^0{3,}$/, '00');
+
+/**
  * Parse one line into { number, name }. Coaches paste rosters in whatever
  * shape their league emailed them, so accept the common ones:
  *   "12 Maya Webb"   "Maya Webb #12"   "12. Maya Webb"
@@ -35,7 +43,7 @@ export function parseRosterLine(line) {
   s = s.replace(/[\s,;|]+$/g, '').replace(/^[\s,;|]+/g, '').replace(/\s+/g, ' ').trim();
   if (!s) return null;
 
-  return { number: number.replace(/^0+(?=\d)/, ''), name: s };
+  return { number: jerseyKey(number), name: s };
 }
 
 /**
@@ -164,7 +172,6 @@ export function repeatNotice(name, count) {
  * so none of them re-derives it.
  */
 export function distinctNames(players) {
-  const numKey = n => String(n ?? '').trim().replace(/^0+(?=\d)/, '');
   const groups = new Map();
   for (const p of players || []) {
     const k = nameKey(p.name);
@@ -177,8 +184,8 @@ export function distinctNames(players) {
   for (const p of players || []) {
     const group = groups.get(nameKey(p.name));
     if (!group || group.length < 2) { out[p.id] = p.name; continue; }
-    const num = numKey(p.number);
-    const sharedNumber = num && group.some(x => x !== p && numKey(x.number) === num);
+    const num = jerseyKey(p.number);
+    const sharedNumber = num && group.some(x => x !== p && jerseyKey(x.number) === num);
     out[p.id] = num && !sharedNumber ? `${p.name} #${num}` : `${p.name} (${shortNames[p.id]})`;
   }
   return out;
@@ -249,14 +256,14 @@ export function sampleRoster(n) {
  * rows reading "7" name nobody. Blank numbers are not duplicates; most of a
  * roster may legitimately have none.
  *
- * Leading zeros are stripped before comparing, the same way `parseRosterLine`
- * normalizes them, so a pasted "07" and a typed "7" are one number and not two.
+ * Numbers are compared by `jerseyKey`, as `parseRosterLine` normalizes them: a
+ * pasted "07" and a typed "7" are one number, and "00" is its own number, not "0".
  * Returns [{ number, ids }] in first-appearance order, `number` normalized.
  */
 export function duplicateNumbers(players) {
   const by = new Map();
   for (const p of players || []) {
-    const n = String(p?.number ?? '').trim().replace(/^0+(?=\d)/, '');
+    const n = jerseyKey(p?.number);
     if (!n) continue;
     if (!by.has(n)) by.set(n, []);
     by.get(n).push(p.id);
