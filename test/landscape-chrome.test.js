@@ -12,9 +12,9 @@ import { readFileSync } from 'node:fs';
 const css = readFileSync(new URL('../app/app.css', import.meta.url), 'utf8');
 
 const LAND = '@media (orientation: landscape) and (max-height: 560px)';
-/* the second occurrence: the first is game mode's, which gm-landscape.test.js
-   pins separately */
-const start = css.indexOf(LAND, css.indexOf(LAND) + 1);
+/* game mode's block is the em one (gm-landscape.test.js pins it), so this px
+   query occurs once */
+const start = css.indexOf(LAND);
 const body = start > -1 ? css.slice(start, css.indexOf('\n}', start)) : '';
 
 test('the chrome landscape block sits after every bar rule it overrides', () => {

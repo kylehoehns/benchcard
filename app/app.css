@@ -1410,6 +1410,26 @@ h3.gm-next-hd { margin-top: 0; }
 .gm-exit { display: none; width: auto; padding: 0 .85rem; font-size: var(--fs-secondary); font-weight: 600;
   letter-spacing: -.01em; color: var(--muted); }
 @media (hover: hover) { .gm-exit:hover { background: var(--surface-2); color: var(--ink); } }
+/* #421: large text (an em width query, as the rest of this file reads "the
+   coach asked for bigger text"; em in a media query is the browser's default
+   size, so 18em is 288px at 16px, under any phone, and 576px at 32px). At a 32px root the
+   bar was 158px and the foot two rows, 288px, which left bench mode's window
+   with no whole player card. The bar loses its padding and shrinks its
+   title; the nav buttons drop from 3.2rem (102px) to a little over the 48px
+   floor, and Leave becomes the x icon (#gmDone's aria-label keeps its accessible
+   name "Leave"), so Leave, Back, the dots
+   and Next share one row at 320px. Finish game on the last stint may still
+   wrap. `.gm-foot .gm-exit` beats the later coarse-pointer `.gm-exit` rule. */
+.gm-exit .gm-exit-i { display: none; }
+@media (max-width: 18em) {
+  .gm-bar { padding-top: .3rem; padding-bottom: .3rem; gap: .3rem; }
+  .gm-title > span:first-child { font-size: var(--fs-secondary); }
+  .gm-foot { gap: .4rem; padding-top: .4rem; padding-bottom: .5rem; }
+  .gm-nav { width: 52px; height: 52px; }
+  .gm-foot .gm-exit { width: 52px; padding: 0; }
+  .gm-exit .gm-exit-i { display: inline-flex; }
+  .gm-exit .gm-exit-t { display: none; }
+}
 /* The dots jump between stints mid-game, so each one is a full-height target:
    the button is 44px tall and takes an equal share of the row, and the dot
    itself is drawn by ::before so the hit area is invisible.
@@ -1479,7 +1499,7 @@ h3.gm-next-hd { margin-top: 0; }
    stops well short of taking a row under 48px: trimmed it still measures in
    the mid-50s. Bounded by max-height so a normal phone is untouched, the
    same way the landscape block is bounded by it. */
-@media (orientation: portrait) and (max-height: 700px) {
+@media (orientation: portrait) and (max-height: 43.75em) {
   .gm-body { padding-top: .65rem; }
   .gm-sec { margin-bottom: .8rem; }
   .gm-lab { margin-bottom: .35rem; }
@@ -1501,7 +1521,7 @@ h3.gm-next-hd { margin-top: 0; }
    after the base .gm-foot / .gm-nav rules, which share its specificity.
    Bounded by max-height so a landscape tablet -- which has the height for the
    single column and looks better with it -- is untouched. */
-@media (orientation: landscape) and (max-height: 560px) {
+@media (orientation: landscape) and (max-height: 35em) {
   .gm-bar { padding: .35rem .9rem; }
   .gm-clock { font-size: var(--fs-body); }
   .gm-body {
@@ -1525,6 +1545,11 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-next { padding: .6rem .8rem; }
   .gm-foot { padding: .45rem .9rem .55rem; }
   .gm-nav { height: 2.8rem; }
+}
+/* #421: and the large-text nav buttons stay the 52px squares the 18em block
+   above makes them -- the rule just above is later and would win on height. */
+@media (orientation: landscape) and (max-height: 35em) and (max-width: 18em) {
+  .gm-nav { height: 52px; }
 }
 
 .side-box { border: 1px solid var(--line); border-radius: var(--r); padding: .95rem; background: var(--surface); }
@@ -1917,6 +1942,20 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .tour-dots { display: flex; gap: .32rem; margin: 0 auto; }
 .tour-dots i { width: .42rem; height: .42rem; border-radius: var(--r-full); background: var(--line-2); }
 .tour-dots i.on { background: var(--accent); }
+/* #421: large text (the 18em width query, as bench mode's block above does). At a 32px root the box's fixed parts alone
+   -- 62px of padding, the step line, a two-line title, and Skip, the dots and
+   Next wrapped onto two rows -- ran 400px or more, so on a 568px phone the box
+   sat on the control it described and its body showed 59px at best. Less
+   padding, the dots off (aria-hidden decoration; "Step N of 7" says the same)
+   and Next without its 5.6rem floor put Skip and Next on one row. */
+@media (max-width: 18em) {
+  .tour-box { padding: .55rem .7rem .5rem; }
+  .tour-t { margin: .1rem 0 .15rem; }
+  .tour-dots { display: none; }
+  .tour-acts { margin-top: .25rem; }
+  .tour-acts #tourNext { min-width: 0; }
+  .tour-acts .btn { padding-block: .2rem; }
+}
 
 /* A phone's side gutter is 16px, not the 11.2px .7rem gave it. */
 @media (max-width: 620px) { .wrap { padding-left: 1rem; padding-right: 1rem; } }
@@ -2951,6 +2990,26 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 .bsheet-status { margin: 0; flex: none; font-size: var(--fs-footnote);
   color: var(--muted); background: var(--surface); border-top: 1px solid var(--line);
   padding: .6rem 1.1rem calc(.6rem + env(safe-area-inset-bottom)); }
+
+/* #421: a short screen or large text. The em query is the browser's own
+   default text size (40em is 640px tall at 16px text, 1280px at 32px), the
+   same idiom as the width queries elsewhere in this file, so it matches
+   320x568 at 16px and every phone at 32px, and leaves 390x844 at 16px alone.
+   A sheet opens full there (openSheet, trap.js); this keeps its chrome from
+   eating the room that buys: the title row drops its 3.125rem minimum (100px
+   at a 32px root) to the 48px touch floor, the close button is that floor
+   rather than 3rem (96px), the empty header slots take only what they hold so
+   the title keeps one line where it fits, and the status line's padding
+   shrinks. The Add-a-rule and Overtime headers keep their own container rule
+   above: its selectors are more specific than these. */
+/* Keep in sync with openSheet's matchMedia('(max-height: 40em)') in trap.js. */
+@media (max-height: 40em) {
+  .bsheet-hd { padding-bottom: .3rem; }
+  .bsheet-hd-row { grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
+    padding-top: .3rem; min-height: 48px; column-gap: .25rem; }
+  .bsheet-close { width: 48px; height: 48px; }
+  .bsheet-status { padding-top: .25rem; padding-bottom: calc(.25rem + env(safe-area-inset-bottom)); }
+}
 
 /* The snackbar mounted inside an open sheet, right above its status line --
    .toast itself needs nothing extra, only a flow slot that will not be

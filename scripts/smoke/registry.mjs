@@ -88,6 +88,7 @@ import { hardwoodPagesPass } from './hardwood-pages.mjs';
 import { wakeLockPass } from './wake-lock.mjs';
 import { overlayPass } from './overlay.mjs';
 import { tourStepsPass, TOUR_STEPS_CHECK } from './tour-steps.mjs';
+import { shortPhonePass, SHORT_PHONE_CHECK } from './short-phone.mjs';
 import { touchPass } from './touch.mjs';
 import { settingsRowPass } from './settings-rows.mjs';
 import { settingsLookPass } from './settings-look.mjs';
@@ -275,6 +276,10 @@ export const ROWS = Object.freeze([
   // tour step's copy, counting, ring and fit -- see tour-steps.mjs.
   { id: 'tourSteps', name: TOUR_STEPS_CHECK, selectable: true, setup: 'rich',
     run: ctx => tourStepsPass(ctx.c, ctx.origin, ctx.rec) },
+  // #421's own guard (docs/specs/421-large-text-short-phone.md): the sheets,
+  // bench mode and the tour leave room on a short phone and at large text.
+  { id: 'shortPhone', name: SHORT_PHONE_CHECK, selectable: true, setup: 'rich',
+    run: ctx => shortPhonePass(ctx.c, ctx.origin, ctx.rec) },
   { id: 'touch', name: `${TOUCH_CHECK}, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
     run: ctx => touchPass(ctx.c, ctx.origin, ctx.source, ctx.rec), replaces: TOUCH_CHECK },
   { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',

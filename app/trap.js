@@ -448,6 +448,12 @@ export function openSheet(dialog, trigger, { full = false } = {}) {
   closeSheets();
   wireSheet(dialog);
   rememberTrigger(dialog, trigger);
+  // A short screen or large text (em in a media query is the browser's own
+  // default text size, so 40em is 640px at 16px text and 1280px at 32px)
+  // leaves a half-height sheet no room for rows: open it full (#421). The
+  // handle still toggles to half. Keep in sync with app.css's
+  // `@media (max-height: 40em)` sheet block, which sizes the chrome for this case.
+  full = full || matchMedia('(max-height: 40em)').matches;
   setSheetHeight(dialog, full, false); // not open yet -- nothing to FLIP from
   dialog.showModal();
   focusTarget(dialog).focus({ preventScroll: true });

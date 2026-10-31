@@ -72,6 +72,13 @@ step scrolls to its anchor is read off the anchor's computed position rather
 than declared per step; a `position: fixed` one is already where it is going to
 be, and scrolling to it walks the page to the top for nothing.
 
+On a short screen or at large text the box can be too tall for the room beside
+the control it points at. `placeTour` then caps the box's height to that room
+(its body scrolls) and shortens the ring on the roomier side, never below 48px.
+If neither side can hold the box's fixed parts and one line of copy, `tourGo`
+parks the anchor just under the sticky bar, which leaves the box the screen
+below it (#421).
+
 **How it works** (Settings → *How it works*) is the reference sheet — the strategies and when a
 coach would pick each, what every rule does, how a tournament day carries over,
 how to read the card (`▼` is who comes off, underlined is who just came on) and
