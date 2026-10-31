@@ -354,9 +354,9 @@ export function renderTeamTitle() {
 export function renderRoster() {
   const n = state.players.length;
   const box = $('#rosterlist'); box.textContent = '';
-  /* A rename repaints this section while the coach is still typing in the
-     field (#420): rewriting a value the field already holds would move the
-     caret, so only a value that differs is written. */
+  /* Written only when it differs (#420): a full render while the field has
+     focus must not rewrite a value it already holds, which would move the
+     caret. */
   const field = $('#teamName');
   if (field && field.value !== (state.teamName || '')) field.value = state.teamName || '';
   renderTeamControls();

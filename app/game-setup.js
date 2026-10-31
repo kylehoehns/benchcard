@@ -76,12 +76,11 @@ function setPhrase(sel, text, name) {
 }
 
 /* The announcement inside each sheet (decision 10): once the scheduled
-   re-plan has run, the line reads the new summary. Hooked into this section,
-   which runs after every re-plan (AFTER_EDIT and PLAN_ONLY), rather than a
-   section of its own. `planSay` is the one place this text is built.
-   Runs with the `summary` section (#420), the one that paints the summary
-   line, so it repaints whenever that line does -- including `closeGameMode`'s
-   repaint after a bench swap, which never touches `sentence`.
+   re-plan has run, the line reads the new summary. Runs with the `summary`
+   section (#420), the one that paints the summary line, so it repaints
+   whenever that line does -- after every re-plan (AFTER_EDIT and PLAN_ONLY)
+   and `closeGameMode`'s repaint after a bench swap, which never touches
+   `sentence`. `planSay` is the one place this text is built.
 
    Written to all three by id rather than to whichever dialog happens to be
    open: `showModal()` makes a closed dialog's contents inert, not absent, so

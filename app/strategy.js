@@ -186,7 +186,11 @@ function updateBudgetUI(g) {
      * ask stays small, and a locked row is left out of the sharing entirely.
      * `.act` below still shows what a row will really play when the two
      * disagree, which is the case a thin bench can still produce. */
-    msg.textContent = state2 === 'exact'
+    const said = msg.textContent;
+    /* #420: already saying one of the two exact lines (a drag mid-solve):
+       leave it, `refreshBudgetActuals` decides after the solve, so a visible
+       "plays N" is not contradicted meanwhile. */
+    if (state2 !== 'exact' || (said !== AS_THEY_ARE && said !== RULES_CHANGED_ROWS)) msg.textContent = state2 === 'exact'
       ? AS_THEY_ARE
       : state2 === 'under'
         ? `${fmtMinutes(-deltaMin)} min still to give out, shared out in proportion, so every number drifts up a little. Lock a row to hold it exactly.`

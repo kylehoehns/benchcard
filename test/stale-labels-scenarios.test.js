@@ -104,6 +104,27 @@ describe('labels that were stale (#420)', { skip }, () => {
     assert.match(await coach.text('.today-game .pass-summary'), /^9 players · /);
   });
 
+  test('the Same as card counts who the game it adds will have, after a player left the last game mid-game', async () => {
+    await coach.onGameDayWith({}, 9);
+    await coach.tap('Ravens, 11:30 AM, planned');
+    await coach.tap('Start game');
+    await coach.tap('Next stint');
+    await coach.tap('Next stint');
+    await coach.tap('Leave');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Ravens, 11:30 AM, underway');
+    await coach.tap("Who's here, 9 players");
+    await coach.tap('Ana Reyes');
+    await coach.tap('Close');
+    assert.equal(await coach.text('#phrasePlayers'), '9 players', 'the game still counts the player who played');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Add a game');
+    const card = (await coach.controls()).find(n => n.startsWith('Same as'));
+    assert.match(card, /8 players, /);
+    await coach.tap(card);
+    assert.ok(await coach.sees("Who's here, 8 players"), 'the added game has the 8 players the card named');
+  });
+
   test('By hand says the rules changed some rows only when a row plays a different number', async () => {
     const EXACT = 'Adds up exactly, so the plan uses these numbers as they are.';
     const CHANGED = 'Adds up exactly, but the rules changed some rows. Each one says what it plays.';

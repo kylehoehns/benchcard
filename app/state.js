@@ -1129,7 +1129,11 @@ export function evensOutLine(i) {
    (`evensOutLine` above keeps its own opponent fallback; the two lines are
    no longer required to agree on what an untimed game is called). The
    summary is three of `sentenceParts`'s five phrases joined; none of them is
-   re-derived here. */
+   re-derived here.
+
+   #420: the card adds a game with the same players HERE, so it counts
+   `availIds` (no plan passed), not a player marked out mid-game who still
+   has minutes -- "Add game" would not bring them. */
 export function sameAsLast() {
   const days = team().days;
   if (!days.length) return null;
@@ -1137,7 +1141,7 @@ export function sameAsLast() {
   const i = games.length - 1;
   const g = games[i];
   if (!g || !availIds(g).length) return null;
-  const { players, format, strategy } = sentenceParts(g, i, dayPlans[days.length - 1]?.[i]);
+  const { players, format, strategy } = sentenceParts(g, i, null);
   return {
     title: g.tipoff ? `Same as ${tipoffLabel(g.tipoff)}?` : 'Same as the last game?',
     summary: `${players}, ${format}, ${strategy}`,
