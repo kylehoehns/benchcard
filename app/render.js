@@ -28,7 +28,7 @@ import { renderSetup, renderSentence } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './teams-view.js';
 import { renderSeason, seasonGames } from './season-view.js';
 import { state, save, renderStorageWarning, computeAll, overridesDropped, rotationMoved, dayUnderway,
-  rotationOfferSuppressed, saveJustFailed, activeColor, hasGames } from './state.js';
+  rotationOfferSuppressed, saveJustFailed, activeColor, hasGames, satShortBench, joinNames } from './state.js';
 import { retireUndo, flash, showUndo } from './toast.js';
 import { initEdits } from './edit.js';
 // storage.js is already in the boot graph (state.js imports it for
@@ -167,6 +167,9 @@ export function render(...keys) {
     flash(ROTATION_CHANGED + SWAPS_CLEARED);
     rotationJustAnnounced = true;
   }
+  /* #412: a re-plan that could not keep a sit says so, once. */
+  const kept = satShortBench();
+  if (kept.length) flash(`Not enough players to keep ${joinNames(kept)} sitting.`);
   save();
   /* Same shape as `overridesDropped()` one line above, for the same kind of
      event: a state change the coach has to be told about once. `save()` has

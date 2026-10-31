@@ -523,3 +523,21 @@ test('decode: an unstarted game carries no played date', async () => {
   doc.d = '2026-09-05';
   assert.equal((await decode(await repack(doc))).played, null);
 });
+
+/* #412: a sit for the rest travels in the link's `l`; a link from before it has
+   no `sat` and decodes with no sit. */
+test('round trip: a sit for the rest comes through, and a link without `sat` decodes with no sit', async () => {
+  const { team, g, p } = sender();
+  g.live.sat = [ids[2]];
+  const hash = await encode(team, g, floorOf(g, p));
+
+  freshDevice();
+  receive(await decode(hash));
+  assert.deepEqual(S.game().live.sat, [ids[2]], 'the sit arrives');
+
+  const doc = JSON.parse(await inflateText(hash));
+  delete doc.l.sat;
+  freshDevice();
+  receive(await decode(await repack(doc)));
+  assert.equal('sat' in S.game().live, false, 'an older link has no sit');
+});
