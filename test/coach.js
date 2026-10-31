@@ -575,7 +575,11 @@ export class Coach {
       clearTimeout(timer);
       this.c.off('Browser.downloadWillBegin', onBegin);
       this.c.off('Browser.downloadProgress', onProgress);
-      fs.rmSync(dir, { recursive: true, force: true });
+      /* Chrome may still be writing another download into the folder (its own
+         downloads.html, #401), and a recursive rm then races it: ENOTEMPTY on
+         CI in run 41218820550. Stop downloads first, and retry the rm. */
+      await this.c.send('Browser.setDownloadBehavior', { behavior: 'deny' }).catch(() => {});
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     }
   }
 
