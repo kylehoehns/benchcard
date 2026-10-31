@@ -38,6 +38,7 @@ const PRECACHE = [
   './trap.js',
   './state.js',
   './live.js',
+  './team-ops.js',
   './card.js',
   './gamemode.js',
   './timeline.js',

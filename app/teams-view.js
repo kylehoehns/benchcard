@@ -22,7 +22,7 @@
 import { $, on, set, el } from './dom.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
-import { state, plans, dayPlans, newGame, newTeam, team, lastGame, gameLabel, game, activeColor,
+import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame,
          hasGames } from './state.js';
@@ -417,14 +417,7 @@ function removeTeam() {
       : ' You can undo this for nine seconds afterwards.'),
     verb: 'Remove team',
     run: () => undoable(`Removed ${label}.`, () => {
-      state.teams.splice(state.activeTeam, 1);
-      if (!state.teams.length) {
-        // the record always holds at least one team; an empty app is expressed
-        // as "not onboarded", which is the state the welcome screen reads
-        state.teams.push(newTeam(''));
-        state.onboarded = false;
-      }
-      state.activeTeam = Math.max(0, Math.min(state.activeTeam, state.teams.length - 1));
+      removeActiveTeam();
       track('team_removed', { teams: state.teams.length });
     }, (undoing) => {
       // setView forces 'welcome' whenever onboarded is false, so this is right
