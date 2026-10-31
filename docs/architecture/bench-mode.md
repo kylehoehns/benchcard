@@ -278,7 +278,15 @@ totalling planned minutes, because a hand swap in game 1 must not silently
 re-solve game 2 underneath the coach. For the same reason the plan table drops
 its "best possible is N" footnote once a swap has moved the minutes — that
 sentence is a fact about the solve, and the rotation it describes is no longer
-on screen.
+on screen. The same rule now covers the spread note under the timeline (#414):
+once the minutes have moved, or the game is finished, the engine's spread note
+is replaced by one built from `effectiveMinutes`. An uneven spread names the
+players who play least and the minutes they play; an even one says what every
+player gets. Neither has a reason or an action, because both were about the
+solver's choice. The same moved minutes also drop the note that the spread
+was held back by the rules, and any missed-minimum or over-cap warning about a
+player whose minutes changed. While nothing has moved the engine's note stays
+word for word (`movedMinutes` and `minutesNote` in `state.js`).
 
 Below the minute bars the plan also names the **longest unbroken sit** — the
 most minutes any player spends on the bench in one go, read straight off

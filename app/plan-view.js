@@ -113,7 +113,11 @@ function issuesList(p) {
      Nothing moved: the engine's notes stay verbatim. */
   const moved = p.ok && game() ? movedMinutes(game(), p) : null;
   if (moved) {
-    const { eff, changed } = moved;
+    const { changed } = moved;
+    // roster order, so a tie at the low end is named in the order the roster reads
+    // (effectiveMinutes lists a player who left after the plan's own players)
+    const order = [...state.players.map(pl => pl.id).filter(id => id in moved.eff), ...Object.keys(moved.eff).filter(id => !byId(id))];
+    const eff = Object.fromEntries(order.map(id => [id, moved.eff[id]]));
     const nameOf = id => byId(id)?.name || id;
     const at = list.findIndex(x => x.code === 'SPREAD_EVEN' || x.code === 'SPREAD_FLOOR');
     if (at >= 0) list[at] = minutesNote(eff, nameOf);
