@@ -21,6 +21,7 @@ const team = () => ({
         lastPeriodFive: ['p1', 'p2', 'p3', 'p4', 'p5'],
         closing: { stints: 2, players: ['p1', 'p2'] },
         units: [['p1', 'p2', 'p3'], ['p4', 'p5']],
+        keepOnFloor: [['p1', 'p2'], ['p2', 'p3']],
       },
       overtime: [{ minutes: 3, five: ['p1', 'p2', 'p3', 'p4', 'p5'] }],
       live: { at: 0, overrides: { 0: ['p1', 'p2', 'p3', 'p4', 'p5'], 2: ['p2', 'p3', 'p4', 'p5', 'p6'] } },
@@ -41,6 +42,7 @@ test('removePlayer leaves the id nowhere in the team, and the others\' entries a
   assert.deepEqual(g.constraints.minMinutes, { p2: 6 });
   assert.deepEqual(g.constraints.pairs, [['p2', 'p3']]);
   assert.deepEqual(g.constraints.closing.players, ['p2']);
+  assert.deepEqual(g.constraints.keepOnFloor, [['p2', 'p3']]);
   assert.deepEqual(g.constraints.units, [['p2', 'p3'], ['p4', 'p5']]);
   assert.deepEqual(g.overtime[0].five, ['p2', 'p3', 'p4', 'p5']);
   assert.deepEqual(Object.keys(g.live.overrides), ['2'], 'the override naming p2 but not p1 stays');
@@ -52,20 +54,15 @@ test('every constraint field is classified here as holding ids or not', () => {
      this test has never heard of -- that is the moment to decide whether it
      holds player ids. */
   const holdsIds = ['minMinutes', 'maxMinutes', 'pairs', 'avoids', 'openingFive',
-    'lastPeriodFive', 'targetSlots', 'lockedTargets', 'closing', 'units'];
+    'lastPeriodFive', 'targetSlots', 'lockedTargets', 'closing', 'units', 'keepOnFloor'];
   /* A field listed in holdsIds must really hold p1 in the fixture, or the
      sweep test passes vacuously for it. */
   const fixed = team().days[0].games[0].constraints;
   for (const f of holdsIds) {
     assert.ok(JSON.stringify(fixed[f]).includes('"p1"'), `fixture field ${f} does not name p1`);
   }
-  /* `keepOnFloor` holds ids but `removePlayer` has never swept it (the old
-     source-reading test missed it too). Moving the body verbatim keeps that
-     as it was; it is listed apart so the gap is written down, not hidden.
-     When #409 lands, keepOnFloor moves to holdsIds (and into the fixture). */
-  const holdsIdsUnswept = ['keepOnFloor'];
   const noIds = ['hardPairs', 'maxConsecutive'];
-  const known = new Set([...holdsIds, ...holdsIdsUnswept, ...noIds]);
+  const known = new Set([...holdsIds, ...noIds]);
   const surprises = Object.keys(emptyConstraints()).filter(f => !known.has(f));
   assert.deepEqual(surprises, [],
     `new constraint field(s) ${surprises.join(', ')} -- do they hold player ids? If so, sweep them in removePlayer, put one in the fixture above, and list them in holdsIds.`);

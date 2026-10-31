@@ -38,6 +38,7 @@ export function removePlayer(team, id) {
     c.lockedTargets = (c.lockedTargets || []).filter(x => x !== id);
     c.pairs = c.pairs.filter(p => !p.includes(id));
     c.avoids = c.avoids.filter(p => !p.includes(id));
+    c.keepOnFloor = (c.keepOnFloor || []).filter(p => !p.includes(id));
     c.openingFive = c.openingFive.filter(x => x !== id);
     c.lastPeriodFive = c.lastPeriodFive.filter(x => x !== id);
     if (c.closing) c.closing.players = (c.closing.players || []).filter(x => x !== id);
