@@ -91,6 +91,22 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
     assert.match(moved, /^([2-9]|\d\d) stints no longer match your printed card\.$/);
   });
 
+  test('a This stint swap the re-plan leaves alone keeps the plain toast (#415)', async () => {
+    await startHawks();
+    for (let i = 0; !(await coach.sees('Finish game')); i++) {
+      assert.ok(i < 20, 'Finish game never appeared');
+      await coach.tap('Next stint');
+    }
+    await coach.tap('Previous stint');
+    // Second-to-last stint: Casey is on at 16 of 16 minutes, Hana is on the bench at 12 of 12.
+    // Four minutes move between them and no later stint changes, so the toast is the plain
+    // one and names both new totals.
+    await coach.tapPlayer('Casey Lindqvist');
+    await coach.tapPlayer('Hana Kim');
+
+    assert.equal(await coach.toast(), 'Hana on for Casey this stint. Hana now ends at 16 min, Casey at 12.');
+  });
+
   test('a reload mid-game leaves nothing inert', async () => {
     await startHawks();
     await coach.comeBackDaysLater(0);

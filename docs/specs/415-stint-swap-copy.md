@@ -63,8 +63,8 @@ count), `app/advanced.html`, `app/index.html`, `app/sitemap.xml` (Advanced's
 
 | Seam | Covers |
 | --- | --- |
-| Coach scenario, `test/bench-mode-scenarios.test.js` | items 1, 2 |
-| `node --test` on `swapToastText`, `test/gamemode-bench-text.test.js` | items 1, 3 |
+| Coach scenario, `test/bench-mode-scenarios.test.js` | items 1, 2, 3 (a swap in the second-to-last stint that the re-plan leaves alone: plain toast) |
+| `node --test` on `swapToastText`, `test/gamemode-bench-text.test.js` | item 1 |
 | Existing `test/game-day-scenarios.test.js` toast assertion, updated | item 1 |
 | Read in review and on the preview | item 4 |
 
