@@ -142,7 +142,7 @@ The PR body says it switched.
    - **Surfaces** — the files that change, and the ones that must not.
    - **Constraints** — the `AGENTS.md` rules this touches, applied rather than
      restated (the card, mobile first, the privacy claim, the four pure
-     modules, the precache bump), and every **"reuse X / do not re-derive Y"**.
+     modules), and every **"reuse X / do not re-derive Y"**.
    - **Design** — what gets built.
    - **Proof** — the **seams** `/tdd` builds at, agreed here so the build can
      run unattended: for each, where the test runs from (a module's exports

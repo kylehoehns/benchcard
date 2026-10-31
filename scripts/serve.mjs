@@ -37,7 +37,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { stripCssComments, parsePrecache, shellDigest, stampShell } from './build.mjs';
+import { stripCssComments, precachedFiles, shellDigest, stampShell } from './build.mjs';
 
 const APP = join(resolve(dirname(fileURLToPath(import.meta.url)), '..'), 'app');
 
@@ -51,25 +51,25 @@ export const TYPES = {
 
 /* The bytes the server sends for `file` ('/x' form): CSS stripped, the rest as
    on disk. */
-async function served(file) {
-  const body = await readFile(join(APP, file));
+async function served(file, appDir = APP) {
+  const body = await readFile(join(appDir, file));
   return extname(file) === '.css' ? stripCssComments(body.toString('utf8')) : body;
 }
 
 /* sw.js as a deploy would ship it: SHELL stamped from the files this server
    would send, computed per request so an edit shows on the next fetch. */
-async function stampedSw() {
-  const source = await readFile(join(APP, 'sw.js'), 'utf8');
-  const files = new Map();
-  for (const p of parsePrecache(source)) {
-    if (p !== './') files.set(p, await served(p.slice(1)));
-  }
+async function stampedSw(appDir) {
+  const source = await readFile(join(appDir, 'sw.js'), 'utf8');
+  const paths = precachedFiles(source);
+  const bodies = await Promise.all(paths.map(p => served(p.slice(1), appDir)));
+  const files = new Map(paths.map((p, i) => [p, bodies[i]]));
   return stampShell(source, shellDigest(p => files.get(p), source));
 }
 
 /* `port` defaults to 0 -- an ephemeral port, which is what the three harnesses
-   want so parallel runs cannot collide. Pass one for a human. */
-export function serve(port = 0) {
+   want so parallel runs cannot collide. Pass one for a human. `appDir` is for
+   tests that serve a doctored copy of `app/`. */
+export function serve(port = 0, appDir = APP) {
   const server = createServer(async (req, res) => {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
 
@@ -92,11 +92,20 @@ export function serve(port = 0) {
 
     let file = path === '/' ? '/index.html' : path;
     if (!extname(file)) file += '.html';       // /about -> about.html
-    const abs = join(APP, file);
-    if (!abs.startsWith(APP)) { res.writeHead(403).end(); return; }
+    const abs = join(appDir, file);
+    if (!abs.startsWith(appDir)) { res.writeHead(403).end(); return; }
     try {
-      if (file === '/sw.js') { res.writeHead(200, { 'content-type': TYPES['.js'] }).end(await stampedSw()); return; }
-      const body = await served(file);
+      if (file === '/sw.js') {
+        let sw;
+        try { sw = await stampedSw(appDir); } catch (err) {
+          console.error(err);
+          res.writeHead(500, { 'content-type': 'text/plain' }).end(String(err.message));
+          return;
+        }
+        res.writeHead(200, { 'content-type': TYPES['.js'] }).end(sw);
+        return;
+      }
+      const body = await served(file, appDir);
       res.writeHead(200, { 'content-type': TYPES[extname(abs)] || 'application/octet-stream' });
       res.end(body);
     } catch { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); }

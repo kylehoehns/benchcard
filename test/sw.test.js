@@ -27,8 +27,11 @@ const css = sheets.map((f) => readFileSync(new URL(f, ROOT), 'utf8')).join('\n')
    scripts/build.mjs, which serve.mjs also imports -- one parse, not two. */
 const precache = parsePrecache(sw);
 
-test('every precached path exists on disk', () => {
+test('parsePrecache finds the whole list', () => {
   assert.ok(precache.length > 10, 'parsed a precache list');
+});
+
+test('every precached path exists on disk', () => {
   for (const p of precache) {
     if (p === './') continue;
     assert.ok(existsSync(new URL(p, ROOT)), `missing precached file: ${p}`);

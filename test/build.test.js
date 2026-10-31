@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { stripCssComments as strip, build, parsePrecache } from '../scripts/build.mjs';
+import { stripCssComments as strip, build, parsePrecache, precachedFiles, stampShell } from '../scripts/build.mjs';
 import { serve } from '../scripts/serve.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -229,4 +229,39 @@ test("serve()'s /sw.js is byte-identical to the built dist/sw.js", async () => {
     const r = await fetch(`http://127.0.0.1:${server.address().port}/sw.js`);
     assert.ok(Buffer.from(await r.arrayBuffer()).equals(readFileSync(join(out, 'sw.js'))));
   } finally { server.stopHard(); }
+});
+
+test('parsePrecache reads the PRECACHE array even when a `];` closes something above it', () => {
+  const src = "const A = [\n  './x.js',\n];\nconst PRECACHE = [\n  './',\n  './a.js',\n  './sw.js',\n];\nconst LAZY = './lazy.js';\n";
+  assert.deepEqual(parsePrecache(src), ['./', './a.js']);
+});
+
+test('parsePrecache throws on an empty or missing PRECACHE list', () => {
+  assert.throws(() => parsePrecache("const PRECACHE = [\n];\n"), /PRECACHE/);
+  assert.throws(() => parsePrecache("const OTHER = ['./a.js'];\n"), /PRECACHE/);
+});
+
+test('precachedFiles is the hashed set: no ./ and no ./sw.js', () => {
+  const src = "const PRECACHE = [\n  './',\n  './a.js',\n  './sw.js',\n];\n";
+  assert.deepEqual(precachedFiles(src), ['./a.js']);
+});
+
+test('stampShell replaces the slot line, not a comment that quotes it', () => {
+  const src = "// the slot is const SHELL = 'unbuilt' (no semicolon here)\nconst SHELL = 'unbuilt';\n";
+  assert.equal(stampShell(src, 'abc123abc123'),
+    "// the slot is const SHELL = 'unbuilt' (no semicolon here)\nconst SHELL = 'abc123abc123';\n");
+});
+
+test("serve() answers /sw.js with a 500 naming the cause when the SHELL slot is missing", async () => {
+  const src = appCopy();
+  const sw = join(src, 'sw.js');
+  writeFileSync(sw, readFileSync(sw, 'utf8').replace("const SHELL = 'unbuilt'", "const SHELL = 'abcdef012345'"));
+  const server = await serve(0, src);
+  const log = console.error;
+  console.error = () => {};
+  try {
+    const r = await fetch(`http://127.0.0.1:${server.address().port}/sw.js`);
+    assert.equal(r.status, 500);
+    assert.match(await r.text(), /SHELL/);
+  } finally { console.error = log; server.stopHard(); }
 });

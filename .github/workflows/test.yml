@@ -145,7 +145,7 @@ jobs:
     # failure says only "history checks failed" would be worse than two jobs;
     # each step's name is the sentence you want to read in the checks list.
     # They do NOT short-circuit each other: `if: always()` on the second means
-    # a stale dateline is still reported when the SHELL digest is also wrong.
+    # a stale dateline is still reported when the sitemap lastmod is also stale.
     runs-on: ubuntu-24.04
     name: checks that need history
     steps:

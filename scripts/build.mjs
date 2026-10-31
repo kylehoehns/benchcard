@@ -3,7 +3,7 @@
  * `wrangler.jsonc` runs this as `build.command` (#339).
  *
  * `scripts/serve.mjs` imports `stripCssComments`, `shellDigest` and
- * `stampShell` from here, so the local server, smoke and the deploy all see
+ * `stampShell` (and `precachedFiles`) from here, so the local server, smoke and the deploy all see
  * the same bytes. No dependencies. */
 import { createHash } from 'node:crypto';
 import { cpSync, readdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -89,23 +89,33 @@ export function stripCssComments(src) {
   return parts.join('');
 }
 
-/* The paths in sw.js's PRECACHE array literal, './'-prefixed. Scoped to the
-   array because sw.js also names a runtime-cached path (LAZY) outside it. */
+/* The paths in sw.js's PRECACHE array literal, './'-prefixed, without
+   './sw.js'. Scoped to the array because sw.js also names a runtime-cached
+   path (LAZY) outside it. Throws if the list is missing or empty. */
 export function parsePrecache(swSource) {
-  return [...swSource.slice(swSource.indexOf('const PRECACHE = ['), swSource.indexOf('\n];'))
-    .matchAll(/'(\.\/[^']*)'/g)]
+  const start = swSource.indexOf('const PRECACHE = [');
+  const end = start < 0 ? -1 : swSource.indexOf('\n];', start);
+  const files = end < 0 ? [] : [...swSource.slice(start, end).matchAll(/'(\.\/[^']*)'/g)]
     .map(m => m[1])
     .filter(p => p !== './sw.js');
+  if (!files.length) throw new Error('parsePrecache: sw.js has no PRECACHE list');
+  return files;
+}
+
+/* The files that are hashed and read from disk: PRECACHE minus `./` (the same
+   bytes as index.html). The one place that fact lives. */
+export function precachedFiles(swSource) {
+  return parsePrecache(swSource).filter(p => p !== './');
 }
 
 /* The 12-hex fingerprint of every file PRECACHE names: paths sorted, each
    contributing `path \0 bytes \0`; `./` (the same bytes as index.html) and
-   `./sw.js` (self-reference) are skipped. `read(path)` returns the bytes for a
+   `./sw.js` (self-reference) are skipped (`precachedFiles`). `read(path)` returns the bytes for a
    './'-prefixed path, so the build reads `dist/` and the server reads what it
    would serve. */
 export function shellDigest(read, swSource) {
   const h = createHash('sha256');
-  for (const p of parsePrecache(swSource).filter(p => p !== './').sort()) {
+  for (const p of precachedFiles(swSource).sort()) {
     h.update(p);
     h.update('\0');
     h.update(read(p));
@@ -122,7 +132,7 @@ export function stampShell(swSource, digest) {
   if (!swSource.includes(SLOT + ';')) {
     throw new Error(`stampShell: sw.js has no \`${SLOT};\` line for SHELL`);
   }
-  return swSource.replace(SLOT, `const SHELL = '${digest}'`);
+  return swSource.replace(SLOT + ';', `const SHELL = '${digest}';`);
 }
 
 /* Copy `appDir` to `outDir` (replacing whatever was there), strip the comments

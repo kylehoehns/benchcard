@@ -12,11 +12,7 @@
 
    sw.test.js checks the list against what index.html actually loads. */
 
-/* The slot the build fills (AGENTS.md § Deploy): `dist/sw.js` ships with the
-   digest of the PRECACHE files as they sit in `dist/`, so a precached byte
-   changing makes a NEW cache name and `activate` below deletes the old one.
-   The build fails if this exact line is missing, so the placeholder can never
-   ship. Nothing here is edited by hand. */
+/* The slot the build fills; AGENTS.md § Deploy says how. Not edited by hand. */
 const SHELL = 'unbuilt';
 
 const CACHE = `benchcard-${SHELL}`;
@@ -160,7 +156,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith((async () => {
     /* THIS GENERATION'S CACHE, never `caches.match()` on the global. That
        searches EVERY cache in the origin, and during a deploy there are two:
-       the new worker installs and fills `benchcard-v<new>` while the old one
+       the new worker installs and fills the new cache name while the old one
        is still activated and still controlling every open tab. A page could
        then be handed index.html from one generation and its modules from the
        other, which is an app whose markup and script disagree -- new buttons

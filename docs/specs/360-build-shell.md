@@ -182,3 +182,5 @@ also deletes the old `benchcard-v453-…` cache.
 - Hashed file names or any other build step.
 - Rewriting old specs or `notes/`.
 - #359, which builds on this after it merges.
+- Serving `app/` with any other server (`python3 -m http.server`): it ships
+  `benchcard-unbuilt` and never busts. `npm run serve` is the one server.
