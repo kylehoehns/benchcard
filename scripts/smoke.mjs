@@ -63,7 +63,7 @@ import { fileURLToPath } from 'node:url';
 import { compare, pinned, summarize } from './budgets.mjs';
 import { serve } from './serve.mjs';
 import { folder, linesOf, summarize as summarizeCoverage, judge, record, annotate, fileOf, ROW as COVERAGE_ROW, RECORDED as COVERAGE_RECORDED } from './coverage.mjs';
-import { parseShard, inShard, consoleRow, mergePartials } from './smoke/shard.mjs';
+import { parseShard, inShard, consoleRow, mergePartials, shardPartial } from './smoke/shard.mjs';
 
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER, DESCRIBE_EL } from './smoke/dom.mjs';
@@ -587,11 +587,11 @@ if (HAS_MERGE) {
    where to look. */
 if (SHARD) {
   const { report, cold, consoleErrors, thirdParty, coverageNotes, folded } = result;
-  await writePartial({
+  await writePartial(shardPartial({
     shard: SHARD, viewport: report.viewport, cold, rich: report.checks.slice(cold.length), payload: report.payload,
     consoleErrors, thirdParty, coverageNotes, lines: linesOf(folded.result()), rowSeconds,
     tallies: { sleep: { ...sleepTally }, settle: { ...settleTally } },
-  });
+  }));
   const pad = Math.max(0, ...report.checks.map(c => c.name.length));
   console.log(`\nbenchcard smoke — shard ${SHARD.k}/${SHARD.n}, ${report.checks.length} checks (partial: ${OUT})\n`);
   for (const c of report.checks) printRow(pad, c);

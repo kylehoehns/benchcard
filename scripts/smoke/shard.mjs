@@ -19,9 +19,19 @@ export function parseShard(raw) {
 }
 
 /* Round-robin, so neighbouring rows (often the same screen, similar cost)
-   spread across shards. Every rich row starts from `reset`, so none depends
-   on the row before it. */
+   spread across shards. Every rich row starts from `reset`, so none should
+   depend on the row before it; the shards put each row after a different
+   neighbour than a single run does, which is how the dark-theme row's
+   dependence on its neighbour's history came to light. */
 export const inShard = (rich, { k, n }) => rich.filter((_, i) => i % n === k - 1);
+
+/* The one shape of a shard's partial, written by smoke.mjs and built by the
+   tests, so the two cannot drift apart. */
+export const shardPartial = ({
+  shard, viewport = [390, 844], cold = [], rich = [], payload, consoleErrors = [], thirdParty = [],
+  coverageNotes = { dropped: [], unseen: [] }, lines = {}, rowSeconds = [],
+  tallies = { sleep: { ms: 0, calls: 0 }, settle: { ms: 0, calls: 0, capped: 0 } },
+}) => ({ shard, viewport, cold, rich, payload, consoleErrors, thirdParty, coverageNotes, lines, rowSeconds, tallies });
 
 /* The one wording of the console row, for a single run and a merge alike. */
 export function consoleRow(name, consoleErrors, thirdParty) {

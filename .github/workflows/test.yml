@@ -73,12 +73,13 @@ jobs:
     # That is the line-coverage floor in scripts/coverage.json; AGENTS.md
     # § Layout has the rule.
     #
-    # #459: ONE RUN IN FIVE JOBS, so the required check takes about 5 minutes
-    # instead of 11.5. `smoke-parts` runs the parts at once: the unit suite
-    # (`--shard suite`) and the browser rows dealt across three Chromes
-    # (`--shard k/3`). Each uploads a partial. This job merges them and judges
-    # the whole run -- every row, the budgets, the coverage floor, the drift
-    # check -- exactly as one `node scripts/smoke.mjs` would.
+    # #459: ONE RUN IN FIVE JOBS. Measured on CI: 3m56s from the first part
+    # starting to this job ending, against 11m34s as one job. `smoke-parts`
+    # runs the parts at once: the unit suite (`--shard suite`) and the
+    # browser rows dealt across three Chromes (`--shard k/3`). Each uploads
+    # a partial. This job merges them and judges the whole run -- every row,
+    # the budgets, the coverage floor, the drift check -- exactly as one
+    # `node scripts/smoke.mjs` would.
     #
     # `if: always()` IS LOAD-BEARING. A required check whose job is skipped
     # (because a job it needs failed) counts as passing. This job runs anyway,

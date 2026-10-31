@@ -101,7 +101,16 @@ test('the required smoke job runs even when a part fails, and merges the parts',
     'without if: always(), a failed part skips the required smoke check, and skipped counts as passing');
   assert.match(job, /node scripts\/smoke\.mjs --merge /);
   const parts = tests.slice(tests.indexOf('\n  smoke-parts:\n'));
-  assert.match(parts, /part: \[suite, 1\/3, 2\/3, 3\/3\]/, 'the parts must be the suite plus every k/n for one n');
+  const list = /part: \[([^\]]*)\]/.exec(parts)?.[1].split(',').map(x => x.trim());
+  assert.ok(list, 'could not find the smoke-parts matrix list');
+  assert.equal(list.filter(x => x === 'suite').length, 1, `the parts must include the suite exactly once: ${list}`);
+  const ks = list.filter(x => x !== 'suite').map(x => x.split('/').map(Number));
+  const n = ks[0]?.[1];
+  assert.ok(n >= 2 && ks.every(([, m]) => m === n), `every shard must share one n >= 2: ${list}`);
+  assert.deepEqual(ks.map(([k]) => k).sort((a, b) => a - b), Array.from({ length: n }, (_, i) => i + 1),
+    `the parts must be every k/n for k = 1..n, each once: ${list}`);
+  assert.match(parts, /node scripts\/smoke\.mjs --shard \$\{\{ matrix\.part \}\} --out /, 'each part must run its own shard and write a partial');
+  assert.doesNotMatch(job + parts, /continue-on-error/, 'continue-on-error would let a failed part or merge report green');
   assert.match(parts, /fail-fast: false/, 'one failed part must not cancel the others mid-upload');
   assert.match(parts, /- if: always\(\)\n\s+uses: actions\/upload-artifact/, 'a failed part must still upload its partial');
 });

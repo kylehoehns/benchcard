@@ -4,7 +4,7 @@
    hand-built partials in, the merged run out. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseShard, inShard, mergePartials } from '../scripts/smoke/shard.mjs';
+import { parseShard, inShard, mergePartials, shardPartial } from '../scripts/smoke/shard.mjs';
 import { folder, linesOf } from '../scripts/coverage.mjs';
 import { ROWS } from '../scripts/smoke/registry.mjs';
 
@@ -36,11 +36,7 @@ const ROWS_FAKE = [
   { id: 'nodetest', name: 'node --test', setup: null },
 ];
 const pass = name => ({ name, pass: true, detail: 'ok' });
-const part = (k, extra) => ({
-  shard: { k, n: 2 }, viewport: [390, 844], cold: [], rich: [], consoleErrors: [], thirdParty: [],
-  coverageNotes: { dropped: [], unseen: [] }, lines: {}, rowSeconds: [],
-  tallies: { sleep: { ms: 0, calls: 0 }, settle: { ms: 0, calls: 0, capped: 0 } }, ...extra,
-});
+const part = (k, extra) => shardPartial({ shard: { k, n: 2 }, ...extra });
 const suite = { shard: { suite: true }, nodeRow: pass('node --test'), lines: {} };
 
 test('mergePartials puts the rows back in registry order with one console row first', () => {
@@ -60,7 +56,7 @@ test('mergePartials refuses a missing shard, a missing suite, a duplicate or a m
   assert.throws(() => mergePartials([part(1), suite], ROWS_FAKE), /shard 2\/2/);
   assert.throws(() => mergePartials([part(1), part(2)], ROWS_FAKE), /suite/);
   assert.throws(() => mergePartials([part(1), part(1), part(2), suite], ROWS_FAKE), /twice/);
-  assert.throws(() => mergePartials([part(1), { ...part(2), shard: { k: 2, n: 3 } }, suite], ROWS_FAKE), /n/);
+  assert.throws(() => mergePartials([part(1), { ...part(2), shard: { k: 2, n: 3 } }, suite], ROWS_FAKE), /disagree/);
   assert.throws(() => mergePartials([], ROWS_FAKE), /no partials/);
 });
 
