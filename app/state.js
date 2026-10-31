@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fmtMinutes, andList, buildStints, isOvertimeStint, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
@@ -1268,16 +1268,10 @@ export function minutesNote(mins, nameOf) {
   const lows = ids.filter(id => mins[id] === lo);
   const highs = ids.filter(id => mins[id] === hi);
   const note = message => ({ severity: 'info', code: 'SPREAD_SHOWN', message, playerIds: lows });
-  if (spreadOf(mins) === 0) return note(`Minutes divide evenly: every player gets ${fmtMinutes(hi)}.`);
-  const who = lows.length <= 6
-    ? `${andList(lows.map(nameOf))} ${lows.length === 1 ? 'plays' : 'play'} ${fmtMinutes(lo)}`
-    : `${lows.length} players play ${fmtMinutes(lo)}`;
-  if (lows.length + highs.length === ids.length) {
-    return note(lows.length <= 6
-      ? `${who}, everyone else ${fmtMinutes(hi)}.`
-      : `${who}, the other ${highs.length} play ${fmtMinutes(hi)}.`);
-  }
-  return note(`${who}, the fewest. The most is ${fmtMinutes(hi)}.`);
+  if (spreadOf(mins) === 0) return note(evenMinutesSentence(hi));
+  const end = lowEndPhrase(lows, lo, highs, hi, ids.length, nameOf);
+  if (end.covers) return note(end.named ? `${end.who}, everyone else ${fmtMinutes(hi)}.` : `${end.who}, ${end.other}.`);
+  return note(`${end.who}, the fewest. The most is ${fmtMinutes(hi)}.`);
 }
 
 /* The summary line under the rotation (#29 decision 6): the minute range and

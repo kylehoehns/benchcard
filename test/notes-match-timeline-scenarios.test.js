@@ -7,6 +7,7 @@
 import { describe, test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Coach, hasChrome } from './coach.js';
+import { lacks } from './prose.js';
 
 const skip = !(await hasChrome()) && 'no Chrome on this machine';
 
@@ -90,6 +91,25 @@ describe('the notes under the timeline', { skip }, () => {
     assert.match(notes, new RegExp(`Ana Reyes plays ${mins['Ana Reyes']}[,.]`), `the notes say: ${notes}`);
   });
 
+  test('a player who left and ties at the low end is named in roster order, not last', async () => {
+    await startHawks();
+    for (let i = 0; i < 4; i++) await coach.tap('Next stint');
+    await coach.tap('Leave');
+    await coach.tap("Who's here, 11 players");
+    await coach.tap('Hana Kim');
+    await coach.tap('Close');
+    await coach.tap((await coach.controls()).find(n => n.startsWith('Resume')));
+    await toLastStint();
+    await coach.tap('Finish game');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, finished');
+
+    const mins = await coach.planMinutes();
+    assert.deepEqual(namesAt(mins, 12), ['Marcus Williams', 'Hana Kim', 'Riley Novak', 'Theo Alvarez'], `the timeline shows ${JSON.stringify(mins)}`);
+    const notes = await coach.text('#issues');
+    assert.match(notes, /Marcus Williams, Hana Kim, Riley Novak and Theo Alvarez play 12, everyone else 16\./, `the notes say: ${notes}`);
+  });
+
   test('after overtime, the note names the players and minutes the timeline shows', async () => {
     await startHawks();
     await toLastStint();
@@ -97,19 +117,83 @@ describe('the notes under the timeline', { skip }, () => {
     await coach.tap('Leave');
 
     const mins = await coach.planMinutes();
-    const values = [...new Set(Object.values(mins))].sort((a, b) => a - b);
-    const lo = values[0], hi = values[values.length - 1];
-    const low = Object.keys(mins).filter(n => mins[n] === lo);
+    const at16 = Object.keys(mins).filter(n => mins[n] === 16);
+    assert.equal(at16.length, 5, `the timeline shows ${JSON.stringify(mins)}`);
+    assert.equal(Object.keys(mins).filter(n => mins[n] === 20).length, 6, `the timeline shows ${JSON.stringify(mins)}`);
     const notes = await coach.text('#issues');
-    if (values.length === 1) {
-      assert.match(notes, new RegExp(`every player gets ${hi}\\.`), `the notes say: ${notes}`);
-    } else {
-      assert.deepEqual(Object.keys(mins).filter(n => notes.includes(n)).sort(), low.length <= 6 ? [...low].sort() : [],
-        `the timeline shows ${JSON.stringify(mins)}; the notes say: ${notes}`);
-      assert.match(notes, new RegExp(`${lo}[,.]`), `the notes say: ${notes}`);
-      assert.match(notes, new RegExp(values.length === 2 ? `everyone else ${hi}\\.|the other \\d+ play ${hi}\\.` : `The most is ${hi}\\.`));
-    }
+    assert.match(notes, /Marcus Williams, Devon Ellis, Jordan Bell, Riley Novak and Nia Brooks play 16, everyone else 20\./, `the notes say: ${notes}`);
     assert.doesNotMatch(notes, /Shuffle|by\s+hand/);
+  });
+
+  /* The engine's other notes quote the solver's plan. Both fixtures are rules
+     the solver cannot meet and says so, found by search on RICH's 11 players:
+     CAP: Marcus (p0) is capped at 4 and gets 8; MIN: Marcus has a 28 minimum
+     and gets 24. Each also carries "Spread is ... among the players without a
+     minimum or cap". Which swaps move Marcus's minutes was found by trying each, so every test
+     reads the timeline to say whether he moved. */
+  const rules = c => ({ keepOnFloor: [], avoids: [], pairs: [], closing: { players: [] }, minMinutes: {}, maxMinutes: {}, ...c });
+  const CAP = rules({ minMinutes: { p1: 28, p7: 24 }, maxMinutes: { p0: 4, p2: 4, p3: 12, p8: 8 }, keepOnFloor: [['p4', 'p0'], ['p0', 'p5']] });
+  const MIN = rules({ minMinutes: { p0: 28, p1: 28, p2: 24, p6: 20, p7: 20, p8: 16, p10: 16 }, maxMinutes: { p9: 4 }, keepOnFloor: [['p7', 'p3'], ['p9', 'p7']] });
+  const CAP_NOTE = /Marcus Williams is at 8 minutes against a 4-minute cap/;
+  const MIN_NOTE = /Marcus Williams got 24 minutes against a 28-minute minimum/;
+
+  async function swapThenRead(constraints, onFloor, onBench, strategy = 'balanced') {
+    await coach.onGameDayWith({ constraints, strategy });
+    await coach.tap('Hawks, 9:00 AM, planned');
+    const before = await coach.text('#issues');
+    const planned = await coach.planMinutes();
+    await coach.tap('Start game');
+    await coach.tapPlayer(onFloor);
+    await coach.tapPlayer(onBench);
+    await coach.tap('Leave');
+    return { before, after: await coach.text('#issues'), planned, mins: await coach.planMinutes() };
+  }
+
+  test('a cap note stays for a player whose minutes did not move, and goes with the plan\'s "spread among the rest" line', async () => {
+    const { before, after, planned, mins } = await swapThenRead(CAP, 'Ana Reyes', 'Casey Lindqvist');
+    assert.match(before, CAP_NOTE);
+    assert.equal(planned['Marcus Williams'], 8);
+    assert.equal(mins['Marcus Williams'], 8, `the timeline shows ${JSON.stringify(mins)}`);
+    assert.notDeepEqual(mins, planned, 'the swap moved nobody, so this proves nothing');
+    assert.match(after, CAP_NOTE, `the notes say: ${after}`);
+    assert.ok(lacks(after, /among the players without a minimum or cap/));
+  });
+
+  test('a cap note goes when the swap moves that player\'s minutes', async () => {
+    const { before, after, planned, mins } = await swapThenRead(CAP, 'Devon Ellis', 'Marcus Williams');
+    assert.match(before, CAP_NOTE);
+    assert.equal(planned['Marcus Williams'], 8);
+    assert.equal(mins['Marcus Williams'], 12, `the timeline shows ${JSON.stringify(mins)}`);
+    assert.ok(lacks(after, /Marcus Williams is at 8 minutes/), `the notes say: ${after}`);
+    assert.ok(lacks(after, /among the players without a minimum or cap/));
+  });
+
+  test('a minimum note stays for a player whose minutes did not move', async () => {
+    const { before, after, planned, mins } = await swapThenRead(MIN, 'Hana Kim', 'Theo Alvarez');
+    assert.match(before, MIN_NOTE);
+    assert.equal(planned['Marcus Williams'], 24);
+    assert.notDeepEqual(mins, planned, 'the swap moved nobody, so this proves nothing');
+    assert.equal(mins['Marcus Williams'], 24, `the timeline shows ${JSON.stringify(mins)}`);
+    assert.match(after, MIN_NOTE, `the notes say: ${after}`);
+    assert.ok(lacks(after, /among the players without a minimum or cap/));
+  });
+
+  test('a minimum note goes when the swap moves that player\'s minutes', async () => {
+    const { before, after, planned, mins } = await swapThenRead(MIN, 'Devon Ellis', 'Casey Lindqvist');
+    assert.match(before, MIN_NOTE);
+    assert.equal(planned['Marcus Williams'], 24);
+    assert.equal(mins['Marcus Williams'], 28, `the timeline shows ${JSON.stringify(mins)}`);
+    assert.ok(lacks(after, /Marcus Williams got 24 minutes/), `the notes say: ${after}`);
+    assert.ok(lacks(after, /among the players without a minimum or cap/));
+  });
+
+  test('where the engine said nothing about the spread, a swap adds no spread note', async () => {
+    const { before, after, planned, mins } = await swapThenRead(rules({ targetSlots: { p0: 6, p1: 2 } }), 'Ana Reyes', 'Theo Alvarez', 'minutes');
+    assert.match(before, /Minutes are set by hand for/);
+    assert.notDeepEqual(mins, planned, 'the swap moved nobody, so this proves nothing');
+    assert.ok(lacks(before, /divide evenly|the fewest|everyone else|The most is/));
+    assert.match(after, /Minutes are set by hand for/, `the notes say: ${after}`);
+    assert.ok(lacks(after, /divide evenly|the fewest|everyone else|the other \d+ play|The most is| play(s)? \d/), `the notes say: ${after}`);
   });
 
   test('before the game starts, with nothing moved, the engine\'s own note is shown as it is', async () => {
