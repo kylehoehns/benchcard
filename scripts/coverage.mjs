@@ -97,12 +97,26 @@ export function folder({ appDir, read }) {
         merged.set(file, into);
       }
     },
+    /* #459: a part's lines, from `linesOf` -- the folded form a sharded run
+       carries between CI jobs. Folded the same way: covered anywhere wins. */
+    addLines(lines) {
+      for (const [file, { covered, uncovered }] of Object.entries(lines)) {
+        const into = merged.get(file) || { covered: new Set(), uncovered: new Set() };
+        for (const n of covered) into.covered.add(n);
+        for (const n of uncovered) into.uncovered.add(n);
+        merged.set(file, into);
+      }
+    },
     result() {
       for (const m of merged.values()) for (const n of m.covered) m.uncovered.delete(n);
       return merged;
     },
   };
 }
+
+/* `result()` as plain JSON, for `addLines` in another process. */
+export const linesOf = merged => Object.fromEntries([...merged].map(([file, m]) =>
+  [file, { covered: [...m.covered], uncovered: [...m.uncovered] }]));
 
 export function merge(reports, opts) {
   const f = folder(opts);

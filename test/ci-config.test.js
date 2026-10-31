@@ -74,13 +74,36 @@ test('every job branch protection requires still exists under that exact name', 
   }
 });
 
+/* Jobs that are deliberately NOT required, each with the required job that
+   judges it. #459: the smoke parts run the run; `smoke` merges and judges
+   them, with `if: always()` so a failed part cannot skip it into a pass. */
+const ADVISORY = {
+  'smoke part ${{ matrix.part }}': 'smoke',
+};
+
 test('the workflow declares no more required-looking jobs than are pinned here', () => {
   /* A new job is not a problem; a new job nobody added to branch protection,
      and nobody noticed was unprotected, is. This fails on the addition so the
      decision gets made deliberately. */
   const names = [...tests.matchAll(/^    name: (.+)$/gm)].map(m => m[1].trim());
-  assert.deepEqual(names.sort(), [...REQUIRED].sort(),
+  assert.deepEqual(names.sort(), [...REQUIRED, ...Object.keys(ADVISORY)].sort(),
     'a job was added to or removed from test.yml. Update branch protection and this list together, or say why the job is not required.');
+});
+
+/* #459: a required job that `needs` another is SKIPPED when that one fails,
+   and GitHub counts a skipped required check as passing. So the smoke job
+   that judges the parts must run whatever they did, and must actually merge. */
+test('the required smoke job runs even when a part fails, and merges the parts', () => {
+  const job = tests.slice(tests.indexOf('\n  smoke:\n'), tests.indexOf('\n  smoke-parts:\n'));
+  assert.ok(job.length > 100, 'could not find the smoke job ahead of smoke-parts');
+  assert.match(job, /^    needs: smoke-parts$/m);
+  assert.match(job, /^    if: always\(\)$/m,
+    'without if: always(), a failed part skips the required smoke check, and skipped counts as passing');
+  assert.match(job, /node scripts\/smoke\.mjs --merge /);
+  const parts = tests.slice(tests.indexOf('\n  smoke-parts:\n'));
+  assert.match(parts, /part: \[suite, 1\/3, 2\/3, 3\/3\]/, 'the parts must be the suite plus every k/n for one n');
+  assert.match(parts, /fail-fast: false/, 'one failed part must not cancel the others mid-upload');
+  assert.match(parts, /- if: always\(\)\n\s+uses: actions\/upload-artifact/, 'a failed part must still upload its partial');
 });
 
 /* The rule is not "no path filters". It is "no path filter on a REQUIRED

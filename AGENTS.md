@@ -270,8 +270,12 @@ than half a point under `scripts/coverage.json`; the table is informational.
 and only when every check passed, and the diff shows in review. A main-frame
 navigation with no coverage taken first fails the row, naming it. `--only` and
 `--no-tests` print no coverage row.
-The CI job is named `smoke` (the ruleset requires it by that name) and runs the
-suite inside it, so it is not run twice. A row that flakes only with coverage on
+The CI job is named `smoke` (the ruleset requires it by that name). CI splits
+the one run into parts that run at once, the suite (`--shard suite`) and the
+browser rows across three Chromes (`--shard k/3`), and `smoke` judges them
+together with `--merge` (#459; `scripts/smoke/shard.mjs`). A local run with no
+flag still runs everything in one process, the suite beside the browser rows,
+and prints one table. A row that flakes only with coverage on
 is a finding to report, not a retry.
 
 The payload budget is a **recorded** baseline. `requests` comes from
