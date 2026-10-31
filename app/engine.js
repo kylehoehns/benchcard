@@ -22,13 +22,18 @@ function makeRng(seed) {
  * stint construction
  * ------------------------------------------------------------------ */
 
+// Stints per period under perPeriod: a whole number, at least 1.
+function perPeriodCount(g) {
+  return Math.max(1, Math.floor(g.value));
+}
+
 // A tail shorter than half the requested interval gets folded into the
 // previous stint -- a 1-minute stint is not a real substitution point.
 function periodLengths(periodMinutes, g) {
   if (g.mode === 'breaksOnly') return [periodMinutes];
 
   if (g.mode === 'perPeriod') {
-    const n = Math.max(1, Math.floor(g.value));
+    const n = perPeriodCount(g);
     return Array.from({ length: n }, () => periodMinutes / n);
   }
 
@@ -96,8 +101,13 @@ export function buildStints(format, granularity) {
       period: periods + i + 1, minutes, name: overtimeLabel(i + 1),
     })),
   ];
+  // #404: under perPeriod an overtime period is cut by the everyN rule at the
+  // regulation stint length, so a short one is one stint, not n slivers
+  const otGranularity = granularity.mode === 'perPeriod'
+    ? { mode: 'everyN', value: periodMinutes / perPeriodCount(granularity) }
+    : granularity;
   for (const { period: p, minutes: pm, name } of all) {
-    const lengths = periodLengths(pm, granularity);
+    const lengths = periodLengths(pm, p > periods ? otGranularity : granularity);
     let left = pm;
     for (const len of lengths) {
       stints.push({

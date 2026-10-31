@@ -90,6 +90,24 @@ describe('adding overtime from bench mode', { skip }, () => {
     assert.deepEqual(walked.slice(0, regulation.length), regulation);
   });
 
+  test('2 minutes of overtime at 4× a period is one overtime stint, not four (#404)', async () => {
+    await coach.onGameDay();
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Sub interval, every 4 min');
+    await coach.tap('4× a period');
+    await coach.tap('Close');
+    await coach.tap('Start game');
+    await toLastStint();
+    assert.equal(await coach.stint(), '16 of 16');
+
+    await coach.addOvertime(2);
+
+    assert.equal(await coach.text('#gmGame'), 'OT · 2:00 to 0:00');
+    assert.equal(await coach.stint(), '17 of 17', 'one overtime stint, not four');
+    assert.equal(await coach.sees('Next stint'), false, 'no further stint after it');
+    assert.ok(await coach.sees('Finish game'));
+  });
+
   test('Undo takes the overtime back: last regulation stint, same minutes, button back', async () => {
     await startHawks();
     await coach.tapPlayer('Ana Reyes');

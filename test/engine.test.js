@@ -1098,12 +1098,52 @@ test('isOvertimeStint is true for the stints buildStints names OT..OT4 and for n
   assert.deepEqual(s.map(isOvertimeStint), [...Array(8).fill(false), true, true, true, true]);
 });
 
-test('overtime is split by the same granularity rule as a period', () => {
+test('overtime under perPeriod is one regulation stint long (#404); breaksOnly gives one', () => {
   const ot = { ...HALVES, overtime: [8] };
   assert.deepEqual(
-    buildStints(ot, { mode: 'perPeriod', value: 2 }).slice(4).map(x => x.minutes), [4, 4]);
+    buildStints(ot, { mode: 'perPeriod', value: 2 }).slice(4).map(x => x.minutes), [8]);
   assert.deepEqual(
     buildStints(ot, { mode: 'breaksOnly' }).slice(2).map(x => x.minutes), [8]);
+});
+
+const PER_4 = { mode: 'perPeriod', value: 4 };
+const otStints = (minutes, g) =>
+  buildStints({ ...QUARTERS, overtime: [minutes] }, g).filter(isOvertimeStint);
+
+test('a short overtime under perPeriod 4 is one stint, not four slivers (#404)', () => {
+  const plain = buildStints(QUARTERS, PER_4);
+  const s = buildStints({ ...QUARTERS, overtime: [2] }, PER_4);
+  assert.deepEqual(s.slice(0, 16), plain);
+  const ot = s.slice(16);
+  assert.equal(ot.length, 1);
+  assert.deepEqual([ot[0].minutes, ot[0].startSec, ot[0].endSec], [2, 120, 0]);
+});
+
+test('a full-length overtime under perPeriod 4 is four 2-minute stints (#404)', () => {
+  assert.deepEqual(otStints(8, PER_4).map(x => x.minutes), [2, 2, 2, 2]);
+});
+
+test('an overtime tail under half a stint folds into the stint before it (#404)', () => {
+  // 2 x 16, perPeriod 2: the stint is 8, a 1-minute tail is under 4
+  const ot = buildStints({ ...HALVES, overtime: [9] }, { mode: 'perPeriod', value: 2 })
+    .filter(isOvertimeStint);
+  assert.deepEqual(ot.map(x => [x.minutes, x.startSec, x.endSec]), [[9, 540, 0]]);
+});
+
+test('an overtime tail of exactly half a stint stays its own stint, as everyN does (#404)', () => {
+  assert.deepEqual(otStints(3, PER_4).map(x => x.minutes), [2, 1]);
+  assert.deepEqual(otStints(3, { mode: 'everyN', value: 2 }).map(x => x.minutes), [2, 1]);
+});
+
+test('perPeriod regulation, everyN and breaksOnly overtime stay as they were (#404)', () => {
+  for (const v of [1, 2, 3, 4]) {
+    assert.deepEqual(
+      buildStints({ ...QUARTERS, overtime: [5] }, { mode: 'perPeriod', value: v }).slice(0, 4 * v)
+        .map(x => x.minutes),
+      Array(4 * v).fill(8 / v));
+  }
+  assert.deepEqual(otStints(8, EVERY_4).map(x => x.minutes), [4, 4]);
+  assert.deepEqual(otStints(2, { mode: 'breaksOnly' }).map(x => x.minutes), [2]);
 });
 
 test('overtime absent or empty gives exactly the regulation stints', () => {

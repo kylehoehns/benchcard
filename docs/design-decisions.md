@@ -223,6 +223,11 @@ its alternative is an assertion, so the rejected options are kept here too.
   and all. Any drift between the two would have desynced the slot count the
   sliders allocate against from the stints the engine actually builds, silently
   corrupting the whole budget with no error anywhere.
+- **Under "× / period", overtime is cut at the regulation stint length.** Each
+  overtime period gets stints of `periodMinutes / n`, split with the same rule
+  as "every N min": a tail shorter than half a stint folds into the stint before
+  it. So a 2-minute overtime under 4 × 8 is one stint, not four. Regulation,
+  every-N and breaks-only splits are unchanged.
 - **Re-allocation uses Hamilton apportionment, not take-from-the-largest.**
   Repeatedly shaving the current maximum flattens the shape the coach dialled
   in: adding an 11th player to a roster with someone set to 32 minutes took all
