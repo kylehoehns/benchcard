@@ -168,7 +168,8 @@ describe('a player sat for the rest stays sat', { skip }, () => {
     assert.ok(short.every(t => t.includes(sat)), `${sat} fills the fifth seat: ${JSON.stringify(short)}`);
 
     while ((await coach.stint()) !== '2 of 8') await coach.tap('Previous stint');
-    await viaWhosHere("Who's here, 5 players", other);
+    // #420: `other` played before being marked out, so the game still counts them
+    await viaWhosHere("Who's here, 6 players", other);
     await resume();
     assert.equal(await coach.stint(), '2 of 8');
     never((await laterFloors()).slice(1), sat, 'once there are five without them');

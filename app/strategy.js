@@ -188,7 +188,7 @@ function updateBudgetUI(g) {
      * disagree, which is the case a thin bench can still produce. */
     const said = msg.textContent;
     /* #420: already saying one of the two exact lines (a drag mid-solve):
-       leave it, `refreshBudgetActuals` decides after the solve, so a visible
+       leave it, the repaint after the solve decides, so a visible
        "plays N" is not contradicted meanwhile. */
     if (state2 !== 'exact' || (said !== AS_THEY_ARE && said !== RULES_CHANGED_ROWS)) msg.textContent = state2 === 'exact'
       ? AS_THEY_ARE
