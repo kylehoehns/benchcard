@@ -247,6 +247,21 @@ its alternative is an assertion, so the rejected options are kept here too.
   five players to close, they close; the fatigue limit is a heuristic and
   yields, with the over-run reported. In practice the local search rests the
   closing group ahead of its window and neither has to give.
+- **A pin is held over a cap, or refused up front, never dropped quietly
+  (#436).** A kid named in the starting five, the Last-period five or the
+  closing group is on the floor for those stints. The greedy pass keeps back
+  the minutes a kid is pinned to from their cap before it spends that cap
+  elsewhere. The local search charges 1000 a minute for each pinned minute a
+  kid is off the floor. If a cap cannot cover a kid's pinned minutes,
+  `PINS_OVER_CAP` refuses the plan and names the kid. If the players pinned to
+  one stint are more than five, `FORCED_GROUP_TOO_BIG` refuses it, even when
+  the extra players come from two different groups. Two players set Apart who
+  are pinned to the same stint are refused the same way by `FORCED_GROUP_AVOID`,
+  again across groups. `buildForced` is the one place that decides which stints
+  each group pins; feasibility, the greedy pass and `finish()` all read it. A
+  pin the search still misses is a warning, one per group, naming everyone it
+  missed (`OPENING_MISSED`, `LAST_PERIOD_MISSED`, `CLOSER_MISSED`). Platoon
+  applies no pins, so none of this applies to it.
 - **A coach's minute target is a pin, not a preference.** It survives caps and
   tournament carryover; everyone else water-fills the remaining floor-time.
 - **Somebody has to play the odd stint, so it is decided out loud.** When the

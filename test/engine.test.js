@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { lacks } from './prose.js';
 import {
   buildStints, fmtClock, deriveShortNames, analyzeFeasibility,
-  generatePlan, minPossibleSpread, ON_FLOOR, stintsBeforeHalftime, isOvertimeStint,
+  generatePlan, missedPinIssues, minPossibleSpread, ON_FLOOR, stintsBeforeHalftime, isOvertimeStint,
 } from '../app/engine.js';
 
 const QUARTERS = { periods: 4, periodMinutes: 8 };
@@ -1234,6 +1235,9 @@ test('378: the last-period five is checked against that period\'s first stint (p
     constraints: { lastPeriodFive: ['p1'], maxMinutes: { p1: 7 } },
   });
   assert.deepEqual(codes(p.issues, 'FORCED_OVER_CAP'), []);
+  // H2's first stint: the cap covers the pin, and the plan holds it
+  const h2 = p.stints.find(r => r.period === 2);
+  assert.ok(h2.onFloor.includes('p1'), 'p1 is not on the floor for H2\'s first stint');
 });
 
 test('378: 4x10 perPeriod 3 prints stint lengths as 3.3, never 3.333', () => {
@@ -1276,8 +1280,8 @@ test('378: KEEPON_UNSATISFIABLE formats the game length', () => {
   fires({ keepOnFloor: [['p0', 'p1']], maxMinutes: { p0: 3, p1: 3 } }, 'KEEPON_UNSATISFIABLE',
     "only cover 6 of the game's 6.7 minutes");
 });
-test('378: CLOSER_OVER_CAP formats the closing window', () => {
-  fires({ closing: { stints: 1, players: ['p2'] }, maxMinutes: { p2: 2 } }, 'CLOSER_OVER_CAP',
+test('378: PINS_OVER_CAP formats the closing window', () => {
+  fires({ closing: { stints: 1, players: ['p2'] }, maxMinutes: { p2: 2 } }, 'PINS_OVER_CAP',
     'set to close (3.3 min) but is capped at 2.');
 });
 test('378: TARGETS_OVER_BUDGET formats the excess', () => {
@@ -1350,4 +1354,139 @@ test('438: a hard pair with an Apart pair on the bench and a pinned player keeps
     });
     for (const id of ['p3', 'p0', 'p1']) assert.ok(r.stints[0].onFloor.includes(id), `seed ${seed} pin ${id}`);
   }
+});
+
+/* ---------------- #436: a pinned kid is held, or the plan is refused ---------------- */
+
+const FIVE = ['p0', 'p1', 'p2', 'p3', 'p4'];
+const ONE_PERIOD = { format: { periods: 1, periodMinutes: 12 } };
+const pinPlan = (n, seed, constraints, extra = {}) => generatePlan({
+  players: roster(n), availableIds: ids(n), format: QUARTERS, granularity: EVERY_4, seed, constraints, ...extra,
+});
+
+test('436: a Last-period five kid with a cap of 4 or 8 is on Q4\'s first stint in every plan', () => {
+  for (const cap of [4, 8]) for (const n of [8, 10, 12]) for (let seed = 1; seed <= 10; seed++) {
+    const p = pinPlan(n, seed, { lastPeriodFive: FIVE, maxMinutes: { p0: cap } });
+    assert.ok(p.ok, `cap ${cap}, ${n} players, seed ${seed}: refused`);
+    assert.ok(p.stints[6].onFloor.includes('p0'), `cap ${cap}, ${n} players, seed ${seed}: p0 missing from stint 6`);
+  }
+});
+
+test('436: a closer capped at 12 is on both closing stints in every plan', () => {
+  for (const n of [8, 10, 12]) for (let seed = 1; seed <= 10; seed++) {
+    const p = pinPlan(n, seed, { closing: { stints: 2, players: FIVE }, maxMinutes: { p0: 12 } }, { strategy: 'closers' });
+    assert.ok(p.ok, `${n} players, seed ${seed}: refused`);
+    for (const i of [6, 7]) assert.ok(p.stints[i].onFloor.includes('p0'), `${n} players, seed ${seed}: p0 missing from stint ${i}`);
+  }
+});
+
+test('436: a cap under the sum of a kid\'s pinned stints is refused with PINS_OVER_CAP', () => {
+  const both = pinPlan(10, 1, { openingFive: FIVE, lastPeriodFive: FIVE, maxMinutes: { p0: 4 } });
+  assert.equal(both.ok, false);
+  const [hit] = codes(both.issues, 'PINS_OVER_CAP');
+  assert.ok(hit, 'PINS_OVER_CAP did not fire');
+  assert.equal(hit.severity, 'error');
+  assert.deepEqual(hit.playerIds, ['p0']);
+  assert.match(hit.message, /PlayerA/);
+  assert.match(hit.message, /\b8\b/);
+  assert.match(hit.message, /\b4\b/);
+
+  const closers = pinPlan(10, 1, { closing: { stints: 2, players: FIVE }, maxMinutes: { p0: 6 } }, { strategy: 'closers' });
+  assert.equal(closers.ok, false);
+  assert.ok(codes(closers.issues, 'PINS_OVER_CAP').length, 'closing 2 stints (8 min) with cap 6 was not refused');
+  assert.deepEqual(codes(closers.issues, 'CLOSER_OVER_CAP'), []);
+
+  // a cap that covers the pins is fine
+  assert.equal(pinPlan(10, 1, { openingFive: FIVE, lastPeriodFive: FIVE, maxMinutes: { p0: 8 } }).ok, true);
+});
+
+test('436: a pin that already trips FORCED_OVER_CAP is not also reported as PINS_OVER_CAP', () => {
+  const issues = feas(HALVES_20, EVERY_6, { openingFive: ['p0'], maxMinutes: { p0: 5 } });
+  assert.equal(codes(issues, 'FORCED_OVER_CAP').length, 1);
+  assert.deepEqual(codes(issues, 'PINS_OVER_CAP'), []);
+});
+
+test('436: a stint pinned by two groups counts once toward the cap', () => {
+  // a one-period game: the opening stint is also the last period's first stint
+  const p = pinPlan(8, 1, { openingFive: FIVE, lastPeriodFive: FIVE, maxMinutes: { p0: 4 } }, ONE_PERIOD);
+  assert.ok(p.ok, JSON.stringify(p.issues.filter(i => i.severity === 'error')));
+  assert.ok(p.stints[0].onFloor.includes('p0'));
+});
+
+test('436: a one-period game with two different fives pinned to its one stint is refused', () => {
+  const p = pinPlan(10, 1, { openingFive: FIVE, lastPeriodFive: ['p5', 'p6', 'p7', 'p8', 'p9'] }, ONE_PERIOD);
+  assert.equal(p.ok, false);
+  const [hit] = codes(p.issues, 'FORCED_GROUP_TOO_BIG');
+  assert.ok(hit, 'FORCED_GROUP_TOO_BIG did not fire');
+  assert.match(hit.message, /\b10 players\b/);
+  assert.match(hit.message, /only 5 fit/);
+});
+
+test('436: closers that overlap the last-period five\'s stint are refused when together they are over five', () => {
+  const p = pinPlan(10, 1, { lastPeriodFive: FIVE, closing: { stints: 2, players: ['p5', 'p6', 'p7', 'p8', 'p9'] } },
+    { strategy: 'closers' });
+  assert.equal(p.ok, false);
+  assert.ok(codes(p.issues, 'FORCED_GROUP_TOO_BIG').length);
+});
+
+test('436: an Apart pair split across two pinned groups is refused once', () => {
+  const p = pinPlan(10, 1, { openingFive: ['p0', 'p1'], lastPeriodFive: ['p2'], avoids: [['p0', 'p1']] });
+  // inside one group: refused, reported once, not twice
+  assert.equal(p.ok, false);
+  assert.equal(codes(p.issues, 'FORCED_GROUP_AVOID').length, 1);
+  const q = pinPlan(10, 1, { openingFive: ['p0'], lastPeriodFive: ['p1'], avoids: [['p0', 'p1']] }, ONE_PERIOD);
+  assert.equal(q.ok, false);
+  const hits = codes(q.issues, 'FORCED_GROUP_AVOID');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].severity, 'error');
+  assert.match(hits[0].message, /PlayerA.*PlayerB|PlayerB.*PlayerA/);
+});
+
+test('436: a cap exactly equal to a fractional pinned sum is not refused', () => {
+  // 4 periods of 8.8 min, one stint each: closing 3 stints pins 26.4 min, which adds up to 26.400000000000002
+  const format = { periods: 4, periodMinutes: 8.8 };
+  const stints = buildStints(format, { mode: 'perPeriod', value: 1 });
+  const run = cap => analyzeFeasibility({ players: roster(10), availableIds: ids(10), stints, strategy: 'closers',
+    constraints: { closing: { stints: 3, players: FIVE }, maxMinutes: { p0: cap } }, periods: 4 });
+  assert.deepEqual(codes(run(26.4), 'PINS_OVER_CAP'), []);
+  assert.equal(codes(run(26.3), 'PINS_OVER_CAP').length, 1);
+});
+
+test('436: the PINS_OVER_CAP message names only groups that pin the kid to a stint', () => {
+  // all-overtime suffix: no regulation stint remains, so the last-period five pins nothing
+  const stints = buildStints({ periods: 2, periodMinutes: 4, overtime: [4] }, EVERY_4).slice(2);
+  const issues = analyzeFeasibility({ players: roster(8), availableIds: ids(8), stints, strategy: 'closers',
+    constraints: { lastPeriodFive: FIVE, closing: { stints: 1, players: FIVE }, maxMinutes: { p0: 2 } }, periods: 2 });
+  const [hit] = codes(issues, 'PINS_OVER_CAP');
+  assert.ok(hit, JSON.stringify(issues));
+  assert.match(hit.message, /set to close/);
+  assert.ok(lacks(hit.message, 'last period'), hit.message);
+});
+
+test('436: platoon applies no pins, so pin checks do not refuse a platoon plan', () => {
+  const p = generatePlan({ players: roster(10), availableIds: ids(10), format: { periods: 4, periodMinutes: 8 },
+    granularity: EVERY_4, seed: 1, strategy: 'platoon',
+    constraints: { units: [FIVE, ['p5', 'p6', 'p7', 'p8', 'p9']], openingFive: ['p0'], lastPeriodFive: ['p0'], maxMinutes: { p0: 4 } } });
+  assert.ok(p.ok, JSON.stringify(p.issues.filter(i => i.severity === 'error')));
+  assert.deepEqual(codes(p.issues, 'PINS_OVER_CAP'), []);
+});
+
+test('436: missedPinIssues emits each missed-pin code, and nothing for platoon', () => {
+  const stints = buildStints(QUARTERS, EVERY_4);
+  const none = { openingFive: [], lastPeriodFive: [], closing: null };
+  const c = { ...none, openingFive: ['p0'], lastPeriodFive: ['p1'], closing: { stints: 1, players: ['p2'] } };
+  // nobody is ever on the floor
+  const lineups = stints.map(() => ['p5', 'p6', 'p7', 'p8', 'p9']);
+  const args = { stints, c, periods: 4, lineups, avail: ids(10), label: id => `Kid ${id}` };
+  const got = missedPinIssues(args);
+  assert.deepEqual(got.map(i => i.code), ['OPENING_MISSED', 'LAST_PERIOD_MISSED', 'CLOSER_MISSED']);
+  assert.deepEqual(got.map(i => i.playerIds), [['p0'], ['p1'], ['p2']]);
+  assert.ok(got.every(i => i.severity === 'warn'));
+  assert.match(got[0].message, /Kid p0 is set to start but is not/);
+  assert.match(got[1].message, /Kid p1 is set to start the last period/);
+  assert.match(got[2].message, /Kid p2 is set to close/);
+  assert.deepEqual(missedPinIssues({ ...args, platoon: true }), []);
+  // a lineup that honors the pins: nothing
+  const kept = stints.map(() => ['p0', 'p1', 'p2', 'p3', 'p4']);
+  assert.deepEqual(missedPinIssues({ ...args, lineups: kept }), []);
 });
