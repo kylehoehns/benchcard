@@ -34,9 +34,11 @@ It is still one tap when nothing differs: step 1 carries a *Same as 9:00?* card
 whose summary line comes from the same `sentenceParts` a game pass reads. The
 card is the whole button — tapping anywhere on it commits the draft — with
 *Add game* as right-aligned ink text. `newGame(len, lastGame(), settings)`
-builds the draft when the flow opens, and tapping the card and **Plan it** commit
-that same object, so the shortcut and walking all three steps unchanged cannot
-land on different games.
+builds the draft when the flow opens (`freshDraft()`). **Plan it** commits that
+draft. The card commits a fresh `freshDraft()` instead, carrying over only step
+1's date, opponent and tip-off, so edits made on steps 2 and 3 are dropped and
+the card adds the game its label names (#428). Walking all three steps unchanged
+still lands on the same game as the card.
 When the team has no games (#126), there is no last game to copy: the draft is
 `newGame(0, null, settings)` dated today, and no *Same as …?* card is offered.
 The draft stays detached until one of them is pressed — a half-answered game is
