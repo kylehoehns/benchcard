@@ -190,7 +190,9 @@ test('fuzz: a hard constraint is either honoured or reported, never silently dro
     if (c.maxConsecutive) {
       for (const id of sc.availableIds) {
         if (longestRun(p.stints, id) > c.maxConsecutive) {
-          assert.ok(said('CONSEC_EXCEEDED'), `${ctx}: ${id} ran past the limit with no warning`);
+          const upFront = p.issues.some(i => i.code === 'CONSEC_TOO_FEW' || i.code === 'CONSEC_IMPOSSIBLE'
+            || (i.code === 'CONSEC_MIN_CONFLICT' && i.playerIds.includes(id)));
+          assert.ok(said('CONSEC_EXCEEDED') || upFront, `${ctx}: ${id} ran past the limit with no warning`);
         }
       }
     }

@@ -1490,3 +1490,55 @@ test('436: missedPinIssues emits each missed-pin code, and nothing for platoon',
   const kept = stints.map(() => ['p0', 'p1', 'p2', 'p3', 'p4']);
   assert.deepEqual(missedPinIssues({ ...args, lineups: kept }), []);
 });
+
+/* ---------------- a Rest limit that cannot hold (#439) ---------------- */
+
+const restPlan = (n, constraints, seed = 1) => plan(n, { constraints, seed });
+const issuesOf = (p, code) => p.issues.filter(i => i.code === code);
+const runOf = (p, id) => {
+  let run = 0, best = 0;
+  for (const r of p.stints) { if (r.onFloor.includes(id)) { run++; best = Math.max(best, run); } else run = 0; }
+  return best;
+};
+
+test('a Rest limit the roster cannot meet is one up-front line naming the players it needs', () => {
+  for (const [n, r, need] of [[8, 1, 10], [7, 2, 8], [6, 3, 7]]) {
+    const p = restPlan(n, { maxConsecutive: r });
+    const few = issuesOf(p, 'CONSEC_TOO_FEW');
+    assert.equal(few.length, 1, `Rest ${r} with ${n} players`);
+    assert.match(few[0].message, /Rest limit/);
+    assert.ok(few[0].message.includes(`needs ${need} players`), few[0].message);
+    assert.equal(issuesOf(p, 'CONSEC_EXCEEDED').length, 0, `Rest ${r} with ${n} players`);
+  }
+});
+
+test('a Rest limit the roster can meet raises no up-front line', () => {
+  for (const [n, r] of [[8, 2], [7, 3]]) {
+    const p = restPlan(n, { maxConsecutive: r });
+    assert.equal(issuesOf(p, 'CONSEC_TOO_FEW').length, 0, `Rest ${r} with ${n} players`);
+  }
+});
+
+test('Rest 1 with 6 players shortens the worst run first', () => {
+  for (let seed = 1; seed <= 10; seed++) {
+    const p = restPlan(6, { maxConsecutive: 1 }, seed);
+    for (const id of ids(6)) assert.ok(runOf(p, id) <= 5, `seed ${seed} ${id} ran ${runOf(p, id)}`);
+  }
+});
+
+test('when the Rest limit forces five to change at once, the subs warning says so', () => {
+  const p = restPlan(10, { maxConsecutive: 1, openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] });
+  const w = issuesOf(p, 'SUBS_EXCEEDED')[0];
+  assert.ok(w, 'SUBS_EXCEEDED is present');
+  assert.match(w.message, /Rest limit/);
+  assert.ok(lacks(w.message, 'cost somebody minutes'), w.message);
+});
+
+test('a minimum the Rest limit makes impossible is named up front', () => {
+  const p = restPlan(10, { maxConsecutive: 2, minMinutes: { p0: 28 } });
+  const w = issuesOf(p, 'CONSEC_MIN_CONFLICT').find(i => i.playerIds.includes('p0'));
+  assert.ok(w, 'CONSEC_MIN_CONFLICT for p0');
+  assert.ok(w.message.includes('28-minute minimum'), w.message);
+  assert.ok(w.message.includes('PlayerA'), w.message);
+  assert.equal(issuesOf(p, 'CONSEC_EXCEEDED').filter(i => i.playerIds.includes('p0')).length, 0);
+});
