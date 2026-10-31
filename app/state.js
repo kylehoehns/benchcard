@@ -23,7 +23,7 @@ import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 import { emptyConstraints, removePlayer as removeFrom, setAvailable, removeTeam } from './team-ops.js';
-import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, gameStarted,
+import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, gameStarted, finishedGame,
   keepThrough, clearRest, replaceOverrides, snapshotFives, restoreFives } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
