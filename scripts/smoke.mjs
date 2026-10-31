@@ -8,7 +8,7 @@
    table. It now also carries the accessibility checks and the performance
    budget (see `budgets.mjs`).
 
-       node scripts/smoke.mjs                  # serve app/, drive Chrome, run tests
+       node scripts/smoke.mjs                  # serve app/, drive Chrome, run tests beside it
        node scripts/smoke.mjs --no-tests       # browser checks only (fast)
        node scripts/smoke.mjs --headful        # watch it happen
        node scripts/smoke.mjs --json           # machine-readable, for CI
@@ -321,7 +321,6 @@ async function browserChecks(origin, only, folded) {
    Its entries have the shape Chrome's `takePreciseCoverage` gives, so the one
    converter in coverage.mjs serves both. */
 async function runTests() {
-  current = 'node --test';
   const covDir = await mkdtemp(join(tmpdir(), 'benchcard-cov-'));
   try {
     const row = await new Promise(ok => {
@@ -491,6 +490,13 @@ watchdogTimer = setTimeout(() => {
 
 server = await serve();
 const origin = `http://127.0.0.1:${server.address().port}`;
+/* #459: the suite starts now, beside the browser rows, not after them. The
+   two do not depend on each other, and in series they were about 8 + 3.7
+   minutes of CI's smoke job. Awaited where its row is pushed, below. The
+   no-op catch only keeps a suite that dies while Chrome is still walking
+   from becoming an unhandled rejection; the real await still sees it. */
+const tests = has('--no-tests') || HAS_ONLY ? null : runTests();
+tests?.catch(() => {});
 let result;
 try {
   /* Read once, up front: Chrome's takes are folded into lines as they arrive,
@@ -500,6 +506,10 @@ try {
   result = await browserChecks(origin, ONLY, folded);
   result.sources = sources;
   result.folded = folded;
+} catch (e) {
+  // A browser half that threw ends the run; do not leave the suite behind.
+  try { liveTests?.kill('SIGKILL'); } catch { /* already gone */ }
+  throw e;
 } finally {
   server.close();
 }
@@ -568,8 +578,9 @@ if (has('--update-budgets')) {
    number, like the budgets' baselines, and `--update-coverage` is the only
    thing that moves it. */
 let coverage = null;
-if (!has('--no-tests')) {
-  const { row, nodeCoverage } = await runTests();
+if (tests) {
+  current = 'node --test';
+  const { row, nodeCoverage } = await tests;
   report.checks.push(row);
   folded.add(nodeCoverage);
   coverage = summarizeCoverage(folded.result(), sources);
