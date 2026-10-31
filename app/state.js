@@ -1476,9 +1476,34 @@ let dropped = 0;
 export const overridesDropped = () => { const n = dropped; dropped = 0; return n; };
 
 /* #412: the sat kids a re-plan had to put back on the floor because five
-   could not be made without them. Read-and-reset, like `overridesDropped`. */
-let satShort = [];
-export const satShortBench = () => { const n = satShort; satShort = []; return n; };
+   could not be made without them, by game id -- `computeAll` re-plans every
+   game of every day, and only the game on screen is told about. Read-and-reset
+   like `overridesDropped`: asking clears every game's, so a game that is not
+   on screen does not save its notice for later. */
+const satShort = new Map();
+export const satShortBench = id => { const n = satShort.get(id) || []; satShort.clear(); return n; };
+
+/* #412: plan the rest of a game from stint `from`, with its standing sit when
+   five can be made without those kids, and without it when they cannot -- the
+   arrival or attendance change has already happened, so a sit cannot refuse
+   it. The sit stays recorded and applies again once five can be made. Every
+   sat kid at the game is named (the retry seats all of them, not only as many
+   as were needed). The one re-plan both `freezePlayedAndReplan` and the #134
+   fallback in `syncOverrides` call. */
+function replanRest(g, p, from) {
+  const live = g.live;
+  let r = resolveRest(g, p, from);
+  if (!r.ok && r.reason === 'nobody' && satIds(live).length) {
+    const again = resolveRest(g, p, from, [], null, []);
+    if (again.ok) {
+      r = again;
+      const here = new Set(availIds(g));
+      const calls = callNames(state.players);
+      satShort.set(g.id, satIds(live).filter(id => here.has(id)).map(id => calls[id]));
+    }
+  }
+  return r;
+}
 
 /* #134: a game underway rewrites the minutes already played whenever its
    rotation changes shape, whether or not there were hand swaps to drop --
@@ -1592,18 +1617,7 @@ function freezePlayedAndReplan(g, p, prev) {
   replaceOverrides(live, frozen, hand);
   let r = { ok: true, overrides: {} };
   if (through < n) {
-    r = resolveRest(g, p, through);
-    /* #412: a standing sit cannot refuse a re-plan -- the arrival or the
-       attendance change has already happened. Plan without it this once; the
-       sit stays recorded and applies again when five can be made without them. */
-    if (!r.ok && r.reason === 'nobody' && satIds(live).length) {
-      const again = resolveRest(g, p, through, [], null, []);
-      if (again.ok) {
-        r = again;
-        const here = new Set(availIds(g));
-        satShort = satIds(live).filter(id => here.has(id)).map(id => callNames(state.players)[id]);
-      }
-    }
+    r = replanRest(g, p, through);
     if (!r.ok) { restoreFives(live, untouched); return false; }
   }
   writeOverrides(live, r.overrides, false);
@@ -1648,7 +1662,7 @@ function syncOverrides(g, p, underway = false, prev = null) {
     /* #412: the stamp moved and the sit's stints went with it: plan them
        again through the one re-plan, the way a freeze would have. */
     if (satIds(live).length) {
-      const r = resolveRest(g, p, resetFrom(live));
+      const r = replanRest(g, p, resetFrom(live));
       if (r.ok) writeOverrides(live, r.overrides, false);
     }
   }

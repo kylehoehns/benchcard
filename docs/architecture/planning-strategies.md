@@ -38,8 +38,8 @@ choice, so a first overtime and a second can differ:
   group and the units do not apply in that overtime.
 - **Keep this five** -- the five on the floor on the last regulation stint,
   hand swaps included.
-- **Strongest five** -- the five highest-Level available players, ties going
-  to whoever has played fewer minutes. Level is never shown; this choice is
+- **Strongest five** -- the five highest-Level players still playing (at the
+  game and not sat for the rest), ties going to whoever has played fewer minutes. Level is never shown; this choice is
   the one place it picks minutes. See
   [ADR 0001](../adr/0001-level-picks-the-overtime-five.md).
 
@@ -53,8 +53,9 @@ stints that are not pinned are solved; the pinned fives count as minutes
 already played. Caps and
 Apart rules do not apply to a pinned five. A hand swap on a pinned stint still
 works. When a pinned player goes Out, or is sat for the rest, their place is
-filled from the available players: for Strongest five by highest Level, then
-fewest minutes; for Keep this five by fewest minutes. The other four stay.
+filled from the players still playing: for Strongest five by highest Level, then
+fewest minutes; for Keep this five by fewest minutes. The other four stay. A kid
+sat for the rest stays off through every later re-plan, overtime included (#412).
 
 The game's own strategy, for Next rotation:
 
