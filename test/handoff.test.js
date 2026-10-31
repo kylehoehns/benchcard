@@ -496,3 +496,30 @@ test('decode takes today as a second argument: d == today and d == tomorrow', as
   doc.d = '2026-10-30';
   assert.equal((await decode(await repack(doc), today)).team.days[0].date, '2026-10-31', 'd == yesterday is today');
 });
+
+/* #419: the replaced game was alone on its day and the link says it was played
+   on another day. The game moves there and the emptied day goes. */
+test('replace to the played day: the game\'s old day, left empty, is dropped and the game opens on the played day', async () => {
+  const { hashP } = phoneWithTeam();
+  const doc = JSON.parse(await inflateText(await hashP));
+  doc.d = '2026-09-05';
+  const got = await decode(await repack(doc));
+  assert.equal(got.played, '2026-09-05', 'a started game with a real date carries it');
+
+  receive(got);
+
+  const t = S.state.teams[1];
+  assert.deepEqual(t.days.map(d => d.date), ['2026-09-05', '2999-09-19'], 'the old day is gone, days stay in order');
+  assert.ok(t.days.every(d => d.games.length > 0), 'no empty day');
+  assert.equal(t.days[0].games[0].id, 'gHawks1');
+  assert.equal(t.days[t.activeDay].date, '2026-09-05', 'the game is open on the played day');
+});
+
+test('decode: an unstarted game carries no played date', async () => {
+  const { team, g, p } = sender();
+  g.live.at = 0;
+  S.computeAll();
+  const doc = JSON.parse(await inflateText(await encode(team, g, floorOf(g, p))));
+  doc.d = '2026-09-05';
+  assert.equal((await decode(await repack(doc))).played, null);
+});

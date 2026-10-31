@@ -353,7 +353,7 @@ const isRealCalendarDate = (y, mo, d) => {
   const dt = new Date(y, mo - 1, d);
   return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
 };
-const validDayDate = v => {
+export const validDayDate = v => {
   const m = typeof v === 'string' && DATE_RE.exec(v);
   return !!m && isRealCalendarDate(Number(m[1]), Number(m[2]), Number(m[3]));
 };

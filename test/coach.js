@@ -447,6 +447,12 @@ export class Coach {
       .map(r => [r.querySelector('.sn-nm').textContent, Number(r.querySelector('.sn-min').textContent)]))`);
   }
 
+  /** The Season screen's filed-game day headings, as read ("Sep 12 · 1 game"), and each day's game titles. */
+  seasonFiled() {
+    return evalIn(this.c, `[...document.querySelectorAll('#seasonFiled .sn-day, #seasonFiled .sn-gt')]
+      .map(e => e.textContent)`);
+  }
+
   /** The Plan's minutes per player, as `{ 'Full Name': minutes }`: the
       timeline's rows as a screen reader hears them ("Ana Reyes, 13.5
       minutes, ..."). Throws when no row is heard, as on the Card view. */
@@ -738,6 +744,15 @@ export class Coach {
     return url;
   }
 
+  /** On the Hand off pane: wait for Share link to come on (the link is built
+      async, and a tap on the disabled button does nothing), tap it, and
+      return the link it shared. */
+  async shareLink() {
+    await this.#until('Share link never came on', async () => !(await this.isDisabled('Share link')));
+    await this.tap('Share link');
+    return this.sharedLink();
+  }
+
   /** Open `url` in a fresh page with no saved record (another phone) and wait for the game screen. */
   async openLink(url) {
     const u = new URL(url, this.origin);
@@ -746,10 +761,10 @@ export class Coach {
   }
 
   /** Open `url` on this same phone, its saved record kept, and wait for the game screen. */
-  async openLinkAgain(url) {
+  async openLinkAgain(url, ready = GAMES_VIEW_READY) {
     const u = new URL(url, this.origin);
     await this.c.send('Page.navigate', { url: 'about:blank' });
-    await land(this.c, this.origin, { record: 'kept', page: u.pathname, query: u.hash, ready: GAMES_VIEW_READY });
+    await land(this.c, this.origin, { record: 'kept', page: u.pathname, query: u.hash, ready });
   }
 
   /** Whether the button a coach would call `name` is disabled. */

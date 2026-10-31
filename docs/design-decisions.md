@@ -393,15 +393,27 @@ its alternative is an assertion, so the rejected options are kept here too.
   tip-off time (#379), so a game the phone did not have takes them. When the
   phone already has the game, its own label and tip-off time are kept
   (#377).
-- **Re-opening a link does not wipe a game that is further along.** The link is
-  a snapshot from when it was sent, so an old one would undo the coach's swaps
-  and stints without warning. If the phone's copy is further along, the phone
-  keeps it and opens it. "Further along" is checked in order: the phone finished
-  and the link did not, keep the phone's; the link finished and the phone did
-  not, import the link's; otherwise more played stints wins; with equal stints,
-  more hand swaps on the phone keeps it; anything else imports the link's game.
-  An import over a game the phone had gets an Undo toast. A game the phone did
-  not have imports with no Undo, as before.
+- **Re-opening a link does not wipe a game that is further along, and does not
+  file a game twice.** The link is a snapshot from when it was sent, so an old
+  one would undo the coach's swaps and stints without warning. Three cases:
+  - **The season already has the game** (it was filed when its day passed). The
+    link changes nothing: the phone does not switch team, open a game or carry
+    anything. It says `You already filed this game.` and stays where it was.
+  - **The phone has the game, not yet filed, and its copy is further along.**
+    The phone keeps it and opens it. "Further along" is checked in order:
+    the phone finished and the link did not, keep the phone's; the link
+    finished and the phone did not, import the link's; otherwise more played
+    stints wins; with equal stints, more hand swaps on the phone keeps it;
+    anything else imports the link's game.
+  - **The link's game replaces the phone's.** It gets an Undo toast reading
+    `<team> game updated.`. If the game has started (finished, or with a stint
+    played), it takes the link's date: the day it was played. The night-before
+    carry (#379) can move an unstarted game onto today, so without this a
+    started game could sit on the wrong day. A passed day then files under the
+    played date, so both phones show the game in the same place. An unstarted
+    game keeps the phone's day.
+
+  A game the phone did not have imports with no Undo, as before.
 - **New link fields do not bump the link's version.** The day date, label and
   tip-off are added without changing the version, which stays `1`. A link from
   before #379 has no date and imports as today. A link from #379 opened on a
