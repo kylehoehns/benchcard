@@ -92,6 +92,7 @@ that do not divide the period) and asserts invariants that must always hold:
 - short names are always unique and printable
 - no issue message prints a raw float such as `3.3333333333333335`
 - a starting five whose caps all cover the opening stint is never blocked by `FORCED_OVER_CAP`
+- a starting five the coach named is on the floor for the first stint, and a Last-period five is on the floor for the last period's first stint (platoon exempt)
 
 The fuzzer immediately found a real one: a 10-minute period split three ways
 gives 3.33-minute stints, and minutes were printing as

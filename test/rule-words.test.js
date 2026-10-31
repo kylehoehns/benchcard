@@ -95,6 +95,7 @@ const EXPECT_KIND = {
   MINS_UNSATISFIABLE: 'minimum',
   CAPS_UNSATISFIABLE: 'cap',
   FORCED_OVER_CAP: 'cap',
+  PINS_OVER_CAP: 'cap',
   PAIR_AVOID_CONFLICT: 'together',
   AVOID_IMPOSSIBLE: 'apart',
   CLOSERS_AVOID: 'apart',
