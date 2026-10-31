@@ -96,4 +96,48 @@ describe('a coach with more than one Team', { skip }, () => {
     assert.ok(await coach.sees('Team JV Ravens · 10 players ›'));
     assert.equal(await coach.sees('Team Smoke Test · 11 players ›'), false);
   });
+
+  /* An Add a game draft the coach force-closed on Smoke Test (Escape, then
+     Escape on the ask), with JV Ravens' last game set to 2 x 20. */
+  async function draftLeftOnSmokeTest() {
+    await coach.onGameDayWithTwoTeams();
+    await coach.tap('Smoke Test');
+    await coach.tap('JV Ravens, 10 players');
+    await coach.tap('Ravens, 11:30 AM, planned');
+    await coach.tap('Format, 4 × 8');
+    await coach.stepTo('periods', 2);
+    await coach.stepTo('minutes', 20);
+    await coach.tap('Close');
+    await coach.tap('Back to JV Ravens');
+    await coach.tap('JV Ravens');
+    await coach.tap('Smoke Test, 11 players');
+    await coach.tap('Add a game');
+    await coach.fill('Opponent', 'Falcons');
+    await coach.press('Escape');
+    await coach.press('Escape');
+  }
+
+  test('an unfinished Add a game draft from one Team does not open in the other', async () => {
+    await draftLeftOnSmokeTest();
+    await coach.tap('Smoke Test');
+    await coach.tap('JV Ravens, 10 players');
+    await coach.tap('Add a game');
+    assert.equal(await coach.valueOf('Opponent'), '');
+  });
+
+  test('the Same as card on the other Team adds the format it shows', async () => {
+    await draftLeftOnSmokeTest();
+    await coach.tap('Smoke Test');
+    await coach.tap('JV Ravens, 10 players');
+    await coach.tap('Add a game');
+    assert.ok((await coach.controls()).some(n => /^Same as 11:30 AM\?.*2 × 20/.test(n)), 'the card says 2 × 20');
+    await coach.tap((await coach.controls()).find(n => n.startsWith('Same as')));
+    assert.ok(await coach.sees('Format, 2 × 20'));
+  });
+
+  test('a force-closed draft is still there when the same Team opens Add a game again', async () => {
+    await draftLeftOnSmokeTest();
+    await coach.tap('Add a game');
+    assert.equal(await coach.valueOf('Opponent'), 'Falcons');
+  });
 });
