@@ -471,7 +471,7 @@ function fileOverdueDay(today = new Date()) {
    about the tip jar. This is the only place in the app that knows the whole
    graph, which is the point of it being the entry point. */
 initToast(renderAll, setView);
-initTeams(renderAll, setView, edit);
+initTeams(renderAll, setView, edit, fileOverdueDay);
 initSeason(renderAll);
 initBalance(edit, setView);
 initRoster(edit);

@@ -9,8 +9,9 @@
  * removing a team, removing a game, clearing the day -- so both go through
  * `undoable`, imported straight from toast.js.
  *
- * Three injections through `initTeams`: `renderAll`, because switching team or
- * game changes everything downstream of it; `setView`, because opening a
+ * Four injections through `initTeams`: `renderAll`, because switching team or
+ * game changes everything downstream of it; `fileOverdueDay`, because a team
+ * switched to has a passed day to file just as a reload would find; `setView`, because opening a
  * game, Team, Season or a fresh team's Settings is a screen change; and
  * `edit` (#122, `app/edit.js`), which the six Settings handlers below call
  * instead of `renderAll` directly. `renderAll`/`setView` belong to render.js.
@@ -56,6 +57,7 @@ import { closeSheet, closeSheetNow, guardClose, rememberTrigger, showAskRow, pai
 import { seasonGames } from './season-view.js';
 
 let renderAll = () => {};
+let fileOverdueDay = () => {};
 let setView = () => {};
 let edit = () => {};
 
@@ -98,8 +100,9 @@ const SUBS_READ = [
   'Aims for at least one change a break, with no ceiling. Five is everyone on the floor, so there is nothing higher to ask for.',
 ];
 
-export function initTeams(renderAllFn, setViewFn, editFn) {
+export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
   renderAll = renderAllFn;
+  fileOverdueDay = fileOverdueDayFn;
   setView = setViewFn;
   edit = editFn;
   // #addTeam is gone (#22); the team menu's own "Add a team" entry calls
@@ -267,6 +270,7 @@ export function renderTeams() {
       state.activeTeam = i;
       track('team_switched', { teams: state.teams.length });
       renderAll();
+      fileOverdueDay(); // app.js owns the due check, carry and toast; the new team may owe a day
     };
     menu.append(item);
   });
