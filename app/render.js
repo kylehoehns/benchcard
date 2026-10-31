@@ -161,7 +161,7 @@ export function render(...keys) {
   /* #412: a re-plan that could not keep a sit says so, once, for the game on
      screen. Said inside the toast this render raises when there is one (a
      second toast would replace its Undo), on its own otherwise. */
-  const kept = satShortBench(state.day.games[state.activeGame]?.id);
+  const kept = satShortBench(state.day?.games[state.activeGame]?.id);
   const notKept = kept.length ? ` Not enough players to keep ${joinNames(kept)} sitting.` : '';
   if (moved.length && priorSettled && !rotationOfferSuppressed()) {
     // Parsed here, not held parsed: this is the one repaint in many that
