@@ -188,3 +188,18 @@ it fits.
 - Who's here row height for very long names (the rows themselves).
 - Large-text CSS outside the sheets, bench mode and the tour (#422).
 - Changing what the status line says.
+- The welcome / first-run and landscape `.bar` height queries, still in px,
+  and one general room sweep across every overlay: filed as #429.
+
+## After review
+
+- Bench mode's two height queries (`max-height: 700px` portrait, `560px`
+  landscape) were in px, so they never fired at large text. They are now
+  `43.75em` and `35em`: the same at a 16px default, and live at 32px. This is
+  the same cause as items 1-3 (chrome sized in rem, queries in px), fixed here
+  only where it touches bench mode.
+- The tour box is never capped below its fixed parts plus one line. Where
+  even that does not fit beside the ring, the box stays whole and on screen,
+  and Next stays reachable, rather than shrinking to nothing.
+- A fifth cell, 568 × 320 at 32px, checks that bench mode's large-text nav
+  buttons stay 52 × 52 in landscape.
