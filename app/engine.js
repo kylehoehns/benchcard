@@ -1255,8 +1255,63 @@ function* exchangeSwaps(cur, ctx, forcedByStint) {
   }
 }
 
+/* Same live-lineup legality as swapLegal, for a move that replaces two players
+   at once: every out is on and not pinned, no in is already on, no Apart pair. */
+function replaceLegal(lu, outs, ins, forced, ctx) {
+  if (!outs.every(id => lu.includes(id) && !forced.has(id))) return false;
+  if (ins.some(id => lu.includes(id))) return false;
+  const next = lu.filter(id => !outs.includes(id)).concat(ins);
+  for (let x = 0; x < next.length; x++) for (let y = x + 1; y < next.length; y++) {
+    if (ctx.avoidSet.has(pairKey(next[x], next[y]))) return false;
+  }
+  return true;
+}
+
+function* twoOf(ids) {
+  for (let x = 0; x < ids.length; x++) for (let y = x + 1; y < ids.length; y++) yield [ids[x], ids[y]];
+}
+
+/* A hard pair can only move together, but every other move changes one player
+   at a time, and unseating one of the two costs the pair penalty before the
+   partner can follow -- so the search never finds the even plan that exists.
+   These moves seat, bench or trade the pair as one. Listed first because the
+   move budget is spent in list order. Yields nothing without a hard pair. */
+function* pairSwaps(cur, ctx, forcedByStint) {
+  if (!ctx.hardPairs) return;
+  for (const [a, b] of ctx.pairs) {
+    for (let i = 0; i < cur.length; i++) {
+      const on = cur[i].includes(a) && cur[i].includes(b);
+      const off = !cur[i].includes(a) && !cur[i].includes(b);
+      if (!on && !off) continue;
+      if (!ctx.neutralOnly) {
+        const others = on ? ctx.avail.filter(id => !cur[i].includes(id)) : cur[i];
+        for (const two of twoOf(others)) {
+          const outs = on ? [a, b] : two;
+          const ins = on ? two : [a, b];
+          if (replaceLegal(cur[i], outs, ins, forcedByStint[i], ctx)) yield { kind: 'pair', i, outs, ins };
+        }
+      }
+      if (!on) continue;
+      for (let j = 0; j < cur.length; j++) {
+        if (j === i || cur[j].includes(a) || cur[j].includes(b)) continue;
+        if (ctx.neutralOnly && Math.abs(ctx.stints[i].minutes - ctx.stints[j].minutes) > 1e-9) continue;
+        const us = cur[j].filter(id => !cur[i].includes(id));
+        for (const vs of twoOf(us)) {
+          if (!replaceLegal(cur[i], [a, b], vs, forcedByStint[i], ctx)) continue;
+          if (!replaceLegal(cur[j], vs, [a, b], forcedByStint[j], ctx)) continue;
+          yield { kind: 'pair', i, j, outs: [a, b], ins: vs };
+        }
+      }
+    }
+  }
+}
+
 function applyMove(cur, mv) {
-  if (mv.kind === 'single') {
+  if (mv.kind === 'pair') {
+    const swap = (lu, outs, ins) => lu.map(id => { const k = outs.indexOf(id); return k < 0 ? id : ins[k]; });
+    cur[mv.i] = swap(cur[mv.i], mv.outs, mv.ins);
+    if (mv.j != null) cur[mv.j] = swap(cur[mv.j], mv.ins, mv.outs);
+  } else if (mv.kind === 'single') {
     cur[mv.i] = cur[mv.i].map(id => (id === mv.outId ? mv.inId : id));
   } else {
     cur[mv.i] = cur[mv.i].map(id => (id === mv.u ? mv.v : id));
@@ -1266,7 +1321,7 @@ function applyMove(cur, mv) {
 
 function undoMove(cur, mv, savedI, savedJ) {
   cur[mv.i] = savedI;
-  if (mv.kind === 'exchange') cur[mv.j] = savedJ;
+  if (mv.j != null) cur[mv.j] = savedJ;
 }
 
 function descend(cur, ctx, forcedByStint, budgetRef, gens) {
@@ -1278,7 +1333,7 @@ function descend(cur, ctx, forcedByStint, budgetRef, gens) {
       for (const mv of gen(cur, ctx, forcedByStint)) {
         if (--budgetRef.left <= 0) break;
         const savedI = cur[mv.i];
-        const savedJ = mv.kind === 'exchange' ? cur[mv.j] : null;
+        const savedJ = mv.j != null ? cur[mv.j] : null;
         applyMove(cur, mv);
         const c2 = cost(cur, ctx);
         if (c2 < curCost - 1e-9) { curCost = c2; moved = true; }
@@ -1324,7 +1379,7 @@ function perturb(cur, ctx, forcedByStint, rng) {
 }
 
 function localSearch(lineups, ctx, forcedByStint, rng, iterations) {
-  const gens = ctx.neutralOnly ? [exchangeSwaps] : [singleSwaps, exchangeSwaps];
+  const gens = ctx.neutralOnly ? [pairSwaps, exchangeSwaps] : [pairSwaps, singleSwaps, exchangeSwaps];
   const budgetRef = { left: iterations };
   let cur = lineups.map(l => l.slice());
   let curCost = descend(cur, ctx, forcedByStint, budgetRef, gens);

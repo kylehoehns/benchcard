@@ -449,3 +449,25 @@ test('property #378: a starting five whose caps cover the opening stint is never
   }
   assert.ok(exercised > 0, 'no scenario had a capped starting five that covers the stint');
 });
+
+test('property #438: a hard pair is never less even than a soft plan that already keeps the pair together', () => {
+  const fmts = [[4, 8, 4], [2, 20, 5], [4, 6, 3], [4, 8, 2], [2, 16, 4], [4, 10, 5], [2, 12, 3]];
+  let checked = 0;
+  for (let k = 0; k < 42; k++) {
+    const [periods, periodMinutes, every] = fmts[k % fmts.length];
+    const n = 6 + (k % 9);
+    const players = Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `P${i}` }));
+    const a = `p${k % n}`;
+    const b = `p${(k + 1 + (k % (n - 1))) % n}`;
+    const base = { players, availableIds: players.map(p => p.id), format: { periods, periodMinutes },
+      granularity: { mode: 'everyN', value: every }, seed: k + 1 };
+    const soft = generatePlan({ ...base, constraints: { pairs: [[a, b]] } });
+    const together = soft.stints.every(s => s.onFloor.includes(a) === s.onFloor.includes(b));
+    if (!together || soft.issues.some(i => i.severity !== 'info')) continue;
+    checked++;
+    const hard = generatePlan({ ...base, constraints: { pairs: [[a, b]], hardPairs: true } });
+    assert.ok(hard.spread <= soft.spread + 1e-9,
+      `input ${k} (${periods}x${periodMinutes} every ${every}, ${n} players): hard ${hard.spread} vs soft ${soft.spread}`);
+  }
+  assert.ok(checked >= 12, `only ${checked} inputs were comparable`);
+});

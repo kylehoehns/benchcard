@@ -372,7 +372,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   their order are the coach's.
 - **Fairness is scored against water-filled per-player targets**, not raw max-minus-min. A capped player otherwise anchors the minimum and blinds the optimizer to real imbalance among everyone else. `spreadUnconstrained` is the number that actually tells you if the rotation is fair.
 - **Local search needs two move types.** A single in-for-out swap shifts both players' minute totals, so once minutes are even it can never improve pairing or sit patterns without breaking balance. The minute-neutral exchange move (trade two players' places across two stints) is what makes pair constraints reachable.
-- **Pairs are soft by default** (`hardPairs: true` to force). Requiring two players together every stint fights even minutes hard; the plan maximizes shared floor time and reports it as "together 20 of a possible 20 minutes".
+- **Pairs are soft by default** (`hardPairs: true` to force). Requiring two players together every stint fights even minutes hard; the plan maximizes shared floor time and reports it as "together 20 of a possible 20 minutes". A hard pair costs even minutes only when no even plan keeps the pair together: the search has a move that seats, benches or trades the pair as one.
 - **Infeasibility is arithmetic, checked before any search**, so the message can name the offending constraint and the numbers.
 - **Subs are held to 1-3 per stint** so there is continuity on the floor.
 - **A hand-off link carries a live copy, not a link between phones.** The

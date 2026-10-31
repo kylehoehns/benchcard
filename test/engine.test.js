@@ -1299,3 +1299,28 @@ test('378: 4x10 perPeriod 3 with a 10-minute minimum is not off a stint boundary
     { minMinutes: { p0: 10 } });
   assert.deepEqual(codes(issues, 'MIN_OFF_STINT_BOUNDARY'), []);
 });
+
+/* ---------------- 438: a hard pair costs evenness only when it must ---------------- */
+
+const hardPairPlan = (format, granularity, seed) => generatePlan({
+  players: roster(10), availableIds: ids(10), format, granularity, seed,
+  constraints: { pairs: [['p0', 'p1']], hardPairs: true },
+});
+
+test('438: Force Together on 4x8 every 4 with 10 players is even and never splits the pair', () => {
+  for (let seed = 1; seed <= 20; seed++) {
+    const r = hardPairPlan(QUARTERS, EVERY_4, seed);
+    assert.equal(r.spread, 0, `seed ${seed}`);
+    r.stints.forEach((s, i) => assert.equal(s.onFloor.includes('p0'), s.onFloor.includes('p1'),
+      `seed ${seed} stint ${i}`));
+  }
+});
+
+test('438: Force Together on 2x20 every 5 keeps the pair within one stint of the even 20', () => {
+  for (let seed = 1; seed <= 20; seed++) {
+    const r = hardPairPlan({ periods: 2, periodMinutes: 20 }, { mode: 'everyN', value: 5 }, seed);
+    for (const id of ['p0', 'p1']) {
+      assert.ok(Math.abs(r.minutes[id] - 20) <= 5, `seed ${seed} ${id} got ${r.minutes[id]}`);
+    }
+  }
+});
