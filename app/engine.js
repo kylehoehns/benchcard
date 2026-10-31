@@ -140,6 +140,28 @@ function andList(names) {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
+/* The one wording for a minutes spread, read by the engine's SPREAD_EVEN and
+   SPREAD_FLOOR notes and by `minutesNote` (state.js), which restates them for
+   the minutes the timeline shows after the solver's plan has moved. The low end
+   is named up to SPREAD_NAME_CAP players; past that, a count. */
+const SPREAD_NAME_CAP = 6;
+export const evenMinutesSentence = minutes => `Minutes divide evenly: every player gets ${fmtMinutes(minutes)}.`;
+/* `lows` / `highs`: ids at the lowest / highest value `lo` / `hi`; `total` is
+   everybody. `who` is "A and B play 12" (or "7 players play 12"); `covers` is
+   whether the two ends account for everybody (a floor or cap can put a third
+   number in the middle); `other` is "the other 4 play 16". No full stops. */
+export function lowEndPhrase(lows, lo, highs, hi, total, label) {
+  const named = lows.length <= SPREAD_NAME_CAP;
+  return {
+    named,
+    covers: lows.length + highs.length === total,
+    who: named
+      ? `${andList(lows.map(label))} ${lows.length === 1 ? 'plays' : 'play'} ${fmtMinutes(lo)}`
+      : `${lows.length} players play ${fmtMinutes(lo)}`,
+    other: `the other ${highs.length} play ${fmtMinutes(hi)}`,
+  };
+}
+
 export function fmtClock(sec) {
   const s = Math.max(0, Math.round(sec));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -1570,7 +1592,7 @@ function finish(lineups, ctx, issues, meta) {
   } else if (spread === 0) {
     issues.push({
       severity: 'info', code: 'SPREAD_EVEN',
-      message: `Minutes divide evenly: every player gets ${fmtMinutes(minutes[ctx.avail[0]])}.`,
+      message: evenMinutesSentence(minutes[ctx.avail[0]]),
       playerIds: [],
     });
   } else if (floor.exact) {
@@ -1596,11 +1618,8 @@ function finish(lineups, ctx, issues, meta) {
     const at = v => ctx.avail.filter(id => Math.abs(minutes[id] - v) < 1e-9);
     const lows = at(lo), highs = at(hi);
     let who = '';
-    if (lows.length + highs.length === ctx.avail.length) {
-      who = lows.length <= 6
-        ? ` ${andList(lows.map(label))} ${lows.length === 1 ? 'plays' : 'play'} ${fmtMinutes(lo)}.`
-        : ` ${lows.length} players play ${fmtMinutes(lo)}, the other ${highs.length} play ${fmtMinutes(hi)}.`;
-    }
+    const end = lowEndPhrase(lows, lo, highs, hi, ctx.avail.length, label);
+    if (end.covers) who = ` ${end.named ? end.who : `${end.who}, ${end.other}`}.`;
     issues.push({
       severity: 'info', code: 'SPREAD_FLOOR',
       message: `Best possible spread with ${ctx.avail.length} players and ${fmtMinutes(stints[0].minutes)}-minute stints is ${fmtMinutes(floor.minutes)} minutes.${who}`,
