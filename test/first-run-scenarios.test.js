@@ -34,12 +34,18 @@ describe('a coach opens Benchcard for the first time', { skip }, () => {
     assert.ok(controls.includes('Try a sample team'), JSON.stringify(controls));
   });
 
-  test('the welcome headline is followed by the demo, with no line between', async () => {
+  test('the welcome headline is followed by one sentence saying what the app is, and the six charts are linked', async () => {
     await coach.onFreshDevice();
 
     const hero = await coach.text('.wel-hero');
     assert.ok(hero.includes('The whole game, worked out before you leave the house.'), hero);
+    assert.ok(hero.includes('A basketball rotation and substitution planner for equal playing time.'), hero);
     assert.ok(lacks(hero, 'however else you want them split'), hero);
+
+    const charts = await coach.text('nav[aria-label="Rotation charts by team size"]');
+    for (const n of [7, 8, 9, 10, 11, 12]) {
+      assert.ok(new RegExp(`\\b${n}\\b`).test(charts), `the chart row shows ${n}: ${JSON.stringify(charts)}`);
+    }
   });
 
   test('trying the sample team lands on its plan with the tour on top', async () => {

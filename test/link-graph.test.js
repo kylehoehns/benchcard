@@ -18,9 +18,10 @@
  * in the files, so both of those fail here.
  *
  * WHY THE WELCOME SCREEN'S LINK IS WHAT MATTERS. A cold visitor -- and a
- * rendering crawler -- lands on the welcome view, and the only live path off
- * it is the "What is this?" link (`.wel-about`); the whole six-page long
- * tail hangs off that one anchor. #33 removed the footer that used to also
+ * rendering crawler -- lands on the welcome view, and the way into the
+ * site is the "How it works" link (`.wel-about`); home and Advanced now
+ * also link the six chart pages directly (#423), so the long tail no longer
+ * hangs off that one anchor. #33 removed the footer that used to also
  * carry an `href="./about"` in the source (and had to be cut out of this
  * walk by hand so that a deleted `.wel-about` still went red here, not green
  * behind the footer's hidden copy) -- there is nothing left to cut.
@@ -32,7 +33,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { SIZES } from '../scripts/charts.mjs';
+import { SIZES, slug } from '../scripts/charts.mjs';
 
 const APP = new URL('../app/', import.meta.url);
 const read = p => readFileSync(new URL(p, APP), 'utf8');
@@ -127,6 +128,35 @@ test('the welcome screen is what a first visit links off "/" with', () => {
   const src = crawlable('index.html');
   assert.ok(/<a class="wel-about" href="\.\/about"/.test(src),
     'the welcome screen\'s "What is this?" link is gone');
+});
+
+/* #423: the welcome screen and Advanced link each chart straight, so a coach
+   on either is one tap from the chart for their roster size, and a crawler
+   sees the links on the pages it already trusts. The source is cut the same
+   way the walk cuts it (comments and noscript), and each href is matched
+   inside the nav it is meant to sit in, so a link elsewhere does not count. */
+const navHrefs = (name, label) => {
+  const nav = crawlable(name).match(new RegExp(`<nav[^>]*aria-label="${label}"[^>]*>([\\s\\S]*?)</nav>`))?.[1];
+  assert.ok(nav, `${name} has no nav labelled "${label}"`);
+  return [...nav.matchAll(/href="([^"]*)"/g)].map(m => m[1]);
+};
+
+test('the welcome tail links the six chart pages from a labelled nav', () => {
+  const src = crawlable('index.html');
+  const hrefs = navHrefs('index.html', 'Rotation charts by team size');
+  assert.deepEqual(hrefs, SIZES.map(n => `./${slug(n)}`));
+  const tail = src.slice(src.indexOf('class="pastein wel-tail"'));
+  assert.ok(tail.includes('aria-label="Rotation charts by team size"'), 'the chart nav is not in .wel-tail');
+});
+
+test('Advanced links the six chart pages under "A chart for your roster size"', () => {
+  const src = crawlable('advanced.html');
+  const at = src.indexOf('A chart for your roster size');
+  assert.ok(at > 0, 'advanced.html has no "A chart for your roster size" heading');
+  assert.ok(at < src.lastIndexOf('<footer'), 'the chart section is not before the footer');
+  const hrefs = navHrefs('advanced.html', 'Rotation charts by roster size');
+  assert.deepEqual(hrefs, SIZES.map(n => `./${slug(n)}`));
+  assert.match(src, /\.sizes a\s*\{/, 'advanced.html has no .sizes chip rule');
 });
 
 /* ------------------------------------------------------------------ *

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SIZES, file, slug } from '../scripts/charts.mjs';
 import { lacks } from './prose.js';
+import { stripHtmlComments } from './html-comments.js';
 import { parseSitemap } from '../scripts/check-sitemap-lastmod.mjs';
 
 /* #279: each page owns its own search phrase. This reads page source on
@@ -123,4 +124,74 @@ test('home meta description mentions the season and fits in 160 characters', () 
 
 test('home JSON-LD description says across the season', () => {
   assert.match(appNode().description, /across the season/);
+});
+
+/* ---- #423: the words the title targets are on the page, not only in <head> ---- */
+
+/* What a reader sees, as source: the head, scripts, styles and comments cut,
+   tags dropped, whitespace flattened (prose here wraps at ~78 columns). */
+const visible = html => stripHtmlComments(html)
+  .replace(/<head[\s\S]*?<\/head>/i, ' ')
+  .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+  .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+  .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/\s+/g, ' ')
+  .toLowerCase();
+
+const WORDS = {
+  'index.html': ['basketball', 'rotation', 'substitution', 'planner'],
+  'about.html': ['equal playing time', 'youth basketball', 'substitution'],
+  'advanced.html': ['setting', 'rule', 'card'],
+  ...Object.fromEntries(SIZES.map(n => [file(n),
+    [`${n}-player basketball rotation chart`, 'substitution', 'printable', 'equal playing time']])),
+};
+
+test('each page says its title words where a reader can see them', () => {
+  assert.equal(Object.keys(WORDS).length, 9, 'a page lost its row');
+  for (const [f, words] of Object.entries(WORDS)) {
+    const text = visible(read(f));
+    assert.ok(text.length > 500, `${f}: the visible text measured ${text.length} characters, so nothing was checked`);
+    for (const w of words) assert.ok(text.includes(w), `${f}'s visible text never says "${w}"`);
+  }
+});
+
+test('the welcome screen says what the app is, in one sentence under the headline', () => {
+  const html = read('index.html');
+  const hero = html.match(/<div class="wel-hero">([\s\S]*?)<div class="wel-stage">/)?.[1] ?? '';
+  assert.match(hero, /<h1 class="wel-h">[\s\S]*?<\/h1>\s*<p class="wel-sub">A basketball rotation and substitution planner for equal playing time\.<\/p>/,
+    'the welcome sentence is not directly under h1.wel-h');
+});
+
+test('about keeps its H1 and its lede carries the searched words', () => {
+  const html = read('about.html');
+  assert.match(html, /<h1><span class="hl">Even minutes<\/span>, worked out before the game\.<\/h1>/);
+  const lede = (html.match(/<p class="lede">([\s\S]*?)<\/p>/)?.[1] ?? '').replace(/\s+/g, ' ');
+  assert.equal(lede, 'Benchcard is a free substitution planner for youth basketball, built around equal playing time. ' +
+    'Give it your roster and say how the minutes should be split, and it works out who is on the floor ' +
+    'for every stint, then prints it on a card that fits in your pocket.');
+});
+
+const ABOUT_DESC = 'Equal playing time, and how to plan a youth basketball substitution rotation: even minutes, the rules a coach needs, and how to read the printed card.';
+
+test('about description is the agreed sentence, within 160, with youth basketball once', () => {
+  const html = read('about.html');
+  const d = descOf(html);
+  assert.equal(d, ABOUT_DESC);
+  assert.equal(d.length, 150);
+  assert.equal(d.match(/youth basketball/g).length, 1);
+  // og and twitter either repeat it exactly or say something else entirely
+  for (const re of [/<meta property="og:description" content="([^"]*)">/, /<meta name="twitter:description" content="([^"]*)">/]) {
+    const o = meta(html, re);
+    assert.ok(o === ABOUT_DESC || lacks(o, 'rotation: even minutes'), `${re} half-repeats the description`);
+  }
+});
+
+test('home JSON-LD has a WebSite named Benchcard beside the SoftwareApplication', () => {
+  const all = nodes(read('index.html'));
+  const site = all.find(x => x['@type'] === 'WebSite');
+  assert.ok(site, 'index.html has no WebSite node');
+  assert.equal(site.name, 'Benchcard');
+  assert.equal(site.url, 'https://benchcard.app/');
+  assert.equal(all.find(x => x['@type'] === 'SoftwareApplication')?.name, 'Benchcard');
 });
