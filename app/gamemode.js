@@ -517,7 +517,8 @@ export const BENCH_IDLE_LABEL = 'Bench · tap a player on the floor to swap';
    read only to decide whether the clause is worth printing -- if neither
    player's number actually moved, naming them again would be noise, not
    news. */
-export function swapToastText(inName, outName, scope, inMin, outMin, inBefore, outBefore) {
+export function swapToastText(inName, outName, scope, inMin, outMin, inBefore, outBefore, replanned) {
+  if (replanned) return `${inName} on for ${outName} this stint. The rest of the game was re-planned to keep minutes even.`;
   const base = `${inName} on for ${outName} ${scope === 'rest' ? 'for the rest of the game' : 'this stint'}.`;
   if (inMin === inBefore && outMin === outBefore) return base;
   return `${base} ${inName} now ends at ${fmtMinutes(inMin)} min, ${outName} at ${fmtMinutes(outMin)}.`;
@@ -648,12 +649,16 @@ export function renderGameMode({ keepFloor = false } = {}) {
   }
   /* Counted against the plan, not off the key list: an override can be written
      with the same five the card already had (a re-solve often leaves a stint
-     alone), and "1 stint no longer matches" would then be a lie. `#gmReset`
+     alone), and "1 stint no longer matches" would then be a lie. #415: a
+     stint the re-plan rewrote after a hand swap counts too (it no longer
+     matches the card because of that swap); a played stint the attendance
+     freeze pinned BEFORE any swap does not, as #247 decision 10 had it. `#gmReset`
      stays on the key list on purpose -- it is the escape hatch, and offering it
      for a no-op edit costs nothing. */
+  const firstHand = handed.length ? Math.min(...handed) : Infinity;
   const moved = Object.entries(live.overrides).filter(([k, five]) => {
     const s = p.stints[k];
-    return handed.includes(Number(k)) && s && [...five].sort().join() !== [...s.onFloor].sort().join();
+    return Number(k) >= firstHand && s && [...five].sort().join() !== [...s.onFloor].sort().join();
   }).length;
   set('#gmMoved', 'hidden', !moved);
   set('#gmMoved', 'textContent', !moved ? ''
@@ -989,11 +994,12 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
   // per `undoable`'s own contract: `message` runs after `mutate`, which is
   // how the post-swap minutes get into the toast without re-solving twice.
   const before = liveMinutes(p, g);
+  let replanned = false;
   tick();
   undoable(
     () => {
       const after = liveMinutes(p, g);
-      return swapToastText(inName, outName, scope, after[inId], after[outId], before[inId], before[outId]);
+      return swapToastText(inName, outName, scope, after[inId], after[outId], before[inId], before[outId], replanned);
     },
     () => {
       const live = liveOf(g);
@@ -1012,7 +1018,12 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
          alone, as before. */
       if (scope === 'stint') {
         const r = resolveRest(g, p, i + 1);
-        if (r.ok) writeOverrides(live, r.overrides, false);
+        if (r.ok) {
+          // #415: told apart from a re-plan that left every later stint alone.
+          replanned = Object.entries(r.overrides).some(([k, five]) =>
+            [...five].sort().join() !== [...effLineup(p, g, Number(k))].sort().join());
+          writeOverrides(live, r.overrides, false);
+        }
       }
       gmPick = null;
     },

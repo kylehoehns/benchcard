@@ -70,3 +70,8 @@ test('swapToastText: names the minutes, or drops the clause when they do not cha
     assert.equal(swapToastText(inName, outName, scope, inMin, outMin, inBefore, outBefore), want, label);
   }
 });
+
+test('swapToastText: a re-planned rest says so and drops the two-player minutes clause (#415)', () => {
+  assert.equal(swapToastText('Devon', 'Ana', 'stint', 12, 8, 10, 10, true),
+    'Devon on for Ana this stint. The rest of the game was re-planned to keep minutes even.');
+});
