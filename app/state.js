@@ -22,8 +22,9 @@ import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          validTipoff, tipoffLabel, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
+import { emptyConstraints, removePlayer as removeFrom, setAvailable, removeTeam } from './team-ops.js';
 import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, finishedGame,
-  dropPlayer, keepThrough, clearRest, replaceOverrides, snapshotFives, restoreFives } from './live.js';
+  keepThrough, clearRest, replaceOverrides, snapshotFives, restoreFives } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
    Lightness and chroma are themed once in CSS; only the hue varies here. */
@@ -62,21 +63,9 @@ export const minutesText = m => `${fmtMinutes(m)} minute${fmtMinutes(m) === '1' 
 /* ================================================================== *
  * state
  *
- * Players carry generated ids. Every constraint, every availability
- * flag and all carryover keys off that id, so renaming, reordering or
- * deleting a player can never silently reattach Kade's cap to Aaron.
+ * (Players are keyed by generated id; see `emptyConstraints` in
+ * `team-ops.js`.)
  * ================================================================== */
-
-export const emptyConstraints = () => ({
-  // `keepOnFloor` is the third pair relation: never BOTH off. Absent is empty,
-  // which is what every record written before it says -- so no version bump.
-  minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [], keepOnFloor: [],
-  openingFive: [], lastPeriodFive: [], hardPairs: false,
-  maxConsecutive: 0,
-  targetSlots: {}, lockedTargets: [],
-  closing: { stints: 2, players: [] },
-  units: [],
-});
 
 /* #28 defect 4: each line is one short sentence, in the prototype's voice --
    the Plan sheet's `#stratwhy` (`strategy.js`) and, since #32, step 3 of the
@@ -638,37 +627,12 @@ export const availIds = g => state.players.map(p => p.id).filter(id => !g.out.in
  * keeps the red error, because there the message is the right one. */
 export const noRoster = () => !state.players.length;
 
-/* ---- removing a player has to sweep every reference to their id ---- */
-/* Every reference to a player id, in one place, because a missed one does not
-   fail loudly -- it renders. A live override left holding a removed id put five
-   rows reading "undefined" with "?" avatars on the bench-mode screen, mid-game,
-   which is the worst possible place for it. `sanitize` drops overrides whose
-   ids no longer resolve, so a reload cleaned it up and it looked intermittent.
-   Slots, locks, the closing group and platoon units were unswept too, and so
-   was the five an overtime period is pinned to (#382). */
-export function removePlayer(id) {
-  state.players = state.players.filter(p => p.id !== id);
-  for (const g of team().days.flatMap(d => d.games)) {
-    g.out = g.out.filter(x => x !== id);
-    const c = g.constraints;
-    delete c.minMinutes[id]; delete c.maxMinutes[id];
-    delete c.targetSlots?.[id];
-    c.lockedTargets = (c.lockedTargets || []).filter(x => x !== id);
-    c.pairs = c.pairs.filter(p => !p.includes(id));
-    c.avoids = c.avoids.filter(p => !p.includes(id));
-    c.openingFive = c.openingFive.filter(x => x !== id);
-    c.lastPeriodFive = c.lastPeriodFive.filter(x => x !== id);
-    if (c.closing) c.closing.players = (c.closing.players || []).filter(x => x !== id);
-    c.units = (c.units || []).map(u => u.filter(x => x !== id));
-    if (g.overtime) g.overtime = g.overtime.map(o => Array.isArray(o.five) ? { ...o, five: o.five.filter(x => x !== id) } : o);
-
-    /* An override is a whole five the coach chose by hand. With one player
-       gone it is no longer a lineup, and there is nothing honest to put in the
-       gap -- so drop it and fall back to the planned stint, which is what the
-       rest of the game is already using. */
-    dropPlayer(g.live, id);
-  }
-}
+/* ---- the record-changing operations live in team-ops.js (no DOM, no
+   import-time side effects, so a test can run them); these bind them to the
+   active team and re-export the rest under their old names ---- */
+export { emptyConstraints, setAvailable };
+export const removePlayer = id => removeFrom(team(), id);
+export const removeActiveTeam = () => removeTeam(state, state.activeTeam, () => newTeam(''));
 
 /* ================================================================== *
  * #101 -- a team's games sit on a list of days, not one. These five walk
@@ -901,32 +865,6 @@ export function addOvertime(g, minutes, who = 'next') {
   state.settings.overtimeMinutes = before.remembered;
   computeAll();
   return false;
-}
-
-/* Sitting a player out is the other half of the sweep above, and it was
-   missed. A no-show or a foul-out does not remove anyone from the roster, so
-   `removePlayer` never runs -- but an override naming them is just as wrong:
-   it is a hand-picked five with someone in it who is not in the gym. It
-   survived into bench mode (the absent player shown on the floor, the player
-   who should be there shown on the bench) and, worse, onto the *printed
-   card*, which is the artefact the coach coaches from. `sanitize` did not
-   catch it either, because the ids all still resolve to real players.
-   Same answer as removing: drop the five and fall back to the plan. */
-export function setAvailable(g, id, available) {
-  const wasOut = g.out.includes(id);
-  g.out = available ? g.out.filter(x => x !== id) : [...g.out, id];
-  const live = g.live;
-  const at = playedStints(live);
-  if (available) {
-    /* #247: a kid who walks in to a game underway owes, and is owed, nothing
-       for the stints before `at`; `resolveRest` reads this to know that. */
-    if (live && wasOut && at > 0 && !finishedGame(live)) live.arrived = { ...live.arrived, [id]: at };
-    return;
-  }
-  // #247: what already happened stays. Only a five still to come is a lineup
-  // with an absent kid in it. The raw `at` (a finished game has played them
-  // all, so it drops nothing).
-  if (!finishedGame(live)) dropPlayer(live, id, at);
 }
 
 /* The third sweep, and the one nothing else could catch: rerolling the seed.
@@ -1459,7 +1397,8 @@ function sayWhyTheyAreShort(p, prio, tiers) {
 
    `live.overrides` is a five the coach picked by hand against a *specific*
    rotation, filed under a stint index. Three sweeps grew one at a time --
-   `removePlayer`, `setAvailable`, `reseed` -- and each one closed exactly one
+   `removePlayer` and `setAvailable` (both now in `team-ops.js`) and
+   `reseed` -- and each one closed exactly one
    door: the periods and min/period spinners, the sub-frequency chips and the
    strategy segment all still left zombie fives behind, spliced into stints at
    clock windows they were never chosen for. Those were never four more bugs.

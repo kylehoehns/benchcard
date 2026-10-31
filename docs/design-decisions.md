@@ -284,7 +284,8 @@ its alternative is an assertion, so the rejected options are kept here too.
   deleting a player mid-tournament silently reattached Kade's cap to Aaron and
   rebalanced the rest of the day against it, with nothing on screen to show
   anything had gone wrong. Deleting a player sweeps every reference to them
-  across every game.
+  across every game, except one: a player named in a "keep on the floor" pair
+  (`keepOnFloor`) is not yet swept, and that gap is #409.
 - **An explicit short name beats the derived one**, and auto-derivation dodges
   the overrides as well as the other auto names -- otherwise overriding one Jack
   to `JACK` silently collides with `Jackson`.
