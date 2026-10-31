@@ -14,6 +14,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
+import { sampleRoster } from '../app/roster.js';
 import { SIZES, file, slug, pages, planFor, cardMetrics, measuredNames, article } from '../scripts/charts.mjs';
 
 const url = p => new URL('../app/' + p, import.meta.url);
@@ -291,8 +292,8 @@ test('every page the site publishes points at the same share image', () => {
 
 test('the placeholder copy is marked, so nobody ships it by accident', () => {
   /* The prose on these pages is the author's, not the loop's. Until it lands,
-     every slot is bracketed AND carries data-draft, so `grep -l data-draft
-     app/*.html` is an accurate list of what is unwritten. This test does not
+     every slot is bracketed AND carries data-draft, so
+     `grep -l 'data-draft="1"' app/*.html` is an accurate list of what is unwritten. This test does not
      fail when a page is still a draft — it fails if a draft stops being
      obvious. */
   for (const n of SIZES) {
@@ -304,5 +305,32 @@ test('the placeholder copy is marked, so nobody ships it by accident', () => {
     const brackets = (page.match(/\[PLACEHOLDER/g) || []).length;
     assert.equal(brackets, drafts.filter(d => d.startsWith('[PLACEHOLDER')).length,
       `${file(n)} has placeholder text that is not marked data-draft`);
+  }
+});
+
+/* ---------------- 4. the sample cast and the searched words (#423) ---------------- */
+
+test('each chart prints the same kids the app\'s "Try it with n sample players" team has', () => {
+  for (const n of SIZES) {
+    assert.deepEqual(planFor(n).players?.map(p => p.name), sampleRoster(n).map(p => p.name),
+      `${file(n)} is not built from the first ${n} of the app's sample cast`);
+  }
+  // and the card shows their short names, so a visitor who taps "Try" sees MAYA, ELI, DEVO...
+  assert.deepEqual(Object.values(planFor(7).shortNames).sort(),
+    ['CALE', 'DEVO', 'ELI', 'HARP', 'MAYA', 'NIA', 'SILA']);
+});
+
+test('each lede says substitution, printable and equal playing time, and still hedges', () => {
+  for (const n of SIZES) {
+    const lede = html.get(n).match(/<p class="lede[^"]*"[^>]*>([\s\S]*?)<\/p>/)?.[1];
+    assert.ok(lede, `${file(n)} has no lede`);
+    const text = lede.replace(/\s+/g, ' ').toLowerCase();
+    for (const w of ['substitution', 'printable', 'equal playing time']) {
+      assert.ok(text.includes(w), `${file(n)}'s lede does not say "${w}": ${text}`);
+    }
+    assert.ok(text.includes('as close to equal playing time as the arithmetic allows'),
+      `${file(n)}'s lede lost its hedge: ${text}`);
+    assert.ok(!/\b(equal|even) minutes\b/.test(text.replace(/minutes each/g, '')),
+      `${file(n)}'s lede claims equal minutes flat: ${text}`);
   }
 });

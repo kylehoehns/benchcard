@@ -88,6 +88,9 @@ One player coming on at a break, and the count of them a plan shows ("16–20
 min each · 12 changes"). Bench mode shows "Next change at" when someone comes
 on or off, and "Next break at" when no one does.
 _Avoid_: substitution
+The one exception is the product's own search phrases, "substitution planner"
+and "substitution chart" (#423): they name the app or the printed chart, never
+a break or a change.
 
 **Sub interval**:
 How often breaks come: every N minutes, N times a period, or only at the end of

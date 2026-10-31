@@ -66,9 +66,19 @@ const FILES = [
 ];
 assert.ok(FILES.length >= 25, `only ${FILES.length} files read; the file walk is wrong`);
 
+/* #423: "substitution" names the PRODUCT in the two phrases coaches search
+   for -- a substitution planner, a substitution chart -- and the welcome
+   line, About's lede and the chart pages' ledes say them where a reader can
+   see them. That is not the moment between stints (Break) or a player coming
+   on (Change), which is what CONTEXT.md retires the word for, so exactly
+   those two phrases are cut before the scan. Any other "substitution" in
+   body copy still fails. */
+const PRODUCT_PHRASE = /\bsubstitution\s+(planner|chart)\b/gi;
+
 test('no retired #149 name survives in app copy', () => {
   const hits = [];
-  for (const [file, text] of FILES) {
+  for (const [file, raw] of FILES) {
+    const text = raw.replace(PRODUCT_PHRASE, '');
     for (const [phrase, re] of WORD_RES) {
       // `lacks` (test/prose.js) rebuilds `re`'s literal spaces as `\s+`
       // before matching, so a phrase the source line-wraps still hits.

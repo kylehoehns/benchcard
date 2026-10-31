@@ -33,13 +33,14 @@
  * Everything in COPY marked PLACEHOLDER is a slot for the author. It ships
  * visible and bracketed on purpose: a page that quietly reads as finished is
  * how placeholder copy goes live. Elements built from a placeholder carry
- * `data-draft="1"`, so `grep -l data-draft app/*.html` lists what is still
+ * `data-draft="1"`, so `grep -l 'data-draft="1"' app/*.html` lists what is still
  * unwritten.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { faviconHref, logoSvg } from './mark.mjs';
+import { sampleRoster } from '../app/roster.js';
 import { generatePlan, fmtClock, fmtMinutes } from '../app/engine.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -66,14 +67,14 @@ export const file = n => `${slug(n)}.html`;
 /* ------------------------------------------------------------------ *
  * the sample roster
  *
- * First names only, and no `tier` on any of them: test/leak.test.js bans a
- * player level from every artefact the app hands out, and a public page is
- * the most public artefact there is. Twelve names, first N used, chosen so
- * `deriveShortNames` resolves them to four characters with no collisions --
- * which is also what keeps the width fit below honest.
+ * The app's own "Try it with n sample players" cast, `sampleRoster` from
+ * app/roster.js, first n of it: a coach who taps "Try" on a chart page sees
+ * the kids the chart printed. One cast, one place -- do not copy it here.
+ * It has no `tier` on anyone (test/leak.test.js bans a player level from
+ * every artefact, and a public page is the most public one), and the names
+ * it prints are whatever `deriveShortNames` makes of them, which
+ * WIDTH_AT_100 below must cover.
  * ------------------------------------------------------------------ */
-const NAMES = ['Ava', 'Beckett', 'Cole', 'Dev', 'Elena', 'Finn',
-  'Grace', 'Harper', 'Isaiah', 'Jonah', 'Kai', 'Luca'];
 
 /* The app's own defaults, and the same game the About page describes: four
    eight-minute quarters, a substitution every four minutes. Uniform across
@@ -84,14 +85,14 @@ const GRANULARITY = { mode: 'everyN', value: 4 };
 const SEED = 11;
 
 export function planFor(n) {
-  const players = NAMES.slice(0, n).map((name, i) => ({ id: `p${i}`, name }));
+  const players = sampleRoster(n).map((p, i) => ({ id: `p${i}`, name: p.name }));
   const plan = generatePlan({
     players,
     availableIds: players.map(p => p.id),
     format: FORMAT, granularity: GRANULARITY, seed: SEED,
   });
   if (!plan.ok) throw new Error(`the engine will not plan ${n} players: ${JSON.stringify(plan.issues)}`);
-  return plan;
+  return { ...plan, players };
 }
 
 /* ------------------------------------------------------------------ *
@@ -119,17 +120,21 @@ const stintPx = px => px * 1.12 + px * CHG_RATIO * 1.3;
  *
  * So the widths are measured once, in Chrome, against the vendored InterVar
  * at weight 800 -- card.js's own `widthAt`, at 100px, on exactly the twelve
- * short names these pages print. `deriveShortNames` is deterministic and the
- * sample roster is fixed, so this table is complete; test/charts.test.js
- * fails if a plan ever prints a name that is not in it, which is the only way
- * it could go stale.
+ * short names these pages print (the app's sample cast: MAYA, ELI, DEVO, NIA,
+ * CALE, HARP, SILA, JONA, RUBY, ISAA, AISH, RYAN). Re-measured for #423 by
+ * loading InterVar from app/vendor/fonts in headless Chrome and calling
+ * `measureText` at `800 100px` with card.js's CARD_FONT stack; HARP and JONA
+ * came out identical to the old table, which is the cross-check.
+ * `deriveShortNames` is deterministic and the sample roster is fixed, so this
+ * table is complete; test/charts.test.js fails if a plan ever prints a name
+ * that is not in it, which is the only way it could go stale.
  *
  * ADVANCE is the fallback for a name that is somehow not in the table, and it
  * is deliberately above the measured worst case rather than near the mean. */
 const WIDTH_AT_100 = {
-  AVA: 214.28, BECK: 275.64, COLE: 269.17, DEV: 210.21,
-  ELEN: 255.11, FINN: 240.25, GRAC: 288.24, HARP: 283.22,
-  ISAI: 197.96, JONA: 289.79, KAI: 179.37, LUCA: 277.50,
+  MAYA: 307.35, ELI: 146.10, DEVO: 283.23, NIA: 182.10,
+  CALE: 265.79, HARP: 283.22, SILA: 228.09, JONA: 289.79,
+  RUBY: 280.61, ISAA: 247.84, AISH: 246.39, RYAN: 283.76,
 };
 const ADVANCE = 0.72;
 export const measuredNames = () => Object.keys(WIDTH_AT_100);
@@ -232,15 +237,16 @@ const COPY = {
   /* Written. Both lines take their numbers from the generated plan, so neither
      can drift from the card printed underneath it.
 
-     "as close to even as the arithmetic allows" rather than "even minutes":
+     "as close to equal playing time as the arithmetic allows" rather than
+     a flat "equal minutes":
      with some roster sizes the slots do not divide, and the timeline directly
      below would disprove the stronger claim. The page must not overclaim what
      its own artefact shows. */
   lede: (n, f) =>
-    `A finished rotation for ${n} players over four eight-minute quarters, ` +
-    `subbing every four minutes — ${f.minutes}, as close to even as the ` +
-    `arithmetic allows, worked out before tip-off. Paste your own roster into ` +
-    `Benchcard and it prints yours.`,
+    `A finished, printable substitution chart for ${n} players over four ` +
+    `eight-minute quarters, subbing every four minutes: ${f.minutes}, as ` +
+    `close to equal playing time as the arithmetic allows, worked out ` +
+    `before tip-off. Paste your own roster into Benchcard and it prints yours.`,
   caption: (n, f) =>
     `Each box is one stint: the clock is time left in the period, and ` +
     `the underlined names just came on. ${f.stints} stints, five on the floor, ` +
