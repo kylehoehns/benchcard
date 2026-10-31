@@ -1937,3 +1937,14 @@ test('a filed season game keeps its overtime, cleaned the same way', () => {
   assert.deepEqual(seasonGame({ id: 'x', label: '', periods: 2, periodMinutes: 16, overtime: [2, 8] },
     { a: 1 }, { date: '2026-11-08' }).overtime, [2, 8]);
 });
+
+/* #412: a sit for the rest is a list of valid, unique player ids; absent when empty. */
+test('a reload keeps sat as valid unique player ids, and a record without any stays without', () => {
+  const raw = good();
+  raw.day.games[0].live = { at: 3, overrides: {}, sat: ['a', 'ghost', 'a', 7, 'b'] };
+  assert.deepEqual(sanitize(raw, H).teams[0].days[0].games[0].live.sat, ['a', 'b']);
+  const none = good();
+  none.day.games[0].live = { at: 3, overrides: {}, sat: ['ghost'] };
+  assert.equal('sat' in sanitize(none, H).teams[0].days[0].games[0].live, false);
+  assert.equal('sat' in sanitize(good(), H).teams[0].days[0].games[0].live, false);
+});

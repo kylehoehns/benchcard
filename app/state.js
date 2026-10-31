@@ -24,7 +24,7 @@ import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
 import { emptyConstraints, removePlayer as removeFrom, setAvailable, removeTeam } from './team-ops.js';
 import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, finishedGame,
-  keepThrough, clearRest, replaceOverrides, snapshotFives, restoreFives } from './live.js';
+  keepThrough, clearRest, replaceOverrides, snapshotFives, restoreFives, satIds, clearSat } from './live.js';
 
 /* Perceptually even hues so ten kids stay distinguishable at a glance.
    Lightness and chroma are themed once in CSS; only the hue varies here. */
@@ -618,6 +618,12 @@ export const teamName = () => (state.teamName || '').trim();
 export const byId = id => state.players.find(p => p.id === id);
 export const availIds = g => state.players.map(p => p.id).filter(id => !g.out.includes(id));
 
+/* #412: who plays -- at the game and not sat for the rest. `also` is a fresh
+   sit not yet recorded; `standing` is the recorded ones, which a short bench
+   lets go of for one solve. Every re-plan asks here, so none re-derives it. */
+const playingIds = (g, also = [], standing = satIds(g.live)) =>
+  availIds(g).filter(id => !standing.includes(id) && !also.includes(id));
+
 /* An empty roster is not a mistake, it is the first thing that happens. On a
  * fresh device the games view used to greet the coach with a red "Only 0
  * players available; you need at least 5 to field a lineup" over "No rotation
@@ -752,7 +758,7 @@ export function openGame(d, i) {
 function pinnedFive(g, who) {
   const p = plans[state.activeGame];
   if (!PINS.includes(who) || !p?.ok) return null;
-  const avail = availIds(g);
+  const avail = playingIds(g);
   if (who === 'keep') {
     return effectiveLineup(g, p, stintIndex(p, g.live)).filter(id => avail.includes(id));
   }
@@ -813,9 +819,10 @@ export function resetRest(g) {
   const live = g.live;
   const from = resetFrom(live);
   clearRest(live);
+  clearSat(live);
   const p = plans[state.activeGame];
   if (!p?.ok) return;
-  const pins = pinFives(g, p, from, availIds(g));
+  const pins = pinFives(g, p, from, playingIds(g));
   if (Object.keys(pins).length) writeOverrides(live, pins, false);
   let period = null;
   p.stints.forEach((s, k) => {
@@ -1436,6 +1443,11 @@ let dropped = 0;
    day were holding stale fives. */
 export const overridesDropped = () => { const n = dropped; dropped = 0; return n; };
 
+/* #412: the sat kids a re-plan had to put back on the floor because five
+   could not be made without them. Read-and-reset, like `overridesDropped`. */
+let satShort = [];
+export const satShortBench = () => { const n = satShort; satShort = []; return n; };
+
 /* #134: a game underway rewrites the minutes already played whenever its
    rotation changes shape, whether or not there were hand swaps to drop --
    so this is a second, companion signal to `dropped` above, not a
@@ -1549,6 +1561,17 @@ function freezePlayedAndReplan(g, p, prev) {
   let r = { ok: true, overrides: {} };
   if (through < n) {
     r = resolveRest(g, p, through);
+    /* #412: a standing sit cannot refuse a re-plan -- the arrival or the
+       attendance change has already happened. Plan without it this once; the
+       sit stays recorded and applies again when five can be made without them. */
+    if (!r.ok && r.reason === 'nobody' && satIds(live).length) {
+      const again = resolveRest(g, p, through, [], null, []);
+      if (again.ok) {
+        r = again;
+        const here = new Set(availIds(g));
+        satShort = satIds(live).filter(id => here.has(id)).map(id => callNames(state.players)[id]);
+      }
+    }
     if (!r.ok) { restoreFives(live, untouched); return false; }
   }
   writeOverrides(live, r.overrides, false);
@@ -1563,7 +1586,7 @@ function freezePlayedAndReplan(g, p, prev) {
    overtime they chose the five for is not the plan's to move. */
 function repinOvertime(g, p) {
   const first = p.stints.findIndex(isOvertimeStint);
-  const pins = first < 0 ? {} : pinFives(g, p, first, availIds(g));
+  const pins = first < 0 ? {} : pinFives(g, p, first, playingIds(g));
   if (Object.keys(pins).length) writeOverrides(g.live, pins, false);
 }
 
@@ -1590,6 +1613,12 @@ function syncOverrides(g, p, underway = false, prev = null) {
     if (handStints(live).length) dropped++;
     replaceOverrides(live, {}, []);
     if (underway) repinOvertime(g, p);
+    /* #412: the stamp moved and the sit's stints went with it: plan them
+       again through the one re-plan, the way a freeze would have. */
+    if (satIds(live).length) {
+      const r = resolveRest(g, p, resetFrom(live));
+      if (r.ok) writeOverrides(live, r.overrides, false);
+    }
   }
   if (underway) moved.add(g.id);
   return p;
@@ -1838,7 +1867,7 @@ function lateArrivals(g, p, k) {
  * actually played. Returns `{ ok: true, from, overrides, issues,
  * minutes }` or `{ ok: false, reason }`; `reason` is for slice 2's copy.
  * ================================================================== */
-export function resolveRest(g, p, from, sitIds = [], to = null) {
+export function resolveRest(g, p, from, sitIds = [], to = null, standing = satIds(g.live)) {
   if (!p || !p.ok) return { ok: false, reason: 'noplan' };
   const k = Math.max(0, Math.min(Math.trunc(from) || 0, p.stints.length));
   // `to` ends the suffix early: Reset plans one Even-out period at a time
@@ -1870,7 +1899,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null) {
 
   const sit = new Set(sitIds || []);
   const all = availIds(g);
-  const avail = all.filter(id => !sit.has(id));
+  const avail = playingIds(g, sitIds, standing);
   if (avail.length < LINEUP_FLOOR) return { ok: false, reason: 'nobody' };
 
   /* `effectiveStints`, not `p.stints`: a coach who already swapped somebody on

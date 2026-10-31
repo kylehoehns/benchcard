@@ -19,15 +19,15 @@ const APP = new URL('../app/', import.meta.url);
 const APP_FILES = readdirSync(APP).filter(f => f.endsWith('.js'));
 const read = f => stripComments(readFileSync(new URL(f, APP), 'utf8'));
 
-/* #356: `live.js` is the only module that assigns `at`, `hand`, `overrides`
- * or `finished` on a game's live record (storage.js's sanitizer builds whole
+/* #356: `live.js` is the only module that assigns `at`, `hand`, `overrides`,
+ * `finished` or (#412) `sat` on a game's live record (storage.js's sanitizer builds whole
  * records and is the one named exception). Every write the app makes is an
  * operation there -- openGame, step, finish, dropPlayer, keepThrough, replaceOverrides,
  * writeOverrides -- so the rule that `hand` lists only stints that still have
  * an override sits in one file. The shapes below are the ways a write has
  * been, or could be, spelled; `writeShapes` is exercised on its own so a
  * regex that stopped matching fails here and not silently. */
-const FIELDS = 'at|hand|overrides|finished';
+const FIELDS = 'at|hand|overrides|finished|sat';
 // `x.at = …`, `x.hand ||= …`, `x?.overrides += …` -- not `==`, `>=`, `!=`, and
 // not a DOM `el.dataset.at = …`.
 const ASSIGN = new RegExp(`(?<!\\bdataset)\\.(?:${FIELDS})\\s*(?:[-+*/%|&?]{1,2})?=(?!=)`, 'g');
