@@ -37,7 +37,7 @@ describe('a coach runs a game', { skip }, () => {
     await coach.tapPlayer('Ana Reyes');
     await coach.tapPlayer('Devon Ellis');
 
-    assert.equal(await coach.toast(), 'Devon on for Ana this stint. Devon now ends at 16 min, Ana at 12.');
+    assert.equal(await coach.toast(), 'Devon on for Ana this stint. The rest of the game was re-planned to keep minutes even.');
     assert.deepEqual(await coach.onFloor(), ['Devon Ellis', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Sam Okafor']);
 
     await coach.tap('Undo');
