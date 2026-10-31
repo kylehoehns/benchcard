@@ -111,7 +111,10 @@ is a **Leave** button at the left end of the stint bar, because bench mode is th
 one screen used standing up one-handed and the top-left corner is the worst
 place on a 390px screen to have to reach. It is text rather than a chevron so it
 never reads as a third stint control, and it is hidden above the coarse-pointer
-breakpoint, where the top-left X is already an easy target.
+breakpoint, where the top-left X is already an easy target. Below 18em of width (large
+text, #421) it is an x icon instead, with the word kept for screen readers and
+as the accessible name, so Leave, Back, the dots and Next share one row at 320px.
+The bar and foot are shorter there too.
 
 The dot strip is **a window, not the whole game**, past 12 stints. It is ~142px
 wide on a 390px phone, which is about twelve usable dots; an 8×20 game has forty

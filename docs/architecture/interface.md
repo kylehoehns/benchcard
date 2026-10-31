@@ -433,7 +433,10 @@ already inerts the page and keeps Tab inside. `openSheet` only adds what it
 leaves undone: focus lands on the sheet's title (an `h2` with `tabindex="-1"`),
 not the handle, so no ring flashes on a tap; Tab reaches the handle next, whose
 ring is drawn on its visible pill. Closing returns focus to the phrase that
-opened the sheet. Motion is transform and opacity only: the sheet slides down
+opened the sheet. On a short screen or at large text (`(max-height: 40em)`,
+#421) `openSheet` opens the sheet full whatever the caller asked for, and the
+app.css block for that query tightens the sheet's header and status row; the
+handle still toggles to half. Motion is transform and opacity only: the sheet slides down
 while the backdrop fades, half and full height animate, a release looks at
 speed (0.5 px/ms over the last 100ms) as well as distance, a drag past the
 edge rubber-bands, and the backdrop follows the finger. Reduced motion closes

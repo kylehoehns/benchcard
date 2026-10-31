@@ -223,7 +223,10 @@ Buttons. Research: Hoober.*
 resting heights, half and full; dismiss by swiping down, tapping outside, the
 back gesture, or the close button. Half height is the default when the screen
 behind should stay visible — in Who's here, the rotation rebuilds above the
-sheet. NN/g: "We strongly recommend not using a bottom sheet to replace typical
+sheet. On a short screen (under 40em tall, which is 640px at the default text
+size) and at large text, where the query covers every phone, a sheet opens
+full instead, because half leaves no room for its rows; its handle still
+switches to half. NN/g: "We strongly recommend not using a bottom sheet to replace typical
 page-to-page user flows." *Apple: Sheets. Material: Bottom sheets. Research:
 NN/g, bottom sheets.*
 
@@ -343,7 +346,9 @@ Typography ("avoid light font weights").*
 
 **T4. When text size grows, the plan grows first.** Names, minutes and the
 sentence scale fully; header labels and footers may scale less. Apple: people
-"don't always want to increase the size of every word on the screen." *Apple:
+"don't always want to increase the size of every word on the screen." Below
+18em of width (288px at the default text size), bench mode's bar title drops
+to the Secondary size, so the bar and foot stay short on a 320px phone. *Apple:
 Typography.*
 
 ---

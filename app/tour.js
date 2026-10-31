@@ -116,13 +116,25 @@ const RING_CAP_RATIO = 0.52;
 // #421: the least a ring may be shortened to when the box has no room beside it.
 const MIN_RING = 48;
 
+// Placement distances, shared by `placeTour` and `tourGo`'s scroll decision:
+// the ring's padding round the anchor, the box's gap to the ring, and the
+// least either may sit from a screen edge.
+const RING_PAD = 8;
+const BOX_GAP = 12;
+const EDGE = 10;
+
 let tourAt = -1;
 
 // #421: the box's fixed parts (step count, title, Skip/Next, padding) and one
 // line of body copy. `.tour-bd` is the box's one scrolling child, so the fixed
-// part is the box's height less the body's visible part.
+// part is the box's height less the body's visible part. Measured with
+// `placeTour`'s own max-height cap lifted (and put back), so an earlier
+// placement's cap can never shrink it.
 function boxRoom(box, bd) {
+  const cap = box.style.maxHeight;
+  box.style.maxHeight = '';
   const fixed = box.offsetHeight - bd.clientHeight;
+  box.style.maxHeight = cap;
   return { fixed, need: fixed + (parseFloat(getComputedStyle(bd).lineHeight) || 0) };
 }
 
@@ -165,7 +177,9 @@ const tourViewport = () => {
 /* Measured, never transitioned -- see the note on `.tour-hole`. Called on
    every scroll and resize while the tour is up, so it must stay cheap: two
    getBoundingClientRects and a handful of style writes. */
-function placeTour() {
+function placeTour(e) {
+  // scrolling the body copy moves nothing the ring is drawn against
+  if (e?.type === 'scroll' && e.target instanceof Node && $('#tourBox')?.contains(e.target)) return;
   const wrap = tourEl();
   if (!wrap || wrap.hidden) return;
   const s = TOUR[tourAt];
@@ -173,7 +187,7 @@ function placeTour() {
   const hole = $('#tourHole'), box = $('#tourBox');
   const vp = tourViewport();
   const vw = vp.w, vh = vp.h;
-  const gap = 12, pad = 8, edge = 10;
+  const gap = BOX_GAP, pad = RING_PAD, edge = EDGE;
   const n = tourAnchor(s);
   let r = n ? n.getBoundingClientRect() : null;
   if (r && (r.width < 2 || r.height < 2)) r = null;
@@ -223,7 +237,11 @@ function placeTour() {
     // than sitting slightly off-center from it. Its height is capped to that
     // room, so the body copy scrolls rather than the box reaching the ring.
     const useBelow = below >= nat || below >= above;
-    const room = Math.max(0, useBelow ? below : above);
+    /* Never a cap under `need`: Skip and Next are fixed parts, and a box
+       squeezed below them spills them out. With less room than that even after
+       the ring cut, keep the box whole and on screen -- Next reachable -- and
+       let it sit over the ring's edge. */
+    const room = Math.min(Math.max(useBelow ? below : above, need), vh - 2 * edge);
     box.style.maxHeight = `${room}px`;
     const bh = Math.min(nat, room);
     const boxTop = useBelow ? bottom + gap : top - gap - bh;
@@ -246,15 +264,15 @@ function tourGo(i) {
   s.before?.();
   set('#tourStep', 'textContent', `Step ${i + 1} of ${TOUR.length}`);
   set('#tourTitle', 'textContent', s.title);
-  const bd = $('#tourBody');
-  bd.textContent = '';
+  const body = $('#tourBody');
+  body.textContent = '';
   if (s.lines) {
     for (const [lab, txt] of s.lines) {
       const row = el('span', 'tour-l');
       row.append(el('b', '', lab), ': ' + txt);
-      bd.append(row);
+      body.append(row);
     }
-  } else bd.append(el('p', '', s.body));
+  } else body.append(el('p', '', s.body));
   const dots = $('#tourDots');
   dots.textContent = '';
   for (let k = 0; k < TOUR.length; k++) dots.append(el('i', k === i ? 'on' : ''));
@@ -287,11 +305,11 @@ function tourGo(i) {
        control. Then park the anchor at the top edge instead, just under the
        sticky bar, which hands the box everything below it. `need` is the
        box's fixed parts plus one body line, as placeTour reckons it. */
-    const box = $('#tourBox'), bd = $('#tourBody');
-    const { need } = boxRoom(box, bd);
-    const ringH = Math.min(r.height + 16, vh * RING_CAP_RATIO);
-    const ringTop = r.top - y - 8;
-    if (Math.max(ringTop - 22, vh - (ringTop + ringH) - 22) < need) {
+    const { need } = boxRoom($('#tourBox'), body);
+    const ringH = Math.min(r.height + 2 * RING_PAD, vh * RING_CAP_RATIO);
+    const ringTop = r.top - y - RING_PAD;
+    const beside = BOX_GAP + EDGE;
+    if (Math.max(ringTop - beside, vh - (ringTop + ringH) - beside) < need) {
       const bar = $('.bar');
       y = r.top - ((bar ? bar.offsetHeight : 0) + 10);
     }

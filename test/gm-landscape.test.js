@@ -11,7 +11,7 @@ const ROOT = new URL('../app/', import.meta.url);
 const css = readFileSync(new URL('app.css', ROOT), 'utf8');
 const html = readFileSync(new URL('index.html', ROOT), 'utf8');
 
-const LAND = '@media (orientation: landscape) and (max-height: 560px)';
+const LAND = '@media (orientation: landscape) and (max-height: 35em)';
 
 test('the game-mode landscape block sits after the base rules it overrides', () => {
   const block = css.indexOf(LAND);

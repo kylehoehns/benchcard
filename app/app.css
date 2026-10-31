@@ -1416,8 +1416,8 @@ h3.gm-next-hd { margin-top: 0; }
    bar was 158px and the foot two rows, 288px, which left bench mode's window
    with no whole player card. The bar loses its padding and shrinks its
    title; the nav buttons drop from 3.2rem (102px) to a little over the 48px
-   floor, and Leave becomes the x icon (its word stays in the markup for a
-   screen reader and for #gmDone's accessible name), so Leave, Back, the dots
+   floor, and Leave becomes the x icon (#gmDone's aria-label keeps its accessible
+   name "Leave"), so Leave, Back, the dots
    and Next share one row at 320px. Finish game on the last stint may still
    wrap. `.gm-foot .gm-exit` beats the later coarse-pointer `.gm-exit` rule. */
 .gm-exit .gm-exit-i { display: none; }
@@ -1428,8 +1428,7 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-nav { width: 52px; height: 52px; }
   .gm-foot .gm-exit { width: 52px; padding: 0; }
   .gm-exit .gm-exit-i { display: inline-flex; }
-  .gm-exit .gm-exit-t { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden;
-    clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .gm-exit .gm-exit-t { display: none; }
 }
 /* The dots jump between stints mid-game, so each one is a full-height target:
    the button is 44px tall and takes an equal share of the row, and the dot
@@ -1500,7 +1499,7 @@ h3.gm-next-hd { margin-top: 0; }
    stops well short of taking a row under 48px: trimmed it still measures in
    the mid-50s. Bounded by max-height so a normal phone is untouched, the
    same way the landscape block is bounded by it. */
-@media (orientation: portrait) and (max-height: 700px) {
+@media (orientation: portrait) and (max-height: 43.75em) {
   .gm-body { padding-top: .65rem; }
   .gm-sec { margin-bottom: .8rem; }
   .gm-lab { margin-bottom: .35rem; }
@@ -1522,7 +1521,7 @@ h3.gm-next-hd { margin-top: 0; }
    after the base .gm-foot / .gm-nav rules, which share its specificity.
    Bounded by max-height so a landscape tablet -- which has the height for the
    single column and looks better with it -- is untouched. */
-@media (orientation: landscape) and (max-height: 560px) {
+@media (orientation: landscape) and (max-height: 35em) {
   .gm-bar { padding: .35rem .9rem; }
   .gm-clock { font-size: var(--fs-body); }
   .gm-body {
@@ -1546,6 +1545,11 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-next { padding: .6rem .8rem; }
   .gm-foot { padding: .45rem .9rem .55rem; }
   .gm-nav { height: 2.8rem; }
+}
+/* #421: and the large-text nav buttons stay the 52px squares the 18em block
+   above makes them -- the rule just above is later and would win on height. */
+@media (orientation: landscape) and (max-height: 35em) and (max-width: 18em) {
+  .gm-nav { height: 52px; }
 }
 
 .side-box { border: 1px solid var(--line); border-radius: var(--r); padding: .95rem; background: var(--surface); }
@@ -2998,9 +3002,10 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    the title keeps one line where it fits, and the status line's padding
    shrinks. The Add-a-rule and Overtime headers keep their own container rule
    above: its selectors are more specific than these. */
+/* Keep in sync with openSheet's matchMedia('(max-height: 40em)') in trap.js. */
 @media (max-height: 40em) {
   .bsheet-hd { padding-bottom: .3rem; }
-  .bsheet-hd-row { grid-template-columns: minmax(48px, auto) 1fr minmax(48px, auto);
+  .bsheet-hd-row { grid-template-columns: minmax(48px, 1fr) auto minmax(48px, 1fr);
     padding-top: .3rem; min-height: 48px; column-gap: .25rem; }
   .bsheet-close { width: 48px; height: 48px; }
   .bsheet-status { padding-top: .25rem; padding-bottom: calc(.25rem + env(safe-area-inset-bottom)); }

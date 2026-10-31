@@ -31,6 +31,9 @@ const CELLS = [
   { width: 320, height: 568, textPx: 32, full: true },
   { width: 390, height: 844, textPx: 16, full: false },
   { width: 390, height: 844, textPx: 32, full: true },
+  // A phone held sideways at large text: the landscape bench block must not
+  // stretch the 52px nav buttons. Bench mode only (`only`).
+  { width: 568, height: 320, textPx: 32, full: true, only: 'bench', square: true },
 ];
 
 const SHEETS = [
@@ -92,6 +95,38 @@ async function sheetsAt(c, origin, rec, cell, where) {
   }
 }
 
+// The title stays centered in its header when the side slots differ (Add rule
+// on the right, Back on the left). Measured on the open sheet's own h2.
+const HEADER_PROBE = `JSON.stringify((() => {
+  const d = document.querySelector('dialog.bsheet[open]');
+  const row = d && [...d.querySelectorAll('.bsheet-hd-row')].find(e => e.getClientRects().length);
+  const h = row && row.querySelector('h2');
+  if (!h) return { found: false };
+  const a = row.getBoundingClientRect(), b = h.getBoundingClientRect(), cs = getComputedStyle(row);
+  const pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0;
+  return { found: true, offset: (b.left + b.right) / 2 - ((a.left + pl) + (a.right - pr)) / 2,
+    lines: Math.round(b.height / (parseFloat(getComputedStyle(h).lineHeight) || parseFloat(getComputedStyle(h).fontSize) * 1.2)) };
+})())`;
+
+async function headersAt(c, origin, rec, cell, where) {
+  const states = [STATES.find(x => x.name === 'plan sheet, add a rule'), stateNamed('overtime sheet')];
+  for (const v of states) {
+    const label = `${v?.name} header at ${where}`;
+    if (!rec.check(!!v, `a header state is missing -- nothing was measured at ${where}`)) continue;
+    try {
+      await evalIn(c, step(TODAY_HOME));
+      await openState(c, origin, v, cellWant(cell));
+      const d = JSON.parse(await evalIn(c, HEADER_PROBE));
+      if (!rec.check(d.found, `${label}: no sheet title found -- nothing was measured`)) continue;
+      rec.check(Math.abs(d.offset) <= 1.5, `${label}: title center is ${Math.round(d.offset)}px off the header's center`);
+    } catch (e) {
+      rec.fail(`${label}: ${firstLine(e)}`);
+    } finally {
+      if (v.close) await evalIn(c, step(v.close)).catch(e => rec.fail(`${label}: did not close -- ${firstLine(e)}`));
+    }
+  }
+}
+
 const BENCH_PROBE = `JSON.stringify((() => {
   const r = e => { if (!e) return null; const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, width: b.width, height: b.height }; };
   const shown = e => e && !e.hidden && e.getClientRects().length > 0;
@@ -112,7 +147,9 @@ async function benchAt(c, origin, rec, cell, where) {
       await openState(c, origin, v, cellWant(cell));
       const d = JSON.parse(await evalIn(c, BENCH_PROBE));
       if (!rec.check(!!(d.bar && d.foot), `${label}: .gm-bar or .gm-foot not found -- nothing was measured`)) continue;
-      if (rec.check(d.cards.length > 0, `${label}: #gmFloor holds no cards -- nothing was measured`)) {
+      // The sideways cell is only here for the nav buttons' size: a 32px card is
+      // taller than that window, so no whole card is asked of it.
+      if (rec.check(d.cards.length > 0, `${label}: #gmFloor holds no cards -- nothing was measured`) && !cell.square) {
         const top = Math.max(d.bar.bottom, d.moved ? d.moved.bottom : 0);
         const whole = d.cards.filter(k => k.top >= top - 0.5 && k.bottom <= d.foot.top + 0.5);
         rec.check(whole.length >= 1,
@@ -120,6 +157,12 @@ async function benchAt(c, origin, rec, cell, where) {
           `card heights ${d.cards.map(k => Math.round(k.height)).join(',')}`);
       }
       if (name === 'bench mode') {
+        if (cell.square) {
+          for (const [n, b] of [['Leave', d.done], ['Back', d.prev], ['Next', d.next]]) {
+            if (b) rec.check(Math.abs(b.width - 52) <= 0.5 && Math.abs(b.height - 52) <= 0.5,
+              `${label}: ${n} is ${Math.round(b.width)}x${Math.round(b.height)}, want 52x52`);
+          }
+        }
         const btns = { Leave: d.done, Back: d.prev, Next: d.next };
         for (const [n, b] of Object.entries(btns)) {
           if (!rec.check(!!b, `${label}: ${n} not found -- nothing was measured`)) continue;
@@ -172,6 +215,8 @@ async function tourAt(c, rec, where) {
       rec.check(d.box.left >= -0.5 && d.box.top >= -0.5 && d.box.right <= d.vw + 0.5 && d.box.bottom <= d.vh + 0.5,
         `${label}: #tourBox is outside the ${d.vw}x${d.vh} viewport`);
       if (rec.check(!!d.next, `${label}: #tourNext not found`)) {
+        rec.check(d.next.top >= d.box.top - 0.5 && d.next.bottom <= d.box.bottom + 0.5,
+          `${label}: #tourNext y ${Math.round(d.next.top)}-${Math.round(d.next.bottom)} spills out of #tourBox y ${Math.round(d.box.top)}-${Math.round(d.box.bottom)}`);
         rec.check(d.next.left >= -0.5 && d.next.top >= -0.5 && d.next.right <= d.vw + 0.5 && d.next.bottom <= d.vh + 0.5,
           `${label}: #tourNext is outside the viewport`);
         rec.check(d.next.width >= TOUCH_MIN - 0.5 && d.next.height >= TOUCH_MIN - 0.5,
@@ -207,7 +252,9 @@ export async function shortPhonePass(c, origin, rec) {
     if (!rec.check(vp.w === cell.width && vp.h === cell.height && vp.px === cell.textPx,
       `${where}: the page measured ${vp.w}x${vp.h} at ${vp.px}px -- nothing was measured`)) continue;
     cells++;
+    if (cell.only === 'bench') { await benchAt(c, origin, rec, cell, where); continue; }
     await sheetsAt(c, origin, rec, cell, where);
+    await headersAt(c, origin, rec, cell, where);
     await benchAt(c, origin, rec, cell, where);
     await tourAt(c, rec, where);
   }
