@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { lacks } from './prose.js';
 import {
   buildStints, fmtClock, deriveShortNames, analyzeFeasibility,
-  generatePlan, minPossibleSpread, ON_FLOOR, stintsBeforeHalftime, isOvertimeStint,
+  generatePlan, missedPinIssues, minPossibleSpread, ON_FLOOR, stintsBeforeHalftime, isOvertimeStint,
 } from '../app/engine.js';
 
 const QUARTERS = { periods: 4, periodMinutes: 8 };
@@ -1430,11 +1431,62 @@ test('436: closers that overlap the last-period five\'s stint are refused when t
 
 test('436: an Apart pair split across two pinned groups is refused once', () => {
   const p = pinPlan(10, 1, { openingFive: ['p0', 'p1'], lastPeriodFive: ['p2'], avoids: [['p0', 'p1']] });
-  // inside one group: reported once, not twice
+  // inside one group: refused, reported once, not twice
+  assert.equal(p.ok, false);
   assert.equal(codes(p.issues, 'FORCED_GROUP_AVOID').length, 1);
   const q = pinPlan(10, 1, { openingFive: ['p0'], lastPeriodFive: ['p1'], avoids: [['p0', 'p1']] }, ONE_PERIOD);
   assert.equal(q.ok, false);
   const hits = codes(q.issues, 'FORCED_GROUP_AVOID');
   assert.equal(hits.length, 1);
+  assert.equal(hits[0].severity, 'error');
   assert.match(hits[0].message, /PlayerA.*PlayerB|PlayerB.*PlayerA/);
+});
+
+test('436: a cap exactly equal to a fractional pinned sum is not refused', () => {
+  // 4 periods of 8.8 min, one stint each: closing 3 stints pins 26.4 min, which adds up to 26.400000000000002
+  const format = { periods: 4, periodMinutes: 8.8 };
+  const stints = buildStints(format, { mode: 'perPeriod', value: 1 });
+  const run = cap => analyzeFeasibility({ players: roster(10), availableIds: ids(10), stints, strategy: 'closers',
+    constraints: { closing: { stints: 3, players: FIVE }, maxMinutes: { p0: cap } }, periods: 4 });
+  assert.deepEqual(codes(run(26.4), 'PINS_OVER_CAP'), []);
+  assert.equal(codes(run(26.3), 'PINS_OVER_CAP').length, 1);
+});
+
+test('436: the PINS_OVER_CAP message names only groups that pin the kid to a stint', () => {
+  // all-overtime suffix: no regulation stint remains, so the last-period five pins nothing
+  const stints = buildStints({ periods: 2, periodMinutes: 4, overtime: [4] }, EVERY_4).slice(2);
+  const issues = analyzeFeasibility({ players: roster(8), availableIds: ids(8), stints, strategy: 'closers',
+    constraints: { lastPeriodFive: FIVE, closing: { stints: 1, players: FIVE }, maxMinutes: { p0: 2 } }, periods: 2 });
+  const [hit] = codes(issues, 'PINS_OVER_CAP');
+  assert.ok(hit, JSON.stringify(issues));
+  assert.match(hit.message, /set to close/);
+  assert.ok(lacks(hit.message, 'last period'), hit.message);
+});
+
+test('436: platoon applies no pins, so pin checks do not refuse a platoon plan', () => {
+  const p = generatePlan({ players: roster(10), availableIds: ids(10), format: { periods: 4, periodMinutes: 8 },
+    granularity: EVERY_4, seed: 1, strategy: 'platoon',
+    constraints: { units: [FIVE, ['p5', 'p6', 'p7', 'p8', 'p9']], openingFive: ['p0'], lastPeriodFive: ['p0'], maxMinutes: { p0: 4 } } });
+  assert.ok(p.ok, JSON.stringify(p.issues.filter(i => i.severity === 'error')));
+  assert.deepEqual(codes(p.issues, 'PINS_OVER_CAP'), []);
+});
+
+test('436: missedPinIssues emits each missed-pin code, and nothing for platoon', () => {
+  const stints = buildStints(QUARTERS, EVERY_4);
+  const none = { openingFive: [], lastPeriodFive: [], closing: null };
+  const c = { ...none, openingFive: ['p0'], lastPeriodFive: ['p1'], closing: { stints: 1, players: ['p2'] } };
+  // nobody is ever on the floor
+  const lineups = stints.map(() => ['p5', 'p6', 'p7', 'p8', 'p9']);
+  const args = { stints, c, periods: 4, lineups, avail: ids(10), label: id => `Kid ${id}` };
+  const got = missedPinIssues(args);
+  assert.deepEqual(got.map(i => i.code), ['OPENING_MISSED', 'LAST_PERIOD_MISSED', 'CLOSER_MISSED']);
+  assert.deepEqual(got.map(i => i.playerIds), [['p0'], ['p1'], ['p2']]);
+  assert.ok(got.every(i => i.severity === 'warn'));
+  assert.match(got[0].message, /Kid p0 is set to start but is not/);
+  assert.match(got[1].message, /Kid p1 is set to start the last period/);
+  assert.match(got[2].message, /Kid p2 is set to close/);
+  assert.deepEqual(missedPinIssues({ ...args, platoon: true }), []);
+  // a lineup that honors the pins: nothing
+  const kept = stints.map(() => ['p0', 'p1', 'p2', 'p3', 'p4']);
+  assert.deepEqual(missedPinIssues({ ...args, lineups: kept }), []);
 });
