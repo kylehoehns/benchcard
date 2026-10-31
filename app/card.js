@@ -320,7 +320,7 @@ export function renderCards() {
      Shuffle over "No players yet" promises a fix it can never deliver. Like
      `#print`, the `s` shortcut clicks this button, so disabling here disables
      the key too. */
-  const done = finishedGame(game().live); // a finished game's minutes are played; a new seed would rewrite them
+  const done = finishedGame(game()?.live); // a finished game's minutes are played; a new seed would rewrite them
   set('#regen', 'disabled', blocked || done);
   set('#regen', 'title', blocked
     ? (noRoster() ? 'Add your roster first. Nothing to shuffle yet'
