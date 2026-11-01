@@ -917,6 +917,13 @@ function mostMinutesUnderRun(lens, limit) {
   return Math.max(...dp);
 }
 
+/* Stints in a row `id` has played, counting back from lineups[end]. */
+function runEndingAt(lineups, id, end) {
+  let run = 0;
+  for (let j = end; j >= 0 && lineups[j].includes(id); j--) run++;
+  return run;
+}
+
 function longestRun(lineups, id) {
   let run = 0, best = 0;
   for (const lu of lineups) { if (lu.includes(id)) { run++; best = Math.max(best, run); } else run = 0; }
@@ -1636,11 +1643,7 @@ function finish(lineups, ctx, issues, meta) {
         /* Players whose run ending at i-1 has reached the Rest limit must come
            off; more of them than the number asked for means the limit forced it. */
         if (ctx.maxConsecutive) {
-          const spent = lineups[i - 1].filter(id => {
-            let run = 0;
-            for (let j = i - 1; j >= 0 && lineups[j].includes(id); j--) run++;
-            return run >= ctx.maxConsecutive;
-          }).length;
+          const spent = lineups[i - 1].filter(id => runEndingAt(lineups, id, i - 1) >= ctx.maxConsecutive).length;
           if (spent > ctx.maxSubs) forced += 1;
         }
       }
