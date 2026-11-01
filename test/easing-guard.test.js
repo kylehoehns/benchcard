@@ -19,7 +19,7 @@ import path from 'node:path';
  * guard is about the curves THIS app authors, not the ones its dependency
  * ships.
  *
- * #151 fix pass: `app/*.html` (the marketing pages and the six generated
+ * #151 fix pass: `app/*.html` (the marketing pages and the generated
  * chart pages) each carry one inline `<style>` block and used to hand-roll
  * `cubic-bezier(.22,.61,.36,1)` there -- CSS the earlier `.(css|js)$` walk
  * never saw. Every one of those pages links `tokens.css` before its own

@@ -1,3 +1,4 @@
+import { CHARTS } from '../charts.mjs';
 import { evalIn, OVERFLOW_PROBE, WORST_OUTSIDE, IS_CUT } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { firstLine } from './verdict.mjs';
@@ -6,8 +7,9 @@ import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './size
 /* The pages no browser check had ever loaded.
  *
  * Everything above this drives `index.html` and only `index.html`. The site is
- * ten pages: the app, `about.html`, `advanced.html`, the six roster-size chart pages that
- * `scripts/charts.mjs` generates, and `404.html`. The other eight were audited by nothing —
+ * twelve pages: the app, `about.html`, `advanced.html`, the eight chart pages that
+ * `scripts/charts.mjs` generates (the seven roster sizes and the two-halves page, read
+ * from its `CHARTS` export, never listed here), and `404.html`. The others were audited by nothing —
  * which is why `images declare alt text` reported "0 image(s)" on every
  * evaluation of a run while the app's only two <img> sat on `about.html`, and
  * why five real defects on these pages were found with a tape measure rather
@@ -15,7 +17,7 @@ import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './size
  * reaching 432px, the chart pages' bar overflowing at large text, a JSON-LD
  * arithmetic error, a missing og:image:alt on seven of eight pages).
  *
- * ALL SIX CHART PAGES, not one representative. Their *structure* cannot drift
+ * EVERY CHART PAGE, not one representative. Their *structure* cannot drift
  * — `charts.mjs --check` fails the suite the moment a page on disk stops
  * matching the generator. What varies page to page is the card: two names on
  * the change line at 7 players and three at 12, different auto-fit type sizes,
@@ -49,7 +51,7 @@ import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './size
    eight addresses nothing on the site links to -- and would have kept passing
    while the real ones broke. `scripts/serve.mjs` 307s `.html` to these, the
    same as Cloudflare. */
-const STATIC_PAGES = ['/about', '/advanced', ...[7, 8, 9, 10, 11, 12].map(n => `/${n}-player-basketball-rotation-chart`),
+const STATIC_PAGES = ['/about', '/advanced', ...CHARTS.map(c => `/${c.slug}`),
   /* #424: what an unknown URL answers with. `serve.mjs` has no route for
      `/404`, so it resolves to `404.html` and answers 200 here; the 404 status
      is tested in test/build.test.js, and this pass is for its layout. */
@@ -126,8 +128,8 @@ async function cellChecks(c, page, where, rec) {
  * that was assumed, not measured, and #338 found it false on `about.html`
  * (its plan card's track was about 12px wide and the Q labels overlapped, with
  * nothing reaching past the viewport for the page probe to see). So both
- * widths run on all eight pages: sixteen navigations rather than the
- * thirty-two of the whole grid, and the cells with the information in them.
+ * widths run on every page: two navigations a page rather than the
+ * four of the whole grid, and the cells with the information in them.
  *
  * THE ALLOWANCE: `LARGE_TEXT_ALLOW` below is empty, and every page is pinned
  * at zero. Do NOT add a number to make a new failure go away -- a new overflow

@@ -678,7 +678,7 @@ test('#firstRunFlow ships without `open`, so the first frame cannot be the flow'
 });
 
 test('only index.html carries the pre-paint view script', () => {
-  // the guides and the six chart pages have the theme script and no views; a
+  // the guides and the chart pages have the theme script and no views; a
   // copy there would be styling elements that do not exist
   for (const f of ['about.html', 'advanced.html', '10-player-basketball-rotation-chart.html']) {
     const src = readFileSync(new URL(`../app/${f}`, import.meta.url), 'utf8');

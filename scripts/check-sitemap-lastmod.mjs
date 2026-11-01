@@ -9,7 +9,7 @@
    The second half is the same-day case, settled the way `check-about-date.mjs`
    settles it: a page edited on the day its <lastmod> already names is honest,
    and no other legal date exists (earlier is a lie, later is in the future).
-   The six chart pages are generated, so a change to `scripts/charts.mjs` that
+   The chart pages are generated, so a change to `scripts/charts.mjs` that
    alters a page shows up as that page's file changing, and the same rule
    covers it with no second path.
 

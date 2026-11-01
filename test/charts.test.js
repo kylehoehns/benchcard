@@ -1,8 +1,8 @@
 /* The roster-size landing pages.
  *
- * Six near-identical documents is a drift machine: the failure mode is not one
+ * Near-identical documents are a drift machine: the failure mode is not one
  * page being wrong, it is page 11 quietly not matching page 10 six months
- * later, and nobody noticing because nobody reads all six. So the pages are
+ * later, and nobody noticing because nobody reads every one. So the pages are
  * generated (scripts/charts.mjs) and these tests pin three separate joints:
  *
  *   1. disk vs generator — a hand edit, or an engine change that moves the
@@ -15,11 +15,20 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { sampleRoster } from '../app/roster.js';
+import { lacks } from './prose.js';
 import { SIZES, file, slug, pages, planFor, cardMetrics, measuredNames, article } from '../scripts/charts.mjs';
+/* The halves page and the list of every generated page are read off the
+   namespace, so a missing export is an assertion about the list rather than a
+   SyntaxError at import. */
+import * as gen from '../scripts/charts.mjs';
 
 const url = p => new URL('../app/' + p, import.meta.url);
 const read = p => readFileSync(url(p), 'utf8');
 const html = new Map(SIZES.map(n => [n, read(file(n))]));
+/* Every generated chart page, from the generator's own list: the seven size
+   pages and the two-halves page (#425). Never a second hand-kept list here. */
+const CHARTS = gen.CHARTS ?? [];
+const HALVES_FILE = 'basketball-rotation-chart-two-halves.html';
 const sitemap = read('sitemap.xml');
 const sw = read('sw.js');
 
@@ -121,7 +130,7 @@ test('no absolute benchcard.app URL this site publishes points at a redirect', (
      canonicals, og:url, JSON-LD. Cloudflare 307s `/<name>.html`, so an
      absolute URL ending in `.html` advertises a redirect to a crawler or a
      share scraper. About had four of them — canonical, og:url, the sitemap
-     entry, and index.html's JSON-LD `softwareHelp` — while all six chart
+     entry, and index.html's JSON-LD `softwareHelp` — while all the chart
      pages were already correct.
 
      Only ABSOLUTE URLs, because relative in-app links are a different
@@ -145,7 +154,7 @@ test('no absolute benchcard.app URL this site publishes points at a redirect', (
   }
 });
 
-test('about.html links to all six, so the pages are reachable without the sitemap', () => {
+test('about.html links to every size, so the pages are reachable without the sitemap', () => {
   const about = read('about.html');
   for (const n of SIZES) {
     assert.ok(about.includes(`href="./${slug(n)}"`), `about.html does not link to ${slug(n)}`);
@@ -332,5 +341,116 @@ test('each lede says substitution, printable and equal playing time, and still h
       `${file(n)}'s lede lost its hedge: ${text}`);
     assert.ok(!/\b(equal|even) minutes\b/.test(text.replace(/minutes each/g, '')),
       `${file(n)}'s lede claims equal minutes flat: ${text}`);
+  }
+});
+
+
+/* ---------------- 5. six players, and two halves (#425) ---------------- */
+
+const lede = page => (page.match(/<p class="lede[^"]*"[^>]*>([\s\S]*?)<\/p>/)?.[1] ?? '').replace(/\s+/g, ' ');
+const meta = (page, re) => page.match(re)?.[1];
+const footerMinutes = page => page.match(/<div class="card-ft">([^<]*)<\/div>/)[1].trim()
+  .split(/\s{3}/).filter(Boolean).map(e => Number(e.split(' ')[1]));
+
+test('SIZES is 6 to 12, and the 6-player page prints 24 to 28 minutes each over 8 stints', () => {
+  assert.deepEqual(SIZES, [6, 7, 8, 9, 10, 11, 12]);
+  const page = read('6-player-basketball-rotation-chart.html');
+  const mins = footerMinutes(page);
+  assert.equal(mins.length, 6);
+  assert.ok(Math.min(...mins) >= 24 && Math.max(...mins) <= 28, `minutes are ${mins}`);
+  assert.equal((page.match(/<div class="stint(?: newper)?"/g) || []).length, 8);
+  assert.ok(page.includes('6-PLAYER ROTATION') && page.includes('4 QUARTERS · 8 MIN'));
+});
+
+test('the generator lists every chart page once: the seven sizes, then the halves page', () => {
+  assert.deepEqual(CHARTS.map(c => c.file), [...SIZES.map(file), HALVES_FILE]);
+  assert.deepEqual(CHARTS.map(c => c.slug), [...SIZES.map(slug), 'basketball-rotation-chart-two-halves']);
+  assert.deepEqual([...pages().keys()], CHARTS.map(c => c.file), 'pages() and the list disagree');
+  assert.ok(!SIZES.map(file).includes(HALVES_FILE), 'the halves page is not a roster size');
+});
+
+test('the halves page is 10 players, two 20-minute halves, 10 stints of 20 minutes each', () => {
+  const page = read(HALVES_FILE);
+  assert.ok(page.includes('<span class="opp">10-PLAYER ROTATION</span><span class="when">2 HALVES · 20 MIN</span>'));
+  assert.deepEqual(footerMinutes(page), Array(10).fill(20));
+  assert.equal((page.match(/<div class="stint(?: newper)?"/g) || []).length, 10);
+  const names = new Set([...page.matchAll(/<span class="nm(?: fresh)?">([^<]+)<\/span>/g)].map(m => m[1]));
+  assert.equal(names.size, 10);
+  const clocks = [...page.matchAll(/<span class="clk">([^<]*)<\/span>/g)].map(m => m[1]);
+  assert.equal(clocks.filter(c => /^H\d /.test(c)).map(c => c.slice(0, 2)).join(), 'H1,H2');
+  assert.ok(lacks(page, '4 QUARTERS'), 'the halves card says quarters');
+  assert.ok(!page.includes('data-draft="1"'), 'the halves page is a draft');
+  assert.ok(page.includes('<meta name="robots" content="index, follow'));
+});
+
+test('the halves page copy is exactly the spec\'s', () => {
+  const page = read(HALVES_FILE);
+  assert.equal(meta(page, /<title>([^<]*)<\/title>/), 'Basketball rotation chart for two halves | Benchcard');
+  assert.equal(meta(page, /<h1[^>]*>([^<]*)<\/h1>/), 'Basketball rotation chart for two halves');
+  const desc = meta(page, /<meta name="description" content="([^"]*)"/);
+  assert.equal(desc, 'A printable substitution chart for two 20-minute halves: 10 players, subs every 4 minutes, ' +
+    '20 minutes each. Free, no signup, works offline.');
+  assert.ok(desc.length <= 160);
+  assert.equal(lede(page), 'A finished, printable substitution chart for 10 players over two twenty-minute halves, ' +
+    'subbing every four minutes: 20 minutes each, as close to equal playing time as the arithmetic allows, ' +
+    'worked out before tip-off. Paste your own roster into Benchcard and it prints yours.');
+  assert.match(page, /<figcaption[^>]*>Each box is one stint: the clock is time left in the period, and the underlined names just came on\. 10 stints, five on the floor, and it cuts out to fit a pocket\.<\/figcaption>/);
+  assert.ok(page.includes('<p class="trust noprint">Free, and there is no account. Your roster never leaves your device.</p>'));
+  assert.ok(page.includes('<a class="btn" href="./?try=10">Try it with 10 sample players</a>'));
+  assert.ok(page.includes('<link rel="canonical" href="https://benchcard.app/basketball-rotation-chart-two-halves">'));
+  const ld = JSON.parse(page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])['@graph'];
+  assert.equal(ld[0].name, 'Basketball rotation chart for two halves');
+  assert.equal(ld[0].url, 'https://benchcard.app/basketball-rotation-chart-two-halves');
+  assert.deepEqual(ld[1].itemListElement.map(i => i.name), ['Benchcard', 'About', 'Two-halves chart']);
+});
+
+test('the halves card is a real generatePlan run and fits the card', () => {
+  const plan = gen.planForHalves?.();
+  assert.ok(plan, 'the generator exports no halves plan');
+  assert.equal(plan.stints.length, 10);
+  assert.deepEqual(plan.players.map(p => p.name), sampleRoster(10).map(p => p.name));
+  const contentPx = (3.45 - 2 * 0.11) * 96;
+  const m = cardMetrics(plan);
+  assert.ok(m.widest <= contentPx + 0.5 && m.five >= 16, `halves card: ${JSON.stringify(m)}`);
+  for (const s of Object.values(plan.shortNames)) assert.ok(measuredNames().includes(s), `no width for ${s}`);
+});
+
+test('size pages and the halves page link to each other', () => {
+  const nav = (page, label) => page.match(new RegExp(`<nav class="sizes" aria-label="${label}">([\\s\\S]*?)</nav>`))?.[1];
+  const chips = n => [...(n ?? '').matchAll(/<a href="([^"]*)">([^<]*)<\/a>/g)].map(m => [m[1], m[2]]);
+  for (const n of SIZES) {
+    const page = html.get(n);
+    assert.deepEqual(chips(nav(page, 'Other roster sizes')),
+      SIZES.filter(o => o !== n).map(o => [`./${slug(o)}`, `${o} players`]), `${file(n)} siblings`);
+    assert.ok(page.includes('<h2>Playing two halves?</h2>'), `${file(n)} has no halves heading`);
+    assert.deepEqual(chips(nav(page, 'Other game formats')),
+      [['./basketball-rotation-chart-two-halves', 'Two 20-minute halves']], `${file(n)} halves chip`);
+  }
+  const page = read(HALVES_FILE);
+  assert.ok(page.includes('<h2>A chart for your roster size</h2>'));
+  assert.deepEqual(chips(nav(page, 'Rotation charts by roster size')),
+    SIZES.map(o => [`./${slug(o)}`, `${o} players`]));
+});
+
+test('about and advanced link the 6 chart first, then the halves page in its own nav', () => {
+  for (const name of ['about.html', 'advanced.html']) {
+    const src = read(name);
+    const sizes = src.match(/<nav class="sizes" aria-label="Rotation charts by roster size">([\s\S]*?)<\/nav>\s*<nav class="sizes" aria-label="Rotation charts by game format">([\s\S]*?)<\/nav>/);
+    assert.ok(sizes, `${name} has no game-format nav directly after the roster-size nav`);
+    assert.deepEqual([...sizes[1].matchAll(/href="([^"]*)"/g)].map(m => m[1]), SIZES.map(n => `./${slug(n)}`));
+    assert.ok(sizes[1].includes('>6 players<'));
+    assert.deepEqual([...sizes[2].matchAll(/<a href="([^"]*)">([^<]*)</g)].map(m => [m[1], m[2]]),
+      [['./basketball-rotation-chart-two-halves', 'Two halves']]);
+  }
+});
+
+test('the sitemap lists the 6-player page before the 7 and the halves page after the 12', () => {
+  const entries = [...sitemap.matchAll(/<url>\s*<loc>([^<]*)<\/loc>\s*<lastmod>([^<]*)<\/lastmod>\s*<changefreq>[^<]*<\/changefreq>\s*<priority>([^<]*)<\/priority>/g)]
+    .map(m => m.slice(1));
+  const at = loc => entries.findIndex(e => e[0] === `https://benchcard.app/${loc}`);
+  assert.equal(at(slug(6)) + 1, at(slug(7)));
+  assert.equal(at('basketball-rotation-chart-two-halves'), at(slug(12)) + 1);
+  for (const loc of [slug(6), 'basketball-rotation-chart-two-halves']) {
+    assert.deepEqual(entries[at(loc)].slice(1), ['2026-10-31', '0.7'], loc);
   }
 });

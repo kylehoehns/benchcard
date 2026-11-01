@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { avoidRegexes, appCopy, htmlBodyCopy } from './glossary.js';
 import { trackedFiles } from '../scripts/spelling.mjs';
 import { lacks } from './prose.js';
+import { CHARTS } from '../scripts/charts.mjs';
 
 /* #149: one name for each thing across the app. Fourteen terms in CONTEXT.md
    each retire one or more older names (rule chips read "substitution", the
@@ -14,7 +15,7 @@ import { lacks } from './prose.js';
    #98's own rule against typing the list out a second time) and fails if any
    of them survives in copy a reader or screen reader actually sees: every
    tracked `app/*.js` string/template literal, and the `<body>` text of
-   index.html, about.html, advanced.html and the six generated chart pages,
+   index.html, about.html, advanced.html and the generated chart pages,
    with HTML and JS comments stripped and `<noscript>` dropped (index.html's
    own `<head>` and `<noscript>` are the one named carve-out -- Out of scope
    -- so a search-engine result or a no-JS reader can still say
@@ -48,16 +49,17 @@ const WORD_RES = avoidRegexes(TERMS, DROPS, OVERRIDES);
 assert.ok(WORD_RES.length >= 20,
   `only ${WORD_RES.length} avoided phrases parsed from CONTEXT.md; the parser broke`);
 
-/* about.html, advanced.html and the six chart pages are not part of
+/* about.html, advanced.html and the generated chart pages are not part of
    `appCopy()` (that helper is shared with rule-names.test.js, which only
    ever scanned app/*.js + index.html) -- item 15 also names these three
    surfaces, so this guard reads them itself, the same way: `htmlBodyCopy`
    (test/glossary.js), from `<body` on, `<noscript>` dropped, HTML comments
    and block comments stripped. */
-const CHART_FILES = trackedFiles()
-  .filter((f) => /^app\/\d+-player-basketball-rotation-chart\.html$/.test(f));
-assert.equal(CHART_FILES.length, 6,
-  `expected the six generated chart pages, found ${CHART_FILES.length}`);
+const CHART_FILES = CHARTS.map((c) => `app/${c.file}`);
+const tracked = new Set(trackedFiles());
+const untracked = CHART_FILES.filter((f) => !tracked.has(f));
+assert.deepEqual(untracked, [],
+  `generated chart pages that git does not track, so this guard would skip them: ${untracked.join(', ')}`);
 
 const FILES = [
   ...appCopy(),

@@ -24,6 +24,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WORDS } from '../scripts/spelling.mjs';
 import { flat } from './prose.js';
+import { CHARTS, HALVES_FILE } from '../scripts/charts.mjs';
 
 const HOOKS = new URL('../.claude/hooks/', import.meta.url);
 const ROOT = new URL('../', import.meta.url);
@@ -176,6 +177,11 @@ test('vendored files, generated chart pages and the budget baseline are denied',
     '/repo/app/12-player-basketball-rotation-chart.html',
     '/repo/scripts/budgets.json',
   ]) assert.equal(edit(p).decision, 'deny', p);
+});
+
+test('every generated chart page is denied, the two-halves page and the 6-player page included', () => {
+  for (const c of CHARTS) assert.equal(edit(`/repo/app/${c.file}`).decision, 'deny', c.file);
+  assert.match(edit(`/repo/app/${HALVES_FILE}`).reason, /charts\.mjs/);
 });
 
 test('the chart denial names the generator, since that is the actual instruction', () => {

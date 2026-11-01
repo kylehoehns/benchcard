@@ -448,7 +448,7 @@ export const APP_LARGE_TEXT_STATES = [
      is exactly where it has to be looked at, and after A49 nothing looked.
 
      IT IS A NAVIGATION, not a click, for two reasons. `?try=N` is the only path
-     that still raises it (the six chart pages link in with their own roster
+     that still raises it (the chart pages link in with their own roster
      size), and `initOnboarding` reads the parameter only while
      `state.onboarded` is false — so the record has to be wiped first, exactly
      as `firstRun` above wipes it and for the same on-new-document reason.

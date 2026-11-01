@@ -2425,18 +2425,19 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    footer block below, so all three footer links are one treatment; only the
    box is set here. */
 .wel-about { display: inline-flex; align-items: center; min-height: 48px; padding: 0 .55rem; }
-/* #423: the six chart links, digits after a label, in the row treatment
+/* #423: the chart links, digits after a label, in the row treatment
    below. 48px square so a thumb can hit one digit; the label is not a link. */
 .wel-chart { display: inline-flex; align-items: center; justify-content: center;
   min-height: 48px; min-width: 48px; }
 .wel-charts-lbl { color: var(--muted); font-size: var(--fs-footnote); font-weight: 500; }
-/* The label takes its own line so the six digits sit together on one row under
-   it (6 x 48px fits 320px at 16px) rather than wrapping 3 + 3 after it. */
+/* The label takes its own line so the seven digits (6 to 12, #425) sit
+   together on one row under it (7 x 48px = 336px) rather than wrapping after it. */
 .wel-tail-row.wel-charts { gap: 0; container-type: inline-size; }
 .wel-charts .wel-charts-lbl { flex-basis: 100%; }
-/* Too narrow for six (large text at 320 leaves ~256px): split 3 + 3 rather
-   than five and an orphaned 12. px, because the chips are 48px, not em. */
-@container (max-width: 287px) { .wel-chart { flex-basis: 33.333%; } }
+/* Too narrow for seven (under 336px): split 4 + 3, the short row centered by
+   the row's justify-content, rather than six and an orphaned 12. px, because
+   the chips are 48px, not em. */
+@container (max-width: 335px) { .wel-chart { flex-basis: 25%; } }
 /* The two doors under the figures: one column of choices, not a row a thumb
    has to aim inside. */
 .wel-go { width: 100%; margin-top: .62rem; padding: .82rem 1rem; font-size: var(--fs-body); }

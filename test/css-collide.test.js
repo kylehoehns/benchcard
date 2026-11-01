@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { CHARTS } from '../scripts/charts.mjs';
 
 /* The same class name, defined by two stylesheets that meet on one page.
  *
@@ -147,7 +148,7 @@ test('the sweep can actually see a stylesheet, and the graph is what we think', 
      `.stint`, `.chg`, `.five` and `.nm` from the printed card and is safe only
      while it does not link `card.css` either. */
   assert.deepEqual(graph['advanced.html'], ['tokens.css', 'inline:advanced.html']);
-  for (const p of PAGES.filter((f) => f.endsWith('-basketball-rotation-chart.html'))) {
+  for (const { file: p } of CHARTS) {
     assert.deepEqual(graph[p], ['tokens.css', 'card.css', `inline:${p}`],
       `${p} loads an unexpected set of stylesheets`);
   }
@@ -155,7 +156,8 @@ test('the sweep can actually see a stylesheet, and the graph is what we think', 
      served at any depth, so `sheetsOf` reads both spellings (#424). It must
      see tokens.css there, or this page's sweep would measure nothing. */
   assert.deepEqual(graph['404.html'], ['tokens.css', 'inline:404.html']);
-  assert.ok(PAGES.length === 10, `expected 10 static pages, found ${PAGES.length}`);
+  /* index, about, advanced, 404, and every page scripts/charts.mjs generates. */
+  assert.equal(PAGES.length, 4 + CHARTS.length, `expected ${4 + CHARTS.length} static pages, found ${PAGES.length}`);
   // and the parser really does read rules out of a real sheet
   assert.ok(classesOf(read('card.css')).has('card'), 'card.css should define .card');
 });

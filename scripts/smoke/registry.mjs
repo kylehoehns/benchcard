@@ -66,6 +66,7 @@ import {
   TOUCH_WIDTHS, TOUCH_CHECK, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, CLIP_SWEEP_CHECK, ABOUT_CLIP_CHECK,
 } from './sizes.mjs';
 
+import { CHARTS } from '../charts.mjs';
 import { cardFontPass } from './card-font.mjs';
 import { fixturePass } from './rich-fixture.mjs';
 import { fontDrawsPass } from './font-draws.mjs';
@@ -573,7 +574,7 @@ export const ROWS = Object.freeze([
     run: ctx => aboutClipSweepPass(ctx.c, ctx.origin, ctx.rec) },
   { id: 'typescale', name: 'type scale: 8 sizes, 4 weights', selectable: true, setup: 'rich',
     run: ctx => typeScalePass(ctx.c, ctx.origin, ctx.rec) },
-  { id: 'static', name: 'static pages: 2 guides + 6 charts', selectable: true, setup: 'rich',
+  { id: 'static', name: `static pages: 2 guides + ${CHARTS.length} charts`, selectable: true, setup: 'rich',
     run: ctx => staticPass(ctx.c, ctx.source, ctx.origin, ctx.rec) },
   // These three names are `budgets.mjs`'s, verbatim — that file is untouched by
   // this change, so the names are pinned here by hand rather than imported.

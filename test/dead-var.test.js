@@ -23,7 +23,7 @@ import { readFileSync, readdirSync } from 'node:fs';
  *     value it could ever take.
  *
  * Scope is deliberately the whole shipped surface in one pool, not per file:
- * `about.html` and the six chart pages link `tokens.css` and read its tokens
+ * `about.html` and the chart pages link `tokens.css` and read its tokens
  * without declaring any, and modules declare tokens (`--c`, `--bar`) that only
  * CSS reads.
  */

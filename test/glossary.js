@@ -65,7 +65,7 @@ export function avoidRegexes(terms, drops = new Set(), overrides = {}) {
 }
 
 /* The body-text extraction both `appCopy()` below (for index.html) and
-   one-name.test.js (for about.html, advanced.html and the six chart pages)
+   one-name.test.js (for about.html, advanced.html and the generated chart pages)
    need: everything from `<body` on -- a page's own `<head>` and `<noscript>`
    are read by search engines and no-JS readers respectively, and #149's one
    named carve-out is index.html's -- with `<noscript>…</noscript>` removed

@@ -182,7 +182,7 @@ test('the declared hooks are all still emitted, so the list cannot rot', () => {
 /* ------------------------------------------------------------------ *
  * The standalone pages: one document, one inline sheet, both ways.
  *
- * `about.html`, `advanced.html` and the six roster-size pages are each a
+ * `about.html`, `advanced.html` and the generated chart pages are each a
  * single document with a single inline <style>, which makes the question
  * decidable in a way it is not for the shell: the classes that sheet DEFINES,
  * minus the classes the markup uses, minus the ones the page's own inline

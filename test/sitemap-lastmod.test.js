@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseSitemap, problems } from '../scripts/check-sitemap-lastmod.mjs';
+import { CHARTS } from '../scripts/charts.mjs';
 
 /* The pure decision behind `scripts/check-sitemap-lastmod.mjs`: a page whose
  * HTML changed in the diff must carry a new <lastmod>. No git here; the
@@ -48,7 +49,7 @@ test('parseSitemap maps each extensionless loc to its file and lastmod', () => {
 
 test('the shipped sitemap is parseable and every lastmod is a date', () => {
   const dates = parseSitemap(readFileSync(new URL('../app/sitemap.xml', import.meta.url), 'utf8'));
-  assert.equal(Object.keys(dates).length, 9);
+  assert.equal(Object.keys(dates).length, 3 + CHARTS.length, 'index, about, advanced and every chart page');
   for (const d of Object.values(dates)) assert.match(d, /^\d{4}-\d{2}-\d{2}$/);
 });
 

@@ -9,6 +9,7 @@ import { describe, test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { Coach, hasChrome } from './coach.js';
 import { lacks } from './prose.js';
+import { SIZES } from '../scripts/charts.mjs';
 
 const skip = !(await hasChrome()) && 'no Chrome on this machine';
 
@@ -34,7 +35,7 @@ describe('a coach opens Benchcard for the first time', { skip }, () => {
     assert.ok(controls.includes('Try a sample team'), JSON.stringify(controls));
   });
 
-  test('the welcome headline is followed by one sentence saying what the app is, and the six charts are linked', async () => {
+  test('the welcome headline is followed by one sentence saying what the app is, and the charts are linked', async () => {
     await coach.onFreshDevice();
 
     const hero = await coach.text('.wel-hero');
@@ -43,7 +44,7 @@ describe('a coach opens Benchcard for the first time', { skip }, () => {
     assert.ok(lacks(hero, 'however else you want them split'), hero);
 
     const charts = await coach.text('nav[aria-label="Rotation charts by team size"]');
-    for (const n of [7, 8, 9, 10, 11, 12]) {
+    for (const n of SIZES) {
       assert.ok(new RegExp(`\\b${n}\\b`).test(charts), `the chart row shows ${n}: ${JSON.stringify(charts)}`);
     }
   });
