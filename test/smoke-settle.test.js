@@ -6,11 +6,12 @@
  * whichever row happens to lean on it. Skips where there is no Chrome (#235). */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { launch, cdp, closeChrome } from '../scripts/smoke/chrome.mjs';
 import { evalIn, SETTLE, TIMER_TRACKER, TIMERS_QUIET, TRACKED_TIMER_MS, SETTLE_CAP_MS } from '../scripts/smoke/dom.mjs';
 import { NEEDS_CHROME } from './helpers/smoke-cli.mjs';
 
-let chrome, c, pageNo = 0;
+let chrome, c, server, origin, pageNo = 0;
 
 /* #481: a history.back() whose traversal the browser runs late, as it does
    under load. When a page sets `window.__lateBackMs`, the real back runs that
@@ -29,6 +30,10 @@ const LATE_BACK = `{
 
 before(async () => {
   if (NEEDS_CHROME.skip) return;
+  // A real http origin: Chrome's Navigation API (canGoBack) reports nothing on a data: page.
+  server = http.createServer((req, res) => { res.setHeader('content-type', 'text/html'); res.end(`<p>settle test ${req.url}</p>`); });
+  await new Promise(ok => server.listen(0, '127.0.0.1', ok));
+  origin = `http://127.0.0.1:${server.address().port}`;
   chrome = await launch(0, false);
   c = cdp(chrome.ws);
   await c.ready;
@@ -40,12 +45,13 @@ before(async () => {
 });
 after(async () => {
   c?.close();
+  server?.close();
   if (chrome) await closeChrome(chrome.proc, chrome.dir);
 });
 
 // A fresh window each time, so an override in one test cannot leak into the next.
 async function freshPage() {
-  const url = `data:text/html,<p>settle test ${++pageNo}</p>`;
+  const url = `${origin}/${++pageNo}`;
   const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
   // #375: a page that never fires load fails here, by name, not at the test timeout.
   const LOAD_LIMIT = 10_000;
@@ -113,4 +119,16 @@ test('SETTLE and TIMERS_QUIET wait for a late history.back() to land (#481)', { 
   }
   // The arm landed: both backs really were delayed.
   assert.equal(await evalIn(c, 'window.__lateBacks'), 2);
+});
+
+test('a history.back() with no entry behind it does not hold the wait (#481)', { timeout: 30_000, ...NEEDS_CHROME }, async () => {
+  await freshPage();
+  // Drop the earlier tests' entries, so this document is the only one: nothing to go back to.
+  await c.send('Page.resetNavigationHistory');
+  assert.equal(await evalIn(c, 'navigation.canGoBack'), false, 'the arm failed: there is still an entry behind');
+  await evalIn(c, 'history.back(); 0');
+  const { result, ms } = await timed(TIMERS_QUIET, SETTLE_CAP_MS + 5000);
+  assert.equal(result, 'quiet');
+  assert.ok(ms < SETTLE_CAP_MS - 1000, `took ${ms}ms: it waited on a back that had nowhere to go`);
+  assert.equal(await evalIn(c, 'window.__pendingBack'), 0);
 });

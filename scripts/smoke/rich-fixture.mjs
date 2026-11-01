@@ -46,19 +46,8 @@ export async function fixturePass(c, rec) {
     out.resetLevels = [...document.querySelectorAll('#teamActions button')]
       .filter(b => /back to the same level/i.test(b.textContent)).length;
     $('#backBtn').click();
-    /* Going home from a pushed screen is a REAL \`history.back()\` now (#23
-       review, item A) -- an async browser traversal, not a same-tick repaint.
-       Clicking the next thing before its own \`popstate\` has landed is
-       exactly the "back-then-push in one tick" race that traversal's own
-       fix guards against, and the guard's recovery is to reassert history at
-       the CURRENT position -- which is safe, but is not "nothing happened",
-       and chaining three of these with no yield between them was enough to
-       walk the tab's session history back past this reload's own base entry
-       and off the app entirely (reproduced: \`npm run smoke -- --no-tests\`
-       died with "Inspected target navigated or closed" mid-\`fixturePass\`).
-       One settle is the fix, here and at every \`#backBtn\` click below:
-       SETTLE waits for the back's own \`popstate\` (#481), because under load
-       a few frames were not always enough for it to land. */
+    /* Going home is a REAL \`history.back()\`, which lands late: settle after it,
+       here and at every \`#backBtn\` click below (BACK_PENDING in dom.mjs, #481). */
     await ${SETTLE};
     $('#todaySeason').click();
     await ${SETTLE};

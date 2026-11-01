@@ -147,10 +147,15 @@ export const TIMER_TRACKER = `(() => {
     return st.call(this, fn, ms, ...rest);
   };
   window.clearTimeout = function (id) { pending.delete(id); return ct.call(this, id); };
-  /* #481: each history.back() counts until a popstate arrives (BACK_PENDING). */
+  /* #481: each history.back() counts until a popstate arrives (BACK_PENDING).
+     A back with nothing behind it, or one that leaves this document, fires no
+     popstate here, so only count when it can traverse within this document. */
   window.__pendingBack = 0;
   const back = History.prototype.back;
-  History.prototype.back = function () { window.__pendingBack++; return back.call(this); };
+  History.prototype.back = function () {
+    if (typeof navigation === 'undefined' || navigation.canGoBack) window.__pendingBack++;
+    return back.call(this);
+  };
   addEventListener('popstate', () => { window.__pendingBack = Math.max(0, window.__pendingBack - 1); });
   // A page restored from the back/forward cache left with a back still counted.
   addEventListener('pageshow', e => { if (e.persisted) window.__pendingBack = 0; });
