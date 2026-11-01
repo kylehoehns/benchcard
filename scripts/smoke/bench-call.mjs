@@ -161,7 +161,8 @@ async function notHereAt(c, origin, rec, cell, where, withToast) {
 function toastClear(rec, d, label, cell) {
   onScreen(rec, d.toast, d.vh, label, 'the toast');
   onScreen(rec, d.foot, d.vh, label, '.gm-foot');
-  const noRoom = cell.where === TIGHT_CELL && d.toast.height > d.next.top;
+  // the same 1.1rem liftToasts keeps (its .6rem foot padding and .5rem top margin)
+  const noRoom = cell.where === TIGHT_CELL && d.toast.height + 1.1 * cell.textPx > d.next.top;
   if (!noRoom) rec.check(!overlaps(d.toast, d.next), `${label}: the toast (${rr(d.toast)}) covers #gmNext (${rr(d.next)})`);
   rec.check(!overlaps(d.toast, d.foot), `${label}: the toast (${rr(d.toast)}) covers .gm-foot (${rr(d.foot)})`);
 }
