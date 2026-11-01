@@ -1686,6 +1686,50 @@ function repinOvertime(g, p) {
   if (Object.keys(pins).length) writeOverrides(g.live, pins, false);
 }
 
+/* #440: a pinned overtime five that breaks one of the coach's rules says so.
+   The five is never changed (ADR 0001); the plan just gets a note. A stint
+   counts when the five the choice puts there breaks the rule AND the five on
+   the floor (hand swaps included) still does, so a swap of the coach's own is
+   never blamed on the choice. One note per rule per choice label. The plan is
+   cached, so earlier notes of this code are dropped before the current ones. */
+const PIN_NOTE = 'PIN_BREAKS_RULE';
+function pinNotes(g, p) {
+  const first = p.stints.findIndex(isOvertimeStint);
+  if (first < 0) return [];
+  const avail = playingIds(g);
+  const pins = pinFives(g, p, first, avail);
+  const floor = effectiveStints(g, p);
+  const calls = callNames(state.players);
+  const nm = id => calls[id] || id;
+  const c = g.constraints;
+  const mins = effectiveMinutes(g, p);
+  const out = new Map();
+  const add = (message, playerIds) => out.has(message) || out.set(message, { severity: 'warn', code: PIN_NOTE, playerIds, message });
+  for (const [k, f] of Object.entries(pins)) {
+    const e = floor[k].onFloor;
+    const label = overtimeOf(g, p.stints[k]).who === 'keep' ? 'Keep this five' : 'Strongest five';
+    const both = (a, b, on) => on(f, a) && on(f, b) && on(e, a) && on(e, b);
+    for (const [a, b] of c.avoids) {
+      if (both(a, b, (x, id) => x.includes(id))) add(`${label} puts ${nm(a)} and ${nm(b)} on together; they are set Apart.`, [a, b]);
+    }
+    for (const [a, b] of (c.keepOnFloor || [])) {
+      if (avail.includes(a) && avail.includes(b) && both(a, b, (x, id) => !x.includes(id))) {
+        add(`${label} leaves ${nm(a)} and ${nm(b)} both off; they are set One of two on.`, [a, b]);
+      }
+    }
+    for (const [id, cap] of Object.entries(c.maxMinutes)) {
+      if (f.includes(id) && e.includes(id) && (mins[id] || 0) > cap) {
+        add(`${label} gives ${nm(id)} ${fmtMinutes(mins[id])} minutes; Plays at most is ${cap}.`, [id]);
+      }
+    }
+  }
+  return [...out.values()];
+}
+
+function notePins(g, p) {
+  p.issues = [...(p.issues || []).filter(i => i.code !== PIN_NOTE), ...pinNotes(g, p)];
+}
+
 function syncOverrides(g, p, underway = false, prev = null) {
   const live = g.live;
   if (!p || !p.ok || !live) return p;
@@ -1792,7 +1836,7 @@ export function computeAll() {
       for (const [id, m] of Object.entries(mins)) cum[id] += m;
       noteToday(mins);
     };
-    const tally = (g, p) => (p.ok && addUp(g, p), p);
+    const tally = (g, p) => (p.ok && (notePins(g, p), addUp(g, p)), p);
     /* Composition, not replacement: `engine.js` reads the priority map for its
        ORDER alone (`tieBreakOrder` sorts on it and nothing else), so a level
        multiplied out past any credible deficit puts the levels first and leaves
