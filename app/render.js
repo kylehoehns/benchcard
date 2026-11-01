@@ -28,7 +28,7 @@ import { renderSetup, renderSentence, refreshSheetStatus } from './game-setup.js
 import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './teams-view.js';
 import { renderSeason, seasonGames } from './season-view.js';
 import { state, save, renderStorageWarning, computeAll, overridesDropped, rotationMoved, dayUnderway,
-  rotationOfferSuppressed, saveJustFailed, activeColor, hasGames, satShortBench, joinNames } from './state.js';
+  rotationOfferSuppressed, saveJustFailed, activeColor, hasGames, satShortBench, pinsNotice, joinNames } from './state.js';
 import { retireUndo, flash, showUndo } from './toast.js';
 import { initEdits } from './edit.js';
 // storage.js is already in the boot graph (state.js imports it for
@@ -165,7 +165,9 @@ export function render(...keys) {
      screen. Said inside the toast this render raises when there is one (a
      second toast would replace its Undo), on its own otherwise. */
   const kept = satShortBench(state.day?.games[state.activeGame]?.id);
-  const notKept = kept.length ? ` Not enough players to keep ${joinNames(kept)} sitting.` : '';
+  const notSat = kept.length ? ` Not enough players to keep ${joinNames(kept)} sitting.` : '';
+  /* #437: and a kid a re-plan stopped holding to a stint, the same way. */
+  const notKept = notSat + pinsNotice(state.day?.games[state.activeGame]?.id);
   if (moved.length && priorSettled && !rotationOfferSuppressed()) {
     // Parsed here, not held parsed: this is the one repaint in many that
     // actually needs an independent object tree to restore into.

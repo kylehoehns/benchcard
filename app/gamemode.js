@@ -19,7 +19,7 @@ import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './tra
 import { track } from './analytics.js';
 import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup, effectiveStints,
-         resolveRest, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+         resolveRest, pinsNotice, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
 import { EDITS } from './edit.js';
 import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, openGame, step, finish, satIds, sitOut, finishedGame } from './live.js';
 
@@ -1134,10 +1134,11 @@ function hereNow(g, id, shown) {
   tick();
   let rewritten = false;
   let name = shown;
+  let told = '';
   /* The message is read after the change: #134's "Rotation changed" notice is
      suppressed inside an `undoable`, so a freeze that could not hold (By hand,
      Platoon, an infeasible rule) says so here, as Add overtime does. */
-  undoable(() => `${name} is here.${rewritten ? ' Rotation changed.' : ''}`, () => {
+  undoable(() => `${name} is here.${rewritten ? ' Rotation changed.' : ''}${told}`, () => {
     /* Stepping through stints in bench mode never re-plans, so the plan the
        coach is looking at has not been "seen" by `syncOverrides` yet, and the
        re-plan below would then adopt the new rotation outright instead of
@@ -1150,6 +1151,9 @@ function hereNow(g, id, shown) {
     setAvailable(g, id, true);
     computeAll();
     const now = played();
+    /* #437: read here, before the repaint below would raise it as a toast of
+       its own that this one then replaces. */
+    told = pinsNotice(g.id);
     rewritten = was.some((five, k) => five !== now[k]);
     // the call name is made from the set that now includes the arrival
     name = callNames(availIds(g).map(byId).filter(Boolean))[id] || shown;

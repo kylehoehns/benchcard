@@ -1502,6 +1502,19 @@ export const overridesDropped = () => { const n = dropped; dropped = 0; return n
 const satShort = new Map();
 export const satShortBench = id => { const n = satShort.get(id) || []; satShort.clear(); return n; };
 
+/* #437: the kids a re-plan stopped holding to a stint, by game id, in the two
+   ways it can: `used` (Plays at most spent) and `cleared` (it still would not
+   solve, so no kid was held). Same shape and read-and-reset as `satShort`. */
+const pinsLet = new Map();
+const pinsLetRead = id => { const n = pinsLet.get(id) || { used: [], cleared: [] }; pinsLet.clear(); return n; };
+/* The sentence(s) for the game on screen, led by a space so they append to
+   another notice; '' when nothing was let go. Read-and-reset. */
+export function pinsNotice(id) {
+  const { used, cleared } = pinsLetRead(id);
+  return (used.length ? ` Not enough minutes left to keep ${joinNames(used)} fixed to a stint.` : '')
+    + (cleared.length ? ` Could not keep ${joinNames(cleared)} fixed to a stint.` : '');
+}
+
 /* #412: plan the rest of a game from stint `from`, with its standing sit when
    five can be made without those kids, and without it when they cannot -- the
    arrival or attendance change has already happened, so a sit cannot refuse
@@ -1511,16 +1524,28 @@ export const satShortBench = id => { const n = satShort.get(id) || []; satShort.
    fallback in `syncOverrides` call. */
 function replanRest(g, p, from) {
   const live = g.live;
+  const here = new Set(availIds(g));
+  const calls = callNames(state.players);
   let r = resolveRest(g, p, from);
   if (!r.ok && r.reason === 'nobody' && satIds(live).length) {
     const again = resolveRest(g, p, from, [], null, []);
     if (again.ok) {
       r = again;
-      const here = new Set(availIds(g));
-      const calls = callNames(state.players);
       satShort.set(g.id, satIds(live).filter(id => here.has(id)).map(id => calls[id]));
     }
   }
+  /* #437: still refused -- hold nobody to a stint, and say who was let go. */
+  if (!r.ok && r.reason === 'infeasible') {
+    const c = g.constraints;
+    const fixed = [...(c.lastPeriodFive || []), ...(g.strategy === 'closers' ? c.closing?.players || [] : [])];
+    const who = [...new Set(fixed)].filter(id => here.has(id));
+    const again = who.length && resolveRest(g, p, from, [], null, undefined, { clearPins: true });
+    if (again?.ok) {
+      pinsLet.set(g.id, { used: [], cleared: who.map(id => calls[id]) });
+      return again;
+    }
+  }
+  if (r.ok && r.pinsDropped?.length) pinsLet.set(g.id, { used: r.pinsDropped.map(id => calls[id]), cleared: [] });
   return r;
 }
 
@@ -1932,7 +1957,7 @@ function lateArrivals(g, p, k) {
  * actually played. Returns `{ ok: true, from, overrides, issues,
  * minutes }` or `{ ok: false, reason }`; `reason` is for slice 2's copy.
  * ================================================================== */
-export function resolveRest(g, p, from, sitIds = [], to = null, standing = satIds(g.live)) {
+export function resolveRest(g, p, from, sitIds = [], to = null, standing = satIds(g.live), { clearPins = false } = {}) {
   if (!p || !p.ok) return { ok: false, reason: 'noplan' };
   const k = Math.max(0, Math.min(Math.trunc(from) || 0, p.stints.length));
   // `to` ends the suffix early: Reset plans one Even-out period at a time
@@ -1989,6 +2014,8 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   c.openingFive = [];
   if (strategy !== 'platoon') c.units = [];
   if (strategy !== 'closers') c.closing = null;
+  /* #437: `replanRest`'s last resort -- hold nobody to a stint. */
+  if (clearPins) { c.lastPeriodFive = []; c.closing = null; }
   /* A By hand lock holds a regulation number, not overtime's, so it is dropped
      here. That is safe for the other strategies: only By hand lets a coach set
      locks, and the engine reads them only to hold a locked row out of its
@@ -2065,6 +2092,35 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
       c.openingFive = [];
       r = solve();
     }
+    /* #437: a kid whose Plays at most is spent cannot be held to a stint the
+       engine pins them onto -- the first remaining stint of the last period,
+       or the closing window. The engine names who (`FORCED_OVER_CAP` /
+       `PINS_OVER_CAP`); those kids, and only those, stop being held, and the
+       rest is solved again. */
+    if (!r.ok) {
+      const capped = [...new Set(r.issues.filter(i => i.severity === 'error'
+        && (i.code === 'FORCED_OVER_CAP' || i.code === 'PINS_OVER_CAP')).flatMap(i => i.playerIds))];
+      if (capped.length) {
+        const rules = id => [c.lastPeriodFive.includes(id) && 'Starts the last period', c.closing?.players.includes(id) && 'Closers'].filter(Boolean);
+        const was = Object.fromEntries(capped.map(id => [id, rules(id)]));
+        c.lastPeriodFive = c.lastPeriodFive.filter(id => !capped.includes(id));
+        if (c.closing) {
+          c.closing = { ...c.closing, players: c.closing.players.filter(id => !capped.includes(id)) };
+          if (!c.closing.players.length) c.closing = null;
+        }
+        const again = solve();
+        if (again.ok) {
+          const calls = callNames(state.players);
+          const held = capped.filter(id => was[id].length);
+          again.issues = [...again.issues, ...held.map(id => ({
+            severity: 'warn', code: 'PIN_CAP_USED', playerIds: [id],
+            message: `${calls[id]}: Plays at most is used up, so ${was[id].join(' and ')} no longer holds them.`,
+          }))];
+          again.pinsDropped = held;
+          r = again;
+        }
+      }
+    }
     if (!r.ok) return { ok: false, reason: 'infeasible', issues: r.issues };
   }
 
@@ -2077,7 +2133,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   const minutes = Object.keys(pinsNow).length
     ? minutesFrom(suffix.map((s, i) => ({ onFloor: overrides[k + i] || s.onFloor, minutes: s.minutes })), avail)
     : r.minutes;
-  return { ok: true, from: k, overrides, issues: r.issues, minutes };
+  return { ok: true, from: k, overrides, issues: r.issues, minutes, pinsDropped: r.pinsDropped || [] };
 }
 
 /* ================================================================== *
