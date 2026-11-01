@@ -156,7 +156,9 @@ test('Advanced links the chart pages under "A chart for your roster size"', () =
   assert.ok(at < src.lastIndexOf('<footer'), 'the chart section is not before the footer');
   const hrefs = navHrefs('advanced.html', 'Rotation charts by roster size');
   assert.deepEqual(hrefs, SIZES.map(n => `./${slug(n)}`));
-  assert.match(src, /\.sizes a\s*\{/, 'advanced.html has no .sizes chip rule');
+  // the chip rule lives once, in site.css (#434), so the page must load it
+  assert.match(src, /<link[^>]*href="\.\/site\.css"/, 'advanced.html does not load site.css');
+  assert.match(readFileSync(new URL('../app/site.css', import.meta.url), 'utf8'), /\.sizes a\s*\{/, 'site.css has no .sizes chip rule');
 });
 
 /* ------------------------------------------------------------------ *

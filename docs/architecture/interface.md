@@ -295,8 +295,8 @@ on CSS transitions. Actions a coach repeats many times a minute (a switch, a
 checkbox, a player chip's avatar) change state with no transition at all (#151).
 
 The UI's own type follows the phone's text-size setting rather than a fixed
-scale (#24): `body` and every text size in `app.css` is one of the seven
-`--fs-*` tokens `tokens.css` declares, `inherit`, or (a screen's own large
+scale (#24): `body` and every text size in `app.css` and `timeline.css` is one
+of the seven `--fs-*` tokens `tokens.css` declares, `inherit`, or (a screen's own large
 title, inside the narrow-screen block) capped against the viewport —
 `interface-guidelines.md` T2 lists the scale and the platform gate that gets
 the root itself to follow the reader's setting. The printed card is exempt:

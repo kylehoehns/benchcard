@@ -22,6 +22,9 @@ const stripHtml = (src) => src.replace(/<!--[\s\S]*?-->/g, ' ');
 
 const tokens = stripCss(readApp('tokens.css'));
 const app = stripCss(readApp('app.css'));
+/* The timeline's rules moved out of app.css into timeline.css (#434); the app
+   loads both, so the scale holds across the pair. */
+const timeline = stripCss(readApp('timeline.css'));
 const index = stripHtml(readApp('index.html'));
 
 /* ---- 1: the scale, exactly (decision 3's table) ---- */
@@ -101,8 +104,10 @@ function checkFontSizes(src, label, allowCap) {
       `on a large title) min(var(--fs-large), <n>vw). Non-token value(s): ${offenders.join(', ')}`);
 }
 
-test('every font-size in app.css is on the scale', () => {
+test('every font-size in app.css and timeline.css is on the scale', () => {
+  assert.ok(timeline.length > 3000, 'timeline.css was not read');
   checkFontSizes(app, 'app.css', true);
+  checkFontSizes(timeline, 'timeline.css', false);
 });
 
 /* Both index.html style-attribute checks below scan the same way: every
@@ -166,8 +171,8 @@ test('every font: shorthand in an index.html style attribute has an on-scale siz
       `(font: inherit is fine): ${offenders.join(', ')}`);
 });
 
-test('every font: shorthand in app.css has an on-scale size', () => {
-  const offenders = fontShorthandSizes(app).filter(size => !FS_TOKEN.test(size));
+test('every font: shorthand in app.css and timeline.css has an on-scale size', () => {
+  const offenders = [...fontShorthandSizes(app), ...fontShorthandSizes(timeline)].filter(size => !FS_TOKEN.test(size));
   assert.deepEqual(offenders, [],
     `app.css must not size text directly via the font: shorthand ` +
       `(font: inherit and the gated font: -apple-system-body rule are fine): ${offenders.join(', ')}`);
@@ -185,8 +190,9 @@ function checkFontWeights(src, label) {
     `${label}: every font-weight must be 400, 500, 600, 700 or inherit. Off-scale value(s): ${offenders.join(', ')}`);
 }
 
-test('every font-weight in app.css is 400, 500, 600, 700 or inherit', () => {
+test('every font-weight in app.css and timeline.css is 400, 500, 600, 700 or inherit', () => {
   checkFontWeights(app, 'app.css');
+  checkFontWeights(timeline, 'timeline.css');
 });
 
 test('every font-weight in an index.html style attribute is 400, 500, 600, 700 or inherit', () => {

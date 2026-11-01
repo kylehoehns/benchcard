@@ -155,9 +155,12 @@
      this page's: shared rather than copied, because a hand-kept copy drifts
      (this one had, on --shadow and --accent-line) and the About page then
      reads as a slightly different product. tokens.css is precached alongside
-     the app, so arriving here from the app costs no request. Everything below
-     is genuinely about-page-only. -->
+     the app, so arriving here from the app costs no request. site.css is the
+     public pages' shared sheet and timeline.css is the app's own timeline
+     (#434); the inline block after them is genuinely about-page-only. -->
 <link rel="stylesheet" href="./tokens.css">
+<link rel="stylesheet" href="./site.css">
+<link rel="stylesheet" href="./timeline.css">
 <script>
 /* The scroll reveals below start hidden, and this class is the ONLY thing that
    turns that hidden state on. It is added here -- before first paint, so there
@@ -171,65 +174,9 @@
 try { if (window.IntersectionObserver) document.documentElement.classList.add('js'); } catch (e) {}
 </script>
 <style>
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font-family: var(--font); font-size: 17px; line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  padding: 0 0 env(safe-area-inset-bottom);
-}
-/* The 1.15rem gutter lives HERE, not on `body`, so that `.topbar` below can be
-   a body child and run edge to edge. `40rem + 2 x 1.15rem` keeps the text
-   column at exactly the 40rem it has always been. */
-.wrap { max-width: 42.3rem; margin: 0 auto; padding: 0 1.15rem; }
-
-/* --- top bar: one 48px target back to the app, thumb-safe on a phone --- */
-/* `flex-wrap` so the "Open the app" pill drops under the wordmark instead of
-   hanging off the right edge once the reader's text size grows -- the same fix
-   the chart pages' top bar carries. This page has its own stylesheet and does
-   not link `app.css`, so it needs its own copy. */
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem;
-       max-width: 42.3rem; margin: 0 auto; padding: .9rem 1.15rem .3rem; }
-/* `min-height` because the wordmark is a live link home, not decoration, and it
-   was 27px tall -- under the 48px floor the rest of the app holds itself to.
-   It costs no bar height while the CTA pill shares the row (that pill is
-   already 48px); it only pays when the row wraps at large text. */
-.mark { display: flex; align-items: center; min-height: 48px; gap: .5rem; text-decoration: none; color: inherit; }
-.mark b { font-size: 1.05rem; font-weight: 660; letter-spacing: -.03em; }
-.spacer { flex: 1; }
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-  min-height: 48px; padding: 0 1.05rem; border-radius: 999px;
-  font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
-  text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
-  background: var(--surface); cursor: pointer;
-  transition: transform 110ms var(--ease);
-}
-.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
-.btn:active { transform: scale(.97); }
-
-h1 {
-  font-size: clamp(2rem, 8vw, 2.9rem); line-height: 1.05; letter-spacing: -.045em;
-  font-weight: 700; margin: 1.6rem 0 0;
-}
-.lede { font-size: 1.16rem; line-height: 1.5; color: var(--ink-2); margin: 1rem 0 0; }
-.cta { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.5rem 0 2.4rem; }
-/* Sections are the rhythm now: a rule, an eyebrow-sized heading, then the
-   artefact. The rule is what stops eight sections of prose reading as one
-   long column. */
-section { border-top: 1px solid var(--line); padding-top: 1.9rem; margin-top: 2.9rem; }
-h2 {
-  font-size: 1.32rem; letter-spacing: -.03em; font-weight: 640;
-  margin: 0 0 .7rem; scroll-margin-top: 1rem;
-}
-h3 { font-size: 1.02rem; font-weight: 640; letter-spacing: -.02em; margin: 1.5rem 0 .3rem; }
-p { margin: .8rem 0; color: var(--ink-2); }
-p.tight { margin-top: .25rem; }
-p.lead { font-size: 1.06rem; color: var(--ink-2); margin: 0 0 1.1rem; max-width: 34rem; }
-b, strong { color: var(--ink); font-weight: 620; }
-a { color: var(--accent-text); text-underline-offset: .18em; text-decoration-thickness: .07em; }
-
+/* About's own rules: everything worn by this page alone. The rest is
+   `site.css`, shared with the other public pages (#434), and the timeline is
+   `timeline.css`, the app's own. */
 ol.steps { margin: 1rem 0; padding: 0; list-style: none; counter-reset: s; }
 ol.steps li {
   counter-increment: s; position: relative; padding: 0 0 0 2.6rem; margin: 0 0 1rem;
@@ -243,39 +190,9 @@ ol.steps li::before {
   display: flex; align-items: center; justify-content: center;
 }
 
-.box {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 16px; padding: 1.1rem 1.15rem; margin: 1.1rem 0;
-  box-shadow: var(--shadow);
-}
-.box h3 { margin-top: 0; }
 .box p:last-child { margin-bottom: 0; }
-.note {
-  border-left: 3px solid var(--accent-line); background: var(--surface-2);
-  border-radius: 0 12px 12px 0; padding: .75rem .95rem; margin: 1.2rem 0;
-  font-size: .96rem;
-}
-.note p { margin: 0; }
 
-/* ---- artefacts -----------------------------------------------------------
-   Everything below draws a piece of the app in the app's own vocabulary,
-   rather than photographing it: sharper than a screenshot, correct in both
-   themes for free, and it costs bytes instead of a request. The two real
-   screenshots that were already here stay, because a phone screen and a sheet
-   of paper are things a picture is honest about and CSS is not. */
-.plate {
-  border-radius: var(--r-lg); padding: 1.15rem 1rem; border: 1px solid var(--line);
-  background:
-    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
-    var(--bg-2);
-}
-figure.art { margin: 0 0 1.5rem; }
-figure.art.after { margin-top: 1.5rem; }
-figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6rem; }
-.plate-hd {
-  font-size: .68rem; font-weight: 680; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--muted); margin: 0 0 .7rem;
-}
+figure.after { margin-top: 1.5rem; }
 
 /* the rotation-level chooser, as the Team page draws it (A56). The real
    control is a five-step staircase per player: bars at 6/11/16/22/28px, filled
@@ -346,63 +263,13 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
    what flex gives that a grid does not. */
 .lv-word { flex: 0 0 4.6rem; font-size: .8rem; font-weight: 600; color: var(--ink-2); }
 
-/* the timeline, as the plan view draws it */
-.tl { --lab: 4.4rem; --tot: 3.6rem; }
-.tl-head { display: grid; grid-template-columns: var(--lab) 1fr var(--tot); gap: .55rem; margin-bottom: .3rem; }
-.tl-periods { position: relative; height: 1rem; grid-column: 2; }
-.tl-periods span {
-  position: absolute; top: 0; font-size: .62rem; font-weight: 660; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--muted); transform: translateX(.3rem);
-}
-.tl-row { display: grid; grid-template-columns: var(--lab) 1fr var(--tot); gap: .55rem; align-items: center; padding: .11rem 0; }
-.tl-lab { display: flex; align-items: center; gap: .38rem; min-width: 0; }
-/* Two figures share these: the timeline above and the level chooser below.
-   Scoped to `.tl-lab` alone, the chooser's dot got NO rule and rendered as
-   nothing -- and `test/dead-class.test.js` stayed green, because the class has
-   a rule somewhere on the page. A rule existing is not a rule applying. */
-.tl-lab .dot, .lv-lab .dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--c); flex: none; }
-.tl-lab .nm, .lv-lab .nm { font-size: .78rem; font-weight: 620; letter-spacing: -.015em; color: var(--ink);
+/* The dot and name beside each level row. Page-only names (`lv-dot`,
+   `lv-nm`): the level chooser used to share `.dot`/`.nm` with the timeline
+   figure, and now that the figure is timeline.css's, a bare `.dot` here would
+   be a second sheet styling the same name. */
+.lv-lab .lv-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--c); flex: none; }
+.lv-lab .lv-nm { font-size: .78rem; font-weight: 620; letter-spacing: -.015em; color: var(--ink);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tl-track { position: relative; height: 1.35rem; border-radius: var(--r-xs); background: var(--pc-track); overflow: hidden; }
-.tl-blk { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: var(--c); opacity: .92; }
-.tl-blk::after { content: ''; position: absolute; inset: 0; border-radius: 5px;
-  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 55%); }
-/* Same two-ink treatment as the app: a hairline over a bright block in dark
-   mode reads at about 1.15:1, so the ones that land on a block get dark ink. */
-.tl-div { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line-2); opacity: .9; z-index: 1; }
-.tl-div.onblk { background: rgba(20, 20, 20, .34); }
-:where(:root)[data-theme="dark"] .tl-div.onblk { background: rgba(8, 8, 8, .46); }
-.tl-tot { text-align: right; font-size: .78rem; font-weight: 660; font-variant-numeric: tabular-nums; color: var(--ink-2); }
-.tl-tot.hi { color: var(--accent-text); } .tl-tot.lo { color: var(--info); }
-
-/* the same track, miniature, one per split so the four read as four shapes */
-.strip { display: grid; gap: .26rem; margin: .1rem 0 .9rem; }
-.strip .sr { display: grid; grid-template-columns: 1fr 2.1rem; gap: .55rem; align-items: center; }
-.strip .trk { position: relative; height: .78rem; border-radius: 5px; background: var(--pc-track); overflow: hidden; }
-.strip .blk { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--c); opacity: .92; z-index: 1; }
-/* The closing window, marked on every track so the two who stay on read as
-   staying on rather than as two long blocks that happen to line up. */
-.strip .band { position: absolute; top: 0; bottom: 0; z-index: 0;
-  background: color-mix(in srgb, var(--accent) 16%, transparent); }
-.strip .mn { font-size: .7rem; font-weight: 640; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-.strip-key { display: flex; justify-content: space-between; font-size: .62rem; font-weight: 660;
-  letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem;
-  padding-right: 2.65rem; }
-
-/* #150: rule rows, styled like the Rules page's own list -- a hairline
-   between rows, the sentence on the left, a chevron on the right
-   (app.css's `.prow` / `.prow-chev`, redrawn here since this page does not
-   load app.css) -- replacing the red/green chip mock the rules builder no
-   longer draws. */
-.rulerows { display: flex; flex-direction: column; }
-.rrule { display: flex; align-items: center; gap: .75rem; padding: .65rem 0;
-  font-size: .86rem; font-weight: 550; color: var(--ink-2); }
-.rrule + .rrule { position: relative; }
-.rrule + .rrule::before { content: ''; position: absolute; top: 0; left: 0; right: 0;
-  height: 1px; background: var(--line); }
-.rrule-t { flex: 1; min-width: 0; }
-.rrule-chev { flex: none; width: .4rem; height: .4rem; border-right: 2px solid var(--muted);
-  border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
 
 /* The card image never grows past its native 331px -- upscaling a photo of
    print is the one thing that makes it look worse than it is. The 2x file in
@@ -420,11 +287,6 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .shot.phone img { max-width: 100%; background: none; border: 0; border-radius: 17px; box-shadow: none; }
 .bezel { max-width: 288px; margin: 0 auto; padding: .5rem; border-radius: 26px;
   background: var(--surface-3); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
-figcaption { font-size: .88rem; color: var(--muted); margin-top: .55rem; }
-
-ul { margin: 1rem 0; padding-left: 1.2rem; color: var(--ink-2); }
-ul li { margin: 0 0 .7rem; padding-left: .25rem; }
-ul li::marker { color: var(--accent); }
 
 /* A20 slice 3. Every section that handed its detail to `advanced.html` ends
    with one link forward, so the deep page is reachable from the thing it
@@ -474,47 +336,6 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 .qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
 .qa p { margin: 0 0 1.05rem; color: var(--ink-2); }
 
-/* The roster-size links. Chips rather than a list: a row of sizes is a picker, and
-   48px keeps it tappable. Same rule set as the one on those pages. */
-.sizes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
-.sizes a {
-  display: inline-flex; align-items: center; min-height: 48px; padding: 0 .95rem;
-  border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
-  color: var(--ink); text-decoration: none; font-size: .95rem; font-weight: 580;
-}
-
-/* The section index, under the hero card. Deliberately NOT `.sizes`: those are
-   two-word chips and these are nine full headings, and a wrapping chip row
-   cannot shrink an over-wide chip -- at 320px with a 32px root one of these
-   would hang a long way off the right edge, on the page that already pans 7px
-   there. Rows instead. A row cannot overflow, it wraps, and it is a 48px
-   target by construction. Rules top and bottom rather than borders on every
-   row, so nine links read as one object and not as nine buttons. */
-.jumpto { display: flex; flex-direction: column; margin: 0 0 2.6rem; }
-.jumpto-hd {
-  margin: 0 0 .1rem; font-size: .82rem; font-weight: 620; letter-spacing: .04em;
-  text-transform: uppercase; color: var(--muted);
-}
-.jumpto a {
-  display: flex; align-items: center; min-height: 48px; padding: .3rem 0;
-  border-bottom: 1px solid var(--line); color: var(--ink-2);
-  text-decoration: none; font-size: .97rem;
-}
-.jumpto a:first-of-type { border-top: 1px solid var(--line); }
-.jumpto a:focus-visible { color: var(--accent-text); }
-@media (hover: hover) { .jumpto a:hover { color: var(--accent-text); } }
-
-footer {
-  border-top: 1px solid var(--line); margin: 3.2rem 0 0; padding: 1.4rem 0 2.6rem;
-  font-size: .92rem; color: var(--muted);
-  display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center;
-}
-/* The footer links are standalone controls, not words inside a sentence, so the
-   48px floor applies to them the same as anywhere else. They are already flex
-   items (blockified), so a min-height grows the box rather than overlapping the
-   line beside it. */
-footer a { display: flex; align-items: center; min-height: 48px; }
-
 /* ---- the reveals ---------------------------------------------------------
    Opacity and a small transform, nothing else, and every rule is behind
    `.js` -- the class the head script adds only when IntersectionObserver
@@ -530,130 +351,30 @@ footer a { display: flex; align-items: center; min-height: 48px; }
   * { transition: none !important; }
   .js .reveal { opacity: 1; transform: none; }
 }
-/* ---- the sticky bar, and the one width where it must NOT stick -----------
-   15,035px of page at 390px: "Build a card" at y=363, the next link into the
-   app at y=14,799. Seventeen screenfuls with no way to act.
-
-   `min-width` IN REM IS THE GUARD, and it is why this is not a one-liner.
-   `.top` wraps to two rows once the wordmark and the pill stop fitting side by
-   side, and that threshold is near-constant in rem -- measured 19.13rem at a
-   16px root, 18.54rem at 24px, 18.25rem at 32px (it drifts only because the
-   26px mark svg is fixed px). 20rem clears all three. So the bar sticks at
-   320 and 390px at a normal root, one 63px row; at a 32px root 20rem is 640px,
-   false at both, and a 200% reader keeps the plain static bar instead of a
-   211px slab taking a quarter of the viewport. Nothing in this block applies
-   in that cell, so large text renders exactly as it did before.
-
-   `.topbar` is a body child, NOT inside `.wrap`: a solid bar inside a 40rem
-   column would be 640px wide with page scrolling past either side of it. The
-   gutter moved from `body` onto `.wrap` and `.top` (top of this sheet) so the
-   bar runs edge to edge while the text column is untouched.
-
-   Translucent rather than a slab, copied from `.bar` in `app.css` so the two
-   chromes read as one product. No motion of any kind. */
-@media (min-width: 20rem) {
-  .topbar {
-    position: sticky; top: 0; z-index: 5;
-    background: color-mix(in srgb, var(--bg) 76%, transparent);
-    backdrop-filter: saturate(180%) blur(24px);
-    -webkit-backdrop-filter: saturate(180%) blur(24px);
-    border-bottom: 1px solid var(--line);
-  }
-  .top { padding-top: calc(.9rem + env(safe-area-inset-top)); }
-  /* Or all nine `.jumpto` links land underneath the bar. Two numbers add up,
-     and the second is a pre-existing surprise: the bar is 64.2px at a 16px
-     root, AND every jump overshoots by exactly 14px, because an unrevealed
-     section is still holding `.reveal`'s `translateY(14px)` when the browser
-     picks its scroll position and rises by that much a moment later. (True
-     since the reveals shipped; with `1rem` it just put a heading 2px from the
-     top rather than 16px, and nothing was measuring.) 64.2 + 14 + air = 5.5rem,
-     measured landing a first jump at 74px -- 9.8px clear -- and a repeat jump,
-     already revealed, at 88px. Scoped to this block: outside it there is no
-     bar to clear and `1rem` is right. */
-  h2 { scroll-margin-top: 5.5rem; }
-}
 @media (min-width: 46rem) {
-  body { font-size: 18px; }
-  h1 { margin-top: 2.2rem; }
-  /* `h1 -> h2` was a 2x cliff (46.4 -> 23.2px) while `h2 -> body` was nearly
-     flat at 1.29x: a section heading was doing less visual work than the 1px
-     rule above it. 1.8rem is 28.8px, 1.6x the 18px body -- the low end of the
-     1.6-1.8 a reference document usually runs, not the 4x of a marketing page
-     where each section owns a screen. Desktop only, deliberately: this page is
-     already 15,035px at 390px and taller headings on a phone buy nothing. */
-  h2 { font-size: 1.8rem; }
-  .plate { padding: 1.5rem 1.4rem; }
-  .tl { --lab: 5.6rem; --tot: 4rem; }
   .bezel { max-width: 320px; }
 }
-@media (max-width: 24rem) {
-  /* 4.2rem: the 3.6rem it had cut `Rafael` and `Simone` to an ellipsis. */
-  .tl { --lab: 4.2rem; --tot: 3.2rem; }
-  .plate { padding: .95rem .75rem; }
+/* The timeline plate. The app's one-row layout turns on at a container width
+   of 20em, and that `em` is the figure's own font size: 16px in the app, but
+   17px here (About's body is px, see site.css), which made it 340px. Reset the
+   plate to `1rem` so the breakpoint is the app's 320px at a default root, and
+   scales with the root as the app's does. The plate's side padding is also
+   trimmed on a phone (below 46rem), or the figure would sit at about 300px at
+   390 and draw the app's stacked narrow layout, which the app itself shows
+   only at 320px; with it the figure is 335px, as the app's own timeline is. */
+.plate.tl-plate { font-size: 1rem; }
+@media (max-width: 46rem) {
+  .plate.tl-plate { padding-inline: .5rem; }
 }
-
-/* The rest of the drawn mocks, which are screen rather than paper and so do
-   grow with the reader. `19em` is the app's own name for "the text is large" --
-   304px at a default root, so a 320px phone at normal text never sees any of
-   this, but 608px at a 32px root, so a 390px phone at 200% does. Each rule
-   below frees one fixed-width or `nowrap` label that had nowhere to go. */
+/* `19em` is the app's own name for "the text is large". `tournament` in "A
+   tournament day" is one word wider than the 246px column at 320px when the h2
+   is `--fs-title` on a 32px root; the viewport sets the size here, not the
+   root, which is what made it too big. Only About has so long a word, so the
+   cap lives here and Advanced and the chart pages keep their full h2. A 390px
+   phone at the default size is wider than this query. */
 @media (max-width: 19em) {
-
-  /* One unbreakable 305px token in a 288px column. */
-  footer a { overflow-wrap: anywhere; }
-
-  /* The plan card's timeline, drawn the way the app's own `.tl-row` draws it
-     when it is narrow, and for the reason `.lv` below stays a flex row: at this
-     size a grid column is too small for the name AND the total, and a
-     name that loses the squeeze is cut to one letter. So the row wraps. The
-     name grows and never shrinks below its own text; the total sits at the
-     right of the name line when it fits and drops under it when it does not;
-     the track always takes a full line of its own, and `order` puts it last
-     because the markup lists it before the total. The Q1-Q4 head is one column
-     so it spans that same track. Three grid columns left the track 0px wide
-     at 320px and the total past the plate. */
-  .tl-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: .55rem; row-gap: .15rem; }
-  .tl-row .tl-lab { flex: 1 0 auto; }
-  .tl-row .tl-tot { margin-left: auto; }
-  .tl-row .tl-track { flex: 0 0 100%; order: 1; }
-  .tl-head { grid-template-columns: 1fr; }
-  .tl-periods { grid-column: 1; }
-
-  /* The two headings that were wider than the column at 320px/32px: `minutes,`
-     in the h1 and `tournament` in an h2 each ran past it. The viewport sets
-     the size here, not the root, which is what made them too big. A 390px
-     phone at the default size is wider than this query, so its h1 and h2 are
-     unchanged. */
-  h1 { font-size: 10vw; }
-  h2 { font-size: min(1.32rem, 9vw); }
+  h2 { font-size: min(var(--fs-title), 9vw); }
 }
-/* #231: this page is always Hardwood, whatever team color the coach saved.
-   tokens.css sets --tint* for data-tint="hardwood" (light, dark and more
-   contrast alike) and leaves --accent* at Graphite, so this page points its
-   accent at the tint. `html:root[...]` outranks tokens.css's
-   `:root[data-theme="dark"]` and its more-contrast blocks whatever order they
-   load in. */
-html:root[data-tint="hardwood"] {
-  --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
-  --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
-  --accent-text: var(--tint);
-}
-/* #332: small orange text needs 4.5:1, which Hardwood misses on light grounds
-   (3.9:1). Light takes a darker orange; dark keeps Hardwood; more contrast
-   takes the ink. Every arm names its theme (the selector trap), and the
-   more-contrast block names both so it outranks the light arm by source
-   order and the dark default above by specificity. */
-html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B04308; }
-@media (prefers-contrast: more) {
-  html:root:not([data-theme="dark"])[data-tint="hardwood"],
-  html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
-}
-/* The headline block. It paints nothing (#242 took the orange gradient
-   away); it keeps the space above the h1 as its own padding, so the h1 sits
-   where it did and its margin cannot collapse out through the block (#238). */
-.hero-band { padding-top: 1.6rem; }
-.hero-band h1 { margin-top: 0; }
-.hl { color: var(--tint); }
 </style>
 </head>
 <body>
@@ -742,69 +463,73 @@ html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B0430
       the other.</p>
 
     <figure class="art">
-      <div class="plate">
+      <div class="plate tl-plate">
         <p class="plate-hd">The plan · 11 players · 8 stints of 4 min</p>
-        <div class="tl">
+        <div class="tl even">
           <div class="tl-head" aria-hidden="true">
+            <div></div>
             <div class="tl-periods">
               <span style="left:0%">Q1</span><span style="left:25%">Q2</span><span style="left:50%">Q3</span><span style="left:75%">Q4</span>
             </div>
+            <div></div>
           </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 26)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Bria</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:12.5%;width:25%"></i><i class="tl-blk" style="left:62.5%;width:25%"></i><i class="tl-div onblk" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div onblk" style="left:75%"></i></span>
-        <span class="tl-tot hi">16 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 52)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Cole</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:0%;width:12.5%"></i><i class="tl-blk" style="left:37.5%;width:12.5%"></i><i class="tl-blk" style="left:87.5%;width:12.5%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot lo">12 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 92)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Noah</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:25%;width:25%"></i><i class="tl-blk" style="left:75%;width:25%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot hi">16 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 128)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Rafael</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:12.5%;width:25%"></i><i class="tl-blk" style="left:62.5%;width:25%"></i><i class="tl-div onblk" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div onblk" style="left:75%"></i></span>
-        <span class="tl-tot hi">16 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 158)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Ty</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:0%;width:12.5%"></i><i class="tl-blk" style="left:37.5%;width:25%"></i><i class="tl-blk" style="left:75%;width:12.5%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div onblk" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot hi">16 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 188)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Amari</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:25%;width:12.5%"></i><i class="tl-blk" style="left:50%;width:25%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot lo">12 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 214)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Elena</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:0%;width:25%"></i><i class="tl-blk" style="left:62.5%;width:12.5%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot lo">12 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 244)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Simone</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:25%;width:37.5%"></i><i class="tl-blk" style="left:87.5%;width:12.5%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div onblk" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot hi">16 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 274)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Devon</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:0%;width:12.5%"></i><i class="tl-blk" style="left:37.5%;width:12.5%"></i><i class="tl-blk" style="left:75%;width:25%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot hi">16 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 304)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Mia</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:0%;width:25%"></i><i class="tl-blk" style="left:50%;width:25%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot hi">16 min</span>
-      </div>
-      <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 334)">
-        <span class="tl-lab"><i class="dot"></i><span class="nm">Kade</span></span>
-        <span class="tl-track"><i class="tl-blk" style="left:12.5%;width:12.5%"></i><i class="tl-blk" style="left:50%;width:12.5%"></i><i class="tl-blk" style="left:87.5%;width:12.5%"></i><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></span>
-        <span class="tl-tot lo">12 min</span>
-      </div>
+          <div class="tl-body">
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 26)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Bria</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:12.5%;width:25%"></div><div class="tl-blk" style="left:62.5%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 52)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Cole</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:0%;width:12.5%"></div><div class="tl-blk" style="left:37.5%;width:12.5%"></div><div class="tl-blk" style="left:87.5%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">12</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 92)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Noah</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:25%;width:25%"></div><div class="tl-blk" style="left:75%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 128)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Rafael</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:12.5%;width:25%"></div><div class="tl-blk" style="left:62.5%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 158)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Ty</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:0%;width:12.5%"></div><div class="tl-blk" style="left:37.5%;width:25%"></div><div class="tl-blk" style="left:75%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 188)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Amari</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:25%;width:12.5%"></div><div class="tl-blk" style="left:50%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">12</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 214)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Elena</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:0%;width:25%"></div><div class="tl-blk" style="left:62.5%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">12</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 244)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Simone</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:25%;width:37.5%"></div><div class="tl-blk" style="left:87.5%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 274)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Devon</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:0%;width:12.5%"></div><div class="tl-blk" style="left:37.5%;width:12.5%"></div><div class="tl-blk" style="left:75%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 304)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Mia</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:0%;width:25%"></div><div class="tl-blk" style="left:50%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
+            </div>
+            <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 334)">
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Kade</span></span></div>
+              <div class="tl-track"><div class="tl-blk" style="left:12.5%;width:12.5%"></div><div class="tl-blk" style="left:50%;width:12.5%"></div><div class="tl-blk" style="left:87.5%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
+              <div class="tl-tot"><span class="num">12</span><span class="ex"></span></div>
+            </div>
+          </div>
         </div>
       </div>
       <figcaption>The whole game on one screen, color-coded by player. Seven
@@ -970,27 +695,27 @@ html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B0430
         <p class="plate-hd">Team &middot; levels</p>
         <p class="lv-key" aria-hidden="true"><span>Developing</span><i class="lv-arrow"></i><span>Go-to</span></p>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 26)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Bria</span></span>
+          <span class="lv-lab"><i class="lv-dot"></i><span class="lv-nm">Bria</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i class="fill"></i><i class="fill"></i></span>
           <span class="lv-word">Go-to</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 52)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Cole</span></span>
+          <span class="lv-lab"><i class="lv-dot"></i><span class="lv-nm">Cole</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i class="fill"></i><i></i></span>
           <span class="lv-word">Reliable</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 92)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Noah</span></span>
+          <span class="lv-lab"><i class="lv-dot"></i><span class="lv-nm">Noah</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i></i><i></i></span>
           <span class="lv-word">Regular</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 128)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Elena</span></span>
+          <span class="lv-lab"><i class="lv-dot"></i><span class="lv-nm">Elena</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i class="fill"></i><i></i><i></i></span>
           <span class="lv-word">Regular</span>
         </div>
         <div class="lv-row" style="--c:oklch(var(--pc-l) var(--pc-c) 158)">
-          <span class="lv-lab"><i class="dot"></i><span class="nm">Mia</span></span>
+          <span class="lv-lab"><i class="lv-dot"></i><span class="lv-nm">Mia</span></span>
           <span class="lv-steps" aria-hidden="true"><i class="fill"></i><i class="fill"></i><i></i><i></i><i></i></span>
           <span class="lv-word">Learning</span>
         </div>

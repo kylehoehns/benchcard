@@ -373,9 +373,10 @@ its alternative is an assertion, so the rejected options are kept here too.
   `advanced.html` and the eight generated chart pages are reachable from search
   results and may be visited by someone with no team saved locally. They use
   Hardwood styling (the orange button, links and phrases) so a visitor sees
-  Benchcard's own warmth rather than a gray template. They map `--accent*` to
-  `--tint*` at the page level, so in-app elements that read the accent stay
-  Hardwood while the app itself honors a saved Graphite or other color in-game.
+  Benchcard's own warmth rather than a gray template. The mapping of `--accent*`
+  to `--tint*` lives once, in `app/site.css`, so in-app elements that read the
+  accent stay Hardwood while the app itself honors a saved Graphite or other
+  color in-game.
   The welcome screen uses `--tint*` directly, so a saved non-Hardwood color stays
   honest there too.
 - **Plans are recomputed, not stored.** The engine is deterministic, so inputs

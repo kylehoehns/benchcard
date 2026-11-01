@@ -77,138 +77,27 @@
 </script>
 
 <link rel="stylesheet" href="./tokens.css">
+<link rel="stylesheet" href="./site.css">
 <style>
-/* This page carries its own sheet, exactly as about.html does, and links only
-   `tokens.css`. It does NOT link `app.css`: that sheet is the app shell, and a
-   document is not the shell. Every rule below is worn by something on this
-   page -- `test/dead-static.test.js` is what says so, in both directions.
+/* This page's own rules: only what nothing else on the public pages wears.
+   The rest -- the resets, the top bar, headings, buttons, chips, strips, rule
+   rows, the section index, the footer, the sticky bar and Hardwood -- is
+   `site.css` (#434), shared with about.html, 404.html and the chart pages.
+   `test/dead-static.test.js` still checks both directions: every rule below is
+   worn by something on this page, and every class used here is styled by this
+   sheet or by `site.css`.
 
    Deliberately NOT copied from about.html: the scroll reveals. A reference is
    landed on at an anchor and scanned, not read top to bottom, so hiding
    sections until they scroll into view works against the page's job -- and not
    copying the choreography means not copying its hazard, which is a page that
    is blank to anyone without script. */
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font-family: var(--font); font-size: 17px; line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  padding: 0 0 env(safe-area-inset-bottom);
-}
-/* The gutter lives here, not on `body`, so `.topbar` can be a body child and
-   run edge to edge. `40rem + 2 x 1.15rem` keeps the text column at 40rem. */
-.wrap { max-width: 42.3rem; margin: 0 auto; padding: 0 1.15rem; }
-
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem;
-       max-width: 42.3rem; margin: 0 auto; padding: .9rem 1.15rem .3rem; }
-/* `min-height` because the wordmark is a live link home, not decoration: under
-   the 48px floor the rest of the app holds itself to. It costs no bar height
-   while the pill shares the row; it only pays when the row wraps. */
-.mark { display: flex; align-items: center; min-height: 48px; gap: .5rem; text-decoration: none; color: inherit; }
-.mark b { font-size: 1.05rem; font-weight: 660; letter-spacing: -.03em; }
-.spacer { flex: 1; }
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-  min-height: 48px; padding: 0 1.05rem; border-radius: 999px;
-  font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
-  text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
-  background: var(--surface); cursor: pointer;
-  transition: transform 110ms var(--ease);
-}
-.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
-.btn:active { transform: scale(.97); }
-
-h1 {
-  /* The 13vw cap: at a 32px root the 1.8rem floor is 57.6px and "reference"
-     (about 5.7em) paints 329px wide in a 246px column. 13vw only binds there. */
-  font-size: min(clamp(1.8rem, 7vw, 2.5rem), 13vw); line-height: 1.08; letter-spacing: -.04em;
-  font-weight: 700; margin: 1.6rem 0 0;
-}
-.lede { font-size: 1.16rem; line-height: 1.5; color: var(--ink-2); margin: 1rem 0 0; }
-.cta { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.5rem 0 2.4rem; }
-section { border-top: 1px solid var(--line); padding-top: 1.9rem; margin-top: 2.9rem; }
-h2 {
-  font-size: 1.32rem; letter-spacing: -.03em; font-weight: 640;
-  margin: 0 0 .7rem; scroll-margin-top: 1rem;
-}
-h3 { font-size: 1.02rem; font-weight: 640; letter-spacing: -.02em; margin: 1.5rem 0 .3rem; }
-p { margin: .8rem 0; color: var(--ink-2); }
-p.tight { margin-top: .25rem; }
-p.lead { font-size: 1.06rem; color: var(--ink-2); margin: 0 0 1.1rem; max-width: 34rem; }
-b, strong { color: var(--ink); font-weight: 620; }
-a { color: var(--accent-text); text-underline-offset: .18em; text-decoration-thickness: .07em; }
-
-ul { margin: 1rem 0; padding-left: 1.2rem; color: var(--ink-2); }
-ul li { margin: 0 0 .7rem; padding-left: .25rem; }
-ul li::marker { color: var(--accent); }
-
-.box {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 16px; padding: 1.1rem 1.15rem; margin: 1.1rem 0;
-  box-shadow: var(--shadow);
-}
-.box h3 { margin-top: 0; }
-.note {
-  border-left: 3px solid var(--accent-line); background: var(--surface-2);
-  border-radius: 0 12px 12px 0; padding: .75rem .95rem; margin: 1.2rem 0;
-  font-size: .96rem;
-}
-.note p { margin: 0; }
-
-/* ---- artefacts -----------------------------------------------------------
-   Every mock below draws a piece of the app in the app's own vocabulary rather
-   than photographing it: sharper than a screenshot, correct in both themes for
-   free, and it never goes stale against a redesign the way a PNG does. There
-   is no new raster asset on this page, on purpose. */
-.plate {
-  border-radius: var(--r-lg); padding: 1.15rem 1rem; border: 1px solid var(--line);
-  background:
-    radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 62%),
-    var(--bg-2);
-}
-figure.art { margin: 0 0 1.5rem; }
-figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6rem; }
-.plate-hd {
-  font-size: .68rem; font-weight: 680; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--muted); margin: 0 0 .7rem;
-}
-
-/* one miniature track per player, so each split reads as a SHAPE */
-.strip { display: grid; gap: .26rem; margin: .1rem 0 .9rem; }
-.strip .sr { display: grid; grid-template-columns: 1fr 2.1rem; gap: .55rem; align-items: center; }
-.strip .trk { position: relative; height: .78rem; border-radius: 5px; background: var(--pc-track); overflow: hidden; }
-.strip .blk { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--c); opacity: .92; z-index: 1; }
-/* The closing window, marked on every track so the two who stay on read as
-   staying on rather than as two long blocks that happen to line up. */
-.strip .band { position: absolute; top: 0; bottom: 0; z-index: 0;
-  background: color-mix(in srgb, var(--accent) 16%, transparent); }
-.strip .mn { font-size: .7rem; font-weight: 640; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-.strip-key { display: flex; justify-content: space-between; font-size: .62rem; font-weight: 660;
-  letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem;
-  padding-right: 2.65rem; }
-
 /* the shape control, from the games screen */
 .seg { display: flex; width: 100%; padding: 4px; gap: 2px; background: var(--surface-2);
   border-radius: var(--r-full); border: 1px solid var(--line); margin: 1rem 0 0; }
 .seg span { flex: 1; padding: .58rem .3rem; border-radius: var(--r-full); text-align: center;
   font-size: .8rem; font-weight: 570; color: var(--muted); white-space: nowrap; }
 .seg span.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); font-weight: 620; }
-
-/* #150: rule rows, styled like the Rules page's own list -- a hairline
-   between rows, the sentence on the left, a chevron on the right
-   (app.css's `.prow` / `.prow-chev`, redrawn here since this page does not
-   load app.css) -- replacing the red/green chip mock the rules builder no
-   longer draws. */
-.rulerows { display: flex; flex-direction: column; }
-.rrule { display: flex; align-items: center; gap: .75rem; padding: .65rem 0;
-  font-size: .86rem; font-weight: 550; color: var(--ink-2); }
-.rrule + .rrule { position: relative; }
-.rrule + .rrule::before { content: ''; position: absolute; top: 0; left: 0; right: 0;
-  height: 1px; background: var(--line); }
-.rrule-t { flex: 1; min-width: 0; }
-.rrule-chev { flex: none; width: .4rem; height: .4rem; border-right: 2px solid var(--muted);
-  border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
 
 /* the swap scope row from bench mode. Two of these are modes and the third is
    an action that fires on the tap -- which is why the third is drawn as a
@@ -267,76 +156,10 @@ figure.art figcaption { font-size: .88rem; color: var(--muted); margin-top: .6re
 .legend .tok.u { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1.6px; }
 .legend .tok.sm { font-weight: 700; letter-spacing: .08em; font-size: .72rem; }
 
-/* The section index. Rows, not chips: these are eight full headings, and a
-   wrapping chip row cannot shrink an over-wide chip -- at 320px on a 32px root
-   one of them would hang off the right edge. A row cannot overflow, it wraps,
-   and it is a 48px target by construction. */
-.jumpto { display: flex; flex-direction: column; margin: 0 0 2.6rem; }
-.jumpto-hd {
-  margin: 0 0 .1rem; font-size: .82rem; font-weight: 620; letter-spacing: .04em;
-  text-transform: uppercase; color: var(--muted);
-}
-.jumpto a {
-  display: flex; align-items: center; min-height: 48px; padding: .3rem 0;
-  border-bottom: 1px solid var(--line); color: var(--ink-2);
-  text-decoration: none; font-size: .97rem;
-}
-.jumpto a:first-of-type { border-top: 1px solid var(--line); }
-.jumpto a:focus-visible { color: var(--accent-text); }
-@media (hover: hover) { .jumpto a:hover { color: var(--accent-text); } }
-
-/* The roster-size links, the same chips About carries: a row of sizes is a picker,
-   and 48px keeps it tappable. */
-.sizes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
-.sizes a {
-  display: inline-flex; align-items: center; min-height: 48px; padding: 0 .95rem;
-  border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
-  color: var(--ink); text-decoration: none; font-size: .95rem; font-weight: 580;
-}
-
-footer {
-  border-top: 1px solid var(--line); margin: 3.2rem 0 0; padding: 1.4rem 0 2.6rem;
-  font-size: .92rem; color: var(--muted);
-  display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center;
-}
-/* Standalone controls, not words in a sentence, so the 48px floor applies. */
-footer a { display: flex; align-items: center; min-height: 48px; }
-
-/* ---- the sticky bar, and the one width where it must NOT stick -----------
-   `min-width` IN REM IS THE GUARD. `.top` wraps to two rows once the wordmark
-   and the pill stop fitting side by side, and that threshold is near-constant
-   in rem -- about.html measured 19.13rem at a 16px root and 18.25rem at 32px.
-   20rem clears both. So the bar sticks at 320 and 390px at a normal root, one
-   row; at a 32px root 20rem is 640px, false at both, and a 200% reader keeps
-   the plain static bar instead of a slab taking a quarter of the viewport.
-
-   `.topbar` is a body child, NOT inside `.wrap`: a solid bar inside a 40rem
-   column would be 640px wide with the page scrolling past either side. */
-@media (min-width: 20rem) {
-  .topbar {
-    position: sticky; top: 0; z-index: 5;
-    background: color-mix(in srgb, var(--bg) 76%, transparent);
-    backdrop-filter: saturate(180%) blur(24px);
-    -webkit-backdrop-filter: saturate(180%) blur(24px);
-    border-bottom: 1px solid var(--line);
-  }
-  .top { padding-top: calc(.9rem + env(safe-area-inset-top)); }
-  /* Or every `.jumpto` link lands underneath the bar. The bar is 64.2px at a
-     16px root; there is no reveal transform on this page to add to it, so this
-     is the bar plus air rather than about.html's 5.5rem. */
-  h2 { scroll-margin-top: 4.8rem; }
-}
 @media (min-width: 46rem) {
-  body { font-size: 18px; }
-  h1 { margin-top: 2.2rem; }
-  h2 { font-size: 1.8rem; }
-  .plate { padding: 1.5rem 1.4rem; }
   .paper { max-width: 384px; padding: 15px 16px; }
   .paper .five { font-size: 19px; }
   .paper .chg { font-size: 13px; }
-}
-@media (max-width: 24rem) {
-  .plate { padding: .95rem .75rem; }
 }
 /* Four `nowrap` labels across need about 345px, and the pill they sit in is
    357px wide only from a 430px phone up at a 16px root, so 30rem (480px) keeps
@@ -371,37 +194,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
      size it prints, the row just takes a second line in the one cell where
      five names have nowhere to go. */
   .paper .five { flex-wrap: wrap; justify-content: flex-start; gap: 5px 10px; }
-
-  /* One unbreakable token in a 288px column. */
-  footer a { overflow-wrap: anywhere; }
 }
-/* #231: this page is always Hardwood, whatever team color the coach saved.
-   tokens.css sets --tint* for data-tint="hardwood" (light, dark and more
-   contrast alike) and leaves --accent* at Graphite, so this page points its
-   accent at the tint. `html:root[...]` outranks tokens.css's
-   `:root[data-theme="dark"]` and its more-contrast blocks whatever order they
-   load in. */
-html:root[data-tint="hardwood"] {
-  --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
-  --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
-  --accent-text: var(--tint);
-}
-/* #332: small orange text needs 4.5:1, which Hardwood misses on light grounds
-   (3.9:1). Light takes a darker orange; dark keeps Hardwood; more contrast
-   takes the ink. Every arm names its theme (the selector trap), and the
-   more-contrast block names both so it outranks the light arm by source
-   order and the dark default above by specificity. */
-html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B04308; }
-@media (prefers-contrast: more) {
-  html:root:not([data-theme="dark"])[data-tint="hardwood"],
-  html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
-}
-/* The headline block. It paints nothing (#242 took the orange gradient
-   away); it keeps the space above the h1 as its own padding, so the h1 sits
-   where it did and its margin cannot collapse out through the block (#238). */
-.hero-band { padding-top: 1.6rem; }
-.hero-band h1 { margin-top: 0; }
-.hl { color: var(--tint); }
 </style>
 </head>
 <body>

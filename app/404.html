@@ -38,42 +38,12 @@
 <!-- Root-relative on purpose: this file is served for a missing path at any
      depth (/a/b/c), where `./` would resolve against the wrong directory. -->
 <link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/site.css">
 <style>
-* { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font-family: var(--font); font-size: 17px; line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  padding: 0 0 env(safe-area-inset-bottom);
-}
-.wrap { max-width: 42.3rem; margin: 0 auto; padding: 0 1.15rem; }
-.mark { display: flex; align-items: center; min-height: 48px; gap: .5rem; text-decoration: none; color: inherit; padding-top: .9rem; }
-.mark b { font-size: 1.05rem; font-weight: 660; letter-spacing: -.03em; }
-.btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-height: 48px; padding: 0 1.05rem; border-radius: 999px;
-  font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
-  text-decoration: none; border: 1px solid transparent;
-  background: var(--accent); color: var(--accent-ink);
-}
-/* Hardwood, as about.html does it (#231, #332): tokens.css leaves --accent at
-   Graphite, so the accent points at the tint. `html:root[...]` outranks the
-   dark and more-contrast blocks whatever order they load in. */
-html:root[data-tint="hardwood"] {
-  --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
-  --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
-  --accent-text: var(--tint);
-}
-html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B04308; }
-@media (prefers-contrast: more) {
-  html:root:not([data-theme="dark"])[data-tint="hardwood"],
-  html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
-}
-h1 {
-  font-size: min(clamp(1.8rem, 7vw, 2.5rem), 13vw); line-height: 1.08; letter-spacing: -.04em;
-  font-weight: 700; margin: 1.6rem 0 1.2rem; overflow-wrap: anywhere;
-}
+/* Only what this page wears alone; the rest is site.css (#434). The wordmark
+   sits in .wrap here, not in a top bar, so it carries its own top padding. */
+.wrap > .mark { padding-top: .9rem; }
+.wrap > h1 { margin-bottom: 1.2rem; overflow-wrap: anywhere; }
 nav { display: flex; flex-direction: column; margin-top: 2rem; }
 nav p { margin: 0 0 .3rem; color: var(--muted); font-size: .92rem; }
 nav a {
@@ -91,7 +61,7 @@ nav a {
   </a>
 
   <h1>This page isn't here.</h1>
-  <a class="btn" href="/">Open Benchcard</a>
+  <a class="btn primary" href="/">Open Benchcard</a>
 
   <nav aria-labelledby="charts">
     <p id="charts">Or start from a rotation chart</p>

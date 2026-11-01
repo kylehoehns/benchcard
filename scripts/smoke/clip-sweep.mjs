@@ -574,6 +574,20 @@ export const REVEAL_STATE = `JSON.stringify({
 })`;
 export const ABOUT_READY = `document.querySelector('.reveal')`;
 
+/* #434: About draws the app's own timeline, so at a phone's default text size it
+ * must show what the app shows there -- the one-row layout, the track beside
+ * the name, and the dot centered on the row -- not the stacked narrow one. The
+ * `20em` that switches it is the figure's own font size, which About's px body
+ * would otherwise make 340px. Measures the first row; null if there is none. */
+export const ABOUT_TIMELINE_ROW = `(() => {
+  const row = document.querySelector('.tl .tl-row');
+  if (!row) return JSON.stringify(null);
+  const r = e => e.getBoundingClientRect();
+  const dot = r(row.querySelector('.dot')), box = r(row);
+  return JSON.stringify({ rowH: box.height, dotOff: Math.abs(dot.top + dot.height / 2 - (box.top + box.height / 2)),
+    beside: Math.abs(r(row.querySelector('.tl-track')).top - r(row.querySelector('.tl-lab')).top) < 30 });
+})()`;
+
 export const ABOUT_CELLS = [
   { label: 'about 320px/32px', want: LARGE_TEXT },
   { label: 'about 390px/16px', want: {} },
@@ -596,6 +610,14 @@ export async function aboutClipSweepPass(c, origin, rec) {
         scanned += res.scanned;
         found.push(...findingsOf(res, label, pos));
       }
+      if (label === 'about 390px/16px') {
+        const row = JSON.parse(await evalIn(c, ABOUT_TIMELINE_ROW));
+        rec.check(row !== null, `${label}: no timeline row was found, so its layout was not measured`);
+        if (row) {
+          rec.check(row.beside, `${label}: the timeline is the stacked narrow layout (name above track, row ${Math.round(row.rowH)}px tall), not the app's one-row one`);
+          rec.check(row.dotOff <= 1, `${label}: the timeline dot is ${row.dotOff.toFixed(1)}px off the row's center`);
+        }
+      }
     } catch (e) {
       rec.fail(`${label}: ${firstLine(e)}`);
     }
@@ -605,5 +627,5 @@ export async function aboutClipSweepPass(c, origin, rec) {
     rec.fail(describeFinding(p));
   }
   rec.check(scanned > 0, 'measured no elements on the about page');
-  rec.ok(`${ABOUT_CELLS.length} cells, ${scanned} elements scanned (top+bottom), nothing clipped, split or hidden`);
+  rec.ok(`${ABOUT_CELLS.length} cells, ${scanned} elements scanned (top+bottom), nothing clipped, split or hidden, the timeline one row and centered at 390px/16px`);
 }

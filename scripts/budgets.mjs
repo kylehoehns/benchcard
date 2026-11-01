@@ -365,8 +365,13 @@ export const NODES_BASELINE = 1_367;
    with it, so the pin moves 41 -> 43: one under the measured 44.
    Why +2 for one module: main already measured 43 against the pin of 41, one
    request above the one-under rule and unexplained before this change. This
-   re-pin follows the rule against today's measured 44. */
-export const REQUESTS_BASELINE = 43;
+   re-pin follows the rule against today's measured 44.
+
+   #434: `app/timeline.css` joins the cold load. The timeline rules moved out
+   of app.css into a sheet About can also link, so index.html loads one more
+   stylesheet and the measured count goes 44 -> 45; the pin moves 43 -> 44,
+   one under it. */
+export const REQUESTS_BASELINE = 44;
 
 export const SLACK = { bytesPct: 0.02, bytesAbs: 24_576, requests: 2, nodes: 250 };
 

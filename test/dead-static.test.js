@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { CHARTS } from '../scripts/charts.mjs';
+import { linkedSheets, inlineSheets } from './page-sheets.js';
 
 /* The static pages, policed the way the shell already is.
  *
@@ -63,11 +64,9 @@ const classesIn = (markup) => {
 const ruleNames = (css) => new Set(
   [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)].map((m) => m[1]));
 
-const inlineCss = (html) =>
-  [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+const inlineCss = (html) => inlineSheets(html).join('\n');
 
-const linkedCss = (html) =>
-  [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.\/([^"]+)"/g)].map((m) => read(m[1]));
+const linkedCss = (html) => linkedSheets(html).map((f) => read(f));
 
 /* What the page's own scripts put on an element, or select by. JSON-LD is
  * data, not code. */
@@ -116,6 +115,24 @@ test('every rule in a static page\'s own stylesheet is worn by something on it',
     'a rule in the page\'s inline sheet that no element on the page wears:\n  ' + dead.join('\n  '));
 });
 
+/* #434: the public pages' shared rules live in `site.css`, which no page owns,
+ * so direction 2 reads it against the UNION of the pages that link it: a class
+ * in site.css that no linking page wears (or scripts) is dead. */
+test('every rule in site.css is worn by some page that links it', () => {
+  const linking = PAGES.filter((p) => /href="\.?\/site\.css"/.test(read(p)));
+  assert.equal(linking.length, 11, 'about, advanced, 404 and the eight chart pages link site.css');
+  const worn = new Set();
+  for (const page of linking) {
+    const html = read(page);
+    for (const c of classesIn(markupOnly(html))) worn.add(c);
+    for (const c of scriptedClasses(html)) worn.add(c);
+  }
+  const names = [...ruleNames(read('site.css'))];
+  assert.ok(names.length > 30, `site.css named only ${names.length} classes`);
+  const dead = names.filter((c) => !worn.has(c) && !KEEP_CLASS.has(c));
+  assert.deepEqual(dead, [], 'a class in site.css that no page linking it wears:\n  ' + dead.join('\n  '));
+});
+
 test('every id on a static page is read on that page, and declared once', () => {
   const dead = [];
   const dupes = [];
@@ -149,7 +166,7 @@ test('the sweep can see the pages it is pointed at', () => {
     'every generated chart page, and no other, should be in scope');
   const html = read('about.html');
   assert.ok(classesIn(markupOnly(html)).has('jumpto'), 'the section index is markup the scanner sees');
-  assert.ok(ruleNames(inlineCss(html)).has('jumpto'), 'and its rule is in the inline sheet');
+  assert.ok(ruleNames(linkedCss(html).join('\n')).has('jumpto'), 'and its rule is in a sheet the page links (site.css, #434)');
   assert.ok(scriptedClasses(html).has('reveal'), 'a class only the inline script names is visible');
   assert.ok(idsIn(html).includes('onthispage'), 'the section index\'s own id is visible');
 });

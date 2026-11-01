@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parsePrecache } from '../scripts/build.mjs';
+import { linkedSheets, inlineSheets } from './page-sheets.js';
 
 /* Everything the service worker serves lives in one directory; these tests
    resolve against it rather than against their own location. */
@@ -15,7 +16,7 @@ const html = readFileSync(new URL('index.html', ROOT), 'utf8');
    longer answerable from index.html alone -- the @font-face lives in
    tokens.css. Read the linked sheets and treat the concatenation as the page's
    styles wherever a test used to grep the inline <style> block. */
-const sheets = [...html.matchAll(/<link rel="stylesheet" href="\.\/([^"]+)"/g)].map((m) => m[1]);
+const sheets = linkedSheets(html);
 const css = sheets.map((f) => readFileSync(new URL(f, ROOT), 'utf8')).join('\n');
 
 /* The precache list is hand-maintained, so these tests are the thing that
@@ -42,6 +43,21 @@ test('precaches the shell entry points', () => {
   for (const p of ['./', './index.html', './app.js', './site.webmanifest']) {
     assert.ok(precache.includes(p), `precache is missing ${p}`);
   }
+});
+
+/* #434: the public pages share site.css and About links timeline.css; a
+   precached page whose sheet is not precached renders unstyled offline. */
+test('every stylesheet a precached page links is precached', () => {
+  let pages = 0;
+  for (const p of precache.filter((f) => f.endsWith('.html'))) {
+    pages += 1;
+    const src = readFileSync(new URL(p, ROOT), 'utf8');
+    for (const f of linkedSheets(src)) {
+      assert.ok(precache.includes(`./${f}`), `${p} links ${f}, which is not precached`);
+    }
+  }
+  assert.ok(pages >= 3, `only ${pages} precached pages were read`);
+  for (const f of ['./site.css', './timeline.css']) assert.ok(precache.includes(f), `${f} is not precached`);
 });
 
 /* Follows side-effect imports too (`import './motion.umd.js'`), and resolves

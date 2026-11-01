@@ -23,11 +23,16 @@ const PRECACHE = [
   './about.html',
   './advanced.html',
 
-  /* Render-blocking, so a cold offline boot needs all three or the shell
+  /* Render-blocking, so a cold offline boot needs all four or the shell
      paints unstyled. Order matters at load, not here. */
   './tokens.css',
   './app.css',
+  './timeline.css',
   './card.css',
+
+  /* The public pages' shared sheet (#434): about.html and advanced.html are
+     precached above and need it, and about.html needs the timeline sheet too. */
+  './site.css',
 
   './app.js',
   './engine.js',
