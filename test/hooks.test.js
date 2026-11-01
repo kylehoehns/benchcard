@@ -404,17 +404,27 @@ test('a table row naming guard-edit.sh or after-edit.sh says a shell write is no
 
 /* Source guard for #486. The behavioral test above only covers the sites that
  * exist today; this one stops the next hook from piping into a reader that
- * closes early (`grep -q`, `head`). Under pipefail that is a silent allow. */
+ * closes early. Under pipefail that is a silent allow. Covered: `| head` and
+ * `| grep` with -q/-l/-m (bundled too) or --quiet/--max-count/--files-with-matches,
+ * across a line ending in `|` or `| \`. Single-quoted spans are ignored, so
+ * `grep -E 'a|head'` is fine. Not covered: `sed 1q`, `awk '...exit'`. */
 test('no hook pipes into an early-closing reader', () => {
   const dir = new URL('.', HOOKS).pathname;
   const files = readdirSync(dir).filter(f => f.endsWith('.sh'));
   assert.ok(files.length > 0, 'scanned no hook files, so nothing was checked');
-  const EARLY = /\|\s*(grep\b[^|]*\s-[A-Za-z]*q|head\b)/;
+  const EARLY = /(?<!\|)\|\s*(head\b|grep\b[^|]*\s(-[A-Za-z]*[qlm][A-Za-z0-9]*|--quiet|--max-count|--files-with-matches)(?![\w-]))/;
   const hits = [];
   for (const f of files) {
-    readFileSync(join(dir, f), 'utf8').split('\n').forEach((line, i) => {
-      if (!line.trimStart().startsWith('#') && EARLY.test(line)) hits.push(`${f}:${i + 1}: ${line.trim()}`);
-    });
+    const lines = readFileSync(join(dir, f), 'utf8').split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trimStart().startsWith('#')) continue;
+      const start = i;
+      let text = lines[i];
+      while (/\|\s*\\?\s*$/.test(text) && !/\|\|\s*$/.test(text) && i + 1 < lines.length) {
+        text = text.replace(/\\\s*$/, '') + ' ' + lines[++i].trim();
+      }
+      if (EARLY.test(text.replace(/'[^']*'/g, "''"))) hits.push(`${f}:${start + 1}: ${text.trim()}`);
+    }
   }
   assert.deepEqual(hits, [], 'feed the reader a here-string (grep -q ... <<<"$x") instead of a pipe');
 });
