@@ -172,14 +172,15 @@ async function measureLargeText(c, origin) {
 
 /* #271: the toast's action row (the button and the dismiss) must stay one unit.
  * Raises the real toasts through the app's own `toast.js` (the page's module
- * instance, same URL) -- one with a button, one without -- and MEASURES them:
+ * instance, same URL) -- one with a button, the update toast, one without -- and MEASURES them:
  * the dismiss on the button's row, the rightmost item, and at the toast's
  * right content edge, wrapped or not. Waits out the entrance animation first,
  * whose scale and offset would otherwise shift every rect. */
 const TOAST_ROW_PROBE = `(async () => {
-  const { offer, flash, showUndo } = await import('/toast.js');
+  const { offer, flash, showUndo, showUpdate } = await import('/toast.js');
   const out = [];
   for (const [kind, raise] of [['button', () => offer('Benchcard updated.', 'Reload', () => {})],
+                               ['update', () => showUpdate(() => {})],
                                ['undo', () => showUndo('Player removed.', {}, () => {})],
                                ['no button', () => flash('Benchcard updated.')]]) {
     raise();
@@ -278,6 +279,6 @@ export async function phoneGutterPass(c, origin, rec) {
   for (const b of bad) rec.fail(`measurement off the gutter: ${b}`);
   rec.check(audited > 0, 'no gutter was measured');
   rec.ok(`${audited} measurements (5 screens + #abBench/#resumeBtn + #view-welcome, ${TOUCH_WIDTHS.join('/')}px, `
-    + `plus 3 toasts at ${TOAST_WIDTHS.join('/')}px, 16px and ${LARGE_TEXT_PX}px text, `
+    + `plus 4 toasts at ${TOAST_WIDTHS.join('/')}px, 16px and ${LARGE_TEXT_PX}px text, `
     + `plus 5 screens + #abBench at ${LARGE_TEXT_WIDTH}px/${LARGE_TEXT_PX}px), all left = right = the .wrap gutter`);
 }

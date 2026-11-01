@@ -1,4 +1,4 @@
-import { evalIn, step } from './dom.mjs';
+import { evalIn, step, setVisibility } from './dom.mjs';
 
 /* #20: hold a screen wake lock while bench mode is on screen, release it the
    moment it is not. `navigator.wakeLock` is replaced in-page with a fake that
@@ -66,13 +66,7 @@ export async function wakeLockPass(c, origin, consoleErrors, rec) {
 
   // The browser drops the lock silently on hide; there is no event for it
   // beyond `visibilitychange` itself, so the fake mimics the drop by hand and
-  // this shadows `document.visibilityState` to drive the listener both ways.
-  const setVisibility = v => evalIn(c, `(() => {
-    Object.defineProperty(document, 'visibilityState',
-      { configurable: true, get: () => ${JSON.stringify(v)} });
-    document.dispatchEvent(new Event('visibilitychange'));
-    return 1;
-  })()`);
+  // setVisibility (dom.mjs) shadows `document.visibilityState` to drive the listener both ways.
 
   // The three controls every scenario below drives, plus the one bit of DOM
   // state ("is bench mode still open") more than one of them reads back.
@@ -116,15 +110,15 @@ export async function wakeLockPass(c, origin, consoleErrors, rec) {
     return true;
   })()`);
   rec.check(dropped, 'hide→visible: no sentinel granted to drop');
-  await setVisibility('hidden');
+  await setVisibility(c, 'hidden');
   s = await wl();
   rec.check(s.requests === 1, `visibilitychange hidden: expected still 1 request, got ${s.requests}`);
-  await setVisibility('visible');
+  await setVisibility(c, 'visible');
   s = await wl();
   rec.check(s.requests === 2, `visibilitychange visible: expected 2 requests total, got ${s.requests}`);
   rec.check(s.unreleased === 1, `visibilitychange visible: expected a held sentinel, ${s.unreleased} unreleased of ${s.granted}`);
   await closeGM();
-  await setVisibility('visible');
+  await setVisibility(c, 'visible');
   s = await wl();
   rec.check(s.requests === 2, `visible after close: expected still 2 requests, got ${s.requests}`);
   nums.push(`hide→visible → ${s.requests} requests total, still ${s.requests} after a post-close visible`);

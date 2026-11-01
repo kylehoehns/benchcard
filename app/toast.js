@@ -135,15 +135,22 @@ function toastHost() {
    not the only useful one -- a bulk paste wants "Skip them", which throws away
    the repeats rather than the whole paste -- so the button's label and what it
    does are the caller's. A toast with no action reads as a confirmation and
-   dwells half as long: nothing is waiting on the coach. */
-function actionToast(message, label, act) {
+   dwells half as long: nothing is waiting on the coach.
+
+   `message` is a string, or a node when the message has parts of its own (the
+   update toast's title and help line). `cls` names a variant (`update-toast`):
+   the box, timer, dismiss and lift stay this function's, so a variant is only
+   what it looks like. */
+function actionToast(message, label, act, { cls = '' } = {}) {
   const box = toastHost();
   if (!box) return;
   clearTimeout(toastTimer);
   [...box.children].forEach(c => c.remove());
 
-  const t = el('div', 'toast');
-  t.append(el('span', 'tmsg', message));
+  const t = el('div', cls ? `toast ${cls}` : 'toast');
+  const msg = el('span', 'tmsg');
+  msg.append(message);
+  t.append(msg);
 
   /* The button and the dismiss are one flex item, so they wrap as a unit. */
   const acts = el('span', 'tacts');
@@ -546,6 +553,19 @@ export function flash(message) {
 const wasControlled = !!navigator.serviceWorker?.controller;
 let updateWaiting = false;
 
+/* The update offer's own toast: the title, led by a refresh glyph on its line,
+   the help under it at the toast's full width, then Reload. Through
+   `actionToast`, so it dwells and lifts like every other offer; exported so
+   smoke can raise the real one. */
+export function showUpdate(reload) {
+  const words = document.createDocumentFragment();
+  // the space between them is for anything that reads the text without the layout
+  const title = el('span', 'update-title');
+  title.append(icon('rotate-ccw', { cls: 'update-glyph' }), 'New version ready');
+  words.append(title, ' ', el('span', 'update-help', 'Reload to get it. Your game stays saved.'));
+  actionToast(words, 'Reload', reload, { cls: 'update-toast' });
+}
+
 function offerReload() {
   // bench mode on screen is the one place an interruption costs something
   // real, exactly as the tip jar reads it
@@ -555,7 +575,7 @@ function offerReload() {
      seconds is left running the very stale code this exists to clear -- so it
      comes back the next time they return to the app. A reload ends it; so does
      any navigation, which is what fixes the page anyway. */
-  offer('Benchcard updated.', 'Reload', () => location.reload());
+  showUpdate(() => location.reload());
 }
 
 if (navigator.serviceWorker) {

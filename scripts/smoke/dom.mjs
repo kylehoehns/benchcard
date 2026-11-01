@@ -705,3 +705,15 @@ export async function samplePixels(c, points, scrollX, scrollY) {
   })()`);
   return JSON.parse(json);
 }
+
+/* The coach switches away from the app and back: `visibilitychange` fires with
+ * `document.visibilityState` reading `state`. The browser has no way to hide a
+ * headless page, so the getter is shadowed for the dispatch and the shadow is
+ * deleted straight after, leaving the page's real state behind. Shared by the
+ * Coach driver (test/coach.js) and the wake-lock row. */
+export const setVisibility = (c, state) => evalIn(c, `(() => {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => ${JSON.stringify(state)} });
+  try { document.dispatchEvent(new Event('visibilitychange', { bubbles: true })); }
+  finally { delete document.visibilityState; }
+  return 1;
+})()`);

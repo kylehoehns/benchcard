@@ -24,11 +24,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { serve } from '../scripts/serve.mjs';
 import { launch, cdp, closeChrome, hasChrome } from '../scripts/smoke/chrome.mjs';
-import { evalIn, quiet, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } from '../scripts/smoke/dom.mjs';
+import { evalIn, quiet, setVisibility, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } from '../scripts/smoke/dom.mjs';
 import { land } from '../scripts/smoke/page-state.mjs';
 import { buildClockScript, SMOKE_CLOCK } from '../scripts/smoke/clock.mjs';
 import { RICH, TODAY_GAME_READY, GAMES_VIEW_READY, WELCOME_LANDING } from '../scripts/smoke/fixtures.mjs';
 import { SAMPLE_PLAYERS, withSecondTeam } from '../scripts/smoke/fixtures.mjs';
+import { WAITING_WORKER, TAKEOVER } from '../scripts/smoke/waiting-worker.mjs';
 
 export { hasChrome };
 
@@ -270,6 +271,39 @@ export class Coach {
   async asHomeScreenApp() {
     if (this.homeScreen) return;
     ({ identifier: this.homeScreen } = await this.c.send('Page.addScriptToEvaluateOnNewDocument', { source: HOME_SCREEN_APP }));
+  }
+
+  /** Open the app from here on as a page a new version is about to take over: a worker already
+      controls it, and `newVersionTakesOver()` is the moment the new one arrives. */
+  async withWaitingWorker() {
+    if (this.waitingWorker) return;
+    ({ identifier: this.waitingWorker } = await this.c.send('Page.addScriptToEvaluateOnNewDocument', { source: WAITING_WORKER }));
+  }
+
+  /** The new worker takes over this page, as it does once it has installed. */
+  async newVersionTakesOver() {
+    await evalIn(this.c, TAKEOVER);
+    await quiet(this.c);
+  }
+
+  /** The coach switches away from the app and back to it. */
+  async leaveAndComeBack() {
+    await setVisibility(this.c, 'hidden');
+    await setVisibility(this.c, 'visible');
+    await quiet(this.c);
+  }
+
+  /** Mark this page, so `reloaded()` can tell whether it is still the same one. */
+  markPage() { return evalIn(this.c, 'window.__pageMark = 1'); }
+
+  /** Whether the page marked by `markPage()` has been reloaded since (waits for the new one to boot). */
+  async reloaded() {
+    try {
+      await this.#until('the page never reloaded', async () => {
+        try { return (await evalIn(this.c, `document.readyState === 'complete' && !!window.benchcard?.booted && window.__pageMark === undefined`)) === true; } catch { return false; }
+      });
+      return true;
+    } catch { return false; }
   }
 
   /* Swap the pinned clock for one at `pin`, from the next page load on. */
