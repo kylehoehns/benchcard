@@ -110,139 +110,27 @@
 <!-- tokens.css is the app's palette and type stack, card.css is the card
      itself -- both already precached for anyone who has opened the app, and
      both shared rather than copied so this page cannot drift into looking
-     like a different product. card.css also brings the @page and print rules,
-     which is why Ctrl-P on this page yields the card at true size and none of
-     the chrome: everything else here is .noprint. -->
+     like a different product. site.css is the public pages' one sheet (#434):
+     the chrome, Hardwood and the chart-only rules all live there, so this page
+     carries no inline sheet. It is deliberately without scroll reveals and any
+     page script: this document exists to be read by someone arriving cold from
+     a search result, including with JavaScript off. card.css also brings the
+     @page and print rules, which is why Ctrl-P on this page yields the card at
+     true size and none of the chrome: everything else here is .noprint. -->
 <!-- The Print button is an onclick attribute, since this page carries no script
      but the theme one; with JavaScript off it would do nothing, so it is
      hidden (index.html hides .app the same way). -->
 <noscript><style>button[onclick="print()"] { display: none; }</style></noscript>
 <link rel="stylesheet" href="./tokens.css">
 <link rel="stylesheet" href="./card.css">
-<style>
-/* Page chrome only. Deliberately no scroll reveals and no page script: this
-   document exists to be read by someone arriving cold from a search result,
-   including with JavaScript off, and the About page's reveal guard is a cost
-   with nothing to buy here. */
-* { box-sizing: border-box; }
-/* #231, #332: always Hardwood, whatever team color the coach saved. A third
-   copy of the block in about.html and advanced.html; #434 moves all three into
-   one stylesheet. tokens.css sets --tint* for data-tint="hardwood" and leaves
-   --accent* at Graphite, so the accent points at the tint here.
-   `html:root[...]` outranks tokens.css's theme and more-contrast blocks. */
-html:root[data-tint="hardwood"] {
-  --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
-  --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
-  --accent-text: var(--tint);
-}
-/* #332: small orange text needs 4.5:1, which Hardwood misses on light grounds
-   (3.9:1). Light takes a darker orange; dark keeps Hardwood; more contrast
-   takes the ink. Every arm names its theme (the selector trap). */
-html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B04308; }
-@media (prefers-contrast: more) {
-  html:root:not([data-theme="dark"])[data-tint="hardwood"],
-  html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
-}
-html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font-family: var(--font); font-size: 17px; line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  padding: 0 1.15rem env(safe-area-inset-bottom);
-}
-.wrap { max-width: 40rem; margin: 0 auto; }
-/* Wraps because at a 32px root the wordmark (200px) and "Open the app" (143px
-   at its min-content, both already wrapping internally) cannot both fit a
-   316px column, and neither can shrink further -- so without this the button
-   hung 29px off a 390px viewport and 112px off a 320px one, clipped mid-word,
-   and the whole page panned sideways. The spacer keeps the button hard right
-   on one line and drops it under the wordmark on two. */
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .9rem 0 .3rem; }
-/* `min-height` because the wordmark is a live link home, not decoration, and it
-   was 27px tall -- under the 48px floor the rest of the app holds itself to.
-   It costs no bar height while the CTA pill shares the row (that pill is
-   already 48px); it only pays when the row wraps at large text. */
-.mark { display: flex; align-items: center; min-height: 48px; gap: .5rem; text-decoration: none; color: inherit; }
-.mark b { font-size: 1.05rem; font-weight: 660; letter-spacing: -.03em; }
-.spacer { flex: 1; }
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
-  min-height: 48px; padding: 0 1.05rem; border-radius: 999px;
-  font: inherit; font-size: .95rem; font-weight: 580; letter-spacing: -.01em;
-  text-decoration: none; border: 1px solid var(--line-2); color: var(--ink);
-  background: var(--surface);
-  transition: transform 110ms var(--ease);
-}
-.btn.primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
-.btn:active { transform: scale(.97); }
-/* The 13vw cap only binds at large text: at a 32px root the 1.9rem floor is
-   60.8px, and "basketball" alone paints 329px, wider than the 246px column at
-   320px, so the word spilled 47px past the viewport (#340). Capped, it wraps. */
-h1 {
-  font-size: min(clamp(1.9rem, 7.5vw, 2.7rem), 13vw); line-height: 1.06; letter-spacing: -.045em;
-  font-weight: 700; margin: 1.6rem 0 0;
-}
-.lede { font-size: 1.16rem; line-height: 1.5; color: var(--ink-2); margin: 1rem 0 0; }
-.cta { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.2rem 0 .9rem; }
-/* Sits under the buttons, where the question it answers gets asked. Muted and
-   small: it is a fact, not a pitch. */
-.trust { font-size: .92rem; color: var(--muted); margin: 0 0 1.8rem; }
-figure { margin: 1.2rem 0 0; }
-figcaption { font-size: .88rem; color: var(--muted); margin-top: .7rem; }
-section { border-top: 1px solid var(--line); padding-top: 1.6rem; margin-top: 2.2rem; }
-h2 { font-size: 1.15rem; letter-spacing: -.03em; font-weight: 640; margin: 0 0 .8rem; }
-p { margin: .8rem 0; color: var(--ink-2); }
-a { color: var(--accent-text); text-underline-offset: .18em; text-decoration-thickness: .07em; }
-/* The sibling links. Chips rather than a list: seven roster sizes is a picker,
-   and 48px keeps it tappable on a phone. */
-.sizes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
-.sizes a {
-  display: inline-flex; align-items: center; min-height: 48px; padding: 0 .95rem;
-  border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
-  color: var(--ink); text-decoration: none; font-size: .95rem; font-weight: 580;
-}
-/* The card is a fixed 3.45in of fixed-px type, so it must SCALE to a narrow
-   stage, never shrink: as a flex item it was squeezed to 294px at 320px wide
-   while its names kept their size, and the widest row (five 4-letter names at
-   19.9px) filled the content box with no gap. No JS on this page, so the zoom
-   is the viewport arithmetic card.js's fitStage does: the stage's width is the
-   viewport less the body's 2 x 1.15rem and the stage's 2 x .3rem padding (its
-   value under 620px, app.css; wider than that the zoom is 1 anyway), over the
-   card's 3.45in. Print is unaffected (card.css forces zoom: 1 there). */
-/* Its own class, because card.css owns `.stage` and `.card` (the collision
-   guard, test/css-collide.test.js, forbids a second sheet restyling them). */
-.chart-stage { --cardzoom: min(1, calc((100vw - 2.9rem) / 3.45in)); }
-.chart-stage > * { flex: none; }
-/* Placeholder copy, and it should look like it until the author lands. */
-[data-draft] { color: var(--muted); font-style: italic; }
-footer {
-  border-top: 1px solid var(--line); margin: 2.6rem 0 0; padding: 1.4rem 0 2.6rem;
-  font-size: .92rem; color: var(--muted);
-  display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; align-items: center;
-}
-/* The footer links are standalone controls, not words inside a sentence, so the
-   48px floor applies to them the same as anywhere else. They are already flex
-   items (blockified), so a min-height grows the box rather than overlapping the
-   line beside it. */
-footer a { display: flex; align-items: center; min-height: 48px; }
-
-/* 19em is the app's own name for "the reader has turned their text up" --
-   304px at a default root, so a 320px phone at normal text never sees this,
-   but 608px at a 32px root, so a 320px phone at 200% does. The mail link is
-   one unbreakable token 305px wide in a 288px column; without this the page
-   measured 342px in a 320px viewport, and overflow-x: clip deleted the
-   scrollbar rather than the overflow, so nothing panned and nothing showed.
-   about.html has carried the identical rule since it shipped; this template
-   never got it. */
-@media (max-width: 19em) {
-  footer a { overflow-wrap: anywhere; }
-}
-</style>
+<link rel="stylesheet" href="./site.css">
 </head>
 <body>
-<div class="wrap">
-
-  <div class="top noprint">
+<!-- Outside `.wrap` so the sticky bar can run edge to edge, the same markup
+     about.html and advanced.html use (site.css). It is .noprint, so the
+     printed card is unchanged. -->
+<header class="topbar noprint">
+  <div class="top">
     <a class="mark" href="./">
       <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#D2500A"/><g transform="rotate(-8 50 50)"><rect x="17" y="10" width="66" height="80" rx="9" fill="#F4F4F6"/><rect x="26" y="24" width="33.6" height="11" rx="5.5" fill="#C0504D"/><rect x="40.4" y="44" width="33.6" height="11" rx="5.5" fill="#C9762F"/><rect x="26" y="64" width="21.6" height="11" rx="5.5" fill="#2E8A7A"/><rect x="59.6" y="64" width="14.4" height="11" rx="5.5" fill="#2E8A7A"/></g></svg>
       <b>Benchcard</b>
@@ -250,11 +138,13 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     <span class="spacer"></span>
     <a class="btn" href="./">Open the app</a>
   </div>
+</header>
+<div class="wrap">
 
   <h1 class="noprint">Basketball rotation chart for two halves</h1>
   <p class="lede noprint">A printable substitution chart for 10 players over two 20-minute halves, subbing every 4 minutes: 20 minutes each, as close to equal playing time as the arithmetic allows.</p>
 
-  <figure>
+  <figure class="chart">
     <!-- Generated by scripts/charts.mjs from a real generatePlan() run:
          10 players, 2 x 20 minutes, subs every 4, seed 11. Nothing in
          here is drawn by hand. -->
@@ -279,7 +169,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     <figcaption class="noprint">Each box is one stint: the clock is time left in the period, and the underlined names just came on. 10 stints, five on the floor, and it cuts out to fit a pocket.</figcaption>
   </figure>
 
-  <div class="cta noprint">
+  <div class="cta chart-cta noprint">
     <!-- The link that continues the thought they arrived with. try=10
          opens the app with a clearly-labelled 10-player SAMPLE team, so a
          coach with nothing to paste can push this rotation around instead of
@@ -305,7 +195,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     </nav>
   </section>
 
-  <footer class="noprint">
+  <footer class="chart-foot noprint">
     <span>Benchcard — free, offline, and yours.</span>
     <a href="./">Open the app</a>
     <a href="./about">How it works</a>

@@ -1,0 +1,247 @@
+/* The app's timeline, in one place. It lives here, and not in app.css, so that
+   about.html can draw the same timeline from the same rules: About links
+   site.css and this sheet, never the app shell. index.html links this right
+   after app.css (#434). Moved from app.css unchanged apart from the two
+   things below. */
+/* ============================ the timeline ============================ */
+/* --lab (9.5rem) fits a name of about twenty characters (rows carry full
+   names, not abbreviations); longer ones ellipsize. It drops to 6.5rem once
+   the one-row layout turns on (@container below, keyed off .tl's own width
+   rather than the viewport -- a phone in portrait is wide enough for
+   dot+name+track+total on one row at ~20em/390px; 320px/32px text keeps it
+   stacked), which pins the track at >= 50% of the row (smoke `game rows
+   fit`) -- at the old 9.5rem/5.6rem split the track was only 29% of a 368px
+   row. It widens back to 9.5rem only once the container is genuinely
+   desktop-wide (34em), since .tl sits in the fluid main column, never the
+   fixed one a phone could reach. --tot starts at the width the number alone
+   needs; :not(.even) widens it for the MOST/FEWEST word column. */
+.tl { --lab: 9.5rem; --tot: 2rem; --edge-l: .5rem; --edge-r: .4rem; container-type: inline-size; }
+.tl:not(.even) { --tot: 6.2rem; }
+/* No gap under the Q1-Q4 labels: align-items: end already leaves the
+   label's descender space before the first row, so a gap here would eat
+   into the budget that fits nine rows plus the Start game bar inside
+   844px. */
+.tl-head { display: grid; grid-template-columns: 1fr; gap: .6rem; align-items: end; margin-bottom: 0;
+  /* The same side insets as .tl-row (its 3px/1px transparent edges plus its
+     padding), so the Q1-Q4 axis and every track share one left and right. */
+  padding: 0 calc(1px + var(--edge-r)) 0 calc(3px + var(--edge-l)); }
+.tl-head > div:first-child, .tl-head > div:last-child { display: none; }
+.tl-periods { position: relative; height: 1.1rem; }
+/* A quiet footnote above the track, the same ink as any other muted label. */
+.tl-periods span {
+  position: absolute; top: 0; font-size: var(--fs-footnote); font-weight: 500;
+  color: var(--muted); transform: translateX(.3rem);
+}
+/* The row is a plain container, not the control: it carries no role, no
+   tabindex and no click handler -- .tl-name (the button) carries the
+   tap-target floor and cursor: pointer instead. */
+.tl-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "lab num" "ex ex" "trk trk";
+  gap: .6rem; row-gap: .22rem; align-items: center;
+  padding: .3rem var(--edge-r) .4rem var(--edge-l); border-radius: var(--r-xs);
+  /* Every row carries the pinned card's side edges, transparent until pinned,
+     so pinning paints a stripe without moving anything (#225). */
+  border: solid transparent; border-width: 0 1px 0 3px;
+  transition: opacity var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.tl-lab { grid-area: lab; display: flex; align-items: center; gap: .4rem; min-width: 0; }
+.tl-lab .dot { width: .58rem; height: .58rem; border-radius: 50%; background: var(--c); flex: none; }
+/* The full name (tlName in timeline.js keeps it full -- test/timeline-names.
+   test.js pins that) reads at the same size/weight as any other row label,
+   not a footnote. */
+.tl-lab .nm { font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis;
+  /* Stacked layout: the name wraps rather than ending in an ellipsis (#422);
+     the one-row block below restores the one-line ellipsis. */
+  min-width: 0; white-space: normal; overflow-wrap: break-word; }
+/* The name is the tap target, not the row: a real <button class="tl-name">
+   around the dot and name, styled to disappear so it reads as the plain
+   label it replaces (no chrome, underline or tint -- K1 disallows tint
+   here). The stacked layout gives it the full 48px; the one-row layout can
+   only give it the row's own pitch, or a taller button would overlap the
+   next row (docs/specs/72-fit-nine-rows.md, "the one conflict, and the call
+   made"). */
+.tl-name {
+  display: flex; align-items: center; gap: .4rem; width: 100%;
+  background: none; border: 0; padding: 0; margin: 0; color: inherit; font: inherit;
+  text-align: left; cursor: pointer; min-height: 48px;
+}
+.tl-track {
+  grid-area: trk; position: relative; height: 1.5rem; border-radius: var(--r-xs);
+  background: var(--track); overflow: hidden;
+}
+/* The one-row layout: label, track and total side by side, the same three
+   columns as the Q1-Q4 labels above (.tl-head/.tl-periods) so the track and
+   its period markers line up in both layouts. */
+@container (min-width: 20em) {
+  /* A container query cannot restyle the container element itself (.tl
+     establishes it) -- only descendants -- so --lab is set on
+     .tl-head/.tl-row directly, not .tl: the earlier .tl { --lab: 6.5rem }
+     here silently never applied. */
+  .tl-head, .tl-row { --lab: 6.5rem; }
+  .tl-head { grid-template-columns: var(--lab) 1fr var(--tot); }
+  .tl-head > div:first-child, .tl-head > div:last-child { display: block; }
+  /* One row, not grid-template-areas: none -- .tl-lab/.tl-track/.tl-tot keep
+     the same grid-area names as the stacked layout, so this only renames the
+     arrangement rather than clearing names and hoping auto-placement sorts
+     them (it previously put every item in the same cell). */
+  /* The row pitch (top of one row to the next) is 2.25rem/36px -- 5px taller
+     than the prototype's ~31px for a bigger target, leaving ~40px of slack
+     under the ninth row at 390x844 (docs/specs/72-fit-nine-rows.md). No
+     vertical padding: the pitch IS the row's min-height. Stated once as
+     --row-pitch on .tl-row (inherited by .tl-name below), not .tl itself,
+     for the same container-query reason --lab is set on .tl-head/.tl-row. */
+  .tl-row {
+    grid-template-columns: var(--lab) 1fr var(--tot); grid-template-areas: "lab trk tot";
+    row-gap: 0; padding: 0 var(--edge-r) 0 var(--edge-l); --row-pitch: 2.25rem; min-height: var(--row-pitch);
+  }
+  /* Stretches the label cell (and the button inside it) to the row's own
+     height; .tl-name's min-height: var(--row-pitch) below is what sets the
+     number. Track and total keep the row's own centered alignment. */
+  .tl-lab { align-self: stretch; align-items: stretch; }
+  /* The one-row layout keeps its fixed pitch: the total is one box again in
+     the "tot" cell, the word in a fixed gutter beside the number, all on one
+     line so every number ends at the same x (#422). `.tl-row` in front: the
+     stacked rules for these sit later in the file, so equal specificity
+     would lose to them. */
+  .tl-lab .nm { white-space: nowrap; overflow-wrap: normal; }
+  .tl-row .tl-tot { grid-area: tot; display: block; white-space: nowrap; }
+  .tl-row .tl-tot .ex, .tl-row .tl-tot .ex:empty { display: inline-block; width: 3.2rem; margin-left: .3rem; }
+  .tl.even .tl-row .tl-tot .ex { width: 0; margin-left: 0; }
+  .tl-row .tl-tot .num { line-height: inherit; }
+  /* Smoke `game rows fit` measures every .tl-name against min(48, pitch) -
+     0.5, not 48 flat, since a target taller than the pitch would overlap the
+     next row; the touch sweep skips .tl-name here for the same reason.
+     --row-pitch is set once on .tl-row and inherited here so the two rules
+     can't drift apart. */
+  .tl-name { min-height: var(--row-pitch); }
+  .tl-track { height: 1rem; }
+}
+/* Widens the label back to the desktop value only once the container is
+   genuinely wide: .s-rot sits in .cols' fluid main column, not the fixed
+   396px one, so this never fires on a phone. */
+@container (min-width: 34em) {
+  .tl-head, .tl-row { --lab: 9.5rem; }
+}
+/* Moves are played as a transform (flipFrom/blockMove in app.js), never a
+   left/width transition, which relaid out every block on every frame of a
+   shuffle with a full squad. transform-origin pins the scale to the left
+   edge so the inverse maths is a plain percentage of the block's own
+   width. */
+.tl-blk {
+  position: absolute; top: 0; bottom: 0; border-radius: var(--r-2xs);
+  background: var(--c);
+  transform-origin: 0 50%;
+}
+/* Period boundaries: a 3px gap of opaque --track (the track's own color), so
+   it reads as a notch cut through a block and disappears seamlessly over the
+   bare track -- one rule for both cases, instead of a variant needed to keep
+   contrast either way. */
+.tl-div { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--track); z-index: 1; /* sits above the bare track it notches through */ }
+/* "The game is here." Only drawn while a game is genuinely part-played (see
+   resumeAt in card.js), because a reload closes bench mode and the plan page
+   otherwise looks identical to a game that has not started. The ring is what
+   keeps it visible over a block of any hue, including an orange one. */
+.tl-now {
+  position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; z-index: 2; /* above .tl-div's notches so the ring reads over any block color */
+  background: var(--accent); box-shadow: 0 0 0 1px var(--surface);
+}
+.tl-row:first-child .tl-now::before {
+  content: ''; position: absolute; left: 50%; top: 0;
+  width: .42rem; height: .42rem; border-radius: 50%;
+  background: var(--accent); transform: translate(-50%, -35%);
+}
+/* 600, not 700 -- the total is a tabular number next to the name, not a
+   heading. */
+/* Stacked layout: the box dissolves so .num sits right of the name and .ex
+   takes its own line under it; the one-row block makes it a box again. Color
+   and type inherit through it, so .hi/.lo still reach both. */
+.tl-tot { display: contents; text-align: right; font-size: var(--fs-footnote); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+/* `--tl-hi` is declared by site.css only: the Hardwood pages need a darker
+   orange here than their accent (#332). The app declares none, so it paints
+   --accent exactly as it did. */
+.tl-tot.hi { color: var(--tl-hi, var(--accent)); } .tl-tot.lo { color: var(--info); }
+/* The word, not the hue, is what says which end of the squad this is. Small
+   enough to stay a footnote to the number, never the other way round. */
+/* Pinned to the row's top at the 48px name height, so every total sits at the
+   same offset however many lines a name wraps to (#422). */
+.tl-tot .num { grid-area: num; align-self: start; line-height: 48px; }
+.tl-tot .ex { grid-area: ex; text-align: left;
+  font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.tl-tot .ex:empty { display: none; }
+.tl-body { position: relative; }
+/* First paint has the shell but no plan: the modules still have to arrive and
+   the first solve is synchronous. The skeleton is built from the real row
+   classes, so it is exactly the height the plan will be and nothing jumps when
+   it is replaced. Rows are neutral; only the track carries a shape. */
+.tl-skel { animation: skel-pulse 1.5s var(--ease) infinite; pointer-events: none; }
+.tl-skel .dot, .tl-skel .nm, .tl-skel .tl-tot { background: var(--line); border-radius: var(--r-2xs); }
+/* Bars stand as tall as the text line box they replace — a shorter bar looked
+   better and cost 11px a row, which is a 136px jump on a full squad. */
+.tl-skel .nm { height: 1.29rem; width: 4.2rem; }
+.tl-skel .tl-tot { height: 1.29rem; width: 1.5rem; margin-left: auto; }
+.tl-skel .tl-track { background-image: linear-gradient(90deg,
+    var(--line) 0 26%, transparent 26% 40%, var(--line) 40% 68%, transparent 68% 84%, var(--line) 84% 100%); }
+.tl-skel .tl-row:nth-child(3n+2) .tl-track { background-image: linear-gradient(90deg,
+    transparent 0 14%, var(--line) 14% 46%, transparent 46% 62%, var(--line) 62% 90%, transparent 90% 100%); }
+.tl-skel .tl-row:nth-child(3n+3) .tl-track { background-image: linear-gradient(90deg,
+    var(--line) 0 18%, transparent 18% 34%, var(--line) 34% 56%, transparent 56% 76%, var(--line) 76% 96%, transparent 96% 100%); }
+@keyframes skel-pulse { 0%, 100% { opacity: .6 } 50% { opacity: .95 } }
+/* Dim the other rows while one is under the pointer. */
+@media (hover: hover) { .tl:hover .tl-row:not(:hover) { opacity: .45; } }
+@media (hover: hover) { .tl-row:hover { background: var(--surface-2); } }
+
+/* One card, in two boxes: the pinned row is its top and .tld (a sibling right
+   under it) its bottom. Same fill, same 3px stripe in the player's color
+   (every row already holds that 3px edge, transparent), same 1px outline; the
+   row rounds only its top corners and .tld only its bottom ones, and the top
+   line is an inset shadow because a real border would grow the row and move
+   its contents (#225). */
+.tl-row.pin {
+  background: var(--surface-2); border-left-color: var(--c); border-right-color: var(--line-2);
+  border-radius: var(--r-sm) var(--r-sm) 0 0; box-shadow: inset 0 1px 0 var(--line-2);
+}
+/* !important because riseIn (fx.js) leaves an inline `opacity: 1` on every row
+   once the entrance animation ends, which would otherwise beat this rule and
+   leave the other rows undimmed. */
+.tl.pinned .tl-row:not(.pin) { opacity: .38 !important; }
+@media (hover: hover) { .tl.pinned:hover .tl-row:not(:hover):not(.pin) { opacity: .38 !important; } }
+
+.tld {
+  margin: 0 0 .55rem; padding: .85rem .95rem; display: flow-root;
+  border: solid var(--line-2); border-width: 0 1px 1px 3px; border-left-color: var(--c, var(--accent));
+  border-radius: 0 0 var(--r-sm) var(--r-sm); background: var(--surface-2);
+}
+/* the panel is a sibling of the rows, so keep the dimming off it */
+.tl.pinned .tld { opacity: 1; }
+/* The close button rides the top-right corner of the details, out into the
+   padding so it is a full 48px target without pushing the facts down; the
+   facts wrap around it. */
+.tld-x { float: right; width: 48px; height: 48px; margin: -.55rem -.65rem 0 .3rem; border-radius: var(--r-full);
+  color: var(--muted); font-size: var(--fs-body); display: grid; place-items: center; }
+@media (hover: hover) { .tld-x:hover { background: var(--surface-3); color: var(--ink); } }
+.tld-facts { display: flex; flex-wrap: wrap; gap: 1.3rem; }
+.tld-f .k { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+.tld-f .v { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; margin-top: .1rem; }
+.tld-lab { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--muted);
+  font-weight: 600; margin: .95rem 0 .4rem; }
+.tld-when { display: flex; flex-wrap: wrap; gap: .3rem; }
+.tld-slot { font-size: var(--fs-footnote); font-variant-numeric: tabular-nums; padding: .2rem .55rem;
+  border-radius: var(--r-full); background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); }
+
+/* The two lines app.css kept in its `19em` block, under their own copy of it. */
+@media (max-width: 19em) {
+  /* The timeline's stacked row (#422): at a 32px root the name column beside
+     the number was ~120px, so "Alexandria" broke into "Alexan" / "dria". Here
+     the name takes the whole row, and the number moves down to the word's
+     line, at the right edge, just above its bar. A plain row's line holds the
+     number alone. */
+  .tl-row { grid-template-areas: "lab lab" "ex num" "trk trk"; }
+  .tl-tot .num { align-self: center; line-height: inherit; }
+}
+
+@media (forced-colors: active) {
+  /* Timeline blocks: a border so each one still shows against its track. */
+  .tl-blk {
+    border: 1px solid CanvasText;
+  }
+}

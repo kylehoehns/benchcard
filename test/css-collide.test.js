@@ -58,6 +58,35 @@ const ALLOWED = new Map([
   // `.gm-p.fresh .nm` is a just-on bench floor row (#147); `.five .nm.fresh`
   // is a name on the printed card's starting five. No element carries both.
   ['fresh app.css|card.css', 'a just-on bench floor row vs. a name on the printed card'],
+  /* #434: the timeline rules moved out of app.css into timeline.css, and
+     these are the pairs they leave behind on index.html, which were
+     app.css's own entries while the rules still lived there. */
+  // `.tl-lab .nm` is the timeline's label; `.plr .nm`, `.srow .nm` are roster
+  // and Team-page rows; `.five .nm.fresh` is a name on the card.
+  ['nm app.css|timeline.css', 'timeline label vs. roster and Team-page row names'],
+  ['nm timeline.css|card.css', 'timeline label vs. a name on the printed card'],
+  // `.tl-lab .dot` is the timeline's player dot; `.srow .nm .dot` and
+  // `.dayrow .nm .dot` are the Team page's and day list's own dots.
+  ['dot app.css|timeline.css', 'timeline player dot vs. the Team page and day-list dots'],
+  // `.tld-f .v` is a fact in the timeline's pinned-player card; `.srow .v` is
+  // a Team-page slider row's value. Different elements.
+  ['v app.css|timeline.css', 'pinned-player fact vs. a Team-page slider value'],
+  // Same element, additive on purpose: timeline.css owns the close button's
+  // look, and app.css's coarse-pointer block lists it with `.gm-x` and
+  // `.bsheet-close` to give all three the same 48px floor.
+  ['tld-x app.css|timeline.css', 'the close button\'s look vs. the shared 48px touch floor'],
+  /* The public pages: a page-only rule that adds to one shared (site.css)
+     class, which is the point of keeping it inline. */
+  // about.html: the last paragraph in a box loses its bottom margin there
+  // only; Advanced's boxes keep it.
+  ['box site.css|inline:about.html', 'About-only `.box p:last-child`; Advanced keeps the margin'],
+  // about.html: the reveal choreography lands the artefact a beat late.
+  ['plate site.css|inline:about.html', 'About-only reveal delay on the shared plate'],
+  // 404.html: the wordmark sits in `.wrap` here, with no top bar around it,
+  // so it carries the top padding the bar would; and its heading has its own
+  // bottom margin and wrap rule.
+  ['wrap site.css|inline:404.html', '404-only: the heading sits directly in .wrap'],
+  ['mark site.css|inline:404.html', '404-only: the wordmark has no top bar, so it carries its own top padding'],
 ]);
 
 /* Every stylesheet a page loads, in cascade order: the linked local sheets in
@@ -142,20 +171,21 @@ test('the sweep can actually see a stylesheet, and the graph is what we think', 
   // `<link>` shape changes. It also pins the trap: `about.html` reuses nine
   // card.css names and is safe only while it does not link card.css.
   const graph = Object.fromEntries(PAGES.map((p) => [p, sheetsOf(p).map((s) => s.name)]));
-  assert.deepEqual(graph['index.html'], ['tokens.css', 'app.css', 'card.css', 'inline:index.html']);
-  assert.deepEqual(graph['about.html'], ['tokens.css', 'inline:about.html']);
+  assert.deepEqual(graph['index.html'], ['tokens.css', 'app.css', 'timeline.css', 'card.css', 'inline:index.html']);
+  assert.deepEqual(graph['about.html'], ['tokens.css', 'site.css', 'timeline.css', 'inline:about.html']);
   /* The same trap, and the same protection: `advanced.html` reuses `.paper`,
      `.stint`, `.chg`, `.five` and `.nm` from the printed card and is safe only
      while it does not link `card.css` either. */
-  assert.deepEqual(graph['advanced.html'], ['tokens.css', 'inline:advanced.html']);
+  assert.deepEqual(graph['advanced.html'], ['tokens.css', 'site.css', 'inline:advanced.html']);
   for (const { file: p } of CHARTS) {
-    assert.deepEqual(graph[p], ['tokens.css', 'card.css', `inline:${p}`],
+    // the inline block is the one-line <noscript> print rule, nothing else (#434)
+    assert.deepEqual(graph[p], ['tokens.css', 'card.css', 'site.css', `inline:${p}`],
       `${p} loads an unexpected set of stylesheets`);
   }
   /* `404.html` links its sheet root-relative (`/tokens.css`), since it is
      served at any depth, so `sheetsOf` reads both spellings (#424). It must
      see tokens.css there, or this page's sweep would measure nothing. */
-  assert.deepEqual(graph['404.html'], ['tokens.css', 'inline:404.html']);
+  assert.deepEqual(graph['404.html'], ['tokens.css', 'site.css', 'inline:404.html']);
   /* index, about, advanced, 404, and every page scripts/charts.mjs generates. */
   assert.equal(PAGES.length, 4 + CHARTS.length, `expected ${4 + CHARTS.length} static pages, found ${PAGES.length}`);
   // and the parser really does read rules out of a real sheet

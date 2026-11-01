@@ -100,7 +100,9 @@ test('the guard reaches every sheet the site ships', () => {
     assert.ok([...SHEETS.keys()].some((n) => n === `inline:${page}` || read(page).includes(`href="./${n}"`)),
       `${page} contributes no stylesheet at all -- either it is unstyled or the link/style scan missed it`);
   }
-  for (const name of ['app.css', 'card.css', 'tokens.css', 'inline:about.html', 'inline:advanced.html']) {
+  /* #434: the About and Advanced hover rules moved to site.css, and the
+   timeline's to timeline.css, so those are the sheets named here. */
+  for (const name of ['app.css', 'card.css', 'tokens.css', 'site.css', 'timeline.css']) {
     assert.ok(SHEETS.has(name), `${name} is no longer being scanned by the hover guard`);
     assert.ok(RULES.some((r) => r.sheet === name), `${name} parsed to zero rules; the walker is not reading it`);
   }
@@ -110,7 +112,7 @@ test('every :hover rule the site ships is behind @media (hover: hover)', () => {
   const hovers = RULES.filter((r) => r.sel.includes(':hover'));
   assert.ok(hovers.length >= 45,
     `only ${hovers.length} hover rules were found across the site; the walker is wrong, not the sheets`);
-  for (const name of ['card.css', 'inline:about.html', 'inline:advanced.html']) {
+  for (const name of ['card.css', 'site.css', 'timeline.css']) {
     assert.ok(hovers.some((r) => r.sheet === name),
       `${name} contributed no hover rule; it carried one when this guard was widened, so either it was `
       + 'deleted (fine, drop it from this list) or the sheet is not being walked (not fine)');

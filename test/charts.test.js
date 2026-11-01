@@ -453,7 +453,7 @@ test('the sitemap lists the 6-player page before the 7 and the halves page after
 
 /* ---------------- 6. try first, chart above the fold, Print, Hardwood (#433) ---------------- */
 
-const ctaOf = page => page.match(/<div class="cta noprint">([\s\S]*?)<\/div>/)?.[1] ?? '';
+const ctaOf = page => page.match(/<div class="cta chart-cta noprint">([\s\S]*?)<\/div>/)?.[1] ?? '';
 const tagsOf = html => [...html.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<(a|button)\b[^>]*>[^<]*<\/\1>/g)]
   .map(m => m[0].replace(/\s+/g, ' '));
 
@@ -461,12 +461,12 @@ test('every chart page reads header, h1, lede, the chart, then the buttons, then
   for (const c of CHARTS) {
     const page = read(c.file);
     const at = needle => page.indexOf(needle);
-    const order = ['<h1 ', '<p class="lede', '<figure>', '<div class="cta noprint">', '<p class="trust noprint">', '<section']
+    const order = ['<h1 ', '<p class="lede', '<figure class="chart">', '<div class="cta chart-cta noprint">', '<p class="trust noprint">', '<section']
       .map(at);
     assert.ok(order.every(i => i > 0), `${c.file} is missing a part: ${order}`);
     assert.deepEqual(order, [...order].sort((a, b) => a - b), `${c.file} parts are out of order: ${order}`);
-    assert.ok(at('<div class="top noprint">') < at('<h1 '), `${c.file} header is not first`);
-    assert.ok(at('</figure>') < at('<div class="cta noprint">'), `${c.file} buttons are above the chart`);
+    assert.ok(at('<header class="topbar noprint">') < at('<h1 '), `${c.file} header is not first`);
+    assert.ok(at('</figure>') < at('<div class="cta chart-cta noprint">'), `${c.file} buttons are above the chart`);
   }
 });
 
@@ -506,10 +506,13 @@ test('Print is an attribute, not a script, and a noscript style hides it with Ja
 });
 
 test('every chart page is Hardwood and its links paint --accent-text', () => {
+  const site = readFileSync(new URL('../app/site.css', import.meta.url), 'utf8');
   for (const c of CHARTS) {
     const page = read(c.file);
     assert.ok(page.includes('<html lang="en" data-tint="hardwood">'), `${c.file} is not data-tint hardwood`);
-    assert.match(page, /\ba \{ color: var\(--accent-text\);/, `${c.file} links do not paint --accent-text`);
-    assert.ok(page.includes('html:root[data-tint="hardwood"]'), `${c.file} has no Hardwood mapping`);
+    // the paint lives once, in site.css (#434); the page must load it
+    assert.ok(page.includes('<link rel="stylesheet" href="./site.css">'), `${c.file} does not load site.css`);
+    assert.match(site, /\ba \{ color: var\(--accent-text\);/, 'site.css links do not paint --accent-text');
+    assert.ok(site.includes('html:root[data-tint="hardwood"]'), 'site.css has no Hardwood mapping');
   }
 });

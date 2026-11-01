@@ -44,6 +44,21 @@ test('precaches the shell entry points', () => {
   }
 });
 
+/* #434: the public pages share site.css and About links timeline.css; a
+   precached page whose sheet is not precached renders unstyled offline. */
+test('every stylesheet a precached page links is precached', () => {
+  let pages = 0;
+  for (const p of precache.filter((f) => f.endsWith('.html'))) {
+    pages += 1;
+    const src = readFileSync(new URL(p, ROOT), 'utf8');
+    for (const m of src.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.?\/?([\w.-]+\.css)"/g)) {
+      assert.ok(precache.includes(`./${m[1]}`), `${p} links ${m[1]}, which is not precached`);
+    }
+  }
+  assert.ok(pages >= 3, `only ${pages} precached pages were read`);
+  for (const f of ['./site.css', './timeline.css']) assert.ok(precache.includes(f), `${f} is not precached`);
+});
+
 /* Follows side-effect imports too (`import './motion.umd.js'`), and resolves
    relative to the importing file — vendor/motion.mjs pulls in a sibling, and
    missing it meant fx.js threw and the whole app never booted offline. */

@@ -500,7 +500,13 @@ const ORANGE_TOKEN = /var\(\s*--(?:accent|accent-2|tint|tint-2|phrase)\s*[,)]/;
  * `more` marks a rule that sits inside (prefers-contrast: more). */
 function pageRules(file) {
   const html = stripAllComments(read('app/' + file));
-  const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+  /* #434: the public pages' rules are in `site.css` (and About's timeline in
+     `timeline.css`) now, not only in the page's own <style>. Read the sheets
+     the page links, in document order, then its inline blocks -- the same
+     cascade the page gets. tokens.css and card.css are measured separately. */
+  const linked = [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="(?:\.\/|\/)(site|timeline)\.css"/g)]
+    .map((m) => stripAllComments(read(`app/${m[1]}.css`)));
+  const styles = [...linked, ...[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1])];
   const out = [];
   const walk = (src, more) => {
     for (const b of splitBlocks(src)) {
@@ -573,7 +579,18 @@ for (const file of Object.keys(PAGES_332)) {
     const rules = pageRules(file);
     const colorDecl = /(?<![-\w])color\s*:\s*([^;}]+)/g;
     const painted = []; // { selector, value } for every `color:` declaration
-    for (const r of rules) for (const m of r.body.matchAll(colorDecl)) painted.push({ selector: r.selector, value: m[1].trim() });
+    /* #434: the timeline total reads `var(--tl-hi, var(--accent))` and the
+       public pages declare `--tl-hi: var(--accent-text)`. Where the page does,
+       the value it paints IS --accent-text; where it does not, it stays the
+       raw accent and is flagged below. */
+    const tlHi = rules.some((r) => /(?<![-\w])--tl-hi\s*:\s*var\(--accent-text\)/.test(r.body));
+    for (const r of rules) {
+      for (const m of r.body.matchAll(colorDecl)) {
+        let value = m[1].trim();
+        if (tlHi && /^var\(--tl-hi,\s*var\(--accent\)\)$/.test(value)) value = 'var(--accent-text)';
+        painted.push({ selector: r.selector, value });
+      }
+    }
     assert.ok(painted.length > 10, `read ${painted.length} color declarations; expected a page's worth`);
     const stray = painted.filter((p) => ORANGE_TOKEN.test(p.value) && !ORANGE_TEXT_OK.has(p.selector))
       .map((p) => `${file}: "${p.selector}" paints ${p.value} as text; small orange text takes var(--accent-text) (only .hl may paint --tint/--accent)`);

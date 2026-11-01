@@ -248,7 +248,11 @@ test('the timeline gives its names back at big text, without losing the word', (
 
      Read from the comment-stripped source for the reason the toast tests above
      record: the rule ships with a comment that names every declaration in it. */
+  /* The timeline lives in timeline.css since #434, and so do its 19em lines. */
+  const bare = readFileSync(new URL('timeline.css', ROOT), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.ok(bare.length > 3000, 'timeline.css was not read');
   const at = bare.indexOf(BIG);
+  assert.ok(at > -1, 'timeline.css has no 19em block');
   const big = bare.slice(at, bare.indexOf('\n}', at));
 
   /* #422: the stacked row owns the word now -- `.tl-tot` dissolves and `.ex`
