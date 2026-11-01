@@ -326,7 +326,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   applies no pins, so none of this applies to it.
 - **A re-plan drops the pin it cannot hold, says so, and leaves the past alone
   (#437).** A re-plan of the remaining stints (a late arrival, a kid marked
-  out, a Who's here change, a Shuffle) can meet a kid whose Plays at most
+  Out, a Who's here change, a Shuffle) can meet a kid whose Plays at most
   minutes are used up while they are fixed to a stint. The engine refuses that
   with `PINS_OVER_CAP` or `FORCED_OVER_CAP` and names the kid. `resolveRest`
   then takes exactly those kids off Starts the last period and the closing
@@ -461,7 +461,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   a flat 200-per-late-player term in `cost()` takes that to 1.7% and one plan in
   thirteen, with the minute spread and the solve time unmoved (the fix comes out
   of the minute-neutral exchange move, not out of anyone's total). It is not a
-  control because the coach already has two — minimum minutes, and the out list.
+  control because the coach already has two — minimum minutes, and Who's here.
   The term is level-blind, so it runs in both search passes without a rotation
   level reaching a single total.
   **`maxSubs` governs it.** The first stint seats five and every break after it

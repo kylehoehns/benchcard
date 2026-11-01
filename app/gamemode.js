@@ -791,12 +791,12 @@ export function renderGameMode({ keepFloor = false } = {}) {
   // #504: Running late, at the top: only kids who were marked late, each with a
   // Here now. A name no longer on the roster is not shown, and nobody late
   // hides the section even when kids are Out.
-  const lateIds = g.late || [];
-  const late = lateIds.filter(id => g.out.includes(id) && byId(id));
+  const lateIds = g.late;
+  const late = lateIds.filter(byId);
   // Out and not late: not coming, so only a quiet row at the bottom offers them.
   const showed = g.out.filter(id => byId(id) && !lateIds.includes(id));
   const full = late.length || showed.length ? distinctNames(state.players) : {};
-  const hereRow = id => hereNowRow(g, id, full[id] || shorts[id] || 'Unnamed', avatarOf);
+  const hereRow = (id, from = 'out') => hereNowRow(g, id, full[id] || shorts[id] || 'Unnamed', avatarOf, from);
   set('#gmOutSec', 'hidden', !late.length);
   const ox = $('#gmOut'); ox.textContent = '';
   for (const id of late) ox.append(hereRow(id));
@@ -808,7 +808,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
   $('#gmShowedBtn').setAttribute('aria-expanded', String(gmShowedOpen));
   set('#gmShowed', 'hidden', !gmShowedOpen);
   const sx = $('#gmShowed'); sx.textContent = '';
-  for (const id of showed) sx.append(hereRow(id));
+  if (gmShowedOpen) for (const id of showed) sx.append(hereRow(id, 'showed'));
 
   // What changes, and exactly when. "Coming off / Going in" with no time on it
   // reads as ambiguous -- the next break is often mid-period, not the period
@@ -1131,7 +1131,7 @@ function sitRest(p, g, i, outId, name) {
 
 /* #383: one Here now row, the same for Running late at the top and Someone
    showed up? at the bottom -- both call `hereNow`, there is no second arrival path. */
-function hereNowRow(g, id, shown, avatarOf) {
+function hereNowRow(g, id, shown, avatarOf, from) {
   const b = el('div', 'gm-b');
   b.style.setProperty('--c', colorOf(id));
   const nm = el('span', 'nm', shown);
@@ -1142,7 +1142,7 @@ function hereNowRow(g, id, shown, avatarOf) {
   go.dataset.pid = id;   // how focus finds this row's button again
   go.setAttribute('aria-label', `Here now, ${shown}`);
   // the arriving player is in the set the call names are made from
-  go.onclick = () => hereNow(g, id, shown);
+  go.onclick = () => hereNow(g, id, shown, from);
   b.append(avatarOf(byId(id)), nm, go);
   return b;
 }
@@ -1152,8 +1152,12 @@ function hereNowRow(g, id, shown, avatarOf) {
    stint on the floor does not change. One `undoable`, so one toast and one
    Undo. Focus goes to the next Here now, else the first floor row; Undo lands
    on the restored player's own button. */
-function hereNow(g, id, shown) {
+function hereNow(g, id, shown, from) {
   tick();
+  // the Here now buttons of the list this tap came from, in order, read before the repaint
+  const listSel = from === 'showed' ? '#gmShowed' : '#gmOut';
+  const siblings = [...document.querySelectorAll(`${listSel} button[data-pid]`)].map(b => b.dataset.pid);
+  const pos = siblings.indexOf(id);
   let rewritten = false;
   let name = shown;
   let told = '';
@@ -1182,11 +1186,16 @@ function hereNow(g, id, shown) {
     gmPick = null;
   }, (undoing) => {
     render(...EDITS.availability.keys);
+    // the coach may have closed the list since; its rows are not built while closed
+    if (undoing && from === 'showed') gmShowedOpen = true;
     renderGameMode();
     if (undoing) gmFocus(`#gmOut button[data-pid="${CSS.escape(id)}"], #gmShowed button[data-pid="${CSS.escape(id)}"]`);
-    else if (document.querySelector('#gmOut button')) gmFocus('#gmOut button');
-    else if (document.querySelector('#gmShowed button')) gmFocus('#gmShowed button');
-    else gmFocusFirstFloor();
+    else {
+      const rest = siblings.filter(x => x !== id);
+      const next = rest[Math.min(pos, rest.length - 1)];
+      if (next) gmFocus(`${listSel} button[data-pid="${CSS.escape(next)}"]`);
+      else gmFocusFirstFloor();
+    }
   });
 }
 

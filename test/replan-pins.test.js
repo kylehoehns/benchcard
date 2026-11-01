@@ -26,7 +26,7 @@ function setup(seed, opts = {}) {
   S.state.players.length = 0;
   for (let i = 0; i < 9; i++) S.state.players.push({ id: `p${i}`, name: `Player ${i}`, tier: 3 });
   const g = {
-    id: `g437-${seed}`, label: '', tipoff: '', out: opts.out || [], seed,
+    id: `g437-${seed}`, label: '', tipoff: '', out: opts.out || [], late: [], seed,
     periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4,
     strategy: opts.strategy ?? 'balanced', balance: 'even',
     constraints: {

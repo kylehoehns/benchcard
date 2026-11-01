@@ -11,7 +11,7 @@ const team = () => ({
   players: [{ id: 'p1' }, { id: 'p2' }],
   days: [
     { name: '', date: '2026-09-12', games: [{
-      out: ['p1', 'p2'],
+      out: ['p1', 'p2'], late: [],
       constraints: {
         ...emptyConstraints(),
         minMinutes: { p1: 8, p2: 6 }, maxMinutes: { p1: 20, p2: 18 },
@@ -27,7 +27,7 @@ const team = () => ({
       live: { at: 0, overrides: { 0: ['p1', 'p2', 'p3', 'p4', 'p5'], 2: ['p2', 'p3', 'p4', 'p5', 'p6'] } },
     }] },
     { name: '', date: '2026-09-19', games: [{
-      out: ['p1'], constraints: { ...emptyConstraints(), minMinutes: { p1: 4 } },
+      out: ['p1'], late: [], constraints: { ...emptyConstraints(), minMinutes: { p1: 4 } },
     }] },
   ],
 });

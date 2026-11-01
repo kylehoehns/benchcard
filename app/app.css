@@ -932,11 +932,8 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
 .who-row .prow-t { overflow-wrap: anywhere; }
 /* #504: each Who's here row is wrapped so a kid who is Out can carry a
    Running late chip as a sibling of the row's button. The hairline moves from
-   `.prow + .prow` to the wrapper, and the chip sits under the name. Tokens
-   only, so dark mode follows. */
-.who-item + .who-item > .who-row::before { content: ''; position: absolute; top: 0; left: 1rem; right: 0;
-  height: 1px; background: var(--line); }
-.who-item > .who-row { position: relative; }
+   `.prow + .prow` to the wrapper (the shared rule below carries it), and the
+   chip sits under the name. Tokens only, so dark mode follows. */
 .who-late { display: block; box-sizing: border-box; min-height: 48px; max-width: calc(100% - 4rem);
   margin: 0 1rem .5rem 3.75rem; padding: 0 1rem; border: 1px solid var(--line); border-radius: var(--r-sm);
   background: var(--chip); color: var(--ink); font: inherit; font-size: var(--fs-footnote);
@@ -2992,8 +2989,8 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
   min-height: 48px; padding: .8125rem 1rem; line-height: 1.375;
   border: 0; background: none; font: inherit;
   font-size: var(--fs-body); color: var(--ink); text-align: left; }
-.prow + .prow { position: relative; }
-.prow + .prow::before { content: ''; position: absolute; top: 0; left: 1rem; right: 0;
+.prow + .prow, .who-item > .who-row { position: relative; }
+.prow + .prow::before, .who-item + .who-item > .who-row::before { content: ''; position: absolute; top: 0; left: 1rem; right: 0;
   height: 1px; background: var(--line); }
 .prow-t { flex: 1; min-width: 0; }
 /* At a large root size the label and the value (Lineup balance's

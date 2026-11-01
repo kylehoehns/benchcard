@@ -33,6 +33,8 @@ import './dom-stub.js';
 export const S = await import('../app/state.js');
 
 export const withTeam = (players, games, settings, fn) => {
+  // a loaded game always has `late` (sanitizeTeam); a hand-built one gets it here
+  for (const g of games) g.late ??= [];
   const saved = S.state.teams;
   S.state.teams = [{
     id: 't', name: 'T', players,

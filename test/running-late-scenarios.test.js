@@ -114,6 +114,27 @@ describe('Running late and Out in bench mode', { skip }, () => {
     assert.equal(await coach.sees('Someone showed up?'), false);
   });
 
+  test('Here now with the Someone showed up list closed puts focus on a floor row, never a hidden button', async () => {
+    await benchWith({ out: ['p8', 'p9'], late: ['p9'] });
+
+    await coach.tap('Here now, Theo Alvarez');
+
+    assert.match(await coach.focused(), /minutes/, 'focus is on a floor row');
+  });
+
+  test('Here now from the bottom list moves focus to the next Here now in that list, and Undo finds the kid again after the list is closed', async () => {
+    await benchWith({ out: ['p7', 'p8'], late: [] });
+    await coach.tap('Someone showed up?');
+    const [first, second] = await coach.showedUp();
+
+    await coach.tap(`Here now, ${first}`);
+    assert.equal(await coach.focused(), `Here now, ${second}`);
+
+    await coach.tap('Someone showed up?');
+    await coach.tap('Undo');
+    assert.equal(await coach.focused(), `Here now, ${first}`, 'Undo lands on the restored kid even though the list was closed');
+  });
+
   test('both: each kid is in their own place, and Here now then Undo restores Out and Running late after a reopen', async () => {
     await benchWith({ out: ['p8', 'p9'], late: ['p9'] });
     assert.deepEqual(await coach.runningLate(), ['Theo Alvarez']);
@@ -173,6 +194,24 @@ describe('Running late changes nothing about the plan, and travels with the game
 
     assert.equal(await coach.isPressed('Running late, Theo Alvarez'), true);
     assert.equal(await coach.isPressed('Running late, Casey Lindqvist'), false);
+  });
+
+  test('the add-game tiles call a kid copied in as Running late "Running late", and a kid copied in as Out "Out"', async () => {
+    await coach.onGameDayWith({}, 10);
+    await coach.tap('Ravens, 11:30 AM, planned');
+    await coach.tap("Who's here, 10 players");
+    await coach.tap('Casey Lindqvist');
+    await coach.tap('Theo Alvarez');
+    await coach.tap('Running late, Theo Alvarez');
+    await coach.tap('Close');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Add a game');
+    await coach.tap('Next');
+
+    const names = await coach.controls();
+
+    assert.ok(names.includes('Theo Alvarez, Running late'), JSON.stringify(names));
+    assert.ok(names.includes('Casey Lindqvist, Out'), JSON.stringify(names));
   });
 
   test('a hand-off link carries who is Running late', async () => {

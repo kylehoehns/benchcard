@@ -11,7 +11,7 @@ import { setAvailable, emptyConstraints } from '../app/team-ops.js';
    swap someone in for the rest of the game, then tap them off in Squad. */
 
 const gameWith = () => ({
-  out: [],
+  out: [], late: [],
   live: {
     at: 0,
     overrides: {
@@ -44,7 +44,7 @@ test('bringing a player back in restores availability without touching overrides
 });
 
 test('a game with no live block survives being sat out', () => {
-  const g = { out: [] };
+  const g = { out: [], late: [] };
   setAvailable(g, 'a', false);
   assert.deepEqual(g.out, ['a']);
 });

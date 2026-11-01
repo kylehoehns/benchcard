@@ -32,7 +32,7 @@ export function removePlayer(team, id) {
   team.players = team.players.filter(p => p.id !== id);
   for (const g of team.days.flatMap(d => d.games)) {
     g.out = g.out.filter(x => x !== id);
-    g.late = (g.late || []).filter(x => x !== id);
+    g.late = g.late.filter(x => x !== id);
     const c = g.constraints;
     delete c.minMinutes[id]; delete c.maxMinutes[id];
     delete c.targetSlots?.[id];
@@ -68,7 +68,7 @@ export function setAvailable(g, id, available) {
   const wasOut = g.out.includes(id);
   g.out = available ? g.out.filter(x => x !== id) : [...g.out, id];
   // #504: Running late is the part of out that is expected, so it never outlives it
-  if (available) g.late = (g.late || []).filter(x => x !== id);
+  if (available) g.late = g.late.filter(x => x !== id);
   const live = g.live;
   const at = playedStints(live);
   if (available) {
@@ -87,7 +87,7 @@ export function setAvailable(g, id, available) {
    can be late; the plan reads `out` alone, so this changes nothing about it. */
 export function setLate(g, id, late) {
   if (!g.out.includes(id)) return;
-  const rest = (g.late || []).filter(x => x !== id);
+  const rest = g.late.filter(x => x !== id);
   g.late = late ? [...rest, id] : rest;
 }
 

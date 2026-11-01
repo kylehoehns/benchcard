@@ -426,10 +426,13 @@
   /* 3b. #27 item 10: every row in the Who's here sheet, at least 48px, at the
         same three phone widths `touchPass` and `settingsRowPass` sweep
         (`who-rows.mjs` drives the sweep; this cell is what it reads back at
-        each width). #143: `.prow` buttons (inside `#sheetWhoBody`'s `.pgrp`)
-        sit straight under `#sheetWhoBody` -- the row IS the control, unlike
-        Settings' box-then-row-then-control nesting -- so this reads them
-        directly rather than walking two levels. Same "open but nothing
+        each width). #143: `.prow` buttons (inside `#sheetWhoBody`'s `.pgrp`,
+        each in its own `.who-item`) are the controls -- the row IS the
+        control, unlike Settings' box-then-row-then-control nesting -- so this
+        reads them directly rather than walking two levels. #504: the
+        `.who-late` chip under an Out kid is measured too, and a sheet with no
+        visible chip is a failure, so a fixture with nobody Out cannot let the
+        chip go unmeasured. Same "open but nothing
         measured is a failure, not a vacuous pass" shape as the settings
         check above, for the same reason: a falsifier that stopped the sheet
         from opening at all must not read as clean because there was nothing
@@ -439,8 +442,11 @@
   minSizeCheck("who's here rows ≥ 48px", {
     gateOpen: whoOpen,
     notOpenMsg: '#sheetWho not open',
-    emptyMsg: '#sheetWho open but 0 rows found -- structural row detection matched nothing',
-    elements: () => document.querySelectorAll('#sheetWhoBody .prow'),
+    emptyMsg: '#sheetWho open but no row and no visible .who-late chip found -- nothing Out, or structural detection matched nothing',
+    elements: () => {
+      const chips = [...document.querySelectorAll('#sheetWhoBody .who-late')].filter(visible);
+      return chips.length ? [...document.querySelectorAll('#sheetWhoBody .prow'), ...chips] : [];
+    },
     dim: r => r.height,
     fmt: (el, r) => `${label(el)} ${round(r.height)}px`,
     noun: 'rows',

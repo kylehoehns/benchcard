@@ -60,7 +60,7 @@ pinned five breaks one of them, the plan gets a `PIN_BREAKS_RULE` warning
 five too. The warning follows the five on the floor, so a hand swap that takes
 the kid off clears it. A hand swap on a pinned stint still works.
 
-When a pinned player goes Out, or is sat for the rest, their place is filled
+When a pinned player is marked absent (Out or Running late), or is sat for the rest, their place is filled
 from the players still playing: for Strongest five by highest Level, then
 fewest minutes; for Keep this five by fewest minutes. The other four stay. A
 kid sat for the rest stays off through every later re-plan, overtime included

@@ -60,7 +60,7 @@ test('a kid who walked in late was not benched before they got here: their leadi
   for (const arrivedAt of [4, 5]) {
     for (const seed of [1, 2, 3, 4]) {
       const game = bareGame({
-        id: 'g0', seed, out: ['p5'], live: { at: 0, overrides: {} },
+        id: 'g0', seed, out: ['p5'], late: [], live: { at: 0, overrides: {} },
         constraints: { ...S.emptyConstraints(), maxBench: LIMIT },
       });
       withTeam(players, [game], {}, () => {
