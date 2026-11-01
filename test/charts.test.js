@@ -389,12 +389,11 @@ test('the halves page copy is exactly the spec\'s', () => {
   assert.equal(desc, 'A printable substitution chart for two 20-minute halves: 10 players, subs every 4 minutes, ' +
     '20 minutes each. Free, no signup, works offline.');
   assert.ok(desc.length <= 160);
-  assert.equal(lede(page), 'A finished, printable substitution chart for 10 players over two twenty-minute halves, ' +
-    'subbing every four minutes: 20 minutes each, as close to equal playing time as the arithmetic allows, ' +
-    'worked out before tip-off. Paste your own roster into Benchcard and it prints yours.');
+  assert.equal(lede(page), 'A printable substitution chart for 10 players over two 20-minute halves, ' +
+    'subbing every 4 minutes: 20 minutes each, as close to equal playing time as the arithmetic allows.');
   assert.match(page, /<figcaption[^>]*>Each box is one stint: the clock is time left in the period, and the underlined names just came on\. 10 stints, five on the floor, and it cuts out to fit a pocket\.<\/figcaption>/);
   assert.ok(page.includes('<p class="trust noprint">Free, and there is no account. Your roster never leaves your device.</p>'));
-  assert.ok(page.includes('<a class="btn" href="./?try=10">Try it with 10 sample players</a>'));
+  assert.ok(page.includes('<a class="btn primary" href="./?try=10">Try it with 10 sample players</a>'));
   assert.ok(page.includes('<link rel="canonical" href="https://benchcard.app/basketball-rotation-chart-two-halves">'));
   const ld = JSON.parse(page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])['@graph'];
   assert.equal(ld[0].name, 'Basketball rotation chart for two halves');
@@ -449,5 +448,66 @@ test('the sitemap lists the 6-player page before the 7 and the halves page after
   assert.equal(at('basketball-rotation-chart-two-halves'), at(slug(12)) + 1);
   for (const loc of [slug(6), 'basketball-rotation-chart-two-halves']) {
     assert.deepEqual(entries[at(loc)].slice(1), ['2026-11-01', '0.7'], loc);
+  }
+});
+
+/* ---------------- 6. try first, chart above the fold, Print, Hardwood (#433) ---------------- */
+
+const ctaOf = page => page.match(/<div class="cta noprint">([\s\S]*?)<\/div>/)?.[1] ?? '';
+const tagsOf = html => [...html.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<(a|button)\b[^>]*>[^<]*<\/\1>/g)]
+  .map(m => m[0].replace(/\s+/g, ' '));
+
+test('every chart page reads header, h1, lede, the chart, then the buttons, then the trust line', () => {
+  for (const c of CHARTS) {
+    const page = read(c.file);
+    const at = needle => page.indexOf(needle);
+    const order = ['<h1 ', '<p class="lede', '<figure>', '<div class="cta noprint">', '<p class="trust noprint">', '<section']
+      .map(at);
+    assert.ok(order.every(i => i > 0), `${c.file} is missing a part: ${order}`);
+    assert.deepEqual(order, [...order].sort((a, b) => a - b), `${c.file} parts are out of order: ${order}`);
+    assert.ok(at('<div class="top noprint">') < at('<h1 '), `${c.file} header is not first`);
+    assert.ok(at('</figure>') < at('<div class="cta noprint">'), `${c.file} buttons are above the chart`);
+  }
+});
+
+test('the button row is Try, Build one, Print, with no "How it works" in it', () => {
+  for (const c of CHARTS) {
+    const n = c.players;
+    assert.deepEqual(tagsOf(ctaOf(read(c.file))), [
+      `<a class="btn primary" href="./?try=${n}">Try it with ${n} sample players</a>`,
+      '<a class="btn" href="./">Build one for your roster</a>',
+      '<button type="button" class="btn" onclick="print()">Print this chart</button>',
+    ], `${c.file} button row`);
+  }
+  assert.equal(read(HALVES_FILE).includes('href="./?try=10"'), true);
+  // the footer keeps its link
+  for (const c of CHARTS) assert.match(read(c.file), /<footer[\s\S]*<a href="\.\/about">How it works<\/a>/);
+});
+
+test('each size page has the one-sentence lede, with the minutes from the plan', () => {
+  for (const n of SIZES) {
+    const m = lede(html.get(n)).match(new RegExp(
+      `^A printable substitution chart for ${n} players over four 8-minute quarters, subbing every 4 minutes: (.+), as close to equal playing time as the arithmetic allows\\.$`));
+    assert.ok(m, `${file(n)} lede is not the one-sentence form: ${lede(html.get(n))}`);
+    assert.match(m[1], /\d+(–\d+)? minutes each|\d+ to \d+ minutes each|\d+ minutes each/, `${file(n)} minutes phrase: ${m[1]}`);
+  }
+});
+
+test('Print is an attribute, not a script, and a noscript style hides it with JavaScript off', () => {
+  for (const c of CHARTS) {
+    const page = read(c.file);
+    const head = page.slice(0, page.indexOf('</head>'));
+    assert.ok(/<noscript><style>[^<]*print[^<]*display:\s*none[^<]*<\/style><\/noscript>/.test(head),
+      `${c.file} has no <noscript><style> hiding the Print button`);
+    assert.equal(page.match(/<button[^>]*onclick="print\(\)"/g)?.length, 1, `${c.file} Print button count`);
+  }
+});
+
+test('every chart page is Hardwood and its links paint --accent-text', () => {
+  for (const c of CHARTS) {
+    const page = read(c.file);
+    assert.ok(page.includes('<html lang="en" data-tint="hardwood">'), `${c.file} is not data-tint hardwood`);
+    assert.match(page, /\ba \{ color: var\(--accent-text\);/, `${c.file} links do not paint --accent-text`);
+    assert.ok(page.includes('html:root[data-tint="hardwood"]'), `${c.file} has no Hardwood mapping`);
   }
 });

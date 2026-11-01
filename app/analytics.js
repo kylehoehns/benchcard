@@ -50,9 +50,11 @@ export const EVENTS = {
      that. So "does onboarding work?" was unanswerable, and A51 rebuilt that
      screen on a diagnosis nobody could check. Fires once per cold load, and
      only for a coach with no record -- `initOnboarding`, behind
-     `!state.onboarded`, the same question app.js asks to pick the view. No
-     fields: a rate needs two counts and nothing else. */
-  welcome_seen: {},
+     `!state.onboarded`, the same question app.js asks to pick the view.
+     One field, `from` (#433): 'try' when the landing URL carried `?try=`,
+     which only the chart pages' Try button links to, else 'direct'. Two
+     literals, so it cannot carry the page address or the roster size. */
+  welcome_seen: { from: ['direct', 'try'] },
   // Does onboarding actually work?
   first_run_complete: { roster: ['1-5', '6-9', '10-12', '13+'] },
   // Does anyone use anything but Balanced?

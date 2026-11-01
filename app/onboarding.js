@@ -930,8 +930,9 @@ export function initOnboarding(setViewFn) {
      list grew for only the second time. Read the note above it in
      `analytics.js`: `first_run_complete` has been a count with no denominator
      since it shipped, so nobody can say whether this screen works. */
+  const want = new URLSearchParams(location.search).get('try');
   if (!state.onboarded) {
-    track('welcome_seen');
+    track('welcome_seen', { from: want !== null ? 'try' : 'direct' });
     showWelcomeDemo();
   }
 
@@ -945,7 +946,6 @@ export function initOnboarding(setViewFn) {
      is about privacy -- a share encodes the coach's own roster into a link --
      and this carries one integer the site already publishes on its public
      chart pages, about nobody. A35, DECISION 2. */
-  const want = new URLSearchParams(location.search).get('try');
   if (want !== null) {
     const rest = new URLSearchParams(location.search);
     rest.delete('try');

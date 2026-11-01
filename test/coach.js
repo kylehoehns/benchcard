@@ -122,6 +122,18 @@ const PRINT_SPY = `window.__prints = [];
       .map(e => e.innerText.replace(/\\s+/g, ' ').trim()));
   };`;
 
+/* A beacon that records instead of sending: each `navigator.sendBeacon(url,
+ * body)` notes the url and the parsed JSON body, as `sentEvents()` reads them
+ * back. The product events (`/e`) go through it; the local server would answer
+ * 204 either way. */
+const BEACON_SPY = `window.__beacons = [];
+  navigator.sendBeacon = (url, body) => {
+    let data = null;
+    try { data = JSON.parse(body); } catch {}
+    window.__beacons.push({ url, data });
+    return true;
+  };`;
+
 const KEY_CODES = { Escape: 27, Tab: 9, Enter: 13 };
 
 export class Coach {
@@ -151,6 +163,7 @@ export class Coach {
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: SHARE_SHEET });
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FADE_WATCH });
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: PRINT_SPY });
+      await c.send('Page.addScriptToEvaluateOnNewDocument', { source: BEACON_SPY });
     } catch (err) {
       c?.close();
       if (launched) await closeChrome(launched.proc, launched.dir);
@@ -795,6 +808,13 @@ export class Coach {
   /** Each time the app asked the browser to print, the card titles on the
       page then ("VS HAWKS"), oldest first. */
   printed() { return evalIn(this.c, 'window.__prints'); }
+
+  /** The product events this page has sent to `/e`, in order, as the bodies
+      the endpoint received (`{ e: 'welcome_seen', from: 'try' }`). */
+  async sentEvents() {
+    const all = await evalIn(this.c, 'window.__beacons');
+    return all.filter(b => b.url === '/e').map(b => b.data);
+  }
 
   /** The last link the share sheet was given; fails if nothing was shared. */
   async sharedLink() {

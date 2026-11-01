@@ -206,6 +206,14 @@ field and no stack field**, which is what keeps "counters only" literally true
 for an event whose whole subject is an exception. It fires at most once per
 page load: an error loop must not become a beacon loop.
 
+**`welcome_seen{from}` counts first runs by how they began (#433).** It fires
+once per cold load with no saved team. `from: 'try'` means the landing URL
+carried `?try=`, which only the "Try it with N sample players" button on the
+eight chart pages links to; `'direct'` is every other arrival, including a
+chart page's "Build one for your roster" button, which links to `./`. So
+`try` is a count of Try taps that reached a first run, and `direct` is the
+rest. It carries nothing about the page address or the roster size.
+
 **A sample team counts nothing until the coach edits it.**
 `first_run_complete{roster}` is the only roster-size signal the app has, and
 the seven roster-size landing pages are built on that distribution — so if

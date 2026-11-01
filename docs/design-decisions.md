@@ -362,8 +362,8 @@ its alternative is an assertion, so the rejected options are kept here too.
   one (the full name if even that collides). It drops back to the short names only
   when a call row would wrap, and then both rows drop together so the block never
   mixes the two.
-- **Public pages always carry Hardwood orange, not the saved team color.** `about.html` and
-  `advanced.html` are reachable from search results and may be visited by someone with no
+- **Public pages always carry Hardwood orange, not the saved team color.** `about.html`,
+  `advanced.html` and the eight generated chart pages are reachable from search results and may be visited by someone with no
   team saved locally. They use Hardwood styling (the orange button, links and phrases) so a
   visitor sees Benchcard's own warmth rather than a gray template. They map `--accent*`
   to `--tint*` at the page level, so in-app elements that read the accent stay Hardwood

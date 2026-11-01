@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseTokensCss, parseColor, colorOf, over, contrast, luminance, splitBlocks, declsOf, stripAllComments } from '../scripts/tokens-css.mjs';
 import { COLORS } from '../app/storage.js';
+import { CHARTS } from '../scripts/charts.mjs';
 
 /* #21 (Graphite look), item 6: every color token in app/tokens.css against
  * WCAG 2.2's own contrast formula, on every ground it can land on.
@@ -487,6 +488,10 @@ test('--on-err on --err, and on its hover fill, clears 4.5:1 in every theme', ()
 const PAGES_332 = {
   'about.html': { rules: ['a', '.jumpto a:focus-visible', '.jumpto a:hover', '.tl-tot.hi', 'ol.steps li::before'] },
   'advanced.html': { rules: ['a', '.jumpto a:focus-visible', '.jumpto a:hover', '.sn-h'] },
+  /* #433: the eight generated chart pages wear Hardwood too. The list is the
+     generator's own, so a ninth page is covered the day it exists. They have
+     no headline phrase (`hl: false`) and their only orange text is links. */
+  ...Object.fromEntries(CHARTS.map((c) => [c.file, { rules: ['a'], hl: false }])),
 };
 const ORANGE_TEXT_OK = new Set(['.hl', 'ul li::marker']);
 const ORANGE_TOKEN = /var\(\s*--(?:accent|accent-2|tint|tint-2|phrase)\s*[,)]/;
@@ -573,8 +578,10 @@ for (const file of Object.keys(PAGES_332)) {
     const stray = painted.filter((p) => ORANGE_TOKEN.test(p.value) && !ORANGE_TEXT_OK.has(p.selector))
       .map((p) => `${file}: "${p.selector}" paints ${p.value} as text; small orange text takes var(--accent-text) (only .hl may paint --tint/--accent)`);
     assert.deepEqual(stray, [], stray.join('\n  '));
-    const hl = painted.find((p) => p.selector === '.hl');
-    assert.ok(hl && /var\(--tint\)/.test(hl.value), `${file}: .hl no longer paints var(--tint), the headline keeps Hardwood`);
+    if (PAGES_332[file].hl !== false) {
+      const hl = painted.find((p) => p.selector === '.hl');
+      assert.ok(hl && /var\(--tint\)/.test(hl.value), `${file}: .hl no longer paints var(--tint), the headline keeps Hardwood`);
+    }
     const missing = PAGES_332[file].rules.filter((sel) => !painted.some((p) => p.selector === sel && /^var\(--accent-text\)$/.test(p.value)))
       .map((sel) => `${file}: "${sel}" does not paint var(--accent-text)`);
     assert.deepEqual(missing, [], missing.join('\n  '));
