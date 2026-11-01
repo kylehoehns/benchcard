@@ -224,15 +224,15 @@ a { color: inherit; }
   #teamAdd:hover { background: none; }
   #teamAdd:hover .i { background: var(--chip-hover); }
 }
-/* One fill for the five header controls that ride directly on the bar's
-   glass -- `#backBtn`, `#shareBtn`, `#settingsBtn` and `#teamAdd` each
-   carry a `.i` icon span; `#teamBtn` holds text instead, so its own button
-   element IS the fill, shaped to a pill (`--r-full`) rather than a circle.
-   Translucent + blurred, not opaque, so each reads as its own small
-   floating chip over the bar's scrim rather than a solid cutout in it --
-   this swaps to opaque `--chip` (see tokens.css) when transparency or a
-   blur is unavailable. */
-#backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
+/* One fill for the header icon buttons that ride directly on the bar's
+   glass -- `#backBtn`, `#shareBtn`, `#settingsBtn` and `#teamAdd` each carry
+   a `.i` icon span, and that span is the round chip. `#teamBtn` is not one:
+   Today's team name is a plain large title with a chevron (#501), and only
+   a hover or press fills it (`--chip`, see `.teambtn`). Translucent +
+   blurred, not opaque, so each reads as its own small floating chip over
+   the bar's scrim rather than a solid cutout in it -- this swaps to opaque
+   `--chip` (see tokens.css) when transparency or a blur is unavailable. */
+#backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i,
 #agClose .i, #frClose .i, .gm-x .i {
   background: color-mix(in srgb, var(--chip) 72%, transparent);
   backdrop-filter: saturate(180%) blur(16px);
@@ -242,7 +242,6 @@ a { color: inherit; }
 #agClose .i, #frClose .i, .gm-x .i {
   width: 2.25rem; height: 2.25rem; border-radius: var(--r-full);
 }
-#teamBtn { border-radius: var(--r-full); }
 #seasonExport { min-height: 48px; }
 
 .wrap { max-width: 1340px; margin: 0 auto; padding: clamp(1rem, 2.2vw, 1.8rem) clamp(.85rem, 2.6vw, 1.5rem) 4rem; }
@@ -342,7 +341,12 @@ a { color: inherit; }
    and the game-mode nav, pointed down to say "opens a list here". */
 .teambtn-chev svg { transform: rotate(90deg); }
 .teambtn-chev { color: var(--muted); }
-@media (hover: hover) { .teambtn:hover { background: var(--surface-2); } }
+/* No fill at rest (#501): a plain large title. Hover fills with the header
+   chips' own `--chip` and a press deepens to `--chip-hover`, as theirs do;
+   `--surface-2` is invisible on light `--bg`. `:active` is never wrapped in
+   a hover query. */
+@media (hover: hover) { .teambtn:hover { background: var(--chip); } }
+.teambtn:active { background: var(--chip-hover); }
 #teamBtnLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* The team menu: a native popover, so Escape, an outside click and the top
@@ -1497,14 +1501,14 @@ h2.side-hd { margin-top: 0; }
     background: var(--bg); mask-image: none; -webkit-mask-image: none;
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
-  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
+  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i,
   #agClose .i, #frClose .i, .gm-x .i {
     background: var(--chip); backdrop-filter: none; -webkit-backdrop-filter: none;
   }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .bar::before, .actionbar::before, .gm-foot::before { background: var(--bg); mask-image: none; -webkit-mask-image: none; }
-  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i, #teamBtn,
+  #backBtn .i, #shareBtn .i, #settingsBtn .i, #teamAdd .i,
   #agClose .i, #frClose .i, .gm-x .i { background: var(--chip); }
 }
 /* The prototype's primary button -- 54px tall, 600 weight, still --tint (K1

@@ -85,6 +85,18 @@ const THEMES = [
   { name: 'dark + more contrast', tokens: darkMore, textFloor: 7, controlFloor: 4.5 },
 ];
 
+/* The four base themes, then every non-Graphite color's four tint states
+ * (#25), each with the text and control floors it is held to. */
+const themeAndTintStates = () => [...THEMES, ...COLORS.flatMap((c) => {
+  const t = resolved.tint(c);
+  return [
+    { name: `${c} light`, tokens: t.light, textFloor: 4.5, controlFloor: 3 },
+    { name: `${c} dark`, tokens: t.dark, textFloor: 4.5, controlFloor: 3 },
+    { name: `${c} light + more contrast`, tokens: t.lightMore, textFloor: 7, controlFloor: 4.5 },
+    { name: `${c} dark + more contrast`, tokens: t.darkMore, textFloor: 7, controlFloor: 4.5 },
+  ];
+})];
+
 const GROUNDS = ['--bg', '--bg-2', '--surface', '--surface-2', '--surface-3', '--sheet'];
 const TEXT_TOKENS = ['--ink', '--ink-2', '--muted', '--ok', '--warn', '--err', '--info'];
 const CONTROL_TOKENS = ['--accent', '--ok', '--warn', '--err', '--info'];
@@ -245,9 +257,10 @@ test('the switch\'s own off track clears the control floor against --surface, in
   assert.deepEqual(bad, [], bad.join('\n  '));
 });
 
-/* #137: the header chips (`#backBtn`, `#shareBtn`, `#settingsBtn`, `#teamAdd`
- * and `#teamBtn`) used to fill from `--surface-2`, which is almost the same
- * as `--bg` in light mode and made them nearly vanish. The owner's decision
+/* #137: the header chips (`#backBtn`, `#shareBtn`, `#settingsBtn`, `#teamAdd`;
+ * `#teamBtn` too until #501) used to fill from `--surface-2`, which is
+ * almost the same as `--bg` in light mode and made them nearly vanish. The
+ * owner's decision
  * (docs/specs/137-header-chip-fill.md) is a token of the chip's own: the
  * prototype's `--seg-track` gray in light, unchanged from `--surface-2` in
  * dark. Both values are pinned here literally, from the spec, not read back
@@ -271,27 +284,19 @@ test('the light chip hover fill is darker than the light chip fill', () => {
     `light --chip-hover should be darker than light --chip: chip luminance ${chip}, hover luminance ${hover}`);
 });
 
-/* #137 item 4: the five header controls do not all draw with the same ink.
+/* #137 item 4: the header controls do not all draw with the same ink.
  * `#backBtn`, `#shareBtn`, `#settingsBtn` and `#teamAdd` are `.btn.icon.ghost`
  * (app/index.html) -- `.btn.ghost` in app.css sets `color: var(--ink-2)`,
  * inherited by their `.i` icon's `currentColor` stroke (app/icons.js). Their
- * icon color is `--ink-2`, not `--ink`. `#teamBtn` is not a `.btn` at all: it
- * sets no color of its own, so its label inherits the page's `--ink` (body's
- * own rule) straight through. Both are checked on `--chip`, across the same
+ * icon color is `--ink-2`, not `--ink`. `#teamBtn` (a hover/press fill
+ * since #501) is not a `.btn` at all: it sets no color of its own, so its
+ * label inherits the page's `--ink` (body's own rule) straight through. Both are checked on `--chip`, across the same
  * four base themes AND every non-Graphite tint's four states (#25), because
  * a tint block that ever redefined either ink should be caught here rather
  * than trusted by inspection. */
 test('the header chips\' own icon and label inks clear the text floor on --chip', () => {
   const bad = [];
-  const cases = [...THEMES, ...COLORS.flatMap((c) => {
-    const t = resolved.tint(c);
-    return [
-      { name: `${c} light`, tokens: t.light, textFloor: 4.5 },
-      { name: `${c} dark`, tokens: t.dark, textFloor: 4.5 },
-      { name: `${c} light + more contrast`, tokens: t.lightMore, textFloor: 7 },
-      { name: `${c} dark + more contrast`, tokens: t.darkMore, textFloor: 7 },
-    ];
-  })];
+  const cases = themeAndTintStates();
   for (const s of cases) {
     for (const fg of ['--ink-2', '--ink']) {
       const ground = colorOf(s.tokens, '--chip');
@@ -308,15 +313,7 @@ test('the header chips\' own icon and label inks clear the text floor on --chip'
  * tint's four states. */
 test('the header chips\' own icon and label inks clear the text floor on --chip-hover', () => {
   const bad = [];
-  const cases = [...THEMES, ...COLORS.flatMap((c) => {
-    const t = resolved.tint(c);
-    return [
-      { name: `${c} light`, tokens: t.light, textFloor: 4.5 },
-      { name: `${c} dark`, tokens: t.dark, textFloor: 4.5 },
-      { name: `${c} light + more contrast`, tokens: t.lightMore, textFloor: 7 },
-      { name: `${c} dark + more contrast`, tokens: t.darkMore, textFloor: 7 },
-    ];
-  })];
+  const cases = themeAndTintStates();
   for (const s of cases) {
     for (const fg of ['--ink-2', '--ink']) {
       const ground = colorOf(s.tokens, '--chip-hover');
@@ -324,6 +321,24 @@ test('the header chips\' own icon and label inks clear the text floor on --chip-
       if (r < s.textFloor - 1e-9) bad.push(`${s.name}: ${fg} on --chip-hover is ${r.toFixed(2)}:1, needs >= ${s.textFloor}:1`);
     }
   }
+  assert.deepEqual(bad, [], bad.join('\n  '));
+});
+
+/* #501: `#teamBtn` is no longer a chip -- Today's team name is a plain large
+ * title -- but a hover paints `--chip` under it and a press `--chip-hover`,
+ * and its chevron (`--muted`) must stay visible on both: the non-text control
+ * floor, 3:1 (4.5:1 under more contrast), every theme and tint. */
+test('the team switcher chevron (--muted) clears the control floor on its hover (--chip) and press (--chip-hover) fills', () => {
+  const bad = [];
+  const cases = themeAndTintStates();
+  for (const s of cases) {
+    for (const bg of ['--chip', '--chip-hover']) {
+      const ground = colorOf(s.tokens, bg);
+      const r = contrast(effective(colorOf(s.tokens, '--muted'), ground), ground);
+      if (r < s.controlFloor - 1e-9) bad.push(`${s.name}: --muted on ${bg} is ${r.toFixed(2)}:1, needs >= ${s.controlFloor}:1`);
+    }
+  }
+  assert.equal(cases.length, THEMES.length + COLORS.length * 4, 'wrong number of cases measured');
   assert.deepEqual(bad, [], bad.join('\n  '));
 });
 

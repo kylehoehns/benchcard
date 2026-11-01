@@ -112,7 +112,8 @@
      --seg-track. The on track is unchanged (item 7). */
   --switch-track-off: #8E8E93;
   /* #137: the header chips (`#backBtn`, `#shareBtn`, `#settingsBtn`,
-     `#teamAdd`, `#teamBtn`) used to fill from `--surface-2`, which in light
+     `#teamAdd`; `#teamBtn` too until #501, which still hovers and presses
+     with it) used to fill from `--surface-2`, which in light
      mode is almost the same color as `--bg` and made them nearly vanish. The
      owner chose `--seg-track`'s own light value on purpose here, rather than
      reaching for 3:1 against `--bg` -- see docs/specs/137-header-chip-fill.md
