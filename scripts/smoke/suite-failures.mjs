@@ -5,6 +5,8 @@
 
 const ERROR_LINES = 3;
 const PRINT_CAP = 20;
+/* `at fn (loc)`, `at async fn (loc)`, `at loc:l:c`; not prose like `at least 2`. */
+const STACK_FRAME = /^at (\S+( \S+)* \(.*\)|\S+:\d+:\d+)( \{)?$/;
 
 export function failuresOf(stdout) {
   if (typeof stdout !== 'string') return [];
@@ -25,7 +27,7 @@ export function failuresOf(stdout) {
     }
     const text = line.trim();
     if (!text || inStack) continue;
-    if (text.startsWith('at ')) { inStack = true; continue; }
+    if (STACK_FRAME.test(text)) { inStack = true; continue; }
     if (cur.error.length < ERROR_LINES) cur.error.push(text);
   }
   return out;

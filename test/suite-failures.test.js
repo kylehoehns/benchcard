@@ -77,3 +77,29 @@ test('the log prints the first 20 failures then how many more', () => {
   assert.equal(lines[19], '        ✖ t19  f:1:1');
   assert.equal(lines[20], '        … and 3 more');
 });
+
+test('an error line that starts "at " but is not a stack frame stays in the error', () => {
+  const out = `✖ failing tests:\n\ntest at t.js:1:1\n✖ rows (1ms)\n  AssertionError: x\n  at least 2 rows expected\n      at TestContext.<anonymous> (file:///a.js:1:1)\n`;
+  assert.deepEqual(failuresOf(out)[0].error, ['AssertionError: x', 'at least 2 rows expected']);
+});
+
+test('real stack frames end the error, including async and bare-location frames', () => {
+  for (const frame of [
+    'at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {',
+    'at Test.run (node:internal/test_runner/test:1306:25)',
+    'at file:///a.js:1:1',
+  ]) {
+    const out = `✖ failing tests:\n\ntest at t.js:1:1\n✖ s (1ms)\n  Error: e\n      ${frame}\n  after\n`;
+    assert.deepEqual(failuresOf(out)[0].error, ['Error: e'], frame);
+  }
+});
+
+test('a test name with parentheses keeps them', () => {
+  const out = `✖ failing tests:\n\ntest at t.js:1:1\n✖ sums (with carry) (1.2ms)\n  Error: e\n`;
+  assert.equal(failuresOf(out)[0].name, 'sums (with carry)');
+});
+
+test('a failure with no error lines gives an empty error', () => {
+  const out = `✖ failing tests:\n\ntest at t.js:1:1\n✖ bare (1.2ms)\n`;
+  assert.deepEqual(failuresOf(out), [{ name: 'bare', file: 't.js:1:1', error: [] }]);
+});
