@@ -260,14 +260,66 @@ Object.defineProperty(state, 'day', {
   set: v => { team().days[team().activeDay] = v; },
   enumerable: false, configurable: true,
 });
-/* The league's floor, in minutes -- 0 is off. Exported because it is the one
-   team setting that changes what the RULES section is telling the truth about:
-   it composes into the per-player minimums the solver reads (`computeAll`), so
-   with it set the plan is not "just evening out the minutes". The count badge,
-   the drawer's copy and the solver all read it here, so two screens cannot
+/* The league's floor -- 0 is off. Exported because it is the one team setting
+   that changes what the RULES section is telling the truth about: it composes
+   into the per-player minimums the solver reads (`computeAll`), so with it set
+   the plan is not "just evening out the minutes". The count badge, the
+   drawer's copy and the solver all read it here, so two screens cannot
    disagree about whether a rule exists (A24b). No settings block means the
-   default, which is what an unsanitized record means. */
-export const leagueMinutes = () => state.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes;
+   default, which is what an unsanitized record means.
+
+   #447: it is an amount and a unit (`settings.minUnit`: minutes, percent of
+   the game, or periods), so what it comes to is a question about a GAME, and
+   this is the one place that answers it. `leagueMinFor(g)` is the minutes the
+   league owes a kid who was there all game. `leagueMinFor(g, arrivedAt)` is
+   what it owes a kid who walked in at the start of stint `arrivedAt`: the same
+   share of the regulation minutes from there to the end. A share is rounded up
+   to a whole stint when every regulation stint is the same length (the test
+   the engine's MIN_OFF_STINT_BOUNDARY makes) and held to the minutes it is a
+   share of. Minutes stay as typed for a kid who was there all game. Regulation
+   only: overtime does not grow it. Stint lengths come from `buildStints`, as
+   `runMinutes` reads them. */
+const leagueSetting = () => ({
+  amount: state.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes,
+  unit: state.settings?.minUnit ?? DEFAULT_SETTINGS.minUnit,
+});
+export function leagueMinFor(g, arrivedAt) {
+  const { amount, unit } = leagueSetting();
+  if (!(amount > 0)) return 0;
+  const lens = buildStints({ periods: g.periods, periodMinutes: g.periodMinutes }, { mode: g.granMode, value: g.granValue }).map(s => s.minutes);
+  const sum = a => a.reduce((x, y) => x + y, 0);
+  const game = sum(lens);
+  const whole = lens.every(x => Math.abs(x - lens[0]) < 1e-9) ? lens[0] : 0;
+  const share = (x, within) => {
+    const up = whole ? Math.ceil(x / whole - 1e-9) * whole : x;
+    return Math.round(Math.min(up, within) * 100) / 100;
+  };
+  const owed = unit === 'min' ? amount : share(unit === 'pct' ? game * amount / 100 : amount * g.periodMinutes, game);
+  if (!arrivedAt || arrivedAt <= 0) return owed;
+  const left = sum(lens.slice(arrivedAt));
+  return share(owed * left / game, left);
+}
+
+/* One composition, for the full solve and for the rest of a game underway: the
+   league floor first, a minimum the coach set on the player winning when it is
+   higher, and their cap winning when it is lower -- a cap is a deliberate
+   "hold this kid back", and raising past it would manufacture a MIN_ABOVE_CAP
+   error they never asked for. */
+function composedMinimum(g, id, arrivedAt) {
+  const want = Math.max(g.constraints.minMinutes?.[id] || 0, leagueMinFor(g, arrivedAt));
+  const cap = g.constraints.maxMinutes?.[id];
+  return cap != null ? Math.min(cap, want) : want;
+}
+
+/* The rule's sentence, with what it comes to in this game: "half the game
+   (16 min)", "2 periods (16 min)", or plain "16 min". */
+function leagueRuleText(g) {
+  const { amount, unit } = leagueSetting();
+  const mins = `${fmtMinutes(leagueMinFor(g))} min`;
+  if (unit === 'pct') return `${amount === 50 ? 'half the game' : `${amount}% of the game`} (${mins})`;
+  if (unit === 'periods') return `${plural(amount, 'period')} (${mins})`;
+  return mins;
+}
 
 /* One rule, one count (#26 item 9). `passSummary` and `sentenceParts` below
    and each game's pass on Today both show this number, so it is computed once,
@@ -288,7 +340,7 @@ export function ruleCount(g) {
     + (c.lastPeriodFive.length ? 1 : 0)
     + (c.maxConsecutive ? 1 : 0)
     + (c.maxBench ? 1 : 0)
-    + (leagueMinutes() > 0 ? 1 : 0);
+    + (leagueMinFor(g) > 0 ? 1 : 0);
 }
 
 /* #441: the most minutes `n` stints in a row can hold in this game's own
@@ -335,8 +387,7 @@ export function ruleItems(g) {
   const nm = id => calls[id] || byId(id)?.name || id;
   const items = [];
 
-  const lmin = leagueMinutes();
-  if (lmin > 0) items.push({ kind: 'leagueMinimum', text: `Everyone plays at least ${lmin} min`, removable: false });
+  if (leagueMinFor(g) > 0) items.push({ kind: 'leagueMinimum', text: `Everyone plays at least ${leagueRuleText(g)}`, removable: false });
 
   for (const [id, v] of Object.entries(c.minMinutes)) {
     if (!avail.has(id)) continue;
@@ -494,7 +545,7 @@ export function ruleComplete(kind, draft) {
   }
 }
 
-/* #25: the active team's color, read the same way `leagueMinutes` above
+/* #25: the active team's color, read the same way `leagueMinFor` above
    reads its own settings key -- one place, so `applyTint` (render.js) and
    the Settings row/picker (teams-view.js) cannot compute it two different
    ways. `team()` is already sanitized (storage.js's `sanitize` runs
@@ -1447,9 +1498,11 @@ function sayTheSeasonSetThem(p) {
    never learns where it came from, so it says "their 16-minute minimum"; this
    call site knows the coach's own minimum for the player is lower. Only when
    the number raised to IS the league minimum: a cap can have lowered the
-   composed minimum below it, and then it is "their 12-minute minimum". */
-function sayTheLeagueMinimum(p, own, leagueMin) {
+   composed minimum below it, and then it is "their 12-minute minimum".
+   `leagueFor(id)` is what the league owes that player (a late kid's is less). */
+function sayTheLeagueMinimum(p, own, leagueFor) {
   for (const i of p.issues || []) {
+    const leagueMin = leagueFor(i.playerIds[0]);
     if (i.code !== 'TARGET_UNDER_MIN' || (own[i.playerIds[0]] || 0) >= leagueMin) continue;
     i.message = i.message.replace(new RegExp(`to ${leagueMin} to meet their ${leagueMin}-minute minimum`), `to ${leagueMin} to meet the league minimum`);
   }
@@ -1779,6 +1832,38 @@ function notePins(g, p) {
   p.issues = [...(p.issues || []).filter(i => i.code !== PIN_NOTE), ...pinNotes(g, p)];
 }
 
+/* #447: a game underway where a kid's minimum can no longer be met. The minimum
+   is their own whole-game one or the league's (scaled for a late arrival),
+   whichever is higher, held under their cap -- `composedMinimum`. The most they
+   can still finish with is what they have played in the stints up to and
+   including the one on the floor, plus every minute after it. Past that the
+   re-solve can only clamp, and says nothing, so this says so. One note per kid,
+   in the words of whichever minimum bound; earlier copies on the cached plan
+   are dropped, as `notePins` does. */
+const CLAMP_NOTE = 'MIN_CLAMPED';
+function clampNotes(g, p) {
+  if (!g.live || !isUnderway(p, g.live)) return [];
+  const at = playedStints(g.live);
+  const floor = effectiveStints(g, p).filter(s => !isOvertimeStint(s));
+  const after = floor.slice(at + 1).reduce((a, s) => a + s.minutes, 0);
+  const calls = callNames(state.players);
+  const out = [];
+  for (const id of availIds(g)) {
+    const arrivedAt = g.live.arrived?.[id];
+    const want = composedMinimum(g, id, arrivedAt);
+    const most = floor.slice(0, at + 1).reduce((a, s) => a + (s.onFloor.includes(id) ? s.minutes : 0), after);
+    if (want <= most + 1e-9) continue;
+    const bound = leagueMinFor(g, arrivedAt) > (g.constraints.minMinutes?.[id] || 0)
+      ? `the league minimum of ${fmtMinutes(want)}` : `their ${fmtMinutes(want)}-minute minimum`;
+    out.push({ severity: 'warn', code: CLAMP_NOTE, playerIds: [id],
+      message: `${calls[id] || id} can finish with at most ${fmtMinutes(most)} min, under ${bound}: that is all the time left.` });
+  }
+  return out;
+}
+function noteClamps(g, p) {
+  p.issues = [...(p.issues || []).filter(i => i.code !== CLAMP_NOTE), ...clampNotes(g, p)];
+}
+
 function syncOverrides(g, p, underway = false, prev = null) {
   const live = g.live;
   if (!p || !p.ok || !live) return p;
@@ -1839,11 +1924,6 @@ export function computeAll() {
      what that means -- so this never throws and never plans to zero. */
   const maxSubs = state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs;
 
-  /* The league's floor, read the same way and for the same reason. 0 is off,
-     and 0 is what every record written before the key existed means, so a
-     coach who never opens Settings gets byte-identical plans. */
-  const leagueMin = leagueMinutes();
-
   /* The team's tie-break stance, read the same way and for the same reason.
      'levels' means the coach has asked for their rotation levels to settle the
      odd stint; 'behind' (the default, and every record written before the key
@@ -1885,7 +1965,7 @@ export function computeAll() {
       for (const [id, m] of Object.entries(mins)) cum[id] += m;
       noteToday(mins);
     };
-    const tally = (g, p) => (p.ok && (notePins(g, p), addUp(g, p)), p);
+    const tally = (g, p) => (p.ok && (notePins(g, p), noteClamps(g, p), addUp(g, p)), p);
     /* Composition, not replacement: `engine.js` reads the priority map for its
        ORDER alone (`tieBreakOrder` sorts on it and nothing else), so a level
        multiplied out past any credible deficit puts the levels first and leaves
@@ -1908,7 +1988,13 @@ export function computeAll() {
          the whole chain -- a game deleted from the ledger, an earlier game in
          the day re-solving -- then invalidates on its own, exactly as the
          day carryover does. */
-      const seasonT = seasonTargetsFor(g, ids.filter(id => !out.has(id)), deficitOf);
+      /* The league's floor for each kid here, from the one reader. 0 is off, and
+         0 is what every record written before the key existed means, so a coach
+         who never opens Settings gets byte-identical plans. */
+      const leagueOn = leagueMinFor(g) > 0;
+      const inPlay = ids.filter(id => !out.has(id));
+      const leagueFor = Object.fromEntries(inPlay.map(id => [id, leagueMinFor(g, g.live?.arrived?.[id])]));
+      const seasonT = seasonTargetsFor(g, inPlay, deficitOf);
       /* The tie-break the engine uses when the clock does not divide evenly and
          somebody has to play a stint less. `deficitOf` is the whole chain in one
          number and always has been: it is the season deficit where a season
@@ -1928,8 +2014,10 @@ export function computeAll() {
         ps.map(p => [p.id, p.name, p.shortName, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
         g.granMode, g.granValue, g.constraints, g.strategy, g.balance, g.seed, carry, seasonT, prio,
         // team settings reach the solver too, so they belong in the signature
-        // for the same reason: change the number and the card must move
-        maxSubs, leagueMin,
+        // for the same reason: change the number and the card must move. The
+        // league floor is a question about this game (#447), and a kid who
+        // walked in late is owed less of it.
+        maxSubs, leagueFor,
       ]);
       const hit = planCache.get(g.id);
       if (hit && hit.sig === sig) {
@@ -1938,17 +2026,12 @@ export function computeAll() {
       const c = clone(g.constraints);
       /* The league floor, composed into the per-player map the engine has always
          read -- so `engine.js` is untouched and knows nothing about the setting.
-         A minimum the coach set by hand wins when it is higher; their CAP wins
-         when it is lower, because a cap is a deliberate "hold this kid back" and
-         raising past it would manufacture a MIN_ABOVE_CAP error they never
-         asked for. Everyone who is out is left alone: they are not available, so
-         no rule about available players reaches them. */
-      if (leagueMin > 0) {
+         `composedMinimum` is the order (own minimum higher wins, cap lower wins).
+         Everyone who is out is left alone: they are not available, so no rule
+         about available players reaches them. */
+      if (leagueOn) {
         for (const id of ids) {
-          if (out.has(id)) continue;
-          const cap = c.maxMinutes[id];
-          const want = Math.max(c.minMinutes[id] || 0, leagueMin);
-          c.minMinutes[id] = cap != null ? Math.min(cap, want) : want;
+          if (!out.has(id)) c.minMinutes[id] = composedMinimum(g, id, g.live?.arrived?.[id]);
         }
       }
       if (g.strategy === 'minutes') {
@@ -1973,7 +2056,7 @@ export function computeAll() {
         maxSubs,
       });
       if (seasonT) sayTheSeasonSetThem(p);
-      if (leagueMin > 0) sayTheLeagueMinimum(p, g.constraints.minMinutes || {}, leagueMin);
+      if (leagueOn) sayTheLeagueMinimum(p, g.constraints.minMinutes || {}, id => leagueFor[id] || 0);
       sayWhyTheyAreShort(p, prio, tiers);
       planCache.set(g.id, { sig, plan: p });
       return tally(g, syncOverrides(g, p, isUnderway(p, g.live), hit?.plan));
@@ -2157,7 +2240,6 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   const openStints = open.map(j => p.stints[j]);
   const total = openStints.reduce((a, s) => a + s.minutes, 0);
   const longest = openStints.reduce((a, s) => Math.max(a, s.minutes), 0);
-  const leagueMin = leagueMinutes();
   const maxSubs = state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs;
 
   const c = clone(g.constraints);
@@ -2178,10 +2260,9 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   c.maxMinutes = {};
   for (const id of avail) {
     const cap = g.constraints.maxMinutes?.[id];
-    // league floor first, the coach's cap still winning over it -- the same
-    // order `computeAll` uses, and for the same reason
-    let lo = Math.max(g.constraints.minMinutes?.[id] || 0, leagueMin);
-    if (cap != null) lo = Math.min(cap, lo);
+    // the same composition `computeAll` uses; a kid who walked in late is owed
+    // the league's share of the time left (#447), not the whole game's
+    const lo = composedMinimum(g, id, arrived[id]);
     const left = Math.min(total, Math.max(0, lo - (played[id] || 0)));
     if (left > 0) c.minMinutes[id] = left;
     if (cap != null) c.maxMinutes[id] = Math.max(0, cap - (played[id] || 0));

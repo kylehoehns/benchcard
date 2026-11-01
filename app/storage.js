@@ -204,6 +204,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
      always read, so the solver is untouched; a coach's own per-player
      minimum wins when it is higher, and their cap wins when it is lower. */
   minMinutes: 0,
+  /* #447: what `minMinutes` counts -- 'min' (minutes), 'pct' (percent of the
+     game) or 'periods'. 'min' is what every record written before this key
+     existed means. */
+  minUnit: 'min',
   /* Whether a NEW game opens with "Even out the season so far" already on.
      false is what the app has always done, and false is what every record
      written before this key existed means. It is read once, by `newGame`, at
@@ -256,8 +260,12 @@ export const colorName = c => c.charAt(0).toUpperCase() + c.slice(1);
 const strictNum = v => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')
   ? Number(v) : NaN);
 
+/* #447: the most the league minimum can be in each unit it is counted in. */
+const MIN_UNIT_MAX = { min: 60, pct: 100, periods: 8 };
+
 export const sanitizeSettings = raw => {
   const s = isObj(raw) ? raw : {};
+  const minUnit = Object.hasOwn(MIN_UNIT_MAX, s.minUnit) ? s.minUnit : DEFAULT_SETTINGS.minUnit;
   return {
     maxSubs: Math.round(num(strictNum(s.maxSubs), DEFAULT_SETTINGS.maxSubs, 1, 5)),
     // an unknown string is a record from a future or a broken app: fall back to
@@ -267,7 +275,8 @@ export const sanitizeSettings = raw => {
        which is why `Number('')` is not allowed through here either. Capped at
        60: longer than any youth game, so a typo cannot turn every plan into
        MINS_UNSATISFIABLE forever. */
-    minMinutes: Math.round(num(strictNum(s.minMinutes), DEFAULT_SETTINGS.minMinutes, 0, 60)),
+    minMinutes: Math.round(num(strictNum(s.minMinutes), DEFAULT_SETTINGS.minMinutes, 0, MIN_UNIT_MAX[minUnit])),
+    minUnit,
     /* Strict `=== true`, not `!!`: every other truthy value in a hand-edited
        or future record is a claim we cannot read, and the safe reading of an
        unreadable claim is the behavior the app has always had. */

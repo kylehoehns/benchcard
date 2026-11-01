@@ -49,7 +49,7 @@ import { openAddTeam, showWelcomeDemo } from './onboarding.js';
 // One switch builder for the whole app (#32): the Plan sheet's "Even out
 // earlier games" row and step 3's are the same control.
 import { switchRow } from './rules.js';
-import { DEFAULT_SETTINGS, colorName, seasonDate } from './storage.js';
+import { DEFAULT_SETTINGS, colorName, seasonDate, sanitizeSettings } from './storage.js';
 // The one close path and the one "ask before discarding" hook, shared with
 // every bottom sheet (#32 uses them from a full-screen dialog).
 import { closeSheet, closeSheetNow, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
@@ -177,19 +177,28 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
     edit('teamSetting');
   });
 
-  /* The league floor. `onchange`, not `oninput`: typing "1" on the way to "12"
-     would otherwise re-solve every plan in the day against a one-minute rule
-     and flash its warnings at a coach mid-keystroke. Blank is off, and the
-     field is re-painted from the sanitized number so a coach who types 99 or
-     -4 sees what actually took. */
-  on('#minMins', 'onchange', (e) => {
+  /* The league floor: an amount and what it counts (#447). `onchange`, not
+     `oninput`: typing "1" on the way to "12" would otherwise re-solve every plan
+     in the day against a one-minute rule and flash its warnings at a coach
+     mid-keystroke. Blank is off, and the field is re-painted from the sanitized
+     number so a coach who types 99 or -4 sees what actually took. The range
+     for each unit is `sanitizeSettings`' own, asked rather than copied. */
+  const setLeagueMin = (amount, unit) => {
     const s = team()?.settings;
     if (!s) return;
-    const raw = e.target.value.trim();
-    const v = raw === '' ? 0 : Math.round(Math.min(60, Math.max(0, Number(raw) || 0)));
-    if (v === s.minMinutes) { e.target.value = String(v); return; }
-    s.minMinutes = v;
+    const next = sanitizeSettings({ ...s, minMinutes: amount, minUnit: unit });
+    if (next.minMinutes === s.minMinutes && next.minUnit === s.minUnit) { paintLeagueMin(true); return; }
+    s.minMinutes = next.minMinutes;
+    s.minUnit = next.minUnit;
     edit('teamSetting');
+    paintLeagueMin(true);
+  };
+  on('#minMins', 'onchange', (e) => {
+    const raw = e.target.value.trim();
+    setLeagueMin(raw === '' ? 0 : Number(raw) || 0, team()?.settings?.minUnit ?? DEFAULT_SETTINGS.minUnit);
+  });
+  on('#minUnit', 'onchange', (e) => {
+    setLeagueMin(team()?.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes, e.target.value);
   });
 
   /* The game format. `onchange` for the same reason the floor is -- a half
@@ -298,6 +307,22 @@ export function renderTeams() {
    So it uses `teamLabel`, the one team-identity fallback -- an unnamed team
    reads `Team 2` on Today's header and in its menu, and it must read
    `Team 2` here too. */
+/* The league floor, written back from the saved settings -- but never while the
+   coach is in the box (unless a handler says it just settled it): `renderAll`
+   runs on every save, and rewriting the value under a caret is how a half-typed
+   "1" becomes "1" again forever. The box's `max` follows the unit. */
+function paintLeagueMin(settled = false) {
+  const settings = team()?.settings;
+  const unit = settings?.minUnit ?? DEFAULT_SETTINGS.minUnit;
+  const mm = $('#minMins');
+  if (mm) {
+    mm.max = String(sanitizeSettings({ minMinutes: 1e9, minUnit: unit }).minMinutes);
+    if (settled || document.activeElement !== mm) mm.value = String(settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes);
+  }
+  const mu = $('#minUnit');
+  if (mu) mu.value = unit;
+}
+
 export function renderSettings() {
   const hd = $('#setTeamHd');
   if (hd) hd.textContent = teamLabel(team(), state.activeTeam);
@@ -349,13 +374,7 @@ export function renderSettings() {
     b.setAttribute('aria-pressed', String(on));
   }
 
-  /* The league floor, written back the same way -- but never while the coach
-     is in the box: `renderAll` runs on every save, and rewriting the value
-     under a caret is how a half-typed "1" becomes "1" again forever. */
-  const mm = $('#minMins');
-  if (mm && document.activeElement !== mm) {
-    mm.value = String(team()?.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes);
-  }
+  paintLeagueMin();
 
   // the carryover default, marked exactly like the stance above it
   const sd = $('#seasonDefSeg');

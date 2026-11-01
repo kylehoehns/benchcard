@@ -29,7 +29,7 @@ describe('the notes under the plan name the rule that bound', { skip }, () => {
     const targetSlots = { p0: 2, p1: 5, p2: 5, p3: 4, p4: 4, p5: 4, p6: 4, p7: 4, p8: 4, p9: 4 };
     await coach.onGameDayWith({ strategy: 'minutes', constraints: { targetSlots, lockedTargets: ['p0'] } }, 10);
     await coach.tap('Settings');
-    await coach.fill('Minutes everyone plays at least', '16');
+    await coach.fill('How much everyone plays at least', '16');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, planned');
     assert.equal((await coach.planMinutes())['Marcus Williams'], 16);
@@ -41,7 +41,7 @@ describe('the notes under the plan name the rule that bound', { skip }, () => {
     const targetSlots = { p0: 2, p1: 5, p2: 5, p3: 4, p4: 4, p5: 4, p6: 4, p7: 4, p8: 4, p9: 4 };
     await coach.onGameDayWith({ strategy: 'minutes', constraints: { targetSlots, lockedTargets: ['p0'], maxMinutes: { p0: 12 } } }, 10);
     await coach.tap('Settings');
-    await coach.fill('Minutes everyone plays at least', '16');
+    await coach.fill('How much everyone plays at least', '16');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, planned');
     const notes = await coach.text('#issues');
@@ -61,7 +61,7 @@ describe('the notes under the plan name the rule that bound', { skip }, () => {
   test('the page for the league minimum says it too', async () => {
     await coach.onGameDayWith({}, 10);
     await coach.tap('Settings');
-    await coach.fill('Minutes everyone plays at least', '16');
+    await coach.fill('How much everyone plays at least', '16');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap((await coach.controls()).find(n => /^Rules, /.test(n)));
