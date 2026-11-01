@@ -562,7 +562,7 @@ export function showUpdate(reload) {
   // the space between them is for anything that reads the text without the layout
   words.append(el('span', 'update-title', 'New version ready'), ' ',
     el('span', 'update-help', 'Reload to get it. Your game stays saved.'));
-  actionToast(words, 'Reload', reload, { cls: 'update-toast', lead: icon('rotate-ccw', { size: '1.25em', cls: 'update-glyph' }) });
+  actionToast(words, 'Reload', reload, { cls: 'update-toast', lead: icon('rotate-ccw', { cls: 'update-glyph' }) });
 }
 
 function offerReload() {

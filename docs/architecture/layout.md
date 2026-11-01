@@ -79,7 +79,7 @@ Everything below is relative to `app/`.
   `game-setup.js`, `strategy.js`, `balance.js`,
   `rules.js`, `pills.js`, `plan-view.js`, `timeline.js`, `gamemode.js`,
   `tour.js`, `onboarding.js`, `shortcuts.js` (the keyboard and
-  the two reference sheets) and `toast.js` (undo, the tip jar, flash).
+  the two reference sheets) and `toast.js` (undo, the tip jar, flash, the update offer).
 - `app.js` / `index.html` — the entry point and the markup. `app.js` is now the
   wiring only: the controls no single module owns, and the boot block that
   hands each module its callbacks. The boot also runs `carryUnplayedDay` (#379)

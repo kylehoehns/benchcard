@@ -1,8 +1,7 @@
 /* A page that was already controlled when it booted, with a new worker about
  * to take over (#498): the state the update toast is for. Chrome here has no
  * second worker generation to install, so the page is faked instead -- the
- * one place it is written, imported by the Coach driver (test/coach.js) and by
- * the smoke row that looks at the toast (update-toast.mjs).
+ * one place it is written, imported by the Coach driver (test/coach.js).
  *
  * WAITING_WORKER goes on the next document, before any app script runs: an
  * own-property `controller` makes `toast.js`'s `wasControlled` true (a page

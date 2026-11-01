@@ -9,6 +9,7 @@ import { setGame } from './sheet-drive.mjs';
 import { UNDERWAY_SEED } from './rotation-undo.mjs';
 import { ROW_STACK_LONG_NAME_STATE, ROW_STACK_STATES, rowStackProblem } from './row-stack.mjs';
 import { SWITCH_ROW_STATES, switchRowProblem } from './switch-row.mjs';
+import { RAISE_UPDATE, CLOSE_UPDATE } from './update-toast.mjs';
 import { welcomeBarsProblem } from './welcome-bars.mjs';
 import { firstLine } from './verdict.mjs';
 
@@ -87,15 +88,13 @@ export const APP_LARGE_TEXT_STATES = [
   { name: 'team menu open', open: `${TODAY_HOME}; document.querySelector('#teamBtn')?.click()`,
     close: `document.querySelector('#teamMenu')?.hidePopover?.()` },
   /* #498: the update toast, raised through its own builder (it is otherwise
-     only offered after a worker takeover), on Today and on the game screen --
-     the two places it floats over content. `close` is its own Dismiss. */
-  { name: 'update toast on Today',
-    open: `${TODAY_HOME}; await ${TIMERS_QUIET}; (await import('/toast.js')).showUpdate(() => {})`,
-    close: `document.querySelector('.update-toast .tx')?.click()` },
+     only offered after a worker takeover), over the game screen, where it
+     floats over content (the update-toast row covers Today). `close` is its
+     own Dismiss. */
   { name: 'update toast on the game screen',
     open: `${TODAY_HOME}; await ${TIMERS_QUIET}; document.querySelector('.today-game').click();
-           await ${TIMERS_QUIET}; (await import('/toast.js')).showUpdate(() => {})`,
-    close: `document.querySelector('.update-toast .tx')?.click()` },
+           await ${TIMERS_QUIET}; ${RAISE_UPDATE}`,
+    close: CLOSE_UPDATE },
   { name: 'bench mode', open: `document.querySelector('#gmOpen').click()`,
     close: `document.querySelector('#gmClose').click()` },
   /* #383, #504: bench mode with a long-named player marked out and Running

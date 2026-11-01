@@ -24,7 +24,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { serve } from '../scripts/serve.mjs';
 import { launch, cdp, closeChrome, hasChrome } from '../scripts/smoke/chrome.mjs';
-import { evalIn, quiet, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } from '../scripts/smoke/dom.mjs';
+import { evalIn, quiet, setVisibility, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } from '../scripts/smoke/dom.mjs';
 import { land } from '../scripts/smoke/page-state.mjs';
 import { buildClockScript, SMOKE_CLOCK } from '../scripts/smoke/clock.mjs';
 import { RICH, TODAY_GAME_READY, GAMES_VIEW_READY, WELCOME_LANDING } from '../scripts/smoke/fixtures.mjs';
@@ -288,12 +288,8 @@ export class Coach {
 
   /** The coach switches away from the app and back to it. */
   async leaveAndComeBack() {
-    const set = state => evalIn(this.c, `(() => {
-      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => '${state}' });
-      document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
-    })()`);
-    await set('hidden');
-    await set('visible');
+    await setVisibility(this.c, 'hidden');
+    await setVisibility(this.c, 'visible');
     await quiet(this.c);
   }
 

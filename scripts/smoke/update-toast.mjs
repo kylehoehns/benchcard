@@ -20,6 +20,7 @@
  * fails if the sentinel survives: a color that did not paint measures the
  * previous one and would report a perfect score. */
 import { evalIn, step } from './dom.mjs';
+import { contrast } from '../tokens-css.mjs';
 import { land } from './page-state.mjs';
 import { richWith, TODAY_LANDING } from './fixtures.mjs';
 
@@ -30,7 +31,9 @@ export const UPDATE_TOAST_THEMES = ['light', 'dark'];
 // The floors are the spec's, item 3; the 60% is item 4's.
 export const MIN_LABEL = 4.5, MIN_FILL = 3, MIN_HELP = 4.5, MIN_LINE_SHARE = .6;
 
-const RAISE = `(await import('/toast.js')).showUpdate(() => {})`;
+// Raise the real update toast, and its own Dismiss: app-large-text.mjs reuses both.
+export const RAISE_UPDATE = `(await import('/toast.js')).showUpdate(() => {})`;
+export const CLOSE_UPDATE = `document.querySelector('.update-toast .tx')?.click()`;
 
 const PROBE = `(() => {
   const toast = document.querySelector('#toasts .toast');
@@ -47,18 +50,13 @@ const PROBE = `(() => {
     }
     return [...g.getImageData(0, 0, 1, 1).data.slice(0, 3)];
   };
-  const lum = rgb => { const [r, g2, b] = rgb.map(v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
-    return .2126 * r + .7152 * g2 + .0722 * b; };
-  const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + .05) / (lo + .05); };
   const css = (el, p) => getComputedStyle(el)[p];
   const btn = toast.querySelector('.tundo'), x = toast.querySelector('.tx'), msg = toast.querySelector('.tmsg');
-  const help = toast.querySelector('.update-help') || msg;
+  const help = toast.querySelector('.update-help');
   const ground = [css(toast, 'backgroundColor')];
   const fill = [...ground, css(btn, 'backgroundColor')];
   const toastPx = paint(ground), fillPx = paint(fill);
-  const labelRatio = ratio(paint([...fill, css(btn, 'color')]), fillPx);
-  const fillRatio = ratio(fillPx, toastPx);
-  const helpRatio = ratio(paint([...ground, css(help, 'color')]), toastPx);
+  const px = { toast: toastPx, fill: fillPx, label: paint([...fill, css(btn, 'color')]), help: paint([...ground, css(help, 'color')]) };
 
   const tb = toast.getBoundingClientRect(), mb = msg.getBoundingClientRect();
   const acts = toast.querySelector('.tacts').getBoundingClientRect();
@@ -73,9 +71,12 @@ const PROBE = `(() => {
   const content = tb.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
   const boxes = [['toast', toast], ['Reload', btn], ['Dismiss', x]].map(([n, e]) => { const r = e.getBoundingClientRect(); return { n, h: r.height, l: r.left, r: r.right, t: r.top, b: r.bottom }; });
+  const gb = toast.querySelector('.update-glyph')?.getBoundingClientRect();
+  const ttb = toast.querySelector('.update-title')?.getBoundingClientRect();
   return JSON.stringify({
+    glyph: gb && ttb && { top: gb.top, right: gb.right }, title: ttb && { top: ttb.top, left: ttb.left },
     host: location.host, toast: true, cls: toast.classList.contains('update-toast'),
-    label: labelRatio, fill: fillRatio, help: helpRatio,
+    px,
     beside, share: widest / content, boxes, vw, vh,
     pans: document.documentElement.scrollWidth > vw,
     clipped: [msg, toast].some(e => e.scrollWidth > e.clientWidth + 1),
@@ -90,10 +91,16 @@ export async function updateToastPass(c, origin, rec) {
       for (const textPx of UPDATE_TOAST_TEXT_PX) {
         const where = `update toast ${theme} ${width}px/${textPx}px`;
         await land(c, origin, { record: { ...richWith({ theme }), view: 'today' }, width, textPx, ...TODAY_LANDING });
-        await evalIn(c, step(RAISE));
+        await evalIn(c, step(RAISE_UPDATE));
         const m = JSON.parse(await evalIn(c, PROBE));
         // rule 2a: no toast on screen means nothing was measured
         if (!rec.check(m.toast, `${where}: no toast on screen -- nothing was measured`)) continue;
+        if (m.px) {
+          const rgb = ([r, g, b]) => ({ r, g, b });
+          m.fill = contrast(rgb(m.px.fill), rgb(m.px.toast));
+          m.label = contrast(rgb(m.px.label), rgb(m.px.fill));
+          m.help = contrast(rgb(m.px.help), rgb(m.px.toast));
+        }
         rec.check(m.cls, `${where}: the toast has lost the update-toast class`);
         rec.check(m.fill >= MIN_FILL, `${where}: the Reload button against the toast is ${m.fill.toFixed(2)}:1, under ${MIN_FILL}:1`);
         rec.check(m.label >= MIN_LABEL, `${where}: the Reload label against its button is ${m.label.toFixed(2)}:1, under ${MIN_LABEL}:1`);
@@ -104,6 +111,10 @@ export async function updateToastPass(c, origin, rec) {
           if (b.n !== 'toast') rec.check(b.h >= 47.5, `${where}: ${b.n} is ${b.h.toFixed(1)}px tall, under 48`);
           rec.check(b.l >= -1 && b.r <= m.vw + 1 && b.t >= -1 && b.b <= m.vh + 1,
             `${where}: ${b.n} spans x ${Math.round(b.l)}-${Math.round(b.r)}, y ${Math.round(b.t)}-${Math.round(b.b)} in a ${m.vw}x${m.vh} viewport`);
+        }
+        if (rec.check(m.glyph && m.title, `${where}: no glyph or title to place -- nothing was measured`)) {
+          rec.check(Math.abs(m.glyph.top - m.title.top) <= 2 && m.glyph.right <= m.title.left + 1,
+            `${where}: the refresh glyph (top ${Math.round(m.glyph.top)}, right ${Math.round(m.glyph.right)}) is not beside the title (top ${Math.round(m.title.top)}, left ${Math.round(m.title.left)})`);
         }
         rec.check(!m.pans, `${where}: the page pans sideways`);
         rec.check(!m.clipped, `${where}: the toast's text is clipped`);
