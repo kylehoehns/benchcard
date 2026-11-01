@@ -499,3 +499,80 @@ test('property #438: a hard pair is never less even than a soft plan that alread
   }
   assert.ok(checked >= 12, `only ${checked} inputs were comparable`);
 });
+
+/* #437: a live attendance change never rewrites a stint already played, whatever
+   the pins. Through `state.js` (`computeAll` + `setAvailable`), which needs the
+   browser's `localStorage` and a canvas stub before it loads. Games the
+   freeze re-plans: By hand and Platoon rewrite the past on an arrival by design
+   (spec 247 E), so they are not generated. */
+const liveStore = new Map();
+globalThis.localStorage = {
+  getItem: k => (liveStore.has(k) ? liveStore.get(k) : null),
+  setItem: (k, v) => liveStore.set(k, String(v)),
+  removeItem: k => liveStore.delete(k),
+};
+globalThis.document = {
+  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }), font: '' }) }),
+  querySelector: () => null,
+  querySelectorAll: () => [],
+};
+const S = await import('../app/state.js');
+
+test('property #437: after a live arrival or departure, every stint before live.at is unchanged', () => {
+  const CASES = 60;
+  let reached = 0, letGo = 0;
+  for (let n = 1; n <= CASES; n++) {
+    const r = rng(n * 2246822519);
+    const int = (lo, hi) => lo + Math.floor(r() * (hi - lo + 1));
+    const size = int(5, 11);
+    const ids = Array.from({ length: size }, (_, i) => `p${i}`);
+    S.state.players.length = 0;
+    for (const id of ids) S.state.players.push({ id, name: `Kid ${id}`, tier: 3 });
+    const periods = int(2, 4);
+    const periodMinutes = int(6, 10);
+    const strategy = r() < 0.5 ? 'balanced' : 'closers';
+    const out = r() < 0.5 ? [ids[int(0, size - 1)]] : [];
+    const here = ids.filter(id => !out.includes(id));
+    const pickHere = () => here[int(0, here.length - 1)];
+    const c = { minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [], keepOnFloor: [], openingFive: [], lastPeriodFive: [], units: [] };
+    if (r() < 0.7) c.lastPeriodFive = [...new Set(Array.from({ length: int(1, 3) }, pickHere))];
+    if (strategy === 'closers') c.closing = { stints: int(1, 2), players: [...new Set(Array.from({ length: int(1, 3) }, pickHere))] };
+    if (r() < 0.3) { const a = pickHere(), b = pickHere(); if (a !== b) c.pairs.push([a, b]); }
+    if (r() < 0.3) { const a = pickHere(), b = pickHere(); if (a !== b) c.avoids.push([a, b]); }
+    /* Caps go on the kids a pin names (the case this change is about), at most two, and only with 7+
+       players. Excluded class, found by this property: a cap on a kid who played every stint so far,
+       with 5-6 left, leaves the rest of the game with too few minutes to keep five on the floor
+       (CAPS_UNSATISFIABLE after a departure). A cap does that without any pin, and it is a different
+       bug (filed as #490). Repro: 7 players, 2 x 7 min, sub every 3, Plays at most 7 on p0 and p1, p2 leaves at live.at 2. */
+    const pinned = [...new Set([...c.lastPeriodFive, ...(c.closing?.players || [])])];
+    if (size >= 7) for (const id of pinned.slice(0, 2)) if (r() < 0.8) c.maxMinutes[id] = int(1, 2) * periodMinutes;
+    const g = {
+      id: `fz${n}`, label: '', tipoff: '', out: [...out], seed: n,
+      periods, periodMinutes, granMode: 'everyN', granValue: int(3, 5),
+      strategy, balance: 'even', constraints: c,
+      live: { at: 0, overrides: {} }, useCarryover: false, useSeasonTargets: false,
+    };
+    S.state.day.games = [g];
+    S.state.activeGame = 0;
+    S.computeAll();
+    if (!S.plans[0]?.ok) continue;             // a game that never planned is not a live game
+    const count = S.plans[0].stints.length;
+    const at = int(1, count - 1);
+    g.live.at = at;
+    S.computeAll();
+    const fives = () => S.effectiveStints(g, S.plans[0]).slice(0, at).map(s => s.onFloor.join(','));
+    const before = fives();
+    const arrival = out.length && r() < 0.5;
+    const who = arrival ? out[0] : pickHere();
+    S.pinsNotice(g.id);                        // drain what earlier computeAll calls left
+    S.setAvailable(g, who, !!arrival);
+    S.computeAll();
+    if (!S.plans[0]?.ok) continue;
+    reached++;
+    if (S.pinsNotice(g.id) !== '') letGo++;    // the #437 drop branch ran
+    assert.deepEqual(fives(), before,
+      `scenario ${n}: ${arrival ? 'arrival' : 'departure'} of ${who} at stint ${at}; ${JSON.stringify({ strategy, c, periods, periodMinutes })}`);
+  }
+  assert.ok(reached >= 30, `only ${reached} cases reached the assertion`);
+  assert.ok(letGo >= 1, 'no case exercised the pin-drop path');
+});

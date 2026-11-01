@@ -19,7 +19,7 @@ import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './tra
 import { track } from './analytics.js';
 import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup, effectiveStints,
-         resolveRest, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+         resolveRest, pinsNotice, pinsDroppedNotice, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
 import { EDITS } from './edit.js';
 import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, openGame, step, finish, satIds, sitOut, finishedGame } from './live.js';
 
@@ -998,11 +998,12 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
   // how the post-swap minutes get into the toast without re-solving twice.
   const before = liveMinutes(p, g);
   let replanned = false;
+  let letGo = '';
   tick();
   undoable(
     () => {
       const after = liveMinutes(p, g);
-      return swapToastText(inName, outName, scope, after[inId], after[outId], before[inId], before[outId], replanned);
+      return swapToastText(inName, outName, scope, after[inId], after[outId], before[inId], before[outId], replanned) + letGo;
     },
     () => {
       const live = liveOf(g);
@@ -1026,6 +1027,8 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
           replanned = Object.entries(r.overrides).some(([k, five]) =>
             [...five].sort().join() !== [...effLineup(p, g, Number(k))].sort().join());
           writeOverrides(live, r.overrides, false);
+          // #437: a kid the re-plan stopped holding to a stint is told, as in a re-plan.
+          letGo = pinsDroppedNotice(r.pinsDropped);
         }
       }
       gmPick = null;
@@ -1107,7 +1110,7 @@ function sitRest(p, g, i, outId, name) {
   // instant the coach tapped -- the difference is the one seat that changed.
   const oldFloor = effLineup(p, g, i);
   tick();
-  undoable(`${name} sits for the rest. The others share those minutes.`, () => {
+  undoable(`${name} sits for the rest. The others share those minutes.${pinsDroppedNotice(r.pinsDropped)}`, () => {
     const live = liveOf(g);
     writeOverrides(live, r.overrides, true);
     sitOut(live, outId);
@@ -1134,10 +1137,11 @@ function hereNow(g, id, shown) {
   tick();
   let rewritten = false;
   let name = shown;
+  let told = '';
   /* The message is read after the change: #134's "Rotation changed" notice is
      suppressed inside an `undoable`, so a freeze that could not hold (By hand,
      Platoon, an infeasible rule) says so here, as Add overtime does. */
-  undoable(() => `${name} is here.${rewritten ? ' Rotation changed.' : ''}`, () => {
+  undoable(() => `${name} is here.${rewritten ? ' Rotation changed.' : ''}${told}`, () => {
     /* Stepping through stints in bench mode never re-plans, so the plan the
        coach is looking at has not been "seen" by `syncOverrides` yet, and the
        re-plan below would then adopt the new rotation outright instead of
@@ -1150,6 +1154,9 @@ function hereNow(g, id, shown) {
     setAvailable(g, id, true);
     computeAll();
     const now = played();
+    /* #437: read here, before the repaint below would raise it as a toast of
+       its own that this one then replaces. */
+    told = pinsNotice(g.id);
     rewritten = was.some((five, k) => five !== now[k]);
     // the call name is made from the set that now includes the arrival
     name = callNames(availIds(g).map(byId).filter(Boolean))[id] || shown;
