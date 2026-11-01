@@ -168,6 +168,7 @@ function printCard() {
   tipAfterPrint();
 }
 on('#print', 'onclick', printCard);
+on('#cardPrint', 'onclick', printCard);
 
 /* #29 decision 4: `#shareBtn` (top bar) is the one door into `#sheetCard`.
    Opens even while blocked -- the sheet then shows why

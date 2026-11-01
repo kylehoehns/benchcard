@@ -65,7 +65,8 @@ describe('labels that were stale (#420)', { skip }, () => {
     assert.ok((await coach.controls()).includes(`${name}, 11 players`), 'the team switcher still shows the old name');
     await coach.press('Escape');
     await coach.tap(`Team ${name} · 11 players ›`);
-    assert.equal(await coach.text('#teamTitle'), name);
+    assert.equal(await coach.text('#teamTitle'), 'Roster');
+    assert.equal(await coach.rosterCount(), `${name} · 11 players`);
   });
 
   test('a player marked out after playing still counts: 9 players on the game, its timeline, Today and Season', async () => {

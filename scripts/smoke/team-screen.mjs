@@ -820,7 +820,7 @@ async function emptyStateOk(c, ck) {
   ck(s.acts.includes('Add a player') && s.acts.includes('Paste a list'),
     `the empty state offers ${s.acts.join(' / ') || 'nothing'}, want both "Add a player" and "Paste a list"`);
   ck(s.right <= s.vw + 0.5, `the empty state reaches ${s.right.toFixed(1)}px past a ${s.vw}px screen`);
-  ck(s.count === '', `the title still reads "${s.count}" with nobody on the roster`);
+  ck(!/player/.test(s.count), `the sub line still reads "${s.count}" with nobody on the roster`);
   ck(s.teamEditHidden, 'with nobody on the roster, #teamEdit is still shown -- there is nothing to reorder');
 }
 

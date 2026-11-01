@@ -404,6 +404,11 @@ a { color: inherit; }
   width: 100%; min-height: 48px; padding: 1rem 1.125rem; border-radius: var(--r-lg);
   border: 0; background: var(--surface); font: inherit; text-align: left; }
 @media (hover: hover) { .today-game:hover { background: var(--surface-2); } }
+/* #432: a planned game's Print card sits under the game's own button, as a
+   sibling (a button cannot hold a button), full width so the target is easy
+   to hit and a long label wraps inside it rather than past the edge. */
+.today-pass { display: flex; flex-direction: column; gap: .4rem; }
+.today-print { width: 100%; min-height: 48px; justify-content: center; }
 
 .pass-top { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
 /* --fs-secondary, a token rather than an absolute unit, so a reader's

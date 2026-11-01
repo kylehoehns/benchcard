@@ -300,8 +300,8 @@ export async function timelineCardSheetPass(c, origin, rec) {
   rec.check(sheet1.hasPreviewCard, '#sheetCardPreview has no live .card clone');
   rec.check(sheet1.printLabel.includes('Print'), `#print reads "${sheet1.printLabel}", want it to include "Print"`);
   rec.check(sheet1.shareLabel.includes('Share image'), `#shareCard reads "${sheet1.shareLabel}", want it to include "Share image"`);
-  rec.check(JSON.stringify(sheet1.rowLabels) === JSON.stringify(['Print', 'Copies', 'Size', 'Names', 'Minutes strip']),
-    `the sheet's rows read ${JSON.stringify(sheet1.rowLabels)}, want ["Print","Copies","Size","Names","Minutes strip"]`);
+  rec.check(JSON.stringify(sheet1.rowLabels) === JSON.stringify(['Games to print', 'Copies', 'Size', 'Names', 'Minutes strip']),
+    `the sheet's rows read ${JSON.stringify(sheet1.rowLabels)}, want ["Games to print","Copies","Size","Names","Minutes strip"]`);
   rec.check(sheet1.hasClose, '#sheetCardClose (✕) is missing');
   // The sheet reflects state.ui -- RICH's own fixture (fixtures.mjs's UI).
   rec.check(sheet1.printScope === 'game', `#printScope reads "${sheet1.printScope}", want "game" (RICH's own ui.printScope)`);
