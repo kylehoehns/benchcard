@@ -448,6 +448,6 @@ test('the sitemap lists the 6-player page before the 7 and the halves page after
   assert.equal(at(slug(6)) + 1, at(slug(7)));
   assert.equal(at('basketball-rotation-chart-two-halves'), at(slug(12)) + 1);
   for (const loc of [slug(6), 'basketball-rotation-chart-two-halves']) {
-    assert.deepEqual(entries[at(loc)].slice(1), ['2026-10-31', '0.7'], loc);
+    assert.deepEqual(entries[at(loc)].slice(1), ['2026-11-01', '0.7'], loc);
   }
 });

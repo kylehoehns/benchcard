@@ -58,7 +58,7 @@ real engine, and one tap from the app and from the other charts.
      this row (see Out of scope).
    - **404.html**: `6-player rotation chart` first, and
      `Two-halves rotation chart` last.
-   - **sitemap.xml**: both new URLs, lastmod 2026-10-31, priority 0.7, the
+   - **sitemap.xml**: both new URLs, lastmod 2026-11-01, priority 0.7, the
      6-player entry before the 7, the halves entry after the 12.
 6. Both pages pass every check the other chart pages pass: `charts.mjs --check`,
    `test/charts.test.js`, `test/seo.test.js` (WORDS row for the halves page:
@@ -102,8 +102,8 @@ Must not change: `app/engine.js`, `app/roster.js`, `app/onboarding.js`,
 - The privacy line is the existing trust line, unchanged.
 - American spelling.
 - Generated pages are edited only by running `node scripts/charts.mjs`.
-- `about.html`'s "Last updated" and the sitemap lastmods are already
-  2026-10-31; `npm run check:history` must pass.
+- `about.html`'s "Last updated" and the sitemap lastmods are
+  2026-11-01 (the build date moved; every changed page is bumped); `npm run check:history` must pass.
 - 48px touch targets on every new chip and digit.
 
 ## Design
