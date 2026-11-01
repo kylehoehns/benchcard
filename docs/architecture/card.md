@@ -13,7 +13,9 @@ is sized in inches, so screen CSS pixels (96/in) map 1:1 to print.
   across two cards, broken on period boundaries, rather than shrunk to fit.
 - **The card also leaves as a PNG.** Printing needs a printer; "text me your
   rotation" is how a card actually reaches another coach, and that is the whole
-  word-of-mouth story for an app nobody advertises. `share.js` clones the
+  word-of-mouth story for an app nobody advertises. In the iOS Home Screen app,
+  where `window.print()` does nothing, this PNG is also how the card gets printed
+  (see [interface.md](interface.md)). `share.js` clones the
   card into an offscreen host (outside `#sheet`, so the preview's `--cardzoom`
   is unset and every rect is a real 96dpi print pixel), walks it, and paints
   each leaf's text and each horizontal rule onto a 3x canvas — no library, and

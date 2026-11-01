@@ -85,6 +85,20 @@ export function midSeason() {
 const SHARE_SHEET = `Object.defineProperty(navigator, 'share', { configurable: true,
   value: data => { window.__sharedLink = data.url; return Promise.resolve(); } })`;
 
+/* #500: the iOS Home Screen app. `navigator.standalone` is true there, and its
+ * share sheet takes files: each share is recorded as the file names and title
+ * (`imageShares()`), and still keeps a link as SHARE_SHEET does. Added only by
+ * `asHomeScreenApp()`, from the next page load. A scenario that wants a plain browser tab opens its own Coach. */
+const HOME_SCREEN_APP = `Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+  window.__sharedImages = [];
+  navigator.canShare = data => !!data?.files?.length;
+  Object.defineProperty(navigator, 'share', { configurable: true,
+    value: data => {
+      if (data.url) window.__sharedLink = data.url;
+      if (data.files) window.__sharedImages.push({ files: data.files.map(f => f.name), types: data.files.map(f => f.type), title: data.title, active: navigator.userActivation.isActive, inTap: window.event?.type === 'click' });
+      return Promise.resolve();
+    } });`;
+
 /* #326: which screens fade in from transparent. Decided at `animationstart`
  * from the entrance keyframe's starting opacity, resolved for this element
  * (`--fade-from` is 1 on the first screen), because Chrome does not count text
@@ -116,10 +130,11 @@ const FADE_WATCH = `window.__fades = [];
 /* A printer that records instead of printing: each `window.print()` notes the
  * titles of the cards on the page at that moment, as `printed()` reads them
  * back. Nothing opens, so a scenario can print as often as it likes. */
-const PRINT_SPY = `window.__prints = [];
+const PRINT_SPY = `window.__prints = []; window.__printViews = [];
   window.print = () => {
     window.__prints.push([...document.querySelectorAll('#sheet .card:not(.card-copy) .card-hd .opp')]
       .map(e => e.innerText.replace(/\\s+/g, ' ').trim()));
+    window.__printViews.push(document.querySelector('.view:not([hidden])')?.id ?? null);
   };`;
 
 /* A beacon that records and still sends: each `navigator.sendBeacon(url,
@@ -250,6 +265,12 @@ export class Coach {
 
   /** Set the phone's clock to `pin` ({ y, m, d, h }) from the next page load on. */
   pinClock(pin) { return this.#setClock(pin); }
+
+  /** Open the app from here on as the iOS Home Screen app: `navigator.standalone` is true and the share sheet takes images. */
+  async asHomeScreenApp() {
+    if (this.homeScreen) return;
+    ({ identifier: this.homeScreen } = await this.c.send('Page.addScriptToEvaluateOnNewDocument', { source: HOME_SCREEN_APP }));
+  }
 
   /* Swap the pinned clock for one at `pin`, from the next page load on. */
   async #setClock(pin) {
@@ -621,7 +642,7 @@ export class Coach {
       Print card button beside a row is a control of its own, not a game. */
   async todayGames() {
     return (await this.#controls(`[document.querySelector('#todayGames')].filter(Boolean)`)).map(x => x.name)
-      .filter(n => !n.startsWith('Print card for '));
+      .filter(n => !n.startsWith('Print card for ') && !n.startsWith('Share to print card for '));
   }
 
   /** The Season screen's rows, as `{ callName: 'N games · M behind' }`: the
@@ -810,6 +831,24 @@ export class Coach {
   /** Each time the app asked the browser to print, the card titles on the
       page then ("VS HAWKS"), oldest first. */
   printed() { return evalIn(this.c, 'window.__prints'); }
+
+  /** The screen (`view-…` id) showing at each time the app asked the browser to print, oldest first. */
+  printedOn() { return evalIn(this.c, 'window.__printViews'); }
+
+  /** From now on this page's share sheet fails the way a broken one does (a
+      non-Abort error), whatever mode it is in. Call after the page has loaded. */
+  shareFails() {
+    return evalIn(this.c, `(() => {
+      navigator.canShare = () => true;
+      Object.defineProperty(navigator, 'share', { configurable: true,
+        value: () => Promise.reject(new Error('share broke')) });
+    })()`);
+  }
+
+  /** Each image the app handed to the share sheet, oldest first, as `{ files: ['benchcard-ravens.png'], types, title, active }`;
+      `active` is whether the tap's user activation still stood when the app called `share`, `inTap` whether
+      the call was still inside the tap's click handler (`window.event` is unset in a timer or after an await, which is how iOS loses activation). */
+  async imageShares() { return (await evalIn(this.c, 'window.__sharedImages')) ?? []; }
 
   /** The product events this page has sent to `/e`, in order, as the bodies
       the endpoint received (`{ e: 'welcome_seen', from: 'try' }`). */

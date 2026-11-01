@@ -43,6 +43,7 @@ describe('a coach prints a card straight from the screen', { skip }, () => {
     const prints = await coach.printed();
     assert.equal(prints.length, 1);
     assert.ok(prints[0].length > 0 && prints[0].every(t => t.includes('RAVENS')), JSON.stringify(prints));
+    assert.deepEqual(await coach.printedOn(), ['view-games'], 'the game screen is showing when print is called');
   });
 
   async function blockHawks() {
