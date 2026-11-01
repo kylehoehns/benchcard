@@ -2029,6 +2029,19 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   const pinnedPlayed = Object.keys(pinsNow).map(Number).map(j => ({ onFloor: pinsNow[j], minutes: p.stints[j].minutes, at: j }));
   for (const x of pinnedPlayed) for (const id of x.onFloor) if (id in played) played[id] = Math.round((played[id] + x.minutes) * 100) / 100;
 
+  /* #442: the Rest limit counts across the cut. Each player's run ending at
+     the cut -- the stints played, then the pinned fives that sit before the
+     first open stint -- is what the solver starts from. Whole runs are counted
+     by the engine; this only says how long each one already is. */
+  const lead = before.map(s => s.onFloor);
+  for (let j = k; j < (open[0] ?? end); j++) if (pinsNow[j]) lead.push(pinsNow[j]);
+  const streakBefore = {};
+  for (const id of avail) {
+    let run = 0;
+    for (let j = lead.length - 1; j >= 0 && lead[j].includes(id); j--) run++;
+    if (run) streakBefore[id] = run;
+  }
+
   const openStints = open.map(j => p.stints[j]);
   const total = openStints.reduce((a, s) => a + s.minutes, 0);
   const longest = openStints.reduce((a, s) => Math.max(a, s.minutes), 0);
@@ -2103,7 +2116,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
       granularity: { mode: g.granMode, value: g.granValue },
       constraints: c, strategy, balance: g.balance,
       seed: g.seed,
-      maxSubs,
+      maxSubs, streakBefore,
     });
     /* #376: a sit changes one seat. The four who stay are handed to the
        solver as the opening five of the suffix (stint `from`), the engine's
