@@ -215,6 +215,19 @@ export function offer(message, label, act) {
   actionToast(message, label, act);
 }
 
+// app.css's game-mode landscape block: the one query that moves the call out from over the foot
+const GM_LANDSCAPE = '(orientation: landscape) and (max-height: 35em)';
+let callWatch = null;
+function watchCall(call, box) {
+  if (callWatch?.call === call) return;
+  callWatch?.ro.disconnect();
+  callWatch = null;
+  if (!call || typeof ResizeObserver === 'undefined') return;
+  const ro = new ResizeObserver(() => { if (box.children.length) liftToasts(box); });
+  ro.observe(call);
+  callWatch = { call, ro };
+}
+
 // lift clear of whatever else owns the bottom edge -- the phone action bar,
 // or game mode's stint nav, which is the one thing a coach must not lose.
 // A toast inside a sheet (#28 decision 13) has nothing to lift clear of: the
@@ -231,10 +244,11 @@ function liftToasts(box) {
   // #430: in portrait bench mode the call strip sits on the foot and is the
   // thing the coach reads at the horn, so the toast clears it too: lift by the
   // strip's top to the bottom of the viewport. Landscape puts the call in the
-  // right-hand column (its left edge past the first quarter), where the foot alone is enough.
+  // right-hand column, where the foot alone is enough. The strip's height
+  // changes with the stint, so it is watched while bench mode is open.
   const call = gmFoot ? $('#gmNext') : null;
-  const at = call ? call.getBoundingClientRect() : null;
-  if (at && at.left < window.innerWidth / 4) lift = Math.max(lift, Math.ceil(window.innerHeight - at.top));
+  watchCall(call, box);
+  if (call && !window.matchMedia?.(GM_LANDSCAPE)?.matches) lift = Math.max(lift, Math.ceil(window.innerHeight - call.getBoundingClientRect().top));
   box.classList.toggle('lifted', lift > 0);
   box.style.setProperty('--toast-lift', `${lift}px`);
 }

@@ -6,6 +6,9 @@
  * with `LONG_AND_SQUEEZE` (long names) and reduced motion, each state opened
  * by the harness's own `openState`.
  *
+ * Spec item 3 (the floor keeps room) is judged in short-phone.mjs only, same
+ * states and cells.
+ *
  * Reuses rather than re-derives: `land`, `openState`, `CLIP_STATES`,
  * `LONG_AND_SQUEEZE`, `REDUCED_MOTION`, `TOUCH_MIN`, `step`, `SETTLE`
  * (via `cellWant`). "Visible" is the spec's: the whole box inside the
@@ -13,33 +16,20 @@
  *
  * Rule 2a (/new-guard): a state that never opened, an empty call, a missing
  * node or fewer stints than the spec's eight fails rather than measuring
- * nothing. Exemptions are by cell name (`TIGHT`), never a blanket tolerance. */
+ * nothing. Exemptions are by cell name (`TIGHT_CELL`), never a blanket tolerance. */
 import { evalIn, step, TIMERS_QUIET, TODAY_HOME } from './dom.mjs';
 import { TOUCH_MIN } from './sizes.mjs';
 import { land } from './page-state.mjs';
-import { CLIP_STATES, openState } from './clip-sweep.mjs';
-import { cellWant } from './short-phone.mjs';
+import { openState } from './clip-sweep.mjs';
+import { cellWant, overlaps, stateNamed, PHONE_CELLS, TIGHT_CELL } from './short-phone.mjs';
 import { firstLine } from './verdict.mjs';
 
 export const BENCH_CALL_CHECK =
   'bench call: the call is pinned, Here now is up top and the toast stays clear at 320x568 and 390x844, 16px and 32px text';
 
-const CELLS = [
-  { width: 320, height: 568, textPx: 16 },
-  { width: 320, height: 568, textPx: 32 },
-  { width: 390, height: 844, textPx: 16 },
-  { width: 390, height: 844, textPx: 32 },
-];
+const CELLS = PHONE_CELLS;
 const STINTS = 8;                 // spec item 1: every stint 1-8
-const TIGHT = '320x568/32px';     // spec item 3, 4: the one cell the screen cannot hold everything in
-const TIGHT_FLOOR_MIN = 96;       // two touch-target heights
 const HERE_NOW = 'Here now, Featherstonehaugh Bartholomew';
-
-const stateNamed = name => {
-  const v = CLIP_STATES.find(s => s.name === name);
-  if (!v) throw new Error(`no state named "${name}" in CLIP_STATES -- nothing was measured`);
-  return v;
-};
 
 const PROBE = `JSON.stringify((() => {
   const R = e => { if (!e) return null; const b = e.getBoundingClientRect(); return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, width: b.width, height: b.height }; };
@@ -62,16 +52,15 @@ const PROBE = `JSON.stringify((() => {
   });
   const toast = q('#toasts .toast');
   return { vw, vh, next: R(next), nextVisible: visible(next), nextText: next ? next.textContent.trim() : '',
-    none: !!q('#gmNext .gm-next-none'), names, foot: R(q('.gm-foot')), body: R(body), bodyClient: body ? body.clientHeight : 0,
+    none: !!q('#gmNext .gm-next-none'), names, foot: R(q('.gm-foot')), body: R(body),
     out: R(q('#gmOutSec')), outShown: !!(q('#gmOutSec') && !q('#gmOutSec').hidden),
     here: R(btn), hereVisible: visible(btn), hereName: btn ? btn.getAttribute('aria-label') : null,
     ot: R(ot), otVisible: visible(ot), toast: R(toast),
-    cards: [...document.querySelectorAll('#gmFloor > *')].map(R),
+    floor: R(q('#gmFloor')), bench0: R(q('#gmBench .gm-b')), bench0Visible: visible(q('#gmBench .gm-b')),
     go: R(q('#overtimeGo')), goVisible: visible(q('#overtimeGo')) };
 })())`;
 
 const probe = async c => JSON.parse(await evalIn(c, PROBE));
-const hit = (a, b) => a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
 const rr = b => `y ${Math.round(b.top)}-${Math.round(b.bottom)}`;
 
 // spec item 1, for one stint at one scroll
@@ -104,15 +93,6 @@ async function stintsAt(c, origin, rec, cell, where, last) {
       await evalIn(c, `document.querySelector('.gm-body').scrollTop = 1e6`);
       const bottom = await probe(c);
       callPinned(rec, bottom, `${at}, scrolled to the bottom`);
-      // item 3: a whole floor card in .gm-body's visible box (the window, not the content)
-      const b = top.body;
-      if (b && top.cards.length) {
-        await evalIn(c, `document.querySelector('.gm-body').scrollTop = 0`);
-        const d = await probe(c);
-        if (cell.where === TIGHT) rec.check(d.bodyClient >= TIGHT_FLOOR_MIN, `${at}: .gm-body shows ${d.bodyClient}px, want >= ${TIGHT_FLOOR_MIN}px at ${TIGHT}`);
-        else rec.check(d.cards.some(k => k.top >= d.body.top - 0.5 && k.bottom <= d.body.bottom + 0.5),
-          `${at}: no floor card is whole inside .gm-body (${rr(d.body)}); card heights ${d.cards.map(k => Math.round(k.height)).join(',')}`);
-      } else rec.fail(`${at}: .gm-body or #gmFloor cards missing -- nothing was measured`);
       if (!last) {
         const dis = await evalIn(c, `document.getElementById('gmNext2').disabled`);
         if (i < STINTS) {
@@ -150,8 +130,8 @@ async function notHereAt(c, origin, rec, cell, where, withToast) {
       rec.check(d.here.width >= TOUCH_MIN && d.here.height >= TOUCH_MIN, `${label}: "Here now" is ${Math.round(d.here.width)}x${Math.round(d.here.height)}, want >= ${TOUCH_MIN}`);
     } else {
       if (!rec.check(!!d.toast, `${label}: no toast showed -- nothing was measured`)) return;
-      if (cell.where !== TIGHT) rec.check(!hit(d.toast, d.here), `${label}: the toast (${rr(d.toast)}) covers the first "Here now" (${rr(d.here)})`);
-      rec.check(!hit(d.toast, d.next) && !hit(d.toast, d.foot), `${label}: the toast (${rr(d.toast)}) covers the call (${rr(d.next)}) or the foot (${rr(d.foot)})`);
+      if (cell.where !== TIGHT_CELL) rec.check(!overlaps(d.toast, d.here), `${label}: the toast (${rr(d.toast)}) covers the first "Here now" (${rr(d.here)})`);
+      rec.check(!overlaps(d.toast, d.next) && !overlaps(d.toast, d.foot), `${label}: the toast (${rr(d.toast)}) covers the call (${rr(d.next)}) or the foot (${rr(d.foot)})`);
     }
   } catch (e) {
     rec.fail(`${label}: ${firstLine(e)}`);
@@ -171,8 +151,22 @@ async function toastAt(c, origin, rec, cell, where, name) {
     const d = await probe(c);
     if (!rec.check(!!d.toast, `${label}: no toast showed -- nothing was measured`)) return;
     if (!rec.check(!!(d.next && d.foot), `${label}: #gmNext or .gm-foot not found -- nothing was measured`)) return;
-    rec.check(!hit(d.toast, d.next), `${label}: the toast (${rr(d.toast)}) covers #gmNext (${rr(d.next)})`);
-    rec.check(!hit(d.toast, d.foot), `${label}: the toast (${rr(d.toast)}) covers .gm-foot (${rr(d.foot)})`);
+    rec.check(!overlaps(d.toast, d.next), `${label}: the toast (${rr(d.toast)}) covers #gmNext (${rr(d.next)})`);
+    rec.check(!overlaps(d.toast, d.foot), `${label}: the toast (${rr(d.toast)}) covers .gm-foot (${rr(d.foot)})`);
+    // stepping stints while the toast is up changes the call's height: the toast must follow
+    if (name === 'bench mode, swap toast') {
+      let seen = 0;
+      for (let i = 1; i < STINTS; i++) {
+        const dis = await evalIn(c, `document.getElementById('gmNext2').disabled`);
+        if (dis) break;
+        await evalIn(c, step(`document.getElementById('gmNext2').click()`));
+        const e = await probe(c);
+        if (!e.toast) continue;
+        seen++;
+        rec.check(!overlaps(e.toast, e.next), `${label}, after stepping to stint ${i + 1}: the toast (${rr(e.toast)}) covers #gmNext (${rr(e.next)})`);
+      }
+      rec.check(seen > 0, `${label}: the toast was gone at every step -- nothing was measured`);
+    }
   } catch (e) {
     rec.fail(`${label}: ${firstLine(e)}`);
   } finally {
@@ -189,6 +183,47 @@ async function overtimeAt(c, origin, rec, cell, where) {
     const d = await probe(c);
     if (!rec.check(!!d.go, `${label}: #overtimeGo not found -- nothing was measured`)) return;
     rec.check(d.goVisible, `${label}: "Add overtime" (${rr(d.go)}) is not visible without scrolling in the ${d.vh}px viewport`);
+  } catch (e) {
+    rec.fail(`${label}: ${firstLine(e)}`);
+  } finally {
+    await evalIn(c, step(v.close)).catch(e => rec.fail(`${label}: did not close -- ${firstLine(e)}`));
+  }
+}
+
+// The landscape block. At 844x390/16px the call, Not here and the bench share the right
+// column, so a coach taps off on the floor and on from the bench without scrolling. At
+// 568x320/16px with a Not here player the right column cannot push the foot off screen.
+const LAND_CELLS = [
+  { width: 844, height: 390, textPx: 16, state: 'bench mode', bench: true },
+  { width: 568, height: 320, textPx: 16, state: 'bench mode, not here', bench: false },
+];
+async function landscapeAt(c, origin, rec, cell) {
+  const where = `${cell.width}x${cell.height}/${cell.textPx}px`;
+  const label = `${cell.state} at ${where}`;
+  const v = stateNamed(cell.state);
+  try {
+    await land(c, origin, cellWant(cell));
+    await evalIn(c, step(TODAY_HOME));
+    await openState(c, origin, v, cellWant(cell));
+    await evalIn(c, `document.querySelectorAll('.gm-body > .gm-sec').forEach(e => { e.scrollTop = 0; })`);
+    const d = await probe(c);
+    if (!rec.check(!!(d.next && d.foot && d.floor), `${label}: #gmNext, .gm-foot or #gmFloor not found -- nothing was measured`)) return;
+    rec.check(d.foot.top >= -0.5 && d.foot.bottom <= d.vh + 0.5, `${label}: .gm-foot (${rr(d.foot)}) is not inside the ${d.vh}px viewport`);
+    rec.check(d.nextVisible, `${label}: #gmNext (${rr(d.next)}) is not fully visible in the ${d.vh}px viewport`);
+    rec.check(d.next.bottom <= d.foot.top + 0.5, `${label}: #gmNext bottom ${Math.round(d.next.bottom)} is below .gm-foot top ${Math.round(d.foot.top)}`);
+    if (!cell.bench) {
+      // the right column must not push the foot off screen at any stint (a 3-swap call is the tallest)
+      for (let i = 2; i <= STINTS; i++) {
+        if (await evalIn(c, `document.getElementById('gmNext2').disabled`)) break;
+        await evalIn(c, step(`document.getElementById('gmNext2').click()`));
+        const e = await probe(c);
+        if (e.foot) rec.check(e.foot.top >= -0.5 && e.foot.bottom <= e.vh + 0.5, `${label}, stint ${i}: .gm-foot (${rr(e.foot)}) is not inside the ${e.vh}px viewport`);
+      }
+      return;
+    }
+    if (!rec.check(!!d.bench0, `${label}: no #gmBench row -- nothing was measured`)) return;
+    rec.check(d.bench0.left >= d.floor.right - 0.5, `${label}: the first bench row starts at x ${Math.round(d.bench0.left)}, left of the floor's right edge ${Math.round(d.floor.right)} -- want it in the right column`);
+    rec.check(d.bench0Visible && d.bench0.bottom <= d.foot.top + 0.5, `${label}: the first bench row (${rr(d.bench0)}) is not visible without scrolling the floor (foot top ${Math.round(d.foot.top)})`);
   } catch (e) {
     rec.fail(`${label}: ${firstLine(e)}`);
   } finally {
@@ -215,6 +250,7 @@ export async function benchCallPass(c, origin, rec) {
     for (const n of ['bench mode, undo toast', 'bench mode, swap toast']) await toastAt(c, origin, rec, cell, where, n);
     if (where === '320x568/16px') await overtimeAt(c, origin, rec, cell, where);
   }
+  for (const cell of LAND_CELLS) await landscapeAt(c, origin, rec, cell);
   rec.check(cells === CELLS.length, `only ${cells} of ${CELLS.length} cells were measured`);
   rec.ok(`the call is pinned at all ${STINTS} stints, Here now is up top and the toast stays clear in ${CELLS.length} cells`);
 }

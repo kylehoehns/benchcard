@@ -1370,19 +1370,22 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
 /* A soft gray fill -- --sheet, a fill token that is neither --surface (the
    white floor rows) nor --bg (the page ground) -- no border, no team tint
    (K2/K3: this box is ink and muted only). */
-.gm-next { border: 0; border-radius: var(--r); padding: .55rem .8rem .6rem; background: var(--sheet);
-  /* #430: a pinned strip between the scroller and the foot, inset like the
-     rows above it */
-  flex: none; margin: .2rem .9rem .3rem; }
+.gm-next { border: 0; border-radius: var(--r); padding: .8rem .95rem; background: var(--sheet); }
+/* #430: bench mode's own call is a pinned strip between the scroller and the
+   foot, inset like the rows above it. Scoped to #gmNext so the first-run demo's
+   `.gm-next` (onboarding.js) keeps the look it had. */
+#gmNext { padding: .55rem .8rem .6rem; flex: none; margin: .2rem .9rem .3rem; }
 /* #368: "Tied? Add overtime" in the last stint's Next box. A text button on
    the box's own surface, a 48px target (I1) that wraps rather than clips. */
-.gm-ot { display: block; width: 100%; min-height: 48px; margin-top: .3rem; font-weight: 600;
+.gm-ot { display: block; width: 100%; min-height: 48px; margin-top: .6rem; font-weight: 600;
   white-space: normal; overflow-wrap: anywhere; }
-.gm-next-hd { font-size: var(--fs-footnote); font-weight: 600; color: var(--ink); margin-bottom: .3rem; }
+.gm-next-hd { font-size: var(--fs-footnote); font-weight: 600; color: var(--ink); margin-bottom: .5rem; }
+#gmNext .gm-next-hd { margin-bottom: .3rem; }
 /* .gm-next-hd is an h3 (it keeps its look from before) -- its own
    font-weight already stands, so only the UA default heading margin-top
    needs resetting. */
 h3.gm-next-hd { margin-top: 0; }
+#gmNext .gm-ot { margin-top: .3rem; }
 .gm-next-none { font-size: var(--fs-secondary); color: var(--muted); }
 /* Two columns, Off and On, each a plain column of names -- no icons, no
    red/green (K2/K3): every color here is ink or muted. */
@@ -1550,9 +1553,9 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-floor { gap: .3rem; }
   .gm-p { padding: .45rem .8rem; }
   /* #368: the last stint's Next box also holds the 48px overtime button. */
-  .gm-next { padding-top: .45rem; padding-bottom: .35rem; margin-bottom: .2rem; }
-  .gm-next-hd { margin-bottom: .2rem; }
-  .gm-ot { margin-top: .2rem; }
+  #gmNext { padding-top: .45rem; padding-bottom: .35rem; margin-bottom: .2rem; }
+  #gmNext .gm-next-hd { margin-bottom: .2rem; }
+  #gmNext .gm-ot { margin-top: .2rem; }
   .gm-foot { padding-top: .3rem; padding-bottom: .4rem; }
   /* #430: bar and Not here row give a little back, so the Here now button and
      the toast above the call both keep clear room on a 568px screen */
@@ -1574,21 +1577,28 @@ h3.gm-next-hd { margin-top: 0; }
 @media (orientation: landscape) and (max-height: 35em) {
   .gm-bar { padding: .35rem .9rem; }
   .gm-clock { font-size: var(--fs-body); }
-  /* #430: .gm is the grid now. The floor and bench scroll in .gm-body on the
-     left; the call and Not here sit in the right-hand column beside them, and
-     the foot spans the bottom. */
+  /* #430: .gm is the grid now, and .gm-body dissolves into it so the floor
+     and the bench land in their own cells: the floor scrolls on the left; the
+     call, Not here and the bench stack down the right (a coach taps off on
+     the floor and on from the bench without scrolling), and the foot spans the
+     bottom. The right column's Not here and bench rows shrink (minmax(0, ...))
+     and scroll themselves rather than push the foot off a short screen. The
+     call and Not here margins live in the block after the large-text one,
+     so large text cannot override them. */
   .gm {
     display: grid; grid-template-columns: 1fr 1fr; column-gap: 1.1rem;
-    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
-    grid-template-areas: "bar bar" "moved moved" "body next" "body out" "body ." "foot foot";
+    grid-template-rows: auto auto auto minmax(0, auto) minmax(0, 1fr) auto;
+    grid-template-areas: "bar bar" "moved moved" "floor next" "floor out" "floor bench" "foot foot";
   }
   .gm-bar { grid-area: bar; }
   .gm-moved { grid-area: moved; }
-  .gm-body { grid-area: body; padding: .7rem 0 .8rem .9rem; }
-  .gm-next { grid-area: next; margin: .7rem .9rem 0 0; }
-  #gmOutSec { grid-area: out; margin: .9rem .9rem 0 0; padding: 0; max-height: 30vh; }
+  .gm-body { display: contents; }
+  .gm-body > .gm-sec:first-child { grid-area: floor; padding: .7rem 0 .8rem .9rem; }
+  #gmBenchSec { grid-area: bench; margin-top: .9rem; padding: 0 .9rem .8rem 0; }
+  .gm-body > .gm-sec { min-height: 0; overflow-y: auto; touch-action: pan-y; }
+  #gmNext { grid-area: next; }
+  #gmOutSec { grid-area: out; }
   .gm-foot { grid-area: foot; }
-  #gmBenchSec { margin-top: .9rem; }
   .gm-sec { margin-bottom: 0; }
   .gm-lab { margin-bottom: .35rem; }
   .gm-floor { gap: .35rem; }
@@ -1597,7 +1607,6 @@ h3.gm-next-hd { margin-top: 0; }
      this padding is what makes all five fit above the fold. */
   .gm-p { padding: .32rem .7rem; gap: .6rem; }
   .gm-p .av { width: 2rem; height: 2rem; }
-  .gm-next { padding: .6rem .8rem; }
   .gm-foot { padding: .45rem .9rem .55rem; }
   .gm-nav { height: 2.8rem; }
 }
@@ -3934,19 +3943,25 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      right edges stay aligned at this size the way they do at 16px text. */
   .gm-body, .gm-p, .gm-bar, .gm-foot { padding-left: .5rem; padding-right: .5rem; }
   #gmOutSec { padding-left: .5rem; padding-right: .5rem; max-height: 30vh; }
-  .gm-next { margin: 0 .5rem; padding: .2rem .5rem; }
+  #gmNext { margin: 0 .5rem; padding: .2rem .5rem; }
+  /* The first-run demo's Next change box (onboarding.js) is not #gmNext: two
+     columns of 91px at 320px/32px break "HANA"/"MAXI" (92-98px in DejaVu Sans)
+     mid-word (#197), so it stacks Off above On. Bench mode's own call keeps two
+     columns, below. */
+  .gm-next-cols { grid-template-columns: 1fr; }
+  #gmNext .gm-next-cols { grid-template-columns: 1fr 1fr; }
   /* #430: the call stays two columns, Off beside On. At the old size each
      column was 91px wide and the card's short names ("HANA", "MAXI", `fitCallRows`)
      measure 92-98px in DejaVu Sans, so it stacked Off above On and ran 340px
      tall -- no longer a pinned strip. The names step down to --fs-secondary and
      the strip's side padding is trimmed above, so `fitCallRows` is handed a
      column wide enough for the short names. */
-  .gm-next-col .nm { font-size: var(--fs-secondary); line-height: 1.15; }
-  .gm-next-col { gap: 0; }
-  .gm-next-hd { margin-bottom: .15rem; line-height: 1.15; }
-  .gm-next-lb { margin-bottom: 0; line-height: 1.15; }
-  .gm-next-none { font-size: var(--fs-footnote); line-height: 1.1; }
-  .gm-ot { font-size: var(--fs-footnote); line-height: 1.2; margin-top: .15rem; }
+  #gmNext .gm-next-col .nm { font-size: var(--fs-secondary); line-height: 1.15; }
+  #gmNext .gm-next-col { gap: 0; }
+  #gmNext .gm-next-hd { margin-bottom: .15rem; line-height: 1.15; }
+  #gmNext .gm-next-lb { margin-bottom: 0; line-height: 1.15; }
+  #gmNext .gm-next-none { font-size: var(--fs-footnote); line-height: 1.1; }
+  #gmNext .gm-ot { font-size: var(--fs-footnote); line-height: 1.2; margin-top: .15rem; }
   .gm-foot { gap: .25rem; padding-top: .25rem; padding-bottom: .3rem; }
   /* Not here at large text: Here now on the row's first line and the name
      under it at the full width, wrapping between words (never cut). Side by
@@ -3999,6 +4014,14 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   #planLineups .prow { flex-wrap: wrap; }
   #planLineups .prow-t { flex-basis: 100%; }
   #planLineups .prow-v { flex: 1 1 0; }
+}
+
+/* #430: landscape bench mode's call and Not here spacing, after the large-text
+   block above: both set the same properties at the same specificity, and the
+   sideways layout (the right column beside the floor) must keep its own. */
+@media (orientation: landscape) and (max-height: 35em) {
+  #gmNext { margin: .7rem .9rem 0 0; padding: .6rem .8rem; }
+  #gmOutSec { margin: .9rem .9rem 0 0; padding: 0; max-height: 30vh; }
 }
 
 /* The planning views on a phone held sideways: not where a coach plans, but
