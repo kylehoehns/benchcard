@@ -193,6 +193,8 @@ Every page it opens has its clock pinned to 2026-09-12 12:00 local
 at any hour instead of failing when CI happens to cross midnight (#178). A run
 also ends on its own if it hangs: `--timeout <minutes>` (default 60) closes
 Chrome and exits 1, naming the check it was on; `Ctrl-C`/`kill` do the same.
+A run killed with SIGKILL leaves its Chrome until the next `launch()` reaps
+it (#510).
 No `perl -e 'alarm …'` wrapper is needed.
 
 How a run spends its time (fast animations, `--timing`, when to sleep): `scripts/smoke/README.md`.

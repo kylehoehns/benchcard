@@ -5,7 +5,7 @@
  * shape (a new env var a case needs, a slower CI runner's slack) is made once.
  *
  * The tripwire: `launch()` in `scripts/smoke/chrome.mjs` calls
- * `mkdtemp(join(tmpdir(), 'benchcard-smoke-'))` to make Chrome's
+ * `mkdtemp(join(tmpdir(), `benchcard-smoke-${process.pid}-`))` to make Chrome's
  * `--user-data-dir` before it ever spawns the binary, so a fresh, otherwise-
  * empty directory pointed to by TMPDIR/TMP/TEMP is a tripwire no timer can be
  * fooled by: if Chrome launches at all, this directory stops being empty, no
