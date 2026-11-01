@@ -446,8 +446,11 @@ a { color: inherit; }
 .pass-summary { overflow: hidden; white-space: normal;
   color: var(--muted); font-size: var(--fs-secondary); }
 
+/* The chevron is out of the wrapping flow, at the row's right edge (the
+   padding reserves its room), so a subtitle that wraps under the label does
+   not push it onto a line of its own (#422). */
 .today-entry::after { content: '\203a'; color: var(--muted); font-size: var(--fs-headline);
-  flex: none; margin-left: .1rem; }
+  position: absolute; right: .95rem; top: 50%; transform: translateY(-50%); }
 
 /* Column, not a row: with the empty-state note showing (#todayNoGames), it
    must read as one gray line above the button, not beside it. The note's
@@ -459,17 +462,18 @@ a { color: inherit; }
    trailing chevron, since it opens a dialog rather than navigating to a
    page. */
 .today-entry.noarrow::after { content: none; }
+.today-entry.noarrow { padding-right: .95rem; }
 
-.today-entry { display: flex; align-items: center; gap: .2rem .9rem; flex-wrap: wrap;
-  width: 100%; min-height: 48px; padding: .8rem .95rem; margin-bottom: .6rem;
+.today-entry { position: relative; display: flex; align-items: center; gap: .2rem .9rem; flex-wrap: wrap;
+  width: 100%; min-height: 48px; padding: .8rem 2.2rem .8rem .95rem; margin-bottom: .6rem;
   border-radius: var(--r-sm); border: 0; background: var(--surface);
   font: inherit; text-align: left; }
 @media (hover: hover) { .today-entry:hover { background: var(--surface-2); } }
 /* Same reason as `.pass-when` above: a token, not a fixed size, so a
    reader's larger-text setting can grow this label too. */
 .today-entry-lab { font-size: var(--fs-body); font-weight: 700; letter-spacing: -.01em; }
-.today-entry-sub { color: var(--muted); font-size: var(--fs-secondary); flex: 1; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-entry-sub { color: var(--muted); font-size: var(--fs-secondary); flex: 1 1 auto; min-width: 0;
+  white-space: normal; overflow-wrap: break-word; }
 
 /* ---- lineup balance ---- */
 /* A staircase, not five identical marks: rising bars say which end is "more"
@@ -602,7 +606,7 @@ a { color: inherit; }
    fixed one a phone could reach. --tot starts at the width the number alone
    needs; :not(.even) widens it for the MOST/FEWEST word column. */
 .tl { --lab: 9.5rem; --tot: 2rem; --edge-l: .5rem; --edge-r: .4rem; container-type: inline-size; }
-.tl:not(.even) { --tot: 5.2rem; }
+.tl:not(.even) { --tot: 6.2rem; }
 /* No gap under the Q1-Q4 labels: align-items: end already leaves the
    label's descender space before the first row, so a gap here would eat
    into the budget that fits nine rows plus the Start game bar inside
@@ -622,7 +626,7 @@ a { color: inherit; }
    tabindex and no click handler -- .tl-name (the button) carries the
    tap-target floor and cursor: pointer instead. */
 .tl-row {
-  display: grid; grid-template-columns: 1fr auto; grid-template-areas: "lab tot" "trk trk";
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "lab num" "ex ex" "trk trk";
   gap: .6rem; row-gap: .22rem; align-items: center;
   padding: .3rem var(--edge-r) .4rem var(--edge-l); border-radius: var(--r-xs);
   /* Every row carries the pinned card's side edges, transparent until pinned,
@@ -635,7 +639,10 @@ a { color: inherit; }
 /* The full name (tlName in timeline.js keeps it full -- test/timeline-names.
    test.js pins that) reads at the same size/weight as any other row label,
    not a footnote. */
-.tl-lab .nm { font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-lab .nm { font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis;
+  /* Stacked layout: the name wraps rather than ending in an ellipsis (#422);
+     the one-row block below restores the one-line ellipsis. */
+  min-width: 0; white-space: normal; overflow-wrap: break-word; }
 /* The name is the tap target, not the row: a real <button class="tl-name">
    around the dot and name, styled to disappear so it reads as the plain
    label it replaces (no chrome, underline or tint -- K1 disallows tint
@@ -681,6 +688,16 @@ a { color: inherit; }
      height; .tl-name's min-height: var(--row-pitch) below is what sets the
      number. Track and total keep the row's own centered alignment. */
   .tl-lab { align-self: stretch; align-items: stretch; }
+  /* The one-row layout keeps its fixed pitch: the total is one box again in
+     the "tot" cell, the word in a fixed gutter beside the number, all on one
+     line so every number ends at the same x (#422). `.tl-row` in front: the
+     stacked rules for these sit later in the file, so equal specificity
+     would lose to them. */
+  .tl-lab .nm { white-space: nowrap; overflow-wrap: normal; }
+  .tl-row .tl-tot { grid-area: tot; display: block; white-space: nowrap; }
+  .tl-row .tl-tot .ex, .tl-row .tl-tot .ex:empty { display: inline-block; width: 3.2rem; margin-left: .3rem; }
+  .tl.even .tl-row .tl-tot .ex { width: 0; margin-left: 0; }
+  .tl-row .tl-tot .num { line-height: inherit; }
   /* Smoke `game rows fit` measures every .tl-name against min(48, pitch) -
      0.5, not 48 flat, since a target taller than the pitch would overlap the
      next row; the touch sweep skips .tl-name here for the same reason.
@@ -725,13 +742,19 @@ a { color: inherit; }
 }
 /* 600, not 700 -- the total is a tabular number next to the name, not a
    heading. */
-.tl-tot { grid-area: tot; text-align: right; font-size: var(--fs-footnote); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+/* Stacked layout: the box dissolves so .num sits right of the name and .ex
+   takes its own line under it; the one-row block makes it a box again. Color
+   and type inherit through it, so .hi/.lo still reach both. */
+.tl-tot { display: contents; text-align: right; font-size: var(--fs-footnote); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .tl-tot.hi { color: var(--accent); } .tl-tot.lo { color: var(--info); }
 /* The word, not the hue, is what says which end of the squad this is. Small
    enough to stay a footnote to the number, never the other way round. */
-.tl-tot .ex { display: inline-block; width: 3.2rem; margin-left: .3rem; text-align: left;
+/* Pinned to the row's top at the 48px name height, so every total sits at the
+   same offset however many lines a name wraps to (#422). */
+.tl-tot .num { grid-area: num; align-self: start; line-height: 48px; }
+.tl-tot .ex { grid-area: ex; text-align: left;
   font-size: var(--fs-footnote); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-.tl.even .tl-tot .ex { width: 0; margin-left: 0; }
+.tl-tot .ex:empty { display: none; }
 .tl-body { position: relative; }
 /* First paint has the shell but no plan: the modules still have to arrive and
    the first solve is synchronous. The skeleton is built from the real row
@@ -2960,6 +2983,10 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    trap.js), not a control -- it never reaches the Tab order and draws no
    ring when focus lands on it programmatically. */
 .bsheet-hd-row h2:focus { outline: none; }
+/* A player's name can be any length (#422): the title column shrinks and
+   breaks inside a long word, so the close button is never pushed out. */
+#sheetPlayer .bsheet-hd-row { grid-template-columns: minmax(48px, 1fr) minmax(0, auto) minmax(48px, 1fr); }
+#sheetPlayerTitle { min-width: 0; overflow-wrap: anywhere; }
 /* At 320px/32px, .bsheet-hd's own inline-size is ~262px -- ~8.2em at the
    32px root -- while the same header at 390px/16px is ~361px, ~22.6em: a
    doubled root doubles every rem/em padding along with the narrower
@@ -2977,12 +3004,14 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    takes the same second row. */
 @container (max-width: 16em) {
   .bsheet-hd-row:has(.planAddRule:not([hidden])),
-  #sheetOvertime .bsheet-hd-row {
+  #sheetOvertime .bsheet-hd-row,
+  #sheetPlayer .bsheet-hd-row {
     grid-template-columns: auto 1fr auto;
     row-gap: .3rem;
   }
   .bsheet-hd-row:has(.planAddRule:not([hidden])) h2,
-  #sheetOvertime .bsheet-hd-row h2 {
+  #sheetOvertime .bsheet-hd-row h2,
+  #sheetPlayer .bsheet-hd-row h2 {
     grid-column: 1 / -1;
     grid-row: 2;
   }
@@ -3586,6 +3615,14 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    on `.bar`, so source order is the whole of the cascade between them, and
    above either one this tightening is silently dead. */
 @media (max-width: 19em) {
+  /* #422: the Today heading steps down to the headline size, and the team
+     name wraps to at most two lines instead of ending in one letter. The
+     sentence step (50px here) still cut "Northside" to "Nort…": no word of a
+     real team name fits a 170px label at that size. The ticket allows a
+     smaller heading; headline is the step #187 used for the same reason. */
+  .today-h1 { font-size: var(--fs-headline); }
+  #teamBtnLabel { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    line-clamp: 2; white-space: normal; text-align: left; }
   .bar { gap: .28rem; padding-left: .5rem; padding-right: .5rem; }
   /* `.btn` is `white-space: nowrap` by design, so "Show me with a sample
      team" measures 352px at a 32px root in a 264px column -- the whole of
@@ -3714,7 +3751,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      .minwrap` above names, and the one that let this ship with the
      three-column template still applied and `.sn-name` measuring 310px in a
      275px row before it was caught. */
-  .sn-list .sn-row { grid-template-columns: 1fr auto; row-gap: .2rem; }
+  .sn-list .sn-row { grid-template-columns: minmax(0, 1fr) 3rem; row-gap: .2rem; }
   .sn-list .sn-name { grid-column: 1 / -1; }
 
   /* An OPENED game's own player rows (`.sn-body .sn-row`, the larger
@@ -3749,25 +3786,13 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   }
   .sn-game > summary .sn-gt { grid-column: 1 / -1; }
 
-  /* The timeline: not a pan (the page stays 320px wide) but a column
-     squeezed to nothing. MOST/FEWEST sits in a fixed `3.2rem` gutter beside
-     the number so the column of totals stays flush, and `3.2rem` is a text
-     measure: 102px at a 32px root. The stacked phone row is `1fr auto`, the
-     `auto` track takes 102px plus the number, and `.tl-lab` is left 20.9px
-     -- the dot and its gap, so every name measured 0px wide.
-     The word moves under the number instead of beside it: it says which end
-     of the squad a row is at to a coach who cannot use the color
-     (`renderTimeline`'s own comment). `width: auto` on a block child of the
-     `auto` track makes the track `max(number, word)` -- 63.2px, not 146.8px
-     -- so the label gets 132.9px at 320 and 202.9px at 390, where eight of
-     twelve real names fit whole.
-     The numbers stay flush, which the fixed gutter is for: `.tl-tot` is
-     right-aligned and the number is last on its own line, so every row's
-     number ends at the same edge. Only rows carrying a word grow; an empty
-     `.ex` is a block with no line box and costs nothing. `.tl.even .tl-tot
-     .ex` outranks this on specificity and still collapses the gutter when
-     no row earns a word. */
-  .tl-tot .ex { display: block; width: auto; margin-left: 0; text-align: right; }
+  /* The timeline's stacked row (#422): at a 32px root the name column beside
+     the number was ~120px, so "Alexandria" broke into "Alexan" / "dria". Here
+     the name takes the whole row, and the number moves down to the word's
+     line, at the right edge, just above its bar. A plain row's line holds the
+     number alone. */
+  .tl-row { grid-template-areas: "lab lab" "ex num" "trk trk"; }
+  .tl-tot .num { align-self: center; line-height: inherit; }
 
   /* #188: at a 32px root the four `.keyswrap` dialogs (team color, keyboard
      shortcuts, confirm, help) were left only 145px of content -- the wrap's

@@ -79,6 +79,7 @@ not counted: only the `.js` files `app/` serves are.
 | `a11y in overlays and dialogs` | `scripts/smoke/overlay.mjs` | RICH |
 | `tour: seven steps at 390px, 1280px and 320px/32px text` | `scripts/smoke/tour-steps.mjs` | RICH |
 | `short phone: sheets, bench mode and the tour leave room at 320x568 and 390x844, 16px and 32px text` | `scripts/smoke/short-phone.mjs` | RICH |
+| `long names: timeline, player sheet, Today lines, team switcher and Season bars at 320x568 and 390x844, 16px and 32px text` | `scripts/smoke/long-names.mjs` | RICH |
 | `touch targets ≥ 48px, 320–390px` | `scripts/smoke/touch.mjs` | RICH |
 | `settings rows ≥ 48px, 320–390px` | `scripts/smoke/settings-rows.mjs` | RICH |
 | `settings look: no border, 32px insets, sentence case, one footnote per group` | `scripts/smoke/settings-look.mjs` | RICH |
