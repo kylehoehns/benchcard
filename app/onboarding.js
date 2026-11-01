@@ -708,9 +708,11 @@ function paintDayRows(box, pick) {
   const now = new Date();
   const today = seasonDate(now);
   const tomorrow = seasonDate(dayAfter(now));
+  const dayRow = (label, date) => [label, !fr.pickDate && fr.gameDate === date,
+    () => { fr.pickDate = false; fr.gameDate = date; }];
   const rows = [
-    ['Today', !fr.pickDate && fr.gameDate === today, () => { fr.pickDate = false; fr.gameDate = today; }],
-    ['Tomorrow', !fr.pickDate && fr.gameDate === tomorrow, () => { fr.pickDate = false; fr.gameDate = tomorrow; }],
+    dayRow('Today', today),
+    dayRow('Tomorrow', tomorrow),
     ['Pick a date', !!fr.pickDate, () => { fr.pickDate = true; }],
   ];
   box.textContent = '';
