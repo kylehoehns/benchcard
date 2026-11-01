@@ -62,17 +62,18 @@ const fileSrc = new Map(SMOKE_FILES.map(f => [relative(SMOKE_DIR, f), readFileSy
 
 const smokeSrc = readFileSync(SMOKE_ENTRY, 'utf8');
 
-test('scripts/smoke.mjs imports only the seven shared ./smoke/ modules, no per-check module', () => {
+test('scripts/smoke.mjs imports only the eight shared ./smoke/ modules, no per-check module', () => {
   const imported = [...smokeSrc.matchAll(/from\s+'(\.\/smoke\/[^']+)'/g)].map(m => m[1]);
   assert.ok(imported.length > 0, 'found no ./smoke/ imports in scripts/smoke.mjs — the regex or the file moved');
   const allowed = new Set([
     './smoke/chrome.mjs', './smoke/dom.mjs', './smoke/fixtures.mjs',
     './smoke/page-state.mjs', './smoke/registry.mjs', './smoke/card-at-32.mjs',
     './smoke/shard.mjs', // #459: the parts CI runs and their merge, not a check
+    './smoke/suite-failures.mjs', // #480: reads a failing suite's test names, shared plumbing, not a check
   ]);
   const extra = [...new Set(imported)].filter(p => !allowed.has(p));
   assert.deepEqual(extra, [],
-    `scripts/smoke.mjs imports from ./smoke/ paths outside the seven allowed ones: ${extra.join(', ')} — ` +
+    `scripts/smoke.mjs imports from ./smoke/ paths outside the eight allowed ones: ${extra.join(', ')} — ` +
     'a check module belongs in registry.mjs\'s own import list, not smoke.mjs\'s');
 });
 

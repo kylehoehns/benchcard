@@ -68,8 +68,7 @@ describe('a game set up the night before', { skip }, () => {
     const fives = await coach.cardFives();
     await coach.tap('Share or hand off');
     await coach.tap('Hand off');
-    await coach.tap('Share link');
-    return { link: await coach.sharedLink(), fives };
+    return { link: await coach.shareLink(), fives };
   }
 
   test('a link made and opened on the 30th keeps its label, tipoff and stints on the 31st', async () => {
