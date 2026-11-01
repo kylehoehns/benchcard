@@ -2,7 +2,7 @@ import { LONG_NAME } from './fixtures.mjs';
 import { evalIn } from './dom.mjs';
 
 /* #143 fix pass: a `.prow` row that carries a badge and/or a trailing check
- * (or "Absent") has to keep all of its own parts sharing one line at a 320px/
+ * (or "Out") has to keep all of its own parts sharing one line at a 320px/
  * 32px root -- the name may still wrap across several lines inside its own
  * box, but the badge and the check must not fall to a physically separate
  * line. `whoRow` (game-setup.js) measured 236px, with the badge on its own

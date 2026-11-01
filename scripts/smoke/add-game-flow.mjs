@@ -13,7 +13,7 @@ import { checkedTileHasNoRing, exactlyOneTintFill, stepThreeVisuals } from './ad
    with real buttons and real keys, the shape `team-screen.mjs` already uses.
 
    Every expected string here is the spec's own ("Add a game", "1 of 3", "Who
-   are you playing?", "11 players, 4 × 8, even minutes", "Absent", "Add game"),
+   are you playing?", "11 players, 4 × 8, even minutes", "Out", "Add game"),
    never a second computation of what the app does. The numbers that are the
    fixture's rather than the spec's -- eleven players, two games already in
    the day -- are read from `fixtures.mjs` or measured before the action, so
@@ -356,7 +356,7 @@ const roster = c => evalJSON(c, `(async () => {
   return JSON.stringify(s.state.players.map(p => ({ id: p.id, name: p.name, number: p.number })));
 })()`);
 
-/* Item 5: who is here, as tiles. The count line and the "Absent" naming are
+/* Item 5: who is here, as tiles. The count line and the "Out" naming are
    the spec's own strings; the number of tiles and the names on them come
    from the roster in the record. */
 async function stepTwoReads(c, ck) {
@@ -390,13 +390,13 @@ async function stepTwoReads(c, ck) {
   b = await bodyState(c);
   ck(b.text.includes('10 of 11'), `tapping a tile left the count at "${b.text.slice(-80)}", want "10 of 11"`);
   ck(t[0].pressed === 'false', `the tapped tile still reads aria-pressed="${t[0].pressed}"`);
-  ck(t[0].name.includes('Absent'), `the absent tile is named "${t[0].name}", which does not say "Absent"`);
+  ck(t[0].name.endsWith(', Out'), `the absent tile is named "${t[0].name}", which does not say "Out"`);
 
   await realTap(c, '#agBody .plr');
   t = await tiles(c);
   b = await bodyState(c);
   ck(b.text.includes('11 of 11'), `tapping the tile again did not restore the count (body reads "${b.text.slice(-80)}")`);
-  ck(t[0].pressed === 'true' && !t[0].name.includes('Absent'),
+  ck(t[0].pressed === 'true' && !t[0].name.endsWith(', Out'),
     `tapping again left the tile "${t[0].name}" at aria-pressed="${t[0].pressed}"`);
 }
 

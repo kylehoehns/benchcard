@@ -128,7 +128,7 @@ export function newGame(n, from, settings) {
     periodMinutes: settings?.periodMinutes ?? 8,
     overtime: [],
     granMode: 'everyN', granValue: 4,
-    out: [], useCarryover: n > 0,
+    out: [], late: [], useCarryover: n > 0,
     /* Season carryover (B3). Off, and -- unlike format, availability and
        strategy below -- deliberately NOT copied from the game this one clones.
        `useCarryover` defaults on for game 2+, and that precedent was not
@@ -153,7 +153,7 @@ export function newGame(n, from, settings) {
   if (from) Object.assign(g, {
     periods: from.periods, periodMinutes: from.periodMinutes,
     granMode: from.granMode, granValue: from.granValue,
-    out: [...from.out], constraints: clone(from.constraints),
+    out: [...from.out], late: [...(from.late || [])], constraints: clone(from.constraints),
     strategy: from.strategy,
   });
   return g;
@@ -2446,7 +2446,7 @@ export function fileIfPast(today = new Date()) {
   if (!t.days.length) {
     fellBack = true;
     const g = newGame(0, lastFiled.games[lastFiled.games.length - 1], state.settings);
-    g.out = [];
+    g.out = []; g.late = [];
     t.days = [{ name: '', date: seasonDate(today), games: [g] }];
     t.activeDay = 0;
     state.activeGame = 0;

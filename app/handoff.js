@@ -44,7 +44,7 @@ export async function encode(team, game, stints) {
     g: {
       id: game.id, periods: game.periods, periodMinutes: game.periodMinutes,
       granMode: game.granMode, granValue: game.granValue, strategy: game.strategy,
-      balance: game.balance, seed: game.seed, out: game.out, constraints: game.constraints,
+      balance: game.balance, seed: game.seed, out: game.out, late: game.late, constraints: game.constraints,
       overtime: game.overtime, label: game.label?.slice(0, 40), tipoff: game.tipoff,
     },
     d: team.days[findGame(team, game.id)?.[0]]?.date,

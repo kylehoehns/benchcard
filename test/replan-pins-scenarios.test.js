@@ -20,7 +20,7 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
 
   test('1. Here now at stint 7 keeps the played stints and does not say the first player is no longer fixed', async () => {
     await coach.onGameDayWith({
-      out: ['p8'],
+      out: ['p8'], late: ['p8'],
       constraints: { minMinutes: {}, maxMinutes: { p0: 8 }, pairs: [], avoids: [], keepOnFloor: [], openingFive: [], lastPeriodFive: ['p0'] },
     }, 9);
     await coach.tap('Hawks, 9:00 AM, planned');
@@ -36,7 +36,7 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
 
   test('2. Sit for the rest at the last stint does not say the first player is no longer fixed', async () => {
     await coach.onGameDayWith({
-      out: ['p8'],
+      out: ['p8'], late: ['p8'],
       constraints: { minMinutes: {}, maxMinutes: { p0: 8 }, pairs: [], avoids: [], keepOnFloor: [], openingFive: [], lastPeriodFive: ['p0'] },
     }, 9);
     await coach.tap('Hawks, 9:00 AM, planned');
@@ -51,7 +51,7 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
 
   test('3. A This stint swap at stint 6 that spends the first player\'s Plays at most says they are no longer fixed', async () => {
     await coach.onGameDayWith({
-      out: ['p8'],
+      out: ['p8'], late: ['p8'],
       constraints: { minMinutes: {}, maxMinutes: { p0: 4 }, pairs: [], avoids: [], keepOnFloor: [], openingFive: [], lastPeriodFive: ['p0'] },
     }, 9);
     await coach.tap('Hawks, 9:00 AM, planned');

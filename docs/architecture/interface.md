@@ -27,7 +27,7 @@ full-screen `<dialog>` that covers everything including the action bar (N8,
 C10), and asks what actually differs between this game and the last one: *Who
 are you playing?* (opponent and tip-off), *Who's here?* (one tile per roster
 player, three across, carrying the last game's answer, where tapping a tile
-toggles that player to Absent against a running count), and *How should minutes
+toggles that player to Out against a running count), and *How should minutes
 split?* (the four strategies with the one-line descriptions `STRATEGIES` holds,
 over the *Even out earlier games* switch `rules.js` builds for the Plan sheet).
 It is still one tap when nothing differs: step 1 carries a *Same as 9:00?* card
@@ -433,7 +433,7 @@ part-played, edits split into two paths (#134, #247):
 
 The snapshot is the whole of `state`: a day is a few
 KB, and a per-action inverse would have to know that removing a player also
-sweeps their id out of every game's out-list, constraints, carryover and
+sweeps their id out of every game's out and late lists, constraints, carryover and
 overtime five. `state`
 is a `const` binding everything closes over, so a restore refills it in place
 rather than reassigning. There are no `confirm()` calls left in the app.

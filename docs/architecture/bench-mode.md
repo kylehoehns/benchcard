@@ -156,7 +156,7 @@ between the scrolling floor and the foot, so it stays on screen at every scroll
 position. The floor and the bench are the only scroller; the foot is a
 normal-flow sibling below the box, not a layer floating over the list. When
 the screen is full (a short phone at large text, after a swap), the "card no
-longer matches" line and the Not here group shrink and scroll before the foot
+longer matches" line and the Running late group shrink and scroll before the foot
 moves. A toast lifts above the box in portrait, but only as far as it fits
 whole on screen; a toast too tall for the room above the box sits over it, never
 over the foot, until it goes.
@@ -209,15 +209,17 @@ and a name-width chip made the second tap smaller than the first, smallest of
 all for the shortest names. Minutes stay right-aligned so played/projected
 still reads as a column down the list.
 
-**A late arrival is marked here from bench mode (#383).** Anyone marked out on
-Who's here is listed under a **Not here** group directly under the bar, above the
-floor (#430), so a late arrival's **Here now** is on screen when bench mode opens.
-Each player is one compact row with a **Here now** button. The group caps its own
-height and scrolls inside itself, so a long out list never pushes the floor off
-the screen. The group is hidden when nobody is out, and it shows on every stint,
-the last included. Tapping **Here now** calls `setAvailable(g, id, true)`,
-the same edit Who's here makes, so the plan from the next stint on picks the kid
-up. The stint on the floor does not change, and the pick in progress is cleared.
+**A late arrival is marked here from bench mode (#383).** Anyone marked
+**Running late** on Who's here is listed under a **Running late** group directly
+under the bar, above the floor (#430), so a late arrival's **Here now** is on
+screen when bench mode opens. A kid turned off on Who's here is **Out** (not
+coming) until the Running late chip beside them is tapped (#504). Each player is
+one compact row with a **Here now** button. The group caps its own height and
+scrolls inside itself, so a long Running late list never pushes the floor off
+the screen. The group is hidden when nobody is late, even when kids are Out, and
+it shows on every stint, the last included. Tapping **Here now** calls
+`setAvailable(g, id, true)`, the same edit Who's here makes, so the plan from the
+next stint on picks the kid up. The stint on the floor does not change, and the pick in progress is cleared.
 The handler runs `computeAll()` first. Stepping through stints in bench mode never
 does a full render, so the plan has not been adopted yet, and without that step
 the re-plan would also rewrite the stint on the floor. The change is one
@@ -228,6 +230,15 @@ fixed to a stint go, the same toast says so once (#437; the rule is in
 now** button, or to the first floor row when none is left. After an Undo, focus
 goes to the restored player's own button. Each button's accessible name is
 "Here now, {full name}".
+
+**Someone showed up? (#504).** A kid who is Out and shows up anyway is marked
+here from one quiet row below the bench, inside the scroller. It appears only
+while at least one kid is Out and not late, has `aria-expanded`, and opens a
+short list of those kids with the same **Here now** rows, calling the same
+`hereNow`. Whether it is open survives repaints within one bench-mode visit, so
+Undo of an arrival from it lands on the restored kid's button. Out and Running
+late are the same to the plan: the engine reads `out` alone, and `late` is
+always a subset of it.
 
 Reality diverges from the plan, so a swap here **overrides** the plan for the
 current stint or the rest of the game. A **This stint** swap then re-plans the
@@ -270,7 +281,7 @@ leaving the sat kid out would leave fewer than five players, that solve puts the
 back on for the fifth seat, the sit stays recorded, and the coach is told once:
 "Not enough players to keep {name} sitting." Names are joined with `joinNames`
 when there is more than one. The sit applies again on the first re-plan that
-has five without them. Marking a sat kid out and then Here now keeps the sit.
+has five without them. Marking a sat kid Out (or Running late) and then Here now keeps the sit.
 
 A **This stint** swap and a sit call `resolveRest` directly, not `replanRest`
 (#437). If a kid fixed to a stint has to be let go for that solve to work, the
@@ -344,7 +355,7 @@ to make, and a red row would call it a failure.
 
 A stored override that no longer names five real players is discarded on load
 — a stale one is worse than none, and "real" means present as well as on the
-roster: marking a player absent in Who's here (#27) drops any override naming
-them, the same way removing them does. An override is a five the coach picked by
+roster: marking a player Out in Who's here (#27) drops any override naming
+them, the same way removing them does. Setting Running late does not touch overrides. An override is a five the coach picked by
 hand, so with one of them not in the gym it is not a lineup, and it would
 otherwise ride into bench mode and onto the printed card.

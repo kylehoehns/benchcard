@@ -547,7 +547,7 @@ test('property #437: after a live arrival or departure, every stint before live.
     const pinned = [...new Set([...c.lastPeriodFive, ...(c.closing?.players || [])])];
     if (size >= 7) for (const id of pinned.slice(0, 2)) if (r() < 0.8) c.maxMinutes[id] = int(1, 2) * periodMinutes;
     const g = {
-      id: `fz${n}`, label: '', tipoff: '', out: [...out], seed: n,
+      id: `fz${n}`, label: '', tipoff: '', out: [...out], late: [], seed: n,
       periods, periodMinutes, granMode: 'everyN', granValue: int(3, 5),
       strategy, balance: 'even', constraints: c,
       live: { at: 0, overrides: {} }, useCarryover: false, useSeasonTargets: false,

@@ -140,7 +140,7 @@ export async function sentenceSheetsPass(c, origin, rec) {
   })()`);
   rec.check(devon.open, 'the sheet closed after marking a player absent');
   rec.check(devon.pressed === 'false', `Devon Ellis's row is aria-pressed="${devon.pressed}" after tapping it, want "false"`);
-  rec.check(devon.mark === 'Absent', `Devon Ellis's row reads "${devon.mark}" after tapping it, want "Absent"`);
+  rec.check(devon.mark === 'Out', `Devon Ellis's row reads "${devon.mark}" after tapping it, want "Out"`);
   rec.check(devon.focused, 'focus did not stay on Devon Ellis\'s row after tapping it');
   // the re-plan: 10 players, 10 timeline rows.
   const afterAbsent = await evalJSON(c, `JSON.stringify({

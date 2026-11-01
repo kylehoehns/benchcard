@@ -29,7 +29,7 @@ describe('a player sat for the rest stays sat', { skip }, () => {
   /* Ten players, Theo (p9) marked out, Hawks started, Eli (the second name on
      stint 3's floor) sat for the rest from stint 3, then on to stint 4. */
   async function satAtStint3(edits = {}, size = 10) {
-    await coach.onGameDayWith({ out: ['p9'], ...edits }, size);
+    await coach.onGameDayWith({ out: ['p9'], late: ['p9'], ...edits }, size);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
     await toStint(3);
