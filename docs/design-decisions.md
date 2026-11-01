@@ -95,6 +95,27 @@ its alternative is an assertion, so the rejected options are kept here too.
   carries a `SUBS_EXCEEDED` warning naming the arithmetic, the same contract
   `CONSEC_EXCEEDED` has. Platoon is exempt: alternating whole fives is the
   strategy the coach asked for.
+- **Long sits cost more than short ones, up to the change limit (#443).** The
+  solver charged a flat 30 for each bench stint from the second in a row, so
+  one 20-minute sit cost the same as two short ones, and a kid could sit or
+  play only one half when a normal-shaped plan with the same minutes existed.
+  Now each bench stint past a free run also costs 60 times how far past it is
+  (60, then 120, then 180), because a long sit feels worse the longer it runs.
+  The free run is tied to the change limit, not a fixed number: it is the bench
+  queue at `maxSubs` changes a break, `max(3, ceil((players available - 5) /
+  maxSubs))` stints, and never reaches half the game. At `maxSubs` changes a
+  break the bench rotates that far anyway, so charging inside that run only
+  pushes plans over the limit. The build's trials found a fixed run length did
+  exactly that. The shaped solve is run again with the charge off when it
+  breaks a cap, a minimum, a pin, the change limit, Plays at most or Sits at
+  most, and the shaped plan is kept only if it is no worse than the plain plan
+  on every one of those; otherwise the plain plan is kept. So a tight rule is
+  never fought to shorten a sit. The charge lives in `cost()` and the free run
+  in `generatePlan`, and the spec is `docs/specs/443-long-sit-cost.md`.
+- **The long-sit charge does not see a sit from before a re-plan.** Unlike
+  the Sits at most limit (#441), the charge counts from the first stint the
+  solve plans, as the flat 30 did. A kid who sat through the stints already
+  played starts the re-plan with a clean count. Carrying it over is not done.
 - **A day that ends is kept, not thrown away.** `teams[].season.games` holds
   every finished game — its date, format, opponent and the per-player minutes
   actually played. A game is finished when it is in the day at the moment the

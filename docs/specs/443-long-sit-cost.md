@@ -50,14 +50,18 @@ Choices the issue did not make, measured in a scratch copy of the engine:
   patch did. Weights tried: 15, 25, 35, 60, 120. None of them alone kept the
   change limit, because the flat 30 already rewards one extra change; the
   fallback below is what holds it.
-- **The change limit is held by a fallback, not a weight.** The solve runs
-  with the long-sit charge. If that plan changes more players at some break
-  than `maxSubs` (or breaks a cap or minimum; see Design), the solve runs
-  again from the same seed without the charge (today's exact search), and
-  the plan that breaks them less wins; a tie keeps the long-sit plan. So a plan can never break the
-  limit more than today's would, and when the limit forces a long sit, the
-  plan keeps today's plan and the "Longest sit" note's advice to allow more
-  changes is true.
+- **Every rule the coach sees as a warning is held by a fallback, not a
+  weight.** The solve runs with the long-sit charge. If the finished plan
+  breaks a rule, the solve runs again from the same seed without the charge
+  (today's exact search), and the long-sit plan is kept only if it is no worse
+  than that plain plan on every count. Counting only cap, minimum and changes
+  with a lexicographic compare was tried first and was not enough: it ignored
+  Plays at most, Sits at most and pins, and let a plan with one fewer cap
+  minute but more changes win, so SUBS_EXCEEDED went from 121 to 128 plans in
+  a sweep of 3456 (CONSEC_EXCEEDED 13 to 18 in one mix). The balance pass can
+  move the changes too, so a long-sit plan's balance pass is dropped if it
+  starts breaking a rule the plan had kept (the choice itself is made before
+  the pass, so a rotation level still never moves anyone's minutes).
 - **No both-halves reward.** The issue asks for one. Measured as a charge of
   20 or 40 for a kid with 2+ stints who plays in only one half: the capped
   starter case is already 30/30 without it; at 20 it cut the plans the change
@@ -140,13 +144,20 @@ All through `generatePlan`, players `p0`..`pN` with no tiers, red on
   reaches `streak > sitFree`, add `60 * (streak - sitFree)` for that stint,
   as a named constant with a comment saying why it grows.
 - In `generatePlan`'s non-platoon branch, wrap greedy and the first local
-  search in one solve that makes its own `makeRng(seed)`. Run it with
-  `shapeSits` on. If the plan breaks a cap, a minimum or the change limit,
-  run it again with `shapeSits` off, and keep that plan only if it breaks
-  them less, compared in that order (cap overage, then minimum shortfall,
-  then changes over the limit); a tie keeps the long-sit plan. The balance
-  pass then runs on the kept plan, continuing that solve's rng, with
-  `shapeSits` matching it.
+  search in one solve that makes its own `makeRng(seed)` and
+  returns the plan, its rng and the `shapeSits` setting it used. Run it with
+  `shapeSits` on. If the plan breaks anything, run it again with `shapeSits`
+  off and keep the long-sit plan only if no count is worse than the plain
+  plan's, then run the balance pass on the kept plan (a long-sit plan
+  keeps the pass only if it starts no new break). The counts (`broken`): cap overage, minimum shortfall, pinned stints
+  missed, changes over the limit, stints over Plays at most, stints over Sits
+  at most, players late for halftime. `ctx.shapeSits` is set once, from the
+  kept plan. `changesAt` is the one count of changes at a break, shared with
+  `cost()` and the SUBS_EXCEEDED check. `sitFree` ignores a change limit of 0.
+- Measured, 3456 plans: every one of SUBS_EXCEEDED, CONSEC_EXCEEDED,
+  CAP_EXCEEDED, MIN_MISSED, BENCH_EXCEEDED and HALF_LATE is at or under
+  today's count in every mix; plans with a kid sitting half the game fell from
+  910 to 295.
 
   Amended during the build: the first version decided after the balance
   pass and on the change limit alone. With every existing assertion

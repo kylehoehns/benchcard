@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generatePlan, buildStints, analyzeFeasibility, isOvertimeStint } from '../app/engine.js';
+import { halfGameSitters } from './long-sit.js';
 
 /* A seeded generator, so any failure is reproducible from its scenario number. */
 function rng(seed) {
@@ -584,15 +585,7 @@ test('property #443: a Starting five adds no half-game sit the no-rule plan avoi
   const FIVE = ['p0', 'p1', 'p2', 'p3', 'p4'];
   const r = rng(443);
   const int = (lo, hi) => lo + Math.floor(r() * (hi - lo + 1));
-  /* players with 2+ stints on the floor who sit `half` of the game or more in a row */
-  const sitters = (p, half) => Object.keys(p.minutes).filter(id => {
-    if (p.stints.filter(s => s.onFloor.includes(id)).length < 2) return false;
-    let run = 0, best = 0;
-    for (const s of p.stints) {
-      if (s.onFloor.includes(id)) run = 0; else { run += s.minutes; best = Math.max(best, run); }
-    }
-    return best >= half;
-  });
+  const sitters = halfGameSitters;
   let checked = 0;
   for (let n = 0; n < 300; n++) {
     const periods = [2, 4][int(0, 1)];
