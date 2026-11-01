@@ -215,13 +215,13 @@ export function renderPlanTable() {
         : spreadMin === p.spread && p.minPossibleSpread.exact ? ` · best possible is ${fmtMinutes(p.minPossibleSpread.minutes)}` : '')));
 
   /* Even minutes are only half of what a kid feels. The other half is how long
-     they sat in one go, and until now the plan never said. Measured over 200
-     solves at 4×8: at a change limit of 3 the worst unbroken bench run in a
-     game is 12 minutes or more in 43% of them and reaches 20; at 5 it tops out
-     at 12 and the mean spread is identical (3.00 either way, 179 of 200 minute
-     maps byte-identical). So the limit is the lever, and it is a trade the
-     coach is entitled to see rather than a failure to warn about — no issue
-     code, no red row, one sentence under the bars. */
+     they sat in one go, and until now the plan never said. The solver charges
+     more for each bench stint past the change limit's own queue (#443) and
+     falls back to the plain search when that would break a rule the coach set,
+     so the change limit is still the lever. That is a trade the coach is
+     entitled to see rather than a failure to warn about: no issue code, no red
+     row, one sentence under the bars. What was measured is in
+     docs/specs/443-long-sit-cost.md. */
   const sit = longestSit(stints, Object.keys(mins));
   if (sit.minutes > 0) {
     const names = sit.ids.slice(0, 3).map(id => sh[id]);

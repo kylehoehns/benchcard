@@ -52,7 +52,8 @@ Choices the issue did not make:
 ## What would settle it
 
 Game: 10 players `p0`..`p9`, Levels `[3,5,5,1,1,4,4,4,2,2]`, 4x8 every 4,
-seed 7, Apart `[p1,p2]`, One of two on `[p3,p4]`, Plays at most p0 16. Game
+seed 7 (seed 1 since #443 changed the sample plan), Apart `[p1,p2]`, One of two on
+`[p3,p4]`, Plays at most p0 16. Game
 underway on `live.at = 7`, then `addOvertime(g, 4, who)` and the plan from
 `S.plans[0]`. Tests red on `900024f`, green after:
 

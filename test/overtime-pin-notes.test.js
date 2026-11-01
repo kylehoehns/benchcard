@@ -5,7 +5,7 @@ import { S, bareGame, withTeam, player } from './state-fixture.js';
 /* #440: a pinned overtime five that breaks one of the coach's rules says so,
    in a note on the plan. The five itself is never changed. Driven through
    `addOvertime` and `computeAll`, the way the app asks. Game: 10 players,
-   4 x 8 every 4, seed 7, Apart p1/p2, One of two on p3/p4, game on stint 8. */
+   4 x 8 every 4, seed 1, Apart p1/p2, One of two on p3/p4, game on stint 8. */
 
 const LEVELS = [3, 5, 5, 1, 1, 4, 4, 4, 2, 2];
 const roster = LEVELS.map((tier, i) => ({ ...player(`p${i}`), tier }));
@@ -15,7 +15,7 @@ function game(maxMinutes = { p0: 16 }) {
   const constraints = { ...S.emptyConstraints(), avoids: [['p1', 'p2']], keepOnFloor: [['p3', 'p4']], maxMinutes };
   return bareGame({
     id: 'g0', periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4,
-    seed: 7, constraints, live: { at: 0, overrides: {} },
+    seed: 1, constraints, live: { at: 0, overrides: {} },
   });
 }
 
@@ -122,12 +122,12 @@ test('the Keep this five label shows on an Apart or One of two on note', () => {
     S.computeAll();
     S.addOvertime(g, 4, 'keep');
     const five = sorted(g.overtime[0].five);
-    assert.deepEqual(five, ['p0', 'p1', 'p3', 'p6', 'p8'], 'the premise: the kept five');
-    g.constraints.avoids = [['p0', 'p1']];
-    g.constraints.keepOnFloor = [['p2', 'p4']];
+    assert.deepEqual(five, ['p2', 'p3', 'p5', 'p7', 'p8'], 'the premise: the kept five');
+    g.constraints.avoids = [['p2', 'p3']];
+    g.constraints.keepOnFloor = [['p0', 'p1']];
     S.computeAll();
-    assert.ok(messages().includes('Keep this five puts p0 and p1 on together; they are set Apart.'), messages().join('|'));
-    assert.ok(messages().includes('Keep this five leaves p2 and p4 both off; they are set One of two on.'), messages().join('|'));
+    assert.ok(messages().includes('Keep this five puts p2 and p3 on together; they are set Apart.'), messages().join('|'));
+    assert.ok(messages().includes('Keep this five leaves p0 and p1 both off; they are set One of two on.'), messages().join('|'));
   });
 });
 

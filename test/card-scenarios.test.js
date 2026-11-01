@@ -16,11 +16,11 @@ const CHANGE_LINES = [
   'Q1 8:00 START',
   '4:00 ▼CASE HANA NIA',
   'Q2 8:00 ▼ANA SAM THEO',
-  '4:00 ▼CASE DEVO JORD',
-  'Q3 8:00 ▼HANA MARC RILE',
-  '4:00 ▼ANA CASE NIA',
-  'Q4 8:00 ▼ELI SAM THEO',
-  '4:00 ▼CASE DEVO JORD',
+  '4:00 ▼DEVO JORD RILE',
+  'Q3 8:00 ▼HANA MARC NIA',
+  '4:00 ▼ANA CASE ELI',
+  'Q4 8:00 ▼NIA SAM THEO',
+  '4:00 ▼DEVO JORD MARC',
 ];
 
 describe('a coach prints or hands off a game', { skip }, () => {

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generatePlan, buildStints, analyzeFeasibility, isOvertimeStint } from '../app/engine.js';
+import { halfGameSitters } from './long-sit.js';
 
 /* A seeded generator, so any failure is reproducible from its scenario number. */
 function rng(seed) {
@@ -575,4 +576,35 @@ test('property #437: after a live arrival or departure, every stint before live.
   }
   assert.ok(reached >= 30, `only ${reached} cases reached the assertion`);
   assert.ok(letGo >= 1, 'no case exercised the pin-drop path');
+});
+
+/* #443: a Starting five must not cost a kid half the game on the bench when the
+   same game without it has no such sit. Even-stint games only: an uneven last
+   stint is outside the claim (docs/specs/443-long-sit-cost.md, Out of scope). */
+test('property #443: a Starting five adds no half-game sit the no-rule plan avoids', () => {
+  const FIVE = ['p0', 'p1', 'p2', 'p3', 'p4'];
+  const r = rng(443);
+  const int = (lo, hi) => lo + Math.floor(r() * (hi - lo + 1));
+  const sitters = halfGameSitters;
+  let checked = 0;
+  for (let n = 0; n < 300; n++) {
+    const periods = [2, 4][int(0, 1)];
+    const periodMinutes = int(6, 20);
+    const divisors = [];
+    for (let d = 2; d <= periodMinutes; d++) if (periodMinutes % d === 0) divisors.push(d);
+    const every = divisors[int(0, divisors.length - 1)];
+    const size = int(7, 12);
+    const players = Array.from({ length: size }, (_, i) => ({ id: `p${i}`, name: `Kid${String.fromCharCode(65 + i)} L${i}` }));
+    const game = { players, availableIds: players.map(p => p.id), format: { periods, periodMinutes },
+      granularity: { mode: 'everyN', value: every }, maxSubs: 3, seed: int(1, 1000) };
+    const free = generatePlan(game);
+    const five = generatePlan({ ...game, constraints: { openingFive: FIVE } });
+    if (!free.ok || !five.ok) continue;
+    const half = periods * periodMinutes / 2;
+    if (sitters(free, half).length) continue;
+    checked++;
+    assert.deepEqual(sitters(five, half), [],
+      `game ${n}: ${JSON.stringify({ size, periods, periodMinutes, every, seed: game.seed })}`);
+  }
+  assert.ok(checked >= 200, `only ${checked} games were checked`);
 });

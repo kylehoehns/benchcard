@@ -29,7 +29,7 @@ describe('a coach runs a game', { skip }, () => {
 
     assert.equal(await coach.stint(), '1 of 8');
     assert.equal(await coach.text('#gmGame'), 'Q1 · 8:00 to 4:00');
-    assert.deepEqual(await coach.onFloor(), ['Ana Reyes', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Sam Okafor']);
+    assert.deepEqual(await coach.onFloor(), ['Ana Reyes', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Theo Alvarez']);
   });
 
   test('a swap for this stint says what it did, and can be undone', async () => {
@@ -38,10 +38,10 @@ describe('a coach runs a game', { skip }, () => {
     await coach.tapPlayer('Devon Ellis');
 
     assert.equal(await coach.toast(), 'Devon on for Ana this stint. The rest of the game was re-planned to keep minutes even.');
-    assert.deepEqual(await coach.onFloor(), ['Devon Ellis', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Sam Okafor']);
+    assert.deepEqual(await coach.onFloor(), ['Devon Ellis', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Theo Alvarez']);
 
     await coach.tap('Undo');
-    assert.deepEqual(await coach.onFloor(), ['Ana Reyes', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Sam Okafor']);
+    assert.deepEqual(await coach.onFloor(), ['Ana Reyes', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Theo Alvarez']);
   });
 
   test('a player sat for the rest stays off for every stint after', async () => {

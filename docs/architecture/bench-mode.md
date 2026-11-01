@@ -345,11 +345,11 @@ word for word (`movedMinutes` and `minutesNote` in `state.js`).
 Below the minute bars the plan also names the **longest unbroken sit** — the
 most minutes any player spends on the bench in one go, read straight off
 `stints[].sitting` by `longestSit` in `plan-view.js`. Even minutes are only half
-of what a kid feels, and the other half went unsaid: at a change limit of 3 the
-worst run in a game is twelve minutes or more in 43% of solves and reaches
-twenty, and at 5 it tops out at twelve with the same spread and, in 179 of 200
-cases, the same minutes to the decimal. So when the run is longer than a third
-of the game and `maxSubs` is below 5, the sentence names the lever. It is
+of what a kid feels, so the solver charges more the longer a sit runs (#443, see
+[design-decisions.md](../design-decisions.md)) and never breaks the change limit
+to shorten one. A long run is still possible when the limit forces it. So when
+the run is longer than a third of the game and `maxSubs` is below 5, the
+sentence names the lever. It is
 deliberately **not** an engine issue code: the trade is one a coach is entitled
 to make, and a red row would call it a failure.
 

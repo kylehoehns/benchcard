@@ -41,7 +41,7 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
 
     assert.ok((await coach.everyControl()).includes('Undo'));
     await coach.tap('Undo');
-    assert.deepEqual(await coach.onFloor(), ['Ana Reyes', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Sam Okafor']);
+    assert.deepEqual(await coach.onFloor(), ['Ana Reyes', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Theo Alvarez']);
   });
 
   test('the shortcuts sheet over bench mode stays reachable and closes back to bench mode', async () => {
@@ -98,13 +98,13 @@ describe('bench mode keeps the page behind it out of reach', { skip }, () => {
       await coach.tap('Next stint');
     }
     await coach.tap('Previous stint');
-    // Second-to-last stint: Casey is on at 16 of 16 minutes, Hana is on the bench at 12 of 12.
+    // Second-to-last stint: Eli is on at 16 of 16 minutes, Hana is on the bench at 12 of 12.
     // Four minutes move between them and no later stint changes, so the toast is the plain
     // one and names both new totals.
-    await coach.tapPlayer('Casey Lindqvist');
+    await coach.tapPlayer('Eli Tran');
     await coach.tapPlayer('Hana Kim');
 
-    assert.equal(await coach.toast(), 'Hana on for Casey this stint. Hana now ends at 16 min, Casey at 12.');
+    assert.equal(await coach.toast(), 'Hana on for Eli this stint. Hana now ends at 16 min, Eli at 12.');
   });
 
   test('a reload mid-game leaves nothing inert', async () => {

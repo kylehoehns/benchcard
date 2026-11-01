@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { lacks } from './prose.js';
+import { longestBench, halfGameSitters } from './long-sit.js';
 import {
   buildStints, fmtClock, deriveShortNames, analyzeFeasibility,
   generatePlan, missedPinIssues, minPossibleSpread, ON_FLOOR, stintsBeforeHalftime, isOvertimeStint,
@@ -1603,4 +1604,86 @@ test('on unequal stints the minimum Plays at most N in a row allows is exact', (
   assert.equal(run(6).stints.map(s => s.minutes).join(), '4,4,2');
   assert.equal(issuesOf(run(6), 'CONSEC_MIN_CONFLICT').length, 0);
   assert.equal(issuesOf(run(7), 'CONSEC_MIN_CONFLICT').length, 1);
+});
+
+/* ---------------- #443: long sits cost more than short ones ---------------- */
+
+const seedsOf = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+const onFloorIn = (p, id, rows) => p.stints.some(r => rows(r.period) && r.onFloor.includes(id));
+
+test('#443 a capped starter still plays in both halves', () => {
+  let both = 0;
+  for (const seed of seedsOf(1, 30)) {
+    const p = plan(10, { seed, constraints: { openingFive: FIVE, maxMinutes: { p0: 8 } } });
+    if (onFloorIn(p, 'p0', q => q <= 2) && onFloorIn(p, 'p0', q => q >= 3)) both++;
+  }
+  assert.ok(both >= 28, `p0 played both halves in ${both}/30 plans`);
+});
+
+test('#443 nobody sits more than 12 minutes in a row at a change limit of 3', () => {
+  for (const n of [11, 12]) {
+    for (const seed of seedsOf(1, 20)) {
+      const p = plan(n, { seed, maxSubs: 3 });
+      for (const id of ids(n)) {
+        assert.ok(longestBench(p, id) <= 12, `${n} players, seed ${seed}: ${id} sat ${longestBench(p, id)}`);
+      }
+    }
+  }
+});
+
+test('#443 a Starting five does not make a starter sit half the game', () => {
+  for (const seed of seedsOf(1, 30)) {
+    const withFive = plan(12, { seed, constraints: { openingFive: FIVE } });
+    const without = plan(12, { seed });
+    if (halfGameSitters(without, 16).length) continue;
+    const bad = halfGameSitters(withFive, 16).filter(id => FIVE.includes(id));
+    assert.deepEqual(bad, [], `seed ${seed}: starters sitting 16+ in a row`);
+  }
+});
+
+test('#443 the change limit is no more broken than before', () => {
+  /* the one plan today's code flags, from the spec's Survey */
+  const today = ['4x8/2, 10 players, seed 6'];
+  const formats = [
+    ['4x8/4', { periods: 4, periodMinutes: 8 }, 4], ['2x20/5', { periods: 2, periodMinutes: 20 }, 5],
+    ['2x16/4', { periods: 2, periodMinutes: 16 }, 4], ['4x6/3', { periods: 4, periodMinutes: 6 }, 3],
+    ['4x8/2', { periods: 4, periodMinutes: 8 }, 2],
+  ];
+  const flagged = [];
+  for (const [label, format, every] of formats) {
+    for (const n of [10, 11, 12]) {
+      for (const seed of seedsOf(1, 8)) {
+        const p = plan(n, { seed, maxSubs: 2, format, granularity: { mode: 'everyN', value: every } });
+        if (p.issues.some(i => i.code === 'SUBS_EXCEEDED')) flagged.push(`${label}, ${n} players, seed ${seed}`);
+      }
+    }
+  }
+  assert.deepEqual(flagged.filter(f => !today.includes(f)), []);
+});
+
+/* Games where the long-sit plan used to win with a warning the plain search
+   does not give. Found by sweeping tiers 1-5 and maxSubs 2/3/5; the base
+   column is the pre-#443 engine. Written as data so each stays a game. */
+const warned = ({ n, seed, maxSubs, constraints }) => {
+  const players = roster(n).map((p, i) => ({ ...p, tier: 1 + (i * 7 + seed) % 5 }));
+  return new Set(generatePlan({
+    players, availableIds: ids(n), format: QUARTERS, granularity: EVERY_4, seed, maxSubs, constraints,
+  }).issues.filter(i => i.level !== 'info').map(i => i.code));
+};
+
+test('#443 Plays at most 2 in a row is not newly broken by the long-sit charge', () => {
+  const w = warned({ n: 8, seed: 4, maxSubs: 2,
+    constraints: { lockedTargets: ['p0'], targetMinutes: { p0: 8 }, maxConsecutive: 2 } });
+  assert.ok(!w.has('CONSEC_EXCEEDED'));
+});
+
+test('#443 the change limit is not newly broken beside Plays at most 2 in a row', () => {
+  const w = warned({ n: 12, seed: 1, maxSubs: 3, constraints: { maxConsecutive: 2 } });
+  assert.ok(!w.has('SUBS_EXCEEDED'));
+});
+
+test('#443 the change limit is not newly broken beside a cap and a minimum', () => {
+  const w = warned({ n: 10, seed: 3, maxSubs: 2,
+    constraints: { maxMinutes: { p0: 12, p1: 16 }, minMinutes: { p2: 20 } } });
+  assert.ok(!w.has('SUBS_EXCEEDED'));
 });
