@@ -19,7 +19,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WORDS } from '../scripts/spelling.mjs';
@@ -83,6 +83,18 @@ test('the trailer is caught in any casing', () => {
 
 test('a session-link trailer on a commit is denied', () => {
   assert.equal(bash('git commit -m "fix\n\nClaude-Session: https://claude.ai/code/session_01ABC"').decision, 'deny');
+});
+
+/* #486: grep -q closes the pipe on its first match; printf, still writing a
+ * long message, dies of SIGPIPE, pipefail fails the pipeline, and the hook
+ * allowed the commit. Only a long message shows it, so these are long. */
+test('a trailer on line 3 of a 256 KB commit message is still denied', () => {
+  const filler = 'x'.repeat(255) + '\n';
+  const long = filler.repeat(1024);
+  for (const trailer of ['Co-Authored-By: Someone <s@example.com>', 'Claude-Session: https://claude.ai/code/session_01ABC']) {
+    const r = bash(`git commit -m "fix\n\n${trailer}\n${long}"`);
+    assert.equal(r.decision, 'deny', `${trailer.split(':')[0]} slipped through a long message`);
+  }
 });
 
 /* A PR body is posted, not committed, so the footer is caught where it is
@@ -388,4 +400,21 @@ test('a table row naming guard-edit.sh or after-edit.sh says a shell write is no
         `AGENTS.md's ${script} row ("${row.trim()}") doesn't say a shell write is not covered`);
     }
   }
+});
+
+/* Source guard for #486. The behavioral test above only covers the sites that
+ * exist today; this one stops the next hook from piping into a reader that
+ * closes early (`grep -q`, `head`). Under pipefail that is a silent allow. */
+test('no hook pipes into an early-closing reader', () => {
+  const dir = new URL('.', HOOKS).pathname;
+  const files = readdirSync(dir).filter(f => f.endsWith('.sh'));
+  assert.ok(files.length > 0, 'scanned no hook files, so nothing was checked');
+  const EARLY = /\|\s*(grep\b[^|]*\s-[A-Za-z]*q|head\b)/;
+  const hits = [];
+  for (const f of files) {
+    readFileSync(join(dir, f), 'utf8').split('\n').forEach((line, i) => {
+      if (!line.trimStart().startsWith('#') && EARLY.test(line)) hits.push(`${f}:${i + 1}: ${line.trim()}`);
+    });
+  }
+  assert.deepEqual(hits, [], 'feed the reader a here-string (grep -q ... <<<"$x") instead of a pipe');
 });
