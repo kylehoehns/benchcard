@@ -56,7 +56,9 @@ export async function fixturePass(c, rec) {
        walk the tab's session history back past this reload's own base entry
        and off the app entirely (reproduced: \`npm run smoke -- --no-tests\`
        died with "Inspected target navigated or closed" mid-\`fixturePass\`).
-       One settle is the fix, here and at every \`#backBtn\` click below. */
+       One settle is the fix, here and at every \`#backBtn\` click below:
+       SETTLE waits for the back's own \`popstate\` (#481), because under load
+       a few frames were not always enough for it to land. */
     await ${SETTLE};
     $('#todaySeason').click();
     await ${SETTLE};

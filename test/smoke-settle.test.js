@@ -12,12 +12,30 @@ import { NEEDS_CHROME } from './helpers/smoke-cli.mjs';
 
 let chrome, c, pageNo = 0;
 
+/* #481: a history.back() whose traversal the browser runs late, as it does
+   under load. When a page sets `window.__lateBackMs`, the real back runs that
+   many ms after the call, on the untracked timer; `__lateBacks` counts the
+   delayed calls, so a test can see the delay really happened. */
+const LATE_BACK = `{
+  const back = History.prototype.back;
+  window.__lateBacks = 0;
+  History.prototype.back = function () {
+    const ms = window.__lateBackMs;
+    if (!ms) return back.call(this);
+    window.__lateBacks++;
+    (window.__untrackedTimeout || setTimeout)(() => back.call(this), ms);
+  };
+}`;
+
 before(async () => {
   if (NEEDS_CHROME.skip) return;
   chrome = await launch(0, false);
   c = cdp(chrome.ws);
   await c.ready;
   await c.send('Page.enable');
+  // Registered BEFORE the tracker, so the tracker wraps it the way it wraps the
+  // browser's own back (see LATE_BACK).
+  await c.send('Page.addScriptToEvaluateOnNewDocument', { source: LATE_BACK });
   await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
 });
 after(async () => {
@@ -79,4 +97,20 @@ test('TIMERS_QUIET and SETTLE return within their cap when requestAnimationFrame
   const q = await timed(TIMERS_QUIET, SETTLE_CAP_MS + slack);
   assert.equal(q.result, 'capped');
   await timed(SETTLE, SETTLE_CAP_MS + slack);
+});
+
+test('SETTLE and TIMERS_QUIET wait for a late history.back() to land (#481)', { timeout: 30_000, ...NEEDS_CHROME }, async () => {
+  await freshPage();
+  // Longer than a tracked timer, so only the back itself can hold the wait.
+  const late = TRACKED_TIMER_MS + 300;
+  await evalIn(c, `window.popped = 0; addEventListener('popstate', () => { window.popped++; }); window.__lateBackMs = ${late}; 0`);
+  for (const [name, wait] of [['SETTLE', SETTLE], ['TIMERS_QUIET', TIMERS_QUIET]]) {
+    const poppedBefore = await evalIn(c, `history.pushState({ at: Date.now() }, ''); history.back(); window.popped`);
+    const { result, ms } = await timed(wait, SETTLE_CAP_MS + 5000);
+    if (name === 'TIMERS_QUIET') assert.equal(result, 'quiet');
+    assert.equal(await evalIn(c, 'window.popped'), poppedBefore + 1,
+      `${name} returned after ${ms}ms, before the popstate of a history.back() delayed ${late}ms`);
+  }
+  // The arm landed: both backs really were delayed.
+  assert.equal(await evalIn(c, 'window.__lateBacks'), 2);
 });
