@@ -64,6 +64,7 @@ import { compare, pinned, summarize } from './budgets.mjs';
 import { serve } from './serve.mjs';
 import { folder, linesOf, summarize as summarizeCoverage, judge, record, annotate, fileOf, ROW as COVERAGE_ROW, RECORDED as COVERAGE_RECORDED } from './coverage.mjs';
 import { parseShard, inShard, consoleRow, mergePartials, shardPartial } from './smoke/shard.mjs';
+import { failuresOf, failureLines } from './smoke/suite-failures.mjs';
 
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
 import { WIDTH, HEIGHT, FAST_PLAYBACK_RATE, sleepTally, settleTally, TIMER_TRACKER, DESCRIBE_EL } from './smoke/dom.mjs';
@@ -340,10 +341,12 @@ async function runTests() {
         // node --test prints `ℹ tests 157` (spec reporter) or `# tests 157` (tap)
         const count = key => (stdout.match(new RegExp(`^[ℹ#] ${key} (\\d+)`, 'm')) || [])[1];
         const pass = count('pass'), total = count('tests');
+        const failures = err ? failuresOf(stdout) : [];
         ok({
           name: nameOf('nodetest'),
           pass: !err,
           detail: total ? `${pass}/${total} passing` : (err ? 'suite failed to run' : 'passed'),
+          ...(failures.length && { failures }),
         });
       });
     });
@@ -370,8 +373,12 @@ async function appSources() {
 const BUDGETS = join(ROOT, 'scripts', 'budgets.json');
 const COVERAGE = join(ROOT, 'scripts', 'coverage.json');
 
-const printRow = (pad, chk) =>
+/* #480: the one place a row prints, so a failing suite's named tests follow
+   its row in a full run, `--shard suite` and `--merge` alike. */
+const printRow = (pad, chk) => {
   console.log(`  ${chk.pass ? '\x1b[32mPASS\x1b[0m' : '\x1b[31mFAIL\x1b[0m'}  ${chk.name.padEnd(pad)}  ${chk.detail}`);
+  for (const line of failureLines(chk.failures)) console.log(line);
+};
 
 /* ---------- --only and --timeout: a shared flag reader ----------
  *

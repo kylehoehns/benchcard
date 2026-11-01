@@ -68,8 +68,7 @@ describe('a coach prints or hands off a game', { skip }, () => {
 
     await coach.tap('Share or hand off');
     await coach.tap('Hand off');
-    await coach.tap('Share link');
-    await coach.openLink(await coach.sharedLink());
+    await coach.openLink(await coach.shareLink());
 
     assert.equal(await coach.toast(), 'Smoke Test game added. Open bench mode to run subs.');
     await coach.tap('Card');

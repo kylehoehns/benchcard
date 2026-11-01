@@ -115,8 +115,7 @@ describe('a player sat for the rest stays sat', { skip }, () => {
     await coach.tap('Card');
     await coach.tap('Share or hand off');
     await coach.tap('Hand off');
-    await coach.tap('Share link');
-    const link = await coach.sharedLink();
+    const link = await coach.shareLink();
     await coach.tap('Close');
     await coach.openLink(link);
     // the link carries first names only

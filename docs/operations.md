@@ -31,6 +31,15 @@ and `vendor drift` (below), plus the weekly `lighthouse scores` (below that).
 Three of these went unmentioned here for months while this paragraph counted
 to three; if you add a ninth, say so here.
 
+When the unit suite fails, the `node --test` row names the tests that failed.
+Under that row each failing test prints its name, its `file:line:col` and the
+first three lines of its error. The `smoke part` log shows this, and so does
+the `smoke` job's log, because the merge prints the same row. The first 20 are
+printed, then `… and N more`; the part's partial keeps all of them as
+`nodeRow.failures`. A run with no failure block, such as a crash or TAP output,
+prints no names, and nothing else from the child's output is printed. The
+parser is `scripts/smoke/suite-failures.mjs` (#480).
+
 The `checks that need history` job runs `scripts/check-sitemap-lastmod.mjs`,
 which fails when a branch changes `app/<page>.html` for a page in the sitemap
 but that page's `<lastmod>` in `sitemap.xml` does not change (a chart page
