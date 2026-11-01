@@ -778,6 +778,7 @@ export function generatePlan(input) {
                 pairs: c.pairs, hardPairs: c.hardPairs, keepOn: c.keepOnFloor, tierOf,
                 targetOf: id => (c.targetMinutes[id] != null ? c.targetMinutes[id] : null),
                 maxConsecutive: c.maxConsecutive,
+                leadOf: id => input.streakBefore?.[id] || 0,
                 hasCarryover: !!carryover && avail.some(id => Math.abs(credit[id]) > 1e-9) };
   // halftime is a regulation fact (#367): overtime follows it and never moves it
   ctx.firstHalf = stintsBeforeHalftime(stints.filter(s => s.period <= format.periods));
@@ -926,14 +927,17 @@ function mostMinutesUnderRun(lens, limit) {
 }
 
 /* Stints in a row `id` has played, counting back from lineups[end]. */
-function runEndingAt(lineups, id, end) {
-  let run = 0;
-  for (let j = end; j >= 0 && lineups[j].includes(id); j--) run++;
-  return run;
+export function runEndingAt(lineups, id, end, lead = 0) {
+  let run = 0, j = end;
+  for (; j >= 0 && lineups[j].includes(id); j--) run++;
+  return j < 0 ? run + lead : run;
 }
 
-function longestRun(lineups, id) {
-  let run = 0, best = 0;
+/* `lead`: stints in a row already played before lineups[0] (#442). It only
+   extends a run that starts at stint 0, and `best` moves only when the kid is
+   on the floor, so a past run never counts by itself. */
+function longestRun(lineups, id, lead = 0) {
+  let run = lead, best = 0;
   for (const lu of lineups) { if (lu.includes(id)) { run++; best = Math.max(best, run); } else run = 0; }
   return best;
 }
@@ -943,7 +947,7 @@ function greedy(ctx, forcedByStint, rng) {
   const minutes = {};
   const sitStreak = {};
   const onStreak = {};
-  for (const id of avail) { minutes[id] = 0; sitStreak[id] = 0; onStreak[id] = 0; }
+  for (const id of avail) { minutes[id] = 0; sitStreak[id] = 0; onStreak[id] = ctx.leadOf(id); }
 
   const ahead = pinnedAhead(forcedByStint, stints);
   const lineups = [];
@@ -1307,7 +1311,7 @@ function cost(lineups, ctx) {
 
   if (ctx.maxConsecutive) {
     for (const id of ctx.avail) {
-      const over = longestRun(lineups, id) - ctx.maxConsecutive;
+      const over = longestRun(lineups, id, ctx.leadOf(id)) - ctx.maxConsecutive;
       if (over > 0) c += over * over * 400;
     }
   }
@@ -1625,7 +1629,7 @@ function finish(lineups, ctx, issues, meta) {
   if (ctx.maxConsecutive && !saidUpFront) {
     for (const id of ctx.avail) {
       if (minConflicted.has(id)) continue;
-      const run = longestRun(lineups, id);
+      const run = longestRun(lineups, id, ctx.leadOf(id));
       if (run > ctx.maxConsecutive) {
         issues.push({
           severity: 'warn', code: 'CONSEC_EXCEEDED', playerIds: [id],
@@ -1653,7 +1657,7 @@ function finish(lineups, ctx, issues, meta) {
            off; more of them than the number asked for means the limit forced it. */
         if (ctx.maxConsecutive) {
           const spent = lineups[i - 1].filter(id => !lineups[i].includes(id)
-            && runEndingAt(lineups, id, i - 1) >= ctx.maxConsecutive).length;
+            && runEndingAt(lineups, id, i - 1, ctx.leadOf(id)) >= ctx.maxConsecutive).length;
           if (spent > ctx.maxSubs) forced += 1;
         }
       }

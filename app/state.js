@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
@@ -2020,7 +2020,8 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   /* `effectiveStints`, not `p.stints`: a coach who already swapped somebody on
      by hand changed who played, and a re-solve that settles up against the
      plan's opinion instead of the game would owe the wrong kid. */
-  const before = effectiveStints(g, p).slice(0, k);
+  const eff = effectiveStints(g, p);
+  const before = eff.slice(0, k);
   const played = minutesFrom(before, all);
   /* #369: a pinned stint is not solved, so it is minutes already played as far
      as the solve goes: the fives it will have count toward caps, minimums and
@@ -2028,6 +2029,18 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   const pinsNow = pinFives(g, p, k, avail, {}, end);
   const pinnedPlayed = Object.keys(pinsNow).map(Number).map(j => ({ onFloor: pinsNow[j], minutes: p.stints[j].minutes, at: j }));
   for (const x of pinnedPlayed) for (const id of x.onFloor) if (id in played) played[id] = Math.round((played[id] + x.minutes) * 100) / 100;
+
+  /* #442: the Rest limit counts across the cut. Each player's run ending at
+     the cut -- the stints played, then the pinned fives that sit before the
+     first open stint -- is what the solver starts from. Whole runs are counted
+     by the engine; this only says how long each one already is. */
+  const lead = before.map(s => s.onFloor);
+  for (let j = k; j < (open[0] ?? end); j++) lead.push(pinsNow[j] || eff[j].onFloor);
+  const streakBefore = {};
+  for (const id of avail) {
+    const run = runEndingAt(lead, id, lead.length - 1);
+    if (run) streakBefore[id] = run;
+  }
 
   const openStints = open.map(j => p.stints[j]);
   const total = openStints.reduce((a, s) => a + s.minutes, 0);
@@ -2103,7 +2116,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
       granularity: { mode: g.granMode, value: g.granValue },
       constraints: c, strategy, balance: g.balance,
       seed: g.seed,
-      maxSubs,
+      maxSubs, streakBefore,
     });
     /* #376: a sit changes one seat. The four who stay are handed to the
        solver as the opening five of the suffix (stint `from`), the engine's

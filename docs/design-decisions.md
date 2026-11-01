@@ -268,6 +268,16 @@ its alternative is an assertion, so the rejected options are kept here too.
   more players than the number asked for reached the limit and came off
   there; when every over-number break is forced, `SUBS_EXCEEDED` names the
   Rest limit instead of blaming minutes.
+- **The Rest limit counts across a re-plan and into overtime (#442).**
+  `resolveRest` hands the engine `streakBefore`: each player's run ending at
+  the cut (stints played, from `effectiveStints`, plus pinned overtime fives
+  before the first open stint). The engine's `longestRun` / `runEndingAt`
+  add it to a run that starts at the first stint solved, so the search, the
+  `CONSEC_EXCEEDED` note and the `SUBS_EXCEEDED` attribution all see it.
+  Absent, plans are unchanged. The `CONSEC_EXCEEDED` note is in
+  `resolveRest`'s issues, which bench mode's Sit for the rest and swap paths
+  show; the freeze re-plan (overtime added, roster change underway) does not
+  surface re-plan issues today (#456).
 - **A pin is held over a cap, or refused up front, never dropped quietly
   (#436).** A kid named in the starting five, in a Starts the last period rule or the
   closing group is on the floor for those stints. The greedy pass keeps back
