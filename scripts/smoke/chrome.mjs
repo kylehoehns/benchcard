@@ -1,10 +1,11 @@
-/* Chrome launch and the DevTools protocol client. Moved out of `smoke.mjs`
-   unchanged; only `launch`'s own `--headful` read moves with it as a
-   parameter (`headful`), since arg parsing itself stays in `smoke.mjs`. */
+/* Chrome launch and the DevTools protocol client. Moved out of `smoke.mjs`;
+   `launch`'s own `--headful` read became a parameter (`headful`), since arg
+   parsing stays in `smoke.mjs`, and #510 added `reapOrphans`. */
 import { spawn, execFile } from 'node:child_process';
 import { mkdtemp, access, rm, readFile, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 /* ---------- Chrome ---------- */
 
@@ -33,7 +34,6 @@ const fetchJSON = async url => JSON.parse(await (await fetch(url)).text());
 
 const DIR_RE = /^benchcard-smoke-(\d+)-[A-Za-z0-9]+$/;
 const pidAlive = pid => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
-const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function psList() {
   return new Promise((ok, fail) => {
@@ -45,14 +45,23 @@ function psList() {
   });
 }
 
-/* True if `command` names exactly `dir`: the path, preceded by the start, a
-   space or `=`, and followed by `/`, whitespace or the end -- so `...-abc123`
-   never matches `...-abc1234`. */
-function names(command, dir) {
-  for (let i = command.indexOf(dir); i !== -1; i = command.indexOf(dir, i + 1)) {
-    const before = i === 0 ? ' ' : command[i - 1];
-    const after = command[i + dir.length] ?? ' ';
-    if (/[\s=]/.test(before) && /[\s/]/.test(after)) return true;
+/* True if `command` carries the token `--user-data-dir=<dir>` followed by
+   whitespace or the end, so `...-abc123` never matches `...-abc1234`, and a
+   process that merely mentions the path (`ls <dir>`, `tail -f <dir>/x`) is not
+   taken for the dir's Chrome. */
+function owns(command, dir) {
+  const token = `--user-data-dir=${dir}`;
+  for (let i = command.indexOf(token); i !== -1; i = command.indexOf(token, i + 1)) {
+    if (/\s|^$/.test(command[i + token.length] ?? '')) return true;
+  }
+  return false;
+}
+
+/* Walk the ppid chain (in one ps snapshot) from `p` looking for `ownerPid`.
+   Capped, so a cycle or a very long chain cannot hang the sweep. */
+function descendsFrom(p, ownerPid, byPid) {
+  for (let n = 0, cur = p; cur && n < 64; n++, cur = byPid.get(cur.ppid)) {
+    if (cur.ppid === ownerPid) return true;
   }
   return false;
 }
@@ -63,9 +72,10 @@ function names(command, dir) {
    (`benchcard-smoke-<ownerPid>-XXXXXX`, made atomically by mkdtemp), rather
    than in a PID file written after spawn, which an owner killed in between
    would never write. Chromes are found by command line (every process of one
-   names `--user-data-dir=<dir>`), so a reused PID that names nothing is never
+   carries the token `--user-data-dir=<dir>`), so a reused PID that names nothing is never
    killed. "Owner alive" is judged by parentage, not by kill(pid, 0) alone: while
-   the owner lives it is the Chrome main's parent; once it dies Chrome is
+   the owner lives it is an ancestor of the Chrome (its parent, or further up
+   when a launcher forks instead of exec'ing); once it dies Chrome is
    reparented, so an owner PID reused by something unrelated protects nothing.
    Never throws: a failed sweep must not fail a launch. Returns
    `{ reaped, kept }` (dir paths) for the tests. */
@@ -75,20 +85,20 @@ export async function reapOrphans(root) {
     const found = (await readdir(root)).map(n => DIR_RE.exec(n)).filter(Boolean);
     if (!found.length) return result;
     const procs = await psList();
-    const ownGroup = procs.find(p => p.pid === process.pid)?.pgid;
+    const byPid = new Map(procs.map(p => [p.pid, p]));
+    const ownGroup = byPid.get(process.pid)?.pgid;
     for (const [name, owner] of found) {
       try {
         const dir = join(root, name);
         const ownerPid = Number(owner);
-        const mine = procs.filter(p => p.pid !== process.pid && names(p.command, dir));
-        if (mine.some(p => p.ppid === ownerPid) || (!mine.length && pidAlive(ownerPid))) {
+        const mine = procs.filter(p => owns(p.command, dir));
+        if (mine.some(p => descendsFrom(p, ownerPid, byPid)) || (!mine.length && pidAlive(ownerPid))) {
           result.kept.push(dir);
           continue;
         }
         for (const g of new Set(mine.map(p => p.pgid))) {
           if (g > 1 && g !== ownGroup) { try { process.kill(-g, 'SIGKILL'); } catch { /* gone */ } }
         }
-        for (const p of mine) { try { process.kill(p.pid, 'SIGKILL'); } catch { /* gone */ } }
         for (const end = Date.now() + 2000; Date.now() < end && mine.some(p => pidAlive(p.pid)); ) await sleep(50);
         await rm(dir, { recursive: true, force: true });
         result.reaped.push(dir);

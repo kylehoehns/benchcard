@@ -28,6 +28,8 @@ function sandbox() {
   return d;
 }
 
+/* Deliberately independent of chrome.mjs's own ps parser and pid check: the
+   test's oracle must not share the sweep's code. */
 const ps = () => execFileSync('ps', ['-A', '-ww', '-o', 'pid=,ppid=,pgid=,command='], { encoding: 'utf8', maxBuffer: 64 << 20 })
   .split('\n').map(l => l.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/)).filter(Boolean)
   .map(m => ({ pid: +m[1], ppid: +m[2], pgid: +m[3], command: m[4] }));
@@ -133,6 +135,49 @@ test('only an exact dir name is reaped: a longer path and an unrelated process s
   assert.ok(!existsSync(dir), 'the dead owner\'s dir was not removed');
 });
 
+test('a process that only names the dir, without --user-data-dir=, is not the dir\'s Chrome and survives', { timeout: 30_000 }, async () => {
+  const root = sandbox();
+  const gone = spawn(process.execPath, ['-e', ''], { stdio: 'ignore' });
+  await new Promise(ok => gone.once('exit', ok));
+  const dir = join(root, `benchcard-smoke-${gone.pid}-tok123`);
+  mkdirSync(dir);
+  const bare = spawn(process.execPath, ['-e', SLEEP, '--', dir], { stdio: 'ignore', detached: true });
+  const sub = spawn(process.execPath, ['-e', SLEEP, '--', `${dir}/Crashpad`], { stdio: 'ignore', detached: true });
+  for (const p of [bare, sub]) { pidsToKill.add(p.pid); groupsToKill.add(p.pid); }
+  const exact = standIn(dir);              // control: the real token
+  await Promise.all([visible(exact.pid), waitFor(() => ps().some(p => p.pid === bare.pid && p.command.includes(dir)) && ps().some(p => p.pid === sub.pid && p.command.includes(dir)), 10_000, 'bystanders to be listed')]);
+  await reapOrphans(root);
+  await waitFor(() => !alive(exact.pid) || ps().find(p => p.pid === exact.pid)?.command.includes('<defunct>'), 5_000, 'exact stand-in to die');
+  assert.ok(alive(bare.pid), 'a process whose argv merely names the dir path was killed');
+  assert.ok(alive(sub.pid), 'a process whose argv names a path inside the dir was killed');
+  assert.ok(!existsSync(dir), 'the dead owner\'s dir was not removed');
+});
+
+test('a dir is live when its Chrome is a grandchild of the owner (a launcher that forks)', { timeout: 30_000 }, async () => {
+  const root = sandbox();
+  const owner = spawn(process.execPath, ['-e', `
+    const fs = require('fs'), cp = require('child_process'), path = require('path');
+    const dir = fs.mkdtempSync(path.join(process.argv[1], 'benchcard-smoke-' + process.pid + '-'));
+    const mid = cp.spawn(process.execPath, ['-e', \`
+      require('child_process').spawn(process.execPath, ['-e', '${SLEEP}', '--', '--user-data-dir=' + process.env.D], { stdio: 'ignore' });
+      ${SLEEP};\`], { stdio: 'ignore', env: { ...process.env, D: dir } });
+    console.log(JSON.stringify({ dir, mid: mid.pid }));
+    ${SLEEP};`, root], { stdio: ['ignore', 'pipe', 'inherit'], detached: true });
+  pidsToKill.add(owner.pid); groupsToKill.add(owner.pid);
+  const line = await new Promise((ok, fail) => {
+    const t = setTimeout(() => fail(new Error('owner stand-in printed nothing in 10s')), 10_000);
+    owner.stdout.once('data', d => { clearTimeout(t); ok(String(d)); });
+  });
+  const { dir, mid } = JSON.parse(line);
+  await waitFor(() => ps().find(p => p.command.includes(`--user-data-dir=${dir}`)), 10_000, 'the grandchild to be listed');
+  const grand = ps().find(p => p.command.includes(`--user-data-dir=${dir}`));
+  assert.equal(grand.ppid, mid, 'precondition: the Chrome stand-in is not the owner\'s direct child');
+  const r = await reapOrphans(root);
+  assert.ok(alive(grand.pid), 'a live owner\'s forked Chrome was killed by the sweep');
+  assert.ok(existsSync(dir), 'a live owner\'s profile dir was removed');
+  assert.deepEqual(r.kept, [dir]);
+});
+
 test('an owner PID reused by an unrelated live process does not protect the dir', { timeout: 30_000 }, async () => {
   const root = sandbox();
   const stranger = sleeper();                       // alive, but not the parent of the dir's process
@@ -213,8 +258,8 @@ test('a smoke run still going is not disturbed by another launch()', { timeout: 
   const before = naming(dir).map(p => p.pid).sort();
   assert.ok(before.length, 'precondition: the live run has Chrome processes');
   await nextLaunch(root);
-  const after = naming(dir).map(p => p.pid);
-  assert.ok(before.every(pid => after.includes(pid)), 'another launch() killed a Chrome whose owner is alive');
+  const still = naming(dir).map(p => p.pid);
+  assert.ok(before.every(pid => still.includes(pid)), 'another launch() killed a Chrome whose owner is alive');
   assert.ok(existsSync(dir), 'another launch() removed a live run\'s profile dir');
   run.kill('SIGTERM');                                  // the run closes its own Chrome
   await Promise.race([new Promise(ok => run.once('exit', ok)), new Promise(ok => setTimeout(ok, 20_000))]);

@@ -48,22 +48,25 @@ method if the lane says why):
    is no moment where a dir exists without its owner.
 2. **Chromes are found by command line, not by a stored PID.** One
    `ps -A -ww -o pid=,ppid=,pgid=,command=` lists processes; a process belongs
-   to a dir only if its command line names that exact dir (the path followed
-   by `/`, whitespace or end of line, so `...-abc123` never matches
-   `...-abc1234`). A PID reused by an unrelated process cannot be killed: its
+   to a dir only if its command line carries the token `--user-data-dir=<dir>`
+   followed by whitespace or end of line, so `...-abc123` never matches
+   `...-abc1234`, and a shell that merely mentions the path (`ls <dir>`) is
+   never taken for Chrome (review finding). A PID reused by an unrelated process cannot be killed: its
    command line does not name the dir.
 3. **"Owner alive" is judged by parentage, not just `kill(pid, 0)`.** While
    the owner lives, the Chrome main process's parent PID **is** the owner
-   (node spawned it directly). The moment the owner dies, Chrome is reparented
-   (to 1, or a subreaper on Linux) and its parent PID stops matching. So a dir
-   is **live** if any of its processes has `ppid === ownerPid`, and is left
+   (node spawned it directly), or an ancestor when a launcher forks instead of
+   exec'ing. The moment the owner dies, Chrome is reparented (to 1, or a
+   subreaper on Linux) and the chain breaks. So a dir is **live** if walking
+   the ppid chain from any of its processes reaches `ownerPid`, and is left
    entirely alone. This also handles an owner PID that has since been reused by
    an unrelated live process: the Chrome's parent is no longer that PID, so it
    is reaped. A dir with no processes at all is removed only when
    `kill(ownerPid, 0)` says the owner is gone (ESRCH; EPERM counts as alive).
 4. **Reaping is SIGKILL to the process group,** for each distinct pgid among
-   the dir's processes (never pgid ≤ 1 and never this process's own group),
-   falling back to the single PID. Nobody is left to shut down gracefully. Then
+   the dir's processes (never pgid ≤ 1 and never this process's own group).
+   No per-PID kill: a PID from the snapshot can be reused before the kill; a
+   pgid cannot while a member lives. Nobody is left to shut down gracefully. Then
    wait (bounded, about 2s) for those processes to go, and `rm -rf` the dir.
 5. **The sweep never fails a launch.** Any error (no `ps`, unparsable output,
    EPERM) is swallowed; `launch()` goes on exactly as before.
