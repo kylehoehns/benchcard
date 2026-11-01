@@ -104,4 +104,57 @@ describe('a coach opens Benchcard for the first time', { skip }, () => {
     assert.ok(!(await coach.sees('Close')), 'the sheet is gone');
     assert.equal(await coach.focused(), 'How it works');
   });
+
+  /* #431: the game's day is asked on step 2, so a coach setting up the night
+     before gets a card dated the day they play. 2026-09-12 is a Saturday. */
+  describe('what day is the game', () => {
+    async function onFormatStep() {
+      await coach.tap('Try a sample team');
+      await coach.tap('Next');
+    }
+
+    test('Tomorrow dates the card Sunday, and Today files the game under Tomorrow', async () => {
+      await coach.onFreshDevice();
+      await onFormatStep();
+      await coach.tap('Tomorrow');
+      await coach.tap('Next');
+
+      assert.equal(await coach.cardCorner(), 'Sun');
+      await coach.tap('Go to the game');
+      assert.ok(await coach.tourShows(), 'the tour opens');
+      await coach.tap('Skip');
+      await coach.tap('Back to Sample team');
+      assert.equal(await coach.text('.day-heading'), 'Tomorrow');
+    });
+
+    test('step 2 starts on Today at noon and on Tomorrow from 6 PM', async () => {
+      await coach.onFreshDeviceAt({ y: 2026, m: 9, d: 12, h: 12 });
+      await onFormatStep();
+      assert.equal(await coach.isPressed('Today'), true);
+      assert.equal(await coach.isPressed('Tomorrow'), false);
+
+      await coach.onFreshDeviceAt({ y: 2026, m: 9, d: 12, h: 19 });
+      await onFormatStep();
+      assert.equal(await coach.isPressed('Tomorrow'), true);
+      assert.equal(await coach.isPressed('Today'), false);
+    });
+
+    test('Pick a date takes a date from the field and dates the card that day', async () => {
+      await coach.onFreshDevice();
+      await onFormatStep();
+      assert.ok(!(await coach.sees('Date')), 'no date field until Pick a date');
+      await coach.tap('Pick a date');
+      await coach.setDate('Date', '2026-09-15');
+      await coach.tap('Next');
+
+      assert.equal(await coach.cardCorner(), 'Tue');
+    });
+
+    test('tapping a day keeps focus on the row tapped', async () => {
+      await coach.onFreshDevice();
+      await onFormatStep();
+      await coach.tap('Tomorrow');
+      assert.equal(await coach.focused(), 'Tomorrow');
+    });
+  });
 });

@@ -159,3 +159,16 @@ test('#welStart is .btn.primary and precedes #welTry in .wel-doors', () => {
   const tryAt = doors.indexOf('id="welTry"');
   assert.ok(tryAt > startAt, '#welStart does not precede #welTry in .wel-doors');
 });
+
+test('startTeam dates the day to the draft\'s date when it has one, else to today (#431)', () => {
+  const players = [{ name: 'Ann', number: '4' }, { name: 'Bo', number: '5' }];
+  const today = new Date(2026, 8, 30);
+  withDays([player('p0')], [{ name: '', date: '2026-09-29', games: [bareGame()] }], {}, () => {
+    startTeam(players, 'Sample team', { ...newDraft(), gameDate: '2026-10-03' }, today);
+    assert.equal(S.state.teams[0].days[0].date, '2026-10-03');
+  });
+  withDays([player('p0')], [{ name: '', date: '2026-09-29', games: [bareGame()] }], {}, () => {
+    startTeam(players, 'Sample team', newDraft(), today);
+    assert.equal(S.state.teams[0].days[0].date, '2026-09-30');
+  });
+});

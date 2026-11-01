@@ -18,7 +18,7 @@
 
 import { generatePlan } from './engine.js';
 import { parseRoster, sampleRoster, sampleRosterText, callNames, dropRepeat, repeatNotice, rosterPreview, SAMPLE_TEAM_NAME } from './roster.js';
-import { $, on, set, el, uid, repeatRow } from './dom.js';
+import { $, on, set, el, uid, repeatRow, checkMark } from './dom.js';
 import { seasonDate } from './storage.js';
 import { state, editHappened, markFirstRunPending, newTeam, team, HUES, joinNames } from './state.js';
 import { track, bucketRoster } from './analytics.js';
@@ -391,7 +391,8 @@ export function startTeam(players, teamName, draft, today = new Date()) {
   state.players = buildPlayers(players);
   state.teamName = teamName;
   // #252: the placeholder day may predate today; the game set up here is today's
-  state.day.date = seasonDate(today);
+  // #431: step 2 asks which day; `?try=` carries no date, so it stays today
+  state.day.date = draft.gameDate || seasonDate(today);
   const g = state.day.games[0];
   // 40, not 20: `storage.js` sanitizes periodMinutes to 40, and a lower cap
   // here meant a record with a 24-minute half loaded fine but could never be
@@ -529,6 +530,9 @@ function setFrChrome(add) {
   if (t) t.textContent = add ? 'Add a team' : 'Get started';
 }
 
+// local parts, as `dayHeading` (state.js) does -- never `new Date('YYYY-MM-DD')`
+const dayAfter = d => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+
 /* `#welStart` opens at step 1 empty; `#welTry` opens at step 1 with the
    sample already in the draft -- both go through this one function so there
    is one place that resets `fr`/`frStep` and shows the dialog. */
@@ -537,6 +541,9 @@ function openFirstRun(trigger, withSample) {
   if (!d) return;
   frMode = 'first';
   fr = newDraft();
+  // #431: about 6 PM is when a coach is setting up for tomorrow
+  const now = new Date();
+  fr.gameDate = seasonDate(now.getHours() >= 18 ? dayAfter(now) : now);
   frStep = 1;
   if (withSample) fillSample();          // writes fr.teamName / fr.roster / fr.filled
   rememberTrigger(d, trigger);
@@ -687,6 +694,46 @@ function stepFormat_(wrap) {
   const box = el('div', 'fr-gran pgrp');
   wrap.append(box);
   paintGranRows(box, () => fr, c => { fr.granMode = c.mode; fr.granValue = c.value; });
+  wrap.append(el('span', 'f fr-f', 'Game day'));
+  const days = el('div', 'pgrp');
+  const pick = el('div');
+  wrap.append(days, pick);
+  paintDayRows(days, pick);
+}
+
+/* #431: the game's day, as the same `.prow` single-choice rows
+   `paintGranRows` draws. A tap repaints just this group and puts focus back
+   on the row tapped. The date field shows only while Pick a date is chosen. */
+function paintDayRows(box, pick) {
+  const now = new Date();
+  const today = seasonDate(now);
+  const tomorrow = seasonDate(dayAfter(now));
+  const rows = [
+    ['Today', !fr.pickDate && fr.gameDate === today, () => { fr.pickDate = false; fr.gameDate = today; }],
+    ['Tomorrow', !fr.pickDate && fr.gameDate === tomorrow, () => { fr.pickDate = false; fr.gameDate = tomorrow; }],
+    ['Pick a date', !!fr.pickDate, () => { fr.pickDate = true; }],
+  ];
+  box.textContent = '';
+  rows.forEach(([label, on_, choose], idx) => {
+    const b = el('button', 'prow');
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(on_));
+    b.setAttribute('aria-label', label);
+    b.append(el('span', 'prow-t', label));
+    if (on_) b.append(checkMark());
+    b.onclick = () => {
+      choose();
+      paintDayRows(box, pick);
+      box.children[idx]?.focus({ preventScroll: true });
+    };
+    box.append(b);
+  });
+  pick.textContent = '';
+  if (!fr.pickDate) return;
+  const [field, input] = flowField('input', 'Date', fr.gameDate, null,
+    v => { if (v >= seasonDate()) fr.gameDate = v; }, 'date');
+  input.min = today;
+  pick.append(field);
 }
 
 /* Committed on Next from step 2, before step 3 paints (decision 4): step 3
