@@ -239,6 +239,13 @@ function pngBlob(canvas) {
   return new Blob([bytes], { type: 'image/png' });
 }
 
+/* The iOS Home Screen app, and nothing else. `navigator.standalone` exists
+   only on iOS and iPadOS Safari and is true only in an installed app, where
+   `window.print()` does nothing (#500). Every caller asks here; none re-reads
+   the property. toast.js's broader `standalone()` answers a different
+   question (is the app installed anywhere, for the install prompt). */
+export const isHomeScreenApp = () => navigator.standalone === true;
+
 /**
  * Share the given cards as a PNG. Resolves to what actually happened:
  * 'shared' (the system sheet), 'copied' (clipboard), 'saved' (a download),

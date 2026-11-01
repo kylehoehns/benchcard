@@ -14,7 +14,7 @@
 import { icon } from './icons.js';
 import { $, on, set, clone } from './dom.js';
 import { refreshCardSheetPreview, CARD_FONT } from './card.js';
-import { shareCards } from './share.js';
+import { shareCards, isHomeScreenApp } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
 import { initTimeline } from './timeline.js';
 import { initGameMode, openGameMode, renderGameMode, clearOverrides, gmFocusFirstFloor } from './gamemode.js';
@@ -155,15 +155,21 @@ function printCard() {
   // #126: no games, nothing to print -- the game screen is unreachable, so
   // this does nothing rather than opening the print dialog over Today.
   if (!hasGames()) return;
-  track('card_printed', { size: state.ui.cardSize === 'half' ? 'half' : 'pocket' });
   /* Still needed after `#print` moved out of the top bar and into the games
      view beside the card. The button is now unreachable by pointer off Games,
      but `p` is deliberately global and clicks it inside the hidden view, so
      without this the key would spool whatever page is on screen. Keeping it
      is what makes `p` land on the card from Settings, Team and Season.
-     `instant`: the print dialog opens in the same tick, and a print taken
-     while the transition's snapshot overlay is up prints the overlay. */
+     `setView` paints synchronously (there is no view transition to wait
+     out), so the game screen is showing by the time print is called;
+     `instant` only skips the scroll to the top. */
   if (state.view !== 'games') setView('games', true);
+  /* #500: `window.print()` does nothing in the iOS Home Screen app, so there
+     the same tap shares the card image, whose share sheet has Print in it.
+     Called inside the click so the tap's activation reaches the share. It
+     counts itself (`card_shared`), not as a print. */
+  if (isHomeScreenApp()) { shareCardImage(); return; }
+  track('card_printed', { size: state.ui.cardSize === 'half' ? 'half' : 'pocket' });
   window.print();
   tipAfterPrint();
 }
@@ -233,6 +239,8 @@ on('#seasonExport', 'onclick', exportSeason);
    #36's step 3 needs the exact same rule behind `#frShare`, and
    test/print-gate.test.js resolves an `on` binding's handler one hop to a
    named top-level function -- an inline arrow would not be discoverable. */
+// Not true in the Home Screen app, where Print is the share (#500).
+const printStillWorks = () => isHomeScreenApp() ? '' : ' Print still works.';
 function shareCardImage() {
   const cards = [...document.querySelectorAll('#sheet .card:not(.card-copy)')];
   if (!cards.length) return;
@@ -252,7 +260,7 @@ function shareCardImage() {
     });
   } catch (err) {
     console.warn('share failed', err);
-    flash('Could not make the image. Print still works.');
+    flash(`Could not make the image.${printStillWorks()}`);
     return;
   }
   // A share sheet is its own confirmation; the quiet fallbacks are not.
@@ -262,7 +270,7 @@ function shareCardImage() {
     if (r !== 'cancelled') track('card_shared', { how: r });
   }).catch(err => {
     console.warn('share failed', err);
-    flash('Could not share the image. Print still works.');
+    flash(`Could not share the image.${printStillWorks()}`);
   });
 }
 on('#shareCard', 'onclick', shareCardImage);
@@ -272,6 +280,25 @@ on('#shareCard', 'onclick', shareCardImage);
    module-private. */
 on('#frPrint', 'onclick', printCard);
 on('#frShare', 'onclick', shareCardImage);
+
+/* #500: in the iOS Home Screen app, Print and Share image would do the same
+   thing (`printCard` shares the image there), so one button stays, relabeled
+   to say what happens, and the other goes. Copies goes too: the image always
+   carries one. The labels are the text node after each button's icon, so the
+   icon span stays, and the accessible name still contains the visible text. */
+if (isHomeScreenApp()) {
+  const relabel = (sel, text, name) => {
+    const b = $(sel);
+    b.lastChild.nodeValue = ` ${text}\n`;
+    if (name) b.setAttribute('aria-label', name);
+  };
+  relabel('#print', 'Share to print', 'Share to print the card');
+  relabel('#frPrint', 'Share to print', 'Share to print the card');
+  relabel('#cardPrint', 'Share to print');
+  $('#shareCard').hidden = true;
+  $('#frShare').hidden = true;
+  $('#copies').closest('.prow').hidden = true;
+}
 
 /* #31: the two doors onto the roster. The sheets themselves -- what they
    hold, what their confirms say and what pressing one does -- belong to
