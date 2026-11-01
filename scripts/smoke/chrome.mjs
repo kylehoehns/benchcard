@@ -77,6 +77,10 @@ function descendsFrom(p, ownerPid, byPid) {
    the owner lives it is an ancestor of the Chrome (its parent, or further up
    when a launcher forks instead of exec'ing); once it dies Chrome is
    reparented, so an owner PID reused by something unrelated protects nothing.
+   #514: the dir's last writer can outlive the 2s wait above (a dying Chrome under
+   load), so the rm retries ENOTEMPTY/EBUSY (up to ~5.5s of backoff) instead of
+   leaving the dir behind; the wait itself is not raised. A dir that stays stuck
+   costs launch() that ~5.5s once, which beats a dir left behind silently.
    Never throws: a failed sweep must not fail a launch. Returns
    `{ reaped, kept }` (dir paths) for the tests. */
 export async function reapOrphans(root) {
@@ -100,7 +104,7 @@ export async function reapOrphans(root) {
           if (g > 1 && g !== ownGroup) { try { process.kill(-g, 'SIGKILL'); } catch { /* gone */ } }
         }
         for (const end = Date.now() + 2000; Date.now() < end && mine.some(p => pidAlive(p.pid)); ) await sleep(50);
-        await rm(dir, { recursive: true, force: true });
+        await rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
         result.reaped.push(dir);
       } catch { /* leave this one; try the rest */ }
     }

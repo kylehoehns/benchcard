@@ -193,6 +193,32 @@ test('an owner PID reused by an unrelated live process does not protect the dir'
   assert.deepEqual(r.reaped, [dir]);
 });
 
+/* #514: a SIGKILLed Chrome can still be writing into its profile dir for a
+   moment after the sweep has seen the process die (a helper outside the groups
+   it killed). The dir must still go. The writer is a separate process in its own
+   group that does not carry the token, so the sweep neither kills nor waits on
+   it; it writes for about 1.5s and then exits by itself. */
+test('a dir something is still writing into for a moment after the kill is still removed', { timeout: 30_000 }, async () => {
+  const root = sandbox();
+  const gone = spawn(process.execPath, ['-e', ''], { stdio: 'ignore' });
+  await new Promise(ok => gone.once('exit', ok));
+  const dir = join(root, `benchcard-smoke-${gone.pid}-write1`);
+  mkdirSync(dir);
+  const writer = spawn(process.execPath, ['-e', `
+    const fs = require('fs'), path = require('path');
+    let n = 0;
+    const end = Date.now() + 1500;
+    while (Date.now() < end) { try { fs.writeFileSync(path.join(process.env.WRITE_DIR, 'f' + n++), 'x'); } catch { /* dir gone */ } }`],
+  { stdio: 'ignore', detached: true, env: { ...process.env, WRITE_DIR: dir } });
+  pidsToKill.add(writer.pid); groupsToKill.add(writer.pid);
+  const exact = standIn(dir);
+  await visible(exact.pid);
+  await waitFor(() => readdirSync(dir).length > 0, 10_000, 'the writer to start writing');
+  const r = await reapOrphans(root);
+  assert.ok(!existsSync(dir), 'the profile dir was left behind because something was still writing into it');
+  assert.deepEqual(r.reaped, [dir]);
+});
+
 test('old-format and foreign dirs are not touched', async () => {
   const root = sandbox();
   mkdirSync(join(root, 'benchcard-smoke-OLD123'));
@@ -255,11 +281,14 @@ test('a smoke run still going is not disturbed by another launch()', { timeout: 
   const root = sandbox();
   const run = startSmoke(root, { BENCHCARD_SMOKE_HANG: 'rich fixture is live' });
   const dir = await midPage(root);
-  const before = naming(dir).map(p => p.pid).sort();
-  assert.ok(before.length, 'precondition: the live run has Chrome processes');
+  /* Judged by what a reap would do, not by every process naming the dir: Chrome
+     ends idle helpers (the data_decoder utility) by itself. A reap SIGKILLs the
+     main's whole group, so it always kills the main. */
+  const mainOf = () => naming(dir).find(p => p.ppid === run.pid);
+  const main = mainOf();
+  assert.ok(main, 'precondition: the live run has a Chrome main process');
   await nextLaunch(root);
-  const still = naming(dir).map(p => p.pid);
-  assert.ok(before.every(pid => still.includes(pid)), 'another launch() killed a Chrome whose owner is alive');
+  assert.equal(mainOf()?.pid, main.pid, 'another launch() killed a Chrome whose owner is alive');
   assert.ok(existsSync(dir), 'another launch() removed a live run\'s profile dir');
   run.kill('SIGTERM');                                  // the run closes its own Chrome
   await Promise.race([new Promise(ok => run.once('exit', ok)), new Promise(ok => setTimeout(ok, 20_000))]);
