@@ -1,5 +1,6 @@
 import { evalIn, samplePixels } from './dom.mjs';
 import { contrast } from '../tokens-css.mjs';
+import { CHARTS } from '../charts.mjs';
 import { RICH, WELCOME_READY } from './fixtures.mjs';
 import { land, reset } from './page-state.mjs';
 
@@ -62,6 +63,16 @@ const PAGES = [
     h1: 'The whole game, worked out before you leave the house.', phrase: 'The whole game',
     band: '.wel-hero', h1Sel: 'h1.wel-h', hl: 'h1.wel-h .hl', button: '#welStart', link: null, body: '#welCap',
     mark: '.wel-mark svg > rect:first-child' },
+  /* #433: the eight generated chart pages (read from CHARTS, so a ninth is
+     covered the day it exists) wear Hardwood too. They have no headline
+     phrase and no hero block (`hl` and `band` are null, and the checks that
+     need them are skipped for these pages, as test/contrast.test.js does
+     with `hl: false`); the main button, the footer links and the lede are
+     what carry the orange. The read is a browser painting the page, so a
+     page missing data-tint="hardwood" fails on the button's color. */
+  ...CHARTS.map(c => ({ name: c.slug, page: `/${c.slug}`, record: 'kept', ready: 'true',
+    h1: null, phrase: null, band: null, h1Sel: 'h1', hl: null, button: '.cta .btn.primary', link: null, body: '.lede',
+    smalls: [{ sel: 'footer a', probe: 'text' }] })),
 ];
 
 /* One in-page read. Everything a color is resolved through the canvas. */
@@ -76,15 +87,15 @@ const READ = p => `(() => {
   const fg = s => { const e = $(s); return e ? rgba(getComputedStyle(e).color) : null; };
   const bg = s => { const e = $(s); return e ? rgba(getComputedStyle(e).backgroundColor) : null; };
   const root = getComputedStyle(document.documentElement);
-  const band = $(${JSON.stringify(p.band)}), h1 = $(${JSON.stringify(p.h1Sel)});
-  const hl = $(${JSON.stringify(p.hl)}), body = $(${JSON.stringify(p.body)});
+  const band = ${p.band ? `$(${JSON.stringify(p.band)})` : 'null'}, h1 = $(${JSON.stringify(p.h1Sel)});
+  const hl = ${p.hl ? `$(${JSON.stringify(p.hl)})` : 'null'}, body = $(${JSON.stringify(p.body)});
   const r = e => e ? e.getBoundingClientRect() : null;
   const rb = r(band), rh = r(h1);
   return JSON.stringify({
     h1Text: h1 ? h1.textContent : null,
     hlText: hl ? hl.textContent : null,
     hlNowrap: hl ? getComputedStyle(hl).whiteSpace : null,
-    hlColor: fg(${JSON.stringify(p.hl)}), h1Color: fg(${JSON.stringify(p.h1Sel)}),
+    hlColor: ${p.hl ? `fg(${JSON.stringify(p.hl)})` : 'null'}, h1Color: fg(${JSON.stringify(p.h1Sel)}),
     btnBg: bg(${JSON.stringify(p.button)}), btnFg: fg(${JSON.stringify(p.button)}),
     linkColor: ${p.link ? `fg(${JSON.stringify(p.link)})` : 'null'},
     bodyColor: fg(${JSON.stringify(p.body)}),
@@ -158,8 +169,9 @@ export async function hardwoodPagesPass(c, origin, rec) {
         // Item 3 and the crawlable-text constraint: the phrase exists, is the
         // spec's own words, the h1 reads the same as before and the phrase
         // wraps with its line.
-        if (rec.check(s.hlText !== null, `${where}: no ${p.hl} element`)) rec.check(s.hlText === p.phrase, `${where}: the orange phrase reads "${s.hlText}", want "${p.phrase}"`);
-        rec.check(s.h1Text === p.h1, `${where}: the h1 reads "${s.h1Text}", want "${p.h1}"`);
+        if (p.hl && rec.check(s.hlText !== null, `${where}: no ${p.hl} element`)) rec.check(s.hlText === p.phrase, `${where}: the orange phrase reads "${s.hlText}", want "${p.phrase}"`);
+        if (p.h1) rec.check(s.h1Text === p.h1, `${where}: the h1 reads "${s.h1Text}", want "${p.h1}"`);
+        else rec.check(s.h1Text, `${where}: no h1`);
         rec.check(s.hlNowrap !== 'nowrap', `${where}: the orange phrase is nowrap; it must wrap with its line`);
         rec.check(!(s.hlColor && css(s.hlColor) !== cse.want), `${where}: the phrase is ${css(s.hlColor)}, want ${cse.want}`);
         rec.check(!(s.hlColor && s.h1Color && css(s.hlColor) === css(s.h1Color)), `${where}: the rest of the h1 is the same color as the phrase`);
@@ -184,7 +196,7 @@ export async function hardwoodPagesPass(c, origin, rec) {
           rec.check(!(r < cse.floor), `${where}: ${what} on its backdrop is ${r.toFixed(2)}:1, want at least ${cse.floor}:1`);
         }
         // #242: no gradient behind the h1, and the h1 keeps its room.
-        if (rec.check(s.bandImage !== null, `${where}: no ${p.band} block`)) {
+        if (p.band && rec.check(s.bandImage !== null, `${where}: no ${p.band} block`)) {
           rec.check(s.bandImage === 'none', `${where}: ${p.band} paints ${s.bandImage.slice(0, 40)}, want no background-image`);
           rec.check(!(s.h1Inset !== null && s.h1Inset < 16), `${where}: the h1 sits ${s.h1Inset}px inside ${p.band}'s top edge, want at least 16`);
         }
@@ -236,6 +248,6 @@ export async function hardwoodPagesPass(c, origin, rec) {
   } finally {
     await reset(c, origin).catch(() => {});
   }
-  rec.ok('welcome, about and advanced: Hardwood button, links, phrase and welcome logo, no gradient behind the headline, in light, dark and more contrast; '
+  rec.ok('welcome, about, advanced and the chart pages: Hardwood button, links, phrase and welcome logo, no gradient behind the headline, in light, dark and more contrast; '
     + 'a Graphite team leaves about.html orange');
 }

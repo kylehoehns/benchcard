@@ -38,4 +38,16 @@ describe('a coach follows a ?try= link from a chart page', { skip }, () => {
     assert.ok((await coach.toast()).startsWith('Sample team loaded.'), await coach.toast());
     assert.equal(await coach.address(), '/');
   });
+
+  test('a fresh device opening the app is counted as a direct arrival', async () => {
+    await coach.onFreshDevice();
+    assert.deepEqual((await coach.sentEvents()).filter(e => e.e === 'welcome_seen'),
+      [{ e: 'welcome_seen', from: 'direct' }]);
+  });
+
+  test('a fresh device following a chart page\'s Try link is counted as a try arrival', async () => {
+    await coach.openFreshAt('/?try=7');
+    assert.deepEqual((await coach.sentEvents()).filter(e => e.e === 'welcome_seen'),
+      [{ e: 'welcome_seen', from: 'try' }]);
+  });
 });

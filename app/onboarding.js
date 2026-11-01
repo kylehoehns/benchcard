@@ -440,7 +440,8 @@ function fillSample(n = DEMO_N) {
 
 /* The sample team, built and put on the screen. SINCE A49 THIS IS THE `?try=N`
    PATH AND NOTHING ELSE: somebody who clicked "Try it with nine sample players"
-   at the foot of a roster-size chart page asked to SEE the card, and handing
+   on a chart page (right under the chart, on all eight
+   including the two-halves page) asked to SEE the card, and handing
    them a filled-in form instead would answer a different question. The button
    on the welcome screen fills the form (`fillSample` above); this one skips it.
 
@@ -930,8 +931,9 @@ export function initOnboarding(setViewFn) {
      list grew for only the second time. Read the note above it in
      `analytics.js`: `first_run_complete` has been a count with no denominator
      since it shipped, so nobody can say whether this screen works. */
+  const want = new URLSearchParams(location.search).get('try');
   if (!state.onboarded) {
-    track('welcome_seen');
+    track('welcome_seen', { from: want !== null ? 'try' : 'direct' });
     showWelcomeDemo();
   }
 
@@ -945,7 +947,6 @@ export function initOnboarding(setViewFn) {
      is about privacy -- a share encodes the coach's own roster into a link --
      and this carries one integer the site already publishes on its public
      chart pages, about nobody. A35, DECISION 2. */
-  const want = new URLSearchParams(location.search).get('try');
   if (want !== null) {
     const rest = new URLSearchParams(location.search);
     rest.delete('try');

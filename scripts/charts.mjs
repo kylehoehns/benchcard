@@ -252,10 +252,9 @@ const COPY = {
      below would disprove the stronger claim. The page must not overclaim what
      its own artefact shows. */
   lede: (n, f) =>
-    `A finished, printable substitution chart for ${n} players over four ` +
-    `eight-minute quarters, subbing every four minutes: ${f.minutes}, as ` +
-    `close to equal playing time as the arithmetic allows, worked out ` +
-    `before tip-off. Paste your own roster into Benchcard and it prints yours.`,
+    `A printable substitution chart for ${n} players over four 8-minute ` +
+    `quarters, subbing every 4 minutes: ${f.minutes}, as close to equal ` +
+    `playing time as the arithmetic allows.`,
   caption: (n, f) =>
     `Each box is one stint: the clock is time left in the period, and ` +
     `the underlined names just came on. ${f.stints} stints, five on the floor, ` +
@@ -326,9 +325,8 @@ const HALVES = {
       `A printable substitution chart for two 20-minute halves: 10 players, subs every 4 minutes, ` +
       `${f.minutes}. Free, no signup, works offline.`,
     lede: f =>
-      `A finished, printable substitution chart for 10 players over two twenty-minute halves, ` +
-      `subbing every four minutes: ${f.minutes}, as close to equal playing time as the arithmetic ` +
-      `allows, worked out before tip-off. Paste your own roster into Benchcard and it prints yours.`,
+      `A printable substitution chart for 10 players over two 20-minute halves, ` +
+      `subbing every 4 minutes: ${f.minutes}, as close to equal playing time as the arithmetic allows.`,
     caption: f => COPY.caption(10, f),
   },
 };
@@ -420,7 +418,7 @@ export function renderPage(chart, shared = fromAbout()) {
   </section>`;
 
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-tint="hardwood">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -474,6 +472,10 @@ ${jsonld}
      like a different product. card.css also brings the @page and print rules,
      which is why Ctrl-P on this page yields the card at true size and none of
      the chrome: everything else here is .noprint. -->
+<!-- The Print button is an onclick attribute, since this page carries no script
+     but the theme one; with JavaScript off it would do nothing, so it is
+     hidden (index.html hides .app the same way). -->
+<noscript><style>button[onclick="print()"] { display: none; }</style></noscript>
 <link rel="stylesheet" href="./tokens.css">
 <link rel="stylesheet" href="./card.css">
 <style>
@@ -482,6 +484,24 @@ ${jsonld}
    including with JavaScript off, and the About page's reveal guard is a cost
    with nothing to buy here. */
 * { box-sizing: border-box; }
+/* #231, #332: always Hardwood, whatever team color the coach saved. A third
+   copy of the block in about.html and advanced.html; #434 moves all three into
+   one stylesheet. tokens.css sets --tint* for data-tint="hardwood" and leaves
+   --accent* at Graphite, so the accent points at the tint here.
+   \`html:root[...]\` outranks tokens.css's theme and more-contrast blocks. */
+html:root[data-tint="hardwood"] {
+  --accent: var(--tint); --accent-2: var(--tint-2); --accent-soft: var(--tint-soft);
+  --accent-line: var(--tint-line); --accent-ink: var(--tint-ink);
+  --accent-text: var(--tint);
+}
+/* #332: small orange text needs 4.5:1, which Hardwood misses on light grounds
+   (3.9:1). Light takes a darker orange; dark keeps Hardwood; more contrast
+   takes the ink. Every arm names its theme (the selector trap). */
+html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B04308; }
+@media (prefers-contrast: more) {
+  html:root:not([data-theme="dark"])[data-tint="hardwood"],
+  html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
+}
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
@@ -522,16 +542,16 @@ h1 {
   font-weight: 700; margin: 1.6rem 0 0;
 }
 .lede { font-size: 1.16rem; line-height: 1.5; color: var(--ink-2); margin: 1rem 0 0; }
-.cta { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.5rem 0 .9rem; }
+.cta { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.2rem 0 .9rem; }
 /* Sits under the buttons, where the question it answers gets asked. Muted and
    small: it is a fact, not a pitch. */
 .trust { font-size: .92rem; color: var(--muted); margin: 0 0 1.8rem; }
-figure { margin: 0 0 1.6rem; }
+figure { margin: 1.2rem 0 0; }
 figcaption { font-size: .88rem; color: var(--muted); margin-top: .7rem; }
 section { border-top: 1px solid var(--line); padding-top: 1.6rem; margin-top: 2.2rem; }
 h2 { font-size: 1.15rem; letter-spacing: -.03em; font-weight: 640; margin: 0 0 .8rem; }
 p { margin: .8rem 0; color: var(--ink-2); }
-a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: .07em; }
+a { color: var(--accent-text); text-underline-offset: .18em; text-decoration-thickness: .07em; }
 /* The sibling links. Chips rather than a list: seven roster sizes is a picker,
    and 48px keeps it tappable on a phone. */
 .sizes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
@@ -593,19 +613,6 @@ footer a { display: flex; align-items: center; min-height: 48px; }
   <h1 class="noprint">${esc(chart.copy.h1())}</h1>
   <p class="lede noprint"${draftAttr}>${esc(chart.copy.lede(f))}</p>
 
-  <div class="cta noprint">
-    <a class="btn primary" href="./">Build one for your roster</a>
-    <!-- The link that continues the thought they arrived with. try=${n}
-         opens the app with a clearly-labelled ${n}-player SAMPLE team, so a
-         coach with nothing to paste can push this rotation around instead of
-         reading about it. It is read only when the app has no team, it is
-         stripped from the URL immediately, and it carries one integer and
-         nothing about anybody -- it is not a URL share. -->
-    <a class="btn" href="./?try=${n}">Try it with ${n} sample players</a>
-    <a class="btn" href="./about">How it works</a>
-  </div>
-  <p class="trust noprint">${esc(COPY.trust)}</p>
-
   <figure>
     <!-- Generated by scripts/charts.mjs from a real generatePlan() run:
          ${chart.game}, seed ${SEED}. Nothing in
@@ -615,6 +622,19 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     </div>
     <figcaption class="noprint"${draftAttr}>${esc(chart.copy.caption(f))}</figcaption>
   </figure>
+
+  <div class="cta noprint">
+    <!-- The link that continues the thought they arrived with. try=${n}
+         opens the app with a clearly-labelled ${n}-player SAMPLE team, so a
+         coach with nothing to paste can push this rotation around instead of
+         reading about it. It is read only when the app has no team, it is
+         stripped from the URL immediately, and it carries one integer and
+         nothing about anybody -- it is not a URL share. -->
+    <a class="btn primary" href="./?try=${n}">Try it with ${n} sample players</a>
+    <a class="btn" href="./">Build one for your roster</a>
+    <button type="button" class="btn" onclick="print()">Print this chart</button>
+  </div>
+  <p class="trust noprint">${esc(COPY.trust)}</p>
 
   ${links}
 

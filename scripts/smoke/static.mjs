@@ -57,6 +57,14 @@ const STATIC_PAGES = ['/about', '/advanced', ...CHARTS.map(c => `/${c.slug}`),
      is tested in test/build.test.js, and this pass is for its layout. */
   '/404'];
 const STATIC_WIDTHS = [390, 320];
+const FOLD_WIDTH = 320;
+const FOLD_HEIGHT = 568;
+const FOLD_PROBE = `(() => {
+  window.scrollTo(0, 0);
+  const e = document.querySelector('.card .stint');
+  return JSON.stringify({ found: !!e, scrollY: window.scrollY,
+    bottom: e ? Math.round(e.getBoundingClientRect().bottom * 10) / 10 : null });
+})()`;
 
 /* #338. The page's own scroll width against its client width, which is the
    number the issue reported (391 in a 390px viewport). `OVERFLOW_PROBE` above
@@ -205,10 +213,32 @@ export async function staticPass(c, source, origin, rec) {
     }
   }
 
+  /* #433 item 3, the fold: the chart's first stint is on screen on a small
+     phone before any scrolling, because the Try button now sits right under the
+     chart and a coach who cannot see the card has no reason to press it. 320x568
+     (an iPhone SE 1st gen), the 16px root text, light, scrolled to the top: the
+     bottom of the first `.card .stint` is at or above FOLD_PX. Every chart page,
+     read from CHARTS. A page with no `.card .stint` FAILS: nothing was measured
+     (rule 2a). Today the size pages sit at 555-557 and the halves page at 525, so
+     this is a ceiling on growth, not a number to widen. */
+  for (const chart of CHARTS) {
+    const where = `/${chart.slug}@${FOLD_WIDTH}x${FOLD_HEIGHT} fold`;
+    try {
+      await land(c, origin, { page: `/${chart.slug}`, record: 'kept', width: FOLD_WIDTH, height: FOLD_HEIGHT,
+        media: [{ name: 'prefers-color-scheme', value: 'light' }], ready: 'true' });
+      const f = JSON.parse(await evalIn(c, FOLD_PROBE));
+      if (!rec.check(f.found, `${where}: no .card .stint on the page, so nothing was measured`)) continue;
+      rec.check(f.scrollY === 0, `${where}: page is scrolled to ${f.scrollY}px, not the top`);
+      rec.check(f.bottom <= FOLD_HEIGHT, `${where}: the first stint's bottom is at ${f.bottom}px, want at most ${FOLD_HEIGHT}px`);
+    } catch (e) {
+      rec.fail(`${where}: ${firstLine(e)}`);
+    }
+  }
+
   rec.ok(`${visited.length} pages × ${STATIC_WIDTHS.join('/')}px + ${LARGE_TEXT_WIDTHS.join('/')}px@${LARGE_TEXT_PX}px text, `
     + `${images} image(s) with alt, no overflow`
     + (allowed ? ` (${allowed} recorded residue)` : '')
-    + `, ids and lang clean, ${TOUCH_CHECK}`);
+    + `, ids and lang clean, ${TOUCH_CHECK}, first stint above the ${FOLD_HEIGHT}px fold on ${CHARTS.length} charts`);
 }
 
 /* Not `A11Y`: that set carries the dialog check, which has no dialogs to find

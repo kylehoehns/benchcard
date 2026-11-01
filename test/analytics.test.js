@@ -72,6 +72,19 @@ test('carries exactly the events we have agreed to send', () => {
   ]);
 });
 
+/* #433: welcome_seen says whether the first run began on a chart page's Try
+   button (`?try=`) or anywhere else. Two literals and no way to carry the page
+   address or the roster size. */
+test('welcome_seen can only say whether the visit began from a ?try= link', () => {
+  assert.deepEqual(Object.keys(EVENTS.welcome_seen), ['from']);
+  assert.deepEqual(EVENTS.welcome_seen.from, ['direct', 'try']);
+  assert.deepEqual(payload('welcome_seen', { from: 'try' }), { e: 'welcome_seen', from: 'try' });
+  assert.deepEqual(payload('welcome_seen', { from: 'direct' }), { e: 'welcome_seen', from: 'direct' });
+  for (const bad of ['chart', 'https://benchcard.app/7-player-basketball-rotation-chart', 7, '?try=7']) {
+    assert.deepEqual(payload('welcome_seen', { from: bad }), { e: 'welcome_seen' }, String(bad));
+  }
+});
+
 /* The one event that is not a product question. It exists because the app had
    no way to say it had broken; what keeps it inside the promise is that its
    only field is a five-value literal and there is no message or stack field to
