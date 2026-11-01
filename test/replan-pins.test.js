@@ -79,18 +79,14 @@ for (const at of [7, 6]) {
 
 const warnFor = (r, code) => (r.issues || []).filter(i => i.code === code);
 
-test('3: resolveRest from stint 7 drops p0 from Starts the last period and warns by call name', () => {
+/* #444: stint 6 is the last period's first stint, so from stint 7 Starts the last
+   period is done: p0 is not held, so a spent Plays at most has nothing to drop. */
+test('3: resolveRest from stint 7 no longer holds p0 to Starts the last period, so there is nothing to warn about', () => {
   const g = setup(1);
   const r = S.resolveRest(g, S.plans[0], 7);
   assert.equal(r.ok, true, 'the rest is planned');
-  const w = warnFor(r, 'PIN_CAP_USED');
-  assert.equal(w.length, 1);
-  assert.equal(w[0].severity, 'warn');
-  assert.deepEqual(w[0].playerIds, ['p0']);
-  assert.match(w[0].message, /Player 0/);
-  assert.match(w[0].message, /Starts the last period/);
-  assert.match(w[0].message, /Plays at most/);
-  assert.deepEqual(r.pinsDropped, ['p0']);
+  assert.deepEqual(warnFor(r, 'PIN_CAP_USED'), []);
+  assert.deepEqual(r.pinsDropped, []);
   assert.deepEqual(Object.keys(r.overrides).map(Number), [7], 'fives for stint 7 only');
   assert.ok(!r.overrides[7].includes('p0'), 'p0 has no minutes left');
 });
@@ -121,15 +117,20 @@ const playedByHand = g => {
   g.live.overrides = { 0: ['p0', 'p1', 'p2', 'p3', 'p4'], 1: ['p0', 'p5', 'p6', 'p7', 'p1'] };
 };
 
-test('4: when dropping the capped kid still refuses, resolveRest keeps its refusal (the sit flow is unchanged)', () => {
+/* #444: the same crowded game, but Starts the last period [p0 p1 p2] began at
+   stint 6, so stint 7 holds only the four closers and the re-plan goes through.
+   (Before #444 the five was pinned to stint 7 again, seven kids on one stint,
+   and both refused; no longer reachable, since a pin is infeasible only when it
+   crowds a stint, and the same constraints crowd the printed plan too.) */
+test('4: from the last stint, a re-plan keeps the closers and no longer holds the Last-period five', () => {
   const g = setup(1, crowded());
   playedByHand(g);
   const r = S.resolveRest(g, S.plans[0], 7);
-  assert.equal(r.ok, false);
-  assert.equal(r.reason, 'infeasible');
+  assert.equal(r.ok, true);
+  for (const id of ['p3', 'p4', 'p5', 'p6']) assert.ok(r.overrides[7].includes(id), `${id} closes`);
 });
 
-test('4: replanRest clears every fixed group, keeps the past, and names who it stopped holding', () => {
+test('4: replanRest keeps the past and says nothing about fixed kids once the last period has started', () => {
   const g = setup(1, crowded());
   playedByHand(g);
   g.live.at = 6;
@@ -141,13 +142,15 @@ test('4: replanRest clears every fixed group, keeps the past, and names who it s
   S.computeAll();
   assert.deepEqual(fives(g, 6), before, 'stints 0-5 are as played');
   assert.deepEqual(S.rotationMoved(), [], 'no #134 whole-game rewrite');
-  assert.equal(S.pinsNotice(g.id), ' Could not keep Player 0., Player 1., Player 2., Player 3., Player 4., Player 5. and Player 6. fixed to a stint.');
-  assert.equal(S.pinsNotice(g.id), '', 'read once');
+  assert.equal(S.pinsNotice(g.id), '');
 });
 
 test('5: a cap-spent drop is told once, in the toast sentence', () => {
+  /* #444: the last period's first stint (6) is still ahead of a re-plan from
+     stint 6, which is where p0's spent cap is met. */
   const g = setup(1, { out: ['p8'] });
-  g.live.at = 6;
+  g.live.overrides = { 0: ['p0', 'p1', 'p2', 'p3', 'p4'], 1: ['p0', 'p5', 'p6', 'p7', 'p1'] };   // p0: 8 minutes, the cap
+  g.live.at = 5;
   S.computeAll();
   S.pinsNotice(g.id); // drains whatever an earlier computeAll left, so the read below is this arrival's
   S.setAvailable(g, 'p8', true);

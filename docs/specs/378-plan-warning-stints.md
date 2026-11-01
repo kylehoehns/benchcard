@@ -58,8 +58,11 @@ All under `node --test`, through `analyzeFeasibility` / `generatePlan`:
   same index for a full game and for a mid-game suffix.
 - A suffix (mid-game re-plan, `input.stints`) keeps working: the opening five
   is checked against the suffix's `stints[0]`, which is what the solver pins.
-  When no last-period stint remains (all overtime), the last-period check is
-  skipped, as `buildForced` skips it.
+  The Last-period five is kept only while the last period's first stint is
+  still ahead of the cut. Once it is behind the cut, `resolveRest` clears the
+  rule (#444), so no suffix pins it mid-period. When no last-period stint
+  remains (all overtime), the last-period check is skipped, as `buildForced`
+  skips it.
 - `app/engine.js` is precached: run `npm run sw:bump`.
 - No interface rule changes; W4 (plain wording) already holds for these
   messages and the words stay the same.
