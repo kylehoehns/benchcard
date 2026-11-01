@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { trackedFiles } from '../scripts/spelling.mjs';
 import { pngSize } from '../scripts/png-size.mjs';
+import { CHARTS } from '../scripts/charts.mjs';
 import { avoidRegexes } from './glossary.js';
 import { stripHtmlComments } from './html-comments.js';
 
@@ -53,9 +54,7 @@ test('no ember hex survives under app/ (outside vendor) or in scripts/og.mjs and
 const OG_BYTES = readFileSync(new URL('../app/og.png', import.meta.url));
 const OG = pngSize(OG_BYTES, 'app/og.png');
 const PAGES = ['index.html', 'about.html', 'advanced.html',
-  '7-player-basketball-rotation-chart.html', '8-player-basketball-rotation-chart.html',
-  '9-player-basketball-rotation-chart.html', '10-player-basketball-rotation-chart.html',
-  '11-player-basketball-rotation-chart.html', '12-player-basketball-rotation-chart.html'];
+  ...CHARTS.map(c => c.file)];
 
 /* #75 item 3 / Design step 3: og.png is captured sharp (DPR 2 composition,
    DPR 3 phone) rather than downscaled or recompressed lossy to hit a byte

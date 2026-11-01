@@ -4,14 +4,14 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { sanitize, sanitizeSettings, loadState, saveState, seasonGame, seasonDate, addSeasonGames,
          seasonShare, KEY, BACKUP_KEY, V6_KEY, V6_BACKUP_KEY, V5_KEY, V5_BACKUP_KEY, V4_KEY, V4_BACKUP_KEY,
          V3_KEY, DEFAULT_SETTINGS, COLORS, validTipoff, tipoffLabel, sortDay, cornerLabel } from '../app/storage.js';
-import { SIZES, file as chartFile } from '../scripts/charts.mjs';
+import { CHARTS } from '../scripts/charts.mjs';
 
 /* Every document that paints themed content before its first frame, and so
    carries its own copy of the theme resolution. The roster-size pages are
    generated from about.html's copy (scripts/charts.mjs), which is why they can
    join this list without adding a maintenance burden — but they are still
    checked, because the generator is a thing someone could take away. */
-const THEMED = ['index.html', 'about.html', '404.html', ...SIZES.map(chartFile)];
+const THEMED = ['index.html', 'about.html', '404.html', ...CHARTS.map(c => c.file)];
 
 const emptyConstraints = () => ({
   minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [],

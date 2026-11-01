@@ -59,11 +59,11 @@ test('no surface states the claim in a form other than the canonical one', () =>
     `the privacy claim is worded more than one way. Two wordings of a trust claim is two claims. Standardize on "${CANONICAL}":\n  ` + offenders.join('\n  '));
 });
 
-test('the generator emits the canonical form, or the six chart pages drift back', () => {
+test('the generator emits the canonical form, or the chart pages drift back', () => {
   const charts = readFileSync(new URL('../scripts/charts.mjs', import.meta.url), 'utf8')
     .replace(/\s+/g, ' ').toLowerCase();
   assert.ok(charts.includes(CANONICAL),
-    'scripts/charts.mjs does not emit the canonical claim. Editing the six generated pages by hand is undone by the next `npm run charts`, so the generator is the only place this can be fixed.');
+    'scripts/charts.mjs does not emit the canonical claim. Editing the generated pages by hand is undone by the next `npm run charts`, so the generator is the only place this can be fixed.');
 });
 
 test('the claim still appears at all, so standardizing cannot become deleting', () => {

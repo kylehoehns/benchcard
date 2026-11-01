@@ -544,7 +544,7 @@ export const saveJustFailed = () => { const m = justFailed; justFailed = ''; ret
 
 /* A sample team is not a first run, and the count that says so has to wait.
    `first_run_complete{roster}` is the only signal the app has about roster
-   sizes, and the six roster-size landing pages are built on that distribution
+   sizes, and the roster-size landing pages are built on that distribution
    -- so a sample firing it would make the data measure the app's OWN
    suggestion, and those pages would feed their own sizes back into the numbers
    that justify them. A35, DECISION 1.

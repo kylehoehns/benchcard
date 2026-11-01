@@ -1,17 +1,17 @@
 /* Can a crawler that starts at "/" actually walk to every page this site
  * ships?
  *
- * The six roster-size chart pages were filed as orphans -- "sitemap.xml
+ * The roster-size chart pages were filed as orphans -- "sitemap.xml
  * carries 11 URLs and index.html links to none of them". Neither half held.
  * The sitemap carries NINE <loc> entries, one per shipped document; the 11 was
  * a `grep -c` counting the two comment lines that mention `<loc>`. And the
  * pages were wired into the graph the day they shipped (8dc9b1e): about.html
- * carries a deliberately non-`.reveal` nav to all six, and each page links its
+ * carries a deliberately non-`.reveal` nav to all of them, and each page links its
  * five siblings. So this file does not add links. It pins the property, which
  * nothing did.
  *
  * WHY A WALK AND NOT A LIST. test/charts.test.js already asserts the two edges
- * it knows the names of -- about -> six, and page -> five siblings. A named
+ * it knows the names of -- about -> every size, and page -> its siblings. A named
  * edge cannot notice a page that stops being reachable for a reason nobody
  * wrote down, and it cannot notice a SEVENTH page arriving with nothing
  * pointing at it. This derives its scope from the directory and from the hrefs
@@ -20,7 +20,7 @@
  * WHY THE WELCOME SCREEN'S LINK IS WHAT MATTERS. A cold visitor -- and a
  * rendering crawler -- lands on the welcome view, and the way into the
  * site is the "How it works" link (`.wel-about`); home and Advanced now
- * also link the six chart pages directly (#423), so the long tail no longer
+ * also link the chart pages directly (#423), so the long tail no longer
  * hangs off that one anchor. #33 removed the footer that used to also
  * carry an `href="./about"` in the source (and had to be cut out of this
  * walk by hand so that a deleted `.wel-about` still went red here, not green
@@ -33,7 +33,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { SIZES, slug } from '../scripts/charts.mjs';
+import { SIZES, CHARTS, slug } from '../scripts/charts.mjs';
 
 const APP = new URL('../app/', import.meta.url);
 const read = p => readFileSync(new URL(p, APP), 'utf8');
@@ -106,7 +106,7 @@ test('every page the site ships is reachable by following links from "/"', () =>
   assert.deepEqual(orphans, [],
     `orphaned — nothing on this site links to: ${orphans.join(', ')}`);
   /* A walk that reached one page would also report zero orphans if `shipped`
-     came back empty. Pin the floor: index, about, advanced and six charts. */
+     came back empty. Pin the floor: index, about, advanced and the charts. */
   assert.ok(shipped.length >= 9, `only ${shipped.length} pages found in app/`);
 });
 
@@ -124,7 +124,7 @@ test('every URL in sitemap.xml is a page the crawl actually reaches', () => {
 test('the welcome screen is what a first visit links off "/" with', () => {
   /* The load-bearing anchor, stated once so a future edit to the welcome
      screen has to argue with it. Several iterations have rebuilt that screen;
-     the next one should know this link is holding up six pages. */
+     the next one should know this link is holding up the chart pages. */
   const src = crawlable('index.html');
   assert.ok(/<a class="wel-about" href="\.\/about"/.test(src),
     'the welcome screen\'s "What is this?" link is gone');
@@ -141,7 +141,7 @@ const navHrefs = (name, label) => {
   return [...nav.matchAll(/href="([^"]*)"/g)].map(m => m[1]);
 };
 
-test('the welcome tail links the six chart pages from a labelled nav', () => {
+test('the welcome tail links the chart pages from a labelled nav', () => {
   const src = crawlable('index.html');
   const hrefs = navHrefs('index.html', 'Rotation charts by team size');
   assert.deepEqual(hrefs, SIZES.map(n => `./${slug(n)}`));
@@ -149,7 +149,7 @@ test('the welcome tail links the six chart pages from a labelled nav', () => {
   assert.ok(tail.includes('aria-label="Rotation charts by team size"'), 'the chart nav is not in .wel-tail');
 });
 
-test('Advanced links the six chart pages under "A chart for your roster size"', () => {
+test('Advanced links the chart pages under "A chart for your roster size"', () => {
   const src = crawlable('advanced.html');
   const at = src.indexOf('A chart for your roster size');
   assert.ok(at > 0, 'advanced.html has no "A chart for your roster size" heading');
@@ -199,13 +199,13 @@ test('no internal href points at a URL that redirects', () => {
  *
  * target() above skips root-relative hrefs, and 404.html uses nothing else
  * (it is served at any depth, so `./` would resolve wrong), so the walk never
- * looked at them. Checked here: the chart links are the six sizes the site
+ * looked at them. Checked here: the chart links are the sizes the site
  * ships, and every root-relative href names a page that exists.
  * ------------------------------------------------------------------ */
-test("404.html links the six chart pages, and every root-relative link names a shipped page", () => {
+test("404.html links the chart pages, and every root-relative link names a shipped page", () => {
   const hrefs = [...strip(read('404.html')).matchAll(/href="(\/[^"]*)"/g)].map(m => m[1]);
-  const charts = hrefs.filter(h => /^\/\d+-player-basketball-rotation-chart$/.test(h));
-  assert.deepEqual(charts, SIZES.map(n => `/${n}-player-basketball-rotation-chart`));
+  const slugs = CHARTS.map(c => `/${c.slug}`);
+  assert.deepEqual(hrefs.filter(h => slugs.includes(h)), slugs, '404.html links every chart page, in order');
   const pages = hrefs.filter(h => !/\.[a-z0-9]+$/i.test(h));   // not site.webmanifest, tokens.css
   assert.ok(pages.length >= 7, `only ${pages.length} page links found in 404.html`);
   for (const h of pages) {

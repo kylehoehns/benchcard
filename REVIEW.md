@@ -54,8 +54,9 @@ Two consequences worth stating, because both have teeth:
   re-recorded wholesale.
 - The privacy claim widened past "your roster and your players never leave your
   device" — "nothing is uploaded" is false while analytics loads a script.
-- A generated file edited by hand: `app/vendor/**`, or any of the six
-  `app/*-player-basketball-rotation-chart.html`.
+- A generated file edited by hand: `app/vendor/**`, or any generated
+  chart page (`app/*-player-basketball-rotation-chart.html`,
+  `app/basketball-rotation-chart-two-halves.html`).
 - A guard added or changed that has not been shown to go red.
 
 **Important — fix before merge:**
@@ -82,7 +83,8 @@ that would read as tidying.
 
 - `app/vendor/**` — review the pin in `app/vendor/fetch.sh` instead; a CI job
   diffs the output byte for byte.
-- `app/*-player-basketball-rotation-chart.html` — review `scripts/charts.mjs`.
+- `app/*-player-basketball-rotation-chart.html` and
+  `app/basketball-rotation-chart-two-halves.html` — review `scripts/charts.mjs`.
 - `scripts/budgets.json` — review the ceiling in `scripts/budgets.mjs`.
 - `notes/**` — not shipped bytes, and CI skips notes-only commits deliberately.
 

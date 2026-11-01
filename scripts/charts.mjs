@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-/* The roster-size landing pages: /7-player-basketball-rotation-chart and its
- * five siblings.
+/* The chart landing pages: /6-player-basketball-rotation-chart and its
+ * siblings, and /basketball-rotation-chart-two-halves (#425).
  *
  *   node scripts/charts.mjs           # write app/<n>-player-basketball-rotation-chart.html
+ *                                     # and app/basketball-rotation-chart-two-halves.html
  *   node scripts/charts.mjs --check   # exit 1 if any page on disk is stale
  *
- * WHY A GENERATOR AND NOT SIX HTML FILES
+ * WHY A GENERATOR AND NOT EIGHT HTML FILES
  *
- * Six near-identical hand-kept pages drift; that is the whole failure mode of
- * this shape of SEO page. One template renders all six, so structure cannot
+ * Eight near-identical hand-kept pages drift; that is the whole failure mode of
+ * this shape of SEO page. One template renders all eight, so structure cannot
  * drift at all, and `--check` (wired into test/charts.test.js) fails the suite
  * the moment a page on disk stops matching what this file would write.
  *
@@ -53,7 +54,7 @@ const ORIGIN = 'https://benchcard.app';
    Used twice per page: X reads twitter:image:alt and ignores og:image:alt. */
 const OG_ALT = 'Benchcard&rsquo;s game screen on a phone: the sentence &ldquo;11 players, 4 × 8, subbing every 4 min for even minutes, with 1 rule&rdquo; above a timeline of each player&rsquo;s minutes, beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
 
-export const SIZES = [7, 8, 9, 10, 11, 12];
+export const SIZES = [6, 7, 8, 9, 10, 11, 12];
 /* Two spellings, and they are NOT interchangeable -- keeping them apart is
    what this file gets wrong when it drifts. `slug` is the page's ADDRESS: the
    canonical tag, `sitemap.xml`, `og:url` and every internal href use it,
@@ -63,6 +64,11 @@ export const SIZES = [7, 8, 9, 10, 11, 12];
    came to link to addresses its own canonical tags told Google not to use. */
 export const slug = n => `${n}-player-basketball-rotation-chart`;
 export const file = n => `${slug(n)}.html`;
+/* The one page that is a game format rather than a roster size. NOT in SIZES:
+   the size pages share one 4 x 8 game so they can be compared, and this one is
+   a different game. Same slug/file split as above. */
+export const HALVES_SLUG = 'basketball-rotation-chart-two-halves';
+export const HALVES_FILE = `${HALVES_SLUG}.html`;
 
 /* ------------------------------------------------------------------ *
  * the sample roster
@@ -78,22 +84,25 @@ export const file = n => `${slug(n)}.html`;
 
 /* The app's own defaults, and the same game the About page describes: four
    eight-minute quarters, a substitution every four minutes. Uniform across
-   all six pages on purpose -- the pages are meant to be compared, and a coach
+   all seven size pages on purpose -- the pages are meant to be compared, and a coach
    who lands on the 9 and then the 10 should be reading the same game. */
 const FORMAT = { periods: 4, periodMinutes: 8 };
+const HALVES_FORMAT = { periods: 2, periodMinutes: 20 };
 const GRANULARITY = { mode: 'everyN', value: 4 };
 const SEED = 11;
 
-export function planFor(n) {
+function planOf(n, format) {
   const players = sampleRoster(n).map((p, i) => ({ id: `p${i}`, name: p.name }));
   const plan = generatePlan({
     players,
     availableIds: players.map(p => p.id),
-    format: FORMAT, granularity: GRANULARITY, seed: SEED,
+    format, granularity: GRANULARITY, seed: SEED,
   });
   if (!plan.ok) throw new Error(`the engine will not plan ${n} players: ${JSON.stringify(plan.issues)}`);
   return { ...plan, players };
 }
+export const planFor = n => planOf(n, FORMAT);
+export const planForHalves = () => planOf(10, HALVES_FORMAT);
 
 /* ------------------------------------------------------------------ *
  * the card
@@ -156,13 +165,13 @@ const round = n => Math.round(n * 100) / 100;
 
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function cardHtml(n, plan) {
+function cardHtml(chart, plan) {
   const m = cardMetrics(plan);
   const sh = plan.shortNames;
   const out = [];
   out.push('<div class="card">');
-  out.push(`<div class="card-hd"><span class="opp">${n}-PLAYER ROTATION</span>` +
-    '<span class="when">4 QUARTERS · 8 MIN</span></div>');
+  out.push(`<div class="card-hd"><span class="opp">${chart.players}-PLAYER ROTATION</span>` +
+    `<span class="when">${chart.when}</span></div>`);
   out.push('<div class="stints">');
   for (const r of plan.stints) {
     const newPeriod = r.index === 0 || plan.stints[r.index - 1].period !== r.period;
@@ -205,7 +214,7 @@ export function facts(plan) {
  *
  * ==================================================================
  * THE AUTHOR'S TABLE. Everything marked PLACEHOLDER below is a slot,
- * not copy. Fill it in, run `node scripts/charts.mjs`, commit the six
+ * not copy. Fill it in, run `node scripts/charts.mjs`, commit the
  * regenerated pages. Do not deploy with the brackets still in.
  * ==================================================================
  *
@@ -255,7 +264,7 @@ const COPY = {
      arrives here from a search result meets a rotation chart and two buttons
      with no idea what the thing costs or what happens to the names they type;
      the answer was only in <meta name="description">, where a reader cannot
-     see it. Not a function, because it is the same on all six.
+     see it. Not a function, because it is the same on all eight.
 
      The words are lifted from what the site already says rather than written
      fresh: index.html's welcome foot is "No account. Your roster never leaves
@@ -276,8 +285,59 @@ const PLACEHOLDER_KEYS = ['lede', 'caption'];
    Derived, never a flag: the moment the author writes both slots the noindex
    disappears by itself. A hand-set switch is one someone forgets to flip, and
    the failure is silent in the direction that costs us. */
-const isDraft = (n, f) =>
-  PLACEHOLDER_KEYS.some(k => String(COPY[k](n, f)).includes('[PLACEHOLDER'));
+const isDraft = (chart, f) =>
+  PLACEHOLDER_KEYS.some(k => String(chart.copy[k](f)).includes('[PLACEHOLDER'));
+
+/* ------------------------------------------------------------------ *
+ * the chart descriptors
+ *
+ * A page is a descriptor, and the size pages and the halves page are the same
+ * template fed different ones: `slug` (address) and `file` (on disk), the
+ * roster size, the game, the card's header text, and the copy. The size pages'
+ * copy is COPY above, partly applied to n; the halves page's is written out
+ * here. The minutes phrase in both descriptions comes from facts(plan).
+ * ------------------------------------------------------------------ */
+/* The card's header text and the sentence in the build comment are the game,
+   spelled out: derived from the descriptor's format, never typed beside it. */
+const gameFields = (players, { periods, periodMinutes }) => ({
+  when: `${periods} ${periods === 2 ? 'HALVES' : 'QUARTERS'} · ${periodMinutes} MIN`,
+  game: `${players} players, ${periods} x ${periodMinutes} minutes, subs every ${GRANULARITY.value}`,
+});
+
+const sizeChart = n => ({
+  kind: 'size', slug: slug(n), file: file(n), players: n, format: FORMAT,
+  ...gameFields(n, FORMAT),
+  crumb: `${n}-player chart`, plan: () => planOf(n, FORMAT),
+  copy: {
+    title: () => COPY.title(n), h1: () => COPY.h1(n),
+    description: f => COPY.description(n, f),
+    lede: f => COPY.lede(n, f), caption: f => COPY.caption(n, f),
+  },
+});
+
+const HALVES = {
+  kind: 'halves', slug: HALVES_SLUG, file: HALVES_FILE, players: 10, format: HALVES_FORMAT,
+  ...gameFields(10, HALVES_FORMAT),
+  crumb: 'Two-halves chart', plan: () => planOf(10, HALVES_FORMAT),
+  copy: {
+    title: () => 'Basketball rotation chart for two halves | Benchcard',
+    h1: () => 'Basketball rotation chart for two halves',
+    description: f =>
+      `A printable substitution chart for two 20-minute halves: 10 players, subs every 4 minutes, ` +
+      `${f.minutes}. Free, no signup, works offline.`,
+    lede: f =>
+      `A finished, printable substitution chart for 10 players over two twenty-minute halves, ` +
+      `subbing every four minutes: ${f.minutes}, as close to equal playing time as the arithmetic ` +
+      `allows, worked out before tip-off. Paste your own roster into Benchcard and it prints yours.`,
+    caption: f => COPY.caption(10, f),
+  },
+};
+
+/* Every generated chart page, in the order a reader meets them: the seven size
+   pages, then the halves page. The one list tests, smoke and pages() read. */
+const DESCRIPTORS = [...SIZES.map(sizeChart), HALVES];
+export const CHARTS = DESCRIPTORS
+  .map(c => ({ slug: c.slug, file: c.file, kind: c.kind, players: c.players }));
 
 /* ------------------------------------------------------------------ *
  * the shared head furniture
@@ -301,17 +361,19 @@ function fromAbout() {
 /* ------------------------------------------------------------------ *
  * the page
  * ------------------------------------------------------------------ */
-export function renderPage(n, shared = fromAbout()) {
-  const plan = planFor(n);
+export function renderPage(chart, shared = fromAbout()) {
+  const n = chart.players;
+  const plan = chart.plan();
   const f = facts(plan);
-  const url = `${ORIGIN}/${slug(n)}`;
+  const url = `${ORIGIN}/${chart.slug}`;
   /* Marked on the page, and derived from the copy rather than set by hand:
      a hard-coded data-draft survives the copy being written, so the noindex
      would never lift and nobody would notice. Both signals come from the
      same fact. */
-  const draftAttr = isDraft(n, f) ? ' data-draft="1"' : '';
-  const title = COPY.title(n);
-  const desc = COPY.description(n, f);
+  const draft = isDraft(chart, f);
+  const draftAttr = draft ? ' data-draft="1"' : '';
+  const title = chart.copy.title();
+  const desc = chart.copy.description(f);
 
   /* One WebPage in the site and the Benchcard > About > chart trail, built
      from the same n, title and url as the head above so they cannot drift. */
@@ -319,7 +381,7 @@ export function renderPage(n, shared = fromAbout()) {
     '@context': 'https://schema.org',
     '@graph': [
       {
-        '@type': 'WebPage', name: COPY.h1(n), url,
+        '@type': 'WebPage', name: chart.copy.h1(), url,
         isPartOf: { '@type': 'WebSite', name: 'Benchcard', url: `${ORIGIN}/` },
       },
       {
@@ -327,14 +389,35 @@ export function renderPage(n, shared = fromAbout()) {
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Benchcard', item: `${ORIGIN}/` },
           { '@type': 'ListItem', position: 2, name: 'About', item: `${ORIGIN}/about` },
-          { '@type': 'ListItem', position: 3, name: `${n}-player chart`, item: url },
+          { '@type': 'ListItem', position: 3, name: chart.crumb, item: url },
         ],
       },
     ],
   }, null, 2).replace(/</g, '\\u003c');
 
-  const siblings = SIZES.filter(o => o !== n)
-    .map(o => `<a href="./${slug(o)}">${o} players</a>`).join('\n      ');
+  const chips = sizes => sizes.map(o => `<a href="./${slug(o)}">${o} players</a>`).join('\n      ');
+  /* A size page offers its six siblings and the halves page; the halves page
+     offers all seven sizes. Each is a labelled nav of 48px chips. */
+  const links = chart.kind === 'halves'
+    ? `<section class="noprint">
+    <h2>A chart for your roster size</h2>
+    <nav class="sizes" aria-label="Rotation charts by roster size">
+      ${chips(SIZES)}
+    </nav>
+  </section>`
+    : `<section class="noprint">
+    <h2>A different number of players?</h2>
+    <nav class="sizes" aria-label="Other roster sizes">
+      ${chips(SIZES.filter(o => o !== n))}
+    </nav>
+  </section>
+
+  <section class="noprint">
+    <h2>Playing two halves?</h2>
+    <nav class="sizes" aria-label="Other game formats">
+      <a href="./${HALVES_SLUG}">Two 20-minute halves</a>
+    </nav>
+  </section>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -363,7 +446,7 @@ ${shared.theme}
      resolves a navigation to the file backing it, so the link a reader
      follows is the URL the canonical names. See scripts/redirect-check.mjs. -->
 <link rel="canonical" href="${url}">
-<meta name="robots" content="${isDraft(n, f) ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}">
+<meta name="robots" content="${draft ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}">
 
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Benchcard">
@@ -449,7 +532,7 @@ section { border-top: 1px solid var(--line); padding-top: 1.6rem; margin-top: 2.
 h2 { font-size: 1.15rem; letter-spacing: -.03em; font-weight: 640; margin: 0 0 .8rem; }
 p { margin: .8rem 0; color: var(--ink-2); }
 a { color: var(--accent); text-underline-offset: .18em; text-decoration-thickness: .07em; }
-/* The sibling links. Chips rather than a list: six roster sizes is a picker,
+/* The sibling links. Chips rather than a list: seven roster sizes is a picker,
    and 48px keeps it tappable on a phone. */
 .sizes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
 .sizes a {
@@ -457,6 +540,18 @@ a { color: var(--accent); text-underline-offset: .18em; text-decoration-thicknes
   border-radius: 999px; border: 1px solid var(--line-2); background: var(--surface);
   color: var(--ink); text-decoration: none; font-size: .95rem; font-weight: 580;
 }
+/* The card is a fixed 3.45in of fixed-px type, so it must SCALE to a narrow
+   stage, never shrink: as a flex item it was squeezed to 294px at 320px wide
+   while its names kept their size, and the widest row (five 4-letter names at
+   19.9px) filled the content box with no gap. No JS on this page, so the zoom
+   is the viewport arithmetic card.js's fitStage does: the stage's width is the
+   viewport less the body's 2 x 1.15rem and the stage's 2 x .3rem padding (its
+   value under 620px, app.css; wider than that the zoom is 1 anyway), over the
+   card's 3.45in. Print is unaffected (card.css forces zoom: 1 there). */
+/* Its own class, because card.css owns \`.stage\` and \`.card\` (the collision
+   guard, test/css-collide.test.js, forbids a second sheet restyling them). */
+.chart-stage { --cardzoom: min(1, calc((100vw - 2.9rem) / 3.45in)); }
+.chart-stage > * { flex: none; }
 /* Placeholder copy, and it should look like it until the author lands. */
 [data-draft] { color: var(--muted); font-style: italic; }
 footer {
@@ -495,8 +590,8 @@ footer a { display: flex; align-items: center; min-height: 48px; }
     <a class="btn" href="./">Open the app</a>
   </div>
 
-  <h1 class="noprint">${esc(COPY.h1(n))}</h1>
-  <p class="lede noprint"${draftAttr}>${esc(COPY.lede(n, f))}</p>
+  <h1 class="noprint">${esc(chart.copy.h1())}</h1>
+  <p class="lede noprint"${draftAttr}>${esc(chart.copy.lede(f))}</p>
 
   <div class="cta noprint">
     <a class="btn primary" href="./">Build one for your roster</a>
@@ -513,20 +608,15 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 
   <figure>
     <!-- Generated by scripts/charts.mjs from a real generatePlan() run:
-         ${n} players, 4 x 8 minutes, subs every 4, seed ${SEED}. Nothing in
+         ${chart.game}, seed ${SEED}. Nothing in
          here is drawn by hand. -->
-    <div class="stage">
-    ${cardHtml(n, plan)}
+    <div class="stage chart-stage">
+    ${cardHtml(chart, plan)}
     </div>
-    <figcaption class="noprint"${draftAttr}>${esc(COPY.caption(n, f))}</figcaption>
+    <figcaption class="noprint"${draftAttr}>${esc(chart.copy.caption(f))}</figcaption>
   </figure>
 
-  <section class="noprint">
-    <h2>A different number of players?</h2>
-    <nav class="sizes" aria-label="Other roster sizes">
-      ${siblings}
-    </nav>
-  </section>
+  ${links}
 
   <footer class="noprint">
     <span>Benchcard — free, offline, and yours.</span>
@@ -543,7 +633,7 @@ footer a { display: flex; align-items: center; min-height: 48px; }
 /* Every page this generator owns, path relative to app/. */
 export function pages() {
   const shared = fromAbout();
-  return new Map(SIZES.map(n => [file(n), renderPage(n, shared)]));
+  return new Map(DESCRIPTORS.map(c => [c.file, renderPage(c, shared)]));
 }
 
 export { PLACEHOLDER_KEYS };
@@ -560,8 +650,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (!check) writeFileSync(path, html);
   }
   if (check) {
-    console.log(stale.length ? `stale: ${stale.join(', ')}` : `up to date — ${SIZES.length} pages`);
+    console.log(stale.length ? `stale: ${stale.join(', ')}` : `up to date — ${DESCRIPTORS.length} pages`);
     process.exit(stale.length ? 1 : 0);
   }
-  console.log(stale.length ? `wrote ${stale.length}: ${stale.join(', ')}` : `up to date — ${SIZES.length} pages`);
+  console.log(stale.length ? `wrote ${stale.length}: ${stale.join(', ')}` : `up to date — ${DESCRIPTORS.length} pages`);
 }

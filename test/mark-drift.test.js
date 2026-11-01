@@ -3,18 +3,19 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { faviconHref, logoSvg, welcomeLogoSvg, shareShapesSource, SHARE_BEGIN, SHARE_END } from '../scripts/mark.mjs';
+import { CHARTS } from '../scripts/charts.mjs';
 
 /* The static pages hold literal copies of the mark, because they are static.
    These tests fail when a copy differs from what scripts/mark.mjs produces,
    and when a ball seam path is left anywhere outside app/vendor. The fix for
    a failure is `node scripts/mark.mjs` (and `node scripts/charts.mjs` for the
-   six chart pages). */
+   generated chart pages). */
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const APP = join(ROOT, 'app');
 const read = p => readFileSync(join(APP, p), 'utf8');
 const PAGES = ['index.html', 'about.html', 'advanced.html',
-  ...[7, 8, 9, 10, 11, 12].map(n => `${n}-player-basketball-rotation-chart.html`)];
+  ...CHARTS.map(c => c.file)];
 
 test('every page declares the card mark as its tab icon', () => {
   assert.match(faviconHref(), /^data:image\/svg\+xml,/);

@@ -88,7 +88,7 @@ not restated here, only listed, so there is still one answer per rule:
 | No `git add -A` / `git add .` | denied, `guard-bash.sh` |
 | No `Co-Authored-By` or `Claude-Session` trailer | denied, `guard-bash.sh` |
 | No generated-by footer or session link in a PR or issue body | denied, `guard-bash.sh` |
-| No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the six generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` — file tools only, not a shell write |
+| No hand edits to `app/vendor/**` (except `fetch.sh` and `README.md`), the eight generated chart pages, or `scripts/budgets.json` | denied, `guard-edit.sh` — file tools only, not a shell write |
 | A text file over 60 KB is read in parts (`grep -n`, then offset and limit) | denied, `guard-read.sh` |
 | A British spelling in an edited file | reminded, `after-edit.sh` — file tools only, not a shell write |
 | A dirty tree means another writer is here | reported at session start |
@@ -98,7 +98,7 @@ not restated here, only listed, so there is still one answer per rule:
 catches it instead:
 
 - `app/vendor/**`: the `vendor drift` workflow.
-- the six chart pages: `test/charts.test.js`.
+- the eight chart pages: `test/charts.test.js`.
 - a British spelling: `test/spelling.test.js`.
 - `scripts/budgets.json`: nothing. Review is the only check.
 
@@ -213,8 +213,8 @@ checks **both axes**:
 `APP_LARGE_TEXT_ALLOW` is empty and every view is pinned at zero; the same rule
 applies to it as to `LARGE_TEXT_ALLOW` below.
 
-Then it loads the other eight pages — `about.html`, `advanced.html`, the six
-generated roster-size chart pages and `404.html` — at 390 and 320 for overflow, alt text, ids, lang,
+Then it loads the other eleven pages — `about.html`, `advanced.html`, the eight
+generated chart pages (seven roster sizes and the two-halves page) and `404.html` — at 390 and 320 for overflow, alt text, ids, lang,
 touch targets and console errors, plus the same 32px-root pass at 320 and 390.
 Those two cells are where the large-text media queries are live (narrowest and
 widest), which is why it is two cells and not a matrix. On the two guides it
@@ -396,7 +396,7 @@ reason before the code exists is its proof that it can.
   markup until 2026-08-25. One list of phrasings serves both. JS comments and
   regex bodies are dropped, `console.*` is deliberately in scope, and no
   attempt is made to tell prose from selectors: the phrase is the
-  discriminator. It used to name two files by hand, which left the six chart
+  discriminator. It used to name two files by hand, which left the chart
   pages carrying the trust line unguarded.
 - **This repo uses American spelling everywhere.** The word list lives in
   `scripts/spelling.mjs`, not here; `test/spelling.test.js` scans every tracked

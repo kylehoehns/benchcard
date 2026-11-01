@@ -266,8 +266,8 @@ test('every ABSOLUTE pattern still matches its claim wrapped across a line, inde
 });
 
 test('no user-facing copy makes an absolute "nothing leaves this device" claim', () => {
-  /* EVERY served HTML file, not the two this started with. The six generated
-     roster-size chart pages carry the same trust line as the app, and for
+  /* EVERY served HTML file, not the two this started with. The generated
+     chart pages carry the same trust line as the app, and for
      months nothing checked them -- a hand-listed pair of filenames is a guard
      that stops covering the site the moment the site grows. Read the directory
      instead, and refuse to pass on an empty list. */

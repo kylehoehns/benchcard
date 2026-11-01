@@ -429,7 +429,7 @@ export function startTeam(players, teamName, draft, today = new Date()) {
    on twelve minutes, tapped "Start with a sample team", and got a roster where
    the thing they had just been shown could not happen. Same team on both sides
    of the tap now. `SAMPLE_SIZE` stays ten and stays roster.js's business: it is
-   the middle of the six roster-size landing pages, which is a different
+   a size the roster-size landing pages cover, which is a different
    question from what this screen demonstrates. `?try=N` is unaffected -- it
    goes through `loadSample` with a size the chart page names. */
 function fillSample(n = DEMO_N) {
@@ -449,7 +449,7 @@ function fillSample(n = DEMO_N) {
    settled, and a sample is just a team.
 
    It counts NOTHING. `first_run_complete` is the only roster-size signal the
-   app has and the six landing pages are built on that distribution, so a
+   app has and the roster-size landing pages are built on that distribution, so a
    sample firing it would make the data measure our own suggestion. The flag
    set here fires it on the coach's first EDIT instead; `plan_generated` cannot
    fire either, because app.js fires that at boot behind `state.onboarded`,
@@ -943,8 +943,8 @@ export function initOnboarding(setViewFn) {
 
      This is NOT a URL share and must never become one. The no-URL-share rule
      is about privacy -- a share encodes the coach's own roster into a link --
-     and this carries one integer the site already publishes on six public
-     pages, about nobody. A35, DECISION 2. */
+     and this carries one integer the site already publishes on its public
+     chart pages, about nobody. A35, DECISION 2. */
   const want = new URLSearchParams(location.search).get('try');
   if (want !== null) {
     const rest = new URLSearchParams(location.search);

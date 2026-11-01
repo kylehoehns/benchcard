@@ -14,7 +14,7 @@ import { firstLine } from './verdict.mjs';
 
 /* ---- the same large-text cell, on the app shell ----
  *
- * WHY: `sweepPass` above covers seven static pages at 300-420px, default font
+ * WHY: `sweepPass` above covers the static pages at 300-420px, default font
  * size only -- `index.html` itself was never checked at a large root, and a
  * 228px sideways pan on the games view (`table.grid` at 675px in a 320px
  * column) was shippable the whole time. Nothing was wrong with either
@@ -448,7 +448,7 @@ export const APP_LARGE_TEXT_STATES = [
      is exactly where it has to be looked at, and after A49 nothing looked.
 
      IT IS A NAVIGATION, not a click, for two reasons. `?try=N` is the only path
-     that still raises it (the six chart pages link in with their own roster
+     that still raises it (the chart pages link in with their own roster
      size), and `initOnboarding` reads the parameter only while
      `state.onboarded` is false — so the record has to be wiped first, exactly
      as `firstRun` above wipes it and for the same on-new-document reason.

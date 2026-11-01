@@ -6,7 +6,7 @@
  *    three names; `roster.js` continues them. A second cast appearing beside
  *    the first is the drift this pins.
  * 2. A SAMPLE LOAD COUNTS NOTHING. `first_run_complete{roster}` is the only
- *    roster-size signal the app has and the six landing pages are built on
+ *    roster-size signal the app has and the roster-size landing pages are built on
  *    that distribution, so a sample firing it would make the data measure the
  *    app's own suggestion. The deferral is proven in a browser; what is pinned
  *    here is the shape it depends on, each scoped to the function that owns
@@ -16,6 +16,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { SIZES, CHARTS, HALVES_FILE } from '../scripts/charts.mjs';
 import { sampleRoster, SAMPLE_TEAM_NAME, duplicateNumbers, callNames, parseRoster } from '../app/roster.js';
 
 const app = (f) => readFileSync(new URL(`../app/${f}`, import.meta.url), 'utf8');
@@ -218,11 +219,14 @@ test('a ?try= link cannot overwrite a roster, and does not survive the load', ()
     'the param must be stripped, or a reload or a bookmark carries it');
 });
 
-test('every roster-size landing page links into the app with its own size', () => {
-  for (const n of [7, 8, 9, 10, 11, 12]) {
-    const page = app(`${n}-player-basketball-rotation-chart.html`);
-    assert.ok(page.includes(`href="./?try=${n}"`), `the ${n}-player page does not offer a ${n}-player sample`);
+test('every chart landing page links into the app with the roster size its card prints', () => {
+  for (const c of CHARTS) {
+    const page = app(c.file);
+    assert.ok(page.includes(`href="./?try=${c.players}"`),
+      `${c.file} does not offer a ${c.players}-player sample`);
     assert.ok(!/href="\.\/\?try=[^"]*(name|team|player=)/i.test(page),
       'a ?try= link carries a size and nothing else -- it is not a URL share');
   }
+  assert.deepEqual(CHARTS.map(c => c.players), [...SIZES, 10], 'the halves page prints 10 players');
+  assert.equal(CHARTS.at(-1).file, HALVES_FILE);
 });
