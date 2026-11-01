@@ -354,6 +354,27 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 @media (min-width: 46rem) {
   .bezel { max-width: 320px; }
 }
+/* The timeline plate. The app's one-row layout turns on at a container width
+   of 20em, and that `em` is the figure's own font size: 16px in the app, but
+   17px here (About's body is px, see site.css), which made it 340px. Reset the
+   plate to `1rem` so the breakpoint is the app's 320px at a default root, and
+   scales with the root as the app's does. The plate's side padding is also
+   trimmed on a phone (below 46rem), or the figure would sit at about 300px at
+   390 and draw the app's stacked narrow layout, which the app itself shows
+   only at 320px; with it the figure is 335px, as the app's own timeline is. */
+.plate.tl-plate { font-size: 1rem; }
+@media (max-width: 46rem) {
+  .plate.tl-plate { padding-inline: .5rem; }
+}
+/* `19em` is the app's own name for "the text is large". `tournament` in "A
+   tournament day" is one word wider than the 246px column at 320px when the h2
+   is `--fs-title` on a 32px root; the viewport sets the size here, not the
+   root, which is what made it too big. Only About has so long a word, so the
+   cap lives here and Advanced and the chart pages keep their full h2. A 390px
+   phone at the default size is wider than this query. */
+@media (max-width: 19em) {
+  h2 { font-size: min(var(--fs-title), 9vw); }
+}
 </style>
 </head>
 <body>
@@ -442,7 +463,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
       the other.</p>
 
     <figure class="art">
-      <div class="plate">
+      <div class="plate tl-plate">
         <p class="plate-hd">The plan · 11 players · 8 stints of 4 min</p>
         <div class="tl even">
           <div class="tl-head" aria-hidden="true">
@@ -454,59 +475,59 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
           </div>
           <div class="tl-body">
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 26)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Bria</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Bria</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:12.5%;width:25%"></div><div class="tl-blk" style="left:62.5%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot hi"><span class="num">16</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 52)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Cole</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Cole</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:0%;width:12.5%"></div><div class="tl-blk" style="left:37.5%;width:12.5%"></div><div class="tl-blk" style="left:87.5%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot lo"><span class="num">12</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">12</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 92)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Noah</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Noah</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:25%;width:25%"></div><div class="tl-blk" style="left:75%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot hi"><span class="num">16</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 128)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Rafael</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Rafael</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:12.5%;width:25%"></div><div class="tl-blk" style="left:62.5%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot hi"><span class="num">16</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 158)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Ty</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Ty</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:0%;width:12.5%"></div><div class="tl-blk" style="left:37.5%;width:25%"></div><div class="tl-blk" style="left:75%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot hi"><span class="num">16</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 188)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Amari</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Amari</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:25%;width:12.5%"></div><div class="tl-blk" style="left:50%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot lo"><span class="num">12</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">12</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 214)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Elena</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Elena</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:0%;width:25%"></div><div class="tl-blk" style="left:62.5%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot lo"><span class="num">12</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">12</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 244)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Simone</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Simone</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:25%;width:37.5%"></div><div class="tl-blk" style="left:87.5%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot hi"><span class="num">16</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 274)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Devon</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Devon</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:0%;width:12.5%"></div><div class="tl-blk" style="left:37.5%;width:12.5%"></div><div class="tl-blk" style="left:75%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot hi"><span class="num">16</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 304)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Mia</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Mia</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:0%;width:25%"></div><div class="tl-blk" style="left:50%;width:25%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot hi"><span class="num">16</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">16</span><span class="ex"></span></div>
             </div>
             <div class="tl-row" style="--c:oklch(var(--pc-l) var(--pc-c) 334)">
-              <div class="tl-lab"><i class="dot"></i><span class="nm">Kade</span></div>
+              <div class="tl-lab"><span class="tl-name"><span class="dot"></span><span class="nm">Kade</span></span></div>
               <div class="tl-track"><div class="tl-blk" style="left:12.5%;width:12.5%"></div><div class="tl-blk" style="left:50%;width:12.5%"></div><div class="tl-blk" style="left:87.5%;width:12.5%"></div><i class="tl-div" style="left:25%"></i><i class="tl-div" style="left:50%"></i><i class="tl-div" style="left:75%"></i></div>
-              <div class="tl-tot lo"><span class="num">12</span><span class="ex"></span></div>
+              <div class="tl-tot"><span class="num">12</span><span class="ex"></span></div>
             </div>
           </div>
         </div>

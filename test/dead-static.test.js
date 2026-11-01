@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { CHARTS } from '../scripts/charts.mjs';
+import { linkedSheets, inlineSheets } from './page-sheets.js';
 
 /* The static pages, policed the way the shell already is.
  *
@@ -63,11 +64,9 @@ const classesIn = (markup) => {
 const ruleNames = (css) => new Set(
   [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)].map((m) => m[1]));
 
-const inlineCss = (html) =>
-  [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+const inlineCss = (html) => inlineSheets(html).join('\n');
 
-const linkedCss = (html) =>
-  [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.?\/([^"]+)"/g)].map((m) => read(m[1]));
+const linkedCss = (html) => linkedSheets(html).map((f) => read(f));
 
 /* What the page's own scripts put on an element, or select by. JSON-LD is
  * data, not code. */

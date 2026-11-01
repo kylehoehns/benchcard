@@ -250,9 +250,11 @@ figure.chart figcaption { font-size: var(--fs-secondary); color: var(--muted); m
      section is still holding `.reveal`'s `translateY(14px)` when the browser
      picks its scroll position and rises by that much a moment later.
      64.2 + 14 + air = 5.5rem, measured landing a first jump at 74px -- 9.8px
-     clear -- and a repeat jump, already revealed, at 88px. Advanced has no
-     reveal, so there it is the bar plus a little more air. Scoped to this
-     block: outside it there is no bar to clear and `1rem` is right. */
+     clear -- and a repeat jump, already revealed, at 88px. One value for every
+     page that has this bar: Advanced has no reveal and would need only the
+     bar plus a little air, so it takes about 11px more than it strictly needs,
+     which is cheaper than a per-page rule. Scoped to this block: outside it
+     there is no bar to clear and `1rem` is right. */
   h2 { scroll-margin-top: 5.5rem; }
 }
 @media (min-width: 46rem) {
@@ -280,13 +282,6 @@ figure.chart figcaption { font-size: var(--fs-secondary); color: var(--muted); m
      deleted the scrollbar rather than the overflow, so nothing panned and
      nothing showed. */
   footer a { overflow-wrap: anywhere; }
-
-  /* `tournament` in About's "A tournament day" is one word wider than the
-     246px column at 320px when the h2 is `--fs-title` on a 32px root. The
-     viewport sets the size here, not the root, which is what made it too big.
-     A 390px phone at the default size is wider than this query, so its h2 is
-     unchanged. */
-  h2 { font-size: min(var(--fs-title), 9vw); }
 }
 
 /* #231: these pages are always Hardwood, whatever team color the coach saved.
@@ -311,12 +306,6 @@ html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B0430
   html:root:not([data-theme="dark"])[data-tint="hardwood"],
   html:root[data-theme="dark"][data-tint="hardwood"] { --accent-text: var(--ink); }
 }
-/* The timeline total reads `--tl-hi` where it has one (timeline.css). On these
-   pages that is the text orange, not the Hardwood accent: 3.9:1 on a light
-   ground is under the 4.5:1 small text needs (#332). The app declares no
-   `--tl-hi`, so it paints `--accent` as before. */
-:root { --tl-hi: var(--accent-text); }
-
 /* The headline block. It paints nothing (#242 took the orange gradient
    away); it keeps the space above the h1 as its own padding, so the h1 sits
    where it did and its margin cannot collapse out through the block (#238). */

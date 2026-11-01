@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { linkedSheets, inlineSheets } from './page-sheets.js';
 
 /* HOVER IS A POINTER AFFORDANCE AND NOTHING THIS SITE SHIPS MAY ASSUME ONE.
  *
@@ -52,10 +53,8 @@ const SHEETS = (() => {
   const out = new Map();
   for (const page of PAGES) {
     const html = read(page);
-    for (const m of html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.\/([\w.-]+\.css)"/g)) {
-      if (!out.has(m[1])) out.set(m[1], read(m[1]));
-    }
-    const inline = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+    for (const f of linkedSheets(html)) if (!out.has(f)) out.set(f, read(f));
+    const inline = inlineSheets(html).join('\n');
     if (inline.trim()) out.set(`inline:${page}`, inline);
   }
   return out;
@@ -97,12 +96,13 @@ test('the guard reaches every sheet the site ships', () => {
   assert.ok(PAGES.length >= 9,
     `only ${PAGES.length} pages found in app/; the page list is the scope of this guard and it is empty or short`);
   for (const page of PAGES) {
-    assert.ok([...SHEETS.keys()].some((n) => n === `inline:${page}` || read(page).includes(`href="./${n}"`)),
+    assert.ok([...SHEETS.keys()].some((n) => n === `inline:${page}`) || linkedSheets(read(page)).length > 0,
       `${page} contributes no stylesheet at all -- either it is unstyled or the link/style scan missed it`);
   }
   /* #434: the About and Advanced hover rules moved to site.css, and the
-   timeline's to timeline.css, so those are the sheets named here. */
-  for (const name of ['app.css', 'card.css', 'tokens.css', 'site.css', 'timeline.css']) {
+   timeline's to timeline.css, so those are the sheets named here; the two guides still carry page-only
+   inline rules, so their own `<style>` blocks stay on the list. */
+  for (const name of ['app.css', 'card.css', 'tokens.css', 'site.css', 'timeline.css', 'inline:about.html', 'inline:advanced.html']) {
     assert.ok(SHEETS.has(name), `${name} is no longer being scanned by the hover guard`);
     assert.ok(RULES.some((r) => r.sheet === name), `${name} parsed to zero rules; the walker is not reading it`);
   }

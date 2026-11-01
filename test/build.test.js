@@ -76,7 +76,7 @@ test('a file with no comments comes back byte-identical', () => {
 /* --- 2. nothing else changes -------------------------------------------- */
 
 const noWs = s => s.replace(/\s+/g, '');
-for (const name of ['tokens.css', 'app.css', 'card.css']) {
+for (const name of ['tokens.css', 'app.css', 'card.css', 'site.css', 'timeline.css']) {
   test(`${name}: only comments and the whitespace around them go`, () => {
     const src = readFileSync(join(APP, name), 'utf8');
     // The plain regex is a fair reference only if no comment opener hides in

@@ -75,17 +75,18 @@ in step by hand.
   after `app.css`; About links it after `site.css`. About's figure then uses
   the markup `timeline.js` builds (`.tl > .tl-head > div + .tl-periods + div`,
   `.tl-body > .tl-row > .tl-lab + .tl-track + .tl-tot > .num + .ex`), with the
-  dot and name directly in `.tl-lab` (no `<button class="tl-name">`: nothing
+  dot and name in a `<span class="tl-name">` (not a button: nothing
   on About is tappable there). About's `.tl-*` rules, its `.tl-div.onblk`
   dark rule and the `onblk` markup go. The figure will look like the app's
   timeline now (notches instead of hairlines, app type sizes): that is the
   point of the item, and the only change to About's look beyond the h1.
-- **Hardwood contrast on the timeline total.** The app paints `.tl-tot.hi`
-  with `--accent`; on About that is Hardwood, 3.9:1 on light, under #332's
-  4.5:1. `timeline.css` reads `var(--tl-hi, var(--accent))`; `site.css` sets
-  `--tl-hi: var(--accent-text)`. The app declares no `--tl-hi`, so it paints
-  exactly as before. The smoke row `hardwood pages` already measures
-  `.tl-tot.hi` on About and keeps doing so.
+- **No `hi`/`lo` totals on About (revised in review).** `timeline.js` marks a
+  total `hi` or `lo` only when that end is a third of the squad or less. About's
+  squad (eleven players, seven at 16 minutes, four at 12) is `.tl.even`, so the
+  markup carries plain `.tl-tot`s and no orange or blue. An earlier draft
+  marked them `hi`/`lo` and added a `--tl-hi` hook for Hardwood contrast; both
+  are gone, `timeline.css` is `app.css`'s own rules, and the smoke row
+  `hardwood pages` no longer measures `.tl-tot.hi` on About.
 - **The two known 32px wraps** (`hello@benchcard.app` breaking in the footer,
   a clock range splitting at 320px) are left alone: the shared sheet does not
   make either easier, and changing them is a look change of its own.
@@ -158,9 +159,9 @@ Must not change: `app/engine.js`, `app/state.js` (another lane), `app/timeline.j
 
 1. `app/site.css`: the shared rules, in the order About's sheet has them,
    with the token mapping above, the unified h1/h2/section, the chart-only
-   rules, `--tl-hi`, and the Hardwood block once.
+   rules, and the Hardwood block once.
 2. `app/timeline.css`: the `app.css` timeline section moved verbatim plus
-   the `19em` and `forced-colors` lines, and the `--tl-hi` hook on `.tl-tot.hi`.
+   the `19em` and `forced-colors` lines.
 3. Pages link `tokens.css`, then (charts) `card.css`, then `site.css`, then
    (About) `timeline.css`, then any page-only inline block. 404 uses
    root-relative `/site.css`.

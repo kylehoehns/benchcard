@@ -156,10 +156,7 @@
    takes its own line under it; the one-row block makes it a box again. Color
    and type inherit through it, so .hi/.lo still reach both. */
 .tl-tot { display: contents; text-align: right; font-size: var(--fs-footnote); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink-2); }
-/* `--tl-hi` is declared by site.css only: the Hardwood pages need a darker
-   orange here than their accent (#332). The app declares none, so it paints
-   --accent exactly as it did. */
-.tl-tot.hi { color: var(--tl-hi, var(--accent)); } .tl-tot.lo { color: var(--info); }
+.tl-tot.hi { color: var(--accent); } .tl-tot.lo { color: var(--info); }
 /* The word, not the hue, is what says which end of the squad this is. Small
    enough to stay a footnote to the number, never the other way round. */
 /* Pinned to the row's top at the 48px name height, so every total sits at the

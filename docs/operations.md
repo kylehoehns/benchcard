@@ -270,12 +270,15 @@ Two things address that, and they are different problems:
   It is standalone in the sense that it loads no modules, but it **links**
   `./tokens.css` rather than carrying a copy (the copy drifted on `--shadow`
   and `--accent-line`, which is why; `tokens.css` is precached, so arriving
-  from the app costs no request) and it repeats the pre-paint theme script, so
+  from the app costs no request), links `./site.css` for the styles the public
+  pages share and `./timeline.css` for the app's own timeline, and it repeats
+  the pre-paint theme script, so
   arriving from a dark app does not flash white. The page always uses Hardwood
   orange (#231) — it is a public page a visitor may reach from a search with no
   saved team color, and the warmth makes it read as Benchcard rather than a
   template. It carries one orange phrase in the headline ("Even minutes"), with
-  no gradient behind it (#242), mapping `--accent*` to the Hardwood `--tint*` values.
+  no gradient behind it (#242). The Hardwood mapping of `--accent*` onto `--tint*`
+  is in `site.css`, not on the page.
   It also links back to the app three times. Each section leads with the artefact it is about, and
   most of those artefacts are **drawn in HTML/CSS against the app's own class
   names** (`.tl-*`, `.bal-*`, `.sn-*`) rather than screenshotted:
@@ -365,12 +368,13 @@ or the sample game's rule changes, and icons when the mark changes —
 --icons` regenerates all of them.
 
 **Offline.** `sw.js` precaches the shell on install and serves it cache-first:
-`index.html`, `about.html`, the three stylesheets, every local module in the
-import graph, the **latin** Inter subset, the manifest and the icons — well
-under a megabyte. The latin-ext subset is the one deliberate exception,
+`index.html`, `about.html`, the stylesheets (`site.css` included, for the public
+pages), every local module in the import graph, the **latin** Inter subset,
+the manifest and the icons — well under a megabyte. The latin-ext subset is the one deliberate exception,
 `LAZY` in `sw.js`: fetched and kept only when a roster actually contains a
-glyph it covers, rather than pushing 74 KB to every install. The stylesheets are render-blocking, so all three have to be in there
-or an offline boot paints unstyled. A gym
+glyph it covers, rather than pushing 74 KB to every install. The four
+render-blocking stylesheets (`tokens.css`, `app.css`, `timeline.css`, `card.css`)
+have to be in there or an offline boot paints unstyled. A gym
 with no signal now costs nothing: kill the server, reload, and the app boots and
 re-plans from `localStorage`. The same goes for an unknown path: offline, a
 navigation the cache cannot answer gets the app shell, not the 404 page, because

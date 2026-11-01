@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { parseTokensCss, parseColor, colorOf, over, contrast, luminance, splitBlocks, declsOf, stripAllComments } from '../scripts/tokens-css.mjs';
 import { COLORS } from '../app/storage.js';
 import { CHARTS } from '../scripts/charts.mjs';
+import { linkedSheets, inlineSheets } from './page-sheets.js';
 
 /* #21 (Graphite look), item 6: every color token in app/tokens.css against
  * WCAG 2.2's own contrast formula, on every ground it can land on.
@@ -486,7 +487,7 @@ test('--on-err on --err, and on its hover fill, clears 4.5:1 in every theme', ()
  * Only `.hl`, the large headline, may paint `--tint`/`--accent`. The list
  * bullets (`ul li::marker`, non-text, spec item 4) are named below. */
 const PAGES_332 = {
-  'about.html': { rules: ['a', '.jumpto a:focus-visible', '.jumpto a:hover', '.tl-tot.hi', 'ol.steps li::before'] },
+  'about.html': { rules: ['a', '.jumpto a:focus-visible', '.jumpto a:hover', 'ol.steps li::before'] },
   'advanced.html': { rules: ['a', '.jumpto a:focus-visible', '.jumpto a:hover', '.sn-h'] },
   /* #433: the eight generated chart pages wear Hardwood too. The list is the
      generator's own, so a ninth page is covered the day it exists. They have
@@ -504,9 +505,9 @@ function pageRules(file) {
      `timeline.css`) now, not only in the page's own <style>. Read the sheets
      the page links, in document order, then its inline blocks -- the same
      cascade the page gets. tokens.css and card.css are measured separately. */
-  const linked = [...html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="(?:\.\/|\/)(site|timeline)\.css"/g)]
-    .map((m) => stripAllComments(read(`app/${m[1]}.css`)));
-  const styles = [...linked, ...[...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1])];
+  const linked = linkedSheets(html).filter((f) => !['tokens.css', 'card.css'].includes(f))
+    .map((f) => stripAllComments(read(`app/${f}`)));
+  const styles = [...linked, ...inlineSheets(html)];
   const out = [];
   const walk = (src, more) => {
     for (const b of splitBlocks(src)) {
@@ -579,20 +580,21 @@ for (const file of Object.keys(PAGES_332)) {
     const rules = pageRules(file);
     const colorDecl = /(?<![-\w])color\s*:\s*([^;}]+)/g;
     const painted = []; // { selector, value } for every `color:` declaration
-    /* #434: the timeline total reads `var(--tl-hi, var(--accent))` and the
-       public pages declare `--tl-hi: var(--accent-text)`. Where the page does,
-       the value it paints IS --accent-text; where it does not, it stays the
-       raw accent and is flagged below. */
-    const tlHi = rules.some((r) => /(?<![-\w])--tl-hi\s*:\s*var\(--accent-text\)/.test(r.body));
     for (const r of rules) {
       for (const m of r.body.matchAll(colorDecl)) {
-        let value = m[1].trim();
-        if (tlHi && /^var\(--tl-hi,\s*var\(--accent\)\)$/.test(value)) value = 'var(--accent-text)';
+        const value = m[1].trim();
         painted.push({ selector: r.selector, value });
       }
     }
     assert.ok(painted.length > 10, `read ${painted.length} color declarations; expected a page's worth`);
-    const stray = painted.filter((p) => ORANGE_TOKEN.test(p.value) && !ORANGE_TEXT_OK.has(p.selector))
+    /* #434: About links timeline.css, whose `.tl-tot.hi` is the app's own raw
+       --accent. About's squad is an even plan, so its markup never wears
+       `.hi` (test/site-css.test.js pins that); the rule is allowed only
+       while the page's markup has no `.tl-tot` carrying it. */
+    const markup = read('app/' + file).replace(/<style[\s\S]*?<\/style>/g, '');
+    const wearsHi = /class="[^"]*\btl-tot\b[^"]*\bhi\b/.test(markup);
+    const okHere = (sel) => ORANGE_TEXT_OK.has(sel) || (sel === '.tl-tot.hi' && !wearsHi);
+    const stray = painted.filter((p) => ORANGE_TOKEN.test(p.value) && !okHere(p.selector))
       .map((p) => `${file}: "${p.selector}" paints ${p.value} as text; small orange text takes var(--accent-text) (only .hl may paint --tint/--accent)`);
     assert.deepEqual(stray, [], stray.join('\n  '));
     if (PAGES_332[file].hl !== false) {

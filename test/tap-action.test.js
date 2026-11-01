@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { linkedSheets, inlineSheets } from './page-sheets.js';
 
 /* EVERY <summary> THIS SITE STYLES CARRIES `touch-action: manipulation`.
  *
@@ -49,10 +50,8 @@ const REQUIRED = [
 function sheetsOf(page) {
   const html = read(page);
   const out = [];
-  for (const m of html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.\/([\w.-]+\.css)"/g)) {
-    out.push({ name: m[1], css: read(m[1]) });
-  }
-  const inline = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+  for (const f of linkedSheets(html)) out.push({ name: f, css: read(f) });
+  const inline = inlineSheets(html).join('\n');
   if (inline.trim()) out.push({ name: `inline:${page}`, css: inline });
   return out;
 }

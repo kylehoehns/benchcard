@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { linkedSheets, inlineSheets } from './page-sheets.js';
 
 /* Every class name the app emits, against every rule the app loads.
  *
@@ -136,14 +137,13 @@ const emitted = memo(() => {
    classes those rules name -- so which sheets the shell loads is read out of
    the markup once, here. */
 const shellSheets = memo(() =>
-  [...read('index.html').matchAll(/<link rel="stylesheet" href="\.\/([^"]+)"/g)]
-    .map((m) => [m[1], read(m[1])]));
+  linkedSheets(read('index.html')).map((f) => [f, read(f)]));
 
 function styled() {
   const html = read('index.html');
   /* The noscript block is a stylesheet too -- `.app` is only ever styled
      there, and a sweep that ignored it would report a false positive. */
-  const inline = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+  const inline = inlineSheets(html);
   const css = [...shellSheets().map(([, src]) => src), ...inline].join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
   const set = new Set();
   let m; const re = /\.(-?[a-zA-Z_][\w-]*)/g;
@@ -204,8 +204,7 @@ test('the declared hooks are all still emitted, so the list cannot rot', () => {
 const STANDALONE = readdirSync(new URL('.', ROOT))
   .filter((f) => f.endsWith('.html') && f !== 'index.html');
 
-const inlineSheet = (html) =>
-  [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+const inlineSheet = (html) => inlineSheets(html).join('\n');
 
 /* Class names in SELECTOR position only -- the same reading `css-collide`
    uses, and for the same reason: every `.name` in the file would also catch
@@ -244,8 +243,8 @@ function pageUses(html) {
 
 const linkedClasses = (html) => {
   const set = new Set();
-  for (const m of html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="\.?\/([\w.-]+\.css)"/g)) {
-    for (const c of selectorClasses(read(m[1])).keys()) set.add(c);
+  for (const f of linkedSheets(html)) {
+    for (const c of selectorClasses(read(f)).keys()) set.add(c);
   }
   return set;
 };

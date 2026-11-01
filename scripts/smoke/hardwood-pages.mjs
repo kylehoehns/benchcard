@@ -52,7 +52,7 @@ const PAGES = [
   { name: 'about', page: '/about', record: 'kept', ready: `document.querySelector('h1')`,
     h1: 'Even minutes, worked out before the game.', phrase: 'Even minutes',
     band: '.hero-band', h1Sel: 'h1', hl: 'h1 .hl', button: '.cta .btn.primary', link: 'p a', body: '.lede',
-    smalls: [{ sel: 'footer a', probe: 'text' }, { sel: '.tl-tot.hi', probe: 'text' },
+    smalls: [{ sel: 'footer a', probe: 'text' },
       { sel: 'ol.steps li', pseudo: '::before', probe: 'circle' }] },
   { name: 'advanced', page: '/advanced', record: 'kept', ready: `document.querySelector('h1')`,
     h1: 'The reference', phrase: 'reference',

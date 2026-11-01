@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { sampleRoster } from '../app/roster.js';
 import { lacks } from './prose.js';
+import { linkedSheets } from './page-sheets.js';
 import {
   SIZES, CHARTS, HALVES_FILE, HALVES_SLUG, file, slug, pages, planFor, planForHalves,
   cardMetrics, measuredNames, article,
@@ -505,14 +506,25 @@ test('Print is an attribute, not a script, and a noscript style hides it with Ja
   }
 });
 
+/* The paint lives once, in site.css (#434); test/site-css.test.js guards that
+   the Hardwood block is written there alone and test/contrast.test.js measures
+   it. What is checked here is the outcome per chart page: the last sheet it
+   links that colors a bare `a` colors it with --accent-text. */
 test('every chart page is Hardwood and its links paint --accent-text', () => {
-  const site = readFileSync(new URL('../app/site.css', import.meta.url), 'utf8');
+  const app = new URL('../app/', import.meta.url);
   for (const c of CHARTS) {
     const page = read(c.file);
     assert.ok(page.includes('<html lang="en" data-tint="hardwood">'), `${c.file} is not data-tint hardwood`);
-    // the paint lives once, in site.css (#434); the page must load it
-    assert.ok(page.includes('<link rel="stylesheet" href="./site.css">'), `${c.file} does not load site.css`);
-    assert.match(site, /\ba \{ color: var\(--accent-text\);/, 'site.css links do not paint --accent-text');
-    assert.ok(site.includes('html:root[data-tint="hardwood"]'), 'site.css has no Hardwood mapping');
+    const sheets = linkedSheets(page);
+    assert.ok(sheets.includes('site.css'), `${c.file} does not load site.css`);
+    let linkColor = null;
+    for (const f of sheets) {
+      const css = readFileSync(new URL(f, app), 'utf8').replace(/\/\*[\s\S]*?\*\//g, ' ');
+      for (const m of css.matchAll(/(?:^|\})\s*a\s*\{([^}]*)\}/g)) {
+        const d = m[1].match(/(?<![-\w])color\s*:\s*([^;]+)/);
+        if (d) linkColor = d[1].trim();
+      }
+    }
+    assert.equal(linkColor, 'var(--accent-text)', `${c.file}: its sheets paint links ${linkColor}`);
   }
 });

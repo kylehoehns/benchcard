@@ -84,14 +84,23 @@ Everything below is relative to `app/`.
   before a hand-off link is read, and `fileIfPast` (#100) after the first render, and a `visibilitychange` listener runs it again when the app
   returns to the foreground — unless bench mode is open, in which case it waits
   until bench mode closes.
-- `tokens.css` / `app.css` / `card.css` — the styles, in that load order and
-  for that reason. `tokens.css` is the palette, type, radii and easings plus
-  the two theme blocks (dark mode is nothing but the second block — no
-  component rule anywhere has a dark variant); `app.css` is the chrome and the
-  components; `card.css` is the printed card and the `@media print` block that
-  prints it, kept beside the object it describes. The order is load-bearing in
-  two places on purpose: `.stage`'s narrow-screen padding and the `@media
-  print` overrides both have to come last.
+- `tokens.css` / `app.css` / `timeline.css` / `card.css` — the styles the app
+  loads, in that load order and for that reason. `tokens.css` is the palette,
+  type, radii and easings plus the two theme blocks (dark mode is nothing but
+  the second block — no component rule anywhere has a dark variant); `app.css`
+  is the chrome and the components; `timeline.css` is every `.tl*` rule, the
+  timeline `timeline.js` builds, split out of `app.css` so About can link the
+  same rules (#434); `card.css` is the printed card and the `@media print` block
+  that prints it, kept beside the object it describes. The order is
+  load-bearing in two places on purpose: `.stage`'s narrow-screen padding and
+  the `@media print` overrides both have to come last.
+- `site.css` (#434) — the one sheet the public pages share: About, Advanced,
+  404 and the eight chart pages link it after `tokens.css`. It holds the rules
+  they have in common (headings, buttons, chips, the footer, the top bar) and
+  the one Hardwood block that maps `--accent*` onto `tokens.css`'s `--tint*` for
+  these pages; no public page copies that block inline. A page's inline
+  `<style>` keeps only the rules that page alone uses. The app does not load
+  `site.css`.
 - `sw.js`, `_headers`, `site.webmanifest`, `robots.txt`, `sitemap.xml`, the
   icons and `vendor/` — the rest of what is served.
 - `404.html` — the page a path with no file gets, with status 404. How it is

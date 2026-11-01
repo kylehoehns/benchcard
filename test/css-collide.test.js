@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { CHARTS } from '../scripts/charts.mjs';
+import { linkedSheets, inlineSheets } from './page-sheets.js';
 
 /* The same class name, defined by two stylesheets that meet on one page.
  *
@@ -95,10 +96,8 @@ const ALLOWED = new Map([
 function sheetsOf(page) {
   const html = read(page);
   const out = [];
-  for (const m of html.matchAll(/<link[^>]*rel="stylesheet"[^>]*href="(?:\.\/|\/)([\w.-]+\.css)"/g)) {
-    out.push({ name: m[1], css: read(m[1]) });
-  }
-  const inline = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+  for (const f of linkedSheets(html)) out.push({ name: f, css: read(f) });
+  const inline = inlineSheets(html).join('\n');
   if (inline.trim()) out.push({ name: `inline:${page}`, css: inline });
   return out;
 }
