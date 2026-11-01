@@ -149,7 +149,7 @@ test('passBlocks never merges a run across a period, even if nobody left the flo
 test('passBlocks leaves out a player who is not available', () => {
   withTeam(players(3), { minMinutes: 0 }, () => {
     const g = { out: ['p2'], live: { overrides: {} } };
-    const p = { ok: true, stints: [{ period: 1, minutes: 8, onFloor: ['p0', 'p2'] }] };
+    const p = { ok: true, minutes: { p0: 8, p1: 0 }, stints: [{ period: 1, minutes: 8, onFloor: ['p0', 'p2'] }] };
     const ids = S.passBlocks(g, p).map(b => b.id);
     assert.deepEqual(ids, ['p0', 'p1']);
   });
@@ -158,7 +158,7 @@ test('passBlocks leaves out a player who is not available', () => {
 test('passBlocks follows a bench-mode override, not the plan\'s own onFloor', () => {
   withTeam(players(2), { minMinutes: 0 }, () => {
     const g = { out: [], live: { overrides: { 0: ['p1'] } } };
-    const p = { ok: true, stints: [{ period: 1, minutes: 8, onFloor: ['p0'] }] };
+    const p = { ok: true, minutes: { p0: 8, p1: 0 }, stints: [{ period: 1, minutes: 8, onFloor: ['p0'] }] };
     assert.deepEqual(S.passBlocks(g, p), [
       { id: 'p0', blocks: [] },
       { id: 'p1', blocks: [{ period: 1, from: 0, to: 8 }] },

@@ -9,7 +9,7 @@ import { S, bareGame, withTeam, player } from './state-fixture.js';
 const roster = ['a', 'b', 'c'].map(id => player(id));
 const plan = (minutes, ok = true) => ({ ok, minutes,
   stints: [{ onFloor: Object.keys(minutes).filter(id => minutes[id] > 0), minutes: 8, period: 1 }] });
-const counted = (out, p) => withTeam(roster, [bareGame({ out })], {}, () => S.countedIds(bareGame({ out }), p));
+const counted = (out, p) => { const g = bareGame({ out }); return withTeam(roster, [g], {}, () => S.countedIds(g, p)); };
 
 test('countedIds: a player who is here counts', () => {
   assert.deepEqual(counted([], plan({ a: 8, b: 8, c: 0 })), ['a', 'b', 'c']);

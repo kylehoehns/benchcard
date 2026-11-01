@@ -20,11 +20,10 @@ import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds,
          ruleItems, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
-         EVEN_OUT_DAY_LABEL } from './state.js';
+         EVEN_OUT_DAY_LABEL, dayIsToday } from './state.js';
 import { pickFive } from './pills.js';
 import { pushPlanPane, stepperRow } from './game-setup.js';
 import { popPane } from './trap.js';
-import { seasonDate } from './storage.js';
 import { undoable, showUndo } from './toast.js';
 
 let edit = () => {};
@@ -129,7 +128,7 @@ function renderDayGroup(g) {
   }));
   wrap.append(box);
   // #420: "today" only when the open day is the phone's today, as `moveGame` and filing read it
-  const when = state.day.date === seasonDate(new Date()) ? 'today' : 'that day';
+  const when = dayIsToday(state.day) ? 'today' : 'that day';
   wrap.append(el('p', 'pgrp-f', first
     ? `This is the first game ${when}, so there's nothing to even out.`
     : `Players who got fewer minutes earlier ${when} get more here.`));

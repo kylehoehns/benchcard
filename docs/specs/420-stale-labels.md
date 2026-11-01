@@ -29,7 +29,19 @@ intent:
   (#247 item G): a player counts when they are here, or when they are marked
   out but have minutes in the effective rotation. On a game that has not
   started, a player marked out has no minutes, so the count is the same as
-  today's `availIds` count. One rule for every stage, not a stage check.
+  today's `availIds` count.
+- **Item 3, the Who's here phrase (decided in review).** `#phrasePlayers` is
+  also the Who's here opener ("Who's here, N players"). Mid-game, after a
+  player who has played is marked out, its sheet shows them Absent, so
+  counting them there would make the row untrue, and #458's test expects
+  `Who's here, 5 players` at that point. The issue's bug is the state after
+  Finish game. So the phrase counts players here (`availIds`) until the game
+  is finished, then the played count (`countedIds`). The timeline rows and
+  Today's pass summary always use the played count. The "Same as ...?" card
+  counts `availIds`, because the game it adds has only the players here.
+  Today's mini rotation (`passBlocks`) draws a row for each counted player,
+  so the card's "9 players" has 9 rows. Finish game repaints `sentence`, so
+  the phrase switches to the played count when the game is finished.
 - **Item 5, the words.** The ticket offers "that day" or the date. "that day"
   is picked: it is short at 320px and 32px text, and needs no date format.
   "today" stays when the open day's date is the phone's today
@@ -55,7 +67,8 @@ Each item has a test that fails on `b297d80` (today's `main`) and passes after.
    (`#phrasePlayers`) and Today's game card summary (`passSummary`) say
    `9 players`, the timeline lists 9 rows and Season says `9 played`. A player
    marked out before the game starts still drops the count (10 on the roster,
-   one out, says `9 players`).
+   one out, says `9 players`). Mid-game, right after the player is marked
+   out, `#phrasePlayers` says `8 players` (Who's here counts who is here).
 4. **By hand.** With the targets adding up exactly and every row playing its
    number, `#budgetMsg` reads `Adds up exactly, so the plan uses these numbers
    as they are.` With the targets adding up exactly but a rule (Apart, One of
@@ -86,7 +99,8 @@ Must not change: `engine.js`, `budget.js`, `storage.js`, `roster.js`; the card.
     `planSay` already compute the same stints/minutes/subs; keep one copy of
     that, not three.
   - Item 3: the "who counts" rule is written once in `state.js` and read by
-    `timeline.js`'s row list, `sentenceParts` and `passSummary`. Timeline's
+    `timeline.js`'s row list, `passSummary`, and `sentenceParts` on a
+    finished game. Timeline's
     inline filter (`timeline.js` ~line 258) becomes a call to it. Minutes come
     from `effectiveMinutes(g, p)`, never `p.minutes`.
   - Item 4: "a row plays a different number" is the same test
@@ -119,8 +133,9 @@ Must not change: `engine.js`, `budget.js`, `storage.js`, `roster.js`; the card.
    an edit list. `renderRoster` writes `#teamName`'s value only when it
    differs.
 3. Export one helper from `state.js` for "who this game counts" (here, or out
-   with minutes > 0 in the effective rotation). `sentenceParts(g, i)` and
-   `passSummary` count with it, using the game's plan when it is ok and
+   with minutes > 0 in the effective rotation). `passSummary` counts with
+   it, and so does `sentenceParts(g, i)` once `finishedGame(g.live)` (before
+   that it counts `availIds(g)`), using the game's plan when it is ok and
    `availIds(g)` when not. Today's passes span several days (`renderPass`
    reads `dayPlans[d][i]`, teams-view.js), so `passSummary` is handed that
    plan by its caller; `plans[i]` is only the open day's. `timeline.js` uses

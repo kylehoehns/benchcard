@@ -1043,8 +1043,9 @@ export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
 /* The pass's one-line summary (#26 item 5, decision 2): "<N> player(s) ·
    <strategy words>", then "evens out the day" for a later game with carryover
    on, then "<N> rule(s)" when `ruleCount(g)` is above 0. Built only from
-   `countedIds`, `g.strategy`/`g.useCarryover` and `ruleCount` -- nothing here is
-   re-derived. */
+   `countedIds` (everyone the game played or has here, so a player marked out
+   after playing still counts), `g.strategy`/`g.useCarryover` and `ruleCount`
+   -- nothing here is re-derived. */
 export function passSummary(g, i, p) {
   const n = countedIds(g, p).length;
   const parts = [`${n} player${n === 1 ? '' : 's'} · ${STRATEGY_WORDS[g.strategy] || g.strategy}`];
@@ -1058,10 +1059,12 @@ export function passSummary(g, i, p) {
    phrases, each of which opens its own sheet or fold. `intervalWords` is
    split out because the Sub interval sheet's rows read it too, and
    `evensOutLine` because it is the whole of the (conditional) second line.
-   Nothing here is re-derived: `countedIds`, `ruleCount`, `STRATEGY_WORDS` and
+   The players phrase counts `availIds` (who is here, as the Who's here sheet
+   shows) until the game is finished, then `countedIds` (who played).
+   Nothing else is re-derived: `ruleCount`, `STRATEGY_WORDS` and
    `GRAN_CHOICES` are the same single sources `passSummary` above reads. */
 export function sentenceParts(g, i, p = plans[i]) {
-  const n = countedIds(g, p).length;
+  const n = (finishedGame(g.live) ? countedIds(g, p) : availIds(g)).length;
   const rules = ruleCount(g);
   return {
     players: `${n} player${n === 1 ? '' : 's'}`,
@@ -1172,7 +1175,7 @@ export function planSay(g, p) {
    rather than one step further out. */
 export const stepFormat = (v, d, lo, hi) => Math.min(hi, Math.max(lo, v + d));
 
-/* One entry per available player, in roster order (#26 item 6 / decision 10):
+/* One entry per counted player (`countedIds`), in roster order (#26 item 6 / decision 10):
    `{ id, blocks }`, each block `{ period, from, to }` in minutes from that
    period's start. Built from `effectiveStints(g, p)` -- never `p.stints`
    directly -- so a bench-mode swap changes the mini rotation exactly the way
@@ -1183,7 +1186,7 @@ export const stepFormat = (v, d, lo, hi) => Math.min(hi, Math.max(lo, v + d));
 export function passBlocks(g, p) {
   if (!p.ok) return [];
   const stints = effectiveStints(g, p);
-  return availIds(g).map(id => {
+  return countedIds(g, p).map(id => {
     const blocks = [];
     let offset = 0, curPeriod = null, open = null;
     for (const r of stints) {
@@ -2147,6 +2150,7 @@ export const setBenchOpen = v => { benchIsOpen = !!v; };
  * built from either side. "Today" is injectable so a pinned clock can stand
  * in for the phone's own day in a test.
  */
+export const dayIsToday = (day, today = new Date()) => day.date === seasonDate(today);
 export const dayIsPast = (day, today = new Date()) => day.date < seasonDate(today);
 
 /**
@@ -2181,9 +2185,8 @@ export const weekdayLabel = iso => {
  * appends " · <name>" to whichever label applies.
  */
 export function dayHeading(day, today = new Date()) {
-  const iso = seasonDate(today);
   const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  const base = day.date === iso ? 'Today'
+  const base = dayIsToday(day, today) ? 'Today'
     : day.date === seasonDate(tomorrow) ? 'Tomorrow'
     : weekdayLabel(day.date);
   return day.name ? `${base} · ${day.name}` : base;

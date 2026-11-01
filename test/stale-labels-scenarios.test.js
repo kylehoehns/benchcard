@@ -80,6 +80,7 @@ describe('labels that were stale (#420)', { skip }, () => {
     await coach.tap("Who's here, 9 players");
     await coach.tap('Ana Reyes');
     await coach.tap('Close');
+    assert.equal(await coach.text('#phrasePlayers'), '8 players', 'mid-game the phrase counts only who is here');
     await coach.tap((await coach.controls()).find(n => n.startsWith('Resume')));
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
@@ -91,6 +92,7 @@ describe('labels that were stale (#420)', { skip }, () => {
     assert.equal(Object.keys(await coach.planMinutes()).length, 9);
     await coach.tap('Back to Smoke Test');
     assert.match(await coach.text('.today-game .pass-summary'), /^9 players · /);
+    assert.equal(await coach.count('.today-game[aria-label^="Hawks"] .pass-row'), 9, 'the card draws a mini-rotation row for each player it counts');
     await coach.comeBackDaysLater(1);
     await coach.tap('Season 1 game filed ›');
     assert.match(await coach.text('.sn-game .sn-gm'), /^9 played/);
@@ -116,7 +118,7 @@ describe('labels that were stale (#420)', { skip }, () => {
     await coach.tap("Who's here, 9 players");
     await coach.tap('Ana Reyes');
     await coach.tap('Close');
-    assert.equal(await coach.text('#phrasePlayers'), '9 players', 'the game still counts the player who played');
+    assert.equal(await coach.text('#phrasePlayers'), '8 players', "Who's here counts only who is here mid-game");
     await coach.tap('Back to Smoke Test');
     await coach.tap('Add a game');
     const card = (await coach.controls()).find(n => n.startsWith('Same as'));
