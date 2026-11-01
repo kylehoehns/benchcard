@@ -341,10 +341,12 @@ a { color: inherit; }
    and the game-mode nav, pointed down to say "opens a list here". */
 .teambtn-chev svg { transform: rotate(90deg); }
 .teambtn-chev { color: var(--muted); }
-/* No fill at rest (#501): a plain large title. Hover and press fill with the
-   header chips' own `--chip`; `--surface-2` is invisible on light `--bg`. */
+/* No fill at rest (#501): a plain large title. Hover fills with the header
+   chips' own `--chip` and a press deepens to `--chip-hover`, as theirs do;
+   `--surface-2` is invisible on light `--bg`. `:active` is never wrapped in
+   a hover query. */
 @media (hover: hover) { .teambtn:hover { background: var(--chip); } }
-.teambtn:active { background: var(--chip); }
+.teambtn:active { background: var(--chip-hover); }
 #teamBtnLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* The team menu: a native popover, so Escape, an outside click and the top

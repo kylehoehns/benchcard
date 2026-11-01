@@ -157,7 +157,43 @@ async function sheetAt(c, origin, rec, cell, where) {
 
 // #501: the team name is a plain large title, so #teamBtn paints no chip fill.
 const TEAM_FILL_READ = `(() => { const b = getComputedStyle(document.getElementById('teamBtn'));
-  return { bg: b.backgroundColor, bf: b.backdropFilter || b.webkitBackdropFilter }; })()`;
+  return { bg: b.backgroundColor, bf: b.backdropFilter || b.webkitBackdropFilter,
+    hovered: document.getElementById('teamBtn').matches(':hover') }; })()`;
+// Every style rule, in any nesting of @media / @supports (a CSSSupportsRule's
+// children are in the CSSOM even when its condition is false, which reaches the
+// `@supports not (backdrop-filter)` copy headless Chrome cannot apply), whose
+// selector list holds `#teamBtn` itself and paints a fill or blur. A style
+// rule is checked AND descended into: an empty CSSRuleList is truthy.
+const TEAM_FILL_RULES = `JSON.stringify((() => {
+  const out = [];
+  const walk = (rules, where) => { for (const r of rules) {
+    if (r.selectorText && r.style && r.selectorText.split(',').some(s => /(^|[\\s>+~])#teamBtn(?![\\w-])/.test(s.trim()))) {
+      for (const p of ['background', 'background-color', 'backdrop-filter', '-webkit-backdrop-filter']) {
+        if (r.style.getPropertyValue(p)) out.push(where + r.selectorText + ' { ' + p + ': ' + r.style.getPropertyValue(p) + ' }');
+      }
+    }
+    if (r.cssRules) walk(r.cssRules, r.conditionText ? where + '@' + r.conditionText + ' ' : where);
+  } };
+  let sheets = 0;
+  for (const sh of document.styleSheets) { let rs; try { rs = sh.cssRules; } catch (e) { continue; } sheets++; walk(rs, ''); }
+  return { out, sheets };
+})())`;
+// What the press and hover fills must paint: the resolved colors of --chip
+// (hover) and --chip-hover (press), read through a probe element.
+const TOKEN_COLOR = t => `(() => { const e = document.createElement('i'); e.style.background = 'var(${t})';
+  document.body.append(e); const c = getComputedStyle(e).backgroundColor; e.remove(); return c; })()`;
+// #501: force :active (and :hover, where the page matches (hover: hover)) on
+// #teamBtn with CDP and read its fill back. Forced state is cleared afterwards.
+async function forcedFill(c, pseudo) {
+  await c.send('DOM.enable'); await c.send('CSS.enable');
+  const { root } = await c.send('DOM.getDocument', { depth: 0 });
+  const { nodeId } = await c.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#teamBtn' });
+  if (!nodeId) return null;
+  await c.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [pseudo] });
+  await evalIn(c, SETTLE); // a transition would otherwise be read mid-way
+  try { return await evalIn(c, `getComputedStyle(document.getElementById('teamBtn')).backgroundColor`); }
+  finally { await c.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: [] }); }
+}
 const TODAY_PROBE = `JSON.stringify((() => {
   const subs = [...document.querySelectorAll('.today-entry-sub')].map(s => {
     const row = s.closest('.today-entry'), rb = row.getBoundingClientRect(), sb = s.getBoundingClientRect();
@@ -196,15 +232,30 @@ async function todayAt(c, origin, rec, cell, where) {
   // #501: no container, so the viewport is the edge the name keeps 0.5em from.
   rec.check(d.labelLeft >= 0.5 * d.em - 0.5 && d.chevRight <= d.vw - 0.5 * d.em + 0.5,
     `${at}: the name starts at x ${Math.round(d.labelLeft)} and the chevron ends at x ${Math.round(d.chevRight)} in a ${d.vw}px viewport, want 0.5em (${d.em / 2}px) clear of both edges`);
-  const noFill = (f, media) => rec.check(alpha(f.bg) === 0 && (!f.bf || f.bf === 'none'),
-    `#teamBtn at ${where}${media}: paints ${f.bg} with backdrop-filter ${f.bf}, want no fill (a plain large title, not a chip)`);
+  const noFill = (f, media) => rec.check(!f.hovered && alpha(f.bg) === 0 && (!f.bf || f.bf === 'none'),
+    f.hovered ? `#teamBtn at ${where}${media}: a pointer is over the button, so its resting fill was not measured`
+      : `#teamBtn at ${where}${media}: paints ${f.bg} with backdrop-filter ${f.bf}, want no fill (a plain large title, not a chip)`);
   noFill(d.fill, '');
+  // The press (and a pointer hover) fill: --chip-hover and --chip. Hover only
+  // where (hover: hover) matches; the suite's touch emulation makes it false.
+  const press = await forcedFill(c, 'active');
+  const pressWant = await evalIn(c, TOKEN_COLOR('--chip-hover'));
+  rec.check(press === pressWant && alpha(press) > 0, `#teamBtn at ${where}: forced :active paints ${press}, want --chip-hover ${pressWant}`);
+  if (await evalIn(c, `matchMedia('(hover: hover)').matches`)) {
+    const hov = await forcedFill(c, 'hover');
+    const hovWant = await evalIn(c, TOKEN_COLOR('--chip'));
+    rec.check(hov === hovWant && alpha(hov) > 0, `#teamBtn at ${where}: forced :hover paints ${hov}, want --chip ${hovWant}`);
+  }
+  const rules = JSON.parse(await evalIn(c, TEAM_FILL_RULES));
+  if (rec.check(rules.sheets > 0, `#teamBtn at ${where}: no readable style sheet -- nothing was walked`)) {
+    rec.check(rules.out.length === 0, `#teamBtn at ${where}: a rule on #teamBtn itself paints a fill: ${rules.out.join('; ')}`);
+  }
   for (const [feature, value] of SOLID_FALLBACK_MEDIA) {
-    await setMedia(c, [{ name: feature, value }]);
+    await setMedia(c, [...REDUCED_MOTION, { name: feature, value }]);
     await evalIn(c, SETTLE);
     noFill(JSON.parse(await evalIn(c, `JSON.stringify(${TEAM_FILL_READ})`)), ` under ${feature}: ${value}`);
   }
-  await setMedia(c, []);
+  await setMedia(c, REDUCED_MOTION);
   // At large text the heading steps down to --fs-headline and the name wraps to
   // at most two lines, each word whole on its line (no word is wider than the
   // label). At 16px the one-line ellipsis is the deliberate design, so only the

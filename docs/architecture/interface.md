@@ -102,13 +102,14 @@ heading instead. Callers like the add-game flow that focus a specific field
 after navigation override the default. The focus works through `applyView`
 and `syncBarTitle` in `render.js`.
 
-Five header controls became translucent chips (#33 decision 9): `#backBtn`,
+Four header controls became translucent chips (#33 decision 9): `#backBtn`,
 `#shareBtn`, `#settingsBtn` and `#teamAdd` are 48px hit areas around a 2.25rem
-circle, and `#teamBtn` is the same treatment as a pill, because its content is
-the team's name rather than one glyph. All five use `--r-full`, a
-`color-mix` fill over `--chip` (its own token, not `--surface-2` -- see
-tokens.css, #137) and a `backdrop-filter`, and all five go flat and opaque
-under reduced transparency, more contrast, or no `backdrop-filter` support.
+circle. All four use `--r-full`, a `color-mix` fill over `--chip` (its own
+token, not `--surface-2` -- see tokens.css, #137) and a `backdrop-filter`, and
+all four go flat and opaque under reduced transparency, more contrast, or no
+`backdrop-filter` support. `#teamBtn` is not a chip (#501): on Today it is the
+large title with a chevron after it and no fill at rest, so it has no radius.
+A hover or press fills it with `--chip`, and the focus ring is the global one.
 `#teamEdit` and `#seasonExport` stay plain text with no chip (decision 10) —
 a screen's chrome tops out at two filled controls or it reads as a toolbar.
 
