@@ -247,6 +247,27 @@ its alternative is an assertion, so the rejected options are kept here too.
   five players to close, they close; the fatigue limit is a heuristic and
   yields, with the over-run reported. In practice the local search rests the
   closing group ahead of its window and neither has to give.
+- **A Rest limit that cannot hold is caught before the search (#439).** The
+  Rest limit (`maxConsecutive`) is the most stints anyone may play in a row.
+  Any `r+1` stints in a row must give every player a sit, and those stints
+  have only `(r+1) x (n-5)` bench seats, so the limit can hold only when
+  `(r+1) x (n-5) >= n`. `analyzeFeasibility` checks that with arithmetic,
+  no search. If it fails, one `CONSEC_TOO_FEW` line names the players the
+  limit needs, `ceil(5(r+1)/r)`, and the smallest limit that holds with the
+  players present, `ceil(5/(n-5))`, or says to turn the limit off when that
+  number is not shorter than the game. With fewer than `r+1` stints the limit
+  cannot bind, so nothing is checked. A minimum the limit makes impossible
+  gets one `CONSEC_MIN_CONFLICT` line naming every player it hits, unless
+  a minimum is already refused outright. The most minutes a player can reach
+  under the limit comes from an exact DP over the stint lengths, and the
+  minimum still wins, as it always has. A player named by
+  `CONSEC_MIN_CONFLICT` gets no per-kid `CONSEC_EXCEEDED`, and nobody does
+  when `CONSEC_TOO_FEW` or `CONSEC_IMPOSSIBLE` is present. Where the search
+  still runs past the limit, an overrun costs its square, so one long run
+  costs more than the same overrun spread out. A break counts as forced when
+  more players than the number asked for reached the limit and came off
+  there; when every over-number break is forced, `SUBS_EXCEEDED` names the
+  Rest limit instead of blaming minutes.
 - **A pin is held over a cap, or refused up front, never dropped quietly
   (#436).** A kid named in the starting five, the Last-period five or the
   closing group is on the floor for those stints. The greedy pass keeps back
