@@ -311,6 +311,13 @@ its alternative is an assertion, so the rejected options are kept here too.
   same first sentence when a pin is dropped. By hand and Platoon never reach this path, because `resolveRest`
   refuses them, so they still fall back to #134 and can rewrite played stints.
   That is follow-up #489.
+- **A pinned overtime five that breaks a rule is kept and reported (#440).**
+  The coach asked for that five by name, so a rule does not reshape it. The
+  plan says so instead, with a `PIN_BREAKS_RULE` warning naming the kids and
+  the rule ([planning-strategies.md](architecture/planning-strategies.md)).
+  Refusing would take away a choice the coach made, and dropping it quietly
+  would hide it. Together and the Rest limit are not checked inside a pinned
+  overtime.
 - **A coach's minute target is a pin, not a preference.** It survives caps and
   tournament carryover; everyone else water-fills the remaining floor-time.
 - **Somebody has to play the odd stint, so it is decided out loud.** When the

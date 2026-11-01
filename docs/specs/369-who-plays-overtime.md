@@ -44,7 +44,9 @@ Even strategy unless said, the game on its last stint.
 8. **Pins hold.** A Keep or Strongest five is not moved by a re-plan: not by a
    one-stint swap re-planning later stints, not by bench mode's Reset, not by
    a Plays-at-most or Apart rule. The coach can still swap a player by hand in
-   any OT stint.
+   any OT stint. A pinned five that breaks Apart, One of two on or Plays at
+   most gets a note on the plan naming the kids and the rule (#440); the five
+   stays.
 9. **A pinned player goes Out** during the overtime: their spot is filled by
    the available player with the highest Level, then fewest minutes, for
    Strongest five; by fewest minutes for Keep this five. The other four stay.

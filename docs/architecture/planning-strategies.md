@@ -50,12 +50,19 @@ stored five, not on the plan, and plans an Even out overtime again as Even
 out), not the #134 "rotation changed" fallback, which writes the pinned fives
 back after it drops the swaps, and not a Plays at most or Apart rule. Only the
 stints that are not pinned are solved; the pinned fives count as minutes
-already played. Caps and
-Apart rules do not apply to a pinned five. A hand swap on a pinned stint still
-works. When a pinned player goes Out, or is sat for the rest, their place is
-filled from the players still playing: for Strongest five by highest Level, then
-fewest minutes; for Keep this five by fewest minutes. The other four stay. A kid
-sat for the rest stays off through every later re-plan, overtime included (#412).
+already played.
+
+Apart, One of two on and Plays at most do not reshape a pinned five. When a
+pinned five breaks one of them, the plan gets a `PIN_BREAKS_RULE` warning
+(#440) naming the kids and the rule, and the five stays. That covers Keep this
+five too. The warning follows the five on the floor, so a hand swap that takes
+the kid off clears it. A hand swap on a pinned stint still works.
+
+When a pinned player goes Out, or is sat for the rest, their place is filled
+from the players still playing: for Strongest five by highest Level, then
+fewest minutes; for Keep this five by fewest minutes. The other four stay. A
+kid sat for the rest stays off through every later re-plan, overtime included
+(#412).
 
 The game's own strategy, for Next rotation:
 
