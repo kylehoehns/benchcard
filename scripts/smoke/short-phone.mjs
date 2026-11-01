@@ -26,11 +26,18 @@ export const SHORT_PHONE_CHECK =
   'short phone: sheets, bench mode and the tour leave room at 320x568 and 390x844, 16px and 32px text';
 
 // `full`: whether `(max-height: 40em)` matches (spec item 1).
-const CELLS = [
+export const PHONE_CELLS = [
   { width: 320, height: 568, textPx: 16, full: true },
   { width: 320, height: 568, textPx: 32, full: true },
   { width: 390, height: 844, textPx: 16, full: false },
   { width: 390, height: 844, textPx: 32, full: true },
+];
+// The one cell whose floor cannot hold a whole card beside the call (spec 430, Survey 3):
+// there the floor's window must show at least two touch targets.
+export const TIGHT_CELL = '320x568/32px';
+export const TIGHT_FLOOR_MIN = 2 * TOUCH_MIN;
+const CELLS = [
+  ...PHONE_CELLS,
   // A phone held sideways at large text: the landscape bench block must not
   // stretch the 52px nav buttons. Bench mode only (`only`).
   { width: 568, height: 320, textPx: 32, full: true, only: 'bench', square: true },
@@ -43,7 +50,7 @@ const SHEETS = [
 ];
 const BODY_SHARE = 0.45; // spec: body clientHeight >= 45% of the viewport height
 
-const stateNamed = name => {
+export const stateNamed = name => {
   const v = CLIP_STATES.find(s => s.name === name);
   if (!v) throw new Error(`no state named "${name}" in CLIP_STATES -- nothing was measured`);
   return v;
@@ -130,10 +137,10 @@ async function headersAt(c, origin, rec, cell, where) {
 const BENCH_PROBE = `JSON.stringify((() => {
   const r = e => { if (!e) return null; const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, width: b.width, height: b.height }; };
   const shown = e => e && !e.hidden && e.getClientRects().length > 0;
-  const bar = document.querySelector('.gm-bar'), foot = document.querySelector('.gm-foot'), moved = document.getElementById('gmMoved');
+  const bar = document.querySelector('.gm-bar'), foot = document.querySelector('.gm-foot'), moved = document.getElementById('gmMoved'), body = document.querySelector('.gm-body');
   const name = id => { const e = document.getElementById(id);
     return e ? (e.getAttribute('aria-label') || e.textContent || '').trim() : ''; };
-  return { bar: r(bar), foot: r(foot), moved: shown(moved) ? r(moved) : null,
+  return { bar: r(bar), foot: r(foot), body: r(body), moved: shown(moved) ? r(moved) : null,
     cards: [...document.querySelectorAll('#gmFloor > *')].map(r),
     done: r(document.getElementById('gmDone')), prev: r(document.getElementById('gmPrev')),
     next: r(document.getElementById('gmNext2')), doneName: name('gmDone'), vh: document.documentElement.clientHeight };
@@ -150,11 +157,19 @@ async function benchAt(c, origin, rec, cell, where) {
       // The sideways cell is only here for the nav buttons' size: a 32px card is
       // taller than that window, so no whole card is asked of it.
       if (rec.check(d.cards.length > 0, `${label}: #gmFloor holds no cards -- nothing was measured`) && !cell.square) {
-        const top = Math.max(d.bar.bottom, d.moved ? d.moved.bottom : 0);
-        const whole = d.cards.filter(k => k.top >= top - 0.5 && k.bottom <= d.foot.top + 0.5);
-        rec.check(whole.length >= 1,
-          `${label}: no floor card is whole between the bar (bottom ${Math.round(top)}) and the foot (top ${Math.round(d.foot.top)}); ` +
-          `card heights ${d.cards.map(k => Math.round(k.height)).join(',')}`);
+        // #430: the call is pinned between the scroller and the foot, so the floor's own window
+        // is .gm-body's box, not "bar to foot". 320x568/32 cannot hold a whole 207px card beside the
+        // call (spec 430, Survey 3), so there the floor window must show at least two touch targets.
+        if (!rec.check(!!d.body, `${label}: .gm-body not found -- nothing was measured`)) continue;
+        if (where === TIGHT_CELL) {
+          rec.check(d.body.height >= TIGHT_FLOOR_MIN,
+            `${label}: .gm-body shows ${Math.round(d.body.height)}px, want >= ${TIGHT_FLOOR_MIN}`);
+        } else {
+          const whole = d.cards.filter(k => k.top >= d.body.top - 0.5 && k.bottom <= d.body.bottom + 0.5);
+          rec.check(whole.length >= 1,
+            `${label}: no floor card is whole inside .gm-body (${Math.round(d.body.top)}-${Math.round(d.body.bottom)}); ` +
+            `card heights ${d.cards.map(k => Math.round(k.height)).join(',')}`);
+        }
       }
       if (name === 'bench mode') {
         if (cell.square) {
@@ -196,7 +211,7 @@ const TOUR_PROBE = `JSON.stringify((() => {
     overflowY: cs ? cs.overflowY : '', vw: document.documentElement.clientWidth, vh: document.documentElement.clientHeight };
 })())`;
 
-const overlaps = (a, b) =>
+export const overlaps = (a, b) =>
   a.left < b.right - 0.5 && a.right > b.left + 0.5 && a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5;
 
 async function tourAt(c, rec, where) {
@@ -238,7 +253,7 @@ async function tourAt(c, rec, where) {
 
 // What `openState` hands the states that reload their own fixture (none of
 // the ones this pass opens do; kept so it stays the harness's own shape).
-const cellWant = cell => ({ record: LONG_AND_SQUEEZE, width: cell.width, height: cell.height, textPx: cell.textPx, media: REDUCED_MOTION });
+export const cellWant = cell => ({ record: LONG_AND_SQUEEZE, width: cell.width, height: cell.height, textPx: cell.textPx, media: REDUCED_MOTION });
 
 export async function shortPhonePass(c, origin, rec) {
   let cells = 0;

@@ -151,6 +151,16 @@ next break is often mid-period rather than the boundary a coach assumes.
 Players who arrived at the current break carry a "just on" tag rather than a
 bare glyph, and that tag always matches the previous stint's On column.
 
+In bench mode the box is **pinned**, not part of the list (#430). It sits
+between the scrolling floor and the foot, so it stays on screen at every scroll
+position. The floor and the bench are the only scroller; the foot is a
+normal-flow sibling below the box, not a layer floating over the list. When
+the screen is full (a short phone at large text, after a swap), the "card no
+longer matches" line and the Not here group shrink and scroll before the foot
+moves. A toast lifts above the box in portrait, but only as far as it fits
+whole on screen; a toast too tall for the room above the box sits over it, never
+over the foot, until it goes.
+
 **A tied game can go to overtime (#368).** On the last stint the Next box
 offers **Tied? Add overtime** under the "Game ends at 0:00." line, and it is gone once
 the game is finished. The sheet asks for whole minutes from 1 to 10. It is
@@ -200,9 +210,12 @@ all for the shortest names. Minutes stay right-aligned so played/projected
 still reads as a column down the list.
 
 **A late arrival is marked here from bench mode (#383).** Anyone marked out on
-Who's here is listed under a **Not here** group below the bench, each row with a
-**Here now** button. The group is hidden when nobody is out, and it shows on every
-stint, the last included. Tapping **Here now** calls `setAvailable(g, id, true)`,
+Who's here is listed under a **Not here** group directly under the bar, above the
+floor (#430), so a late arrival's **Here now** is on screen when bench mode opens.
+Each player is one compact row with a **Here now** button. The group caps its own
+height and scrolls inside itself, so a long out list never pushes the floor off
+the screen. The group is hidden when nobody is out, and it shows on every stint,
+the last included. Tapping **Here now** calls `setAvailable(g, id, true)`,
 the same edit Who's here makes, so the plan from the next stint on picks the kid
 up. The stint on the floor does not change, and the pick in progress is cleared.
 The handler runs `computeAll()` first. Stepping through stints in bench mode never

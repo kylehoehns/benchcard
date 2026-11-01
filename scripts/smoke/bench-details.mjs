@@ -11,8 +11,10 @@
  *     (stint 0 never carries one, so a plain fresh `land` open would
  *     measure nothing about the tag).
  *   item 5 -- the last bench row stays reachable by scrolling `.gm-body`,
- *     with and without a pick, and its 9.5rem bottom padding is not
- *     narrowed to make that true.
+ *     with and without a pick. (#430: the foot is no longer a floating
+ *     overlay, so the 9.5rem bottom reserve is gone; the checks are now that
+ *     the foot is in normal flow, `.gm-body` ends above it, and the last row,
+ *     scrolled to, ends above the call strip (`#gmNext`) and `.gm-body`'s bottom.)
  *   item 6 -- `#gmDone` reads "Leave".
  *
  * Item 2 (the swap toast's minutes) is `test/gamemode-bench-text.test.js`'s
@@ -187,7 +189,8 @@ export async function benchDetailsPass(c, origin, rec) {
     await evalIn(c, step(CLOSE_BENCH));
 
     /* ---- item 5: bench rows reachable by scrolling, 390x844 and 320x640,
-       with and without a pick -- and the 9.5rem bottom padding stays ---- */
+       with and without a pick -- and (#430) the foot is a normal-flow sibling
+       under the scroller, not an overlay needing a 9.5rem reserve ---- */
     for (const { w, h } of [{ w: 390, h: 844 }, { w: 320, h: 640 }]) {
       for (const picked of [false, true]) {
         await land(c, origin, { width: w, height: h });
@@ -197,22 +200,33 @@ export async function benchDetailsPass(c, origin, rec) {
         const r = JSON.parse(await evalIn(c, `(() => {
           const rows = document.querySelectorAll('#gmFloor .gm-p, #gmBench .gm-b');
           const last = rows[rows.length - 1];
-          const foot = document.querySelector('.gm-foot');
-          if (!last) return JSON.stringify({ none: true });
-          const lr = last.getBoundingClientRect(), fr = foot.getBoundingClientRect();
-          return JSON.stringify({ lastBottom: Math.round(lr.bottom), footTop: Math.round(fr.top) });
+          const call = document.getElementById('gmNext'), body = document.querySelector('.gm-body');
+          if (!last || !call || !body) return JSON.stringify({ none: true });
+          const lr = last.getBoundingClientRect();
+          return JSON.stringify({ lastBottom: Math.round(lr.bottom), callTop: Math.round(call.getBoundingClientRect().top),
+            bodyBottom: Math.round(body.getBoundingClientRect().bottom) });
         })()`));
         const where = `${w}x${h}, ${picked ? 'a player picked' : 'no pick'}`;
-        if (r.none) rec.fail(`item 5: ${where}: no floor or bench row to measure`);
-        else if (r.lastBottom > r.footTop + 0.5) {
-          rec.fail(`item 5: ${where}: the last bench row ends at ${r.lastBottom}, below .gm-foot's top ${r.footTop}`);
+        if (r.none) rec.fail(`item 5: ${where}: no floor or bench row, #gmNext or .gm-body to measure`);
+        else if (r.lastBottom > r.callTop + 0.5 || r.lastBottom > r.bodyBottom + 0.5) {
+          rec.fail(`item 5: ${where}: the last bench row ends at ${r.lastBottom}, below the call's top ${r.callTop} or .gm-body's bottom ${r.bodyBottom}`);
         }
         await evalIn(c, step(CLOSE_BENCH));
       }
     }
     await land(c, origin);
-    const padBottom = parseFloat(await evalIn(c, `getComputedStyle(document.querySelector('.gm-body')).paddingBottom`));
-    rec.check(padBottom >= 152 - 0.5, `item 5: .gm-body's bottom padding computes to ${padBottom}px, want at least 9.5rem (152px)`);
+    await evalIn(c, step(OPEN_BENCH));
+    const lay = JSON.parse(await evalIn(c, `(() => {
+      const foot = document.querySelector('.gm-foot'), body = document.querySelector('.gm-body');
+      if (!foot || !body) return JSON.stringify({ none: true });
+      return JSON.stringify({ pos: getComputedStyle(foot).position, bodyBottom: body.getBoundingClientRect().bottom, footTop: foot.getBoundingClientRect().top });
+    })()`));
+    await evalIn(c, step(CLOSE_BENCH));
+    if (lay.none) rec.fail('item 5: no .gm-foot or .gm-body to measure');
+    else {
+      rec.check(lay.pos !== 'absolute' && lay.pos !== 'fixed', `item 5: .gm-foot is ${lay.pos}, want a normal-flow sibling of .gm-body`);
+      rec.check(lay.bodyBottom <= lay.footTop + 0.5, `item 5: .gm-body ends at ${lay.bodyBottom}, below .gm-foot's top ${lay.footTop}`);
+    }
 
     /* ---- item 6: the bottom exit reads "Leave" ---- */
     const doneText = await evalIn(c, `document.getElementById('gmDone').textContent.trim()`);

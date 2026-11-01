@@ -215,6 +215,19 @@ export function offer(message, label, act) {
   actionToast(message, label, act);
 }
 
+// app.css's game-mode landscape block: the one query that moves the call out from over the foot
+const GM_LANDSCAPE = '(orientation: landscape) and (max-height: 35em)';
+let callWatch = null;
+function watchCall(call, box) {
+  if (callWatch?.call === call) return;
+  callWatch?.ro.disconnect();
+  callWatch = null;
+  if (!call || typeof ResizeObserver === 'undefined') return;
+  const ro = new ResizeObserver(() => { if (box.children.length) liftToasts(box); });
+  ro.observe(call);
+  callWatch = { call, ro };
+}
+
 // lift clear of whatever else owns the bottom edge -- the phone action bar,
 // or game mode's stint nav, which is the one thing a coach must not lose.
 // A toast inside a sheet (#28 decision 13) has nothing to lift clear of: the
@@ -227,7 +240,25 @@ function liftToasts(box) {
   // candidate -- a toast on Today with a part-played game must clear it too.
   const showing = el => el && !el.hidden && getComputedStyle(el).display !== 'none' ? el : null;
   const bar = gmFoot || showing($('#actionbar')) || showing($('#resumeBar'));
-  const lift = bar ? bar.offsetHeight : 0;
+  let lift = bar ? bar.offsetHeight : 0;
+  // #430: in portrait bench mode the call strip sits on the foot and is the
+  // thing the coach reads at the horn, so the toast clears it too: lift by the
+  // strip's top to the bottom of the viewport. Landscape puts the call in the
+  // right-hand column, where the foot alone is enough. The strip's height
+  // changes with the stint, so it is watched while bench mode is open.
+  const call = gmFoot ? $('#gmNext') : null;
+  watchCall(call, box);
+  if (call && !window.matchMedia?.(GM_LANDSCAPE)?.matches) {
+    // ...but never so far that the toast's own top leaves the screen. On a
+    // short phone at large text a long-name toast is taller than the room
+    // above the call; it is then lifted only as far as it fits whole, clear
+    // of the foot as before #430, and sits over the call until it times out.
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const gap = .5 * rem * Math.max(0, box.children.length - 1);
+    const tall = [...box.children].reduce((h, t) => h + t.offsetHeight, gap);
+    const room = Math.floor(window.innerHeight - tall - .6 * rem - .5 * rem);
+    lift = Math.max(lift, Math.min(Math.ceil(window.innerHeight - call.getBoundingClientRect().top), room));
+  }
   box.classList.toggle('lifted', lift > 0);
   box.style.setProperty('--toast-lift', `${lift}px`);
 }
