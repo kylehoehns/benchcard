@@ -185,8 +185,8 @@ on('#shareBtn', 'onclick', e => {
   openSheet($('#sheetCard'), e.currentTarget, { full: true });
   refreshCardSheetPreview();
 });
-/* #257: Print card | Hand off, the `.seg` shape `#viewSeg` uses. The sheet
-   always opens on Print card; nothing is remembered. */
+/* #257: Card | Hand off, the `.seg` shape `#viewSeg` uses. The sheet
+   always opens on Card; nothing is remembered. */
 function showSharePane(pane) {
   for (const b of document.querySelectorAll('#shareSeg button[data-pane]')) {
     const on = b.dataset.pane === pane;
@@ -198,7 +198,7 @@ function showSharePane(pane) {
 }
 /* #250, #257: Hand off is fetched when it is used, not at boot -- a cold load
    makes the same requests it did before the feature. The first tap on Hand off
-   loads its module, which wires the rest of its controls. Print card shows the
+   loads its module, which wires the rest of its controls. Card shows the
    preview again and refits it: the clone's fit needs a non-zero box. */
 let handoffLoaded = false, handoffTries = 0;
 on('#shareSeg', 'onclick', async e => {

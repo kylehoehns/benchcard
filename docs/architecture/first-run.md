@@ -113,9 +113,11 @@ and the current team's settings copied over), makes it active, and fires
 dialog and lands on Game 1 of the new team with the plan built and no tour.
 
 **The Team screen is the roster the way a coach reads it on paper (#31).** The
-team's own name is a large in-page `h1` with a muted *N players* under it (the
-header leaves its own title off this screen for that reason — *One header, two
-states* below), then one grouped list in which each player is a single button:
+screen's large in-page `h1` reads *Roster*, with a muted sub line under it that
+gives the team's name and the count, *Tigers · 11 players* (just the name with
+nobody on it, just the count when the team has no name). The header leaves its
+own title off this screen, as *One header, two states* below explains. Then one
+grouped list in which each player is a single button:
 their number in a badge tinted with their color, their name, the word for their
 level, and a chevron. Nothing in a row can be edited, so the list stays
 readable at arm's length and a mis-tap cannot change a jersey number. Under it

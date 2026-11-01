@@ -37,6 +37,12 @@ offered "for example", this spec picks one and says why:
 - **Item 1, the share sheet's three names.** The ticket's own example: the tab
   becomes **Card** (was "Print card"), the button stays **Print**, the row
   becomes **Games to print** (was "Print").
+- **Item 1, Today's button has no `data-needs-card`.** `card.js`'s sweep gates
+  every such control on the *active* game's blocked state, not on the row's
+  own, so a blocked active game would disable Ravens' button for no reason. The
+  button is shown only for a Planned row, whose card always exists, and its
+  handler shows the opened game (`setView('games')`) before clicking `#print`,
+  so `#print`'s own gate reads that game.
 - **Item 2.** The welcome screen's link becomes **About Benchcard**; Settings'
   row, which opens the in-app guide, keeps "How it works".
 - **Item 3.** The label becomes **View game** on a finished game, on both the
@@ -103,9 +109,10 @@ as it is.
 
 - Reuse `printCard` for every new print control. Do not add a second print
   path or call `window.print()` anywhere new.
-- Every new print control carries `data-needs-card` so `card.js`'s sweep gates
-  it, and `test/print-gate.test.js` discovers it from its handler (a named
-  top-level function, not an inline arrow, if that test needs it).
+- The Card view's `#cardPrint` carries `data-needs-card` so `card.js`'s sweep
+  gates it, and `test/print-gate.test.js` discovers it from its handler (a
+  named top-level function, not an inline arrow, if that test needs it).
+  Today's button does not (see Decisions).
 - A button cannot sit inside Today's `.today-game` button. Keep `.today-game`
   as the class of the game's own button (dozens of smoke hooks select it) and
   put the Print card button beside it as a sibling.

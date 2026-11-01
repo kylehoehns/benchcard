@@ -1467,6 +1467,7 @@ h3.gm-next-hd { margin-top: 0; }
 
 .gm-cta { display: flex; flex-wrap: wrap; gap: .55rem; justify-content: center; margin-top: .85rem; }
 .gm-cta.recover-cta { margin-top: 1.4rem; }
+#cardPrintRow .btn { min-height: 48px; }
 /* The card sheet's own Print/Share pair should span the sheet's full width
    as two equal buttons (the prototype), not sit centered at content width.
    .gm-cta is also the boot-recovery panel's row (index.html) -- unrelated

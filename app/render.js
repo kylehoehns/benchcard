@@ -22,7 +22,7 @@ import { renderTimeline, applyGameView } from './timeline.js';
 import { renderBalance } from './balance.js';
 import { renderConstraints, renderSeasonAdjust } from './rules.js';
 import { renderStrategy, refreshBudgetActuals } from './strategy.js';
-import { renderRoster, renderTeamTitle, renderLevels, resetEditMode } from './roster-view.js';
+import { renderRoster, renderTeamSub, renderLevels, resetEditMode } from './roster-view.js';
 import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
 import { renderSetup, renderSentence, refreshSheetStatus } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './teams-view.js';
@@ -46,8 +46,8 @@ import { VIEWS } from './storage.js';
  * ------------------------------------------------------------------ */
 const SECTIONS = {
   roster:      () => renderRoster(),
-  // just the Team page's large title, so a rename can repaint it mid-keystroke
-  teamTitle:   () => renderTeamTitle(),
+  // just the Team page's sub line, so a rename can repaint it mid-keystroke
+  teamSub:     () => renderTeamSub(),
   teams:       () => renderTeams(),
   tabs:        () => renderTabs(),
   // #34 decision 6/7: not in AFTER_EDIT or PLAN_ONLY -- nothing a coach can

@@ -24,7 +24,7 @@ import { resumeAt, finishedGame } from './live.js';
 function labelBench(blocked) {
   const r = blocked ? null : resumeAt(plans[state.activeGame] ?? null, game()?.live);
   // #432: a finished game is looked back on, not started.
-  const finished = !blocked && finishedGame(game()?.live);
+  const finished = finishedGame(game()?.live);
   for (const sel of ['#abBench', '#gmOpen']) {
     const btn = $(sel);
     if (!btn) continue;

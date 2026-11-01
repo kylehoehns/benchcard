@@ -506,20 +506,21 @@ function renderPass(g, i, d) {
   b.onclick = () => { openGame(d, i); setView('games'); };
 
   /* #432: a planned game gets its own Print card button, beside the row (a
-     button cannot sit inside a button). Planned is `passStatus`'s word, read
-     here and not re-derived. It opens the game as the row does and then
-     clicks `#print` -- the way the `p` key does (shortcuts.js) -- so the one
-     `printCard` runs, behind the same `data-needs-card` gate. */
-  if (status.word !== 'Planned') return b;
+     button cannot sit inside a button). Planned is `passStatus`'s class
+     (`ok`), read here and not re-derived. It opens the game and shows it, as
+     the row does, so `#print`'s gate reads this game, then clicks `#print` --
+     the way the `p` key does (shortcuts.js) -- so the one `printCard` runs.
+     It carries no `data-needs-card`: card.js's sweep gates on the *active*
+     game, and a Planned row's own card always exists. */
+  if (status.cls !== 'ok') return b;
   const row = el('div', 'today-pass');
   const pr = el('button', 'btn press noprint today-print');
   pr.type = 'button';
-  pr.dataset.needsCard = '';
   pr.setAttribute('aria-label', `Print card for ${full}`);
   const ic = el('span', 'i');
   ic.append(icon('printer', { size: '1em' }));
   pr.append(ic, ' Print card');
-  pr.onclick = () => { openGame(d, i); $('#print').click(); };
+  pr.onclick = () => { openGame(d, i); setView('games'); $('#print').click(); };
   row.append(b, pr);
   return row;
 }

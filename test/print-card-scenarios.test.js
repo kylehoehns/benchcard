@@ -45,6 +45,57 @@ describe('a coach prints a card straight from the screen', { skip }, () => {
     assert.ok(prints[0].length > 0 && prints[0].every(t => t.includes('RAVENS')), JSON.stringify(prints));
   });
 
+  async function blockHawks() {
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap((await coach.controls()).find(n => /^Rules, /.test(n)));
+    for (const kind of ['Together', 'Apart']) {
+      await coach.tap('Add a rule');
+      await coach.tap(kind);
+      await coach.tap('Marcus Williams');
+      await coach.tap('Devon Ellis');
+      await coach.tap('Add rule');
+    }
+    await coach.tap('Close');
+    assert.notEqual(await coach.blockedPlan(), '', 'Hawks should need a fix');
+    await coach.tap('Back to Smoke Test');
+  }
+
+  test('Today prints the Ravens card even while the open game needs a fix', async () => {
+    await coach.onGameDay();
+    await blockHawks();
+    assert.equal(await coach.isDisabled('Print card for Ravens'), false, 'Ravens Print card is disabled');
+
+    await coach.tap('Print card for Ravens');
+
+    const prints = await coach.printed();
+    assert.equal(prints.length, 1);
+    assert.ok(prints[0].length > 0 && prints[0].every(t => t.includes('RAVENS')), JSON.stringify(prints));
+  });
+
+  test('an underway game has no Print card on Today and its main button says Resume', async () => {
+    await coach.onGameDay();
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Start game');
+    await coach.tap('Next stint');
+    await coach.press('Escape');
+    await coach.tap('Back to Smoke Test');
+
+    const rows = await coach.controls();
+    assert.ok(rows.includes('Print card for Ravens'), JSON.stringify(rows));
+    assert.ok(!rows.some(n => n.startsWith('Print card for Hawks')), JSON.stringify(rows));
+    await coach.tap(rows.find(n => /^Hawks, 9:00 AM/.test(n)));
+    const controls = await coach.controls();
+    assert.ok(controls.some(n => n.startsWith('Resume')), JSON.stringify(controls));
+  });
+
+  test('the Card view Print card button is at least 48px tall', async () => {
+    await coach.onGameDay();
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Card');
+    const { height } = await coach.sizeOf('Print card');
+    assert.ok(height >= 48, `Print card is ${height}px tall`);
+  });
+
   test('the share sheet names its tab Card, its button Print and its first row Games to print', async () => {
     await coach.onGameDay();
     await coach.tap('Hawks, 9:00 AM, planned');
@@ -93,6 +144,23 @@ describe('a coach prints a card straight from the screen', { skip }, () => {
     const controls = await coach.controls();
     assert.ok(controls.includes('View game'), JSON.stringify(controls));
     assert.ok(!controls.some(n => n === 'Start game'), JSON.stringify(controls));
+  });
+
+  test('a finished game whose plan later needs a fix still says View game', async () => {
+    await coach.onGameDay();
+    await finishHawks();
+    await coach.tap('Rules, no rules');
+    for (const kind of ['Together', 'Apart']) {
+      await coach.tap('Add a rule');
+      await coach.tap(kind);
+      await coach.tap('Marcus Williams');
+      await coach.tap('Devon Ellis');
+      await coach.tap('Add rule');
+    }
+    await coach.tap('Close');
+    assert.notEqual(await coach.blockedPlan(), '', 'Hawks should need a fix');
+    const controls = await coach.controls();
+    assert.ok(controls.includes('View game'), JSON.stringify(controls));
   });
 
   test('on a wide screen a finished game says View game too', async () => {
