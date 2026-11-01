@@ -474,7 +474,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 .qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
 .qa p { margin: 0 0 1.05rem; color: var(--ink-2); }
 
-/* The roster-size links. Chips rather than a list: six sizes is a picker, and
+/* The roster-size links. Chips rather than a list: a row of sizes is a picker, and
    48px keeps it tappable. Same rule set as the one on those pages. */
 .sizes { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; }
 .sizes a {
@@ -484,7 +484,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 }
 
 /* The section index, under the hero card. Deliberately NOT `.sizes`: those are
-   six two-word chips and these are nine full headings, and a wrapping chip row
+   two-word chips and these are nine full headings, and a wrapping chip row
    cannot shrink an over-wide chip -- at 320px with a 32px root one of these
    would hang a long way off the right edge, on the page that already pans 7px
    there. Rows instead. A row cannot overflow, it wraps, and it is a 48px
@@ -1231,7 +1231,7 @@ html:root:not([data-theme="dark"])[data-tint="hardwood"] { --accent-text: #B0430
   </section>
 
   <!-- The roster-size pages. Deliberately NOT a `.reveal` section: this is the
-       one internal link into those six documents, and the sitemap alone is a
+       one internal link into those chart documents, and the sitemap alone is a
        much weaker signal than a link from the page Google already has. It is
        also the only nav a coach who landed on one of them has back out to the
        others. No prose here on purpose — the heading is a label, and the

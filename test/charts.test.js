@@ -16,19 +16,17 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { sampleRoster } from '../app/roster.js';
 import { lacks } from './prose.js';
-import { SIZES, file, slug, pages, planFor, cardMetrics, measuredNames, article } from '../scripts/charts.mjs';
-/* The halves page and the list of every generated page are read off the
-   namespace, so a missing export is an assertion about the list rather than a
-   SyntaxError at import. */
-import * as gen from '../scripts/charts.mjs';
+import {
+  SIZES, CHARTS, HALVES_FILE, HALVES_SLUG, file, slug, pages, planFor, planForHalves,
+  cardMetrics, measuredNames, article,
+} from '../scripts/charts.mjs';
 
 const url = p => new URL('../app/' + p, import.meta.url);
 const read = p => readFileSync(url(p), 'utf8');
 const html = new Map(SIZES.map(n => [n, read(file(n))]));
-/* Every generated chart page, from the generator's own list: the seven size
-   pages and the two-halves page (#425). Never a second hand-kept list here. */
-const CHARTS = gen.CHARTS ?? [];
-const HALVES_FILE = 'basketball-rotation-chart-two-halves.html';
+/* CHARTS is the generator's own list of every generated page: the seven size
+   pages and the two-halves page (#425). Per-page invariants loop over it, so a
+   page added there is held to them without anyone editing a test. */
 const sitemap = read('sitemap.xml');
 const sw = read('sw.js');
 
@@ -145,7 +143,7 @@ test('no absolute benchcard.app URL this site publishes points at a redirect', (
      the page. `sw.js` now resolves a navigation to the file backing it, so
      the href is free to be the address the canonical names, and
      `redirect-check.mjs` arm 5 is what holds that. */
-  const files = ['index.html', 'about.html', 'sitemap.xml', ...SIZES.map(file)];
+  const files = ['index.html', 'about.html', 'sitemap.xml', ...CHARTS.map(c => c.file)];
   for (const name of files) {
     for (const m of read(name).matchAll(/https:\/\/benchcard\.app\/(\S*?)(?=["'<\s])/g)) {
       assert.ok(!m[1].endsWith('.html'),
@@ -219,10 +217,10 @@ test('the landing pages are not precached, and do not reference favicon.ico', ()
      If that is ever revisited, revisit it here too — and re-run
      `npm run redirect-check`, because every precached path has to survive
      Cloudflare's .html redirect. */
-  for (const n of SIZES) {
-    assert.ok(!sw.includes(slug(n)), `${file(n)} is precached; it was deliberately left out`);
-    assert.ok(!html.get(n).includes('favicon.ico'),
-      `${file(n)} references favicon.ico, which is deliberately unreferenced`);
+  for (const c of CHARTS) {
+    assert.ok(!sw.includes(c.slug), `${c.file} is precached; it was deliberately left out`);
+    assert.ok(!read(c.file).includes('favicon.ico'),
+      `${c.file} references favicon.ico, which is deliberately unreferenced`);
   }
 });
 
@@ -230,58 +228,58 @@ test('nothing public shows a player level, real or sample', () => {
   /* test/leak.test.js bans levels from the card, the bench, the share image,
      analytics and the CSV. A public landing page is the most public artefact
      there is, so the same ban applies to the sample roster. */
-  for (const n of SIZES) {
-    const page = html.get(n);
-    assert.ok(!/\btier\b/i.test(page), `${file(n)} mentions a tier`);
-    assert.ok(!/\blevel\b/i.test(page), `${file(n)} mentions a player level`);
+  for (const c of CHARTS) {
+    const page = read(c.file);
+    assert.ok(!/\btier\b/i.test(page), `${c.file} mentions a tier`);
+    assert.ok(!/\blevel\b/i.test(page), `${c.file} mentions a player level`);
   }
 });
 
 test('the pages read correctly with JavaScript off', () => {
-  for (const n of SIZES) {
-    const page = html.get(n);
+  for (const c of CHARTS) {
+    const page = read(c.file);
     /* Exactly one inline script — the pre-paint theme resolution — and no
        external one. There is nothing here to reveal, so there is nothing that
        can stay hidden. */
     const scripts = [...page.matchAll(/<script[^>]*>/g)]
       .filter(m => !/type="application\/ld\+json"/.test(m[0])); // data, not code (#279)
-    assert.equal(scripts.length, 1, `${file(n)} has ${scripts.length} scripts; it should only have the theme one`);
+    assert.equal(scripts.length, 1, `${c.file} has ${scripts.length} scripts; it should only have the theme one`);
     /* ...and the data blocks skipped above are counted, so extras cannot pile up unchecked. */
     const data = page.match(/<script type="application\/ld\+json">/g) || [];
-    assert.equal(data.length, 1, `${file(n)} has ${data.length} ld+json blocks; it should have exactly one`);
-    assert.ok(!/<script[^>]+src=/.test(page), `${file(n)} loads an external script`);
+    assert.equal(data.length, 1, `${c.file} has ${data.length} ld+json blocks; it should have exactly one`);
+    assert.ok(!/<script[^>]+src=/.test(page), `${c.file} loads an external script`);
     const style = page.slice(page.indexOf('<style>'), page.indexOf('</style>'));
     assert.ok(!/opacity:\s*0\s*[;}]|visibility:\s*hidden/.test(style),
-      `${file(n)} hides content in CSS with no script to unhide it`);
+      `${c.file} hides content in CSS with no script to unhide it`);
     // and the card is in the markup, not built at runtime
-    assert.ok(page.includes('<div class="card">'), `${file(n)} has no card in the HTML itself`);
+    assert.ok(page.includes('<div class="card">'), `${c.file} has no card in the HTML itself`);
   }
 });
 
 test('head hygiene matches the two pages that came before', () => {
-  for (const n of SIZES) {
-    const page = html.get(n);
+  for (const c of CHARTS) {
+    const page = read(c.file);
     for (const needle of [
       '<meta name="description" content="',
       // a draft page is noindex; see the sitemap test above for why
-      html.get(n).includes('data-draft="1"')
+      page.includes('data-draft="1"')
         ? '<meta name="robots" content="noindex, nofollow">'
         : '<meta name="robots" content="index, follow',
       '<meta property="og:site_name" content="Benchcard">',
       '<meta property="og:image" content="https://benchcard.app/og.png">',
       '<meta name="twitter:card" content="summary_large_image">',
       '<link rel="stylesheet" href="./tokens.css">',
-    ]) assert.ok(page.includes(needle), `${file(n)} is missing ${needle}`);
+    ]) assert.ok(page.includes(needle), `${c.file} is missing ${needle}`);
     /* Open Graph URLs must be absolute — a relative one resolves against the
        scraper, not the site. */
     for (const m of page.matchAll(/<meta property="og:(url|image)" content="([^"]+)"/g)) {
-      assert.match(m[2], /^https:\/\/benchcard\.app\//, `${file(n)} og:${m[1]} is not absolute`);
+      assert.match(m[2], /^https:\/\/benchcard\.app\//, `${c.file} og:${m[1]} is not absolute`);
     }
   }
 });
 
 test('every page the site publishes points at the same share image', () => {
-  /* All eight pages point at the same og.png, and get there with `og:image`,
+  /* Every page listed below points at the same og.png, and get there with `og:image`,
      its MIME type and `twitter:image` — the same URL/type sub-properties
      regardless of what size the image is or what it depicts. The width,
      height and alt text are the part that actually describes the image, and
@@ -289,7 +287,7 @@ test('every page the site publishes points at the same share image', () => {
      og.png's own bytes and checks every page's alt text against every other
      page's, rather than a literal copy of both here that would drift the
      moment either changed and only one file got the memo. */
-  for (const name of ['index.html', 'about.html', 'advanced.html', ...SIZES.map(file)]) {
+  for (const name of ['index.html', 'about.html', 'advanced.html', ...CHARTS.map(c => c.file)]) {
     const page = read(name);
     for (const needle of [
       '<meta property="og:image" content="https://benchcard.app/og.png">',
@@ -364,7 +362,7 @@ test('SIZES is 6 to 12, and the 6-player page prints 24 to 28 minutes each over 
 
 test('the generator lists every chart page once: the seven sizes, then the halves page', () => {
   assert.deepEqual(CHARTS.map(c => c.file), [...SIZES.map(file), HALVES_FILE]);
-  assert.deepEqual(CHARTS.map(c => c.slug), [...SIZES.map(slug), 'basketball-rotation-chart-two-halves']);
+  assert.deepEqual(CHARTS.map(c => c.slug), [...SIZES.map(slug), HALVES_SLUG]);
   assert.deepEqual([...pages().keys()], CHARTS.map(c => c.file), 'pages() and the list disagree');
   assert.ok(!SIZES.map(file).includes(HALVES_FILE), 'the halves page is not a roster size');
 });
@@ -405,8 +403,7 @@ test('the halves page copy is exactly the spec\'s', () => {
 });
 
 test('the halves card is a real generatePlan run and fits the card', () => {
-  const plan = gen.planForHalves?.();
-  assert.ok(plan, 'the generator exports no halves plan');
+  const plan = planForHalves();
   assert.equal(plan.stints.length, 10);
   assert.deepEqual(plan.players.map(p => p.name), sampleRoster(10).map(p => p.name));
   const contentPx = (3.45 - 2 * 0.11) * 96;
@@ -424,7 +421,7 @@ test('size pages and the halves page link to each other', () => {
       SIZES.filter(o => o !== n).map(o => [`./${slug(o)}`, `${o} players`]), `${file(n)} siblings`);
     assert.ok(page.includes('<h2>Playing two halves?</h2>'), `${file(n)} has no halves heading`);
     assert.deepEqual(chips(nav(page, 'Other game formats')),
-      [['./basketball-rotation-chart-two-halves', 'Two 20-minute halves']], `${file(n)} halves chip`);
+      [[`./${HALVES_SLUG}`, 'Two 20-minute halves']], `${file(n)} halves chip`);
   }
   const page = read(HALVES_FILE);
   assert.ok(page.includes('<h2>A chart for your roster size</h2>'));
@@ -440,7 +437,7 @@ test('about and advanced link the 6 chart first, then the halves page in its own
     assert.deepEqual([...sizes[1].matchAll(/href="([^"]*)"/g)].map(m => m[1]), SIZES.map(n => `./${slug(n)}`));
     assert.ok(sizes[1].includes('>6 players<'));
     assert.deepEqual([...sizes[2].matchAll(/<a href="([^"]*)">([^<]*)</g)].map(m => [m[1], m[2]]),
-      [['./basketball-rotation-chart-two-halves', 'Two halves']]);
+      [[`./${HALVES_SLUG}`, 'Two halves']]);
   }
 });
 

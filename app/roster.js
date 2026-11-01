@@ -218,7 +218,7 @@ export function distinctNames(players) {
  */
 export const SAMPLE_TEAM_NAME = 'Sample team';
 
-/* Ten, not twelve: the middle of the six roster-size landing pages, and a
+/* Ten, not twelve: one of the roster sizes the landing pages cover, and a
    squad big enough that the rotation has something to solve. */
 const SAMPLE_SIZE = 10;
 

@@ -33,7 +33,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
-import { SIZES, slug } from '../scripts/charts.mjs';
+import { SIZES, CHARTS, slug } from '../scripts/charts.mjs';
 
 const APP = new URL('../app/', import.meta.url);
 const read = p => readFileSync(new URL(p, APP), 'utf8');
@@ -204,8 +204,8 @@ test('no internal href points at a URL that redirects', () => {
  * ------------------------------------------------------------------ */
 test("404.html links the chart pages, and every root-relative link names a shipped page", () => {
   const hrefs = [...strip(read('404.html')).matchAll(/href="(\/[^"]*)"/g)].map(m => m[1]);
-  const charts = hrefs.filter(h => /^\/\d+-player-basketball-rotation-chart$/.test(h));
-  assert.deepEqual(charts, SIZES.map(n => `/${n}-player-basketball-rotation-chart`));
+  const slugs = CHARTS.map(c => `/${c.slug}`);
+  assert.deepEqual(hrefs.filter(h => slugs.includes(h)), slugs, '404.html links every chart page, in order');
   const pages = hrefs.filter(h => !/\.[a-z0-9]+$/i.test(h));   // not site.webmanifest, tokens.css
   assert.ok(pages.length >= 7, `only ${pages.length} page links found in 404.html`);
   for (const h of pages) {

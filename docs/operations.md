@@ -175,7 +175,7 @@ lines, since every request now runs the Worker.
 
 **An unknown path gets a real 404.** A path with no file answers `404` with the
 bytes of `app/404.html`: a one-line "This page isn't here." with a link home and
-links to the six rotation charts. The page is `noindex` and not in the sitemap.
+links to the rotation chart pages. The page is `noindex` and not in the sitemap.
 Cloudflare does this through `not_found_handling: "404-page"` in
 `wrangler.jsonc`. `scripts/serve.mjs` does the same locally, so `npm run serve`
 shows what a coach would see.
@@ -208,7 +208,7 @@ page load: an error loop must not become a beacon loop.
 
 **A sample team counts nothing until the coach edits it.**
 `first_run_complete{roster}` is the only roster-size signal the app has, and
-the six roster-size landing pages are built on that distribution — so if
+the seven roster-size landing pages are built on that distribution — so if
 loading a sample fired it, the data steering the roadmap would be measuring the
 app's own suggestion, and those pages would feed their own sizes back into the
 numbers that justify them. Loading a sample therefore fires nothing at all
@@ -290,25 +290,28 @@ Two things address that, and they are different problems:
   links in `index.html`'s own markup carry it now: the welcome screen's **How it
   works** (`<a class="wel-about" href="./about">`, which
   `test/link-graph.test.js` pins by its exact attribute) and the **About** row
-  in Settings. Since #423 the six chart pages also have direct links from the
+  in Settings. Since #423 the chart pages also have direct links from the
   welcome screen and from Advanced (see the roster-size pages below), so that
   anchor is no longer the only way in to them.
-- **The roster-size pages** — `7-player-basketball-rotation-chart.html` through
+- **The roster-size pages** — `6-player-basketball-rotation-chart.html` through
   `12-…` — are the long tail. Google's autocomplete suggests every one of those
   variants across unrelated seeds, no competitor has a page for any of them, and
   a coach with nine kids searches for *nine kids*. They are **generated**, by
   `scripts/charts.mjs` (`npm run charts`), and that matters in three ways:
-  one template renders all six, so six near-identical pages cannot drift apart;
+  one template renders all eight, so near-identical pages cannot drift apart;
   the card on each is a real `generatePlan` run at build time rather than a
   drawing or a screenshot, so it cannot contradict the engine; and
-  `test/charts.test.js` re-renders all six and compares, so an engine change
+  `test/charts.test.js` re-renders all eight and compares, so an engine change
   that moves the plans fails the suite until `npm run charts` is re-run.
-  The prose slots (`lede`, `caption`) are placeholders carrying `data-draft="1"`
-  until the author writes them — `grep -l 'data-draft="1"' app/*.html`. The `<title>`
-  and description are assembled from the generated plan's own numbers instead.
+  The prose slots (`lede`, `caption`) are written in the generator's copy table.
+  A slot still unwritten is built as `[PLACEHOLDER …]` with `data-draft="1"`, and
+  `grep -l 'data-draft="1"' app/*.html` lists those; no chart page carries one
+  today. The `<title>` and description are assembled from the generated plan's
+  own numbers instead.
   Each chart page also carries a JSON-LD `WebPage` block naming the page and
-  linking it to the site, plus a `BreadcrumbList` showing Benchcard › About › N-player chart,
-  emitted by `scripts/charts.mjs` so `--check` keeps all six in sync.
+  linking it to the site, plus a `BreadcrumbList` showing Benchcard › About › N-player chart
+  (Benchcard › About › Two-halves chart on the halves page), emitted by
+  `scripts/charts.mjs` so `--check` keeps all eight in sync.
   The players on each card are `sampleRoster(n)` from `app/roster.js`, the first
   n of the cast that **Try it with n sample players** loads (`./?try=n`), so a
   visitor who taps it meets the kids the chart printed. The cast is not copied
@@ -316,6 +319,12 @@ Two things address that, and they are different problems:
   players, and `WIDTH_AT_100` in `charts.mjs` holds a measured width for each
   one, so a change to the cast means re-measuring; `test/charts.test.js` fails
   when a printed name has no entry.
+  The two-halves page (`basketball-rotation-chart-two-halves.html`, #425) is a
+  game format, not a roster size, so it sits outside `SIZES`. It is the first 10
+  of the same cast, played as two 20-minute halves with a sub every 4 minutes
+  (seed 11). Its card header reads `2 HALVES · 20 MIN` and its periods are the
+  engine's own `H1` and `H2`. The size pages link to it from a "Playing two
+  halves?" section, and it links back to the seven sizes.
   Canonical, `sitemap.xml` and every internal `href` use the **extensionless**
   URL, which is what Cloudflare 200s. One spelling per page: they disagreed
   until September 2026, and offline the worker served the app shell in place of
@@ -324,9 +333,10 @@ Two things address that, and they are different problems:
   offline value is near zero for a page reached from a search result, and the
   precache list is the payload budget's problem. Until #423 the one internal
   link into them was on `about.html`, which kept them out of the app's own
-  cold-load markup. #423 added the six-link nav to `index.html`, so that markup
-  carries them now, and `advanced.html` links all six from a section before its
-  footer.
+  cold-load markup. The welcome screen's chart row carries all seven size links
+  (#423 added six, #425 added the 6-player one), so that markup carries them, and
+  `advanced.html` links the seven sizes from a section before its footer, with the
+  two-halves page in a second nav beside them.
 - **`<noscript>`** is *not* an SEO device; Googlebot runs the JS. It is for the
   human whose browser does not, and a `<noscript><style>` in the head hides
   `.app` so they get the explanation instead of a dead gray page.

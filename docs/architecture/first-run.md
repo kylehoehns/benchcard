@@ -50,7 +50,7 @@ typed it, and from the first edit the discard ask protects it. The cast lives in
 `roster.js` as lines of text that go back through `parseRoster`, so the sample is parsed by the same code a
 paste is, and it
 opens with `#frRoster`'s own placeholder names so there is one fictional cast
-in the app rather than two. The six roster-size landing pages link in with
+in the app rather than two. The seven roster-size landing pages link in with
 `?try=N`, and that path is the **one** that still builds the team and shows the
 card — somebody who clicked "see this as a card" asked for the card, not for a
 filled-in box and three steps, so it also still flashes how to remove what it
@@ -72,7 +72,7 @@ Under the headline, one muted line says what the app is in the words people
 search for (`.wel-sub` in `index.html`, #423). `test/seo.test.js` pins that it
 sits directly under the `h1`, and the coach-seam scenario in
 `test/first-run-scenarios.test.js` checks it on a fresh device. The welcome
-tail (`.wel-tail`) also carries a row of six digit links, 7 to 12, to the
+tail (`.wel-tail`) also carries a row of seven digit links, 6 to 12, to the
 chart pages, in a `nav` labelled "Rotation charts by team size".
 `test/link-graph.test.js` checks their hrefs against `SIZES` in `charts.mjs`.
 

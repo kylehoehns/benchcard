@@ -466,7 +466,7 @@ its alternative is an assertion, so the rejected options are kept here too.
 - **A dead URL gets a real 404, not the app shell.** Rewriting every unknown
   path to `index.html` would make a mistyped link look like a working page with
   nothing to say it went wrong. The 404 page says so, returns status 404, and
-  links home and to the six rotation charts. Offline the shell still answers,
+  links home and to the rotation chart pages. Offline the shell still answers,
   because the app runs from `localStorage` and a coach with no signal is better
   served by it than by an error.
 - **www is redirected by the Worker, configured in the repo.** The alternative

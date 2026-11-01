@@ -39,7 +39,7 @@ export function initToast(renderAllFn, setViewFn) {
   // #33 removed the footer these used to hang off (it carried a link to
   // /about too, the one page on this site a crawler can read without running
   // the app; the welcome screen's .wel-about and Settings' own About row are
-  // what test/link-graph.test.js hangs the six chart pages off now).
+  // what test/link-graph.test.js hangs the chart pages off now).
   //
   // `[data-tip-link]`, not an id: #22 added a second tip row, in Settings,
   // before #33 removed the footer's own `#tipLink` -- one selector still
