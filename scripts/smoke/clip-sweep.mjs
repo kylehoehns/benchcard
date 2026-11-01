@@ -84,10 +84,8 @@ export const SCROLL_TO_BOTTOM = `(() => {
  * trimmed to exactly what `--only clipsweep` exercises. */
 export const CLIP_SWEEP_ALLOW = [
   { selector: '.bar-title', reason: 'the collapsing top-bar title stays one line as it fades in' },
-  { selector: '#teamBtnLabel', reason: "the team-switcher button's own label truncates, not the bar" },
-  { selector: '.today-entry-sub', reason: 'the "Add a game" entry\'s subtitle line' },
   { selector: '.dayhead .game-h1, .dayhead .season-h1, .dayhead .team-h1', reason: 'the large page heading stays one line' },
-  { selector: '.tl-lab .nm', reason: "a timeline row's own player name" },
+  { selector: '.tl-lab .nm', reason: "a timeline name wraps (#422), but one word wider than the name column still breaks inside the word; the one-row layout keeps its one-line ellipsis" },
   { selector: '.gm-p.fresh .nm', reason: 'a bench row just tagged "just on" keeps its name on one line' },
   { selector: 'dialog.flow .plr .plr-first, dialog.flow .plr .plr-sur', reason: "a roster tile's first/last name each ellipsize on their own line" },
   { selector: '.sn-list .sn-nm', reason: "a season ledger row's own player name" },

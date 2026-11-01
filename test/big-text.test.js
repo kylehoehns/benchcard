@@ -182,7 +182,7 @@ test('the season ledger rows collapse to two lines, and only at big text', () =>
      `.rlist .rrow` are already pinned against a few tests up -- a bare
      `.sn-row` override here measured `.sn-name` at 310px in a 275px row
      before this was caught. */
-  assert.match(big, /\.sn-list \.sn-row\s*{[^}]*grid-template-columns:\s*1fr auto/,
+  assert.match(big, /\.sn-list \.sn-row\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*3rem/,
     'the season ledger row no longer collapses to two columns at big text, or lost the extra specificity that makes it win');
   assert.match(big, /\.sn-list \.sn-name\s*{[^}]*grid-column:\s*1\s*\/\s*-1/,
     'the season ledger name cell no longer spans the full row at big text, or lost the extra specificity that makes it win');
@@ -190,7 +190,7 @@ test('the season ledger rows collapse to two lines, and only at big text', () =>
   /* And nowhere else: at normal text the row is one tidy line with three
      columns, and the minutes column only reads as a column while it does. */
   const others = css.slice(0, at) + css.slice(at + big.length);
-  assert.ok(!/\.sn-list \.sn-row\s*{[^}]*grid-template-columns:\s*1fr auto/.test(others),
+  assert.ok(!/\.sn-list \.sn-row\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*3rem/.test(others),
     'the ledger row collapses to two columns outside the big-text block, which breaks the minutes column at normal text');
 });
 
@@ -251,27 +251,36 @@ test('the timeline gives its names back at big text, without losing the word', (
   const at = bare.indexOf(BIG);
   const big = bare.slice(at, bare.indexOf('\n}', at));
 
-  const m = big.match(/\.tl-tot\s+\.ex\s*{[^}]*}/);
-  assert.ok(m, 'the timeline no longer hands its label column back at big text');
-  assert.match(m[0], /display:\s*block/,
-    'MOST / FEWEST is beside the number again, so the fixed gutter takes the name column');
-  assert.match(m[0], /width:\s*auto/,
-    'the gutter is still a fixed width, which is the 102px that left the names 0px wide');
+  /* #422: the stacked row owns the word now -- `.tl-tot` dissolves and `.ex`
+     is its own line under the name -- so the 19em block no longer carries a
+     `.tl-tot .ex` rule, and the base one is a grid area, not a fixed gutter. */
+  assert.ok(!/\.tl-tot\s+\.ex\s*{/.test(big),
+    'the 19em block restyles the word again, which is what moved it under the number and shrank the names');
+  assert.match(bare, /\.tl-tot\s*{[^}]*display:\s*contents/,
+    'the total is a box in the stacked row again, so the word cannot take its own line under the name');
+  assert.match(bare, /\.tl-tot\s+\.ex\s*{[^}]*grid-area:\s*ex/,
+    'the word has no line of its own under the name');
 
   /* The word is not deleted, here or anywhere: it is what says which end of
-     the squad a row is at to a coach who cannot use the color. A rule that
-     hides it would pass every width assertion and lose the meaning. */
+     the squad a row is at to a coach who cannot use the color. Only an EMPTY
+     word takes no space (`:empty`); a rule that hides the word itself would
+     pass every width assertion and lose the meaning. */
   assert.ok(!/\.tl-tot\s+\.ex\s*{[^}]*(display:\s*none|visibility:\s*hidden)/.test(bare),
     'MOST / FEWEST is hidden rather than moved, so the color is carrying the meaning alone');
+  assert.match(bare, /\.tl-tot\s+\.ex:empty\s*{[^}]*display:\s*none/,
+    'an empty word holds a blank line under every name in the stacked row');
 
-  /* And only at big text. At normal size the fixed gutter is the design -- it
-     is what keeps the column of totals flush when some rows carry a word and
-     others do not -- so the base rule must still declare it. */
-  const others = bare.slice(0, at) + bare.slice(at + big.length);
-  assert.match(others, /\.tl-tot\s+\.ex\s*{[^}]*width:\s*3\.2rem/,
-    'the base gutter is gone, so the totals column no longer holds a flush edge at normal text');
-  assert.match(others, /\.tl\.even\s+\.tl-tot\s+\.ex\s*{[^}]*width:\s*0/,
+  /* The one-row layout (the 20em container) keeps the fixed gutter: it is what
+     keeps the column of totals flush when some rows carry a word and others
+     do not. */
+  const oneAt = bare.indexOf('@container (min-width: 20em)');
+  const one = bare.slice(oneAt, bare.indexOf('\n}', oneAt));
+  assert.match(one, /\.tl-tot\s+\.ex[^{]*{[^}]*width:\s*3\.2rem/,
+    'the one-row gutter is gone, so the totals column no longer holds a flush edge');
+  assert.match(one, /\.tl\.even\s+(\.tl-row\s+)?\.tl-tot\s+\.ex\s*{[^}]*width:\s*0/,
     'an even plan no longer collapses the gutter, so it holds a blank second line under every number');
+  assert.match(one, /\.tl-tot\s*{[^}]*white-space:\s*nowrap/,
+    'the one-row total may wrap, which slides the number right on the rows that wrap');
 });
 
 test('the two short-viewport-height blocks still move a large title down to the sentence step', () => {
