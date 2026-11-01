@@ -293,20 +293,6 @@ export function renderTeams() {
   }
 }
 
-/* ---------------- the settings page's team heading ----------------
-   The one piece of the settings surface that is not static markup, and it
-   lives here rather than in a settings module of its own for two reasons.
-   The small one: a module costs a request, and the boot graph is at 40 of a
-   recorded 41 -- a whole file for one textContent write is the wrong place to
-   spend the last one. The real one: this IS team identity, which is what this
-   file already owns everywhere else in the app. The chip strip above the plan,
-   the name on a removal confirm and this heading all answer "which team am I
-   looking at", and they have to answer it the same way or the settings page
-   becomes the one place a league rule can land on the wrong roster.
-
-   So it uses `teamLabel`, the one team-identity fallback -- an unnamed team
-   reads `Team 2` on Today's header and in its menu, and it must read
-   `Team 2` here too. */
 /* The league floor, written back from the saved settings -- but never while the
    coach is in the box (unless a handler says it just settled it): `renderAll`
    runs on every save, and rewriting the value under a caret is how a half-typed
@@ -323,6 +309,20 @@ function paintLeagueMin(settled = false) {
   if (mu) mu.value = unit;
 }
 
+/* ---------------- the settings page's team heading ----------------
+   The one piece of the settings surface that is not static markup, and it
+   lives here rather than in a settings module of its own for two reasons.
+   The small one: a module costs a request, and the boot graph is at 40 of a
+   recorded 41 -- a whole file for one textContent write is the wrong place to
+   spend the last one. The real one: this IS team identity, which is what this
+   file already owns everywhere else in the app. The chip strip above the plan,
+   the name on a removal confirm and this heading all answer "which team am I
+   looking at", and they have to answer it the same way or the settings page
+   becomes the one place a league rule can land on the wrong roster.
+
+   So it uses `teamLabel`, the one team-identity fallback -- an unnamed team
+   reads `Team 2` on Today's header and in its menu, and it must read
+   `Team 2` here too. */
 export function renderSettings() {
   const hd = $('#setTeamHd');
   if (hd) hd.textContent = teamLabel(team(), state.activeTeam);

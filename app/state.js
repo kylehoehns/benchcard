@@ -286,18 +286,25 @@ const leagueSetting = () => ({
 export function leagueMinFor(g, arrivedAt) {
   const { amount, unit } = leagueSetting();
   if (!(amount > 0)) return 0;
-  const lens = buildStints({ periods: g.periods, periodMinutes: g.periodMinutes }, { mode: g.granMode, value: g.granValue }).map(s => s.minutes);
+  const { lens, equal } = regulationLens(g);
   const sum = a => a.reduce((x, y) => x + y, 0);
   const game = sum(lens);
-  const whole = lens.every(x => Math.abs(x - lens[0]) < 1e-9) ? lens[0] : 0;
   const share = (x, within) => {
-    const up = whole ? Math.ceil(x / whole - 1e-9) * whole : x;
+    const up = equal ? Math.ceil(x / lens[0] - 1e-9) * lens[0] : x;
     return Math.round(Math.min(up, within) * 100) / 100;
   };
   const owed = unit === 'min' ? amount : share(unit === 'pct' ? game * amount / 100 : amount * g.periodMinutes, game);
   if (!arrivedAt || arrivedAt <= 0) return owed;
   const left = sum(lens.slice(arrivedAt));
-  return share(owed * left / game, left);
+  // never more than a kid who was there all game is owed
+  return share(owed * left / game, Math.min(left, owed));
+}
+
+/* The game's regulation stint lengths, and whether they are all the same: the
+   one reading `leagueMinFor` and `runMinutes` share. */
+function regulationLens(g) {
+  const lens = buildStints({ periods: g.periods, periodMinutes: g.periodMinutes }, { mode: g.granMode, value: g.granValue }).map(s => s.minutes);
+  return { lens, equal: lens.every(x => Math.abs(x - lens[0]) < 1e-9) };
 }
 
 /* One composition, for the full solve and for the rest of a game underway: the
@@ -305,8 +312,8 @@ export function leagueMinFor(g, arrivedAt) {
    higher, and their cap winning when it is lower -- a cap is a deliberate
    "hold this kid back", and raising past it would manufacture a MIN_ABOVE_CAP
    error they never asked for. */
-function composedMinimum(g, id, arrivedAt) {
-  const want = Math.max(g.constraints.minMinutes?.[id] || 0, leagueMinFor(g, arrivedAt));
+function composedMinimum(g, id, league) {
+  const want = Math.max(g.constraints.minMinutes?.[id] || 0, league);
   const cap = g.constraints.maxMinutes?.[id];
   return cap != null ? Math.min(cap, want) : want;
 }
@@ -340,7 +347,7 @@ export function ruleCount(g) {
     + (c.lastPeriodFive.length ? 1 : 0)
     + (c.maxConsecutive ? 1 : 0)
     + (c.maxBench ? 1 : 0)
-    + (leagueMinFor(g) > 0 ? 1 : 0);
+    + (leagueSetting().amount > 0 ? 1 : 0);
 }
 
 /* #441: the most minutes `n` stints in a row can hold in this game's own
@@ -348,12 +355,12 @@ export function ruleCount(g) {
  * how it reads: "8 min" when every stint is the same length, "up to 9 min"
  * when they are not. */
 function runMinutes(g, n) {
-  const lens = buildStints({ periods: g.periods, periodMinutes: g.periodMinutes }, { mode: g.granMode, value: g.granValue }).map(s => s.minutes);
+  const { lens, equal } = regulationLens(g);
   let best = 0;
   for (let i = 0; i < lens.length; i++) {
     best = Math.max(best, lens.slice(i, i + n).reduce((a, x) => a + x, 0));
   }
-  return { minutes: best, equal: lens.every(x => Math.abs(x - lens[0]) < 1e-9) };
+  return { minutes: best, equal };
 }
 function runMinutesText(g, n) {
   const { minutes, equal } = runMinutes(g, n);
@@ -387,7 +394,7 @@ export function ruleItems(g) {
   const nm = id => calls[id] || byId(id)?.name || id;
   const items = [];
 
-  if (leagueMinFor(g) > 0) items.push({ kind: 'leagueMinimum', text: `Everyone plays at least ${leagueRuleText(g)}`, removable: false });
+  if (leagueSetting().amount > 0) items.push({ kind: 'leagueMinimum', text: `Everyone plays at least ${leagueRuleText(g)}`, removable: false });
 
   for (const [id, v] of Object.entries(c.minMinutes)) {
     if (!avail.has(id)) continue;
@@ -1504,7 +1511,9 @@ function sayTheLeagueMinimum(p, own, leagueFor) {
   for (const i of p.issues || []) {
     const leagueMin = leagueFor(i.playerIds[0]);
     if (i.code !== 'TARGET_UNDER_MIN' || (own[i.playerIds[0]] || 0) >= leagueMin) continue;
-    i.message = i.message.replace(new RegExp(`to ${leagueMin} to meet their ${leagueMin}-minute minimum`), `to ${leagueMin} to meet the league minimum`);
+    // the engine prints through fmtMinutes, so the pattern does too
+    const said = fmtMinutes(leagueMin).replace(/\./g, '\\.');
+    i.message = i.message.replace(new RegExp(`to ${said} to meet their ${said}-minute minimum`), `to ${fmtMinutes(leagueMin)} to meet the league minimum`);
   }
 }
 
@@ -1847,13 +1856,14 @@ function clampNotes(g, p) {
   const floor = effectiveStints(g, p).filter(s => !isOvertimeStint(s));
   const after = floor.slice(at + 1).reduce((a, s) => a + s.minutes, 0);
   const calls = callNames(state.players);
+  const late = lateArrivals(g, p, at + 1);
   const out = [];
   for (const id of availIds(g)) {
-    const arrivedAt = g.live.arrived?.[id];
-    const want = composedMinimum(g, id, arrivedAt);
+    const league = leagueMinFor(g, late[id]);
+    const want = composedMinimum(g, id, league);
     const most = floor.slice(0, at + 1).reduce((a, s) => a + (s.onFloor.includes(id) ? s.minutes : 0), after);
     if (want <= most + 1e-9) continue;
-    const bound = leagueMinFor(g, arrivedAt) > (g.constraints.minMinutes?.[id] || 0)
+    const bound = want === league && league > (g.constraints.minMinutes?.[id] || 0)
       ? `the league minimum of ${fmtMinutes(want)}` : `their ${fmtMinutes(want)}-minute minimum`;
     out.push({ severity: 'warn', code: CLAMP_NOTE, playerIds: [id],
       message: `${calls[id] || id} can finish with at most ${fmtMinutes(most)} min, under ${bound}: that is all the time left.` });
@@ -1993,7 +2003,12 @@ export function computeAll() {
          who never opens Settings gets byte-identical plans. */
       const leagueOn = leagueMinFor(g) > 0;
       const inPlay = ids.filter(id => !out.has(id));
-      const leagueFor = Object.fromEntries(inPlay.map(id => [id, leagueMinFor(g, g.live?.arrived?.[id])]));
+      /* Who is late is `lateArrivals`' answer everywhere: a kid who played before
+         the stint they "arrived" at is not, and the cached plan is where that
+         is read. No cached plan, nobody has played, so the record stands. */
+      const before = planCache.get(g.id)?.plan;
+      const late = before && g.live ? lateArrivals(g, before, playedStints(g.live) + 1) : (g.live?.arrived || {});
+      const leagueFor = Object.fromEntries(inPlay.map(id => [id, leagueMinFor(g, late[id])]));
       const seasonT = seasonTargetsFor(g, inPlay, deficitOf);
       /* The tie-break the engine uses when the clock does not divide evenly and
          somebody has to play a stint less. `deficitOf` is the whole chain in one
@@ -2031,7 +2046,7 @@ export function computeAll() {
          about available players reaches them. */
       if (leagueOn) {
         for (const id of ids) {
-          if (!out.has(id)) c.minMinutes[id] = composedMinimum(g, id, g.live?.arrived?.[id]);
+          if (!out.has(id)) c.minMinutes[id] = composedMinimum(g, id, leagueFor[id]);
         }
       }
       if (g.strategy === 'minutes') {
@@ -2262,7 +2277,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
     const cap = g.constraints.maxMinutes?.[id];
     // the same composition `computeAll` uses; a kid who walked in late is owed
     // the league's share of the time left (#447), not the whole game's
-    const lo = composedMinimum(g, id, arrived[id]);
+    const lo = composedMinimum(g, id, leagueMinFor(g, arrived[id]));
     const left = Math.min(total, Math.max(0, lo - (played[id] || 0)));
     if (left > 0) c.minMinutes[id] = left;
     if (cap != null) c.maxMinutes[id] = Math.max(0, cap - (played[id] || 0));

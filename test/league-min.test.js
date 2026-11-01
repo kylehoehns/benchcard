@@ -57,9 +57,9 @@ test('the Rules count counts the league minimum', () => {
      the league floor from. What still has to hold is that state.js's own
      count and its own row list agree with each other about it. */
   const stateJs = read('state.js');
-  assert.match(stateJs, /leagueMinFor\(g\) > 0 \? 1 : 0/,
+  assert.match(stateJs, /leagueSetting\(\)\.amount > 0 \? 1 : 0/,
     'ruleCount(g) in state.js no longer counts the league minimum when it is on');
-  assert.match(stateJs, /if \(leagueMinFor\(g\) > 0\) items\.push/,
+  assert.match(stateJs, /if \(leagueSetting\(\)\.amount > 0\) items\.push/,
     'ruleItems(g) in state.js no longer lists the league minimum as a row of its own — the '
     + 'Rules group and ruleCount would disagree about it again (A24b / #26 decision 3)');
 });
@@ -79,7 +79,7 @@ test('the Rules drawer only says "just evens out the minutes" when nothing else 
   assert.match(before, /!items\.length/,
     `"${FALSE_WHEN_SET}" is no longer guarded by ruleItems(g).length — with the league minimum `
     + 'on, ruleItems is non-empty and #issues four inches away is naming every player it applies to');
-  assert.match(read('state.js'), /if \(leagueMinFor\(g\) > 0\) items\.push/,
+  assert.match(read('state.js'), /if \(leagueSetting\(\)\.amount > 0\) items\.push/,
     'ruleItems(g) no longer lists the league minimum as its own row — the one rule a coach '
     + 'cannot see from the Rules group is the one rule that is on');
 });

@@ -10,8 +10,8 @@ const ids = n => Array.from({ length: n }, (_, i) => `p${i}`);
 
 /* Runs `fn(g)` on a fresh team of `n` players and one game of `periods` x
    `periodMinutes` subbed every `every` minutes, with `settings` for the team. */
-function game({ n = 10, periods = 4, periodMinutes = 8, every = 4, settings, out = [], constraints }, fn) {
-  const g = bareGame({ id: 'g447', seed: 1234, periods, periodMinutes, granValue: every, out, late: [],
+function game({ n = 10, periods = 4, periodMinutes = 8, every = 4, settings, out = [], constraints, strategy }, fn) {
+  const g = bareGame({ id: 'g447', seed: 1234, ...(strategy ? { strategy } : {}), periods, periodMinutes, granValue: every, out, late: [],
     live: { at: 0, overrides: {} }, constraints: { ...S.emptyConstraints(), ...constraints } });
   return withTeam(ids(n).map(id => player(id)), [g], settings, () => { S.computeAll(); return fn(g); });
 }
@@ -108,5 +108,84 @@ test('J: two kids walking in do not refuse the game for a minimum they are no lo
   game({ n: 11, out: ['p9', 'p10'], settings: { minMinutes: 16 } }, g => {
     arriveAt(g, 4, 'p9', 'p10');
     assert.equal(S.plans[0].ok, true, codes().join());
+  });
+});
+
+/* ---- fix pass after review ---- */
+
+test('K: a late share rounded up to a whole stint never passes what an on-time kid is owed (10 min, 4-minute stints, arrived at stint 1)', () => {
+  // 10 * 28/32 = 8.75, rounds up to 12 -- more than the 10 everyone else is owed
+  game({ settings: { minMinutes: 10 } }, g => {
+    assert.equal(S.leagueMinFor(g), 10);
+    assert.equal(S.leagueMinFor(g, 1), 10);
+  });
+});
+
+test('L: a share that is a percent or periods scales for a late arrival like minutes do', () => {
+  for (const settings of [{ minMinutes: 50, minUnit: 'pct' }, { minMinutes: 2, minUnit: 'periods' }]) {
+    game({ out: ['p9'], settings }, g => {
+      assert.equal(S.leagueMinFor(g), 16);
+      assert.equal(S.leagueMinFor(g, 4), 8, settings.minUnit);
+      arriveAt(g, 4, 'p9');
+      assert.equal(minutes(g).p9, 8, settings.minUnit);
+      for (const id of ids(9)) assert.ok(minutes(g)[id] >= 16, `${settings.minUnit}: ${id} ends at ${minutes(g)[id]}`);
+    });
+  }
+});
+
+test('M: uneven stints (4, 4, 3 a period) keep the exact share: no rounding up to a stint', () => {
+  // 2 x 11, every 4: stints 4,4,3,4,4,3 = 22 minutes. From stint 3 there are 11 left.
+  game({ n: 8, periods: 2, periodMinutes: 11, settings: { minMinutes: 12 } }, g => {
+    assert.equal(S.leagueMinFor(g, 3), 6);
+  });
+  game({ n: 8, periods: 2, periodMinutes: 11, settings: { minMinutes: 33, minUnit: 'pct' } }, g => {
+    assert.equal(S.leagueMinFor(g), 7.26);
+    assert.equal(S.leagueMinFor(g, 3), 3.63);
+  });
+});
+
+test('N: changing only the unit re-solves the cached plan', () => {
+  // 12 players, 3: as minutes it is easy, as periods it is 24 each -- more than the game has
+  game({ n: 12, settings: { minMinutes: 3 } }, g => {
+    assert.ok(!codes().includes('MINS_UNSATISFIABLE'), codes().join());
+    S.state.teams[0].settings.minUnit = 'periods';
+    S.computeAll();
+    assert.equal(S.leagueMinFor(g), 24);
+    assert.ok(codes().includes('MINS_UNSATISFIABLE') || !S.plans[0].ok, codes().join());
+  });
+});
+
+test('O: a By hand number raised to a fractional league minimum is told in the league\'s words', () => {
+  // 33 % of a 22-minute game is 7.26; the engine prints it as 7.3
+  const targetSlots = { p0: 1 };
+  for (let i = 1; i < 10; i++) targetSlots[`p${i}`] = 5;
+  game({ periods: 2, periodMinutes: 11, settings: { minMinutes: 33, minUnit: 'pct' },
+    constraints: { targetSlots, lockedTargets: ['p0'] }, strategy: 'minutes' }, () => {
+    const note = S.plans[0].issues.find(i => i.code === 'TARGET_UNDER_MIN');
+    assert.equal(note.message, "p0's By hand number was raised from 3.7 to 7.3 to meet the league minimum.");
+  });
+});
+
+test('P: a cap that lowered the minimum is not called the league\'s number', () => {
+  game({ out: ['p9'], settings: { minMinutes: 16 }, constraints: { maxMinutes: { p9: 2 } } }, g => {
+    arriveAt(g, 7, 'p9');
+    const note = S.plans[0].issues.find(i => i.code === 'MIN_CLAMPED');
+    assert.match(note.message, /can finish with at most 0 min, under their 2-minute minimum: that is all the time left\.$/);
+  });
+});
+
+test('Q: a kid who played, went Out and came back is not late: the plan settles on the first solve after they are back', () => {
+  game({ settings: { minMinutes: 16 } }, g => {
+    S.computeAll();
+    const st = S.plans[0].stints;
+    const id = ids(10).find(i => st[0].onFloor.includes(i) && st[1].onFloor.includes(i));
+    g.live.at = 2; S.computeAll();
+    S.setAvailable(g, id, false); S.computeAll();
+    g.live.at = 7; S.computeAll();
+    S.setAvailable(g, id, true); S.computeAll();
+    const fives = () => S.plans[0].stints.map(s => s.onFloor.join(',')).join('|');
+    const first = fives();
+    S.computeAll();
+    assert.equal(fives(), first);
   });
 });

@@ -219,7 +219,9 @@ scrolls inside itself, so a long Running late list never pushes the floor off
 the screen. The group is hidden when nobody is late, even when kids are Out, and
 it shows on every stint, the last included. Tapping **Here now** calls
 `setAvailable(g, id, true)`, the same edit Who's here makes, so the plan from the
-next stint on picks the kid up. The stint on the floor does not change, and the pick in progress is cleared.
+next stint on picks the kid up. A league minimum owes that kid the share of the
+time left, not the whole game's ([design decisions](../design-decisions.md)).
+The stint on the floor does not change, and the pick in progress is cleared.
 The handler runs `computeAll()` first. Stepping through stints in bench mode never
 does a full render, so the plan has not been adopted yet, and without that step
 the re-plan would also rewrite the stint on the floor. The change is one
