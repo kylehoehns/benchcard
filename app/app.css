@@ -1233,12 +1233,13 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
 .gm-moved { margin: 0; padding: .5rem .9rem; font-size: var(--fs-footnote); line-height: 1.35;
   color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line); }
 
-/* .gm-foot floats over this scroller (it is not a flex sibling -- see
-   .gm-foot below), so the bottom padding is reserved space for it, not
-   visual breathing room -- generous enough to clear the foot even wrapped
-   onto two lines (large text, app-large-text.mjs), since both scale
-   together in rem. */
-.gm-body { flex: 1; overflow-y: auto; padding: 1rem .9rem 9.5rem; -webkit-overflow-scrolling: touch;
+/* #430: bench mode reads, top to bottom, bar, #gmMoved, Not here, this
+   scroller (the floor and the bench -- the only thing that scrolls), the call
+   (#gmNext) and the foot. The foot and the call are flex siblings of the
+   scroller, not floating over it, so nothing needs a bottom reserve and the
+   call is on screen at every scroll. min-height: 0 lets the scroller shrink
+   to the room the call and foot leave. */
+.gm-body { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem .9rem .6rem; -webkit-overflow-scrolling: touch;
   /* the browser keeps the vertical scroll; horizontal moves come to us as
      pointer events so a stint can be swiped past */
   touch-action: pan-y; will-change: transform; }
@@ -1246,7 +1247,18 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-sec { margin-bottom: 1.15rem; }
 /* Lives here, not inline, so the landscape block below can override it
    without !important. */
-#gmBenchSec, #gmOutSec { margin-top: 1.15rem; }
+#gmBenchSec { margin-top: 1.15rem; }
+/* #430: Not here is a compact row under the bar (above the scroller), so a
+   late arrival's Here now is on screen when bench mode opens. It caps its own
+   height and scrolls itself, so a long out list never pushes the floor off
+   the screen; the label stays (small, muted) for screen readers and sighted
+   coaches alike. */
+#gmOutSec { margin: 0; padding: .1rem .9rem .35rem; max-height: max(24vh, 7.5rem); overflow-y: auto; flex: none; }
+#gmOutSec .gm-lab { margin-bottom: .1rem; }
+/* One line per player: the name and its Here now. The badge is dropped here
+   (the name is the identity), which is what lets the row stay one line. */
+#gmOutSec .gm-b { padding-top: 0; padding-bottom: 0; }
+#gmOutSec .av { display: none; }
 /* Sentence case, muted footnote -- the bench label; the floor's own heading
    is gone (the accessible name moved to #gmFloor's aria-label in
    index.html). */
@@ -1358,12 +1370,15 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
 /* A soft gray fill -- --sheet, a fill token that is neither --surface (the
    white floor rows) nor --bg (the page ground) -- no border, no team tint
    (K2/K3: this box is ink and muted only). */
-.gm-next { border: 0; border-radius: var(--r); padding: .8rem .95rem; background: var(--sheet); }
+.gm-next { border: 0; border-radius: var(--r); padding: .55rem .8rem .6rem; background: var(--sheet);
+  /* #430: a pinned strip between the scroller and the foot, inset like the
+     rows above it */
+  flex: none; margin: .2rem .9rem .3rem; }
 /* #368: "Tied? Add overtime" in the last stint's Next box. A text button on
    the box's own surface, a 48px target (I1) that wraps rather than clips. */
-.gm-ot { display: block; width: 100%; min-height: 48px; margin-top: .6rem; font-weight: 600;
+.gm-ot { display: block; width: 100%; min-height: 48px; margin-top: .3rem; font-weight: 600;
   white-space: normal; overflow-wrap: anywhere; }
-.gm-next-hd { font-size: var(--fs-footnote); font-weight: 600; color: var(--ink); margin-bottom: .5rem; }
+.gm-next-hd { font-size: var(--fs-footnote); font-weight: 600; color: var(--ink); margin-bottom: .3rem; }
 /* .gm-next-hd is an h3 (it keeps its look from before) -- its own
    font-weight already stands, so only the UA default heading margin-top
    needs resetting. */
@@ -1393,13 +1408,12 @@ h3.gm-next-hd { margin-top: 0; }
    x=349, entirely off a 320px screen with no way to pan to it. Wrapping puts it
    on the next line instead. Nothing moves at a 16px root: the row is 320px wide
    there and has nothing to wrap. */
-/* No top border, no opaque bar -- the foot floats over `.gm-body`'s content
-   on its own `::before` scrim, the same masked-fade technique
-   `.bar`/`.actionbar` use (extended below, not copied), solid under
-   reduced transparency / more contrast. Absolutely positioned over
-   `.gm-body` (rather than a flex sibling of it) so the content actually
-   scrolls underneath it, the way the prototype's controls float. */
-.gm-foot { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; /* floats over .gm-body's scrolling content, own local stack */
+/* No top border, no opaque bar -- the foot keeps its own `::before` scrim, the
+   same masked-fade technique `.bar`/`.actionbar` use (extended below, not
+   copied), solid under reduced transparency / more contrast. #430: it is a
+   flex sibling under the scroller and the call, not floating over them, so the
+   scrim has no content to fade; it stays so the foot keeps its look. */
+.gm-foot { position: relative; flex: none; /* #430: a normal-flow sibling now, positioned only to hold its ::before scrim */
   display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; padding: .8rem .9rem 1rem; }
 .gm-foot::before {
   content: ''; position: absolute; inset: 0; z-index: -1; /* behind .gm-foot's own content, masked-fade scrim */
@@ -1450,7 +1464,8 @@ h3.gm-next-hd { margin-top: 0; }
    wrap. `.gm-foot .gm-exit` beats the later coarse-pointer `.gm-exit` rule. */
 .gm-exit .gm-exit-i { display: none; }
 @media (max-width: 18em) {
-  .gm-bar { padding-top: .3rem; padding-bottom: .3rem; gap: .3rem; }
+  .gm-bar { padding-top: .2rem; padding-bottom: .2rem; gap: .3rem; }
+  .gm-title { line-height: 1.1; }
   .gm-title > span:first-child { font-size: var(--fs-secondary); }
   .gm-foot { gap: .4rem; padding-top: .4rem; padding-bottom: .5rem; }
   .gm-nav { width: 52px; height: 52px; }
@@ -1524,7 +1539,7 @@ h3.gm-next-hd { margin-top: 0; }
    spare, 390x844 easily does). Trims the same handful of spacings the
    landscape block below trims -- .gm-body's top padding, the label and
    section gaps, and the floor row's own vertical padding -- just enough that
-   #gmNext's bottom clears .gm-foot's top at every stint. .gm-p's padding
+   a whole floor card still shows beside the pinned call (#430). .gm-p's padding
    stops well short of taking a row under 48px: trimmed it still measures in
    the mid-50s. Bounded by max-height so a normal phone is untouched, the
    same way the landscape block is bounded by it. */
@@ -1535,9 +1550,15 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-floor { gap: .3rem; }
   .gm-p { padding: .45rem .8rem; }
   /* #368: the last stint's Next box also holds the 48px overtime button. */
-  .gm-next { padding-top: .6rem; padding-bottom: .4rem; }
-  .gm-next-hd { margin-bottom: .3rem; }
-  .gm-ot { margin-top: .3rem; }
+  .gm-next { padding-top: .45rem; padding-bottom: .35rem; margin-bottom: .2rem; }
+  .gm-next-hd { margin-bottom: .2rem; }
+  .gm-ot { margin-top: .2rem; }
+  .gm-foot { padding-top: .3rem; padding-bottom: .4rem; }
+  /* #430: bar and Not here row give a little back, so the Here now button and
+     the toast above the call both keep clear room on a 568px screen */
+  .gm-bar { padding-top: .35rem; padding-bottom: .35rem; }
+  #gmOutSec { padding-top: 0; padding-bottom: .25rem; }
+  #gmOutSec .gm-lab { margin-bottom: 0; line-height: 1.1; }
 }
 
 /* Phone held sideways. Game mode is one tall column, which on a 390px-high
@@ -1553,16 +1574,21 @@ h3.gm-next-hd { margin-top: 0; }
 @media (orientation: landscape) and (max-height: 35em) {
   .gm-bar { padding: .35rem .9rem; }
   .gm-clock { font-size: var(--fs-body); }
-  .gm-body {
-    display: grid; align-content: start;
-    grid-template-columns: 1fr 1fr; column-gap: 1.1rem;
-    grid-template-areas: "floor next" "floor bench" "floor out";
-    padding: .7rem .9rem .8rem;
+  /* #430: .gm is the grid now. The floor and bench scroll in .gm-body on the
+     left; the call and Not here sit in the right-hand column beside them, and
+     the foot spans the bottom. */
+  .gm {
+    display: grid; grid-template-columns: 1fr 1fr; column-gap: 1.1rem;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "bar bar" "moved moved" "body next" "body out" "body ." "foot foot";
   }
-  .gm-body > .gm-sec:first-child { grid-area: floor; }
-  .gm-body > .gm-next { grid-area: next; }
-  #gmBenchSec { grid-area: bench; margin-top: .9rem; }
-  #gmOutSec { grid-area: out; margin-top: .9rem; }
+  .gm-bar { grid-area: bar; }
+  .gm-moved { grid-area: moved; }
+  .gm-body { grid-area: body; padding: .7rem 0 .8rem .9rem; }
+  .gm-next { grid-area: next; margin: .7rem .9rem 0 0; }
+  #gmOutSec { grid-area: out; margin: .9rem .9rem 0 0; padding: 0; max-height: 30vh; }
+  .gm-foot { grid-area: foot; }
+  #gmBenchSec { margin-top: .9rem; }
   .gm-sec { margin-bottom: 0; }
   .gm-lab { margin-bottom: .35rem; }
   .gm-floor { gap: .35rem; }
@@ -3907,16 +3933,35 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      and `.gm-foot` take the same padding here too, so bench mode's left and
      right edges stay aligned at this size the way they do at 16px text. */
   .gm-body, .gm-p, .gm-bar, .gm-foot { padding-left: .5rem; padding-right: .5rem; }
-  /* The Next change box's two columns, side by side at every other size,
-     have only 91px each at 320px/32px, and "HANA"/"MAXI"/"THEO"/"CASE" (the
-     card's own short names, `fitCallRows`) measure 92-98px in DejaVu Sans --
-     wider than the column, so `overflow-wrap: anywhere` breaks them mid-word
-     (#197) rather than fixing a wrap setting on a box that was never wide
-     enough. Off stacks above On instead, each column about 227px wide;
-     `fitCallRows` then measures the wider column on its own and may show
-     full names where it showed short ones -- that is its job, not a change
-     to it. */
-  .gm-next-cols { grid-template-columns: 1fr; }
+  #gmOutSec { padding-left: .5rem; padding-right: .5rem; max-height: 30vh; }
+  .gm-next { margin: 0 .5rem; padding: .2rem .5rem; }
+  /* #430: the call stays two columns, Off beside On. At the old size each
+     column was 91px wide and the card's short names ("HANA", "MAXI", `fitCallRows`)
+     measure 92-98px in DejaVu Sans, so it stacked Off above On and ran 340px
+     tall -- no longer a pinned strip. The names step down to --fs-secondary and
+     the strip's side padding is trimmed above, so `fitCallRows` is handed a
+     column wide enough for the short names. */
+  .gm-next-col .nm { font-size: var(--fs-secondary); line-height: 1.15; }
+  .gm-next-col { gap: 0; }
+  .gm-next-hd { margin-bottom: .15rem; line-height: 1.15; }
+  .gm-next-lb { margin-bottom: 0; line-height: 1.15; }
+  .gm-next-none { font-size: var(--fs-footnote); line-height: 1.1; }
+  .gm-ot { font-size: var(--fs-footnote); line-height: 1.2; margin-top: .15rem; }
+  .gm-foot { gap: .25rem; padding-top: .25rem; padding-bottom: .3rem; }
+  /* Not here at large text: Here now on the row's first line and the name
+     under it at the full width, wrapping between words (never cut). Side by
+     side, the 178px button left the name 53px and it broke every few letters;
+     stacked name-first, one late arrival took a third of the screen and the
+     toast above the call covered the button. A screen reader still reads the
+     button's own name, "Here now, <full name>". */
+  #gmOutSec .gm-b { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: 0; }
+  #gmOutSec .gm-b .btn { order: -1; flex: none; min-height: 48px; font-size: var(--fs-footnote); padding: 0 .6rem; }
+  #gmOutSec .gm-b .nm { order: 1; flex: 1 1 100%; font-size: var(--fs-secondary); line-height: 1.2; padding-bottom: .2rem; }
+  /* the heading stays for screen readers; sighted, the Here now buttons beside
+     the names are the label, and the 32px heading cost 40px of a short screen */
+  #gmOutSec .gm-lab { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+  .gm-moved { padding: .15rem .5rem; line-height: 1.2; }
+  .gm-body { padding-top: .5rem; padding-bottom: .25rem; }
 
   /* `#gmClose`'s visible fill (`.i`, `#agClose .i, #frClose .i, .gm-x .i`
      above) is sized in rem (2.25rem) while the button's own hit box stays a

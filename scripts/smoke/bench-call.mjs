@@ -49,7 +49,9 @@ const PROBE = `JSON.stringify((() => {
     if (!e || !e.getClientRects().length) return false;
     const b = e.getBoundingClientRect();
     if (b.left < -0.5 || b.top < -0.5 || b.right > vw + 0.5 || b.bottom > vh + 0.5 || b.width < 1 || b.height < 1) return false;
-    return [[b.left + 1, b.top + 1], [b.right - 1, b.top + 1], [b.left + 1, b.bottom - 1], [b.right - 1, b.bottom - 1],
+    // a rounded box does not hit-test in its corner cut-outs, so the corner samples sit just inside the curve
+    const r = Math.min(parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0, b.width / 2, b.height / 2), k = r * 0.3 + 1;
+    return [[b.left + k, b.top + k], [b.right - k, b.top + k], [b.left + k, b.bottom - k], [b.right - k, b.bottom - k],
       [(b.left + b.right) / 2, (b.top + b.bottom) / 2]].every(([x, y]) => { const h = document.elementFromPoint(x, y); return h && e.contains(h); });
   };
   const q = s => document.querySelector(s);

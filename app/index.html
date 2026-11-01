@@ -1682,6 +1682,13 @@
          looked away for two minutes should not have to scroll to find out. -->
     <p class="gm-moved" id="gmMoved" hidden></p>
 
+    <!-- #430: above the floor, so a late arrival's Here now is on screen when
+         bench mode opens. #383: players marked out, each with a Here now for a late arrival. -->
+    <div class="gm-sec" id="gmOutSec" hidden>
+      <h3 class="gm-lab">Not here</h3>
+      <div class="gm-bench" id="gmOut"></div>
+    </div>
+
     <div class="gm-body">
       <div class="gm-sec">
         <!-- No visible "On the floor" heading (the prototype has none); the
@@ -1695,17 +1702,15 @@
              a padded empty-state cost ~200px of nothing on a 390px screen. -->
         <div class="gm-allon" id="gmAllOn" hidden>Everyone available is on the floor.</div>
       </div>
-      <div class="gm-next" id="gmNext"></div>
       <div class="gm-sec" id="gmBenchSec">
         <h3 class="gm-lab" id="gmBenchLab">Bench</h3>
         <div class="gm-bench" id="gmBench"></div>
       </div>
-      <!-- #383: players marked out, each with a Here now for a late arrival. -->
-      <div class="gm-sec" id="gmOutSec" hidden>
-        <h3 class="gm-lab">Not here</h3>
-        <div class="gm-bench" id="gmOut"></div>
-      </div>
     </div>
+
+    <!-- #430: the call, pinned between the floor and the foot -- not inside
+         the scroller, so it never scrolls away at the horn. -->
+    <div class="gm-next" id="gmNext"></div>
 
     <div class="gm-foot">
       <!-- Second exit, phone only: the top-left X is a two-handed reach on a

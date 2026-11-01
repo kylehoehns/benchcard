@@ -227,7 +227,14 @@ function liftToasts(box) {
   // candidate -- a toast on Today with a part-played game must clear it too.
   const showing = el => el && !el.hidden && getComputedStyle(el).display !== 'none' ? el : null;
   const bar = gmFoot || showing($('#actionbar')) || showing($('#resumeBar'));
-  const lift = bar ? bar.offsetHeight : 0;
+  let lift = bar ? bar.offsetHeight : 0;
+  // #430: in portrait bench mode the call strip sits on the foot and is the
+  // thing the coach reads at the horn, so the toast clears it too: lift by the
+  // strip's top to the bottom of the viewport. Landscape puts the call in the
+  // right-hand column (its left edge past the first quarter), where the foot alone is enough.
+  const call = gmFoot ? $('#gmNext') : null;
+  const at = call ? call.getBoundingClientRect() : null;
+  if (at && at.left < window.innerWidth / 4) lift = Math.max(lift, Math.ceil(window.innerHeight - at.top));
   box.classList.toggle('lifted', lift > 0);
   box.style.setProperty('--toast-lift', `${lift}px`);
 }
