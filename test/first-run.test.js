@@ -92,6 +92,21 @@ test('startTeam dates the day it fills to today, so the new game is not filed on
   });
 });
 
+test('startTeam uses the draft day only when it is today or later (a flow left open past midnight)', () => {
+  const run = gameDate => {
+    let date;
+    withDays([player('p0')], [{ name: '', date: '2026-09-29', games: [bareGame()] }], {}, () => {
+      const draft = { ...newDraft(), teamName: 'Sample team', gameDate };
+      startTeam([{ name: 'Ann', number: '4' }], draft.teamName, draft, new Date(2026, 8, 30));
+      date = S.state.teams[0].days[0].date;
+    });
+    return date;
+  };
+  assert.equal(run('2026-09-29'), '2026-09-30', 'yesterday becomes today');
+  assert.equal(run('2026-09-30'), '2026-09-30');
+  assert.equal(run('2026-10-02'), '2026-10-02');
+});
+
 /* Proof item 3: the shell markup. A guard under /new-guard -- it reads
  * index.html directly, because these are facts about bytes, not behavior;
  * nothing runs them. */
@@ -158,4 +173,17 @@ test('#welStart is .btn.primary and precedes #welTry in .wel-doors', () => {
   const startAt = doors.indexOf('id="welStart"');
   const tryAt = doors.indexOf('id="welTry"');
   assert.ok(tryAt > startAt, '#welStart does not precede #welTry in .wel-doors');
+});
+
+test('startTeam dates the day to the draft\'s date when it has one, else to today (#431)', () => {
+  const players = [{ name: 'Ann', number: '4' }, { name: 'Bo', number: '5' }];
+  const today = new Date(2026, 8, 30);
+  withDays([player('p0')], [{ name: '', date: '2026-09-29', games: [bareGame()] }], {}, () => {
+    startTeam(players, 'Sample team', { ...newDraft(), gameDate: '2026-10-03' }, today);
+    assert.equal(S.state.teams[0].days[0].date, '2026-10-03');
+  });
+  withDays([player('p0')], [{ name: '', date: '2026-09-29', games: [bareGame()] }], {}, () => {
+    startTeam(players, 'Sample team', newDraft(), today);
+    assert.equal(S.state.teams[0].days[0].date, '2026-09-30');
+  });
 });

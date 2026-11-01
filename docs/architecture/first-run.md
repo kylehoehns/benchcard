@@ -4,9 +4,9 @@ The app opens empty and asks for the coach's team rather than seeding a fake
 roster, which reads like a demo. The welcome screen offers two doors — **Set up
 my team** and **Try a sample team** — and both open `#firstRunFlow`, a
 full-screen `<dialog>` of three steps (#36): *Who's on the team?* (a name and a
-roster box), *How long is a game?* (periods, minutes each, how often to sub),
-and then the coach's own first card, with Print and Share image on it. Players
-are typed or pasted in any of the usual shapes (`12 Marcus Webb`,
+roster box), *How long is a game?* (periods, minutes each, how often to sub,
+and the game day), and then the coach's own first card, with Print and Share
+image on it. Players are typed or pasted in any of the usual shapes (`12 Marcus Webb`,
 `Marcus Webb #12`, `Devon Ellis`), or as a comma-separated list with no line
 breaks (`Sam, Jo, Kai`). A leading list bullet is stripped, and a spreadsheet
 header row such as `Jersey<TAB>First<TAB>Last` is dropped. They are counted by
@@ -29,6 +29,13 @@ is what makes "Go to the game" a plain close with nothing to transition.
 Leaving before that point stores nothing at all. Step 3 has no Back, because by
 then there is nothing left to abandon, and a back gesture there finishes the
 flow rather than dead-ending.
+
+**The game day is set on step 2 (#431).** The flow reads the phone's clock when
+it opens and pre-selects Today before 6 PM local, or Tomorrow from 6 PM. The coach
+can tap Today, Tomorrow or Pick a date. Pick a date shows a date field under the
+rows, with today as the earliest day. The game and the printed card are dated the
+chosen day, so a coach setting up on Friday night for Saturday gets a Saturday
+card. The `?try=` landing still dates today, and Add a team never asks.
 
 A **sample team** is the opt-in exception, and it is opt-in on purpose: nothing
 is seeded unless the coach asks. "Try a sample team" opens the flow with step 1

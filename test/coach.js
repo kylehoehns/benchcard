@@ -400,6 +400,44 @@ export class Coach {
     await quiet(this.c);
   }
 
+  /** The one date field a coach would call `name`, as a resolved node. */
+  async #dateField(name, verb) {
+    const { result } = await this.c.send('Runtime.evaluate', { expression: 'document.documentElement' });
+    const { nodes } = await this.c.send('Accessibility.queryAXTree',
+      { objectId: result.objectId, accessibleName: name, role: 'Date' });
+    if (nodes.length !== 1) throw new Error(`${verb} ${JSON.stringify(name)}: ${nodes.length} date fields match`);
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: nodes[0].backendDOMNodeId });
+    return object;
+  }
+
+  /** What is in the date field a coach would call `name`, as "2026-09-15" ("" when empty). */
+  async dateValue(name) {
+    const object = await this.#dateField(name, 'dateValue');
+    const { result } = await this.c.send('Runtime.callFunctionOn',
+      { objectId: object.objectId, functionDeclaration: 'function () { return this.value; }', returnByValue: true });
+    return result.value;
+  }
+
+  /** Set the date field a coach would call `name` ("Date") to an ISO date
+      such as "2026-09-15", typed a key at a time from the month on (the en-US
+      field the harness runs in): a tap would land on one part of it. */
+  async setDate(name, iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    if (!m) throw new Error(`setDate ${JSON.stringify(iso)}: write it like "2026-09-15"`);
+    const keys = m[2] + m[3] + m[1];
+    const object = await this.#dateField(name, 'setDate');
+    await this.c.send('Runtime.callFunctionOn', { objectId: object.objectId,
+      functionDeclaration: 'function () { this.scrollIntoView({ block: "center" }); this.focus(); }' });
+    for (const ch of keys) {
+      await this.c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ch, text: ch });
+      await this.c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ch });
+    }
+    await quiet(this.c);
+  }
+
+  /** The text in the card's top-right corner ("Sat 9:00 AM", or just "Sat"). */
+  cardCorner() { return this.text('.card .when'); }
+
   /** Press one key on the keyboard, as a coach with a keyboard would. */
   async press(key) {
     // a named key (Escape) carries no text, and Chrome wants its key code to act on it

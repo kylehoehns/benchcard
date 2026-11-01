@@ -22,6 +22,8 @@ describe('a game set up the night before', { skip }, () => {
     await coach.onFreshDeviceAt(pin);
     await coach.tap('Try a sample team');
     await coach.tap('Next');
+    // #431: from 6 PM first run offers Tomorrow; these are tonight's games
+    await coach.tap('Today');
     await coach.tap('Next');
     await coach.tap('Go to the game');
     if (await coach.tourShows()) await coach.tap('Skip');
