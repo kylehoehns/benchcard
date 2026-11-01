@@ -195,6 +195,14 @@ test('fuzz: a hard constraint is either honoured or reported, never silently dro
           assert.ok(said('CONSEC_EXCEEDED') || upFront, `${ctx}: ${id} ran past the limit with no warning`);
         }
       }
+      /* The DP says a minimum is out of reach under the limit; the engine must
+         never have delivered it, or the up-front line claimed the impossible. */
+      for (const w of p.issues.filter(i => i.code === 'CONSEC_MIN_CONFLICT')) {
+        for (const id of w.playerIds) {
+          const both = p.minutes[id] >= c.minMinutes[id] - 1e-9 && longestRun(p.stints, id) <= c.maxConsecutive;
+          assert.ok(!both, `${ctx}: ${id} met the minimum within the limit yet CONSEC_MIN_CONFLICT named them`);
+        }
+      }
     }
   }
 });

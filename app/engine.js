@@ -506,6 +506,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
   }
 
+  let minConflict = [], minConflictMost = 0;
   if (c.maxConsecutive) {
     if (avail.length <= ON_FLOOR) {
       warn('CONSEC_IMPOSSIBLE', `With only ${avail.length} available, nobody can be rested — the Rest limit rule will be ignored.`, avail);
@@ -514,18 +515,13 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
          only (r+1)*(n-5) bench seats between them. Arithmetic, no search. */
       const r = c.maxConsecutive, n = avail.length;
       if (stints.length >= r + 1 && (r + 1) * (n - ON_FLOOR) < n) {
+        const tryLimit = Math.ceil(ON_FLOOR / (n - ON_FLOOR));
         warn('CONSEC_TOO_FEW',
-          `With ${n} players, a Rest limit of ${r} stint${r === 1 ? '' : 's'} in a row cannot hold: it needs ${Math.ceil(ON_FLOOR * (r + 1) / r)} players. Try a limit of ${Math.ceil(ON_FLOOR / (n - ON_FLOOR))}.`);
+          `With ${n} players, a Rest limit of ${r} stint${r === 1 ? '' : 's'} in a row cannot hold: it needs ${Math.ceil(ON_FLOOR * (r + 1) / r)} players. ${tryLimit < stints.length ? `Try a limit of ${tryLimit}.` : 'Turn the Rest limit off or add players.'}`);
       }
       const most = mostMinutesUnderRun(stintLens, r);
-      for (const id of avail) {
-        const mn = c.minMinutes[id];
-        if (!mn) continue;
-        if (mn > most + 1e-9) {
-          warn('CONSEC_MIN_CONFLICT',
-            `${label(id)}'s ${mn}-minute minimum needs more than a Rest limit of ${r} allows (${fmtMinutes(most)} minutes at most), so they will play longer runs. Lower one of the two.`, [id]);
-        }
-      }
+      minConflict = avail.filter(id => c.minMinutes[id] && c.minMinutes[id] > most + 1e-9);
+      minConflictMost = most;
     }
   }
 
@@ -578,6 +574,18 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
         `No legal lineup of ${ON_FLOOR} exists — the Apart rules rule out every combination. Drop one of them.`,
         c.avoids.flat());
     }
+  }
+
+  /* Said last, and only for a plan that will be built: a minimum already
+     refused as unsatisfiable does not also need the Rest limit blamed. One line
+     however many players, because a league-wide minimum reaches all of them. */
+  if (minConflict.length && !issues.some(i => i.severity === 'error')) {
+    const r = c.maxConsecutive;
+    const who = minConflict.length === 1
+      ? `${label(minConflict[0])}'s ${c.minMinutes[minConflict[0]]}-minute minimum needs`
+      : `${andList(minConflict.map(label))} have minimums that need`;
+    warn('CONSEC_MIN_CONFLICT',
+      `${who} more than a Rest limit of ${r} allows (${fmtMinutes(minConflictMost)} minutes at most), so they will play longer runs. Lower one of the two.`, minConflict);
   }
 
   return issues;
@@ -1612,10 +1620,11 @@ function finish(lineups, ctx, issues, meta) {
      exempt: it applies no pins, the units are the coach's. */
   issues.push(...missedPinIssues({ stints, c, periods, lineups, avail: ctx.avail, platoon, label }));
 
-  const saidUpFront = code => issues.some(i => i.code === code);
-  if (ctx.maxConsecutive && !saidUpFront('CONSEC_TOO_FEW') && !saidUpFront('CONSEC_IMPOSSIBLE')) {
+  const saidUpFront = issues.some(i => i.code === 'CONSEC_TOO_FEW' || i.code === 'CONSEC_IMPOSSIBLE');
+  const minConflicted = new Set(issues.filter(i => i.code === 'CONSEC_MIN_CONFLICT').flatMap(i => i.playerIds));
+  if (ctx.maxConsecutive && !saidUpFront) {
     for (const id of ctx.avail) {
-      if (issues.some(i => i.code === 'CONSEC_MIN_CONFLICT' && i.playerIds.includes(id))) continue;
+      if (minConflicted.has(id)) continue;
       const run = longestRun(lineups, id);
       if (run > ctx.maxConsecutive) {
         issues.push({
@@ -1643,7 +1652,8 @@ function finish(lineups, ctx, issues, meta) {
         /* Players whose run ending at i-1 has reached the Rest limit must come
            off; more of them than the number asked for means the limit forced it. */
         if (ctx.maxConsecutive) {
-          const spent = lineups[i - 1].filter(id => runEndingAt(lineups, id, i - 1) >= ctx.maxConsecutive).length;
+          const spent = lineups[i - 1].filter(id => !lineups[i].includes(id)
+            && runEndingAt(lineups, id, i - 1) >= ctx.maxConsecutive).length;
           if (spent > ctx.maxSubs) forced += 1;
         }
       }
@@ -1651,7 +1661,7 @@ function finish(lineups, ctx, issues, meta) {
     if (over) {
       issues.push({
         severity: 'warn', code: 'SUBS_EXCEEDED', playerIds: [],
-        message: `${over === 1 ? 'One break puts' : `${over} breaks put`} ${worst} players on at once, more than the ${ctx.maxSubs} you asked for${over === forced ? ` — a Rest limit of ${ctx.maxConsecutive} makes that many come off together.` : ' — holding to your number would have cost somebody minutes.'}`,
+        message: `${over === 1 ? 'One break puts' : `${over} breaks put`} ${worst} players on at once, more than the ${ctx.maxSubs} you asked for${over === forced ? ` — a Rest limit of ${ctx.maxConsecutive} makes more than ${ctx.maxSubs} come off at once.` : ' — holding to your number would have cost somebody minutes.'}`,
       });
     }
   }

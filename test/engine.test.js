@@ -1542,3 +1542,65 @@ test('a minimum the Rest limit makes impossible is named up front', () => {
   assert.ok(w.message.includes('PlayerA'), w.message);
   assert.equal(issuesOf(p, 'CONSEC_EXCEEDED').filter(i => i.playerIds.includes('p0')).length, 0);
 });
+
+/* ---------------- #439 review fixes ---------------- */
+
+test('a break the Rest limit did not force keeps the "cost somebody minutes" reason', () => {
+  const p = plan(8, { seed: 1, maxSubs: 1, constraints: { maxConsecutive: 2 } });
+  const w = issuesOf(p, 'SUBS_EXCEEDED')[0];
+  assert.ok(w, 'SUBS_EXCEEDED is present');
+  assert.ok(w.message.includes('cost somebody minutes'), w.message);
+  assert.ok(lacks(w.message, 'Rest limit'), w.message);
+});
+
+test('a forced break names the number asked for, not "that many"', () => {
+  const p = restPlan(10, { maxConsecutive: 1, openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] });
+  const w = issuesOf(p, 'SUBS_EXCEEDED')[0];
+  assert.ok(w.message.includes('a Rest limit of 1 makes more than 3 come off at once.'), w.message);
+});
+
+const everyoneMin = (n, m) => Object.fromEntries(ids(n).map(id => [id, m]));
+
+test('several minimums the Rest limit rules out are one line naming each player', () => {
+  const five = ids(5);
+  const p = restPlan(10, { maxConsecutive: 2, minMinutes: Object.fromEntries(five.map(id => [id, 28])) });
+  assert.ok(p.ok, 'the plan builds');
+  const w = issuesOf(p, 'CONSEC_MIN_CONFLICT');
+  assert.equal(w.length, 1, w.map(i => i.message).join(' | '));
+  assert.deepEqual([...w[0].playerIds].sort(), five);
+  assert.ok(w[0].message.includes('PlayerA') && w[0].message.includes('PlayerE'), w[0].message);
+  assert.match(w[0].message, /Rest limit of 2 allows/);
+});
+
+test('a minimum the game cannot hold at all does not also blame the Rest limit', () => {
+  const p = restPlan(10, { maxConsecutive: 2, minMinutes: everyoneMin(10, 26) });
+  assert.equal(p.ok, false);
+  assert.ok(p.issues.some(i => i.severity === 'error'), 'a blocking error is named');
+  assert.equal(issuesOf(p, 'CONSEC_MIN_CONFLICT').length, 0);
+});
+
+test('a Rest limit as long as the game is not offered as the way out', () => {
+  const p = plan(6, { format: { periods: 4, periodMinutes: 8 }, granularity: { mode: 'perPeriod', value: 1 },
+    constraints: { maxConsecutive: 3 } });
+  const w = issuesOf(p, 'CONSEC_TOO_FEW')[0];
+  assert.ok(w, 'CONSEC_TOO_FEW is present');
+  assert.ok(lacks(w.message, 'Try a limit of'), w.message);
+  assert.match(w.message, /Turn the Rest limit off or add players\.$/);
+});
+
+test('no up-front line when the game has fewer than r+1 stints', () => {
+  const p = plan(6, { format: { periods: 1, periodMinutes: 8 }, granularity: { mode: 'everyN', value: 4 },
+    constraints: { maxConsecutive: 2 } });
+  assert.equal(p.stints.length, 2);
+  assert.equal(issuesOf(p, 'CONSEC_TOO_FEW').length, 0);
+});
+
+test('on unequal stints the minimum the Rest limit allows is exact', () => {
+  /* 1 period of 10 minutes, a break every 4: stints of 4, 4 and 2. With Rest 1
+     nobody can play two in a row, so the most is 4 + 2 = 6 minutes. */
+  const run = mn => plan(8, { format: { periods: 1, periodMinutes: 10 }, granularity: { mode: 'everyN', value: 4 },
+    constraints: { maxConsecutive: 1, minMinutes: { p0: mn } } });
+  assert.equal(run(6).stints.map(s => s.minutes).join(), '4,4,2');
+  assert.equal(issuesOf(run(6), 'CONSEC_MIN_CONFLICT').length, 0);
+  assert.equal(issuesOf(run(7), 'CONSEC_MIN_CONFLICT').length, 1);
+});
