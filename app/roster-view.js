@@ -344,11 +344,16 @@ function removalCosts(id) {
   return out;
 }
 
-/* The Team page's large title, on its own so a rename can repaint it while
-   the coach is still typing in `#teamName` without rebuilding the roster
-   (#420). `renderRoster` writes it too, from here. */
-export function renderTeamTitle() {
-  set('#teamTitle', 'textContent', teamName() || 'Team');
+/* The Team page's sub line, on its own so a rename can repaint it while the
+   coach is still typing in `#teamName` without rebuilding the roster (#420).
+   `renderRoster` writes it too, from here. #432: the large title is plain
+   markup, `Roster`; the team's name moved into this line, `Tigers · 11
+   players`: just the name with nobody on the roster, just the count when the
+   team has no name. */
+export function renderTeamSub() {
+  const n = state.players.length;
+  const count = n ? `${n} player${n === 1 ? '' : 's'}` : '';
+  set('#rosterCount', 'textContent', [teamName(), count].filter(Boolean).join(' · '));
 }
 
 export function renderRoster() {
@@ -362,8 +367,7 @@ export function renderRoster() {
   renderTeamControls();
   renderTeamActions();
   if (!box.dataset.dnd) { box.dataset.dnd = '1'; box.addEventListener('pointerdown', rosterDown); }
-  renderTeamTitle();
-  set('#rosterCount', 'textContent', n ? `${n} player${n === 1 ? '' : 's'}` : '');
+  renderTeamSub();
 
   /* Decision 8: with nobody on the roster the group box itself goes, rather
      than standing open and empty above a designed empty state (W3). */

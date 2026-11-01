@@ -57,6 +57,8 @@ export function applyGameView() {
   const tl = $('#timeline'), sheet = $('#sheet');
   if (tl) tl.hidden = onCard;
   if (sheet) sheet.hidden = !onCard;
+  const printRow = $('#cardPrintRow');
+  if (printRow) printRow.hidden = !onCard;
   const seg = $('#viewSeg');
   if (seg) {
     for (const b of seg.querySelectorAll('button[data-view]')) {

@@ -4,11 +4,11 @@ The rules for how Benchcard looks and behaves on a phone. Benchcard is a web app
 that coaches install on iPhone and Android, and it should feel at home on both
 without copying either.
 
-**Status: target design, adopted 2026-09-14. The app does not follow these yet.**
-The redesign is built issue by issue, and a spec cites the rules it implements by
-ID (`N1`, `C4`, …). Where the running app and this file disagree, the app is
-behind, not wrong about how it works today — `architecture.md` describes what the
-code does now.
+**Status: adopted 2026-09-14, and the redesign has shipped (#18 closed
+2026-09-22). The app follows these rules.** A spec cites the rules it implements
+by ID (`N1`, `C4`, …). Where the running app and this file disagree, one of them
+is a bug: file an issue, and do not assume the app is behind.
+`architecture.md` describes what the code does now.
 
 Every rule says where it came from. The sources were read on 2026-09-14 and are
 listed at the end:

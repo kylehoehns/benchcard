@@ -157,8 +157,8 @@ export async function finishGamePass(c, origin, rec) {
     gmOpen: document.getElementById('gmOpen')?.querySelector('.ab-lab')?.textContent ?? null,
     abBench: document.getElementById('abBench')?.querySelector('.ab-lab')?.textContent ?? null,
   }))()`));
-  rec.check(startLabels.gmOpen === 'Start game', `item 4: #gmOpen reads ${JSON.stringify(startLabels.gmOpen)}, want "Start game"`);
-  rec.check(startLabels.abBench === 'Start game', `item 4: #abBench reads ${JSON.stringify(startLabels.abBench)}, want "Start game"`);
+  rec.check(startLabels.gmOpen === 'View game', `item 4: #gmOpen reads ${JSON.stringify(startLabels.gmOpen)}, want "View game" (#432)`);
+  rec.check(startLabels.abBench === 'View game', `item 4: #abBench reads ${JSON.stringify(startLabels.abBench)}, want "View game" (#432)`);
   const live4 = JSON.parse(await evalIn(c, liveRead));
   const lastIndex = JSON.parse(await evalIn(c, `(async () => {
     const { plans } = await import('/state.js');

@@ -32,7 +32,7 @@ function drawQr(grid) {
 }
 
 /* A render that finished after the coach left: a newer opening, or the pane
-   put away by picking Print card. */
+   put away by picking Card. */
 const stale = mine => mine !== opening || $('#handoffPane').hidden;
 
 let wired = false;

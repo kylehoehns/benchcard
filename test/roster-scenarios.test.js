@@ -27,7 +27,7 @@ describe('a coach builds their roster', { skip }, () => {
     await coach.tap('Add 3 players');
 
     assert.deepEqual(await coach.rosterNames(), ['Maya Webb', 'Eli Tran', 'Devon Ellis']);
-    assert.equal(await coach.rosterCount(), '3 players');
+    assert.equal(await coach.rosterCount(), 'Smoke Test · 3 players');
 
     await coach.comeBackLater();
     assert.deepEqual(await coach.rosterNames(), ['Maya Webb', 'Eli Tran', 'Devon Ellis'], 'the roster was saved');
@@ -76,7 +76,7 @@ describe('a coach builds their roster', { skip }, () => {
     await coach.tap('Add player');
 
     assert.deepEqual(await coach.rosterNames(), ['Maya Webb', 'Jo Park']);
-    assert.equal(await coach.rosterCount(), '2 players');
+    assert.equal(await coach.rosterCount(), 'Smoke Test · 2 players');
 
     await coach.openPlayer('Jo Park');
     assert.equal(await coach.valueOf('Jersey number for Jo Park'), '7');

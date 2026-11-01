@@ -77,8 +77,8 @@ export async function shareDoorPass(c, origin, rec) {
     rec.check(a.open, 'the share sheet did not open');
     rec.check(a.title === 'Share', `the sheet heading reads "${a.title}", want "Share"`);
     rec.check(a.firstIsSeg, 'the first control in the sheet body is not the Print card | Hand off segment');
-    rec.check(JSON.stringify(a.seg) === JSON.stringify([['Print card', 'true'], ['Hand off', 'false']]),
-      `the segment reads ${JSON.stringify(a.seg)}, want Print card pressed and Hand off not`);
+    rec.check(JSON.stringify(a.seg) === JSON.stringify([['Card', 'true'], ['Hand off', 'false']]),
+      `the segment reads ${JSON.stringify(a.seg)}, want Card pressed and Hand off not`);
     rec.check(a.print.length === PRINT_BODY.length, `on Print card these are not visible: ${PRINT_BODY.filter(i => !a.print.includes(i))}`);
     rec.check(a.handoff.length === 0, `on Print card the hand-off controls ${a.handoff} are visible`);
     rec.check(a.gone.length === 0, `${a.gone} still exist; the hand-off door is the segment now`);
@@ -107,7 +107,7 @@ export async function shareDoorPass(c, origin, rec) {
     rec.check(b.dialogsOpen === 1 && b.open, `Hand off: ${b.dialogsOpen} dialogs are open, want the share sheet alone`);
     rec.check(b.handoff.length === HANDOFF_BODY.length, `Hand off: these are not visible: ${HANDOFF_BODY.filter(i => !b.handoff.includes(i))}`);
     rec.check(b.print.length === 0, `Hand off: the print controls ${b.print} are still visible`);
-    rec.check(JSON.stringify(b.seg) === JSON.stringify([['Print card', 'false'], ['Hand off', 'true']]), `Hand off: the segment reads ${JSON.stringify(b.seg)}`);
+    rec.check(JSON.stringify(b.seg) === JSON.stringify([['Card', 'false'], ['Hand off', 'true']]), `Hand off: the segment reads ${JSON.stringify(b.seg)}`);
     const note = await evalJSON(c, `JSON.stringify({ share: !document.getElementById('handoffShare').disabled,
       note: document.getElementById('handoffNote').textContent, names: document.querySelectorAll('#handoffNames li').length })`);
     rec.check(note.share, 'Hand off: Share link is disabled');
@@ -119,7 +119,7 @@ export async function shareDoorPass(c, origin, rec) {
     const cc = await evalJSON(c, READ);
     rec.check(cc.print.length === PRINT_BODY.length, `Print card again: these are not visible: ${PRINT_BODY.filter(i => !cc.print.includes(i))}`);
     rec.check(cc.handoff.length === 0, `Print card again: the hand-off controls ${cc.handoff} are still visible`);
-    rec.check(JSON.stringify(cc.seg) === JSON.stringify([['Print card', 'true'], ['Hand off', 'false']]), `Print card again: the segment reads ${JSON.stringify(cc.seg)}`);
+    rec.check(JSON.stringify(cc.seg) === JSON.stringify([['Card', 'true'], ['Hand off', 'false']]), `Print card again: the segment reads ${JSON.stringify(cc.seg)}`);
     const fit = await evalIn(c, `getComputedStyle(document.getElementById('sheetCardPreview')).getPropertyValue('--cardzoom')`);
     rec.check(fit.trim() !== '' && Number(fit) > 0 && Number(fit) <= 1, `Print card again: the preview's fit is "${fit}", want a zoom in (0, 1]`);
 
@@ -133,7 +133,7 @@ export async function shareDoorPass(c, origin, rec) {
     await tap(c, `document.getElementById('sheetCardClose').click()`);
     await tap(c, `document.getElementById('shareBtn').click()`);
     const d = await evalJSON(c, READ);
-    rec.check(JSON.stringify(d.seg) === JSON.stringify([['Print card', 'true'], ['Hand off', 'false']]), `reopened: the segment reads ${JSON.stringify(d.seg)}, want Print card pressed`);
+    rec.check(JSON.stringify(d.seg) === JSON.stringify([['Card', 'true'], ['Hand off', 'false']]), `reopened: the segment reads ${JSON.stringify(d.seg)}, want Card pressed`);
     rec.check(d.print.length === PRINT_BODY.length && d.handoff.length === 0, 'reopened: the print body is not the one showing');
 
     // G. Names

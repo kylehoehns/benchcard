@@ -222,14 +222,12 @@ export async function todayAndBackPass(c, origin, rec) {
   // items 3, 4, 5, 6, 8: each pushed screen, its header, and its way home.
   const openers = [
     ['games', `document.querySelector('.today-game')?.click()`, 'Hawks'],
-    /* #33 decision 5: the team's own name, not the word "Team". The bar
-       title is now a copy of the screen's large title, and Team's large
-       title has always been the team's name -- a hand-typed "Team" in the
-       header was the one place the two disagreed. Pinned by hand from
-       `rich2`'s `activeTeam: 0` (see line 47 above), not read back off the
-       large title, or this would only be checking that a copy matches its
-       own source. */
-    ['team', `document.getElementById('todayTeam')?.click()`, 'Smoke Test'],
+    /* #432 item 4: the Team screen's large title is "Roster" (it was the
+       team's own name, #33 decision 5, which made "Back to Smoke Test" go
+       back to a screen also called Smoke Test). The bar title is a copy of
+       the large title. Pinned by hand, not read back off the large title,
+       or this would only be checking that a copy matches its own source. */
+    ['team', `document.getElementById('todayTeam')?.click()`, 'Roster'],
     ['season', `document.getElementById('todaySeason')?.click()`, 'Season'],
     ['settings', `document.getElementById('settingsBtn')?.click()`, 'Settings'],
   ];

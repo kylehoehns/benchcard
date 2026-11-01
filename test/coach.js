@@ -113,6 +113,15 @@ const FADE_WATCH = `window.__fades = [];
     if (view && !window.__fades.includes(view.id)) window.__fades.push(view.id);
   }, true);`;
 
+/* A printer that records instead of printing: each `window.print()` notes the
+ * titles of the cards on the page at that moment, as `printed()` reads them
+ * back. Nothing opens, so a scenario can print as often as it likes. */
+const PRINT_SPY = `window.__prints = [];
+  window.print = () => {
+    window.__prints.push([...document.querySelectorAll('#sheet .card:not(.card-copy) .card-hd .opp')]
+      .map(e => e.innerText.replace(/\\s+/g, ' ').trim()));
+  };`;
+
 const KEY_CODES = { Escape: 27, Tab: 9, Enter: 13 };
 
 export class Coach {
@@ -141,6 +150,7 @@ export class Coach {
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: SHARE_SHEET });
       await c.send('Page.addScriptToEvaluateOnNewDocument', { source: FADE_WATCH });
+      await c.send('Page.addScriptToEvaluateOnNewDocument', { source: PRINT_SPY });
     } catch (err) {
       c?.close();
       if (launched) await closeChrome(launched.proc, launched.dir);
@@ -554,9 +564,11 @@ export class Coach {
     return evalIn(this.c, `document.querySelectorAll(${JSON.stringify(sel)}).length`);
   }
 
-  /** Today's games, top to bottom, as the passes read ("Hawks, 9:00 AM, planned"). */
+  /** Today's games, top to bottom, as the passes read ("Hawks, 9:00 AM, planned"); the
+      Print card button beside a row is a control of its own, not a game. */
   async todayGames() {
-    return (await this.#controls(`[document.querySelector('#todayGames')].filter(Boolean)`)).map(x => x.name);
+    return (await this.#controls(`[document.querySelector('#todayGames')].filter(Boolean)`)).map(x => x.name)
+      .filter(n => !n.startsWith('Print card for '));
   }
 
   /** The Season screen's rows, as `{ callName: 'N games · M behind' }`: the
@@ -741,6 +753,10 @@ export class Coach {
     const shown = await evalIn(this.c, 'document.activeElement.selectedOptions?.[0]?.text ?? null');
     if (shown !== option) throw new Error(`choose ${JSON.stringify(name)}: wanted ${JSON.stringify(option)}, it shows ${JSON.stringify(shown)}`);
   }
+
+  /** Each time the app asked the browser to print, the card titles on the
+      page then ("VS HAWKS"), oldest first. */
+  printed() { return evalIn(this.c, 'window.__prints'); }
 
   /** The last link the share sheet was given; fails if nothing was shared. */
   async sharedLink() {

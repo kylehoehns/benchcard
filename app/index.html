@@ -684,6 +684,14 @@
                  `applyGameView` toggle `hidden`; `.stage[hidden]` (card.css)
                  is what makes that toggle take on screen. -->
             <div class="stage print-path" id="sheet" hidden></div>
+            <!-- #432: a plain Print card under the card, for a coach who does
+                 not know the share icon prints. Same `printCard` as `#print`;
+                 `applyGameView` hides it with `#sheet`. -->
+            <div class="gm-cta noprint" id="cardPrintRow" hidden>
+              <button class="btn press" id="cardPrint" data-needs-card>
+                <span class="i" data-icon="printer"></span> Print card
+              </button>
+            </div>
             <!-- #69 decision 7: the timeline is not boxed. `.surface` (a
                  bordered card) used to wrap it; both ids stay, unwrapped. -->
             <h2 class="sr-only">Timeline</h2>
@@ -817,9 +825,9 @@
       <div class="bsheet-body">
         <!-- #257: Print card | Hand off, the `.seg` primitive `#viewSeg` uses.
              `app.js` keeps `.on`/`aria-pressed` and which pane shows; the
-             sheet opens on Print card every time. -->
+             sheet opens on Card every time. -->
         <div class="seg wide noprint" id="shareSeg" role="group" aria-label="Print or hand off">
-          <button class="press on" type="button" data-pane="print" aria-pressed="true">Print card</button>
+          <button class="press on" type="button" data-pane="print" aria-pressed="true">Card</button>
           <button class="press" type="button" data-pane="handoff" aria-pressed="false">Hand off</button>
         </div>
         <div id="printPane">
@@ -844,7 +852,7 @@
         </div>
         <div class="pgrp">
           <label class="prow" for="printScope">
-            <span class="prow-t">Print</span>
+            <span class="prow-t">Games to print</span>
             <span class="prow-ctl">
               <select id="printScope" class="prow-select">
                 <option value="game">This game</option>
@@ -1051,7 +1059,7 @@
              purpose: a different kind of link (six pages by team size, #423),
              and opening Paste must drop its box beside the link that opened it. -->
         <nav class="wel-tail-row" aria-label="More about Benchcard">
-          <a class="wel-about" href="./about">How it works</a>
+          <a class="wel-about" href="./about">About Benchcard</a>
           <button type="button" class="linkish press" id="welRestore">Restore a backup</button>
           <button type="button" class="linkish press paste-open">Paste one</button>
         </nav>
@@ -1097,7 +1105,7 @@
 
          #31: the screen is the roster read the way a coach reads it on paper
          -- one line per kid, tapped to open everything about them. Its own
-         large `h1` is the team's name, and `data-large-title` on it is what
+         large `h1` reads Roster (#432; the team's name moved to the sub line), and `data-large-title` on it is what
          the header copies into `#barTitle` once it scrolls away (#33
          decision 5, `syncBarTitle` in render.js -- the same arrangement
          `games` and `season` have). The two actions on the right of the
@@ -1106,7 +1114,7 @@
          rows themselves, the second group under them and the empty state are
          all painted by `roster-view.js`. -->
     <div class="dayhead">
-      <h1 class="team-h1" id="teamTitle" data-large-title tabindex="-1">Team</h1>
+      <h1 class="team-h1" id="teamTitle" data-large-title tabindex="-1">Roster</h1>
       <!-- "11 players": the prototype's muted sub, and the same count the
            roster footer used to carry, so it keeps the id that already had a
            writer. -->

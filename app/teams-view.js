@@ -21,6 +21,7 @@
  * game screen can't be reached without one.
  * ================================================================== */
 import { $, on, set, el } from './dom.js';
+import { icon } from './icons.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
@@ -503,7 +504,25 @@ function renderPass(g, i, d) {
   const statusWord = status.word.toLowerCase();
   b.setAttribute('aria-label', when ? `${full}, ${when}, ${statusWord}` : `${full}, ${statusWord}`);
   b.onclick = () => { openGame(d, i); setView('games'); };
-  return b;
+
+  /* #432: a planned game gets its own Print card button, beside the row (a
+     button cannot sit inside a button). Planned is `passStatus`'s class
+     (`ok`), read here and not re-derived. It opens the game and shows it, as
+     the row does, so `#print`'s gate reads this game, then clicks `#print` --
+     the way the `p` key does (shortcuts.js) -- so the one `printCard` runs.
+     It carries no `data-needs-card`: card.js's sweep gates on the *active*
+     game, and a Planned row's own card always exists. */
+  if (status.cls !== 'ok') return b;
+  const row = el('div', 'today-pass');
+  const pr = el('button', 'btn press noprint today-print');
+  pr.type = 'button';
+  pr.setAttribute('aria-label', `Print card for ${full}`);
+  const ic = el('span', 'i');
+  ic.append(icon('printer', { size: '1em' }));
+  pr.append(ic, ' Print card');
+  pr.onclick = () => { openGame(d, i); setView('games'); $('#print').click(); };
+  row.append(b, pr);
+  return row;
 }
 
 /* #34 decision 6: sets `#resumeBar`'s hidden state and writes the label in

@@ -69,8 +69,10 @@ The bar's title is a centered overlay, `#barTitle`, positioned absolutely inside
 decisions 3–5). On the four screens that own a large title (Today, a game, Team,
 Season), the overlay's text is copied at runtime from whichever element carries
 `data-large-title` in the view's `<main>` — a single source of truth that stays
-honest when a coach renames the team in the roster. On Today, the large title is the team name and also the team menu button (`#teamBtn`). Settings has no large title,
-so its bar title reads the static `data-bar-title` on its `<main>` and is shown
+honest when a coach renames the team. On Today, the large title is the team name
+and also the team menu button (`#teamBtn`). On the Team screen it is the fixed
+word *Roster*, and the team's name sits in the sub line under it
+(`#rosterCount`, #432). Settings has no large title, so its bar title reads the static `data-bar-title` on its `<main>` and is shown
 at all times. An `IntersectionObserver` in `render.js` (`watchLargeTitle`)
 watches the view's `[data-large-title]` element and toggles `.bar.title-in` as
 it slides under the bar, fading the overlay in or out. The observer's `rootMargin`
@@ -453,7 +455,10 @@ Mobile specifics that came out of real use:
   a small picture of who plays when and for how long (one row per available player,
   `aria-hidden` since it is not a roster list), and a line of setup — player count, strategy,
   any rules, and whether it evens out later games. A blocked plan has no picture. Tapping opens
-  the game screen.
+  the game screen. A Planned pass has a **Print card** button under it (#432), a sibling
+  of the pass's own button: it opens that game and prints its card through the same
+  `printCard` as the share sheet's Print, with the same print settings. The game screen's
+  Card view has the same button under the card (`#cardPrint`).
   Each pass is a card: neutral surface with 20px radius, no border, with 0.75rem
   gap between them (#69). The status color is shown as a dot only, not the text
   color. Tip-off time, opponent name, and summary are sized from the type scale:
@@ -514,7 +519,7 @@ Mobile specifics that came out of real use:
 ## Hand off
 
 The **Share sheet** opens from a tap on the share button and presents two
-segments: **Print card** and **Hand off**. Print card is selected when the
+segments: **Card** and **Hand off**. Card is selected when the
 sheet opens, showing the card preview, print and share image buttons, and the
 print settings; switching to Hand off swaps the body in place to show the hand-off
 interface, which builds a link from the game, its roster and its stints (`encode` in

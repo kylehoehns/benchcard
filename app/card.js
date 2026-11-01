@@ -23,11 +23,13 @@ import { resumeAt, finishedGame } from './live.js';
    load: a coach who reloaded because something was wrong would be trapped. */
 function labelBench(blocked) {
   const r = blocked ? null : resumeAt(plans[state.activeGame] ?? null, game()?.live);
+  // #432: a finished game is looked back on, not started.
+  const finished = finishedGame(game()?.live);
   for (const sel of ['#abBench', '#gmOpen']) {
     const btn = $(sel);
     if (!btn) continue;
     const lab = btn.querySelector('.ab-lab');
-    if (lab) lab.textContent = r ? `Resume · ${r.where}` : 'Start game';
+    if (lab) lab.textContent = r ? `Resume · ${r.where}` : finished ? 'View game' : 'Start game';
     /* The `.i` span is the styled wrapper and the svg lives inside it (see the
        hydration loop in app.js), so swap the contents, never the span. */
     const ic = btn.querySelector('.i');

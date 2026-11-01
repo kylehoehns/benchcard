@@ -158,11 +158,11 @@ export async function focusAnnouncePass(c, origin, rec) {
     await enterOn(c, '#todayTeam');
     f = await focusInfo(c);
     rec.check(f.id === 'teamTitle', `item 1: pushing Team landed focus on ${JSON.stringify(f.id)}, want #teamTitle`);
-    rec.check(f.title === 'Smoke Test · Benchcard', `item 5: Team's tab title reads ${JSON.stringify(f.title)}, want "Smoke Test · Benchcard"`);
+    rec.check(f.title === 'Roster · Benchcard', `item 5: Team's tab title reads ${JSON.stringify(f.title)}, want "Roster · Benchcard"`);
     await tap(c, `document.getElementById('backBtn').click()`);
     const backTeam = await evalJSON(c, `JSON.stringify(document.activeElement === document.getElementById('todayTeam'))`);
     rec.check(backTeam === true, 'item 3: Back from Team did not return focus to #todayTeam');
-    notes.push('item 1: pushing Team lands focus on #teamTitle, titled "Smoke Test · Benchcard", and Back returns it to #todayTeam');
+    notes.push('item 1: pushing Team lands focus on #teamTitle, titled "Roster · Benchcard", and Back returns it to #todayTeam');
 
     // item 1/3/5: Season -- heading has no id, matched by class instead.
     await enterOn(c, '#todaySeason');

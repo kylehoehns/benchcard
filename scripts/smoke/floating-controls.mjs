@@ -64,6 +64,10 @@ export async function floatingControlsPass(c, origin, rec) {
   for (const { view, main, hasLarge } of VIEWS) {
     await evalIn(c, step(TODAY_HOME));
     if (view !== 'today') await evalIn(c, step(GO[view]));
+    /* "At the top of the screen" is what this measures, so start there: an
+       earlier check can leave Today scrolled, and since #432's Print card
+       buttons Today is taller than 844px, so that scroll now survives. */
+    await evalIn(c, 'window.scrollTo(0, 0)');
     await evalIn(c, `${SETTLE}`);
     const t = JSON.parse(await evalIn(c, `(() => {
       const bar = document.querySelector('.bar');
@@ -89,6 +93,7 @@ export async function floatingControlsPass(c, origin, rec) {
         ariaHidden: bt.getAttribute('aria-hidden'),
         large: large ? large.textContent.trim() : null,
         titleIn: bar.classList.contains('title-in'),
+        scrollY: Math.round(window.scrollY),
         overlap: rects.filter(x => !(br.right <= x.r.l || br.left >= x.r.r || br.bottom <= x.r.t || br.top >= x.r.b)).map(x => x.label),
         barSide: getComputedStyle(bar).getPropertyValue('--bar-side').trim(),
       });
@@ -101,7 +106,7 @@ export async function floatingControlsPass(c, origin, rec) {
       }
       rec.check(t.ariaHidden === 'true', `${view}: #barTitle aria-hidden is ${JSON.stringify(t.ariaHidden)}, want "true" -- `
         + 'the screen already has its own h1 and both would be announced');
-      rec.check(!t.titleIn, `${view}: .bar has .title-in at the top of the screen, want the large title showing alone`);
+      rec.check(!t.titleIn, `${view}: .bar has .title-in at the top of the screen (scrollY ${t.scrollY}), want the large title showing alone`);
     } else {
       rec.check(!t.large, `${view}: has a [data-large-title], want none (light-settings.png shows a bar title only)`);
       rec.check(t.barTitle === 'Settings', `${view}: #barTitle reads ${JSON.stringify(t.barTitle)}, want "Settings"`);
