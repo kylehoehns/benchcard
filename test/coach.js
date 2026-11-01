@@ -733,6 +733,16 @@ export class Coach {
     return result.value === 'true';
   }
 
+  /** Whether the disclosure button a coach would call `name` is open. */
+  async isExpanded(name) {
+    const hit = (await this.#controls()).find(x => x.name === name);
+    if (!hit) throw new Error(`isExpanded ${JSON.stringify(name)}: not on screen. On screen: ${JSON.stringify(await this.controls())}`);
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: hit.node });
+    const { result } = await this.c.send('Runtime.callFunctionOn',
+      { objectId: object.objectId, functionDeclaration: 'function () { return this.getAttribute("aria-expanded"); }', returnByValue: true });
+    return result.value === 'true';
+  }
+
   /** The color the page paints behind everything, as the browser reports it. */
   pageBackground() {
     return evalIn(this.c, 'getComputedStyle(document.body).backgroundColor');
@@ -924,12 +934,30 @@ export class Coach {
     await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
   }
 
-  /** Who bench mode lists under Not here, top to bottom, by name; [] when the group is hidden. */
-  notHere() {
+  /** Who bench mode lists under Running late, top to bottom, by name; [] when the group is hidden. */
+  runningLate() {
     return evalIn(this.c, `(() => {
       const sec = document.querySelector('#gmOutSec');
       if (!sec || sec.hidden) return [];
       return [...sec.querySelectorAll('.nm')].map(n => n.textContent);
+    })()`);
+  }
+
+  /** Who bench mode lists once "Someone showed up?" is open, top to bottom, by name; []
+      while it is closed or not shown (nobody is Out and not late). */
+  showedUp() {
+    return evalIn(this.c, `(() => {
+      const list = document.querySelector('#gmShowed');
+      if (!list || list.hidden || list.closest('[hidden]')) return [];
+      return [...list.querySelectorAll('.nm')].map(n => n.textContent);
+    })()`);
+  }
+
+  /** What the Who's here row for `name` says on its right: "Out" when the kid is off, '' when on. */
+  whoMark(name) {
+    return evalIn(this.c, `(() => {
+      const row = [...document.querySelectorAll('#sheetWhoBody .who-row')].find(b => b.getAttribute('aria-label') === ${JSON.stringify(name)});
+      return row ? (row.querySelector('.prow-v')?.textContent ?? '') : null;
     })()`);
   }
 

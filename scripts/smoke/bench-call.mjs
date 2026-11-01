@@ -214,9 +214,9 @@ async function overtimeAt(c, origin, rec, cell, where) {
   }
 }
 
-// The landscape block. At 844x390/16px the call, Not here and the bench share the right
+// The landscape block. At 844x390/16px the call, Running late and the bench share the right
 // column, so a coach taps off on the floor and on from the bench without scrolling. At
-// 568x320/16px with a Not here player the right column cannot push the foot off screen.
+// 568x320/16px with a Running late player the right column cannot push the foot off screen.
 const LAND_CELLS = [
   { width: 844, height: 390, textPx: 16, state: 'bench mode', bench: true },
   { width: 568, height: 320, textPx: 16, state: 'bench mode, not here', bench: false },

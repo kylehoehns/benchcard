@@ -1685,9 +1685,9 @@
     <p class="gm-moved" id="gmMoved" hidden></p>
 
     <!-- #430: above the floor, so a late arrival's Here now is on screen when
-         bench mode opens. #383: players marked out, each with a Here now for a late arrival. -->
+         bench mode opens. #383, #504: players marked Running late, each with a Here now. -->
     <div class="gm-sec" id="gmOutSec" hidden>
-      <h3 class="gm-lab">Not here</h3>
+      <h3 class="gm-lab">Running late</h3>
       <div class="gm-bench" id="gmOut"></div>
     </div>
 
@@ -1707,6 +1707,12 @@
       <div class="gm-sec" id="gmBenchSec">
         <h3 class="gm-lab" id="gmBenchLab">Bench</h3>
         <div class="gm-bench" id="gmBench"></div>
+      </div>
+      <!-- #504: a kid marked Out who showed up anyway. Quiet, below the bench;
+           shown only while someone is Out and not Running late. -->
+      <div class="gm-sec" id="gmShowedSec" hidden>
+        <button class="gm-showed press" id="gmShowedBtn" type="button" aria-expanded="false" aria-controls="gmShowed"><span>Someone showed up?</span><span class="i" data-icon="chevron-right" aria-hidden="true"></span></button>
+        <div class="gm-bench" id="gmShowed" hidden></div>
       </div>
     </div>
 

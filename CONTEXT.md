@@ -106,9 +106,23 @@ A player who is at this game and can be planned.
 
 **Absent**:
 A player who is on the roster but not at this game, so the plan leaves them out
-entirely.
-_Avoid_: out, sitting out, no-show, not here
+entirely. An absent player is either **Out** or **Running late**.
+_Avoid_: sitting out, no-show, not here
 _In code_: `g.out`
+
+**Out**:
+The default kind of absent: the player is not coming to this game. Bench mode
+does not list them up top; a "Someone showed up?" row at the bottom can still
+mark one here.
+_Avoid_: absent (in the app's words), not here
+_In code_: in `g.out` and not in `g.late`
+
+**Running late**:
+The other kind of absent: the player is expected but not here yet. Bench mode
+lists them above the floor with a Here now button. The plan treats them
+exactly like Out.
+_Avoid_: late arrival (as a label), not here
+_In code_: `g.late`, always a subset of `g.out`
 
 **On the floor**:
 The five players playing during a stint.
@@ -427,8 +441,9 @@ _Avoid_: delete
 - **Rotation** was also level 3's name; level 3 is now **Regular**, and rotation
   means only the plan's lineups.
 - **Even** was also a balance shape; that shape is now **Steady**.
-- **Out** meant absent, comes off, sit for the rest, and once on the floor. Use
-  the specific term; bare "out" is not a term.
+- **Out** meant absent, comes off, sit for the rest, and once on the floor. It
+  now names one thing: an absent player who is not coming (#504). Use the
+  specific term for the others.
 - **Floor** means the court. The minimum-minutes idea is a **minimum** or the
   **league minimum**, never a floor.
 - **Bench** is where players wait during a stint, and the start of **bench

@@ -54,6 +54,23 @@ test('keepOnFloor persists like the other two pair rules, and is empty when the 
   assert.deepEqual(c.keepOnFloor, [['a', 'b']], 'dangling and malformed entries are dropped');
 });
 
+test('late is the part of out that is only running late: a subset, de-duplicated, and empty when the key is absent', () => {
+  // #504: a record from before the split has no key, so every kid already out is Out (not coming)
+  assert.deepEqual(sanitize(good(), H).teams[0].days[0].games[0].late, []);
+
+  const raw = good();
+  raw.day.games[0].out = ['a', 'b'];
+  raw.day.games[0].late = ['b', 'b', 'ghost'];
+  assert.deepEqual(sanitize(raw, H).teams[0].days[0].games[0].late, ['b'], 'unknown ids and repeats are dropped');
+
+  raw.day.games[0].out = ['b'];
+  raw.day.games[0].late = ['a', 'b'];
+  assert.deepEqual(sanitize(raw, H).teams[0].days[0].games[0].late, ['b'], 'a kid who is here cannot be running late');
+
+  raw.day.games[0].late = 'b';
+  assert.deepEqual(sanitize(raw, H).teams[0].days[0].games[0].late, [], 'junk is empty');
+});
+
 test('garbage in returns null rather than a broken state', () => {
   for (const junk of [null, undefined, 'nope', 42, [], true]) {
     assert.equal(sanitize(junk, H), null, String(junk));

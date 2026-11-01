@@ -88,24 +88,26 @@ export const APP_LARGE_TEXT_STATES = [
     close: `document.querySelector('#teamMenu')?.hidePopover?.()` },
   { name: 'bench mode', open: `document.querySelector('#gmOpen').click()`,
     close: `document.querySelector('#gmClose').click()` },
-  /* #383: bench mode with a long-named player marked out, so the "Not here"
-     group and its "Here now" button are on screen at a 32px root -- no state
-     above has anyone out. The second player is renamed to a long two-word
-     name (as `LONG_AND_SQUEEZE` already has it) and marked out before bench
-     mode opens; close leaves the record as it found it: the name and the
-     out list put back, bench mode closed. */
+  /* #383, #504: bench mode with a long-named player marked out and Running
+     late, so the "Running late" group and its "Here now" button are on screen
+     at a 32px root -- no state above has anyone out. The second player is
+     renamed to a long two-word name (as `LONG_AND_SQUEEZE` already has it) and
+     marked out and late before bench mode opens; close leaves the record as it
+     found it: the name and both lists put back, bench mode closed. */
   { name: 'bench mode, not here',
     open: `const st = await import('/state.js');
            const who = st.team().players[1];
-           window.__notHere383 = { name: who.name, out: [...st.game().out] };
+           window.__notHere383 = { name: who.name, out: [...st.game().out], late: [...st.game().late] };
            who.name = 'Featherstonehaugh Bartholomew';
            st.game().out = [...st.game().out, who.id];
+           st.game().late = [...st.game().late, who.id];
            (await import('/render.js')).renderAll();
            document.querySelector('#gmOpen').click()`,
     close: `document.querySelector('#gmClose').click();
             const st = await import('/state.js');
             st.team().players[1].name = window.__notHere383.name;
             st.game().out = window.__notHere383.out;
+            st.game().late = window.__notHere383.late;
             (await import('/render.js')).renderAll();` },
   /* AND A TOAST, which this pass could not see either, for a different reason:
      the other states are static and a toast expires. It joins anyway because

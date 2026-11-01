@@ -522,6 +522,8 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
       const closing = isObj(c.closing) ? c.closing : {};
       const out = keep(g.out);
       const sittingOut = new Set(out);
+      // #504: Running late is the part of out that is expected; never a kid who is here
+      const late = [...new Set(keep(g.late))].filter(id => sittingOut.has(id));
       return {
         id: typeof g.id === 'string' && g.id ? g.id : 'g' + Math.random().toString(36).slice(2, 8),
         label: typeof g.label === 'string' ? g.label : '',
@@ -532,6 +534,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         granMode: ['everyN', 'perPeriod', 'breaksOnly'].includes(g.granMode) ? g.granMode : 'everyN',
         granValue: num(g.granValue, 4, 1, 40),
         out,
+        late,
         useCarryover: !!g.useCarryover,
         // v5 gained a season; B3 gained the switch that reads it back. Absent
         // is off, which is what every record written before this shipped says,

@@ -81,7 +81,7 @@ describe('a coach runs a game', { skip }, () => {
 
   /* #383: ten players, Theo (p9) marked out, Hawks, bench mode at stint 3. */
   async function startHawksOfTenAtStint3(edits = {}) {
-    await coach.onGameDayWith({ out: ['p9'], ...edits }, 10);
+    await coach.onGameDayWith({ out: ['p9'], late: ['p9'], ...edits }, 10);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
     await coach.tap('Next stint');
@@ -97,7 +97,7 @@ describe('a coach runs a game', { skip }, () => {
 
   test('a late arrival is marked Here now from bench mode and plays from the next stint', async () => {
     await startHawksOfTenAtStint3();
-    assert.deepEqual(await coach.notHere(), ['Theo Alvarez']);
+    assert.deepEqual(await coach.runningLate(), ['Theo Alvarez']);
     const size = await coach.sizeOf('Here now, Theo Alvarez');
     assert.ok(size.height >= 48 && size.width >= 48, `Here now is ${size.width} x ${size.height}`);
     const stint3 = await coach.onFloor();
@@ -107,19 +107,19 @@ describe('a coach runs a game', { skip }, () => {
     assert.equal(await coach.toast(), 'Theo is here.');
     assert.equal(await coach.stint(), '3 of 8');
     assert.deepEqual(await coach.onFloor(), stint3, "stint 3's floor did not change");
-    assert.deepEqual(await coach.notHere(), []);
+    assert.deepEqual(await coach.runningLate(), []);
     const later = (await floorsFromHere()).slice(1);
     assert.ok(later.some(f => f.includes('Theo Alvarez')), `Theo plays from stint 4 on: ${JSON.stringify(later)}`);
   });
 
-  test('Undo on the Here now toast puts the player back under Not here and the rotation as it was', async () => {
+  test('Undo on the Here now toast puts the player back under Running late and the rotation as it was', async () => {
     await startHawksOfTenAtStint3();
     const before = await floorsFromHere();
 
     await coach.tap('Here now, Theo Alvarez');
     await coach.tap('Undo');
 
-    assert.deepEqual(await coach.notHere(), ['Theo Alvarez']);
+    assert.deepEqual(await coach.runningLate(), ['Theo Alvarez']);
     assert.equal(await coach.stint(), '3 of 8');
     assert.deepEqual(await floorsFromHere(), before);
   });
@@ -166,12 +166,12 @@ describe('a coach runs a game', { skip }, () => {
     assert.equal(await coach.focused(), 'Here now, Theo Alvarez');
   });
 
-  test('with nobody out, bench mode has no Not here group', async () => {
+  test('with nobody out, bench mode has no Running late group', async () => {
     await coach.onGameDayWith({ out: [] }, 10);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
 
-    assert.deepEqual(await coach.notHere(), []);
+    assert.deepEqual(await coach.runningLate(), []);
     assert.ok(!(await coach.controls()).some(n => n.startsWith('Here now')), 'no Here now button is reachable');
   });
 

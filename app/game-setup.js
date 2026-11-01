@@ -17,9 +17,10 @@
  * ================================================================== */
 import { riseIn } from './fx.js';
 import { $, set, el, checkMark } from './dom.js';
-import { state, game, plans, noRoster, setAvailable,
+import { state, game, plans, noRoster, setAvailable, save,
          sentenceParts, planSay, stepFormat, GRAN_CHOICES, weekdayLabel,
          initials, colorOf } from './state.js';
+import { setLate } from './team-ops.js';
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
 import { colorName, seasonDate } from './storage.js';
 import { distinctNames } from './roster.js';
@@ -209,14 +210,33 @@ function on(sel, fn) { const n = $(sel); if (n) n.onclick = fn; }
 /* ---------------------------- Who's here ---------------------------- */
 
 // #143: the trailing slot is a `.prow-check` mark (present) or a muted
-// "Absent" (`.prow-v`, not present) -- never both, never neither. Rebuilt
+// "Out" (`.prow-v`, not present) -- never both, never neither. Rebuilt
 // each paint rather than toggled in place, the same way `paintGranRows`
 // below moves its own check between rows.
 function paintWhoRow(b, on_) {
   b.setAttribute('aria-pressed', String(on_));
   const old = b.querySelector('.prow-check, .prow-v');
   if (old) old.remove();
-  b.append(on_ ? checkMark() : el('span', 'prow-v', 'Absent'));
+  b.append(on_ ? checkMark() : el('span', 'prow-v', 'Out'));
+}
+
+/* #504: a kid who is Out can be marked Running late. The chip is a sibling of
+   the row's own button, never inside it: no interactive element in a button.
+   Gone when the kid is on. Plain `save`: the plan reads `out` alone, so
+   Running late changes nothing it would re-plan. */
+function paintLateChip(item, g, id, name, on_) {
+  item.querySelector('.who-late')?.remove();
+  if (on_) return;
+  const c = el('button', 'who-late', 'Running late');
+  c.type = 'button';
+  c.setAttribute('aria-label', `Running late, ${name}`);
+  c.setAttribute('aria-pressed', String(g.late.includes(id)));
+  c.onclick = () => {
+    setLate(g, id, c.getAttribute('aria-pressed') !== 'true');
+    c.setAttribute('aria-pressed', String(g.late.includes(id)));
+    save();
+  };
+  item.append(c);
 }
 
 function whoRow(g, p, on_, names) {
@@ -229,6 +249,7 @@ function whoRow(g, p, on_, names) {
   // badge, the name and the check onto three separate lines (236px against
   // the sheet's own 148px half-height window), a fix pass finding this
   // ticket's own spec calls out by name.
+  const item = el('div', 'who-item');
   const b = el('button', 'prow who-row');
   b.type = 'button';
   b.style.setProperty('--c', colorOf(p.id));
@@ -236,7 +257,7 @@ function whoRow(g, p, on_, names) {
   // by the caller rather than re-derived per row) carries the suffix a shared
   // name needs; a player with no name at all still falls back to 'Unnamed'.
   const name = names[p.id] || p.name || 'Unnamed';
-  // Named with the player's name alone (item 3): the visible "Absent" text
+  // Named with the player's name alone (item 3): the visible "Out" text
   // beside it is decorative confirmation of `aria-pressed`, not part of the
   // accessible name, the same split `renderAvail` used to draw between its
   // pill's className and its `aria-label`.
@@ -244,17 +265,20 @@ function whoRow(g, p, on_, names) {
   b.append(el('span', 'av', initials(p)));
   b.append(el('span', 'prow-t', name));
   paintWhoRow(b, on_);
+  item.append(b);
+  paintLateChip(item, g, p.id, name, on_);
   b.onclick = () => {
     const nowOn = b.getAttribute('aria-pressed') !== 'true';
     // setAvailable, not a bare g.out edit: a live override naming a player
     // who has just been sat out has to go with them.
     setAvailable(g, p.id, nowOn);
     paintWhoRow(b, nowOn);
+    paintLateChip(item, g, p.id, name, nowOn);
     // Who's here is an availability edit -- the re-plan it schedules leaves
     // the strategy body alone, same as the pill it replaces.
     edit('availability');
   };
-  return b;
+  return item;
 }
 
 function paintWhoBody() {
@@ -270,7 +294,7 @@ function paintWhoBody() {
   const grp = el('div', 'pgrp');
   for (const p of state.players) grp.append(whoRow(g, p, !out.has(p.id), names));
   box.append(grp);
-  riseIn(grp.querySelectorAll('.prow'), { delay: 0.012, from: 5 });
+  riseIn(grp.querySelectorAll('.who-row'), { delay: 0.012, from: 5 });
 }
 
 /* ------------------------------ Format ------------------------------ */

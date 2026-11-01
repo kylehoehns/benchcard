@@ -930,6 +930,18 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
    already use: a break inside the box's own width keeps every word the box
    has room for, rather than clipped by .pgrp's overflow: hidden. */
 .who-row .prow-t { overflow-wrap: anywhere; }
+/* #504: each Who's here row is wrapped so a kid who is Out can carry a
+   Running late chip as a sibling of the row's button. The hairline moves from
+   `.prow + .prow` to the wrapper, and the chip sits under the name. Tokens
+   only, so dark mode follows. */
+.who-item + .who-item > .who-row::before { content: ''; position: absolute; top: 0; left: 1rem; right: 0;
+  height: 1px; background: var(--line); }
+.who-item > .who-row { position: relative; }
+.who-late { display: block; box-sizing: border-box; min-height: 48px; max-width: calc(100% - 4rem);
+  margin: 0 1rem .5rem 3.75rem; padding: 0 1rem; border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--chip); color: var(--ink); font: inherit; font-size: var(--fs-footnote);
+  line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+.who-late[aria-pressed="true"] { background: var(--tint); color: var(--tint-ink); border-color: var(--tint); }
 /* Edit mode: the order column, ahead of the badge. Grip, up and down are
    each a 48px target at every width -- rationale at app/roster-view.js:93-99
    (canonical). Pinned by test/roster-order.test.js. The row gives up its own
@@ -1016,7 +1028,7 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
      for one) when the pinned call and foot leave no room, never the foot */
   overflow-y: auto; flex-shrink: 4; }
 
-/* #430: bench mode reads, top to bottom, bar, #gmMoved, Not here, this
+/* #430: bench mode reads, top to bottom, bar, #gmMoved, Running late, this
    scroller (the floor and the bench -- the only thing that scrolls), the call
    (#gmNext) and the foot. The foot and the call are flex siblings of the
    scroller, not floating over it, so nothing needs a bottom reserve and the
@@ -1031,7 +1043,7 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
 /* Lives here, not inline, so the landscape block below can override it
    without !important. */
 #gmBenchSec { margin-top: 1.15rem; }
-/* #430: Not here is a compact row under the bar (above the scroller), so a
+/* #430: Running late is a compact row under the bar (above the scroller), so a
    late arrival's Here now is on screen when bench mode opens. It caps its own
    height and scrolls itself, so a long out list never pushes the floor off
    the screen; the label stays (small, muted) for screen readers and sighted
@@ -1121,11 +1133,20 @@ h3.gm-lab { margin-top: 0; font-weight: inherit; }
    (#191): a word wider than the whole row breaks rather than running past
    .gm-body's own edge uncut. */
 .gm-b .nm { flex: 1; min-width: 0; font-weight: 400; overflow-wrap: anywhere; }
-/* #383: a Not here row's Here now button. It never shrinks below the touch
+/* #504: "Someone showed up?" -- quiet: full-width, muted, no fill, a chevron
+   that turns down when it is open. Still a 48px target. */
+.gm-showed { display: flex; align-items: center; justify-content: space-between; gap: .6rem; width: 100%;
+  min-height: 48px; padding: .3rem .3rem; border: 0; background: none; font: inherit;
+  font-size: var(--fs-footnote); color: var(--muted); text-align: left; overflow-wrap: anywhere; }
+.gm-showed .i svg { width: 1em; height: 1em; }
+.gm-showed .i { transition: transform var(--t-fast) var(--ease); }
+.gm-showed[aria-expanded="true"] .i { transform: rotate(90deg); }
+#gmShowed { margin-bottom: .4rem; }
+/* #383: a Running late row's Here now button. It never shrinks below the touch
    floor or leaves the row; at a 32px root the row is a grid (below) and the
    button stacks under the name. */
 .gm-b .btn { flex: none; min-width: 48px; min-height: 48px; }
-/* Only a Not here row has a button. Its name asks for 11rem, so when a whole
+/* Only a Here now row has a button. Its name asks for 11rem, so when a whole
    word cannot fit beside the button the button drops below the name instead of
    the name splitting mid-word. Bench rows (no button) keep the one-line row. */
 .gm-b:has(> .btn) { flex-wrap: wrap; }
@@ -1341,7 +1362,7 @@ h3.gm-next-hd { margin-top: 0; }
   #gmNext .gm-next-hd { margin-bottom: .2rem; }
   #gmNext .gm-ot { margin-top: .2rem; }
   .gm-foot { padding-top: .3rem; padding-bottom: .4rem; }
-  /* #430: bar and Not here row give a little back, so the Here now button and
+  /* #430: bar and Running late row give a little back, so the Here now button and
      the toast above the call both keep clear room on a 568px screen */
   .gm-bar { padding-top: .35rem; padding-bottom: .35rem; }
   #gmOutSec { padding-top: 0; padding-bottom: .25rem; }
@@ -1363,16 +1384,16 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-clock { font-size: var(--fs-body); }
   /* #430: .gm is the grid now, and .gm-body dissolves into it so the floor
      and the bench land in their own cells: the floor scrolls on the left; the
-     call, Not here and the bench stack down the right (a coach taps off on
+     call, Running late and the bench stack down the right (a coach taps off on
      the floor and on from the bench without scrolling), and the foot spans the
-     bottom. The right column's Not here and bench rows shrink (minmax(0, ...))
+     bottom. The right column's Running late and bench rows shrink (minmax(0, ...))
      and scroll themselves rather than push the foot off a short screen. The
-     call and Not here margins live in the block after the large-text one,
+     call and Running late margins live in the block after the large-text one,
      so large text cannot override them. */
   .gm {
     display: grid; grid-template-columns: 1fr 1fr; column-gap: 1.1rem;
-    grid-template-rows: auto auto auto minmax(0, auto) minmax(0, 1fr) auto;
-    grid-template-areas: "bar bar" "moved moved" "floor next" "floor out" "floor bench" "foot foot";
+    grid-template-rows: auto auto auto minmax(0, auto) minmax(0, 1fr) minmax(0, auto) auto;
+    grid-template-areas: "bar bar" "moved moved" "floor next" "floor out" "floor bench" "floor showed" "foot foot";
   }
   .gm-bar { grid-area: bar; }
   .gm-moved { grid-area: moved; }
@@ -1382,6 +1403,7 @@ h3.gm-next-hd { margin-top: 0; }
   .gm-body > .gm-sec { min-height: 0; overflow-y: auto; touch-action: pan-y; }
   #gmNext { grid-area: next; }
   #gmOutSec { grid-area: out; }
+  #gmShowedSec { grid-area: showed; padding: 0 .9rem 0 0; }
   .gm-foot { grid-area: foot; }
   .gm-sec { margin-bottom: 0; }
   .gm-lab { margin-bottom: .35rem; }
@@ -3741,15 +3763,15 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   #gmNext .gm-next-none { font-size: var(--fs-footnote); line-height: 1.1; }
   #gmNext .gm-ot { font-size: var(--fs-footnote); line-height: 1.2; margin-top: .15rem; }
   .gm-foot { gap: .25rem; padding-top: .25rem; padding-bottom: .3rem; }
-  /* Not here at large text: Here now on the row's first line and the name
+  /* Running late at large text: Here now on the row's first line and the name
      under it at the full width, wrapping between words (never cut). Side by
      side, the 178px button left the name 53px and it broke every few letters;
      stacked name-first, one late arrival took a third of the screen and the
      toast above the call covered the button. A screen reader still reads the
      button's own name, "Here now, <full name>". */
-  #gmOutSec .gm-b { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: 0; }
-  #gmOutSec .gm-b .btn { order: -1; flex: none; min-height: 48px; font-size: var(--fs-footnote); padding: 0 .6rem; }
-  #gmOutSec .gm-b .nm { order: 1; flex: 1 1 100%; font-size: var(--fs-secondary); line-height: 1.2; padding-bottom: .2rem; }
+  #gmOutSec .gm-b, #gmShowed .gm-b { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: 0; }
+  #gmOutSec .gm-b .btn, #gmShowed .gm-b .btn { order: -1; flex: none; min-height: 48px; font-size: var(--fs-footnote); padding: 0 .6rem; }
+  #gmOutSec .gm-b .nm, #gmShowed .gm-b .nm { order: 1; flex: 1 1 100%; font-size: var(--fs-secondary); line-height: 1.2; padding-bottom: .2rem; }
   /* the heading stays for screen readers; sighted, the Here now buttons beside
      the names are the label, and the 32px heading cost 40px of a short screen */
   #gmOutSec .gm-lab { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
@@ -3780,6 +3802,8 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      cap for this fixture's longest word ("Lindqvist", 126px). */
   .who-row { gap: .15rem; padding-left: .1rem; padding-right: .1rem; }
   .who-row .av { width: 1.4rem; height: 1.4rem; }
+  /* #504: the Running late chip gives back its indent, so a 32px label is one or two lines, not five */
+  .who-late { margin-left: 1rem; }
 
   /* #189: the Plan sheet's Lineup balance row (`#planLineups .prow`) draws
      its value on top of its own label at this size -- in DejaVu Sans,
@@ -3796,7 +3820,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   #planLineups .prow-v { flex: 1 1 0; }
 }
 
-/* #430: landscape bench mode's call and Not here spacing, after the large-text
+/* #430: landscape bench mode's call and Running late spacing, after the large-text
    block above: both set the same properties at the same specificity, and the
    sideways layout (the right column beside the floor) must keep its own. */
 @media (orientation: landscape) and (max-height: 35em) {

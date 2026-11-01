@@ -799,13 +799,13 @@ function stepWho(wrap) {
    pointed at availability instead of a five: the number in the player's own
    color, the first name bold and the surname muted under it, a ✓ while they
    are here. The visible "✓" is decorative -- the accessible name carries the
-   state, as ", Absent", the same split `whoRow` draws on the Who sheet. */
+   state, as ", Out", the same split `whoRow` draws on the Who sheet. */
 const tileName = p => p.name || 'Unnamed';
 
 function paintTile(b, p, present) {
   b.className = 'plr press ' + (present ? 'on' : 'off');
   b.setAttribute('aria-pressed', String(present));
-  b.setAttribute('aria-label', present ? tileName(p) : `${tileName(p)}, Absent`);
+  b.setAttribute('aria-label', present ? tileName(p) : `${tileName(p)}, Out`);
   const check = b.querySelector('.plr-check');
   if (check) check.hidden = !present;
 }

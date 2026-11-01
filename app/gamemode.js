@@ -82,6 +82,7 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
   // new `isFinish` argument -- always truthy, so ✕ and Done would report a
   // finish every time.
   on('#gmClose', 'onclick', () => closeGameMode(false));
+  on('#gmShowedBtn', 'onclick', () => { gmShowedOpen = !gmShowedOpen; renderGameMode(); });
   on('#gmDone', 'onclick', () => closeGameMode(false));   // phone-height twin of the top-left X
   on('#gmPrev', 'onclick', () => gmStep(-1));
   on('#gmNext2', 'onclick', () => gmStep(1));
@@ -100,6 +101,7 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
 }
 
 let gmPick = null;      // player selected for a swap
+let gmShowedOpen = false;  // #504: "Someone showed up?" is open (one bench-mode visit)
 let gmScope = 'stint';  // 'stint' | 'rest'
 
 /* #139 item 6: the one focus rule for bench mode -- a target that is not
@@ -210,6 +212,7 @@ export function openGameMode() {
   // waiting for closeGameMode
   save();
   gmPick = null;
+  gmShowedOpen = false;
   // #139 item 7: primed to the opening stint -- the first `renderGameMode`
   // call below sees no change and writes nothing, matching "not on open".
   lastLiveStint = stintIndex(p, live);
@@ -785,29 +788,27 @@ export function renderGameMode({ keepFloor = false } = {}) {
     bx.append(b);
   }
 
-  // #383: who is marked out, each with a Here now for a late arrival. A name on
-  // the list that is no longer on the roster is not shown.
-  const out = g.out.filter(id => byId(id));
-  set('#gmOutSec', 'hidden', !out.length);
+  // #504: Running late, at the top: only kids who were marked late, each with a
+  // Here now. A name no longer on the roster is not shown, and nobody late
+  // hides the section even when kids are Out.
+  const lateIds = g.late || [];
+  const late = lateIds.filter(id => g.out.includes(id) && byId(id));
+  // Out and not late: not coming, so only a quiet row at the bottom offers them.
+  const showed = g.out.filter(id => byId(id) && !lateIds.includes(id));
+  const full = late.length || showed.length ? distinctNames(state.players) : {};
+  const hereRow = id => hereNowRow(g, id, full[id] || shorts[id] || 'Unnamed', avatarOf);
+  set('#gmOutSec', 'hidden', !late.length);
   const ox = $('#gmOut'); ox.textContent = '';
-  const full = out.length ? distinctNames(state.players) : {};
-  for (const id of out) {
-    const pl = byId(id);
-    const b = el('div', 'gm-b');
-    b.style.setProperty('--c', colorOf(id));
-    const shown = full[id] || shorts[id] || 'Unnamed';
-    const nm = el('span', 'nm', shown);
-    // not `el(.., 'Here now')`: feature-keys.mjs reads that shape as a bench scope
-    const go = el('button', 'press btn');
-    go.textContent = 'Here now';
-    go.type = 'button';
-    go.dataset.pid = id;   // how focus finds this row's button again
-    go.setAttribute('aria-label', `Here now, ${shown}`);
-    // the arriving player is in the set the call names are made from
-    go.onclick = () => hereNow(g, id, shown);
-    b.append(avatarOf(pl), nm, go);
-    ox.append(b);
-  }
+  for (const id of late) ox.append(hereRow(id));
+
+  // #504: "Someone showed up?", below the bench -- the same Here now rows for a
+  // kid who was Out and arrived anyway. Whether it is open outlives a repaint,
+  // so Undo of a Here now from this list can focus the restored kid's button.
+  set('#gmShowedSec', 'hidden', !showed.length);
+  $('#gmShowedBtn').setAttribute('aria-expanded', String(gmShowedOpen));
+  set('#gmShowed', 'hidden', !gmShowedOpen);
+  const sx = $('#gmShowed'); sx.textContent = '';
+  for (const id of showed) sx.append(hereRow(id));
 
   // What changes, and exactly when. "Coming off / Going in" with no time on it
   // reads as ambiguous -- the next break is often mid-period, not the period
@@ -1128,6 +1129,24 @@ function sitRest(p, g, i, outId, name) {
   });
 }
 
+/* #383: one Here now row, the same for Running late at the top and Someone
+   showed up? at the bottom -- both call `hereNow`, there is no second arrival path. */
+function hereNowRow(g, id, shown, avatarOf) {
+  const b = el('div', 'gm-b');
+  b.style.setProperty('--c', colorOf(id));
+  const nm = el('span', 'nm', shown);
+  // not `el(.., 'Here now')`: feature-keys.mjs reads that shape as a bench scope
+  const go = el('button', 'press btn');
+  go.textContent = 'Here now';
+  go.type = 'button';
+  go.dataset.pid = id;   // how focus finds this row's button again
+  go.setAttribute('aria-label', `Here now, ${shown}`);
+  // the arriving player is in the set the call names are made from
+  go.onclick = () => hereNow(g, id, shown);
+  b.append(avatarOf(byId(id)), nm, go);
+  return b;
+}
+
 /* #383: a late arrival, from bench mode. `setAvailable` records the arrival
    and `render` re-plans from the next stint, the way Who's here does -- the
    stint on the floor does not change. One `undoable`, so one toast and one
@@ -1164,8 +1183,9 @@ function hereNow(g, id, shown) {
   }, (undoing) => {
     render(...EDITS.availability.keys);
     renderGameMode();
-    if (undoing) gmFocus(`#gmOut button[data-pid="${CSS.escape(id)}"]`);
+    if (undoing) gmFocus(`#gmOut button[data-pid="${CSS.escape(id)}"], #gmShowed button[data-pid="${CSS.escape(id)}"]`);
     else if (document.querySelector('#gmOut button')) gmFocus('#gmOut button');
+    else if (document.querySelector('#gmShowed button')) gmFocus('#gmShowed button');
     else gmFocusFirstFloor();
   });
 }

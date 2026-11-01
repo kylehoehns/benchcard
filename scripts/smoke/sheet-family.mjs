@@ -120,7 +120,7 @@ async function chosenRowPass(c, ck, where, inkWant) {
 // chain `roster-view.js`'s `playerRow` builds (`.rrow .av`), thrown away in
 // the same expression, the same technique `team-color.mjs`'s probes use.
 // Also flips one player absent (a real tap, not a state edit) to prove the
-// "Absent" (`.prow-v`) trailing slot, then taps it back present again.
+// "Out" (`.prow-v`) trailing slot, then taps it back present again.
 async function whoBadgePass(c, ck, where) {
   await tap(c, "document.getElementById('phrasePlayers').click()");
   const m = await evalJSON(c, `(() => {
@@ -173,8 +173,8 @@ async function whoBadgePass(c, ck, where) {
   const mutedWant = where.includes('dark') ? MUTED_DARK : MUTED_LIGHT;
   if (before === 'true') {
     ck(after.pressed === 'false', `${where}: tapping a present row did not flip aria-pressed to false`);
-    ck(after.absentText === 'Absent', `${where}: an absent row's trailing text reads "${after.absentText}", want "Absent"`);
-    ck(after.absentFg === mutedWant, `${where}: "Absent" is ${after.absentFg}, want ${mutedWant} (--muted)`);
+    ck(after.absentText === 'Out', `${where}: an Out row's trailing text reads "${after.absentText}", want "Out"`);
+    ck(after.absentFg === mutedWant, `${where}: "Out" is ${after.absentFg}, want ${mutedWant} (--muted)`);
     ck(!after.hasCheck, `${where}: an absent row still carries a .prow-check mark`);
     ck(after.avStillThere, `${where}: the badge disappeared for an absent player -- it must stay full strength`);
   }
