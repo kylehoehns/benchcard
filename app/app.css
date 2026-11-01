@@ -1625,12 +1625,9 @@ h2.side-hd { margin-top: 0; }
 /* The update offer (#498): a glyph, the title over its help line, and Reload.
    Only what differs from `.toast` is here. */
 .update-toast { padding: .7rem .5rem .7rem 1rem; }
-/* The glyph rides the title's line, not the middle of a two-line message. */
-.update-toast .update-glyph { flex: none; align-self: flex-start; font-size: var(--fs-secondary);
-  width: 1.25em; height: 1.25em; }
-/* `.tmsg`'s 12rem basis would push the glyph onto a row of its own at large
-   text; this one takes what the glyph leaves and wraps inside it. */
-.update-toast .tmsg { flex: 1 1 0; min-width: 0; }
+/* The glyph sits inline at the head of the title, so the help line below keeps
+   the toast's full width at large text rather than a column beside the glyph. */
+.update-toast .update-glyph { width: 1.25em; height: 1.25em; vertical-align: -.25em; margin-right: .4em; }
 .update-toast .update-title, .update-toast .update-help { display: block; }
 .update-toast .update-title { font-weight: 700; }
 .update-toast .update-help { font-weight: 400; color: color-mix(in srgb, var(--bg) 82%, var(--ink)); }

@@ -23,9 +23,10 @@ Nothing else about when or how it appears changes.
    that was saved. (When saving is failing, the app already shows its own
    storage warning; the toast does not try to repeat that.)
 2. **Its own variant.** The update toast carries the class `update-toast` (on
-   top of `.toast`). It has a leading refresh glyph (`rotate-ccw`, already
-   vendored in `app/vendor/icons/` and in `app/icons.js` already), the
-   title on its own line in bold, the help text under it.
+   top of `.toast`). The bold title, on its own line, is led by a refresh
+   glyph (`rotate-ccw`, already vendored in `app/vendor/icons/` and in
+   `app/icons.js` already) inline on its first line; the help text is under
+   it at the message's full width.
 3. **A primary Reload button.** Filled solid, not the shared gray
    translucent pill. The toast is the inverse surface (`--ink` ground, `--bg`
    text), so the primary fill on it is the inverse of the app's Graphite
@@ -89,16 +90,19 @@ any other screen's CSS, the shared `.toast`/`.tundo`/`.tmsg`/`.tacts` rules,
 
 `offerReload` keeps its gate (`updateWaiting`, `benchOpen()`) and calls an
 exported `showUpdate(reload)` (name is the developer's) that raises the toast
-through the shared machinery with class `update-toast`, the glyph, a `.tmsg`
-holding the bold title and the help line, then the Reload button and ✕ in
-`.tacts`. CSS, scoped to `.update-toast`:
+through the shared machinery with class `update-toast`, a `.tmsg` holding
+the bold title (the glyph inline at its head) and the help line, then the
+Reload button and ✕ in `.tacts`. CSS, scoped to `.update-toast`:
 
-- the glyph: `flex: none`, about 1.25em (the CSS is the one place its size is set), `align-self:
-  flex-start`, on the title's first line;
+- the glyph: inline inside the title, about 1.25em (the CSS is the one place
+  its size is set), on the title's first line. Two layouts were tried first
+  and failed the look check at 32px text: the glyph as its own flex item
+  before `.tmsg` wrapped onto a row by itself, and with `.tmsg` at flex-basis
+  0 beside it the message became a column about 150px wide, a word or two a
+  line at 320px;
 - `.tmsg`: title `display: block; font-weight: 700`, help `display: block;
-  font-weight: 400`, color a token mix of `--bg` that clears 4.5:1; its
-  flex-basis is 0 (`flex: 1 1 0; min-width: 0`), not the shared 12rem, which
-  at 32px text wraps the glyph onto a row of its own;
+  font-weight: 400`, color a token mix of `--bg` that clears 4.5:1; the
+  shared `.tmsg` flex rule is unchanged;
 - `.tundo`: `background: var(--accent-ink); color: var(--accent)`, hover a
   small mix toward `--accent`; same 48px height and radius as today;
 - `align-items: flex-start` or center as the look checks show best, and
@@ -116,7 +120,9 @@ holding the bold title and the help line, then the Reload button and ✕ in
 - **Smoke row** (new module): raises the real update toast through
   `showUpdate` at 320 and 390, 16 and 32px, light and dark, over Today; checks
   `update-toast`, the three contrast numbers (canvas-read), the dead-band
-  rule, 48px controls, nothing off screen, and the glyph on the title's row (items 2, 3, 4, 6). Watch it fail
+  rule, 48px controls, nothing off screen, the glyph on the title's first
+  line, and, when Reload wraps under the message, the message at least 85% of
+  the toast's content width (no cramped column) (items 2, 3, 4, 6). Watch it fail
   against the current gray pill before the CSS lands.
 - **Large-text and clip sweeps**: one new `APP_LARGE_TEXT_STATES` entry,
   "update toast on the game screen" (Today is the smoke row's), so

@@ -138,17 +138,16 @@ function toastHost() {
    dwells half as long: nothing is waiting on the coach.
 
    `message` is a string, or a node when the message has parts of its own (the
-   update toast's title and help line). `cls` names a variant (`update-toast`)
-   and `lead` is a node that goes before the message: the box, timer, dismiss
-   and lift stay this function's, so a variant is only what it looks like. */
-function actionToast(message, label, act, { cls = '', lead = null } = {}) {
+   update toast's title and help line). `cls` names a variant (`update-toast`):
+   the box, timer, dismiss and lift stay this function's, so a variant is only
+   what it looks like. */
+function actionToast(message, label, act, { cls = '' } = {}) {
   const box = toastHost();
   if (!box) return;
   clearTimeout(toastTimer);
   [...box.children].forEach(c => c.remove());
 
   const t = el('div', cls ? `toast ${cls}` : 'toast');
-  if (lead) t.append(lead);
   const msg = el('span', 'tmsg');
   msg.append(message);
   t.append(msg);
@@ -554,15 +553,17 @@ export function flash(message) {
 const wasControlled = !!navigator.serviceWorker?.controller;
 let updateWaiting = false;
 
-/* The update offer's own toast: a refresh glyph, the title on its own line and
-   the help under it, then Reload. Through `actionToast`, so it dwells and lifts
-   like every other offer; exported so smoke can raise the real one. */
+/* The update offer's own toast: the title, led by a refresh glyph on its line,
+   the help under it at the toast's full width, then Reload. Through
+   `actionToast`, so it dwells and lifts like every other offer; exported so
+   smoke can raise the real one. */
 export function showUpdate(reload) {
   const words = document.createDocumentFragment();
   // the space between them is for anything that reads the text without the layout
-  words.append(el('span', 'update-title', 'New version ready'), ' ',
-    el('span', 'update-help', 'Reload to get it. Your game stays saved.'));
-  actionToast(words, 'Reload', reload, { cls: 'update-toast', lead: icon('rotate-ccw', { cls: 'update-glyph' }) });
+  const title = el('span', 'update-title');
+  title.append(icon('rotate-ccw', { cls: 'update-glyph' }), 'New version ready');
+  words.append(title, ' ', el('span', 'update-help', 'Reload to get it. Your game stays saved.'));
+  actionToast(words, 'Reload', reload, { cls: 'update-toast' });
 }
 
 function offerReload() {

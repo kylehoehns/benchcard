@@ -29,7 +29,7 @@ export const UPDATE_TOAST_TEXT_PX = [16, 32];
 export const UPDATE_TOAST_THEMES = ['light', 'dark'];
 
 // The floors are the spec's, item 3; the 60% is item 4's.
-export const MIN_LABEL = 4.5, MIN_FILL = 3, MIN_HELP = 4.5, MIN_LINE_SHARE = .6;
+export const MIN_LABEL = 4.5, MIN_FILL = 3, MIN_HELP = 4.5, MIN_LINE_SHARE = .6, MIN_MSG_SHARE = .85;
 
 // Raise the real update toast, and its own Dismiss: app-large-text.mjs reuses both.
 export const RAISE_UPDATE = `(await import('/toast.js')).showUpdate(() => {})`;
@@ -72,9 +72,14 @@ const PROBE = `(() => {
   const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
   const boxes = [['toast', toast], ['Reload', btn], ['Dismiss', x]].map(([n, e]) => { const r = e.getBoundingClientRect(); return { n, h: r.height, l: r.left, r: r.right, t: r.top, b: r.bottom }; });
   const gb = toast.querySelector('.update-glyph')?.getBoundingClientRect();
-  const ttb = toast.querySelector('.update-title')?.getBoundingClientRect();
+  // the title's first line box: the glyph belongs on it, whatever the layout
+  const ttl = toast.querySelector('.update-title');
+  const words = ttl && [...ttl.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+  let line = null;
+  if (words) { const r = document.createRange(); r.selectNodeContents(words); line = r.getClientRects()[0] || null; }
   return JSON.stringify({
-    glyph: gb && ttb && { top: gb.top, right: gb.right }, title: ttb && { top: ttb.top, left: ttb.left },
+    glyph: gb && { top: gb.top, bottom: gb.bottom }, line: line && { top: line.top, bottom: line.bottom },
+    msgShare: mb.width / content,
     host: location.host, toast: true, cls: toast.classList.contains('update-toast'),
     px,
     beside, share: widest / content, boxes, vw, vh,
@@ -112,10 +117,14 @@ export async function updateToastPass(c, origin, rec) {
           rec.check(b.l >= -1 && b.r <= m.vw + 1 && b.t >= -1 && b.b <= m.vh + 1,
             `${where}: ${b.n} spans x ${Math.round(b.l)}-${Math.round(b.r)}, y ${Math.round(b.t)}-${Math.round(b.b)} in a ${m.vw}x${m.vh} viewport`);
         }
-        if (rec.check(m.glyph && m.title, `${where}: no glyph or title to place -- nothing was measured`)) {
-          rec.check(Math.abs(m.glyph.top - m.title.top) <= 2 && m.glyph.right <= m.title.left + 1,
-            `${where}: the refresh glyph (top ${Math.round(m.glyph.top)}, right ${Math.round(m.glyph.right)}) is not beside the title (top ${Math.round(m.title.top)}, left ${Math.round(m.title.left)})`);
+        if (rec.check(m.glyph && m.line, `${where}: no glyph or title line to place -- nothing was measured`)) {
+          const mid = (m.glyph.top + m.glyph.bottom) / 2;
+          rec.check(mid >= m.line.top - 1 && mid <= m.line.bottom + 1,
+            `${where}: the refresh glyph (middle ${Math.round(mid)}) is not on the title's first line (${Math.round(m.line.top)}-${Math.round(m.line.bottom)})`);
         }
+        // a message squeezed into a narrow column wraps a word or two a line
+        rec.check(m.beside || m.msgShare >= MIN_MSG_SHARE,
+          `${where}: Reload wrapped under a message only ${(m.msgShare * 100).toFixed(0)}% of the toast wide, under ${MIN_MSG_SHARE * 100}% (a cramped column)`);
         rec.check(!m.pans, `${where}: the page pans sideways`);
         rec.check(!m.clipped, `${where}: the toast's text is clipped`);
         seen.push(`${theme} ${width}/${textPx}: label ${m.label.toFixed(1)} fill ${m.fill.toFixed(1)} help ${m.help.toFixed(1)}${m.beside ? ' beside' : ` stacked ${(m.share * 100).toFixed(0)}%`}`);
