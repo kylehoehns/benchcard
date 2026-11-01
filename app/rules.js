@@ -18,7 +18,7 @@ import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
 import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds,
-         ruleItems, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
+         ruleItems, runHint, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
          EVEN_OUT_DAY_LABEL, dayIsToday } from './state.js';
 import { pickFive } from './pills.js';
@@ -262,6 +262,7 @@ function draftFrom(item) {
     case 'starts': return { kind: 'starts', ids: [...c.openingFive] };
     case 'lastq': return { kind: 'lastq', ids: [...c.lastPeriodFive] };
     case 'rest': return { kind: 'rest', n: c.maxConsecutive };
+    case 'bench': return { kind: 'bench', n: c.maxBench };
     default: return { kind: item.kind };
   }
 }
@@ -401,7 +402,8 @@ const KINDS = [
   ['keepon', 'One of two on'],
   ['starts', 'Starting five'],
   ['lastq', 'Starts the last period'],
-  ['rest', 'Rest limit'],
+  ['rest', 'Plays at most N in a row'],
+  ['bench', 'Sits at most N in a row'],
 ];
 
 // The draft is module state, reset on each push (Design > State).
@@ -435,7 +437,7 @@ function paintKindChips(box) {
     b.setAttribute('aria-pressed', String(draft.kind === k));
     b.onclick = () => {
       // Changing the kind keeps the minutes and clears the players.
-      draft = { kind: k, minutes: draft.minutes, n: k === 'rest' ? 2 : undefined };
+      draft = { kind: k, minutes: draft.minutes, n: k === 'rest' || k === 'bench' ? 2 : undefined };
       paintKindChips(box);
       renderKindBody();
     };
@@ -480,10 +482,16 @@ function kindControls(kind, draft, hooks = {}) {
       draft.ids = on ? [...(draft.ids || []), id] : (draft.ids || []).filter(x => x !== id);
       onPick();
     }, { max: 5, title: 'Pick up to five' }));
-  } else if (kind === 'rest') {
+  } else if (kind === 'rest' || kind === 'bench') {
     const grp = el('div', 'pgrp');
-    grp.append(stepperRow('Stints in a row', () => draft.n, v => { draft.n = v; }, 1, 4, 'stints', afterStep));
-    body.append(grp);
+    const hint = el('p', 'pgrp-f');
+    const paintHint = () => {
+      const g = game();
+      hint.textContent = [runHint(g, draft.n), kind === 'bench' ? benchPlatoonHint(g, draft.n) : ''].filter(Boolean).join(' ');
+    };
+    paintHint();
+    grp.append(stepperRow('Stints in a row', () => draft.n, v => { draft.n = v; }, 1, 4, 'stints', () => { paintHint(); afterStep?.(); }));
+    body.append(grp, hint);
   }
   return body;
 }
@@ -497,7 +505,8 @@ function renderKindBody() {
 
   const replaces = (draft.kind === 'starts' && c.openingFive.length)
     || (draft.kind === 'lastq' && c.lastPeriodFive.length)
-    || (draft.kind === 'rest' && c.maxConsecutive);
+    || (draft.kind === 'rest' && c.maxConsecutive)
+    || (draft.kind === 'bench' && c.maxBench);
   if (replaces) body.append(el('p', 'pgrp-f', 'Replaces the one you have.'));
 
   syncAddRuleBtn();
@@ -528,6 +537,7 @@ function commitAddRule() {
     case 'starts': c.openingFive = [...draft.ids]; break;
     case 'lastq': c.lastPeriodFive = [...draft.ids]; break;
     case 'rest': c.maxConsecutive = draft.n; break;
+    case 'bench': c.maxBench = draft.n; break;
     default: return;
   }
   renderConstraints();

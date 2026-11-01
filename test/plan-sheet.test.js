@@ -52,7 +52,7 @@ test('ruleComplete: starting five and Starts the last period need 1-5 players', 
   }
 });
 
-test('ruleComplete: rest limit needs a choice of 1-4', () => {
+test('ruleComplete: Plays at most N in a row needs a choice of 1-4', () => {
   assert.equal(S.ruleComplete('rest', { n: 0 }), false);
   assert.equal(S.ruleComplete('rest', {}), false);
   assert.equal(S.ruleComplete('rest', { n: 1 }), true);
@@ -97,7 +97,7 @@ test('ruleItems: decision 5 sentences, in order, for a game with one of each rul
     'A Six or A Seven is always on the floor',
     'Marcus starts the game',
     'Marcus, Devon and Hana start the last period',
-    'Nobody plays more than 1 stint in a row',
+    'Each player plays at most 1 stint in a row (4 min)',
   ]);
 });
 
@@ -116,10 +116,10 @@ test('ruleItems: skips a minimum for a player who is not available', () => {
   assert.deepEqual(items.map(i => i.text), ['Marcus plays at least 16 min']);
 });
 
-test('ruleItems: a rest limit above one reads the plural', () => {
+test('ruleItems: Plays at most above one reads the plural', () => {
   const g = bareGame({ constraints: { ...S.emptyConstraints(), maxConsecutive: 3 } });
   const items = withTeam([player('p0')], [g], {}, () => S.ruleItems(g));
-  assert.deepEqual(items.map(i => i.text), ['Nobody plays more than 3 stints in a row']);
+  assert.deepEqual(items.map(i => i.text), ['Each player plays at most 3 stints in a row (12 min)']);
 });
 
 test('ruleItems: length always equals ruleCount(g)', () => {
@@ -135,6 +135,40 @@ test('ruleItems: length always equals ruleCount(g)', () => {
   withTeam(players, [g], { minMinutes: 8 }, () => {
     assert.equal(S.ruleItems(g).length, S.ruleCount(g));
   });
+});
+
+test('ruleItems: Sits at most reads as a sentence with its minutes, singular at one', () => {
+  for (const [n, text] of [[1, 'Each player sits at most 1 stint in a row (4 min)'], [2, 'Each player sits at most 2 stints in a row (8 min)']]) {
+    const g = bareGame({ constraints: { ...S.emptyConstraints(), maxBench: n } });
+    const items = withTeam([player('p0')], [g], {}, () => S.ruleItems(g));
+    assert.deepEqual(items.map(i => [i.kind, i.text, i.removable]), [['bench', text, true]]);
+    assert.equal(S.ruleCount(g), 1);
+  }
+});
+
+test('ruleItems: on unequal stints the minutes read "up to" the most any run holds', () => {
+  /* one period of 14, a break every 5: stints of 5, 5 and 4 */
+  const g = bareGame({ periods: 1, periodMinutes: 14, granValue: 5,
+    constraints: { ...S.emptyConstraints(), maxBench: 2, maxConsecutive: 2 } });
+  const texts = withTeam([player('p0')], [g], {}, () => S.ruleItems(g).map(i => i.text));
+  assert.deepEqual(texts, [
+    'Each player plays at most 2 stints in a row (up to 10 min)',
+    'Each player sits at most 2 stints in a row (up to 10 min)',
+  ]);
+});
+
+test('Sits at most: removeRule clears it, replaceRule sets it, ruleComplete wants 1-4', () => {
+  const c = { ...S.emptyConstraints(), maxBench: 3, maxConsecutive: 2 };
+  assert.deepEqual(S.replaceRule(c, { kind: 'bench' }, { n: 1 }), { kind: 'bench' });
+  assert.equal(c.maxBench, 1);
+  assert.equal(c.maxConsecutive, 2);
+  S.removeRule(c, { kind: 'bench' });
+  assert.equal(c.maxBench, 0);
+  assert.equal(c.maxConsecutive, 2);
+  assert.equal(S.ruleComplete('bench', { n: 0 }), false);
+  assert.equal(S.ruleComplete('bench', { n: 1 }), true);
+  assert.equal(S.ruleComplete('bench', { n: 4 }), true);
+  assert.equal(S.ruleComplete('bench', { n: 5 }), false);
 });
 
 test('ruleItems: no rules at all is an empty list', () => {
@@ -173,7 +207,7 @@ test('removeRule: clears the Starts the last period rule and leaves the other ru
   assert.deepEqual(c.pairs, [['p0', 'p1']]);
 });
 
-test('removeRule: clears the rest limit', () => {
+test('removeRule: clears Plays at most N in a row', () => {
   const c = { ...S.emptyConstraints(), maxConsecutive: 3 };
   S.removeRule(c, { kind: 'rest' });
   assert.equal(c.maxConsecutive, 0);

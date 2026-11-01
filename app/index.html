@@ -368,7 +368,7 @@
   "browserRequirements": "Requires JavaScript. Works offline once loaded.",
   "isAccessibleForFree": true,
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "description": "Benchcard plans youth basketball substitutions. Paste a roster, pick how the minutes should be split — even for everybody, totals you set yourself, a group that closes, or fixed platoons — and it works out who is on the floor for every stint of the game, then prints it on a pocket card. Rules for starters, minimums and maximums per player, pairs to keep together or apart and rest limits are respected, a tournament day balances across games, minutes even out across the season, and everything stays in the browser: no account, and your roster never leaves your device.",
+  "description": "Benchcard plans youth basketball substitutions. Paste a roster, pick how the minutes should be split — even for everybody, totals you set yourself, a group that closes, or fixed platoons — and it works out who is on the floor for every stint of the game, then prints it on a pocket card. Rules for starters, minimums and maximums per player, pairs to keep together or apart and limits on how long a player plays or sits in a row are respected, a tournament day balances across games, minutes even out across the season, and everything stays in the browser: no account, and your roster never leaves your device.",
   "featureList": [
     "Equal playing time across the whole roster",
     "Per-player minimums and maximums",
@@ -1907,9 +1907,13 @@
         <dd>A pair you never want resting at the same time: your two ball handlers,
           or your two bigs. One of them is on the floor every stint. The mirror of
           “Apart”: that one is about the floor, this one is about the bench.</dd>
-        <dt>Rest limit</dt>
+        <dt>Plays at most N in a row</dt>
         <dd>The most stints anyone may play back to back. Stops the plan leaving a kid
           out there for the whole half.</dd>
+        <dt>Sits at most N in a row</dt>
+        <dd>The most stints anyone may sit back to back. Stops the plan leaving a kid
+          on the bench for the whole half. With a big roster it can need more changes
+          at a break than you allow, and the plan says so.</dd>
       </dl>
       <p class="help-p">One rule is worth setting once rather than per game. If your
         league says everyone plays a minimum, <b>Settings</b> holds

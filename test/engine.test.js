@@ -633,7 +633,7 @@ test('a consecutive limit with no bench is flagged, not silently applied', () =>
   assert.ok(p.ok);
   const w = p.issues.find(i => i.code === 'CONSEC_IMPOSSIBLE');
   assert.ok(w);
-  assert.equal(w.message, 'With only 5 available, nobody can be rested — the Rest limit rule will be ignored.');
+  assert.equal(w.message, 'With only 5 available, nobody can be rested — the Plays at most N in a row rule will be ignored.');
 });
 
 test('a single-stint game is valid', () => {
@@ -1491,7 +1491,7 @@ test('436: missedPinIssues emits each missed-pin code, and nothing for platoon',
   assert.deepEqual(missedPinIssues({ ...args, lineups: kept }), []);
 });
 
-/* ---------------- a Rest limit that cannot hold (#439) ---------------- */
+/* ---------------- Plays at most N in a row that cannot hold (#439) ---------------- */
 
 const restPlan = (n, constraints, seed = 1) => plan(n, { constraints, seed });
 const issuesOf = (p, code) => p.issues.filter(i => i.code === code);
@@ -1501,18 +1501,18 @@ const runOf = (p, id) => {
   return best;
 };
 
-test('a Rest limit the roster cannot meet is one up-front line naming the players it needs', () => {
+test('Plays at most N in a row the roster cannot meet is one up-front line naming the players it needs', () => {
   for (const [n, r, need] of [[8, 1, 10], [7, 2, 8], [6, 3, 7]]) {
     const p = restPlan(n, { maxConsecutive: r });
     const few = issuesOf(p, 'CONSEC_TOO_FEW');
     assert.equal(few.length, 1, `Rest ${r} with ${n} players`);
-    assert.match(few[0].message, /Rest limit/);
+    assert.ok(few[0].message.includes(`Plays at most ${r} in a row cannot hold`), few[0].message);
     assert.ok(few[0].message.includes(`needs ${need} players`), few[0].message);
     assert.equal(issuesOf(p, 'CONSEC_EXCEEDED').length, 0, `Rest ${r} with ${n} players`);
   }
 });
 
-test('a Rest limit the roster can meet raises no up-front line', () => {
+test('Plays at most N in a row the roster can meet raises no up-front line', () => {
   for (const [n, r] of [[8, 2], [7, 3]]) {
     const p = restPlan(n, { maxConsecutive: r });
     assert.equal(issuesOf(p, 'CONSEC_TOO_FEW').length, 0, `Rest ${r} with ${n} players`);
@@ -1526,15 +1526,15 @@ test('Rest 1 with 6 players shortens the worst run first', () => {
   }
 });
 
-test('when the Rest limit forces five to change at once, the subs warning says so', () => {
+test('when Plays at most N in a row forces five to change at once, the subs warning says so', () => {
   const p = restPlan(10, { maxConsecutive: 1, openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] });
   const w = issuesOf(p, 'SUBS_EXCEEDED')[0];
   assert.ok(w, 'SUBS_EXCEEDED is present');
-  assert.match(w.message, /Rest limit/);
+  assert.match(w.message, /Plays at most 1 in a row/);
   assert.ok(lacks(w.message, 'cost somebody minutes'), w.message);
 });
 
-test('a minimum the Rest limit makes impossible is named up front', () => {
+test('a minimum Plays at most N in a row makes impossible is named up front', () => {
   const p = restPlan(10, { maxConsecutive: 2, minMinutes: { p0: 28 } });
   const w = issuesOf(p, 'CONSEC_MIN_CONFLICT').find(i => i.playerIds.includes('p0'));
   assert.ok(w, 'CONSEC_MIN_CONFLICT for p0');
@@ -1545,23 +1545,23 @@ test('a minimum the Rest limit makes impossible is named up front', () => {
 
 /* ---------------- #439 review fixes ---------------- */
 
-test('a break the Rest limit did not force keeps the "cost somebody minutes" reason', () => {
+test('a break Plays at most N in a row did not force keeps the "cost somebody minutes" reason', () => {
   const p = plan(8, { seed: 1, maxSubs: 1, constraints: { maxConsecutive: 2 } });
   const w = issuesOf(p, 'SUBS_EXCEEDED')[0];
   assert.ok(w, 'SUBS_EXCEEDED is present');
   assert.ok(w.message.includes('cost somebody minutes'), w.message);
-  assert.ok(lacks(w.message, 'Rest limit'), w.message);
+  assert.ok(lacks(w.message, 'Plays at most'), w.message);
 });
 
 test('a forced break names the number asked for, not "that many"', () => {
   const p = restPlan(10, { maxConsecutive: 1, openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] });
   const w = issuesOf(p, 'SUBS_EXCEEDED')[0];
-  assert.ok(w.message.includes('a Rest limit of 1 makes more than 3 come off at once.'), w.message);
+  assert.ok(w.message.includes('Plays at most 1 in a row makes more than 3 come off at once.'), w.message);
 });
 
 const everyoneMin = (n, m) => Object.fromEntries(ids(n).map(id => [id, m]));
 
-test('several minimums the Rest limit rules out are one line naming each player', () => {
+test('several minimums Plays at most N in a row rules out are one line naming each player', () => {
   const five = ids(5);
   const p = restPlan(10, { maxConsecutive: 2, minMinutes: Object.fromEntries(five.map(id => [id, 28])) });
   assert.ok(p.ok, 'the plan builds');
@@ -1569,23 +1569,23 @@ test('several minimums the Rest limit rules out are one line naming each player'
   assert.equal(w.length, 1, w.map(i => i.message).join(' | '));
   assert.deepEqual([...w[0].playerIds].sort(), five);
   assert.ok(w[0].message.includes('PlayerA') && w[0].message.includes('PlayerE'), w[0].message);
-  assert.match(w[0].message, /Rest limit of 2 allows/);
+  assert.match(w[0].message, /more than Plays at most 2 in a row allows/);
 });
 
-test('a minimum the game cannot hold at all does not also blame the Rest limit', () => {
+test('a minimum the game cannot hold at all does not also blame Plays at most N in a row', () => {
   const p = restPlan(10, { maxConsecutive: 2, minMinutes: everyoneMin(10, 26) });
   assert.equal(p.ok, false);
   assert.ok(p.issues.some(i => i.severity === 'error'), 'a blocking error is named');
   assert.equal(issuesOf(p, 'CONSEC_MIN_CONFLICT').length, 0);
 });
 
-test('a Rest limit as long as the game is not offered as the way out', () => {
+test('Plays at most N in a row as long as the game is not offered as the way out', () => {
   const p = plan(6, { format: { periods: 4, periodMinutes: 8 }, granularity: { mode: 'perPeriod', value: 1 },
     constraints: { maxConsecutive: 3 } });
   const w = issuesOf(p, 'CONSEC_TOO_FEW')[0];
   assert.ok(w, 'CONSEC_TOO_FEW is present');
   assert.ok(lacks(w.message, 'Try a limit of'), w.message);
-  assert.match(w.message, /Turn the Rest limit off or add players\.$/);
+  assert.match(w.message, /Turn off Plays at most N in a row or add players\.$/);
 });
 
 test('no up-front line when the game has fewer than r+1 stints', () => {
@@ -1595,7 +1595,7 @@ test('no up-front line when the game has fewer than r+1 stints', () => {
   assert.equal(issuesOf(p, 'CONSEC_TOO_FEW').length, 0);
 });
 
-test('on unequal stints the minimum the Rest limit allows is exact', () => {
+test('on unequal stints the minimum Plays at most N in a row allows is exact', () => {
   /* 1 period of 10 minutes, a break every 4: stints of 4, 4 and 2. With Rest 1
      nobody can play two in a row, so the most is 4 + 2 = 6 minutes. */
   const run = mn => plan(8, { format: { periods: 1, periodMinutes: 10 }, granularity: { mode: 'everyN', value: 4 },

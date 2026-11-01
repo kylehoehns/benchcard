@@ -92,6 +92,42 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       assert.equal(await coach.blockedPlan(), '');
       assert.ok((await coach.planMinutes())['Marcus Williams'] > 0);
     });
+    test('the run rules are named for what they limit, and Sits at most is kept', async () => {
+      const { coach } = own;
+      await openHawks(coach);
+      await openPlan(coach);
+      await coach.tap('Add a rule');
+      assert.ok(await coach.sees('Plays at most N in a row'), 'the plays chip is on screen');
+      assert.ok(await coach.sees('Sits at most N in a row'), 'the sits chip is on screen');
+      assert.ok(!(await coach.sees('Rest limit')), 'the old name is gone');
+      await coach.tap('Sits at most N in a row');
+      assert.equal(await coach.text('#planKindBody .pgrp-f'), '2 stints in a row is 8 min.');
+      await coach.stepTo('stints', 3);
+      assert.equal(await coach.text('#planKindBody .pgrp-f'), '3 stints in a row is 12 min.');
+      await coach.stepTo('stints', 2);
+      await coach.tap('Plays at most N in a row');
+      assert.equal(await coach.text('#planKindBody .pgrp-f'), '2 stints in a row is 8 min.');
+      await coach.tap('Sits at most N in a row');
+      await coach.tap('Add rule');
+      assert.ok(await coach.sees('Each player sits at most 2 stints in a row (8 min)'), 'the rule row is shown');
+      await coach.tap('Close');
+
+      await coach.comeBackDaysLater(0);
+      await openPlan(coach);
+      assert.ok(await coach.sees('Each player sits at most 2 stints in a row (8 min)'), 'the rule row is shown after a reopen');
+    });
+  });
+
+  describe('a team saved with the old rule', { concurrency: 1 }, () => {
+    const own = chrome();
+
+    test('a saved maxConsecutive of 2 loads and reads as Plays at most', async () => {
+      const { coach } = own;
+      await coach.onGameDayWith({ constraints: { maxConsecutive: 2 } });
+      await coach.tap('Hawks, 9:00 AM, planned');
+      await openPlan(coach);
+      assert.ok(await coach.sees('Each player plays at most 2 stints in a row (8 min)'), 'the rule row reads the new name');
+    });
   });
 
   describe('in the game', { concurrency: 1 }, () => {

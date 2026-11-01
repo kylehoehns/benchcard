@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
@@ -287,12 +287,38 @@ export function ruleCount(g) {
     + (c.openingFive.length ? 1 : 0)
     + (c.lastPeriodFive.length ? 1 : 0)
     + (c.maxConsecutive ? 1 : 0)
+    + (c.maxBench ? 1 : 0)
     + (leagueMinutes() > 0 ? 1 : 0);
 }
 
+/* #441: the most minutes `n` stints in a row can hold in this game's own
+ * stints (one answer for the rule's sentence and the picker's hint line), and
+ * how it reads: "8 min" when every stint is the same length, "up to 9 min"
+ * when they are not. */
+function runMinutes(g, n) {
+  const lens = buildStints({ periods: g.periods, periodMinutes: g.periodMinutes }, { mode: g.granMode, value: g.granValue }).map(s => s.minutes);
+  let best = 0;
+  for (let i = 0; i < lens.length; i++) {
+    best = Math.max(best, lens.slice(i, i + n).reduce((a, x) => a + x, 0));
+  }
+  return { minutes: best, equal: lens.every(x => Math.abs(x - lens[0]) < 1e-9) };
+}
+function runMinutesText(g, n) {
+  const { minutes, equal } = runMinutes(g, n);
+  return `${equal ? '' : 'up to '}${fmtMinutes(minutes)} min`;
+}
+
+/* #441: the picker's lines under the stepper, from the same helpers as the
+ * rule's sentence. The second is only said where it is true: with ten
+ * players, "Sits at most 1" is two fives trading places, which is Platoon. */
+export const runHint = (g, n) => `${plural(n, 'stint')} in a row is ${runMinutesText(g, n)}.`;
+export const benchPlatoonHint = (g, n) => (n === 1 && availIds(g).length === 2 * LINEUP_FLOOR
+  ? `With ${availIds(g).length} players, Sits at most 1 in a row is Platoon.` : '');
+
 /* #28 decision 5: the Plan sheet's Rules section, as plain sentences, in the
  * table's own order -- league minimum, minimum, cap, together, apart, one of
- * two on, starting five, starts the last period, rest limit. Reads exactly the
+ * two on, starting five, starts the last period, Plays at most N in a row,
+ * Sits at most N in a row. Reads exactly the
  * fields `ruleCount` above counts, the same way, so `ruleItems(g).length ===
  * ruleCount(g)` always holds (a test pins it) -- this is not a second count,
  * it is the same one rule by rule. Names are the on-court call names from
@@ -341,7 +367,11 @@ export function ruleItems(g) {
   }
   if (c.maxConsecutive) {
     items.push({ kind: 'rest', removable: true,
-      text: `Nobody plays more than ${c.maxConsecutive} stint${c.maxConsecutive > 1 ? 's' : ''} in a row` });
+      text: `Each player plays at most ${plural(c.maxConsecutive, 'stint')} in a row (${runMinutesText(g, c.maxConsecutive)})` });
+  }
+  if (c.maxBench) {
+    items.push({ kind: 'bench', removable: true,
+      text: `Each player sits at most ${plural(c.maxBench, 'stint')} in a row (${runMinutesText(g, c.maxBench)})` });
   }
 
   return items;
@@ -385,6 +415,7 @@ export function removeRule(c, item) {
     case 'starts': c.openingFive = []; break;
     case 'lastq': c.lastPeriodFive = []; break;
     case 'rest': c.maxConsecutive = 0; break;
+    case 'bench': c.maxBench = 0; break;
     default: break; // 'leagueMinimum', or anything unrecognized: not removable from here
   }
 }
@@ -430,6 +461,7 @@ export function replaceRule(c, item, draft) {
     case 'starts': c.openingFive = [...draft.ids]; return { kind: 'starts' };
     case 'lastq': c.lastPeriodFive = [...draft.ids]; return { kind: 'lastq' };
     case 'rest': c.maxConsecutive = draft.n; return { kind: 'rest' };
+    case 'bench': c.maxBench = draft.n; return { kind: 'bench' };
     default: return false;
   }
 }
@@ -442,7 +474,7 @@ export const changedRuleToast = item => `Changed: ${item.text}`;
 export const removedRuleToast = item => `Removed: ${item.text}`;
 
 /* #28 decision 7: whether a draft is complete enough to enable `Add rule`,
- * for each of the eight kinds. `draft` is the one shape the Add-a-rule page
+ * for each of the nine kinds. `draft` is the one shape the Add-a-rule page
  * keeps as module state (`{ kind, id, minutes, a, b, ids, n }`) -- this reads
  * only the fields each kind uses and never assumes the others are absent. */
 export function ruleComplete(kind, draft) {
@@ -457,7 +489,7 @@ export function ruleComplete(kind, draft) {
       const n = (d.ids || []).length;
       return n >= 1 && n <= 5;
     }
-    case 'rest': return Number.isInteger(d.n) && d.n >= 1 && d.n <= 4;
+    case 'rest': case 'bench': return Number.isInteger(d.n) && d.n >= 1 && d.n <= 4;
     default: return false;
   }
 }
@@ -1110,9 +1142,9 @@ export function evensOutLine(i) {
   if (!g || i === 0 || !g.useCarryover) return '';
   const earlier = games.slice(0, i);
   const names = earlier.map(e => tipoffLabel(e.tipoff) || e.label || null);
-  const plural = earlier.length > 1;
-  if (names.some(nm => !nm)) return `Evens out the earlier game${plural ? 's' : ''}.`;
-  return `Evens out the ${joinNames(names)} game${plural ? 's' : ''}.`;
+  const several = earlier.length > 1;
+  if (names.some(nm => !nm)) return `Evens out the earlier game${several ? 's' : ''}.`;
+  return `Evens out the ${joinNames(names)} game${several ? 's' : ''}.`;
 }
 
 /* #32 decision 10: the "Same as …?" card on step 1 of Add a game -- its two
@@ -2083,7 +2115,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   const pinnedPlayed = Object.keys(pinsNow).map(Number).map(j => ({ onFloor: pinsNow[j], minutes: p.stints[j].minutes, at: j }));
   for (const x of pinnedPlayed) for (const id of x.onFloor) if (id in played) played[id] = Math.round((played[id] + x.minutes) * 100) / 100;
 
-  /* #442: the Rest limit counts across the cut. Each player's run ending at
+  /* #442: Plays at most N in a row counts across the cut. Each player's run ending at
      the cut -- the stints played, then the pinned fives that sit before the
      first open stint -- is what the solver starts from. Whole runs are counted
      by the engine; this only says how long each one already is. */
@@ -2093,6 +2125,19 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   for (const id of avail) {
     const run = runEndingAt(lead, id, lead.length - 1);
     if (run) streakBefore[id] = run;
+  }
+  /* #441: the bench run at the cut, the same lead read the other way round, so
+     the engine's one run counter does the counting. A kid who walked in late
+     (`live.arrived`) was not benched before they got there, so only the
+     stints after their arrival count -- the stints `fair` below shares out. */
+  const arrived = lateArrivals(g, p, k);
+  const sitBefore = {};
+  if (g.constraints.maxBench) {
+    for (const id of avail) {
+      let run = runEndingAt(lead, id, lead.length - 1, 0, false);
+      if (id in arrived) run = Math.min(run, Math.max(0, lead.length - 1 - arrived[id]));
+      if (run) sitBefore[id] = run;
+    }
   }
 
   const openStints = open.map(j => p.stints[j]);
@@ -2136,7 +2181,6 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
      in during) is owed a share of only the stints after it. Each past stint's
      minutes are split among whoever was there for it; with nobody late that is
      the plain average of what was played. */
-  const arrived = lateArrivals(g, p, k);
   const fair = Object.fromEntries(avail.map(id => [id, 0]));
   [...before.map((s, j) => [s, j]), ...pinnedPlayed.map(x => [x, x.at])].forEach(([s, j]) => {
     const here = avail.filter(id => !(id in arrived) || arrived[id] < j);
@@ -2170,7 +2214,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
       granularity: { mode: g.granMode, value: g.granValue },
       constraints: c, strategy, balance: g.balance,
       seed: g.seed,
-      maxSubs, streakBefore,
+      maxSubs, streakBefore, sitBefore,
     });
     /* #376: a sit changes one seat. The four who stay are handed to the
        solver as the opening five of the suffix (stint `from`), the engine's

@@ -183,6 +183,18 @@ test('a missing constraints object is filled in, not left undefined', () => {
   assert.equal(c.maxConsecutive, 0);
 });
 
+test('maxBench round-trips, is clamped like maxConsecutive, and a record without it loads as 0', () => {
+  const load = v => {
+    const raw = good();
+    if (v !== undefined) raw.day.games[0].constraints.maxBench = v;
+    return sanitize(raw, H).teams[0].days[0].games[0].constraints.maxBench;
+  };
+  assert.equal(load(3), 3);
+  assert.equal(load(500), 20);
+  assert.equal(load(-2), 0);
+  assert.equal(load(undefined), 0);
+});
+
 test('sanitize is idempotent', () => {
   const once = sanitize(good(), H);
   assert.deepEqual(sanitize(once, H), once);

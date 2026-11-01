@@ -121,7 +121,7 @@ async function checkFormatColumns(c, ck, where, checkGeometry = false) {
 }
 
 // item 5, Add a rule: one row at a time ("Minutes" for a minimum/cap rule,
-// "Stints in a row" for a rest-limit rule) -- the two states are measured
+// "Stints in a row" for a Plays at most N in a row rule) -- the two states are measured
 // separately and compared to each other, since both are never on screen
 // together the way Format's two rows are.
 async function checkAddRuleColumns(c, ck, where, checkGeometry = false) {
@@ -131,10 +131,10 @@ async function checkAddRuleColumns(c, ck, where, checkGeometry = false) {
   ck(minuteRows.length === 1, `${where}: Add a rule's "Minutes" kind shows ${minuteRows.length} stepper row(s), want 1`);
   if (checkGeometry) await stepperGeometryOk(c, ck, '#planKindBody', where, 'Add a rule (Minutes)');
   await tap(c, `[...document.querySelectorAll('#planSub .plan-kinds .chip')]
-    .find(b => b.textContent.trim() === 'Rest limit').click()`);
+    .find(b => b.textContent.trim() === 'Plays at most N in a row').click()`);
   const restRows = await pstepCols(c, '#planKindBody');
-  ck(restRows.length === 1, `${where}: Add a rule's "Rest limit" kind shows ${restRows.length} stepper row(s), want 1`);
-  if (checkGeometry) await stepperGeometryOk(c, ck, '#planKindBody', where, 'Add a rule (Rest limit)');
+  ck(restRows.length === 1, `${where}: Add a rule's "Plays at most N in a row" kind shows ${restRows.length} stepper row(s), want 1`);
+  if (checkGeometry) await stepperGeometryOk(c, ck, '#planKindBody', where, 'Add a rule (Plays at most N in a row)');
   if (minuteRows.length === 1 && restRows.length === 1) {
     const both = [minuteRows[0], restRows[0]];
     ck(colsAligned(both), `${where}: Add a rule's stepper column moves between kinds: ${JSON.stringify(both)}`);

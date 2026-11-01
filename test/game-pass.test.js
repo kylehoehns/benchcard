@@ -44,7 +44,7 @@ test('ruleCount counts each rule once, exactly as the rules list does', () => {
       maxConsecutive: 3,
     } };
     // 1 (min, p0) + 1 (max, p1) + 1 (pair) + 1 (avoid) + 1 (keepOnFloor)
-    // + 1 (starting five) + 1 (last period) + 1 (rest limit) + 1 (league min) = 9
+    // + 1 (starting five) + 1 (last period) + 1 (Plays at most N in a row) + 1 (league min) = 9
     assert.equal(S.ruleCount(g), 9);
   });
 });

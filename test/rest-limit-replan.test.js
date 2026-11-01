@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { generatePlan } from '../app/engine.js';
 import { S, bareGame, withTeam, player } from './state-fixture.js';
 
-/* #442: the Rest limit ("Plays at most N in a row") counts across a re-plan
+/* #442: Plays at most N in a row counts across a re-plan
    and into overtime. Seams: `generatePlan` (the new `streakBefore` input) and
    `state.js` (`resolveRest`, `addOvertime`), as resolve-rest.test.js and
    overtime-grow.test.js drive them. */
@@ -35,7 +35,7 @@ const mk = (seed, extra = {}) => bareGame({
   constraints: { ...S.emptyConstraints(), maxConsecutive: LIMIT }, ...extra,
 });
 
-test('a re-plan from any stint keeps the Rest limit across the cut, or names who broke it', () => {
+test('a re-plan from any stint keeps Plays at most N in a row across the cut, or names who broke it', () => {
   let checked = 0;
   for (const seed of SEEDS) {
     withTeam(players, [mk(seed)], {}, () => {
@@ -57,7 +57,7 @@ test('a re-plan from any stint keeps the Rest limit across the cut, or names who
   assert.equal(checked, 8 * 7);
 });
 
-test('overtime (Next rotation and Even out) never runs a kid over the Rest limit across regulation, no note excused', () => {
+test('overtime (Next rotation and Even out) never runs a kid over Plays at most N in a row across regulation, no note excused', () => {
   for (const who of ['next', 'even']) {
     for (const seed of SEEDS) {
       withTeam(players, [mk(seed)], {}, () => {
@@ -118,8 +118,8 @@ test('streakBefore: a pinned opening five over the limit gets a CONSEC_EXCEEDED 
 });
 
 /* runEndingAt's lead: a pinned opening five all at the limit at the cut, one
-   change allowed, so the Rest limit (not minutes) is why more than that come off at once. */
-test('streakBefore: SUBS_EXCEEDED blames the Rest limit when the lead puts more kids at it than maxSubs', () => {
+   change allowed, so Plays at most N in a row (not minutes) is why more than that come off at once. */
+test('streakBefore: SUBS_EXCEEDED blames Plays at most N in a row when the lead puts more kids at it than maxSubs', () => {
   let named = 0;
   for (const seed of SEEDS) {
     const r = generatePlan(input({
@@ -127,7 +127,7 @@ test('streakBefore: SUBS_EXCEEDED blames the Rest limit when the lead puts more 
       constraints: { maxConsecutive: LIMIT, openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] },
     }));
     const subs = (r.issues || []).filter(i => i.code === 'SUBS_EXCEEDED');
-    if (subs.some(i => i.message.includes(`a Rest limit of ${LIMIT} makes more than 1 come off at once`))) named++;
+    if (subs.some(i => i.message.includes(`Plays at most ${LIMIT} in a row makes more than 1 come off at once`))) named++;
   }
-  assert.ok(named > 0, 'no seed blamed the Rest limit');
+  assert.ok(named > 0, 'no seed blamed Plays at most N in a row');
 });
