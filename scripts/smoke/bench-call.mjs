@@ -14,6 +14,9 @@
  * (via `cellWant`). "Visible" is the spec's: the whole box inside the
  * viewport and `elementFromPoint` at its corners and center lands inside it.
  *
+ * The toast and the foot must each be whole on screen in every toast state
+ * (added after the preview of 95866da showed both clipped at 320x568/32).
+ *
  * Rule 2a (/new-guard): a state that never opened, an empty call, a missing
  * node or fewer stints than the spec's eight fails rather than measuring
  * nothing. Exemptions are by cell name (`TIGHT_CELL`), never a blanket tolerance. */
@@ -63,9 +66,16 @@ const PROBE = `JSON.stringify((() => {
 const probe = async c => JSON.parse(await evalIn(c, PROBE));
 const rr = b => `y ${Math.round(b.top)}-${Math.round(b.bottom)}`;
 
+// A box the coach must see whole: inside the viewport, top and bottom. A
+// clipped foot loses the stint nav; a clipped toast loses its message or Undo.
+function onScreen(rec, b, vh, label, what) {
+  return rec.check(b.top >= -0.5 && b.bottom <= vh + 0.5, `${label}: ${what} (${rr(b)}) is not inside the ${vh}px viewport`);
+}
+
 // spec item 1, for one stint at one scroll
 function callPinned(rec, d, label) {
   if (!rec.check(!!(d.next && d.foot && d.body), `${label}: #gmNext, .gm-foot or .gm-body not found -- nothing was measured`)) return;
+  onScreen(rec, d.foot, d.vh, label, '.gm-foot');
   rec.check(d.nextVisible, `${label}: #gmNext (${rr(d.next)}) is not fully visible in the ${d.vh}px viewport`);
   rec.check(d.next.bottom <= d.foot.top + 0.5, `${label}: #gmNext bottom ${Math.round(d.next.bottom)} is below .gm-foot top ${Math.round(d.foot.top)}`);
   if (!rec.check(d.nextText.length > 0 && (d.names.length > 0 || d.none || !!d.ot),
@@ -131,7 +141,7 @@ async function notHereAt(c, origin, rec, cell, where, withToast) {
     } else {
       if (!rec.check(!!d.toast, `${label}: no toast showed -- nothing was measured`)) return;
       if (cell.where !== TIGHT_CELL) rec.check(!overlaps(d.toast, d.here), `${label}: the toast (${rr(d.toast)}) covers the first "Here now" (${rr(d.here)})`);
-      rec.check(!overlaps(d.toast, d.next) && !overlaps(d.toast, d.foot), `${label}: the toast (${rr(d.toast)}) covers the call (${rr(d.next)}) or the foot (${rr(d.foot)})`);
+      toastClear(rec, d, label, cell);
     }
   } catch (e) {
     rec.fail(`${label}: ${firstLine(e)}`);
@@ -140,6 +150,20 @@ async function notHereAt(c, origin, rec, cell, where, withToast) {
     await evalIn(c, `(async () => { await ${TIMERS_QUIET}; })()`).catch(() => {});
     await evalIn(c, step(v.close)).catch(e => rec.fail(`${label}: did not close -- ${firstLine(e)}`));
   }
+}
+
+// The toast and the foot are whole on screen, the toast never covers the foot,
+// and it covers the call only where it cannot fit above it: at TIGHT_CELL, a
+// toast taller than the room between the top of the screen and the call (the
+// long-name swap toast at 32px is ~390px tall on a 568px screen) is kept whole
+// and sits over the call until it times out. Anywhere else, or a toast that
+// would fit, covering the call fails.
+function toastClear(rec, d, label, cell) {
+  onScreen(rec, d.toast, d.vh, label, 'the toast');
+  onScreen(rec, d.foot, d.vh, label, '.gm-foot');
+  const noRoom = cell.where === TIGHT_CELL && d.toast.height > d.next.top;
+  if (!noRoom) rec.check(!overlaps(d.toast, d.next), `${label}: the toast (${rr(d.toast)}) covers #gmNext (${rr(d.next)})`);
+  rec.check(!overlaps(d.toast, d.foot), `${label}: the toast (${rr(d.toast)}) covers .gm-foot (${rr(d.foot)})`);
 }
 
 // spec item 4's two toast states
@@ -151,8 +175,7 @@ async function toastAt(c, origin, rec, cell, where, name) {
     const d = await probe(c);
     if (!rec.check(!!d.toast, `${label}: no toast showed -- nothing was measured`)) return;
     if (!rec.check(!!(d.next && d.foot), `${label}: #gmNext or .gm-foot not found -- nothing was measured`)) return;
-    rec.check(!overlaps(d.toast, d.next), `${label}: the toast (${rr(d.toast)}) covers #gmNext (${rr(d.next)})`);
-    rec.check(!overlaps(d.toast, d.foot), `${label}: the toast (${rr(d.toast)}) covers .gm-foot (${rr(d.foot)})`);
+    toastClear(rec, d, label, cell);
     // stepping stints while the toast is up changes the call's height: the toast must follow
     if (name === 'bench mode, swap toast') {
       let seen = 0;
@@ -163,7 +186,7 @@ async function toastAt(c, origin, rec, cell, where, name) {
         const e = await probe(c);
         if (!e.toast) continue;
         seen++;
-        rec.check(!overlaps(e.toast, e.next), `${label}, after stepping to stint ${i + 1}: the toast (${rr(e.toast)}) covers #gmNext (${rr(e.next)})`);
+        toastClear(rec, e, `${label}, after stepping to stint ${i + 1}`, cell);
       }
       rec.check(seen > 0, `${label}: the toast was gone at every step -- nothing was measured`);
     }

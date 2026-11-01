@@ -154,7 +154,12 @@ bare glyph, and that tag always matches the previous stint's On column.
 In bench mode the box is **pinned**, not part of the list (#430). It sits
 between the scrolling floor and the foot, so it stays on screen at every scroll
 position. The floor and the bench are the only scroller; the foot is a
-normal-flow sibling below the box, not a layer floating over the list.
+normal-flow sibling below the box, not a layer floating over the list. When
+the screen is full (a short phone at large text, after a swap), the "card no
+longer matches" line and the Not here group shrink and scroll before the foot
+moves. A toast lifts above the box in portrait, but only as far as it fits
+whole on screen; a toast too tall for the room above the box sits over it, never
+over the foot, until it goes.
 
 **A tied game can go to overtime (#368).** On the last stint the Next box
 offers **Tied? Add overtime** under the "Game ends at 0:00." line, and it is gone once

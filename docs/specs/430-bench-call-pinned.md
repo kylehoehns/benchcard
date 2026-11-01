@@ -54,9 +54,20 @@ What the survey changed in the issue's claims, and the choice made for each
    window shows at least 96px" (two touch-target heights: the coach can see
    and scroll it). Every other cell keeps the whole-card rule.
    With a Not here row **and** a toast at that one cell, the toast may run up
-   over the Not here row for its few seconds; it still never covers the call
-   or the foot, and its own x dismisses it. Every other cell keeps the toast
-   off "Here now".
+   over the Not here row for its few seconds; it still never covers the
+   foot, and its own x dismisses it. Every other cell keeps the toast off
+   "Here now".
+   **Found on the preview (95866da), fixed after it.** At that same cell a
+   swap shows `#gmMoved` and a five-row call at once. The foot was pushed
+   11px off the screen (509–579 of 568; 606–676 with a Not here row), and the
+   long-name swap toast (393px tall) was lifted above the call to −172–221,
+   its top off the screen. Now `#gmMoved` caps at two lines and, like
+   `#gmOutSec`, is a scroller that shrinks before the foot moves; and the
+   toast lifts above the call only as far as it fits whole. Where it cannot
+   fit above the call (taller than the room between the top of the screen and
+   the call, which happens only at this cell), it sits over the call, clear
+   of the foot, for its few seconds — the clipped toast lost its message, the
+   covered call is back when the toast goes.
 
 ## What would settle it
 
@@ -71,7 +82,7 @@ allows).
    with `#gmNext2`), and in `bench mode, last stint`: `#gmNext` is visible
    with `.gm-body` at its opening scroll **and** with `.gm-body` scrolled to
    the bottom (it does not scroll with the floor). Its bottom is at or above
-   `.gm-foot`'s top. Every name in it shows on one line (no name box taller
+   `.gm-foot`'s top, and `.gm-foot` is whole inside the viewport. Every name in it shows on one line (no name box taller
    than one line of its own `line-height`), and no word splits.
    On the last stint, "Tied? Add overtime" is visible and ≥ 48 × 48.
 2. **Here now is up top.** In `bench mode, not here`: `#gmOutSec` sits above
@@ -84,8 +95,11 @@ allows).
    `.gm-body`'s visible height is ≥ 96px. Leave, Back and Next keep #421's
    one row at ≥ 48 × 48.
 4. **The toast stays clear.** In `bench mode, undo toast` and `bench mode,
-   swap toast`, the toast (`#toasts .toast`) does not overlap `#gmNext` or
-   `.gm-foot` in any cell. In `bench mode, not here` with a toast showing
+   swap toast`, the toast (`#toasts .toast`) and `.gm-foot` are each whole
+   inside the viewport (top ≥ 0, bottom ≤ innerHeight) in every cell, also
+   after stepping stints with the toast up. The toast does not overlap
+   `.gm-foot` in any cell, nor `#gmNext` in any cell except 320×568/32 when
+   it is taller than the room above the call. In `bench mode, not here` with a toast showing
    (a swap made while someone is Not here), it does not overlap the first
    "Here now" in every cell except 320×568/32.
 5. **Overtime sheet.** At 320×568/16 the overtime sheet's "Add overtime"
@@ -194,4 +208,4 @@ coach can do does not change, only where it sits.
 - Floor card height at large text (the avatar stacking above the name) and
   the bar's two-line title at 320/32: both would buy room at 320×568/32, and
   both are other large-text work.
-- `#gmMoved`'s own height.
+- `#gmMoved`'s own height, beyond the two-line cap at large text above.

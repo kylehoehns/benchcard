@@ -248,7 +248,17 @@ function liftToasts(box) {
   // changes with the stint, so it is watched while bench mode is open.
   const call = gmFoot ? $('#gmNext') : null;
   watchCall(call, box);
-  if (call && !window.matchMedia?.(GM_LANDSCAPE)?.matches) lift = Math.max(lift, Math.ceil(window.innerHeight - call.getBoundingClientRect().top));
+  if (call && !window.matchMedia?.(GM_LANDSCAPE)?.matches) {
+    // ...but never so far that the toast's own top leaves the screen. On a
+    // short phone at large text a long-name toast is taller than the room
+    // above the call; it is then lifted only as far as it fits whole, clear
+    // of the foot as before #430, and sits over the call until it times out.
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const gap = .5 * rem * Math.max(0, box.children.length - 1);
+    const tall = [...box.children].reduce((h, t) => h + t.offsetHeight, gap);
+    const room = Math.floor(window.innerHeight - tall - .6 * rem - .5 * rem);
+    lift = Math.max(lift, Math.min(Math.ceil(window.innerHeight - call.getBoundingClientRect().top), room));
+  }
   box.classList.toggle('lifted', lift > 0);
   box.style.setProperty('--toast-lift', `${lift}px`);
 }

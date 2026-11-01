@@ -1231,7 +1231,10 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
    away with the floor; muted rather than alarming, because the coach asked for
    this change and nothing is wrong. */
 .gm-moved { margin: 0; padding: .5rem .9rem; font-size: var(--fs-footnote); line-height: 1.35;
-  color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line); }
+  color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--line);
+  /* #430: a scroller, so it is the line that gives way (min-height: auto is 0
+     for one) when the pinned call and foot leave no room, never the foot */
+  overflow-y: auto; flex-shrink: 4; }
 
 /* #430: bench mode reads, top to bottom, bar, #gmMoved, Not here, this
    scroller (the floor and the bench -- the only thing that scrolls), the call
@@ -1252,8 +1255,9 @@ body.gm-swiping { user-select: none; -webkit-user-select: none; }
    late arrival's Here now is on screen when bench mode opens. It caps its own
    height and scrolls itself, so a long out list never pushes the floor off
    the screen; the label stays (small, muted) for screen readers and sighted
-   coaches alike. */
-#gmOutSec { margin: 0; padding: .1rem .9rem .35rem; max-height: max(24vh, 7.5rem); overflow-y: auto; flex: none; }
+   coaches alike. It shrinks too (a scroller's min-height is 0), after
+   #gmMoved, so a swap's taller call never pushes the foot off a short phone. */
+#gmOutSec { margin: 0; padding: .1rem .9rem .35rem; max-height: max(24vh, 7.5rem); overflow-y: auto; flex: 0 1 auto; }
 #gmOutSec .gm-lab { margin-bottom: .1rem; }
 /* One line per player: the name and its Here now. The badge is dropped here
    (the name is the identity), which is what lets the row stay one line. */
@@ -3975,7 +3979,9 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   /* the heading stays for screen readers; sighted, the Here now buttons beside
      the names are the label, and the 32px heading cost 40px of a short screen */
   #gmOutSec .gm-lab { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
-  .gm-moved { padding: .15rem .5rem; line-height: 1.2; }
+  /* two lines at most: at 320x568 a swap shows this line and a five-row call
+     at once, and three lines of it pushed the foot 11px off the screen */
+  .gm-moved { padding: .15rem .5rem; line-height: 1.2; max-height: calc(2.4em + .3rem); }
   .gm-body { padding-top: .5rem; padding-bottom: .25rem; }
 
   /* `#gmClose`'s visible fill (`.i`, `#agClose .i, #frClose .i, .gm-x .i`
