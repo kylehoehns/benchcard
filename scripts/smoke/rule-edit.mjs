@@ -234,7 +234,7 @@ export async function ruleEditPass(c, origin, rec) {
   await tap(c, `(${tile('Hana Kim')}).click()`);
   const lastqAfter = await evalJSON(c, `(async () => JSON.stringify((await import('/state.js')).game().constraints.lastPeriodFive))()`);
   rec.check(JSON.stringify(lastqAfter) === JSON.stringify(['p0', 'p1']), `item 4 (last period): lastPeriodFive is ${JSON.stringify(lastqAfter)}, want ["p0","p1"]`);
-  notes.push('item 4: the same holds for the last-period five');
+  notes.push('item 4: the same holds for the Starts the last period rule');
   await back(c);
   await evalIn(c, setGame(`s.game().constraints.lastPeriodFive = [];`));
 

@@ -3298,7 +3298,7 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    a 320px viewport, wider than the sheet itself; .chip's own white-space:
    nowrap is what every other, shorter chip wants, but here it is what
    pinned that one wide enough to overflow. Shortened to "One of two on" --
-   "Last-period five" is now the longest label in this group, and this
+   "Starts the last period" is now the longest label in this group, and this
    override is scoped to the group rather than the one chip, so the shared
    primitive stays nowrap everywhere else it is used. */
 .plan-kinds .chip { white-space: normal; text-align: center; }

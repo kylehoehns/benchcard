@@ -8,7 +8,7 @@
 - **Platoon** -- fixed fives alternating wholesale, no optimization.
 
 Plus rules that compose with any of them: min/cap minutes, Together and
-Apart pairs, pinned starting five and last-period five, and a
+Apart pairs, pinned starting five and Starts the last period rule, and a
 most-stints-in-a-row limit.
 
 There is a third pair relation, `keepOnFloor` -- "One of two on".

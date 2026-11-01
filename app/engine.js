@@ -83,7 +83,7 @@ export function stintsBeforeHalftime(stints) {
 }
 
 /* #367: overtime periods follow regulation, numbered `periods + 1`, `+ 2`, ...
-   so the last-period five (`period === format.periods`) never reaches one.
+   so the last-period rule (`period === format.periods`) never reaches one.
    Their names are made here, next to `periodLabel`, and nowhere else. */
 const overtimeLabel = n => (n === 1 ? 'OT' : `OT${n}`);
 // whether a stint belongs to an overtime period, by the name overtimeLabel gave it
@@ -291,8 +291,8 @@ function combinations(arr, k) {
 /* ------------------------------------------------------------------ *
  * feasibility -- pure arithmetic, runs before any search
  * ------------------------------------------------------------------ */
-/* Where the last period's first stint sits: the one place buildForced pins the
-   last-period five and the one place analyzeFeasibility checks it, so the
+/* Where the last period's first stint sits: the one place buildForced pins
+   the last-period rule and the one place analyzeFeasibility checks it, so the
    warning and the solver cannot disagree. -1 when no such stint remains (a
    suffix that is all overtime). `periods` absent: the highest regulation period
    among the stints, which is the same index for a full game and for a suffix. */

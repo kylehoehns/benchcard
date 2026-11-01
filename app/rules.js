@@ -400,7 +400,7 @@ const KINDS = [
   ['together', 'Together'],
   ['keepon', 'One of two on'],
   ['starts', 'Starting five'],
-  ['lastq', 'Last-period five'],
+  ['lastq', 'Starts the last period'],
   ['rest', 'Rest limit'],
 ];
 

@@ -57,8 +57,8 @@ phone and can run substitutions from bench mode. The two phones are not linked
 afterward.
 
 **Rules that compose with any of them** — Plays at least and Plays at
-most, Together and Apart, One of two on, a Starting five and Last-period
-five, and a Rest limit.
+most, Together and Apart, One of two on, a Starting five and Starts the last
+period, and a Rest limit.
 
 **Across the season, not just the afternoon.** Attendance is irregular, and
 that is what actually creates unfairness: one kid on 27 stints and another on

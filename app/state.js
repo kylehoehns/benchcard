@@ -272,7 +272,7 @@ export const leagueMinutes = () => state.settings?.minMinutes ?? DEFAULT_SETTING
 /* One rule, one count (#26 item 9). `passSummary` and `sentenceParts` below
    and each game's pass on Today both show this number, so it is computed once,
    exactly as `renderConstraints` (rules.js) lists rules: a starting five or a
-   last-period five is 1 rule, not 5 (the badge used to add `.length`, which
+   Starts the last period rule is 1, not 5 (the badge used to add `.length`, which
    counted five), and an "always on" pair (`keepOnFloor`) counts, which the
    badge used to leave out entirely. A min or cap on a player who is not
    available does not count -- the rules list never shows it either. */
@@ -292,7 +292,7 @@ export function ruleCount(g) {
 
 /* #28 decision 5: the Plan sheet's Rules section, as plain sentences, in the
  * table's own order -- league minimum, minimum, cap, together, apart, one of
- * two on, starting five, last-period five, rest limit. Reads exactly the
+ * two on, starting five, starts the last period, rest limit. Reads exactly the
  * fields `ruleCount` above counts, the same way, so `ruleItems(g).length ===
  * ruleCount(g)` always holds (a test pins it) -- this is not a second count,
  * it is the same one rule by rule. Names are the on-court call names from
