@@ -1507,11 +1507,17 @@ export const satShortBench = id => { const n = satShort.get(id) || []; satShort.
    solve, so no kid was held). Same shape and read-and-reset as `satShort`. */
 const pinsLet = new Map();
 const pinsLetRead = id => { const n = pinsLet.get(id) || { used: [], cleared: [] }; pinsLet.clear(); return n; };
+/* The one sentence for kids a solve stopped holding because their Plays at
+   most is spent -- `names` are call names. Led by a space; '' for nobody. */
+const pinsUsedSentence = names => (names.length ? ` Not enough minutes left to keep ${joinNames(names)} fixed to a stint.` : '');
+/* The same sentence from `resolveRest`'s `pinsDropped` ids, for the callers
+   (a sit, a one-stint swap) that re-plan without `replanRest`. */
+export const pinsDroppedNotice = ids => pinsUsedSentence(ids.map(id => callNames(state.players)[id]));
 /* The sentence(s) for the game on screen, led by a space so they append to
    another notice; '' when nothing was let go. Read-and-reset. */
 export function pinsNotice(id) {
   const { used, cleared } = pinsLetRead(id);
-  return (used.length ? ` Not enough minutes left to keep ${joinNames(used)} fixed to a stint.` : '')
+  return pinsUsedSentence(used)
     + (cleared.length ? ` Could not keep ${joinNames(cleared)} fixed to a stint.` : '');
 }
 
@@ -1536,10 +1542,10 @@ function replanRest(g, p, from) {
   }
   /* #437: still refused -- hold nobody to a stint, and say who was let go. */
   if (!r.ok && r.reason === 'infeasible') {
-    const c = g.constraints;
-    const fixed = [...(c.lastPeriodFive || []), ...(g.strategy === 'closers' ? c.closing?.players || [] : [])];
-    const who = [...new Set(fixed)].filter(id => here.has(id));
-    const again = who.length && resolveRest(g, p, from, [], null, undefined, { clearPins: true });
+    /* Runs on any infeasible refusal with a fixed kid at the game, so the cause
+       may not have been the pins; if clearing them does not help, nothing changes. */
+    const who = Object.keys(pinnedRules(g, g.constraints)).filter(id => here.has(id));
+    const again = who.length && resolveRest(g, p, from, [], null, undefined, { dropPins: who });
     if (again?.ok) {
       pinsLet.set(g.id, { used: [], cleared: who.map(id => calls[id]) });
       return again;
@@ -1957,7 +1963,26 @@ function lateArrivals(g, p, k) {
  * actually played. Returns `{ ok: true, from, overrides, issues,
  * minutes }` or `{ ok: false, reason }`; `reason` is for slice 2's copy.
  * ================================================================== */
-export function resolveRest(g, p, from, sitIds = [], to = null, standing = satIds(g.live), { clearPins = false } = {}) {
+/* The kids a coach fixed to a stint, as { id: [rule names] }: Starts the last
+   period, and Closers when the game's strategy is closers. `c` is the
+   constraints to read (the game's, or a solve's clone). */
+function pinnedRules(g, c) {
+  const out = {};
+  for (const id of c.lastPeriodFive || []) (out[id] ||= []).push('Starts the last period');
+  if (g.strategy === 'closers') for (const id of c.closing?.players || []) (out[id] ||= []).push('Closers');
+  return out;
+}
+/* The one place a solve's constraints let go of fixed kids: `ids` come out of
+   Starts the last period and Closers. Writes `c`, which is a clone. */
+function dropPinned(c, ids) {
+  if (!ids.length) return;
+  c.lastPeriodFive = (c.lastPeriodFive || []).filter(id => !ids.includes(id));
+  if (c.closing) {
+    const players = c.closing.players.filter(id => !ids.includes(id));
+    c.closing = players.length ? { ...c.closing, players } : null;
+  }
+}
+export function resolveRest(g, p, from, sitIds = [], to = null, standing = satIds(g.live), { dropPins = [] } = {}) {
   if (!p || !p.ok) return { ok: false, reason: 'noplan' };
   const k = Math.max(0, Math.min(Math.trunc(from) || 0, p.stints.length));
   // `to` ends the suffix early: Reset plans one Even-out period at a time
@@ -2015,7 +2040,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   if (strategy !== 'platoon') c.units = [];
   if (strategy !== 'closers') c.closing = null;
   /* #437: `replanRest`'s last resort -- hold nobody to a stint. */
-  if (clearPins) { c.lastPeriodFive = []; c.closing = null; }
+  dropPinned(c, dropPins);
   /* A By hand lock holds a regulation number, not overtime's, so it is dropped
      here. That is safe for the other strategies: only By hand lets a coach set
      locks, and the engine reads them only to hold a locked row out of its
@@ -2101,13 +2126,9 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
       const capped = [...new Set(r.issues.filter(i => i.severity === 'error'
         && (i.code === 'FORCED_OVER_CAP' || i.code === 'PINS_OVER_CAP')).flatMap(i => i.playerIds))];
       if (capped.length) {
-        const rules = id => [c.lastPeriodFive.includes(id) && 'Starts the last period', c.closing?.players.includes(id) && 'Closers'].filter(Boolean);
-        const was = Object.fromEntries(capped.map(id => [id, rules(id)]));
-        c.lastPeriodFive = c.lastPeriodFive.filter(id => !capped.includes(id));
-        if (c.closing) {
-          c.closing = { ...c.closing, players: c.closing.players.filter(id => !capped.includes(id)) };
-          if (!c.closing.players.length) c.closing = null;
-        }
+        const pinned = pinnedRules(g, c);
+        const was = Object.fromEntries(capped.map(id => [id, pinned[id] || []]));
+        dropPinned(c, capped);
         const again = solve();
         if (again.ok) {
           const calls = callNames(state.players);

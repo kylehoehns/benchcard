@@ -283,6 +283,24 @@ its alternative is an assertion, so the rejected options are kept here too.
   pin the search still misses is a warning, one per group, naming everyone it
   missed (`OPENING_MISSED`, `LAST_PERIOD_MISSED`, `CLOSER_MISSED`). Platoon
   applies no pins, so none of this applies to it.
+- **A re-plan drops the pin it cannot hold, says so, and leaves the past alone
+  (#437).** A re-plan of the remaining stints (a late arrival, a kid marked
+  out, a Who's here change, a Shuffle) can meet a kid whose Plays at most
+  minutes are used up while they are fixed to a stint. The engine refuses that
+  with `PINS_OVER_CAP` or `FORCED_OVER_CAP` and names the kid. `resolveRest`
+  then takes exactly those kids off Starts the last period and the closing
+  group, solves again, and adds one `PIN_CAP_USED` warning per kid. If the
+  solve still refuses, `replanRest` retries once with every fixed group
+  cleared, and records the available kids it stopped holding. Only when that
+  also refuses does the #134 whole-game fallback run. Stints already played are
+  never written either way. The coach hears this once, appended to the toast the
+  change already raises: "Not enough minutes left to keep {names} fixed to a
+  stint." for a dropped pin, and "Could not keep {names} fixed to a stint." when
+  the retry was needed. A **This stint** swap and **Sit for the rest** call
+  `resolveRest` directly rather than `replanRest`, and their own toasts add the
+  same first sentence when a pin is dropped. By hand and Platoon never reach this path, because `resolveRest`
+  refuses them, so they still fall back to #134 and can rewrite played stints.
+  That is follow-up #489.
 - **A coach's minute target is a pin, not a preference.** It survives caps and
   tournament carryover; everyone else water-fills the remaining floor-time.
 - **Somebody has to play the odd stint, so it is decided out loud.** When the
@@ -410,7 +428,7 @@ its alternative is an assertion, so the rejected options are kept here too.
 - **Pairs are soft by default** (`hardPairs: true` to force). Requiring two players together every stint fights even minutes hard; the plan maximizes shared floor time and reports it as "together 20 of a possible 20 minutes". A hard pair costs even minutes only when no even plan keeps the pair together: the search has a move that seats, benches or trades the pair as one.
 - **Infeasibility is arithmetic, checked before any search**, so the message can name the offending constraint and the numbers.
 - **Subs are held to 1-3 per stint** so there is continuity on the floor.
-- **A sit for the rest is a fact about the game, not only about its stints.** Sitting a kid writes their later stints as overrides, but every later re-plan (an arrival, a Who's here change, a Shuffle, overtime, a hand-off) plans afresh, so the sit used to vanish on the next one. The sit is now also recorded as `live.sat`, and every re-plan leaves those kids out. No "Back in" control was added: Undo and Back to the printed plan are the way back, and that button stays on screen while a sit stands. A re-plan cannot refuse, because the arrival or change has already happened. So when leaving the sat kid out would leave fewer than five, that one solve puts them back for the fifth seat, the sit stays recorded, and the coach is told once. The mechanics are in [bench-mode.md](architecture/bench-mode.md).
+- **A sit for the rest is a fact about the game, not only about its stints.** Sitting a kid writes their later stints as overrides, but every later re-plan (an arrival, a Who's here change, a Shuffle, overtime, a hand-off) plans afresh, so the sit used to vanish on the next one. The sit is now also recorded as `live.sat`, and every re-plan leaves those kids out. No "Back in" control was added: Undo and Back to the printed plan are the way back, and that button stays on screen while a sit stands. A re-plan cannot refuse over a short bench, because the arrival or change has already happened. So when leaving the sat kid out would leave fewer than five, that one solve puts them back for the fifth seat, the sit stays recorded, and the coach is told once. The mechanics are in [bench-mode.md](architecture/bench-mode.md).
 - **A hand-off link carries a live copy, not a link between phones.** The
   assistant's phone receives a complete working copy of the game and its roster
   and can edit it freely. The two phones are not synchronized afterward, so

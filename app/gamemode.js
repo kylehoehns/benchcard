@@ -19,7 +19,7 @@ import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './tra
 import { track } from './analytics.js';
 import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup, effectiveStints,
-         resolveRest, pinsNotice, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+         resolveRest, pinsNotice, pinsDroppedNotice, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
 import { EDITS } from './edit.js';
 import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, openGame, step, finish, satIds, sitOut, finishedGame } from './live.js';
 
@@ -998,11 +998,12 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
   // how the post-swap minutes get into the toast without re-solving twice.
   const before = liveMinutes(p, g);
   let replanned = false;
+  let letGo = '';
   tick();
   undoable(
     () => {
       const after = liveMinutes(p, g);
-      return swapToastText(inName, outName, scope, after[inId], after[outId], before[inId], before[outId], replanned);
+      return swapToastText(inName, outName, scope, after[inId], after[outId], before[inId], before[outId], replanned) + letGo;
     },
     () => {
       const live = liveOf(g);
@@ -1026,6 +1027,8 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
           replanned = Object.entries(r.overrides).some(([k, five]) =>
             [...five].sort().join() !== [...effLineup(p, g, Number(k))].sort().join());
           writeOverrides(live, r.overrides, false);
+          // #437: a kid the re-plan stopped holding to a stint is told, as in a re-plan.
+          letGo = pinsDroppedNotice(r.pinsDropped);
         }
       }
       gmPick = null;
@@ -1107,7 +1110,7 @@ function sitRest(p, g, i, outId, name) {
   // instant the coach tapped -- the difference is the one seat that changed.
   const oldFloor = effLineup(p, g, i);
   tick();
-  undoable(`${name} sits for the rest. The others share those minutes.`, () => {
+  undoable(`${name} sits for the rest. The others share those minutes.${pinsDroppedNotice(r.pinsDropped)}`, () => {
     const live = liveOf(g);
     writeOverrides(live, r.overrides, true);
     sitOut(live, outId);

@@ -136,7 +136,7 @@ test('4: replanRest clears every fixed group, keeps the past, and names who it s
   S.computeAll();
   const before = fives(g, 6);
   S.rotationMoved();
-  S.pinsNotice(g.id);
+  S.pinsNotice(g.id); // drains whatever an earlier computeAll left, so the read below is this arrival's
   S.setAvailable(g, 'p8', true);
   S.computeAll();
   assert.deepEqual(fives(g, 6), before, 'stints 0-5 are as played');
@@ -149,7 +149,7 @@ test('5: a cap-spent drop is told once, in the toast sentence', () => {
   const g = setup(1, { out: ['p8'] });
   g.live.at = 6;
   S.computeAll();
-  S.pinsNotice(g.id);
+  S.pinsNotice(g.id); // drains whatever an earlier computeAll left, so the read below is this arrival's
   S.setAvailable(g, 'p8', true);
   S.computeAll();
   assert.equal(S.pinsNotice(g.id), ' Not enough minutes left to keep Player 0. fixed to a stint.');

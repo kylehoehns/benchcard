@@ -222,7 +222,9 @@ The handler runs `computeAll()` first. Stepping through stints in bench mode nev
 does a full render, so the plan has not been adopted yet, and without that step
 the re-plan would also rewrite the stint on the floor. The change is one
 `undoable`: the toast reads "{call name} is here." with an Undo, and the Undo
-takes back the arrival and its re-plan together. Focus moves to the next **Here
+takes back the arrival and its re-plan together. If the re-plan has to let a kid
+fixed to a stint go, the same toast says so once (#437; the rule is in
+[design decisions](../design-decisions.md)). Focus moves to the next **Here
 now** button, or to the first floor row when none is left. After an Undo, focus
 goes to the restored player's own button. Each button's accessible name is
 "Here now, {full name}".
@@ -263,12 +265,18 @@ game that is not finished, because a re-plan rewrites the sit's stints as not by
 hand, and the hand-swap rule alone would hide the only way back. Reset clears
 the sit and plans everyone again.
 
-A re-plan cannot refuse, so a short bench is handled inside it. If leaving the
-sat kid out would leave fewer than five players, that solve puts them back on
-for the fifth seat, the sit stays recorded, and the coach is told once:
+A re-plan cannot refuse over a short bench, so that case is handled inside it. If
+leaving the sat kid out would leave fewer than five players, that solve puts them
+back on for the fifth seat, the sit stays recorded, and the coach is told once:
 "Not enough players to keep {name} sitting." Names are joined with `joinNames`
 when there is more than one. The sit applies again on the first re-plan that
 has five without them. Marking a sat kid out and then Here now keeps the sit.
+
+A **This stint** swap and a sit call `resolveRest` directly, not `replanRest`
+(#437). If a kid fixed to a stint has to be let go for that solve to work, the
+change still goes through and its own toast adds the same "Not enough minutes
+left to keep {names} fixed to a stint." sentence. The rule is in
+[design decisions](../design-decisions.md).
 
 It offers an **Undo** rather than asking a confirm, because a coach cannot tell
 whether sitting someone was right until the rest of the game has rebalanced. The

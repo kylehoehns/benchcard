@@ -30,4 +30,19 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
     assert.equal(await coach.toast(),
       'Casey is here. Not enough minutes left to keep Marcus fixed to a stint.');
   });
+
+  test('2. Sit for the rest at the last stint says the first player is no longer fixed', async () => {
+    await coach.onGameDayWith({
+      out: ['p8'],
+      constraints: { minMinutes: {}, maxMinutes: { p0: 8 }, pairs: [], avoids: [], keepOnFloor: [], openingFive: [], lastPeriodFive: ['p0'] },
+    }, 9);
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Start game');
+    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    const sat = (await coach.onFloor()).find(n => n !== 'Marcus Webb');
+    await coach.tapPlayer(sat);
+    await coach.tap('Sit for the rest');
+
+    assert.match(await coach.toast(), /sits for the rest\. The others share those minutes\. Not enough minutes left to keep Marcus fixed to a stint\.$/);
+  });
 });

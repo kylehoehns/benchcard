@@ -519,8 +519,8 @@ globalThis.document = {
 const S = await import('../app/state.js');
 
 test('property #437: after a live arrival or departure, every stint before live.at is unchanged', () => {
-  const started = Date.now();
   const CASES = 60;
+  let reached = 0, letGo = 0;
   for (let n = 1; n <= CASES; n++) {
     const r = rng(n * 2246822519);
     const int = (lo, hi) => lo + Math.floor(r() * (hi - lo + 1));
@@ -543,7 +543,7 @@ test('property #437: after a live arrival or departure, every stint before live.
        players. Excluded class, found by this property: a cap on a kid who played every stint so far,
        with 5-6 left, leaves the rest of the game with too few minutes to keep five on the floor
        (CAPS_UNSATISFIABLE after a departure). A cap does that without any pin, and it is a different
-       bug. Repro: 7 players, 2 x 7 min, sub every 3, Plays at most 7 on p0 and p1, p2 leaves at live.at 2. */
+       bug (filed as #490). Repro: 7 players, 2 x 7 min, sub every 3, Plays at most 7 on p0 and p1, p2 leaves at live.at 2. */
     const pinned = [...new Set([...c.lastPeriodFive, ...(c.closing?.players || [])])];
     if (size >= 7) for (const id of pinned.slice(0, 2)) if (r() < 0.8) c.maxMinutes[id] = int(1, 2) * periodMinutes;
     const g = {
@@ -564,11 +564,15 @@ test('property #437: after a live arrival or departure, every stint before live.
     const before = fives();
     const arrival = out.length && r() < 0.5;
     const who = arrival ? out[0] : pickHere();
+    S.pinsNotice(g.id);                        // drain what earlier computeAll calls left
     S.setAvailable(g, who, !!arrival);
     S.computeAll();
     if (!S.plans[0]?.ok) continue;
+    reached++;
+    if (S.pinsNotice(g.id) !== '') letGo++;    // the #437 drop branch ran
     assert.deepEqual(fives(), before,
       `scenario ${n}: ${arrival ? 'arrival' : 'departure'} of ${who} at stint ${at}; ${JSON.stringify({ strategy, c, periods, periodMinutes })}`);
   }
-  assert.ok(Date.now() - started < 5000, 'the property stays under 5 s');
+  assert.ok(reached >= 30, `only ${reached} cases reached the assertion`);
+  assert.ok(letGo >= 1, 'no case exercised the pin-drop path');
 });
