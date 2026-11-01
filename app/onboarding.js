@@ -440,7 +440,8 @@ function fillSample(n = DEMO_N) {
 
 /* The sample team, built and put on the screen. SINCE A49 THIS IS THE `?try=N`
    PATH AND NOTHING ELSE: somebody who clicked "Try it with nine sample players"
-   at the foot of a roster-size chart page asked to SEE the card, and handing
+   on a chart page (right under the chart, on all eight
+   including the two-halves page) asked to SEE the card, and handing
    them a filled-in form instead would answer a different question. The button
    on the welcome screen fills the form (`fillSample` above); this one skips it.
 

@@ -122,16 +122,18 @@ const PRINT_SPY = `window.__prints = [];
       .map(e => e.innerText.replace(/\\s+/g, ' ').trim()));
   };`;
 
-/* A beacon that records instead of sending: each `navigator.sendBeacon(url,
+/* A beacon that records and still sends: each `navigator.sendBeacon(url,
  * body)` notes the url and the parsed JSON body, as `sentEvents()` reads them
- * back. The product events (`/e`) go through it; the local server would answer
- * 204 either way. */
+ * back, then calls the browser's own sendBeacon and returns its result, so no
+ * scenario sees a different beacon than a coach's browser has. The product
+ * events (`/e`) go through it; the local server would answer 204 either way. */
 const BEACON_SPY = `window.__beacons = [];
+  const realBeacon = navigator.sendBeacon && navigator.sendBeacon.bind(navigator);
   navigator.sendBeacon = (url, body) => {
     let data = null;
     try { data = JSON.parse(body); } catch {}
     window.__beacons.push({ url, data });
-    return true;
+    return realBeacon ? realBeacon(url, body) : true;
   };`;
 
 const KEY_CODES = { Escape: 27, Tab: 9, Enter: 13 };

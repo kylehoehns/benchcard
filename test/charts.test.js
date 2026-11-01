@@ -479,7 +479,6 @@ test('the button row is Try, Build one, Print, with no "How it works" in it', ()
       '<button type="button" class="btn" onclick="print()">Print this chart</button>',
     ], `${c.file} button row`);
   }
-  assert.equal(read(HALVES_FILE).includes('href="./?try=10"'), true);
   // the footer keeps its link
   for (const c of CHARTS) assert.match(read(c.file), /<footer[\s\S]*<a href="\.\/about">How it works<\/a>/);
 });
@@ -489,7 +488,10 @@ test('each size page has the one-sentence lede, with the minutes from the plan',
     const m = lede(html.get(n)).match(new RegExp(
       `^A printable substitution chart for ${n} players over four 8-minute quarters, subbing every 4 minutes: (.+), as close to equal playing time as the arithmetic allows\\.$`));
     assert.ok(m, `${file(n)} lede is not the one-sentence form: ${lede(html.get(n))}`);
-    assert.match(m[1], /\d+(–\d+)? minutes each|\d+ to \d+ minutes each|\d+ minutes each/, `${file(n)} minutes phrase: ${m[1]}`);
+    // the phrase is the range of the minutes the card's own footer prints
+    const mins = footerMinutes(html.get(n));
+    const lo = Math.min(...mins), hi = Math.max(...mins);
+    assert.equal(m[1], lo === hi ? `${lo} minutes each` : `${lo}–${hi} minutes each`, `${file(n)} minutes phrase`);
   }
 });
 

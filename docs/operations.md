@@ -212,7 +212,9 @@ carried `?try=`, which only the "Try it with N sample players" button on the
 eight chart pages links to; `'direct'` is every other arrival, including a
 chart page's "Build one for your roster" button, which links to `./`. So
 `try` is a count of Try taps that reached a first run, and `direct` is the
-rest. It carries nothing about the page address or the roster size.
+rest. It carries nothing about the page address or the roster size. Rows
+from before #433 carry no `from`, so grouping by it puts older rows under an
+empty value.
 
 **A sample team counts nothing until the coach edits it.**
 `first_run_complete{roster}` is the only roster-size signal the app has, and
