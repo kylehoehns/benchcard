@@ -48,11 +48,18 @@ first stint is behind the cut, the same test `resolveRest` uses.
   rebuilt.
 - Item 5 is not reachable by a test: once the mid-period re-pin is gone, a
   pin crowds a re-plan only when it would crowd the printed plan too, and a
-  spent cap goes through `PIN_CAP_USED` instead. The reviewer reads it.
+  spent cap goes through `PIN_CAP_USED` instead. The fix pass searched for a
+  closers setup that reaches it (crowded and Apart closers, small caps, an
+  arrival, ~7,500 fuzzed `resolveRest` calls with `dropPins`): after the cut,
+  the plan's own `CLOSERS_TOO_MANY` / `CLOSERS_AVOID` refuse first, and cap
+  refusals are not rescued by dropping pins. The `who` argument stays as a
+  guard so the notice can never name the Last-period five mid-period; it has
+  no test.
 - Existing #437 tests re-planned from stint 7 of a 4x8/4 game (the last
   period starts at stint 6) and leaned on the mid-period re-pin to make a
   pin refuse. They now assert the new behavior; the cap-spent notice test
-  moved to stint 6, where the five still holds. The "Could not keep ... fixed
+  moved to stint 6, where the five still holds, and a Coach scenario
+  re-plans at stint 6 and reads the "Not enough minutes left" toast. The "Could not keep ... fixed
   to a stint" last resort lost its only test, because the setup that reached
   it was this bug.
 
@@ -89,7 +96,8 @@ Tests through the `state.js` seam, red on `d0b42ab`, green after:
   is before `k`; the same test in `replanRest`'s `who`. Update the comment
   block above `resolveRest` ("`lastPeriodFive` still lands on the first
   remaining stint...").
-- `app/sw.js`: `npm run sw:bump` (both files are precached).
+- `app/sw.js`: nothing. `SHELL` is `'unbuilt'` in the tree and the build
+  writes it as a digest (#408), so there is no `sw:bump` to run.
 - `test/`: the tests above, in `test/resolve-rest.test.js` or a new
   `test/last-period-replan.test.js`.
 - `docs/specs/378-*.md` lines 55-62: the five is kept only while the last

@@ -1,23 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { S } from './state-fixture.js';
 
 /* #444: once the last period's first stint has been played, a re-plan treats
    the Last-period five as done. Through the `state.js` seam (spec 444, "What
    would settle it"): 10 players, Starts the last period p0-p4. */
-const store = new Map();
-globalThis.localStorage = {
-  getItem: k => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: k => store.delete(k),
-};
-globalThis.document = {
-  createElement: () => ({ getContext: () => ({ measureText: () => ({ width: 0 }), font: '' }) }),
-  querySelector: () => null,
-  querySelectorAll: () => [],
-};
-
-const S = await import('../app/state.js');
-
 const FIVE = ['p0', 'p1', 'p2', 'p3', 'p4'];
 const CASES = [
   { name: '4x8 every 3, seed 1', seed: 1, periods: 4, periodMinutes: 8, granValue: 3 },
@@ -87,7 +74,6 @@ test('2: 4x8 every 3, seed 3: swapping p0 off at the last period\'s first stint,
   const r = S.resolveRest(g, p, f + 1);
   assert.equal(r.ok, true);
   // p0 may come back on by fairness (they lost a stint); the full five must not
-  assert.notDeepEqual(setOf(r.overrides[f + 1]), FIVE);
   assert.ok(r.overrides[f + 1].filter(id => FIVE.includes(id)).length < 5);
 });
 
