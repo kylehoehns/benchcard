@@ -927,7 +927,7 @@ function mostMinutesUnderRun(lens, limit) {
 }
 
 /* Stints in a row `id` has played, counting back from lineups[end]. */
-function runEndingAt(lineups, id, end, lead = 0) {
+export function runEndingAt(lineups, id, end, lead = 0) {
   let run = 0, j = end;
   for (; j >= 0 && lineups[j].includes(id); j--) run++;
   return j < 0 ? run + lead : run;

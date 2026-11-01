@@ -36,6 +36,11 @@ bug back one period later. Pinned stints after the first open one are not
 handled (the solver already treats the open stints as contiguous; that is
 #369's existing shape and is out of scope).
 
+Recorded limit: the `CONSEC_EXCEEDED` note is in `resolveRest`'s issues,
+which bench mode's Sit for the rest and swap paths show. The freeze re-plan
+(overtime added, roster change underway) does not surface re-plan issues
+today (#456: stale and dropped lineup notes).
+
 ## What would settle it
 
 Tests red on `f837a8f`, green after:

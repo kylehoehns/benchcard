@@ -57,7 +57,7 @@ test('a re-plan from any stint keeps the Rest limit across the cut, or names who
   assert.equal(checked, 8 * 7);
 });
 
-test('overtime (Next rotation and Even out) keeps the Rest limit across regulation, or names who broke it', () => {
+test('overtime (Next rotation and Even out) never runs a kid over the Rest limit across regulation, no note excused', () => {
   for (const who of ['next', 'even']) {
     for (const seed of SEEDS) {
       withTeam(players, [mk(seed)], {}, () => {
@@ -70,8 +70,9 @@ test('overtime (Next rotation and Even out) keeps the Rest limit across regulati
         const p = S.plans[0];
         const all = S.effectiveStints(g, p).map(s => s.onFloor);
         assert.ok(all.length > REG);
-        const bad = overBreaks(all.slice(0, REG), all.slice(REG), p.issues || []);
-        assert.deepEqual(bad, [], `${who} seed ${seed}: over the limit with no note`);
+        // strict: the freeze re-plan drops resolveRest's issues, so p.issues is stale
+        const bad = overBreaks(all.slice(0, REG), all.slice(REG), []);
+        assert.deepEqual(bad, [], `${who} seed ${seed}: run over the limit`);
       });
     }
   }
@@ -101,4 +102,32 @@ test('streakBefore {} or absent gives identical plans', () => {
     const b = generatePlan(input({ seed, streakBefore: {} }));
     assert.deepEqual(b, a);
   }
+});
+
+/* finish() reads the lead through longestRun: pins outrank the limit, so a
+   forced opening five holding p0 after two in a row is over, and said so. */
+test('streakBefore: a pinned opening five over the limit gets a CONSEC_EXCEEDED naming the kid', () => {
+  for (const seed of SEEDS) {
+    const r = generatePlan(input({
+      seed, streakBefore: { p0: LIMIT },
+      constraints: { maxConsecutive: LIMIT, openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] },
+    }));
+    const hit = (r.issues || []).filter(i => i.code === 'CONSEC_EXCEEDED' && i.playerIds.includes('p0'));
+    assert.equal(hit.length, 1, `seed ${seed}: no CONSEC_EXCEEDED naming p0`);
+  }
+});
+
+/* runEndingAt's lead: a pinned opening five all at the limit at the cut, one
+   change allowed, so the Rest limit (not minutes) is why more than that come off at once. */
+test('streakBefore: SUBS_EXCEEDED blames the Rest limit when the lead puts more kids at it than maxSubs', () => {
+  let named = 0;
+  for (const seed of SEEDS) {
+    const r = generatePlan(input({
+      seed, maxSubs: 1, streakBefore: { p0: LIMIT, p1: LIMIT, p2: LIMIT, p3: LIMIT, p4: LIMIT },
+      constraints: { maxConsecutive: LIMIT, openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'] },
+    }));
+    const subs = (r.issues || []).filter(i => i.code === 'SUBS_EXCEEDED');
+    if (subs.some(i => i.message.includes(`a Rest limit of ${LIMIT} makes more than 1 come off at once`))) named++;
+  }
+  assert.ok(named > 0, 'no seed blamed the Rest limit');
 });
