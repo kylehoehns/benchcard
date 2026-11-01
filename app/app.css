@@ -1622,6 +1622,20 @@ h2.side-hd { margin-top: 0; }
    it wraps to its own row -- send it to the same right edge the tip's button
    holds rather than leaving it stranded under the first word. */
 .install-toast .tx { margin-left: auto; }
+/* The update offer (#498): a glyph, the title over its help line, and Reload.
+   Only what differs from `.toast` is here. */
+.update-toast { padding: .7rem .5rem .7rem 1rem; }
+/* The glyph rides the title's line, not the middle of a two-line message. */
+.update-toast .update-glyph { flex: none; align-self: flex-start; font-size: var(--fs-secondary);
+  width: 1.25em; height: 1.25em; margin-top: .1em; }
+.update-toast .update-title, .update-toast .update-help { display: block; }
+.update-toast .update-title { font-weight: 700; }
+.update-toast .update-help { font-weight: 400; color: color-mix(in srgb, var(--bg) 82%, var(--ink)); }
+/* The inverse of the app's Graphite primary: the toast is the inverse surface,
+   so the filled button is --accent-ink with an --accent label. Both tokens
+   ignore the team color. */
+.update-toast .tundo { background: var(--accent-ink); color: var(--accent); }
+@media (hover: hover) { .update-toast .tundo:hover { background: color-mix(in srgb, var(--accent-ink) 88%, var(--accent)); } }
 @media (pointer: coarse), screen and (max-width: 620px) {
   .toast .tx { width: 44px; }
 }

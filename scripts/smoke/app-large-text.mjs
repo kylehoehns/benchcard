@@ -86,6 +86,16 @@ export const APP_LARGE_TEXT_STATES = [
      every other click in this file already does. */
   { name: 'team menu open', open: `${TODAY_HOME}; document.querySelector('#teamBtn')?.click()`,
     close: `document.querySelector('#teamMenu')?.hidePopover?.()` },
+  /* #498: the update toast, raised through its own builder (it is otherwise
+     only offered after a worker takeover), on Today and on the game screen --
+     the two places it floats over content. `close` is its own Dismiss. */
+  { name: 'update toast on Today',
+    open: `${TODAY_HOME}; await ${TIMERS_QUIET}; (await import('/toast.js')).showUpdate(() => {})`,
+    close: `document.querySelector('.update-toast .tx')?.click()` },
+  { name: 'update toast on the game screen',
+    open: `${TODAY_HOME}; await ${TIMERS_QUIET}; document.querySelector('.today-game').click();
+           await ${TIMERS_QUIET}; (await import('/toast.js')).showUpdate(() => {})`,
+    close: `document.querySelector('.update-toast .tx')?.click()` },
   { name: 'bench mode', open: `document.querySelector('#gmOpen').click()`,
     close: `document.querySelector('#gmClose').click()` },
   /* #383, #504: bench mode with a long-named player marked out and Running
@@ -761,6 +771,11 @@ export async function appLargeTextPass(c, origin, rec) {
         // rule 2a: a failed swap would raise no toast to measure.
         const msg = await evalIn(c, `document.querySelector('.toast .tmsg')?.textContent ?? null`);
         rec.check(msg && msg.includes(' on for '), `${where}: no swap toast text found (got ${JSON.stringify(msg)}) -- nothing was measured`);
+      }
+      if (v.name.startsWith('update toast')) {
+        // rule 2a: no update toast raised means the sweep measured the page behind it
+        const up = await evalIn(c, `!!document.querySelector('#toasts .update-toast')`);
+        rec.check(up, `${where}: no update toast was raised -- nothing was measured`);
       }
       if (DIALOG_CHECKED_STATES.has(v.name)) {
         const dd = JSON.parse(await evalIn(c, DIALOG_OVERFLOW_PROBE));

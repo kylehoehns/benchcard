@@ -104,6 +104,7 @@ not counted: only the `.js` files `app/` serves are.
 | `share sheet: Print card \| Hand off` | `scripts/smoke/share-door.mjs` | RICH |
 | `team screen: roster rows, the player sheet, add and paste` | `scripts/smoke/team-screen.mjs` | RICH |
 | `dark theme: print-sheet selects, minutes switch and roster fields stay transparent` | `scripts/smoke/dark-input-bg.mjs` | RICH |
+| `update toast: variant, contrast, no dead band, 320/390px at 16/32px text, light and dark` | `scripts/smoke/update-toast.mjs` | RICH |
 | `phone gutter: five screens, #abBench and #resumeBar, 320–390px + 320px/32px text` | `scripts/smoke/phone-gutter.mjs` | RICH |
 | `prototype control sizes: sentence, segs, steppers, switch rows` | `scripts/smoke/control-size.mjs` | RICH |
 | `#removeGame and #removeTeam are .prow-danger rows` | `scripts/smoke/remove-rows.mjs` | RICH |

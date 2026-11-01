@@ -174,7 +174,7 @@ test('a resume checks for a new worker, since a resume is not a navigation', () 
 test('the update is offered, never taken', () => {
   const fn = toast.slice(toast.indexOf('function offerReload'));
   const body = fn.slice(0, fn.indexOf('\n}'));
-  assert.match(body, /offer\(/, 'a toast the coach can ignore');
+  assert.match(body, /showUpdate\(/, 'a toast the coach can ignore');
   assert.match(body, /location\.reload\(\)/);
   assert.doesNotMatch(html, /controllerchange[\s\S]{0,200}location\.reload\(\)/,
     'a page that reloads itself is exactly what the conservative handover prevents');

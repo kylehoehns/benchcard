@@ -133,6 +133,7 @@ import { clipSweepPass, aboutClipSweepPass } from './clip-sweep.mjs';
 import { typeScalePass } from './type-scale.mjs';
 import { staticPass } from './static.mjs';
 import { darkInputBgPass } from './dark-input-bg.mjs';
+import { updateToastPass } from './update-toast.mjs';
 import { phoneGutterPass } from './phone-gutter.mjs';
 import { controlSizePass } from './control-size.mjs';
 import { removeRowsPass } from './remove-rows.mjs';
@@ -384,6 +385,10 @@ export const ROWS = Object.freeze([
   // `:root` prefix that flipped them filled -- see dark-input-bg.mjs.
   { id: 'darkinputbg', name: 'dark theme: print-sheet selects, minutes switch and roster fields stay transparent', selectable: true, setup: 'rich',
     run: ctx => darkInputBgPass(ctx.c, ctx.origin, ctx.rec) },
+  // #498: the update toast has its own variant -- class, contrast read from
+  // painted pixels, no dead band, 48px controls -- see update-toast.mjs.
+  { id: 'updatetoast', name: 'update toast: variant, contrast, no dead band, 320/390px at 16/32px text, light and dark', selectable: true, setup: 'rich',
+    run: ctx => updateToastPass(ctx.c, ctx.origin, ctx.rec) },
   // #132's own guard (see docs/specs/132-phone-gutter.md's Proof section):
   // Today, the game screen, Team, Season and Settings sit 16px from each
   // edge -- not 11.2px -- at TOUCH_WIDTHS and at the large-text cell, and
