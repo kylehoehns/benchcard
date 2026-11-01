@@ -3769,6 +3769,9 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   #gmOutSec .gm-b, #gmShowed .gm-b { display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: 0; }
   #gmOutSec .gm-b .btn, #gmShowed .gm-b .btn { order: -1; flex: none; min-height: 48px; font-size: var(--fs-footnote); padding: 0 .6rem; }
   #gmOutSec .gm-b .nm, #gmShowed .gm-b .nm { order: 1; flex: 1 1 100%; font-size: var(--fs-secondary); line-height: 1.2; padding-bottom: .2rem; }
+  /* #504: the showed-up list drops its badge here too, as Running late always
+     does: beside the stacked button it floated off on its own at 320px. */
+  #gmShowed .av { display: none; }
   /* the heading stays for screen readers; sighted, the Here now buttons beside
      the names are the label, and the 32px heading cost 40px of a short screen */
   #gmOutSec .gm-lab { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
@@ -3799,8 +3802,11 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      cap for this fixture's longest word ("Lindqvist", 126px). */
   .who-row { gap: .15rem; padding-left: .1rem; padding-right: .1rem; }
   .who-row .av { width: 1.4rem; height: 1.4rem; }
-  /* #504: the Running late chip gives back its indent, so a 32px label is one or two lines, not five */
-  .who-late { margin-left: 1rem; }
+  /* #504: the Running late chip gives back its indent and most of its side
+     padding, so at a 32px root "Running" fits whole on a 320px screen
+     (look.mjs measured it splitting "Run|ning" with the 4rem cut and 1rem
+     padding) and the label wraps only between its two words. */
+  .who-late { margin-left: 1rem; max-width: calc(100% - 2rem); padding: 0 .4rem; }
 
   /* #189: the Plan sheet's Lineup balance row (`#planLineups .prow`) draws
      its value on top of its own label at this size -- in DejaVu Sans,
