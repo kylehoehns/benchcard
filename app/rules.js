@@ -276,6 +276,9 @@ function takenFor(item) {
   return new Set(Object.keys(bucket).filter(id => id !== item.id));
 }
 
+// #446: the one coach-facing line about a minimum and a locked By hand number
+const MINIMUM_WINS = 'If a locked By hand number is lower, the minimum wins and the plan notes say so.';
+
 function openRuleDetail(item, idx, trigger) {
   const sub = $('#planSub');
   sub.textContent = '';
@@ -284,6 +287,7 @@ function openRuleDetail(item, idx, trigger) {
 
   if (!item.removable) {
     sub.append(el('p', 'pgrp-f', 'Your league minimum. Change it in Settings.'));
+    sub.append(el('p', 'pgrp-f', MINIMUM_WINS));
     pushPlanPane(trigger, { title: 'Rule' });
     return;
   }
@@ -297,6 +301,7 @@ function openRuleDetail(item, idx, trigger) {
 
   const controlsHost = el('div');
   sub.append(controlsHost);
+  if (item.kind === 'minimum') sub.append(el('p', 'pgrp-f', MINIMUM_WINS));
   // decision 4: shown only when a pair the coach just picked already
   // matches another rule of the same kind.
   const dupMsg = el('p', 'pgrp-f', 'You already have this rule.');

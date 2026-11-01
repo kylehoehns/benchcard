@@ -1687,3 +1687,171 @@ test('#443 the change limit is not newly broken beside a cap and a minimum', () 
     constraints: { maxMinutes: { p0: 12, p1: 16 }, minMinutes: { p2: 20 } } });
   assert.ok(!w.has('SUBS_EXCEEDED'));
 });
+
+/* ---------------- #446: notes name the rule that bound ---------------- */
+
+const lettered = (n) => Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: String.fromCharCode(65 + i) }));
+const clash = (n, over = {}) => generatePlan({
+  players: lettered(n), availableIds: lettered(n).map(p => p.id),
+  format: QUARTERS, granularity: EVERY_4, seed: 1, ...over,
+});
+const noteOf = (p, code) => p.issues.find(i => i.code === code);
+
+test('#446 Apart on a 6-player bench says Apart, not the clock', () => {
+  const p = clash(6, { constraints: { avoids: [['p0', 'p1']] } });
+  assert.equal(noteOf(p, 'SPREAD_FLOOR'), undefined);
+  const n = noteOf(p, 'SPREAD_RULE');
+  assert.equal(n.severity, 'info');
+  assert.match(n.message, /Apart/);
+  assert.match(n.message, /6/);
+  assert.match(n.message, /\bA\b/);
+  assert.match(n.message, /\bB\b/);
+  assert.deepEqual([...n.playerIds].sort(), ['p0', 'p1']);
+});
+
+test('#446 Force Together with a capped partner names the partner and the cap', () => {
+  const p = clash(10, { constraints: { pairs: [['p0', 'p1']], hardPairs: true, maxMinutes: { p0: 8 } } });
+  assert.equal(noteOf(p, 'SPREAD_FLOOR'), undefined);
+  const n = noteOf(p, 'SPREAD_RULE');
+  assert.match(n.message, /Force Together/);
+  assert.match(n.message, /capped at 8/);
+  assert.match(n.message, /\bB\b/);
+});
+
+test('#446 Force Together with a partner who has a minimum says minimum', () => {
+  const p = clash(10, { constraints: { pairs: [['p0', 'p1']], hardPairs: true, minMinutes: { p0: 28 } } });
+  const n = noteOf(p, 'SPREAD_RULE');
+  assert.match(n.message, /Force Together/);
+  assert.match(n.message, /minimum 28/);
+});
+
+test('#446 Force Together that ties two Apart players is refused, naming them', () => {
+  const constraints = { pairs: [['p0', 'p1'], ['p0', 'p2']], avoids: [['p1', 'p2']], hardPairs: true };
+  const p = clash(10, { constraints });
+  assert.equal(p.ok, false);
+  const e = noteOf(p, 'PAIR_CHAIN_APART');
+  assert.equal(e.severity, 'error');
+  assert.match(e.message, /\bB and C\b/);
+  assert.match(e.message, /\bA\b/);
+  assert.deepEqual([...e.playerIds].sort(), ['p1', 'p2']);
+});
+
+test('#446 the same rules with Force Together off are not refused', () => {
+  const p = clash(10, { constraints: { pairs: [['p0', 'p1'], ['p0', 'p2']], avoids: [['p1', 'p2']], hardPairs: false } });
+  assert.equal(p.ok, true);
+});
+
+const byHand = (over = {}) => ({
+  strategy: 'minutes',
+  constraints: {
+    targetMinutes: { p0: 8, p1: 20, p2: 20, p3: 16, p4: 16, p5: 16, p6: 16, p7: 16, p8: 16, p9: 16 },
+    lockedTargets: ['p0'], minMinutes: { p0: 16 }, ...over,
+  },
+});
+
+test('#446 a locked By hand number under a minimum is raised, on every seed', () => {
+  for (let seed = 1; seed <= 20; seed++) {
+    assert.equal(clash(10, { ...byHand(), seed }).minutes.p0, 16, `seed ${seed}`);
+  }
+  const p = clash(10, byHand());
+  const w = noteOf(p, 'TARGET_UNDER_MIN');
+  assert.equal(w.severity, 'warn');
+  assert.deepEqual(w.playerIds, ['p0']);
+  assert.equal(w.message, "A's By hand number was raised from 8 to 16 to meet their 16-minute minimum.");
+  assert.equal(noteOf(p, 'TARGETS_OVER_BUDGET'), undefined);
+});
+
+test('#446 the league shape (everyone has a 16 minimum) raises the lock too', () => {
+  const everyone = Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`p${i}`, 16]));
+  const p = clash(10, byHand({ minMinutes: everyone }));
+  assert.equal(p.minutes.p0, 16);
+  assert.equal(noteOf(p, 'TARGETS_OVER_BUDGET'), undefined);
+});
+
+test('#446 locked By hand numbers that cannot cover One of two on are refused, naming them', () => {
+  const targetMinutes = { p0: 8, p1: 8 };
+  for (let i = 2; i < 10; i++) targetMinutes[`p${i}`] = 18;
+  const p = clash(10, { strategy: 'minutes', constraints: {
+    targetMinutes, lockedTargets: ['p0', 'p1'], keepOnFloor: [['p0', 'p1']] } });
+  assert.equal(p.ok, false);
+  const e = noteOf(p, 'KEEPON_UNSATISFIABLE');
+  assert.match(e.message, /By hand/);
+  assert.match(e.message, /\b8\b/);
+  assert.doesNotMatch(e.message, /caps/);
+});
+
+test('#446 a minimum lost to the pinned fives names them, not the clock', () => {
+  const p = clash(6, {
+    format: { periods: 1, periodMinutes: 6 },
+    constraints: { minMinutes: { p0: 4 }, openingFive: ['p1', 'p2', 'p3'], lastPeriodFive: ['p4', 'p5'] },
+  });
+  const m = noteOf(p, 'MIN_MISSED');
+  assert.match(m.message, /Starting five/);
+  assert.match(m.message, /Starts the last period/);
+  assert.doesNotMatch(m.message, /clock/);
+});
+
+test('#446 a minimum off the stint grid keeps the clock wording', () => {
+  const players = lettered(7);
+  const p = clash(7, {
+    format: { periods: 2, periodMinutes: 20 }, granularity: { mode: 'everyN', value: 5 }, seed: 9,
+    constraints: {
+      minMinutes: Object.fromEntries(players.map(x => [x.id, 6])), maxMinutes: { p1: 8 },
+    },
+  });
+  assert.equal(p.minutes.p1, 5);
+  const m = p.issues.filter(i => i.code === 'MIN_MISSED').find(i => i.playerIds[0] === 'p1');
+  assert.match(m.message, /The clock does not divide to hit it exactly\./);
+});
+
+test('#446 a Force Together group too big to sit plays every minute, and says so', () => {
+  const p = clash(7, { constraints: { pairs: [['p0', 'p1'], ['p1', 'p2']], hardPairs: true } });
+  assert.equal(noteOf(p, 'SPREAD_FLOOR'), undefined);
+  const n = noteOf(p, 'SPREAD_RULE');
+  assert.match(n.message, /Force Together/);
+  assert.match(n.message, /every minute/);
+  assert.deepEqual([...n.playerIds].sort(), ['p0', 'p1', 'p2']);
+});
+
+test('#446 Apart from a player who plays the whole game names that player', () => {
+  const p = clash(6, { constraints: { avoids: [['p0', 'p1']], minMinutes: { p1: 32 } } });
+  assert.equal(noteOf(p, 'SPREAD_FLOOR'), undefined);
+  const n = noteOf(p, 'SPREAD_RULE');
+  assert.equal(n.message, 'A plays 0 because they are Apart from B, who plays every minute.');
+});
+
+test('#446 One of two on with both capped to cover the game names One of two on', () => {
+  const p = clash(13, { constraints: { keepOnFloor: [['p0', 'p1']], maxMinutes: { p0: 16, p1: 16 } } });
+  assert.equal(noteOf(p, 'SPREAD_FLOOR'), undefined);
+  const n = noteOf(p, 'SPREAD_RULE');
+  assert.match(n.message, /One of two on/);
+  assert.deepEqual([...n.playerIds].sort(), ['p0', 'p1']);
+});
+
+test('#446 HALF_LATE names the pinned closers when they fill every stint before halftime', () => {
+  const p = clash(6, {
+    format: { periods: 1, periodMinutes: 16 },
+    constraints: { closing: { stints: 4, players: ['p1', 'p2', 'p3', 'p4', 'p5'] } },
+  });
+  const m = noteOf(p, 'HALF_LATE').message;
+  assert.match(m, /Closers/);
+  assert.ok(lacks(m, /No legal lineup/));
+});
+
+test('#446 HALF_LATE names the Apart rule when the partner is on every stint before halftime', () => {
+  const p = clash(6, { constraints: { avoids: [['p0', 'p1']], minMinutes: { p1: 32 } } });
+  const m = noteOf(p, 'HALF_LATE').message;
+  assert.match(m, /Apart from B/);
+  assert.ok(lacks(m, /No legal lineup/));
+});
+
+test('#446 One of two on missed because the pinned fives fill the stint names them', () => {
+  const p = clash(7, {
+    format: { periods: 1, periodMinutes: 6 },
+    constraints: { keepOnFloor: [['p0', 'p1']], openingFive: ['p2', 'p3', 'p4'], lastPeriodFive: ['p5', 'p6'] },
+  });
+  const m = noteOf(p, 'KEEPON_PARTIAL').message;
+  assert.match(m, /Starting five/);
+  assert.match(m, /Starts the last period/);
+  assert.ok(lacks(m, /No legal lineup/));
+});

@@ -1065,6 +1065,7 @@ const SIT_RULES = {
   FORCED_OVER_CAP: 'a Plays at most maximum will not cover the Starts the last period rule',
   PINS_OVER_CAP: 'a Plays at most maximum will not cover the stints a player is fixed to',
   PAIR_AVOID_CONFLICT: 'a pair is set to both Together and Apart',
+  PAIR_CHAIN_APART: 'two players set Apart are tied together by Force Together',
   AVOID_IMPOSSIBLE: 'the Apart rules cannot all be met with who is left',
   CLOSERS_AVOID: 'two players set to close are also set Apart',
   FORCED_GROUP_AVOID: 'two players fixed to the same stint are set Apart',
