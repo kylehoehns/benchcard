@@ -22,9 +22,9 @@ import { renderTimeline, applyGameView } from './timeline.js';
 import { renderBalance } from './balance.js';
 import { renderConstraints, renderSeasonAdjust } from './rules.js';
 import { renderStrategy, refreshBudgetActuals } from './strategy.js';
-import { renderRoster, renderLevels, resetEditMode } from './roster-view.js';
+import { renderRoster, renderTeamTitle, renderLevels, resetEditMode } from './roster-view.js';
 import { renderSummary, renderIssues, renderPlanTable, renderDayTotals } from './plan-view.js';
-import { renderSetup, renderSentence } from './game-setup.js';
+import { renderSetup, renderSentence, refreshSheetStatus } from './game-setup.js';
 import { renderTeams, renderTabs, renderSettings, renderResumeBar } from './teams-view.js';
 import { renderSeason, seasonGames } from './season-view.js';
 import { state, save, renderStorageWarning, computeAll, overridesDropped, rotationMoved, dayUnderway,
@@ -46,6 +46,8 @@ import { VIEWS } from './storage.js';
  * ------------------------------------------------------------------ */
 const SECTIONS = {
   roster:      () => renderRoster(),
+  // just the Team page's large title, so a rename can repaint it mid-keystroke
+  teamTitle:   () => renderTeamTitle(),
   teams:       () => renderTeams(),
   tabs:        () => renderTabs(),
   // #34 decision 6/7: not in AFTER_EDIT or PLAN_ONLY -- nothing a coach can
@@ -53,12 +55,13 @@ const SECTIONS = {
   // transition into Today, and by boot's own `renderAll()` on first paint.
   resume:      () => renderResumeBar(),
   setup:       () => renderSetup(),
-  /* #27: the sentence, and the announcement inside whichever sheet is open
-     (`refreshSheetStatus`, game-setup.js) -- both read the just-solved plan,
-     so both belong on the same key as `strategy`'s own re-plan below, in
-     both AFTER_EDIT and PLAN_ONLY (decision 13). The buttons themselves are
-     never rebuilt; only their text and `aria-label` are rewritten in place,
-     which is what lets a sheet's own opener still take focus back on close. */
+  /* #27: the sentence, which reads the just-solved plan, so it belongs on
+     the same key as `strategy`'s own re-plan below, in both AFTER_EDIT and
+     PLAN_ONLY (decision 13). The announcement inside each sheet
+     (`refreshSheetStatus`) runs with `summary` instead (#420). The buttons
+     themselves are never rebuilt; only their text and `aria-label` are
+     rewritten in place, which is what lets a sheet's own opener still take
+     focus back on close. */
   sentence:    () => renderSentence(),
   strategy:    () => renderStrategy(),
   // in-place only: writes what the plan actually gives onto the budget rows
@@ -82,7 +85,7 @@ const SECTIONS = {
   // #29 decision 6: replaces the stat tiles -- renamed, not just re-pointed,
   // so every caller (below, and `gamemode.js`) has to follow deliberately
   // rather than silently keep working under a name that no longer matches.
-  summary:     () => renderSummary(),
+  summary:     () => { renderSummary(); refreshSheetStatus(); },
   issues:      () => renderIssues(),
   plan:        () => renderPlanTable(),
   timeline:    () => renderTimeline(),

@@ -39,7 +39,7 @@ export const EDITS = {
   gameDate: { keys: 'all', now: true },
   opponent: { keys: ['tabs', 'totals', 'cards'] },
   tipoff: { keys: ['tabs', 'cards'] },
-  teamName: { keys: ['cards'] },
+  teamName: { keys: ['teams', 'tabs', 'teamTitle', 'cards'] },
   dayName: { keys: ['tabs'] },
   teamSetting: { keys: 'all', now: true },
   teamColor: { keys: [], now: true },

@@ -17,7 +17,7 @@ import { fmtMinutes } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, summaryLine, minutesNote, movedMinutes } from './state.js';
+import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, planSay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
 import { blockedPanel } from './timeline.js';
@@ -39,10 +39,7 @@ export function renderSummary() {
     return;
   }
   if (row) row.hidden = false;
-  const stints = effectiveStints(g, p);
-  const mins = effectiveMinutes(g, p);
-  const subs = stints.slice(1).reduce((a, r) => a + r.in.length, 0);
-  if (box) box.textContent = summaryLine(mins, subs);
+  if (box) box.textContent = planSay(g, p);
 }
 
 export function renderIssues() {

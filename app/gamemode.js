@@ -408,7 +408,7 @@ function gmFinish() {
   closeGameMode(true);
   undoable(`Marked ${label} finished.`, () => {
     finish(live);
-  }, () => render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs', 'plan', 'issues'));
+  }, () => render('cards', 'timeline', 'summary', 'gameview', 'resume', 'tabs', 'plan', 'issues', 'sentence'));
 }
 
 /* #368: the overtime sheet. Prefilled with the length this team added last

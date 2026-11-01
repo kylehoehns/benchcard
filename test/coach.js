@@ -549,6 +549,11 @@ export class Coach {
     return evalIn(this.c, `(document.querySelector(${JSON.stringify(sel)})?.innerText || '').replace(/\\s+/g, ' ').trim()`);
   }
 
+  /** How many elements match `sel`. */
+  count(sel) {
+    return evalIn(this.c, `document.querySelectorAll(${JSON.stringify(sel)}).length`);
+  }
+
   /** Today's games, top to bottom, as the passes read ("Hawks, 9:00 AM, planned"). */
   async todayGames() {
     return (await this.#controls(`[document.querySelector('#todayGames')].filter(Boolean)`)).map(x => x.name);
