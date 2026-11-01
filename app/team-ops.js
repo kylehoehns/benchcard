@@ -15,7 +15,7 @@ export const emptyConstraints = () => ({
   // which is what every record written before it says -- so no version bump.
   minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [], keepOnFloor: [],
   openingFive: [], lastPeriodFive: [], hardPairs: false,
-  maxConsecutive: 0,
+  maxConsecutive: 0, maxBench: 0,
   targetSlots: {}, lockedTargets: [],
   closing: { stints: 2, players: [] },
   units: [],

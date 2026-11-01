@@ -584,6 +584,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
           lastPeriodFive: keep(c.lastPeriodFive).slice(0, 5),
           hardPairs: !!c.hardPairs,
           maxConsecutive: num(c.maxConsecutive, 0, 0, 20),
+          maxBench: num(c.maxBench, 0, 0, 20),
           closing: { stints: num(closing.stints, 2, 1, 40), players: keep(closing.players).slice(0, 5) },
           units: (Array.isArray(c.units) ? c.units : []).map(keep),
         },

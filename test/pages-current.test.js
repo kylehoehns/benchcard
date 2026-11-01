@@ -22,7 +22,7 @@ import { read as readSurface } from '../scripts/feature-keys.mjs';
  * slice, then run through the same comment-stripping `htmlBodyCopy` uses.
  *
  * Each phrase below is exactly one of the spec's item 8 bullets. `<h3>Even</h3>`
- * (the strategy heading), "On the floor", "Rest limit" and the sheets' own
+ * (the strategy heading), "On the floor", "Plays at most N in a row" and the sheets' own
  * ✕ close buttons are deliberately NOT on this list -- they are current,
  * ordinary words that collide with the retired ones, which is why #150 does
  * not add them to CONTEXT.md's `_Avoid_` lists and this guard holds them

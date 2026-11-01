@@ -61,7 +61,7 @@ test('every constraint field is classified here as holding ids or not', () => {
   for (const f of holdsIds) {
     assert.ok(JSON.stringify(fixed[f]).includes('"p1"'), `fixture field ${f} does not name p1`);
   }
-  const noIds = ['hardPairs', 'maxConsecutive'];
+  const noIds = ['hardPairs', 'maxConsecutive', 'maxBench'];
   const known = new Set([...holdsIds, ...noIds]);
   const surprises = Object.keys(emptyConstraints()).filter(f => !known.has(f));
   assert.deepEqual(surprises, [],

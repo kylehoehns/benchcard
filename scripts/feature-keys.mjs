@@ -140,7 +140,8 @@ export const FEATURES = [
   { key: 'rule:together', src: 'rules.js KINDS', term: ['together'] },
   { key: 'rule:apart', src: 'rules.js KINDS', term: ['apart'] },
   { key: 'rule:keepon', src: 'rules.js KINDS', term: ['one of two on'] },
-  { key: 'rule:rest', src: 'rules.js KINDS', term: ['rest limit'], text: ['rest limit'] },
+  { key: 'rule:rest', src: 'rules.js KINDS', term: ['plays at most n in a row'], text: ['plays at most n in a row'] },
+  { key: 'rule:bench', src: 'rules.js KINDS', term: ['sits at most n in a row'], text: ['sits at most n in a row'] },
 
   /* The bench scopes are pinned by the LABEL the button carries, not by its
    * internal key: two of the three have no key at all (one is a bare button),

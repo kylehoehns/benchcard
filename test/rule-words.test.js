@@ -8,7 +8,7 @@ import { sitRulesMap } from './sit-rules-map.js';
 /* #136: bench mode, the solver's warnings and the tour used rule names from
    before the redesign. `KINDS` in rules.js (`Plays at least`, `Plays at
    most`, `Apart`, `Together`, `One of two on`, `Starting five`, `Starts the
-   last period`, `Rest limit`) is the one name for each rule now; the words below are
+   last period`, `Plays at most N in a row`) is the one name for each rule now; the words below are
    the ones the old naming left behind, decided in
    docs/specs/136-rule-words.md ("What would settle it" item 1).
 

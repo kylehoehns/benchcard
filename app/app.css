@@ -3141,7 +3141,7 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 .prow-sub { font-size: var(--fs-secondary); color: var(--muted); }
 .prow-check { flex: none; color: var(--ink); font-weight: 700; }
 
-/* The Add-a-rule kind chips, and the stepper it shares with Rest limit.
+/* The Add-a-rule kind chips, and the stepper it shares with Plays at most N in a row.
    .chips/.chip stay the shared primitive; the only other chip row is the
    Closing-window one, which renders into #stratbody -- this same sheet.
    This scopes the sheet's own padding, since the chips sit inside a group's

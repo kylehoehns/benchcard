@@ -23,7 +23,7 @@ import { CHARTS } from '../scripts/charts.mjs';
 const TERMS = [
   'Break', 'Change', 'Filing', 'Filed game', 'Blocked plan',
   'Comes on / comes off', 'Starting five', 'Starts the last period', 'Card name', 'Lock', 'Odd minutes',
-  'Swap', 'Half sheet', 'Remove', 'By hand',
+  'Swap', 'Half sheet', 'Remove', 'By hand', 'Plays at most N in a row',
 ];
 
 /* Dropped as ordinary words rather than the retired name #149 bans -- each

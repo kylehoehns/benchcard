@@ -250,10 +250,14 @@ A rule that fixes the five on the floor at the start of the last period (its fir
 _Avoid_: last-period five, finishing five, closing five
 _In code_: `lastPeriodFive`
 
-**Rest limit**:
+**Plays at most N in a row**:
 A rule that no one plays more than a number of stints in a row.
-_Avoid_: fatigue limit, max consecutive
+_Avoid_: rest limit, fatigue limit, max consecutive
 _In code_: `maxConsecutive`
+
+**Sits at most N in a row**:
+A rule that no one sits on the bench more than a number of stints in a row.
+_In code_: `maxBench`
 
 ## Team settings
 
