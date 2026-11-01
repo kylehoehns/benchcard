@@ -90,6 +90,7 @@ import { overlayPass } from './overlay.mjs';
 import { tourStepsPass, TOUR_STEPS_CHECK } from './tour-steps.mjs';
 import { shortPhonePass, SHORT_PHONE_CHECK } from './short-phone.mjs';
 import { longNamesPass, LONG_NAMES_CHECK } from './long-names.mjs';
+import { benchCallPass, BENCH_CALL_CHECK } from './bench-call.mjs';
 import { touchPass } from './touch.mjs';
 import { settingsRowPass } from './settings-rows.mjs';
 import { settingsLookPass } from './settings-look.mjs';
@@ -285,6 +286,10 @@ export const ROWS = Object.freeze([
   // decimal minutes and large text -- see long-names.mjs.
   { id: 'longNames', name: LONG_NAMES_CHECK, selectable: true, setup: 'rich',
     run: ctx => longNamesPass(ctx.c, ctx.origin, ctx.rec) },
+  // #430's own guard (docs/specs/430-bench-call-pinned.md): the call is pinned,
+  // Here now is up top and the toast stays off both.
+  { id: 'benchCall', name: BENCH_CALL_CHECK, selectable: true, setup: 'rich',
+    run: ctx => benchCallPass(ctx.c, ctx.origin, ctx.rec) },
   { id: 'touch', name: `${TOUCH_CHECK}, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',
     run: ctx => touchPass(ctx.c, ctx.origin, ctx.source, ctx.rec), replaces: TOUCH_CHECK },
   { id: 'settingsrows', name: `settings rows ≥ 48px, ${TOUCH_RANGE}`, selectable: true, setup: 'rich',

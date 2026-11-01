@@ -238,7 +238,7 @@ async function tourAt(c, rec, where) {
 
 // What `openState` hands the states that reload their own fixture (none of
 // the ones this pass opens do; kept so it stays the harness's own shape).
-const cellWant = cell => ({ record: LONG_AND_SQUEEZE, width: cell.width, height: cell.height, textPx: cell.textPx, media: REDUCED_MOTION });
+export const cellWant = cell => ({ record: LONG_AND_SQUEEZE, width: cell.width, height: cell.height, textPx: cell.textPx, media: REDUCED_MOTION });
 
 export async function shortPhonePass(c, origin, rec) {
   let cells = 0;
