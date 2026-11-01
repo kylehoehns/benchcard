@@ -780,7 +780,6 @@ export function generatePlan(input) {
   const availSet = new Set(avail);
   const c = normalize(constraints, availSet);
   const avoidSet = avoidSetOf(c.avoids);
-  const rng = makeRng(seed);
   const short = deriveShortNames(players);
 
   const gameMinutes = stints.reduce((a, s) => a + s.minutes, 0);
@@ -854,13 +853,47 @@ export function generatePlan(input) {
      * lopsided eleven it reaches the same stint strengths as a full budget and
      * costs a third of a solve rather than a whole one. */
     const shaped = ctx.balanceTargets;
-    ctx.balanceTargets = null;
-    lineups = greedy(ctx, forcedByStint, rng);
-    lineups = localSearch(lineups, ctx, forcedByStint, rng, iterations);
+    const solve = (shapeSits) => {
+      const rng = makeRng(seed);
+      ctx.shapeSits = shapeSits;
+      ctx.balanceTargets = null;
+      const lu = localSearch(greedy(ctx, forcedByStint, rng), ctx, forcedByStint, rng, iterations);
+      return { lu, rng };
+    };
+    /* Long sits cost more (`LONG_SIT`), but the coach's numbers win: a plan
+       that breaks a cap, a minimum or the change limit is solved again from the
+       same seed with the charge off, which is today's search exactly. The new
+       plan is kept only if it breaks them less, compared in that order. The cap
+       matters because a kid capped at one stint sits nearly the whole game, and
+       the charge for that can outweigh the cap itself. */
+    const broken = (lu) => {
+      const m = minutesOf(lu, ctx);
+      let capOver = 0, minShort = 0, subsOver = 0;
+      for (const id of avail) {
+        capOver += Math.max(0, m[id] - capOf(id));
+        minShort += Math.max(0, minOf(id) - m[id]);
+      }
+      for (let i = 1; i < lu.length; i++) {
+        const subs = lu[i].filter(id => !lu[i - 1].includes(id)).length;
+        if (subs > maxSubs) subsOver += subs - maxSubs;
+      }
+      return [capOver, minShort, subsOver];
+    };
+    const fewer = (a, b) => { for (let k = 0; k < a.length; k++) if (a[k] !== b[k]) return a[k] < b[k]; return false; };
+    ctx.sitFree = Math.max(1, Math.min(Math.max(3, Math.ceil((avail.length - ON_FLOOR) / maxSubs)),
+      Math.ceil(stints.length / 2) - 1));
+    let kept = solve(true);
+    const keptBroken = broken(kept.lu);
+    if (keptBroken.some(v => v > 0)) {
+      const plain = solve(false);
+      if (fewer(broken(plain.lu), keptBroken)) kept = plain;
+      else ctx.shapeSits = true;
+    }
+    lineups = kept.lu;
     if (shaped) {
       ctx.balanceTargets = shaped;
       ctx.neutralOnly = true;
-      lineups = localSearch(lineups, ctx, forcedByStint, rng, iterations / 2);
+      lineups = localSearch(lineups, ctx, forcedByStint, kept.rng, iterations / 2);
       ctx.neutralOnly = false;
     }
   }
@@ -1322,6 +1355,15 @@ function balanceTargets(ctx, kind) {
   return f.map(v => base + amp * v);
 }
 
+/* A bench stint past the free run length costs this times how far past it is
+   (60, then 120, then 180 ...), so one long sit costs more than two short ones
+   instead of the same flat 30. It grows because a sit feels worse the longer it
+   runs, and a flat charge per stint cannot tell 20 minutes from 8. The free
+   length is not a round number but `ctx.sitFree`, taken from the change limit:
+   at `maxSubs` changes a break the bench queue is that long whether we like it
+   or not, so charging inside it only pushes plans over the limit. */
+const LONG_SIT = 60;
+
 function cost(lineups, ctx) {
   const m = minutesOf(lineups, ctx);
   let c = 0;
@@ -1361,7 +1403,11 @@ function cost(lineups, ctx) {
   for (let i = 0; i < lineups.length; i++) {
     for (const id of ctx.avail) {
       if (lineups[i].includes(id)) streak[id] = 0;
-      else { streak[id] += 1; if (streak[id] >= 2) c += 30; }
+      else {
+        streak[id] += 1;
+        if (streak[id] >= 2) c += 30;
+        if (ctx.shapeSits && streak[id] > ctx.sitFree) c += LONG_SIT * (streak[id] - ctx.sitFree);
+      }
     }
     if (i > 0) {
       const subs = lineups[i].filter(id => !lineups[i - 1].includes(id)).length;

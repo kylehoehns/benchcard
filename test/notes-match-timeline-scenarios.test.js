@@ -49,7 +49,7 @@ describe('the notes under the timeline', { skip }, () => {
     const notes = await coach.text('#issues');
     const named = Object.keys(mins).filter(n => notes.includes(n));
     assert.deepEqual(named.sort(), [...low].sort(), `the notes say: ${notes}`);
-    assert.match(notes, /Eli Tran, Ana Reyes, Theo Alvarez and Nia Brooks play 12, everyone else 16\./);
+    assert.match(notes, /Eli Tran, Ana Reyes, Sam Okafor and Nia Brooks play 12, everyone else 16\./);
   });
 
   test('finishing the game keeps the note on the timeline\'s four and offers nothing to do', async () => {
@@ -65,7 +65,7 @@ describe('the notes under the timeline', { skip }, () => {
     assert.equal(low.length, 4, `the timeline shows ${JSON.stringify(mins)}`);
     const notes = await coach.text('#issues');
     assert.deepEqual(Object.keys(mins).filter(n => notes.includes(n)).sort(), [...low].sort(), `the notes say: ${notes}`);
-    assert.match(notes, /Eli Tran, Ana Reyes, Theo Alvarez and Nia Brooks play 12, everyone else 16\./);
+    assert.match(notes, /Eli Tran, Ana Reyes, Sam Okafor and Nia Brooks play 12, everyone else 16\./);
     assert.doesNotMatch(notes, /Shuffle|by\s+hand/);
   });
 
@@ -96,7 +96,7 @@ describe('the notes under the timeline', { skip }, () => {
     for (let i = 0; i < 4; i++) await coach.tap('Next stint');
     await coach.tap('Leave');
     await coach.tap("Who's here, 11 players");
-    await coach.tap('Hana Kim');
+    await coach.tap('Casey Lindqvist');
     await coach.tap('Close');
     await coach.tap((await coach.controls()).find(n => n.startsWith('Resume')));
     await toLastStint();
@@ -105,9 +105,9 @@ describe('the notes under the timeline', { skip }, () => {
     await coach.tap('Hawks, 9:00 AM, finished');
 
     const mins = await coach.planMinutes();
-    assert.deepEqual(namesAt(mins, 12), ['Marcus Williams', 'Hana Kim', 'Riley Novak', 'Theo Alvarez'], `the timeline shows ${JSON.stringify(mins)}`);
+    assert.deepEqual(namesAt(mins, 12), ['Riley Novak', 'Casey Lindqvist', 'Theo Alvarez', 'Nia Brooks'], `the timeline shows ${JSON.stringify(mins)}`);
     const notes = await coach.text('#issues');
-    assert.match(notes, /Marcus Williams, Hana Kim, Riley Novak and Theo Alvarez play 12, everyone else 16\./, `the notes say: ${notes}`);
+    assert.match(notes, /Riley Novak, Casey Lindqvist, Theo Alvarez and Nia Brooks play 12, everyone else 16\./, `the notes say: ${notes}`);
   });
 
   test('after overtime, the note names the players and minutes the timeline shows', async () => {
@@ -188,7 +188,7 @@ describe('the notes under the timeline', { skip }, () => {
   });
 
   test('where the engine said nothing about the spread, a swap adds no spread note', async () => {
-    const { before, after, planned, mins } = await swapThenRead(rules({ targetSlots: { p0: 6, p1: 2 } }), 'Ana Reyes', 'Theo Alvarez', 'minutes');
+    const { before, after, planned, mins } = await swapThenRead(rules({ targetSlots: { p0: 6, p1: 2 } }), 'Ana Reyes', 'Hana Kim', 'minutes');
     assert.match(before, /Minutes are set by hand for/);
     assert.notDeepEqual(mins, planned, 'the swap moved nobody, so this proves nothing');
     assert.ok(lacks(before, /divide evenly|the fewest|everyone else|The most is/));
