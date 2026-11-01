@@ -228,6 +228,51 @@ function autoShortNames(players, taken) {
  * ------------------------------------------------------------------ */
 function pairKey(a, b) { return a < b ? `${a}|${b}` : `${b}|${a}`; }
 
+/* #446: a minimum beats a locked By hand number. The one place that is
+   decided -- `analyzeFeasibility` and `generatePlan` both read it through
+   `normalize`. Mutates `targets` and returns `[{ id, from, to }]`. The extra
+   minutes come back out of the unlocked numbers in proportion to them, never
+   below a player's own minimum, and only when every available player has a
+   number (otherwise the players without one absorb it, as they always have). */
+function raiseLockedTargets(targets, locked, minMinutes, avail) {
+  const raised = [];
+  for (const id of locked) {
+    const min = minMinutes[id] || 0;
+    if (targets[id] != null && targets[id] < min) {
+      raised.push({ id, from: targets[id], to: min });
+      targets[id] = min;
+    }
+  }
+  if (!raised.length || !avail.every(id => targets[id] != null)) return raised;
+  let owed = raised.reduce((a, r) => a + r.to - r.from, 0);
+  let pool = avail.filter(id => !locked.includes(id));
+  while (owed > 1e-9 && pool.length) {
+    const sum = pool.reduce((a, id) => a + targets[id], 0);
+    if (sum <= 1e-9) break;
+    const room = id => Math.max(0, targets[id] - (minMinutes[id] || 0));
+    const clamped = pool.filter(id => owed * targets[id] / sum > room(id) + 1e-9);
+    if (!clamped.length) {
+      for (const id of pool) targets[id] -= owed * targets[id] / sum;
+      owed = 0;
+    } else {
+      for (const id of clamped) { owed -= room(id); targets[id] -= room(id); }
+      pool = pool.filter(id => !clamped.includes(id));
+    }
+  }
+  return raised;
+}
+
+/* Force Together ties players into groups that play every stint as one:
+   `Map` of id to the (shared) Set of everyone tied to it. */
+function tiedGroups(ids, pairs) {
+  const group = new Map(ids.map(id => [id, new Set([id])]));
+  for (const [a, b] of pairs) {
+    const merged = new Set([...group.get(a), ...group.get(b)]);
+    for (const id of merged) group.set(id, merged);
+  }
+  return group;
+}
+
 function normalize(constraints, availSet) {
   const c = constraints || {};
   // A pair rule means nothing unless both players are at the game. Three lists
@@ -243,18 +288,21 @@ function normalize(constraints, availSet) {
   const filterIds = (ids) => (ids || []).filter(id => availSet.has(id));
   const targetMinutes = {};
   for (const [id, v] of Object.entries(c.targetMinutes || {})) if (availSet.has(id)) targetMinutes[id] = v;
+  const minMinutes = c.minMinutes || {};
+  const lockedTargets = filterIds(c.lockedTargets);
+  const raised = raiseLockedTargets(targetMinutes, lockedTargets, minMinutes, [...availSet]);
   const closing = c.closing && c.closing.stints > 0
     ? { stints: c.closing.stints, players: filterIds(c.closing.players) } : null;
   const units = (c.units || []).map(u => filterIds(u));
   return {
-    minMinutes: c.minMinutes || {},
+    minMinutes,
     maxMinutes: c.maxMinutes || {},
     /* `normalize` is a whitelist, and lockedTargets was never on it -- so a
        locked row had never reached the solver at all. That is why the lock only
        ever guarded the "Even out the rest" button: the UI was the only place
        the flag existed. */
-    lockedTargets: filterIds(c.lockedTargets),
-    targetMinutes, closing, units,
+    lockedTargets,
+    targetMinutes, raised, closing, units,
     maxConsecutive: c.maxConsecutive > 0 ? c.maxConsecutive : 0,
     maxBench: c.maxBench > 0 ? c.maxBench : 0,
     pairs: keepPairs,
@@ -381,12 +429,36 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
   }
 
+  /* #446: Force Together makes a tied group play every stint as one, so two
+     kids tied through a third and also set Apart can never both be satisfied.
+     A direct pair is PAIR_AVOID_CONFLICT above and is not said twice. */
+  if (c.hardPairs) {
+    const group = tiedGroups(avail, c.pairs);
+    const direct = new Set(c.pairs.map(([a, b]) => pairKey(a, b)));
+    for (const [a, b] of c.avoids) {
+      if (direct.has(pairKey(a, b)) || group.get(a) !== group.get(b)) continue;
+      const via = [...group.get(a)].filter(id => id !== a && id !== b);
+      err('PAIR_CHAIN_APART',
+        `${label(a)} and ${label(b)} are set Apart, but Force Together ties both to ${andList(via.map(label))}, so they would always be on together. Drop one of the rules.`,
+        [a, b]);
+    }
+  }
+
+  /* A side covers the smaller of its cap and its locked By hand number (after
+     the raise); a number the coach has not locked is only a preference. */
+  const lockOf = id => (c.lockedTargets.includes(id) && c.targetMinutes[id] != null ? c.targetMinutes[id] : Infinity);
   for (const [a, b] of c.keepOnFloor) {
-    const cover = (c.maxMinutes[a] != null ? c.maxMinutes[a] : gameMinutes)
-                + (c.maxMinutes[b] != null ? c.maxMinutes[b] : gameMinutes);
+    const capOf = id => (c.maxMinutes[id] != null ? c.maxMinutes[id] : gameMinutes);
+    const side = id => Math.min(capOf(id), lockOf(id));
+    const cover = side(a) + side(b);
     if (cover < gameMinutes) {
+      const byHand = [a, b].filter(id => lockOf(id) < capOf(id));
+      const byCap = [a, b].filter(id => capOf(id) < gameMinutes && capOf(id) <= lockOf(id));
+      const nums = byHand.length ? ` (${andList(byHand.map(id => `${label(id)} ${fmtMinutes(lockOf(id))}`))})` : '';
+      const what = byHand.length && byCap.length ? `caps and By hand numbers${nums}` : byHand.length ? `By hand numbers${nums}` : 'caps';
+      const fix = byHand.length && byCap.length ? 'Raise a cap, unlock a number' : byHand.length ? 'Unlock a number' : 'Raise a cap';
       err('KEEPON_UNSATISFIABLE',
-        `${label(a)} or ${label(b)} has to be on the floor at all times, but their caps only cover ${fmtMinutes(cover)} of the game's ${fmtMinutes(gameMinutes)} minutes. Raise a cap or drop the rule.`,
+        `${label(a)} or ${label(b)} has to be on the floor at all times, but their ${what} only cover ${fmtMinutes(cover)} of the game's ${fmtMinutes(gameMinutes)} minutes. ${fix} or drop the rule.`,
         [a, b]);
     }
   }
@@ -481,6 +553,11 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
           [a, b]);
       }
     }
+  }
+
+  for (const { id, from, to } of c.raised) {
+    warn('TARGET_UNDER_MIN',
+      `${label(id)}'s By hand number was raised from ${fmtMinutes(from)} to ${fmtMinutes(to)} to meet their ${fmtMinutes(to)}-minute minimum.`, [id]);
   }
 
   if (Object.keys(c.targetMinutes).length) {
@@ -950,10 +1027,10 @@ function pinnedAhead(forced, stints) {
 function pinGroups(stints, c, periods) {
   const none = { openingFive: [], lastPeriodFive: [], closing: null };
   return [
-    ['OPENING_MISSED', 'is set to start', { openingFive: c.openingFive }],
-    ['LAST_PERIOD_MISSED', 'is set to start the last period', { lastPeriodFive: c.lastPeriodFive }],
-    ['CLOSER_MISSED', 'is set to close', { closing: c.closing }],
-  ].map(([code, say, only]) => ({ code, say: say.replace(/^is /, ''), verb: say,
+    ['OPENING_MISSED', 'is set to start', 'Starting five', false, { openingFive: c.openingFive }],
+    ['LAST_PERIOD_MISSED', 'is set to start the last period', 'Starts the last period', false, { lastPeriodFive: c.lastPeriodFive }],
+    ['CLOSER_MISSED', 'is set to close', 'Closers', true, { closing: c.closing }],
+  ].map(([code, say, name, plural, only]) => ({ code, say: say.replace(/^is /, ''), verb: say, name, plural,
     forced: buildForced(stints, { ...none, ...only }, { periods }) }));
 }
 
@@ -1692,6 +1769,126 @@ function localSearch(lineups, ctx, forcedByStint, rng, iterations) {
 /* ------------------------------------------------------------------ *
  * result assembly
  * ------------------------------------------------------------------ */
+// whether `total` is the sum of some of the stint lengths (a minimum the clock can hit)
+function isSumOfStints(total, lens) {
+  let sums = new Set([0]);
+  for (const l of lens) for (const v of [...sums]) sums.add(Math.round((v + l) * 1e6) / 1e6);
+  return sums.has(Math.round(total * 1e6) / 1e6);
+}
+
+/* The stints (of those asked about) where the pinned groups together seat a
+   full five, and the groups that pin a seat in any of them -- named in the
+   coach's words, "the starting five and the last-period five". Which group
+   pins which stint is `pinGroups`' answer alone, and a kid two groups pin
+   counts once. `groups` is `pinGroups`' result, built once in `finish`. */
+function pinsFilling(groups, among) {
+  const filled = among.filter(i => new Set(groups.flatMap(g => [...g.forced[i]])).size >= ON_FLOOR);
+  const named = groups.filter(g => filled.some(i => g.forced[i].size));
+  const names = named.map(g => g.name);
+  return { filled, who: names.length ? `${andList(names)} fill${named.length === 1 && !named[0].plural ? 's' : ''}` : '' };
+}
+
+/* #446: why a minimum the stints could add up to was still missed. When the
+   open stints (no full five pinned) the player sat could have made up the
+   shortfall, it was not a pin or a rival that held them back: the plain truth.
+   Otherwise the pinned fives that filled a stint they sat, then other players
+   whose minimum or By hand number held one, else the plain truth. */
+function minMissedReason(id, need, ctx, lineups, minutes, groups, label) {
+  const { stints } = ctx;
+  if (!isSumOfStints(need, stints.map(s => s.minutes))) return 'The clock does not divide to hit it exactly.';
+  const sat = stints.map((s, i) => i).filter(i => !lineups[i].includes(id));
+  const { filled, who } = pinsFilling(groups, sat);
+  const openRoom = sat.filter(i => !filled.includes(i)).reduce((a, i) => a + stints[i].minutes, 0);
+  if (openRoom >= need - minutes[id] - 1e-9) return 'No legal lineup gave them more.';
+  if (filled.length) {
+    const lens = [...new Set(filled.map(i => stints[i].minutes))];
+    const where = filled.length === 1 && lens.length === 1 ? `the ${fmtMinutes(lens[0])}-minute stint` : plural(filled.length, 'stint');
+    return `${who} ${where}.`;
+  }
+  const holders = ctx.avail.filter(q => q !== id && sat.some(i => {
+    if (!lineups[i].includes(q)) return false;
+    const left = minutes[q] - stints[i].minutes;
+    const held = ctx.lockedSet.has(q) ? ctx.targetOf(q) : null;
+    return left < ctx.minOf(q) - 1e-9 || (held != null && left < held - 1e-9);
+  }));
+  if (holders.length) {
+    return `${andList(holders.map(label))} would drop under their minimum or By hand number if they gave up a stint ${label(id)} sat.`;
+  }
+  return 'No legal lineup gave them more.';
+}
+
+/* #446: the rule that made the spread wider than the clock does. Each reason
+   reads its own condition off the final minutes, so a note is only said when
+   it is true. Null when no rule explains it, and the plain clock note stands.
+   `{ message, playerIds }`, the sentences joined. */
+function spreadRuleNote(ctx, c, minutes, label) {
+  const n = ctx.avail.length;
+  const said = [], named = new Set();
+  const say = (text, ids) => { said.push(text); ids.forEach(id => named.add(id)); };
+
+  for (const [a, b] of c.avoids) {
+    const ma = minutes[a], mb = minutes[b];
+    const rest = ctx.avail.filter(id => id !== a && id !== b);
+    if (n >= 2 * ON_FLOOR || Math.abs(ma + mb - ctx.gameMinutes) > 1e-9) continue;
+    if (!rest.every(id => minutes[id] > Math.max(ma, mb) + 1e-9)) continue;
+    say(`${label(a)} and ${label(b)} share one spot because they are Apart and only ${n} are here, so they play ${Math.abs(ma - mb) < 1e-9 ? `${fmtMinutes(ma)} each` : `${fmtMinutes(ma)} and ${fmtMinutes(mb)}`}.`, [a, b]);
+  }
+
+  /* Force Together ties a kid with nothing set to a partner who has a cap, a
+     minimum or a By hand number, so they play the partner's minutes. */
+  const near = (x, y) => Math.abs(x - y) < 1e-9;
+  const bare = id => ctx.minOf(id) === 0 && ctx.capOf(id) === Infinity && ctx.targetOf(id) == null;
+  const bound = (id) => {
+    const m = minutes[id];
+    if (ctx.capOf(id) !== Infinity && near(m, ctx.capOf(id))) return `capped at ${fmtMinutes(ctx.capOf(id))}`;
+    if (ctx.minOf(id) && near(m, ctx.minOf(id))) return `minimum ${fmtMinutes(ctx.minOf(id))}`;
+    if (ctx.targetOf(id) != null && near(m, ctx.targetOf(id))) return `By hand ${fmtMinutes(ctx.targetOf(id))}`;
+    return null;
+  };
+  if (c.hardPairs) {
+    for (const [x, y] of c.pairs) {
+      for (const [a, b] of [[x, y], [y, x]]) {
+        if (!bare(b) || bare(a) || !near(minutes[a], minutes[b])) continue;
+        const why = bound(a);
+        const others = ctx.avail.filter(id => id !== a).map(id => minutes[id]);
+        const ends = near(minutes[b], Math.min(...others)) || near(minutes[b], Math.max(...others));
+        if (!why || !ends) continue;
+        say(`${label(b)} plays ${fmtMinutes(minutes[b])} because Force Together ties them to ${label(a)} (${why}).`, [a, b]);
+        break;
+      }
+    }
+  }
+
+  /* a tied group bigger than the bench has seats can never all sit, so it
+     plays every minute */
+  if (c.hardPairs) {
+    const group = tiedGroups(ctx.avail, c.pairs);
+    for (const set of new Set(group.values())) {
+      const ids = [...set];
+      if (ids.length > n - ON_FLOOR && ids.every(id => near(minutes[id], ctx.gameMinutes))) {
+        say(`${andList(ids.map(label))} play every minute because Force Together ties ${ids.length} players and only ${plural(n - ON_FLOOR, 'player')} can sit.`, ids);
+      }
+    }
+  }
+
+  /* an Apart partner who never leaves the floor keeps their pair off it */
+  for (const [x, y] of c.avoids) {
+    for (const [a, b] of [[x, y], [y, x]]) {
+      if (near(minutes[a], 0) && near(minutes[b], ctx.gameMinutes)) {
+        say(`${label(a)} plays 0 because they are Apart from ${label(b)}, who plays every minute.`, [a, b]);
+      }
+    }
+  }
+
+  for (const [a, b] of c.keepOnFloor) {
+    const rest = ctx.avail.filter(id => id !== a && id !== b);
+    if (!near(minutes[a] + minutes[b], ctx.gameMinutes)) continue;
+    if (!rest.every(id => minutes[id] < Math.min(minutes[a], minutes[b]) - 1e-9)) continue;
+    say(`${label(a)} and ${label(b)} split the game because One of two on keeps one of them on the floor, so everyone else plays less.`, [a, b]);
+  }
+  return said.length ? { message: said.join(' '), playerIds: [...named] } : null;
+}
+
 function finish(lineups, ctx, issues, meta) {
   const { players, short, seed, stints, c, platoon, periods } = meta;
   const byId = new Map(players.map(p => [p.id, p]));
@@ -1730,6 +1927,8 @@ function finish(lineups, ctx, issues, meta) {
   const spreadUnconstrained = freeVals.length > 1
     ? Math.round((Math.max(...freeVals) - Math.min(...freeVals)) * 100) / 100 : 0;
   const floor = minPossibleSpread(stints, ctx.avail.length);
+  /* which group pins which stint, asked once; platoon applies no pins */
+  const groups = platoon ? [] : pinGroups(stints, c, periods);
 
   // post-hoc constraint report -- soft constraints can miss, so say so
   for (const id of ctx.avail) {
@@ -1737,7 +1936,7 @@ function finish(lineups, ctx, issues, meta) {
     if (need && minutes[id] < need - 1e-9) {
       issues.push({
         severity: 'warn', code: 'MIN_MISSED', playerIds: [id],
-        message: `${label(id)} got ${fmtMinutes(minutes[id])} minutes against a ${need}-minute minimum. The clock does not divide to hit it exactly.`,
+        message: `${label(id)} got ${fmtMinutes(minutes[id])} minutes against a ${need}-minute minimum. ${minMissedReason(id, need, ctx, lineups, minutes, groups, label)}`,
       });
     }
     const cap = ctx.capOf(id);
@@ -1836,6 +2035,26 @@ function finish(lineups, ctx, issues, meta) {
     const on = playedBeforeHalf(lineups, ctx);
     const late = ctx.avail.filter(id => !on.has(id));
     if (late.length) {
+      /* #446: when nothing the clock or the change limit says, the rule that
+         held them off: the pinned fives, or an Apart partner on the floor
+         for every stint before halftime. */
+      const whyLate = (ids) => {
+        const first = stints.map((s, i) => i).filter(i => i < ctx.firstHalf);
+        const { filled, who } = pinsFilling(groups, first);
+        if (first.length && filled.length === first.length) return `${who} every stint before halftime.`;
+        const apart = [], unexplained = new Set(ids);
+        for (const id of ids) {
+          for (const [x, y] of c.avoids) {
+            const q = x === id ? y : y === id ? x : null;
+            if (q && first.every(i => lineups[i].includes(q))) {
+              apart.push(`${label(id)} is Apart from ${label(q)}, who is on the floor for every stint before halftime.`);
+              unexplained.delete(id);
+            }
+          }
+        }
+        if (!apart.length) return 'No legal lineup got them on any sooner.';
+        return unexplained.size ? `${apart.join(' ')} No legal lineup got ${andList([...unexplained].map(label))} on any sooner.` : apart.join(' ');
+      };
       const capped = ctx.halfReach < ctx.firstHalf * ON_FLOOR;
       const fits = Math.min(ctx.firstHalf * ON_FLOOR, ctx.halfReach);
       issues.push({
@@ -1843,7 +2062,7 @@ function finish(lineups, ctx, issues, meta) {
         message: `${andList(late.map(label))} ${late.length === 1 ? 'does' : 'do'} not get on until the second half. ${
           ctx.avail.length > fits
             ? `Only ${fits} can play before halftime here — ${plural(ctx.firstHalf, 'stint')}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`
-            : `No legal lineup got them on any sooner.`}`,
+            : whyLate(late)}`,
       });
     }
   }
@@ -1867,11 +2086,21 @@ function finish(lineups, ctx, issues, meta) {
   /* Feasibility refuses what cannot work; this catches what the search merely
      failed to reach. Same job as SUBS_EXCEEDED and PAIR_PARTIAL. */
   for (const [a, b] of platoon ? [] : c.keepOnFloor) {
-    const off = lineups.filter(lu => !lu.includes(a) && !lu.includes(b)).length;
+    const offAt = lineups.map((lu, i) => i).filter(i => !lineups[i].includes(a) && !lineups[i].includes(b));
+    const off = offAt.length;
     if (off) {
+      /* #446: the pinned fives, when they filled every stint both sat; else
+         both held at their cap or locked number; else the plain truth */
+      const { filled, who } = pinsFilling(groups, offAt);
+      const pinned = filled.length === off;
+      const atLimit = id => (ctx.capOf(id) !== Infinity && minutes[id] >= ctx.capOf(id) - 1e-9)
+        || (ctx.lockedSet.has(id) && ctx.targetOf(id) != null && minutes[id] >= ctx.targetOf(id) - 1e-9);
+      const why = pinned ? `${who} ${off === 1 ? 'it' : 'them'}.`
+        : atLimit(a) && atLimit(b) ? `Both are at their cap or By hand number, so neither could play more.`
+        : `no legal lineup kept one of them on.`;
       issues.push({
         severity: 'warn', code: 'KEEPON_PARTIAL', playerIds: [a, b],
-        message: `${label(a)} and ${label(b)} are both off the floor for ${plural(off, 'stint')} — no legal lineup kept one of them on.`,
+        message: `${label(a)} and ${label(b)} are both off the floor for ${plural(off, 'stint')}${pinned || atLimit(a) && atLimit(b) ? '. ' : ' — '}${why}`,
       });
     }
   }
@@ -1883,6 +2112,9 @@ function finish(lineups, ctx, issues, meta) {
       playerIds: [],
     });
   }
+  /* #446: only when the spread is wider than the clock alone makes it. */
+  const clockFloor = floor.exact ? floor.minutes : Math.max(...stints.map(s => s.minutes));
+  const ruleNote = !platoon && spread > clockFloor + 1e-9 ? spreadRuleNote(ctx, c, minutes, label) : null;
   // Where the spread is deliberate -- hand-set targets, or carryover evening
   // out the day -- the single-game floor is the wrong benchmark and saying
   // "best possible is 0" is just wrong.
@@ -1911,6 +2143,8 @@ function finish(lineups, ctx, issues, meta) {
       message: evenMinutesSentence(minutes[ctx.avail[0]]),
       playerIds: [],
     });
+  } else if (ruleNote) {
+    issues.push({ severity: 'info', code: 'SPREAD_RULE', ...ruleNote });
   } else if (floor.exact) {
     /* "Best possible spread is 4 minutes" is true and, on its own, useless: it
        tells the coach the clock does not divide and nothing about who pays for

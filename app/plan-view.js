@@ -116,7 +116,7 @@ function issuesList(p) {
     const order = [...state.players.map(pl => pl.id).filter(id => id in moved.eff), ...Object.keys(moved.eff).filter(id => !byId(id))];
     const eff = Object.fromEntries(order.map(id => [id, moved.eff[id]]));
     const nameOf = id => byId(id)?.name || id;
-    const at = list.findIndex(x => x.code === 'SPREAD_EVEN' || x.code === 'SPREAD_FLOOR');
+    const at = list.findIndex(x => x.code === 'SPREAD_EVEN' || x.code === 'SPREAD_FLOOR' || x.code === 'SPREAD_RULE');
     if (at >= 0) list[at] = minutesNote(eff, nameOf);
     const constrained = list.findIndex(x => x.code === 'SPREAD_CONSTRAINED');
     if (constrained >= 0) list.splice(constrained, 1);

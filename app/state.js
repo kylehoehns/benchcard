@@ -1442,6 +1442,19 @@ function sayTheSeasonSetThem(p) {
   return p;
 }
 
+/* #446: a By hand number raised to a minimum the league set is told in the
+   league's words. The engine is only handed a composed per-player minimum and
+   never learns where it came from, so it says "their 16-minute minimum"; this
+   call site knows the coach's own minimum for the player is lower. Only when
+   the number raised to IS the league minimum: a cap can have lowered the
+   composed minimum below it, and then it is "their 12-minute minimum". */
+function sayTheLeagueMinimum(p, own, leagueMin) {
+  for (const i of p.issues || []) {
+    if (i.code !== 'TARGET_UNDER_MIN' || (own[i.playerIds[0]] || 0) >= leagueMin) continue;
+    i.message = i.message.replace(new RegExp(`to ${leagueMin} to meet their ${leagueMin}-minute minimum`), `to ${leagueMin} to meet the league minimum`);
+  }
+}
+
 /* The engine names who plays the odd stint less; it cannot say WHY, because it
    is handed the tie-break as a bare number and is deliberately never told what
    the number means. Only this module knows it is the season. Same shape as
@@ -1960,6 +1973,7 @@ export function computeAll() {
         maxSubs,
       });
       if (seasonT) sayTheSeasonSetThem(p);
+      if (leagueMin > 0) sayTheLeagueMinimum(p, g.constraints.minMinutes || {}, leagueMin);
       sayWhyTheyAreShort(p, prio, tiers);
       planCache.set(g.id, { sig, plan: p });
       return tally(g, syncOverrides(g, p, isUnderway(p, g.live), hit?.plan));

@@ -380,7 +380,9 @@ player down to 4 minutes of 160 and leave the rest alone and that player plays
 it is: it holds the number against "Even out the rest", which is the move that
 makes the budget exact and the number real. Whether the solver *should* protect
 an under-budget target instead is a live question; until it is answered, the
-app states the rule rather than hiding it.
+app states the rule rather than hiding it. The one thing that moves a locked
+number is a minimum above it, rule or league: the number is raised to the
+minimum and the plan says so ([design-decisions.md](../design-decisions.md#when-rules-disagree)).
 
 The **timeline reconciles rather than rebuilds**, so blocks are the same DOM
 nodes between renders and their left/width transitions actually run. Move a

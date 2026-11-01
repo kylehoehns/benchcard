@@ -3,6 +3,122 @@
 The calls that were made, and what they were made against. A decision without
 its alternative is an assertion, so the rejected options are kept here too.
 
+## When rules disagree
+
+Rules are additive, so two of them can ask for things that cannot both happen.
+This table says which one the plan keeps and what the coach is told. The reasons
+are in the bullets under [Design decisions](#design-decisions), and the table
+points at them rather than repeating them. **Force Together** is the Together
+switch that makes a pair hard (`hardPairs`); plain **Together** is the soft
+default.
+
+A minimum now beats a locked By hand number. Before this change, a lock could
+sit under a rule's or the league's minimum and the minimum was the thing that
+lost. Now the lock is raised to the minimum, and the plan says so.
+
+| When these collide | What wins | What the coach is told | Where the reason is |
+| --- | --- | --- | --- |
+| A minimum (a rule's or the league's) and a locked By hand number below it | The minimum. The locked number is raised to it, and the extra minutes come out of the unlocked By hand numbers. | A warning that the number was raised. The league's name for it when the league set the minimum. | [Choices](#choices-behind-the-table); "A league minimum is a floor on the map the engine already reads" |
+| A league minimum and a cap on the same player | The cap, when it is lower. A coach's own minimum wins over the league minimum when it is higher. | Nothing. The minimum is held at the cap, so no error appears. | "A league minimum is a floor on the map the engine already reads" |
+| A minimum and Plays at most N in a row | The minimum. The run limit gives way. | `CONSEC_MIN_CONFLICT` names every player the limit makes impossible to meet. | "A Plays at most N in a row limit that cannot hold is caught before the search (#439)" |
+| Together and Apart on the same two players | Nothing: the plan is refused. | Error `PAIR_AVOID_CONFLICT` naming the two, whatever the Together strength. | `analyzeFeasibility`; [Choices](#choices-behind-the-table) |
+| Force Together ties A to B and A to C, and B and C are set Apart | Nothing: the plan is refused, but only with Force Together on. Plain Together is not refused. | Error `PAIR_CHAIN_APART` naming B and C and the player who links them. | [Choices](#choices-behind-the-table) |
+| Force Together (hard) and even minutes | The pair stays on the floor together. Even minutes give way only when no even plan keeps them together. | The plan reports the shared floor time. | "Pairs are soft by default" |
+| Force Together ties a player with no rule of their own to a partner who has a cap, a minimum or a By hand number | The partner's number holds, and the tied player plays the same minutes. | Info note: the tied player plays that many minutes because of Force Together, and names the partner's rule. | [Choices](#choices-behind-the-table) |
+| Force Together ties more players than the bench has seats for | The whole tied group plays every minute. | Info note saying so. | [Choices](#choices-behind-the-table) |
+| Apart and a short bench | Apart holds. The pair shares one spot and each plays less. | Info note naming the pair and their minutes. | [Choices](#choices-behind-the-table); `swapLegal` in `app/engine.js` |
+| Apart and a player who plays every minute | Apart holds. The player set Apart from them plays nothing. | Info note. | [Choices](#choices-behind-the-table) |
+| One of two on and Apart on the same pair | Both hold. Never both on and never both off means exactly one of them is on. | Nothing. | `planning-strategies.md`, the One of two on section |
+| One of two on and a cap or a locked By hand number | Each side covers the smaller of its cap and its locked number. If the two covers cannot reach the whole game, the plan is refused. An unlocked number does not count. | Error `KEEPON_UNSATISFIABLE`, naming caps, By hand numbers or both. | [Choices](#choices-behind-the-table) |
+| One of two on and a pinned five | The pinned five holds. Refused as `FORCED_GROUP_KEEPON` when the pins make it impossible; otherwise, if the search misses, the note names the pins. | Warning `KEEPON_PARTIAL`, or the refusal. | `planning-strategies.md`; [Choices](#choices-behind-the-table) |
+| A pinned five (Starting five or Starts the last period) and a minimum | The pinned five. The minimum can slip, and the note says why. | `MIN_MISSED` names the pinned five when it filled a stint the player sat. | [Choices](#choices-behind-the-table) |
+| A pinned five and a cap (Plays at most minutes) | The pin holds over the cap. Refused with `PINS_OVER_CAP` when the cap cannot cover the pins. | Error naming the player. | "A pin is held over a cap, or refused up front, never dropped quietly" |
+| A pinned five and Plays at most N in a row, or Sits at most N in a row | The pinned five. A pinned overtime five that breaks one of these is kept and reported. | Warning `PIN_BREAKS_RULE` in an overtime. | "A pinned lineup outranks the consecutive-stint limit"; "A pinned overtime five that breaks a rule is kept and reported" |
+| An overtime five (pinned, or picked by Strongest five) and Apart or a cap | The five. | Warning `PIN_BREAKS_RULE` naming the kids and the rule broken. | "A pinned overtime five that breaks a rule is kept and reported"; [ADR 0001](adr/0001-level-picks-the-overtime-five.md) |
+| A hand-set minute target and a cap | The target. | Nothing beyond the target warnings. | "A coach's minute target is a pin, not a preference" |
+| Players changing at once and minutes | The change limit is a preference. The plan goes over it when holding it would cost minutes. | `SUBS_EXCEEDED` says so. | "How many change at once" is a preference, and the plan says when it misses |
+| Odd minutes and any minimum, cap, lock or hand-set number | The minimum, cap, lock or number. The odd minutes go to whoever the tie-break favors among the rest. | The spread note names who pays. | "The stance on that tie is the coach's"; "Somebody has to play the odd stint" |
+| Everyone plays before halftime and the change limit | The change limit governs the early minutes. A number the coach set by hand is not overridden. | `HALF_LATE` names who is still waiting and which limit bound. | "Everyone plays before halftime, and it is a default rather than a setting" |
+| A hand-set number or a lock and the season evening-out switch | The hand-set number or the lock. The switch writes a target only where there is none. | The switch's own lines under it. | "And it can plan the next game" |
+| A long sit and the change limit | The change limit. The long-sit charge never breaks it to shorten a sit. | Nothing. | "Long sits cost more than short ones, up to the change limit" |
+
+### Cost weights
+
+These are the weights `cost()` in `app/engine.js` applies to a candidate plan.
+The solver minimizes their sum. "Minute" means a minute of a stint, and "a
+player's target" is the number the plan is trying to hit for them.
+
+| Term in `cost()` | Weight |
+| --- | --- |
+| A minute off a player's target, when the target is not locked | 60 per minute |
+| A minute off a locked By hand number | 1000 per minute |
+| A minute under a minimum, or over a cap | 1000 per minute |
+| A pinned player off the floor in a stint they are pinned to | 1000 per minute of that stint |
+| A bench stint from the second in a row | 30 each |
+| A bench stint past the free run (`LONG_SIT`) | 60 times the stints past the free run: 60, then 120, then 180 |
+| Changes at a break above the change limit (`maxSubs`) | 40 per change |
+| Changes at a break below `minSubs` (default 1) | 20 per change |
+| Plays at most N in a row over the limit, or Sits at most N in a row over it | 400 times the square of the stints over |
+| A player not on the floor before halftime, when the roster is small enough for that to be possible | 200 each (`LATE_WEIGHT`) |
+| A stint's strength away from its balance target (Lineup balance) | 5 per point (`BALANCE_WEIGHT`) |
+| A Together pair split across a stint | 25 per minute under soft Together; 400 per minute under Force Together |
+| One of two on, with both players off the floor | 1000 per minute |
+
+Apart is not in `cost()`: the search's swaps refuse it (`swapLegal`). The
+odd-minute order is not in `cost()` either; it is an input to the targets.
+
+### Choices behind the table
+
+The table settles which rule wins. The choices below are the ones the rule
+text left open, and a future reader needs them to read the plan.
+
+- **Where a raised lock's minutes come from.** Raising a lock adds minutes to a
+  By hand budget that already sums to the game. Those minutes come back out of
+  the unlocked By hand numbers in proportion to them, never below a player's
+  own minimum. This happens only when every available player has a number. If
+  some do not, the players without one absorb the change, as they always have.
+  The rule mirrors the surplus rule in `computeTargets`. Without it the budget
+  goes over, and an unrelated over-budget warning fires. The raise is decided
+  once, in `normalize`, which both `analyzeFeasibility` and `generatePlan` read.
+- **Where the league wording comes from.** The engine never learns that a league
+  setting exists. Its warning says "their N-minute minimum". `state.js` swaps
+  that phrase for "the league minimum" when the composed minimum came from the
+  league setting, which is when the coach's own minimum for that player is lower.
+- **The detail-page line.** One line appears on the minimum rule's page and on
+  the league minimum's page: a locked number below the minimum loses to the
+  minimum, and the plan notes say so. The other rows of the table get no page
+  line.
+- **PAIR_CHAIN_APART is an error.** It is refused like `PAIR_AVOID_CONFLICT`,
+  but only with Force Together on. A direct pair is still only
+  `PAIR_AVOID_CONFLICT`, so it is not said twice.
+- **Locks count in the One of two on cover.** Each side covers the smaller of
+  its cap and its locked number, after the raise. The refusal stays
+  `KEEPON_UNSATISFIABLE`, with wording that names the caps, the By hand numbers
+  or both.
+- **MIN_MISSED names its reason, in this order.** The clock sentence is used
+  only when the minimum is not the sum of some stint lengths. Otherwise the
+  note names the pinned fives that filled a stint the player sat. If there are
+  none, it names other players whose minimum or locked number would drop under
+  it if they gave up a stint the player sat. If there are none of those either,
+  it says no legal lineup gave them more.
+- **HALF_LATE and KEEPON_PARTIAL name a rule before they fall back.**
+  `HALF_LATE` names the pinned fives when they fill every stint before halftime,
+  then an Apart partner who is on the floor for every one of those stints, and
+  otherwise keeps its old sentence. `KEEPON_PARTIAL` names the pinned fives when
+  they fill a stint both players sat, then says both are at their cap or locked
+  number when they are, and otherwise keeps its old sentence.
+- **SPREAD_RULE replaces SPREAD_FLOOR only when it fires.** It is one info note.
+  It is emitted only when the spread is wider than the clock alone makes it,
+  and never on Platoon. It names only the reasons the final minutes prove, so a
+  reason is said only when it is true. It covers the Force Together, Apart and
+  One of two on rows above. Because `sayWhyTheyAreShort` keys on
+  `SPREAD_FLOOR`, its absence also removes the "Shuffle" suggestion from a
+  spread that a rule caused. `SPREAD_CONSTRAINED` is unchanged.
+- **Not changed.** No cost weight, move or search step changed. The lineups
+  should stay as they were except where a locked number sits under a minimum.
+  `PAIR_PARTIAL` is still listed as a cause, with nothing new in its "What to
+  do" line.
+
 ## Design decisions
 
 - **Minutes are formatted, never printed raw.** Stint lengths are legitimately
@@ -371,7 +487,9 @@ its alternative is an assertion, so the rejected options are kept here too.
   would hide it. Together and both in-a-row limits (Plays at most N in a row, Sits at
   most N in a row) are not checked inside a pinned overtime.
 - **A coach's minute target is a pin, not a preference.** It survives caps and
-  tournament carryover; everyone else water-fills the remaining floor-time.
+  tournament carryover; everyone else water-fills the remaining floor-time. A
+  rule or league minimum above it is the one exception (see
+  [When rules disagree](#when-rules-disagree)).
 - **Somebody has to play the odd stint, so it is decided out loud.** When the
   floor-minutes do not divide, `generatePlan` takes a `priority` map -- one
   number per player, highest first -- and nudges the free targets along a ramp
