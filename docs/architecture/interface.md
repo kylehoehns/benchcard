@@ -225,9 +225,14 @@ Period dividers are now 3px gaps in the track color, appearing as notches cut
 through both blocks and empty track (#69). The period labels above the track
 read in a quiet, muted footnote size with no uppercase — they introduce the
 track, not interrupt it. When the timeline is narrow (320px with large text) the layout stacks:
-player name and total on one line, track underneath. Once the timeline itself is about 20em wide (a container query, so a 390px
-phone qualifies) it lays out one row: name, track and total side by side. At
-about 34em the name column widens again for desktop.
+the player's name on the first line, the total at its right edge, and the track underneath. A name
+wraps onto as many lines as it needs instead of ending in an ellipsis (#422). The word `MOST` or
+`FEWEST`, where a row has one, sits on a line of its own under the name. At the largest text size
+(`@media (max-width: 19em)`, which every phone is under at a 32px root) the name takes the whole row
+and the total moves down onto the word's line, so every total sits at the same height above its own
+track. Once the timeline itself is about 20em wide (a container query, so a 390px phone qualifies) it
+lays out one row: name, track and total side by side, and the name keeps a one-line ellipsis, because
+the row pitch is fixed (#72). At about 34em the name column widens again for desktop.
 
 The timeline's row itself is a plain container, not the button. Each player's
 name is a real `<button>` that opens the player's minute breakdown; tapping it
@@ -301,7 +306,9 @@ it do. The smoke suite verifies this in two passes: `applargetext` checks that
 everything fits on screen at 320px wide with 32px text, and `clipsweep` verifies
 that no text is cut off by its own box, squeezed narrower than its longest word,
 split mid-word, or hidden under another element — things that stick out past the
-screen edge alone might not catch. Read `docs/specs/179-clip-sweep.md` for the details.
+screen edge alone might not catch. Read `docs/specs/179-clip-sweep.md` for the details. A third
+check, `longNames` (in `scripts/smoke/long-names.mjs`), pins the long-name cases on the timeline, the player sheet, Today's lines, the
+team switcher and the Season bars (#422); `scripts/smoke/README.md` lists its cells.
 
 One consequence worth knowing: the printed card is auto-fitted from canvas
 `measureText`, and the constraint that follows from it — the measurement font
