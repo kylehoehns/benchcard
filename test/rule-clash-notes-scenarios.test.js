@@ -37,6 +37,18 @@ describe('the notes under the plan name the rule that bound', { skip }, () => {
     assert.match(notes, /Marcus Williams's By hand number was raised from 8 to 16 to meet the league minimum\./);
   });
 
+  test('a cap under the league minimum lowers the number a lock is raised to, and the note says their minimum', async () => {
+    const targetSlots = { p0: 2, p1: 5, p2: 5, p3: 4, p4: 4, p5: 4, p6: 4, p7: 4, p8: 4, p9: 4 };
+    await coach.onGameDayWith({ strategy: 'minutes', constraints: { targetSlots, lockedTargets: ['p0'], maxMinutes: { p0: 12 } } }, 10);
+    await coach.tap('Settings');
+    await coach.fill('Minutes everyone plays at least', '16');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, planned');
+    const notes = await coach.text('#issues');
+    assert.match(notes, /Marcus Williams's By hand number was raised from 8 to 12 to meet their 12-minute minimum\./);
+    assert.ok(lacks(notes, /league\s+minimum/));
+  });
+
   test('the page for a minimum says a locked By hand number below it loses', async () => {
     await coach.onGameDayWith({ constraints: { minMinutes: { p0: 20 } } }, 10);
     await coach.tap('Hawks, 9:00 AM, planned');

@@ -1855,3 +1855,99 @@ test('#446 One of two on missed because the pinned fives fill the stint names th
   assert.match(m, /Starts the last period/);
   assert.ok(lacks(m, /No legal lineup/));
 });
+
+/* ---------------- #446 fix pass: the notes must be true ---------------- */
+
+test('#446 a player in two pinned groups is not counted twice: a stint with open seats is not "filled"', () => {
+  // 1 x 6 gives stints of 4 and 2. Starting five and Starts the last period are
+  // the same three kids (B, C, D) on the same stint, so two seats stay open --
+  // A could play it, but is Apart from B. A got 2 against a 4-minute minimum.
+  const p = clash(6, {
+    format: { periods: 1, periodMinutes: 6 },
+    constraints: {
+      minMinutes: { p0: 4 }, avoids: [['p0', 'p1']],
+      openingFive: ['p1', 'p2', 'p3'], lastPeriodFive: ['p1', 'p2', 'p3'],
+    },
+  });
+  const m = noteOf(p, 'MIN_MISSED').message;
+  assert.equal(m, 'A got 2 minutes against a 4-minute minimum. No legal lineup gave them more.');
+});
+
+test('#446 a minimum missed after a pin-filled stint AND an open one the player sat does not blame the pins', () => {
+  // 7 players, 1 x 12 (three 4-minute stints), Starting five B-F fills stint 1.
+  // A and G both need 8, are Apart, so each gets one of the two open stints (4).
+  // The open stint each sat could have covered the 4 minutes they lack.
+  const p = clash(7, {
+    format: { periods: 1, periodMinutes: 12 },
+    constraints: {
+      minMinutes: { p0: 8, p6: 8 }, avoids: [['p0', 'p6']], openingFive: ['p1', 'p2', 'p3', 'p4', 'p5'],
+    },
+  });
+  const m = p.issues.filter(i => i.code === 'MIN_MISSED').find(i => i.playerIds[0] === 'p0').message;
+  assert.equal(m, 'A got 4 minutes against a 8-minute minimum. No legal lineup gave them more.');
+});
+
+test('#446 One of two on off for two stints, only one of them pin-filled, does not blame the pins', () => {
+  // 7 players, 1 x 12 (three stints). B, C, D start and E, F the last period
+  // (the same stint in a one-period game), so stint 1 is filled. A is Apart from
+  // all five, so A never plays; B is capped at 4. Both are off stints 1 and one other.
+  const p = clash(7, {
+    format: { periods: 1, periodMinutes: 12 },
+    constraints: {
+      keepOnFloor: [['p0', 'p1']], maxMinutes: { p1: 4 },
+      avoids: ['p2', 'p3', 'p4', 'p5', 'p6'].map(x => ['p0', x]),
+      openingFive: ['p2', 'p3', 'p4'], lastPeriodFive: ['p5', 'p6'],
+    },
+  });
+  const m = noteOf(p, 'KEEPON_PARTIAL').message;
+  assert.equal(m, 'A and B are both off the floor for 2 stints — no legal lineup kept one of them on.');
+});
+
+test('#446 HALF_LATE explains the late player it can and keeps the plain sentence for the one it cannot', () => {
+  // A is Apart from B, who plays every minute. C is capped at 0, so nothing
+  // but the cap keeps C off the floor.
+  const p = clash(7, { constraints: { avoids: [['p0', 'p1']], minMinutes: { p1: 32 }, maxMinutes: { p2: 0 } } });
+  const m = noteOf(p, 'HALF_LATE').message;
+  assert.match(m, /A is Apart from B, who is on the floor for every stint before halftime\./);
+  assert.match(m, /No legal lineup got C on any sooner\./);
+});
+
+test('#446 two locked By hand numbers under a minimum are both raised, and the unlocked numbers pay for both', () => {
+  // A and B locked at 8, minimum 16 each. The other eight were 18 (144): raising
+  // A and B adds 16, which comes back as 2 each from the eight, to 16. All 160.
+  const targetMinutes = { p0: 8, p1: 8 };
+  for (let i = 2; i < 10; i++) targetMinutes[`p${i}`] = 18;
+  const p = clash(10, { strategy: 'minutes', constraints: {
+    targetMinutes, lockedTargets: ['p0', 'p1'], minMinutes: { p0: 16, p1: 16 } } });
+  const raised = p.issues.filter(i => i.code === 'TARGET_UNDER_MIN');
+  assert.deepEqual(raised.map(i => i.message), [
+    "A's By hand number was raised from 8 to 16 to meet their 16-minute minimum.",
+    "B's By hand number was raised from 8 to 16 to meet their 16-minute minimum.",
+  ]);
+  assert.equal(noteOf(p, 'TARGETS_OVER_BUDGET'), undefined);
+  assert.equal(noteOf(p, 'TARGETS_UNDER_BUDGET'), undefined);
+  assert.deepEqual(Object.values(p.minutes), Array(10).fill(16));
+});
+
+test('#446 the take-back never goes below a player\'s own minimum: the one with room pays it all', () => {
+  // A locked 8 (minimum 16), B-I each 16 with a 16 minimum, J 24. Raising A adds
+  // 8; B-I have no room, so J pays all 8, to 16. Everyone plays 16.
+  const targetMinutes = { p0: 8, p9: 24 };
+  const minMinutes = { p0: 16 };
+  for (let i = 1; i < 9; i++) { targetMinutes[`p${i}`] = 16; minMinutes[`p${i}`] = 16; }
+  const p = clash(10, { strategy: 'minutes', constraints: { targetMinutes, lockedTargets: ['p0'], minMinutes } });
+  assert.equal(noteOf(p, 'TARGET_UNDER_MIN').message,
+    "A's By hand number was raised from 8 to 16 to meet their 16-minute minimum.");
+  assert.equal(noteOf(p, 'TARGETS_OVER_BUDGET'), undefined);
+  assert.equal(noteOf(p, 'TARGETS_UNDER_BUDGET'), undefined);
+  assert.equal(noteOf(p, 'MIN_MISSED'), undefined);
+  assert.deepEqual(Object.values(p.minutes), Array(10).fill(16));
+});
+
+test('#446 when not everyone has a By hand number, the raise takes nothing back and says so once', () => {
+  const p = clash(10, { strategy: 'minutes', constraints: {
+    targetMinutes: { p0: 8, p1: 20, p2: 20 }, lockedTargets: ['p0'], minMinutes: { p0: 16 } } });
+  assert.equal(p.minutes.p0, 16);
+  assert.equal(p.issues.filter(i => i.code === 'TARGET_UNDER_MIN').length, 1);
+  assert.equal(noteOf(p, 'TARGETS_OVER_BUDGET'), undefined);
+});

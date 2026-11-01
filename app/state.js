@@ -1445,11 +1445,13 @@ function sayTheSeasonSetThem(p) {
 /* #446: a By hand number raised to a minimum the league set is told in the
    league's words. The engine is only handed a composed per-player minimum and
    never learns where it came from, so it says "their 16-minute minimum"; this
-   call site knows the coach's own minimum for the player is lower. */
+   call site knows the coach's own minimum for the player is lower. Only when
+   the number raised to IS the league minimum: a cap can have lowered the
+   composed minimum below it, and then it is "their 12-minute minimum". */
 function sayTheLeagueMinimum(p, own, leagueMin) {
   for (const i of p.issues || []) {
     if (i.code !== 'TARGET_UNDER_MIN' || (own[i.playerIds[0]] || 0) >= leagueMin) continue;
-    i.message = i.message.replace(/their [\d.]+-minute minimum/, 'the league minimum');
+    i.message = i.message.replace(new RegExp(`to ${leagueMin} to meet their ${leagueMin}-minute minimum`), `to ${leagueMin} to meet the league minimum`);
   }
 }
 

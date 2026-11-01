@@ -1027,10 +1027,10 @@ function pinnedAhead(forced, stints) {
 function pinGroups(stints, c, periods) {
   const none = { openingFive: [], lastPeriodFive: [], closing: null };
   return [
-    ['OPENING_MISSED', 'is set to start', { openingFive: c.openingFive }],
-    ['LAST_PERIOD_MISSED', 'is set to start the last period', { lastPeriodFive: c.lastPeriodFive }],
-    ['CLOSER_MISSED', 'is set to close', { closing: c.closing }],
-  ].map(([code, say, only]) => ({ code, say: say.replace(/^is /, ''), verb: say,
+    ['OPENING_MISSED', 'is set to start', 'Starting five', false, { openingFive: c.openingFive }],
+    ['LAST_PERIOD_MISSED', 'is set to start the last period', 'Starts the last period', false, { lastPeriodFive: c.lastPeriodFive }],
+    ['CLOSER_MISSED', 'is set to close', 'Closers', true, { closing: c.closing }],
+  ].map(([code, say, name, plural, only]) => ({ code, say: say.replace(/^is /, ''), verb: say, name, plural,
     forced: buildForced(stints, { ...none, ...only }, { periods }) }));
 }
 
@@ -1769,10 +1769,6 @@ function localSearch(lineups, ctx, forcedByStint, rng, iterations) {
 /* ------------------------------------------------------------------ *
  * result assembly
  * ------------------------------------------------------------------ */
-/* The coach's names for the pinned groups, keyed by `pinGroups`' code. Which
-   stints a group pins still comes from `pinGroups`, never from here. */
-const PIN_NAMES = { OPENING_MISSED: 'Starting five', LAST_PERIOD_MISSED: 'Starts the last period', CLOSER_MISSED: 'Closers' };
-
 // whether `total` is the sum of some of the stint lengths (a minimum the clock can hit)
 function isSumOfStints(total, lens) {
   let sums = new Set([0]);
@@ -1783,28 +1779,31 @@ function isSumOfStints(total, lens) {
 /* The stints (of those asked about) where the pinned groups together seat a
    full five, and the groups that pin a seat in any of them -- named in the
    coach's words, "the starting five and the last-period five". Which group
-   pins which stint is `pinGroups`' answer alone. */
-function pinsFilling(stints, c, periods, among) {
-  const groups = pinGroups(stints, c, periods);
-  const filled = among.filter(i => groups.reduce((n, g) => n + g.forced[i].size, 0) >= ON_FLOOR);
-  const names = groups.filter(g => filled.some(i => g.forced[i].size)).map(g => PIN_NAMES[g.code]);
-  return { filled, who: names.length ? `${andList(names)} fill${names.length === 1 && names[0] !== 'Closers' ? 's' : ''}` : '' };
+   pins which stint is `pinGroups`' answer alone, and a kid two groups pin
+   counts once. `groups` is `pinGroups`' result, built once in `finish`. */
+function pinsFilling(groups, among) {
+  const filled = among.filter(i => new Set(groups.flatMap(g => [...g.forced[i]])).size >= ON_FLOOR);
+  const named = groups.filter(g => filled.some(i => g.forced[i].size));
+  const names = named.map(g => g.name);
+  return { filled, who: names.length ? `${andList(names)} fill${named.length === 1 && !named[0].plural ? 's' : ''}` : '' };
 }
 
-/* #446: why a minimum the stints could add up to was still missed. First the
-   pinned fives that filled a stint the player sat, then other players whose
-   minimum or By hand number held one, else the plain truth. */
-function minMissedReason(id, need, ctx, c, lineups, minutes, periods, platoon, label) {
+/* #446: why a minimum the stints could add up to was still missed. When the
+   open stints (no full five pinned) the player sat could have made up the
+   shortfall, it was not a pin or a rival that held them back: the plain truth.
+   Otherwise the pinned fives that filled a stint they sat, then other players
+   whose minimum or By hand number held one, else the plain truth. */
+function minMissedReason(id, need, ctx, lineups, minutes, groups, label) {
   const { stints } = ctx;
   if (!isSumOfStints(need, stints.map(s => s.minutes))) return 'The clock does not divide to hit it exactly.';
   const sat = stints.map((s, i) => i).filter(i => !lineups[i].includes(id));
-  if (!platoon) {
-    const { filled, who } = pinsFilling(stints, c, periods, sat);
-    if (filled.length) {
-      const lens = [...new Set(filled.map(i => stints[i].minutes))];
-      const where = filled.length === 1 && lens.length === 1 ? `the ${fmtMinutes(lens[0])}-minute stint` : plural(filled.length, 'stint');
-      return `${who} ${where}.`;
-    }
+  const { filled, who } = pinsFilling(groups, sat);
+  const openRoom = sat.filter(i => !filled.includes(i)).reduce((a, i) => a + stints[i].minutes, 0);
+  if (openRoom >= need - minutes[id] - 1e-9) return 'No legal lineup gave them more.';
+  if (filled.length) {
+    const lens = [...new Set(filled.map(i => stints[i].minutes))];
+    const where = filled.length === 1 && lens.length === 1 ? `the ${fmtMinutes(lens[0])}-minute stint` : plural(filled.length, 'stint');
+    return `${who} ${where}.`;
   }
   const holders = ctx.avail.filter(q => q !== id && sat.some(i => {
     if (!lineups[i].includes(q)) return false;
@@ -1830,7 +1829,7 @@ function spreadRuleNote(ctx, c, minutes, label) {
   for (const [a, b] of c.avoids) {
     const ma = minutes[a], mb = minutes[b];
     const rest = ctx.avail.filter(id => id !== a && id !== b);
-    if (Math.abs(ma + mb - ctx.gameMinutes) > 1e-9) continue;
+    if (n >= 2 * ON_FLOOR || Math.abs(ma + mb - ctx.gameMinutes) > 1e-9) continue;
     if (!rest.every(id => minutes[id] > Math.max(ma, mb) + 1e-9)) continue;
     say(`${label(a)} and ${label(b)} share one spot because they are Apart and only ${n} are here, so they play ${Math.abs(ma - mb) < 1e-9 ? `${fmtMinutes(ma)} each` : `${fmtMinutes(ma)} and ${fmtMinutes(mb)}`}.`, [a, b]);
   }
@@ -1928,6 +1927,8 @@ function finish(lineups, ctx, issues, meta) {
   const spreadUnconstrained = freeVals.length > 1
     ? Math.round((Math.max(...freeVals) - Math.min(...freeVals)) * 100) / 100 : 0;
   const floor = minPossibleSpread(stints, ctx.avail.length);
+  /* which group pins which stint, asked once; platoon applies no pins */
+  const groups = platoon ? [] : pinGroups(stints, c, periods);
 
   // post-hoc constraint report -- soft constraints can miss, so say so
   for (const id of ctx.avail) {
@@ -1935,7 +1936,7 @@ function finish(lineups, ctx, issues, meta) {
     if (need && minutes[id] < need - 1e-9) {
       issues.push({
         severity: 'warn', code: 'MIN_MISSED', playerIds: [id],
-        message: `${label(id)} got ${fmtMinutes(minutes[id])} minutes against a ${need}-minute minimum. ${minMissedReason(id, need, ctx, c, lineups, minutes, periods, platoon, label)}`,
+        message: `${label(id)} got ${fmtMinutes(minutes[id])} minutes against a ${need}-minute minimum. ${minMissedReason(id, need, ctx, lineups, minutes, groups, label)}`,
       });
     }
     const cap = ctx.capOf(id);
@@ -2039,18 +2040,20 @@ function finish(lineups, ctx, issues, meta) {
          for every stint before halftime. */
       const whyLate = (ids) => {
         const first = stints.map((s, i) => i).filter(i => i < ctx.firstHalf);
-        if (!platoon) {
-          const { filled, who } = pinsFilling(stints, c, periods, first);
-          if (filled.length === first.length) return `${who} every stint before halftime.`;
-        }
-        const apart = [];
+        const { filled, who } = pinsFilling(groups, first);
+        if (first.length && filled.length === first.length) return `${who} every stint before halftime.`;
+        const apart = [], unexplained = new Set(ids);
         for (const id of ids) {
           for (const [x, y] of c.avoids) {
             const q = x === id ? y : y === id ? x : null;
-            if (q && first.every(i => lineups[i].includes(q))) apart.push(`${label(id)} is Apart from ${label(q)}, who is on the floor for every stint before halftime.`);
+            if (q && first.every(i => lineups[i].includes(q))) {
+              apart.push(`${label(id)} is Apart from ${label(q)}, who is on the floor for every stint before halftime.`);
+              unexplained.delete(id);
+            }
           }
         }
-        return apart.length ? apart.join(' ') : 'No legal lineup got them on any sooner.';
+        if (!apart.length) return 'No legal lineup got them on any sooner.';
+        return unexplained.size ? `${apart.join(' ')} No legal lineup got ${andList([...unexplained].map(label))} on any sooner.` : apart.join(' ');
       };
       const capped = ctx.halfReach < ctx.firstHalf * ON_FLOOR;
       const fits = Math.min(ctx.firstHalf * ON_FLOOR, ctx.halfReach);
@@ -2086,17 +2089,18 @@ function finish(lineups, ctx, issues, meta) {
     const offAt = lineups.map((lu, i) => i).filter(i => !lineups[i].includes(a) && !lineups[i].includes(b));
     const off = offAt.length;
     if (off) {
-      /* #446: the pinned fives that filled a stint both sat, else both held
-         at their cap or locked number, else the plain truth */
-      const { filled, who } = pinsFilling(stints, c, periods, offAt);
+      /* #446: the pinned fives, when they filled every stint both sat; else
+         both held at their cap or locked number; else the plain truth */
+      const { filled, who } = pinsFilling(groups, offAt);
+      const pinned = filled.length === off;
       const atLimit = id => (ctx.capOf(id) !== Infinity && minutes[id] >= ctx.capOf(id) - 1e-9)
         || (ctx.lockedSet.has(id) && ctx.targetOf(id) != null && minutes[id] >= ctx.targetOf(id) - 1e-9);
-      const why = filled.length ? `${who} ${filled.length === 1 ? 'it' : 'them'}.`
+      const why = pinned ? `${who} ${off === 1 ? 'it' : 'them'}.`
         : atLimit(a) && atLimit(b) ? `Both are at their cap or By hand number, so neither could play more.`
         : `no legal lineup kept one of them on.`;
       issues.push({
         severity: 'warn', code: 'KEEPON_PARTIAL', playerIds: [a, b],
-        message: `${label(a)} and ${label(b)} are both off the floor for ${plural(off, 'stint')}${filled.length || atLimit(a) && atLimit(b) ? '. ' : ' — '}${why}`,
+        message: `${label(a)} and ${label(b)} are both off the floor for ${plural(off, 'stint')}${pinned || atLimit(a) && atLimit(b) ? '. ' : ' — '}${why}`,
       });
     }
   }
