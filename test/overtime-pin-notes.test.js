@@ -101,3 +101,44 @@ test('keep this five is checked too, and the note names the choice', () => {
     assert.ok(messages().includes('Keep this five gives p0 20 minutes; Plays at most is 16.'), messages().join('|'));
   });
 });
+
+test('a One of two on pair where one kid is Out gives no note', () => {
+  withTeam(roster, [game()], {}, () => {
+    const g = S.state.day.games[0];
+    g.out = ['p3'];
+    S.computeAll();
+    g.live.at = 7;
+    S.computeAll();
+    S.addOvertime(g, 4, 'strongest');
+    assert.ok(!messages().some(m => m.includes('One of two on')), messages().join('|'));
+  });
+});
+
+test('the Keep this five label shows on an Apart or One of two on note', () => {
+  withTeam(roster, [game({})], {}, () => {
+    const g = S.state.day.games[0];
+    S.computeAll();
+    g.live.at = 6;
+    S.computeAll();
+    S.addOvertime(g, 4, 'keep');
+    const five = sorted(g.overtime[0].five);
+    assert.deepEqual(five, ['p0', 'p1', 'p3', 'p6', 'p8'], 'the premise: the kept five');
+    g.constraints.avoids = [['p0', 'p1']];
+    g.constraints.keepOnFloor = [['p2', 'p4']];
+    S.computeAll();
+    assert.ok(messages().includes('Keep this five puts p0 and p1 on together; they are set Apart.'), messages().join('|'));
+    assert.ok(messages().includes('Keep this five leaves p2 and p4 both off; they are set One of two on.'), messages().join('|'));
+  });
+});
+
+test('a hand swap that takes the capped kid off the pinned stint clears the cap note', () => {
+  run('strongest', g => {
+    assert.ok(messages().some(m => m.includes('Plays at most')), 'the premise: the note is there first');
+    const k = S.plans[0].stints.length - 1;
+    const five = S.effectiveLineup(g, S.plans[0], k);
+    g.live.overrides[k] = five.map(id => (id === 'p1' ? 'p8' : id));
+    g.live.hand = [...new Set([...(g.live.hand || []), k])];
+    S.computeAll();
+    assert.ok(!messages().some(m => m.includes('Plays at most')), messages().join('|'));
+  }, { p1: 16 });
+});

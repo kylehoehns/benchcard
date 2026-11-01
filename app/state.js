@@ -1680,9 +1680,13 @@ function freezePlayedAndReplan(g, p, prev) {
 
 /* #369: the #134 rewrite below is of the regulation the coach played; the
    overtime they chose the five for is not the plan's to move. */
-function repinOvertime(g, p) {
+function overtimePins(g, p) {
   const first = p.stints.findIndex(isOvertimeStint);
-  const pins = first < 0 ? {} : pinFives(g, p, first, playingIds(g));
+  return first < 0 ? {} : pinFives(g, p, first, playingIds(g));
+}
+
+function repinOvertime(g, p) {
+  const pins = overtimePins(g, p);
   if (Object.keys(pins).length) writeOverrides(g.live, pins, false);
 }
 
@@ -1693,11 +1697,11 @@ function repinOvertime(g, p) {
    never blamed on the choice. One note per rule per choice label. The plan is
    cached, so earlier notes of this code are dropped before the current ones. */
 const PIN_NOTE = 'PIN_BREAKS_RULE';
+const PIN_LABEL = { keep: 'Keep this five', strongest: 'Strongest five' };
 function pinNotes(g, p) {
-  const first = p.stints.findIndex(isOvertimeStint);
-  if (first < 0) return [];
+  const pins = overtimePins(g, p);
+  if (!Object.keys(pins).length) return [];
   const avail = playingIds(g);
-  const pins = pinFives(g, p, first, avail);
   const floor = effectiveStints(g, p);
   const calls = callNames(state.players);
   const nm = id => calls[id] || id;
@@ -1707,7 +1711,7 @@ function pinNotes(g, p) {
   const add = (message, playerIds) => out.has(message) || out.set(message, { severity: 'warn', code: PIN_NOTE, playerIds, message });
   for (const [k, f] of Object.entries(pins)) {
     const e = floor[k].onFloor;
-    const label = overtimeOf(g, p.stints[k]).who === 'keep' ? 'Keep this five' : 'Strongest five';
+    const label = PIN_LABEL[overtimeOf(g, p.stints[k]).who];
     const both = (a, b, on) => on(f, a) && on(f, b) && on(e, a) && on(e, b);
     for (const [a, b] of c.avoids) {
       if (both(a, b, (x, id) => x.includes(id))) add(`${label} puts ${nm(a)} and ${nm(b)} on together; they are set Apart.`, [a, b]);
@@ -1718,8 +1722,8 @@ function pinNotes(g, p) {
       }
     }
     for (const [id, cap] of Object.entries(c.maxMinutes)) {
-      if (f.includes(id) && e.includes(id) && (mins[id] || 0) > cap) {
-        add(`${label} gives ${nm(id)} ${fmtMinutes(mins[id])} minutes; Plays at most is ${cap}.`, [id]);
+      if (f.includes(id) && e.includes(id) && (mins[id] || 0) > cap + 1e-9) {
+        add(`${label} gives ${nm(id)} ${minutesText(mins[id])}; Plays at most is ${cap}.`, [id]);
       }
     }
   }
