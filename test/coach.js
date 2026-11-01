@@ -88,15 +88,14 @@ const SHARE_SHEET = `Object.defineProperty(navigator, 'share', { configurable: t
 /* #500: the iOS Home Screen app. `navigator.standalone` is true there, and its
  * share sheet takes files: each share is recorded as the file names and title
  * (`imageShares()`), and still keeps a link as SHARE_SHEET does. Added only by
- * `asHomeScreenApp()`, from the next page load, and removed again by
- * `asBrowserTab()`, so a later scenario in the same Coach is back to normal. */
+ * `asHomeScreenApp()`, from the next page load. A scenario that wants a plain browser tab opens its own Coach. */
 const HOME_SCREEN_APP = `Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
   window.__sharedImages = [];
   navigator.canShare = data => !!data?.files?.length;
   Object.defineProperty(navigator, 'share', { configurable: true,
     value: data => {
       if (data.url) window.__sharedLink = data.url;
-      if (data.files) window.__sharedImages.push({ files: data.files.map(f => f.name), types: data.files.map(f => f.type), title: data.title });
+      if (data.files) window.__sharedImages.push({ files: data.files.map(f => f.name), types: data.files.map(f => f.type), title: data.title, active: navigator.userActivation.isActive, inTap: window.event?.type === 'click' });
       return Promise.resolve();
     } });`;
 
@@ -271,13 +270,6 @@ export class Coach {
   async asHomeScreenApp() {
     if (this.homeScreen) return;
     ({ identifier: this.homeScreen } = await this.c.send('Page.addScriptToEvaluateOnNewDocument', { source: HOME_SCREEN_APP }));
-  }
-
-  /** Open the app from here on as a plain browser tab again. */
-  async asBrowserTab() {
-    if (!this.homeScreen) return;
-    await this.c.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: this.homeScreen });
-    this.homeScreen = null;
   }
 
   /* Swap the pinned clock for one at `pin`, from the next page load on. */
@@ -843,7 +835,19 @@ export class Coach {
   /** The screen (`view-…` id) showing at each time the app asked the browser to print, oldest first. */
   printedOn() { return evalIn(this.c, 'window.__printViews'); }
 
-  /** Each image the app handed to the share sheet, oldest first, as `{ files: ['benchcard-ravens.png'], types, title }`. */
+  /** From now on this page's share sheet fails the way a broken one does (a
+      non-Abort error), whatever mode it is in. Call after the page has loaded. */
+  shareFails() {
+    return evalIn(this.c, `(() => {
+      navigator.canShare = () => true;
+      Object.defineProperty(navigator, 'share', { configurable: true,
+        value: () => Promise.reject(new Error('share broke')) });
+    })()`);
+  }
+
+  /** Each image the app handed to the share sheet, oldest first, as `{ files: ['benchcard-ravens.png'], types, title, active }`;
+      `active` is whether the tap's user activation still stood when the app called `share`, `inTap` whether
+      the call was still inside the tap's click handler (`window.event` is unset in a timer or after an await, which is how iOS loses activation). */
   async imageShares() { return (await evalIn(this.c, 'window.__sharedImages')) ?? []; }
 
   /** The product events this page has sent to `/e`, in order, as the bodies

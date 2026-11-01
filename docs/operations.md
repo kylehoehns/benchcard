@@ -402,9 +402,10 @@ taking it, and never over bench mode — see the Status section. That offer is t
 update prompt; this paragraph said there was none.
 
 `site.webmanifest` uses `display_override: ["minimal-ui", "standalone"]`. A
-home-screen install still prints fine — the in-app **Print** button calls
-`window.print()` rather than relying on the browser's share sheet, which
-standalone iOS does not have.
+home-screen install on iOS cannot print through `window.print()`, which does
+nothing there. Its Print buttons share the card image instead, and the iOS share
+sheet has Print in it. Android installs keep `window.print()`. The mode test and
+what changes with it are in [architecture/interface.md](architecture/interface.md).
 
 **Asking a coach to install it** is the other half of the eviction defence the
 Backup box started, because WebKit exempts an installed app from the seven-day

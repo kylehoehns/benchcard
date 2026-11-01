@@ -14,7 +14,7 @@
 import { icon } from './icons.js';
 import { $, on, set, clone } from './dom.js';
 import { refreshCardSheetPreview, CARD_FONT } from './card.js';
-import { shareCards, isHomeScreenApp } from './share.js';
+import { shareCards, isHomeScreenApp, SHARE_TO_PRINT } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
 import { initTimeline } from './timeline.js';
 import { initGameMode, openGameMode, renderGameMode, clearOverrides, gmFocusFirstFloor } from './gamemode.js';
@@ -292,9 +292,9 @@ if (isHomeScreenApp()) {
     b.lastChild.nodeValue = ` ${text}\n`;
     if (name) b.setAttribute('aria-label', name);
   };
-  relabel('#print', 'Share to print', 'Share to print the card');
-  relabel('#frPrint', 'Share to print', 'Share to print the card');
-  relabel('#cardPrint', 'Share to print');
+  relabel('#print', SHARE_TO_PRINT, `${SHARE_TO_PRINT} the card`);
+  relabel('#frPrint', SHARE_TO_PRINT, `${SHARE_TO_PRINT} the card`);
+  relabel('#cardPrint', SHARE_TO_PRINT);
   $('#shareCard').hidden = true;
   $('#frShare').hidden = true;
   $('#copies').closest('.prow').hidden = true;

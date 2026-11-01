@@ -110,7 +110,7 @@ the build), on RICH game day (Hawks 9:00 AM, Ravens 11:30 AM, both planned):
 Change: `app/app.js` (`printCard`, `shareCardImage`'s toasts, a boot-time
 pass that relabels and hides the static buttons and the Copies row),
 `app/teams-view.js` (the Today row's label and name), `app/share.js` (the
-exported predicate, beside the share path it chooses), `app/index.html` only
+exported predicate and the `SHARE_TO_PRINT` label, beside the share path it chooses), `app/app.css` (`.today-print` wraps: the longer Home Screen label overflowed its button by 4px at 320px / 32px text), `app/index.html` only
 if the Copies row needs a hook, `test/coach.js` (a Home Screen app verb and a
 share-sheet record of files), `test/print-card-scenarios.test.js` or a new
 scenario file.

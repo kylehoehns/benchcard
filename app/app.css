@@ -406,9 +406,11 @@ a { color: inherit; }
 @media (hover: hover) { .today-game:hover { background: var(--surface-2); } }
 /* #432: a planned game's Print card sits under the game's own button, as a
    sibling (a button cannot hold a button), full width so the target is easy
-   to hit and a long label wraps inside it rather than past the edge. */
+   to hit and a long label wraps inside it rather than past the edge. `.btn` is
+   nowrap, so this lets the label wrap in the button: at 320px / 32px text
+   "Share to print" otherwise paints 4px past the button (#500). */
 .today-pass { display: flex; flex-direction: column; gap: .4rem; }
-.today-print { width: 100%; min-height: 48px; justify-content: center; }
+.today-print { width: 100%; min-height: 48px; justify-content: center; white-space: normal; text-align: center; }
 
 .pass-top { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
 /* --fs-secondary, a token rather than an absolute unit, so a reader's

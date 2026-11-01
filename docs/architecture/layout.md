@@ -34,7 +34,9 @@ Everything below is relative to `app/`.
 - `card.js` — the printed card: sizes, canvas auto-fit, pagination, the preview
   zoom and the phone disclosure. The card is the product, so it is its own file.
 - `share.js` — the same card as a PNG, painted from the laid-out DOM onto a
-  canvas, for `navigator.share` with a clipboard/download fallback. The image
+  canvas, for `navigator.share` with a clipboard/download fallback. It also
+  exports `isHomeScreenApp()`, the one test for the iOS Home Screen app (#500).
+  The image
   keeps a taller bottom margin than its other three, with `benchcard.app`
   centered in it: the in-card mark is 7px, which is about five device pixels
   once a phone scales the picture into a message bubble. A URL and nothing

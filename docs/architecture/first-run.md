@@ -6,7 +6,8 @@ my team** and **Try a sample team** — and both open `#firstRunFlow`, a
 full-screen `<dialog>` of three steps (#36): *Who's on the team?* (a name and a
 roster box), *How long is a game?* (periods, minutes each, how often to sub,
 and the game day), and then the coach's own first card, with Print and Share
-image on it. Players are typed or pasted in any of the usual shapes (`12 Marcus Webb`,
+image on it (in the iOS Home Screen app, one button, **Share to print**; see
+[interface.md](interface.md)). Players are typed or pasted in any of the usual shapes (`12 Marcus Webb`,
 `Marcus Webb #12`, `Devon Ellis`), or as a comma-separated list with no line
 breaks (`Sam, Jo, Kai`). A leading list bullet is stripped, and a spreadsheet
 header row such as `Jersey<TAB>First<TAB>Last` is dropped. They are counted by

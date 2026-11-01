@@ -22,7 +22,7 @@
  * ================================================================== */
 import { $, on, set, el } from './dom.js';
 import { icon } from './icons.js';
-import { isHomeScreenApp } from './share.js';
+import { isHomeScreenApp, SHARE_TO_PRINT } from './share.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
@@ -518,10 +518,10 @@ function renderPass(g, i, d) {
   const pr = el('button', 'btn press noprint today-print');
   pr.type = 'button';
   const share = isHomeScreenApp();   // #500: print does nothing there; it shares the image
-  pr.setAttribute('aria-label', `${share ? 'Share to print' : 'Print'} card for ${full}`);
+  pr.setAttribute('aria-label', `${share ? SHARE_TO_PRINT : 'Print'} card for ${full}`);
   const ic = el('span', 'i');
   ic.append(icon('printer', { size: '1em' }));
-  pr.append(ic, share ? ' Share to print' : ' Print card');
+  pr.append(ic, ` ${share ? SHARE_TO_PRINT : 'Print card'}`);
   pr.onclick = () => { openGame(d, i); setView('games'); $('#print').click(); };
   row.append(b, pr);
   return row;

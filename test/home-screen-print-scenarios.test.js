@@ -33,6 +33,8 @@ describe('a coach prints from the iOS Home Screen app', { skip }, () => {
     assert.equal(shares.length, 1, JSON.stringify(shares));
     assert.deepEqual(shares[0].files, ['benchcard-ravens.png']);
     assert.deepEqual(shares[0].types, ['image/png']);
+    assert.equal(shares[0].active, true, 'the share was made outside the tap');
+    assert.equal(shares[0].inTap, true, 'the share was deferred out of the click handler');
     assert.deepEqual(await coach.printed(), []);
     assert.equal(await coach.showing('game'), true);
   });
@@ -83,5 +85,27 @@ describe('a coach prints from the iOS Home Screen app', { skip }, () => {
     assert.ok(names.includes('Share to print the card'), JSON.stringify(names));
     assert.ok(!shows(names, 'Share image'), JSON.stringify(names));
     assert.ok(!shows(names, 'Print the card'), JSON.stringify(names));
+  });
+
+  test('a share that breaks says so and does not promise Print still works', async () => {
+    await coach.onGameDay();
+    await coach.shareFails();
+    await coach.tap('Share to print card for Ravens');
+    assert.equal(await coach.toast(), 'Could not share the image.');
+  });
+});
+
+describe('a coach in a browser tab whose share breaks', { skip }, () => {
+  let coach;
+  before(async () => { coach = await Coach.open(); });
+  after(async () => { await coach?.close(); });
+
+  test('is told Print still works', async () => {
+    await coach.onGameDay();
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Share or hand off');
+    await coach.shareFails();
+    await coach.tap('Share image');
+    assert.equal(await coach.toast(), 'Could not share the image. Print still works.');
   });
 });

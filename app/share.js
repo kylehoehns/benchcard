@@ -246,6 +246,9 @@ function pngBlob(canvas) {
    question (is the app installed anywhere, for the install prompt). */
 export const isHomeScreenApp = () => navigator.standalone === true;
 
+/* What every Print button says in the Home Screen app, where it shares. */
+export const SHARE_TO_PRINT = 'Share to print';
+
 /**
  * Share the given cards as a PNG. Resolves to what actually happened:
  * 'shared' (the system sheet), 'copied' (clipboard), 'saved' (a download),
