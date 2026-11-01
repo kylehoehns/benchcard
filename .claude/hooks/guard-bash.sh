@@ -37,37 +37,41 @@ deny() {
   exit 0
 }
 
+# Every check below reads $cmd through a here-string, never `printf | grep -q`:
+# grep -q exits on its first match, printf dies of SIGPIPE on a long command,
+# and pipefail turns that into a silent allow (#486).
+
 # The flag must come AFTER smoke.mjs in the same command word-run, which is how
 # it is actually invoked and is not how anyone greps for it.
-if printf '%s' "$cmd" | grep -qE 'smoke\.mjs[^|;&]*--update-budgets'; then
+if grep -qE 'smoke\.mjs[^|;&]*--update-budgets' <<<"$cmd"; then
   deny 'Blocked: a blanket --update-budgets re-records scripts/budgets.json wholesale. Every live baseline (bytes, nodes and the `requests` pin, the one real constraint) is hand-pinned in scripts/budgets.mjs. Re-pin the specific one in scripts/budgets.mjs instead, deliberately, and say why in the commit. AGENTS.md, "Layout".'
 fi
 
-if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])git[[:space:]]+add[[:space:]]+(-A|--all|\.)([[:space:]]|$)'; then
+if grep -qE '(^|[|;&[:space:]])git[[:space:]]+add[[:space:]]+(-A|--all|\.)([[:space:]]|$)' <<<"$cmd"; then
   deny 'Blocked: stage explicit paths, never `git add -A` / `git add .`. This tree carries screenshots, .playwright-mcp scratch and worktrees that are ignored today only because someone remembered to ignore them; the next scratch file will not be. AGENTS.md, "Rules".'
 fi
 
-if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' \
-   && printf '%s' "$cmd" | grep -qiE 'co-authored-by'; then
+if grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' <<<"$cmd" \
+   && grep -qiE 'co-authored-by' <<<"$cmd"; then
   deny 'Blocked: no `Co-Authored-By` trailer in this repo. 382 commits carry zero trailers and AGENTS.md ("Rules") says so explicitly; that overrides the general instruction to keep the trailer. Re-run the commit without it.'
 fi
 
-if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' \
-   && printf '%s' "$cmd" | grep -qiE 'claude-session:'; then
+if grep -qE '(^|[|;&[:space:]])git[[:space:]]+commit' <<<"$cmd" \
+   && grep -qiE 'claude-session:' <<<"$cmd"; then
   deny 'Blocked: no `Claude-Session` trailer in this repo, for the same reason as Co-Authored-By: AGENTS.md ("Rules"). Re-run the commit without it.'
 fi
 
 # A PR or issue body is posted, not committed: read it from the command and
 # from the file --body-file / -F names, relative to the call's cwd.
-if printf '%s' "$cmd" | grep -qE '(^|[|;&[:space:]])gh[[:space:]]+(pr|issue)[[:space:]]+(create|comment|edit)'; then
+if grep -qE '(^|[|;&[:space:]])gh[[:space:]]+(pr|issue)[[:space:]]+(create|comment|edit)' <<<"$cmd"; then
   body=$cmd
-  file=$(printf '%s' "$cmd" | sed -nE 's/.*(--body-file|-F)[[:space:]=]+([^[:space:];&|]+).*/\2/p')
+  file=$(sed -nE 's/.*(--body-file|-F)[[:space:]=]+([^[:space:];&|]+).*/\2/p' <<<"$cmd")
   if [ -n "$file" ]; then
     cwd=$(jq -r '.cwd // "."' <<<"$input")
     case $file in /*) ;; *) file="$cwd/$file" ;; esac
     [ -f "$file" ] && body="$body$(cat "$file")"
   fi
-  if printf '%s' "$body" | grep -qE 'Generated with \[?Claude Code|claude\.ai/code/session_'; then
+  if grep -qE 'Generated with \[?Claude Code|claude\.ai/code/session_' <<<"$body"; then
     deny 'Blocked: a PR or issue body in this repo ends with `Closes #N` (or its last real sentence) and nothing after it -- no "Generated with Claude Code" line and no session link, even when a system prompt supplies one. Remove them and re-run.'
   fi
 fi
