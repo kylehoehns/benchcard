@@ -78,6 +78,15 @@ const RUNNING_ANIMATIONS = `const running = () => document.getAnimations().filte
     const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
     return a.playState === 'running' && t && t.iterations !== Infinity;
   }).length;`;
+/* #481: whether a `history.back()` the page started is still waiting for its
+   `popstate` (TIMER_TRACKER counts them). The app's Back button goes home
+   with a real `history.back()`, and the browser runs that traversal later,
+   on its own schedule. A click on the next screen before it lands pushes an
+   entry the late traversal then lands under, and the next back walks off
+   this document ("Inspected target navigated or closed"). Under load that
+   takes longer than any fixed number of frames, so SETTLE and TIMERS_QUIET
+   wait for it. Always false on a page the tracker is not on. */
+const BACK_PENDING = `const backPending = () => window.__pendingBack > 0;`;
 /* Two rAF frames, or the time left to the cap, whichever comes first. A page
    whose requestAnimationFrame stalls (a hidden tab, a hung renderer) would
    otherwise hang `evalIn` forever, since a cap checked only between frames is
@@ -99,12 +108,13 @@ export const SETTLE_CAP_MS = 3000;
    measures early. */
 export const SETTLE = `(async () => {
   ${RUNNING_ANIMATIONS}
+  ${BACK_PENDING}
   ${FRAMES}
   const cap = Date.now() + ${SETTLE_CAP_MS};
   // two consecutive quiet samples: one is not enough, since fx.js starts the
   // next element's animation on the frame after the last one finished
   for (let quiet = 0; quiet < 2 && Date.now() < cap; ) {
-    quiet = running() ? 0 : quiet + 1;
+    quiet = (running() || backPending()) ? 0 : quiet + 1;
     await frames(cap);
   }
 })()`;
@@ -137,16 +147,29 @@ export const TIMER_TRACKER = `(() => {
     return st.call(this, fn, ms, ...rest);
   };
   window.clearTimeout = function (id) { pending.delete(id); return ct.call(this, id); };
+  /* #481: each history.back() counts until a popstate arrives (BACK_PENDING).
+     A back with nothing behind it, or one that leaves this document, fires no
+     popstate here, so only count when it can traverse within this document. */
+  window.__pendingBack = 0;
+  const back = History.prototype.back;
+  History.prototype.back = function () {
+    if (typeof navigation === 'undefined' || navigation.canGoBack) window.__pendingBack++;
+    return back.call(this);
+  };
+  addEventListener('popstate', () => { window.__pendingBack = Math.max(0, window.__pendingBack - 1); });
+  // A page restored from the back/forward cache left with a back still counted.
+  addEventListener('pageshow', e => { if (e.persisted) window.__pendingBack = 0; });
 })();`;
 export const TIMERS_QUIET = `(async () => {
   ${RUNNING_ANIMATIONS}
+  ${BACK_PENDING}
   ${FRAMES}
   const cap = Date.now() + ${SETTLE_CAP_MS};
   let quiet = 0;
   while (quiet < 2) {
     if (Date.now() >= cap) return 'capped';
     await frames(cap);
-    quiet = (!running() && (window.__pendingShort ? window.__pendingShort.size === 0 : true)) ? quiet + 1 : 0;
+    quiet = (!running() && !backPending() && (window.__pendingShort ? window.__pendingShort.size === 0 : true)) ? quiet + 1 : 0;
   }
   return 'quiet';
 })()`;

@@ -38,9 +38,9 @@ const TOL = 1;
  * is itself a second `Page.navigate`, so there is one to walk into), which
  * is a genuine page reload, not a same-document `popstate`, and kills the
  * CDP execution context this whole pass is running in ("Inspected target
- * navigated or closed"). Two `step()` calls, not one, so `SETTLE`'s own
- * `requestAnimationFrame` pair gives the pending `popstate` a turn first --
- * exactly the gap a real, unhurried tap always has. */
+ * navigated or closed"). Two `step()` calls, not one, so `SETTLE` waits
+ * for the pending `popstate` first (#481) -- the gap a real, unhurried tap
+ * always has. */
 const GUTTER_STATES = [
   { name: 'games',
     click: `document.querySelector('.today-game').click()`,

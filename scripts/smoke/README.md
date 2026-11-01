@@ -21,7 +21,10 @@ carries `motion: 'real'` in `registry.mjs` and runs at 1x. A wait on an
 animation or an app timer of at most `TRACKED_TIMER_MS` is a condition, not a
 sleep: `settle`/`tap` (`sheet-drive.mjs`), `resize(..., { debounce: true })`
 (`page-state.mjs`) or `quiet` (`dom.mjs`), all on `TIMERS_QUIET`, which sees
-those timers through `TIMER_TRACKER`. Only real elapsed time (a toast still up
+those timers through `TIMER_TRACKER`. The same tracker counts each
+`history.back()` until its `popstate` (#481), and those waits also hold until
+the back lands, so a row does not act on the next screen mid-traversal; the
+detail is in `dom.mjs`. Only real elapsed time (a toast still up
 2s later, a drag's hold) or a poll uses `wait` in `dom.mjs`. A sleep written
 inside a page-side template string is not counted anywhere. `--timing` prints
 each timed row's seconds, the node-side sleep through `wait`, and how many
