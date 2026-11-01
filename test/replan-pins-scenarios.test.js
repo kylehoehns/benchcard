@@ -16,7 +16,7 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
   after(async () => { await coach?.close(); });
   afterEach(() => { assert.deepEqual(coach.errors, [], 'the page logged an error'); });
 
-  test('1. Here now at stint 7 keeps the played stints and says the first player is no longer fixed', async () => {
+  test('1. Here now at stint 7 keeps the played stints and does not say the first player is no longer fixed', async () => {
     await coach.onGameDayWith({
       out: ['p8'],
       constraints: { minMinutes: {}, maxMinutes: { p0: 8 }, pairs: [], avoids: [], keepOnFloor: [], openingFive: [], lastPeriodFive: ['p0'] },
@@ -27,11 +27,12 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
     assert.equal(await coach.stint(), '7 of 8', 'the premise');
     await coach.tap('Here now, Casey Lindqvist');
 
-    assert.equal(await coach.toast(),
-      'Casey is here. Not enough minutes left to keep Marcus fixed to a stint.');
+    /* #444: stint 6 began the last period, so Starts the last period is done and
+       Marcus is not held to stint 7: nothing to say about him. */
+    assert.equal(await coach.toast(), 'Casey is here.');
   });
 
-  test('2. Sit for the rest at the last stint says the first player is no longer fixed', async () => {
+  test('2. Sit for the rest at the last stint does not say the first player is no longer fixed', async () => {
     await coach.onGameDayWith({
       out: ['p8'],
       constraints: { minMinutes: {}, maxMinutes: { p0: 8 }, pairs: [], avoids: [], keepOnFloor: [], openingFive: [], lastPeriodFive: ['p0'] },
@@ -43,6 +44,6 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
     await coach.tapPlayer(sat);
     await coach.tap('Sit for the rest');
 
-    assert.match(await coach.toast(), /sits for the rest\. The others share those minutes\. Not enough minutes left to keep Marcus fixed to a stint\.$/);
+    assert.match(await coach.toast(), /sits for the rest\. The others share those minutes\.$/);
   });
 });

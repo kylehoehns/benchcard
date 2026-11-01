@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
@@ -1544,7 +1544,7 @@ function replanRest(g, p, from) {
   if (!r.ok && r.reason === 'infeasible') {
     /* Runs on any infeasible refusal with a fixed kid at the game, so the cause
        may not have been the pins; if clearing them does not help, nothing changes. */
-    const who = Object.keys(pinnedRules(g, g.constraints)).filter(id => here.has(id));
+    const who = Object.keys(pinnedRules(g, g.constraints, lastPeriodAhead(g, p, from))).filter(id => here.has(id));
     const again = who.length && resolveRest(g, p, from, [], null, undefined, { dropPins: who });
     if (again?.ok) {
       pinsLet.set(g.id, { used: [], cleared: who.map(id => calls[id]) });
@@ -1938,12 +1938,14 @@ function lateArrivals(g, p, k) {
  * `engine.js` permission and its only reason for existing -- a suffix
  * frequently is not describable as any {periods, periodMinutes} pair, so
  * there is no other way to ask. `format` keeps the REAL period count, so
- * `lastPeriodFive` still lands on the first remaining stint of the real
- * last period. `openingFive` is dropped (stint k is not the tip-off),
+ * `lastPeriodFive` still lands on the last period's first stint while it
+ * is ahead; once it is behind the cut (#444) the five has started the
+ * period and the rule is cleared. `openingFive` is dropped (stint k is not the tip-off),
  * except a sit seeds it with the four who stay;
  * floors and caps are reduced by minutes already played; everything else
- * -- `closing`, `lastPeriodFive`, `pairs`, `avoids`, `keepOnFloor`,
- * `maxConsecutive`, `balance` -- is kept as the coach set it. A suffix of
+ * -- `closing`, `pairs`, `avoids`, `keepOnFloor`,
+ * `maxConsecutive`, `balance` -- is kept as the coach set it
+ * (`lastPeriodFive` too, while its stint is ahead). A suffix of
  * a suffix is still the end of the game, and every other rule is about
  * who is on the floor beside whom, which the clock does not change.
  *
@@ -1963,12 +1965,15 @@ function lateArrivals(g, p, k) {
  * actually played. Returns `{ ok: true, from, overrides, issues,
  * minutes }` or `{ ok: false, reason }`; `reason` is for slice 2's copy.
  * ================================================================== */
+/* #444: the last period's first stint is at or after stint `k`, so the Last-period
+   five has not yet started it. Once it is behind, that rule is done. */
+const lastPeriodAhead = (g, p, k) => lastPeriodStintIndex(p.stints, gameFormat(g).periods) >= k;
 /* The kids a coach fixed to a stint, as { id: [rule names] }: Starts the last
    period, and Closers when the game's strategy is closers. `c` is the
    constraints to read (the game's, or a solve's clone). */
-function pinnedRules(g, c) {
+function pinnedRules(g, c, lastPeriodStillAhead = true) {
   const out = {};
-  for (const id of c.lastPeriodFive || []) (out[id] ||= []).push('Starts the last period');
+  for (const id of lastPeriodStillAhead ? c.lastPeriodFive || [] : []) (out[id] ||= []).push('Starts the last period');
   if (g.strategy === 'closers') for (const id of c.closing?.players || []) (out[id] ||= []).push('Closers');
   return out;
 }
@@ -2050,6 +2055,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
 
   const c = clone(g.constraints);
   c.openingFive = [];
+  if (!lastPeriodAhead(g, p, k)) c.lastPeriodFive = [];
   if (strategy !== 'platoon') c.units = [];
   if (strategy !== 'closers') c.closing = null;
   /* #437: `replanRest`'s last resort -- hold nobody to a stint. */

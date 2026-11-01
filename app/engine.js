@@ -296,7 +296,7 @@ function combinations(arr, k) {
    warning and the solver cannot disagree. -1 when no such stint remains (a
    suffix that is all overtime). `periods` absent: the highest regulation period
    among the stints, which is the same index for a full game and for a suffix. */
-function lastPeriodStintIndex(stints, periods) {
+export function lastPeriodStintIndex(stints, periods) {
   // the fallback equals format.periods only for a suffix that reaches the last regulation period (direct callers that omit periods)
   const last = periods ?? Math.max(0, ...stints.filter(s => !isOvertimeStint(s)).map(s => s.period));
   return stints.findIndex(s => s.period === last);
@@ -731,8 +731,10 @@ export function generatePlan(input) {
      {periods, periodMinutes} pair (28.6% of cut points across every format
      `sanitize` accepts; 6 of the 11 cut points in the app's own 4x8 default at
      3-minute stints). `format.periods` keeps being passed -- the REAL period
-     count -- so `lastPeriodFive` still resolves to the first remaining stint of
-     the real last period, which is the right answer for a suffix. Absent, every
+     count -- so a suffix that still holds the last period's first stint pins
+     `lastPeriodFive` there. A suffix that starts inside the last period has
+     no such stint to pin: `resolveRest` clears the rule first, because the
+     five has already started the period. Absent, every
      call is byte-identical to before; that is measured, not assumed. */
   const stints = input.stints || buildStints(format, granularity);
   const byId = new Map(players.map(p => [p.id, p]));
