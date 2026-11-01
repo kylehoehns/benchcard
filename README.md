@@ -58,7 +58,8 @@ afterward.
 
 **Rules that compose with any of them** — Plays at least and Plays at
 most, Together and Apart, One of two on, a Starting five and Starts the last
-period, and a Rest limit.
+period, and two limits on stints in a row: Plays at most N in a row and
+Sits at most N in a row.
 
 **Across the season, not just the afternoon.** Attendance is irregular, and
 that is what actually creates unfairness: one kid on 27 stints and another on

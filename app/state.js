@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
@@ -295,7 +295,6 @@ export function ruleCount(g) {
  * stints (one answer for the rule's sentence and the picker's hint line), and
  * how it reads: "8 min" when every stint is the same length, "up to 9 min"
  * when they are not. */
-const stintsInARow = n => `${n} stint${n === 1 ? '' : 's'}`;
 function runMinutes(g, n) {
   const lens = buildStints({ periods: g.periods, periodMinutes: g.periodMinutes }, { mode: g.granMode, value: g.granValue }).map(s => s.minutes);
   let best = 0;
@@ -312,7 +311,7 @@ function runMinutesText(g, n) {
 /* #441: the picker's lines under the stepper, from the same helpers as the
  * rule's sentence. The second is only said where it is true: with ten
  * players, "Sits at most 1" is two fives trading places, which is Platoon. */
-export const runHint = (g, n) => `${stintsInARow(n)} in a row is ${runMinutesText(g, n)}.`;
+export const runHint = (g, n) => `${plural(n, 'stint')} in a row is ${runMinutesText(g, n)}.`;
 export const benchPlatoonHint = (g, n) => (n === 1 && availIds(g).length === 2 * LINEUP_FLOOR
   ? `With ${availIds(g).length} players, Sits at most 1 in a row is Platoon.` : '');
 
@@ -368,11 +367,11 @@ export function ruleItems(g) {
   }
   if (c.maxConsecutive) {
     items.push({ kind: 'rest', removable: true,
-      text: `Everyone plays at most ${stintsInARow(c.maxConsecutive)} in a row (${runMinutesText(g, c.maxConsecutive)})` });
+      text: `Each player plays at most ${plural(c.maxConsecutive, 'stint')} in a row (${runMinutesText(g, c.maxConsecutive)})` });
   }
   if (c.maxBench) {
     items.push({ kind: 'bench', removable: true,
-      text: `Everyone sits at most ${stintsInARow(c.maxBench)} in a row (${runMinutesText(g, c.maxBench)})` });
+      text: `Each player sits at most ${plural(c.maxBench, 'stint')} in a row (${runMinutesText(g, c.maxBench)})` });
   }
 
   return items;
@@ -475,7 +474,7 @@ export const changedRuleToast = item => `Changed: ${item.text}`;
 export const removedRuleToast = item => `Removed: ${item.text}`;
 
 /* #28 decision 7: whether a draft is complete enough to enable `Add rule`,
- * for each of the eight kinds. `draft` is the one shape the Add-a-rule page
+ * for each of the nine kinds. `draft` is the one shape the Add-a-rule page
  * keeps as module state (`{ kind, id, minutes, a, b, ids, n }`) -- this reads
  * only the fields each kind uses and never assumes the others are absent. */
 export function ruleComplete(kind, draft) {
@@ -1143,9 +1142,9 @@ export function evensOutLine(i) {
   if (!g || i === 0 || !g.useCarryover) return '';
   const earlier = games.slice(0, i);
   const names = earlier.map(e => tipoffLabel(e.tipoff) || e.label || null);
-  const plural = earlier.length > 1;
-  if (names.some(nm => !nm)) return `Evens out the earlier game${plural ? 's' : ''}.`;
-  return `Evens out the ${joinNames(names)} game${plural ? 's' : ''}.`;
+  const several = earlier.length > 1;
+  if (names.some(nm => !nm)) return `Evens out the earlier game${several ? 's' : ''}.`;
+  return `Evens out the ${joinNames(names)} game${several ? 's' : ''}.`;
 }
 
 /* #32 decision 10: the "Same as …?" card on step 1 of Add a game -- its two

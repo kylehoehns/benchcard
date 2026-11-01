@@ -87,6 +87,8 @@ export function stintsBeforeHalftime(stints) {
    Their names are made here, next to `periodLabel`, and nowhere else. */
 const overtimeLabel = n => (n === 1 ? 'OT' : `OT${n}`);
 // whether a stint belongs to an overtime period, by the name overtimeLabel gave it
+/* "3 stints", "1 change": one plural, shared with state.js. */
+export const plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
 export const isOvertimeStint = s => /^OT\d*$/.test(s.periodName);
 
 export function buildStints(format, granularity) {
@@ -534,19 +536,23 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
      by changing more at once, so this line replaces SUBS_EXCEEDED. */
   if (c.maxBench && avail.length > ON_FLOOR) {
     const m = c.maxBench, n = avail.length, S = stints.length;
-    const needOn = lim => Math.max(0, Math.ceil((S - lim) / (lim + 1)));
-    const plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
-    if (S > m && n * needOn(m) > ON_FLOOR * S) {
+    if (benchTotalShort(m, n, S) || benchWindowShort(m, n, S)) {
+      /* the nearest limit a coach can set (the stepper stops at MAX_BENCH_LIMIT) that holds */
       let tryLimit = m + 1;
-      while (tryLimit < S && n * needOn(tryLimit) > ON_FLOOR * S) tryLimit++;
+      while (tryLimit < S && (benchTotalShort(tryLimit, n, S) || benchWindowShort(tryLimit, n, S))) tryLimit++;
+      const advice = tryLimit < S && tryLimit <= MAX_BENCH_LIMIT ? `Try a limit of ${tryLimit}.` : 'Turn off Sits at most N in a row or add players.';
       warn('BENCH_TOO_FEW',
-        `With ${n} players, Sits at most ${m} in a row cannot hold: everyone needs ${plural(needOn(m), 'stint')} on, ${n * needOn(m)} in all, and the game has ${ON_FLOOR * S}. ${tryLimit < S ? `Try a limit of ${tryLimit}.` : 'Turn off Sits at most N in a row or add players.'}`,
+        benchTotalShort(m, n, S)
+          ? `With ${n} players, Sits at most ${m} in a row cannot hold: everyone needs ${plural(benchNeedOn(m, S), 'stint')} on, ${n * benchNeedOn(m, S)} in all, and the game has ${ON_FLOOR * S}. ${advice}`
+          : `With ${n} players, Sits at most ${m} in a row cannot hold: any ${m + 1} stints in a row have ${ON_FLOOR * (m + 1)} spots on the floor, and all ${n} players need one. ${advice}`,
         avail);
     } else if (strategy !== 'platoon' && benchOutrunsChanges(m, maxSubs, n, S)) {
+      /* The window check above keeps this at most MAX_CHANGES (n <= 5(m+1)),
+         so "Allow N changes" is never above the 5 Settings allows. */
       const need = Math.ceil((n - ON_FLOOR) / m);
       const tryLimit = Math.ceil((n - ON_FLOOR) / maxSubs);
       warn('BENCH_SUBS',
-        `With ${n} players and ${plural(maxSubs, 'change')} at a time, Sits at most ${m} in a row needs ${need} changes at some breaks. Allow ${need} changes at a time, or ${tryLimit < S ? `try a limit of ${tryLimit}.` : 'turn off Sits at most N in a row.'}`,
+        `With ${n} players and ${plural(maxSubs, 'change')} at a time, Sits at most ${m} in a row needs ${need} changes at some breaks. Allow ${need} changes at a time, or ${tryLimit < S && tryLimit <= MAX_BENCH_LIMIT ? `try a limit of ${tryLimit}.` : 'turn off Sits at most N in a row.'}`,
         avail);
     }
   }
@@ -944,6 +950,12 @@ function legalWith(id, chosen, ctx, minutes, stintLen, onStreak, held = 0) {
 
 /* The change limit cannot hold beside Sits at most m: the entries over any m
    breaks must cover the n - 5 who sat, and maxSubs a break is too few. */
+const MAX_BENCH_LIMIT = 4;   // the Sits at most stepper's top, rules.js
+const benchNeedOn = (lim, S) => Math.max(0, Math.ceil((S - lim) / (lim + 1)));
+/* The rule cannot hold when the game has too few floor seats for everyone's
+   required stints, or when some m+1 stints in a row have fewer than n seats. */
+const benchTotalShort = (m, n, S) => S > m && n * benchNeedOn(m, S) > ON_FLOOR * S;
+const benchWindowShort = (m, n, S) => S > m && n > ON_FLOOR * (m + 1);
 function benchOutrunsChanges(m, maxSubs, n, S) {
   return S > m && maxSubs > 0 && maxSubs * m < n - ON_FLOOR;
 }
@@ -982,10 +994,9 @@ function longestRun(lineups, id, lead = 0, on = true) {
 function greedy(ctx, forcedByStint, rng) {
   const { stints, avail } = ctx;
   const minutes = {};
-  const sitStreak = {};
+  const sitStreak = {};   // stints sat in a row; with Sits at most, seeded with the run at the cut
   const onStreak = {};
-  const benchRun = {};   // Sits at most: stints sat in a row, seeded with the run at the cut
-  for (const id of avail) { minutes[id] = 0; sitStreak[id] = 0; onStreak[id] = ctx.leadOf(id); benchRun[id] = ctx.sitLeadOf(id); }
+  for (const id of avail) { minutes[id] = 0; sitStreak[id] = ctx.sitLeadOf(id); onStreak[id] = ctx.leadOf(id); }
 
   const ahead = pinnedAhead(forcedByStint, stints);
   const lineups = [];
@@ -1015,8 +1026,10 @@ function greedy(ctx, forcedByStint, rng) {
     // Sits at most: whoever has sat the limit goes in now, if the rules allow
     const atBenchLimit = new Set();
     if (ctx.maxBench) {
-      for (const id of avail) {
-        if (chosen.length >= ON_FLOOR || chosen.includes(id) || benchRun[id] < ctx.maxBench) continue;
+      // more at the limit than seats: longest sit first, so the same late-roster kid is not always left over
+      const due = avail.filter(id => sitStreak[id] >= ctx.maxBench).sort((a, b) => sitStreak[b] - sitStreak[a]);
+      for (const id of due) {
+        if (chosen.length >= ON_FLOOR || chosen.includes(id)) continue;
         if (legalWith(id, chosen, ctx, minutes, len, onStreak, held(id))) { chosen.push(id); atBenchLimit.add(id); }
       }
     }
@@ -1064,8 +1077,8 @@ function greedy(ctx, forcedByStint, rng) {
     const repaired = repairChurn(prev, chosen, scores, stay, ctx, minutes, len, onStreak, held);
 
     for (const id of avail) {
-      if (repaired.includes(id)) { minutes[id] += len; sitStreak[id] = 0; onStreak[id] += 1; benchRun[id] = 0; }
-      else { sitStreak[id] += 1; onStreak[id] = 0; benchRun[id] += 1; }
+      if (repaired.includes(id)) { minutes[id] += len; sitStreak[id] = 0; onStreak[id] += 1; }
+      else { sitStreak[id] += 1; onStreak[id] = 0; }
     }
 
     lineups.push(repaired);
@@ -1766,7 +1779,7 @@ function finish(lineups, ctx, issues, meta) {
         severity: 'warn', code: 'HALF_LATE', playerIds: late,
         message: `${andList(late.map(label))} ${late.length === 1 ? 'does' : 'do'} not get on until the second half. ${
           ctx.avail.length > fits
-            ? `Only ${fits} can play before halftime here — ${ctx.firstHalf} stint${ctx.firstHalf === 1 ? '' : 's'}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`
+            ? `Only ${fits} can play before halftime here — ${plural(ctx.firstHalf, 'stint')}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`
             : `No legal lineup got them on any sooner.`}`,
       });
     }
@@ -1795,7 +1808,7 @@ function finish(lineups, ctx, issues, meta) {
     if (off) {
       issues.push({
         severity: 'warn', code: 'KEEPON_PARTIAL', playerIds: [a, b],
-        message: `${label(a)} and ${label(b)} are both off the floor for ${off} stint${off === 1 ? '' : 's'} — no legal lineup kept one of them on.`,
+        message: `${label(a)} and ${label(b)} are both off the floor for ${plural(off, 'stint')} — no legal lineup kept one of them on.`,
       });
     }
   }

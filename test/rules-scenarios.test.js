@@ -109,12 +109,12 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       assert.equal(await coach.text('#planKindBody .pgrp-f'), '2 stints in a row is 8 min.');
       await coach.tap('Sits at most N in a row');
       await coach.tap('Add rule');
-      assert.ok(await coach.sees('Everyone sits at most 2 stints in a row (8 min)'), 'the rule row is shown');
+      assert.ok(await coach.sees('Each player sits at most 2 stints in a row (8 min)'), 'the rule row is shown');
       await coach.tap('Close');
 
       await coach.comeBackDaysLater(0);
       await openPlan(coach);
-      assert.ok(await coach.sees('Everyone sits at most 2 stints in a row (8 min)'), 'the rule row is shown after a reopen');
+      assert.ok(await coach.sees('Each player sits at most 2 stints in a row (8 min)'), 'the rule row is shown after a reopen');
     });
   });
 
@@ -126,7 +126,7 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       await coach.onGameDayWith({ constraints: { maxConsecutive: 2 } });
       await coach.tap('Hawks, 9:00 AM, planned');
       await openPlan(coach);
-      assert.ok(await coach.sees('Everyone plays at most 2 stints in a row (8 min)'), 'the rule row reads the new name');
+      assert.ok(await coach.sees('Each player plays at most 2 stints in a row (8 min)'), 'the rule row reads the new name');
     });
   });
 

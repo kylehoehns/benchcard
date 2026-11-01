@@ -97,7 +97,7 @@ test('ruleItems: decision 5 sentences, in order, for a game with one of each rul
     'A Six or A Seven is always on the floor',
     'Marcus starts the game',
     'Marcus, Devon and Hana start the last period',
-    'Everyone plays at most 1 stint in a row (4 min)',
+    'Each player plays at most 1 stint in a row (4 min)',
   ]);
 });
 
@@ -119,7 +119,7 @@ test('ruleItems: skips a minimum for a player who is not available', () => {
 test('ruleItems: Plays at most above one reads the plural', () => {
   const g = bareGame({ constraints: { ...S.emptyConstraints(), maxConsecutive: 3 } });
   const items = withTeam([player('p0')], [g], {}, () => S.ruleItems(g));
-  assert.deepEqual(items.map(i => i.text), ['Everyone plays at most 3 stints in a row (12 min)']);
+  assert.deepEqual(items.map(i => i.text), ['Each player plays at most 3 stints in a row (12 min)']);
 });
 
 test('ruleItems: length always equals ruleCount(g)', () => {
@@ -138,7 +138,7 @@ test('ruleItems: length always equals ruleCount(g)', () => {
 });
 
 test('ruleItems: Sits at most reads as a sentence with its minutes, singular at one', () => {
-  for (const [n, text] of [[1, 'Everyone sits at most 1 stint in a row (4 min)'], [2, 'Everyone sits at most 2 stints in a row (8 min)']]) {
+  for (const [n, text] of [[1, 'Each player sits at most 1 stint in a row (4 min)'], [2, 'Each player sits at most 2 stints in a row (8 min)']]) {
     const g = bareGame({ constraints: { ...S.emptyConstraints(), maxBench: n } });
     const items = withTeam([player('p0')], [g], {}, () => S.ruleItems(g));
     assert.deepEqual(items.map(i => [i.kind, i.text, i.removable]), [['bench', text, true]]);
@@ -152,8 +152,8 @@ test('ruleItems: on unequal stints the minutes read "up to" the most any run hol
     constraints: { ...S.emptyConstraints(), maxBench: 2, maxConsecutive: 2 } });
   const texts = withTeam([player('p0')], [g], {}, () => S.ruleItems(g).map(i => i.text));
   assert.deepEqual(texts, [
-    'Everyone plays at most 2 stints in a row (up to 10 min)',
-    'Everyone sits at most 2 stints in a row (up to 10 min)',
+    'Each player plays at most 2 stints in a row (up to 10 min)',
+    'Each player sits at most 2 stints in a row (up to 10 min)',
   ]);
 });
 

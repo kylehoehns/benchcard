@@ -48,9 +48,9 @@ Choices the issue did not make (closest to its intent):
 2. **Labels keep a literal N**: the chips and help `<dt>`s read exactly
    "Plays at most N in a row" and "Sits at most N in a row", as the issue
    writes them. The rule's sentence puts the number in:
-   "Everyone plays at most 2 stints in a row (8 min)" and
-   "Everyone sits at most 2 stints in a row (8 min)" ("1 stint" singular).
-   "Everyone ..." matches the league minimum's sentence.
+   "Each player plays at most 2 stints in a row (8 min)" and
+   "Each player sits at most 2 stints in a row (8 min)" ("1 stint" singular).
+   "Each player ..." (not "Everyone", which paints past its box at 320px and 32px text).
 3. **Minutes** are the most minutes in N stints in a row of the game's own
    stints (`buildStints` of the game's format and stint choice). All stints
    equal: "(8 min)". Unequal: "(up to 9 min)". One helper in `state.js`
@@ -64,15 +64,25 @@ Choices the issue did not make (closest to its intent):
    400 for one stint over. "Like maxConsecutive" and "400 per stint over" agree
    at one stint; the squared form is what the Rest limit does.
 6. **Two up-front lines, said once each, and what each suppresses:**
-   - `BENCH_TOO_FEW` — the rule truly cannot hold: every kid needs at least
-     `X = ceil((S - m) / (m + 1))` stints on (S stints, m the limit), and
-     `n * X > 5 * S`. It suppresses the after-the-fact `BENCH_EXCEEDED`, as
+   - `BENCH_TOO_FEW` — the rule truly cannot hold, for either of two reasons:
+     the game's total (every kid needs at least `X = ceil((S - m) / (m + 1))`
+     stints on, `n * X > 5 * S`), or the window (any `m + 1` stints in a row
+     have `5 * (m + 1)` floor spots and each kid must be on in every such
+     window, so `n > 5 * (m + 1)`, with `S > m`). The total's line is said
+     when both fail; the window's line is "With 16 players, Sits at most 2 in a
+     row cannot hold: any 3 stints in a row have 15 spots on the floor, and all
+     16 players need one. Try a limit of 3." The suggested limit is the nearest
+     one above `m` that clears both checks, and only when it is below S and
+     within the stepper's 1-4; otherwise "Turn off Sits at most N in a row or
+     add players." It suppresses the after-the-fact `BENCH_EXCEEDED`, as
      `CONSEC_TOO_FEW` suppresses `CONSEC_EXCEEDED`.
    - `BENCH_SUBS` — the change limit cannot hold beside it: `S > m`,
      `maxSubs * m < n - 5`. The plan still holds the bench limit by changing
      more at once, so this line replaces `SUBS_EXCEEDED` (said once) and does
      not suppress `BENCH_EXCEEDED`. Skipped for Platoon (alternating fives is
      the strategy, the same exemption `SUBS_EXCEEDED` has).
+   - At-limit order (greedy): when more kids are at the bench limit than there
+     are seats, the longest current sit goes on first.
    - Only one of the two is said: `BENCH_TOO_FEW` wins. Neither is said with
      5 or fewer available (nobody sits).
 7. **Messages name the rule by its name with the number in**, for both rules,
@@ -104,7 +114,9 @@ Tests red on `46bc43d`, green after. "4x8 pp2" = 4 periods of 8, perPeriod 2
    `BENCH_SUBS`, message "With 12 players and 3 changes at a time, Sits at
    most 2 in a row needs 4 changes at some breaks. Allow 4 changes at a time,
    or try a limit of 3." (the suggested limit is `ceil((n - 5) / maxSubs)`,
-   or "turn it off" wording when that is not below S). 10 players,
+   or "turn off Sits at most N in a row" wording in place of the limit when that is not below S or is above the stepper's 4. The window check keeps "Allow N changes" at 5 or fewer, the most Settings allows). 16 players,
+   `maxBench: 2`: `BENCH_TOO_FEW` by the window, with the message in Survey
+   choice 6, and no `BENCH_SUBS` or `BENCH_EXCEEDED`. 10 players,
    `maxBench: 2`, `maxSubs: 3`: no bench warning.
 3. 4x8 pp2, 9, 11 and 12 players, `maxBench: 2`, `maxSubs: 5`, seeds 1-20:
    every kid's total minutes with the rule are within 4 (one stint) of the
@@ -122,9 +134,9 @@ Tests red on `46bc43d`, green after. "4x8 pp2" = 4 periods of 8, perPeriod 2
 6. Coach scenario (`test/coach.js`): the Add a rule page offers chips
    "Plays at most N in a row" and "Sits at most N in a row" and no "Rest
    limit"; adding Sits at most with the stepper at 2 on a 4x8 every-4 game
-   shows the rule row "Everyone sits at most 2 stints in a row (8 min)" and
+   shows the rule row "Each player sits at most 2 stints in a row (8 min)" and
    it survives a reopen. A team saved with `maxConsecutive: 2` loads and its
-   rule row reads "Everyone plays at most 2 stints in a row (8 min)".
+   rule row reads "Each player plays at most 2 stints in a row (8 min)".
 7. Storage: `maxBench` round-trips through `sanitizeTeam` (clamped like
    `maxConsecutive`, 0-20), and a record without it loads as 0.
 8. No "Rest limit" survives in app copy: CONTEXT.md's entry becomes

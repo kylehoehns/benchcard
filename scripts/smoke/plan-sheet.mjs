@@ -484,8 +484,8 @@ export async function planSheetPass(c, origin, rec) {
         'Sam, Riley, Casey, Theo and Nia start the game', k => JSON.stringify(k.openingFive) === '["p6","p7","p8","p9","p10"]'],
       ['Starts the last period', ['Marcus Williams', 'Devon Ellis', 'Ana Reyes', 'Jordan Bell', 'Sam Okafor'], 0,
         'Marcus, Devon, Ana, Jordan and Sam start the last period', k => JSON.stringify(k.lastPeriodFive) === '["p0","p1","p4","p5","p6"]'],
-      ['Plays at most N in a row', [], 0, 'Everyone plays at most 2 stints in a row (8 min)', k => k.maxConsecutive === 2],
-      ['Sits at most N in a row', [], 0, 'Everyone sits at most 2 stints in a row (8 min)', k => k.maxBench === 2],
+      ['Plays at most N in a row', [], 0, 'Each player plays at most 2 stints in a row (8 min)', k => k.maxConsecutive === 2],
+      ['Sits at most N in a row', [], 0, 'Each player sits at most 2 stints in a row (8 min)', k => k.maxBench === 2],
     ];
     for (const [chip, names, more, text, has] of KINDS) {
       await tapPane(c, `document.querySelector('#constraints .add-rule').click()`);

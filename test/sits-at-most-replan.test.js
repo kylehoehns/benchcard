@@ -51,3 +51,28 @@ test('a re-plan from any stint keeps Sits at most across the cut, or names who b
   }
   assert.equal(checked, 8 * 7);
 });
+
+test('a kid who walked in late was not benched before they got here: their leading sit does not force them on', () => {
+  /* p5 is out of the game until stint 4 or 5, so they have "sat" 4 or 5
+     stints in a row by the cut -- but only the stints since they arrived
+     count against Sits at most 2, and those are none. The re-plan may leave
+     them out of its first stint; a run counted from stint 0 would put them on. */
+  for (const arrivedAt of [4, 5]) {
+    for (const seed of [1, 2, 3, 4]) {
+      const game = bareGame({
+        id: 'g0', seed, out: ['p5'], live: { at: 0, overrides: {} },
+        constraints: { ...S.emptyConstraints(), maxBench: LIMIT },
+      });
+      withTeam(players, [game], {}, () => {
+        const g = S.state.day.games[0];
+        S.computeAll();
+        const p = S.plans[0];
+        g.live.at = arrivedAt;
+        S.setAvailable(g, 'p5', true);
+        const r = S.resolveRest(g, p, arrivedAt);
+        assert.equal(r.ok, true, `arrived ${arrivedAt} seed ${seed}: ${r.reason}`);
+        assert.equal(r.overrides[arrivedAt].includes('p5'), false, `arrived ${arrivedAt} seed ${seed}: p5 forced on by a run from before they arrived`);
+      });
+    }
+  }
+});

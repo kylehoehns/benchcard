@@ -8,8 +8,9 @@
 - **Platoon** -- fixed fives alternating wholesale, no optimization.
 
 Plus rules that compose with any of them: min/cap minutes, Together and
-Apart pairs, pinned starting five and Starts the last period rule, and a
-most-stints-in-a-row limit.
+Apart pairs, pinned starting five and Starts the last period rule, and two
+limits on stints in a row: Plays at most N in a row (most stints on the floor
+in a row) and Sits at most N in a row (most stints on the bench in a row).
 
 There is a third pair relation, `keepOnFloor` -- "One of two on".
 It is worth spelling out why it is not one of the other two wearing a minus
@@ -52,7 +53,8 @@ back after it drops the swaps, and not a Plays at most or Apart rule. Only the
 stints that are not pinned are solved; the pinned fives count as minutes
 already played.
 
-Apart, One of two on and Plays at most do not reshape a pinned five. When a
+Apart, One of two on and Plays at most do not reshape a pinned five, and
+neither do the two in-a-row limits, which are not checked inside one. When a
 pinned five breaks one of them, the plan gets a `PIN_BREAKS_RULE` warning
 (#440) naming the kids and the rule, and the five stays. That covers Keep this
 five too. The warning follows the five on the floor, so a hand swap that takes

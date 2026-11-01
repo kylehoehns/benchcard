@@ -247,8 +247,8 @@ its alternative is an assertion, so the rejected options are kept here too.
   five players to close, they close; the fatigue limit is a heuristic and
   yields, with the over-run reported. In practice the local search rests the
   closing group ahead of its window and neither has to give.
-- **A Rest limit that cannot hold is caught before the search (#439).** The
-  Rest limit (`maxConsecutive`) is the most stints anyone may play in a row.
+- **A Plays at most N in a row limit that cannot hold is caught before the search (#439).** The
+  limit (`maxConsecutive`) is the most stints anyone may play in a row.
   Any `r+1` stints in a row must give every player a sit, and those stints
   have only `(r+1) x (n-5)` bench seats, so the limit can hold only when
   `(r+1) x (n-5) >= n`. `analyzeFeasibility` checks that with arithmetic,
@@ -267,8 +267,39 @@ its alternative is an assertion, so the rejected options are kept here too.
   costs more than the same overrun spread out. A break counts as forced when
   more players than the number asked for reached the limit and came off
   there; when every over-number break is forced, `SUBS_EXCEEDED` names the
-  Rest limit instead of blaming minutes.
-- **The Rest limit counts across a re-plan and into overtime (#442).**
+  rule that forced more of them instead of blaming minutes. On a tie that is
+  Plays at most.
+- **The old Rest limit is now Plays at most N in a row (#441).** The name
+  "Rest limit" sounded like a bench limit, and it caps play, so the coach-facing
+  name changed. The stored key stays `maxConsecutive`, so a team saved under
+  the old name loads unchanged.
+- **Sits at most N in a row is the bench twin of that limit (#441).** The
+  stored key is `maxBench`, 1 to 4 stints, default 2. The engine counts a bench
+  run with the same counter it uses for a play run, read the other way round
+  (`runEndingAt` and `longestRun` take an `on` flag), so there is one run
+  counter, not two. The search treats a kid whose bench run has reached the
+  limit as due on: the greedy pass brings them in when the other rules allow,
+  and `repairChurn` does not swap them back out. Each stint past the limit costs
+  `over x over x 400`, the same shape as the play limit, so one long sit costs
+  more than the same overrun split up.
+- **A Sits at most limit that cannot hold is said up front, in one of two lines
+  (#441).** `BENCH_TOO_FEW` means the rule is impossible: each kid needs
+  `ceil((S - m) / (m + 1))` stints on, where S is the stints and m the limit,
+  and five seats a stint cannot cover everyone. It replaces the after-the-fact
+  `BENCH_EXCEEDED`, the way `CONSEC_TOO_FEW` replaces `CONSEC_EXCEEDED`.
+  `BENCH_SUBS` means the rule can hold, but only by changing more players at
+  once than the change limit allows, so the plan changes more and says so. It
+  replaces `SUBS_EXCEEDED` for that case and does not suppress
+  `BENCH_EXCEEDED`. When both would apply, `BENCH_TOO_FEW` is the one said.
+  Platoon gets no `BENCH_SUBS`, as it gets no `SUBS_EXCEEDED`. Neither is said
+  with 5 or fewer available, because nobody sits.
+- **The bench run counts across a re-plan too.** `resolveRest` builds
+  `sitBefore` from the same lead list as `streakBefore`, so a kid who has
+  already sat brings that run into the re-plan. A late arrival counts from the
+  stint they walked in. `sitBefore` is only built when the rule is on, so a plan
+  without it is unchanged. Pinned overtime fives win over the rule, as they do
+  over Plays at most, and the rule is not checked inside one.
+- **Plays at most N in a row counts across a re-plan and into overtime (#442).**
   `resolveRest` hands the engine `streakBefore`: each player's run ending at
   the cut (stints played, from `effectiveStints`, plus pinned overtime fives
   before the first open stint). The engine's `longestRun` / `runEndingAt`
@@ -316,8 +347,8 @@ its alternative is an assertion, so the rejected options are kept here too.
   plan says so instead, with a `PIN_BREAKS_RULE` warning naming the kids and
   the rule ([planning-strategies.md](architecture/planning-strategies.md)).
   Refusing would take away a choice the coach made, and dropping it quietly
-  would hide it. Together and the Rest limit are not checked inside a pinned
-  overtime.
+  would hide it. Together and both in-a-row limits (Plays at most N in a row, Sits at
+  most N in a row) are not checked inside a pinned overtime.
 - **A coach's minute target is a pin, not a preference.** It survives caps and
   tournament carryover; everyone else water-fills the remaining floor-time.
 - **Somebody has to play the odd stint, so it is decided out loud.** When the
