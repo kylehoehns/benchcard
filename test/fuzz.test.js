@@ -318,7 +318,7 @@ test('property: a starting five the coach named is the five that starts', () => 
   assert.ok(checked > 20, `only ${checked} scenarios named a starting five`);
 });
 
-test('property: a Starts the last period five the coach named is on the floor for the last period\'s first stint', () => {
+test('property: the five a Starts the last period rule names is on the floor for the last period\'s first stint', () => {
   let checked = 0;
   for (let n = 1; n <= 400; n++) {
     const sc = scenario(n);

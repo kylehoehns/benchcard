@@ -92,7 +92,7 @@ that do not divide the period) and asserts invariants that must always hold:
 - short names are always unique and printable
 - no issue message prints a raw float such as `3.3333333333333335`
 - a starting five whose caps all cover the opening stint is never blocked by `FORCED_OVER_CAP`
-- in every plan that is not refused, a starting five the coach named is on the floor for the first stint, and a Last-period five is on the floor for the first stint of the last regulation period (platoon exempt)
+- in every plan that is not refused, a starting five the coach named is on the floor for the first stint, and the five named by a Starts the last period rule is on the floor for the first stint of the last regulation period (platoon exempt)
 
 The fuzzer immediately found a real one: a 10-minute period split three ways
 gives 3.33-minute stints, and minutes were printing as

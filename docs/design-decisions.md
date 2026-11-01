@@ -269,7 +269,7 @@ its alternative is an assertion, so the rejected options are kept here too.
   there; when every over-number break is forced, `SUBS_EXCEEDED` names the
   Rest limit instead of blaming minutes.
 - **A pin is held over a cap, or refused up front, never dropped quietly
-  (#436).** A kid named in the starting five, the Last-period five or the
+  (#436).** A kid named in the starting five, in a Starts the last period rule or the
   closing group is on the floor for those stints. The greedy pass keeps back
   the minutes a kid is pinned to from their cap before it spends that cap
   elsewhere. The local search charges 1000 a minute for each pinned minute a

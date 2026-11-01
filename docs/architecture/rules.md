@@ -4,7 +4,7 @@ A grid of ten min/cap boxes is mostly waste — a coach sets a limit on one or
 two players a game. Nothing shows until a rule exists, each rule reads back as
 a plain sentence chip ("Kade capped at 12 min", "Jack / Jackson apart"), and
 adding one starts from a row of rule types rather than a form. The starting
-five and last-period pickers reuse the same tap-a-player control as closers.
+five and Starts the last period pickers reuse the same tap-a-player control as closers.
 
 **Rules are also editable in place (#148).** Tapping a rule's chip opens its own
 page with the same controls Add a rule shows (without the kind choices, because

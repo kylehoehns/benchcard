@@ -132,8 +132,12 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       const five = ['Hana Kim', 'Eli Tran', 'Ana Reyes', 'Sam Okafor', 'Riley Novak'];
       await openHawks(coach);
       await openPlan(coach);
-      await addRule(coach, 'Starts the last period', five);
+      await coach.tap('Add a rule');
+      assert.ok(await coach.sees('Starts the last period'), 'the kind chips are on screen');
       assert.ok(!(await coach.sees('Last-period five')), 'the old name is gone');
+      await coach.tap('Starts the last period');
+      for (const p of five) await coach.tap(p);
+      await coach.tap('Add rule');
       await coach.tap('Close');
 
       await coach.comeBackDaysLater(0);
