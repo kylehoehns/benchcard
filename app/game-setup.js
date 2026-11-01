@@ -352,18 +352,13 @@ function paintFormatBody() {
 // aliased here rather than re-derived.
 const capitalize = colorName;
 
-/* #36 Constraints/Reuse: `GRAN_CHOICES` through this one builder, so the
-   first-run flow's step 2 gets the same rows the sub-interval sheet does
-   rather than a third hand-written list. `get`/`onPick` are what let a draft
-   object (`fr`, onboarding.js) share this with the sheet's own `game()` --
-   the write itself, and what happens after it, stay the caller's. */
-export function paintGranRows(box, get, onPick) {
-  if (!box) return;
+/* One single-choice group: `.prow` + `aria-pressed` + `checkMark()`, for
+   `rows` of `[label, on, choose]`. A tap runs `choose`, has the caller
+   `repaint` the group, and puts focus back on the row at the same position.
+   First run's Game day rows (#431, onboarding.js) use it too. */
+export function paintChoiceRows(box, rows, repaint) {
   box.textContent = '';
-  GRAN_CHOICES.forEach((c, idx) => {
-    const g = get();
-    const on_ = g.granMode === c.mode && (c.mode === 'breaksOnly' || g.granValue === c.value);
-    const label = capitalize(c.phrase);
+  rows.forEach(([label, on_, choose], idx) => {
     // #143: `.prow`, the same row Format/Plan/Settings/Team use.
     const b = el('button', 'prow');
     b.type = 'button';
@@ -374,15 +369,30 @@ export function paintGranRows(box, get, onPick) {
     // mark) instead of a filled `.sel` bar; unchosen rows carry no mark.
     if (on_) b.append(checkMark());
     b.onclick = () => {
-      onPick(c);
+      choose();
       // The checkmark moves to a different row -- unlike a Who's here row or
       // a stepper, which update themselves, this repaints the whole list --
       // then puts focus back on the row that used to be at this position.
-      paintGranRows(box, get, onPick);
+      repaint();
       box.children[idx]?.focus({ preventScroll: true });
     };
     box.append(b);
   });
+}
+
+/* #36 Constraints/Reuse: `GRAN_CHOICES` through this one builder, so the
+   first-run flow's step 2 gets the same rows the sub-interval sheet does
+   rather than a third hand-written list. `get`/`onPick` are what let a draft
+   object (`fr`, onboarding.js) share this with the sheet's own `game()` --
+   the write itself, and what happens after it, stay the caller's. */
+export function paintGranRows(box, get, onPick) {
+  if (!box) return;
+  const g = get();
+  paintChoiceRows(box, GRAN_CHOICES.map(c => [
+    capitalize(c.phrase),
+    g.granMode === c.mode && (c.mode === 'breaksOnly' || g.granValue === c.value),
+    () => onPick(c),
+  ]), () => paintGranRows(box, get, onPick));
 }
 
 function paintIntervalBody() {

@@ -18,14 +18,14 @@
 
 import { generatePlan } from './engine.js';
 import { parseRoster, sampleRoster, sampleRosterText, callNames, dropRepeat, repeatNotice, rosterPreview, SAMPLE_TEAM_NAME } from './roster.js';
-import { $, on, set, el, uid, repeatRow, checkMark } from './dom.js';
-import { seasonDate } from './storage.js';
+import { $, on, set, el, uid, repeatRow } from './dom.js';
+import { seasonDate, validDayDate } from './storage.js';
 import { state, editHappened, markFirstRunPending, newTeam, team, HUES, joinNames } from './state.js';
 import { track, bucketRoster } from './analytics.js';
 import { startTour } from './tour.js';
 import { flash } from './toast.js';
 import { closeSheet, guardClose, rememberTrigger, showAskRow, paintFlowShell, flowStepBody, flowField } from './trap.js';
-import { stepperRow, paintGranRows, PERIODS_LO, PERIODS_HI, MINUTES_LO, MINUTES_HI } from './game-setup.js';
+import { stepperRow, paintGranRows, paintChoiceRows, PERIODS_LO, PERIODS_HI, MINUTES_LO, MINUTES_HI } from './game-setup.js';
 import { buildNextCols, BENCH_IDLE_LABEL } from './gamemode.js';
 import { cardPreviewInto, fitPreview } from './card.js';
 
@@ -392,7 +392,8 @@ export function startTeam(players, teamName, draft, today = new Date()) {
   state.teamName = teamName;
   // #252: the placeholder day may predate today; the game set up here is today's
   // #431: step 2 asks which day; `?try=` carries no date, so it stays today
-  state.day.date = draft.gameDate || seasonDate(today);
+  const todayIso = seasonDate(today);
+  state.day.date = draft.gameDate >= todayIso ? draft.gameDate : todayIso;
   const g = state.day.games[0];
   // 40, not 20: `storage.js` sanitizes periodMinutes to 40, and a lower cap
   // here meant a record with a 24-minute half loaded fine but could never be
@@ -715,26 +716,15 @@ function paintDayRows(box, pick) {
     dayRow('Tomorrow', tomorrow),
     ['Pick a date', !!fr.pickDate, () => { fr.pickDate = true; }],
   ];
-  box.textContent = '';
-  rows.forEach(([label, on_, choose], idx) => {
-    const b = el('button', 'prow');
-    b.type = 'button';
-    b.setAttribute('aria-pressed', String(on_));
-    b.setAttribute('aria-label', label);
-    b.append(el('span', 'prow-t', label));
-    if (on_) b.append(checkMark());
-    b.onclick = () => {
-      choose();
-      paintDayRows(box, pick);
-      box.children[idx]?.focus({ preventScroll: true });
-    };
-    box.append(b);
-  });
+  paintChoiceRows(box, rows, () => paintDayRows(box, pick));
   pick.textContent = '';
   if (!fr.pickDate) return;
   const [field, input] = flowField('input', 'Date', fr.gameDate, null,
-    v => { if (v >= seasonDate()) fr.gameDate = v; }, 'date');
+    v => { if (validDayDate(v) && v >= today) fr.gameDate = v; }, 'date');
   input.min = today;
+  // typing past `min` is not stopped by the picker: when the coach leaves the
+  // field, show the day the card will carry, not what was typed
+  input.onblur = () => { input.value = fr.gameDate; };
   pick.append(field);
 }
 

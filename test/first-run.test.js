@@ -92,6 +92,21 @@ test('startTeam dates the day it fills to today, so the new game is not filed on
   });
 });
 
+test('startTeam uses the draft day only when it is today or later (a flow left open past midnight)', () => {
+  const run = gameDate => {
+    let date;
+    withDays([player('p0')], [{ name: '', date: '2026-09-29', games: [bareGame()] }], {}, () => {
+      const draft = { ...newDraft(), teamName: 'Sample team', gameDate };
+      startTeam([{ name: 'Ann', number: '4' }], draft.teamName, draft, new Date(2026, 8, 30));
+      date = S.state.teams[0].days[0].date;
+    });
+    return date;
+  };
+  assert.equal(run('2026-09-29'), '2026-09-30', 'yesterday becomes today');
+  assert.equal(run('2026-09-30'), '2026-09-30');
+  assert.equal(run('2026-10-02'), '2026-10-02');
+});
+
 /* Proof item 3: the shell markup. A guard under /new-guard -- it reads
  * index.html directly, because these are facts about bytes, not behavior;
  * nothing runs them. */

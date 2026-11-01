@@ -33,6 +33,13 @@ prints that day's short weekday. Choices the ticket left open, made here:
   Add a game's step 1 uses) under the rows, prefilled with the date currently
   chosen, `min` today. Clearing the field keeps the last valid date. The field
   is shown only while Pick a date is chosen.
+- **After review:** a typed past or malformed date is not accepted
+  (`validDayDate` and on or after today), and when the coach leaves the field
+  it shows the accepted day again, so the field never disagrees with the card.
+  `startTeam` uses the draft's date only if it is today or later, so a flow
+  left open past midnight cannot date the game yesterday. The `.prow` row loop
+  moved out of `paintGranRows` into `paintChoiceRows` (`game-setup.js`), which
+  both groups use.
 - **`?try=` keeps today.** The sample landing never asks, so `startTeam` falls
   back to today when the draft carries no date, exactly as today.
 

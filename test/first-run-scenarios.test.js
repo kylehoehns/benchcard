@@ -150,6 +150,17 @@ describe('a coach opens Benchcard for the first time', { skip }, () => {
       assert.equal(await coach.cardCorner(), 'Tue');
     });
 
+    test('a past day typed in the field is put back to the accepted day when the coach moves on', async () => {
+      await coach.onFreshDevice();
+      await onFormatStep();
+      await coach.tap('Pick a date');
+      await coach.setDate('Date', '2026-09-01');
+      await coach.tap('More periods');
+      assert.equal(await coach.dateValue('Date'), '2026-09-12');
+      await coach.tap('Next');
+      assert.equal(await coach.cardCorner(), 'Sat');
+    });
+
     test('tapping a day keeps focus on the row tapped', async () => {
       await coach.onFreshDevice();
       await onFormatStep();
