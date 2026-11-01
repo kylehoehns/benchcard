@@ -13,9 +13,9 @@
  * a 20em container, which only 390/16 reaches). Rule 2a (/new-guard): zero
  * rows, zero names, no extreme row, a sheet that never opened -- each fails
  * rather than measuring nothing. */
-import { evalIn, SETTLE } from './dom.mjs';
+import { evalIn, SETTLE, SOLID_FALLBACK_MEDIA, alpha } from './dom.mjs';
 import { TOUCH_MIN } from './sizes.mjs';
-import { land } from './page-state.mjs';
+import { land, setMedia } from './page-state.mjs';
 import { REDUCED_MOTION } from './clip-sweep.mjs';
 import { RICH, TODAY_LANDING, GAMES_VIEW_READY } from './fixtures.mjs';
 import { firstLine } from './verdict.mjs';
@@ -155,6 +155,9 @@ async function sheetAt(c, origin, rec, cell, where) {
     `${at}: the title spans x ${Math.round(t.left)}-${Math.round(t.right)}, outside the sheet's ${Math.round(d.sheet.left)}-${Math.round(d.sheet.right)}`);
 }
 
+// #501: the team name is a plain large title, so #teamBtn paints no chip fill.
+const TEAM_FILL_READ = `(() => { const b = getComputedStyle(document.getElementById('teamBtn'));
+  return { bg: b.backgroundColor, bf: b.backdropFilter || b.webkitBackdropFilter }; })()`;
 const TODAY_PROBE = `JSON.stringify((() => {
   const subs = [...document.querySelectorAll('.today-entry-sub')].map(s => {
     const row = s.closest('.today-entry'), rb = row.getBoundingClientRect(), sb = s.getBoundingClientRect();
@@ -170,7 +173,8 @@ const TODAY_PROBE = `JSON.stringify((() => {
   const headlinePx = parseFloat(getComputedStyle(probe).fontSize); probe.remove();
   return { subs, label: l.textContent, labelRight: lb.right, labelLeft: lb.left, lines: Math.round(lb.height / lh),
     h1Px: parseFloat(getComputedStyle(document.querySelector('.today-h1')).fontSize), headlinePx, wordCut: l.scrollWidth > l.clientWidth + 1,
-    vw: document.documentElement.clientWidth };
+    vw: document.documentElement.clientWidth, em: parseFloat(cs.fontSize),
+    chevRight: document.querySelector('#teamBtn .teambtn-chev').getBoundingClientRect().right, fill: ${TEAM_FILL_READ} };
 })())`;
 
 async function todayAt(c, origin, rec, cell, where) {
@@ -189,6 +193,18 @@ async function todayAt(c, origin, rec, cell, where) {
   const at = `#teamBtnLabel at ${where}`;
   if (!rec.check(d.label === TEAM, `${at}: reads "${d.label}", want "${TEAM}" -- nothing was measured`)) return;
   rec.check(d.labelRight <= d.vw + 0.5 && d.labelLeft >= -0.5, `${at}: spans x ${Math.round(d.labelLeft)}-${Math.round(d.labelRight)} in a ${d.vw}px viewport`);
+  // #501: no container, so the viewport is the edge the name keeps 0.5em from.
+  rec.check(d.labelLeft >= 0.5 * d.em - 0.5 && d.chevRight <= d.vw - 0.5 * d.em + 0.5,
+    `${at}: the name starts at x ${Math.round(d.labelLeft)} and the chevron ends at x ${Math.round(d.chevRight)} in a ${d.vw}px viewport, want 0.5em (${d.em / 2}px) clear of both edges`);
+  const noFill = (f, media) => rec.check(alpha(f.bg) === 0 && (!f.bf || f.bf === 'none'),
+    `#teamBtn at ${where}${media}: paints ${f.bg} with backdrop-filter ${f.bf}, want no fill (a plain large title, not a chip)`);
+  noFill(d.fill, '');
+  for (const [feature, value] of SOLID_FALLBACK_MEDIA) {
+    await setMedia(c, [{ name: feature, value }]);
+    await evalIn(c, SETTLE);
+    noFill(JSON.parse(await evalIn(c, `JSON.stringify(${TEAM_FILL_READ})`)), ` under ${feature}: ${value}`);
+  }
+  await setMedia(c, []);
   // At large text the heading steps down to --fs-headline and the name wraps to
   // at most two lines, each word whole on its line (no word is wider than the
   // label). At 16px the one-line ellipsis is the deliberate design, so only the
