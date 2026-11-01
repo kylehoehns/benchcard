@@ -245,9 +245,9 @@ A rule that fixes the five on the floor at tip-off.
 _Avoid_: opening five, starters
 _In code_: `openingFive`
 
-**Last-period five**:
-A rule that fixes the five on the floor at the start of the last period.
-_Avoid_: finishing five, closing five
+**Starts the last period**:
+A rule that fixes the five on the floor at the start of the last period (its first stint only; overtime is not the last period). To keep a group on at the end, use Closers.
+_Avoid_: last-period five, finishing five, closing five
 _In code_: `lastPeriodFive`
 
 **Rest limit**:

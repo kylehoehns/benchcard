@@ -42,7 +42,7 @@ test('ruleComplete: together, apart and one-of-two-on need two different players
   }
 });
 
-test('ruleComplete: starting five and last-period five need 1-5 players', () => {
+test('ruleComplete: starting five and Starts the last period need 1-5 players', () => {
   for (const kind of ['starts', 'lastq']) {
     assert.equal(S.ruleComplete(kind, { ids: [] }), false, `${kind}: none chosen`);
     assert.equal(S.ruleComplete(kind, {}), false, `${kind}: empty draft`);
@@ -163,7 +163,7 @@ test('removeRule: clears the starting five', () => {
   assert.deepEqual(c.openingFive, []);
 });
 
-test('removeRule: clears the last-period five and leaves the other rules', () => {
+test('removeRule: clears the Starts the last period rule and leaves the other rules', () => {
   const c = { ...S.emptyConstraints(), openingFive: ['p0', 'p1'], lastPeriodFive: ['p2', 'p3'],
     maxConsecutive: 3, pairs: [['p0', 'p1']] };
   S.removeRule(c, { kind: 'lastq' });

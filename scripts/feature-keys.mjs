@@ -127,7 +127,7 @@ export const FEATURES = [
    * for the glossary's own two rules, named side by side ("Minimum and Cap").
    * #136 moved `#help` onto the Add a rule labels (`KINDS` in rules.js):
    * its `<dt>`s read "Plays at least / Plays at most" and "Starting five /
-   * Last-period five", so those two keys are per-surface the same way
+   * Starts the last period", so those two keys are per-surface the same way
    * `shape:even` is. #98 brought the three pair rules' names into line
    * earlier: `#help`'s own `<dt>`s read Together / Apart / One of two on,
    * the same words about.html and advanced.html already used, so those
@@ -136,7 +136,7 @@ export const FEATURES = [
     term: { '#help': ['plays at least'], 'about.html': ['minimum'], 'advanced.html': ['minimum'] } },
   { key: 'rule:starts', src: 'rules.js KINDS', term: ['starting five'], text: ['starting five'] },
   { key: 'rule:lastq', src: 'rules.js KINDS',
-    term: { '#help': ['last-period five'], 'about.html': ['last period'], 'advanced.html': ['last period'] } },
+    term: { '#help': ['starts the last period'], 'about.html': ['starts the last period'], 'advanced.html': ['starts the last period'] } },
   { key: 'rule:together', src: 'rules.js KINDS', term: ['together'] },
   { key: 'rule:apart', src: 'rules.js KINDS', term: ['apart'] },
   { key: 'rule:keepon', src: 'rules.js KINDS', term: ['one of two on'] },

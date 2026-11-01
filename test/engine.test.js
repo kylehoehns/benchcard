@@ -1218,7 +1218,7 @@ test('378: a 5-minute cap on a starter fires FORCED_OVER_CAP naming the 6-minute
   assert.match(hit.message, /6-minute stint/);
 });
 
-test('378: the last-period five is checked against that period\'s first stint (periods passed or inferred)', () => {
+test('378: the Starts the last period rule is checked against that period\'s first stint (periods passed or inferred)', () => {
   const stints = buildStints(HALVES_20, EVERY_6);
   const run = (cap, extra) => analyzeFeasibility({
     players: roster(8), availableIds: ids(8), stints, ...extra,
@@ -1364,7 +1364,7 @@ const pinPlan = (n, seed, constraints, extra = {}) => generatePlan({
   players: roster(n), availableIds: ids(n), format: QUARTERS, granularity: EVERY_4, seed, constraints, ...extra,
 });
 
-test('436: a Last-period five kid with a cap of 4 or 8 is on Q4\'s first stint in every plan', () => {
+test('436: a Starts the last period kid with a cap of 4 or 8 is on Q4\'s first stint in every plan', () => {
   for (const cap of [4, 8]) for (const n of [8, 10, 12]) for (let seed = 1; seed <= 10; seed++) {
     const p = pinPlan(n, seed, { lastPeriodFive: FIVE, maxMinutes: { p0: cap } });
     assert.ok(p.ok, `cap ${cap}, ${n} players, seed ${seed}: refused`);
@@ -1422,7 +1422,7 @@ test('436: a one-period game with two different fives pinned to its one stint is
   assert.match(hit.message, /only 5 fit/);
 });
 
-test('436: closers that overlap the last-period five\'s stint are refused when together they are over five', () => {
+test('436: closers that overlap the Starts the last period stint are refused when together they are over five', () => {
   const p = pinPlan(10, 1, { lastPeriodFive: FIVE, closing: { stints: 2, players: ['p5', 'p6', 'p7', 'p8', 'p9'] } },
     { strategy: 'closers' });
   assert.equal(p.ok, false);
@@ -1453,7 +1453,7 @@ test('436: a cap exactly equal to a fractional pinned sum is not refused', () =>
 });
 
 test('436: the PINS_OVER_CAP message names only groups that pin the kid to a stint', () => {
-  // all-overtime suffix: no regulation stint remains, so the last-period five pins nothing
+  // all-overtime suffix: no regulation stint remains, so the Starts the last period rule pins nothing
   const stints = buildStints({ periods: 2, periodMinutes: 4, overtime: [4] }, EVERY_4).slice(2);
   const issues = analyzeFeasibility({ players: roster(8), availableIds: ids(8), stints, strategy: 'closers',
     constraints: { lastPeriodFive: FIVE, closing: { stints: 1, players: FIVE }, maxMinutes: { p0: 2 } }, periods: 2 });

@@ -126,5 +126,27 @@ describe('a coach sets rules for a game', { skip, concurrency: true }, () => {
       assert.deepEqual([...floors[0]].sort(), [...opening].sort());
       assert.deepEqual([...floors.at(-1)].sort(), [...closers].sort());
     });
+
+    test('a rule that starts the last period is kept, and the last period opens with those five', async () => {
+      const { coach } = own;
+      const five = ['Hana Kim', 'Eli Tran', 'Ana Reyes', 'Sam Okafor', 'Riley Novak'];
+      await openHawks(coach);
+      await openPlan(coach);
+      await addRule(coach, 'Starts the last period', five);
+      assert.ok(!(await coach.sees('Last-period five')), 'the old name is gone');
+      await coach.tap('Close');
+
+      await coach.comeBackDaysLater(0);
+      await openPlan(coach);
+      const row = (await coach.controls()).find(n => /start the last period$/.test(n));
+      assert.ok(row, 'the rule row is shown after a reopen');
+      for (const p of five) assert.ok(row.includes(p.split(' ')[0]), `${p} is in "${row}"`);
+      await coach.tap('Close');
+
+      assert.equal(await coach.planStints(), 8);
+      await coach.tap('Start game');
+      const floors = await coach.floorEachStint();
+      assert.deepEqual([...floors[6]].sort(), [...five].sort());
+    });
   });
 });

@@ -63,7 +63,7 @@ test('ruleCount is 0 with no rules and no league minimum', () => {
   });
 });
 
-test('ruleCount counts a starting five or a last-period five as 1, not its length', () => {
+test('ruleCount counts a starting five or a Starts the last period rule as 1, not its length', () => {
   withTeam(players(5), { minMinutes: 0 }, () => {
     const g = { out: [], constraints: {
       ...S.emptyConstraints(), openingFive: ['p0', 'p1', 'p2', 'p3', 'p4'],

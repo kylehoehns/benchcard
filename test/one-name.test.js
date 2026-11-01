@@ -21,7 +21,7 @@ import { lacks } from './prose.js';
    "substitution"). */
 const TERMS = [
   'Break', 'Change', 'Filing', 'Filed game', 'Blocked plan',
-  'Comes on / comes off', 'Starting five', 'Card name', 'Lock', 'Odd minutes',
+  'Comes on / comes off', 'Starting five', 'Starts the last period', 'Card name', 'Lock', 'Odd minutes',
   'Swap', 'Half sheet', 'Remove', 'By hand',
 ];
 
@@ -35,6 +35,7 @@ const DROPS = new Set([
   'infeasible',   // Blocked plan _Avoid_: a code value, state.js -- `plan.reason === 'infeasible'`
   'pin',          // Lock _Avoid_: a class name, timeline.js's `.pin` row state
   'minutes',      // By hand _Avoid_: the ordinary word, everywhere minutes are just minutes
+  'closing five', // Starts the last period _Avoid_: engine.js names the Closers group so in FORCED_GROUP_KEEPON, which is not this rule
   'just on',      // Comes on / comes off _Avoid_: the bench-mode tag stays (Decided with the maintainer)
 ]);
 

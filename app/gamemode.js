@@ -1058,7 +1058,7 @@ const SIT_RULES = {
   MIN_ABOVE_CAP: 'a Plays at least minimum is set above its own Plays at most maximum',
   MINS_UNSATISFIABLE: 'the Plays at least minimums add up to more than the rest of the game',
   CAPS_UNSATISFIABLE: 'the Plays at most maximums do not cover the rest of the game',
-  FORCED_OVER_CAP: 'a Plays at most maximum will not cover the Last-period five',
+  FORCED_OVER_CAP: 'a Plays at most maximum will not cover the Starts the last period rule',
   PINS_OVER_CAP: 'a Plays at most maximum will not cover the stints a player is fixed to',
   PAIR_AVOID_CONFLICT: 'a pair is set to both Together and Apart',
   AVOID_IMPOSSIBLE: 'the Apart rules cannot all be met with who is left',

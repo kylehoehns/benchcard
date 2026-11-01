@@ -7,8 +7,8 @@ import { sitRulesMap } from './sit-rules-map.js';
 
 /* #136: bench mode, the solver's warnings and the tour used rule names from
    before the redesign. `KINDS` in rules.js (`Plays at least`, `Plays at
-   most`, `Apart`, `Together`, `One of two on`, `Starting five`, `Last-period
-   five`, `Rest limit`) is the one name for each rule now; the words below are
+   most`, `Apart`, `Together`, `One of two on`, `Starting five`, `Starts the
+   last period`, `Rest limit`) is the one name for each rule now; the words below are
    the ones the old naming left behind, decided in
    docs/specs/136-rule-words.md ("What would settle it" item 1).
 
@@ -194,4 +194,13 @@ test('each rule the help sheet names is named by its KINDS label', () => {
   assert.ok(dts.length >= 4, `only ${dts.length} <dt>s in the help sheet's Rules section`);
   const stray = dts.flatMap((dt) => dt.split(' / ')).filter((name) => !labels.has(name));
   assert.deepEqual(stray, [], `help sheet names a rule no KINDS entry has: ${stray.join(', ')}`);
+});
+
+test('the help for Starts the last period points to Closers and says overtime is not the last period', () => {
+  const label = KIND_LABEL.get('lastq');
+  const dd = new RegExp(`<dt>[^<]*${label}[^<]*</dt>\\s*<dd>([^<]+)</dd>`).exec(helpRules);
+  assert.ok(dd, `no help <dd> follows the "${label}" <dt>`);
+  const text = dd[1].replace(/\s+/g, ' ');
+  assert.match(text, /\bClosers\b/);
+  assert.match(text, /Overtime is not the last period/);
 });

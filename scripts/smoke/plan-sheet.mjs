@@ -372,7 +372,7 @@ export async function planSheetPass(c, origin, rec) {
   rec.check(addPage.addLabel === 'Add rule', `the commit button reads "${addPage.addLabel}", want "Add rule"`);
   rec.check(addPage.addDisabled === true, '"Add rule" is not disabled with nothing picked yet');
   const WANT_KINDS = ['Plays at least', 'Plays at most', 'Apart', 'Together',
-    'One of two on', 'Starting five', 'Last-period five', 'Rest limit'];
+    'One of two on', 'Starting five', 'Starts the last period', 'Rest limit'];
   rec.check(JSON.stringify(addPage.kinds) === JSON.stringify(WANT_KINDS),
     `the kind chips read ${JSON.stringify(addPage.kinds)}, want ${JSON.stringify(WANT_KINDS)}`);
   rec.check(addPage.pressed[0] === 'true' && addPage.pressed.slice(1).every(p => p === 'false'),
@@ -482,7 +482,7 @@ export async function planSheetPass(c, origin, rec) {
       ['One of two on', ['Ana Reyes', 'Jordan Bell'], 0, 'Ana or Jordan is always on the floor', k => JSON.stringify(k.keepOnFloor) === '[["p4","p5"]]'],
       ['Starting five', ['Sam Okafor', 'Riley Novak', 'Casey Lindqvist', 'Theo Alvarez', 'Nia Brooks'], 0,
         'Sam, Riley, Casey, Theo and Nia start the game', k => JSON.stringify(k.openingFive) === '["p6","p7","p8","p9","p10"]'],
-      ['Last-period five', ['Marcus Williams', 'Devon Ellis', 'Ana Reyes', 'Jordan Bell', 'Sam Okafor'], 0,
+      ['Starts the last period', ['Marcus Williams', 'Devon Ellis', 'Ana Reyes', 'Jordan Bell', 'Sam Okafor'], 0,
         'Marcus, Devon, Ana, Jordan and Sam start the last period', k => JSON.stringify(k.lastPeriodFive) === '["p0","p1","p4","p5","p6"]'],
       ['Rest limit', [], 0, 'Nobody plays more than 2 stints in a row', k => k.maxConsecutive === 2],
     ];
