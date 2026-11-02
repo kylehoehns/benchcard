@@ -884,7 +884,14 @@ export function generatePlan(input) {
   // which is the whole meaning of the lock.
   const lockedSet = new Set(c.lockedTargets || []);
 
-  const ctx = { stints, avail, avoidSet, capOf, minOf, credit, gameMinutes, maxSubs, minSubs, lockedSet,
+  /* #449: `input.start` is a previous plan's fives, one row per stint, for a
+     re-solve after a rule edit to begin from (`greedy` tries them first, and
+     still through `legalWith`, so a new rule repairs a row). Ignored unless it
+     has one row per stint; absent, every call is byte-identical to before. */
+  const start = Array.isArray(input.start) && input.start.length === stints.length
+    ? input.start.map(row => (Array.isArray(row) ? row.filter(id => availSet.has(id)) : []))
+    : null;
+  const ctx = { stints, avail, avoidSet, start, capOf, minOf, credit, gameMinutes, maxSubs, minSubs, lockedSet,
                 pairs: c.pairs, hardPairs: c.hardPairs, keepOn: c.keepOnFloor, tierOf,
                 targetOf: id => (c.targetMinutes[id] != null ? c.targetMinutes[id] : null),
                 maxConsecutive: c.maxConsecutive,
@@ -930,11 +937,27 @@ export function generatePlan(input) {
      * lopsided eleven it reaches the same stint strengths as a full budget and
      * costs a third of a solve rather than a whole one. */
     const shaped = ctx.balanceTargets;
+    /* #449: the previous plan's fives are a candidate too. If they cost no more
+       than what the search found -- a rule that changes nothing, say -- they are
+       the answer, so an edit that needs no seat moved moves none. */
+    // (`cost` prices a broken minimum, cap or pin but not an Apart pair: the
+    // search never makes one, so a start that has one is not a candidate)
+    const startLegal = () => ctx.start.every(row => row.length === ON_FLOOR
+      && row.every((a, i) => row.slice(i + 1).every(b => !avoidSet.has(pairKey(a, b)))));
+    // `neutral`: the balance pass moves no minutes, so the start must carry the same totals as `lu`
+    const keepStart = (lu, neutral = false) => {
+      if (!ctx.start || !startLegal() || cost(ctx.start, ctx) > cost(lu, ctx) + 1e-9) return lu;
+      if (neutral) {
+        const a = minutesOf(ctx.start, ctx), b = minutesOf(lu, ctx);
+        if (ctx.avail.some(id => Math.abs(a[id] - b[id]) > 1e-9)) return lu;
+      }
+      return ctx.start.map(row => row.slice());
+    };
     const solve = (shapeSits) => {
       const rng = makeRng(seed);
       ctx.shapeSits = shapeSits;
       ctx.balanceTargets = null;
-      const lu = localSearch(greedy(ctx, forcedByStint, rng), ctx, forcedByStint, rng, iterations);
+      const lu = keepStart(localSearch(greedy(ctx, forcedByStint, rng), ctx, forcedByStint, rng, iterations));
       return { lu, rng, shapeSits };
     };
     /* Long sits cost more (`LONG_SIT`), but the coach's numbers win: a plan
@@ -977,7 +1000,7 @@ export function generatePlan(input) {
     if (shaped) {
       ctx.balanceTargets = shaped;
       ctx.neutralOnly = true;
-      const balanced = localSearch(lineups, ctx, forcedByStint, kept.rng, iterations / 2);
+      const balanced = keepStart(localSearch(lineups, ctx, forcedByStint, kept.rng, iterations / 2), true);
       ctx.neutralOnly = false;
       /* the pass trades changes for strength; on a long-sit plan it may not
          start breaking a rule the plan kept (it may still trade one for
@@ -1171,6 +1194,11 @@ function greedy(ctx, forcedByStint, rng) {
     const pool = avail
       .filter(id => !chosen.includes(id))
       .sort((a, b) => scores[b] - scores[a]);
+    // #449: the previous plan's five for this stint, tried first (stable: by score within each half)
+    if (ctx.start) {
+      const wanted = new Set(ctx.start[s]);
+      pool.sort((a, b) => wanted.has(b) - wanted.has(a));
+    }
 
     for (const id of pool) {
       if (chosen.length >= ON_FLOOR) break;
@@ -1452,6 +1480,8 @@ function balanceTargets(ctx, kind) {
    at `maxSubs` changes a break the bench queue is that long whether we like it
    or not, so charging inside it only pushes plans over the limit. */
 const LONG_SIT = 60;
+/* #449: under every rule term (the smallest is 20), so it only breaks ties; 1 left a no-op cap edit moving seats on 4 of 10 seeds (spec 489). */
+const START_WEIGHT = 5;
 
 /* How many come on at break i: ids in lineups[i] not in lineups[i - 1]. */
 function changesAt(lineups, i) {
@@ -1567,6 +1597,15 @@ function cost(lineups, ctx) {
         if (!lu.includes(a) && !lu.includes(b)) off += ctx.stints[i].minutes;
       });
       c += off * 1000;
+    }
+  }
+
+  /* #449: a seat that is not the previous plan's costs START_WEIGHT, so a rule
+     edit moves the seats the rule needs and no others. Only when a start is
+     given. */
+  if (ctx.start) {
+    for (let i = 0; i < lineups.length; i++) {
+      for (const id of lineups[i]) if (!ctx.start[i].includes(id)) c += START_WEIGHT;
     }
   }
 
@@ -1889,6 +1928,17 @@ function spreadRuleNote(ctx, c, minutes, label) {
   return said.length ? { message: said.join(' '), playerIds: [...named] } : null;
 }
 
+/* The arithmetic both halftime warnings give: how many can play in the `stints`
+   stints of one half when `reach` is the most the clock and the change limit let
+   take the floor, or null when everyone available fits. `when` is "before" or
+   "after" (halftime). */
+function halfReachSentence(ctx, when, stints, reach) {
+  const capped = reach < stints * ON_FLOOR;
+  const fits = Math.min(stints * ON_FLOOR, reach);
+  if (ctx.avail.length <= fits) return null;
+  return `Only ${fits} can play ${when} halftime here — ${plural(stints, 'stint')}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`;
+}
+
 function finish(lineups, ctx, issues, meta) {
   const { players, short, seed, stints, c, platoon, periods } = meta;
   const byId = new Map(players.map(p => [p.id, p]));
@@ -2055,14 +2105,30 @@ function finish(lineups, ctx, issues, meta) {
         if (!apart.length) return 'No legal lineup got them on any sooner.';
         return unexplained.size ? `${apart.join(' ')} No legal lineup got ${andList([...unexplained].map(label))} on any sooner.` : apart.join(' ');
       };
-      const capped = ctx.halfReach < ctx.firstHalf * ON_FLOOR;
-      const fits = Math.min(ctx.firstHalf * ON_FLOOR, ctx.halfReach);
       issues.push({
         severity: 'warn', code: 'HALF_LATE', playerIds: late,
         message: `${andList(late.map(label))} ${late.length === 1 ? 'does' : 'do'} not get on until the second half. ${
-          ctx.avail.length > fits
-            ? `Only ${fits} can play before halftime here — ${plural(ctx.firstHalf, 'stint')}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`
-            : whyLate(late)}`,
+          halfReachSentence(ctx, 'before', ctx.firstHalf, ctx.halfReach) ?? whyLate(late)}`,
+      });
+    }
+  }
+
+  /* #448: the mirror. Somebody who plays before halftime and never after
+     is the same silence HALF_LATE ends. The arithmetic is counted for the
+     stints after halftime, the first of which is a change like any other. */
+  if (ctx.firstHalf && !platoon) {
+    const after = new Set();
+    for (let i = ctx.firstHalf; i < lineups.length; i++) for (const id of lineups[i]) after.add(id);
+    const gone = [...playedBeforeHalf(lineups, ctx)].filter(id => !after.has(id));
+    if (gone.length) {
+      const left = lineups.length - ctx.firstHalf;
+      const reach = ON_FLOOR + Math.max(0, ctx.maxSubs) * (left - 1);
+      /* Only the arithmetic: when it does not bind, nothing here knows why they
+         sat (no cost term pushes second-half minutes), so no reason is claimed. */
+      const why = halfReachSentence(ctx, 'after', left, reach);
+      issues.push({
+        severity: 'warn', code: 'HALF_EARLY', playerIds: gone,
+        message: `${andList(gone.map(label))} ${gone.length === 1 ? 'does' : 'do'} not play after halftime.${why ? ` ${why}` : ''}`,
       });
     }
   }

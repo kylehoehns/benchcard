@@ -6,7 +6,8 @@
  * The expected numbers are the spec's: stints 1-7 carry overrides after the
  * swap, the projected spread is at most one stint (4 min) rather than 8, the
  * toast names both kids' new totals, one Undo empties `live.overrides`, and
- * with Set minutes the swap writes stint 0 only, as it did before #247.
+ * with By hand the swap re-plans the rest too (#489), while Platoon, which
+ * cannot re-plan, writes stint 0 only, as every strategy did before #247.
  * The plan table and minute bars are read off their own DOM, never from a
  * number the page computes the same way the table does.
  */
@@ -134,14 +135,24 @@ export async function swapReplansRestPass(c, origin, rec) {
   }
   notes.push('G: a kid marked out after playing keeps a Timeline row showing their played minutes');
 
-  /* ---- F: with Set minutes, the swap behaves as before #247 ---- */
+  /* ---- F: By hand re-plans the rest too (#489); Platoon, which still
+     cannot re-plan, writes stint 0 only, as every strategy did before #247 ---- */
   await evalIn(c, setGame(`const g = s.state.day.games[0]; g.live = { at: 0, overrides: {} }; g.strategy = 'minutes';`));
   await wait(SETTLE_MS);
   await evalIn(c, step(SWAP));
   await wait(SETTLE_MS);
-  const minutesStrategy = JSON.parse(await evalIn(c, readGame));
-  rec.check(Object.keys(minutesStrategy.overrides).join() === '0', `F: with Set minutes the swap wrote overrides at ${Object.keys(minutesStrategy.overrides)}, want stint 0 only`);
+  const byHand = JSON.parse(await evalIn(c, readGame));
+  const handMissing = Array.from({ length: byHand.stints }, (_, i) => i).filter(i => !(i in byHand.overrides));
+  rec.check(!handMissing.length, `F: with By hand the swap left stints ${handMissing.join(', ')} without overrides, want the rest re-planned (#489)`);
   await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
-  notes.push('F: with Set minutes the swap writes stint 0 only');
+  notes.push('F: with By hand the swap re-plans the rest');
+  await evalIn(c, setGame(`const g = s.state.day.games[0]; g.live = { at: 0, overrides: {} }; g.strategy = 'platoon'; const ids = s.state.players.map(pl => pl.id).filter(id => !g.out.includes(id)); g.constraints.units = [ids.slice(0, 5), ids.slice(5, 10)];`));
+  await wait(SETTLE_MS);
+  await evalIn(c, step(SWAP));
+  await wait(SETTLE_MS);
+  const platoon = JSON.parse(await evalIn(c, readGame));
+  rec.check(Object.keys(platoon.overrides).join() === '0', `F: with Platoon the swap wrote overrides at ${Object.keys(platoon.overrides)}, want stint 0 only`);
+  await evalIn(c, step(`document.getElementById('gmClose')?.click()`));
+  notes.push('F: with Platoon the swap writes stint 0 only');
   rec.ok(notes.join('; '));
 }

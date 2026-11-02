@@ -1019,7 +1019,7 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
          unless the rest of the game is re-planned around it. `resolveRest`
          settles up against what the floor actually showed, swap included, and
          the write below is in this same `undoable`, so one Undo reverts both.
-         A refusal (Set minutes, Platoon, an infeasible rest) keeps the swap
+         A refusal (Platoon, an infeasible rest) keeps the swap
          alone, as before. */
       if (scope === 'stint') {
         const r = resolveRest(g, p, i + 1);
@@ -1163,8 +1163,8 @@ function hereNow(g, id, shown, from) {
   let name = shown;
   let told = '';
   /* The message is read after the change: #134's "Rotation changed" notice is
-     suppressed inside an `undoable`, so a freeze that could not hold (By hand,
-     Platoon, an infeasible rule) says so here, as Add overtime does. */
+     suppressed inside an `undoable`, so a freeze that could not hold (Platoon,
+     an infeasible rule) says so here, as Add overtime does. */
   undoable(() => `${name} is here.${rewritten ? ' Rotation changed.' : ''}${told}`, () => {
     /* Stepping through stints in bench mode never re-plans, so the plan the
        coach is looking at has not been "seen" by `syncOverrides` yet, and the

@@ -203,12 +203,23 @@ test('the coach\'s floors and caps survive the suffix, reduced by what was playe
     `p0 finished on ${(played.p0 || 0) + rest} against a cap of 10`);
 });
 
-test('the two hand-set-minutes strategies are refused rather than quietly reinterpreted', () => {
+test('a sitter is refused under both hand-set-minutes strategies rather than quietly reinterpreted', () => {
   for (const strategy of ['minutes', 'platoon']) {
     const { g, p } = setup(10, { strategy });
     if (!p || !p.ok) continue;
     assert.deepEqual(S.resolveRest(g, p, 3, ['p1']), { ok: false, reason: 'strategy' });
   }
+});
+
+test('#489 By hand re-plans the rest when nobody is sat; Platoon still does not', () => {
+  const hand = setup(10, { strategy: 'minutes' });
+  assert.ok(hand.p?.ok, 'the By hand fixture plans');
+  const r = S.resolveRest(hand.g, hand.p, 3);
+  assert.equal(r.ok, true, `By hand with no sitter is refused: ${r.reason}`);
+  assert.deepEqual(Object.keys(r.overrides).map(Number).sort((a, b) => a - b),
+    hand.p.stints.map((s, i) => i).filter(i => i >= 3), 'it writes exactly the stints from 3 on');
+  const plat = setup(10, { strategy: 'platoon' });
+  if (plat.p?.ok) assert.deepEqual(S.resolveRest(plat.g, plat.p, 3), { ok: false, reason: 'strategy' });
 });
 
 test('nothing is written when there is nothing left, or nobody left', () => {
@@ -298,4 +309,24 @@ test('#376 when the four who stay cannot all stay (a hand swap put two Apart pla
   assert.deepEqual(Object.keys(r.overrides).map(Number).filter(j => j < k), [], 'the past was written');
   Object.assign(g.live.overrides, r.overrides);
   assert.deepEqual(S.effectiveStints(g, p).slice(0, k).map(s => s.onFloor.join(',')), before);
+});
+
+test('#490 relaxCaps: spent caps that cannot cover the floor are refused, then raised', () => {
+  const caps = { ...freshConstraints(), maxMinutes: { p0: 7, p1: 7 } };
+  const { g, p } = setup(7, { periods: 2, periodMinutes: 7, granValue: 3, constraints: caps });
+  assert.ok(p?.ok, 'the fixture plans');
+  g.out = ['p2'];   // p2 leaves after stint 2 was planned: the plan is still the 7-kid one
+  const plain = S.resolveRest(g, p, 3);
+  assert.equal(plain.ok, false, 'the caps left cannot cover the floor');
+  assert.equal(plain.reason, 'infeasible');
+  assert.ok(plain.issues.some(i => i.code === 'CAPS_UNSATISFIABLE'));
+  const r = S.resolveRest(g, p, 3, [], null, undefined, { relaxCaps: true });
+  assert.equal(r.ok, true, 'relaxed, it plans');
+  assert.ok(Object.values(r.overrides).every(f => f.length === 5), 'five on the floor in every stint left');
+  // the shortfall lands on the capped kids only: somebody passes a cap, and nobody uncapped is held to one
+  const played = id => S.effectiveStints(g, p).slice(0, 3).reduce((a, s) => a + (s.onFloor.includes(id) ? s.minutes : 0), 0);
+  const total = id => played(id) + (r.minutes[id] || 0);
+  assert.ok(['p0', 'p1'].some(id => total(id) > 7 + 1e-9), 'a capped kid ends over their cap');
+  // the option is off by default: a sit or a swap still refuses as before
+  assert.equal(S.resolveRest(g, p, 3).ok, false);
 });

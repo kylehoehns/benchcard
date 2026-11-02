@@ -137,14 +137,23 @@ describe('the notes under the timeline', { skip }, () => {
   const CAP_NOTE = /Marcus Williams is at 8 minutes against a 4-minute cap/;
   const MIN_NOTE = /Marcus Williams got 24 minutes against a 28-minute minimum/;
 
-  async function swapThenRead(constraints, onFloor, onBench, strategy = 'balanced') {
+  async function swapThenRead(constraints, onFloor, onBench, strategy = 'balanced', onLast = false) {
     await coach.onGameDayWith({ constraints, strategy });
     await coach.tap('Hawks, 9:00 AM, planned');
     const before = await coach.text('#issues');
     const planned = await coach.planMinutes();
     await coach.tap('Start game');
-    await coach.tapPlayer(onFloor);
-    await coach.tapPlayer(onBench);
+    // on the last stint, whoever is on the floor first, and the first on the bench once that one is picked
+    if (onLast) {
+      await toLastStint();
+      [onFloor] = await coach.onFloor();
+      await coach.tapPlayer(onFloor);
+      [onBench] = await coach.onBench();
+      await coach.tapPlayer(onBench);
+    } else {
+      await coach.tapPlayer(onFloor);
+      await coach.tapPlayer(onBench);
+    }
     await coach.tap('Leave');
     return { before, after: await coach.text('#issues'), planned, mins: await coach.planMinutes() };
   }
@@ -188,7 +197,10 @@ describe('the notes under the timeline', { skip }, () => {
   });
 
   test('where the engine said nothing about the spread, a swap adds no spread note', async () => {
-    const { before, after, planned, mins } = await swapThenRead(rules({ targetSlots: { p0: 6, p1: 2 } }), 'Ana Reyes', 'Hana Kim', 'minutes');
+    /* Since #489 a By hand swap re-plans the rest back onto the hand numbers, so
+       it moves nobody's minutes. On the last stint there is no rest to re-plan,
+       so the swap still moves minutes there. */
+    const { before, after, planned, mins } = await swapThenRead(rules({ targetSlots: { p0: 6, p1: 2 } }), null, null, 'minutes', true);
     assert.match(before, /Minutes are set by hand for/);
     assert.notDeepEqual(mins, planned, 'the swap moved nobody, so this proves nothing');
     assert.ok(lacks(before, /divide evenly|the fewest|everyone else|The most is/));

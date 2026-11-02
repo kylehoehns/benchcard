@@ -5,7 +5,7 @@
  * game, rather than driving Start/swap/step-forward by hand each time this
  * check runs -- three different edits that rebuild the rotation (Format's
  * minutes-per-period stepper, Sub interval, and the Plan sheet's strategy
- * seg set to By hand, which `resolveRest` refuses) each get the same
+ * seg set to Platoon, which `resolveRest` refuses) each get the same
  * "Rotation changed." toast with an Undo
  * button, and Undo puts the game's periods/period minutes, `live.overrides`,
  * `live.at` and the plan table's own played-minutes column back exactly as
@@ -243,17 +243,22 @@ export async function rotationUndoPass(c, origin, rec) {
 
   // Fresh underway seed for the rest of this check: the absent player would
   // otherwise still be out, and the baseline below no longer applies.
+  // Platoon needs units to plan (item 3 switches to it): two fives from the
+  // roster, harmless while the strategy is still Even.
   await evalIn(c, setGame(`s.state.day.games[0].out = ${JSON.stringify(outBefore)};
   s.state.day.games[0].live = null;
+  { const ids = s.state.players.map(pl => pl.id).filter(id => !s.state.day.games[0].out.includes(id));
+    s.state.day.games[0].constraints.units = [ids.slice(0, 5), ids.slice(5, 10)]; }
   const rr0 = await import('/render.js'); rr0.renderAll();
 ` + UNDERWAY_SEED));
   await wait(SETTLE_MS);
 
-  /* ---- item 3: the Plan sheet's strategy seg. "By hand" (`minutes`) is a
-     strategy `resolveRest` refuses, so #247 decision 1 falls back to #134:
+  /* ---- item 3: the Plan sheet's strategy seg. Platoon is a strategy
+     `resolveRest` refuses (By hand re-plans since #489), so #247 decision 1
+     falls back to #134:
      the rotation is rewritten and the toast offers Undo (spec case E). ---- */
   await evalIn(c, step(`document.getElementById('phraseStrategy').click()`));
-  await evalIn(c, step(`[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'By hand').click()`));
+  await evalIn(c, step(`[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'Platoon').click()`));
   await wait(SETTLE_MS);
   const toast4 = JSON.parse(await evalIn(c, readToast));
   rec.check(toast4.shown && (toast4.text || '').startsWith('Rotation changed.') && toast4.hasUndo, `item 3 (strategy): toast reads ${JSON.stringify(toast4)}, want "Rotation changed." with Undo`);
