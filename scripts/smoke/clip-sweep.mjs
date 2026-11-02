@@ -33,6 +33,18 @@ import { FIT_SELECTORS, NOTE_TEXT } from '../../app/dom.js';
 /* What the probe never excuses a split in: what the fitter shrinks, and the plan
  * note sentence that holds its `.fitw` words. */
 const OWNED_SELECTORS = [...FIT_SELECTORS, NOTE_TEXT];
+
+/* #520: the smallest a fitted name may get, as a share of its CSS size. A
+ * coach who set 32px text needs large text; past this the fitter breaks the
+ * word with a hyphen instead. Deliberately its own number, not app/dom.js's
+ * floor: this is the requirement the floor has to meet, so lowering the floor
+ * there (back to #519's 40%) fails here. */
+export const MIN_FIT_RATIO = 0.7;
+
+/* #517: how close a line of text may come to an open sheet's left or right
+ * edge. Every block in a sheet sits inside a side margin (1rem or more); text
+ * nearer the edge than this has lost its margin. */
+export const SHEET_EDGE_MIN = 8;
 import { evalIn, step, IS_SR_ONLY_RECT, WORD_FLOOR_FN, DESCRIBE_EL, IS_CUT } from './dom.mjs';
 import { LONG_NAME, RICH, FOUR, TODAY_LANDING } from './fixtures.mjs';
 import { LARGE_TEXT } from './sizes.mjs';
@@ -196,10 +208,11 @@ const FLOOR_ALLOW_SELECTORS = CLIP_SWEEP_FLOOR_ALLOW.map(a => a.selector);
  * alarms from the old floor, none from this one).
  *
  * `wordRects` (`WORD_RECTS_FN`) tokenizes on `\S+`, so a hyphenated compound
- * (`Featherstone-Whitmore`) is one token whose two rects are what a
- * design-intended wrap after the hyphen looks like, indistinguishable from a
- * genuine bad break inside the token. A token containing a hyphen is treated
- * as exempt rather than tokenizing more finely just for this case. */
+ * (`Featherstone-Whitmore`) is one token with two rects. #520: its
+ * `hyphenBreak` says whether every break in it comes right after a hyphen or
+ * a soft hyphen -- a clean break, allowed -- so a token is no longer excused
+ * just for holding a hyphen somewhere: "Feathersto / ne-Whitmore" is still a
+ * split. */
 export const CLIP_PROBE = `(() => {
   const isSrOnly = ${IS_SR_ONLY_RECT};
   ${WORD_RECTS_FN}
@@ -320,7 +333,7 @@ export const CLIP_PROBE = `(() => {
   const SPLIT_MARK = '__cs179split__';
 
   let scanned = 0;
-  const clip = [], split = [], hidden = [], overlap = [], floor = [];
+  const clip = [], split = [], hidden = [], overlap = [], floor = [], shrunk = [], edge = [];
   // #455/#477/#483: an element the long-word fitter owns (app/dom.js's
   // FIT_SELECTORS) is never excused by ROW_LIKE or by "the word is wider than
   // its row" below -- the fitter's whole job is to shrink that word to fit.
@@ -339,6 +352,31 @@ export const CLIP_PROBE = `(() => {
     const ownedSel = FIT_SELECTORS.find(sel => el.matches(sel));
     if (ownedSel) ownedScanned[ownedSel] = (ownedScanned[ownedSel] || 0) + 1;
     if (el.matches('.tl-row .tl-tot .ex')) fewestScanned++;
+
+    // #520: a fitted name's size against its CSS size, read by taking the
+    // fitter's inline size off for the one measurement (the fitter's observer
+    // ignores style, so this does not re-run it).
+    if (ownedSel && el.style.fontSize) {
+      const fitted = parseFloat(getComputedStyle(el).fontSize);
+      const inline = el.style.fontSize;
+      el.style.fontSize = '';
+      const base = parseFloat(getComputedStyle(el).fontSize);
+      el.style.fontSize = inline;
+      if (fitted / base < ${MIN_FIT_RATIO} - 0.005) {
+        shrunk.push({ el: path(el), text: el.textContent.trim().slice(0, 40), px: Math.round(fitted * 10) / 10, base: Math.round(base * 10) / 10 });
+      }
+    }
+
+    // #517: text in an open sheet that runs to the sheet's own left or right
+    // edge has lost the side margin every other block in it has.
+    const sheet = el.closest('dialog.bsheet[open]');
+    if (sheet) {
+      const sr = sheet.getBoundingClientRect();
+      for (const lr of textLineRects(el)) {
+        const gap = Math.min(lr.left - sr.left, sr.right - lr.right);
+        if (gap < ${SHEET_EDGE_MIN}) { edge.push({ el: path(el), text: el.textContent.trim().slice(0, 40), gap: Math.round(gap) }); break; }
+      }
+    }
 
     const cs = getComputedStyle(el);
 
@@ -430,7 +468,7 @@ export const CLIP_PROBE = `(() => {
     }
 
     const words = wordRects(el);
-    const bad = words.find(w => w.rectsN > 1 && !w.word.includes('-'));
+    const bad = words.find(w => w.rectsN > 1 && !w.hyphenBreak);
     if (bad) {
       // Not a squeeze bug if the word itself is wider than its row could
       // ever give it (e.g. "Featherstonehaugh"), only if the row had the
@@ -474,7 +512,7 @@ export const CLIP_PROBE = `(() => {
     }
   }
 
-  return JSON.stringify({ scanned, clip, split, hidden, overlap, floor, usedAllow, usedSideways, usedFloorAllow, ownedScanned, fewestScanned });
+  return JSON.stringify({ scanned, clip, split, hidden, overlap, floor, shrunk, edge, usedAllow, usedSideways, usedFloorAllow, ownedScanned, fewestScanned });
 })()`;
 
 /* The issue number of the CLIP_SWEEP_KNOWN_ISSUES entry that excuses
@@ -493,6 +531,8 @@ export const findingsOf = (res, where, pos) => [
   ...res.hidden.map(f => ({ kind: 'hidden', where, pos, ...f })),
   ...res.overlap.map(f => ({ kind: 'overlap', where, pos, ...f })),
   ...res.floor.map(f => ({ kind: 'floor', where, pos, ...f })),
+  ...res.shrunk.map(f => ({ kind: 'shrunk', where, pos, ...f })),
+  ...res.edge.map(f => ({ kind: 'edge', where, pos, ...f })),
 ];
 
 /* One problem line for a raw finding `knownIssueFor` did not excuse. */
@@ -503,6 +543,8 @@ const describeFinding = p => {
     case 'hidden': return `${p.where}@${p.pos}: ${p.el} is hidden under ${p.hitBy}`;
     case 'overlap': return `${p.where}@${p.pos}: "${p.text}" (${p.el}) spills past its own box onto ${p.hitBy}'s text`;
     case 'floor': return `${p.where}@${p.pos}: "${p.text}" paints ${p.over}px past its own ${p.box}px box (${p.el})`;
+    case 'shrunk': return `${p.where}@${p.pos}: "${p.text}" is fitted down to ${p.px}px of its ${p.base}px, under ${MIN_FIT_RATIO * 100}% (${p.el})`;
+    case 'edge': return `${p.where}@${p.pos}: "${p.text}" is ${p.gap}px from the sheet's edge, want >= ${SHEET_EDGE_MIN}px (${p.el})`;
     default: return `${p.where}@${p.pos}: unknown finding ${p.kind}`;
   }
 };

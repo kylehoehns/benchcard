@@ -40,7 +40,30 @@ import { evalIn } from './dom.mjs';
 // Exported (#179) so clip-sweep.mjs's own generic "did a word split across
 // two lines" check reuses this exact technique rather than a second copy of
 // it -- see that file's own comment for what it does with it.
-export const WORD_RECTS_FN = `function wordRects(nameEl) {
+// #520: `hyphenBreak` -- true when every line break inside a split word comes
+// right after a hyphen or a soft hyphen (U+00AD, which paints as "-" at the
+// end of the line), the clean break app/dom.js's fitter falls back to once a
+// name is at its smallest. Found by walking the word one character at a time
+// and noting where the next one starts a lower line; any other break is a
+// split with no hyphen, the bug.
+export const WORD_RECTS_FN = `function hyphenBreaksOnly(n, w) {
+    let prevTop = null, prevCh = '';
+    for (let i = 0; i < w[0].length; i++) {
+      const cr = document.createRange();
+      cr.setStart(n, w.index + i);
+      cr.setEnd(n, w.index + i + 1);
+      // The last rect: Chrome gives the letter after a soft-hyphen break a
+      // second rect back on the first line, for the hyphen it paints there.
+      const q = [...cr.getClientRects()].filter(x => x.height > 0).pop();
+      if (q) {
+        if (prevTop !== null && q.top > prevTop + q.height / 2 && prevCh !== '-' && prevCh !== '\\u00AD') return false;
+        prevTop = q.top;
+      }
+      prevCh = w[0][i];
+    }
+    return true;
+  }
+  function wordRects(nameEl) {
     const out = [];
     const walker = document.createTreeWalker(nameEl, NodeFilter.SHOW_TEXT);
     for (let n = walker.nextNode(); n; n = walker.nextNode()) {
@@ -48,7 +71,8 @@ export const WORD_RECTS_FN = `function wordRects(nameEl) {
         const r = document.createRange();
         r.setStart(n, w.index);
         r.setEnd(n, w.index + w[0].length);
-        out.push({ word: w[0], rect: r.getBoundingClientRect(), rectsN: r.getClientRects().length });
+        const rectsN = r.getClientRects().length;
+        out.push({ word: w[0], rect: r.getBoundingClientRect(), rectsN, hyphenBreak: rectsN > 1 && hyphenBreaksOnly(n, w) });
       }
     }
     return out;
@@ -76,7 +100,7 @@ export const ROW_STACK_PROBE = `(() => {
     if (nameEl) {
       const words = wordRects(nameEl);
       if (!splitWord) {
-        const bad = words.find(w => w.rectsN > 1);
+        const bad = words.find(w => w.rectsN > 1 && !w.hyphenBreak);
         if (bad) splitWord = { word: bad.word };
       }
       const clipBox = (row.closest('.pgrp') || row).getBoundingClientRect();
