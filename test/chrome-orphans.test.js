@@ -80,9 +80,14 @@ async function ownerWithChild() {
   await visible(child);
   return { root, owner, dir, child };
 }
-const killAndWait = async pid => {
+/* SIGKILLs `pid` and waits until its exit is finished, judged by `orphan` no
+   longer naming it as parent. A process still exiting can already show as
+   `(node)` in ps before its children are reparented; under load that window is
+   long enough for the sweep to see the orphan still descending from its owner
+   and rightly keep the dir (#514). A wait that times out fails the test. */
+const killAndWait = async (pid, orphan) => {
   process.kill(pid, 'SIGKILL');
-  await waitFor(() => !ps().some(p => p.pid === pid && !/<defunct>|^\(/.test(p.command)), 10_000, `pid ${pid} to die`).catch(() => {});
+  await waitFor(() => ps().find(p => p.pid === orphan)?.ppid !== pid, 10_000, `pid ${pid} to finish exiting`);
 };
 
 after(() => {
@@ -101,7 +106,7 @@ after(() => {
 
 test('a dir whose owner was SIGKILLed has its process reaped and the dir removed', { timeout: 30_000 }, async () => {
   const { root, owner, dir, child } = await ownerWithChild();
-  await killAndWait(owner.pid);
+  await killAndWait(owner.pid, child);
   assert.ok(alive(child), 'precondition: the orphan survives its owner (the bug)');
   const r = await reapOrphans(root);
   assert.ok(!naming(dir).length, `a process naming the dead owner's dir survived the sweep: ${JSON.stringify(naming(dir))}`);
