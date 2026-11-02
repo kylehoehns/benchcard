@@ -1,9 +1,9 @@
 {
   "url": "https://benchcard.app/",
   "formFactor": "mobile",
-  "fetchTime": "2026-10-26T14:35:50.817Z",
+  "fetchTime": "2026-11-02T17:27:57.266Z",
   "lighthouseVersion": "12.8.2",
-  "performance": 72,
+  "performance": 98,
   "accessibility": 100,
   "bestPractices": 82,
   "seo": 100
