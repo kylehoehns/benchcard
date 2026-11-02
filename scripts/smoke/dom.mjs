@@ -515,8 +515,11 @@ export const WORD_FONT_PROPS = ['fontFamily', 'fontSize', 'fontWeight', 'fontSty
    uses this to decide what a name or title actually says; `bench-look.mjs`'s
    #200 calibration reuses the exact same function (spliced in alongside
    `WORD_FLOOR_FN`) to re-find the identical node the floor measured, rather
-   than a second hand-typed copy of the same walk. */
-export const DIRECT_TEXT = `(el => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim())`;
+   than a second hand-typed copy of the same walk. Soft hyphens (U+00AD) are
+   dropped: app/dom.js's fitter puts them into a word
+   too wide for its row at the 70% floor (#520). They paint nothing unless the
+   line breaks there, so the name a coach reads has none. */
+export const DIRECT_TEXT = `(el => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').replace(/\\u00AD/g, '').trim())`;
 
 /* #144's own squeeze check reuses this, #138's own first: the floor a name or
    a title is held to at a large root, once something beside it is fighting
