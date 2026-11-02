@@ -145,7 +145,8 @@ export async function bootWait(c, ready, where = 'the page') {
 /* Get the page into `want`'s state, defaulting every field left out to
    `BASELINE`. Order: device metrics, font sizes, emulated media, the seeding
    script(s), navigate (twice first if `freshHistory`, the cache-busting trick
-   that truncates forward session history), wait for the load event once, then the one boot
+   that truncates forward session history), wait for the load event (once more, on the last document, when Chrome
+   aborted its module requests: #400), then the one boot
    wait -- `document.fonts.ready`, poll `ready` every 50ms up to 3s, `SETTLE`
    (reused, not re-derived). A `ready` still false after 3s throws (D3):
    `runCheck` turns that into a FAIL row that names what it was waiting for,
@@ -207,7 +208,9 @@ export async function land(c, origin, want = {}) {
   });
 }
 
-/* The Script requests `land` has seen fail (#400), by document: the
+/* Sees events only when the client sent `Network.enable` (smoke.mjs and look.mjs do;
+   compare-shots.mjs does not, so there the retry never fires and `land` behaves as before).
+   The Script requests `land` has seen fail (#400), by document: the
    `loaderId` `Page.navigate` returned, so a failure of the previous page or of
    `freshHistory`'s first navigation is not counted. Listeners come off in `stop`. */
 function watchScripts(c) {

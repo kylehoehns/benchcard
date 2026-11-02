@@ -70,3 +70,31 @@ page, a refused port). The refused port showed that an error page denies
 
 Any change to the app, the 3s cap, or row code. Fixing the cause, once a
 failure names it.
+
+## Update 2026-11-02: cause found, one re-landing
+
+The cause is known now. Two hits in real smoke shards on a loaded machine
+(load average 15 to 40) had the same signature. Chrome cancelled two or three
+of the new page's own module requests (`net::ERR_ABORTED`, `canceled: true`).
+The page's `app.js` module then failed, and the app never ran. A longer wait
+cannot help. Nothing in the app or the harness asked for the cancel. Which
+part of Chrome does it is not known.
+
+What `land` does now (`scripts/smoke/page-state.mjs`):
+
+- It records the Script requests of the document it navigated to. If Chrome
+  cancelled one of them, `land` navigates to the same URL once more. That
+  happens one time only. It writes one stderr line:
+  `land: Chrome aborted <files> on <page+query>; landed again (#400)`.
+- Every other failure gets no retry. That covers a failure without `canceled`
+  (for example a blocked module), a failure on an earlier page, and a second
+  cancel after the re-landing. Those go to the boot wait and fail there.
+- A boot-wait timeout ends with `, failed scripts: <file> <errorText>[ canceled]`
+  when the final document had failed Script requests. With none, the message
+  is the same as before.
+
+The "no retry" decision above stays as the record of when the cause was
+unknown. It no longer applies to this one signature.
+
+The app gap is not fixed here. When a module fails to load, a coach is left on
+a dead Today with no message. That is filed as #527.

@@ -259,6 +259,16 @@ test('land: no second landing for no failure, a failure without canceled, or ano
   assert.deepEqual(other.lines, []);
 });
 
+test('land: a canceled request that is not a Script (Fetch, Image) does not trigger a second landing', async () => {
+  const { navs, lines } = await landWatching({ evaluate: undefined, during: (n, emit) => {
+    emit('Network.requestWillBeSent', { requestId: 'f', loaderId: 'L1', type: 'Fetch', request: { url: 'http://x/app/data.json' } });
+    emit('Network.requestWillBeSent', { requestId: 'i', loaderId: 'L1', type: 'Image', request: { url: 'http://x/app/icon.png' } });
+    emit(...failed('f')); emit(...failed('i'));
+  } });
+  assert.equal(navs, 1);
+  assert.deepEqual(lines, []);
+});
+
 test('land: a second abort is not retried again; the timeout names the failed scripts', async () => {
   const { navs, lines, error } = await landWatching({ evaluate: TIMED_OUT, during: (n, emit) => {
     emit(...script(`L${n}`, `r${n}`, 'trap.js')); emit(...failed(`r${n}`));
