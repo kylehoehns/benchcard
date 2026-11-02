@@ -8,9 +8,10 @@
     "flakes": "node scripts/flakes.mjs",
     "og": "node scripts/og.mjs",
     "charts": "node scripts/charts.mjs",
+    "whats-new": "node scripts/whats-new.mjs",
     "redirect-check": "node scripts/redirect-check.mjs",
     "evals": "node scripts/evals.mjs",
     "bands": "node scripts/bands.mjs",
-    "check:history": "git fetch -q origin main && node scripts/check-about-date.mjs origin/main && node scripts/check-sitemap-lastmod.mjs origin/main"
+    "check:history": "git fetch -q origin main && node scripts/check-about-date.mjs origin/main && node scripts/check-sitemap-lastmod.mjs origin/main && node scripts/check-whats-new.mjs origin/main"
   }
 }

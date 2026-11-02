@@ -53,7 +53,7 @@ test('no ember hex survives under app/ (outside vendor) or in scripts/og.mjs and
    number. */
 const OG_BYTES = readFileSync(new URL('../app/og.png', import.meta.url));
 const OG = pngSize(OG_BYTES, 'app/og.png');
-const PAGES = ['index.html', 'about.html', 'advanced.html',
+const PAGES = ['index.html', 'about.html', 'advanced.html', 'whats-new.html',
   ...CHARTS.map(c => c.file)];
 
 /* #75 item 3 / Design step 3: og.png is captured sharp (DPR 2 composition,

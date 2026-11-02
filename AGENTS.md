@@ -215,8 +215,9 @@ checks **both axes**:
 `APP_LARGE_TEXT_ALLOW` is empty and every view is pinned at zero; the same rule
 applies to it as to `LARGE_TEXT_ALLOW` below.
 
-Then it loads the other eleven pages — `about.html`, `advanced.html`, the eight
-generated chart pages (seven roster sizes and the two-halves page) and `404.html` — at 390 and 320 for overflow, alt text, ids, lang,
+Then it loads the other twelve pages — `about.html`, `advanced.html`, the eight
+generated chart pages (seven roster sizes and the two-halves page), `404.html` and
+the generated `whats-new.html` — at 390 and 320 for overflow, alt text, ids, lang,
 touch targets and console errors, plus the same 32px-root pass at 320 and 390.
 Those two cells are where the large-text media queries are live (narrowest and
 widest), which is why it is two cells and not a matrix. On the two guides it
@@ -323,9 +324,11 @@ allowlist shape; do not reintroduce a denylist.
 
 ## Traps
 
-**`scripts/check-about-date.mjs` and `scripts/check-sitemap-lastmod.mjs` need a
-base ref,** so the proof pair skips them; `npm run check:history` runs both
-against `origin/main` — run it before every push.
+**`scripts/check-about-date.mjs`, `scripts/check-sitemap-lastmod.mjs` and
+`scripts/check-whats-new.mjs` need a base ref,** so the proof pair skips them;
+`npm run check:history` runs all three against `origin/main` — run it before
+every push. The third fails a coach-facing change with no What's new entry;
+`/ship-feature` § Would a coach notice this? says what to add.
 
 **The printed card is auto-fitted from canvas `measureText`.** Its measurement
 font stack must match `.card`'s exactly. The UI itself does not use the card's

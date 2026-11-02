@@ -1652,6 +1652,10 @@ h2.side-hd { margin-top: 0; }
    ignore the team color. */
 .update-toast .tundo { background: var(--accent-ink); color: var(--accent); }
 @media (hover: hover) { .update-toast .tundo:hover { background: color-mix(in srgb, var(--accent-ink) 88%, var(--accent)); } }
+/* The What's new link (#499) leads the row in toast ink; `margin-right: auto`
+   pushes Reload and Dismiss to the right when the row stacks. */
+.update-toast .update-new { display: inline-flex; align-items: center; min-height: 48px;
+  margin-right: auto; color: var(--bg); font-weight: 600; text-decoration: underline; }
 @media (pointer: coarse), screen and (max-width: 620px) {
   .toast .tx { width: 44px; }
 }

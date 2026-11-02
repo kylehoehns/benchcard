@@ -563,7 +563,11 @@ export function showUpdate(reload) {
   const title = el('span', 'update-title');
   title.append(icon('rotate-ccw', { cls: 'update-glyph' }), 'New version ready');
   words.append(title, ' ', el('span', 'update-help', 'Reload to get it. Your game stays saved.'));
-  actionToast(words, 'Reload', reload, { cls: 'update-toast' });
+  const t = actionToast(words, 'Reload', reload, { cls: 'update-toast' });
+  // first in the row, so in the stacked layout it sits at the left, Reload and Dismiss at the right
+  const link = el('a', 'update-new', 'What\'s new');
+  link.href = './whats-new';
+  t?.querySelector('.tacts').prepend(link);
 }
 
 function offerReload() {

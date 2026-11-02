@@ -185,8 +185,8 @@ test('the sweep can actually see a stylesheet, and the graph is what we think', 
      served at any depth, so `sheetsOf` reads both spellings (#424). It must
      see tokens.css there, or this page's sweep would measure nothing. */
   assert.deepEqual(graph['404.html'], ['tokens.css', 'site.css', 'inline:404.html']);
-  /* index, about, advanced, 404, and every page scripts/charts.mjs generates. */
-  assert.equal(PAGES.length, 4 + CHARTS.length, `expected ${4 + CHARTS.length} static pages, found ${PAGES.length}`);
+  /* index, about, advanced, 404, whats-new, and every page scripts/charts.mjs generates. */
+  assert.equal(PAGES.length, 5 + CHARTS.length, `expected ${5 + CHARTS.length} static pages, found ${PAGES.length}`);
   // and the parser really does read rules out of a real sheet
   assert.ok(classesOf(read('card.css')).has('card'), 'card.css should define .card');
 });

@@ -533,12 +533,26 @@ export class Coach {
   /** The paste sheet's preview of who it read: "3 players: ...". */
   pasteNote() { return this.text('#pasteNote'); }
 
-  /** The newest toast's message, without its button. */
+  /** Where the one link a coach would call `name` goes: its `href` as written. */
+  async linkTarget(name) {
+    const found = (await this.#controls()).filter(x => x.name === name);
+    if (found.length !== 1) {
+      throw new Error(`linkTarget ${JSON.stringify(name)}: it ${found.length ? `matches ${found.length} controls` : 'is not on screen'}.`
+        + ` On screen: ${JSON.stringify((await this.controls()))}`);
+    }
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: found[0].node });
+    const { result } = await this.c.send('Runtime.callFunctionOn', { objectId: object.objectId, returnByValue: true,
+      functionDeclaration: `function () { return this.tagName === 'A' ? this.getAttribute('href') : null; }` });
+    if (result.value === null) throw new Error(`linkTarget ${JSON.stringify(name)}: it is not a link`);
+    return result.value;
+  }
+
+  /** The newest toast's message, without its buttons and links. */
   toast() {
     return evalIn(this.c, `(() => {
       const t = [...document.querySelectorAll('.toast:not(.out)')].pop();
       if (!t) return '';
-      const c = t.cloneNode(true); c.querySelectorAll('button').forEach(b => b.remove());
+      const c = t.cloneNode(true); c.querySelectorAll('button, a').forEach(b => b.remove());
       return c.innerText.replace(/\\s+/g, ' ').trim();
     })()`);
   }

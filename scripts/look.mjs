@@ -5,7 +5,7 @@
  * check makes beside every PNG.
  *
  *   node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390]
- *     [--font 16,32] [--height 844] [--dark] [--view today,settings,about] [--headful]
+ *     [--font 16,32] [--height 844] [--dark] [--view today,settings,about,whats-new] [--headful]
  *
  * Each shot is `<view-slug>-<width>-<font>-<theme>.png`, plus `-bottom.png`
  * when that state scrolls. `measurements.json` holds one record per PNG.
@@ -47,7 +47,10 @@ import {
 import { shotProblems, postCaptureProblems, READ_PAINT, applyThemeScript } from './compare-shots.mjs';
 
 const ABOUT = 'about';
-const VIEW_NAMES = [...CLIP_STATES.map(s => s.name), ABOUT];
+/* #499: the What's new page, shot the way about is: land on its address, ready
+ * when its h1 is there (it has no .reveal elements and no app to boot). */
+const WHATS_NEW = 'whats-new';
+const VIEW_NAMES = [...CLIP_STATES.map(s => s.name), ABOUT, WHATS_NEW];
 
 /* The page's own scrolling state: the window plus every scroller's offset, so
  * "did the bottom shot move anything" covers an open sheet's own scroller. */
@@ -154,6 +157,8 @@ async function shoot(c, origin, cell, outDir, height) {
 
   if (cell.view === ABOUT) {
     await land(c, origin, { record, ...want, page: '/about', ready: ABOUT_READY });
+  } else if (cell.view === WHATS_NEW) {
+    await land(c, origin, { record, ...want, page: '/whats-new', ready: `document.querySelector('h1')` });
   } else {
     const state = CLIP_STATES.find(s => s.name === cell.view);
     /* The sweep starts on `games` but its first state, `today`, takes it to

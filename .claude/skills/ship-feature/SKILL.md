@@ -176,7 +176,8 @@ The PR body says it switched.
    spec's **Proof**. Its prompt carries the spec path and those constraints. Each
    coach-facing slice starts from a red scenario (`AGENTS.md` § Test seams).
    Wait until it reports each slice's test and the failure it saw before the
-   code existed, and a green `npm test`. A slice whose reported failure is an
+   code existed, and a green `npm test`. The slice also settles
+   "Would a coach notice this?" (the section below): an entry, or the opt-out line. A slice whose reported failure is an
    import error or a typo rather than the behavior's assertion never saw red:
    send it back.
 
@@ -255,6 +256,25 @@ The PR body says it switched.
    that handoff in your report rather than running `npm test` or `npm run
    smoke` again.
 
+## Would a coach notice this?
+
+This is the one place that says so; anything else points here. A coach notices a
+change if they could see it or feel it: a new screen, setting, rule or wording,
+a plan that comes out differently, a layout that moves, a bug they could have
+hit. They do not notice a refactor, a test, a guard, a doc or the harness.
+
+- **If they would:** the same PR adds one entry to `scripts/whats-new.json`
+  (newest first: `{ "date": "YYYY-MM-DD", "text": "<one plain sentence for a
+  coach>" }`, no markup, no issue numbers), runs `npm run whats-new` to rewrite
+  `app/whats-new.html`, and moves the What's new page's `<lastmod>`
+  in `app/sitemap.xml` to the entry's date.
+- **If they would not:** the PR body carries one line that starts `No coach
+  note:` and gives the reason (`No coach note: harness only`). A bare `No coach
+  note:` does not count.
+
+`scripts/check-whats-new.mjs` (in `npm run check:history` and the `history` job)
+fails a PR that changes a coach-facing path under `app/` and has neither.
+
 ## Ship
 
 10. **Open the PR.** The proof points already committed the change; this step
@@ -266,6 +286,9 @@ The PR body says it switched.
     gh pr create --base main --title "<what changed>" --body-file <body.md>
     PR=$(gh pr view --json number -q .number)
     ```
+
+    The body carries the `No coach note:` line when step 5's "Would a coach
+    notice this?" says nobody would; the guard reads it from the PR body.
 
     Write the body with the `pr` skill's template (Summary, Evidence, Merge
     Danger; source: `mattpocock/skills`, `skills/in-progress/pr`), in plain

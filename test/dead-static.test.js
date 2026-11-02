@@ -120,7 +120,7 @@ test('every rule in a static page\'s own stylesheet is worn by something on it',
  * in site.css that no linking page wears (or scripts) is dead. */
 test('every rule in site.css is worn by some page that links it', () => {
   const linking = PAGES.filter((p) => /href="\.?\/site\.css"/.test(read(p)));
-  assert.equal(linking.length, 11, 'about, advanced, 404 and the eight chart pages link site.css');
+  assert.equal(linking.length, 12, 'about, advanced, 404, whats-new and the eight chart pages link site.css');
   const worn = new Set();
   for (const page of linking) {
     const html = read(page);

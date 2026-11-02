@@ -52,7 +52,7 @@ const ORIGIN = 'https://benchcard.app';
    to index.html's and about.html's; test/charts.test.js pins all eight. Already
    entity-escaped, so it is interpolated raw rather than through esc().
    Used twice per page: X reads twitter:image:alt and ignores og:image:alt. */
-const OG_ALT = 'Benchcard&rsquo;s game screen on a phone: the sentence &ldquo;11 players, 4 × 8, subbing every 4 min for even minutes, with 1 rule&rdquo; above a timeline of each player&rsquo;s minutes, beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
+export const OG_ALT = 'Benchcard&rsquo;s game screen on a phone: the sentence &ldquo;11 players, 4 × 8, subbing every 4 min for even minutes, with 1 rule&rdquo; above a timeline of each player&rsquo;s minutes, beside the words &ldquo;Even minutes, worked out before the game.&rdquo;';
 
 export const SIZES = [6, 7, 8, 9, 10, 11, 12];
 /* Two spellings, and they are NOT interchangeable -- keeping them apart is
@@ -345,7 +345,7 @@ export const CHARTS = DESCRIPTORS
  * match across every page, and a hand-kept copy is exactly the drift that test
  * exists to catch -- so there is only ever one copy of it in the repo.
  * ------------------------------------------------------------------ */
-function fromAbout() {
+export function fromAbout() {
   const src = readFileSync(join(APP, 'about.html'), 'utf8');
   const themeStart = src.indexOf('<script>');
   const themeEnd = src.indexOf('</script>', themeStart) + '</script>'.length;

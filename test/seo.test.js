@@ -54,8 +54,8 @@ const strings = v => (typeof v === 'string' ? [v]
   : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []);
 
 test('every JSON-LD block parses, and every page URL in it is one the sitemap lists', () => {
-  /* index, about, advanced, and every generated chart page. */
-  assert.equal(locs.length, 3 + CHARTS.length);
+  /* index, about, advanced, whats-new, and every generated chart page. */
+  assert.equal(locs.length, 4 + CHARTS.length);
   for (const f of Object.keys(dates)) {
     const html = read(f);
     for (const s of strings(blocks(html))) {
@@ -144,13 +144,14 @@ const WORDS = {
   'index.html': ['basketball', 'rotation', 'substitution', 'planner'],
   'about.html': ['equal playing time', 'youth basketball', 'substitution'],
   'advanced.html': ['setting', 'rule', 'card'],
+  'whats-new.html': ['what\'s new', 'newest first', 'open benchcard'],
   ...Object.fromEntries(SIZES.map(n => [file(n),
     [`${n}-player basketball rotation chart`, 'substitution', 'printable', 'equal playing time']])),
   [HALVES_FILE]: ['basketball rotation chart', 'two halves', 'substitution', 'printable', 'equal playing time'],
 };
 
 test('each page says its title words where a reader can see them', () => {
-  assert.equal(Object.keys(WORDS).length, 3 + CHARTS.length, 'a page lost its row');
+  assert.equal(Object.keys(WORDS).length, 4 + CHARTS.length, 'a page lost its row');
   for (const [f, words] of Object.entries(WORDS)) {
     const text = visible(read(f));
     assert.ok(text.length > 500, `${f}: the visible text measured ${text.length} characters, so nothing was checked`);

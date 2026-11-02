@@ -173,13 +173,13 @@ jobs:
       - run: node scripts/redirect-check.mjs
 
   history:
-    # The two checks that a single commit CANNOT answer, sharing one runner.
+    # The three checks that a single commit CANNOT answer, sharing one runner.
     #
-    # Both compare the pushed range against its base, so both need history
+    # All compare the pushed range against its base, so all need history
     # fetched, and each was previously its own job doing an identical
     # checkout + setup-node to run one small script. GitHub bills every job a
-    # whole minute however fast it runs, so two jobs cost two minutes to do
-    # about four seconds of work. Merged, the coverage is identical.
+    # whole minute however fast it runs, so three jobs cost three minutes to do
+    # about six seconds of work. Merged, the coverage is identical.
     #
     #   * about dateline -- the About footer carries a hand-typed "last
     #     updated" date and going stale is only visible across two commits.
@@ -188,11 +188,17 @@ jobs:
     #   * sitemap lastmod -- a page's <lastmod> must move whenever its HTML
     #     does. test/sitemap-lastmod.test.js unit-tests the pure decision.
     #
+    #   * What's new -- a change a coach can see needs an entry in
+    #     scripts/whats-new.json, or a "No coach note: <reason>" line in the PR
+    #     body or a commit. Pull requests only: a squash-merge to main has no PR
+    #     body to read. test/whats-new-guard.test.js unit-tests the decision.
+    #
     # THE STEPS STAY SEPARATELY NAMED AND SEPARATELY RUN. A merged job whose
     # failure says only "history checks failed" would be worse than two jobs;
     # each step's name is the sentence you want to read in the checks list.
     # They do NOT short-circuit each other: `if: always()` on the second means
-    # a stale dateline is still reported when the sitemap lastmod is also stale.
+    # a stale dateline is still reported when the sitemap lastmod is also stale,
+    # and so on down the list.
     runs-on: ubuntu-24.04
     name: checks that need history
     steps:
@@ -202,7 +208,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      # Resolved once, used by both steps: a pull_request compares against the
+      # Resolved once, used by every step: a pull_request compares against the
       # base branch, every other trigger against the commit before the push.
       - name: resolve the base commit
         run: >-
@@ -216,3 +222,10 @@ jobs:
       - name: a sitemap page changed without its lastmod changing
         if: always()
         run: node scripts/check-sitemap-lastmod.mjs "$BASE"
+
+      - name: a coach-facing change without a What's new entry
+        if: always() && github.event_name == 'pull_request'
+        # The PR body goes in through env, never interpolated into the script.
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/check-whats-new.mjs "$BASE"

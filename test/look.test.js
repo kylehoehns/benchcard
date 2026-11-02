@@ -40,7 +40,7 @@ test('--out is required', () => {
 test('an unknown --view is refused by name, and the known names are printed', () => {
   assert.throws(() => parseArgs(['--out', 'o', '--view', 'today,nosuchview']), e => {
     assert.match(e.message, /nosuchview/);
-    for (const known of ['today', 'games', 'team', 'season', 'settings', 'plan sheet', 'about']) {
+    for (const known of ['today', 'games', 'team', 'season', 'settings', 'plan sheet', 'about', 'whats-new']) {
       assert.ok(e.message.includes(known), `the known view "${known}" is not listed in: ${e.message}`);
     }
     return true;
