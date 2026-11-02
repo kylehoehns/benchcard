@@ -17,7 +17,7 @@ import { fmtClock, fmtMinutes } from './engine.js';
 import { riseIn, popIn, countTo, enabled as fxOn, EASE } from './fx.js';
 import { icon } from './icons.js';
 import { $, el } from './dom.js';
-import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, countedIds, blockedFix, BLOCKED_TITLE } from './state.js';
+import { state, plans, colorOf, game, byId, noRoster, effectiveStints, effectiveMinutes, sitStints, longestSit, countedIds, blockedFix, BLOCKED_TITLE } from './state.js';
 import { distinctNames } from './roster.js';
 import { fitPreview } from './card.js';
 import { resumeAt } from './live.js';
@@ -467,18 +467,18 @@ function renderPinned(names, p, stints, mins, starts) {
   host.setAttribute('aria-labelledby', 'tlPinNm');
   host.style.setProperty('--c', colorOf(id));
   const on = stints.map(s2 => s2.onFloor.includes(id));
-  const runs = [], sits = [];
+  const runs = [];
   let cur = 0, mode = null;
   stints.forEach((s2, i) => {
     const m2 = on[i];
-    if (m2 !== mode) { if (mode !== null) (mode ? runs : sits).push(cur); mode = m2; cur = 0; }
+    if (m2 !== mode) { if (mode === true) runs.push(cur); mode = m2; cur = 0; }
     cur += s2.minutes;
   });
-  if (mode !== null) (mode ? runs : sits).push(cur);
+  if (mode === true) runs.push(cur);
 
   const stintsOn = on.filter(Boolean).length;
   const longestRun = runs.length ? Math.max(...runs) : 0;
-  const longestSit = sits.length ? Math.max(...sits) : 0;
+  const longestSitMin = longestSit(sitStints(game(), p), [id]).minutes;
   const firstOn = on.indexOf(true);
 
   const close = el('button', 'tld-x press');
@@ -493,7 +493,7 @@ function renderPinned(names, p, stints, mins, starts) {
   f('Minutes', fmtMinutes(mins[id] || 0));
   f('Stints', `${stintsOn} of ${stints.length}`);
   f('Longest run', longestRun ? fmtMinutes(longestRun) + ' min' : '—');
-  f('Longest sit', longestSit ? fmtMinutes(longestSit) + ' min' : 'never sits');
+  f('Longest sit', longestSitMin ? fmtMinutes(longestSitMin) + ' min' : 'never sits');
   f('First on', firstOn < 0 ? 'never' : `${stints[firstOn].periodName || 'Q' + stints[firstOn].period} ${fmtClock(stints[firstOn].startSec)}`);
   host.append(facts);
 

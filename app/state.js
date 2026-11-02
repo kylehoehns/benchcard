@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, longestRun, runOverSentence, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -1148,6 +1148,43 @@ export function effectiveStints(g, p) {
     }));
 }
 
+/* #537: who sits at each stint, for anything that lists or counts the bench.
+   `effectiveStints` with a kid who walked in late (`live.arrived`, as recorded)
+   taken off the bench for every stint up to and including the one they walked
+   in during: they were not there to sit. When nobody is late it is
+   `effectiveStints`' own array. */
+export function benchStints(g, p) {
+  const eff = effectiveStints(g, p);
+  const arrived = g.live?.arrived;
+  const late = Object.keys(arrived || {});
+  if (!late.length) return eff;
+  return eff.map((r, k) => {
+    const away = late.filter(id => k <= arrived[id] && r.sitting.includes(id));
+    return away.length ? { ...r, sitting: r.sitting.filter(id => !away.includes(id)) } : r;
+  });
+}
+
+/* The longest unbroken bench run in the plan, and everyone tied on it. Reads
+   `sitting`, which the engine fills from the available players only, so a
+   player who is out is never "sitting" for the whole game. */
+export function longestSit(stints, ids) {
+  const run = {}, best = {};
+  for (const r of stints) {
+    const sitting = new Set(r.sitting);
+    for (const id of ids) {
+      run[id] = sitting.has(id) ? (run[id] || 0) + r.minutes : 0;
+      if (run[id] > (best[id] || 0)) best[id] = run[id];
+    }
+  }
+  const minutes = Math.max(0, ...Object.values(best));
+  return { minutes, ids: ids.filter(id => (best[id] || 0) === minutes && minutes > 0) };
+}
+
+/* #537 #541: the stints a sit run is counted over -- `benchStints` less
+   overtime, which Sits at most never counted (`benchSpan`). The note, the
+   Longest sit and the re-plan's run at the cut all read this one list. */
+export const sitStints = (g, p) => benchStints(g, p).slice(0, benchSpan(p.stints));
+
 /* The two-or-three-word label for each strategy: `#stratnote` on the Plan
    screen (`renderStrategy`, strategy.js) and the pass's one-line summary
    (`passSummary` below, #26 decision 1) both read this one map, so the two
@@ -1463,15 +1500,12 @@ export function consecNotes(g, p, issues, nameOf) {
 export function benchNotes(g, p, issues, nameOf) {
   const limit = g.constraints?.maxBench;
   if (!limit || issues.some(i => i.code === 'BENCH_TOO_FEW')) return [];
-  const fives = effectiveStints(g, p).map(s => s.onFloor);
-  const arrived = g.live?.arrived || {};
+  const rows = sitStints(g, p).map(s => s.sitting);
   const sat = new Set(satIds(g.live));
   const out = [];
   for (const id of availIds(g)) {
     if (sat.has(id)) continue;
-    // a late kid was not benched before they got there, whatever they did in the stint they walked in during
-    const after = id in arrived ? fives.slice(arrived[id] + 1) : fives;
-    const longest = longestRun(after, id, 0, false);
+    const longest = longestRun(rows, id, 0, true);
     if (longest > limit) {
       out.push({
         severity: 'warn', code: 'BENCH_EXCEEDED', playerIds: [id],
@@ -2290,16 +2324,17 @@ export function computeAll() {
 }
 
 /* #247 amendment 11: `live.arrived` is for a kid who was not there at the
-   start. One who played in the stints up to and including the stint they
-   "arrived" at -- played, went out, came back -- was not late, so the record
-   of it is dropped and they keep a whole-game share. Judged on the first `k`
+   start. One who played in a stint BEFORE the stint they "arrived" at --
+   played, went out, came back -- was not late, so the record of it is dropped
+   and they keep a whole-game share. Playing in the arrival stint itself is how
+   a late kid starts, so it does not drop the record. Judged on the first `k`
    stints, the ones the caller treats as played. */
 function lateArrivals(g, p, k) {
   const arrived = g.live?.arrived;
   if (!arrived) return {};
   const eff = effectiveStints(g, p).slice(0, k);
   return Object.fromEntries(Object.entries(arrived).filter(([id, at]) =>
-    !eff.slice(0, at + 1).some(s => s.onFloor.includes(id))));
+    !eff.slice(0, at).some(s => s.onFloor.includes(id))));
 }
 
 /* ================================================================== *
@@ -2446,16 +2481,18 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
     const run = runEndingAt(lead, id, lead.length - 1);
     if (run) streakBefore[id] = run;
   }
-  /* #441: the bench run at the cut, the same lead read the other way round, so
-     the engine's one run counter does the counting. A kid who walked in late
-     (`live.arrived`) was not benched before they got there, so only the
-     stints after their arrival count -- the stints `fair` below shares out. */
+  /* #441: the bench run at the cut, counted over the stints a sit run is counted
+     over (`sitStints`: a late kid is not benched before they got there, and
+     overtime is not counted), so the engine's one run counter does the counting. */
+  /* The pinned fives in [k, open[0]) are overtime only (`pinFives`/`isPinned` go
+     through `overtimeOf`), which `benchSpan` never counts, so `lead`'s pinned
+     rows are not needed here. */
   const arrived = lateArrivals(g, p, k);
   const sitBefore = {};
   if (g.constraints.maxBench) {
+    const rows = sitStints(g, p).slice(0, k).map(s => s.sitting);
     for (const id of avail) {
-      let run = runEndingAt(lead, id, lead.length - 1, 0, false);
-      if (id in arrived) run = Math.min(run, Math.max(0, lead.length - 1 - arrived[id]));
+      const run = runEndingAt(rows, id, rows.length - 1);
       if (run) sitBefore[id] = run;
     }
   }
@@ -2500,29 +2537,38 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   const wholePlayed = id => [...new Set(before.map(s => s.period))].filter(q => q <= format.periods
     && eff.filter(s => s.period === q).length === before.filter(s => s.period === q).length
     && before.filter(s => s.period === q).every(s => s.onFloor.includes(id))).length;
-  const fullLeft = {};
-  for (const id of avail) {
-    let need = leagueFullFor(g, id, arrived[id]) - wholePlayed(id);
-    if (c.maxMinutes[id] != null) need = Math.min(need, Math.floor(c.maxMinutes[id] / g.periodMinutes + 1e-9));
-    if (need > 0) fullLeft[id] = need;
-  }
-  if (Object.keys(fullLeft).length) c.fullPeriods = fullLeft;
   /* #535: a suffix that starts partway through a regulation period q. A kid who
      still owes a full period and was on the floor for every stint of q outside
      the open stints is asked to finish it, and it counts as one of theirs. A
      start at a period's first stint has no such period. */
   const fromStint = p.stints[k], cutStint = p.stints[k - 1];
-  if (k > 0 && fromStint && cutStint && fromStint.period === cutStint.period && fromStint.period <= format.periods
-      && p.stints.every((s, j) => s.period !== fromStint.period || j < end)) {
-    const q = fromStint.period;
-    const mine = before.filter(s => s.period === q);
-    const finish = {};
-    // Plays at most N in a row: finishing adds the period's open stints to the run at the cut
-    const openInQ = p.stints.filter((s, j) => j >= k && j < end && s.period === q).length;
-    const fits = id => !g.constraints.maxConsecutive || (streakBefore[id] || 0) + openInQ <= g.constraints.maxConsecutive;
-    for (const id of avail) if (fullLeft[id] > 0 && mine.every(s => s.onFloor.includes(id)) && fits(id)) finish[id] = q;
-    if (Object.keys(finish).length) c.fullFinish = finish;
+  const midPeriod = k > 0 && fromStint && cutStint && fromStint.period === cutStint.period && fromStint.period <= format.periods
+    && p.stints.every((s, j) => s.period !== fromStint.period || j < end);
+  const q = midPeriod ? fromStint.period : null;
+  const mine = midPeriod ? before.filter(s => s.period === q) : [];
+  // Plays at most N in a row: finishing adds the period's open stints to the run at the cut
+  const openInQ = midPeriod ? p.stints.filter((s, j) => j >= k && j < end && s.period === q) : [];
+  const restOfQ = openInQ.reduce((a, s) => a + s.minutes, 0);
+  const fits = id => !g.constraints.maxConsecutive || (streakBefore[id] || 0) + openInQ.length <= g.constraints.maxConsecutive;
+  const finishes = id => midPeriod && mine.every(s => s.onFloor.includes(id)) && fits(id);
+  const fullLeft = {};
+  for (const id of avail) {
+    let need = leagueFullFor(g, id, arrived[id]) - wholePlayed(id);
+    const left = c.maxMinutes[id];
+    if (left != null) {
+      /* #540: a kid who will finish q is paid for the rest of it out of their cap first, and
+         only then for whole periods, so a cap that covers the rest of q but not a whole
+         period no longer takes the finish away. Everyone else: whole periods the cap covers. */
+      need = Math.min(need, need > 0 && finishes(id) && left + 1e-9 >= restOfQ
+        ? 1 + Math.floor((left - restOfQ) / g.periodMinutes + 1e-9)
+        : Math.floor(left / g.periodMinutes + 1e-9));
+    }
+    if (need > 0) fullLeft[id] = need;
   }
+  if (Object.keys(fullLeft).length) c.fullPeriods = fullLeft;
+  const finish = {};
+  for (const id of avail) if (fullLeft[id] > 0 && finishes(id)) finish[id] = q;
+  if (Object.keys(finish).length) c.fullFinish = finish;
   // #451: who already played in a half or period the open stints share
   const playsIn = playsInSetting();
   const coveredIn = {};

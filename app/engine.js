@@ -133,6 +133,14 @@ const overtimeLabel = n => (n === 1 ? 'OT' : `OT${n}`);
 /* "3 stints", "1 change": one plural, shared with state.js. */
 export const plural = (k, w) => `${k} ${w}${k === 1 ? '' : 's'}`;
 export const isOvertimeStint = s => /^OT\d*$/.test(s.periodName);
+/* #541: the stints Sits at most N in a row is counted over -- those before the
+   first overtime stint (overtime is always last), all of them when there is
+   none. Overtime is extra time the limit was never set for, so it neither
+   counts nor resets a run. Every bench-run count reads this one answer. */
+export const benchSpan = stints => {
+  const k = stints.findIndex(isOvertimeStint);
+  return k < 0 ? stints.length : k;
+};
 
 export function buildStints(format, granularity) {
   const { periods, periodMinutes } = format;
@@ -680,7 +688,7 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
      which the change limit may not allow -- the plan then holds the bench limit
      by changing more at once, so this line replaces SUBS_EXCEEDED. */
   if (c.maxBench && avail.length > ON_FLOOR) {
-    const m = c.maxBench, n = avail.length, S = stints.length;
+    const m = c.maxBench, n = avail.length, S = benchSpan(stints);
     if (benchTotalShort(m, n, S) || benchWindowShort(m, n, S)) {
       /* the nearest limit a coach can set (the stepper stops at MAX_BENCH_LIMIT) that holds */
       let tryLimit = m + 1;
@@ -1027,6 +1035,7 @@ export function generatePlan(input) {
                 maxConsecutive: c.maxConsecutive,
                 leadOf: id => input.streakBefore?.[id] || 0,
                 maxBench: c.maxBench,
+                benchSpan: benchSpan(stints),   // Sits at most counts regulation only
                 sitLeadOf: id => (c.maxBench ? input.sitBefore?.[id] || 0 : 0),
                 hasCarryover: !!carryover && avail.some(id => Math.abs(credit[id]) > 1e-9) };
   // halftime is a regulation fact (#367): overtime follows it and never moves it
@@ -1109,11 +1118,12 @@ export function generatePlan(input) {
       const m = minutesOf(lu, ctx);
       let capOver = 0, minShort = 0, pins = 0, subsOver = 0, restOver = 0, benchOver = 0, late = 0;
       const playsMiss = ctx.playsIn ? playsInMissCount(lu, ctx) : 0;
+      const benched = lu.slice(0, ctx.benchSpan);
       for (const id of avail) {
         capOver += Math.max(0, m[id] - capOf(id));
         minShort += Math.max(0, minOf(id) - m[id]);
         if (ctx.maxConsecutive) restOver += Math.max(0, longestRun(lu, id, ctx.leadOf(id)) - ctx.maxConsecutive);
-        if (ctx.maxBench) benchOver += Math.max(0, longestRun(lu, id, ctx.sitLeadOf(id), false) - ctx.maxBench);
+        if (ctx.maxBench) benchOver += Math.max(0, longestRun(benched, id, ctx.sitLeadOf(id), false) - ctx.maxBench);
       }
       lu.forEach((row, i) => { for (const id of forcedByStint[i]) if (!row.includes(id)) pins++; });
       for (let i = 1; i < lu.length; i++) subsOver += Math.max(0, changesAt(lu, i) - maxSubs);
@@ -1406,6 +1416,7 @@ function greedy(ctx, forcedByStint, rng) {
   for (const id of avail) { minutes[id] = 0; sitStreak[id] = ctx.sitLeadOf(id); onStreak[id] = ctx.leadOf(id); }
 
   const ahead = pinnedAhead(forcedByStint, stints);
+  const span = ctx.benchSpan;
   const lineups = [];
   let prev = null;
   let elapsed = 0;
@@ -1432,7 +1443,7 @@ function greedy(ctx, forcedByStint, rng) {
 
     // Sits at most: whoever has sat the limit goes in now, if the rules allow
     const atBenchLimit = new Set();
-    if (ctx.maxBench) {
+    if (ctx.maxBench && s < span) {
       // more at the limit than seats: longest sit first, so the same late-roster kid is not always left over
       const due = avail.filter(id => sitStreak[id] >= ctx.maxBench).sort((a, b) => sitStreak[b] - sitStreak[a]);
       for (const id of due) {
@@ -1810,8 +1821,9 @@ function cost(lineups, ctx) {
   }
 
   if (ctx.maxBench) {
+    const benched = lineups.slice(0, ctx.benchSpan);
     for (const id of ctx.avail) {
-      const over = longestRun(lineups, id, ctx.sitLeadOf(id), false) - ctx.maxBench;
+      const over = longestRun(benched, id, ctx.sitLeadOf(id), false) - ctx.maxBench;
       if (over > 0) c += over * over * 400;
     }
   }
@@ -2286,9 +2298,11 @@ function finish(lineups, ctx, issues, meta) {
   }
 
   const saidUpFront = issues.some(i => i.code === 'CONSEC_TOO_FEW' || i.code === 'CONSEC_IMPOSSIBLE');
+  const span = ctx.benchSpan;
   if (ctx.maxBench && !issues.some(i => i.code === 'BENCH_TOO_FEW')) {
+    const benched = lineups.slice(0, span);
     for (const id of ctx.avail) {
-      const run = longestRun(lineups, id, ctx.sitLeadOf(id), false);
+      const run = longestRun(benched, id, ctx.sitLeadOf(id), false);
       if (run > ctx.maxBench) {
         issues.push({
           severity: 'warn', code: 'BENCH_EXCEEDED', playerIds: [id],
@@ -2321,7 +2335,7 @@ function finish(lineups, ctx, issues, meta) {
      whole fives IS the strategy. */
   // BENCH_SUBS, PLAYS_IN_SUBS or PLAYS_IN_TOO_FEW, or BENCH_TOO_FEW beside a change limit too small, already said it
   const benchSaidChanges = issues.some(i => i.code === 'BENCH_SUBS' || i.code === 'PLAYS_IN_SUBS' || i.code === 'PLAYS_IN_TOO_FEW')
-    || (issues.some(i => i.code === 'BENCH_TOO_FEW') && benchOutrunsChanges(ctx.maxBench, ctx.maxSubs, ctx.avail.length, stints.length));
+    || (issues.some(i => i.code === 'BENCH_TOO_FEW') && benchOutrunsChanges(ctx.maxBench, ctx.maxSubs, ctx.avail.length, span));
   if (!platoon && ctx.maxSubs > 0 && !benchSaidChanges) {
     let over = 0, worst = 0, forced = 0, byRest = 0, byBench = 0;
     for (let i = 1; i < lineups.length; i++) {
@@ -2337,7 +2351,7 @@ function finish(lineups, ctx, issues, meta) {
           rest = spent > ctx.maxSubs;
         }
         /* ... and whoever has sat the Sits at most limit must come on. */
-        if (ctx.maxBench) {
+        if (ctx.maxBench && i < span) {
           const due = lineups[i].filter(id => !lineups[i - 1].includes(id)
             && runEndingAt(lineups, id, i - 1, ctx.sitLeadOf(id), false) >= ctx.maxBench).length;
           bench = due > ctx.maxSubs;

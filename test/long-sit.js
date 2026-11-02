@@ -1,6 +1,6 @@
-/* #443: the longest-sit counts the engine and fuzz tests share. app/plan-view.js
-   has `longestSit`, but it needs a browser to import, so the tests read the
-   same thing from a plan's stints here. */
+/* #443: the longest-sit counts the engine and fuzz tests share. app/state.js
+   has `longestSit`, which needs the browser stubs to import; the engine tests
+   read the same thing from a plan's stints here without them. */
 
 /* the longest unbroken bench run of `id`, in minutes */
 export function longestBench(p, id) {

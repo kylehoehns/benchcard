@@ -15,13 +15,13 @@ import { generatePlan } from '../app/engine.js';
  * like that -- the totals come out the same") is measured here against
  * the real solver rather than asserted, because it is advice: if a later
  * engine change stops it being true the sentence has to go with it.
- * plan-view.js reaches for a canvas and a media query at import time, so
+ * state.js reaches for localStorage at import time, so
  * `dom-stub.js` stands in for the document; nothing here renders (shared
  * with test/day-games-text.test.js, for the same reason).
  * ================================================================== */
 import './dom-stub.js';
 globalThis.window = globalThis;
-const { longestSit } = await import('../app/plan-view.js');
+const { longestSit } = await import('../app/state.js');
 
 /* Four 4-minute stints, hand-written so the expected runs are obvious. */
 const stints = sitting => sitting.map((s, i) => ({ index: i, minutes: 4, sitting: s }));
