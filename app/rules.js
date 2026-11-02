@@ -18,7 +18,7 @@ import { icon } from './icons.js';
 import { el, $, clone } from './dom.js';
 import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds,
-         ruleItems, runHint, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
+         ruleItems, runHint, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
          EVEN_OUT_DAY_LABEL, dayIsToday } from './state.js';
 import { pickFive } from './pills.js';
@@ -494,8 +494,11 @@ function kindControls(kind, draft, hooks = {}) {
       const g = game();
       hint.textContent = [runHint(g, draft.n), kind === 'bench' ? benchPlatoonHint(g, draft.n) : ''].filter(Boolean).join(' ');
     };
+    const top = kind === 'rest' ? restLimitMax(game()) : 4;
+    // a limit above the top (the stepper starts at 2; a saved rule may be higher) is no limit at all, so show and save the top
+    draft.n = Math.max(1, Math.min(draft.n ?? 2, top));
     paintHint();
-    grp.append(stepperRow('Stints in a row', () => draft.n, v => { draft.n = v; }, 1, 4, 'stints', () => { paintHint(); afterStep?.(); }));
+    grp.append(stepperRow(runRowLabel(game()), () => draft.n, v => { draft.n = v; }, 1, top, runNoun(game(), 2), () => { paintHint(); afterStep?.(); }));
     body.append(grp, hint);
   }
   return body;

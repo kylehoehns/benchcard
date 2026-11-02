@@ -64,10 +64,13 @@ function periodLengths(periodMinutes, g) {
    anything else is just a period. Same width in every case, so the card is
    unaffected. */
 export function periodLabel(period, total) {
-  if (total === 2) return `H${period}`;
-  if (total === 4) return `Q${period}`;
-  return `P${period}`;
+  return `${periodWords(total).letter}${period}`;
 }
+
+/* What a period is called, by how many there are: the one ladder `periodLabel`
+   and `periodNoun` read. */
+const PERIOD_WORDS = { 2: { letter: 'H', one: 'half', many: 'halves' }, 4: { letter: 'Q', one: 'quarter', many: 'quarters' } };
+const periodWords = total => PERIOD_WORDS[total] || { letter: 'P', one: 'period', many: 'periods' };
 
 // Whole stints that finish before the midpoint of the clock; 0 when the game
 // is one stint and there is no such thing as being late. See LATE_WEIGHT.
@@ -80,6 +83,46 @@ export function stintsBeforeHalftime(stints) {
     n++;
   }
   return n < stints.length ? n : 0;
+}
+
+/* #450/#451: which half or period a stint is in, or null for overtime. `mode`
+   is 'halves' or 'periods'. A half is split at the regulation midpoint by the
+   stint's end on the clock (the reading `stintsBeforeHalftime` makes), worked
+   out from `period`, `endSec` and `format.periodMinutes`, so a re-plan's suffix
+   splits the same way. The one answer for the engine and state.js. */
+// the engine is pure, so it keeps its own reading of the setting: `storage.js` owns the list, this normalizes what a caller hands in
+const playsInMode = m => (m === 'halves' || m === 'periods' ? m : null);
+export function playsInGroup(stint, format, mode) {
+  if (stint.period > format.periods) return null;
+  if (mode === 'periods') return stint.period;
+  const end = (stint.period - 1) * format.periodMinutes + (format.periodMinutes - stint.endSec / 60);
+  return end <= format.periods * format.periodMinutes / 2 + 1e-9 ? 1 : 2;
+}
+
+/* The stints grouped by the half or period `playsInGroup` files them in, as
+   [{ key, idx }] (overtime has none): the one grouping feasibility and the
+   search both read. */
+function stintGroups(stints, format, mode) {
+  const byKey = new Map();
+  stints.forEach((s, i) => {
+    const key = playsInGroup(s, format, mode);
+    if (key != null) byKey.set(key, [...(byKey.get(key) || []), i]);
+  });
+  return [...byKey].map(([key, idx]) => ({ key, idx }));
+}
+
+/* #451: what a half or period is called in a sentence: "each half" under
+   halves, else by the game's period count (a quarter, a half, a period). */
+export const periodNoun = (periods, count = 1) => (count === 1 ? periodWords(periods).one : periodWords(periods).many);
+export const playsInNoun = (mode, periods) => (mode === 'halves' ? periodWords(2).one : periodNoun(periods));
+
+/* #450: the regulation periods a list of stints covers whole -- the periods a
+   kid can play start to finish. A re-plan's suffix leaves out the period in
+   progress, and a period with a hand-chosen stint taken out of the list. */
+function eligiblePeriods(stints, format) {
+  const sums = new Map();
+  for (const s of stints) if (s.period <= format.periods) sums.set(s.period, (sums.get(s.period) || 0) + s.minutes);
+  return [...sums].filter(([, m]) => Math.abs(m - format.periodMinutes) < 1e-6).map(([p]) => p);
 }
 
 /* #367: overtime periods follow regulation, numbered `periods + 1`, `+ 2`, ...
@@ -289,6 +332,9 @@ function normalize(constraints, availSet) {
   const targetMinutes = {};
   for (const [id, v] of Object.entries(c.targetMinutes || {})) if (availSet.has(id)) targetMinutes[id] = v;
   const minMinutes = c.minMinutes || {};
+  const fullPeriods = {}, fullPins = {};
+  for (const [id, v] of Object.entries(c.fullPeriods || {})) if (availSet.has(id) && Number.isInteger(v) && v > 0) fullPeriods[id] = v;
+  for (const [id, v] of Object.entries(c.fullPins || {})) if (availSet.has(id) && Array.isArray(v) && v.length) fullPins[id] = v;
   const lockedTargets = filterIds(c.lockedTargets);
   const raised = raiseLockedTargets(targetMinutes, lockedTargets, minMinutes, [...availSet]);
   const closing = c.closing && c.closing.stints > 0
@@ -296,6 +342,7 @@ function normalize(constraints, availSet) {
   const units = (c.units || []).map(u => filterIds(u));
   return {
     minMinutes,
+    fullPeriods, fullPins,
     maxMinutes: c.maxMinutes || {},
     /* `normalize` is a whitelist, and lockedTargets was never on it -- so a
        locked row had never reached the solver at all. That is why the lock only
@@ -353,7 +400,7 @@ export function lastPeriodStintIndex(stints, periods) {
   return stints.findIndex(s => s.period === last);
 }
 
-export function analyzeFeasibility({ players, availableIds, constraints, stints, strategy, periods, maxSubs }) {
+export function analyzeFeasibility({ players, availableIds, constraints, stints, strategy, periods, maxSubs, periodMinutes, playsIn, coveredIn }) {
   const issues = [];
   const byId = new Map(players.map(p => [p.id, p]));
   const short = deriveShortNames(players);
@@ -402,8 +449,28 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
   }
 
+  /* #450: the full periods asked for must fit the seats the whole periods have.
+     Said in periods; it replaces the same arithmetic in minutes below. */
+  const fullAsked = avail.filter(id => c.fullPeriods[id]);
+  let fullTooMany = false;
+  /* Only a list that covers the whole regulation game is refused: a re-plan's
+     suffix places what fits and `FULL_PERIODS_SHORT` names the rest. */
+  const regulationMinutes = stints.reduce((a, s) => a + (s.period <= periods ? s.minutes : 0), 0);
+  if (fullAsked.length && strategy !== 'platoon' && periodMinutes > 0 && Math.abs(regulationMinutes - periods * periodMinutes) < 1e-6) {
+    const eligible = eligiblePeriods(stints, { periods, periodMinutes }).length;
+    const total = fullAsked.reduce((a, id) => a + Math.min(c.fullPeriods[id], eligible), 0);
+    if (total > eligible * ON_FLOOR) {
+      fullTooMany = true;
+      const same = fullAsked.every(id => c.fullPeriods[id] === c.fullPeriods[fullAsked[0]]);
+      const asked = same ? `Everyone plays ${plural(c.fullPeriods[fullAsked[0]], 'full period')}` : 'The full periods asked for';
+      err('FULL_PERIODS_TOO_MANY',
+        `${asked} needs ${total} player-periods${same ? ` (${c.fullPeriods[fullAsked[0]]} x ${plural(fullAsked.length, 'player')})` : ''}, but ${plural(eligible, 'period')} have room for ${eligible * ON_FLOOR} (${eligible} x ${ON_FLOOR} on the floor). Lower the number, or count it in minutes.`,
+        fullAsked);
+    }
+  }
+
   const minSum = avail.reduce((a, id) => a + (c.minMinutes[id] || 0), 0);
-  if (minSum > floorMinutes) {
+  if (minSum > floorMinutes && !fullTooMany) {
     const top = avail
       .filter(id => c.minMinutes[id])
       .sort((a, b) => c.minMinutes[b] - c.minMinutes[a])
@@ -634,6 +701,35 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
     }
   }
 
+  /* #451: Everyone plays in each half or period. Two arithmetic lines, one at
+     most, and each replaces what the change limit would say (SUBS_EXCEEDED).
+     A half or period of k stints seats 5 in the first and `maxSubs` more at each
+     break after it; more kids than that cannot all play in it. When the clock
+     itself has fewer than n seats (5 x k) no number of changes helps. */
+  if (playsInMode(playsIn) && strategy !== 'platoon' && periodMinutes > 0) {
+    const mode = playsIn, format = { periods, periodMinutes };
+    const noun1 = playsInNoun(mode, periods);
+    const noun = `each ${noun1}`;
+    let few = null, subs = null;
+    for (const { key: g, idx } of stintGroups(stints, format, mode)) {
+      const k = idx.length;
+      const n = avail.filter(id => !coveredIn?.[id]?.includes(g)).length;
+      if (n <= ON_FLOOR) continue;
+      if (n > ON_FLOOR * k) { if (!few || k < few.k) few = { k, n }; continue; }
+      if (maxSubs > 0 && k > 1 && n > ON_FLOOR + maxSubs * (k - 1)) {
+        const need = Math.ceil((n - ON_FLOOR) / (k - 1));
+        if (!subs || need > subs.need) subs = { need, n };
+      }
+    }
+    if (few) {
+      warn('PLAYS_IN_TOO_FEW',
+        `With ${few.n} players, Everyone plays in ${noun} cannot hold: a ${noun1} is ${plural(few.k, 'stint')} here, ${ON_FLOOR * few.k} spots on the floor. Sub more often, or turn it off.`, avail);
+    } else if (subs) {
+      warn('PLAYS_IN_SUBS',
+        `With ${subs.n} players and ${plural(maxSubs, 'change')} at a time, Everyone plays in ${noun} needs ${subs.need} changes at some breaks. Allow ${subs.need} changes at a time, or turn it off.`, avail);
+    }
+  }
+
   // Choosing platoon without defining the fives used to fall through and plan
   // as if balanced -- a silent no-op is worse than a clear ask.
   if (strategy === 'platoon' && !c.units.length) {
@@ -814,6 +910,24 @@ const playedBeforeHalf = (lineups, ctx) => {
   return on;
 };
 
+/* #451: the [id, group] pairs where a kid is on for no stint of a half or
+   period they are owed (one a re-plan says they already played in is not).
+   `cost` and `broken` run this on every candidate lineup, so they take the
+   count, which allocates nothing; the named list is for `finish`. */
+function playsInMissCount(lineups, ctx, out = null) {
+  let n = 0;
+  for (const g of ctx.playsIn.groups) {
+    for (const id of ctx.avail) {
+      if (ctx.playsIn.covered(id, g.key)) continue;
+      let on = false;
+      for (let k = 0; k < g.idx.length && !on; k++) on = lineups[g.idx[k]].includes(id);
+      if (!on) { n++; if (out) out.push([id, g.key]); }
+    }
+  }
+  return n;
+}
+const playsInMisses = (lineups, ctx) => { const out = []; playsInMissCount(lineups, ctx, out); return out; };
+
 export function generatePlan(input) {
   const {
     players,
@@ -848,14 +962,29 @@ export function generatePlan(input) {
   const stints = input.stints || buildStints(format, granularity);
   const byId = new Map(players.map(p => [p.id, p]));
   const avail = availableIds.filter(id => byId.has(id));
-  const issues = analyzeFeasibility({ players, availableIds: avail, constraints, stints, strategy: input.strategy, periods: format.periods, maxSubs });
+  /* #450: full periods are pinned before anything reads pins. The picks ride
+     on a copy of the constraints, so feasibility, `buildForced`, `cost` and the
+     notes after the fact all see one set. Platoon applies no pins. */
+  let cons = constraints, fullShort = [];
+  if (input.strategy !== 'platoon' && Object.keys(constraints.fullPeriods || {}).length) {
+    const c0 = normalize(constraints, new Set(avail));
+    if (Object.keys(c0.fullPeriods).length) {
+      const start0 = Array.isArray(input.start) && input.start.length === stints.length
+        ? input.start.map(row => (Array.isArray(row) ? row : [])) : null;
+      const got = assignFullPeriods(stints, c0, format, avail, avoidSetOf(c0.avoids), start0, seed);
+      cons = { ...constraints, fullPins: got.pins };
+      fullShort = got.short;
+    }
+  }
+  const playsMode = input.strategy !== 'platoon' ? playsInMode(input.playsIn) : null;
+  const issues = analyzeFeasibility({ players, availableIds: avail, constraints: cons, stints, strategy: input.strategy, periods: format.periods, maxSubs, periodMinutes: format.periodMinutes, playsIn: playsMode, coveredIn: input.coveredIn });
 
   if (issues.some(i => i.severity === 'error')) {
     return { ok: false, stints: [], minutes: {}, spread: null, issues, seed };
   }
 
   const availSet = new Set(avail);
-  const c = normalize(constraints, availSet);
+  const c = normalize(cons, availSet);
   const avoidSet = avoidSetOf(c.avoids);
   const short = deriveShortNames(players);
 
@@ -900,6 +1029,13 @@ export function generatePlan(input) {
                 sitLeadOf: id => (c.maxBench ? input.sitBefore?.[id] || 0 : 0),
                 hasCarryover: !!carryover && avail.some(id => Math.abs(credit[id]) > 1e-9) };
   // halftime is a regulation fact (#367): overtime follows it and never moves it
+  if (playsMode) {
+    ctx.playsIn = {
+      mode: playsMode,
+      groups: stintGroups(stints, format, playsMode),
+      covered: (id, key) => !!input.coveredIn?.[id]?.includes(key),
+    };
+  }
   ctx.firstHalf = stintsBeforeHalftime(stints.filter(s => s.period <= format.periods));
   ctx.halfReach = ctx.firstHalf ? ON_FLOOR + Math.max(0, maxSubs) * (ctx.firstHalf - 1) : 0;
   ctx.targets = computeTargets(ctx);
@@ -971,6 +1107,7 @@ export function generatePlan(input) {
     const broken = (lu) => {
       const m = minutesOf(lu, ctx);
       let capOver = 0, minShort = 0, pins = 0, subsOver = 0, restOver = 0, benchOver = 0, late = 0;
+      const playsMiss = ctx.playsIn ? playsInMissCount(lu, ctx) : 0;
       for (const id of avail) {
         capOver += Math.max(0, m[id] - capOf(id));
         minShort += Math.max(0, minOf(id) - m[id]);
@@ -979,11 +1116,11 @@ export function generatePlan(input) {
       }
       lu.forEach((row, i) => { for (const id of forcedByStint[i]) if (!row.includes(id)) pins++; });
       for (let i = 1; i < lu.length; i++) subsOver += Math.max(0, changesAt(lu, i) - maxSubs);
-      if (avail.length <= ctx.halfReach) {
+      if (!ctx.playsIn && avail.length <= ctx.halfReach) {
         const on = playedBeforeHalf(lu, ctx);
         late = avail.filter(id => !on.has(id)).length;
       }
-      return [capOver, minShort, pins, subsOver, restOver, benchOver, late];
+      return [capOver, minShort, pins, subsOver, restOver, benchOver, late, playsMiss];
     };
     const worse = (a, b) => a.some((v, k) => v > b[k] + 1e-9);
     // the bench queue at the change limit; no limit to read when maxSubs is 0 or not a number
@@ -1011,8 +1148,100 @@ export function generatePlan(input) {
   }
 
   // platoon alternates whole fives by definition; see the churn report in `finish`
-  return finish(lineups, ctx, issues, { players, short, seed, stints, c, periods: format.periods,
+  return finish(lineups, ctx, issues, { players, short, seed, stints, c, periods: format.periods, fullShort,
     platoon: input.strategy === 'platoon' && c.units.length > 0 });
+}
+
+/* #450: which periods each kid plays start to finish, picked once before the
+   search and handed to `buildForced` as pins, so every reader of pins sees them.
+   In order of priority a pick never puts more than five on a stint (the other
+   pins count), never seats two Apart kids in one period and never pins a kid
+   past their cap; then it keeps the kid's pinned run under Plays at most N in a
+   row; then it takes a period in a half the kid has none in, then the
+   least-loaded period, then one the kid already plays in `start`, then the seed.
+   Picks go round by round so no kid is left the leftovers. A kid it cannot place
+   gets a one-step repair (another kid moves to a period with room); one still
+   short comes back in `short`, never as an error. */
+function assignFullPeriods(stints, c, format, avail, avoidSet, start, seed) {
+  const elig = eligiblePeriods(stints, format);
+  const base = buildForced(stints, { ...c, fullPins: {} }, format);
+  const forced = base.map(set => new Set(set));
+  const rng = makeRng(((seed ^ 0x45f9a1) >>> 0) || 1);
+  const idxOf = new Map(elig.map(p => [p, stints.map((s, i) => i).filter(i => stints[i].period === p)]));
+  // a period's half is its last stint's, as `playsInGroup` files it: a middle period of three ends in the second half
+  const half = new Map(elig.map(p => [p, playsInGroup(stints[idxOf.get(p).at(-1)], format, 'halves')]));
+  const pins = {};
+  const has = (id, p) => idxOf.get(p).every(i => forced[i].has(id));
+  const pinnedMin = id => stints.reduce((a, s, i) => a + (forced[i].has(id) ? s.minutes : 0), 0);
+  const capOf = id => (c.maxMinutes[id] != null ? c.maxMinutes[id] : Infinity);
+  const can = (id, p) => {
+    if (has(id, p)) return false;
+    const idx = idxOf.get(p);
+    if (!idx.every(i => forced[i].has(id) || forced[i].size < ON_FLOOR)) return false;
+    for (const i of idx) for (const q of forced[i]) if (avoidSet.has(pairKey(id, q))) return false;
+    const added = idx.reduce((a, i) => a + (forced[i].has(id) ? 0 : stints[i].minutes), 0);
+    return pinnedMin(id) + added <= capOf(id) + 1e-9;
+  };
+  const put = (id, p) => { for (const i of idxOf.get(p)) forced[i].add(id); (pins[id] ||= []).push(p); };
+  // a pick is taken back; a stint the starting five, last period or closers pin the kid in stays pinned
+  const take = (id, p) => { for (const i of idxOf.get(p)) if (!base[i].has(id)) forced[i].delete(id); pins[id] = pins[id].filter(x => x !== p); };
+  const load = p => Math.max(...idxOf.get(p).map(i => forced[i].size));
+  const inStart = (id, p) => !!start && idxOf.get(p).every(i => start[i].includes(id));
+  const owned = id => elig.filter(p => has(id, p));
+
+  const want = {};
+  const owed = {};
+  for (const id of avail) if (c.fullPeriods[id] > 0) { owed[id] = c.fullPeriods[id]; want[id] = Math.min(owed[id], elig.length); }
+  const order = Object.keys(want).map(id => [rng(), id]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  /* Plays at most N in a row: how far past the limit the kid's pinned run (in
+     stints, across breaks) would go with period `p` added. 0 with no limit. One
+     period longer than the limit on its own is a conflict between the rules; it
+     is picked anyway and the rest warnings say so. */
+  const runOver = (id, p) => {
+    if (!c.maxConsecutive) return 0;
+    const added = new Set(idxOf.get(p));
+    let run = 0, best = 0;
+    stints.forEach((s, i) => { run = forced[i].has(id) || added.has(i) ? run + 1 : 0; best = Math.max(best, run); });
+    return Math.max(0, best - c.maxConsecutive);
+  };
+  const pick = (id) => {
+    const mine = owned(id).map(p => half.get(p));
+    const options = elig.filter(p => can(id, p)).map(p => [runOver(id, p), mine.includes(half.get(p)) ? 1 : 0, load(p), inStart(id, p) ? 0 : 1, rng(), p]);
+    options.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4]);
+    return options.length ? options[0][5] : null;
+  };
+  const repair = (id) => {
+    for (const p of elig) {
+      if (has(id, p) || can(id, p)) continue;
+      for (const y of Object.keys(pins)) {
+        if (y === id || !pins[y].includes(p)) continue;
+        for (const q of elig) {
+          take(y, p);
+          if (q !== p && can(y, q)) {
+            put(y, q);
+            if (can(id, p)) { put(id, p); return true; }
+            take(y, q);
+          }
+          put(y, p);
+        }
+      }
+    }
+    return false;
+  };
+  const stuck = new Set();
+  for (let round = 1; ; round++) {
+    let any = false;
+    for (const id of order) {
+      if (stuck.has(id) || owned(id).length >= want[id]) continue;
+      any = true;
+      const p = pick(id);
+      if (p != null) put(id, p);
+      else if (!repair(id)) stuck.add(id);
+    }
+    if (!any) break;
+  }
+  const short = order.filter(id => owned(id).length < owed[id]).map(id => ({ id, need: owed[id], got: owned(id).length }));
+  return { pins, short };
 }
 
 function buildForced(stints, c, format) {
@@ -1026,6 +1255,10 @@ function buildForced(stints, c, format) {
   if (c.closing && c.closing.players.length) {
     const from = Math.max(0, stints.length - c.closing.stints);
     for (let i = from; i < stints.length; i++) for (const id of c.closing.players) forced[i].add(id);
+  }
+  // #450: a kid's full periods, picked by `assignFullPeriods`, are pinned like any other group
+  for (const [id, periods] of Object.entries(c.fullPins || {})) {
+    stints.forEach((s, i) => { if (periods.includes(s.period)) forced[i].add(id); });
   }
   return forced;
 }
@@ -1048,11 +1281,12 @@ function pinnedAhead(forced, stints) {
 /* Each pin group on its own, run through buildForced so which stints it pins
    is still decided there. `say` is the coach's own words for it. */
 function pinGroups(stints, c, periods) {
-  const none = { openingFive: [], lastPeriodFive: [], closing: null };
+  const none = { openingFive: [], lastPeriodFive: [], closing: null, fullPins: {} };
   return [
     ['OPENING_MISSED', 'is set to start', 'Starting five', false, { openingFive: c.openingFive }],
     ['LAST_PERIOD_MISSED', 'is set to start the last period', 'Starts the last period', false, { lastPeriodFive: c.lastPeriodFive }],
     ['CLOSER_MISSED', 'is set to close', 'Closers', true, { closing: c.closing }],
+    ['FULL_PERIOD_MISSED', 'is set to play a full period', 'Full periods', true, { fullPins: c.fullPins }],
   ].map(([code, say, name, plural, only]) => ({ code, say: say.replace(/^is /, ''), verb: say, name, plural,
     forced: buildForced(stints, { ...none, ...only }, { periods }) }));
 }
@@ -1554,7 +1788,8 @@ function cost(lineups, ctx) {
     }
   }
 
-  if (ctx.avail.length <= ctx.halfReach) {   // see LATE_WEIGHT
+  if (ctx.playsIn) c += playsInMissCount(lineups, ctx) * LATE_WEIGHT;   // #451, in place of the halftime term
+  else if (ctx.avail.length <= ctx.halfReach) {   // see LATE_WEIGHT
     const on = playedBeforeHalf(lineups, ctx);
     for (const id of ctx.avail) if (!on.has(id)) c += LATE_WEIGHT;
   }
@@ -2003,6 +2238,24 @@ function finish(lineups, ctx, issues, meta) {
      alone, so which stints it pins is still decided in one place. Platoon is
      exempt: it applies no pins, the units are the coach's. */
   issues.push(...missedPinIssues({ stints, c, periods, lineups, avail: ctx.avail, platoon, label }));
+  if (meta.fullShort?.length) {
+    issues.push({
+      severity: 'warn', code: 'FULL_PERIODS_SHORT', playerIds: meta.fullShort.map(x => x.id),
+      message: `${andList(meta.fullShort.map(x => `${label(x.id)} gets ${x.got} of ${plural(x.need, 'full period')}`))}: no period had room for them without breaking another rule.`,
+    });
+  }
+
+  if (ctx.playsIn && !issues.some(i => i.code === 'PLAYS_IN_TOO_FEW')) {
+    const name = g => (ctx.playsIn.mode === 'halves' ? (g === 1 ? 'the first half' : 'the second half') : periodLabel(g, periods));
+    const byKid = new Map();
+    for (const [id, g] of playsInMisses(lineups, ctx)) byKid.set(id, [...(byKid.get(id) || []), g]);
+    if (byKid.size) {
+      issues.push({
+        severity: 'warn', code: 'PLAYS_IN_MISSED', playerIds: [...byKid.keys()],
+        message: [...byKid].map(([id, gs]) => `${label(id)} misses ${andList(gs.map(name))}.`).join(' '),
+      });
+    }
+  }
 
   const saidUpFront = issues.some(i => i.code === 'CONSEC_TOO_FEW' || i.code === 'CONSEC_IMPOSSIBLE');
   if (ctx.maxBench && !issues.some(i => i.code === 'BENCH_TOO_FEW')) {
@@ -2038,8 +2291,8 @@ function finish(lineups, ctx, issues, meta) {
      plan in nine. Same contract as CONSEC_EXCEEDED above -- say the limit was
      missed rather than under-deliver quietly. Platoon is exempt: alternating
      whole fives IS the strategy. */
-  // BENCH_SUBS, or BENCH_TOO_FEW beside a change limit too small, already said it
-  const benchSaidChanges = issues.some(i => i.code === 'BENCH_SUBS')
+  // BENCH_SUBS, PLAYS_IN_SUBS or PLAYS_IN_TOO_FEW, or BENCH_TOO_FEW beside a change limit too small, already said it
+  const benchSaidChanges = issues.some(i => i.code === 'BENCH_SUBS' || i.code === 'PLAYS_IN_SUBS' || i.code === 'PLAYS_IN_TOO_FEW')
     || (issues.some(i => i.code === 'BENCH_TOO_FEW') && benchOutrunsChanges(ctx.maxBench, ctx.maxSubs, ctx.avail.length, stints.length));
   if (!platoon && ctx.maxSubs > 0 && !benchSaidChanges) {
     let over = 0, worst = 0, forced = 0, byRest = 0, byBench = 0;
@@ -2081,7 +2334,7 @@ function finish(lineups, ctx, issues, meta) {
      that fits is the tighter of the clock and the coach's change limit, and the
      second lever is only offered when lifting it would actually help. Platoon
      is exempt for the SUBS_EXCEEDED reason: the units are the coach's. */
-  if (ctx.firstHalf && !platoon) {
+  if (ctx.firstHalf && !platoon && !ctx.playsIn) {
     const on = playedBeforeHalf(lineups, ctx);
     const late = ctx.avail.filter(id => !on.has(id));
     if (late.length) {
@@ -2116,7 +2369,7 @@ function finish(lineups, ctx, issues, meta) {
   /* #448: the mirror. Somebody who plays before halftime and never after
      is the same silence HALF_LATE ends. The arithmetic is counted for the
      stints after halftime, the first of which is a change like any other. */
-  if (ctx.firstHalf && !platoon) {
+  if (ctx.firstHalf && !platoon && !ctx.playsIn) {
     const after = new Set();
     for (let i = ctx.firstHalf; i < lineups.length; i++) for (const id of lineups[i]) after.add(id);
     const gone = [...playedBeforeHalf(lineups, ctx)].filter(id => !after.has(id));

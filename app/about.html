@@ -777,9 +777,11 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
         name your two ball handlers and one of them is on the floor every
         stint.</li>
       <li><b>Plays at most N in a row</b> — the most stints anyone may play back
-        to back.</li>
+        to back. Breaks between periods do not reset the count, so a kid who
+        plays the end of one period and the start of the next has played two in
+        a row. A limit of 1 means the whole five changes at every break.</li>
       <li><b>Sits at most N in a row</b> — the most stints anyone may sit back to
-        back.</li>
+        back. Breaks between periods do not reset that count either.</li>
     </ul>
 
     <!-- The league minimum is deliberately NOT in the list above and not an
@@ -794,7 +796,11 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
     <p>One of these is worth setting once rather than per game. If your league
       says everyone plays a minimum, Settings holds one number for the whole
       team: <b>Everyone plays at least … min</b>. It reaches every available
-      player in every game, so you do not add a rule each time.</p>
+      player in every game, so you do not add a rule each time. The number can
+      count in minutes, as a share of the game, in periods, or in full periods,
+      where a kid plays whole periods start to finish. A second choice in
+      Settings, <b>Everyone plays in</b>, asks that every kid is on the floor in
+      each half, or in each period.</p>
     <p class="more"><a href="./advanced#rules">All seven rules, and what happens
       when two of them disagree</a></p>
   </section>
@@ -1001,7 +1007,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
          no date at all, so the guard is the reason the line is allowed to
          exist. The machine and human forms must agree; the guard checks that
          too. -->
-    <span>Last updated <time datetime="2026-11-01">1 November 2026</time></span>
+    <span>Last updated <time datetime="2026-11-02">2 November 2026</time></span>
   </footer>
 </div>
 

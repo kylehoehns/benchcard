@@ -15,10 +15,10 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
-         sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
+         sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
          validTipoff, tipoffLabel, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
@@ -322,6 +322,28 @@ function composedMinimum(g, id, league) {
   return cap != null ? Math.min(cap, want) : want;
 }
 
+/* #450: full periods the league owes this kid, 0 when the unit is not `full`.
+   The league's N (a late arrival's is the scaled league minutes over the period
+   length, rounded down), lowered so the pinned minutes fit under their cap
+   (`composedMinimum`'s order) and never more than the regulation periods. The
+   engine is told it per kid (`constraints.fullPeriods`). */
+function leagueFullFor(g, id, arrivedAt) {
+  const { amount, unit } = leagueSetting();
+  if (unit !== 'full' || !(amount > 0)) return 0;
+  const league = leagueMinFor(g, arrivedAt);
+  const owed = arrivedAt > 0 ? Math.floor(league / g.periodMinutes + 1e-9) : amount;
+  const fits = Math.floor(composedMinimum(g, id, league) / g.periodMinutes + 1e-9);
+  return Math.max(0, Math.min(owed, fits, g.periods));
+}
+
+/* #451: Everyone plays in 'halves' or 'periods', else 'off'. Read here and
+   nowhere else, beside `leagueSetting`. */
+const playsInSetting = () => (PLAYS_IN.includes(state.settings?.playsIn) ? state.settings.playsIn : DEFAULT_SETTINGS.playsIn);
+// Platoon applies no such rule, so for it the setting is not listed or counted
+const playsInRule = g => (g.strategy === 'platoon' ? 'off' : playsInSetting());
+// "each half", or "every quarter" / "every half" / "every period" by the game's period count
+const playsInText = g => (playsInSetting() === 'halves' ? `each ${playsInNoun('halves')}` : `every ${playsInNoun('periods', g.periods)}`);
+
 /* The rule's sentence, with what it comes to in this game: "half the game
    (16 min)", "2 periods (16 min)", or plain "16 min". */
 function leagueRuleText(g) {
@@ -329,6 +351,7 @@ function leagueRuleText(g) {
   const mins = `${fmtMinutes(leagueMinFor(g))} min`;
   if (unit === 'pct') return `${amount === 50 ? 'half the game' : `${amount}% of the game`} (${mins})`;
   if (unit === 'periods') return `${plural(amount, 'period')} (${mins})`;
+  if (unit === 'full') return `${plural(amount, 'full period')} (${mins})`;
   return mins;
 }
 
@@ -351,7 +374,8 @@ export function ruleCount(g) {
     + (c.lastPeriodFive.length ? 1 : 0)
     + (c.maxConsecutive ? 1 : 0)
     + (c.maxBench ? 1 : 0)
-    + (leagueSetting().amount > 0 ? 1 : 0);
+    + (leagueSetting().amount > 0 ? 1 : 0)
+    + (playsInRule(g) === 'off' ? 0 : 1);
 }
 
 /* #441: the most minutes `n` stints in a row can hold in this game's own
@@ -374,7 +398,17 @@ function runMinutesText(g, n) {
 /* #441: the picker's lines under the stepper, from the same helpers as the
  * rule's sentence. The second is only said where it is true: with ten
  * players, "Sits at most 1" is two fives trading places, which is Platoon. */
-export const runHint = (g, n) => `${plural(n, 'stint')} in a row is ${runMinutesText(g, n)}.`;
+export const runHint = (g, n) => `${runCount(g, n)} in a row is ${runMinutesText(g, n)}.`;
+
+/* #452: what a stint is called. Under Breaks only a stint is a whole period,
+ * so the run rules count quarters, halves or periods; every other game counts
+ * stints. `restLimitMax` is the most Plays at most can be set to: one less
+ * than the game's regulation stints, since all of them is no limit. */
+export const runNoun = (g, n = 1) => (g.granMode !== 'breaksOnly' ? (n === 1 ? 'stint' : 'stints') : periodNoun(g.periods, n));
+const runCount = (g, n) => `${n} ${runNoun(g, n)}`;
+// the stepper row's label, "Quarters in a row", and the unit its buttons say
+export const runRowLabel = g => { const w = runNoun(g, 2); return `${w[0].toUpperCase()}${w.slice(1)} in a row`; };
+export const restLimitMax = (g) => Math.max(1, regulationLens(g).lens.length - 1);
 export const benchPlatoonHint = (g, n) => (n === 1 && availIds(g).length === 2 * LINEUP_FLOOR
   ? `With ${availIds(g).length} players, Sits at most 1 in a row is Platoon.` : '');
 
@@ -399,6 +433,8 @@ export function ruleItems(g) {
   const items = [];
 
   if (leagueSetting().amount > 0) items.push({ kind: 'leagueMinimum', text: `Everyone plays at least ${leagueRuleText(g)}`, removable: false });
+
+  if (playsInRule(g) !== 'off') items.push({ kind: 'playsIn', text: `Everyone plays in ${playsInText(g)}`, removable: false });
 
   for (const [id, v] of Object.entries(c.minMinutes)) {
     if (!avail.has(id)) continue;
@@ -429,11 +465,11 @@ export function ruleItems(g) {
   }
   if (c.maxConsecutive) {
     items.push({ kind: 'rest', removable: true,
-      text: `Each player plays at most ${plural(c.maxConsecutive, 'stint')} in a row (${runMinutesText(g, c.maxConsecutive)})` });
+      text: `Each player plays at most ${runCount(g, c.maxConsecutive)} in a row (${runMinutesText(g, c.maxConsecutive)})` });
   }
   if (c.maxBench) {
     items.push({ kind: 'bench', removable: true,
-      text: `Each player sits at most ${plural(c.maxBench, 'stint')} in a row (${runMinutesText(g, c.maxBench)})` });
+      text: `Each player sits at most ${runCount(g, c.maxBench)} in a row (${runMinutesText(g, c.maxBench)})` });
   }
 
   return items;
@@ -478,7 +514,7 @@ export function removeRule(c, item) {
     case 'lastq': c.lastPeriodFive = []; break;
     case 'rest': c.maxConsecutive = 0; break;
     case 'bench': c.maxBench = 0; break;
-    default: break; // 'leagueMinimum', or anything unrecognized: not removable from here
+    default: break; // 'leagueMinimum', 'playsIn', or anything unrecognized: not removable from here
   }
 }
 
@@ -2091,6 +2127,9 @@ export function computeAll() {
       const before = planCache.get(g.id)?.plan;
       const late = before && g.live ? lateArrivals(g, before, playedStints(g.live) + 1) : (g.live?.arrived || {});
       const leagueFor = Object.fromEntries(inPlay.map(id => [id, leagueMinFor(g, late[id])]));
+      // #450: the whole periods each kid is owed, per kid; empty unless the unit is `full`
+      const fullFor = Object.fromEntries(inPlay.map(id => [id, leagueFullFor(g, id, late[id])]).filter(([, n]) => n > 0));
+      const playsIn = playsInSetting();
       const seasonT = seasonTargetsFor(g, inPlay, deficitOf);
       /* The tie-break the engine uses when the clock does not divide evenly and
          somebody has to play a stint less. `deficitOf` is the whole chain in one
@@ -2114,6 +2153,7 @@ export function computeAll() {
       const rest = JSON.stringify([
         ps.map(p => [p.id, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
         g.granMode, g.granValue, g.strategy, g.balance, g.seed, carry, seasonT, prio, maxSubs, leagueFor,
+        fullFor, playsIn,
       ]);
       const sig = JSON.stringify([ps.map(p => [p.name, p.shortName]), g.constraints, rest]);
       const hit = planCache.get(g.id);
@@ -2140,6 +2180,7 @@ export function computeAll() {
           if (!out.has(id)) c.minMinutes[id] = composedMinimum(g, id, leagueFor[id]);
         }
       }
+      if (Object.keys(fullFor).length) c.fullPeriods = fullFor;
       if (g.strategy === 'minutes') {
         c.targetMinutes = {};
         for (const [id, slots] of Object.entries(g.constraints.targetSlots || {})) {
@@ -2159,7 +2200,7 @@ export function computeAll() {
         carryover: carry,
         priority: prio,
         seed: g.seed,
-        maxSubs, start,
+        maxSubs, start, playsIn,
       });
       if (seasonT) sayTheSeasonSetThem(p);
       if (leagueOn) sayTheLeagueMinimum(p, g.constraints.minMinutes || {}, id => leagueFor[id] || 0);
@@ -2396,6 +2437,33 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
     if (cap != null) c.maxMinutes[id] = Math.max(0, cap - (played[id] || 0));
   }
 
+  /* #450: a kid's full periods still owed are what the league asks less the
+     whole periods they already played start to finish (counted from the stints
+     before the cut), and no more than their cap left can pin. The engine only
+     offers the periods the open stints cover whole. */
+  const format = gameFormat(g);
+  const wholePlayed = id => [...new Set(before.map(s => s.period))].filter(q => q <= format.periods
+    && eff.filter(s => s.period === q).length === before.filter(s => s.period === q).length
+    && before.filter(s => s.period === q).every(s => s.onFloor.includes(id))).length;
+  const fullLeft = {};
+  for (const id of avail) {
+    let need = leagueFullFor(g, id, arrived[id]) - wholePlayed(id);
+    if (c.maxMinutes[id] != null) need = Math.min(need, Math.floor(c.maxMinutes[id] / g.periodMinutes + 1e-9));
+    if (need > 0) fullLeft[id] = need;
+  }
+  if (Object.keys(fullLeft).length) c.fullPeriods = fullLeft;
+  // #451: who already played in a half or period the open stints share
+  const playsIn = playsInSetting();
+  const coveredIn = {};
+  if (playsIn !== 'off') {
+    const seen = [...before.map((s, j) => [p.stints[j], s.onFloor]), ...pinnedPlayed.map(x => [p.stints[x.at], x.onFloor])];
+    for (const [st, onFloor] of seen) {
+      const grp = playsInGroup(st, format, playsIn);
+      if (grp == null) continue;
+      for (const id of onFloor) if (!(coveredIn[id] ||= []).includes(grp)) coveredIn[id].push(grp);
+    }
+  }
+
   /* #490: `replanRest`'s retry when the caps left cannot cover the floor --
      each Plays at most minus what was played, with the uncapped kids at the
      whole of `total`, add up to less than five on the floor for every stint
@@ -2474,7 +2542,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
       granularity: { mode: g.granMode, value: g.granValue },
       constraints: c, strategy, balance: g.balance,
       seed: g.seed,
-      maxSubs, streakBefore, sitBefore,
+      maxSubs, streakBefore, sitBefore, playsIn, coveredIn,
     });
     /* #376: a sit changes one seat. The four who stay are handed to the
        solver as the opening five of the suffix (stint `from`), the engine's
