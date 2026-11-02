@@ -94,9 +94,14 @@ describe('a coach copies a setup from another game', { skip }, () => {
     assert.equal(await coach.isDisabled('Copy'), false);
   });
 
+  /* Plan is opened once before the start, so the row has been painted; the
+     reopen after the start has to take it away again. */
   test('a game in progress does not offer the action', async () => {
     await coach.onGameDay();
     await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Plan, even minutes');
+    assert.equal(await coach.sees('Copy from another game'), true);
+    await coach.tap('Close');
     await coach.tap('Start game');
     await coach.tap('Next stint');
     await coach.tap('Leave');
