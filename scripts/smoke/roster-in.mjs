@@ -246,7 +246,7 @@ function suffixRowProbe(rowSel) {
     const measure = (row) => {
       const nameEl = row.querySelector('.prow-t');
       if (!nameEl) return null;
-      const text = nameOf(row);
+      const text = shownName(row);
       const walker = document.createTreeWalker(nameEl, NodeFilter.SHOW_TEXT);
       const node = walker.nextNode();
       if (!node || node.data.length <= base.length) return null;
@@ -269,11 +269,11 @@ function suffixRowProbe(rowSel) {
         rowRect: { left: rowRect.left, top: rowRect.top, right: rowRect.right, bottom: rowRect.bottom },
       };
     };
-    const nameOf = row => (row.querySelector('.prow-t')?.textContent || '').replace(/\\u00AD/g, ''); // #520: the fitter's soft hyphens
-    const byText = t => rows.find(row => nameOf(row) === t);
+    const shownName = row => (row.querySelector('.prow-t')?.textContent || '').replace(/\\u00AD/g, ''); // #520: the fitter's soft hyphens
+    const byText = t => rows.find(row => shownName(row) === t);
     const numbered = byText(${JSON.stringify(LONG_NUMBERED)});
     const shorted = rows.find(row => {
-      const t = nameOf(row);
+      const t = shownName(row);
       return t !== ${JSON.stringify(LONG_NUMBERED)} && t.startsWith(base + ' (');
     });
     return JSON.stringify({ numbered: numbered ? measure(numbered) : null, shorted: shorted ? measure(shorted) : null });
