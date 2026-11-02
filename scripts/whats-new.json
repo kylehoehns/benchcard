@@ -1,4 +1,7 @@
 [
+  { "date": "2026-11-02", "text": "If a kid shows up late, the time they sit on the bench now counts from when they arrived, not from the start of the game." },
+  { "date": "2026-11-02", "text": "Overtime no longer counts toward your limit on how long a kid can sit in a row (Sits at most). A kid who sits at the end of the game and again in overtime is not warned about." },
+  { "date": "2026-11-02", "text": "If a kid has a limit on how many minutes they can play and it covers the rest of the quarter or half, changing the plan partway through no longer takes them off before it ends." },
   { "date": "2026-11-02", "text": "After you swap a kid in or out, the plan now warns you if someone sits on the bench more in a row than your Sits at most limit allows." },
   { "date": "2026-11-02", "text": "When your league minimum is in full periods and you change the plan partway through a quarter or half, a kid who has played all of it so far stays on to finish it, and it counts as one of their full periods." },
   { "date": "2026-11-02", "text": "Sitting a kid for the rest of the game, or swapping one in for now, no longer fails when a Plays at most limit is in the way. The plan tells you who ends up over it." },

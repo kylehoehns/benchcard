@@ -607,6 +607,15 @@ export class Coach {
     return Number(counts[0]);
   }
 
+  /** Open the plan's "Stint by stint" list and read its On the bench column:
+      one array of short names per stint, in order ('—' cells are []). */
+  async benchEachStint() {
+    const { result } = await this.c.send('Runtime.evaluate', { expression: `document.querySelector('#tabledetails:not([open]) > summary')` });
+    if (result.objectId) await this.#tapObject(result.objectId, 'Stint by stint');
+    return evalIn(this.c, `[...document.querySelectorAll('#plan table.grid td.sit')]
+      .map(td => td.textContent === '—' ? [] : td.textContent.split(' '))`);
+  }
+
   /** The starting five the card prints, in card order, as it shows them. Needs Card view. */
   starters() {
     return evalIn(this.c, `[...(document.querySelector('#sheet .card .stint .five')?.querySelectorAll('.nm') ?? [])].map(e => e.textContent)`);

@@ -17,7 +17,7 @@ import { fmtMinutes } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, planSay } from './state.js';
+import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, sitStints, benchStints, longestSit, planSay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
 import { blockedPanel } from './timeline.js';
@@ -189,12 +189,13 @@ export function renderPlanTable() {
   // card prints, hand swaps and all
   const stints = effectiveStints(game(), p);
   const mins = effectiveMinutes(game(), p);
+  const onBench = benchStints(game(), p);
 
   const t = el('table', 'grid');
   const hr = el('tr');
   for (const h of ['', 'Clock', 'On the floor', 'Comes on', 'Comes off', 'On the bench']) hr.append(el('th', null, h));
   t.append(hr);
-  for (const r of stints) {
+  for (const [k, r] of stints.entries()) {
     const tr = el('tr', r.index && stints[r.index - 1].period !== r.period ? 'period-break' : '');
     tr.append(el('td', 'per', r.periodName || 'Q' + r.period));
     tr.append(el('td', 'clk', r.clock));
@@ -203,7 +204,7 @@ export function renderPlanTable() {
     tr.append(el('td', 'out', r.out.map(i => sh[i]).join(' ') || '—'));
     // '—' like In and Out: with five available nobody ever sits, and a column
     // of blank cells under a heading reads as "not worked out yet"
-    tr.append(el('td', 'sit', r.sitting.map(i => sh[i]).join(' ') || '—'));
+    tr.append(el('td', 'sit', onBench[k].sitting.map(i => sh[i]).join(' ') || '—'));
     t.append(tr);
   }
   box.append(t);
@@ -247,10 +248,11 @@ export function renderPlanTable() {
      entitled to see rather than a failure to warn about: no issue code, no red
      row, one sentence under the bars. What was measured is in
      docs/specs/443-long-sit-cost.md. */
-  const sit = longestSit(stints, Object.keys(mins));
+  const counted = sitStints(game(), p);
+  const sit = longestSit(counted, Object.keys(mins));
   if (sit.minutes > 0) {
     const names = sit.ids.slice(0, 3).map(id => sh[id]);
-    const gameMins = stints.reduce((a, r) => a + r.minutes, 0);
+    const gameMins = counted.reduce((a, r) => a + r.minutes, 0);
     /* A third of the game, not a hard 12: 12 of 32 is what the measurement
        found, and a 4×6 game would never reach it while sitting a third of it
        feels exactly as long. */
@@ -263,21 +265,7 @@ export function renderPlanTable() {
   }
 }
 
-/* The longest unbroken bench run in the plan, and everyone tied on it. Reads
-   `sitting`, which the engine fills from the available players only, so a
-   player who is out is never "sitting" for the whole game. */
-export function longestSit(stints, ids) {
-  const run = {}, best = {};
-  for (const r of stints) {
-    const sitting = new Set(r.sitting);
-    for (const id of ids) {
-      run[id] = sitting.has(id) ? (run[id] || 0) + r.minutes : 0;
-      if (run[id] > (best[id] || 0)) best[id] = run[id];
-    }
-  }
-  const minutes = Math.max(0, ...Object.values(best));
-  return { minutes, ids: ids.filter(id => (best[id] || 0) === minutes && minutes > 0) };
-}
+export { longestSit };
 
 const maxSubsNow = () => state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs;
 
