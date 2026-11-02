@@ -59,7 +59,7 @@ async function pagesProblems(c, origin, rec) {
   const adv = await evalJSON(c, PAGE_TEXT);
   rec.check(adv.h2.some(([id, t]) => id === 'handoff' && t === 'Handing a game to an assistant'), `advanced.html headings: ${JSON.stringify(adv.h2.map(h => h[1]))}, want "Handing a game to an assistant" as #handoff`);
   const sec = adv.sec;
-  rec.check(/one game/i.test(sec) && /card name/i.test(sec) && /skill tier/i.test(sec) && /jersey number/i.test(sec) && !/nothing else comes/i.test(sec) && /where the game stands|where it stands/i.test(sec), 'the advanced section does not cover what travels: one game, card name, jersey number, skill tier, where the game stands');
+  rec.check(/one game/i.test(sec) && /card name/i.test(sec) && /\blevel\b/i.test(sec) && /jersey number/i.test(sec) && !/nothing else comes/i.test(sec) && /where the game stands|where it stands/i.test(sec), 'the advanced section does not cover what travels: one game, card name, jersey number, level, where the game stands');
   rec.check(/not linked|aren.t linked|stay linked|no longer linked/i.test(sec), 'the advanced section does not say the two phones are not linked afterward');
   rec.check(/Share/.test(sec) && /Hand off/.test(sec), 'the advanced section does not say where the door is (Share, then Hand off)');
   rec.check(adv.text.includes(NEVER_LEAVES), 'advanced.html lost "Your roster never leaves your device."');
