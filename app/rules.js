@@ -20,7 +20,7 @@ import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds,
          ruleItems, runHint, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
-         EVEN_OUT_DAY_LABEL, dayIsToday } from './state.js';
+         EVEN_OUT_DAY_LABEL, dayIsToday, evensOutDay } from './state.js';
 import { pickFive } from './pills.js';
 import { pushPlanPane, stepperRow } from './game-setup.js';
 import { popPane } from './trap.js';
@@ -123,15 +123,18 @@ function renderDayGroup(g) {
   wrap.append(el('div', 'pgrp-h', 'Across the day'));
   const box = el('div', 'pgrp');
   const first = state.activeGame === 0;
-  box.append(switchRow(EVEN_OUT_DAY_LABEL, !first && g.useCarryover, first, v => {
+  const byOrder = g.strategy === 'order';
+  box.append(switchRow(EVEN_OUT_DAY_LABEL, evensOutDay(g, state.activeGame), first || byOrder, v => {
     g.useCarryover = v; renderConstraints(); edit('dayCarryover');
   }));
   wrap.append(box);
   // #420: "today" only when the open day is the phone's today, as `moveGame` and filing read it
   const when = dayIsToday(state.day) ? 'today' : 'that day';
-  wrap.append(el('p', 'pgrp-f', first
-    ? `This is the first game ${when}, so there's nothing to even out.`
-    : `Players who got fewer minutes earlier ${when} get more here.`));
+  wrap.append(el('p', 'pgrp-f', byOrder
+    ? 'Not used with a rotation order. The order decides who plays.'
+    : first
+      ? `This is the first game ${when}, so there's nothing to even out.`
+      : `Players who got fewer minutes earlier ${when} get more here.`));
 }
 
 function renderSeasonGroup(g) {

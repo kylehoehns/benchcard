@@ -75,20 +75,6 @@ test('five players: everybody plays every stint, whatever the order and c', () =
   }
 });
 
-test('orderNext is the player the cycle puts on after the last stint', () => {
-  // the issue's example: 9 players, 4 at once, 8 stints -> game 2 starts at the sixth player
-  assert.equal(orderPlan(names(9), 4).orderNext, 'p5');
-  // 6 players, 2 at once: the window start moves 0,2,4,0,2,4,0,2 and the next is 4
-  assert.equal(orderPlan(names(6), 2).orderNext, 'p4');
-  // the circle's own order, not the ids' order
-  assert.equal(orderPlan(['p3', 'p1', 'p0', 'p2', 'p5', 'p4'], 2).orderNext, 'p5');
-});
-
-test('a plan for another strategy has no orderNext', () => {
-  const p = generatePlan({ players: roster(9), availableIds: names(9), format: FORMAT, granularity: EVERY_4, seed: 1 });
-  assert.equal('orderNext' in p, false);
-});
-
 test('the changes-at-once note is there exactly when fewer than c players sit', () => {
   const said = (n, c) => orderPlan(names(n), c).issues.filter(i => i.code === 'ORDER_CHANGES');
   for (const n of [6, 7, 9, 10]) {

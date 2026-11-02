@@ -2,6 +2,7 @@
 // corrupt or half-written record must not cost the coach their roster.
 
 import { ON_FLOOR } from './budget.js';
+import { STRATEGY_KEYS } from './engine.js';
 
 export const KEY = 'benchcard.v7';
 export const BACKUP_KEY = 'benchcard.v7.bak';
@@ -564,7 +565,7 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         // is off, which is what every record written before this shipped says,
         // and what a coach who has never opened the season should see.
         useSeasonTargets: !!g.useSeasonTargets,
-        strategy: ['balanced', 'minutes', 'closers', 'platoon', 'order'].includes(g.strategy) ? g.strategy : 'balanced',
+        strategy: STRATEGY_KEYS.includes(g.strategy) ? g.strategy : 'balanced',
         // #545: the rotation order, as ids; one entry per player, the rest is read as the roster order
         order: [...new Set(keep(g.order))],
         // how lineup strength is shaped across the game; see BALANCE in engine.js

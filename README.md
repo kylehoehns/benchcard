@@ -41,7 +41,7 @@ phone in your hand while play is live.
 
 ## What it does
 
-**Four planning strategies:**
+**Five planning strategies:**
 
 | | |
 | --- | --- |
@@ -49,6 +49,7 @@ phone in your hand while play is live.
 | **By hand** | per-player targets on sliders, with locks |
 | **Closers** | even minutes early, a group you pick finishes the game |
 | **Platoon** | fixed fives alternating wholesale |
+| **Rotation order** | you list the players, and they take turns on the floor in that order |
 
 **Hand off a game to an assistant with a link or QR code.** Share the game and
 its roster through a link — the plan travels in the part of the URL after
@@ -59,7 +60,7 @@ afterward.
 **Rules that compose with any of them** — Plays at least and Plays at
 most, Together and Apart, One of two on, a Starting five and Starts the last
 period, and two limits on stints in a row: Plays at most N in a row and
-Sits at most N in a row.
+Sits at most N in a row. Rotation order does not use a Starting five, because the order picks who starts.
 
 **Across the season, not just the afternoon.** Attendance is irregular, and
 that is what actually creates unfairness: one kid on 27 stints and another on

@@ -138,6 +138,33 @@ export const CLOSERS_STATE = {
           $('#sheetPlan').close(); $('#backBtn').click()`,
 };
 
+/* #545: the Plan sheet's Rotation order list: one row per player with a place
+ * number, the name (LONG_AND_SQUEEZE gives two rows their long names), an
+ * "Out" or "Running late" mark and two move buttons -- the one row in the app
+ * with two controls. p2 is set Running late so a mark is on screen. `close`
+ * puts the strategy, the order and attendance back. */
+export const ORDER_STATE = {
+  name: 'plan sheet, rotation order',
+  open: `$('.today-game').click(); $('#phraseStrategy').click();
+         const st = await import('/state.js');
+         const g = st.game();
+         window.__order545 = { strategy: g.strategy, order: g.order, out: [...g.out], late: [...(g.late || [])] };
+         [...document.querySelectorAll('#stratseg button')].find(b => b.dataset.strat === 'order').click();
+         if (!g.out.includes('p2')) g.out.push('p2');
+         g.late = [...new Set([...(g.late || []), 'p2'])];
+         (await import('/render.js')).renderAll();
+         await new Promise(r => setTimeout(r, 300));
+         const rows = document.querySelectorAll('#stratbody .orow');
+         if (rows.length < 8 || !document.querySelector('#stratbody .ord-mark')) {
+           throw new Error('the Rotation order list showed ' + rows.length + ' rows and no Running late mark');
+         }`,
+  close: `const st = await import('/state.js');
+          const g = st.game(), was = window.__order545;
+          g.strategy = was.strategy; g.order = was.order; g.out = was.out; g.late = was.late;
+          (await import('/render.js')).renderAll();
+          $('#sheetPlan').close(); $('#backBtn').click()`,
+};
+
 /* #455: the plan notes under the timeline with a name no column can hold whole.
  * A minimum for the first player and a stints-in-a-row limit make the engine
  * write "<name> plays 3 stints in a row ..." (the wording test/stale-lineup-notes
@@ -583,7 +610,7 @@ const describeFinding = p => {
 };
 
 /* The states the sweep walks, in order. Shared with scripts/look.mjs. */
-export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, CLOSERS_STATE, PLAN_NOTES_STATE];
+export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, CLOSERS_STATE, ORDER_STATE, PLAN_NOTES_STATE];
 
 /* The states that navigate to their own page and so wipe whatever the run
  * set up on the one before (the roster, injected CSS). Shared with

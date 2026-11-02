@@ -10,6 +10,8 @@
    build step, so a markup change that drops an element should degrade to a
    warned no-op rather than throw and kill every handler declared after it. */
 
+import { icon } from './icons.js';
+
 export const $ = s => document.querySelector(s);
 
 // Binding helper: a markup change that drops an element degrades to a no-op
@@ -55,6 +57,19 @@ export const repeatRow = (notice, name, onDrop) => {
   drop.onclick = onDrop;
   row.append(drop);
   return row;
+};
+
+/* The 48px up or down button of a reorderable list: the roster's rows and
+   the plan's rotation order (#545) both build theirs here, so the two lists
+   cannot come to look or read differently. `dir` is -1 (up) or 1 (down). */
+export const moveButton = (dir, name, disabled, onclick) => {
+  const b = el('button', 'obtn press');
+  b.type = 'button';
+  b.append(icon(dir < 0 ? 'arrow-up' : 'arrow-down', { size: '.85em', stroke: 2.4 }));
+  b.disabled = disabled;
+  b.setAttribute('aria-label', `Move ${name} ${dir < 0 ? 'up' : 'down'}`);
+  b.onclick = onclick;
+  return b;
 };
 
 /* One shared 2D context for text measurement. Several places size type by

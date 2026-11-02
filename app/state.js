@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -157,7 +157,6 @@ export function newGame(n, from, settings) {
     out: [...from.out], late: [...(from.late || [])], constraints: clone(from.constraints),
     strategy: from.strategy,
   });
-  if (from?.strategy === 'order') g.order = orderAfter(from);
   return g;
 }
 
@@ -342,7 +341,7 @@ function leagueFullFor(g, id, arrivedAt) {
    nowhere else, beside `leagueSetting`. */
 const playsInSetting = () => (PLAYS_IN.includes(state.settings?.playsIn) ? state.settings.playsIn : DEFAULT_SETTINGS.playsIn);
 // Platoon applies no such rule, so for it the setting is not listed or counted
-const playsInRule = g => (g.strategy === 'platoon' || g.strategy === 'order' ? 'off' : playsInSetting());
+const playsInRule = g => (fivesAreSet(g.strategy) ? 'off' : playsInSetting());
 // "each half", or "every quarter" / "every half" / "every period" by the game's period count
 const playsInText = g => (playsInSetting() === 'halves' ? `each ${playsInNoun('halves')}` : `every ${playsInNoun('periods', g.periods)}`);
 
@@ -829,6 +828,7 @@ export function addGame(g, date) {
   const day = team().days[i];
   day.games.push(g);
   reopenSorted(i, day.games, g);
+  if (g.strategy === 'order' && !g.order?.length) g.order = startingOrder(g, day);
   return i;
 }
 
@@ -1198,18 +1198,22 @@ const turnTo = (list, id) => {
 };
 const changingAtOnce = () => orderChanges(state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs);
 
-/* Who the cycle puts on next after `row` (a stint with `onFloor` and
-   `sitting`): the circle is the order as it was at that stint, the five is a
-   run of it starting at `w`, and the next player is `c` places on. A five
-   that is not a run (a hand swap broke it) is read from its first member on,
-   to the first player not on it. */
-function cycleNext(g, row) {
+/* Who the cycle puts on next after stint `j` (`row`, with `onFloor` and
+   `sitting`): the circle is the order over everyone on that stint's floor or
+   bench, less a kid who sat for the rest of the game. With a circle of five
+   or fewer the cycle is a pure count -- stint j+1 starts `c` places on from
+   stint j, as the engine places it. With more, the five is a run of the
+   circle starting at `w` and the next player is `c` places on; a five that is
+   not a run (a hand swap broke it) is read from its first member on, to the
+   first player not on it. `order` is the list in force, default the game's. */
+function cycleNext(g, row, j, order = effectiveOrder(g)) {
   const five = new Set(row.onFloor);
-  const circle = effectiveOrder(g).filter(id => five.has(id) || row.sitting.includes(id));
+  const sat = new Set(satIds(g.live));
+  const circle = order.filter(id => five.has(id) || (row.sitting.includes(id) && !sat.has(id)));
   const n = circle.length;
   if (!n) return null;
   const c = changingAtOnce();
-  if (n <= five.size) return circle[c % n];
+  if (n <= 5) return circle[((j + 1) * c) % n];
   const starts = circle.map((id, i) => i).filter(i => five.has(circle[i]) && !five.has(circle[(i + n - 1) % n]));
   if (starts.length === 1) return circle[(starts[0] + c) % n];
   const first = circle.findIndex(id => five.has(id));
@@ -1248,8 +1252,32 @@ function orderAfter(prev) {
   const p = planOf(prev.id);
   if (!p?.ok) return order;
   const eff = benchStints(prev, p);
-  const next = eff.length ? cycleNext(prev, eff[eff.length - 1]) : null;
+  const next = eff.length ? cycleNext(prev, eff[eff.length - 1], eff.length - 1) : null;
   return next ? turnTo(order, next) : order;
+}
+
+/* A game's starting order on Order: the latest earlier game that same day on
+   Order says where its cycle stopped, and with none the roster order is the
+   start. A new day always starts from the roster order. */
+function startingOrder(g, day) {
+  const at = day ? day.games.indexOf(g) : -1;
+  const earlier = at > 0 ? day.games.slice(0, at).filter(x => x.strategy === 'order') : [];
+  return earlier.length ? orderAfter(earlier[earlier.length - 1]) : effectiveOrder(g);
+}
+
+/* A kid moved in a game that is underway: the stints played stay, and the rest
+   follows the new order, starting from whoever the order as it WAS would have
+   put on next. `orderBefore` holds that older list from the first move after
+   a plan until `computeAll` has re-planned. */
+const orderBefore = new Map();
+export function moveInOrder(g, id, dir) {
+  const list = effectiveOrder(g);
+  const i = list.indexOf(id), j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return false;
+  if (!orderBefore.has(g.id) && isUnderway(planOf(g.id), g.live)) orderBefore.set(g.id, [...list]);
+  [list[i], list[j]] = [list[j], list[i]];
+  g.order = list;
+  return true;
 }
 
 /* Picking a strategy. Order's starting point is written once, into the game,
@@ -1259,9 +1287,7 @@ export function chooseStrategy(g, key) {
   g.strategy = key;
   if (key !== 'order' || g.order?.length) return;
   const day = team().days.find(d => d.games.some(x => x.id === g.id));
-  const at = day ? day.games.findIndex(x => x.id === g.id) : -1;
-  const earlier = at > 0 ? day.games.slice(0, at).filter(x => x.strategy === 'order') : [];
-  g.order = earlier.length ? orderAfter(earlier[earlier.length - 1]) : effectiveOrder(g);
+  g.order = startingOrder(g, day);
 }
 
 /* #537 #541: the stints a sit run is counted over -- `benchStints` less
@@ -1298,10 +1324,16 @@ export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
    `countedIds` (everyone the game played or has here, so a player marked out
    after playing still counts), `g.strategy`/`g.useCarryover` and `ruleCount`
    -- nothing here is re-derived. */
+/* Whether game `i` of the day evens out the games before it: a later game
+   with its switch on -- except on Order, whose fives come from the order alone
+   and so cannot make up anyone's minutes (#545). The switch stays set under
+   it, for the day the coach picks another strategy. */
+export const evensOutDay = (g, i) => i > 0 && g.useCarryover && g.strategy !== 'order';
+
 export function passSummary(g, i, p) {
   const n = countedIds(g, p).length;
   const parts = [`${n} player${n === 1 ? '' : 's'} · ${STRATEGY_WORDS[g.strategy] || g.strategy}`];
-  if (i > 0 && g.useCarryover) parts.push('evens out the day');
+  if (evensOutDay(g, i)) parts.push('evens out the day');
   const rules = ruleCount(g);
   if (rules) parts.push(`${rules} rule${rules === 1 ? '' : 's'}`);
   return parts.join(' · ');
@@ -1359,7 +1391,7 @@ export function joinNames(names) {
 export function evensOutLine(i) {
   const games = state.day.games;
   const g = games[i];
-  if (!g || i === 0 || !g.useCarryover) return '';
+  if (!g || !evensOutDay(g, i)) return '';
   const earlier = games.slice(0, i);
   const names = earlier.map(e => tipoffLabel(e.tipoff) || e.label || null);
   const several = earlier.length > 1;
@@ -1692,7 +1724,7 @@ function seasonTargetsFor(g, avail, deficitOf) {
   const note = (reason, extra) => (seasonAdjust[g.id] = { on: true, reason, even, ...extra }, null);
 
   if (!g.useSeasonTargets) { delete seasonAdjust[g.id]; return null; }
-  if (g.strategy === 'minutes' || g.strategy === 'platoon' || g.strategy === 'order') return note('strategy');
+  if (g.strategy === 'minutes' || fivesAreSet(g.strategy)) return note('strategy');
   if (!avail.length) return note('nobody');
 
   const locked = (g.constraints.lockedTargets || []).filter(id => avail.includes(id));
@@ -2300,6 +2332,7 @@ export function computeAll() {
       // #450: the whole periods each kid is owed, per kid; empty unless the unit is `full`
       const fullFor = Object.fromEntries(inPlay.map(id => [id, leagueFullFor(g, id, late[id])]).filter(([, n]) => n > 0));
       const playsIn = playsInSetting();
+      const order = g.strategy === 'order' ? effectiveOrder(g, ids) : undefined;
       const seasonT = seasonTargetsFor(g, inPlay, deficitOf);
       /* The tie-break the engine uses when the clock does not divide evenly and
          somebody has to play a stint less. `deficitOf` is the whole chain in one
@@ -2323,7 +2356,7 @@ export function computeAll() {
       const rest = JSON.stringify([
         ps.map(p => [p.id, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
         g.granMode, g.granValue, g.strategy, g.balance, g.seed, carry, seasonT, prio, maxSubs, leagueFor,
-        fullFor, playsIn, ...(g.strategy === 'order' ? [effectiveOrder(g, ids)] : []),
+        fullFor, playsIn, ...(order ? [order] : []),
       ]);
       const sig = JSON.stringify([ps.map(p => [p.name, p.shortName]), g.constraints, rest]);
       const hit = planCache.get(g.id);
@@ -2371,7 +2404,7 @@ export function computeAll() {
         priority: prio,
         seed: g.seed,
         maxSubs, start, playsIn,
-        order: g.strategy === 'order' ? effectiveOrder(g, ids) : undefined,
+        order,
       });
       if (seasonT) sayTheSeasonSetThem(p);
       if (leagueOn) sayTheLeagueMinimum(p, g.constraints.minMinutes || {}, id => leagueFor[id] || 0);
@@ -2382,6 +2415,7 @@ export function computeAll() {
   };
 
   dayPlans = team().days.map(solveDay);
+  orderBefore.clear();
   plans = dayPlans[team().activeDay] ?? [];
 
   for (const key of [...planCache.keys()]) if (!live.has(key)) planCache.delete(key);
@@ -2585,7 +2619,8 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   if (strategy === 'order') {
     const first = open[0] ?? k;
     const prior = first > 0 ? benchStints(g, p)[first - 1] : null;
-    order = orderCircle(g, avail, prior ? cycleNext(g, prior) : null);
+    const was = orderBefore.get(g.id);
+    order = orderCircle(g, avail, prior ? cycleNext(g, prior, first - 1, was) : null);
   }
 
   const openStints = open.map(j => p.stints[j]);

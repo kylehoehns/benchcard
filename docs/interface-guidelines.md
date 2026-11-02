@@ -244,10 +244,12 @@ sheet on top. *Apple: Modality. Research: NN/g, bottom sheets.*
 opens something, a checkmark means it's chosen, a switch means on or off. Use
 `<input type="checkbox" switch>` where supported; Safari gives it a haptic tap on
 iPhone. Swipe-to-remove is only a shortcut; every row can also be removed from its
-detail. *Apple: Lists and tables. Web: Safari 18.0; WCAG 2.5.7.*
+detail. The one exception is Rotation order's move buttons, which sit two to a row
+(see [design decisions](design-decisions-rotation-order.md)).
+*Apple: Lists and tables. Web: Safari 18.0; WCAG 2.5.7.*
 
 **C7. Segmented controls: up to 3 options to switch a view, up to 5 to choose.**
-Timeline | Card. Even | By hand | Closers | Platoon. Text only, equal widths.
+Timeline | Card. Even | By hand | Closers | Platoon | Order. Text only, equal widths.
 *Apple: Segmented controls. Material: Buttons (button groups).*
 
 **C8. Menus are popovers anchored to the button that opened them.** The current

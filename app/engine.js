@@ -988,6 +988,7 @@ export function generatePlan(input) {
      notes after the fact all see one set. Platoon applies no pins. */
   let cons = constraints, fullShort = [];
   const order = input.strategy === 'order';
+  const searched = !fivesAreSet(input.strategy);
   /* Rotation order applies none of the pins that choose who plays: the list
      does. Starts the last period is the one pin still read, and is only
      warned about when the list misses it. */
@@ -995,7 +996,7 @@ export function generatePlan(input) {
     cons = { ...constraints, openingFive: [], fullPeriods: {}, fullPins: {}, fullFinish: {}, closing: null,
       units: [], targetMinutes: {}, lockedTargets: [] };
   }
-  if (input.strategy !== 'platoon' && !order && Object.keys(constraints.fullPeriods || {}).length) {
+  if (searched && Object.keys(constraints.fullPeriods || {}).length) {
     const c0 = normalize(constraints, new Set(avail));
     if (Object.keys(c0.fullPeriods).length) {
       const start0 = Array.isArray(input.start) && input.start.length === stints.length
@@ -1005,7 +1006,7 @@ export function generatePlan(input) {
       fullShort = got.short;
     }
   }
-  const playsMode = input.strategy !== 'platoon' && !order ? playsInMode(input.playsIn) : null;
+  const playsMode = searched ? playsInMode(input.playsIn) : null;
   const issues = analyzeFeasibility({ players, availableIds: avail, constraints: cons, stints, strategy: input.strategy, periods: format.periods, maxSubs, periodMinutes: format.periodMinutes, playsIn: playsMode, coveredIn: input.coveredIn });
 
   if (issues.some(i => i.severity === 'error')) {
@@ -1074,9 +1075,9 @@ export function generatePlan(input) {
 
   const forcedByStint = buildForced(stints, c, format);
   ctx.forced = forcedByStint;
-  let lineups, orderNext;
+  let lineups;
   if (order) {
-    ({ lineups, orderNext } = orderLineups(ctx, input.order, avail));
+    lineups = orderLineups(ctx, input.order, avail);
   } else if (input.strategy === 'platoon' && c.units.length) {
     // the coach has already decided the fives; there is nothing to optimize
     lineups = platoonLineups(ctx, c.units);
@@ -1182,7 +1183,7 @@ export function generatePlan(input) {
 
   // platoon alternates whole fives by definition; see the churn report in `finish`
   return finish(lineups, ctx, issues, { players, short, seed, stints, c, periods: format.periods, fullShort,
-    platoon: input.strategy === 'platoon' && c.units.length > 0, order, orderNext });
+    platoon: input.strategy === 'platoon' && c.units.length > 0, order });
 }
 
 /* #450: which periods each kid plays start to finish, picked once before the
@@ -1369,12 +1370,23 @@ function platoonLineups(ctx, units) {
   return ctx.stints.map((s, i) => units[(s.index ?? i) % units.length].slice(0, ON_FLOOR));
 }
 
+/* The strategies a game can be on. state.js's `STRATEGIES` keys the same
+   five with their words (a guard in test/analytics.test.js holds the two
+   together); storage.js and analytics.js read the list from here. */
+export const STRATEGY_KEYS = ['balanced', 'minutes', 'closers', 'platoon', 'order'];
+
+/* Platoon and Order are the two strategies where the coach's own list decides
+   the fives, so the search, the pins that choose who plays and the plays-in
+   rule are all left out of them. One answer, read by `generatePlan` and by
+   state.js. */
+export const fivesAreSet = strategy => strategy === 'platoon' || strategy === 'order';
+
 /* Rotation order (#545): the circle is the available players in the coach's
    order, turned so the first stint's lead is first. Stint j puts on the five
    at positions j*c .. j*c+4, counted round the circle, where c is Players
    changing at once; the stints handed in are the ones counted, so a re-plan's
-   suffix starts where its circle does. `orderNext` is who the cycle puts on
-   after the last stint. A player the order leaves out joins the end. */
+   suffix starts where its circle does. A player the order leaves out joins
+   the end. */
 export function orderChanges(maxSubs) {
   const n = Number(maxSubs);
   return Number.isFinite(n) ? Math.max(1, Math.min(ON_FLOOR, Math.trunc(n))) : DEFAULT_MAX_SUBS;
@@ -1383,8 +1395,7 @@ function orderLineups(ctx, order, avail) {
   const here = new Set(avail);
   const circle = [...new Set([...(order || []).filter(id => here.has(id)), ...avail])];
   const n = circle.length, c = orderChanges(ctx.maxSubs);
-  const lineups = ctx.stints.map((s, j) => Array.from({ length: ON_FLOOR }, (_, t) => circle[(j * c + t) % n]));
-  return { lineups, orderNext: circle[(ctx.stints.length * c) % n] };
+  return ctx.stints.map((s, j) => Array.from({ length: ON_FLOOR }, (_, t) => circle[(j * c + t) % n]));
 }
 
 /* `held`: minutes this player is pinned to in later stints. Seating them in an
@@ -2277,6 +2288,7 @@ function orderNotes(ctx, c, lineups, label) {
 
 function finish(lineups, ctx, issues, meta) {
   const { players, short, seed, stints, c, platoon, periods, order } = meta;
+  const searched = !platoon && !order;
   const byId = new Map(players.map(p => [p.id, p]));
   const label = id => byId.get(id)?.name || id;
   const minutes = minutesOf(lineups, ctx);
@@ -2397,7 +2409,7 @@ function finish(lineups, ctx, issues, meta) {
   // BENCH_SUBS, PLAYS_IN_SUBS or PLAYS_IN_TOO_FEW, or BENCH_TOO_FEW beside a change limit too small, already said it
   const benchSaidChanges = issues.some(i => i.code === 'BENCH_SUBS' || i.code === 'PLAYS_IN_SUBS' || i.code === 'PLAYS_IN_TOO_FEW')
     || (issues.some(i => i.code === 'BENCH_TOO_FEW') && benchOutrunsChanges(ctx.maxBench, ctx.maxSubs, ctx.avail.length, span));
-  if (!platoon && !order && ctx.maxSubs > 0 && !benchSaidChanges) {
+  if (searched && ctx.maxSubs > 0 && !benchSaidChanges) {
     let over = 0, worst = 0, forced = 0, byRest = 0, byBench = 0;
     for (let i = 1; i < lineups.length; i++) {
       const subs = changesAt(lineups, i);
@@ -2437,7 +2449,7 @@ function finish(lineups, ctx, issues, meta) {
      that fits is the tighter of the clock and the coach's change limit, and the
      second lever is only offered when lifting it would actually help. Platoon
      is exempt for the SUBS_EXCEEDED reason: the units are the coach's. */
-  if (ctx.firstHalf && !platoon && !order && !ctx.playsIn) {
+  if (ctx.firstHalf && searched && !ctx.playsIn) {
     const on = playedBeforeHalf(lineups, ctx);
     const late = ctx.avail.filter(id => !on.has(id));
     if (late.length) {
@@ -2472,7 +2484,7 @@ function finish(lineups, ctx, issues, meta) {
   /* #448: the mirror. Somebody who plays before halftime and never after
      is the same silence HALF_LATE ends. The arithmetic is counted for the
      stints after halftime, the first of which is a change like any other. */
-  if (ctx.firstHalf && !platoon && !order && !ctx.playsIn) {
+  if (ctx.firstHalf && searched && !ctx.playsIn) {
     const after = new Set();
     for (let i = ctx.firstHalf; i < lineups.length; i++) for (const id of lineups[i]) after.add(id);
     const gone = [...playedBeforeHalf(lineups, ctx)].filter(id => !after.has(id));
@@ -2541,7 +2553,7 @@ function finish(lineups, ctx, issues, meta) {
   }
   /* #446: only when the spread is wider than the clock alone makes it. */
   const clockFloor = floor.exact ? floor.minutes : Math.max(...stints.map(s => s.minutes));
-  const ruleNote = !platoon && !order && spread > clockFloor + 1e-9 ? spreadRuleNote(ctx, c, minutes, label) : null;
+  const ruleNote = searched && spread > clockFloor + 1e-9 ? spreadRuleNote(ctx, c, minutes, label) : null;
   // Where the spread is deliberate -- hand-set targets, or carryover evening
   // out the day -- the single-game floor is the wrong benchmark and saying
   // "best possible is 0" is just wrong.
@@ -2614,7 +2626,6 @@ function finish(lineups, ctx, issues, meta) {
     constrainedIds: ctx.avail.filter(id => !free.includes(id)),
     targets: Object.fromEntries(ctx.targets),
     minPossibleSpread: floor, pairs: pairReport, shortNames: short, issues,
-    ...(order ? { orderNext: meta.orderNext } : {}),
   };
 }
 

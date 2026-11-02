@@ -67,20 +67,27 @@ issue.
 3. **When the starting point is written.** The starting point is written into
    `g.order` once, so editing one game never moves another:
    - when the coach picks Order for a game whose `g.order` is empty;
-   - when a game is added by cloning a game whose strategy is `order`
-     (`newGame` copies the strategy).
-   The starting point is: the latest earlier game that day with strategy
-   `order` — its effective order turned to begin at the player its cycle
-   would put on next; with no such game, the roster order. Until written (an
-   old record, say) the same rule is read lazily.
+   - when a game on Order is added to a day (`addGame`), whether it was
+     cloned from an Order game or the coach picked Order at step 3 of Add a
+     game.
+   The starting point is: the latest earlier game **that same day** with
+   strategy `order` — its effective order turned to begin at the player its
+   cycle would put on next; with no such game, the roster order. A new day
+   always starts from the roster order, so the game that replaces a filed day
+   and a game added to another date get no continuation. An empty `g.order`
+   (an old record, a game never written) is read as the roster order.
 4. **Where the earlier game's cycle stopped** is read from that game's last
-   effective stint, not stored: take the circle as it was at that stint
-   (the game's order filtered to that stint's `onFloor ∪ sitting`), find the
-   window start `w` (the member of the five whose circle predecessor is not
-   in the five; with five or fewer in the circle, the first in order), and
-   the next player is `circle[(w + c) mod n]`. If the five is not a run of
-   the circle (a hand swap broke it), fall back to the engine's `orderNext`
-   on that game's plan. The same helper gives the lead for a re-plan (5).
+   effective stint, not stored, by one helper (`cycleNext`) that the re-plan
+   (5) uses too: take the circle as it was at that stint (the game's order
+   filtered to that stint's `onFloor ∪ sitting`, less a kid who sat for the
+   rest of the game, since the cycle no longer counts them). With five or
+   fewer in the circle the next player is `circle[((j + 1) * c) mod n]`, as
+   the engine places stint `j + 1`. With more, find the window start `w` (the
+   member of the five whose circle predecessor is not in the five) and the
+   next player is `circle[(w + c) mod n]`; if the five is not a run of the
+   circle (a hand swap broke it), read it from its first member on, to the
+   first player not on it. The engine returns no "next player" of its own:
+   one formula, one place.
    In the example this gives Sheeks.
 5. **A change of plan mid-game** (late arrival, Out, Sit for the rest, a rule
    or setting change) keeps the stints played, as every strategy does, and
@@ -93,6 +100,15 @@ issue.
    Sit for the rest of a kid on the floor re-plans from the current stint
    like the other strategies do, with the new circle; the four who stay are
    not forced (the order decides).
+   **Moving a kid in the order of a game underway** keeps the stints played.
+   The rest follows the NEW order, starting from the player the OLD order
+   would have put on next (if that player is not playing, the next player
+   after them in the new order who is).
+   **Across the day.** A game on Order does not say it evens out the day: the
+   "evens out the day" line on the card and in the add flow is left off, and
+   the Across the day switch is off and unavailable, with a note that the
+   order decides who plays. The switch's setting is kept for another
+   strategy.
 6. **c** is Players changing at once (1–5). **"Doesn't fit"** means
    `c > n − 5`: fewer players sit than c, so fewer than c change. The plan
    says: "With N players, only N−5 sit each stint, so fewer than c change at
@@ -157,7 +173,7 @@ issue.
 2. **Independence.** Editing game 1's order after game 2 exists leaves game 2's
    order unchanged.
 3. **Engine cases** (`node --test`): c = 1..5 against the formula for n = 6,
-   7, 9, 10; n = 5 everybody every stint; `orderNext` correct; (6)'s note
+   7, 9, 10; n = 5 everybody every stint; (6)'s note
    present exactly when `c > n − 5`.
 4. **Out kid**: marked Out before the game, skipped; the circle is the other
    n−1 in order.
@@ -188,7 +204,7 @@ issue.
 ## Surfaces
 
 Change: `app/engine.js` (an `order` path in `generatePlan`, `finish`
-exemptions and wording, `orderNext`/per-stint leads), `app/state.js`
+exemptions and wording), `app/state.js`
 (`STRATEGIES`, `STRATEGY_WORDS`, `computeAll` input and cache key, starting
 point, `resolveRest`, `seasonTargetsFor`, `playsInRule`, `newGame`),
 `app/team-ops.js` (`removePlayer` sweep), `app/storage.js` (accept `order`,
@@ -226,7 +242,7 @@ Engine: `generatePlan({ strategy: 'order', order, … })` where `order` is the
 circle (available ids, in the game's order, already turned so the first stint's
 lead is first). Stint `j` of the stints handed in is
 `circle[(j*c + t) mod n]`, t = 0..4, c = clamp(maxSubs, 1, 5). Returns the
-usual plan plus `orderNext` (`circle[(S*c) mod n]`, S stints). No search, no
+usual plan. No search, no
 seed dependence.
 
 State: one helper turns a game into its circle and lead; `computeAll` passes

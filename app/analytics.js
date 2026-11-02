@@ -21,6 +21,8 @@
    but it is NOT off: the token and endpoint below are filled in and live. This
    comment said "off by default" for months after they were. */
 
+import { STRATEGY_KEYS } from './engine.js';
+
 // ---------------------------------------------------------------------------
 // Fill this in to switch analytics on. Either field may stay null on its own.
 //   token    — Cloudflare Web Analytics beacon token (baseline pageviews)
@@ -58,7 +60,7 @@ export const EVENTS = {
   // Does onboarding actually work?
   first_run_complete: { roster: ['1-5', '6-9', '10-12', '13+'] },
   // Does anyone use anything but Balanced?
-  plan_generated: { strategy: ['balanced', 'minutes', 'closers', 'platoon', 'order'] },
+  plan_generated: { strategy: STRATEGY_KEYS },
   // The core conversion. Is the card the point?
   card_printed: { size: ['pocket', 'half'] },
   /* The other half of that question: a card that gets sent to another coach is

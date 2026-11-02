@@ -15,11 +15,11 @@
  */
 import { fmtMinutes, deriveShortNames, isOvertimeStint } from './engine.js';
 import { icon } from './icons.js';
-import { $, el } from './dom.js';
+import { $, el, moveButton } from './dom.js';
 import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, moveInOrder as moveInOrderOf } from './state.js';
 
 let edit = () => {};
 
@@ -347,20 +347,18 @@ function orderEditor(g) {
   const wrap = el('div');
   const grp = el('div', 'pgrp');
   list.forEach((id, i) => {
-    const p = byId(id);
-    const name = p?.name || 'player';
+    const name = byId(id).name;
     const row = el('div', 'prow orow');
-    row.append(el('span', 'ord-n', String(i + 1)), el('span', 'prow-t', name));
-    if (g.out.includes(id)) row.append(el('span', 'ord-mark', (g.late || []).includes(id) ? 'Running late' : 'Out'));
+    const who = el('div', 'ord-who');
+    who.append(el('span', 'prow-t', name));
+    if (g.out.includes(id)) who.append(el('span', 'ord-mark', (g.late || []).includes(id) ? 'Running late' : 'Out'));
+    const body = el('div', 'ord-body');
+    body.append(el('span', 'ord-n', String(i + 1)), who);
+    const btns = el('div', 'ord-btns');
     for (const dir of [-1, 1]) {
-      const b = el('button', 'obtn press');
-      b.type = 'button';
-      b.append(icon(dir < 0 ? 'arrow-up' : 'arrow-down', { size: '.85em', stroke: 2.4 }));
-      b.disabled = i + dir < 0 || i + dir >= list.length;
-      b.setAttribute('aria-label', `Move ${name} ${dir < 0 ? 'up' : 'down'}`);
-      b.onclick = () => moveInOrder(id, dir);
-      row.append(b);
+      btns.append(moveButton(dir, name, i + dir < 0 || i + dir >= list.length, () => moveInOrder(id, dir)));
     }
+    row.append(body, btns);
     grp.append(row);
   });
   wrap.append(grp, el('p', 'pgrp-f', 'The first five start. Players who are out are skipped.'));
@@ -370,11 +368,9 @@ function orderEditor(g) {
 // `game()` is read at tap time, so a stale list is never the one swapped.
 function moveInOrder(id, dir) {
   const g = game();
-  const list = effectiveOrder(g);
-  const i = list.indexOf(id), j = i + dir;
-  if (i < 0 || j < 0 || j >= list.length) return;
-  [list[i], list[j]] = [list[j], list[i]];
-  g.order = list;
+  const before = effectiveOrder(g).indexOf(id);
+  if (!moveInOrderOf(g, id, dir)) return;
+  const j = before + dir;
   renderStrategy();
   const row = document.querySelectorAll('#stratbody .orow')[j];
   const [up, down] = row.querySelectorAll('.obtn');

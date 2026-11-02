@@ -400,11 +400,11 @@ async function stepTwoReads(c, ck) {
     `tapping again left the tile "${t[0].name}" at aria-pressed="${t[0].pressed}"`);
 }
 
-/* Step 3's four cards and the switch under them. The descriptions are read
+/* Step 3's five cards and the switch under them. The descriptions are read
    out of `STRATEGIES` rather than typed here: the spec names that map as the
    single source of the wording, so a third copy written into the flow is the
    failure this is looking for, and a copy of the map in this file would be a
-   fourth. The labels ARE typed, because the spec names those four words. */
+   fourth. The labels ARE typed, because the spec names those five words. */
 const splitState = c => evalJSON(c, `(async () => {
   const { STRATEGIES } = await import('/state.js');
   const g = document.querySelector('#agBody [role=radiogroup]');
@@ -434,9 +434,9 @@ async function stepThreeReads(c, ck) {
   ck(s.segmentsOn === 3, `at step 3 of 3, ${s.segmentsOn} progress segment(s) are on, want 3`);
 
   const sp = await splitState(c);
-  if (!ck(sp.group && sp.options.length === 4,
-    `step 3 draws ${sp.options.length} option(s) in ${sp.group ? 'a radiogroup' : 'no radiogroup'}, want 4`)) return;
-  ['Even', 'By hand', 'Closers', 'Platoon'].forEach((w, i) => {
+  if (!ck(sp.group && sp.options.length === 5,
+    `step 3 draws ${sp.options.length} option(s) in ${sp.group ? 'a radiogroup' : 'no radiogroup'}, want 5`)) return;
+  ['Even', 'By hand', 'Closers', 'Platoon', 'Order'].forEach((w, i) => {
     ck(sp.options[i].text.startsWith(w),
       `option ${i + 1} reads "${sp.options[i].text}", want it to start with "${w}" -- #stratseg's own word`);
   });
@@ -445,7 +445,7 @@ async function stepThreeReads(c, ck) {
       `option ${i + 1} ("${sp.options[i].text}") does not carry its STRATEGIES line, "${d}"`);
   });
   const on = sp.options.filter(o => o.checked).length;
-  ck(on === 1, `${on} of the four options are marked aria-checked, want exactly 1`);
+  ck(on === 1, `${on} of the five options are marked aria-checked, want exactly 1`);
   ck(sp.switchLabel === 'Even out earlier games',
     `the switch under the options is labeled "${sp.switchLabel}", want "Even out earlier games"`);
   ck(sp.switchOn === true, 'the "Even out earlier games" switch is off on a second game of the day, want it on');

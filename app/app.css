@@ -966,11 +966,23 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
   border-radius: var(--r-xs); color: var(--muted); line-height: 1; }
 @media (hover: hover) { .obtn:hover:not(:disabled) { color: var(--ink); background: var(--surface-2); } }
 .obtn:disabled { opacity: .22; cursor: default; }
-/* #545: the rotation order list. Each row is the position, the name (it wraps
-   rather than clips) and the two 48px arrows; the buttons carry the row's
-   height, so the row itself takes no vertical padding. */
-.orow { padding: 0 .25rem 0 1rem; }
-.orow .prow-t { overflow-wrap: anywhere; padding: .5rem 0; }
+/* #545: the rotation order list. Each row is the position, then the name with
+   its Out or Running late mark under it, then the two 48px arrows. The name
+   takes the free width, so the mark never costs it any; when the name's
+   longest word does not fit beside the arrows they drop to their own line
+   under it (flex-wrap, the way #sheetPlayer's rows do) rather than squeezing
+   the name until the word breaks. The arrows carry the row's height, so the
+   row takes no vertical padding of its own. */
+.orow { padding: 0 .25rem 0 1rem; flex-wrap: wrap; row-gap: 0; }
+.ord-body { flex: 1 1 6rem; min-width: min-content; display: flex; align-items: center; gap: .75rem; padding: .5rem 0; }
+.ord-who { flex: 1 1 auto; display: grid; }
+.ord-who .prow-t { flex: none; min-width: auto; overflow-wrap: break-word; }
+.ord-btns { display: flex; margin-left: auto; }
+/* At a large text size the name needs the row's whole width: a word that the
+   row could hold must not break because the position number and the arrows
+   sat beside it. So the number goes above the name and the arrows take their
+   own line; a word wider than the whole row may still break, which no layout
+   can help (the roster's rows do the same). */
 .ord-n { flex: none; min-width: 1.25rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ord-mark { flex: none; color: var(--muted); font-size: var(--fs-footnote); }
 
@@ -2992,6 +3004,10 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    widths, because "Strongest five" does not fit a quarter of a phone's row. */
 #overtimeWho { flex-wrap: wrap; }
 #overtimeWho button { flex: 1 0 40%; }
+/* #545: five strategies fit one row at 320px/16, but only if no label breaks
+   ("By hand" wrapped onto two lines). At a larger text size the shared
+   `.seg.wide` wrap above puts them in rows instead. */
+#stratseg button { white-space: nowrap; padding-left: .2rem; padding-right: .2rem; }
 /* The header and footer sit on the sheet background, outside the white
    card: the prototype's header/footer are never inside .pgrp, and a footer
    that ellipsized was losing whole sentences rather than wrapping them.
@@ -3510,6 +3526,11 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      real team name fits a 170px label at that size. The ticket allows a
      smaller heading; headline is the step #187 used for the same reason. */
   .today-h1 { font-size: var(--fs-headline); }
+  /* #545: a rotation-order row at big text stacks, number above name, the
+     move buttons on their own line (after .ord-* above, so it wins). */
+  .ord-body { flex: 1 1 100%; min-width: 0; flex-direction: column; align-items: stretch; gap: 0; }
+  .ord-who { flex: none; min-width: 0; }
+  .ord-who .prow-t { min-width: 0; }
   #teamBtnLabel { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     line-clamp: 2; white-space: normal; text-align: left; }
   .bar { gap: .28rem; padding-left: .5rem; padding-right: .5rem; }
