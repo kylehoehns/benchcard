@@ -458,13 +458,16 @@ function fillSample(n = DEMO_N) {
 
    No tour: this IS the tour, in the coach's own hands, and two explainers
    stacked on a 390px screen is worse than either. `tourSeen` is untouched. */
-function loadSample(n) {
+function loadSample(n, { halves = false } = {}) {
   // `startTeam` reads its format off a draft since #36; `?try=N` never ran a
   // flow to build one, so it hands over `newDraft()`'s own defaults -- the
   // same 4 periods / 8 minutes / every-4 sub this path always used, back when
   // it read `#welPeriods`/`#welMinutes` (both defaulted to 4 and 8 in the
   // markup) and the module's own `welGran` (everyN/4) directly.
-  startTeam(sampleRoster(n), SAMPLE_TEAM_NAME, newDraft());
+  // #493: the two-halves chart page links in with `&halves`: two 20-minute
+  // halves, still subbing every 4 -- the game that page printed.
+  const draft = halves ? { ...newDraft(), periods: 2, periodMinutes: 20 } : newDraft();
+  startTeam(sampleRoster(n), SAMPLE_TEAM_NAME, draft);
   markFirstRunPending();
   // `setView('games')` renders it: always called from welcome, always a real
   // transition into Games, so `applyView` does the render itself now (#23
@@ -950,9 +953,11 @@ export function initOnboarding(setViewFn) {
   if (want !== null) {
     const rest = new URLSearchParams(location.search);
     rest.delete('try');
+    const halves = rest.has('halves');
+    rest.delete('halves');
     const query = rest.toString();
     history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
-    if (!state.onboarded) loadSample(want);
+    if (!state.onboarded) loadSample(want, { halves });
     else flash("You already have a team, so the sample team wasn't loaded.");
   }
 }

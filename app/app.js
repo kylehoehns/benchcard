@@ -12,7 +12,7 @@
  * function instead, which is what keeps the import graph a tree.
  * ================================================================== */
 import { icon } from './icons.js';
-import { $, on, set, clone } from './dom.js';
+import { $, on, set, clone, initFit } from './dom.js';
 import { refreshCardSheetPreview, CARD_FONT } from './card.js';
 import { shareCards, isHomeScreenApp, SHARE_TO_PRINT } from './share.js';
 import { backupFilename, downloadBackup, readBackup, keepStored } from './backup.js';
@@ -510,6 +510,7 @@ initRules(edit);
 initStrategy(edit);
 initOnboarding(setView);
 initGameSetup(edit);
+initFit();
 
 initShortcuts(setView);
 /* #250: a link someone handed over carries a game in `#p=`. It is opened

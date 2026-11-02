@@ -612,6 +612,21 @@ export class Coach {
     }
   }
 
+  /** Bench mode: who is on the floor in every stint, first to last (steps back to the first, then walks forward). */
+  async floorEveryStint() {
+    while ((await this.stint()).split(' of ')[0] !== '1') await this.tap('Previous stint');
+    return this.floorEachStint();
+  }
+
+  /** Bench mode: step to stint `n` (1-based) with 'Previous stint' / 'Next stint'. */
+  async goToStint(n) {
+    for (;;) {
+      const at = Number((await this.stint()).split(' of ')[0]);
+      if (at === n) return;
+      await this.tap(at < n ? 'Next stint' : 'Previous stint');
+    }
+  }
+
   /** The Blocked plan panel's words, without its button; '' when the plan is not blocked. */
   blockedPlan() {
     return evalIn(this.c, `(() => {

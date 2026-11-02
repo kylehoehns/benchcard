@@ -75,6 +75,13 @@ test('every flag is read', () => {
   assert.equal(a.headful, true);
 });
 
+test('--height defaults to 844 and is read when given (#429)', () => {
+  assert.equal(parseArgs(['--out', 'o']).height, 844);
+  assert.equal(parseArgs(['--out', 'o', '--height', '568']).height, 568);
+  refused(['--out', 'o', '--height', '0'], /height/i);
+  refused(['--out', 'o', '--height', 'tall'], /height/i);
+});
+
 test('a state name that itself holds a comma survives --view splitting on commas', () => {
   const a = parseArgs(['--out', 'o', '--view', 'add a game, step 1,today,bench mode, undo toast']);
   assert.deepEqual(a.views, ['add a game, step 1', 'today', 'bench mode, undo toast']);

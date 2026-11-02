@@ -241,7 +241,7 @@ test('the timeline gives its names back at big text, without losing the word', (
   /* NOT a pan -- the page stays 320px wide the whole time -- so every probe in
      `scripts/smoke.mjs` reads this screen green. Measured at 320px on a 32px
      root with twelve players and an uneven plan: `.tl-tot`'s MOST / FEWEST
-     gutter is a fixed `3.2rem`, 102px there, the stacked row is `1fr auto`, and
+     gutter was a fixed `3.2rem`, 102px there, the stacked row is `1fr auto`, and
      `.tl-lab` was left 20.9px -- the dot and its gap. Every name on every row
      measured **0px wide**. 132.9px and a readable name after, and 202.9px at
      390px, where eight of twelve real names fit whole.
@@ -279,7 +279,7 @@ test('the timeline gives its names back at big text, without losing the word', (
      do not. */
   const oneAt = bare.indexOf('@container (min-width: 20em)');
   const one = bare.slice(oneAt, bare.indexOf('\n}', oneAt));
-  assert.match(one, /\.tl-tot\s+\.ex[^{]*{[^}]*width:\s*3\.2rem/,
+  assert.match(one, /\.tl-tot\s+\.ex[^{]*{[^}]*width:\s*5\.7em/,
     'the one-row gutter is gone, so the totals column no longer holds a flush edge');
   assert.match(one, /\.tl\.even\s+(\.tl-row\s+)?\.tl-tot\s+\.ex\s*{[^}]*width:\s*0/,
     'an even plan no longer collapses the gutter, so it holds a blank second line under every number');
@@ -297,13 +297,13 @@ test('the two short-viewport-height blocks still move a large title down to the 
      now `.dayhead .game-h1` since #69 turned it from an editable day-name
      input into the opponent's `h1` -- was a flat 1.5rem), so both take
      `var(--fs-sentence)` here. */
-  const shortAt = bare.indexOf('@media (max-height: 700px)');
+  const shortAt = bare.indexOf('@media (max-height: 43.75em)');
   assert.ok(shortAt > -1, 'the short-viewport-height welcome block is gone');
   const short = bare.slice(shortAt, bare.indexOf('\n}', shortAt));
   assert.match(short, /\.wel-h\s*{[^}]*font-size:\s*var\(--fs-sentence\)/,
-    'the welcome wordmark no longer shrinks under @media (max-height: 700px), so the bottom row falls below the fold again at 375x667');
+    'the welcome wordmark no longer shrinks under @media (max-height: 43.75em), so the bottom row falls below the fold again at 375x667');
 
-  const landscapeAt = bare.lastIndexOf('@media (orientation: landscape) and (max-height: 560px)');
+  const landscapeAt = bare.lastIndexOf('@media (orientation: landscape) and (max-height: 35em)');
   assert.ok(landscapeAt > -1, 'the short-landscape day-title block is gone');
   const landscape = bare.slice(landscapeAt, bare.indexOf('\n}', landscapeAt));
   assert.match(landscape, /\.dayhead \.game-h1\s*{[^}]*font-size:\s*var\(--fs-sentence\)/,

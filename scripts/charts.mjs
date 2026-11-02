@@ -520,7 +520,7 @@ ${jsonld}
          reading about it. It is read only when the app has no team, it is
          stripped from the URL immediately, and it carries one integer and
          nothing about anybody -- it is not a URL share. -->
-    <a class="btn primary" href="./?try=${n}">Try it with ${n} sample players</a>
+    <a class="btn primary" href="./?try=${n}${chart.kind === 'halves' ? '&halves' : ''}">Try it with ${n} sample players</a>
     <a class="btn" href="./">Build one for your roster</a>
     <button type="button" class="btn" onclick="print()">Print this chart</button>
   </div>

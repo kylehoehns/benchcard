@@ -1372,6 +1372,47 @@ export function movedMinutes(g, p) {
   return finishedGame(g.live) || !sameSet || changed.length ? { eff, changed } : null;
 }
 
+/* #456: whether the lineups the timeline shows are no longer the solver's: the
+   game is over, or any shown stint's five is not the plan's (a hand swap, a
+   re-plan or a pinned overtime five writes its own). Minutes can stay put while
+   a lineup moves, so this is asked of the fives themselves, not of
+   `movedMinutes`. The engine's notes about the lineup (a pair kept together, a
+   keep-on rule, changes at once, the half) describe the solver's five and are
+   untrue once this is true. */
+export function movedLineups(g, p) {
+  if (finishedGame(g.live)) return true;
+  const same = (a, b) => a.length === b.length && a.every(id => b.includes(id));
+  return effectiveStints(g, p).some((s, k) => !same(s.onFloor, p.stints[k].onFloor));
+}
+
+/* #456: the engine's "plays N stints in a row against a limit of L" notes,
+   rebuilt from the fives on screen (`effectiveStints`), one per player whose
+   longest shown run is over the game's Plays at most N in a row, in the engine's
+   own words. The engine's suppressions hold: nothing when its up-front notes
+   (CONSEC_TOO_FEW, CONSEC_IMPOSSIBLE) say the rule is being ignored, and
+   nothing for a player it said conflicts with their minimum (CONSEC_MIN_CONFLICT).
+   `issues` are the plan's own notes, `nameOf` an id-to-name lookup. A run is
+   counted from the first stint; the plan keeps no run from an earlier game. */
+export function consecNotes(g, p, issues, nameOf) {
+  const limit = g.constraints?.maxConsecutive;
+  if (!limit || issues.some(i => i.code === 'CONSEC_TOO_FEW' || i.code === 'CONSEC_IMPOSSIBLE')) return [];
+  const conflicted = new Set(issues.filter(i => i.code === 'CONSEC_MIN_CONFLICT').flatMap(i => i.playerIds));
+  const fives = effectiveStints(g, p).map(s => s.onFloor);
+  const out = [];
+  for (const id of new Set([...availIds(g), ...fives.flat()])) {
+    if (conflicted.has(id)) continue;
+    let run = 0, longest = 0;
+    for (const five of fives) { run = five.includes(id) ? run + 1 : 0; longest = Math.max(longest, run); }
+    if (longest > limit) {
+      out.push({
+        severity: 'warn', code: 'CONSEC_EXCEEDED', playerIds: [id],
+        message: `${nameOf(id)} plays ${longest} stints in a row against a limit of ${limit} — no legal lineup kept them under it.`,
+      });
+    }
+  }
+  return out;
+}
+
 /* #414: the note under the timeline when the minutes it shows are no longer
    the solver's. Takes the effective minutes (in roster order) and an
    id-to-name lookup; names the low end, six at most (past that, a count), the
@@ -1754,6 +1795,11 @@ const sameGrid = (a, b, at = 0) => {
    refuses -- By hand and Platoon outside an all-overtime suffix, Platoon
    sitting anyone, nobody left to plan with, a plan that will not solve -- or
    a removed player is in the way), and the caller falls back to #134. */
+/* #456: only the new fives are kept from `resolveRest`; the notes it returns
+   (a CONSEC_EXCEEDED for a run it could not hold under the limit) are not.
+   They are not needed here: `issuesList` (plan-view.js) rebuilds the
+   stints-in-a-row note from the fives shown (`consecNotes`) once they differ
+   from the plan's, so an over-limit run this re-plan wrote still says so. */
 function freezePlayedAndReplan(g, p, prev) {
   const live = g.live;
   const n = p.stints.length;

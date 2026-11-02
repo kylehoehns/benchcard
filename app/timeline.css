@@ -16,7 +16,7 @@
    fixed one a phone could reach. --tot starts at the width the number alone
    needs; :not(.even) widens it for the MOST/FEWEST word column. */
 .tl { --lab: 9.5rem; --tot: 2rem; --edge-l: .5rem; --edge-r: .4rem; container-type: inline-size; }
-.tl:not(.even) { --tot: 6.2rem; }
+.tl:not(.even) { --tot: 7.8rem; }
 /* No gap under the Q1-Q4 labels: align-items: end already leaves the
    label's descender space before the first row, so a gap here would eat
    into the budget that fits nine rows plus the Start game bar inside
@@ -105,7 +105,7 @@
      would lose to them. */
   .tl-lab .nm { white-space: nowrap; overflow-wrap: normal; }
   .tl-row .tl-tot { grid-area: tot; display: block; white-space: nowrap; }
-  .tl-row .tl-tot .ex, .tl-row .tl-tot .ex:empty { display: inline-block; width: 3.2rem; margin-left: .3rem; }
+  .tl-row .tl-tot .ex, .tl-row .tl-tot .ex:empty { display: inline-block; width: 5.7em; margin-left: .3rem; }
   .tl.even .tl-row .tl-tot .ex { width: 0; margin-left: 0; }
   .tl-row .tl-tot .num { line-height: inherit; }
   /* Smoke `game rows fit` measures every .tl-name against min(48, pitch) -

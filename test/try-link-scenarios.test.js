@@ -50,4 +50,19 @@ describe('a coach follows a ?try= link from a chart page', { skip }, () => {
     assert.deepEqual((await coach.sentEvents()).filter(e => e.e === 'welcome_seen'),
       [{ e: 'welcome_seen', from: 'try' }]);
   });
+
+  test('the two-halves chart page\'s link lands on two 20-minute halves, subbing every 4', async () => {
+    await coach.openFreshAt('/?try=10&halves');
+
+    const names = await coach.controls();
+    assert.ok(names.includes('Format, 2 × 20'), names.join(' | '));
+    assert.ok(names.includes('Sub interval, every 4 min'), names.join(' | '));
+    assert.equal(await coach.planStints(), 10);
+    assert.equal(await coach.address(), '/');
+  });
+
+  test('a size page\'s link still lands on four 8-minute quarters', async () => {
+    await coach.openFreshAt('/?try=10');
+    assert.ok((await coach.controls()).includes('Format, 4 × 8'));
+  });
 });
