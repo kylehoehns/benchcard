@@ -1070,6 +1070,11 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
   /* the browser keeps the vertical scroll; horizontal moves come to us as
      pointer events so a stint can be swiped past */
   touch-action: pan-y; will-change: transform; }
+/* No scroll bar in bench mode: on a phone it ran half the screen beside the
+   five. The bench row cut off under the call already shows there is more.
+   The landscape columns (.gm-body > .gm-sec) and Running late scroll too. */
+.gm-body, .gm-body > .gm-sec, #gmOutSec { scrollbar-width: none; }
+.gm-body::-webkit-scrollbar, .gm-body > .gm-sec::-webkit-scrollbar, #gmOutSec::-webkit-scrollbar { display: none; }
 body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-sec { margin-bottom: 1.15rem; }
 /* Lives here, not inline, so the landscape block below can override it
