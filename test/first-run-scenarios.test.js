@@ -99,7 +99,7 @@ describe('a coach opens Benchcard for the first time', { skip }, () => {
     await coach.tap('Settings');
     await coach.tap('How it works');
 
-    assert.deepEqual(await coach.controls(), ['Close', 'Show me around again']);
+    assert.deepEqual(await coach.controls(), ['Close', 'What\'s new', 'Show me around again']);
     await coach.tap('Close');
 
     assert.ok(!(await coach.sees('Close')), 'the sheet is gone');

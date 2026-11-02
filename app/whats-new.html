@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" data-tint="hardwood">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F4F4F6">
+<script>
+/* Same pre-paint theme resolution as the app, and deliberately a copy rather
+   than a shared file: it has to run before first paint, so it would be an
+   extra blocking request. Reads the app's own stored preference so arriving
+   here from a dark-mode app does not flash white. Every key we have written,
+   newest first, and identical to the copy in index.html -- see the longer
+   note there. */
+(function () {
+  try {
+    var get = function (k) {
+      // per key, so a corrupt v7 blob still lets v6, v5, v4 or v3 answer
+      try { return (JSON.parse(localStorage.getItem(k)) || {}).ui; } catch (e) { return null; }
+    };
+    var ui = get('benchcard.v7') || get('benchcard.v6') || get('benchcard.v5') || get('benchcard.v4') || get('benchcard.v3');
+    var t = ui && ui.theme;
+    if (t !== 'light' && t !== 'dark') {
+      t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+    document.querySelector('meta[name="theme-color"]')
+      .setAttribute('content', t === 'dark' ? '#0B0B0C' : '#F4F4F6');
+  } catch (e) {}
+})();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%20100%20100%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2222%22%20fill%3D%22%23D2500A%22%2F%3E%3Cg%20transform%3D%22rotate(-8%2050%2050)%22%3E%3Crect%20x%3D%2217%22%20y%3D%2210%22%20width%3D%2266%22%20height%3D%2280%22%20rx%3D%229%22%20fill%3D%22%23F4F4F6%22%2F%3E%3Crect%20x%3D%2226%22%20y%3D%2224%22%20width%3D%2233.6%22%20height%3D%2211%22%20rx%3D%225.5%22%20fill%3D%22%23C0504D%22%2F%3E%3Crect%20x%3D%2240.4%22%20y%3D%2244%22%20width%3D%2233.6%22%20height%3D%2211%22%20rx%3D%225.5%22%20fill%3D%22%23C9762F%22%2F%3E%3Crect%20x%3D%2226%22%20y%3D%2264%22%20width%3D%2221.6%22%20height%3D%2211%22%20rx%3D%225.5%22%20fill%3D%22%232E8A7A%22%2F%3E%3Crect%20x%3D%2259.6%22%20y%3D%2264%22%20width%3D%2214.4%22%20height%3D%2211%22%20rx%3D%225.5%22%20fill%3D%22%232E8A7A%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="manifest" href="./site.webmanifest">
+
+<title>What's new | Benchcard</title>
+<meta name="description" content="What changed in Benchcard lately, newest first, in plain words for coaches.">
+<link rel="canonical" href="https://benchcard.app/whats-new">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Benchcard">
+<meta property="og:url" content="https://benchcard.app/whats-new">
+<meta property="og:title" content="What's new | Benchcard">
+<meta property="og:description" content="What changed in Benchcard lately, newest first, in plain words for coaches.">
+<meta property="og:image" content="https://benchcard.app/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1260">
+<meta property="og:image:alt" content="Benchcard&rsquo;s game screen on a phone: the sentence &ldquo;11 players, 4 × 8, subbing every 4 min for even minutes, with 1 rule&rdquo; above a timeline of each player&rsquo;s minutes, beside the words &ldquo;Even minutes, worked out before the game.&rdquo;">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What's new | Benchcard">
+<meta name="twitter:description" content="What changed in Benchcard lately, newest first, in plain words for coaches.">
+<meta name="twitter:image" content="https://benchcard.app/og.png">
+<meta name="twitter:image:alt" content="Benchcard&rsquo;s game screen on a phone: the sentence &ldquo;11 players, 4 × 8, subbing every 4 min for even minutes, with 1 rule&rdquo; above a timeline of each player&rsquo;s minutes, beside the words &ldquo;Even minutes, worked out before the game.&rdquo;">
+
+<link rel="stylesheet" href="./tokens.css">
+<link rel="stylesheet" href="./site.css">
+</head>
+<body>
+<div class="wrap">
+  <a class="mark" href="/">
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#D2500A"/><g transform="rotate(-8 50 50)"><rect x="17" y="10" width="66" height="80" rx="9" fill="#F4F4F6"/><rect x="26" y="24" width="33.6" height="11" rx="5.5" fill="#C0504D"/><rect x="40.4" y="44" width="33.6" height="11" rx="5.5" fill="#C9762F"/><rect x="26" y="64" width="21.6" height="11" rx="5.5" fill="#2E8A7A"/><rect x="59.6" y="64" width="14.4" height="11" rx="5.5" fill="#2E8A7A"/></g></svg>
+    <b>Benchcard</b>
+  </a>
+
+  <h1>What's new</h1>
+  <p class="lede">The latest changes, newest first.</p>
+
+  <section>
+    <h2>Week of 2 November 2026</h2>
+    <ul>
+      <li>Everyone plays at least can now count whole periods: set it to 2 and each kid plays two full periods, start to finish.</li>
+      <li>A new setting, Everyone plays in, gets every kid on the floor at least once each half, or each period.</li>
+      <li>Plays at most N in a row now shows how many minutes in a row that is, goes as high as the game allows, and says that a break between periods does not reset the count.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Week of 26 October 2026</h2>
+    <ul>
+      <li>A re-plan during a game no longer rewrites stints already played, even under By hand or when a kid’s cap is already used up, and the plan warns you when a kid would sit out the whole second half.</li>
+      <li>A re-plan now counts the stints a kid has already played toward Plays at most, and once the last period is under way it leaves Starts the last period alone.</li>
+      <li>If Strongest five or Keep this five sends out an overtime five that breaks one of your rules, the plan now says so.</li>
+      <li>Everyone plays at least can be a share of the game instead of minutes, and a kid who arrives late is owed the same share of the time that is left.</li>
+      <li>Who’s here now marks a missing kid Out or Running late, and bench mode lists only the kids you’re still expecting. Anyone else who turns up is under Someone showed up?</li>
+      <li>Long names shrink to fit, then break with a hyphen, instead of splitting mid-word or getting cut off.</li>
+      <li>The team name at the top of Today is now a plain large title. Tap it to switch teams, as before.</li>
+      <li>In the iPhone Home Screen app, Share to print hands the card to the share sheet, where you can print it.</li>
+      <li>A new rule, Sits at most N in a row, keeps a kid from waiting on the bench too long, and the Rest limit is now called Plays at most N in a row.</li>
+      <li>Plans spread bench time out more, so a kid with a cap or in the starting five no longer sits out a whole half.</li>
+      <li>When two rules pull against each other, the notes under the plan now name the rule that won.</li>
+      <li>Bench mode keeps the Off and On call on screen at every stint, even on a small phone.</li>
+    </ul>
+  </section>
+
+  <div class="cta">
+    <a class="btn primary" href="/">Open Benchcard</a>
+    <a class="btn" href="/about">About</a>
+  </div>
+</div>
+</body>
+</html>

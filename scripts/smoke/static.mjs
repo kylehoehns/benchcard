@@ -51,7 +51,7 @@ import { LARGE_TEXT, LARGE_TEXT_PX, LARGE_TEXT_WIDTH, TOUCH_CHECK } from './size
    eight addresses nothing on the site links to -- and would have kept passing
    while the real ones broke. `scripts/serve.mjs` 307s `.html` to these, the
    same as Cloudflare. */
-const STATIC_PAGES = ['/about', '/advanced', ...CHARTS.map(c => `/${c.slug}`),
+const STATIC_PAGES = ['/about', '/advanced', '/whats-new', ...CHARTS.map(c => `/${c.slug}`),
   /* #424: what an unknown URL answers with. `serve.mjs` has no route for
      `/404`, so it resolves to `404.html` and answers 200 here; the 404 status
      is tested in test/build.test.js, and this pass is for its layout. */

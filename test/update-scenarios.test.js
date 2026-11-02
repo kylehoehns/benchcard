@@ -34,6 +34,18 @@ describe('the update offer', { skip }, () => {
     assert.equal(await coach.toast(), OFFER);
   });
 
+  test('the offer carries a What\'s new link, ahead of Reload, that points at the page', async () => {
+    await coach.onGameDay();
+    await coach.newVersionTakesOver();
+
+    const controls = await coach.controls();
+    const at = controls.indexOf('What\'s new');
+    assert.ok(at >= 0, `no What's new in ${JSON.stringify(controls)}`);
+    assert.deepEqual(controls.slice(at, at + 3), ['What\'s new', 'Reload', 'Dismiss']);
+    assert.equal(await coach.linkTarget('What\'s new'), './whats-new');
+    assert.ok((await coach.sizeOf('What\'s new')).height >= 48, 'What\'s new is under 48px tall');
+  });
+
   test('tapping Reload reloads the page', async () => {
     await coach.onGameDay();
     await coach.markPage();

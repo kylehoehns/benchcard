@@ -98,7 +98,7 @@ Everything below is relative to `app/`.
   load-bearing in two places on purpose: `.stage`'s narrow-screen padding and
   the `@media print` overrides both have to come last.
 - `site.css` (#434) — the one sheet the public pages share: About, Advanced,
-  404 and the eight chart pages link it after `tokens.css`. It holds the rules
+  What's new, 404 and the eight chart pages link it after `tokens.css`. It holds the rules
   they have in common (headings, buttons, chips, the footer, the top bar) and
   the one Hardwood block that maps `--accent*` onto `tokens.css`'s `--tint*` for
   these pages; no public page copies that block inline. A page's inline

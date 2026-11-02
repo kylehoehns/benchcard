@@ -23,7 +23,7 @@ const ROOT = new URL('../app/', import.meta.url);
 const read = (f) => readFileSync(new URL(f, ROOT), 'utf8');
 const strip = (css) => css.replace(/\/\*[\s\S]*?\*\//g, ' ');
 const CHART_PAGES = CHARTS.map((c) => c.file);
-const PUBLIC = ['about.html', 'advanced.html', '404.html', ...CHART_PAGES];
+const PUBLIC = ['about.html', 'advanced.html', '404.html', 'whats-new.html', ...CHART_PAGES];
 
 /* Every rule of a sheet as `context | selector`: the `@media` / `@container`
  * wrappers it sits in, then one entry per selector of its list. Nested blocks
@@ -69,7 +69,7 @@ test('the Hardwood block is written once, in site.css', () => {
 });
 
 test('every public page links site.css after tokens.css', () => {
-  assert.equal(PUBLIC.length, 11, 'about, advanced, 404 and the eight generated pages');
+  assert.equal(PUBLIC.length, 12, 'about, advanced, 404, whats-new and the eight generated pages');
   for (const p of PUBLIC) {
     const links = linkedSheets(read(p));
     const i = links.indexOf('tokens.css');

@@ -9,6 +9,7 @@
  *     toast >= 3:1, the help text against the toast >= 4.5:1;
  *   - the Reload button either sits on the text's row, or wraps under it with
  *     the message's widest line at least 60% of the toast's content width;
+ *   - the What's new link (#499) against the toast >= 4.5:1;
  *   - every control >= 48px, nothing past any edge, no sideways scroll.
  *
  * COLORS ARE READ FROM PIXELS, not parsed: Chrome reports `color-mix` as
@@ -52,11 +53,11 @@ const PROBE = `(() => {
   };
   const css = (el, p) => getComputedStyle(el)[p];
   const btn = toast.querySelector('.tundo'), x = toast.querySelector('.tx'), msg = toast.querySelector('.tmsg');
-  const help = toast.querySelector('.update-help');
+  const help = toast.querySelector('.update-help'), link = toast.querySelector('.update-new');
   const ground = [css(toast, 'backgroundColor')];
   const fill = [...ground, css(btn, 'backgroundColor')];
   const toastPx = paint(ground), fillPx = paint(fill);
-  const px = { toast: toastPx, fill: fillPx, label: paint([...fill, css(btn, 'color')]), help: paint([...ground, css(help, 'color')]) };
+  const px = { toast: toastPx, fill: fillPx, label: paint([...fill, css(btn, 'color')]), help: paint([...ground, css(help, 'color')]), link: link && paint([...ground, css(link, 'color')]) };
 
   const tb = toast.getBoundingClientRect(), mb = msg.getBoundingClientRect();
   const acts = toast.querySelector('.tacts').getBoundingClientRect();
@@ -70,7 +71,7 @@ const PROBE = `(() => {
   const cs = getComputedStyle(toast);
   const content = tb.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const vw = document.documentElement.clientWidth, vh = document.documentElement.clientHeight;
-  const boxes = [['toast', toast], ['Reload', btn], ['Dismiss', x]].map(([n, e]) => { const r = e.getBoundingClientRect(); return { n, h: r.height, l: r.left, r: r.right, t: r.top, b: r.bottom }; });
+  const boxes = [['toast', toast], ["What's new", link], ['Reload', btn], ['Dismiss', x]].map(([n, e]) => { const r = e.getBoundingClientRect(); return { n, h: r.height, l: r.left, r: r.right, t: r.top, b: r.bottom }; });
   const gb = toast.querySelector('.update-glyph')?.getBoundingClientRect();
   // the title's first line box: the glyph belongs on it, whatever the layout
   const ttl = toast.querySelector('.update-title');
@@ -105,11 +106,14 @@ export async function updateToastPass(c, origin, rec) {
           m.fill = contrast(rgb(m.px.fill), rgb(m.px.toast));
           m.label = contrast(rgb(m.px.label), rgb(m.px.fill));
           m.help = contrast(rgb(m.px.help), rgb(m.px.toast));
+          m.link = m.px.link ? contrast(rgb(m.px.link), rgb(m.px.toast)) : 0;
         }
         rec.check(m.cls, `${where}: the toast has lost the update-toast class`);
         rec.check(m.fill >= MIN_FILL, `${where}: the Reload button against the toast is ${m.fill.toFixed(2)}:1, under ${MIN_FILL}:1`);
         rec.check(m.label >= MIN_LABEL, `${where}: the Reload label against its button is ${m.label.toFixed(2)}:1, under ${MIN_LABEL}:1`);
         rec.check(m.help >= MIN_HELP, `${where}: the help text against the toast is ${m.help.toFixed(2)}:1, under ${MIN_HELP}:1`);
+        // rule 2a: a missing link measures 0:1 and fails here, not silently
+        rec.check(m.link >= MIN_HELP, `${where}: the What's new link against the toast is ${(m.link || 0).toFixed(2)}:1, under ${MIN_HELP}:1`);
         rec.check(m.beside || m.share >= MIN_LINE_SHARE,
           `${where}: Reload wrapped under a message whose widest line is ${(m.share * 100).toFixed(0)}% of the toast, under ${MIN_LINE_SHARE * 100}% (a dead band)`);
         for (const b of m.boxes) {
@@ -127,7 +131,7 @@ export async function updateToastPass(c, origin, rec) {
           `${where}: Reload wrapped under a message only ${(m.msgShare * 100).toFixed(0)}% of the toast wide, under ${MIN_MSG_SHARE * 100}% (a cramped column)`);
         rec.check(!m.pans, `${where}: the page pans sideways`);
         rec.check(!m.clipped, `${where}: the toast's text is clipped`);
-        seen.push(`${theme} ${width}/${textPx}: label ${m.label.toFixed(1)} fill ${m.fill.toFixed(1)} help ${m.help.toFixed(1)}${m.beside ? ' beside' : ` stacked ${(m.share * 100).toFixed(0)}%`}`);
+        seen.push(`${theme} ${width}/${textPx}: label ${m.label.toFixed(1)} fill ${m.fill.toFixed(1)} help ${m.help.toFixed(1)} link ${m.link.toFixed(1)}${m.beside ? ' beside' : ` stacked ${(m.share * 100).toFixed(0)}%`}`);
       }
     }
   }

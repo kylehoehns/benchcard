@@ -22,6 +22,7 @@ const PRECACHE = [
   './index.html',
   './about.html',
   './advanced.html',
+  './whats-new.html',
 
   /* Render-blocking, so a cold offline boot needs all four or the shell
      paints unstyled. Order matters at load, not here. */

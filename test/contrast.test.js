@@ -508,6 +508,8 @@ const PAGES_332 = {
      generator's own, so a ninth page is covered the day it exists. They have
      no headline phrase (`hl: false`) and their only orange text is links. */
   ...Object.fromEntries(CHARTS.map((c) => [c.file, { rules: ['a'], hl: false }])),
+  /* #499: the generated What's new page; its only orange text is links. */
+  'whats-new.html': { rules: ['a'], hl: false },
 };
 const ORANGE_TEXT_OK = new Set(['.hl', 'ul li::marker']);
 const ORANGE_TOKEN = /var\(\s*--(?:accent|accent-2|tint|tint-2|phrase)\s*[,)]/;

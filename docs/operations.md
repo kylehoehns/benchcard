@@ -26,7 +26,7 @@ floor on the whole run, and failing if any part failed or is missing; #459),
 `evals` (`node scripts/evals.mjs`, which
 checks the harness's evals still pass), `redirect` (`redirect-check.mjs`,
 the service worker behind Cloudflare's trailing-slash 307s), `checks that need
-history` (two steps: `check-about-date.mjs` and `check-sitemap-lastmod.mjs`),
+history` (three steps: `check-about-date.mjs`, `check-sitemap-lastmod.mjs` and `check-whats-new.mjs`),
 and `vendor drift` (below), plus the weekly `lighthouse scores` (below that).
 Three of these went unmentioned here for months while this paragraph counted
 to three; if you add a ninth, say so here.
@@ -52,6 +52,11 @@ stays stale. Run it locally with `node scripts/check-sitemap-lastmod.mjs
 origin/main`. It exits 0 when there is no base ref to compare against, for the
 same reason as the about dateline check: a guard that fails on a ref it cannot
 read is a guard people learn to ignore.
+
+`scripts/check-whats-new.mjs` is the third step. It fails a coach-facing change
+under `app/` that adds no entry to `scripts/whats-new.json`; the rule and its
+escape are in `AGENTS.md`. The page itself, `app/whats-new.html`, is generated
+from that JSON by `npm run whats-new`.
 
 `.github/workflows/vendor-drift.yml` re-runs `sh app/vendor/fetch.sh` and
 fails if the working tree moves. Committing the output of a script is only
@@ -473,5 +478,5 @@ already loaded, so nothing swaps under a coach mid-substitution; the new code
 lands on the next navigation. An installed iOS app can go weeks without one --
 it resumes from a snapshot rather than navigating -- so `index.html` re-checks
 for a worker whenever the app returns to the foreground, and when one takes over
-`toast.js` *offers* the reload in its own update toast rather than taking it,
-never over bench mode.
+`toast.js` *offers* the reload in its own update toast, which also links to the
+What's new page, rather than taking it, never over bench mode.
