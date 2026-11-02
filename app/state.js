@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, longestRun, runOverSentence, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -1446,7 +1446,36 @@ export function consecNotes(g, p, issues, nameOf) {
     if (longest > limit) {
       out.push({
         severity: 'warn', code: 'CONSEC_EXCEEDED', playerIds: [id],
-        message: `${nameOf(id)} plays ${longest} stints in a row against a limit of ${limit} — no legal lineup kept them under it.`,
+        message: runOverSentence(nameOf(id), 'plays', longest, limit),
+      });
+    }
+  }
+  return out;
+}
+
+/* #534: the engine's "sits N stints in a row" notes, rebuilt from the fives on
+   screen the way `consecNotes` rebuilds "plays N stints in a row", in the
+   engine's own words (BENCH_EXCEEDED). One per available kid whose longest shown
+   run off the floor is over Sits at most. Left out: a kid sat for the rest (the
+   coach chose that), a late arrival's stints up to the one they walked in during
+   (`live.arrived`, as recorded), and everything when the engine said the limit cannot hold
+   (BENCH_TOO_FEW). `issues` are the plan's own notes. */
+export function benchNotes(g, p, issues, nameOf) {
+  const limit = g.constraints?.maxBench;
+  if (!limit || issues.some(i => i.code === 'BENCH_TOO_FEW')) return [];
+  const fives = effectiveStints(g, p).map(s => s.onFloor);
+  const arrived = g.live?.arrived || {};
+  const sat = new Set(satIds(g.live));
+  const out = [];
+  for (const id of availIds(g)) {
+    if (sat.has(id)) continue;
+    // a late kid was not benched before they got there, whatever they did in the stint they walked in during
+    const after = id in arrived ? fives.slice(arrived[id] + 1) : fives;
+    const longest = longestRun(after, id, 0, false);
+    if (longest > limit) {
+      out.push({
+        severity: 'warn', code: 'BENCH_EXCEEDED', playerIds: [id],
+        message: runOverSentence(nameOf(id), 'sits', longest, limit),
       });
     }
   }
@@ -1709,6 +1738,20 @@ export function pinsNotice(id) {
     + (cleared.length ? ` Could not keep ${joinNames(cleared)} fixed to a stint.` : '');
 }
 
+/* #490 #533: the one cap retry. `resolveRest`, and when it refuses because the
+   Plays at most maximums left cannot cover the floor, once more with the caps
+   relaxed for the rest. Returns the retry when it plans, else the first
+   refusal. A change of plan (`replanRest`), a This stint swap and Sit for the
+   rest all go through it; saying who went over is `capNotes`'s job. */
+export function resolveRestRelaxing(g, p, from, sitIds = [], standing = satIds(g.live)) {
+  const r = resolveRest(g, p, from, sitIds, null, standing);
+  if (!r.ok && r.reason === 'infeasible' && r.issues?.some(i => i.code === 'CAPS_UNSATISFIABLE')) {
+    const again = resolveRest(g, p, from, sitIds, null, standing, { relaxCaps: true });
+    if (again.ok) return again;
+  }
+  return r;
+}
+
 /* #412: plan the rest of a game from stint `from`, with its standing sit when
    five can be made without those kids, and without it when they cannot -- the
    arrival or attendance change has already happened, so a sit cannot refuse
@@ -1720,20 +1763,14 @@ function replanRest(g, p, from) {
   const live = g.live;
   const here = new Set(availIds(g));
   const calls = callNames(state.players);
-  let r = resolveRest(g, p, from);
+  // #490: the caps left cannot cover the floor -- relaxed for the rest (before any pin is let go)
+  let r = resolveRestRelaxing(g, p, from);
   if (!r.ok && r.reason === 'nobody' && satIds(live).length) {
     const again = resolveRest(g, p, from, [], null, []);
     if (again.ok) {
       r = again;
       satShort.set(g.id, satIds(live).filter(id => here.has(id)).map(id => calls[id]));
     }
-  }
-  /* #490: the caps left cannot cover the floor -- relax them for the rest and
-     say so, before letting go of any pin. */
-  if (!r.ok && r.reason === 'infeasible' && r.issues?.some(i => i.code === 'CAPS_UNSATISFIABLE')) {
-    const again = resolveRest(g, p, from, [], null, undefined, { relaxCaps: true });
-    // the warning is not kept here: `capNotes` derives it from the minutes on every render
-    if (again.ok) return again;
   }
   /* #437: still refused -- hold nobody to a stint, and say who was let go. */
   if (!r.ok && r.reason === 'infeasible') {
@@ -1898,6 +1935,25 @@ function repinOvertime(g, p) {
    cached, so earlier notes of this code are dropped before the current ones. */
 const PIN_NOTE = 'PIN_BREAKS_RULE';
 const PIN_LABEL = { keep: 'Keep this five', strongest: 'Strongest five' };
+/* #533: the one place that says a pinned overtime five breaks a Plays at most:
+   per pinned stint, each kid the pinned five and the five on the floor both
+   put on who ends over their cap. `pinNotes` words it; `capNotes` leaves those
+   kids out, so one broken cap is one note. */
+function pinnedOverCap(g, p) {
+  const pins = overtimePins(g, p);
+  if (!Object.keys(pins).length) return [];
+  const floor = effectiveStints(g, p);
+  const mins = effectiveMinutes(g, p);
+  const out = [];
+  for (const [k, f] of Object.entries(pins)) {
+    const e = floor[k].onFloor;
+    const label = PIN_LABEL[overtimeOf(g, p.stints[k]).who];
+    for (const [id, cap] of Object.entries(g.constraints.maxMinutes)) {
+      if (f.includes(id) && e.includes(id) && (mins[id] || 0) > cap + 1e-9) out.push({ k, id, cap, label, minutes: mins[id] });
+    }
+  }
+  return out;
+}
 function pinNotes(g, p) {
   const pins = overtimePins(g, p);
   if (!Object.keys(pins).length) return [];
@@ -1906,7 +1962,7 @@ function pinNotes(g, p) {
   const calls = callNames(state.players);
   const nm = id => calls[id] || id;
   const c = g.constraints;
-  const mins = effectiveMinutes(g, p);
+  const over = pinnedOverCap(g, p);
   const out = new Map();
   const add = (message, playerIds) => out.has(message) || out.set(message, { severity: 'warn', code: PIN_NOTE, playerIds, message });
   for (const [k, f] of Object.entries(pins)) {
@@ -1921,10 +1977,8 @@ function pinNotes(g, p) {
         add(`${label} leaves ${nm(a)} and ${nm(b)} both off; they are set One of two on.`, [a, b]);
       }
     }
-    for (const [id, cap] of Object.entries(c.maxMinutes)) {
-      if (f.includes(id) && e.includes(id) && (mins[id] || 0) > cap + 1e-9) {
-        add(`${label} gives ${nm(id)} ${minutesText(mins[id])}; Plays at most is ${cap}.`, [id]);
-      }
+    for (const x of over.filter(x => x.k === k)) {
+      add(`${x.label} gives ${nm(x.id)} ${minutesText(x.minutes)}; Plays at most is ${x.cap}.`, [x.id]);
     }
   }
   return [...out.values()];
@@ -1977,7 +2031,8 @@ function capNotes(g, p) {
   if (!g.live || !isUnderway(p, g.live)) return [];
   const caps = g.constraints.maxMinutes || {};
   const mins = effectiveMinutes(g, p);
-  const over = availIds(g).filter(id => caps[id] != null && (mins[id] || 0) > caps[id] + 1e-9)
+  const named = new Set(pinnedOverCap(g, p).map(x => x.id));
+  const over = availIds(g).filter(id => caps[id] != null && (mins[id] || 0) > caps[id] + 1e-9 && !named.has(id))
     .map(id => ({ id, cap: caps[id] }));
   return over.length ? [capRelaxedIssue(over)] : [];
 }
@@ -2452,6 +2507,22 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
     if (need > 0) fullLeft[id] = need;
   }
   if (Object.keys(fullLeft).length) c.fullPeriods = fullLeft;
+  /* #535: a suffix that starts partway through a regulation period q. A kid who
+     still owes a full period and was on the floor for every stint of q outside
+     the open stints is asked to finish it, and it counts as one of theirs. A
+     start at a period's first stint has no such period. */
+  const fromStint = p.stints[k], cutStint = p.stints[k - 1];
+  if (k > 0 && fromStint && cutStint && fromStint.period === cutStint.period && fromStint.period <= format.periods
+      && p.stints.every((s, j) => s.period !== fromStint.period || j < end)) {
+    const q = fromStint.period;
+    const mine = before.filter(s => s.period === q);
+    const finish = {};
+    // Plays at most N in a row: finishing adds the period's open stints to the run at the cut
+    const openInQ = p.stints.filter((s, j) => j >= k && j < end && s.period === q).length;
+    const fits = id => !g.constraints.maxConsecutive || (streakBefore[id] || 0) + openInQ <= g.constraints.maxConsecutive;
+    for (const id of avail) if (fullLeft[id] > 0 && mine.every(s => s.onFloor.includes(id)) && fits(id)) finish[id] = q;
+    if (Object.keys(finish).length) c.fullFinish = finish;
+  }
   // #451: who already played in a half or period the open stints share
   const playsIn = playsInSetting();
   const coveredIn = {};

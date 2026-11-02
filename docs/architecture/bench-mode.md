@@ -289,8 +289,9 @@ back on for the fifth seat, the sit stays recorded, and the coach is told once:
 when there is more than one. The sit applies again on the first re-plan that
 has five without them. Marking a sat kid Out (or Running late) and then Here now keeps the sit.
 
-A **This stint** swap and a sit call `resolveRest` directly, not `replanRest`
-(#437). If a kid fixed to a stint has to be let go for that solve to work, the
+A **This stint** swap and a sit call `resolveRestRelaxing` (`state.js`), which
+is `resolveRest` with the one cap retry a change of plan makes (#533), and not
+`replanRest` (#437). If a kid fixed to a stint has to be let go for that solve to work, the
 change still goes through and its own toast adds the same "Not enough minutes
 left to keep {names} fixed to a stint." sentence. The rule is in
 [design decisions](../design-decisions.md).

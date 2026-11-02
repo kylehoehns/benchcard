@@ -332,7 +332,8 @@ function normalize(constraints, availSet) {
   const targetMinutes = {};
   for (const [id, v] of Object.entries(c.targetMinutes || {})) if (availSet.has(id)) targetMinutes[id] = v;
   const minMinutes = c.minMinutes || {};
-  const fullPeriods = {}, fullPins = {};
+  const fullPeriods = {}, fullPins = {}, fullFinish = {};
+  for (const [id, v] of Object.entries(c.fullFinish || {})) if (availSet.has(id) && Number.isInteger(v)) fullFinish[id] = v;
   for (const [id, v] of Object.entries(c.fullPeriods || {})) if (availSet.has(id) && Number.isInteger(v) && v > 0) fullPeriods[id] = v;
   for (const [id, v] of Object.entries(c.fullPins || {})) if (availSet.has(id) && Array.isArray(v) && v.length) fullPins[id] = v;
   const lockedTargets = filterIds(c.lockedTargets);
@@ -342,7 +343,7 @@ function normalize(constraints, availSet) {
   const units = (c.units || []).map(u => filterIds(u));
   return {
     minMinutes,
-    fullPeriods, fullPins,
+    fullPeriods, fullPins, fullFinish,
     maxMinutes: c.maxMinutes || {},
     /* `normalize` is a whitelist, and lockedTargets was never on it -- so a
        locked row had never reached the solver at all. That is why the lock only
@@ -1161,15 +1162,25 @@ export function generatePlan(input) {
    least-loaded period, then one the kid already plays in `start`, then the seed.
    Picks go round by round so no kid is left the leftovers. A kid it cannot place
    gets a one-step repair (another kid moves to a period with room); one still
-   short comes back in `short`, never as an error. */
+   short comes back in `short`, never as an error.
+
+   #535: a kid in `c.fullFinish` ({ id: period }) is on the floor for every stint
+   of a period a re-plan starts inside (`resolveRest` says who). That period is
+   not whole in the list, so it is never offered to anyone, but those kids are
+   pinned to the rest of it first, when the same rules allow it, and a kid so
+   placed owes one period fewer. */
 function assignFullPeriods(stints, c, format, avail, avoidSet, start, seed) {
   const elig = eligiblePeriods(stints, format);
   const base = buildForced(stints, { ...c, fullPins: {} }, format);
   const forced = base.map(set => new Set(set));
   const rng = makeRng(((seed ^ 0x45f9a1) >>> 0) || 1);
-  const idxOf = new Map(elig.map(p => [p, stints.map((s, i) => i).filter(i => stints[i].period === p)]));
+  const stintsOf = p => stints.map((s, i) => i).filter(i => stints[i].period === p);
+  const idxOf = new Map(elig.map(p => [p, stintsOf(p)]));
+  // the period a re-plan starts inside is read like the others for the stints it has, and is never in `elig`
+  for (const q of Object.values(c.fullFinish)) if (!idxOf.has(q)) idxOf.set(q, stintsOf(q));
   // a period's half is its last stint's, as `playsInGroup` files it: a middle period of three ends in the second half
-  const half = new Map(elig.map(p => [p, playsInGroup(stints[idxOf.get(p).at(-1)], format, 'halves')]));
+  const half = new Map([...elig, ...Object.values(c.fullFinish)].filter(p => idxOf.get(p).length)
+    .map(p => [p, playsInGroup(stints[idxOf.get(p).at(-1)], format, 'halves')]));
   const pins = {};
   const has = (id, p) => idxOf.get(p).every(i => forced[i].has(id));
   const pinnedMin = id => stints.reduce((a, s, i) => a + (forced[i].has(id) ? s.minutes : 0), 0);
@@ -1193,6 +1204,15 @@ function assignFullPeriods(stints, c, format, avail, avoidSet, start, seed) {
   const owed = {};
   for (const id of avail) if (c.fullPeriods[id] > 0) { owed[id] = c.fullPeriods[id]; want[id] = Math.min(owed[id], elig.length); }
   const order = Object.keys(want).map(id => [rng(), id]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  for (const id of order) {
+    const q = c.fullFinish[id];
+    if (q == null || !idxOf.get(q).length) continue;
+    if (has(id, q) || can(id, q)) {
+      if (!has(id, q)) put(id, q);
+      owed[id] -= 1;
+      want[id] = Math.min(owed[id], elig.length);
+    }
+  }
   /* Plays at most N in a row: how far past the limit the kid's pinned run (in
      stints, across breaks) would go with period `p` added. 0 with no limit. One
      period longer than the limit on its own is a conflict between the rules; it
@@ -1205,7 +1225,9 @@ function assignFullPeriods(stints, c, format, avail, avoidSet, start, seed) {
     return Math.max(0, best - c.maxConsecutive);
   };
   const pick = (id) => {
-    const mine = owned(id).map(p => half.get(p));
+    // the period a kid was kept on to finish (#535) is one they own: its half is taken
+    const finished = c.fullFinish[id] != null && has(id, c.fullFinish[id]) ? [c.fullFinish[id]] : [];
+    const mine = [...owned(id), ...finished].map(p => half.get(p));
     const options = elig.filter(p => can(id, p)).map(p => [runOver(id, p), mine.includes(half.get(p)) ? 1 : 0, load(p), inStart(id, p) ? 0 : 1, rng(), p]);
     options.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4]);
     return options.length ? options[0][5] : null;
@@ -1364,7 +1386,13 @@ export function runEndingAt(lineups, id, end, lead = 0, on = true) {
 /* `lead`: stints in a row already played before lineups[0] (#442). It only
    extends a run that starts at stint 0, and `best` moves only when the kid is
    on the floor, so a past run never counts by itself. */
-function longestRun(lineups, id, lead = 0, on = true) {
+/* The one wording of a run over its limit: `verb` is 'plays' (CONSEC_EXCEEDED)
+   or 'sits' (BENCH_EXCEEDED). The notes the engine writes and the ones the app
+   rebuilds from the fives on screen (#456, #534) both come from here. */
+export const runOverSentence = (name, verb, run, limit) =>
+  `${name} ${verb} ${run} stints in a row against a limit of ${limit} — no legal lineup kept them under it.`;
+
+export function longestRun(lineups, id, lead = 0, on = true) {
   let run = lead, best = 0;
   for (const lu of lineups) { if (lu.includes(id) === on) { run++; best = Math.max(best, run); } else run = 0; }
   return best;
@@ -2264,7 +2292,7 @@ function finish(lineups, ctx, issues, meta) {
       if (run > ctx.maxBench) {
         issues.push({
           severity: 'warn', code: 'BENCH_EXCEEDED', playerIds: [id],
-          message: `${label(id)} sits ${run} stints in a row against a limit of ${ctx.maxBench} — no legal lineup kept them under it.`,
+          message: runOverSentence(label(id), 'sits', run, ctx.maxBench),
         });
       }
     }
@@ -2277,7 +2305,7 @@ function finish(lineups, ctx, issues, meta) {
       if (run > ctx.maxConsecutive) {
         issues.push({
           severity: 'warn', code: 'CONSEC_EXCEEDED', playerIds: [id],
-          message: `${label(id)} plays ${run} stints in a row against a limit of ${ctx.maxConsecutive} — no legal lineup kept them under it.`,
+          message: runOverSentence(label(id), 'plays', run, ctx.maxConsecutive),
         });
       }
     }

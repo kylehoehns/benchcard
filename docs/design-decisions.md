@@ -34,7 +34,7 @@ lost. Now the lock is raised to the minimum, and the plan says so.
 | One of two on and a pinned five | The pinned five holds. Refused as `FORCED_GROUP_KEEPON` when the pins make it impossible; otherwise, if the search misses, the note names the pins. | Warning `KEEPON_PARTIAL`, or the refusal. | `planning-strategies.md`; [Choices](#choices-behind-the-table) |
 | A pinned five (Starting five or Starts the last period) and a minimum | The pinned five. The minimum can slip, and the note says why. | `MIN_MISSED` names the pinned five when it filled a stint the player sat. | [Choices](#choices-behind-the-table) |
 | A pinned five and a cap (Plays at most minutes) | The pin holds over the cap. Refused with `PINS_OVER_CAP` when the cap cannot cover the pins. | Error naming the player. | "A pin is held over a cap, or refused up front, never dropped quietly" |
-| Plays at most and a mid-game re-plan the caps cannot fill | The floor. Caps rise for the rest only as far as five need. Played stints stay. | Note `CAP_RELAXED` names who is over. | "A cap the time left cannot fill is relaxed for the rest, not the past (#490)" |
+| Plays at most and a mid-game re-plan the caps cannot fill | The floor. Caps rise for the rest only as far as five need. Played stints stay. | Note `CAP_RELAXED` names who is over, unless `PIN_BREAKS_RULE` does (#533). | "A cap the time left cannot fill is relaxed for the rest, not the past (#490)" |
 | A pinned five and Plays at most N in a row, or Sits at most N in a row | The pinned five. A pinned overtime five that breaks one of these is kept and reported. | Warning `PIN_BREAKS_RULE` in an overtime. | "A pinned lineup outranks the consecutive-stint limit"; "A pinned overtime five that breaks a rule is kept and reported" |
 | An overtime five (pinned, or picked by Strongest five) and Apart or a cap | The five. | Warning `PIN_BREAKS_RULE` naming the kids and the rule broken. | "A pinned overtime five that breaks a rule is kept and reported"; [ADR 0001](adr/0001-level-picks-the-overtime-five.md) |
 | A hand-set minute target and a cap | The target. | Nothing beyond the target warnings. | "A coach's minute target is a pin, not a preference" |
@@ -480,17 +480,16 @@ text left open, and a future reader needs them to read the plan.
   already sat brings that run into the re-plan. A late arrival counts from the
   stint they walked in. `sitBefore` is only built when the rule is on, so a plan
   without it is unchanged. Pinned overtime fives win over the rule, as they do
-  over Plays at most, and the rule is not checked inside one.
+  over Plays at most, and the rule is not checked inside one. After a swap,
+  `BENCH_EXCEEDED` is rebuilt from the fives on screen (#534).
 - **Plays at most N in a row counts across a re-plan and into overtime (#442).**
   `resolveRest` hands the engine `streakBefore`: each player's run ending at
   the cut (stints played, from `effectiveStints`, plus pinned overtime fives
   before the first open stint). The engine's `longestRun` / `runEndingAt`
   add it to a run that starts at the first stint solved, so the search, the
   `CONSEC_EXCEEDED` note and the `SUBS_EXCEEDED` attribution all see it.
-  Absent, plans are unchanged. The `CONSEC_EXCEEDED` note is in
-  `resolveRest`'s issues, which bench mode's Sit for the rest and swap paths
-  show; the freeze re-plan (overtime added, roster change underway) does not
-  surface re-plan issues today (#456).
+  Absent, plans are unchanged. After a swap or a re-plan, the plan rebuilds
+  the `CONSEC_EXCEEDED` note from the fives on screen (#456).
 - **A pin is held over a cap, or refused up front, never dropped quietly
   (#436).** A kid named in the starting five, in a Starts the last period rule or the
   closing group is on the floor for those stints. The greedy pass keeps back
@@ -520,7 +519,7 @@ text left open, and a future reader needs them to read the plan.
   change already raises: "Not enough minutes left to keep {names} fixed to a
   stint." for a dropped pin, and "Could not keep {names} fixed to a stint." when
   the retry was needed. A **This stint** swap and **Sit for the rest** call
-  `resolveRest` directly rather than `replanRest`, and their own toasts add the
+  `resolveRestRelaxing` (#533) rather than `replanRest`, and their own toasts add the
   same first sentence when a pin is dropped. Platoon still falls back to #134.
 - **By hand re-plans the rest mid-game (#489)**, toward each kid's hand
   minutes less what they played, with no band: a hand number is the coach's

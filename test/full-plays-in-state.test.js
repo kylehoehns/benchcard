@@ -84,8 +84,12 @@ test('L. a re-plan under each half does not call back a kid who already played i
   });
 });
 
+/* #535: a kid who has played all of the quarter in progress now finishes it for
+   credit, so with no rule in the way every full period fits and nothing is
+   short. Apart rules keep a few kids from sharing a period, so some are. */
+const APART = [['p0', 'p1'], ['p0', 'p2'], ['p0', 'p3'], ['p4', 'p5'], ['p4', 'p6'], ['p4', 'p7']];
 test('a re-plan mid-game places the full periods that fit and names the rest, never an error', () => {
-  game({ settings: FULL2 }, g => {
+  game({ settings: FULL2, constraints: { avoids: APART } }, g => {
     for (const from of [1, 3, 5]) {
       const r = S.resolveRest(g, S.plans[0], from);
       assert.ok(r.ok, `from stint ${from}: ${r.reason}: ${(r.issues || []).filter(i => i.severity === 'error').map(i => i.code).join()}`);

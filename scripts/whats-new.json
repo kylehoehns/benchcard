@@ -1,4 +1,7 @@
 [
+  { "date": "2026-11-02", "text": "After you swap a kid in or out, the plan now warns you if someone sits on the bench more in a row than your Sits at most limit allows." },
+  { "date": "2026-11-02", "text": "When your league minimum is in full periods and you change the plan partway through a quarter or half, a kid who has played all of it so far stays on to finish it, and it counts as one of their full periods." },
+  { "date": "2026-11-02", "text": "Sitting a kid for the rest of the game, or swapping one in for now, no longer fails when a Plays at most limit is in the way. The plan tells you who ends up over it." },
   { "date": "2026-11-02", "text": "Help, the tour and the About page now use plainer words and shorter sentences." },
   { "date": "2026-11-02", "text": "If Benchcard doesn’t load on a weak connection, it now tries once more by itself. If that fails too, it offers to save your backup and shows a Reload button instead of a blank screen." },
   { "date": "2026-11-02", "text": "New in Settings: you can set the minimum playing time in whole periods. Pick 2, and every kid plays two full periods, start to finish." },

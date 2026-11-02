@@ -68,9 +68,15 @@ Same columns as "When rules disagree": the two rules, what wins, what the plan s
     fits and `FULL_PERIODS_SHORT` names the rest.
   - **Eligible periods.** A period is eligible when it is regulation and its
     stints in the list add up to the whole period. A mid-game re-plan leaves out
-    the period in progress and any period with a hand-chosen stint. A kid's need
-    there is their number less the whole periods they already played start to
-    finish.
+    any period with a hand-chosen stint, and the period in progress unless a kid
+    can finish it (below). A kid's need there is their number less the whole
+    periods they already played start to finish.
+  - **A kid can finish the period in progress (#535).** A kid who was on the
+    floor for every stint of that period so far is offered the rest of it
+    first, and it counts as one of their full periods. No one else is offered
+    it. If a rule stops the kid (five on the floor, Apart, their cap), they get
+    no credit for it, as before. A kid who already has their number is not kept
+    on for it. Overtime never counts.
   - **Platoon ignores it.** Platoon applies no pins. A full period missed is
     said like any pin, `FULL_PERIOD_MISSED`.
 - **Everyone plays in is a setting, and it steps the halftime default aside (#451).**

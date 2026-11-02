@@ -17,7 +17,7 @@ import { fmtMinutes } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, planSay } from './state.js';
+import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, planSay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
 import { blockedPanel } from './timeline.js';
@@ -141,11 +141,13 @@ function issuesList(p) {
   /* #456: the lineup notes name the solver's fives the same way. Once the shown
      fives are not the plan's (a swap, a re-plan, a finished game) the pair,
      keep-on, changes-at-once and second-half notes are untrue and go; the
-     stints-in-a-row note is rebuilt from the fives on screen, which is also
-     where a re-plan's over-limit run (its own notes are never kept) shows up. */
+     stints-in-a-row notes (plays and sits, #534) are rebuilt from the fives on
+     screen, which is also where a re-plan's over-limit run (its own notes are
+     never kept) shows up. */
   if (p.ok && game() && movedLineups(game(), p)) {
-    const stale = ['PAIR_PARTIAL', 'KEEPON_PARTIAL', 'SUBS_EXCEEDED', 'HALF_LATE', 'CONSEC_EXCEEDED'];
-    const rebuilt = consecNotes(game(), p, p.issues, id => byId(id)?.name || id);
+    const stale = ['PAIR_PARTIAL', 'KEEPON_PARTIAL', 'SUBS_EXCEEDED', 'HALF_LATE', 'CONSEC_EXCEEDED', 'BENCH_EXCEEDED'];
+    const nameOf = id => byId(id)?.name || id;
+    const rebuilt = [...consecNotes(game(), p, p.issues, nameOf), ...benchNotes(game(), p, p.issues, nameOf)];
     for (let i = list.length - 1; i >= 0; i--) if (stale.includes(list[i].code)) list.splice(i, 1);
     list.push(...rebuilt);
   }

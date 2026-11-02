@@ -91,6 +91,11 @@ Recorded here and in the PR body.
    underway with no rotation for the rest, which a coach on the bench cannot
    use. Only `replanRest` (the freeze and the #134 fallback) relaxes; a sit
    or a swap still refuses as today.
+   **Amended 2026-11-02 by #533:** a sit and a This stint swap now retry the
+   caps too, through the helper `replanRest` uses (`resolveRestRelaxing`). A
+   spent cap refuses only when the retry also refuses. This reverses this
+   choice. See the
+   [533 spec](533-swaps-cap-retry-sit-notes-period-credit.md).
 5. **#449: what counts as "a rule edit", and where the start is kept.** A
    rule edit is a re-solve where the game's `constraints` changed and nothing
    else that reaches the solver did. The start is the previous plan's
