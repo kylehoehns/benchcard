@@ -10,6 +10,11 @@ import { land, reset } from './page-state.mjs';
  * took away the soft orange band #231 put behind the headline, so the block
  * that held it must now paint no gradient.
  *
+ * The generated chart pages (#433) and the What's new page (#499) are in the
+ * list too, but with no headline phrase and no band: for them the checks
+ * cover the main button's color and the lede, and what's-new has no small
+ * orange text to probe.
+ *
  * Expected colors are the spec's own literals, typed once here as rgb()
  * strings, never read back from tokens.css or resolved the way the pages
  * resolve them: Hardwood light #D2500A, dark #FF7A2A (spec item 1), and the
