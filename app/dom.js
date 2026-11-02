@@ -70,7 +70,7 @@ export const ctx2d = document.createElement('canvas').getContext('2d');
    (scripts/smoke/clip-sweep.mjs) never excuses a split inside one. A plan note
    keeps its sentence at its CSS size: plan-view.js wraps each long word of it
    in a `.fitw`, and only that word shrinks. */
-export const FIT_SELECTORS = ['.alert .fitw', '.rrow .prow-t', '.gm-p:not(.fresh) .nm'];
+export const FIT_SELECTORS = ['.alert .fitw', '.rrow .prow-t', '.gm-p:not(.fresh) .nm', '#sheetPlan .plr .nm', '.tl-lab .nm'];
 /* The plan note's own sentence: not shrunk, but a split in it is never excused. */
 export const NOTE_TEXT = '.alert > span:not(.ico)';
 
@@ -173,7 +173,7 @@ function fitLongWords(root = document) {
      below would see the size before it and shrink the name to the floor. */
   for (const e of todo) {
     unhyphenate(e);
-    e.style.fontSize = e.style.minWidth = '';
+    e.style.fontSize = e.style.minWidth = e.style.whiteSpace = '';
     e.style.overflowWrap = 'normal'; e.style.transition = 'none';
   }
   const bases = todo.map(e => parseFloat(getComputedStyle(e).fontSize));
@@ -197,6 +197,8 @@ function fitLongWords(root = document) {
     if (!(wide[i] < 1 && over(e))) return;
     const max = room(e) - 0.05;
     if (boxOf(e) === e) e.style.minWidth = `${e.getBoundingClientRect().width}px`;
+    /* A one-line name (the timeline's one-row layout) breaks once it is hyphenated: a hyphen is no use on a line that cannot wrap. */
+    e.style.whiteSpace = 'normal';
     hyphenate(e, max);
   });
   for (const e of todo) { e.style.overflowWrap = e.style.transition = ''; fitSig.set(e, sigOf(e)); }

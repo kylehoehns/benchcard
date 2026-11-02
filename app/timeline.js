@@ -215,9 +215,10 @@ function timelineEmpty(g, p) {
    reader announced "Austin Schumacher" where the eye read AUST. This is the
    two visible call sites joining them. `deriveShortNames` is untouched and the
    card and bench mode keep their abbreviations.
-   A name too long for the column ellipsizes (`.tl-lab .nm`, app.css); a
-   first-name / last-initial ladder is the eventual shape there and is
-   deliberately not built yet. */
+   A name too long for the column shrinks to 70%, then breaks at a hyphen
+   (`.tl-lab .nm` is in FIT_SELECTORS, app/dom.js); a first-name /
+   last-initial ladder is the eventual shape there and is deliberately not
+   built yet. */
 /* #146 item 4: `distinctNames` (roster.js) is the one place a shared name's
    suffix is computed -- ` #12` or ` (MAYW2)` -- so the timeline reads it
    instead of the bare `byId(id)?.name`. `names` is that map, built from

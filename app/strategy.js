@@ -268,7 +268,7 @@ export function refreshBudgetActuals() {
 function closersEditor(g) {
   const c = g.constraints;
   const shape = stintShape(g);
-  const wrap = el('div');
+  const wrap = el('div', 'closers');
 
   const hd = el('div', 'pickhd');
   hd.append(el('span', 't', 'Closing window'));
