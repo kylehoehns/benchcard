@@ -1767,7 +1767,7 @@ kbd { display: inline-grid; place-items: center; min-width: 1.7rem; height: 1.7r
 .help-dl dt:first-child { margin-top: 0; }
 /* a list that follows a lead-in sentence still needs the break the heading
    above the first list would have given it */
-.help-p + .help-dl { margin-top: .7rem; }
+.help-p + .help-dl, .help-dl + .help-p { margin-top: .7rem; }
 .help-dl dd { margin: .1rem 0 0; color: var(--ink-2); }
 .help-p b, .help-dl b { color: var(--ink); font-weight: 600; }
 .help-tour { width: 100%; justify-content: center; margin-top: 1.5rem; }

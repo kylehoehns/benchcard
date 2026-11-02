@@ -64,3 +64,17 @@ test('app/whats-new.html is what scripts/whats-new.mjs renders from scripts/what
   }
   assert.equal(pages().size, 1);
 });
+
+test('the real entries have real dates, newest first, and no repeated text', () => {
+  const list = JSON.parse(readFileSync(new URL('../scripts/whats-new.json', import.meta.url), 'utf8'));
+  assert.ok(list.length > 0);
+  for (const { date } of list) {
+    assert.match(date, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(new Date(date + 'T00:00:00Z').toISOString().slice(0, 10), date, `${date} is not a real date`);
+  }
+  for (let i = 1; i < list.length; i++) {
+    assert.ok(list[i].date <= list[i - 1].date, `${list[i].date} is listed after ${list[i - 1].date}; newest first`);
+  }
+  const texts = list.map(x => x.text);
+  assert.equal(new Set(texts).size, texts.length, 'an entry text repeats');
+});

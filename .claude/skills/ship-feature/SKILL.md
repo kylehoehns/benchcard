@@ -268,9 +268,10 @@ hit. They do not notice a refactor, a test, a guard, a doc or the harness.
   coach>" }`, no markup, no issue numbers), runs `npm run whats-new` to rewrite
   `app/whats-new.html`, and moves the What's new page's `<lastmod>`
   in `app/sitemap.xml` to the entry's date.
-- **If they would not:** the PR body carries one line that starts `No coach
-  note:` and gives the reason (`No coach note: harness only`). A bare `No coach
-  note:` does not count.
+- **If they would not:** put one line that starts `No coach note:` and gives
+  the reason (`No coach note: harness only`) in a commit message, so
+  `npm run check:history` passes before the PR exists, and in the PR body,
+  which is what CI reads. A bare `No coach note:` does not count.
 
 `scripts/check-whats-new.mjs` (in `npm run check:history` and the `history` job)
 fails a PR that changes a coach-facing path under `app/` and has neither.
@@ -287,8 +288,9 @@ fails a PR that changes a coach-facing path under `app/` and has neither.
     PR=$(gh pr view --json number -q .number)
     ```
 
-    The body carries the `No coach note:` line when step 5's "Would a coach
-    notice this?" says nobody would; the guard reads it from the PR body.
+    When step 5's "Would a coach notice this?" says nobody would, the
+    `No coach note:` line goes in a commit message (so `npm run check:history`
+    passes before the PR exists) and in the PR body (CI reads that).
 
     Write the body with the `pr` skill's template (Summary, Evidence, Merge
     Danger; source: `mattpocock/skills`, `skills/in-progress/pr`), in plain

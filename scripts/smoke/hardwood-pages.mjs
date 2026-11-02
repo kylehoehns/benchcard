@@ -73,6 +73,11 @@ const PAGES = [
   ...CHARTS.map(c => ({ name: c.slug, page: `/${c.slug}`, record: 'kept', ready: 'true',
     h1: null, phrase: null, band: null, h1Sel: 'h1', hl: null, button: '.cta .btn.primary', link: null, body: '.lede',
     smalls: [{ sel: 'footer a', probe: 'text' }] })),
+  /* #499: the What's new page is generated too, and wears Hardwood the same
+     way: no headline phrase, no hero block, no small orange text to probe. */
+  { name: 'whats-new', page: '/whats-new', record: 'kept', ready: 'true',
+    h1: null, phrase: null, band: null, h1Sel: 'h1', hl: null, button: '.cta .btn.primary', link: null, body: '.lede',
+    smalls: [] },
 ];
 
 /* One in-page read. Everything a color is resolved through the canvas. */

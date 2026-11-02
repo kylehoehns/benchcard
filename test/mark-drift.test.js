@@ -14,7 +14,7 @@ import { CHARTS } from '../scripts/charts.mjs';
 const ROOT = new URL('..', import.meta.url).pathname;
 const APP = join(ROOT, 'app');
 const read = p => readFileSync(join(APP, p), 'utf8');
-const PAGES = ['index.html', 'about.html', 'advanced.html',
+const PAGES = ['index.html', 'about.html', 'advanced.html', 'whats-new.html',
   ...CHARTS.map(c => c.file)];
 
 test('every page declares the card mark as its tab icon', () => {

@@ -17,6 +17,11 @@
    `.claude/skills/ship-feature/SKILL.md` says when a coach would notice; this
    file only checks that one of the two answers is on the branch.
 
+   The file list is `git diff --name-only --no-renames <base>...HEAD`: three
+   dots, so a stale local branch is not charged for files main gained since it
+   forked; and no rename detection, so a file moved out of `app/` still shows
+   up as a deletion under `app/` instead of hiding as a rename.
+
    WHY THIS IS A SCRIPT AND NOT A `node --test` TEST. The same reason
    `check-sitemap-lastmod.mjs` is: the mistake only exists in the diff between
    two commits, and the `tests` job checks out at depth 1. The `history` job in
@@ -83,7 +88,7 @@ function main() {
   let oldEntries = [];
   try { oldEntries = parse(git(['show', `${base}:${SOURCE}`], true)); } catch { /* no file at the base: empty */ }
   const newEntries = parse(readFileSync(new URL(`../${SOURCE}`, import.meta.url), 'utf8'));
-  const changed = git(['diff', '--name-only', base, 'HEAD']).split('\n').filter(Boolean);
+  const changed = git(['diff', '--name-only', '--no-renames', `${base}...HEAD`]).split('\n').filter(Boolean);
   const messages = [process.env.PR_BODY || '', git(['log', '--format=%B', `${base}..HEAD`])];
 
   const found = problems(changed, oldEntries, newEntries, messages);

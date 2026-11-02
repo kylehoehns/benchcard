@@ -589,7 +589,7 @@ text left open, and a future reader needs them to read the plan.
   when a call row would wrap, and then both rows drop together so the block never
   mixes the two.
 - **Public pages always carry Hardwood orange, not the saved team color.** `about.html`,
-  `advanced.html` and the eight generated chart pages are reachable from search
+  `advanced.html`, `whats-new.html` and the eight chart pages are reachable from search
   results and may be visited by someone with no team saved locally. They use
   Hardwood styling (the orange button, links and phrases) so a visitor sees
   Benchcard's own warmth rather than a gray template. The mapping of `--accent*`
