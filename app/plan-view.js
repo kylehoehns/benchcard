@@ -58,9 +58,21 @@ export function renderIssues() {
     const a = el('div', 'alert ' + i.severity);
     const ic = el('span', 'ico');
     ic.append(icon(ico[i.severity], { size: '1.05em' }));
-    a.append(ic, el('span', null, i.message));
+    a.append(ic, noteText(i.message));
     box.append(a);
   }
+}
+
+/* #455: a plan note's sentence, with each long word in its own `.fitw` so the
+   fitter (dom.js) can shrink a name that cannot fit and leave the sentence
+   at its CSS size. */
+function noteText(message) {
+  const span = el('span');
+  for (const part of message.split(/(\s+)/)) {
+    if (part.length >= 8 && /\S/.test(part)) span.append(el('span', 'fitw', part));
+    else if (part) span.append(part);
+  }
+  return span;
 }
 
 let lastIssuesSig = null;   // #139 item 14: the last text `renderIssues` painted

@@ -80,6 +80,13 @@ function positiveInts(flag, text) {
   });
 }
 
+/* A flag that takes one number: a list is refused, not read as its first value. */
+function oneInt(flag, text) {
+  const all = positiveInts(flag, text);
+  if (all.length > 1) throw new Error(`${flag} takes one value, not a list ("${text}"); run look.mjs once per height`);
+  return all[0];
+}
+
 /* A state name can itself hold ", " ("add a game, step 1"), so the comma list
  * is read longest-known-name first rather than split blindly. */
 function viewNames(text) {
@@ -114,7 +121,7 @@ export function parseArgs(argv) {
     url: url ? url.replace(/\/+$/, '') : null,
     widths: widths === null ? [320, 390] : positiveInts('--widths', widths),
     fonts: fonts === null ? [16, 32] : positiveInts('--font', fonts),
-    height: height === null ? HEIGHT : positiveInts('--height', height)[0],
+    height: height === null ? HEIGHT : oneInt('--height', height),
     dark: argv.includes('--dark'),
     views: views === null ? VIEWS.map(v => v.name) : viewNames(views),
     headful: argv.includes('--headful'),

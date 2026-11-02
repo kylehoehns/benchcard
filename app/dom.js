@@ -67,8 +67,12 @@ export const ctx2d = document.createElement('canvas').getContext('2d');
 /* #455, #477, #483: the elements that hold a person's name or a plan note's
    sentence, where a single word can be wider than the column at a large text
    size. The one list: `fitLongWords` below shrinks these, and the clip sweep
-   (scripts/smoke/clip-sweep.mjs) never excuses a split inside one. */
-export const FIT_SELECTORS = ['.alert > span:not(.ico)', '.rrow .prow-t', '.gm-p:not(.fresh) .nm'];
+   (scripts/smoke/clip-sweep.mjs) never excuses a split inside one. A plan note
+   keeps its sentence at its CSS size: plan-view.js wraps each long word of it
+   in a `.fitw`, and only that word shrinks. */
+export const FIT_SELECTORS = ['.alert .fitw', '.rrow .prow-t', '.gm-p:not(.fresh) .nm'];
+/* The plan note's own sentence: not shrunk, but a split in it is never excused. */
+export const NOTE_TEXT = '.alert > span:not(.ico)';
 
 /* The smallest a fitted name gets: 40% of its CSS size. Below that the
    element's own `overflow-wrap` still breaks the word as a last resort, so
@@ -76,6 +80,9 @@ export const FIT_SELECTORS = ['.alert > span:not(.ico)', '.rrow .prow-t', '.gm-p
 const FIT_FLOOR = 0.4;
 
 const fitSig = new WeakMap();
+// Bumped when fonts finish loading: a fit measured on the fallback font is stale
+// though the text and width have not changed.
+let fitGen = 0;
 
 /* How wide an element's text lays out, and the room it has: both fractional,
    since `scrollWidth` rounds to a whole pixel and a word a hair wider than its
@@ -88,28 +95,33 @@ const widest = e => {
   for (const q of r.getClientRects()) m = Math.max(m, q.width);
   return m;
 };
+/* A `.fitw` word is measured against the note sentence that holds it. */
+const boxOf = e => e.matches('.fitw') ? e.parentElement : e;
 const room = e => {
-  const cs = getComputedStyle(e);
-  return e.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+  const b = boxOf(e);
+  const cs = getComputedStyle(b);
+  return b.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
     - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
 };
+/* What a fit depends on: the words, the room, the text size (the root's, which
+   is what a coach's text-size setting changes) and the font generation. */
+const sigOf = e => `${e.textContent}|${boxOf(e).clientWidth}|${getComputedStyle(document.documentElement).fontSize}|${fitGen}`;
 
 /* Shrink the text of each `FIT_SELECTORS` element just enough that its widest
    unbreakable chunk (a word, or the part of a hyphenated one before its
-   hyphen: the browser's own break chances) fits the element's width. The real
-   font, weight and letter-spacing are the ones measured, so there is no canvas
+   hyphen: the browser's own break chances) fits its box. The real font,
+   weight and letter-spacing are the ones measured, so there is no canvas
    guess. A name that fits keeps its CSS size. An element that is not laid out
    (a closed sheet) is skipped and fitted when it opens.
 
    An owned element's width must never depend on its own font size, or fitting
    would chase itself. Each pass starts from the CSS size, so the answer is the
-   same however many times it runs; an element whose text and width have not
-   changed since its last fit is not touched at all. */
+   same however many times it runs; an element whose signature (`sigOf`) has
+   not changed since its last fit is not touched at all. */
 function fitLongWords(root = document) {
   const todo = [];
   for (const e of root.querySelectorAll(FIT_SELECTORS.join(','))) {
-    const sig = `${e.textContent}|${e.clientWidth}`;
-    if (e.clientWidth > 0 && fitSig.get(e) !== sig) todo.push(e);
+    if (boxOf(e).clientWidth > 0 && fitSig.get(e) !== sigOf(e)) todo.push(e);
   }
   if (!todo.length) return;
   for (const e of todo) { e.style.fontSize = ''; e.style.overflowWrap = 'normal'; }
@@ -126,22 +138,24 @@ function fitLongWords(root = document) {
       e.style.fontSize = px(next);
     }
   });
-  for (const e of todo) { e.style.overflowWrap = ''; fitSig.set(e, `${e.textContent}|${e.clientWidth}`); }
+  for (const e of todo) { e.style.overflowWrap = ''; fitSig.set(e, sigOf(e)); }
 }
 
 /* Keep `fitLongWords` true as the page changes. A MutationObserver rather than
    a ResizeObserver: its callback is a microtask, so the fit lands before the
    frame that shows the new text is painted, it sees text and `open`/`hidden`
    changes that a ResizeObserver does not, and fitting from inside one would
-   risk "ResizeObserver loop completed" errors. The observer ignores `style`,
-   so its own writes cannot call it again. Resizing the window and fonts
-   finishing loading re-run it as well. */
+   risk "ResizeObserver loop completed" errors. The fitter only writes `style`,
+   which the observer ignores, and never adds or removes nodes, so its own
+   writes cannot call it again. Resizing the window and fonts finishing loading
+   (which bumps `fitGen`, so every element is measured again) re-run it too. */
 export function initFit() {
   const run = () => fitLongWords();
+  const refit = () => { fitGen++; run(); };
   new MutationObserver(run).observe(document.body, { childList: true, subtree: true, characterData: true,
     attributes: true, attributeFilter: ['open', 'hidden', 'class'] });
   addEventListener('resize', run);
-  document.fonts?.addEventListener?.('loadingdone', run);
-  document.fonts?.ready?.then(run);
+  document.fonts?.addEventListener?.('loadingdone', refit);
+  document.fonts?.ready?.then(refit);
   run();
 }

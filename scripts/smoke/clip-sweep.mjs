@@ -28,7 +28,11 @@
  * `openRotationToastState` too, but that one only mutates the loaded record's
  * game in place (`setGame`), so it needs no restore. */
 import '../../test/dom-stub.js';
-import { FIT_SELECTORS } from '../../app/dom.js';
+import { FIT_SELECTORS, NOTE_TEXT } from '../../app/dom.js';
+
+/* What the probe never excuses a split in: what the fitter shrinks, and the plan
+ * note sentence that holds its `.fitw` words. */
+const OWNED_SELECTORS = [...FIT_SELECTORS, NOTE_TEXT];
 import { evalIn, step, IS_SR_ONLY_RECT, WORD_FLOOR_FN, DESCRIBE_EL, IS_CUT } from './dom.mjs';
 import { LONG_NAME, RICH, FOUR, TODAY_LANDING } from './fixtures.mjs';
 import { LARGE_TEXT } from './sizes.mjs';
@@ -86,6 +90,29 @@ export const BY_HAND_STATE = {
           c.minMinutes = was.minMinutes; c.maxMinutes = was.maxMinutes;
           (await import('/render.js')).renderAll();
           $('#sheetPlan').close(); $('#backBtn').click()`,
+};
+
+/* #455: the plan notes under the timeline with a name no column can hold whole.
+ * A minimum for the first player and a stints-in-a-row limit make the engine
+ * write "<name> plays 3 stints in a row ..." (the wording test/stale-lineup-notes
+ * checks); the name is the one-word surname that cannot break after a hyphen.
+ * `close` puts the name and the rules back. */
+export const PLAN_NOTES_STATE = {
+  name: 'plan notes, long name',
+  open: `$('.today-game').click();
+         const st = await import('/state.js');
+         const c = st.game().constraints, p0 = st.byId('p0');
+         window.__notes455 = { name: p0.name, minMinutes: c.minMinutes, maxConsecutive: c.maxConsecutive };
+         p0.name = 'Featherstonehaugh Bartholomew';
+         c.minMinutes = { p0: 24 }; c.maxConsecutive = 2;
+         (await import('/render.js')).renderAll();
+         await new Promise(r => setTimeout(r, 300));
+         if (!document.querySelector('#issues .alert .fitw')) throw new Error('no plan note carried a long word, so the notes were not at their widest');`,
+  close: `const st = await import('/state.js');
+          const c = st.game().constraints, was = window.__notes455;
+          st.byId('p0').name = was.name; c.minMinutes = was.minMinutes; c.maxConsecutive = was.maxConsecutive;
+          (await import('/render.js')).renderAll();
+          $('#backBtn').click()`,
 };
 
 /* Scroll the page, and every one of its own scrolling descendants (an open
@@ -298,7 +325,7 @@ export const CLIP_PROBE = `(() => {
   // FIT_SELECTORS) is never excused by ROW_LIKE or by "the word is wider than
   // its row" below -- the fitter's whole job is to shrink that word to fit.
   // Counted per selector so the pass can fail when one was never measured.
-  const FIT_SELECTORS = ${JSON.stringify(FIT_SELECTORS)};
+  const FIT_SELECTORS = ${JSON.stringify(OWNED_SELECTORS)};
   const ownedScanned = {};
   let fewestScanned = 0;
 
@@ -481,7 +508,7 @@ const describeFinding = p => {
 };
 
 /* The states the sweep walks, in order. Shared with scripts/look.mjs. */
-export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE];
+export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, PLAN_NOTES_STATE];
 
 /* The states that navigate to their own page and so wipe whatever the run
  * set up on the one before (the roster, injected CSS). Shared with
@@ -574,7 +601,7 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   await sweep(states.find(v => v.name === 'bench mode, last stint'), {}, 'bench mode, last stint 390px/16px');
   await land(c, origin, { record: { ...LONG_AND_SQUEEZE, view: 'today' }, ...TODAY_LANDING });
   await applyInjectCss();
-  for (const name of ['games', 'team', 'plan sheet, by hand']) {
+  for (const name of ['games', 'team', 'plan sheet, by hand', 'plan notes, long name']) {
     await sweep(states.find(v => v.name === name), {}, `${name} 390px/16px`);
   }
 
@@ -585,7 +612,7 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
     rec.fail(`${items.length} stale ${label} entr${items.length === 1 ? 'y' : 'ies'} (never ${verb} this run): ${items.map(fmt).join(sep)}`);
   };
   // /new-guard 2a: a fitted element no state ever put on screen measured nothing.
-  for (const sel of FIT_SELECTORS.filter(sel => !ownedScanned.has(sel))) {
+  for (const sel of OWNED_SELECTORS.filter(sel => !ownedScanned.has(sel))) {
     rec.fail(`no state measured an element matching the long-word fitter's "${sel}", so a split in one went unchecked`);
   }
   // #505, rule 2a: the Timeline's MOST / FEWEST word must have been on screen
@@ -609,7 +636,7 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
 
   rec.check(scanned > 0, 'measured no elements across any state');
-  rec.ok(`${states.length} states + 5 at 390px/16px, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
+  rec.ok(`${states.length} states + 6 at 390px/16px, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
 }
 
 /* #283: the same four tests, on `/about.html`, which the app sweep above

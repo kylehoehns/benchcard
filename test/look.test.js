@@ -80,6 +80,7 @@ test('--height defaults to 844 and is read when given (#429)', () => {
   assert.equal(parseArgs(['--out', 'o', '--height', '568']).height, 568);
   refused(['--out', 'o', '--height', '0'], /height/i);
   refused(['--out', 'o', '--height', 'tall'], /height/i);
+  refused(['--out', 'o', '--height', '568,700'], /height.*one|one.*height/i);
 });
 
 test('a state name that itself holds a comma survives --view splitting on commas', () => {

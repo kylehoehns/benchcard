@@ -31,18 +31,41 @@ export const OVERLAY_PROBE = `JSON.stringify((() => {
   const welcome = document.querySelector('#view-welcome');
   const root = dlg || (welcome && shown(welcome) ? welcome : null);
   if (!root) return { overlay: false, line };
+  const name = e => (e.id ? '#' + e.id : '') + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\\s+/).join('.') : '') || e.tagName.toLowerCase();
+  // The snackbar slot (.bsheet-toasts) scrolls too, but it is a box the sheet
+  // body shares the sheet with, not the content: measuring it would pass a body
+  // squeezed to nothing. It and everything in it never count as the region.
   const scrolls = [root, ...root.querySelectorAll('*')].filter(e => {
     const oy = getComputedStyle(e).overflowY;
-    return (oy === 'auto' || oy === 'scroll') && e.clientHeight > 0 && shown(e);
-  }).map(e => ({ el: (e.id ? '#' + e.id : '') + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\\s+/).join('.') : '') || e.tagName.toLowerCase(),
-    client: e.clientHeight, shell: e === root }));
+    return (oy === 'auto' || oy === 'scroll') && e.clientHeight > 0 && shown(e) && !e.closest('.bsheet-toasts');
+  }).map(e => ({ el: name(e), client: e.clientHeight, shell: e === root, body: e.matches('.bsheet-body, .flow-body') }));
   const vh = document.documentElement.clientHeight;
-  // The content region is the tallest scroller inside the overlay (the dialog
+  // The content region is the sheet's own body (.bsheet-body / .flow-body)
+  // when it has one, else the tallest scroller inside the overlay (the dialog
   // shell is not one of them); a nested field never beats the body that holds
-  // it. With none, the overlay is its own region -- or, for the welcome page,
-  // the document scrolls and the region is the viewport.
-  const inner = scrolls.filter(s => !s.shell).sort((a, b) => b.client - a.client)[0];
-  const region = inner || (dlg ? { el: '#' + root.id, client: root.clientHeight } : { el: 'the page', client: vh });
+  // it. With none, the dialog is its own region. The welcome page has no
+  // scroller: the document scrolls, so its room is what of the landing content
+  // shows between the top of the screen and the bottom, less any fixed or
+  // sticky chrome standing over that band.
+  const inner = scrolls.filter(s => s.body).sort((a, b) => b.client - a.client)[0]
+    || scrolls.filter(s => !s.shell).sort((a, b) => b.client - a.client)[0];
+  let region = inner;
+  if (!region && dlg) region = { el: '#' + root.id, client: root.clientHeight };
+  if (!region) {
+    const c = root.querySelector('.wel-landing') || root;
+    const r = c.getBoundingClientRect();
+    let top = Math.max(r.top, 0), bottom = Math.min(r.bottom, vh);
+    for (const e of document.querySelectorAll('body *')) {
+      if (root.contains(e) || !shown(e)) continue;
+      const pos = getComputedStyle(e).position;
+      if (pos !== 'fixed' && pos !== 'sticky') continue;
+      const q = e.getBoundingClientRect();
+      if (q.height <= 0 || q.width <= 0) continue;
+      if (q.top <= top && q.bottom > top) top = Math.min(q.bottom, bottom);
+      else if (q.bottom >= bottom && q.top < bottom) bottom = Math.max(q.top, top);
+    }
+    region = { el: 'the landing content (visible)', client: Math.max(0, Math.round(bottom - top)) };
+  }
   return { overlay: true, id: root.id, line, vh, region };
 })())`;
 
