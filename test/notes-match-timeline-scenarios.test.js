@@ -190,7 +190,10 @@ describe('the notes under the timeline', { skip }, () => {
   test('where the engine said nothing about the spread, a swap adds no spread note', async () => {
     const { before, after, planned, mins } = await swapThenRead(rules({ targetSlots: { p0: 6, p1: 2 } }), 'Ana Reyes', 'Hana Kim', 'minutes');
     assert.match(before, /Minutes are set by hand for/);
-    assert.notDeepEqual(mins, planned, 'the swap moved nobody, so this proves nothing');
+    // Since #489 a By hand re-plan holds the past and lands the rest on the hand-set
+    // totals, so a swap no longer moves anyone's minutes. The point here is that no
+    // spread note appears either way.
+    assert.deepEqual(mins, planned, 'By hand lands on its hand-set minutes after the swap');
     assert.ok(lacks(before, /divide evenly|the fewest|everyone else|The most is/));
     assert.match(after, /Minutes are set by hand for/, `the notes say: ${after}`);
     assert.ok(lacks(after, /divide evenly|the fewest|everyone else|the other \d+ play|The most is| play(s)? \d/), `the notes say: ${after}`);

@@ -124,18 +124,27 @@ test('D: a sub-interval change mid-game keeps #134: the rotation is rewritten an
   assert.deepEqual(g.live.overrides, {}, 'nothing is frozen on a new grid');
 });
 
-for (const strategy of ['minutes', 'platoon']) {
-  test(`E: with ${strategy}, a mid-game change keeps #134`, () => {
-    const g = setup({ strategy, units: [['p0', 'p1', 'p2', 'p3', 'p4'], ['p6', 'p7', 'p8', 'p1', 'p2']] });
-    assert.equal(S.plans[0].ok, true, 'the fixture plans');
-    startAt(g, 2);
-    S.rotationMoved();
-    if (strategy === 'platoon') g.constraints.units[1] = ['p6', 'p7', 'p8', 'p3', 'p4'];
-    else S.setAvailable(g, 'p8', false);
-    S.computeAll();
-    assert.deepEqual(S.rotationMoved(), [g.id], 'resolveRest refuses, so the rotation is rewritten and reported');
-  });
-}
+test('E: with platoon, a mid-game change keeps #134', () => {
+  const g = setup({ strategy: 'platoon', units: [['p0', 'p1', 'p2', 'p3', 'p4'], ['p6', 'p7', 'p8', 'p1', 'p2']] });
+  assert.equal(S.plans[0].ok, true, 'the fixture plans');
+  startAt(g, 2);
+  S.rotationMoved();
+  g.constraints.units[1] = ['p6', 'p7', 'p8', 'p3', 'p4'];
+  S.computeAll();
+  assert.deepEqual(S.rotationMoved(), [g.id], 'resolveRest refuses, so the rotation is rewritten and reported');
+});
+
+test('E: with By hand, a mid-game change freezes the past like the other strategies (#489)', () => {
+  const g = setup({ strategy: 'minutes' });
+  assert.equal(S.plans[0].ok, true, 'the fixture plans');
+  startAt(g, 2);
+  const past = fives(g, 3);
+  S.rotationMoved();
+  S.setAvailable(g, 'p8', false);
+  S.computeAll();
+  assert.deepEqual(fives(g, 3), past, 'stints 0-2 are the same fives');
+  assert.deepEqual(S.rotationMoved(), [], 'nothing played moved, so nothing is reported');
+});
 
 test('I: before tip-off every change re-plans the whole game', () => {
   const g = setup();

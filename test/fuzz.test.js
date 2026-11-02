@@ -504,8 +504,8 @@ test('property #438: a hard pair is never less even than a soft plan that alread
 /* #437: a live attendance change never rewrites a stint already played, whatever
    the pins. Through `state.js` (`computeAll` + `setAvailable`), which needs the
    browser's `localStorage` and a canvas stub before it loads. Games the
-   freeze re-plans: By hand and Platoon rewrite the past on an arrival by design
-   (spec 247 E), so they are not generated. */
+   freeze re-plans: Platoon rewrites the past on an arrival by design (spec 247
+   E), so it is not generated; By hand freezes since #489. */
 const liveStore = new Map();
 globalThis.localStorage = {
   getItem: k => (liveStore.has(k) ? liveStore.get(k) : null),
@@ -520,7 +520,7 @@ globalThis.document = {
 const S = await import('../app/state.js');
 
 test('property #437: after a live arrival or departure, every stint before live.at is unchanged', () => {
-  const CASES = 60;
+  const CASES = 250;
   let reached = 0, letGo = 0;
   for (let n = 1; n <= CASES; n++) {
     const r = rng(n * 2246822519);
@@ -531,7 +531,7 @@ test('property #437: after a live arrival or departure, every stint before live.
     for (const id of ids) S.state.players.push({ id, name: `Kid ${id}`, tier: 3 });
     const periods = int(2, 4);
     const periodMinutes = int(6, 10);
-    const strategy = r() < 0.5 ? 'balanced' : 'closers';
+    const strategy = ['balanced', 'closers', 'minutes'][int(0, 2)];
     const out = r() < 0.5 ? [ids[int(0, size - 1)]] : [];
     const here = ids.filter(id => !out.includes(id));
     const pickHere = () => here[int(0, here.length - 1)];
@@ -540,13 +540,11 @@ test('property #437: after a live arrival or departure, every stint before live.
     if (strategy === 'closers') c.closing = { stints: int(1, 2), players: [...new Set(Array.from({ length: int(1, 3) }, pickHere))] };
     if (r() < 0.3) { const a = pickHere(), b = pickHere(); if (a !== b) c.pairs.push([a, b]); }
     if (r() < 0.3) { const a = pickHere(), b = pickHere(); if (a !== b) c.avoids.push([a, b]); }
-    /* Caps go on the kids a pin names (the case this change is about), at most two, and only with 7+
-       players. Excluded class, found by this property: a cap on a kid who played every stint so far,
-       with 5-6 left, leaves the rest of the game with too few minutes to keep five on the floor
-       (CAPS_UNSATISFIABLE after a departure). A cap does that without any pin, and it is a different
-       bug (filed as #490). Repro: 7 players, 2 x 7 min, sub every 3, Plays at most 7 on p0 and p1, p2 leaves at live.at 2. */
+    /* Caps go on the kids a pin names and on one more kid, at most three, from 5 players up. A cap on
+       a kid who played every stint so far can leave the rest of the game too few minutes for five
+       on the floor; #490 relaxes it and warns, so this class is generated. */
     const pinned = [...new Set([...c.lastPeriodFive, ...(c.closing?.players || [])])];
-    if (size >= 7) for (const id of pinned.slice(0, 2)) if (r() < 0.8) c.maxMinutes[id] = int(1, 2) * periodMinutes;
+    for (const id of [...new Set([...pinned.slice(0, 2), pickHere()])]) if (r() < 0.8) c.maxMinutes[id] = int(1, 2) * periodMinutes;
     const g = {
       id: `fz${n}`, label: '', tipoff: '', out: [...out], late: [], seed: n,
       periods, periodMinutes, granMode: 'everyN', granValue: int(3, 5),

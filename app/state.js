@@ -1688,6 +1688,16 @@ function replanRest(g, p, from) {
       satShort.set(g.id, satIds(live).filter(id => here.has(id)).map(id => calls[id]));
     }
   }
+  /* #490: the caps left cannot cover the floor -- relax them for the rest and
+     say so, before letting go of any pin. */
+  if (!r.ok && r.reason === 'infeasible' && r.issues?.some(i => i.code === 'CAPS_UNSATISFIABLE')) {
+    const again = resolveRest(g, p, from, [], null, undefined, { relaxCaps: true });
+    if (again.ok) {
+      /* the plan on screen is `p`, not the re-plan's own issues: say it there */
+      p.issues = [...(p.issues || []).filter(i => i.code !== 'CAP_RELAXED'), ...again.issues.filter(i => i.code === 'CAP_RELAXED')];
+      return again;
+    }
+  }
   /* #437: still refused -- hold nobody to a stint, and say who was let go. */
   if (!r.ok && r.reason === 'infeasible') {
     /* Runs on any infeasible refusal with a fixed kid at the game, so the cause
@@ -1961,6 +1971,13 @@ const tierOfPlayer = p => {
   return Number.isFinite(n) && n >= 1 && n <= 5 ? Math.round(n) : DEFAULT_TIER;
 };
 
+/* A short stable hash of a string: the key a saved `basis` is valid for. */
+function hashOf(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(36);
+}
+
 export function computeAll() {
   const ps = state.players;
   const ids = ps.map(p => p.id);
@@ -2069,18 +2086,27 @@ export function computeAll() {
          under 'behind' it IS `deficitOf`, and under 'levels' the level leads and
          the deficit decides inside it. */
       const prio = Object.fromEntries(ids.filter(id => !out.has(id)).map(id => [id, priorityOf(id)]));
-      const sig = JSON.stringify([
-        // p.tier and g.balance belong here: both change the plan, and leaving
-        // either out means a coach re-tiers a player and the card does not move
-        ps.map(p => [p.id, p.name, p.shortName, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
-        g.granMode, g.granValue, g.constraints, g.strategy, g.balance, g.seed, carry, seasonT, prio,
-        // team settings reach the solver too, so they belong in the signature
-        // for the same reason: change the number and the card must move. The
-        // league floor is a question about this game (#447), and a kid who
-        // walked in late is owed less of it.
-        maxSubs, leagueFor,
-      ]);
+      /* p.tier and g.balance belong in the signature: both change the plan, and
+         leaving either out means a coach re-tiers a player and the card does not
+         move. Team settings reach the solver too, so they belong for the same
+         reason: change the number and the card must move. The league floor is a
+         question about this game (#447), and a kid who walked in late is owed
+         less of it. `rest` is everything but the rules and the names (#449). */
+      const rest = [
+        ps.map(p => [p.id, p.shortName, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
+        g.granMode, g.granValue, g.strategy, g.balance, g.seed, carry, seasonT, prio, maxSubs, leagueFor,
+      ];
+      const sig = JSON.stringify([ps.map(p => p.name), g.constraints, rest]);
+      const warmKey = hashOf(JSON.stringify(rest));
       const hit = planCache.get(g.id);
+      /* #449: a rule edit starts from the plan the coach had. The previous
+         plan's fives are kept on the game (`g.basis`), so a reload starts from
+         the same place. Only when the cached plan solved from what `g.basis`
+         still says: an Undo that restored an older record leaves it alone. */
+      if (hit && hit.sig !== sig && hit.warmKey === warmKey && hit.plan.ok && hit.basis === JSON.stringify(g.basis ?? null)) {
+        g.basis = { key: warmKey, seed: g.seed, lineups: hit.plan.stints.map(s => s.onFloor.slice()) };
+      }
+      const start = g.basis?.key === warmKey ? g.basis.lineups : undefined;
       if (hit && hit.sig === sig) {
         return tally(g, syncOverrides(g, hit.plan, isUnderway(hit.plan, g.live)));
       }
@@ -2114,12 +2140,12 @@ export function computeAll() {
         carryover: carry,
         priority: prio,
         seed: g.seed,
-        maxSubs,
+        maxSubs, start,
       });
       if (seasonT) sayTheSeasonSetThem(p);
       if (leagueOn) sayTheLeagueMinimum(p, g.constraints.minMinutes || {}, id => leagueFor[id] || 0);
       sayWhyTheyAreShort(p, prio, tiers);
-      planCache.set(g.id, { sig, plan: p });
+      planCache.set(g.id, { sig, warmKey, basis: JSON.stringify(g.basis ?? null), plan: p });
       return tally(g, syncOverrides(g, p, isUnderway(p, g.live), hit?.plan));
     });
   };
@@ -2225,7 +2251,20 @@ function dropPinned(c, ids) {
     c.closing = players.length ? { ...c.closing, players } : null;
   }
 }
-export function resolveRest(g, p, from, sitIds = [], to = null, standing = satIds(g.live), { dropPins = [] } = {}) {
+/* The one warning for kids whose Plays at most could not hold in a re-plan of
+   the rest. `over` is [{ id, cap }]. */
+function capRelaxedIssue(over) {
+  const calls = callNames(state.players);
+  const same = over.every(x => x.cap === over[0].cap);
+  const who = same
+    ? `${joinNames(over.map(x => calls[x.id]))} under Plays at most ${fmtMinutes(over[0].cap)}`
+    : joinNames(over.map(x => `${calls[x.id]} under Plays at most ${fmtMinutes(x.cap)}`));
+  return {
+    severity: 'warn', code: 'CAP_RELAXED', playerIds: over.map(x => x.id),
+    message: `Not enough players left to keep ${who}.`,
+  };
+}
+export function resolveRest(g, p, from, sitIds = [], to = null, standing = satIds(g.live), { dropPins = [], relaxCaps = false } = {}) {
   if (!p || !p.ok) return { ok: false, reason: 'noplan' };
   const k = Math.max(0, Math.min(Math.trunc(from) || 0, p.stints.length));
   // `to` ends the suffix early: Reset plans one Even-out period at a time
@@ -2252,7 +2291,12 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   /* Platoon's units are exact fives that ignore who is available, so it still
      cannot sit anyone for the rest -- only carry on with the next unit. A
      suffix that is all pinned plans nothing, so it is not refused. */
-  if (handSet && !allPinned && (!overtimeOnly || (strategy === 'platoon' && sitIds?.length))) return { ok: false, reason: 'strategy' };
+  /* #489: By hand re-plans the rest when nobody is sat -- its hand numbers are
+     turned into what is left of them below. Sitting a kid under By hand stays
+     refused (its minutes are set by hand). */
+  const byHand = strategy === 'minutes' && !overtimeOnly && !allPinned;
+  if (handSet && !allPinned && (!overtimeOnly || (strategy === 'platoon' && sitIds?.length))
+      && !(byHand && !sitIds?.length)) return { ok: false, reason: 'strategy' };
   if (!suffix.length) return { ok: false, reason: 'nothing' };
 
   const sit = new Set(sitIds || []);
@@ -2329,6 +2373,32 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
     if (cap != null) c.maxMinutes[id] = Math.max(0, cap - (played[id] || 0));
   }
 
+  /* #490: `replanRest`'s retry when the caps left cannot cover the floor --
+     each Plays at most minus what was played, with the uncapped kids at the
+     whole of `total`, add up to less than five on the floor for every stint
+     left. The shortfall is shared equally among the capped kids (none past
+     `total`, which is all anyone can play), so the kids whose cap is not in
+     the way keep it. Who it raised, and the cap they had, is kept to say so. */
+  const raised = [];
+  if (relaxCaps) {
+    const capped = avail.filter(id => id in c.maxMinutes);
+    const room = avail.reduce((a, id) => a + (id in c.maxMinutes ? c.maxMinutes[id] : total), 0);
+    let shortfall = total * LINEUP_FLOOR - room;
+    let open = capped.filter(id => c.maxMinutes[id] < total);
+    for (let pass = 0; pass < 20 && shortfall > 1e-9 && open.length; pass++) {
+      const each = shortfall / open.length;
+      for (const id of open) {
+        const give = Math.min(each, total - c.maxMinutes[id]);
+        if (!raised.some(x => x.id === id)) raised.push({ id, was: c.maxMinutes[id], cap: g.constraints.maxMinutes[id] });
+        // rounded up to the hundredth: the engine compares the sum to the floor exactly
+        const to = Math.min(total, Math.ceil((c.maxMinutes[id] + give) * 100 - 1e-9) / 100);
+        shortfall -= to - c.maxMinutes[id];
+        c.maxMinutes[id] = to;
+      }
+      open = open.filter(id => c.maxMinutes[id] < total - 1e-9);
+    }
+  }
+
   /* Fairness, in the one currency the engine already takes. `deficit` is each
      player's even share of what has been played so far minus what they really
      played, so a target lands on (everyone's total + the rest) / n minus what
@@ -2344,11 +2414,24 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
     const pool = s.minutes * s.onFloor.filter(id => avail.includes(id)).length;
     for (const id of here) fair[id] += pool / here.length;
   });
+  /* #489: under By hand what a kid is owed is their own number (a late
+     arrival's scaled to the share of regulation from their arrival on, the
+     reading `leagueMinFor` makes), with no band: it is the coach's word. */
+  if (byHand) {
+    const { lens } = regulationLens(g);
+    const game = lens.reduce((a, x) => a + x, 0);
+    for (const id of avail) {
+      const slots = g.constraints.targetSlots?.[id];
+      if (slots == null) continue;
+      const share = id in arrived ? lens.slice(arrived[id]).reduce((a, x) => a + x, 0) / game : 1;
+      fair[id] = slotsToMinutes(g, slots) * share;
+    }
+  }
   const deficit = Object.fromEntries(avail.map(id => [id, fair[id] - (played[id] || 0)]));
   const targets = carryoverTargets({
     ids: avail, deficit,
     budget: total * LINEUP_FLOOR,
-    cap: 2 * longest,
+    cap: byHand ? total : 2 * longest,
     min: c.minMinutes, max: c.maxMinutes,
     ceiling: total,
   });
@@ -2421,7 +2504,10 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   const minutes = Object.keys(pinsNow).length
     ? minutesFrom(suffix.map((s, i) => ({ onFloor: overrides[k + i] || s.onFloor, minutes: s.minutes })), avail)
     : r.minutes;
-  return { ok: true, from: k, overrides, issues: r.issues, minutes, pinsDropped: r.pinsDropped || [] };
+  /* #490: only the kids who really end over their cap are named. */
+  const over = raised.filter(x => (minutes?.[x.id] || 0) > x.was + 1e-9);
+  const issues = over.length ? [...r.issues, capRelaxedIssue(over)] : r.issues;
+  return { ok: true, from: k, overrides, issues, minutes, pinsDropped: r.pinsDropped || [] };
 }
 
 /* ================================================================== *

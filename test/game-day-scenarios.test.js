@@ -142,16 +142,22 @@ describe('a coach runs a game', { skip }, () => {
     assert.deepEqual(await floorsFromHere(), viaBench);
   });
 
-  test('Here now says the rotation changed when the freeze could not hold the stints already played', async () => {
+  test('Here now in a By hand game keeps the stints already played and does not say the rotation changed', async () => {
+    // Before #489 By hand refused the freeze and rewrote the past; now it holds.
+    const played = async () => {
+      while ((await coach.stint()) !== '1 of 8') await coach.tap('Previous stint');
+      const floors = [await coach.onFloor()];
+      for (let k = 0; k < 2; k++) { await coach.tap('Next stint'); floors.push(await coach.onFloor()); }
+      return floors;
+    };
     await startHawksOfTenAtStint3({ strategy: 'minutes' });
-    const before = await floorsFromHere();
+    const before = await played();
+    assert.equal(await coach.stint(), '3 of 8');
 
     await coach.tap('Here now, Theo Alvarez');
 
-    const after = await floorsFromHere();
-    const moved = before.slice(0, 3).some((f, k) => f.join() !== after[k].join());
-    assert.ok(moved, `a By hand game re-solves stints already played: ${JSON.stringify(before.slice(0, 3))}`);
-    assert.equal(await coach.toast(), 'Theo is here. Rotation changed.');
+    assert.deepEqual(await played(), before, 'stints already played are the same fives');
+    assert.equal(await coach.toast(), 'Theo is here.');
   });
 
   test('Here now leaves focus on the first floor row after the last one, and Undo on that player\'s button', async () => {

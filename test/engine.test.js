@@ -1951,3 +1951,86 @@ test('#446 when not everyone has a By hand number, the raise takes nothing back 
   assert.equal(p.issues.filter(i => i.code === 'TARGET_UNDER_MIN').length, 1);
   assert.equal(noteOf(p, 'TARGETS_OVER_BUDGET'), undefined);
 });
+
+/* ---------------- #448: HALF_EARLY, the mirror of HALF_LATE ---------------- */
+
+describe448();
+function describe448() {
+  const ALL = (n, minutes) => Object.fromEntries(ids(n).map(id => [id, minutes]));
+  const run = (n, periodMinutes, maxSubs, seed) => generatePlan({
+    players: roster(n), availableIds: ids(n),
+    format: { periods: 4, periodMinutes }, granularity: { mode: 'breaksOnly' },
+    constraints: { minMinutes: ALL(n, 10) }, seed, maxSubs,
+  });
+  const half = (p) => stintsBeforeHalftime(p.stints.filter(s => s.period <= 4));
+  const early = (p) => p.issues.find(i => i.code === 'HALF_EARLY');
+
+  test('#448 names the kids who play before halftime and never after, with the arithmetic', () => {
+    const p = run(10, 5, 3, 1);
+    assert.ok(p.ok);
+    const issue = early(p);
+    assert.ok(issue, 'kids sit the whole second half and the plan is silent about it');
+    assert.equal(issue.severity, 'warn');
+    assert.deepEqual([...issue.playerIds].sort(), ['p5', 'p9']);
+    assert.ok(issue.message.includes('PlayerF') && issue.message.includes('PlayerJ'), issue.message);
+    assert.ok(/do not play after halftime/.test(issue.message), issue.message);
+    assert.ok(/3 changes at a time/.test(issue.message) && /allow more changes/.test(issue.message), issue.message);
+  });
+
+  test('#448 stays silent when the change limit leaves room for everyone', () => {
+    assert.equal(early(run(10, 5, 5, 1)), undefined);
+  });
+
+  test('#448 names exactly the kids who play only the first half, seeds 1-20', () => {
+    for (const [pm, n] of [[5, 9], [5, 10], [8, 9], [8, 10]]) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const p = run(n, pm, 3, seed);
+        if (!p.ok) continue;
+        const h = half(p);
+        const first = new Set(p.stints.slice(0, h).flatMap(x => x.onFloor));
+        const second = new Set(p.stints.slice(h).flatMap(x => x.onFloor));
+        const want = [...first].filter(id => !second.has(id)).sort();
+        const got = early(p) ? [...early(p).playerIds].sort() : [];
+        assert.deepEqual(got, want, `${n} players, ${pm} min periods, seed ${seed}`);
+      }
+    }
+  });
+}
+
+/* ---------------- #449: `start`, the plan a re-solve begins from ---------------- */
+
+{
+  const TEN = Array.from({ length: 10 }, (_, i) => ({ id: 'ABCDEFGHIJ'[i], name: `Kid${'ABCDEFGHIJ'[i]}` }));
+  const solve = (seed, extra = {}, constraintExtra = {}) => generatePlan({
+    players: TEN, availableIds: TEN.map(p => p.id), format: QUARTERS, granularity: EVERY_4, seed, maxSubs: 3,
+    constraints: { openingFive: ['A', 'B', 'C', 'D', 'E'], avoids: [['F', 'G']], keepOnFloor: [['A', 'F']], maxConsecutive: 2, ...constraintExtra },
+    ...extra,
+  });
+  const rows = (p) => p.stints.map(s => s.onFloor);
+
+  test('#449 a start that is not one row per stint is ignored, byte for byte', () => {
+    const plain = solve(3);
+    assert.deepEqual(solve(3, { start: undefined }), plain);
+    assert.deepEqual(solve(3, { start: rows(plain).slice(0, 3) }), plain, 'too few rows');
+    assert.deepEqual(solve(3, { start: [] }), plain, 'empty');
+  });
+
+  test('#449 given its own plan back, a solve keeps every seat, whatever the seed', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const first = solve(seed);
+      assert.deepEqual(rows(solve(seed, { start: rows(first) })), rows(first), `seed ${seed}`);
+    }
+  });
+
+  test('#449 a rule the start breaks is repaired, and most seats stay', () => {
+    // Apart A-B: the opening five holds both, so stint 0 must change; the rest should mostly stay
+    const first = solve(2);
+    const edited = { avoids: [['F', 'G'], ['H', 'I']] };
+    const warm = solve(2, { start: rows(first) }, edited);
+    const cold = solve(2, {}, edited);
+    assert.ok(warm.ok);
+    for (const lu of rows(warm)) assert.ok(!(lu.includes('H') && lu.includes('I')), `H and I together: ${lu}`);
+    const moved = (a, b) => rows(a).reduce((m, r, i) => m + r.filter(id => !rows(b)[i].includes(id)).length, 0);
+    assert.ok(moved(first, warm) <= moved(first, cold), `warm moved ${moved(first, warm)}, cold ${moved(first, cold)}`);
+  });
+}

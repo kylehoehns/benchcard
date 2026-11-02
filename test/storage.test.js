@@ -1990,3 +1990,29 @@ test('#447: the league minimum has a unit; a saved team without one is minutes, 
   assert.equal(at({ minMinutes: 99, minUnit: 'min' }).minMinutes, 60);
   assert.equal(at({}).minUnit, 'min');
 });
+
+/* #449: `basis` is the lineups a rule edit starts from. */
+const withBasis = (basis) => {
+  const raw = good();
+  raw.players.push(
+    { id: 'c', name: 'Devon Ellis' }, { id: 'd', name: 'Kade Brenner' },
+    { id: 'e', name: 'Aaron Volk' }, { id: 'f', name: 'Jack Morrison' });
+  raw.day.games[0].out = [];
+  raw.day.games[0].basis = basis;
+  return sanitize(raw, H).teams[0].days[0].games[0];
+};
+
+test('#449 a well-formed basis survives a reload', () => {
+  const basis = { key: 'abc123', seed: 7, lineups: [['a', 'b', 'c', 'd', 'e'], ['b', 'c', 'd', 'e', 'f']] };
+  assert.deepEqual(withBasis(basis).basis, basis);
+});
+
+test('#449 a malformed basis is dropped, and a game with none stays without', () => {
+  assert.equal('basis' in withBasis(undefined), false, 'no basis, no field');
+  assert.equal('basis' in withBasis({ key: 'k', seed: 1, lineups: [['a', 'b', 'c', 'd', 'ghost']] }), false, 'a ghost id leaves a row short');
+  assert.equal('basis' in withBasis({ key: 'k', seed: 1, lineups: [['a', 'b', 'c', 'd']] }), false, 'four to a row');
+  assert.equal('basis' in withBasis({ key: 'k', seed: 1, lineups: [] }), false, 'no rows');
+  assert.equal('basis' in withBasis({ key: 5, seed: 1, lineups: [['a', 'b', 'c', 'd', 'e']] }), false, 'key is not a string');
+  assert.equal('basis' in withBasis({ key: 'k', seed: 'x', lineups: [['a', 'b', 'c', 'd', 'e']] }), false, 'seed is not a number');
+  assert.equal('basis' in withBasis('lineups'), false, 'not an object');
+});

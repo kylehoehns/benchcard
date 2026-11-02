@@ -301,15 +301,18 @@ test('addOvertime takes itself back when nobody can play it, rather than leave a
   });
 });
 
-test('addOvertime says so when the freeze cannot hold and played stints were rewritten', () => {
+test('addOvertime keeps the stints played when four players are already at their cap, and says the caps were relaxed (#490)', () => {
   run({}, g => {
-    // four players already at their cap: the suffix cannot be planned around the past
+    // four players already at their cap: the overtime cannot be planned inside them.
+    // This used to rewrite the past ('rewritten'); the caps give way instead.
     const played = minutesThrough(g, REG);
     g.constraints.maxMinutes = Object.fromEntries(['p0', 'p1', 'p2', 'p3'].map(id => [id, played[id]]));
     const was = fives(g).slice(0, REG);
     const r = S.addOvertime(g, 8);
-    assert.notDeepEqual(fives(g).slice(0, REG), was, 'the premise: this case does rewrite the past');
-    assert.equal(r, 'rewritten');
+    assert.equal(r, true);
+    assert.deepEqual(fives(g).slice(0, REG), was, 'the stints played are the same fives');
+    assert.deepEqual(S.rotationMoved(), [], 'no Rotation changed');
+    assert.ok(S.plans[0].issues.some(i => i.code === 'CAP_RELAXED'), 'the plan says a cap was relaxed');
   });
 });
 
