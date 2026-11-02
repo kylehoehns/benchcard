@@ -39,7 +39,7 @@ import { serve } from './serve.mjs';
 import { parseTokensCss, colorOf } from './tokens-css.mjs';
 import { evalIn, step, SETTLE, WIDTH, HEIGHT } from './smoke/dom.mjs';
 import { LONG_NAME, RICH, richWith, TODAY_GAME_READY, partPlayed as partPlayedFixture } from './smoke/fixtures.mjs';
-import { land, withScripts, LOCALSTORAGE_WIPE } from './smoke/page-state.mjs';
+import { land, withScripts, LOCALSTORAGE_WIPE, SPEND_RELOAD } from './smoke/page-state.mjs';
 import { fixturePass } from './smoke/rich-fixture.mjs';
 import { recorder, verdict } from './smoke/verdict.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
@@ -516,7 +516,7 @@ export function twinProblems(records) {
  * same rule item 3 states for every other shot, applied to the one state
  * `richWith`'s override cannot reach. */
 async function goFirstRun(c, origin, theme, opts = {}) {
-  await withScripts(c, [LOCALSTORAGE_WIPE], async () => {
+  await withScripts(c, [SPEND_RELOAD, LOCALSTORAGE_WIPE], async () => {
     const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
     await c.send('Page.navigate', { url: origin + '/index.html' });
     await loaded;

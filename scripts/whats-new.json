@@ -1,4 +1,5 @@
 [
+  { "date": "2026-11-02", "text": "If Benchcard doesn’t load on a weak connection, it now tries once more by itself. If that fails too, it offers to save your backup and shows a Reload button instead of a blank screen." },
   { "date": "2026-11-02", "text": "New in Settings: you can set the minimum playing time in whole periods. Pick 2, and every kid plays two full periods, start to finish." },
   { "date": "2026-11-02", "text": "New in Settings: make sure every kid gets in at least once each half, or once each quarter." },
   { "date": "2026-11-02", "text": "The limit on how long a kid can play without a rest now shows the time in minutes, so you don’t have to do the math. It also goes higher than before. A break between periods doesn’t count as rest." },

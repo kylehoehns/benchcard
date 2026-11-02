@@ -105,3 +105,19 @@ test('the guard downloads the key the app actually writes, newest first', () => 
     + 'the theme script -- a coach whose boot broke mid-migration would '
     + 'otherwise be handed an empty file, which is worse than nothing');
 });
+
+/* #527: a module that fails to fetch fires `error` on its own <script>, never
+   on window. The hook is an attribute on the app.js tag and on no other
+   script: analytics.js injects a module script of its own (the beacon), and a
+   failure of that must not reload a healthy app. The behavior is scenario-
+   tested (test/module-fail-scenarios.test.js); this pins where it is wired. */
+test('only the app.js module tag carries the load-failure hook', () => {
+  const tags = html.match(/<script\b[^>]*>/g);
+  assert.ok(tags.length > 5, `found ${tags.length} script tags; the walk measured nothing`);
+  const hooked = tags.filter(t => /\bonerror\s*=/.test(t));
+  assert.equal(hooked.length, 1, hooked.join('\n'));
+  assert.match(hooked[0], /type="module"/);
+  assert.match(hooked[0], /src="\.\/app\.js"/);
+  assert.match(hooked[0], /onerror="benchcard\.loadFailed\(\)"/);
+  assert.ok(!/loadFailed/.test(read('analytics.js')), 'analytics.js calls the load-failure hook itself');
+});
