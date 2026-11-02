@@ -42,6 +42,11 @@ before(async () => {
   // browser's own back (see LATE_BACK).
   await c.send('Page.addScriptToEvaluateOnNewDocument', { source: LATE_BACK });
   await c.send('Page.addScriptToEvaluateOnNewDocument', { source: TIMER_TRACKER });
+  /* #513: the first navigation from about:blank to the test origin is cross-site,
+     so Chrome starts a new renderer for it, and under load that start can take
+     longer than freshPage's 10s. One throwaway page here, with launch()'s own 45s
+     budget for a cold Chrome, so the timed tests start with the renderer up. */
+  await loadPage(`${origin}/warm`, 45_000);
 });
 after(async () => {
   c?.close();
@@ -49,17 +54,27 @@ after(async () => {
   if (chrome) await closeChrome(chrome.proc, chrome.dir);
 });
 
-// A fresh window each time, so an override in one test cannot leak into the next.
-async function freshPage() {
-  const url = `${origin}/${++pageNo}`;
-  const loaded = new Promise(ok => c.on('Page.loadEventFired', ok));
-  // #375: a page that never fires load fails here, by name, not at the test timeout.
-  const LOAD_LIMIT = 10_000;
-  const never = new Promise((_, no) => setTimeout(() => no(new Error(
-    `freshPage: Page.loadEventFired did not arrive within ${LOAD_LIMIT}ms for ${url}`)), LOAD_LIMIT).unref());
-  await c.send('Page.navigate', { url });
-  await Promise.race([loaded, never]);
+/* Navigates and waits for the load event; a page that never fires it fails here,
+   by name (#375), not at the test timeout. The handler is removed afterwards, so a
+   late load event of this page cannot resolve the next page's wait. */
+async function loadPage(url, limit) {
+  let onLoad, timer;
+  const loaded = new Promise(ok => { onLoad = ok; c.on('Page.loadEventFired', onLoad); });
+  const never = new Promise((_, no) => { timer = setTimeout(() => no(new Error(
+    `loadPage: Page.loadEventFired did not arrive within ${limit}ms for ${url}`)), limit); });
+  try {
+    // The limit covers Page.navigate too: under load it is the navigate (the new
+    // renderer starting) that is slow, and an unraced limit would reject unheard.
+    await Promise.race([c.send('Page.navigate', { url }).then(() => loaded), never]);
+  } finally {
+    clearTimeout(timer);
+    c.off('Page.loadEventFired', onLoad);
+  }
 }
+
+// A fresh window each time, so an override in one test cannot leak into the next.
+const LOAD_LIMIT = 10_000;
+const freshPage = () => loadPage(`${origin}/${++pageNo}`, LOAD_LIMIT);
 
 // Node-side elapsed time and result of one page-side wait. Rejects rather than
 // hanging if the wait outlives `limit`, so a stalled wait fails the test.
