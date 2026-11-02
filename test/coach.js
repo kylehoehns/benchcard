@@ -872,6 +872,21 @@ export class Coach {
     return result.value === 'true';
   }
 
+  /** Whether the switch a coach would call `name` is on. */
+  async isOn(name) {
+    const hit = (await this.#controls()).find(x => x.name === name);
+    if (!hit) throw new Error(`isOn ${JSON.stringify(name)}: not on screen. On screen: ${JSON.stringify(await this.controls())}`);
+    const { object } = await this.c.send('DOM.resolveNode', { backendNodeId: hit.node });
+    const { result } = await this.c.send('Runtime.callFunctionOn',
+      { objectId: object.objectId, functionDeclaration: 'function () { return this.checked; }', returnByValue: true });
+    return result.value === true;
+  }
+
+  /** The days of games the app has saved for the first team, as stored: what a reopen would read. */
+  savedDays() {
+    return evalIn(this.c, `JSON.parse(localStorage.getItem('benchcard.v7')).teams[0].days`);
+  }
+
   /** Whether the disclosure button a coach would call `name` is open. */
   async isExpanded(name) {
     const hit = (await this.#controls()).find(x => x.name === name);

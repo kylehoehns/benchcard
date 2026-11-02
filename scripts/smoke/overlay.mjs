@@ -144,6 +144,12 @@ export const STATES = [
     open: `$('.today-game').click(); $('#phraseRules').click(); $('#constraints .add-rule').click()`,
     shows: '#planAddRuleBtn:not([hidden])',
     close: `$('#sheetPlan').close(); $('#backBtn').click()` },
+  /* #548: the Copy from another game page. The game rows are the app's
+     two-line `.prow-shape`, so a long opponent has to wrap here. */
+  { name: 'plan sheet, copy from another game',
+    open: `$('.today-game').click(); $('#phraseRules').click(); $('#planCopy .prow').click()`,
+    shows: '#planCopyBtn:not([hidden])',
+    close: `$('#sheetPlan').close(); $('#backBtn').click()` },
   { name: 'plan sheet, lineup balance',
     open: `$('.today-game').click(); $('#phraseStrategy').click(); $('#planLineups .prow').click()`,
     shows: '#planSub .prow-shape',

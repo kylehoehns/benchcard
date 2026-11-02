@@ -113,6 +113,42 @@ export const GRAN_CHOICES = [
    plays an overtime is state.js's business, not the grid's. */
 const gameFormat = g => ({ periods: g.periods, periodMinutes: g.periodMinutes, overtime: overtimeMinutes(g.overtime) });
 
+/* #548: the one routine that copies a game's setup onto another, behind both
+   the Same as card (`newGame`, all four parts) and "Copy from another game".
+   `parts` are the four switches: `rules` (the ten keys below), `plan` (the
+   strategy, the order, and every other constraints key -- the strategy's own
+   settings, and any added later by default), `format` (periods, minutes, sub
+   interval) and `here` (out and late). Never touched: label, tip-off, date,
+   id, seed, live (but a pre-start five naming a player now out is dropped, as
+   `setAvailable` does), overtime, balance and the two carryover switches.
+   A key the source lacks is removed from the target, so all four parts leave
+   the constraints equal to the source's. */
+const RULE_KEYS = ['minMinutes', 'maxMinutes', 'pairs', 'avoids', 'keepOnFloor', 'openingFive',
+  'lastPeriodFive', 'hardPairs', 'maxConsecutive', 'maxBench'];
+
+export function copySetup(to, from, { rules, plan, format, here }) {
+  const wanted = k => (RULE_KEYS.includes(k) ? rules : plan);
+  const keys = new Set([...Object.keys(from.constraints), ...Object.keys(to.constraints)]);
+  for (const k of keys) {
+    if (!wanted(k)) continue;
+    if (k in from.constraints) to.constraints[k] = clone(from.constraints[k]);
+    else delete to.constraints[k];
+  }
+  if (plan) {
+    to.strategy = from.strategy;
+    if (from.order) to.order = [...from.order]; else delete to.order;
+  }
+  if (format) {
+    to.periods = from.periods; to.periodMinutes = from.periodMinutes;
+    to.granMode = from.granMode; to.granValue = from.granValue;
+  }
+  if (here) {
+    to.out = []; to.late = [];
+    for (const id of from.out) setAvailable(to, id, false);
+    to.late = [...(from.late || [])];
+  }
+}
+
 export function newGame(n, from, settings) {
   const g = {
     id: uid('g'), label: '', tipoff: '',
@@ -150,13 +186,12 @@ export function newGame(n, from, settings) {
   };
   // Format, who is at the gym and the constraints hold all day; only the
   // opponent, tip-off and seed are per-game. Deep-copied, so editing game 2
-  // never reaches back into game 1 and corrupts the day's carryover.
-  if (from) Object.assign(g, {
-    periods: from.periods, periodMinutes: from.periodMinutes,
-    granMode: from.granMode, granValue: from.granValue,
-    out: [...from.out], late: [...(from.late || [])], constraints: clone(from.constraints),
-    strategy: from.strategy,
-  });
+  // never reaches back into game 1 and corrupts the day's carryover. The day's
+  // order is not copied: `addGame` continues it from the earlier game (#545).
+  if (from) {
+    copySetup(g, from, { rules: true, plan: true, format: true, here: true });
+    delete g.order;
+  }
   return g;
 }
 
@@ -1428,11 +1463,42 @@ export function sameAsLast() {
   const i = games.length - 1;
   const g = games[i];
   if (!g || !availIds(g).length) return null;
-  const { players, format, strategy } = sentenceParts(g, i, null);
   return {
     title: g.tipoff ? `Same as ${tipoffLabel(g.tipoff)}?` : 'Same as the last game?',
-    summary: `${players}, ${format}, ${strategy}`,
+    summary: setupSummary(g),
   };
+}
+
+/* "11 players, 4 × 8, even minutes": three of `sentenceParts`'s phrases joined.
+   The Same as card and #548's Copy from another game rows both read it. The
+   index is -1 and the plan null, because the game need not be the open one:
+   `evensOutLine` (not used here) reads the open day. */
+export function setupSummary(g) {
+  const { players, format, strategy } = sentenceParts(g, -1, null);
+  return `${players}, ${format}, ${strategy}`;
+}
+
+/* #548: the games Copy from another game lists -- every game on the team but
+   the open one. This game's own day first, then the other days newest first;
+   within a day, the latest game first. Filed season games are not here: they
+   hold no rules, strategy, sub interval or attendance. `title` names a game as
+   the rest of the app does; `line` is its day, its tip-off when set, and its
+   summary. */
+export function copySources(today = new Date()) {
+  const own = state.day;
+  const rows = [];
+  const days = [own, ...team().days.filter(d => d !== own).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))];
+  for (const day of days) {
+    for (let i = day.games.length - 1; i >= 0; i--) {
+      const g = day.games[i];
+      if (day === own && i === state.activeGame) continue;
+      rows.push({
+        game: g, day, title: gameLabel(g, i),
+        line: [dayHeading(day, today), tipoffLabel(g.tipoff), setupSummary(g)].filter(Boolean).join(' · '),
+      });
+    }
+  }
+  return rows;
 }
 
 /* The status line inside an open sheet (decision 10, item 6; #149 item 1):
