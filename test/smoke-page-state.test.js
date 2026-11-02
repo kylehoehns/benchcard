@@ -130,16 +130,35 @@ const TIMED_OUT = { timedOut: true, ...FACTS, key: 'benchcard.v7', days: 2, view
 const PREFIX = "boot wait timed out: document.querySelector('.card') on /index.html (page showed /index.html, complete, visible views: view-today";
 
 /* A fake CDP client. `evaluate` is what Runtime.evaluate's value is; `nav` is
-   what Page.navigate returns; `frame` is the getFrameTree handler. */
-function fakeClient({ evaluate, nav = { loaderId: 'L1' }, frame, calls = [] }) {
+   what Page.navigate returns (or a function of the navigation's number, from
+   1); `frame` is the getFrameTree handler. `during(n, emit)` runs inside the
+   nth Page.navigate, before it returns, to fire CDP events with `emit`
+   (#400: `Network.requestWillBeSent`, `Network.loadingFailed`). Only the load
+   event fires by itself on `on`; every other listener waits for `emit`. */
+function fakeClient({ evaluate, nav = { loaderId: 'L1' }, frame, calls = [], during }) {
+  const handlers = new Map();
+  let navs = 0;
+  const emit = (ev, params) => { for (const cb of [...(handlers.get(ev) || [])]) cb(params); };
   return {
     calls,
-    on: (ev, cb) => { calls.push(['on', ev]); setTimeout(cb, 0); },
-    off: (ev) => calls.push(['off', ev]),
+    on: (ev, cb) => {
+      calls.push(['on', ev]);
+      if (ev === 'Page.loadEventFired') return setTimeout(cb, 0);
+      handlers.set(ev, [...(handlers.get(ev) || []), cb]);
+    },
+    off: (ev, cb) => {
+      calls.push(['off', ev]);
+      handlers.set(ev, (handlers.get(ev) || []).filter(h => h !== cb));
+    },
+    listeners: ev => (handlers.get(ev) || []).length,
     send: async (method) => {
       calls.push([method]);
       if (method === 'Runtime.evaluate') return { result: { value: evaluate } };
-      if (method === 'Page.navigate') return nav;
+      if (method === 'Page.navigate') {
+        navs++;
+        if (during) during(navs, emit);
+        return typeof nav === 'function' ? nav(navs) : nav;
+      }
       if (method === 'Page.getFrameTree') return frame ? frame() : { frameTree: { frame: { loaderId: 'L1' } } };
       return {};
     },
@@ -194,7 +213,88 @@ test('land: removes its loadEventFired listener once per navigate', async () => 
   assert.equal(calls.filter(([m, ev]) => m === 'off' && ev === 'Page.loadEventFired').length, 1);
   const fresh = [];
   await pageState.land(fakeClient({ evaluate: undefined, calls: fresh }), 'http://x', { freshHistory: true });
-  assert.equal(fresh.filter(([m]) => m === 'off').length, 2);
+  assert.equal(fresh.filter(([m, ev]) => m === 'off' && ev === 'Page.loadEventFired').length, 2);
+});
+
+/* #400: Chrome itself, under load, aborts a few module requests of a fresh
+   document; the app never boots. `land` recognizes that one signature. */
+const script = (loaderId, requestId, file) => ['Network.requestWillBeSent',
+  { requestId, loaderId, type: 'Script', request: { url: `http://x/app/${file}` } }];
+const failed = (requestId, errorText = 'net::ERR_ABORTED', canceled = true) =>
+  ['Network.loadingFailed', { requestId, errorText, canceled }];
+
+async function landWatching({ during, evaluate, want = {} }) {
+  const c = fakeClient({ evaluate, nav: n => ({ loaderId: `L${n}` }), during,
+    frame: () => ({ frameTree: { frame: { loaderId: 'L2' } } }) });
+  const lines = [];
+  const write = process.stderr.write;
+  process.stderr.write = s => { lines.push(String(s)); return true; };
+  let error;
+  try { await pageState.land(c, 'http://x', want); } catch (e) { error = e; } finally { process.stderr.write = write; }
+  return { c, lines, error, navs: c.calls.filter(([m]) => m === 'Page.navigate').length };
+}
+
+test('land: scripts of the navigated document that Chrome aborted: lands once more and says so', async () => {
+  const { navs, lines, error } = await landWatching({ evaluate: undefined, want: { query: '?try=9' },
+    during: (n, emit) => { if (n === 1) {
+      emit(...script('L1', 'a', 'storage.js')); emit(...script('L1', 'b', 'engine.js')); emit(...script('L1', 'c', 'ok.js'));
+      emit(...failed('a')); emit(...failed('b'));
+    } } });
+  assert.equal(error, undefined);
+  assert.equal(navs, 2);
+  assert.deepEqual(lines, ['land: Chrome aborted storage.js, engine.js on /index.html?try=9; landed again (#400)\n']);
+});
+
+test('land: no second landing for no failure, a failure without canceled, or another loader', async () => {
+  const none = await landWatching({ evaluate: undefined, during: (n, emit) => emit(...script('L1', 'a', 'storage.js')) });
+  assert.equal(none.navs, 1);
+  const hard = await landWatching({ evaluate: undefined, during: (n, emit) => {
+    emit(...script('L1', 'a', 'storage.js')); emit(...failed('a', 'net::ERR_FAILED', false)); } });
+  assert.equal(hard.navs, 1);
+  assert.deepEqual(hard.lines, []);
+  // freshHistory: the abort belongs to the first of its two navigations
+  const other = await landWatching({ evaluate: undefined, want: { freshHistory: true }, during: (n, emit) => {
+    if (n === 1) { emit(...script('L1', 'a', 'storage.js')); emit(...failed('a')); } } });
+  assert.equal(other.navs, 2);
+  assert.deepEqual(other.lines, []);
+});
+
+test('land: a canceled request that is not a Script (Fetch, Image) does not trigger a second landing', async () => {
+  const { navs, lines } = await landWatching({ evaluate: undefined, during: (n, emit) => {
+    emit('Network.requestWillBeSent', { requestId: 'f', loaderId: 'L1', type: 'Fetch', request: { url: 'http://x/app/data.json' } });
+    emit('Network.requestWillBeSent', { requestId: 'i', loaderId: 'L1', type: 'Image', request: { url: 'http://x/app/icon.png' } });
+    emit(...failed('f')); emit(...failed('i'));
+  } });
+  assert.equal(navs, 1);
+  assert.deepEqual(lines, []);
+});
+
+test('land: a second abort is not retried again; the timeout names the failed scripts', async () => {
+  const { navs, lines, error } = await landWatching({ evaluate: TIMED_OUT, during: (n, emit) => {
+    emit(...script(`L${n}`, `r${n}`, 'trap.js')); emit(...failed(`r${n}`));
+    if (n === 2) { emit(...script('L2', 'z', 'shortcuts.js')); emit(...failed('z', 'net::ERR_FAILED', false)); }
+  } });
+  assert.equal(navs, 2);
+  assert.equal(lines.length, 1);
+  assert.ok(error.message.startsWith(PREFIX), error.message);
+  assert.ok(error.message.includes(', document: the one navigated to'), error.message);
+  assert.ok(error.message.includes(', failed scripts: trap.js net::ERR_ABORTED canceled, shortcuts.js net::ERR_FAILED'), error.message);
+});
+
+test('land: a timeout with no failed script adds nothing to the message', async () => {
+  const { error } = await landWatching({ evaluate: TIMED_OUT, during: (n, emit) => emit(...script('L1', 'a', 'storage.js')) });
+  assert.ok(lacks(error.message, 'failed scripts'), error.message);
+});
+
+test('land: removes its Network listeners whatever happens', async () => {
+  const ok = fakeClient({ evaluate: undefined });
+  await pageState.land(ok, 'http://x', {});
+  const bad = fakeClient({ evaluate: TIMED_OUT });
+  await assert.rejects(pageState.land(bad, 'http://x', {}));
+  for (const c of [ok, bad]) {
+    assert.equal(c.listeners('Network.requestWillBeSent'), 0);
+    assert.equal(c.listeners('Network.loadingFailed'), 0);
+  }
 });
 
 test('describeDocument: same, different, missing loaderId, rejecting and hanging frame tree', async () => {
