@@ -19,7 +19,7 @@ import { openTrap, closeTrap, openSheet, closeSheet, closeSheetNow } from './tra
 import { track } from './analytics.js';
 import { validOvertime, DEFAULT_SETTINGS, OVERTIME_MAX } from './storage.js';
 import { state, save, plans, colorOf, initials, game, gameLabel, byId, availIds, effectiveLineup, effectiveStints,
-         resolveRest, pinsNotice, pinsDroppedNotice, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
+         resolveRestRelaxing, pinsNotice, pinsDroppedNotice, setAvailable, computeAll, benchOpen, setBenchOpen, addOvertime, resetRest } from './state.js';
 import { EDITS } from './edit.js';
 import { stage, stintIndex, playedStints, handStints, writeOverrides, resetFrom, openGame, step, finish, satIds, sitOut, finishedGame } from './live.js';
 
@@ -1022,7 +1022,7 @@ function applySwap(p, g, i, outId, inId, outName, inName) {
          A refusal (Platoon, an infeasible rest) keeps the swap
          alone, as before. */
       if (scope === 'stint') {
-        const r = resolveRest(g, p, i + 1);
+        const r = resolveRestRelaxing(g, p, i + 1);
         if (r.ok) {
           // #415: told apart from a re-plan that left every later stint alone.
           replanned = Object.entries(r.overrides).some(([k, five]) =>
@@ -1096,7 +1096,7 @@ const SIT_RULES = {
    stamp drops the whole thing if the plan moves underneath it -- the same
    contract every hand swap already has. */
 function sitRest(p, g, i, outId, name) {
-  const r = resolveRest(g, p, i, [outId]);
+  const r = resolveRestRelaxing(g, p, i, [outId]);
   if (!r.ok) {
     gmPick = null;
     renderGameMode();

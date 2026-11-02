@@ -332,7 +332,8 @@ function normalize(constraints, availSet) {
   const targetMinutes = {};
   for (const [id, v] of Object.entries(c.targetMinutes || {})) if (availSet.has(id)) targetMinutes[id] = v;
   const minMinutes = c.minMinutes || {};
-  const fullPeriods = {}, fullPins = {};
+  const fullPeriods = {}, fullPins = {}, fullFinish = {};
+  for (const [id, v] of Object.entries(c.fullFinish || {})) if (availSet.has(id) && Number.isInteger(v)) fullFinish[id] = v;
   for (const [id, v] of Object.entries(c.fullPeriods || {})) if (availSet.has(id) && Number.isInteger(v) && v > 0) fullPeriods[id] = v;
   for (const [id, v] of Object.entries(c.fullPins || {})) if (availSet.has(id) && Array.isArray(v) && v.length) fullPins[id] = v;
   const lockedTargets = filterIds(c.lockedTargets);
@@ -342,7 +343,7 @@ function normalize(constraints, availSet) {
   const units = (c.units || []).map(u => filterIds(u));
   return {
     minMinutes,
-    fullPeriods, fullPins,
+    fullPeriods, fullPins, fullFinish,
     maxMinutes: c.maxMinutes || {},
     /* `normalize` is a whitelist, and lockedTargets was never on it -- so a
        locked row had never reached the solver at all. That is why the lock only
@@ -966,9 +967,9 @@ export function generatePlan(input) {
      on a copy of the constraints, so feasibility, `buildForced`, `cost` and the
      notes after the fact all see one set. Platoon applies no pins. */
   let cons = constraints, fullShort = [];
-  if (input.strategy !== 'platoon' && Object.keys(constraints.fullPeriods || {}).length) {
+  if (input.strategy !== 'platoon' && (Object.keys(constraints.fullPeriods || {}).length || Object.keys(constraints.fullFinish || {}).length)) {
     const c0 = normalize(constraints, new Set(avail));
-    if (Object.keys(c0.fullPeriods).length) {
+    if (Object.keys(c0.fullPeriods).length || Object.keys(c0.fullFinish).length) {
       const start0 = Array.isArray(input.start) && input.start.length === stints.length
         ? input.start.map(row => (Array.isArray(row) ? row : [])) : null;
       const got = assignFullPeriods(stints, c0, format, avail, avoidSetOf(c0.avoids), start0, seed);
@@ -1161,13 +1162,22 @@ export function generatePlan(input) {
    least-loaded period, then one the kid already plays in `start`, then the seed.
    Picks go round by round so no kid is left the leftovers. A kid it cannot place
    gets a one-step repair (another kid moves to a period with room); one still
-   short comes back in `short`, never as an error. */
+   short comes back in `short`, never as an error.
+
+   #535: a kid in `c.fullFinish` ({ id: period }) is on the floor for every stint
+   of a period a re-plan starts inside (`resolveRest` says who). That period is
+   not whole in the list, so it is never offered to anyone, but those kids are
+   pinned to the rest of it first, when the same rules allow it, and a kid so
+   placed owes one period fewer. */
 function assignFullPeriods(stints, c, format, avail, avoidSet, start, seed) {
   const elig = eligiblePeriods(stints, format);
   const base = buildForced(stints, { ...c, fullPins: {} }, format);
   const forced = base.map(set => new Set(set));
   const rng = makeRng(((seed ^ 0x45f9a1) >>> 0) || 1);
-  const idxOf = new Map(elig.map(p => [p, stints.map((s, i) => i).filter(i => stints[i].period === p)]));
+  const stintsOf = p => stints.map((s, i) => i).filter(i => stints[i].period === p);
+  const idxOf = new Map(elig.map(p => [p, stintsOf(p)]));
+  // the period a re-plan starts inside is read like the others for the stints it has, and is never in `elig`
+  for (const q of Object.values(c.fullFinish)) if (!idxOf.has(q)) idxOf.set(q, stintsOf(q));
   // a period's half is its last stint's, as `playsInGroup` files it: a middle period of three ends in the second half
   const half = new Map(elig.map(p => [p, playsInGroup(stints[idxOf.get(p).at(-1)], format, 'halves')]));
   const pins = {};
@@ -1193,6 +1203,15 @@ function assignFullPeriods(stints, c, format, avail, avoidSet, start, seed) {
   const owed = {};
   for (const id of avail) if (c.fullPeriods[id] > 0) { owed[id] = c.fullPeriods[id]; want[id] = Math.min(owed[id], elig.length); }
   const order = Object.keys(want).map(id => [rng(), id]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  for (const id of order) {
+    const q = c.fullFinish[id];
+    if (q == null || !idxOf.get(q).length) continue;
+    if (has(id, q) || can(id, q)) {
+      if (!has(id, q)) put(id, q);
+      owed[id] -= 1;
+      want[id] = Math.min(owed[id], elig.length);
+    }
+  }
   /* Plays at most N in a row: how far past the limit the kid's pinned run (in
      stints, across breaks) would go with period `p` added. 0 with no limit. One
      period longer than the limit on its own is a conflict between the rules; it
