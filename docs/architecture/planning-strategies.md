@@ -8,6 +8,11 @@
   they have played (#489; see [design decisions](../design-decisions.md)).
 - **Closers** -- even minutes early, a group you pick finishes the game.
 - **Platoon** -- fixed fives alternating wholesale, no optimization.
+- **Rotation order** -- the coach lists the players, and the five on the floor
+  is taken from that list in turn, so the next players are always known. A
+  later game that day starts where the earlier one's turn stopped. No search;
+  the rules warn rather than block, and the starting five rule is not used. See
+  [design decisions](../design-decisions-rotation-order.md).
 
 Plus rules that compose with any of them: min/cap minutes, Together and
 Apart pairs, pinned starting five and Starts the last period rule, and two
@@ -19,8 +24,9 @@ halves or periods instead.
 
 The league minimum and Everyone plays in are Settings, not rules on one player.
 A league minimum counted in full periods is pinned once, before the search, so
-each kid plays those whole periods; Platoon applies no pins, so it ignores that
-unit. Everyone plays in adds a cost for each kid who misses a half or a period.
+each kid plays those whole periods; Platoon and Rotation order apply no pins, so
+they ignore that unit. Everyone plays in adds a cost for each kid who misses a
+half or a period, and Platoon and Rotation order do not price it.
 The choices behind both are in [full periods and plays in](../design-decisions-plays-in.md).
 
 There is a third pair relation, `keepOnFloor` -- "One of two on".
@@ -84,6 +90,8 @@ The game's own strategy, for Next rotation:
 - **Closers** -- the closing group is on the floor for the last overtime stint.
 - **Platoon** -- the unit order carries on. The first overtime stint sends out
   the next unit, counted by the stint's place in the whole game.
+- **Rotation order** -- the cycle carries on into the overtime stints, from
+  where regulation stopped.
 - **By hand** -- overtime is planned as Even around the minutes played. The
   per-player targets the coach saved are for regulation, so they are left as
   they were, and so are the regulation stints. Locks do not carry into

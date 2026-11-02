@@ -17,7 +17,7 @@ wiring that hands each view its own callbacks. See [architecture/layout.md](arch
 
 ## Planning strategies
 
-The four ways minutes are shared out (Even, By hand, Closers, Platoon) and
+The five ways minutes are shared out (Even, By hand, Closers, Platoon, Rotation order) and
 the pair rules that compose with any of them. See [architecture/planning-strategies.md](architecture/planning-strategies.md).
 
 ## Lineup balance

@@ -61,14 +61,15 @@ const editRow = fnSource('editRow',
 test('an Edit row carries the grip and both move buttons', () => {
   assert.ok(/'obtn rgrip press'/.test(editRow),
     'the Edit row lost its drag grip -- it is the only reorder surface a pointer has');
-  const arrows = [...editRow.matchAll(/el\('button', '([^']*)'\)/g)]
-    .filter(([, cls]) => cls.split(/\s+/).includes('obtn') && !cls.split(/\s+/).includes('rgrip'));
+  // the two arrows are built by dom.js's `moveButton` (the plan's rotation order builds its own the same way)
+  const arrows = [...editRow.matchAll(/moveButton\((-?1),/g)];
   assert.equal(arrows.length, 2,
     `the Edit row builds ${arrows.length} move button(s), want move-up and move-down. I3: every `
     + 'drag needs a visible button that does the same thing, and Edit mode is where they live.');
-  assert.ok(/icon\('arrow-up'/.test(editRow) && /icon\('arrow-down'/.test(editRow),
+  const domJs = readFileSync(new URL('../app/dom.js', import.meta.url), 'utf8');
+  assert.ok(/icon\(dir < 0 \? 'arrow-up' : 'arrow-down'/.test(domJs),
     "the Edit row's move buttons stopped building the up/down icons a coach reads as a move control");
-  assert.ok(/up\.disabled = idx === 0/.test(editRow) && /dn\.disabled = idx === state\.players\.length - 1/.test(editRow),
+  assert.ok(/moveButton\(-1, name, idx === 0,/.test(editRow) && /moveButton\(1, name, idx === state\.players\.length - 1,/.test(editRow),
     'the ends stopped disabling themselves, so the first row offers a move up that does nothing');
 });
 
@@ -114,10 +115,10 @@ test('no width hides the move buttons', () => {
  * rebuild is harmless: the grip's keyboard path, which has no pointer to
  * keep visually anchored the way a drag does. */
 test('the arrows move through rosterDrop’s cheap path, not movePlayer’s rebuild', () => {
-  assert.ok(/up\.onclick = \(\) => arrowMove\(p\.id, -1\)/.test(editRow),
+  assert.ok(/moveButton\(-1,[^\n]*\(\) => arrowMove\(p\.id, -1\)/.test(editRow),
     'the Up arrow no longer calls arrowMove(p.id, -1) -- it should reuse rosterDrop’s cheap '
     + 'splice+DOM-move+redisable path instead of movePlayer’s full-rebuild path');
-  assert.ok(/dn\.onclick = \(\) => arrowMove\(p\.id, 1\)/.test(editRow),
+  assert.ok(/moveButton\(1,[^\n]*\(\) => arrowMove\(p\.id, 1\)/.test(editRow),
     'the Down arrow no longer calls arrowMove(p.id, 1) -- same finding as the Up arrow');
   const arrowMoveSrc = fnSource('arrowMove',
     'arrowMove is gone or renamed; the arrow buttons have nothing cheap left to call');

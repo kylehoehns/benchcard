@@ -112,7 +112,8 @@ export function renderBalance() {
   wrap.textContent = '';
 
   const g = game();
-  if (!g) return;
+  // #545: the order decides who plays and when, so there is no shape to choose
+  if (!g || g.strategy === 'order') return;
 
   const levelled = levelledCount();
   const current = SHAPES.some(s => s.v === g.balance) ? g.balance : 'even';

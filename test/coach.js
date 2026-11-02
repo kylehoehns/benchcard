@@ -610,10 +610,14 @@ export class Coach {
   /** Open the plan's "Stint by stint" list and read its On the bench column:
       one array of short names per stint, in order ('—' cells are []). */
   async benchEachStint() {
+    return (await this.#stintCells('sit')).map(t => (t === '—' ? [] : t.split(' ')));
+  }
+
+  /** The text of one column of the "Stint by stint" table (`floor` or `sit`), one per stint, opening the list first. */
+  async #stintCells(column) {
     const { result } = await this.c.send('Runtime.evaluate', { expression: `document.querySelector('#tabledetails:not([open]) > summary')` });
     if (result.objectId) await this.#tapObject(result.objectId, 'Stint by stint');
-    return evalIn(this.c, `[...document.querySelectorAll('#plan table.grid td.sit')]
-      .map(td => td.textContent === '—' ? [] : td.textContent.split(' '))`);
+    return evalIn(this.c, `[...document.querySelectorAll('#plan table.grid td.${column}')].map(td => td.textContent)`);
   }
 
   /** The starting five the card prints, in card order, as it shows them. Needs Card view. */
@@ -1057,16 +1061,51 @@ export class Coach {
 
   /** `onGameDay` with the Hawks game changed by `edits` (e.g. `{ granValue: 2, overtime: [2] }`).
       `rosterSize` cuts the roster to its first that-many players (`p0`...), so
-      `onGameDayWith({ out: ['p9'] }, 10)` is nine here and a tenth marked out. */
-  async onGameDayWith(edits, rosterSize) {
+      `onGameDayWith({ out: ['p9'] }, 10)` is nine here and a tenth marked out.
+      `edits` may be a function of the game. `names` replaces the roster
+      (`p0`...), `settings` is laid over the team's and `alone` drops the
+      day's other games. */
+  async onGameDayWith(edits, rosterSize, { names, settings, alone } = {}) {
     this.errors.length = 0;
     await this.#setClock(SMOKE_CLOCK);
     const record = gameDay();
     const [team] = record.teams;
+    if (names) team.players = names.map((name, i) => ({ id: `p${i}`, name, number: '', tier: 3 }));
+    if (settings) team.settings = { ...team.settings, ...settings };
     if (rosterSize) team.players = team.players.slice(0, rosterSize);
     const [day] = team.days;
-    day.games = day.games.map((g, i) => (i === 0 ? { ...g, ...edits } : g));
+    day.games = day.games.map((g, i) => (i === 0 ? { ...g, ...(typeof edits === 'function' ? edits(g) : edits) } : g));
+    if (alone) day.games = day.games.slice(0, 1);
     await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
+  }
+
+  /** Game day with only the first game of the day, a roster of exactly `names`
+      (`p0`...), 2 periods of 16 minutes, a sub every 4 minutes and
+      `changing` players changing at once (#545's example). `edits` is laid
+      over that game, e.g. `{ out: ['p1'] }`; `startingFive` is a Starting five
+      rule, as ids. */
+  async onGameDayWithRoster(names, { changing = 4, startingFive, ...edits } = {}) {
+    await this.onGameDayWith(g => ({
+      periods: 2, periodMinutes: 16, granMode: 'everyN', granValue: 4, out: [], ...edits,
+      ...(startingFive ? { constraints: { ...g.constraints, openingFive: startingFive } } : {}),
+    }), undefined, { names, settings: { maxSubs: changing }, alone: true });
+  }
+
+  /** The plan's "Stint by stint" table: who is on the floor each stint, as
+      sorted arrays of the short names it shows. */
+  async planFives() {
+    return (await this.#stintCells('floor')).map(t => t.split(' ').sort());
+  }
+
+  /** The Plan sheet's Rotation order list, top to bottom: each row's name. */
+  orderList() {
+    return evalIn(this.c, `[...document.querySelectorAll('#stratbody .orow')].map(r => r.querySelector('.prow-t').textContent)`);
+  }
+
+  /** The marks beside the Rotation order list's names: `{ name: 'Out' }`. */
+  orderMarks() {
+    return evalIn(this.c, `Object.fromEntries([...document.querySelectorAll('#stratbody .orow')]
+      .map(r => [r.querySelector('.prow-t').textContent, r.querySelector('.ord-mark')?.textContent ?? '']).filter(([, m]) => m))`);
   }
 
   /** Who bench mode lists under Running late, top to bottom, by name; [] when the group is hidden. */

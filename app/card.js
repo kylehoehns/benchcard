@@ -323,7 +323,11 @@ export function renderCards() {
      `#print`, the `s` shortcut clicks this button, so disabling here disables
      the key too. */
   const done = finishedGame(game()?.live); // a finished game's minutes are played; a new seed would rewrite them
-  set('#regen', 'disabled', blocked || done);
+  /* #545: Order has no seed to shuffle, so the button is gone and the `s` key,
+     which clicks it, does nothing. */
+  const ordered = game()?.strategy === 'order';
+  set('#regen', 'hidden', ordered);
+  set('#regen', 'disabled', blocked || done || ordered);
   set('#regen', 'title', blocked
     ? (noRoster() ? 'Add your roster first. Nothing to shuffle yet'
       : 'Shuffling only changes the seed. Fix the errors above first')

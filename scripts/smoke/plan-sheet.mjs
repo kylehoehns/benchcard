@@ -64,9 +64,9 @@ export async function planSheetPass(c, origin, rec) {
       pressed: bs.map(b => b.getAttribute('aria-pressed')),
     });
   })()`);
-  rec.check(JSON.stringify(seg.labels) === JSON.stringify(['Even', 'By hand', 'Closers', 'Platoon']),
-    `#stratseg reads ${JSON.stringify(seg.labels)}, want ["Even","By hand","Closers","Platoon"]`);
-  rec.check(JSON.stringify(seg.pressed) === JSON.stringify(['true', 'false', 'false', 'false']),
+  rec.check(JSON.stringify(seg.labels) === JSON.stringify(['Even', 'By hand', 'Closers', 'Platoon', 'Order']),
+    `#stratseg reads ${JSON.stringify(seg.labels)}, want ["Even","By hand","Closers","Platoon","Order"]`);
+  rec.check(JSON.stringify(seg.pressed) === JSON.stringify(['true', 'false', 'false', 'false', 'false']),
     `#stratseg aria-pressed is ${JSON.stringify(seg.pressed)}, want only "Even" pressed`);
 
   // Closing (item 10: waits out the slide) returns focus to the trigger.

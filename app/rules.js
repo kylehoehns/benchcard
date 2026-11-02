@@ -20,7 +20,7 @@ import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds,
          ruleItems, runHint, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
-         EVEN_OUT_DAY_LABEL, dayIsToday } from './state.js';
+         EVEN_OUT_DAY_LABEL, dayIsToday, evensOutDay } from './state.js';
 import { pickFive } from './pills.js';
 import { pushPlanPane, stepperRow } from './game-setup.js';
 import { popPane } from './trap.js';
@@ -123,15 +123,18 @@ function renderDayGroup(g) {
   wrap.append(el('div', 'pgrp-h', 'Across the day'));
   const box = el('div', 'pgrp');
   const first = state.activeGame === 0;
-  box.append(switchRow(EVEN_OUT_DAY_LABEL, !first && g.useCarryover, first, v => {
+  const byOrder = g.strategy === 'order';
+  box.append(switchRow(EVEN_OUT_DAY_LABEL, evensOutDay(g, state.activeGame), first || byOrder, v => {
     g.useCarryover = v; renderConstraints(); edit('dayCarryover');
   }));
   wrap.append(box);
   // #420: "today" only when the open day is the phone's today, as `moveGame` and filing read it
   const when = dayIsToday(state.day) ? 'today' : 'that day';
-  wrap.append(el('p', 'pgrp-f', first
-    ? `This is the first game ${when}, so there's nothing to even out.`
-    : `Players who got fewer minutes earlier ${when} get more here.`));
+  wrap.append(el('p', 'pgrp-f', byOrder
+    ? 'Not used with a rotation order. The order decides who plays.'
+    : first
+      ? `This is the first game ${when}, so there's nothing to even out.`
+      : `Players who got fewer minutes earlier ${when} get more here.`));
 }
 
 function renderSeasonGroup(g) {
@@ -187,7 +190,8 @@ export function renderSeasonAdjust() {
   if (a.reason === 'strategy') {
     return say(g.strategy === 'platoon'
       ? 'Not used with fixed units. The fives you set decide who plays.'
-      : 'Not used with hand-set minutes. The sliders above are already your targets.');
+      : g.strategy === 'order' ? 'Not used with a rotation order. The order decides who plays.'
+        : 'Not used with hand-set minutes. The sliders above are already your targets.');
   }
   if (a.reason === 'nobody') return say('Nobody is available for this game yet.');
   if (a.reason === 'locked') return say('Every player is locked to a number, so there is nothing to even out.');
@@ -437,6 +441,8 @@ function renderAddRule(trigger) {
 function paintKindChips(box) {
   box.textContent = '';
   for (const [k, label] of KINDS) {
+    // #545: the order picks who starts, so there is no Starting five to add
+    if (k === 'starts' && game().strategy === 'order' && draft.kind !== 'starts') continue;
     const b = el('button', 'chip press' + (draft.kind === k ? ' sel' : ''), label);
     b.type = 'button';
     b.setAttribute('aria-pressed', String(draft.kind === k));

@@ -59,6 +59,7 @@ export const EDITS = {
   lockTarget: { keys: [...AFTER_EDIT] },                // lock/unlock a target
   closers: { keys: [...PLAN_ONLY] },                    // closing window, who closes
   units: { keys: [...PLAN_ONLY] },                      // who is in a platoon unit
+  order: { keys: [...PLAN_ONLY] },                      // move a player up or down the rotation order
   unitCount: { keys: [...AFTER_EDIT] },                 // add/remove a platoon unit
 
   // rules.js

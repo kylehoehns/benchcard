@@ -198,12 +198,12 @@ function andList(names) {
    the minutes the timeline shows after the solver's plan has moved. The low end
    is named up to SPREAD_NAME_CAP players; past that, a count. */
 const SPREAD_NAME_CAP = 6;
-export const evenMinutesSentence = minutes => `Minutes divide evenly: every player gets ${fmtMinutes(minutes)}.`;
+const evenMinutesSentence = minutes => `Minutes divide evenly: every player gets ${fmtMinutes(minutes)}.`;
 /* `lows` / `highs`: ids at the lowest / highest value `lo` / `hi`; `total` is
    everybody. `who` is "A and B play 12" (or "7 players play 12"); `covers` is
    whether the two ends account for everybody (a floor or cap can put a third
    number in the middle); `other` is "the other 4 play 16". No full stops. */
-export function lowEndPhrase(lows, lo, highs, hi, total, label) {
+function lowEndPhrase(lows, lo, highs, hi, total, label) {
   const named = lows.length <= SPREAD_NAME_CAP;
   return {
     named,
@@ -213,6 +213,15 @@ export function lowEndPhrase(lows, lo, highs, hi, total, label) {
       : `${lows.length} players play ${fmtMinutes(lo)}`,
     other: `the other ${highs.length} play ${fmtMinutes(hi)}`,
   };
+}
+
+/* The sentence for minutes as they fall, read by `minutesNote` (state.js) and
+   by Rotation order's SPREAD_ORDER note: the low end named, then the rest. */
+export function minutesSpreadSentence(lows, lo, highs, hi, total, label) {
+  if (Math.round((hi - lo) * 100) === 0) return evenMinutesSentence(hi);
+  const end = lowEndPhrase(lows, lo, highs, hi, total, label);
+  if (end.covers) return end.named ? `${end.who}, everyone else ${fmtMinutes(hi)}.` : `${end.who}, ${end.other}.`;
+  return `${end.who}, the fewest. The most is ${fmtMinutes(hi)}.`;
 }
 
 export function fmtClock(sec) {
@@ -437,6 +446,9 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       avail);
     return issues;
   }
+  /* Rotation order (#545): the coach's list is the plan, so no rule can make
+     it infeasible. Rules warn after the fives are made (`finish`). */
+  if (strategy === 'order') return issues;
 
   for (const id of avail) {
     const mn = c.minMinutes[id];
@@ -975,7 +987,16 @@ export function generatePlan(input) {
      on a copy of the constraints, so feasibility, `buildForced`, `cost` and the
      notes after the fact all see one set. Platoon applies no pins. */
   let cons = constraints, fullShort = [];
-  if (input.strategy !== 'platoon' && Object.keys(constraints.fullPeriods || {}).length) {
+  const order = input.strategy === 'order';
+  const searched = !fivesAreSet(input.strategy);
+  /* Rotation order applies none of the pins that choose who plays: the list
+     does. Starts the last period is the one pin still read, and is only
+     warned about when the list misses it. */
+  if (order) {
+    cons = { ...constraints, openingFive: [], fullPeriods: {}, fullPins: {}, fullFinish: {}, closing: null,
+      units: [], targetMinutes: {}, lockedTargets: [] };
+  }
+  if (searched && Object.keys(constraints.fullPeriods || {}).length) {
     const c0 = normalize(constraints, new Set(avail));
     if (Object.keys(c0.fullPeriods).length) {
       const start0 = Array.isArray(input.start) && input.start.length === stints.length
@@ -985,7 +1006,7 @@ export function generatePlan(input) {
       fullShort = got.short;
     }
   }
-  const playsMode = input.strategy !== 'platoon' ? playsInMode(input.playsIn) : null;
+  const playsMode = searched ? playsInMode(input.playsIn) : null;
   const issues = analyzeFeasibility({ players, availableIds: avail, constraints: cons, stints, strategy: input.strategy, periods: format.periods, maxSubs, periodMinutes: format.periodMinutes, playsIn: playsMode, coveredIn: input.coveredIn });
 
   if (issues.some(i => i.severity === 'error')) {
@@ -1055,7 +1076,9 @@ export function generatePlan(input) {
   const forcedByStint = buildForced(stints, c, format);
   ctx.forced = forcedByStint;
   let lineups;
-  if (input.strategy === 'platoon' && c.units.length) {
+  if (order) {
+    lineups = orderLineups(ctx, input.order, avail);
+  } else if (input.strategy === 'platoon' && c.units.length) {
     // the coach has already decided the fives; there is nothing to optimize
     lineups = platoonLineups(ctx, c.units);
   } else {
@@ -1160,7 +1183,7 @@ export function generatePlan(input) {
 
   // platoon alternates whole fives by definition; see the churn report in `finish`
   return finish(lineups, ctx, issues, { players, short, seed, stints, c, periods: format.periods, fullShort,
-    platoon: input.strategy === 'platoon' && c.units.length > 0 });
+    platoon: input.strategy === 'platoon' && c.units.length > 0, order });
 }
 
 /* #450: which periods each kid plays start to finish, picked once before the
@@ -1325,7 +1348,7 @@ function pinGroups(stints, c, periods) {
 
 /* The warnings for pins the search still missed: one per group, naming
    everyone left out. Platoon applies no pins, so it has none. */
-export function missedPinIssues({ stints, c, periods, lineups, avail, platoon, label }) {
+export function missedPinIssues({ stints, c, periods, lineups, avail, platoon, order, label }) {
   if (platoon) return [];
   const out = [];
   for (const { code, verb, forced } of pinGroups(stints, c, periods)) {
@@ -1334,7 +1357,7 @@ export function missedPinIssues({ stints, c, periods, lineups, avail, platoon, l
     const one = missed.length === 1;
     out.push({
       severity: 'warn', code, playerIds: missed,
-      message: `${andList(missed.map(label))} ${one ? verb : verb.replace('is', 'are')} but ${one ? 'is' : 'are'} not on the floor for it — no legal lineup kept them there.`,
+      message: `${andList(missed.map(label))} ${one ? verb : verb.replace('is', 'are')} but ${one ? 'is' : 'are'} not on the floor for it — ${order ? 'the order does not put them there' : 'no legal lineup kept them there'}.`,
     });
   }
   return out;
@@ -1345,6 +1368,34 @@ function platoonLineups(ctx, units) {
   // by the stint's number in the whole game, which is its own position unless
   // the solver was handed a suffix (a mid-game re-plan) -- then it is `index`
   return ctx.stints.map((s, i) => units[(s.index ?? i) % units.length].slice(0, ON_FLOOR));
+}
+
+/* The strategies a game can be on. state.js's `STRATEGIES` keys the same
+   five with their words (a guard in test/analytics.test.js holds the two
+   together); storage.js and analytics.js read the list from here. */
+export const STRATEGY_KEYS = ['balanced', 'minutes', 'closers', 'platoon', 'order'];
+
+/* Platoon and Order are the two strategies where the coach's own list decides
+   the fives, so the search, the pins that choose who plays and the plays-in
+   rule are all left out of them. One answer, read by `generatePlan` and by
+   state.js. */
+export const fivesAreSet = strategy => strategy === 'platoon' || strategy === 'order';
+
+/* Rotation order (#545): the circle is the available players in the coach's
+   order, turned so the first stint's lead is first. Stint j puts on the five
+   at positions j*c .. j*c+4, counted round the circle, where c is Players
+   changing at once; the stints handed in are the ones counted, so a re-plan's
+   suffix starts where its circle does. A player the order leaves out joins
+   the end. */
+export function orderChanges(maxSubs) {
+  const n = Number(maxSubs);
+  return Number.isFinite(n) ? Math.max(1, Math.min(ON_FLOOR, Math.trunc(n))) : DEFAULT_MAX_SUBS;
+}
+function orderLineups(ctx, order, avail) {
+  const here = new Set(avail);
+  const circle = [...new Set([...(order || []).filter(id => here.has(id)), ...avail])];
+  const n = circle.length, c = orderChanges(ctx.maxSubs);
+  return ctx.stints.map((s, j) => Array.from({ length: ON_FLOOR }, (_, t) => circle[(j * c + t) % n]));
 }
 
 /* `held`: minutes this player is pinned to in later stints. Seating them in an
@@ -1399,8 +1450,10 @@ export function runEndingAt(lineups, id, end, lead = 0, on = true) {
 /* The one wording of a run over its limit: `verb` is 'plays' (CONSEC_EXCEEDED)
    or 'sits' (BENCH_EXCEEDED). The notes the engine writes and the ones the app
    rebuilds from the fives on screen (#456, #534) both come from here. */
-export const runOverSentence = (name, verb, run, limit) =>
-  `${name} ${verb} ${run} stints in a row against a limit of ${limit} — no legal lineup kept them under it.`;
+export const runOverSentence = (name, verb, run, limit, order = false) =>
+  `${name} ${verb} ${run} stints in a row against a limit of ${limit} — ${order
+    ? `the order keeps them ${verb === 'plays' ? 'on the floor' : 'on the bench'}`
+    : 'no legal lineup kept them under it'}.`;
 
 export function longestRun(lineups, id, lead = 0, on = true) {
   let run = lead, best = 0;
@@ -2214,8 +2267,28 @@ function halfReachSentence(ctx, when, stints, reach) {
   return `Only ${fits} can play ${when} halftime here — ${plural(stints, 'stint')}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`;
 }
 
+/* The notes only a Rotation order plan writes: an Apart pair the list puts on
+   the floor together, and "fewer than c change" when fewer than c players sit. */
+function orderNotes(ctx, c, lineups, label) {
+  const out = [];
+  for (const [a, b] of c.avoids) {
+    const together = lineups.filter(lu => lu.includes(a) && lu.includes(b)).length;
+    if (together) {
+      out.push({ severity: 'warn', code: 'APART_TOGETHER', playerIds: [a, b],
+        message: `${label(a)} and ${label(b)} are set Apart but are on the floor together for ${plural(together, 'stint')}.` });
+    }
+  }
+  const n = ctx.avail.length, change = orderChanges(ctx.maxSubs);
+  if (n > ON_FLOOR && change > n - ON_FLOOR) {
+    out.push({ severity: 'warn', code: 'ORDER_CHANGES', playerIds: [],
+      message: `With ${n} players, only ${n - ON_FLOOR} sit each stint, so fewer than ${change} change at a break.` });
+  }
+  return out;
+}
+
 function finish(lineups, ctx, issues, meta) {
-  const { players, short, seed, stints, c, platoon, periods } = meta;
+  const { players, short, seed, stints, c, platoon, periods, order } = meta;
+  const searched = !platoon && !order;
   const byId = new Map(players.map(p => [p.id, p]));
   const label = id => byId.get(id)?.name || id;
   const minutes = minutesOf(lineups, ctx);
@@ -2261,14 +2334,14 @@ function finish(lineups, ctx, issues, meta) {
     if (need && minutes[id] < need - 1e-9) {
       issues.push({
         severity: 'warn', code: 'MIN_MISSED', playerIds: [id],
-        message: `${label(id)} got ${fmtMinutes(minutes[id])} minutes against a ${need}-minute minimum. ${minMissedReason(id, need, ctx, lineups, minutes, groups, label)}`,
+        message: `${label(id)} got ${fmtMinutes(minutes[id])} minutes against a ${need}-minute minimum. ${order ? 'The order puts them on the floor for less.' : minMissedReason(id, need, ctx, lineups, minutes, groups, label)}`,
       });
     }
     const cap = ctx.capOf(id);
     if (cap !== Infinity && minutes[id] > cap + 1e-9) {
       issues.push({
         severity: 'warn', code: 'CAP_EXCEEDED', playerIds: [id],
-        message: `${label(id)} is at ${fmtMinutes(minutes[id])} minutes against a ${cap}-minute cap — there was no legal lineup that kept them under it.`,
+        message: `${label(id)} is at ${fmtMinutes(minutes[id])} minutes against a ${cap}-minute cap — ${order ? 'the order puts them on the floor for more' : 'there was no legal lineup that kept them under it'}.`,
       });
     }
   }
@@ -2277,7 +2350,7 @@ function finish(lineups, ctx, issues, meta) {
      per group, naming everyone left out. Each group is run through buildForced
      alone, so which stints it pins is still decided in one place. Platoon is
      exempt: it applies no pins, the units are the coach's. */
-  issues.push(...missedPinIssues({ stints, c, periods, lineups, avail: ctx.avail, platoon, label }));
+  issues.push(...missedPinIssues({ stints, c, periods, lineups, avail: ctx.avail, platoon, order, label }));
   if (meta.fullShort?.length) {
     issues.push({
       severity: 'warn', code: 'FULL_PERIODS_SHORT', playerIds: meta.fullShort.map(x => x.id),
@@ -2306,7 +2379,7 @@ function finish(lineups, ctx, issues, meta) {
       if (run > ctx.maxBench) {
         issues.push({
           severity: 'warn', code: 'BENCH_EXCEEDED', playerIds: [id],
-          message: runOverSentence(label(id), 'sits', run, ctx.maxBench),
+          message: runOverSentence(label(id), 'sits', run, ctx.maxBench, order),
         });
       }
     }
@@ -2319,7 +2392,7 @@ function finish(lineups, ctx, issues, meta) {
       if (run > ctx.maxConsecutive) {
         issues.push({
           severity: 'warn', code: 'CONSEC_EXCEEDED', playerIds: [id],
-          message: runOverSentence(label(id), 'plays', run, ctx.maxConsecutive),
+          message: runOverSentence(label(id), 'plays', run, ctx.maxConsecutive, order),
         });
       }
     }
@@ -2336,7 +2409,7 @@ function finish(lineups, ctx, issues, meta) {
   // BENCH_SUBS, PLAYS_IN_SUBS or PLAYS_IN_TOO_FEW, or BENCH_TOO_FEW beside a change limit too small, already said it
   const benchSaidChanges = issues.some(i => i.code === 'BENCH_SUBS' || i.code === 'PLAYS_IN_SUBS' || i.code === 'PLAYS_IN_TOO_FEW')
     || (issues.some(i => i.code === 'BENCH_TOO_FEW') && benchOutrunsChanges(ctx.maxBench, ctx.maxSubs, ctx.avail.length, span));
-  if (!platoon && ctx.maxSubs > 0 && !benchSaidChanges) {
+  if (searched && ctx.maxSubs > 0 && !benchSaidChanges) {
     let over = 0, worst = 0, forced = 0, byRest = 0, byBench = 0;
     for (let i = 1; i < lineups.length; i++) {
       const subs = changesAt(lineups, i);
@@ -2376,7 +2449,7 @@ function finish(lineups, ctx, issues, meta) {
      that fits is the tighter of the clock and the coach's change limit, and the
      second lever is only offered when lifting it would actually help. Platoon
      is exempt for the SUBS_EXCEEDED reason: the units are the coach's. */
-  if (ctx.firstHalf && !platoon && !ctx.playsIn) {
+  if (ctx.firstHalf && searched && !ctx.playsIn) {
     const on = playedBeforeHalf(lineups, ctx);
     const late = ctx.avail.filter(id => !on.has(id));
     if (late.length) {
@@ -2411,7 +2484,7 @@ function finish(lineups, ctx, issues, meta) {
   /* #448: the mirror. Somebody who plays before halftime and never after
      is the same silence HALF_LATE ends. The arithmetic is counted for the
      stints after halftime, the first of which is a change like any other. */
-  if (ctx.firstHalf && !platoon && !ctx.playsIn) {
+  if (ctx.firstHalf && searched && !ctx.playsIn) {
     const after = new Set();
     for (let i = ctx.firstHalf; i < lineups.length; i++) for (const id of lineups[i]) after.add(id);
     const gone = [...playedBeforeHalf(lineups, ctx)].filter(id => !after.has(id));
@@ -2456,7 +2529,8 @@ function finish(lineups, ctx, issues, meta) {
       const pinned = filled.length === off;
       const atLimit = id => (ctx.capOf(id) !== Infinity && minutes[id] >= ctx.capOf(id) - 1e-9)
         || (ctx.lockedSet.has(id) && ctx.targetOf(id) != null && minutes[id] >= ctx.targetOf(id) - 1e-9);
-      const why = pinned ? `${who} ${off === 1 ? 'it' : 'them'}.`
+      const why = order ? 'the order sits both of them then.'
+        : pinned ? `${who} ${off === 1 ? 'it' : 'them'}.`
         : atLimit(a) && atLimit(b) ? `Both are at their cap or By hand number, so neither could play more.`
         : `no legal lineup kept one of them on.`;
       issues.push({
@@ -2466,7 +2540,11 @@ function finish(lineups, ctx, issues, meta) {
     }
   }
 
-  if (free.length !== ctx.avail.length && spreadUnconstrained !== spread) {
+  /* Rotation order says what the list does: who is on together against an
+     Apart pair, and a change limit the bench is too short for. */
+  if (order) issues.push(...orderNotes(ctx, c, lineups, label));
+
+  if (!order && free.length !== ctx.avail.length && spreadUnconstrained !== spread) {
     issues.push({
       severity: 'info', code: 'SPREAD_CONSTRAINED',
       message: `Spread is ${fmtMinutes(spread)} minutes overall, ${fmtMinutes(spreadUnconstrained)} among the players without a minimum or cap.`,
@@ -2475,12 +2553,17 @@ function finish(lineups, ctx, issues, meta) {
   }
   /* #446: only when the spread is wider than the clock alone makes it. */
   const clockFloor = floor.exact ? floor.minutes : Math.max(...stints.map(s => s.minutes));
-  const ruleNote = !platoon && spread > clockFloor + 1e-9 ? spreadRuleNote(ctx, c, minutes, label) : null;
+  const ruleNote = searched && spread > clockFloor + 1e-9 ? spreadRuleNote(ctx, c, minutes, label) : null;
   // Where the spread is deliberate -- hand-set targets, or carryover evening
   // out the day -- the single-game floor is the wrong benchmark and saying
   // "best possible is 0" is just wrong.
   const pinnedTargets = ctx.avail.filter(id => ctx.targetOf(id) != null);
-  if (pinnedTargets.length) {
+  if (order) {
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const at = v => ctx.avail.filter(id => Math.abs(minutes[id] - v) < 1e-9);
+    issues.push({ severity: 'info', code: 'SPREAD_ORDER', playerIds: at(lo),
+      message: minutesSpreadSentence(at(lo), lo, at(hi), hi, ctx.avail.length, label) });
+  } else if (pinnedTargets.length) {
     issues.push({
       severity: 'info', code: 'TARGETS_ACTIVE',
       message: pinnedTargets.length === ctx.avail.length
