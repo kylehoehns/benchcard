@@ -87,14 +87,14 @@ test('the Rules drawer only says "just evens out the minutes" when nothing else 
 /* One source, or the two screens drift apart again — which is the whole bug.
    `state.js` defines the reader; `storage.js` sanitizes the stored value and
    `teams-view.js` is the editor that writes it. Nobody else reads it raw. */
-test('nothing outside state.js, storage.js and the settings editor reads minMinutes or minUnit raw', () => {
+test('nothing outside state.js, storage.js and the settings editor reads minMinutes, minUnit or playsIn raw', () => {
   const ALLOWED = new Set(['state.js', 'storage.js', 'teams-view.js']);
   const FILES = ['game-setup.js', 'rules.js', 'plan-view.js', 'season-view.js', 'card.js',
     'app.js', 'render.js', 'strategy.js', 'gamemode.js', 'onboarding.js', 'balance.js'];
   for (const f of FILES) {
     if (ALLOWED.has(f)) continue;
-    assert.ok(!/settings\??\.\s*(minMinutes|minUnit)/.test(read(f)),
-      `${f} reads settings.minMinutes or minUnit directly — use leagueMinFor(g) from state.js, or the `
+    assert.ok(!/settings\??\.\s*(minMinutes|minUnit|playsIn)/.test(read(f)),
+      `${f} reads settings.minMinutes, minUnit or playsIn directly — use leagueMinFor(g) from state.js, or the `
       + 'Rules badge, the Rules drawer and the solver start disagreeing again (A24b)');
   }
 });

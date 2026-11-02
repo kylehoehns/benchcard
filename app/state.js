@@ -15,10 +15,10 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, playsInGroup, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
-         sanitizeSettings, DEFAULT_SETTINGS, seasonDate, localDate,
+         sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
          validTipoff, tipoffLabel, sortDay, OVERTIME_MAX, overtimeMinutes, overtimeEntry, PINS } from './storage.js';
 import { el, clone, uid } from './dom.js';
 import { callNames } from './roster.js';
@@ -338,15 +338,11 @@ function leagueFullFor(g, id, arrivedAt) {
 
 /* #451: Everyone plays in 'halves' or 'periods', else 'off'. Read here and
    nowhere else, beside `leagueSetting`. */
-const playsInSetting = () => {
-  const v = state.settings?.playsIn;
-  return v === 'halves' || v === 'periods' ? v : 'off';
-};
+const playsInSetting = () => (PLAYS_IN.includes(state.settings?.playsIn) ? state.settings.playsIn : DEFAULT_SETTINGS.playsIn);
+// Platoon applies no such rule, so for it the setting is not listed or counted
+const playsInRule = g => (g.strategy === 'platoon' ? 'off' : playsInSetting());
 // "each half", or "every quarter" / "every half" / "every period" by the game's period count
-const playsInText = g => {
-  if (playsInSetting() === 'halves') return 'each half';
-  return `every ${periodNoun(g.periods)}`;
-};
+const playsInText = g => (playsInSetting() === 'halves' ? `each ${playsInNoun('halves')}` : `every ${playsInNoun('periods', g.periods)}`);
 
 /* The rule's sentence, with what it comes to in this game: "half the game
    (16 min)", "2 periods (16 min)", or plain "16 min". */
@@ -379,7 +375,7 @@ export function ruleCount(g) {
     + (c.maxConsecutive ? 1 : 0)
     + (c.maxBench ? 1 : 0)
     + (leagueSetting().amount > 0 ? 1 : 0)
-    + (playsInSetting() === 'off' ? 0 : 1);
+    + (playsInRule(g) === 'off' ? 0 : 1);
 }
 
 /* #441: the most minutes `n` stints in a row can hold in this game's own
@@ -402,13 +398,16 @@ function runMinutesText(g, n) {
 /* #441: the picker's lines under the stepper, from the same helpers as the
  * rule's sentence. The second is only said where it is true: with ten
  * players, "Sits at most 1" is two fives trading places, which is Platoon. */
-export const runHint = (g, n) => `${plural(n, runNoun(g))} in a row is ${runMinutesText(g, n)}.`;
+export const runHint = (g, n) => `${runCount(g, n)} in a row is ${runMinutesText(g, n)}.`;
 
 /* #452: what a stint is called. Under Breaks only a stint is a whole period,
  * so the run rules count quarters, halves or periods; every other game counts
  * stints. `restLimitMax` is the most Plays at most can be set to: one less
  * than the game's regulation stints, since all of them is no limit. */
-export const runNoun = (g) => (g.granMode !== 'breaksOnly' ? 'stint' : periodNoun(g.periods));
+export const runNoun = (g, n = 1) => (g.granMode !== 'breaksOnly' ? (n === 1 ? 'stint' : 'stints') : periodNoun(g.periods, n));
+const runCount = (g, n) => `${n} ${runNoun(g, n)}`;
+// the stepper row's label, "Quarters in a row", and the unit its buttons say
+export const runRowLabel = g => { const w = runNoun(g, 2); return `${w[0].toUpperCase()}${w.slice(1)} in a row`; };
 export const restLimitMax = (g) => Math.max(1, regulationLens(g).lens.length - 1);
 export const benchPlatoonHint = (g, n) => (n === 1 && availIds(g).length === 2 * LINEUP_FLOOR
   ? `With ${availIds(g).length} players, Sits at most 1 in a row is Platoon.` : '');
@@ -435,7 +434,7 @@ export function ruleItems(g) {
 
   if (leagueSetting().amount > 0) items.push({ kind: 'leagueMinimum', text: `Everyone plays at least ${leagueRuleText(g)}`, removable: false });
 
-  if (playsInSetting() !== 'off') items.push({ kind: 'playsIn', text: `Everyone plays in ${playsInText(g)}`, removable: false });
+  if (playsInRule(g) !== 'off') items.push({ kind: 'playsIn', text: `Everyone plays in ${playsInText(g)}`, removable: false });
 
   for (const [id, v] of Object.entries(c.minMinutes)) {
     if (!avail.has(id)) continue;
@@ -466,11 +465,11 @@ export function ruleItems(g) {
   }
   if (c.maxConsecutive) {
     items.push({ kind: 'rest', removable: true,
-      text: `Each player plays at most ${plural(c.maxConsecutive, runNoun(g))} in a row (${runMinutesText(g, c.maxConsecutive)})` });
+      text: `Each player plays at most ${runCount(g, c.maxConsecutive)} in a row (${runMinutesText(g, c.maxConsecutive)})` });
   }
   if (c.maxBench) {
     items.push({ kind: 'bench', removable: true,
-      text: `Each player sits at most ${plural(c.maxBench, runNoun(g))} in a row (${runMinutesText(g, c.maxBench)})` });
+      text: `Each player sits at most ${runCount(g, c.maxBench)} in a row (${runMinutesText(g, c.maxBench)})` });
   }
 
   return items;

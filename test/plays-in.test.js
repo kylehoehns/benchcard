@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { generatePlan } from '../app/engine.js';
+import { generatePlan, playsInGroup, stintsBeforeHalftime, buildStints } from '../app/engine.js';
 
 /* #451: Everyone plays in each half or period. Spec 450, D-F and H. */
 
@@ -51,6 +51,38 @@ test('H. too few seats: 4x8 breaksOnly, 10 players, each period says so and does
   const p = run(10, { periods: 4, periodMinutes: 8 }, { mode: 'breaksOnly' }, { playsIn: 'periods' });
   assert.ok(p.issues.some(i => i.code === 'PLAYS_IN_TOO_FEW'));
   assert.ok(!p.issues.some(i => i.code === 'PLAYS_IN_MISSED'));
+});
+
+test('too few seats: 4x8 every 4, 11 players, each period says so and SUBS_EXCEEDED stays quiet', () => {
+  for (const seed of SEEDS) {
+    const p = run(11, { periods: 4, periodMinutes: 8 }, { mode: 'everyN', value: 4 }, { seed, playsIn: 'periods' });
+    assert.ok(p.issues.some(i => i.code === 'PLAYS_IN_TOO_FEW'), `seed ${seed}: no PLAYS_IN_TOO_FEW`);
+    assert.ok(!p.issues.some(i => i.code === 'SUBS_EXCEEDED'), `seed ${seed}: SUBS_EXCEEDED is also said`);
+  }
+});
+
+/* Guard: the halftime reading Everyone plays in uses (`playsInGroup`) and the one
+   the default halftime check uses (`stintsBeforeHalftime`) agree on every shape
+   the probe covers, plus a game of three periods. */
+test('the halves playsInGroup files agree with stintsBeforeHalftime on every probe shape', () => {
+  const SHAPES = [
+    [{ periods: 4, periodMinutes: 8 }, { mode: 'everyN', value: 4 }],
+    [{ periods: 4, periodMinutes: 8 }, { mode: 'perPeriod', value: 2 }],
+    [{ periods: 4, periodMinutes: 6 }, { mode: 'everyN', value: 3 }],
+    [{ periods: 2, periodMinutes: 16 }, { mode: 'everyN', value: 4 }],
+    [{ periods: 2, periodMinutes: 20 }, { mode: 'everyN', value: 5 }],
+    [{ periods: 4, periodMinutes: 5 }, { mode: 'breaksOnly' }],
+    [{ periods: 4, periodMinutes: 8 }, { mode: 'breaksOnly' }],
+    [{ periods: 3, periodMinutes: 12 }, { mode: 'everyN', value: 4 }],
+  ];
+  for (const [format, granularity] of SHAPES) {
+    const stints = buildStints(format, granularity);
+    const before = stintsBeforeHalftime(stints);
+    assert.ok(before > 0 && before < stints.length, `${JSON.stringify(format)}: the shape has a halftime`);
+    stints.forEach((s, i) => {
+      assert.equal(playsInGroup(s, format, 'halves'), i < before ? 1 : 2, `${JSON.stringify([format, granularity])}: stint ${i}`);
+    });
+  }
 });
 
 /* G. With no fullPeriods and no playsIn the plans are the plans of f3593a0

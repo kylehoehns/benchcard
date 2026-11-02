@@ -76,14 +76,17 @@ committed) calls `generatePlan` directly over 7 shapes (4x8/4, 4x8 perPeriod 2,
    sees them with no second copy. The assignment, in order of priority: never
    more than 5 pinned in any stint (counting the other pins: starting five,
    last period, closers), never two Apart kids in one period, never more
-   pinned minutes than a kid's cap; then one period in each half where N
-   allows; then the least-loaded period; then a period the kid already plays
+   pinned minutes than a kid's cap; then a pinned run (in stints, across
+   breaks) under Plays at most N in a row, a period longer than the limit on
+   its own being picked anyway; then one period in each half where N allows; then the least-loaded period; then a period the kid already plays
    in `input.start` (#449, so a rule edit does not reshuffle); then the seed.
    A kid it cannot place gets a one-step repair (move another kid to a
    period with room); a kid still short is named in a warning
    `FULL_PERIODS_SHORT`. It never makes an error, so a blocked plan is still
    blocked for every seed (`card.js`'s Shuffle note).
-5. **Refused up front**: `FULL_PERIODS_TOO_MANY` (error) when the full periods
+5. **Refused up front**: `FULL_PERIODS_TOO_MANY` (error), on a plan that covers
+   the whole regulation game (a mid-game re-plan places what fits and names the
+   rest with `FULL_PERIODS_SHORT`), when the full periods
    asked for add up to more than the eligible periods x 5. "Everyone plays 2
    full periods needs 22 player-periods (2 x 11 players), but 4 periods have
    room for 20 (4 x 5 on the floor). Lower the number, or count it in
@@ -160,8 +163,8 @@ Through `generatePlan` (`node --test`), red on `f3593a0` unless marked:
 - **F. Subs limit.** E with maxSubs 3: a `PLAYS_IN_SUBS` warning that names 3
   and 5; no `SUBS_EXCEEDED`.
 - **G. Off is unchanged** (green on `f3593a0` too): with no `fullPeriods` and
-  no `playsIn`, the probe's plans are identical to `f3593a0`'s (lineups and
-  issue codes, 840 cases).
+  no `playsIn`, the plans are identical to `f3593a0`'s (lineups and issue
+  codes, 126 cases: 7 shapes x 7-12 players x seeds 1-3, held as one digest).
 - **H. Too few seats.** 4x8 breaksOnly, 10 players, `playsIn: 'periods'`:
   `PLAYS_IN_TOO_FEW`, no `PLAYS_IN_MISSED`.
 

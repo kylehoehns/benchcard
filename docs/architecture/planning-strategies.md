@@ -13,6 +13,14 @@ Plus rules that compose with any of them: min/cap minutes, Together and
 Apart pairs, pinned starting five and Starts the last period rule, and two
 limits on stints in a row: Plays at most N in a row (most stints on the floor
 in a row) and Sits at most N in a row (most stints on the bench in a row).
+Under Breaks only a stint is a whole period, so both limits count quarters,
+halves or periods instead.
+
+The league minimum and Everyone plays in are Settings, not rules on one player.
+A league minimum counted in full periods is pinned once, before the search, so
+each kid plays those whole periods; Platoon applies no pins, so it ignores that
+unit. Everyone plays in adds a cost for each kid who misses a half or a period.
+The choices behind both are in [full periods and plays in](../design-decisions-plays-in.md).
 
 There is a third pair relation, `keepOnFloor` -- "One of two on".
 It is worth spelling out why it is not one of the other two wearing a minus

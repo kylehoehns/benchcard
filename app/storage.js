@@ -266,7 +266,7 @@ const strictNum = v => (typeof v === 'number' || (typeof v === 'string' && v.tri
 
 /* #447: the most the league minimum can be in each unit it is counted in. */
 const MIN_UNIT_MAX = { min: 60, pct: 100, periods: 8, full: 8 };
-const PLAYS_IN = ['off', 'halves', 'periods'];
+export const PLAYS_IN = ['off', 'halves', 'periods'];
 
 export const sanitizeSettings = raw => {
   const s = isObj(raw) ? raw : {};

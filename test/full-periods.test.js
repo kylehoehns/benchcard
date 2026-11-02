@@ -50,3 +50,40 @@ test('C. even: full periods keep the spread within one stint (4 min), seeds 1-20
     }
   }
 });
+
+test('a full-period pick never moves a kid out of the starting five, so no stint is pinned past five', () => {
+  const owed = { p0: 3, p1: 2, p2: 2, p3: 1, p4: 1, p5: 3, p6: 2, p7: 1, p8: 1, p9: 1 };
+  for (const seed of SEEDS) {
+    const p = generatePlan({
+      players: roster(10), availableIds: ids(10), format: QUARTERS, granularity: EVERY_4, seed, iterations: 300,
+      constraints: { openingFive: ['p7', 'p2', 'p9', 'p8', 'p1'], fullPeriods: owed },
+    });
+    assert.ok(p.ok, `seed ${seed}: ${p.issues.filter(i => i.severity === 'error').map(i => i.code).join()}`);
+  }
+});
+
+test('Plays at most 1 in a row: the periods picked for a kid are not back to back, seeds 1-20', () => {
+  const owed = Object.fromEntries(ids(10).slice(0, 5).map(id => [id, 2]));
+  for (const seed of SEEDS) {
+    const p = generatePlan({
+      players: roster(10), availableIds: ids(10), format: QUARTERS, granularity: { mode: 'breaksOnly' }, seed, iterations: 300,
+      constraints: { fullPeriods: owed, maxConsecutive: 1 },
+    });
+    assert.ok(p.ok, `seed ${seed} refused`);
+    const exceeded = p.issues.filter(i => i.code === 'CONSEC_EXCEEDED').flatMap(i => i.playerIds).filter(id => id in owed);
+    assert.deepEqual(exceeded, [], `seed ${seed}: ${exceeded.join()} play two quarters in a row`);
+  }
+});
+
+test('three periods: the middle one is filed in the second half, so five kids get the first period and one of the others', () => {
+  const ids6 = ids(6);
+  for (const seed of SEEDS) {
+    const p = generatePlan({
+      players: roster(6), availableIds: ids6, format: { periods: 3, periodMinutes: 12 }, granularity: EVERY_4, seed, iterations: 300,
+      constraints: { fullPeriods: Object.fromEntries(ids6.map(id => [id, 2])) },
+    });
+    assert.ok(p.ok, `seed ${seed} refused`);
+    const whole = id => [1, 2, 3].filter(q => p.stints.filter(s => s.period === q).every(s => s.onFloor.includes(id)));
+    assert.equal(ids6.filter(id => whole(id).includes(1)).length, 5, `seed ${seed}: ${ids6.map(id => whole(id).join('')).join(' ')}`);
+  }
+});

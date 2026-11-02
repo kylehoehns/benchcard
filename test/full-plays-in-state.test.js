@@ -78,8 +78,27 @@ test('L. a re-plan under each half does not call back a kid who already played i
     const inQ1 = new Set(rows.slice(0, 2).flat());
     const left = ids(10).filter(id => !inQ1.has(id));
     for (const id of left) assert.ok(rows[2].includes(id) || rows[3].includes(id), `${id} sat the first half`);
-    for (let i = 3; i < 4; i++) assert.ok(rows[i].filter(id => !rows[i - 1].includes(id)).length <= 3, 'break over the change limit');
+    assert.ok(rows[3].filter(id => !rows[2].includes(id)).length <= 3, 'break over the change limit');
     assert.ok(!r.issues.some(i => i.code === 'PLAYS_IN_SUBS' || i.code === 'PLAYS_IN_MISSED'), r.issues.map(i => i.code).join());
     for (const id of ids(10)) assert.ok(rows.slice(4).some(row => row.includes(id)), `${id} misses the second half`);
+  });
+});
+
+test('a re-plan mid-game places the full periods that fit and names the rest, never an error', () => {
+  game({ settings: FULL2 }, g => {
+    for (const from of [1, 3, 5]) {
+      const r = S.resolveRest(g, S.plans[0], from);
+      assert.ok(r.ok, `from stint ${from}: ${r.reason}: ${(r.issues || []).filter(i => i.severity === 'error').map(i => i.code).join()}`);
+    }
+    const r = S.resolveRest(g, S.plans[0], 3);
+    assert.ok(r.issues.some(i => i.code === 'FULL_PERIODS_SHORT'), r.issues.map(i => i.code).join());
+  });
+});
+
+test('a Platoon game does not list Everyone plays in, which it ignores, and the count still matches the list', () => {
+  const g = bareGame({ id: 'g450', seed: 1234, strategy: 'platoon', late: [], live: { at: 0, overrides: {} }, constraints: S.emptyConstraints() });
+  withTeam(ids(10).map(id => player(id)), [g], { playsIn: 'halves' }, () => {
+    assert.ok(!S.ruleItems(g).some(i => i.kind === 'playsIn'), S.ruleItems(g).map(i => i.text).join(' | '));
+    assert.equal(S.ruleItems(g).length, S.ruleCount(g));
   });
 });

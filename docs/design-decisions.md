@@ -654,8 +654,8 @@ text left open, and a future reader needs them to read the plan.
   minutes at or after the break and one plan in four had at least one of them;
   a flat 200-per-late-player term in `cost()` takes that to 1.7% and one plan in
   thirteen, with the minute spread and the solve time unmoved (the fix comes out
-  of the minute-neutral exchange move, not out of anyone's total). It is not a
-  control because the coach already has two — minimum minutes, and Who's here.
+  of the minute-neutral exchange move, not out of anyone's total). The setting
+  Everyone plays in replaces it ([#451](design-decisions-plays-in.md)).
   The term is level-blind, so it runs in both search passes without a rotation
   level reaching a single total.
   **`maxSubs` governs it.** The first stint seats five and every break after it
