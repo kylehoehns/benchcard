@@ -104,6 +104,40 @@ export const BY_HAND_STATE = {
           $('#sheetPlan').close(); $('#backBtn').click()`,
 };
 
+/* #521: the Plan sheet's Closers panel with nobody picked to close: the
+ * Closing window chips, the "Who closes" tiles (LONG_AND_SQUEEZE gives two of
+ * them their long call names) and the "Until you pick someone" line under
+ * them. `close` puts the strategy and the closing group back. */
+export const CLOSERS_STATE = {
+  name: 'plan sheet, closers',
+  open: `$('.today-game').click(); $('#phraseStrategy').click();
+         const st = await import('/state.js');
+         const g = st.game();
+         window.__closers521 = { strategy: g.strategy, closing: JSON.parse(JSON.stringify(g.constraints.closing ?? null)) };
+         [...document.querySelectorAll('#stratseg button')].find(b => b.dataset.strat === 'closers').click();
+         g.constraints.closing.players = [];
+         (await import('/render.js')).renderAll();
+         await new Promise(r => setTimeout(r, 300));
+         const box = document.getElementById('stratbody');
+         if (!box.querySelector('.chips .chip') || !box.querySelector('.pick .plr') || !box.querySelector('.budget-msg')) {
+           throw new Error('the Closers panel did not show its chips, tiles and "Until you pick someone" line');
+         }
+         // #521: one left inset for the chips, both headers, the tiles and the
+         // line under them, and not the sheet's own edge.
+         const sheetLeft = $('#sheetPlan').getBoundingClientRect().left;
+         const lefts = [...box.querySelectorAll('.chips, .pickhd, .pick, .budget-msg')]
+           .map(e => [e.className, Math.round(e.getBoundingClientRect().left - sheetLeft)]);
+         if (lefts.length < 5 || lefts.some(([, x]) => Math.abs(x - lefts[0][1]) > 1 || x < ${SHEET_EDGE_MIN})) {
+           throw new Error('the Closers panel blocks do not share one left inset (px from the sheet edge): ' + JSON.stringify(lefts));
+         }`,
+  // The restore is in memory only (nothing saves it); the next state reads it.
+  close: `const st = await import('/state.js');
+          const g = st.game(), was = window.__closers521;
+          g.strategy = was.strategy; g.constraints.closing = was.closing;
+          (await import('/render.js')).renderAll();
+          $('#sheetPlan').close(); $('#backBtn').click()`,
+};
+
 /* #455: the plan notes under the timeline with a name no column can hold whole.
  * A minimum for the first player and a stints-in-a-row limit make the engine
  * write "<name> plays 3 stints in a row ..." (the wording test/stale-lineup-notes
@@ -153,7 +187,6 @@ export const SCROLL_TO_BOTTOM = `(() => {
 export const CLIP_SWEEP_ALLOW = [
   { selector: '.bar-title', reason: 'the collapsing top-bar title stays one line as it fades in' },
   { selector: '.dayhead .game-h1, .dayhead .season-h1, .dayhead .team-h1', reason: 'the large page heading stays one line' },
-  { selector: '.tl-lab .nm', reason: "a timeline name wraps (#422), but one word wider than the name column still breaks inside the word; the one-row layout keeps its one-line ellipsis" },
   { selector: '.gm-p.fresh .nm', reason: 'a bench row just tagged "just on" keeps its name on one line' },
   { selector: 'dialog.flow .plr .plr-first, dialog.flow .plr .plr-sur', reason: "a roster tile's first/last name each ellipsize on their own line" },
   { selector: '.sn-list .sn-nm', reason: "a season ledger row's own player name" },
@@ -550,7 +583,7 @@ const describeFinding = p => {
 };
 
 /* The states the sweep walks, in order. Shared with scripts/look.mjs. */
-export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, PLAN_NOTES_STATE];
+export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, CLOSERS_STATE, PLAN_NOTES_STATE];
 
 /* The states that navigate to their own page and so wipe whatever the run
  * set up on the one before (the roster, injected CSS). Shared with
@@ -643,7 +676,7 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   await sweep(states.find(v => v.name === 'bench mode, last stint'), {}, 'bench mode, last stint 390px/16px');
   await land(c, origin, { record: { ...LONG_AND_SQUEEZE, view: 'today' }, ...TODAY_LANDING });
   await applyInjectCss();
-  for (const name of ['games', 'team', 'plan sheet, by hand', 'plan notes, long name']) {
+  for (const name of ['games', 'team', 'plan sheet, by hand', 'plan sheet, closers', 'plan notes, long name']) {
     await sweep(states.find(v => v.name === name), {}, `${name} 390px/16px`);
   }
 
@@ -678,7 +711,7 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
 
   rec.check(scanned > 0, 'measured no elements across any state');
-  rec.ok(`${states.length} states + 6 at 390px/16px, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
+  rec.ok(`${states.length} states + 7 at 390px/16px, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
 }
 
 /* #283: the same four tests, on `/about.html`, which the app sweep above

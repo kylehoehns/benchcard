@@ -50,9 +50,12 @@
    test.js pins that) reads at the same size/weight as any other row label,
    not a footnote. */
 .tl-lab .nm { font-size: var(--fs-secondary); font-weight: 500; letter-spacing: -.015em; overflow: hidden; text-overflow: ellipsis;
-  /* Stacked layout: the name wraps rather than ending in an ellipsis (#422);
-     the one-row block below restores the one-line ellipsis. */
-  min-width: 0; white-space: normal; overflow-wrap: break-word; }
+  /* Stacked layout: the name wraps rather than ending in an ellipsis (#422).
+     It is one of FIT_SELECTORS (app/dom.js, #522): a word wider than the
+     column shrinks to 70%, then breaks at a hyphen. flex: 1 takes the width
+     from the column, not from the text, so the fit never chases itself. The
+     one-row block below keeps one line while the whole name fits. */
+  min-width: 0; flex: 1; white-space: normal; overflow-wrap: break-word; }
 /* The name is the tap target, not the row: a real <button class="tl-name">
    around the dot and name, styled to disappear so it reads as the plain
    label it replaces (no chrome, underline or tint -- K1 disallows tint
@@ -103,6 +106,9 @@
      line so every number ends at the same x (#422). `.tl-row` in front: the
      stacked rules for these sit later in the file, so equal specificity
      would lose to them. */
+  /* One line while the name fits (the fitter shrinks it to 70% first); one
+     that still does not fit gets `white-space: normal` inline and wraps at a
+     hyphen. Nothing ends in an ellipsis. */
   .tl-lab .nm { white-space: nowrap; overflow-wrap: normal; }
   .tl-row .tl-tot { grid-area: tot; display: block; white-space: nowrap; }
   .tl-row .tl-tot .ex, .tl-row .tl-tot .ex:empty { display: inline-block; width: 5.7em; margin-left: .3rem; }

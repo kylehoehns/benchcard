@@ -58,7 +58,7 @@ const TL_PROBE = `JSON.stringify((() => {
     const nm = r.querySelector('.tl-lab .nm'), num = r.querySelector('.tl-tot .num'), ex = r.querySelector('.tl-tot .ex');
     const rr = r.getBoundingClientRect(), nr = num.getBoundingClientRect(), nb = r.querySelector('.tl-name').getBoundingClientRect();
     const eb = ex.getBoundingClientRect(), tb = r.querySelector('.tl-track')?.getBoundingClientRect();
-    return { name: nm.textContent, cut: nm.scrollWidth > nm.clientWidth + 1, nameW: nb.width, numW: nr.width, num: num.textContent,
+    return { rowH: rr.height, name: nm.textContent.replaceAll('\\u00AD', ''), cut: nm.scrollWidth > nm.clientWidth + 1, nameW: nb.width, numW: nr.width, num: num.textContent,
       numRight: nr.right, numTop: nr.top - rr.top, numBesideName: nr.top + nr.height / 2 > nb.top && nr.top + nr.height / 2 < nb.bottom, numAboveTrack: tb ? tb.top - nr.bottom : null, wordHitsNum: eb.width > 0 && eb.left < nr.right - 0.5 && eb.right > nr.left + 0.5 && eb.top < nr.bottom - 0.5 && eb.bottom > nr.top + 0.5, wordOut: eb.width > 0 && eb.right > rr.right + 0.5, word: ex.textContent,
       wordShown: !!ex.textContent && ex.getClientRects().length > 0 && eb.height > 0 && getComputedStyle(ex).visibility !== 'hidden' };
   });
@@ -113,10 +113,14 @@ async function timelineAt(c, origin, rec, cell, where, label, record, names) {
     // Beside the name, every total sits at one offset from its row's top; on
     // the word's line, at one offset above its own bar (names wrap to
     // different heights, so the row's top is not the reference there).
+    // A name that wraps in the one-row layout (#522) makes its own row taller,
+    // and the total centers in it; the offset is held among the rows at the pitch.
     const off = r => (cell.numBelow ? r.numAboveTrack : r.numTop);
+    const minH = Math.min(...d.rows.map(r => r.rowH));
+    const level = cell.numBelow ? d.rows : d.rows.filter(r => r.rowH < minH + 1);
     if (rec.check(d.rows.every(r => off(r) !== null), `${at}: a row has no track to measure the total against`)) {
-      rec.check(d.rows.every(r => Math.abs(off(r) - off(r0)) <= 1),
-        `${at}: totals sit ${d.rows.map(r => Math.round(off(r))).join(', ')}px ${cell.numBelow ? 'above their bar' : "below their row's top"}, want one offset`);
+      rec.check(level.every(r => Math.abs(off(r) - off(level[0])) <= 1),
+        `${at}: totals sit ${level.map(r => Math.round(off(r))).join(', ')}px ${cell.numBelow ? 'above their bar' : "below their row's top"}, want one offset`);
     }
     rec.check(d.rows.some(r => r.num.includes('.')), `${at}: no decimal total -- nothing was measured`);
   }
