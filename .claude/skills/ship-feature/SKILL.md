@@ -264,10 +264,17 @@ a plan that comes out differently, a layout that moves, a bug they could have
 hit. They do not notice a refactor, a test, a guard, a doc or the harness.
 
 - **If they would:** the same PR adds one entry to `scripts/whats-new.json`
-  (newest first: `{ "date": "YYYY-MM-DD", "text": "<one plain sentence for a
-  coach>" }`, no markup, no issue numbers), runs `npm run whats-new` to rewrite
-  `app/whats-new.html`, and moves the What's new page's `<lastmod>`
+  (newest first: `{ "date": "YYYY-MM-DD", "text": "<one or two short
+  sentences>" }`, no markup, no issue numbers), runs `npm run whats-new` to
+  rewrite `app/whats-new.html`, and moves the What's new page's `<lastmod>`
   in `app/sitemap.xml` to the entry's date.
+- **How an entry reads.** Write for a volunteer parent coach who has used the
+  app twice. Say what they can now do or will now see, and where ("New in
+  Settings: …", "During the game, …"). Use the words a coach says: "change the
+  plan", "sub", "on the bench", "quarter or half". Not our words: re-plan,
+  stint, cap, pin, By hand, bench mode, toast. A setting's name may appear
+  only after the sentence has said what it does. One change per entry; if it
+  needs "and" twice, split it.
 - **If they would not:** put one line that starts `No coach note:` and gives
   the reason (`No coach note: harness only`) in a commit message, so
   `npm run check:history` passes before the PR exists, and in the PR body,
