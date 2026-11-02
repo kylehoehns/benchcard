@@ -53,7 +53,7 @@ test('an all-overtime suffix owes Sits at most nothing: no bench warning, whatev
   for (let seed = 1; seed <= 12; seed++) {
     const p = generatePlan({
       players: roster(9), availableIds: ids(9), format: QUARTERS, granularity: EVERY_4, seed,
-      stints: suffix, constraints: { maxBench: 1 }, sitBefore: { p0: 1, p1: 1, p2: 1, p3: 1 },
+      stints: suffix, constraints: { maxBench: 1 }, sitBefore: { p0: 3, p1: 3, p2: 3, p3: 3 },   // well over the limit of 1
     });
     const codes = p.issues.map(i => i.code).filter(c => c.startsWith('BENCH_'));
     assert.deepEqual(codes, [], `seed ${seed}`);

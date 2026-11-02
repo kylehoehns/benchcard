@@ -13,11 +13,11 @@
  * full repaint, went with Season taking over the empty state -- Today
  * already owns Add a game (#26).
  * ================================================================== */
-import { fmtMinutes } from './engine.js';
+import { fmtMinutes, benchSpan } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, sitStints, benchStints, longestSit, planSay } from './state.js';
+import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, benchStints, longestSit, planSay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
 import { blockedPanel } from './timeline.js';
@@ -248,7 +248,7 @@ export function renderPlanTable() {
      entitled to see rather than a failure to warn about: no issue code, no red
      row, one sentence under the bars. What was measured is in
      docs/specs/443-long-sit-cost.md. */
-  const counted = sitStints(game(), p);
+  const counted = onBench.slice(0, benchSpan(p.stints));   // what `sitStints` is, from the rows already built
   const sit = longestSit(counted, Object.keys(mins));
   if (sit.minutes > 0) {
     const names = sit.ids.slice(0, 3).map(id => sh[id]);
@@ -264,8 +264,6 @@ export function renderPlanTable() {
         : '')));
   }
 }
-
-export { longestSit };
 
 const maxSubsNow = () => state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs;
 

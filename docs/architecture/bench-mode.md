@@ -223,6 +223,8 @@ next stint on picks the kid up. A league minimum owes that kid the share of the
 time left, not the whole game's, and a By hand number is scaled the same way
 ([design decisions](../design-decisions.md)).
 The stint on the floor does not change, and the pick in progress is cleared.
+That stint and any before it do not count as sitting for the kid (#537; the
+reading is in [design decisions](../design-decisions-sits-at-most.md)).
 The handler runs `computeAll()` first. Stepping through stints in bench mode never
 does a full render, so the plan has not been adopted yet, and without that step
 the re-plan would also rewrite the stint on the floor. The change is one
@@ -350,8 +352,10 @@ player whose minutes changed. While nothing has moved the engine's note stays
 word for word (`movedMinutes` and `minutesNote` in `state.js`).
 
 Below the minute bars the plan also names the **longest unbroken sit** — the
-most minutes any player spends on the bench in one go, read straight off
-`stints[].sitting` by `longestSit` in `plan-view.js`. Even minutes are only half
+most minutes any player spends on the bench in one go. It is read off the
+stints that count as sitting (`sitStints` in `state.js`: a late kid's stints up
+to the one they walked in during are left out, and overtime is not counted,
+#537 and #541) by `longestSit` in `plan-view.js`. Even minutes are only half
 of what a kid feels, so the solver charges more the longer a sit runs (#443, see
 [design-decisions.md](../design-decisions.md)) and never breaks the change limit
 to shorten one. A long run is still possible when the limit forces it. So when

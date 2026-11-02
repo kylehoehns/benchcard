@@ -1035,6 +1035,7 @@ export function generatePlan(input) {
                 maxConsecutive: c.maxConsecutive,
                 leadOf: id => input.streakBefore?.[id] || 0,
                 maxBench: c.maxBench,
+                benchSpan: benchSpan(stints),   // Sits at most counts regulation only
                 sitLeadOf: id => (c.maxBench ? input.sitBefore?.[id] || 0 : 0),
                 hasCarryover: !!carryover && avail.some(id => Math.abs(credit[id]) > 1e-9) };
   // halftime is a regulation fact (#367): overtime follows it and never moves it
@@ -1117,7 +1118,7 @@ export function generatePlan(input) {
       const m = minutesOf(lu, ctx);
       let capOver = 0, minShort = 0, pins = 0, subsOver = 0, restOver = 0, benchOver = 0, late = 0;
       const playsMiss = ctx.playsIn ? playsInMissCount(lu, ctx) : 0;
-      const benched = ctx.maxBench ? lu.slice(0, benchSpan(ctx.stints)) : lu;
+      const benched = lu.slice(0, ctx.benchSpan);
       for (const id of avail) {
         capOver += Math.max(0, m[id] - capOf(id));
         minShort += Math.max(0, minOf(id) - m[id]);
@@ -1415,7 +1416,7 @@ function greedy(ctx, forcedByStint, rng) {
   for (const id of avail) { minutes[id] = 0; sitStreak[id] = ctx.sitLeadOf(id); onStreak[id] = ctx.leadOf(id); }
 
   const ahead = pinnedAhead(forcedByStint, stints);
-  const span = benchSpan(stints);   // Sits at most counts regulation only
+  const span = ctx.benchSpan;
   const lineups = [];
   let prev = null;
   let elapsed = 0;
@@ -1820,7 +1821,7 @@ function cost(lineups, ctx) {
   }
 
   if (ctx.maxBench) {
-    const benched = lineups.slice(0, benchSpan(ctx.stints));
+    const benched = lineups.slice(0, ctx.benchSpan);
     for (const id of ctx.avail) {
       const over = longestRun(benched, id, ctx.sitLeadOf(id), false) - ctx.maxBench;
       if (over > 0) c += over * over * 400;
@@ -2297,7 +2298,7 @@ function finish(lineups, ctx, issues, meta) {
   }
 
   const saidUpFront = issues.some(i => i.code === 'CONSEC_TOO_FEW' || i.code === 'CONSEC_IMPOSSIBLE');
-  const span = benchSpan(stints);   // Sits at most counts regulation only
+  const span = ctx.benchSpan;
   if (ctx.maxBench && !issues.some(i => i.code === 'BENCH_TOO_FEW')) {
     const benched = lineups.slice(0, span);
     for (const id of ctx.avail) {

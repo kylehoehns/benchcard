@@ -34,17 +34,16 @@ describe('a late arrival is not sitting before they got there', { skip }, () => 
     for (let n = 1; n <= 5; n++) assert.ok(!bench[n - 1].includes('Theo'), `stint ${n} lists Theo on the bench: ${bench[n - 1]}`);
   });
 
-  test('the Longest sit note and Theo\'s detail count his sitting from the stint after he arrived', async () => {
+  test('Theo\'s detail counts his Longest sit from the stint after he arrived', async () => {
     await theoArrivesAtStint5();
     // three stints (12 minutes) are left after stint 5
     await coach.benchEachStint();
-    const fromNote = /Longest sit ([\d.]+) min in a row: ([^.]*)\./.exec(await coach.text('#plan'));
-    if (fromNote && /Theo/.test(fromNote[2])) assert.ok(Number(fromNote[1]) <= 12, `the note says Theo sits ${fromNote[1]} minutes in a row`);
     const row = (await coach.controls()).find(n => n.startsWith('Theo Alvarez, '));
     await coach.tap(row);
-    const m = LONGEST.exec(await coach.text('.tld-facts'));
-    if (m) assert.ok(Number(m[1]) <= 12, `Theo's detail says he sits ${m[1]} minutes in a row`);
-    else assert.match(await coach.text('.tld-facts'), /never sits/);
+    const facts = await coach.text('.tld-facts');
+    const m = LONGEST.exec(facts);
+    assert.ok(m, `the premise: Theo sits at least once after he arrived, so his detail shows a Longest sit in minutes: ${facts}`);
+    assert.ok(Number(m[1]) <= 12, `Theo's detail says he sits ${m[1]} minutes in a row`);
   });
 });
 

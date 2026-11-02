@@ -77,6 +77,13 @@ Same columns as "When rules disagree": the two rules, what wins, what the plan s
     it. If a rule stops the kid (five on the floor, Apart, their cap), they get
     no credit for it, as before. A kid who already has their number is not kept
     on for it. Overtime never counts.
+  - **A cap that covers the rest of the period finishes it (#540).** A kid with
+    a Plays at most limit that covers the rest of the period is offered the
+    finish under the same conditions, even when the limit does not cover a whole
+    period. Whole periods
+    after that come from what the limit has left once the finish is paid for. A
+    limit shorter than the rest of the period gives no finish, as before. Before
+    #540 such a kid was subbed off part-way through the period.
   - **Platoon ignores it.** Platoon applies no pins. A full period missed is
     said like any pin, `FULL_PERIOD_MISSED`.
 - **Everyone plays in is a setting, and it steps the halftime default aside (#451).**

@@ -455,33 +455,24 @@ text left open, and a future reader needs them to read the plan.
   "Rest limit" sounded like a bench limit, and it caps play, so the coach-facing
   name changed. The stored key stays `maxConsecutive`, so a team saved under
   the old name loads unchanged.
-- **Sits at most N in a row is the bench twin of that limit (#441).** The
-  stored key is `maxBench`, 1 to 4 stints, default 2. The engine counts a bench
-  run with the same counter it uses for a play run, read the other way round
-  (`runEndingAt` and `longestRun` take an `on` flag), so there is one run
-  counter, not two. The search treats a kid whose bench run has reached the
-  limit as due on: the greedy pass brings them in when the other rules allow,
-  and `repairChurn` does not swap them back out. Each stint past the limit costs
-  `over x over x 400`, the same shape as the play limit, so one long sit costs
-  more than the same overrun split up.
-- **A Sits at most limit that cannot hold is said up front, in one of two lines
-  (#441).** `BENCH_TOO_FEW` means the rule is impossible: each kid needs
-  `ceil((S - m) / (m + 1))` stints on, where S is the stints and m the limit,
-  and five seats a stint cannot cover everyone. It replaces the after-the-fact
-  `BENCH_EXCEEDED`, the way `CONSEC_TOO_FEW` replaces `CONSEC_EXCEEDED`.
-  `BENCH_SUBS` means the rule can hold, but only by changing more players at
-  once than the change limit allows, so the plan changes more and says so. It
-  replaces `SUBS_EXCEEDED` for that case and does not suppress
-  `BENCH_EXCEEDED`. When both would apply, `BENCH_TOO_FEW` is the one said.
-  Platoon gets no `BENCH_SUBS`, as it gets no `SUBS_EXCEEDED`. Neither is said
-  with 5 or fewer available, because nobody sits.
-- **The bench run counts across a re-plan too.** `resolveRest` builds
-  `sitBefore` from the same lead list as `streakBefore`, so a kid who has
-  already sat brings that run into the re-plan. A late arrival counts from the
-  stint they walked in. `sitBefore` is only built when the rule is on, so a plan
-  without it is unchanged. Pinned overtime fives win over the rule, as they do
-  over Plays at most, and the rule is not checked inside one. After a swap,
-  `BENCH_EXCEEDED` is rebuilt from the fives on screen (#534).
+- **Sits at most N in a row is the bench twin of Plays at most (#441).** The
+  stored key is `maxBench`, 1 to 4 stints, default 2, counted by the same run
+  counter read the other way round. Each stint past the limit costs
+  `over x over x 400`. The search, the two up-front lines (`BENCH_TOO_FEW` and
+  `BENCH_SUBS`) and the re-plan count are in
+  [Sits at most, in full](design-decisions-sits-at-most.md).
+- **Overtime neither counts toward Sits at most nor resets it (#541).** Overtime
+  always comes after regulation, so the count is over regulation stints only,
+  for the warning, the notes and the solver alike. The option not taken counted
+  it, which warned a kid who sat at the end of regulation and again in overtime.
+  The On the bench column still lists who sits in overtime, since it is a list.
+  See [Overtime](design-decisions-sits-at-most.md#overtime).
+- **A late arrival is not sitting before they walk in (#537).** The stints up to
+  and including the one a kid walked in during do not count, on the bench
+  column, in the notes, the timeline detail and the warning. The option not taken
+  was a fresh `lateArrivals` call, which differs only for a kid swapped on during
+  that stint before any re-plan. See
+  [A late arrival](design-decisions-sits-at-most.md#a-late-arrival).
 - **Plays at most N in a row counts across a re-plan and into overtime (#442).**
   `resolveRest` hands the engine `streakBefore`: each player's run ending at
   the cut (stints played, from `effectiveStints`, plus pinned overtime fives

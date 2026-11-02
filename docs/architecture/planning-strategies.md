@@ -12,7 +12,8 @@
 Plus rules that compose with any of them: min/cap minutes, Together and
 Apart pairs, pinned starting five and Starts the last period rule, and two
 limits on stints in a row: Plays at most N in a row (most stints on the floor
-in a row) and Sits at most N in a row (most stints on the bench in a row).
+in a row) and Sits at most N in a row (most stints on the bench in a row;
+overtime does not count, [design decisions](../design-decisions-sits-at-most.md#overtime)).
 Under Breaks only a stint is a whole period, so both limits count quarters,
 halves or periods instead.
 

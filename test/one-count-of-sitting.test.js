@@ -4,7 +4,6 @@ import { S, bareGame, withTeam, player } from './state-fixture.js';
 import { setAvailable } from '../app/team-ops.js';
 import './dom-stub.js';
 globalThis.window = globalThis;
-const { longestSit } = await import('../app/plan-view.js');
 
 /* #537 #541: one count of sitting. Seam: state.js exports, over the fixtures of
    docs/specs/537-one-count-of-sitting.md. Nine players, 4 x 8 minutes, a change
@@ -58,7 +57,7 @@ test('the premise: effectiveStints alone lists the late kid on the bench before 
 
 test('the Longest sit for a late kid counts only the stints after they walked in', () => {
   late((g, p) => {
-    const sit = longestSit(S.sitStints(g, p), ['p8']);
+    const sit = S.longestSit(S.sitStints(g, p), ['p8']);
     assert.ok(sit.minutes <= 3 * 4, `p8 is shown sitting ${sit.minutes} minutes in a row; only 3 stints (12 minutes) come after stint 5`);
   });
 });
@@ -80,6 +79,37 @@ test('a late kid with Sits at most 2 who sits stints 6 and 7 is told so, and not
   });
 });
 
+test('a kid swapped on in the stint they walked in during is still late after a later re-plan', () => {
+  late((g, p) => {
+    // by hand: p8 takes the floor in stint 5 (index 4), the stint they walked in during
+    const five = p.stints[4].onFloor;
+    g.live.overrides = { ...g.live.overrides, 4: five.includes('p8') ? five : [...five.slice(1), 'p8'] };
+    g.live.at = 6;
+    // a rotation change two stints later freezes the played stints and re-plans the rest
+    setAvailable(g, 'p7', false);
+    S.computeAll();
+    const q = S.plans[0];
+    assert.deepEqual(g.live.arrived, { p8: 4 }, 'p8 played in the stint they arrived at, which is not playing before it');
+    for (const [name, rows] of [['benchStints', S.benchStints(g, q)], ['sitStints', S.sitStints(g, q)]]) {
+      for (let k = 0; k <= 4; k++) assert.ok(!rows[k].sitting.includes('p8'), `${name}: p8 is shown sitting at stint ${k + 1}`);
+    }
+  });
+});
+
+test('a re-plan from the stint after a late kid arrived does not count their time before it as a bench run', () => {
+  for (const seed of [1, 2, 3]) {
+    late((g, p) => {
+      // p8 walked in during stint 5 (index 4) and was swapped out of it by hand: no run of sitting yet
+      const five = p.stints[4].onFloor;
+      const sub = IDS.find(id => id !== 'p8' && !five.includes(id));
+      g.live.overrides = { ...g.live.overrides, 4: five.includes('p8') ? five.filter(id => id !== 'p8').concat(sub) : five };
+      const r = S.resolveRest(g, p, 5);
+      assert.equal(r.ok, true, r.reason);
+      assert.equal(r.overrides[5].includes('p8'), false, 'p8 is forced on by a bench run counted from before they arrived');
+    }, { seed, constraints: { ...S.emptyConstraints(), maxBench: 1 } });
+  }
+});
+
 /* ---------------- #541: overtime does not count toward Sits at most ---------------- */
 
 for (const seed of [1, 2, 3]) {
@@ -97,3 +127,24 @@ for (const seed of [1, 2, 3]) {
     });
   });
 }
+
+test('a re-plan cut inside overtime puts nobody on for a sit run: Sits at most does not reach overtime', () => {
+  for (const seed of [1, 2, 3]) {
+    const g = mk(seed, { constraints: { ...S.emptyConstraints(), maxBench: 2 } });
+    room(g, gg => {
+      gg.live.at = 7;
+      S.computeAll();
+      assert.equal(S.addOvertime(gg, 4, 'keep'), true);
+      assert.equal(S.addOvertime(gg, 4, 'keep'), true);
+      gg.live.at = 9;
+      S.computeAll();
+      const q = S.plans[0];
+      assert.equal(q.stints.length, 10, 'the premise: 8 regulation stints and 2 overtime');
+      const limited = S.resolveRest(gg, q, 9);
+      gg.constraints.maxBench = 0;
+      const unlimited = S.resolveRest(gg, q, 9);
+      assert.equal(limited.ok, true, limited.reason);
+      assert.deepEqual(limited.overrides, unlimited.overrides, `seed ${seed}: the sit limit moved an overtime five`);
+    });
+  }
+});

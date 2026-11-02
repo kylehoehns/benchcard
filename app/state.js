@@ -1156,9 +1156,10 @@ export function effectiveStints(g, p) {
 export function benchStints(g, p) {
   const eff = effectiveStints(g, p);
   const arrived = g.live?.arrived;
-  if (!arrived || !Object.keys(arrived).length) return eff;
+  const late = Object.keys(arrived || {});
+  if (!late.length) return eff;
   return eff.map((r, k) => {
-    const away = Object.keys(arrived).filter(id => k <= arrived[id] && r.sitting.includes(id));
+    const away = late.filter(id => k <= arrived[id] && r.sitting.includes(id));
     return away.length ? { ...r, sitting: r.sitting.filter(id => !away.includes(id)) } : r;
   });
 }
@@ -2323,16 +2324,17 @@ export function computeAll() {
 }
 
 /* #247 amendment 11: `live.arrived` is for a kid who was not there at the
-   start. One who played in the stints up to and including the stint they
-   "arrived" at -- played, went out, came back -- was not late, so the record
-   of it is dropped and they keep a whole-game share. Judged on the first `k`
+   start. One who played in a stint BEFORE the stint they "arrived" at --
+   played, went out, came back -- was not late, so the record of it is dropped
+   and they keep a whole-game share. Playing in the arrival stint itself is how
+   a late kid starts, so it does not drop the record. Judged on the first `k`
    stints, the ones the caller treats as played. */
 function lateArrivals(g, p, k) {
   const arrived = g.live?.arrived;
   if (!arrived) return {};
   const eff = effectiveStints(g, p).slice(0, k);
   return Object.fromEntries(Object.entries(arrived).filter(([id, at]) =>
-    !eff.slice(0, at + 1).some(s => s.onFloor.includes(id))));
+    !eff.slice(0, at).some(s => s.onFloor.includes(id))));
 }
 
 /* ================================================================== *
@@ -2482,6 +2484,9 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   /* #441: the bench run at the cut, counted over the stints a sit run is counted
      over (`sitStints`: a late kid is not benched before they got there, and
      overtime is not counted), so the engine's one run counter does the counting. */
+  /* The pinned fives in [k, open[0]) are overtime only (`pinFives`/`isPinned` go
+     through `overtimeOf`), which `benchSpan` never counts, so `lead`'s pinned
+     rows are not needed here. */
   const arrived = lateArrivals(g, p, k);
   const sitBefore = {};
   if (g.constraints.maxBench) {
