@@ -167,7 +167,7 @@ export async function land(c, origin, want = {}) {
       ? [`${plain}${state.query ? '&' : '?'}_smoke=${Date.now()}`, plain]
       : [plain];
     let nav, navError = '';
-    for (const url of urls) {
+    const navigate = async url => {
       let fired;
       const loaded = new Promise(ok => { fired = ok; });
       c.on('Page.loadEventFired', fired);
@@ -178,16 +178,52 @@ export async function land(c, origin, want = {}) {
       } finally {
         c.off('Page.loadEventFired', fired);
       }
-    }
+    };
+    const scripts = watchScripts(c);
     try {
-      await bootWait(c, state.ready, `${state.page}${state.query}`);
-    } catch (e) {
-      if (e?.message?.startsWith('boot wait timed out:')) {
-        e.message += `${navError ? `, navigate error: ${navError}` : ''}, document: ${await describeDocument(c, nav)}`;
+      for (const url of urls) await navigate(url);
+      // #400: Chrome, under load, cancels a few module requests of a fresh
+      // document and the app never runs; a longer wait cannot help. That one
+      // signature, and only on the last document, gets one more landing.
+      const aborted = scripts.failed(nav).filter(f => f.canceled);
+      if (aborted.length) {
+        process.stderr.write(`land: Chrome aborted ${aborted.map(f => f.name).join(', ')} ` +
+          `on ${state.page}${state.query}; landed again (#400)\n`);
+        await navigate(plain);
       }
-      throw e;
+      try {
+        await bootWait(c, state.ready, `${state.page}${state.query}`);
+      } catch (e) {
+        if (e?.message?.startsWith('boot wait timed out:')) {
+          const lost = scripts.failed(nav);
+          e.message += `${navError ? `, navigate error: ${navError}` : ''}, document: ${await describeDocument(c, nav)}` +
+            (lost.length ? `, failed scripts: ${lost.map(f => `${f.name} ${f.errorText}${f.canceled ? ' canceled' : ''}`).join(', ')}` : '');
+        }
+        throw e;
+      }
+    } finally {
+      scripts.stop();
     }
   });
+}
+
+/* The Script requests `land` has seen fail (#400), by document: the
+   `loaderId` `Page.navigate` returned, so a failure of the previous page or of
+   `freshHistory`'s first navigation is not counted. Listeners come off in `stop`. */
+function watchScripts(c) {
+  const seen = new Map();   // requestId -> { loaderId, name }
+  const lost = [];          // { requestId, errorText, canceled }
+  const onRequest = p => {
+    if (p?.type === 'Script') seen.set(p.requestId, { loaderId: p.loaderId, name: new URL(p.request.url).pathname.split('/').pop() });
+  };
+  const onFailed = p => { if (p && seen.has(p.requestId)) lost.push(p); };
+  c.on('Network.requestWillBeSent', onRequest);
+  c.on('Network.loadingFailed', onFailed);
+  return {
+    failed: nav => lost.filter(p => nav?.loaderId && seen.get(p.requestId).loaderId === nav.loaderId)
+      .map(p => ({ name: seen.get(p.requestId).name, errorText: p.errorText, canceled: p.canceled === true })),
+    stop: () => { c.off('Network.requestWillBeSent', onRequest); c.off('Network.loadingFailed', onFailed); },
+  };
 }
 
 /* Whether the page now showing is the document `Page.navigate` returned (#400),
