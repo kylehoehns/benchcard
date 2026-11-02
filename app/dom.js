@@ -74,10 +74,49 @@ export const FIT_SELECTORS = ['.alert .fitw', '.rrow .prow-t', '.gm-p:not(.fresh
 /* The plan note's own sentence: not shrunk, but a split in it is never excused. */
 export const NOTE_TEXT = '.alert > span:not(.ico)';
 
-/* The smallest a fitted name gets: 40% of its CSS size. Below that the
-   element's own `overflow-wrap` still breaks the word as a last resort, so
-   nothing is ever clipped. */
-const FIT_FLOOR = 0.4;
+/* #520: the smallest a fitted name gets: 70% of its CSS size. A coach who set
+   large text needs it, so a word that still does not fit at the floor is
+   broken with a hyphen instead (`hyphenate` below) rather than shrunk further.
+   The clip sweep holds this to its own 70% (MIN_FIT_RATIO). */
+const FIT_FLOOR = 0.7;
+const SHY = '\u00AD';
+
+const textNodes = e => {
+  const out = [], w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) out.push(n);
+  return out;
+};
+/* Take back the soft hyphens a previous fit put in, so this one measures the
+   words as the app wrote them. */
+const unhyphenate = e => {
+  for (const n of textNodes(e)) if (n.data.includes(SHY)) n.data = n.data.replaceAll(SHY, '');
+};
+/* Put a soft hyphen between the letters of each word still wider than the
+   room at the floor, keeping two letters on either side of any break. The
+   browser then breaks it at the last one that fits and paints a hyphen there,
+   so the word never splits without one. Only the over-wide words get them: a
+   soft hyphen is a break chance, and in a word that fits it would break
+   where moving the whole word down was right. A part of a hyphenated name
+   ("Montgomery-Okafor") is measured on its own, since the browser can already
+   break after its hyphen. */
+const hyphenate = (e, max) => {
+  for (const n of textNodes(e)) {
+    const r = document.createRange();
+    const long = [...n.data.matchAll(/[^\s-]{5,}/g)].filter(m => {
+      r.setStart(n, m.index);
+      r.setEnd(n, m.index + m[0].length);
+      return r.getBoundingClientRect().width > max;
+    });
+    if (!long.length) continue;
+    let out = '', at = 0;
+    for (const m of long) {
+      const ch = [...m[0]];
+      out += n.data.slice(at, m.index) + ch.map((c, i) => (i >= 2 && i <= ch.length - 2 ? SHY : '') + c).join('');
+      at = m.index + m[0].length;
+    }
+    n.data = out + n.data.slice(at);
+  }
+};
 
 const fitSig = new WeakMap();
 // Bumped when fonts finish loading: a fit measured on the fallback font is stale
@@ -104,12 +143,16 @@ const room = e => {
     - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
 };
 /* What a fit depends on: the words, the room, the text size (the root's, which
-   is what a coach's text-size setting changes) and the font generation. */
-const sigOf = e => `${e.textContent}|${boxOf(e).clientWidth}|${getComputedStyle(document.documentElement).fontSize}|${fitGen}`;
+   is what a coach's text-size setting changes) and the font generation. The
+   room is read off the box's parent, whose width the fit cannot change: the
+   box's own width follows the fit (a hyphenated name's pinned min-width, a
+   Team name moving up beside its badge), so it would hide a real change. */
+const sigOf = e => `${e.textContent}|${boxOf(e).parentElement.clientWidth}|${getComputedStyle(document.documentElement).fontSize}|${fitGen}`;
 
 /* Shrink the text of each `FIT_SELECTORS` element just enough that its widest
    unbreakable chunk (a word, or the part of a hyphenated one before its
-   hyphen: the browser's own break chances) fits its box. The real font,
+   hyphen: the browser's own break chances) fits its box, down to FIT_FLOOR;
+   past that, hyphenate the chunk. The real font,
    weight and letter-spacing are the ones measured, so there is no canvas
    guess. A name that fits keeps its CSS size. An element that is not laid out
    (a closed sheet) is skipped and fitted when it opens.
@@ -124,7 +167,15 @@ function fitLongWords(root = document) {
     if (boxOf(e).clientWidth > 0 && fitSig.get(e) !== sigOf(e)) todo.push(e);
   }
   if (!todo.length) return;
-  for (const e of todo) { e.style.fontSize = ''; e.style.overflowWrap = 'normal'; }
+  /* `transition: none` while fitting: the reduced-motion block in app.css gives
+     every element a .01ms transition on every property, and a font size that
+     transitions still reads as the old one this tick, so each measurement
+     below would see the size before it and shrink the name to the floor. */
+  for (const e of todo) {
+    unhyphenate(e);
+    e.style.fontSize = e.style.minWidth = '';
+    e.style.overflowWrap = 'normal'; e.style.transition = 'none';
+  }
   const bases = todo.map(e => parseFloat(getComputedStyle(e).fontSize));
   const px = n => `${Math.floor(n * 100) / 100}px`;
   const over = e => widest(e) > room(e) - 0.05;
@@ -138,16 +189,27 @@ function fitLongWords(root = document) {
       e.style.fontSize = px(next);
     }
   });
-  for (const e of todo) { e.style.overflowWrap = ''; fitSig.set(e, sigOf(e)); }
+  /* Soft hyphens shrink an element's min-content to a few letters, and a Team
+     row (`.rrow`, flex-wrap) places its name by that: the name would jump up
+     beside the badge, into less room, and the fit would no longer hold. So a
+     name that gets them keeps the width it was fitted at. */
+  todo.forEach((e, i) => {
+    if (!(wide[i] < 1 && over(e))) return;
+    const max = room(e) - 0.05;
+    if (boxOf(e) === e) e.style.minWidth = `${e.getBoundingClientRect().width}px`;
+    hyphenate(e, max);
+  });
+  for (const e of todo) { e.style.overflowWrap = e.style.transition = ''; fitSig.set(e, sigOf(e)); }
 }
 
 /* Keep `fitLongWords` true as the page changes. A MutationObserver rather than
    a ResizeObserver: its callback is a microtask, so the fit lands before the
    frame that shows the new text is painted, it sees text and `open`/`hidden`
    changes that a ResizeObserver does not, and fitting from inside one would
-   risk "ResizeObserver loop completed" errors. The fitter only writes `style`,
-   which the observer ignores, and never adds or removes nodes, so its own
-   writes cannot call it again. Resizing the window and fonts finishing loading
+   risk "ResizeObserver loop completed" errors. The fitter writes `style`, which
+   the observer ignores, and the soft hyphens in a text node's data, which it
+   does see: that wakes it once more, but each element's signature was taken
+   after the write, so the second run touches nothing and the loop ends. Resizing the window and fonts finishing loading
    (which bumps `fitGen`, so every element is measured again) re-run it too. */
 export function initFit() {
   const run = () => fitLongWords();

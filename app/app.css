@@ -698,18 +698,22 @@ input[type=checkbox].box:checked { background: var(--tint); border-color: var(--
 input[type=checkbox].box:checked::after { content: '✓'; color: var(--tint-ink); font-size: var(--fs-footnote); font-weight: 700; display: grid; place-items: center; height: 100%; }
 
 /* ============================ budget sliders ============================ */
-.budget { display: flex; align-items: baseline; gap: .5rem; margin: .1rem 0 .7rem; }
+/* #517: the Plan sheet's body has no side padding (each block brings its
+   own), so these three take the 2rem inset of the explainer (.pgrp-f) above
+   them -- the same line the text in the cards below starts on. The By hand
+   row card itself sits at 1rem, so they stay inside its edge. */
+.budget { display: flex; align-items: baseline; gap: .5rem; margin: .1rem 2rem .7rem; }
 .budget .b-k { font-size: var(--fs-footnote); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
 .budget .b-v { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; font-size: var(--fs-secondary); transition: color var(--t-fast) var(--ease); }
 .budget .b-v.over { color: var(--err); } .budget .b-v.under { color: var(--warn); } .budget .b-v.exact { color: var(--ok); }
 .meter { position: relative; display: flex; height: .42rem; border-radius: var(--r-full);
-  background: var(--pc-track); overflow: hidden; margin-bottom: .5rem; }
+  background: var(--pc-track); overflow: hidden; margin: 0 2rem .5rem; }
 .meter i { display: block; height: 100%; background: var(--ink-2); transition: width var(--t) var(--ease), background var(--t) var(--ease); }
 .meter b { display: block; height: 100%; background: var(--err); transition: width var(--t) var(--ease); }
 .meter.exact i { background: var(--ok); }
 .meter.under i { background: var(--warn); }
 .meter.over i { background: var(--err); }
-.budget-msg { font-size: var(--fs-footnote); margin: 0 0 .55rem; color: var(--muted); transition: color var(--t-fast) var(--ease); }
+.budget-msg { font-size: var(--fs-footnote); margin: 0 2rem .55rem; color: var(--muted); transition: color var(--t-fast) var(--ease); }
 .budget-msg.under { color: var(--warn); } .budget-msg.over { color: var(--err); } .budget-msg.exact { color: var(--ok); }
 .srow { --c: var(--accent); display: grid; grid-template-columns: 4.6rem 1fr 4.1rem 2rem; gap: .55rem; align-items: center; padding: .12rem 0; }
 .srow .nm { display: flex; align-items: center; gap: .38rem; font-weight: 600; font-size: var(--fs-footnote); letter-spacing: -.015em; overflow: hidden; }
