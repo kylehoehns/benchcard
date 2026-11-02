@@ -62,8 +62,9 @@ Why a blocked action always names the fix, not just the block. See
 
 ## A boot that fails says so, and hands the season back
 
-The inline error boundary and the backup download it offers when a boot
-throws. See [architecture/boot-failure.md](architecture/boot-failure.md).
+The inline error boundary, the backup download it offers when a boot throws,
+and the one reload it tries first when the app's module fails to load. See
+[architecture/boot-failure.md](architecture/boot-failure.md).
 
 ## Hand off
 
