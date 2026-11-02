@@ -53,18 +53,18 @@ async function pagesProblems(c, origin, rec) {
   rec.check(qa, 'about.html has no Questions entry about an assistant running subs from their phone');
   rec.check(qa?.links.some(h => /advanced(\.html)?#handoff$/.test(h)), `the about entry links ${JSON.stringify(qa?.links)}, want advanced#handoff`);
   rec.check(about.text.includes(NEVER_LEAVES), 'about.html lost "Your roster never leaves your device."');
-  rec.check(/hand-?off link carries one game, with each player['\u2019]s card name, number and skill tier/i.test(about.text) && /no Benchcard server sees it/i.test(about.text),
-    'about.html privacy note does not say a hand-off link carries one game, with each player\'s card name, number and skill tier, and no Benchcard server sees it');
+  rec.check(/hand-?off link carries one game to whoever you send it to, with each player['\u2019]s card name, number and level/i.test(about.text) && /no Benchcard server sees it/i.test(about.text),
+    'about.html privacy note does not say a hand-off link carries one game, with each player\'s card name, number and level, and no Benchcard server sees it');
   await land(c, origin, { page: '/advanced.html', record: 'kept', ready: 'document.body' });
   const adv = await evalJSON(c, PAGE_TEXT);
   rec.check(adv.h2.some(([id, t]) => id === 'handoff' && t === 'Handing a game to an assistant'), `advanced.html headings: ${JSON.stringify(adv.h2.map(h => h[1]))}, want "Handing a game to an assistant" as #handoff`);
   const sec = adv.sec;
-  rec.check(/one game/i.test(sec) && /card name/i.test(sec) && /skill tier/i.test(sec) && /jersey number/i.test(sec) && !/nothing else comes/i.test(sec) && /where the game stands|where it stands/i.test(sec), 'the advanced section does not cover what travels: one game, card name, jersey number, skill tier, where the game stands');
+  rec.check(/one game/i.test(sec) && /card name/i.test(sec) && /\blevel\b/i.test(sec) && /jersey number/i.test(sec) && !/nothing else comes/i.test(sec) && /where the game stands|where it stands/i.test(sec), 'the advanced section does not cover what travels: one game, card name, jersey number, level, where the game stands');
   rec.check(/not linked|aren.t linked|stay linked|no longer linked/i.test(sec), 'the advanced section does not say the two phones are not linked afterward');
   rec.check(/Share/.test(sec) && /Hand off/.test(sec), 'the advanced section does not say where the door is (Share, then Hand off)');
   rec.check(adv.text.includes(NEVER_LEAVES), 'advanced.html lost "Your roster never leaves your device."');
-  rec.check(/hand-?off link carries one game, with each player['\u2019]s card name, number and skill tier/i.test(adv.text) && /no Benchcard server sees it/i.test(adv.text),
-    'advanced.html privacy note does not say a hand-off link carries one game, with each player\'s card name, number and skill tier, and no Benchcard server sees it');
+  rec.check(/hand-?off link carries one game to whoever you send it to, with each player['\u2019]s card name, number and level/i.test(adv.text) && /no Benchcard server sees it/i.test(adv.text),
+    'advanced.html privacy note does not say a hand-off link carries one game, with each player\'s card name, number and level, and no Benchcard server sees it');
 }
 
 export async function shareDoorPass(c, origin, rec) {

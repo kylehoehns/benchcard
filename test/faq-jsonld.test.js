@@ -160,7 +160,7 @@ test('"Could I lose my roster?" tells a coach to back up, and that the home-scre
     const entry = find(list);
     assert.ok(entry, `${where} has no "Could I lose my roster?" entry`);
     assert.match(entry.a, /backup/, `${where}: the answer does not mention a backup`);
-    assert.match(entry.a, /starts fresh, though, so save a backup first and restore it there/,
+    assert.match(entry.a, /starts empty, though, so save a backup first and restore it there/,
       `${where}: the answer does not tell a coach to save a backup first, then restore it in the home-screen app`);
   }
 });

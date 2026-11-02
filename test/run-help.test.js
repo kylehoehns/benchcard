@@ -18,7 +18,8 @@ test('the run-rule help says breaks do not reset the count and drops "the whole 
   const sits = entry('Sits at most N in a row');
   for (const e of [plays, sits]) {
     assert.ok(lacks(e, 'the whole half'), 'no "the whole half"');
-    assert.ok(flat(e).toLowerCase().includes('breaks between periods do not reset the count'), 'says breaks do not reset the count');
   }
-  assert.ok(flat(plays).includes('1 means the whole five changes at every break'), 'says what 1 means');
+  assert.ok(flat(plays).toLowerCase().includes('a break between periods is not a rest'), 'plays: says a break does not reset the count');
+  assert.ok(flat(sits).toLowerCase().includes('a break between periods does not reset the count'), 'sits: says a break does not reset the count');
+  assert.ok(flat(plays).includes('Set it to 1 and all five change at every sub'), 'says what 1 means');
 });

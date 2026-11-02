@@ -1015,7 +1015,8 @@
             <div class="wel-pane wel-pane-draw" id="welPaneScreen" role="tabpanel" aria-labelledby="welTabScreen" hidden></div>
           </div>
           <p class="wel-cap">
-            <span id="welCap">Nine players, 16 or 20 minutes each. Shuffle solves it again.</span>
+            <span id="welCap">Nine players, 16 or 20 minutes each. Shuffle
+              makes a new plan.</span>
             <!-- The same control as the games view's `#regen`, down to the icon,
                  and since A52 it calls the same solver rather than cycling a
                  baked list. It only belongs to the plan tab, so it hides with
@@ -1893,45 +1894,49 @@
           This is what most rec and youth leagues expect, and it is the right answer if
           you are not sure.</dd>
         <dt>By hand</dt>
-        <dd>You set each player’s total yourself and the plan hits it. Useful when
-          somebody has to leave early, is easing back from an injury, or a parent has
-          asked for something specific. The totals always add up to the whole game, so
-          giving one player more takes it from the others in front of you.</dd>
+        <dd>You set each player’s minutes yourself, and the plan follows them.
+          Use it when a kid has to leave early, is coming back from an injury,
+          or a parent has asked for something. The totals always add up to the
+          whole game, so giving one kid more takes minutes from someone else,
+          and you see it happen.</dd>
         <dt>Closers</dt>
-        <dd>Even minutes for most of the game, then a group you pick stays on to finish.
-          For the games that are allowed to matter.</dd>
+        <dd>Even minutes for most of the game, then a group you pick plays the
+          end. Use it for games where the score counts.</dd>
         <dt>Platoon</dt>
-        <dd>Two or three fixed fives that swap as whole units. The easiest thing to run
-          from the bench, and good for the youngest ages. The minutes only come out even
-          if the groups themselves are even.</dd>
+        <dd>Two or three set groups of five that always go in and come out
+          together. It is the easiest to run from the bench and works well for
+          the youngest kids, but minutes only come out even if the groups are
+          even.</dd>
       </dl>
 
       <h3 class="help-h">Lineup balance</h3>
-      <p class="help-p">Even minutes decides how long everyone plays, not who plays
-        together, so five players picked purely for fairness can be your five
-        youngest at once. Give each player a level on the <b>Team</b> page, by
-        tapping a player and choosing their level in the sheet that opens. You do that
-        once a season, not once a game, and the plan keeps the fives from tipping.
-        Minutes do not move. Then pick the shape under
-        <b>Lineup balance</b> beside the plan, which is a call about tonight&rsquo;s
-        opponent. Levels stay on the Team page: never printed, never shown in
-        bench mode.</p>
+      <p class="help-p">Even minutes decides how long each kid plays, not who
+        plays together. If you pick only for fairness, your five youngest can
+        end up on the floor at once. To fix that, give each player a level: on
+        the <b>Team</b> page, tap a player and pick their level. You do it
+        once a season, not every game. The plan then keeps each five evenly matched,
+        and the minutes it aims for stay the same. For each game, choose when your
+        strongest lineups play under <b>Lineup balance</b> in the game&rsquo;s
+        plan. That depends on tonight&rsquo;s opponent. Levels stay on the
+        Team page. They are never printed and never shown in bench mode.</p>
       <dl class="help-dl">
         <dt>Steady</dt>
         <dd>Every stint about as strong as every other.</dd>
         <dt>Start strong</dt>
-        <dd>Best five open the game. The closing stints go lighter in exchange. Those minutes have to land somewhere.</dd>
+        <dd>Your best five open the game, so the lineups at the end are
+          weaker.</dd>
         <dt>Finish strong</dt>
         <dd>Best five saved for the end.</dd>
         <dt>Both ends</dt>
-        <dd>Strong to open and close, softer through the middle. The one to pick to get developing players real minutes in a game you expect to be decided late.</dd>
+        <dd>Strong at the start and the end, weaker in the middle. Good for
+          giving newer players real minutes in a game you expect to stay close
+          until late.</dd>
       </dl>
 
       <h3 class="help-h">Rules</h3>
-      <p class="help-p">Rules are things you need to be true; the plan works around them.
-        Open a game and tap the rules words in the sentence under its title. That
-        is where you add one, and opening a rule you have added shows a
-        <b>Remove rule</b> button to take it away.</p>
+      <p class="help-p">A rule is something the plan must do. To add one, open
+        a game and tap the words about rules in the sentence under its title.
+        To take a rule away, open it and tap <b>Remove rule</b>.</p>
       <dl class="help-dl">
         <dt>Plays at least / Plays at most</dt>
         <dd>The fewest minutes one player gets, the most, or both. “At least 10” guarantees
@@ -1941,61 +1946,65 @@
           the last period. Overtime is not the last period. To keep a group on until
           the end, use Closers.</dd>
         <dt>Together / Apart</dt>
-        <dd>Two players who work well as a pair, or two who need separating. By default
-          “together” is a preference the plan maximizes and reports; the switch below
-          the rules makes it a hard requirement for every stint, which costs you
-          evenness.</dd>
+        <dd>Two players who work well as a pair, or two who need separating. By
+          default the plan pairs “together” players as often as it can and
+          tells you how often. The switch below the rules makes them play
+          together every stint, but minutes may come out less even.</dd>
         <dt>One of two on</dt>
         <dd>A pair you never want resting at the same time: your two ball handlers,
           or your two bigs. One of them is on the floor every stint. The mirror of
           “Apart”: that one is about the floor, this one is about the bench.</dd>
         <dt>Plays at most N in a row</dt>
-        <dd>The most stints anyone may play back to back. Stops the plan leaving a kid
-          out there too long. Breaks between periods do not reset the count, so a kid
-          who plays the end of one period and the start of the next has played two in
-          a row. A limit of 1 means the whole five changes at every break.</dd>
+        <dd>The most stints in a row a kid can play before a rest. A break
+          between periods is not a rest, so a kid who plays the end of one
+          period and the start of the next has played two in a row. Set it to
+          1 and all five change at every sub.</dd>
         <dt>Sits at most N in a row</dt>
-        <dd>The most stints anyone may sit back to back. Stops the plan leaving a kid
-          on the bench too long. Breaks between periods do not reset the count. With a big roster it can need more changes
-          at a break than you allow, and the plan says so.</dd>
+        <dd>The most stints in a row a kid can sit. A break between periods
+          does not reset the count. With a big roster, this can need more
+          players to change at once than you allow. The plan tells you
+          when.</dd>
       </dl>
-      <p class="help-p">One rule is worth setting once rather than per game. If your
-        league says everyone plays a minimum, <b>Settings</b> holds
-        <b>Everyone plays at least</b>, a minimum for the whole team that reaches
-        every available player in every game. Count it in minutes, as a share of the
-        game ("half the game" is 50 % of game), in periods, or in <b>full periods</b>
-        (each kid plays whole periods, not just the minutes), and each game owes its
-        own length. <b>Everyone plays in</b> asks that every player is on the floor
-        in each half, or in each period. A Plays at least you set on one player still
-        wins when it is higher, and a Plays at most you set still wins when it is lower.</p>
+      <p class="help-p">If your league has a minimum playing time, set it once
+        with <b>Everyone plays at least</b> in <b>Settings</b>. It covers
+        every kid at every game. Count it in minutes, as a share of the game
+        ("half the game" is 50 % of game), in periods, or in <b>full
+        periods</b>, where each kid plays whole periods. Each game works it
+        out from its own length. <b>Everyone plays in</b> makes sure every kid
+        gets on the floor in each half, or in each period. A Plays at least
+        rule on one player still wins when it is higher, and a Plays at most
+        rule still wins when it is lower.</p>
 
       <h3 class="help-h">A tournament day, and the season</h3>
-      <p class="help-p"><b>Add a game</b> on Today asks three questions -- who you're playing, who's
-        here, and how minutes should split -- then carries over the format, who is at the
-        gym and your rules from the last game, so only the opponent and tip-off are new.
-        If nothing about the game has changed, the first question offers a
-        <b>Same as …?</b> card with a one-tap <b>Add game</b> that skips straight past the
-        other two. From the second game on there is a switch called <b>Even out earlier
+      <p class="help-p"><b>Add a game</b> on Today asks three questions: who
+        you're playing, who's here, and how to split the minutes. It copies
+        the format, who is at the gym and your rules from the last game, so
+        only the opponent and tip-off are new. If nothing has changed, the
+        first question shows a <b>Same as …?</b> card. Tap <b>Add game</b>
+        there to skip the other two questions. From the second game on there
+        is a switch called <b>Even out earlier
         games</b>. Leave it on and the day evens out across every game, so a kid who sat
         more in game 1 gets it back in game 2. Turn it off and each game is fair on its
         own. The <b>Season</b> screen shows the running totals for the day.</p>
-      <p class="help-p">Once a day is over, every game you played on it is filed into the
-        <b>Season</b> screen, which keeps what each player actually played and exports as a
-        spreadsheet. Once a season has games in it, every game gets a second switch called
-        <b>Even out the season so far</b>. It starts the players who are behind for
-        the season a stint or two up, and the ones ahead a stint or two down. The switch
-        is off to begin with; <b>Settings</b> can have each new game open with it
-        already on.</p>
+      <p class="help-p">When a day is over, its games are added to the
+        <b>Season</b> screen. It keeps how much each player actually played,
+        and you can export it as a spreadsheet. Once a season has games in it,
+        every game gets a second switch called
+        <b>Even out the season so far</b>. It gives kids who are behind for
+          the season a stint or two more, and kids who are ahead a stint or
+          two less. The switch starts off. In <b>Settings</b> you can have
+          every new game start with it on.</p>
 
       <h3 class="help-h">Reading the card</h3>
       <!-- Bold here means "printed on the paper", not "stressed in this
            sentence" -- about.html's card section already made that call. -->
-      <p class="help-p">Each box is one stint. On the left is the clock:
-        <b>Q2 8:00</b> means with 8:00 left in the second period. To its right,
-        <b>▼</b> lists who is coming off. Underneath are the five who are on the floor
-        for that stretch, and the <b>underlined</b> names are the
-        ones who just came on. <b>START</b> is your starting five and <b>NO SUBS</b>
-        means nobody changes at that break. Cut along the dashed line.</p>
+      <p class="help-p">Each box is one stint, the time between two subs. On
+        the left is the clock:
+        <b>Q2 8:00</b> means 8:00 left in the second period. To its right,
+        <b>▼</b> lists who is coming off. Underneath are the five on the floor
+          until the next sub. <b>Underlined</b> names just came on.
+          <b>START</b> marks your starting five, and <b>NO SUBS</b> means
+          nobody changes at that sub. Cut along the dashed line.</p>
       <p class="help-p">Two sizes, under <b>Size</b>. <b>Pocket size</b> is 3.45 × 5 in,
         two to a sheet across, and is the one that lives in a notebook.
         <b>Half sheet</b> is 8 × 5.1 in, two down the page: the same card in bigger type
@@ -2003,17 +2012,18 @@
         on one card.</p>
 
       <h3 class="help-h">Changing the plan mid-game</h3>
-      <p class="help-p"><b>Bench mode</b> opens the game one stint at a time.
+      <p class="help-p"><b>Bench mode</b> walks you through the game one stint
+        at a time.
         Tap whoever is coming off and pick how long the change lasts.</p>
       <dl class="help-dl">
         <dt>This stint</dt>
-        <dd>A one-off swap. The rest of the game is re-planned to keep minutes even,
-          so from here on follow bench mode, not the printed card.</dd>
+        <dd>A one-time swap. The rest of the plan changes to keep minutes
+          even, so from here on follow bench mode, not the printed card.</dd>
         <dt>Rest of game</dt>
         <dd>Every remaining stint goes to the player you name. This is how you say
           “Simone takes Rafael’s minutes”.</dd>
         <dt>Sit for the rest</dt>
-        <dd>For foul trouble, when you have no opinion about who covers. It sits that
+        <dd>For foul trouble, when you don't mind who goes in. It sits that
           player for the rest of the game and spreads the minutes across everyone
           still available, counting what each has already played. Nothing already
           played moves, and the round-arrow <b>Back to the printed plan</b> button
@@ -2035,7 +2045,7 @@
         <dt>Team name</dt>
         <dd>Heads the card when a game has no opponent, and names the day above your games.</dd>
         <dt>Team color</dt>
-        <dd>Tints the primary buttons and the selected states across the app.</dd>
+        <dd>Colors the main buttons and selected options across the app.</dd>
         <dt>A game is</dt>
         <dd>Periods, and minutes in each period. A game you add copies the format from
           the game before it, so this is what a game starts as when there is
@@ -2044,24 +2054,26 @@
         <dt>A new game starts</dt>
         <dd>Every game you add can open with “Even out the season so far” already on,
           so you do not tick it each week. You can still change it per game in the
-          game's Plan, under Across the season. Until a day has been filed there
-          is no season to even out, and both settle a new game the same way.</dd>
+          game's Plan, under Across the season. Until your first game day is
+          added to the season, there is nothing to even out, so both choices
+          make the same plan.</dd>
         <dt>Players changing at once</dt>
-        <dd>How many go on together at a break. Fewer keeps the floor settled;
-          more breaks up long stretches on the bench. Totals come out the same either
-          way.</dd>
+        <dd>How many players go in at each sub. Fewer keeps the same kids
+          together longer. More means shorter waits on the bench. Totals come
+          out the same either way.</dd>
         <dt>The odd minutes</dt>
-        <dd>When the clock will not divide evenly, somebody plays one stint less. Choose
-          who lands on the high side. Minimum minutes, caps and minutes you set by hand
-          all still win. Until you set levels on the Team page, both settle it the
-          same way.</dd>
+        <dd>When the minutes do not divide evenly, some kids play
+          one stint less. Choose who gets the extra time. Minimums, Plays at most limits
+          and minutes you set by hand still come first. Until you set levels
+          on the Team page, both choices give the same result.</dd>
         <dt>Everyone plays at least</dt>
         <dd>For every player who is available. Count it in minutes, as a percent of
           the game, or in periods: 50 % of game is half of whatever length the game is,
           rounded up to a whole stint. Leave it at 0 unless your league has a rule. A
           kid who arrives late is owed the same share of the time left, not the whole
-          game's. A minimum you set on one player still wins when it is higher, a cap
-          you set still wins when it is lower, and the plan says so if the game is not
+          game's. A minimum you set on one player still wins when it is higher, a
+          Plays at most you set still wins when it is lower, and the plan says
+          so if the game is not
           long enough to give everyone that much.</dd>
         <dt>Backup and restore</dt>
         <dd>Your roster is saved in this browser and nowhere else. Clearing your history can

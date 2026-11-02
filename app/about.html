@@ -80,7 +80,7 @@
       "name": "How do you give every player equal playing time?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Stop thinking in players and think in stints. A 4 × 8 game with a change every four minutes is eight stints of five, which is forty player-slots. Eleven players share forty slots, so each gets three or four: seven on sixteen minutes and four on twelve. You could close that gap to seconds, but only by subbing at odd times like forty-four seconds left in a quarter and running lineups straight through the buzzer, and nobody is doing that from a card in a gym. So Benchcard subs on the interval you chose, never carries a stint through a period break, gets everyone on before halftime where the sub schedule allows, and remembers which four were short. Turn on the season switch and the next plan opens them ahead, at most two stints either way. Keeping that straight across a season is the part a phone is better at than a parent under pressure."
+        "text": "Count spots on the floor, not minutes. Four 8-minute quarters with a sub every four minutes is eight stints of five players, so forty spots. Eleven players share forty spots, so each gets three or four: seven play sixteen minutes and four play twelve. You could get closer, but only by subbing at odd times, like with forty-four seconds left in a quarter, and nobody can run that from a card in a gym. So Benchcard subs only at the times you chose, never carries a stint across a period break, gets everyone on the floor before halftime when the sub schedule allows, and remembers which four played less. Turn on the season switch and the next plan gives those four more time, up to two stints. A phone is better than a busy parent at keeping that straight all season."
       }
     },
     {
@@ -96,7 +96,7 @@
       "name": "Do I have to rank my players?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. Everyone starts on the same level and the plan is the same as it would be without the feature. It is there for the coach who wants even minutes and a competitive five on the floor, and it stays on the Team page: never on the card, never in bench mode."
+        "text": "No. Everyone starts on the same level, and the plan comes out the same as if levels did not exist. Levels are for coaches who want even minutes and an evenly matched five on the floor. They stay on the Team page, never on the card or in bench mode."
       }
     },
     {
@@ -112,7 +112,7 @@
       "name": "Could I lose my roster?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "It is saved on this device rather than on a server, which is the trade for having no account, so the risk is the device, not an outage. Two things cover it. Settings can write a backup file with your roster, your rules and your season in it, and read one back in the same panel. Worth doing once at the start of a season, and again any time you would hate to lose the season you have built up. And on your home screen the browser will not clear Benchcard to free up space. The home-screen app starts fresh, though, so save a backup first and restore it there."
+        "text": "It is saved on this device, not on a server. That is the trade for having no account: if something happens to the device, the roster goes with it. Two things protect it. In Settings you can save a backup file with your roster, your rules and your season, and restore it in the same place. Do it once at the start of the season, and again whenever you would hate to lose what you have. And if you add Benchcard to your home screen, the browser will not clear it to free up space. The home-screen app starts empty, though, so save a backup first and restore it there."
       }
     },
     {
@@ -120,7 +120,7 @@
       "name": "What if somebody shows up late or leaves early?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Mark who is actually at the gym before you build the plan, or give that player a minutes cap. Mid-game, bench mode lets you swap anybody and re-checks the stints that are left."
+        "text": "Before the game, mark who is at the gym, or give that player a Plays at most rule. During the game, bench mode lets you swap anyone and redoes the rest of the plan."
       }
     },
     {
@@ -136,7 +136,7 @@
       "name": "Does it work for other sports?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "The scheduling works for any sport with a fixed number on the floor and a running clock. The problem is the same one. What is basketball is the vocabulary, the card layout and the defaults: five on the floor, four periods, eight minutes each."
+        "text": "The planning works for any sport with a set number of players on the floor and a running clock. Only the words, the card and the starting settings are made for basketball: five on the floor, four periods, eight minutes each."
       }
     },
     {
@@ -144,7 +144,7 @@
       "name": "How many players does it need?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Five or more. Below five there is nothing to plan; above about fifteen the minutes get thin enough that you will want per-player minimums rather than a pure even split."
+        "text": "Five or more. With fewer than five there is nothing to plan. Past about fifteen, each kid's share gets small, and you may want to set a minimum for some players instead of a straight even split."
       }
     }
   ]
@@ -396,10 +396,10 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 <div class="wrap">
 
   <h1><span class="hl">Even minutes</span>, worked out before the game.</h1>
-  <p class="lede">Benchcard is a free substitution planner for youth basketball,
-    built around equal playing time. Give it your roster and say how the
-    minutes should be split, and it works out who is on the floor for every
-    stint, then prints it on a card that fits in your pocket.</p>
+  <p class="lede">Benchcard is a free substitution planner for youth
+    basketball, built around equal playing time. Give it your roster and say
+    how to split the minutes. It works out who is on the floor between every
+    sub, then prints the plan on a card that fits in your pocket.</p>
 
   <div class="cta">
     <a class="btn primary" href="./">Build a card</a>
@@ -426,8 +426,9 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
     <div class="plate">
       <img src="./card-sample.png" srcset="./card-sample.png 1x, ./card-sample@2x.png 2x" width="331" height="480" alt="A printed Benchcard rotation card. Each block shows the clock on the left, who is coming off after a triangle, and the five players on the floor underneath, with the players who just came on underlined.">
     </div>
-    <figcaption>The printed card, actual size. One box per stint, five
-      names each; the underlined names are the ones who just came on.</figcaption>
+    <figcaption>The printed card, actual size. Each box is one stint, the time
+      between two subs, with the five players on the floor. Underlined names
+      just came on.</figcaption>
   </figure>
 
   <!-- Nine sections, 13,630px at 390px and 33,544px at 200% text -- roughly
@@ -459,8 +460,8 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 
   <section class="reveal">
     <h2 id="problem">The problem it solves</h2>
-    <p class="lead">Eleven kids, forty player-slots, and no way to divide one by
-      the other.</p>
+    <p class="lead">Eleven kids, forty spots on the floor, and forty does not
+      divide by eleven.</p>
 
     <figure class="art">
       <div class="plate tl-plate">
@@ -532,39 +533,41 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
           </div>
         </div>
       </div>
-      <figcaption>The whole game on one screen, color-coded by player. Seven
-        land on sixteen minutes and four on twelve, because forty slots do not
-        divide by eleven, and the season further down remembers which four.</figcaption>
+      <figcaption>The whole game on one screen, one color per player. Seven
+        kids play sixteen minutes and four play twelve, because forty spots do
+        not divide by eleven. The season, further down, remembers which four
+        got less.</figcaption>
     </figure>
 
-    <p>You have eleven kids and a thirty-two minute game. Five are on the floor at
-      a time, so there are forty player-slots to hand out, and forty does not
-      divide by eleven. Somebody is getting more and somebody is getting less, and
-      the parents in the third row are counting.</p>
-    <p>Most coaches do this in the car, on the back of the schedule, five minutes
-      before tip-off, and then lose track by the third quarter. A rotation
-      plan is not a thing you can hold in your head while you are also coaching.
-      Benchcard does the arithmetic once, honestly, and hands you a piece of paper
-      that tells you what to do at every break.</p>
+    <p>Say you have eleven kids and a thirty-two minute game, with a sub every
+      four minutes. Five play at a time, so there are forty spots on the floor
+      to hand out, and forty does not divide by eleven. Some kids will play
+      more than others, and the parents in the third row are counting.</p>
+    <p>Most coaches work this out in the car, on the back of the schedule,
+      five minutes before tip-off. By the third quarter they have lost track.
+      It is hard to keep a rotation in your head while you coach. Benchcard
+      does the math once and gives you a card that says who goes in at every
+      sub.</p>
   </section>
 
   <section class="reveal">
     <h2 id="how">How it works</h2>
-    <p class="lead">Five steps, and the fifth one is the game itself.</p>
+    <p class="lead">Five steps, from your roster to the game.</p>
     <ol class="steps">
-      <li><b>Put in your roster.</b> One player per line, jersey numbers optional.
-        Paste it in from the team email or the group chat it already lives in, and
-        Benchcard reads the numbers off either end.</li>
-      <li><b>Say how long the game is.</b> Periods, minutes per period, and how
-        often you want to substitute. Four eight-minute quarters with a change
-        every four minutes is the common one.</li>
+      <li><b>Put in your roster.</b> One player per line. Jersey numbers are
+        optional. You can paste the list from the team email or group chat,
+        and Benchcard picks up a number before or after the name.</li>
+      <li><b>Say how long the game is.</b> How many periods, how many minutes
+        each, and how often you want to sub. A common one is four 8-minute
+        quarters with a sub every four minutes.</li>
       <li><b>Choose how the minutes get split.</b> The four plans are below, and
         you can add any rules you need.</li>
       <li><b>Print the card.</b> Pocket size for a notebook, half sheet if you
         carry a clipboard. Cut on the dashed line.</li>
-      <li><b>Run the game off it.</b> The card is enough on its own; if you would
-        rather use the phone, bench mode shows the next change in large
-        type and lets you swap someone on the fly.</li>
+      <li><b>Run the game off it.</b> The card is all you need. If you would
+        rather use your device, tap <b>Start game</b>: bench mode shows the
+        next sub in large type and lets you swap a player during the
+        game.</li>
     </ol>
 
     <!-- Narrower than the card figure: a 390x844 phone at the card's 332px would
@@ -582,28 +585,29 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
       <div class="bezel">
         <img src="./bench-sample.png" width="264" height="571" loading="lazy" decoding="async" alt="Bench mode on a phone, at the third stint of eight and the start of the second quarter. Five players are listed on the floor with their jersey colors, minutes played and projected, and the three who just came on are tagged. Below them a shaded panel reads Next change at 4:00, with three names coming off and three going on, then the bench with an instruction to tap a player on the floor to swap, then large buttons to step through the game.">
       </div>
-      <figcaption>Bench mode, mid-game. Who is on, what each has played against
-        what they are on track for, and the next change spelled out. One
-        tap moves the game along.</figcaption>
+      <figcaption>Bench mode during a game. It shows who is on, how many
+        minutes each kid has played and will end up with, and who goes in at
+        the next sub. One tap moves to the next sub.</figcaption>
     </figure>
 
     <!-- A20 slice 3. This paragraph used to recite the swap sheet's three
          buttons by name. Those are in-app control labels, which is the detail
          a high-level page hands off: `#help` names all three for the coach
          standing at the bench, and so does the reference this links to. -->
-    <p>Games do not run to plan, so bench mode lets you change one. Tap whoever
-      is coming off and say how long they are out for: one stint, the rest of
-      the game, or sit them and let everyone else absorb the minutes. The stints
-      that are left are worked out again around it, nothing already played
-      moves, and one tap puts the printed plan back.</p>
+    <p>Games don't always go to plan, so bench mode lets you change it. Tap
+      the player coming off and say how long they sit: just until the next
+      sub, the rest of the game, or the rest of the game with their minutes
+      shared among everyone else. Benchcard redoes the rest of the game around
+      it. The part already played stays as it was, and one tap puts the
+      printed plan back.</p>
     <p class="more"><a href="./advanced#midgame">Changing the plan mid-game, in
       detail</a></p>
   </section>
 
   <section class="reveal">
     <h2 id="splits">The four ways to split a game</h2>
-    <p class="lead">Four sample players, one game, four different shapes. The
-      number on the right is what that player ends the game on.</p>
+    <p class="lead">Four sample players in one game, split four ways. The
+      number on the right is how many minutes each player ends up with.</p>
 
     <div class="box">
       <h3>Even</h3>
@@ -626,11 +630,11 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
         <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 214)"><span class="trk"><i class="blk" style="left:25%;width:25%"></i><i class="blk" style="left:87.5%;width:12.5%"></i></span><span class="mn">12</span></span>
         <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 304)"><span class="trk"><i class="blk" style="left:25%;width:12.5%"></i><i class="blk" style="left:62.5%;width:25%"></i></span><span class="mn">12</span></span>
       </div>
-      <p class="tight">You set each player's total yourself and the plan hits it.
-        Useful when somebody has to leave early, is easing back from an injury, or
-        a parent has asked for something specific. The totals always add up to the
-        whole game, so giving one player more takes it from the others, in front
-        of you rather than by accident.</p>
+      <p class="tight">You set each player's minutes yourself, and the plan
+        follows them. Use it when a kid has to leave early, is coming back
+        from an injury, or a parent has asked for something. The totals always
+        add up to the whole game, so giving one kid more takes minutes from
+        someone else, and you see it happen.</p>
     </div>
     <div class="box">
       <h3>Closers</h3>
@@ -641,8 +645,8 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
         <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 214)"><span class="trk"><i class="band" style="left:75%;width:25%"></i><i class="blk" style="left:0%;width:25%"></i><i class="blk" style="left:50%;width:25%"></i></span><span class="mn">16</span></span>
         <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 304)"><span class="trk"><i class="band" style="left:75%;width:25%"></i><i class="blk" style="left:12.5%;width:25%"></i><i class="blk" style="left:50%;width:25%"></i></span><span class="mn">16</span></span>
       </div>
-      <p class="tight">Even minutes for most of the game, then a group you pick
-        stays on to finish. For the games that are allowed to matter.</p>
+      <p class="tight">Even minutes for most of the game, then a group you
+        pick plays the end. Use it for games where the score counts.</p>
     </div>
     <div class="box">
       <h3>Platoon</h3>
@@ -652,9 +656,10 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
         <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 214)"><span class="trk"><i class="blk" style="left:25%;width:25%"></i><i class="blk" style="left:75%;width:25%"></i></span><span class="mn">16</span></span>
         <span class="sr" style="--c:oklch(var(--pc-l) var(--pc-c) 304)"><span class="trk"><i class="blk" style="left:25%;width:25%"></i><i class="blk" style="left:75%;width:25%"></i></span><span class="mn">16</span></span>
       </div>
-      <p class="tight">Two or three fixed fives that swap as whole units. The
-        easiest thing to run from the bench and good for the youngest ages, but
-        the minutes only come out even if the groups themselves are even.</p>
+      <p class="tight">Two or three set groups of five that always go in and
+        come out together. It is the easiest to run from the bench and works
+        well for the youngest kids, but minutes only come out even if the
+        groups are even.</p>
     </div>
     <p class="more"><a href="./advanced#splits">Each of the four, worked
       through</a></p>
@@ -662,8 +667,8 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 
   <section class="reveal">
     <h2 id="lineups">Even minutes without lopsided lineups</h2>
-    <p class="lead">A five-step level per player on the Team page, and one
-      choice per game about where your strongest lineups fall.</p>
+    <p class="lead">Give each player a level on the Team page, then choose for
+      each game when your strongest lineups play.</p>
 
     <!-- A20 slice 3 moved the shape segment to advanced.html and said it had
          moved the roster-levels plate there too. IT HAD NOT: checked
@@ -680,15 +685,14 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
          shapes, the tie-break -- is still on advanced.html and still linked at
          the foot of this section. -->
 
-    <p>Even minutes decides <em>how long</em> everybody plays. It says nothing
-      about <em>who plays together</em>, and five players picked purely for
-      fairness can be your five youngest all at once. That is the moment most
-      coaches give up on even minutes altogether.</p>
-    <p>So you can give each player a level on the Team page, once a
-      season rather than once a game, and Benchcard keeps the lineups from
-      tipping. Everyone&rsquo;s share of the minutes is still worked out without
-      the levels: they change who shares the floor, not how long anyone is on
-      it.</p>
+    <p>Even minutes decides <em>how long</em> each kid plays, not <em>who
+      plays together</em>. If you pick only for fairness, your five youngest
+      can end up on the floor at once. That is when many coaches give up on
+      even minutes.</p>
+    <p>So you can give each player a level on the Team page. You do it once a
+      season, not every game, and Benchcard keeps each five on the floor
+      evenly matched. Levels do not change how many minutes the plan aims to
+      give each kid. They change who plays together.</p>
 
     <figure class="art">
       <div class="plate">
@@ -720,33 +724,31 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
           <span class="lv-word">Learning</span>
         </div>
       </div>
-      <figcaption>Tap a player on the Team page and choose their level in the
-        sheet that opens. Everyone starts on the middle step, which is what
-        makes the feature off until you use it.</figcaption>
+      <figcaption>On the Team page, tap a player and pick their level.
+        Everyone starts on the middle step, so nothing changes until you set
+        some levels.</figcaption>
     </figure>
-    <p>Then, beside the plan for each game, you choose the shape. Which end of
-      the game your stronger lineups fall on is a call about tonight&rsquo;s
-      opponent, not about your team:</p>
+    <p>Then, for each game, you choose when your stronger lineups play. That
+      depends on tonight&rsquo;s opponent, so you set it per game:</p>
     <ul>
       <li><b>Steady</b> — every stint about as strong as every other.</li>
       <li><b>Start strong</b> — your best five open the game.</li>
-      <li><b>Finish strong</b> — the reverse, saving them to close it out.</li>
+      <li><b>Finish strong</b> — your best five finish the game.</li>
       <li><b>Both ends</b> — strong to open and strong to finish, softer in the
         middle.</li>
     </ul>
-    <p>A level is a note about your rotation, not a rating of a child: it lives
-      on the Team page, and it is never printed on the card, never shown in
-      bench mode, and never included when you share the card as an image. And the
-      whole feature is off until you use it. Every player starts on the middle
-      level, so every five is worth the same and the plan you get is exactly the
-      plan you got before.</p>
+    <p>A level is a note for planning your rotation, not a grade for a child.
+      It stays on the Team page. It is never printed on the card, never shown
+      in bench mode, and never included when you share the card as an image.
+      If you never set levels, nothing changes: everyone starts on the middle
+      level, and your plan comes out the same as before.</p>
     <p class="more"><a href="./advanced#shapes">Levels and shapes in detail</a></p>
   </section>
 
   <section class="reveal">
     <h2 id="rules">Rules the plan works around</h2>
-    <p class="lead">Each one reads back as a sentence, and the plan is built
-      around all of them at once.</p>
+    <p class="lead">Each rule reads as a plain sentence, and the plan follows
+      all of them at once.</p>
 
     <figure class="art">
       <div class="plate">
@@ -761,14 +763,15 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
           <div class="rrule"><span class="rrule-t">Rafael or Devon is always on the floor</span><i class="rrule-chev"></i></div>
         </div>
       </div>
-      <figcaption>Seven rules on one game. Nothing shows until a rule exists, and
-        opening one shows a Remove rule button to take it off again.</figcaption>
+      <figcaption>Seven rules on one game. The list is empty until you add a
+        rule. Open a rule to see a Remove rule button.</figcaption>
     </figure>
 
-    <p>Rules are things that have to be true; everything else bends around them.</p>
+    <p>A rule is something the plan must do. Everything else fits around your
+      rules.</p>
     <ul>
-      <li><b>Minimum</b> and <b>Cap</b> — at least, or at most, a number of
-        minutes for one player.</li>
+      <li><b>Plays at least</b> and <b>Plays at most</b> — the fewest or the
+        most minutes one player gets.</li>
       <li><b>Starting five</b> and <b>Starts the last period</b> — who is out there at
         tip-off, and who is on when the last period begins.</li>
       <li><b>Together</b> / <b>Apart</b> — two players who share the floor
@@ -776,12 +779,12 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
       <li><b>One of two on</b> — a pair you never want resting at the same time:
         name your two ball handlers and one of them is on the floor every
         stint.</li>
-      <li><b>Plays at most N in a row</b> — the most stints anyone may play back
-        to back. Breaks between periods do not reset the count, so a kid who
-        plays the end of one period and the start of the next has played two in
-        a row. A limit of 1 means the whole five changes at every break.</li>
-      <li><b>Sits at most N in a row</b> — the most stints anyone may sit back to
-        back. Breaks between periods do not reset that count either.</li>
+      <li><b>Plays at most N in a row</b> — the most stints in a row a kid can
+        play before a rest. A break between periods is not a rest, so a kid
+        who plays the end of one period and the start of the next has played
+        two in a row. Set it to 1 and all five change at every sub.</li>
+      <li><b>Sits at most N in a row</b> — the most stints in a row a kid can
+        sit. A break between periods does not reset this count either.</li>
     </ul>
 
     <!-- The league minimum is deliberately NOT in the list above and not an
@@ -793,59 +796,59 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
          minimum wins when it is higher, and a hand-set cap wins when it is
          lower, so a cap under a league rule holds rather than becoming a
          MIN_ABOVE_CAP error nobody asked for. -->
-    <p>One of these is worth setting once rather than per game. If your league
-      says everyone plays a minimum, Settings holds one number for the whole
-      team: <b>Everyone plays at least … min</b>. It reaches every available
-      player in every game, so you do not add a rule each time. The number can
-      count in minutes, as a share of the game, in periods, or in full periods,
-      where a kid plays whole periods start to finish. A second choice in
-      Settings, <b>Everyone plays in</b>, asks that every kid is on the floor in
-      each half, or in each period.</p>
+    <p>If your league has a minimum playing time, set it once in Settings
+      instead of adding a rule every game. The setting is <b>Everyone plays at
+      least … min</b>, and it covers every kid who is at the game. You can
+      count it in minutes, as a share of the game, in periods, or in full
+      periods, where a kid plays whole periods start to finish. Another
+      setting, <b>Everyone plays in</b>, makes sure every kid gets on the
+      floor in each half, or in each period.</p>
     <p class="more"><a href="./advanced#rules">All seven rules, and what happens
       when two of them disagree</a></p>
   </section>
 
   <section class="reveal">
     <h2 id="tournament">A tournament day</h2>
-    <p class="lead">And, once you have finished a few games, a season that
-      remembers who has been short.</p>
+    <p class="lead">After a few games, Benchcard also keeps track of who has
+      played less over the season.</p>
 
     <!-- A20 slice 3. The season plate and its adjustment list moved to
          advanced.html. The differentiator is the SENTENCE -- nobody else plans
          across a season -- and the season drawn row by row is reference. -->
 
     <p>Add a second game and it copies the format, who is at the gym and your
-      rules. Only the opponent and tip-off are new. From there the day balances
-      across every game by default, so a player who sat more in game one gets it
-      back in game two. Turn that off and each game is fair on its own. A running
+      rules. Only the opponent and tip-off are new. By default, minutes even
+      out across the whole day, so a kid who sat more in game one plays more
+      in game two. Turn that off and each game is fair on its own. A running
       total shows where everyone stands.</p>
-    <p>A season works the same way over a longer clock. Each finished game is
-      filed into the season, and the per-game switch <b>Even out the season so far</b>
-      opens each player&rsquo;s minutes ahead or behind by how far they
-      are off their share of everything played to date. The adjustment is at
-      most two stints either way, and never over a cap or a locked number.
-      It is off unless you turn it on,
-      and the numbers it handed the plan are printed underneath it, so a target
-      never moves without saying why.</p>
+    <p>The season works the same way over more games. Each finished game is
+      added to the season. Turn on <b>Even out the season so far</b> for a
+      game, and kids who are behind for the season get a little more time,
+      while kids who are ahead get a little less. It moves anyone by at most
+      two stints, and never past a Plays at most limit or minutes you locked
+      by hand. It is off until you turn it on, and the changes it made are
+      listed under the switch, so you can always see why someone&rsquo;s
+      minutes moved.</p>
     <p class="more"><a href="./advanced#season">The season in detail</a></p>
   </section>
 
   <section class="reveal">
     <h2 id="card">Reading the card</h2>
-    <p class="lead">One box per stint, and nothing on it you have to
-      decode in a hurry.</p>
+    <p class="lead">Each box is one stint, and everything on it is quick to
+      read.</p>
 
     <!-- A20 slice 3. The three-block paper mock and its legend moved to
          advanced.html. The hero at the top of this page is a photograph-true
          render of the same card at actual size, so a reader here has already
          SEEN one -- what is left is the sentence that decodes it. -->
 
-    <p>Each box is one stint. On the left is the clock: <b>Q2 8:00</b>
+    <p>Each box is one stint, the time between two subs. On the left is the
+      clock: <b>Q2 8:00</b>
       means eight minutes left in the second period. To its right, <b>▼</b> lists
-      who is coming off. Underneath are the five who are on the floor for that
-      stretch, and the underlined names are the ones who just came on.
-      <b>START</b> is your starting five; <b>NO SUBS</b> means nobody changes at
-      that break. Print it pocket size for a notebook, or half sheet if you carry
+      who is coming off. Underneath are the five on the floor until the next
+      sub. Underlined names just came on. <b>START</b> marks your starting
+      five, and <b>NO SUBS</b> means nobody changes at that sub. Print it
+      pocket size for a notebook, or half sheet if you carry
       a clipboard.</p>
     <p class="more"><a href="./advanced#card">The card block by block, in both
       sizes</a></p>
@@ -857,10 +860,10 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
         server holding your team, so clearing your browser data clears it too.
         The site counts anonymous usage (page views, and which features get used)
         so I can see what is worth building next; those are counters only, never
-        a name, a team or an opponent. A hand-off link carries one game, with each
-        player&rsquo;s card name, number and skill tier, to whoever you send it
-        to; the game rides after the
-        <code>#</code>, which a browser never sends, so no Benchcard server sees
+        a name, a team or an opponent. A hand-off link carries one game to
+        whoever you send it to, with each player&rsquo;s card name, number and
+        level. The game is stored after the <code>#</code> in the link.
+        Browsers never send that part to a server, so no Benchcard server sees
         it.</p>
     </div>
   </section>
@@ -870,19 +873,18 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
     <div class="faq">
       <details class="qa">
         <summary>How do you give every player equal playing time?</summary>
-        <p>Stop thinking in players and think in stints. A 4 × 8 game with a change
-          every four minutes is eight stints of five, which is forty player-slots.
-          Eleven players share forty slots, so each gets three or four: seven on
-          sixteen minutes and four on twelve. You could close that gap to seconds,
-          but only by subbing at odd times like forty-four seconds left in a
-          quarter and running lineups straight through the buzzer, and nobody is
-          doing that from a card in a gym. So Benchcard subs on the interval you
-          chose, never carries a stint through a period break, gets everyone on
-          before halftime where the sub schedule allows, and remembers which four
-          were short. Turn on the season switch and the
-          next plan opens them ahead, at most two stints either way. Keeping that
-          straight across a season is the part a phone is better at than a parent
-          under pressure.</p>
+        <p>Count spots on the floor, not minutes. Four 8-minute quarters with
+          a sub every four minutes is eight stints of five players, so forty
+          spots. Eleven players share forty spots, so each gets three or four:
+          seven play sixteen minutes and four play twelve. You could get
+          closer, but only by subbing at odd times, like with forty-four
+          seconds left in a quarter, and nobody can run that from a card in a
+          gym. So Benchcard subs only at the times you chose, never carries a
+          stint across a period break, gets everyone on the floor before halftime when
+          the sub schedule allows, and remembers which four played less. Turn
+          on the season switch and the next plan gives those four more time,
+          up to two stints. A phone is better than a busy parent at keeping
+          that straight all season.</p>
       </details>
 
       <!-- The href has to match TIP_URL in app.js; test/analytics.test.js pins
@@ -900,10 +902,10 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 
       <details class="qa">
         <summary>Do I have to rank my players?</summary>
-        <p>No. Everyone starts on the same level and the plan is the same as it
-          would be without the feature. It is there for the coach who wants even
-          minutes <em>and</em> a competitive five on the floor, and it stays on the
-          Team page: never on the card, never in bench mode.</p>
+        <p>No. Everyone starts on the same level, and the plan comes out the
+          same as if levels did not exist. Levels are for coaches who want
+          even minutes <em>and</em> an evenly matched five on the floor. They stay on
+          the Team page, never on the card or in bench mode.</p>
       </details>
 
       <details class="qa">
@@ -921,21 +923,22 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
            cleanup", which clearing site data still beats. -->
       <details class="qa">
         <summary>Could I lose my roster?</summary>
-        <p>It is saved on this device rather than on a server, which is the trade
-          for having no account, so the risk is the device, not an outage. Two
-          things cover it. Settings can write a backup file with your roster, your
-          rules and your season in it, and read one back in the same panel. Worth
-          doing once at the start of a season, and again any time you would hate
-          to lose the season you have built up. And on your home screen the
-          browser will not clear Benchcard to free up space. The home-screen app
-          starts fresh, though, so save a backup first and restore it there.</p>
+        <p>It is saved on this device, not on a server. That is the trade for
+          having no account: if something happens to the device, the roster
+          goes with it. Two things protect it. In Settings you can save a
+          backup file with your roster, your rules and your season, and
+          restore it in the same place. Do it once at the start of the season,
+          and again whenever you would hate to lose what you have. And if you
+          add Benchcard to your home screen, the browser will not clear it to
+          free up space. The home-screen app starts empty, though, so save a
+          backup first and restore it there.</p>
       </details>
 
       <details class="qa">
         <summary>What if somebody shows up late or leaves early?</summary>
-        <p>Mark who is actually at the gym before you build the plan, or give that
-          player a minutes cap. Mid-game, bench mode lets you swap anybody and
-          re-checks the stints that are left.</p>
+        <p>Before the game, mark who is at the gym, or give that player a
+          Plays at most rule. During the game, bench mode lets you swap anyone
+          and redoes the rest of the plan.</p>
       </details>
 
       <details class="qa">
@@ -949,17 +952,17 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
 
       <details class="qa">
         <summary>Does it work for other sports?</summary>
-        <p>The scheduling works for any sport with a fixed number on the floor and
-          a running clock. The problem is the same one. What is basketball is the
-          vocabulary, the card layout and the defaults: five on the floor, four
+        <p>The planning works for any sport with a set number of players on
+          the floor and a running clock. Only the words, the card and the
+          starting settings are made for basketball: five on the floor, four
           periods, eight minutes each.</p>
       </details>
 
       <details class="qa">
         <summary>How many players does it need?</summary>
-        <p>Five or more. Below five there is nothing to plan; above about fifteen
-          the minutes get thin enough that you will want per-player minimums rather than a
-          pure even split.</p>
+        <p>Five or more. With fewer than five there is nothing to plan. Past
+          about fifteen, each kid's share gets small, and you may want to set
+          a minimum for some players instead of a straight even split.</p>
       </details>
     </div>
   </section>
@@ -991,7 +994,7 @@ summary { -webkit-tap-highlight-color: transparent; touch-action: manipulation; 
   </div>
 
   <footer>
-    <span>Benchcard — free, offline, and yours.</span>
+    <span>Benchcard is free and works offline.</span>
     <a href="./">Open the app</a>
     <!-- The address is spelled out here rather than hidden behind the word
          "Contact": this page is the crawlable prose, and a sports director

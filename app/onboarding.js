@@ -322,7 +322,7 @@ function demoFigure(pane, src, alt, srcset) {
 const CAPS = {
   plan: null,   // written by renderDemo, which is the only thing that knows
   paper: 'The printed card, actual size. Cut it out and put it in your pocket.',
-  screen: 'Bench mode. Minutes played against projected, and the next change.',
+  screen: 'Bench mode during a game: minutes played so far, minutes by the end, and the next sub.',
 };
 function showStage(which) {
   for (const [tab, pane, key] of [['#welTabPlan', '#welPanePlan', 'plan'],

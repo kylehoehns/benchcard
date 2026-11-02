@@ -1,4 +1,5 @@
 [
+  { "date": "2026-11-02", "text": "Help, the tour and the About page now use plainer words and shorter sentences." },
   { "date": "2026-11-02", "text": "If Benchcard doesn’t load on a weak connection, it now tries once more by itself. If that fails too, it offers to save your backup and shows a Reload button instead of a blank screen." },
   { "date": "2026-11-02", "text": "New in Settings: you can set the minimum playing time in whole periods. Pick 2, and every kid plays two full periods, start to finish." },
   { "date": "2026-11-02", "text": "New in Settings: make sure every kid gets in at least once each half, or once each quarter." },

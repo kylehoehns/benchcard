@@ -253,12 +253,12 @@ const COPY = {
      its own artefact shows. */
   lede: (n, f) =>
     `A printable substitution chart for ${n} players over four 8-minute ` +
-    `quarters, subbing every 4 minutes: ${f.minutes}, as close to equal ` +
-    `playing time as the arithmetic allows.`,
+    `quarters, subbing every 4 minutes. That is ${f.minutes}, as close to equal ` +
+    `playing time as the math allows.`,
   caption: (n, f) =>
-    `Each box is one stint: the clock is time left in the period, and ` +
-    `the underlined names just came on. ${f.stints} stints, five on the floor, ` +
-    `and it cuts out to fit a pocket.`,
+    `Each box is one stint, the time between two subs. The clock shows time ` +
+    `left in the period, and the underlined names just came on. ${f.stints} ` +
+    `stints with five on the floor, and it cuts out to fit a pocket.`,
   /* The trust line, and the one thing these pages were missing. A coach who
      arrives here from a search result meets a rotation chart and two buttons
      with no idea what the thing costs or what happens to the names they type;
@@ -326,7 +326,7 @@ const HALVES = {
       `${f.minutes}. Free, no signup, works offline.`,
     lede: f =>
       `A printable substitution chart for 10 players over two 20-minute halves, ` +
-      `subbing every 4 minutes: ${f.minutes}, as close to equal playing time as the arithmetic allows.`,
+      `subbing every 4 minutes. That is ${f.minutes}, as close to equal playing time as the math allows.`,
     caption: f => COPY.caption(10, f),
   },
 };
@@ -529,7 +529,7 @@ ${jsonld}
   ${links}
 
   <footer class="chart-foot noprint">
-    <span>Benchcard — free, offline, and yours.</span>
+    <span>Benchcard is free and works offline.</span>
     <a href="./">Open the app</a>
     <a href="./about">How it works</a>
     <a href="mailto:hello@benchcard.app">hello@benchcard.app</a>

@@ -124,7 +124,9 @@ export const FEATURES = [
 
   /* #75 item 6: about.html and advanced.html dropped "minutes limit" (one
    * phrase for the app's `minimum`/`cap` pair, per `shipped()`'s note below)
-   * for the glossary's own two rules, named side by side ("Minimum and Cap").
+   * for the glossary's own two rules, named side by side. #536 renamed them on
+   * those two pages to the app's own labels, "Plays at least" and "Plays at
+   * most", so all three surfaces now share one term.
    * #136 moved `#help` onto the Add a rule labels (`KINDS` in rules.js):
    * its `<dt>`s read "Plays at least / Plays at most" and "Starting five /
    * Starts the last period", so those two keys are per-surface the same way
@@ -133,7 +135,7 @@ export const FEATURES = [
    * the same words about.html and advanced.html already used, so those
    * three keys below are plain arrays rather than per-surface objects. */
   { key: 'rule:limit', src: 'rules.js KINDS',
-    term: { '#help': ['plays at least'], 'about.html': ['minimum'], 'advanced.html': ['minimum'] } },
+    term: ['plays at least'] },
   { key: 'rule:starts', src: 'rules.js KINDS', term: ['starting five'], text: ['starting five'] },
   { key: 'rule:lastq', src: 'rules.js KINDS',
     term: { '#help': ['starts the last period'], 'about.html': ['starts the last period'], 'advanced.html': ['starts the last period'] } },

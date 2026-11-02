@@ -140,7 +140,7 @@ test('tour step 1 tells the coach to mark who is not here, not to mark someone a
   assert.ok(start > 0, 'tour.js no longer declares `const TOUR = [`');
   const m = tour.slice(start).match(/body:\s*(['"])((?:\\.|(?!\1).)*)\1/);
   assert.ok(m, 'step 1 has no `body:` string');
-  assert.equal(m[2], "Everyone on the roster is available. Tap the number of players to mark who isn't here, and the rotation rebuilds.");
+  assert.equal(m[2], "Everyone on the roster is available. Tap the number of players to mark who isn't here, and the plan updates.");
 });
 
 /* Survey's three more coach-visible "rebalanc" strings the issue did not
