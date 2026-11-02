@@ -2022,8 +2022,25 @@ function describe448() {
     }
   });
 
+  test('#449 levels never move minutes, with a start too (the balance pass is minute-neutral)', () => {
+    // a start from another seed is not what this solve would find, and under levels
+    // the second pass must not swap it in with different totals than the first gave
+    const NINE = TEN.slice(0, 9);
+    const leveled = NINE.map((p, i) => ({ ...p, tier: [1, 5, 3, 2, 4, 1, 5, 3, 2][i] }));
+    const flat = NINE.map(p => ({ ...p, tier: 3 }));
+    const go = (players, start) => generatePlan({
+      players, availableIds: NINE.map(p => p.id), format: QUARTERS, granularity: EVERY_4, seed: 1, maxSubs: 3,
+      balance: 'even', constraints: {}, start,
+    });
+    const start = rows(generatePlan({
+      players: leveled, availableIds: NINE.map(p => p.id), format: QUARTERS, granularity: EVERY_4, seed: 8, maxSubs: 3,
+      balance: 'even', constraints: {},
+    }));
+    assert.deepEqual(go(leveled, start).minutes, go(flat, start).minutes);
+  });
+
   test('#449 a rule the start breaks is repaired, and most seats stay', () => {
-    // Apart A-B: the opening five holds both, so stint 0 must change; the rest should mostly stay
+    // Apart H-I: the start has them on together in two stints, so those rows must change; the rest should mostly stay
     const first = solve(2);
     const edited = { avoids: [['F', 'G'], ['H', 'I']] };
     const warm = solve(2, { start: rows(first) }, edited);
@@ -2031,6 +2048,7 @@ function describe448() {
     assert.ok(warm.ok);
     for (const lu of rows(warm)) assert.ok(!(lu.includes('H') && lu.includes('I')), `H and I together: ${lu}`);
     const moved = (a, b) => rows(a).reduce((m, r, i) => m + r.filter(id => !rows(b)[i].includes(id)).length, 0);
-    assert.ok(moved(first, warm) <= moved(first, cold), `warm moved ${moved(first, warm)}, cold ${moved(first, cold)}`);
+    assert.ok(moved(first, warm) <= moved(first, cold) / 2, `warm moved ${moved(first, warm)}, cold ${moved(first, cold)}`);
+    assert.ok(moved(first, warm) <= 8, `warm moved ${moved(first, warm)} of 40 seats`);
   });
 }

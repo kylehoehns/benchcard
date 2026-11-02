@@ -34,12 +34,14 @@ lost. Now the lock is raised to the minimum, and the plan says so.
 | One of two on and a pinned five | The pinned five holds. Refused as `FORCED_GROUP_KEEPON` when the pins make it impossible; otherwise, if the search misses, the note names the pins. | Warning `KEEPON_PARTIAL`, or the refusal. | `planning-strategies.md`; [Choices](#choices-behind-the-table) |
 | A pinned five (Starting five or Starts the last period) and a minimum | The pinned five. The minimum can slip, and the note says why. | `MIN_MISSED` names the pinned five when it filled a stint the player sat. | [Choices](#choices-behind-the-table) |
 | A pinned five and a cap (Plays at most minutes) | The pin holds over the cap. Refused with `PINS_OVER_CAP` when the cap cannot cover the pins. | Error naming the player. | "A pin is held over a cap, or refused up front, never dropped quietly" |
+| Plays at most and a mid-game re-plan the caps cannot fill | The floor. Caps rise for the rest only as far as five need. Played stints stay. | Note `CAP_RELAXED` names who is over. | "A cap the time left cannot fill is relaxed for the rest, not the past (#490)" |
 | A pinned five and Plays at most N in a row, or Sits at most N in a row | The pinned five. A pinned overtime five that breaks one of these is kept and reported. | Warning `PIN_BREAKS_RULE` in an overtime. | "A pinned lineup outranks the consecutive-stint limit"; "A pinned overtime five that breaks a rule is kept and reported" |
 | An overtime five (pinned, or picked by Strongest five) and Apart or a cap | The five. | Warning `PIN_BREAKS_RULE` naming the kids and the rule broken. | "A pinned overtime five that breaks a rule is kept and reported"; [ADR 0001](adr/0001-level-picks-the-overtime-five.md) |
 | A hand-set minute target and a cap | The target. | Nothing beyond the target warnings. | "A coach's minute target is a pin, not a preference" |
 | Players changing at once and minutes | The change limit is a preference. The plan goes over it when holding it would cost minutes. | `SUBS_EXCEEDED` says so. | "How many change at once" is a preference, and the plan says when it misses |
 | Odd minutes and any minimum, cap, lock or hand-set number | The minimum, cap, lock or number. The odd minutes go to whoever the tie-break favors among the rest. | The spread note names who pays. | "The stance on that tie is the coach's"; "Somebody has to play the odd stint" |
 | Everyone plays before halftime and the change limit | The change limit governs the early minutes. A number the coach set by hand is not overridden. | `HALF_LATE` names who is still waiting and which limit bound. | "Everyone plays before halftime, and it is a default rather than a setting" |
+| A kid who plays before halftime and never after | The plan as built. No cost term. | Warning `HALF_EARLY` names them. | "Somebody who plays before halftime and never after is named (#448)" |
 | A hand-set number or a lock and the season evening-out switch | The hand-set number or the lock. The switch writes a target only where there is none. | The switch's own lines under it. | "And it can plan the next game" |
 | A long sit and the change limit | The change limit. The long-sit charge never breaks it to shorten a sit. | Nothing. | "Long sits cost more than short ones, up to the change limit" |
 
@@ -62,6 +64,7 @@ player's target" is the number the plan is trying to hit for them.
 | Plays at most N in a row over the limit, or Sits at most N in a row over it | 400 times the square of the stints over |
 | A player not on the floor before halftime, when the roster is small enough for that to be possible | 200 each (`LATE_WEIGHT`) |
 | A stint's strength away from its balance target (Lineup balance) | 5 per point (`BALANCE_WEIGHT`) |
+| A seat not in the previous plan's fives, on a rule edit only | 5 per seat (`START_WEIGHT`), below every rule term |
 | A Together pair split across a stint | 25 per minute under soft Together; 400 per minute under Force Together |
 | One of two on, with both players off the floor | 1000 per minute |
 
@@ -232,7 +235,7 @@ text left open, and a future reader needs them to read the plan.
   `computeAll` uses the scaled figure too, so marking a late kid here does not
   refuse the whole game for a minimum they are no longer owed. A game whose
   minimums cannot fit even scaled still refuses. Before this, a re-plan gave a
-  late kid the whole-game minimum and clamped it to the stints left, silently.
+  late kid the whole-game minimum and clamped it to the stints left, silently. By hand minutes scale the same way (#489).
   - **When the time left cannot hold a minimum, the plan says so.** The
     re-plan can only give the minutes that exist, so the solver clamps and the
     plan does not refuse. `MIN_CLAMPED` is a warning, one per kid, added to the
@@ -518,9 +521,13 @@ text left open, and a future reader needs them to read the plan.
   stint." for a dropped pin, and "Could not keep {names} fixed to a stint." when
   the retry was needed. A **This stint** swap and **Sit for the rest** call
   `resolveRest` directly rather than `replanRest`, and their own toasts add the
-  same first sentence when a pin is dropped. By hand and Platoon never reach this path, because `resolveRest`
-  refuses them, so they still fall back to #134 and can rewrite played stints.
-  That is follow-up #489.
+  same first sentence when a pin is dropped. Platoon still falls back to #134.
+- **By hand re-plans the rest mid-game (#489)**, toward each kid's hand
+  minutes less what they played, with no band: a hand number is the coach's
+  word. [Bench mode](architecture/bench-mode.md) has the details.
+- **A cap the time left cannot fill is relaxed for the rest, not the past
+  (#490).** A refusal would leave the game with no rotation, so the caps rise
+  for the rest only as far as five need, and `CAP_RELAXED` names who is over.
 - **A pinned overtime five that breaks a rule is kept and reported (#440).**
   The coach asked for that five by name, so a rule does not reshape it. The
   plan says so instead, with a `PIN_BREAKS_RULE` warning naming the kids and
@@ -595,6 +602,12 @@ text left open, and a future reader needs them to read the plan.
   plus a stored `seed` reproduce a card exactly. That gives the stability that
   matters (a refresh cannot change a card you already printed) without a cache
   to invalidate. Shuffle just rolls a new seed.
+- **A rule edit starts from the plan the coach had (#449).** A cold solve
+  moved as many seats as a Shuffle. When only constraints change, the fives on
+  screen are kept as `g.basis` and each seat that differs costs `START_WEIGHT`.
+  Undo and reload keep it. Anything else solves fresh.
+- **Somebody who plays before halftime and never after is named (#448)**, by
+  `HALF_EARLY`, a warning with no cost term. Platoon skips it.
 - **A new game inherits the tournament-level setup** from the previous one:
   format, Sub interval, who is at the gym, and all constraints. Only
   the opponent, the tip time and the seed are per-game. The inherited

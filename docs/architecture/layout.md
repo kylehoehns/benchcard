@@ -27,7 +27,8 @@ Everything below is relative to `app/`.
   the bottom sheets' open, close, push and drag (#73), and the step painter the
   two full-screen flows share (#36).
 - `state.js` — the app record: state shape and migration, load/save glue, the
-  accessors every view reads through, the slot budget and the plan cache,
+  accessors every view reads through, the slot budget, the plan cache and the
+  rule-edit start a game keeps (`g.basis`, #449),
   and `benchOpen()` / `setBenchOpen(v)` to track whether bench mode is open (#123).
   Imports only the pure modules, so the view seams can depend on it freely.
 - `team-ops.js` (#359) — the operations that change the record: `removePlayer(team, id)`, which sweeps a player's id out of every game (the sweep's reasons are in its comments), `setAvailable(g, id, available)` for sitting a player out or bringing them back, `setLate(g, id, late)` for the Running late flag on a player who is out (#504), `removeTeam(record, index, blank)`, which keeps at least one team in the record, and `emptyConstraints`, the shape a game's constraints start from. It imports only `live.js` and has no import-time side effects; `state.js` loads the saved record the moment it is imported, which is why these cannot sit there and still be tested by a plain `node --test` file. `state.js` binds them to the active team (`removePlayer(id)`, `removeActiveTeam()`) and re-exports `setAvailable` and `emptyConstraints` under their old names, so the views did not change.

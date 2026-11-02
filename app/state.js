@@ -287,15 +287,14 @@ export function leagueMinFor(g, arrivedAt) {
   const { amount, unit } = leagueSetting();
   if (!(amount > 0)) return 0;
   const { lens, equal } = regulationLens(g);
-  const sum = a => a.reduce((x, y) => x + y, 0);
-  const game = sum(lens);
+  const game = lensSum(lens);
   const share = (x, within) => {
     const up = equal ? Math.ceil(x / lens[0] - 1e-9) * lens[0] : x;
     return Math.round(Math.min(up, within) * 100) / 100;
   };
   const owed = unit === 'min' ? amount : share(unit === 'pct' ? game * amount / 100 : amount * g.periodMinutes, game);
   if (!arrivedAt || arrivedAt <= 0) return owed;
-  const left = sum(lens.slice(arrivedAt));
+  const left = lensSum(lens, arrivedAt);
   // never more than a kid who was there all game is owed
   return share(owed * left / game, Math.min(left, owed));
 }
@@ -306,6 +305,11 @@ function regulationLens(g) {
   const lens = buildStints({ periods: g.periods, periodMinutes: g.periodMinutes }, { mode: g.granMode, value: g.granValue }).map(s => s.minutes);
   return { lens, equal: lens.every(x => Math.abs(x - lens[0]) < 1e-9) };
 }
+
+/* Minutes of the regulation stints `lens` from stint `from` on: the game's
+   length, or what is left once a kid arrives. `leagueMinFor` and the By hand
+   re-plan both scale by it. */
+const lensSum = (lens, from = 0) => lens.slice(from).reduce((a, x) => a + x, 0);
 
 /* One composition, for the full solve and for the rest of a game underway: the
    league floor first, a minimum the coach set on the player winning when it is
@@ -1692,11 +1696,8 @@ function replanRest(g, p, from) {
      say so, before letting go of any pin. */
   if (!r.ok && r.reason === 'infeasible' && r.issues?.some(i => i.code === 'CAPS_UNSATISFIABLE')) {
     const again = resolveRest(g, p, from, [], null, undefined, { relaxCaps: true });
-    if (again.ok) {
-      /* the plan on screen is `p`, not the re-plan's own issues: say it there */
-      p.issues = [...(p.issues || []).filter(i => i.code !== 'CAP_RELAXED'), ...again.issues.filter(i => i.code === 'CAP_RELAXED')];
-      return again;
-    }
+    // the warning is not kept here: `capNotes` derives it from the minutes on every render
+    if (again.ok) return again;
   }
   /* #437: still refused -- hold nobody to a stint, and say who was let go. */
   if (!r.ok && r.reason === 'infeasible') {
@@ -1802,8 +1803,8 @@ const sameGrid = (a, b, at = 0) => {
    would write a removed player's id (amendment 9) does not run.
 
    Returns false, having touched nothing, when it cannot (`resolveRest`
-   refuses -- By hand and Platoon outside an all-overtime suffix, Platoon
-   sitting anyone, nobody left to plan with, a plan that will not solve -- or
+   refuses -- Platoon outside an all-overtime suffix, a sit under By hand
+   or Platoon, nobody left to plan with, a plan that will not solve -- or
    a removed player is in the way), and the caller falls back to #134. */
 /* #456: only the new fives are kept from `resolveRest`; the notes it returns
    (a CONSEC_EXCEEDED for a run it could not hold under the limit) are not.
@@ -1930,6 +1931,24 @@ function noteClamps(g, p) {
   p.issues = [...(p.issues || []).filter(i => i.code !== CLAMP_NOTE), ...clampNotes(g, p)];
 }
 
+/* #490: a game underway where a kid ends over their Plays at most, because a
+   re-plan of the rest could not keep every cap and still field five. Read off
+   the minutes on the floor, so it survives a reload and clears when the minutes
+   no longer break the cap. One note for all of them, as `capRelaxedIssue` words
+   it; earlier copies on the cached plan are dropped, as `notePins` does. */
+const CAP_NOTE = 'CAP_RELAXED';
+function capNotes(g, p) {
+  if (!g.live || !isUnderway(p, g.live)) return [];
+  const caps = g.constraints.maxMinutes || {};
+  const mins = effectiveMinutes(g, p);
+  const over = availIds(g).filter(id => caps[id] != null && (mins[id] || 0) > caps[id] + 1e-9)
+    .map(id => ({ id, cap: caps[id] }));
+  return over.length ? [capRelaxedIssue(over)] : [];
+}
+function noteCaps(g, p) {
+  p.issues = [...(p.issues || []).filter(i => i.code !== CAP_NOTE), ...capNotes(g, p)];
+}
+
 function syncOverrides(g, p, underway = false, prev = null) {
   const live = g.live;
   if (!p || !p.ok || !live) return p;
@@ -2038,7 +2057,7 @@ export function computeAll() {
       for (const [id, m] of Object.entries(mins)) cum[id] += m;
       noteToday(mins);
     };
-    const tally = (g, p) => (p.ok && (notePins(g, p), noteClamps(g, p), addUp(g, p)), p);
+    const tally = (g, p) => (p.ok && (notePins(g, p), noteClamps(g, p), noteCaps(g, p), addUp(g, p)), p);
     /* Composition, not replacement: `engine.js` reads the priority map for its
        ORDER alone (`tieBreakOrder` sorts on it and nothing else), so a level
        multiplied out past any credible deficit puts the levels first and leaves
@@ -2092,24 +2111,24 @@ export function computeAll() {
          reason: change the number and the card must move. The league floor is a
          question about this game (#447), and a kid who walked in late is owed
          less of it. `rest` is everything but the rules and the names (#449). */
-      const rest = [
-        ps.map(p => [p.id, p.shortName, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
+      const rest = JSON.stringify([
+        ps.map(p => [p.id, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
         g.granMode, g.granValue, g.strategy, g.balance, g.seed, carry, seasonT, prio, maxSubs, leagueFor,
-      ];
-      const sig = JSON.stringify([ps.map(p => p.name), g.constraints, rest]);
-      const warmKey = hashOf(JSON.stringify(rest));
+      ]);
+      const sig = JSON.stringify([ps.map(p => [p.name, p.shortName]), g.constraints, rest]);
       const hit = planCache.get(g.id);
+      if (hit && hit.sig === sig) {
+        return tally(g, syncOverrides(g, hit.plan, isUnderway(hit.plan, g.live)));
+      }
+      const warmKey = hashOf(rest);
       /* #449: a rule edit starts from the plan the coach had. The previous
          plan's fives are kept on the game (`g.basis`), so a reload starts from
          the same place. Only when the cached plan solved from what `g.basis`
          still says: an Undo that restored an older record leaves it alone. */
-      if (hit && hit.sig !== sig && hit.warmKey === warmKey && hit.plan.ok && hit.basis === JSON.stringify(g.basis ?? null)) {
-        g.basis = { key: warmKey, seed: g.seed, lineups: hit.plan.stints.map(s => s.onFloor.slice()) };
+      if (hit && hit.warmKey === warmKey && hit.plan.ok && hit.basis === JSON.stringify(g.basis ?? null)) {
+        g.basis = { key: warmKey, lineups: hit.plan.stints.map(s => s.onFloor.slice()) };
       }
       const start = g.basis?.key === warmKey ? g.basis.lineups : undefined;
-      if (hit && hit.sig === sig) {
-        return tally(g, syncOverrides(g, hit.plan, isUnderway(hit.plan, g.live)));
-      }
       const c = clone(g.constraints);
       /* The league floor, composed into the per-player map the engine has always
          read -- so `engine.js` is untouched and knows nothing about the setting.
@@ -2251,17 +2270,19 @@ function dropPinned(c, ids) {
     c.closing = players.length ? { ...c.closing, players } : null;
   }
 }
-/* The one warning for kids whose Plays at most could not hold in a re-plan of
-   the rest. `over` is [{ id, cap }]. */
+/* The one warning for kids a game underway puts over their Plays at most.
+   Usually a re-plan of the rest that could not field five otherwise (#490),
+   but a hand swap gets there too, so it names the fact and not a cause.
+   `over` is [{ id, cap }]. */
 function capRelaxedIssue(over) {
   const calls = callNames(state.players);
   const same = over.every(x => x.cap === over[0].cap);
   const who = same
-    ? `${joinNames(over.map(x => calls[x.id]))} under Plays at most ${fmtMinutes(over[0].cap)}`
-    : joinNames(over.map(x => `${calls[x.id]} under Plays at most ${fmtMinutes(x.cap)}`));
+    ? `${joinNames(over.map(x => calls[x.id]))} over Plays at most ${fmtMinutes(over[0].cap)}`
+    : joinNames(over.map(x => `${calls[x.id]} over Plays at most ${fmtMinutes(x.cap)}`));
   return {
     severity: 'warn', code: 'CAP_RELAXED', playerIds: over.map(x => x.id),
-    message: `Not enough players left to keep ${who}.`,
+    message: `This game puts ${who}.`,
   };
 }
 export function resolveRest(g, p, from, sitIds = [], to = null, standing = satIds(g.live), { dropPins = [], relaxCaps = false } = {}) {
@@ -2293,7 +2314,8 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
      suffix that is all pinned plans nothing, so it is not refused. */
   /* #489: By hand re-plans the rest when nobody is sat -- its hand numbers are
      turned into what is left of them below. Sitting a kid under By hand stays
-     refused (its minutes are set by hand). */
+     refused (its minutes are set by hand), though a sit already made, which
+     `standing` carries, is honored: that kid was sat before the re-plan. */
   const byHand = strategy === 'minutes' && !overtimeOnly && !allPinned;
   if (handSet && !allPinned && (!overtimeOnly || (strategy === 'platoon' && sitIds?.length))
       && !(byHand && !sitIds?.length)) return { ok: false, reason: 'strategy' };
@@ -2355,12 +2377,13 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   /* #437: `replanRest`'s last resort -- hold nobody to a stint. */
   dropPinned(c, dropPins);
   /* A By hand lock holds a regulation number, not overtime's, so it is dropped
-     here. That is safe for the other strategies: only By hand lets a coach set
-     locks, and the engine reads them only to hold a locked row out of its
-     proportional top-up -- there is nothing to hold when the targets are the
-     fairness ones made below. `c` is a clone made for this one solve, so the
-     saved locks are untouched. */
-  c.lockedTargets = [];
+     for every other strategy: only By hand lets a coach set locks, and the
+     engine reads them only to hold a locked row out of its proportional top-up
+     -- there is nothing to hold when the targets are the fairness ones made
+     below. Under By hand (#489) the targets are the coach's own numbers, so a
+     locked one stays locked for the kids still here. `c` is a clone made for
+     this one solve, so the saved locks are untouched. */
+  c.lockedTargets = byHand ? (g.constraints.lockedTargets || []).filter(id => avail.includes(id)) : [];
   c.minMinutes = {};
   c.maxMinutes = {};
   for (const id of avail) {
@@ -2378,8 +2401,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
      whole of `total`, add up to less than five on the floor for every stint
      left. The shortfall is shared equally among the capped kids (none past
      `total`, which is all anyone can play), so the kids whose cap is not in
-     the way keep it. Who it raised, and the cap they had, is kept to say so. */
-  const raised = [];
+     the way keep it. Saying so is `capNotes`'s job, off the minutes. */
   if (relaxCaps) {
     const capped = avail.filter(id => id in c.maxMinutes);
     const room = avail.reduce((a, id) => a + (id in c.maxMinutes ? c.maxMinutes[id] : total), 0);
@@ -2389,7 +2411,6 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
       const each = shortfall / open.length;
       for (const id of open) {
         const give = Math.min(each, total - c.maxMinutes[id]);
-        if (!raised.some(x => x.id === id)) raised.push({ id, was: c.maxMinutes[id], cap: g.constraints.maxMinutes[id] });
         // rounded up to the hundredth: the engine compares the sum to the floor exactly
         const to = Math.min(total, Math.ceil((c.maxMinutes[id] + give) * 100 - 1e-9) / 100);
         shortfall -= to - c.maxMinutes[id];
@@ -2419,11 +2440,11 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
      reading `leagueMinFor` makes), with no band: it is the coach's word. */
   if (byHand) {
     const { lens } = regulationLens(g);
-    const game = lens.reduce((a, x) => a + x, 0);
+    const game = lensSum(lens);
     for (const id of avail) {
       const slots = g.constraints.targetSlots?.[id];
       if (slots == null) continue;
-      const share = id in arrived ? lens.slice(arrived[id]).reduce((a, x) => a + x, 0) / game : 1;
+      const share = id in arrived ? lensSum(lens, arrived[id]) / game : 1;
       fair[id] = slotsToMinutes(g, slots) * share;
     }
   }
@@ -2504,10 +2525,7 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
   const minutes = Object.keys(pinsNow).length
     ? minutesFrom(suffix.map((s, i) => ({ onFloor: overrides[k + i] || s.onFloor, minutes: s.minutes })), avail)
     : r.minutes;
-  /* #490: only the kids who really end over their cap are named. */
-  const over = raised.filter(x => (minutes?.[x.id] || 0) > x.was + 1e-9);
-  const issues = over.length ? [...r.issues, capRelaxedIssue(over)] : r.issues;
-  return { ok: true, from: k, overrides, issues, minutes, pinsDropped: r.pinsDropped || [] };
+  return { ok: true, from: k, overrides, issues: r.issues, minutes, pinsDropped: r.pinsDropped || [] };
 }
 
 /* ================================================================== *

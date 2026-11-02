@@ -3,7 +3,9 @@
 - **Even** (default) -- as close to equal as the clock allows. One click.
 - **By hand** -- per-player targets on sliders, with locks. Exact when they
   add up to the whole game; short of that the spare minutes get shared out and
-  each row says what it will really play.
+  each row says what it will really play. Once a game is underway, a kid who
+  arrives or leaves re-plans the rest around their hand number less the minutes
+  they have played (#489; see [design decisions](../design-decisions.md)).
 - **Closers** -- even minutes early, a group you pick finishes the game.
 - **Platoon** -- fixed fives alternating wholesale, no optimization.
 

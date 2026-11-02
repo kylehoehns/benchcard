@@ -533,14 +533,14 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
       const sittingOut = new Set(out);
       // #504: Running late is the part of out that is expected; never a kid who is here
       const late = [...new Set(keep(g.late))].filter(id => sittingOut.has(id));
-      /* #449: the lineups a rule edit starts from. Kept only whole: a string key,
-         a seed, and at least one row of five real ids -- one ghost and the
+      /* #449: the lineups a rule edit starts from. Kept only whole: a string key
+         and at least one row of five real ids -- one ghost and the
          row is short, so the next solve starts cold rather than from a guess. */
       const b = isObj(g.basis) ? g.basis : null;
       const rows = b && Array.isArray(b.lineups) ? b.lineups.map(r => (Array.isArray(r) ? keep(r) : [])) : [];
-      const basis = b && typeof b.key === 'string' && b.key && Number.isFinite(b.seed)
-        && rows.length && rows.every(r => r.length === 5 && new Set(r).size === 5)
-        ? { key: b.key, seed: b.seed, lineups: rows } : null;
+      const basis = b && typeof b.key === 'string' && b.key
+        && rows.length && rows.every(r => r.length === ON_FLOOR && new Set(r).size === ON_FLOOR)
+        ? { key: b.key, lineups: rows } : null;
       return {
         id: typeof g.id === 'string' && g.id ? g.id : 'g' + Math.random().toString(36).slice(2, 8),
         label: typeof g.label === 'string' ? g.label : '',

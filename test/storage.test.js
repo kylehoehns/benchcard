@@ -2003,16 +2003,15 @@ const withBasis = (basis) => {
 };
 
 test('#449 a well-formed basis survives a reload', () => {
-  const basis = { key: 'abc123', seed: 7, lineups: [['a', 'b', 'c', 'd', 'e'], ['b', 'c', 'd', 'e', 'f']] };
+  const basis = { key: 'abc123', lineups: [['a', 'b', 'c', 'd', 'e'], ['b', 'c', 'd', 'e', 'f']] };
   assert.deepEqual(withBasis(basis).basis, basis);
 });
 
 test('#449 a malformed basis is dropped, and a game with none stays without', () => {
   assert.equal('basis' in withBasis(undefined), false, 'no basis, no field');
-  assert.equal('basis' in withBasis({ key: 'k', seed: 1, lineups: [['a', 'b', 'c', 'd', 'ghost']] }), false, 'a ghost id leaves a row short');
-  assert.equal('basis' in withBasis({ key: 'k', seed: 1, lineups: [['a', 'b', 'c', 'd']] }), false, 'four to a row');
-  assert.equal('basis' in withBasis({ key: 'k', seed: 1, lineups: [] }), false, 'no rows');
-  assert.equal('basis' in withBasis({ key: 5, seed: 1, lineups: [['a', 'b', 'c', 'd', 'e']] }), false, 'key is not a string');
-  assert.equal('basis' in withBasis({ key: 'k', seed: 'x', lineups: [['a', 'b', 'c', 'd', 'e']] }), false, 'seed is not a number');
+  assert.equal('basis' in withBasis({ key: 'k', lineups: [['a', 'b', 'c', 'd', 'ghost']] }), false, 'a ghost id leaves a row short');
+  assert.equal('basis' in withBasis({ key: 'k', lineups: [['a', 'b', 'c', 'd']] }), false, 'four to a row');
+  assert.equal('basis' in withBasis({ key: 'k', lineups: [] }), false, 'no rows');
+  assert.equal('basis' in withBasis({ key: 5, lineups: [['a', 'b', 'c', 'd', 'e']] }), false, 'key is not a string');
   assert.equal('basis' in withBasis('lineups'), false, 'not an object');
 });

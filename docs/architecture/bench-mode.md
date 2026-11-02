@@ -220,7 +220,8 @@ the screen. The group is hidden when nobody is late, even when kids are Out, and
 it shows on every stint, the last included. Tapping **Here now** calls
 `setAvailable(g, id, true)`, the same edit Who's here makes, so the plan from the
 next stint on picks the kid up. A league minimum owes that kid the share of the
-time left, not the whole game's ([design decisions](../design-decisions.md)).
+time left, not the whole game's, and a By hand number is scaled the same way
+([design decisions](../design-decisions.md)).
 The stint on the floor does not change, and the pick in progress is cleared.
 The handler runs `computeAll()` first. Stepping through stints in bench mode never
 does a full render, so the plan has not been adopted yet, and without that step
@@ -246,6 +247,9 @@ Reality diverges from the plan, so a swap here **overrides** the plan for the
 current stint or the rest of the game. A **This stint** swap then re-plans the
 stints after it with `resolveRest` so minutes stay even (#247), and its toast
 says the rest of the game was re-planned (#415); one Undo takes back both.
+Under By hand that re-plan works from the hand numbers (#489), so a swap there
+no longer stands alone. It aims at each hand number less what was played, with
+no two-stint band, and still holds locks, minimums and caps.
 Overrides persist per game and can be reset back to the plan,
 except that a pinned overtime stint goes back to its stored five and an Even
 out overtime is planned again as Even out
@@ -297,9 +301,9 @@ fairness input
 is `carryoverTargets` from `budget.js`, the same helper the season carryover
 uses, with the deficit read off this game so far; `generatePlan`'s own
 `carryover` argument is deliberately *not* used, because its two-stint clamp is
-right between games and wrong inside one. The `minutes` and `platoon`
-strategies are refused out loud — their numbers are set by hand — unless the
-stints left are all overtime (#368), which is planned around what was played.
+right between games and wrong inside one. A sit under the `minutes` or
+`platoon` strategy is refused out loud — their numbers are set by hand — unless
+the stints left are all overtime (#368), which is planned around what was played.
 So is a
 remainder the solver cannot cover: the toast names the rule that stopped it
 (`SIT_RULES` in `gamemode.js`, keyed by the solver's own error codes) rather

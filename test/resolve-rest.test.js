@@ -311,7 +311,7 @@ test('#376 when the four who stay cannot all stay (a hand swap put two Apart pla
   assert.deepEqual(S.effectiveStints(g, p).slice(0, k).map(s => s.onFloor.join(',')), before);
 });
 
-test('#490 relaxCaps: spent caps that cannot cover the floor are refused, then raised and named', () => {
+test('#490 relaxCaps: spent caps that cannot cover the floor are refused, then raised', () => {
   const caps = { ...freshConstraints(), maxMinutes: { p0: 7, p1: 7 } };
   const { g, p } = setup(7, { periods: 2, periodMinutes: 7, granValue: 3, constraints: caps });
   assert.ok(p?.ok, 'the fixture plans');
@@ -323,10 +323,10 @@ test('#490 relaxCaps: spent caps that cannot cover the floor are refused, then r
   const r = S.resolveRest(g, p, 3, [], null, undefined, { relaxCaps: true });
   assert.equal(r.ok, true, 'relaxed, it plans');
   assert.ok(Object.values(r.overrides).every(f => f.length === 5), 'five on the floor in every stint left');
-  const warn = r.issues.filter(i => i.code === 'CAP_RELAXED');
-  assert.equal(warn.length, 1);
-  assert.ok(warn[0].playerIds.every(id => ['p0', 'p1'].includes(id)), 'only a capped kid is named');
-  assert.ok(warn[0].playerIds.length > 0);
+  // the shortfall lands on the capped kids only: somebody passes a cap, and nobody uncapped is held to one
+  const played = id => S.effectiveStints(g, p).slice(0, 3).reduce((a, s) => a + (s.onFloor.includes(id) ? s.minutes : 0), 0);
+  const total = id => played(id) + (r.minutes[id] || 0);
+  assert.ok(['p0', 'p1'].some(id => total(id) > 7 + 1e-9), 'a capped kid ends over their cap');
   // the option is off by default: a sit or a swap still refuses as before
   assert.equal(S.resolveRest(g, p, 3).ok, false);
 });

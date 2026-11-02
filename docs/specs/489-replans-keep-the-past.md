@@ -78,7 +78,9 @@ Recorded here and in the PR body.
    are shared out over the minutes left with the same `carryoverTargets` the
    other strategies' re-plan uses, with no ±two-stint band (a hand number is
    the coach's word, not a nudge). Minimums and caps still win, as today.
-   Locks are not held in the re-plan, as today's comment in `resolveRest` says.
+   A locked hand number stays locked in the re-plan, for the kids still
+   here (the other strategies' re-plans still drop locks: their targets are the
+   fairness ones).
 3. **#489: Sit for the rest stays refused under By hand.** Only re-plans with
    nobody sat lose the refusal (the freeze, and the one-stint swap's re-plan,
    which already calls `resolveRest` with no sitters). `SIT_REFUSALS.strategy`
@@ -118,9 +120,9 @@ Recorded here and in the PR body.
 - Repro: 7 players, 2x7 every 3, Even, Plays at most 7 on p0 and p1, p2 marked
   out at `live.at = 2`: stints 0-2 unchanged, every later stint has five, and
   the plan carries one warning (code `CAP_RELAXED`) naming each kid who ends
-  over their cap, with the cap. Example copy: "Not enough players left to keep
-  Kid 0 and Kid 1 under Plays at most 7." (exact copy is the developer's,
-  in this shape, American spelling, call names).
+  over their cap, with the cap. Copy: "This game puts Kid 0 and Kid 1 over
+  Plays at most 7." It states the fact, not a cause, because the note is
+  derived from the minutes and a hand swap can put a kid over a cap too.
 - The caps sweep above (88 games): 0 change played stints (from 21/88).
 - A kid whose cap is not in the way is not named and not raised.
 - `test/fuzz.test.js`'s #437 property drops its exclusion of this class (the
@@ -211,8 +213,11 @@ is the existing code path.
 `resolveRest` gains an option `{ relaxCaps: true }`. With it, when the caps
 left (each `cap - played`, plus `total` for each uncapped kid) sum to less
 than `total * 5`, each capped kid's allowance is raised by an equal share of
-the shortfall (never past `total`), and the plan's issues gain `CAP_RELAXED`
-naming the kids it raised, with their caps. `replanRest` retries with it when
+the shortfall (never past `total`), and the plan says so with a
+`CAP_RELAXED` note naming each kid who ends over their cap, with the cap. The
+note is derived from the minutes on the floor on every render (as the pin and
+minimum notes are), not stored, so it survives a reload and clears when the
+minutes stop breaking the cap. `replanRest` retries with it when
 the first solve is refused as infeasible with `CAPS_UNSATISFIABLE`, before
 the pin retry. The kids whose cap is not in the way keep it.
 
@@ -225,8 +230,9 @@ not play after halftime." plus, when the stints after halftime cannot seat
 everyone at the change limit, "Only N can play after halftime here — K
 stints, M changes at a time — and you have A. Sub more often, or allow more
 changes at once." (the "changes at a time" part only when the change limit is
-what binds, as `HALF_LATE`). Otherwise "No legal lineup got them on after
-halftime." No new cost term: the issue asks for the warning only.
+what binds, as `HALF_LATE`). Otherwise nothing more is said: no cost
+term pushes second-half minutes, so no reason is claimed. The arithmetic is
+one helper both warnings use. No new cost term: the issue asks for the warning only.
 
 ### #449
 
@@ -248,17 +254,19 @@ not in `start`, below the smallest rule term (20). Weight 1 left a no-op cap
 edit moving seats on 4 of 10 seeds; 5, 10 and 15 all gave 0. Two additions
 went with it: `startLegal()` (a start with an Apart pair, which `cost()`
 does not price, is never kept) and `keepStart()` (a legal start that costs
-no more than the search's result is the answer). Measured over seeds 1-10:
+no more than the search's result is the answer; on the minute-neutral balance
+pass only when its per-kid minutes equal the result's, so levels never move
+minutes). Measured over seeds 1-10:
 Plays at least 8 for A, mean 0.0; cap 28 for J, 0 on every seed; Apart I-J,
 5.2 (10 5 4 1 9 3 4 4 3 9; the rule forces a repair); soft Together H-I,
 7.2; Shuffle still 16.7 (at least 14, unchanged).
 
 **State.** In `computeAll`, the plan signature gets a companion key with
-`g.constraints` and player names left out (everything else in `sig`). When
+`g.constraints` and player names (name and nickname) left out (everything else in `sig`). When
 the cache holds a plan for the game, the new `sig` differs, the companion key
 is the same, the cached plan solved, and `g.basis` is still what the cached
 plan was solved with (so an Undo that restored an older `basis` is left
-alone), then `g.basis = { key, seed, lineups }` from the cached plan. A
+alone), then `g.basis = { key, lineups }` from the cached plan. A
 solve passes `start: g.basis.lineups` when `g.basis.key` matches the current
 companion key and the stint count matches; otherwise no `start`. The key may
 be a short hash of the companion key's JSON. `sanitizeGames` keeps a

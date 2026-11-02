@@ -48,6 +48,20 @@ function game(o) {
 }
 const fives = (g, n) => S.effectiveStints(g, S.plans[0]).slice(0, n).map(s => [...s.onFloor].sort().join(','));
 
+const { sanitize } = await import('../app/storage.js');
+// the record as it is saved and read back, with an empty plan cache (the cache is keyed by game id)
+let reloads = 0;
+function reloaded(g) {
+  const raw = {
+    version: 3, players: JSON.parse(JSON.stringify(S.state.players)),
+    day: { name: 'Sat', games: [JSON.parse(JSON.stringify(g))] }, activeGame: 0, view: 'games', ui: {},
+  };
+  const back = sanitize(raw, { emptyConstraints: () => ({ ...emptyC(), targetSlots: {}, lockedTargets: [] }), newGame: () => g }).teams[0].days[0].games[0];
+  back.id = `cold${++reloads}`;
+  S.state.day.games = [back];
+  return back;
+}
+
 /* ---------------- #489: By hand ---------------- */
 
 test('#489 By hand: a late arrival keeps stints 0-4 and plays only after, near the hand number', () => {
@@ -69,8 +83,8 @@ test('#489 By hand: a late arrival keeps stints 0-4 and plays only after, near t
        finishes within one stint (4 min) of the hand number they hold. */
     const m = S.effectiveMinutes(g, S.plans[0]);
     for (const id of S.availIds(g).filter(x => x !== 'p8')) {
-      const want = S.plans[0] && g.constraints.targetSlots[id] * 4;
-      assert.ok(Math.abs(m[id] - want) <= 4 + 1e-9, `seed ${seed}: ${id} ends at ${m[id]}, hand number ${want}`);
+      const want = g.constraints.targetSlots[id] * S.plans[0].stints[0].minutes;
+      assert.ok(Math.abs(m[id] - want) <= S.plans[0].stints[0].minutes + 1e-9, `seed ${seed}: ${id} ends at ${m[id]}, hand number ${want}`);
     }
   }
 });
@@ -95,6 +109,23 @@ test('#489 By hand: no played stint changes over 80 mixed games', () => {
   }
   assert.ok(n >= 60, `only ${n} games planned`);
   assert.deepEqual(changed, [], 'games whose played stints changed');
+});
+
+test('#489 By hand: a locked hand number is still held after a late arrival, seeds 1-8', () => {
+  for (let seed = 1; seed <= 8; seed++) {
+    const g = game({ size: 9, periods: 4, periodMinutes: 8, every: 4, strategy: 'minutes', out: ['p8'], seed });
+    // 4-minute stints: 6 slots is 24 minutes, 3 slots is 12
+    g.constraints.targetSlots = { p0: 6, p1: 3, p2: 5, p3: 5, p4: 5, p5: 5, p6: 5, p7: 6 };
+    g.constraints.lockedTargets = ['p0', 'p1'];
+    S.computeAll();
+    g.live.at = 4;
+    S.computeAll();
+    S.setAvailable(g, 'p8', true);
+    S.computeAll();
+    const m = S.effectiveMinutes(g, S.plans[0]);
+    assert.equal(m.p0, 24, `seed ${seed}: p0 is locked at 6 slots`);
+    assert.equal(m.p1, 12, `seed ${seed}: p1 is locked at 3 slots`);
+  }
 });
 
 /* ---------------- #490: spent caps ---------------- */
@@ -122,8 +153,44 @@ test('#490 a departure whose caps cannot cover the floor keeps the past and warn
   assert.equal(warns[0].severity, 'warn');
   assert.ok(warns[0].message.includes('KidB'), warns[0].message);
   assert.ok(!warns[0].message.includes('KidA'), 'a kid still under the cap is not named');
-  assert.ok(/under Plays at most 7\./.test(warns[0].message), `names the cap: ${warns[0].message}`);
+  assert.ok(/^This game puts KidB over Plays at most 7\.$/.test(warns[0].message), `names the cap: ${warns[0].message}`);
   assert.ok(!/Kid[D-G]/.test(warns[0].message), 'a kid with no cap is not named');
+});
+
+test('#490 the warning is rebuilt after a reload, and gone once the caps are lifted', () => {
+  const g = game({ size: 7, periods: 2, periodMinutes: 7, every: 3, seed: 1, c: { maxMinutes: { p0: 7, p1: 7 } } });
+  g.live.at = 2;
+  S.computeAll();
+  S.setAvailable(g, 'p2', false);
+  S.computeAll();
+  const named = S.plans[0].issues.find(i => i.code === 'CAP_RELAXED')?.playerIds;
+  assert.ok(named?.length, 'the departure names who ends over a cap');
+  const back = reloaded(g);
+  S.computeAll();
+  const again = S.plans[0].issues.filter(i => i.code === 'CAP_RELAXED');
+  assert.equal(again.length, 1, 'still one warning after a reload');
+  assert.deepEqual([...again[0].playerIds].sort(), [...named].sort());
+  back.constraints.maxMinutes = {};
+  S.computeAll();
+  assert.ok(!S.plans[0].issues.some(i => i.code === 'CAP_RELAXED'), 'no cap, no warning');
+});
+
+test('#490 with a hand-pinned stint in the rest, a kid inside their cap is still not named', () => {
+  const g = game({ size: 7, periods: 2, periodMinutes: 7, every: 3, seed: 1, c: { maxMinutes: { p0: 7, p1: 7 } } });
+  g.live.at = 2;
+  S.computeAll();
+  // the coach puts p3 on in the last stint, in place of the first kid there
+  const last = S.plans[0].stints.length - 1;
+  const five = [...S.effectiveStints(g, S.plans[0])[last].onFloor];
+  if (!five.includes('p3')) five[0] = 'p3';
+  g.live.overrides[last] = five;
+  S.setAvailable(g, 'p2', false);
+  S.computeAll();
+  const p = S.plans[0];
+  const m = S.effectiveMinutes(g, p);
+  const warn = p.issues.find(i => i.code === 'CAP_RELAXED');
+  const over = ['p0', 'p1'].filter(id => m[id] > 7 + 1e-9);
+  assert.deepEqual(warn ? [...warn.playerIds].sort() : [], over);
 });
 
 test('#490 no played stint changes over 88 capped games', () => {
@@ -154,7 +221,6 @@ test('#490 no played stint changes over 88 capped games', () => {
 
 /* ---------------- #449: a rule edit moves little ---------------- */
 
-const { sanitize } = await import('../app/storage.js');
 const TEN = 'ABCDEFGHIJ'.split('');
 const base449 = () => ({
   ...emptyC(), openingFive: ['A', 'B', 'C', 'D', 'E'], avoids: [['F', 'G']], keepOnFloor: [['A', 'F']], maxConsecutive: 2,
@@ -207,19 +273,24 @@ test('#449 report: the new means for Apart I-J and soft Together H-I', () => {
 test('#449 a cold reload solves the plan the warm solve showed', () => {
   for (let seed = 1; seed <= 4; seed++) {
     const g = game449(seed);
-    g.constraints.minMinutes.A = 8;
+    g.constraints.minMinutes.J = 28;
     S.computeAll();
     const warm = lineups();
-    // the record as it is saved and read back, with an empty plan cache (the cache is keyed by game id)
-    const raw = {
-      version: 3, players: TEN.map(id => ({ id, name: `Kid${id}`, tier: 3 })),
-      day: { name: 'Sat', games: [JSON.parse(JSON.stringify(g))] }, activeGame: 0, view: 'games', ui: {},
-    };
-    const back = sanitize(raw, { emptyConstraints: () => ({ ...emptyC(), targetSlots: {}, lockedTargets: [] }), newGame: () => g }).teams[0].days[0].games[0];
-    back.id = `cold${seed}`;
-    S.state.day.games = [back];
+    reloaded(g);
     S.computeAll();
     assert.deepEqual(lineups(), warm, `seed ${seed}`);
+  }
+});
+
+test('#449 renaming a kid after a rule edit moves no seat', () => {
+  for (let seed = 1; seed <= 4; seed++) {
+    const g = game449(seed);
+    g.constraints.minMinutes.J = 28;
+    S.computeAll();
+    const before = lineups();
+    S.state.players[3].shortName = 'Dee';
+    S.computeAll();
+    assert.equal(seatsMoved(before, lineups()), 0, `seed ${seed}`);
   }
 });
 
@@ -228,11 +299,45 @@ test('#449 undoing the edit gives back the exact plan before it', () => {
     const g = game449(seed);
     const original = lineups();
     const snap = JSON.parse(JSON.stringify(S.state));     // what `undoable` takes before the edit
-    g.constraints.minMinutes.A = 8;
+    g.constraints.minMinutes.J = 28;
     S.computeAll();
-    assert.notDeepEqual(lineups(), null);
+    assert.notDeepEqual(lineups(), original, `seed ${seed}: the edit moved something`);
     S.replaceState(snap);
     S.computeAll();
     assert.deepEqual(lineups(), original, `seed ${seed}`);
+  }
+});
+
+test('#449 undoing the second of two edits gives back the plan the first one made', () => {
+  for (let seed = 1; seed <= 4; seed++) {
+    const g = game449(seed);
+    g.constraints.minMinutes.J = 28;
+    S.computeAll();
+    const afterFirst = lineups();
+    const snap = JSON.parse(JSON.stringify(S.state));
+    g.constraints.maxMinutes.A = 8;
+    S.computeAll();
+    assert.notDeepEqual(lineups(), afterFirst, `seed ${seed}: the second edit moved something`);
+    S.replaceState(snap);
+    S.computeAll();
+    assert.deepEqual(lineups(), afterFirst, `seed ${seed}`);
+  }
+});
+
+test('#449 undoing the second edit still works when the app was reloaded between the two', () => {
+  for (let seed = 1; seed <= 4; seed++) {
+    const g = game449(seed);
+    g.constraints.minMinutes.J = 28;
+    S.computeAll();
+    const afterFirst = lineups();
+    const back = reloaded(g);
+    S.computeAll();
+    const snap = JSON.parse(JSON.stringify(S.state));
+    back.constraints.maxMinutes.A = 8;
+    S.computeAll();
+    assert.notDeepEqual(lineups(), afterFirst, `seed ${seed}: the second edit moved something`);
+    S.replaceState(snap);
+    S.computeAll();
+    assert.deepEqual(lineups(), afterFirst, `seed ${seed}`);
   }
 });

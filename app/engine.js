@@ -944,8 +944,15 @@ export function generatePlan(input) {
     // search never makes one, so a start that has one is not a candidate)
     const startLegal = () => ctx.start.every(row => row.length === ON_FLOOR
       && row.every((a, i) => row.slice(i + 1).every(b => !avoidSet.has(pairKey(a, b)))));
-    const keepStart = (lu) => (ctx.start && startLegal()
-      && cost(ctx.start, ctx) <= cost(lu, ctx) + 1e-9 ? ctx.start.map(row => row.slice()) : lu);
+    // `neutral`: the balance pass moves no minutes, so the start must carry the same totals as `lu`
+    const keepStart = (lu, neutral = false) => {
+      if (!ctx.start || !startLegal() || cost(ctx.start, ctx) > cost(lu, ctx) + 1e-9) return lu;
+      if (neutral) {
+        const a = minutesOf(ctx.start, ctx), b = minutesOf(lu, ctx);
+        if (ctx.avail.some(id => Math.abs(a[id] - b[id]) > 1e-9)) return lu;
+      }
+      return ctx.start.map(row => row.slice());
+    };
     const solve = (shapeSits) => {
       const rng = makeRng(seed);
       ctx.shapeSits = shapeSits;
@@ -993,7 +1000,7 @@ export function generatePlan(input) {
     if (shaped) {
       ctx.balanceTargets = shaped;
       ctx.neutralOnly = true;
-      const balanced = keepStart(localSearch(lineups, ctx, forcedByStint, kept.rng, iterations / 2));
+      const balanced = keepStart(localSearch(lineups, ctx, forcedByStint, kept.rng, iterations / 2), true);
       ctx.neutralOnly = false;
       /* the pass trades changes for strength; on a long-sit plan it may not
          start breaking a rule the plan kept (it may still trade one for
@@ -1921,6 +1928,17 @@ function spreadRuleNote(ctx, c, minutes, label) {
   return said.length ? { message: said.join(' '), playerIds: [...named] } : null;
 }
 
+/* The arithmetic both halftime warnings give: how many can play in the `stints`
+   stints of one half when `reach` is the most the clock and the change limit let
+   take the floor, or null when everyone available fits. `when` is "before" or
+   "after" (halftime). */
+function halfReachSentence(ctx, when, stints, reach) {
+  const capped = reach < stints * ON_FLOOR;
+  const fits = Math.min(stints * ON_FLOOR, reach);
+  if (ctx.avail.length <= fits) return null;
+  return `Only ${fits} can play ${when} halftime here — ${plural(stints, 'stint')}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`;
+}
+
 function finish(lineups, ctx, issues, meta) {
   const { players, short, seed, stints, c, platoon, periods } = meta;
   const byId = new Map(players.map(p => [p.id, p]));
@@ -2087,14 +2105,10 @@ function finish(lineups, ctx, issues, meta) {
         if (!apart.length) return 'No legal lineup got them on any sooner.';
         return unexplained.size ? `${apart.join(' ')} No legal lineup got ${andList([...unexplained].map(label))} on any sooner.` : apart.join(' ');
       };
-      const capped = ctx.halfReach < ctx.firstHalf * ON_FLOOR;
-      const fits = Math.min(ctx.firstHalf * ON_FLOOR, ctx.halfReach);
       issues.push({
         severity: 'warn', code: 'HALF_LATE', playerIds: late,
         message: `${andList(late.map(label))} ${late.length === 1 ? 'does' : 'do'} not get on until the second half. ${
-          ctx.avail.length > fits
-            ? `Only ${fits} can play before halftime here — ${plural(ctx.firstHalf, 'stint')}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`
-            : whyLate(late)}`,
+          halfReachSentence(ctx, 'before', ctx.firstHalf, ctx.halfReach) ?? whyLate(late)}`,
       });
     }
   }
@@ -2109,14 +2123,12 @@ function finish(lineups, ctx, issues, meta) {
     if (gone.length) {
       const left = lineups.length - ctx.firstHalf;
       const reach = ON_FLOOR + Math.max(0, ctx.maxSubs) * (left - 1);
-      const capped = reach < left * ON_FLOOR;
-      const fits = Math.min(left * ON_FLOOR, reach);
+      /* Only the arithmetic: when it does not bind, nothing here knows why they
+         sat (no cost term pushes second-half minutes), so no reason is claimed. */
+      const why = halfReachSentence(ctx, 'after', left, reach);
       issues.push({
         severity: 'warn', code: 'HALF_EARLY', playerIds: gone,
-        message: `${andList(gone.map(label))} ${gone.length === 1 ? 'does' : 'do'} not play after halftime. ${
-          ctx.avail.length > fits
-            ? `Only ${fits} can play after halftime here — ${plural(left, 'stint')}${capped ? `, ${ctx.maxSubs} changes at a time` : ''} — and you have ${ctx.avail.length}. Sub more often${capped ? ', or allow more changes at once' : ''}.`
-            : 'No legal lineup got them on after halftime.'}`,
+        message: `${andList(gone.map(label))} ${gone.length === 1 ? 'does' : 'do'} not play after halftime.${why ? ` ${why}` : ''}`,
       });
     }
   }
