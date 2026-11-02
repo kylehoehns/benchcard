@@ -337,7 +337,9 @@ Two things address that, and they are different problems:
   of the same cast, played as two 20-minute halves with a sub every 4 minutes
   (seed 11). Its card header reads `2 HALVES · 20 MIN` and its periods are the
   engine's own `H1` and `H2`. The size pages link to it from a "Playing two
-  halves?" section, and it links back to the seven sizes.
+  halves?" section, and it links back to the seven sizes. Its Try button is
+  `./?try=10&halves`, which loads that same format (two 20-minute halves, a sub
+  every 4 minutes) rather than the four-quarter sample (#493).
   Canonical, `sitemap.xml` and every internal `href` use the **extensionless**
   URL, which is what Cloudflare 200s. One spelling per page: they disagreed
   until September 2026, and offline the worker served the app shell in place of
