@@ -18,8 +18,8 @@
  * signal, and it had been broken there since launch.
  *
  * This server is the production one's redirect behavior, so the failure is
- * reproducible on a laptop. FIVE assertions now. The first three failed before
- * the original fix and pass after it; the fourth is the offline fallback.
+ * reproducible on a laptop. The first three assertions failed before the
+ * original fix and pass after it; the fourth is the offline fallback.
  *
  * The fifth is a second bug of the same family, found in September 2026: the
  * hrefs and the precache key had drifted to different spellings of the same
@@ -28,6 +28,7 @@
  * `.html`, and arm 3 had been navigating a spelling nothing linked to since
  * the page shipped. Both now follow the href. `work/one-spelling-per-page/`
  * carried the reasoning while it was open; `notes/DECISIONS.md` has the rest.
+ * The What's new page (#499) is covered by both arms the same way (#542).
  */
 import { spawn } from 'node:child_process';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
@@ -199,6 +200,13 @@ try {
   add('the reference page loads through the worker', advOk,
     adv.failed ? 'navigation produced no document' : `title "${adv.title}"`);
 
+  /* #542: `whats-new.html` (#499) got the same treatment. It is precached as a
+     file and linked extensionless, and this arm had never asked about it. */
+  const wn = await navigate(origin + '/whats-new');
+  const wnOk = !wn.failed && /Benchcard/.test(wn.title || '');
+  add("the What's new page loads through the worker", wnOk,
+    wn.failed ? 'navigation produced no document' : `title "${wn.title}"`);
+
   /* 4. The offline fallback -- the actual promise of the app. A navigation to
         something never precached, with no network, must still get the shell.
 
@@ -233,7 +241,8 @@ try {
         and that is what made this invisible. It is "the page that loaded is
         the one named", checked by title and by the ABSENCE of the app shell.
         Both, because either alone passes on the wrong document. */
-  for (const [path, want] of [['/about', /Equal playing time/], ['/advanced', /reference/i]]) {
+  for (const [path, want] of [['/about', /Equal playing time/], ['/advanced', /reference/i],
+    ['/whats-new', /What's new/]]) {
     const r = await navigate(origin + path);
     const ok = !r.failed && r.hasApp === false && want.test(r.title || '');
     add(`offline, ${path} is the page it names`, ok,
