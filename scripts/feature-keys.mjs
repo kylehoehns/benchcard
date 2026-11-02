@@ -115,6 +115,7 @@ export const FEATURES = [
   { key: 'strategy:minutes', src: 'state.js STRATEGIES', term: ['by hand'] },
   { key: 'strategy:closers', src: 'state.js STRATEGIES', term: ['closers'] },
   { key: 'strategy:platoon', src: 'state.js STRATEGIES', term: ['platoon'] },
+  { key: 'strategy:order', src: 'state.js STRATEGIES', term: ['rotation order'] },
 
   { key: 'shape:even', src: 'balance.js SHAPES',
     term: { '#help': ['steady'] }, text: ['every stint about as strong as every other'] },
@@ -180,6 +181,8 @@ export const FEATURES = [
  * gets in. */
 export const KEEP = new Map([
   ['about.html bench:stint', 'in-app button label; #help and advanced.html#midgame name it'],
+  ['about.html strategy:order', 'public-page copy is out of scope for #545; #help names it'],
+  ['advanced.html strategy:order', 'public-page copy is out of scope for #545; #help names it'],
   ['about.html bench:rest', 'in-app button label; #help and advanced.html#midgame name it'],
   ['about.html bench:rebalance', 'in-app button label; #help and advanced.html#midgame name it'],
 ]);

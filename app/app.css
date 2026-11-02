@@ -966,6 +966,13 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
   border-radius: var(--r-xs); color: var(--muted); line-height: 1; }
 @media (hover: hover) { .obtn:hover:not(:disabled) { color: var(--ink); background: var(--surface-2); } }
 .obtn:disabled { opacity: .22; cursor: default; }
+/* #545: the rotation order list. Each row is the position, the name (it wraps
+   rather than clips) and the two 48px arrows; the buttons carry the row's
+   height, so the row itself takes no vertical padding. */
+.orow { padding: 0 .25rem 0 1rem; }
+.orow .prow-t { overflow-wrap: anywhere; padding: .5rem 0; }
+.ord-n { flex: none; min-width: 1.25rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ord-mark { flex: none; color: var(--muted); font-size: var(--fs-footnote); }
 
 /* Drag to reorder: the grab area is the order column and the avatar, so the
    rest of the row still scrolls the page under a thumb. Scoped to

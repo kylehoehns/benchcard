@@ -19,7 +19,7 @@ import { $, el } from './dom.js';
 import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder } from './state.js';
 
 let edit = () => {};
 
@@ -48,6 +48,7 @@ export function renderStrategy() {
   if (g.strategy === 'minutes') box.append(minutesEditor(g));
   else if (g.strategy === 'closers') box.append(closersEditor(g));
   else if (g.strategy === 'platoon') box.append(platoonEditor(g));
+  else if (g.strategy === 'order') box.append(orderEditor(g));
 }
 
 function minutesEditor(g) {
@@ -334,6 +335,52 @@ function platoonEditor(g) {
   add.onclick = () => { c.units.push([]); renderStrategy(); edit('unitCount'); };
   wrap.append(add);
   return wrap;
+}
+
+/* #545: the rotation order, one row per player in the game's order. Each row
+   is the name and two 48px buttons (I3: a visible way to move, no drag), so
+   it is the one list in the app with two controls in a row (C6). A move acts at
+   once, and focus stays on the button that was pressed -- or on its partner
+   when the row has reached an end and that button is off. */
+function orderEditor(g) {
+  const list = effectiveOrder(g);
+  const wrap = el('div');
+  const grp = el('div', 'pgrp');
+  list.forEach((id, i) => {
+    const p = byId(id);
+    const name = p?.name || 'player';
+    const row = el('div', 'prow orow');
+    row.append(el('span', 'ord-n', String(i + 1)), el('span', 'prow-t', name));
+    if (g.out.includes(id)) row.append(el('span', 'ord-mark', (g.late || []).includes(id) ? 'Running late' : 'Out'));
+    for (const dir of [-1, 1]) {
+      const b = el('button', 'obtn press');
+      b.type = 'button';
+      b.append(icon(dir < 0 ? 'arrow-up' : 'arrow-down', { size: '.85em', stroke: 2.4 }));
+      b.disabled = i + dir < 0 || i + dir >= list.length;
+      b.setAttribute('aria-label', `Move ${name} ${dir < 0 ? 'up' : 'down'}`);
+      b.onclick = () => moveInOrder(id, dir);
+      row.append(b);
+    }
+    grp.append(row);
+  });
+  wrap.append(grp, el('p', 'pgrp-f', 'The first five start. Players who are out are skipped.'));
+  return wrap;
+}
+
+// `game()` is read at tap time, so a stale list is never the one swapped.
+function moveInOrder(id, dir) {
+  const g = game();
+  const list = effectiveOrder(g);
+  const i = list.indexOf(id), j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  g.order = list;
+  renderStrategy();
+  const row = document.querySelectorAll('#stratbody .orow')[j];
+  const [up, down] = row.querySelectorAll('.obtn');
+  const same = dir < 0 ? up : down;
+  (same.disabled ? (dir < 0 ? down : up) : same).focus();
+  edit('order');
 }
 
 // `game()` is read at tap time, not the `c` `platoonEditor` closed over, so a

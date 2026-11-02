@@ -1069,6 +1069,45 @@ export class Coach {
     await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
   }
 
+  /** Game day with only the first game of the day, a roster of exactly `names`
+      (`p0`...), 2 periods of 16 minutes, a sub every 4 minutes and
+      `changing` players changing at once (#545's example). `edits` is laid
+      over that game, e.g. `{ out: ['p1'] }`; `startingFive` is a Starting five
+      rule, as ids. */
+  async onGameDayWithRoster(names, { changing = 4, startingFive, ...edits } = {}) {
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    const record = gameDay();
+    const [team] = record.teams;
+    team.players = names.map((name, i) => ({ id: `p${i}`, name, number: '', tier: 3 }));
+    team.settings = { ...team.settings, maxSubs: changing };
+    const [day] = team.days;
+    const game = { ...day.games[0], periods: 2, periodMinutes: 16, granMode: 'everyN', granValue: 4, out: [], ...edits };
+    if (startingFive) game.constraints = { ...game.constraints, openingFive: startingFive };
+    day.games = [game];
+    await land(this.c, this.origin, { record, ready: TODAY_GAME_READY });
+  }
+
+  /** The plan's "Stint by stint" table: who is on the floor each stint, as
+      sorted arrays of the short names it shows. */
+  async planFives() {
+    const { result } = await this.c.send('Runtime.evaluate', { expression: `document.querySelector('#tabledetails:not([open]) > summary')` });
+    if (result.objectId) await this.#tapObject(result.objectId, 'Stint by stint');
+    return evalIn(this.c, `[...document.querySelectorAll('#plan table.grid td.floor')]
+      .map(td => td.textContent.split(' ').sort())`);
+  }
+
+  /** The Plan sheet's Rotation order list, top to bottom: each row's name. */
+  orderList() {
+    return evalIn(this.c, `[...document.querySelectorAll('#stratbody .orow')].map(r => r.querySelector('.prow-t').textContent)`);
+  }
+
+  /** The marks beside the Rotation order list's names: `{ name: 'Out' }`. */
+  orderMarks() {
+    return evalIn(this.c, `Object.fromEntries([...document.querySelectorAll('#stratbody .orow')]
+      .map(r => [r.querySelector('.prow-t').textContent, r.querySelector('.ord-mark')?.textContent ?? '']).filter(([, m]) => m))`);
+  }
+
   /** Who bench mode lists under Running late, top to bottom, by name; [] when the group is hidden. */
   runningLate() {
     return evalIn(this.c, `(() => {

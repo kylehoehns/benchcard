@@ -58,7 +58,7 @@ export const EVENTS = {
   // Does onboarding actually work?
   first_run_complete: { roster: ['1-5', '6-9', '10-12', '13+'] },
   // Does anyone use anything but Balanced?
-  plan_generated: { strategy: ['balanced', 'minutes', 'closers', 'platoon'] },
+  plan_generated: { strategy: ['balanced', 'minutes', 'closers', 'platoon', 'order'] },
   // The core conversion. Is the card the point?
   card_printed: { size: ['pocket', 'half'] },
   /* The other half of that question: a card that gets sent to another coach is

@@ -69,6 +69,7 @@ const TOUR = [
       ['By hand', 'you set each player’s total yourself.'],
       ['Closers', 'even minutes, then a group you pick plays the end.'],
       ['Platoon', 'set groups of five that go in and out together.'],
+      ['Order', 'players take turns in a list you set.'],
     ],
   },
   {

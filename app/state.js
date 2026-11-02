@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -88,6 +88,7 @@ export const STRATEGIES = {
   minutes:  'You set each player’s minutes by hand.',
   closers:  'Even minutes early, then your closing group finishes the game.',
   platoon:  'Fixed groups of five take turns, whole group for whole group.',
+  order:    'Players take turns in the order you set, so you always know who is next.',
 };
 
 /* The substitution grid a coach can choose from. It lives here rather than in
@@ -156,6 +157,7 @@ export function newGame(n, from, settings) {
     out: [...from.out], late: [...(from.late || [])], constraints: clone(from.constraints),
     strategy: from.strategy,
   });
+  if (from?.strategy === 'order') g.order = orderAfter(from);
   return g;
 }
 
@@ -340,7 +342,7 @@ function leagueFullFor(g, id, arrivedAt) {
    nowhere else, beside `leagueSetting`. */
 const playsInSetting = () => (PLAYS_IN.includes(state.settings?.playsIn) ? state.settings.playsIn : DEFAULT_SETTINGS.playsIn);
 // Platoon applies no such rule, so for it the setting is not listed or counted
-const playsInRule = g => (g.strategy === 'platoon' ? 'off' : playsInSetting());
+const playsInRule = g => (g.strategy === 'platoon' || g.strategy === 'order' ? 'off' : playsInSetting());
 // "each half", or "every quarter" / "every half" / "every period" by the game's period count
 const playsInText = g => (playsInSetting() === 'halves' ? `each ${playsInNoun('halves')}` : `every ${playsInNoun('periods', g.periods)}`);
 
@@ -456,7 +458,8 @@ export function ruleItems(g) {
   if (c.openingFive.length) {
     const names = c.openingFive.map(nm);
     items.push({ kind: 'starts', removable: true,
-      text: `${joinNames(names)} ${names.length === 1 ? 'starts' : 'start'} the game` });
+      text: `${joinNames(names)} ${names.length === 1 ? 'starts' : 'start'} the game`
+        + (g.strategy === 'order' ? '. Not used: the order picks who starts.' : '') });
   }
   if (c.lastPeriodFive.length) {
     const names = c.lastPeriodFive.map(nm);
@@ -1180,6 +1183,87 @@ export function longestSit(stints, ids) {
   return { minutes, ids: ids.filter(id => (best[id] || 0) === minutes && minutes > 0) };
 }
 
+/* #545 Rotation order. A game's `order` is a list of ids, one per player, in
+   the sequence they take the floor. What is read is `effectiveOrder`: the
+   list with anyone no longer on the roster dropped and anyone it lacks added
+   at the end in roster order, so an empty list is the roster order. */
+export function effectiveOrder(g, ids = state.players.map(p => p.id)) {
+  const here = new Set(ids);
+  const own = [...new Set(g.order || [])].filter(id => here.has(id));
+  return [...own, ...ids.filter(id => !own.includes(id))];
+}
+const turnTo = (list, id) => {
+  const i = list.indexOf(id);
+  return i <= 0 ? list : [...list.slice(i), ...list.slice(0, i)];
+};
+const changingAtOnce = () => orderChanges(state.settings?.maxSubs ?? DEFAULT_SETTINGS.maxSubs);
+
+/* Who the cycle puts on next after `row` (a stint with `onFloor` and
+   `sitting`): the circle is the order as it was at that stint, the five is a
+   run of it starting at `w`, and the next player is `c` places on. A five
+   that is not a run (a hand swap broke it) is read from its first member on,
+   to the first player not on it. */
+function cycleNext(g, row) {
+  const five = new Set(row.onFloor);
+  const circle = effectiveOrder(g).filter(id => five.has(id) || row.sitting.includes(id));
+  const n = circle.length;
+  if (!n) return null;
+  const c = changingAtOnce();
+  if (n <= five.size) return circle[c % n];
+  const starts = circle.map((id, i) => i).filter(i => five.has(circle[i]) && !five.has(circle[(i + n - 1) % n]));
+  if (starts.length === 1) return circle[(starts[0] + c) % n];
+  const first = circle.findIndex(id => five.has(id));
+  for (let s = 0; s < n; s++) if (!five.has(circle[(first + s) % n])) return circle[(first + s) % n];
+  return null;
+}
+
+/* `avail` in the game's order, turned to begin at `lead`, or at the next
+   player after them in the game's order who is in `avail`. */
+function orderCircle(g, avail, lead) {
+  const full = effectiveOrder(g);
+  const here = new Set(avail);
+  const list = full.filter(id => here.has(id));
+  const at = full.indexOf(lead);
+  if (lead == null || at < 0) return list;
+  for (let s = 0; s < full.length; s++) {
+    const id = full[(at + s) % full.length];
+    if (here.has(id)) return turnTo(list, id);
+  }
+  return list;
+}
+
+function planOf(id) {
+  const days = team().days;
+  for (let i = 0; i < days.length; i++) {
+    const j = days[i].games.findIndex(x => x.id === id);
+    if (j >= 0) return dayPlans?.[i]?.[j] ?? null;
+  }
+  return null;
+}
+
+/* The order a game after `prev` starts from: `prev`'s order turned to begin
+   where its last stint left the cycle. */
+function orderAfter(prev) {
+  const order = effectiveOrder(prev);
+  const p = planOf(prev.id);
+  if (!p?.ok) return order;
+  const eff = benchStints(prev, p);
+  const next = eff.length ? cycleNext(prev, eff[eff.length - 1]) : null;
+  return next ? turnTo(order, next) : order;
+}
+
+/* Picking a strategy. Order's starting point is written once, into the game,
+   so editing another game never moves it: the latest earlier game that day on
+   Order says where it stopped, and with none the roster order is the start. */
+export function chooseStrategy(g, key) {
+  g.strategy = key;
+  if (key !== 'order' || g.order?.length) return;
+  const day = team().days.find(d => d.games.some(x => x.id === g.id));
+  const at = day ? day.games.findIndex(x => x.id === g.id) : -1;
+  const earlier = at > 0 ? day.games.slice(0, at).filter(x => x.strategy === 'order') : [];
+  g.order = earlier.length ? orderAfter(earlier[earlier.length - 1]) : effectiveOrder(g);
+}
+
 /* #537 #541: the stints a sit run is counted over -- `benchStints` less
    overtime, which Sits at most never counted (`benchSpan`). The note, the
    Longest sit and the re-plan's run at the cut all read this one list. */
@@ -1200,6 +1284,7 @@ export const STRATEGY_WORDS = {
   // #stratnote read this same map, so both moved with it.
   closers: 'a closing group',
   platoon: 'fixed fives',
+  order: 'rotation order',
 };
 
 /* The one switch label two callers build (rules.js's own carryover switch and
@@ -1483,7 +1568,7 @@ export function consecNotes(g, p, issues, nameOf) {
     if (longest > limit) {
       out.push({
         severity: 'warn', code: 'CONSEC_EXCEEDED', playerIds: [id],
-        message: runOverSentence(nameOf(id), 'plays', longest, limit),
+        message: runOverSentence(nameOf(id), 'plays', longest, limit, g.strategy === 'order'),
       });
     }
   }
@@ -1509,7 +1594,7 @@ export function benchNotes(g, p, issues, nameOf) {
     if (longest > limit) {
       out.push({
         severity: 'warn', code: 'BENCH_EXCEEDED', playerIds: [id],
-        message: runOverSentence(nameOf(id), 'sits', longest, limit),
+        message: runOverSentence(nameOf(id), 'sits', longest, limit, g.strategy === 'order'),
       });
     }
   }
@@ -1527,11 +1612,7 @@ export function minutesNote(mins, nameOf) {
   const lo = Math.min(...vals), hi = Math.max(...vals);
   const lows = ids.filter(id => mins[id] === lo);
   const highs = ids.filter(id => mins[id] === hi);
-  const note = message => ({ severity: 'info', code: 'SPREAD_SHOWN', message, playerIds: lows });
-  if (spreadOf(mins) === 0) return note(evenMinutesSentence(hi));
-  const end = lowEndPhrase(lows, lo, highs, hi, ids.length, nameOf);
-  if (end.covers) return note(end.named ? `${end.who}, everyone else ${fmtMinutes(hi)}.` : `${end.who}, ${end.other}.`);
-  return note(`${end.who}, the fewest. The most is ${fmtMinutes(hi)}.`);
+  return { severity: 'info', code: 'SPREAD_SHOWN', playerIds: lows, message: minutesSpreadSentence(lows, lo, highs, hi, ids.length, nameOf) };
 }
 
 /* The summary line under the rotation (#29 decision 6): the minute range and
@@ -1611,7 +1692,7 @@ function seasonTargetsFor(g, avail, deficitOf) {
   const note = (reason, extra) => (seasonAdjust[g.id] = { on: true, reason, even, ...extra }, null);
 
   if (!g.useSeasonTargets) { delete seasonAdjust[g.id]; return null; }
-  if (g.strategy === 'minutes' || g.strategy === 'platoon') return note('strategy');
+  if (g.strategy === 'minutes' || g.strategy === 'platoon' || g.strategy === 'order') return note('strategy');
   if (!avail.length) return note('nobody');
 
   const locked = (g.constraints.lockedTargets || []).filter(id => avail.includes(id));
@@ -2242,7 +2323,7 @@ export function computeAll() {
       const rest = JSON.stringify([
         ps.map(p => [p.id, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
         g.granMode, g.granValue, g.strategy, g.balance, g.seed, carry, seasonT, prio, maxSubs, leagueFor,
-        fullFor, playsIn,
+        fullFor, playsIn, ...(g.strategy === 'order' ? [effectiveOrder(g, ids)] : []),
       ]);
       const sig = JSON.stringify([ps.map(p => [p.name, p.shortName]), g.constraints, rest]);
       const hit = planCache.get(g.id);
@@ -2290,6 +2371,7 @@ export function computeAll() {
         priority: prio,
         seed: g.seed,
         maxSubs, start, playsIn,
+        order: g.strategy === 'order' ? effectiveOrder(g, ids) : undefined,
       });
       if (seasonT) sayTheSeasonSetThem(p);
       if (leagueOn) sayTheLeagueMinimum(p, g.constraints.minMinutes || {}, id => leagueFor[id] || 0);
@@ -2497,6 +2579,15 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
     }
   }
 
+  /* #545: Order's circle for the rest is the game's order over who is playing
+     now, led by whoever the cycle had next after the last stint before the cut. */
+  let order;
+  if (strategy === 'order') {
+    const first = open[0] ?? k;
+    const prior = first > 0 ? benchStints(g, p)[first - 1] : null;
+    order = orderCircle(g, avail, prior ? cycleNext(g, prior) : null);
+  }
+
   const openStints = open.map(j => p.stints[j]);
   const total = openStints.reduce((a, s) => a + s.minutes, 0);
   const longest = openStints.reduce((a, s) => Math.max(a, s.minutes), 0);
@@ -2659,13 +2750,13 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
       granularity: { mode: g.granMode, value: g.granValue },
       constraints: c, strategy, balance: g.balance,
       seed: g.seed,
-      maxSubs, streakBefore, sitBefore, playsIn, coveredIn,
+      maxSubs, streakBefore, sitBefore, playsIn, coveredIn, order,
     });
     /* #376: a sit changes one seat. The four who stay are handed to the
        solver as the opening five of the suffix (stint `from`), the engine's
        own forced group. If that cannot be met -- a hand swap put two Apart
        players together, say -- the free solve below is today's behavior. */
-    if (sit.size && open[0] === k) {
+    if (sit.size && open[0] === k && strategy !== 'order') {
       c.openingFive = effectiveStints(g, p)[k].onFloor.filter(id => !sit.has(id) && avail.includes(id));
     }
     r = solve();

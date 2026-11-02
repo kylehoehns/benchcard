@@ -187,7 +187,8 @@ export function renderSeasonAdjust() {
   if (a.reason === 'strategy') {
     return say(g.strategy === 'platoon'
       ? 'Not used with fixed units. The fives you set decide who plays.'
-      : 'Not used with hand-set minutes. The sliders above are already your targets.');
+      : g.strategy === 'order' ? 'Not used with a rotation order. The order decides who plays.'
+        : 'Not used with hand-set minutes. The sliders above are already your targets.');
   }
   if (a.reason === 'nobody') return say('Nobody is available for this game yet.');
   if (a.reason === 'locked') return say('Every player is locked to a number, so there is nothing to even out.');
@@ -437,6 +438,8 @@ function renderAddRule(trigger) {
 function paintKindChips(box) {
   box.textContent = '';
   for (const [k, label] of KINDS) {
+    // #545: the order picks who starts, so there is no Starting five to add
+    if (k === 'starts' && game().strategy === 'order' && draft.kind !== 'starts') continue;
     const b = el('button', 'chip press' + (draft.kind === k ? ' sel' : ''), label);
     b.type = 'button';
     b.setAttribute('aria-pressed', String(draft.kind === k));

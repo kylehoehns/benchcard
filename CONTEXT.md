@@ -176,7 +176,8 @@ _In code_: `plan.ok === false`, `issues` with severity `error`
 ## Strategies
 
 **Strategy**:
-How minutes are shared out in a game: Even, By hand, Closers or Platoon.
+How minutes are shared out in a game: Even, By hand, Closers, Platoon or
+Rotation order.
 _Avoid_: mode, plan type
 
 **Even**:
@@ -212,6 +213,14 @@ _Avoid_: lines, shifts
 **Unit**:
 One fixed group of five in Platoon.
 _Avoid_: line, group, five
+
+**Rotation order**:
+The strategy where the coach lists the game's players in an order and the plan
+takes them in turn: the first five start, and each break the next players in the
+list come on for the ones who have played longest. Each game has its own order; a
+later game that day starts from where the earlier game's turn stopped.
+_Avoid_: rotation list, queue, cycle (in coach text)
+_In code_: `order`, `g.order`
 
 **Lineup balance**:
 An optional setting that uses levels to shape how strong each stint's five is.

@@ -33,6 +33,7 @@ export function removePlayer(team, id) {
   for (const g of team.days.flatMap(d => d.games)) {
     g.out = g.out.filter(x => x !== id);
     g.late = g.late.filter(x => x !== id);
+    g.order = (g.order || []).filter(x => x !== id);
     const c = g.constraints;
     delete c.minMinutes[id]; delete c.maxMinutes[id];
     delete c.targetSlots?.[id];

@@ -43,7 +43,7 @@ export async function encode(team, game, stints) {
     p: team.players.map((p, i) => [p.id, leaving[i], p.number, p.tier]),
     g: {
       id: game.id, periods: game.periods, periodMinutes: game.periodMinutes,
-      granMode: game.granMode, granValue: game.granValue, strategy: game.strategy,
+      granMode: game.granMode, granValue: game.granValue, strategy: game.strategy, order: game.order,
       balance: game.balance, seed: game.seed, out: game.out, late: game.late, constraints: game.constraints,
       overtime: game.overtime, label: game.label?.slice(0, 40), tipoff: game.tipoff,
     },

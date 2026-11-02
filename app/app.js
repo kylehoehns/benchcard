@@ -35,7 +35,7 @@ import { edit } from './edit.js';
 import { DAMAGED_LINK } from './live.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         dueToFile, dayIsPast, fileIfPast, carryUnplayedDay, moveGame, setTipoff, hasGames } from './state.js';
+         chooseStrategy, dueToFile, dayIsPast, fileIfPast, carryUnplayedDay, moveGame, setTipoff, hasGames } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -48,7 +48,7 @@ import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 on('#settingsBtn', 'onclick', () => setView('settings'));
 on('#backBtn', 'onclick', () => setView('today'));
 for (const b of document.querySelectorAll('#stratseg button')) {
-  b.onclick = () => { game().strategy = b.dataset.strat; track('plan_generated', { strategy: b.dataset.strat }); edit('strategy'); };
+  b.onclick = () => { chooseStrategy(game(), b.dataset.strat); track('plan_generated', { strategy: b.dataset.strat }); edit('strategy'); };
 }
 
 /* #22: the Appearance group replaces the theme cycler. Same delegated shape

@@ -729,3 +729,5 @@ text left open, and a future reader needs them to read the plan.
   (`run_worker_first`) so the redirect sees www before the asset layer does. The
   price is a Worker invocation per request; `docs/operations.md` § Deployment
   has the rest.
+- **Rotation order is its own strategy (#545).** The list is taken in turn,
+  with no search. [Rotation order, in full](design-decisions-rotation-order.md).
