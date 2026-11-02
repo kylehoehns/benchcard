@@ -3230,7 +3230,9 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
    on the chosen one. Live: the check moves without leaving the page. */
 .prow-shape { align-items: flex-start; padding-top: .6rem; padding-bottom: .6rem; }
 .prow-shape-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
-.prow-sub { font-size: var(--fs-secondary); color: var(--muted); }
+/* break-word: a day name too long for the row at 32px text breaks rather
+   than running past it. */
+.prow-sub { font-size: var(--fs-secondary); color: var(--muted); overflow-wrap: break-word; }
 .prow-check { flex: none; color: var(--ink); font-weight: 700; }
 
 /* The Add-a-rule kind chips, and the stepper it shares with Plays at most N in a row.

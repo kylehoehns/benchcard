@@ -402,7 +402,12 @@ export function paintChoiceRows(box, rows, repaint) {
     b.setAttribute('aria-label', sub ? `${label}, ${sub}` : label);
     if (sub) {
       const txt = el('div', 'prow-shape-t');
-      txt.append(el('span', 'prow-t', label), el('span', 'prow-sub', sub));
+      /* A long second line wraps at 32px text. A narrow no-break space keeps
+         each "·" on the end of its line, not the start of the next; a full
+         one is 3px too wide for "Saturday ·" in a 320px row. "4 × 8" stays
+         whole. */
+      const shown = sub.replace(/ ·/g, '\u202f·').replace(/ × /g, '\u00a0×\u00a0');
+      txt.append(el('span', 'prow-t', label), el('span', 'prow-sub', shown));
       b.append(txt);
     } else b.append(el('span', 'prow-t', label));
     // The chosen row carries `.prow-check` (balance.js's own chosen-row
