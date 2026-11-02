@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, evenMinutesSentence, lowEndPhrase, buildStints, isOvertimeStint, runEndingAt, longestRun, runOverSentence, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -1446,7 +1446,7 @@ export function consecNotes(g, p, issues, nameOf) {
     if (longest > limit) {
       out.push({
         severity: 'warn', code: 'CONSEC_EXCEEDED', playerIds: [id],
-        message: `${nameOf(id)} plays ${longest} stints in a row against a limit of ${limit} — no legal lineup kept them under it.`,
+        message: runOverSentence(nameOf(id), 'plays', longest, limit),
       });
     }
   }
@@ -1458,27 +1458,24 @@ export function consecNotes(g, p, issues, nameOf) {
    engine's own words (BENCH_EXCEEDED). One per available kid whose longest shown
    run off the floor is over Sits at most. Left out: a kid sat for the rest (the
    coach chose that), a late arrival's stints up to the one they walked in during
-   (`lateArrivals`), and everything when the engine said the limit cannot hold
+   (`live.arrived`, as recorded), and everything when the engine said the limit cannot hold
    (BENCH_TOO_FEW). `issues` are the plan's own notes. */
 export function benchNotes(g, p, issues, nameOf) {
   const limit = g.constraints?.maxBench;
   if (!limit || issues.some(i => i.code === 'BENCH_TOO_FEW')) return [];
   const fives = effectiveStints(g, p).map(s => s.onFloor);
-  const arrived = lateArrivals(g, p, fives.length);
+  const arrived = g.live?.arrived || {};
   const sat = new Set(satIds(g.live));
   const out = [];
   for (const id of availIds(g)) {
     if (sat.has(id)) continue;
-    let run = 0, longest = 0;
-    fives.forEach((five, k) => {
-      if (id in arrived && k <= arrived[id]) return;
-      run = five.includes(id) ? 0 : run + 1;
-      longest = Math.max(longest, run);
-    });
+    // a late kid was not benched before they got there, whatever they did in the stint they walked in during
+    const after = id in arrived ? fives.slice(arrived[id] + 1) : fives;
+    const longest = longestRun(after, id, 0, false);
     if (longest > limit) {
       out.push({
         severity: 'warn', code: 'BENCH_EXCEEDED', playerIds: [id],
-        message: `${nameOf(id)} sits ${longest} stints in a row against a limit of ${limit} — no legal lineup kept them under it.`,
+        message: runOverSentence(nameOf(id), 'sits', longest, limit),
       });
     }
   }
@@ -2520,7 +2517,10 @@ export function resolveRest(g, p, from, sitIds = [], to = null, standing = satId
     const q = fromStint.period;
     const mine = before.filter(s => s.period === q);
     const finish = {};
-    for (const id of avail) if (fullLeft[id] > 0 && mine.every(s => s.onFloor.includes(id))) finish[id] = q;
+    // Plays at most N in a row: finishing adds the period's open stints to the run at the cut
+    const openInQ = p.stints.filter((s, j) => j >= k && j < end && s.period === q).length;
+    const fits = id => !g.constraints.maxConsecutive || (streakBefore[id] || 0) + openInQ <= g.constraints.maxConsecutive;
+    for (const id of avail) if (fullLeft[id] > 0 && mine.every(s => s.onFloor.includes(id)) && fits(id)) finish[id] = q;
     if (Object.keys(finish).length) c.fullFinish = finish;
   }
   // #451: who already played in a half or period the open stints share

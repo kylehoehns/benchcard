@@ -57,6 +57,41 @@ test('a late arrival is counted only from the stint after the one they walked in
   });
 });
 
+test('a kid already on the floor in the stint they walked in during is counted only after it', () => {
+  const g = bareGame({ id: 'g0', seed: 1, live: { at: 0, overrides: {} }, constraints: { ...S.emptyConstraints(), maxBench: 2 } });
+  withTeam(IDS.map(id => player(id)), [g], {}, () => {
+    S.computeAll();
+    const p = S.plans[0];
+    // p5 is off for stints 1-3, walks in during stint 4 (swapped on that stint) and plays on to the end
+    const fives = p.stints.map((s, k) => (k < 3 ? FIRST : k === 3 ? ['p0', 'p1', 'p2', 'p3', 'p5'] : LAST));
+    writeOverrides(g.live, Object.fromEntries(fives.map((f, k) => [k, f])), true);
+    g.live.arrived = { p5: 3 };
+    assert.ok(!said(g, p).includes(WORDS('p5', 3, 2)), 'the stints before p5 got there are counted as bench time');
+  });
+});
+
+test('the engine\'s own note goes when a swap leaves the run on screen within the limit', () => {
+  // p0 is capped at 8 minutes (two stints), so the engine plans [off off on off off on off off]
+  // and says p0 sits 2 in a row against a limit of 1
+  const g = bareGame({ id: 'g0', seed: 1, live: { at: 0, overrides: {} }, constraints: { ...S.emptyConstraints(), maxBench: 1, maxMinutes: { p0: 8 } } });
+  withTeam(IDS.map(id => player(id)), [g], {}, () => {
+    S.computeAll();
+    const p = S.plans[0];
+    assert.deepEqual(p.issues.filter(i => i.code === 'BENCH_EXCEEDED').map(i => i.message), [WORDS('p0', 2, 1)], 'the premise: the engine says p0 sits 2 in a row');
+    assert.deepEqual(p.stints.map(s => s.onFloor.includes('p0')), [false, false, true, false, false, true, false, false]);
+    assert.deepEqual(said(g, p, p.issues), [WORDS('p0', 2, 1)], 'the run on screen is the engine\'s, so the rebuilt note is its note');
+    // the coach swaps p0 on for stints 1, 4 and 8, each time for a kid who plays the stints either side
+    const swaps = {};
+    for (const k of [0, 3, 7]) {
+      const out = p.stints[k].onFloor.find(id => [k - 1, k + 1].every(j => !p.stints[j] || p.stints[j].onFloor.includes(id)));
+      swaps[k] = p.stints[k].onFloor.map(id => (id === out ? 'p0' : id));
+    }
+    writeOverrides(g.live, swaps, true);
+    assert.deepEqual(S.effectiveStints(g, p).map(s => s.onFloor.includes('p0')), [true, false, true, true, false, true, false, true], 'the premise: p0 never sits twice running on screen');
+    assert.deepEqual(said(g, p, p.issues), [], 'a run within the limit on screen gets no note');
+  });
+});
+
 test('nothing is said when the engine said the limit cannot hold', () => {
   shown(2, (g, p) => assert.deepEqual(said(g, p, [{ severity: 'warn', code: 'BENCH_TOO_FEW', message: 'x', playerIds: [] }]), []));
 });

@@ -100,6 +100,10 @@ committed) calls `generatePlan` directly over 7 shapes (4x8/4, 4x8 perPeriod 2,
    (`resolveRest`) that leaves out the period in progress and any period with
    a hand-chosen stint. A kid's need there is their N minus the whole periods
    they already played start to finish.
+   **Amended 2026-11-02 by #535** (in the [533 spec](533-swaps-cap-retry-sit-notes-period-credit.md)):
+   the period in progress is no longer always left out. A kid who was on the
+   floor for every stint of it so far is offered the rest of it, and it counts
+   as one of their periods. A rule that stops that leaves them no credit.
 8. **Everyone plays in is a team setting** in Settings, next to Everyone plays
    at least: `settings.playsIn`, `'off'` (default, and what every saved team
    means), `'halves'` or `'periods'`. Control: a three-button segment like
