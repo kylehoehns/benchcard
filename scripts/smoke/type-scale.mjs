@@ -2,6 +2,7 @@ import { evalIn, step, IS_SR_ONLY_RECT, DESCRIBE_EL } from './dom.mjs';
 import { land } from './page-state.mjs';
 import { APP_LARGE_TEXT_STATES, firstRun, tryLanding } from './app-large-text.mjs';
 import { firstLine } from './verdict.mjs';
+import { FIT_SELECTORS, FIT_FLOOR } from '../../app/dom.js';
 
 /* #24 item 3: the scale's runtime proof. Item 3's "What would settle it" is
    computed rem values, so this reads the SAME size/weight set the spec's own
@@ -15,7 +16,12 @@ const TYPESCALE_WEIGHTS = new Set([400, 500, 600, 700]);
    `smoke-checks.js`'s touch-target scan finds controls rather than guessing a
    selector list: a direct non-whitespace text node, or a form control whose
    value is its "text". `.card` is print output at a fixed size and out of
-   scope (#24's item 5 covers it separately). */
+   scope (#24's item 5 covers it separately).
+   A name the long-word fitter shrank (one of FIT_SELECTORS, with an inline
+   font-size: app/dom.js) is off the scale on purpose. It is judged by its CSS
+   size instead, read by clearing the inline size for one synchronous read
+   (the fitter's observer ignores style), and its fitted size must be no
+   smaller than FIT_FLOOR of that (#522). */
 const TYPESCALE_PROBE = `(() => {
   const seen = [];
   const isSrOnly = ${IS_SR_ONLY_RECT};
@@ -34,7 +40,15 @@ const TYPESCALE_PROBE = `(() => {
     if (!hasOwnText(el) && !isFormEl(el)) continue;
     const cs = getComputedStyle(el);
     const label = describe(el);
-    seen.push({ sel: label, size: Math.round(parseFloat(cs.fontSize)), weight: Number(cs.fontWeight) });
+    let size = parseFloat(cs.fontSize), floorOk = true;
+    if (el.style.fontSize && el.matches(${JSON.stringify(FIT_SELECTORS.join(','))})) {
+      const fitted = size, inline = el.style.fontSize;
+      el.style.fontSize = '';
+      size = parseFloat(getComputedStyle(el).fontSize);
+      el.style.fontSize = inline;
+      floorOk = fitted >= size * ${FIT_FLOOR} - 0.5;
+    }
+    seen.push({ sel: label, size: Math.round(size), weight: Number(cs.fontWeight), floorOk });
   }
   return JSON.stringify(seen);
 })()`;
@@ -56,6 +70,7 @@ export async function typeScalePass(c, origin, rec) {
       rec.check(seen.length > 0, `${v.name}: measured no elements at all`);
       for (const el of seen) {
         rec.check(TYPESCALE_SIZES_PX.has(el.size), `${v.name} — ${el.sel}: ${el.size}px is off the scale`);
+        rec.check(el.floorOk, `${v.name} — ${el.sel}: fitted below ${FIT_FLOOR} of its CSS size`);
         rec.check(TYPESCALE_WEIGHTS.has(el.weight), `${v.name} — ${el.sel}: weight ${el.weight} is off the scale`);
       }
     } catch (e) {

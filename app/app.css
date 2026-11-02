@@ -759,9 +759,9 @@ input[type=range]:disabled { opacity: .5; }
 /* #521: the Closers panel's chips and its "Until you pick someone" line sit at
    the 1rem the headers and tiles already do (By hand's .budget-msg keeps 2rem). */
 .closers .chips { margin: 0 1rem; }
+.closers .budget-msg { margin-left: 1rem; margin-right: 1rem; }
 /* The fitted tile name takes the tile's width, not its text's (app/dom.js). */
 #sheetPlan .plr .nm { align-self: stretch; }
-.closers .budget-msg { margin-left: 1rem; margin-right: 1rem; }
 .pick .plr:disabled { opacity: .32; cursor: not-allowed; }
 .pick .plr.off { opacity: .62; }
 .pick .plr.off .nm { text-decoration: none; }

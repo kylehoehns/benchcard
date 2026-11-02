@@ -130,6 +130,7 @@ export const CLOSERS_STATE = {
          if (lefts.length < 5 || lefts.some(([, x]) => Math.abs(x - lefts[0][1]) > 1 || x < ${SHEET_EDGE_MIN})) {
            throw new Error('the Closers panel blocks do not share one left inset (px from the sheet edge): ' + JSON.stringify(lefts));
          }`,
+  // The restore is in memory only (nothing saves it); the next state reads it.
   close: `const st = await import('/state.js');
           const g = st.game(), was = window.__closers521;
           g.strategy = was.strategy; g.constraints.closing = was.closing;

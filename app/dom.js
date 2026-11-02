@@ -78,7 +78,7 @@ export const NOTE_TEXT = '.alert > span:not(.ico)';
    large text needs it, so a word that still does not fit at the floor is
    broken with a hyphen instead (`hyphenate` below) rather than shrunk further.
    The clip sweep holds this to its own 70% (MIN_FIT_RATIO). */
-const FIT_FLOOR = 0.7;
+export const FIT_FLOOR = 0.7;
 const SHY = '\u00AD';
 
 const textNodes = e => {
@@ -197,7 +197,8 @@ function fitLongWords(root = document) {
     if (!(wide[i] < 1 && over(e))) return;
     const max = room(e) - 0.05;
     if (boxOf(e) === e) e.style.minWidth = `${e.getBoundingClientRect().width}px`;
-    /* A one-line name (the timeline's one-row layout) breaks once it is hyphenated: a hyphen is no use on a line that cannot wrap. */
+    /* A one-line name (the timeline's one-row layout) may break once it is
+       hyphenated: a hyphen is no use on a line that cannot wrap. */
     e.style.whiteSpace = 'normal';
     hyphenate(e, max);
   });
