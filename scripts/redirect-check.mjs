@@ -154,6 +154,7 @@ try {
       url: location.pathname,
       title: document.title,
       hasApp: !!document.querySelector('#view-games'),
+      booted: !!(window.benchcard && window.benchcard.booted),
       hasAbout: !!document.querySelector('h1'),
       text: (document.body.textContent || '').trim().slice(0, 120),
     })`);
@@ -207,9 +208,15 @@ try {
         it was proving nothing. A dead socket is unambiguous. */
   server.stopHard();
   await new Promise(r => setTimeout(r, 300));
-  const o = await navigate(origin + '/some/deep/link');
-  add('offline navigation still gets the shell', !o.failed && o.hasApp === true,
-    o.failed ? 'navigation produced no document' : `shell present: ${o.hasApp}, title "${o.title}"`);
+  /* One path segment on purpose: the shell's `./app.js` then resolves to the
+     precached `/app.js`. Under `/some/deep/link` it resolves to
+     `/some/deep/app.js`, which was never cached, and offline the module fails
+     to load (a separate, known defect). The shell being PRESENT proved little:
+     on a page that never booted it is exactly the dead shell #527 is about, so
+     the arm also needs `benchcard.booted`. */
+  const o = await navigate(origin + '/some-link');
+  add('offline navigation still gets the shell', !o.failed && o.hasApp === true && o.booted === true,
+    o.failed ? 'navigation produced no document' : `shell present: ${o.hasApp}, booted: ${o.booted}, title "${o.title}"`);
 
   /* 5. THE ONE THIS ITEM EXISTS FOR. Offline, a precached document must load
         through the spelling its own hrefs use.

@@ -26,6 +26,19 @@ export const BASELINE = Object.freeze({
    is written. */
 export const LOCALSTORAGE_WIPE = `try { localStorage.clear(); } catch {}`;
 
+/* #527: the app reloads itself once when its module script fails to load,
+   guarded by this sessionStorage key (the same string `app/index.html`'s boot
+   guard uses; `test/smoke-page-state.test.js` pins the two equal). An app
+   reload inside the harness is a main-frame navigation nothing armed a
+   coverage take for, so `land` spends the reload FIRST, before any page
+   script runs, and a failed module goes straight to the recovery panel, with
+   `land`'s own #400 retry the only retry. Not spent after `land`'s scripts
+   are removed: `today-and-back.mjs`'s in-place `location.reload()` runs on a
+   page whose boot already cleared the flag, and a module failing there is
+   not something that row can survive anyway. */
+export const RELOAD_FLAG = 'benchcard.reloaded';
+export const SPEND_RELOAD = `try { sessionStorage.setItem(${JSON.stringify(RELOAD_FLAG)}, '1'); } catch {}`;
+
 const FIELDS = new Set(Object.keys(BASELINE));
 
 /* The #35 fix, the one seeding path: a
@@ -161,7 +174,7 @@ export async function land(c, origin, want = {}) {
   await c.send('Page.setFontSizes', { fontSizes: { standard: state.textPx, fixed: state.textPx } });
   await c.send('Emulation.setEmulatedMedia', { features: state.media });
 
-  const sources = script ? [script, ...state.scripts] : state.scripts;
+  const sources = [SPEND_RELOAD, ...(script ? [script] : []), ...state.scripts];
   await withScripts(c, sources, async () => {
     const plain = `${origin}${state.page}${state.query}`;
     const urls = state.freshHistory

@@ -300,6 +300,29 @@
     }).catch(function () { note.textContent = 'The download failed. Copy this page’s address and try another browser.'; });
   }
 
+  /* #527: a module that fails to FETCH fires `error` on its own <script>, not
+     on window, so no listener below sees it; the app.js tag calls this.
+     Reload once -- a weak gym connection usually answers the second time --
+     and only then show the panel. The sessionStorage flag keeps that to one
+     reload; where storage throws there is no flag, so no reload at all.
+     scripts/smoke's land pre-spends it (RELOAD_FLAG in page-state.mjs). */
+  var spent = 'benchcard.reloaded';
+  g.loadFailed = function () {
+    if (g.booted) return;
+    try {
+      if (!sessionStorage.getItem(spent)) {
+        sessionStorage.setItem(spent, '1');
+        location.reload();
+        return;
+      }
+    } catch (e) {}
+    report('boot');
+  };
+  /* The flag goes when the app.js graph arrived: the script's own `load`,
+     which only a fully fetched graph fires. Not window load or `booted`: the
+     app awaits a shared link before it boots, so both can come too early. */
+  g.fetched = function () { try { sessionStorage.removeItem(spent); } catch (e) {} };
+
   addEventListener('error', function (e) { report(null, e && e.filename); });
   addEventListener('unhandledrejection', function () { report(null, null); });
 })();
@@ -2128,7 +2151,7 @@
   } catch (e) {}
 })();
 </script>
-<script type="module" src="./app.js"></script>
+<script type="module" src="./app.js" onerror="benchcard.loadFailed()" onload="benchcard.fetched()"></script>
 <script>
 /* Service worker: the shell has to boot in a gym with no signal. Registered
    after load so it never competes with first paint, and failures are silent —

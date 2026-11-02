@@ -21,6 +21,25 @@ in plain words that the roster is still on the device. The panel is BUILT IN
 THE CATCH and is not in the markup — a hidden panel would spend a third of the
 node budget's headroom on a screen almost nobody sees.
 
+**A module that fails to load gets one reload first (#527).** A throw inside a
+module reaches the boot try. A module that never arrives does not: the browser
+fires `error` on the app.js module `<script>` tag, not on
+`window`, so the guard cannot see it. That tag's `onerror` calls
+`benchcard.loadFailed()`, which reloads the page once and sets the
+sessionStorage flag `benchcard.reloaded`. The app.js tag's `onload` clears the flag
+(`benchcard.fetched()`): that event fires only once the whole module graph
+arrived, so a failed document never clears it. It is not window `load` or
+`booted`, because the app awaits a shared link before it boots and both can
+come too early. If the flag is already set, or sessionStorage throws, the
+guard goes straight to the panel and sends `app_error` with `where: 'boot'`. A
+coach therefore sees at most one reload, and the app never reloads twice. Only
+the app.js tag is hooked: `analytics.js` injects a module of its own, and its
+failure must not reload a healthy app.
+
+Smoke pre-spends the flag, so the app never navigates by itself inside the
+harness; `RELOAD_FLAG` and `SPEND_RELOAD` in `scripts/smoke/page-state.mjs`
+say why. The harness's own retry stays the only one.
+
 **The download is `backup.js`'s, not a copy of it.** It dynamically imports
 `downloadText` and `backupFilename` at click time, and hands them the raw
 `localStorage` bytes — trying the same newest-first key chain the theme script

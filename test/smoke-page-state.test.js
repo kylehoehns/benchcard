@@ -536,3 +536,44 @@ test('no check module restores RICH itself', () => {
     .map(f => relative(ROOT, f).split(sep).join('/'));
   assert.deepEqual(bad, []);
 });
+
+/* #527: the app reloads itself once when its module fails to load. Inside the
+   harness that reload would be a main-frame navigation nothing armed a
+   coverage take for, so `land` registers a script, FIRST, that spends the
+   app's one reload before any page script runs. */
+async function sourcesLandedFor(want) {
+  const calls = [];
+  const c = fakeClient({ evaluate: undefined, calls });
+  const send = c.send;
+  const sources = [];
+  c.send = async (m, p) => { if (m === 'Page.addScriptToEvaluateOnNewDocument') sources.push(p.source); return send(m, p); };
+  await pageState.land(c, 'http://x', want);
+  return sources;
+}
+const runSpend = source => {
+  const store = new Map();
+  const sessionStorage = { setItem: (k, v) => store.set(k, String(v)), getItem: k => store.get(k) ?? null };
+  const localStorage = { setItem() {}, removeItem() {}, clear() {}, getItem: () => null };
+  new Function('sessionStorage', 'localStorage', source)(sessionStorage, localStorage);
+  return store;
+};
+
+test("land: the first on-new-document script spends the app's one reload, whatever the record", async () => {
+  for (const want of [{}, { record: 'kept' }, { record: 'wiped' }, { scripts: ['1;'] }]) {
+    const [first] = await sourcesLandedFor(want);
+    assert.ok(first, `no script registered for ${JSON.stringify(want)}`);
+    assert.equal(runSpend(first).get('benchcard.reloaded'), '1', `first script for ${JSON.stringify(want)} does not spend the reload`);
+  }
+});
+
+test('land: a sessionStorage that throws does not break the spend script', async () => {
+  const [first] = await sourcesLandedFor({ record: 'kept' });
+  assert.doesNotThrow(() => new Function('sessionStorage', first)({ setItem() { throw new Error('denied'); } }));
+});
+
+test("the reload flag's key is the one index.html's boot guard reads", async () => {
+  const html = readFileSync(new URL('../app/index.html', import.meta.url), 'utf8');
+  assert.ok(pageState.RELOAD_FLAG, 'page-state.mjs does not export RELOAD_FLAG');
+  assert.ok(html.includes(`'${pageState.RELOAD_FLAG}'`), `index.html does not use the key ${pageState.RELOAD_FLAG}`);
+  assert.equal(pageState.RELOAD_FLAG, 'benchcard.reloaded');
+});

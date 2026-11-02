@@ -25,7 +25,7 @@ import path from 'node:path';
 import { serve } from '../scripts/serve.mjs';
 import { launch, cdp, closeChrome, hasChrome } from '../scripts/smoke/chrome.mjs';
 import { evalIn, quiet, setVisibility, screenReadyExpr, FAST_PLAYBACK_RATE, TIMER_TRACKER } from '../scripts/smoke/dom.mjs';
-import { land } from '../scripts/smoke/page-state.mjs';
+import { land, RELOAD_FLAG } from '../scripts/smoke/page-state.mjs';
 import { buildClockScript, SMOKE_CLOCK } from '../scripts/smoke/clock.mjs';
 import { RICH, TODAY_GAME_READY, GAMES_VIEW_READY, WELCOME_LANDING } from '../scripts/smoke/fixtures.mjs';
 import { SAMPLE_PLAYERS, withSecondTeam } from '../scripts/smoke/fixtures.mjs';
@@ -191,7 +191,11 @@ export class Coach {
     return new Coach({ c, origin, server, proc: launched.proc, dir: launched.dir, errors, clock });
   }
 
-  constructor(s) { Object.assign(this, s); }
+  constructor(s) {
+    Object.assign(this, s);
+    this.navigationCount = 0;
+    s.c.on('Page.frameNavigated', p => { if (!p.frame.parentId) this.navigationCount++; });
+  }
 
   async close() {
     await closeChrome(this.proc, this.dir);
@@ -778,6 +782,65 @@ export class Coach {
     this.errors.length = 0;
     await this.#setClock(SMOKE_CLOCK);
     await land(this.c, this.origin, { record: two, ready: TODAY_GAME_READY });
+  }
+
+  /** Open the app on Today, game day, on a connection where the module `file`
+      ('trap.js') fails to load the first `failures` times it is asked for
+      (every time, by default) and loads after. The app's own reload is let
+      through (`land` spends it, so this clears it first, once), and the wait
+      ends on Today or on the recovery panel, whichever the page lands on.
+      `withoutSessionStorage` is a browser that denies the page its session
+      storage. How many times the page navigated is `navigationCount`. */
+  async onGameDayWithBrokenModule(file, { failures = Infinity, withoutSessionStorage = false } = {}) {
+    const { c } = this;
+    this.errors.length = 0;
+    await this.#setClock(SMOKE_CLOCK);
+    const token = `${Date.now()}-${Math.random()}`;
+    const key = JSON.stringify(RELOAD_FLAG);
+    const clearOnce = `try { if (sessionStorage.getItem('__brokenModule') !== '${token}') {
+      sessionStorage.removeItem(${key}); sessionStorage.setItem('__brokenModule', '${token}'); } } catch {}`;
+    /* The flag `land` spent is cleared (once) BEFORE the denial is installed: a
+       flag still set would show the panel with no reload whether or not
+       storage was denied. */
+    const denied = `Object.defineProperty(window, 'sessionStorage', { get() { throw new DOMException('denied', 'SecurityError'); } });`;
+    await c.send('Network.enable');
+    await c.send('Network.setBypassServiceWorker', { bypass: true });
+    /* Each ask for the file is answered here, one at a time, so "fails once,
+       then loads" is exact: a reload cannot race an unblock. */
+    let failed = 0;
+    const onPaused = p => {
+      if (failed < failures) { failed++; c.send('Fetch.failRequest', { requestId: p.requestId, errorReason: 'Failed' }).catch(() => {}); }
+      else c.send('Fetch.continueRequest', { requestId: p.requestId }).catch(() => {});
+    };
+    c.on('Fetch.requestPaused', onPaused);
+    await c.send('Fetch.enable', { patterns: [{ urlPattern: `*${file}`, requestStage: 'Request' }] });
+    const ready = `(${TODAY_GAME_READY}) || document.getElementById('recover')`;
+    /* `land` re-navigates once when it hears Chrome cancel the navigated
+       document's module requests (#400). Here the app itself may have replaced
+       that document with its reload, and a retry on top would be a second
+       harness navigation the scenario counts and the app never made. So `land`
+       is handed a client that hears no Network events (its retry is inert);
+       the bypass above needed the domain on, the retry does not get it. */
+    const deaf = new Proxy(c, { get: (t, k) => k === 'on' ? (ev, cb) => (ev.startsWith('Network.') ? undefined : t.on(ev, cb))
+      : k === 'off' ? (ev, cb) => (ev.startsWith('Network.') ? undefined : t.off(ev, cb))
+      : typeof t[k] === 'function' ? t[k].bind(t) : t[k] });
+    try {
+      try {
+        await land(deaf, this.origin, { record: gameDay(), ready, scripts: withoutSessionStorage ? [clearOnce, denied] : [clearOnce] });
+      } catch (err) {
+        /* The page reloaded itself under land's wait (or never came up, which
+           the scenario's own assertions then report): poll for where it ends up. */
+        if (!/context was destroyed|Cannot find context|Inspected target navigated|^boot wait timed out/i.test(err.message)) throw err;
+        await this.#until('the page never settled', async () => {
+          try { return !!(await evalIn(c, ready)); } catch { return false; }
+        }).catch(() => {});
+      }
+    } finally {
+      await c.send('Fetch.disable');
+      c.off('Fetch.requestPaused', onPaused);
+      await c.send('Network.setBypassServiceWorker', { bypass: false });
+      await c.send('Network.disable');
+    }
   }
 
   /** Close the app and open it again where the coach left it: `screen` is
