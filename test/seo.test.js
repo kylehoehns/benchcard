@@ -171,8 +171,8 @@ test('about keeps its H1 and its lede carries the searched words', () => {
   assert.match(html, /<h1><span class="hl">Even minutes<\/span>, worked out before the game\.<\/h1>/);
   const lede = (html.match(/<p class="lede">([\s\S]*?)<\/p>/)?.[1] ?? '').replace(/\s+/g, ' ');
   assert.equal(lede, 'Benchcard is a free substitution planner for youth basketball, built around equal playing time. ' +
-    'Give it your roster and say how the minutes should be split, and it works out who is on the floor ' +
-    'for every stint, then prints it on a card that fits in your pocket.');
+    'Give it your roster and say how to split the minutes. It works out who is on the floor ' +
+    'between every sub, then prints the plan on a card that fits in your pocket.');
 });
 
 const ABOUT_DESC = 'Equal playing time, and how to plan a youth basketball substitution rotation: even minutes, the rules a coach needs, and how to read the printed card.';

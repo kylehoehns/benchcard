@@ -336,7 +336,7 @@ test('each lede says substitution, printable and equal playing time, and still h
     for (const w of ['substitution', 'printable', 'equal playing time']) {
       assert.ok(text.includes(w), `${file(n)}'s lede does not say "${w}": ${text}`);
     }
-    assert.ok(text.includes('as close to equal playing time as the arithmetic allows'),
+    assert.ok(text.includes('as close to equal playing time as the math allows'),
       `${file(n)}'s lede lost its hedge: ${text}`);
     assert.ok(!/\b(equal|even) minutes\b/.test(text.replace(/minutes each/g, '')),
       `${file(n)}'s lede claims equal minutes flat: ${text}`);
@@ -391,8 +391,8 @@ test('the halves page copy is exactly the spec\'s', () => {
     '20 minutes each. Free, no signup, works offline.');
   assert.ok(desc.length <= 160);
   assert.equal(lede(page), 'A printable substitution chart for 10 players over two 20-minute halves, ' +
-    'subbing every 4 minutes: 20 minutes each, as close to equal playing time as the arithmetic allows.');
-  assert.match(page, /<figcaption[^>]*>Each box is one stint: the clock is time left in the period, and the underlined names just came on\. 10 stints, five on the floor, and it cuts out to fit a pocket\.<\/figcaption>/);
+    'subbing every 4 minutes. That is 20 minutes each, as close to equal playing time as the math allows.');
+  assert.match(page, /<figcaption[^>]*>Each box is one stint, the time between two subs\. The clock shows time left in the period, and the underlined names just came on\. 10 stints with five on the floor, and it cuts out to fit a pocket\.<\/figcaption>/);
   assert.ok(page.includes('<p class="trust noprint">Free, and there is no account. Your roster never leaves your device.</p>'));
   assert.ok(page.includes('<a class="btn primary" href="./?try=10&halves">Try it with 10 sample players</a>'));
   assert.ok(page.includes('<link rel="canonical" href="https://benchcard.app/basketball-rotation-chart-two-halves">'));
@@ -448,7 +448,7 @@ test('the sitemap lists the 6-player page before the 7 and the halves page after
   assert.equal(at(slug(6)) + 1, at(slug(7)));
   assert.equal(at('basketball-rotation-chart-two-halves'), at(slug(12)) + 1);
   for (const loc of [slug(6), 'basketball-rotation-chart-two-halves']) {
-    assert.deepEqual(entries[at(loc)].slice(1), ['2026-11-01', '0.7'], loc);
+    assert.deepEqual(entries[at(loc)].slice(1), ['2026-11-02', '0.7'], loc);
   }
 });
 
@@ -487,7 +487,7 @@ test('the button row is Try, Build one, Print, with no "How it works" in it', ()
 test('each size page has the one-sentence lede, with the minutes from the plan', () => {
   for (const n of SIZES) {
     const m = lede(html.get(n)).match(new RegExp(
-      `^A printable substitution chart for ${n} players over four 8-minute quarters, subbing every 4 minutes: (.+), as close to equal playing time as the arithmetic allows\\.$`));
+      `^A printable substitution chart for ${n} players over four 8-minute quarters, subbing every 4 minutes\\. That is (.+), as close to equal playing time as the math allows\\.$`));
     assert.ok(m, `${file(n)} lede is not the one-sentence form: ${lede(html.get(n))}`);
     // the phrase is the range of the minutes the card's own footer prints
     const mins = footerMinutes(html.get(n));

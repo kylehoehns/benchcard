@@ -56,7 +56,7 @@ const TOUR = [
        is no fold to open first, unlike the step below. */
     sel: ['#phrasePlayers'],
     title: 'Who is here tonight',
-    body: "Everyone on the roster is available. Tap the number of players to mark who isn't here, and the rotation rebuilds.",
+    body: "Everyone on the roster is available. Tap the number of players to mark who isn't here, and the plan updates.",
   },
   {
     /* #28: the Plan sheet replaced `#planFold`, so there is no fold to open
@@ -67,8 +67,8 @@ const TOUR = [
     lines: [
       ['Even', 'as close to equal as the clock allows.'],
       ['By hand', 'you set each player’s total yourself.'],
-      ['Closers', 'even early, then a group you pick finishes.'],
-      ['Platoon', 'fixed fives that swap as whole units.'],
+      ['Closers', 'even minutes, then a group you pick plays the end.'],
+      ['Platoon', 'set groups of five that go in and out together.'],
     ],
   },
   {
@@ -77,12 +77,12 @@ const TOUR = [
        in the top layer and would make it inert, survey item 4). */
     sel: ['#phraseRules'],
     title: 'Rules and lineups',
-    body: 'Tap here to add rules the plan keeps, like a starting five or two players kept apart. Lineup balance lives here too.',
+    body: 'Tap here to add rules, like a starting five or two players kept apart. Lineup balance is here too.',
   },
   {
     sel: ['#timeline'],
     title: 'This is the rotation',
-    body: 'One row per player, the game clock running left to right. Open a row to see that player’s minutes, stints and rest.',
+    body: 'One row per player, the game clock running left to right. Open a row to see that player’s minutes and when they sit.',
   },
   {
     /* #201: the switch, with no `before` -- tapping it would change the
@@ -94,12 +94,12 @@ const TOUR = [
   {
     sel: ['#abBench', '#gmOpen'],
     title: 'What you use in the gym',
-    body: 'Start game opens bench mode: who is on, who is next, one tap to move the game along.',
+    body: 'Start game opens bench mode. It shows who is on and who goes in next, and one tap moves to the next sub.',
   },
   {
     sel: ['#shareBtn'],
     title: 'Print, share or hand off',
-    body: 'This button prints the card, shares it as an image, or hands the game to an assistant.',
+    body: 'Tap here to print the card, share it as an image, or put the game on an assistant’s phone.',
   },
 ];
 
