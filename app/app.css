@@ -3574,6 +3574,14 @@ input[switch]:disabled { opacity: .4; cursor: default; }
      since the base rule is ~230 lines below this block and would otherwise
      win on source order. */
   #view-settings .minwrap { flex: 0 1 auto; flex-wrap: wrap; }
+  /* The same row's unit picker (#447) took the wrap to its own line and
+     still ran to 326px (smoke `app shell at 320px/32px text`): the base
+     select's .72rem + 2rem padding is 87px at a 32px root around a
+     "% of game" label, and the 5px chevron sits 10-15px from the edge, so
+     most of the 2rem is empty. Padding in px keeps the chevron's gap fixed
+     while the text grows; max-width is the backstop so a longer label can
+     never push the row off the screen. */
+  #view-settings .minwrap select.prow-select { max-width: 100%; padding-left: .4rem; padding-right: 28px; }
 
   /* "Remove this game": `#removeGame` is hidden until the day holds two
      games, so a harness that seeds one game never renders it. Measured at
@@ -4094,6 +4102,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
    in both directions. */
 .minwrap { flex: none; align-self: flex-start; display: flex; align-items: center; gap: .4rem; }
 .minwrap > span { color: var(--muted); font-size: var(--fs-secondary); }
+#view-settings select.prow-select { flex: 0 1 auto; width: auto; min-width: 0; min-height: 48px; }
 #view-settings input.minmins { flex: none; width: 4.25rem; min-height: 48px; text-align: center;
   font-variant-numeric: tabular-nums; }
 

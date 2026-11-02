@@ -174,7 +174,7 @@ new game starts as, and that any game can be changed from its own screen.
 
 The third group holds **Players changing at once** (1–5, default 3, `maxSubs`),
 **The odd minutes** (who gets the high side when the clock does not divide
-evenly), and **Everyone plays at least** (league minimum minutes, default 0).
+evenly), and **Everyone plays at least** (the league minimum: an amount and what it counts, minutes, percent of the game or periods; default 0 minutes, [design decisions](../design-decisions.md)).
 These three settings live together because they shape who plays, and the
 group's one footnote is the `maxSubs` read-back below. `maxSubs` has
 always existed in `engine.js` and was invisible to a coach until it moved here.

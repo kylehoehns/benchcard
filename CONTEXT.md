@@ -276,8 +276,10 @@ _In code_: `maxBench`
 ## Team settings
 
 **League minimum**:
-A team setting for the minutes every available player gets at least, when a
-league requires one.
+A team setting for the least every available player gets, when a league
+requires one. It is an amount counted in minutes, a percent of the game, or
+periods, so what it comes to is a number of minutes for a given game. A player
+who arrives late is owed the same share of the time left.
 _Avoid_: league floor
 
 **Odd minutes**:

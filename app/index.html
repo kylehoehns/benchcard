@@ -1412,8 +1412,12 @@
         <span class="prow-t">Everyone plays at least</span>
         <div class="minwrap">
           <input class="minmins" id="minMins" type="number" min="0" max="60" step="1"
-                 inputmode="numeric" aria-label="Minutes everyone plays at least">
-          <span aria-hidden="true">min</span>
+                 inputmode="numeric" aria-label="How much everyone plays at least">
+          <select class="prow-select" id="minUnit" aria-label="Counted in">
+            <option value="min">min</option>
+            <option value="pct">% of game</option>
+            <option value="periods">periods</option>
+          </select>
         </div>
       </div>
     </div>
@@ -1923,8 +1927,10 @@
       </dl>
       <p class="help-p">One rule is worth setting once rather than per game. If your
         league says everyone plays a minimum, <b>Settings</b> holds
-        <b>Everyone plays at least … min</b>, a minimum for the whole team that reaches
-        every available player in every game. A Plays at least you set on one player still
+        <b>Everyone plays at least</b>, a minimum for the whole team that reaches
+        every available player in every game. Count it in minutes, as a share of the
+        game ("half the game" is 50 % of game) or in periods, and each game owes its
+        own length. A Plays at least you set on one player still
         wins when it is higher, and a Plays at most you set still wins when it is lower.</p>
 
       <h3 class="help-h">A tournament day, and the season</h3>
@@ -2014,10 +2020,13 @@
           all still win. Until you set levels on the Team page, both settle it the
           same way.</dd>
         <dt>Everyone plays at least</dt>
-        <dd>Minutes, for every player who is available. Leave it at 0 unless your
-          league has a rule. A minimum you set on one player still wins when it is
-          higher, a cap you set still wins when it is lower, and the plan says so if
-          the game is not long enough to give everyone that much.</dd>
+        <dd>For every player who is available. Count it in minutes, as a percent of
+          the game, or in periods: 50 % of game is half of whatever length the game is,
+          rounded up to a whole stint. Leave it at 0 unless your league has a rule. A
+          kid who arrives late is owed the same share of the time left, not the whole
+          game's. A minimum you set on one player still wins when it is higher, a cap
+          you set still wins when it is lower, and the plan says so if the game is not
+          long enough to give everyone that much.</dd>
         <dt>Backup and restore</dt>
         <dd>Your roster is saved in this browser and nowhere else. Clearing your history can
           erase it, and so can leaving Benchcard unopened for a week on an iPhone. Save a

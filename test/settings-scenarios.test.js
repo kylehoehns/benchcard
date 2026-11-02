@@ -100,4 +100,22 @@ describe('a coach changes Settings', { skip }, () => {
     await coach.tap('Back to JV Ravens');
     assert.equal(await coach.sees('Smoke Test'), false);
   });
+
+  test('the league minimum set as half the game reads as 16 min in the Plan sheet, and Settings keeps 50 and % of game', async () => {
+    await coach.onGameDayWith({}, 10);
+    await coach.tap('Settings');
+    await coach.choose('Counted in', '% of game');
+    await coach.fill('How much everyone plays at least', '50');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Settings');
+    await coach.comeBackLaterOn('settings');
+    assert.equal(await coach.valueOf('How much everyone plays at least'), '50');
+    assert.equal(await coach.valueOf('Counted in'), 'pct');
+
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap((await coach.controls()).find(n => /^Rules, /.test(n)));
+    assert.ok(await coach.sees('Everyone plays at least half the game (16 min)'),
+      `Rules reads: ${JSON.stringify((await coach.controls()).filter(n => /Everyone/.test(n)))}`);
+  });
 });

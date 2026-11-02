@@ -20,6 +20,7 @@ lost. Now the lock is raised to the minimum, and the plan says so.
 | --- | --- | --- | --- |
 | A minimum (a rule's or the league's) and a locked By hand number below it | The minimum. The locked number is raised to it, and the extra minutes come out of the unlocked By hand numbers. | A warning that the number was raised. The league's name for it when the league set the minimum. | [Choices](#choices-behind-the-table); "A league minimum is a floor on the map the engine already reads" |
 | A league minimum and a cap on the same player | The cap, when it is lower. A coach's own minimum wins over the league minimum when it is higher. | Nothing. The minimum is held at the cap, so no error appears. | "A league minimum is a floor on the map the engine already reads" |
+| A minimum (the league's or a coach's own) that a kid who arrived late cannot reach in the time left | The time left. The league owes that kid its share of the minutes from their arrival stint on, and the minimum gives way to the minutes that exist. | Warning `MIN_CLAMPED`, one per kid, naming the minimum that could not be reached. | "A late arrival is owed the league's share of the time left (#447)" |
 | A minimum and Plays at most N in a row | The minimum. The run limit gives way. | `CONSEC_MIN_CONFLICT` names every player the limit makes impossible to meet. | "A Plays at most N in a row limit that cannot hold is caught before the search (#439)" |
 | Together and Apart on the same two players | Nothing: the plan is refused. | Error `PAIR_AVOID_CONFLICT` naming the two, whatever the Together strength. | `analyzeFeasibility`; [Choices](#choices-behind-the-table) |
 | Force Together ties A to B and A to C, and B and C are set Apart | Nothing: the plan is refused, but only with Force Together on. Plain Together is not refused. | Error `PAIR_CHAIN_APART` naming B and C and the player who links them. | [Choices](#choices-behind-the-table) |
@@ -84,6 +85,8 @@ text left open, and a future reader needs them to read the plan.
   setting exists. Its warning says "their N-minute minimum". `state.js` swaps
   that phrase for "the league minimum" when the composed minimum came from the
   league setting, which is when the coach's own minimum for that player is lower.
+  The league figure is the one for that kid, so a late arrival's is their share
+  of the time left.
 - **The detail-page line.** One line appears on the minimum rule's page and on
   the league minimum's page: a locked number below the minimum loses to the
   minimum, and the plan notes say so. The other rows of the table get no page
@@ -188,19 +191,58 @@ text left open, and a future reader needs them to read the plan.
   halves of twenty minutes" never opened it. It then became its own fold, and
   is now a phrase the coach reads before touching anything.
 - **A league minimum is a floor on the map the engine already reads.**
-  `settings.minMinutes` (0 meaning off) is composed into each game's per-player
-  `minMinutes` in `computeAll`, so `engine.js` never learns the setting exists —
-  the same trick as the tie-break stance, and the reason neither cost a solver
-  change. A minimum the coach set on one player wins when it is higher; their
-  **cap wins when it is lower**, because a cap is a deliberate "hold this kid
-  back" and raising past it would manufacture a `MIN_ABOVE_CAP` error nobody
-  asked for. The engine's own arithmetic still gets to refuse: twelve players at
-  fifteen minutes wants more floor-minutes than a 32-minute game has, and
-  `MINS_UNSATISFIABLE` says so. One knock-on worth knowing —
-  `MIN_OFF_STINT_BOUNDARY` is per player, so a league number that is not a whole
-  multiple of the stint fired it once for everybody; `renderIssues` collapses
-  the repeat, in the same place and for the same reason it drops Platoon's
-  `SPREAD_FLOOR`.
+  `settings.minMinutes` (0 meaning off) is the amount, and `settings.minUnit`
+  says what it counts (below). `leagueMinFor(g)` in `state.js` turns that into
+  the minutes the league owes a kid who was there all game, for that game's own
+  length. `computeAll` and the re-plan in `resolveRest` both compose it into each
+  player's `minMinutes` through one helper, so `engine.js` never learns the
+  setting exists — the same trick as the tie-break stance, and the reason neither
+  cost a solver change. A minimum the coach set on one player wins when it is
+  higher; their **cap wins when it is lower**, because a cap is a deliberate
+  "hold this kid back" and raising past it would manufacture a `MIN_ABOVE_CAP`
+  error nobody asked for. The engine's own arithmetic still gets to refuse:
+  twelve players at fifteen minutes wants more floor-minutes than a 32-minute
+  game has, and `MINS_UNSATISFIABLE` says so. A share is rounded up to a whole
+  stint when every regulation stint is the same length (below), so it never
+  fires `MIN_OFF_STINT_BOUNDARY`. A league number in plain minutes that is not a
+  whole multiple of the stint still does, once for everybody; `renderIssues`
+  collapses the repeat, in the same place and for the same reason it drops
+  Platoon's `SPREAD_FLOOR`.
+- **A league minimum is a share of the game, or a count of periods (#447).**
+  `settings.minUnit` is `min` (minutes, as typed; the default, and what every
+  record saved before the key existed means), `pct` (a percent of the game's
+  regulation minutes) or `periods` (a count times the period length). "Half the
+  game" is 50 percent. A percent covers a half, a third or a quarter in one box,
+  so the Settings row is a number and a unit picker, not a menu of halves. The
+  amount is clamped to the unit: 0–60 minutes, 0–100 percent, 0–8 periods.
+  Changing the unit keeps the number, clamped. Regulation only: overtime does
+  not grow the league figure. "Rounded up to a whole stint" applies only when
+  every regulation stint is the same length; with uneven stints the exact value
+  is used. The rule sentence names the game's minutes too, so a coach sees what
+  the share means for this game: "half the game (16 min)".
+- **A late arrival is owed the league's share of the time left (#447).**
+  `leagueMinFor(g, arrivedAt)` scales the whole-game figure by the regulation
+  minutes from the start of the stint the kid arrived in to the end of the game,
+  rounds that up to a whole stint (when the stints are equal), and never gives
+  more than that time or more than a kid who was there all game is owed. A kid
+  who played before the stint they came back at is not late (`lateArrivals`
+  decides, for the full solve and the re-plan alike). In a 4×8 with a 16-minute league minimum, a kid who walks
+  in at halftime is owed 8, not every stint left. The kids who were there all
+  along keep the whole figure. The scaling applies to minutes as well as shares.
+  `computeAll` uses the scaled figure too, so marking a late kid here does not
+  refuse the whole game for a minimum they are no longer owed. A game whose
+  minimums cannot fit even scaled still refuses. Before this, a re-plan gave a
+  late kid the whole-game minimum and clamped it to the stints left, silently.
+  - **When the time left cannot hold a minimum, the plan says so.** The
+    re-plan can only give the minutes that exist, so the solver clamps and the
+    plan does not refuse. `MIN_CLAMPED` is a warning, one per kid, added to the
+    plan's issues after the overrides are synced, the way the pin notes are. It
+    names the minimum that bound: "the league minimum of 8" when the league
+    figure is the higher, "their 20-minute minimum" when the coach's own is or
+    when a cap lowered the figure.
+  - **The league's part of a kid's minimum is their scaled figure.** So the
+    "league minimum" wording under [Where the league wording comes from](#choices-behind-the-table)
+    uses that number for a late kid, not the whole-game one.
 - **"How many change at once" is a preference, and the plan says when it misses.**
   `repairChurn` holds the ceiling while a lineup is built, but the local search
   that follows charges 40 per extra change against 60 a minute off target — so

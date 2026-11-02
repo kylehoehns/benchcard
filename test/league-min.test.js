@@ -38,11 +38,13 @@ const withSettings = (settings, fn) => {
   try { return fn(); } finally { S.state.teams = saved; }
 };
 
-test('leagueMinutes reads the active team, and off is 0', () => {
-  assert.equal(withSettings({ minMinutes: 10 }, () => S.leagueMinutes()), 10);
-  assert.equal(withSettings({ minMinutes: 0 }, () => S.leagueMinutes()), 0,
+const GAME = { periods: 4, periodMinutes: 8, granMode: 'everyN', granValue: 4 };
+
+test('leagueMinFor reads the active team, and off is 0', () => {
+  assert.equal(withSettings({ minMinutes: 10 }, () => S.leagueMinFor(GAME)), 10);
+  assert.equal(withSettings({ minMinutes: 0 }, () => S.leagueMinFor(GAME)), 0,
     '0 is off, and 0 is what every record written before the key existed means');
-  assert.equal(withSettings(undefined, () => S.leagueMinutes()), 0,
+  assert.equal(withSettings(undefined, () => S.leagueMinFor(GAME)), 0,
     'a record that has not been through sanitize has no settings block — the default is '
     + 'exactly what that means, and this must never throw on the way to a render');
 });
@@ -55,9 +57,9 @@ test('the Rules count counts the league minimum', () => {
      the league floor from. What still has to hold is that state.js's own
      count and its own row list agree with each other about it. */
   const stateJs = read('state.js');
-  assert.match(stateJs, /leagueMinutes\(\) > 0 \? 1 : 0/,
+  assert.match(stateJs, /leagueSetting\(\)\.amount > 0 \? 1 : 0/,
     'ruleCount(g) in state.js no longer counts the league minimum when it is on');
-  assert.match(stateJs, /if \(lmin > 0\) items\.push/,
+  assert.match(stateJs, /if \(leagueSetting\(\)\.amount > 0\) items\.push/,
     'ruleItems(g) in state.js no longer lists the league minimum as a row of its own — the '
     + 'Rules group and ruleCount would disagree about it again (A24b / #26 decision 3)');
 });
@@ -67,17 +69,17 @@ test('the Rules drawer only says "just evens out the minutes" when nothing else 
   const FALSE_WHEN_SET = 'No rules yet. The plan just evens out the minutes.';
   const at = rules.indexOf(FALSE_WHEN_SET);
   assert.ok(at > -1, 'the zero-state sentence is gone — if it was reworded, re-pin it here');
-  /* #28: the guard moved from a local `leagueMinutes()` check to
+  /* #28: the guard moved from a local league-minimum check to
      `ruleItems(g).length` -- `ruleItems` (state.js) already puts the league
      minimum in the same list this file counts, so an empty list here already
      means no rule is on, the league floor included. Re-deriving the check
-     from `leagueMinutes()` a second time here is exactly the kind of second
+     from `leagueMinFor(g)` a second time here is exactly the kind of second
      copy that let the badge and the drawer disagree before (A24b). */
   const before = rules.slice(Math.max(0, at - 400), at);
   assert.match(before, /!items\.length/,
     `"${FALSE_WHEN_SET}" is no longer guarded by ruleItems(g).length — with the league minimum `
     + 'on, ruleItems is non-empty and #issues four inches away is naming every player it applies to');
-  assert.match(read('state.js'), /if \(lmin > 0\) items\.push/,
+  assert.match(read('state.js'), /if \(leagueSetting\(\)\.amount > 0\) items\.push/,
     'ruleItems(g) no longer lists the league minimum as its own row — the one rule a coach '
     + 'cannot see from the Rules group is the one rule that is on');
 });
@@ -85,14 +87,14 @@ test('the Rules drawer only says "just evens out the minutes" when nothing else 
 /* One source, or the two screens drift apart again — which is the whole bug.
    `state.js` defines the reader; `storage.js` sanitizes the stored value and
    `teams-view.js` is the editor that writes it. Nobody else reads it raw. */
-test('nothing outside state.js, storage.js and the settings editor reads minMinutes raw', () => {
+test('nothing outside state.js, storage.js and the settings editor reads minMinutes or minUnit raw', () => {
   const ALLOWED = new Set(['state.js', 'storage.js', 'teams-view.js']);
   const FILES = ['game-setup.js', 'rules.js', 'plan-view.js', 'season-view.js', 'card.js',
     'app.js', 'render.js', 'strategy.js', 'gamemode.js', 'onboarding.js', 'balance.js'];
   for (const f of FILES) {
     if (ALLOWED.has(f)) continue;
-    assert.ok(!/settings\??\.\s*minMinutes/.test(read(f)),
-      `${f} reads settings.minMinutes directly — use leagueMinutes() from state.js, or the `
+    assert.ok(!/settings\??\.\s*(minMinutes|minUnit)/.test(read(f)),
+      `${f} reads settings.minMinutes or minUnit directly — use leagueMinFor(g) from state.js, or the `
       + 'Rules badge, the Rules drawer and the solver start disagreeing again (A24b)');
   }
 });

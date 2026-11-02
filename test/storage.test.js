@@ -1420,7 +1420,7 @@ test('a settings block holds only what the app reads, so the file makes no claim
   const s = sanitize({ version: 6, onboarded: true,
     teams: [{ ...good(), settings: { maxSubs: 4, tieBreak: 'levels', leagueMin: 12 } }] }, H);
   assert.deepEqual(Object.keys(s.teams[0].settings),
-    ['maxSubs', 'tieBreak', 'minMinutes', 'seasonDefault', 'periods', 'periodMinutes', 'color', 'overtimeMinutes'],
+    ['maxSubs', 'tieBreak', 'minMinutes', 'minUnit', 'seasonDefault', 'periods', 'periodMinutes', 'color', 'overtimeMinutes'],
     'a key nothing honours must not survive into the record a coach can open');
   assert.equal(s.teams[0].settings.maxSubs, 4);
   assert.equal(s.teams[0].settings.tieBreak, 'levels');
@@ -1976,4 +1976,17 @@ test('a reload keeps sat as valid unique player ids, and a record without any st
   none.day.games[0].live = { at: 3, overrides: {}, sat: ['ghost'] };
   assert.equal('sat' in sanitize(none, H).teams[0].days[0].games[0].live, false);
   assert.equal('sat' in sanitize(good(), H).teams[0].days[0].games[0].live, false);
+});
+
+/* #447: the league minimum is an amount and a unit. A record without a unit is
+   minutes, so every saved team loads as it was. */
+test('#447: the league minimum has a unit; a saved team without one is minutes, and the amount is clamped per unit', () => {
+  const at = raw => sanitizeSettings(raw);
+  assert.deepEqual([at({ minMinutes: 16 }).minMinutes, at({ minMinutes: 16 }).minUnit], [16, 'min']);
+  assert.equal(at({ minMinutes: 16, minUnit: 'furlongs' }).minUnit, 'min', 'junk falls back to minutes');
+  assert.equal(at({ minMinutes: 16, minUnit: 7 }).minUnit, 'min');
+  assert.deepEqual([at({ minMinutes: 150, minUnit: 'pct' }).minMinutes, at({ minMinutes: 150, minUnit: 'pct' }).minUnit], [100, 'pct']);
+  assert.equal(at({ minMinutes: 12, minUnit: 'periods' }).minMinutes, 8);
+  assert.equal(at({ minMinutes: 99, minUnit: 'min' }).minMinutes, 60);
+  assert.equal(at({}).minUnit, 'min');
 });
