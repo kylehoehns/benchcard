@@ -1420,7 +1420,7 @@ test('a settings block holds only what the app reads, so the file makes no claim
   const s = sanitize({ version: 6, onboarded: true,
     teams: [{ ...good(), settings: { maxSubs: 4, tieBreak: 'levels', leagueMin: 12 } }] }, H);
   assert.deepEqual(Object.keys(s.teams[0].settings),
-    ['maxSubs', 'tieBreak', 'minMinutes', 'minUnit', 'seasonDefault', 'periods', 'periodMinutes', 'color', 'overtimeMinutes'],
+    ['maxSubs', 'tieBreak', 'minMinutes', 'minUnit', 'playsIn', 'seasonDefault', 'periods', 'periodMinutes', 'color', 'overtimeMinutes'],
     'a key nothing honours must not survive into the record a coach can open');
   assert.equal(s.teams[0].settings.maxSubs, 4);
   assert.equal(s.teams[0].settings.tieBreak, 'levels');
@@ -1989,6 +1989,19 @@ test('#447: the league minimum has a unit; a saved team without one is minutes, 
   assert.equal(at({ minMinutes: 12, minUnit: 'periods' }).minMinutes, 8);
   assert.equal(at({ minMinutes: 99, minUnit: 'min' }).minMinutes, 60);
   assert.equal(at({}).minUnit, 'min');
+});
+
+/* #450 / #451: the league minimum can be counted in full periods, and a team
+   can ask everyone to play in each half or period. Saved teams have neither. */
+test('#450 #451: full periods is a unit (0-8); Everyone plays in is off unless it is halves or periods', () => {
+  const at = raw => sanitizeSettings(raw);
+  assert.equal(at({ minMinutes: 2, minUnit: 'periods' }).minUnit, 'periods');
+  assert.equal(at({ minMinutes: 2, minUnit: 'full' }).minUnit, 'full');
+  assert.equal(at({ minMinutes: 12, minUnit: 'full' }).minMinutes, 8);
+  assert.equal(at({}).playsIn, 'off');
+  assert.equal(at({ playsIn: 'halves' }).playsIn, 'halves');
+  assert.equal(at({ playsIn: 'periods' }).playsIn, 'periods');
+  for (const junk of ['quarters', 7, null, true, 'Halves']) assert.equal(at({ playsIn: junk }).playsIn, 'off');
 });
 
 /* #449: `basis` is the lineups a rule edit starts from. */

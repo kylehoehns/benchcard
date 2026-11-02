@@ -205,9 +205,13 @@ export const DEFAULT_SETTINGS = Object.freeze({
      minimum wins when it is higher, and their cap wins when it is lower. */
   minMinutes: 0,
   /* #447: what `minMinutes` counts -- 'min' (minutes), 'pct' (percent of the
-     game) or 'periods'. 'min' is what every record written before this key
+     game), 'periods' (minutes: a period's worth each) or 'full' (whole periods,
+     start to finish, #450). 'min' is what every record written before this key
      existed means. */
   minUnit: 'min',
+  /* #451: Everyone plays in each 'halves' or each 'periods', or 'off'. 'off' is
+     what every record written before this key existed means. */
+  playsIn: 'off',
   /* Whether a NEW game opens with "Even out the season so far" already on.
      false is what the app has always done, and false is what every record
      written before this key existed means. It is read once, by `newGame`, at
@@ -261,7 +265,8 @@ const strictNum = v => (typeof v === 'number' || (typeof v === 'string' && v.tri
   ? Number(v) : NaN);
 
 /* #447: the most the league minimum can be in each unit it is counted in. */
-const MIN_UNIT_MAX = { min: 60, pct: 100, periods: 8 };
+const MIN_UNIT_MAX = { min: 60, pct: 100, periods: 8, full: 8 };
+const PLAYS_IN = ['off', 'halves', 'periods'];
 
 export const sanitizeSettings = raw => {
   const s = isObj(raw) ? raw : {};
@@ -277,6 +282,8 @@ export const sanitizeSettings = raw => {
        MINS_UNSATISFIABLE forever. */
     minMinutes: Math.round(num(strictNum(s.minMinutes), DEFAULT_SETTINGS.minMinutes, 0, MIN_UNIT_MAX[minUnit])),
     minUnit,
+    // #451: strict, so an unreadable value is off, which is what every older record means
+    playsIn: PLAYS_IN.includes(s.playsIn) ? s.playsIn : DEFAULT_SETTINGS.playsIn,
     /* Strict `=== true`, not `!!`: every other truthy value in a hand-edited
        or future record is a claim we cannot read, and the safe reading of an
        unreadable claim is the behavior the app has always had. */

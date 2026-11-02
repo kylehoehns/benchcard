@@ -118,4 +118,24 @@ describe('a coach changes Settings', { skip }, () => {
     assert.ok(await coach.sees('Everyone plays at least half the game (16 min)'),
       `Rules reads: ${JSON.stringify((await coach.controls()).filter(n => /Everyone/.test(n)))}`);
   });
+  test('full periods and Each half are kept, and the Plan sheet reads both rules (#450 #451)', async () => {
+    await coach.onGameDayWith({}, 10);
+    await coach.tap('Settings');
+    await coach.choose('Counted in', 'full periods');
+    await coach.fill('How much everyone plays at least', '2');
+    await coach.tap('Each half');
+    assert.equal(await coach.isPressed('Each half'), true);
+    await coach.comeBackLaterOn('settings');
+    assert.equal(await coach.valueOf('Counted in'), 'full');
+    assert.equal(await coach.valueOf('How much everyone plays at least'), '2');
+    assert.equal(await coach.isPressed('Each half'), true);
+
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap((await coach.controls()).find(n => /^Rules, /.test(n)));
+    assert.ok(await coach.sees('Everyone plays at least 2 full periods (16 min)'),
+      `Rules reads: ${JSON.stringify((await coach.controls()).filter(n => /Everyone/.test(n)))}`);
+    assert.ok(await coach.sees('Everyone plays in each half'),
+      `Rules reads: ${JSON.stringify((await coach.controls()).filter(n => /Everyone/.test(n)))}`);
+  });
 });

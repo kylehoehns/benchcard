@@ -151,6 +151,18 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
     edit('teamSetting');
   });
 
+  /* #451: Everyone plays in each half or period. Same delegated shape; the
+     value is sanitized so the saved record only ever holds one of the three. */
+  on('#playsInSeg', 'onclick', (e) => {
+    const b = e.target.closest('button[data-playsin]');
+    const s = team()?.settings;
+    if (!b || !s) return;
+    const v = sanitizeSettings({ ...s, playsIn: b.dataset.playsin }).playsIn;
+    if (v === s.playsIn) return;
+    s.playsIn = v;
+    edit('teamSetting');
+  });
+
   /* Same shape, same reasons: static buttons, delegated once, a full render
      because the stance re-solves every plan in the day. */
   on('#tieBreakSeg', 'onclick', (e) => {
@@ -362,6 +374,15 @@ export function renderSettings() {
   const read = $('#maxSubsRead');
   const line = SUBS_READ[now] || '';
   if (read && read.textContent !== line) read.textContent = line;
+
+  // #451: the plays-in segment, marked the same way
+  const pin = $('#playsInSeg');
+  const playsNow = team()?.settings?.playsIn ?? DEFAULT_SETTINGS.playsIn;
+  for (const b of pin?.querySelectorAll('button[data-playsin]') ?? []) {
+    const on = b.dataset.playsin === playsNow;
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
 
   // the tie-break stance, marked the same way -- the labels read on their own,
   // so these need no aria-label of their own

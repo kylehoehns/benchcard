@@ -1417,7 +1417,16 @@
             <option value="min">min</option>
             <option value="pct">% of game</option>
             <option value="periods">periods</option>
+            <option value="full">full periods</option>
           </select>
+        </div>
+      </div>
+      <div class="prow">
+        <span class="prow-t">Everyone plays in</span>
+        <div class="seg wide" id="playsInSeg" role="group" aria-label="Everyone plays in">
+          <button class="press" type="button" data-playsin="off" aria-label="Not required">Off</button>
+          <button class="press" type="button" data-playsin="halves">Each half</button>
+          <button class="press" type="button" data-playsin="periods">Each period</button>
         </div>
       </div>
     </div>
@@ -1919,18 +1928,22 @@
           “Apart”: that one is about the floor, this one is about the bench.</dd>
         <dt>Plays at most N in a row</dt>
         <dd>The most stints anyone may play back to back. Stops the plan leaving a kid
-          out there for the whole half.</dd>
+          out there too long. Breaks between periods do not reset the count, so a kid
+          who plays the end of one period and the start of the next has played two in
+          a row. A limit of 1 means the whole five changes at every break.</dd>
         <dt>Sits at most N in a row</dt>
         <dd>The most stints anyone may sit back to back. Stops the plan leaving a kid
-          on the bench for the whole half. With a big roster it can need more changes
+          on the bench too long. Breaks between periods do not reset the count. With a big roster it can need more changes
           at a break than you allow, and the plan says so.</dd>
       </dl>
       <p class="help-p">One rule is worth setting once rather than per game. If your
         league says everyone plays a minimum, <b>Settings</b> holds
         <b>Everyone plays at least</b>, a minimum for the whole team that reaches
         every available player in every game. Count it in minutes, as a share of the
-        game ("half the game" is 50 % of game) or in periods, and each game owes its
-        own length. A Plays at least you set on one player still
+        game ("half the game" is 50 % of game), in periods, or in <b>full periods</b>
+        (each kid plays whole periods, not just the minutes), and each game owes its
+        own length. <b>Everyone plays in</b> asks that every player is on the floor
+        in each half, or in each period. A Plays at least you set on one player still
         wins when it is higher, and a Plays at most you set still wins when it is lower.</p>
 
       <h3 class="help-h">A tournament day, and the season</h3>
