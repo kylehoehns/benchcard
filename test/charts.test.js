@@ -394,7 +394,7 @@ test('the halves page copy is exactly the spec\'s', () => {
     'subbing every 4 minutes: 20 minutes each, as close to equal playing time as the arithmetic allows.');
   assert.match(page, /<figcaption[^>]*>Each box is one stint: the clock is time left in the period, and the underlined names just came on\. 10 stints, five on the floor, and it cuts out to fit a pocket\.<\/figcaption>/);
   assert.ok(page.includes('<p class="trust noprint">Free, and there is no account. Your roster never leaves your device.</p>'));
-  assert.ok(page.includes('<a class="btn primary" href="./?try=10">Try it with 10 sample players</a>'));
+  assert.ok(page.includes('<a class="btn primary" href="./?try=10&halves">Try it with 10 sample players</a>'));
   assert.ok(page.includes('<link rel="canonical" href="https://benchcard.app/basketball-rotation-chart-two-halves">'));
   const ld = JSON.parse(page.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])['@graph'];
   assert.equal(ld[0].name, 'Basketball rotation chart for two halves');
@@ -475,7 +475,7 @@ test('the button row is Try, Build one, Print, with no "How it works" in it', ()
   for (const c of CHARTS) {
     const n = c.players;
     assert.deepEqual(tagsOf(ctaOf(read(c.file))), [
-      `<a class="btn primary" href="./?try=${n}">Try it with ${n} sample players</a>`,
+      `<a class="btn primary" href="./?try=${n}${c.kind === 'halves' ? '&halves' : ''}">Try it with ${n} sample players</a>`,
       '<a class="btn" href="./">Build one for your roster</a>',
       '<button type="button" class="btn" onclick="print()">Print this chart</button>',
     ], `${c.file} button row`);

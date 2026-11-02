@@ -17,7 +17,7 @@ import { fmtMinutes } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, planSay } from './state.js';
+import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, planSay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
 import { blockedPanel } from './timeline.js';
@@ -58,9 +58,21 @@ export function renderIssues() {
     const a = el('div', 'alert ' + i.severity);
     const ic = el('span', 'ico');
     ic.append(icon(ico[i.severity], { size: '1.05em' }));
-    a.append(ic, el('span', null, i.message));
+    a.append(ic, noteText(i.message));
     box.append(a);
   }
+}
+
+/* #455: a plan note's sentence, with each long word in its own `.fitw` so the
+   fitter (dom.js) can shrink a name that cannot fit and leave the sentence
+   at its CSS size. */
+function noteText(message) {
+  const span = el('span');
+  for (const part of message.split(/(\s+)/)) {
+    if (part.length >= 8 && /\S/.test(part)) span.append(el('span', 'fitw', part));
+    else if (part) span.append(part);
+  }
+  return span;
 }
 
 let lastIssuesSig = null;   // #139 item 14: the last text `renderIssues` painted
@@ -125,6 +137,17 @@ function issuesList(p) {
       if ((x.code === 'MIN_MISSED' || x.code === 'CAP_EXCEEDED')
         && (x.playerIds || []).some(id => changed.includes(id))) list.splice(i, 1);
     }
+  }
+  /* #456: the lineup notes name the solver's fives the same way. Once the shown
+     fives are not the plan's (a swap, a re-plan, a finished game) the pair,
+     keep-on, changes-at-once and second-half notes are untrue and go; the
+     stints-in-a-row note is rebuilt from the fives on screen, which is also
+     where a re-plan's over-limit run (its own notes are never kept) shows up. */
+  if (p.ok && game() && movedLineups(game(), p)) {
+    const stale = ['PAIR_PARTIAL', 'KEEPON_PARTIAL', 'SUBS_EXCEEDED', 'HALF_LATE', 'CONSEC_EXCEEDED'];
+    const rebuilt = consecNotes(game(), p, p.issues, id => byId(id)?.name || id);
+    for (let i = list.length - 1; i >= 0; i--) if (stale.includes(list[i].code)) list.splice(i, 1);
+    list.push(...rebuilt);
   }
   /* With exactly five available the five who turned up play the whole game.
      The engine reports that as "minutes divide evenly: every player gets 32",

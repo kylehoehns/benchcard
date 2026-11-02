@@ -5,7 +5,7 @@
  * check makes beside every PNG.
  *
  *   node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390]
- *     [--font 16,32] [--dark] [--view today,settings,about] [--headful]
+ *     [--font 16,32] [--height 844] [--dark] [--view today,settings,about] [--headful]
  *
  * Each shot is `<view-slug>-<width>-<font>-<theme>.png`, plus `-bottom.png`
  * when that state scrolls. `measurements.json` holds one record per PNG.
@@ -36,7 +36,7 @@ import { createHash } from 'node:crypto';
 import { launch, cdp, closeChrome } from './smoke/chrome.mjs';
 import { serve } from './serve.mjs';
 import { FONT_INJECTION_SCRIPT, CLOCK_SCRIPT } from './smoke/registry.mjs';
-import { evalIn, SETTLE, TIMER_TRACKER } from './smoke/dom.mjs';
+import { evalIn, SETTLE, TIMER_TRACKER, HEIGHT } from './smoke/dom.mjs';
 import { richWith, FOUR, TODAY_LANDING } from './smoke/fixtures.mjs';
 import { land } from './smoke/page-state.mjs';
 import { VIEWS } from './smoke/sweep.mjs';
@@ -70,7 +70,7 @@ const SW_SETTLED = `(async () => {
 
 export const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-const USAGE = 'usage: node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390] [--font 16,32] [--dark] [--view a,b] [--headful]';
+const USAGE = 'usage: node scripts/look.mjs --out <dir> [--url <url>] [--widths 320,390] [--font 16,32] [--height 844] [--dark] [--view a,b] [--headful]';
 
 function positiveInts(flag, text) {
   return text.split(',').map(raw => {
@@ -78,6 +78,13 @@ function positiveInts(flag, text) {
     if (!/^[1-9]\d*$/.test(t)) throw new Error(`${flag}: "${t}" is not a positive integer`);
     return Number(t);
   });
+}
+
+/* A flag that takes one number: a list is refused, not read as its first value. */
+function oneInt(flag, text) {
+  const all = positiveInts(flag, text);
+  if (all.length > 1) throw new Error(`${flag} takes one value, not a list ("${text}"); run look.mjs once per height`);
+  return all[0];
 }
 
 /* A state name can itself hold ", " ("add a game, step 1"), so the comma list
@@ -108,12 +115,13 @@ export function parseArgs(argv) {
   const out = flag('--out');
   if (!out) throw new Error(`--out <dir> is required\n${USAGE}`);
   const url = flag('--url');
-  const widths = flag('--widths'), fonts = flag('--font'), views = flag('--view');
+  const widths = flag('--widths'), fonts = flag('--font'), views = flag('--view'), height = flag('--height');
   return {
     out,
     url: url ? url.replace(/\/+$/, '') : null,
     widths: widths === null ? [320, 390] : positiveInts('--widths', widths),
     fonts: fonts === null ? [16, 32] : positiveInts('--font', fonts),
+    height: height === null ? HEIGHT : oneInt('--height', height),
     dark: argv.includes('--dark'),
     views: views === null ? VIEWS.map(v => v.name) : viewNames(views),
     headful: argv.includes('--headful'),
@@ -136,12 +144,12 @@ export const classify = findings => findings.map(f => ({ ...f, excused: knownIss
 
 /* One cell: land, open the state, settle, then the top shot, and the bottom
  * shot when scrolling moved something. Throws the moment a shot is not proved. */
-async function shoot(c, origin, cell, outDir) {
+async function shoot(c, origin, cell, outDir, height) {
   const record = richWith({ theme: cell.theme }, LONG_AND_SQUEEZE);
   /* page '/', not '/index.html': the local server's 307 from the latter drops
    * a query string (`?try=`), and with the service worker bypassed nothing
    * else would answer it. */
-  const want = { width: cell.width, textPx: cell.font, media: REDUCED_MOTION, page: '/' };
+  const want = { width: cell.width, height, textPx: cell.font, media: REDUCED_MOTION, page: '/' };
   const records = [];
 
   if (cell.view === ABOUT) {
@@ -190,7 +198,7 @@ async function shoot(c, origin, cell, outDir) {
     const buf = Buffer.from(data, 'base64');
     await writeFile(resolve(outDir, file), buf);
     records.push({
-      file, view: cell.view, width: cell.width, font: cell.font, theme: cell.theme, pos,
+      file, view: cell.view, width: cell.width, height, font: cell.font, theme: cell.theme, pos,
       origin: where.host, swControlled: where.swControlled, measured,
       digest: createHash('sha256').update(buf).digest('hex'),
       findings: classify(findingsOf(res, cell.view, pos)),
@@ -234,7 +242,7 @@ export async function main(argv = process.argv.slice(2)) {
     await first;
     await evalIn(c, SW_SETTLED);
 
-    for (const cell of cells(args)) records.push(...await shoot(c, origin, cell, outDir));
+    for (const cell of cells(args)) records.push(...await shoot(c, origin, cell, outDir, args.height));
     const empty = emptyRunProblem(records.length);
     if (empty) throw new Error(empty);
 

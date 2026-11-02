@@ -11,10 +11,11 @@ import { readFileSync } from 'node:fs';
 
 const css = readFileSync(new URL('../app/app.css', import.meta.url), 'utf8');
 
-const LAND = '@media (orientation: landscape) and (max-height: 560px)';
-/* game mode's block is the em one (gm-landscape.test.js pins it), so this px
-   query occurs once */
-const start = css.indexOf(LAND);
+const LAND = '@media (orientation: landscape) and (max-height: 35em)';
+/* Game mode's blocks use the same em query (gm-landscape.test.js pins them),
+   so the planning-views block is the last one in the file (#429 moved it from
+   px to em, which made the text occur more than once). */
+const start = css.lastIndexOf(LAND);
 const body = start > -1 ? css.slice(start, css.indexOf('\n}', start)) : '';
 
 test('the chrome landscape block sits after every bar rule it overrides', () => {

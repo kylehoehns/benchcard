@@ -27,6 +27,12 @@
  * right after each of them. `rotationToast` opens through its own
  * `openRotationToastState` too, but that one only mutates the loaded record's
  * game in place (`setGame`), so it needs no restore. */
+import '../../test/dom-stub.js';
+import { FIT_SELECTORS, NOTE_TEXT } from '../../app/dom.js';
+
+/* What the probe never excuses a split in: what the fitter shrinks, and the plan
+ * note sentence that holds its `.fitw` words. */
+const OWNED_SELECTORS = [...FIT_SELECTORS, NOTE_TEXT];
 import { evalIn, step, IS_SR_ONLY_RECT, WORD_FLOOR_FN, DESCRIBE_EL, IS_CUT } from './dom.mjs';
 import { LONG_NAME, RICH, FOUR, TODAY_LANDING } from './fixtures.mjs';
 import { LARGE_TEXT } from './sizes.mjs';
@@ -57,6 +63,56 @@ export const CONFIRM_STATE = {
   name: 'confirm dialog',
   open: CONFIRM_DIALOG.open,
   close: CONFIRM_DIALOG.close,
+};
+
+/* #473: the Plan sheet's By hand rows (`.srow`) with a rule that makes some of
+ * them say "plays N" -- a minimum for two players and a cap for a third, seeded
+ * the way `plan sheet, a rule` seeds one -- so every row is on screen with its
+ * name, slider, minutes, "plays N" and lock. LONG_AND_SQUEEZE gives the first
+ * two rows their long names. `close` puts the strategy, the targets and the
+ * rules back, so the fixture is as it was found. */
+export const BY_HAND_STATE = {
+  name: 'plan sheet, by hand',
+  open: `$('.today-game').click(); $('#phraseStrategy').click();
+         const st = await import('/state.js');
+         const c = st.game().constraints;
+         window.__byHand473 = { strategy: st.game().strategy, targetSlots: c.targetSlots, lockedTargets: c.lockedTargets,
+           minMinutes: c.minMinutes, maxMinutes: c.maxMinutes };
+         [...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'By hand').click();
+         c.minMinutes = { p2: 24, p3: 24 }; c.maxMinutes = { p4: 4 };
+         (await import('/render.js')).renderAll();
+         await new Promise(r => setTimeout(r, 300));
+         const acts = [...document.querySelectorAll('.srow .act:not([hidden])')].length;
+         if (acts < 2) throw new Error('only ' + acts + ' By hand rows say "plays N", so the rows were not at their widest');`,
+  close: `const st = await import('/state.js');
+          const c = st.game().constraints, was = window.__byHand473;
+          st.game().strategy = was.strategy; c.targetSlots = was.targetSlots; c.lockedTargets = was.lockedTargets;
+          c.minMinutes = was.minMinutes; c.maxMinutes = was.maxMinutes;
+          (await import('/render.js')).renderAll();
+          $('#sheetPlan').close(); $('#backBtn').click()`,
+};
+
+/* #455: the plan notes under the timeline with a name no column can hold whole.
+ * A minimum for the first player and a stints-in-a-row limit make the engine
+ * write "<name> plays 3 stints in a row ..." (the wording test/stale-lineup-notes
+ * checks); the name is the one-word surname that cannot break after a hyphen.
+ * `close` puts the name and the rules back. */
+export const PLAN_NOTES_STATE = {
+  name: 'plan notes, long name',
+  open: `$('.today-game').click();
+         const st = await import('/state.js');
+         const c = st.game().constraints, p0 = st.byId('p0');
+         window.__notes455 = { name: p0.name, minMinutes: c.minMinutes, maxConsecutive: c.maxConsecutive };
+         p0.name = 'Featherstonehaugh Bartholomew';
+         c.minMinutes = { p0: 24 }; c.maxConsecutive = 2;
+         (await import('/render.js')).renderAll();
+         await new Promise(r => setTimeout(r, 300));
+         if (!document.querySelector('#issues .alert .fitw')) throw new Error('no plan note carried a long word, so the notes were not at their widest');`,
+  close: `const st = await import('/state.js');
+          const c = st.game().constraints, was = window.__notes455;
+          st.byId('p0').name = was.name; c.minMinutes = was.minMinutes; c.maxConsecutive = was.maxConsecutive;
+          (await import('/render.js')).renderAll();
+          $('#backBtn').click()`,
 };
 
 /* Scroll the page, and every one of its own scrolling descendants (an open
@@ -265,6 +321,13 @@ export const CLIP_PROBE = `(() => {
 
   let scanned = 0;
   const clip = [], split = [], hidden = [], overlap = [], floor = [];
+  // #455/#477/#483: an element the long-word fitter owns (app/dom.js's
+  // FIT_SELECTORS) is never excused by ROW_LIKE or by "the word is wider than
+  // its row" below -- the fitter's whole job is to shrink that word to fit.
+  // Counted per selector so the pass can fail when one was never measured.
+  const FIT_SELECTORS = ${JSON.stringify(OWNED_SELECTORS)};
+  const ownedScanned = {};
+  let fewestScanned = 0;
 
   for (const el of document.querySelectorAll(${JSON.stringify(CANDIDATE_SEL)})) {
     if (!hasOwnText(el)) continue;
@@ -273,6 +336,9 @@ export const CLIP_PROBE = `(() => {
     if (isSrOnly(r)) continue;
     if (!el.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })) continue;
     scanned++;
+    const ownedSel = FIT_SELECTORS.find(sel => el.matches(sel));
+    if (ownedSel) ownedScanned[ownedSel] = (ownedScanned[ownedSel] || 0) + 1;
+    if (el.matches('.tl-row .tl-tot .ex')) fewestScanned++;
 
     const cs = getComputedStyle(el);
 
@@ -370,7 +436,7 @@ export const CLIP_PROBE = `(() => {
       // ever give it (e.g. "Featherstonehaugh"), only if the row had the
       // room and something else took it: same floor wordFloorRows computes
       // (longest vs rowContent, see WORD_FLOOR_FN in dom.mjs).
-      const row = el.closest(ROW_LIKE);
+      const row = ownedSel ? null : el.closest(ROW_LIKE);
       let exempt = false, fr = null;
       if (row) {
         el.classList.add(SPLIT_MARK);
@@ -408,7 +474,7 @@ export const CLIP_PROBE = `(() => {
     }
   }
 
-  return JSON.stringify({ scanned, clip, split, hidden, overlap, floor, usedAllow, usedSideways, usedFloorAllow });
+  return JSON.stringify({ scanned, clip, split, hidden, overlap, floor, usedAllow, usedSideways, usedFloorAllow, ownedScanned, fewestScanned });
 })()`;
 
 /* The issue number of the CLIP_SWEEP_KNOWN_ISSUES entry that excuses
@@ -442,7 +508,7 @@ const describeFinding = p => {
 };
 
 /* The states the sweep walks, in order. Shared with scripts/look.mjs. */
-export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE];
+export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, PLAN_NOTES_STATE];
 
 /* The states that navigate to their own page and so wipe whatever the run
  * set up on the one before (the roster, injected CSS). Shared with
@@ -480,6 +546,8 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   const usedAllow = new Set();
   const usedSideways = new Set();
   const usedFloorAllow = new Set();
+  const ownedScanned = new Set();
+  const fewestAt = new Set(); // #505: the widths at which a MOST / FEWEST word was measured
   const states = CLIP_STATES;
 
   // A reload wipes any <style> this injected, so it's re-run
@@ -502,6 +570,8 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
         res.usedAllow.forEach(sel => usedAllow.add(sel));
         res.usedSideways.forEach(sel => usedSideways.add(sel));
         res.usedFloorAllow.forEach(sel => usedFloorAllow.add(sel));
+        Object.keys(res.ownedScanned).forEach(sel => ownedScanned.add(sel));
+        if (res.fewestScanned) fewestAt.add(where.includes('390px/16px') ? '390px/16px' : '320px/32px');
         found.push(...findingsOf(res, where, pos));
       }
     } catch (e) {
@@ -527,6 +597,13 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   await land(c, origin, { record: LONG_AND_SQUEEZE });
   await applyInjectCss();
   await sweep(states.find(v => v.name === 'bench mode, undo toast'), {}, 'bench mode, undo toast 390px/16px');
+  // #455/#477/#483/#473: the long-name sites at a phone's ordinary size too.
+  await sweep(states.find(v => v.name === 'bench mode, last stint'), {}, 'bench mode, last stint 390px/16px');
+  await land(c, origin, { record: { ...LONG_AND_SQUEEZE, view: 'today' }, ...TODAY_LANDING });
+  await applyInjectCss();
+  for (const name of ['games', 'team', 'plan sheet, by hand', 'plan notes, long name']) {
+    await sweep(states.find(v => v.name === name), {}, `${name} 390px/16px`);
+  }
 
   // An allow-list, sideways-scroll, floor-allow or known-issue entry this
   // run never needed is stale and fails here, same reasoning for all four.
@@ -534,6 +611,15 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
     if (!items.length) return;
     rec.fail(`${items.length} stale ${label} entr${items.length === 1 ? 'y' : 'ies'} (never ${verb} this run): ${items.map(fmt).join(sep)}`);
   };
+  // /new-guard 2a: a fitted element no state ever put on screen measured nothing.
+  for (const sel of OWNED_SELECTORS.filter(sel => !ownedScanned.has(sel))) {
+    rec.fail(`no state measured an element matching the long-word fitter's "${sel}", so a split in one went unchecked`);
+  }
+  // #505, rule 2a: the Timeline's MOST / FEWEST word must have been on screen
+  // at both text sizes, or a spill in its fixed gutter went unmeasured.
+  for (const size of ['390px/16px', '320px/32px']) {
+    if (!fewestAt.has(size)) rec.fail(`no state measured a Timeline MOST / FEWEST word at ${size}, so a spill in its gutter went unchecked`);
+  }
   reportStale('allow-list', 'needed', ALLOW_SELECTORS.filter(sel => !usedAllow.has(sel)), ' | ');
   reportStale('sideways-scroll', 'needed', SIDEWAYS_SELECTORS.filter(sel => !usedSideways.has(sel)), ' | ');
   reportStale('floor allow-list', 'needed', FLOOR_ALLOW_SELECTORS.filter(sel => !usedFloorAllow.has(sel)), ' | ');
@@ -550,7 +636,7 @@ export async function clipSweepPass(c, origin, rec, { injectCss } = {}) {
   reportStale('known-issue', 'matched', CLIP_SWEEP_KNOWN_ISSUES.filter(k => !matchedIssues.has(k.issue)), ', ', k => '#' + k.issue);
 
   rec.check(scanned > 0, 'measured no elements across any state');
-  rec.ok(`${states.length} states + 1 at 390px/16px, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
+  rec.ok(`${states.length} states + 6 at 390px/16px, ${scanned} elements scanned (top+bottom), nothing clipped, squeezed, split or hidden`);
 }
 
 /* #283: the same four tests, on `/about.html`, which the app sweep above

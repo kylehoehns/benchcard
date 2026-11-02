@@ -128,7 +128,7 @@ test('both doors open the flow, and the sample one fills the draft on the way', 
     'the typing door no longer opens the flow empty');
   assert.match(init, /on\('#welTry', 'onclick', \(\) => openFirstRun\(\$\('#welTry'\), true\)\)/,
     'the sample door no longer opens the flow with the draft filled');
-  assert.match(init, /loadSample\(want\)/,
+  assert.match(init, /loadSample\(want, \{ halves \}\)/,
     'the ?try= deep link no longer builds the team and shows the card');
   assert.ok(!/on\('#welTry'[^\n]*loadSample/.test(init),
     'the hero button calls loadSample directly again -- ?try= is the only path that should');
@@ -222,7 +222,7 @@ test('a ?try= link cannot overwrite a roster, and does not survive the load', ()
 test('every chart landing page links into the app with the roster size its card prints', () => {
   for (const c of CHARTS) {
     const page = app(c.file);
-    assert.ok(page.includes(`href="./?try=${c.players}"`),
+    assert.ok(page.includes(`href="./?try=${c.players}${c.kind === 'halves' ? '&halves' : ''}"`),
       `${c.file} does not offer a ${c.players}-player sample`);
     assert.ok(!/href="\.\/\?try=[^"]*(name|team|player=)/i.test(page),
       'a ?try= link carries a size and nothing else -- it is not a URL share');

@@ -90,6 +90,7 @@ import { wakeLockPass } from './wake-lock.mjs';
 import { overlayPass } from './overlay.mjs';
 import { tourStepsPass, TOUR_STEPS_CHECK } from './tour-steps.mjs';
 import { shortPhonePass, SHORT_PHONE_CHECK } from './short-phone.mjs';
+import { overlayRoomPass, OVERLAY_ROOM_CHECK } from './overlay-room.mjs';
 import { longNamesPass, LONG_NAMES_CHECK } from './long-names.mjs';
 import { benchCallPass, BENCH_CALL_CHECK } from './bench-call.mjs';
 import { touchPass } from './touch.mjs';
@@ -284,6 +285,10 @@ export const ROWS = Object.freeze([
   // bench mode and the tour leave room on a short phone and at large text.
   { id: 'shortPhone', name: SHORT_PHONE_CHECK, selectable: true, setup: 'rich',
     run: ctx => shortPhonePass(ctx.c, ctx.origin, ctx.rec) },
+  // #429's general guard: every overlay keeps a scrolling region three lines
+  // tall at the two phone sizes with 32px text -- see overlay-room.mjs.
+  { id: 'overlayRoom', name: OVERLAY_ROOM_CHECK, selectable: true, setup: 'rich',
+    run: ctx => overlayRoomPass(ctx.c, ctx.origin, ctx.rec) },
   // #422's own guard (docs/specs/422-large-text-long-names.md): long names,
   // decimal minutes and large text -- see long-names.mjs.
   { id: 'longNames', name: LONG_NAMES_CHECK, selectable: true, setup: 'rich',

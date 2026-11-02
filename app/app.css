@@ -612,6 +612,8 @@ a { color: inherit; }
    lets it shrink to the row, and overflow-wrap: break-word only then breaks
    a word wider than that row ever gives it. */
 .alert > span { min-width: 0; overflow-wrap: break-word; }
+/* A long word of a note (dom.js shrinks it to fit); past the floor it still breaks rather than clip. */
+.alert .fitw { overflow-wrap: break-word; }
 .alert.error { background: var(--err-soft); color: var(--err); }
 .alert.warn  { background: var(--warn-soft); color: var(--warn); }
 .alert.info  { background: var(--info-soft); color: var(--info); }
@@ -2213,7 +2215,7 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
    comes down with them. max-height re-evaluates as the bar collapses, the
    same way dvh does, so a coach who scrolls once gets the roomier layout
    back. */
-@media (max-height: 700px) {
+@media (max-height: 43.75em) {
   .welcome { padding-top: .4rem; }
   .wel-lockup { margin-bottom: .45rem; }
   /* docs/specs/24-text-size.md: a short-viewport-height block is not the
@@ -2932,7 +2934,16 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 /* The snackbar mounted inside an open sheet, right above its status line --
    .toast itself needs nothing extra, only a flow slot that will not be
    squeezed by .bsheet-body's flex: 1. */
-.bsheet-toasts { flex: none; padding: 0 1.1rem .5rem; }
+/* Capped (#429): at 32px text on a 568px phone the rotation toast alone is
+   376px, which left the Format sheet's body 32px -- under one line -- until
+   the toast went. About a third of the screen is the most it may take there;
+   past that it scrolls inside its own box, Undo still one swipe away. A screen
+   22em tall or more (em in a media query is the browser's own text size, so
+   that is 704px at 32px and a short phone at no larger text) has the room to
+   show the whole toast, so its cap is higher and nothing scrolls. */
+.bsheet-toasts { flex: none; padding: 0 1.1rem .5rem;
+  max-height: 32vh; max-height: 32dvh; overflow-y: auto; overscroll-behavior: contain; }
+@media (min-height: 22em) { .bsheet-toasts { max-height: 48vh; max-height: 48dvh; } }
 
 /* A commit sheet's confirm -- full width at the foot of the body (naming
    rationale at app/roster.js:200-203, canonical). Sits in the scrolling body
@@ -3873,7 +3884,7 @@ input[switch]:disabled { opacity: .4; cursor: default; }
  * step here. Bounded by max-height like the game-mode block, so a landscape
  * tablet, which has the height already, is untouched. Must stay after the
  * 620px and 19em blocks: all three share specificity on `.bar`. */
-@media (orientation: landscape) and (max-height: 560px) {
+@media (orientation: landscape) and (max-height: 35em) {
   .bar { padding-top: calc(.3rem + env(safe-area-inset-top)); padding-bottom: .3rem; }
   .dayhead { margin-bottom: .7rem; }
   .dayhead .game-h1 { font-size: var(--fs-sentence); }
@@ -3917,6 +3928,20 @@ input[switch]:disabled { opacity: .4; cursor: default; }
   .gm-b, .gm-p { min-height: 48px; }
   .gm-exit { display: grid; }
   input[type="text"], input[type="number"], select { min-height: 48px; }
+}
+
+/* #473: a By hand row is name, slider, minutes ("plays N" under it) and lock in
+   one line. At a 32px root those fixed columns (4.6rem + 4.1rem + 48px) are
+   wider than a 320px phone's whole card, which cut off the minutes and the lock.
+   There the row folds in two: the name and the lock on top, the slider and the
+   minutes below. The 19em query is the same one the other large-text folds use:
+   em in a media query follows the browser's own text size, which px never does. */
+@media (max-width: 19em) {
+  .srow { grid-template-columns: 1fr auto; }
+  .srow .nm { grid-area: 1 / 1; }
+  .srow .lockbtn { grid-area: 1 / 2; justify-self: end; }
+  .srow input[type=range] { grid-area: 2 / 1; }
+  .srow .v { grid-area: 2 / 2; }
 }
 
 
