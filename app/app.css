@@ -3255,6 +3255,10 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
 .prow-danger { color: var(--err); font-weight: 600; }
 .prow-icon { color: var(--muted); }
 .prow.add-rule .prow-t { color: inherit; }
+/* A rule row names players ("Featherstonehaugh and Hana together"): at
+   320px/32px a one-word surname is wider than the label column, so it breaks
+   anywhere, as .who-row and .sn-nm names do (#563 first measured it). */
+#constraints .prow-t { overflow-wrap: anywhere; }
 
 /* The identity block the prototype's own player sheet opens with (a 56px
    badge, a 24px/700 name, a 15px muted level line) above the Number/
