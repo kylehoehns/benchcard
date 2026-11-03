@@ -39,7 +39,7 @@ opens (`freshDraft()`). `newGame` copies the last game's setup with
 `copySetup`, the routine behind the Plan sheet's *Copy from another game*
 (below), with all four parts on. It then drops the copied order and whose it
 was, because `addGame` writes the new game's list: it continues the day's order
-when that game's list is the coach's (#545), and builds one otherwise (#547). **Plan it** commits that
+when that game's list is the coach's (#545), and builds one otherwise (#547). The How to build the list choice (Mix the fives, #557) is kept. **Plan it** commits that
 draft. The card commits a fresh `freshDraft()` instead, carrying over only
 step 1's date, opponent and tip-off, so edits made on steps 2 and 3 are
 dropped and the card adds the game its label names (#428). Walking all three

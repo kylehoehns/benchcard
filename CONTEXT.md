@@ -221,9 +221,14 @@ come on for the ones who have played longest. Each game has its own list. Until
 the game starts, the app builds the list from the odd minutes setting and the
 rules; once the coach moves anyone, the list is the coach's. A later game that day
 starts from where an earlier game's turn stopped when that game's list is the
-coach's. Otherwise the later game's list is built too.
+coach's. Otherwise the later game's list is built too. For the app's list the
+coach can choose **Mix the fives** on the Order sheet ("How to build the list"):
+the stronger players are spread out so every five has some, instead of the best
+players getting the most minutes.
 _Avoid_: rotation list, queue, cycle (in coach text)
-_In code_: `order`, `g.order`; `g.orderBuilt` is set for the app's list
+_In code_: `order`, `g.order`; `g.orderBuilt` is set for the app's list;
+`g.orderMix` is set for Mix the fives (absent is the default), and only
+alongside `g.orderBuilt`
 
 **Lineup balance**:
 An optional setting that uses levels to shape how strong each stint's five is.

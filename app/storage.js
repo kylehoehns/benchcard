@@ -570,6 +570,8 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         order: [...new Set(keep(g.order))],
         // #547: the app built this list and has not been moved; absent means the coach's
         ...(g.orderBuilt === true ? { orderBuilt: true } : {}),
+        // #557: the app's list mixes the fives rather than giving the best players the most minutes
+        ...(g.orderMix === true && g.orderBuilt === true ? { orderMix: true } : {}),
         // how lineup strength is shaped across the game; see BALANCE in engine.js
         balance: ['even', 'start', 'finish', 'both'].includes(g.balance) ? g.balance : 'even',
         live: (() => {

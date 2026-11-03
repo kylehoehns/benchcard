@@ -4,8 +4,9 @@ Split out of [design decisions](design-decisions.md), which has a size limit.
 The same rule applies: a decision is kept with its alternative.
 
 The spec was #545. #547 changed who builds the list; see
-[The app builds the list](#the-app-builds-the-list-547). The glossary entry is
-**Rotation order** in CONTEXT.md.
+[The app builds the list](#the-app-builds-the-list-547). #557 added a choice of
+how the app builds it; see [Mix the fives](#mix-the-fives-557). The glossary
+entry is **Rotation order** in CONTEXT.md.
 
 ## The plan is a formula, not a search
 
@@ -89,7 +90,8 @@ The spec is [specs/547-order-builds-the-list.md](specs/547-order-builds-the-list
   carry it. Not done: the spec puts that out of scope.
 - **The app's list is built again on every plan until the game starts.** The
   build reads the roster, levels, who is here, the rules, the format, Players
-  changing at once and the odd minutes setting, as they are at that moment. So an
+  changing at once, the odd minutes setting and the How to build the list choice
+  (#557), as they are at that moment. So an
   added Apart rule, or a kid marked Out, moves the app's list. The coach's list
   never moves by itself. Once a stint is played, or the game is finished, the
   list is frozen, even if the app built it. Alternative: write the list once,
@@ -112,7 +114,8 @@ The spec is [specs/547-order-builds-the-list.md](specs/547-order-builds-the-list
   minutes. It then swaps two kids, keeping each swap that lowers the score, until
   none does. Then it tries every three-kid turn once, and goes back to swaps if
   one helps. The score is 1,000,000 times the rule cost in minutes, plus the
-  preference cost. A rule always beats a preference. The rule cost is the minutes
+  preference cost (under Mix the score is different; see Mix the fives below).
+  A rule always beats a preference. The rule cost is the minutes
   a minimum falls short, the minutes a cap is exceeded, the minutes an Apart pair
   shares, the minutes both kids of a One of two on pair sit, and the minutes a
   Starts the last period kid misses. Together counts the minutes the pair does not
@@ -147,8 +150,9 @@ The spec is [specs/547-order-builds-the-list.md](specs/547-order-builds-the-list
   Rejected: a coach who did not set the list has no other way to learn the app
   could not do better.
 - **Copying a game's plan copies whose list it is.** "Copy from another game",
-  with How it plans on, copies the list and the flag. An app's list is built
-  again for the new game, and a coach's list is copied as set. A game added
+  with How it plans on, copies the list and the flag, and the How to build the
+  list choice (#557). An app's list is built again for the new game, and a
+  coach's list is copied as set. A game added
   without a copy drops both, and `addGame` writes its start. Alternative: always
   copy the list as the coach's. Rejected: a copied list the new game's roster or
   rules do not fit would stay frozen.
@@ -164,6 +168,79 @@ The spec is [specs/547-order-builds-the-list.md](specs/547-order-builds-the-list
   drawn again.
 - **The footer says who built the list.** The app's list says so, and that a
   move makes it the coach's. The coach's list says "You set this list."
+
+## Mix the fives (#557)
+
+The spec is [specs/557-order-mix-the-fives.md](specs/557-order-mix-the-fives.md).
+It is the coach's choice of how the app builds its list. The default is the list
+#547 builds, which gives the best players the most minutes.
+
+- **The choice is one flag, `g.orderMix`.** Set to `true` means Mix the fives.
+  Absent means the default. The default being the absent value means a game
+  saved before this change plans exactly as it did. `sanitize` keeps the flag
+  only when it is exactly `true` and the list is the app's (`orderBuilt`). The
+  coach moving a row clears both, so "Build it for me again" gives the default
+  list; `copySetup` carries the flag only from an app-built list.
+- **The choice travels with the plan.** "Copy from another game", with How it
+  plans on, copies the flag, or deletes it. A new game made from another (Same
+  as) keeps it, like `orderBuilt`. A handed-off game does not carry it: a
+  handed-off list is the coach's, and the choice only matters for the app's list.
+- **The choice shows only while it takes effect.** It appears on the Plan
+  sheet's Order body only while the app owns the list and the game has not
+  started (`orderBuilt` and not started). A coach's list does not show it, and
+  "Build it for me again" works as before. Alternative: show it always. Rejected:
+  a control that changes nothing is noise.
+- **Two rows, one chosen, under "How to build the list".** The first row reads
+  "Best players play the most" when the odd minutes setting is Best players, and
+  "Kids furthest behind play the most" when it is Furthest behind. That is what
+  the default list does under each setting. The second row is "Mix the fives".
+  A tap sets or clears the flag and rebuilds the list (`edit('orderBuild')`),
+  and focus goes back to the row that was tapped. There is no Undo. The other
+  row is the way back, the same as Lineup balance.
+- **Under Mix the score changes; rules still come first.** The rule cost is
+  still multiplied by 1,000,000. The spread term `V` is the minutes-weighted
+  variance of each five's strength, where a five's strength is the sum of its
+  kids' levels. In symbols, `V = Σ mⱼ (sⱼ − s̄)²`, with `mⱼ` the minutes of stint
+  `j`, `sⱼ` the strength of its five, and `s̄` the minutes-weighted mean. The
+  preference is still counted, but divided by `1 + max(n² M², 5 n d² M²)`, where
+  `M` is the game's minutes and every stint is a multiple of 1/`d` minute (so
+  whole-minute stints have `d` = 1). That makes it smaller than one step of `V`
+  for any stint lengths, so it only chooses
+  between lists whose fives are equally even. Among those, the kids the odd
+  minutes setting favors still get the longer spots.
+  - Levels run 1 to 5, so a five's strength runs from 5 to 25, and no variance
+    of values in that range is above 100. So `V` is at most `100 M`. For a game
+    under 10,000 minutes that is less than the 1,000,000 a broken rule costs.
+- **Why variance, not the gap or a count of the top kids.** The gap between the
+  strongest and weakest five, and the number of top kids in the weakest five,
+  look at one five only. Most swaps leave them unchanged, so the search has no
+  direction to follow. The variance moves with every five, so a swap that helps
+  any five shows up. The spec records the cases it was tried on.
+- **Restarts always run under Mix.** The restarts from the winner, turned by
+  one place, then two, and so on, run whether or not a rule is broken. They
+  still stop at `BUILD_CAP`. Under Best players they run only while a rule is
+  broken, as before. Alternative: keep the restarts rule-only under Mix.
+  Rejected: without them the search stopped short of the even spread in some
+  small cases, which the spec records.
+- **Mix does nothing when it cannot tell kids apart.** Mix applies only when the
+  levels of the kids in play differ. With every kid at one level, or with no
+  `mix` map, `buildOrder` runs today's code path and gives today's list, step
+  for step. Equal levels therefore never change a list.
+- **The interface.** `buildOrder({ ..., mix })`, where `mix` maps a kid's id to
+  a level. `solveDay` passes it only when `g.orderMix` is set, and reads levels
+  with `tierOfPlayer`, whatever the odd minutes setting. The raw `p.tier` and the
+  levels-only `tiers` map are not read here. The memo key gains the map only when
+  it is set, so a default game's key is unchanged.
+- **Same input, same list.** The Mix score has no random choice and no clock.
+  The scan order is fixed, as it is for the default.
+- **The footer under the list says what the choice did.** With Mix and kids at
+  different levels: "Built for you: your stronger players are spread out so
+  every five has some. Move anyone and the list is yours." With Mix and every
+  kid at one level: "Built for you: everyone is at the same level, so there is
+  nothing to mix. Move anyone and the list is yours." Otherwise the footer is as
+  before.
+  Each of the three is followed by "The first five start. Players who are out
+  are skipped."
 
 ## A game underway
 
