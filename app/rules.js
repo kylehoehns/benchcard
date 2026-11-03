@@ -118,38 +118,35 @@ function renderPairsGroup(c) {
   wrap.append(el('p', 'pgrp-f', 'Left off, the plan maximizes their shared floor time and reports it.'));
 }
 
-/* The one sentence each fives-set strategy gives for a switch that does not apply to it. */
-const fivesSetNote = strategy => (strategy === 'platoon'
-  ? 'Not used with fixed groups. The fives you set decide who plays.'
-  : 'Not used with a rotation order. The order decides who plays.');
-
 function renderDayGroup(g) {
   const wrap = $('#planDay');
   if (!wrap) return;
   wrap.textContent = '';
+  // #562: the fives (Platoon) or the order decide who plays, so the switch does nothing there
+  wrap.hidden = fivesAreSet(g.strategy);
+  if (wrap.hidden) return;
   wrap.append(el('div', 'pgrp-h', 'Across the day'));
   const box = el('div', 'pgrp');
   const first = state.activeGame === 0;
-  box.append(switchRow(EVEN_OUT_DAY_LABEL, evensOutDay(g, state.activeGame), first || fivesAreSet(g.strategy), v => {
+  box.append(switchRow(EVEN_OUT_DAY_LABEL, evensOutDay(g, state.activeGame), first, v => {
     g.useCarryover = v; renderConstraints(); edit('dayCarryover');
   }));
   wrap.append(box);
   // #420: "today" only when the open day is the phone's today, as `moveGame` and filing read it
   const when = dayIsToday(state.day) ? 'today' : 'that day';
-  wrap.append(el('p', 'pgrp-f', fivesAreSet(g.strategy)
-    ? fivesSetNote(g.strategy)
-    : first
-      ? `This is the first game ${when}, so there's nothing to even out.`
-      : `Players who got fewer minutes earlier ${when} get more here.`));
+  wrap.append(el('p', 'pgrp-f', first
+    ? `This is the first game ${when}, so there's nothing to even out.`
+    : `Players who got fewer minutes earlier ${when} get more here.`));
 }
 
 function renderSeasonGroup(g) {
   const wrap = $('#planSeason');
   if (!wrap) return;
-  const hasSeason = (state.season?.games || []).length > 0;
-  wrap.hidden = !hasSeason;
+  // #562: By hand, Platoon and Order set their own targets, so the switch does nothing there
+  const shown = (state.season?.games || []).length > 0 && g.strategy !== 'minutes' && !fivesAreSet(g.strategy);
+  wrap.hidden = !shown;
   wrap.textContent = '';
-  if (!hasSeason) return;
+  if (!shown) return;
   wrap.append(el('div', 'pgrp-h', 'Across the season'));
   const box = el('div', 'pgrp');
   box.append(switchRow('Even out the season so far', g.useSeasonTargets, false, v => {
@@ -260,10 +257,6 @@ export function renderSeasonAdjust() {
   const nm = id => byId(id)?.name || id;   // sentences about a child, so full names
   const say = t => host.append(el('p', 'pgrp-f', t));
 
-  if (a.reason === 'strategy') {
-    return say(fivesAreSet(g.strategy) ? fivesSetNote(g.strategy)
-      : 'Not used with hand-set minutes. The sliders above are already your targets.');
-  }
   if (a.reason === 'nobody') return say('Nobody is available for this game yet.');
   if (a.reason === 'locked') return say('Every player is locked to a number, so there is nothing to even out.');
   if (a.reason === 'impossible') {

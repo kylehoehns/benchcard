@@ -13,7 +13,7 @@
  * wiring stays in app.js too -- picking a strategy is `edit('strategy')`,
  * not a repaint of this section.
  */
-import { fmtMinutes, deriveShortNames, isOvertimeStint, tiersDiffer } from './engine.js';
+import { fmtMinutes, deriveShortNames, isOvertimeStint, tiersDiffer, fivesAreSet } from './engine.js';
 import { gameStarted } from './live.js';
 import { icon } from './icons.js';
 import { $, el, moveButton } from './dom.js';
@@ -21,7 +21,7 @@ import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
 import { paintChoiceRows } from './game-setup.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain, tieBreakIsLevels, tierOfPlayer } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain, tieBreakIsLevels, tierOfPlayer, leagueMinFor, leagueUnit } from './state.js';
 
 let edit = () => {};
 
@@ -46,12 +46,36 @@ export function renderStrategy() {
      few words (STRATEGY_WORDS, state.js), so the sheet only needs the full
      sentence, as a group footer under the segment that chose it. */
   $('#stratwhy').textContent = STRATEGIES[g.strategy] || '';
+  paintSkipLine(g);
   const box = $('#stratbody'); box.textContent = '';
   if (g.strategy !== 'closers') windowFor = null;
   if (g.strategy === 'minutes') box.append(minutesEditor(g));
   else if (g.strategy === 'closers') box.append(closersEditor(g));
   else if (g.strategy === 'platoon') box.append(platoonEditor(g));
   else if (g.strategy === 'order') box.append(orderEditor(g));
+}
+
+/* #562: which team settings the strategy skips, one line under the segment.
+   Empty and hidden under Even and Closers. The league minimum still holds
+   under Platoon and Order, so the line says how, only when one is set. */
+const SKIPS = {
+  platoon: "Platoon plays whole groups, so Players changing at once, Everyone plays in, full periods and evening out other games don't apply.",
+  order: "The order decides who plays, so Everyone plays in, full periods and the two Even out switches don't apply.",
+  minutes: "By hand plays the minutes you set, so evening out the season doesn't apply.",
+};
+
+function leagueClause(g) {
+  if (!fivesAreSet(g.strategy) || !(leagueMinFor(g) > 0)) return '';
+  const inFull = leagueUnit() === 'full';
+  const warns = g.strategy === 'order';
+  if (inFull) return ` Your league minimum still counts in minutes, not as full periods${warns ? ', and the plan only warns when someone falls short' : ''}.`;
+  return ` Your league minimum still counts${warns ? ', but the plan only warns when someone falls short' : ''}.`;
+}
+
+function paintSkipLine(g) {
+  const line = $('#stratskip');
+  line.textContent = SKIPS[g.strategy] ? SKIPS[g.strategy] + leagueClause(g) : '';
+  line.hidden = !line.textContent;
 }
 
 function minutesEditor(g) {

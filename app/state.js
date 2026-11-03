@@ -353,6 +353,8 @@ const leagueSetting = () => ({
   amount: state.settings?.minMinutes ?? DEFAULT_SETTINGS.minMinutes,
   unit: state.settings?.minUnit ?? DEFAULT_SETTINGS.minUnit,
 });
+/* #562: the unit alone, for the Plan sheet's note on what a league minimum still means. */
+export const leagueUnit = () => leagueSetting().unit;
 export function leagueMinFor(g, arrivedAt) {
   const { amount, unit } = leagueSetting();
   if (!(amount > 0)) return 0;

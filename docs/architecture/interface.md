@@ -444,6 +444,8 @@ in `state.js` does the copy, and the commit is one undoable edit (`copySetup`
 in `EDITS`). Opponent, tip-off, date, lineup balance and the carryover and
 overtime settings are never copied. `rules.js` builds the page.
 
+**The Plan sheet hides the switches a strategy ignores (#562).** Lineup balance is hidden under Platoon and Order (`renderBalance`, `balance.js`). Across the day is hidden under Platoon and Order (`renderDayGroup`, `rules.js`). Across the season is hidden under By hand, Platoon and Order as well as before any game is filed (`renderSeasonGroup`). Hidden, not disabled: hiding writes nothing, so a saved value comes back when the strategy changes. Under the strategy segment, `#stratskip` (painted by `paintSkipLine` in `strategy.js`) names the team settings the strategy skips, with a league-minimum clause when one is set. Its wording lives in `SKIPS` in `strategy.js`. Platoon and Order are read through `fivesAreSet` in `engine.js`, the same test the engine uses.
+
 Touch minimums (48px) are gated `@media (pointer: coarse), screen and
 (max-width: 620px)`. The pointer half alone was a trap: it never fires in a
 resized desktop browser, so nothing behind it was ever exercised in testing.
