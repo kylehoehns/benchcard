@@ -1066,15 +1066,18 @@ td.sit { color: var(--muted); font-size: var(--fs-footnote); }
    scroller, not floating over it, so nothing needs a bottom reserve and the
    call is on screen at every scroll. min-height: 0 lets the scroller shrink
    to the room the call and foot leave. */
-.gm-body { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem .9rem .6rem; -webkit-overflow-scrolling: touch;
+.gm-body { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem .9rem .6rem;
   /* the browser keeps the vertical scroll; horizontal moves come to us as
      pointer events so a stint can be swiped past */
   touch-action: pan-y; will-change: transform; }
 /* No scroll bar in bench mode: on a phone it ran half the screen beside the
    five. The bench row cut off under the call already shows there is more.
-   The landscape columns (.gm-body > .gm-sec) and Running late scroll too. */
-.gm-body, .gm-body > .gm-sec, #gmOutSec { scrollbar-width: none; }
-.gm-body::-webkit-scrollbar, .gm-body > .gm-sec::-webkit-scrollbar, #gmOutSec::-webkit-scrollbar { display: none; }
+   Every scroller in bench mode is covered (the floor, the landscape columns,
+   Running late, the moved line). iOS ignores ::-webkit-scrollbar on a box with
+   -webkit-overflow-scrolling: touch, so .gm-body no longer sets it; momentum
+   scrolling is the default there since iOS 13. */
+.gm, .gm * { scrollbar-width: none; }
+.gm::-webkit-scrollbar, .gm *::-webkit-scrollbar { display: none; width: 0; height: 0; }
 body.gm-swiping { user-select: none; -webkit-user-select: none; }
 .gm-sec { margin-bottom: 1.15rem; }
 /* Lives here, not inline, so the landscape block below can override it
