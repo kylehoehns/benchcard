@@ -485,7 +485,10 @@ Mobile specifics that came out of real use:
   (green) if the plan is ready, or Needs a fix (amber) if the plan is blocked. Each pass shows
   a small picture of who plays when and for how long (one row per available player,
   `aria-hidden` since it is not a roster list), and a line of setup — player count, strategy,
-  any rules, and whether it evens out later games. A blocked plan has no picture. Tapping opens
+  the minutes range (`12–16 min each`, from `effectiveMinutes`, so a swap moves it),
+  any rules, and whether it evens out later games. A printed game whose plan has since
+  moved adds **Changed since printed** under that line ([design decisions](../design-decisions.md)).
+  A blocked plan has no picture. Tapping opens
   the game screen. A Planned pass has a **Print card** button under it (#432), a sibling
   of the pass's own button: it opens that game and prints its card through the same
   `printCard` as the share sheet's Print, with the same print settings. The game screen's
