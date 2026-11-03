@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -137,6 +137,8 @@ export function copySetup(to, from, { rules, plan, format, here }) {
   if (plan) {
     to.strategy = from.strategy;
     if (from.order) to.order = [...from.order]; else delete to.order;
+    // #547: whose list it is travels with it; an app-built one is built again for this game
+    if (from.orderBuilt) to.orderBuilt = true; else delete to.orderBuilt;
   }
   if (format) {
     to.periods = from.periods; to.periodMinutes = from.periodMinutes;
@@ -191,6 +193,7 @@ export function newGame(n, from, settings) {
   if (from) {
     copySetup(g, from, { rules: true, plan: true, format: true, here: true });
     delete g.order;
+    delete g.orderBuilt;
   }
   return g;
 }
@@ -863,7 +866,7 @@ export function addGame(g, date) {
   const day = team().days[i];
   day.games.push(g);
   reopenSorted(i, day.games, g);
-  if (g.strategy === 'order' && !g.order?.length) g.order = startingOrder(g, day);
+  if (g.strategy === 'order' && !g.order?.length) startingOrder(g, day);
   return i;
 }
 
@@ -1291,13 +1294,29 @@ function orderAfter(prev) {
   return next ? turnTo(order, next) : order;
 }
 
-/* A game's starting order on Order: the latest earlier game that same day on
-   Order says where its cycle stopped, and with none the roster order is the
-   start. A new day always starts from the roster order. */
+/* A game's starting order on Order, written into the game (#547). When the
+   latest earlier game that same day on Order is the coach's, the new game
+   continues its cycle and is the coach's too. In every other case -- none
+   that day (a new day, or the game that replaces a filed one), or the earlier
+   one is the app's -- the new game is the app's: `orderBuilt`, with the roster
+   order as a placeholder that the next plan (`computeAll`) replaces. */
 function startingOrder(g, day) {
   const at = day ? day.games.indexOf(g) : -1;
   const earlier = at > 0 ? day.games.slice(0, at).filter(x => x.strategy === 'order') : [];
-  return earlier.length ? orderAfter(earlier[earlier.length - 1]) : effectiveOrder(g);
+  const prev = earlier[earlier.length - 1];
+  if (prev && !prev.orderBuilt) {
+    g.order = orderAfter(prev);
+    delete g.orderBuilt;
+  } else {
+    g.order = effectiveOrder(g);
+    g.orderBuilt = true;
+  }
+}
+
+/* "Build it for me again": the list becomes the app's, and the next plan
+   builds it (`computeAll`). */
+export function buildOrderAgain(g) {
+  g.orderBuilt = true;
 }
 
 /* A kid moved in a game that is underway: the stints played stay, and the rest
@@ -1312,17 +1331,18 @@ export function moveInOrder(g, id, dir) {
   if (!orderBefore.has(g.id) && isUnderway(planOf(g.id), g.live)) orderBefore.set(g.id, [...list]);
   [list[i], list[j]] = [list[j], list[i]];
   g.order = list;
+  delete g.orderBuilt;
   return true;
 }
 
 /* Picking a strategy. Order's starting point is written once, into the game,
-   so editing another game never moves it: the latest earlier game that day on
-   Order says where it stopped, and with none the roster order is the start. */
+   so editing another game never moves it (`startingOrder` says which kind of
+   list it is). */
 export function chooseStrategy(g, key) {
   g.strategy = key;
   if (key !== 'order' || g.order?.length) return;
   const day = team().days.find(d => d.games.some(x => x.id === g.id));
-  g.order = startingOrder(g, day);
+  startingOrder(g, day);
 }
 
 /* #537 #541: the stints a sit run is counted over -- `benchStints` less
@@ -2399,7 +2419,18 @@ export function computeAll() {
       // #450: the whole periods each kid is owed, per kid; empty unless the unit is `full`
       const fullFor = Object.fromEntries(inPlay.map(id => [id, leagueFullFor(g, id, late[id])]).filter(([, n]) => n > 0));
       const playsIn = playsInSetting();
-      const order = g.strategy === 'order' ? effectiveOrder(g, ids) : undefined;
+      const c = clone(g.constraints);
+      /* The league floor, composed into the per-player map the engine has always
+         read -- so `engine.js` is untouched and knows nothing about the setting.
+         `composedMinimum` is the order (own minimum higher wins, cap lower wins).
+         Everyone who is out is left alone: they are not available, so no rule
+         about available players reaches them. Composed here, ahead of the cache
+         key, because the list Order builds (#547) reads these minimums too. */
+      if (leagueOn) {
+        for (const id of ids) {
+          if (!out.has(id)) c.minMinutes[id] = composedMinimum(g, id, leagueFor[id]);
+        }
+      }
       const seasonT = seasonTargetsFor(g, inPlay, deficitOf);
       /* The tie-break the engine uses when the clock does not divide evenly and
          somebody has to play a stint less. `deficitOf` is the whole chain in one
@@ -2414,6 +2445,23 @@ export function computeAll() {
          under 'behind' it IS `deficitOf`, and under 'levels' the level leads and
          the deficit decides inside it. */
       const prio = Object.fromEntries(ids.filter(id => !out.has(id)).map(id => [id, priorityOf(id)]));
+      /* #547: the app's own list is built again on every plan until the game
+         starts, from this moment's roster, rules and odd minutes setting, and
+         written to `g.order` before the cache key is taken. The coach's list
+         (no `orderBuilt`) and a list once a stint is played are left alone.
+         Out and Running late kids go to the end, in roster order. */
+      const building = g.strategy === 'order' && g.orderBuilt === true && !gameStarted(g.live);
+      let builtShort = [];
+      const nameOf = Object.fromEntries(ps.map(x => [x.id, x.name]));
+      if (building) {
+        const built = buildOrder({
+          ids: inPlay, stints: buildStints(gameFormat(g), { mode: g.granMode, value: g.granValue }),
+          maxSubs, priority: prio, constraints: c, periods: g.periods,
+        });
+        g.order = [...built.order, ...ids.filter(id => out.has(id))];
+        builtShort = built.short;
+      }
+      const order = g.strategy === 'order' ? effectiveOrder(g, ids) : undefined;
       /* p.tier and g.balance belong in the signature: both change the plan, and
          leaving either out means a coach re-tiers a player and the card does not
          move. Team settings reach the solver too, so they belong for the same
@@ -2423,7 +2471,7 @@ export function computeAll() {
       const rest = JSON.stringify([
         ps.map(p => [p.id, p.tier]), g.out, g.periods, g.periodMinutes, g.overtime,
         g.granMode, g.granValue, g.strategy, g.balance, g.seed, carry, seasonT, prio, maxSubs, leagueFor,
-        fullFor, playsIn, ...(order ? [order] : []),
+        fullFor, playsIn, ...(order ? [order] : []), ...(building ? ['built'] : []),
       ]);
       const sig = JSON.stringify([ps.map(p => [p.name, p.shortName]), g.constraints, rest]);
       const hit = planCache.get(g.id);
@@ -2439,17 +2487,6 @@ export function computeAll() {
         g.basis = { key: warmKey, lineups: hit.plan.stints.map(s => s.onFloor.slice()) };
       }
       const start = g.basis?.key === warmKey ? g.basis.lineups : undefined;
-      const c = clone(g.constraints);
-      /* The league floor, composed into the per-player map the engine has always
-         read -- so `engine.js` is untouched and knows nothing about the setting.
-         `composedMinimum` is the order (own minimum higher wins, cap lower wins).
-         Everyone who is out is left alone: they are not available, so no rule
-         about available players reaches them. */
-      if (leagueOn) {
-        for (const id of ids) {
-          if (!out.has(id)) c.minMinutes[id] = composedMinimum(g, id, leagueFor[id]);
-        }
-      }
       if (Object.keys(fullFor).length) c.fullPeriods = fullFor;
       if (g.strategy === 'minutes') {
         c.targetMinutes = {};
@@ -2476,6 +2513,8 @@ export function computeAll() {
       if (seasonT) sayTheSeasonSetThem(p);
       if (leagueOn) sayTheLeagueMinimum(p, g.constraints.minMinutes || {}, id => leagueFor[id] || 0);
       sayWhyTheyAreShort(p, prio, tiers);
+      const shortNote = p.ok && orderShortNote(builtShort, id => nameOf[id] || id);
+      if (shortNote) p.issues.push(shortNote);
       planCache.set(g.id, { sig, warmKey, basis: JSON.stringify(g.basis ?? null), plan: p });
       return tally(g, syncOverrides(g, p, isUnderway(p, g.live), hit?.plan));
     });

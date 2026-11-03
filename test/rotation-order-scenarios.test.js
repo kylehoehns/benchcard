@@ -40,11 +40,18 @@ describe('Rotation order: two games the same day', { skip }, () => {
 
   const sameAsCard = async () => (await coach.controls()).find(n => n.startsWith('Same as'));
 
-  async function gameOneOnOrder(names = ROSTER, edits = {}) {
+  /* #547: a list picked on Order is built by the app, and a later game builds
+     its own. `byHand` moves Webb down and back up first, which makes the list
+     the coach's: the roster order, and the one a later game carries on from. */
+  async function gameOneOnOrder(names = ROSTER, edits = {}, byHand = false) {
     await coach.onGameDayWithRoster(names, edits);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Plan, even minutes');
     await coach.tap('Order');
+    if (byHand) {
+      await coach.tap('Move Webb down');
+      await coach.tap('Move Webb up');
+    }
   }
 
   async function addGameTwo() {
@@ -56,7 +63,7 @@ describe('Rotation order: two games the same day', { skip }, () => {
   }
 
   test('1. the issue\'s example: game 1 follows the roster, game 2 picks up where it stopped', async () => {
-    await gameOneOnOrder();
+    await gameOneOnOrder(ROSTER, {}, true);
 
     assert.deepEqual(await coach.orderList(), ROSTER, 'the list starts as the roster order');
     await coach.tap('Close');
@@ -73,7 +80,7 @@ describe('Rotation order: two games the same day', { skip }, () => {
   });
 
   test('2. moving a kid in game 1 afterwards leaves game 2 as it was', async () => {
-    await gameOneOnOrder();
+    await gameOneOnOrder(ROSTER, {}, true);
     await addGameTwo();
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, planned');
@@ -96,7 +103,8 @@ describe('Rotation order: two games the same day', { skip }, () => {
 
     assert.deepEqual(await coach.orderMarks(), { Cooper: 'Out' });
     assert.equal(await coach.isDisabled('Move Webb up'), true);
-    assert.equal(await coach.isDisabled('Move Damari down'), true);
+    // #547: the built list puts the Out kid last (it was the seventh in #545's roster-order copy)
+    assert.equal(await coach.isDisabled('Move Cooper down'), true);
     assert.equal(await coach.isDisabled('Move Webb down'), false);
     assert.ok((await coach.sizeOf('Move Kade up')).height >= 48);
     const A = short(['Webb', 'Kade', 'Brooks', 'Brody', 'Jack']);

@@ -568,6 +568,8 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         strategy: STRATEGY_KEYS.includes(g.strategy) ? g.strategy : 'balanced',
         // #545: the rotation order, as ids; one entry per player, the rest is read as the roster order
         order: [...new Set(keep(g.order))],
+        // #547: the app built this list and has not been moved; absent means the coach's
+        ...(g.orderBuilt === true ? { orderBuilt: true } : {}),
         // how lineup strength is shaped across the game; see BALANCE in engine.js
         balance: ['even', 'start', 'finish', 'both'].includes(g.balance) ? g.balance : 'even',
         live: (() => {
