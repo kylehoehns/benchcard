@@ -588,6 +588,8 @@
         <button type="button" class="phrase" id="phrasePlayers"></button>, <button type="button" class="phrase" id="phraseFormat"></button>, subbing <button type="button" class="phrase" id="phraseInterval"></button> for <button type="button" class="phrase" id="phraseStrategy"></button>, with <button type="button" class="phrase" id="phraseRules"></button>.
       </p>
       <p class="sentence noprint" id="sentenceEvens" hidden><button type="button" class="phrase" id="phraseEvens"></button></p>
+      <!-- #572: the minute range, plain gray text (not a phrase): the tinted words above stay the only things to tap. -->
+      <p class="sentence sentence-range noprint" id="sentenceRange" hidden></p>
 
       <!-- The three live sheets (#27). Static shells: each is painted once,
            when it opens (`openSheet`, trap.js), and updates itself in place

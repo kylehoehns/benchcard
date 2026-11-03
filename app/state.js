@@ -1401,9 +1401,26 @@ export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
    (#553). */
 export const evensOutDay = (g, i) => i > 0 && g.useCarryover && !fivesAreSet(g.strategy);
 
+/* #572: the Season day chart's closing sentence. "Automatically" is true only of
+   the later games `evensOutDay` holds for (not Platoon, not Order, not the
+   switch off), so it says "later games" only when that is all of them, names
+   the ones that do the way `evensOutLine` names games (tip-off, else
+   opponent) and counts them when any has neither. Empty when none do. */
+export function dayChartNote(games) {
+  const later = games.slice(1), evens = later.filter((g, k) => evensOutDay(g, k + 1));
+  if (!evens.length) return '';
+  if (evens.length === later.length) return 'Later games even out against this automatically.';
+  const several = evens.length > 1;
+  const names = evens.map(g => tipoffLabel(g.tipoff) || g.label || null);
+  const who = names.some(nm => !nm) ? `${evens.length} later game${several ? 's' : ''}` : `The ${joinNames(names)} game${several ? 's' : ''}`;
+  return `${who} ${several ? 'even' : 'evens'} out against this automatically.`;
+}
+
 export function passSummary(g, i, p) {
   const n = countedIds(g, p).length;
   const parts = [`${n} player${n === 1 ? '' : 's'} · ${STRATEGY_WORDS[g.strategy] || g.strategy}`];
+  const range = gameRange(g, p);
+  if (range) parts.push(range);
   if (evensOutDay(g, i)) parts.push('evens out the day');
   const rules = ruleCount(g);
   if (rules) parts.push(`${rules} rule${rules === 1 ? '' : 's'}`);
@@ -1755,11 +1772,21 @@ export function minutesNote(mins, nameOf) {
    is what the line describes. Pure: takes the numbers already computed
    rather than a plan, so it is testable without a game/plan fixture. */
 export function summaryLine(mins, subs) {
+  return `${minutesRange(mins)} · ${subs} change${subs === 1 ? '' : 's'}`;
+}
+
+/* #572: the minutes half of `summaryLine`, "12–16 min each", or one number when
+   everyone plays the same. Read by `summaryLine`, by `passSummary` (the Today
+   pass) and by the line under the game sentence, so the three cannot drift. */
+function minutesRange(mins) {
   const vals = Object.values(mins);
   const lo = Math.min(...vals), hi = Math.max(...vals);
-  const minutesPart = lo === hi ? `${fmtMinutes(hi)} min each` : `${fmtMinutes(lo)}–${fmtMinutes(hi)} min each`;
-  return `${minutesPart} · ${subs} change${subs === 1 ? '' : 's'}`;
+  return lo === hi ? `${fmtMinutes(hi)} min each` : `${fmtMinutes(lo)}–${fmtMinutes(hi)} min each`;
 }
+
+/* The range of a game the coach can see: from `effectiveMinutes`, so a swap
+   moves it, and empty while the plan is blocked or missing. */
+export const gameRange = (g, p) => (p?.ok ? minutesRange(effectiveMinutes(g, p)) : '');
 
 /* The blocked panel's title (#29 decisions 5/7): one string, read by both
    timeline.js's empty-rotation panel and card.js's card-sheet preview, so a
@@ -2347,7 +2374,8 @@ export function computeAll() {
      does not change from one day to the next. Archived games are effective
      minutes (that is what `archiveDay` files); a day's own games are PLANNED
      minutes, folded in below as that day solves, for the same reason `cum`
-     is planned -- a hand swap in game 1 must not silently re-solve game 2
+     is planned until a game starts (#572: then it is what was played) -- a
+     hand swap in game 1 before tip-off must not silently re-solve game 2
      underneath the coach. */
   const base = seasonShare(team().season?.games);
 
@@ -2389,10 +2417,14 @@ export function computeAll() {
        minutes. #368: a game that went to overtime hands over what was played
        -- its regulation was frozen and its overtime planned around that, so
        the fresh solve's own totals are not the minutes anyone got. Read after
-       `syncOverrides`, which is what writes those fives. */
+       `syncOverrides`, which is what writes those fives.
+       #572: the same once a stint is played (or the game is finished): what was
+       played, and the rest as it now stands, is what the day hands on, and it is
+       the number the day chart sums. A game not started yet still hands over
+       its plan, so a swap made before tip-off does not re-solve game 2. */
     const addUp = (g, p) => {
       any = true;
-      const mins = g.overtime?.length ? effectiveMinutes(g, p) : p.minutes;
+      const mins = (g.overtime?.length || gameStarted(g.live)) ? effectiveMinutes(g, p) : p.minutes;
       for (const [id, m] of Object.entries(mins)) cum[id] += m;
       noteToday(mins);
     };
@@ -2568,6 +2600,20 @@ export function computeAll() {
   for (const id of ids) eff[id] = Math.round(eff[id] * 100) / 100;
   dayTotals = eff;
 }
+
+/* #572: what the coach printed or shared. `g.printed` is the rotation stamp of
+   the plan at that moment, saved with the game (storage.js keeps it; handoff.js
+   drops it). It is not part of the plan signature, so printing never re-solves.
+   A plan whose stamp has since moved -- an earlier game's swap changed what this
+   game evens out -- no longer matches the paper. Not asked of a blocked plan or
+   a finished game, and never of a game that was not printed. */
+const printedStamp = p => (p?.ok ? rotationStamp(p) : '');
+export function notePrinted(g, p) {
+  const stamp = printedStamp(p);
+  if (stamp) g.printed = stamp;
+  return stamp;
+}
+export const changedSincePrinted = (g, p) => !!g.printed && !!p?.ok && !finishedGame(g.live) && printedStamp(p) !== g.printed;
 
 /* #247 amendment 11: `live.arrived` is for a kid who was not there at the
    start. One who played in a stint BEFORE the stint they "arrived" at --

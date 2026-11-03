@@ -17,7 +17,7 @@ import { fmtMinutes, benchSpan } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, benchStints, longestSit, planSay } from './state.js';
+import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, gameRange, dayChartNote, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, benchStints, longestSit, planSay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
 import { blockedPanel } from './timeline.js';
@@ -33,13 +33,17 @@ import { blockedPanel } from './timeline.js';
 export function renderSummary() {
   const row = $('#summaryRow'), box = $('#summary');
   const p = plans[state.activeGame], g = game();
+  const range = $('#sentenceRange');
   if (noRoster() || !p || !p.ok) {
     if (row) row.hidden = true;
     if (box) box.textContent = '';
+    if (range) { range.hidden = true; range.textContent = ''; }
     return;
   }
   if (row) row.hidden = false;
   if (box) box.textContent = planSay(g, p);
+  // #572: the same range, in plain text under the game sentence
+  if (range) { range.textContent = gameRange(g, p); range.hidden = false; }
 }
 
 export function renderIssues() {
@@ -343,5 +347,5 @@ export function renderDayTotals() {
   box.append(legend);
   box.append(el('p', 'note', hi === lo
     ? `Even across the day: everyone at ${fmtMinutes(hi)} minutes.`
-    : `Day spread ${fmtMinutes(hi - lo)} min. Heaviest ${fmtMinutes(hi)}, lightest ${fmtMinutes(lo)}. Later games even out against this automatically.`));
+    : [`Day spread ${fmtMinutes(hi - lo)} min. Heaviest ${fmtMinutes(hi)}, lightest ${fmtMinutes(lo)}.`, dayChartNote(state.day.games)].filter(Boolean).join(' ')));
 }

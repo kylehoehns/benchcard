@@ -373,8 +373,10 @@ text left open, and a future reader needs them to read the plan.
   game itself, and if the numbers cannot be made to add up to the floor budget
   exactly the whole adjustment stands down rather than shipping targets the
   solver would stop honouring. "The season so far" **includes today's earlier
-  games** (as planned minutes, the same choice `cum` makes; a game that went
-  to overtime hands over its effective minutes instead, #368), or game 2 of a
+  games** (once a game has started, its played minutes, the same
+  `effectiveMinutes` the day chart sums, #572; a game not yet started hands over
+  its planned minutes, and so does a swap made before tip-off; a game that went
+  to overtime hands over its effective minutes too, #368), or game 2 of a
   tournament would pay off a debt game 1 has already cleared.
   And it **says what it did**, under the switch: the even share, then one line
   per player who is off it — *Marcus Webb opens at 24 min — 8 down on the

@@ -572,6 +572,8 @@ export function sanitizeTeam(raw, { emptyConstraints, newGame, today = new Date(
         ...(g.orderBuilt === true ? { orderBuilt: true } : {}),
         // #557: the app's list mixes the fives rather than giving the best players the most minutes
         ...(g.orderMix === true && g.orderBuilt === true ? { orderMix: true } : {}),
+        // #572: the rotation stamp the coach last printed or shared; a non-empty string or absent
+        ...(typeof g.printed === 'string' && g.printed ? { printed: g.printed } : {}),
         // how lineup strength is shaped across the game; see BALANCE in engine.js
         balance: ['even', 'start', 'finish', 'both'].includes(g.balance) ? g.balance : 'even',
         live: (() => {

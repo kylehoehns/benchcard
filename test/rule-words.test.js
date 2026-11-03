@@ -20,6 +20,7 @@ const read = (f) => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
 const engine = stripComments(read('app/engine.js'));
 const tour = stripComments(read('app/tour.js'));
 const planView = read('app/plan-view.js');
+const stateSrc = read('app/state.js');
 const teamsView = read('app/teams-view.js');
 const rulesJs = stripComments(read('app/rules.js'));
 
@@ -148,8 +149,9 @@ test('tour step 1 tells the coach to mark who is not here, not to mark someone a
    literal by name, not scanned across the whole file (`app/teams-view.js`
    also calls the code identifier `rebalance()`, which item 1 leaves alone). */
 test('the day-spread note under the plan sheet no longer says "rebalance"', () => {
-  const m = planView.match(/Later games ([^`]+)`/);
-  assert.ok(m, 'the "Later games..." clause is gone from plan-view.js');
+  // The note's words moved into state.js's dayChartNote (#572).
+  const m = stateSrc.match(/Later games ([^']+)'/);
+  assert.ok(m, 'the "Later games..." clause is gone from state.js');
   assert.equal(m[1], 'even out against this automatically.');
 });
 

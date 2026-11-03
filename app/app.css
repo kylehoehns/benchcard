@@ -2377,6 +2377,10 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
   letter-spacing: -.022em; line-height: 1.38em; color: var(--muted);
   text-underline-offset: .2em; text-decoration-skip-ink: none; }
 .sentence:last-of-type { margin-bottom: 1rem; }
+/* #572: the minute range under the sentence is secondary text, one gray line:
+   the secondary step in rem, regular weight, and no tint (K1: the tint stays
+   on the phrases). */
+.sentence-range { font-size: var(--fs-secondary); font-weight: 400; letter-spacing: normal; line-height: 1.4; }
 
 /* ============================== the sheets ============================== */
 /* A dialog opened with showModal() promotes itself to the top layer, so none

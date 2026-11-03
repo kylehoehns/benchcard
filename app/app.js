@@ -35,7 +35,7 @@ import { edit } from './edit.js';
 import { DAMAGED_LINK } from './live.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         chooseStrategy, dueToFile, dayIsPast, fileIfPast, carryUnplayedDay, moveGame, setTipoff, hasGames } from './state.js';
+         chooseStrategy, dueToFile, dayIsPast, fileIfPast, carryUnplayedDay, moveGame, setTipoff, hasGames, plans, notePrinted } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -151,6 +151,12 @@ on('#regen', 'onclick', () => { const hadOverrides = reseed(game());
     }
   }
 });
+/* #572: remember which rotation went on paper, so the game can say when its
+   plan has moved since. Saved with the game; a repaint of the pass and the
+   game screen's sub line clears the cue. */
+function recordPrinted() {
+  if (notePrinted(game(), plans[state.activeGame])) edit('printed');
+}
 function printCard() {
   // #126: no games, nothing to print -- the game screen is unreachable, so
   // this does nothing rather than opening the print dialog over Today.
@@ -170,6 +176,7 @@ function printCard() {
      counts itself (`card_shared`), not as a print. */
   if (isHomeScreenApp()) { shareCardImage(); return; }
   track('card_printed', { size: state.ui.cardSize === 'half' ? 'half' : 'pocket' });
+  recordPrinted();
   window.print();
   tipAfterPrint();
 }
@@ -267,7 +274,7 @@ function shareCardImage() {
   how.then(r => {
     if (r === 'copied') flash('Card copied. Paste it into a message.');
     else if (r === 'saved') flash('Card saved as a PNG.');
-    if (r !== 'cancelled') track('card_shared', { how: r });
+    if (r !== 'cancelled') { track('card_shared', { how: r }); recordPrinted(); }
   }).catch(err => {
     console.warn('share failed', err);
     flash(`Could not share the image.${printStillWorks()}`);

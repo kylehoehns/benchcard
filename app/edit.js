@@ -46,6 +46,7 @@ export const EDITS = {
   theme: { pref: true, keys: [], now: true },
   gameView: { pref: true, keys: ['gameview'], now: true },
   cardOptions: { pref: true, keys: ['cards'], now: true },
+  printed: { pref: true, keys: ['tabs'], now: true },   // Print or Share image: the stamp is saved and the cue repaints
   cardSize: { pref: true, keys: ['setup', 'cards', 'gameview'], now: true },
 
   /* -------- Derived from every soon(...) in the five view files --------

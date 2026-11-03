@@ -126,6 +126,8 @@ export async function decode(hash, today = new Date()) {
       players: p.map(([id, name, number, tier], hue) => ({ id, name, number, tier, hue })),
       days: [{ name: '', date: dayDate(d.d, today), games: [{
         ...g, useCarryover: false,
+        // #572: what this phone printed means nothing on that one
+        printed: undefined,
         live: { at: l.at, overrides, hand: l.hand, finished: l.finished === true, arrived: l.arrived, sat: l.sat },
       }] }],
     };
