@@ -22,7 +22,7 @@ import { CHARTS } from '../scripts/charts.mjs';
    "substitution"). */
 const TERMS = [
   'Break', 'Change', 'Filing', 'Filed game', 'Blocked plan',
-  'Comes on / comes off', 'Starting five', 'Starts the last period', 'Card name', 'Lock', 'Odd minutes',
+  'Comes on / comes off', 'Starting five', 'Starts the last period', 'Card name', 'Lock', 'Extra minutes go to',
   'Swap', 'Half sheet', 'Remove', 'By hand', 'Plays at most N in a row',
 ];
 

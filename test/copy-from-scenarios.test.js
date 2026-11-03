@@ -51,7 +51,7 @@ describe('a coach copies a setup from another game', { skip }, () => {
     assert.equal(row, 'Ravens, Today · Saturday · 11:30 AM · 10 players, 2 × 16, rotation order');
     assert.ok(await coach.isPressed(row), 'the first game is chosen');
     assert.equal(await coach.isOn('Rules'), true);
-    assert.equal(await coach.isOn('How it plans'), true);
+    assert.equal(await coach.isOn('Strategy (Even, Closers…)'), true);
     assert.equal(await coach.isOn('Format and subs'), true);
     assert.equal(await coach.isOn("Who's here"), false);
     assert.equal(await coach.isDisabled('Copy'), false);
@@ -88,7 +88,7 @@ describe('a coach copies a setup from another game', { skip }, () => {
   test('with every switch off, Copy is disabled', async () => {
     await ravensSetUpThenHawks();
     await coach.tap('Copy from another game');
-    for (const name of ['Rules', 'How it plans', 'Format and subs']) await coach.tap(name);
+    for (const name of ['Rules', 'Strategy (Even, Closers…)', 'Format and subs']) await coach.tap(name);
     assert.equal(await coach.isDisabled('Copy'), true);
     await coach.tap("Who's here");
     assert.equal(await coach.isDisabled('Copy'), false);
@@ -103,7 +103,7 @@ describe('a coach copies a setup from another game', { skip }, () => {
     assert.equal(await coach.sees('Copy from another game'), true);
     await coach.tap('Close');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap('Plan, even minutes');
     assert.equal(await coach.sees('Copy from another game'), false);

@@ -167,10 +167,8 @@
      above -- so no attribute, or data-tint="graphite", is exactly today's
      app. A per-color [data-tint] block (below) overrides these four; see
      the selector-trap comment down there for why each one names its theme
-     explicitly. --phrase/--phrase-line are #27's sentence style (item 5):
-     ink with a 2px underline at the accent-line alpha for Graphite, and
-     --phrase-line goes transparent for every other color so the underline
-     disappears without a second rule. */
+     explicitly. --phrase is #27's sentence style (item 5): the phrase's own color, and
+     the 1px underline (#576) is drawn in that same color. */
   --tint: #1C1C1E;
   --tint-2: #35353A;
   --tint-ink: #FFFFFF;
@@ -182,11 +180,6 @@
   --tint-soft: rgba(28, 28, 30, .10);
   --tint-line: rgba(28, 28, 30, .32);
   --phrase: #1C1C1E;
-  /* #151 item 2: at .32 alpha this measured 2.00:1 against --bg in light
-     mode, under the 3:1 floor a decorative underline needs. .5 clears it
-     (3.22:1) without changing the underline's color, only its opacity; dark
-     mode (.4 alpha, 3.55:1) already cleared 3:1 and is unchanged. */
-  --phrase-line: rgba(28, 28, 30, .5);
 
   /* #151 item 1: light --ok on --ok-soft blended over --bg (the ground
      `.gm-p .mn .tag.in` actually sits on in bench mode) measured 4.47:1,
@@ -289,7 +282,6 @@
   --tint-soft: rgba(244, 244, 246, .14);
   --tint-line: rgba(244, 244, 246, .4);
   --phrase: #F4F4F6;
-  --phrase-line: rgba(244, 244, 246, .4);
 
   /* #151 item 3: dark #fff on dark --err measured 2.93:1, and 1.91:1 in dark
      + more contrast -- both under 4.5:1. A near-black ink (the same value as
@@ -326,8 +318,8 @@
    `:root[data-tint="royal"]` alone would outrank `:root[data-theme="dark"]`
    and paint light values on a dark phone, so every block names its theme
    explicitly, both here and inside the more-contrast media query below.
-   --phrase-line is transparent for every one of these -- #27's sentence
-   style keeps its underline only for Graphite (see the base blocks above). */
+   --phrase is each color's own sentence-phrase color (see the base blocks
+   above). */
 :root:not([data-theme="dark"])[data-tint="hardwood"],
 :root:not([data-theme="dark"]) [data-tint="hardwood"] {
   --tint: #D2500A;
@@ -336,7 +328,6 @@
   --tint-soft: rgba(210, 80, 10, .10);
   --tint-line: rgba(210, 80, 10, .32);
   --phrase: #D2500A;
-  --phrase-line: transparent;
 }
 :root[data-theme="dark"][data-tint="hardwood"],
 :root[data-theme="dark"] [data-tint="hardwood"] {
@@ -347,7 +338,6 @@
   --tint-soft: rgba(255, 122, 42, .14);
   --tint-line: rgba(255, 122, 42, .4);
   --phrase: #FF7A2A;
-  --phrase-line: transparent;
 }
 :root:not([data-theme="dark"])[data-tint="royal"],
 :root:not([data-theme="dark"]) [data-tint="royal"] {
@@ -357,7 +347,6 @@
   --tint-soft: rgba(36, 80, 214, .10);
   --tint-line: rgba(36, 80, 214, .32);
   --phrase: #2450D6;
-  --phrase-line: transparent;
 }
 :root[data-theme="dark"][data-tint="royal"],
 :root[data-theme="dark"] [data-tint="royal"] {
@@ -368,7 +357,6 @@
   --tint-soft: rgba(124, 155, 255, .14);
   --tint-line: rgba(124, 155, 255, .4);
   --phrase: #7C9BFF;
-  --phrase-line: transparent;
 }
 :root:not([data-theme="dark"])[data-tint="navy"],
 :root:not([data-theme="dark"]) [data-tint="navy"] {
@@ -378,7 +366,6 @@
   --tint-soft: rgba(31, 58, 110, .10);
   --tint-line: rgba(31, 58, 110, .32);
   --phrase: #1F3A6E;
-  --phrase-line: transparent;
 }
 :root[data-theme="dark"][data-tint="navy"],
 :root[data-theme="dark"] [data-tint="navy"] {
@@ -389,7 +376,6 @@
   --tint-soft: rgba(143, 176, 234, .14);
   --tint-line: rgba(143, 176, 234, .4);
   --phrase: #8FB0EA;
-  --phrase-line: transparent;
 }
 :root:not([data-theme="dark"])[data-tint="maroon"],
 :root:not([data-theme="dark"]) [data-tint="maroon"] {
@@ -399,7 +385,6 @@
   --tint-soft: rgba(140, 29, 58, .10);
   --tint-line: rgba(140, 29, 58, .32);
   --phrase: #8C1D3A;
-  --phrase-line: transparent;
 }
 :root[data-theme="dark"][data-tint="maroon"],
 :root[data-theme="dark"] [data-tint="maroon"] {
@@ -410,7 +395,6 @@
   --tint-soft: rgba(238, 120, 150, .14);
   --tint-line: rgba(238, 120, 150, .4);
   --phrase: #EE7896;
-  --phrase-line: transparent;
 }
 :root:not([data-theme="dark"])[data-tint="red"],
 :root:not([data-theme="dark"]) [data-tint="red"] {
@@ -420,7 +404,6 @@
   --tint-soft: rgba(192, 24, 44, .10);
   --tint-line: rgba(192, 24, 44, .32);
   --phrase: #C0182C;
-  --phrase-line: transparent;
 }
 :root[data-theme="dark"][data-tint="red"],
 :root[data-theme="dark"] [data-tint="red"] {
@@ -431,7 +414,6 @@
   --tint-soft: rgba(255, 107, 107, .14);
   --tint-line: rgba(255, 107, 107, .4);
   --phrase: #FF6B6B;
-  --phrase-line: transparent;
 }
 :root:not([data-theme="dark"])[data-tint="forest"],
 :root:not([data-theme="dark"]) [data-tint="forest"] {
@@ -441,7 +423,6 @@
   --tint-soft: rgba(27, 106, 67, .10);
   --tint-line: rgba(27, 106, 67, .32);
   --phrase: #1B6A43;
-  --phrase-line: transparent;
 }
 :root[data-theme="dark"][data-tint="forest"],
 :root[data-theme="dark"] [data-tint="forest"] {
@@ -452,7 +433,6 @@
   --tint-soft: rgba(76, 201, 138, .14);
   --tint-line: rgba(76, 201, 138, .4);
   --phrase: #4CC98A;
-  --phrase-line: transparent;
 }
 :root:not([data-theme="dark"])[data-tint="gold"],
 :root:not([data-theme="dark"]) [data-tint="gold"] {
@@ -462,7 +442,6 @@
   --tint-soft: rgba(168, 114, 0, .10);
   --tint-line: rgba(168, 114, 0, .32);
   --phrase: #A87200;
-  --phrase-line: transparent;
 }
 :root[data-theme="dark"][data-tint="gold"],
 :root[data-theme="dark"] [data-tint="gold"] {
@@ -473,7 +452,6 @@
   --tint-soft: rgba(255, 197, 61, .14);
   --tint-line: rgba(255, 197, 61, .4);
   --phrase: #FFC53D;
-  --phrase-line: transparent;
 }
 :root:not([data-theme="dark"])[data-tint="purple"],
 :root:not([data-theme="dark"]) [data-tint="purple"] {
@@ -483,7 +461,6 @@
   --tint-soft: rgba(91, 52, 184, .10);
   --tint-line: rgba(91, 52, 184, .32);
   --phrase: #5B34B8;
-  --phrase-line: transparent;
 }
 :root[data-theme="dark"][data-tint="purple"],
 :root[data-theme="dark"] [data-tint="purple"] {
@@ -494,7 +471,6 @@
   --tint-soft: rgba(174, 146, 255, .14);
   --tint-line: rgba(174, 146, 255, .4);
   --phrase: #AE92FF;
-  --phrase-line: transparent;
 }
 
 /* Increased contrast, held to a stricter floor (text >= 7:1, controls >= 4.5:1

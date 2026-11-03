@@ -86,7 +86,7 @@ export const minutesText = m => `${fmtMinutes(m)} minute${fmtMinutes(m) === '1' 
 export const STRATEGIES = {
   balanced: 'As close to equal as the clock allows.',
   minutes:  'You set each player’s minutes by hand.',
-  closers:  'Even minutes early, then your closing group finishes the game.',
+  closers:  'Even minutes early, then your closing group finishes the game and plays more than everyone else.',
   platoon:  'Fixed groups of five take turns, whole group for whole group.',
   order:    'Players take turns in the order you set, so you always know who is next.',
 };
@@ -106,6 +106,30 @@ export const GRAN_CHOICES = [
   { mode: 'perPeriod', value: 4, label: '4× / period', phrase: '4× a period' },
   { mode: 'breaksOnly', value: 1, label: 'Breaks only', phrase: 'only at breaks' },
 ];
+
+/* #575: the Sub interval sheet's list for one game. Several options cut a
+   period the same way (4 x 8: every 2 min and 4x a period are both four
+   2-minute subs), so each group of options with the same stint lengths --
+   read off the engine's own `buildStints` on one period -- shows one row. The
+   game's current option stands for its group; else "Only at breaks" when the
+   group is the whole period; else the first in `GRAN_CHOICES` order (minutes
+   before "x a period"). Display order stays `GRAN_CHOICES` order. */
+export function distinctGranChoices(g) {
+  const format = { periods: 1, periodMinutes: g.periodMinutes };
+  const key = c => buildStints(format, { mode: c.mode, value: c.value })
+    .map(s => s.minutes.toFixed(3)).join();
+  const isCurrent = c => g.granMode === c.mode && (c.mode === 'breaksOnly' || g.granValue === c.value);
+  const groups = new Map();
+  for (const c of GRAN_CHOICES) {
+    const k = key(c);
+    groups.set(k, [...(groups.get(k) || []), c]);
+  }
+  const pick = members => members.find(isCurrent)
+    || members.find(c => c.mode === 'breaksOnly')
+    || members[0];
+  const shown = new Set([...groups.values()].map(pick));
+  return GRAN_CHOICES.filter(c => shown.has(c));
+}
 
 /* #367: a game's format, built once -- regulation and its overtime periods.
    Every caller that asks the engine for stints or a plan goes through here,
@@ -433,7 +457,7 @@ function runMinutes(g, n) {
   }
   return { minutes: best, equal };
 }
-function runMinutesText(g, n) {
+export function runMinutesText(g, n) {
   const { minutes, equal } = runMinutes(g, n);
   return `${equal ? '' : 'up to '}${fmtMinutes(minutes)} min`;
 }
@@ -441,7 +465,8 @@ function runMinutesText(g, n) {
 /* #441: the picker's lines under the stepper, from the same helpers as the
  * rule's sentence. The second is only said where it is true: with ten
  * players, "Sits at most 1" is two fives trading places, which is Platoon. */
-export const runHint = (g, n) => `${runCount(g, n)} in a row is ${runMinutesText(g, n)}.`;
+// Only under Breaks only, where the stepper counts periods: elsewhere it shows minutes itself.
+export const runHint = (g, n) => (g.granMode === 'breaksOnly' ? `${runCount(g, n)} in a row is ${runMinutesText(g, n)}.` : '');
 
 /* #452: what a stint is called. Under Breaks only a stint is a whole period,
  * so the run rules count quarters, halves or periods; every other game counts
@@ -450,7 +475,7 @@ export const runHint = (g, n) => `${runCount(g, n)} in a row is ${runMinutesText
 export const runNoun = (g, n = 1) => (g.granMode !== 'breaksOnly' ? (n === 1 ? 'stint' : 'stints') : periodNoun(g.periods, n));
 const runCount = (g, n) => `${n} ${runNoun(g, n)}`;
 // the stepper row's label, "Quarters in a row", and the unit its buttons say
-export const runRowLabel = g => { const w = runNoun(g, 2); return `${w[0].toUpperCase()}${w.slice(1)} in a row`; };
+export const runRowLabel = g => { if (g.granMode !== 'breaksOnly') return 'In a row'; const w = runNoun(g, 2); return `${w[0].toUpperCase()}${w.slice(1)} in a row`; };
 export const restLimitMax = (g) => Math.max(1, regulationLens(g).lens.length - 1);
 export const benchPlatoonHint = (g, n) => (n === 1 && availIds(g).length === 2 * LINEUP_FLOOR
   ? `With ${availIds(g).length} players, Sits at most 1 in a row is Platoon.` : '');
@@ -1449,6 +1474,7 @@ export function sentenceParts(g, i, p = plans[i]) {
   const n = (finishedGame(g.live) ? countedIds(g, p) : availIds(g)).length;
   const rules = ruleCount(g);
   return {
+    here: n,
     players: `${n} player${n === 1 ? '' : 's'}`,
     format: `${g.periods} × ${g.periodMinutes}`,
     interval: intervalWords(g),

@@ -25,7 +25,7 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
     }, 9);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    for (let i = 0; i < 6; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 6; i++) await coach.tap('Next');
     assert.equal(await coach.stint(), '7 of 8', 'the premise');
     await coach.tap('Here now, Casey Lindqvist');
 
@@ -41,10 +41,10 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
     }, 9);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 7; i++) await coach.tap('Next');
     const sat = (await coach.onFloor()).find(n => n !== 'Marcus Webb');
     await coach.tapPlayer(sat);
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
 
     assert.match(await coach.toast(), /sits for the rest\. The others share those minutes\.$/);
   });
@@ -56,7 +56,7 @@ describe('a spent Plays at most does not rewrite the game already played', { ski
     }, 9);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    for (let i = 0; i < 5; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 5; i++) await coach.tap('Next');
     assert.equal(await coach.stint(), '6 of 8', 'the premise: the last period starts next stint');
     const off = (await coach.onFloor())[0];
     await coach.tapPlayer(off);

@@ -61,7 +61,7 @@ describe('lineup notes after the lineup moved', { skip }, () => {
   async function toLastStint() {
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
   }
 
@@ -130,7 +130,7 @@ describe('lineup notes after the lineup moved', { skip }, () => {
     await coach.goToStint(start + 1);
     const floor = await coach.onFloor();
     await coach.tapPlayer('Marcus Williams');
-    await coach.tap('Rest of game');
+    await coach.tap('Takes their minutes');
     await coach.tapPlayer((await benchPlayers(floor))[0]);
     const after = await coach.floorEveryStint();
     assert.ok(longestRun(after, 'Marcus Williams') <= 2, 'the swap did not break the run');

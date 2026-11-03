@@ -18,7 +18,7 @@
 import { riseIn } from './fx.js';
 import { $, set, el, checkMark } from './dom.js';
 import { state, game, plans, noRoster, setAvailable, save,
-         sentenceParts, planSay, stepFormat, GRAN_CHOICES, weekdayLabel,
+         sentenceParts, planSay, stepFormat, GRAN_CHOICES, distinctGranChoices, weekdayLabel,
          initials, colorOf } from './state.js';
 import { setLate } from './team-ops.js';
 import { openSheet, closeSheet, pushPane, popPane } from './trap.js';
@@ -104,6 +104,7 @@ export function renderSentence() {
   setPhrase('#phraseInterval', parts.interval, PHRASE_NAME.interval);
   setPhrase('#phraseStrategy', parts.strategy, PHRASE_NAME.strategy);
   setPhrase('#phraseRules', parts.rules, PHRASE_NAME.rules);
+  set('#hereRowText', 'textContent', `Who's here (${parts.here})`);
   const line2 = $('#sentenceEvens');
   if (line2) line2.hidden = !parts.evens;
   if (parts.evens) setPhrase('#phraseEvens', parts.evens, 'Evening out the day');
@@ -197,6 +198,8 @@ export function openWhoSheet(trigger) {
 function wireSentence() {
   const players = $('#phrasePlayers');
   if (players) players.onclick = () => openWhoSheet(players);
+  const hereRow = $('#hereRow');
+  if (hereRow) hereRow.onclick = () => openWhoSheet(hereRow);
   const format = $('#phraseFormat');
   if (format) format.onclick = () => { paintFormatBody(); openSheet($('#sheetFormat'), format); };
   const interval = $('#phraseInterval');
@@ -326,10 +329,11 @@ export const MINUTES_LO = 4, MINUTES_HI = 20;
 // joins the boot graph. `get`/`set` (rather than a state key) is what lets
 // rules.js's draft object share this with Format's `game()` fields; the
 // clamp itself is still `stepFormat` (state.js), never re-derived.
-export function stepperRow(label, get, set, lo, hi, noun, afterChange) {
+export function stepperRow(label, get, set, lo, hi, noun, afterChange, show = String) {
   const row = el('div', 'prow pstep-row');
   row.append(el('span', 'prow-t', label));
-  const val = el('span', 'pstep-val', '');
+  // a value with words in it ("up to 9 min") is wider than the two digits the column is sized for
+  const val = el('span', 'pstep-val' + (show === String ? '' : ' wide'), '');
   const wrap = el('div', 'pstep');
   const minus = el('button', 'pstep-btn', '−');
   minus.type = 'button';
@@ -339,7 +343,7 @@ export function stepperRow(label, get, set, lo, hi, noun, afterChange) {
   plus.setAttribute('aria-label', `More ${noun}`);
   const sync = () => {
     const v = get();
-    val.textContent = String(v);
+    val.textContent = show(v);
     minus.disabled = v <= lo;
     plus.disabled = v >= hi;
   };
@@ -430,14 +434,17 @@ export function paintChoiceRows(box, rows, repaint) {
    rather than a third hand-written list. `get`/`onPick` are what let a draft
    object (`fr`, onboarding.js) share this with the sheet's own `game()` --
    the write itself, and what happens after it, stay the caller's. */
-export function paintGranRows(box, get, onPick) {
+export function paintGranRows(box, get, onPick, onlyDistinct = false) {
   if (!box) return;
   const g = get();
-  paintChoiceRows(box, GRAN_CHOICES.map(c => [
+  /* #575: the sheet lists only what differs for this game's length. First-run
+     step 2 keeps the whole list: its minutes stepper above does not repaint
+     these rows, so a trimmed list there would go stale. */
+  paintChoiceRows(box, (onlyDistinct ? distinctGranChoices(g) : GRAN_CHOICES).map(c => [
     capitalize(c.phrase),
     g.granMode === c.mode && (c.mode === 'breaksOnly' || g.granValue === c.value),
     () => onPick(c),
-  ]), () => paintGranRows(box, get, onPick));
+  ]), () => paintGranRows(box, get, onPick, onlyDistinct));
 }
 
 function paintIntervalBody() {
@@ -449,5 +456,5 @@ function paintIntervalBody() {
   paintGranRows(grp, game, c => {
     Object.assign(game(), { granMode: c.mode, granValue: c.value });
     edit('format');
-  });
+  }, true);
 }

@@ -31,7 +31,7 @@ describe('the notes under the timeline', { skip }, () => {
   async function toLastStint() {
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
   }
 
@@ -71,8 +71,8 @@ describe('the notes under the timeline', { skip }, () => {
 
   test('a player who leaves mid-game is named with the minutes the timeline shows, not an even split', async () => {
     await startHawks();
-    await coach.tap('Next stint');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
+    await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap("Who's here, 11 players");
     await coach.tap('Ana Reyes');
@@ -93,7 +93,7 @@ describe('the notes under the timeline', { skip }, () => {
 
   test('a player who left and ties at the low end is named in roster order, not last', async () => {
     await startHawks();
-    for (let i = 0; i < 4; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 4; i++) await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap("Who's here, 11 players");
     await coach.tap('Casey Lindqvist');

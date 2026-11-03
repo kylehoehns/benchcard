@@ -61,7 +61,7 @@ test('How it works has a Settings section holding each moved explanation', () =>
   const phrases = [
     'nine seconds to undo',
     'nothing to copy',
-    'one stint less',
+    'one sub less',
     'league has a rule',
     'Even out the season so far',
     'nowhere else',

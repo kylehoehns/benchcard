@@ -26,7 +26,7 @@ describe('overtime minutes after the game', { skip }, () => {
   async function toLastStint() {
     for (let i = 0; !(await coach.sees('Finish game')); i++) {
       assert.ok(i < 40, 'Finish game never appeared');
-      await coach.tap('Next stint');
+      await coach.tap('Next');
     }
   }
 
@@ -54,7 +54,7 @@ describe('overtime minutes after the game', { skip }, () => {
     await coach.addOvertime(8);
     const first = await playedOnFloor();
     const fiveFirst = await coach.onFloor();
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     const second = await playedOnFloor();
     for (const name of fiveFirst.filter(n => n in second)) {
       assert.equal(second[name], first[name] + 4, `${name} played the first four overtime minutes`);
@@ -76,7 +76,7 @@ describe('overtime minutes after the game', { skip }, () => {
     await startHawks();
     await toLastStint();
     await coach.addOvertime(8);
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.comeBackDaysLater(1);
@@ -96,7 +96,7 @@ describe('overtime minutes after the game', { skip }, () => {
     await startHawks();
     await toLastStint();
     await coach.addOvertime(8);
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, finished');
@@ -129,7 +129,7 @@ describe('overtime minutes after the game', { skip }, () => {
     await coach.tap('Ravens, 11:30 AM, planned');
     await coach.tap('Start game');
     await toLastStint();
-    await coach.tap('Tied? Add overtime');
+    await coach.tap('Change overtime');
 
     assert.equal(await coach.valueOf('Minutes'), '3');
   });

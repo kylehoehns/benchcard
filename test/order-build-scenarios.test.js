@@ -143,7 +143,7 @@ describe('Rotation order: the coach\'s hand wins', { skip }, () => {
     assert.ok(await coach.sees('Build it for me again'));
     await coach.tap('Close');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, underway');
@@ -169,7 +169,7 @@ describe('Rotation order: a game underway keeps the list the app built', { skip 
     assert.equal(await coach.orderFooter(), ONLY_BUILT);
     await coach.tap('Close');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, underway');
@@ -217,7 +217,7 @@ describe('Rotation order builds the list: the second game', { skip }, () => {
     assert.deepEqual(await coach.orderMinutes(), {
       Avery: '16 min', Finley: '20 min', Gray: '20 min', Harper: '20 min', Indy: '20 min',
       Blake: '16 min', Casey: '16 min', Drew: '16 min', Emery: '16 min' });
-    assert.match(await coach.orderFooter(), /^Built for you: the kids furthest behind get the spots that play the most\./);
+    assert.match(await coach.orderFooter(), /^Built for you: the kids behind on minutes get the spots that play the most\./);
   });
 
   test('8. game 1 set by hand: game 2 continues its cycle and the list is the coach\'s too', async () => {

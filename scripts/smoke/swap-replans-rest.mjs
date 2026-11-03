@@ -62,7 +62,7 @@ export async function swapReplansRestPass(c, origin, rec) {
   rec.check(!missing.length, `F: stints ${missing.join(', ')} were not re-planned (overrides ${Object.keys(after.overrides)})`);
   rec.check(after.spread <= 4, `F: projected spread is ${after.spread} min, want at most 4`);
   const toast = JSON.parse(await evalIn(c, readToast));
-  const wantToast = `${after.first[inId]} on for ${after.first[outId]} this stint. The rest of the game was re-planned to keep minutes even.`;
+  const wantToast = `${after.first[inId]} on for ${after.first[outId]} for now. The rest of the game was re-planned to keep minutes even.`;
   rec.check(toast.shown && toast.text === wantToast && toast.hasUndo, `F: the toast reads ${JSON.stringify(toast)}, want "${wantToast}" with Undo`);
   notes.push(`F: a This stint swap re-plans stints 1-${after.stints - 1}, spread ${after.spread}, toast says the rest was re-planned`);
 

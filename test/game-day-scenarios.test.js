@@ -37,7 +37,7 @@ describe('a coach runs a game', { skip }, () => {
     await coach.tapPlayer('Ana Reyes');
     await coach.tapPlayer('Devon Ellis');
 
-    assert.equal(await coach.toast(), 'Devon on for Ana this stint. The rest of the game was re-planned to keep minutes even.');
+    assert.equal(await coach.toast(), 'Devon on for Ana for now. The rest of the game was re-planned to keep minutes even.');
     assert.deepEqual(await coach.onFloor(), ['Devon Ellis', 'Casey Lindqvist', 'Hana Kim', 'Nia Brooks', 'Theo Alvarez']);
 
     await coach.tap('Undo');
@@ -47,7 +47,7 @@ describe('a coach runs a game', { skip }, () => {
   test('a player sat for the rest stays off for every stint after', async () => {
     await startHawks();
     await coach.tapPlayer('Ana Reyes');
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
 
     assert.equal(await coach.toast(), 'Ana sits for the rest. The others share those minutes.');
     for (let stint = 1; stint <= 8; stint++) {
@@ -55,7 +55,7 @@ describe('a coach runs a game', { skip }, () => {
       const floor = await coach.onFloor();
       assert.equal(floor.length, 5, `five on the floor in stint ${stint}`);
       assert.ok(floor.every(name => name !== 'Ana Reyes'), `Ana is off in stint ${stint}`);
-      if (stint < 8) await coach.tap('Next stint');
+      if (stint < 8) await coach.tap('Next');
     }
   });
 
@@ -64,14 +64,14 @@ describe('a coach runs a game', { skip }, () => {
     await coach.onGameDayWith({ out: ['p9', 'p10'] });
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
+    await coach.tap('Next');
     assert.equal(await coach.stint(), '3 of 8');
     const before = await coach.onFloor();
     const sat = before[1];
 
     await coach.tapPlayer(sat);
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
 
     assert.equal(await coach.stint(), '3 of 8');
     const after = await coach.onFloor();
@@ -84,8 +84,8 @@ describe('a coach runs a game', { skip }, () => {
     await coach.onGameDayWith({ out: ['p9'], late: ['p9'], ...edits }, 10);
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    await coach.tap('Next stint');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
+    await coach.tap('Next');
     assert.equal(await coach.stint(), '3 of 8');
   }
 
@@ -147,7 +147,7 @@ describe('a coach runs a game', { skip }, () => {
     const played = async () => {
       while ((await coach.stint()) !== '1 of 8') await coach.tap('Previous stint');
       const floors = [await coach.onFloor()];
-      for (let k = 0; k < 2; k++) { await coach.tap('Next stint'); floors.push(await coach.onFloor()); }
+      for (let k = 0; k < 2; k++) { await coach.tap('Next'); floors.push(await coach.onFloor()); }
       return floors;
     };
     await startHawksOfTenAtStint3({ strategy: 'minutes' });
@@ -183,8 +183,8 @@ describe('a coach runs a game', { skip }, () => {
 
   test('leaving bench mode mid-game keeps the game, even after closing the app', async () => {
     await startHawks();
-    await coach.tap('Next stint');
-    await coach.tap('Next stint');
+    await coach.tap('Next');
+    await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap('Back to Smoke Test');
 
@@ -196,8 +196,8 @@ describe('a coach runs a game', { skip }, () => {
 
   test('finishing the game marks it finished on Today', async () => {
     await startHawks();
-    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
-    assert.equal(await coach.sees('Next stint'), false, 'the last stint offers Finish instead');
+    for (let i = 0; i < 7; i++) await coach.tap('Next');
+    assert.equal(await coach.sees('Next'), false, 'the last stint offers Finish instead');
     await coach.tap('Finish game');
 
     assert.equal(await coach.toast(), 'Marked Hawks finished.');
@@ -208,14 +208,14 @@ describe('a coach runs a game', { skip }, () => {
 
   test('a finished game cannot be shuffled, an underway one can', async () => {
     await startHawks();
-    await coach.tap('Next stint');
+    await coach.tap('Next');
     await coach.tap('Leave');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, underway');
     await coach.tap('Card');
     assert.equal(await coach.isDisabled('Shuffle'), false, 'Shuffle works while the game is underway');
     await coach.tap('Resume · Q1 4:00');
-    for (let i = 0; i < 6; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 6; i++) await coach.tap('Next');
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Hawks, 9:00 AM, finished');
@@ -226,7 +226,7 @@ describe('a coach runs a game', { skip }, () => {
 
   test('the next day, the finished game is filed to the season and the unstarted one left out', async () => {
     await startHawks();
-    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 7; i++) await coach.tap('Next');
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.comeBackDaysLater(1);

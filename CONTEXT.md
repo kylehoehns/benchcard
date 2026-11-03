@@ -177,7 +177,7 @@ _In code_: `plan.ok === false`, `issues` with severity `error`
 
 **Strategy**:
 How minutes are shared out in a game: Even, By hand, Closers, Platoon or
-Rotation order.
+Order.
 _Avoid_: mode, plan type
 
 **Even**:
@@ -214,18 +214,18 @@ _Avoid_: lines, shifts
 One fixed group of five in Platoon.
 _Avoid_: line, group, five
 
-**Rotation order**:
+**Order**:
 The strategy where the game's players are listed in an order and the plan takes
 them in turn: the first five start, and each break the next players in the list
 come on for the ones who have played longest. Each game has its own list. Until
-the game starts, the app builds the list from the odd minutes setting and the
+the game starts, the app builds the list from the extra minutes setting and the
 rules; once the coach moves anyone, the list is the coach's. A later game that day
 starts from where an earlier game's turn stopped when that game's list is the
 coach's. Otherwise the later game's list is built too. For the app's list the
 coach can choose **Mix the fives** on the Order sheet ("How to build the list"):
 the stronger players are spread out so every five has some, instead of the best
 players getting the most minutes.
-_Avoid_: rotation list, queue, cycle (in coach text)
+_Avoid_: Rotation order (as the strategy's name), rotation list, queue, cycle (in coach text)
 _In code_: `order`, `g.order`; `g.orderBuilt` is set for the app's list;
 `g.orderMix` is set for Mix the fives (absent is the default), and only
 alongside `g.orderBuilt`
@@ -301,10 +301,12 @@ pins each player on for that many entire periods. A player who arrives late is
 owed the same share of the time left.
 _Avoid_: league floor
 
-**Odd minutes**:
-The minutes left over when a game's clock can't divide evenly, and the team
-setting for who gets them: furthest behind, or best players.
-_Avoid_: tie-break, odd stint
+**Extra minutes go to**:
+The minutes left over when a game's clock can't divide evenly (the spare sub),
+and the team setting for who gets them: kids behind on minutes, or best
+players. It sits under Fine-tuning in Settings. Kids behind on minutes counts
+the season plus the earlier games today.
+_Avoid_: Odd minutes (the old name), tie-break, odd stint
 _In code_: `tieBreak`, `priority`
 
 **Players changing at once**:
@@ -375,17 +377,18 @@ _Avoid_: game mode, live mode, on screen
 _In code_: `gamemode.js`, `openGameMode`, `benchOpen`
 
 **Swap**:
-A coach's change to who is on the floor in bench mode, for this stint or the rest
-of the game, made without re-planning.
+A coach's change to who is on the floor in bench mode, for now (the current
+stint) or for the rest of the game ("Takes their minutes"), made without
+re-planning.
 _Avoid_: override (in copy), hand sub
 _In code_: `live.overrides`
 
-**Sit for the rest**:
+**Sits the rest of the game**:
 Removing a player from the rest of a game in bench mode and re-planning the
 remaining stints around the minutes already played. The sit stands through
 every later re-plan until the coach undoes it (Undo, or Back to the printed
 plan).
-_Avoid_: sit and rebalance, re-solve, bench (as a verb)
+_Avoid_: Sit for the rest (the old button name), sit and rebalance, re-solve, bench (as a verb)
 _In code_: `resolveRest`, `live.sat`
 
 **Part-played game**:

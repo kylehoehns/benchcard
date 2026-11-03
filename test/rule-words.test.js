@@ -167,7 +167,7 @@ test('removing a team\'s last-team toast no longer says "The day rebalanced"', (
 test('the "force pairs" switch names the Together rule by its KINDS label', () => {
   const m = rulesJs.match(/switchRow\('([^']*)',\s*c\.hardPairs/);
   assert.ok(m, 'renderPairsGroup\'s switchRow call for hardPairs is gone from rules.js');
-  assert.equal(m[1], 'Force Together pairs every stint');
+  assert.equal(m[1], 'Force Together pairs to always be in together');
 });
 
 /* The help sheet's Rules section (#help in index.html) is coach-visible copy

@@ -25,20 +25,26 @@ async function openPlan(coach) {
 describe('the run stepper (#452)', { skip, concurrency: true }, () => {
   describe('every 4 minutes', { concurrency: 1 }, () => {
     const own = chrome();
-    test('Plays at most reaches 7 of 8 stints; Sits at most stops at 4', async () => {
+    test('the stepper shows minutes, not stints, reaches 7 of 8 subs for Plays at most and stops at 4 for Sits at most', async () => {
       const { coach } = own;
       await coach.onGameDay();
       await coach.tap('Hawks, 9:00 AM, planned');
       await openPlan(coach);
       await coach.tap('Add a rule');
       await coach.tap('Plays at most N in a row');
-      assert.equal(await coach.text('#planKindBody .pgrp-f'), '2 stints in a row is 8 min.');
-      await coach.stepTo('stints', 7);
-      await coach.stepTo('stints', 6);
-      assert.equal(await coach.text('#planKindBody .pgrp-f'), '6 stints in a row is 24 min.');
+      assert.equal(await coach.text('#planKindBody .prow-t'), 'In a row');
+      assert.equal(await coach.text('#planKindBody .pstep-val'), '8 min');
+      assert.equal(await coach.count('#planKindBody .pgrp-f:not([hidden])'), 0, 'no N stints is X min hint');
+      for (let i = 0; i < 5; i++) await coach.tap('More minutes');
+      assert.equal(await coach.text('#planKindBody .pstep-val'), '28 min', '7 of the 8 subs');
+      assert.ok(await coach.isDisabled('More minutes'), 'all 8 would be no limit');
+      await coach.tap('Fewer minutes');
+      assert.equal(await coach.text('#planKindBody .pstep-val'), '24 min');
       await coach.tap('Sits at most N in a row');
-      await coach.stepTo('stints', 4);
-      await assert.rejects(coach.stepTo('stints', 5), /ended at 4|disabled|wanted 5/);
+      await coach.tap('More minutes');
+      await coach.tap('More minutes');
+      assert.equal(await coach.text('#planKindBody .pstep-val'), '16 min');
+      assert.ok(await coach.isDisabled('More minutes'), 'Sits at most stops at 4 subs');
     });
   });
 

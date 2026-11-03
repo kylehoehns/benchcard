@@ -41,7 +41,7 @@ describe('the sits-in-a-row note after a swap', { skip }, () => {
       .filter(n => n && !floor.includes(n));
   }
 
-  for (const scope of ['This stint', 'Rest of game']) {
+  for (const scope of ['For now', 'Takes their minutes']) {
     test(`${scope} swap: the notes list every kid shown sitting past the limit, with the run on screen`, async () => {
       await start();
       await coach.goToStint(3);
@@ -62,7 +62,7 @@ describe('the sits-in-a-row note after a swap', { skip }, () => {
     await coach.goToStint(3);
     const floor = await coach.onFloor();
     await coach.tapPlayer(floor[0]);
-    await coach.tap('Rest of game');
+    await coach.tap('Takes their minutes');
     await coach.tapPlayer((await benchPlayers(floor))[0]);
     const floors = await coach.floorEveryStint();
     const names = [...new Set(floors.flat())];

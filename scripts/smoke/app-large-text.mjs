@@ -141,7 +141,7 @@ export const APP_LARGE_TEXT_STATES = [
            document.querySelector('#gmFloor .gm-p').click();
            await ${TIMERS_QUIET};
            [...document.querySelectorAll('#gamemode button')]
-             .find(b => b.textContent.trim() === 'Sit for the rest').click()`,
+             .find(b => b.textContent.trim() === 'Sits the rest of the game').click()`,
     close: `document.querySelector('.toast .tundo')?.click();
             await ${TIMERS_QUIET};
             document.querySelector('#gmClose').click()` },
@@ -180,14 +180,14 @@ export const APP_LARGE_TEXT_STATES = [
             document.querySelector('#gmClose').click()` },
   /* #368 item 15: the Overtime sheet over the last stint (whose Next box now
      also carries "Tied? Add overtime", so 'bench mode, last stint' above
-     measures that button). Closed with its own X, nothing added, then walked
+     measures that button and the Change beside it). Closed with its own X, nothing added, then walked
      back to stint 0 the way that state does, so the fixture is left as found.
      #369 item 14: the sheet now carries the four-option "Who plays" control,
      so this state is where it is measured at 320px and 32px text. */
   { name: 'overtime sheet',
     open: `document.querySelector('#gmOpen').click();
            while (!document.querySelector('#gmNext2').disabled) { document.querySelector('#gmNext2').click(); }
-           document.querySelector('#gmNext .gm-ot').click()`,
+           document.querySelector('#gmNext .gm-ot-change').click()`,
     close: `document.querySelector('#sheetOvertimeClose').click();
             await ${TIMERS_QUIET};
             while (!document.querySelector('#gmPrev').disabled) { document.querySelector('#gmPrev').click(); }

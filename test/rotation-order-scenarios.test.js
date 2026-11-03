@@ -183,7 +183,7 @@ describe('Rotation order: a game underway', { skip }, () => {
     await underwayAt(3);
     await coach.tapPlayer('Drew');
 
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
 
     const C8 = ['Indy', 'Avery', 'Blake', 'Casey', 'Emery'];
     const D8 = ['Emery', 'Finley', 'Gray', 'Harper', 'Indy'];
@@ -218,7 +218,7 @@ describe('Rotation order: where the cycle stopped, after a kid sat for the rest'
     await coach.tap('Start game');
     await coach.goToStint(2);
     await coach.tapPlayer('Gray');
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
     await coach.tap('Leave');
     await coach.tap('Back to Smoke Test');
     await coach.tap('Add a game');
@@ -241,7 +241,7 @@ describe('Rotation order: where the cycle stopped, after a kid sat for the rest'
     await coach.tap('Start game');
     await coach.goToStint(3);
     await coach.tapPlayer('Drew');
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
     await coach.goToStint(5);
     await coach.tap('Here now, Gray');
 
@@ -305,7 +305,7 @@ describe('Rotation order: where a later game starts', { skip }, () => {
     await coach.onGameDayWithRoster(ROSTER, { strategy: 'order', order: backwards });
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 7; i++) await coach.tap('Next');
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.comeBackDaysLater(1, `document.querySelector('.today-game')`);

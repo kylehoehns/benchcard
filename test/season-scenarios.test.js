@@ -25,7 +25,7 @@ describe('a coach reads the season', { skip }, () => {
     await coach.onGameDay();
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Start game');
-    for (let i = 0; i < 7; i++) await coach.tap('Next stint');
+    for (let i = 0; i < 7; i++) await coach.tap('Next');
     await coach.tap('Finish game');
     await coach.tap('Back to Smoke Test');
     await coach.comeBackDaysLater(1);

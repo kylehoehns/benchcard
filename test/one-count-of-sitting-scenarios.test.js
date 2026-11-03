@@ -67,7 +67,7 @@ describe('overtime does not count toward Sits at most', { skip }, () => {
       await coach.onGameDayWith({ constraints: rules }, 9);
       await coach.tap('Hawks, 9:00 AM, planned');
       await coach.tap('Start game');
-      for (let i = 0; !(await coach.sees('Finish game')); i++) { assert.ok(i < 40); await coach.tap('Next stint'); }
+      for (let i = 0; !(await coach.sees('Finish game')); i++) { assert.ok(i < 40); await coach.tap('Next'); }
       await coach.addOvertime(4, who);
       const floors = await coach.floorEveryStint();
       assert.equal(floors.length, 9, 'eight stints and one of overtime');

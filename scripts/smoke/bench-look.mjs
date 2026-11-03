@@ -365,7 +365,8 @@ async function runTheme(c, origin, theme, rec, notes) {
   rec.check(foot.done.bg !== tint, tag(`item 9: #gmDone paints the primary tint ${tint}, want the raised surface`));
   for (const [name, box] of [['prev', foot.prev], ['next2', foot.next2]]) {
     rec.check(box.w >= 48 && box.h >= 48, tag(`item 9: #gm${name} is ${Math.round(box.w)}x${Math.round(box.h)}, want >=48x48`));
-    rec.check(Math.abs(box.w - box.h) <= 0.5, tag(`item 9: #gm${name} is ${box.w}x${box.h}, want width == height (round)`));
+    // #573: Next carries the word "Next" on purpose, so it is a pill, not a circle; Back stays round.
+    if (name !== 'next2') rec.check(Math.abs(box.w - box.h) <= 0.5, tag(`item 9: #gm${name} is ${box.w}x${box.h}, want width == height (round)`));
     rec.check(box.radius >= box.h / 2 - 0.5, tag(`item 9: #gm${name} border-radius ${box.radius} on a ${Math.round(box.h)}px control, want at least half its height`));
   }
   rec.check(foot.next2.bg === tint, tag(`item 9: #gmNext2 paints ${foot.next2.bg}, want ${tint} (--tint, K1's primary fill)`));

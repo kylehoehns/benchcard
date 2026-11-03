@@ -29,7 +29,7 @@ describe('a sit or a swap with Plays at most in the way', { skip }, () => {
     await atStint2();
     const sitter = (await coach.onFloor()).find(n => !CAPPED.includes(n));
     await coach.tapPlayer(sitter);
-    await coach.tap('Sit for the rest');
+    await coach.tap('Sits the rest of the game');
     assert.ok(!(await coach.onFloor()).includes(sitter), 'the sit took');
     const later = await coach.floorEachStint();
     assert.deepEqual(later.filter(f => f.includes(sitter)), [], `${sitter} plays after the sit`);
@@ -45,7 +45,7 @@ describe('a sit or a swap with Plays at most in the way', { skip }, () => {
     const before = await coach.floorEachStint();
     await coach.goToStint(2);
     await coach.tapPlayer(floor.find(n => !CAPPED.includes(n)));
-    await coach.tap('This stint');
+    await coach.tap('For now');
     await coach.tapPlayer(off);
     assert.match(await coach.toast(), /The rest of the game was re-planned/);
     const after = await coach.floorEachStint();

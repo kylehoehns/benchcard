@@ -90,7 +90,13 @@ export function initGameMode(renderFn, onCloseFn, toastFns) {
   on('#sheetOvertimeClose', 'onclick', () => closeSheet($('#sheetOvertime')));
   $('#overtimeMinutes').oninput = paintOvertimeConfirm;
   for (const b of document.querySelectorAll('#overtimeWho button')) b.onclick = () => paintOvertimeWho(b.dataset.who);
-  on('#overtimeGo', 'onclick', commitOvertime);
+  on('#overtimeGo', 'onclick', () => {
+    const minutes = overtimeAsked();
+    if (!validOvertime(minutes)) return;
+    const who = overtimeWho();
+    closeSheetNow($('#sheetOvertime'));
+    commitOvertime(minutes, who);
+  });
   /* The browser drops the lock as soon as the tab is hidden -- there is no
      "keep this held in the background" option -- so returning to a visible
      tab with bench mode still on screen has to ask again. One listener for
@@ -428,16 +434,25 @@ function paintOvertimeConfirm() {
 /* #369: who plays it. One option at a time, `.on` and `aria-pressed` as
    #stratseg does; the sheet opens on Next rotation every time. */
 const overtimeWho = () => document.querySelector('#overtimeWho button.on')?.dataset.who || 'next';
+/* #564: what the picked choice does, in words about the kids on the floor. */
+const OVERTIME_WHO_NOTE = {
+  next: 'Your plan carries on. Whoever is due on next goes on.',
+  even: 'The kids with the fewest minutes so far play.',
+  keep: 'The five on the floor now stay on.',
+  strongest: 'Your strongest five play.',
+};
 function paintOvertimeWho(who) {
   for (const b of document.querySelectorAll('#overtimeWho button')) {
     const on = b.dataset.who === who;
     b.classList.toggle('on', on);
     b.setAttribute('aria-pressed', String(on));
   }
+  $('#overtimeWhoNote').textContent = OVERTIME_WHO_NOTE[who];
 }
 
+const overtimeRemembered = () => state.settings?.overtimeMinutes ?? DEFAULT_SETTINGS.overtimeMinutes;
 function openOvertimeSheet(trigger) {
-  $('#overtimeMinutes').value = String(state.settings?.overtimeMinutes ?? DEFAULT_SETTINGS.overtimeMinutes);
+  $('#overtimeMinutes').value = String(overtimeRemembered());
   paintOvertimeWho('next');
   paintOvertimeConfirm();
   openSheet($('#sheetOvertime'), trigger);
@@ -445,15 +460,11 @@ function openOvertimeSheet(trigger) {
 
 /* "Add overtime": one `undoable`, so one Undo takes all of it back -- the
    overtime, the remembered length and the step onto its first stint. The sheet
-   goes first and instantly: a toast raised while a sheet is open mounts inside
-   it. */
-function commitOvertime() {
-  const minutes = overtimeAsked();
-  if (!validOvertime(minutes)) return;
-  const who = overtimeWho();
+   goes first and instantly (its caller's job): a toast raised while a sheet is
+   open mounts inside it. */
+function commitOvertime(minutes, who) {
   const g = game();
   const live = liveOf(g);
-  closeSheetNow($('#sheetOvertime'));
   let added = false;
   /* The message is read after the change, so it can say what happened: a plan
      that would not solve adds nothing, and a freeze that could not hold moved
@@ -521,8 +532,8 @@ export const BENCH_IDLE_LABEL = 'Bench · tap a player on the floor to swap';
    player's number actually moved, naming them again would be noise, not
    news. */
 export function swapToastText(inName, outName, scope, inMin, outMin, inBefore, outBefore, replanned) {
-  if (replanned) return `${inName} on for ${outName} this stint. The rest of the game was re-planned to keep minutes even.`;
-  const base = `${inName} on for ${outName} ${scope === 'rest' ? 'for the rest of the game' : 'this stint'}.`;
+  if (replanned) return `${inName} on for ${outName} for now. The rest of the game was re-planned to keep minutes even.`;
+  const base = `${inName} on for ${outName} ${scope === 'rest' ? 'for the rest of the game' : 'for now'}.`;
   if (inMin === inBefore && outMin === outBefore) return base;
   return `${base} ${inName} now ends at ${fmtMinutes(inMin)} min, ${outName} at ${fmtMinutes(outMin)}.`;
 }
@@ -619,13 +630,16 @@ export function renderGameMode({ keepFloor = false } = {}) {
   // #147 item 1: `justOn` appends the "just on" tag here, inline with the
   // minutes, rather than the caller appending it to `.nm` -- see the
   // `.gm-p .mn .tag` comment in app.css for why.
-  const mtag = (id, bench = false, justOn = false) => {
+  const mtag = (id, bench = false, justOn = false, unit = false) => {
     const d = el('span', 'mn');
     d.setAttribute('aria-hidden', 'true');   // #139 item 9: read once, by `rowLabel`, below
     d.append(bench
       ? document.createTextNode(fmtMinutes(played[id] || 0))
       : el('b', null, fmtMinutes(played[id] || 0)));
-    d.append(el('span', 'proj', ` / ${fmtMinutes(projected[id] || 0)}`));
+    // #573: the first floor row says what the numbers are; the rest stay bare
+    const proj = el('span', 'proj', ` / ${fmtMinutes(projected[id] || 0)}`);
+    if (unit) proj.append(el('span', 'unit', ` ${'min'}`));
+    d.append(proj);
     if (justOn) d.append(el('span', 'tag in', 'just on'));
     return d;
   };
@@ -709,7 +723,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
       if (canSwap) b.setAttribute('aria-pressed', String(gmPick === id));   // #139 item 8
       const nameWrap = el('span', 'nm', pl.name || shorts[id]);
       nameWrap.setAttribute('aria-hidden', 'true');
-      b.append(avatarOf(pl), nameWrap, mtag(id, false, justOn), srLabel(pl, id, justOn));
+      b.append(avatarOf(pl), nameWrap, mtag(id, false, justOn, id === floor[0]), srLabel(pl, id, justOn));
       if (canSwap) {
         b.type = 'button';
         b.onclick = () => {
@@ -731,10 +745,10 @@ export function renderGameMode({ keepFloor = false } = {}) {
     : BENCH_IDLE_LABEL));
   if (gmPick) {
     // #147 item 3: the shared `.seg` (#141/PR #162), not a bespoke
-    // `.gm-scope` look -- "This stint" and "Rest of game" are a real choice,
+    // `.gm-scope` look -- "For now" and "Takes their minutes" are a real choice,
     // marked with `.on` the same way every other `.seg` here does.
     const sc = el('div', 'seg');
-    for (const [k, t] of [['stint', 'This stint'], ['rest', 'Rest of game']]) {
+    for (const [k, t] of [['stint', 'For now'], ['rest', 'Takes their minutes']]) {
       const on = gmScope === k;
       const b = el('button', 'press' + (on ? ' on' : ''), t);
       b.type = 'button';
@@ -758,7 +772,7 @@ export function renderGameMode({ keepFloor = false } = {}) {
        `.primary` and not filled with the tint or `--accent`. The one filled
        button on this screen is ›/Finish game (C2); this one must not look
        more "selected" than whichever segment actually is. */
-    const rb = el('button', 'press btn', 'Sit for the rest');
+    const rb = el('button', 'press btn', 'Sits the rest of the game');
     rb.type = 'button';
     rb.onclick = () => sitRest(p, g, i, gmPick, calls[gmPick] || shorts[gmPick]);
     lab.append(rb);
@@ -835,10 +849,19 @@ export function renderGameMode({ keepFloor = false } = {}) {
     // #368: a tied game goes on. Only a game still being played can; a finished
     // one has been marked, and getting it back is Undo's.
     if (stage(p, live) !== 'finished' && (game().overtime?.length || 0) < OVERTIME_MAX) {
+      // #564: one tap adds the team's remembered length with Next rotation;
+      // Change opens the sheet for the length and who plays. Undo is the way back.
+      const row = el('div', 'gm-ot-row');
       const ot = el('button', 'btn press gm-ot', 'Tied? Add overtime');
       ot.type = 'button';
-      ot.onclick = () => openOvertimeSheet(ot);
-      nx.append(ot);
+      ot.onclick = () => commitOvertime(overtimeRemembered(), 'next');
+      const change = el('button', 'btn ghost press gm-ot-change');
+      change.append(el('span', 'gm-ot-change-t', 'Change'));
+      change.type = 'button';
+      change.setAttribute('aria-label', 'Change overtime');
+      change.onclick = () => openOvertimeSheet(change);
+      row.append(ot, change);
+      nx.append(row);
     }
   }
 

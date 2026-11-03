@@ -388,7 +388,7 @@ function orderEditor(g) {
     acts.append(again);
     wrap.append(acts);
   }
-  const who = tieBreakIsLevels() ? 'your best players' : 'the kids furthest behind';
+  const who = tieBreakIsLevels() ? 'your best players' : 'the kids behind on minutes';
   const levels = new Set(list.filter(id => !g.out.includes(id)).map(id => tierOfPlayer(byId(id))));
   const built = g.orderMix
     ? (levels.size > 1
@@ -420,7 +420,7 @@ function mixChoice(g) {
     document.querySelector(`#stratbody [aria-label="${MIX_GROUP}"]`)?.children[tapped]?.focus({ preventScroll: true });
   };
   paintChoiceRows(box, [
-    [tieBreakIsLevels() ? 'Best players play the most' : 'Kids furthest behind play the most', !g.orderMix, choose(false, 0)],
+    [tieBreakIsLevels() ? 'Best players get the extra sub' : 'Kids behind on minutes get the extra sub', !g.orderMix, choose(false, 0)],
     ['Mix the fives', !!g.orderMix, choose(true, 1)],
   ], paint);
   return [el('div', 'pgrp-h', MIX_GROUP), box];

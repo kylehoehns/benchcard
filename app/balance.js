@@ -41,9 +41,9 @@ export const LEVELS = [
 ];
 
 export const SHAPES = [
-  { v: 'even', label: 'Steady', blurb: 'Every stint about as strong as every other. Nobody gets stranded with a lineup that cannot compete.' },
-  { v: 'start', label: 'Start strong', blurb: 'Your best five open the game. Under even minutes the closing stints are lighter. Those minutes have to go somewhere.' },
-  { v: 'finish', label: 'Finish strong', blurb: 'Saves your best five for the end. The opening stints are lighter in exchange.' },
+  { v: 'even', label: 'Steady', blurb: 'Every part of the game about as strong as every other. Nobody gets stranded with a lineup that cannot compete.' },
+  { v: 'start', label: 'Start strong', blurb: 'Your best five open the game. Under even minutes the last minutes of the game are lighter. Those minutes have to go somewhere.' },
+  { v: 'finish', label: 'Finish strong', blurb: 'Saves your best five for the end. Minutes stay even, so use Closers to give your closers more time.' },
   { v: 'both', label: 'Both ends', blurb: 'Strong to open and strong to close, with a softer middle. Good for developing players when the game is likely decided in the last period.' },
 ];
 
