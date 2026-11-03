@@ -153,6 +153,26 @@ export const CLOSERS_STATE = {
           $('#sheetPlan').close(); $('#backBtn').click()`,
 };
 
+/* #582: the Plan sheet's Rules list with a league minimum in full periods, whose
+ * row ("Everyone plays at least 1 full period (8 min)") is the longest sentence in
+ * the list and shows on every strategy. `open` proves the row is on screen;
+ * `close` puts the league settings back exactly. */
+export const LEAGUE_MIN_STATE = {
+  name: 'plan sheet, league minimum in full periods',
+  open: `$('.today-game').click(); $('#phraseStrategy').click();
+         const st = await import('/state.js');
+         window.__leagueMin582 = { minMinutes: st.state.settings.minMinutes, minUnit: st.state.settings.minUnit };
+         st.state.settings.minMinutes = 1; st.state.settings.minUnit = 'full';
+         (await import('/render.js')).renderAll();
+         await new Promise(r => setTimeout(r, 300));
+         const row = [...document.querySelectorAll('#constraints .prow .prow-t')].find(e => e.textContent.startsWith('Everyone plays at least 1 full period'));
+         if (!row) throw new Error('the Rules list did not show the league minimum row, so it was not measured');`,
+  close: `const st = await import('/state.js'), was = window.__leagueMin582;
+          if (was) { st.state.settings.minMinutes = was.minMinutes; st.state.settings.minUnit = was.minUnit; }
+          (await import('/render.js')).renderAll();
+          $('#sheetPlan').close(); $('#backBtn').click()`,
+};
+
 /* #545: the Plan sheet's Rotation order list: one row per player with a place
  * number, the name (LONG_AND_SQUEEZE gives two rows their long names), an
  * "Out" or "Running late" mark and two move buttons -- the one row in the app
@@ -625,7 +645,7 @@ const describeFinding = p => {
 };
 
 /* The states the sweep walks, in order. Shared with scripts/look.mjs. */
-export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, CLOSERS_STATE, ORDER_STATE, PLAN_NOTES_STATE];
+export const CLIP_STATES = [...APP_LARGE_TEXT_STATES, CONFIRM_STATE, BY_HAND_STATE, CLOSERS_STATE, LEAGUE_MIN_STATE, ORDER_STATE, PLAN_NOTES_STATE];
 
 /* The states that navigate to their own page and so wipe whatever the run
  * set up on the one before (the roster, injected CSS). Shared with

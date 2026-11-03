@@ -3197,6 +3197,17 @@ dialog.flow .pgrp { margin-top: 0; margin-bottom: 0; }
   #sheetCard .pgrp .prow-ctl { width: 100%; }
   #sheetCard .pgrp .prow-select { flex: 1; }
 }
+/* #582: the Plan sheet's Rules rows, the same squeeze. At 320px/32px "Everyone
+   plays at least 1 full period (8 min)" had a 142px label box and its first
+   line ran 8px past it. The chevron stays: it is the only sign a rule row
+   opens a pane. The label gets its room from the row's own spacing instead,
+   the gap to the chevron .75rem -> .25rem and the right padding 1rem -> .5rem.
+   Measured at 320px/32px: label box 142px -> 174px against "Everyone", the
+   longest word, at 150px; the chevron (26px wide) sits 16px inside the card. */
+#sheetPlanBody { container-type: inline-size; }
+@container (max-width: 12em) {
+  #constraints .prow { gap: .25rem; padding-right: .5rem; }
+}
 @media (hover: hover) { button.prow:hover { background: var(--surface-2); } }
 /* A text field inside a .prow row -- Number, Name and Card name in the
    player sheet. #sheetCard .pgrp .prow-select above is the prior art: the
