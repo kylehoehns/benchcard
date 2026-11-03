@@ -30,9 +30,9 @@ const BASELINE_NODES = JSON.parse(
 // text.mjs`'s Ravens check) imports this table too rather than copying a
 // literal, so the two checks cannot drift apart.
 export const GAME_SUMMARIES = {
-  Panthers: '12 players · even minutes',
-  Ravens: '11 players · even minutes · evens out the day · 2 rules',
-  'Game 3': '12 players · a closing group',
+  Panthers: '12 players · even minutes · 12–16 min each',
+  Ravens: '11 players · even minutes · 12–16 min each · evens out the day · 2 rules',
+  'Game 3': '12 players · a closing group · 12–16 min each',
   Owls: '12 players · even minutes · 1 rule',
 };
 
@@ -321,8 +321,8 @@ export async function gamePassesPass(c, origin, rec) {
       rowCount: b.querySelectorAll('.pass-rot .pass-row').length,
     });
   })()`));
-  rec.check(repainted.summary === '11 players · even minutes', `after sitting a player out and returning to Today, pass 0's summary is `
-      + `${JSON.stringify(repainted.summary)}, want "11 players · even minutes"`);
+  rec.check(repainted.summary === '11 players · even minutes · 12–16 min each', `after sitting a player out and returning to Today, pass 0's summary is `
+      + `${JSON.stringify(repainted.summary)}, want "11 players · even minutes · 12–16 min each"`);
   rec.check(repainted.rowCount === 11, `after sitting a player out and returning to Today, pass 0's mini rotation has `
       + `${repainted.rowCount} rows, want 11`);
   rec.ok(`4 passes in day order, titles/tip-offs/status/summaries/aria-labels match, mini rotations paint real `

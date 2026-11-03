@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SIT_REFUSALS } from '../app/engine.js';
+import { S } from './state-fixture.js';
 import { stripComments } from './js-comments.js';
 import { sitRulesMap } from './sit-rules-map.js';
 
@@ -148,9 +149,10 @@ test('tour step 1 tells the coach to mark who is not here, not to mark someone a
    literal by name, not scanned across the whole file (`app/teams-view.js`
    also calls the code identifier `rebalance()`, which item 1 leaves alone). */
 test('the day-spread note under the plan sheet no longer says "rebalance"', () => {
-  const m = planView.match(/Later games ([^`]+)`/);
-  assert.ok(m, 'the "Later games..." clause is gone from plan-view.js');
-  assert.equal(m[1], 'even out against this automatically.');
+  const day = [{ strategy: 'balanced' }, { strategy: 'balanced', useCarryover: true }, { strategy: 'balanced', useCarryover: true }];
+  const note = S.dayChartNote(day, day.map(() => ({ ok: true })));
+  assert.equal(note, 'Later games even out against this automatically.');
+  assert.doesNotMatch(note, /rebalanc/i);
 });
 
 test('removing a team\'s last-team toast no longer says "The day rebalanced"', () => {

@@ -26,7 +26,7 @@ import { isHomeScreenApp, SHARE_TO_PRINT } from './share.js';
 import { undoable, confirmAction } from './toast.js';
 import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
-         colorOf, passSummary, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
+         colorOf, passSummary, changedSincePrinted, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame,
          hasGames } from './state.js';
 import { tipoffLabel } from './storage.js';
@@ -493,6 +493,9 @@ function removeTeam() {
  * (item 8): the mini rotation is `aria-hidden`, and its accessible name is
  * set with `aria-label` instead of read off the visible text.
  */
+// #572: the cue a printed game carries once its plan has moved (pass row and game sub line)
+const CHANGED_SINCE_PRINTED = 'Changed since printed';
+
 // The pass's own status word and dot (`.pass-status`): Underway/now,
 // Planned/ok or Needs a fix/warn -- `passStatus` (live.js) is the one place
 // that decides which, read straight off its `{ word, cls }` result rather
@@ -541,8 +544,11 @@ function renderPass(g, i, d) {
   }
 
   b.append(el('span', 'pass-summary', passSummary(g, i, p)));
+  // #572: the paper this game was printed on no longer matches its plan; plain secondary text
+  const changed = changedSincePrinted(g, p);
+  if (changed) b.append(el('span', 'pass-summary', CHANGED_SINCE_PRINTED));
 
-  const statusWord = status.word.toLowerCase();
+  const statusWord = status.word.toLowerCase() + (changed ? `, ${CHANGED_SINCE_PRINTED.toLowerCase()}` : '');
   b.setAttribute('aria-label', when ? `${full}, ${when}, ${statusWord}` : `${full}, ${statusWord}`);
   b.onclick = () => { openGame(d, i); setView('games'); };
 
@@ -623,6 +629,7 @@ export function renderTabs() {
       gs.append(dayHeading(state.day) + ' · ');
       if (g.tipoff) gs.append(tipoffLabel(g.tipoff) + ' · ');
       gs.append(passStatusEl(passStatus(plans[i] ?? null, g.live)));
+      if (changedSincePrinted(g, plans[i])) gs.append(el('span', 'game-sub-cue', CHANGED_SINCE_PRINTED));
     }
   }
 

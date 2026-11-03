@@ -1009,6 +1009,15 @@ export class Coach {
     })()`);
   }
 
+  /** From now on this page's share sheet is dismissed without sharing, the way a coach backs out of it. */
+  shareCancelled() {
+    return evalIn(this.c, `(() => {
+      navigator.canShare = () => true;
+      Object.defineProperty(navigator, 'share', { configurable: true,
+        value: () => Promise.reject(new DOMException('dismissed', 'AbortError')) });
+    })()`);
+  }
+
   /** Each image the app handed to the share sheet, oldest first, as `{ files: ['benchcard-ravens.png'], types, title, active }`;
       `active` is whether the tap's user activation still stood when the app called `share`, `inTap` whether
       the call was still inside the tap's click handler (`window.event` is unset in a timer or after an await, which is how iOS loses activation). */

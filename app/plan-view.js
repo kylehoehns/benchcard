@@ -17,7 +17,7 @@ import { fmtMinutes, benchSpan } from './engine.js';
 import { countTo } from './fx.js';
 import { $, el, set } from './dom.js';
 import { icon } from './icons.js';
-import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, benchStints, longestSit, planSay } from './state.js';
+import { state, plans, dayTotals, game, availIds, byId, noRoster, colorOf, gameLabel, effectiveStints, effectiveMinutes, gameRange, dayChartNote, spreadOf, minutesNote, movedMinutes, movedLineups, consecNotes, benchNotes, benchStints, longestSit, planSay } from './state.js';
 import { DEFAULT_SETTINGS } from './storage.js';
 import { callNames } from './roster.js';
 import { blockedPanel } from './timeline.js';
@@ -33,13 +33,17 @@ import { blockedPanel } from './timeline.js';
 export function renderSummary() {
   const row = $('#summaryRow'), box = $('#summary');
   const p = plans[state.activeGame], g = game();
+  const range = $('#sentenceRange');
   if (noRoster() || !p || !p.ok) {
     if (row) row.hidden = true;
     if (box) box.textContent = '';
+    if (range) { range.hidden = true; range.textContent = ''; }
     return;
   }
   if (row) row.hidden = false;
   if (box) box.textContent = planSay(g, p);
+  // #572: the same range, in plain text under the game sentence
+  if (range) { range.textContent = gameRange(g, p); range.hidden = false; }
 }
 
 export function renderIssues() {
@@ -65,11 +69,13 @@ export function renderIssues() {
 
 /* #455: a plan note's sentence, with each long word in its own `.fitw` so the
    fitter (dom.js) can shrink a name that cannot fit and leave the sentence
-   at its CSS size. */
+   at its CSS size. A hyphenated long word goes in a `.fitw` per piece, so it
+   can break after its hyphen ("Montgomery-" / "Okafor,") instead of inside
+   the first half. */
 function noteText(message) {
   const span = el('span');
   for (const part of message.split(/(\s+)/)) {
-    if (part.length >= 8 && /\S/.test(part)) span.append(el('span', 'fitw', part));
+    if (part.length >= 8 && /\S/.test(part)) for (const piece of part.split(/(?<=-)(?=.)/)) span.append(el('span', 'fitw', piece));
     else if (part) span.append(part);
   }
   return span;
@@ -343,5 +349,5 @@ export function renderDayTotals() {
   box.append(legend);
   box.append(el('p', 'note', hi === lo
     ? `Even across the day: everyone at ${fmtMinutes(hi)} minutes.`
-    : `Day spread ${fmtMinutes(hi - lo)} min. Heaviest ${fmtMinutes(hi)}, lightest ${fmtMinutes(lo)}. Later games even out against this automatically.`));
+    : [`Day spread ${fmtMinutes(hi - lo)} min. Heaviest ${fmtMinutes(hi)}, lightest ${fmtMinutes(lo)}.`, dayChartNote(state.day.games, plans)].filter(Boolean).join(' ')));
 }

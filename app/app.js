@@ -35,7 +35,7 @@ import { edit } from './edit.js';
 import { DAMAGED_LINK } from './live.js';
 import { state, save, game, teamName, reseed,
          replaceState, emptyConstraints, newGame, migrateLegacy, team,
-         chooseStrategy, dueToFile, dayIsPast, fileIfPast, carryUnplayedDay, moveGame, setTipoff, hasGames } from './state.js';
+         chooseStrategy, dueToFile, dayIsPast, fileIfPast, carryUnplayedDay, moveGame, setTipoff, hasGames, plans, notePrinted } from './state.js';
 import { openTrap, closeTrap, openSheet, closeSheet } from './trap.js';
 
 /* ---------------- the controls app.js still owns ---------------- */
@@ -151,6 +151,15 @@ on('#regen', 'onclick', () => { const hadOverrides = reseed(game());
     }
   }
 });
+/* #572: remember which rotation went on paper, so the game can say when its
+   plan has moved since. Saved with the game; the re-stamp is what clears the
+   cue, and the repaint of the pass and the game screen's sub line shows the
+   change. Takes the game and plan the card was made from, because a share
+   resolves later, after the coach may have opened another game. Saves only when
+   the stamp moved. */
+function recordPrinted(g, p) {
+  if (notePrinted(g, p)) edit('printed');
+}
 function printCard() {
   // #126: no games, nothing to print -- the game screen is unreachable, so
   // this does nothing rather than opening the print dialog over Today.
@@ -170,6 +179,7 @@ function printCard() {
      counts itself (`card_shared`), not as a print. */
   if (isHomeScreenApp()) { shareCardImage(); return; }
   track('card_printed', { size: state.ui.cardSize === 'half' ? 'half' : 'pocket' });
+  recordPrinted(game(), plans[state.activeGame]);
   window.print();
   tipAfterPrint();
 }
@@ -244,7 +254,7 @@ const printStillWorks = () => isHomeScreenApp() ? '' : ' Print still works.';
 function shareCardImage() {
   const cards = [...document.querySelectorAll('#sheet .card:not(.card-copy)')];
   if (!cards.length) return;
-  const g = game();
+  const g = game(), p = plans[state.activeGame];
   const slug = (g.label || teamName() || 'rotation').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'rotation';
   /* Deliberately not disabled while this runs. The paint is synchronous and
@@ -267,7 +277,7 @@ function shareCardImage() {
   how.then(r => {
     if (r === 'copied') flash('Card copied. Paste it into a message.');
     else if (r === 'saved') flash('Card saved as a PNG.');
-    if (r !== 'cancelled') track('card_shared', { how: r });
+    if (r !== 'cancelled') { track('card_shared', { how: r }); recordPrinted(g, p); }
   }).catch(err => {
     console.warn('share failed', err);
     flash(`Could not share the image.${printStillWorks()}`);

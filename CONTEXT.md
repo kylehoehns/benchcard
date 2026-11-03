@@ -322,8 +322,10 @@ _In code_: `color`, `--tint`
 ## Across the day and season
 
 **Evening out the day**:
-Planning a later game against the minutes planned in the day's earlier games, so
-a player who played less earlier plays more now.
+Planning a later game against the minutes in the day's earlier games, so a
+player who played less earlier plays more now. Once a game has started, its
+played minutes count (swaps included); a game not started yet counts its planned
+minutes.
 _Avoid_: day carryover, tournament carryover
 _In code_: `useCarryover`, `carryover`
 

@@ -373,8 +373,8 @@ text left open, and a future reader needs them to read the plan.
   game itself, and if the numbers cannot be made to add up to the floor budget
   exactly the whole adjustment stands down rather than shipping targets the
   solver would stop honouring. "The season so far" **includes today's earlier
-  games** (as planned minutes, the same choice `cum` makes; a game that went
-  to overtime hands over its effective minutes instead, #368), or game 2 of a
+  games** (played minutes once a game has started, #572, else planned; after
+  overtime, effective minutes, #368), or game 2 of a
   tournament would pay off a debt game 1 has already cleared.
   And it **says what it did**, under the switch: the even share, then one line
   per player who is off it — *Marcus Webb opens at 24 min — 8 down on the
@@ -592,6 +592,11 @@ text left open, and a future reader needs them to read the plan.
   plus a stored `seed` reproduce a card exactly. That gives the stability that
   matters (a refresh cannot change a card you already printed) without a cache
   to invalidate. Shuffle just rolls a new seed.
+- **A printed card can go stale, and the game says so (#572).** Print and Share
+  save a stamp of the card's fives (swaps included) as `g.printed`. When
+  the plan moves, **Changed since printed** shows
+  on the game's Today pass and on its own line under the game screen's title
+  and sub line. Printing again clears it.
 - **A rule edit starts from the plan the coach had (#449).** A cold solve
   moved as many seats as a Shuffle. When only constraints change, the fives on
   screen are kept as `g.basis` and each seat that differs costs `START_WEIGHT`.
@@ -626,15 +631,17 @@ text left open, and a future reader needs them to read the plan.
   the `Q1-Q2` scope are never elided, and the CSS `text-overflow: ellipsis`
   on `.opp` stays as
   the backstop for the frame before the webfont lands.
-- **Games chain within a day.** Game N is planned against the minutes actually
-  assigned in games 1..N-1, so a kid who sat out game one gets caught up. The
+- **Games chain within a day.** Game N is planned against the minutes played in
+  games 1..N-1, so a kid who sat out game one gets caught up. The
   credit is clamped to +/- 2 stints so one absence cannot hand someone an entire
   later game. Platoon and Order fix their fives, so earlier games do not reach
   them, even with the switch on.
 - **Carryover suppresses the fairness messaging.** With carryover on, an uneven
   game is the point -- the target is an even day, not an even game -- so the
   single-game "best possible spread" benchmark is wrong and gets replaced by an
-  explanation of who is being caught up. Platoon suppresses the same benchmark,
+  explanation of who is being caught up and who gives up minutes. The day
+  chart says *automatically* only where true (#572). Platoon suppresses the same
+  benchmark,
   in the view rather than the engine: the number is still correct about the
   format, but under a strategy that is by definition not optimizing minutes it
   reads as an accusation.

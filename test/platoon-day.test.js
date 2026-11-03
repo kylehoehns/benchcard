@@ -44,12 +44,14 @@ const dayOn = (strategy, on) => [
    - Order: the whole plan minus `targets`.
    `targets` is the engine's minute goals; nothing in the app reads it, and for
    Platoon and Order it is the one field besides `issues` that moves, because
-   the carryover no longer reaches the solver. Fives do not. */
+   the carryover no longer reaches the solver. Fives do not.
+   #572 re-recorded `balanced` and `closers` only: they hash `issues`, and the
+   CARRYOVER_ACTIVE note's wording changed (it names who gets more and less). */
 const GOLDEN_PLATOON_NO_ISSUES = 'b9652402f6306ffc900654cc317d614f2d259cbfb630a3b14b9403c662a9d728';
 const GOLDEN = {
-  balanced: '875becf619d5995cb592358e393f772200245b47568e69b0dfbb96a3edbe8773',
+  balanced: '4e1184926c32ce936c3d44f4aa846758623dcdad8ad4c132a761d418e8a5aa38',
   minutes: '166c287277978de921beb954465c52dd252ab5cfbe9b1bfa5b025c61e7c62f9e',
-  closers: 'ec40c0f34dfe0077b1e0e6850f1751ced54e9defde7578df6b41822dcd48b56e',
+  closers: 'c7711d9c91a0f9e2cc3f3a80888f9253bcc4aea05526daff0c02264a0dacb350',
   order: '0454cc5bef8ea6894f59093a9907e766474f2bedf0363e8d2a8cc6fb3e91a69e',
 };
 
@@ -109,8 +111,8 @@ test('the summary of a later Platoon game does not say it evens out the day, and
   withTeam(IDS.map(id => player(id)), day(), {}, () => {
     S.computeAll();
     const [, g] = S.team().days[0].games;
-    assert.equal(S.passSummary(g, 1, S.plans[1]), '10 players · fixed fives');
+    assert.equal(S.passSummary(g, 1, S.plans[1]), '10 players · fixed fives · 16 min each');
     g.strategy = 'balanced';
-    assert.equal(S.passSummary(g, 1, S.plans[1]), '10 players · even minutes · evens out the day');
+    assert.equal(S.passSummary(g, 1, S.plans[1]), '10 players · even minutes · 16 min each · evens out the day');   // #572: the range is the Platoon plan's, which this test does not re-solve
   });
 });

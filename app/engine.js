@@ -2799,12 +2799,19 @@ function finish(lineups, ctx, issues, meta) {
       playerIds: pinnedTargets,
     });
   } else if (ctx.hasCarryover) {
-    const up = ctx.avail.filter(id => ctx.credit[id] > 1e-9)
-      .sort((a, b) => ctx.credit[b] - ctx.credit[a]).slice(0, 3).map(label);
+    /* #572: both sides are named, the biggest credit first. Up to 4 kids on a
+       side by name; past that the first 3 and a count. */
+    const side = (up) => {
+      const ids = ctx.avail.filter(id => (up ? ctx.credit[id] > 1e-9 : ctx.credit[id] < -1e-9))
+        .sort((a, b) => (up ? ctx.credit[b] - ctx.credit[a] : ctx.credit[a] - ctx.credit[b]));
+      const names = ids.length > 4 ? [...ids.slice(0, 3).map(label), `${ids.length - 3} others`] : ids.map(label);
+      return names.length ? `${andList(names)} ${ids.length === 1 ? 'gets' : 'get'} a little ${up ? 'more' : 'less'}.` : '';
+    };
+    const more = side(true), less = side(false);
     issues.push({
       severity: 'info', code: 'CARRYOVER_ACTIVE',
-      message: up.length
-        ? `Minutes are deliberately uneven here to even out the day — ${up.join(', ')} came in light and are being caught up.`
+      message: more
+        ? `Minutes are deliberately uneven here to even out the day. ${more}${less ? ` ${less}` : ''}`
         : `Balanced against minutes already played today.`,
       playerIds: [],
     });

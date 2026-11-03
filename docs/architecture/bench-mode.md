@@ -335,10 +335,12 @@ readout goes through the pair — the card, bench mode, the timeline blocks and
 totals, the detail panel, the summary line, the stint grid, the minute bars and
 the across-the-day chart. Both short-circuit to the plan's own arrays by
 identity when nothing has been swapped, which is every game before tip-off, so
-the engine's numbers are what prints rather than a re-rounding of them. The one
-deliberate exception is **carryover**, which is a solver *input*: it keeps
-totalling planned minutes, because a hand swap in game 1 must not silently
-re-solve game 2 underneath the coach. For the same reason the plan table drops
+the engine's numbers are what prints rather than a re-rounding of them. **Carryover**
+is a solver *input*, so it has one exception to the rule: until a game starts
+(a stint played, or finished) it totals planned minutes, so a swap made before
+tip-off cannot silently re-solve game 2 underneath the coach. Once a stint is
+played it totals `effectiveMinutes`, the same numbers the chart sums (#572),
+because what was played is what the day hands on. For the same reason the plan table drops
 its "best possible is N" footnote once a swap has moved the minutes — that
 sentence is a fact about the solve, and the rotation it describes is no longer
 on screen. The same rule now covers the spread note under the timeline (#414):
