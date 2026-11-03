@@ -1360,10 +1360,11 @@ export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
    after playing still counts), `g.strategy`/`g.useCarryover` and `ruleCount`
    -- nothing here is re-derived. */
 /* Whether game `i` of the day evens out the games before it: a later game
-   with its switch on -- except on Order, whose fives come from the order alone
-   and so cannot make up anyone's minutes (#545). The switch stays set under
-   it, for the day the coach picks another strategy. */
-export const evensOutDay = (g, i) => i > 0 && g.useCarryover && g.strategy !== 'order';
+   with its switch on -- except on Order and Platoon, whose fives come from the
+   order or the units the coach set and so cannot make up anyone's minutes
+   (#545, #552). The switch stays set under them, for the day the coach picks
+   another strategy. */
+export const evensOutDay = (g, i) => i > 0 && g.useCarryover && !fivesAreSet(g.strategy);
 
 export function passSummary(g, i, p) {
   const n = countedIds(g, p).length;
