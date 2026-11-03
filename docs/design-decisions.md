@@ -629,7 +629,8 @@ text left open, and a future reader needs them to read the plan.
 - **Games chain within a day.** Game N is planned against the minutes actually
   assigned in games 1..N-1, so a kid who sat out game one gets caught up. The
   credit is clamped to +/- 2 stints so one absence cannot hand someone an entire
-  later game.
+  later game. Platoon and Order fix their fives, so earlier games do not reach
+  them, even with the switch on.
 - **Carryover suppresses the fairness messaging.** With carryover on, an uneven
   game is the point -- the target is an even day, not an even game -- so the
   single-game "best possible spread" benchmark is wrong and gets replaced by an

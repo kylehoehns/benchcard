@@ -74,6 +74,15 @@ test('Platoon game 2: the switch no longer reaches the solver, and the plan carr
   assert.ok(!codes(on).includes('CARRYOVER_ACTIVE'), JSON.stringify(codes(on)));
 });
 
+/* Fresh solves, not cache hits: the plan cache keys on the carry, so a hit
+   only happens when the carry is equal, and equal carry could not hide a
+   difference. Order shares the day's distinct game ids with nothing else. */
+test('Order game 2: the switch no longer reaches the solver, on equals off', () => {
+  const on = planOf(dayOn('order', true));
+  assert.deepEqual(on, planOf(dayOn('order', false)));
+  assert.ok(!codes(on).includes('CARRYOVER_ACTIVE'), JSON.stringify(codes(on)));
+});
+
 test('Even with the same uneven carryover still carries CARRYOVER_ACTIVE', () => {
   assert.ok(codes(planOf(dayOn('balanced', true))).includes('CARRYOVER_ACTIVE'));
 });

@@ -19,15 +19,17 @@ describe('Platoon: a second game the same day', { skip }, () => {
   after(async () => { await coach?.close(); });
   afterEach(() => { assert.deepEqual(coach.errors, [], 'the page logged an error'); });
 
-  async function gameTwoOnPlatoon() {
+  /* Game 1 is `out` sitting out; game 2 is the same game on `strategy`, switch on. */
+  async function gameTwo({ out, strategy }) {
     await coach.onGameDayWith(g => ({
-      periods: 2, periodMinutes: 16, granMode: 'everyN', granValue: 4, out: [],
-      strategy: 'platoon', useCarryover: true, constraints: { ...g.constraints, units: UNITS },
+      periods: 2, periodMinutes: 16, granMode: 'everyN', granValue: 4, out,
+      strategy, useCarryover: true, constraints: { ...g.constraints, units: UNITS },
     }), undefined, { names: ROSTER, settings: { maxSubs: 5 }, alone: true });
     await coach.tap('Add a game');
     await coach.fill('Opponent', 'Owls');
     await coach.tap((await coach.controls()).find(n => n.startsWith('Same as')));
   }
+  const gameTwoOnPlatoon = () => gameTwo({ out: [], strategy: 'platoon' });
 
   test('1. its summary and sentence do not say it evens out the day, and its switch says why it is off', async () => {
     await gameTwoOnPlatoon();
@@ -51,13 +53,7 @@ describe('Platoon: a second game the same day', { skip }, () => {
   /* #553: game 1 sat Reid out, so game 2 has a real deficit to carry. Game 2
      is the same game with Reid back, switched to Platoon with the switch on. */
   async function gameTwoAfterAbsence() {
-    await coach.onGameDayWith(g => ({
-      periods: 2, periodMinutes: 16, granMode: 'everyN', granValue: 4, out: ['p9'],
-      strategy: 'balanced', useCarryover: true, constraints: { ...g.constraints, units: UNITS },
-    }), undefined, { names: ROSTER, settings: { maxSubs: 5 }, alone: true });
-    await coach.tap('Add a game');
-    await coach.fill('Opponent', 'Owls');
-    await coach.tap((await coach.controls()).find(n => n.startsWith('Same as')));
+    await gameTwo({ out: ['p9'], strategy: 'balanced' });
     await coach.tap("Who's here, 9 players");
     await coach.tap('Reid');
     await coach.tap('Close');
@@ -68,6 +64,11 @@ describe('Platoon: a second game the same day', { skip }, () => {
 
   test('3. its notes do not say minutes are uneven to even out the day', async () => {
     await gameTwoAfterAbsence();
+    // Positive: game 2 is on fixed fives, and Reid sat game 1 out (game 2 was
+    // copied from it with 9 here, then Reid added), so the carryover is uneven.
+    const controls = await coach.controls();
+    assert.ok(controls.includes('Plan, fixed fives'), controls.join(' | '));
+    assert.ok(controls.includes("Who's here, 10 players"), controls.join(' | '));
     assert.ok(lacks(await coach.text('#issues'), 'even out the day'), await coach.text('#issues'));
     assert.ok(lacks(await coach.text('body'), 'uneven on purpose'), 'the spread line says it is uneven on purpose');
   });
