@@ -1209,7 +1209,7 @@ export class Coach {
   }
 
   /** The line under the Rotation order list: who built it and what the first five do. */
-  orderFooter() { return evalIn(this.c, `document.querySelector('#stratbody .pgrp-f').textContent`); }
+  orderFooter() { return evalIn(this.c, `[...document.querySelectorAll('#stratbody .pgrp-f')].at(-1).textContent`); }   // the footer is the last line; #570's pointer sits above the list
 
   /** The marks beside the Rotation order list's names: `{ name: 'Out' }`. */
   orderMarks() {

@@ -195,6 +195,13 @@ It is the coach's choice of how the app builds its list. The default is the list
   "Kids behind on minutes get the extra sub" when it is Kids behind on minutes (#571; the
   earlier wording was "Best players play the most" and "Kids furthest behind play the most"). That is what
   the default list does under each setting. The second row is "Mix the fives".
+  One gray line under the two rows says where the first one is set:
+  "Set in Settings > Fine-tuning > Extra minutes go to." It shows only where the
+  two rows show. Alternative: the shorter path, "Set in Settings > Extra minutes
+  go to." Rejected: that row is behind Fine-tuning (#567), so the shorter path
+  would send a coach to a row they cannot see. While every level is equal and
+  the setting is Kids behind, that row is hidden too, so the line reads "To give
+  the extra sub to your best players, set levels on the Team page." (#570)
   A tap sets or clears the flag and rebuilds the list (`edit('orderBuild')`),
   and focus goes back to the row that was tapped. There is no Undo. The other
   row is the way back, the same as Lineup balance.

@@ -28,7 +28,7 @@ import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, changedSincePrinted, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame,
-         hasGames } from './state.js';
+         hasGames, bestPlayersOffered } from './state.js';
 import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in live.js, and this is the one place
 // it is called from -- both the paint and the tap. No cycle: gamemode.js
@@ -169,8 +169,7 @@ export function initTeams(renderAllFn, setViewFn, editFn, fileOverdueDayFn) {
     const btn = $('#fineTuneBtn');
     const open = btn.getAttribute('aria-expanded') !== 'true';
     btn.setAttribute('aria-expanded', String(open));
-    $('#fineTune').hidden = !open;
-    $('#fineTuneNote').hidden = !open;   // the note is its own hidden element, so a measure of what is painted skips it
+    paintFineTune();
   });
   on('#tieBreakSeg', 'onclick', (e) => {
     const b = e.target.closest('button[data-tie]');
@@ -341,6 +340,22 @@ function paintLeagueMin(settled = false) {
   if (mu) mu.value = unit;
 }
 
+/* #570: the Fine-tuning group, painted by the row's tap and by renderSettings
+   so the two cannot disagree. While every player is at one level, Best players
+   would do nothing, so the "Extra minutes go to" row hides and the footnote
+   points to the Team page -- unless Best players is already saved, which keeps
+   showing. `bestPlayersOffered` (state.js) is that question, shared with Order's pointer. */
+const SAME_LEVEL_NOTE = "When minutes can't split evenly, the spare sub goes to the kids behind on minutes. Set levels on the Team page to choose your best players instead.";
+function paintFineTune() {
+  const open = $('#fineTuneBtn').getAttribute('aria-expanded') === 'true';
+  const same = !bestPlayersOffered();
+  const note = $('#fineTuneNote');
+  if (!note.dataset.usual) note.dataset.usual = note.textContent;
+  note.textContent = same ? SAME_LEVEL_NOTE : note.dataset.usual;
+  $('#fineTune').hidden = !open || same;
+  note.hidden = !open;   // the note is its own hidden element, so a measure of what is painted skips it
+}
+
 /* ---------------- the settings page's team heading ----------------
    The one piece of the settings surface that is not static markup, and it
    lives here rather than in a settings module of its own for two reasons.
@@ -415,6 +430,7 @@ export function renderSettings() {
     b.setAttribute('aria-pressed', String(on));
   }
 
+  paintFineTune();
   paintLeagueMin();
 
   // the carryover default, marked exactly like the stance above it

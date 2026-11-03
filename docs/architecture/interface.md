@@ -182,6 +182,10 @@ The third group holds **Players changing at once** (1–5, default 3, `maxSubs`)
 **Fine-tuning** (a row that opens **Extra minutes go to**: who gets the high side
 when the clock does not divide evenly, Kids behind on minutes or Best players,
 with its own one-line note), and **Everyone plays at least** (the league minimum: an amount and what it counts, minutes, percent of the game, periods or full periods; default 0 minutes, [design decisions](../design-decisions.md)). Under it, **Everyone plays in** is a three-way choice, Off, Each half or Each period (`settings.playsIn`, default Off).
+While every player on the team is at one level, the **Extra minutes go to** row
+is hidden and the note under Fine-tuning points to the Team page instead. A
+saved Best players keeps the row showing. The reasons are in
+[levels and best-player choices](../design-decisions-levels.md) (#570).
 These settings live together because they shape who plays. The `maxSubs`
 read-back sits under **Players changing at once**, as described below. `maxSubs` has
 always existed in `engine.js` and was invisible to a coach until it moved here.

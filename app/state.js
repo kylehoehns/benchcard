@@ -15,7 +15,7 @@
 // #146 item 5: the engine's `ON_FLOOR`, read here as `LINEUP_FLOOR`: the one
 // five this file counts to (the season-carryover section and the mid-game
 // re-solve use it too -- there is no second constant).
-import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, fillGroups, fillClosers, plural, DEFAULT_TIER, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
+import { generatePlan, fivesAreSet, lastPeriodStintIndex, playsInGroup, playsInNoun, periodNoun, fmtMinutes, minutesSpreadSentence, buildStints, isOvertimeStint, benchSpan, runEndingAt, longestRun, runOverSentence, orderChanges, buildOrder, orderShortNote, fillGroups, fillClosers, plural, DEFAULT_TIER, tiersDiffer, ON_FLOOR as LINEUP_FLOOR } from './engine.js';
 import { capacityOf, normalizeSlots, rebalance, carryoverTargets } from './budget.js';
 import { loadState, saveState, seasonGame, addSeasonGames, seasonShare,
          sanitizeSettings, DEFAULT_SETTINGS, PLAYS_IN, seasonDate, localDate,
@@ -1356,6 +1356,11 @@ function startingOrder(g, day) {
    opposed to the season ('behind', the default and what a record without the
    key means). The one reader of that setting. */
 export const tieBreakIsLevels = (st = state) => (st.settings?.tieBreak ?? DEFAULT_SETTINGS.tieBreak) === 'levels';
+
+/* Whether Settings offers "Best players" at all: the stance already is it, or
+   the team's levels differ (with every level equal it would do nothing). The
+   one answer for the Settings row and for Order's pointer to it. */
+export const bestPlayersOffered = (st = state) => tieBreakIsLevels(st) || tiersDiffer(st.players, tierOfPlayer);
 
 /* "Build it for me again": the list becomes the app's, and the next plan
    builds it (`computeAll`). */
