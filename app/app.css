@@ -562,6 +562,9 @@ a { color: inherit; }
 /* Reuses `.pass-status`'s own dot and weight; only the size follows the sub
    line's own step here rather than a pass's footnote. */
 .dayhead .game-sub .pass-status { font-size: inherit; }
+/* #572: "Changed since printed" is its own line under the sub line, so it never
+   reads as a second status or starts a wrapped line with a stray dot. */
+.dayhead .game-sub .game-sub-cue { flex-basis: 100%; }
 
 @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
 
@@ -2376,7 +2379,9 @@ html[data-boot="settings"] #barBack[hidden] { display: flex !important; }
 .sentence { margin: 0 0 .2rem; font-size: var(--fs-sentence); font-weight: 600;
   letter-spacing: -.022em; line-height: 1.38em; color: var(--muted);
   text-underline-offset: .2em; text-decoration-skip-ink: none; }
-.sentence:last-of-type { margin-bottom: 1rem; }
+/* The last sentence line on show carries the gap below, whichever of the optional
+   lines (evens out, #572's range) are hidden. */
+.sentence:not([hidden]):not(:has(~ .sentence:not([hidden]))) { margin-bottom: 1rem; }
 /* #572: the minute range under the sentence is secondary text, one gray line:
    the secondary step in rem, regular weight, and no tint (K1: the tint stays
    on the phrases). */

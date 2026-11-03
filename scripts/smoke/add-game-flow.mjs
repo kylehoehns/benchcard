@@ -627,7 +627,7 @@ async function landsOnToday(c, ck) {
       passes: btns.length,
       games: s.state.day.games.length,
       summary: last?.querySelector('.pass-summary')?.textContent ?? null,
-      want: s.passSummary(s.state.day.games[i], i),
+      want: s.passSummary(s.state.day.games[i], i, s.plans[i]),
     });
   })()`);
   ck(seen.passes === seen.games,

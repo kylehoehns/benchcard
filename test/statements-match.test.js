@@ -130,36 +130,47 @@ test('a game that has not started hands later games its planned minutes, even wi
    later games that do (item 5). Seam: `dayChartNote` (state.js), the sentence
    renderDayTotals ends its note with. */
 const dayOf = (...later) => [{ strategy: 'balanced' }, ...later.map(l => ({ strategy: 'balanced', useCarryover: true, ...l }))];
+/* Every plan ok, so only the switches decide; the blocked-plan cases pass their own plans. */
+const noteOf = (games, plans = games.map(() => ({ ok: true }))) => S.dayChartNote(games, plans);
 const flat = s => s.replace(/\s+/g, ' ');
 
-test('every later game evens out: the chart says later games even out against the day', () => {
-  assert.equal(S.dayChartNote(dayOf({}, {})), 'Later games even out against this automatically.');
-  assert.equal(S.dayChartNote(dayOf({})), 'Later games even out against this automatically.');
+test('every later game evens out: the chart says later games even out against the day, or the later game when there is one', () => {
+  assert.equal(noteOf(dayOf({}, {})), 'Later games even out against this automatically.');
+  assert.equal(noteOf(dayOf({})), 'The later game evens out against this automatically.');
 });
 
 test('some later games even out: the chart names them by tip-off, else opponent', () => {
   const one = dayOf({ tipoff: '14:30' }, { tipoff: '16:00', useCarryover: false });
-  assert.equal(flat(S.dayChartNote(one)), 'The 2:30 PM game evens out against this automatically.');
+  assert.equal(flat(noteOf(one)), 'The 2:30 PM game evens out against this automatically.');
   const two = dayOf({ tipoff: '14:30' }, { tipoff: '16:00' }, { tipoff: '17:00', useCarryover: false });
-  assert.equal(flat(S.dayChartNote(two)), 'The 2:30 PM and 4:00 PM games even out against this automatically.');
+  assert.equal(flat(noteOf(two)), 'The 2:30 PM and 4:00 PM games even out against this automatically.');
   const opp = dayOf({ tipoff: '14:30' }, { label: 'Owls' }, { tipoff: '17:00', useCarryover: false });
-  assert.equal(flat(S.dayChartNote(opp)), 'The 2:30 PM and Owls games even out against this automatically.');
+  assert.equal(flat(noteOf(opp)), 'The 2:30 PM and Owls games even out against this automatically.');
 });
 
 test('some later games even out and one has neither tip-off nor opponent: the chart counts them', () => {
-  assert.equal(S.dayChartNote(dayOf({}, { useCarryover: false })), '1 later game evens out against this automatically.');
-  assert.equal(S.dayChartNote(dayOf({}, { tipoff: '16:00' }, { useCarryover: false })), '2 later games even out against this automatically.');
+  assert.equal(noteOf(dayOf({}, { useCarryover: false })), '1 later game evens out against this automatically.');
+  assert.equal(noteOf(dayOf({}, { tipoff: '16:00' }, { useCarryover: false })), '2 later games even out against this automatically.');
 });
 
 test('no later game evens out, whether on Platoon, Order or with the switch off: the chart says nothing of it', () => {
-  assert.equal(S.dayChartNote(dayOf({ strategy: 'platoon' }, { strategy: 'platoon' })), '');
-  assert.equal(S.dayChartNote(dayOf({ strategy: 'order' })), '');
-  assert.equal(S.dayChartNote(dayOf({ useCarryover: false }, { useCarryover: false })), '');
+  assert.equal(noteOf(dayOf({ strategy: 'platoon' }, { strategy: 'platoon' })), '');
+  assert.equal(noteOf(dayOf({ strategy: 'order' })), '');
+  assert.equal(noteOf(dayOf({ useCarryover: false }, { useCarryover: false })), '');
 });
 
 test('Platoon and Order games are left out of the names while the others are named', () => {
   const mixed = dayOf({ tipoff: '14:30', strategy: 'order' }, { tipoff: '16:00' });
-  assert.equal(flat(S.dayChartNote(mixed)), 'The 4:00 PM game evens out against this automatically.');
+  assert.equal(flat(noteOf(mixed)), 'The 4:00 PM game evens out against this automatically.');
+});
+
+test('a later game whose plan is blocked, or that has no earlier plan to even out against, is left out of the note', () => {
+  const ok = { ok: true }, blocked = { ok: false };
+  const day = dayOf({ tipoff: '14:30' }, { tipoff: '16:00' });
+  assert.equal(flat(noteOf(day, [ok, ok, blocked])), 'The 2:30 PM game evens out against this automatically.');
+  assert.equal(noteOf(day, [blocked, blocked, blocked]), '', 'nothing earlier was planned, so nothing is carried');
+  assert.equal(flat(noteOf(day, [blocked, ok, ok])), 'The 4:00 PM game evens out against this automatically.');
+  assert.equal(noteOf(dayOf({}), [ok, blocked]), '');
 });
 
 /* Item 7: the minute range sits right after the strategy words in a pass's
@@ -221,5 +232,39 @@ test('a handed-off game arrives without a printed stamp, even from a link that c
     const got = await decode(link);
     assert.ok(got, 'the edited link still decodes');
     assert.equal('printed' in got.team.days[0].games[0], false);
+  });
+});
+
+/* Item 8, what the paper holds: the printed card shows effectiveStints (swaps
+   included), so the stamp is over those. A swap made after printing, in the
+   printed game before tip-off, is a change; one made before printing is not. */
+test('printing then swapping in that same game shows the cue; swapping then printing does not', () => {
+  inTwoGames(games => {
+    const g = games[0];
+    g.live = { at: 0, overrides: {} };
+    assert.equal(S.changedSincePrinted(g, S.plans[0]), false, 'never printed');
+    assert.ok(S.notePrinted(g, S.plans[0]));
+    assert.equal(S.changedSincePrinted(g, S.plans[0]), false, 'nothing moved');
+    swapOff(g, S.plans[0].stints[1].onFloor[0], 1);
+    S.computeAll();
+    assert.equal(S.changedSincePrinted(g, S.plans[0]), true, 'a swap after printing');
+    S.notePrinted(g, S.plans[0]);
+    assert.equal(S.changedSincePrinted(g, S.plans[0]), false, 'printing again clears it');
+  });
+  inTwoGames(games => {
+    const g = games[0];
+    g.live = { at: 0, overrides: {} };
+    swapOff(g, S.plans[0].stints[1].onFloor[0], 1);
+    S.computeAll();
+    S.notePrinted(g, S.plans[0]);
+    assert.equal(S.changedSincePrinted(g, S.plans[0]), false, 'the swap was on the paper');
+  });
+});
+
+test('notePrinted says whether the stamp changed, so printing the same card twice saves once', () => {
+  inTwoGames(games => {
+    assert.equal(S.notePrinted(games[0], S.plans[0]), true);
+    assert.equal(S.notePrinted(games[0], S.plans[0]), false);
+    assert.equal(S.notePrinted(games[0], { ok: false }), false, 'a blocked plan stamps nothing');
   });
 });

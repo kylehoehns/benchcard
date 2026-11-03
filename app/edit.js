@@ -46,7 +46,9 @@ export const EDITS = {
   theme: { pref: true, keys: [], now: true },
   gameView: { pref: true, keys: ['gameview'], now: true },
   cardOptions: { pref: true, keys: ['cards'], now: true },
-  printed: { pref: true, keys: ['tabs'], now: true },   // Print or Share image: the stamp is saved and the cue repaints
+  // Print or Share image: the stamp is saved and the cue repaints. A pref so that
+  // printing is not counted as an edit (no recovery notice, no Undo to retire, no first-run).
+  printed: { pref: true, keys: ['tabs'], now: true },
   cardSize: { pref: true, keys: ['setup', 'cards', 'gameview'], now: true },
 
   /* -------- Derived from every soon(...) in the five view files --------

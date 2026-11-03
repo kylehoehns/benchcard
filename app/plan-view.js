@@ -69,11 +69,13 @@ export function renderIssues() {
 
 /* #455: a plan note's sentence, with each long word in its own `.fitw` so the
    fitter (dom.js) can shrink a name that cannot fit and leave the sentence
-   at its CSS size. */
+   at its CSS size. A hyphenated long word goes in a `.fitw` per piece, so it
+   can break after its hyphen ("Montgomery-" / "Okafor,") instead of inside
+   the first half. */
 function noteText(message) {
   const span = el('span');
   for (const part of message.split(/(\s+)/)) {
-    if (part.length >= 8 && /\S/.test(part)) span.append(el('span', 'fitw', part));
+    if (part.length >= 8 && /\S/.test(part)) for (const piece of part.split(/(?<=-)(?=.)/)) span.append(el('span', 'fitw', piece));
     else if (part) span.append(part);
   }
   return span;
@@ -347,5 +349,5 @@ export function renderDayTotals() {
   box.append(legend);
   box.append(el('p', 'note', hi === lo
     ? `Even across the day: everyone at ${fmtMinutes(hi)} minutes.`
-    : [`Day spread ${fmtMinutes(hi - lo)} min. Heaviest ${fmtMinutes(hi)}, lightest ${fmtMinutes(lo)}.`, dayChartNote(state.day.games)].filter(Boolean).join(' ')));
+    : [`Day spread ${fmtMinutes(hi - lo)} min. Heaviest ${fmtMinutes(hi)}, lightest ${fmtMinutes(lo)}.`, dayChartNote(state.day.games, plans)].filter(Boolean).join(' ')));
 }

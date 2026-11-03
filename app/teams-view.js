@@ -548,7 +548,7 @@ function renderPass(g, i, d) {
   const changed = changedSincePrinted(g, p);
   if (changed) b.append(el('span', 'pass-summary', CHANGED_SINCE_PRINTED));
 
-  const statusWord = status.word.toLowerCase() + (changed ? ', changed since printed' : '');
+  const statusWord = status.word.toLowerCase() + (changed ? `, ${CHANGED_SINCE_PRINTED.toLowerCase()}` : '');
   b.setAttribute('aria-label', when ? `${full}, ${when}, ${statusWord}` : `${full}, ${statusWord}`);
   b.onclick = () => { openGame(d, i); setView('games'); };
 
@@ -629,7 +629,7 @@ export function renderTabs() {
       gs.append(dayHeading(state.day) + ' · ');
       if (g.tipoff) gs.append(tipoffLabel(g.tipoff) + ' · ');
       gs.append(passStatusEl(passStatus(plans[i] ?? null, g.live)));
-      if (changedSincePrinted(g, plans[i])) gs.append(' · ' + CHANGED_SINCE_PRINTED);
+      if (changedSincePrinted(g, plans[i])) gs.append(el('span', 'game-sub-cue', CHANGED_SINCE_PRINTED));
     }
   }
 

@@ -1401,18 +1401,28 @@ export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
    (#553). */
 export const evensOutDay = (g, i) => i > 0 && g.useCarryover && !fivesAreSet(g.strategy);
 
+/* The one way a list of games is named in a coach-facing line: "2:30 PM and
+   Owls" (tip-off, else opponent), or null when any of them has neither, so the
+   caller falls back to counting rather than guessing. */
+const namedGames = games => {
+  const names = games.map(g => tipoffLabel(g.tipoff) || g.label || null);
+  return names.some(nm => !nm) ? null : joinNames(names);
+};
+
 /* #572: the Season day chart's closing sentence. "Automatically" is true only of
-   the later games `evensOutDay` holds for (not Platoon, not Order, not the
-   switch off), so it says "later games" only when that is all of them, names
-   the ones that do the way `evensOutLine` names games (tip-off, else
-   opponent) and counts them when any has neither. Empty when none do. */
-export function dayChartNote(games) {
-  const later = games.slice(1), evens = later.filter((g, k) => evensOutDay(g, k + 1));
+   the later games `solveDay` really carries into: `evensOutDay` holds, the game's
+   own plan is ok, and an earlier game has an ok plan to even out against (a
+   blocked plan hands nothing on). It says "later games" only when that is all of
+   them, names the ones that do the way `evensOutLine` names games and counts
+   them when any has neither. Empty when none do. */
+export function dayChartNote(games, dayPlans) {
+  const later = games.slice(1);
+  const evens = later.filter((g, k) => evensOutDay(g, k + 1) && dayPlans[k + 1]?.ok && dayPlans.slice(0, k + 1).some(p => p?.ok));
   if (!evens.length) return '';
-  if (evens.length === later.length) return 'Later games even out against this automatically.';
   const several = evens.length > 1;
-  const names = evens.map(g => tipoffLabel(g.tipoff) || g.label || null);
-  const who = names.some(nm => !nm) ? `${evens.length} later game${several ? 's' : ''}` : `The ${joinNames(names)} game${several ? 's' : ''}`;
+  if (evens.length === later.length) return several ? 'Later games even out against this automatically.' : 'The later game evens out against this automatically.';
+  const named = namedGames(evens);
+  const who = named ? `The ${named} game${several ? 's' : ''}` : `${evens.length} later game${several ? 's' : ''}`;
   return `${who} ${several ? 'even' : 'evens'} out against this automatically.`;
 }
 
@@ -1481,10 +1491,8 @@ export function evensOutLine(i) {
   const g = games[i];
   if (!g || !evensOutDay(g, i)) return '';
   const earlier = games.slice(0, i);
-  const names = earlier.map(e => tipoffLabel(e.tipoff) || e.label || null);
-  const several = earlier.length > 1;
-  if (names.some(nm => !nm)) return `Evens out the earlier game${several ? 's' : ''}.`;
-  return `Evens out the ${joinNames(names)} game${several ? 's' : ''}.`;
+  const named = namedGames(earlier), several = earlier.length > 1;
+  return named ? `Evens out the ${named} game${several ? 's' : ''}.` : `Evens out the earlier game${several ? 's' : ''}.`;
 }
 
 /* #32 decision 10: the "Same as …?" card on step 1 of Add a game -- its two
@@ -1973,9 +1981,9 @@ function sayWhyTheyAreShort(p, prio, tiers) {
    anything that changed it would have dropped them before the save. Keeping
    it in `live` rather than a module map is what makes Undo work: the snapshot
    restores the old plan *and* its stamp together, so they still match. */
-const rotationStamp = p => {
+const rotationStamp = (p, stints = p.stints) => {
   let h = 5381;
-  for (const s of p.stints) {
+  for (const s of stints) {
     const row = `${s.periodName}${s.startSec}-${s.endSec}:${s.onFloor.join(',')}|`;
     for (let i = 0; i < row.length; i++) h = (h * 33 ^ row.charCodeAt(i)) >>> 0;
   }
@@ -2607,13 +2615,16 @@ export function computeAll() {
    A plan whose stamp has since moved -- an earlier game's swap changed what this
    game evens out -- no longer matches the paper. Not asked of a blocked plan or
    a finished game, and never of a game that was not printed. */
-const printedStamp = p => (p?.ok ? rotationStamp(p) : '');
+const printedStamp = (g, p) => (p?.ok ? rotationStamp(p, effectiveStints(g, p)) : '');
+/* True when the stamp moved (so the caller saves only then). The stamp is over
+   `effectiveStints`, the fives the printed card shows, swaps included. */
 export function notePrinted(g, p) {
-  const stamp = printedStamp(p);
-  if (stamp) g.printed = stamp;
-  return stamp;
+  const stamp = printedStamp(g, p);
+  if (!stamp || g.printed === stamp) return false;
+  g.printed = stamp;
+  return true;
 }
-export const changedSincePrinted = (g, p) => !!g.printed && !!p?.ok && !finishedGame(g.live) && printedStamp(p) !== g.printed;
+export const changedSincePrinted = (g, p) => !!g.printed && !!p?.ok && !finishedGame(g.live) && printedStamp(g, p) !== g.printed;
 
 /* #247 amendment 11: `live.arrived` is for a kid who was not there at the
    start. One who played in a stint BEFORE the stint they "arrived" at --
