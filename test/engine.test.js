@@ -766,7 +766,7 @@ test('platoon with no units asks for them instead of silently planning as balanc
   assert.equal(p.ok, false, 'must not quietly fall back to an even rotation');
   const e = p.issues.find(i => i.code === 'UNITS_MISSING');
   assert.ok(e);
-  assert.match(e.message, /Unit 1/);
+  assert.match(e.message, /Group 1/);
   // and the other strategies are unaffected
   assert.ok(plan(10).ok);
   assert.ok(plan(10, { constraints: { units: [] } }).ok);

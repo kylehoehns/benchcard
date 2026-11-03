@@ -91,5 +91,5 @@ test('every remove action built in app/*.js is a .prow-danger row', () => {
         `app/${file} builds "${text}" classed "${classAttr}", not .prow-danger`);
     }
   }
-  assert.ok(checked >= 3, `only found ${checked} remove-action button(s) built in app/*.js -- expected at least "Remove rule", "Remove unit N" and Season's remove button`);
+  assert.ok(checked >= 3, `only found ${checked} remove-action button(s) built in app/*.js -- expected at least "Remove rule", "Remove group N" and Season's remove button`);
 });

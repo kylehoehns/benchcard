@@ -1180,6 +1180,22 @@ export class Coach {
     return (await this.#stintCells('floor')).map(t => t.split(' ').sort());
   }
 
+  /** The Plan sheet's player pickers, top to bottom (one per Platoon group, one for
+      Closers): each one's picked players, by full name, in roster order. */
+  picked() {
+    return evalIn(this.c, `[...document.querySelectorAll('#stratbody .pick')]
+      .map(p => [...p.querySelectorAll('button[aria-pressed="true"]')].map(b => b.getAttribute('aria-label')))`);
+  }
+
+  /** Tap `name` in the `n`th player picker on the Plan sheet (0-based), where
+      several pickers show the same names. */
+  async tapPicked(n, name) {
+    const { result } = await this.c.send('Runtime.evaluate', { expression: `[...(document.querySelectorAll('#stratbody .pick')[${n}]?.querySelectorAll('button') ?? [])]
+      .find(b => b.getAttribute('aria-label') === ${JSON.stringify(name)}) ?? null` });
+    if (!result.objectId) throw new Error(`tapPicked ${n} ${JSON.stringify(name)}: no such tile`);
+    await this.#tapObject(result.objectId, `${name} in picker ${n}`);
+  }
+
   /** The Plan sheet's Rotation order list, top to bottom: each row's name. */
   orderList() {
     return evalIn(this.c, `[...document.querySelectorAll('#stratbody .orow')].map(r => r.querySelector('.prow-t').textContent)`);

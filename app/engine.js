@@ -754,19 +754,19 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
   // Choosing platoon without defining the fives used to fall through and plan
   // as if balanced -- a silent no-op is worse than a clear ask.
   if (strategy === 'platoon' && !c.units.length) {
-    err('UNITS_MISSING', `Platoon needs at least one unit of ${ON_FLOOR}. Pick the players for Unit 1.`, []);
+    err('UNITS_MISSING', `Platoon needs at least one group of ${ON_FLOOR}. Pick the players for Group 1.`, []);
   }
 
   if (c.units.length) {
     c.units.forEach((u, i) => {
       if (u.length !== ON_FLOOR) {
-        err('UNIT_WRONG_SIZE', `Unit ${i + 1} has ${u.length} player${u.length === 1 ? '' : 's'}; a unit needs exactly ${ON_FLOOR}.`, u);
+        err('UNIT_WRONG_SIZE', `Group ${i + 1} has ${u.length} player${u.length === 1 ? '' : 's'}; a group needs exactly ${ON_FLOOR}.`, u);
       }
     });
     const inUnit = new Set(c.units.flat());
     const benched = avail.filter(id => !inUnit.has(id));
     if (benched.length) {
-      warn('UNIT_LEFTOVERS', `${benched.map(label).join(', ')} ${benched.length === 1 ? 'is' : 'are'} not in any unit and will not play.`, benched);
+      warn('UNIT_LEFTOVERS', `${benched.map(label).join(', ')} ${benched.length === 1 ? 'is' : 'are'} not in any group and will not play.`, benched);
     }
     /* A unit is used exactly as declared -- there is nothing for the solver to
        optimize -- so a "never together" pair sitting inside one was honoured
@@ -778,14 +778,14 @@ export function analyzeFeasibility({ players, availableIds, constraints, stints,
       for (const [a, b] of c.keepOnFloor) {
         if (!u.includes(a) && !u.includes(b)) {
           warn('UNIT_KEEPON',
-            `Unit ${i + 1} has neither ${label(a)} nor ${label(b)}, but you have one of them on the floor at all times. The unit wins — drop the rule or change the unit.`,
+            `Group ${i + 1} has neither ${label(a)} nor ${label(b)}, but you have one of them on the floor at all times. The group wins — drop the rule or change the group.`,
             [a, b]);
         }
       }
       for (const [a, b] of combinations(u, 2)) {
         if (avoidSet.has(pairKey(a, b))) {
           warn('UNIT_AVOID',
-            `Unit ${i + 1} puts ${label(a)} and ${label(b)} on the floor together, but you have them set Apart. The unit wins — drop the rule or change the unit.`,
+            `Group ${i + 1} puts ${label(a)} and ${label(b)} on the floor together, but you have them set Apart. The group wins — drop the rule or change the group.`,
             [a, b]);
         }
       }
@@ -2871,3 +2871,44 @@ export const SIT_REFUSALS = {
   nobody: 'Not enough players left to cover the rest of the game.',
   nothing: 'Nothing left to share out. This is the last stint.',
 };
+
+/* Whether the kids are not all at one level. */
+export const tiersDiffer = (ids, tierOf) => new Set(ids.map(tierOf)).size > 1;
+
+/* #569: Platoon's groups, filled for a coach who has picked nobody. Who is placed
+   never depends on level: the first 5 x floor(n / 5) kids in roster order, the
+   rest left out. Level only decides who plays together. When the placed kids'
+   levels differ they are dealt strongest first (roster order breaking ties) in a
+   snake -- 1-2-2-1-1-2 -- so each group gets some of the stronger players; when
+   they are all alike the groups are the roster in fives. `tierOf(id)` is the
+   level, higher is stronger. */
+export function fillGroups(ids, tierOf) {
+  const count = Math.floor(ids.length / ON_FLOOR);
+  const placed = ids.slice(0, count * ON_FLOOR);
+  const groups = Array.from({ length: count }, () => []);
+  if (tiersDiffer(placed, tierOf)) {
+    const rank = new Map(placed.map((id, i) => [id, i]));
+    placed.slice().sort((a, b) => tierOf(b) - tierOf(a) || rank.get(a) - rank.get(b)).forEach((id, r) => {
+      const pos = r % count, row = Math.floor(r / count);
+      groups[row % 2 ? count - 1 - pos : pos].push(id);
+    });
+    groups.forEach(g => g.sort((a, b) => ids.indexOf(a) - ids.indexOf(b)));
+  } else {
+    groups.forEach((g, i) => g.push(...placed.slice(i * ON_FLOOR, (i + 1) * ON_FLOOR)));
+  }
+  return groups;
+}
+
+/* #569: Closers' five. When levels differ, the five highest (roster order
+   breaking ties); when alike, `lastFive` -- who is on the floor last in the
+   plan the game had -- or the first five when there is no plan to read. Fewer
+   than five kids: nothing. */
+export function fillClosers(ids, tierOf, lastFive) {
+  if (ids.length < ON_FLOOR) return [];
+  if (tiersDiffer(ids, tierOf)) {
+    return ids.map((id, i) => [id, i]).sort((a, b) => tierOf(b[0]) - tierOf(a[0]) || a[1] - b[1])
+      .slice(0, ON_FLOOR).map(([id]) => id);
+  }
+  const last = (lastFive || []).filter(id => ids.includes(id));
+  return last.length === ON_FLOOR ? last : ids.slice(0, ON_FLOOR);
+}

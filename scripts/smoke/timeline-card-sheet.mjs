@@ -437,14 +437,14 @@ export async function timelineCardSheetPass(c, origin, rec) {
   await evalIn(c, setGame(FIX_WHO));
   await settle(c);
 
-  // 'strategy': Platoon with no unit filled -> "Fill a unit".
+  // 'strategy': Platoon with no group filled -> "Fill a group".
   await evalIn(c, setGame(BREAK_STRATEGY));
   await settle(c);
   const unitsBlocked = await evalJSON(c, `JSON.stringify(document.querySelector('#timeline .empty button')?.textContent)`);
-  rec.check(unitsBlocked === 'Fill a unit', `the fix button reads "${unitsBlocked}" with Platoon and no unit filled, want "Fill a unit"`);
+  rec.check(unitsBlocked === 'Fill a group', `the fix button reads "${unitsBlocked}" with Platoon and no group filled, want "Fill a group"`);
   await tap(c, `document.querySelector('#timeline .empty button').click()`);
   const stratOpen = await evalJSON(c, `JSON.stringify(document.getElementById('sheetPlan')?.open)`);
-  rec.check(stratOpen === true, '"Fill a unit" did not open #sheetPlan');
+  rec.check(stratOpen === true, '"Fill a group" did not open #sheetPlan');
   await tap(c, `document.getElementById('sheetPlanClose').click()`);
   await evalIn(c, setGame(FIX_STRATEGY));
   await settle(c);

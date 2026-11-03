@@ -37,7 +37,7 @@ describe('Platoon: a second game the same day', { skip }, () => {
     assert.ok(lacks(await coach.text('body'), 'evens out the day'), 'the page says Platoon evens out the day');
     await coach.tap('Plan, fixed fives');
     assert.equal(await coach.isDisabled('Even out earlier games'), true);
-    assert.match(await coach.text('#planDay'), /Not used with fixed units\. The fives you set decide who plays\./);
+    assert.match(await coach.text('#planDay'), /Not used with fixed groups\. The fives you set decide who plays\./);
   });
 
   test('2. switched to Even it evens out the day again, with the switch enabled and still on', async () => {

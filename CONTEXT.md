@@ -210,9 +210,10 @@ _Avoid_: closing five, closers (for the players)
 The strategy where fixed groups of five take turns, whole group for whole group.
 _Avoid_: lines, shifts
 
-**Unit**:
-One fixed group of five in Platoon.
-_Avoid_: line, group, five
+**Group**:
+One fixed group of five in Platoon. Not a Team. The code still says units
+(`constraints.units`, and the `UNIT_*` codes), and those keep their names.
+_Avoid_: line, unit, five
 
 **Order**:
 The strategy where the game's players are listed in an order and the plan takes

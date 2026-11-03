@@ -116,7 +116,22 @@ export const CLOSERS_STATE = {
          window.__closers521 = { strategy: g.strategy, closing: JSON.parse(JSON.stringify(g.constraints.closing ?? null)) };
          [...document.querySelectorAll('#stratseg button')].find(b => b.dataset.strat === 'closers').click();
          g.constraints.closing.players = [];
+         delete g.closersBuilt;
          (await import('/render.js')).renderAll();
+         // #569: the window line reads as a normal line (not a one-word column) and its text starts
+         // where the Change when row's text does, so the two share a left edge.
+         const textLeft = e => e.getBoundingClientRect().left + parseFloat(getComputedStyle(e).paddingLeft);
+         const sumLine = [...document.querySelectorAll('#stratbody .pgrp-f')].find(e => /^The closing group plays/.test(e.textContent));
+         const whenRow = [...document.querySelectorAll('#stratbody button')].find(b => b.textContent === 'Change when');
+         if (!sumLine || !whenRow) throw new Error('the Closers panel did not show its window line and Change when');
+         const cardW = whenRow.closest('.pgrp').getBoundingClientRect().width;
+         // as wide as the card it sits under, like every other .pgrp-f line (inside the card it was 128px of text)
+         const lineW = sumLine.getBoundingClientRect().width;
+         if (Math.abs(textLeft(sumLine) - textLeft(whenRow)) > 1 || lineW < cardW - 1) {
+           throw new Error('the Closers window line does not line up with Change when or is squeezed: ' + JSON.stringify({ line: textLeft(sumLine), row: textLeft(whenRow), lineW, cardW }));
+         }
+         // #569: the window's chips wait behind "Change when"
+         [...document.querySelectorAll('#stratbody button')].find(b => b.textContent === 'Change when').click();
          await new Promise(r => setTimeout(r, 300));
          const box = document.getElementById('stratbody');
          if (!box.querySelector('.chips .chip') || !box.querySelector('.pick .plr') || !box.querySelector('.budget-msg')) {

@@ -344,7 +344,7 @@ export const ROWS = Object.freeze([
   // #159's own guard (see docs/specs/159-platoon-undo.md's Proof section):
   // "Remove unit N" in the Platoon editor acts at once and offers Undo, the
   // same shape "Remove rule" gets -- see platoon-undo.mjs.
-  { id: 'platoonundo', name: 'remove a platoon unit, then Undo', selectable: true, setup: 'rich',
+  { id: 'platoonundo', name: 'remove a platoon group, then Undo', selectable: true, setup: 'rich',
     run: ctx => platoonUndoPass(ctx.c, ctx.origin, ctx.rec) },
   // #73's own guard (see docs/specs/73-sheet-polish.md's Proof section):
   // stepper column equality at 390px and 320px/32px, equal row padding

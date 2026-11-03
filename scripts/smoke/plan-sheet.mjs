@@ -194,6 +194,10 @@ export async function planSheetPass(c, origin, rec) {
 
   /* ---- item 3: Closers and Platoon ---- */
   await tap(c, `[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'Closers').click()`);
+  // #569: picking Closers fills the five in, so the row empties them to count its own two taps;
+  // and the window's chips wait behind "Change when"
+  await tap(c, `const st = await import('/state.js'); st.game().constraints.closing.players = []; (await import('/render.js')).renderAll();`);
+  await tap(c, `[...document.querySelectorAll('#stratbody button')].find(b => b.textContent === 'Change when').click()`);
   const closers = await evalJSON(c, `JSON.stringify({
     hasChips: !!document.querySelector('#stratbody .chips'),
     hasWho: [...document.querySelectorAll('#stratbody .pickhd .t')].some(t => t.textContent === 'Who closes'),
@@ -213,22 +217,24 @@ export async function planSheetPass(c, origin, rec) {
 
   // Platoon.
   await tap(c, `[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'Platoon').click()`);
+  // #569: picking Platoon fills the groups in, so the row empties them to count its own one and two
+  await tap(c, `const st = await import('/state.js'); st.game().constraints.units = []; (await import('/render.js')).renderAll();`);
   const platoon1 = await evalJSON(c, `JSON.stringify({
-    unit1: [...document.querySelectorAll('#stratbody .pgrp-h')].some(h => h.textContent === 'Unit 1'),
-    addUnit: [...document.querySelectorAll('#stratbody .prow')].some(b => b.textContent.includes('Add unit')),
-    removeRows: [...document.querySelectorAll('#stratbody .prow')].filter(b => b.textContent.startsWith('Remove unit')).length,
+    unit1: [...document.querySelectorAll('#stratbody .pgrp-h')].some(h => h.textContent === 'Group 1'),
+    addUnit: [...document.querySelectorAll('#stratbody .prow')].some(b => b.textContent.includes('Add group')),
+    removeRows: [...document.querySelectorAll('#stratbody .prow')].filter(b => b.textContent.startsWith('Remove group')).length,
   })`);
-  rec.check(platoon1.unit1, '"Unit 1" is missing');
-  rec.check(platoon1.addUnit, '"Add unit" is missing');
-  rec.check(platoon1.removeRows === 0, `${platoon1.removeRows} "Remove unit" rows with only one unit, want 0`);
+  rec.check(platoon1.unit1, '"Group 1" is missing');
+  rec.check(platoon1.addUnit, '"Add group" is missing');
+  rec.check(platoon1.removeRows === 0, `${platoon1.removeRows} "Remove group" rows with only one group, want 0`);
 
-  await tap(c, `[...document.querySelectorAll('#stratbody .prow')].find(b => b.textContent.includes('Add unit')).click()`);
+  await tap(c, `[...document.querySelectorAll('#stratbody .prow')].find(b => b.textContent.includes('Add group')).click()`);
   const platoon2 = await evalJSON(c, `JSON.stringify({
-    unit2: [...document.querySelectorAll('#stratbody .pgrp-h')].some(h => h.textContent === 'Unit 2'),
-    removeRows: [...document.querySelectorAll('#stratbody .prow')].filter(b => b.textContent.startsWith('Remove unit')).length,
+    unit2: [...document.querySelectorAll('#stratbody .pgrp-h')].some(h => h.textContent === 'Group 2'),
+    removeRows: [...document.querySelectorAll('#stratbody .prow')].filter(b => b.textContent.startsWith('Remove group')).length,
   })`);
-  rec.check(platoon2.unit2, '"Unit 2" did not appear after "Add unit"');
-  rec.check(platoon2.removeRows === 2, `${platoon2.removeRows} "Remove unit" rows with two units, want 2`);
+  rec.check(platoon2.unit2, '"Group 2" did not appear after "Add group"');
+  rec.check(platoon2.removeRows === 2, `${platoon2.removeRows} "Remove group" rows with two groups, want 2`);
 
   // Back to Even: #stratbody is empty.
   await tap(c, `[...document.querySelectorAll('#stratseg button')].find(b => b.textContent === 'Even').click()`);

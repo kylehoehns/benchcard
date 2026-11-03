@@ -9,7 +9,7 @@ import { readFileSync, readdirSync } from 'node:fs';
  * unit, on a screen that can hold several, with nothing to say which one it
  * deletes. Smoke's `controls have accessible names` passes that — the name is
  * non-empty — and that check is right; a live probe cannot know that "×" means
- * nothing to a listener while "Remove unit 2" means something.
+ * nothing to a listener while "Remove group 2" means something.
  *
  * So the check belongs here, on the shape rather than on today's one instance:
  * every `el('button', …, '<glyph>')` in the app must get a real name from an
@@ -50,14 +50,14 @@ for (const g of found) {
   });
 }
 
-test('the unit-remove control still says WHICH unit', () => {
+test('the group-remove control still says WHICH group', () => {
   /* #28 replaced the glyph-only `×` button this file's own comment describes
-     with a full-text `.prow` row ("Remove unit N") -- decision 5's "a `Remove
+     with a full-text `.prow` row ("Remove group N") -- decision 5's "a `Remove
      unit N` row". The row's visible text IS its accessible name, so the glyph
      problem this file guards against cannot recur here; what still has to
      hold is that the index survives the restyle. */
   const src = decomment(readFileSync(new URL('strategy.js', dir), 'utf8'));
-  assert.match(src, /`Remove unit \$\{i \+ 1\}`/,
+  assert.match(src, /`Remove group \$\{i \+ 1\}`/,
     'the unit-remove rows all carry the same name again. On a screen holding three units '
-    + 'that is three identical "Remove unit" rows — the index is what makes it usable.');
+    + 'that is three identical "Remove group" rows — the index is what makes it usable.');
 });

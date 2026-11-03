@@ -120,7 +120,7 @@ function renderPairsGroup(c) {
 
 /* The one sentence each fives-set strategy gives for a switch that does not apply to it. */
 const fivesSetNote = strategy => (strategy === 'platoon'
-  ? 'Not used with fixed units. The fives you set decide who plays.'
+  ? 'Not used with fixed groups. The fives you set decide who plays.'
   : 'Not used with a rotation order. The order decides who plays.');
 
 function renderDayGroup(g) {
