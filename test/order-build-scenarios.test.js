@@ -12,12 +12,12 @@ import { lacks } from './prose.js';
 
 const skip = !(await hasChrome()) && 'no Chrome on this machine';
 
-const ROSTER = ['Webb', 'Kade', 'Brooks', 'Brody', 'Jack', 'Sheeks', 'Cooper', 'Tate', 'Damari'];
-/* Brooks, Brody, Cooper and Tate are a level above the rest: not the first four. */
+const ROSTER = ['Avery', 'Blake', 'Casey', 'Drew', 'Emery', 'Finley', 'Gray', 'Harper', 'Indy'];
+/* Casey, Drew, Gray and Harper are a level above the rest: not the first four. */
 const TIERS = { p2: 4, p3: 4, p6: 4, p7: 4 };
-const BEST = ['Webb', 'Brooks', 'Brody', 'Cooper', 'Tate', 'Kade', 'Jack', 'Sheeks', 'Damari'];
-const BEST_MINUTES = { Webb: '16 min', Brooks: '20 min', Brody: '20 min', Cooper: '20 min', Tate: '20 min',
-  Kade: '16 min', Jack: '16 min', Sheeks: '16 min', Damari: '16 min' };
+const BEST = ['Avery', 'Casey', 'Drew', 'Gray', 'Harper', 'Blake', 'Emery', 'Finley', 'Indy'];
+const BEST_MINUTES = { Avery: '16 min', Casey: '20 min', Drew: '20 min', Gray: '20 min', Harper: '20 min',
+  Blake: '16 min', Emery: '16 min', Finley: '16 min', Indy: '16 min' };
 const ONLY_BUILT = 'Built for you: your best players get the spots that play the most. Move anyone and the list is yours. The first five start. Players who are out are skipped.';
 const ONLY_MINE = 'You set this list. The first five start. Players who are out are skipped.';
 
@@ -55,14 +55,14 @@ describe('Rotation order builds the list', { skip }, () => {
     await pickOrder({ out: ['p6'] });
 
     const list = await coach.orderList();
-    assert.equal(list.at(-1), 'Cooper');
-    assert.deepEqual(await coach.orderMarks(), { Cooper: 'Out' });
-    assert.equal((await coach.orderMinutes()).Cooper, undefined);
+    assert.equal(list.at(-1), 'Gray');
+    assert.deepEqual(await coach.orderMarks(), { Gray: 'Out' });
+    assert.equal((await coach.orderMinutes()).Gray, undefined);
   });
 
   test('3. an Apart pair is never on together, because the list follows the rule when it is added', async () => {
     await pickOrder();
-    await addRule('Apart', ['Brooks', 'Webb']);
+    await addRule('Apart', ['Casey', 'Avery']);
 
     assert.notDeepEqual(await coach.orderList(), BEST, 'the app\'s list followed the new rule');
     await coach.tap('Close');
@@ -96,16 +96,16 @@ describe('Rotation order: the coach\'s hand wins', { skip }, () => {
   test('5. after a move the list is theirs: a new rule leaves it, and Build it for me again builds it, Undo gives it back', async () => {
     await pickOrder();
     assert.equal(await coach.sees('Build it for me again'), false, 'the app\'s own list needs no button');
-    await coach.tap('Move Webb down');
-    const mine = ['Brooks', 'Webb', 'Brody', 'Cooper', 'Tate', 'Kade', 'Jack', 'Sheeks', 'Damari'];
+    await coach.tap('Move Avery down');
+    const mine = ['Casey', 'Avery', 'Drew', 'Gray', 'Harper', 'Blake', 'Emery', 'Finley', 'Indy'];
     assert.deepEqual(await coach.orderList(), mine);
     assert.equal(await coach.orderFooter(), ONLY_MINE);
     assert.ok(await coach.sees('Build it for me again'));
 
     await coach.tap('Add a rule');
     await coach.tap('Apart');
-    await coach.tap('Brooks');
-    await coach.tap('Webb');
+    await coach.tap('Casey');
+    await coach.tap('Avery');
     await coach.tap('Add rule');
     assert.deepEqual(await coach.orderList(), mine, 'a rule does not move the coach\'s list');
 
@@ -123,8 +123,8 @@ describe('Rotation order: the coach\'s hand wins', { skip }, () => {
 
   test('5b. a move and its move back leave the same list, and Build it for me again still makes it the app\'s', async () => {
     await pickOrder();
-    await coach.tap('Move Webb down');
-    await coach.tap('Move Webb up');
+    await coach.tap('Move Avery down');
+    await coach.tap('Move Avery up');
     assert.deepEqual(await coach.orderList(), BEST);
     assert.equal(await coach.orderFooter(), ONLY_MINE);
     assert.ok(await coach.sees('Build it for me again'));
@@ -176,8 +176,8 @@ describe('Rotation order: a game underway keeps the list the app built', { skip 
     await coach.tap('Plan, rotation order');
     await coach.tap('Add a rule');
     await coach.tap('Apart');
-    await coach.tap('Brooks');
-    await coach.tap('Webb');
+    await coach.tap('Casey');
+    await coach.tap('Avery');
     await coach.tap('Add rule');
 
     assert.deepEqual(await coach.orderList(), BEST, 'the list did not move');
@@ -209,14 +209,14 @@ describe('Rotation order builds the list: the second game', { skip }, () => {
     await addGameTwo();
     await coach.tap('Plan, rotation order');
 
-    /* Game 1 gave Kade, Brooks, Brody and Jack 20 and the other five 16, so
+    /* Game 1 gave Blake, Casey, Drew and Emery 20 and the other five 16, so
        those five are furthest behind. They take the next five spots in the
-       roster order, and the 20-minute spots 2 to 5 go to Sheeks, Cooper, Tate
-       and Damari. */
-    assert.deepEqual(await coach.orderList(), ['Webb', 'Sheeks', 'Cooper', 'Tate', 'Damari', 'Kade', 'Brooks', 'Brody', 'Jack']);
+       roster order, and the 20-minute spots 2 to 5 go to Finley, Gray, Harper
+       and Indy. */
+    assert.deepEqual(await coach.orderList(), ['Avery', 'Finley', 'Gray', 'Harper', 'Indy', 'Blake', 'Casey', 'Drew', 'Emery']);
     assert.deepEqual(await coach.orderMinutes(), {
-      Webb: '16 min', Sheeks: '20 min', Cooper: '20 min', Tate: '20 min', Damari: '20 min',
-      Kade: '16 min', Brooks: '16 min', Brody: '16 min', Jack: '16 min' });
+      Avery: '16 min', Finley: '20 min', Gray: '20 min', Harper: '20 min', Indy: '20 min',
+      Blake: '16 min', Casey: '16 min', Drew: '16 min', Emery: '16 min' });
     assert.match(await coach.orderFooter(), /^Built for you: the kids furthest behind get the spots that play the most\./);
   });
 
@@ -225,12 +225,12 @@ describe('Rotation order builds the list: the second game', { skip }, () => {
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Plan, even minutes');
     await coach.tap('Order');
-    await coach.tap('Move Webb down');
-    await coach.tap('Move Webb up');
+    await coach.tap('Move Avery down');
+    await coach.tap('Move Avery up');
     await addGameTwo();
     await coach.tap('Plan, rotation order');
 
-    assert.deepEqual(await coach.orderList(), ['Sheeks', 'Cooper', 'Tate', 'Damari', 'Webb', 'Kade', 'Brooks', 'Brody', 'Jack']);
+    assert.deepEqual(await coach.orderList(), ['Finley', 'Gray', 'Harper', 'Indy', 'Avery', 'Blake', 'Casey', 'Drew', 'Emery']);
     assert.equal((await coach.orderFooter()).startsWith('You set this list.'), true);
   });
 });

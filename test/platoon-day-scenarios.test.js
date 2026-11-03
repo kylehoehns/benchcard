@@ -10,7 +10,7 @@ import { lacks } from './prose.js';
 
 const skip = !(await hasChrome()) && 'no Chrome on this machine';
 
-const ROSTER = ['Webb', 'Kade', 'Brooks', 'Brody', 'Jack', 'Sheeks', 'Cooper', 'Tate', 'Damari', 'Reid'];
+const ROSTER = ['Avery', 'Blake', 'Casey', 'Drew', 'Emery', 'Finley', 'Gray', 'Harper', 'Indy', 'Reid'];
 const UNITS = [['p0', 'p1', 'p2', 'p3', 'p4'], ['p5', 'p6', 'p7', 'p8', 'p9']];
 
 describe('Platoon: a second game the same day', { skip }, () => {

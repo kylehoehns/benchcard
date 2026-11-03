@@ -88,7 +88,7 @@ issue.
    circle (a hand swap broke it), read it from its first member on, to the
    first player not on it. The engine returns no "next player" of its own:
    one formula, one place.
-   In the example this gives Sheeks.
+   In the example this gives Finley.
 5. **A change of plan mid-game** (late arrival, Out, Sit for the rest, a rule
    or setting change) keeps the stints played, as every strategy does, and
    plans the rest with the formula: the lead for the first re-planned stint
@@ -143,7 +143,7 @@ issue.
     `minMinutes` and warns as (7).
 11. **Fairness note.** For `order` the engine writes one info with the minutes
     as they fall, naming the low end in the same words as
-    `minutesNote`/`lowEndPhrase` (e.g. "Sheeks 16, everyone else 20.") or the
+    `minutesNote`/`lowEndPhrase` (e.g. "Finley 16, everyone else 20.") or the
     even sentence when equal. Code `SPREAD_ORDER`; `plan-view.js`'s rebuild
     after a swap treats it like the other spread notes.
 12. **Handoff** carries `g.order` with the game so a handed-off Rotation order
@@ -163,13 +163,13 @@ issue.
 
 ## What would settle it
 
-1. **Example, exactly.** Roster Webb, Kade, Brooks, Brody, Jack, Sheeks,
-   Cooper, Tate, Damari; 2 periods × 16 min, sub every 4 min (8 stints),
+1. **Example, exactly.** Roster Avery, Blake, Casey, Drew, Emery, Finley,
+   Gray, Harper, Indy; 2 periods × 16 min, sub every 4 min (8 stints),
    Players changing at once 4, strategy Order. Game 1's eight fives are the
    issue's list, in order. Adding game 2 the same day (cloned) gives game 2
-   the order Sheeks, Cooper, Tate, Damari, Webb, Kade, Brooks, Brody, Jack,
-   stint 1 Sheeks, Cooper, Tate, Damari, Webb, stint 2 Webb, Kade, Brooks,
-   Brody, Jack. A Coach-seam scenario; red on `317022e`.
+   the order Finley, Gray, Harper, Indy, Avery, Blake, Casey, Drew, Emery,
+   stint 1 Finley, Gray, Harper, Indy, Avery, stint 2 Avery, Blake, Casey,
+   Drew, Emery. A Coach-seam scenario; red on `317022e`.
 2. **Independence.** Editing game 1's order after game 2 exists leaves game 2's
    order unchanged.
 3. **Engine cases** (`node --test`): c = 1..5 against the formula for n = 6,

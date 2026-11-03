@@ -1120,7 +1120,7 @@ export class Coach {
     return evalIn(this.c, `[...document.querySelectorAll('#stratbody .orow')].map(r => r.querySelector('.prow-t').textContent)`);
   }
 
-  /** The minutes each row of the Rotation order list shows, by name: `{ Webb: '20 min' }`.
+  /** The minutes each row of the Rotation order list shows, by name: `{ Avery: '20 min' }`.
       A row with no minutes line (out, running late, no plan) is left out. */
   orderMinutes() {
     return evalIn(this.c, `Object.fromEntries([...document.querySelectorAll('#stratbody .orow')]
