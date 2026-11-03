@@ -1156,6 +1156,9 @@ export let plans = [], dayTotals = {}, dayPlans = [];
 // actually feed the solver -- carryover included, which makes the chain
 // between games invalidate correctly on its own.
 const planCache = new Map();
+/* #547: the list `buildOrder` made for a game, and what it was made from. */
+const orderMemo = new Map();
+const ORDER_RULES = ['avoids', 'pairs', 'keepOnFloor', 'minMinutes', 'maxMinutes', 'lastPeriodFive'];
 
 /* ---- the one place any surface asks "who is actually on the floor" ----
 
@@ -1312,6 +1315,11 @@ function startingOrder(g, day) {
     g.orderBuilt = true;
   }
 }
+
+/* Whether the team asks its levels to settle the odd minutes ('levels'), as
+   opposed to the season ('behind', the default and what a record without the
+   key means). The one reader of that setting. */
+export const tieBreakIsLevels = (st = state) => (st.settings?.tieBreak ?? DEFAULT_SETTINGS.tieBreak) === 'levels';
 
 /* "Build it for me again": the list becomes the app's, and the next plan
    builds it (`computeAll`). */
@@ -2349,8 +2357,7 @@ export function computeAll() {
      `tiers` is built once for the team and is non-null ONLY under 'levels' --
      it is both the composition input below and the flag `sayWhyTheyAreShort`
      reads to know which reason it is allowed to give. */
-  const stance = state.settings?.tieBreak ?? DEFAULT_SETTINGS.tieBreak;
-  const tiers = stance === 'levels'
+  const tiers = tieBreakIsLevels()
     ? Object.fromEntries(ps.map(p => [p.id, tierOfPlayer(p)])) : null;
 
   /* Each day solved on its own (#101 item 7): `cum` and the soFar-today
@@ -2454,12 +2461,18 @@ export function computeAll() {
       let builtShort = [];
       const nameOf = Object.fromEntries(ps.map(x => [x.id, x.name]));
       if (building) {
-        const built = buildOrder({
-          ids: inPlay, stints: buildStints(gameFormat(g), { mode: g.granMode, value: g.granValue }),
-          maxSubs, priority: prio, constraints: c, periods: g.periods,
-        });
-        g.order = [...built.order, ...ids.filter(id => out.has(id))];
-        builtShort = built.short;
+        /* The search runs only when what it reads has changed: the same
+           inputs give the same list, so an unchanged game keeps its array. */
+        const stints = buildStints(gameFormat(g), { mode: g.granMode, value: g.granValue });
+        const key = JSON.stringify([inPlay, stints, maxSubs, prio, g.periods, ORDER_RULES.map(k => c[k])]);
+        let memo = orderMemo.get(g.id);
+        if (memo?.key !== key) {
+          memo = { key, built: buildOrder({ ids: inPlay, stints, maxSubs, priority: prio, constraints: c, periods: g.periods }) };
+          orderMemo.set(g.id, memo);
+        }
+        const list = [...memo.built.order, ...ids.filter(id => out.has(id))];
+        if (list.join() !== (g.order || []).join()) g.order = list;
+        builtShort = memo.built.short;
       }
       const order = g.strategy === 'order' ? effectiveOrder(g, ids) : undefined;
       /* p.tier and g.balance belong in the signature: both change the plan, and
@@ -2525,6 +2538,7 @@ export function computeAll() {
   plans = dayPlans[team().activeDay] ?? [];
 
   for (const key of [...planCache.keys()]) if (!live.has(key)) planCache.delete(key);
+  for (const key of [...orderMemo.keys()]) if (!live.has(key)) orderMemo.delete(key);
   for (const key of Object.keys(seasonAdjust)) if (!live.has(key)) delete seasonAdjust[key];
   /* Two totals, deliberately. `cum` is the solver's input, accumulated in
      game order inside `solveDay` above. `dayTotals` is what the day chart
@@ -3124,6 +3138,7 @@ export function fileIfPast(today = new Date()) {
     fellBack = true;
     const g = newGame(0, lastFiled.games[lastFiled.games.length - 1], state.settings);
     g.out = []; g.late = [];
+    if (g.strategy === 'order') startingOrder(g, null);
     t.days = [{ name: '', date: seasonDate(today), games: [g] }];
     t.activeDay = 0;
     state.activeGame = 0;

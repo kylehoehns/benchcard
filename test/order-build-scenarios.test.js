@@ -121,6 +121,20 @@ describe('Rotation order: the coach\'s hand wins', { skip }, () => {
     assert.ok(await coach.sees('Build it for me again'));
   });
 
+  test('5b. a move and its move back leave the same list, and Build it for me again still makes it the app\'s', async () => {
+    await pickOrder();
+    await coach.tap('Move Webb down');
+    await coach.tap('Move Webb up');
+    assert.deepEqual(await coach.orderList(), BEST);
+    assert.equal(await coach.orderFooter(), ONLY_MINE);
+    assert.ok(await coach.sees('Build it for me again'));
+
+    await coach.tap('Build it for me again');
+    assert.deepEqual(await coach.orderList(), BEST);
+    assert.equal(await coach.orderFooter(), ONLY_BUILT);
+    assert.equal(await coach.sees('Build it for me again'), false);
+  });
+
   test('6. a list seeded as the coach\'s is kept, and a game underway cannot be built again', async () => {
     await coach.onGameDayWithRoster(ROSTER, { strategy: 'order', order: ROSTER.map((_, i) => `p${i}`), tiers: TIERS, tieBreak: 'levels' });
     await coach.tap('Hawks, 9:00 AM, planned');
@@ -136,6 +150,37 @@ describe('Rotation order: the coach\'s hand wins', { skip }, () => {
     await coach.tap('Plan, rotation order');
 
     assert.deepEqual(await coach.orderList(), ROSTER);
+    assert.equal(await coach.sees('Build it for me again'), false);
+  });
+});
+
+describe('Rotation order: a game underway keeps the list the app built', { skip }, () => {
+  let coach;
+  before(async () => { coach = await Coach.open(); });
+  after(async () => { await coach?.close(); });
+  afterEach(() => { assert.deepEqual(coach.errors, [], 'the page logged an error'); });
+
+  test('6b. the app\'s own list stays put once a stint is played, and a new Apart rule does not build it again', async () => {
+    await coach.onGameDayWithRoster(ROSTER, { tiers: TIERS, tieBreak: 'levels' });
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Plan, even minutes');
+    await coach.tap('Order');
+    assert.deepEqual(await coach.orderList(), BEST);
+    assert.equal(await coach.orderFooter(), ONLY_BUILT);
+    await coach.tap('Close');
+    await coach.tap('Start game');
+    await coach.tap('Next stint');
+    await coach.tap('Leave');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Hawks, 9:00 AM, underway');
+    await coach.tap('Plan, rotation order');
+    await coach.tap('Add a rule');
+    await coach.tap('Apart');
+    await coach.tap('Brooks');
+    await coach.tap('Webb');
+    await coach.tap('Add rule');
+
+    assert.deepEqual(await coach.orderList(), BEST, 'the list did not move');
     assert.equal(await coach.sees('Build it for me again'), false);
   });
 });

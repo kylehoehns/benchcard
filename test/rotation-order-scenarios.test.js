@@ -300,7 +300,7 @@ describe('Rotation order: where a later game starts', { skip }, () => {
     assert.deepEqual(await coach.orderList(), ROSTER);
   });
 
-  test('14. the day after, the game that replaces a filed one starts from the roster order', async () => {
+  test('14. the day after, the game that replaces a filed one is built again, the kids the old list left short first', async () => {
     const backwards = [...ROSTER].map((_, i) => `p${8 - i}`);
     await coach.onGameDayWithRoster(ROSTER, { strategy: 'order', order: backwards });
     await coach.tap('Hawks, 9:00 AM, planned');
@@ -312,7 +312,10 @@ describe('Rotation order: where a later game starts', { skip }, () => {
     await coach.tap((await coach.todayGames())[0]);
     await coach.tap('Plan, rotation order');
 
-    assert.deepEqual(await coach.orderList(), ROSTER);
+    /* The filed game's backwards list gave Jack, Sheeks, Cooper and Tate 20 minutes
+       and the other five 16. Those five are furthest behind: they take the first
+       five spots in the roster order (#547: the game that replaces a filed day is built). */
+    assert.deepEqual(await coach.orderList(), ['Webb', 'Kade', 'Brooks', 'Brody', 'Damari', 'Jack', 'Sheeks', 'Cooper', 'Tate']);
   });
 
   test('15. picking Order in the add-a-game steps starts it where the day\'s Order game stopped', async () => {

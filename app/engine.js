@@ -1402,6 +1402,11 @@ function orderLineups(ctx, order, avail) {
   return ctx.stints.map((s, j) => placesOn(n, c, j).map(k => circle[k]));
 }
 
+/* One quantizer for "who is ahead": a hundredth of a minute, so season shares
+   that differ by arithmetic noise tie. `tieBreakOrder` and `buildOrder` both
+   read priority through it, and so can never disagree on what a tie is. */
+const quantizePriority = value => Math.round((Number(value) || 0) * 100);
+
 /* #547: the list Order builds for a coach who has not set one. `ids` are the
    players here in roster order, `priority` the one number per kid `solveDay`
    composes from the odd minutes setting (higher plays more), and `constraints`
@@ -1413,15 +1418,14 @@ function orderLineups(ctx, order, avail) {
    once, with a fixed cap on scores worked out -- never a clock -- so the same
    input always gives the same list. Returns `{ order, short }`, `short` being
    the rules the final list breaks as `{ kind, ids }`. */
-const TIED = 1e-6;
-const BUILD_CAP = 12000;
-export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c = {}, periods }) {
+export const BUILD_CAP = 12000;
+export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c = {}, periods, cap = BUILD_CAP }) {
   const n = ids.length;
-  if (n < 2) return { order: [...ids], short: [] };
+  if (n < 2) return { order: [...ids], short: [], evals: 0 };
   const change = orderChanges(maxSubs);
   const idx = new Map(ids.map((id, i) => [id, i]));
-  const mask = stints.map((s, j) => placesOn(n, change, j).reduce((m, k) => m | (1 << k), 0));
-  const on = (k, j) => (mask[j] >> k) & 1;
+  const floor = stints.map((s, j) => { const row = Array(n).fill(false); for (const k of placesOn(n, change, j)) row[k] = true; return row; });
+  const on = (k, j) => (floor[j][k] ? 1 : 0);
   const mins = Array.from({ length: n }, (_, k) => stints.reduce((a, s, j) => a + on(k, j) * s.minutes, 0));
   // minutes spots k and l share, both on (`both`) or both off
   const share = (k, l, both) => stints.reduce((a, s, j) => a + (!!on(k, j) === both && !!on(l, j) === both ? s.minutes : 0), 0);
@@ -1439,11 +1443,11 @@ export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c
   const kidMax = ids.map(id => c.maxMinutes?.[id] ?? Infinity);
 
   // kids by priority, a tie group sharing one weight: how many have strictly less
-  const prio = k => priority[ids[k]] || 0;
+  const prio = k => quantizePriority(priority[ids[k]]);
   const groups = [];
   for (const k of Array.from({ length: n }, (_, i) => i).sort((a, b) => prio(b) - prio(a) || a - b)) {
     const last = groups[groups.length - 1];
-    if (last && Math.abs(prio(last[0]) - prio(k)) <= TIED) last.push(k);
+    if (last && prio(last[0]) === prio(k)) last.push(k);
     else groups.push([k]);
   }
   const weight = Array(n).fill(0);
@@ -1501,7 +1505,7 @@ export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c
   const best = moves => {
     let top = null, topScore = score - EPS;
     for (const move of moves) {
-      if (evals >= BUILD_CAP) break;
+      if (evals >= cap) break;
       const q = move();
       const s = cost(q);
       if (s < topScore) { top = q; topScore = s; }
@@ -1513,16 +1517,35 @@ export function buildOrder({ ids, stints, maxSubs, priority = {}, constraints: c
     swaps.push(() => swapped(i, j));
     for (let k = j + 1; k < n; k++) turns.push(() => turned(i, j, k, false), () => turned(i, j, k, true));
   }
-  while (evals < BUILD_CAP) {
-    const step = best(swaps) || best(turns);
-    if (!step) break;
-    perm = step.list;
-    score = step.score;
+  const descend = () => {
+    while (evals < cap) {
+      const step = best(swaps) || best(turns);
+      if (!step) break;
+      perm = step.list;
+      score = step.score;
+    }
+  };
+  descend();
+  /* A search that ends still breaking a rule may only be stuck: two kids that
+     must both move to separate may need two moves at once. Start again from
+     the list turned round by one place, then two, and so on -- the same
+     seeds in the same order every time -- and keep the best. Only while a
+     rule is broken and the cap allows, so a list that meets every rule is
+     never looked at twice. */
+  let winner = perm, winnerScore = score;
+  for (let turn = 1; turn < n && winnerScore >= 1e6 - EPS && evals < cap; turn++) {
+    perm = winner.map((_, k) => winner[(k + turn) % n]);
+    score = cost(perm);
+    descend();
+    if (score < winnerScore - EPS) { winner = perm; winnerScore = score; }
   }
+  perm = winner;
 
+  const searched = evals;
   const short = [];
   cost(perm, short);
-  return { order: perm.map(k => ids[k]), short };
+  evals = searched;
+  return { order: perm.map(k => ids[k]), short, evals };
 }
 
 /* The one note a built list writes when no list meets every rule. A part with
@@ -1892,7 +1915,7 @@ function tieBreakOrder(ctx, priority, seed) {
   /* Quantized to a hundredth of a minute before it is compared. Season shares
      are averages and land on values like 0.0000000004 apart; sorting on the
      raw float would let arithmetic noise outrank the rotation. */
-  const q = id => Math.round((Number(priority && priority[id]) || 0) * 100);
+  const q = id => quantizePriority(priority && priority[id]);
   return base
     .map((id, i) => ({ id, r: q(id), i }))
     .sort((a, b) => (b.r - a.r) || (a.i - b.i))

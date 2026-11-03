@@ -20,7 +20,7 @@ import { $, el, moveButton } from './dom.js';
 import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain, tieBreakIsLevels } from './state.js';
 
 let edit = () => {};
 
@@ -347,22 +347,25 @@ function platoonEditor(g) {
    #547: under the name, each kid's minutes this game from the open plan (a
    kid who is out shows their mark instead), the list says whose it is, and a
    list the coach set can be built again until the game starts. */
-const minutesLine = (g, id) => {
+const minutesOfOrder = g => {
   const p = plans[state.activeGame];
-  return p?.ok && !g.out.includes(id) && id in p.minutes ? `${fmtMinutes(effectiveMinutes(g, p)[id])} min` : '';
+  return p?.ok ? effectiveMinutes(g, p) : null;
 };
+const minutesLine = (g, id, mins) => (mins && !g.out.includes(id) && id in mins ? `${fmtMinutes(mins[id])} min` : '');
 function orderEditor(g) {
   const list = effectiveOrder(g);
   const wrap = el('div');
   const grp = el('div', 'pgrp');
+  const mins = minutesOfOrder(g);
   list.forEach((id, i) => {
     const name = byId(id).name;
     const row = el('div', 'prow orow');
+    row.dataset.id = id;
     const who = el('div', 'ord-who');
     who.append(el('span', 'prow-t', name));
     if (g.out.includes(id)) who.append(el('span', 'ord-mark', (g.late || []).includes(id) ? 'Running late' : 'Out'));
     else {
-      const min = minutesLine(g, id);
+      const min = minutesLine(g, id, mins);
       if (min) who.append(el('span', 'ord-min', min));
     }
     const body = el('div', 'ord-body');
@@ -383,7 +386,7 @@ function orderEditor(g) {
     acts.append(again);
     wrap.append(acts);
   }
-  const who = state.settings?.tieBreak === 'levels' ? 'your best players' : 'the kids furthest behind';
+  const who = tieBreakIsLevels() ? 'your best players' : 'the kids furthest behind';
   wrap.append(el('p', 'pgrp-f', `${g.orderBuilt
     ? `Built for you: ${who} get the spots that play the most. Move anyone and the list is yours.`
     : 'You set this list.'} The first five start. Players who are out are skipped.`));
@@ -398,7 +401,7 @@ function focusFirstDown() {
   if (first) first.focus();
 }
 function buildAgain() {
-  undoable('Built the list for you.', () => buildOrderAgain(game()), () => { renderStrategy(); edit('orderBuild'); focusFirstDown(); });
+  undoable('Built the list for you.', () => buildOrderAgain(game()), () => { edit('orderBuild'); focusFirstDown(); });
 }
 
 /* After every plan (the `budget` painter): the app may have rebuilt the list
@@ -410,17 +413,17 @@ export function refreshOrderList() {
   const rows = [...document.querySelectorAll('#stratbody .orow')];
   if (!g || g.strategy !== 'order' || !rows.length) return;
   const list = effectiveOrder(g);
-  const shown = rows.map(r => r.querySelector('.prow-t').textContent);
-  if (shown.length !== list.length || list.some((id, i) => byId(id).name !== shown[i])) {
+  if (rows.length !== list.length || list.some((id, i) => rows[i].dataset.id !== id)) {
     const had = document.activeElement?.closest('#stratbody') ? document.activeElement.getAttribute('aria-label') : null;
     renderStrategy();
     if (had) [...document.querySelectorAll('#stratbody .obtn')].find(b => b.getAttribute('aria-label') === had)?.focus();
     return;
   }
+  const mins = minutesOfOrder(g);
   list.forEach((id, i) => {
     const who = rows[i].querySelector('.ord-who');
     let min = who.querySelector('.ord-min');
-    const text = minutesLine(g, id);
+    const text = minutesLine(g, id, mins);
     if (text && !min) who.append(min = el('span', 'ord-min'));
     if (min && text) min.textContent = text;
     else if (min) min.remove();

@@ -201,3 +201,95 @@ test('copying how a game plans carries whether its list is the app\'s or the coa
 
   assert.equal('orderBuilt' in S.newGame(1, built), false);
 });
+
+/* ---- fix pass: the cap, the quantizer, big rosters, a stuck search ---- */
+import { BUILD_CAP } from '../app/engine.js';
+
+/* Every rule kind a roster of 15 can meet. (One of two on the floor cannot be met
+   with 15 kids and 5 places: two spots never cover every stint.) */
+const FIFTEEN = () => {
+  const ids = names(15);
+  const stints = stintsOf(Array(16).fill(2), 4);
+  const priority = Object.fromEntries(ids.map((id, i) => [id, (i * 7) % 15]));
+  return { ids, stints, maxSubs: 2, priority, periods: 4, constraints: {
+    ...NONE, avoids: [['p0', 'p1'], ['p2', 'p3']], pairs: [['p4', 'p5']],
+    minMinutes: { p8: 12 }, maxMinutes: { p9: 10 }, lastPeriodFive: ['p10', 'p11', 'p12'] } };
+};
+
+test('a 15-player build with every rule it can meet works out fewer scores than the cap', () => {
+  const { evals, order, short } = buildOrder(FIFTEEN());
+  assert.deepEqual(short, []);
+  assert.ok(evals > 0 && evals < BUILD_CAP, `${evals} scores against a cap of ${BUILD_CAP}`);
+  assert.deepEqual([...order].sort(), [...names(15)].sort());
+});
+
+test('a build that hits the cap stops there and still returns every kid once', () => {
+  const cap = 40;
+  const { evals, order } = buildOrder({ ...FIFTEEN(), cap });
+  assert.equal(evals, cap, "the search stopped on the cap");
+  assert.deepEqual([...order].sort(), [...names(15)].sort());
+});
+
+test('priorities less than a hundredth of a minute apart are a tie, the same as the plan reads them', () => {
+  // tieBreakOrder rounds to a hundredth; a builder that told these apart would put p5 in a 20-minute spot
+  const priority = Object.fromEntries(names(9).map(id => [id, id === 'p5' ? 0.004 : 0]));
+  assert.deepEqual(build({ priority }).order, names(9));
+  const wide = Object.fromEntries(names(9).map(id => [id, id === 'p5' ? 0.02 : 0]));
+  assert.equal(build({ priority: wide }).order.indexOf('p5') > 0 && build({ priority: wide }).order.indexOf('p5') < 5, true);
+});
+
+test('a roster past 32 players is counted by place, not by a 32-bit mask', () => {
+  // 34 places, 7 stints of 5 changing: only place 0 is on twice (stints 1 and 7)
+  const ids = names(34);
+  const stints = stintsOf(Array(7).fill(1), 7);
+  const { order, short } = buildOrder({ ids, stints, maxSubs: 5, priority: { p7: 9 }, periods: 1,
+    constraints: { ...NONE, minMinutes: { p20: 2 } } });
+  assert.deepEqual(short, []);
+  assert.equal(minutesOfKid(order, 'p20', 5, stints), 2);
+});
+
+test('a roster the plain search gets stuck on still finds the list that keeps the pair apart', () => {
+  // found by brute force: some list of the nine keeps p2 and p4 apart, and swaps and three-way turns from the start never reach it
+  const priority = { p0: 1000, p1: 1000, p2: 0, p3: 0, p4: 3000, p5: 3000, p6: 1000, p7: 3000, p8: 2000 };
+  const { order, short } = build({ priority, constraints: { avoids: [['p2', 'p4']] } });
+  assert.equal(sharedMinutes(order, 'p2', 'p4', 4), 0);
+  assert.deepEqual(short, []);
+});
+
+/* #547: whose list it is survives a reload, and only as a plain yes. */
+test('orderBuilt survives a save and load only when it is true', async () => {
+  const { sanitize } = await import('../app/storage.js');
+  const emptyConstraints = () => ({ minMinutes: {}, maxMinutes: {}, pairs: [], avoids: [], openingFive: [],
+    lastPeriodFive: [], hardPairs: false, maxConsecutive: 0, targetSlots: {}, lockedTargets: [],
+    closing: { stints: 2, players: [] }, units: [] });
+  const newGame = () => ({ id: 'gnew', label: '', tipoff: '', periods: 4, periodMinutes: 8, granMode: 'everyN',
+    granValue: 4, out: [], useCarryover: false, strategy: 'balanced', balance: 'even',
+    live: { at: 0, overrides: {} }, seed: 1, constraints: emptyConstraints() });
+  const H = { emptyConstraints, newGame, migrateLegacy: () => null };
+  const loadedGame = extra => sanitize({ version: 4, onboarded: true, teams: [{ id: 't', name: 'T',
+    players: names(6).map(id => ({ id, name: id })),
+    days: [{ name: '', date: '2026-09-26', games: [{ id: 'g1', strategy: 'order', order: names(6), ...extra }] }] }] }, H)
+    .teams[0].days[0].games[0];
+
+  assert.equal(loadedGame({ orderBuilt: true }).orderBuilt, true);
+  assert.equal('orderBuilt' in loadedGame({ orderBuilt: 'yes' }), false);
+  assert.equal('orderBuilt' in loadedGame({}), false);
+});
+
+/* The list is searched for only when what it is built from changes. An
+   unchanged game leaves `g.order` the very array it was; a new Apart rule
+   builds a new one. */
+test('an unchanged game is not searched again, and a changed rule is', async () => {
+  const { S, withTeam, player, bareGame } = await import('./state-fixture.js');
+  const players = names(9).map(id => player(id));
+  const g = bareGame({ id: 'g1', strategy: 'order', order: names(9), orderBuilt: true, late: [] });
+  withTeam(players, [g], { maxSubs: 4 }, () => {
+    S.computeAll();
+    const built = g.order;
+    S.computeAll();
+    assert.equal(g.order, built, 'nothing changed, so the list was not built again');
+    g.constraints.avoids = [['p1', 'p2']];
+    S.computeAll();
+    assert.notEqual(g.order, built, 'a new rule builds the list again');
+  });
+});

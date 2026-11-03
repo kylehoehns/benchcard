@@ -215,12 +215,15 @@ One fixed group of five in Platoon.
 _Avoid_: line, group, five
 
 **Rotation order**:
-The strategy where the coach lists the game's players in an order and the plan
-takes them in turn: the first five start, and each break the next players in the
-list come on for the ones who have played longest. Each game has its own order; a
-later game that day starts from where the earlier game's turn stopped.
+The strategy where the game's players are listed in an order and the plan takes
+them in turn: the first five start, and each break the next players in the list
+come on for the ones who have played longest. Each game has its own list. Until
+the game starts, the app builds the list from the odd minutes setting and the
+rules; once the coach moves anyone, the list is the coach's. A later game that day
+starts from where an earlier game's turn stopped when that game's list is the
+coach's. Otherwise the later game's list is built too.
 _Avoid_: rotation list, queue, cycle (in coach text)
-_In code_: `order`, `g.order`
+_In code_: `order`, `g.order`; `g.orderBuilt` is set for the app's list
 
 **Lineup balance**:
 An optional setting that uses levels to shape how strong each stint's five is.
