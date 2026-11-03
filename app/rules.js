@@ -20,10 +20,11 @@ import { fmtMinutes } from './engine.js';
 import { state, game, byId, plans, seasonAdjust, availIds, team, copySources, copySetup,
          ruleItems, runHint, runMinutesText, runNoun, runRowLabel, restLimitMax, benchPlatoonHint, removeRule, ruleComplete, replaceRule, pairInList, keepOnList, minutesBucket,
          changedRuleToast, removedRuleToast, suppressRotationOffer,
-         dayIsToday, makeUpOffers, makeUpShown, setMakeUp } from './state.js';
+         dayIsToday, makeUpOffers, makeUpShown, makeUpOf, setMakeUp } from './state.js';
 import { pickFive } from './pills.js';
 import { pushPlanPane, stepperRow, paintChoiceRows, onPlanOpen } from './game-setup.js';
 import { gameStarted } from './live.js';
+import { MAKE_UPS } from './storage.js';
 import { popPane } from './trap.js';
 import { undoable, showUndo } from './toast.js';
 
@@ -83,7 +84,7 @@ function ruleRow(item, idx) {
   return b;
 }
 
-export function switchRow(label, checked, disabled, onChange) {
+function switchRow(label, checked, disabled, onChange) {
   // #221: prow-toggle (app.css) wraps this row's label onto its own line at
   // 320px/32px text instead of letting it squeeze and paint under the switch.
   const row = el('label', 'prow prow-toggle');
@@ -119,7 +120,7 @@ function renderPairsGroup(c) {
    would change this game's plan (`makeUpOffers`); fewer than two and the group
    is hidden. Showing never writes: a saved choice that is not offered is
    drawn as what it does (`makeUpShown`), and only a tap saves anything. */
-const MAKE_UP_ROWS = [['game', 'This game only'], ['day', null], ['season', 'The season so far']];
+const MAKE_UP_LABELS = { game: 'This game only', day: null, season: 'The season so far' };
 
 function renderMakeUpGroup(g) {
   const wrap = $('#planDay');
@@ -131,8 +132,8 @@ function renderMakeUpGroup(g) {
   if (wrap.hidden) return;
   // #420: "today" only when the open day is the phone's today, as `moveGame` and filing read it
   const dayLabel = dayIsToday(state.day) ? 'Earlier today' : 'Earlier that day';
-  const shown = makeUpShown(g, i);
-  const keys = MAKE_UP_ROWS.filter(([key]) => offers.includes(key));
+  const shown = makeUpShown(g, i, offers);
+  const keys = MAKE_UPS.filter(key => offers.includes(key)).map(key => [key, MAKE_UP_LABELS[key]]);
   let tapped = 0;
   const box = el('div', 'pgrp');
   /* The edit repaints this whole group, so the row that was tapped is gone by
@@ -140,7 +141,9 @@ function renderMakeUpGroup(g) {
      of the new group instead. */
   paintChoiceRows(box, keys.map(([key, label], idx) => [label || dayLabel, key === shown, () => {
     tapped = idx;
-    setMakeUp(g, key, team().settings);
+    // the row already saved is a no-op; a row checked only as a fallback still saves
+    if (key === makeUpOf(g)) return;
+    setMakeUp(g, key, state.settings);
     edit('makeUp');
   }]), () => $('#planDay .pgrp')?.children[tapped]?.focus({ preventScroll: true }));
   wrap.append(el('div', 'pgrp-h', 'Make up minutes from'), box,

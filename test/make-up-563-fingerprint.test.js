@@ -10,7 +10,9 @@
  * the old team `seasonDefault`, loaded through `sanitizeTeam` and planned with
  * `computeAll`. Before loading, the test applies that one known mapping itself
  * (`known`), so the hash says: the plans are what the unchanged tree planned,
- * reading "season only" as both on.
+ * reading "season only" as both on. So `known()` pre-applies the mapping and
+ * the hash pins plans, not the migration itself (make-up-migration.test.js
+ * covers that). The seeded `seasonDefault` does not affect any plan.
  *
  * The hash below was recorded on the UNCHANGED tree, HEAD 82c9ba3, before any
  * edit for #563 or #581, by running this same test there. */

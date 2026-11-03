@@ -368,7 +368,7 @@ test('the per-player boundary warning is collapsed, because the league floor set
    thing that reads it, at the moment a game is created. So the tests are
    about creation and about what it must NOT touch, not about minutes. */
 
-test('a new game opens on its own by default, which is what every older record means', () => {
+test('a new game opens on Earlier today from the second game of a day on by default, which is what every older record means', () => {
   const t = setup();
   assert.equal(t.settings.makeUp, 'day', 'absent means earlier today from a second game on');
   assert.equal(S.newGame(0, null, t.settings).useSeasonTargets, false);

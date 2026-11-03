@@ -21,14 +21,6 @@ test('the three choices read from, and write to, the two flags', () => {
   }
 });
 
-test('picking writes the team setting; a draft game given no settings writes none', () => {
-  const settings = { makeUp: 'day' };
-  S.setMakeUp(g({}), 'season', settings);
-  assert.equal(settings.makeUp, 'season');
-  S.setMakeUp(g({}), 'game');
-  assert.equal(settings.makeUp, 'season');
-});
-
 test('a new game: the season if that was the last choice, else earlier today from game 2 on, else this game only', () => {
   for (const [n, last, want] of [
     [0, 'season', 'season'], [2, 'season', 'season'],
@@ -81,20 +73,25 @@ test('#581: By hand does not even out the day, whatever the switch says', () => 
   assert.equal(S.evensOutDay(even, 0), false);
 });
 
-test('#581: the solver gets no day credit under By hand', () => {
+/* The solver's carryover input is part of the plan cache's signature, so a
+   flag that changes that input forces a new solve, and one that does not
+   leaves the cached plan object in place. That is the seam: nothing else shows
+   whether the day credit reached the solver, because By hand plans the same
+   either way. */
+test('#581: flipping the day switch re-solves Even, and leaves By hand\'s plan alone', () => {
   const players = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(id => player(id));
-  const mk = strategy => [
-    g({ id: 'g1', out: ['a', 'b'], seed: 3 }),
-    g({ id: 'g2', strategy, useCarryover: true, seed: 4 }),
-  ];
-  const stints = strategy => withTeam(players, mk(strategy), {}, () => {
-    S.state.onboarded = true;
-    S.computeAll();
-    return JSON.stringify(S.plans[1]?.stints.map(x => x.onFloor));
-  });
-  const withDay = stints('minutes');
-  const games = mk('minutes'); games[1].useCarryover = false;
-  const without = withTeam(players, games, {}, () => { S.computeAll(); return JSON.stringify(S.plans[1]?.stints.map(x => x.onFloor)); });
-  assert.equal(withDay, without);
-  assert.notEqual(stints('balanced'), without, 'the check can tell the day credit from none');
+  const solvedAgain = strategy => {
+    const games = [g({ id: 'g1', out: ['a', 'b'], seed: 3 }), g({ id: 'g2', strategy, useCarryover: true, seed: 4 })];
+    return withTeam(players, games, {}, () => {
+      S.state.onboarded = true;
+      S.computeAll();
+      const before = S.plans[1];
+      assert.ok(before?.ok, `${strategy}: game 2 planned`);
+      games[1].useCarryover = false;
+      S.computeAll();
+      return S.plans[1] !== before;
+    });
+  };
+  assert.equal(solvedAgain('balanced'), true, 'control: Even takes the day credit, so turning it off re-solves');
+  assert.equal(solvedAgain('minutes'), false, 'By hand takes none, so turning it off changes nothing the solver sees');
 });

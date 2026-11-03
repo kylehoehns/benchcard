@@ -68,12 +68,14 @@ export function switchRowMessage(r, requireRows) {
   return null;
 }
 
-/* #221's own two named states (Plan sheet, Add a game step 3) get rule 2a: if
- * the sheet never opened, or `switchRow`'s markup changed shape, `rows === 0`
- * fails the state instead of quietly measuring nothing. Every other state in
- * `app-large-text.mjs`'s list legitimately has no switch row on screen, so
+/* #221's named state gets rule 2a: if the sheet never opened, or
+ * `switchRow`'s markup changed shape, `rows === 0` fails the state instead of
+ * quietly measuring nothing. It is the Plan sheet with a pair on the game, whose
+ * "Force Together" row is the one switch left (#563 took the Plan sheet's
+ * even-out switches and Add a game step 3's switch away). Every other state
+ * in `app-large-text.mjs`'s list legitimately has no switch row on screen, so
  * `requireRows` is false there and 0 rows is not a problem. */
-export const SWITCH_ROW_STATES = new Set(['plan sheet', 'add a game, step 3']);
+export const SWITCH_ROW_STATES = new Set(['plan sheet, with a pair']);
 
 export async function switchRowProblem(c, requireRows) {
   const r = JSON.parse(await evalIn(c, SWITCH_ROW_PROBE));

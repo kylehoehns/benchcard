@@ -214,8 +214,7 @@ export function makeUpOffers(g, i) {
 
 /* The checked row: the saved choice if it is offered, else what it does here
    (the season with nothing filed plans as earlier today). Showing never writes. */
-export function makeUpShown(g, i) {
-  const offers = makeUpOffers(g, i);
+export function makeUpShown(g, i, offers = makeUpOffers(g, i)) {
   const saved = makeUpOf(g);
   if (offers.includes(saved)) return saved;
   if (saved === 'season' && offers.includes('day')) return 'day';

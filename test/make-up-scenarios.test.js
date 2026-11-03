@@ -165,6 +165,20 @@ describe('Make up minutes from', { skip }, () => {
     });
   }
 
+  test('11b. tapping the row that is already checked changes nothing, not even what a new game starts on', async () => {
+    await planOf(1, { flags: [true, true] });
+    assert.deepEqual(await checked(), [SEASON]);
+    await coach.tap(SEASON);
+    assert.deepEqual(await checked(), [SEASON]);
+    await coach.tap('Close');
+    await coach.tap('Back to Smoke Test');
+    await coach.tap('Add a game');
+    await coach.setDate('Date', '2026-09-19');
+    await coach.tap((await coach.controls()).find(n => n.startsWith('Same as')));
+    await coach.tap((await coach.controls()).find(n => n.startsWith('Plan, ')));
+    assert.deepEqual(await checked(), [GAME], 'the team never picked the season, so a new day still starts on This game only');
+  });
+
   test('12. a new day with nothing filed has no row on its first game', async () => {
     await planOf(1, { filed: false, flags: [true, false] });
     await coach.tap(DAY);

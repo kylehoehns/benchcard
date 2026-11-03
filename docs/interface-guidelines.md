@@ -140,7 +140,7 @@ Design principles; Modality.*
 **S1. One Settings screen, with three sections.** The top section is headed with
 the active team's name and holds everything that belongs to that team: the team's
 display name, team color, default game format, players changing at once, league
-minimum, where extra minutes go (under Fine-tuning), and whether new games even out the season, in
+minimum and where extra minutes go (under Fine-tuning), in
 grouped rows with at most one footnote per group. The second
 section is headed *Benchcard* and holds appearance, How it works (with the
 tour), and About, contact and the tip jar. The third is headed *Backup and
@@ -151,8 +151,8 @@ gave backup and restore its own heading, last, and moved Settings onto
 Team's grouped rows.*
 
 **S2. No settings anywhere else.** The Team screen is the roster. The Plan sheet
-holds only choices about this game: strategy, rules, lineup balance, evening
-out earlier games, and copying another game's setup onto this one (#548). A
+holds only choices about this game: strategy, rules, lineup balance, which
+games to make up minutes from, and copying another game's setup onto this one (#548). A
 setting that belongs to the team is never also editable from a game.
 *Benchcard: decided 2026-09-14.*
 

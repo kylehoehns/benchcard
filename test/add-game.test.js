@@ -177,13 +177,6 @@ test('with no days the draft is newGame(0, null, settings), dated today, and off
 const APP = new URL('../app/', import.meta.url);
 const MODULES = readdirSync(APP).filter(f => f.endsWith('.js'));
 
-test('rules.js exports switchRow, so a second caller can reuse it', async () => {
-  const R = await import('../app/rules.js');
-  assert.equal(typeof R.switchRow, 'function',
-    'app/rules.js does not export switchRow -- #32 step 3 needs the one switch builder, '
-    + 'not a second copy of it (docs/specs/32-add-a-game.md, Constraints)');
-});
-
 test('exactly one module in app/ builds an input[switch]', () => {
   assert.ok(MODULES.length > 20, `scanned ${MODULES.length} module(s) in app/; the read is wrong`);
   const builders = MODULES.filter(f =>

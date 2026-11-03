@@ -263,9 +263,9 @@ It is the coach's choice of how the app builds its list. The default is the list
   the rest from the top of the new order. Rejected: the coach moves one kid and
   the player who was due on next would change for no reason.
 - **Order does not claim to even out the day.** The "evens out the day" line is
-  off for a game on Order, and the Across the day switch is not on the Plan sheet
+  off for a game on Order, and Make up minutes from is not on the Plan sheet
   there (#562). The line under the strategy names the team settings Order skips.
-  The switch's setting is kept underneath.
+  The row's setting is kept underneath.
 - **Sit for the rest (now Sits the rest of the game) keeps the cycle going.** The four who stay are not forced
   into the next five: the order decides. `resolveRest` does not refuse Order.
 
@@ -289,7 +289,7 @@ It is the coach's choice of how the app builds its list. The default is the list
   or percent still applies, and it warns the way the notes above do.
 - **A switch the strategy ignores is hidden, not shown off (#562).** Under Platoon,
   Lineup balance joins Order in being hidden, and under Platoon and Order the
-  Across the day switch is hidden too. The line under the strategy names what is
+  Make up minutes from is hidden too. The line under the strategy names what is
   skipped instead. Alternative: keep them shown off with a note, as before.
   Rejected: the coach should see only the switches that change their plan, and a
   note on each one repeated the reason the strategy line already gives. Nothing is

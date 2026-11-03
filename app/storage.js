@@ -246,7 +246,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
 });
 
 const TIE_BREAKS = Object.freeze(['behind', 'levels']);
-const MAKE_UPS = Object.freeze(['game', 'day', 'season']);
+export const MAKE_UPS = Object.freeze(['game', 'day', 'season']);
 
 /* The nine team colors, in the order the picker lists them and the order
    the contrast test walks. One list: the picker, sanitizeSettings and

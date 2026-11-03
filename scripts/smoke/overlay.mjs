@@ -84,6 +84,22 @@ export const STATES = [
   { name: 'plan sheet',
     open: `$('.today-game').click(); $('#phraseStrategy').click()`, shows: '#sheetPlan[open]',
     close: `$('#sheetPlan').close(); $('#backBtn').click()` },
+  /* #221, #563: the Plan sheet's one remaining switch, Force Together, only
+     draws once the game has a pair, so this is `plan sheet` with one seeded
+     (and cleared) the same way the rule states below are. */
+  { name: 'plan sheet, with a pair',
+    open: `await (async () => {
+             const st = await import('/state.js');
+             st.game().constraints.pairs = [['p1', 'p2']];
+             (await import('/render.js')).renderAll();
+           })();
+           $('.today-game').click(); $('#phraseStrategy').click()`, shows: '#sheetPlan[open]',
+    close: `await (async () => {
+              const st = await import('/state.js');
+              st.game().constraints.pairs = [];
+              (await import('/render.js')).renderAll();
+            })();
+            $('#sheetPlan').close(); $('#backBtn').click()` },
   /* A rule's detail needs a rule on the game first, which the harness's
      RICH fixture does not seed (Hawks ships with none) -- seeded the same
      way `plan-sheet.mjs`'s own item 4 seeds one, by editing
