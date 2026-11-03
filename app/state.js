@@ -1391,7 +1391,8 @@ export const EVEN_OUT_DAY_LABEL = 'Even out earlier games';
    with its switch on -- except on Order and Platoon, whose fives come from the
    order or the units the coach set and so cannot make up anyone's minutes
    (#545, #552). The switch stays set under them, for the day the coach picks
-   another strategy. */
+   another strategy. The carryover reaches the solver only when this holds
+   (#553). */
 export const evensOutDay = (g, i) => i > 0 && g.useCarryover && !fivesAreSet(g.strategy);
 
 export function passSummary(g, i, p) {
@@ -2400,14 +2401,15 @@ export function computeAll() {
        byte for byte the plan 'behind' would have produced. */
     const priorityOf = id => (tiers ? tiers[id] * 1000 : 0) + deficitOf(id);
 
-    return day.games.map(g => {
+    return day.games.map((g, i) => {
       live.add(g.id);
       const out = new Set(g.out);
       // slots are the UI's currency; the engine works in minutes. Normalize here
       // rather than in the editor so the budget invariant holds even when the
       // roster or format changed from another view.
       if (g.strategy === 'minutes') normalizeTargets(g);
-      const carry = (g.useCarryover && any) ? { ...cum } : null;
+      // Same test as the notes: Platoon and Order get no carryover input (#553).
+      const carry = (evensOutDay(g, i) && any) ? { ...cum } : null;
       /* Computed before the cache is consulted and folded into the signature:
          the whole chain -- a game deleted from the ledger, an earlier game in
          the day re-solving -- then invalidates on its own, exactly as the
