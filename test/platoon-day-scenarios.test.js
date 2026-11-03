@@ -47,4 +47,36 @@ describe('Platoon: a second game the same day', { skip }, () => {
     await coach.tap('Close');
     assert.match(await coach.text('body'), /Evens out the 9:00 AM game./);
   });
+
+  /* #553: game 1 sat Reid out, so game 2 has a real deficit to carry. Game 2
+     is the same game with Reid back, switched to Platoon with the switch on. */
+  async function gameTwoAfterAbsence() {
+    await coach.onGameDayWith(g => ({
+      periods: 2, periodMinutes: 16, granMode: 'everyN', granValue: 4, out: ['p9'],
+      strategy: 'balanced', useCarryover: true, constraints: { ...g.constraints, units: UNITS },
+    }), undefined, { names: ROSTER, settings: { maxSubs: 5 }, alone: true });
+    await coach.tap('Add a game');
+    await coach.fill('Opponent', 'Owls');
+    await coach.tap((await coach.controls()).find(n => n.startsWith('Same as')));
+    await coach.tap("Who's here, 9 players");
+    await coach.tap('Reid');
+    await coach.tap('Close');
+    await coach.tap('Plan, even minutes');
+    await coach.tap('Platoon');
+    await coach.tap('Close');
+  }
+
+  test('3. its notes do not say minutes are uneven to even out the day', async () => {
+    await gameTwoAfterAbsence();
+    assert.ok(lacks(await coach.text('#issues'), 'even out the day'), await coach.text('#issues'));
+    assert.ok(lacks(await coach.text('body'), 'uneven on purpose'), 'the spread line says it is uneven on purpose');
+  });
+
+  test('4. switched to Even, the notes about catching Reid up come back', async () => {
+    await gameTwoAfterAbsence();
+    await coach.tap('Plan, fixed fives');
+    await coach.tap('Even');
+    await coach.tap('Close');
+    assert.match(await coach.text('#issues'), /even out the day/);
+  });
 });
