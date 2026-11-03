@@ -604,7 +604,8 @@ function levelsNote() {
      place levels are read, so it is true in either state. "Never a lot more
      minutes": everyone's share is worked out without levels (budget.js never
      sees them -- test/leak.test.js pins that); at most they move who gets the
-     odd stint. The last sentence is pinned by test/leak.test.js and smoke's
+     odd stint. Copy false in a state the app can be in is why a level-blind
+     share is never claimed. The last sentence is pinned by test/leak.test.js and smoke's
      team screen. */
   return 'Levels mix strong and newer kids on the floor, decide who gets the few extra minutes if you choose that in Settings, help Order build its list, and pick the strongest five in overtime. They never give a kid a lot more minutes. They are never printed and never shown in bench mode.';
 }

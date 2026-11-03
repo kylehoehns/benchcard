@@ -21,7 +21,7 @@ import { pickFive } from './pills.js';
 import { undoable } from './toast.js';
 import { paintChoiceRows } from './game-setup.js';
 import { state, game, byId, colorOf, minutesText, availIds, stintShape, regulationShape,
-         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain, tieBreakIsLevels, tierOfPlayer, leagueMinFor, leagueUnit } from './state.js';
+         normalizeTargets, rebalanceSlots, plans, STRATEGIES, minutesFrom, effectiveStints, effectiveOrder, effectiveMinutes, moveInOrder as moveInOrderOf, buildOrderAgain, tieBreakIsLevels, bestPlayersOffered, tierOfPlayer, leagueMinFor, leagueUnit } from './state.js';
 
 let edit = () => {};
 
@@ -488,7 +488,7 @@ function mixChoice(g) {
     [tieBreakIsLevels() ? 'Best players get the extra sub' : 'Kids behind on minutes get the extra sub', !g.orderMix, choose(false, 0)],
     ['Mix the fives', !!g.orderMix, choose(true, 1)],
   ], paint);
-  return [el('div', 'pgrp-h', MIX_GROUP), box, el('p', 'pgrp-f', 'Set in Settings > Fine-tuning > Extra minutes go to.')];
+  return [el('div', 'pgrp-h', MIX_GROUP), box, el('p', 'pgrp-f', bestPlayersOffered() ? 'Set in Settings > Fine-tuning > Extra minutes go to.' : 'To give the extra sub to your best players, set levels on the Team page.')];
 }
 
 /* The refresh `undoable` runs on the tap and on Undo: the plan rebuilds the

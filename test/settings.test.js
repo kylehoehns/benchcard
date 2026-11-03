@@ -263,16 +263,6 @@ test('the stance belongs to the team, and one squad\'s never reaches the other',
   assert.equal(S.state.settings.tieBreak, 'behind', 'the accessor follows the active team');
 });
 
-test('the roster note stops claiming minutes are level-blind when they are not', () => {
-  /* Copy that is false in a state the app can be in is the reason this option
-     is opt-in rather than a weight quietly folded into the default. #570: one
-     note for both stances, so it claims only what is true in either (levels
-     never give a kid a LOT more minutes) and never a level-blind share. */
-  const src = readFileSync(new URL('../app/roster-view.js', import.meta.url), 'utf8');
-  assert.match(src, /They never give a kid a lot more minutes\./,
-    'the level note claims only that levels never give a lot more minutes');
-});
-
 test('the plan says which reason is actually deciding it', () => {
   /* The engine hands back a bare number and is deliberately never told what
      it means, so state.js supplies the reason. A line that names the wrong

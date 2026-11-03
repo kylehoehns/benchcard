@@ -13,6 +13,7 @@ const NAMES = ['Avery', 'Blake', 'Casey', 'Drew', 'Emery', 'Finley', 'Gray', 'Ha
 const LEVELS_NOTE = 'Levels mix strong and newer kids on the floor, decide who gets the few extra minutes if you choose that in Settings, help Order build its list, and pick the strongest five in overtime. They never give a kid a lot more minutes. They are never printed and never shown in bench mode.';
 const SAME_LEVEL_NOTE = "When minutes can't split evenly, the spare sub goes to the kids behind on minutes. Set levels on the Team page to choose your best players instead.";
 const TODAYS_NOTE = "When minutes can't split evenly, who gets the spare sub. Everyone still plays about the same.";
+const ORDER_TEAM_PAGE = 'To give the extra sub to your best players, set levels on the Team page.';
 const POINTER = 'Set in Settings > Fine-tuning > Extra minutes go to.';
 
 describe('levels, one note and no choice that does nothing', { skip }, () => {
@@ -57,8 +58,21 @@ describe('levels, one note and no choice that does nothing', { skip }, () => {
     assert.ok((await coach.footnotes()).includes(TODAYS_NOTE), JSON.stringify(await coach.footnotes()));
   });
 
-  test('Order says where its first choice is set, until the coach moves someone', async () => {
+  test('Order with every level equal and Kids behind: points to the Team page, not to a Settings row that is hidden', async () => {
     await coach.onGameDayWithRoster(NAMES);
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Plan, even minutes');
+    await coach.tap('Order');
+    const notes = await coach.footnotes();
+    assert.ok(notes.includes(ORDER_TEAM_PAGE), JSON.stringify(notes));
+    assert.equal(notes.includes(POINTER), false, JSON.stringify(notes));
+
+    await coach.tap('Move Avery down');
+    assert.equal((await coach.footnotes()).includes(ORDER_TEAM_PAGE), false);
+  });
+
+  test('Order with levels apart says where its first choice is set, until the coach moves someone', async () => {
+    await coach.onGameDayWithRoster(NAMES, { tiers: { p0: 5 } });
     await coach.tap('Hawks, 9:00 AM, planned');
     await coach.tap('Plan, even minutes');
     await coach.tap('Order');
@@ -66,5 +80,21 @@ describe('levels, one note and no choice that does nothing', { skip }, () => {
 
     await coach.tap('Move Avery down');
     assert.equal((await coach.footnotes()).includes(POINTER), false);
+  });
+
+  test('Order with equal levels but Best players saved still points to Settings', async () => {
+    await coach.onGameDayWithRoster(NAMES, { tieBreak: 'levels' });
+    await coach.tap('Hawks, 9:00 AM, planned');
+    await coach.tap('Plan, even minutes');
+    await coach.tap('Order');
+    assert.ok((await coach.footnotes()).includes(POINTER), JSON.stringify(await coach.footnotes()));
+  });
+
+  test('Settings with equal levels, Best players saved: tapping Kids behind on minutes leaves no choice and the equal-levels line', async () => {
+    await settingsOpen({ tieBreak: 'levels' });
+    await coach.tap('Kids behind on minutes');
+    assert.equal(await coach.sees('Best players'), false, JSON.stringify(await coach.controls()));
+    assert.equal(await coach.sees('Kids behind on minutes'), false, JSON.stringify(await coach.controls()));
+    assert.ok((await coach.footnotes()).includes(SAME_LEVEL_NOTE), JSON.stringify(await coach.footnotes()));
   });
 });

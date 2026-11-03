@@ -28,8 +28,7 @@ import { track } from './analytics.js';
 import { state, plans, dayPlans, newGame, removeActiveTeam, team, lastGame, gameLabel, game, activeColor,
          colorOf, passSummary, changedSincePrinted, passBlocks, rowGradient, sameAsLast, availIds, setAvailable,
          initials, STRATEGIES, EVEN_OUT_DAY_LABEL, openGame, dayHeading, addGame, removeGame,
-         hasGames, tierOfPlayer } from './state.js';
-import { tiersDiffer } from './engine.js';
+         hasGames, bestPlayersOffered } from './state.js';
 import { tipoffLabel } from './storage.js';
 // #34 decision 5/6: the picker lives in live.js, and this is the one place
 // it is called from -- both the paint and the tap. No cycle: gamemode.js
@@ -345,12 +344,11 @@ function paintLeagueMin(settled = false) {
    so the two cannot disagree. While every player is at one level, Best players
    would do nothing, so the "Extra minutes go to" row hides and the footnote
    points to the Team page -- unless Best players is already saved, which keeps
-   showing. `tiersDiffer`/`tierOfPlayer` are the engine's own question. */
+   showing. `bestPlayersOffered` (state.js) is that question, shared with Order's pointer. */
 const SAME_LEVEL_NOTE = "When minutes can't split evenly, the spare sub goes to the kids behind on minutes. Set levels on the Team page to choose your best players instead.";
 function paintFineTune() {
   const open = $('#fineTuneBtn').getAttribute('aria-expanded') === 'true';
-  const stance = team()?.settings?.tieBreak ?? DEFAULT_SETTINGS.tieBreak;
-  const same = stance !== 'levels' && !tiersDiffer(state.players, tierOfPlayer);
+  const same = !bestPlayersOffered();
   const note = $('#fineTuneNote');
   if (!note.dataset.usual) note.dataset.usual = note.textContent;
   note.textContent = same ? SAME_LEVEL_NOTE : note.dataset.usual;

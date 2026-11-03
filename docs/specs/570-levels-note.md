@@ -74,7 +74,9 @@ coach can see where the first option's name comes from. No plan changes.
 4. Settings, equal levels with Best players saved: both buttons show, Best
    players pressed.
 5. Order (built list, game not started): under the two options, the line "Set
-   in Settings > Fine-tuning > Extra minutes go to." Not shown once the coach
+   in Settings > Fine-tuning > Extra minutes go to." While levels are equal and
+   the setting is Kids behind, it reads "To give the extra sub to your best
+   players, set levels on the Team page." instead. Not shown once the coach
    has moved someone (the options are not shown then either).
 6. Plans unchanged: `test/levels-570-fingerprint.test.js`, recorded at
    `82c9ba3` before any edit, stays green.

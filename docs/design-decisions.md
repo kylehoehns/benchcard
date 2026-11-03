@@ -554,9 +554,8 @@ text left open, and a future reader needs them to read the plan.
   so `'levels'` solves *identically* to `'behind'`; and `applyTieBreak` already
   excludes anyone the coach has spoken for, so a floor, a cap, a lock or a
   hand-set target still outranks it. The claim in the `SPREAD_FLOOR` line
-  follows what actually separated the two groups, and the level note in the
-  player sheet stops saying the share is worked out without levels when it is
-  not --
+  follows what actually separated the two groups, and the level
+  note is one text for both (#570) --
   copy that is false in a state the app can be in is why the option is opt-in
   rather than a weight folded into the default.
 - **Players carry generated ids.** Constraints, availability and carryover all
@@ -740,3 +739,4 @@ text left open, and a future reader needs them to read the plan.
 - **Rotation order is its own strategy (#545)**, with no search on the
   plan: [in full](design-decisions-rotation-order.md). **Platoon and Closers
   start filled in (#569)**: [in full](design-decisions-filled-in.md).
+  **Levels (#570)**: [in full](design-decisions-levels.md).
